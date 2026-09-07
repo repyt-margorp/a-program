@@ -2129,6 +2129,26 @@ conclusion and all premise pointers; no accepted record is overwritten.
   target and performs a resumable comparison; the expectation never flows back
   into the left job. Tests compile a raw polymorphic nested identity, execute
   an application, check function expectations and reject unresolved names.
+- [x] September 8, after `49ea57d`: open source telescopes through shared
+  binding jobs. Ordinary Lambda/Pi synthesis and `pg_synthesis_telescope` now
+  use the same domain synthesis, pure type-input handling, fresh pointer binder
+  and checked Context extension. Exact source/scope keys share those outputs;
+  this does not intern by alpha or normal form. No value-side Pi, new evidence
+  rule, declaration-specific context representation or expected-type synthesis
+  is introduced. A telescope returns ordinary context evidence plus its source
+  scope and unprocessed tail; it does not certify that tail or admit a datatype.
+  Tests open parameter/index/field lists from an indexed declaration, retain
+  their scope separation, and connect the result-index expression to existing
+  substitution pairing and `pg_data_schema`. They also cover expression-first
+  and telescope-first binder sharing, computed domains, invalid domains, empty
+  and anonymous telescopes, 256 iterative binders, foreign scopes and cyclic
+  waiting without polling. Nominal formation still reports UNSUPPORTED;
+  Self, positivity, membership, typed Match/IH and indexed fibrancy remain N3
+  obligations. The common scheduler is bounded in transitions; context extension
+  and primitive proof checks remain synchronous, not constant-time operations.
+  Optimized check: 3.621 s (synthesis rebuilt); ASan/UBSan check and four
+  computation suites at 512 KiB stack passed. Implementation `synthesis.c`
+  +85/-26, `synthesis.h` +11; tests +145; documentation separate.
 - [ ] Complete source lowering/synthesis: import providers and full definition diagnostics,
   literals, ADT/IADT, computation blocks/folds, implicit sequencing
   of remaining returning argument/callee cases, computed type

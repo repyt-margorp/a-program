@@ -52,7 +52,7 @@ struct block_state {
 	struct pg_index names;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, BINDING_JOB, TELESCOPE_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -60,6 +60,7 @@ struct pg_synthesis_job {
 	size_t input_count;
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
+	const struct pg_syntax *tail;
 	enum pg_synthesis_status status;
 	unsigned stage;
 	struct pg_synthesis_job *next;
@@ -230,6 +231,23 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
 {
 	return request_role(synthesis, scope, syntax, EXPRESSION_JOB);
+}
+
+struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
+{
+	return request_role(synthesis, scope, syntax, TELESCOPE_JOB);
+}
+
+const struct pg_source_scope *pg_synthesis_telescope_scope(const struct pg_synthesis_job *job)
+{
+	if (!job || job->role != TELESCOPE_JOB || job->status != PG_SYNTHESIS_DONE) return NULL;
+	return job->inner;
+}
+
+const struct pg_syntax *pg_synthesis_telescope_body(const struct pg_synthesis_job *job)
+{
+	return pg_synthesis_telescope_scope(job) ? job->tail : NULL;
 }
 
 struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
@@ -502,6 +520,52 @@ static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 }
 
 static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
+
+static void binding_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	const struct pg_syntax *syntax = job->syntax;
+	if (syntax->binder_marker) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+	if (!job->left) {
+		const struct pg_syntax *domain = syntax->left;
+		if (syntax->kind == PG_SYNTAX_PI && domain->kind == PG_SYNTAX_BINDER) domain = domain->left;
+		job->left = pg_synthesis_request(synthesis, job->scope, domain);
+		depend(synthesis, job, job->left);
+		return;
+	}
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	const struct pg_evidence *input = type_input(synthesis, job, job->scope->context, job->left->result);
+	if (!input) return;
+	job->domain = value_type(synthesis, input);
+	if (!job->domain) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+	struct pg_token name = syntax->token;
+	if (syntax->kind == PG_SYNTAX_PI) {
+		name = syntax->left->token;
+		if (syntax->left->kind != PG_SYNTAX_BINDER) name = (struct pg_token){0};
+	}
+	const struct pg_object *binder = pg_binder(synthesis->typing->graph);
+	job->result = pg_prove_context_extension(synthesis->typing, job->scope->context, binder, job->domain);
+	job->inner = pg_synthesis_bind(synthesis, job->scope, name, binder, job->result);
+	finish(synthesis, job, job->inner ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+}
+
+static void telescope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->inner) { job->inner = job->scope; job->tail = job->syntax; }
+	if (job->left) {
+		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		job->inner = job->left->inner;
+		job->tail = job->tail->right;
+		job->left = NULL;
+	}
+	if (job->tail->kind != job->syntax->kind ||
+		(job->tail->kind != PG_SYNTAX_LAMBDA && job->tail->kind != PG_SYNTAX_PI)) {
+		job->result = job->inner->context;
+		finish(synthesis, job, PG_SYNTHESIS_DONE);
+		return;
+	}
+	job->left = request_role(synthesis, job->inner, job->tail, BINDING_JOB);
+	depend(synthesis, job, job->left);
+}
 
 static void classifier_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
@@ -1211,6 +1275,8 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		return;
 	}
 	if (job->role == RETURN_JOB || job->role == THUNK_JOB) { contents_step(synthesis, job); return; }
+	if (job->role == BINDING_JOB) { binding_step(synthesis, job); return; }
+	if (job->role == TELESCOPE_JOB) { telescope_step(synthesis, job); return; }
 	if (job->role == DEFINITION_JOB) { definition_step(synthesis, job); return; }
 	if (job->role == DEFINITION_SCOPE_JOB) { definition_scope_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
@@ -1221,18 +1287,28 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		reference_step(synthesis, job); return;
 	}
 	switch (syntax->kind) {
-	case PG_SYNTAX_LAMBDA:
-		if (syntax->binder_marker) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		break;
-	case PG_SYNTAX_PI: case PG_SYNTAX_APPLICATION: case PG_SYNTAX_QUOTE: case PG_SYNTAX_EXPECT:
+	case PG_SYNTAX_LAMBDA: case PG_SYNTAX_PI: case PG_SYNTAX_APPLICATION:
+	case PG_SYNTAX_QUOTE: case PG_SYNTAX_EXPECT:
 		break;
 	default:
 		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 	}
+	if ((syntax->kind == PG_SYNTAX_LAMBDA || syntax->kind == PG_SYNTAX_PI) && job->stage < 2) {
+		if (!job->left) {
+			job->left = request_role(synthesis, job->scope, syntax, BINDING_JOB);
+			depend(synthesis, job, job->left);
+			return;
+		}
+		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		job->domain = job->left->domain;
+		job->inner = job->left->inner;
+		job->right = pg_synthesis_request(synthesis, job->inner, syntax->right);
+		job->stage = 2;
+		depend(synthesis, job, job->right);
+		return;
+	}
 	if (!job->stage) {
-		const struct pg_syntax *left = syntax->left;
-		if (syntax->kind == PG_SYNTAX_PI && left->kind == PG_SYNTAX_BINDER) left = left->left;
-		job->left = pg_synthesis_request(synthesis, job->scope, left);
+		job->left = pg_synthesis_request(synthesis, job->scope, syntax->left);
 		job->stage = 1;
 		depend(synthesis, job, job->left);
 		return;
@@ -1244,24 +1320,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		return;
 	}
 	if (job->stage == 1) {
-		const struct pg_source_scope *scope = job->scope;
-		if (syntax->kind == PG_SYNTAX_LAMBDA || syntax->kind == PG_SYNTAX_PI) {
-			const struct pg_evidence *input = type_input(synthesis, job, scope->context, job->left->result);
-			if (!input) return;
-			job->domain = value_type(synthesis, input);
-			if (!job->domain) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-			struct pg_token name = syntax->token;
-			if (syntax->kind == PG_SYNTAX_PI) {
-				name = syntax->left->token;
-				if (syntax->left->kind != PG_SYNTAX_BINDER) name.length = 0;
-			}
-			const struct pg_object *binder = pg_binder(synthesis->typing->graph);
-			const struct pg_evidence *context = pg_prove_context_extension(synthesis->typing, scope->context, binder, job->domain);
-			job->inner = pg_synthesis_bind(synthesis, scope, name, binder, context);
-			if (!job->inner) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			scope = job->inner;
-		}
-		job->right = pg_synthesis_request(synthesis, scope, syntax->right);
+		job->right = pg_synthesis_request(synthesis, job->scope, syntax->right);
 		job->stage = 2;
 		depend(synthesis, job, job->right);
 		return;

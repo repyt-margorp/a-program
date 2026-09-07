@@ -37,6 +37,17 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_object *binder, const struct pg_evidence *extended_context);
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Open the maximal leading Lambda or Pi telescope (not both mixed), using
+ * the same domain synthesis and binding jobs as ordinary expressions. Other
+ * heads give an empty telescope. Only domains are synthesized: the remaining
+ * body, constructor result or declaration is not checked here. The result is
+ * context evidence, not a datatype admission or Pi formation certificate. */
+struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Available only after this telescope completes. The scope retains the same
+ * pointer binders used by ordinary Lambda/Pi synthesis of the source. */
+const struct pg_source_scope *pg_synthesis_telescope_scope(const struct pg_synthesis_job *job);
+const struct pg_syntax *pg_synthesis_telescope_body(const struct pg_synthesis_job *job);
 /* Register an already accepted proof as a completed producer. The exact
  * evidence pointer, including its typed occurrence and premises, is the key.
  * No synthesis, evaluation or proof replay occurs. Only evidence owned by
