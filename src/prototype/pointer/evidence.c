@@ -325,9 +325,11 @@ static const struct pg_evidence *apply_context_action(struct pg_typing *typing,
 	return NULL;
 }
 
-const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
-	const struct pg_evidence *context, const struct pg_evidence *application)
+static const struct pg_evidence *prepare_beta(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *application,
+	const struct pg_evidence **body)
 {
+	*body = NULL;
 	if (!context_proof(typing, context)) return NULL;
 	if (!application || application->owner != typing) return NULL;
 	if (application->rule != PG_APP_ELIM || application->context != context->context) return NULL;
@@ -366,11 +368,21 @@ const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
 	}
 	const struct pg_evidence *substitution = pg_prove_substitution(typing, body_context, context, count, images);
 	if (!substitution) goto done;
-	result = pg_prove_reindex(typing, substitution, function->premises[1]);
-	if (result && pg_alpha_equal(result->classifier, application->classifier) != 1) result = NULL;
+	result = substitution;
+	*body = function->premises[1];
 done:
 	pg_graph_destroy(&temporary);
 	return result;
+}
+
+const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *application)
+{
+	const struct pg_evidence *body;
+	const struct pg_evidence *substitution = prepare_beta(typing, context, application, &body);
+	if (!substitution) return NULL;
+	const struct pg_evidence *result = pg_prove_reindex(typing, substitution, body);
+	return result && pg_alpha_equal(result->classifier, application->classifier) == 1 ? result : NULL;
 }
 
 /* Invert introductions through the same context actions as their contents. */
@@ -441,12 +453,11 @@ int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *con
 	case PG_CONTEXT_PROJECTION: case PG_REINDEX:
 		return pg_prepare_context_action(typing, context, computation, step);
 	case PG_APP_ELIM:
-		result = pg_reduce_beta(typing, context, computation);
-		if (!result) {
+		step->substitution = prepare_beta(typing, context, computation, &step->input);
+		if (!step->substitution) {
 			step->input = computation->premises[0];
-			return 0;
 		}
-		break;
+		return 0;
 	case PG_FORCE_ELIM:
 		result = pg_prove_thunk_computation(typing, computation->premises[0]);
 		break;
@@ -497,6 +508,10 @@ const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
 	struct pg_reduction step;
 	if (pg_prepare_reduction(typing, context, computation, &step) != 0) return NULL;
 	if (step.result) return step.result;
+	if (step.substitution) {
+		const struct pg_evidence *result = pg_prove_reindex(typing, step.substitution, step.input);
+		return result && pg_alpha_equal(result->classifier, computation->classifier) == 1 ? result : NULL;
+	}
 	const struct pg_evidence *operand = pg_reduce_computation(typing, step.context, step.input);
 	return pg_prove_computation_operand(typing, computation, operand);
 }

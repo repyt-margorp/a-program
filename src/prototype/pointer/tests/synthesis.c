@@ -121,6 +121,29 @@ int main(void)
 	}
 	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, a_scope, x_name, x, x_context);
+	const struct pg_evidence *deep_body = return_x;
+	for (size_t i = 0; i < 120; ++i)
+		deep_body = pg_prove_return(&typing, &classifiers, pg_prove_thunk(&typing, &classifiers, deep_body));
+	const struct pg_evidence *deep_pi = pg_prove_pi(&typing, &classifiers, a_type, x_context,
+		pg_prove_classifier(&typing, &classifiers, x_context, deep_body));
+	const struct pg_evidence *deep_function = pg_prove_projection(&typing, x_context,
+		pg_prove_lambda(&typing, deep_pi, deep_body));
+	const struct pg_evidence *deep_application = pg_prove_application(&typing, deep_function, x_value);
+	struct pg_synthesis_job *deep_step = pg_synthesis_reduce(&synthesis, x_context, deep_application);
+	assert(deep_step && !pg_synthesis_result(deep_step));
+	pg_synthesis_advance(&synthesis, 1);
+	assert(pg_synthesis_dependency(deep_step));
+	pg_synthesis_advance(&synthesis, 32);
+	assert(pg_synthesis_status(deep_step) == PG_SYNTHESIS_PENDING);
+	assert(!pg_synthesis_result(deep_step));
+	for (size_t i = 0; pg_synthesis_status(deep_step) == PG_SYNTHESIS_PENDING; ++i) {
+		assert(i < 1000);
+		pg_synthesis_advance(&synthesis, 11);
+	}
+	const struct pg_evidence *deep_result = pg_synthesis_result(deep_step);
+	assert(deep_result && pg_evidence_subject(deep_result)->core == pg_evidence_subject(deep_body)->core);
+	assert(deep_result == pg_reduce_beta(&typing, x_context, deep_application));
+	assert(pg_synthesis_reduce(&synthesis, x_context, deep_application) == deep_step);
 	const struct pg_evidence *delayed_type = pg_prove_thunk_type(&typing, &classifiers,
 		pg_prove_return_type(&typing, &classifiers, pg_prove_variable(&typing, x_context, a)));
 	const struct pg_object *m = pg_binder(&graph);

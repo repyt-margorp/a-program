@@ -354,7 +354,7 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 	depend(synthesis, job, job->left);
 }
 
-enum reduction_stage { REDUCTION_DEMAND, REDUCTION_SUBSTITUTED, REDUCTION_CONVERTING, REDUCTION_ARGUMENT };
+enum reduction_stage { REDUCTION_DEMAND, REDUCTION_SUBSTITUTED, REDUCTION_CONVERTING, REDUCTION_ARGUMENT, REDUCTION_BETA };
 
 static void reduction_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
@@ -419,11 +419,23 @@ static void reduction_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 			job->result = step.result;
 			finish(synthesis, job, PG_SYNTHESIS_DONE); return;
 		}
+		if (step.substitution) {
+			job->stage = REDUCTION_BETA;
+			job->left = request_job(synthesis, REINDEX_JOB, step.substitution, step.input);
+			depend(synthesis, job, job->left);
+			return;
+		}
 		job->left = pg_synthesis_reduce(synthesis, step.context, step.input);
 		depend(synthesis, job, job->left);
 		return;
 	}
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	if (job->stage == REDUCTION_BETA) {
+		job->result = job->left->result;
+		int equal = pg_alpha_equal(pg_evidence_classifier(job->result), pg_evidence_classifier(job->inputs[1]));
+		finish(synthesis, job, equal == 1 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+		return;
+	}
 	if (job->stage == REDUCTION_SUBSTITUTED) {
 		job->checking_term = job->left->result;
 		if (pg_evidence_classifier(job->checking_term) == pg_evidence_classifier(job->inputs[1])) {

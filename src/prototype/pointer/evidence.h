@@ -110,8 +110,11 @@ struct pg_reduction {
 	const struct pg_evidence *result;
 	const struct pg_evidence *context;
 	const struct pg_evidence *input;
+	/* When present, reindex input with this checked substitution instead of
+ * executing input in its original context. Used for a prepared beta step. */
+	const struct pg_evidence *substitution;
 };
-/* Prepare a direct reduct or a demanded operand without recursively reducing
+/* Prepare a direct reduct, a beta substitution or a demanded operand without recursively reducing
  * that operand. Nonzero includes unsupported rules and failed premises. */
 int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *context,
 	const struct pg_evidence *computation, struct pg_reduction *step);

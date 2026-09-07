@@ -650,11 +650,21 @@ successful return codes as new-kernel certificates.
   actions are scheduled before synchronous introduction extraction so they do
   not bypass this path. Other jobs wait on the same dependency mechanism; there
   is no second scheduler or new acceptance rule.
+- [x] Preparing a typed beta step now returns its checked context substitution
+  and original body rather than substituting the body synchronously. Both the
+  synchronous reducer and the synthesis reducer consume this same preparation;
+  synthesis waits on its shared reindex job. Completion keeps the beta rule's
+  structural-alpha classifier check, without manufacturing a conversion proof.
+  A 120-level RETURN/THUNK body remains pending during substitution, then returns
+  the same accepted evidence as synchronous beta. Existing projection/reindex,
+  higher-order, converted-function and shared-demand fixtures remain covered.
 - [ ] Thread resumable substitution through remaining typed evidence/synthesis work and
   budget dispatched evaluation readback. Those call sites still use synchronous wrappers.
   Initialization validates/copies bindings synchronously; allocation and hash
   maintenance are not wall-clock bounded. Other recursive traversals are not
   covered by the stack test. This does not complete end-to-end compiler fuel.
+  In particular beta preparation still assembles and validates context images
+  synchronously, and final classifier alpha comparison is not yet budgeted.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation
