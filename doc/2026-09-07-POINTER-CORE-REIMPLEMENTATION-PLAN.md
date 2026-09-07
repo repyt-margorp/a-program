@@ -1155,6 +1155,41 @@ conclusion and all premise pointers; no accepted record is overwritten.
   not constitute a complete checker; NULL currently combines invalid-premise
   and allocation failures and is not a solver-level logical rejection result.
 
+### Directed normalization evidence (September 8)
+
+- [x] `pg_whnf_job` publishes an opaque, graph-owned receipt only after directed
+  evaluation and readback complete. The receipt owns the result reference;
+  there is no separate mutable result authority. It records the exact source,
+  target and evaluation policy, and survives disposal of temporary job storage.
+- [x] `PG_PURE_NORMALIZATION` accepts an already checked term or formation plus
+  a receipt from exactly that source under `pg_pure_policy`. Its conclusion
+  retains the original context, classifier and judgement, with the source proof
+  as a premise. This is subject reduction, not symmetric conversion of subjects:
+  `x` being beta-convertible to `(lambda ignored. x) unbound` cannot establish
+  the typing of that expansion. Unfinished and other-policy receipts are rejected.
+- [x] `pg_synthesis_normalize` uses the existing scheduler and shared WHNF store.
+  Computation sharing is keyed by Core/policy; accepted evidence is keyed by
+  the typed source. Tests cover distinct annotated functions over one erased
+  Core, different contexts, classifier recovery after weakening, acted terms
+  and formations, split/bulk scheduling and receipt lifetime.
+  Ordinary `check`, ASan/UBSan `check`, and the synthesis suite with a 512 KiB
+  stack pass. The syntax inventory still measures parsing, not full acceptance.
+- [ ] Integrate normalized-head inversion into RETURN/THUNK exposure and retire
+  the overlapping typed reduction traversal where the common evaluator suffices.
+  The older typed contents jobs are not yet replaced by this entry point.
+
+The rule adds an explicit metatheoretic obligation: every admitted pure rewrite,
+including acted Lambda/APP and binder freshening during readback, must preserve
+the accepted judgement. Directed evaluation prevents arbitrary expansion but is
+not, by itself, a proof of preservation. Current fragment tests do not establish
+general HOTT subject reduction, transport, lifting or higher coherence. Adding a
+semantic owner to the pure policy requires checking its rules against this
+obligation; an arbitrary runtime handler cannot issue accepted typing evidence.
+
+These receipts are trusted in-process results, not serialized reduction traces.
+N5 must reconstruct their justification through the same evaluator or validated
+retained reduction evidence, not deserialize endpoint/policy fields as a proof.
+
 ### Image checking is not a separate Replay semantics
 
 The September 7 clarification applies to every replay gate below. A `.p` file

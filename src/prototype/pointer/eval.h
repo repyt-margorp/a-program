@@ -70,6 +70,7 @@ const struct pg_term *pg_term_substitute(struct pg_graph *graph,
 struct pg_eval_policy { int (*dispatch)(struct pg_eval *machine); };
 extern const struct pg_eval_policy pg_beta_policy;
 struct pg_whnf_job;
+struct pg_whnf_certificate;
 /* Keys are (input term, policy pointer), with empty environments. Captured
  * environments remain inside jobs. All referenced graphs outlive the store. */
 struct pg_whnf_work {
@@ -89,5 +90,12 @@ enum pg_eval_status pg_whnf_status(const struct pg_whnf_job *job);
 uint64_t pg_whnf_steps(const struct pg_whnf_job *job);
 /* NULL until WHNF has been reached and read back successfully. */
 const struct pg_term *pg_whnf_result(const struct pg_whnf_job *job);
+/* Immutable directed evaluation receipt, issued only after readback completes.
+ * Owned by work->graph, so it survives job-store destruction. Core records the
+ * policy; the typing layer decides whether that policy preserves typing. */
+const struct pg_whnf_certificate *pg_whnf_certificate(const struct pg_whnf_job *job);
+const struct pg_term *pg_whnf_source(const struct pg_whnf_certificate *certificate);
+const struct pg_term *pg_whnf_target(const struct pg_whnf_certificate *certificate);
+const struct pg_eval_policy *pg_whnf_policy(const struct pg_whnf_certificate *certificate);
 
 #endif

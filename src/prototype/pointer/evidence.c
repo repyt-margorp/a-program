@@ -12,7 +12,7 @@ struct pg_evidence {
 	const struct pg_context *context;
 	const struct pg_occurrence *subject;
 	const struct pg_term *classifier;
-	const struct pg_conversion_certificate *conversion;
+	const void *certificate;
 	size_t premise_count;
 	const struct pg_evidence *premises[];
 };
@@ -32,7 +32,7 @@ static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_e
 	enum pg_evidence_judgement judgement,
 	const struct pg_context *context, const struct pg_occurrence *subject,
 	const struct pg_term *classifier, size_t count, const struct pg_evidence *const *premises,
-	const struct pg_conversion_certificate *conversion, uint64_t *hash_out)
+	const void *certificate, uint64_t *hash_out)
 {
 	/* For these rules, immutable premises determine the output. Check this key
 	 * before substitution or independence checks allocate temporary binders. */
@@ -50,7 +50,7 @@ static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_e
 			if (proof->subject != subject) continue;
 			if (proof->classifier != classifier) continue;
 		}
-		if (proof->conversion != conversion) continue;
+		if (proof->certificate != certificate) continue;
 		if (proof->premise_count != count) continue;
 		size_t i = 0;
 		while (i < count && proof->premises[i] == premises[i]) ++i;
@@ -63,12 +63,12 @@ static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg
 	enum pg_evidence_judgement judgement,
 	const struct pg_context *context, const struct pg_occurrence *subject,
 	const struct pg_term *classifier, size_t count, const struct pg_evidence *const *premises,
-	const struct pg_conversion_certificate *conversion,
+	const void *certificate,
 	size_t binding_count, const struct pg_binding_value *bindings)
 {
 	uint64_t hash;
 	const struct pg_evidence *existing = find_record(typing, rule, judgement, context,
-		subject, classifier, count, premises, conversion, &hash);
+		subject, classifier, count, premises, certificate, &hash);
 	if (existing) return existing;
 	if (count > (SIZE_MAX - sizeof(struct pg_evidence)) / sizeof(*premises)) return NULL;
 	size_t size = sizeof(struct pg_evidence) + count * sizeof(*premises);
@@ -81,7 +81,7 @@ static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg
 	proof->context = context;
 	proof->subject = subject;
 	proof->classifier = classifier;
-	proof->conversion = conversion;
+	proof->certificate = certificate;
 	proof->premise_count = count;
 	for (size_t i = 0; i < count; ++i) proof->premises[i] = premises[i];
 	struct pg_binding_value *mapping = (struct pg_binding_value *)(proof->premises + count);
@@ -677,7 +677,36 @@ const struct pg_evidence *pg_prove_conversion(struct pg_typing *typing,
 		term->context, term->subject, target_type->subject->core, 2, premises, certificate);
 }
 
-const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_evidence *evidence) { return evidence->conversion; }
+const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_evidence *evidence)
+{
+	return evidence->rule == PG_TYPE_CONVERSION ? evidence->certificate : NULL;
+}
+
+const struct pg_whnf_certificate *pg_evidence_normalization(const struct pg_evidence *evidence)
+{
+	return evidence->rule == PG_PURE_NORMALIZATION ? evidence->certificate : NULL;
+}
+
+const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_whnf_certificate *certificate)
+{
+	if (!source || source->owner != typing || !certificate) return NULL;
+	if (!source->subject) return NULL;
+	switch (source->judgement) {
+	case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION:
+	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
+	default: return NULL;
+	}
+	if (pg_whnf_policy(certificate) != &pg_pure_policy) return NULL;
+	if (pg_whnf_source(certificate) != source->subject->core) return NULL;
+	const struct pg_term *target = pg_whnf_target(certificate);
+	if (target == source->subject->core) return source;
+	const struct pg_occurrence *subject = pg_occurrence(typing, source->context,
+		target, NULL, 1, &source->subject);
+	if (!subject) return NULL;
+	return accept_record(typing, PG_PURE_NORMALIZATION, source->judgement,
+		source->context, subject, source->classifier, 1, &source, certificate, 0, NULL);
+}
 const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *proof)
 {
@@ -1215,9 +1244,13 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	if (classifiers->graph != typing->graph) return NULL;
 	if (!term || term->owner != typing) return NULL;
 	if (context->context != term->context) return NULL;
-	/* A projected term keeps its original derivation; inspect it without copying
-	 * the DAG, then transport the recovered formation to the requested context. */
-	while (term->rule == PG_CONTEXT_PROJECTION) term = term->premises[1];
+	/* These steps retain the classifier. Inspect their source without copying
+	 * the DAG, then project the recovered formation to the requested context. */
+	for (;;) {
+		if (term->rule == PG_CONTEXT_PROJECTION) term = term->premises[1];
+		else if (term->rule == PG_PURE_NORMALIZATION) term = term->premises[0];
+		else break;
+	}
 	const struct pg_evidence *formation = NULL;
 	switch (term->rule) {
 	case PG_REFLEXIVITY:

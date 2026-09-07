@@ -12,7 +12,7 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_CONTEXT_SUBSTITUTION, PG_REINDEX, PG_THUNK_CONTENT, PG_PI_CODOMAIN, PG_PI_DOMAIN,
 	PG_RETURN_CONTENT, PG_PI_CONSTANT_CODOMAIN, PG_FOLD_ELIM,
 	PG_IDENTITY_FORM, PG_IDENTITY_INSTANCE, PG_REFLEXIVITY,
-	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM };
+	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -88,6 +88,13 @@ const struct pg_evidence *pg_prove_conversion(struct pg_typing *typing,
 	const struct pg_evidence *term, const struct pg_evidence *target_type,
 	const struct pg_conversion_certificate *certificate);
 const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_evidence *evidence);
+/* Subject reduction for the fixed kernel-pure rules. Requires an accepted
+ * source and a directed completed evaluation from exactly that source Core.
+ * A symmetric conversion certificate cannot justify an arbitrary expansion.
+ * The receipt's graph/policy and source evidence must outlive the result. */
+const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_whnf_certificate *certificate);
+const struct pg_whnf_certificate *pg_evidence_normalization(const struct pg_evidence *evidence);
 /* Weakening is pullback along a prefix projection. Core and the premise DAG
  * stay shared; this creates only the conclusion in the extended context. */
 const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,

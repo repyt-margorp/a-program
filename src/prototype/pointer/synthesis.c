@@ -1,4 +1,5 @@
 #include "synthesis.h"
+#include "computation.h"
 
 #include <string.h>
 
@@ -43,7 +44,7 @@ struct block_state {
 	const struct pg_evidence *tail;
 	struct pg_index names;
 };
-enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, REDUCTION_JOB, THUNK_JOB, REINDEX_JOB };
+enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, REDUCTION_JOB, THUNK_JOB, REINDEX_JOB, NORMALIZATION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	enum job_role role;
@@ -68,6 +69,7 @@ struct pg_synthesis_job {
 	struct pg_conversion comparison;
 	struct pg_comparison structural;
 	struct pg_reindex reindex;
+	struct pg_whnf_job *normalizing;
 	int comparing;
 	struct block_state *block;
 	const struct continuation_frame *application_frame;
@@ -195,6 +197,15 @@ struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *value)
 {
 	return request_evaluation(synthesis, context, value, THUNK_JOB);
+}
+
+struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *proof)
+{
+	if (!context || !proof) return NULL;
+	if (!pg_evidence_subject(proof)) return NULL;
+	if (pg_prove_projection(synthesis->typing, context, proof) != proof) return NULL;
+	return request_job(synthesis, NORMALIZATION_JOB, context, proof);
 }
 
 static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
@@ -842,6 +853,23 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		}
 	}
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->role == NORMALIZATION_JOB) {
+		if (!job->normalizing) job->normalizing = pg_whnf_request(synthesis->normalization,
+			&pg_pure_policy, pg_evidence_subject(job->inputs[1])->core);
+		if (!job->normalizing) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		switch (pg_whnf_advance(job->normalizing, 1)) {
+		case PG_EVAL_PENDING:
+			job->next = synthesis->ready;
+			synthesis->ready = job;
+			return;
+		case PG_EVAL_ERROR:
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+		case PG_EVAL_WHNF:
+			job->result = pg_prove_normalization(synthesis->typing, job->inputs[1], pg_whnf_certificate(job->normalizing));
+			finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+			return;
+		}
+	}
 	if (job->role == RETURN_JOB || job->role == THUNK_JOB) { contents_step(synthesis, job); return; }
 	if (job->role == REDUCTION_JOB) { reduction_step(synthesis, job); return; }
 	if (job->role == DEFINITION_JOB) { definition_step(synthesis, job); return; }

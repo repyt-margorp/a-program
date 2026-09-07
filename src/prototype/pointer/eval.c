@@ -396,13 +396,19 @@ void pg_eval_destroy(struct pg_eval *machine)
 
 const struct pg_eval_policy pg_beta_policy = {NULL};
 
+struct pg_whnf_certificate {
+	const struct pg_term *source;
+	const struct pg_term *target;
+	const struct pg_eval_policy *policy;
+};
+
 struct pg_whnf_job {
 	struct pg_index_entry index;
 	struct pg_graph *graph;
 	const struct pg_term *input;
 	const struct pg_eval_policy *policy;
 	struct pg_eval machine;
-	const struct pg_term *result;
+	const struct pg_whnf_certificate *certificate;
 	struct readback_context readback;
 	struct readback_entry *entry;
 	const struct pg_argument *remaining;
@@ -449,7 +455,6 @@ struct pg_whnf_job *pg_whnf_request(struct pg_whnf_work *work,
 	job->graph = work->graph;
 	job->input = input;
 	job->policy = policy;
-	job->result = NULL;
 	pg_eval_init(&job->machine, input);
 	job->machine.output = work->graph;
 	job->machine.dispatch = policy->dispatch;
@@ -485,12 +490,15 @@ static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 		job->remaining = job->remaining->next;
 		return PG_EVAL_PENDING;
 	}
-	job->result = job->partial;
+	struct pg_whnf_certificate *certificate = pg_alloc(job->graph, sizeof(*certificate));
+	if (!certificate) return PG_EVAL_ERROR;
+	*certificate = (struct pg_whnf_certificate){job->input, job->partial, job->policy};
+	job->certificate = certificate;
 	pg_index_destroy(&job->readback.results);
 	pg_graph_destroy(&job->readback.temporary);
 	pg_graph_destroy(&job->machine.temporary);
 	job->entry = NULL;
-	job->machine.current = (struct pg_closure){job->result, NULL};
+	job->machine.current = (struct pg_closure){certificate->target, NULL};
 	job->machine.arguments = NULL;
 	return PG_EVAL_WHNF;
 }
@@ -517,5 +525,10 @@ uint64_t pg_whnf_steps(const struct pg_whnf_job *job)
 
 const struct pg_term *pg_whnf_result(const struct pg_whnf_job *job)
 {
-	return job->result;
+	return job->certificate ? job->certificate->target : NULL;
 }
+
+const struct pg_whnf_certificate *pg_whnf_certificate(const struct pg_whnf_job *job) { return job->certificate; }
+const struct pg_term *pg_whnf_source(const struct pg_whnf_certificate *certificate) { return certificate->source; }
+const struct pg_term *pg_whnf_target(const struct pg_whnf_certificate *certificate) { return certificate->target; }
+const struct pg_eval_policy *pg_whnf_policy(const struct pg_whnf_certificate *certificate) { return certificate->policy; }

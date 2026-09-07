@@ -41,6 +41,11 @@ struct pg_synthesis_job *pg_synthesis_return(struct pg_synthesis *synthesis,
  * in the same scheduler, not recursive calls hidden inside this request. */
 struct pg_synthesis_job *pg_synthesis_reduce(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *computation);
+/* Normalize an accepted term or formation using shared pure WHNF work, then
+ * retain typing through directed subject-reduction evidence. The immutable
+ * typed input, not its erased Core alone, is the evidence-job key. */
+struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *proof);
 /* Expose checked THUNK code, preserving context actions and conversion.
  * This does not execute the stored computation or cache an effect result. */
 struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
