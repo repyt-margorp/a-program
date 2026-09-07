@@ -228,8 +228,15 @@ and explicit alpha comparison, never by modifying interned node identity.
   the continuation's APP retains explicit conversion evidence. A genuinely
   different result type is rejected. Block and argument sequencing share
   continuation opening/closing through the existing checked proof rules.
+- [x] Sequence a callee returning a quoted function before its argument.
+  Both operands use the same continuation-opening operation; their frames close
+  in reverse order to form `FOLD(callee, \f. FOLD(argument, \x. FORCE(f) x))`.
+  Tests execute returned/quoted callees, two computed operands and higher-order
+  returned functions, inspect this nesting in the proof DAG, and reject
+  nonfunction results and mismatched arguments. This checks the pure translation;
+  observable effect-order tests still require requests and handlers.
 - [ ] Add operation clauses, effect rows/forwarding, dependent sequencing and
-  remaining computed-callee cases. These remain unsupported by this initial path.
+  computed classifier normalization. These remain unsupported by this initial path.
 
 Memoization keys include the semantic reference policy and captured environment
 when relevant. Never memoize a dispatched effect as if repeated force were pure.
@@ -700,7 +707,8 @@ known values without inventing a type-level result of an unknown computation.
   are parsed but not resolved or executed. A block-local name index rejects
   duplicate active bindings without repeatedly scanning previous statements.
   Tests reject unknown selectors and wrong annotations and execute eight
-  representative block forms to the same expected RETURN value.
+  representative block forms to the same expected RETURN value; additional
+  application fixtures cover blocks used in function and argument positions.
   A dependent result after `B := A` substitutes the known type value into its
   classifier. The corresponding `B := (\T : @ => T) A` case remains explicitly
   UNSUPPORTED: obtaining its pure result requires an additional checked

@@ -238,6 +238,20 @@ static const struct pg_evidence *close_continuation(struct pg_synthesis *synthes
 		: pg_prove_fold(synthesis->typing, frame->input, continuation);
 }
 
+static int sequence_operand(struct pg_synthesis *synthesis,
+	const struct continuation_frame **frames, const struct pg_evidence **context,
+	const struct pg_evidence **operand, const struct pg_evidence **other)
+{
+	struct continuation_frame *frame = open_continuation(synthesis, *context, *operand);
+	if (!frame) return -1;
+	frame->parent = *frames;
+	*frames = frame;
+	*context = frame->context;
+	*other = pg_prove_projection(synthesis->typing, *context, *other);
+	*operand = pg_prove_variable(synthesis->typing, *context, pg_evidence_context(*context)->binder);
+	return *other && *operand ? 0 : -1;
+}
+
 static int same_name(struct pg_token left, struct pg_token right)
 {
 	return left.length == right.length && memcmp(left.text, right.text, left.length) == 0;
@@ -399,13 +413,18 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	case PG_SYNTAX_APPLICATION: {
 		if (!job->checking_term) {
 			const struct pg_evidence *context = job->scope->context;
+			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) left = pg_prove_force(synthesis->typing, left);
+			if (!left) break;
+			const struct pg_term *returned;
+			if (pg_return_type_view(pg_evidence_classifier(left), &returned)) {
+				if (sequence_operand(synthesis, &job->application_frame, &context, &left, &right) != 0) {
+					finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+				}
+			}
 			if (pg_evidence_judgement(right) == PG_JUDGEMENT_COMPUTATION) {
-				job->application_frame = open_continuation(synthesis, context, right);
-				if (!job->application_frame) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-				context = job->application_frame->context;
-				left = pg_prove_projection(synthesis->typing, context, left);
-				right = pg_prove_variable(synthesis->typing, context, pg_evidence_context(context)->binder);
-				if (!left || !right) break;
+				if (sequence_operand(synthesis, &job->application_frame, &context, &right, &left) != 0) {
+					finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+				}
 			}
 			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) left = pg_prove_force(synthesis->typing, left);
 			right = value(synthesis, right);
@@ -424,8 +443,8 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 			right = compare(synthesis, job);
 		if (!right) return;
 		job->result = pg_prove_application(synthesis->typing, job->function, right);
-		if (job->result && job->application_frame) {
-			job->result = close_continuation(synthesis, job->application_frame, job->result);
+		for (const struct continuation_frame *frame = job->application_frame; job->result && frame; frame = frame->parent) {
+			job->result = close_continuation(synthesis, frame, job->result);
 			if (!job->result) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		}
 		break;

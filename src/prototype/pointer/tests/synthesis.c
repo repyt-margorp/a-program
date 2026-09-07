@@ -130,7 +130,11 @@ int main(void)
 		"main := { x; (\\y : A => y) x; };",
 		"main := { result : A := (\\y : A => y) x; result; };",
 		"main := { outer := { inner := x; inner; }; outer; };",
-		"main := { f := &(\\y : A => y); f x; };"
+		"main := { f := &(\\y : A => y); f x; };",
+		"main := { &(\\y : A => y); } x;",
+		"main := (&{ &(\\y : A => y); }) x;",
+		"main := { &(\\y : A => y); } { x; };",
+		"main := { &(\\f : A -> A => f x); } { &(\\y : A => y); };"
 	};
 	for (size_t i = 0; i < sizeof(blocks) / sizeof(*blocks); ++i) {
 		const struct pg_evidence *block = complete(&synthesis, request(&synthesis, scope, blocks[i]), PG_SYNTHESIS_DONE);
@@ -140,6 +144,19 @@ int main(void)
 		pg_eval_destroy(&machine);
 	}
 	complete(&synthesis, request(&synthesis, scope, "main := { temp := x; }.missing;"), PG_SYNTHESIS_REJECTED);
+	const struct pg_evidence *ordered = complete(&synthesis, request(&synthesis, scope,
+		"main := { &(\\y : A => y); } { x; };"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(ordered) == PG_FOLD_ELIM);
+	assert(pg_evidence_rule(pg_evidence_premise(ordered, 0)) == PG_RETURN_INTRO);
+	const struct pg_evidence *argument_fold = pg_evidence_premise(pg_evidence_premise(ordered, 1), 1);
+	assert(pg_evidence_rule(argument_fold) == PG_FOLD_ELIM);
+	assert(pg_evidence_rule(pg_evidence_premise(argument_fold, 0)) == PG_CONTEXT_PROJECTION);
+	const struct pg_evidence *ordered_app = pg_evidence_premise(pg_evidence_premise(argument_fold, 1), 1);
+	assert(pg_evidence_rule(ordered_app) == PG_APP_ELIM);
+	assert(pg_evidence_rule(pg_evidence_premise(ordered_app, 0)) == PG_FORCE_ELIM);
+	complete(&synthesis, request(&synthesis, scope, "main := { x; } x;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := { &(\\y : A => y); } { A; };"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope, "main := { temp := x; temp := x; temp; };"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope, "main := { temp : @ := x; temp; };"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope, "main := { !x; };"), PG_SYNTHESIS_UNSUPPORTED);
