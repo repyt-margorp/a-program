@@ -113,6 +113,57 @@ static void schemas(struct pg_graph *graph)
 		{ctor, pg_lambda(graph, x, pg_lambda(graph, p, vx))}
 	};
 	check(&work, pg_data_match(graph, layout, data, 3, clauses), vx);
+	/* Branch abstraction synthesizes raw Pi/Lambda from the field telescope.
+	 * Its application agrees with direct typed substitution of the body. */
+	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers, pv);
+	const struct pg_evidence *branch = pg_data_branch(&typing, &classifiers, indexed, indexed_ctor, body);
+	assert(branch && pg_evidence_context(branch) == pg_evidence_context(parameters));
+	assert(pg_data_branch(&typing, &classifiers, indexed, indexed_ctor, body) == branch);
+	const struct pg_evidence *applied = pg_prove_reindex(&typing, params, branch);
+	for (size_t n = 0; n < 2; ++n) applied = pg_prove_application(&typing, applied, values[n]);
+	assert(applied);
+	const struct pg_evidence *body_instance = pg_prove_reindex(&typing, instance, body);
+	const struct pg_term *answer = pg_evidence_subject(body_instance)->core;
+	check(&work, pg_evidence_subject(applied)->core, answer);
+	const struct pg_whnf_certificate *receipt = pg_whnf_certificate(pg_whnf_request(&work, &pg_pure_policy,
+		pg_evidence_subject(applied)->core));
+	const struct pg_evidence *reduced = pg_prove_normalization(&typing, applied, receipt);
+	assert(reduced && pg_alpha_equal(pg_evidence_classifier(reduced), pg_evidence_classifier(body_instance)) == 1);
+	const struct pg_evidence *qv = pg_prove_variable(&typing, indices, q);
+	const struct pg_evidence *motive = pg_prove_return_type(&typing, &classifiers,
+		pg_prove_classifier(&typing, &classifiers, indices, qv));
+	const struct pg_evidence *result_type = pg_prove_reindex(&typing, index_result, motive);
+	assert(result_type && pg_alpha_equal(pg_evidence_classifier(applied), pg_evidence_subject(result_type)->core) == 1);
+	struct pg_match_clause typed_clause = {indexed_ctor, pg_evidence_subject(branch)->core};
+	const struct pg_term *indexed_data = pg_application(graph, pg_application(graph,
+		pg_reference(graph, indexed_ctor), vx), pg_evidence_subject(values[1])->core);
+	check(&work, pg_data_match(graph, pg_data_schema_layout(indexed), indexed_data, 1, &typed_clause), answer);
+	assert(!pg_data_branch(&typing, &classifiers, indexed, indexed_ctor, pv));
+	assert(!pg_data_branch(&typing, &classifiers, indexed, indexed_ctor,
+		pg_prove_return(&typing, &classifiers, xv)));
+	assert(!pg_data_branch(&typing, &classifiers, indexed, ctor, body));
+	assert(!pg_data_branch(&foreign, &classifiers, indexed, indexed_ctor, body));
+	const struct pg_evidence *constant = pg_prove_return(&typing, &classifiers,
+		pg_prove_variable(&typing, parameters, a));
+	assert(pg_data_branch(&typing, &classifiers, schema, pg_data_constructor(layout, 0), constant) == constant);
+	/* A branch returning a raw function stays a computation Pi, not F(U Pi). */
+	const struct pg_object *z = pg_binder(graph);
+	const struct pg_evidence *field_a = pg_prove_value_type(&typing, index_images[0]);
+	const struct pg_evidence *under_z = pg_prove_context_extension(&typing, fields, z, field_a);
+	const struct pg_evidence *return_p = pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, under_z, p));
+	const struct pg_evidence *function_type = pg_prove_pi(&typing, &classifiers, field_a, under_z,
+		pg_prove_classifier(&typing, &classifiers, under_z, return_p));
+	const struct pg_evidence *function_body = pg_prove_lambda(&typing, function_type, return_p);
+	const struct pg_evidence *function_branch = pg_data_branch(&typing, &classifiers, indexed, indexed_ctor, function_body);
+	applied = pg_prove_reindex(&typing, params, function_branch);
+	for (size_t n = 0; n < 2; ++n) applied = pg_prove_application(&typing, applied, values[n]);
+	assert(applied);
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *bound;
+	assert(pg_pi_view(pg_evidence_classifier(applied), &domain, &bound, &codomain));
+	applied = pg_prove_application(&typing, applied, xv);
+	assert(applied);
+	check(&work, pg_evidence_subject(applied)->core, answer);
 	pg_whnf_work_destroy(&work);
 	assert(!pg_data_instance(&typing, schema, ctor, params, 1, values));
 	assert(!pg_data_instance(&typing, schema, ctor, params, 2, NULL));
@@ -174,6 +225,29 @@ static void schemas(struct pg_graph *graph)
 			assert(pg_evidence_subject(pg_evidence_premise(index_result, n + 3))->core == pg_evidence_subject(values[n])->core);
 	}
 	assert(pg_whnf_work_init(&work, graph) == 0);
+	const struct pg_evidence *body_type = pg_prove_classifier(&typing, &classifiers, fields, body);
+	const struct pg_evidence *acted_body = pg_prove_family_action(&typing, body_type, body, left, right, 2, paths);
+	const struct pg_term *acted_answer = pg_application(graph, pg_reference(graph, &pg_return_operation),
+		pg_evidence_subject(paths[1])->core);
+	assert(acted_body);
+	const struct pg_evidence *branch_type = pg_prove_classifier(&typing, &classifiers, parameters, branch);
+	const struct pg_evidence *branch_action = pg_prove_reflexivity(&typing, branch_type, branch);
+	assert(branch_action);
+	const struct pg_term *acted_branch = pg_evidence_subject(branch_action)->core;
+	for (size_t n = 0; n < 2; ++n) {
+		acted_branch = pg_application(graph, acted_branch, pg_evidence_subject(pg_evidence_premise(left, n + 3))->core);
+		acted_branch = pg_application(graph, acted_branch, pg_evidence_subject(pg_evidence_premise(right, n + 3))->core);
+		acted_branch = pg_application(graph, acted_branch, pg_evidence_subject(paths[n])->core);
+	}
+	/* RETURN is WHNF before its payload reduces; compare below that head
+	 * explicitly instead of demanding stronger evaluation from WHNF. */
+	const struct pg_term *actions[] = {pg_evidence_subject(acted_body)->core, acted_branch};
+	for (size_t n = 0; n < 2; ++n) {
+		struct pg_conversion comparison;
+		assert(pg_conversion_init(&comparison, &work, actions[n], acted_answer) == 0);
+		assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
+		pg_conversion_destroy(&comparison);
+	}
 	for (size_t n = 0; n < 2; ++n) {
 		const struct pg_evidence *type = n ? pg_prove_projection(&typing, fields, id)
 			: pg_prove_value_type(&typing, index_images[0]);

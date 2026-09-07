@@ -24,6 +24,7 @@ const struct pg_term *pg_data_match(struct pg_graph *graph, const struct pg_data
 int pg_data_dispatch(struct pg_eval *machine);
 
 struct pg_typing;
+struct pg_classifiers;
 struct pg_evidence;
 struct pg_data_schema;
 /* indices extends parameters. Each result is a checked substitution from
@@ -51,5 +52,12 @@ const struct pg_evidence *pg_data_instance(struct pg_typing *typing,
 	const struct pg_data_schema *schema, const struct pg_object *constructor,
 	const struct pg_evidence *parameters, size_t count,
 	const struct pg_evidence *const *values);
+/* Abstract a synthesized computation in the constructor's field context over
+ * exactly those fields. Ordinary Pi/Lambda derivations retain the parameter
+ * prefix. No expected motive guides synthesis, and no RETURN is inserted.
+ * This proves the branch function, not an entire Match elimination. */
+const struct pg_evidence *pg_data_branch(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_data_schema *schema,
+	const struct pg_object *constructor, const struct pg_evidence *body);
 
 #endif

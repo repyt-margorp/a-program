@@ -1036,6 +1036,30 @@ a specified type family, not a global endpoint-only relation.
   ASan/UBSan `make check` passed in 15.813 s, including affected rebuilds.
   Implementation: `iadt.c` +56/-16, `iadt.h` +14/-6 (net +48);
   tests +78/-18 (net +60); docs separate. N2/N3 are not closed.
+- [x] September 8, after `6528356`: synthesize typed branch closures.
+  `pg_data_branch` recovers a synthesized computation body's own classifier
+  and abstracts the constructor field context with existing Pi formation and
+  Lambda introduction. It retains the parameter prefix, adds no evidence rule
+  or constructor-specific Pi, and does not infer from an expected motive.
+  Raw values require an explicit RETURN before this operation; raw Pi bodies
+  stay computations rather than being wrapped in F/U. Zero fields return the
+  original computation proof. Repeated construction reuses the proof DAG.
+  Tests apply dependent branches to checked field values, validate directed
+  normalization of that application, and compare with typed body substitution,
+  index-motive instantiation and erased Match execution. Wrong context, foreign
+  owner and value bodies are rejected. Branches returning nested lambdas keep
+  their raw Pi classifier. On selected field boundaries, the acted branch Core
+  and checked body action convert to the same RETURN of the selected path.
+  An initial test required identical WHNF pointers under RETURN; it was fixed
+  to use explicit conversion, not by strengthening WHNF or changing interning.
+  This certifies branch functions, not a complete typed Match: scrutinee
+  membership, motive compatibility for all cases, recursive IH and higher
+  datatype/transport rules remain required. No new nominal type is admitted.
+  Construction uses synchronous existing classifier recovery/Pi checks.
+  Optimized pointer `make check` passed in 2.236 s with the changed test rebuilt;
+  ASan/UBSan `make check` passed in 7.612 s, also rebuilding the changed test;
+  iadt/Identity/synthesis passed with a 512 KiB stack. Implementation +26 lines
+  (`iadt.c` +18, `iadt.h` +8), tests +74, docs separate. N2/N3 remain open.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

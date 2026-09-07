@@ -24,6 +24,10 @@ field and index contexts, preserving the fixed parameter prefix. Field/index
 instances use ordinary dependent substitution and composition, including
 Identity-valued indices and their acted boundaries. Alternative context derivations are retained;
 equal contexts need not use identical proof pointers.
+Branch abstraction uses ordinary Pi/Lambda proofs from synthesized computation
+bodies. Its applications agree with typed body substitution and erased iota;
+raw function results stay Pi computations. Selected-path action is compared by
+conversion, since WHNF does not normalize a RETURN payload.
 These layouts are not accepted declarations: no positivity, index refinement,
 IH, source ADT synthesis or higher constructor witness is certified by this test.
 
