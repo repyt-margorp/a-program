@@ -43,7 +43,7 @@ struct block_state {
 	const struct pg_evidence *tail;
 	struct pg_index names;
 };
-enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, REDUCTION_JOB, THUNK_JOB };
+enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, REDUCTION_JOB, THUNK_JOB, REINDEX_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	enum job_role role;
@@ -66,6 +66,7 @@ struct pg_synthesis_job {
 	const struct pg_evidence *function;
 	const struct pg_evidence *continuation;
 	struct pg_conversion comparison;
+	struct pg_reindex reindex;
 	int comparing;
 	struct block_state *block;
 	const struct continuation_frame *application_frame;
@@ -92,6 +93,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			pg_conversion_destroy(&job->comparison);
+			pg_reindex_destroy(&job->reindex);
 			if (job->block) pg_index_destroy(&job->block->names);
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
 		}
@@ -250,7 +252,7 @@ static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 
 static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
 
-enum contents_stage { CONTENTS_REDUCING, CONTENTS_CONTEXT_ACTION, CONTENTS_CONVERTING, CONTENTS_SUBSTITUTED };
+enum contents_stage { CONTENTS_REDUCING, CONTENTS_CONTEXT_ACTION, CONTENTS_CONVERTING, CONTENTS_SUBSTITUTED, CONTENTS_REINDEXING };
 
 static void convert_contents(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	const struct pg_evidence *formation)
@@ -281,6 +283,11 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 	if (!job->checking_term) job->checking_term = job->inputs[1];
 	if (job->left) {
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		if (job->stage == CONTENTS_REINDEXING) {
+			job->result = job->left->result;
+			finish(synthesis, job, PG_SYNTHESIS_DONE);
+			return;
+		}
 		if (job->stage == CONTENTS_SUBSTITUTED) {
 			convert_contents(synthesis, job, pg_prove_classifier(synthesis->typing,
 				synthesis->classifiers, job->inputs[0], job->checking_term));
@@ -293,8 +300,10 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 				job->result = pg_prove_projection(synthesis->typing, premise, job->left->result);
 				break;
 			case PG_REINDEX:
-				job->result = pg_prove_reindex(synthesis->typing, premise, job->left->result);
-				break;
+				job->left = request_job(synthesis, REINDEX_JOB, premise, job->left->result);
+				job->stage = CONTENTS_REINDEXING;
+				depend(synthesis, job, job->left);
+				return;
 			case PG_TYPE_CONVERSION:
 				convert_contents(synthesis, job, pg_evidence_premise(job->checking_term, 1));
 				return;
@@ -306,10 +315,6 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 		job->checking_term = job->left->result;
 		job->left = NULL;
 	}
-	job->result = job->role == THUNK_JOB
-		? pg_prove_thunk_computation(synthesis->typing, job->checking_term)
-		: pg_prove_return_value(synthesis->typing, job->checking_term);
-	if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
 	if (pg_evidence_rule(job->checking_term) == PG_REINDEX) {
 		const struct pg_evidence *exposed = job->role == THUNK_JOB
 			? pg_prove_reindexed_variable(synthesis->typing, job->checking_term)
@@ -340,6 +345,10 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 	}
 	default: break;
 	}
+	job->result = job->role == THUNK_JOB
+		? pg_prove_thunk_computation(synthesis->typing, job->checking_term)
+		: pg_prove_return_value(synthesis->typing, job->checking_term);
+	if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
 	if (job->role == THUNK_JOB) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 	job->left = pg_synthesis_reduce(synthesis, job->inputs[0], job->checking_term);
 	depend(synthesis, job, job->left);
@@ -774,6 +783,26 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
+	if (job->role == REINDEX_JOB) {
+		if (!job->reindex.state && pg_reindex_init(&job->reindex, synthesis->typing, job->inputs[0], job->inputs[1]) != 0) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+		}
+		switch (pg_reindex_advance(&job->reindex, 1)) {
+		case PG_REINDEX_PENDING:
+			job->next = synthesis->ready;
+			synthesis->ready = job;
+			return;
+		case PG_REINDEX_DONE:
+			job->result = pg_reindex_result(&job->reindex);
+			pg_reindex_destroy(&job->reindex);
+			finish(synthesis, job, PG_SYNTHESIS_DONE);
+			return;
+		case PG_REINDEX_ERROR:
+			pg_reindex_destroy(&job->reindex);
+			finish(synthesis, job, PG_SYNTHESIS_ERROR);
+			return;
+		}
+	}
 	const struct pg_syntax *syntax = job->syntax;
 	if (job->role == RETURN_JOB || job->role == THUNK_JOB) { contents_step(synthesis, job); return; }
 	if (job->role == REDUCTION_JOB) { reduction_step(synthesis, job); return; }

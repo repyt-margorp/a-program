@@ -637,7 +637,20 @@ successful return codes as new-kernel certificates.
   list remains immutable. This removes the synchronous lookup loop without a
   second cursor/tag in the evaluator. A 64-level environment regression checks
   suspension at each link, residual readback, and split/whole step equivalence.
-- [ ] Thread resumable substitution through typed evidence/synthesis work and
+- [x] Reindex evidence construction now advances the common substitution engine
+  for Core, classifier and optional annotation before accepting any conclusion.
+  The synchronous API uses the same preparation/advance/accept path with local
+  work storage; cached synchronous requests do not allocate a new heap job.
+  Public work owns no accepted proof: completion returns the immutable premise-
+  keyed evidence, including when another request has accepted it in the meantime.
+  Tests cover no pending evidence, split/whole execution, cancellation, invalid
+  contexts, Lambda domain annotations, and concurrent identical conclusions.
+- [x] Content extraction routes reindexed RETURN/THUNK results through the
+  existing synthesis queue, keyed by substitution and original proof. Context
+  actions are scheduled before synchronous introduction extraction so they do
+  not bypass this path. Other jobs wait on the same dependency mechanism; there
+  is no second scheduler or new acceptance rule.
+- [ ] Thread resumable substitution through remaining typed evidence/synthesis work and
   budget dispatched evaluation readback. Those call sites still use synchronous wrappers.
   Initialization validates/copies bindings synchronously; allocation and hash
   maintenance are not wall-clock bounded. Other recursive traversals are not

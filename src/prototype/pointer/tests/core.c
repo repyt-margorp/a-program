@@ -465,7 +465,35 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *sigma = pg_prove_substitution(&typing, source, destination, 2, images);
 	assert(sigma && pg_evidence_judgement(sigma) == PG_JUDGEMENT_SUBSTITUTION);
 	assert(pg_prove_substitution(&typing, source, destination, 2, images) == sigma);
+	struct pg_reindex split, whole;
+	assert(pg_reindex_init(&split, &typing, sigma, source_x) == 0);
+	assert(pg_reindex_init(&whole, &typing, sigma, source_x) == 0);
+	size_t pending_proofs = typing.proofs.count;
+	assert(pg_reindex_advance(&split, 0) == PG_REINDEX_PENDING);
+	assert(pg_reindex_steps(&split) == 0);
+	while (pg_reindex_status(&split) == PG_REINDEX_PENDING) {
+		assert(!pg_reindex_result(&split));
+		assert(typing.proofs.count == pending_proofs);
+		uint64_t steps = pg_reindex_steps(&split);
+		pg_reindex_advance(&split, 1);
+		assert(pg_reindex_steps(&split) == steps + 1);
+	}
+	assert(pg_reindex_advance(&whole, UINT64_MAX) == PG_REINDEX_DONE);
+	assert(pg_reindex_steps(&whole) == pg_reindex_steps(&split));
+	assert(pg_reindex_result(&whole) == pg_reindex_result(&split));
+	assert(typing.proofs.count == pending_proofs + 1);
+	const struct pg_evidence *split_result = pg_reindex_result(&split);
+	pg_reindex_destroy(&split);
+	pg_reindex_destroy(&whole);
 	const struct pg_evidence *reindexed = pg_prove_reindex(&typing, sigma, source_x);
+	assert(reindexed == split_result);
+	assert(pg_reindex_init(&split, &typing, sigma, source_x) == 0);
+	assert(pg_reindex_advance(&split, 0) == PG_REINDEX_DONE);
+	assert(pg_reindex_steps(&split) == 0);
+	pg_reindex_destroy(&split);
+	assert(pg_reindex_init(&split, &typing, sigma, destination_y) != 0);
+	assert(pg_reindex_status(&split) == PG_REINDEX_ERROR);
+	pg_reindex_destroy(&split);
 	assert(reindexed && pg_evidence_subject(reindexed)->core == pg_reference(graph, y));
 	assert(pg_evidence_classifier(reindexed) == pg_reference(graph, b));
 	assert(pg_evidence_context(reindexed) == pg_evidence_context(destination));
@@ -523,6 +551,22 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *a_extended = pg_prove_variable(&typing, source_extension, a);
 	const struct pg_evidence *fa_extended = pg_prove_return_type(&typing, &classifiers, a_extended);
 	const struct pg_evidence *source_pi = pg_prove_pi(&typing, &classifiers, a_in_source, source_extension, fa_extended);
+	const struct pg_evidence *source_lambda = pg_prove_lambda(&typing, source_pi,
+		pg_prove_return(&typing, &classifiers, source_p));
+	assert(source_lambda);
+	pending_proofs = typing.proofs.count;
+	assert(pg_reindex_init(&split, &typing, sigma, source_lambda) == 0);
+	assert(pg_reindex_advance(&split, 1) == PG_REINDEX_PENDING);
+	assert(!pg_reindex_result(&split));
+	pg_reindex_destroy(&split);
+	assert(typing.proofs.count == pending_proofs);
+	assert(pg_reindex_init(&split, &typing, sigma, source_lambda) == 0);
+	const struct pg_evidence *moved_lambda = pg_prove_reindex(&typing, sigma, source_lambda);
+	while (pg_reindex_advance(&split, 1) == PG_REINDEX_PENDING) assert(!pg_reindex_result(&split));
+	assert(pg_reindex_result(&split) == moved_lambda);
+	assert(pg_evidence_subject(moved_lambda)->annotation);
+	assert(pg_evidence_subject(moved_lambda)->annotation == pg_reference(graph, b));
+	pg_reindex_destroy(&split);
 	const struct pg_evidence *moved_pi = pg_prove_reindex(&typing, sigma, source_pi);
 	const struct pg_evidence *codomain = pg_prove_pi_codomain(&typing, moved_pi, destination_y);
 	assert(codomain && pg_evidence_subject(codomain)->core == pg_return_type(&classifiers, pg_reference(graph, b)));

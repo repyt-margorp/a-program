@@ -1,6 +1,7 @@
 #include "evidence.h"
 #include "computation.h"
 #include "eval.h"
+#include <stdlib.h>
 
 struct pg_evidence {
 	struct pg_index_entry index;
@@ -626,32 +627,123 @@ done:
 	return result;
 }
 
+struct pg_reindex_state {
+	struct pg_typing *typing;
+	const struct pg_evidence *premises[2];
+	const struct pg_term *inputs[3], *outputs[3];
+	struct pg_substitution substitution;
+	size_t next;
+	uint64_t steps;
+	enum pg_reindex_status status;
+	const struct pg_evidence *result;
+};
+
+static int reindex_prepare(struct pg_reindex_state *state, struct pg_typing *typing,
+	const struct pg_evidence *substitution, const struct pg_evidence *proof)
+{
+	if (!substitution || substitution->owner != typing) return -1;
+	if (substitution->rule != PG_CONTEXT_SUBSTITUTION) return -1;
+	if (!proof || proof->owner != typing) return -1;
+	if (!proof->subject) return -1;
+	if (proof->context != substitution->premises[0]->context) return -1;
+	state->typing = typing;
+	state->premises[0] = substitution;
+	state->premises[1] = proof;
+	state->inputs[0] = proof->subject->core;
+	state->inputs[1] = proof->classifier;
+	state->inputs[2] = proof->subject->annotation;
+	const struct pg_evidence *premises[] = {substitution, proof};
+	uint64_t hash;
+	state->result = find_record(typing, PG_REINDEX, proof->judgement,
+		substitution->context, NULL, NULL, 2, premises, NULL, &hash);
+	state->status = state->result ? PG_REINDEX_DONE : PG_REINDEX_PENDING;
+	return 0;
+}
+
+int pg_reindex_init(struct pg_reindex *work, struct pg_typing *typing,
+	const struct pg_evidence *substitution, const struct pg_evidence *proof)
+{
+	work->state = calloc(1, sizeof(*work->state));
+	if (!work->state) return -1;
+	if (reindex_prepare(work->state, typing, substitution, proof) == 0) return 0;
+	pg_reindex_destroy(work);
+	return -1;
+}
+
+static enum pg_reindex_status reindex_step(struct pg_reindex_state *state)
+{
+	struct pg_typing *typing = state->typing;
+	const struct pg_evidence *substitution = state->premises[0], *proof = state->premises[1];
+	if (state->next < 3) {
+		if (!state->inputs[state->next]) { ++state->next; return PG_REINDEX_PENDING; }
+		if (!state->substitution.state) {
+			size_t count = substitution->premise_count - 2;
+			const struct pg_binding_value *bindings = (const struct pg_binding_value *)(substitution->premises + substitution->premise_count);
+			if (pg_substitution_init(&state->substitution, typing->graph,
+				state->inputs[state->next], count, bindings) != 0) return PG_REINDEX_ERROR;
+			return PG_REINDEX_PENDING;
+		}
+		switch (pg_substitution_advance(&state->substitution, 1)) {
+		case PG_SUBSTITUTION_PENDING: return PG_REINDEX_PENDING;
+		case PG_SUBSTITUTION_ERROR: return PG_REINDEX_ERROR;
+		case PG_SUBSTITUTION_DONE:
+			state->outputs[state->next++] = pg_substitution_result(&state->substitution);
+			pg_substitution_destroy(&state->substitution);
+			return PG_REINDEX_PENDING;
+		}
+	}
+	const struct pg_occurrence *old = proof->subject;
+	const struct pg_occurrence *subject = pg_occurrence(typing, substitution->context, state->outputs[0],
+		state->outputs[2], old->operand_count, old->operands);
+	if (!subject) return PG_REINDEX_ERROR;
+	state->result = accept(typing, PG_REINDEX, proof->judgement, substitution->context,
+		subject, state->outputs[1], 2, state->premises);
+	return state->result ? PG_REINDEX_DONE : PG_REINDEX_ERROR;
+}
+
+enum pg_reindex_status pg_reindex_status(const struct pg_reindex *work)
+{
+	return work->state ? work->state->status : PG_REINDEX_ERROR;
+}
+
+enum pg_reindex_status pg_reindex_advance(struct pg_reindex *work, uint64_t budget)
+{
+	while (pg_reindex_status(work) == PG_REINDEX_PENDING && budget) {
+		--budget;
+		++work->state->steps;
+		work->state->status = reindex_step(work->state);
+	}
+	return pg_reindex_status(work);
+}
+
+const struct pg_evidence *pg_reindex_result(const struct pg_reindex *work)
+{
+	return pg_reindex_status(work) == PG_REINDEX_DONE ? work->state->result : NULL;
+}
+
+uint64_t pg_reindex_steps(const struct pg_reindex *work)
+{
+	return work->state ? work->state->steps : 0;
+}
+
+void pg_reindex_destroy(struct pg_reindex *work)
+{
+	if (!work->state) return;
+	pg_substitution_destroy(&work->state->substitution);
+	free(work->state);
+	work->state = NULL;
+}
+
 const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof)
 {
-	if (!substitution || substitution->owner != typing) return NULL;
-	if (substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (!proof || proof->owner != typing) return NULL;
-	if (!proof->subject) return NULL;
-	if (proof->context != substitution->premises[0]->context) return NULL;
-	const struct pg_evidence *premises[] = {substitution, proof};
-	uint64_t hash;
-	const struct pg_evidence *existing = find_record(typing, PG_REINDEX, proof->judgement,
-		substitution->context, NULL, NULL, 2, premises, NULL, &hash);
-	if (existing) return existing;
-	size_t count = substitution->premise_count - 2;
-	const struct pg_binding_value *bindings = (const struct pg_binding_value *)(substitution->premises + substitution->premise_count);
-	const struct pg_occurrence *old = proof->subject;
-	const struct pg_term *core = pg_term_substitute(typing->graph, old->core, count, bindings);
-	const struct pg_term *classifier = pg_term_substitute(typing->graph, proof->classifier, count, bindings);
-	const struct pg_term *annotation = old->annotation ? pg_term_substitute(typing->graph, old->annotation, count, bindings) : NULL;
-	if (!core || !classifier) return NULL;
-	if (old->annotation && !annotation) return NULL;
-	const struct pg_occurrence *subject = pg_occurrence(typing, substitution->context, core,
-		annotation, old->operand_count, old->operands);
-	if (!subject) return NULL;
-	return accept(typing, PG_REINDEX, proof->judgement, substitution->context,
-		subject, classifier, 2, premises);
+	struct pg_reindex_state state = {0};
+	struct pg_reindex work = {&state};
+	if (reindex_prepare(&state, typing, substitution, proof) != 0) return NULL;
+	while (pg_reindex_advance(&work, UINT64_MAX) == PG_REINDEX_PENDING) {}
+	const struct pg_evidence *result = pg_reindex_result(&work);
+	pg_substitution_destroy(&state.substitution);
+	return result;
 }
 
 const struct pg_evidence *pg_prove_reindexed_variable(struct pg_typing *typing,
