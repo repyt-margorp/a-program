@@ -314,6 +314,7 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 		const struct pg_evidence *exposed = job->role == THUNK_JOB
 			? pg_prove_reindexed_variable(synthesis->typing, job->checking_term)
 			: pg_prove_reindexed_elimination(synthesis->typing, job->checking_term);
+		if (!exposed) exposed = pg_prove_reindexed_premise(synthesis->typing, job->checking_term);
 		if (exposed) {
 			job->left = request_evaluation(synthesis, job->inputs[0], exposed, job->role);
 			job->stage = CONTENTS_SUBSTITUTED;
@@ -344,7 +345,7 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 	depend(synthesis, job, job->left);
 }
 
-enum reduction_stage { REDUCTION_DEMAND, REDUCTION_SUBSTITUTED, REDUCTION_CONVERTING };
+enum reduction_stage { REDUCTION_DEMAND, REDUCTION_SUBSTITUTED, REDUCTION_CONVERTING, REDUCTION_ARGUMENT };
 
 static void reduction_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
@@ -353,8 +354,43 @@ static void reduction_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		if (job->result) finish(synthesis, job, PG_SYNTHESIS_DONE);
 		return;
 	}
+	if (job->stage == REDUCTION_ARGUMENT) {
+		const struct pg_evidence *argument = job->checking_term;
+		if (pg_evidence_classifier(argument) != pg_evidence_subject(job->checking_type)->core)
+			argument = compare(synthesis, job);
+		if (!argument) return;
+		const struct pg_evidence *application = pg_prove_application(synthesis->typing, job->function, argument);
+		if (!application) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		pg_conversion_destroy(&job->comparison);
+		job->comparing = 0;
+		job->stage = REDUCTION_SUBSTITUTED;
+		job->left = pg_synthesis_reduce(synthesis, job->inputs[0], application);
+		depend(synthesis, job, job->left);
+		return;
+	}
 	if (!job->left) {
+		if (pg_evidence_rule(job->inputs[1]) == PG_TYPE_CONVERSION) {
+			job->stage = REDUCTION_SUBSTITUTED;
+			job->left = pg_synthesis_reduce(synthesis, job->inputs[0], pg_evidence_premise(job->inputs[1], 0));
+			depend(synthesis, job, job->left);
+			return;
+		}
+		if (pg_evidence_rule(job->inputs[1]) == PG_APP_ELIM) {
+			const struct pg_evidence *function = pg_evidence_premise(job->inputs[1], 0);
+			if (pg_evidence_rule(function) == PG_TYPE_CONVERSION) {
+				job->function = pg_evidence_premise(function, 0);
+				job->checking_type = pg_prove_pi_domain(synthesis->typing,
+					pg_prove_classifier(synthesis->typing, synthesis->classifiers, job->inputs[0], job->function));
+				if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+				job->checking_term = pg_evidence_premise(job->inputs[1], 1);
+				job->stage = REDUCTION_ARGUMENT;
+				job->next = synthesis->ready;
+				synthesis->ready = job;
+				return;
+			}
+		}
 		const struct pg_evidence *exposed = pg_prove_reindexed_elimination(synthesis->typing, job->inputs[1]);
+		if (!exposed) exposed = pg_prove_reindexed_premise(synthesis->typing, job->inputs[1]);
 		if (exposed) {
 			job->stage = REDUCTION_SUBSTITUTED;
 			job->left = pg_synthesis_reduce(synthesis, job->inputs[0], exposed);

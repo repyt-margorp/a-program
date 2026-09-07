@@ -244,6 +244,17 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_term *old_classifier = pg_evidence_classifier(quoted_function);
 	const struct pg_term *new_classifier = pg_evidence_subject(upi_z)->core;
 	assert(old_classifier != new_classifier);
+	const struct pg_object *f = pg_binder(graph);
+	const struct pg_evidence *f_context = pg_prove_context_extension(&typing, x_context, f, upi_z);
+	const struct pg_evidence *f_body = pg_prove_projection(&typing, f_context, returned);
+	const struct pg_evidence *f_pi = pg_prove_pi(&typing, &classifiers, upi_z, f_context,
+		pg_prove_projection(&typing, f_context, fa_in_x));
+	const struct pg_evidence *ignore_function = pg_prove_lambda(&typing, f_pi, f_body);
+	assert(pg_prove_application(&typing, ignore_function, quoted_function));
+	assert(!pg_prove_application(&typing, ignore_function, delayed));
+	assert(pg_prove_fold(&typing, pg_prove_return(&typing, &classifiers, quoted_function), ignore_function));
+	assert(!pg_prove_fold(&typing, returned, ignore_function));
+	assert(pg_evidence_classifier(quoted_function) == old_classifier);
 	struct pg_beta_work work;
 	struct pg_conversion comparison;
 	assert(pg_beta_work_init(&work, graph) == 0);

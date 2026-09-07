@@ -516,7 +516,7 @@ const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
 	if (!pg_pi_view(function->classifier, &domain, &binder, &codomain)) return NULL;
-	if (domain != argument->classifier) return NULL;
+	if (pg_alpha_equal(domain, argument->classifier) != 1) return NULL;
 	struct pg_binding_value substitution = {binder, argument->subject->core};
 	const struct pg_term *classifier = pg_term_substitute(typing->graph, codomain, 1, &substitution);
 	const struct pg_term *term = pg_application(typing->graph, function->subject->core, argument->subject->core);
@@ -703,6 +703,22 @@ static int substitution_proof(const struct pg_typing *typing, const struct pg_ev
 	return proof->rule == PG_CONTEXT_SUBSTITUTION;
 }
 
+const struct pg_evidence *pg_prove_reindexed_premise(struct pg_typing *typing,
+	const struct pg_evidence *proof)
+{
+	if (!proof || proof->owner != typing) return NULL;
+	if (proof->rule != PG_REINDEX) return NULL;
+	const struct pg_evidence *substitution = proof->premises[0], *original = proof->premises[1];
+	switch (original->rule) {
+	case PG_TYPE_CONVERSION:
+		return pg_prove_reindex(typing, substitution, original->premises[0]);
+	case PG_REINDEX:
+		substitution = pg_prove_substitution_compose(typing, original->premises[0], substitution);
+		return pg_prove_reindex(typing, substitution, original->premises[1]);
+	default: return NULL;
+	}
+}
+
 const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second)
 {
@@ -826,7 +842,7 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 	const struct pg_object *binder;
 	if (!pg_return_type_view(computation->classifier, &value_type)) return NULL;
 	if (!pg_pi_view(continuation->classifier, &domain, &binder, &codomain)) return NULL;
-	if (domain != value_type) return NULL;
+	if (pg_alpha_equal(domain, value_type) != 1) return NULL;
 	codomain = constant_codomain(typing, continuation->classifier);
 	if (!codomain) return NULL;
 	const struct pg_term *head = pg_application(typing->graph,

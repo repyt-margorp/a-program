@@ -330,6 +330,11 @@ int main(void)
 	const struct pg_evidence *force_result = complete(&synthesis,
 		pg_synthesis_reduce(&synthesis, x_context, force_converted), PG_SYNTHESIS_DONE);
 	assert(force_result == unthunked);
+	const struct pg_evidence *converted_application = pg_prove_application(&typing, unthunked, x_value);
+	const struct pg_evidence *converted_application_value = complete(&synthesis,
+		pg_synthesis_return(&synthesis, x_context, converted_application), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(converted_application_value)->core == pg_reference(&graph, x));
+	assert(pg_evidence_classifier(converted_application_value) == pg_reference(&graph, a));
 	assert(pg_evidence_classifier(force_result) == pg_evidence_classifier(force_converted));
 	assert(!pg_synthesis_unthunk(&synthesis, x_context, force_converted));
 	assert(!pg_synthesis_unthunk(&synthesis, a_context, converted_value));
@@ -433,6 +438,13 @@ int main(void)
 	assert(pg_eval_advance(&machine, 300) == PG_EVAL_WHNF);
 	assert(pg_eval_readback(&machine, &graph) == expected);
 	pg_eval_destroy(&machine);
+	const struct pg_evidence *typed_programs[] = {application, higher, sequenced_higher, sequenced, curried};
+	for (size_t i = 0; i < sizeof(typed_programs) / sizeof(*typed_programs); ++i) {
+		const struct pg_evidence *value = complete(&synthesis,
+			pg_synthesis_return(&synthesis, x_context, typed_programs[i]), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(value)->core == pg_reference(&graph, x));
+		assert(pg_evidence_classifier(value) == pg_reference(&graph, a));
+	}
 	complete(&synthesis, request(&synthesis, root, "Nat := @{zero:*; succ:*->*;};"), PG_SYNTHESIS_UNSUPPORTED);
 	const char *blocks[] = {
 		"main := { alias := x; alias; };",
@@ -454,6 +466,10 @@ int main(void)
 		assert(pg_eval_advance(&machine, 500) == PG_EVAL_WHNF);
 		assert(pg_eval_readback(&machine, &graph) == expected);
 		pg_eval_destroy(&machine);
+		const struct pg_evidence *value = complete(&synthesis,
+			pg_synthesis_return(&synthesis, x_context, block), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(value)->core == pg_reference(&graph, x));
+		assert(pg_evidence_classifier(value) == pg_reference(&graph, a));
 	}
 	complete(&synthesis, request(&synthesis, scope, "main := { temp := x; }.missing;"), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *ordered = complete(&synthesis, request(&synthesis, scope,

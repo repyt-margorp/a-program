@@ -78,6 +78,11 @@ const struct pg_evidence *pg_prove_reindexed_variable(struct pg_typing *typing,
 	const struct pg_evidence *proof);
 const struct pg_evidence *pg_prove_reindexed_elimination(struct pg_typing *typing,
 	const struct pg_evidence *proof);
+/* Push substitution through structural evidence before demanding computation.
+ * For conversion, returns the substituted original term: the caller must
+ * restore the converted classifier with ordinary checked conversion. */
+const struct pg_evidence *pg_prove_reindexed_premise(struct pg_typing *typing,
+	const struct pg_evidence *proof);
 /* Derive a beta reduct of a checked APP with a Lambda introduction premise
  * (possibly projected/reindexed). Uses ordinary substitution/reindex evidence, not a
  * new equality axiom. NULL includes unsupported heads and failed premises. */

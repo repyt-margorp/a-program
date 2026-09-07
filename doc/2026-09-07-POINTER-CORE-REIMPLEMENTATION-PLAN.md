@@ -572,12 +572,32 @@ successful return codes as new-kernel certificates.
   not claimed; neither result is alpha-interned. Tests cover a substituted FORCE demanded inside FOLD, its
   final value, a reindexed polymorphic application returning raw Pi code, and
   completed-step reuse. Original source/reindex proofs remain unchanged.
+- [x] Shared reduction jobs handle direct converted computations and application
+  of converted raw-Pi code. Argument types are checked against the original
+  function domain; reducts are checked against the original request's classifier.
+  Sequential argument/result comparisons have separate comparison state.
+- [x] Push reindex through nested reindex by checked substitution composition,
+  and through conversion by exposing the substituted original premise before
+  restoring the target classifier. Do not evaluate the unsubstituted source
+  variable first: an outer substitution can supply its executable code.
+- [x] APP and FOLD accept structural alpha equality of the domain, consistently
+  with Lambda and checked substitution. Reindexing can freshen internal Pi
+  binders independently in function and argument classifiers. Pointer equality
+  was incorrectly rejecting these valid applications. This is explicit alpha
+  comparison, not alpha interning or implicit beta conversion. Structural
+  mismatches remain rejected and original term/classifier pointers unchanged.
+- [x] Compare Core evaluation with checked returned-value synthesis for five
+  application fixtures and twelve source block fixtures, including higher-order
+  arguments, nested sequencing and post-synthesis annotations. Each returns the
+  existing value `x : A`; single-step fuel tests retain suspended job behavior.
+  Normal and ASan/UBSan pointer suites pass, including domain mismatch rejection
+  and the unchanged 158-case syntax inventory (not semantic example parity).
 - [ ] Generalize substituted-redex exposure across remaining intermediate rule
-  wrappers. The synchronous one-step reducer
-  still has its original contract; reindex distribution is proof construction,
-  not itself a beta/FORCE/FOLD execution step. Applying converted raw-Pi code needs argument/result conversions, not
-  unchecked peeling of a function's conversion premise. These remain blockers
-  for general higher-order typed evaluation despite direct content extraction.
+  wrappers, including projection under substitution. The synchronous one-step
+  reducer retains its original contract; administrative proof construction is
+  not itself a beta/FORCE/FOLD execution step. Primitive substitution and alpha
+  traversal still need budget accounting. These tests establish neither general
+  higher-order completeness nor HOTT/ADT/effect support.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation
