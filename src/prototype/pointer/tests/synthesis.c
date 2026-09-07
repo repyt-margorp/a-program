@@ -135,17 +135,18 @@ static void named_identity(struct pg_typing *typing, struct pg_classifiers *clas
 	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
 	const struct pg_source_scope *root = pg_synthesis_root(&synthesis), *scope = root;
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
-	const struct pg_identity_library *library = pg_identity_library(typing, classifiers, 0);
+	const struct pg_identity_library *library = pg_identity_library(typing, classifiers, &work, 0);
 	assert(library);
-	const struct pg_evidence *functions[] = {library->equality, library->reflexivity};
+	size_t library_work = work.jobs.count;
+	const struct pg_evidence *functions[] = {library->equality, library->reflexivity, library->symmetry, library->composition};
 	/* These are ordinary checked functions, not special source-name rules. */
-	const char *names[] = {"Eq", "refl"};
-	for (size_t n = 0; n < 2; ++n) {
+	const char *names[] = {"Eq", "refl", "sym", "trans"};
+	for (size_t n = 0; n < sizeof(functions) / sizeof(*functions); ++n) {
 		scope = pg_synthesis_name(&synthesis, scope,
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[n], .length = strlen(names[n])}, functions[n]);
 		assert(scope);
 	}
-	assert(!synthesis.steps && !synthesis.ready && !work.jobs.count);
+	assert(!synthesis.steps && !synthesis.ready && work.jobs.count == library_work);
 	const struct pg_evidence *named = complete(&synthesis, request(&synthesis, scope, "main := refl;"), PG_SYNTHESIS_DONE);
 	assert(named == functions[1]);
 	const char *sources[] = {
@@ -167,7 +168,32 @@ static void named_identity(struct pg_typing *typing, struct pg_classifiers *clas
 	}
 	complete(&synthesis, request(&synthesis, scope,
 		"main := \\A : @ => \\x : A => \\y : A => refl A x :: Eq A x y;"), PG_SYNTHESIS_REJECTED);
-	const struct pg_identity_library *higher = pg_identity_library(typing, classifiers, 1);
+	const char *path_functions[] = {
+		"main := \\A:@ => \\x:A => \\y:A => \\p:Eq A x y => sym A x y p :: Eq A y x;",
+		"main := \\A:@ => \\x:A => \\y:A => \\z:A => \\p:Eq A x y => \\q:Eq A y z => trans A x y z p q :: Eq A x z;"
+	};
+	for (size_t i = 0; i < sizeof(path_functions) / sizeof(*path_functions); ++i) {
+		const struct pg_evidence *result = complete(&synthesis, request(&synthesis, scope, path_functions[i]), PG_SYNTHESIS_DONE);
+		const struct pg_evidence *expected = functions[i + 2];
+		assert(pg_alpha_equal(pg_evidence_classifier(result), pg_evidence_classifier(expected)) == 1);
+		result = complete(&synthesis, pg_synthesis_nf(&synthesis, empty, result), PG_SYNTHESIS_DONE);
+		expected = complete(&synthesis, pg_synthesis_nf(&synthesis, empty, expected), PG_SYNTHESIS_DONE);
+		assert(pg_alpha_equal(pg_evidence_subject(result)->core, pg_evidence_subject(expected)->core) == 1);
+	}
+	const char *diagonals[] = {
+		"main := \\A:@ => \\x:A => sym A x x (refl A x);",
+		"main := \\A:@ => \\x:A => trans A x x x (refl A x) (refl A x);"
+	};
+	for (size_t i = 0; i < sizeof(diagonals) / sizeof(*diagonals); ++i) {
+		const struct pg_evidence *result = complete(&synthesis, request(&synthesis, scope, diagonals[i]), PG_SYNTHESIS_DONE);
+		result = complete(&synthesis, pg_synthesis_nf(&synthesis, empty, result), PG_SYNTHESIS_DONE);
+		assert(pg_alpha_equal(pg_evidence_subject(result)->core, pg_evidence_subject(library->reflexivity)->core) == 1);
+	}
+	complete(&synthesis, request(&synthesis, scope,
+		"main := \\A:@ => \\x:A => \\y:A => \\p:Eq A x y => sym A x y p :: Eq A x y;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := \\A:@ => \\x:A => \\y:A => \\z:A => \\p:Eq A x y => \\q:Eq A x z => trans A x y z p q;"), PG_SYNTHESIS_REJECTED);
+	const struct pg_identity_library *higher = pg_identity_library(typing, classifiers, &work, 1);
 	assert(higher);
 	scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Eq1", .length = 3}, higher->equality);
@@ -210,23 +236,31 @@ static void named_identity(struct pg_typing *typing, struct pg_classifiers *clas
 
 static void library_levels(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
-	assert(!pg_identity_library(NULL, classifiers, 0));
-	assert(!pg_identity_library(typing, NULL, 0));
-	assert(!pg_identity_library(typing, classifiers, UINT64_MAX));
+	struct pg_whnf_work work;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(!pg_identity_library(NULL, classifiers, &work, 0));
+	assert(!pg_identity_library(typing, NULL, &work, 0));
+	assert(!pg_identity_library(typing, classifiers, NULL, 0));
+	assert(!pg_identity_library(typing, classifiers, &work, UINT64_MAX));
 	struct pg_graph foreign_graph = {0};
 	struct pg_classifiers foreign;
 	assert(pg_classifiers_init(&foreign, &foreign_graph) == 0);
-	assert(!pg_identity_library(typing, &foreign, 0));
+	assert(!pg_identity_library(typing, &foreign, &work, 0));
+	struct pg_whnf_work foreign_work;
+	assert(pg_whnf_work_init(&foreign_work, &foreign_graph) == 0);
+	assert(!pg_identity_library(typing, classifiers, &foreign_work, 0));
+	pg_whnf_work_destroy(&foreign_work);
 	pg_classifiers_destroy(&foreign);
 	pg_graph_destroy(&foreign_graph);
 	for (uint64_t level = 0; level < 3; ++level) {
-		const struct pg_identity_library *library = pg_identity_library(typing, classifiers, level);
-		const struct pg_identity_library *copy = pg_identity_library(typing, classifiers, level);
+		const struct pg_identity_library *library = pg_identity_library(typing, classifiers, &work, level);
+		const struct pg_identity_library *copy = pg_identity_library(typing, classifiers, &work, level);
 		assert(library && copy);
 		const struct pg_evidence *exports[] = {library->equality, library->reflexivity, library->instance,
-			library->transport[0], library->transport[1], library->lifting[0], library->lifting[1]};
+			library->transport[0], library->transport[1], library->lifting[0], library->lifting[1],
+			library->symmetry, library->composition};
 		const struct pg_evidence *copies[] = {copy->equality, copy->reflexivity, copy->instance,
-			copy->transport[0], copy->transport[1], copy->lifting[0], copy->lifting[1]};
+			copy->transport[0], copy->transport[1], copy->lifting[0], copy->lifting[1], copy->symmetry, copy->composition};
 		for (size_t i = 0; i < sizeof(exports) / sizeof(*exports); ++i) {
 			const struct pg_evidence *proof = exports[i];
 			assert(pg_evidence_owned_by(proof, typing) && !pg_evidence_context(proof));
@@ -239,6 +273,7 @@ static void library_levels(struct pg_typing *typing, struct pg_classifiers *clas
 			assert(pg_evidence_subject(proof)->core != pg_evidence_subject(copies[i])->core);
 		}
 	}
+	pg_whnf_work_destroy(&work);
 }
 
 static void named_transport(struct pg_typing *typing, struct pg_classifiers *classifiers)
@@ -248,7 +283,7 @@ static void named_transport(struct pg_typing *typing, struct pg_classifiers *cla
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
 	const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
-	const struct pg_identity_library *library = pg_identity_library(typing, classifiers, 0);
+	const struct pg_identity_library *library = pg_identity_library(typing, classifiers, &work, 0);
 	assert(library);
 	scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "instance", .length = 8}, library->instance);

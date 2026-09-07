@@ -1,9 +1,62 @@
 #include "prelude.h"
 
+static const struct pg_evidence *path_function(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, struct pg_whnf_work *work,
+	const struct pg_evidence *empty, const struct pg_evidence *a_context,
+	const struct pg_object *a, uint64_t level, int compose)
+{
+	const struct pg_evidence *context = a_context;
+	const struct pg_object *bindings[5];
+	const struct pg_evidence *images[6];
+	/* Images are A,x,y,p for symmetry, or A,x,y,z,p,q for composition. */
+	size_t points = compose ? 3 : 2, count = compose ? 5 : 3;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_evidence *type = pg_prove_value_type(typing, pg_prove_variable(typing, context, a));
+		if (i >= points) type = pg_prove_identity_type(typing, type,
+			pg_prove_variable(typing, context, bindings[i - points]),
+			pg_prove_variable(typing, context, bindings[i - points + 1]));
+		bindings[i] = pg_binder(typing->graph);
+		context = pg_prove_context_extension(typing, context, bindings[i], type);
+		if (!context) return NULL;
+	}
+	images[0] = pg_prove_variable(typing, context, a);
+	for (size_t i = 0; i < count; ++i) images[i + 1] = pg_prove_variable(typing, context, bindings[i]);
+	const struct pg_evidence *prefix = pg_prove_substitution(typing, context, context, count + 1, images);
+	const struct pg_evidence *base = pg_prove_value_type(typing, images[0]);
+	const struct pg_object *t = pg_binder(typing->graph);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, context, t, base);
+	const struct pg_evidence *v = pg_prove_variable(typing, source, t);
+	const struct pg_evidence *x = pg_prove_projection(typing, source, images[1]);
+	const struct pg_evidence *family = pg_prove_type_value(typing, pg_prove_identity_type(typing,
+		pg_prove_projection(typing, source, base), compose ? x : v, compose ? v : x));
+	const struct pg_evidence *kind = pg_prove_classifier(typing, classifiers, source, family);
+	const struct pg_evidence *left = pg_prove_substitution_pair(typing, prefix, source, images[compose ? 2 : 1]);
+	const struct pg_evidence *right = pg_prove_substitution_pair(typing, prefix, source, images[compose ? 3 : 2]);
+	const struct pg_evidence *path = images[compose ? 5 : 3];
+	const struct pg_evidence *action = pg_prove_family_action(typing, kind, family, left, right, 1, &path);
+	const struct pg_evidence *target = pg_prove_identity_type(typing,
+		pg_prove_universe(typing, classifiers, context, level),
+		pg_prove_reindex(typing, left, family), pg_prove_reindex(typing, right, family));
+	if (!action || !target) return NULL;
+	/* Only this fixed, closed library derivation is assembled synchronously.
+	 * Its conversion still uses the caller's common pure work and certificate. */
+	struct pg_conversion conversion;
+	if (pg_conversion_init(&conversion, work, pg_evidence_classifier(action), pg_evidence_subject(target)->core) != 0)
+		return NULL;
+	const struct pg_evidence *checked = NULL;
+	if (pg_conversion_advance(&conversion, UINT64_MAX) == PG_CONVERSION_EQUAL)
+		checked = pg_prove_conversion(typing, action, target, pg_conversion_certificate(&conversion));
+	pg_conversion_destroy(&conversion);
+	const struct pg_evidence *input = compose ? images[4] : pg_prove_reflexivity(typing, base, images[1]);
+	const struct pg_evidence *result = pg_prove_identity_transport(typing, classifiers, checked, input, PG_IDENTITY_RIGHT);
+	return pg_prove_abstract(typing, classifiers, empty, context, pg_prove_return(typing, classifiers, result));
+}
+
 const struct pg_identity_library *pg_identity_library(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, uint64_t level)
+	struct pg_classifiers *classifiers, struct pg_whnf_work *normalization, uint64_t level)
 {
 	if (!typing || !classifiers || typing->graph != classifiers->graph) return NULL;
+	if (!normalization || normalization->graph != typing->graph) return NULL;
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
 	const struct pg_evidence *universe = pg_prove_universe(typing, classifiers, empty, level);
 	if (!universe) return NULL;
@@ -59,5 +112,7 @@ const struct pg_identity_library *pg_identity_library(struct pg_typing *typing,
 			pg_prove_return(typing, classifiers, lift));
 		if (!library->transport[direction] || !library->lifting[direction]) return NULL;
 	}
-	return library;
+	library->symmetry = path_function(typing, classifiers, normalization, empty, a_context, a, level, 0);
+	library->composition = path_function(typing, classifiers, normalization, empty, a_context, a, level, 1);
+	return library->symmetry && library->composition ? library : NULL;
 }

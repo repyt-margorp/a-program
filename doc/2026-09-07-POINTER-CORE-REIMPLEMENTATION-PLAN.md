@@ -1404,6 +1404,29 @@ a specified type family, not a global endpoint-only relation.
   `prelude.h` +3; tests `synthesis.c` +25/-4; documentation separate.
   Direct surface `R x y`, automatic library installation, CLI/imports, general
   Pi transport and higher coherence remain open. This is not N2 completion.
+- [x] September 8, after `41522bc`: expose homogeneous symmetry and path
+  composition as ordinary library functions. Symmetry transports `refl x`
+  along `p:x=y` in `t |-> Id A t x`; composition transports `p:x=y` along
+  `q:y=z` in `t |-> Id A x t`. One shared recipe constructs their checked
+  contexts, selected substitutions, Act, transport and Lambda abstractions.
+  Act's classifier is converted to its universe Identity using a certificate
+  from the caller's shared pure normalizer. `pg_identity_library` therefore
+  now takes that work store explicitly; no local evaluator, solver or new
+  equality rule is introduced. Only this fixed library assembly is synchronous;
+  it does not execute arbitrary source terms or alter source fuel accounting.
+  Source tests call the exports under ordinary names `sym` and `trans`, check
+  their dependent result types with `::`, normalize them against the derived
+  library terms, and verify their refl computations. Incorrect orientation and
+  noncomposable paths reject. Existing independent `family_transport` tests
+  remain in place. All nine exports are checked at levels 0-2; graph ownership
+  and normalization-store ownership must agree. Registering names itself still
+  performs no solving or evaluation.
+  Final optimized check: 8.338 s; ASan/UBSan: 18.547 s with affected binaries
+  rebuilt (builds overlapped, not performance-comparison measurements). All
+  four computation suites pass at 512 KiB stack. Implementation `prelude.c`
+  +57/-2, `prelude.h` +7/-2; tests `synthesis.c` +50/-15; docs separate.
+  Associativity, inverse laws, higher coherence, general Pi transport and N2
+  acceptance remain open; these functions do not establish those laws.
 - [x] September 8, after `fedba41`: share context-suffix abstraction between
   ADT branch functions and named checked functions (`pg_prove_abstract`). It
   composes the existing Pi/Lambda rules, retains every premise and binder,
