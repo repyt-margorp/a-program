@@ -120,6 +120,38 @@ int main(void)
 	}
 	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, a_scope, x_name, x, x_context);
+	const struct pg_evidence *computed_domain = complete(&synthesis, request(&synthesis, scope,
+		"main := \\y : ((\\T : @ => T) A) => y;"), PG_SYNTHESIS_DONE);
+	assert(pg_pi_view(pg_evidence_classifier(computed_domain), &domain, &binder, &codomain));
+	assert(domain == pg_reference(&graph, a));
+	const struct pg_evidence *computed_codomain = complete(&synthesis, request(&synthesis, scope,
+		"main := A -> ((\\T : @ => T) A);"), PG_SYNTHESIS_DONE);
+	assert(pg_pi_view(pg_evidence_subject(computed_codomain)->core, &domain, &binder, &codomain));
+	assert(pg_return_type_view(codomain, &codomain) && codomain == pg_reference(&graph, a));
+	const struct pg_evidence *computed_expect = complete(&synthesis, request(&synthesis, scope,
+		"main := x :: ((\\T : @ => T) ((\\S : @ => S) A));"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(computed_expect)->core == pg_reference(&graph, x));
+	assert(pg_evidence_classifier(computed_expect) == pg_reference(&graph, a));
+	const struct pg_evidence *computed_function_domain = complete(&synthesis, request(&synthesis, scope,
+		"main := \\y : ((\\T : @ => \\S : @ => S) A A) => y;"), PG_SYNTHESIS_DONE);
+	assert(pg_pi_view(pg_evidence_classifier(computed_function_domain), &domain, &binder, &codomain));
+	assert(domain == pg_reference(&graph, a));
+	complete(&synthesis, request(&synthesis, scope,
+		"main := \\y : ((\\z : A => z) x) => y;"), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *batched_type = request(&synthesis, scope,
+		"main := \\y : ((\\T : @ => \\S : @ => S) A A) => y;");
+	pg_synthesis_advance(&synthesis, 0);
+	assert(pg_synthesis_status(batched_type) == PG_SYNTHESIS_PENDING);
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_status(batched_type) == PG_SYNTHESIS_DONE);
+	assert(pg_alpha_equal(pg_evidence_subject(pg_synthesis_result(batched_type))->core,
+		pg_evidence_subject(computed_function_domain)->core) == 1);
+	assert(pg_alpha_equal(pg_evidence_classifier(pg_synthesis_result(batched_type)),
+		pg_evidence_classifier(computed_function_domain)) == 1);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := missing :: ((\\T : @ => T) A);"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := \\f : @ -> @ => \\y : f A => y;"), PG_SYNTHESIS_UNSUPPORTED);
 	const struct pg_evidence *application = complete(&synthesis,
 		request(&synthesis, scope, "main := (\\y : A => y) x;"), PG_SYNTHESIS_DONE);
 	struct pg_eval machine;

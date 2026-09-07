@@ -59,6 +59,7 @@ struct pg_synthesis_job {
 	const struct pg_evidence *result;
 	const struct pg_evidence *checking_term;
 	const struct pg_evidence *checking_type;
+	const struct pg_evidence *type_input;
 	const struct pg_evidence *function;
 	struct pg_conversion comparison;
 	int comparing;
@@ -186,6 +187,30 @@ static const struct pg_evidence *value_type(struct pg_synthesis *synthesis, cons
 	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_COMPUTATION_TYPE)
 		return pg_prove_thunk_type(synthesis->typing, synthesis->classifiers, proof);
 	return pg_prove_value_type(synthesis->typing, proof);
+}
+
+/* Type positions may advance pure computations, but only checked RETURN
+ * evidence exposes a value. Expected types never supply missing synthesis. */
+static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, const struct pg_evidence *context,
+	const struct pg_evidence *proof)
+{
+	if (!job->type_input) job->type_input = proof;
+	proof = job->type_input;
+	if (pg_evidence_judgement(proof) != PG_JUDGEMENT_COMPUTATION) {
+		job->type_input = NULL;
+		return proof;
+	}
+	const struct pg_evidence *returned = pg_prove_return_value(synthesis->typing, proof);
+	if (returned) {
+		job->type_input = NULL;
+		return returned;
+	}
+	job->type_input = pg_reduce_computation(synthesis->typing, context, proof);
+	if (!job->type_input) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return NULL; }
+	job->next = synthesis->ready;
+	synthesis->ready = job;
+	return NULL;
 }
 
 static const struct pg_evidence *value(struct pg_synthesis *synthesis, const struct pg_evidence *proof)
@@ -535,7 +560,9 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->stage == 1) {
 		const struct pg_source_scope *scope = job->scope;
 		if (syntax->kind == PG_SYNTAX_LAMBDA || syntax->kind == PG_SYNTAX_PI) {
-			job->domain = value_type(synthesis, job->left->result);
+			const struct pg_evidence *input = type_input(synthesis, job, scope->context, job->left->result);
+			if (!input) return;
+			job->domain = value_type(synthesis, input);
 			if (!job->domain) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			struct pg_token name = syntax->token;
 			if (syntax->kind == PG_SYNTAX_PI) {
@@ -566,7 +593,8 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		break;
 	}
 	case PG_SYNTAX_PI: {
-		const struct pg_evidence *codomain = right;
+		const struct pg_evidence *codomain = type_input(synthesis, job, job->inner->context, right);
+		if (!codomain) return;
 		if (pg_evidence_judgement(codomain) != PG_JUDGEMENT_COMPUTATION_TYPE)
 			codomain = pg_prove_return_type(synthesis->typing, synthesis->classifiers, value_type(synthesis, codomain));
 		job->result = pg_prove_pi(synthesis->typing, synthesis->classifiers, job->domain, job->inner->context, codomain);
@@ -613,6 +641,8 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	case PG_SYNTAX_EXPECT: {
 		if (!job->checking_term) {
+			right = type_input(synthesis, job, job->scope->context, right);
+			if (!right) return;
 			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE_TYPE) left = value(synthesis, left);
 			if (!left) break;
 			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) right = value_type(synthesis, right);

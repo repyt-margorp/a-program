@@ -480,12 +480,32 @@ successful return codes as new-kernel certificates.
   independent Core evaluation, and repeat requests without Term/proof growth.
 - [ ] General typed reduction must handle converted function proofs,
   converted introductions and admitted semantic owners, plus budgeted reduction chains and
-  checked pure type-result exposure. `pg_reduce_beta` is only the Lambda-head
+  general pure type-result exposure. `pg_reduce_beta` is only the Lambda-head
   step above; its NULL result is not a normalization or untypability verdict.
   Its reduct is ordinary reindex evidence, not an object Identity witness or a
   persistent conversion certificate for the original APP.
   Introduction inversion currently traverses its immutable premise chain;
   budgeting that traversal and composing arbitrary chains remain unfinished.
+- [x] Initial source-level pure type-result exposure uses existing accepted
+  derivations: `pg_prove_return_value` inverts RETURN through context actions,
+  and the existing value-universe rule checks whether that returned value is a
+  type. Lambda/Pi domains, Pi codomains and the right side of `::` share one
+  synthesis helper. It retains its current proof between scheduler steps;
+  each successful reduction yields before continuing. APP can advance its
+  callee and FOLD its input by rebuilding the same checked elimination rules.
+  Tests cover computed domains/codomains, nested computed arguments in a
+  post-check, a computed callee, rejection of a returned non-type and missing
+  subject, and an unsupported neutral type-family application. `::` still
+  supplies no information to synthesis of its left-hand side.
+- [ ] Neutral/open pure type-family computations require their own checked
+  formation contract; reaching `F Universe` alone is not sufficient to invent
+  a returned type. Current inability to expose `f A` for an unknown `f` is
+  reported unsupported, not proof that dependent families are invalid. The
+  checked family/substitution action contract above is still required.
+  Typed reduction currently has no shared pending-work store; the source job
+  retains progress and accepted derivations are interned, but independent
+  type-position consumers can repeat traversal. Demand/context traversal and
+  primitive substitution costs are not yet charged individually to fuel.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation

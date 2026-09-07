@@ -382,6 +382,14 @@ static const struct pg_evidence *introduced_content(struct pg_typing *typing,
 	return apply_context_action(typing, proof, content);
 }
 
+const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
+	const struct pg_evidence *computation)
+{
+	if (!computation || computation->owner != typing) return NULL;
+	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	return introduced_content(typing, computation, PG_RETURN_INTRO);
+}
+
 const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *computation)
 {
@@ -405,13 +413,21 @@ const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
 		result = apply_context_action(typing, computation, result);
 		break;
 	case PG_APP_ELIM:
-		return pg_reduce_beta(typing, context, computation);
+		result = pg_reduce_beta(typing, context, computation);
+		if (result) return result;
+		result = pg_reduce_computation(typing, context, computation->premises[0]);
+		result = pg_prove_application(typing, result, computation->premises[1]);
+		break;
 	case PG_FORCE_ELIM:
 		result = introduced_content(typing, computation->premises[0], PG_THUNK_INTRO);
 		break;
 	case PG_FOLD_ELIM:
-		value = introduced_content(typing, computation->premises[0], PG_RETURN_INTRO);
-		result = pg_prove_application(typing, computation->premises[1], value);
+		value = pg_prove_return_value(typing, computation->premises[0]);
+		if (value) result = pg_prove_application(typing, computation->premises[1], value);
+		else {
+			result = pg_reduce_computation(typing, context, computation->premises[0]);
+			result = pg_prove_fold(typing, result, computation->premises[1]);
+		}
 		break;
 	default:
 		return NULL;

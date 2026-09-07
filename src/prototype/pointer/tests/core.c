@@ -188,6 +188,9 @@ static void evidence_test(struct pg_graph *graph)
 	assert(x_term && pg_evidence_classifier(x_term) == pg_reference(graph, a));
 	const struct pg_evidence *returned = pg_prove_return(&typing, &classifiers, x_term);
 	assert(returned && pg_evidence_classifier(returned) == pg_evidence_subject(fa_in_x)->core);
+	assert(pg_prove_return_value(&typing, returned) == x_term);
+	assert(!pg_prove_return_value(&typing, x_term));
+	assert(!pg_prove_return_value(&typing, NULL));
 	const struct pg_evidence *delayed = pg_prove_thunk(&typing, &classifiers, returned);
 	const struct pg_evidence *forced = pg_prove_force(&typing, delayed);
 	assert(forced && pg_evidence_classifier(forced) == pg_evidence_classifier(returned));
@@ -290,6 +293,9 @@ static void evidence_test(struct pg_graph *graph)
 		pg_prove_thunk(&typing, &classifiers, return_y));
 	const struct pg_evidence *reindexed_force = pg_prove_force(&typing, reindexed_thunk);
 	assert(pg_reduce_computation(&typing, x_context, reindexed_force) == reduct);
+	const struct pg_evidence *exposed = pg_prove_return_value(&typing, reduct);
+	assert(exposed && pg_evidence_subject(exposed)->core == pg_evidence_subject(x_term)->core);
+	assert(pg_evidence_classifier(exposed) == pg_evidence_classifier(x_term));
 	assert(!pg_reduce_computation(&typing, x_context, pg_prove_force(&typing, converted)));
 	size_t reduction_terms = graph->terms.count, reduction_proofs = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i) {

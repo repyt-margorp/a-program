@@ -82,6 +82,10 @@ const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
  * NULL also includes unsupported evidence, not just irreducible terms. */
 const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *computation);
+/* Invert a RETURN introduction through checked context actions. This does not
+ * execute an arbitrary computation or assert an equation with its result. */
+const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
+	const struct pg_evidence *computation);
 /* first : Delta -> Gamma, second : Theta -> Delta; result : Theta -> Gamma. */
 const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second);
