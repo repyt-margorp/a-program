@@ -393,6 +393,63 @@ base witness: identical endpoints can admit different identifications. Do not
 erase those choices or collapse all evidence into an endpoint pair. Pointer
 sharing and kernel conversion do not imply equality reflection.
 
+### N2 implementation contract: families are not returning computations
+
+Rechecked the primary [observational documentation](https://narya.readthedocs.io/en/latest/observational.html#heterogeneous-identity-types)
+and [HOTT documentation](https://narya.readthedocs.io/en/latest/hott.html#transport-and-lifting).
+In Narya a heterogeneous identification retains the base identification through
+the acted family. A universe identification has an underlying correspondence,
+but instantiating that correspondence is not ordinary function application.
+HOTT adds transport/lifting and higher compatibility; an arbitrary reflexive
+correspondence is not thereby an equality. Its indexed-type fibrancy caveat
+must not be mistaken for an already implemented generic solution.
+
+The following is our CBPV adaptation, not a Narya theorem or implemented rule:
+
+- A family is first an accepted formation under a boundary context. Given
+  `Delta |- A type` and a checked substitution `sigma : Gamma -> Delta`, its
+  instance is `Gamma |- A[sigma] type`. Use `pg_prove_substitution` and
+  `pg_prove_reindex`; do not represent this operation as obtaining a runtime
+  value from `F Universe`. Do not add ValueSidePi to encode this meta-level
+  binding. Raw computation Pi retains its existing meaning.
+- A higher family request must identify the original formation/occurrence,
+  dimension operator, acted context and chosen lower-dimensional family/base
+  evidence. The two endpoint types alone are not a sufficient key. A neutral
+  semantic reference may eventually retain these immutable inputs, but only
+  after its formation rule exists; allocating such a reference is not evidence.
+- Materialize the boundary context in dependency order. Each declaration's
+  classifier is an instance of an already checked lower face family. The center
+  formation must have this entire context as its source. Supplying an arbitrary
+  center type of the right universe does not establish that it is the action
+  of the original type.
+- Keep VALUE_TYPE/COMPUTATION_TYPE judgements distinct without adding Core tags.
+  A raw Pi action has computation polarity. Passing its center as an ordinary
+  context argument requires the existing U/thunk discipline; an implementation
+  must not insert raw computation proofs into a value context. The Id rules for
+  F/U remain obligations, not an assumption that all computations have values.
+- Derive the classifier of an acted term by instantiating the selected acted
+  family with its checked boundary terms. Lambda action must use an acted binder
+  telescope; APP action must consume that same telescope, including the center.
+  Checking only that corresponding subterms have some relation is insufficient.
+
+Code audit: `pointer/action.c` currently only constructs restriction substitutions.
+`pointer/evidence.c` already supplies checked family instantiation by reindexing,
+but no rule constructs a higher family. Legacy
+`src/prototype/src/dimension/action.c` has boundary-applied family/classifier
+builders; they return Term IDs rather than the fresh kernel's accepted formation
+evidence. Reuse their equations only after verifying the premises, not their
+successful return codes as new-kernel certificates.
+
+- [ ] Implement a checked acted-context/center-formation contract using these
+  existing proof inputs; test different chosen correspondences with identical
+  endpoints remain distinct.
+- [ ] Implement the Pi/Lambda/APP center rules together, including F/U polarity
+  and exact boundary instantiation; test identity and constant actions followed
+  by a second action. A generic relation-preservation test cannot replace this.
+- [ ] Supply transport/lifting computations and their boundary tests before
+  advertising this as HOTT Identity. Pure type evaluation, generated IADT
+  families and their fibrancy obligations remain part of the full goal.
+
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation
 rules for the initial supported type formers. Unknown families may remain
