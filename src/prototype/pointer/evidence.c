@@ -4,6 +4,7 @@ struct pg_evidence {
 	struct pg_index_entry index;
 	const struct pg_typing *owner;
 	enum pg_evidence_rule rule;
+	enum pg_evidence_judgement judgement;
 	const struct pg_context *context;
 	const struct pg_occurrence *subject;
 	const struct pg_term *classifier;
@@ -12,6 +13,7 @@ struct pg_evidence {
 };
 
 static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_evidence_rule rule,
+	enum pg_evidence_judgement judgement,
 	const struct pg_context *context, const struct pg_occurrence *subject,
 	const struct pg_term *classifier, size_t count, const struct pg_evidence *const *premises)
 {
@@ -21,6 +23,7 @@ static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_eviden
 		if (candidate->hash != hash) continue;
 		const struct pg_evidence *proof = (const struct pg_evidence *)candidate;
 		if (proof->rule != rule) continue;
+		if (proof->judgement != judgement) continue;
 		if (proof->context != context) continue;
 		if (proof->subject != subject) continue;
 		if (proof->classifier != classifier) continue;
@@ -33,6 +36,7 @@ static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_eviden
 	if (!proof) return NULL;
 	proof->owner = typing;
 	proof->rule = rule;
+	proof->judgement = judgement;
 	proof->context = context;
 	proof->subject = subject;
 	proof->classifier = classifier;
@@ -45,12 +49,23 @@ static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_eviden
 static int context_proof(const struct pg_typing *typing, const struct pg_evidence *proof)
 {
 	if (!proof || proof->owner != typing) return 0;
-	return proof->rule == PG_CONTEXT_EMPTY || proof->rule == PG_CONTEXT_EXTEND;
+	return proof->judgement == PG_JUDGEMENT_CONTEXT;
 }
 
 const struct pg_evidence *pg_prove_empty_context(struct pg_typing *typing)
 {
-	return accept(typing, PG_CONTEXT_EMPTY, NULL, NULL, NULL, 0, NULL);
+	return accept(typing, PG_CONTEXT_EMPTY, PG_JUDGEMENT_CONTEXT, NULL, NULL, NULL, 0, NULL);
+}
+
+const struct pg_evidence *pg_prove_value_type(struct pg_typing *typing, const struct pg_evidence *value)
+{
+	if (!value || value->owner != typing) return NULL;
+	if (value->judgement == PG_JUDGEMENT_VALUE_TYPE) return value;
+	if (value->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	uint64_t level;
+	if (!pg_universe_level(value->classifier, &level)) return NULL;
+	return accept(typing, PG_TYPE_FROM_VALUE, PG_JUDGEMENT_VALUE_TYPE,
+		value->context, value->subject, value->classifier, 1, &value);
 }
 
 const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
@@ -58,7 +73,8 @@ const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
 	const struct pg_evidence *type)
 {
 	if (!context_proof(typing, parent)) return NULL;
-	if (!type || type->owner != typing) return NULL;
+	type = pg_prove_value_type(typing, type);
+	if (!type) return NULL;
 	if (!type->subject || type->context != parent->context) return NULL;
 	uint64_t level;
 	if (!pg_universe_level(type->classifier, &level)) return NULL;
@@ -66,7 +82,7 @@ const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
 	const struct pg_context *context = pg_context_bind(typing, parent->context, binder, type->subject->core);
 	if (!context) return NULL;
 	const struct pg_evidence *premises[] = {parent, type};
-	return accept(typing, PG_CONTEXT_EXTEND, context, NULL, NULL, 2, premises);
+	return accept(typing, PG_CONTEXT_EXTEND, PG_JUDGEMENT_CONTEXT, context, NULL, NULL, 2, premises);
 }
 
 const struct pg_evidence *pg_prove_universe(struct pg_typing *typing,
@@ -80,7 +96,7 @@ const struct pg_evidence *pg_prove_universe(struct pg_typing *typing,
 	if (!term || !sort) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, context->context, term, NULL, 0, NULL);
 	if (!subject) return NULL;
-	return accept(typing, PG_UNIVERSE_FORM, context->context, subject, sort, 1, &context);
+	return accept(typing, PG_UNIVERSE_FORM, PG_JUDGEMENT_VALUE_TYPE, context->context, subject, sort, 1, &context);
 }
 
 const struct pg_evidence *pg_prove_variable(struct pg_typing *typing,
@@ -92,10 +108,78 @@ const struct pg_evidence *pg_prove_variable(struct pg_typing *typing,
 	const struct pg_term *term = pg_reference(typing->graph, binder);
 	const struct pg_occurrence *subject = pg_occurrence(typing, context->context, term, NULL, 0, NULL);
 	if (!subject) return NULL;
-	return accept(typing, PG_VARIABLE, context->context, subject, declaration->declared_type, 1, &context);
+	return accept(typing, PG_VARIABLE, PG_JUDGEMENT_VALUE, context->context, subject, declaration->declared_type, 1, &context);
+}
+
+static const struct pg_evidence *unary_formation(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *argument,
+	enum pg_evidence_rule rule)
+{
+	if (!argument || argument->owner != typing) return NULL;
+	if (classifiers->graph != typing->graph) return NULL;
+	enum pg_evidence_judgement output;
+	const struct pg_term *term;
+	if (rule == PG_RETURN_TYPE_FORM) {
+		argument = pg_prove_value_type(typing, argument);
+		if (!argument) return NULL;
+		output = PG_JUDGEMENT_COMPUTATION_TYPE;
+		term = pg_return_type(classifiers, argument->subject->core);
+	} else {
+		if (argument->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+		output = PG_JUDGEMENT_VALUE_TYPE;
+		term = pg_thunk_type(classifiers, argument->subject->core);
+	}
+	if (!term) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, argument->context,
+		term, NULL, 1, &argument->subject);
+	if (!subject) return NULL;
+	return accept(typing, rule, output, argument->context, subject,
+		argument->classifier, 1, &argument);
+}
+
+const struct pg_evidence *pg_prove_return_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *value_type)
+{
+	return unary_formation(typing, classifiers, value_type, PG_RETURN_TYPE_FORM);
+}
+
+const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *computation_type)
+{
+	return unary_formation(typing, classifiers, computation_type, PG_THUNK_TYPE_FORM);
+}
+
+const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_evidence *domain, const struct pg_evidence *extended_context,
+	const struct pg_evidence *codomain)
+{
+	if (classifiers->graph != typing->graph) return NULL;
+	domain = pg_prove_value_type(typing, domain);
+	if (!domain) return NULL;
+	if (!context_proof(typing, extended_context)) return NULL;
+	const struct pg_context *scope = extended_context->context;
+	if (!scope || scope->parent != domain->context) return NULL;
+	if (scope->declared_type != domain->subject->core) return NULL;
+	if (!codomain || codomain->owner != typing) return NULL;
+	if (codomain->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	if (codomain->context != scope) return NULL;
+	uint64_t left, right;
+	if (!pg_universe_level(domain->classifier, &left)) return NULL;
+	if (!pg_universe_level(codomain->classifier, &right)) return NULL;
+	const struct pg_term *bound = pg_universe(classifiers, left > right ? left : right);
+	const struct pg_term *term = pg_pi(classifiers, domain->subject->core,
+		scope->binder, codomain->subject->core);
+	if (!bound || !term) return NULL;
+	const struct pg_occurrence *operands[] = {domain->subject, codomain->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, domain->context, term, NULL, 2, operands);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {domain, extended_context, codomain};
+	return accept(typing, PG_PI_FORM, PG_JUDGEMENT_COMPUTATION_TYPE,
+		domain->context, subject, bound, 3, premises);
 }
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }
+enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence) { return evidence->judgement; }
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence) { return evidence->context; }
 const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence) { return evidence->subject; }
 const struct pg_term *pg_evidence_classifier(const struct pg_evidence *evidence) { return evidence->classifier; }

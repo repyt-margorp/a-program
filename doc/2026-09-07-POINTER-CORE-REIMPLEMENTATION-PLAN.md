@@ -362,10 +362,41 @@ conclusion and all premise pointers; no accepted record is overwritten.
 - [x] Verify primitive context/Universe/variable premises, rejection of free
   variables, wrong scopes, duplicate binders and non-type declarations; retain
   distinct occurrence evidence over shared Core. Ordinary/sanitizer tests pass.
-- [ ] Pi/CBPV formation, conversion evidence, synthesis scheduling, replay and
-  typed HOTT action still need implementation. These four primitive rules do
+- [x] Add pure F/U/Pi formation using existing Reference/Application/Lambda
+  spines. Distinguish value/computation type formation from value/computation
+  inhabitation in evidence conclusions, never by duplicated Core tags.
+  A value inhabiting a value universe determines a value type; computation-type
+  formation does not make that type a value inhabiting the same universe.
+  Formation classifiers record concrete universe bounds. Pi requires a value
+  domain, its verified context extension, and a computation codomain in that
+  extension; its bound is the maximum of the two premise bounds. Ordinary tests
+  cover wrong scopes, wrong sorts, retained premises, interning and bounds.
+- [ ] Conversion evidence, synthesis scheduling, image checking and
+  typed HOTT action still need implementation. These primitive rules do
   not constitute a complete checker; NULL currently combines invalid-premise
   and allocation failures and is not a solver-level logical rejection result.
+
+### Image checking is not a separate Replay semantics
+
+The September 7 clarification applies to every replay gate below. A `.p` file
+creates an unresolved program image; solving advances that image, and loading
+resumes the same solver. Do not introduce a loader-specific compilation or
+proof-search pipeline. Previously solved work must not be searched again merely
+because it crossed a file boundary.
+
+Loading still checks structural references and the validity of retained evidence.
+Use the same checked derivation rules used to accept new solver results. Check a
+shared premise DAG once per load rather than recursively duplicating its work.
+Checking evidence is distinct from rediscovering its proof: conversion premises
+may nevertheless require reduction or validation of retained reduction evidence.
+No unchecked serialized "accepted" bit constitutes a proof.
+
+- [ ] N5: restore pending work and resume the existing solver without a parallel
+  Replay engine; distinguish discarded work from retained validated results.
+- [ ] N5: route reconstructed derivations through the existing acceptance rules;
+  reject invalid evidence and test shared-DAG checking and split-budget resume.
+- [ ] N5: document what seed/checkpoint retention saves and which calculations
+  must be repeated. Do not promise zero recomputation for a compact image.
 
 `pg_term_substitute` now exposes the evaluator's existing capture-avoiding
 readback traversal for simultaneous binder-pointer substitution. Images are

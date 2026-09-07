@@ -17,5 +17,9 @@ const struct pg_term *pg_pi(struct pg_classifiers *classifiers,
 	const struct pg_term *domain, const struct pg_object *binder, const struct pg_term *codomain);
 int pg_pi_view(const struct pg_term *term, const struct pg_term **domain,
 	const struct pg_object **binder, const struct pg_term **codomain);
+const struct pg_term *pg_return_type(struct pg_classifiers *classifiers, const struct pg_term *value_type);
+const struct pg_term *pg_thunk_type(struct pg_classifiers *classifiers, const struct pg_term *computation_type);
+int pg_return_type_view(const struct pg_term *term, const struct pg_term **value_type);
+int pg_thunk_type_view(const struct pg_term *term, const struct pg_term **computation_type);
 
 #endif

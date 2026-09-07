@@ -5,6 +5,10 @@
 static const struct pg_object_class universe_class = {"universe"};
 static const struct pg_object_class pi_class = {"pi-former"};
 static const struct pg_object pi_former = {PG_SEMANTIC_OBJECT, &pi_class};
+static const struct pg_object_class return_type_class = {"return-type-former"};
+static const struct pg_object_class thunk_type_class = {"thunk-type-former"};
+static const struct pg_object return_type_former = {PG_SEMANTIC_OBJECT, &return_type_class};
+static const struct pg_object thunk_type_former = {PG_SEMANTIC_OBJECT, &thunk_type_class};
 
 struct universe_object {
 	struct pg_object object;
@@ -77,4 +81,36 @@ int pg_pi_view(const struct pg_term *term, const struct pg_term **domain,
 	*binder = family->as.lambda.binder;
 	*codomain = family->as.lambda.body;
 	return 1;
+}
+
+static const struct pg_term *unary_type(struct pg_classifiers *classifiers,
+	const struct pg_object *former, const struct pg_term *argument)
+{
+	return pg_application(classifiers->graph, pg_reference(classifiers->graph, former), argument);
+}
+
+static int unary_view(const struct pg_term *term, const struct pg_object *former, const struct pg_term **argument)
+{
+	if (!term || term->kind != PG_APPLICATION) return 0;
+	const struct pg_term *head = term->as.application.function;
+	if (head->kind != PG_REFERENCE || head->as.reference != former) return 0;
+	*argument = term->as.application.argument;
+	return 1;
+}
+
+const struct pg_term *pg_return_type(struct pg_classifiers *classifiers, const struct pg_term *value_type)
+{
+	return unary_type(classifiers, &return_type_former, value_type);
+}
+const struct pg_term *pg_thunk_type(struct pg_classifiers *classifiers, const struct pg_term *computation_type)
+{
+	return unary_type(classifiers, &thunk_type_former, computation_type);
+}
+int pg_return_type_view(const struct pg_term *term, const struct pg_term **value_type)
+{
+	return unary_view(term, &return_type_former, value_type);
+}
+int pg_thunk_type_view(const struct pg_term *term, const struct pg_term **computation_type)
+{
+	return unary_view(term, &thunk_type_former, computation_type);
 }
