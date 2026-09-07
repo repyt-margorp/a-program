@@ -41,7 +41,9 @@ It reads paths supplied as arguments and emits TSV rows: `parsed`,
 execution. Its exit status is nonzero if any input could not be parsed.
 
 The `program` rows in `compatibility.tsv` select the inventory. On 2026-09-07,
-after adding repeated index markers and bare annotated lambdas, 133 of 158
-current-worktree files parsed; 25 did not. Negative fixtures can legitimately
+after adding index markers, bare annotated lambdas, imports and companion
+syntax, 154 of 158 current-worktree files parsed; four did not. The remaining
+files are `12_append_assoc_draft.p` and `stage1.p` through `stage3.p`.
+Negative fixtures can legitimately
 parse before failing semantic checks. These counts are not conformance results.
 `make check` now also parses the existing examples numbered 01 through 09.

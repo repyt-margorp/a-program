@@ -19,7 +19,9 @@ enum pg_syntax_kind {
 	PG_SYNTAX_DEFINITIONS,
 	PG_SYNTAX_EXIT,
 	PG_SYNTAX_ELIMINATION,
-	PG_SYNTAX_CLAUSE
+	PG_SYNTAX_CLAUSE,
+	PG_SYNTAX_GRAPH_REFERENCE,
+	PG_SYNTAX_IMPORT
 };
 
 struct pg_syntax_item {
@@ -38,6 +40,7 @@ struct pg_syntax {
 	const struct pg_syntax *right;
 	size_t item_count;
 	const struct pg_syntax_item *items;
+	int binder_marker;
 };
 
 struct pg_definition {
@@ -56,7 +59,8 @@ struct pg_parser {
 void pg_parser_init(struct pg_parser *parser, struct pg_graph *arena,
 	const char *input, size_t length);
 /* 1 entry, 0 end, -1 error. operation '{' denotes a root definition-block
- * selection; otherwise ':=' or '::'. No name resolution or type synthesis. */
+ * selection; PG_SYNTAX_IMPORT an import; otherwise ':=' or '::'.
+ * No name resolution or type synthesis. */
 int pg_parser_next(struct pg_parser *parser, struct pg_definition *definition);
 
 #endif

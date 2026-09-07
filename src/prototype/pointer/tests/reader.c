@@ -190,13 +190,49 @@ static void eliminations(void)
 	assert(clause->items[0].expression->token.text[0] == 'x');
 	assert(pg_parser_next(&parser, &definition) == 0);
 	const char *invalid[] = {"m:=x @;", "m:=x @c p {q;} =>x;", "m:=x @c {p:=;} =>x;",
-		"m:=x @c p x;", "m:=x @c =>;"};
+		"m:=x @c p =>;", "m:=x @c =>;"};
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
 		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
 		assert(pg_parser_next(&parser, &definition) == -1);
 	}
 	pg_graph_destroy(&arena);
 	puts("elimination syntax: clause arrays, alias heads, return labels, nested grouping and selectors passed");
+}
+
+static void companions(void)
+{
+	const char source[] = "import Sigma; f:=\\le:A=>\\@le:G=>\\*le=>@le; p:=m @output=>inspect x output @output;";
+	struct pg_graph arena = {0};
+	struct pg_parser parser;
+	struct pg_definition definition;
+	pg_parser_init(&parser, &arena, source, sizeof(source) - 1);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.operation == PG_SYNTAX_IMPORT);
+	assert(definition.expression->left->token.text_length == 5);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	const struct pg_syntax *raw = definition.expression;
+	assert(raw->binder_marker == 0 && raw->left);
+	const struct pg_syntax *graph = raw->right;
+	assert(graph->binder_marker == '@' && graph->left);
+	const struct pg_syntax *certified = graph->right;
+	assert(certified->binder_marker == '*' && !certified->left);
+	assert(certified->right->kind == PG_SYNTAX_GRAPH_REFERENCE);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	const struct pg_syntax *body = definition.expression->items[0].expression->right;
+	assert(body->kind == PG_SYNTAX_APPLICATION);
+	assert(body->right->kind == PG_SYNTAX_GRAPH_REFERENCE);
+	assert(pg_parser_next(&parser, &definition) == 0);
+	const char root[] = "{{import Sigma; main:=x;}}.main";
+	pg_parser_init(&parser, &arena, root, sizeof(root) - 1);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->left->items[0].operation == PG_SYNTAX_IMPORT);
+	const char *invalid[] = {"import;", "import X.Y;", "f:=\\@x=>x;", "f:=\\*x:A=>x;", "f:=#;"};
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
+		assert(pg_parser_next(&parser, &definition) == -1);
+	}
+	pg_graph_destroy(&arena);
+	puts("companions: import syntax, marker retention and graph arguments without type fabrication passed");
 }
 
 static void blocks(void)
@@ -317,6 +353,7 @@ int main(void)
 	declarations();
 	blocks();
 	eliminations();
+	companions();
 	puts("reader: symbolic syntax, contextual names, literals, comments and bounded input passed");
 	return 0;
 }

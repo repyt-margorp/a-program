@@ -421,10 +421,8 @@ fragment, qualified names, literals, quotation, and separate `::` checks into
 source-owned syntax nodes. It does not resolve names, infer types, insert CBPV
 coercions or evaluate expressions. Tests check left-associated application,
 dependent binder retention and separation of expected-type checks from
-definitions. Ordinary and ASan/UBSan checks pass. Imports and graph-companion
-syntax still need grammar implementations; current
-rejection of those forms is a temporary unsupported boundary, not a language
-design change or a compatibility success.
+definitions. Ordinary and ASan/UBSan checks pass. Grammar coverage is tracked
+below; successful parsing is not a compatibility claim for elaboration.
 
 Declaration syntax now accepts `@{...}` and `@\\index:A => {...}`. Outer
 lambdas remain parameters; index lambdas sit inside the declaration marker.
@@ -455,6 +453,17 @@ matches, operation aliases and return labels; ordinary and sanitizer checks
 pass. Name/arity validation, head classification, scope checks and iota/fold
 lowering remain unimplemented. The full existing nesting/precedence fixture
 inventory still needs comparison before claiming grammar compatibility.
+
+Import and graph-companion syntax is now retained without parser-side type
+construction. `\\@f:G=>...` and `\\*f=>...` retain their markers; the latter has
+no fabricated domain. `@name` in argument position is distinguished from a
+clause head by following syntax. Top-level/root-block imports record only the
+requested name. Tests and a sanitizer inventory run now parse 154/158 files.
+The four remaining syntax failures are `12_append_assoc_draft.p` and the three
+`stage*.p` files; their historical validity still needs explicit review. No
+negative fixture has been certified merely because it parsed. Companion
+origin checking, import resolution, typed lowering and full precedence/scope
+conformance remain outstanding.
 
 This table is a starting inventory from the current reader, AST and test tree,
 not a claim that the failed snapshot passes every row. N0 must enumerate exact
