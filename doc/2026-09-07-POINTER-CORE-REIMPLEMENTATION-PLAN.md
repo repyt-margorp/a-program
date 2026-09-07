@@ -563,12 +563,19 @@ successful return codes as new-kernel certificates.
   value, preserve the original premises, and reuse the completed job. When the
   exposed content already has the exact target classifier, no redundant
   conversion proof is added; otherwise the existing comparison checks it.
-- [ ] Generalize substituted-redex exposure across all demanded evaluation
-  positions and intermediate rule wrappers. The synchronous one-step reducer
+- [x] Reduction jobs distribute a direct reindexed APP/FORCE/FOLD before
+  demanding its next execution step. The exposed derivation is a shared child
+  request, not itself reported as a beta step. The result retains the original
+  classifier up to checked alpha equality, using the existing resumable
+  conversion checker when substituted binders differ. Formation reconstruction
+  can itself freshen Pi binders, so exact classifier-pointer preservation is
+  not claimed; neither result is alpha-interned. Tests cover a substituted FORCE demanded inside FOLD, its
+  final value, a reindexed polymorphic application returning raw Pi code, and
+  completed-step reuse. Original source/reindex proofs remain unchanged.
+- [ ] Generalize substituted-redex exposure across remaining intermediate rule
+  wrappers. The synchronous one-step reducer
   still has its original contract; reindex distribution is proof construction,
-  not itself a beta/FORCE/FOLD execution step. In particular a substituted
-  redex demanded inside a larger elimination can still encounter the original
-  neutral premise. Applying converted raw-Pi code needs argument/result conversions, not
+  not itself a beta/FORCE/FOLD execution step. Applying converted raw-Pi code needs argument/result conversions, not
   unchecked peeling of a function's conversion premise. These remain blockers
   for general higher-order typed evaluation despite direct content extraction.
 

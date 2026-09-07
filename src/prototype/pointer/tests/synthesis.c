@@ -156,8 +156,27 @@ int main(void)
 	assert(pg_evidence_subject(substituted_result)->core == pg_reference(&graph, x));
 	assert(pg_evidence_classifier(substituted_result) == pg_reference(&graph, a));
 	assert(pg_evidence_rule(substituted_force) == PG_REINDEX);
+	const struct pg_evidence *nested_result = complete(&synthesis,
+		pg_synthesis_return(&synthesis, x_context, substituted_fold), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(nested_result)->core == pg_reference(&graph, x));
+	assert(pg_evidence_classifier(nested_result) == pg_reference(&graph, a));
+	struct pg_synthesis_job *substituted_force_step = pg_synthesis_reduce(&synthesis, x_context, substituted_force);
+	const struct pg_evidence *force_step_result = complete(&synthesis, substituted_force_step, PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(force_step_result)->core == pg_evidence_subject(return_x)->core);
+	assert(pg_evidence_rule(substituted_force) == PG_REINDEX);
 	uint64_t image_steps = synthesis.steps;
 	assert(pg_synthesis_return(&synthesis, x_context, substituted_force) == substituted_return);
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(synthesis.steps == image_steps);
+	const struct pg_evidence *a_images[] = {a_type};
+	const struct pg_evidence *a_substitution = pg_prove_substitution(&typing, a_context, a_context, 1, a_images);
+	const struct pg_evidence *reindexed_polymorphic = pg_prove_reindex(&typing, a_substitution, typed_application);
+	struct pg_synthesis_job *polymorphic_step = pg_synthesis_reduce(&synthesis, a_context, reindexed_polymorphic);
+	const struct pg_evidence *polymorphic_result = complete(&synthesis, polymorphic_step, PG_SYNTHESIS_DONE);
+	assert(pg_alpha_equal(pg_evidence_classifier(polymorphic_result), pg_evidence_classifier(reindexed_polymorphic)) == 1);
+	assert(pg_alpha_equal(pg_evidence_subject(polymorphic_result)->core, pg_evidence_subject(typed_reduct)->core) == 1);
+	image_steps = synthesis.steps;
+	assert(pg_synthesis_reduce(&synthesis, a_context, reindexed_polymorphic) == polymorphic_step);
 	pg_synthesis_advance(&synthesis, 1000);
 	assert(synthesis.steps == image_steps);
 	struct pg_synthesis_job *callee_step = pg_synthesis_reduce(&synthesis, x_context, projected_application);

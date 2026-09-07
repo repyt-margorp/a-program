@@ -344,9 +344,23 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 	depend(synthesis, job, job->left);
 }
 
+enum reduction_stage { REDUCTION_DEMAND, REDUCTION_SUBSTITUTED, REDUCTION_CONVERTING };
+
 static void reduction_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
+	if (job->stage == REDUCTION_CONVERTING) {
+		job->result = compare(synthesis, job);
+		if (job->result) finish(synthesis, job, PG_SYNTHESIS_DONE);
+		return;
+	}
 	if (!job->left) {
+		const struct pg_evidence *exposed = pg_prove_reindexed_elimination(synthesis->typing, job->inputs[1]);
+		if (exposed) {
+			job->stage = REDUCTION_SUBSTITUTED;
+			job->left = pg_synthesis_reduce(synthesis, job->inputs[0], exposed);
+			depend(synthesis, job, job->left);
+			return;
+		}
 		if (pg_evidence_rule(job->inputs[1]) == PG_FORCE_ELIM) {
 			job->left = pg_synthesis_unthunk(synthesis, job->inputs[0], pg_evidence_premise(job->inputs[1], 0));
 			depend(synthesis, job, job->left);
@@ -365,6 +379,23 @@ static void reduction_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		return;
 	}
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	if (job->stage == REDUCTION_SUBSTITUTED) {
+		job->checking_term = job->left->result;
+		if (pg_evidence_classifier(job->checking_term) == pg_evidence_classifier(job->inputs[1])) {
+			job->result = job->checking_term;
+			finish(synthesis, job, PG_SYNTHESIS_DONE);
+			return;
+		}
+		job->checking_type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, job->inputs[0], job->inputs[1]);
+		if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		if (pg_alpha_equal(pg_evidence_subject(job->checking_type)->core, pg_evidence_classifier(job->inputs[1])) != 1) {
+			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+		}
+		job->stage = REDUCTION_CONVERTING;
+		job->next = synthesis->ready;
+		synthesis->ready = job;
+		return;
+	}
 	job->result = pg_evidence_rule(job->inputs[1]) == PG_FORCE_ELIM
 		? job->left->result : pg_prove_computation_operand(synthesis->typing, job->inputs[1], job->left->result);
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
