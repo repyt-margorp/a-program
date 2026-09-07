@@ -55,7 +55,7 @@ static int force_answer(struct pg_eval *machine, const struct pg_term *answer)
 		return pg_eval_enter(machine, (struct pg_closure){pg_identity_action(machine->output, observed), NULL}, 1);
 	}
 	const struct pg_term *body = unary_argument(answer, &pg_thunk_operation);
-	return body ? pg_eval_enter(machine, (struct pg_closure){body, NULL}, 1) : 1;
+	return body ? pg_eval_enter(machine, (struct pg_closure){body, NULL}, 1) : pg_identity_force(machine, answer);
 }
 
 static int fold_answer(struct pg_eval *machine, const struct pg_term *answer)

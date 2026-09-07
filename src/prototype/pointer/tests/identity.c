@@ -385,7 +385,7 @@ static void pi_transport_candidate(struct pg_typing *typing, struct pg_classifie
 				pg_prove_classifier(typing, classifiers, function_context, actual));
 			const struct pg_term *term = pg_evidence_subject(expected)->core;
 			const struct pg_term *reflected;
-			if (pg_identity_action_view(pg_evidence_subject(path)->core, &reflected)) {
+			{
 				/* Application, unlike bare function comparison, can expose the
 				 * transport recipe without adding function eta to conversion. */
 				const struct pg_evidence *actual_call = pg_prove_application(typing,
@@ -395,6 +395,56 @@ static void pi_transport_candidate(struct pg_typing *typing, struct pg_classifie
 				assert(actual_call && recipe_call);
 				converts(&work, pg_evidence_classifier(actual_call), pg_evidence_classifier(recipe_call));
 				converts(&work, pg_evidence_subject(actual_call)->core, pg_evidence_subject(recipe_call)->core);
+				const struct pg_term *call_term = pg_evidence_subject(actual_call)->core;
+				struct pg_whnf_job *split = pg_whnf_request(&work, &pg_pure_policy, call_term);
+				struct pg_whnf_job *bulk = pg_whnf_request(&whole, &pg_pure_policy, call_term);
+				while (pg_whnf_advance(split, 1) == PG_EVAL_PENDING) assert(pg_whnf_steps(split) < 100000);
+				assert(pg_whnf_advance(bulk, 100000) == PG_EVAL_WHNF);
+				assert(pg_whnf_steps(split) == pg_whnf_steps(bulk));
+				assert(pg_alpha_equal(pg_whnf_result(split), pg_whnf_result(bulk)) == 1);
+				assert(pg_prove_normalization(typing, actual_call, pg_whnf_certificate(split)));
+				const struct pg_term *callee = call_term->as.application.function;
+				struct pg_whnf_job *preforce = pg_whnf_request(&work, &pg_pure_policy, callee);
+				assert(pg_whnf_advance(preforce, 100000) == PG_EVAL_WHNF);
+				converts(&work, pg_application(graph, pg_whnf_result(preforce), pg_evidence_subject(target)->core), call_term);
+				if (!pg_identity_action_view(pg_evidence_subject(path)->core, &reflected)) {
+					/* No eta expansion even when FORCE itself is precomputed. */
+					assert(pg_alpha_equal(pg_whnf_result(preforce), callee) == 1);
+					const struct pg_term *right_type = pg_evidence_subject(types[1])->core;
+					const struct pg_term *path_term = pg_evidence_subject(path)->core;
+					assert(right_type->kind == PG_REFERENCE && path_term->kind == PG_REFERENCE);
+					struct pg_binding_value diagonal[] = {
+						{right_type->as.reference, pg_evidence_subject(types[0])->core},
+						{path_term->as.reference, pg_identity_action(graph, pg_evidence_subject(types[0])->core)}
+					};
+					/* Contract before restricting the path, or restrict first. */
+					converts(&work, pg_term_substitute(graph, call_term, 2, diagonal),
+						pg_term_substitute(graph, pg_whnf_result(split), 2, diagonal));
+				}
+				struct pg_whnf_job *beta_call = pg_whnf_request(&work, &pg_beta_policy, call_term);
+				assert(pg_whnf_advance(beta_call, 10000) == PG_EVAL_WHNF && pg_whnf_result(beta_call) == call_term);
+				if (!dependent) {
+					/* Runtime-only probe: transporting a function never calls it,
+					 * and each application invokes the body exactly once. */
+					const struct pg_term *body = pg_application(graph, pg_reference(graph, &tick),
+						pg_application(graph, pg_reference(graph, &pg_return_operation), pg_reference(graph, y)));
+					struct pg_binding_value binding = {f, pg_application(graph,
+						pg_reference(graph, &pg_thunk_operation), pg_lambda(graph, y, body))};
+					const struct pg_term *quote = pg_term_substitute(graph, pg_evidence_subject(actual)->core, 1, &binding);
+					struct pg_eval runtime;
+					pg_computation_eval_init(&runtime, graph, quote);
+					runtime.dispatch = counted_dispatch;
+					ticks = 0;
+					assert(pg_eval_advance(&runtime, 100000) == PG_EVAL_WHNF && ticks == 0);
+					pg_eval_destroy(&runtime);
+					const struct pg_term *invoke = pg_term_substitute(graph, call_term, 1, &binding);
+					for (size_t n = 1; n <= 2; ++n) {
+						pg_computation_eval_init(&runtime, graph, invoke);
+						runtime.dispatch = counted_dispatch;
+						assert(pg_eval_advance(&runtime, 100000) == PG_EVAL_WHNF && ticks == n);
+						pg_eval_destroy(&runtime);
+					}
+				}
 			}
 			if (!dependent && pg_identity_action_view(pg_evidence_subject(path)->core, &reflected)) {
 				const struct pg_term *eta = pg_application(graph, pg_reference(graph, &pg_thunk_operation),

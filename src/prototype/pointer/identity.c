@@ -365,7 +365,7 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	return enter_action(machine, &scope, result, 0);
 }
 
-static int thunk_return_family(const struct pg_term *family,
+static int thunk_family(const struct pg_term *family,
 	struct action_scope *scope, const struct pg_term **content)
 {
 	const struct pg_term *source;
@@ -377,8 +377,69 @@ static int thunk_return_family(const struct pg_term *family,
 	}
 	source_scope(source, scope);
 	if (!count || count % 3 || scope->count != count / 3) return 0;
+	return pg_thunk_type_view(scope->body, content);
+}
+
+static int thunk_return_family(const struct pg_term *family,
+	struct action_scope *scope, const struct pg_term **content)
+{
 	const struct pg_term *computation;
-	return pg_thunk_type_view(scope->body, &computation) && pg_return_type_view(computation, content);
+	return thunk_family(family, scope, &computation) && pg_return_type_view(computation, content);
+}
+
+static const struct pg_term *close_family(struct pg_eval *machine,
+	const struct action_scope *scope, const struct pg_term *family, const struct pg_term *result)
+{
+	size_t count = 3 * scope->count;
+	const struct pg_term **arguments = pg_alloc(&machine->temporary, count * sizeof(*arguments));
+	if (!arguments) return NULL;
+	for (size_t i = count; i; --i, family = family->as.application.function)
+		arguments[i - 1] = family->as.application.argument;
+	for (size_t i = scope->count; i; --i)
+		for (size_t j = 3; j; --j)
+			result = pg_lambda(machine->output, scope->bindings[i - 1].arguments[j - 1], result);
+	for (size_t i = 0; i < count; ++i) result = pg_application(machine->output, result, arguments[i]);
+	return result;
+}
+
+int pg_identity_force(struct pg_eval *machine, const struct pg_term *value)
+{
+	const struct pg_closure *argument = pg_eval_argument(machine, 1);
+	if (!argument || value->kind != PG_APPLICATION) return 1;
+	const struct pg_term *prefix = value->as.application.function;
+	if (prefix->kind != PG_APPLICATION) return 1;
+	const struct pg_term *head = prefix->as.application.function;
+	if (head->kind != PG_REFERENCE) return 1;
+	int field = field_index(head->as.reference);
+	if (field < 0 || field > 1) return 1;
+	const struct pg_term *family = prefix->as.application.argument;
+	const struct pg_term *computation, *domain, *codomain, *content;
+	const struct pg_object *binder;
+	struct action_scope scope;
+	if (!thunk_family(family, &scope, &computation)) return 1;
+	if (!pg_pi_view(computation, &domain, &binder, &codomain)) return 1;
+	if (!pg_return_type_view(codomain, &content)) return 1;
+	if (prepare_bindings(machine, &scope) != 0) return -1;
+	struct pg_graph *graph = machine->output;
+	const struct pg_object *y = pg_binder(graph), *z = pg_binder(graph);
+	const struct pg_term *target = pg_reference(graph, y);
+	enum pg_identity_direction direction = (enum pg_identity_direction)field;
+	enum pg_identity_direction reverse = field ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT;
+	const struct pg_term *domain_path = acted_body(graph, &scope, domain);
+	const struct pg_term *input = pg_identity_transport(graph, domain_path, target, reverse);
+	const struct pg_term *lift = pg_identity_lift(graph, domain_path, target, reverse);
+	const struct pg_term *result_path = acted_body(graph, &scope, pg_lambda(graph, binder, content));
+	result_path = pg_application(graph,
+		pg_identity_instance(graph, result_path, field ? target : input, field ? input : target), lift);
+	const struct pg_term *call = pg_application(graph,
+		pg_application(graph, pg_reference(graph, &pg_force_operation), value->as.application.argument), input);
+	const struct pg_term *result = pg_application(graph, pg_reference(graph, &pg_return_operation),
+		pg_identity_transport(graph, result_path, pg_reference(graph, z), direction));
+	result = pg_application(graph, pg_application(graph, pg_reference(graph, &pg_fold_operation), call),
+		pg_lambda(graph, z, result));
+	result = close_family(machine, &scope, family, pg_lambda(graph, y, result));
+	if (!result) return -1;
+	return pg_eval_apply(machine, (struct pg_closure){result, NULL}, *argument, 2);
 }
 
 static int thunk_return_field(struct pg_eval *machine, const struct pg_term *value)
@@ -404,14 +465,8 @@ static int thunk_return_field(struct pg_eval *machine, const struct pg_term *val
 			pg_application(graph, pg_reference(graph, &pg_fold_operation), source), pg_lambda(graph, binder, result));
 	}
 	result = pg_application(graph, pg_reference(graph, &pg_thunk_operation), result);
-	size_t count = 3 * scope.count;
-	const struct pg_term **arguments = pg_alloc(&machine->temporary, count * sizeof(*arguments));
-	if (!arguments) return -1;
-	for (size_t i = count; i; --i, family = family->as.application.function)
-		arguments[i - 1] = family->as.application.argument;
-	for (size_t i = scope.count; i; --i)
-		for (size_t j = 3; j; --j) result = pg_lambda(graph, scope.bindings[i - 1].arguments[j - 1], result);
-	for (size_t i = 0; i < count; ++i) result = pg_application(graph, result, arguments[i]);
+	result = close_family(machine, &scope, family, result);
+	if (!result) return -1;
 	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 2);
 }
 

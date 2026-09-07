@@ -1583,6 +1583,29 @@ a specified type family, not a global endpoint-only relation.
   Check non-diagonal subject reduction, higher lifting, normalization before
   versus after substitution, and effect evaluation order before admitting
   the rule. Do not install an eager eta expansion as a shortcut.
+- [x] September 8, after `a4ca3f6`: implement the application equation for
+  acted `U(Pi x:A. F B)` families. FORCE delegates a demanded transport answer
+  to the Identity owner only when a further application argument is present.
+  It transports the argument in the reverse direction, uses that lifting
+  witness to select the codomain path, calls the original function, and maps
+  the result with the ordinary FOLD and forward transport. Family closure
+  reconstruction is shared with U/F fields. No Core tag, classifier lookup,
+  function eta, eager thunk expansion or specialized conversion exception is
+  introduced. Bare FORCE of a non-diagonal transported function stays neutral.
+  `pi_transport_candidate` independently constructs checked recipe evidence
+  for two selected paths, both directions and constant/dependent codomains;
+  application now converts to that recipe. Tests also cover precomputed FORCE,
+  one-step versus bulk evaluation, normalization evidence, beta-only policy
+  isolation, and reduction before versus after diagonal substitution.
+  A runtime-only probe confirms zero body calls during transport and one per
+  application, including repeated execution outside the pure memo store.
+  This admits the tested application fragment, not a general Pi lifting rule
+  or arbitrary higher coherence. The N2 equational/coherence gate and nominal
+  datatype fibrancy gate remain open.
+  Optimized and ASan/UBSan pointer `make check` pass; Identity also passes
+  with a 512 KiB stack. Implementation: +69/-11 lines; tests: +51/-1;
+  documentation is separate. Syntax inventory success is not source semantic
+  acceptance or completion of N0-N7.
 - [ ] Resolve this N2 equational choice before enabling structural U/Pi
   transport or using it to justify nominal datatype fibrancy. If the
   elimination-driven alternative is insufficient, either admit

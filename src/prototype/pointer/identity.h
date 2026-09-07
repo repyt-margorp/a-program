@@ -38,5 +38,8 @@ int pg_identity_view(const struct pg_term *term, const struct pg_term **type,
  * general lifting on non-returned thunks remains neutral.
  * Unknown sources/families stay neutral. No classifier or proof lookup. */
 int pg_identity_dispatch(struct pg_eval *machine);
+/* FORCE's demanded answer: unfold U(Pi x:A. F B) transport only when an
+ * application argument is present. Bare transported functions stay neutral. */
+int pg_identity_force(struct pg_eval *machine, const struct pg_term *value);
 
 #endif
