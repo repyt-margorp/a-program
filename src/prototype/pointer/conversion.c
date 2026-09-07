@@ -1,6 +1,24 @@
 #include "conversion.h"
 
 #include <string.h>
+#include <stdlib.h>
+
+struct pg_conversion_certificate {
+	const struct pg_term *left;
+	const struct pg_term *right;
+};
+
+struct pg_conversion_state {
+	struct pg_beta_work *work;
+	struct pg_graph storage;
+	struct pg_index visited;
+	struct pg_conversion_task *pending;
+	enum pg_conversion_status status;
+	uint64_t steps;
+	const struct pg_term *left;
+	const struct pg_term *right;
+	const struct pg_conversion_certificate *certificate;
+};
 
 struct conversion_scope {
 	const struct pg_object *left;
@@ -16,7 +34,7 @@ struct pg_conversion_task {
 	struct pg_conversion_task *next;
 };
 
-static int push(struct pg_conversion *conversion, const struct pg_term *left,
+static int push(struct pg_conversion_state *conversion, const struct pg_term *left,
 	const struct pg_term *right, const struct conversion_scope *scope)
 {
 	if (!left || !right) return -1;
@@ -43,11 +61,13 @@ static int push(struct pg_conversion *conversion, const struct pg_term *left,
 	return 0;
 }
 
-int pg_conversion_init(struct pg_conversion *conversion, struct pg_beta_work *work,
+static int initialize(struct pg_conversion_state *conversion, struct pg_beta_work *work,
 	const struct pg_term *left, const struct pg_term *right)
 {
 	memset(conversion, 0, sizeof(*conversion));
 	conversion->work = work;
+	conversion->left = left;
+	conversion->right = right;
 	conversion->status = PG_CONVERSION_ERROR;
 	if (pg_index_init(&conversion->visited) != 0) return -1;
 	if (push(conversion, left, right, NULL) != 0) {
@@ -70,7 +90,7 @@ static int references_equal(const struct pg_object *left, const struct pg_object
 }
 
 /* One transition either advances one normalization or decomposes one pair. */
-static enum pg_conversion_status step(struct pg_conversion *conversion)
+static enum pg_conversion_status step(struct pg_conversion_state *conversion)
 {
 	struct pg_conversion_task *task = conversion->pending;
 	struct pg_beta_job *left_job = pg_beta_request(conversion->work, task->left);
@@ -108,7 +128,7 @@ static enum pg_conversion_status step(struct pg_conversion *conversion)
 	return conversion->pending ? PG_CONVERSION_PENDING : PG_CONVERSION_EQUAL;
 }
 
-enum pg_conversion_status pg_conversion_advance(struct pg_conversion *conversion, uint64_t budget)
+static enum pg_conversion_status advance(struct pg_conversion_state *conversion, uint64_t budget)
 {
 	while (conversion->status == PG_CONVERSION_PENDING && budget) {
 		--budget;
@@ -118,9 +138,71 @@ enum pg_conversion_status pg_conversion_advance(struct pg_conversion *conversion
 	return conversion->status;
 }
 
-void pg_conversion_destroy(struct pg_conversion *conversion)
+static void destroy(struct pg_conversion_state *conversion)
 {
 	pg_index_destroy(&conversion->visited);
 	pg_graph_destroy(&conversion->storage);
 	memset(conversion, 0, sizeof(*conversion));
 }
+
+static void certify(struct pg_conversion_state *state)
+{
+	if (state->status != PG_CONVERSION_EQUAL || state->certificate) return;
+	struct pg_conversion_certificate *certificate = pg_alloc(state->work->graph, sizeof(*certificate));
+	if (!certificate) { state->status = PG_CONVERSION_ERROR; return; }
+	*certificate = (struct pg_conversion_certificate){state->left, state->right};
+	state->certificate = certificate;
+}
+
+int pg_conversion_init(struct pg_conversion *conversion, struct pg_beta_work *work,
+	const struct pg_term *left, const struct pg_term *right)
+{
+	conversion->state = calloc(1, sizeof(*conversion->state));
+	if (!conversion->state) return -1;
+	if (initialize(conversion->state, work, left, right) != 0) {
+		free(conversion->state);
+		conversion->state = NULL;
+		return -1;
+	}
+	certify(conversion->state);
+	if (conversion->state->status == PG_CONVERSION_ERROR) {
+		pg_conversion_destroy(conversion);
+		return -1;
+	}
+	return 0;
+}
+
+enum pg_conversion_status pg_conversion_advance(struct pg_conversion *conversion, uint64_t budget)
+{
+	if (!conversion->state) return PG_CONVERSION_ERROR;
+	advance(conversion->state, budget);
+	certify(conversion->state);
+	return conversion->state->status;
+}
+
+void pg_conversion_destroy(struct pg_conversion *conversion)
+{
+	if (!conversion->state) return;
+	destroy(conversion->state);
+	free(conversion->state);
+	conversion->state = NULL;
+}
+
+enum pg_conversion_status pg_conversion_status(const struct pg_conversion *conversion)
+{
+	return conversion->state ? conversion->state->status : PG_CONVERSION_ERROR;
+}
+uint64_t pg_conversion_steps(const struct pg_conversion *conversion)
+{
+	return conversion->state ? conversion->state->steps : 0;
+}
+const struct pg_conversion_certificate *pg_conversion_certificate(const struct pg_conversion *conversion)
+{
+	return conversion->state ? conversion->state->certificate : NULL;
+}
+size_t pg_conversion_task_count(const struct pg_conversion *conversion)
+{
+	return conversion->state ? conversion->state->visited.count : 0;
+}
+const struct pg_term *pg_conversion_left(const struct pg_conversion_certificate *certificate) { return certificate->left; }
+const struct pg_term *pg_conversion_right(const struct pg_conversion_certificate *certificate) { return certificate->right; }

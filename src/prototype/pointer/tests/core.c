@@ -215,6 +215,39 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *quoted_function = pg_prove_thunk(&typing, &classifiers, identity_y);
 	assert(!pg_prove_application(&typing, quoted_function, x_term));
 	assert(pg_prove_application(&typing, pg_prove_force(&typing, quoted_function), x_term));
+	const struct pg_object *z = pg_binder(graph);
+	const struct pg_evidence *z_context = pg_prove_context_extension(&typing, x_context, z, a_in_x);
+	const struct pg_evidence *a_in_z = pg_prove_variable(&typing, z_context, a);
+	const struct pg_evidence *fa_in_z = pg_prove_return_type(&typing, &classifiers, a_in_z);
+	const struct pg_evidence *pi_z = pg_prove_pi(&typing, &classifiers, a_in_x, z_context, fa_in_z);
+	const struct pg_evidence *upi_z = pg_prove_thunk_type(&typing, &classifiers, pi_z);
+	const struct pg_term *old_classifier = pg_evidence_classifier(quoted_function);
+	const struct pg_term *new_classifier = pg_evidence_subject(upi_z)->core;
+	assert(old_classifier != new_classifier);
+	struct pg_beta_work work;
+	struct pg_conversion comparison;
+	assert(pg_beta_work_init(&work, graph) == 0);
+	assert(pg_conversion_init(&comparison, &work, old_classifier, new_classifier) == 0);
+	assert(!pg_conversion_certificate(&comparison));
+	while (pg_conversion_advance(&comparison, 1) == PG_CONVERSION_PENDING)
+		assert(!pg_conversion_certificate(&comparison));
+	const struct pg_conversion_certificate *certificate = pg_conversion_certificate(&comparison);
+	assert(certificate);
+	pg_conversion_destroy(&comparison);
+	pg_beta_work_destroy(&work);
+	const struct pg_evidence *converted = pg_prove_conversion(&typing, quoted_function, upi_z, certificate);
+	assert(converted && pg_evidence_classifier(converted) == new_classifier);
+	assert(pg_evidence_classifier(quoted_function) == old_classifier);
+	assert(pg_evidence_subject(converted) == pg_evidence_subject(quoted_function));
+	assert(pg_evidence_conversion(converted) == certificate);
+	assert(pg_evidence_premise(converted, 0) == quoted_function);
+	assert(pg_evidence_premise(converted, 1) == upi_z);
+	assert(pg_prove_conversion(&typing, quoted_function, upi_z, certificate) == converted);
+	assert(!pg_prove_conversion(&typing, quoted_function, upi_z, NULL));
+	assert(!pg_prove_conversion(&typing, x_term, upi_z, certificate));
+	assert(!pg_prove_conversion(&typing, quoted_function, ufa, certificate));
+	assert(!pg_prove_conversion(&typing, quoted_function, pi_z, certificate));
+	assert(pg_prove_application(&typing, pg_prove_force(&typing, converted), x_term));
 	struct pg_eval application_machine;
 	pg_eval_init(&application_machine, pg_evidence_subject(app)->core);
 	assert(pg_eval_advance(&application_machine, 100) == PG_EVAL_WHNF);
@@ -463,8 +496,8 @@ static void conversion_test(struct pg_graph *graph)
 	struct pg_conversion conversion;
 	assert(pg_conversion_init(&conversion, &work, left, identity) == 0);
 	assert(pg_conversion_advance(&conversion, 0) == PG_CONVERSION_PENDING);
-	while (pg_conversion_advance(&conversion, 1) == PG_CONVERSION_PENDING) assert(conversion.steps < 100);
-	assert(conversion.status == PG_CONVERSION_EQUAL);
+	while (pg_conversion_advance(&conversion, 1) == PG_CONVERSION_PENDING) assert(pg_conversion_steps(&conversion) < 100);
+	assert(pg_conversion_status(&conversion) == PG_CONVERSION_EQUAL);
 	assert(left != identity);
 	pg_conversion_destroy(&conversion);
 	/* An identical body pointer does not identify a bound variable with a
@@ -483,7 +516,7 @@ static void conversion_test(struct pg_graph *graph)
 	}
 	assert(pg_conversion_init(&conversion, &work, pg_lambda(graph, x, dag_x), pg_lambda(graph, y, dag_y)) == 0);
 	assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
-	assert(conversion.visited.count < 100);
+	assert(pg_conversion_task_count(&conversion) < 100);
 	pg_conversion_destroy(&conversion);
 	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
 	const struct pg_term *omega = pg_application(graph, self, self);

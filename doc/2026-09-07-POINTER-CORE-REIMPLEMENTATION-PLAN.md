@@ -232,7 +232,20 @@ outside a binder correspondence. No result is fed into structural interning.
 - [x] Explicit beta conversion under lambdas; reject bound/free confusion; test
   alpha-renamed shared DAGs and divergence remaining pending under split fuel.
   Ordinary and ASan/UBSan checks pass.
-- [ ] Connect comparison to typed premises and record conversion evidence.
+- [x] Connect beta comparison to typed premises and record conversion evidence.
+  Comparison state is private; only a completed equal comparison issues an
+  immutable certificate in the program graph arena. A conversion derivation
+  requires an existing term derivation, target-type formation in the same
+  context and sort, and exact certificate endpoints matching the old and new
+  classifiers. It preserves the original occurrence and derivation. Tests
+  convert a thunked function between distinct alpha-equivalent Pi classifiers
+  and apply it, reject mismatched scopes/sorts/endpoints, and retain the
+  certificate after comparison/work-store destruction.
+- [ ] Extend admitted comparison semantics beyond beta; attach typed HOTT rules
+  and source synthesis. A certificate currently records the verified endpoints
+  and fixed beta policy, not a serialized reduction trace. Image loading must
+  recompute that check or validate a future retained trace using the same rules;
+  it must not trust a certificate reconstructed from endpoint pointers alone.
   `DIFFERENT` currently means different under beta-only neutral-reference
   semantics, not inequality in a future owner-reduction policy or object
   Identity. There are no eta, iota, transport or effect equations in this
@@ -409,7 +422,7 @@ conclusion and all premise pointers; no accepted record is overwritten.
   synthesizes `F U0`, while applying it to an open `B:U1` synthesizes `F B`.
   Neither requires executing `f` or deciding B's eventual value. Formation
   evidence is not silently accepted as argument inhabitation evidence.
-- [ ] Conversion evidence, synthesis scheduling, image checking and
+- [ ] Semantic conversion extensions, synthesis scheduling, image checking and
   typed HOTT action still need implementation. These primitive rules do
   not constitute a complete checker; NULL currently combines invalid-premise
   and allocation failures and is not a solver-level logical rejection result.

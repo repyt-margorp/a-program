@@ -10,14 +10,16 @@ struct pg_evidence {
 	const struct pg_context *context;
 	const struct pg_occurrence *subject;
 	const struct pg_term *classifier;
+	const struct pg_conversion_certificate *conversion;
 	size_t premise_count;
 	const struct pg_evidence *premises[];
 };
 
-static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_evidence_rule rule,
+static const struct pg_evidence *accept_with_conversion(struct pg_typing *typing, enum pg_evidence_rule rule,
 	enum pg_evidence_judgement judgement,
 	const struct pg_context *context, const struct pg_occurrence *subject,
-	const struct pg_term *classifier, size_t count, const struct pg_evidence *const *premises)
+	const struct pg_term *classifier, size_t count, const struct pg_evidence *const *premises,
+	const struct pg_conversion_certificate *conversion)
 {
 	uint64_t hash = ((uintptr_t)context ^ (uintptr_t)subject ^ (uintptr_t)classifier ^ rule) * UINT64_C(1099511628211);
 	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
@@ -29,6 +31,7 @@ static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_eviden
 		if (proof->context != context) continue;
 		if (proof->subject != subject) continue;
 		if (proof->classifier != classifier) continue;
+		if (proof->conversion != conversion) continue;
 		if (proof->premise_count != count) continue;
 		size_t i = 0;
 		while (i < count && proof->premises[i] == premises[i]) ++i;
@@ -42,10 +45,19 @@ static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_eviden
 	proof->context = context;
 	proof->subject = subject;
 	proof->classifier = classifier;
+	proof->conversion = conversion;
 	proof->premise_count = count;
 	for (size_t i = 0; i < count; ++i) proof->premises[i] = premises[i];
 	if (pg_index_insert(&typing->proofs, &proof->index, hash) != 0) return NULL;
 	return proof;
+}
+
+static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_evidence_rule rule,
+	enum pg_evidence_judgement judgement,
+	const struct pg_context *context, const struct pg_occurrence *subject,
+	const struct pg_term *classifier, size_t count, const struct pg_evidence *const *premises)
+{
+	return accept_with_conversion(typing, rule, judgement, context, subject, classifier, count, premises, NULL);
 }
 
 static int context_proof(const struct pg_typing *typing, const struct pg_evidence *proof)
@@ -277,6 +289,33 @@ const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 		function->context, subject, classifier, 2, premises);
 }
 
+const struct pg_evidence *pg_prove_conversion(struct pg_typing *typing,
+	const struct pg_evidence *term, const struct pg_evidence *target_type,
+	const struct pg_conversion_certificate *certificate)
+{
+	if (!certificate) return NULL;
+	if (!term || term->owner != typing) return NULL;
+	if (!target_type || target_type->owner != typing) return NULL;
+	if (term->context != target_type->context) return NULL;
+	switch (term->judgement) {
+	case PG_JUDGEMENT_VALUE:
+		target_type = pg_prove_value_type(typing, target_type);
+		if (!target_type) return NULL;
+		break;
+	case PG_JUDGEMENT_COMPUTATION:
+		if (target_type->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+		break;
+	default:
+		return NULL;
+	}
+	if (pg_conversion_left(certificate) != term->classifier) return NULL;
+	if (pg_conversion_right(certificate) != target_type->subject->core) return NULL;
+	const struct pg_evidence *premises[] = {term, target_type};
+	return accept_with_conversion(typing, PG_TYPE_CONVERSION, term->judgement,
+		term->context, term->subject, target_type->subject->core, 2, premises, certificate);
+}
+
+const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_evidence *evidence) { return evidence->conversion; }
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence) { return evidence->judgement; }
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence) { return evidence->context; }
