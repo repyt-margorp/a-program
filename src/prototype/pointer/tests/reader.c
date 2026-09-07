@@ -1,4 +1,5 @@
 #include "reader.h"
+#include "syntax.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -99,12 +100,65 @@ static void prefixes(void)
 	}
 }
 
+static void syntax(void)
+{
+	const char source[] = "id := \\x : A => x; main := id #1; main :: A; f := \\g : (x:A) -> B x => g; checked := (f a) :: B; call := f a b; delayed := &id; text := #\"hello\"; t := #.Int; type := @;";
+	struct pg_graph arena = {0};
+	struct pg_parser parser;
+	struct pg_definition definition;
+	pg_parser_init(&parser, &arena, source, sizeof(source) - 1);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.operation == PG_TOKEN_ASSIGN);
+	assert(definition.expression->kind == PG_SYNTAX_LAMBDA);
+	assert(definition.expression->token.text_length == 1);
+	assert(definition.expression->left->token.text[0] == 'A');
+	assert(definition.expression->right->token.text[0] == 'x');
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->kind == PG_SYNTAX_APPLICATION);
+	assert(definition.expression->right->token.integer == 1);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.operation == PG_TOKEN_EXPECT);
+	assert(definition.expression->kind == PG_SYNTAX_ATOM);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	const struct pg_syntax *domain = definition.expression->left;
+	assert(domain->kind == PG_SYNTAX_PI);
+	assert(domain->left->kind == PG_SYNTAX_BINDER);
+	assert(domain->left->token.text[0] == 'x');
+	assert(domain->right->kind == PG_SYNTAX_APPLICATION);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->kind == PG_SYNTAX_EXPECT);
+	assert(definition.expression->left->kind == PG_SYNTAX_APPLICATION);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->kind == PG_SYNTAX_APPLICATION);
+	assert(definition.expression->left->kind == PG_SYNTAX_APPLICATION);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->kind == PG_SYNTAX_QUOTE);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->token.kind == PG_TOKEN_TEXT);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->kind == PG_SYNTAX_QUALIFIED);
+	assert(definition.expression->left->token.kind == '#');
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->token.kind == '@');
+	assert(pg_parser_next(&parser, &definition) == 0);
+	const char *invalid[] = {"id := \\x => x;", "x := (x:A);", "x := f (x:A);",
+		"x := (f a;", "x := f", "x := b @true => x;", "T := @{c:*;};"};
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
+		assert(pg_parser_next(&parser, &definition) == -1);
+		assert(parser.error);
+	}
+	pg_graph_destroy(&arena);
+	puts("syntax: lambda annotations, dependent Pi, applications and separate expect nodes passed");
+}
+
 int main(void)
 {
 	tokens();
 	literals();
 	failures();
 	prefixes();
+	syntax();
 	puts("reader: symbolic syntax, contextual names, literals, comments and bounded input passed");
 	return 0;
 }

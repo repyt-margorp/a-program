@@ -405,6 +405,16 @@ introduced. Explicit buffer length replaces the old NUL-terminated scan.
 - [ ] Build the grammar and lowering on these tokens; compare the complete
   frozen fixture inventory. Lexer tests alone do not establish compatibility.
 
+`pointer/syntax.c` now parses the initial annotated Lambda/application/Pi
+fragment, qualified names, literals, quotation, and separate `::` checks into
+source-owned syntax nodes. It does not resolve names, infer types, insert CBPV
+coercions or evaluate expressions. Tests check left-associated application,
+dependent binder retention and separation of expected-type checks from
+definitions. Ordinary and ASan/UBSan checks pass. Match, declarations, blocks,
+imports and graph-companion syntax still need grammar implementations; current
+rejection of those forms is a temporary unsupported boundary, not a language
+design change or a compatibility success.
+
 This table is a starting inventory from the current reader, AST and test tree,
 not a claim that the failed snapshot passes every row. N0 must enumerate exact
 fixtures/options and distinguish old bugs from intended behavior.

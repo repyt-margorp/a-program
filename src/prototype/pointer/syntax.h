@@ -1,0 +1,44 @@
+#ifndef A_PROGRAM_POINTER_SYNTAX_H
+#define A_PROGRAM_POINTER_SYNTAX_H
+
+#include "graph.h"
+#include "reader.h"
+
+enum pg_syntax_kind {
+	PG_SYNTAX_ATOM,
+	PG_SYNTAX_QUALIFIED,
+	PG_SYNTAX_APPLICATION,
+	PG_SYNTAX_LAMBDA,
+	PG_SYNTAX_PI,
+	PG_SYNTAX_BINDER,
+	PG_SYNTAX_EXPECT,
+	PG_SYNTAX_QUOTE
+};
+
+/* Source syntax is not executable Core or accepted typing evidence. Token
+ * text borrows the source buffer; nodes belong to the supplied arena. */
+struct pg_syntax {
+	enum pg_syntax_kind kind;
+	struct pg_token token;
+	const struct pg_syntax *left;
+	const struct pg_syntax *right;
+};
+
+struct pg_definition {
+	struct pg_token name;
+	int operation;
+	const struct pg_syntax *expression;
+};
+
+struct pg_parser {
+	struct pg_reader reader;
+	struct pg_graph *arena;
+	const char *error;
+	struct pg_token error_token;
+};
+void pg_parser_init(struct pg_parser *parser, struct pg_graph *arena,
+	const char *input, size_t length);
+/* 1 definition/check, 0 end, -1 error. No name resolution or type synthesis. */
+int pg_parser_next(struct pg_parser *parser, struct pg_definition *definition);
+
+#endif
