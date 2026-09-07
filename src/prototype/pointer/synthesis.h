@@ -114,6 +114,15 @@ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthes
 	const struct pg_evidence *right_substitution, size_t count,
 	const struct pg_evidence *const *paths);
 struct pg_data_schema;
+/* In an already synthesized constructor field scope, check the syntactic
+ * result '* i ...' against the declared index context. Both field and index
+ * contexts extend parameters. Parameter images are fixed binder references;
+ * index expressions synthesize independently before ordinary substitution
+ * pairing checks their types. Returns substitution evidence, not membership,
+ * positivity, fibrancy or a declaration admission certificate. */
+struct pg_synthesis_job *pg_synthesis_data_result(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *fields, const struct pg_evidence *parameters,
+	const struct pg_evidence *indices, const struct pg_syntax *result);
 /* Wait for independent body synthesis, then post-check its classifier against
  * the constructor's pulled-back index motive and abstract the checked case.
  * Requests only record immutable inputs; conversion advances on the shared

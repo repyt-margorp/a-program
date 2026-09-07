@@ -187,17 +187,6 @@ struct pg_data_schema {
 	const struct pg_evidence *results[];
 };
 
-static int extension_size(const struct pg_context *context,
-	const struct pg_context *prefix, size_t *count)
-{
-	*count = 0;
-	for (; context != prefix; context = context->parent) {
-		if (!context) return -1;
-		++*count;
-	}
-	return 0;
-}
-
 const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
 	const struct pg_evidence *parameters, const struct pg_evidence *indices,
 	size_t count, const struct pg_evidence *const *results)
@@ -208,8 +197,8 @@ const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
 	if (pg_evidence_judgement(indices) != PG_JUDGEMENT_CONTEXT) return NULL;
 	const struct pg_context *prefix = pg_evidence_context(parameters);
 	size_t index_count, parameter_count;
-	if (extension_size(pg_evidence_context(indices), prefix, &index_count) != 0) return NULL;
-	if (extension_size(prefix, NULL, &parameter_count) != 0) return NULL;
+	if (pg_context_extension_size(pg_evidence_context(indices), prefix, &index_count) != 0) return NULL;
+	if (pg_context_extension_size(prefix, NULL, &parameter_count) != 0) return NULL;
 	if (count > (SIZE_MAX - sizeof(struct pg_data_schema)) / sizeof(*results)) return NULL;
 	if (count > SIZE_MAX / sizeof(size_t)) return NULL;
 	struct pg_graph temporary = {0};
@@ -221,7 +210,7 @@ const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
 		if (!pg_evidence_owned_by(result, typing)) goto done;
 		if (pg_evidence_rule(result) != PG_CONTEXT_SUBSTITUTION) goto done;
 		if (pg_evidence_context(pg_evidence_premise(result, 0)) != pg_evidence_context(indices)) goto done;
-		if (extension_size(pg_evidence_context(result), prefix, &arities[i]) != 0) goto done;
+		if (pg_context_extension_size(pg_evidence_context(result), prefix, &arities[i]) != 0) goto done;
 		const struct pg_context *parameter = prefix;
 		for (size_t j = parameter_count; j; --j, parameter = parameter->parent) {
 			const struct pg_term *image = pg_evidence_subject(pg_evidence_premise(result, j + 1))->core;

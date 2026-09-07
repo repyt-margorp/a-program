@@ -36,6 +36,10 @@ const struct pg_context *pg_context_bind(struct pg_typing *typing,
 	const struct pg_term *declared_type);
 const struct pg_context *pg_context_lookup(const struct pg_context *context,
 	const struct pg_object *binder);
+/* Count declarations after an exact prefix. Returns -1 for unrelated contexts
+ * or a missing output pointer. This inspects structure, not proof validity. */
+int pg_context_extension_size(const struct pg_context *context,
+	const struct pg_context *prefix, size_t *count);
 /* annotation is a declaration supplied by syntax, never a mutable solver
  * answer or an expected-type check. NULL means no explicit annotation. */
 const struct pg_occurrence *pg_occurrence(struct pg_typing *typing,

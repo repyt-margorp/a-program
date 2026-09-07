@@ -70,6 +70,19 @@ const struct pg_context *pg_context_lookup(const struct pg_context *context,
 	return NULL;
 }
 
+int pg_context_extension_size(const struct pg_context *context,
+	const struct pg_context *prefix, size_t *count)
+{
+	if (!count) return -1;
+	size_t length = 0;
+	for (; context != prefix; context = context->parent) {
+		if (!context) return -1;
+		++length;
+	}
+	*count = length;
+	return 0;
+}
+
 const struct pg_occurrence *pg_occurrence(struct pg_typing *typing,
 	const struct pg_context *context, const struct pg_term *core,
 	const struct pg_term *annotation, size_t operand_count,

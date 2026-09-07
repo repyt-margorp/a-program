@@ -2149,6 +2149,25 @@ conclusion and all premise pointers; no accepted record is overwritten.
   Optimized check: 3.621 s (synthesis rebuilt); ASan/UBSan check and four
   computation suites at 512 KiB stack passed. Implementation `synthesis.c`
   +85/-26, `synthesis.h` +11; tests +145; documentation separate.
+- [x] September 8, after `594c23b`: `pg_synthesis_data_result` connects the
+  constructor result syntax `* index...` in an already checked field scope to
+  ordinary substitution evidence. Parameters retain their original binder
+  references even under lexical shadowing. Index expressions are independent
+  source jobs; shared pure return exposure, reindex/conversion and pairing
+  check their dependent classifiers without expected-type-guided synthesis.
+  The shared Context extension-size helper replaces the IADT-local traversal.
+  Tests connect parsed field/result syntax to `pg_data_schema`, compare split
+  and bulk work, accept computed indices, and reject wrong self heads, arities,
+  dependent argument types and unrelated contexts. Empty maps, shared results,
+  invalid API inputs and cyclic index waiting are covered. No membership,
+  positivity, Self-family formation or indexed fibrancy is inferred from this
+  map; those nominal-admission obligations remain open. Setup walks the spine
+  and context linearly; existing flat substitution premises can still retain
+  quadratic aggregate prefix storage. No new Core or proof rule is introduced.
+  Optimized check: 3.707 s (synthesis rebuilt); ASan/UBSan: 18.741 s (affected
+  binaries rebuilt); four computation suites pass at 512 KiB stack.
+  Implementation: `synthesis.c` +99/-1, header +9; `typing.c` +13,
+  header +4; `iadt.c` +3/-14; tests +57/-1; documentation separate.
 - [ ] Complete source lowering/synthesis: import providers and full definition diagnostics,
   literals, ADT/IADT, computation blocks/folds, implicit sequencing
   of remaining returning argument/callee cases, computed type
