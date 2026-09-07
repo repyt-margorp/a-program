@@ -541,9 +541,24 @@ successful return codes as new-kernel certificates.
   source contexts and apply the existing context rules to their results.
   Tests cover source `::` inside computed annotations, conversion under beta
   reindexing, distinct alpha-equivalent thunk-Pi classifiers, preservation of
-  original proofs, context actions and completed-job reuse. Converted FORCE
-  and raw-Pi evaluation remain separate outstanding cases; this is not a
+  original proofs, context actions and completed-job reuse. This is not a
   blanket rule erasing conversion evidence from every computation.
+- [x] RETURN and THUNK content requests share one scheduler state machine for
+  introduction inversion, context actions and checked conversion. A THUNK
+  request exposes its stored computation without executing it; FORCE reduction
+  subscribes to that request. Conversion of `U C` to `U D` requires a separately
+  checked conversion of the extracted code from `C` to `D`. Context-action
+  decomposition is shared with reduction preparation for either polarity,
+  without new Core tags or a second context algorithm. Tests cover distinct
+  thunk-Pi classifiers, converted FORCE, projected/reindexed contents, original
+  evidence retention, wrong input contexts/polarities and completed-job reuse.
+- [ ] Trace a substituted variable back to the checked image evidence when its
+  Core becomes a THUNK. Merely descending to the original variable's proof
+  cannot expose the introduced code. Preserve the original reindex evidence;
+  do not erase the occurrence's origin or infer a classifier from the new Core.
+  Applying converted raw-Pi code also needs argument/result conversions, not
+  unchecked peeling of a function's conversion premise. These remain blockers
+  for general higher-order typed evaluation despite direct content extraction.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation

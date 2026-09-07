@@ -260,18 +260,42 @@ int main(void)
 	assert(pg_evidence_subject(converted_value) == pg_evidence_subject(original_quote));
 	assert(pg_evidence_classifier(original_quote) != pg_evidence_classifier(converted_value));
 	assert(pg_evidence_conversion(converted_value) != pg_evidence_conversion(converted_return));
+	struct pg_synthesis_job *unthunk_job = pg_synthesis_unthunk(&synthesis, x_context, converted_value);
+	assert(unthunk_job && pg_synthesis_status(unthunk_job) == PG_SYNTHESIS_PENDING);
+	const struct pg_evidence *unthunked = complete(&synthesis, unthunk_job, PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(unthunked) == PG_TYPE_CONVERSION);
+	assert(pg_evidence_subject(unthunked) == pg_evidence_subject(computed_domain));
+	assert(pg_thunk_type_view(pg_evidence_classifier(converted_value), &codomain));
+	assert(pg_evidence_classifier(unthunked) == codomain);
+	assert(pg_evidence_conversion(unthunked) != pg_evidence_conversion(converted_value));
+	const struct pg_evidence *force_converted = pg_prove_force(&typing, converted_value);
+	const struct pg_evidence *force_result = complete(&synthesis,
+		pg_synthesis_reduce(&synthesis, x_context, force_converted), PG_SYNTHESIS_DONE);
+	assert(force_result == unthunked);
+	assert(pg_evidence_classifier(force_result) == pg_evidence_classifier(force_converted));
+	assert(!pg_synthesis_unthunk(&synthesis, x_context, force_converted));
+	assert(!pg_synthesis_unthunk(&synthesis, a_context, converted_value));
 	const struct pg_evidence *projected_conversion = pg_prove_projection(&typing, extra_context, converted_return);
 	const struct pg_evidence *projected_value = complete(&synthesis,
 		pg_synthesis_return(&synthesis, extra_context, projected_conversion), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_context(projected_value) == pg_evidence_context(extra_context));
 	assert(pg_evidence_classifier(projected_value) == pg_evidence_classifier(converted_value));
+	const struct pg_evidence *projected_code = complete(&synthesis,
+		pg_synthesis_unthunk(&synthesis, extra_context, projected_value), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_context(projected_code) == pg_evidence_context(extra_context));
+	assert(pg_evidence_classifier(projected_code) == pg_evidence_classifier(unthunked));
 	const struct pg_evidence *reindexed_conversion = pg_prove_reindex(&typing, sigma, converted_return);
 	const struct pg_evidence *reindexed_value = complete(&synthesis,
 		pg_synthesis_return(&synthesis, x_context, reindexed_conversion), PG_SYNTHESIS_DONE);
 	assert(pg_return_type_view(pg_evidence_classifier(reindexed_conversion), &codomain));
 	assert(pg_alpha_equal(pg_evidence_classifier(reindexed_value), codomain) == 1);
+	const struct pg_evidence *reindexed_code = complete(&synthesis,
+		pg_synthesis_unthunk(&synthesis, x_context, reindexed_value), PG_SYNTHESIS_DONE);
+	assert(pg_thunk_type_view(pg_evidence_classifier(reindexed_value), &codomain));
+	assert(pg_alpha_equal(pg_evidence_classifier(reindexed_code), codomain) == 1);
 	uint64_t conversion_steps = synthesis.steps;
 	assert(pg_synthesis_return(&synthesis, x_context, converted_return) == converted_value_job);
+	assert(pg_synthesis_unthunk(&synthesis, x_context, converted_value) == unthunk_job);
 	pg_synthesis_advance(&synthesis, 1000);
 	assert(synthesis.steps == conversion_steps);
 	struct pg_synthesis_job *batched_type = request(&synthesis, scope,

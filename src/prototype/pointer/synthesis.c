@@ -43,7 +43,7 @@ struct block_state {
 	const struct pg_evidence *tail;
 	struct pg_index names;
 };
-enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, REDUCTION_JOB };
+enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, REDUCTION_JOB, THUNK_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	enum job_role role;
@@ -164,26 +164,33 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	return request_role(synthesis, scope, syntax, EXPRESSION_JOB);
 }
 
-static struct pg_synthesis_job *request_computation(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, const struct pg_evidence *computation, enum job_role role)
+static struct pg_synthesis_job *request_evaluation(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *proof, enum job_role role)
 {
-	if (!context || !computation) return NULL;
-	if (pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
-	if (pg_evidence_context(context) != pg_evidence_context(computation)) return NULL;
-	if (pg_prove_projection(synthesis->typing, context, computation) != computation) return NULL;
-	return request_job(synthesis, role, context, computation);
+	if (!context || !proof) return NULL;
+	enum pg_evidence_judgement judgement = role == THUNK_JOB ? PG_JUDGEMENT_VALUE : PG_JUDGEMENT_COMPUTATION;
+	if (pg_evidence_judgement(proof) != judgement) return NULL;
+	if (pg_evidence_context(context) != pg_evidence_context(proof)) return NULL;
+	if (pg_prove_projection(synthesis->typing, context, proof) != proof) return NULL;
+	return request_job(synthesis, role, context, proof);
 }
 
 struct pg_synthesis_job *pg_synthesis_return(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *computation)
 {
-	return request_computation(synthesis, context, computation, RETURN_JOB);
+	return request_evaluation(synthesis, context, computation, RETURN_JOB);
 }
 
 struct pg_synthesis_job *pg_synthesis_reduce(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *computation)
 {
-	return request_computation(synthesis, context, computation, REDUCTION_JOB);
+	return request_evaluation(synthesis, context, computation, REDUCTION_JOB);
+}
+
+struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *value)
+{
+	return request_evaluation(synthesis, context, value, THUNK_JOB);
 }
 
 static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
@@ -243,11 +250,11 @@ static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 
 static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
 
-enum return_stage { RETURN_REDUCING, RETURN_CONTEXT_ACTION, RETURN_CONVERTING };
+enum contents_stage { CONTENTS_REDUCING, CONTENTS_CONTEXT_ACTION, CONTENTS_CONVERTING };
 
-static void return_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (job->stage == RETURN_CONVERTING) {
+	if (job->stage == CONTENTS_CONVERTING) {
 		job->result = compare(synthesis, job);
 		if (job->result) finish(synthesis, job, PG_SYNTHESIS_DONE);
 		return;
@@ -255,7 +262,7 @@ static void return_step(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 	if (!job->checking_term) job->checking_term = job->inputs[1];
 	if (job->left) {
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-		if (job->stage == RETURN_CONTEXT_ACTION) {
+		if (job->stage == CONTENTS_CONTEXT_ACTION) {
 			const struct pg_evidence *premise = pg_evidence_premise(job->checking_term, 0);
 			switch (pg_evidence_rule(job->checking_term)) {
 			case PG_CONTEXT_PROJECTION:
@@ -265,12 +272,14 @@ static void return_step(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 				job->result = pg_prove_reindex(synthesis->typing, premise, job->left->result);
 				break;
 			case PG_TYPE_CONVERSION:
-				job->checking_type = pg_prove_return_content(synthesis->typing,
-					pg_evidence_premise(job->checking_term, 1));
+				job->checking_type = pg_evidence_premise(job->checking_term, 1);
+				job->checking_type = job->role == THUNK_JOB
+					? pg_prove_thunk_content(synthesis->typing, job->checking_type)
+					: pg_prove_return_content(synthesis->typing, job->checking_type);
 				if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 				job->checking_term = job->left->result;
 				job->left = NULL;
-				job->stage = RETURN_CONVERTING;
+				job->stage = CONTENTS_CONVERTING;
 				job->next = synthesis->ready;
 				synthesis->ready = job;
 				return;
@@ -282,26 +291,29 @@ static void return_step(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 		job->checking_term = job->left->result;
 		job->left = NULL;
 	}
-	job->result = pg_prove_return_value(synthesis->typing, job->checking_term);
+	job->result = job->role == THUNK_JOB
+		? pg_prove_thunk_computation(synthesis->typing, job->checking_term)
+		: pg_prove_return_value(synthesis->typing, job->checking_term);
 	if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
 	switch (pg_evidence_rule(job->checking_term)) {
 	case PG_TYPE_CONVERSION:
-		job->left = pg_synthesis_return(synthesis, job->inputs[0], pg_evidence_premise(job->checking_term, 0));
-		job->stage = RETURN_CONTEXT_ACTION;
+		job->left = request_evaluation(synthesis, job->inputs[0], pg_evidence_premise(job->checking_term, 0), job->role);
+		job->stage = CONTENTS_CONTEXT_ACTION;
 		depend(synthesis, job, job->left);
 		return;
 	case PG_CONTEXT_PROJECTION: case PG_REINDEX: {
 		struct pg_reduction step;
-		if (pg_prepare_reduction(synthesis->typing, job->inputs[0], job->checking_term, &step) != 0) {
+		if (pg_prepare_context_action(synthesis->typing, job->inputs[0], job->checking_term, &step) != 0) {
 			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 		}
-		job->left = pg_synthesis_return(synthesis, step.context, step.input);
-		job->stage = RETURN_CONTEXT_ACTION;
+		job->left = request_evaluation(synthesis, step.context, step.input, job->role);
+		job->stage = CONTENTS_CONTEXT_ACTION;
 		depend(synthesis, job, job->left);
 		return;
 	}
 	default: break;
 	}
+	if (job->role == THUNK_JOB) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 	job->left = pg_synthesis_reduce(synthesis, job->inputs[0], job->checking_term);
 	depend(synthesis, job, job->left);
 }
@@ -309,6 +321,11 @@ static void return_step(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 static void reduction_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (!job->left) {
+		if (pg_evidence_rule(job->inputs[1]) == PG_FORCE_ELIM) {
+			job->left = pg_synthesis_unthunk(synthesis, job->inputs[0], pg_evidence_premise(job->inputs[1], 0));
+			depend(synthesis, job, job->left);
+			return;
+		}
 		struct pg_reduction step;
 		if (pg_prepare_reduction(synthesis->typing, job->inputs[0], job->inputs[1], &step) != 0) {
 			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
@@ -322,7 +339,8 @@ static void reduction_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		return;
 	}
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-	job->result = pg_prove_computation_operand(synthesis->typing, job->inputs[1], job->left->result);
+	job->result = pg_evidence_rule(job->inputs[1]) == PG_FORCE_ELIM
+		? job->left->result : pg_prove_computation_operand(synthesis->typing, job->inputs[1], job->left->result);
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 }
 
@@ -664,7 +682,7 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
-	if (job->role == RETURN_JOB) { return_step(synthesis, job); return; }
+	if (job->role == RETURN_JOB || job->role == THUNK_JOB) { contents_step(synthesis, job); return; }
 	if (job->role == REDUCTION_JOB) { reduction_step(synthesis, job); return; }
 	if (job->role == DEFINITION_JOB) { definition_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }

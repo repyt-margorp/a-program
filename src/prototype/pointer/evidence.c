@@ -390,17 +390,22 @@ const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 	return introduced_content(typing, computation, PG_RETURN_INTRO);
 }
 
-int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *context,
+const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
+	const struct pg_evidence *value)
+{
+	if (!value || value->owner != typing) return NULL;
+	if (value->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	return introduced_content(typing, value, PG_THUNK_INTRO);
+}
+
+int pg_prepare_context_action(struct pg_typing *typing, const struct pg_evidence *context,
 	const struct pg_evidence *computation, struct pg_reduction *step)
 {
 	if (!step) return -1;
 	*step = (struct pg_reduction){0};
 	if (!context_proof(typing, context)) return -1;
 	if (!computation || computation->owner != typing) return -1;
-	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return -1;
 	if (computation->context != context->context) return -1;
-	const struct pg_evidence *result = NULL, *value;
-	step->context = context;
 	switch (computation->rule) {
 	case PG_CONTEXT_PROJECTION: {
 		const struct pg_evidence *source = context;
@@ -416,6 +421,24 @@ int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *con
 		step->context = computation->premises[0]->premises[0];
 		step->input = computation->premises[1];
 		return 0;
+	default: return -1;
+	}
+}
+
+int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *context,
+	const struct pg_evidence *computation, struct pg_reduction *step)
+{
+	if (!step) return -1;
+	*step = (struct pg_reduction){0};
+	if (!context_proof(typing, context)) return -1;
+	if (!computation || computation->owner != typing) return -1;
+	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return -1;
+	if (computation->context != context->context) return -1;
+	const struct pg_evidence *result = NULL, *value;
+	step->context = context;
+	switch (computation->rule) {
+	case PG_CONTEXT_PROJECTION: case PG_REINDEX:
+		return pg_prepare_context_action(typing, context, computation, step);
 	case PG_APP_ELIM:
 		result = pg_reduce_beta(typing, context, computation);
 		if (!result) {
@@ -424,7 +447,7 @@ int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *con
 		}
 		break;
 	case PG_FORCE_ELIM:
-		result = introduced_content(typing, computation->premises[0], PG_THUNK_INTRO);
+		result = pg_prove_thunk_computation(typing, computation->premises[0]);
 		break;
 	case PG_FOLD_ELIM:
 		value = pg_prove_return_value(typing, computation->premises[0]);

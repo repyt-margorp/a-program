@@ -91,6 +91,10 @@ struct pg_reduction {
  * that operand. Nonzero includes unsupported rules and failed premises. */
 int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *context,
 	const struct pg_evidence *computation, struct pg_reduction *step);
+/* Source context and premise of a checked projection/reindex, for either
+ * polarity. This decomposes context action, not computation execution. */
+int pg_prepare_context_action(struct pg_typing *typing, const struct pg_evidence *context,
+	const struct pg_evidence *proof, struct pg_reduction *step);
 /* Rebuild the demanded position with checked evidence. This is typing, not a
  * claim that an arbitrary replacement is equal to the original operand. */
 const struct pg_evidence *pg_prove_computation_operand(struct pg_typing *typing,
@@ -99,6 +103,8 @@ const struct pg_evidence *pg_prove_computation_operand(struct pg_typing *typing,
  * execute an arbitrary computation or assert an equation with its result. */
 const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 	const struct pg_evidence *computation);
+const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
+	const struct pg_evidence *value);
 /* first : Delta -> Gamma, second : Theta -> Delta; result : Theta -> Gamma. */
 const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second);
