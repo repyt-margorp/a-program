@@ -583,10 +583,16 @@ conclusion and all premise pointers; no accepted record is overwritten.
   Tests cover forward references, type aliases, shared function aliases,
   post-checks before definitions, both quotation policies, duplicate/missing
   names, failure in an unselected definition, and execution after explicit force.
+- [x] Definition indexing and activation advance one entry per scheduling
+  transition. Producer jobs remain dormant until all names are registered;
+  partial budgets cannot expose an incomplete name table to a body. Shared
+  producer jobs are activated once even when multiple entries share syntax.
+  Tests inspect a one-step prefix (one indexed name, no generated Core) and
+  resume it, as well as a shared-syntax definition DAG.
 - [ ] Definition SCC diagnostics and imports remain incomplete. A circular
   alias pair exhausts its ready work and stays Pending with no accepted proof;
-  it is not a supported recursive definition. Initialization currently scans
-  the source array in one scheduling transition. Image persistence, complete
+  it is not a supported recursive definition. Array allocation and hash-index
+  growth are still unbudgeted storage operations. Image persistence, complete
   budgeting, imported names and full definition compatibility remain required.
 - [x] Ordinary APP and inline `::` share one resumable comparison path. Cache
   the already synthesized input and target derivations while comparison is

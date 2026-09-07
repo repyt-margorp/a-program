@@ -200,13 +200,28 @@ int main(void)
 	}
 	complete(&synthesis, program(&synthesis, scope, "id:=\\y:A=>y; id::A->A;"), PG_SYNTHESIS_DONE);
 	struct pg_synthesis_job *library = program(&synthesis, scope, "left:=id; right:=id; id:=\\y:A=>y;");
-	assert(!complete(&synthesis, library, PG_SYNTHESIS_DONE));
 	struct pg_token left_name = {.text="left", .length=4}, right_name = {.text="right", .length=5};
+	size_t before_indexing = synthesis.jobs.count, before_terms = graph.terms.count;
+	pg_synthesis_advance(&synthesis, 1);
+	assert(synthesis.jobs.count == before_indexing + 1 && graph.terms.count == before_terms);
+	assert(pg_synthesis_definition(library, left_name));
+	assert(!pg_synthesis_definition(library, right_name));
+	assert(pg_synthesis_status(pg_synthesis_definition(library, left_name)) == PG_SYNTHESIS_PENDING);
+	assert(!complete(&synthesis, library, PG_SYNTHESIS_DONE));
 	struct pg_synthesis_job *left_alias = pg_synthesis_definition(library, left_name);
 	struct pg_synthesis_job *right_alias = pg_synthesis_definition(library, right_name);
 	assert(left_alias && right_alias && pg_synthesis_status(left_alias) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_result(left_alias) == pg_synthesis_result(right_alias));
 	assert(!pg_synthesis_definition(library, x_name));
+	const struct pg_syntax shared_body = {.kind=PG_SYNTAX_ATOM, .token=x_name};
+	const struct pg_syntax_item shared_entries[] = {
+		{.name=left_name, .expression=&shared_body, .operation=PG_TOKEN_ASSIGN},
+		{.name=right_name, .expression=&shared_body, .operation=PG_TOKEN_ASSIGN}
+	};
+	const struct pg_syntax shared_root = {.kind=PG_SYNTAX_DEFINITIONS, .items=shared_entries, .item_count=2};
+	struct pg_synthesis_job *shared = pg_synthesis_request(&synthesis, scope, &shared_root);
+	assert(!complete(&synthesis, shared, PG_SYNTHESIS_DONE));
+	assert(pg_synthesis_definition(shared, left_name) == pg_synthesis_definition(shared, right_name));
 	complete(&synthesis, program(&synthesis, scope, ""), PG_SYNTHESIS_DONE);
 	const char *invalid_modules[] = {
 		"{{main:=x; main:=A;}}.main", "{{main:=x;}}.missing",

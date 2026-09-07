@@ -28,9 +28,10 @@ struct block_name {
 };
 struct definition_state {
 	struct pg_index names;
+	const struct pg_syntax *syntax;
 	struct pg_source_scope *scope;
 	struct pg_synthesis_job **entries;
-	size_t count, next;
+	size_t count, indexed, activated, next;
 	struct pg_synthesis_job *selected;
 };
 struct block_state {
@@ -135,8 +136,10 @@ static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
 	job->syntax = syntax;
 	job->definition = definition;
 	if (pg_index_insert(&synthesis->jobs, &job->index, hash) != 0) return NULL;
-	job->next = synthesis->ready;
-	synthesis->ready = job;
+	if (!definition) {
+		job->next = synthesis->ready;
+		synthesis->ready = job;
+	}
 	return job;
 }
 
@@ -427,10 +430,15 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		*state->scope = (struct pg_source_scope){.owner = synthesis, .parent = job->scope,
 			.context = job->scope->context, .definitions = state};
 		state->count = syntax->item_count;
-		/* Register every producer before advancing any body or post-check. */
-		for (size_t i = 0; i < state->count; ++i) {
-			const struct pg_syntax_item *item = &syntax->items[i];
-			if (item->operation == PG_TOKEN_EXPECT) continue;
+		state->syntax = syntax;
+	}
+	struct definition_state *state = job->definitions;
+	/* Register one producer per transition. Dormant producers cannot observe
+	 * a partially constructed name index. */
+	if (state->indexed < state->count) {
+		size_t i = state->indexed++;
+		const struct pg_syntax_item *item = &state->syntax->items[i];
+		if (item->operation != PG_TOKEN_EXPECT) {
 			if (item->operation != PG_TOKEN_ASSIGN) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 			int status = register_name(synthesis, &state->names, item->name);
 			if (status) { finish(synthesis, job, status > 0 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR); return; }
@@ -440,9 +448,21 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			state->entries[i] = name->producer;
 			if (!name->producer) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
-		for (size_t i = 0; i < state->count; ++i) {
-			if (state->entries[i]) continue;
-			const struct pg_syntax_item *item = &syntax->items[i];
+		job->next = synthesis->ready;
+		synthesis->ready = job;
+		return;
+	}
+	if (state->activated < state->count) {
+		size_t i = state->activated++;
+		if (state->entries[i]) {
+			struct pg_synthesis_job *producer = state->entries[i];
+			if (!producer->stage) {
+				producer->stage = 1;
+				producer->next = synthesis->ready;
+				synthesis->ready = producer;
+			}
+		} else {
+			const struct pg_syntax_item *item = &state->syntax->items[i];
 			if (!lookup_name(&state->names, item->name)) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			struct pg_syntax *name = pg_alloc(synthesis->typing->graph, sizeof(*name));
 			struct pg_syntax *check = pg_alloc(synthesis->typing->graph, sizeof(*check));
@@ -452,13 +472,18 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			state->entries[i] = pg_synthesis_request(synthesis, state->scope, check);
 			if (!state->entries[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
+		job->next = synthesis->ready;
+		synthesis->ready = job;
+		return;
+	}
+	if (!job->stage) {
 		if (job->syntax->kind == PG_SYNTAX_QUALIFIED) {
 			struct block_name *name = lookup_name(&state->names, job->syntax->right->token);
 			if (!name) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			state->selected = name->producer;
 		}
+		job->stage = 1;
 	}
-	struct definition_state *state = job->definitions;
 	if (job->left && job->left->status != PG_SYNTHESIS_DONE) {
 		finish(synthesis, job, job->left->status); return;
 	}
