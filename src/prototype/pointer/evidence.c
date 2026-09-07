@@ -246,17 +246,47 @@ const struct pg_evidence *pg_prove_identity_type(struct pg_typing *typing,
 		subject, type->classifier, 3, premises);
 }
 
+static int universe_identity(const struct pg_typing *typing,
+	const struct pg_evidence *family, const struct pg_term **left,
+	const struct pg_term **right, uint64_t *level)
+{
+	if (!family || family->owner != typing) return 0;
+	if (family->judgement != PG_JUDGEMENT_VALUE) return 0;
+	const struct pg_term *universe;
+	if (!pg_identity_view(family->classifier, &universe, left, right)) return 0;
+	return pg_universe_level(universe, level);
+}
+
+const struct pg_evidence *pg_prove_identity_endpoint_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	enum pg_evidence_rule side)
+{
+	if (classifiers->graph != typing->graph) return NULL;
+	const struct pg_term *left, *right, *core;
+	uint64_t level;
+	if (!universe_identity(typing, family, &left, &right, &level)) return NULL;
+	switch (side) {
+	case PG_IDENTITY_LEFT_TYPE: core = left; break;
+	case PG_IDENTITY_RIGHT_TYPE: core = right; break;
+	default: return NULL;
+	}
+	const struct pg_term *sort = pg_universe(classifiers, level);
+	if (!sort) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, family->context,
+		core, NULL, 1, &family->subject);
+	if (!subject) return NULL;
+	return accept(typing, side, PG_JUDGEMENT_VALUE_TYPE, family->context,
+		subject, sort, 1, &family);
+}
+
 const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *family,
 	const struct pg_evidence *left, const struct pg_evidence *right)
 {
 	if (classifiers->graph != typing->graph) return NULL;
-	if (!family || family->owner != typing) return NULL;
-	if (family->judgement != PG_JUDGEMENT_VALUE) return NULL;
-	const struct pg_term *universe, *left_type, *right_type;
-	if (!pg_identity_view(family->classifier, &universe, &left_type, &right_type)) return NULL;
+	const struct pg_term *left_type, *right_type;
 	uint64_t level;
-	if (!pg_universe_level(universe, &level)) return NULL;
+	if (!universe_identity(typing, family, &left_type, &right_type, &level)) return NULL;
 	if (!endpoint(typing, left, PG_JUDGEMENT_VALUE, family->context, left_type)) return NULL;
 	if (!endpoint(typing, right, PG_JUDGEMENT_VALUE, family->context, right_type)) return NULL;
 	const struct pg_term *core = pg_identity_instance(typing->graph, family->subject->core,

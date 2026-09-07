@@ -433,13 +433,35 @@ a specified type family, not a global endpoint-only relation.
   the acted computation codomain. Lambda and APP action must construct/consume
   this same telescope. The constant-family homogeneous equations above are
   not a substitute for dependent codomain instantiation through `x01`.
+- [x] Elementary checked boundary context (after `91bc348`): given accepted
+  `R : Id Universe_i A B` in Gamma, `pg_identity_context_extend` constructs
+  `Gamma,x0:A,x1:B,x01:R x0 x1`. Endpoint-type regularity rules recover
+  `A/B : Universe_i` from that accepted premise; shared Universe-Identity
+  inspection also serves existing family instantiation. Ordinary context
+  extension, projection and instantiation then construct the telescope. No
+  additional Core tag, context store, arbitrary center type or relation
+  constructor is introduced. This composes current rules, not a new transport
+  principle or a claim that all relations are identifications.
+  `tests/identity.c` covers exact proof/context reuse, binding-cube pointers,
+  distinct selected R/S despite identical endpoint types, scope/owner/polarity
+  and binder-capture rejection, and existing substitution lifting with R:=S:
+  the center classifier changes to S x0 x1 while the variable Core stays shared.
+  The same telescope supports three nested raw computation Pi/Lambda binders
+  without a value-side function constructor.
+  Verified with `make -f src/prototype/pointer/Makefile check` in optimized and
+  ASan/UBSan builds, plus `identity_test` with a 512 KiB stack. The syntax
+  inventory remains 158 reviewed parser outcomes, not semantic acceptance.
+  This is only the elementary Universe-indexed value boundary; arbitrary
+  higher-family instantiation, dimensional typed Act, Pi/Lambda/APP action
+  reduction and transport/lifting coherence remain unchecked above/below.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general
   universe-Identity witness constructor. Preserve distinct choices even when
   endpoint types coincide.
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
-  policy when implemented. The current conversion wrapper admits beta only;
+  policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
+  and the implemented homogeneous F/U Identity and RETURN/THUNK action rules;
   its generic pair walker is not permission to certify an arbitrary callback's
   answers. Runtime handlers/oracles must not change this policy.
 

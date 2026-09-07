@@ -1,5 +1,28 @@
 #include "action.h"
 
+const struct pg_evidence *pg_identity_context_extend(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *family, const struct pg_object *left,
+	const struct pg_object *right, const struct pg_object *center)
+{
+	const struct pg_evidence *left_type = pg_prove_identity_endpoint_type(typing,
+		classifiers, family, PG_IDENTITY_LEFT_TYPE);
+	const struct pg_evidence *right_type = pg_prove_identity_endpoint_type(typing,
+		classifiers, family, PG_IDENTITY_RIGHT_TYPE);
+	if (!left_type || !right_type) return NULL;
+	context = pg_prove_context_extension(typing, context, left, left_type);
+	if (!context) return NULL;
+	right_type = pg_prove_projection(typing, context, right_type);
+	context = pg_prove_context_extension(typing, context, right, right_type);
+	if (!context) return NULL;
+	family = pg_prove_projection(typing, context, family);
+	const struct pg_evidence *x0 = pg_prove_variable(typing, context, left);
+	const struct pg_evidence *x1 = pg_prove_variable(typing, context, right);
+	const struct pg_evidence *center_type = pg_prove_identity_instance(typing,
+		classifiers, family, x0, x1);
+	return pg_prove_context_extension(typing, context, center, center_type);
+}
+
 const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,
 	struct pg_dimensions *dimensions, const struct pg_evidence *source,
 	const struct pg_dimension_map *face, size_t count,
