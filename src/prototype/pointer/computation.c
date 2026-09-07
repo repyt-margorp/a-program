@@ -1,5 +1,6 @@
 #include "computation.h"
 #include "identity.h"
+#include "iadt.h"
 
 static const struct pg_object_class return_class = {"return"};
 static const struct pg_object_class thunk_class = {"thunk"};
@@ -48,7 +49,8 @@ static int dispatch(struct pg_eval *machine)
 		if (!pg_eval_argument(machine, 1)) return 1;
 		return pg_eval_demand(machine, 0, fold_answer);
 	}
-	return pg_identity_dispatch(machine);
+	int data = pg_data_dispatch(machine);
+	return data == 1 ? pg_identity_dispatch(machine) : data;
 }
 
 const struct pg_eval_policy pg_pure_policy = {dispatch};

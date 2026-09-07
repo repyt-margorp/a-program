@@ -947,6 +947,36 @@ a specified type family, not a global endpoint-only relation.
   tests: `tests/synthesis.c` +142/-0; documentation counted separately.
   N2/N3 remain open, particularly higher field computation, canonical
   transport/lifting, indexed fibrancy and full source-level access.
+- [x] September 8, after `aeb26f7`: erased constructor/Match execution.
+  `iadt.c/h` introduces immutable, generative layout references and ordinary
+  APP spines for fields, scrutinee and branches. Constructor labels are object
+  pointers; array positions only locate branches inside one owning layout.
+  No Core tag, alpha interning, semantic integer identity or hidden branch
+  traversal is added. The builder places labelled clauses in layout order;
+  the interner still compares exact pointer tuples, never reduction results.
+  The fixed pure evaluator demands the scrutinee using its existing machine,
+  selects only an exactly saturated constructor of the same layout, and
+  applies the chosen ordinary lambda to its fields. Existing closure and
+  substitution machinery preserves captured variables and trailing arguments.
+  Partial, foreign and neutral heads remain neutral; unused fields and cases
+  are not evaluated. Beta-only WHNF keeps Match opaque, with separate job keys.
+  Tests cover these boundaries, nested Match, free-field capture, split/bulk
+  budgets, repeated job reuse, divergent selected cases and diagonal Act after
+  iota. This last test does not supply action on neutral Match or higher data.
+  Layout arities are erased runtime information, not semantic schemas or
+  evidence. Before typed declaration/Match admission, derive and check them
+  against the accepted field telescope and justify iota subject reduction
+  through typed substitution and the indexed motive. Positivity, IH, indexed
+  fibrancy, higher constructors and source ADT synthesis remain required.
+  Shared demand/readback is budgeted; callback-local field/spine traversal and
+  application construction are synchronous linear work, not a wall-clock bound.
+  Optimized pointer `make check` passed in 2.047 s including rebuilding the
+  changed test; ASan/UBSan `make check` passed in 7.435 s, also rebuilding
+  that test. Iadt/Identity/synthesis pass with a 512 KiB stack.
+  The 158 syntax inventory cases remain parsing checks, not execution parity.
+  Implementation: `iadt.c` +105, `iadt.h` +26, `computation.c` +3/-1
+  (net +133); tests: `tests/iadt.c` +121; build: +7/-2; docs separate.
+  N2/N3 remain open; this is the erased execution foundation, not IADT acceptance.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

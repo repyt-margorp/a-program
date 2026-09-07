@@ -13,9 +13,14 @@ node's entry in the interning table.
 universe-family instantiation, iterated diagonal witnesses, CBPV polarity and
 reindexing. It rejects using an ordinary function as a universe identification.
 The same suite checks the implemented RETURN/THUNK and canonical F/U action
-equations, policy-keyed WHNF caching and fixed pure conversion. It does not yet
-establish Pi action, transport/lifting, general higher boundary action or
-observational adequacy.
+equations, policy-keyed WHNF caching and fixed pure conversion. It also checks
+the implemented dependent Pi action and diagonal transport/lifting, not general
+higher coherence or observational adequacy.
+
+`iadt.c` tests erased constructor/Match references, pointer-labelled clause
+selection, saturation, capture, lazy fields/branches and policy isolation.
+These layouts are not accepted declarations: no positivity, index refinement,
+IH, source ADT synthesis or higher constructor witness is certified by this test.
 
 `synthesis.c` also checks typed RETURN/THUNK content extraction through reflexive
 action, including a beta-redex source, repeated action, conversion and context
