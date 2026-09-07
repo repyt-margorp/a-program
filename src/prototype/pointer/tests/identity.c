@@ -297,6 +297,123 @@ static void thunk_transport(struct pg_typing *typing, struct pg_classifiers *cla
 	pg_whnf_work_destroy(&work);
 }
 
+static const struct pg_evidence *convert_to(struct pg_typing *typing, struct pg_whnf_work *work,
+	const struct pg_evidence *value, const struct pg_evidence *type)
+{
+	assert(value && type);
+	struct pg_conversion comparison;
+	assert(pg_conversion_init(&comparison, work, pg_evidence_classifier(value), pg_evidence_subject(type)->core) == 0);
+	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
+	const struct pg_evidence *result = pg_prove_conversion(typing, value, type, pg_conversion_certificate(&comparison));
+	pg_conversion_destroy(&comparison);
+	assert(result);
+	return result;
+}
+
+/* A well-typed transport recipe is not yet an admissible computation rule. */
+static void pi_transport_candidate(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_evidence *context, const struct pg_evidence *path)
+{
+	struct pg_graph *graph = typing->graph;
+	struct pg_whnf_work work, whole;
+	assert(pg_whnf_work_init(&work, graph) == 0);
+	assert(pg_whnf_work_init(&whole, graph) == 0);
+	const struct pg_object *a = pg_binder(graph), *x = pg_binder(graph);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *parameters = pg_prove_context_extension(typing, empty, a,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_evidence *domain = pg_prove_value_type(typing, pg_prove_variable(typing, parameters, a));
+	const struct pg_evidence *source = pg_prove_context_extension(typing, parameters, x, domain);
+	const struct pg_evidence *types[2], *maps[2];
+	for (size_t i = 0; i < 2; ++i) {
+		types[i] = pg_prove_type_value(typing, pg_prove_identity_endpoint_type(typing, classifiers, path,
+			i ? PG_IDENTITY_RIGHT_TYPE : PG_IDENTITY_LEFT_TYPE));
+		maps[i] = pg_prove_substitution(typing, parameters, context, 1, &types[i]);
+	}
+	for (size_t dependent = 0; dependent < 2; ++dependent) {
+		const struct pg_evidence *b = pg_prove_projection(typing, source, domain);
+		if (dependent) b = pg_prove_identity_type(typing, b,
+			pg_prove_variable(typing, source, x), pg_prove_variable(typing, source, x));
+		const struct pg_evidence *family = pg_prove_type_value(typing, pg_prove_thunk_type(typing, classifiers,
+			pg_prove_pi(typing, classifiers, domain, source, pg_prove_return_type(typing, classifiers, b))));
+		const struct pg_evidence *action = pg_prove_family_action(typing,
+			pg_prove_classifier(typing, classifiers, parameters, family), family, maps[0], maps[1], 1, &path);
+		const struct pg_evidence *endpoints[2] = {pg_prove_reindex(typing, maps[0], family), pg_prove_reindex(typing, maps[1], family)};
+		action = convert_to(typing, &work, action, pg_prove_identity_type(typing,
+			pg_prove_universe(typing, classifiers, context, 0), endpoints[0], endpoints[1]));
+		for (unsigned i = 0; i < 2; ++i) {
+			enum pg_identity_direction direction = (enum pg_identity_direction)i;
+			enum pg_identity_direction reverse = i ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT;
+			const struct pg_object *f = pg_binder(graph), *y = pg_binder(graph);
+			const struct pg_evidence *function_context = pg_prove_context_extension(typing, context, f,
+				pg_prove_value_type(typing, endpoints[i]));
+			const struct pg_evidence *function = pg_prove_variable(typing, function_context, f);
+			const struct pg_evidence *actual = pg_prove_identity_transport(typing, classifiers,
+				pg_prove_projection(typing, function_context, action), function, direction);
+			const struct pg_evidence *target_domain = pg_prove_projection(typing, function_context,
+				pg_prove_value_type(typing, types[1 - i]));
+			const struct pg_evidence *body_context = pg_prove_context_extension(typing, function_context, y, target_domain);
+			const struct pg_evidence *r = pg_prove_projection(typing, body_context, path);
+			const struct pg_evidence *target = pg_prove_variable(typing, body_context, y);
+			const struct pg_evidence *argument = pg_prove_identity_transport(typing, classifiers, r, target, reverse);
+			const struct pg_evidence *lift = pg_prove_identity_lift(typing, classifiers, r, target, reverse);
+			const struct pg_evidence *call = pg_prove_application(typing,
+				pg_prove_force(typing, pg_prove_projection(typing, body_context, function)), argument);
+			const struct pg_evidence *substitutions[2], *prefixes[2];
+			for (size_t j = 0; j < 2; ++j) {
+				const struct pg_evidence *type = pg_prove_projection(typing, body_context, types[j]);
+				prefixes[j] = pg_prove_substitution(typing, parameters, body_context, 1, &type);
+				substitutions[j] = pg_prove_substitution_pair(typing, prefixes[j], source, j == i ? argument : target);
+			}
+			lift = convert_to(typing, &work, lift, pg_prove_family_identity_type(typing, domain,
+				prefixes[0], prefixes[1], 1, &r, i ? target : argument, i ? argument : target));
+			const struct pg_evidence *paths[] = {r, lift};
+			const struct pg_evidence *b_value = pg_prove_type_value(typing, b);
+			const struct pg_evidence *b_path = pg_prove_family_action(typing,
+				pg_prove_classifier(typing, classifiers, source, b_value), b_value,
+				substitutions[0], substitutions[1], 2, paths);
+			b_path = convert_to(typing, &work, b_path, pg_prove_identity_type(typing,
+				pg_prove_universe(typing, classifiers, body_context, 0),
+				pg_prove_reindex(typing, substitutions[0], b_value), pg_prove_reindex(typing, substitutions[1], b_value)));
+			const struct pg_evidence *body = pg_prove_force(typing, thunk_map(typing, classifiers, body_context,
+				b_path, pg_prove_thunk(typing, classifiers, call), direction));
+			const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, target_domain, body_context,
+				pg_prove_classifier(typing, classifiers, body_context, body));
+			const struct pg_evidence *expected = pg_prove_thunk(typing, classifiers, pg_prove_lambda(typing, pi, body));
+			assert(actual && expected);
+			expected = convert_to(typing, &work, expected,
+				pg_prove_classifier(typing, classifiers, function_context, actual));
+			const struct pg_term *term = pg_evidence_subject(expected)->core;
+			const struct pg_term *reflected;
+			if (!dependent && pg_identity_action_view(pg_evidence_subject(path)->core, &reflected)) {
+				const struct pg_term *eta = pg_application(graph, pg_reference(graph, &pg_thunk_operation),
+					pg_lambda(graph, y, pg_application(graph,
+						pg_application(graph, pg_reference(graph, &pg_force_operation), pg_evidence_subject(function)->core),
+						pg_reference(graph, y))));
+				converts(&work, term, eta);
+				/* Strict diagonal transport returns f; the recipe returns its
+				 * function eta expansion, intentionally not current DefEq. */
+				converts(&work, pg_evidence_subject(actual)->core, pg_evidence_subject(function)->core);
+				struct pg_conversion comparison;
+				assert(pg_conversion_init(&comparison, &work, pg_evidence_subject(actual)->core, term) == 0);
+				assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_DIFFERENT);
+				assert(!pg_conversion_certificate(&comparison));
+				pg_conversion_destroy(&comparison);
+			}
+			struct pg_whnf_job *split = pg_whnf_request(&work, &pg_pure_policy, term);
+			struct pg_whnf_job *bulk = pg_whnf_request(&whole, &pg_pure_policy, term);
+			while (pg_whnf_advance(split, 1) == PG_EVAL_PENDING) assert(pg_whnf_steps(split) < 100000);
+			assert(pg_whnf_advance(bulk, 100000) == PG_EVAL_WHNF);
+			assert(pg_whnf_steps(split) == pg_whnf_steps(bulk));
+			assert(pg_alpha_equal(pg_whnf_result(split), pg_whnf_result(bulk)) == 1);
+			struct pg_whnf_job *beta = pg_whnf_request(&work, &pg_beta_policy, term);
+			assert(pg_whnf_advance(beta, 10000) == PG_EVAL_WHNF && pg_whnf_result(beta) == term);
+		}
+	}
+	pg_whnf_work_destroy(&whole);
+	pg_whnf_work_destroy(&work);
+}
+
 static void transport_fields(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_evidence *scope, const struct pg_evidence *r, const struct pg_evidence *s,
 	const struct pg_evidence *x, const struct pg_evidence *y, const struct pg_evidence *substitution)
@@ -304,6 +421,8 @@ static void transport_fields(struct pg_typing *typing, struct pg_classifiers *cl
 	struct pg_graph *graph = typing->graph;
 	thunk_transport(typing, classifiers, scope, r, x, y);
 	thunk_transport(typing, classifiers, scope, s, x, y);
+	pi_transport_candidate(typing, classifiers, scope, r);
+	pi_transport_candidate(typing, classifiers, scope, s);
 	struct pg_whnf_work work, whole;
 	assert(pg_whnf_work_init(&work, graph) == 0);
 	assert(pg_whnf_work_init(&whole, graph) == 0);
@@ -313,6 +432,7 @@ static void transport_fields(struct pg_typing *typing, struct pg_classifiers *cl
 	const struct pg_evidence *diagonal = pg_prove_reflexivity(typing, universe, a_value);
 	const struct pg_evidence *reflexivity = pg_prove_reflexivity(typing, a, x);
 	assert(diagonal && reflexivity);
+	pi_transport_candidate(typing, classifiers, scope, diagonal);
 	for (unsigned i = 0; i < 2; ++i) {
 		enum pg_identity_direction direction = (enum pg_identity_direction)i;
 		const struct pg_evidence *input = i ? y : x;

@@ -1322,6 +1322,51 @@ a specified type family, not a global endpoint-only relation.
   Implementation `eval.c` +137/-1, `eval.h` +18/-0, `conversion.c` +30/-6,
   `conversion.h` +5/-3 (net +180); tests `core.c` +90, `identity.c` +9;
   documentation separate. N2/N3/N5 remain open, including NF CLI integration.
+- [x] September 8, after `c03fa1c`: audit the U/Pi transport candidate before
+  admitting it as a pure rewrite. `tests/identity.c:pi_transport_candidate`
+  constructs the map with ordinary checked Pi/Lambda, APP, FOLD, transport
+  and lifting. It handles both directions, two selected universe paths,
+  constant result family `A` and dependent result family `Id A x x`.
+  Domain arguments move in the opposite direction; the corresponding lifting
+  path selects the codomain identification. That path must first be converted
+  explicitly to the acted domain family, not accepted by weakening the checker.
+  The candidate has the expected destination type. This does NOT prove it equal
+  to the existing transport term. The experimental U/Pi dispatcher passed the
+  non-diagonal checks but failed the diagonal comparison; it was removed.
+  The retained test separates candidate typing from that rejected equation.
+
+  For `R : Id Universe A0 A1`, let `Q(R)` be the action of `U(Pi x:A. F A)`.
+  The proposed equation was:
+
+  ```text
+  trr Q(R) u = THUNK(lambda y.
+      FOLD(APP(FORCE(u), trl R y), lambda z. RETURN(trr R z)))
+  ```
+
+  Substituting `R := refl A` in its right side yields
+  `THUNK(lambda y. APP(FORCE(u), y))`, by existing scalar diagonal transport
+  and FOLD right unit. But acting on the diagonal first, followed by existing
+  strict diagonal transport, yields `u`. Equating these requires function eta,
+  intentionally absent from current DefEq (`tests/synthesis.c:function_eta`).
+  Unlike the previous U/F case, strong normalization alone cannot repair this
+  while preserving that exclusion. This is a conflict in the proposed extension,
+  not a demonstrated inconsistency of the currently admitted neutral Pi fields.
+  The primary [Narya field contract](https://narya.readthedocs.io/en/latest/hott.html#transport-and-lifting)
+  informs the candidate's directions; the CBPV adaptation and this derivation
+  are ours. Its documentation does not validate our strict regularity choice.
+  Optimized pointer `make check`: 2.848 s; ASan/UBSan: 8.461 s (only Identity
+  rebuilt on those final runs); Identity/synthesis/IADT pass at 512 KiB.
+  A test-only omitted split advance was corrected before the final runs.
+  Production implementation change: zero; tests `identity.c` +120; docs separate.
+- [ ] Resolve this N2 equational choice before enabling structural U/Pi
+  transport or using it to justify nominal datatype fibrancy. Either admit
+  computation-Pi eta into fixed pure DefEq, revisiting the current eta example
+  and runtime/Act compatibility, or retain the current DefEq and revise the
+  unrestricted strict diagonal transport contract (with its lifting/regularity
+  proofs and existing tests). Do not hide the choice behind a path-shape branch
+  or a Pi-transport-only conversion exception. Either choice leaves pointer
+  interning structural: conversion must never merge Core nodes. The user has
+  been asked which direction to pursue; no choice has been silently adopted.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

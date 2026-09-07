@@ -41,6 +41,12 @@ source exactly once per force, never during transport or through a pure cache.
 The former neutral `map refl` conversion failure now has an accepted typed
 regression in both directions. General dependent lifting and higher U/F
 coherence remain open; these tests do not establish their completeness.
+`pi_transport_candidate` derives a contravariant-domain/covariant-result
+map, including an index-dependent result and its selected lifting path. It
+checks destination typing, not an admitted Pi transport equation. At a
+diagonal path the candidate reduces to function eta expansion while strict
+transport returns its input; the test preserves the current DefEq distinction.
+The plan records the required equational decision before enabling that rewrite.
 
 `iadt.c` tests erased constructor/Match references, pointer-labelled clause
 selection, saturation, capture, lazy fields/branches and policy isolation.
