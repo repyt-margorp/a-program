@@ -682,8 +682,28 @@ drop the suffix after a selected binding or resolve an exit target. Root-only
 entries. Constructor and block arrays share one storage builder. Tests cover
 ordering, nesting, quotation, selected results, exit preservation, root
 restrictions and malformed delimiters; ordinary and sanitizer checks pass.
-Scope validation, duplicate-name checks, selected-binding validation, exit
-barriers, CBPV lowering and effect execution remain required.
+The pure block path is now connected to synthesis. Each active statement is a
+shared synthesis job; a continuation frame retains its accepted input, domain
+and extended context. Frames discharge through the same Lambda/APP/FOLD rules.
+Already available syntactic values use `FOLD(RETURN v,K) = APP(K,v)` directly;
+unknown returning computations retain FOLD. This permits dependent uses of
+known values without inventing a type-level result of an unknown computation.
+
+- [x] Named/unnamed statements, nested blocks, declared annotations as post-
+  synthesis checks, lexical shadowing of outer names, quoted functions and
+  selected-result cutoff. Selectors stop at a direct binding; later statements
+  are parsed but not resolved or executed. A block-local name index rejects
+  duplicate active bindings without repeatedly scanning previous statements.
+  Tests reject unknown selectors and wrong annotations and execute eight
+  representative block forms to the same expected RETURN value.
+  A dependent result after `B := A` substitutes the known type value into its
+  classifier. The corresponding `B := (\T : @ => T) A` case remains explicitly
+  UNSUPPORTED: obtaining its pure result requires an additional checked
+  computation step, not assuming that a returning computation is a value.
+- [ ] Lambda-exit target/barrier semantics, remaining computed type/argument
+  cases, effect requests and handlers, and complete dependency/resource checks.
+  EXIT remains UNSUPPORTED. This does not establish full block compatibility or
+  effect-order correctness merely from the passing pure fixtures.
 
 Elimination syntax now retains multiple clauses with unresolved label syntax,
 positional binders or named selector aliases, and bodies. `#.return` is retained

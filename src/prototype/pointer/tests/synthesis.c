@@ -110,6 +110,35 @@ int main(void)
 	assert(pg_eval_readback(&machine, &graph) == expected);
 	pg_eval_destroy(&machine);
 	complete(&synthesis, request(&synthesis, root, "Nat := @{zero:*; succ:*->*;};"), PG_SYNTHESIS_UNSUPPORTED);
+	const char *blocks[] = {
+		"main := { alias := x; alias; };",
+		"main := { first := (\\y : A => y) x; second := (\\y : A => y) first; second; };",
+		"main := { selected := x; dead := missing; }.selected;",
+		"main := { x := x; x; };",
+		"main := { x; (\\y : A => y) x; };",
+		"main := { result : A := (\\y : A => y) x; result; };",
+		"main := { outer := { inner := x; inner; }; outer; };",
+		"main := { f := &(\\y : A => y); f x; };"
+	};
+	for (size_t i = 0; i < sizeof(blocks) / sizeof(*blocks); ++i) {
+		const struct pg_evidence *block = complete(&synthesis, request(&synthesis, scope, blocks[i]), PG_SYNTHESIS_DONE);
+		pg_computation_eval_init(&machine, &graph, pg_evidence_subject(block)->core);
+		assert(pg_eval_advance(&machine, 500) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&machine, &graph) == expected);
+		pg_eval_destroy(&machine);
+	}
+	complete(&synthesis, request(&synthesis, scope, "main := { temp := x; }.missing;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope, "main := { temp := x; temp := x; temp; };"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope, "main := { temp : @ := x; temp; };"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope, "main := { !x; };"), PG_SYNTHESIS_UNSUPPORTED);
+	complete(&synthesis, request(&synthesis, scope, "main := &{ x; };"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *dependent_block = complete(&synthesis, request(&synthesis, scope,
+		"main := { B := A; \\y : B => y; };"), PG_SYNTHESIS_DONE);
+	assert(pg_pi_view(pg_evidence_classifier(dependent_block), &domain, &binder, &codomain));
+	assert(domain == pg_reference(&graph, a));
+	assert(pg_return_type_view(codomain, &codomain) && codomain == domain);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := { B := (\\T : @ => T) A; \\y : B => y; };"), PG_SYNTHESIS_UNSUPPORTED);
 	uint64_t steps = synthesis.steps;
 	pg_synthesis_advance(&synthesis, 100);
 	assert(synthesis.steps == steps);
