@@ -120,6 +120,69 @@ int main(void)
 	}
 	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, a_scope, x_name, x, x_context);
+	size_t evaluation_jobs = synthesis.jobs.count;
+	struct pg_synthesis_job *shared_return = pg_synthesis_return(&synthesis, x_context, second_application);
+	assert(shared_return && pg_synthesis_status(shared_return) == PG_SYNTHESIS_PENDING);
+	assert(synthesis.jobs.count == evaluation_jobs + 1);
+	assert(pg_synthesis_return(&synthesis, x_context, second_application) == shared_return);
+	uint64_t evaluation_steps = synthesis.steps;
+	pg_synthesis_advance(&synthesis, 0);
+	assert(synthesis.steps == evaluation_steps && !pg_synthesis_result(shared_return));
+	pg_synthesis_advance(&synthesis, 1);
+	assert(pg_synthesis_status(shared_return) == PG_SYNTHESIS_PENDING);
+	assert(pg_synthesis_return(&synthesis, x_context, second_application) == shared_return);
+	const struct pg_evidence *shared_value = complete(&synthesis, shared_return, PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(shared_value)->core == pg_reference(&graph, x));
+	assert(pg_evidence_classifier(shared_value) == pg_reference(&graph, a));
+	evaluation_steps = synthesis.steps;
+	reduction_terms = graph.terms.count;
+	reduction_proofs = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i) {
+		assert(pg_synthesis_return(&synthesis, x_context, second_application) == shared_return);
+		pg_synthesis_advance(&synthesis, 100);
+	}
+	assert(synthesis.steps == evaluation_steps);
+	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
+	assert(!pg_synthesis_return(&synthesis, a_context, second_application));
+	assert(!pg_synthesis_return(&synthesis, x_context, x_value));
+	assert(!pg_synthesis_return(&synthesis, NULL, second_application));
+	struct pg_synthesis_job *other_return = pg_synthesis_return(&synthesis, x_context, reindexed_application);
+	assert(other_return && other_return != shared_return);
+	assert(pg_evidence_subject(complete(&synthesis, other_return, PG_SYNTHESIS_DONE))->core == pg_reference(&graph, x));
+	const struct pg_evidence *extra_context = pg_prove_context_extension(&typing, x_context,
+		pg_binder(&graph), pg_prove_variable(&typing, x_context, a));
+	const struct pg_evidence *projected_input = pg_prove_projection(&typing, extra_context, second_application);
+	assert(pg_evidence_subject(projected_input)->core == pg_evidence_subject(second_application)->core);
+	struct pg_synthesis_job *projected_return = pg_synthesis_return(&synthesis, extra_context, projected_input);
+	assert(projected_return && projected_return != shared_return);
+	assert(pg_evidence_context(complete(&synthesis, projected_return, PG_SYNTHESIS_DONE)) == pg_evidence_context(extra_context));
+	struct pg_typing foreign_typing;
+	assert(pg_typing_init(&foreign_typing, &graph) == 0);
+	const struct pg_evidence *foreign_context = pg_prove_empty_context(&foreign_typing);
+	const struct pg_evidence *foreign_value = pg_prove_type_value(&foreign_typing,
+		pg_prove_universe(&foreign_typing, &classifiers, foreign_context, 0));
+	assert(!pg_synthesis_return(&synthesis, foreign_context,
+		pg_prove_return(&foreign_typing, &classifiers, foreign_value)));
+	pg_typing_destroy(&foreign_typing);
+	struct pg_parser shared_parser;
+	struct pg_definition shared_definition;
+	const char *shared_source = "main := \\y : ((\\T : @ => T) A) => y;";
+	pg_parser_init(&shared_parser, &graph, shared_source, strlen(shared_source));
+	assert(pg_parser_next(&shared_parser, &shared_definition) == 1);
+	struct pg_syntax *shared_copy = pg_alloc(&graph, sizeof(*shared_copy));
+	assert(shared_copy);
+	*shared_copy = *shared_definition.expression;
+	struct pg_synthesis_job *first_consumer = pg_synthesis_request(&synthesis, scope, shared_definition.expression);
+	struct pg_synthesis_job *second_consumer = pg_synthesis_request(&synthesis, scope, shared_copy);
+	assert(first_consumer != second_consumer);
+	complete(&synthesis, first_consumer, PG_SYNTHESIS_DONE);
+	complete(&synthesis, second_consumer, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *shared_input = pg_synthesis_result(pg_synthesis_request(&synthesis, scope,
+		shared_definition.expression->left));
+	evaluation_jobs = synthesis.jobs.count;
+	struct pg_synthesis_job *type_producer = pg_synthesis_return(&synthesis, x_context, shared_input);
+	assert(type_producer && pg_synthesis_status(type_producer) == PG_SYNTHESIS_DONE);
+	assert(synthesis.jobs.count == evaluation_jobs);
 	const struct pg_evidence *computed_domain = complete(&synthesis, request(&synthesis, scope,
 		"main := \\y : ((\\T : @ => T) A) => y;"), PG_SYNTHESIS_DONE);
 	assert(pg_pi_view(pg_evidence_classifier(computed_domain), &domain, &binder, &codomain));

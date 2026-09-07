@@ -502,10 +502,24 @@ successful return codes as new-kernel certificates.
   a returned type. Current inability to expose `f A` for an unknown `f` is
   reported unsupported, not proof that dependent families are invalid. The
   checked family/substitution action contract above is still required.
-  Typed reduction currently has no shared pending-work store; the source job
-  retains progress and accepted derivations are interned, but independent
-  type-position consumers can repeat traversal. Demand/context traversal and
-  primitive substitution costs are not yet charged individually to fuel.
+  Demand/context traversal and primitive substitution costs are not yet charged
+  individually to fuel.
+- [x] Pure returned-value requests now use the existing synthesis job index,
+  ready queue, completion status and waiters. The immutable key is the job role
+  plus context evidence and input computation evidence; source expression and
+  definition requests use the same index with their own input pair. There is
+  no second evaluation scheduler or copied authoritative classifier answer.
+  Type-position consumers subscribe to the returned-value producer rather
+  than retaining independent reduction progress. Zero-budget requests do no
+  reduction; a partial request resumes its existing proof; completed requests
+  perform no further scheduler steps. Tests cover those cases, two source
+  consumers sharing a computed annotation, same-Core inputs in distinct
+  contexts, differing input derivations, and rejection of foreign-owner proofs.
+- [ ] Generalize sharing to dependent reduction subrequests and budget traversal
+  inside each primitive step. Current sharing is at whole returned-value
+  requests; different proofs or different requests with common subcomputations
+  can still traverse those subcomputations independently. Effectful execution
+  must not reuse a prior runtime result through this pure-work mechanism.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
 for transport/lifting and their dimensional boundaries, with actual computation

@@ -31,6 +31,12 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_object *binder, const struct pg_evidence *extended_context);
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Pure checked computation -> returned value, using the same job table and
+ * scheduler. The immutable context/evidence pair is the key, never bare Core.
+ * Requests do not reduce; unsupported neutral heads are not negative proofs.
+ * Evidence outlives this store. Primitive rule traversal is not yet budgeted. */
+struct pg_synthesis_job *pg_synthesis_return(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *computation);
 void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);
 enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job);
 const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job);

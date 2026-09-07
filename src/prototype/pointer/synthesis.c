@@ -43,8 +43,11 @@ struct block_state {
 	const struct pg_evidence *tail;
 	struct pg_index names;
 };
+enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
+	enum job_role role;
+	const void *inputs[2];
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
 	enum pg_synthesis_status status;
@@ -59,13 +62,12 @@ struct pg_synthesis_job {
 	const struct pg_evidence *result;
 	const struct pg_evidence *checking_term;
 	const struct pg_evidence *checking_type;
-	const struct pg_evidence *type_input;
+	struct pg_synthesis_job *type_input;
 	const struct pg_evidence *function;
 	struct pg_conversion comparison;
 	int comparing;
 	struct block_state *block;
 	const struct continuation_frame *application_frame;
-	int definition;
 	struct definition_state *definitions;
 };
 
@@ -123,33 +125,52 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	return scope;
 }
 
-static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, const struct pg_syntax *syntax, int definition)
+static struct pg_synthesis_job *request_job(struct pg_synthesis *synthesis,
+	enum job_role role, const void *first, const void *second)
 {
-	if (!scope || scope->owner != synthesis || !syntax) return NULL;
-	uint64_t hash = ((uintptr_t)scope ^ (uintptr_t)syntax ^ (unsigned)definition) * UINT64_C(1099511628211);
+	uint64_t hash = ((uintptr_t)first ^ (uintptr_t)second ^ (unsigned)role) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->jobs, hash); entry; entry = entry->next) {
 		if (entry->hash != hash) continue;
 		struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
-		if (job->scope == scope && job->syntax == syntax && job->definition == definition) return job;
+		if (job->role != role) continue;
+		if (job->inputs[0] == first && job->inputs[1] == second) return job;
 	}
 	struct pg_synthesis_job *job = pg_alloc(synthesis->typing->graph, sizeof(*job));
 	if (!job) return NULL;
-	job->scope = scope;
-	job->syntax = syntax;
-	job->definition = definition;
+	job->role = role;
+	job->inputs[0] = first;
+	job->inputs[1] = second;
 	if (pg_index_insert(&synthesis->jobs, &job->index, hash) != 0) return NULL;
-	if (!definition) {
+	if (role != DEFINITION_JOB) {
 		job->next = synthesis->ready;
 		synthesis->ready = job;
 	}
 	return job;
 }
 
+static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax, enum job_role role)
+{
+	if (!scope || scope->owner != synthesis || !syntax) return NULL;
+	struct pg_synthesis_job *job = request_job(synthesis, role, scope, syntax);
+	if (job) { job->scope = scope; job->syntax = syntax; }
+	return job;
+}
+
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
 {
-	return request_role(synthesis, scope, syntax, 0);
+	return request_role(synthesis, scope, syntax, EXPRESSION_JOB);
+}
+
+struct pg_synthesis_job *pg_synthesis_return(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *computation)
+{
+	if (!context || !computation) return NULL;
+	if (pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (pg_evidence_context(context) != pg_evidence_context(computation)) return NULL;
+	if (pg_prove_projection(synthesis->typing, context, computation) != computation) return NULL;
+	return request_job(synthesis, RETURN_JOB, context, computation);
 }
 
 static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
@@ -195,22 +216,27 @@ static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_evidence *context,
 	const struct pg_evidence *proof)
 {
-	if (!job->type_input) job->type_input = proof;
-	proof = job->type_input;
-	if (pg_evidence_judgement(proof) != PG_JUDGEMENT_COMPUTATION) {
-		job->type_input = NULL;
-		return proof;
+	if (pg_evidence_judgement(proof) != PG_JUDGEMENT_COMPUTATION) return proof;
+	if (!job->type_input) {
+		job->type_input = pg_synthesis_return(synthesis, context, proof);
+		depend(synthesis, job, job->type_input);
+		return NULL;
 	}
-	const struct pg_evidence *returned = pg_prove_return_value(synthesis->typing, proof);
-	if (returned) {
-		job->type_input = NULL;
-		return returned;
-	}
-	job->type_input = pg_reduce_computation(synthesis->typing, context, proof);
-	if (!job->type_input) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return NULL; }
+	struct pg_synthesis_job *producer = job->type_input;
+	if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return NULL; }
+	job->type_input = NULL;
+	return producer->result;
+}
+
+static void return_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->checking_term) job->checking_term = job->inputs[1];
+	job->result = pg_prove_return_value(synthesis->typing, job->checking_term);
+	if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
+	job->checking_term = pg_reduce_computation(synthesis->typing, job->inputs[0], job->checking_term);
+	if (!job->checking_term) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 	job->next = synthesis->ready;
 	synthesis->ready = job;
-	return NULL;
 }
 
 static const struct pg_evidence *value(struct pg_synthesis *synthesis, const struct pg_evidence *proof)
@@ -473,7 +499,7 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			if (status) { finish(synthesis, job, status > 0 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR); return; }
 			struct block_name *name = lookup_name(&state->names, item->name);
 			if (!name) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			name->producer = request_role(synthesis, state->scope, item->expression, 1);
+			name->producer = request_role(synthesis, state->scope, item->expression, DEFINITION_JOB);
 			state->entries[i] = name->producer;
 			if (!name->producer) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
@@ -528,7 +554,8 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
-	if (job->definition) { definition_step(synthesis, job); return; }
+	if (job->role == RETURN_JOB) { return_step(synthesis, job); return; }
+	if (job->role == DEFINITION_JOB) { definition_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_BLOCK) { block_step(synthesis, job); return; }
