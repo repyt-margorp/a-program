@@ -360,6 +360,15 @@ binders. No normalization or alpha interning is used to merge them.
   binders. No independent context-rewriting or classifier solver is added.
   Tests compare square-to-edge-to-vertex with direct restriction, including
   dependent classifiers, identity maps and invalid binder/dimension mappings.
+- [x] Extend that fixture to checked Lambda/APP derivations over the boundary
+  telescope. Restricting an APP agrees up to explicit alpha comparison with
+  applying its separately restricted function and argument; their classifiers
+  agree and regularity is recovered in the target context. Twice-restricted
+  Lambdas agree with direct restriction. Executing the restricted identity
+  application yields the independently derived, restricted beta result at the
+  same classifier. These tests reuse context substitution/reindex and the
+  existing evaluator, without a second action-specific substitution engine.
+  They do not construct object Identity witnesses or establish general naturality.
 - [ ] Identity-family/context action and restriction inside semantic owners
   remain unimplemented. The helper rejects degeneracies: forming a higher witness
   cannot be replaced by generating another free boundary variable.

@@ -537,6 +537,43 @@ static void typed_restriction_test(struct pg_graph *graph)
 	assert(once && twice && pg_evidence_subject(once)->core == pg_evidence_subject(twice)->core);
 	assert(pg_evidence_classifier(once) == pg_evidence_classifier(twice));
 	const struct pg_evidence *identity_substitution = pg_context_restrict(&typing, &dimensions, source, identity, 2, bindings);
+	const struct pg_evidence *domain = pg_prove_variable(&typing, source, &a->variable);
+	const struct pg_object *y = pg_binder(graph);
+	const struct pg_evidence *body_context = pg_prove_context_extension(&typing, source, y, domain);
+	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers,
+		pg_prove_variable(&typing, body_context, y));
+	const struct pg_evidence *codomain = pg_prove_classifier(&typing, &classifiers, body_context, body);
+	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, domain, body_context, codomain);
+	const struct pg_evidence *function = pg_prove_lambda(&typing, pi, body);
+	const struct pg_evidence *application = pg_prove_application(&typing, function, source_x);
+	assert(function && application);
+	const struct pg_evidence *restricted_function = pg_prove_reindex(&typing, direct, function);
+	const struct pg_evidence *restricted_application = pg_prove_reindex(&typing, direct, application);
+	const struct pg_evidence *rebuilt_application = pg_prove_application(&typing, restricted_function, once);
+	assert(restricted_application && rebuilt_application);
+	assert(pg_alpha_equal(pg_evidence_subject(restricted_application)->core,
+		pg_evidence_subject(rebuilt_application)->core) == 1);
+	assert(pg_evidence_classifier(restricted_application) == pg_evidence_classifier(rebuilt_application));
+	const struct pg_evidence *vertex_context = pg_evidence_premise(direct, 1);
+	const struct pg_evidence *restricted_formation = pg_prove_classifier(&typing, &classifiers,
+		vertex_context, restricted_application);
+	assert(restricted_formation && pg_evidence_subject(restricted_formation)->core == pg_evidence_classifier(restricted_application));
+	const struct pg_evidence *twice_function = pg_prove_reindex(&typing, vertex_substitution,
+		pg_prove_reindex(&typing, edge_substitution, function));
+	assert(twice_function);
+	assert(pg_alpha_equal(pg_evidence_subject(twice_function)->core,
+		pg_evidence_subject(restricted_function)->core) == 1);
+	assert(pg_alpha_equal(pg_evidence_classifier(twice_function), pg_evidence_classifier(restricted_function)) == 1);
+	/* Restrict the independently derived beta result, then compare execution.
+	 * No Identity witness is inferred from this metatheoretic fixture. */
+	const struct pg_evidence *beta_result = pg_prove_return(&typing, &classifiers, source_x);
+	const struct pg_evidence *restricted_result = pg_prove_reindex(&typing, direct, beta_result);
+	struct pg_eval machine;
+	pg_computation_eval_init(&machine, graph, pg_evidence_subject(restricted_application)->core);
+	assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, graph) == pg_evidence_subject(restricted_result)->core);
+	assert(pg_evidence_classifier(restricted_result) == pg_evidence_classifier(restricted_application));
+	pg_eval_destroy(&machine);
 	assert(identity_substitution && pg_evidence_context(identity_substitution) == pg_evidence_context(source));
 	assert(!pg_context_restrict(&typing, &dimensions, source, edge, 1, bindings));
 	assert(!pg_context_restrict(&typing, &dimensions, source, edge, 2, edge_bindings));
