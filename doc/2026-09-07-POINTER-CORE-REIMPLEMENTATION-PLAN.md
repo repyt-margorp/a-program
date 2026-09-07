@@ -371,6 +371,20 @@ conclusion and all premise pointers; no accepted record is overwritten.
   domain, its verified context extension, and a computation codomain in that
   extension; its bound is the maximum of the two premise bounds. Ordinary tests
   cover wrong scopes, wrong sorts, retained premises, interning and bounds.
+- [x] Add checked RETURN/THUNK/FORCE and Lambda/APP derivations. Fixed semantic
+  operation references build ordinary APP spines. Lambda uses the verified Pi
+  context/codomain; APP substitutes its value argument into the codomain with
+  the existing simultaneous substitution implementation. Typed operands and
+  all proof premises remain attached to occurrences. Tests cover invalid
+  value/computation sorts, wrong scope/domain/codomain, explicit force before
+  applying a thunked function, proof reuse, and beta reduction of a typed
+  identity application to its RETURN spine.
+- [ ] Connect these rules to synthesis and semantic execution. The current APP
+  rule requires exact classifier pointers; an explicit conversion derivation
+  remains necessary for non-identical convertible classifiers. The beta-only
+  evaluator intentionally does not reduce FORCE(THUNK(...)) yet. F currently
+  describes the pure fragment, not unspecified effect rows. Universe formation
+  as a term-level value, effect rows and dependent computations remain pending.
 - [ ] Conversion evidence, synthesis scheduling, image checking and
   typed HOTT action still need implementation. These primitive rules do
   not constitute a complete checker; NULL currently combines invalid-premise

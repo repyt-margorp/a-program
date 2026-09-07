@@ -1,4 +1,6 @@
 #include "evidence.h"
+#include "computation.h"
+#include "eval.h"
 
 struct pg_evidence {
 	struct pg_index_entry index;
@@ -176,6 +178,95 @@ const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classi
 	const struct pg_evidence *premises[] = {domain, extended_context, codomain};
 	return accept(typing, PG_PI_FORM, PG_JUDGEMENT_COMPUTATION_TYPE,
 		domain->context, subject, bound, 3, premises);
+}
+
+static const struct pg_evidence *unary_term(struct pg_typing *typing,
+	const struct pg_evidence *argument, const struct pg_object *operation,
+	const struct pg_term *classifier, enum pg_evidence_rule rule,
+	enum pg_evidence_judgement judgement)
+{
+	if (!classifier) return NULL;
+	const struct pg_term *term = pg_application(typing->graph,
+		pg_reference(typing->graph, operation), argument->subject->core);
+	if (!term) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, argument->context,
+		term, NULL, 1, &argument->subject);
+	if (!subject) return NULL;
+	return accept(typing, rule, judgement, argument->context, subject, classifier, 1, &argument);
+}
+
+const struct pg_evidence *pg_prove_return(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *value)
+{
+	if (!value || value->owner != typing) return NULL;
+	if (value->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (classifiers->graph != typing->graph) return NULL;
+	return unary_term(typing, value, &pg_return_operation,
+		pg_return_type(classifiers, value->classifier), PG_RETURN_INTRO, PG_JUDGEMENT_COMPUTATION);
+}
+
+const struct pg_evidence *pg_prove_thunk(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *computation)
+{
+	if (!computation || computation->owner != typing) return NULL;
+	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (classifiers->graph != typing->graph) return NULL;
+	return unary_term(typing, computation, &pg_thunk_operation,
+		pg_thunk_type(classifiers, computation->classifier), PG_THUNK_INTRO, PG_JUDGEMENT_VALUE);
+}
+
+const struct pg_evidence *pg_prove_force(struct pg_typing *typing, const struct pg_evidence *value)
+{
+	if (!value || value->owner != typing) return NULL;
+	if (value->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	const struct pg_term *classifier;
+	if (!pg_thunk_type_view(value->classifier, &classifier)) return NULL;
+	return unary_term(typing, value, &pg_force_operation, classifier, PG_FORCE_ELIM, PG_JUDGEMENT_COMPUTATION);
+}
+
+const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
+	const struct pg_evidence *pi, const struct pg_evidence *body)
+{
+	if (!pi || pi->owner != typing) return NULL;
+	if (pi->rule != PG_PI_FORM) return NULL;
+	if (!body || body->owner != typing) return NULL;
+	if (body->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	if (!pg_pi_view(pi->subject->core, &domain, &binder, &codomain)) return NULL;
+	if (body->context != pi->premises[1]->context) return NULL;
+	if (body->classifier != codomain) return NULL;
+	const struct pg_term *term = pg_lambda(typing->graph, binder, body->subject->core);
+	if (!term) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, pi->context, term, domain, 1, &body->subject);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {pi, body};
+	return accept(typing, PG_LAMBDA_INTRO, PG_JUDGEMENT_COMPUTATION,
+		pi->context, subject, pi->subject->core, 2, premises);
+}
+
+const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
+	const struct pg_evidence *function, const struct pg_evidence *argument)
+{
+	if (!function || function->owner != typing) return NULL;
+	if (!argument || argument->owner != typing) return NULL;
+	if (function->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (argument->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (function->context != argument->context) return NULL;
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	if (!pg_pi_view(function->classifier, &domain, &binder, &codomain)) return NULL;
+	if (domain != argument->classifier) return NULL;
+	struct pg_binding_value substitution = {binder, argument->subject->core};
+	const struct pg_term *classifier = pg_term_substitute(typing->graph, codomain, 1, &substitution);
+	const struct pg_term *term = pg_application(typing->graph, function->subject->core, argument->subject->core);
+	if (!classifier || !term) return NULL;
+	const struct pg_occurrence *operands[] = {function->subject, argument->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, function->context, term, NULL, 2, operands);
+	if (!subject) return NULL;
+	const struct pg_evidence *premises[] = {function, argument};
+	return accept(typing, PG_APP_ELIM, PG_JUDGEMENT_COMPUTATION,
+		function->context, subject, classifier, 2, premises);
 }
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }

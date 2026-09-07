@@ -5,7 +5,8 @@
 #include "classifier.h"
 
 enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, PG_VARIABLE,
-	PG_TYPE_FROM_VALUE, PG_RETURN_TYPE_FORM, PG_THUNK_TYPE_FORM, PG_PI_FORM };
+	PG_TYPE_FROM_VALUE, PG_RETURN_TYPE_FORM, PG_THUNK_TYPE_FORM, PG_PI_FORM,
+	PG_RETURN_INTRO, PG_THUNK_INTRO, PG_FORCE_ELIM, PG_LAMBDA_INTRO, PG_APP_ELIM };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION };
 struct pg_evidence;
@@ -32,6 +33,18 @@ const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classi
 	const struct pg_evidence *codomain);
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence);
+const struct pg_evidence *pg_prove_return(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *value);
+const struct pg_evidence *pg_prove_thunk(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *computation);
+const struct pg_evidence *pg_prove_force(struct pg_typing *typing,
+	const struct pg_evidence *value);
+/* Exact classifier premises; conversion must be supplied as a separate
+ * derivation rather than silently changing the input or running a solver. */
+const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
+	const struct pg_evidence *pi, const struct pg_evidence *body);
+const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
+	const struct pg_evidence *function, const struct pg_evidence *argument);
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence);
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence);
 /* Context formation has no term subject or classifier. */
