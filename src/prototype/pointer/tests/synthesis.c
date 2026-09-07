@@ -142,12 +142,8 @@ static void named_identity(struct pg_typing *typing, struct pg_classifiers *clas
 			: pg_prove_type_value(typing, pg_prove_identity_type(typing, type, x,
 				pg_prove_variable(typing, context, binders[2])));
 		body = pg_prove_return(typing, classifiers, body);
-		for (size_t i = count; i > 0; --i) {
-			const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domains[i - 1], contexts[i],
-				pg_prove_classifier(typing, classifiers, contexts[i], body));
-			body = pg_prove_lambda(typing, pi, body);
-			assert(body);
-		}
+		body = pg_prove_abstract(typing, classifiers, contexts[0], context, body);
+		assert(body);
 		functions[n] = body;
 		scope = pg_synthesis_name(&synthesis, scope,
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[n], .length = strlen(names[n])}, body);
@@ -192,6 +188,101 @@ static void named_identity(struct pg_typing *typing, struct pg_classifiers *clas
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("source Identity: checked named functions, dependent annotations, higher reflexivity and post-check rejection passed");
+}
+
+static void named_transport(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing), *contexts[4] = {empty};
+	const struct pg_object *bindings[6];
+	for (size_t i = 0; i < 6; ++i) bindings[i] = pg_binder(typing->graph);
+	for (size_t i = 0; i < 2; ++i) contexts[i + 1] = pg_prove_context_extension(typing,
+		contexts[i], bindings[i], pg_prove_universe(typing, classifiers, contexts[i], 0));
+	const struct pg_evidence *relation = pg_prove_identity_type(typing,
+		pg_prove_universe(typing, classifiers, contexts[2], 0),
+		pg_prove_variable(typing, contexts[2], bindings[0]), pg_prove_variable(typing, contexts[2], bindings[1]));
+	contexts[3] = pg_prove_context_extension(typing, contexts[2], bindings[2], relation);
+	const char *fields[] = {"trr", "trl", "liftr", "liftl"};
+	for (size_t i = 0; i < 4; ++i) {
+		enum pg_identity_direction direction = i % 2 ? PG_IDENTITY_LEFT : PG_IDENTITY_RIGHT;
+		const struct pg_evidence *domain = pg_prove_variable(typing, contexts[3], bindings[i % 2]);
+		const struct pg_evidence *context = pg_prove_context_extension(typing, contexts[3], bindings[4], domain);
+		const struct pg_evidence *family = pg_prove_variable(typing, context, bindings[2]);
+		const struct pg_evidence *value = pg_prove_variable(typing, context, bindings[4]);
+		const struct pg_evidence *field = i < 2 ? pg_prove_identity_transport(typing, classifiers, family, value, direction)
+			: pg_prove_identity_lift(typing, classifiers, family, value, direction);
+		const struct pg_evidence *body = pg_prove_return(typing, classifiers, field);
+		assert(body && pg_prove_abstract(typing, classifiers, context, context, body) == body);
+		const struct pg_evidence *function = pg_prove_abstract(typing, classifiers, empty, context, body);
+		assert(function);
+		const struct pg_evidence *partial = pg_prove_abstract(typing, classifiers, contexts[2], context, body);
+		assert(pg_prove_abstract(typing, classifiers, empty, contexts[2], partial) == function);
+		size_t terms = typing->graph->terms.count, proofs = typing->proofs.count;
+		assert(pg_prove_abstract(typing, classifiers, empty, context, body) == function);
+		assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+		assert(!pg_prove_abstract(typing, classifiers, empty, contexts[3], body));
+		assert(!pg_prove_abstract(typing, classifiers, empty, context, value));
+		assert(!pg_prove_abstract(typing, classifiers, context, contexts[3], partial));
+		const struct pg_evidence *unrelated = pg_prove_context_extension(typing, contexts[3], pg_binder(typing->graph), domain);
+		assert(!pg_prove_abstract(typing, classifiers, unrelated, context, body));
+		scope = pg_synthesis_name(&synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = fields[i], .length = strlen(fields[i])}, function);
+		assert(scope);
+	}
+	const char *names[] = {"A", "B", "r", "s", "x", "y"};
+	const struct pg_evidence *context = empty;
+	for (size_t i = 0; i < 6; ++i) {
+		if (i < 3) context = contexts[i + 1];
+		else {
+			const struct pg_evidence *type = i == 3 ? pg_prove_projection(typing, context, relation)
+				: pg_prove_variable(typing, context, bindings[i - 4]);
+			context = pg_prove_context_extension(typing, context, bindings[i], type);
+		}
+		scope = pg_synthesis_bind(&synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[i], .length = strlen(names[i])}, bindings[i], context);
+		assert(scope);
+	}
+	const char *sources[] = {"main := trr A B r x :: B;", "main := trl A B r y :: A;",
+		"main := liftr A B r x;", "main := liftl A B r y;"};
+	const struct pg_evidence *values[4];
+	for (size_t i = 0; i < 4; ++i) {
+		const struct pg_evidence *result = complete(&synthesis, request(&synthesis, scope, sources[i]), PG_SYNTHESIS_DONE);
+		values[i] = complete(&synthesis, pg_synthesis_return(&synthesis, context, result), PG_SYNTHESIS_DONE);
+		const struct pg_evidence *r = pg_prove_variable(typing, context, bindings[2]);
+		const struct pg_evidence *x = pg_prove_variable(typing, context, bindings[4 + i % 2]);
+		enum pg_identity_direction direction = i % 2 ? PG_IDENTITY_LEFT : PG_IDENTITY_RIGHT;
+		const struct pg_evidence *expected = i < 2 ? pg_prove_identity_transport(typing, classifiers, r, x, direction)
+			: pg_prove_identity_lift(typing, classifiers, r, x, direction);
+		const struct pg_evidence *normal = complete(&synthesis, pg_synthesis_nf(&synthesis, context, values[i]), PG_SYNTHESIS_DONE);
+		assert(pg_alpha_equal(pg_evidence_subject(normal)->core, pg_evidence_subject(expected)->core) == 1);
+		struct pg_conversion comparison;
+		assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(normal), pg_evidence_classifier(expected)) == 0);
+		assert(pg_conversion_advance(&comparison, 10000) == PG_CONVERSION_EQUAL);
+		assert(pg_prove_conversion(typing, normal, pg_prove_classifier(typing, classifiers, context, expected),
+			pg_conversion_certificate(&comparison)));
+		pg_conversion_destroy(&comparison);
+	}
+	const struct pg_evidence *other = complete(&synthesis, request(&synthesis, scope, "main := trr A B s x;"), PG_SYNTHESIS_DONE);
+	other = complete(&synthesis, pg_synthesis_return(&synthesis, context, other), PG_SYNTHESIS_DONE);
+	struct pg_conversion comparison;
+	assert(pg_conversion_init(&comparison, &work, pg_evidence_subject(values[0])->core, pg_evidence_subject(other)->core) == 0);
+	assert(pg_conversion_advance(&comparison, 10000) == PG_CONVERSION_DIFFERENT);
+	pg_conversion_destroy(&comparison);
+	const struct pg_evidence *diagonal = pg_prove_reflexivity(typing,
+		pg_prove_universe(typing, classifiers, context, 0), pg_prove_variable(typing, context, bindings[0]));
+	scope = pg_synthesis_name(&synthesis, scope, (struct pg_token){.kind = PG_TOKEN_IDENT, .text = "diagonal", .length = 8}, diagonal);
+	assert(scope);
+	const struct pg_evidence *result = complete(&synthesis, request(&synthesis, scope, "main := trr A A diagonal x :: A;"), PG_SYNTHESIS_DONE);
+	result = complete(&synthesis, pg_synthesis_return(&synthesis, context, result), PG_SYNTHESIS_DONE);
+	result = complete(&synthesis, pg_synthesis_nf(&synthesis, context, result), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(result)->core == pg_reference(typing->graph, bindings[4]));
+	complete(&synthesis, request(&synthesis, scope, "main := trr B A r y;"), PG_SYNTHESIS_REJECTED);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
 }
 
 static int arbitrary_policy(struct pg_eval *machine)
@@ -1124,6 +1215,7 @@ int main(void)
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
 	accepted_inputs(&typing, &classifiers);
 	named_identity(&typing, &classifiers);
+	named_transport(&typing, &classifiers);
 	data_cases(&typing, &classifiers);
 	source_actions(&typing, &classifiers);
 	family_transport(&typing, &classifiers);

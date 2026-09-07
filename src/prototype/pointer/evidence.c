@@ -461,6 +461,26 @@ const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 }
 
 
+const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
+	const struct pg_evidence *context, const struct pg_evidence *body)
+{
+	if (classifiers->graph != typing->graph) return NULL;
+	if (!context_proof(typing, prefix) || !context_proof(typing, context)) return NULL;
+	if (!body || body->owner != typing || body->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (body->context != context->context) return NULL;
+	const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, body);
+	if (!type) return NULL;
+	while (context->context != prefix->context) {
+		if (context->rule != PG_CONTEXT_EXTEND) return NULL;
+		type = pg_prove_pi(typing, classifiers, context->premises[1], context, type);
+		body = pg_prove_lambda(typing, type, body);
+		if (!body) return NULL;
+		context = context->premises[0];
+	}
+	return body;
+}
+
 /* Inversion uses an accepted judgement, never an untyped constructor spine. */
 static const struct pg_evidence *term_content(struct pg_typing *typing,
 	const struct pg_evidence *proof, const struct pg_object *operation,

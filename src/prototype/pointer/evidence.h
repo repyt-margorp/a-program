@@ -102,6 +102,13 @@ const struct pg_evidence *pg_prove_force(struct pg_typing *typing,
  * derivation, not a solver run inside the primitive rule. APP is exact. */
 const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *body);
+/* Abstract exactly context's suffix after prefix, inside out, using ordinary
+ * Pi formation and Lambda introduction. Body must already be a computation
+ * in context; no expected type, implicit RETURN or new proof rule is used.
+ * A zero-length suffix preserves body. All contexts/proofs belong to typing. */
+const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
+	const struct pg_evidence *context, const struct pg_evidence *body);
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
 /* The certificate and its endpoint graphs must outlive typing->graph. */

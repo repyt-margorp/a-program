@@ -304,17 +304,7 @@ const struct pg_evidence *pg_data_branch(struct pg_typing *typing,
 	const struct pg_object *object, const struct pg_evidence *body)
 {
 	const struct pg_evidence *context = pg_data_schema_fields(schema, object);
-	if (!context || !pg_evidence_owned_by(body, typing)) return NULL;
-	if (pg_evidence_judgement(body) != PG_JUDGEMENT_COMPUTATION) return NULL;
-	const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, body);
-	if (!type) return NULL;
-	while (pg_evidence_context(context) != pg_evidence_context(schema->parameters)) {
-		type = pg_prove_pi(typing, classifiers, pg_evidence_premise(context, 1), context, type);
-		body = pg_prove_lambda(typing, type, body);
-		if (!body) return NULL;
-		context = pg_evidence_premise(context, 0);
-	}
-	return body;
+	return context ? pg_prove_abstract(typing, classifiers, schema->parameters, context, body) : NULL;
 }
 
 const struct pg_evidence *pg_data_branch_motive(struct pg_typing *typing,

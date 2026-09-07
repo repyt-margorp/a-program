@@ -1322,6 +1322,23 @@ a specified type family, not a global endpoint-only relation.
   Implementation `eval.c` +137/-1, `eval.h` +18/-0, `conversion.c` +30/-6,
   `conversion.h` +5/-3 (net +180); tests `core.c` +90, `identity.c` +9;
   documentation separate. N2/N3/N5 remain open, including NF CLI integration.
+- [x] September 8, after `fedba41`: share context-suffix abstraction between
+  ADT branch functions and named checked functions (`pg_prove_abstract`). It
+  composes the existing Pi/Lambda rules, retains every premise and binder,
+  preserves a zero-length suffix, and inserts no RETURN or expected type.
+  This is a synchronous derived operation, not a new kernel rule or bounded
+  traversal claim. Source tests call the four universe transport/lifting fields
+  as ordinary checked functions, compare terms and classifiers with independent
+  primitive derivations, distinguish selected paths with identical endpoints,
+  normalize diagonal transport and reject reversed arguments. RETURN extraction
+  only exposes its payload; the diagonal final-value test requires NF, not WHNF.
+  Full/staged abstraction agrees; repeated inputs allocate no new terms/proofs;
+  wrong contexts, unrelated prefixes and value bodies reject. No structural Pi
+  transport equation, new primitive, prelude/CLI or full N2/N3 acceptance is added.
+  Optimized check: 7.692 s; ASan/UBSan: 17.442 s, with affected binaries rebuilt.
+  Core/Identity/synthesis/IADT also pass with a 512 KiB stack.
+  Implementation `evidence.c` +20/-0, `evidence.h` +7/-0, `iadt.c` +1/-11
+  (net +17); tests `synthesis.c` +98/-6; documentation separate.
 - [x] September 8, after `a8ba9a1`: connect accepted typed terms to source name
   resolution with `pg_synthesis_name`. Immutable lexical scopes point to the
   existing accepted-evidence producer, not a Core-only classifier lookup.
