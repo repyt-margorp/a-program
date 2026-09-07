@@ -19,6 +19,18 @@ struct pg_dimension_map {
 struct pg_dimensions {
 	struct pg_graph *graph;
 	struct pg_index maps;
+	struct pg_index binding_faces;
+};
+
+struct pg_binding_cube {
+	size_t dimension;
+};
+
+/* One variable of a cube's dependent boundary telescope. */
+struct pg_binding_face {
+	struct pg_object variable;
+	const struct pg_binding_cube *cube;
+	const struct pg_dimension_map *face;
 };
 
 int pg_dimensions_init(struct pg_dimensions *dimensions, struct pg_graph *graph);
@@ -30,5 +42,12 @@ const struct pg_dimension_map *pg_dimension_identity(struct pg_dimensions *dimen
 /* outer : m -> n, inner : l -> m; result : l -> n. */
 const struct pg_dimension_map *pg_dimension_compose(struct pg_dimensions *dimensions,
 	const struct pg_dimension_map *outer, const struct pg_dimension_map *inner);
+
+const struct pg_binding_cube *pg_binding_cube(struct pg_dimensions *dimensions, size_t dimension);
+/* Faces use every source axis. Degeneracies are actions, not new variables. */
+const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
+	const struct pg_binding_cube *cube, const struct pg_dimension_map *face);
+const struct pg_binding_face *pg_binding_restrict(struct pg_dimensions *dimensions,
+	const struct pg_binding_face *binding, const struct pg_dimension_map *face);
 
 #endif

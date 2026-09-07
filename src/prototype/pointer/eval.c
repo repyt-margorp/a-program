@@ -12,6 +12,18 @@ struct pg_argument {
 	const struct pg_argument *next;
 };
 
+struct readback_entry {
+	struct pg_index_entry index;
+	struct pg_closure input;
+	const struct pg_term *result;
+};
+
+struct readback_context {
+	struct pg_graph *output;
+	struct pg_graph temporary;
+	struct pg_index results;
+};
+
 static const struct pg_closure *lookup(const struct pg_environment *environment,
 	const struct pg_object *binder)
 {
@@ -76,19 +88,22 @@ enum pg_eval_status pg_eval_advance(struct pg_eval *machine, uint64_t budget)
 
 /* Readback is substitution, not evaluation. Fresh binder references prevent
  * capture when closures from different lexical environments are combined. */
-static const struct pg_term *reify(struct pg_graph *graph, struct pg_closure closure)
+static const struct pg_term *reify(struct readback_context *context, struct pg_closure closure);
+
+static const struct pg_term *reify_node(struct readback_context *context, struct pg_closure closure)
 {
+	struct pg_graph *graph = context->output;
 	const struct pg_term *term = closure.term;
 	switch (term->kind) {
 	case PG_REFERENCE: {
 		const struct pg_closure *value = lookup(closure.environment, term->as.reference);
-		return value ? reify(graph, *value) : term;
+		return value ? reify(context, *value) : term;
 	}
 	case PG_APPLICATION: {
-		const struct pg_term *function = reify(graph,
+		const struct pg_term *function = reify(context,
 			(struct pg_closure){term->as.application.function, closure.environment});
 		if (!function) return NULL;
-		const struct pg_term *argument = reify(graph,
+		const struct pg_term *argument = reify(context,
 			(struct pg_closure){term->as.application.argument, closure.environment});
 		return pg_application(graph, function, argument);
 	}
@@ -96,22 +111,48 @@ static const struct pg_term *reify(struct pg_graph *graph, struct pg_closure clo
 		const struct pg_object *binder = pg_binder(graph);
 		const struct pg_term *variable = pg_reference(graph, binder);
 		if (!variable) return NULL;
-		struct pg_environment environment = {term->as.lambda.binder, {variable, NULL}, closure.environment};
-		const struct pg_term *body = reify(graph, (struct pg_closure){term->as.lambda.body, &environment});
+		struct pg_environment *environment = pg_alloc(&context->temporary, sizeof(*environment));
+		if (!environment) return NULL;
+		*environment = (struct pg_environment){term->as.lambda.binder, {variable, NULL}, closure.environment};
+		const struct pg_term *body = reify(context, (struct pg_closure){term->as.lambda.body, environment});
 		return pg_lambda(graph, binder, body);
 	}
 	}
 	return NULL;
 }
 
+static const struct pg_term *reify(struct readback_context *context, struct pg_closure closure)
+{
+	if (!closure.environment) return closure.term;
+	uint64_t hash = ((uintptr_t)closure.term * UINT64_C(1099511628211)) ^ (uintptr_t)closure.environment;
+	for (struct pg_index_entry *candidate = pg_index_candidates(&context->results, hash); candidate; candidate = candidate->next) {
+		if (candidate->hash != hash) continue;
+		const struct readback_entry *entry = (const struct readback_entry *)candidate;
+		if (entry->input.term != closure.term) continue;
+		if (entry->input.environment == closure.environment) return entry->result;
+	}
+	const struct pg_term *result = reify_node(context, closure);
+	if (!result) return NULL;
+	struct readback_entry *entry = pg_alloc(&context->temporary, sizeof(*entry));
+	if (!entry) return NULL;
+	entry->input = closure;
+	entry->result = result;
+	if (pg_index_insert(&context->results, &entry->index, hash) != 0) return NULL;
+	return result;
+}
+
 const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph *graph)
 {
 	if (machine->status == PG_EVAL_ERROR) return NULL;
-	const struct pg_term *result = reify(graph, machine->current);
+	struct readback_context context = {.output = graph};
+	if (pg_index_init(&context.results) != 0) return NULL;
+	const struct pg_term *result = reify(&context, machine->current);
 	for (const struct pg_argument *argument = machine->arguments; argument; argument = argument->next) {
-		if (!result) return NULL;
-		result = pg_application(graph, result, reify(graph, argument->value));
+		if (!result) break;
+		result = pg_application(graph, result, reify(&context, argument->value));
 	}
+	pg_index_destroy(&context.results);
+	pg_graph_destroy(&context.temporary);
 	return result;
 }
 

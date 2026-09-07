@@ -64,52 +64,74 @@ static uint64_t mix(uint64_t left, uint64_t right)
 	return (left ^ (right + UINT64_C(0x9e3779b97f4a7c15))) * UINT64_C(1099511628211);
 }
 
-static uint64_t alpha_hash(const struct pg_term *term, const struct binder_pair *scope)
-{
-	uint64_t hash = (uint64_t)term->kind + 1;
-	switch (term->kind) {
-	case PG_REFERENCE:
-		for (const struct binder_pair *p = scope; p; p = p->parent) {
-			if (p->left == term->as.reference) return mix(hash, 0);
-		}
-		return mix(hash, (uintptr_t)term->as.reference);
-	case PG_APPLICATION:
-		return mix(mix(hash, alpha_hash(term->as.application.function, scope)),
-			alpha_hash(term->as.application.argument, scope));
-	case PG_LAMBDA: {
-		struct binder_pair binder = {term->as.lambda.binder, NULL, scope};
-		return mix(hash, alpha_hash(term->as.lambda.body, &binder));
-	}
-	}
-	return 0;
-}
+struct alpha_entry {
+	struct pg_index_entry index;
+	const struct pg_term *left;
+	const struct pg_term *right;
+	const struct binder_pair *scope;
+};
 
-static int alpha_equal(const struct pg_term *left, const struct pg_term *right,
+struct alpha_context {
+	struct pg_graph arena;
+	struct pg_index seen;
+};
+
+static int alpha_equal(struct alpha_context *context, const struct pg_term *left, const struct pg_term *right,
 	const struct binder_pair *scope)
 {
 	if (left->kind != right->kind) return 0;
-	switch (left->kind) {
-	case PG_REFERENCE:
+	if (left->kind == PG_REFERENCE) {
 		for (const struct binder_pair *p = scope; p; p = p->parent) {
 			if (left->as.reference == p->left) return right->as.reference == p->right;
 			if (right->as.reference == p->right) return 0;
 		}
 		return left->as.reference == right->as.reference;
+	}
+	uint64_t hash = mix(mix((uintptr_t)left, (uintptr_t)right), (uintptr_t)scope);
+	for (struct pg_index_entry *candidate = pg_index_candidates(&context->seen, hash); candidate; candidate = candidate->next) {
+		if (candidate->hash != hash) continue;
+		const struct alpha_entry *entry = (const struct alpha_entry *)candidate;
+		if (entry->left != left) continue;
+		if (entry->right != right) continue;
+		if (entry->scope == scope) return 1;
+	}
+	int result;
+	switch (left->kind) {
 	case PG_APPLICATION:
-		if (!alpha_equal(left->as.application.function, right->as.application.function, scope)) return 0;
-		return alpha_equal(left->as.application.argument, right->as.application.argument, scope);
+		result = alpha_equal(context, left->as.application.function, right->as.application.function, scope);
+		if (result != 1) return result;
+		result = alpha_equal(context, left->as.application.argument, right->as.application.argument, scope);
+		break;
 	case PG_LAMBDA: {
-		struct binder_pair binder = {left->as.lambda.binder, right->as.lambda.binder, scope};
-		return alpha_equal(left->as.lambda.body, right->as.lambda.body, &binder);
+		struct binder_pair *binder = pg_alloc(&context->arena, sizeof(*binder));
+		if (!binder) return -1;
+		*binder = (struct binder_pair){left->as.lambda.binder, right->as.lambda.binder, scope};
+		result = alpha_equal(context, left->as.lambda.body, right->as.lambda.body, binder);
+		break;
 	}
+	default:
+		return 0;
 	}
-	return 0;
+	if (result != 1) return result;
+	struct alpha_entry *entry = pg_alloc(&context->arena, sizeof(*entry));
+	if (!entry) return -1;
+	entry->left = left;
+	entry->right = right;
+	entry->scope = scope;
+	if (pg_index_insert(&context->seen, &entry->index, hash) != 0) return -1;
+	return 1;
 }
 
 int pg_alpha_equal(const struct pg_term *left, const struct pg_term *right)
 {
 	if (!left || !right) return 0;
-	return alpha_equal(left, right, NULL);
+	if (left == right) return 1;
+	struct alpha_context context = {0};
+	if (pg_index_init(&context.seen) != 0) return -1;
+	int result = alpha_equal(&context, left, right, NULL);
+	pg_index_destroy(&context.seen);
+	pg_graph_destroy(&context.arena);
+	return result;
 }
 
 int pg_index_init(struct pg_index *index)
@@ -165,14 +187,17 @@ int pg_index_insert(struct pg_index *index, struct pg_index_entry *entry, uint64
 	return 0;
 }
 
-static const struct pg_term *intern(struct pg_graph *graph, const struct pg_term *term)
+static const struct pg_term *intern(struct pg_graph *graph, struct pg_term *term)
 {
 	uint64_t hash;
 	if (term->kind == PG_APPLICATION) {
 		hash = mix(mix(PG_APPLICATION + 1, (uintptr_t)term->as.application.function),
 			(uintptr_t)term->as.application.argument);
+	} else if (term->kind == PG_REFERENCE) {
+		hash = mix(PG_REFERENCE + 1, (uintptr_t)term->as.reference);
 	} else {
-		hash = alpha_hash(term, NULL);
+		hash = mix(mix(PG_LAMBDA + 1, (uintptr_t)term->as.lambda.binder),
+			(uintptr_t)term->as.lambda.body);
 	}
 	for (struct pg_index_entry *candidate = pg_index_candidates(&graph->terms, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
@@ -183,7 +208,12 @@ static const struct pg_term *intern(struct pg_graph *graph, const struct pg_term
 			if (entry->term.as.application.argument != term->as.application.argument) continue;
 			return &entry->term;
 		}
-		if (pg_alpha_equal(&entry->term, term)) return &entry->term;
+		if (term->kind == PG_REFERENCE) {
+			if (entry->term.as.reference == term->as.reference) return &entry->term;
+			continue;
+		}
+		if (entry->term.as.lambda.binder != term->as.lambda.binder) continue;
+		if (entry->term.as.lambda.body == term->as.lambda.body) return &entry->term;
 	}
 	struct pg_entry *entry = pg_alloc(graph, sizeof(*entry));
 	if (!entry) return NULL;

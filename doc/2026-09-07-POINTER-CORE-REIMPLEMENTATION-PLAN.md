@@ -9,6 +9,9 @@ AI implementation location: `src/prototype/pointer/`
 
 Revision: HOTT and dimensional action are foundational from N0/N1, following
 the user's 2026-09-07 correction. They are not a feature to bolt on at N6.
+Further correction: Core interning uses exact pointer tuples only. Alpha
+comparison and normalization are explicit operations, never construction-time
+criteria for merging different Lambda or semantic-object references.
 
 ## 1. Objective and Source of Decisions
 
@@ -79,7 +82,7 @@ pointer does not eliminate those rules.
 6. A budget exhaustion result is pending, not false or accepted. Static
    evaluation uses only the explicitly admitted pure semantics. Host effects
    execute only at an execution boundary.
-7. Hash lookup followed by exact comparison and allocation is the common
+7. Hash lookup followed by exact pointer-key comparison and allocation is the common
    construction path. Rule dispatch, genuine scope distinctions and errors
    remain explicit. Deleting all conditional operators is not an acceptance test.
 
@@ -124,12 +127,17 @@ Start with whole-program arena ownership and reclaim temporary frames per run.
 Measure before adding fine-grained GC or environment indexes.
 
 Binder objects are allocated before their bodies and are frozen with the binding
-scope. Use a correspondence of binder pointers for alpha comparison, including
-Match field binders and recursive frames. Do not adopt De Bruijn storage. A
-scope-aware structural hash may ignore the identity of bound pointers and then
-resolve collisions with the exact binder bijection. Free pointers remain part of
-identity. Do not hash raw bound addresses and call that alpha interning.
-Measure collision behavior before optimizing this algorithm. Reindexing and
+scope. Intern Lambda by `(binder*, body*)`, APP by `(function*, argument*)`, and
+REFERENCE by `object*`, with the node kind in every key. There is no recursive
+inspection of children during interning. Different binder pointers remain
+different structural nodes even when the lambdas are alpha-equivalent.
+
+When alpha comparison is explicitly required, use a binder correspondence;
+never use its result to merge the input nodes. Do not adopt De Bruijn storage.
+Likewise, evaluating `APP(identity, value)` may return `value`, but the original
+APP remains a distinct interned node. WHNF/NF equality belongs to explicit
+conversion, not allocation. Match/IADT references follow the same rule: distinct
+semantic objects are not merged because their computations agree. Reindexing and
 capture avoidance still exist with pointers; share unchanged subgraphs and
 memoize substitution by term plus immutable environment/mapping.
 
@@ -347,7 +355,7 @@ results, timing and net source/test LOC. An unchecked row is not implemented.
 | --- | --- | --- | --- |
 | [x] | Archive | preserve failed source and stop predecessor | local archive commit and failure record |
 | [ ] | N0 Baseline and HOTT rules | inventory syntax/tests; pin Narya source and define action, boundary, transport/lifting rules for the initial fragment | compatibility manifest plus concise rule/representation correspondence, including CBPV obligations |
-| [ ] | N1 Dimensional pointer Core | stable arena, binders, APP, descriptors, alpha interning, evaluator; dimension maps and shared boundary diagrams | beta/capture tests and dimension 0-3 action laws; no depth-specific Core variants |
+| [ ] | N1 Dimensional pointer Core | stable arena, pointer-key interning, explicit alpha comparison, evaluator; dimension maps and shared boundary diagrams | beta/capture tests, no conversion-based interning, dimension 0-3 action laws; no depth-specific Core variants |
 | [ ] | N2 Typed HOTT vertical slice | reader, synthesis, contexts; typed Act, Identity and initial transport/lifting computation | shared Core with distinct typing; post-check `::`; iterated action on Lambda/APP, checked boundaries and supported equality operations |
 | [ ] | N3 Dimensional ADT/IADT | parameters/indices, self family, telescope action, nominal declarations, Match/IH and their higher rules | Nat/List/Vec/Acc; higher constructors and Match; indexed transport obligations recorded; producer-order-independent goals |
 | [ ] | N4 CBPV and effects | remaining block/quote/exit forms; structural references; request/fold reducers; effect rows and continuation rules | 01-09, single versus repeated execution, nested exit boundary, operation alias, multi-clause deep handler and unhandled forwarding |
@@ -378,8 +386,9 @@ input/options on consecutive implementations; do not infer speed from LOC.
 
 ## 10. Review Gates and Explicit Limits
 
-- Pointer-based Core is the chosen direction; whether the particular binder
-  canonicalization performs well is an N1 measurement, not an assumption.
+- Pointer-based Core is the chosen direction; measure interning collisions and
+  explicit alpha-comparison costs separately. Do not add binder canonicalization
+  as an implicit construction pass.
 - Oracle/IADT descriptors may contain complex rules. Count their code as Core
   functionality when reporting size; hiding it behind pointers is not reduction.
 - Do not copy the old solution/projection/transaction infrastructure wholesale.
@@ -395,6 +404,9 @@ input/options on consecutive implementations; do not infer speed from LOC.
   start this independent prototype.
 
 ## 11. Progress: 2026-09-07 Initial Core
+
+Historical checkpoint `6ef8a74`; its alpha-interning decision is superseded by
+the exact-pointer-key correction below.
 
 Implemented independently in `src/prototype/pointer/`:
 
@@ -437,6 +449,32 @@ Neither N0 nor N1 is marked complete. Next: complete the compatibility inventory
 implement shared boundary diagrams and scoped action using this pointer graph,
 then integrate typed Act/Identity with source synthesis. Do not resume the old
 single-path refactoring or push this partial implementation to main.
+
+## 12. Progress: Pointer Identity and Boundary Bindings
+
+The user's clarification supersedes automatic alpha interning in `6ef8a74`.
+Core constructors now compare exact pointer tuples only, with no recursive
+hashing, alpha comparison, WHNF evaluation or normalization in that path.
+Alpha comparison remains an explicit operation and memoizes term pairs together
+with their binder correspondence. It never merges them. Readback separately
+memoizes term/environment pairs to preserve DAG sharing during substitution.
+
+Lazy cube boundary binders are interned by `(cube*, face_map*)`. Restriction
+composes maps before lookup, so two paths to one corner recover the same binder.
+Distinct cube owners remain distinct. A degeneracy cannot allocate an independent
+boundary variable; its term action still needs the typed action implementation.
+These objects specify scopes, not inhabitants of Identity by themselves.
+
+`src/prototype/pointer/tests/compatibility.tsv` now records the frozen source
+inventory; its companion README explains the remaining manual review. The
+parser's generated binary-Bool companion classifier was identified as semantic
+work that must move to typed elaboration when preserving that syntax.
+
+Normal and ASan/UBSan builds pass the expanded Core suite. Regressions include
+40-level shared DAGs, capture-preserving readback, distinct alpha-equivalent
+Lambda nodes, unchanged interning after beta reduction, and equal composite
+boundary restrictions. The typed classifier for a cube, higher term action,
+transport/lifting and source parsing remain incomplete. N0/N1 stay open.
 
 The design is informed by the two handmade files and the current implementation
 paths above. It is an A Program engineering proposal, not a claimed direct

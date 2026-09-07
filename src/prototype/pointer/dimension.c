@@ -8,16 +8,27 @@ struct pg_map_entry {
 	struct pg_dimension_map map;
 };
 
+struct pg_binding_entry {
+	struct pg_index_entry index;
+	struct pg_binding_face binding;
+};
+
 int pg_dimensions_init(struct pg_dimensions *dimensions, struct pg_graph *graph)
 {
 	memset(dimensions, 0, sizeof(*dimensions));
 	dimensions->graph = graph;
-	return pg_index_init(&dimensions->maps);
+	if (pg_index_init(&dimensions->maps) != 0) return -1;
+	if (pg_index_init(&dimensions->binding_faces) != 0) {
+		pg_index_destroy(&dimensions->maps);
+		return -1;
+	}
+	return 0;
 }
 
 void pg_dimensions_destroy(struct pg_dimensions *dimensions)
 {
 	pg_index_destroy(&dimensions->maps);
+	pg_index_destroy(&dimensions->binding_faces);
 	memset(dimensions, 0, sizeof(*dimensions));
 }
 
@@ -117,4 +128,43 @@ const struct pg_dimension_map *pg_dimension_compose(struct pg_dimensions *dimens
 	const struct pg_dimension_map *result = pg_dimension_map(dimensions, inner->source, outer->target, coordinates);
 	free(coordinates);
 	return result;
+}
+
+const struct pg_binding_cube *pg_binding_cube(struct pg_dimensions *dimensions, size_t dimension)
+{
+	struct pg_binding_cube *cube = pg_alloc(dimensions->graph, sizeof(*cube));
+	if (cube) cube->dimension = dimension;
+	return cube;
+}
+
+const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
+	const struct pg_binding_cube *cube, const struct pg_dimension_map *face)
+{
+	if (!cube || !face) return NULL;
+	if (cube->dimension != face->target) return NULL;
+	size_t used_axes = 0;
+	for (size_t i = 0; i < face->target; ++i) {
+		if (face->coordinates[i].kind == PG_AXIS) used_axes++;
+	}
+	if (used_axes != face->source) return NULL;
+	uint64_t hash = mix(mix(UINT64_C(14695981039346656037), (uintptr_t)cube), (uintptr_t)face);
+	for (struct pg_index_entry *candidate = pg_index_candidates(&dimensions->binding_faces, hash); candidate; candidate = candidate->next) {
+		if (candidate->hash != hash) continue;
+		const struct pg_binding_entry *entry = (const struct pg_binding_entry *)candidate;
+		if (entry->binding.cube != cube) continue;
+		if (entry->binding.face == face) return &entry->binding;
+	}
+	struct pg_binding_entry *entry = pg_alloc(dimensions->graph, sizeof(*entry));
+	if (!entry) return NULL;
+	entry->binding = (struct pg_binding_face){{PG_BINDER}, cube, face};
+	if (pg_index_insert(&dimensions->binding_faces, &entry->index, hash) != 0) return NULL;
+	return &entry->binding;
+}
+
+const struct pg_binding_face *pg_binding_restrict(struct pg_dimensions *dimensions,
+	const struct pg_binding_face *binding, const struct pg_dimension_map *face)
+{
+	if (!binding) return NULL;
+	const struct pg_dimension_map *composite = pg_dimension_compose(dimensions, binding->face, face);
+	return pg_binding_face(dimensions, binding->cube, composite);
 }

@@ -57,6 +57,8 @@ const struct pg_term *pg_application(struct pg_graph *graph,
 	const struct pg_term *function, const struct pg_term *argument);
 const struct pg_term *pg_lambda(struct pg_graph *graph,
 	const struct pg_object *binder, const struct pg_term *body);
+/* Explicit syntactic alpha comparison, never used by interning or reduction.
+ * 1 equal, 0 different, -1 allocation failure. */
 int pg_alpha_equal(const struct pg_term *left, const struct pg_term *right);
 
 #endif

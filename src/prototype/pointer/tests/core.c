@@ -14,15 +14,18 @@ static void graph_test(struct pg_graph *graph)
 	const struct pg_term *vy = pg_reference(graph, y);
 	const struct pg_term *vz = pg_reference(graph, z);
 	const struct pg_term *identity = pg_lambda(graph, x, vx);
-	assert(identity == pg_lambda(graph, y, vy));
+	assert(identity == pg_lambda(graph, x, vx));
+	assert(identity != pg_lambda(graph, y, vy));
+	assert(pg_alpha_equal(identity, pg_lambda(graph, y, vy)) == 1);
 	assert(vx != vy);
 	assert(pg_lambda(graph, x, vy) != identity);
 	const struct pg_term *first = pg_lambda(graph, x, pg_lambda(graph, y, vx));
 	const struct pg_term *second = pg_lambda(graph, x, pg_lambda(graph, y, vy));
 	assert(first != second);
 	assert(!pg_alpha_equal(first, second));
-	assert(first == pg_lambda(graph, y, pg_lambda(graph, z, vy)));
-	assert(pg_lambda(graph, x, vz) == pg_lambda(graph, y, vz));
+	assert(pg_alpha_equal(first, pg_lambda(graph, y, pg_lambda(graph, z, vy))) == 1);
+	assert(pg_lambda(graph, x, vz) != pg_lambda(graph, y, vz));
+	assert(pg_alpha_equal(pg_lambda(graph, x, vz), pg_lambda(graph, y, vz)) == 1);
 	assert(pg_lambda(graph, x, vz) != pg_lambda(graph, x, vy));
 	const struct pg_term *app = pg_application(graph, identity, vx);
 	assert(app == pg_application(graph, identity, vx));
@@ -39,8 +42,21 @@ static void graph_test(struct pg_graph *graph)
 	}
 	assert(graph->terms.capacity > 1024);
 	assert(vx->as.reference == x);
-	assert(identity == pg_lambda(graph, z, vz));
+	assert(identity == pg_lambda(graph, x, vx));
 	assert(app == pg_application(graph, identity, vx));
+	/* These DAGs contain 40 application nodes each, not 2^40 independent
+	 * subterms. Hashing and alpha comparison must preserve that sharing. */
+	const struct pg_term *left_dag = vx;
+	const struct pg_term *right_dag = vy;
+	for (size_t i = 0; i < 40; ++i) {
+		left_dag = pg_application(graph, left_dag, left_dag);
+		right_dag = pg_application(graph, right_dag, right_dag);
+	}
+	const struct pg_term *left_lambda = pg_lambda(graph, x, left_dag);
+	const struct pg_term *right_lambda = pg_lambda(graph, y, right_dag);
+	assert(left_lambda != right_lambda);
+	assert(pg_alpha_equal(left_lambda, right_lambda) == 1);
+	assert(pg_alpha_equal(left_dag, right_dag) == 0);
 }
 
 static const struct pg_dimension_map *maps[128];
@@ -58,6 +74,9 @@ static void evaluation_test(struct pg_graph *graph)
 	const struct pg_term *vb = pg_reference(graph, b);
 	const struct pg_term *constant = pg_lambda(graph, x, pg_lambda(graph, y, vx));
 	const struct pg_term *input = pg_application(graph, pg_application(graph, constant, va), vb);
+	const struct pg_term *identity = pg_lambda(graph, x, vx);
+	const struct pg_term *redex = pg_application(graph, identity, va);
+	assert(redex != va);
 	struct pg_eval whole, split;
 	pg_eval_init(&whole, input);
 	pg_eval_init(&split, input);
@@ -72,6 +91,12 @@ static void evaluation_test(struct pg_graph *graph)
 	assert(pg_eval_readback(&split, graph) == va);
 	pg_eval_destroy(&whole);
 	pg_eval_destroy(&split);
+	pg_eval_init(&whole, redex);
+	assert(pg_eval_advance(&whole, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&whole, graph) == va);
+	assert(pg_application(graph, identity, va) == redex);
+	assert(redex != va);
+	pg_eval_destroy(&whole);
 	pg_eval_init(&whole, residual);
 	assert(pg_eval_advance(&whole, 100) == PG_EVAL_WHNF);
 	assert(pg_eval_readback(&whole, graph) == va);
@@ -80,8 +105,8 @@ static void evaluation_test(struct pg_graph *graph)
 	pg_eval_init(&whole, pg_application(graph, constant, vy));
 	assert(pg_eval_advance(&whole, 100) == PG_EVAL_WHNF);
 	const struct pg_term *captured = pg_eval_readback(&whole, graph);
-	assert(captured == pg_lambda(graph, a, vy));
-	assert(captured != pg_lambda(graph, y, vy));
+	assert(pg_alpha_equal(captured, pg_lambda(graph, a, vy)) == 1);
+	assert(pg_alpha_equal(captured, pg_lambda(graph, y, vy)) == 0);
 	pg_eval_destroy(&whole);
 	/* One shared lambda is used under two distinct environments. */
 	const struct pg_term *inner = pg_lambda(graph, y, vx);
@@ -89,7 +114,7 @@ static void evaluation_test(struct pg_graph *graph)
 		const struct pg_term *argument = i ? vb : va;
 		pg_eval_init(&whole, pg_application(graph, pg_lambda(graph, x, inner), argument));
 		assert(pg_eval_advance(&whole, 100) == PG_EVAL_WHNF);
-		assert(pg_eval_readback(&whole, graph) == pg_lambda(graph, y, argument));
+		assert(pg_alpha_equal(pg_eval_readback(&whole, graph), pg_lambda(graph, y, argument)) == 1);
 		pg_eval_destroy(&whole);
 	}
 	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
@@ -97,6 +122,17 @@ static void evaluation_test(struct pg_graph *graph)
 	assert(pg_eval_advance(&whole, 100) == PG_EVAL_PENDING);
 	assert(pg_eval_advance(&whole, 100) == PG_EVAL_PENDING);
 	assert(whole.steps == 200);
+	pg_eval_destroy(&whole);
+	const struct pg_term *shared = vx;
+	const struct pg_term *expected = va;
+	for (size_t i = 0; i < 40; ++i) {
+		shared = pg_application(graph, shared, shared);
+		expected = pg_application(graph, expected, expected);
+	}
+	const struct pg_term *suspended = pg_lambda(graph, x, pg_lambda(graph, y, shared));
+	pg_eval_init(&whole, pg_application(graph, suspended, va));
+	assert(pg_eval_advance(&whole, 100) == PG_EVAL_WHNF);
+	assert(pg_alpha_equal(pg_eval_readback(&whole, graph), pg_lambda(graph, y, expected)) == 1);
 	pg_eval_destroy(&whole);
 	puts("evaluation: lexical capture, shared closures, split budgets and divergence passed");
 }
@@ -168,6 +204,35 @@ static void dimension_test(struct pg_graph *graph)
 	const struct pg_dimension_map *projection = pg_dimension_map(&dimensions, 3, 2, projection_coordinates);
 	assert(pg_dimension_compose(&dimensions, projection, face) == pg_dimension_identity(&dimensions, 2));
 	assert(!pg_dimension_compose(&dimensions, face, face));
+	/* Restricting a cube along equal composites names the same variable. */
+	const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, 3);
+	const struct pg_binding_face *top = pg_binding_face(&dimensions, cube,
+		pg_dimension_identity(&dimensions, 3));
+	assert(top);
+	const struct pg_binding_face *surface = pg_binding_restrict(&dimensions, top, face);
+	assert(surface);
+	struct pg_coordinate edge_coordinates[] = {{PG_ENDPOINT_ZERO, 0}, {PG_AXIS, 0}};
+	const struct pg_dimension_map *edge = pg_dimension_map(&dimensions, 1, 2, edge_coordinates);
+	const struct pg_binding_face *line = pg_binding_restrict(&dimensions, surface, edge);
+	assert(line == pg_binding_restrict(&dimensions, top, pg_dimension_compose(&dimensions, face, edge)));
+	const struct pg_term *line_term = pg_reference(graph, &line->variable);
+	assert(line_term == pg_reference(graph, &pg_binding_face(&dimensions, cube, line->face)->variable));
+	const struct pg_binding_cube *other_cube = pg_binding_cube(&dimensions, 3);
+	assert(pg_binding_face(&dimensions, other_cube, line->face) != line);
+	const struct pg_binding_cube *square = pg_binding_cube(&dimensions, 2);
+	struct pg_coordinate down[] = {{PG_ENDPOINT_ZERO, 0}, {PG_AXIS, 0}};
+	struct pg_coordinate left[] = {{PG_AXIS, 0}, {PG_ENDPOINT_ZERO, 0}};
+	struct pg_coordinate endpoint = {PG_ENDPOINT_ZERO, 0};
+	const struct pg_dimension_map *zero = pg_dimension_map(&dimensions, 0, 1, &endpoint);
+	const struct pg_binding_face *bottom = pg_binding_face(&dimensions, square,
+		pg_dimension_map(&dimensions, 1, 2, down));
+	const struct pg_binding_face *side = pg_binding_face(&dimensions, square,
+		pg_dimension_map(&dimensions, 1, 2, left));
+	assert(pg_binding_restrict(&dimensions, bottom, zero) == pg_binding_restrict(&dimensions, side, zero));
+	/* Dropping a source dimension cannot introduce an independent binder. */
+	assert(!pg_binding_face(&dimensions, square, projection));
+	assert(!pg_binding_restrict(&dimensions, top, edge));
+	assert(pg_binding_restrict(&dimensions, top, pg_dimension_identity(&dimensions, 3)) == top);
 	for (size_t n = 4; n < 150; ++n) assert(pg_dimension_identity(&dimensions, n));
 	assert(dimensions.maps.capacity > 64);
 	assert(cycle == pg_dimension_map(&dimensions, 3, 3, permutation));
@@ -182,7 +247,7 @@ int main(void)
 	graph_test(&graph);
 	evaluation_test(&graph);
 	dimension_test(&graph);
-	printf("graph: %zu terms; alpha sharing and stable pointers passed\n", graph.terms.count);
+	printf("graph: %zu terms; pointer-key interning and separate alpha comparison passed\n", graph.terms.count);
 	pg_graph_destroy(&graph);
 	return 0;
 }
