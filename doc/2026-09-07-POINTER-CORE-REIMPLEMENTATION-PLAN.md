@@ -809,6 +809,41 @@ a specified type family, not a global endpoint-only relation.
   parser-only checks, not full old-example synthesis/evaluation acceptance.
   Sizes excluding docs: `synthesis.c` +50/-31, `synthesis.h` +5/-0
   (implementation net +24); `tests/synthesis.c` +137/-0.
+- [x] September 8, after `48b037b`: diagonal substitution for scoped action.
+  Add the canonical reduction `ap F (refl a) -> refl (F a)`, simultaneously
+  for all variables of a curried source telescope. It also applies when the
+  source body is an Identity instance or a transport field, where ordinary
+  action dispatch must otherwise remain neutral. The selected triples must
+  have exactly the same left/right closure and a syntactic reflexivity of
+  that closure; identical term pointers under different environments do not
+  qualify. An arbitrary path with equal endpoints is not collapsed to refl.
+  No endpoint normalization, alpha interning or checker lookup is performed
+  to select the rewrite. Administrative Lambda/APP reuses ordinary capture-
+  avoiding evaluation; a read-only argument cursor avoids repeated prefix
+  walks while inspecting all triples. Partial applications stay neutral.
+  This is the specialization of action/substitution compatibility to a
+  diagonal substitution. [Narya's observational laws](https://narya.readthedocs.io/en/latest/observational.html#observational-primitives)
+  explicitly include the corresponding ap/refl equation (checked September 8).
+  The CBPV polarity discipline and closure implementation remain our adaptation.
+  Tests now derive **and reduce** symmetry of refl and composition of two
+  reflexivities, including their lift witnesses. A dependent `(Z,e:Z)` family
+  `Id Z e e` checks both term and classifier computation under two diagonal
+  paths. Tests also cover multiple curried arguments, an incomplete spine,
+  a non-reflexive chosen loop, mismatched endpoints, captured environments,
+  and split/whole step agreement. Earlier tests expecting a field-headed
+  action to stay neutral now distinguish diagonal from arbitrary input paths.
+  This does not implement general action on acted/field-headed sources,
+  naturality for an opaque neutral callee, higher interchange/coherence, or
+  nontrivial unit/associativity laws for the derived groupoid operations.
+  The arity scan is linear but still one callback transition, not a wall-clock
+  fuel bound. N2/N3 remain open; constructor telescopes still need checked
+  declarations, dimensional action and indexed fibrancy before acceptance.
+  Verification passed: optimized and ASan/UBSan pointer `make check`, plus
+  Identity/synthesis with a 512 KiB stack. The 158 syntax outcomes remain
+  parsing coverage rather than full legacy program acceptance.
+  Sizes excluding docs: `identity.c` +24/-0, `eval.c` +11/-3,
+  `eval.h` +3/-0 (implementation net +35); `tests/identity.c` +55/-0,
+  `tests/synthesis.c` +11/-0.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

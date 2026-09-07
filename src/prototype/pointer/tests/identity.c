@@ -167,6 +167,11 @@ static void transport_fields(struct pg_typing *typing, struct pg_classifiers *cl
 	const struct pg_term *higher = pg_identity_apply(graph, pg_lambda(graph, z,
 		pg_identity_transport(graph, pg_evidence_subject(r)->core, vz, PG_IDENTITY_RIGHT)),
 		pg_evidence_subject(x)->core, pg_evidence_subject(x)->core, pg_evidence_subject(reflexivity)->core);
+	normalizes(&work, higher, pg_identity_action(graph,
+		pg_identity_transport(graph, pg_evidence_subject(r)->core, pg_evidence_subject(x)->core, PG_IDENTITY_RIGHT)));
+	higher = pg_identity_apply(graph, pg_lambda(graph, z,
+		pg_identity_transport(graph, pg_evidence_subject(r)->core, vz, PG_IDENTITY_RIGHT)),
+		pg_evidence_subject(x)->core, pg_evidence_subject(x)->core, pg_reference(graph, pg_binder(graph)));
 	normalizes(&work, higher, higher);
 	pg_whnf_work_destroy(&whole);
 	pg_whnf_work_destroy(&work);
@@ -347,6 +352,36 @@ static void lambda_actions(struct pg_classifiers *classifiers)
 	 * unused boundary computations must never be demanded. */
 	const struct pg_term *family = pg_identity_instance(graph, pg_identity_action(graph, a), vx, vx);
 	const struct pg_term *closed = pg_identity_instance(graph, pg_identity_action(graph, a), a, b);
+	/* Reflexivity commutes with substitution, including an acted source. */
+	const struct pg_term *refl_a = pg_identity_action(graph, a);
+	const struct pg_term *diagonal_family = pg_lambda(graph, x, family);
+	const struct pg_term *diagonal = pg_identity_apply(graph, diagonal_family, a, a, refl_a);
+	const struct pg_term *diagonal_result = pg_identity_action(graph,
+		pg_identity_instance(graph, pg_identity_action(graph, a), a, a));
+	normalizes(&work, diagonal, diagonal_result);
+	const struct pg_term *chosen_loop = pg_identity_apply(graph, diagonal_family, a, a, p);
+	normalizes(&work, chosen_loop, chosen_loop);
+	const struct pg_term *wrong_endpoint = pg_identity_apply(graph, diagonal_family, a, b, refl_a);
+	normalizes(&work, wrong_endpoint, wrong_endpoint);
+	const struct pg_term *two = pg_lambda(graph, x, pg_lambda(graph, y,
+		pg_identity_instance(graph, pg_identity_action(graph, a), vx, vy)));
+	const struct pg_term *two_action = pg_identity_apply(graph, two, a, a, refl_a);
+	normalizes(&work, two_action, two_action);
+	two_action = pg_application(graph, pg_identity_instance(graph, two_action, b, b), pg_identity_action(graph, b));
+	normalizes(&work, two_action, pg_identity_action(graph, closed));
+	/* Equal syntax under different environments is not an equal endpoint. */
+	const struct pg_term *prefix = pg_application(graph, pg_lambda(graph, x,
+		pg_application(graph, pg_identity_action(graph, diagonal_family), vx)), a);
+	const struct pg_term *capture_diagonal = pg_application(graph, pg_application(graph, prefix, vx),
+		pg_identity_action(graph, vx));
+	converts(&work, capture_diagonal, pg_identity_apply(graph, diagonal_family, a, vx, pg_identity_action(graph, vx)));
+	struct pg_whnf_work diagonal_whole;
+	assert(pg_whnf_work_init(&diagonal_whole, graph) == 0);
+	struct pg_whnf_job *diagonal_job = pg_whnf_request(&diagonal_whole, &pg_pure_policy, diagonal);
+	assert(pg_whnf_advance(diagonal_job, 100000) == PG_EVAL_WHNF);
+	assert(pg_whnf_result(diagonal_job) == diagonal_result);
+	assert(pg_whnf_steps(diagonal_job) == pg_whnf_steps(pg_whnf_request(&work, &pg_pure_policy, diagonal)));
+	pg_whnf_work_destroy(&diagonal_whole);
 	normalizes(&work, pg_identity_apply(graph, pg_lambda(graph, x, closed), omega, omega, omega),
 		pg_identity_action(graph, closed));
 	const struct pg_term *f_type = pg_return_type(classifiers, a);
@@ -636,6 +671,26 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 		pg_prove_family_action(typing, pg_prove_classifier(typing, classifiers, element_scope, ethunk),
 			ethunk, tls, trs, 2, paths),
 		pg_prove_thunk(typing, classifiers, pg_prove_return(typing, classifiers, paths[1])));
+	/* Diagonal action of the dependent family (Z,e:Z) |-> Id Z e e. */
+	const struct pg_evidence *diagonal_paths[2];
+	for (size_t i = 0; i < 2; ++i) diagonal_paths[i] = pg_prove_reflexivity(typing,
+		pg_prove_classifier(typing, classifiers, telescope_scope, tleft[i]), tleft[i]);
+	const struct pg_evidence *diagonal_prefix = pg_prove_substitution(typing, source, telescope_scope, 1, tleft);
+	const struct pg_evidence *path_type = pg_prove_family_identity_type(typing,
+		family, diagonal_prefix, diagonal_prefix, 1, diagonal_paths, tleft[1], tleft[1]);
+	struct pg_conversion diagonal_conversion;
+	assert(pg_conversion_init(&diagonal_conversion, &work, pg_evidence_classifier(diagonal_paths[1]),
+		pg_evidence_subject(path_type)->core) == 0);
+	assert(pg_conversion_advance(&diagonal_conversion, 100000) == PG_CONVERSION_EQUAL);
+	diagonal_paths[1] = pg_prove_conversion(typing, diagonal_paths[1], path_type,
+		pg_conversion_certificate(&diagonal_conversion));
+	pg_conversion_destroy(&diagonal_conversion);
+	const struct pg_evidence *id_family = pg_prove_type_value(typing, pg_prove_identity_type(typing, etype, element, element));
+	const struct pg_evidence *id_sort = pg_prove_classifier(typing, classifiers, element_scope, id_family);
+	const struct pg_evidence *id_instance = pg_prove_reindex(typing, tls, id_family);
+	action_result(typing, classifiers, telescope_scope, &work,
+		pg_prove_family_action(typing, id_sort, id_family, tls, tls, 2, diagonal_paths),
+		pg_prove_reflexivity(typing, pg_prove_classifier(typing, classifiers, telescope_scope, id_instance), id_instance));
 	/* Zero varied declarations is diagonal action after a common substitution. */
 	action_result(typing, classifiers, telescope_scope, &work,
 		pg_prove_family_action(typing, etype, element, tls, tls, 0, NULL),

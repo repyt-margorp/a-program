@@ -36,6 +36,9 @@ void pg_eval_destroy(struct pg_eval *machine);
  * The output graph must outlive the machine. This machine does not memoize
  * invocations; the separate WHNF store is only for immutable pure policies. */
 const struct pg_closure *pg_eval_argument(const struct pg_eval *machine, size_t index);
+/* Read-only argument cursor. Start at machine->arguments; each call advances
+ * one link without evaluating. Returned closures live until machine destroy. */
+const struct pg_closure *pg_eval_next_argument(const struct pg_argument **cursor);
 int pg_eval_enter(struct pg_eval *machine, struct pg_closure value, size_t consume);
 int pg_eval_apply(struct pg_eval *machine, struct pg_closure function,
 	struct pg_closure argument, size_t consume);

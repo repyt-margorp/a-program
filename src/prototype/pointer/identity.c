@@ -198,6 +198,28 @@ static int prune_scope(struct pg_eval *machine, struct action_scope *scope)
 	return enter_action(machine, scope, result, 0);
 }
 
+/* Substituting diagonal triples into an action is reflexivity of the
+ * substituted source. Exact closure identity avoids evaluating endpoints or
+ * mistaking a chosen loop for reflexivity. This is reduction, not interning. */
+static int diagonal_scope(struct pg_eval *machine, struct action_scope *scope)
+{
+	if (!scope->count) return 1;
+	const struct pg_argument *cursor = machine->arguments;
+	pg_eval_next_argument(&cursor); /* The action source precedes its triples. */
+	for (size_t i = 0; i < scope->count; ++i) {
+		const struct pg_closure *left = pg_eval_next_argument(&cursor);
+		const struct pg_closure *right = pg_eval_next_argument(&cursor);
+		const struct pg_closure *path = pg_eval_next_argument(&cursor);
+		if (left->term != right->term || left->environment != right->environment) return 1;
+		if (left->environment != path->environment) return 1;
+		const struct pg_term *value;
+		if (!pg_identity_action_view(path->term, &value) || value != left->term) return 1;
+	}
+	if (prepare_bindings(machine, scope) != 0) return -1;
+	const struct pg_term *value = body_endpoint(machine->output, scope, scope->body, 0);
+	return enter_action(machine, scope, pg_identity_action(machine->output, value), 0);
+}
+
 static int right_endpoint(struct pg_eval *machine, const struct pg_term *right)
 {
 	struct action_scope scope;
@@ -286,6 +308,8 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 		return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1 + 3 * scope.count);
 	}
 	status = prune_scope(machine, &scope);
+	if (status != 1) return status;
+	status = diagonal_scope(machine, &scope);
 	if (status != 1) return status;
 	const struct pg_term *argument = unary_argument(body, &pg_return_operation);
 	if (!argument) argument = unary_argument(body, &pg_thunk_operation);

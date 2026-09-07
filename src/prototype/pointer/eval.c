@@ -57,11 +57,19 @@ static int materialize_step(struct materialization *work, struct pg_graph *graph
 	struct pg_closure closure, const struct pg_argument *arguments);
 static void materialize_destroy(struct materialization *work);
 
+const struct pg_closure *pg_eval_next_argument(const struct pg_argument **cursor)
+{
+	const struct pg_argument *argument = *cursor;
+	if (!argument) return NULL;
+	*cursor = argument->next;
+	return &argument->value;
+}
+
 const struct pg_closure *pg_eval_argument(const struct pg_eval *machine, size_t index)
 {
-	const struct pg_argument *argument = machine->arguments;
-	while (argument && index) { argument = argument->next; --index; }
-	return argument ? &argument->value : NULL;
+	const struct pg_argument *cursor = machine->arguments;
+	while (index--) if (!pg_eval_next_argument(&cursor)) return NULL;
+	return pg_eval_next_argument(&cursor);
 }
 
 int pg_eval_enter(struct pg_eval *machine, struct pg_closure value, size_t consume)

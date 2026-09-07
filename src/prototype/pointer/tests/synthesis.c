@@ -188,6 +188,17 @@ static void family_transport(struct pg_typing *typing, struct pg_classifiers *cl
 		assert(transport && pg_evidence_classifier(transport) == pg_evidence_subject(expected)->core);
 		assert(pg_prove_classifier(typing, classifiers, context, transport));
 		assert(pg_prove_identity_lift(typing, classifiers, r, input, PG_IDENTITY_RIGHT));
+		/* Symmetry and composition compute on reflexivity, not only typecheck. */
+		const struct pg_evidence *diagonal = pg_prove_substitution_pair(typing, prefix, source, images[0]);
+		const struct pg_evidence *diagonal_action = pg_prove_family_action(typing, kind, family,
+			diagonal, diagonal, 1, &refl);
+		const struct pg_evidence *dr = complete(&split,
+			pg_synthesis_normalize_classifier(&split, context, diagonal_action), PG_SYNTHESIS_DONE);
+		const struct pg_evidence *dt = pg_prove_identity_transport(typing, classifiers, dr, refl, PG_IDENTITY_RIGHT);
+		assert(dt && pg_evidence_subject(normalize(&split, context, dt))->core == pg_evidence_subject(refl)->core);
+		const struct pg_evidence *dl = pg_prove_identity_lift(typing, classifiers, dr, refl, PG_IDENTITY_RIGHT);
+		assert(dl && pg_evidence_subject(normalize(&split, context, dl))->core ==
+			pg_identity_action(typing->graph, pg_evidence_subject(refl)->core));
 		assert(complete(&split, pg_synthesis_normalize_classifier(&split, context, r), PG_SYNTHESIS_DONE) == r);
 		size_t terms = typing->graph->terms.count, proofs = typing->proofs.count;
 		assert(pg_synthesis_normalize_classifier(&split, context, action) == job);
