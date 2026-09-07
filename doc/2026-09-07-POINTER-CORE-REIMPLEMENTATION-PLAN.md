@@ -464,7 +464,8 @@ a specified type family, not a global endpoint-only relation.
   family abstraction does not introduce a value-side Pi or return a universe.
   This symbolic formation is an A Program rule being developed, not a theorem
   that arbitrary relations are equalities. It supplies no inhabitant or
-  transport and does not yet reduce the action of its lambda body.
+  transport. Its lambda-body computation is provided by the shared action
+  reducer recorded below, not by this formation rule.
 - [x] Homogeneous dependent Pi Identity expands by the fixed pure reducer to
   `Pi x0:A. Pi x1:A. Pi p:Id A x0 x1.
   (refl (lambda x.C)) x0 x1 p (f0 x0) (f1 x1)`.
@@ -521,6 +522,41 @@ a specified type family, not a global endpoint-only relation.
   the 158 parser outcomes. `identity_test` also passes with a 512 KiB stack,
   including a 2048-variable curried action. These are fragment tests, not a
   general coherence or end-to-end legacy-program acceptance proof.
+- [x] September 8, after `082ab35`: checked contextual term action.
+  `pg_prove_family_action` takes `Gamma,x:A |- t:C`, C's formation, two
+  checked substitutions agreeing on Gamma, and the selected
+  `p : Id A[sigma] x0 x1`. It constructs
+
+  ```text
+  act(lambda x.t[sigma]) x0 x1 p
+    : act(lambda x.C[sigma]) x0 x1 p t[left] t[right]
+  ```
+
+  Ordinary reindex supplies both endpoints; the existing family Identity
+  formation validates the boundary and result classifier. The immutable
+  `PG_FAMILY_ACTION` derivation retains that formation and the source proof,
+  transitively retaining both substitutions and p. Its polarity is t's, not
+  inferred from erased Core. Regularity recovers the retained formation.
+  Type/term action share one capture-avoiding abstraction helper. Exact
+  immutable-premise lookup precedes reconstruction; no additional evaluator,
+  Core tag, value-side Pi, arbitrary-relation witness or Replay path is added.
+  This is the one-varied-binder contextual congruence rule for our polarized
+  theory. The `ap` laws in [Narya's observational primitives](https://narya.readthedocs.io/en/latest/observational.html#observational-primitives)
+  motivate the variable/constant tests; they do not prove this CBPV adaptation.
+  Preservation, substitution coherence and general higher action remain
+  metatheoretic obligations, not consequences of passing these tests.
+  Tests check z:Universe acting to the selected p/q, RETURN/THUNK, a genuinely
+  dependent Lambda `C(Z)=Pi e:Z.F Z` followed by three ordinary applications,
+  constant ambient action, capture avoidance, exact reuse without added
+  Core/proof records, and rejection of wrong classifier, polarity, scope,
+  direction, ambient prefix, owner and absent premises. Results pass directed
+  normalization and explicit conversion against independently typed terms.
+  Verification passed: full optimized and ASan/UBSan pointer `make check`,
+  plus `identity_test` with a 512 KiB stack. Parser compatibility is still
+  not semantic parity. Change sizes: `evidence.c` +56/-11, `evidence.h` +7/-1
+  (implementation net +51); `tests/identity.c` +93/-0, separately from docs.
+  General telescope/dimension action jobs, already-acted source computation,
+  transport/lifting, surface Identity and N2 acceptance remain unchecked.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

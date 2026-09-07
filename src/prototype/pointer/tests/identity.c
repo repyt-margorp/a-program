@@ -35,6 +35,30 @@ static void converts(struct pg_whnf_work *work, const struct pg_term *left, cons
 	pg_conversion_destroy(&comparison);
 }
 
+static const struct pg_evidence *action_result(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	struct pg_whnf_work *work, const struct pg_evidence *action,
+	const struct pg_evidence *expected)
+{
+	assert(action && expected);
+	struct pg_whnf_job *job = pg_whnf_request(work, &pg_pure_policy, pg_evidence_subject(action)->core);
+	while (pg_whnf_advance(job, 1) == PG_EVAL_PENDING) assert(pg_whnf_steps(job) < 100000);
+	const struct pg_evidence *reduced = pg_prove_normalization(typing, action, pg_whnf_certificate(job));
+	assert(reduced);
+	const struct pg_evidence *formation = pg_prove_classifier(typing, classifiers, context, action);
+	assert(formation && pg_evidence_subject(formation)->core == pg_evidence_classifier(action));
+	const struct pg_evidence *target = pg_prove_classifier(typing, classifiers, context, expected);
+	assert(target);
+	struct pg_conversion comparison;
+	assert(pg_conversion_init(&comparison, work, pg_evidence_classifier(reduced), pg_evidence_subject(target)->core) == 0);
+	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
+	const struct pg_evidence *converted = pg_prove_conversion(typing, reduced, target, pg_conversion_certificate(&comparison));
+	assert(converted && pg_evidence_judgement(converted) == pg_evidence_judgement(expected));
+	pg_conversion_destroy(&comparison);
+	converts(work, pg_evidence_subject(converted)->core, pg_evidence_subject(expected)->core);
+	return converted;
+}
+
 static void lambda_actions(struct pg_graph *graph)
 {
 	struct pg_whnf_work work;
@@ -220,6 +244,36 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 	assert(cp && pg_evidence_judgement(cp) == PG_JUDGEMENT_COMPUTATION_TYPE);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	/* Contextual action of z:Universe retains the selected p, not just A/B. */
+	const struct pg_evidence *zvalue = pg_prove_variable(typing, source, z);
+	const struct pg_evidence *zsort = pg_prove_projection(typing, source, universe);
+	const struct pg_evidence *za = pg_prove_family_action(typing, zsort, zvalue, ls, rs, p);
+	const struct pg_evidence *zq = pg_prove_family_action(typing, zsort, zvalue, ls, rs, q);
+	assert(za && zq && za != zq && pg_evidence_rule(za) == PG_FAMILY_ACTION);
+	assert(pg_evidence_premise(za, 1) == zvalue);
+	assert(pg_evidence_premise(pg_evidence_premise(za, 0), 3) == p);
+	size_t terms_before = typing->graph->terms.count, proofs_before = typing->proofs.count;
+	assert(pg_prove_family_action(typing, zsort, zvalue, ls, rs, p) == za);
+	assert(typing->graph->terms.count == terms_before && typing->proofs.count == proofs_before);
+	action_result(typing, classifiers, scope, &work, za, p);
+	action_result(typing, classifiers, scope, &work, zq, q);
+	const struct pg_evidence *rz = pg_prove_return(typing, classifiers, zvalue);
+	const struct pg_evidence *rza = pg_prove_family_action(typing,
+		pg_prove_return_type(typing, classifiers, zsort), rz, ls, rs, p);
+	action_result(typing, classifiers, scope, &work, rza, pg_prove_return(typing, classifiers, p));
+	const struct pg_evidence *tz = pg_prove_thunk(typing, classifiers, rz);
+	const struct pg_evidence *tza = pg_prove_family_action(typing,
+		pg_prove_classifier(typing, classifiers, source, tz), tz, ls, rs, p);
+	action_result(typing, classifiers, scope, &work, tza,
+		pg_prove_thunk(typing, classifiers, pg_prove_return(typing, classifiers, p)));
+	assert(!pg_prove_family_action(typing, family, zvalue, ls, rs, p));
+	assert(!pg_prove_family_action(typing, zsort, rz, ls, rs, p));
+	assert(!pg_prove_family_action(typing, zsort, zvalue, rs, ls, p));
+	assert(!pg_prove_family_action(typing, zsort, zvalue, ls, rs, x));
+	assert(!pg_prove_family_action(typing, zsort, zvalue, ls, rs, NULL));
+	assert(!pg_prove_family_action(typing, zsort, NULL, ls, rs, p));
+	assert(!pg_prove_family_action(typing, zsort, a, ls, rs, p));
+	assert(!pg_prove_family_action(typing, zsort, zvalue, NULL, rs, p));
 	const struct pg_evidence *instance = pg_prove_identity_instance(typing, classifiers, p, x, y);
 	converts(&work, pg_evidence_subject(vp)->core, pg_evidence_subject(instance)->core);
 	converts(&work, pg_evidence_subject(cp)->core,
@@ -244,6 +298,7 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 	assert(acted_pi && pg_evidence_judgement(acted_pi) == PG_JUDGEMENT_COMPUTATION_TYPE);
 	const struct pg_object *x0 = pg_binder(typing->graph), *x1 = pg_binder(typing->graph), *center = pg_binder(typing->graph);
 	const struct pg_evidence *boundary = pg_identity_context_extend(typing, classifiers, scope, p, x0, x1, center);
+	const struct pg_evidence *path_scope = boundary;
 	const struct pg_evidence *output = pg_prove_return_type(typing, classifiers,
 		pg_prove_classifier(typing, classifiers, boundary, pg_prove_variable(typing, boundary, center)));
 	for (size_t i = 0; i < 3; ++i) {
@@ -252,6 +307,22 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 	}
 	assert(output);
 	converts(&work, pg_evidence_subject(acted_pi)->core, pg_evidence_subject(output)->core);
+	/* A raw dependent Lambda acts without a value-side function constructor. */
+	const struct pg_evidence *function = pg_prove_lambda(typing, pi_family,
+		pg_prove_return(typing, classifiers, pg_prove_variable(typing, element_scope, e)));
+	const struct pg_evidence *function_action = pg_prove_family_action(typing, pi_family, function, ls, rs, p);
+	assert(function_action);
+	struct pg_conversion pi_conversion;
+	assert(pg_conversion_init(&pi_conversion, &work, pg_evidence_classifier(function_action), pg_evidence_subject(output)->core) == 0);
+	assert(pg_conversion_advance(&pi_conversion, 100000) == PG_CONVERSION_EQUAL);
+	const struct pg_evidence *applied = pg_prove_conversion(typing, function_action, output, pg_conversion_certificate(&pi_conversion));
+	pg_conversion_destroy(&pi_conversion);
+	applied = pg_prove_projection(typing, path_scope, applied);
+	const struct pg_object *arguments[] = {x0, x1, center};
+	for (size_t i = 0; i < 3; ++i)
+		applied = pg_prove_application(typing, applied, pg_prove_variable(typing, path_scope, arguments[i]));
+	action_result(typing, classifiers, path_scope, &work, applied,
+		pg_prove_return(typing, classifiers, pg_prove_variable(typing, path_scope, center)));
 	const struct pg_evidence *other_pi = pg_prove_family_identity_type(typing, pi_family, ls, rs, q, functions[0], functions[1]);
 	struct pg_conversion distinct;
 	assert(pg_conversion_init(&distinct, &work, pg_evidence_subject(other_pi)->core, pg_evidence_subject(output)->core) == 0);
@@ -287,6 +358,27 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 	assert(pg_prove_family_identity_type(typing, higher, ls, rs, p, refl_a, p) == hs);
 	const struct pg_evidence *bad = pg_prove_substitution(typing, source, scope, 2, wrong);
 	assert(bad && !pg_prove_family_identity_type(typing, higher, ls, bad, p, refl_a, p));
+	/* The unvaried ambient term t maps to A on both faces: its action is refl A. */
+	zsort = pg_prove_projection(typing, source, universe);
+	const struct pg_evidence *ambient = pg_prove_variable(typing, source, t);
+	const struct pg_evidence *constant_action = pg_prove_family_action(typing, zsort, ambient, ls, rs, p);
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	action_result(typing, classifiers, scope, &work, constant_action, refl_a);
+	/* An ambient image may use the varied binder's pointer freely in the
+	 * destination. Closing the source before substitution must not capture it. */
+	const struct pg_evidence *capture_scope = pg_prove_context_extension(typing, scope, z,
+		pg_prove_projection(typing, scope, universe));
+	const struct pg_evidence *free_z = pg_prove_variable(typing, capture_scope, z);
+	const struct pg_evidence *cl[] = {free_z, pg_prove_projection(typing, capture_scope, a)};
+	const struct pg_evidence *cr[] = {free_z, pg_prove_projection(typing, capture_scope, b)};
+	const struct pg_evidence *capture_action = pg_prove_family_action(typing, zsort, ambient,
+		pg_prove_substitution(typing, source, capture_scope, 2, cl),
+		pg_prove_substitution(typing, source, capture_scope, 2, cr),
+		pg_prove_projection(typing, capture_scope, p));
+	action_result(typing, classifiers, capture_scope, &work, capture_action,
+		pg_prove_reflexivity(typing, pg_prove_projection(typing, capture_scope, universe), free_z));
+	pg_whnf_work_destroy(&work);
+	assert(!pg_prove_family_action(typing, zsort, ambient, ls, bad, p));
 	const struct pg_term *ambient_type = pg_identity_instance(typing->graph,
 		pg_identity_action(typing->graph, pg_universe(classifiers, 0)),
 		pg_evidence_subject(a)->core, pg_reference(typing->graph, z));
@@ -298,6 +390,7 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 	struct pg_typing foreign;
 	assert(pg_typing_init(&foreign, typing->graph) == 0);
 	assert(!pg_prove_family_identity_type(&foreign, higher, ls, rs, p, refl_a, p));
+	assert(!pg_prove_family_action(&foreign, zsort, ambient, ls, rs, p));
 	pg_typing_destroy(&foreign);
 }
 

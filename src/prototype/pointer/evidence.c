@@ -22,7 +22,7 @@ static int derived_output(enum pg_evidence_rule rule)
 	switch (rule) {
 	case PG_REINDEX: case PG_APP_ELIM: case PG_PI_CODOMAIN:
 	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN:
-	case PG_FAMILY_IDENTITY_FORM:
+	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION:
 		return 1;
 	default: return 0;
 	}
@@ -740,6 +740,24 @@ static int substitution_proof(const struct pg_typing *typing, const struct pg_ev
 	return proof->rule == PG_CONTEXT_SUBSTITUTION;
 }
 
+/* Call only after family formation has checked the common prefix and path.
+ * Closing the varied binder before substitution prevents ambient capture. */
+static const struct pg_term *family_action_core(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_evidence *left,
+	const struct pg_evidence *right, const struct pg_evidence *path)
+{
+	size_t count = left->premise_count - 2;
+	const struct pg_term *abstraction = pg_lambda(typing->graph,
+		source->context->binder, source->subject->core);
+	const struct pg_binding_value *bindings = (const struct pg_binding_value *)(
+		left->premises + left->premise_count);
+	abstraction = pg_term_substitute(typing->graph, abstraction, count - 1, bindings);
+	if (!abstraction) return NULL;
+	return pg_identity_apply(typing->graph, abstraction,
+		left->premises[count + 1]->subject->core,
+		right->premises[count + 1]->subject->core, path->subject->core);
+}
+
 const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing,
 	const struct pg_evidence *family, const struct pg_evidence *left_substitution,
 	const struct pg_evidence *right_substitution, const struct pg_evidence *path,
@@ -780,15 +798,8 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	if (!ltype || !rtype) return NULL;
 	if (!endpoint(typing, left, elements, context, ltype->subject->core)) return NULL;
 	if (!endpoint(typing, right, elements, context, rtype->subject->core)) return NULL;
-	/* Close only the varied binder, then substitute the common ambient prefix.
-	 * The ordinary substitution traversal handles lexical capture and sharing. */
-	const struct pg_term *abstraction = pg_lambda(typing->graph, family->context->binder, family->subject->core);
-	const struct pg_binding_value *bindings = (const struct pg_binding_value *)(
-		left_substitution->premises + left_substitution->premise_count);
-	abstraction = pg_term_substitute(typing->graph, abstraction, count - 1, bindings);
-	if (!abstraction) return NULL;
-	const struct pg_term *acted = pg_identity_apply(typing->graph, abstraction,
-		x0->subject->core, x1->subject->core, path->subject->core);
+	const struct pg_term *acted = family_action_core(typing, family,
+		left_substitution, right_substitution, path);
 	const struct pg_term *core = pg_identity_instance(typing->graph, acted, left->subject->core, right->subject->core);
 	if (!core) return NULL;
 	const struct pg_occurrence *operands[] = {family->subject, path->subject, left->subject, right->subject};
@@ -796,6 +807,40 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	if (!subject) return NULL;
 	return accept(typing, PG_FAMILY_IDENTITY_FORM, family->judgement, context,
 		subject, family->classifier, 6, premises);
+}
+
+const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
+	const struct pg_evidence *family, const struct pg_evidence *term,
+	const struct pg_evidence *left_substitution,
+	const struct pg_evidence *right_substitution, const struct pg_evidence *path)
+{
+	if (!family || family->owner != typing) return NULL;
+	enum pg_evidence_judgement elements;
+	switch (family->judgement) {
+	case PG_JUDGEMENT_VALUE_TYPE: elements = PG_JUDGEMENT_VALUE; break;
+	case PG_JUDGEMENT_COMPUTATION_TYPE: elements = PG_JUDGEMENT_COMPUTATION; break;
+	default: return NULL;
+	}
+	if (!endpoint(typing, term, elements, family->context, family->subject->core)) return NULL;
+	const struct pg_evidence *left = pg_prove_reindex(typing, left_substitution, term);
+	const struct pg_evidence *right = pg_prove_reindex(typing, right_substitution, term);
+	const struct pg_evidence *identity = pg_prove_family_identity_type(typing,
+		family, left_substitution, right_substitution, path, left, right);
+	if (!identity) return NULL;
+	const struct pg_evidence *premises[] = {identity, term};
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, PG_FAMILY_ACTION,
+		elements, identity->context, NULL, NULL, 2, premises, NULL, &hash);
+	if (existing) return existing;
+	const struct pg_term *core = family_action_core(typing, term,
+		left_substitution, right_substitution, path);
+	if (!core) return NULL;
+	const struct pg_occurrence *operands[] = {term->subject, path->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, identity->context,
+		core, NULL, 2, operands);
+	if (!subject) return NULL;
+	return accept(typing, PG_FAMILY_ACTION, elements, identity->context,
+		subject, identity->subject->core, 2, premises);
 }
 
 
@@ -1019,7 +1064,7 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	}
 	const struct pg_evidence *formation = NULL;
 	switch (term->rule) {
-	case PG_REFLEXIVITY:
+	case PG_REFLEXIVITY: case PG_FAMILY_ACTION:
 		formation = term->premises[0];
 		break;
 	case PG_VARIABLE: {

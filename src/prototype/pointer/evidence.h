@@ -13,7 +13,7 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_RETURN_CONTENT, PG_PI_CONSTANT_CODOMAIN, PG_FOLD_ELIM,
 	PG_IDENTITY_FORM, PG_IDENTITY_INSTANCE, PG_REFLEXIVITY,
 	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION,
-	PG_RETURN_VALUE, PG_THUNK_COMPUTATION };
+	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -66,6 +66,12 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	const struct pg_evidence *family, const struct pg_evidence *left_substitution,
 	const struct pg_evidence *right_substitution, const struct pg_evidence *path,
 	const struct pg_evidence *left, const struct pg_evidence *right);
+/* t : C in Gamma,x:A acts along the same checked boundary as C. Endpoints
+ * are t[left]/t[right], not caller-supplied witnesses. Preserves polarity. */
+const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
+	const struct pg_evidence *family, const struct pg_evidence *term,
+	const struct pg_evidence *left_substitution,
+	const struct pg_evidence *right_substitution, const struct pg_evidence *path);
 /* Symbolic diagonal action; no endpoint conversion is registered globally. */
 const struct pg_evidence *pg_prove_reflexivity(struct pg_typing *typing,
 	const struct pg_evidence *type, const struct pg_evidence *term);
