@@ -476,7 +476,7 @@ static void pi_transport_candidate(struct pg_typing *typing, struct pg_classifie
 }
 
 static void curried_transport(struct pg_typing *typing, struct pg_classifiers *classifiers,
-	const struct pg_evidence *context, const struct pg_evidence *path)
+	const struct pg_evidence *context, const struct pg_evidence *path, const struct pg_evidence *result_path)
 {
 	struct pg_graph *graph = typing->graph;
 	struct pg_whnf_work work;
@@ -485,23 +485,36 @@ static void curried_transport(struct pg_typing *typing, struct pg_classifiers *c
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
 	const struct pg_evidence *parameters = pg_prove_context_extension(typing, empty, a,
 		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_object *b = pg_binder(graph);
+	const struct pg_evidence *prefix = parameters;
+	parameters = pg_prove_context_extension(typing, parameters, b,
+		pg_prove_universe(typing, classifiers, parameters, 0));
 	const struct pg_evidence *domain = pg_prove_value_type(typing, pg_prove_variable(typing, parameters, a));
+	const struct pg_evidence *codomain = pg_prove_value_type(typing, pg_prove_variable(typing, parameters, b));
 	const struct pg_evidence *first = pg_prove_context_extension(typing, parameters, x, domain);
 	const struct pg_evidence *second = pg_prove_context_extension(typing, first, z,
 		pg_prove_projection(typing, first, domain));
 	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, pg_prove_projection(typing, first, domain), second,
-		pg_prove_return_type(typing, classifiers, pg_prove_projection(typing, second, domain)));
+		pg_prove_return_type(typing, classifiers, pg_prove_projection(typing, second, codomain)));
 	pi = pg_prove_pi(typing, classifiers, domain, first, pi);
 	const struct pg_evidence *family = pg_prove_type_value(typing, pg_prove_thunk_type(typing, classifiers, pi));
-	const struct pg_evidence *types[2], *maps[2], *endpoints[2];
+	const struct pg_evidence *types[2], *maps[2], *endpoints[2], *prefix_maps[2], *result_types[2];
 	for (size_t i = 0; i < 2; ++i) {
 		types[i] = pg_prove_type_value(typing, pg_prove_identity_endpoint_type(typing, classifiers, path,
 			i ? PG_IDENTITY_RIGHT_TYPE : PG_IDENTITY_LEFT_TYPE));
-		maps[i] = pg_prove_substitution(typing, parameters, context, 1, &types[i]);
+		result_types[i] = pg_prove_type_value(typing,
+			pg_prove_identity_endpoint_type(typing, classifiers, result_path,
+				i ? PG_IDENTITY_RIGHT_TYPE : PG_IDENTITY_LEFT_TYPE));
+		const struct pg_evidence *images[] = {types[i], result_types[i]};
+		prefix_maps[i] = pg_prove_substitution(typing, prefix, context, 1, &types[i]);
+		maps[i] = pg_prove_substitution(typing, parameters, context, 2, images);
 		endpoints[i] = pg_prove_reindex(typing, maps[i], family);
 	}
+	const struct pg_evidence *paths[] = {path, convert_to(typing, &work, result_path,
+		pg_prove_family_identity_type(typing, pg_prove_universe(typing, classifiers, prefix, 0),
+			prefix_maps[0], prefix_maps[1], 1, &path, result_types[0], result_types[1]))};
 	const struct pg_evidence *action = pg_prove_family_action(typing,
-		pg_prove_classifier(typing, classifiers, parameters, family), family, maps[0], maps[1], 1, &path);
+		pg_prove_classifier(typing, classifiers, parameters, family), family, maps[0], maps[1], 2, paths);
 	action = convert_to(typing, &work, action, pg_prove_identity_type(typing,
 		pg_prove_universe(typing, classifiers, context, 0), endpoints[0], endpoints[1]));
 	for (unsigned i = 0; i < 2; ++i) {
@@ -521,11 +534,22 @@ static void curried_transport(struct pg_typing *typing, struct pg_classifiers *c
 		const struct pg_evidence *recipe = pg_prove_application(typing, pg_prove_force(typing, function),
 			pg_prove_identity_transport(typing, classifiers, r, left, reverse));
 		recipe = pg_prove_application(typing, recipe, pg_prove_identity_transport(typing, classifiers, r, right, reverse));
-		recipe = pg_prove_force(typing, thunk_map(typing, classifiers, scope, r,
+		const struct pg_evidence *source_call = recipe;
+		recipe = pg_prove_force(typing, thunk_map(typing, classifiers, scope, pg_prove_projection(typing, scope, result_path),
 			pg_prove_thunk(typing, classifiers, recipe), direction));
 		assert(actual && recipe && partial);
 		converts(&work, pg_evidence_classifier(actual), pg_evidence_classifier(recipe));
 		converts(&work, pg_evidence_subject(actual)->core, pg_evidence_subject(recipe)->core);
+		if (path != result_path) {
+			const struct pg_evidence *wrong = pg_prove_force(typing, thunk_map(typing, classifiers, scope, r,
+				pg_prove_thunk(typing, classifiers, source_call), direction));
+			assert(wrong);
+			struct pg_conversion comparison;
+			assert(pg_conversion_init(&comparison, &work, pg_evidence_subject(actual)->core, pg_evidence_subject(wrong)->core) == 0);
+			assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_DIFFERENT);
+			assert(!pg_conversion_certificate(&comparison));
+			pg_conversion_destroy(&comparison);
+		}
 		struct pg_whnf_job *job = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(partial)->core);
 		while (pg_whnf_advance(job, 1) == PG_EVAL_PENDING) assert(pg_whnf_steps(job) < 100000);
 		assert(pg_whnf_status(job) == PG_EVAL_WHNF);
@@ -544,8 +568,10 @@ static void transport_fields(struct pg_typing *typing, struct pg_classifiers *cl
 	thunk_transport(typing, classifiers, scope, s, x, y);
 	pi_transport_candidate(typing, classifiers, scope, r);
 	pi_transport_candidate(typing, classifiers, scope, s);
-	curried_transport(typing, classifiers, scope, r);
-	curried_transport(typing, classifiers, scope, s);
+	curried_transport(typing, classifiers, scope, r, r);
+	curried_transport(typing, classifiers, scope, s, s);
+	curried_transport(typing, classifiers, scope, r, s);
+	curried_transport(typing, classifiers, scope, s, r);
 	struct pg_whnf_work work, whole;
 	assert(pg_whnf_work_init(&work, graph) == 0);
 	assert(pg_whnf_work_init(&whole, graph) == 0);
@@ -556,7 +582,7 @@ static void transport_fields(struct pg_typing *typing, struct pg_classifiers *cl
 	const struct pg_evidence *reflexivity = pg_prove_reflexivity(typing, a, x);
 	assert(diagonal && reflexivity);
 	pi_transport_candidate(typing, classifiers, scope, diagonal);
-	curried_transport(typing, classifiers, scope, diagonal);
+	curried_transport(typing, classifiers, scope, diagonal, diagonal);
 	for (unsigned i = 0; i < 2; ++i) {
 		enum pg_identity_direction direction = (enum pg_identity_direction)i;
 		const struct pg_evidence *input = i ? y : x;

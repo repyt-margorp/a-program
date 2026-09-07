@@ -1621,6 +1621,16 @@ a specified type family, not a global endpoint-only relation.
   open. Implementation `identity.c`: +9/-8; `identity.h`: +1/-1;
   tests: +63/-0; documentation separate. Optimized and ASan/UBSan pointer
   checks pass; Identity also passes with a 512 KiB stack.
+- [x] September 8, after `a4f79d0`: extend `curried_transport` to two
+  independently varied universe parameters, `U(A -> A -> F B)`. Exercise
+  same-path, distinct-path and diagonal cases in both directions. The result
+  path must first carry an explicit conversion to the acted universe family
+  over the preceding parameter; omitting that premise is correctly rejected
+  by `pg_prove_family_action`, not a reason to relax endpoint checking.
+  The resulting application agrees with the independently checked recipe.
+  Substituting the domain path for a distinct result path is not DefEq, even
+  though their endpoint types coincide. No implementation rule was changed.
+  Higher coherence and general datatype fibrancy remain unproved.
 - [ ] Resolve this N2 equational choice before enabling structural U/Pi
   transport or using it to justify nominal datatype fibrancy. If the
   elimination-driven alternative is insufficient, either admit
