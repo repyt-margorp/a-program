@@ -390,33 +390,38 @@ const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 	return introduced_content(typing, computation, PG_RETURN_INTRO);
 }
 
-const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
-	const struct pg_evidence *context, const struct pg_evidence *computation)
+int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *context,
+	const struct pg_evidence *computation, struct pg_reduction *step)
 {
-	if (!context_proof(typing, context)) return NULL;
-	if (!computation || computation->owner != typing) return NULL;
-	if (computation->context != context->context) return NULL;
-	const struct pg_evidence *result, *value;
+	if (!step) return -1;
+	*step = (struct pg_reduction){0};
+	if (!context_proof(typing, context)) return -1;
+	if (!computation || computation->owner != typing) return -1;
+	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return -1;
+	if (computation->context != context->context) return -1;
+	const struct pg_evidence *result = NULL, *value;
+	step->context = context;
 	switch (computation->rule) {
 	case PG_CONTEXT_PROJECTION: {
 		const struct pg_evidence *source = context;
 		while (source->context != computation->premises[1]->context) {
-			if (source->rule != PG_CONTEXT_EXTEND) return NULL;
+			if (source->rule != PG_CONTEXT_EXTEND) return -1;
 			source = source->premises[0];
 		}
-		result = pg_reduce_computation(typing, source, computation->premises[1]);
-		result = apply_context_action(typing, computation, result);
-		break;
+		step->context = source;
+		step->input = computation->premises[1];
+		return 0;
 	}
 	case PG_REINDEX:
-		result = pg_reduce_computation(typing, computation->premises[0]->premises[0], computation->premises[1]);
-		result = apply_context_action(typing, computation, result);
-		break;
+		step->context = computation->premises[0]->premises[0];
+		step->input = computation->premises[1];
+		return 0;
 	case PG_APP_ELIM:
 		result = pg_reduce_beta(typing, context, computation);
-		if (result) return result;
-		result = pg_reduce_computation(typing, context, computation->premises[0]);
-		result = pg_prove_application(typing, result, computation->premises[1]);
+		if (!result) {
+			step->input = computation->premises[0];
+			return 0;
+		}
 		break;
 	case PG_FORCE_ELIM:
 		result = introduced_content(typing, computation->premises[0], PG_THUNK_INTRO);
@@ -425,16 +430,51 @@ const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
 		value = pg_prove_return_value(typing, computation->premises[0]);
 		if (value) result = pg_prove_application(typing, computation->premises[1], value);
 		else {
-			result = pg_reduce_computation(typing, context, computation->premises[0]);
-			result = pg_prove_fold(typing, result, computation->premises[1]);
+			step->input = computation->premises[0];
+			return 0;
 		}
 		break;
 	default:
-		return NULL;
+		return -1;
+	}
+	if (!result) return -1;
+	if (pg_alpha_equal(result->classifier, computation->classifier) != 1) return -1;
+	step->result = result;
+	return 0;
+}
+
+const struct pg_evidence *pg_prove_computation_operand(struct pg_typing *typing,
+	const struct pg_evidence *computation, const struct pg_evidence *operand)
+{
+	if (!computation || computation->owner != typing) return NULL;
+	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	const struct pg_evidence *result;
+	switch (computation->rule) {
+	case PG_CONTEXT_PROJECTION: case PG_REINDEX:
+		result = apply_context_action(typing, computation, operand);
+		break;
+	case PG_APP_ELIM:
+		result = pg_prove_application(typing, operand, computation->premises[1]);
+		break;
+	case PG_FOLD_ELIM:
+		result = pg_prove_fold(typing, operand, computation->premises[1]);
+		break;
+	default: return NULL;
 	}
 	if (!result) return NULL;
+	if (result->context != computation->context) return NULL;
 	if (pg_alpha_equal(result->classifier, computation->classifier) != 1) return NULL;
 	return result;
+}
+
+const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *computation)
+{
+	struct pg_reduction step;
+	if (pg_prepare_reduction(typing, context, computation, &step) != 0) return NULL;
+	if (step.result) return step.result;
+	const struct pg_evidence *operand = pg_reduce_computation(typing, step.context, step.input);
+	return pg_prove_computation_operand(typing, computation, operand);
 }
 
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,

@@ -82,6 +82,19 @@ const struct pg_evidence *pg_reduce_beta(struct pg_typing *typing,
  * NULL also includes unsupported evidence, not just irreducible terms. */
 const struct pg_evidence *pg_reduce_computation(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *computation);
+struct pg_reduction {
+	const struct pg_evidence *result;
+	const struct pg_evidence *context;
+	const struct pg_evidence *input;
+};
+/* Prepare a direct reduct or a demanded operand without recursively reducing
+ * that operand. Nonzero includes unsupported rules and failed premises. */
+int pg_prepare_reduction(struct pg_typing *typing, const struct pg_evidence *context,
+	const struct pg_evidence *computation, struct pg_reduction *step);
+/* Rebuild the demanded position with checked evidence. This is typing, not a
+ * claim that an arbitrary replacement is equal to the original operand. */
+const struct pg_evidence *pg_prove_computation_operand(struct pg_typing *typing,
+	const struct pg_evidence *computation, const struct pg_evidence *operand);
 /* Invert a RETURN introduction through checked context actions. This does not
  * execute an arbitrary computation or assert an equation with its result. */
 const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,

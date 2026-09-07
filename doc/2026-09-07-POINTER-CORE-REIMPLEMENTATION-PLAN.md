@@ -515,10 +515,21 @@ successful return codes as new-kernel certificates.
   perform no further scheduler steps. Tests cover those cases, two source
   consumers sharing a computed annotation, same-Core inputs in distinct
   contexts, differing input derivations, and rejection of foreign-owner proofs.
-- [ ] Generalize sharing to dependent reduction subrequests and budget traversal
-  inside each primitive step. Current sharing is at whole returned-value
-  requests; different proofs or different requests with common subcomputations
-  can still traverse those subcomputations independently. Effectful execution
+- [x] Demanded reduction steps use the same job table and waiters as whole
+  returned-value requests. Preparing a step returns either a checked direct
+  reduct or a context/input pair for its demanded operand. APP callee, FOLD
+  input and projection/reindex demands become shared reduction-job dependencies.
+  Resumption rebuilds the original rule with the checked operand derivation.
+  This reconstruction is a typing operation, not an equality axiom accepting
+  arbitrary replacement evidence. The synchronous `pg_reduce_computation`
+  helper delegates to this same prepare/rebuild contract; synthesis no longer
+  calls its recursive traversal. Tests put two applications simultaneously on
+  the same pending callee job, verify notification and cached step reuse, and
+  check the whole application against independent Core execution.
+- [ ] Budget traversal inside each primitive step. Introduction inversion,
+  context-prefix lookup, beta image construction and term substitution can
+  still perform unbudgeted work. Different input derivations are deliberately
+  distinct keys even when their Core happens to be shared. Effectful execution
   must not reuse a prior runtime result through this pure-work mechanism.
 
 **HOTT rather than only relation preservation.** N2 includes checked contracts
