@@ -190,6 +190,78 @@ static struct pg_synthesis_job *program(struct pg_synthesis *synthesis,
 	return job;
 }
 
+static const struct pg_syntax *select_definition(struct pg_graph *graph,
+	const struct pg_syntax *definitions, struct pg_token name)
+{
+	struct pg_syntax *member = pg_alloc(graph, sizeof(*member));
+	struct pg_syntax *selection = pg_alloc(graph, sizeof(*selection));
+	assert(member && selection);
+	*member = (struct pg_syntax){.kind = PG_SYNTAX_ATOM, .token = name};
+	*selection = (struct pg_syntax){.kind = PG_SYNTAX_QUALIFIED, .left = definitions, .right = member};
+	return selection;
+}
+
+static void definition_selections(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
+	const char *source = "left:=id; right:=id; id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A;";
+	struct pg_parser parser;
+	pg_parser_init(&parser, typing->graph, source, strlen(source));
+	const struct pg_syntax *definitions = pg_parser_program(&parser);
+	assert(definitions);
+	struct pg_token left = {.kind = PG_TOKEN_IDENT, .text = "left", .length = 4};
+	struct pg_token right = {.kind = PG_TOKEN_IDENT, .text = "right", .length = 5};
+	struct pg_synthesis_job *selected = pg_synthesis_request(&synthesis, scope, select_definition(typing->graph, definitions, left));
+	struct pg_synthesis_job *module = pg_synthesis_request(&synthesis, scope, definitions);
+	const struct pg_evidence *answer = complete(&synthesis, selected, PG_SYNTHESIS_DONE);
+	complete(&synthesis, module, PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_definition(selected, left) == pg_synthesis_definition(module, left));
+	assert(pg_synthesis_definition(selected, right) == pg_synthesis_definition(module, right));
+	size_t jobs = synthesis.jobs.count, scopes = synthesis.scopes.count;
+	size_t terms = typing->graph->terms.count, proofs = typing->proofs.count, reductions = work.jobs.count;
+	struct pg_synthesis_job *second = pg_synthesis_request(&synthesis, scope, select_definition(typing->graph, definitions, right));
+	assert(complete(&synthesis, second, PG_SYNTHESIS_DONE) == answer);
+	assert(pg_synthesis_definition(second, left) == pg_synthesis_definition(module, left));
+	assert(synthesis.jobs.count == jobs + 1 && synthesis.scopes.count == scopes);
+	assert(typing->graph->terms.count == terms && typing->proofs.count == proofs && work.jobs.count == reductions);
+	const char *invalid[] = {"left:=@; right:=missing;", "left:=@; right:=@; right::@;",
+		"left:=@; right:=@; left:=@;"};
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+		pg_parser_init(&parser, typing->graph, invalid[i], strlen(invalid[i]));
+		definitions = pg_parser_program(&parser);
+		assert(definitions);
+		module = pg_synthesis_request(&synthesis, scope, definitions);
+		selected = pg_synthesis_request(&synthesis, scope, select_definition(typing->graph, definitions, left));
+		second = pg_synthesis_request(&synthesis, scope, select_definition(typing->graph, definitions, right));
+		complete(&synthesis, selected, PG_SYNTHESIS_REJECTED);
+		complete(&synthesis, second, PG_SYNTHESIS_REJECTED);
+		complete(&synthesis, module, PG_SYNTHESIS_REJECTED);
+		assert(pg_synthesis_definition(selected, left) == pg_synthesis_definition(second, left));
+	}
+	source = "left:=@; a:=b; b:=a;";
+	pg_parser_init(&parser, typing->graph, source, strlen(source));
+	definitions = pg_parser_program(&parser);
+	assert(definitions);
+	selected = pg_synthesis_request(&synthesis, scope, select_definition(typing->graph, definitions, left));
+	second = pg_synthesis_request(&synthesis, scope, select_definition(typing->graph, definitions, right));
+	/* A missing member rejects even when a different definition is pending. */
+	complete(&synthesis, second, PG_SYNTHESIS_REJECTED);
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_status(selected) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(selected));
+	assert(pg_synthesis_status(pg_synthesis_definition(selected, left)) == PG_SYNTHESIS_DONE);
+	assert(!pg_synthesis_result(selected) && !synthesis.ready);
+	uint64_t steps = synthesis.steps;
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(synthesis.steps == steps);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("definition selections: shared producers, whole-module checking and pending/missing boundaries passed");
+}
+
 static void namespaces(struct pg_synthesis *synthesis, const struct pg_source_scope *exports,
 	const struct pg_identity_library *library)
 {
@@ -1619,6 +1691,7 @@ int main(void)
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
 	accepted_inputs(&typing, &classifiers);
+	definition_selections(&typing, &classifiers);
 	fair_work(&typing, &classifiers);
 	library_levels(&typing, &classifiers);
 	named_identity(&typing, &classifiers);
@@ -2161,6 +2234,9 @@ int main(void)
 	size_t before_indexing = synthesis.jobs.count, before_terms = graph.terms.count;
 	pg_synthesis_advance(&synthesis, 1);
 	assert(synthesis.jobs.count == before_indexing + 1 && graph.terms.count == before_terms);
+	assert(!pg_synthesis_definition(library, left_name));
+	pg_synthesis_advance(&synthesis, 1);
+	assert(synthesis.jobs.count == before_indexing + 2 && graph.terms.count == before_terms);
 	assert(pg_synthesis_definition(library, left_name));
 	assert(!pg_synthesis_definition(library, right_name));
 	assert(pg_synthesis_status(pg_synthesis_definition(library, left_name)) == PG_SYNTHESIS_PENDING);

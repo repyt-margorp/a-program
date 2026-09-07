@@ -132,7 +132,10 @@ const struct pg_synthesis_job *pg_synthesis_dependency(const struct pg_synthesis
 const struct pg_synthesis_job *pg_synthesis_cycle(const struct pg_synthesis_job *job);
 /* After a definition root has been indexed, retrieve its producer job without
  * resynthesizing it. NULL means not indexed or no such local definition.
- * A completed unselected library root has no expression result of its own. */
+ * Selections and their common definition root expose the same producers.
+ * A completed unselected library root has no expression result of its own.
+ * Registration/activation is shared by AST and scope; each selection waits
+ * for whole-definition checking after resolving its member name. */
 struct pg_synthesis_job *pg_synthesis_definition(const struct pg_synthesis_job *root,
 	struct pg_token name);
 

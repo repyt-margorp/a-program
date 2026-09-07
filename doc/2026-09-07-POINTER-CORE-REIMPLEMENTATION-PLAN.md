@@ -2042,10 +2042,25 @@ conclusion and all premise pointers; no accepted record is overwritten.
   ASan/UBSan: 17.899 s (affected binaries rebuilt); all four computation suites
   pass with 512 KiB stack. Implementation `synthesis.c` +48/-22,
   `synthesis.h` +5; tests +51; documentation separate. N2/N5 remain open.
-- [ ] Share definition indexing/producers across multiple selections of the
-  same definition AST. `definitions_step` still creates state for each selector
-  job. Preserve whole-definition validation, pending dependencies and useful
-  missing-member diagnostics; do not replace validation with selected-only work.
+- [x] September 8, after `85c9c61`: share definition indexing and producers by
+  definition AST/scope through one `DEFINITION_SCOPE_JOB` in the existing queue.
+  Its completion means names/entries were registered and activated, not that
+  their terms were accepted. Root and selector requests reuse those producers;
+  selectors resolve a name, then await the common whole-definition root.
+  The root joins every definition/check once. No selected-only validation,
+  duplicate proof checker, new Core form or polling loop is introduced.
+  A regression on distinct selector/root producers failed before the change.
+  After completion, another selector adds only its request, not scopes, Core,
+  proofs, reduction jobs or definition producers. Tests also cover duplicate
+  names, invalid unselected definitions/expectations, shared rejection, and a
+  missing selector rejecting despite unrelated cyclic pending definitions.
+  A valid selector of that cyclic module remains pending without busy work.
+  The indexing test now accounts for one shared setup transition before the
+  first dormant producer is registered. Optimized check: 3.465 s (synthesis
+  rebuilt); ASan/UBSan: 18.394 s (affected binaries rebuilt); four computation
+  suites pass at 512 KiB stack. Implementation `synthesis.c` +32/-14,
+  `synthesis.h` +4/-1; tests +76; documentation separate. File loading and
+  source/export integration with nominal declarations remain open.
 - [x] Connect value universes, scoped variables, annotated Lambda, dependent Pi,
   APP, quotation and inline post-synthesis `::`. Lambda bodies retain raw
   computation polarity, while value bodies acquire RETURN. Function-typed
