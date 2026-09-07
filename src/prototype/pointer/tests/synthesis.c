@@ -41,7 +41,7 @@ static const struct pg_evidence *complete(struct pg_synthesis *synthesis,
 	unsigned steps = 0;
 	while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
 		assert(!pg_synthesis_result(job));
-		assert(++steps < 1000);
+		assert(++steps < 10000);
 		pg_synthesis_advance(synthesis, 1);
 	}
 	assert(pg_synthesis_status(job) == expected);
@@ -223,9 +223,9 @@ static void library_levels(struct pg_typing *typing, struct pg_classifiers *clas
 		const struct pg_identity_library *library = pg_identity_library(typing, classifiers, level);
 		const struct pg_identity_library *copy = pg_identity_library(typing, classifiers, level);
 		assert(library && copy);
-		const struct pg_evidence *exports[] = {library->equality, library->reflexivity,
+		const struct pg_evidence *exports[] = {library->equality, library->reflexivity, library->instance,
 			library->transport[0], library->transport[1], library->lifting[0], library->lifting[1]};
-		const struct pg_evidence *copies[] = {copy->equality, copy->reflexivity,
+		const struct pg_evidence *copies[] = {copy->equality, copy->reflexivity, copy->instance,
 			copy->transport[0], copy->transport[1], copy->lifting[0], copy->lifting[1]};
 		for (size_t i = 0; i < sizeof(exports) / sizeof(*exports); ++i) {
 			const struct pg_evidence *proof = exports[i];
@@ -250,6 +250,9 @@ static void named_transport(struct pg_typing *typing, struct pg_classifiers *cla
 	const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
 	const struct pg_identity_library *library = pg_identity_library(typing, classifiers, 0);
 	assert(library);
+	scope = pg_synthesis_name(&synthesis, scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "instance", .length = 8}, library->instance);
+	assert(scope);
 	const struct pg_evidence *empty = pg_prove_empty_context(typing), *contexts[4] = {empty};
 	const struct pg_object *bindings[6];
 	for (size_t i = 0; i < 6; ++i) bindings[i] = pg_binder(typing->graph);
@@ -302,7 +305,8 @@ static void named_transport(struct pg_typing *typing, struct pg_classifiers *cla
 		assert(scope);
 	}
 	const char *sources[] = {"main := trr A B r x :: B;", "main := trl A B r y :: A;",
-		"main := liftr A B r x;", "main := liftl A B r y;"};
+		"main := liftr A B r x :: instance A B r x (trr A B r x);",
+		"main := liftl A B r y :: instance A B r (trl A B r y) y;"};
 	const struct pg_evidence *values[4];
 	for (size_t i = 0; i < 4; ++i) {
 		const struct pg_evidence *result = complete(&synthesis, request(&synthesis, scope, sources[i]), PG_SYNTHESIS_DONE);
@@ -321,6 +325,23 @@ static void named_transport(struct pg_typing *typing, struct pg_classifiers *cla
 			pg_conversion_certificate(&comparison)));
 		pg_conversion_destroy(&comparison);
 	}
+	const struct pg_evidence *selected = complete(&synthesis, request(&synthesis, scope,
+		"main := \\p : instance A B r x y => p;"), PG_SYNTHESIS_DONE);
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *selected_binder;
+	assert(pg_pi_view(pg_evidence_classifier(selected), &domain, &selected_binder, &codomain));
+	const struct pg_evidence *selected_type = pg_prove_identity_instance(typing, classifiers,
+		pg_prove_variable(typing, context, bindings[2]), pg_prove_variable(typing, context, bindings[4]),
+		pg_prove_variable(typing, context, bindings[5]));
+	assert(domain == pg_evidence_subject(selected_type)->core);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := \\p : instance A B r x y => p :: instance A B s x y;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := liftr A B r x :: instance A B s x (trr A B r x);"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := instance A B r y x;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := instance A B (&(\\a : A => \\b : B => A)) x y;"), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *other = complete(&synthesis, request(&synthesis, scope, "main := trr A B s x;"), PG_SYNTHESIS_DONE);
 	other = complete(&synthesis, pg_synthesis_return(&synthesis, context, other), PG_SYNTHESIS_DONE);
 	struct pg_conversion comparison;

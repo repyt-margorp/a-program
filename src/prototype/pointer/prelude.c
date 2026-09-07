@@ -35,6 +35,16 @@ const struct pg_identity_library *pg_identity_library(struct pg_typing *typing,
 		pg_prove_variable(typing, b_context, a), pg_prove_variable(typing, b_context, b));
 	const struct pg_evidence *r_context = pg_prove_context_extension(typing, b_context, r, relation);
 	if (!r_context) return NULL;
+	const struct pg_evidence *left_context = pg_prove_context_extension(typing, r_context, x,
+		pg_prove_variable(typing, r_context, a));
+	const struct pg_evidence *endpoints = pg_prove_context_extension(typing, left_context, y,
+		pg_prove_variable(typing, left_context, b));
+	const struct pg_evidence *instance = pg_prove_identity_instance(typing, classifiers,
+		pg_prove_variable(typing, endpoints, r), pg_prove_variable(typing, endpoints, x),
+		pg_prove_variable(typing, endpoints, y));
+	library->instance = pg_prove_abstract(typing, classifiers, empty, endpoints,
+		pg_prove_return(typing, classifiers, pg_prove_type_value(typing, instance)));
+	if (!library->instance) return NULL;
 	for (enum pg_identity_direction direction = PG_IDENTITY_RIGHT; direction <= PG_IDENTITY_LEFT; ++direction) {
 		const struct pg_object *endpoint = direction == PG_IDENTITY_RIGHT ? a : b;
 		const struct pg_evidence *context = pg_prove_context_extension(typing, r_context, x,

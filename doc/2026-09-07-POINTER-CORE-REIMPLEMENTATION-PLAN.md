@@ -1383,6 +1383,27 @@ a specified type family, not a global endpoint-only relation.
   Makefile +1/-1; tests `synthesis.c` +70/-24; documentation separate.
   Public CLI/import installation, general Act syntax, Pi transport, arbitrary
   higher coherence and N2 acceptance remain open. No Replay engine is added.
+- [x] September 8, after `cb0e2df`: add the library's selected-family instance
+  function `(A B:U_i) -> (R:Id U_i A B) -> (x:A) -> (y:B) -> F U_i`.
+  Its returned type is exactly `R x y`, assembled with ordinary accepted
+  Identity instantiation, RETURN and telescope abstraction. It does not infer
+  a relation from the endpoints or add a new application/coercion rule.
+  Publishing it as the ordinary name `instance` lets source code post-check
+  `liftr A B r x :: instance A B r x (trr A B r x)` and its left counterpart.
+  Source Lambda domains also retain this selected family. Tests compare that
+  domain with independently constructed primitive evidence and reject another
+  path `s` with the same endpoints, reversed endpoint types and an arbitrary
+  quoted relation offered as a universe-Identity witness. Library checks cover
+  this seventh export at levels 0-2, including fresh-binder/non-interning checks.
+  One composed annotation needed 1,232 scheduler transitions, exceeding the
+  test helper's old 1,000-transition guard; continuing the same job completed
+  after 233 more transitions. The test-only guard is now 10,000. No solver fuel,
+  acceptance condition or expected-type synthesis rule was changed.
+  Final optimized check: 3.238 s; ASan/UBSan: 8.997 s (synthesis rebuilt);
+  synthesis passes at 512 KiB stack. Implementation `prelude.c` +10,
+  `prelude.h` +3; tests `synthesis.c` +25/-4; documentation separate.
+  Direct surface `R x y`, automatic library installation, CLI/imports, general
+  Pi transport and higher coherence remain open. This is not N2 completion.
 - [x] September 8, after `fedba41`: share context-suffix abstraction between
   ADT branch functions and named checked functions (`pg_prove_abstract`). It
   composes the existing Pi/Lambda rules, retains every premise and binder,

@@ -11,6 +11,9 @@
 struct pg_identity_library {
 	const struct pg_evidence *equality;
 	const struct pg_evidence *reflexivity;
+	/* (A B:U_i) -> (R:Id U_i A B) -> (x:A) -> (y:B) -> F U_i,
+	 * returning the selected family instance R x y, not Id A x y. */
+	const struct pg_evidence *instance;
 	const struct pg_evidence *transport[2];
 	const struct pg_evidence *lifting[2];
 };
