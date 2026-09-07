@@ -62,5 +62,9 @@ void pg_parser_init(struct pg_parser *parser, struct pg_graph *arena,
  * selection; PG_SYNTAX_IMPORT an import; otherwise ':=' or '::'.
  * No name resolution or type synthesis. */
 int pg_parser_next(struct pg_parser *parser, struct pg_definition *definition);
+/* Read a complete, previously unread source into a definition array. Explicit
+ * {{...}}.name roots retain their selection; flat sources have no selection.
+ * This stores all entries, including checks/imports, without resolving them. */
+const struct pg_syntax *pg_parser_program(struct pg_parser *parser);
 
 #endif

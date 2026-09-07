@@ -555,6 +555,16 @@ conclusion and all premise pointers; no accepted record is overwritten.
   premise failures; error classification must be completed. Budget currently
   counts scheduling/comparison transitions, not all work within a kernel rule.
   This initial expression-job store is not a serialized `.a` image yet.
+- [x] Whole-source parsing collects flat definitions into the same definition
+  array shape as explicit `{{...}}.name` roots, preserving explicit selection
+  rather than inventing a `main` binding for libraries. Assignments, standalone
+  post-checks and imports retain their entry kinds and source order. No Core
+  terms, name resolution, implicit quotation or effects are produced by this
+  step. Tests cover forward names, unchanged computation RHS, empty sources,
+  malformed suffixes and rejection after partially consuming a source.
+  This is an unresolved syntax input, not yet the N5 program image or a solved
+  module. Legacy definition fixtures require implicit/explicit thunk policy;
+  that policy belongs to synthesis, not this parser normalization.
 - [x] Ordinary APP and inline `::` share one resumable comparison path. Cache
   the already synthesized input and target derivations while comparison is
   pending; do not rerun their synthesis or reconstruct adaptations on each

@@ -343,6 +343,51 @@ static void declarations(void)
 	puts("declarations: parameter/index separation, List/Vec/Acc self markers and constructor arrays passed");
 }
 
+static void programs(void)
+{
+	struct pg_graph arena;
+	struct pg_parser parser;
+	assert(pg_graph_init(&arena) == 0);
+	const char *sources[] = {
+		"main := later; main :: A; import Library; later := { x; };",
+		"{{main := later; main :: A; import Library; later := { x; };}}.main"
+	};
+	for (size_t i = 0; i < 2; ++i) {
+		pg_parser_init(&parser, &arena, sources[i], strlen(sources[i]));
+		const struct pg_syntax *root = pg_parser_program(&parser);
+		assert(root);
+		if (i) {
+			assert(root->kind == PG_SYNTAX_QUALIFIED);
+			assert(root->right->token.length == 4);
+			assert(memcmp(root->right->token.text, "main", 4) == 0);
+			root = root->left;
+		}
+		assert(root->kind == PG_SYNTAX_DEFINITIONS && root->item_count == 4);
+		assert(root->items[0].operation == PG_TOKEN_ASSIGN);
+		assert(root->items[0].expression->kind == PG_SYNTAX_ATOM);
+		assert(root->items[1].operation == PG_TOKEN_EXPECT);
+		assert(root->items[2].operation == PG_SYNTAX_IMPORT);
+		assert(root->items[3].expression->kind == PG_SYNTAX_BLOCK);
+		assert(parser.reader.token.kind == PG_TOKEN_EOF);
+		assert(!pg_parser_program(&parser));
+	}
+	pg_parser_init(&parser, &arena, "", 0);
+	const struct pg_syntax *empty = pg_parser_program(&parser);
+	assert(empty && empty->kind == PG_SYNTAX_DEFINITIONS && !empty->item_count);
+	pg_parser_init(&parser, &arena, sources[0], strlen(sources[0]));
+	struct pg_definition first;
+	assert(pg_parser_next(&parser, &first) == 1);
+	assert(!pg_parser_program(&parser) && parser.error);
+	const char *invalid[] = {"x:=A; broken", "x:=A; {{y:=B;}}.y", "{{x:=A;}}.x trailing"};
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
+		assert(!pg_parser_program(&parser) && parser.error);
+	}
+	assert(arena.terms.count == 0);
+	pg_graph_destroy(&arena);
+	puts("program syntax: flat/explicit definition arrays retain checks, imports and selection without Core construction");
+}
+
 int main(void)
 {
 	tokens();
@@ -354,6 +399,7 @@ int main(void)
 	blocks();
 	eliminations();
 	companions();
+	programs();
 	puts("reader: symbolic syntax, contextual names, literals, comments and bounded input passed");
 	return 0;
 }

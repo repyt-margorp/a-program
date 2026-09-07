@@ -469,3 +469,29 @@ int pg_parser_next(struct pg_parser *parser, struct pg_definition *definition)
 	++parser->entries;
 	return 1;
 }
+
+const struct pg_syntax *pg_parser_program(struct pg_parser *parser)
+{
+	if (parser->entries) {
+		error(parser, "program parsing requires an unread source");
+		return NULL;
+	}
+	struct item_buffer buffer = {0};
+	struct pg_token opening = parser->reader.token;
+	const struct pg_syntax *result = NULL;
+	struct pg_definition definition;
+	int status;
+	while ((status = pg_parser_next(parser, &definition)) > 0) {
+		if (definition.operation == '{') {
+			result = definition.expression;
+			goto done;
+		}
+		struct pg_syntax_item item = {.name = definition.name,
+			.expression = definition.expression, .operation = definition.operation};
+		if (append_item(parser, &buffer, item) != 0) goto done;
+	}
+	if (status == 0) result = item_node(parser, PG_SYNTAX_DEFINITIONS, opening, &buffer);
+done:
+	free(buffer.items);
+	return result;
+}
