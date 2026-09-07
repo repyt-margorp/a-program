@@ -1,6 +1,7 @@
 #include "graph.h"
 #include "dimension.h"
 #include "eval.h"
+#include "typing.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -61,6 +62,68 @@ static void graph_test(struct pg_graph *graph)
 
 static const struct pg_dimension_map *maps[128];
 static size_t map_count;
+
+static void context_test(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	assert(pg_typing_init(&typing, graph) == 0);
+	struct pg_object *type_a = pg_alloc(graph, sizeof(*type_a));
+	struct pg_object *type_b = pg_alloc(graph, sizeof(*type_b));
+	assert(type_a && type_b);
+	type_a->kind = PG_SEMANTIC_OBJECT;
+	type_b->kind = PG_SEMANTIC_OBJECT;
+	const struct pg_term *a = pg_reference(graph, type_a);
+	const struct pg_term *b = pg_reference(graph, type_b);
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_object *y = pg_binder(graph);
+	const struct pg_context *in_a = pg_context_bind(&typing, NULL, x, a);
+	const struct pg_context *in_b = pg_context_bind(&typing, NULL, x, b);
+	assert(in_a && in_b);
+	assert(in_a != in_b);
+	assert(in_a == pg_context_bind(&typing, NULL, x, a));
+	const struct pg_term *identity = pg_lambda(graph, x, pg_reference(graph, x));
+	assert(identity == pg_lambda(graph, in_a->binder, pg_reference(graph, in_a->binder)));
+	assert(identity == pg_lambda(graph, in_b->binder, pg_reference(graph, in_b->binder)));
+	assert(pg_context_lookup(in_a, x)->declared_type == a);
+	assert(pg_context_lookup(in_b, x)->declared_type == b);
+	assert(!pg_context_lookup(in_a, y));
+	const struct pg_context *extended = pg_context_bind(&typing, in_a, y, b);
+	assert(extended->parent == in_a);
+	assert(pg_context_lookup(extended, x) == in_a);
+	assert(pg_context_lookup(extended, y) == extended);
+	for (size_t i = 0; i < 1000; ++i) {
+		assert(pg_context_bind(&typing, in_a, pg_binder(graph), a));
+	}
+	assert(in_a == pg_context_bind(&typing, NULL, x, a));
+	assert(in_a->declared_type == a);
+	assert(in_b->declared_type == b);
+	assert(!pg_context_bind(&typing, NULL, type_a, a));
+	const struct pg_term *vx = pg_reference(graph, x);
+	const struct pg_occurrence *body_a = pg_occurrence(&typing, in_a, vx, NULL, 0, NULL);
+	const struct pg_occurrence *body_b = pg_occurrence(&typing, in_b, vx, NULL, 0, NULL);
+	assert(body_a && body_b && body_a != body_b);
+	assert(body_a->core == body_b->core);
+	const struct pg_occurrence *lambda_a = pg_occurrence(&typing, NULL, identity, NULL, 1, &body_a);
+	const struct pg_occurrence *lambda_b = pg_occurrence(&typing, NULL, identity, NULL, 1, &body_b);
+	assert(lambda_a && lambda_b && lambda_a != lambda_b);
+	assert(lambda_a->core == lambda_b->core);
+	assert(lambda_a == pg_occurrence(&typing, NULL, identity, NULL, 1, &body_a));
+	assert(lambda_a->operands[0]->context == in_a);
+	assert(lambda_b->operands[0]->context == in_b);
+	const struct pg_occurrence *annotated = pg_occurrence(&typing, in_a, vx, a, 0, NULL);
+	assert(annotated && annotated != body_a);
+	assert(annotated->annotation == a);
+	assert(!pg_occurrence(&typing, NULL, NULL, NULL, 0, NULL));
+	assert(!pg_occurrence(&typing, NULL, identity, NULL, 1, NULL));
+	assert(!pg_occurrence(&typing, NULL, identity, NULL, SIZE_MAX, &body_a));
+	for (size_t i = 0; i < 1000; ++i) {
+		const struct pg_term *variable = pg_reference(graph, pg_binder(graph));
+		assert(pg_occurrence(&typing, NULL, variable, NULL, 0, NULL));
+	}
+	assert(lambda_a == pg_occurrence(&typing, NULL, identity, NULL, 1, &body_a));
+	pg_typing_destroy(&typing);
+	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
+}
 
 static void evaluation_test(struct pg_graph *graph)
 {
@@ -245,6 +308,7 @@ int main(void)
 	struct pg_graph graph;
 	assert(pg_graph_init(&graph) == 0);
 	graph_test(&graph);
+	context_test(&graph);
 	evaluation_test(&graph);
 	dimension_test(&graph);
 	printf("graph: %zu terms; pointer-key interning and separate alpha comparison passed\n", graph.terms.count);

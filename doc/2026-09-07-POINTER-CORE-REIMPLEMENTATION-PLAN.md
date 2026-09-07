@@ -301,6 +301,28 @@ store only if a concrete consumer needs a distinct acceptance identity.
 Expected-type checks, diagnostics and artifact roots read these results rather
 than reproducing their lifecycle.
 
+Implemented input boundary (`pointer/typing.c`): immutable declared contexts
+are interned by `(parent*, binder*, declared_type*)`. An occurrence is interned
+by `(context*, core*, explicit_annotation*, typed_operands[])`. Typed operands
+retain the declarations erased from shared Core children; they do not duplicate
+Lambda/APP computation fields. Neither allocation constitutes accepted typing
+evidence. Explicit annotations are immutable syntax inputs, not solver answers;
+`::` must remain a subsequent check. Diagnostics are not part of these keys.
+
+- [x] Persistent declared contexts and exact-pointer occurrence interning.
+- [x] Test distinct lambda occurrences with identical erased Core but different
+  body declarations, exact-key reuse after index growth, and invalid storage
+  inputs; ordinary and ASan/UBSan builds pass.
+- [ ] Validate occurrence scope/operand contracts in elaboration and implement
+  synthesis with explicit derivations. Storage currently accepts unchecked
+  inputs and must not be presented as a kernel checker.
+- [ ] Connect typed occurrences to dimensional action and its classifier rules.
+
+The new input store uses the existing arena and hash index. Context lookup is
+currently a parent walk; no claim of constant-time binding lookup is made.
+N0/N1 and N2 remain incomplete; these checks do not establish HOTT or surface
+compatibility.
+
 ## 7. Compatibility Inventory
 
 This table is a starting inventory from the current reader, AST and test tree,
