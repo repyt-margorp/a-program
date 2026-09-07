@@ -55,6 +55,43 @@ static const struct pg_evidence *normalize(struct pg_synthesis *synthesis,
 	return complete(synthesis, pg_synthesis_normalize(synthesis, context, input), PG_SYNTHESIS_DONE);
 }
 
+static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing), *proofs[2];
+	const struct pg_object *x = pg_binder(typing->graph);
+	for (size_t n = 0; n < 2; ++n) {
+		const struct pg_evidence *domain = pg_prove_universe(typing, classifiers, empty, n);
+		const struct pg_evidence *context = pg_prove_context_extension(typing, empty, x, domain);
+		const struct pg_evidence *codomain = pg_prove_return_type(typing, classifiers,
+			pg_prove_projection(typing, context, domain));
+		proofs[n] = pg_prove_lambda(typing, pg_prove_pi(typing, classifiers, domain, context, codomain),
+			pg_prove_return(typing, classifiers, pg_prove_variable(typing, context, x)));
+		assert(proofs[n]);
+	}
+	assert(pg_evidence_subject(proofs[0])->core == pg_evidence_subject(proofs[1])->core);
+	assert(pg_evidence_classifier(proofs[0]) != pg_evidence_classifier(proofs[1]));
+	size_t terms = typing->graph->terms.count, evidence = typing->proofs.count;
+	struct pg_synthesis_job *first = pg_synthesis_evidence(&synthesis, proofs[0]);
+	struct pg_synthesis_job *second = pg_synthesis_evidence(&synthesis, proofs[1]);
+	assert(first && second && first != second);
+	assert(pg_synthesis_result(first) == proofs[0] && pg_synthesis_result(second) == proofs[1]);
+	assert(pg_synthesis_evidence(&synthesis, proofs[0]) == first);
+	assert(!pg_synthesis_evidence(&synthesis, NULL));
+	struct pg_typing foreign;
+	assert(pg_typing_init(&foreign, typing->graph) == 0);
+	assert(!pg_synthesis_evidence(&synthesis, pg_prove_empty_context(&foreign)));
+	pg_typing_destroy(&foreign);
+	pg_synthesis_advance(&synthesis, 100);
+	assert(!synthesis.steps && !synthesis.ready && synthesis.jobs.count == 2);
+	assert(typing->graph->terms.count == terms && typing->proofs.count == evidence);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+}
+
 static struct pg_synthesis_job *program(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const char *source)
 {
@@ -832,8 +869,36 @@ static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifi
 	const struct pg_evidence *target = pg_identity_context(typing, &dimensions, indices, 2, index_centers,
 		&index_left, &index_right, index_paths);
 	assert(boundary && target);
-	const struct pg_evidence *acted_images[2];
-	assert(pg_identity_substitution_images(typing, classifiers, result_map, left, right, 2, paths, 2, acted_images) == 0);
+	const struct pg_evidence *acted_images[2], *direct_images[2];
+	struct pg_synthesis_job *image_jobs[2], *bulk_image_jobs[2];
+	terms = graph->terms.count;
+	proofs = typing->proofs.count;
+	steps = split.steps;
+	for (size_t n = 0; n < 2; ++n) {
+		const struct pg_evidence *image = pg_evidence_premise(result_map, n + 3);
+		struct pg_synthesis_job *producer = pg_synthesis_evidence(&split, image);
+		assert(producer && pg_synthesis_result(producer) == image);
+		assert(pg_synthesis_evidence(&split, image) == producer);
+		assert(!pg_synthesis_dependency(producer));
+		image_jobs[n] = pg_synthesis_family_action(&split, producer, left, right, 2, paths);
+		bulk_image_jobs[n] = pg_synthesis_family_action(&whole,
+			pg_synthesis_evidence(&whole, image), left, right, 2, paths);
+		assert(image_jobs[n] && bulk_image_jobs[n]);
+		assert(pg_synthesis_family_action(&split, producer, left, right, 2, paths) == image_jobs[n]);
+	}
+	assert(graph->terms.count == terms && typing->proofs.count == proofs && split.steps == steps);
+	pg_synthesis_advance(&split, 1);
+	assert(!pg_synthesis_result(image_jobs[0]) && !pg_synthesis_result(image_jobs[1]));
+	pg_synthesis_advance(&whole, 100000);
+	for (size_t n = 0; n < 2; ++n) {
+		acted_images[n] = complete(&split, image_jobs[n], PG_SYNTHESIS_DONE);
+		same_judgement(acted_images[n], pg_synthesis_result(bulk_image_jobs[n]));
+	}
+	assert(pg_identity_substitution_images(typing, classifiers, result_map, left, right, 2, paths, 2, direct_images) == 0);
+	for (size_t n = 0; n < 2; ++n) same_judgement(acted_images[n], direct_images[n]);
+	steps = split.steps;
+	pg_synthesis_advance(&split, 1000);
+	assert(split.steps == steps);
 	const struct pg_evidence *endpoints[] = {pg_data_result(typing, schema, ctor, left), pg_data_result(typing, schema, ctor, right)};
 	const struct pg_evidence *values[7] = {pg_evidence_premise(endpoints[0], 2)};
 	for (size_t n = 0; n < 2; ++n) {
@@ -911,6 +976,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
+	accepted_inputs(&typing, &classifiers);
 	data_cases(&typing, &classifiers);
 	source_actions(&typing, &classifiers);
 	family_transport(&typing, &classifiers);

@@ -45,7 +45,7 @@ struct block_state {
 	const struct pg_evidence *tail;
 	struct pg_index names;
 };
-enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB,
+enum job_role { EXPRESSION_JOB, DEFINITION_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
@@ -156,7 +156,10 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 	job->input_count = count;
 	for (size_t i = 0; i < count; ++i) job->inputs[i] = inputs[i];
 	if (pg_index_insert(&synthesis->jobs, &job->index, hash) != 0) return NULL;
-	if (role != DEFINITION_JOB) {
+	if (role == EVIDENCE_JOB) {
+		job->result = inputs[0];
+		job->status = PG_SYNTHESIS_DONE;
+	} else if (role != DEFINITION_JOB) {
 		job->next = synthesis->ready;
 		synthesis->ready = job;
 	}
@@ -183,6 +186,14 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
 {
 	return request_role(synthesis, scope, syntax, EXPRESSION_JOB);
+}
+
+struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
+	const struct pg_evidence *proof)
+{
+	if (!pg_evidence_owned_by(proof, synthesis->typing)) return NULL;
+	const void *inputs[] = {proof};
+	return request_inputs(synthesis, EVIDENCE_JOB, 1, inputs);
 }
 
 struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis,

@@ -1195,6 +1195,25 @@ a specified type family, not a global endpoint-only relation.
   ASan/UBSan: 16.801 s (affected binaries rebuilt); core/IADT/Identity/synthesis
   pass at 512 KiB. These are verification durations, not a comparative speedup.
   Implementation `evidence.c` +27/-8; tests `core.c` +19/-0; docs separate.
+- [x] September 8, after `5216661`: accepted evidence can seed the existing
+  synthesis dependency graph through `pg_synthesis_evidence`. Registration is
+  already complete, keyed by the exact owned evidence pointer, and never queued
+  for resynthesis, reduction or Replay. Consumers use ordinary subscriptions.
+  The dependent-index result-map test now schedules each image's action using
+  this input and the existing family-action job, then assembles the map using
+  conversion-aware pairing. Split/bulk execution agrees with direct image action
+  and preserves both endpoint projections. No datatype-specific action job or
+  second checker is introduced. A same-Core Lambda with two different universe
+  annotations produces distinct inputs; registration adds no Core/proof records
+  or solver steps, repeated requests share, and foreign/null evidence rejects.
+  Suspension is between image jobs: regularity and the family-action primitive
+  still run synchronously within a step. This does not solve higher fibrancy or
+  implement `.a` loading; a future loader must establish accepted evidence before
+  registering it here. N2/N3/N5 remain open.
+  Optimized pointer `make check`: 3.134 s (changed synthesis test rebuilt);
+  ASan/UBSan: 17.149 s (affected binaries rebuilt); synthesis/Identity/IADT pass
+  at 512 KiB. Implementation `synthesis.c` +13/-2, `synthesis.h` +6/-0
+  (net +17); tests `synthesis.c` +68/-2; docs separate.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

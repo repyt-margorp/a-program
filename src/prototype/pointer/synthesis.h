@@ -31,6 +31,12 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_object *binder, const struct pg_evidence *extended_context);
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Register an already accepted proof as a completed producer. The exact
+ * evidence pointer, including its typed occurrence and premises, is the key.
+ * No synthesis, evaluation or proof replay occurs. Only evidence owned by
+ * this store's typing arena is accepted; this is not a serialized-proof loader. */
+struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
+	const struct pg_evidence *proof);
 /* Diagonal action of an input job, after its own synthesis has succeeded.
  * Both jobs belong to this store. The supplied context must be exactly the
  * input judgement's context; no expected classifier guides the producer.
