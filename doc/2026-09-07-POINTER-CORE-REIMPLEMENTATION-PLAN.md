@@ -921,9 +921,20 @@ known values without inventing a type-level result of an unknown computation.
   representative block forms to the same expected RETURN value; additional
   application fixtures cover blocks used in function and argument positions.
   A dependent result after `B := A` substitutes the known type value into its
-  classifier. The corresponding `B := (\T : @ => T) A` case remains explicitly
-  UNSUPPORTED: obtaining its pure result requires an additional checked
-  computation step, not assuming that a returning computation is a value.
+  classifier.
+- [x] The corresponding `B := (\T : @ => T) A` case now requests the shared
+  checked returned-value job when nondependent FOLD cannot close its
+  continuation. Only after obtaining actual value evidence does ordinary APP
+  instantiate the continuation's dependent classifier. The same close operation
+  serves computation blocks and computed application operands. Formation is
+  retained across suspension; multiple application frames close one scheduler
+  step at a time instead of an unbounded loop. Tests cover one/two dependent
+  block bindings, a computed dependent function argument, classifier agreement
+  with the known-value case, and independent Core evaluation. An unknown
+  function returning a type remains UNSUPPORTED; no type-level future result is
+  fabricated. Nondependent computations still use FOLD without forced eager
+  evaluation. The public result accessor exposes only completed jobs, not a
+  partially closed application while its value dependency is pending.
 - [ ] Lambda-exit target/barrier semantics, remaining computed type/argument
   cases, effect requests and handlers, and complete dependency/resource checks.
   EXIT remains UNSUPPORTED. This does not establish full block compatibility or

@@ -62,8 +62,9 @@ struct pg_synthesis_job {
 	const struct pg_evidence *result;
 	const struct pg_evidence *checking_term;
 	const struct pg_evidence *checking_type;
-	struct pg_synthesis_job *type_input;
+	struct pg_synthesis_job *value_job;
 	const struct pg_evidence *function;
+	const struct pg_evidence *continuation;
 	struct pg_conversion comparison;
 	int comparing;
 	struct block_state *block;
@@ -229,14 +230,14 @@ static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 	const struct pg_evidence *proof)
 {
 	if (pg_evidence_judgement(proof) != PG_JUDGEMENT_COMPUTATION) return proof;
-	if (!job->type_input) {
-		job->type_input = pg_synthesis_return(synthesis, context, proof);
-		depend(synthesis, job, job->type_input);
+	if (!job->value_job) {
+		job->value_job = pg_synthesis_return(synthesis, context, proof);
+		depend(synthesis, job, job->value_job);
 		return NULL;
 	}
-	struct pg_synthesis_job *producer = job->type_input;
+	struct pg_synthesis_job *producer = job->value_job;
 	if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return NULL; }
-	job->type_input = NULL;
+	job->value_job = NULL;
 	return producer->result;
 }
 
@@ -376,15 +377,37 @@ static struct continuation_frame *open_continuation(struct pg_synthesis *synthes
 }
 
 static const struct pg_evidence *close_continuation(struct pg_synthesis *synthesis,
-	const struct continuation_frame *frame, const struct pg_evidence *body)
+	struct pg_synthesis_job *job, const struct continuation_frame *frame,
+	const struct pg_evidence *body)
 {
-	const struct pg_evidence *codomain = pg_prove_classifier(synthesis->typing, synthesis->classifiers, frame->context, body);
-	const struct pg_evidence *pi = pg_prove_pi(synthesis->typing, synthesis->classifiers, frame->domain, frame->context, codomain);
-	const struct pg_evidence *continuation = pg_prove_lambda(synthesis->typing, pi, body);
-	/* Known values discharge FOLD(RETURN v,K) by APP(K,v). Unknown
-	 * returning computations retain their sequencing operation. */
-	return frame->value ? pg_prove_application(synthesis->typing, continuation, frame->value)
-		: pg_prove_fold(synthesis->typing, frame->input, continuation);
+	if (!job->continuation) {
+		const struct pg_evidence *codomain = pg_prove_classifier(synthesis->typing, synthesis->classifiers, frame->context, body);
+		const struct pg_evidence *pi = pg_prove_pi(synthesis->typing, synthesis->classifiers, frame->domain, frame->context, codomain);
+		job->continuation = pg_prove_lambda(synthesis->typing, pi, body);
+		if (!job->continuation) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return NULL; }
+	}
+	const struct pg_evidence *result;
+	if (frame->value) result = pg_prove_application(synthesis->typing, job->continuation, frame->value);
+	else if (!job->value_job) {
+		result = pg_prove_fold(synthesis->typing, frame->input, job->continuation);
+		if (!result) {
+			/* A dependent result needs an actual checked value, not an
+			 * assumed execution result in the classifier. */
+			job->value_job = pg_synthesis_return(synthesis,
+				pg_evidence_premise(frame->context, 0), frame->input);
+			depend(synthesis, job, job->value_job);
+			return NULL;
+		}
+	} else {
+		if (job->value_job->status != PG_SYNTHESIS_DONE) {
+			finish(synthesis, job, job->value_job->status); return NULL;
+		}
+		result = pg_prove_application(synthesis->typing, job->continuation, job->value_job->result);
+		job->value_job = NULL;
+	}
+	job->continuation = NULL;
+	if (!result) finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
+	return result;
 }
 
 static int sequence_operand(struct pg_synthesis *synthesis,
@@ -442,8 +465,9 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			return;
 		}
 		const struct continuation_frame *frame = block->frames;
-		block->tail = close_continuation(synthesis, frame, block->tail);
-		if (!block->tail) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		const struct pg_evidence *tail = close_continuation(synthesis, job, frame, block->tail);
+		if (!tail) return;
+		block->tail = tail;
 		block->frames = frame->parent;
 		job->next = synthesis->ready;
 		synthesis->ready = job;
@@ -691,14 +715,24 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 			job->checking_term = right;
 			job->function = left;
 		}
-		right = job->checking_term;
-		if (pg_evidence_classifier(right) != pg_evidence_subject(job->checking_type)->core)
-			right = compare(synthesis, job);
-		if (!right) return;
-		job->result = pg_prove_application(synthesis->typing, job->function, right);
-		for (const struct continuation_frame *frame = job->application_frame; job->result && frame; frame = frame->parent) {
-			job->result = close_continuation(synthesis, frame, job->result);
-			if (!job->result) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		if (job->stage == 2) {
+			right = job->checking_term;
+			if (pg_evidence_classifier(right) != pg_evidence_subject(job->checking_type)->core)
+				right = compare(synthesis, job);
+			if (!right) return;
+			job->result = pg_prove_application(synthesis->typing, job->function, right);
+			if (!job->result) break;
+			job->stage = 3;
+		}
+		if (job->application_frame) {
+			const struct continuation_frame *frame = job->application_frame;
+			const struct pg_evidence *result = close_continuation(synthesis, job, frame, job->result);
+			if (!result) return;
+			job->result = result;
+			job->application_frame = frame->parent;
+			job->next = synthesis->ready;
+			synthesis->ready = job;
+			return;
 		}
 		break;
 	}
@@ -736,7 +770,10 @@ void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget)
 	}
 }
 enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job) { return job->status; }
-const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job) { return job->result; }
+const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job)
+{
+	return job->status == PG_SYNTHESIS_DONE ? job->result : NULL;
+}
 const struct pg_synthesis_job *pg_synthesis_dependency(const struct pg_synthesis_job *job)
 {
 	return job && job->dependency ? job->dependency->child : NULL;

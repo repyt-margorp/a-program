@@ -25,6 +25,7 @@ static const struct pg_evidence *complete(struct pg_synthesis *synthesis,
 {
 	unsigned steps = 0;
 	while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+		assert(!pg_synthesis_result(job));
 		assert(++steps < 1000);
 		pg_synthesis_advance(synthesis, 1);
 	}
@@ -348,8 +349,27 @@ int main(void)
 	assert(pg_pi_view(pg_evidence_classifier(dependent_block), &domain, &binder, &codomain));
 	assert(domain == pg_reference(&graph, a));
 	assert(pg_return_type_view(codomain, &codomain) && codomain == domain);
+	const char *dependent_computations[] = {
+		"main := { B := (\\T : @ => T) A; \\y : B => y; };",
+		"main := { B := (\\T : @ => T) A; C := (\\T : @ => T) B; \\y : C => y; };",
+		"main := (\\B : @ => \\y : B => y) ((\\T : @ => T) A);"
+	};
+	for (size_t i = 0; i < sizeof(dependent_computations) / sizeof(*dependent_computations); ++i) {
+		const struct pg_evidence *result = complete(&synthesis,
+			request(&synthesis, scope, dependent_computations[i]), PG_SYNTHESIS_DONE);
+		assert(pg_alpha_equal(pg_evidence_classifier(result), pg_evidence_classifier(dependent_block)) == 1);
+		pg_computation_eval_init(&machine, &graph, pg_evidence_subject(result)->core);
+		assert(pg_eval_advance(&machine, 1000) == PG_EVAL_WHNF);
+		const struct pg_term *function_result = pg_eval_readback(&machine, &graph);
+		pg_eval_destroy(&machine);
+		assert(function_result && function_result->kind == PG_LAMBDA);
+		pg_computation_eval_init(&machine, &graph, pg_application(&graph, function_result, pg_reference(&graph, x)));
+		assert(pg_eval_advance(&machine, 1000) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&machine, &graph) == expected);
+		pg_eval_destroy(&machine);
+	}
 	complete(&synthesis, request(&synthesis, scope,
-		"main := { B := (\\T : @ => T) A; \\y : B => y; };"), PG_SYNTHESIS_UNSUPPORTED);
+		"main := \\f : A -> @ => { B := f x; \\y : B => y; };"), PG_SYNTHESIS_UNSUPPORTED);
 	const char *modules[] = {
 		"{{ main := id x; id := \\y:A=>y; }}.main",
 		"{{ main :: A -> A; main := id; id := \\y:A=>y; }}.main",
