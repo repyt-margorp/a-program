@@ -40,6 +40,35 @@ static const struct pg_term *action_match(struct pg_graph *graph, const struct p
 	return result;
 }
 
+static const struct pg_evidence *checked_case(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, struct pg_whnf_work *work,
+	const struct pg_data_schema *schema, const struct pg_object *constructor,
+	const struct pg_evidence *motive, const struct pg_evidence *body)
+{
+	const struct pg_evidence *target = pg_data_branch_motive(typing, schema, constructor, motive);
+	assert(target && pg_evidence_rule(target) == PG_REINDEX);
+	assert(pg_evidence_premise(target, 0) == pg_data_schema_result(schema, constructor));
+	assert(pg_evidence_premise(target, 1) == motive);
+	assert(pg_data_branch_motive(typing, schema, constructor, motive) == target);
+	struct pg_conversion comparison;
+	assert(pg_conversion_init(&comparison, work, pg_evidence_classifier(body), pg_evidence_subject(target)->core) == 0);
+	assert(!pg_data_case(typing, classifiers, schema, constructor, motive, body, NULL));
+	if (pg_conversion_status(&comparison) == PG_CONVERSION_PENDING)
+		assert(!pg_conversion_certificate(&comparison));
+	while (pg_conversion_advance(&comparison, 1) == PG_CONVERSION_PENDING)
+		assert(pg_conversion_steps(&comparison) < 100000);
+	assert(pg_conversion_status(&comparison) == PG_CONVERSION_EQUAL);
+	const struct pg_conversion_certificate *certificate = pg_conversion_certificate(&comparison);
+	const struct pg_evidence *result = pg_data_case(typing, classifiers, schema, constructor, motive, body, certificate);
+	assert(result && pg_data_case(typing, classifiers, schema, constructor, motive, body, certificate) == result);
+	const struct pg_evidence *leaf = result;
+	while (pg_evidence_rule(leaf) == PG_LAMBDA_INTRO) leaf = pg_evidence_premise(leaf, 1);
+	assert(pg_evidence_rule(leaf) == PG_TYPE_CONVERSION);
+	assert(pg_evidence_premise(leaf, 0) == body && pg_evidence_premise(leaf, 1) == target);
+	pg_conversion_destroy(&comparison);
+	return result;
+}
+
 static void higher_matches(struct pg_graph *graph, struct pg_whnf_work *work)
 {
 	size_t arities[] = {0, 1};
@@ -235,6 +264,32 @@ static void schemas(struct pg_graph *graph)
 		pg_prove_classifier(&typing, &classifiers, indices, qv));
 	const struct pg_evidence *result_type = pg_prove_reindex(&typing, index_result, motive);
 	assert(result_type && pg_alpha_equal(pg_evidence_classifier(applied), pg_evidence_subject(result_type)->core) == 1);
+	const struct pg_evidence *case_proof = checked_case(&typing, &classifiers, &work, indexed, indexed_ctor, motive, body);
+	assert(pg_evidence_subject(case_proof)->core == pg_evidence_subject(branch)->core);
+	const struct pg_evidence *case_application = pg_prove_reindex(&typing, params, case_proof);
+	for (size_t n = 0; n < 2; ++n) case_application = pg_prove_application(&typing, case_application, values[n]);
+	assert(case_application && pg_alpha_equal(pg_evidence_classifier(case_application), pg_evidence_subject(result_type)->core) == 1);
+	check(&work, pg_evidence_subject(case_application)->core, answer);
+	assert(!pg_data_branch_motive(&foreign, indexed, indexed_ctor, motive));
+	assert(!pg_data_branch_motive(&typing, indexed, ctor, motive));
+	assert(!pg_data_branch_motive(&typing, indexed, indexed_ctor, qv));
+	assert(!pg_data_branch_motive(&typing, indexed, indexed_ctor, result_type));
+	assert(!pg_data_branch_motive(&typing, NULL, indexed_ctor, motive));
+	const struct pg_evidence *wrong_motive = pg_prove_return_type(&typing, &classifiers, index_type);
+	wrong_motive = pg_prove_projection(&typing, indices, wrong_motive);
+	const struct pg_evidence *wrong_target = pg_data_branch_motive(&typing, indexed, indexed_ctor, wrong_motive);
+	assert(wrong_target);
+	const struct pg_evidence *checked_body = case_proof;
+	while (pg_evidence_rule(checked_body) == PG_LAMBDA_INTRO) checked_body = pg_evidence_premise(checked_body, 1);
+	const struct pg_conversion_certificate *valid = pg_evidence_conversion(checked_body);
+	assert(valid && !pg_data_case(&typing, &classifiers, indexed, indexed_ctor, wrong_motive, body, valid));
+	assert(!pg_data_case(&foreign, &classifiers, indexed, indexed_ctor, motive, body, valid));
+	assert(!pg_data_case(&typing, &classifiers, indexed, indexed_ctor, motive, pv, valid));
+	struct pg_conversion mismatch;
+	assert(pg_conversion_init(&mismatch, &work, pg_evidence_classifier(body), pg_evidence_subject(wrong_target)->core) == 0);
+	assert(pg_conversion_advance(&mismatch, 100000) == PG_CONVERSION_DIFFERENT);
+	assert(!pg_data_case(&typing, &classifiers, indexed, indexed_ctor, wrong_motive, body, pg_conversion_certificate(&mismatch)));
+	pg_conversion_destroy(&mismatch);
 	struct pg_match_clause typed_clause = {indexed_ctor, pg_evidence_subject(branch)->core};
 	const struct pg_term *indexed_data = pg_application(graph, pg_application(graph,
 		pg_reference(graph, indexed_ctor), vx), pg_evidence_subject(values[1])->core);
@@ -247,6 +302,9 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *constant = pg_prove_return(&typing, &classifiers,
 		pg_prove_variable(&typing, parameters, a));
 	assert(pg_data_branch(&typing, &classifiers, schema, pg_data_constructor(layout, 0), constant) == constant);
+	const struct pg_evidence *constant_case = checked_case(&typing, &classifiers, &work, schema,
+		pg_data_constructor(layout, 0), pg_prove_classifier(&typing, &classifiers, parameters, constant), constant);
+	assert(pg_evidence_subject(constant_case) == pg_evidence_subject(constant));
 	/* A branch returning a raw function stays a computation Pi, not F(U Pi). */
 	const struct pg_object *z = pg_binder(graph);
 	const struct pg_evidence *field_a = pg_prove_value_type(&typing, index_images[0]);
@@ -256,6 +314,15 @@ static void schemas(struct pg_graph *graph)
 		pg_prove_classifier(&typing, &classifiers, under_z, return_p));
 	const struct pg_evidence *function_body = pg_prove_lambda(&typing, function_type, return_p);
 	const struct pg_evidence *function_branch = pg_data_branch(&typing, &classifiers, indexed, indexed_ctor, function_body);
+	const struct pg_object *index_z = pg_binder(graph);
+	const struct pg_evidence *index_a = pg_prove_value_type(&typing, pg_prove_variable(&typing, indices, a));
+	const struct pg_evidence *index_under_z = pg_prove_context_extension(&typing, indices, index_z, index_a);
+	const struct pg_evidence *function_motive = pg_prove_pi(&typing, &classifiers, index_a, index_under_z,
+		pg_prove_projection(&typing, index_under_z, motive));
+	assert(function_motive);
+	const struct pg_evidence *function_case = checked_case(&typing, &classifiers, &work, indexed, indexed_ctor,
+		function_motive, function_body);
+	assert(pg_evidence_subject(function_case)->core == pg_evidence_subject(function_branch)->core);
 	applied = pg_prove_reindex(&typing, params, function_branch);
 	for (size_t n = 0; n < 2; ++n) applied = pg_prove_application(&typing, applied, values[n]);
 	assert(applied);

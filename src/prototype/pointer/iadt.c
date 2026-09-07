@@ -316,3 +316,22 @@ const struct pg_evidence *pg_data_branch(struct pg_typing *typing,
 	}
 	return body;
 }
+
+const struct pg_evidence *pg_data_branch_motive(struct pg_typing *typing,
+	const struct pg_data_schema *schema, const struct pg_object *object,
+	const struct pg_evidence *motive)
+{
+	if (!pg_evidence_owned_by(motive, typing)) return NULL;
+	if (pg_evidence_judgement(motive) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	return pg_prove_reindex(typing, pg_data_schema_result(schema, object), motive);
+}
+
+const struct pg_evidence *pg_data_case(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_data_schema *schema,
+	const struct pg_object *object, const struct pg_evidence *motive,
+	const struct pg_evidence *body, const struct pg_conversion_certificate *conversion)
+{
+	const struct pg_evidence *target = pg_data_branch_motive(typing, schema, object, motive);
+	const struct pg_evidence *checked = pg_prove_conversion(typing, body, target, conversion);
+	return pg_data_branch(typing, classifiers, schema, object, checked);
+}

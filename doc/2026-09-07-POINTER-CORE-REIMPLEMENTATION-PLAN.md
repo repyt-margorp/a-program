@@ -1086,6 +1086,28 @@ a specified type family, not a global endpoint-only relation.
   Optimized pointer `make check`: 2.215 s; ASan/UBSan: 7.448 s, both including
   the changed test rebuild. IADT/Identity/synthesis also pass at a 512 KiB stack.
   Implementation +90/-7 (net +83); tests +120/-6 (net +114); docs separate.
+- [x] September 8, after `1134be9`: post-check an index-motive case.
+  Before nominal admission, connect the already checked result maps and branch
+  proofs: `pg_data_branch_motive` derives `C[r]` by ordinary reindexing, where C
+  is a computation-type motive in the index context and r is the constructor
+  result map. `pg_data_case` takes an independently synthesized body and an
+  explicit completed conversion certificate, then uses existing conversion and
+  Pi/Lambda rules. No expected type guides synthesis, no reduction runs inside
+  the case check, and no new rule, mutable schema result or evaluator is added.
+  Its proof DAG retains both the body derivation and the motive/result-map
+  derivation; repeated requests reuse those accepted nodes. Tests cover dependent
+  indices, raw Pi motives, empty field telescopes, instantiated result types,
+  missing and wrong-target certificates, wrong context/polarity and foreign
+  ownership. An initial test incorrectly required every comparison to start
+  pending; exact comparisons can finish immediately. The corrected test checks
+  missing certificates and pending certificate visibility separately.
+  Optimized pointer `make check`: 2.217 s (changed test rebuilt); ASan/UBSan:
+  15.856 s (affected binaries rebuilt); IADT/Identity/synthesis pass at 512 KiB.
+  Implementation +33 (`iadt.c` +19, `iadt.h` +14); tests +67; docs separate.
+  N2/N3 stay open: this checks an index-dependent case function, not a complete
+  Match, recursive IH, a motive depending on the scrutinee itself, or nominal
+  datatype fibrancy. Shared scheduler integration and checked nominal family
+  formation/membership remain next, with recursive and higher obligations intact.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

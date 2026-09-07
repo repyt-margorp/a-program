@@ -62,5 +62,19 @@ const struct pg_evidence *pg_data_instance(struct pg_typing *typing,
 const struct pg_evidence *pg_data_branch(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_data_schema *schema,
 	const struct pg_object *constructor, const struct pg_evidence *body);
+/* Pull an index-dependent computation motive back along the constructor's
+ * result map. This constructs a checking obligation, never synthesizes a body. */
+const struct pg_evidence *pg_data_branch_motive(struct pg_typing *typing,
+	const struct pg_data_schema *schema, const struct pg_object *constructor,
+	const struct pg_evidence *motive);
+struct pg_conversion_certificate;
+/* Post-check an independently synthesized body against that motive, then
+ * abstract its fields. Retains both derivations through ordinary conversion;
+ * callers obtain the comparison certificate from the shared conversion work.
+ * This certifies a case function, not scrutinee membership or a whole Match. */
+const struct pg_evidence *pg_data_case(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_data_schema *schema,
+	const struct pg_object *constructor, const struct pg_evidence *motive,
+	const struct pg_evidence *body, const struct pg_conversion_certificate *conversion);
 
 #endif

@@ -28,6 +28,10 @@ Branch abstraction uses ordinary Pi/Lambda proofs from synthesized computation
 bodies. Its applications agree with typed body substitution and erased iota;
 raw function results stay Pi computations. Selected-path action is compared by
 conversion, since WHNF does not normalize a RETURN payload.
+Index-motive cases are post-checked using ordinary reindex and conversion
+evidence. Tests retain the independent body proof, reject wrong/missing
+certificates, and cover raw Pi motives and zero-field cases without guiding
+body synthesis from an expected type.
 One-direction erased Match action retains selected constructor and branch
 paths, including compressed diagonal prefixes. Tests compare it with checked
 dependent body action, preserve captured scope/trailing applications, and check
