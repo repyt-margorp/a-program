@@ -142,7 +142,7 @@ static void syntax(void)
 	assert(definition.expression->token.kind == '@');
 	assert(pg_parser_next(&parser, &definition) == 0);
 	const char *invalid[] = {"id := \\x => x;", "x := (x:A);", "x := f (x:A);",
-		"x := (f a;", "x := f", "x := b @true => x;", "T := @{c:*;};"};
+		"x := (f a;", "x := f", "x := b @true => x;", "T := @{c:*};"};
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
 		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
 		assert(pg_parser_next(&parser, &definition) == -1);
@@ -152,6 +152,62 @@ static void syntax(void)
 	puts("syntax: lambda annotations, dependent Pi, applications and separate expect nodes passed");
 }
 
+static size_t self_count(const struct pg_syntax *syntax)
+{
+	if (!syntax) return 0;
+	size_t count = syntax->kind == PG_SYNTAX_ATOM && syntax->token.kind == '*';
+	count += self_count(syntax->left) + self_count(syntax->right);
+	for (size_t i = 0; i < syntax->item_count; ++i) count += self_count(syntax->items[i].expression);
+	return count;
+}
+
+static void declarations(void)
+{
+	const char source[] =
+		"List := \\A:@ => @{nil:*; cons:A->*;};"
+		"Vec := \\A:@ => @\\n:Nat => {nil:* Nat.zero; cons:(k:Nat)->A->* k->* (Nat.succ k);};"
+		"Acc := \\A:@ => \\R:A->A->@ => @\\subject:A => {acc:(x:A)->((y:A)->R y x->* y)->* x;};"
+		"Empty := @{};"
+		"Many := @{a:*; b:*; c:*; d:*; e:*; f:*; g:*; h:*; i:*;};";
+	struct pg_graph arena = {0};
+	struct pg_parser parser;
+	struct pg_definition definition;
+	pg_parser_init(&parser, &arena, source, sizeof(source) - 1);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->kind == PG_SYNTAX_LAMBDA);
+	const struct pg_syntax *declaration = definition.expression->right;
+	assert(declaration->kind == PG_SYNTAX_DECLARATION);
+	assert(declaration->left->kind == PG_SYNTAX_CONSTRUCTORS);
+	assert(declaration->left->item_count == 2);
+	assert(self_count(declaration) == 2);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	declaration = definition.expression->right;
+	assert(declaration->kind == PG_SYNTAX_DECLARATION);
+	assert(declaration->left->kind == PG_SYNTAX_LAMBDA);
+	assert(declaration->left->token.text[0] == 'n');
+	assert(declaration->left->right->item_count == 2);
+	assert(self_count(declaration) == 3);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->right->kind == PG_SYNTAX_LAMBDA);
+	declaration = definition.expression->right->right;
+	assert(declaration->kind == PG_SYNTAX_DECLARATION);
+	assert(declaration->left->token.text_length == strlen("subject"));
+	assert(declaration->left->right->item_count == 1);
+	assert(self_count(declaration) == 2);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->left->item_count == 0);
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->left->item_count == 9);
+	assert(pg_parser_next(&parser, &definition) == 0);
+	const char *invalid[] = {"T := @\\n:A => ;", "T := @{a:*;", "T := @{a:=*;};"};
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
+		assert(pg_parser_next(&parser, &definition) == -1);
+	}
+	pg_graph_destroy(&arena);
+	puts("declarations: parameter/index separation, List/Vec/Acc self markers and constructor arrays passed");
+}
+
 int main(void)
 {
 	tokens();
@@ -159,6 +215,7 @@ int main(void)
 	failures();
 	prefixes();
 	syntax();
+	declarations();
 	puts("reader: symbolic syntax, contextual names, literals, comments and bounded input passed");
 	return 0;
 }

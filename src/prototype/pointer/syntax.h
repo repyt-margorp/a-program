@@ -12,7 +12,14 @@ enum pg_syntax_kind {
 	PG_SYNTAX_PI,
 	PG_SYNTAX_BINDER,
 	PG_SYNTAX_EXPECT,
-	PG_SYNTAX_QUOTE
+	PG_SYNTAX_QUOTE,
+	PG_SYNTAX_DECLARATION,
+	PG_SYNTAX_CONSTRUCTORS
+};
+
+struct pg_syntax_item {
+	struct pg_token name;
+	const struct pg_syntax *expression;
 };
 
 /* Source syntax is not executable Core or accepted typing evidence. Token
@@ -22,6 +29,8 @@ struct pg_syntax {
 	struct pg_token token;
 	const struct pg_syntax *left;
 	const struct pg_syntax *right;
+	size_t item_count;
+	const struct pg_syntax_item *items;
 };
 
 struct pg_definition {

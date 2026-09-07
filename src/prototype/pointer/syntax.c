@@ -1,5 +1,8 @@
 #include "syntax.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 static void error(struct pg_parser *parser, const char *message)
 {
 	if (parser->error) return;
@@ -32,11 +35,69 @@ static const struct pg_syntax *node(struct pg_parser *parser, enum pg_syntax_kin
 		error(parser, "syntax allocation failed");
 		return NULL;
 	}
-	*syntax = (struct pg_syntax){kind, token, left, right};
+	*syntax = (struct pg_syntax){.kind = kind, .token = token, .left = left, .right = right};
 	return syntax;
 }
 
 static const struct pg_syntax *expression(struct pg_parser *parser);
+
+/* Index binders occur inside the declaration marker. Outer lambdas remain
+ * parameters; the parser does not substitute the declaration's source name. */
+static const struct pg_syntax *declaration_body(struct pg_parser *parser)
+{
+	if (parser->reader.token.kind == '\\') {
+		advance(parser);
+		struct pg_token binder = parser->reader.token;
+		if (require(parser, PG_TOKEN_IDENT, "expected index binder") != 0) return NULL;
+		if (require(parser, ':', "expected index domain") != 0) return NULL;
+		const struct pg_syntax *domain = expression(parser);
+		if (require(parser, PG_TOKEN_LAMBDA_ARROW, "expected '=>' after index domain") != 0) return NULL;
+		const struct pg_syntax *body = declaration_body(parser);
+		return node(parser, PG_SYNTAX_LAMBDA, binder, domain, body);
+	}
+	struct pg_token opening = parser->reader.token;
+	if (require(parser, '{', "expected constructor block") != 0) return NULL;
+	struct pg_syntax_item *items = NULL;
+	size_t count = 0, capacity = 0;
+	const struct pg_syntax *result = NULL;
+	while (!parser->error && parser->reader.token.kind != '}') {
+		struct pg_token name = parser->reader.token;
+		if (require(parser, PG_TOKEN_IDENT, "expected constructor name") != 0) goto done;
+		if (require(parser, ':', "expected ':' after constructor name") != 0) goto done;
+		const struct pg_syntax *type = expression(parser);
+		if (!type) goto done;
+		if (require(parser, ';', "expected ';' after constructor classifier") != 0) goto done;
+		if (count == capacity) {
+			size_t next = capacity ? capacity * 2 : 8;
+			if (next < capacity || next > SIZE_MAX / sizeof(*items)) {
+				error(parser, "constructor storage overflow");
+				goto done;
+			}
+			struct pg_syntax_item *grown = realloc(items, next * sizeof(*items));
+			if (!grown) {
+				error(parser, "constructor storage allocation failed");
+				goto done;
+			}
+			items = grown;
+			capacity = next;
+		}
+		items[count++] = (struct pg_syntax_item){name, type};
+	}
+	if (require(parser, '}', "expected '}' after constructors") != 0) goto done;
+	struct pg_syntax_item *stored = pg_alloc(parser->arena, count * sizeof(*stored));
+	struct pg_syntax *block = pg_alloc(parser->arena, sizeof(*block));
+	if (!stored || !block) {
+		error(parser, "constructor syntax allocation failed");
+		goto done;
+	}
+	if (count) memcpy(stored, items, count * sizeof(*stored));
+	*block = (struct pg_syntax){.kind = PG_SYNTAX_CONSTRUCTORS, .token = opening,
+		.item_count = count, .items = stored};
+	result = block;
+done:
+	free(items);
+	return result;
+}
 
 static int atom_start(int kind)
 {
@@ -75,8 +136,12 @@ static const struct pg_syntax *atom(struct pg_parser *parser)
 	} else {
 		if (token.kind == '@') {
 			int next = parser->reader.token.kind;
-			if (next == '{' || next == '\\' || next == PG_TOKEN_IDENT) {
-				error(parser, "declaration/graph-selector grammar not implemented yet");
+			if (next == '{' || next == '\\') {
+				const struct pg_syntax *body = declaration_body(parser);
+				return node(parser, PG_SYNTAX_DECLARATION, token, body, NULL);
+			}
+			if (next == PG_TOKEN_IDENT) {
+				error(parser, "graph-selector grammar not implemented yet");
 				return NULL;
 			}
 		}

@@ -410,10 +410,19 @@ fragment, qualified names, literals, quotation, and separate `::` checks into
 source-owned syntax nodes. It does not resolve names, infer types, insert CBPV
 coercions or evaluate expressions. Tests check left-associated application,
 dependent binder retention and separation of expected-type checks from
-definitions. Ordinary and ASan/UBSan checks pass. Match, declarations, blocks,
+definitions. Ordinary and ASan/UBSan checks pass. Match, blocks,
 imports and graph-companion syntax still need grammar implementations; current
 rejection of those forms is a temporary unsupported boundary, not a language
 design change or a compatibility success.
+
+Declaration syntax now accepts `@{...}` and `@\\index:A => {...}`. Outer
+lambdas remain parameters; index lambdas sit inside the declaration marker.
+Constructor classifiers are retained whole, in a source-order array, with `*`
+and its index applications preserved rather than rewritten to a named recursive
+reference. List/Vec/Acc, empty declarations, array growth and malformed syntax
+fixtures pass ordinary and sanitizer checks. Name resolution must still reject
+using the defining name as a recursive reference. Positivity, index typing,
+declaration lowering and HOTT declaration action are not implemented yet.
 
 This table is a starting inventory from the current reader, AST and test tree,
 not a claim that the failed snapshot passes every row. N0 must enumerate exact
