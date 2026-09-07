@@ -5,15 +5,20 @@ BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)evidence.c $(ROOT)computation.c
 
 .PHONY: check
-check: $(BUILD)/core_test $(BUILD)/reader_test $(BUILD)/parse_files
+check: $(BUILD)/core_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test
 	$(BUILD)/core_test
 	$(BUILD)/reader_test
+	$(BUILD)/synthesis_test
 	$(BUILD)/parse_files $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 	bash $(ROOT)tests/syntax_inventory.sh $(BUILD)/parse_files
 
 $(BUILD)/core_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)tests/core.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)tests/core.c -o $@
+
+$(BUILD)/synthesis_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)tests/synthesis.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)tests/synthesis.c -o $@
 
 $(BUILD)/reader_test: $(ROOT)reader.c $(ROOT)reader.h $(ROOT)syntax.c $(ROOT)syntax.h $(ROOT)graph.c $(ROOT)graph.h $(ROOT)tests/reader.c
 	mkdir -p $(BUILD)

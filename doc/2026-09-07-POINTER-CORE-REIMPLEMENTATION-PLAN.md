@@ -467,7 +467,31 @@ conclusion and all premise pointers; no accepted record is overwritten.
   Regularity for unsupported rules returns NULL, not a refutation. Recovery
   currently traverses the relevant proof premises; scheduling/memoization and
   source synthesis still need integration rather than a separate type authority.
-- [ ] Semantic conversion extensions, synthesis scheduling, image checking and
+- [x] Initial source-synthesis jobs are interned by syntax and lexical scope.
+  Requests do not synthesize; a budgeted ready queue advances dependencies.
+  A waiting parent subscribes once to its child and wakes on completion rather
+  than scanning all pending work. Results point to accepted derivations, with
+  no parallel mutable classifier answer. Completed jobs do not run again.
+  Source scopes map names to pointer binders and verified contexts; they are
+  not execution environments and do not change Core interning.
+- [x] Connect value universes, scoped variables, annotated Lambda, dependent Pi,
+  APP, quotation and inline post-synthesis `::`. Lambda bodies retain raw
+  computation polarity, while value bodies acquire RETURN. Function-typed
+  value domains use U(Pi); callable thunk values are explicitly forced during
+  elaboration. Inline `::` first finishes its left job, then synthesizes its
+  target and performs a resumable comparison; the expectation never flows back
+  into the left job. Tests compile a raw polymorphic nested identity, execute
+  an application, check function expectations and reject unresolved names.
+- [ ] Complete source lowering/synthesis: root definition graph and forward
+  names/imports, literals, ADT/IADT, computation blocks/folds, implicit sequencing
+  of returning arguments/callees, conversion at ordinary APP and computed type
+  annotations, structured error reasons and comprehensive surface compatibility.
+  Current unsupported syntax and computation arguments report UNSUPPORTED,
+  not a theorem of untypability. Kernel APIs still conflate some allocation and
+  premise failures; error classification must be completed. Budget currently
+  counts scheduling/comparison transitions, not all work within a kernel rule.
+  This initial expression-job store is not a serialized `.a` image yet.
+- [ ] Semantic conversion extensions, full synthesis scheduling, image checking and
   typed HOTT action still need implementation. These primitive rules do
   not constitute a complete checker; NULL currently combines invalid-premise
   and allocation failures and is not a solver-level logical rejection result.
