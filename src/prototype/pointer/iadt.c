@@ -1,4 +1,5 @@
 #include "iadt.h"
+#include "evidence.h"
 
 static const struct pg_object_class constructor_class = {"constructor"};
 static const struct pg_object_class match_class = {"match"};
@@ -102,4 +103,83 @@ int pg_data_dispatch(struct pg_eval *machine)
 	const struct pg_data_layout *layout = (const struct pg_data_layout *)object;
 	if (!pg_eval_argument(machine, layout->count)) return 1;
 	return pg_eval_demand(machine, 0, match_answer);
+}
+
+struct pg_data_schema {
+	const struct pg_data_layout *layout;
+	const struct pg_evidence *parameters;
+	const struct pg_evidence *fields[];
+};
+
+const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
+	const struct pg_evidence *parameters, size_t count,
+	const struct pg_evidence *const *fields)
+{
+	if (!pg_evidence_owned_by(parameters, typing) || (count && !fields)) return NULL;
+	if (pg_evidence_judgement(parameters) != PG_JUDGEMENT_CONTEXT) return NULL;
+	if (count > (SIZE_MAX - sizeof(struct pg_data_schema)) / sizeof(*fields)) return NULL;
+	if (count > SIZE_MAX / sizeof(size_t)) return NULL;
+	struct pg_graph temporary = {0};
+	size_t *arities = pg_alloc(&temporary, count * sizeof(*arities));
+	struct pg_data_schema *schema = NULL;
+	if (count && !arities) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		if (!pg_evidence_owned_by(fields[i], typing)) goto done;
+		if (pg_evidence_judgement(fields[i]) != PG_JUDGEMENT_CONTEXT) goto done;
+		const struct pg_context *cursor = pg_evidence_context(fields[i]);
+		while (cursor != pg_evidence_context(parameters)) {
+			if (!cursor) goto done;
+			++arities[i];
+			cursor = cursor->parent;
+		}
+	}
+	const struct pg_data_layout *layout = pg_data_layout(typing->graph, count, arities);
+	if (!layout) goto done;
+	schema = pg_alloc(typing->graph, sizeof(*schema) + count * sizeof(*fields));
+	if (!schema) goto done;
+	schema->parameters = parameters;
+	schema->layout = layout;
+	for (size_t i = 0; i < count; ++i) schema->fields[i] = fields[i];
+done:
+	pg_graph_destroy(&temporary);
+	return schema;
+}
+
+const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *schema)
+{
+	return schema ? schema->layout : NULL;
+}
+
+const struct pg_evidence *pg_data_schema_fields(const struct pg_data_schema *schema,
+	const struct pg_object *object)
+{
+	if (!schema) return NULL;
+	const struct pg_constructor *c = constructor(object, schema->layout);
+	return c ? schema->fields[c - schema->layout->constructors] : NULL;
+}
+
+const struct pg_evidence *pg_data_instance(struct pg_typing *typing,
+	const struct pg_data_schema *schema, const struct pg_object *object,
+	const struct pg_evidence *parameters, size_t count,
+	const struct pg_evidence *const *values)
+{
+	const struct pg_evidence *fields = pg_data_schema_fields(schema, object);
+	if (!fields || !pg_evidence_owned_by(parameters, typing) || (count && !values)) return NULL;
+	if (pg_evidence_rule(parameters) != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (pg_evidence_context(pg_evidence_premise(parameters, 0)) != pg_evidence_context(schema->parameters)) return NULL;
+	const struct pg_constructor *c = constructor(object, schema->layout);
+	if (count != c->arity) return NULL;
+	size_t prefix = pg_evidence_premise_count(parameters) - 2;
+	if (count > SIZE_MAX / sizeof(*values)) return NULL;
+	if (prefix > SIZE_MAX / sizeof(*values) - count) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence **images = pg_alloc(&temporary, (prefix + count) * sizeof(*images));
+	const struct pg_evidence *result = NULL;
+	if (prefix + count && !images) goto done;
+	for (size_t i = 0; i < prefix; ++i) images[i] = pg_evidence_premise(parameters, i + 2);
+	for (size_t i = 0; i < count; ++i) images[prefix + i] = values[i];
+	result = pg_prove_substitution(typing, fields, pg_evidence_premise(parameters, 1), prefix + count, images);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
 }

@@ -977,6 +977,40 @@ a specified type family, not a global endpoint-only relation.
   Implementation: `iadt.c` +105, `iadt.h` +26, `computation.c` +3/-1
   (net +133); tests: `tests/iadt.c` +121; build: +7/-2; docs separate.
   N2/N3 remain open; this is the erased execution foundation, not IADT acceptance.
+- [x] September 8, after `02a7ad0`: checked field telescopes derive layouts.
+  `pg_data_schema` keeps accepted Context evidence for the parameter prefix
+  and each constructor's dependent field extension. No new telescope nodes,
+  field-type arrays, value-side Pi or nominal type-formation rule are added.
+  Arity is derived from those contexts once into the immutable erased layout;
+  the evaluator still reads no typing/proof state. Fresh schema creation is
+  generative, even for equal field lists. Existing binder/context pointers,
+  not proof-pointer equality, determine whether the parameter prefix matches.
+  `pg_data_instance` assembles parameter images and field values for the
+  existing checked substitution rule. Its result is ordinary substitution
+  evidence, with the same interning and dependent classifier checks, not a
+  constructor-membership certificate or a second schema-specific solver.
+  Tests use `A : Universe, x : A, p : Id A x x`: a proof for another field
+  value is rejected; the corresponding reflexivity proof succeeds. They also
+  reject computation-valued fields, foreign proof stores/owners, wrong arity
+  and unrelated prefixes, and check empty telescopes and derived-layout iota.
+  The existing context Act generates the two-field boundary telescope; both
+  endpoint field instances reuse its substitution evidence with identical
+  premises. An initial test incorrectly expected identical proofs after
+  replacing a projected parameter proof by a direct variable proof; the test
+  now retains the original premises, without merging distinct derivations.
+  Different derivations of the same parameter context remain accepted.
+  This validates sharing of field/context action, not action on a new nominal
+  datatype. Result-index schemas, recursive self binding/positivity, nominal
+  formation/constructor evidence, typed Match/IH and higher fibrancy remain
+  open N3 work; raw field schemas cannot bypass any of these gates.
+  Schema construction and the underlying substitution checker are currently
+  synchronous; the latter can revisit dependent prefixes. Do not claim a new
+  budgeted declaration solver or improved asymptotic substitution complexity.
+  Verification: optimized pointer `make check` passed in 2.039 s including
+  rebuilding the changed test, plus iadt/Identity/synthesis at a 512 KiB stack.
+  ASan/UBSan `make check` passed in 6.832 s with the changed test rebuilt.
+  Implementation +107 lines (`iadt.c` +80, `iadt.h` +21, evidence API +6),
+  tests +114; documentation counted separately. N2/N3 remain open.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

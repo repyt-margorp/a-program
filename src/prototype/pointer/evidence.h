@@ -182,6 +182,8 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *term);
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence);
+/* Storage provenance only; this does not validate a rule-specific premise. */
+int pg_evidence_owned_by(const struct pg_evidence *evidence, const struct pg_typing *typing);
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence);
 /* Context formation has no term subject or classifier. */
 const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence);

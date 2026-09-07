@@ -1202,6 +1202,10 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence) { return evidence->judgement; }
+int pg_evidence_owned_by(const struct pg_evidence *evidence, const struct pg_typing *typing)
+{
+	return evidence && evidence->owner == typing;
+}
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence) { return evidence->context; }
 const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence) { return evidence->subject; }
 const struct pg_term *pg_evidence_classifier(const struct pg_evidence *evidence) { return evidence->classifier; }

@@ -19,6 +19,10 @@ higher coherence or observational adequacy.
 
 `iadt.c` tests erased constructor/Match references, pointer-labelled clause
 selection, saturation, capture, lazy fields/branches and policy isolation.
+It also derives layouts from checked parameter/field contexts and checks field
+instances by ordinary dependent substitution, including Identity-valued fields
+and their acted boundary contexts. Alternative context derivations are retained;
+equal contexts need not use identical proof pointers.
 These layouts are not accepted declarations: no positivity, index refinement,
 IH, source ADT synthesis or higher constructor witness is certified by this test.
 
