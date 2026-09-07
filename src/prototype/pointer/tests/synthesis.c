@@ -29,6 +29,8 @@ static const struct pg_evidence *complete(struct pg_synthesis *synthesis,
 		pg_synthesis_advance(synthesis, 1);
 	}
 	assert(pg_synthesis_status(job) == expected);
+	assert(!pg_synthesis_dependency(job));
+	assert(!pg_synthesis_cycle(job));
 	return pg_synthesis_result(job);
 }
 
@@ -235,6 +237,19 @@ int main(void)
 	pg_synthesis_advance(&synthesis, 1000);
 	assert(pg_synthesis_status(cycle) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(cycle));
 	assert(!synthesis.ready);
+	const struct pg_synthesis_job *member = pg_synthesis_cycle(cycle);
+	assert(member && pg_synthesis_dependency(member));
+	const struct pg_synthesis_job *cursor = member;
+	unsigned cycle_length = 0;
+	do {
+		assert(pg_synthesis_status(cursor) == PG_SYNTHESIS_PENDING);
+		assert(!pg_synthesis_result(cursor));
+		cursor = pg_synthesis_dependency(cursor);
+		assert(cursor && ++cycle_length < 20);
+	} while (cursor != member);
+	uint64_t stopped_steps = synthesis.steps;
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(synthesis.steps == stopped_steps && pg_synthesis_cycle(cycle) == member);
 	struct pg_synthesis strict;
 	assert(pg_synthesis_init(&strict, &typing, &classifiers, &beta, PG_DEFINITION_EXPLICIT_THUNK) == 0);
 	const struct pg_source_scope *strict_root = pg_synthesis_root(&strict);

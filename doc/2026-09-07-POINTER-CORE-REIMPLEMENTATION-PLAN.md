@@ -594,6 +594,15 @@ conclusion and all premise pointers; no accepted record is overwritten.
   it is not a supported recursive definition. Array allocation and hash-index
   growth are still unbudgeted storage operations. Image persistence, complete
   budgeting, imported names and full definition compatibility remain required.
+- [x] Active dependency inspection uses the existing subscription edge in both
+  directions: the child wakes its waiters and clears their active edge, while
+  a consumer exposes the child it is waiting for. There is no copied pending
+  status or second dependency graph. An on-demand constant-space cycle query
+  follows active edges without scanning all jobs or advancing/rejecting work.
+  Tests verify completed jobs have no active dependency, a circular alias pair
+  reports a closed waiting path with no accepted result, and additional fuel
+  does not reschedule the stalled cycle. This is diagnostic evidence, not an
+  SCC acceptance rule or a proof that every pending job can make progress.
 - [x] Ordinary APP and inline `::` share one resumable comparison path. Cache
   the already synthesized input and target derivations while comparison is
   pending; do not rerun their synthesis or reconstruct adaptations on each

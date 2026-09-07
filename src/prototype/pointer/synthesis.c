@@ -12,6 +12,7 @@ struct pg_source_scope {
 };
 struct waiter {
 	struct pg_synthesis_job *parent;
+	struct pg_synthesis_job *child;
 	struct waiter *next;
 };
 struct continuation_frame {
@@ -50,6 +51,7 @@ struct pg_synthesis_job {
 	unsigned stage;
 	struct pg_synthesis_job *next;
 	struct waiter *waiters;
+	struct waiter *dependency;
 	struct pg_synthesis_job *left;
 	struct pg_synthesis_job *right;
 	const struct pg_source_scope *inner;
@@ -154,6 +156,7 @@ static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 {
 	job->status = status;
 	for (struct waiter *waiter = job->waiters; waiter; waiter = waiter->next) {
+		waiter->parent->dependency = NULL;
 		waiter->parent->next = synthesis->ready;
 		synthesis->ready = waiter->parent;
 	}
@@ -173,8 +176,9 @@ static void depend(struct pg_synthesis *synthesis, struct pg_synthesis_job *pare
 	}
 	struct waiter *waiter = pg_alloc(synthesis->typing->graph, sizeof(*waiter));
 	if (!waiter) { finish(synthesis, parent, PG_SYNTHESIS_ERROR); return; }
-	*waiter = (struct waiter){parent, child->waiters};
+	*waiter = (struct waiter){parent, child, child->waiters};
 	child->waiters = waiter;
+	parent->dependency = waiter;
 }
 
 static const struct pg_evidence *value_type(struct pg_synthesis *synthesis, const struct pg_evidence *proof)
@@ -640,6 +644,22 @@ void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget)
 }
 enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job) { return job->status; }
 const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job) { return job->result; }
+const struct pg_synthesis_job *pg_synthesis_dependency(const struct pg_synthesis_job *job)
+{
+	return job && job->dependency ? job->dependency->child : NULL;
+}
+
+const struct pg_synthesis_job *pg_synthesis_cycle(const struct pg_synthesis_job *job)
+{
+	const struct pg_synthesis_job *slow = job, *fast = job;
+	do {
+		slow = pg_synthesis_dependency(slow);
+		fast = pg_synthesis_dependency(pg_synthesis_dependency(fast));
+		if (!slow || !fast) return NULL;
+	} while (slow != fast);
+	return slow;
+}
+
 struct pg_synthesis_job *pg_synthesis_definition(const struct pg_synthesis_job *root,
 	struct pg_token name)
 {

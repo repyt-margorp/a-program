@@ -34,6 +34,11 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);
 enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job);
 const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job);
+/* Inspect the active subscription, not historical premises. A cycle query
+ * returns one job on a reachable waiting cycle, or NULL. It neither advances
+ * work nor rejects recursion, and an absent cycle does not prove progress. */
+const struct pg_synthesis_job *pg_synthesis_dependency(const struct pg_synthesis_job *job);
+const struct pg_synthesis_job *pg_synthesis_cycle(const struct pg_synthesis_job *job);
 /* After a definition root has been indexed, retrieve its producer job without
  * resynthesizing it. NULL means not indexed or no such local definition.
  * A completed unselected library root has no expression result of its own. */
