@@ -6,6 +6,7 @@
 #include "a_program/support/symbol.h"
 #include "a_program/support/storage.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #define PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_BINDER_CAPACITY 512
@@ -109,13 +110,14 @@ int prototype_constructor_telescopes_validate(
 int prototype_constructor_curried_caches_validate(
 	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_constructor_classifier_cache* classifier_cache,
-	const struct prototype_context_db* contexts,
+	const struct prototype_context_classifier_view* context_view,
 	struct prototype_term_db* terms
 ) {
-	if (!semantic_schema || !classifier_cache || !contexts || !terms ||
+	if (!semantic_schema || !classifier_cache || !context_view ||
+		!context_view->contexts || !terms ||
 		semantic_schema->constructor_count > classifier_cache->capacity ||
 		prototype_constructor_telescopes_validate(
-			semantic_schema, contexts, terms
+			semantic_schema, context_view->contexts, terms
 		) != 0) {
 		return -1;
 	}
@@ -129,9 +131,9 @@ int prototype_constructor_curried_caches_validate(
 		}
 		uint32_t derived_classifier;
 		int cache_equal;
-		if (prototype_type_constructor_derive_curried_classifier(
+		if (prototype_type_constructor_derive_curried_classifier_in_context(
 				terms,
-				contexts,
+				context_view,
 				constructor->parameter_context,
 				constructor->field_context,
 				constructor->result_classifier,
@@ -194,6 +196,8 @@ int prototype_constructor_curried_caches_rebuild(
 
 struct type_representation_fingerprint_binder_env {
 	const struct prototype_context_db* contexts;
+	const struct prototype_context_classifier_view* context_view;
+	const struct prototype_type_representation_anchor_view* anchors;
 	struct prototype_alpha_slot_env binders;
 	struct prototype_alpha_slot_env levels;
 };
@@ -201,6 +205,10 @@ struct type_representation_fingerprint_binder_env {
 struct representation_compare_env {
 	const struct prototype_context_db* left_contexts;
 	const struct prototype_context_db* right_contexts;
+	const struct prototype_context_classifier_view* left_context_view;
+	const struct prototype_context_classifier_view* right_context_view;
+	const struct prototype_type_representation_anchor_view* left_anchors;
+	const struct prototype_type_representation_anchor_view* right_anchors;
 	uint32_t left_binders[PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY];
 	uint32_t right_binders[PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY];
 	uint32_t binder_count;
@@ -208,6 +216,65 @@ struct representation_compare_env {
 	uint32_t right_types[PROTOTYPE_REPRESENTATION_COMPARE_CAPACITY];
 	uint32_t type_count;
 };
+
+static int type_context_classifier(
+	const struct prototype_context_classifier_view* view,
+	uint32_t context_id,
+	uint32_t* p_classifier
+) {
+	return prototype_context_classifier_view_read(
+		view, context_id, p_classifier
+	);
+}
+
+static int type_former_representative_type_id(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	uint32_t term_id,
+	const struct prototype_type_representation_anchor_view* anchors,
+	uint32_t* p_type_id
+) {
+	if (!terms || !db || !p_type_id || term_id >= terms->term_count ||
+		terms->terms[term_id].tag != PROTOTYPE_TERM_TYPE_FORMER) {
+		return -1;
+	}
+	uint32_t representation_id =
+		terms->terms[term_id].as.type_former.representation_id;
+	if (representation_id < db->representation_db.representation_count) {
+		uint32_t type_id = db->representation_db.representations[
+			representation_id
+		].representative_type_id;
+		if (type_id < db->semantic_schema.type_count &&
+			type_declaration_present(
+				&db->semantic_schema.type_declarations[type_id]
+			)) {
+			*p_type_id = type_id;
+			return 0;
+		}
+	}
+	if (anchors && anchors->type_ids_by_term && term_id < anchors->term_count) {
+		uint32_t type_id = anchors->type_ids_by_term[term_id];
+		if (type_id < db->semantic_schema.type_count &&
+			type_declaration_present(
+				&db->semantic_schema.type_declarations[type_id]
+			)) {
+			*p_type_id = type_id;
+			return 0;
+		}
+	}
+	/* A Layer T append transaction may have published declaration assignments
+	 * before rebuilding the reverse representation table. */
+	for (uint32_t i = 0; i < db->semantic_schema.type_count; ++i) {
+		if (type_declaration_present(
+				&db->semantic_schema.type_declarations[i]
+			) && db->semantic_schema.type_declarations[i].representation_id ==
+				representation_id) {
+			*p_type_id = i;
+			return 0;
+		}
+	}
+	return -1;
+}
 
 static int representation_types_equal_at_depth(
 	const struct prototype_term_db* left_terms,
@@ -387,9 +454,41 @@ int prototype_type_expr_name(struct prototype_type_readback_db* readback, int sy
 	return add_expr(readback, expr, p_ret);
 }
 
+static int type_expr_host_type_from_tag(int tag, int* p_type_id) {
+	if (!p_type_id) {
+		return -1;
+	}
+	switch (tag) {
+		case PROTOTYPE_TYPE_EXPR_PRIMITIVE_TEXT:
+			*p_type_id = PROTOTYPE_HOST_TYPE_TEXT;
+			return 0;
+		case PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT:
+			*p_type_id = PROTOTYPE_HOST_TYPE_INT32;
+			return 0;
+		case PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64:
+			*p_type_id = PROTOTYPE_HOST_TYPE_INT64;
+			return 0;
+		default:
+			return 1;
+	}
+}
+
+int prototype_type_expr_tag_from_host_type(int type_id) {
+	switch (type_id) {
+		case PROTOTYPE_HOST_TYPE_TEXT:
+			return PROTOTYPE_TYPE_EXPR_PRIMITIVE_TEXT;
+		case PROTOTYPE_HOST_TYPE_INT32:
+			return PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT;
+		case PROTOTYPE_HOST_TYPE_INT64:
+			return PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64;
+		default:
+			return 0;
+	}
+}
+
 int prototype_type_expr_primitive(struct prototype_type_readback_db* readback, int tag, uint32_t* p_ret) {
 	int host_type;
-	if (prototype_term_host_type_from_type_expr_tag(tag, &host_type) != 0) {
+	if (type_expr_host_type_from_tag(tag, &host_type) != 0) {
 		return -1;
 	}
 	struct prototype_type_expr expr;
@@ -694,17 +793,17 @@ int prototype_type_constructor_classifier_cache_set(
 	return 0;
 }
 
-int prototype_type_constructor_classifier(
+int prototype_type_constructor_classifier_in_context(
 	const struct prototype_type_semantic_schema_db* semantic_schema,
 	struct prototype_constructor_classifier_cache* classifier_cache,
 	struct prototype_constructor_specialization_stats* specialization_stats,
-	const struct prototype_context_db* contexts,
+	const struct prototype_context_classifier_view* context_view,
 	struct prototype_term_db* terms,
 	uint32_t constructor_id,
 	uint32_t* p_classifier
 ) {
 	if (!semantic_schema || !classifier_cache || !specialization_stats ||
-		!contexts || !terms || !p_classifier ||
+		!context_view || !context_view->contexts || !terms || !p_classifier ||
 		constructor_id >= semantic_schema->constructor_count ||
 		constructor_id >= classifier_cache->capacity) {
 		return -1;
@@ -720,9 +819,9 @@ int prototype_type_constructor_classifier(
 		return 0;
 	}
 	specialization_stats->classifier_cache_miss_count++;
-	if (prototype_type_constructor_derive_curried_classifier(
+	if (prototype_type_constructor_derive_curried_classifier_in_context(
 			terms,
-			contexts,
+			context_view,
 			constructor->parameter_context,
 			constructor->field_context,
 			constructor->result_classifier,
@@ -733,6 +832,29 @@ int prototype_type_constructor_classifier(
 	cache->schema_revision = constructor->schema_revision;
 	*p_classifier = cache->classifier;
 	return 0;
+}
+
+int prototype_type_constructor_classifier(
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_constructor_classifier_cache* classifier_cache,
+	struct prototype_constructor_specialization_stats* specialization_stats,
+	const struct prototype_context_db* contexts,
+	struct prototype_term_db* terms,
+	uint32_t constructor_id,
+	uint32_t* p_classifier
+) {
+	const struct prototype_context_classifier_view context_view = {
+		.contexts = contexts
+	};
+	return prototype_type_constructor_classifier_in_context(
+		semantic_schema,
+		classifier_cache,
+		specialization_stats,
+		&context_view,
+		terms,
+		constructor_id,
+		p_classifier
+	);
 }
 
 const struct prototype_type_constructor_readback* prototype_type_constructor_readback_get(
@@ -762,9 +884,9 @@ prototype_type_constructor_classifier_cache_get(
 	return &classifier_cache->entries[constructor_id];
 }
 
-int prototype_type_constructor_derive_curried_classifier(
+int prototype_type_constructor_derive_curried_classifier_in_context(
 	struct prototype_term_db* terms,
-	const struct prototype_context_db* contexts,
+	const struct prototype_context_classifier_view* context_view,
 	uint32_t parameter_context,
 	uint32_t field_context,
 	uint32_t result_classifier,
@@ -774,18 +896,18 @@ int prototype_type_constructor_derive_curried_classifier(
 	uint32_t field_path[64];
 	uint32_t parameter_count;
 	uint32_t field_count;
-	if (!terms || !contexts || !p_classifier ||
+	if (!terms || !context_view || !context_view->contexts || !p_classifier ||
 		result_classifier >= terms->term_count ||
 		prototype_context_extension_path(
-			contexts,
-			prototype_context_empty(contexts),
+			context_view->contexts,
+			prototype_context_empty(context_view->contexts),
 			parameter_context,
 			parameter_path,
 			64,
 			&parameter_count
 		) != 0 ||
 		prototype_context_extension_path(
-			contexts,
+			context_view->contexts,
 			parameter_context,
 			field_context,
 			field_path,
@@ -798,11 +920,30 @@ int prototype_type_constructor_derive_curried_classifier(
 	uint32_t classifier = result_classifier;
 	for (uint32_t i = field_count; i > 0; --i) {
 		const struct prototype_context* field =
-			prototype_context_get(contexts, field_path[i - 1]);
-		uint32_t field_classifier = prototype_context_classifier_term(field);
+			prototype_context_get(context_view->contexts, field_path[i - 1]);
+		uint32_t field_classifier;
 		uint32_t codomain_family;
 		uint32_t pi_classifier;
-		if (!field || field_classifier == PROTOTYPE_INVALID_ID ||
+		int classifier_status = field ? type_context_classifier(
+			context_view, field_path[i - 1], &field_classifier
+		) : -1;
+		if (getenv("A_PROGRAM_FORMATION_TRACE") && classifier_status != 0) {
+			const struct prototype_context_classifier_equation* equation =
+				field ? prototype_context_classifier_equation_get(
+					context_view->contexts, field->classifier_equation
+				) : NULL;
+			fprintf(
+				stderr,
+				"constructor telescope classifier unavailable context=%u "
+				"equation=%u owner=%u answer=%u status=%d\n",
+				field_path[i - 1],
+				field ? field->classifier_equation : PROTOTYPE_INVALID_ID,
+				equation ? equation->owner_occurrence : PROTOTYPE_INVALID_ID,
+				equation ? equation->answer : PROTOTYPE_INVALID_ID,
+				classifier_status
+			);
+		}
+		if (!field || classifier_status != 0 ||
 			prototype_term_pure_family(
 				terms,
 				field->binding_id,
@@ -821,7 +962,7 @@ int prototype_type_constructor_derive_curried_classifier(
 	}
 	for (uint32_t i = parameter_count; i > 0; --i) {
 		const struct prototype_context* parameter =
-			prototype_context_get(contexts, parameter_path[i - 1]);
+			prototype_context_get(context_view->contexts, parameter_path[i - 1]);
 		uint32_t lambda;
 		if (!parameter ||
 			prototype_term_lambda(
@@ -833,6 +974,27 @@ int prototype_type_constructor_derive_curried_classifier(
 	}
 	*p_classifier = classifier;
 	return 0;
+}
+
+int prototype_type_constructor_derive_curried_classifier(
+	struct prototype_term_db* terms,
+	const struct prototype_context_db* contexts,
+	uint32_t parameter_context,
+	uint32_t field_context,
+	uint32_t result_classifier,
+	uint32_t* p_classifier
+) {
+	const struct prototype_context_classifier_view context_view = {
+		.contexts = contexts
+	};
+	return prototype_type_constructor_derive_curried_classifier_in_context(
+		terms,
+		&context_view,
+		parameter_context,
+		field_context,
+		result_classifier,
+		p_classifier
+	);
 }
 
 const struct prototype_type_declaration* prototype_type_declaration_lookup(
@@ -922,7 +1084,7 @@ int prototype_type_declaration_project_reduction_environment(
 			succ = constructor;
 		}
 	}
-	if (!zero || !succ || prototype_term_type_instance_make(
+	if (!zero || !succ || prototype_type_projection_instance_make(
 			terms,
 			type_declarations,
 			nat->type_index,
@@ -1157,29 +1319,58 @@ static int representation_terms_equal_at_depth(
 			return REPRESENTATION_TERMS_EQUAL(
 				left->as.type_view.source, right->as.type_view.source
 			);
-		case PROTOTYPE_TERM_TYPE_DECLARATION:
+		case PROTOTYPE_TERM_TYPE_DECLARATION: {
+			uint32_t left_type_id;
+			uint32_t right_type_id;
+			uint32_t left_argument_count;
+			uint32_t right_argument_count;
+			if (prototype_type_projection_instance_info(
+					left_terms, &left_db->semantic_schema, left_term_id,
+					&left_type_id, NULL, &left_argument_count
+				) != 0 || prototype_type_projection_instance_info(
+					right_terms, &right_db->semantic_schema, right_term_id,
+					&right_type_id, NULL, &right_argument_count
+				) != 0 || left_argument_count != 0 || right_argument_count != 0) {
+				return 0;
+			}
 			return representation_types_equal_at_depth(
-				left_terms, left_db, left->as.type_declaration.type_id,
-				right_terms, right_db, right->as.type_declaration.type_id,
+				left_terms, left_db, left_type_id,
+				right_terms, right_db, right_type_id,
 				env, depth + 1
 			);
+		}
 		case PROTOTYPE_TERM_TYPE_FORMER: {
 			uint32_t left_representation = left->as.type_former.representation_id;
 			uint32_t right_representation = right->as.type_former.representation_id;
-			if (left_db == right_db && left_representation == right_representation) {
+			if (left_representation < left_db->representation_db.representation_count &&
+				right_representation < right_db->representation_db.representation_count &&
+				left_db == right_db && left_representation == right_representation) {
 				return 1;
 			}
-			if (left_representation >= left_db->representation_db.representation_count ||
-				right_representation >= right_db->representation_db.representation_count) {
+			uint32_t left_type_id;
+			uint32_t right_type_id;
+			if (type_former_representative_type_id(
+					left_terms,
+					left_db,
+					left_term_id,
+					env->left_anchors,
+					&left_type_id
+				) != 0 || type_former_representative_type_id(
+					right_terms,
+					right_db,
+					right_term_id,
+					env->right_anchors,
+					&right_type_id
+				) != 0) {
 				return 0;
 			}
 			return representation_types_equal_at_depth(
 				left_terms,
 				left_db,
-				left_db->representation_db.representations[left_representation].representative_type_id,
+				left_type_id,
 				right_terms,
 				right_db,
-				right_db->representation_db.representations[right_representation].representative_type_id,
+				right_type_id,
 				env,
 				depth + 1
 			);
@@ -1205,11 +1396,7 @@ static int representation_terms_equal_at_depth(
 				left->as.pure_primitive.type_symbol_id == right->as.pure_primitive.type_symbol_id;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			return left->as.effect_operation.operation_id ==
-					right->as.effect_operation.operation_id &&
-				REPRESENTATION_TERMS_EQUAL(
-					left->as.effect_operation.classifier,
-					right->as.effect_operation.classifier
-				);
+					right->as.effect_operation.operation_id;
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			return REPRESENTATION_TERMS_EQUAL(
 				left->as.induction_hypothesis.argument,
@@ -1398,13 +1585,14 @@ static int representation_types_equal_at_depth(
 			prototype_context_get(env->left_contexts, left_parameter_path[i]);
 		const struct prototype_context* right_parameter =
 			prototype_context_get(env->right_contexts, right_parameter_path[i]);
-		uint32_t left_classifier =
-			prototype_context_classifier_term(left_parameter);
-		uint32_t right_classifier =
-			prototype_context_classifier_term(right_parameter);
+		uint32_t left_classifier;
+		uint32_t right_classifier;
 		if (!left_parameter || !right_parameter ||
-			left_classifier == PROTOTYPE_INVALID_ID ||
-			right_classifier == PROTOTYPE_INVALID_ID ||
+			type_context_classifier(
+				env->left_context_view, left_parameter_path[i], &left_classifier
+			) != 0 || type_context_classifier(
+				env->right_context_view, right_parameter_path[i], &right_classifier
+			) != 0 ||
 			!representation_terms_equal_at_depth(
 				left_terms, left_db, left_classifier,
 				right_terms, right_db, right_classifier, env, depth + 1
@@ -1445,13 +1633,14 @@ static int representation_types_equal_at_depth(
 			prototype_context_get(env->left_contexts, left_index_path[i]);
 		const struct prototype_context* right_index =
 			prototype_context_get(env->right_contexts, right_index_path[i]);
-		uint32_t left_classifier =
-			prototype_context_classifier_term(left_index);
-		uint32_t right_classifier =
-			prototype_context_classifier_term(right_index);
+		uint32_t left_classifier;
+		uint32_t right_classifier;
 		if (!left_index || !right_index ||
-			left_classifier == PROTOTYPE_INVALID_ID ||
-			right_classifier == PROTOTYPE_INVALID_ID ||
+			type_context_classifier(
+				env->left_context_view, left_index_path[i], &left_classifier
+			) != 0 || type_context_classifier(
+				env->right_context_view, right_index_path[i], &right_classifier
+			) != 0 ||
 			!representation_terms_equal_at_depth(
 				left_terms, left_db, left_classifier,
 				right_terms, right_db, right_classifier, env, depth + 1
@@ -1496,13 +1685,14 @@ static int representation_types_equal_at_depth(
 				prototype_context_get(env->left_contexts, left_fields[j]);
 			const struct prototype_context* right_field =
 				prototype_context_get(env->right_contexts, right_fields[j]);
-			uint32_t left_classifier =
-				prototype_context_classifier_term(left_field);
-			uint32_t right_classifier =
-				prototype_context_classifier_term(right_field);
+			uint32_t left_classifier;
+			uint32_t right_classifier;
 			if (!left_field || !right_field ||
-				left_classifier == PROTOTYPE_INVALID_ID ||
-				right_classifier == PROTOTYPE_INVALID_ID ||
+				type_context_classifier(
+					env->left_context_view, left_fields[j], &left_classifier
+				) != 0 || type_context_classifier(
+					env->right_context_view, right_fields[j], &right_classifier
+				) != 0 ||
 				!representation_terms_equal_at_depth(
 					left_terms, left_db, left_classifier,
 					right_terms, right_db, right_classifier, env, depth + 1
@@ -1553,6 +1743,15 @@ static int type_representation_fingerprint_term_at_depth(
 	uint32_t depth
 );
 
+static int type_declaration_representation_fingerprint_with_anchors(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_context_classifier_view* context_view,
+	uint32_t type_id,
+	const struct prototype_type_representation_anchor_view* anchors,
+	struct prototype_type_representation_fingerprint* p_key
+);
+
 static int type_representation_fingerprint_type_instance_at_depth(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
@@ -1573,7 +1772,9 @@ static int type_representation_fingerprint_type_instance_at_depth(
 	uint32_t type_id;
 	uint32_t args[16];
 	uint32_t arg_count;
-	if (prototype_term_type_instance_info(terms, term_id, &type_id, args, &arg_count) != 0) {
+	if (prototype_type_projection_instance_info(
+			terms, &db->semantic_schema, term_id, &type_id, args, &arg_count
+		) != 0) {
 		return 0;
 	}
 	if (type_id >= db->semantic_schema.type_count || arg_count > 16) {
@@ -1587,11 +1788,12 @@ static int type_representation_fingerprint_type_instance_at_depth(
 		type_representation_fingerprint_hash_mix_tag(p_hash, 0x73656c66U);
 	} else {
 		struct prototype_type_representation_fingerprint referenced;
-		if (prototype_type_declaration_representation_fingerprint(
+		if (type_declaration_representation_fingerprint_with_anchors(
 				terms,
 				db,
-				env->contexts,
+				env->context_view,
 				type_id,
+				env->anchors,
 				&referenced
 			) != 0) {
 			return -1;
@@ -2016,20 +2218,29 @@ static int type_representation_fingerprint_term_at_depth(
 				(uint32_t)term->as.effect_operation.operation_id);
 			return 0;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			if (term->as.type_declaration.type_id == self_type_id) {
+			{
+			uint32_t referenced_type_id;
+			uint32_t argument_count;
+			if (prototype_type_projection_instance_info(
+					terms, &db->semantic_schema, term_id,
+					&referenced_type_id, NULL, &argument_count
+				) != 0 || argument_count != 0) {
+				return -1;
+			}
+			if (referenced_type_id == self_type_id) {
 				type_representation_fingerprint_hash_mix_tag(p_hash, 0x73656c66U);
 				return 0;
 			}
-			if (term->as.type_declaration.type_id >= db->semantic_schema.type_count) {
+			if (referenced_type_id >= db->semantic_schema.type_count) {
 				return -1;
 			}
-			{
 				struct prototype_type_representation_fingerprint referenced;
-				if (prototype_type_declaration_representation_fingerprint(
+				if (type_declaration_representation_fingerprint_with_anchors(
 						terms,
 						db,
-						env->contexts,
-						term->as.type_declaration.type_id,
+						env->context_view,
+						referenced_type_id,
+						env->anchors,
 						&referenced
 					) != 0) {
 					return -1;
@@ -2051,44 +2262,10 @@ static int type_representation_fingerprint_term_at_depth(
 			);
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			{
-				uint32_t candidate = term->as.type_former.declaration_type_id;
-				if (!db->representation_db.cache_dirty &&
-					term->as.type_former.representation_id <
-						db->representation_db.representation_count) {
-					candidate = db->representation_db.representations[
-						term->as.type_former.representation_id
-					].representative_type_id;
-				}
-				if (db->representation_db.cache_dirty &&
-					(candidate >= db->semantic_schema.type_count ||
-					 !type_declaration_present(
-						&db->semantic_schema.type_declarations[candidate]
-					 ) || db->semantic_schema.type_declarations[
-						candidate
-					 ].representation_id != term->as.type_former.representation_id)) {
-					candidate = PROTOTYPE_INVALID_ID;
-					/* During representation rebuild the reverse map is deliberately
-					 * unavailable. Recover its owner once from relocated declaration
-					 * anchors; steady-state queries use RepresentationDB directly. */
-					for (uint32_t i = 0;
-						i < db->semantic_schema.type_count; ++i) {
-						if (type_declaration_present(
-								&db->semantic_schema.type_declarations[i]
-							) && db->semantic_schema.type_declarations[
-								i
-							].representation_id ==
-								term->as.type_former.representation_id) {
-							candidate = i;
-							break;
-						}
-					}
-				}
-				if (candidate >= db->semantic_schema.type_count ||
-					!type_declaration_present(
-						&db->semantic_schema.type_declarations[candidate]
-					) || db->semantic_schema.type_declarations[
-						candidate
-					].representation_id != term->as.type_former.representation_id) {
+				uint32_t candidate;
+				if (type_former_representative_type_id(
+						terms, db, term_id, env->anchors, &candidate
+					) != 0) {
 					return -1;
 				}
 				if (candidate == self_type_id) {
@@ -2098,8 +2275,13 @@ static int type_representation_fingerprint_term_at_depth(
 					return 0;
 				}
 				struct prototype_type_representation_fingerprint referenced;
-				if (prototype_type_declaration_representation_fingerprint(
-						terms, db, env->contexts, candidate, &referenced
+				if (type_declaration_representation_fingerprint_with_anchors(
+						terms,
+						db,
+						env->context_view,
+						candidate,
+						env->anchors,
+						&referenced
 					) != 0) {
 					return -1;
 				}
@@ -2112,14 +2294,16 @@ static int type_representation_fingerprint_term_at_depth(
 	}
 }
 
-int prototype_type_declaration_representation_fingerprint(
+static int type_declaration_representation_fingerprint_with_anchors(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
-	const struct prototype_context_db* contexts,
+	const struct prototype_context_classifier_view* context_view,
 	uint32_t type_id,
+	const struct prototype_type_representation_anchor_view* anchors,
 	struct prototype_type_representation_fingerprint* p_key
 ) {
-	if (!terms || !db || !contexts || !p_key || type_id >= db->semantic_schema.type_count ||
+	if (!terms || !db || !context_view || !context_view->contexts || !p_key ||
+		type_id >= db->semantic_schema.type_count ||
 		!type_declaration_present(&db->semantic_schema.type_declarations[type_id])) {
 		return -1;
 	}
@@ -2127,8 +2311,8 @@ int prototype_type_declaration_representation_fingerprint(
 	const struct prototype_type_declaration* type = &db->semantic_schema.type_declarations[type_id];
 	if (type->first_constructor + type->constructor_count > db->semantic_schema.constructor_count ||
 		type->parameter_count > 64 || type->index_count > 64 ||
-		!prototype_context_get(contexts, type->parameter_context) ||
-		!prototype_context_get(contexts, type->index_context)) {
+		!prototype_context_get(context_view->contexts, type->parameter_context) ||
+		!prototype_context_get(context_view->contexts, type->index_context)) {
 		fprintf(stderr,
 			"type representation header failed type=%u parameters=%u indices=%u parameter-context=%u index-context=%u\n",
 			type_id, type->parameter_count, type->index_count,
@@ -2138,7 +2322,9 @@ int prototype_type_declaration_representation_fingerprint(
 	struct type_representation_fingerprint_binder_env env;
 	uint64_t hash = PROTOTYPE_TYPE_REPRESENTATION_FINGERPRINT_HASH_OFFSET;
 	memset(&env, 0, sizeof(env));
-	env.contexts = contexts;
+	env.contexts = context_view->contexts;
+	env.context_view = context_view;
+	env.anchors = anchors;
 	memset(p_key, 0, sizeof(*p_key));
 	p_key->parameter_count = type->parameter_count;
 	p_key->index_count = type->index_count;
@@ -2148,7 +2334,7 @@ int prototype_type_declaration_representation_fingerprint(
 	uint32_t parameter_context = type->parameter_context;
 	for (uint32_t i = type->parameter_count; i > 0; --i) {
 		const struct prototype_context* entry =
-			prototype_context_get(contexts, parameter_context);
+			prototype_context_get(context_view->contexts, parameter_context);
 		if (!entry || entry->parent == PROTOTYPE_INVALID_ID) {
 			return -1;
 		}
@@ -2158,10 +2344,11 @@ int prototype_type_declaration_representation_fingerprint(
 	type_representation_fingerprint_hash_mix_u32(&hash, type->parameter_count);
 	for (uint32_t i = 0; i < type->parameter_count; ++i) {
 		const struct prototype_context* parameter =
-			prototype_context_get(contexts, parameter_path[i]);
-		uint32_t parameter_classifier =
-			prototype_context_classifier_term(parameter);
-		if (!parameter || parameter_classifier == PROTOTYPE_INVALID_ID) {
+			prototype_context_get(context_view->contexts, parameter_path[i]);
+		uint32_t parameter_classifier;
+		if (!parameter || type_context_classifier(
+				context_view, parameter_path[i], &parameter_classifier
+			) != 0) {
 			return -1;
 		}
 		type_representation_fingerprint_hash_mix_tag(&hash, 0x7061726dU);
@@ -2186,7 +2373,7 @@ int prototype_type_declaration_representation_fingerprint(
 	uint32_t index_path[64];
 	uint32_t index_count;
 	if (prototype_context_extension_path(
-			contexts,
+			context_view->contexts,
 			type->parameter_context,
 			type->index_context,
 			index_path,
@@ -2198,9 +2385,11 @@ int prototype_type_declaration_representation_fingerprint(
 	type_representation_fingerprint_hash_mix_u32(&hash, type->index_count);
 	for (uint32_t i = 0; i < index_count; ++i) {
 		const struct prototype_context* index =
-			prototype_context_get(contexts, index_path[i]);
-		uint32_t index_classifier = prototype_context_classifier_term(index);
-		if (!index || index_classifier == PROTOTYPE_INVALID_ID) {
+			prototype_context_get(context_view->contexts, index_path[i]);
+		uint32_t index_classifier;
+		if (!index || type_context_classifier(
+				context_view, index_path[i], &index_classifier
+			) != 0) {
 			return -1;
 		}
 		type_representation_fingerprint_hash_mix_tag(&hash, 0x696e6478U);
@@ -2233,7 +2422,7 @@ int prototype_type_declaration_representation_fingerprint(
 		if (!constructor_declaration_present(constructor) ||
 			constructor->parameter_context != type->parameter_context ||
 			prototype_context_extension_path(
-				contexts,
+				context_view->contexts,
 				constructor->parameter_context,
 				constructor->field_context,
 				field_path,
@@ -2254,10 +2443,11 @@ int prototype_type_declaration_representation_fingerprint(
 		type_representation_fingerprint_hash_mix_u32(&hash, field_count);
 		for (uint32_t j = 0; j < field_count; ++j) {
 			const struct prototype_context* field =
-				prototype_context_get(contexts, field_path[j]);
-			uint32_t field_classifier =
-				prototype_context_classifier_term(field);
-			if (!field || field_classifier == PROTOTYPE_INVALID_ID) {
+				prototype_context_get(context_view->contexts, field_path[j]);
+			uint32_t field_classifier;
+			if (!field || type_context_classifier(
+					context_view, field_path[j], &field_classifier
+				) != 0) {
 				return -1;
 			}
 			type_representation_fingerprint_hash_mix_tag(&hash, 0x6669656cU);
@@ -2300,6 +2490,33 @@ int prototype_type_declaration_representation_fingerprint(
 
 	p_key->hash = hash;
 	return 0;
+}
+
+int prototype_type_declaration_representation_fingerprint(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts,
+	uint32_t type_id,
+	struct prototype_type_representation_fingerprint* p_key
+) {
+	const struct prototype_context_classifier_view context_view = {
+		.contexts = contexts
+	};
+	return type_declaration_representation_fingerprint_with_anchors(
+		terms, db, &context_view, type_id, NULL, p_key
+	);
+}
+
+int prototype_type_declaration_representation_fingerprint_in_context(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_context_classifier_view* context_view,
+	uint32_t type_id,
+	struct prototype_type_representation_fingerprint* p_key
+) {
+	return type_declaration_representation_fingerprint_with_anchors(
+		terms, db, context_view, type_id, NULL, p_key
+	);
 }
 
 int prototype_type_representation_fingerprints_equal(
@@ -2367,8 +2584,9 @@ int prototype_type_declaration_instance_info(
 	}
 	uint32_t named_arguments[16];
 	uint32_t named_argument_count;
-	if (prototype_term_type_instance_info(
+	if (prototype_type_projection_instance_info(
 			terms,
+			&db->semantic_schema,
 			instance,
 			p_type_id,
 			named_arguments,
@@ -2428,7 +2646,15 @@ int prototype_type_view_declaration_query(
 		) != 0) {
 		return -1;
 	}
-	uint32_t type_id = terms->terms[type_view].as.type_view.view_type_id;
+	uint32_t type_id;
+	uint32_t arguments[16];
+	uint32_t argument_count;
+	if (prototype_type_projection_instance_info(
+			terms, semantic_schema, type_view,
+			&type_id, arguments, &argument_count
+		) != 0) {
+		return -1;
+	}
 	if (type_id >= semantic_schema->type_count ||
 		!type_declaration_present(&semantic_schema->type_declarations[type_id])) {
 		return -1;
@@ -2483,16 +2709,18 @@ int prototype_type_view_constructor_telescope_query(
 	return 0;
 }
 
-int prototype_type_declaration_rebuild_representations(
+static int type_declaration_rebuild_representations_in_context_with_anchors(
 	const struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* db,
-	const struct prototype_context_db* contexts
+	const struct prototype_context_classifier_view* context_view,
+	const struct prototype_type_representation_anchor_view* anchors
 ) {
-	if (!terms || !db || !contexts) {
+	if (!terms || !db || !context_view || !context_view->contexts ||
+		(anchors && !anchors->type_ids_by_term)) {
 		return -1;
 	}
-	db->representation_db.representation_count = 0;
 	if (db->semantic_schema.type_count == 0) {
+		db->representation_db.representation_count = 0;
 		db->representation_db.cache_dirty = 0;
 		prototype_type_declaration_db_mark_semantic_change(&db->semantic_schema);
 		return 0;
@@ -2500,32 +2728,54 @@ int prototype_type_declaration_rebuild_representations(
 	if (!db->representation_db.representations || db->representation_db.representation_capacity < db->semantic_schema.type_count) {
 		return -1;
 	}
+	struct prototype_type_representation* rebuilt = calloc(
+		db->representation_db.representation_capacity,
+		sizeof(*rebuilt)
+	);
+	uint32_t* assignments = malloc(
+		db->semantic_schema.type_count * sizeof(*assignments)
+	);
+	if (!rebuilt || !assignments) {
+		free(rebuilt);
+		free(assignments);
+		return -1;
+	}
+	for (uint32_t i = 0; i < db->semantic_schema.type_count; ++i) {
+		assignments[i] = PROTOTYPE_INVALID_ID;
+	}
+	uint32_t rebuilt_count = 0;
 	for (uint32_t type_id = 0; type_id < db->semantic_schema.type_count; ++type_id) {
 		if (!type_declaration_present(&db->semantic_schema.type_declarations[type_id])) {
 			continue;
 		}
 		struct prototype_type_representation_fingerprint fingerprint;
-		if (prototype_type_declaration_representation_fingerprint(
-				terms, db, contexts, type_id, &fingerprint
+		if (type_declaration_representation_fingerprint_with_anchors(
+				terms, db, context_view, type_id, anchors, &fingerprint
 			) != 0) {
 			fprintf(
 				stderr,
 				"type representation rebuild failed for type %u\n",
 				type_id
 			);
+			free(rebuilt);
+			free(assignments);
 			return -1;
 		}
 		uint32_t representation_id = PROTOTYPE_INVALID_ID;
-		for (uint32_t candidate_id = 0; candidate_id < db->representation_db.representation_count; ++candidate_id) {
+		for (uint32_t candidate_id = 0; candidate_id < rebuilt_count; ++candidate_id) {
 			const struct prototype_type_representation* candidate =
-				&db->representation_db.representations[candidate_id];
+				&rebuilt[candidate_id];
 			if (!prototype_type_representation_fingerprints_equal(&fingerprint, &candidate->fingerprint)) {
 				continue;
 			}
 			struct representation_compare_env env;
 			memset(&env, 0, sizeof(env));
-			env.left_contexts = contexts;
-			env.right_contexts = contexts;
+			env.left_contexts = context_view->contexts;
+			env.right_contexts = context_view->contexts;
+			env.left_context_view = context_view;
+			env.right_context_view = context_view;
+			env.left_anchors = anchors;
+			env.right_anchors = anchors;
 			if (representation_types_equal_at_depth(
 					terms,
 					db,
@@ -2541,19 +2791,71 @@ int prototype_type_declaration_rebuild_representations(
 			}
 		}
 		if (representation_id == PROTOTYPE_INVALID_ID) {
-			if (db->representation_db.representation_count >= db->representation_db.representation_capacity) {
+			if (rebuilt_count >= db->representation_db.representation_capacity) {
+				free(rebuilt);
+				free(assignments);
 				return -1;
 			}
-			representation_id = (uint32_t)db->representation_db.representation_count;
-			db->representation_db.representations[representation_id].representative_type_id = type_id;
-			db->representation_db.representations[representation_id].fingerprint = fingerprint;
-			db->representation_db.representation_count++;
+			representation_id = rebuilt_count++;
+			rebuilt[representation_id].representative_type_id = type_id;
+			rebuilt[representation_id].fingerprint = fingerprint;
 		}
-		db->semantic_schema.type_declarations[type_id].representation_id = representation_id;
+		assignments[type_id] = representation_id;
 	}
+	memcpy(
+		db->representation_db.representations,
+		rebuilt,
+		rebuilt_count * sizeof(*rebuilt)
+	);
+	for (uint32_t type_id = 0; type_id < db->semantic_schema.type_count; ++type_id) {
+		if (assignments[type_id] != PROTOTYPE_INVALID_ID) {
+			db->semantic_schema.type_declarations[type_id].representation_id =
+				assignments[type_id];
+		}
+	}
+	db->representation_db.representation_count = rebuilt_count;
 	db->representation_db.cache_dirty = 0;
 	prototype_type_declaration_db_mark_semantic_change(&db->semantic_schema);
+	free(rebuilt);
+	free(assignments);
 	return 0;
+}
+
+int prototype_type_declaration_rebuild_representations(
+	const struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts
+) {
+	const struct prototype_context_classifier_view context_view = {
+		.contexts = contexts
+	};
+	return type_declaration_rebuild_representations_in_context_with_anchors(
+		terms, db, &context_view, NULL
+	);
+}
+
+int prototype_type_declaration_rebuild_representations_with_anchors(
+	const struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_type_representation_anchor_view* anchors
+) {
+	const struct prototype_context_classifier_view context_view = {
+		.contexts = contexts
+	};
+	return type_declaration_rebuild_representations_in_context_with_anchors(
+		terms, db, &context_view, anchors
+	);
+}
+
+int prototype_type_declaration_rebuild_representations_in_context(
+	const struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* db,
+	const struct prototype_context_classifier_view* context_view
+) {
+	return type_declaration_rebuild_representations_in_context_with_anchors(
+		terms, db, context_view, NULL
+	);
 }
 
 int prototype_type_declaration_representations_equal(
@@ -2572,9 +2874,17 @@ int prototype_type_declaration_representations_equal(
 		return -1;
 	}
 	struct representation_compare_env env;
+	const struct prototype_context_classifier_view left_context_view = {
+		.contexts = left_contexts
+	};
+	const struct prototype_context_classifier_view right_context_view = {
+		.contexts = right_contexts
+	};
 	memset(&env, 0, sizeof(env));
 	env.left_contexts = left_contexts;
 	env.right_contexts = right_contexts;
+	env.left_context_view = &left_context_view;
+	env.right_context_view = &right_context_view;
 	*p_equal = representation_types_equal_at_depth(
 		left_terms,
 		left_db,

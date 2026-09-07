@@ -13,7 +13,7 @@ static int operation_named_nat_type_classifier(
 	if (!nat_type) {
 		return -1;
 	}
-	return prototype_term_type_instance_make(
+	return prototype_type_projection_instance_make(
 		terms,
 		type_declarations,
 		nat_type->type_index,
@@ -71,11 +71,15 @@ int prototype_judgement_pure_primitive_classifier(
 		return -1;
 	}
 	const struct prototype_pure_primitive_declaration* signature =
-		prototype_term_pure_primitive_declaration(operation->as.pure_primitive.primitive_id);
-	if (signature) {
+		prototype_intrinsic_pure_primitive_declaration(operation->as.pure_primitive.primitive_id);
+	const struct prototype_core_pure_primitive_declaration* core_declaration =
+		prototype_core_pure_primitive_declaration(
+			operation->as.pure_primitive.primitive_id
+		);
+	if (signature && core_declaration) {
 		int status = host_signature_classifier(
 			terms,
-			signature->arity,
+			core_declaration->arity,
 			signature->argument_types,
 			signature->result_type,
 			p_ret
@@ -139,13 +143,148 @@ int prototype_judgement_effect_operation_classifier(
 		operation->tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
 		return -1;
 	}
-	if (!prototype_term_effect_operation_declaration(
+	const struct prototype_effect_operation_declaration* declaration =
+		prototype_intrinsic_effect_operation_declaration(
 			operation->as.effect_operation.operation_id
-		) || operation->as.effect_operation.classifier >= terms->term_count) {
+		);
+	if (!declaration) {
 		return -1;
 	}
-	*p_ret = operation->as.effect_operation.classifier;
-	return 0;
+	uint32_t text;
+	uint32_t argument;
+	uint32_t empty_effects;
+	uint32_t result_effects;
+	uint32_t result;
+	uint32_t classifier;
+	if (prototype_term_make_host_type(
+			terms, PROTOTYPE_HOST_TYPE_TEXT, &text
+		) != 0 || prototype_term_effect_row_empty(
+			terms, &empty_effects
+		) != 0 || prototype_term_effect_row_operation(
+			terms,
+			operation->as.effect_operation.operation_id,
+			empty_effects,
+			&result_effects
+		) != 0 || prototype_term_total_computation_type(
+			terms, result_effects, text, &result
+		) != 0) {
+		return -1;
+	}
+	switch (declaration->classifier_schema) {
+		case PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_TEXT_TO_TEXT:
+			argument = text;
+			return prototype_term_pi(terms, argument, result, p_ret);
+		case PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT: {
+			uint32_t row_binder = prototype_term_new_binding(terms);
+			uint32_t row;
+			uint32_t computation;
+			if (row_binder == PROTOTYPE_INVALID_ID ||
+				prototype_term_effect_row_var(terms, row_binder, &row) != 0 ||
+				prototype_term_total_computation_type(
+					terms, row, text, &computation
+				) != 0 || prototype_term_thunk_type(
+					terms, computation, &argument
+				) != 0 || prototype_term_pi(
+					terms, argument, result, &classifier
+				) != 0 || prototype_term_effect_row_forall(
+					terms, row_binder, classifier, p_ret
+				) != 0) {
+				return -1;
+			}
+			return 0;
+		}
+		default:
+			return -1;
+	}
+}
+
+int prototype_judgement_effect_operation_classifier_matches(
+	const struct prototype_term_db* terms,
+	const struct prototype_term* operation,
+	uint32_t classifier
+) {
+	if (!terms || !operation || operation->tag !=
+			PROTOTYPE_TERM_EFFECT_OPERATION || classifier >= terms->term_count) {
+		return 0;
+	}
+	const struct prototype_effect_operation_declaration* declaration =
+		prototype_intrinsic_effect_operation_declaration(
+			operation->as.effect_operation.operation_id
+		);
+	const struct prototype_core_effect_operation_declaration* core_declaration =
+		prototype_core_effect_operation_declaration(
+			operation->as.effect_operation.operation_id
+		);
+	if (!declaration || !core_declaration || core_declaration->arity != 1) {
+		return 0;
+	}
+	uint32_t effect_binding = PROTOTYPE_INVALID_ID;
+	const struct prototype_term* classifier_term = &terms->terms[classifier];
+	if (classifier_term->tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
+		effect_binding = classifier_term->as.effect_row_forall.binding_id;
+		classifier = classifier_term->as.effect_row_forall.body;
+	}
+	if (classifier >= terms->term_count || terms->terms[classifier].tag !=
+			PROTOTYPE_TERM_PI) {
+		return 0;
+	}
+	uint32_t domain = terms->terms[classifier].as.pi.domain;
+	uint32_t result;
+	uint32_t ignored_binder;
+	if (prototype_term_pure_family_parts(
+			terms,
+			terms->terms[classifier].as.pi.codomain_family,
+			&ignored_binder,
+			&result
+		) != 0) {
+		return 0;
+	}
+	if (domain >= terms->term_count || result >= terms->term_count ||
+		terms->terms[result].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
+		terms->terms[result].as.computation_type.totality !=
+			PROTOTYPE_COMPUTATION_TOTALITY_TOTAL ||
+		terms->terms[result].as.computation_type.result >= terms->term_count ||
+		terms->terms[terms->terms[result].as.computation_type.result].tag !=
+			PROTOTYPE_TERM_PRIMITIVE_TEXT) {
+		return 0;
+	}
+	uint32_t effect_row = terms->terms[result].as.computation_type.label;
+	if (effect_row >= terms->term_count || terms->terms[effect_row].tag !=
+			PROTOTYPE_TERM_EFFECT_ROW_OPERATION ||
+		terms->terms[effect_row].as.effect_row_operation.operation_id !=
+			operation->as.effect_operation.operation_id) {
+		return 0;
+	}
+	uint32_t latent = terms->terms[effect_row].as.effect_row_operation.latent_row;
+	if (latent >= terms->term_count || terms->terms[latent].tag !=
+			PROTOTYPE_TERM_EFFECT_ROW_EMPTY) {
+		return 0;
+	}
+	if (declaration->classifier_schema ==
+			PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_TEXT_TO_TEXT) {
+		return effect_binding == PROTOTYPE_INVALID_ID &&
+			terms->terms[domain].tag == PROTOTYPE_TERM_PRIMITIVE_TEXT;
+	}
+	if (declaration->classifier_schema !=
+			PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT ||
+		effect_binding == PROTOTYPE_INVALID_ID ||
+		terms->terms[domain].tag != PROTOTYPE_TERM_THUNK_TYPE) {
+		return 0;
+	}
+	uint32_t computation = terms->terms[domain].as.thunk_type.computation;
+	if (computation >= terms->term_count || terms->terms[computation].tag !=
+			PROTOTYPE_TERM_COMPUTATION_TYPE ||
+		terms->terms[computation].as.computation_type.totality !=
+			PROTOTYPE_COMPUTATION_TOTALITY_TOTAL ||
+		terms->terms[computation].as.computation_type.result >= terms->term_count ||
+		terms->terms[terms->terms[computation].as.computation_type.result].tag !=
+			PROTOTYPE_TERM_PRIMITIVE_TEXT) {
+		return 0;
+	}
+	uint32_t input_row = terms->terms[computation].as.computation_type.label;
+	return input_row < terms->term_count &&
+		terms->terms[input_row].tag == PROTOTYPE_TERM_EFFECT_ROW_VAR &&
+		terms->terms[input_row].as.effect_row_var.binding_id == effect_binding;
 }
 
 static int infer_text_literal_classifier(
@@ -300,11 +439,11 @@ int prototype_judgement_cbpv_boundary_classifier(
 			return -1;
 		}
 	} else if (term->tag == PROTOTYPE_TERM_THUNK) {
-		struct prototype_term_classifier_view view;
+		struct prototype_classifier_view view;
 		if (prototype_judgement_classifier_view(
 				terms, type_declarations, NULL, child_classifier, &view
 			) != 0 ||
-			view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+			view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
 			prototype_term_thunk_type(terms, child_classifier, &classifier) != 0) {
 			return -1;
 		}
@@ -444,7 +583,7 @@ static int infer_cbpv_boundary_classifier(
 
 int prototype_judgement_delta_record_computation_constraint(
 	struct prototype_judgement_delta* delta,
-	const struct prototype_term_db* terms,
+	struct prototype_term_db* terms,
 	uint32_t context_id,
 	uint32_t subject
 ) {
@@ -472,7 +611,14 @@ int prototype_judgement_delta_record_computation_constraint(
 		constraint.computation = term->as.operation_request.operation;
 		constraint.continuation = term->as.operation_request.continuation;
 		constraint.argument = term->as.operation_request.argument;
-		constraint.application = PROTOTYPE_INVALID_ID;
+		if (prototype_term_app(
+				terms,
+				constraint.computation,
+				constraint.argument,
+				&constraint.application
+			) != 0) {
+			return -1;
+		}
 	} else {
 		return 1;
 	}
@@ -492,8 +638,7 @@ int prototype_judgement_delta_record_computation_constraint(
 				&delta->computation_constraints[existing_id];
 			return existing->kind == constraint.kind &&
 				existing->context_id == context_id &&
-				existing->occurrence_id == constraint.occurrence_id &&
-				existing->subject == subject ? 0 : -1;
+				existing->occurrence_id == constraint.occurrence_id ? 0 : -1;
 		}
 	} else {
 		for (size_t i = 0; i < delta->computation_constraint_count; ++i) {
@@ -522,33 +667,6 @@ int prototype_judgement_delta_record_computation_constraint(
 	return 0;
 }
 
-int prototype_judgement_delta_rebuild_computation_constraint_index(
-	struct prototype_judgement_delta* delta
-) {
-	if (!delta || (delta->computation_constraint_count != 0 &&
-		!delta->computation_constraints)) {
-		return -1;
-	}
-	for (uint32_t i = 0;
-		i < PROTOTYPE_JUDGEMENT_OCCURRENCE_INDEX_CAPACITY;
-		++i) {
-		delta->computation_constraint_by_occurrence[i] = PROTOTYPE_INVALID_ID;
-	}
-	for (uint32_t i = 0; i < delta->computation_constraint_count; ++i) {
-		uint32_t occurrence = delta->computation_constraints[i].occurrence_id;
-		if (occurrence == PROTOTYPE_INVALID_ID) {
-			continue;
-		}
-		if (occurrence >= PROTOTYPE_JUDGEMENT_OCCURRENCE_INDEX_CAPACITY ||
-			delta->computation_constraint_by_occurrence[occurrence] !=
-				PROTOTYPE_INVALID_ID) {
-			return -1;
-		}
-		delta->computation_constraint_by_occurrence[occurrence] = i;
-	}
-	return 0;
-}
-
 int prototype_judgement_delta_computation_constraint_for_occurrence(
 	const struct prototype_judgement_delta* delta,
 	uint32_t occurrence_id,
@@ -572,7 +690,7 @@ int prototype_judgement_delta_computation_constraint_for_occurrence(
 
 static int prototype_judgement_delta_generate_computation_constraints(
 	struct prototype_judgement_delta* delta,
-	const struct prototype_term_db* terms
+	struct prototype_term_db* terms
 ) {
 	if (!delta || !terms) {
 		return -1;
@@ -603,8 +721,8 @@ int prototype_judgement_computation_fold_result_classifier(
 	uint32_t continuation_classifier,
 	uint32_t* p_ret
 ) {
-	struct prototype_term_classifier_view input_view;
-	struct prototype_term_classifier_view continuation_view;
+	struct prototype_classifier_view input_view;
+	struct prototype_classifier_view continuation_view;
 	uint32_t continuation_pi;
 	uint32_t domain;
 	uint32_t codomain_family;
@@ -612,8 +730,6 @@ int prototype_judgement_computation_fold_result_classifier(
 	uint32_t codomain;
 	uint32_t dependency_codomain;
 	uint32_t normalized_dependency_codomain;
-	uint32_t normalized_input;
-	struct prototype_term_normalization_result input_normalization;
 	uint32_t codomain_lambda;
 	uint32_t applied_codomain;
 	uint32_t normalized_codomain;
@@ -638,15 +754,15 @@ int prototype_judgement_computation_fold_result_classifier(
 			terms, type_declarations, NULL, input_classifier, &input_view
 		);
 		if (input_view_status != 0 ||
-			input_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+			input_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
 			(input_view.computation_kind !=
-				PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING &&
+				PROTOTYPE_COMPUTATION_KIND_RETURNING &&
 			 input_view.computation_kind !=
-				PROTOTYPE_TERM_COMPUTATION_KIND_FUNCTION)) {
+				PROTOTYPE_COMPUTATION_KIND_FUNCTION)) {
 			return -1;
 		}
 		if (input_view.computation_kind ==
-			PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+			PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 			input_value_classifier = input_view.result;
 			input_effect_row = input_view.effect_row;
 			input_totality = input_view.totality;
@@ -678,12 +794,12 @@ int prototype_judgement_computation_fold_result_classifier(
 	int family_status = continuation_pi_status == 0 ? prototype_term_pure_family_parts(
 			terms, codomain_family, &codomain_binder, &codomain
 		) : -1;
-	int domain_conversion = continuation_pi_status == 0 ?
-		prototype_judgement_classifier_conversion(
+	int domain_compatible = continuation_pi_status == 0 &&
+		prototype_judgement_classifier_compatible(
 			terms, type_declarations, domain, input_value_classifier
-		).status : PROTOTYPE_TERM_CONVERSION_INVALID;
+		);
 	if (continuation_pi_status == 0 && family_status == 0 &&
-		domain_conversion != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		!domain_compatible) {
 		uint32_t instantiated_input_classifier;
 		int instantiate_status = prototype_judgement_solve_expected_effect_rows(
 			terms,
@@ -697,20 +813,18 @@ int prototype_judgement_computation_fold_result_classifier(
 			return -1;
 		}
 		if (instantiate_status == 0 &&
-			prototype_judgement_classifier_conversion(
-				terms,
-				type_declarations,
-				instantiated_input_classifier,
-				domain
-			).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			prototype_judgement_classifier_compatible(
+				terms, type_declarations, domain,
+				instantiated_input_classifier
+			)) {
 			/* Effect-row schemes are instantiated at the sequencing use site. The
 			 * premise evidence retains its general classifier. */
 			input_value_classifier = instantiated_input_classifier;
-			domain_conversion = PROTOTYPE_TERM_CONVERSION_EQUAL;
+			domain_compatible = 1;
 		}
 	}
 	if (continuation_pi_status != 0 || family_status != 0 ||
-		domain_conversion != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		!domain_compatible) {
 		return -1;
 	}
 	dependency_codomain = codomain;
@@ -723,9 +837,8 @@ int prototype_judgement_computation_fold_result_classifier(
 	 * computation merely because x occurs before beta reduction. */
 	if (prototype_term_normalize_complete_with_profile(
 			terms,
-			type_declarations,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			dependency_codomain,
 			&normalized_dependency_codomain
 		) != 0) {
@@ -739,49 +852,15 @@ int prototype_judgement_computation_fold_result_classifier(
 		if (input_totality != PROTOTYPE_COMPUTATION_TOTALITY_TOTAL) {
 			return 1;
 		}
-		if (prototype_term_normalize_with_profile(
-				terms,
-				type_declarations,
-				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-				input_computation,
-				PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
-				&input_normalization
-			) != 0 || input_normalization.status ==
-				PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID) {
-			return -1;
-		}
-		if (input_normalization.status !=
-			PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
-			return 1;
-		}
-		normalized_input = input_normalization.term_id;
 		uint32_t input_value;
-		if (normalized_input >= terms->term_count) {
-			return -1;
-		}
-		if (terms->terms[normalized_input].tag == PROTOTYPE_TERM_RETURN) {
-			input_value = terms->terms[normalized_input].as.return_term.value;
-		} else if (terms->terms[normalized_input].tag == PROTOTYPE_TERM_THUNK) {
-			input_value = normalized_input;
-		} else if (terms->terms[normalized_input].tag == PROTOTYPE_TERM_LAMBDA) {
-			if (prototype_term_thunk(terms, normalized_input, &input_value) != 0) {
-				return -1;
-			}
-		} else {
-			int projection_status = prototype_term_project_pure_computation_value(
-				terms,
-				type_declarations,
-				input_computation,
-				PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
-				&input_value
-			);
-			if (projection_status != 0) {
-				/* COMPLETE means that a WHNF was reached, not that the computation
-				 * returned. Keep an opaque pure result as a residual dependent
-				 * sequencing equation. */
-				return projection_status < 0 ? -1 : 1;
-			}
+		int projection_status = prototype_term_project_structural_return_value(
+			terms,
+			input_computation,
+			PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
+			&input_value
+		);
+		if (projection_status != 0) {
+			return projection_status < 0 ? -1 : 1;
 		}
 		if (
 			prototype_term_pure_family_lambda(
@@ -799,9 +878,8 @@ int prototype_judgement_computation_fold_result_classifier(
 	}
 	if (prototype_term_normalize_complete_with_profile(
 			terms,
-			type_declarations,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			applied_codomain,
 			&normalized_codomain
 		) != 0 || normalized_codomain >= terms->term_count) {
@@ -814,12 +892,12 @@ int prototype_judgement_computation_fold_result_classifier(
 	}
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, applied_codomain, &continuation_view
-		) != 0 || continuation_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		continuation_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+		) != 0 || continuation_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		continuation_view.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 		return -1;
 	}
 	uint32_t effect_row;
-	int totality = prototype_computation_totality_join(
+	int totality = prototype_classifier_totality_join(
 		input_totality, continuation_view.totality
 	);
 	if (totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
@@ -900,10 +978,10 @@ int prototype_judgement_delta_record_computation_fold_elim(
 			return 1;
 		}
 	} else {
-		struct prototype_term_classifier_view result;
+		struct prototype_classifier_view result;
 		if (prototype_judgement_classifier_view(
 				terms, type_declarations, NULL, classifier, &result
-			) != 0 || result.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
+			) != 0 || result.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION) {
 			return -1;
 		}
 	}
@@ -935,12 +1013,13 @@ int prototype_judgement_delta_record_computation_fold_elim(
 
 static int select_closed_constraint_premises(
 	const struct prototype_judgement_computation_constraint* constraint,
+	const struct prototype_judgement_computation_constraint_input* input,
 	const uint32_t* subjects,
 	const uint32_t* classifiers,
 	uint32_t premise_count,
 	struct prototype_judgement_selected_evidence* selected
 ) {
-	if (!constraint || !subjects || !classifiers || !selected ||
+	if (!constraint || !input || !subjects || !classifiers || !selected ||
 		constraint->occurrence_id == PROTOTYPE_INVALID_ID ||
 		premise_count > constraint->premise_occurrence_count) {
 		return -1;
@@ -951,36 +1030,36 @@ static int select_closed_constraint_premises(
 		premise_count * sizeof(struct prototype_judgement_selected_evidence)
 	);
 	for (uint32_t i = 0; i < premise_count; ++i) {
-		if (constraint->premise_states[i] ==
+		if (input->premise_states[i] ==
 			PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_LOCAL) {
 			selected[i] = (struct prototype_judgement_selected_evidence){
 				.kind = PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
 				.authority_kind = PROTOTYPE_JUDGEMENT_AUTHORITY_CORE_HELPER,
 				.authority_id = subjects[i],
-				.context_id = constraint->premise_contexts[i],
+				.context_id = input->premise_contexts[i],
 				.occurrence_id = PROTOTYPE_INVALID_ID,
 				.subject = subjects[i],
 				.classifier = classifiers[i]
 			};
 			continue;
 		}
-		if (constraint->premise_states[i] ==
+		if (input->premise_states[i] ==
 			PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_UNRESOLVED) {
 			return 1;
 		}
-		if (constraint->premise_states[i] !=
+		if (input->premise_states[i] !=
 				PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_CLOSED ||
 			constraint->premise_occurrences[i] == PROTOTYPE_INVALID_ID ||
 			classifiers[i] == PROTOTYPE_INVALID_ID ||
-			constraint->premise_evidence[i].kind !=
+			input->premise_evidence[i].kind !=
 				PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-			constraint->premise_evidence[i].authority_kind ==
+			input->premise_evidence[i].authority_kind ==
 				PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
-			constraint->premise_evidence[i].subject != subjects[i] ||
-			constraint->premise_evidence[i].classifier != classifiers[i]) {
+			input->premise_evidence[i].subject != subjects[i] ||
+			input->premise_evidence[i].classifier != classifiers[i]) {
 			return -1;
 		}
-		selected[i] = constraint->premise_evidence[i];
+		selected[i] = input->premise_evidence[i];
 	}
 	return 0;
 }
@@ -989,19 +1068,20 @@ static int solve_zero_clause_computation_fold_constraint(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_computation_constraint* constraint,
+	const struct prototype_judgement_computation_constraint* constraint,
+	const struct prototype_judgement_computation_constraint_input* input,
 	struct prototype_judgement_computation_constraint_result* result
 ) {
 	uint32_t input_classifier;
 	struct prototype_judgement_selected_evidence input_evidence;
-	struct prototype_term_classifier_view input_view;
+	struct prototype_classifier_view input_view;
 	int input_status;
 	if (constraint->occurrence_id != PROTOTYPE_INVALID_ID) {
 		if (constraint->premise_occurrence_count < 2 ||
-			constraint->premise_classifiers[0] == PROTOTYPE_INVALID_ID) {
+			input->premise_classifiers[0] == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
-		input_classifier = constraint->premise_classifiers[0];
+		input_classifier = input->premise_classifiers[0];
 		input_status = 0;
 	} else {
 		if (term_has_tag(
@@ -1040,8 +1120,8 @@ static int solve_zero_clause_computation_fold_constraint(
 	}
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, input_classifier, &input_view
-		) != 0 || input_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		input_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+		) != 0 || input_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		input_view.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 		/* TermDB identity may be shared by differently typed source occurrences.
 		 * A global lookup that finds a non-returning candidate cannot refute this
 		 * occurrence-local zero-clause computation fold; defer until the TypedOccurrenceGraph records its selected
@@ -1062,7 +1142,7 @@ static int solve_zero_clause_computation_fold_constraint(
 	uint32_t continuation_classifier;
 	struct prototype_judgement_selected_evidence continuation_evidence;
 	if (constraint->occurrence_id != PROTOTYPE_INVALID_ID) {
-		continuation_classifier = constraint->premise_classifiers[1];
+		continuation_classifier = input->premise_classifiers[1];
 		if (continuation_classifier == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
@@ -1092,16 +1172,16 @@ static int solve_zero_clause_computation_fold_constraint(
 		return 1;
 	}
 	result->solved_classifier = classifier;
-	if (result->projected_classifier != PROTOTYPE_INVALID_ID) {
+	if (input->projected_classifier != PROTOTYPE_INVALID_ID) {
 		if (prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				classifier,
-				result->projected_classifier
+				input->projected_classifier
 			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 			return 1;
 		}
-		classifier = result->projected_classifier;
+		classifier = input->projected_classifier;
 		result->solved_classifier = classifier;
 	}
 	uint32_t subjects[2] = { constraint->computation, constraint->continuation };
@@ -1113,7 +1193,8 @@ static int solve_zero_clause_computation_fold_constraint(
 		premise_occurrence_ids[0] = constraint->premise_occurrences[0];
 		premise_occurrence_ids[1] = constraint->premise_occurrences[1];
 		int premise_status = select_closed_constraint_premises(
-				constraint,
+			constraint,
+			input,
 				subjects,
 				classifiers,
 				2,
@@ -1141,25 +1222,13 @@ static int solve_operation_request_constraint(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_computation_constraint* constraint,
+	const struct prototype_judgement_computation_constraint* constraint,
+	const struct prototype_judgement_computation_constraint_input* input,
 	struct prototype_judgement_computation_constraint_result* result,
 	uint32_t constraint_id
 ) {
 	if (constraint->application == PROTOTYPE_INVALID_ID) {
-		for (uint32_t i = 0; i < (uint32_t)terms->term_count; ++i) {
-			if (terms->terms[i].tag == PROTOTYPE_TERM_APP &&
-				terms->terms[i].as.app.function == constraint->computation &&
-				terms->terms[i].as.app.argument == constraint->argument) {
-				constraint->application = i;
-				break;
-			}
-		}
-		if (constraint->application == PROTOTYPE_INVALID_ID &&
-			prototype_term_app(
-				terms, constraint->computation, constraint->argument, &constraint->application
-			) != 0) {
-			return -1;
-		}
+		return -1;
 	}
 	uint32_t application_classifier;
 	uint32_t argument_classifier;
@@ -1167,16 +1236,16 @@ static int solve_operation_request_constraint(
 	struct prototype_judgement_selected_evidence argument_evidence;
 	if (constraint->occurrence_id != PROTOTYPE_INVALID_ID) {
 		if (constraint->premise_occurrence_count < 3 ||
-			constraint->premise_classifiers[0] == PROTOTYPE_INVALID_ID ||
-			constraint->premise_classifiers[1] == PROTOTYPE_INVALID_ID) {
+			input->premise_classifiers[0] == PROTOTYPE_INVALID_ID ||
+			input->premise_classifiers[1] == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
-		argument_classifier = constraint->premise_classifiers[1];
+		argument_classifier = input->premise_classifiers[1];
 		if (prototype_judgement_delta_app_elim_classifier(
 				delta,
 				terms,
 				type_declarations,
-				constraint->premise_classifiers[0],
+				input->premise_classifiers[0],
 				constraint->argument,
 				argument_classifier,
 				&application_classifier
@@ -1208,16 +1277,16 @@ static int solve_operation_request_constraint(
 		}
 		argument_classifier = argument_evidence.classifier;
 	}
-	struct prototype_term_classifier_view operation_view;
+	struct prototype_classifier_view operation_view;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, application_classifier, &operation_view
 		) != 0) {
 		return -1;
 	}
 	/* A request is only meaningful after the operation application is Comp. */
-	if (operation_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+	if (operation_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
 		operation_view.computation_kind !=
-			PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+			PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 		return 1;
 	}
 	if (!term_has_tag(terms, constraint->continuation, PROTOTYPE_TERM_THUNK)) {
@@ -1233,7 +1302,7 @@ static int solve_operation_request_constraint(
 	uint32_t continuation_classifier;
 	struct prototype_judgement_selected_evidence continuation_evidence;
 	if (constraint->occurrence_id != PROTOTYPE_INVALID_ID) {
-		continuation_classifier = constraint->premise_classifiers[2];
+		continuation_classifier = input->premise_classifiers[2];
 		if (continuation_classifier == PROTOTYPE_INVALID_ID ||
 			!term_has_tag(terms, continuation_classifier, PROTOTYPE_TERM_THUNK_TYPE)) {
 			return 1;
@@ -1297,12 +1366,12 @@ static int solve_operation_request_constraint(
 		) != 0) {
 		return -1;
 	}
-	struct prototype_term_classifier_view continuation_view;
+	struct prototype_classifier_view continuation_view;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, continuation_result, &continuation_view
-		) != 0 || continuation_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		) != 0 || continuation_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
 		continuation_view.computation_kind !=
-			PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+			PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 		return 1;
 	}
 	if (prototype_term_contains_free_binding(
@@ -1318,11 +1387,12 @@ static int solve_operation_request_constraint(
 		return -1;
 	}
 	const struct prototype_effect_operation_declaration* declaration =
-		prototype_term_effect_operation_declaration(operation_id);
+		prototype_intrinsic_effect_operation_declaration(operation_id);
 	if (!declaration) {
 		return -1;
 	}
-	int has_suspended_argument;
+	int has_suspended_argument = declaration->classifier_schema ==
+		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT;
 	uint32_t operation_head = constraint->computation;
 	while (operation_head < terms->term_count &&
 		terms->terms[operation_head].tag == PROTOTYPE_TERM_APP) {
@@ -1332,38 +1402,31 @@ static int solve_operation_request_constraint(
 		terms->terms[operation_head].tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
 		return -1;
 	}
-	if (prototype_term_effect_operation_classifier_has_suspended_argument(
-			terms,
-			terms->terms[operation_head].as.effect_operation.classifier,
-			&has_suspended_argument
-		) != 0) {
-		return -1;
-	}
 	if (has_suspended_argument) {
 		if (!term_has_tag(terms, argument_classifier, PROTOTYPE_TERM_THUNK_TYPE)) {
 			return -1;
 		}
-		struct prototype_term_classifier_view argument_view;
+		struct prototype_classifier_view argument_view;
 		if (prototype_judgement_classifier_view(
 				terms,
 				type_declarations,
 				NULL,
 				terms->terms[argument_classifier].as.thunk_type.computation,
 				&argument_view
-			) != 0 || argument_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+			) != 0 || argument_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
 			argument_view.computation_kind !=
-				PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+				PROTOTYPE_COMPUTATION_KIND_RETURNING ||
 			prototype_term_effect_row_operation(
 				terms, operation_id, argument_view.effect_row, &operation_effect_row
 			) != 0) {
 			return -1;
 		}
 	}
-	struct prototype_term_classifier_view request_operation_view = operation_view;
+	struct prototype_classifier_view request_operation_view = operation_view;
 	request_operation_view.effect_row = operation_effect_row;
 	uint32_t effect_row;
 	uint32_t classifier;
-	int totality = prototype_computation_totality_join(
+	int totality = prototype_classifier_totality_join(
 		request_operation_view.totality, continuation_view.totality
 	);
 	if (totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
@@ -1390,16 +1453,18 @@ static int solve_operation_request_constraint(
 	/* Classifier synthesis is independent of proof closure. Publish the checked
 	 * solution even when premise evidence is not available until a later pass. */
 	result->solved_classifier = classifier;
-	if (result->projected_classifier != PROTOTYPE_INVALID_ID) {
-		if (prototype_judgement_classifier_conversion(
+	if (input->projected_classifier != PROTOTYPE_INVALID_ID) {
+		struct prototype_term_conversion_result projected_conversion =
+			prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				classifier,
-				result->projected_classifier
-			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+				input->projected_classifier
+			);
+		if (projected_conversion.status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 			return 1;
 		}
-		classifier = result->projected_classifier;
+		classifier = input->projected_classifier;
 		result->solved_classifier = classifier;
 	}
 	uint32_t subjects[3] = {
@@ -1432,21 +1497,21 @@ static int solve_operation_request_constraint(
 			.classifier = application_classifier
 		};
 		for (uint32_t i = 1; i < 3; ++i) {
-			if (constraint->premise_states[i] ==
+			if (input->premise_states[i] ==
 				PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_UNRESOLVED) {
 				return 1;
 			}
-			if (constraint->premise_states[i] !=
+			if (input->premise_states[i] !=
 					PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_CLOSED ||
-				constraint->premise_evidence[i].kind !=
+				input->premise_evidence[i].kind !=
 					PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
-				constraint->premise_evidence[i].authority_kind ==
+				input->premise_evidence[i].authority_kind ==
 					PROTOTYPE_JUDGEMENT_AUTHORITY_INVALID ||
-				constraint->premise_evidence[i].subject != subjects[i] ||
-				constraint->premise_evidence[i].classifier != classifiers[i]) {
+				input->premise_evidence[i].subject != subjects[i] ||
+				input->premise_evidence[i].classifier != classifiers[i]) {
 				return -1;
 			}
-			selected_premises[i] = constraint->premise_evidence[i];
+			selected_premises[i] = input->premise_evidence[i];
 		}
 		premise_evidence = selected_premises;
 	} else {
@@ -1529,11 +1594,11 @@ static int record_computation_lambda_body_effect_weaken(
 		) != 0) {
 		return -1;
 	}
-	struct prototype_term_classifier_view source_body;
+	struct prototype_classifier_view source_body;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, source_body_classifier, &source_body
-		) != 0 || source_body.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		source_body.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+		) != 0 || source_body.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		source_body.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 		return -1;
 	}
 	uint32_t target_body_classifier;
@@ -1595,7 +1660,7 @@ static int fold_clause_closed_body_row(
 	uint32_t body_classifier;
 	uint32_t instantiated_domain;
 	uint32_t instantiated_body;
-	struct prototype_term_classifier_view body_view;
+	struct prototype_classifier_view body_view;
 	if (!terms || !type_declarations || !p_effect_row || !p_totality ||
 		pi_parts(terms, classifier, &outer_domain, &outer_family) != 0 ||
 		prototype_term_pure_family_parts(
@@ -1630,8 +1695,8 @@ static int fold_clause_closed_body_row(
 			&domain_equal
 		) != 0 || prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, instantiated_body, &body_view
-		) != 0 || body_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		body_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		) != 0 || body_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		body_view.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
 		classifier_conversion_decision(
 			prototype_judgement_classifier_conversion(
 				terms, type_declarations, body_view.result, carrier_result
@@ -1657,7 +1722,8 @@ static int solve_clause_computation_fold_constraint(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_computation_constraint* constraint,
+	const struct prototype_judgement_computation_constraint* constraint,
+	const struct prototype_judgement_computation_constraint_input* input,
 	struct prototype_judgement_computation_constraint_result* result,
 	uint32_t constraint_id
 ) {
@@ -1680,10 +1746,10 @@ static int solve_clause_computation_fold_constraint(
 	int input_status = -1;
 	if (constraint->occurrence_id != PROTOTYPE_INVALID_ID) {
 		if (constraint->premise_occurrence_count != 2 + 2 * clause_count ||
-			constraint->premise_classifiers[0] == PROTOTYPE_INVALID_ID) {
+			input->premise_classifiers[0] == PROTOTYPE_INVALID_ID) {
 			return 1;
 		}
-		input_classifier = constraint->premise_classifiers[0];
+		input_classifier = input->premise_classifiers[0];
 		input_status = 0;
 	} else if (term_has_tag(
 			terms,
@@ -1721,11 +1787,11 @@ static int solve_clause_computation_fold_constraint(
 	if (constraint->occurrence_id == PROTOTYPE_INVALID_ID) {
 		input_classifier = input_evidence.classifier;
 	}
-	struct prototype_term_classifier_view input_view;
+	struct prototype_classifier_view input_view;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, input_classifier, &input_view
-		) != 0 || input_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		input_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+		) != 0 || input_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		input_view.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 		return -1;
 	}
 
@@ -1738,7 +1804,7 @@ static int solve_clause_computation_fold_constraint(
 	uint32_t operation_domains[
 		PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES
 	];
-	struct prototype_term_classifier_view operation_views[
+	struct prototype_classifier_view operation_views[
 		PROTOTYPE_COMPUTATION_FOLD_MAX_OPERATION_CLAUSES
 	];
 	struct prototype_judgement_selected_evidence operation_evidence[
@@ -1764,7 +1830,7 @@ static int solve_clause_computation_fold_constraint(
 		uint32_t operation_result;
 		uint32_t ignored_operation_body;
 		if (constraint->occurrence_id != PROTOTYPE_INVALID_ID) {
-			operation_classifiers[i] = constraint->premise_classifiers[2 + 2 * i];
+			operation_classifiers[i] = input->premise_classifiers[2 + 2 * i];
 			if (operation_classifiers[i] == PROTOTYPE_INVALID_ID) {
 				return 1;
 			}
@@ -1784,7 +1850,7 @@ static int solve_clause_computation_fold_constraint(
 			return -1;
 		}
 		const struct prototype_effect_operation_declaration* declaration =
-			prototype_term_effect_operation_declaration(operation_identity);
+			prototype_intrinsic_effect_operation_declaration(operation_identity);
 		if (!declaration) {
 			return -1;
 		}
@@ -1811,9 +1877,9 @@ static int solve_clause_computation_fold_constraint(
 				PROTOTYPE_INVALID_ID, &operation_result
 			) != 0 || prototype_judgement_classifier_view(
 				terms, type_declarations, NULL, operation_result, &operation_views[i]
-			) != 0 || operation_views[i].category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+			) != 0 || operation_views[i].category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
 			operation_views[i].computation_kind !=
-				PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+				PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 			return -1;
 		}
 		uint32_t union_row;
@@ -1836,9 +1902,9 @@ static int solve_clause_computation_fold_constraint(
 		) != 0) {
 		return -1;
 	}
-	struct prototype_term_classifier_view handled_operations_view = {
-		.category = PROTOTYPE_TERM_CATEGORY_COMPUTATION,
-		.computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING,
+	struct prototype_classifier_view handled_operations_view = {
+		.category = PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION,
+		.computation_kind = PROTOTYPE_COMPUTATION_KIND_RETURNING,
 		.effect_row = handled_operations_row,
 		.result = input_view.result,
 		.totality = input_view.totality
@@ -1877,7 +1943,7 @@ static int solve_clause_computation_fold_constraint(
 	struct prototype_judgement_selected_evidence return_evidence;
 	int return_selection;
 	if (constraint->occurrence_id != PROTOTYPE_INVALID_ID) {
-		return_classifier = constraint->premise_classifiers[1];
+		return_classifier = input->premise_classifiers[1];
 		return_selection = return_classifier == PROTOTYPE_INVALID_ID ? 1 : 0;
 	} else {
 		return_selection = select_delta_pi_classifier_for_domain(
@@ -1926,16 +1992,16 @@ static int solve_clause_computation_fold_constraint(
 	int dependent_output = prototype_term_contains_free_binding(
 		terms, output_classifier, return_binder
 	);
-	struct prototype_term_classifier_view output_view;
+	struct prototype_classifier_view output_view;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, output_classifier, &output_view
-		) != 0 || output_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		output_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+		) != 0 || output_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		output_view.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 		return -1;
 	}
 	uint32_t carrier_rows[33];
 	uint32_t carrier_row_count = 0;
-	int fold_totality = prototype_computation_totality_join(
+	int fold_totality = prototype_classifier_totality_join(
 		input_view.totality, output_view.totality
 	);
 	if (fold_totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
@@ -1960,13 +2026,13 @@ static int solve_clause_computation_fold_constraint(
 			int clause_totality;
 			uint32_t premise = 3 + 2 * i;
 			if (premise >= constraint->premise_occurrence_count ||
-				constraint->premise_classifiers[premise] == PROTOTYPE_INVALID_ID) {
+				input->premise_classifiers[premise] == PROTOTYPE_INVALID_ID) {
 				return 1;
 			}
 			int row_status = fold_clause_closed_body_row(
 				terms,
 				type_declarations,
-				constraint->premise_classifiers[premise],
+				input->premise_classifiers[premise],
 				operation_domains[i],
 				output_view.result,
 				&clause_row,
@@ -1976,7 +2042,7 @@ static int solve_clause_computation_fold_constraint(
 				return -1;
 			}
 			if (row_status == 0) {
-				fold_totality = prototype_computation_totality_join(
+				fold_totality = prototype_classifier_totality_join(
 					fold_totality, clause_totality
 				);
 				if (fold_totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
@@ -2016,7 +2082,7 @@ static int solve_clause_computation_fold_constraint(
 			if (row_status != 0) {
 				continue;
 			}
-			fold_totality = prototype_computation_totality_join(
+			fold_totality = prototype_classifier_totality_join(
 				fold_totality, clause_totality
 			);
 			if (fold_totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
@@ -2123,7 +2189,7 @@ static int solve_clause_computation_fold_constraint(
 				fold->as.computation_fold.first_clause + i
 			];
 		uint32_t operation_domain = operation_domains[i];
-		struct prototype_term_classifier_view operation_view = operation_views[i];
+		struct prototype_classifier_view operation_view = operation_views[i];
 		if (clause->body >= terms->term_count ||
 			terms->terms[clause->body].tag != PROTOTYPE_TERM_LAMBDA) {
 			return -1;
@@ -2164,7 +2230,6 @@ static int solve_clause_computation_fold_constraint(
 				saved_context,
 				terms->terms[clause->body].as.lambda.binding_id,
 				operation_domain,
-				PROTOTYPE_INVALID_ID,
 				&operation_argument_context
 			) != 0) {
 			return -1;
@@ -2180,7 +2245,6 @@ static int solve_clause_computation_fold_constraint(
 				operation_argument_context,
 				terms->terms[continuation_lambda].as.lambda.binding_id,
 				continuation_expected,
-				PROTOTYPE_INVALID_ID,
 				&continuation_context
 			) != 0) {
 			prototype_judgement_delta_set_context(delta, saved_context);
@@ -2227,9 +2291,9 @@ static int solve_clause_computation_fold_constraint(
 		uint32_t outer_classifier;
 		if (constraint->occurrence_id != PROTOTYPE_INVALID_ID) {
 			uint32_t outer_premise = 3 + 2 * i;
-			outer_classifier = constraint->premise_classifiers[outer_premise];
+			outer_classifier = input->premise_classifiers[outer_premise];
 			if (outer_classifier == PROTOTYPE_INVALID_ID ||
-				constraint->premise_states[outer_premise] ==
+				input->premise_states[outer_premise] ==
 					PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_UNRESOLVED) {
 				return 1;
 			}
@@ -2335,16 +2399,16 @@ static int solve_clause_computation_fold_constraint(
 		return 1;
 	}
 	result->solved_classifier = handled_output_classifier;
-	if (result->projected_classifier != PROTOTYPE_INVALID_ID) {
+	if (input->projected_classifier != PROTOTYPE_INVALID_ID) {
 		if (prototype_judgement_classifier_conversion(
 				terms,
 				type_declarations,
 				handled_output_classifier,
-				result->projected_classifier
+				input->projected_classifier
 			).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
 			return 1;
 		}
-		handled_output_classifier = result->projected_classifier;
+		handled_output_classifier = input->projected_classifier;
 		result->solved_classifier = handled_output_classifier;
 	}
 	uint32_t subjects[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
@@ -2374,7 +2438,8 @@ static int solve_clause_computation_fold_constraint(
 			premise_occurrence_ids[i] = constraint->premise_occurrences[i];
 		}
 		int premise_status = select_closed_constraint_premises(
-				constraint,
+			constraint,
+			input,
 				subjects,
 				classifiers,
 				premise_count,
@@ -2413,11 +2478,14 @@ static int solve_computation_constraints(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_computation_constraint_input* inputs,
+	size_t input_capacity,
 	struct prototype_judgement_computation_constraint_result* results,
 	size_t result_capacity,
 	int include_folds
 ) {
-	if (!results || result_capacity < delta->computation_constraint_count) {
+	if (!results || result_capacity < delta->computation_constraint_count ||
+		(inputs && input_capacity < delta->computation_constraint_count)) {
 		return -1;
 	}
 	/* Request classifiers are premises of enclosing folds. Derive every request
@@ -2427,20 +2495,40 @@ static int solve_computation_constraints(
 		if (pass == 1 && !include_folds) {
 			break;
 		}
-		/* Operation-owned operand snapshots are refreshed by the frontend. If
-		 * request closure changed their evidence, do not solve dependent folds
-		 * against the old snapshot in this invocation. */
+		/* Inputs are one read-only view of a Layer T solution revision. If request
+		 * closure adds evidence, dependent folds wait for the next input view. */
 		if (pass == 1 && delta->proposition_count != before_request_closure) {
 			break;
 		}
 		for (size_t i = 0; i < delta->computation_constraint_count; ++i) {
-			struct prototype_judgement_computation_constraint* constraint =
+			const struct prototype_judgement_computation_constraint* constraint =
 				&delta->computation_constraints[i];
+			const struct prototype_judgement_computation_constraint_input* input =
+				inputs ? &inputs[i] : NULL;
+			struct prototype_judgement_computation_constraint projected;
 			struct prototype_judgement_computation_constraint_result* result =
 				&results[i];
 			if (constraint->occurrence_id == PROTOTYPE_INVALID_ID) {
 				continue;
+			} else if (!input) {
+				return -1;
 			}
+			if (input->state ==
+					PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_UNRESOLVED) {
+				continue;
+			}
+			if (input->state !=
+					PROTOTYPE_JUDGEMENT_CONSTRAINT_OPERAND_CLOSED) {
+				return -1;
+			}
+			projected = *constraint;
+			projected.context_id = input->context_id;
+			projected.subject = input->subject;
+			projected.computation = input->computation;
+			projected.continuation = input->continuation;
+			projected.argument = input->argument;
+			projected.application = input->application;
+			constraint = &projected;
 			int is_request = constraint->kind ==
 				PROTOTYPE_JUDGEMENT_COMPUTATION_CONSTRAINT_OPERATION_REQUEST;
 			if ((pass == 0) != is_request) {
@@ -2459,9 +2547,10 @@ static int solve_computation_constraints(
 			const struct prototype_term* fold = &terms->terms[constraint->subject];
 			int status = fold->as.computation_fold.clause_count == 0 ?
 				solve_zero_clause_computation_fold_constraint(
-					delta, terms, type_declarations, constraint, result
+					delta, terms, type_declarations, constraint, input, result
 				) : solve_clause_computation_fold_constraint(
-					delta, terms, type_declarations, constraint, result, (uint32_t)i
+					delta, terms, type_declarations, constraint, input, result,
+					(uint32_t)i
 				);
 			if (status < 0) {
 				fprintf(
@@ -2474,7 +2563,8 @@ static int solve_computation_constraints(
 			}
 			} else {
 			int status = solve_operation_request_constraint(
-				delta, terms, type_declarations, constraint, result, (uint32_t)i
+				delta, terms, type_declarations, constraint, input, result,
+				(uint32_t)i
 			);
 			if (status < 0) {
 				fprintf(
@@ -2517,10 +2607,12 @@ int prototype_judgement_delta_solve_recorded_computation_constraints(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_computation_constraint_input* inputs,
+	size_t input_capacity,
 	struct prototype_judgement_computation_constraint_result* results,
 	size_t result_capacity
 ) {
-	if (!delta || !terms || !type_declarations || !results) {
+	if (!delta || !terms || !type_declarations || !inputs || !results) {
 		return -1;
 	}
 	/* Constraint solving may synthesize Core-level helper derivations. The
@@ -2528,7 +2620,8 @@ int prototype_judgement_delta_solve_recorded_computation_constraints(
 	prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
 	reset_computation_constraint_solutions(delta, results, result_capacity);
 	return solve_computation_constraints(
-		delta, terms, type_declarations, results, result_capacity, 1
+		delta, terms, type_declarations, inputs, input_capacity, results,
+		result_capacity, 1
 	);
 }
 
@@ -2536,16 +2629,19 @@ int prototype_judgement_delta_solve_recorded_computation_requests(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_computation_constraint_input* inputs,
+	size_t input_capacity,
 	struct prototype_judgement_computation_constraint_result* results,
 	size_t result_capacity
 ) {
-	if (!delta || !terms || !type_declarations || !results) {
+	if (!delta || !terms || !type_declarations || !inputs || !results) {
 		return -1;
 	}
 	prototype_judgement_delta_set_occurrence(delta, PROTOTYPE_INVALID_ID);
 	reset_computation_constraint_solutions(delta, results, result_capacity);
 	return solve_computation_constraints(
-		delta, terms, type_declarations, results, result_capacity, 0
+		delta, terms, type_declarations, inputs, input_capacity, results,
+		result_capacity, 0
 	);
 }
 
@@ -2690,7 +2786,7 @@ static int infer_core_helper_facts_with_results(
 		}
 		size_t before = delta->proposition_count;
 		int solve_status = solve_computation_constraints(
-			delta, terms, type_declarations, results, result_capacity, 1
+			delta, terms, type_declarations, NULL, 0, results, result_capacity, 1
 		);
 		if (solve_status != 0) {
 			fprintf(stderr,

@@ -5,33 +5,35 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "a_program/core/conversion.h"
+#include "a_program/core/graph.h"
+#include "a_program/core/intrinsic.h"
+#include "a_program/core/request.h"
 #include "a_program/support/schema.h"
 #include "a_program/support/symbol.h"
 
 struct prototype_term_db;
 struct prototype_term_definition_env;
 struct prototype_term_reduction_options;
-struct prototype_type_declaration_db;
-struct prototype_type_semantic_schema_db;
-struct prototype_type_representation_db;
 struct prototype_dimension_operator_db;
 
-struct prototype_type_view_rebuild_context {
-	const struct prototype_type_semantic_schema_db* semantic_schema;
-	const struct prototype_type_representation_db* representation_db;
+/* Core-only construction view. Variable-length binders are copied into the
+ * TermDB by prototype_term_match(); this borrowed pointer never crosses the
+ * detached C/T protocol boundary. */
+struct prototype_match_case_input {
+	int case_label_symbol_id;
+	uint32_t constructor_owner;
+	uint32_t constructor_id;
+	const struct prototype_case_binder* binders;
+	uint32_t binder_count;
+	uint32_t body;
 };
-
-struct prototype_type_view_rebuild_context
-prototype_type_view_rebuild_context_from_db(
-	const struct prototype_type_declaration_db* db
-);
 
 /* Runtime-only dispatch for an OPERATION_REQUEST. Returning 1 supplies a
  * result, 0 leaves the request unhandled, and -1 reports a runtime failure. */
 typedef int (*prototype_term_operation_dispatch_fn)(
 	void* context,
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	const struct prototype_term_reduction_options* options,
 	uint32_t operation,
@@ -40,206 +42,21 @@ typedef int (*prototype_term_operation_dispatch_fn)(
 	unsigned depth
 );
 
+/* Return 1 when the binding satisfies the caller's query, 0 when it does not,
+ * and -1 when the query cannot be evaluated. Core owns lexical-scope traversal;
+ * callers may interpret a free binding using Layer T state without exposing that
+ * state to the Term graph. */
+typedef int (*prototype_term_free_binding_predicate_fn)(
+	void* context,
+	uint32_t binding_id
+);
+
 #define PROTOTYPE_SCOPE_BINDING_CAPACITY 512
 #define PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY 1024
 #define PROTOTYPE_TERM_NORMALIZATION_CACHE_BUCKET_CAPACITY 2048
 #define PROTOTYPE_COMPUTATION_FOLD_CLAUSE_CAPACITY 4096
 #define PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT UINT64_C(100000)
 #define PROTOTYPE_SOLVER_DEFAULT_STEP_LIMIT UINT64_C(100000)
-
-enum prototype_term_tag {
-	PROTOTYPE_TERM_VAR = 1,
-	PROTOTYPE_TERM_CONSTRUCTOR = 2,
-	PROTOTYPE_TERM_APP = 3,
-	PROTOTYPE_TERM_LAMBDA = 4,
-	PROTOTYPE_TERM_PI = 5,
-	PROTOTYPE_TERM_MATCH = 6,
-	PROTOTYPE_TERM_TYPE_FORMER = 7,
-	PROTOTYPE_TERM_TYPE_DECLARATION = 8,
-	PROTOTYPE_TERM_INDUCTION_HYPOTHESIS = 9,
-	PROTOTYPE_TERM_UNIVERSE_VAR = 10,
-	PROTOTYPE_TERM_PRIMITIVE_TEXT = 11,
-	PROTOTYPE_TERM_TEXT_LITERAL = 12,
-	PROTOTYPE_TERM_PRIMITIVE_INT = 13,
-	PROTOTYPE_TERM_PRIMITIVE_INT64 = 14,
-	PROTOTYPE_TERM_INT_LITERAL = 15,
-	PROTOTYPE_TERM_EXTERNAL_REF = 16,
-	PROTOTYPE_TERM_PURE_PRIMITIVE = 17,
-	PROTOTYPE_TERM_EFFECT_OPERATION = 18,
-	PROTOTYPE_TERM_TYPE_VIEW = 19,
-	PROTOTYPE_TERM_EFFECT_ROW_EMPTY = 20,
-	PROTOTYPE_TERM_EFFECT_ROW_VAR = 21,
-	PROTOTYPE_TERM_EFFECT_ROW_UNION = 22,
-	/* Classifier-only implicit quantification. The binder is erased at runtime
-	 * and scopes EFFECT_ROW_VAR occurrences in body. */
-	PROTOTYPE_TERM_EFFECT_ROW_FORALL = 23,
-	PROTOTYPE_TERM_COMPUTATION_TYPE = 24,
-	PROTOTYPE_TERM_THUNK_TYPE = 25,
-	PROTOTYPE_TERM_RETURN = 26,
-	PROTOTYPE_TERM_THUNK = 27,
-	PROTOTYPE_TERM_FORCE = 28,
-	PROTOTYPE_TERM_OPERATION_REQUEST = 29,
-	PROTOTYPE_TERM_COMPUTATION_FOLD = 30,
-	/* Static effect-row atom for one higher-order operation family and the
-	 * latent effects of its suspended computation argument. */
-	PROTOTYPE_TERM_EFFECT_ROW_OPERATION = 31,
-	PROTOTYPE_TERM_RELATION_TYPE_FORMER = 32,
-	PROTOTYPE_TERM_RELATION_WITNESS_FORMER = 33,
-	PROTOTYPE_TERM_DIMENSION_ACTION = 34,
-	PROTOTYPE_TERM_TERMINATES_TYPE_FORMER = 37,
-	PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER = 38
-};
-
-#define PROTOTYPE_TERM_TAG_MAX PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER
-
-enum prototype_term_category {
-	PROTOTYPE_TERM_CATEGORY_INVALID = 0,
-	PROTOTYPE_TERM_CATEGORY_VALUE = 1,
-	PROTOTYPE_TERM_CATEGORY_COMPUTATION = 2,
-	PROTOTYPE_TERM_CATEGORY_TYPE = 3
-};
-
-enum prototype_term_computation_kind {
-	PROTOTYPE_TERM_COMPUTATION_KIND_INVALID = 0,
-	PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING = 1,
-	PROTOTYPE_TERM_COMPUTATION_KIND_FUNCTION = 2,
-	PROTOTYPE_TERM_COMPUTATION_KIND_HANDLER = 3
-};
-
-struct prototype_term_classifier_view {
-	int category;
-	int computation_kind;
-	int totality;
-	uint32_t effect_row;
-	uint32_t result;
-};
-
-enum prototype_pure_primitive_id {
-	PROTOTYPE_PURE_PRIMITIVE_UNKNOWN = 0,
-	PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT = 1,
-	PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT = 2,
-	PROTOTYPE_PURE_PRIMITIVE_INT_ADD = 3,
-	PROTOTYPE_PURE_PRIMITIVE_INT_SUB = 4,
-	PROTOTYPE_PURE_PRIMITIVE_INT_MUL = 5,
-	PROTOTYPE_PURE_PRIMITIVE_INT_NEG = 6,
-	PROTOTYPE_PURE_PRIMITIVE_INT64_ADD = 7,
-	PROTOTYPE_PURE_PRIMITIVE_INT64_SUB = 8,
-	PROTOTYPE_PURE_PRIMITIVE_INT64_MUL = 9,
-	PROTOTYPE_PURE_PRIMITIVE_INT64_NEG = 10
-};
-
-enum prototype_effect_operation_id {
-	PROTOTYPE_EFFECT_OPERATION_UNKNOWN = 0,
-	PROTOTYPE_EFFECT_OPERATION_PRINT = 1,
-	PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT = 2,
-	PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT_ONCE = 3,
-	PROTOTYPE_EFFECT_OPERATION_ABORT_TEXT = 4
-};
-
-enum prototype_effect_operation_classifier_schema {
-	PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_INVALID = 0,
-	PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_TEXT_TO_TEXT = 1,
-	PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT = 2
-};
-
-enum prototype_effect_operation_inner_policy {
-	PROTOTYPE_EFFECT_OPERATION_INNER_OPAQUE = 0,
-	PROTOTYPE_EFFECT_OPERATION_INNER_SCOPED = 1
-};
-
-enum prototype_effect_operation_resumption_multiplicity {
-	PROTOTYPE_EFFECT_OPERATION_RESUMPTION_MULTI_SHOT = 0,
-	PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ONE_SHOT = 1,
-	PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ABORTIVE = 2
-};
-
-enum prototype_host_type_id {
-	PROTOTYPE_HOST_TYPE_INVALID = 0,
-	PROTOTYPE_HOST_TYPE_TEXT = 1,
-	PROTOTYPE_HOST_TYPE_INT32 = 2,
-	PROTOTYPE_HOST_TYPE_INT64 = 3
-};
-
-enum prototype_host_oracle_kind {
-	PROTOTYPE_HOST_ORACLE_NONE = 0,
-	PROTOTYPE_HOST_ORACLE_PRINT = 1,
-	PROTOTYPE_HOST_ORACLE_TEXT_TO_NAT = 2,
-	PROTOTYPE_HOST_ORACLE_NAT_TO_TEXT = 3,
-	PROTOTYPE_HOST_ORACLE_INT_ADD = 4,
-	PROTOTYPE_HOST_ORACLE_INT_SUB = 5,
-	PROTOTYPE_HOST_ORACLE_INT_MUL = 6,
-	PROTOTYPE_HOST_ORACLE_INT_NEG = 7
-};
-
-enum prototype_host_effect_flag {
-	PROTOTYPE_HOST_EFFECT_NONE = 0,
-	PROTOTYPE_HOST_EFFECT_TERMINAL = 1u << 0
-};
-
-enum prototype_effect_row_purity {
-	PROTOTYPE_EFFECT_ROW_PURITY_INVALID = 0,
-	PROTOTYPE_EFFECT_ROW_PURITY_PURE = 1,
-	PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL = 2,
-	PROTOTYPE_EFFECT_ROW_PURITY_UNRESOLVED = 3
-};
-
-/* Termination is independent of the effect row. UNKNOWN is a solver outcome
- * and is never stored in a COMPUTATION_TYPE Term. */
-enum prototype_computation_totality {
-	PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN = 0,
-	PROTOTYPE_COMPUTATION_TOTALITY_TOTAL = 1,
-	PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE = 2
-};
-
-int prototype_computation_totality_join(int left, int right);
-
-#define PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY 2
-#define PROTOTYPE_EFFECT_OPERATION_MAX_ARITY 1
-
-struct prototype_pure_primitive_declaration {
-	int primitive_id;
-	uint32_t arity;
-	int argument_types[PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY];
-	int result_type;
-};
-
-/* Effect-operation declarations are language-level interface data. Runtime
- * implementations and intrinsic-namespace spellings are separate. */
-struct prototype_effect_operation_declaration {
-	int operation_id;
-	int classifier_schema;
-	unsigned required_host_effects;
-	uint32_t arity;
-	int inner_policy;
-	int resumption_multiplicity;
-};
-
-enum prototype_intrinsic_namespace_binding_kind {
-	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_UNKNOWN = 0,
-	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE = 1,
-	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE = 2,
-	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION = 3,
-	PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_COMPUTATION_FOLD_RETURN = 4
-};
-
-struct prototype_intrinsic_namespace_binding {
-	const char* source_name;
-	int kind;
-	int target_id;
-};
-
-/* Immutable language/runtime boundary selected for one compilation.  The
- * descriptor, rather than a source spelling or an expected type, owns the
- * principal representation of an unsuffixed integer literal. */
-struct prototype_intrinsic_environment {
-	const struct prototype_intrinsic_namespace_binding* namespace_bindings;
-	size_t namespace_binding_count;
-	const struct prototype_pure_primitive_declaration* pure_primitives;
-	size_t pure_primitive_count;
-	const struct prototype_effect_operation_declaration* effect_operations;
-	size_t effect_operation_count;
-	int default_integer_host_type;
-};
 
 enum prototype_term_layer {
 	PROTOTYPE_TERM_LAYER_LAMBDA_CORE = 1,
@@ -268,7 +85,7 @@ enum prototype_term_application_role {
 	PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION = 2,
 	/* Pure type formation exposes a suspended family lambda for compile-time
 	 * evaluation. This role has no distinct Core APP representation. */
-	PROTOTYPE_TERM_APPLICATION_PURE_TYPE_FAMILY_EVALUATION = 3
+	PROTOTYPE_TERM_APPLICATION_TYPE_FAMILY_CALCULATION = 3
 };
 
 enum prototype_term_definition_transparency {
@@ -286,7 +103,7 @@ enum prototype_term_reduction_flag {
 	PROTOTYPE_TERM_REDUCE_COMPUTATIONS = 1u << 4,
 	/* A semantic profile marker. It introduces no reduction rule; it keeps
 	 * pure conversion cache entries distinct from computation WHNF entries. */
-	PROTOTYPE_TERM_REDUCE_PURE_TYPE = 1u << 5,
+	PROTOTYPE_TERM_REDUCE_TYPE_EXPRESSION = 1u << 5,
 	PROTOTYPE_TERM_PERFORM_HOST_EFFECT = 1u << 6,
 	/* Deterministic host intrinsics with an empty effect row are computation
 	 * reductions. They are available to execution, never to type conversion. */
@@ -297,21 +114,6 @@ enum prototype_term_reduction_flag {
  * A profile specifies the semantic layer at which a weak-head result is
  * observed.  The profiles intentionally exclude host evaluation and effects.
  */
-enum prototype_term_normalization_profile {
-	PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF = 1,
-	PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF = 2,
-	PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF = 3
-};
-
-/* A kernel normalization attempt may stop without establishing a normal form.
- * This status is intentionally separate from runtime operation dispatch. */
-enum prototype_term_normalization_status {
-	PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE = 1,
-	PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT = 2,
-	PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED = 3,
-	PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID = 4
-};
-
 struct prototype_term_normalization_result {
 	int status;
 	uint32_t term_id;
@@ -321,42 +123,6 @@ struct prototype_term_normalization_result {
 };
 
 struct prototype_term_normalization_machine;
-
-enum prototype_term_conversion_status {
-	PROTOTYPE_TERM_CONVERSION_EQUAL = 1,
-	PROTOTYPE_TERM_CONVERSION_NOT_EQUAL,
-	PROTOTYPE_TERM_CONVERSION_RESIDUAL,
-	PROTOTYPE_TERM_CONVERSION_BLOCKED_EFFECT,
-	PROTOTYPE_TERM_CONVERSION_EXHAUSTED,
-	PROTOTYPE_TERM_CONVERSION_INVALID
-};
-
-enum prototype_term_conversion_reason {
-	PROTOTYPE_TERM_CONVERSION_REASON_NONE = 0,
-	PROTOTYPE_TERM_CONVERSION_REASON_NEUTRAL,
-	PROTOTYPE_TERM_CONVERSION_REASON_OPAQUE_DEFINITION,
-	PROTOTYPE_TERM_CONVERSION_REASON_UNSUPPORTED_RULE,
-	PROTOTYPE_TERM_CONVERSION_REASON_EFFECT_REQUEST,
-	PROTOTYPE_TERM_CONVERSION_REASON_STEP_LIMIT,
-	PROTOTYPE_TERM_CONVERSION_REASON_DEPTH_LIMIT,
-	PROTOTYPE_TERM_CONVERSION_REASON_MALFORMED_GRAPH
-};
-
-struct prototype_term_conversion_result {
-	int status;
-	int reason;
-	int profile;
-	uint32_t left;
-	uint32_t right;
-	uint32_t left_observation;
-	uint32_t right_observation;
-	uint64_t step_limit;
-	uint64_t steps_used;
-	uint64_t graph_revision;
-};
-
-const char* prototype_term_conversion_status_name(int status);
-const char* prototype_term_conversion_reason_name(int reason);
 
 enum prototype_term_normalization_cache_state {
 	PROTOTYPE_TERM_NORMALIZATION_CACHE_EMPTY = 0,
@@ -368,7 +134,6 @@ struct prototype_term_normalization_cache_entry {
 	uint32_t term_id;
 	uint32_t result_term_id;
 	uint64_t graph_revision;
-	uint64_t semantic_revision;
 	int profile;
 	int state;
 };
@@ -383,7 +148,6 @@ struct prototype_term_normalization_cache_stats {
 	uint64_t ih_scope_invalidation_count;
 	uint64_t type_former_invalidation_count;
 	uint64_t empty_cache_invalidation_count;
-	uint64_t semantic_revision_miss_count;
 };
 
 struct prototype_term_intern_stats {
@@ -399,24 +163,6 @@ struct prototype_term_intern_stats {
 	uint64_t unique_terms_by_tag[PROTOTYPE_TERM_TAG_MAX + 1];
 	uint64_t bucket_probes_by_tag[PROTOTYPE_TERM_TAG_MAX + 1];
 	uint64_t alpha_compares_by_tag[PROTOTYPE_TERM_TAG_MAX + 1];
-};
-
-#define PROTOTYPE_TYPE_INSTANCE_CACHE_CAPACITY 4096
-
-struct prototype_type_instance_cache_entry {
-	int present;
-	uint64_t semantic_revision;
-	uint32_t type_id;
-	uint32_t arg_count;
-	uint32_t args[16];
-	uint32_t result;
-};
-
-struct prototype_type_instance_cache_stats {
-	uint64_t hit_count;
-	uint64_t miss_count;
-	uint64_t collision_count;
-	uint64_t stale_revision_count;
 };
 
 /* Immutable operational data projected by compilation. It contains only the
@@ -468,222 +214,28 @@ struct prototype_term_semantics {
 	int link_boundary;
 };
 
-/* A child role describes one structural edge in the shared Term graph. It is
- * independent of typing occurrences, source syntax, and evaluation strategy. */
-enum prototype_term_child_role {
-	PROTOTYPE_TERM_CHILD_INVALID = 0,
-	PROTOTYPE_TERM_CHILD_FUNCTION = 1,
-	PROTOTYPE_TERM_CHILD_ARGUMENT = 2,
-	PROTOTYPE_TERM_CHILD_BODY = 3,
-	PROTOTYPE_TERM_CHILD_DOMAIN = 4,
-	PROTOTYPE_TERM_CHILD_CODOMAIN_FAMILY = 5,
-	PROTOTYPE_TERM_CHILD_SCRUTINEE = 6,
-	PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY = 7,
-	PROTOTYPE_TERM_CHILD_TYPE_VIEW_CORE = 8,
-	PROTOTYPE_TERM_CHILD_TYPE_VIEW_SOURCE = 9,
-	PROTOTYPE_TERM_CHILD_INDUCTION_ARGUMENT = 10,
-	PROTOTYPE_TERM_CHILD_EFFECT_OPERATION_CLASSIFIER = 11,
-	PROTOTYPE_TERM_CHILD_EFFECT_ROW_LEFT = 12,
-	PROTOTYPE_TERM_CHILD_EFFECT_ROW_RIGHT = 13,
-	PROTOTYPE_TERM_CHILD_EFFECT_ROW_BODY = 14,
-	PROTOTYPE_TERM_CHILD_EFFECT_ROW_LATENT = 15,
-	PROTOTYPE_TERM_CHILD_COMPUTATION_EFFECT_ROW = 16,
-	PROTOTYPE_TERM_CHILD_SEQUENCE_RESULT = 17,
-	PROTOTYPE_TERM_CHILD_THUNK_TYPE_COMPUTATION = 18,
-	PROTOTYPE_TERM_CHILD_RETURN_VALUE = 19,
-	PROTOTYPE_TERM_CHILD_THUNK_COMPUTATION = 20,
-	PROTOTYPE_TERM_CHILD_FORCE_VALUE = 21,
-	PROTOTYPE_TERM_CHILD_REQUEST_OPERATION = 22,
-	PROTOTYPE_TERM_CHILD_REQUEST_ARGUMENT = 23,
-	PROTOTYPE_TERM_CHILD_REQUEST_CONTINUATION = 24,
-	PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION = 25,
-	PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE = 26,
-	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_OPERATION = 27,
-	PROTOTYPE_TERM_CHILD_FOLD_CLAUSE_BODY = 28,
-	PROTOTYPE_TERM_CHILD_DIMENSION_ACTION_SOURCE = 29,
-	PROTOTYPE_TERM_CHILD_TERMINATION_EVIDENCE_COMPUTATION = 32
+/*
+ * A structural-key caller may replace process-local identity payloads with a
+ * stable token. Core owns the traversal and alpha treatment; the caller owns
+ * the meaning of symbols, type representations, and dimension operators.
+ * The callback is pure and cannot expose a typing store to Core reduction.
+ */
+enum prototype_term_structural_identity_kind {
+	PROTOTYPE_TERM_STRUCTURAL_IDENTITY_SYMBOL = 1,
+	PROTOTYPE_TERM_STRUCTURAL_IDENTITY_TYPE_REPRESENTATION = 2,
+	PROTOTYPE_TERM_STRUCTURAL_IDENTITY_DIMENSION_OPERATOR = 3
 };
 
-struct prototype_term_child {
-	int role;
-	uint32_t ordinal;
-	uint32_t term;
-};
+typedef int (*prototype_term_structural_identity_resolver_fn)(
+	const void* context,
+	int kind,
+	uint32_t local_identity,
+	uint64_t* p_stable_token
+);
 
-struct prototype_term {
-	int tag;
-	union {
-		struct {
-			uint32_t binding_id;
-		} var;
-		struct {
-			uint32_t owner;
-			uint32_t constructor_id;
-		} constructor;
-		struct {
-			uint32_t function;
-			uint32_t argument;
-		} app;
-		struct {
-			uint32_t binding_id;
-			uint32_t body;
-		} lambda;
-		struct {
-			uint32_t domain;
-			uint32_t codomain_family;
-		} pi;
-		struct {
-			uint32_t scrutinee;
-			uint32_t first_case;
-			uint32_t case_count;
-			uint32_t ih_scope_id;
-		} match;
-		struct {
-			/* Rebuild anchor for the process-local representation cache. This is
-			 * not nominal identity: structurally shared formers may use any
-			 * declaration with the same representation. */
-			uint32_t declaration_type_id;
-			uint32_t representation_id;
-			/* Number of constructor ordinals in this erased algebra signature.
-			 * This is operational reduction data, not a source declaration or
-			 * classifier fact. */
-			uint32_t constructor_count;
-		} type_former;
-		struct {
-			uint32_t type_id;
-			struct prototype_qualified_name identity;
-		} type_declaration;
-		struct {
-			uint32_t view_type_id;
-			struct prototype_qualified_name identity;
-			uint32_t core;
-			uint32_t source;
-		} type_view;
-			struct {
-				uint32_t ih_scope_id;
-				uint32_t argument;
-		} induction_hypothesis;
-		struct {
-			uint32_t level_var;
-		} universe_var;
-		struct {
-			int text_symbol_id;
-		} text_literal;
-		struct {
-			int64_t value;
-		} int_literal;
-		struct {
-			struct prototype_qualified_name name;
-		} external_ref;
-		struct {
-			int primitive_id;
-			int type_symbol_id;
-		} pure_primitive;
-		struct {
-			int operation_id;
-			uint32_t classifier;
-		} effect_operation;
-		struct {
-			uint32_t binding_id;
-		} effect_row_var;
-		struct {
-			uint32_t left;
-			uint32_t right;
-		} effect_row_union;
-		struct {
-			uint32_t binding_id;
-			uint32_t body;
-		} effect_row_forall;
-		struct {
-			int operation_id;
-			uint32_t latent_row;
-		} effect_row_operation;
-		struct {
-			uint32_t label;
-			uint32_t result;
-			int totality;
-		} computation_type;
-		struct {
-			uint32_t computation;
-		} thunk_type;
-		struct {
-			uint32_t value;
-		} return_term;
-		struct {
-			uint32_t computation;
-		} thunk;
-		struct {
-			uint32_t value;
-		} force;
-		struct {
-			uint32_t operation;
-			uint32_t argument;
-			uint32_t continuation;
-		} operation_request;
-		struct {
-			uint32_t computation;
-			uint32_t return_clause;
-			uint32_t first_clause;
-			uint32_t clause_count;
-		} computation_fold;
-		struct {
-			uint32_t source;
-			uint32_t operator_id;
-		} dimension_action;
-	} as;
-	};
-
-struct prototype_computation_fold_clause {
-	uint32_t operation;
-	uint32_t body;
-};
-
-struct prototype_match_case {
-	uint32_t constructor_owner;
-	uint32_t constructor_id;
-	uint32_t first_binder;
-	uint32_t binder_count;
-	uint32_t body;
-};
-
-struct prototype_case_binder {
-	uint32_t binding_id;
-	int is_recursive;
-};
-
-struct prototype_match_case_input {
-	int case_label_symbol_id;
-	uint32_t constructor_owner;
-	uint32_t constructor_id;
-	const struct prototype_case_binder* binders;
-	uint32_t binder_count;
-	uint32_t body;
-};
-
-struct prototype_term_canonical_key {
-	uint64_t hash;
-	uint32_t node_count;
-	uint32_t bound_binder_count;
-	uint32_t free_binder_count;
-	int has_frame_local_reference;
-	int has_type_local_reference;
-	int has_type_name_reference;
-	int has_type_universe_reference;
-};
-
-struct prototype_ih_scope_key {
-	struct prototype_term_canonical_key match_key;
-	uint32_t case_count;
-	int is_linkable;
-};
-
-struct prototype_ih_scope {
-	uint32_t match_term;
-	/* When the recursive Match scrutinizes a bound variable, its branch bodies
-	 * retain that binding until iota reduction. Each recursive invocation then
-	 * substitutes the current scrutinee, not the first invocation's value. */
-	uint32_t scrutinee_binding_id;
-	struct prototype_ih_scope_key key;
+struct prototype_term_structural_identity_domain {
+	const void* context;
+	prototype_term_structural_identity_resolver_fn resolve;
 };
 
 struct prototype_term_db {
@@ -709,6 +261,7 @@ struct prototype_term_db {
 	size_t computation_fold_clause_count;
 
 	uint32_t next_binding_id;
+	uint32_t next_universe_level_id;
 	uint32_t scope_bindings[PROTOTYPE_SCOPE_BINDING_CAPACITY];
 
 	/* Runtime-only metadata. It is not part of the serialized term graph. */
@@ -723,11 +276,6 @@ struct prototype_term_db {
 		PROTOTYPE_TERM_NORMALIZATION_CACHE_CAPACITY
 	];
 	struct prototype_term_normalization_cache_stats normalization_cache_stats;
-	int type_instance_cache_enabled;
-	struct prototype_type_instance_cache_entry* type_instance_cache;
-	size_t type_instance_cache_capacity;
-	struct prototype_type_instance_cache_stats type_instance_cache_stats;
-
 	/* Runtime-only canonical identity index. The Term graph remains the sole
 	 * semantic owner; this index is a rebuildable projection of that graph. */
 	struct prototype_term_canonical_key* intern_keys;
@@ -751,9 +299,7 @@ struct prototype_term_db {
 struct prototype_term_definition {
 	struct prototype_qualified_name name;
 	uint32_t term;
-	uint32_t classifier;
 	int transparency;
-	struct prototype_term_canonical_key canonical_key;
 };
 
 struct prototype_term_definition_env {
@@ -793,11 +339,6 @@ int prototype_term_constructor_spine_info(
 	uint32_t* arguments,
 	uint32_t argument_capacity,
 	uint32_t* p_argument_count
-);
-int prototype_term_classifier_view(
-	const struct prototype_term_db* db,
-	uint32_t classifier,
-	struct prototype_term_classifier_view* p_ret
 );
 void prototype_term_db_init(
 	struct prototype_term_db* db,
@@ -842,6 +383,7 @@ int prototype_term_db_append_relocated(
 
 uint32_t prototype_term_binding_for_scope_slot(struct prototype_term_db* db, uint32_t scope_slot);
 uint32_t prototype_term_new_binding(struct prototype_term_db* db);
+uint32_t prototype_term_new_universe_level(struct prototype_term_db* db);
 uint32_t prototype_term_new_ih_scope(struct prototype_term_db* db);
 int prototype_term_set_ih_scope_term(
 	struct prototype_term_db* db,
@@ -883,43 +425,32 @@ int prototype_term_match_with_ih_scope(
 	uint32_t* p_ret
 );
 int prototype_term_erase_constructor_view_owners(struct prototype_term_db* db);
-int prototype_term_type_instance_make(
+int prototype_term_type_former(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t type_id,
-	const uint32_t* args,
-	uint32_t arg_count,
+	uint32_t representation_id,
+	uint32_t constructor_count,
 	uint32_t* p_ret
 );
-int prototype_term_type_instance_info(
+int prototype_term_type_declaration(
+	struct prototype_term_db* db,
+	struct prototype_qualified_name identity,
+	uint32_t* p_ret
+);
+int prototype_term_type_view(
+	struct prototype_term_db* db,
+	struct prototype_qualified_name identity,
+	uint32_t core,
+	uint32_t source,
+	uint32_t* p_ret
+);
+int prototype_term_nominal_type_instance_info(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
-	uint32_t* p_type_id,
+	struct prototype_qualified_name* p_identity,
 	uint32_t* args,
 	uint32_t* p_arg_count
 );
 
-/* Rebind provisional TYPE_FORMER declaration anchors after representation
- * interning has completed. */
-int prototype_term_rebind_type_former_anchors(
-	struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations
-);
-int prototype_term_canonicalize_type_former_references(
-	struct prototype_term_db* db
-);
-int prototype_term_type_instance_extend(
-	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
-	uint32_t instance,
-	uint32_t argument,
-	uint32_t* p_ret
-);
-int prototype_term_type_instance_is_saturated(
-	const struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
-	uint32_t term_id
-);
 int prototype_term_induction_hypothesis(
 	struct prototype_term_db* db,
 	uint32_t ih_scope_id,
@@ -930,8 +461,8 @@ int prototype_term_universe_var(struct prototype_term_db* db, uint32_t level_var
 int prototype_term_primitive_text(struct prototype_term_db* db, uint32_t* p_ret);
 int prototype_term_relation_type(
 	struct prototype_term_db* db,
-	uint32_t left_classifier,
-	uint32_t right_classifier,
+	uint32_t left_type_term,
+	uint32_t right_type_term,
 	uint32_t left_endpoint,
 	uint32_t right_endpoint,
 	uint32_t* p_ret
@@ -945,8 +476,8 @@ int prototype_term_relation_witness(
 int prototype_term_relation_type_info(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
-	uint32_t* p_left_classifier,
-	uint32_t* p_right_classifier,
+	uint32_t* p_left_type_term,
+	uint32_t* p_right_type_term,
 	uint32_t* p_left_endpoint,
 	uint32_t* p_right_endpoint
 );
@@ -1050,11 +581,6 @@ int prototype_term_effect_row_is_closed(
 	const struct prototype_term_db* db,
 	uint32_t row
 );
-/* Purity is derived from the normalized row rather than cached membership. */
-int prototype_term_effect_row_purity(
-	const struct prototype_term_db* db,
-	uint32_t row
-);
 int prototype_term_effect_row_residual(
 	struct prototype_term_db* db,
 	uint32_t row,
@@ -1073,10 +599,6 @@ int prototype_term_total_computation_type(
 	uint32_t label,
 	uint32_t result,
 	uint32_t* p_ret
-);
-int prototype_term_computation_type_is_pure_total(
-	const struct prototype_term_db* db,
-	uint32_t computation_type
 );
 int prototype_term_thunk_type(
 	struct prototype_term_db* db,
@@ -1113,15 +635,7 @@ int prototype_term_computation_fold(
 	uint32_t clause_count,
 	uint32_t* p_ret
 );
-int prototype_term_host_type_from_source_name(
-	const struct prototype_intrinsic_environment* environment,
-	const char* name,
-	int* p_type_id
-);
 int prototype_term_host_type_from_term_tag(int tag, int* p_type_id);
-int prototype_term_host_type_from_type_expr_tag(int tag, int* p_type_id);
-const char* prototype_term_host_type_debug_name(int type_id);
-int prototype_term_host_type_expr_tag(int type_id);
 int prototype_term_host_type_bit_width(int type_id);
 size_t prototype_term_host_type_count(void);
 int prototype_term_host_type_at(size_t index, int* p_type_id);
@@ -1129,27 +643,6 @@ int prototype_term_make_host_type(
 	struct prototype_term_db* db,
 	int type_id,
 	uint32_t* p_ret
-);
-int prototype_intrinsic_namespace_lookup(
-	const struct prototype_intrinsic_environment* environment,
-	const char* name,
-	struct prototype_intrinsic_namespace_binding* p_binding
-);
-const char* prototype_intrinsic_namespace_source_name(
-	const struct prototype_intrinsic_environment* environment,
-	int kind,
-	int target_id
-);
-const struct prototype_intrinsic_environment*
-prototype_default_intrinsic_environment(void);
-uint64_t prototype_intrinsic_environment_fingerprint(
-	const struct prototype_intrinsic_environment* environment
-);
-const struct prototype_pure_primitive_declaration*
-prototype_term_pure_primitive_declaration(int primitive_id);
-const struct prototype_effect_operation_declaration*
-prototype_term_effect_operation_declaration(
-	int operation_id
 );
 int prototype_term_external_ref(
 	struct prototype_term_db* db,
@@ -1173,15 +666,17 @@ int prototype_term_effect_operation_identity(
 	uint32_t term_id,
 	int* p_operation_id
 );
-int prototype_term_effect_operation_classifier_has_suspended_argument(
-	const struct prototype_term_db* db,
-	uint32_t classifier,
-	int* p_has_suspended_argument
-);
 int prototype_term_contains_free_binding(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
 	uint32_t binding_id
+);
+int prototype_term_any_free_binding(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	prototype_term_free_binding_predicate_fn predicate,
+	void* context,
+	int* p_found
 );
 /*
  * View shape equality preserves TYPE_VIEW wrappers. Bool and Two may share the
@@ -1251,19 +746,15 @@ int prototype_term_source_shape_equal(
  * functions always validate the complete cross-database term structure. */
 int prototype_term_view_shape_equal_for_link(
 	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
 	uint32_t left,
 	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
 	uint32_t right,
 	int* p_equal
 );
 int prototype_term_core_shape_equal_for_link(
 	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
 	uint32_t left,
 	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
 	uint32_t right,
 	int* p_equal
 );
@@ -1272,10 +763,10 @@ int prototype_term_canonical_key(
 	uint32_t term_id,
 	struct prototype_term_canonical_key* p_key
 );
-int prototype_term_canonical_key_with_types(
+int prototype_term_structural_key_in_domain(
 	const struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
 	uint32_t term_id,
+	const struct prototype_term_structural_identity_domain* domain,
 	struct prototype_term_canonical_key* p_key
 );
 int prototype_term_pi(
@@ -1318,7 +809,6 @@ int prototype_term_pure_family_parts(
  */
 int prototype_term_graph_substitute_bound_var(
 	struct prototype_term_db* db,
-	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t binding_id,
 	uint32_t replacement,
@@ -1328,22 +818,26 @@ int prototype_term_graph_substitute_bound_var(
  * is structural and does not assert typed conversion between the two terms. */
 int prototype_term_graph_replace_exact(
 	struct prototype_term_db* db,
-	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t exact_term,
 	uint32_t replacement,
 	uint32_t* p_ret
 );
-struct prototype_binding_replacement {
-	uint32_t binding_id;
-	uint32_t replacement;
-};
+/* Replace one exact subgraph without descending through an existing
+ * TYPE_VIEW. A view is the nominal boundary of a typed occurrence; its source
+ * provenance and erased core are not rewritten as incidental descendants. */
+int prototype_term_graph_replace_exact_outside_type_views(
+	struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t exact_term,
+	uint32_t replacement,
+	uint32_t* p_ret
+);
 /* Rebuild a graph once under a simultaneous binding-handle substitution.
  * Replacement terms are final images and are never rewritten by sibling
  * entries in the same substitution. */
 int prototype_term_graph_reindex_bindings(
 	struct prototype_term_db* db,
-	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	const struct prototype_binding_replacement* bindings,
 	size_t binding_count,
@@ -1359,7 +853,6 @@ int prototype_term_resolve_external_ref(
 
 int prototype_term_normalize_complete_with_profile(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t term_id,
@@ -1369,7 +862,6 @@ int prototype_term_normalize_complete_with_profile(
  * no reduction work. This does not dispatch effects. */
 int prototype_term_normalize_with_profile(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t term_id,
@@ -1383,7 +875,6 @@ int prototype_term_normalize_with_profile(
  * persist a separate evaluation stack. */
 int prototype_term_normalization_machine_create(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t term_id,
@@ -1400,20 +891,18 @@ uint32_t prototype_term_normalization_machine_current(
 void prototype_term_normalization_machine_destroy(
 	struct prototype_term_normalization_machine* machine
 );
-/* Project the value returned by a pure computation without selecting a
- * neutral Match branch. Zero returns a value graph, one means that the pure
- * result is still opaque, and -1 reports malformed Core data. The caller is
- * responsible for establishing an empty effect row. */
-int prototype_term_project_pure_computation_value(
+/* Project a value under RETURN by structural reduction without selecting a
+ * neutral Match branch or dispatching effects. Zero returns a value graph,
+ * one means that the result is still opaque, and -1 reports malformed Core
+ * data. This operation does not establish purity, totality, or typehood. */
+int prototype_term_project_structural_return_value(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	uint32_t computation,
 	uint64_t step_limit,
 	uint32_t* p_value
 );
 int prototype_term_nf_with_options(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -1421,7 +910,6 @@ int prototype_term_nf_with_options(
 );
 int prototype_term_perform_with_options(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -1429,7 +917,6 @@ int prototype_term_perform_with_options(
 );
 int prototype_term_compare_with_options(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t left,
@@ -1439,7 +926,6 @@ int prototype_term_compare_with_options(
 );
 int prototype_term_compare_for_conversion(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t left,
@@ -1453,15 +939,4 @@ void prototype_term_normalization_cache_get_stats(
 	const struct prototype_term_db* db,
 	struct prototype_term_normalization_cache_stats* p_stats
 );
-
-
-void prototype_term_print_debug(
-	FILE* output,
-	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_db* terms,
-	uint32_t term_id
-);
-
 #endif

@@ -54,6 +54,34 @@ const struct prototype_typed_occurrence* prototype_typed_occurrence_graph_get(
 		&graph->occurrences[operation_id] : NULL;
 }
 
+int prototype_typed_occurrence_graph_unwrap_transparent(
+	const struct prototype_typed_occurrence_graph* graph,
+	uint32_t occurrence_id,
+	uint32_t* p_unwrapped_occurrence
+) {
+	if (!graph || !p_unwrapped_occurrence ||
+		occurrence_id >= graph->occurrence_count) {
+		return -1;
+	}
+	for (size_t visited = 0; visited < graph->occurrence_count; ++visited) {
+		const struct prototype_typed_occurrence* occurrence =
+			&graph->occurrences[occurrence_id];
+		switch (occurrence->tag) {
+		case PROTOTYPE_TYPED_OCCURRENCE_REFERENCE:
+		case PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE:
+			if (occurrence->wrapped_occurrence >= graph->occurrence_count) {
+				return -1;
+			}
+			occurrence_id = occurrence->wrapped_occurrence;
+			break;
+		default:
+			*p_unwrapped_occurrence = occurrence_id;
+			return 0;
+		}
+	}
+	return -1;
+}
+
 const struct prototype_typed_occurrence_edge*
 prototype_typed_occurrence_graph_get_edge(
 	const struct prototype_typed_occurrence_graph* graph,
@@ -176,6 +204,15 @@ int prototype_typed_occurrence_graph_add_case(
 	if (!graph || graph->frozen || graph->sealed ||
 		!contexts || !graph->cases ||
 		!prototype_context_get(contexts, operation_case.context_id) ||
+		((operation_case.declared_constructor_owner == PROTOTYPE_INVALID_ID) !=
+		 (operation_case.declared_constructor_id == PROTOTYPE_INVALID_ID)) ||
+		((operation_case.constructor_owner == PROTOTYPE_INVALID_ID) !=
+		 (operation_case.constructor_id == PROTOTYPE_INVALID_ID)) ||
+		(operation_case.declared_constructor_owner != PROTOTYPE_INVALID_ID &&
+		 (operation_case.constructor_owner !=
+			 operation_case.declared_constructor_owner ||
+		  operation_case.constructor_id !=
+			 operation_case.declared_constructor_id)) ||
 		operation_case.binder_count >
 			PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY ||
 		reserve_slot(graph->case_count, graph->case_capacity) != 0) {
@@ -541,4 +578,94 @@ int prototype_typed_occurrence_graph_reaches(
 	return typed_occurrence_graph_reaches_at_depth(
 		graph, terms, root_operation, target_operation, visited
 	);
+}
+
+static int typed_occurrence_graph_source_subtree_reaches(
+	const struct prototype_typed_occurrence_graph* graph,
+	uint32_t root_occurrence,
+	uint32_t target_occurrence,
+	unsigned char* visited
+) {
+	if (!graph || !visited || root_occurrence >= graph->occurrence_count ||
+		target_occurrence >= graph->occurrence_count) {
+		return -1;
+	}
+	if (root_occurrence == target_occurrence) {
+		return 1;
+	}
+	if (visited[root_occurrence]) {
+		return 0;
+	}
+	visited[root_occurrence] = 1;
+	const struct prototype_typed_occurrence* occurrence =
+		&graph->occurrences[root_occurrence];
+	if (occurrence->first_edge != PROTOTYPE_INVALID_ID) {
+		if (occurrence->first_edge > graph->edge_count ||
+			occurrence->edge_count > graph->edge_count - occurrence->first_edge) {
+			return -1;
+		}
+		for (uint32_t index = 0; index < occurrence->edge_count; ++index) {
+			const struct prototype_typed_occurrence_edge* edge =
+				&graph->edges[occurrence->first_edge + index];
+			int reaches = typed_occurrence_graph_source_subtree_reaches(
+				graph, edge->child_occurrence, target_occurrence, visited
+			);
+			if (reaches != 0) {
+				return reaches;
+			}
+		}
+	}
+	/* A reference names a separately rooted definition. It is not part of the
+	 * source subtree that contains the reference occurrence. */
+	if (occurrence->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE) {
+		return typed_occurrence_graph_source_subtree_reaches(
+			graph, occurrence->wrapped_occurrence, target_occurrence, visited
+		);
+	}
+	return 0;
+}
+
+int prototype_typed_occurrence_graph_occurrence_is_unreachable(
+	const struct prototype_typed_occurrence_graph* graph,
+	uint32_t occurrence_id
+) {
+	if (!graph || occurrence_id >= graph->occurrence_count) {
+		return -1;
+	}
+	unsigned char visited[graph->occurrence_count == 0 ? 1 : graph->occurrence_count];
+	for (uint32_t match_id = 0; match_id < graph->occurrence_count; ++match_id) {
+		const struct prototype_typed_occurrence* match = &graph->occurrences[match_id];
+		if (match->tag != PROTOTYPE_TYPED_OCCURRENCE_MATCH ||
+			match->first_case == PROTOTYPE_INVALID_ID ||
+			match->first_case > graph->case_count ||
+			match->case_count > graph->case_count - match->first_case) {
+			continue;
+		}
+		for (uint32_t case_index = 0; case_index < match->case_count; ++case_index) {
+			const struct prototype_typed_occurrence_match_case* operation_case =
+				&graph->cases[match->first_case + case_index];
+			if (operation_case->refinement_status !=
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_IMPOSSIBLE) {
+				continue;
+			}
+			uint32_t branch_occurrence;
+			if (prototype_typed_occurrence_graph_child(
+					graph,
+					match_id,
+					PROTOTYPE_TERM_CHILD_MATCH_CASE_BODY,
+					case_index,
+					&branch_occurrence
+				) != 0) {
+				return -1;
+			}
+			memset(visited, 0, sizeof(visited));
+			int reaches = typed_occurrence_graph_source_subtree_reaches(
+				graph, branch_occurrence, occurrence_id, visited
+			);
+			if (reaches != 0) {
+				return reaches;
+			}
+		}
+	}
+	return 0;
 }

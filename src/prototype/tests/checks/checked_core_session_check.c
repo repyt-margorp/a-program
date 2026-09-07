@@ -3,6 +3,7 @@
 #include "a_program/checker/parallel.h"
 #include "a_program/checker/session.h"
 #include "a_program/driver/compiler_session.h"
+#include "../support/compiler_session_storage.h"
 #include "a_program/frontend/reader.h"
 #include "a_program/graph/compile_metadata.h"
 #include "a_program/kernel/type_declaration.h"
@@ -28,18 +29,19 @@ static int project_source(
 	if (prototype_program_storage_init(storage) != 0) {
 		return -1;
 	}
-	if (prototype_read_string(name, source, &storage->program, &error) != 0) {
+	if (prototype_read_string(name, source, &storage->private->program, &error) != 0) {
 		fprintf(stderr, "%s: compile failed: %s\n", name, error.message);
 		return -1;
 	}
 	if (prototype_compile_metadata_frozen_snapshot(
-			&storage->metadata, &snapshot
+			&storage->private->metadata, &snapshot
 		) != 0 || prototype_elaborated_module_project(
-			&storage->symbols,
-			&storage->terms,
-			&storage->type_declarations.semantic_schema,
-			storage->program.intrinsic_environment,
-			&storage->universe,
+			&storage->private->symbols,
+			&storage->private->core.terms,
+			&storage->private->type_declarations.semantic_schema,
+			storage->private->program.intrinsic_environment,
+			&storage->private->universe,
+			&storage->private->judgement,
 			&snapshot,
 			module
 		) != 0) {
@@ -60,18 +62,19 @@ static int project_file(
 	if (prototype_program_storage_init(storage) != 0) {
 		return -1;
 	}
-	if (prototype_read_file(path, &storage->program, &error) != 0) {
+	if (prototype_read_file(path, &storage->private->program, &error) != 0) {
 		fprintf(stderr, "%s: compile failed: %s\n", path, error.message);
 		return -1;
 	}
 	if (prototype_compile_metadata_frozen_snapshot(
-			&storage->metadata, &snapshot
+			&storage->private->metadata, &snapshot
 		) != 0 || prototype_elaborated_module_project(
-			&storage->symbols,
-			&storage->terms,
-			&storage->type_declarations.semantic_schema,
-			storage->program.intrinsic_environment,
-			&storage->universe,
+			&storage->private->symbols,
+			&storage->private->core.terms,
+			&storage->private->type_declarations.semantic_schema,
+			storage->private->program.intrinsic_environment,
+			&storage->private->universe,
+			&storage->private->judgement,
 			&snapshot,
 			module
 		) != 0) {
@@ -110,12 +113,12 @@ static int check_complete_fragment(void) {
 	storage_initialized = 1;
 	const struct prototype_type_constructor_declaration* telescope_constructor = NULL;
 	uint32_t telescope_type_view = PROTOTYPE_INVALID_ID;
-	for (uint32_t i = 0; i < storage.terms.term_count; ++i) {
-		if (storage.terms.terms[i].tag != PROTOTYPE_TERM_TYPE_VIEW ||
+	for (uint32_t i = 0; i < storage.private->core.terms.term_count; ++i) {
+		if (storage.private->core.terms.terms[i].tag != PROTOTYPE_TERM_TYPE_VIEW ||
 			prototype_type_view_constructor_telescope_query(
-				&storage.type_declarations.semantic_schema,
-				&storage.metadata.contexts,
-				&storage.terms,
+				&storage.private->type_declarations.semantic_schema,
+				&storage.private->metadata.contexts,
+				&storage.private->core.terms,
 				i,
 				0,
 				&telescope_constructor
@@ -127,17 +130,17 @@ static int check_complete_fragment(void) {
 	}
 	if (telescope_type_view == PROTOTYPE_INVALID_ID || !telescope_constructor ||
 		prototype_type_view_constructor_telescope_query(
-			&storage.type_declarations.semantic_schema,
-			&storage.metadata.contexts,
-			&storage.terms,
+			&storage.private->type_declarations.semantic_schema,
+			&storage.private->metadata.contexts,
+			&storage.private->core.terms,
 			telescope_type_view,
 			UINT32_MAX,
 			&telescope_constructor
 		) == 0 || prototype_type_view_constructor_telescope_query(
-			&storage.type_declarations.semantic_schema,
-			&storage.metadata.contexts,
-			&storage.terms,
-			storage.terms.term_count,
+			&storage.private->type_declarations.semantic_schema,
+			&storage.private->metadata.contexts,
+			&storage.private->core.terms,
+			storage.private->core.terms.term_count,
 			0,
 			&telescope_constructor
 		) == 0) {
@@ -1351,7 +1354,10 @@ static int check_checked_module_set_boundary(void) {
 		.producer_version = PROTOTYPE_MERGE_PRODUCER_VERSION,
 		.cost_model_version = PROTOTYPE_EFFORT_COST_MODEL_VERSION,
 		.calculus_fingerprint = modules[0].view.calculus_fingerprint,
-		.intrinsic_fingerprint = modules[0].view.intrinsic_fingerprint,
+		.intrinsic_fingerprint =
+			prototype_elaborated_module_intrinsic_contract_fingerprint(
+				&modules[0].view
+			),
 		.base_revision = {131, 0, 0, 0},
 		.goal_key = {137, 0, 0, 0}
 	};

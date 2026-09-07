@@ -48,7 +48,8 @@ then
 	echo 'QuickSort without a decrease witness unexpectedly compiled' >&2
 	exit 1
 fi
-grep -q 'diagnostic-code=unsolved-classifier' "$tmp_dir/missing-bound.err"
+grep -q 'diagnostic-code=classifier-equation-contradiction' \
+	"$tmp_dir/missing-bound.err"
 
 if sed \
 	's/\*down lowerSize lowerBound lower/\*down lowerSize (LT.step (Nat.succ size)) lower/' \
@@ -59,7 +60,8 @@ then
 	echo 'QuickSort with an unrelated constructed LT witness unexpectedly compiled' >&2
 	exit 1
 fi
-grep -q 'diagnostic-code=unsolved-classifier' "$tmp_dir/forged-bound.err"
+grep -q 'diagnostic-code=classifier-equation-contradiction' \
+	"$tmp_dir/forged-bound.err"
 
 awk '
 	/^Acc :=/ {
@@ -68,14 +70,19 @@ awk '
 	{ print }
 ' "$fuel_free" | sed \
 	's/\*down lowerSize lowerBound lower/\*down lowerSize (unresolvedDecrease lowerSize (Nat.succ size)) lower/' \
-	>"$tmp_dir/residual-bound.p"
-if ./read_file.out "$tmp_dir/residual-bound.p" \
-	>"$tmp_dir/residual-bound.out" 2>"$tmp_dir/residual-bound.err"
+	>"$tmp_dir/incompatible-external-bound.p"
+if ./read_file.out "$tmp_dir/incompatible-external-bound.p" \
+	>"$tmp_dir/incompatible-external-bound.out" \
+	2>"$tmp_dir/incompatible-external-bound.err"
 then
-	echo 'QuickSort with unresolved external decrease evidence unexpectedly compiled' >&2
+	echo 'QuickSort with incompatible external decrease evidence unexpectedly compiled' >&2
 	exit 1
 fi
-grep -q 'diagnostic-code=unsolved-classifier' "$tmp_dir/residual-bound.err"
+# The external term has the requested surface classifier, so APP-domain
+# checking is not the rejecting rule. It fails when the recursive Match motive
+# cannot derive the structural decrease relation from that opaque term.
+grep -q 'diagnostic-code=motive-equation-mismatch' \
+	"$tmp_dir/incompatible-external-bound.err"
 
 if grep -nE 'quickSort(Acc)?[^:]*:.*fuel|\\fuel[[:space:]]*:' "$fuel_free"
 then
@@ -96,6 +103,73 @@ prototype_test_phase readback
 	>"$tmp_dir/order-read.out"
 ./read_file.out --read-graph "$tmp_dir/if8-quicksort.apo" \
 	>"$tmp_dir/quicksort-read.out"
+
+# One dense arena retains source/replay cases as well as accepted executable
+# Core. Source-only cases remain readable, but promoting one into the
+# executable closure must fail because its constructor selection is unresolved.
+source_only_case=$(awk '
+	$1 == "match_case" && $4 == 4294967295 && $5 == 4294967295 {
+		print $2
+		exit
+	}
+' "$tmp_dir/if8-quicksort.apo")
+test -n "$source_only_case"
+if awk -v target="$source_only_case" '
+	$1 == "executable_cases" {
+		$2++
+		in_cases = 1
+		print
+		next
+	}
+	in_cases && $1 != "executable_case" {
+		print "executable_case " target
+		in_cases = 0
+	}
+	{ print }
+' "$tmp_dir/if8-quicksort.apo" >"$tmp_dir/forged-executable-case.apo" &&
+	./read_file.out --read-graph "$tmp_dir/forged-executable-case.apo" \
+		>"$tmp_dir/forged-executable-case.out" \
+		2>"$tmp_dir/forged-executable-case.err"
+then
+	echo 'artifact promoted unresolved source provenance into executable Core' >&2
+	exit 1
+fi
+
+# Direct accepted roots and transitive Core children must both remain in the
+# declared executable closure.
+main_term=$(awk '$1 == "term" && $2 == "main" { print $3; exit }' \
+	"$tmp_dir/if8-quicksort.apo")
+test -n "$main_term"
+awk -v target="$main_term" '
+	$1 == "executable_terms" { $2--; print; next }
+	$1 == "executable_term" && $2 == target { removed = 1; next }
+	{ print }
+	END { if (!removed) exit 1 }
+' "$tmp_dir/if8-quicksort.apo" >"$tmp_dir/missing-executable-root.apo"
+if ./read_file.out --read-graph "$tmp_dir/missing-executable-root.apo" \
+	>"$tmp_dir/missing-executable-root.out" \
+	2>"$tmp_dir/missing-executable-root.err"
+then
+	echo 'artifact accepted an executable interface root outside its closure' >&2
+	exit 1
+fi
+
+app_child=$(awk '$1 == "term_node" && $3 == 3 { print $4; exit }' \
+	"$tmp_dir/if8-quicksort.apo")
+test -n "$app_child"
+awk -v target="$app_child" '
+	$1 == "executable_terms" { $2--; print; next }
+	$1 == "executable_term" && $2 == target { removed = 1; next }
+	{ print }
+	END { if (!removed) exit 1 }
+' "$tmp_dir/if8-quicksort.apo" >"$tmp_dir/missing-executable-child.apo"
+if ./read_file.out --read-graph "$tmp_dir/missing-executable-child.apo" \
+	>"$tmp_dir/missing-executable-child.out" \
+	2>"$tmp_dir/missing-executable-child.err"
+then
+	echo 'artifact accepted a non-closed executable Term graph' >&2
+	exit 1
+fi
 
 prototype_test_phase artifact_equality
 for pair in \

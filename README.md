@@ -37,9 +37,9 @@ Implemented in the prototype:
   function executions, plus `#.Terminates` evidence for accepted total
   computation classifiers; these proofs do not extend DefEq or make `::`
   synthesize types;
-- accepted proof artifact v86, namespace-qualified interfaces, relocation,
+- accepted proof artifact v90, namespace-qualified interfaces, relocation,
   linking, aggregation, and backend capability checks;
-- checked semantic container v87, which carries untrusted checked-Core input
+- checked semantic container v90, which carries untrusted checked-Core input
   and always reruns the independent checker before minting authority;
 - an interpreter/REPL and an inspection-oriented compiler CLI.
 
@@ -463,7 +463,7 @@ this elaboration boundary.
 The prototype currently has two persistent boundaries with different trust
 roles. They are not compatibility versions of one authority mechanism.
 
-Accepted proof artifact v86 serializes the dense reachable accepted or explicitly
+Accepted proof artifact v90 serializes the dense reachable accepted or explicitly
 conditional object graph of:
 
 - interfaces, qualified exports, dependencies, and transparency;
@@ -485,20 +485,22 @@ binders/contexts/terms, preserves typed export identity, and may share
 alpha-equivalent Core representatives without merging the exports.
 
 Its exact wire and semantic contract is
-[`src/prototype/spec/artifact_v86.schema`](src/prototype/spec/artifact_v86.schema).
+[`src/prototype/spec/artifact_v90.schema`](src/prototype/spec/artifact_v90.schema).
 
-Checked semantic container v87 serializes an elaborated semantic module and
+Checked semantic container v90 serializes an elaborated semantic module and
 its residual contracts, but never a checked capability. Its semantic and
 contract sections are assertions supplied to the independent checker. Reading
 the container validates structure and reruns that checker before creating a
 process-local checked module. Optional producer work and debug sections carry
 no authority. Its exact wire and authority contract is
-[`src/prototype/spec/checked_artifact_v87.schema`](src/prototype/spec/checked_artifact_v87.schema).
+[`src/prototype/spec/checked_artifact_v90.schema`](src/prototype/spec/checked_artifact_v90.schema).
 
-The accepted v86 boundary remains required while published language roots such
-as deferred Identity/HOTT roots lack admitted checked-Core representations and
-rules. It may be retired only after every required published root can be
-projected and independently admitted through the v87 checked-Core path.
+The accepted proof artifact and checked semantic container are distinct v90
+formats with different magic values and authority. The accepted proof boundary
+remains required while published roots such as deferred Identity/HOTT roots
+lack admitted checked-Core representations and rules. It may be retired only
+after every required published root can be projected and independently admitted
+through the checked-Core path.
 
 The implemented HOTT/Identity boundary is
 [`src/prototype/spec/hott_fragment_v6.schema`](src/prototype/spec/hott_fragment_v6.schema).

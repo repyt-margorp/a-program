@@ -4,10 +4,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "calculus.h"
-#include "a_program/core/term.h"
-#include "a_program/kernel/type_declaration.h"
-
 enum prototype_ast_tag {
 	PROTOTYPE_AST_VAR = 1,
 	PROTOTYPE_AST_NAME,
@@ -298,9 +294,6 @@ struct prototype_ast_type_def {
 	uint32_t index_count;
 	uint32_t first_constructor;
 	uint32_t constructor_count;
-	uint32_t compiled_type;
-	int compiling;
-	int compiled;
 };
 
 struct prototype_ast_match_case {
@@ -309,7 +302,6 @@ struct prototype_ast_match_case {
 	uint32_t binder_count;
 	uint32_t first_selector;
 	uint32_t selector_count;
-	int selectors_expanded;
 	uint32_t body;
 	struct prototype_source_span span;
 };
@@ -370,24 +362,23 @@ struct prototype_ast_type_expectation_def {
 	struct prototype_source_span type_span;
 	uint32_t paired_assignment_id;
 	uint32_t next_for_symbol;
-	uint32_t compiled_classifier;
-	int compiling;
-	int compiled;
 };
 
 struct prototype_ast_term_assignment_def {
 	int name_symbol_id;
 	uint32_t ast;
+	/* A compiler-generated declaration equation for this assignment. Surface
+	 * `::` expectations remain post-synthesis checks and never populate this
+	 * field. A generated contract may either provide this explicit type
+	 * expression or be reconstructed from the generated term graph. */
+	uint32_t source_classifier_type_expr;
+	/* Generated contracts are pure source equations. Lowering closes their
+	 * implicit effect rows before publishing either an equation or a check. */
+	int source_classifier_from_contract;
 	uint32_t source_entry_id;
 	struct prototype_source_span name_span;
 	struct prototype_source_span body_span;
 	uint32_t next_for_symbol;
-	uint32_t compiled_term;
-	uint32_t compiled_classifier;
-	uint32_t compiled_operation;
-	int compiling;
-	int compiled;
-	int published;
 	int definition_value_required;
 };
 
@@ -891,6 +882,17 @@ int prototype_ast_add_term_assignment(
 	struct prototype_source_span name_span,
 	struct prototype_source_span body_span,
 	uint32_t* p_ret
+);
+
+int prototype_ast_set_assignment_source_classifier(
+	struct prototype_ast_db* db,
+	uint32_t assignment_id,
+	uint32_t type_expr
+);
+
+int prototype_ast_set_assignment_contract_classifier(
+	struct prototype_ast_db* db,
+	uint32_t assignment_id
 );
 int prototype_ast_add_import(
 	struct prototype_ast_db* db,

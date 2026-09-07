@@ -3,7 +3,6 @@
 #include "a_program/core/term_schema.h"
 
 #include "a_program/dimension/operator.h"
-#include "a_program/kernel/type_declaration.h"
 #include "a_program/support/storage.h"
 
 #include <inttypes.h>
@@ -31,7 +30,6 @@ struct prototype_host_type_descriptor {
 	int type_id;
 	const char* debug_name;
 	int term_tag;
-	int type_expr_tag;
 	int bit_width;
 };
 
@@ -40,172 +38,50 @@ static const struct prototype_host_type_descriptor host_types[] = {
 		PROTOTYPE_HOST_TYPE_TEXT,
 		"Text",
 		PROTOTYPE_TERM_PRIMITIVE_TEXT,
-		PROTOTYPE_TYPE_EXPR_PRIMITIVE_TEXT,
 		0
 	},
 	{
 		PROTOTYPE_HOST_TYPE_INT32,
 		"Int",
 		PROTOTYPE_TERM_PRIMITIVE_INT,
-		PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT,
 		32
 	},
 	{
 		PROTOTYPE_HOST_TYPE_INT64,
 		"Int64",
 		PROTOTYPE_TERM_PRIMITIVE_INT64,
-		PROTOTYPE_TYPE_EXPR_PRIMITIVE_INT64,
 		64
 	}
 };
 
-static const struct prototype_pure_primitive_declaration
+static const struct prototype_core_pure_primitive_declaration
 pure_primitive_declarations[] = {
-	{
-			PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT,
-			1,
-			{ PROTOTYPE_HOST_TYPE_TEXT, PROTOTYPE_HOST_TYPE_INVALID },
-			PROTOTYPE_HOST_TYPE_INVALID
-	},
-	{
-			PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT,
-			1,
-			{ PROTOTYPE_HOST_TYPE_INVALID, PROTOTYPE_HOST_TYPE_INVALID },
-			PROTOTYPE_HOST_TYPE_TEXT
-	},
-	{
-			PROTOTYPE_PURE_PRIMITIVE_INT_ADD,
-			2,
-			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INT32 },
-			PROTOTYPE_HOST_TYPE_INT32
-	},
-	{
-			PROTOTYPE_PURE_PRIMITIVE_INT_SUB,
-			2,
-			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INT32 },
-			PROTOTYPE_HOST_TYPE_INT32
-	},
-	{
-			PROTOTYPE_PURE_PRIMITIVE_INT_MUL,
-			2,
-			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INT32 },
-			PROTOTYPE_HOST_TYPE_INT32
-	},
-	{
-			PROTOTYPE_PURE_PRIMITIVE_INT_NEG,
-			1,
-			{ PROTOTYPE_HOST_TYPE_INT32, PROTOTYPE_HOST_TYPE_INVALID },
-			PROTOTYPE_HOST_TYPE_INT32
-	},
-	{
-			PROTOTYPE_PURE_PRIMITIVE_INT64_ADD,
-			2,
-			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INT64 },
-			PROTOTYPE_HOST_TYPE_INT64
-	},
-	{
-			PROTOTYPE_PURE_PRIMITIVE_INT64_SUB,
-			2,
-			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INT64 },
-			PROTOTYPE_HOST_TYPE_INT64
-	},
-	{
-			PROTOTYPE_PURE_PRIMITIVE_INT64_MUL,
-			2,
-			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INT64 },
-			PROTOTYPE_HOST_TYPE_INT64
-	},
-	{
-			PROTOTYPE_PURE_PRIMITIVE_INT64_NEG,
-			1,
-			{ PROTOTYPE_HOST_TYPE_INT64, PROTOTYPE_HOST_TYPE_INVALID },
-			PROTOTYPE_HOST_TYPE_INT64
-	}
+	{ PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT, 1, PROTOTYPE_HOST_TYPE_INVALID },
+	{ PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT, 1, PROTOTYPE_HOST_TYPE_TEXT },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT_ADD, 2, PROTOTYPE_HOST_TYPE_INT32 },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT_SUB, 2, PROTOTYPE_HOST_TYPE_INT32 },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT_MUL, 2, PROTOTYPE_HOST_TYPE_INT32 },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT_NEG, 1, PROTOTYPE_HOST_TYPE_INT32 },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT64_ADD, 2, PROTOTYPE_HOST_TYPE_INT64 },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT64_SUB, 2, PROTOTYPE_HOST_TYPE_INT64 },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT64_MUL, 2, PROTOTYPE_HOST_TYPE_INT64 },
+	{ PROTOTYPE_PURE_PRIMITIVE_INT64_NEG, 1, PROTOTYPE_HOST_TYPE_INT64 }
 };
 
-static const struct prototype_effect_operation_declaration
+static const struct prototype_core_effect_operation_declaration
 effect_operation_declarations[] = {
-	{
-		PROTOTYPE_EFFECT_OPERATION_PRINT,
-		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_TEXT_TO_TEXT,
-		PROTOTYPE_HOST_EFFECT_TERMINAL,
-		1,
+	{ PROTOTYPE_EFFECT_OPERATION_PRINT, PROTOTYPE_HOST_EFFECT_TERMINAL, 1,
 		PROTOTYPE_EFFECT_OPERATION_INNER_OPAQUE,
-		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_MULTI_SHOT
-	},
-	{
-		PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT,
-		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT,
-		PROTOTYPE_HOST_EFFECT_NONE,
-		1,
+		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_MULTI_SHOT },
+	{ PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT, PROTOTYPE_HOST_EFFECT_NONE, 1,
 		PROTOTYPE_EFFECT_OPERATION_INNER_OPAQUE,
-		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_MULTI_SHOT
-	},
-	{
-		PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT_ONCE,
-		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT,
-		PROTOTYPE_HOST_EFFECT_NONE,
-		1,
+		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_MULTI_SHOT },
+	{ PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT_ONCE, PROTOTYPE_HOST_EFFECT_NONE, 1,
 		PROTOTYPE_EFFECT_OPERATION_INNER_OPAQUE,
-		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ONE_SHOT
-	},
-	{
-		PROTOTYPE_EFFECT_OPERATION_ABORT_TEXT,
-		PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_THUNK_TEXT_TO_TEXT,
-		PROTOTYPE_HOST_EFFECT_NONE,
-		1,
+		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ONE_SHOT },
+	{ PROTOTYPE_EFFECT_OPERATION_ABORT_TEXT, PROTOTYPE_HOST_EFFECT_NONE, 1,
 		PROTOTYPE_EFFECT_OPERATION_INNER_OPAQUE,
-		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ABORTIVE
-	}
-};
-
-static const struct prototype_intrinsic_namespace_binding intrinsic_namespace[] = {
-	{ "Text", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, PROTOTYPE_HOST_TYPE_TEXT },
-	{ "Int", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, PROTOTYPE_HOST_TYPE_INT32 },
-	{ "Int32", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, PROTOTYPE_HOST_TYPE_INT32 },
-	{ "Int64", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE, PROTOTYPE_HOST_TYPE_INT64 },
-	{ "text_to_nat", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-		PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT },
-	{ "nat_to_text", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-		PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT },
-	{ "int_add", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-		PROTOTYPE_PURE_PRIMITIVE_INT_ADD },
-	{ "int_sub", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-		PROTOTYPE_PURE_PRIMITIVE_INT_SUB },
-	{ "int_mul", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-		PROTOTYPE_PURE_PRIMITIVE_INT_MUL },
-	{ "int_neg", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-		PROTOTYPE_PURE_PRIMITIVE_INT_NEG },
-	{ "int64_add", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-		PROTOTYPE_PURE_PRIMITIVE_INT64_ADD },
-	{ "int64_sub", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-		PROTOTYPE_PURE_PRIMITIVE_INT64_SUB },
-	{ "int64_mul", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-		PROTOTYPE_PURE_PRIMITIVE_INT64_MUL },
-	{ "int64_neg", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-		PROTOTYPE_PURE_PRIMITIVE_INT64_NEG },
-	{ "print", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
-		PROTOTYPE_EFFECT_OPERATION_PRINT },
-	{ "scope_text", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
-		PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT },
-	{ "scope_text_once", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
-		PROTOTYPE_EFFECT_OPERATION_SCOPE_TEXT_ONCE },
-	{ "abort_text", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
-		PROTOTYPE_EFFECT_OPERATION_ABORT_TEXT },
-	{ "return", PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_COMPUTATION_FOLD_RETURN, 0 }
-};
-
-static const struct prototype_intrinsic_environment default_intrinsic_environment = {
-	.namespace_bindings = intrinsic_namespace,
-	.namespace_binding_count = sizeof(intrinsic_namespace) /
-		sizeof(intrinsic_namespace[0]),
-	.pure_primitives = pure_primitive_declarations,
-	.pure_primitive_count = sizeof(pure_primitive_declarations) /
-		sizeof(pure_primitive_declarations[0]),
-	.effect_operations = effect_operation_declarations,
-	.effect_operation_count = sizeof(effect_operation_declarations) /
-		sizeof(effect_operation_declarations[0]),
-	.default_integer_host_type = PROTOTYPE_HOST_TYPE_INT32
+		PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ABORTIVE }
 };
 
 struct host_pure_primitive_implementation {
@@ -246,28 +122,6 @@ static const struct prototype_host_type_descriptor* host_type_by_id(int type_id)
 	return NULL;
 }
 
-int prototype_term_host_type_from_source_name(
-	const struct prototype_intrinsic_environment* environment,
-	const char* name,
-	int* p_type_id
-) {
-	if (!environment || !name || !p_type_id) {
-		return -1;
-	}
-	struct prototype_intrinsic_namespace_binding binding;
-	int status = prototype_intrinsic_namespace_lookup(
-		environment, name, &binding
-	);
-	if (status != 0) {
-		return status;
-	}
-	if (binding.kind != PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_HOST_TYPE) {
-		return 1;
-	}
-	*p_type_id = binding.target_id;
-	return 0;
-}
-
 int prototype_term_host_type_from_term_tag(int tag, int* p_type_id) {
 	if (!p_type_id) {
 		return -1;
@@ -279,31 +133,6 @@ int prototype_term_host_type_from_term_tag(int tag, int* p_type_id) {
 		}
 	}
 	return 1;
-}
-
-int prototype_term_host_type_from_type_expr_tag(int tag, int* p_type_id) {
-	if (!p_type_id) {
-		return -1;
-	}
-	for (size_t i = 0; i < sizeof(host_types) / sizeof(host_types[0]); ++i) {
-		if (host_types[i].type_expr_tag == tag) {
-			*p_type_id = host_types[i].type_id;
-			return 0;
-		}
-	}
-	return 1;
-}
-
-
-const char* prototype_term_host_type_debug_name(int type_id) {
-	const struct prototype_host_type_descriptor* type = host_type_by_id(type_id);
-	return type ? type->debug_name : NULL;
-}
-
-
-int prototype_term_host_type_expr_tag(int type_id) {
-	const struct prototype_host_type_descriptor* type = host_type_by_id(type_id);
-	return type ? type->type_expr_tag : 0;
 }
 
 int prototype_term_host_type_bit_width(int type_id) {
@@ -323,128 +152,8 @@ int prototype_term_host_type_at(size_t index, int* p_type_id) {
 	return 0;
 }
 
-int prototype_intrinsic_namespace_lookup(
-	const struct prototype_intrinsic_environment* environment,
-	const char* name,
-	struct prototype_intrinsic_namespace_binding* p_binding
-) {
-	if (!environment || !name || !p_binding ||
-		(!environment->namespace_bindings &&
-			environment->namespace_binding_count != 0)) {
-		return -1;
-	}
-	for (size_t i = 0; i < environment->namespace_binding_count; ++i) {
-		if (strcmp(name, environment->namespace_bindings[i].source_name) == 0) {
-			*p_binding = environment->namespace_bindings[i];
-			return 0;
-		}
-	}
-	return 1;
-}
-
-const char* prototype_intrinsic_namespace_source_name(
-	const struct prototype_intrinsic_environment* environment,
-	int kind,
-	int target_id
-) {
-	if (!environment || (!environment->namespace_bindings &&
-		environment->namespace_binding_count != 0)) {
-		return NULL;
-	}
-	for (size_t i = 0; i < environment->namespace_binding_count; ++i) {
-		if (environment->namespace_bindings[i].kind == kind &&
-			environment->namespace_bindings[i].target_id == target_id) {
-			return environment->namespace_bindings[i].source_name;
-		}
-	}
-	return NULL;
-}
-
-const struct prototype_intrinsic_environment*
-prototype_default_intrinsic_environment(void) {
-	return &default_intrinsic_environment;
-}
-
-static void intrinsic_fingerprint_mix_u64(uint64_t* p_hash, uint64_t value) {
-	for (unsigned i = 0; i < 8; ++i) {
-		*p_hash ^= (value >> (i * 8)) & 0xffu;
-		*p_hash *= UINT64_C(1099511628211);
-	}
-}
-
-static void intrinsic_fingerprint_mix_string(uint64_t* p_hash, const char* value) {
-	if (!value) {
-		intrinsic_fingerprint_mix_u64(p_hash, UINT64_MAX);
-		return;
-	}
-	for (const unsigned char* cursor = (const unsigned char*)value;
-		*cursor != '\0'; ++cursor) {
-		*p_hash ^= *cursor;
-		*p_hash *= UINT64_C(1099511628211);
-	}
-	*p_hash ^= 0;
-	*p_hash *= UINT64_C(1099511628211);
-}
-
-uint64_t prototype_intrinsic_environment_fingerprint(
-	const struct prototype_intrinsic_environment* environment
-) {
-	if (!environment) {
-		return 0;
-	}
-	uint64_t hash = UINT64_C(1469598103934665603);
-	intrinsic_fingerprint_mix_u64(
-		&hash, (uint64_t)(uint32_t)environment->default_integer_host_type
-	);
-	intrinsic_fingerprint_mix_u64(&hash, environment->namespace_binding_count);
-	for (size_t i = 0; i < environment->namespace_binding_count; ++i) {
-		const struct prototype_intrinsic_namespace_binding* binding =
-			&environment->namespace_bindings[i];
-		intrinsic_fingerprint_mix_string(&hash, binding->source_name);
-		intrinsic_fingerprint_mix_u64(&hash, (uint64_t)(uint32_t)binding->kind);
-		intrinsic_fingerprint_mix_u64(&hash, (uint64_t)(uint32_t)binding->target_id);
-	}
-	intrinsic_fingerprint_mix_u64(&hash, environment->pure_primitive_count);
-	for (size_t i = 0; i < environment->pure_primitive_count; ++i) {
-		const struct prototype_pure_primitive_declaration* declaration =
-			&environment->pure_primitives[i];
-		intrinsic_fingerprint_mix_u64(
-			&hash, (uint64_t)(uint32_t)declaration->primitive_id
-		);
-		intrinsic_fingerprint_mix_u64(&hash, declaration->arity);
-		for (size_t j = 0; j < PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY; ++j) {
-			intrinsic_fingerprint_mix_u64(
-				&hash, (uint64_t)(uint32_t)declaration->argument_types[j]
-			);
-		}
-		intrinsic_fingerprint_mix_u64(
-			&hash, (uint64_t)(uint32_t)declaration->result_type
-		);
-	}
-	intrinsic_fingerprint_mix_u64(&hash, environment->effect_operation_count);
-	for (size_t i = 0; i < environment->effect_operation_count; ++i) {
-		const struct prototype_effect_operation_declaration* declaration =
-			&environment->effect_operations[i];
-		intrinsic_fingerprint_mix_u64(
-			&hash, (uint64_t)(uint32_t)declaration->operation_id
-		);
-		intrinsic_fingerprint_mix_u64(
-			&hash, (uint64_t)(uint32_t)declaration->classifier_schema
-		);
-		intrinsic_fingerprint_mix_u64(&hash, declaration->required_host_effects);
-		intrinsic_fingerprint_mix_u64(&hash, declaration->arity);
-		intrinsic_fingerprint_mix_u64(
-			&hash, (uint64_t)(uint32_t)declaration->inner_policy
-		);
-		intrinsic_fingerprint_mix_u64(
-			&hash, (uint64_t)(uint32_t)declaration->resumption_multiplicity
-		);
-	}
-	return hash;
-}
-
-const struct prototype_pure_primitive_declaration*
-prototype_term_pure_primitive_declaration(int primitive_id) {
+const struct prototype_core_pure_primitive_declaration*
+prototype_core_pure_primitive_declaration(int primitive_id) {
 	for (size_t i = 0;
 		i < sizeof(pure_primitive_declarations) /
 			sizeof(pure_primitive_declarations[0]);
@@ -456,8 +165,8 @@ prototype_term_pure_primitive_declaration(int primitive_id) {
 	return NULL;
 }
 
-const struct prototype_effect_operation_declaration*
-prototype_term_effect_operation_declaration(int operation_id) {
+const struct prototype_core_effect_operation_declaration*
+prototype_core_effect_operation_declaration(int operation_id) {
 	for (size_t i = 0;
 		i < sizeof(effect_operation_declarations) / sizeof(effect_operation_declarations[0]);
 		++i) {
@@ -466,6 +175,48 @@ prototype_term_effect_operation_declaration(int operation_id) {
 		}
 	}
 	return NULL;
+}
+
+static size_t core_pure_primitive_count(void) {
+	return sizeof(pure_primitive_declarations) /
+		sizeof(pure_primitive_declarations[0]);
+}
+
+static size_t core_effect_operation_count(void) {
+	return sizeof(effect_operation_declarations) /
+		sizeof(effect_operation_declarations[0]);
+}
+
+static void core_intrinsic_fingerprint_mix(uint64_t* p_hash, uint64_t value) {
+	for (unsigned i = 0; i < 8; ++i) {
+		*p_hash ^= (value >> (i * 8)) & UINT64_C(0xff);
+		*p_hash *= UINT64_C(1099511628211);
+	}
+}
+
+uint64_t prototype_core_intrinsic_fingerprint(void) {
+	uint64_t hash = UINT64_C(1469598103934665603);
+	core_intrinsic_fingerprint_mix(&hash, core_pure_primitive_count());
+	for (size_t i = 0; i < core_pure_primitive_count(); ++i) {
+		const struct prototype_core_pure_primitive_declaration* declaration =
+			&pure_primitive_declarations[i];
+		core_intrinsic_fingerprint_mix(&hash, (uint32_t)declaration->primitive_id);
+		core_intrinsic_fingerprint_mix(&hash, declaration->arity);
+		core_intrinsic_fingerprint_mix(&hash, (uint32_t)declaration->result_host_type);
+	}
+	core_intrinsic_fingerprint_mix(&hash, core_effect_operation_count());
+	for (size_t i = 0; i < core_effect_operation_count(); ++i) {
+		const struct prototype_core_effect_operation_declaration* declaration =
+			&effect_operation_declarations[i];
+		core_intrinsic_fingerprint_mix(&hash, (uint32_t)declaration->operation_id);
+		core_intrinsic_fingerprint_mix(&hash, declaration->required_host_effects);
+		core_intrinsic_fingerprint_mix(&hash, declaration->arity);
+		core_intrinsic_fingerprint_mix(&hash, (uint32_t)declaration->inner_policy);
+		core_intrinsic_fingerprint_mix(
+			&hash, (uint32_t)declaration->resumption_multiplicity
+		);
+	}
+	return hash;
 }
 
 static const struct host_pure_primitive_implementation*
@@ -797,47 +548,6 @@ int prototype_term_child_at(
 	return -1;
 }
 
-int prototype_term_classifier_view(
-	const struct prototype_term_db* db,
-	uint32_t classifier,
-	struct prototype_term_classifier_view* p_ret
-) {
-	if (!db || !p_ret || classifier >= db->term_count) {
-		return -1;
-	}
-	memset(p_ret, 0, sizeof(*p_ret));
-	const struct prototype_term* term = &db->terms[classifier];
-	if (term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
-		if (term->as.computation_type.label >= db->term_count ||
-			term->as.computation_type.result >= db->term_count) {
-			return -1;
-		}
-		p_ret->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
-		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
-		p_ret->totality = term->as.computation_type.totality;
-		p_ret->effect_row = term->as.computation_type.label;
-		p_ret->result = term->as.computation_type.result;
-		return 0;
-	}
-	/* PI(A, C) classifies a computation-level function. A source function is a
-	 * value only after THUNK introduces THUNK_TYPE(PI(A, C)). */
-	if (term->tag == PROTOTYPE_TERM_PI) {
-		p_ret->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
-		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_FUNCTION;
-		p_ret->effect_row = PROTOTYPE_INVALID_ID;
-		p_ret->result = classifier;
-		return 0;
-	}
-	if (term->tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
-		p_ret->category = PROTOTYPE_TERM_CATEGORY_TYPE;
-		p_ret->result = classifier;
-		return 0;
-	}
-	p_ret->category = PROTOTYPE_TERM_CATEGORY_VALUE;
-	p_ret->result = classifier;
-	return 0;
-}
-
 struct term_scope_env {
 	uint32_t left[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t right[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
@@ -845,6 +555,10 @@ struct term_scope_env {
 	uint32_t frame_left[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t frame_right[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t frame_count;
+	uint32_t unmatched_frame_left[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
+	uint32_t unmatched_frame_left_count;
+	uint32_t unmatched_frame_right[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
+	uint32_t unmatched_frame_right_count;
 	uint32_t visited_frame_left[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t visited_frame_right[PROTOTYPE_CANONICAL_BINDER_CAPACITY];
 	uint32_t visited_frame_count;
@@ -878,6 +592,7 @@ struct substitution_binding_scope {
 struct substitution_memo_entry {
 	uint32_t term_id;
 	uint32_t result;
+	uint32_t type_view_projection;
 	uint64_t binding_scope_key;
 	uint64_t ih_scope_clone_key;
 	uint32_t next;
@@ -886,12 +601,13 @@ struct substitution_memo_entry {
 struct substitution_context {
 	const struct substitution_ih_scope_clone* ih_scope_clone;
 	const struct substitution_binding_scope* binding_scope;
-	struct prototype_type_view_rebuild_context type_views;
 	const struct prototype_binding_replacement* bindings;
 	size_t binding_count;
 	uint32_t exact_term;
 	uint32_t exact_replacement;
 	int replace_exact_term;
+	int type_views_are_boundaries;
+	uint32_t type_view_projection;
 	struct substitution_memo_entry* memo;
 	uint32_t* memo_buckets;
 	size_t memo_count;

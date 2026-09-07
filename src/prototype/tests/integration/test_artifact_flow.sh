@@ -126,16 +126,17 @@ PROOF_KIND_IS_TYPE_FROM_HAS_TYPE=$(c_enum_value prototype_judgement_proof_kind P
 PROOF_KIND_DECLARATION=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_DECLARATION)
 PROOF_KIND_UNIVERSE_CUMULATIVITY=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_UNIVERSE_CUMULATIVITY)
 PROOF_KIND_PI_FORMATION_INTRO=$(c_enum_value prototype_judgement_proof_kind PROTOTYPE_JUDGEMENT_PROOF_PI_FORMATION_INTRO)
-TERM_TAG_VAR=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_VAR)
-TERM_TAG_CONSTRUCTOR=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_CONSTRUCTOR)
-TERM_TAG_PI=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_PI)
-TERM_TAG_TEXT_LITERAL=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_TEXT_LITERAL)
-TERM_TAG_EXTERNAL_REF=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EXTERNAL_REF)
-TERM_TAG_PURE_PRIMITIVE=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_PURE_PRIMITIVE)
-TERM_TAG_EFFECT_OPERATION=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_OPERATION)
-TERM_TAG_EFFECT_ROW_EMPTY=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_EMPTY)
-TERM_TAG_EFFECT_ROW_OPERATION=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_OPERATION)
-TERM_TAG_COMPUTATION_TYPE=$(c_enum_value_in src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_COMPUTATION_TYPE)
+TERM_SCHEMA=src/prototype/include/a_program/protocol/graph.h
+TERM_TAG_VAR=$(c_enum_value_in "$TERM_SCHEMA" prototype_term_tag PROTOTYPE_TERM_VAR)
+TERM_TAG_CONSTRUCTOR=$(c_enum_value_in "$TERM_SCHEMA" prototype_term_tag PROTOTYPE_TERM_CONSTRUCTOR)
+TERM_TAG_PI=$(c_enum_value_in "$TERM_SCHEMA" prototype_term_tag PROTOTYPE_TERM_PI)
+TERM_TAG_TEXT_LITERAL=$(c_enum_value_in "$TERM_SCHEMA" prototype_term_tag PROTOTYPE_TERM_TEXT_LITERAL)
+TERM_TAG_EXTERNAL_REF=$(c_enum_value_in "$TERM_SCHEMA" prototype_term_tag PROTOTYPE_TERM_EXTERNAL_REF)
+TERM_TAG_PURE_PRIMITIVE=$(c_enum_value_in "$TERM_SCHEMA" prototype_term_tag PROTOTYPE_TERM_PURE_PRIMITIVE)
+TERM_TAG_EFFECT_OPERATION=$(c_enum_value_in "$TERM_SCHEMA" prototype_term_tag PROTOTYPE_TERM_EFFECT_OPERATION)
+TERM_TAG_EFFECT_ROW_EMPTY=$(c_enum_value_in "$TERM_SCHEMA" prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_EMPTY)
+TERM_TAG_EFFECT_ROW_OPERATION=$(c_enum_value_in "$TERM_SCHEMA" prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_OPERATION)
+TERM_TAG_COMPUTATION_TYPE=$(c_enum_value_in "$TERM_SCHEMA" prototype_term_tag PROTOTYPE_TERM_COMPUTATION_TYPE)
 OCCURRENCE_TAG_LAMBDA=$(c_enum_value_in \
 	src/prototype/include/a_program/graph/typed_occurrence_model.h \
 	prototype_typed_occurrence_kind PROTOTYPE_TYPED_OCCURRENCE_LAMBDA)
@@ -177,19 +178,17 @@ grep -q '^source-exports-normalization-equal boolMain boolExpected mode=default 
 grep -q '^source-exports-normalization-equal natMain natExpected mode=default yes$' \
 	"$TMP_DIR/identity-source-nat.out"
 ./read_file.out --write-artifact "$TMP_DIR/identity.apo" "$TMP_DIR/identity.p" >"$TMP_DIR/identity.out"
-./read_file.out --quiet --audit-no-type-instance-cache \
-	--write-artifact "$TMP_DIR/identity-no-type-instance-cache.apo" \
-	"$TMP_DIR/identity.p"
-cmp "$TMP_DIR/identity.apo" "$TMP_DIR/identity-no-type-instance-cache.apo"
-grep -q '^A_PROGRAM_ARTIFACT 86 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
-schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v86.schema | awk '{print $1}')
+grep -q '^A_PROGRAM_ARTIFACT 90 [0-9a-f]\{64\}$' "$TMP_DIR/identity.apo"
+schema_fingerprint=$(sha256sum src/prototype/spec/artifact_v90.schema | awk '{print $1}')
 artifact_fingerprint=$(awk 'NR == 1 { print $3 }' "$TMP_DIR/identity.apo")
 test "$artifact_fingerprint" = "$schema_fingerprint"
-grep -Eq '^intrinsic_environment [1-9][0-9]* [0-9]+$' "$TMP_DIR/identity.apo"
+grep -Eq '^intrinsic_environment [1-9][0-9]* [1-9][0-9]* [0-9]+$' \
+	"$TMP_DIR/identity.apo"
 awk '
 	$1 == "intrinsic_environment" && !done {
 		$2 = $2 == 1 ? 2 : 1
-		$3 = 3
+		$3 = $3 == 1 ? 2 : 1
+		$4 = 3
 		done = 1
 	}
 	{ print }
@@ -203,8 +202,8 @@ if ./read_file.out --read-graph "$TMP_DIR/identity-foreign-intrinsics.apo" \
 fi
 awk '
 	$1 == "context" && NF != 8 { bad = 1 }
-	$1 == "typed_occurrence" && NF != 28 { bad = 1 }
-	$1 == "substitution" && NF != 9 { bad = 1 }
+	$1 == "typed_occurrence" && NF != 33 { bad = 1 }
+	$1 == "substitution" && NF != 10 { bad = 1 }
 	END { exit bad }
 ' "$TMP_DIR/identity.apo"
 awk '
@@ -258,26 +257,26 @@ if ./read_file.out --aggregate-artifact "$TMP_DIR/mixed-policy.apo" \
 	exit 1
 fi
 test "$(cat "$TMP_DIR/mixed-policy.apo")" = 'unpublished-sentinel'
-./read_file.out --effort 100000 \
+./read_file.out --solve-effort 100000 \
 	--write-artifact "$TMP_DIR/identity-budget.apo" "$TMP_DIR/identity.p" \
 	>"$TMP_DIR/identity-budget.out"
 grep -q '^compile_policy 2 1 - 4294967295 4294967295 4294967295 0$' \
 	"$TMP_DIR/identity-budget.apo"
 cmp "$TMP_DIR/identity.apo" "$TMP_DIR/identity-budget.apo"
-./read_file.out --effort 100000 \
+./read_file.out --solve-effort 100000 \
 	--write-artifact "$TMP_DIR/identity-budget-repeat.apo" "$TMP_DIR/identity.p" \
 	>"$TMP_DIR/identity-budget-repeat.out"
 cmp "$TMP_DIR/identity-budget.apo" "$TMP_DIR/identity-budget-repeat.apo"
-if ./read_file.out --effort 0 "$TMP_DIR/identity.p" \
+if ./read_file.out --solve-effort 0 "$TMP_DIR/identity.p" \
 	>"$TMP_DIR/identity-zero-solver.out" 2>"$TMP_DIR/identity-zero-solver.err"; then
 	echo "zero-step classifier solver unexpectedly completed" >&2
 	exit 1
 fi
 grep -q 'classifier solver step limit exhausted' "$TMP_DIR/identity-zero-solver.err"
-sed '1s/A_PROGRAM_ARTIFACT 86/A_PROGRAM_ARTIFACT 85/' \
+sed '1s/A_PROGRAM_ARTIFACT 90/A_PROGRAM_ARTIFACT 85/' \
 	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-v79.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-v79.apo" >"$TMP_DIR/identity-v79.out" 2>"$TMP_DIR/identity-v79.err"; then
-	echo "obsolete artifact unexpectedly passed at the v86 version boundary" >&2
+	echo "obsolete artifact unexpectedly passed at the v90 version boundary" >&2
 	exit 1
 fi
 sed '1s/[0-9a-f]\{64\}$/0000000000000000000000000000000000000000000000000000000000000000/' \
@@ -288,6 +287,22 @@ if ./read_file.out --read-graph "$TMP_DIR/identity-bad-fingerprint.apo" \
 	echo "artifact with a foreign calculus fingerprint unexpectedly passed" >&2
 	exit 1
 fi
+awk '
+	$1 == "term" && !done {
+		$6 = 0
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/identity.apo" >"$TMP_DIR/identity-forged-semantic-key.apo"
+if ./read_file.out --read-graph "$TMP_DIR/identity-forged-semantic-key.apo" \
+	>"$TMP_DIR/identity-forged-semantic-key.out" \
+	2>"$TMP_DIR/identity-forged-semantic-key.err"; then
+	echo "artifact accepted a forged semantic term key" >&2
+	exit 1
+fi
+grep -q 'artifact semantic term key mismatch' \
+	"$TMP_DIR/identity-forged-semantic-key.err"
 awk '$1 == "term_node" && !done { $3 = 999; done = 1 } { print } END { if (!done) exit 1 }' \
 	"$TMP_DIR/identity.apo" >"$TMP_DIR/identity-unknown-term-tag.apo"
 if ./read_file.out --read-graph "$TMP_DIR/identity-unknown-term-tag.apo" \
@@ -1177,7 +1192,7 @@ awk '
 		}
 		if ($1 == "derivation" && $3 == type_formation_proof_kind && !bad_classifier) {
 			bad_classifier = classifier[claim_proposition[$5]];
-		} else if ($1 == "derivation" && $3 == declaration_proof_kind && !target_proposition) {
+		} else if ($1 == "derivation" && $3 == constructor_intro_proof_kind && !target_proposition) {
 			target_proposition = claim_proposition[$5];
 		}
 		next;
@@ -1188,7 +1203,7 @@ awk '
 	}
 	{ print }
 ' type_formation_proof_kind="$PROOF_KIND_TYPE_FORMATION_INTRO" \
-	declaration_proof_kind="$PROOF_KIND_DECLARATION" \
+	constructor_intro_proof_kind="$PROOF_KIND_CONSTRUCTOR_INTRO" \
 	"$TMP_DIR/ConstructorValue.apo" "$TMP_DIR/ConstructorValue.apo" >"$TMP_DIR/BadConstructorIntroClassifier.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadConstructorIntroClassifier.apo" >"$TMP_DIR/bad-constructor-intro-classifier.out" 2>"$TMP_DIR/bad-constructor-intro-classifier.err"; then
 	echo "bad constructor intro classifier artifact unexpectedly passed" >&2
@@ -1796,7 +1811,7 @@ awk '
 		} else if ($1 == "claim") {
 			claim_proposition[$2] = $4;
 		}
-		if ($1 == "derivation" && $3 == declaration_proof_kind) {
+		if ($1 == "derivation" && $3 == constructor_intro_proof_kind) {
 			target_constructor = subject[claim_proposition[$5]];
 		}
 		next;
@@ -1805,7 +1820,7 @@ awk '
 		$4 = 999;
 	}
 	{ print }
-' declaration_proof_kind="$PROOF_KIND_DECLARATION" \
+' constructor_intro_proof_kind="$PROOF_KIND_CONSTRUCTOR_INTRO" \
 	constructor_tag="$TERM_TAG_CONSTRUCTOR" \
 	"$TMP_DIR/ConstructorDeclaration.apo" "$TMP_DIR/ConstructorDeclaration.apo" >"$TMP_DIR/BadConstructorDeclaration.apo"
 if ./read_file.out --read-graph "$TMP_DIR/BadConstructorDeclaration.apo" >"$TMP_DIR/bad-constructor-declaration.out" 2>"$TMP_DIR/bad-constructor-declaration.err"; then
@@ -2199,31 +2214,31 @@ grep -q 'has-type INT_LITERAL(42) PRIMITIVE(Int) \[int-literal-intro proof#' "$T
 grep -q '\[host-type-intro proof#' "$TMP_DIR/int-literal.out"
 awk '
 	$1 == "typed_occurrence" && $3 == 1 {
-		literal_operation = $2;
+		literal_term = $6;
 		selected_classifier = $8;
 		literal_count++;
 	}
 	$1 == "proposition" {
-		proposition_operation[$2] = $7;
+		proposition_subject[$2] = $8;
 		proposition_classifier[$2] = $9;
 	}
 	$1 == "claim" {
-		claim_operation[$2] = proposition_operation[$4];
+		claim_subject[$2] = proposition_subject[$4];
 		claim_classifier[$2] = proposition_classifier[$4];
 	}
 	$1 == "derivation" && $3 == int_literal_intro {
-		admissible[claim_operation[$5] SUBSEP claim_classifier[$5]] = 1;
+		admissible[claim_subject[$5] SUBSEP claim_classifier[$5]] = 1;
 	}
 	END {
 		classifier_count = 0;
 		for (entry in admissible) {
 			split(entry, parts, SUBSEP);
-			if (parts[1] == literal_operation) {
+			if (parts[1] == literal_term) {
 				classifier_count++;
 			}
 		}
 		if (literal_count != 1 || classifier_count != 1 ||
-			!admissible[literal_operation SUBSEP selected_classifier]) {
+			!admissible[literal_term SUBSEP selected_classifier]) {
 			exit 1;
 		}
 	}
@@ -2231,7 +2246,7 @@ awk '
 	"$TMP_DIR/IntLiteral.apo"
 ./read_file.out --write-artifact "$TMP_DIR/IntLiteralRepeat.apo" \
 	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal-repeat.out"
-./read_file.out --effort 200000 \
+./read_file.out --solve-effort 200000 \
 	--write-artifact "$TMP_DIR/IntLiteralMoreFuel.apo" \
 	"$TMP_DIR/int-literal.p" >"$TMP_DIR/int-literal-more-fuel.out"
 awk '$1 == "typed_occurrence" { print $2, $8 }' "$TMP_DIR/IntLiteral.apo" \
@@ -2250,9 +2265,9 @@ inline := (#40 :: #.Int);
 EOF_INT_ASCRIPTIONS
 ./read_file.out "$TMP_DIR/int-ascriptions.p" >"$TMP_DIR/int-ascriptions.out"
 test "$(grep -c 'has-type INT_LITERAL(40) PRIMITIVE(Int) \[int-literal-intro proof#' \
-	"$TMP_DIR/int-ascriptions.out")" -ge 2
-grep -q 'has-type INT_LITERAL(40) PRIMITIVE(Int) \[conversion proof#' \
-	"$TMP_DIR/int-ascriptions.out"
+	"$TMP_DIR/int-ascriptions.out")" -eq 1
+test "$(grep -c 'has-type INT_LITERAL(40) PRIMITIVE(Int) \[conversion proof#' \
+	"$TMP_DIR/int-ascriptions.out")" -eq 2
 
 cat >"$TMP_DIR/int-literal-specialization.p" <<'EOF_INT_LITERAL_SPECIALIZATION'
 id := \x : #.Int => x;
@@ -2267,31 +2282,31 @@ grep -q 'core-value term#[0-9][0-9]* = INT_LITERAL(42) human-value=#42' \
 	"$TMP_DIR/int-literal-specialization-read.out"
 awk '
 	$1 == "typed_occurrence" && $3 == 1 {
-		literal_operation = $2;
+		literal_term = $6;
 		selected_classifier = $8;
 		literal_count++;
 	}
 	$1 == "proposition" {
-		proposition_operation[$2] = $7;
+		proposition_subject[$2] = $8;
 		proposition_classifier[$2] = $9;
 	}
 	$1 == "claim" {
-		claim_operation[$2] = proposition_operation[$4];
+		claim_subject[$2] = proposition_subject[$4];
 		claim_classifier[$2] = proposition_classifier[$4];
 	}
 	$1 == "derivation" && $3 == int_literal_intro {
-		admissible[claim_operation[$5] SUBSEP claim_classifier[$5]] = 1;
+		admissible[claim_subject[$5] SUBSEP claim_classifier[$5]] = 1;
 	}
 	END {
 		classifier_count = 0;
 		for (entry in admissible) {
 			split(entry, parts, SUBSEP);
-			if (parts[1] == literal_operation) {
+			if (parts[1] == literal_term) {
 				classifier_count++;
 			}
 		}
 		if (literal_count != 1 || classifier_count != 1 ||
-			!admissible[literal_operation SUBSEP selected_classifier]) {
+			!admissible[literal_term SUBSEP selected_classifier]) {
 			exit 1;
 		}
 	}
@@ -2524,8 +2539,31 @@ EOF_TERMINAL_EFFECT
 	"$TMP_DIR/terminal-effect.p" >"$TMP_DIR/terminal-effect-artifact.out"
 grep -q '\[effect-operation-type-intro proof#' "$TMP_DIR/terminal-effect-artifact.out"
 ./read_file.out --read-graph "$TMP_DIR/TerminalEffect.apo" >"$TMP_DIR/terminal-effect-read-graph.out"
-grep -q "^term_node .* $TERM_TAG_EFFECT_OPERATION print [0-9][0-9]*$" \
+grep -q "^term_node .* $TERM_TAG_EFFECT_OPERATION print$" \
 	"$TMP_DIR/TerminalEffect.apo"
+if awk -v effect_tag="$TERM_TAG_EFFECT_OPERATION" '
+	$1 == "term_node" && $3 == effect_tag && NF != 4 { bad = 1 }
+	END { exit bad }
+' "$TMP_DIR/TerminalEffect.apo"; then
+	:
+else
+	echo "effect operation Core record contains non-operational metadata" >&2
+	exit 1
+fi
+awk -v effect_tag="$TERM_TAG_EFFECT_OPERATION" '
+	$1 == "term_node" && $3 == effect_tag && !done {
+		$0 = $0 " 0"
+		done = 1
+	}
+	{ print }
+	END { if (!done) exit 1 }
+' "$TMP_DIR/TerminalEffect.apo" >"$TMP_DIR/TerminalEffectClassifierCore.apo"
+if ./read_file.out --read-graph "$TMP_DIR/TerminalEffectClassifierCore.apo" \
+	>"$TMP_DIR/terminal-effect-classifier-core.out" \
+	2>"$TMP_DIR/terminal-effect-classifier-core.err"; then
+	echo "artifact accepted a classifier-bearing Core operation record" >&2
+	exit 1
+fi
 awk -v primitive_tag="$TERM_TAG_PURE_PRIMITIVE" \
 	-v effect_tag="$TERM_TAG_EFFECT_OPERATION" '
 	$1 == "term_node" && $3 == effect_tag && $4 == "print" { $3 = primitive_tag }
@@ -3262,6 +3300,11 @@ for scoped_field in kind context subject classifier; do
 		exit 1
 	fi
 done
+
+sed 's/^END universe$/END malformed-universe/' \
+	"$TMP_DIR/ScopedPremise.apo" >"$TMP_DIR/ScopedPremise-truncated.apo"
+./read_file.out --audit-artifact-transaction-rejection \
+	"$TMP_DIR/ScopedPremise.apo" "$TMP_DIR/ScopedPremise-truncated.apo"
 
 prototype_test_phase final_representation
 prototype_compile c11 werror compiler \

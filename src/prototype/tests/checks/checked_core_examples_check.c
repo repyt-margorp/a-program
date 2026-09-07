@@ -4,6 +4,7 @@
 #include "a_program/frontend/reader.h"
 #include "a_program/graph/compile_metadata.h"
 #include "a_program/graph/occurrence_usage.h"
+#include "../support/compiler_session_storage.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -53,13 +54,46 @@ static void print_checker_failure(
 			context->binding_id,
 			context->classifier,
 			context->extension_kind,
-			context->producer_computation
+			context->producer_occurrence
 		);
 		return;
 	}
-	if (report->stop_reason != PROTOTYPE_CHECKER_STOP_OCCURRENCE) {
+	if (report->stop_reason != PROTOTYPE_CHECKER_STOP_OCCURRENCE &&
+		report->stop_reason != PROTOTYPE_CHECKER_STOP_CLASSIFIER) {
 		fprintf(stderr, "checker subject domain=reason-specific\n");
 		return;
+	}
+	if (report->stop_reason == PROTOTYPE_CHECKER_STOP_CLASSIFIER &&
+		report->subject < module->view.terms.term_count) {
+		fprintf(
+			stderr,
+			"checker subject domain=classifier term=%u tag=%d\n",
+			report->subject,
+			module->view.terms.terms[report->subject].tag
+		);
+		for (uint32_t i = 1; i < module->view.contexts.context_count; ++i) {
+			if (module->view.contexts.contexts[i].classifier == report->subject) {
+				fprintf(
+					stderr,
+					"checker classifier context=%u parent=%u binding=%u\n",
+					i,
+					module->view.contexts.contexts[i].parent,
+					module->view.contexts.contexts[i].binding_id
+				);
+			}
+		}
+		const struct prototype_term* subject =
+			&module->view.terms.terms[report->subject];
+		if (subject->tag == PROTOTYPE_TERM_APP) {
+			fprintf(
+				stderr,
+				"checker classifier app function=%u:%d argument=%u:%d\n",
+				subject->as.app.function,
+				module->view.terms.terms[subject->as.app.function].tag,
+				subject->as.app.argument,
+				module->view.terms.terms[subject->as.app.argument].tag
+			);
+		}
 	}
 	if (report->subject >= module->view.occurrences.occurrence_count) {
 		fprintf(stderr, "checker subject domain=occurrence invalid-id\n");
@@ -76,7 +110,8 @@ static void print_checker_failure(
 	fprintf(
 		stderr,
 		"checker subject domain=occurrence kind=%d core=%u:%d "
-		"classifier=%u:%d origin-core=%u role=%d evidence=%d wrapped=%u\n",
+		"classifier=%u:%d origin-core=%u role=%d evidence=%d wrapped=%u "
+		"context=%u action=%u binding=%u\n",
 		occurrence->kind,
 		occurrence->core_term,
 		core ? core->tag : -1,
@@ -85,8 +120,29 @@ static void print_checker_failure(
 		occurrence->origin_core_term,
 		occurrence->application_role,
 		occurrence->classifier_evidence_kind,
-		occurrence->wrapped_occurrence
+		occurrence->wrapped_occurrence,
+		occurrence->context_id,
+		occurrence->context_action_substitution,
+		occurrence->binding_id
 	);
+	if (occurrence->wrapped_occurrence <
+		module->view.occurrences.occurrence_count) {
+		const struct prototype_semantic_occurrence* wrapped =
+			&module->view.occurrences.occurrences[
+				occurrence->wrapped_occurrence
+			];
+		fprintf(
+			stderr,
+			"checker wrapped occurrence=%u kind=%d core=%u classifier=%u "
+			"context=%u action=%u\n",
+			occurrence->wrapped_occurrence,
+			wrapped->kind,
+			wrapped->core_term,
+			wrapped->asserted_classifier,
+			wrapped->context_id,
+			wrapped->context_action_substitution
+		);
+	}
 }
 
 static int compare_resource_usage(
@@ -94,7 +150,7 @@ static int compare_resource_usage(
 	const struct prototype_program_storage* storage,
 	const struct prototype_checked_module* checked
 ) {
-	size_t solution_count = storage->metadata.typed_occurrences.occurrence_count;
+	size_t solution_count = storage->private->metadata.typed_occurrences.occurrence_count;
 	struct prototype_occurrence_usage_solution* solutions = solution_count == 0 ?
 		NULL : calloc(solution_count, sizeof(*solutions));
 	struct prototype_usage_entry* entries = malloc(
@@ -103,9 +159,9 @@ static int compare_resource_usage(
 	size_t entry_count = 0;
 	if ((solution_count != 0 && !solutions) || !entries ||
 		prototype_occurrence_usage_solve(
-			&storage->metadata.typed_occurrences,
-			&storage->terms,
-			&storage->metadata.contexts,
+			&storage->private->metadata.typed_occurrences,
+			&storage->private->core.terms,
+			&storage->private->metadata.contexts,
 			solutions,
 			solution_count,
 			entries,
@@ -181,40 +237,41 @@ static int check_file(const char* path) {
 		return -1;
 	}
 	storage_initialized = 1;
-	if (prototype_read_file(path, &storage.program, &error) != 0) {
+	if (prototype_read_file(path, &storage.private->program, &error) != 0) {
 		fprintf(stderr, "%s: compile failed: %s\n", path, error.message);
 		goto cleanup;
 	}
 	if (prototype_compile_metadata_frozen_snapshot(
-			&storage.metadata, &snapshot
+			&storage.private->metadata, &snapshot
 		) != 0 || prototype_elaborated_module_project(
-			&storage.symbols,
-			&storage.terms,
-			&storage.type_declarations.semantic_schema,
-			storage.program.intrinsic_environment,
-			&storage.universe,
+			&storage.private->symbols,
+			&storage.private->core.terms,
+			&storage.private->type_declarations.semantic_schema,
+			storage.private->program.intrinsic_environment,
+			&storage.private->universe,
+			&storage.private->judgement,
 			&snapshot,
 			&module
 		) != 0) {
 		fprintf(stderr, "%s: semantic projection failed\n", path);
 		goto cleanup;
 	}
-	if (storage.judgement.accepted_replay_stats.validation_count == 0) {
-		fprintf(stderr, "%s: compile skipped the v86 replay oracle\n", path);
+	if (storage.private->judgement.accepted_replay_stats.validation_count == 0) {
+		fprintf(stderr, "%s: compile skipped the v90 replay oracle\n", path);
 		goto cleanup;
 	}
 	uint64_t producer_effort_sum = 0;
 	for (size_t i = 0; i < PROTOTYPE_EFFORT_PHASE_COUNT; ++i) {
-		producer_effort_sum += storage.metadata.effort.phase_used[i];
-		producer_effort_by_phase[i] += storage.metadata.effort.phase_used[i];
+		producer_effort_sum += storage.private->metadata.effort.phase_used[i];
+		producer_effort_by_phase[i] += storage.private->metadata.effort.phase_used[i];
 	}
-	if (producer_effort_sum != storage.metadata.effort.used ||
-		storage.metadata.effort.cost_model_version !=
+	if (producer_effort_sum != storage.private->metadata.effort.used ||
+		storage.private->metadata.effort.cost_model_version !=
 			PROTOTYPE_EFFORT_COST_MODEL_VERSION) {
 		fprintf(stderr, "%s: typed producer effort accounting mismatch\n", path);
 		goto cleanup;
 	}
-	accepted_replay_time_ns += storage.metadata.accepted_replay_time_ns;
+	accepted_replay_time_ns += storage.private->metadata.accepted_replay_time_ns;
 	uint64_t checker_start = test_clock_ns();
 	if (prototype_checker_check_module(
 			&module.view, &options, &checked, &report
@@ -265,12 +322,15 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 	}
-	if (producer_effort_by_phase[PROTOTYPE_EFFORT_PHASE_GRAPH] == 0 ||
+	if (producer_effort_by_phase[PROTOTYPE_EFFORT_PHASE_GRAPH] != 0 ||
+		producer_effort_by_phase[PROTOTYPE_EFFORT_PHASE_FUNCTION_GRAPH] != 0 ||
 		producer_effort_by_phase[PROTOTYPE_EFFORT_PHASE_CLASSIFIER] == 0 ||
 		producer_effort_by_phase[PROTOTYPE_EFFORT_PHASE_NORMALIZATION] == 0 ||
+		producer_effort_by_phase[PROTOTYPE_EFFORT_PHASE_MOTIVE] == 0 ||
 		producer_effort_by_phase[PROTOTYPE_EFFORT_PHASE_PROOF] == 0 ||
-		producer_effort_by_phase[PROTOTYPE_EFFORT_PHASE_FUNCTION_GRAPH] == 0) {
-		fprintf(stderr, "producer effort phases were not independently charged\n");
+		producer_effort_by_phase[PROTOTYPE_EFFORT_PHASE_CHECKER] != 0 ||
+		producer_effort_by_phase[PROTOTYPE_EFFORT_PHASE_MERGE] != 0) {
+		fprintf(stderr, "producer effort escaped semantic solve phases\n");
 		return 1;
 	}
 	fprintf(

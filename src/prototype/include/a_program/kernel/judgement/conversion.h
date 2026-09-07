@@ -1,6 +1,7 @@
 #ifndef __A_PROGRAM_KERNEL_JUDGEMENT_CONVERSION_H__
 #define __A_PROGRAM_KERNEL_JUDGEMENT_CONVERSION_H__
 
+#include "a_program/kernel/judgement/conversion_goal.h"
 #include "a_program/kernel/judgement/types.h"
 
 int prototype_judgement_pi_parts(
@@ -17,24 +18,23 @@ struct prototype_term_conversion_result prototype_judgement_classifier_conversio
 	uint32_t actual
 );
 
-/* A conversion goal records the complete deterministic kernel request. It is
- * compiler evidence only: executing it never creates an object-level equality
- * witness or a JudgementDB relation. */
-struct prototype_kernel_conversion_goal {
-	uint32_t id;
-	uint32_t context_id;
-	uint32_t carrier_classifier;
-	uint32_t left_term;
-	uint32_t right_term;
-	int normalization_profile;
-	uint64_t step_limit;
-	struct prototype_term_conversion_result result;
-};
+/* Validate one guarded recursive classifier equation. This relation unfolds
+ * only IH back-edges exposed by a finite recursive Match graph; it is not
+ * definitional equality and must only be used by rules that already establish
+ * guardedness. Returns 1 for a valid equation, 0 for a mismatch, and -1 for a
+ * malformed graph. */
+int prototype_judgement_guarded_classifier_equation(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t expected,
+	uint32_t actual,
+	uint32_t* p_validated_expected
+);
 
 int prototype_judgement_kernel_conversion_goal_validate(
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms,
-	const struct prototype_kernel_conversion_goal* goal,
+	const struct prototype_typing_conversion_goal* goal,
 	int require_carrier
 );
 
@@ -43,7 +43,7 @@ int prototype_judgement_kernel_conversion_goal_execute(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
-	struct prototype_kernel_conversion_goal* goal,
+	struct prototype_typing_conversion_goal* goal,
 	int require_carrier
 );
 
@@ -81,15 +81,26 @@ int prototype_judgement_classifier_view(
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	uint32_t classifier,
-	struct prototype_term_classifier_view* p_ret
+	struct prototype_classifier_view* p_ret
+);
+
+/* Inspect an already exposed classifier without normalization. This is a
+ * Layer T operation even though the classifier expression is stored in
+ * TermDB. */
+int prototype_judgement_classifier_view_syntax(
+	const struct prototype_term_db* terms,
+	uint32_t classifier,
+	struct prototype_classifier_view* p_ret
 );
 
 /*
  * Solve free effect-row variables in an elaborated expected classifier from
  * the corresponding rows of an actual classifier. Returns 0 with a concrete
- * classifier, 1 when the classifier shapes do not determine a compatible
- * solution, and -1 for malformed input. This is elaboration/constraint
- * solving, not kernel compatibility.
+ * classifier, 1 when the classifier shapes do not determine a complete
+ * compatible solution, and -1 for malformed input. On 1, p_solved_expected
+ * still receives the projection of every row equation established before the
+ * shape mismatch. The caller must validate the remaining classifier structure.
+ * This is elaboration/constraint solving, not kernel compatibility.
  */
 int prototype_judgement_solve_expected_effect_rows(
 	struct prototype_term_db* terms,
@@ -105,6 +116,17 @@ int prototype_judgement_classifier_compatible(
 	struct prototype_type_declaration_db* type_declarations,
 	uint32_t expected,
 	uint32_t actual
+);
+
+/* Return 1 when superset has the same classifier structure as subset and every
+ * corresponding computation effect row includes the subset row, 0 when it does
+ * not, and -1 for malformed input. This is the ordering used by elaboration for
+ * effect weakening; it is not definitional equality. */
+int prototype_judgement_classifier_effect_row_includes(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t superset,
+	uint32_t subset
 );
 
 int prototype_judgement_classifier_compatible_with_definitions(

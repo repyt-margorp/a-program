@@ -30,8 +30,7 @@ static int operation_runtime_instantiate_term(
 			continue;
 		}
 		if (prototype_term_graph_substitute_bound_var(
-				terms, prototype_type_view_rebuild_context_from_db(NULL),
-				current,
+				terms, current,
 				environment->bindings[i].binding_id,
 				environment->bindings[i].value.as.term,
 				&current
@@ -272,7 +271,6 @@ static int operation_runtime_discharge_sequence_fold(
 			terms, family_lambda, returned_value, &family_application
 		) != 0 || prototype_term_normalize_complete_with_profile(
 			terms,
-			type_declarations,
 			definitions,
 			obligation->normalization_profile,
 			family_application,
@@ -551,8 +549,8 @@ static int operation_runtime_machine_request_from_result(
 		) != 0) {
 		return -1;
 	}
-	const struct prototype_effect_operation_declaration* declaration =
-		prototype_term_effect_operation_declaration(operation_id);
+	const struct prototype_core_effect_operation_declaration* declaration =
+		prototype_core_effect_operation_declaration(operation_id);
 	if (!declaration) {
 		return -1;
 	}
@@ -674,7 +672,6 @@ static int operation_runtime_machine_invoke_resumption(
 			machine->terms, forced, argument_term, &application
 		) != 0 || prototype_term_perform_with_options(
 			machine->terms,
-			NULL,
 			machine->definitions,
 			machine->options,
 			application,
@@ -832,7 +829,6 @@ static int operation_runtime_machine_leaf(
 		) != 0 ||
 		prototype_term_perform_with_options(
 			machine->terms,
-			NULL,
 			machine->definitions,
 			machine->options,
 			instantiated,
@@ -1127,7 +1123,6 @@ static int operation_runtime_machine_step_unwind(
 					machine->terms, function, argument_term, &application
 				) != 0 || prototype_term_perform_with_options(
 					machine->terms,
-					NULL,
 					machine->definitions,
 					machine->options,
 					application,
@@ -1179,7 +1174,6 @@ static int operation_runtime_machine_step_unwind(
 					&request
 				) != 0 || prototype_term_perform_with_options(
 					machine->terms,
-					NULL,
 					machine->definitions,
 					machine->options,
 					request,

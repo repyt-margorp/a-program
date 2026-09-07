@@ -4,23 +4,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "a_program/core/term.h"
-
-struct prototype_compile_label {
-	int name_symbol_id;
-	uint32_t term;
-	/* The assignment RHS occurrence and its independently synthesized
-	 * principal. For an ASCRIPTION root this is the operation below it. */
-	uint32_t body_occurrence;
-	uint32_t body_classifier;
-	/* Published/evaluation view. An outer ASCRIPTION may differ from body. */
-	uint32_t exposed_occurrence;
-	uint32_t exposed_classifier;
-	uint32_t expectation_classifier;
-	uint32_t expectation_claim_id;
-	struct prototype_term_canonical_key canonical_key;
-};
-
 /*
  * Typed occurrences preserve the static/source occurrence graph produced by AST
  * lowering.  Their core_term fields may intentionally alias: for example,
@@ -81,6 +64,11 @@ struct prototype_typed_occurrence {
 	uint32_t source_core_term;
 	uint32_t source_classifier;
 	uint32_t core_term;
+	/* Immutable declaration input for a constructor occurrence. This is not a
+	 * solver answer: it preserves the nominal classifier selected by source
+	 * lowering so a later Context projection can solve an occurrence that was
+	 * unreachable in an earlier transaction. */
+	uint32_t declared_classifier;
 	/* The solver result for this source operation. */
 	uint32_t classifier;
 	/* Frozen result status. Residual typing has no principal classifier and must
@@ -138,12 +126,19 @@ struct prototype_typed_occurrence_edge {
 struct prototype_typed_occurrence_match_case {
 	/* Semantic case telescope. Source binder IDs below are occurrence metadata. */
 	uint32_t context_id;
+	/* Constructor correspondence available without Solver progress. An unresolved
+	 * source case stores INVALID/INVALID and is resolved from its immutable Match
+	 * resolution goal. RECOMPUTE persists these fields, not the current answer. */
+	uint32_t declared_constructor_owner;
+	uint32_t declared_constructor_id;
 	/* A solved dependent branch owns the pullback Context above. This morphism
 	 * maps its refined Context back to the source branch Context. Ordinary ADTs
 	 * map the scrutinee to the constructor spine; indexed ADTs additionally map
 	 * the solved family indices. */
 	int refinement_status;
 	uint32_t refinement_substitution;
+	/* Current Match-resolution answer. This is checkpoint progress and must
+	 * either equal the declared pair or be justified by the resolution goal. */
 	uint32_t constructor_owner;
 	uint32_t constructor_id;
 	int case_label_symbol_id;

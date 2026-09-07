@@ -29,13 +29,14 @@ cat >"$tmp_dir/operation_constants.c" <<'EOF_CONSTANTS'
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/core/term.h"
+#include "a_program/kernel/classifier.h"
 
 int main(void) {
 	printf(
 		"%d %d %d %d %d\n",
 		PROTOTYPE_TYPED_OCCURRENCE_APP,
-		PROTOTYPE_TERM_CATEGORY_VALUE,
-		PROTOTYPE_TERM_CATEGORY_COMPUTATION,
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE,
+		PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION,
 		PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION,
 		PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION
 	);

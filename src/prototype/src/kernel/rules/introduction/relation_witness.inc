@@ -141,9 +141,8 @@ int prototype_judgement_add_relation_witness_intro(
 		prototype_judgement_proposition_get(judgement, right->proposition_id)->classifier != right_type ||
 		prototype_term_compare_for_conversion(
 			terms,
-			type_declarations,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			relation_left,
 			relation_right,
 			64,
@@ -662,9 +661,9 @@ static int relation_lambda_witness_shape_valid(
 		prototype_context_get(contexts, right_context->parent) : NULL;
 	if (!relation_context || !right_context || !left_context ||
 		left_context->parent != context_id ||
-		prototype_context_classifier_term(left_context) !=
+		prototype_context_classifier_answer(contexts, left_context) !=
 			terms->terms[left_type].as.pi.domain ||
-		prototype_context_classifier_term(right_context) !=
+		prototype_context_classifier_answer(contexts, right_context) !=
 			terms->terms[right_type].as.pi.domain) {
 		return 0;
 	}
@@ -686,7 +685,9 @@ static int relation_lambda_witness_shape_valid(
 			left_argument,
 			right_argument,
 			&expected_input_relation
-		) != 0 || prototype_context_classifier_term(relation_context) !=
+		) != 0 || prototype_context_classifier_answer(
+			contexts, relation_context
+		) !=
 			expected_input_relation || prototype_term_lambda(
 			terms, left_context->binding_id, body_left, &left_lambda
 		) != 0 || prototype_term_lambda(
@@ -852,12 +853,14 @@ static int relation_match_case_witness_shape_valid(
 				terms, right_context->binding_id, &right_variable
 			) != 0 || prototype_term_relation_type(
 				terms,
-				prototype_context_classifier_term(left_context),
-				prototype_context_classifier_term(right_context),
+				prototype_context_classifier_answer(contexts, left_context),
+				prototype_context_classifier_answer(contexts, right_context),
 				left_variable,
 				right_variable,
 				&relation_type
-			) != 0 || prototype_context_classifier_term(relation_context) !=
+			) != 0 || prototype_context_classifier_answer(
+				contexts, relation_context
+			) !=
 				relation_type) {
 			return 0;
 		}

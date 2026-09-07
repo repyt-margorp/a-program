@@ -3,22 +3,37 @@ PROTOTYPE_ROOT := src/prototype
 PROTOTYPE_AST_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/graph/typed_occurrence_graph.c \
 	$(PROTOTYPE_ROOT)/src/graph/occurrence_usage.c \
+	$(PROTOTYPE_ROOT)/src/graph/typed_publication_view.c \
 	$(PROTOTYPE_ROOT)/src/graph/compile_metadata.c \
+	$(PROTOTYPE_ROOT)/src/artifact/semantic_key.c \
 	$(PROTOTYPE_ROOT)/src/artifact/interface.c \
 	$(PROTOTYPE_ROOT)/src/artifact/publication.c \
-	$(PROTOTYPE_ROOT)/src/artifact/wire_v86.c \
+	$(PROTOTYPE_ROOT)/src/artifact/wire_v90.c \
 	$(PROTOTYPE_ROOT)/src/artifact/relocation.c \
 	$(PROTOTYPE_ROOT)/src/artifact/link.c \
 	$(PROTOTYPE_ROOT)/src/frontend/ast.c \
+	$(PROTOTYPE_ROOT)/src/frontend/context_projection.c \
+	$(PROTOTYPE_ROOT)/src/frontend/context_projection_builder.c \
 	$(PROTOTYPE_ROOT)/src/frontend/function_graph.c \
 	$(PROTOTYPE_ROOT)/src/frontend/lowering.c \
+	$(PROTOTYPE_ROOT)/src/frontend/source_epoch.c \
+	$(PROTOTYPE_ROOT)/src/frontend/source_lowering_plan.c \
+	$(PROTOTYPE_ROOT)/src/frontend/source_schedule.c \
+	$(PROTOTYPE_ROOT)/src/frontend/typing_constraint_state.c \
+	$(PROTOTYPE_ROOT)/src/frontend/typing_binding_state.c \
+	$(PROTOTYPE_ROOT)/src/frontend/typing_pipeline.c \
+	$(PROTOTYPE_ROOT)/src/frontend/typing_publication.c \
+	$(PROTOTYPE_ROOT)/src/frontend/typing_source_results.c \
 	$(PROTOTYPE_ROOT)/src/frontend/universe_collection.c
 
 PROTOTYPE_TYPING_SOURCES := \
+	$(PROTOTYPE_ROOT)/src/kernel/intrinsic.c \
 	$(PROTOTYPE_ROOT)/src/kernel/judgement.c
 
 PROTOTYPE_TYPE_DECLARATION_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/kernel/type_declaration.c \
+	$(PROTOTYPE_ROOT)/src/kernel/type_projection.c \
+	$(PROTOTYPE_ROOT)/src/kernel/type_term_debug.c \
 	$(PROTOTYPE_ROOT)/src/kernel/type_schema_view.c
 
 PROTOTYPE_CWF_SOURCES := \
@@ -49,12 +64,20 @@ PROTOTYPE_DIMENSION_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/dimension/face.c \
 	$(PROTOTYPE_ROOT)/src/dimension/action.c
 
+PROTOTYPE_PROTOCOL_SOURCES := \
+	$(PROTOTYPE_ROOT)/src/protocol/request.c
+
 PROTOTYPE_CORE_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/core/alpha_slot_env.c \
+	$(PROTOTYPE_ROOT)/src/core/pipeline.c \
+	$(PROTOTYPE_ROOT)/src/core/read.c \
+	$(PROTOTYPE_ROOT)/src/frontend/core_lowering.c \
+	$(PROTOTYPE_ROOT)/src/frontend/source_core_handoff.c \
 	$(PROTOTYPE_ROOT)/src/core/term.c \
 	$(PROTOTYPE_ROOT)/src/core/term_schema.c
 
 PROTOTYPE_KERNEL_SOURCES := \
+	$(PROTOTYPE_PROTOCOL_SOURCES) \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
@@ -73,6 +96,7 @@ PROTOTYPE_COMPILER_SESSION_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/driver/program_storage.c
 
 PROTOTYPE_GRAPH_SOURCES := \
+	$(PROTOTYPE_PROTOCOL_SOURCES) \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
@@ -88,6 +112,7 @@ PROTOTYPE_GRAPH_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/support/storage.c \
 	$(PROTOTYPE_ROOT)/src/support/symbol.c
 PROTOTYPE_COMPILER_SOURCES := \
+	$(PROTOTYPE_PROTOCOL_SOURCES) \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \
@@ -106,6 +131,7 @@ PROTOTYPE_COMPILER_SOURCES := \
 
 PROTOTYPE_HOTT_SOURCES := \
 	$(PROTOTYPE_ROOT)/src/identity/hott.c \
+	$(PROTOTYPE_PROTOCOL_SOURCES) \
 	$(PROTOTYPE_AST_SOURCES) \
 	$(PROTOTYPE_CHECKER_SOURCES) \
 	$(PROTOTYPE_DIMENSION_SOURCES) \

@@ -21,7 +21,7 @@ static int hott_publish_action_residual(
 				PROTOTYPE_HOTT_ACTION_RESULT_UNSUPPORTED :
 				PROTOTYPE_HOTT_ACTION_RESULT_RESIDUAL,
 			.residual_reason = reason,
-			.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			.step_limit = 0,
 			.term_graph_revision = terms->term_count
 		}
@@ -283,8 +283,7 @@ static int hott_publish_dimension_action_identity_result(
 			&classifier_binder,
 			&classifier_body
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			terms, prototype_type_view_rebuild_context_from_db(types),
-			classifier_body,
+			terms, classifier_body,
 			classifier_binder,
 			left_endpoint,
 			&left_identity_classifier
@@ -310,8 +309,7 @@ static int hott_publish_dimension_action_identity_result(
 			&classifier_binder,
 			&classifier_body
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			terms, prototype_type_view_rebuild_context_from_db(types),
-			classifier_body,
+			terms, classifier_body,
 			classifier_binder,
 			right_endpoint,
 			&classifier_body
@@ -380,7 +378,7 @@ static int hott_publish_dimension_action_identity_result(
 		terms,
 		request_id,
 		certificate_id,
-		PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+		PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 		0,
 		p_result_id
 	);
@@ -683,8 +681,7 @@ static int hott_apply_claim_argument(
 			&binder,
 			&body
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			terms, prototype_type_view_rebuild_context_from_db(types),
-			body,
+			terms, body,
 			binder,
 			argument->subject,
 			&classifier
@@ -849,7 +846,9 @@ static int hott_infer_action_endpoint_claim_depth(
 				kernel->contexts,
 				context_id,
 				term->as.var.binding_id,
-				prototype_context_classifier_term(binding_context),
+				prototype_context_classifier_answer(
+					kernel->contexts, binding_context
+				),
 				p_claim_id
 			) != 0) {
 			return -1;
@@ -919,8 +918,7 @@ static int hott_infer_action_endpoint_claim_depth(
 				depth + 1,
 				&argument_claim
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				terms, prototype_type_view_rebuild_context_from_db(kernel->type_declarations),
-				codomain,
+				terms, codomain,
 				binder,
 				term->as.app.argument,
 				&classifier
@@ -1477,7 +1475,6 @@ static int hott_seed_dimension_classifier_domains_depth(
 				context_id,
 				binder,
 				domain,
-				PROTOTYPE_INVALID_ID,
 				&next_context
 			) != 0 || prototype_cwf_certificate_db_add_context(
 				cwf,
@@ -1705,7 +1702,6 @@ static int hott_prepare_identity_endpoints(
 			bridge->bridge_context_id,
 			p_setup->left_binding_id,
 			p_setup->left_type_term_id,
-			PROTOTYPE_INVALID_ID,
 			&p_setup->left_context_id
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			cwf,
@@ -1736,7 +1732,6 @@ static int hott_prepare_identity_endpoints(
 			p_setup->left_context_id,
 			p_setup->right_binding_id,
 			p_setup->right_type_term_id,
-			PROTOTYPE_INVALID_ID,
 			&p_setup->endpoint_context_id
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			cwf,
@@ -1781,7 +1776,7 @@ static int hott_add_variable_assumption_in_context(
 			contexts,
 			context_id,
 			binding_id,
-			prototype_context_classifier_term(binding_context),
+			prototype_context_classifier_answer(contexts, binding_context),
 			p_claim_id
 		) != 0) {
 		return -1;
@@ -2184,7 +2179,7 @@ static int hott_publish_repeated_dimension_action_identity_result(
 				terms,
 				request_id,
 				certificate_id,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 				0,
 				&result
 			) != 0) {
@@ -2258,7 +2253,7 @@ static int hott_build_nondependent_pi_identity_type(
 		prototype_term_contains_free_binding(terms, codomain, codomain_binding) ||
 		(is_computation_function ?
 			(terms->terms[codomain].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
-			 prototype_term_effect_row_purity(
+			 prototype_classifier_effect_row_purity(
 				terms, terms->terms[codomain].as.computation_type.label
 			 ) != PROTOTYPE_EFFECT_ROW_PURITY_PURE) :
 			terms->terms[codomain].tag != PROTOTYPE_TERM_UNIVERSE_VAR)) {
@@ -2355,16 +2350,14 @@ static int hott_build_nondependent_pi_identity_type(
 		 * typed source and its erased core describe the same fiber. */
 		if (prototype_term_normalize_complete_with_profile(
 				terms,
-				type_declarations,
 				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 				applied_u0,
 				&thunked_applied_u0
 			) != 0 || prototype_term_normalize_complete_with_profile(
 				terms,
-				type_declarations,
 				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 				applied_u1,
 				&thunked_applied_u1
 			) != 0) {
@@ -2638,21 +2631,18 @@ static int hott_publish_pi_identity_result(
 			endpoints.endpoint_context_id,
 			x0_binding,
 			terms->terms[source_pi].as.pi.domain,
-			PROTOTYPE_INVALID_ID,
 			&x0_context
 		) != 0 || prototype_context_extend(
 			contexts,
 			x0_context,
 			x1_binding,
 			terms->terms[source_pi].as.pi.domain,
-			PROTOTYPE_INVALID_ID,
 			&x1_context
 		) != 0 || prototype_context_extend(
 			contexts,
 			x1_context,
 			xr_binding,
 			domain_identity,
-			PROTOTYPE_INVALID_ID,
 			&xr_context
 		) != 0 || prototype_substitution_projection_path(
 			kernel->substitutions,
@@ -2972,7 +2962,7 @@ static int hott_publish_pi_identity_result(
 		terms,
 		request_id,
 		certificate_id,
-		PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+		PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 		0,
 		p_result_id
 	);
@@ -3101,7 +3091,6 @@ int prototype_parametricity_execute_relation_type_action(
 			bridge->bridge_context_id,
 			left_binding,
 			left_type,
-			PROTOTYPE_INVALID_ID,
 			&left_context
 		) != 0 ||
 		prototype_cwf_certificate_db_add_context(
@@ -3150,7 +3139,6 @@ int prototype_parametricity_execute_relation_type_action(
 			left_context,
 			right_binding,
 			right_type,
-			PROTOTYPE_INVALID_ID,
 			&endpoint_context
 		) != 0 ||
 		prototype_cwf_certificate_db_add_context(
@@ -3276,7 +3264,7 @@ int prototype_parametricity_execute_relation_type_action(
 		terms,
 		request_id,
 		certificate_id,
-		PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+		PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 		0,
 		p_result_id
 	);

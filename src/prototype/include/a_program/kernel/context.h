@@ -8,6 +8,19 @@ struct prototype_term_db;
 struct prototype_type_declaration_db;
 struct prototype_term_conversion_result;
 
+/* Read-only Layer T capability for resolving a Context binder's classifier
+ * equation. Semantic consumers receive this view instead of reading or
+ * copying mutable answers from Context nodes. */
+struct prototype_context_classifier_view {
+	const struct prototype_context_db* contexts;
+	const void* classifier_equations;
+	int (*classifier_answer)(
+		const void* classifier_equations,
+		uint32_t context_id,
+		uint32_t* p_classifier
+	);
+};
+
 /* EXTEND remains a classifier-coherent candidate constructor. These results
  * identify which structural/coherence premise failed; they do not report CwF
  * formation evidence, which belongs to cwf_certificate.h. */
@@ -25,12 +38,13 @@ enum prototype_substitution_extend_result {
 	PROTOTYPE_SUBSTITUTION_EXTEND_STORAGE_FAILED = -10
 };
 
-#define PROTOTYPE_CONTEXT_CAPACITY 8192
-#define PROTOTYPE_SUBSTITUTION_CAPACITY 8192
+#define PROTOTYPE_CONTEXT_CAPACITY 32768
+#define PROTOTYPE_SUBSTITUTION_CAPACITY 32768
 #define PROTOTYPE_CONTEXT_GRAPH_INDEX_BUCKET_COUNT 1021
 #define PROTOTYPE_REINDEX_CACHE_COUNT 1021
 #define PROTOTYPE_SUBSTITUTION_BINDING_CACHE_COUNT 4093
-#define PROTOTYPE_CONTEXT_COMPREHENSION_ACTION_CAPACITY 8192
+#define PROTOTYPE_CONTEXT_COMPREHENSION_ACTION_CAPACITY 32768
+#define PROTOTYPE_CONTEXT_CLASSIFIER_EQUATION_INDEX_CAPACITY 32749
 
 /*
  * The comprehension action is an interned CwF pullback, not a disposable
@@ -63,23 +77,6 @@ struct prototype_substitution_binding_cache_entry {
 	uint32_t term;
 };
 
-/*
- * Contexts are objects of the compiler's syntactic CwF. Entry zero is the
- * empty context; every other entry is an immutable context extension.
- */
-enum prototype_context_classifier_ref_kind {
-	PROTOTYPE_CONTEXT_CLASSIFIER_REF_INVALID = 0,
-	PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM = 1,
-	PROTOTYPE_CONTEXT_CLASSIFIER_REF_VARIABLE = 2,
-	PROTOTYPE_CONTEXT_CLASSIFIER_REF_PROVISIONAL = 3
-};
-
-struct prototype_context_classifier_ref {
-	int kind;
-	uint32_t term_id;
-	uint32_t variable_id;
-};
-
 enum prototype_context_extension_kind {
 	PROTOTYPE_CONTEXT_EXTENSION_INVALID = 0,
 	PROTOTYPE_CONTEXT_EXTENSION_VALUE = 1,
@@ -89,12 +86,47 @@ enum prototype_context_extension_kind {
 struct prototype_context {
 	uint32_t parent;
 	uint32_t binding_id;
-	struct prototype_context_classifier_ref classifier_ref;
+	/* Stable reference into the classifier-equation provider carried by the
+	 * corresponding prototype_context_classifier_view. */
+	uint32_t classifier_equation;
 	int extension_kind;
-	uint32_t producer_computation;
+	uint32_t producer_occurrence;
 	uint32_t depth;
 	uint64_t key_hash;
 	uint32_t hash_next;
+};
+
+struct prototype_context_classifier_equation {
+	uint32_t id;
+	uint32_t binding_id;
+	uint32_t source_ast_binder_id;
+	/* Whether the source classifier is supplied by syntax or synthesized from
+	 * the producer. Source identity and classifier authority are independent. */
+	int source_classifier_authority;
+	uint32_t parent_context;
+	uint32_t extension_context;
+	uint32_t owner_occurrence;
+	uint32_t answer;
+	uint32_t evidence_constraint_id;
+	int key_kind;
+	uint32_t key_value;
+	uint32_t key_auxiliary;
+	int key_extension_kind;
+	uint32_t key_producer_occurrence;
+	uint64_t key_hash;
+	uint32_t hash_next;
+};
+
+enum prototype_context_classifier_equation_kind {
+	CONTEXT_CLASSIFIER_EQUATION_SOURCE = 1,
+	CONTEXT_CLASSIFIER_EQUATION_ANSWER = 2,
+	CONTEXT_CLASSIFIER_EQUATION_REINDEX = 3
+};
+
+enum prototype_context_classifier_authority {
+	PROTOTYPE_CONTEXT_CLASSIFIER_AUTHORITY_UNSPECIFIED = 0,
+	PROTOTYPE_CONTEXT_CLASSIFIER_AUTHORITY_INFERRED = 1,
+	PROTOTYPE_CONTEXT_CLASSIFIER_AUTHORITY_FIXED = 2
 };
 
 struct prototype_context_db {
@@ -108,6 +140,13 @@ struct prototype_context_db {
 	uint64_t intern_requests;
 	uint64_t intern_hits;
 	uint64_t intern_probes;
+	struct prototype_context_classifier_equation classifier_equations[
+		PROTOTYPE_CONTEXT_CAPACITY
+	];
+	uint32_t classifier_equation_count;
+	uint32_t classifier_equation_index_heads[
+		PROTOTYPE_CONTEXT_CLASSIFIER_EQUATION_INDEX_CAPACITY
+	];
 	struct prototype_context_comprehension_action
 		comprehension_actions[PROTOTYPE_CONTEXT_COMPREHENSION_ACTION_CAPACITY];
 	size_t comprehension_action_count;
@@ -141,7 +180,6 @@ struct prototype_substitution {
 	uint32_t first;
 	uint32_t second;
 	uint32_t term;
-	uint32_t term_classifier;
 	uint64_t key_hash;
 	uint32_t hash_next;
 };
@@ -178,45 +216,98 @@ int prototype_context_extend(
 	uint32_t parent,
 	uint32_t binding_id,
 	uint32_t classifier,
-	uint32_t classifier_variable,
 	uint32_t* p_context
 );
 
-int prototype_context_extend_occurrence(
+int prototype_context_extend_equation(
 	struct prototype_context_db* db,
 	uint32_t parent,
 	uint32_t binding_id,
-	uint32_t classifier,
-	uint32_t classifier_variable,
+	uint32_t classifier_equation,
 	uint32_t* p_context
 );
+
 int prototype_context_extend_sequence_result(
 	struct prototype_context_db* db,
 	uint32_t parent,
 	uint32_t binding_id,
 	uint32_t classifier,
-	uint32_t classifier_variable,
-	uint32_t producer_computation,
+	uint32_t producer_occurrence,
 	uint32_t* p_context
 );
-int prototype_context_extend_sequence_result_occurrence(
+int prototype_context_extend_sequence_result_equation(
 	struct prototype_context_db* db,
 	uint32_t parent,
 	uint32_t binding_id,
-	uint32_t classifier,
-	uint32_t classifier_variable,
-	uint32_t producer_computation,
+	uint32_t classifier_equation,
+	uint32_t producer_occurrence,
 	uint32_t* p_context
 );
 const struct prototype_context* prototype_context_get(
 	const struct prototype_context_db* db,
 	uint32_t context_id
 );
-uint32_t prototype_context_classifier_term(
+uint32_t prototype_context_classifier_equation(
 	const struct prototype_context* context
 );
-uint32_t prototype_context_classifier_variable(
+const struct prototype_context_classifier_equation*
+prototype_context_classifier_equation_get(
+	const struct prototype_context_db* db,
+	uint32_t equation_id
+);
+int prototype_context_classifier_read(
+	const struct prototype_context_db* db,
+	uint32_t context_id,
+	uint32_t* p_classifier
+);
+uint32_t prototype_context_classifier_answer(
+	const struct prototype_context_db* db,
 	const struct prototype_context* context
+);
+int prototype_context_classifier_equation_intern(
+	struct prototype_context_db* db,
+	uint32_t binding_id,
+	uint32_t source_ast_binder_id,
+	uint32_t parent_context,
+	uint32_t* p_equation_id
+);
+int prototype_context_classifier_equation_attach_context(
+	struct prototype_context_db* db,
+	uint32_t equation_id,
+	uint32_t extension_context
+);
+int prototype_context_classifier_equation_publish(
+	struct prototype_context_db* db,
+	uint32_t equation_id,
+	uint32_t classifier
+);
+int prototype_context_classifier_equation_transition(
+	struct prototype_context_db* db,
+	uint32_t equation_id,
+	uint32_t expected_answer,
+	uint32_t next_answer
+);
+int prototype_context_classifier_reindex_solve(
+	struct prototype_context_db* db,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t* changed_equations,
+	size_t changed_equation_capacity,
+	size_t* p_changed_equation_count
+);
+int prototype_substitution_extend_after_validation(
+	struct prototype_substitution_db* db,
+	const struct prototype_context_db* contexts,
+	uint32_t prefix_substitution,
+	uint32_t target_context,
+	uint32_t term,
+	uint32_t* p_substitution
+);
+int prototype_context_classifier_view_read(
+	const struct prototype_context_classifier_view* view,
+	uint32_t context_id,
+	uint32_t* p_classifier
 );
 int prototype_context_contains_binding(
 	const struct prototype_context_db* db,
@@ -245,6 +336,7 @@ int prototype_context_db_append_relocated(
 	size_t term_relocation_count,
 	const uint32_t* binding_relocation,
 	size_t binding_relocation_count,
+	uint32_t occurrence_offset,
 	uint32_t* relocation,
 	size_t relocation_capacity
 );
@@ -285,6 +377,7 @@ int prototype_context_reindex_telescope(
 	uint32_t* p_substitution
 );
 int prototype_context_pullback_occurrence_telescope(
+	const struct prototype_context_classifier_view* context_view,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
@@ -311,7 +404,6 @@ int prototype_substitution_rebase(
 	uint32_t target_context,
 	uint32_t first,
 	uint32_t second,
-	uint32_t term_classifier,
 	uint32_t* p_substitution
 );
 int prototype_substitution_identity(
@@ -357,6 +449,17 @@ int prototype_substitution_extend(
 	uint32_t term_classifier,
 	uint32_t* p_substitution
 );
+int prototype_substitution_extend_in_view(
+	const struct prototype_context_classifier_view* context_view,
+	struct prototype_substitution_db* db,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t prefix_substitution,
+	uint32_t target_context,
+	uint32_t term,
+	uint32_t term_classifier,
+	uint32_t* p_substitution
+);
 int prototype_substitution_compose(
 	struct prototype_substitution_db* db,
 	const struct prototype_context_db* contexts,
@@ -367,6 +470,14 @@ int prototype_substitution_compose(
 const struct prototype_substitution* prototype_substitution_get(
 	const struct prototype_substitution_db* db,
 	uint32_t substitution_id
+);
+int prototype_substitution_term_classifier_in_view(
+	const struct prototype_context_classifier_view* context_view,
+	struct prototype_substitution_db* db,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t substitution_id,
+	uint32_t* p_classifier
 );
 int prototype_substitution_db_validate(
 	const struct prototype_substitution_db* db,
@@ -432,8 +543,19 @@ int prototype_context_substitution_from_terms(
 	uint32_t argument_count,
 	uint32_t* p_substitution
 );
-int prototype_context_telescope_classifiers(
-	struct prototype_context_db* contexts,
+int prototype_context_substitution_from_terms_in_view(
+	const struct prototype_context_classifier_view* context_view,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t source_context,
+	uint32_t target_context,
+	const uint32_t* arguments,
+	uint32_t argument_count,
+	uint32_t* p_substitution
+);
+int prototype_context_telescope_classifiers_in_view(
+	const struct prototype_context_classifier_view* context_view,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -447,6 +569,19 @@ int prototype_context_telescope_classifiers(
 );
 int prototype_context_telescope_entry_classifier(
 	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t prefix_substitution,
+	uint32_t telescope_base,
+	uint32_t telescope_end,
+	const uint32_t* previous_terms,
+	uint32_t previous_term_count,
+	uint32_t entry_index,
+	uint32_t* p_classifier
+);
+int prototype_context_telescope_entry_classifier_in_view(
+	const struct prototype_context_classifier_view* context_view,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,

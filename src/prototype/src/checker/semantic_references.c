@@ -22,7 +22,8 @@ static const struct semantic_reference_field context_fields[] = {
 		PROTOTYPE_CHECKER_REFERENCE_REQUIRED),
 	TERM_REFERENCE(struct prototype_semantic_context, classifier,
 		PROTOTYPE_CHECKER_REFERENCE_REQUIRED),
-	TERM_REFERENCE(struct prototype_semantic_context, producer_computation,
+	REFERENCE(struct prototype_semantic_context, producer_occurrence,
+		PROTOTYPE_CHECKER_REFERENCE_OCCURRENCE,
 		PROTOTYPE_CHECKER_REFERENCE_OPTIONAL)
 };
 static const struct semantic_reference_field substitution_fields[] = {

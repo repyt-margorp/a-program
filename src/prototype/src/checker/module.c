@@ -4,6 +4,8 @@
 #include "a_program/dimension/operator.h"
 #include "a_program/graph/compile_metadata.h"
 #include "a_program/graph/verification.h"
+#include "a_program/kernel/cwf_certificate.h"
+#include "a_program/kernel/judgement/db.h"
 #include "a_program/kernel/universe.h"
 #include "a_program/support/symbol.h"
 
@@ -48,7 +50,6 @@ static uint64_t prototype_semantic_intrinsic_fingerprint(
 		const struct prototype_pure_primitive_declaration* declaration =
 			&environment->pure_primitives[i];
 		hash = fingerprint_u32(hash, (uint32_t)declaration->primitive_id);
-		hash = fingerprint_u32(hash, declaration->arity);
 		for (size_t j = 0; j < PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY; ++j) {
 			hash = fingerprint_u32(
 				hash, (uint32_t)declaration->argument_types[j]
@@ -62,12 +63,6 @@ static uint64_t prototype_semantic_intrinsic_fingerprint(
 			&environment->effect_operations[i];
 		hash = fingerprint_u32(hash, (uint32_t)declaration->operation_id);
 		hash = fingerprint_u32(hash, (uint32_t)declaration->classifier_schema);
-		hash = fingerprint_u32(hash, declaration->required_host_effects);
-		hash = fingerprint_u32(hash, declaration->arity);
-		hash = fingerprint_u32(hash, (uint32_t)declaration->inner_policy);
-		hash = fingerprint_u32(
-			hash, (uint32_t)declaration->resumption_multiplicity
-		);
 	}
 	return fingerprint_u32(
 		hash, (uint32_t)environment->default_integer_host_type
@@ -287,6 +282,7 @@ static int semantic_term_reader_read_ih_scope(
 	p_scope->match_term = graph->ih_scopes[scope_id].match_term;
 	p_scope->scrutinee_binding_id =
 		graph->ih_scopes[scope_id].scrutinee_binding_id;
+	p_scope->binding_scope_id = graph->ih_scopes[scope_id].binding_scope_id;
 	return 0;
 }
 
@@ -339,7 +335,7 @@ static int semantic_context_reader_read(
 		.binding_id = context->binding_id,
 		.classifier = context->classifier,
 		.extension_kind = context->extension_kind,
-		.producer_computation = context->producer_computation
+		.producer_occurrence = context->producer_occurrence
 	};
 	return 0;
 }
@@ -376,8 +372,7 @@ static int semantic_substitution_reader_read(
 		.target_context = substitution->target_context,
 		.first = substitution->first,
 		.second = substitution->second,
-		.term = substitution->term,
-		.term_classifier = substitution->term_classifier
+		.term = substitution->term
 	};
 	return 0;
 }
@@ -433,8 +428,6 @@ static int semantic_term_field_structurally_valid(
 			return field->as.u32 <= graph->computation_fold_clause_count &&
 				term->as.computation_fold.clause_count <=
 					graph->computation_fold_clause_count - field->as.u32;
-		case PROTOTYPE_TERM_FIELD_TYPE_DECLARATION:
-			return field->as.u32 < module->type_schema.type_count;
 		case PROTOTYPE_TERM_FIELD_SYMBOL:
 			return semantic_term_symbol_field_valid(&module->symbols, field);
 		case PROTOTYPE_TERM_FIELD_OPERATION:
@@ -472,19 +465,19 @@ static int semantic_term_graph_validate(
 			match_case->binder_count > graph->case_binder_count -
 				match_case->first_binder ||
 			!semantic_term_exists(graph, match_case->body) ||
-			((match_case->constructor_owner == PROTOTYPE_INVALID_ID) !=
-			 (match_case->constructor_id == PROTOTYPE_INVALID_ID)) ||
-			(match_case->constructor_owner != PROTOTYPE_INVALID_ID &&
-			 (semantic_constructor_owner_arity(
+			match_case->constructor_owner == PROTOTYPE_INVALID_ID ||
+			match_case->constructor_id == PROTOTYPE_INVALID_ID ||
+			semantic_constructor_owner_arity(
 				graph,
 				match_case->constructor_owner,
 				&constructor_count
-			  ) != 0 || match_case->constructor_id >= constructor_count))) {
+			) != 0 || match_case->constructor_id >= constructor_count) {
 			return -1;
 		}
 	}
 	for (uint32_t i = 0; i < graph->ih_scope_count; ++i) {
 		if (!semantic_term_exists(graph, graph->ih_scopes[i].match_term) ||
+			graph->ih_scopes[i].binding_scope_id >= graph->ih_scope_count ||
 			graph->terms[graph->ih_scopes[i].match_term].tag !=
 				PROTOTYPE_TERM_MATCH) {
 			return -1;
@@ -692,7 +685,9 @@ int prototype_elaborated_module_validate_structure(
 ) {
 	if (!module || module->calculus_fingerprint !=
 		prototype_checker_calculus_fingerprint() ||
-		module->intrinsic_fingerprint !=
+		module->operational_intrinsic_fingerprint !=
+			prototype_core_intrinsic_fingerprint() ||
+		module->typing_intrinsic_fingerprint !=
 		prototype_semantic_intrinsic_fingerprint(
 			&module->intrinsic_environment
 		) ||
@@ -1095,6 +1090,25 @@ int prototype_elaborated_module_validate_structure(
 	return 0;
 }
 
+uint64_t prototype_elaborated_module_intrinsic_contract_fingerprint(
+	const struct prototype_elaborated_module_view* module
+) {
+	if (!module || module->operational_intrinsic_fingerprint == 0 ||
+		module->typing_intrinsic_fingerprint == 0) {
+		return 0;
+	}
+	uint64_t hash = CHECKER_FNV_OFFSET;
+	for (unsigned shift = 0; shift < 64; shift += 8) {
+		hash ^= (module->operational_intrinsic_fingerprint >> shift) & UINT64_C(0xff);
+		hash *= CHECKER_FNV_PRIME;
+	}
+	for (unsigned shift = 0; shift < 64; shift += 8) {
+		hash ^= (module->typing_intrinsic_fingerprint >> shift) & UINT64_C(0xff);
+		hash *= CHECKER_FNV_PRIME;
+	}
+	return hash;
+}
+
 static int mark_context_path(
 	const struct prototype_context_db* contexts,
 	uint32_t context_id,
@@ -1137,6 +1151,7 @@ static int mark_optional_substitution(
 
 static int project_structural_graphs(
 	const struct prototype_type_semantic_schema_db* type_schema,
+	const struct prototype_judgement_db* judgement,
 	const struct prototype_frozen_module_snapshot* snapshot,
 	struct prototype_elaborated_module* module,
 	uint32_t** p_context_relocation,
@@ -1148,7 +1163,8 @@ static int project_structural_graphs(
 	size_t substitution_queue_count = 0;
 	uint32_t* context_relocation = NULL;
 	uint32_t* substitution_relocation = NULL;
-	if (!type_schema || !snapshot || !module || !p_context_relocation ||
+	const char* structural_stage = "arguments";
+	if (!type_schema || !judgement || !snapshot || !module || !p_context_relocation ||
 		!p_substitution_relocation || snapshot->contexts.context_count == 0) {
 		return -1;
 	}
@@ -1183,6 +1199,7 @@ static int project_structural_graphs(
 	}
 
 	for (size_t i = 0; i < type_schema->type_count; ++i) {
+		structural_stage = "type contexts";
 		const struct prototype_type_declaration* type =
 			&type_schema->type_declarations[i];
 		if (mark_context_path(
@@ -1194,6 +1211,7 @@ static int project_structural_graphs(
 		}
 	}
 	for (size_t i = 0; i < type_schema->constructor_count; ++i) {
+		structural_stage = "constructor contexts";
 		const struct prototype_type_constructor_declaration* constructor =
 			&type_schema->constructor_declarations[i];
 		if (mark_context_path(
@@ -1205,19 +1223,41 @@ static int project_structural_graphs(
 		}
 	}
 	for (size_t i = 0; i < snapshot->typed_occurrences.occurrence_count; ++i) {
+		structural_stage = "occurrence roots";
 		const struct prototype_typed_occurrence* occurrence =
 			&snapshot->typed_occurrences.occurrences[i];
+		uint32_t concrete_context;
+		const struct prototype_typed_publication_projection* publication =
+			prototype_typed_publication_view_get(
+				&snapshot->typed_publication, (uint32_t)i, &concrete_context
+			);
+		if (!publication) {
+			fprintf(stderr, "missing publication projection for occurrence %zu\n", i);
+			goto fail;
+		}
 		if (mark_context_path(
 				&snapshot->contexts, occurrence->context_id, context_marked
-			) != 0 || mark_optional_substitution(
+			) != 0) {
+			fprintf(stderr, "invalid source context for occurrence %zu\n", i);
+			goto fail;
+		}
+		if (mark_context_path(
+				&snapshot->contexts, concrete_context, context_marked
+			) != 0) {
+			fprintf(stderr, "invalid publication context for occurrence %zu\n", i);
+			goto fail;
+		}
+		if (mark_optional_substitution(
 				&snapshot->substitutions,
-				occurrence->context_action_substitution,
+				publication->substitution,
 				substitution_marked
 			) != 0) {
+			fprintf(stderr, "invalid publication substitution for occurrence %zu\n", i);
 			goto fail;
 		}
 	}
 	for (size_t i = 0; i < snapshot->typed_occurrences.case_count; ++i) {
+		structural_stage = "case roots";
 		const struct prototype_typed_occurrence_match_case* match_case =
 			&snapshot->typed_occurrences.cases[i];
 		if (mark_context_path(
@@ -1231,6 +1271,7 @@ static int project_structural_graphs(
 		}
 	}
 	for (size_t i = 0; i < snapshot->typed_occurrences.fold_clause_count; ++i) {
+		structural_stage = "fold roots";
 		if (mark_context_path(
 				&snapshot->contexts,
 				snapshot->typed_occurrences.fold_clauses[i].context_id,
@@ -1241,6 +1282,7 @@ static int project_structural_graphs(
 	}
 
 	for (uint32_t i = 0; i < snapshot->substitutions.substitution_count; ++i) {
+		structural_stage = "substitution closure";
 		if (substitution_marked[i]) {
 			substitution_queue[substitution_queue_count++] = i;
 		}
@@ -1314,17 +1356,14 @@ static int project_structural_graphs(
 		goto fail;
 	}
 	for (uint32_t i = 0; i < snapshot->contexts.context_count; ++i) {
+		structural_stage = "context projection";
 		if (!context_marked[i]) {
 			continue;
 		}
 		const struct prototype_context* source = &snapshot->contexts.contexts[i];
-		uint32_t classifier = source->classifier_ref.term_id;
-		if ((i == 0 && source->classifier_ref.kind !=
-				PROTOTYPE_CONTEXT_CLASSIFIER_REF_INVALID) ||
-			(i != 0 && source->classifier_ref.kind !=
-				PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM &&
-			 source->classifier_ref.kind !=
-				PROTOTYPE_CONTEXT_CLASSIFIER_REF_PROVISIONAL) ||
+		uint32_t classifier = i == 0 ? PROTOTYPE_INVALID_ID :
+			prototype_context_classifier_answer(&snapshot->contexts, source);
+		if ((i == 0 && classifier != PROTOTYPE_INVALID_ID) ||
 			(i != 0 && classifier == PROTOTYPE_INVALID_ID)) {
 			goto fail;
 		}
@@ -1337,15 +1376,87 @@ static int project_structural_graphs(
 				.extension_kind = project_context_extension_kind(
 					source->extension_kind
 				),
-				.producer_computation = source->producer_computation
+				.producer_occurrence = source->producer_occurrence
 			};
 	}
 	for (uint32_t i = 0; i < snapshot->substitutions.substitution_count; ++i) {
+		structural_stage = "substitution projection";
 		if (!substitution_marked[i]) {
 			continue;
 		}
 		const struct prototype_substitution* source =
 			&snapshot->substitutions.substitutions[i];
+		uint32_t term_classifier = PROTOTYPE_INVALID_ID;
+		if (source->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
+			uint32_t claim_id = i <
+				snapshot->accepted_substitution_claim_capacity &&
+				snapshot->accepted_substitution_claims ?
+					snapshot->accepted_substitution_claims[i] :
+					PROTOTYPE_INVALID_ID;
+			const struct prototype_judgement_proposition* proposition =
+				claim_id == PROTOTYPE_INVALID_ID ? NULL :
+					prototype_judgement_claim_proposition(judgement, claim_id);
+			if (!proposition ||
+				!prototype_cwf_substitution_claim_matches_assignment(
+					&snapshot->substitutions, judgement, i, claim_id
+				)) {
+				fprintf(
+					stderr,
+					"unaccepted projected substitution=%u claim=%u source=%u "
+					"target=%u term=%u\n",
+					i, claim_id, source->source_context,
+					source->target_context, source->term
+				);
+				goto fail;
+			}
+			term_classifier = proposition->classifier;
+			if (source->term < module->view.terms.term_count &&
+				module->view.terms.terms[source->term].tag == PROTOTYPE_TERM_VAR) {
+				uint32_t binding_context;
+				if (prototype_context_find_binding(
+						&snapshot->contexts,
+						source->source_context,
+						module->view.terms.terms[
+							source->term
+						].as.var.binding_id,
+						&binding_context
+					) == 0) {
+					uint32_t binding_classifier =
+						prototype_context_classifier_answer(
+							&snapshot->contexts,
+							&snapshot->contexts.contexts[binding_context]
+						);
+					if (binding_classifier != term_classifier) {
+						const struct prototype_context_classifier_equation* equation =
+							prototype_context_classifier_equation_get(
+								&snapshot->contexts,
+								snapshot->contexts.contexts[
+									binding_context
+								].classifier_equation
+							);
+						fprintf(
+							stderr,
+							"projected substitution typing source-substitution=%u "
+							"source-context=%u target-context=%u term=%u binding=%u "
+							"binding-context=%u binding-classifier=%u "
+							"evidence-classifier=%u first=%u equation=%u kind=%d "
+							"source-equation=%u equation-substitution=%u\n",
+							i, source->source_context, source->target_context,
+							source->term,
+							module->view.terms.terms[
+								source->term
+							].as.var.binding_id,
+							binding_context, binding_classifier,
+							term_classifier, source->first,
+							equation ? equation->id : PROTOTYPE_INVALID_ID,
+							equation ? equation->key_kind : -1,
+							equation ? equation->key_value : PROTOTYPE_INVALID_ID,
+							equation ? equation->key_auxiliary : PROTOTYPE_INVALID_ID
+						);
+					}
+				}
+			}
+		}
 		module->substitutions[substitution_relocation[i]] =
 			(struct prototype_semantic_substitution) {
 				.kind = project_substitution_kind(source->kind),
@@ -1356,10 +1467,11 @@ static int project_structural_graphs(
 				.second = source->second == PROTOTYPE_INVALID_ID ?
 					PROTOTYPE_INVALID_ID : substitution_relocation[source->second],
 				.term = source->term,
-				.term_classifier = source->term_classifier
+				.term_classifier = term_classifier
 			};
 	}
 	for (size_t i = 0; i < type_schema->type_count; ++i) {
+		structural_stage = "type schema projection";
 		const struct prototype_type_declaration* source =
 			&type_schema->type_declarations[i];
 		module->type_declarations[i] =
@@ -1378,6 +1490,7 @@ static int project_structural_graphs(
 			};
 	}
 	for (size_t i = 0; i < type_schema->constructor_count; ++i) {
+		structural_stage = "constructor schema projection";
 		const struct prototype_type_constructor_declaration* source =
 			&type_schema->constructor_declarations[i];
 		module->constructor_declarations[i] =
@@ -1451,6 +1564,7 @@ static int project_structural_graphs(
 	return 0;
 
 fail:
+	fprintf(stderr, "structural projection stage failed: %s\n", structural_stage);
 	free(context_marked);
 	free(substitution_marked);
 	free(substitution_queue);
@@ -1534,30 +1648,11 @@ static int project_term_graph(
 				sizeof(*module->computation_fold_clauses)
 		);
 	}
-	for (size_t i = 0; i < source->term_count; ++i) {
-		if (module->terms[i].tag != PROTOTYPE_TERM_TYPE_FORMER) {
-			continue;
-		}
-		uint32_t representation_id =
-			module->terms[i].as.type_former.representation_id;
-		uint32_t canonical_declaration = PROTOTYPE_INVALID_ID;
-		for (uint32_t j = 0; j < type_schema->type_count; ++j) {
-			if (type_schema->type_declarations[j].representation_id ==
-				representation_id) {
-				canonical_declaration = j;
-				break;
-			}
-		}
-		if (canonical_declaration == PROTOTYPE_INVALID_ID) {
-			return -1;
-		}
-		module->terms[i].as.type_former.declaration_type_id =
-			canonical_declaration;
-	}
 	for (size_t i = 0; i < source->ih_scope_count; ++i) {
 		module->ih_scopes[i] = (struct prototype_semantic_ih_scope) {
 			.match_term = source->ih_scopes[i].match_term,
-			.scrutinee_binding_id = source->ih_scopes[i].scrutinee_binding_id
+			.scrutinee_binding_id = source->ih_scopes[i].scrutinee_binding_id,
+			.binding_scope_id = source->ih_scopes[i].binding_scope_id
 		};
 	}
 	module->view.terms = (struct prototype_semantic_term_graph_view) {
@@ -1576,7 +1671,7 @@ static int project_term_graph(
 }
 
 static int project_intrinsic_environment(
-	const struct prototype_intrinsic_environment* source,
+	const struct prototype_intrinsic_typing_environment* source,
 	struct prototype_elaborated_module* module
 ) {
 	if (!source || !module ||
@@ -1622,7 +1717,9 @@ static int project_intrinsic_environment(
 		};
 	module->view.calculus_fingerprint =
 		prototype_checker_calculus_fingerprint();
-	module->view.intrinsic_fingerprint =
+	module->view.operational_intrinsic_fingerprint =
+		prototype_core_intrinsic_fingerprint();
+	module->view.typing_intrinsic_fingerprint =
 		prototype_semantic_intrinsic_fingerprint(
 			&module->view.intrinsic_environment
 		);
@@ -2227,6 +2324,13 @@ static int mark_semantic_ih_scope(
 	}
 	if (!marks->ih_scopes[ih_scope_id]) {
 		marks->ih_scopes[ih_scope_id] = 1;
+		if (mark_semantic_ih_scope(
+				module,
+				marks,
+				module->ih_scopes[ih_scope_id].binding_scope_id
+			) != 0) {
+			return -1;
+		}
 		return mark_semantic_term_id(
 			module, marks, module->ih_scopes[ih_scope_id].match_term
 		);
@@ -2569,9 +2673,14 @@ static int compact_semantic_terms(struct prototype_elaborated_module* module) {
 				term_relocation,
 				source_term_count,
 				&compact_ih[ih_relocation[i]].match_term
-			) != 0) {
+			) != 0 || module->ih_scopes[i].binding_scope_id >=
+				module->view.terms.ih_scope_count ||
+			ih_relocation[module->ih_scopes[i].binding_scope_id] ==
+				PROTOTYPE_INVALID_ID) {
 			goto compact_fail;
 		}
+		compact_ih[ih_relocation[i]].binding_scope_id =
+			ih_relocation[module->ih_scopes[i].binding_scope_id];
 	}
 	for (size_t i = 0;
 		i < module->view.terms.computation_fold_clause_count;
@@ -2859,6 +2968,7 @@ static int project_occurrence_kind(int source_kind, int* p_target_kind) {
 
 static int project_occurrences(
 	const struct prototype_typed_occurrence_graph* source,
+	const struct prototype_typed_publication_view* publication,
 	const uint32_t* contract_relocation,
 	size_t contract_relocation_count,
 	const uint32_t* context_relocation,
@@ -2897,14 +3007,19 @@ static int project_occurrences(
 	for (size_t i = 0; i < source->occurrence_count; ++i) {
 		const struct prototype_typed_occurrence* occurrence = &source->occurrences[i];
 		struct prototype_semantic_occurrence* target = &module->occurrences[i];
-		if (occurrence->context_id >= context_relocation_count ||
+		uint32_t concrete_context;
+		const struct prototype_typed_publication_projection* accepted =
+			prototype_typed_publication_view_get(
+				publication, (uint32_t)i, &concrete_context
+			);
+		if (!accepted || concrete_context >= context_relocation_count ||
+			context_relocation[concrete_context] == PROTOTYPE_INVALID_ID ||
+			occurrence->context_id >= context_relocation_count ||
 			context_relocation[occurrence->context_id] == PROTOTYPE_INVALID_ID ||
-			(occurrence->context_action_substitution != PROTOTYPE_INVALID_ID &&
-			 (occurrence->context_action_substitution >=
-				substitution_relocation_count || !substitution_relocation ||
-			  substitution_relocation[
-				occurrence->context_action_substitution
-			  ] == PROTOTYPE_INVALID_ID))) {
+			accepted->substitution >= substitution_relocation_count ||
+			!substitution_relocation || substitution_relocation[
+				accepted->substitution
+			] == PROTOTYPE_INVALID_ID) {
 			return -1;
 		}
 		if (project_occurrence_kind(occurrence->tag, &target->kind) != 0) {
@@ -2915,14 +3030,11 @@ static int project_occurrences(
 		target->application_role = occurrence->application_role;
 		target->context_id = context_relocation[occurrence->context_id];
 		target->context_action_substitution =
-			occurrence->context_action_substitution == PROTOTYPE_INVALID_ID ?
-				PROTOTYPE_INVALID_ID : substitution_relocation[
-					occurrence->context_action_substitution
-				];
-		target->origin_core_term = occurrence->source_core_term;
-		target->origin_classifier = occurrence->source_classifier;
-		target->core_term = occurrence->core_term;
-		target->asserted_classifier = occurrence->classifier;
+			substitution_relocation[accepted->substitution];
+		target->origin_core_term = occurrence->core_term;
+		target->origin_classifier = occurrence->classifier;
+		target->core_term = accepted->subject;
+		target->asserted_classifier = accepted->classifier;
 		target->conditional_contract = PROTOTYPE_INVALID_ID;
 		if (occurrence->classifier_status ==
 			PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED) {
@@ -3047,12 +3159,14 @@ int prototype_elaborated_module_project(
 	const struct symbol_table* symbols,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_semantic_schema_db* type_schema,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_universe_db* universes,
+	const struct prototype_judgement_db* judgement,
 	const struct prototype_frozen_module_snapshot* snapshot,
 	struct prototype_elaborated_module* module
 ) {
 	if (!symbols || !terms || !type_schema || !intrinsic_environment || !universes ||
+		!judgement ||
 		!snapshot || !module ||
 		!snapshot->typed_occurrences.sealed || !snapshot->typed_occurrences.frozen ||
 		snapshot->typed_occurrences.transaction_active) {
@@ -3068,14 +3182,18 @@ int prototype_elaborated_module_project(
 	uint32_t* contract_relocation = NULL;
 	uint32_t* context_relocation = NULL;
 	uint32_t* substitution_relocation = NULL;
+	const char* project_stage = "intrinsic environment";
 	if (project_intrinsic_environment(intrinsic_environment, module) != 0) {
 		goto project_fail;
 	}
+	project_stage = "term graph";
 	if (project_term_graph(terms, type_schema, module) != 0) {
 		goto project_fail;
 	}
+	project_stage = "structural graphs";
 	if (project_structural_graphs(
 			type_schema,
+			judgement,
 			snapshot,
 			module,
 			&context_relocation,
@@ -3083,13 +3201,16 @@ int prototype_elaborated_module_project(
 		) != 0) {
 		goto project_fail;
 	}
+	project_stage = "contracts";
 	if (project_contracts(
 			&snapshot->verification, module, &contract_relocation
 		) != 0) {
 		goto project_fail;
 	}
+	project_stage = "occurrences";
 	if (project_occurrences(
 			&snapshot->typed_occurrences,
+			&snapshot->typed_publication,
 			contract_relocation,
 			snapshot->verification.obligation_count,
 			context_relocation,
@@ -3100,24 +3221,30 @@ int prototype_elaborated_module_project(
 		) != 0) {
 		goto project_fail;
 	}
+	project_stage = "term compaction";
 	if (compact_semantic_terms(module) != 0) {
 		goto project_fail;
 	}
+	project_stage = "exports";
 	if (project_semantic_exports(snapshot, module) != 0) {
 		goto project_fail;
 	}
+	project_stage = "universes";
 	if (project_semantic_universes(universes, module) != 0) {
 		goto project_fail;
 	}
+	project_stage = "symbols";
 	if (project_semantic_symbols(symbols, module) != 0) {
 		goto project_fail;
 	}
+	project_stage = "dependencies";
 	if (project_semantic_dependencies(module) != 0) {
 		goto project_fail;
 	}
 	goto project_done;
 
 project_fail:
+		fprintf(stderr, "semantic projection stage failed: %s\n", project_stage);
 		free(contract_relocation);
 		free(context_relocation);
 		free(substitution_relocation);

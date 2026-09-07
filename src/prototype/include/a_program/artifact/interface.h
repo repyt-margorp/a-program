@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "calculus.h"
+#include "a_program/artifact/semantic_key.h"
 #include "a_program/frontend/ast.h"
 #include "a_program/graph/compile_metadata.h"
 #include "a_program/kernel/context.h"
@@ -14,7 +15,7 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 
-#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 86
+#define PROTOTYPE_ARTIFACT_FORMAT_VERSION 90
 #define PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_ASSOCIATION_CAPACITY 128
 #define PROTOTYPE_ARTIFACT_FUNCTION_GRAPH_SELECTOR_GROUP_CAPACITY 2048
 #define PROTOTYPE_ARTIFACT_EXPORT_CONDITION_CAPACITY 8192
@@ -62,8 +63,8 @@ struct prototype_artifact_term_export {
 	uint32_t source_condition_first;
 	uint32_t source_condition_count;
 	int transparency;
-	struct prototype_term_canonical_key canonical_key;
-	struct prototype_term_canonical_key classifier_key;
+	struct prototype_artifact_semantic_key canonical_key;
+	struct prototype_artifact_semantic_key classifier_key;
 };
 
 struct prototype_artifact_type_export {
@@ -171,7 +172,7 @@ struct prototype_artifact_resolved_constructor_owner_ref {
 	uint32_t source;
 	uint32_t owner;
 	uint32_t ordinal;
-	struct prototype_term_canonical_key owner_key;
+	struct prototype_artifact_semantic_key owner_key;
 };
 
 struct prototype_artifact_relocation_table {
@@ -244,7 +245,8 @@ struct prototype_artifact_debug_table {
 };
 
 struct prototype_artifact_interface {
-	uint64_t intrinsic_environment_fingerprint;
+	uint64_t operational_intrinsic_fingerprint;
+	uint64_t typing_intrinsic_fingerprint;
 	int default_integer_host_type;
 	struct prototype_artifact_term_export* term_exports;
 	size_t term_export_count;
@@ -302,6 +304,7 @@ struct prototype_canonical_link_entry {
 	const struct prototype_type_declaration_db* type_declarations;
 	uint32_t local_term;
 	uint32_t representative;
+	/* Compiler-session candidate key. This table is never persisted. */
 	struct prototype_term_canonical_key canonical_key;
 };
 
@@ -406,7 +409,8 @@ void prototype_artifact_debug_table_init(
 
 int prototype_artifact_interface_build_from_metadata(
 	struct prototype_artifact_interface* interface,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_compile_metadata* metadata,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
@@ -436,9 +440,19 @@ void prototype_artifact_interface_set_namespace(
 
 int prototype_artifact_interface_recompute_keys(
 	struct prototype_artifact_interface* interface,
+	const struct symbol_table* symbols,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_context_db* contexts
+	const struct prototype_context_db* contexts,
+	const struct prototype_dimension_operator_db* dimension_operators
+);
+
+int prototype_artifact_interface_validate_semantic_keys(
+	const struct prototype_artifact_interface* interface,
+	const struct symbol_table* symbols,
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_dimension_operator_db* dimension_operators
 );
 
 int prototype_artifact_interface_build_definition_env(
@@ -485,6 +499,7 @@ int prototype_artifact_interface_find_constructor_export(
 
 int prototype_artifact_apply_term_relocations(
 	struct prototype_artifact_interface* target_interface,
+	const struct symbol_table* symbols,
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,
@@ -495,10 +510,12 @@ int prototype_artifact_apply_term_relocations(
 
 int prototype_artifact_apply_type_expr_relocations(
 	struct prototype_artifact_interface* target_interface,
+	const struct symbol_table* symbols,
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,
 	const struct prototype_context_db* target_contexts,
+	const struct prototype_dimension_operator_db* target_dimension_operators,
 	const struct prototype_artifact_interface* provider_interface
 );
 
@@ -527,6 +544,7 @@ struct prototype_artifact_graph_relocation {
 
 int prototype_artifact_append_graph(
 	struct prototype_artifact_interface* appended_interface,
+	const struct symbol_table* symbols,
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,

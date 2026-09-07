@@ -4,19 +4,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "a_program/frontend/typing_usage_state.h"
 #include "a_program/graph/typed_occurrence_model.h"
-#include "a_program/kernel/resource_usage.h"
-
-#define PROTOTYPE_TYPED_OCCURRENCE_USAGE_SOLUTION_CAPACITY 4096
-#define PROTOTYPE_TYPED_OCCURRENCE_USAGE_ENTRY_CAPACITY 131072
 
 struct prototype_context_db;
-
-struct prototype_occurrence_usage_solution {
-	uint32_t first_entry;
-	uint32_t entry_count;
-	int binder_usage;
-};
+struct prototype_term_db;
 
 int prototype_occurrence_usage_solve(
 	const struct prototype_typed_occurrence_graph* occurrences,

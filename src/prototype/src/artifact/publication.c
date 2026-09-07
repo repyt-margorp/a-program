@@ -1,4 +1,5 @@
 #include "a_program/kernel/cwf_certificate.h"
+#include "a_program/kernel/type_term_debug.h"
 
 /* Publication remains one translation unit so closure traversal and dense ID
  * assignment retain their exact order. These partitions separate ownership. */

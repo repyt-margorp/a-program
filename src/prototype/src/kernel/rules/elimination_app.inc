@@ -28,7 +28,6 @@ static int ensure_lambda_binder_assumption(
 			delta->current_context_id,
 			lambda->as.lambda.binding_id,
 			argument_classifier,
-			PROTOTYPE_INVALID_ID,
 			&binder_context
 		) != 0) {
 		return -1;
@@ -293,7 +292,7 @@ static int lambda_body_classifier_matches_binder(
 	}
 	if (terms->terms[body].tag == PROTOTYPE_TERM_RETURN) {
 		uint32_t value = terms->terms[body].as.return_term.value;
-		struct prototype_term_classifier_view view;
+		struct prototype_classifier_view view;
 		if (value >= terms->term_count) {
 			return 0;
 		}
@@ -303,7 +302,7 @@ static int lambda_body_classifier_matches_binder(
 		}
 		if (prototype_judgement_classifier_view(
 				terms, type_declarations, NULL, body_classifier, &view
-			) != 0 || view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
+			) != 0 || view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION) {
 			return 0;
 		}
 		return (prototype_judgement_classifier_conversion(
@@ -715,8 +714,8 @@ static int select_delta_pi_classifier_for_domain(
 			uint32_t selected_body;
 			uint32_t candidate_family_binder;
 			uint32_t candidate_body;
-			struct prototype_term_classifier_view selected_view;
-			struct prototype_term_classifier_view candidate_view;
+			struct prototype_classifier_view selected_view;
+			struct prototype_classifier_view candidate_view;
 			struct prototype_effect_row_normal_form selected_effects;
 			struct prototype_effect_row_normal_form candidate_effects;
 			if (classifier_kernel_as_pi(
@@ -750,12 +749,12 @@ static int select_delta_pi_classifier_for_domain(
 					candidate_body,
 					&candidate_view
 				) != 0 || selected_view.category !=
-					PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-				candidate_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+					PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+				candidate_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
 				selected_view.computation_kind !=
-					PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+					PROTOTYPE_COMPUTATION_KIND_RETURNING ||
 				candidate_view.computation_kind !=
-					PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+					PROTOTYPE_COMPUTATION_KIND_RETURNING ||
 				!(prototype_judgement_classifier_conversion(
 					terms,
 					type_declarations,

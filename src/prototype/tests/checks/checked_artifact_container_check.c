@@ -1,5 +1,6 @@
 #include "a_program/checker/container.h"
 #include "a_program/driver/compiler_session.h"
+#include "../support/compiler_session_storage.h"
 #include "a_program/frontend/reader.h"
 #include "a_program/graph/compile_metadata.h"
 
@@ -67,15 +68,16 @@ static int project_fixture(
 	struct prototype_frozen_module_snapshot snapshot;
 	memset(&error, 0, sizeof(error));
 	if (prototype_program_storage_init(storage) != 0 ||
-		prototype_read_file(path, &storage->program, &error) != 0 ||
+		prototype_read_file(path, &storage->private->program, &error) != 0 ||
 		prototype_compile_metadata_frozen_snapshot(
-			&storage->metadata, &snapshot
+			&storage->private->metadata, &snapshot
 		) != 0 || prototype_elaborated_module_project(
-			&storage->symbols,
-			&storage->terms,
-			&storage->type_declarations.semantic_schema,
-			storage->program.intrinsic_environment,
-			&storage->universe,
+			&storage->private->symbols,
+			&storage->private->core.terms,
+			&storage->private->type_declarations.semantic_schema,
+			storage->private->program.intrinsic_environment,
+			&storage->private->universe,
+			&storage->private->judgement,
 			&snapshot,
 			module
 		) != 0) {
@@ -153,7 +155,15 @@ int main(void) {
 	if (prototype_checker_check_module(
 			&source.view, &options, &source_checked, &report
 		) != 0 || report.status != PROTOTYPE_CHECKER_COMPLETE || !source_checked) {
-		fprintf(stderr, "fixture did not mint checked authority\n");
+		fprintf(
+			stderr,
+			"fixture did not mint checked authority status=%d reason=%d subject=%u "
+			"effort=%llu\n",
+			report.status,
+			report.stop_reason,
+			report.subject,
+			(unsigned long long)report.effort_used
+		);
 		goto cleanup;
 	}
 	first = tmpfile();
@@ -179,7 +189,8 @@ int main(void) {
 	capsule.producer_version = 1;
 	capsule.cost_model_version = PROTOTYPE_EFFORT_COST_MODEL_VERSION;
 	capsule.calculus_fingerprint = source.view.calculus_fingerprint;
-	capsule.intrinsic_fingerprint = source.view.intrinsic_fingerprint;
+	capsule.intrinsic_fingerprint =
+		prototype_elaborated_module_intrinsic_contract_fingerprint(&source.view);
 	capsule.payload_format = 1;
 	capsule.payload_size = 1;
 	capsule.payload = malloc(1);

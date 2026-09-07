@@ -728,7 +728,6 @@ static int check_comprehension_action_collisions(void) {
 				prototype_context_empty(&contexts),
 				ACTION_COUNT + i,
 				int_type,
-				PROTOTYPE_INVALID_ID,
 				&sources[i]
 			) != 0) {
 			return -1;
@@ -812,6 +811,8 @@ int main(void) {
 	uint32_t dependent_context;
 	uint32_t unresolved_left;
 	uint32_t unresolved_right;
+	uint32_t unresolved_left_equation;
+	uint32_t unresolved_right_equation;
 	uint32_t empty_substitution;
 	uint32_t section;
 	uint32_t dependent_section;
@@ -895,19 +896,19 @@ int main(void) {
 	if (prototype_term_primitive_int(&term_db, &int_type) != 0 ||
 		prototype_term_primitive_text(&term_db, &text_type) != 0 ||
 		prototype_context_extend(
-			&contexts, 0, 0, int_type, PROTOTYPE_INVALID_ID, &int_context
+			&contexts, 0, 0, int_type, &int_context
 		) != 0 ||
 		prototype_context_extend(
-			&contexts, 0, 99, int_type, PROTOTYPE_INVALID_ID, &same_int_context
+			&contexts, 0, 99, int_type, &same_int_context
 		) != 0 ||
 		prototype_context_extend(
-			&contexts, 0, 0, int_type, PROTOTYPE_INVALID_ID, &repeated_int_context
+			&contexts, 0, 0, int_type, &repeated_int_context
 		) != 0 ||
 		prototype_context_extend(
-			&contexts, 0, 0, text_type, PROTOTYPE_INVALID_ID, &text_context
+			&contexts, 0, 0, text_type, &text_context
 		) != 0 ||
 		prototype_context_extend(
-			&contexts, int_context, 1, text_type, PROTOTYPE_INVALID_ID,
+			&contexts, int_context, 1, text_type,
 			&nested_context
 		) != 0 ||
 		prototype_term_var(&term_db, 0, &variable) != 0 ||
@@ -920,14 +921,16 @@ int main(void) {
 			int_context,
 			1,
 			dependent_classifier,
-			PROTOTYPE_INVALID_ID,
 			&dependent_context
 		) != 0 ||
-		prototype_context_extend(
-			&contexts, 0, 0, PROTOTYPE_INVALID_ID, 17, &unresolved_left
-		) != 0 ||
-		prototype_context_extend(
-			&contexts, 0, 0, PROTOTYPE_INVALID_ID, 18, &unresolved_right
+		prototype_context_classifier_equation_intern(
+			&contexts, 0, 17, 0, &unresolved_left_equation
+		) != 0 || prototype_context_classifier_equation_intern(
+			&contexts, 0, 18, 0, &unresolved_right_equation
+		) != 0 || prototype_context_extend_equation(
+			&contexts, 0, 0, unresolved_left_equation, &unresolved_left
+		) != 0 || prototype_context_extend_equation(
+			&contexts, 0, 0, unresolved_right_equation, &unresolved_right
 		) != 0) {
 		fprintf(stderr, "failed to construct categorical contexts\n");
 		return 1;
@@ -1238,6 +1241,66 @@ int main(void) {
 		return 1;
 	}
 	{
+		uint32_t source_equation;
+		uint32_t source_extension;
+		uint32_t projected_extension;
+		uint32_t projected_substitution;
+		uint32_t repeated_extension;
+		uint32_t repeated_substitution;
+		uint32_t projected_classifier;
+		const struct prototype_context_classifier_view context_view = {
+			.contexts = &contexts
+		};
+		if (prototype_context_classifier_equation_intern(
+				&contexts,
+				42,
+				777,
+				prototype_context_empty(&contexts),
+				&source_equation
+			) != 0 || prototype_context_extend_equation(
+				&contexts,
+				prototype_context_empty(&contexts),
+				42,
+				source_equation,
+				&source_extension
+			) != 0 || prototype_context_pullback_occurrence_telescope(
+				&context_view,
+				&contexts,
+				&substitutions,
+				&term_db,
+				&type_declarations,
+				prototype_context_empty(&contexts),
+				source_extension,
+				empty_identity,
+				&projected_extension,
+				&projected_substitution
+			) != 0 || projected_extension == source_extension ||
+			prototype_context_classifier_read(
+				&contexts, projected_extension, &projected_classifier
+			) != 1 || prototype_context_classifier_equation_publish(
+				&contexts, source_equation, int_type
+			) != 0 || prototype_context_pullback_occurrence_telescope(
+				&context_view,
+				&contexts,
+				&substitutions,
+				&term_db,
+				&type_declarations,
+				prototype_context_empty(&contexts),
+				source_extension,
+				empty_identity,
+				&repeated_extension,
+				&repeated_substitution
+			) != 0 || repeated_extension != projected_extension ||
+			repeated_substitution != projected_substitution ||
+			prototype_context_classifier_read(
+				&contexts, projected_extension, &projected_classifier
+			) != 0 || projected_classifier != int_type ||
+			prototype_context_db_validate(&contexts, &term_db) != 0) {
+			fprintf(stderr, "pending classifier pullback equation law failed\n");
+			return 1;
+		}
+	}
+	{
 		enum { LARGE_CONTEXT_DEPTH = 513 };
 		static struct prototype_term large_term_storage[16];
 		static struct prototype_match_case large_case_storage[1];
@@ -1290,8 +1353,7 @@ int main(void) {
 			.target_context = 0,
 			.first = PROTOTYPE_INVALID_ID,
 			.second = PROTOTYPE_INVALID_ID,
-			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID
+			.term = PROTOTYPE_INVALID_ID
 		};
 		large_substitutions.substitution_count = 1;
 		for (uint32_t i = 0; i < LARGE_CONTEXT_DEPTH; ++i) {
@@ -1301,7 +1363,6 @@ int main(void) {
 					large_context,
 					1000 + i,
 					large_int_type,
-					PROTOTYPE_INVALID_ID,
 					&extended_context
 				) != 0) {
 				fprintf(stderr, "failed to extend large context\n");
@@ -1314,8 +1375,7 @@ int main(void) {
 					.target_context = extended_context,
 					.first = i,
 					.second = PROTOTYPE_INVALID_ID,
-					.term = large_literal,
-					.term_classifier = large_int_type
+					.term = large_literal
 				};
 			large_substitutions.substitution_count++;
 			large_context = extended_context;
@@ -1370,8 +1430,7 @@ int main(void) {
 			.target_context = prototype_context_empty(&contexts),
 			.first = 0,
 			.second = 0,
-			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID
+			.term = PROTOTYPE_INVALID_ID
 		};
 		if (prototype_context_db_validate(
 				&malformed_contexts, &term_db
@@ -1423,7 +1482,6 @@ int main(void) {
 				prototype_context_empty(&source_contexts),
 				41,
 				int_type,
-				PROTOTYPE_INVALID_ID,
 				&source_context
 			) != 0 || prototype_substitution_empty(
 				&source_substitutions,
@@ -1447,6 +1505,7 @@ int main(void) {
 				8,
 				binding_relocation,
 				42,
+				0,
 				context_relocation,
 				4
 			) != 0 || prototype_substitution_db_append_relocated(
@@ -1464,19 +1523,18 @@ int main(void) {
 				141 ||
 			target_contexts.contexts[
 				context_relocation[source_context]
-			].classifier_ref.kind !=
-				PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM ||
-			target_contexts.contexts[
-				context_relocation[source_context]
-			].classifier_ref.term_id != int_type + 3 ||
+			].classifier_equation == PROTOTYPE_INVALID_ID ||
+			prototype_context_classifier_answer(
+				&target_contexts,
+				&target_contexts.contexts[context_relocation[source_context]]
+			) != int_type + 3 ||
 			target_substitutions.substitution_count != 2 ||
 			target_substitutions.substitutions[1].source_context !=
 				context_relocation[source_context] ||
 			target_substitutions.substitutions[1].target_context !=
 				context_relocation[source_context] ||
 			target_substitutions.substitutions[1].first != 0 ||
-			target_substitutions.substitutions[1].term != literal + 3 ||
-			target_substitutions.substitutions[1].term_classifier != int_type + 3) {
+			target_substitutions.substitutions[1].term != literal + 3) {
 			fprintf(stderr, "context/substitution relocation law failed\n");
 			return 1;
 		}
@@ -1511,7 +1569,6 @@ int main(void) {
 					prototype_context_empty(&collision_contexts),
 					1000 + i,
 					int_type,
-					PROTOTYPE_INVALID_ID,
 					&context_id
 				) != 0 || context_id != i + 1 ||
 				prototype_substitution_identity(
@@ -1535,7 +1592,6 @@ int main(void) {
 				prototype_context_empty(&collision_contexts),
 				1000,
 				int_type,
-				PROTOTYPE_INVALID_ID,
 				&repeated_context
 			) != 0 || repeated_context != first_context ||
 			prototype_substitution_identity(
@@ -1571,8 +1627,8 @@ int main(void) {
 	);
 	memset(&int_occurrence, 0xff, sizeof(int_occurrence));
 	int_occurrence.tag = PROTOTYPE_TYPED_OCCURRENCE_ATOM;
-	int_occurrence.category = PROTOTYPE_TERM_CATEGORY_VALUE;
-	int_occurrence.computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
+	int_occurrence.category = PROTOTYPE_CLASSIFIER_CATEGORY_VALUE;
+	int_occurrence.computation_kind = PROTOTYPE_COMPUTATION_KIND_INVALID;
 	int_occurrence.application_role = PROTOTYPE_TERM_APPLICATION_NONE;
 	int_occurrence.context_id = int_context;
 	int_occurrence.core_term = literal;
@@ -1616,9 +1672,9 @@ int main(void) {
 	}
 	saturated_effect_occurrence = int_occurrence;
 	saturated_effect_occurrence.tag = PROTOTYPE_TYPED_OCCURRENCE_APP;
-	saturated_effect_occurrence.category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
+	saturated_effect_occurrence.category = PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION;
 	saturated_effect_occurrence.computation_kind =
-		PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
+		PROTOTYPE_COMPUTATION_KIND_RETURNING;
 	saturated_effect_occurrence.application_role =
 		PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION;
 	saturated_effect_occurrence.core_term = effect_application;

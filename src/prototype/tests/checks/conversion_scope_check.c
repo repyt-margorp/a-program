@@ -1,5 +1,4 @@
 #include "a_program/core/term.h"
-#include "a_program/kernel/type_declaration.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -8,32 +7,16 @@
 #define CASE_CAPACITY 64
 #define CASE_BINDER_CAPACITY 64
 #define MATCH_FRAME_CAPACITY 32
-#define TYPE_CAPACITY 4
-#define CONSTRUCTOR_CAPACITY 4
-#define PARAMETER_CAPACITY 4
-#define FIELD_TYPE_CAPACITY 4
-#define TYPE_EXPR_CAPACITY 4
-
 struct test_storage {
 	struct prototype_term terms[TERM_CAPACITY];
 	struct prototype_match_case cases[CASE_CAPACITY];
 	int case_label_symbols[CASE_CAPACITY];
 	struct prototype_case_binder case_binders[CASE_BINDER_CAPACITY];
 	struct prototype_ih_scope ih_scopes[MATCH_FRAME_CAPACITY];
-	struct prototype_type_declaration type_declarations[TYPE_CAPACITY];
-	struct prototype_type_constructor_declaration constructors[CONSTRUCTOR_CAPACITY];
-	struct prototype_type_readback_entry type_readback_entries[TYPE_CAPACITY];
-	struct prototype_type_constructor_readback constructor_readbacks[CONSTRUCTOR_CAPACITY];
-	struct prototype_constructor_classifier_cache_entry constructor_caches[CONSTRUCTOR_CAPACITY];
-	struct prototype_type_parameter_declaration parameters[PARAMETER_CAPACITY];
-	uint32_t field_types[FIELD_TYPE_CAPACITY];
-	struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
-	struct prototype_type_representation type_representations[TYPE_CAPACITY];
 };
 
 static void init_databases(
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* types,
 	struct test_storage* storage
 ) {
 	prototype_term_db_init(
@@ -48,32 +31,10 @@ static void init_databases(
 		storage->ih_scopes,
 		MATCH_FRAME_CAPACITY
 	);
-	prototype_type_declaration_db_init(
-		types,
-		storage->type_declarations,
-		TYPE_CAPACITY,
-		storage->constructors,
-		CONSTRUCTOR_CAPACITY,
-		storage->type_readback_entries,
-		TYPE_CAPACITY,
-		storage->parameters,
-		PARAMETER_CAPACITY,
-		storage->constructor_readbacks,
-		CONSTRUCTOR_CAPACITY,
-		storage->field_types,
-		FIELD_TYPE_CAPACITY,
-		storage->type_exprs,
-		TYPE_EXPR_CAPACITY,
-		storage->type_representations,
-		TYPE_CAPACITY,
-		storage->constructor_caches,
-		CONSTRUCTOR_CAPACITY
-	);
 }
 
 static int conversion_status(
 	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* types,
 	uint32_t left,
 	uint32_t right,
 	uint64_t step_limit,
@@ -82,9 +43,8 @@ static int conversion_status(
 	struct prototype_term_conversion_result result;
 	if (prototype_term_compare_for_conversion(
 			terms,
-			types,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			left,
 			right,
 			step_limit,
@@ -302,9 +262,8 @@ static int build_nested_recursive_match(
 
 int main(void) {
 	struct prototype_term_db terms;
-	struct prototype_type_declaration_db types;
 	struct test_storage storage;
-	init_databases(&terms, &types, &storage);
+	init_databases(&terms, &storage);
 
 	uint32_t scrutinee;
 	uint32_t left_frame;
@@ -322,7 +281,6 @@ int main(void) {
 	}
 	if (conversion_status(
 			&terms,
-			&types,
 			left_match,
 			right_match,
 			UINT64_MAX,
@@ -354,7 +312,6 @@ int main(void) {
 	}
 	if (conversion_status(
 			&terms,
-			&types,
 			left_free_ih,
 			right_free_ih,
 			UINT64_MAX,
@@ -392,7 +349,6 @@ int main(void) {
 	}
 	if (conversion_status(
 			&terms,
-			&types,
 			left_forall,
 			right_forall,
 			UINT64_MAX,
@@ -403,7 +359,6 @@ int main(void) {
 	}
 	if (conversion_status(
 			&terms,
-			&types,
 			left_row,
 			right_row,
 			UINT64_MAX,
@@ -415,7 +370,6 @@ int main(void) {
 	prototype_term_normalization_cache_clear(&terms);
 	if (conversion_status(
 			&terms,
-			&types,
 			left_forall,
 			right_forall,
 			0,
@@ -457,14 +411,12 @@ int main(void) {
 			&terms, right_outer, crossed_nested_inner, &crossed_nested
 		) != 0 || conversion_status(
 			&terms,
-			&types,
 			left_nested,
 			right_nested,
 			UINT64_MAX,
 			PROTOTYPE_TERM_CONVERSION_EQUAL
 		) != 0 || conversion_status(
 			&terms,
-			&types,
 			left_nested,
 			crossed_nested,
 			UINT64_MAX,
@@ -506,7 +458,6 @@ int main(void) {
 			&terms, right_outer, right_outer_row, &plain_forall
 		) != 0 || conversion_status(
 			&terms,
-			&types,
 			request_forall,
 			plain_forall,
 			UINT64_MAX,
@@ -532,7 +483,6 @@ int main(void) {
 	}
 	if (conversion_status(
 			&terms,
-			&types,
 			recursive_binder_match,
 			plain_binder_match,
 			UINT64_MAX,
@@ -559,7 +509,6 @@ int main(void) {
 			&unframed_match
 		) != 0 || conversion_status(
 			&terms,
-			&types,
 			framed_match,
 			unframed_match,
 			UINT64_MAX,
@@ -584,7 +533,6 @@ int main(void) {
 			&foreign_match
 		) != 0 || conversion_status(
 			&terms,
-			&types,
 			owning_match,
 			foreign_match,
 			UINT64_MAX,
@@ -605,14 +553,12 @@ int main(void) {
 			&terms, scrutinee, 1, 1, &crossed_nested_match
 		) != 0 || conversion_status(
 			&terms,
-			&types,
 			left_nested_match,
 			right_nested_match,
 			UINT64_MAX,
 			PROTOTYPE_TERM_CONVERSION_EQUAL
 		) != 0 || conversion_status(
 			&terms,
-			&types,
 			left_nested_match,
 			crossed_nested_match,
 			UINT64_MAX,

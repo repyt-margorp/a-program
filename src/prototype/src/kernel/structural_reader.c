@@ -44,6 +44,7 @@ static int producer_ih_scope_read(
 	if (!db || !p_scope || scope_id >= db->ih_scope_count) return -1;
 	p_scope->match_term = db->ih_scopes[scope_id].match_term;
 	p_scope->scrutinee_binding_id = db->ih_scopes[scope_id].scrutinee_binding_id;
+	p_scope->binding_scope_id = db->ih_scopes[scope_id].binding_scope_id;
 	return 0;
 }
 
@@ -140,15 +141,19 @@ static int producer_context_read(
 	const struct prototype_context_db* db = state;
 	const struct prototype_context* context = prototype_context_get(db, context_id);
 	if (!context || !p_record) return -1;
-	if (context_id != 0 && context->classifier_ref.kind !=
-		PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM) return 1;
+	uint32_t classifier = PROTOTYPE_INVALID_ID;
+	if (context_id != 0) {
+		int classifier_status = prototype_context_classifier_read(
+			db, context_id, &classifier
+		);
+		if (classifier_status != 0) return classifier_status;
+	}
 	*p_record = (struct prototype_context_structural_record) {
 		.parent = context->parent,
 		.binding_id = context->binding_id,
-		.classifier = context_id == 0 ? PROTOTYPE_INVALID_ID :
-			context->classifier_ref.term_id,
+		.classifier = classifier,
 		.extension_kind = context->extension_kind,
-		.producer_computation = context->producer_computation
+		.producer_occurrence = context->producer_occurrence
 	};
 	return 0;
 }
@@ -180,8 +185,7 @@ static int producer_substitution_read(
 		.target_context = substitution->target_context,
 		.first = substitution->first,
 		.second = substitution->second,
-		.term = substitution->term,
-		.term_classifier = substitution->term_classifier
+		.term = substitution->term
 	};
 	return 0;
 }
@@ -225,7 +229,7 @@ int prototype_context_structural_validate(
 				context.classifier != PROTOTYPE_INVALID_ID ||
 				context.extension_kind !=
 					PROTOTYPE_STRUCTURAL_CONTEXT_EXTENSION_INVALID ||
-				context.producer_computation != PROTOTYPE_INVALID_ID) return -1;
+				context.producer_occurrence != PROTOTYPE_INVALID_ID) return -1;
 			continue;
 		}
 		if (context.parent >= i || context.binding_id == PROTOTYPE_INVALID_ID ||
@@ -236,9 +240,7 @@ int prototype_context_structural_validate(
 				PROTOTYPE_STRUCTURAL_CONTEXT_EXTENSION_SEQUENCE_RESULT) ||
 			((context.extension_kind ==
 				PROTOTYPE_STRUCTURAL_CONTEXT_EXTENSION_VALUE) !=
-			 (context.producer_computation == PROTOTYPE_INVALID_ID)) ||
-			(context.producer_computation != PROTOTYPE_INVALID_ID &&
-			 context.producer_computation >= term_count)) return -1;
+			 (context.producer_occurrence == PROTOTYPE_INVALID_ID))) return -1;
 	}
 	return 0;
 }
@@ -359,8 +361,7 @@ int prototype_substitution_structural_validate(
 			substitution.target_context >= contexts->count) return -1;
 		int empty_payload = substitution.first == PROTOTYPE_INVALID_ID &&
 			substitution.second == PROTOTYPE_INVALID_ID &&
-			substitution.term == PROTOTYPE_INVALID_ID &&
-			substitution.term_classifier == PROTOTYPE_INVALID_ID;
+			substitution.term == PROTOTYPE_INVALID_ID;
 		switch (substitution.kind) {
 			case PROTOTYPE_STRUCTURAL_SUBSTITUTION_IDENTITY:
 				if (!empty_payload || substitution.source_context !=
@@ -383,7 +384,6 @@ int prototype_substitution_structural_validate(
 				if (substitution.first >= i ||
 					substitution.second != PROTOTYPE_INVALID_ID ||
 					substitution.term >= term_count ||
-					substitution.term_classifier >= term_count ||
 					substitution.target_context == 0 ||
 					prototype_substitution_structural_read(
 						substitutions, substitution.first, &prefix
@@ -399,7 +399,6 @@ int prototype_substitution_structural_validate(
 				struct prototype_substitution_structural_record inner;
 				if (substitution.first >= i || substitution.second >= i ||
 					substitution.term != PROTOTYPE_INVALID_ID ||
-					substitution.term_classifier != PROTOTYPE_INVALID_ID ||
 					prototype_substitution_structural_read(
 						substitutions, substitution.first, &outer
 					) != 0 || prototype_substitution_structural_read(

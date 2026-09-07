@@ -237,7 +237,6 @@ static int prototype_judgement_delta_ensure_type_at_universe(
 				outer_context,
 				codomain_binder,
 				domain,
-				PROTOTYPE_INVALID_ID,
 				&binder_context
 			) != 0) {
 			return -1;
@@ -1269,7 +1268,6 @@ int prototype_judgement_delta_build_match_motive(
 			outer_context,
 			motive_binder_id,
 			scrutinee_classifier,
-			PROTOTYPE_INVALID_ID,
 			&motive_context
 		) != 0) {
 		return -1;
@@ -1520,7 +1518,6 @@ int prototype_judgement_delta_build_constant_match_motive(
 			outer_context,
 			motive_binding,
 			scrutinee_classifier,
-			PROTOTYPE_INVALID_ID,
 			&motive_context
 		) != 0) {
 		return -1;

@@ -1,4 +1,4 @@
-#include "a_program/artifact/wire_v86.h"
+#include "a_program/artifact/wire_v90.h"
 
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/cwf_certificate.h"
@@ -11,11 +11,31 @@
 #include "artifact_graph_internal.h"
 #define A_PROGRAM_ARTIFACT_DEFINE_RUNTIME_CAPABILITY_HELPER
 #include "artifact_internal.h"
+
+void prototype_artifact_graph_decode_state_init(
+	struct prototype_artifact_graph_decode_state* state
+) {
+	if (state) {
+		memset(state, 0, sizeof(*state));
+	}
+}
+
+void prototype_artifact_graph_decode_state_destroy(
+	struct prototype_artifact_graph_decode_state* state
+) {
+	if (!state) {
+		return;
+	}
+	free(state->representation_anchors);
+	free(state->executable_terms);
+	free(state->executable_cases);
+	memset(state, 0, sizeof(*state));
+}
 #undef A_PROGRAM_ARTIFACT_DEFINE_RUNTIME_CAPABILITY_HELPER
 
 static int read_artifact_term_key(
 	FILE* stream,
-	struct prototype_term_canonical_key* key
+	struct prototype_artifact_semantic_key* key
 ) {
 	unsigned long long hash;
 	if (fscanf(
@@ -34,6 +54,27 @@ static int read_artifact_term_key(
 	}
 	key->hash = (uint64_t)hash;
 	return 0;
+}
+
+static int read_core_term_key(
+	FILE* stream,
+	struct prototype_term_canonical_key* key
+) {
+	if (!stream || !key) {
+		return -1;
+	}
+	return fscanf(
+		stream,
+		"%" SCNu64 " %u %u %u %d %d %d %d",
+		&key->hash,
+		&key->node_count,
+		&key->bound_binder_count,
+		&key->free_binder_count,
+		&key->has_frame_local_reference,
+		&key->has_type_local_reference,
+		&key->has_type_name_reference,
+		&key->has_type_universe_reference
+	) == 8 ? 0 : -1;
 }
 
 static int read_artifact_type_representation_fingerprint(
@@ -156,7 +197,7 @@ static int validate_function_graph_association_names(
 int prototype_artifact_read_text_interface(
 	FILE* stream,
 	struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	struct prototype_artifact_interface* interface
 ) {
 	if (!stream || !symbols || !intrinsic_environment || !interface) {
@@ -172,23 +213,29 @@ int prototype_artifact_read_text_interface(
 		strcmp(fingerprint, PROTOTYPE_ARTIFACT_CALCULUS_FINGERPRINT) != 0) {
 		return -1;
 	}
-	unsigned long long intrinsic_fingerprint;
+	unsigned long long operational_intrinsic_fingerprint;
+	unsigned long long typing_intrinsic_fingerprint;
 	int default_integer_host_type;
 	if (fscanf(
 			stream,
-			"%255s %llu %d",
+			"%255s %llu %llu %d",
 			word,
-			&intrinsic_fingerprint,
+			&operational_intrinsic_fingerprint,
+			&typing_intrinsic_fingerprint,
 			&default_integer_host_type
-		) != 3 || strcmp(word, "intrinsic_environment") != 0 ||
-		(uint64_t)intrinsic_fingerprint !=
-			prototype_intrinsic_environment_fingerprint(intrinsic_environment) ||
+		) != 4 || strcmp(word, "intrinsic_environment") != 0 ||
+		(uint64_t)operational_intrinsic_fingerprint !=
+			prototype_core_intrinsic_fingerprint() ||
+		(uint64_t)typing_intrinsic_fingerprint !=
+			prototype_intrinsic_typing_fingerprint(intrinsic_environment) ||
 		default_integer_host_type !=
 			intrinsic_environment->default_integer_host_type) {
 		return -1;
 	}
-	interface->intrinsic_environment_fingerprint =
-		(uint64_t)intrinsic_fingerprint;
+	interface->operational_intrinsic_fingerprint =
+		(uint64_t)operational_intrinsic_fingerprint;
+	interface->typing_intrinsic_fingerprint =
+		(uint64_t)typing_intrinsic_fingerprint;
 	interface->default_integer_host_type = default_integer_host_type;
 	if (fscanf(stream, "%255s", word) != 1 || strcmp(word, "SECTION") != 0 ||
 		fscanf(stream, "%255s", word) != 1 || strcmp(word, "interface") != 0) {
@@ -866,9 +913,10 @@ static int read_artifact_type_expr(
 static int read_artifact_term(
 	FILE* stream,
 	struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	struct prototype_dimension_operator_db* dimension_operators,
 	struct prototype_term_db* terms,
+	struct prototype_artifact_graph_decode_state* decode_state,
 	uint32_t expected_id,
 	uint32_t* p_next_binder_id
 ) {
@@ -876,7 +924,7 @@ static int read_artifact_term(
 	uint32_t term_id;
 	int tag;
 	if (!stream || !symbols || !intrinsic_environment || !dimension_operators ||
-		!terms ||
+		!terms || !decode_state ||
 		!p_next_binder_id ||
 		fscanf(stream, "%255s %u %d", word, &term_id, &tag) != 3 ||
 		strcmp(word, "term_node") != 0 ||
@@ -926,18 +974,23 @@ static int read_artifact_term(
 				&term->as.match.ih_scope_id
 			) == 4 ? 0 : -1;
 		case PROTOTYPE_TERM_TYPE_FORMER:
-			return fscanf(stream, "%u", &term->as.type_former.representation_id) == 1 ? 0 : -1;
+			if (term_id >= decode_state->representation_anchor_count || fscanf(
+					stream, "%u", &decode_state->representation_anchors[term_id]
+				) != 1) {
+				return -1;
+			}
+			term->as.type_former.representation_id = PROTOTYPE_INVALID_ID;
+			return 0;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
 			{
 				char namespace_name[256];
 				char name[256];
 				if (fscanf(
 						stream,
-						"%u %255s %255s",
-						&term->as.type_declaration.type_id,
+						"%255s %255s",
 						namespace_name,
 						name
-					) != 3) {
+					) != 2) {
 					return -1;
 				}
 				term->as.type_declaration.identity.namespace_symbol_id =
@@ -954,13 +1007,12 @@ static int read_artifact_term(
 			char name[256];
 			if (fscanf(
 					stream,
-					"%u %255s %255s %u %u",
-					&term->as.type_view.view_type_id,
+					"%255s %255s %u %u",
 					namespace_name,
 					name,
 					&term->as.type_view.core,
 					&term->as.type_view.source
-				) != 5) {
+				) != 4) {
 				return -1;
 			}
 			term->as.type_view.identity.namespace_symbol_id =
@@ -1014,8 +1066,7 @@ static int read_artifact_term(
 			case PROTOTYPE_TERM_EFFECT_OPERATION:
 				{
 					int symbol_id;
-					if (read_artifact_symbol(stream, symbols, &symbol_id) != 0 ||
-						fscanf(stream, "%u", &term->as.effect_operation.classifier) != 1) {
+					if (read_artifact_symbol(stream, symbols, &symbol_id) != 0) {
 						return -1;
 					}
 					struct prototype_intrinsic_namespace_binding binding;
@@ -1385,8 +1436,7 @@ static int artifact_validate_term_refs(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_dimension_operator_db* dimension_operators,
-	uint32_t term_id,
-	int representation_handles_resolved
+	uint32_t term_id
 ) {
 	if (!artifact_read_term_present(terms, term_id) || !type_declarations) {
 		return -1;
@@ -1406,8 +1456,8 @@ static int artifact_validate_term_refs(
 				case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 					return 0;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
-			return artifact_read_term_present(
-				terms, term->as.effect_operation.classifier
+			return prototype_intrinsic_effect_operation_declaration(
+				term->as.effect_operation.operation_id
 			) ? 0 : -1;
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 			return artifact_read_term_present(terms, term->as.effect_row_union.left) &&
@@ -1415,7 +1465,7 @@ static int artifact_validate_term_refs(
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
 			return artifact_read_term_present(terms, term->as.effect_row_forall.body) ? 0 : -1;
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-			return prototype_term_effect_operation_declaration(
+			return prototype_intrinsic_effect_operation_declaration(
 					term->as.effect_row_operation.operation_id
 				) && artifact_read_term_present(
 					terms, term->as.effect_row_operation.latent_row
@@ -1448,7 +1498,6 @@ static int artifact_validate_term_refs(
 			}
 			return 0;
 		case PROTOTYPE_TERM_TYPE_FORMER:
-			if (representation_handles_resolved) {
 				if (term->as.type_former.representation_id >=
 					type_declarations->representation_db.representation_count) {
 					return -1;
@@ -1457,42 +1506,26 @@ static int artifact_validate_term_refs(
 					type_declarations->representation_db.representations[
 						term->as.type_former.representation_id
 					].fingerprint.constructor_count ? 0 : -1;
-			}
-			return artifact_read_type_present(
-				type_declarations,
-				term->as.type_former.representation_id
-			) ? 0 : -1;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			if (!artifact_read_type_present(
-					type_declarations, term->as.type_declaration.type_id
-				)) {
+		case PROTOTYPE_TERM_TYPE_VIEW: {
+			uint32_t type_id;
+			uint32_t arguments[16];
+			uint32_t argument_count;
+			if ((term->tag == PROTOTYPE_TERM_TYPE_VIEW &&
+				(!artifact_read_term_present(terms, term->as.type_view.core) ||
+				 !artifact_read_term_present(terms, term->as.type_view.source))) ||
+				prototype_type_projection_instance_info(
+					terms,
+					&type_declarations->semantic_schema,
+					term_id,
+					&type_id,
+					arguments,
+					&argument_count
+				) != 0 || !artifact_read_type_present(type_declarations, type_id)) {
 				return -1;
 			}
-			{
-				const struct prototype_type_declaration* type =
-					&type_declarations->semantic_schema.type_declarations[
-						term->as.type_declaration.type_id
-					];
-				return type->namespace_symbol_id ==
-						term->as.type_declaration.identity.namespace_symbol_id &&
-					type->name_symbol_id ==
-						term->as.type_declaration.identity.name_symbol_id ? 0 : -1;
-			}
-		case PROTOTYPE_TERM_TYPE_VIEW:
-			if (!artifact_read_type_present(
-					type_declarations, term->as.type_view.view_type_id
-				) || !artifact_read_term_present(terms, term->as.type_view.core) ||
-				!artifact_read_term_present(terms, term->as.type_view.source)) {
-				return -1;
-			}
-			{
-				const struct prototype_type_declaration* type =
-					&type_declarations->semantic_schema.type_declarations[term->as.type_view.view_type_id];
-				return type->namespace_symbol_id ==
-						term->as.type_view.identity.namespace_symbol_id &&
-					type->name_symbol_id == term->as.type_view.identity.name_symbol_id ?
-					0 : -1;
-			}
+			return 0;
+		}
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 				return artifact_read_frame_present(terms, term->as.induction_hypothesis.ih_scope_id) &&
 					artifact_read_term_present(terms, term->as.induction_hypothesis.argument) ? 0 : -1;
@@ -1549,12 +1582,38 @@ static int artifact_validate_term_graph_refs(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_dimension_operator_db* dimension_operators,
-	int representation_handles_resolved
+	const struct prototype_artifact_graph_decode_state* decode_state
 ) {
-	if (!terms || !type_declarations || !dimension_operators) {
+	if (!terms || !type_declarations || !dimension_operators || !decode_state ||
+		!decode_state->executable_terms || !decode_state->executable_cases ||
+		decode_state->executable_term_count > terms->term_count ||
+		decode_state->executable_case_count > terms->case_count) {
+		fprintf(stderr,
+			"artifact executable closure: invalid validation input "
+			"terms=%p types=%p dimensions=%p state=%p term-marks=%p "
+			"case-marks=%p marked-terms=%zu arena-terms=%zu marked-cases=%zu "
+			"arena-cases=%zu\n",
+			(void*)terms, (void*)type_declarations, (void*)dimension_operators,
+			(void*)decode_state,
+			decode_state ? (void*)decode_state->executable_terms : NULL,
+			decode_state ? (void*)decode_state->executable_cases : NULL,
+			decode_state ? decode_state->executable_term_count : 0,
+			terms ? terms->term_count : 0,
+			decode_state ? decode_state->executable_case_count : 0,
+			terms ? terms->case_count : 0);
 		return -1;
 	}
-	for (size_t i = 0; i < terms->term_count; ++i) {
+	unsigned char* executable_cases_reached = calloc(
+		terms->case_count == 0 ? 1 : terms->case_count,
+		sizeof(*executable_cases_reached)
+	);
+	if (!executable_cases_reached) {
+		return -1;
+	}
+	/* Typed-publication replay may intern derived classifier cache Terms and
+	 * Match cases after graph decoding. The wire closure describes the
+	 * persisted arena prefix, not those reconstructible post-read nodes. */
+	for (size_t i = 0; i < decode_state->executable_term_count; ++i) {
 		if (!artifact_term_present(&terms->terms[i])) {
 			continue;
 		}
@@ -1562,10 +1621,74 @@ static int artifact_validate_term_graph_refs(
 				terms,
 				type_declarations,
 				dimension_operators,
-				(uint32_t)i,
-				representation_handles_resolved
+				(uint32_t)i
 			) != 0) {
+			fprintf(stderr,
+				"artifact executable closure: invalid arena term references term=%zu tag=%d\n",
+				i, terms->terms[i].tag);
+			free(executable_cases_reached);
 			return -1;
+		}
+		if (!decode_state->executable_terms[i]) {
+			continue;
+		}
+		uint32_t child_count;
+		if (prototype_term_child_count(terms, (uint32_t)i, &child_count) != 0) {
+			fprintf(stderr,
+				"artifact executable closure: child enumeration failed term=%zu tag=%d\n",
+				i, terms->terms[i].tag);
+			free(executable_cases_reached);
+			return -1;
+		}
+		for (uint32_t j = 0; j < child_count; ++j) {
+			struct prototype_term_child child;
+			if (prototype_term_child_at(
+					terms, (uint32_t)i, j, &child
+				) != 0 || child.term >= decode_state->executable_term_count ||
+				!decode_state->executable_terms[child.term]) {
+				fprintf(stderr,
+					"artifact executable closure: child is outside closure "
+					"term=%zu tag=%d child-index=%u child=%u\n",
+					i, terms->terms[i].tag, j,
+					prototype_term_child_at(
+						terms, (uint32_t)i, j, &child
+					) == 0 ? child.term : PROTOTYPE_INVALID_ID);
+				free(executable_cases_reached);
+				return -1;
+			}
+		}
+		const struct prototype_term* term = &terms->terms[i];
+		if (term->tag == PROTOTYPE_TERM_MATCH) {
+			for (uint32_t j = 0; j < term->as.match.case_count; ++j) {
+				uint32_t case_id = term->as.match.first_case + j;
+				if (case_id >= decode_state->executable_case_count ||
+					!decode_state->executable_cases[case_id]) {
+					fprintf(stderr,
+						"artifact executable closure: Match case is outside closure "
+						"term=%zu case=%u\n",
+						i, case_id);
+					free(executable_cases_reached);
+					return -1;
+				}
+				executable_cases_reached[case_id] = 1;
+			}
+		} else if (term->tag == PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
+			uint32_t scope_id = term->as.induction_hypothesis.ih_scope_id;
+			if (scope_id >= terms->ih_scope_count ||
+				terms->ih_scopes[scope_id].match_term >=
+					decode_state->executable_term_count ||
+				!decode_state->executable_terms[
+					terms->ih_scopes[scope_id].match_term
+				]) {
+				fprintf(stderr,
+					"artifact executable closure: IH frame Match is outside closure "
+					"term=%zu scope=%u match=%u\n",
+					i, scope_id,
+					scope_id < terms->ih_scope_count ?
+						terms->ih_scopes[scope_id].match_term : PROTOTYPE_INVALID_ID);
+				free(executable_cases_reached);
+				return -1;
+			}
 		}
 	}
 	for (size_t i = 0; i < terms->case_count; ++i) {
@@ -1573,18 +1696,34 @@ static int artifact_validate_term_graph_refs(
 		if (!artifact_case_present(match_case)) {
 			continue;
 		}
+		int executable = decode_state->executable_cases[i] != 0;
+		int unresolved = match_case->constructor_owner == PROTOTYPE_INVALID_ID &&
+			match_case->constructor_id == PROTOTYPE_INVALID_ID;
+		int resolved = match_case->constructor_owner != PROTOTYPE_INVALID_ID &&
+			match_case->constructor_id != PROTOTYPE_INVALID_ID &&
+			artifact_read_term_present(terms, match_case->constructor_owner);
 		if (!artifact_read_term_present(terms, match_case->body) ||
-			(match_case->constructor_owner != PROTOTYPE_INVALID_ID &&
-				!artifact_read_term_present(terms, match_case->constructor_owner)) ||
+			(!unresolved && !resolved) || (executable && !resolved) ||
+			(executable && (!executable_cases_reached[i] ||
+			 (!decode_state->executable_terms[match_case->body] ||
+			  !decode_state->executable_terms[match_case->constructor_owner]))) ||
 			!artifact_range_within(
 				match_case->first_binder,
 				match_case->binder_count,
 				terms->case_binder_count
 			)) {
+			fprintf(stderr,
+				"artifact executable closure: invalid Match case case=%zu executable=%d "
+				"reached=%u owner=%u constructor=%u body=%u\n",
+				i, executable, executable_cases_reached[i],
+				match_case->constructor_owner, match_case->constructor_id,
+				match_case->body);
+			free(executable_cases_reached);
 			return -1;
 		}
 		for (uint32_t j = 0; j < match_case->binder_count; ++j) {
 			if (!artifact_read_case_binder_present(terms, match_case->first_binder + j)) {
+				free(executable_cases_reached);
 				return -1;
 			}
 		}
@@ -1595,11 +1734,18 @@ static int artifact_validate_term_graph_refs(
 			continue;
 		}
 		if (!artifact_read_term_present(terms, frame->match_term)) {
+			free(executable_cases_reached);
+			return -1;
+		}
+		if (frame->binding_scope_id >= terms->ih_scope_count ||
+			!artifact_frame_present(&terms->ih_scopes[frame->binding_scope_id])) {
+			free(executable_cases_reached);
 			return -1;
 		}
 		const struct prototype_term* match = &terms->terms[frame->match_term];
 		if (match->tag != PROTOTYPE_TERM_MATCH ||
 			!artifact_read_term_present(terms, match->as.match.scrutinee)) {
+			free(executable_cases_reached);
 			return -1;
 		}
 		const struct prototype_term* scrutinee =
@@ -1607,18 +1753,50 @@ static int artifact_validate_term_graph_refs(
 		if (scrutinee->tag == PROTOTYPE_TERM_VAR &&
 			(frame->scrutinee_binding_id == PROTOTYPE_INVALID_ID ||
 			 scrutinee->as.var.binding_id != frame->scrutinee_binding_id)) {
+			free(executable_cases_reached);
+			return -1;
+		}
+	}
+	free(executable_cases_reached);
+	return 0;
+}
+
+static int artifact_executable_term_is_marked(
+	const struct prototype_artifact_graph_decode_state* decode_state,
+	uint32_t term_id
+) {
+	return decode_state && decode_state->executable_terms &&
+		term_id < decode_state->executable_term_count &&
+		decode_state->executable_terms[term_id];
+}
+
+static int artifact_validate_executable_interface_roots(
+	const struct prototype_artifact_interface* interface,
+	const struct prototype_judgement_db* judgement,
+	const struct prototype_artifact_graph_decode_state* decode_state
+) {
+	if (!interface || !judgement || !decode_state) {
+		return -1;
+	}
+	for (size_t i = 0; i < interface->term_export_count; ++i) {
+		const struct prototype_artifact_term_export* export =
+			&interface->term_exports[i];
+		if (!artifact_executable_term_is_marked(
+				decode_state, export->local_term
+			)) {
 			return -1;
 		}
 	}
 	return 0;
 }
 
-/* TYPE_FORMER ids are serialized as declaration anchors and rebound locally. */
-static int artifact_resolve_representation_handles(
+/* Layer T closes serialized declaration anchors before final Core validation. */
+static int artifact_close_staged_type_formers(
 	struct prototype_term_db* terms,
-	const struct prototype_type_declaration_db* type_declarations
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_artifact_graph_decode_state* decode_state
 ) {
-	if (!terms || !type_declarations) {
+	if (!terms || !type_declarations || !decode_state) {
 		return -1;
 	}
 	for (size_t i = 0; i < terms->term_count; ++i) {
@@ -1626,7 +1804,11 @@ static int artifact_resolve_representation_handles(
 		if (!artifact_term_present(term) || term->tag != PROTOTYPE_TERM_TYPE_FORMER) {
 			continue;
 		}
-		uint32_t representative_type_id = term->as.type_former.representation_id;
+		if (i >= decode_state->representation_anchor_count) {
+			return -1;
+		}
+		uint32_t representative_type_id =
+			decode_state->representation_anchors[i];
 		if (representative_type_id >= type_declarations->semantic_schema.type_count ||
 			!artifact_type_present(&type_declarations->semantic_schema.type_declarations[representative_type_id])) {
 			return -1;
@@ -1637,12 +1819,34 @@ static int artifact_resolve_representation_handles(
 			representation_id >= type_declarations->representation_db.representation_count) {
 			return -1;
 		}
-		term->as.type_former.declaration_type_id = representative_type_id;
 		term->as.type_former.representation_id = representation_id;
 		term->as.type_former.constructor_count =
 			type_declarations->semantic_schema.type_declarations[
 				representative_type_id
 			].constructor_count;
+	}
+	return 0;
+}
+
+static int artifact_validate_staged_representation_anchors(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_artifact_graph_decode_state* decode_state
+) {
+	if (!terms || !type_declarations || !decode_state) {
+		return -1;
+	}
+	for (size_t i = 0; i < terms->term_count; ++i) {
+		const struct prototype_term* term = &terms->terms[i];
+		if (!artifact_term_present(term) || term->tag != PROTOTYPE_TERM_TYPE_FORMER) {
+			continue;
+		}
+		if (i >= decode_state->representation_anchor_count ||
+			!artifact_read_type_present(
+				type_declarations, decode_state->representation_anchors[i]
+			)) {
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -1716,16 +1920,12 @@ static int artifact_validate_judgement_graph_refs(
 static int artifact_validate_read_graph_refs(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_judgement_db* judgement,
-	int representation_handles_resolved
+	const struct prototype_artifact_graph_decode_state* decode_state
 ) {
 	return artifact_validate_type_graph_refs(type_declarations, terms) == 0 &&
-		artifact_validate_term_graph_refs(
-			terms,
-			type_declarations,
-			dimension_operators,
-			representation_handles_resolved
+		artifact_validate_staged_representation_anchors(
+			terms, type_declarations, decode_state
 		) == 0 &&
 		artifact_validate_judgement_graph_refs(judgement, terms) == 0 ? 0 : -1;
 }
@@ -1796,15 +1996,19 @@ void prototype_internal_sync_artifact_universe_level_counters(
 int prototype_artifact_read_text_graph(
 	FILE* stream,
 	struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
+	const struct prototype_artifact_interface* interface,
 	struct prototype_dimension_operator_db* dimension_operators,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_judgement_db* judgement
+	struct prototype_judgement_db* judgement,
+	struct prototype_artifact_graph_decode_state* decode_state
 ) {
-	if (!stream || !symbols || !intrinsic_environment || !dimension_operators ||
+	if (!stream || !symbols || !intrinsic_environment || !interface || !dimension_operators ||
 		!terms ||
-		!type_declarations || !judgement) {
+		!type_declarations || !judgement || !decode_state ||
+		decode_state->representation_anchors || decode_state->executable_terms ||
+		decode_state->executable_cases) {
 		return -1;
 	}
 
@@ -1902,8 +2106,48 @@ int prototype_artifact_read_text_graph(
 		derivation_slot_count > judgement->derivation_capacity) {
 		return -1;
 	}
+	decode_state->executable_terms = calloc(
+		term_slot_count == 0 ? 1 : term_slot_count,
+		sizeof(*decode_state->executable_terms)
+	);
+	decode_state->executable_cases = calloc(
+		case_slot_count == 0 ? 1 : case_slot_count,
+		sizeof(*decode_state->executable_cases)
+	);
+	if (!decode_state->executable_terms || !decode_state->executable_cases) {
+		return -1;
+	}
+	decode_state->executable_term_count = term_slot_count;
+	decode_state->executable_case_count = case_slot_count;
 
 	size_t count;
+	if (expect_artifact_count(stream, "executable_terms", &count) != 0 ||
+		count > term_slot_count) {
+		return -1;
+	}
+	for (size_t i = 0; i < count; ++i) {
+		size_t id;
+		if (fscanf(stream, "%255s %zu", word, &id) != 2 ||
+			strcmp(word, "executable_term") != 0 || id >= term_slot_count ||
+			decode_state->executable_terms[id]) {
+			return -1;
+		}
+		decode_state->executable_terms[id] = 1;
+	}
+	if (expect_artifact_count(stream, "executable_cases", &count) != 0 ||
+		count > case_slot_count) {
+		return -1;
+	}
+	for (size_t i = 0; i < count; ++i) {
+		size_t id;
+		if (fscanf(stream, "%255s %zu", word, &id) != 2 ||
+			strcmp(word, "executable_case") != 0 || id >= case_slot_count ||
+			decode_state->executable_cases[id]) {
+			return -1;
+		}
+		decode_state->executable_cases[id] = 1;
+	}
+
 	for (size_t i = 0; i < type_slot_count; ++i) {
 		type_declarations->semantic_schema.type_declarations[i].name_symbol_id = -1;
 		type_declarations->semantic_schema.type_declarations[i].namespace_symbol_id = -1;
@@ -2159,6 +2403,16 @@ int prototype_artifact_read_text_graph(
 	type_declarations->readback.next_level_var = next_level_var;
 
 	memset(terms->terms, 0, sizeof(*terms->terms) * term_slot_count);
+	decode_state->representation_anchors = malloc(
+		term_slot_count * sizeof(*decode_state->representation_anchors)
+	);
+	if (term_slot_count != 0 && !decode_state->representation_anchors) {
+		return -1;
+	}
+	decode_state->representation_anchor_count = term_slot_count;
+	for (size_t i = 0; i < term_slot_count; ++i) {
+		decode_state->representation_anchors[i] = PROTOTYPE_INVALID_ID;
+	}
 	memset(terms->cases, 0, sizeof(*terms->cases) * case_slot_count);
 	memset(terms->case_binders, 0, sizeof(*terms->case_binders) * case_binder_slot_count);
 	memset(terms->ih_scopes, 0, sizeof(*terms->ih_scopes) * frame_slot_count);
@@ -2173,6 +2427,7 @@ int prototype_artifact_read_text_graph(
 	for (size_t i = 0; i < frame_slot_count; ++i) {
 		terms->ih_scopes[i].match_term = PROTOTYPE_INVALID_ID;
 		terms->ih_scopes[i].scrutinee_binding_id = PROTOTYPE_INVALID_ID;
+		terms->ih_scopes[i].binding_scope_id = PROTOTYPE_INVALID_ID;
 	}
 
 	if (expect_artifact_count(stream, "terms", &count) != 0 || count != term_slot_count) {
@@ -2186,6 +2441,7 @@ int prototype_artifact_read_text_graph(
 					intrinsic_environment,
 					dimension_operators,
 					terms,
+					decode_state,
 					PROTOTYPE_INVALID_ID,
 					&next_binding_id
 				) != 0) {
@@ -2272,17 +2528,21 @@ int prototype_artifact_read_text_graph(
 			}
 			if (fscanf(
 					stream,
-					"%u %u %u %d",
+					"%u %u %u %u %d",
 					&frame->match_term,
 					&frame->scrutinee_binding_id,
+					&frame->binding_scope_id,
 					&frame->key.case_count,
 					&frame->key.is_linkable
-				) != 4 ||
-				read_artifact_term_key(stream, &frame->key.match_key) != 0) {
+				) != 5 ||
+				read_core_term_key(stream, &frame->key.match_key) != 0) {
 				return -1;
 		}
 		if (frame->scrutinee_binding_id != PROTOTYPE_INVALID_ID &&
 			frame->scrutinee_binding_id >= terms->next_binding_id) {
+			return -1;
+		}
+		if (frame->binding_scope_id >= frame_slot_count) {
 			return -1;
 		}
 	}
@@ -2529,9 +2789,10 @@ int prototype_artifact_read_text_graph(
 		if (artifact_validate_read_graph_refs(
 				terms,
 				type_declarations,
-				dimension_operators,
 				judgement,
-				0
+				decode_state
+			) != 0 || artifact_validate_executable_interface_roots(
+				interface, judgement, decode_state
 			) != 0) {
 			return -1;
 		}
@@ -2555,9 +2816,11 @@ int prototype_artifact_read_text_typed_occurrences(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
-	struct prototype_compile_metadata* metadata
+	struct prototype_compile_metadata* metadata,
+	struct prototype_artifact_graph_decode_state* decode_state
 ) {
-	if (!stream || !symbols || !terms || !type_declarations || !judgement) {
+	if (!stream || !symbols || !terms || !type_declarations || !judgement ||
+		!decode_state || !decode_state->representation_anchors) {
 		return -1;
 	}
 	char word[256];
@@ -2610,11 +2873,16 @@ int prototype_artifact_read_text_typed_occurrences(
 		return -1;
 	}
 	if (metadata) {
-		metadata->contexts.context_count = 0;
+		struct prototype_context* context_storage = metadata->contexts.contexts;
+		size_t context_capacity = metadata->contexts.context_capacity;
+		prototype_context_db_init(
+			&metadata->contexts, context_storage, context_capacity
+		);
 	}
 	for (size_t i = 0; i < context_count; ++i) {
 		size_t id;
 		struct prototype_context context;
+		memset(&context, 0, sizeof(context));
 		uint32_t classifier;
 		if (fscanf(
 				stream,
@@ -2625,7 +2893,7 @@ int prototype_artifact_read_text_typed_occurrences(
 				&context.binding_id,
 				&classifier,
 				&context.extension_kind,
-				&context.producer_computation,
+				&context.producer_occurrence,
 				&context.depth
 			) != 8 ||
 			strcmp(word, "context") != 0 ||
@@ -2633,33 +2901,25 @@ int prototype_artifact_read_text_typed_occurrences(
 			(metadata && (
 				(i != 0 && classifier == PROTOTYPE_INVALID_ID) ||
 				(classifier != PROTOTYPE_INVALID_ID &&
-				 !artifact_read_term_present(terms, classifier)) ||
-				(context.producer_computation != PROTOTYPE_INVALID_ID &&
-				 !artifact_read_term_present(
-					terms, context.producer_computation
-				 ))))) {
+				 !artifact_read_term_present(terms, classifier))))) {
 			return -1;
 		}
-		context.classifier_ref.kind = i == 0 ?
-			PROTOTYPE_CONTEXT_CLASSIFIER_REF_INVALID :
-			PROTOTYPE_CONTEXT_CLASSIFIER_REF_TERM;
-		context.classifier_ref.term_id = classifier;
-		context.classifier_ref.variable_id = PROTOTYPE_INVALID_ID;
 		if ((i == 0 && (context.extension_kind !=
 				PROTOTYPE_CONTEXT_EXTENSION_INVALID ||
-			context.producer_computation != PROTOTYPE_INVALID_ID)) ||
+			context.producer_occurrence != PROTOTYPE_INVALID_ID)) ||
 			(i != 0 && context.extension_kind !=
 				PROTOTYPE_CONTEXT_EXTENSION_VALUE &&
 			 context.extension_kind !=
 				PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT) ||
 			(i != 0 &&
 			 (context.extension_kind == PROTOTYPE_CONTEXT_EXTENSION_VALUE) !=
-				(context.producer_computation == PROTOTYPE_INVALID_ID))) {
+				(context.producer_occurrence == PROTOTYPE_INVALID_ID))) {
 			return -1;
 		}
 		if (metadata) {
 			if ((i == 0 && context.binding_id != PROTOTYPE_INVALID_ID) ||
-				(i != 0 && context.binding_id == PROTOTYPE_INVALID_ID)) {
+				(i != 0 && (context.binding_id == PROTOTYPE_INVALID_ID ||
+				 context.parent >= i))) {
 				return -1;
 			}
 			if (i != 0 && context.binding_id >= terms->next_binding_id) {
@@ -2668,14 +2928,56 @@ int prototype_artifact_read_text_typed_occurrences(
 				}
 				terms->next_binding_id = context.binding_id + 1;
 			}
-			metadata->contexts.contexts[i] = context;
-			metadata->contexts.context_count++;
+			if (i == 0) {
+				if (context.parent != PROTOTYPE_INVALID_ID || context.depth != 0) {
+					return -1;
+				}
+				continue;
+			}
+			uint32_t created_context = PROTOTYPE_INVALID_ID;
+			int extend_status = context.extension_kind ==
+				PROTOTYPE_CONTEXT_EXTENSION_SEQUENCE_RESULT ?
+				prototype_context_extend_sequence_result(
+					&metadata->contexts,
+					context.parent,
+					context.binding_id,
+					classifier,
+					context.producer_occurrence,
+					&created_context
+				) : prototype_context_extend(
+					&metadata->contexts,
+					context.parent,
+					context.binding_id,
+					classifier,
+					&created_context
+				);
+			if (extend_status != 0 || created_context != i ||
+				metadata->contexts.contexts[created_context].depth != context.depth) {
+				return -1;
+			}
 		}
 	}
-	if (metadata && prototype_context_db_rebuild_runtime_index_after_bulk_load(
-			&metadata->contexts
-		) != 0) {
-		return -1;
+	if (metadata) {
+		/* Context classifiers are the last Layer T input required to rebuild the
+		 * representation map. Close every TYPE_FORMER before Substitution loading
+		 * can invoke Core reindexing and build the Term intern index. */
+		struct prototype_type_representation_anchor_view anchor_view;
+		anchor_view.type_ids_by_term = decode_state->representation_anchors;
+		anchor_view.term_count = decode_state->representation_anchor_count;
+		if (prototype_type_declaration_rebuild_representations_with_anchors(
+				terms, type_declarations, &metadata->contexts, &anchor_view
+			) != 0) {
+			fprintf(stderr,
+				"artifact typed-occurrence graph: representation rebuild failed\n");
+			return -1;
+		}
+		if (artifact_close_staged_type_formers(
+				terms, type_declarations, decode_state
+			) != 0) {
+			fprintf(stderr,
+				"artifact typed-occurrence graph: representation resolution failed\n");
+			return -1;
+		}
 	}
 	if (expect_artifact_count(stream, "substitutions", &substitution_count) != 0 ||
 		(metadata &&
@@ -2688,6 +2990,7 @@ int prototype_artifact_read_text_typed_occurrences(
 	for (size_t i = 0; i < substitution_count; ++i) {
 		size_t id;
 		struct prototype_substitution substitution;
+		uint32_t term_classifier;
 		uint32_t evidence_claim_id;
 		if (fscanf(
 				stream,
@@ -2700,7 +3003,7 @@ int prototype_artifact_read_text_typed_occurrences(
 				&substitution.first,
 				&substitution.second,
 				&substitution.term,
-				&substitution.term_classifier,
+				&term_classifier,
 				&evidence_claim_id
 			) != 10 ||
 			strcmp(word, "substitution") != 0 ||
@@ -2711,8 +3014,8 @@ int prototype_artifact_read_text_typed_occurrences(
 			substitution.target_context >= context_count ||
 			(substitution.term != PROTOTYPE_INVALID_ID &&
 				substitution.term >= terms->term_count) ||
-			(substitution.term_classifier != PROTOTYPE_INVALID_ID &&
-				substitution.term_classifier >= terms->term_count) ||
+			(term_classifier != PROTOTYPE_INVALID_ID &&
+				term_classifier >= terms->term_count) ||
 			(substitution.first != PROTOTYPE_INVALID_ID &&
 				substitution.first >= i) ||
 			(substitution.second != PROTOTYPE_INVALID_ID &&
@@ -2724,13 +3027,19 @@ int prototype_artifact_read_text_typed_occurrences(
 			return -1;
 		}
 		if (metadata) {
+			const struct prototype_judgement_proposition* evidence =
+				prototype_judgement_claim_proposition(judgement, evidence_claim_id);
+			if (substitution.kind == PROTOTYPE_SUBSTITUTION_EXTEND &&
+				(!evidence || evidence->classifier != term_classifier)) {
+				return -1;
+			}
 			metadata->substitutions.substitutions[i] = substitution;
 			metadata->substitutions.substitution_count++;
 			if (substitution.kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
 				int has_derivation = evidence_claim_id < judgement->claim_count &&
 					judgement->claims[evidence_claim_id].first_derivation !=
 						PROTOTYPE_INVALID_ID;
-				int certifies = prototype_cwf_substitution_claim_certifies(
+				int certifies = prototype_cwf_substitution_claim_matches_assignment(
 						&metadata->substitutions,
 						judgement,
 						(uint32_t)i,
@@ -2784,11 +3093,15 @@ int prototype_artifact_read_text_typed_occurrences(
 	for (size_t i = 0; i < occurrence_count; ++i) {
 		size_t id;
 		struct prototype_typed_occurrence operation;
+			uint32_t publication_context;
+			uint32_t publication_substitution;
+			uint32_t publication_subject;
+			uint32_t publication_classifier;
 		char source_name[256];
 		char binder_name[256];
 		memset(&operation, 0, sizeof(operation));
-		if (fscanf(stream, "%255s %zu %d %d %d %u %d %u %u %255s %255s"
-				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
+		int occurrence_fields = fscanf(stream, "%255s %zu %d %d %d %u %d %u %u %255s %255s"
+					" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
 				word, &id, &operation.tag, &operation.category,
 				&operation.application_role,
 				&operation.core_term,
@@ -2808,16 +3121,43 @@ int prototype_artifact_read_text_typed_occurrences(
 				&operation.context_id,
 				&operation.context_action_substitution,
 				&operation.source_core_term,
-				&operation.source_classifier) != 28 ||
+					&operation.source_classifier,
+					&publication_context,
+					&publication_substitution,
+					&publication_subject,
+					&publication_classifier,
+					&operation.declared_classifier);
+		if (occurrence_fields != 33 ||
 			strcmp(word, "typed_occurrence") != 0 || id != i) {
+			fprintf(stderr,
+				"artifact typed-occurrence parse failed occurrence=%zu fields=%d "
+				"word=%s id=%zu\n",
+				i, occurrence_fields, word, id);
 			return -1;
 		}
+		int unreachable_publication =
+			publication_context == PROTOTYPE_INVALID_ID &&
+			publication_substitution == PROTOTYPE_INVALID_ID &&
+			publication_subject == PROTOTYPE_INVALID_ID &&
+			publication_classifier == PROTOTYPE_INVALID_ID;
+		int partial_publication = !unreachable_publication &&
+			(publication_context == PROTOTYPE_INVALID_ID ||
+			 publication_substitution == PROTOTYPE_INVALID_ID ||
+			 publication_subject == PROTOTYPE_INVALID_ID ||
+			 publication_classifier == PROTOTYPE_INVALID_ID);
 		if (operation.tag < PROTOTYPE_TYPED_OCCURRENCE_ATOM ||
 			operation.tag > PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ||
 			operation.classifier_status <
-				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED ||
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_PENDING ||
 			operation.classifier_status >
 				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION ||
+			(operation.classifier_status ==
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_PENDING &&
+			 !unreachable_publication) ||
+			(operation.classifier_status !=
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_PENDING &&
+			 unreachable_publication) ||
+			partial_publication ||
 			(operation.classifier_status ==
 				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED &&
 			 operation.classifier == PROTOTYPE_INVALID_ID) ||
@@ -2825,23 +3165,26 @@ int prototype_artifact_read_text_typed_occurrences(
 				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_RESIDUAL_VERIFICATION &&
 			 (operation.classifier != PROTOTYPE_INVALID_ID ||
 			  operation.classifier_verification_obligation == PROTOTYPE_INVALID_ID)) ||
-			operation.category < PROTOTYPE_TERM_CATEGORY_INVALID ||
-			operation.category > PROTOTYPE_TERM_CATEGORY_TYPE ||
+			operation.category < PROTOTYPE_CLASSIFIER_CATEGORY_INVALID ||
+			operation.category > PROTOTYPE_CLASSIFIER_CATEGORY_TYPE ||
 			operation.application_role < PROTOTYPE_TERM_APPLICATION_NONE ||
 			operation.application_role >
-				PROTOTYPE_TERM_APPLICATION_PURE_TYPE_FAMILY_EVALUATION ||
+				PROTOTYPE_TERM_APPLICATION_TYPE_FAMILY_CALCULATION ||
 			(operation.tag != PROTOTYPE_TYPED_OCCURRENCE_APP &&
 			 operation.application_role != PROTOTYPE_TERM_APPLICATION_NONE)) {
+			fprintf(stderr,
+				"artifact typed-occurrence enum validation failed occurrence=%zu\n",
+				i);
 			return -1;
 		}
 		operation.source_ast = PROTOTYPE_INVALID_ID;
 		operation.referenced_ast_binder_id = PROTOTYPE_INVALID_ID;
 		operation.fold_return_ast_binder_id = PROTOTYPE_INVALID_ID;
-		operation.computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
+		operation.computation_kind = PROTOTYPE_COMPUTATION_KIND_INVALID;
 		operation.first_edge = PROTOTYPE_INVALID_ID;
 		operation.edge_count = 0;
 		if (operation.classifier != PROTOTYPE_INVALID_ID) {
-			struct prototype_term_classifier_view classifier_view;
+			struct prototype_classifier_view classifier_view;
 			if (prototype_judgement_classifier_view(
 					terms,
 					type_declarations,
@@ -2858,21 +3201,35 @@ int prototype_artifact_read_text_typed_occurrences(
 				return -1;
 			}
 			operation.computation_kind =
-				classifier_view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ?
+				classifier_view.category == PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ?
 					classifier_view.computation_kind :
-					PROTOTYPE_TERM_COMPUTATION_KIND_INVALID;
+					PROTOTYPE_COMPUTATION_KIND_INVALID;
 		}
 		if ((operation.context_action_substitution == PROTOTYPE_INVALID_ID &&
 			 (operation.source_core_term != PROTOTYPE_INVALID_ID ||
 			  operation.source_classifier != PROTOTYPE_INVALID_ID)) ||
 			(operation.context_action_substitution != PROTOTYPE_INVALID_ID &&
 			 operation.source_core_term == PROTOTYPE_INVALID_ID) ||
-			(metadata && (operation.context_id >= context_count ||
+			 (metadata && ((operation.declared_classifier != PROTOTYPE_INVALID_ID &&
+				operation.declared_classifier >= terms->term_count) ||
+				operation.context_id >= context_count ||
+			 (!unreachable_publication &&
+			  (publication_context >= context_count ||
+			   publication_substitution >= substitution_count ||
+			   publication_subject >= terms->term_count ||
+			   publication_classifier >= terms->term_count)) ||
 			 (operation.context_action_substitution != PROTOTYPE_INVALID_ID &&
 			  (operation.context_action_substitution >= substitution_count ||
 			   operation.source_core_term >= terms->term_count ||
 			   (operation.source_classifier != PROTOTYPE_INVALID_ID &&
 			    operation.source_classifier >= terms->term_count)))))) {
+			fprintf(stderr,
+				"artifact typed-occurrence reference validation failed occurrence=%zu "
+				"context=%u action=%u source=%u:%u publication=%u:%u:%u:%u\n",
+				i, operation.context_id, operation.context_action_substitution,
+				operation.source_core_term, operation.source_classifier,
+				publication_context, publication_substitution, publication_subject,
+				publication_classifier);
 			return -1;
 		}
 		if (strcmp(source_name, "-") == 0) {
@@ -2901,9 +3258,22 @@ int prototype_artifact_read_text_typed_occurrences(
 			}
 		}
 		if (metadata) {
-			if (prototype_typed_occurrence_graph_add(
-					graph, &metadata->contexts, operation, NULL
-				) != 0) {
+			int occurrence_status = prototype_typed_occurrence_graph_add(
+				graph, &metadata->contexts, operation, NULL
+			);
+			int publication_status = unreachable_publication ?
+				prototype_typed_publication_view_mark_unreachable(
+					&metadata->typed_publication, (uint32_t)i
+				) : prototype_typed_publication_view_put(
+					&metadata->typed_publication,
+					(uint32_t)i,
+					PROTOTYPE_INVALID_ID,
+					publication_context,
+					publication_substitution,
+					publication_subject,
+					publication_classifier
+				);
+			if (occurrence_status != 0 || publication_status != 0) {
 				fprintf(
 					stderr,
 					"artifact typed-occurrence graph: occurrence validation failed "
@@ -3022,15 +3392,22 @@ int prototype_artifact_read_text_typed_occurrences(
 	for (size_t i = 0; i < case_count; ++i) {
 		size_t id;
 		struct prototype_typed_occurrence_match_case operation_case;
+		uint32_t publication_context;
+		uint32_t publication_refinement;
 		char label[256];
 		memset(&operation_case, 0, sizeof(operation_case));
-		if (fscanf(stream, "%255s %zu %u %d %u %u %u %255s", word, &id,
+		if (fscanf(stream, "%255s %zu %u %d %u %u %u %255s %u %u", word, &id,
 				&operation_case.context_id,
 				&operation_case.refinement_status,
 				&operation_case.refinement_substitution,
 				&operation_case.constructor_owner,
-				&operation_case.constructor_id, label) != 8 ||
+				&operation_case.constructor_id, label,
+				&publication_context,
+				&publication_refinement) != 10 ||
 			strcmp(word, "occurrence_match_case") != 0 || id != i) {
+			fprintf(stderr,
+				"artifact occurrence Match-case parse failed case=%zu word=%s id=%zu\n",
+				i, word, id);
 			return -1;
 		}
 		if ((operation_case.refinement_status !=
@@ -3046,9 +3423,23 @@ int prototype_artifact_read_text_typed_occurrences(
 					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_CONSTANT &&
 			 operation_case.refinement_substitution != PROTOTYPE_INVALID_ID) ||
 			(metadata && (operation_case.context_id >= context_count ||
+			 publication_context >= context_count ||
 			 (operation_case.refinement_status ==
 					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED &&
-			  operation_case.refinement_substitution >= substitution_count)))) {
+			  (operation_case.refinement_substitution >= substitution_count ||
+			   publication_refinement !=
+				operation_case.refinement_substitution)) ||
+			 (operation_case.refinement_status !=
+					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_SOLVED &&
+			  publication_refinement != PROTOTYPE_INVALID_ID)))) {
+			fprintf(stderr,
+				"artifact occurrence Match-case references failed case=%zu "
+				"source-context=%u publication-context=%u status=%d "
+				"source-refinement=%u publication-refinement=%u\n",
+				i, operation_case.context_id, publication_context,
+				operation_case.refinement_status,
+				operation_case.refinement_substitution,
+				publication_refinement);
 			return -1;
 		}
 		if (strcmp(label, "-") == 0) {
@@ -3057,6 +3448,12 @@ int prototype_artifact_read_text_typed_occurrences(
 			symbols, label, strlen(label))) < 0) {
 			return -1;
 		}
+		/* A sealed v90 artifact contains only the accepted correspondence. When
+		 * imported as immutable input, that accepted pair is also its declaration
+		 * seed; no compiler-local resolution history is reconstructed. */
+		operation_case.declared_constructor_owner =
+			operation_case.constructor_owner;
+		operation_case.declared_constructor_id = operation_case.constructor_id;
 		size_t binder_case_id;
 		if (fscanf(
 				stream,
@@ -3078,6 +3475,12 @@ int prototype_artifact_read_text_typed_occurrences(
 		if (metadata) {
 			if (prototype_typed_occurrence_graph_add_case(
 					graph, &metadata->contexts, operation_case, NULL
+				) != 0 || prototype_typed_publication_view_put_match_case(
+					&metadata->typed_publication,
+					(uint32_t)i,
+					PROTOTYPE_INVALID_ID,
+					publication_context,
+					publication_refinement
 				) != 0) {
 				fprintf(stderr,
 					"artifact typed-occurrence graph: case validation failed case=%zu context=%u binders=%u\n",
@@ -3117,7 +3520,7 @@ int prototype_artifact_read_text_typed_occurrences(
 			obligation.state != PROTOTYPE_VERIFICATION_OBLIGATION_PENDING ||
 			obligation.normalization_profile < PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF ||
 			obligation.normalization_profile >
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF ||
+				PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF ||
 			(metadata && prototype_verification_db_add(
 				&metadata->verification, obligation, NULL
 			) != 0)) {
@@ -3168,7 +3571,41 @@ int prototype_artifact_read_text_typed_occurrences(
 		for (size_t i = 0; i < prototype_typed_occurrence_graph_count(graph); ++i) {
 			const struct prototype_typed_occurrence* operation =
 				prototype_typed_occurrence_graph_get(graph, (uint32_t)i);
-			if (!operation) {
+			const struct prototype_typed_publication_projection* publication =
+				&metadata->typed_publication.projections[i];
+			uint32_t publication_context =
+				metadata->typed_publication.concrete_contexts[i];
+			int unreachable_publication =
+				prototype_typed_publication_view_occurrence_is_unreachable(
+					&metadata->typed_publication, (uint32_t)i
+				);
+			const struct prototype_substitution* publication_substitution =
+				unreachable_publication ? NULL : prototype_substitution_get(
+					&metadata->substitutions, publication->substitution
+				);
+			int graph_unreachable = operation ?
+				prototype_typed_occurrence_graph_occurrence_is_unreachable(
+					graph, (uint32_t)i
+				) : -1;
+			if (!operation || publication->source_occurrence != i ||
+				(unreachable_publication && graph_unreachable != 1) ||
+				(!unreachable_publication &&
+				 (!publication_substitution ||
+				  publication_substitution->source_context != publication_context ||
+				  publication_substitution->target_context != operation->context_id ||
+				  !artifact_read_term_present(terms, publication->subject) ||
+				  !artifact_read_term_present(terms, publication->classifier)))) {
+				fprintf(stderr,
+					"artifact publication judgement failed occurrence=%zu "
+					"source-context=%u publication-context=%u substitution=%u:%u->%u "
+					"subject=%u classifier=%u\n",
+					i, operation ? operation->context_id : PROTOTYPE_INVALID_ID,
+					publication_context, publication->substitution,
+					publication_substitution ?
+						publication_substitution->source_context : PROTOTYPE_INVALID_ID,
+					publication_substitution ?
+						publication_substitution->target_context : PROTOTYPE_INVALID_ID,
+					publication->subject, publication->classifier);
 				return -1;
 			}
 			uint32_t term_references[] = {
@@ -3194,6 +3631,14 @@ int prototype_artifact_read_text_typed_occurrences(
 				return -1;
 			}
 		}
+		if (prototype_typed_publication_view_seal(
+				&metadata->typed_publication,
+				graph,
+				0,
+				0
+			) != 0) {
+			return -1;
+		}
 		if (prototype_verification_db_validate(
 				&metadata->verification, graph, terms
 			) != 0) {
@@ -3204,21 +3649,13 @@ int prototype_artifact_read_text_typed_occurrences(
 		if (metadata->required_runtime_capabilities != declared_capabilities) {
 			return -1;
 		}
-		if (prototype_type_declaration_rebuild_representations(
-				terms, type_declarations, &metadata->contexts
-			) != 0) {
-			fprintf(stderr, "artifact typed-occurrence graph: representation rebuild failed\n");
-			return -1;
-		}
-		if (artifact_resolve_representation_handles(
-				terms, type_declarations
-			) != 0) {
-			fprintf(stderr, "artifact typed-occurrence graph: representation resolution failed\n");
-			return -1;
-		}
 		if (prototype_constructor_curried_caches_validate(
 			&type_declarations->semantic_schema,
-			&type_declarations->constructor_classifier_cache, &metadata->contexts, terms
+			&type_declarations->constructor_classifier_cache,
+			&(const struct prototype_context_classifier_view) {
+				.contexts = &metadata->contexts
+			},
+			terms
 			) != 0) {
 			fprintf(stderr, "artifact typed-occurrence graph: constructor cache validation failed\n");
 			return -1;
@@ -3227,7 +3664,7 @@ int prototype_artifact_read_text_typed_occurrences(
 				terms,
 				type_declarations,
 				&metadata->dimension_operators,
-				1
+				decode_state
 			) != 0) {
 			fprintf(stderr, "artifact typed-occurrence graph: Term reference validation failed\n");
 			return -1;

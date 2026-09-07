@@ -102,9 +102,9 @@ int main(void) {
 	uint32_t first_context;
 	uint32_t second_context;
 	if (prototype_context_extend(
-			&context_db, 0, 10, 2, PROTOTYPE_INVALID_ID, &first_context
+			&context_db, 0, 10, 2, &first_context
 		) != 0 || prototype_context_extend_sequence_result(
-			&context_db, first_context, 20, 3, PROTOTYPE_INVALID_ID, 4,
+			&context_db, first_context, 20, 3, 4,
 			&second_context
 		) != 0 || first_context != 1 || second_context != 2) return 2;
 
@@ -114,9 +114,11 @@ int main(void) {
 			.parent = producer_contexts[i].parent,
 			.binding_id = producer_contexts[i].binding_id,
 			.classifier = i == 0 ? PROTOTYPE_INVALID_ID :
-				producer_contexts[i].classifier_ref.term_id,
+				prototype_context_classifier_answer(
+					&context_db, &producer_contexts[i]
+				),
 			.extension_kind = producer_contexts[i].extension_kind,
-			.producer_computation = producer_contexts[i].producer_computation
+			.producer_occurrence = producer_contexts[i].producer_occurrence
 		};
 	}
 
@@ -124,42 +126,35 @@ int main(void) {
 		{ .kind = PROTOTYPE_SUBSTITUTION_IDENTITY,
 			.source_context = 0, .target_context = 0,
 			.first = PROTOTYPE_INVALID_ID, .second = PROTOTYPE_INVALID_ID,
-			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID },
+			.term = PROTOTYPE_INVALID_ID },
 		{ .kind = PROTOTYPE_SUBSTITUTION_IDENTITY,
 			.source_context = 1, .target_context = 1,
 			.first = PROTOTYPE_INVALID_ID, .second = PROTOTYPE_INVALID_ID,
-			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID },
+			.term = PROTOTYPE_INVALID_ID },
 		{ .kind = PROTOTYPE_SUBSTITUTION_IDENTITY,
 			.source_context = 2, .target_context = 2,
 			.first = PROTOTYPE_INVALID_ID, .second = PROTOTYPE_INVALID_ID,
-			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID },
+			.term = PROTOTYPE_INVALID_ID },
 		{ .kind = PROTOTYPE_SUBSTITUTION_EMPTY,
 			.source_context = 1, .target_context = 0,
 			.first = PROTOTYPE_INVALID_ID, .second = PROTOTYPE_INVALID_ID,
-			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID },
+			.term = PROTOTYPE_INVALID_ID },
 		{ .kind = PROTOTYPE_SUBSTITUTION_PROJECTION,
 			.source_context = 1, .target_context = 0,
 			.first = PROTOTYPE_INVALID_ID, .second = PROTOTYPE_INVALID_ID,
-			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID },
+			.term = PROTOTYPE_INVALID_ID },
 		{ .kind = PROTOTYPE_SUBSTITUTION_EXTEND,
 			.source_context = 1, .target_context = 1,
 			.first = 3, .second = PROTOTYPE_INVALID_ID,
-			.term = 5, .term_classifier = 6 },
+			.term = 5 },
 		{ .kind = PROTOTYPE_SUBSTITUTION_PROJECTION,
 			.source_context = 2, .target_context = 1,
 			.first = PROTOTYPE_INVALID_ID, .second = PROTOTYPE_INVALID_ID,
-			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID },
+			.term = PROTOTYPE_INVALID_ID },
 		{ .kind = PROTOTYPE_SUBSTITUTION_COMPOSE,
 			.source_context = 2, .target_context = 1,
 			.first = 5, .second = 6,
-			.term = PROTOTYPE_INVALID_ID,
-			.term_classifier = PROTOTYPE_INVALID_ID }
+			.term = PROTOTYPE_INVALID_ID }
 	};
 	struct prototype_substitution_db substitution_db = {
 		.substitutions = producer_substitutions,
@@ -176,7 +171,7 @@ int main(void) {
 			.first = producer_substitutions[i].first,
 			.second = producer_substitutions[i].second,
 			.term = producer_substitutions[i].term,
-			.term_classifier = producer_substitutions[i].term_classifier
+			.term_classifier = i == 5 ? 6 : PROTOTYPE_INVALID_ID
 		};
 	}
 
@@ -222,14 +217,41 @@ int main(void) {
 	uint32_t classifier;
 	if (prototype_context_structural_is_ancestor(
 			&semantic_context_reader, 0, 2
-		) != 1 || prototype_context_structural_is_ancestor(
+		) != 1) {
+		fprintf(stderr, "empty Context is not an ancestor\n");
+		return 5;
+	}
+	if (prototype_context_structural_is_ancestor(
 			&semantic_context_reader, 2, 1
-		) != 0 || prototype_context_structural_path(
+		) != 0) {
+		fprintf(stderr, "Context ancestry is not antisymmetric\n");
+		return 5;
+	}
+	if (prototype_context_structural_path(
 			&semantic_context_reader, 0, 2, path, 2, &path_count
-		) != 0 || path_count != 2 || path[0] != 1 || path[1] != 2 ||
-		prototype_context_structural_find_binding(
+		) != 0) {
+		fprintf(stderr, "Context path lookup failed\n");
+		return 5;
+	}
+	if (path_count != 2 || path[0] != 1 || path[1] != 2) {
+		fprintf(stderr, "Context path has the wrong extension order\n");
+		return 5;
+	}
+	if (prototype_context_structural_find_binding(
 			&semantic_context_reader, 2, 10, &entry, &classifier
-		) != 0 || entry != 1 || classifier != 2) return 5;
+		) != 0) {
+		fprintf(stderr, "Context binding lookup failed\n");
+		return 5;
+	}
+	if (entry != 1 || classifier != 2) {
+		fprintf(
+			stderr,
+			"Context binding projection mismatch entry=%u classifier=%u\n",
+			entry,
+			classifier
+		);
+		return 5;
+	}
 
 	struct prototype_substitution_structural_image image;
 	if (prototype_substitution_structural_binding_image(
@@ -251,8 +273,7 @@ int main(void) {
 		) != -1) return 7;
 	semantic_contexts[2].parent = 1;
 
-	producer_contexts[1].classifier_ref.kind =
-		PROTOTYPE_CONTEXT_CLASSIFIER_REF_PROVISIONAL;
+	producer_contexts[1].classifier_equation = PROTOTYPE_INVALID_ID;
 	if (prototype_context_structural_validate(
 		&producer_context_reader, TERM_COUNT
 		) == 0) return 8;

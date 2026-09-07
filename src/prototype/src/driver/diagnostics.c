@@ -3,6 +3,7 @@
 #include "a_program/core/term.h"
 #include "a_program/graph/compile_metadata.h"
 #include "a_program/kernel/type_declaration.h"
+#include "a_program/kernel/type_term_debug.h"
 #include "a_program/kernel/universe.h"
 #include "a_program/support/symbol.h"
 
@@ -65,6 +66,8 @@ static const char* prototype_compile_diagnostic_reason_name(int reason) {
 			return "motive-equation-mismatch";
 		case PROTOTYPE_COMPILE_DIAGNOSTIC_MOTIVE_GUARDEDNESS:
 			return "motive-guardedness";
+		case PROTOTYPE_COMPILE_DIAGNOSTIC_CLASSIFIER_EQUATION_CONTRADICTION:
+			return "classifier-equation-contradiction";
 		default:
 			return "unknown";
 	}
@@ -159,7 +162,7 @@ static const char* resolution_item_state_name(int state) {
 void prototype_diagnostic_print_resolution_trace(
 	FILE* stream,
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	const struct prototype_compile_metadata* metadata
@@ -192,7 +195,7 @@ void prototype_diagnostic_print_resolution_trace(
 		if (item->state == PROTOTYPE_RESOLUTION_ITEM_RESOLVED) {
 			fprintf(stream, " -> ");
 			if (item->resolved_owner < terms->term_count) {
-				prototype_term_print_debug(
+				prototype_type_term_print_debug(
 					stream, symbols, intrinsic_environment, type_declarations,
 					terms, item->resolved_owner
 				);
@@ -230,7 +233,7 @@ void prototype_diagnostic_print_resolution_trace(
 				event->scrutinee_term
 			);
 			if (event->resolved_owner < terms->term_count) {
-				prototype_term_print_debug(
+				prototype_type_term_print_debug(
 					stream, symbols, intrinsic_environment, type_declarations,
 					terms, event->resolved_owner
 				);

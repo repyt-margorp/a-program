@@ -1,5 +1,5 @@
 #include "a_program/frontend/lowering.h"
-#include "a_program/artifact/wire_v86.h"
+#include "a_program/artifact/wire_v90.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/graph/occurrence_usage.h"
 #include "a_program/identity/types.h"
@@ -107,8 +107,7 @@ static int fixture_apply_claim_argument(
 			&binder,
 			&body
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			kernel->terms, prototype_type_view_rebuild_context_from_db(kernel->type_declarations),
-			body,
+			kernel->terms, body,
 			binder,
 			argument->subject,
 			&classifier
@@ -149,6 +148,11 @@ static struct prototype_typed_occurrence operations[OPERATION_CAPACITY];
 static struct prototype_typed_occurrence_edge
 	occurrence_edges[OCCURRENCE_EDGE_CAPACITY];
 static struct prototype_typed_occurrence_match_case occurrence_match_cases[128];
+static struct prototype_typed_publication_projection
+	typed_publication_projections[OPERATION_CAPACITY];
+static uint32_t typed_publication_contexts[OPERATION_CAPACITY];
+static struct prototype_typed_publication_match_case_projection
+	typed_publication_match_case_projections[128];
 static struct prototype_hott_bridge bridges[128];
 static struct prototype_hott_bridge_certificate bridge_certificates[128];
 static struct prototype_hott_bridge_face_binding bridge_face_bindings[384];
@@ -212,10 +216,10 @@ static int fixture_occurrence_usage_provider(
 
 static int write_identity_root_artifact_with_environment(
 	const char* path,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_artifact_interface* interface,
-	const struct prototype_term_db* term_db,
-	const struct prototype_type_declaration_db* type_db,
+	struct prototype_term_db* term_db,
+	struct prototype_type_declaration_db* type_db,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_context_db* context_db,
@@ -309,9 +313,117 @@ static int write_identity_root_artifact_with_environment(
 	metadata.substitutions = *substitution_db;
 	metadata.dimension_operators = *dimension_operators;
 	metadata.typed_occurrences = *operation_graph;
+	prototype_compile_metadata_set_typed_publication_storage(
+		&metadata,
+		typed_publication_projections,
+		typed_publication_contexts,
+		OPERATION_CAPACITY,
+		typed_publication_match_case_projections,
+		128
+	);
 	if (!metadata.typed_occurrences.frozen &&
 		prototype_typed_occurrence_graph_freeze(
 			&metadata.typed_occurrences, term_db, &metadata.contexts
+		) != 0) {
+		symbol_table_free(&symbols);
+		return -1;
+	}
+	for (uint32_t i = 0;
+		i < metadata.typed_occurrences.occurrence_count;
+		++i) {
+		const struct prototype_typed_occurrence* occurrence =
+			&metadata.typed_occurrences.occurrences[i];
+		uint32_t concrete_context = occurrence->context_id;
+		uint32_t substitution_id = occurrence->context_action_substitution;
+		if (substitution_id != PROTOTYPE_INVALID_ID) {
+			const struct prototype_substitution* substitution =
+				prototype_substitution_get(
+					&metadata.substitutions,
+					substitution_id
+				);
+			if (!substitution) {
+				symbol_table_free(&symbols);
+				return -1;
+			}
+			concrete_context = substitution->source_context;
+		} else if (prototype_substitution_identity(
+				&metadata.substitutions,
+				&metadata.contexts,
+				concrete_context,
+				&substitution_id
+			) != 0) {
+			symbol_table_free(&symbols);
+			return -1;
+		}
+		uint32_t subject;
+		uint32_t classifier;
+		if (prototype_term_reindex(
+				term_db,
+				type_db,
+				&metadata.contexts,
+				&metadata.substitutions,
+				occurrence->core_term,
+				substitution_id,
+				&subject
+			) != 0 || prototype_term_reindex(
+				term_db,
+				type_db,
+				&metadata.contexts,
+				&metadata.substitutions,
+				occurrence->classifier,
+				substitution_id,
+				&classifier
+			) != 0) {
+			symbol_table_free(&symbols);
+			return -1;
+		}
+		if (prototype_typed_publication_view_put(
+				&metadata.typed_publication,
+				i,
+				PROTOTYPE_INVALID_ID,
+				concrete_context,
+				substitution_id,
+				subject,
+				classifier
+			) != 0) {
+			symbol_table_free(&symbols);
+			return -1;
+		}
+	}
+	for (uint32_t i = 0; i < metadata.typed_occurrences.case_count; ++i) {
+		const struct prototype_typed_occurrence_match_case* operation_case =
+			&metadata.typed_occurrences.cases[i];
+		uint32_t concrete_context = operation_case->context_id;
+		uint32_t refinement_substitution = PROTOTYPE_INVALID_ID;
+		if (prototype_typed_occurrence_match_case_is_solved(operation_case)) {
+			const struct prototype_substitution* substitution =
+				prototype_substitution_get(
+					&metadata.substitutions,
+					operation_case->refinement_substitution
+				);
+			if (!substitution) {
+				symbol_table_free(&symbols);
+				return -1;
+			}
+			concrete_context = substitution->source_context;
+			refinement_substitution = operation_case->refinement_substitution;
+		}
+		if (prototype_typed_publication_view_put_match_case(
+				&metadata.typed_publication,
+				i,
+				PROTOTYPE_INVALID_ID,
+				concrete_context,
+				refinement_substitution
+			) != 0) {
+			symbol_table_free(&symbols);
+			return -1;
+		}
+	}
+	if (prototype_typed_publication_view_seal(
+			&metadata.typed_publication,
+			&metadata.typed_occurrences,
+			0,
+			0
 		) != 0) {
 		symbol_table_free(&symbols);
 		return -1;
@@ -322,12 +434,17 @@ static int write_identity_root_artifact_with_environment(
 		return -1;
 	}
 	struct prototype_artifact_interface write_interface = *interface;
-	write_interface.intrinsic_environment_fingerprint =
-		prototype_intrinsic_environment_fingerprint(
+	write_interface.operational_intrinsic_fingerprint =
+		prototype_core_intrinsic_fingerprint();
+	write_interface.typing_intrinsic_fingerprint =
+		prototype_intrinsic_typing_fingerprint(
 			intrinsic_environment
 		);
 	write_interface.default_integer_host_type =
 		intrinsic_environment->default_integer_host_type;
+	const struct prototype_context_classifier_view context_classifiers = {
+		.contexts = &metadata.contexts
+	};
 	int status = prototype_artifact_write_text(
 		stream,
 		&symbols,
@@ -339,7 +456,8 @@ static int write_identity_root_artifact_with_environment(
 		cwf_certificates,
 		&universe,
 		NULL,
-		&metadata
+		&metadata,
+		&context_classifiers
 	);
 	long written_size = ftell(stream);
 	if (status != 0) {
@@ -371,8 +489,8 @@ static int write_identity_root_artifact_with_environment(
 static int write_identity_root_artifact(
 	const char* path,
 	const struct prototype_artifact_interface* interface,
-	const struct prototype_term_db* term_db,
-	const struct prototype_type_declaration_db* type_db,
+	struct prototype_term_db* term_db,
+	struct prototype_type_declaration_db* type_db,
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_context_db* context_db,
@@ -382,7 +500,7 @@ static int write_identity_root_artifact(
 ) {
 	return write_identity_root_artifact_with_environment(
 		path,
-		prototype_default_intrinsic_environment(),
+		prototype_default_intrinsic_typing_environment(),
 		interface,
 		term_db,
 		type_db,
@@ -398,10 +516,10 @@ static int write_identity_root_artifact(
 static int fixture_int64_intrinsic_environment(
 	struct prototype_intrinsic_namespace_binding* bindings,
 	size_t binding_capacity,
-	struct prototype_intrinsic_environment* p_environment
+	struct prototype_intrinsic_typing_environment* p_environment
 ) {
-	const struct prototype_intrinsic_environment* base =
-		prototype_default_intrinsic_environment();
+	const struct prototype_intrinsic_typing_environment* base =
+		prototype_default_intrinsic_typing_environment();
 	if (!bindings || !p_environment ||
 		base->namespace_binding_count > binding_capacity) {
 		return -1;
@@ -418,7 +536,7 @@ static int fixture_int64_intrinsic_environment(
 			found = 1;
 		}
 	}
-	*p_environment = (struct prototype_intrinsic_environment) {
+	*p_environment = (struct prototype_intrinsic_typing_environment) {
 		.namespace_bindings = bindings,
 		.namespace_binding_count = base->namespace_binding_count,
 		.pure_primitives = base->pure_primitives,
@@ -432,8 +550,8 @@ static int fixture_int64_intrinsic_environment(
 
 static int fixture_artifact_interface_environment_round_trip(
 	const char* path,
-	const struct prototype_intrinsic_environment* accepted_environment,
-	const struct prototype_intrinsic_environment* rejected_environment,
+	const struct prototype_intrinsic_typing_environment* accepted_environment,
+	const struct prototype_intrinsic_typing_environment* rejected_environment,
 	const struct prototype_artifact_interface* shape
 ) {
 	if (!path || !accepted_environment || !rejected_environment || !shape) {
@@ -769,7 +887,6 @@ static int apply_pure_thunk_function(
 		prototype_term_app(terms, force, argument, &app) != 0 ||
 		prototype_term_normalize_complete_with_profile(
 			terms,
-			type_declarations,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			app,
@@ -872,9 +989,8 @@ static int check_bool_function_extensional_identity(
 	struct prototype_term_conversion_result conversion;
 	if (prototype_term_compare_for_conversion(
 			term_db,
-			type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			left_value,
 			right_value,
 			64,
@@ -884,14 +1000,12 @@ static int check_bool_function_extensional_identity(
 	}
 	uint32_t concrete_identity;
 	if (prototype_term_graph_substitute_bound_var(
-			term_db, prototype_type_view_rebuild_context_from_db(type_db),
-			certificate->identity_type_term_id,
+			term_db, certificate->identity_type_term_id,
 			certificate->left_endpoint_binding_id,
 			left_value,
 			&concrete_identity
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			term_db, prototype_type_view_rebuild_context_from_db(type_db),
-			concrete_identity,
+			term_db, concrete_identity,
 			certificate->right_endpoint_binding_id,
 			right_value,
 			&concrete_identity
@@ -958,14 +1072,11 @@ static int check_bool_function_extensional_identity(
 		prototype_term_var(term_db, x1_binding, &x1) != 0 ||
 		prototype_term_var(term_db, xr_binding, &xr) != 0 ||
 		prototype_context_extend(
-			context_db, empty_context, x0_binding, bool_type,
-			PROTOTYPE_INVALID_ID, &x0_context
+			context_db, empty_context, x0_binding, bool_type, &x0_context
 		) != 0 || prototype_context_extend(
-			context_db, x0_context, x1_binding, bool_type,
-			PROTOTYPE_INVALID_ID, &x1_context
+			context_db, x0_context, x1_binding, bool_type, &x1_context
 		) != 0 || prototype_context_extend(
-			context_db, x1_context, xr_binding, input_identity,
-			PROTOTYPE_INVALID_ID, &xr_context
+			context_db, x1_context, xr_binding, input_identity, &xr_context
 		) != 0) {
 		return 8;
 	}
@@ -1432,7 +1543,6 @@ static int check_bool_function_extensional_identity(
 			empty_context,
 			left_binder,
 			bool_type,
-			PROTOTYPE_INVALID_ID,
 			&left_context
 		) != 0 || prototype_judgement_add_context_binding_assumption(
 			judgement,
@@ -1492,7 +1602,6 @@ static int check_bool_function_extensional_identity(
 			empty_context,
 			function_codomain_binding,
 			bool_type,
-			PROTOTYPE_INVALID_ID,
 			&motive_context
 		) != 0 || prototype_substitution_projection_path(
 			substitution_db,
@@ -1555,7 +1664,6 @@ static int check_bool_function_extensional_identity(
 			empty_context,
 			right_binder,
 			bool_type,
-			PROTOTYPE_INVALID_ID,
 			&right_context
 		) != 0 || prototype_substitution_projection_path(
 			substitution_db,
@@ -1814,27 +1922,27 @@ static int check_bool_function_extensional_identity(
 	}
 	uint32_t scrutinee_operation = add_operation(
 		operation_graph, xr_context, xr, input_identity,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t false_witness_operation = add_operation(
 		operation_graph, false_branch_context, false_computation_witness,
-		false_computation_identity, PROTOTYPE_TERM_CATEGORY_VALUE
+		false_computation_identity, PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t false_operation = add_operation(
 		operation_graph, false_branch_context, false_witness_return,
-		false_branch_computation_identity, PROTOTYPE_TERM_CATEGORY_COMPUTATION
+		false_branch_computation_identity, PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION
 	);
 	uint32_t true_witness_operation = add_operation(
 		operation_graph, true_branch_context, true_computation_witness,
-		true_computation_identity, PROTOTYPE_TERM_CATEGORY_VALUE
+		true_computation_identity, PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t true_operation = add_operation(
 		operation_graph, true_branch_context, true_witness_return,
-		true_branch_computation_identity, PROTOTYPE_TERM_CATEGORY_COMPUTATION
+		true_branch_computation_identity, PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION
 	);
 	uint32_t proof_operation = add_operation(
 		operation_graph, xr_context, proof_endpoint, PROTOTYPE_INVALID_ID,
-		PROTOTYPE_TERM_CATEGORY_COMPUTATION
+		PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION
 	);
 	uint32_t first_proof_case = operation_graph->case_count;
 	operation_graph->occurrences[scrutinee_operation].tag = PROTOTYPE_TYPED_OCCURRENCE_VAR;
@@ -2109,14 +2217,12 @@ static int check_bool_function_extensional_identity(
 		) != 0 || prototype_term_thunk(
 			term_db, constant_lambda, &constant_value
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			term_db, prototype_type_view_rebuild_context_from_db(type_db),
-			certificate->identity_type_term_id,
+			term_db, certificate->identity_type_term_id,
 			certificate->left_endpoint_binding_id,
 			left_value,
 			&discriminating_identity
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			term_db, prototype_type_view_rebuild_context_from_db(type_db),
-			discriminating_identity,
+			term_db, discriminating_identity,
 			certificate->right_endpoint_binding_id,
 			constant_value,
 			&discriminating_identity
@@ -2196,6 +2302,19 @@ static uint32_t find_rule(
 	return PROTOTYPE_INVALID_ID;
 }
 
+static uint32_t fixture_type_id_for_instance(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* types,
+	uint32_t instance
+) {
+	uint32_t type_id;
+	uint32_t argument_count;
+	return prototype_type_projection_instance_info(
+		terms, &types->semantic_schema, instance,
+		&type_id, NULL, &argument_count
+	) == 0 ? type_id : PROTOTYPE_INVALID_ID;
+}
+
 static uint32_t add_bool_view(
 	struct prototype_term_db* terms_db,
 	struct prototype_type_declaration_db* types_db,
@@ -2206,7 +2325,6 @@ static uint32_t add_bool_view(
 	uint32_t view = (uint32_t)terms_db->term_count++;
 	memset(&terms_db->terms[view], 0, sizeof(terms_db->terms[view]));
 	terms_db->terms[view].tag = PROTOTYPE_TERM_TYPE_VIEW;
-	terms_db->terms[view].as.type_view.view_type_id = 0;
 	terms_db->terms[view].as.type_view.identity.namespace_symbol_id = -1;
 	terms_db->terms[view].as.type_view.identity.name_symbol_id = 100;
 	terms_db->terms[view].as.type_view.core = core;
@@ -2252,7 +2370,6 @@ static uint32_t add_bool_view(
 	uint32_t source = (uint32_t)terms_db->term_count++;
 	memset(&terms_db->terms[source], 0, sizeof(terms_db->terms[source]));
 	terms_db->terms[source].tag = PROTOTYPE_TERM_TYPE_DECLARATION;
-	terms_db->terms[source].as.type_declaration.type_id = 0;
 	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
 	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 100;
 	terms_db->terms[view].as.type_view.source = source;
@@ -2282,14 +2399,12 @@ static uint32_t add_box_view(
 	uint32_t view = (uint32_t)terms_db->term_count++;
 	memset(&terms_db->terms[view], 0, sizeof(terms_db->terms[view]));
 	terms_db->terms[view].tag = PROTOTYPE_TERM_TYPE_VIEW;
-	terms_db->terms[view].as.type_view.view_type_id = type_id;
 	terms_db->terms[view].as.type_view.identity.namespace_symbol_id = -1;
 	terms_db->terms[view].as.type_view.identity.name_symbol_id = 200;
 	terms_db->terms[view].as.type_view.core = core;
 	uint32_t source = (uint32_t)terms_db->term_count++;
 	memset(&terms_db->terms[source], 0, sizeof(terms_db->terms[source]));
 	terms_db->terms[source].tag = PROTOTYPE_TERM_TYPE_DECLARATION;
-	terms_db->terms[source].as.type_declaration.type_id = type_id;
 	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
 	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 200;
 	terms_db->terms[view].as.type_view.source = source;
@@ -2306,7 +2421,6 @@ static uint32_t add_box_view(
 			empty,
 			field_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&field_context
 		) != 0 || prototype_type_constructor_derive_curried_classifier(
 			terms_db,
@@ -2356,14 +2470,12 @@ static uint32_t add_dependent_box_view(
 	uint32_t view = (uint32_t)terms_db->term_count++;
 	memset(&terms_db->terms[view], 0, sizeof(terms_db->terms[view]));
 	terms_db->terms[view].tag = PROTOTYPE_TERM_TYPE_VIEW;
-	terms_db->terms[view].as.type_view.view_type_id = type_id;
 	terms_db->terms[view].as.type_view.identity.namespace_symbol_id = -1;
 	terms_db->terms[view].as.type_view.identity.name_symbol_id = 210;
 	terms_db->terms[view].as.type_view.core = core;
 	uint32_t source = (uint32_t)terms_db->term_count++;
 	memset(&terms_db->terms[source], 0, sizeof(terms_db->terms[source]));
 	terms_db->terms[source].tag = PROTOTYPE_TERM_TYPE_DECLARATION;
-	terms_db->terms[source].as.type_declaration.type_id = type_id;
 	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
 	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 210;
 	terms_db->terms[view].as.type_view.source = source;
@@ -2391,7 +2503,6 @@ static uint32_t add_dependent_box_view(
 			empty,
 			first_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&first_context
 		) != 0 || prototype_term_var(
 			terms_db, first_binding, &first_variable
@@ -2404,7 +2515,6 @@ static uint32_t add_dependent_box_view(
 			first_context,
 			second_binding,
 			dependent_classifier,
-			PROTOTYPE_INVALID_ID,
 			&second_context
 		) != 0 || prototype_type_constructor_derive_curried_classifier(
 			terms_db,
@@ -2453,14 +2563,12 @@ static uint32_t add_nat_view(
 	uint32_t view = (uint32_t)terms_db->term_count++;
 	memset(&terms_db->terms[view], 0, sizeof(terms_db->terms[view]));
 	terms_db->terms[view].tag = PROTOTYPE_TERM_TYPE_VIEW;
-	terms_db->terms[view].as.type_view.view_type_id = type_id;
 	terms_db->terms[view].as.type_view.identity.namespace_symbol_id = -1;
 	terms_db->terms[view].as.type_view.identity.name_symbol_id = 300;
 	terms_db->terms[view].as.type_view.core = core;
 	uint32_t source = (uint32_t)terms_db->term_count++;
 	memset(&terms_db->terms[source], 0, sizeof(terms_db->terms[source]));
 	terms_db->terms[source].tag = PROTOTYPE_TERM_TYPE_DECLARATION;
-	terms_db->terms[source].as.type_declaration.type_id = type_id;
 	terms_db->terms[source].as.type_declaration.identity.namespace_symbol_id = -1;
 	terms_db->terms[source].as.type_declaration.identity.name_symbol_id = 300;
 	terms_db->terms[view].as.type_view.source = source;
@@ -2493,7 +2601,6 @@ static uint32_t add_nat_view(
 			empty,
 			field_binding,
 			view,
-			PROTOTYPE_INVALID_ID,
 			&field_context
 		) != 0 || prototype_type_constructor_derive_curried_classifier(
 			terms_db,

@@ -67,19 +67,14 @@ int main(void) {
 		CONSTRUCTOR_CAPACITY
 	);
 
-	uint32_t type_id;
 	uint32_t owner;
 	uint32_t constructor;
 	uint32_t argument;
 	uint32_t lambda;
 	uint32_t application;
 	uint32_t branch;
-	if (prototype_type_declaration_add(
-			&type_db.semantic_schema,
-			&type_db.readback,
-			&type_db.representation_db, 1, &type_id) != 0 ||
-		prototype_term_type_instance_make(
-			&term_db, &type_db, type_id, NULL, 0, &owner
+	if (prototype_term_type_former(
+			&term_db, 0, 1, &owner
 		) != 0 ||
 		prototype_term_constructor(&term_db, owner, 0, &constructor) != 0 ||
 		prototype_term_external_ref(
@@ -144,9 +139,8 @@ int main(void) {
 	uint32_t kernel_whnf;
 	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			neutral_uniform_match,
 			&kernel_whnf
 		) != 0 || kernel_whnf != neutral_uniform_match) {
@@ -183,7 +177,6 @@ int main(void) {
 			&term_db, thunked_bound_constructor, &forced_bound_constructor
 		) != 0 || prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			forced_constructor,
@@ -191,7 +184,6 @@ int main(void) {
 		) != 0 || core_cbpv_whnf != forced_constructor ||
 		prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			forced_constructor,
@@ -199,15 +191,13 @@ int main(void) {
 		) != 0 || computation_cbpv_whnf != returned_constructor ||
 		prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			forced_constructor,
 			&computation_cbpv_whnf
 		) != 0 || computation_cbpv_whnf != returned_constructor ||
 		prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			bound_constructor,
@@ -215,7 +205,6 @@ int main(void) {
 		) != 0 || core_cbpv_whnf != bound_constructor ||
 		prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			bound_constructor,
@@ -223,9 +212,8 @@ int main(void) {
 		) != 0 || computation_cbpv_whnf != returned_constructor ||
 		prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			bound_constructor,
 			&computation_cbpv_whnf
 		) != 0 || computation_cbpv_whnf != returned_constructor) {
@@ -233,9 +221,8 @@ int main(void) {
 	}
 	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			forced_bound_constructor,
 			&computation_cbpv_whnf
 		) != 0 || computation_cbpv_whnf != returned_constructor) {
@@ -246,7 +233,6 @@ int main(void) {
 	uint32_t lambda_whnf;
 	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			match_term,
@@ -258,7 +244,6 @@ int main(void) {
 	uint32_t cached_lambda_whnf;
 	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			match_term,
@@ -276,7 +261,6 @@ int main(void) {
 	uint32_t unresolved_inductive_whnf;
 	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			match_term,
@@ -303,7 +287,6 @@ int main(void) {
 	uint32_t inductive_whnf;
 	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			resolved_match,
@@ -315,7 +298,6 @@ int main(void) {
 	uint32_t cached_inductive_whnf;
 	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			resolved_match,
@@ -331,7 +313,6 @@ int main(void) {
 	uint32_t still_unresolved_whnf;
 	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			match_term,
@@ -347,7 +328,6 @@ int main(void) {
 	uint32_t mutated_whnf;
 	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF,
 			resolved_match,
@@ -382,9 +362,8 @@ int main(void) {
 	struct prototype_term_normalization_result normalization_result;
 	if (prototype_term_normalize_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 				effect_request,
 				PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
 			&normalization_result
@@ -398,7 +377,6 @@ int main(void) {
 	}
 	if (prototype_term_normalize_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			application,
@@ -413,7 +391,6 @@ int main(void) {
 	}
 	if (prototype_term_normalize_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			application,
@@ -430,7 +407,6 @@ int main(void) {
 	struct prototype_term_normalization_machine* machine = NULL;
 	if (prototype_term_normalization_machine_create(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			application,
@@ -495,7 +471,7 @@ int main(void) {
 				.classifier_family = residual_family,
 				.effect_row = effect_row,
 				.normalization_profile =
-					PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
+					PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF
 			},
 			NULL
 		) != 0 || prototype_verification_db_discharge_computation_fold_result(
@@ -608,20 +584,20 @@ int main(void) {
 	prototype_term_normalization_cache_clear(&term_db);
 	uint32_t schema_cache_result;
 	if (prototype_term_normalize_complete_with_profile(
-			&term_db, &type_db, NULL,
+			&term_db, NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			neutral_uniform_match, &schema_cache_result
 		) != 0 || prototype_term_normalize_complete_with_profile(
-			&term_db, &type_db, NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			&term_db, NULL,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			neutral_uniform_match, &schema_cache_result
 		) != 0 || prototype_term_normalize_complete_with_profile(
-			&term_db, &type_db, NULL,
+			&term_db, NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			neutral_uniform_match, &schema_cache_result
 		) != 0 || prototype_term_normalize_complete_with_profile(
-			&term_db, &type_db, NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			&term_db, NULL,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			neutral_uniform_match, &schema_cache_result
 		) != 0) {
 		return 1;
@@ -636,12 +612,12 @@ int main(void) {
 			&type_db.readback,
 			&type_db.representation_db, 99, &unrelated_type
 		) != 0 || prototype_term_normalize_complete_with_profile(
-			&term_db, &type_db, NULL,
+			&term_db, NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			neutral_uniform_match, &schema_cache_result
 		) != 0 || prototype_term_normalize_complete_with_profile(
-			&term_db, &type_db, NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			&term_db, NULL,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			neutral_uniform_match, &schema_cache_result
 		) != 0) {
 		return 1;
@@ -650,10 +626,9 @@ int main(void) {
 	prototype_term_normalization_cache_get_stats(
 		&term_db, &after_schema_change
 	);
-	if (after_schema_change.hit_count != before_schema_change.hit_count + 1 ||
-		after_schema_change.miss_count != before_schema_change.miss_count + 1 ||
-		after_schema_change.semantic_revision_miss_count !=
-			before_schema_change.semantic_revision_miss_count + 1) {
+	/* Layer T schema changes cannot invalidate Layer C normalization. */
+	if (after_schema_change.hit_count != before_schema_change.hit_count + 2 ||
+		after_schema_change.miss_count != before_schema_change.miss_count) {
 		return 1;
 	}
 	return 0;

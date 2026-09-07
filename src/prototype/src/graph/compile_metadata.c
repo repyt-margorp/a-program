@@ -249,34 +249,69 @@ int prototype_compile_metadata_frozen_snapshot(
 ) {
 	if (!metadata || !p_snapshot || !metadata->typed_occurrences.frozen ||
 		!metadata->typed_occurrences.sealed ||
-		metadata->typed_occurrences.transaction_active) {
+		metadata->typed_occurrences.transaction_active ||
+		!metadata->typed_publication.sealed ||
+		metadata->typed_publication.count !=
+			metadata->typed_occurrences.occurrence_count ||
+		metadata->typed_publication.match_case_count !=
+			metadata->typed_occurrences.case_count) {
 		return -1;
 	}
-	*p_snapshot = (struct prototype_frozen_module_snapshot) {
-		.reduction_environment = metadata->reduction_environment,
-		.contexts = metadata->contexts,
-		.substitutions = metadata->substitutions,
-		.dimension_operators = metadata->dimension_operators,
-		.typed_occurrences = metadata->typed_occurrences,
-		.verification = metadata->verification,
-		.labels = metadata->labels,
-		.label_count = metadata->label_count,
-		.type_exports = metadata->type_exports,
-		.type_export_count = metadata->type_export_count,
-		.constructor_exports = metadata->constructor_exports,
-		.constructor_export_count = metadata->constructor_export_count,
-		.function_graph_associations = metadata->function_graph_associations,
-		.function_graph_association_count =
-			metadata->function_graph_association_count,
-		.function_graph_origin_groups = metadata->function_graph_origin_groups,
-		.function_graph_origin_group_count =
-			metadata->function_graph_origin_group_count,
-		.selected_entry_term = metadata->selected_entry_term,
-		.selected_entry_classifier = metadata->selected_entry_classifier,
-		.selected_entry_occurrence = metadata->selected_entry_occurrence,
-		.required_runtime_capabilities = metadata->required_runtime_capabilities
-	};
+	/* This is a shallow prefix snapshot. Assign the views directly instead of
+	 * constructing a second multi-megabyte compound literal on the stack. */
+	p_snapshot->reduction_environment = metadata->reduction_environment;
+	p_snapshot->contexts = metadata->contexts;
+	p_snapshot->substitutions = metadata->substitutions;
+	p_snapshot->dimension_operators = metadata->dimension_operators;
+	p_snapshot->typed_occurrences = metadata->typed_occurrences;
+	p_snapshot->typed_publication = metadata->typed_publication;
+	p_snapshot->accepted_substitution_claims =
+		metadata->accepted_substitution_claims;
+	p_snapshot->accepted_substitution_claim_capacity =
+		metadata->accepted_substitution_claim_capacity;
+	p_snapshot->verification = metadata->verification;
+	p_snapshot->labels = metadata->labels;
+	p_snapshot->label_count = metadata->label_count;
+	p_snapshot->type_exports = metadata->type_exports;
+	p_snapshot->type_export_count = metadata->type_export_count;
+	p_snapshot->constructor_exports = metadata->constructor_exports;
+	p_snapshot->constructor_export_count = metadata->constructor_export_count;
+	p_snapshot->function_graph_associations =
+		metadata->function_graph_associations;
+	p_snapshot->function_graph_association_count =
+		metadata->function_graph_association_count;
+	p_snapshot->function_graph_origin_groups =
+		metadata->function_graph_origin_groups;
+	p_snapshot->function_graph_origin_group_count =
+		metadata->function_graph_origin_group_count;
+	p_snapshot->selected_entry_term = metadata->selected_entry_term;
+	p_snapshot->selected_entry_classifier = metadata->selected_entry_classifier;
+	p_snapshot->selected_entry_occurrence = metadata->selected_entry_occurrence;
+	p_snapshot->required_runtime_capabilities =
+		metadata->required_runtime_capabilities;
 	return 0;
+}
+
+void prototype_compile_metadata_set_typed_publication_storage(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_typed_publication_projection* projections,
+	uint32_t* concrete_contexts,
+	size_t capacity,
+	struct prototype_typed_publication_match_case_projection*
+		match_case_projections,
+	size_t match_case_capacity
+) {
+	if (!metadata) {
+		return;
+	}
+	prototype_typed_publication_view_init(
+		&metadata->typed_publication,
+		projections,
+		concrete_contexts,
+		capacity,
+		match_case_projections,
+		match_case_capacity
+	);
 }
 
 void prototype_compile_metadata_set_accepted_substitution_claim_storage(
@@ -396,8 +431,7 @@ enum prototype_type_inspection_state prototype_compile_metadata_inspect_type(
 			.body_classifier = label->body_classifier,
 			.exposed_occurrence = label->exposed_occurrence,
 			.exposed_classifier = label->exposed_classifier,
-			.expectation_classifier = label->expectation_classifier,
-			.expectation_claim_id = label->expectation_claim_id
+			.expectation_classifier = label->expectation_classifier
 		};
 		return PROTOTYPE_TYPE_INSPECTION_AVAILABLE;
 	}

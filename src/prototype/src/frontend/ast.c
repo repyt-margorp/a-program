@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "a_program/support/schema.h"
+
 #include "../internal/ast_common.h"
 
 void prototype_ast_db_init(
@@ -225,7 +227,9 @@ int prototype_ast_type_expr_host_type(
 	struct prototype_source_span span,
 	uint32_t* p_ret
 ) {
-	if (!prototype_term_host_type_debug_name(host_type_id)) {
+	/* The source tree records the resolved intrinsic identity. Registry
+	 * membership is checked by the resolver/typing environment, not by Core. */
+	if (host_type_id <= 0) {
 		return -1;
 	}
 	struct prototype_ast_type_expr expr;
@@ -422,7 +426,6 @@ int prototype_ast_type_add(
 	type->body_span = body_span;
 	type->first_family_binder = (uint32_t)db->family_binder_count;
 	type->first_constructor = (uint32_t)db->type_constructor_count;
-	type->compiled_type = PROTOTYPE_INVALID_ID;
 	db->type_def_count++;
 	*p_type_def_id = id;
 	return 0;
@@ -695,7 +698,6 @@ int prototype_ast_match(
 		stored_case->binder_count = cases[i].binder_count;
 		stored_case->first_selector = (uint32_t)db->match_selector_count;
 		stored_case->selector_count = 0;
-		stored_case->selectors_expanded = 1;
 		stored_case->body = cases[i].body;
 		stored_case->span = cases[i].span;
 		for (uint32_t j = 0; j < cases[i].binder_count; ++j) {
@@ -724,12 +726,9 @@ int prototype_ast_match_case_set_selectors(
 		return -1;
 	}
 	struct prototype_ast_match_case* match_case = &db->cases[case_id];
-	if (match_case->selector_count != 0 || !match_case->selectors_expanded) {
-		return -1;
-	}
+	if (match_case->selector_count != 0) return -1;
 	match_case->first_selector = (uint32_t)db->match_selector_count;
 	match_case->selector_count = selector_count;
-	match_case->selectors_expanded = 0;
 	for (uint32_t i = 0; i < selector_count; ++i) {
 		db->match_selectors[db->match_selector_count++] = selectors[i];
 	}
@@ -1310,16 +1309,42 @@ int prototype_ast_add_term_assignment(
 	memset(&db->assignments[id], 0, sizeof(db->assignments[id]));
 	db->assignments[id].name_symbol_id = name_symbol_id;
 	db->assignments[id].ast = ast;
+	db->assignments[id].source_classifier_type_expr = PROTOTYPE_INVALID_ID;
 	db->assignments[id].source_entry_id = source_entry_id;
 	db->assignments[id].name_span = name_span;
 	db->assignments[id].body_span = body_span;
 	db->assignments[id].next_for_symbol = symbol->first_assignment;
-	db->assignments[id].compiled_term = PROTOTYPE_INVALID_ID;
-	db->assignments[id].compiled_classifier = PROTOTYPE_INVALID_ID;
 	symbol->first_assignment = id;
 	symbol->assignment_count++;
 	db->assignment_count++;
 	*p_ret = id;
+	return 0;
+}
+
+int prototype_ast_set_assignment_source_classifier(
+	struct prototype_ast_db* db,
+	uint32_t assignment_id,
+	uint32_t type_expr
+) {
+	if (!db || assignment_id >= db->assignment_count ||
+		type_expr >= db->type_expr_count ||
+		db->assignments[assignment_id].source_classifier_type_expr !=
+			PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	db->assignments[assignment_id].source_classifier_type_expr = type_expr;
+	return 0;
+}
+
+int prototype_ast_set_assignment_contract_classifier(
+	struct prototype_ast_db* db,
+	uint32_t assignment_id
+) {
+	if (!db || assignment_id >= db->assignment_count ||
+		db->assignments[assignment_id].source_classifier_from_contract) {
+		return -1;
+	}
+	db->assignments[assignment_id].source_classifier_from_contract = 1;
 	return 0;
 }
 

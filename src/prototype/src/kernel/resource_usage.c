@@ -1,6 +1,8 @@
 #include "a_program/kernel/resource_usage.h"
 
 #include "a_program/core/term.h"
+#include "a_program/kernel/context.h"
+#include "a_program/kernel/type_declaration.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -513,4 +515,65 @@ int prototype_term_usage_analyze(
 	}
 	p_usage->count = 0;
 	return term_usage_visit(terms, term_id, p_usage, 0);
+}
+
+int prototype_usage_vector_reindex(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	const struct prototype_usage_vector* source,
+	uint32_t substitution_id,
+	struct prototype_usage_vector* target
+) {
+	if (!terms || !type_declarations || !contexts || !substitutions ||
+		!source || !target || !prototype_substitution_get(
+			substitutions, substitution_id
+		)) {
+		return -1;
+	}
+	target->count = 0;
+	for (size_t i = 0; i < source->count; ++i) {
+		uint32_t source_var;
+		uint32_t projected_term;
+		struct prototype_usage_entry term_entries[PROTOTYPE_CONTEXT_CAPACITY];
+		struct prototype_usage_vector term_usage;
+		prototype_usage_vector_init(
+			&term_usage, term_entries, PROTOTYPE_CONTEXT_CAPACITY
+		);
+		if (prototype_term_var(
+				terms, source->entries[i].binding_id, &source_var
+			) != 0 || prototype_term_reindex(
+				terms,
+				type_declarations,
+				contexts,
+				substitutions,
+				source_var,
+				substitution_id,
+				&projected_term
+			) != 0 || prototype_term_usage_analyze(
+				terms, projected_term, &term_usage
+			) != 0) {
+			return -1;
+		}
+		for (size_t j = 0; j < term_usage.count; ++j) {
+			int scaled;
+			int current;
+			int combined;
+			if (prototype_usage_grade_multiply(
+					source->entries[i].grade,
+					term_usage.entries[j].grade,
+					&scaled
+				) != 0 || prototype_usage_vector_get(
+					target, term_usage.entries[j].binding_id, &current
+				) != 0 || prototype_usage_grade_add(
+					current, scaled, &combined
+				) != 0 || prototype_usage_vector_set(
+					target, term_usage.entries[j].binding_id, combined
+				) != 0) {
+				return -1;
+			}
+		}
+	}
+	return 0;
 }

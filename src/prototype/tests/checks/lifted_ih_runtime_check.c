@@ -134,7 +134,6 @@ int main(void) {
 	uint32_t normal;
 	if (prototype_term_nf_with_options(
 			&terms,
-			&types,
 			NULL,
 			(struct prototype_term_reduction_options) {
 				.flags = PROTOTYPE_TERM_REDUCE_DEFAULT

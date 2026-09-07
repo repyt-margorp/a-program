@@ -18,6 +18,7 @@ static int write_artifact_typed_occurrence_section(
 	if (prototype_verification_db_validate(
 			&metadata->verification, graph, terms
 		) != 0) {
+		fprintf(stderr, "artifact typed occurrence verification graph invalid\n");
 		return -1;
 	}
 	size_t occurrence_count = prototype_typed_occurrence_graph_count(graph);
@@ -47,22 +48,20 @@ static int write_artifact_typed_occurrence_section(
 		}
 		const struct prototype_context* context =
 			&metadata->contexts.contexts[i];
-		uint32_t classifier = prototype_context_classifier_term(context);
-		uint32_t classifier_variable =
-			prototype_context_classifier_variable(context);
-		if (classifier == PROTOTYPE_INVALID_ID &&
-			classifier_variable != PROTOTYPE_INVALID_ID) {
-			const struct prototype_typed_occurrence* classifier_operation =
-				prototype_typed_occurrence_graph_get(
-					graph, classifier_variable
-				);
-			if (!classifier_operation ||
-				classifier_operation->classifier == PROTOTYPE_INVALID_ID) {
-				return -1;
-			}
-			classifier = classifier_operation->classifier;
-		}
-		if (i != 0 && classifier == PROTOTYPE_INVALID_ID) {
+		uint32_t classifier = PROTOTYPE_INVALID_ID;
+		const struct prototype_context_classifier_view context_view = {
+			.contexts = &metadata->contexts
+		};
+		int classifier_status = i == 0 ? 0 :
+			prototype_context_classifier_view_read(
+				&context_view, (uint32_t)i, &classifier
+			);
+		if (i != 0 && classifier_status != 0) {
+			fprintf(stderr,
+				"artifact typed occurrence Context has no classifier equation "
+				"context=%zu equation=%u\n",
+				i,
+				prototype_context_classifier_equation(context));
 			return -1;
 		}
 		fprintf(
@@ -77,7 +76,7 @@ static int write_artifact_typed_occurrence_section(
 			context->binding_id,
 			classifier,
 			context->extension_kind,
-			context->producer_computation,
+			context->producer_occurrence,
 			context->depth
 		);
 	}
@@ -89,15 +88,28 @@ static int write_artifact_typed_occurrence_section(
 			&metadata->substitutions.substitutions[i];
 		uint32_t evidence_claim_id = i < substitution_evidence_count ?
 			substitution_evidence_claims[i] : PROTOTYPE_INVALID_ID;
+		const struct prototype_judgement_proposition* evidence =
+			prototype_judgement_claim_proposition(judgement, evidence_claim_id);
 		if ((substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND) !=
 			(evidence_claim_id != PROTOTYPE_INVALID_ID) ||
 			(evidence_claim_id != PROTOTYPE_INVALID_ID &&
-			 !prototype_cwf_substitution_claim_certifies(
+			 !prototype_cwf_substitution_claim_matches_assignment(
 				&metadata->substitutions,
 				judgement,
 				(uint32_t)i,
 				evidence_claim_id
 			 ))) {
+			fprintf(stderr,
+				"artifact typed occurrence substitution evidence invalid substitution=%zu kind=%d source=%u term=%u claim=%u evidence=%d:%u:%u:%u\n",
+				i,
+				substitution->kind,
+				substitution->source_context,
+				substitution->term,
+				evidence_claim_id,
+				evidence ? evidence->kind : 0,
+				evidence ? evidence->context_id : PROTOTYPE_INVALID_ID,
+				evidence ? evidence->subject : PROTOTYPE_INVALID_ID,
+				evidence ? evidence->classifier : PROTOTYPE_INVALID_ID);
 			return -1;
 		}
 		fprintf(
@@ -114,7 +126,7 @@ static int write_artifact_typed_occurrence_section(
 			substitution->first,
 			substitution->second,
 			substitution->term,
-			substitution->term_classifier,
+			evidence ? evidence->classifier : PROTOTYPE_INVALID_ID,
 			evidence_claim_id
 		);
 	}
@@ -122,9 +134,29 @@ static int write_artifact_typed_occurrence_section(
 	for (size_t i = 0; i < occurrence_count; ++i) {
 		const struct prototype_typed_occurrence* occurrence =
 			prototype_typed_occurrence_graph_get(graph, (uint32_t)i);
-		if (!occurrence) {
+		uint32_t publication_context = PROTOTYPE_INVALID_ID;
+		const struct prototype_typed_publication_projection* publication;
+		int publication_status = prototype_typed_publication_view_lookup(
+			&metadata->typed_publication, (uint32_t)i, &publication,
+			&publication_context
+		);
+		if (!occurrence || publication_status < 0) {
 			return -1;
 		}
+		const struct prototype_substitution* publication_action =
+			publication_status == 0 ? prototype_substitution_get(
+				&metadata->substitutions, publication->substitution
+			) : NULL;
+		if (publication_status == 0 && !publication_action) {
+			return -1;
+		}
+		if (publication_action) {
+			publication_context = publication_action->source_context;
+		}
+		uint32_t publication_output_context = publication_status == 0 ?
+			artifact_context_slice_relocate(
+				context_slice, publication_context
+			) : PROTOTYPE_INVALID_ID;
 		const char* source_name = artifact_optional_symbol_name(
 			symbols, occurrence->source_symbol_id
 		);
@@ -137,7 +169,7 @@ static int write_artifact_typed_occurrence_section(
 		fprintf(
 			stream,
 			"typed_occurrence %zu %d %d %d %u %d %u %u %s %s"
-			" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
+				" %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
 			i,
 			occurrence->tag,
 			occurrence->category,
@@ -166,8 +198,13 @@ static int write_artifact_typed_occurrence_section(
 			),
 			occurrence->context_action_substitution,
 			occurrence->source_core_term,
-			occurrence->source_classifier
-		);
+			occurrence->source_classifier,
+			publication_output_context,
+			publication->substitution,
+				publication->subject,
+				publication->classifier,
+				occurrence->declared_classifier
+			);
 		fprintf(stream, "typed_occurrence_rows %zu", i);
 		for (uint32_t j = 0; j < occurrence->implicit_effect_row_count; ++j) {
 			fprintf(stream, " %u", occurrence->implicit_effect_row_binders[j]);
@@ -221,9 +258,24 @@ static int write_artifact_typed_occurrence_section(
 	for (size_t i = 0; i < case_count; ++i) {
 		const struct prototype_typed_occurrence_match_case* operation_case =
 			prototype_typed_occurrence_graph_get_case(graph, (uint32_t)i);
-		if (!operation_case) {
+		const struct prototype_typed_publication_match_case_projection*
+			publication_case = prototype_typed_publication_view_get_match_case(
+				&metadata->typed_publication, (uint32_t)i
+			);
+		const struct prototype_substitution* publication_refinement =
+			publication_case && publication_case->refinement_substitution !=
+				PROTOTYPE_INVALID_ID ? prototype_substitution_get(
+				&metadata->substitutions,
+				publication_case->refinement_substitution
+			) : NULL;
+		if (!operation_case || !publication_case ||
+			(publication_case->refinement_substitution != PROTOTYPE_INVALID_ID &&
+			 !publication_refinement)) {
 			return -1;
 		}
+		uint32_t publication_case_context = publication_refinement ?
+			publication_refinement->source_context :
+			publication_case->concrete_context;
 		const char* label = artifact_optional_symbol_name(
 			symbols, operation_case->case_label_symbol_id
 		);
@@ -232,7 +284,7 @@ static int write_artifact_typed_occurrence_section(
 		}
 		fprintf(
 			stream,
-			"occurrence_match_case %zu %u %d %u %u %u %s\n",
+			"occurrence_match_case %zu %u %d %u %u %u %s %u %u\n",
 			i,
 			artifact_context_slice_relocate(
 				context_slice, operation_case->context_id
@@ -241,7 +293,11 @@ static int write_artifact_typed_occurrence_section(
 			operation_case->refinement_substitution,
 			operation_case->constructor_owner,
 			operation_case->constructor_id,
-			label
+			label,
+			artifact_context_slice_relocate(
+				context_slice, publication_case_context
+			),
+			publication_case->refinement_substitution
 		);
 		fprintf(stream, "occurrence_match_case_binders %zu %u", i,
 			operation_case->binder_count);
@@ -298,7 +354,7 @@ static int write_artifact_typed_occurrence_section(
 static int prototype_artifact_write_text_body(
 	FILE* stream,
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
@@ -307,12 +363,16 @@ static int prototype_artifact_write_text_body(
 	const struct prototype_ast_db* asts,
 	const struct prototype_compile_metadata* metadata,
 	const uint32_t* substitution_evidence_claims,
-	size_t substitution_evidence_count
+	size_t substitution_evidence_count,
+	const struct artifact_executable_reachability* executable
 ) {
 	if (!stream || !symbols || !intrinsic_environment || !interface ||
-		interface->intrinsic_environment_fingerprint == 0 ||
-		interface->intrinsic_environment_fingerprint !=
-			prototype_intrinsic_environment_fingerprint(intrinsic_environment) ||
+		!executable || interface->operational_intrinsic_fingerprint == 0 ||
+		interface->operational_intrinsic_fingerprint !=
+			prototype_core_intrinsic_fingerprint() ||
+		interface->typing_intrinsic_fingerprint == 0 ||
+		interface->typing_intrinsic_fingerprint !=
+			prototype_intrinsic_typing_fingerprint(intrinsic_environment) ||
 		interface->default_integer_host_type !=
 			intrinsic_environment->default_integer_host_type ||
 		prototype_term_host_type_bit_width(
@@ -331,8 +391,9 @@ static int prototype_artifact_write_text_body(
 	);
 	fprintf(
 		stream,
-		"intrinsic_environment %" PRIu64 " %d\n",
-		interface->intrinsic_environment_fingerprint,
+		"intrinsic_environment %" PRIu64 " %" PRIu64 " %d\n",
+		interface->operational_intrinsic_fingerprint,
+		interface->typing_intrinsic_fingerprint,
 		interface->default_integer_host_type
 	);
 	fprintf(stream, "SECTION interface\n");
@@ -634,10 +695,11 @@ static int prototype_artifact_write_text_body(
 			symbols,
 			intrinsic_environment,
 			&metadata->dimension_operators,
-			terms,
-			type_declarations,
+		terms,
+		type_declarations,
 		judgement,
-		&context_slice
+		&context_slice,
+		executable
 	) != 0) {
 		fprintf(stderr, "artifact write: object graph section failed\n");
 		artifact_context_slice_free(&context_slice);
@@ -673,6 +735,7 @@ static int prototype_artifact_write_text_body(
 		interface,
 		terms,
 		type_declarations,
+		metadata ? &metadata->dimension_operators : NULL,
 		judgement
 	);
 	if (relocation_status != 0) {
@@ -684,7 +747,7 @@ static int prototype_artifact_write_text_body(
 int prototype_artifact_write_text(
 	FILE* stream,
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
@@ -692,10 +755,11 @@ int prototype_artifact_write_text(
 	const struct prototype_cwf_certificate_db* cwf_certificates,
 	const struct prototype_universe_db* universe,
 	const struct prototype_ast_db* asts,
-	const struct prototype_compile_metadata* metadata
+	const struct prototype_compile_metadata* metadata,
+	const struct prototype_context_classifier_view* context_classifiers
 ) {
 	if (!stream || !symbols || !intrinsic_environment || !interface || !terms ||
-		!type_declarations || !judgement || !universe) {
+		!type_declarations || !judgement || !universe || !context_classifiers) {
 		return -1;
 	}
 	if (metadata &&
@@ -726,9 +790,14 @@ int prototype_artifact_write_text(
 		fprintf(stderr, "artifact source identity-root validation failed\n");
 		return -1;
 	}
-	struct artifact_closure_graph closure_graph;
+	struct artifact_closure_graph* closure_graph = calloc(
+		1, sizeof(*closure_graph)
+	);
+	if (!closure_graph) {
+		return -1;
+	}
 	if (artifact_build_closure_graph(
-			&closure_graph,
+			closure_graph,
 			interface,
 			terms,
 			type_declarations,
@@ -736,40 +805,55 @@ int prototype_artifact_write_text(
 			cwf_certificates,
 			metadata ? metadata->accepted_substitution_claims : NULL,
 			metadata ? metadata->accepted_substitution_claim_capacity : 0,
-			universe,
-			metadata
+		universe,
+		metadata,
+		context_classifiers
 	) != 0) {
 		fprintf(stderr, "artifact closure construction failed\n");
+		free(closure_graph);
 		return -1;
 	}
-	struct artifact_publication_graph publication;
+	struct artifact_publication_graph* publication = calloc(
+		1, sizeof(*publication)
+	);
+	if (!publication) {
+		artifact_closure_graph_free(closure_graph);
+		free(closure_graph);
+		return -1;
+	}
 	if (artifact_build_publication_graph(
-			&publication,
-			&closure_graph,
+			publication,
+			symbols,
+			closure_graph,
 			interface,
-		metadata
+			metadata,
+			context_classifiers
 	) != 0) {
 		fprintf(stderr, "artifact dense publication construction failed\n");
-		artifact_closure_graph_free(&closure_graph);
+		artifact_closure_graph_free(closure_graph);
+		free(publication);
+		free(closure_graph);
 		return -1;
 	}
 	/* Dependencies are part of the public rooted graph. Recompute them after
 	 * dense publication so unused accepted work cannot leak imports, while
 	 * external references reachable only through proof evidence are retained. */
 	if (prototype_artifact_interface_collect_dependencies(
-			&publication.interface,
-			&publication.object.terms,
-			&publication.object.type_declarations,
-			&publication.object.judgement
+			&publication->interface,
+			&publication->object.terms,
+			&publication->object.type_declarations,
+			&publication->object.judgement
 		) != 0) {
 		fprintf(stderr, "artifact publication dependency collection failed\n");
-		artifact_publication_graph_free(&publication);
-		artifact_closure_graph_free(&closure_graph);
+		artifact_publication_graph_free(publication);
+		artifact_closure_graph_free(closure_graph);
+		free(publication);
+		free(closure_graph);
 		return -1;
 	}
 	if (asts) {
-		for (size_t i = 0; i < publication.object.terms.term_count; ++i) {
-			const struct prototype_term* term = &publication.object.terms.terms[i];
+		for (size_t i = 0; i < publication->object.terms.term_count; ++i) {
+			const struct prototype_term* term = &publication->object.terms.terms[i];
 			if (term->tag != PROTOTYPE_TERM_TYPE_DECLARATION) {
 				continue;
 			}
@@ -783,13 +867,15 @@ int prototype_artifact_write_text(
 					continue;
 				}
 				if (prototype_artifact_interface_add_dependency_in_namespace(
-						&publication.interface,
+						&publication->interface,
 						dependency->namespace_symbol_id,
 						dependency->name_symbol_id
 					) != 0) {
 					fprintf(stderr, "artifact rooted type dependency collection failed\n");
-					artifact_publication_graph_free(&publication);
-					artifact_closure_graph_free(&closure_graph);
+					artifact_publication_graph_free(publication);
+					artifact_closure_graph_free(closure_graph);
+					free(publication);
+					free(closure_graph);
 					return -1;
 				}
 				break;
@@ -797,38 +883,53 @@ int prototype_artifact_write_text(
 		}
 		for (size_t i = 0; i < asts->import_count; ++i) {
 			if (prototype_artifact_interface_add_dependency(
-					&publication.interface, asts->imports[i].name_symbol_id
+					&publication->interface, asts->imports[i].name_symbol_id
 				) != 0) {
 				fprintf(stderr, "artifact source import collection failed\n");
-				artifact_publication_graph_free(&publication);
-				artifact_closure_graph_free(&closure_graph);
+				artifact_publication_graph_free(publication);
+				artifact_closure_graph_free(closure_graph);
+				free(publication);
+				free(closure_graph);
 				return -1;
 			}
 		}
 	}
-	if (publication.object.terms.term_count != 0 ||
-		publication.object.type_declarations.semantic_schema.type_count != 0 ||
-		publication.object.judgement.claim_count != 0) {
-		struct artifact_publication_graph normalized_publication;
-		if (artifact_republish_publication_graph(
-				&normalized_publication, &publication
-			) != 0) {
-			fprintf(stderr, "artifact publication normalization failed\n");
-			artifact_publication_graph_free(&publication);
-			artifact_closure_graph_free(&closure_graph);
+	if (publication->object.terms.term_count != 0 ||
+		publication->object.type_declarations.semantic_schema.type_count != 0 ||
+		publication->object.judgement.claim_count != 0) {
+		struct artifact_publication_graph* normalized_publication = calloc(
+			1, sizeof(*normalized_publication)
+		);
+		if (!normalized_publication) {
+			artifact_publication_graph_free(publication);
+			artifact_closure_graph_free(closure_graph);
+			free(publication);
+			free(closure_graph);
 			return -1;
 		}
-		artifact_publication_graph_free(&publication);
+		if (artifact_republish_publication_graph(
+				normalized_publication, symbols, publication
+			) != 0) {
+			fprintf(stderr, "artifact publication normalization failed\n");
+			artifact_publication_graph_free(publication);
+			artifact_closure_graph_free(closure_graph);
+			free(normalized_publication);
+			free(publication);
+			free(closure_graph);
+			return -1;
+		}
+		artifact_publication_graph_free(publication);
+		free(publication);
 		publication = normalized_publication;
 	}
 	int identity_validation_status =
 		prototype_artifact_interface_validate_identity_roots(
-			&publication.interface,
-			&publication.object.terms,
-			&publication.object.type_declarations,
-			&publication.metadata.contexts,
-			&publication.metadata.dimension_operators,
-			&publication.object.judgement
+			&publication->interface,
+			&publication->object.terms,
+			&publication->object.type_declarations,
+			&publication->metadata.contexts,
+			&publication->metadata.dimension_operators,
+			&publication->object.judgement
 		);
 	if (identity_validation_status != 0) {
 		fprintf(
@@ -836,49 +937,58 @@ int prototype_artifact_write_text(
 			"artifact dense identity validation failed status=%d\n",
 			identity_validation_status
 		);
-		artifact_publication_graph_free(&publication);
-		artifact_closure_graph_free(&closure_graph);
+		artifact_publication_graph_free(publication);
+		artifact_closure_graph_free(closure_graph);
+		free(publication);
+		free(closure_graph);
 		return -1;
 	}
 	if (prototype_artifact_interface_validate_function_graph_associations(
-			&publication.interface,
-			&publication.object.terms,
-			&publication.object.type_declarations,
-			&publication.metadata.contexts,
-			&publication.object.judgement
+			&publication->interface,
+			&publication->object.terms,
+			&publication->object.type_declarations,
+			&publication->metadata.contexts,
+			&publication->object.judgement
 		) != 0) {
 		fprintf(stderr, "artifact dense function-graph validation failed\n");
-		artifact_publication_graph_free(&publication);
-		artifact_closure_graph_free(&closure_graph);
+		artifact_publication_graph_free(publication);
+		artifact_closure_graph_free(closure_graph);
+		free(publication);
+		free(closure_graph);
 		return -1;
 	}
 	if (prototype_cwf_validate_accepted_semantic_action_coverage(
-			&publication.metadata.substitutions,
-			&publication.object.judgement
+			&publication->metadata.substitutions,
+			&publication->object.judgement
 		) != 0) {
 		fprintf(stderr, "artifact CwF semantic-action coverage failed\n");
-		artifact_publication_graph_free(&publication);
-		artifact_closure_graph_free(&closure_graph);
+		artifact_publication_graph_free(publication);
+		artifact_closure_graph_free(closure_graph);
+		free(publication);
+		free(closure_graph);
 		return -1;
 	}
 	int status = prototype_artifact_write_text_body(
 		stream,
 		symbols,
 		intrinsic_environment,
-		&publication.interface,
-		&publication.object.terms,
-		&publication.object.type_declarations,
-		&publication.object.judgement,
-		&publication.object.universe,
+		&publication->interface,
+		&publication->object.terms,
+		&publication->object.type_declarations,
+		&publication->object.judgement,
+		&publication->object.universe,
 		asts,
-		&publication.metadata,
-		publication.substitution_evidence_claims,
-		publication.metadata.substitutions.substitution_count
+		&publication->metadata,
+		publication->substitution_evidence_claims,
+		publication->metadata.substitutions.substitution_count,
+		&publication->object.executable
 	);
 	if (status != 0) {
 		fprintf(stderr, "artifact dense publication write failed\n");
 	}
-	artifact_publication_graph_free(&publication);
-	artifact_closure_graph_free(&closure_graph);
+	artifact_publication_graph_free(publication);
+	artifact_closure_graph_free(closure_graph);
+	free(publication);
+	free(closure_graph);
 	return status;
 }

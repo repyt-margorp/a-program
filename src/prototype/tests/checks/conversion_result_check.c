@@ -46,13 +46,13 @@ static int expect_status(
 	int expected_status,
 	int expected_reason
 ) {
-	struct prototype_kernel_conversion_goal goal = {
+	struct prototype_typing_conversion_goal goal = {
 		.id = 0,
 		.context_id = prototype_context_empty(context_db),
 		.carrier_classifier = PROTOTYPE_INVALID_ID,
 		.left_term = left,
 		.right_term = right,
-		.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+		.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 		.step_limit = step_limit
 	};
 	if (prototype_judgement_kernel_conversion_goal_execute(
@@ -264,9 +264,8 @@ int main(void) {
 	struct prototype_term_conversion_result invalid;
 	if (prototype_term_compare_for_conversion(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			term_db.term_count,
 			universe_u,
 			UINT64_MAX,
@@ -284,12 +283,12 @@ int main(void) {
 		return 12;
 	}
 
-	struct prototype_kernel_conversion_goal malformed_goal = {
+	struct prototype_typing_conversion_goal malformed_goal = {
 		.context_id = context_db.context_count,
 		.carrier_classifier = PROTOTYPE_INVALID_ID,
 		.left_term = universe_u,
 		.right_term = universe_u,
-		.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+		.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 		.step_limit = 1
 	};
 	if (prototype_judgement_kernel_conversion_goal_validate(

@@ -119,13 +119,13 @@ make reader >/dev/null
 cwf_inspection=$TIMING_TMP/cwf-inspection.out
 ./read_file.out --read-graph "$identity_artifact" >"$cwf_inspection"
 grep -q '^#### Static Context and Substitution ####$' "$cwf_inspection"
-grep -Eq '^context#[1-9][0-9]* parent=context#[0-9]+ depth=[1-9][0-9]* binding=binding#[0-9]+ classifier=term#[0-9]+$' \
+grep -Eq '^context#[1-9][0-9]* parent=context#[0-9]+ depth=[1-9][0-9]* binding=binding#[0-9]+ classifier-equation=equation#[0-9]+$' \
 	"$cwf_inspection"
 grep -Eq '^substitution#[0-9]+ kind=extend .* evidence=claim#[0-9]+$' \
 	"$cwf_inspection"
 grep -Eq '^  core-value term#[0-9]+ = ' "$cwf_inspection"
 grep -q '^#### Runtime Environment Boundary ####$' "$cwf_inspection"
-grep -Eq '^intrinsic-environment fingerprint=[1-9][0-9]* default-integer=#\.Int32$' \
+grep -Eq '^intrinsic-environment operational=[1-9][0-9]* typing=[1-9][0-9]* default-integer=#\.Int32$' \
 	"$cwf_inspection"
 prototype_test_phase forgery
 forged_source_artifact=$TIMING_TMP/forged-identity-source.apo

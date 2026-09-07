@@ -213,7 +213,7 @@ static int validate_dimension_action_thunk_return_witness_proof(
 	}
 	uint32_t computation = terms->terms[outer_source].as.thunk_type.computation;
 	if (computation >= terms->term_count || terms->terms[computation].tag !=
-			PROTOTYPE_TERM_COMPUTATION_TYPE || prototype_term_effect_row_purity(
+			PROTOTYPE_TERM_COMPUTATION_TYPE || prototype_classifier_effect_row_purity(
 			terms, terms->terms[computation].as.computation_type.label
 		) != PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
 		return -1;

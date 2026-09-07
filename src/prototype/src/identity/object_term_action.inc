@@ -127,10 +127,12 @@ static int hott_instantiate_object_identity_family(
 		endpoint->binding_id != identity->right_endpoint_binding_id) {
 		return -1;
 	}
-	uint32_t expected_left_classifier = prototype_context_classifier_term(
-		left_endpoint
+	uint32_t expected_left_classifier = prototype_context_classifier_answer(
+		contexts, left_endpoint
 	);
-	uint32_t expected_right_classifier = prototype_context_classifier_term(endpoint);
+	uint32_t expected_right_classifier = prototype_context_classifier_answer(
+		contexts, endpoint
+	);
 	if (left->classifier != expected_left_classifier) {
 		uint32_t converted_left_claim;
 		if (prototype_judgement_classifier_conversion(
@@ -494,7 +496,6 @@ static int hott_prepare_local_object_identity(
 			environment->target_context_id,
 			left_binding,
 			left->classifier,
-			PROTOTYPE_INVALID_ID,
 			&left_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			cwf,
@@ -525,7 +526,6 @@ static int hott_prepare_local_object_identity(
 			left_context,
 			right_binding,
 			right->classifier,
-			PROTOTYPE_INVALID_ID,
 			&endpoint_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			cwf,
@@ -562,9 +562,8 @@ static int hott_prepare_local_object_identity(
 	int computation_rule;
 	if (prototype_term_normalize_complete_with_profile(
 			terms,
-			types,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			left->classifier,
 			&normalized_carrier
 		) != 0) {
@@ -1064,7 +1063,6 @@ static int hott_construct_nullary_match_object_action(
 			environment->target_context_id,
 			motive_binding,
 			scrutinee_family->subject,
-			PROTOTYPE_INVALID_ID,
 			&motive_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			cwf,
@@ -1799,8 +1797,7 @@ static int hott_apply_pointwise_identity_witness(
 			&codomain_binding,
 			&codomain
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			terms, prototype_type_view_rebuild_context_from_db(types),
-			codomain,
+			terms, codomain,
 			codomain_binding,
 			argument->subject,
 			&application_classifier
@@ -1902,7 +1899,7 @@ static int hott_apply_pointwise_identity_witness(
 				formation_stage,
 				formation_status
 			);
-			prototype_term_print_debug(
+			prototype_type_term_print_debug(
 				stderr, NULL, NULL, types, terms, next_value_type
 			);
 			fputc('\n', stderr);
@@ -2008,7 +2005,6 @@ static int hott_apply_pointwise_identity_witness(
 							trace_context,
 							trace_binder,
 							terms->terms[trace_term].as.pi.domain,
-							PROTOTYPE_INVALID_ID,
 							&trace_next_context
 						) != 0) {
 						break;
@@ -2094,7 +2090,6 @@ static int hott_apply_pointwise_identity_witness(
 			context_id,
 			continuation_binding,
 			next_value_type,
-			PROTOTYPE_INVALID_ID,
 			&continuation_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			cwf,
@@ -2437,7 +2432,7 @@ static int hott_construct_object_app_action(
 	uint32_t acted_at_left_claim;
 	if (!witness_evidence || witness_evidence->classifier >= terms->term_count ||
 		terms->terms[witness_evidence->classifier].tag !=
-			PROTOTYPE_TERM_COMPUTATION_TYPE || prototype_term_effect_row_purity(
+			PROTOTYPE_TERM_COMPUTATION_TYPE || prototype_classifier_effect_row_purity(
 			terms,
 			terms->terms[witness_evidence->classifier].as.computation_type.label
 		) != PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
@@ -2696,14 +2691,12 @@ static int hott_construct_identity_lambda_action(
 
 	uint32_t concrete_identity;
 	if (prototype_term_graph_substitute_bound_var(
-			terms, prototype_type_view_rebuild_context_from_db(types),
-			identity->identity_type_term_id,
+			terms, identity->identity_type_term_id,
 			identity->left_endpoint_binding_id,
 			left_source->subject,
 			&concrete_identity
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			terms, prototype_type_view_rebuild_context_from_db(types),
-			concrete_identity,
+			terms, concrete_identity,
 			identity->right_endpoint_binding_id,
 			right_source->subject,
 			&concrete_identity
@@ -2783,7 +2776,6 @@ static int hott_construct_identity_lambda_action(
 			target_context_id,
 			binders[0],
 			domain,
-			PROTOTYPE_INVALID_ID,
 			&x0_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			cwf,
@@ -2821,7 +2813,6 @@ static int hott_construct_identity_lambda_action(
 			x0_context,
 			binders[1],
 			domain,
-			PROTOTYPE_INVALID_ID,
 			&x1_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			cwf,
@@ -2902,7 +2893,6 @@ static int hott_construct_identity_lambda_action(
 			x1_context,
 			binders[2],
 			input_identity,
-			PROTOTYPE_INVALID_ID,
 			&xr_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			cwf,
@@ -3817,9 +3807,8 @@ static int hott_construct_object_value_action_depth(
 		terms->terms[source->classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR &&
 		prototype_term_normalize_complete_with_profile(
 			terms,
-			types,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			source->subject,
 			&normalized_subject
 		) == 0 && normalized_subject != source->subject) {
@@ -4767,7 +4756,7 @@ int prototype_hott_execute_object_term_action(
 		terms,
 		request_id,
 		certificate_id,
-		PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+		PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 		0,
 		p_result_id
 	);
@@ -5378,9 +5367,10 @@ int prototype_hott_execute_term_action(
 			const struct prototype_context* relation_entry = binding_bridge ?
 				prototype_context_get(
 					contexts, binding_bridge->bridge_context_id
-				) : NULL;
+			) : NULL;
 			if (relation_entry &&
-				prototype_context_classifier_term(relation_entry) == relation_type &&
+				prototype_context_classifier_answer(contexts, relation_entry) ==
+					relation_type &&
 				prototype_term_var(
 					terms, relation_entry->binding_id, &witness
 				) == 0 &&
@@ -5401,9 +5391,8 @@ int prototype_hott_execute_term_action(
 		struct prototype_term_conversion_result endpoint_comparison;
 		if (prototype_term_compare_for_conversion(
 				terms,
-				type_declarations,
 				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 				prototype_judgement_proposition_get(judgement, left_endpoint_evidence->proposition_id)->subject,
 				prototype_judgement_proposition_get(judgement, right_endpoint_evidence->proposition_id)->subject,
 				64,
@@ -6149,7 +6138,7 @@ int prototype_hott_execute_term_action(
 		terms,
 		request_id,
 		certificate_id,
-		PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+		PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 		64,
 		p_result_id
 	);

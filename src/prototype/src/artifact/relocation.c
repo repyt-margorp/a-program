@@ -161,6 +161,7 @@ static int artifact_export_source_proposition(
 
 int prototype_artifact_apply_term_relocations(
 	struct prototype_artifact_interface* target_interface,
+	const struct symbol_table* symbols,
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,
@@ -168,9 +169,15 @@ int prototype_artifact_apply_term_relocations(
 	struct prototype_compile_metadata* target_metadata,
 	const struct prototype_artifact_interface* provider_interface
 ) {
-	if (!target_interface || !target_terms || !target_type_declarations ||
+	if (!target_interface || !symbols || !target_terms || !target_type_declarations ||
 		!target_judgement || !target_contexts || !target_metadata ||
 		!provider_interface) {
+		return -1;
+	}
+	if (!target_metadata->typed_publication.sealed ||
+		prototype_typed_publication_view_begin_extension(
+			&target_metadata->typed_publication
+		) != 0) {
 		return -1;
 	}
 	for (size_t i = 0; i < provider_interface->term_export_count; ++i) {
@@ -220,9 +227,11 @@ int prototype_artifact_apply_term_relocations(
 				return -1;
 			}
 			target->local_term = linked;
-			if (prototype_term_canonical_key_with_types(
+			if (prototype_artifact_semantic_key_build(
+					symbols,
 					target_terms,
 					target_type_declarations,
+					&target_metadata->dimension_operators,
 					target->local_term,
 					&target->canonical_key
 				) != 0) {
@@ -240,9 +249,11 @@ int prototype_artifact_apply_term_relocations(
 			}
 			if (target->classifier < target_terms->term_count) {
 				target->classifier = linked;
-				if (prototype_term_canonical_key_with_types(
+				if (prototype_artifact_semantic_key_build(
+						symbols,
 						target_terms,
 						target_type_declarations,
+						&target_metadata->dimension_operators,
 						target->classifier,
 						&target->classifier_key
 					) != 0) {
@@ -313,6 +324,8 @@ int prototype_artifact_apply_term_relocations(
 		for (size_t j = 0; j < target_metadata->typed_occurrences.occurrence_count; ++j) {
 			struct prototype_typed_occurrence* operation =
 				&target_metadata->typed_occurrences.occurrences[j];
+			uint32_t original_core_term = operation->core_term;
+			uint32_t original_classifier = operation->classifier;
 			uint32_t* projections[] = {
 				&operation->core_term,
 				&operation->classifier,
@@ -334,17 +347,47 @@ int prototype_artifact_apply_term_relocations(
 					return -1;
 				}
 			}
+			if (!prototype_typed_publication_view_occurrence_is_unreachable(
+					&target_metadata->typed_publication, (uint32_t)j
+				)) {
+				const struct prototype_typed_publication_projection* publication =
+					&target_metadata->typed_publication.projections[j];
+				uint32_t typed_projection = publication->typed_projection;
+				if ((original_core_term != operation->core_term &&
+					 prototype_typed_publication_view_project_subject(
+						&target_metadata->typed_publication,
+						(uint32_t)j,
+						typed_projection,
+						original_core_term,
+						operation->core_term
+					 ) != 0) ||
+					(original_classifier != operation->classifier &&
+					 prototype_typed_publication_view_project_classifier(
+						&target_metadata->typed_publication,
+						(uint32_t)j,
+						typed_projection,
+						original_classifier,
+						operation->classifier
+					 ) != 0)) {
+					return -1;
+				}
+			}
 		}
 		for (size_t j = 1; j < target_contexts->context_count; ++j) {
 			struct prototype_context* context = &target_contexts->contexts[j];
-			if (prototype_context_classifier_term(context) !=
-					PROTOTYPE_INVALID_ID &&
+			struct prototype_context_classifier_equation* equation =
+				context->classifier_equation <
+					target_contexts->classifier_equation_count ?
+				&target_contexts->classifier_equations[
+					context->classifier_equation
+				] : NULL;
+			if (!equation || equation->answer == PROTOTYPE_INVALID_ID ||
 				prototype_term_resolve_external_ref(
 					target_terms,
-					prototype_context_classifier_term(context),
+					equation->answer,
 					provider_name,
 					provider_term,
-					&context->classifier_ref.term_id
+					&equation->answer
 				) != 0) {
 				return -1;
 			}
@@ -366,16 +409,6 @@ int prototype_artifact_apply_term_relocations(
 					provider_name,
 					provider_term,
 					&substitution->term
-				) != 0) {
-				return -1;
-			}
-			if (substitution->term_classifier != PROTOTYPE_INVALID_ID &&
-				prototype_term_resolve_external_ref(
-					target_terms,
-					substitution->term_classifier,
-					provider_name,
-					provider_term,
-					&substitution->term_classifier
 				) != 0) {
 				return -1;
 			}
@@ -428,6 +461,14 @@ int prototype_artifact_apply_term_relocations(
 		}
 	}
 	prototype_term_notify_graph_mutation(target_terms);
+	if (prototype_typed_publication_view_seal(
+			&target_metadata->typed_publication,
+			&target_metadata->typed_occurrences,
+			0,
+			0
+		) != 0) {
+		return -1;
+	}
 	return prototype_artifact_interface_collect_dependencies(
 		target_interface,
 		target_terms,
@@ -438,11 +479,14 @@ int prototype_artifact_apply_term_relocations(
 
 int prototype_artifact_interface_recompute_keys(
 	struct prototype_artifact_interface* interface,
+	const struct symbol_table* symbols,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_context_db* contexts
+	const struct prototype_context_db* contexts,
+	const struct prototype_dimension_operator_db* dimension_operators
 ) {
-	if (!interface || !terms || !type_declarations || !contexts) {
+	if (!interface || !symbols || !terms || !type_declarations || !contexts ||
+		!dimension_operators) {
 		return -1;
 	}
 	if (prototype_constructor_curried_caches_rebuild(
@@ -494,9 +538,11 @@ int prototype_artifact_interface_recompute_keys(
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
 		struct prototype_artifact_term_export* export = &interface->term_exports[i];
 		if (export->local_term >= terms->term_count ||
-			prototype_term_canonical_key_with_types(
+			prototype_artifact_semantic_key_build(
+				symbols,
 				terms,
 				type_declarations,
+				dimension_operators,
 				export->local_term,
 				&export->canonical_key
 			) != 0) {
@@ -506,9 +552,11 @@ int prototype_artifact_interface_recompute_keys(
 		memset(&export->classifier_key, 0, sizeof(export->classifier_key));
 		if (export->classifier != PROTOTYPE_INVALID_ID &&
 			(export->classifier >= terms->term_count ||
-				prototype_term_canonical_key_with_types(
+				prototype_artifact_semantic_key_build(
+					symbols,
 					terms,
 					type_declarations,
+					dimension_operators,
 					export->classifier,
 					&export->classifier_key
 				) != 0)) {
@@ -555,16 +603,113 @@ int prototype_artifact_interface_recompute_keys(
 	return 0;
 }
 
+int prototype_artifact_interface_validate_semantic_keys(
+	const struct prototype_artifact_interface* interface,
+	const struct symbol_table* symbols,
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_dimension_operator_db* dimension_operators
+) {
+	if (!interface || !symbols || !terms || !type_declarations ||
+		!dimension_operators) {
+		return -1;
+	}
+	for (size_t i = 0; i < interface->term_export_count; ++i) {
+		const struct prototype_artifact_term_export* export =
+			&interface->term_exports[i];
+		struct prototype_artifact_semantic_key expected;
+		if (export->local_term >= terms->term_count ||
+			prototype_artifact_semantic_key_build(
+				symbols,
+				terms,
+				type_declarations,
+				dimension_operators,
+				export->local_term,
+				&expected
+			) != 0 || !prototype_artifact_semantic_keys_equal(
+				&expected, &export->canonical_key
+			)) {
+			fprintf(
+				stderr,
+				"artifact semantic term key mismatch export=%zu "
+				"persisted=%" PRIu64 "/%" PRIu32 "/%" PRIu32 "/%" PRIu32
+				" expected=%" PRIu64 "/%" PRIu32 "/%" PRIu32 "/%" PRIu32
+				"\n",
+				i,
+				export->canonical_key.hash,
+				export->canonical_key.node_count,
+				export->canonical_key.bound_binder_count,
+				export->canonical_key.free_binder_count,
+				expected.hash,
+				expected.node_count,
+				expected.bound_binder_count,
+				expected.free_binder_count
+			);
+			return -1;
+		}
+		memset(&expected, 0, sizeof(expected));
+		if (export->classifier == PROTOTYPE_INVALID_ID) {
+			struct prototype_artifact_semantic_key empty;
+			memset(&empty, 0, sizeof(empty));
+			if (!prototype_artifact_semantic_keys_equal(
+					&empty, &export->classifier_key
+				)) {
+				fprintf(
+					stderr,
+					"artifact semantic classifier key present without classifier "
+					"export=%zu\n",
+					i
+				);
+				return -1;
+			}
+			continue;
+		}
+		if (export->classifier >= terms->term_count ||
+			prototype_artifact_semantic_key_build(
+				symbols,
+				terms,
+				type_declarations,
+				dimension_operators,
+				export->classifier,
+				&expected
+			) != 0 || !prototype_artifact_semantic_keys_equal(
+				&expected, &export->classifier_key
+			)) {
+			fprintf(
+				stderr,
+				"artifact semantic classifier key mismatch export=%zu "
+				"persisted=%" PRIu64 "/%" PRIu32 "/%" PRIu32 "/%" PRIu32
+				" expected=%" PRIu64 "/%" PRIu32 "/%" PRIu32 "/%" PRIu32
+				"\n",
+				i,
+				export->classifier_key.hash,
+				export->classifier_key.node_count,
+				export->classifier_key.bound_binder_count,
+				export->classifier_key.free_binder_count,
+				expected.hash,
+				expected.node_count,
+				expected.bound_binder_count,
+				expected.free_binder_count
+			);
+			return -1;
+		}
+	}
+	return 0;
+}
+
 int prototype_artifact_apply_type_expr_relocations(
 	struct prototype_artifact_interface* target_interface,
+	const struct symbol_table* symbols,
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,
 	const struct prototype_context_db* target_contexts,
+	const struct prototype_dimension_operator_db* target_dimension_operators,
 	const struct prototype_artifact_interface* provider_interface
 ) {
-	if (!target_interface || !target_terms || !target_type_declarations ||
-		!target_judgement || !target_contexts || !provider_interface) {
+	if (!target_interface || !symbols || !target_terms || !target_type_declarations ||
+		!target_judgement || !target_contexts || !target_dimension_operators ||
+		!provider_interface) {
 		return -1;
 	}
 
@@ -599,9 +744,11 @@ int prototype_artifact_apply_type_expr_relocations(
 
 	if (prototype_artifact_interface_recompute_keys(
 		target_interface,
+		symbols,
 		target_terms,
 		target_type_declarations,
-		target_contexts
+		target_contexts,
+		target_dimension_operators
 		) != 0) {
 		return -1;
 	}

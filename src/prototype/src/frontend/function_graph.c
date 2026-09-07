@@ -1,7 +1,9 @@
 #include "a_program/frontend/function_graph.h"
+#include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/rules.h"
+#include "a_program/kernel/type_term_debug.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +32,780 @@ static int prototype_accepted_definition_view_open(
 	uint32_t assignment_id,
 	struct prototype_accepted_definition_view* p_view
 );
+
+static uint32_t generated_source_application_head(
+	const struct prototype_ast_db* asts,
+	uint32_t ast
+) {
+	while (asts && ast < asts->node_count &&
+		asts->nodes[ast].tag == PROTOTYPE_AST_APP) {
+		ast = asts->nodes[ast].as.app.function;
+	}
+	return ast;
+}
+
+static uint32_t generated_source_type_application_head(
+	const struct prototype_ast_db* asts,
+	uint32_t type_expr
+) {
+	while (asts && type_expr < asts->type_expr_count &&
+		asts->type_exprs[type_expr].tag == PROTOTYPE_AST_TYPE_EXPR_APP) {
+		type_expr = asts->type_exprs[type_expr].as.app.function;
+	}
+	return type_expr;
+}
+
+static int generated_source_ast_contains(
+	const struct prototype_ast_db* asts,
+	uint32_t root,
+	uint32_t target,
+	uint32_t depth
+) {
+	if (!asts || root >= asts->node_count || depth > 256) return 0;
+	if (root == target) return 1;
+	const struct prototype_ast_node* node = &asts->nodes[root];
+	switch (node->tag) {
+		case PROTOTYPE_AST_APP:
+			if (generated_source_ast_contains(
+					asts, node->as.app.function, target, depth + 1
+				)) {
+				return 1;
+			}
+			return generated_source_ast_contains(
+				asts, node->as.app.argument, target, depth + 1
+			);
+		case PROTOTYPE_AST_LAMBDA:
+			return generated_source_ast_contains(
+				asts, node->as.lambda.body, target, depth + 1
+			);
+		case PROTOTYPE_AST_MATCH:
+			if (generated_source_ast_contains(
+					asts, node->as.match.scrutinee, target, depth + 1
+				)) {
+				return 1;
+			}
+			for (uint32_t i = 0; i < node->as.match.case_count; ++i) {
+				uint32_t case_id = node->as.match.first_case + i;
+				if (case_id >= asts->case_count) return 0;
+				if (generated_source_ast_contains(
+						asts, asts->cases[case_id].body, target, depth + 1
+					)) {
+					return 1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_AST_ASCRIPTION:
+			return generated_source_ast_contains(
+				asts, node->as.ascription.term, target, depth + 1
+			);
+		case PROTOTYPE_AST_QUOTE:
+			return generated_source_ast_contains(
+				asts, node->as.unary.term, target, depth + 1
+			);
+		case PROTOTYPE_AST_COMPUTATION_BLOCK:
+			for (uint32_t i = 0; i < node->as.block.item_count; ++i) {
+				uint32_t item_id = node->as.block.first_item + i;
+				if (item_id >= asts->block_item_count) return 0;
+				if (generated_source_ast_contains(
+						asts, asts->block_items[item_id], target, depth + 1
+					)) {
+					return 1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_AST_DEFINITION_BLOCK:
+			for (uint32_t i = 0; i < node->as.definition_block.assignment_count; ++i) {
+				uint32_t item_id = node->as.definition_block.first_assignment + i;
+				if (item_id >= asts->definition_item_count) return 0;
+				if (generated_source_ast_contains(
+						asts, asts->definition_items[item_id], target, depth + 1
+					)) {
+					return 1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_AST_BLOCK_BINDING:
+			return generated_source_ast_contains(
+				asts, node->as.block_binding.value, target, depth + 1
+			);
+		case PROTOTYPE_AST_BLOCK_EXPRESSION:
+			return generated_source_ast_contains(
+				asts, node->as.block_expression.term, target, depth + 1
+			);
+		case PROTOTYPE_AST_BLOCK_LAMBDA_EXIT:
+			return generated_source_ast_contains(
+				asts, node->as.block_lambda_exit.value, target, depth + 1
+			);
+		default:
+			return 0;
+	}
+}
+
+static int generated_source_association_id_for_owner(
+	const struct prototype_compile_metadata* metadata,
+	int owner_symbol_id,
+	uint32_t* p_association_id
+) {
+	if (!metadata || !p_association_id) return -1;
+	const struct prototype_function_graph_association* association =
+		prototype_compile_metadata_function_graph_association_for_owner(
+			metadata, owner_symbol_id
+		);
+	if (!association || association < metadata->function_graph_associations ||
+		association >= metadata->function_graph_associations +
+			metadata->function_graph_association_count) {
+		return -1;
+	}
+	*p_association_id = (uint32_t)(association -
+		metadata->function_graph_associations);
+	return 0;
+}
+
+static int generated_source_association_for_binder(
+	const struct prototype_ast_db* asts,
+	const struct prototype_compile_metadata* metadata,
+	uint32_t ast_binder_id,
+	uint32_t* p_association_id
+) {
+	if (!asts || !metadata || !p_association_id ||
+		ast_binder_id == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	uint32_t selected = PROTOTYPE_INVALID_ID;
+	for (uint32_t ast_id = 0; ast_id < asts->node_count; ++ast_id) {
+		const struct prototype_ast_node* node = &asts->nodes[ast_id];
+		if (node->tag != PROTOTYPE_AST_LAMBDA ||
+			node->as.lambda.ast_binder_id != ast_binder_id) {
+			continue;
+		}
+		uint32_t head = generated_source_type_application_head(
+			asts, node->as.lambda.binder_type
+		);
+		if (head >= asts->type_expr_count ||
+			asts->type_exprs[head].tag !=
+				PROTOTYPE_AST_TYPE_EXPR_FUNCTION_GRAPH_REFERENCE) {
+			continue;
+		}
+		uint32_t association_id;
+		if (generated_source_association_id_for_owner(
+				metadata,
+				asts->type_exprs[head].as.function_graph_reference.owner_symbol_id,
+				&association_id
+			) != 0) {
+			return -1;
+		}
+		if (selected != PROTOTYPE_INVALID_ID && selected != association_id) {
+			return -1;
+		}
+		selected = association_id;
+	}
+	if (selected == PROTOTYPE_INVALID_ID) return -1;
+	*p_association_id = selected;
+	return 0;
+}
+
+static int generated_source_case_binds_graph(
+	const struct prototype_ast_db* asts,
+	const struct prototype_ast_match_case* match_case,
+	uint32_t graph_ast_binder
+) {
+	if (!asts || !match_case) return 0;
+	if (match_case->first_binder > asts->case_binder_count ||
+		match_case->binder_count > asts->case_binder_count -
+			match_case->first_binder) {
+		return 0;
+	}
+	for (uint32_t i = 0; i < match_case->binder_count; ++i) {
+		if (asts->case_binders[match_case->first_binder + i].ast_binder_id ==
+			graph_ast_binder) {
+			return 1;
+		}
+	}
+	if (match_case->first_selector > asts->match_selector_count ||
+		match_case->selector_count > asts->match_selector_count -
+			match_case->first_selector) {
+		return 0;
+	}
+	for (uint32_t i = 0; i < match_case->selector_count; ++i) {
+		if (asts->match_selectors[match_case->first_selector + i].
+			graph_ast_binder_id == graph_ast_binder) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int generated_source_association_for_lexical_result(
+	const struct prototype_ast_db* asts,
+	const struct prototype_compile_metadata* metadata,
+	uint32_t named_match_ast,
+	const struct prototype_ast_node* named_match,
+	uint32_t* p_association_id
+) {
+	if (!asts || !metadata || !named_match || !p_association_id ||
+		named_match->as.match.scrutinee >= asts->node_count) {
+		return -1;
+	}
+	const struct prototype_ast_node* scrutinee =
+		&asts->nodes[named_match->as.match.scrutinee];
+	if (scrutinee->tag != PROTOTYPE_AST_VAR) return -1;
+	uint32_t graph_ast_binder = scrutinee->as.var.ast_binder_id;
+	uint32_t selected = PROTOTYPE_INVALID_ID;
+	for (uint32_t outer_ast = 0; outer_ast < asts->node_count; ++outer_ast) {
+		const struct prototype_ast_node* outer = &asts->nodes[outer_ast];
+		if (outer->tag != PROTOTYPE_AST_MATCH || outer_ast == named_match_ast) {
+			continue;
+		}
+		uint32_t head = generated_source_application_head(
+			asts, outer->as.match.scrutinee
+		);
+		if (head >= asts->node_count || asts->nodes[head].tag !=
+			PROTOTYPE_AST_CERTIFIED_FUNCTION_REFERENCE) {
+			continue;
+		}
+		uint32_t association_id;
+		if (generated_source_association_id_for_owner(
+				metadata,
+				asts->nodes[head].as.certified_function_reference.owner_symbol_id,
+				&association_id
+			) != 0) {
+			continue;
+		}
+		const struct prototype_function_graph_association* association =
+			&metadata->function_graph_associations[association_id];
+		for (uint32_t case_index = 0; case_index < outer->as.match.case_count;
+			++case_index) {
+			uint32_t case_id = outer->as.match.first_case + case_index;
+			if (case_id >= asts->case_count) return -1;
+			const struct prototype_ast_match_case* outer_case =
+				&asts->cases[case_id];
+			if (outer_case->constructor_symbol_id !=
+				association->returned_constructor_symbol_id) {
+				continue;
+			}
+			if (!generated_source_ast_contains(
+					asts, outer_case->body, named_match_ast, 0
+				)) {
+				continue;
+			}
+			if (!generated_source_case_binds_graph(
+					asts, outer_case, graph_ast_binder
+				)) {
+				continue;
+			}
+			if (selected != PROTOTYPE_INVALID_ID && selected != association_id) {
+				return -1;
+			}
+			selected = association_id;
+		}
+	}
+	if (selected == PROTOTYPE_INVALID_ID) return -1;
+	*p_association_id = selected;
+	return 0;
+}
+
+static int generated_source_match_association(
+	const struct prototype_ast_db* asts,
+	const struct prototype_compile_metadata* metadata,
+	uint32_t match_ast,
+	const struct prototype_ast_node* match,
+	uint32_t* p_association_id
+) {
+	if (!asts || !metadata || !match || !p_association_id ||
+		match->as.match.scrutinee >= asts->node_count) {
+		return -1;
+	}
+	const struct prototype_ast_node* scrutinee =
+		&asts->nodes[match->as.match.scrutinee];
+	if (scrutinee->tag == PROTOTYPE_AST_VAR &&
+		generated_source_association_for_binder(
+			asts, metadata, scrutinee->as.var.ast_binder_id, p_association_id
+		) == 0) {
+		return 0;
+	}
+	return generated_source_association_for_lexical_result(
+		asts, metadata, match_ast, match, p_association_id
+	);
+}
+
+static int generated_source_constructor_shape(
+	const struct prototype_ast_db* asts,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_compile_metadata* metadata,
+	const struct prototype_function_graph_association* association,
+	int constructor_symbol_id,
+	uint32_t* p_constructor_ordinal,
+	uint32_t* p_field_count
+) {
+	if (!asts || !type_declarations || !metadata || !association ||
+		!p_constructor_ordinal || !p_field_count) {
+		return -1;
+	}
+	if (association->imported) {
+		if (association->graph_type_id >=
+			type_declarations->semantic_schema.type_count) {
+			return -1;
+		}
+		const struct prototype_type_declaration* type =
+			&type_declarations->semantic_schema.type_declarations[
+				association->graph_type_id
+			];
+		for (uint32_t i = 0; i < type->constructor_count; ++i) {
+			uint32_t constructor_id = type->first_constructor + i;
+			if (constructor_id >=
+				type_declarations->semantic_schema.constructor_count) {
+				return -1;
+			}
+			const struct prototype_type_constructor_declaration* constructor =
+				&type_declarations->semantic_schema.constructor_declarations[
+					constructor_id
+				];
+			if (constructor->name_symbol_id != constructor_symbol_id) {
+				continue;
+			}
+			uint32_t field_contexts[128];
+			uint32_t field_count;
+			if (prototype_context_extension_path(
+					&metadata->contexts,
+					constructor->parameter_context,
+					constructor->field_context,
+					field_contexts,
+					128,
+					&field_count
+				) != 0) {
+				return -1;
+			}
+			*p_constructor_ordinal = i;
+			*p_field_count = field_count;
+			return 0;
+		}
+		return -1;
+	}
+	if (association->graph_type_assignment_id >= asts->assignment_count) {
+		return -1;
+	}
+	const struct prototype_ast_term_assignment_def* assignment =
+		&asts->assignments[association->graph_type_assignment_id];
+	if (assignment->ast >= asts->node_count) return -1;
+	const struct prototype_ast_node* node = &asts->nodes[assignment->ast];
+	uint32_t type_def_id;
+	if (node->tag == PROTOTYPE_AST_TYPE_FORMATION) {
+		type_def_id = node->as.type_formation.ast_type_def_id;
+	} else if (node->tag == PROTOTYPE_AST_TYPE_LITERAL) {
+		type_def_id = node->as.type_literal.ast_type_def_id;
+	} else {
+		return -1;
+	}
+	if (type_def_id >= asts->type_def_count) return -1;
+	const struct prototype_ast_type_def* type = &asts->type_defs[type_def_id];
+	if (type->first_constructor > asts->type_constructor_count ||
+		type->constructor_count > asts->type_constructor_count -
+			type->first_constructor) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < type->constructor_count; ++i) {
+		const struct prototype_ast_type_constructor* constructor =
+			&asts->type_constructors[type->first_constructor + i];
+		if (constructor->name_symbol_id != constructor_symbol_id) continue;
+		*p_constructor_ordinal = i;
+		*p_field_count = constructor->field_count;
+		return 0;
+	}
+	return -1;
+}
+
+static struct prototype_ast_match_selector* generated_source_case_selector(
+	struct prototype_ast_db* asts,
+	struct prototype_ast_match_case* match_case,
+	uint32_t origin_ast_binder_id
+) {
+	if (!asts || !match_case || match_case->first_selector >
+		asts->match_selector_count || match_case->selector_count >
+		asts->match_selector_count - match_case->first_selector) {
+		return NULL;
+	}
+	for (uint32_t i = 0; i < match_case->selector_count; ++i) {
+		struct prototype_ast_match_selector* selector =
+			&asts->match_selectors[match_case->first_selector + i];
+		if (selector->value_ast_binder_id == origin_ast_binder_id) {
+			return selector;
+		}
+	}
+	return NULL;
+}
+
+static int generated_source_resolve_role_references(
+	struct prototype_ast_db* asts,
+	struct prototype_ast_match_case* match_case,
+	uint32_t ast,
+	uint32_t depth
+) {
+	if (!asts || !match_case || ast >= asts->node_count || depth > 256) {
+		return -1;
+	}
+	struct prototype_ast_node* node = &asts->nodes[ast];
+	if (node->tag == PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_REFERENCE) {
+		struct prototype_ast_match_selector* selector =
+			generated_source_case_selector(
+				asts,
+				match_case,
+				node->as.function_graph_role_reference.origin_ast_binder_id
+			);
+		if (!selector) return 0;
+		if (selector->graph_ast_binder_id == PROTOTYPE_INVALID_ID ||
+			!(selector->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH)) {
+			fprintf(stderr, "named graph selector has no graph role symbol=%d\n",
+				node->as.function_graph_role_reference.symbol_id);
+			return -1;
+		}
+		if (node->as.function_graph_role_reference.role ==
+			PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_INDUCTION_HYPOTHESIS) {
+			if (!(selector->role_mask & PROTOTYPE_FUNCTION_GRAPH_ORIGIN_IH)) {
+				fprintf(stderr,
+					"named graph selector has no induction role symbol=%d\n",
+					node->as.function_graph_role_reference.symbol_id);
+				return -1;
+			}
+			node->tag = PROTOTYPE_AST_INDUCTION_HYPOTHESIS;
+			node->as.induction_hypothesis.ast_binder_id =
+				selector->graph_ast_binder_id;
+			node->as.induction_hypothesis.symbol_id = selector->local_symbol_id;
+			return 0;
+		}
+		node->tag = PROTOTYPE_AST_VAR;
+		node->as.var.ast_binder_id = selector->graph_ast_binder_id;
+		node->as.var.symbol_id = selector->local_symbol_id;
+		return 0;
+	}
+	switch (node->tag) {
+		case PROTOTYPE_AST_APP:
+			if (generated_source_resolve_role_references(
+					asts, match_case, node->as.app.function, depth + 1
+				) != 0) {
+				return -1;
+			}
+			return generated_source_resolve_role_references(
+				asts, match_case, node->as.app.argument, depth + 1
+			);
+		case PROTOTYPE_AST_LAMBDA:
+			return generated_source_resolve_role_references(
+				asts, match_case, node->as.lambda.body, depth + 1
+			);
+		case PROTOTYPE_AST_MATCH:
+			if (generated_source_resolve_role_references(
+					asts, match_case, node->as.match.scrutinee, depth + 1
+				) != 0) {
+				return -1;
+			}
+			for (uint32_t i = 0; i < node->as.match.case_count; ++i) {
+				uint32_t case_id = node->as.match.first_case + i;
+				if (case_id >= asts->case_count) return -1;
+				if (generated_source_resolve_role_references(
+						asts, match_case, asts->cases[case_id].body, depth + 1
+					) != 0) {
+					return -1;
+				}
+			}
+			return 0;
+		case PROTOTYPE_AST_ASCRIPTION:
+			return generated_source_resolve_role_references(
+				asts, match_case, node->as.ascription.term, depth + 1
+			);
+		case PROTOTYPE_AST_QUOTE:
+			return generated_source_resolve_role_references(
+				asts, match_case, node->as.unary.term, depth + 1
+			);
+		case PROTOTYPE_AST_COMPUTATION_BLOCK:
+		case PROTOTYPE_AST_DEFINITION_BLOCK: {
+			uint32_t first = node->tag == PROTOTYPE_AST_COMPUTATION_BLOCK ?
+				node->as.block.first_item :
+				node->as.definition_block.first_assignment;
+			uint32_t count = node->tag == PROTOTYPE_AST_COMPUTATION_BLOCK ?
+				node->as.block.item_count :
+				node->as.definition_block.assignment_count;
+			size_t item_count = node->tag == PROTOTYPE_AST_COMPUTATION_BLOCK ?
+				asts->block_item_count : asts->definition_item_count;
+			if (first > item_count || count > item_count - first) return -1;
+			for (uint32_t i = 0; i < count; ++i) {
+				uint32_t item = node->tag == PROTOTYPE_AST_COMPUTATION_BLOCK ?
+					asts->block_items[first + i] : asts->definition_items[first + i];
+				if (generated_source_resolve_role_references(
+						asts, match_case, item, depth + 1
+					) != 0) {
+					return -1;
+				}
+			}
+			return 0;
+		}
+		case PROTOTYPE_AST_BLOCK_BINDING:
+			return generated_source_resolve_role_references(
+				asts, match_case, node->as.block_binding.value, depth + 1
+			);
+		case PROTOTYPE_AST_BLOCK_EXPRESSION:
+			return generated_source_resolve_role_references(
+				asts, match_case, node->as.block_expression.term, depth + 1
+			);
+		case PROTOTYPE_AST_BLOCK_LAMBDA_EXIT:
+			return generated_source_resolve_role_references(
+				asts, match_case, node->as.block_lambda_exit.value, depth + 1
+			);
+		default:
+			return 0;
+	}
+}
+
+static int generated_source_expand_direct_elimination(
+	struct prototype_ast_db* asts,
+	const struct prototype_compile_metadata* metadata,
+	uint32_t ast_id
+) {
+	if (!asts || !metadata || ast_id >= asts->node_count ||
+		asts->nodes[ast_id].tag != PROTOTYPE_AST_CERTIFIED_ELIMINATION) {
+		return -1;
+	}
+	struct prototype_ast_node direct = asts->nodes[ast_id];
+	uint32_t association_id;
+	if (generated_source_association_id_for_owner(
+			metadata,
+			direct.as.certified_elimination.owner_symbol_id,
+			&association_id
+		) != 0) {
+		return -1;
+	}
+	const struct prototype_function_graph_association* association =
+		&metadata->function_graph_associations[association_id];
+	if (association->returned_constructor_symbol_id < 0) return -1;
+	if (asts->case_count >= asts->case_capacity) return -1;
+	if (asts->case_binder_capacity < 2) return -1;
+	if (asts->case_binder_count > asts->case_binder_capacity - 2) return -1;
+	uint32_t case_id = (uint32_t)asts->case_count++;
+	struct prototype_ast_match_case* match_case = &asts->cases[case_id];
+	*match_case = (struct prototype_ast_match_case) {
+		.constructor_symbol_id = association->returned_constructor_symbol_id,
+		.first_binder = (uint32_t)asts->case_binder_count,
+		.binder_count = 2,
+		.first_selector = (uint32_t)asts->match_selector_count,
+		.selector_count = 0,
+		.body = direct.as.certified_elimination.body,
+		.span = direct.span
+	};
+	asts->case_binders[asts->case_binder_count++] =
+		(struct prototype_ast_binder) {
+			.ast_binder_id = direct.as.certified_elimination.result_ast_binder_id,
+			.symbol_id = direct.as.certified_elimination.result_symbol_id
+		};
+	asts->case_binders[asts->case_binder_count++] =
+		(struct prototype_ast_binder) {
+			.ast_binder_id = direct.as.certified_elimination.graph_ast_binder_id,
+			.symbol_id = direct.as.certified_elimination.result_symbol_id
+		};
+	struct prototype_ast_match_selector selector = {
+		.source_symbol_id = direct.as.certified_elimination.result_symbol_id,
+		.local_symbol_id = direct.as.certified_elimination.result_symbol_id,
+		.value_ast_binder_id =
+			direct.as.certified_elimination.result_ast_binder_id,
+		.graph_ast_binder_id =
+			direct.as.certified_elimination.graph_ast_binder_id,
+		.role_mask = PROTOTYPE_FUNCTION_GRAPH_ORIGIN_GRAPH,
+		.span = direct.span
+	};
+	if (prototype_ast_match_case_set_selectors(
+			asts, case_id, &selector, 1
+		) != 0) {
+		return -1;
+	}
+	if (generated_source_resolve_role_references(
+			asts, match_case, match_case->body, 0
+		) != 0) {
+		return -1;
+	}
+	match_case->first_selector = 0;
+	match_case->selector_count = 0;
+	struct prototype_ast_node match;
+	memset(&match, 0, sizeof(match));
+	match.tag = PROTOTYPE_AST_MATCH;
+	match.span = direct.span;
+	match.as.match.scrutinee = direct.as.certified_elimination.computation;
+	match.as.match.first_case = case_id;
+	match.as.match.case_count = 1;
+	asts->nodes[ast_id] = match;
+	return 0;
+}
+
+static int generated_source_expand_named_case(
+	struct prototype_ast_db* asts,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_compile_metadata* metadata,
+	uint32_t match_ast,
+	struct prototype_ast_match_case* match_case,
+	uint32_t association_id
+) {
+	if (!asts || !type_declarations || !metadata || !match_case || association_id >=
+		metadata->function_graph_association_count) {
+		return -1;
+	}
+	const struct prototype_function_graph_association* association =
+		&metadata->function_graph_associations[association_id];
+	if (!association->origin_groups_staged || association->first_origin_group >
+		metadata->function_graph_origin_group_count ||
+		association->origin_group_count >
+			metadata->function_graph_origin_group_count -
+			association->first_origin_group) {
+		return -1;
+	}
+	uint32_t constructor_ordinal;
+	uint32_t constructor_field_count;
+	if (generated_source_constructor_shape(
+			asts,
+			type_declarations,
+			metadata,
+			association,
+			match_case->constructor_symbol_id,
+			&constructor_ordinal,
+			&constructor_field_count
+		) != 0) {
+		fprintf(stderr,
+			"named graph constructor shape failed association=%u constructor=%d match=%u\n",
+			association_id, match_case->constructor_symbol_id, match_ast);
+		return -1;
+	}
+	if (constructor_field_count > asts->case_binder_capacity -
+		asts->case_binder_count) {
+		return -1;
+	}
+	uint32_t first_binder = (uint32_t)asts->case_binder_count;
+	for (uint32_t field = 0; field < constructor_field_count; ++field) {
+		struct prototype_ast_match_selector* selected = NULL;
+		const struct prototype_function_graph_origin_group* selected_group = NULL;
+		for (uint32_t selector_index = 0;
+			selector_index < match_case->selector_count;
+			++selector_index) {
+			struct prototype_ast_match_selector* selector =
+				&asts->match_selectors[
+					match_case->first_selector + selector_index
+				];
+			const struct prototype_function_graph_origin_group* group =
+				prototype_compile_metadata_draft_function_graph_origin_group(
+					metadata,
+					association_id,
+					constructor_ordinal,
+					selector->source_symbol_id
+				);
+			if (!group) {
+				fprintf(stderr,
+					"unknown named graph selector symbol=%d case=%d\n",
+					selector->source_symbol_id,
+					match_case->constructor_symbol_id);
+				return -1;
+			}
+			if (group->value_field_ordinal != field &&
+				group->graph_field_ordinal != field) {
+				continue;
+			}
+			if (selected && selected != selector) return -1;
+			selected = selector;
+			selected_group = group;
+		}
+		struct prototype_ast_binder binder = {
+			.ast_binder_id = PROTOTYPE_INVALID_ID,
+			.symbol_id = -1
+		};
+		if (selected && selected_group->value_field_ordinal == field) {
+			binder.ast_binder_id = selected->value_ast_binder_id;
+			binder.symbol_id = selected->local_symbol_id;
+			selected->role_mask = selected_group->role_mask;
+		}
+		if (selected && selected_group->graph_field_ordinal == field) {
+			if (selected->graph_ast_binder_id == PROTOTYPE_INVALID_ID) return -1;
+			binder.ast_binder_id = selected->graph_ast_binder_id;
+			binder.symbol_id = selected->local_symbol_id;
+			selected->role_mask = selected_group->role_mask;
+		}
+		if (binder.ast_binder_id == PROTOTYPE_INVALID_ID) {
+			binder.ast_binder_id = prototype_ast_new_binder(asts);
+		}
+		if (binder.ast_binder_id == PROTOTYPE_INVALID_ID) return -1;
+		asts->case_binders[asts->case_binder_count++] = binder;
+	}
+	for (uint32_t selector_index = 0;
+		selector_index < match_case->selector_count;
+		++selector_index) {
+		const struct prototype_ast_match_selector* selector =
+			&asts->match_selectors[match_case->first_selector + selector_index];
+		if (selector->role_mask == 0) {
+			fprintf(stderr,
+				"named graph selector did not select a constructor field\n");
+			return -1;
+		}
+	}
+	match_case->first_binder = first_binder;
+	match_case->binder_count = constructor_field_count;
+	if (generated_source_resolve_role_references(
+			asts, match_case, match_case->body, 0
+		) != 0) {
+		return -1;
+	}
+	match_case->first_selector = 0;
+	match_case->selector_count = 0;
+	return 0;
+}
+
+int prototype_function_graph_prepare_generated_source(
+	struct prototype_ast_db* asts,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_compile_metadata* metadata
+) {
+	if (!asts || !type_declarations || !metadata) return -1;
+	size_t direct_scan_count = asts->node_count;
+	for (uint32_t ast_id = 0; ast_id < direct_scan_count; ++ast_id) {
+		if (asts->nodes[ast_id].tag != PROTOTYPE_AST_CERTIFIED_ELIMINATION) {
+			continue;
+		}
+		if (generated_source_expand_direct_elimination(
+				asts, metadata, ast_id
+			) != 0) {
+			return -1;
+		}
+	}
+	for (uint32_t ast_id = 0; ast_id < asts->node_count; ++ast_id) {
+		struct prototype_ast_node* node = &asts->nodes[ast_id];
+		if (node->tag != PROTOTYPE_AST_MATCH) continue;
+		if (node->as.match.first_case > asts->case_count) return -1;
+		if (node->as.match.case_count >
+			asts->case_count - node->as.match.first_case) {
+			return -1;
+		}
+		uint32_t association_id = PROTOTYPE_INVALID_ID;
+		for (uint32_t case_index = 0; case_index < node->as.match.case_count;
+			++case_index) {
+			uint32_t case_id = node->as.match.first_case + case_index;
+			if (case_id >= asts->case_count) return -1;
+			struct prototype_ast_match_case* match_case = &asts->cases[case_id];
+			if (match_case->selector_count == 0) continue;
+			if (association_id == PROTOTYPE_INVALID_ID) {
+				if (generated_source_match_association(
+						asts, metadata, ast_id, node, &association_id
+					) != 0) {
+					fprintf(stderr,
+						"named graph case requires an explicit generated graph type match=%u\n",
+						ast_id);
+					return -1;
+				}
+			}
+			if (generated_source_expand_named_case(
+					asts, type_declarations, metadata, ast_id, match_case,
+					association_id
+				) != 0) {
+				return -1;
+			}
+		}
+	}
+	for (uint32_t case_id = 0; case_id < asts->case_count; ++case_id) {
+		asts->cases[case_id].first_selector = 0;
+	}
+	asts->match_selector_count = 0;
+	return 0;
+}
 
 struct function_graph_recursive_call {
 	uint32_t source_call_ast;
@@ -222,6 +998,83 @@ static const struct prototype_typed_occurrence* function_graph_any_occurrence(
 	return NULL;
 }
 
+static const struct prototype_typed_occurrence*
+function_graph_unwrapped_occurrence(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t source_ast,
+	int expected_tag
+) {
+	const struct prototype_typed_occurrence* source =
+		function_graph_any_occurrence(metadata, source_ast);
+	if (!metadata || !source) {
+		return NULL;
+	}
+	ptrdiff_t source_id = source - metadata->typed_occurrences.occurrences;
+	uint32_t unwrapped_id;
+	if (source_id < 0 ||
+		(size_t)source_id >= metadata->typed_occurrences.occurrence_count ||
+		prototype_typed_occurrence_graph_unwrap_transparent(
+			&metadata->typed_occurrences, (uint32_t)source_id, &unwrapped_id
+		) != 0) {
+		return NULL;
+	}
+	const struct prototype_typed_occurrence* unwrapped =
+		prototype_typed_occurrence_graph_get(
+			&metadata->typed_occurrences, unwrapped_id
+		);
+	return unwrapped && unwrapped->tag == expected_tag ? unwrapped : NULL;
+}
+
+static int function_graph_label_for_symbol(
+	const struct prototype_compile_metadata* metadata,
+	int symbol_id,
+	const struct prototype_compile_label** p_label
+) {
+	if (!metadata || !p_label) {
+		return -1;
+	}
+	const struct prototype_compile_label* found = NULL;
+	for (size_t i = 0; i < metadata->label_count; ++i) {
+		const struct prototype_compile_label* label = &metadata->labels[i];
+		if (label->name_symbol_id != symbol_id) {
+			continue;
+		}
+		if (found) {
+			return -1;
+		}
+		found = label;
+	}
+	*p_label = found;
+	return found ? 0 : 1;
+}
+
+static int function_graph_case_concrete_context(
+	const struct function_graph_generation* generation,
+	const struct prototype_typed_occurrence_match_case* operation_case,
+	uint32_t* p_context
+) {
+	if (!generation || !generation->metadata || !operation_case || !p_context ||
+		!generation->metadata->typed_occurrences.cases) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence_match_case* first =
+		generation->metadata->typed_occurrences.cases;
+	ptrdiff_t case_id = operation_case - first;
+	if (case_id < 0 ||
+		(size_t)case_id >= generation->metadata->typed_occurrences.case_count) {
+		return -1;
+	}
+	const struct prototype_typed_publication_match_case_projection* projection =
+		prototype_typed_publication_view_get_match_case(
+			&generation->metadata->typed_publication, (uint32_t)case_id
+		);
+	if (!projection) {
+		return -1;
+	}
+	*p_context = projection->concrete_context;
+	return 0;
+}
+
 static int function_graph_named_call_site_open(
 	struct function_graph_generation* generation,
 	uint32_t call_ast,
@@ -246,12 +1099,18 @@ static int function_graph_named_call_site_open(
 		return 0;
 	}
 	int owner_symbol = generation->asts->nodes[current].as.name.symbol_id;
+	const struct prototype_compile_label* owner_label;
+	int label_status = function_graph_label_for_symbol(
+		generation->metadata, owner_symbol, &owner_label
+	);
+	if (label_status < 0) {
+		return -1;
+	}
 	uint32_t assignment_id = PROTOTYPE_INVALID_ID;
 	for (uint32_t i = 0; i < generation->asts->assignment_count; ++i) {
 		const struct prototype_ast_term_assignment_def* assignment =
 			&generation->asts->assignments[i];
-		if (assignment->name_symbol_id == owner_symbol && assignment->compiled &&
-			assignment->published) {
+		if (assignment->name_symbol_id == owner_symbol && owner_label) {
 			assignment_id = i;
 			break;
 		}
@@ -367,9 +1226,17 @@ static int function_graph_request_certified_source_dependencies(
 			continue;
 		}
 		const struct prototype_ast_term_assignment_def* dependency = NULL;
+		const struct prototype_compile_label* dependency_label;
+		if (function_graph_label_for_symbol(
+				generation->metadata, dependency_symbol, &dependency_label
+			) != 0) {
+			fprintf(stderr,
+				"function graph certified dependency is unavailable owner=%d dependency=%d\n",
+				generation->owner_symbol, dependency_symbol);
+			return -1;
+		}
 		for (uint32_t i = 0; i < generation->asts->assignment_count; ++i) {
-			if (generation->asts->assignments[i].name_symbol_id != dependency_symbol ||
-				!generation->asts->assignments[i].published) {
+			if (generation->asts->assignments[i].name_symbol_id != dependency_symbol) {
 				continue;
 			}
 			if (dependency) {
@@ -481,9 +1348,8 @@ static int function_graph_occurrence_is_computation(
 		struct prototype_term_normalization_result normalized;
 		if (prototype_term_normalize_with_profile(
 				generation->terms,
-				generation->type_declarations,
 				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 				current,
 				10000,
 				&normalized
@@ -740,8 +1606,7 @@ static int function_graph_substitution_type(
 			continue;
 		}
 		if (prototype_term_graph_substitute_bound_var(
-				generation->terms, prototype_type_view_rebuild_context_from_db(generation->type_declarations),
-				term,
+				generation->terms, term,
 				binding_id,
 				empty_effect_row,
 				&term
@@ -1028,23 +1893,39 @@ static int function_graph_result_type_for_values(
 	uint32_t argument_count,
 	uint32_t* p_type
 ) {
-	uint32_t type_arguments[FUNCTION_GRAPH_MAX_ARGUMENTS];
+	uint32_t type_arguments[FUNCTION_GRAPH_MAX_ARGUMENTS + 1];
 	if (!generation || !arguments || !p_type ||
 		argument_count > FUNCTION_GRAPH_MAX_ARGUMENTS) {
 		return -1;
 	}
+	uint32_t type_argument_count = 0;
 	for (uint32_t i = 0; i < argument_count; ++i) {
 		if (function_graph_value_type_expr(
-				generation, arguments[i], &type_arguments[i]
+				generation, arguments[i],
+				&type_arguments[type_argument_count++]
 			) != 0) {
 			return -1;
+		}
+		/* The generated result family inserts the certified graph interface
+		 * immediately after the certified source argument. Every application of
+		 * that family must use the same telescope; omitting this parameter creates
+		 * two incompatible partial applications of one nominal family. */
+		if (i == generation->certified_argument_index) {
+			if (generation->runner_interface_value == PROTOTYPE_INVALID_ID ||
+				function_graph_value_type_expr(
+					generation,
+					generation->runner_interface_value,
+					&type_arguments[type_argument_count++]
+				) != 0) {
+				return -1;
+			}
 		}
 	}
 	return function_graph_type_name_app(
 		generation,
 		generation->result_symbol,
 		type_arguments,
-		argument_count,
+		type_argument_count,
 		p_type
 	);
 }
@@ -1660,8 +2541,9 @@ static int function_graph_term_value(
 	uint32_t arguments[FUNCTION_GRAPH_MAX_ARGUMENTS];
 	uint32_t argument_count;
 	if (node->tag == PROTOTYPE_TERM_TYPE_VIEW &&
-		prototype_term_type_instance_info(
+		prototype_type_projection_instance_info(
 			generation->terms,
+			&generation->type_declarations->semantic_schema,
 			term,
 			&type_id,
 			arguments,
@@ -1701,13 +2583,10 @@ static int function_graph_term_value(
 		return 0;
 	}
 	if (node->tag == PROTOTYPE_TERM_TYPE_DECLARATION &&
-		node->as.type_declaration.type_id <
-			generation->type_declarations->semantic_schema.type_count) {
+		node->as.type_declaration.identity.name_symbol_id >= 0) {
 		return prototype_ast_name(
 			generation->asts,
-			generation->type_declarations->semantic_schema.type_declarations[
-				node->as.type_declaration.type_id
-			].name_symbol_id,
+			node->as.type_declaration.identity.name_symbol_id,
 			generation->span,
 			p_value
 		);
@@ -1820,9 +2699,12 @@ static uint32_t function_graph_binding_classifier(
 		const struct prototype_context* context = prototype_context_get(
 			&generation->metadata->contexts, context_id
 		);
+		uint32_t classifier = prototype_context_classifier_answer(
+			&generation->metadata->contexts, context
+		);
 		if (context && context->binding_id == binding_id &&
-			prototype_context_classifier_term(context) != PROTOTYPE_INVALID_ID) {
-			return prototype_context_classifier_term(context);
+			classifier != PROTOTYPE_INVALID_ID) {
+			return classifier;
 		}
 	}
 	return PROTOTYPE_INVALID_ID;
@@ -1949,30 +2831,25 @@ static uint32_t function_graph_case_field_classifier(
 	if (!generation || !operation_case || field >= operation_case->binder_count) {
 		return PROTOTYPE_INVALID_ID;
 	}
+	uint32_t case_context;
+	if (function_graph_case_concrete_context(
+			generation, operation_case, &case_context
+		) != 0) {
+		return PROTOTYPE_INVALID_ID;
+	}
 	uint32_t binding_context = PROTOTYPE_INVALID_ID;
 	uint32_t classifier = prototype_context_find_binding(
 		&generation->metadata->contexts,
-		operation_case->context_id,
+		case_context,
 		operation_case->binder_ids[field],
 		&binding_context
-	) == 0 ? prototype_context_classifier_term(prototype_context_get(
-		&generation->metadata->contexts, binding_context
-	)) : PROTOTYPE_INVALID_ID;
-	for (uint32_t occurrence_id = 0;
-		occurrence_id < generation->metadata->typed_occurrences.occurrence_count;
-		++occurrence_id) {
-		const struct prototype_typed_occurrence* occurrence =
-			&generation->metadata->typed_occurrences.occurrences[occurrence_id];
-		if (occurrence->tag == PROTOTYPE_TYPED_OCCURRENCE_VAR &&
-			occurrence->binding_id == operation_case->binder_ids[field] &&
-			occurrence->classifier_status ==
-				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED &&
-			occurrence->classifier < generation->terms->term_count) {
-			return field > 0 && occurrence->source_classifier <
-				generation->terms->term_count ? occurrence->source_classifier :
-				occurrence->classifier;
-		}
-	}
+	) == 0 ? prototype_context_classifier_answer(
+		&generation->metadata->contexts,
+		prototype_context_get(&generation->metadata->contexts, binding_context)
+	) : PROTOTYPE_INVALID_ID;
+	/* The concrete case Context is the authority for the field classifier. A VAR
+	 * occurrence of the same Binding may be projected into a deeper constructor
+	 * branch, so a global occurrence scan can substitute an unrelated refinement. */
 	return classifier;
 }
 
@@ -1982,10 +2859,13 @@ static int function_graph_case_result_classifier(
 	uint32_t* p_classifier
 ) {
 	uint32_t subject;
+	uint32_t case_context;
 	uint32_t argument_classifiers[FUNCTION_GRAPH_MAX_BINDINGS];
 	if (!generation || !operation_case || !p_classifier ||
 		operation_case->binder_count > FUNCTION_GRAPH_MAX_BINDINGS ||
-		prototype_term_constructor(
+		function_graph_case_concrete_context(
+			generation, operation_case, &case_context
+		) != 0 || prototype_term_constructor(
 			generation->terms,
 			operation_case->constructor_owner,
 			operation_case->constructor_id,
@@ -2038,7 +2918,7 @@ static int function_graph_case_result_classifier(
 		generation->type_declarations,
 		&generation->metadata->contexts,
 		&generation->metadata->substitutions,
-		operation_case->context_id,
+		case_context,
 		subject,
 		PROTOTYPE_INVALID_ID,
 		argument_classifiers,
@@ -2050,7 +2930,7 @@ static int function_graph_case_result_classifier(
 		fprintf(stderr,
 			"function graph constructor classifier rejected owner=%u constructor=%u fields=%u context=%u status=%d saturated=%d result=%u\n",
 			operation_case->constructor_owner, operation_case->constructor_id,
-			operation_case->binder_count, operation_case->context_id, status, saturated,
+			operation_case->binder_count, case_context, status, saturated,
 			*p_classifier);
 	}
 	return status == PROTOTYPE_JUDGEMENT_CONSTRUCTOR_SPINE_VALID && saturated ?
@@ -2269,8 +3149,9 @@ static int function_graph_constructor_value(
 	uint32_t owner_argument_count;
 	if (!generation || !operation_case || !p_value ||
 		field_count != operation_case->binder_count ||
-		prototype_term_type_instance_info(
+		prototype_type_projection_instance_info(
 			generation->terms,
+			&generation->type_declarations->semantic_schema,
 			operation_case->constructor_owner,
 			&type_id,
 			owner_arguments,
@@ -2369,9 +3250,38 @@ static int function_graph_constructor_type_expr(
 		) != 0) {
 		return -1;
 	}
-	return prototype_ast_type_expr_value_reference(
+	int status = prototype_ast_type_expr_value_reference(
 		generation->asts, constructor, generation->span, p_type
 	);
+	if (status == 0 && getenv("A_PROGRAM_FUNCTION_GRAPH_REFINEMENT_TRACE")) {
+		fprintf(stderr,
+			"function graph constructor index owner=%u constructor=%u ast=%u type=%u fields=%u\n",
+			operation_case->constructor_owner,
+			operation_case->constructor_id,
+			constructor,
+			*p_type,
+			operation_case->binder_count);
+		for (uint32_t i = 0; i < operation_case->binder_count; ++i) {
+			fprintf(stderr,
+				"  field=%u binding=%u ast=%u tag=%d\n",
+				i,
+				operation_case->binder_ids[i],
+				field_values[i],
+				field_values[i] < generation->asts->node_count ?
+					generation->asts->nodes[field_values[i]].tag : -1);
+		}
+		for (uint32_t i = 0; i < binding_count; ++i) {
+			fprintf(stderr,
+				"  map=%u source-ast=%u source=%u target-ast=%u target-value=%u symbol=%d\n",
+				i,
+				bindings[i].source_ast_binder,
+				bindings[i].source_binding,
+				bindings[i].target_ast_binder,
+				bindings[i].target_value,
+				bindings[i].symbol_id);
+		}
+	}
+	return status;
 }
 
 static int function_graph_add_type_assignment(
@@ -2564,13 +3474,24 @@ static int function_graph_add_runner_expectation(
 	}
 	const struct prototype_ast_term_assignment_def* def =
 		&generation->asts->assignments[assignment];
+	if (prototype_ast_set_assignment_source_classifier(
+			generation->asts, assignment, expected_type
+		) != 0 || prototype_ast_set_assignment_contract_classifier(
+			generation->asts, assignment
+		) != 0) {
+		return -1;
+	}
+	uint32_t source_entry = prototype_ast_new_source_entry(generation->asts);
+	if (source_entry == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
 	uint32_t expectation;
 	return prototype_ast_add_type_expectation(
 		generation->asts,
 		PROTOTYPE_AST_TYPE_ENTRY_EXPECTATION,
 		def->name_symbol_id,
 		expected_type,
-		def->source_entry_id,
+		source_entry,
 		generation->span,
 		generation->span,
 		assignment,
@@ -2810,6 +3731,12 @@ static int function_graph_append_case_fields(
 		source_case->binder_count != operation_case->binder_count) {
 		return -1;
 	}
+	uint32_t case_context;
+	if (function_graph_case_concrete_context(
+			generation, operation_case, &case_context
+		) != 0) {
+		return -1;
+	}
 	for (uint32_t field = 0; field < source_case->binder_count; ++field) {
 		if (*p_binding_count >= FUNCTION_GRAPH_MAX_BINDINGS ||
 			*p_field_count >= FUNCTION_GRAPH_MAX_BINDINGS) {
@@ -2822,7 +3749,7 @@ static int function_graph_append_case_fields(
 		if (target_binder == PROTOTYPE_INVALID_ID ||
 			prototype_context_find_binding(
 				&generation->metadata->contexts,
-				operation_case->context_id,
+				case_context,
 				operation_case->binder_ids[field],
 				&field_binding_context
 			) != 0) {
@@ -3220,9 +4147,8 @@ static int function_graph_project_final_computation(
 			if (current >= generation->terms->term_count ||
 				prototype_term_normalize_with_profile(
 					generation->terms,
-					generation->type_declarations,
 					NULL,
-					PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+					PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 					current,
 					10000,
 					&normalized
@@ -3265,8 +4191,7 @@ static int function_graph_project_final_computation(
 	}
 	uint32_t projected;
 	if (prototype_term_graph_reindex_bindings(
-			generation->terms, prototype_type_view_rebuild_context_from_db(generation->type_declarations),
-			current,
+			generation->terms, current,
 			replacements,
 			generation->argument_count,
 			&projected
@@ -3292,9 +4217,8 @@ static int function_graph_pure_whnf(
 	if (!generation || !p_whnf || term >= generation->terms->term_count ||
 		prototype_term_normalize_with_profile(
 			generation->terms,
-			generation->type_declarations,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			term,
 			10000,
 			&normalized
@@ -3375,8 +4299,9 @@ static int function_graph_binary_bool_classifier(
 	uint32_t type_id;
 	uint32_t arguments[4];
 	uint32_t argument_count;
-	if (prototype_term_type_instance_info(
+	if (prototype_type_projection_instance_info(
 			generation->terms,
+			&generation->type_declarations->semantic_schema,
 			shape.result,
 			&type_id,
 			arguments,
@@ -3514,20 +4439,25 @@ static int function_graph_prepare(
 		) != 0) {
 		const struct prototype_ast_term_assignment_def* failed =
 			&generation->asts->assignments[assignment_id];
+		const struct prototype_compile_label* failed_label = NULL;
+		int label_status = function_graph_label_for_symbol(
+			generation->metadata, failed->name_symbol_id, &failed_label
+		);
 		fprintf(stderr,
-			"accepted definition view unavailable compiled=%d published=%d operation=%u classifier=%u frozen=%d sealed=%d\n",
-			failed->compiled, failed->published, failed->compiled_operation,
-			failed->compiled_classifier,
+			"accepted definition view unavailable label=%d operation=%u classifier=%u frozen=%d sealed=%d\n",
+			label_status,
+			failed_label ? failed_label->exposed_occurrence : PROTOTYPE_INVALID_ID,
+			failed_label ? failed_label->exposed_classifier : PROTOTYPE_INVALID_ID,
 			generation->metadata->typed_occurrences.frozen,
 			generation->metadata->typed_occurrences.sealed);
 		uint32_t ignored_result;
 		uint32_t ignored_effect;
 		int ignored_totality;
-		if (failed->compiled_classifier == PROTOTYPE_INVALID_ID ||
+		if (!failed_label ||
 			accepted_definition_final_computation(
 				generation->terms,
 				generation->type_declarations,
-				failed->compiled_classifier,
+				failed_label->exposed_classifier,
 				&ignored_result,
 				&ignored_effect,
 				&ignored_totality
@@ -3690,8 +4620,9 @@ static int function_graph_prepare(
 			return 1;
 		}
 	}
-	if (prototype_term_type_instance_info(
+	if (prototype_type_projection_instance_info(
 			generation->terms,
+			&generation->type_declarations->semantic_schema,
 			match_classifier,
 			&input_type_id,
 			input_owner_arguments,
@@ -3739,8 +4670,9 @@ static int function_graph_prepare(
 		uint32_t owner_arguments[16];
 		uint32_t owner_argument_count;
 		if (!recursive_scrutinee_occurrence ||
-			prototype_term_type_instance_info(
+			prototype_type_projection_instance_info(
 				generation->terms,
+			&generation->type_declarations->semantic_schema,
 				recursive_scrutinee_occurrence->classifier,
 				&type_id,
 				owner_arguments,
@@ -4827,6 +5759,31 @@ static int function_graph_generate_graph_type(
 		if (!generation->nested_recursive) {
 			uint32_t branch_argument_values[FUNCTION_GRAPH_MAX_ARGUMENTS];
 			uint32_t branch_input_classifier;
+			if (getenv("A_PROGRAM_FUNCTION_GRAPH_REFINEMENT_TRACE")) {
+				fprintf(stderr,
+					"function graph refinement case=%u substitution=%u\n",
+					case_index, operation_case->refinement_substitution);
+				for (uint32_t argument_index = 0;
+					argument_index < generation->argument_count;
+					++argument_index) {
+					uint32_t image = PROTOTYPE_INVALID_ID;
+					int image_status = prototype_substitution_binding_term(
+						generation->terms,
+						generation->type_declarations,
+						&generation->metadata->contexts,
+						&generation->metadata->substitutions,
+						operation_case->refinement_substitution,
+						generation->source_argument_bindings[argument_index],
+						&image
+					);
+					fprintf(stderr,
+						"  argument=%u binding=%u status=%d image=%u\n",
+						argument_index,
+						generation->source_argument_bindings[argument_index],
+						image_status,
+						image);
+				}
+			}
 			for (uint32_t argument_index = 0;
 				argument_index < generation->argument_count;
 				++argument_index) {
@@ -4909,6 +5866,44 @@ static int function_graph_generate_graph_type(
 		}
 		result_arguments[result_argument_count++] = output_index;
 		uint32_t result_type;
+		if (getenv("A_PROGRAM_FUNCTION_GRAPH_TRACE")) {
+			fprintf(
+				stderr,
+				"function graph constructor plan owner=%s case=%u constructor=%s "
+				"fields=%u bindings=%u\n",
+				symbol_to_string(generation->symbols, generation->owner_symbol),
+				case_index,
+				symbol_to_string(generation->symbols, source_case->constructor_symbol_id),
+				field_count,
+				binding_count
+			);
+			for (uint32_t field = 0; field < field_count; ++field) {
+				fprintf(
+					stderr,
+					"  field=%u name=%s type-ast=%u value-ast=%u binder=%u\n",
+					field,
+					symbol_to_string(generation->symbols, field_symbols[field]),
+					field_types[field],
+					field_values[field],
+					field_binders[field]
+				);
+			}
+			for (uint32_t argument = 0; argument < result_argument_count; ++argument) {
+				const struct prototype_ast_type_expr* result_argument =
+					result_arguments[argument] < generation->asts->type_expr_count ?
+						&generation->asts->type_exprs[result_arguments[argument]] : NULL;
+				fprintf(
+					stderr,
+					"  result-argument=%u type-ast=%u tag=%d value-ast=%u\n",
+					argument,
+					result_arguments[argument],
+					result_argument ? result_argument->tag : -1,
+					result_argument && result_argument->tag ==
+						PROTOTYPE_AST_TYPE_EXPR_VALUE_REFERENCE ?
+						result_argument->as.value_reference.value : PROTOTYPE_INVALID_ID
+				);
+			}
+		}
 		if (function_graph_self_app(
 				generation, result_arguments, result_argument_count, &result_type
 			) != 0 || prototype_ast_type_add_constructor(
@@ -6073,6 +7068,7 @@ static int function_graph_generate_runner_branch(
 			.span = generation->span
 		};
 		uint32_t packet_match;
+		uint32_t packet_type;
 		uint32_t binding_item;
 		uint32_t expression_item;
 		if (prototype_ast_match(
@@ -6082,11 +7078,16 @@ static int function_graph_generate_runner_branch(
 				1,
 				generation->span,
 				&packet_match
+			) != 0 || function_graph_result_type_for_values(
+				generation,
+				recursive_argument_values[i],
+				generation->argument_count,
+				&packet_type
 			) != 0 || prototype_ast_block_binding(
 				generation->asts,
 				recursive_packet_binders[i],
 				recursive_packet_symbols[i],
-				PROTOTYPE_INVALID_ID,
+				packet_type,
 				call,
 				generation->span,
 				&binding_item
@@ -6317,6 +7318,7 @@ static int function_graph_generate_nested_inner_branch(
 	struct function_graph_generation* generation,
 	const struct prototype_ast_match_case* source_case,
 	const struct prototype_typed_occurrence_match_case* operation_case,
+	const struct prototype_typed_occurrence_match_case* outer_operation_case,
 	const struct function_graph_binding_map* outer_bindings,
 	uint32_t outer_binding_count,
 	const uint32_t* root_argument_values,
@@ -6328,7 +7330,8 @@ static int function_graph_generate_nested_inner_branch(
 	struct function_graph_binding_map bindings[FUNCTION_GRAPH_MAX_BINDINGS];
 	uint32_t binding_count = outer_binding_count;
 	uint32_t inner_values[FUNCTION_GRAPH_MAX_BINDINGS];
-	if (!generation || !source_case || !operation_case || !outer_bindings ||
+	if (!generation || !source_case || !operation_case || !outer_operation_case ||
+		!outer_bindings ||
 		!root_argument_values || !outer_field_values || !generated_case_binders ||
 		!p_case || binding_count > FUNCTION_GRAPH_MAX_BINDINGS) {
 		return -1;
@@ -6416,7 +7419,7 @@ static int function_graph_generate_nested_inner_branch(
 		const struct prototype_ast_node* terminal_scrutinee =
 			&generation->asts->nodes[terminal_match->as.match.scrutinee];
 		const struct prototype_typed_occurrence* scrutinee_occurrence =
-			function_graph_occurrence(
+			function_graph_unwrapped_occurrence(
 				generation->metadata,
 				terminal_match->as.match.scrutinee,
 				PROTOTYPE_TYPED_OCCURRENCE_VAR
@@ -6693,6 +7696,25 @@ static int function_graph_generate_nested_inner_branch(
 		exact_arguments[i] = root_argument_values[i];
 	}
 	exact_arguments[generation->graph_parameter_count] = outer_field_values[0];
+	if (function_graph_constructor_value(
+			generation,
+			outer_operation_case,
+			bindings,
+			binding_count,
+			outer_field_values,
+			outer_field_count,
+			&exact_arguments[generation->graph_parameter_count + 1]
+		) != 0 || function_graph_constructor_value(
+			generation,
+			operation_case,
+			bindings,
+			binding_count,
+			inner_values,
+			source_case->binder_count,
+			&exact_arguments[generation->graph_parameter_count + 2]
+		) != 0) {
+		return -1;
+	}
 	if (function_graph_graph_constructor(
 			generation,
 			source_case->constructor_symbol_id,
@@ -7078,6 +8100,7 @@ static int function_graph_generate_nested_runner(
 				&generation->metadata->typed_occurrences.cases[
 					input_occurrence->first_case + i
 				],
+				outer_operation_case,
 				root_maps,
 				root_binding_count,
 				all_argument_values,
@@ -7201,11 +8224,12 @@ static int function_graph_generate_nested_runner(
 		fprintf(stderr, "function graph nested runner assignment failed\n");
 		return -1;
 	}
-	/* The final input classifier depends on fields introduced by the outer
-	 * Match.  Its branch-local ascription above is the exact post-synthesis
-	 * contract.  Flattening that contract into a top-level Pi expectation would
-	 * leak the source branch Binding instead of preserving the Match motive. */
-	return 0;
+	/* This runner's final Pi lives below the outer Match and mentions its case
+	 * fields. Preserve that dependent contract in place; lowering reconstructs
+	 * the closed source equation from the generated Lambda/Match graph. */
+	return prototype_ast_set_assignment_contract_classifier(
+		generation->asts, generation->runner_assignment
+	);
 }
 
 static int function_graph_generate_runner(
@@ -7525,8 +8549,9 @@ static int function_graph_generate_binary_adapter(
 	uint32_t result_argument_count;
 	if (function_graph_pure_whnf(
 			generation, generation->view.final_result_type, &result_whnf
-		) != 0 || prototype_term_type_instance_info(
-			generation->terms, result_whnf, &result_type_id, NULL,
+		) != 0 || prototype_type_projection_instance_info(
+			generation->terms,
+			&generation->type_declarations->semantic_schema, result_whnf, &result_type_id, NULL,
 			&result_argument_count
 		) != 0 || result_argument_count != 0 || result_type_id >=
 			generation->type_declarations->semantic_schema.type_count) {
@@ -8439,9 +9464,8 @@ static int accepted_definition_final_computation(
 		struct prototype_term_normalization_result normalized;
 		if (prototype_term_normalize_with_profile(
 				terms,
-				type_declarations,
 				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 				current,
 				10000,
 				&normalized
@@ -8516,18 +9540,20 @@ static int prototype_accepted_definition_view_open(
 	}
 	const struct prototype_ast_term_assignment_def* assignment =
 		&asts->assignments[assignment_id];
-	if (!assignment->compiled || !assignment->published ||
-		assignment->compiled_operation >=
+	const struct prototype_compile_label* label;
+	if (function_graph_label_for_symbol(
+			metadata, assignment->name_symbol_id, &label
+		) != 0 || label->exposed_occurrence >=
 			metadata->typed_occurrences.occurrence_count) {
 		return -1;
 	}
 	const struct prototype_typed_occurrence* occurrence =
-		&metadata->typed_occurrences.occurrences[assignment->compiled_operation];
+		&metadata->typed_occurrences.occurrences[label->exposed_occurrence];
 	if (occurrence->classifier == PROTOTYPE_INVALID_ID ||
-		assignment->compiled_classifier != occurrence->classifier ||
+		label->exposed_classifier != occurrence->classifier ||
 		!definition_root_has_accepted_claim(
 			judgement,
-			assignment->compiled_operation,
+			label->exposed_occurrence,
 			occurrence
 		)) {
 		return -1;
@@ -8542,8 +9568,8 @@ static int prototype_accepted_definition_view_open(
 	view.assignment_id = assignment_id;
 	view.source_entry_id = assignment->source_entry_id;
 	view.root_ast = assignment->ast;
-	view.root_occurrence = assignment->compiled_operation;
-	view.classifier = assignment->compiled_classifier;
+	view.root_occurrence = label->exposed_occurrence;
+	view.classifier = label->exposed_classifier;
 	if (accepted_definition_final_computation(
 			terms,
 			type_declarations,
@@ -8569,10 +9595,19 @@ int prototype_function_graph_generate_requested(
 	if (!asts || !terms || !type_declarations || !judgement || !metadata ||
 		!symbols || !metadata->typed_occurrences.frozen ||
 		metadata->typed_occurrences.transaction_active) {
+		fprintf(stderr,
+			"function graph generation boundary invalid frozen=%d sealed=%d transaction=%d\n",
+			metadata ? metadata->typed_occurrences.frozen : -1,
+			metadata ? metadata->typed_occurrences.sealed : -1,
+			metadata ? metadata->typed_occurrences.transaction_active : -1);
 		return -1;
 	}
 	for (size_t i = 0; i < metadata->function_graph_association_count; ++i) {
 		if (!metadata->function_graph_associations[i].imported) {
+			fprintf(stderr,
+				"function graph generation found pre-existing local association=%zu owner=%d\n",
+				i,
+				metadata->function_graph_associations[i].owner_symbol_id);
 			return -1;
 		}
 	}
@@ -8662,7 +9697,9 @@ static int function_graph_validate_origin_groups(
 			const struct prototype_context* graph_field = prototype_context_get(
 				&metadata->contexts, field_contexts[group->graph_field_ordinal]
 			);
-			uint32_t graph_classifier = prototype_context_classifier_term(graph_field);
+			uint32_t graph_classifier = prototype_context_classifier_answer(
+				&metadata->contexts, graph_field
+			);
 			if (!graph_field || graph_classifier == PROTOTYPE_INVALID_ID ||
 				prototype_judgement_classifier_is_strictly_positive_recursive_field(
 					terms,
@@ -8674,7 +9711,8 @@ static int function_graph_validate_origin_groups(
 				fprintf(stderr,
 					"function graph origin recursive classifier invalid association=%u group=%u field=%u kind=%d\n",
 					association_id, i, group->graph_field_ordinal,
-					graph_field ? graph_field->classifier_ref.kind : -1);
+					graph_field ? graph_field->classifier_equation :
+						PROTOTYPE_INVALID_ID);
 				return -1;
 			}
 		}
@@ -8711,15 +9749,13 @@ int prototype_function_graph_finalize_associations(
 		}
 		association->graph_type_id = PROTOTYPE_INVALID_ID;
 		association->result_type_id = PROTOTYPE_INVALID_ID;
-		for (size_t type_id = 0; type_id < asts->type_def_count; ++type_id) {
-			const struct prototype_ast_type_def* type = &asts->type_defs[type_id];
-			if (!type->compiled || type->compiled_type == PROTOTYPE_INVALID_ID) {
-				continue;
-			}
+		for (size_t type_id = 0; type_id < metadata->type_export_count; ++type_id) {
+			const struct prototype_compile_type_export* type =
+				&metadata->type_exports[type_id];
 			if (type->name_symbol_id == association->graph_symbol_id) {
-				association->graph_type_id = type->compiled_type;
+				association->graph_type_id = type->type_id;
 			} else if (type->name_symbol_id == association->result_symbol_id) {
-				association->result_type_id = type->compiled_type;
+				association->result_type_id = type->type_id;
 			}
 		}
 		if (association->graph_type_id == PROTOTYPE_INVALID_ID ||
@@ -8733,29 +9769,17 @@ int prototype_function_graph_finalize_associations(
 			association->executable_assignment_id >= asts->assignment_count) {
 			return -1;
 		}
-		struct prototype_ast_term_assignment_def* owner =
-			&asts->assignments[association->owner_assignment_id];
 		const struct prototype_ast_term_assignment_def* executable =
 			&asts->assignments[association->executable_assignment_id];
-		if (!executable->compiled || !executable->published) {
-			return -1;
-		}
 		struct prototype_compile_label executable_label;
-		int found_executable_label = 0;
+		const struct prototype_compile_label* executable_label_view;
 		int found_owner_label = 0;
-		for (size_t label_id = 0; label_id < metadata->label_count; ++label_id) {
-			if (metadata->labels[label_id].name_symbol_id ==
-					executable->name_symbol_id) {
-				if (found_executable_label) {
-					return -1;
-				}
-				executable_label = metadata->labels[label_id];
-				found_executable_label = 1;
-			}
-		}
-		if (!found_executable_label) {
+		if (function_graph_label_for_symbol(
+				metadata, executable->name_symbol_id, &executable_label_view
+			) != 0) {
 			return -1;
 		}
+		executable_label = *executable_label_view;
 		for (size_t label_id = 0; label_id < metadata->label_count; ++label_id) {
 			if (metadata->labels[label_id].name_symbol_id !=
 					association->owner_symbol_id) {
@@ -8771,13 +9795,6 @@ int prototype_function_graph_finalize_associations(
 		if (!found_owner_label) {
 			return -1;
 		}
-		owner->compiled_term = executable->compiled_term;
-		owner->compiled_classifier = executable->compiled_classifier;
-		owner->compiled_operation = executable->compiled_operation;
-		owner->compiling = 0;
-		owner->compiled = 1;
-		owner->published = 1;
-		owner->definition_value_required = executable->definition_value_required;
 		if (association->executable_assignment_id !=
 			association->owner_assignment_id) {
 			function_graph_unpublish_owner(metadata, executable->name_symbol_id);
@@ -8871,14 +9888,14 @@ static const char* function_graph_role_text(uint32_t roles) {
 static void function_graph_print_classifier(
 	FILE* output,
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	const char* label,
 	uint32_t classifier
 ) {
 	fprintf(output, "  %s=", label);
-	prototype_term_print_debug(
+	prototype_type_term_print_debug(
 		output, symbols, intrinsic_environment, type_declarations, terms, classifier
 	);
 	fputc('\n', output);
@@ -8887,7 +9904,7 @@ static void function_graph_print_classifier(
 enum prototype_function_graph_inspection_state prototype_function_graph_inspect(
 	FILE* output,
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_compile_metadata* metadata,
@@ -9026,7 +10043,7 @@ enum prototype_function_graph_inspection_state prototype_function_graph_inspect(
 				&metadata->contexts, field_contexts[group->value_field_ordinal]
 			);
 			uint32_t value_classifier =
-				prototype_context_classifier_term(value_field);
+				prototype_context_classifier_answer(&metadata->contexts, value_field);
 			if (!value_field || value_classifier == PROTOTYPE_INVALID_ID) {
 				return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
 			}
@@ -9039,7 +10056,9 @@ enum prototype_function_graph_inspection_state prototype_function_graph_inspect(
 					&metadata->contexts, field_contexts[group->graph_field_ordinal]
 				);
 				uint32_t graph_classifier =
-					prototype_context_classifier_term(graph_field);
+					prototype_context_classifier_answer(
+						&metadata->contexts, graph_field
+					);
 				if (!graph_field || graph_classifier == PROTOTYPE_INVALID_ID) {
 					return PROTOTYPE_FUNCTION_GRAPH_INSPECTION_INVALID;
 				}

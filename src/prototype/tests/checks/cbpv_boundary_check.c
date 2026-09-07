@@ -6,6 +6,7 @@
 #include "a_program/support/symbol.h"
 #include "a_program/core/term.h"
 #include "a_program/kernel/type_declaration.h"
+#include "a_program/kernel/type_term_debug.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -120,7 +121,7 @@ int main(void) {
 		&delta, &contexts, &substitutions
 	);
 	prototype_judgement_delta_set_intrinsic_environment(
-		&delta, prototype_default_intrinsic_environment()
+		&delta, prototype_default_intrinsic_typing_environment()
 	);
 
 	uint32_t value;
@@ -137,14 +138,18 @@ int main(void) {
 			&delta, &term_db, &type_db
 		) != 0 ||
 		prototype_judgement_delta_commit(&delta, 0) != 0 ||
-		prototype_judgement_publish_candidates(NULL, &judgement) != 0 ||
+		prototype_judgement_publish_candidates(NULL, NULL, &judgement) != 0 ||
 		prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
-			prototype_default_intrinsic_environment(),
+			prototype_default_intrinsic_typing_environment(),
 			&contexts,
+			&(const struct prototype_context_classifier_view) {
+				.contexts = &contexts
+			},
 			&substitutions,
 			&dimension_operators,
+			NULL,
 			NULL,
 			&judgement
 		) != 0) {
@@ -152,19 +157,19 @@ int main(void) {
 	}
 
 	uint32_t classifier;
-	struct prototype_term_classifier_view view;
+	struct prototype_classifier_view view;
 	if (prototype_judgement_lookup_authority_neutral_core_classifier(
 			&judgement, returned, &classifier
 		) != 0 ||
 		prototype_judgement_classifier_view(&term_db, &type_db, NULL, classifier, &view) != 0 ||
-		view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		prototype_term_effect_row_purity(&term_db, view.effect_row) !=
+		view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		prototype_classifier_effect_row_purity(&term_db, view.effect_row) !=
 			PROTOTYPE_EFFECT_ROW_PURITY_PURE ||
 		prototype_judgement_lookup_authority_neutral_core_classifier(
 			&judgement, forced, &classifier
 		) != 0 ||
 		prototype_judgement_classifier_view(&term_db, &type_db, NULL, classifier, &view) != 0 ||
-		view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION) {
+		view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION) {
 		return 1;
 	}
 
@@ -226,8 +231,7 @@ int main(void) {
 			terminal_effect_row,
 			&scoped_terminal_row
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			&term_db, prototype_type_view_rebuild_context_from_db(&type_db),
-			scoped_symbolic_row,
+			&term_db, scoped_symbolic_row,
 			99,
 			terminal_effect_row,
 			&substituted_scoped_row
@@ -238,7 +242,7 @@ int main(void) {
 			scoped_terminal_row
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_total_computation_type(
 			&term_db, symbolic_effect_union, value, &row_computation
-		) != 0 || prototype_term_classifier_view(&term_db, row_computation, &view) != 0 ||
+		) != 0 || prototype_judgement_classifier_view_syntax(&term_db, row_computation, &view) != 0 ||
 		view.effect_row != symbolic_effect_union ||
 		prototype_term_total_computation_type(
 			&term_db, empty_effect_row, value, &pure_computation
@@ -259,13 +263,13 @@ int main(void) {
 			&term_db, empty_effect_row, value,
 			PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN,
 			&substituted_partial_computation
-		) == 0 || prototype_term_computation_type_is_pure_total(
+		) == 0 || prototype_classifier_computation_type_is_pure_total(
 			&term_db, pure_computation
-		) != 1 || prototype_term_computation_type_is_pure_total(
+		) != 1 || prototype_classifier_computation_type_is_pure_total(
 			&term_db, terminal_computation
-		) != 0 || prototype_term_computation_type_is_pure_total(
+		) != 0 || prototype_classifier_computation_type_is_pure_total(
 			&term_db, partial_pure_computation
-		) != 0 || prototype_computation_totality_join(
+		) != 0 || prototype_classifier_totality_join(
 			PROTOTYPE_COMPUTATION_TOTALITY_TOTAL,
 			PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE
 		) != PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE ||
@@ -273,9 +277,9 @@ int main(void) {
 			&term_db, &type_db, pure_computation, partial_pure_computation
 		).status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL ||
 		prototype_term_graph_substitute_bound_var(
-			&term_db, prototype_type_view_rebuild_context_from_db(&type_db), partial_symbolic_computation, 99,
+			&term_db, partial_symbolic_computation, 99,
 			terminal_effect_row, &substituted_partial_computation
-		) != 0 || prototype_term_classifier_view(
+		) != 0 || prototype_judgement_classifier_view_syntax(
 			&term_db, substituted_partial_computation, &view
 		) != 0 || view.totality != PROTOTYPE_COMPUTATION_TOTALITY_MAY_DIVERGE ||
 		prototype_judgement_classifier_conversion(
@@ -354,9 +358,8 @@ int main(void) {
 	struct prototype_term_normalization_result normalization;
 	if (prototype_term_normalize_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			symbolic_effect_union,
 			PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
 			&normalization
@@ -373,7 +376,7 @@ int main(void) {
 			&judgement, returned, &returned_classifier
 		) != 0 || prototype_judgement_classifier_view(
 			&term_db, &type_db, NULL, returned_classifier, &view
-		) != 0 || view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+		) != 0 || view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
 		prototype_term_total_computation_type(
 			&term_db,
 			terminal_effect_row,
@@ -397,7 +400,7 @@ int main(void) {
 		&delta, &contexts, &substitutions
 	);
 	prototype_judgement_delta_set_intrinsic_environment(
-		&delta, prototype_default_intrinsic_environment()
+		&delta, prototype_default_intrinsic_typing_environment()
 	);
 	prototype_judgement_delta_set_context(
 		&delta, prototype_context_empty(&contexts)
@@ -424,14 +427,18 @@ int main(void) {
 			&returned_evidence,
 			wrong_result_classifier
 		) == 0 || prototype_judgement_delta_commit(&delta, 0) != 0 ||
-		prototype_judgement_publish_candidates(NULL, &judgement) != 0 ||
+		prototype_judgement_publish_candidates(NULL, NULL, &judgement) != 0 ||
 		prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
-			prototype_default_intrinsic_environment(),
+			prototype_default_intrinsic_typing_environment(),
 			&contexts,
+			&(const struct prototype_context_classifier_view) {
+				.contexts = &contexts
+			},
 			&substitutions,
 			&dimension_operators,
+			NULL,
 			NULL,
 			&judgement
 		) != 0) {
@@ -440,9 +447,8 @@ int main(void) {
 
 	if (prototype_term_normalize_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			forced,
 			PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
 			&normalization
@@ -463,9 +469,8 @@ int main(void) {
 		) != 0 ||
 		prototype_term_normalize_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			pure_bound,
 			PROTOTYPE_NORMALIZATION_DEFAULT_STEP_LIMIT,
 			&normalization
@@ -492,8 +497,8 @@ int main(void) {
 		return 1;
 	}
 
-	const struct prototype_intrinsic_environment* default_environment =
-		prototype_default_intrinsic_environment();
+	const struct prototype_intrinsic_typing_environment* default_environment =
+		prototype_default_intrinsic_typing_environment();
 	struct prototype_intrinsic_namespace_binding int64_bindings[32];
 	if (default_environment->namespace_binding_count > 32) {
 		return 1;
@@ -517,7 +522,7 @@ int main(void) {
 			remapped_add_name = 1;
 		}
 	}
-	const struct prototype_intrinsic_environment int64_environment = {
+	const struct prototype_intrinsic_typing_environment int64_environment = {
 		.namespace_bindings = int64_bindings,
 		.namespace_binding_count = default_environment->namespace_binding_count,
 		.pure_primitives = default_environment->pure_primitives,
@@ -526,9 +531,9 @@ int main(void) {
 		.effect_operation_count = default_environment->effect_operation_count,
 		.default_integer_host_type = PROTOTYPE_HOST_TYPE_INT64
 	};
-	if (!remapped_int || !remapped_add_name || prototype_intrinsic_environment_fingerprint(
+	if (!remapped_int || !remapped_add_name || prototype_intrinsic_typing_fingerprint(
 			&int64_environment
-		) == prototype_intrinsic_environment_fingerprint(default_environment)) {
+		) == prototype_intrinsic_typing_fingerprint(default_environment)) {
 		return 1;
 	}
 
@@ -587,7 +592,7 @@ int main(void) {
 		}
 		return 1;
 	}
-	prototype_term_print_debug(
+	prototype_type_term_print_debug(
 		readback_file,
 		&symbols,
 		&int64_environment,
@@ -606,7 +611,7 @@ int main(void) {
 		prototype_judgement_delta_infer_core_helper_facts(
 			&delta, &term_db, &type_db
 		) != 0 || prototype_judgement_delta_commit(&delta, 0) != 0 ||
-		prototype_judgement_publish_candidates(NULL, &judgement) != 0 ||
+		prototype_judgement_publish_candidates(NULL, NULL, &judgement) != 0 ||
 		prototype_judgement_lookup_authority_neutral_core_classifier(
 			&judgement, int64_literal, &int64_classifier
 		) != 0 || int64_classifier >= term_db.term_count ||
@@ -616,8 +621,12 @@ int main(void) {
 			&type_db,
 			&int64_environment,
 			&contexts,
+			&(const struct prototype_context_classifier_view) {
+				.contexts = &contexts
+			},
 			&substitutions,
 			&dimension_operators,
+			NULL,
 			NULL,
 			&judgement
 		) != 0 || prototype_judgement_validate_accepted_graph(
@@ -625,8 +634,12 @@ int main(void) {
 			&type_db,
 			default_environment,
 			&contexts,
+			&(const struct prototype_context_classifier_view) {
+				.contexts = &contexts
+			},
 			&substitutions,
 			&dimension_operators,
+			NULL,
 			NULL,
 			&judgement
 		) == 0) {

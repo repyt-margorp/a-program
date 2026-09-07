@@ -5,12 +5,17 @@
 
 struct prototype_compile_metadata;
 struct prototype_context_db;
+struct prototype_term_db;
 
 int prototype_typed_occurrence_graph_reaches(
 	const struct prototype_typed_occurrence_graph* graph,
 	const struct prototype_term_db* terms,
 	uint32_t root_occurrence,
 	uint32_t target_occurrence
+);
+int prototype_typed_occurrence_graph_occurrence_is_unreachable(
+	const struct prototype_typed_occurrence_graph* graph,
+	uint32_t occurrence_id
 );
 
 void prototype_typed_occurrence_graph_init(
@@ -29,6 +34,11 @@ size_t prototype_typed_occurrence_graph_case_count(const struct prototype_typed_
 const struct prototype_typed_occurrence* prototype_typed_occurrence_graph_get(
 	const struct prototype_typed_occurrence_graph* graph,
 	uint32_t occurrence_id
+);
+int prototype_typed_occurrence_graph_unwrap_transparent(
+	const struct prototype_typed_occurrence_graph* graph,
+	uint32_t occurrence_id,
+	uint32_t* p_unwrapped_occurrence
 );
 const struct prototype_typed_occurrence_edge*
 prototype_typed_occurrence_graph_get_edge(

@@ -52,9 +52,6 @@ int prototype_internal_canonicalize_type_view_core_refs(
 			) != 0) {
 			return -1;
 		}
-		if (prototype_term_rebind_type_former_anchors(terms, type_declarations) != 0) {
-			return -1;
-		}
 	}
 	size_t original_term_count = terms->term_count;
 	for (size_t i = 0; i < original_term_count; ++i) {
@@ -65,14 +62,15 @@ int prototype_internal_canonicalize_type_view_core_refs(
 		uint32_t args[16];
 		uint32_t arg_count;
 		uint32_t canonical_view;
-		if (prototype_term_type_instance_info(
+		if (prototype_type_projection_instance_info(
 				terms,
+				&type_declarations->semantic_schema,
 				(uint32_t)i,
 				&type_id,
 				args,
 				&arg_count
 			) != 0 ||
-			prototype_term_type_instance_make(
+			prototype_type_projection_instance_make(
 				terms,
 				type_declarations,
 				type_id,
@@ -104,7 +102,8 @@ int prototype_internal_artifact_find_existing_term_by_canonical_key(
 		appended_term >= terms->term_count) {
 		return -1;
 	}
-	if (!canonical_key_is_cross_artifact_linkable(key)) {
+	if (key->free_binder_count != 0 || key->has_type_local_reference ||
+		key->has_frame_local_reference || key->has_type_universe_reference) {
 		return 0;
 	}
 	for (uint32_t i = 0; i < old_term_count; ++i) {
@@ -113,23 +112,20 @@ int prototype_internal_artifact_find_existing_term_by_canonical_key(
 		if (terms->terms[i].tag == 0) {
 			continue;
 		}
-		if (prototype_term_canonical_key_with_types(
+		if (prototype_term_canonical_key(
 				terms,
-				type_declarations,
 				i,
 				&candidate
 			) != 0) {
 			return -1;
 		}
-		if (!canonical_keys_equal(&candidate, key)) {
+		if (!core_canonical_keys_equal(&candidate, key)) {
 			continue;
 		}
 			if (prototype_term_view_shape_equal_for_link(
 					terms,
-					type_declarations,
 					i,
 					terms,
-				type_declarations,
 				appended_term,
 				&same_term
 			) != 0) {
@@ -164,9 +160,8 @@ static int canonicalize_constructor_owner_ref(
 	}
 
 	struct prototype_term_canonical_key key;
-	if (prototype_term_canonical_key_with_types(
+	if (prototype_term_canonical_key(
 			terms,
-			type_declarations,
 			*p_owner,
 			&key
 		) != 0) {
@@ -822,15 +817,6 @@ static int artifact_build_binding_relocation(
 			) != 0) {
 			return -1;
 		}
-		if (context->classifier_ref.kind ==
-				PROTOTYPE_CONTEXT_CLASSIFIER_REF_VARIABLE &&
-			artifact_mark_binding(
-				used,
-				terms->next_binding_id,
-				context->classifier_ref.variable_id
-			) != 0) {
-			return -1;
-		}
 	}
 	for (size_t i = 0; i < type_declarations->readback.expr_count; ++i) {
 		const struct prototype_type_expr* expr = &type_declarations->readback.exprs[i];
@@ -1033,6 +1019,7 @@ static int artifact_append_reachable_dimension_operators(
 
 int prototype_internal_artifact_append_graph_ordered(
 	struct prototype_artifact_interface* appended_interface,
+	const struct symbol_table* symbols,
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,
@@ -1055,7 +1042,7 @@ int prototype_internal_artifact_append_graph_ordered(
 	int canonicalize_link_references,
 	const struct artifact_append_order* order
 ) {
-	if (!appended_interface || !target_terms || !target_type_declarations ||
+	if (!appended_interface || !symbols || !target_terms || !target_type_declarations ||
 		!target_judgement || !target_contexts || !target_substitutions ||
 		!target_dimension_operators ||
 		!source_interface ||
@@ -1596,6 +1583,7 @@ int prototype_internal_artifact_append_graph_ordered(
 			term_relocation_capacity,
 			binding_relocation,
 			binding_relocation_count,
+			occurrence_offset,
 			context_relocation,
 			context_relocation_capacity
 		) != 0) {
@@ -1947,10 +1935,6 @@ int prototype_internal_artifact_append_graph_ordered(
 			return -1;
 		}
 	}
-	if (prototype_term_canonicalize_type_former_references(target_terms) != 0) {
-		return -1;
-	}
-
 	if (occurrence_offset != PROTOTYPE_INVALID_ID &&
 		artifact_append_accepted_judgement(
 			target_judgement,
@@ -1994,8 +1978,10 @@ int prototype_internal_artifact_append_graph_ordered(
 		return -1;
 	}
 
-	appended_interface->intrinsic_environment_fingerprint =
-		source_interface->intrinsic_environment_fingerprint;
+	appended_interface->operational_intrinsic_fingerprint =
+		source_interface->operational_intrinsic_fingerprint;
+	appended_interface->typing_intrinsic_fingerprint =
+		source_interface->typing_intrinsic_fingerprint;
 	appended_interface->default_integer_host_type =
 		source_interface->default_integer_host_type;
 	appended_interface->term_export_count = source_interface->term_export_count;
@@ -2125,9 +2111,11 @@ int prototype_internal_artifact_append_graph_ordered(
 				appended_interface->term_exports[i].classifier
 			];
 		}
-		if (prototype_term_canonical_key_with_types(
+		if (prototype_artifact_semantic_key_build(
+				symbols,
 				target_terms,
 				target_type_declarations,
+				target_dimension_operators,
 				appended_interface->term_exports[i].local_term,
 				&appended_interface->term_exports[i].canonical_key
 			) != 0) {
@@ -2140,9 +2128,11 @@ int prototype_internal_artifact_append_graph_ordered(
 		);
 		if (appended_interface->term_exports[i].classifier != PROTOTYPE_INVALID_ID &&
 			(appended_interface->term_exports[i].classifier >= target_terms->term_count ||
-				prototype_term_canonical_key_with_types(
+				prototype_artifact_semantic_key_build(
+					symbols,
 					target_terms,
 					target_type_declarations,
+					target_dimension_operators,
 					appended_interface->term_exports[i].classifier,
 					&appended_interface->term_exports[i].classifier_key
 				) != 0)) {
@@ -2328,6 +2318,7 @@ int prototype_internal_artifact_append_graph_ordered(
 
 int prototype_artifact_append_graph(
 	struct prototype_artifact_interface* appended_interface,
+	const struct symbol_table* symbols,
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,
@@ -2351,6 +2342,7 @@ int prototype_artifact_append_graph(
 ) {
 	return prototype_internal_artifact_append_graph_ordered(
 		appended_interface,
+		symbols,
 		target_terms,
 		target_type_declarations,
 		target_judgement,
@@ -2650,7 +2642,9 @@ int prototype_canonical_link_table_add_metadata(
 
 		uint32_t representative = (uint32_t)table->entry_count;
 		for (size_t j = 0; j < table->entry_count; ++j) {
-			if (!canonical_keys_equal(&table->entries[j].canonical_key, &label->canonical_key)) {
+			if (!core_canonical_keys_equal(
+					&table->entries[j].canonical_key, &label->canonical_key
+				)) {
 				continue;
 			}
 			const struct prototype_canonical_link_entry* candidate = &table->entries[j];
@@ -2660,10 +2654,8 @@ int prototype_canonical_link_table_add_metadata(
 			int same_term = 0;
 				if (prototype_term_view_shape_equal_for_link(
 						candidate->terms,
-						candidate->type_declarations,
 						candidate->local_term,
 					terms,
-					type_declarations,
 					label->term,
 					&same_term
 				) != 0) {

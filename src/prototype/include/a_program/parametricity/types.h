@@ -97,7 +97,7 @@ struct prototype_parametricity_conversion_premise {
 	uint32_t candidate_id;
 	int role;
 	uint32_t ordinal;
-	struct prototype_kernel_conversion_goal request;
+	struct prototype_typing_conversion_goal request;
 	uint64_t conversion_graph_revision;
 };
 

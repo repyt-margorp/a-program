@@ -46,6 +46,33 @@ static const struct prototype_term* checker_term(
 	uint32_t term_id
 );
 
+static int checker_nominal_identity_equal(
+	struct prototype_qualified_name left,
+	struct prototype_qualified_name right
+) {
+	return left.namespace_symbol_id == right.namespace_symbol_id &&
+		left.name_symbol_id == right.name_symbol_id;
+}
+
+static const struct prototype_semantic_type_declaration*
+checker_type_declaration_for_identity(
+	const struct checker_state* state,
+	struct prototype_qualified_name identity
+) {
+	if (!state || !state->module) {
+		return NULL;
+	}
+	for (uint32_t i = 0; i < state->module->type_schema.type_count; ++i) {
+		const struct prototype_semantic_type_declaration* declaration =
+			&state->module->type_schema.type_declarations[i];
+		if (declaration->namespace_symbol_id == identity.namespace_symbol_id &&
+			declaration->name_symbol_id == identity.name_symbol_id) {
+			return declaration;
+		}
+	}
+	return NULL;
+}
+
 static int checker_term_has_type_after_bindings(
 	const struct checker_state* state,
 	uint32_t context_id,
@@ -55,6 +82,18 @@ static int checker_term_has_type_after_bindings(
 	const uint32_t* inherited_argument_ids,
 	size_t inherited_binding_count,
 	uint32_t depth
+);
+
+static int checker_occurrence_effective_context(
+	const struct checker_state* state,
+	const struct prototype_semantic_occurrence* occurrence,
+	uint32_t* p_context
+);
+
+static int checker_context_weakens_to(
+	const struct checker_state* state,
+	uint32_t source_context,
+	uint32_t target_context
 );
 
 static int checker_pi_parts(
@@ -72,6 +111,19 @@ static int checker_term_equal_after_bindings(
 	const uint32_t* argument_ids,
 	size_t binding_count,
 	uint32_t target_id,
+	uint32_t depth
+);
+
+static int checker_term_equal_under_bindings(
+	const struct checker_state* state,
+	uint32_t left_id,
+	const uint32_t* left_bindings,
+	const uint32_t* left_arguments,
+	size_t left_count,
+	uint32_t right_id,
+	const uint32_t* right_bindings,
+	const uint32_t* right_arguments,
+	size_t right_count,
 	uint32_t depth
 );
 
@@ -280,14 +332,14 @@ static int checker_type_view_is_well_formed(
 	const struct checker_state* state,
 	const struct prototype_term* view
 ) {
-	if (!view || view->tag != PROTOTYPE_TERM_TYPE_VIEW ||
-		view->as.type_view.view_type_id >= state->module->type_schema.type_count) {
+	if (!view || view->tag != PROTOTYPE_TERM_TYPE_VIEW) {
 		return 0;
 	}
 	const struct prototype_semantic_type_declaration* declaration =
-		&state->module->type_schema.type_declarations[
-			view->as.type_view.view_type_id
-		];
+		checker_type_declaration_for_identity(state, view->as.type_view.identity);
+	if (!declaration) {
+		return 0;
+	}
 	uint32_t core_arguments[64];
 	uint32_t source_arguments[64];
 	uint32_t core_count = 0;
@@ -322,7 +374,6 @@ static int checker_type_view_is_well_formed(
 	return core && core->tag == PROTOTYPE_TERM_TYPE_FORMER &&
 		core->as.type_former.representation_id == declaration->representation_id &&
 		source && source->tag == PROTOTYPE_TERM_TYPE_DECLARATION &&
-		source->as.type_declaration.type_id == declaration->type_index &&
 		source->as.type_declaration.identity.namespace_symbol_id ==
 			declaration->namespace_symbol_id &&
 		source->as.type_declaration.identity.name_symbol_id ==
@@ -464,8 +515,7 @@ checker_type_declaration_for_term(
 	for (uint32_t i = 0; i < state->module->type_schema.type_count; ++i) {
 		const struct prototype_semantic_type_declaration* declaration =
 			&state->module->type_schema.type_declarations[i];
-		if (term->as.type_declaration.type_id == declaration->type_index &&
-			term->as.type_declaration.identity.namespace_symbol_id ==
+		if (term->as.type_declaration.identity.namespace_symbol_id ==
 				declaration->namespace_symbol_id &&
 			term->as.type_declaration.identity.name_symbol_id ==
 				declaration->name_symbol_id) {
@@ -626,12 +676,12 @@ static int checker_application_is_type(
 				break;
 			}
 		}
-	} else if (root && root->tag == PROTOTYPE_TERM_TYPE_VIEW &&
-		root->as.type_view.view_type_id < state->module->type_schema.type_count) {
+	} else if (root && root->tag == PROTOTYPE_TERM_TYPE_VIEW) {
 		const struct prototype_semantic_type_declaration* declaration =
-			&state->module->type_schema.type_declarations[
-				root->as.type_view.view_type_id
-			];
+			checker_type_declaration_for_identity(state, root->as.type_view.identity);
+		if (!declaration) {
+			goto cleanup;
+		}
 		uint32_t type_id;
 		uint32_t view_arguments[64];
 		size_t view_argument_count;
@@ -969,9 +1019,9 @@ static int checker_context_binding(
 	return status == 0 ? 0 : -1;
 }
 
-/* Compare one classifier body after substituting a single Pi binder. This is
- * deliberately a checker-local structural operation: it neither interns a
- * Term nor consults producer normalization state. */
+/* A single binder is the one-element case of the canonical simultaneous
+ * substitution comparison. Keep only one conversion implementation so
+ * dependent beta reduction cannot diverge between checker call sites. */
 static int checker_term_equal_after_binding(
 	const struct checker_state* state,
 	uint32_t source_id,
@@ -980,298 +1030,20 @@ static int checker_term_equal_after_binding(
 	uint32_t target_id,
 	uint32_t depth
 ) {
-	if (depth > state->module->terms.term_count) {
-		return -1;
-	}
-	const struct prototype_term* source = checker_term(state, source_id);
-	const struct prototype_term* target = checker_term(state, target_id);
-	if (!source || !target) {
-		return 0;
-	}
 	const uint32_t* binding_ids = binding_id == PROTOTYPE_INVALID_ID ?
 		NULL : &binding_id;
 	const uint32_t* argument_ids = binding_id == PROTOTYPE_INVALID_ID ?
 		NULL : &argument_id;
 	size_t binding_count = binding_id == PROTOTYPE_INVALID_ID ? 0 : 1;
-	int pure_family_equal = checker_pure_family_spine_equal(
-		state, source_id, binding_ids, argument_ids, binding_count,
-		target_id, depth
+	return checker_term_equal_after_bindings(
+		state,
+		source_id,
+		binding_ids,
+		argument_ids,
+		binding_count,
+		target_id,
+		depth
 	);
-	if (pure_family_equal != -2) {
-		return pure_family_equal;
-	}
-	if (source->tag == PROTOTYPE_TERM_APP) {
-		const struct prototype_term* function = checker_term(
-			state, source->as.app.function
-		);
-		if (function && function->tag == PROTOTYPE_TERM_LAMBDA &&
-			!checker_term_contains_binding(
-				state, function->as.lambda.body,
-				function->as.lambda.binding_id, 0
-			)) {
-			return checker_term_equal_after_binding(
-				state, function->as.lambda.body, binding_id, argument_id,
-				target_id, depth + 1
-			);
-		}
-	}
-	if (target->tag == PROTOTYPE_TERM_APP) {
-		const struct prototype_term* function = checker_term(
-			state, target->as.app.function
-		);
-		if (function && function->tag == PROTOTYPE_TERM_LAMBDA &&
-			!checker_term_contains_binding(
-				state, function->as.lambda.body,
-				function->as.lambda.binding_id, 0
-			)) {
-			return checker_term_equal_after_binding(
-				state, source_id, binding_id, argument_id,
-				function->as.lambda.body, depth + 1
-			);
-		}
-	}
-	if (source->tag == PROTOTYPE_TERM_VAR &&
-		source->as.var.binding_id == binding_id) {
-		if (argument_id == target_id) {
-			return 1;
-		}
-		const struct prototype_term* argument = checker_term(state, argument_id);
-		return (target->tag == PROTOTYPE_TERM_TYPE_VIEW &&
-			target->as.type_view.core == argument_id) ||
-			(argument && argument->tag == PROTOTYPE_TERM_TYPE_VIEW &&
-			 argument->as.type_view.core == target_id);
-	}
-	if (source->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR &&
-		source->as.effect_row_var.binding_id == binding_id) {
-		return argument_id == target_id;
-	}
-	if (target->tag == PROTOTYPE_TERM_TYPE_VIEW &&
-		source->tag != PROTOTYPE_TERM_TYPE_VIEW) {
-		const struct prototype_term* source_root = source;
-		while (source_root && source_root->tag == PROTOTYPE_TERM_APP) {
-			source_root = checker_term(state, source_root->as.app.function);
-		}
-		return checker_term_equal_after_binding(
-			state,
-			source_id,
-			binding_id,
-			argument_id,
-			source_root && source_root->tag == PROTOTYPE_TERM_TYPE_DECLARATION ?
-				target->as.type_view.source : target->as.type_view.core,
-			depth + 1
-		);
-	}
-	if (source->tag == PROTOTYPE_TERM_TYPE_VIEW &&
-		target->tag != PROTOTYPE_TERM_TYPE_VIEW) {
-		return checker_term_equal_after_binding(
-			state,
-			source->as.type_view.core,
-			binding_id,
-			argument_id,
-			target_id,
-			depth + 1
-		);
-	}
-	if (source->tag != target->tag) {
-		return 0;
-	}
-	switch (source->tag) {
-		case PROTOTYPE_TERM_VAR:
-			return source->as.var.binding_id == target->as.var.binding_id;
-		case PROTOTYPE_TERM_PRIMITIVE_TEXT:
-		case PROTOTYPE_TERM_PRIMITIVE_INT:
-		case PROTOTYPE_TERM_PRIMITIVE_INT64:
-		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
-			return 1;
-		case PROTOTYPE_TERM_UNIVERSE_VAR:
-			return checker_universes_equal(state, source_id, target_id);
-		case PROTOTYPE_TERM_TYPE_FORMER:
-			return source->as.type_former.representation_id ==
-				target->as.type_former.representation_id &&
-				source->as.type_former.constructor_count ==
-					target->as.type_former.constructor_count;
-		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			return source->as.type_declaration.type_id ==
-				target->as.type_declaration.type_id &&
-				source->as.type_declaration.identity.namespace_symbol_id ==
-					target->as.type_declaration.identity.namespace_symbol_id &&
-				source->as.type_declaration.identity.name_symbol_id ==
-					target->as.type_declaration.identity.name_symbol_id;
-		case PROTOTYPE_TERM_TYPE_VIEW:
-			return source->as.type_view.view_type_id ==
-				target->as.type_view.view_type_id &&
-				checker_term_equal_after_binding(
-					state,
-					source->as.type_view.core,
-					binding_id,
-					argument_id,
-					target->as.type_view.core,
-					depth + 1
-				) == 1 && checker_term_equal_after_binding(
-					state,
-					source->as.type_view.source,
-					binding_id,
-					argument_id,
-					target->as.type_view.source,
-					depth + 1
-				) == 1;
-		case PROTOTYPE_TERM_APP:
-			return checker_term_equal_after_binding(
-				state,
-				source->as.app.function,
-				binding_id,
-				argument_id,
-				target->as.app.function,
-				depth + 1
-			) == 1 && checker_term_equal_after_binding(
-				state,
-				source->as.app.argument,
-				binding_id,
-				argument_id,
-				target->as.app.argument,
-				depth + 1
-			) == 1;
-		case PROTOTYPE_TERM_LAMBDA:
-			if (source->as.lambda.binding_id == target->as.lambda.binding_id) {
-				return checker_term_equal_after_binding(
-					state,
-					source->as.lambda.body,
-					binding_id,
-					argument_id,
-					target->as.lambda.body,
-					depth + 1
-				);
-			}
-			return checker_term_equal_after_bindings(
-				state,
-				source_id,
-				binding_id == PROTOTYPE_INVALID_ID ? NULL : &binding_id,
-				binding_id == PROTOTYPE_INVALID_ID ? NULL : &argument_id,
-				binding_id == PROTOTYPE_INVALID_ID ? 0 : 1,
-				target_id,
-				depth + 1
-			);
-		case PROTOTYPE_TERM_PI:
-			return checker_term_equal_after_binding(
-				state,
-				source->as.pi.domain,
-				binding_id,
-				argument_id,
-				target->as.pi.domain,
-				depth + 1
-			) == 1 && checker_term_equal_after_binding(
-				state,
-				source->as.pi.codomain_family,
-				binding_id,
-				argument_id,
-				target->as.pi.codomain_family,
-				depth + 1
-			) == 1;
-		case PROTOTYPE_TERM_CONSTRUCTOR:
-			return source->as.constructor.constructor_id ==
-				target->as.constructor.constructor_id &&
-				checker_term_equal_after_binding(
-					state,
-					source->as.constructor.owner,
-					binding_id,
-					argument_id,
-					target->as.constructor.owner,
-					depth + 1
-				) == 1;
-		case PROTOTYPE_TERM_TEXT_LITERAL:
-			return source->as.text_literal.text_symbol_id ==
-				target->as.text_literal.text_symbol_id;
-		case PROTOTYPE_TERM_INT_LITERAL:
-			return source->as.int_literal.value == target->as.int_literal.value;
-		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-			return source->as.effect_row_var.binding_id ==
-				target->as.effect_row_var.binding_id;
-		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-			return checker_term_equal_after_binding(
-				state,
-				source->as.effect_row_union.left,
-				binding_id,
-				argument_id,
-				target->as.effect_row_union.left,
-				depth + 1
-			) == 1 && checker_term_equal_after_binding(
-				state,
-				source->as.effect_row_union.right,
-				binding_id,
-				argument_id,
-				target->as.effect_row_union.right,
-				depth + 1
-			) == 1;
-		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			return source->as.effect_row_forall.binding_id ==
-				target->as.effect_row_forall.binding_id &&
-				checker_term_equal_after_binding(
-					state,
-					source->as.effect_row_forall.body,
-					binding_id,
-					argument_id,
-					target->as.effect_row_forall.body,
-					depth + 1
-				) == 1;
-		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-			return source->as.effect_row_operation.operation_id ==
-				target->as.effect_row_operation.operation_id &&
-				checker_term_equal_after_binding(
-					state,
-					source->as.effect_row_operation.latent_row,
-					binding_id,
-					argument_id,
-					target->as.effect_row_operation.latent_row,
-					depth + 1
-				) == 1;
-		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			return source->as.computation_type.totality ==
-				target->as.computation_type.totality &&
-				checker_term_equal_after_binding(
-					state,
-					source->as.computation_type.label,
-					binding_id,
-					argument_id,
-					target->as.computation_type.label,
-					depth + 1
-				) == 1 && checker_term_equal_after_binding(
-					state,
-					source->as.computation_type.result,
-					binding_id,
-					argument_id,
-					target->as.computation_type.result,
-					depth + 1
-				) == 1;
-		case PROTOTYPE_TERM_THUNK_TYPE:
-			return checker_term_equal_after_binding(
-				state,
-				source->as.thunk_type.computation,
-				binding_id,
-				argument_id,
-				target->as.thunk_type.computation,
-				depth + 1
-			);
-		case PROTOTYPE_TERM_RETURN:
-			return checker_term_equal_after_binding(
-				state,
-				source->as.return_term.value,
-				binding_id,
-				argument_id,
-				target->as.return_term.value,
-				depth + 1
-			);
-		case PROTOTYPE_TERM_THUNK:
-			return checker_term_equal_after_binding(
-				state,
-				source->as.thunk.computation,
-				binding_id,
-				argument_id,
-				target->as.thunk.computation,
-				depth + 1
-			);
-		default:
-			return source_id == target_id ? 1 : -1;
-	}
 }
 
 struct checker_substitution_path {
@@ -1279,10 +1051,17 @@ struct checker_substitution_path {
 	const struct checker_substitution_path* next;
 };
 
+struct checker_ih_scope_path {
+	uint32_t source_scope;
+	uint32_t target_scope;
+	const struct checker_ih_scope_path* next;
+};
+
 static int checker_term_equal_reindexed_path(
 	const struct checker_state* state,
 	uint32_t source_id,
 	const struct checker_substitution_path* path,
+	const struct checker_ih_scope_path* ih_scopes,
 	uint32_t target_id,
 	uint32_t depth
 );
@@ -1295,6 +1074,7 @@ static int checker_variable_equal_reindexed_path(
 	const struct checker_state* state,
 	uint32_t binding_id,
 	const struct checker_substitution_path* path,
+	const struct checker_ih_scope_path* ih_scopes,
 	uint32_t target_id,
 	uint32_t depth
 ) {
@@ -1321,7 +1101,7 @@ static int checker_variable_equal_reindexed_path(
 		case PROTOTYPE_SEMANTIC_SUBSTITUTION_EMPTY:
 		case PROTOTYPE_SEMANTIC_SUBSTITUTION_PROJECTION:
 			return checker_variable_equal_reindexed_path(
-				state, binding_id, path->next, target_id, depth + 1
+				state, binding_id, path->next, ih_scopes, target_id, depth + 1
 			);
 		case PROTOTYPE_SEMANTIC_SUBSTITUTION_EXTEND: {
 			const struct prototype_semantic_context* target =
@@ -1333,6 +1113,7 @@ static int checker_variable_equal_reindexed_path(
 					state,
 					substitution->term,
 					path->next,
+					ih_scopes,
 					target_id,
 					depth + 1
 				);
@@ -1342,7 +1123,7 @@ static int checker_variable_equal_reindexed_path(
 				.next = path->next
 			};
 			return checker_variable_equal_reindexed_path(
-				state, binding_id, &prefix, target_id, depth + 1
+				state, binding_id, &prefix, ih_scopes, target_id, depth + 1
 			);
 		}
 		case PROTOTYPE_SEMANTIC_SUBSTITUTION_COMPOSE: {
@@ -1355,7 +1136,7 @@ static int checker_variable_equal_reindexed_path(
 				.next = &inner
 			};
 			return checker_variable_equal_reindexed_path(
-				state, binding_id, &outer, target_id, depth + 1
+				state, binding_id, &outer, ih_scopes, target_id, depth + 1
 			);
 		}
 		default:
@@ -1367,6 +1148,7 @@ static int checker_term_equal_reindexed_path(
 	const struct checker_state* state,
 	uint32_t source_id,
 	const struct checker_substitution_path* path,
+	const struct checker_ih_scope_path* ih_scopes,
 	uint32_t target_id,
 	uint32_t depth
 ) {
@@ -1394,7 +1176,7 @@ static int checker_term_equal_reindexed_path(
 		substitution->kind == PROTOTYPE_SEMANTIC_SUBSTITUTION_EMPTY ||
 		substitution->kind == PROTOTYPE_SEMANTIC_SUBSTITUTION_PROJECTION) {
 		return checker_term_equal_reindexed_path(
-			state, source_id, path->next, target_id, depth + 1
+			state, source_id, path->next, ih_scopes, target_id, depth + 1
 		);
 	}
 	if (substitution->kind == PROTOTYPE_SEMANTIC_SUBSTITUTION_COMPOSE) {
@@ -1407,7 +1189,7 @@ static int checker_term_equal_reindexed_path(
 			.next = &inner
 		};
 		return checker_term_equal_reindexed_path(
-			state, source_id, &outer, target_id, depth + 1
+			state, source_id, &outer, ih_scopes, target_id, depth + 1
 		);
 	}
 	const struct prototype_term* source = checker_term(state, source_id);
@@ -1418,7 +1200,7 @@ static int checker_term_equal_reindexed_path(
 	}
 	if (source->tag == PROTOTYPE_TERM_VAR) {
 		return checker_variable_equal_reindexed_path(
-			state, source->as.var.binding_id, path, target_id, depth + 1
+			state, source->as.var.binding_id, path, ih_scopes, target_id, depth + 1
 		);
 	}
 	if (target->tag == PROTOTYPE_TERM_TYPE_VIEW &&
@@ -1431,6 +1213,7 @@ static int checker_term_equal_reindexed_path(
 			state,
 			source_id,
 			path,
+			ih_scopes,
 			root && root->tag == PROTOTYPE_TERM_TYPE_DECLARATION ?
 				target->as.type_view.source : target->as.type_view.core,
 			depth + 1
@@ -1442,6 +1225,7 @@ static int checker_term_equal_reindexed_path(
 			state,
 			source->as.type_view.core,
 			path,
+			ih_scopes,
 			target_id,
 			depth + 1
 		);
@@ -1451,7 +1235,7 @@ static int checker_term_equal_reindexed_path(
 	}
 #define REINDEX_CHILD(source_child, target_child) \
 	checker_term_equal_reindexed_path( \
-		state, (source_child), path, (target_child), depth + 1 \
+		state, (source_child), path, ih_scopes, (target_child), depth + 1 \
 	)
 	switch (source->tag) {
 		case PROTOTYPE_TERM_UNIVERSE_VAR:
@@ -1472,8 +1256,10 @@ static int checker_term_equal_reindexed_path(
 				depth + 1
 			);
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			return source->as.type_view.view_type_id ==
-				target->as.type_view.view_type_id &&
+			return checker_nominal_identity_equal(
+				source->as.type_view.identity,
+				target->as.type_view.identity
+			) &&
 				REINDEX_CHILD(
 					source->as.type_view.core, target->as.type_view.core
 				) == 1 && REINDEX_CHILD(
@@ -1554,6 +1340,155 @@ static int checker_term_equal_reindexed_path(
 			return REINDEX_CHILD(
 				source->as.force.value, target->as.force.value
 			);
+		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+		{
+			uint32_t expected_scope = source->as.induction_hypothesis.ih_scope_id;
+			for (const struct checker_ih_scope_path* scope = ih_scopes;
+				scope;
+				scope = scope->next) {
+				if (scope->source_scope == expected_scope) {
+					expected_scope = scope->target_scope;
+					break;
+				}
+			}
+			return expected_scope == target->as.induction_hypothesis.ih_scope_id &&
+				REINDEX_CHILD(
+					source->as.induction_hypothesis.argument,
+					target->as.induction_hypothesis.argument
+				);
+		}
+		case PROTOTYPE_TERM_MATCH:
+		{
+			if (source->as.match.case_count != target->as.match.case_count ||
+				source->as.match.first_case > state->module->terms.case_count ||
+				source->as.match.case_count > state->module->terms.case_count -
+					source->as.match.first_case ||
+				target->as.match.first_case > state->module->terms.case_count ||
+				target->as.match.case_count > state->module->terms.case_count -
+					target->as.match.first_case ||
+				REINDEX_CHILD(
+					source->as.match.scrutinee, target->as.match.scrutinee
+				) != 1) {
+				return 0;
+			}
+			int source_has_scope = source->as.match.ih_scope_id !=
+				PROTOTYPE_INVALID_ID;
+			int target_has_scope = target->as.match.ih_scope_id !=
+				PROTOTYPE_INVALID_ID;
+			if (source_has_scope != target_has_scope) {
+				return 0;
+			}
+			struct checker_ih_scope_path local_scope = {
+				.source_scope = source->as.match.ih_scope_id,
+				.target_scope = target->as.match.ih_scope_id,
+				.next = ih_scopes
+			};
+			const struct checker_ih_scope_path* body_scopes = source_has_scope ?
+				&local_scope : ih_scopes;
+			for (uint32_t i = 0; i < source->as.match.case_count; ++i) {
+				const struct prototype_match_case* source_case =
+					&state->module->terms.cases[
+						source->as.match.first_case + i
+					];
+				const struct prototype_match_case* target_case =
+					&state->module->terms.cases[
+						target->as.match.first_case + i
+					];
+				if (source_case->constructor_id != target_case->constructor_id ||
+					source_case->binder_count != target_case->binder_count ||
+					source_case->first_binder >
+						state->module->terms.case_binder_count ||
+					source_case->binder_count >
+						state->module->terms.case_binder_count -
+							source_case->first_binder ||
+					target_case->first_binder >
+						state->module->terms.case_binder_count ||
+					target_case->binder_count >
+						state->module->terms.case_binder_count -
+							target_case->first_binder ||
+					checker_term_equal_reindexed_path(
+						state,
+						source_case->constructor_owner,
+						path,
+						body_scopes,
+						target_case->constructor_owner,
+						depth + 1
+					) != 1) {
+					return 0;
+				}
+				for (uint32_t j = 0; j < source_case->binder_count; ++j) {
+					const struct prototype_case_binder* source_binder =
+						&state->module->terms.case_binders[
+							source_case->first_binder + j
+						];
+					const struct prototype_case_binder* target_binder =
+						&state->module->terms.case_binders[
+							target_case->first_binder + j
+						];
+					if (source_binder->binding_id != target_binder->binding_id ||
+						source_binder->is_recursive != target_binder->is_recursive) {
+						return 0;
+					}
+				}
+				if (checker_term_equal_reindexed_path(
+						state,
+						source_case->body,
+						path,
+						body_scopes,
+						target_case->body,
+						depth + 1
+					) != 1) {
+					return 0;
+				}
+			}
+			return 1;
+		}
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
+		{
+			int computation_equal = REINDEX_CHILD(
+				source->as.computation_fold.computation,
+				target->as.computation_fold.computation
+			);
+			int return_equal = REINDEX_CHILD(
+				source->as.computation_fold.return_clause,
+				target->as.computation_fold.return_clause
+			);
+			if (source->as.computation_fold.clause_count !=
+					target->as.computation_fold.clause_count ||
+				source->as.computation_fold.first_clause >
+					state->module->terms.computation_fold_clause_count ||
+				source->as.computation_fold.clause_count >
+					state->module->terms.computation_fold_clause_count -
+						source->as.computation_fold.first_clause ||
+				target->as.computation_fold.first_clause >
+					state->module->terms.computation_fold_clause_count ||
+				target->as.computation_fold.clause_count >
+					state->module->terms.computation_fold_clause_count -
+						target->as.computation_fold.first_clause ||
+				computation_equal != 1 || return_equal != 1) {
+				return 0;
+			}
+			for (uint32_t i = 0;
+				i < source->as.computation_fold.clause_count;
+				++i) {
+				const struct prototype_computation_fold_clause* source_clause =
+					&state->module->terms.computation_fold_clauses[
+						source->as.computation_fold.first_clause + i
+					];
+				const struct prototype_computation_fold_clause* target_clause =
+					&state->module->terms.computation_fold_clauses[
+						target->as.computation_fold.first_clause + i
+					];
+				if (REINDEX_CHILD(
+						source_clause->operation, target_clause->operation
+					) != 1 || REINDEX_CHILD(
+						source_clause->body, target_clause->body
+					) != 1) {
+					return 0;
+				}
+			}
+			return 1;
+		}
 		default:
 			return -1;
 	}
@@ -1571,7 +1506,7 @@ static int checker_term_equal_reindexed(
 		.next = NULL
 	};
 	return checker_term_equal_reindexed_path(
-		state, source_id, &path, target_id, 0
+		state, source_id, &path, NULL, target_id, 0
 	);
 }
 
@@ -1816,286 +1751,31 @@ static int checker_term_equal_after_bindings(
 	uint32_t target_id,
 	uint32_t depth
 ) {
-	if (depth > state->module->terms.term_count) {
-		return -1;
-	}
-	const struct prototype_term* source = checker_term(state, source_id);
-	const struct prototype_term* target = checker_term(state, target_id);
-	if (!source || !target) {
-		return 0;
-	}
 	int pure_family_equal = checker_pure_family_spine_equal(
-		state, source_id, binding_ids, argument_ids, binding_count,
-		target_id, depth
+		state,
+		source_id,
+		binding_ids,
+		argument_ids,
+		binding_count,
+		target_id,
+		depth
 	);
 	if (pure_family_equal != -2) {
 		return pure_family_equal;
 	}
-	if (source->tag == PROTOTYPE_TERM_APP) {
-		const struct prototype_term* function = checker_term(
-			state, source->as.app.function
-		);
-		if (function && function->tag == PROTOTYPE_TERM_LAMBDA) {
-			if (binding_count == SIZE_MAX) {
-				return -1;
-			}
-			uint32_t* beta_bindings = malloc(
-				(binding_count + 1) * sizeof(*beta_bindings)
-			);
-			uint32_t* beta_arguments = malloc(
-				(binding_count + 1) * sizeof(*beta_arguments)
-			);
-			if (!beta_bindings || !beta_arguments) {
-				free(beta_bindings);
-				free(beta_arguments);
-				return -1;
-			}
-			if (binding_count != 0) {
-				memcpy(beta_bindings, binding_ids,
-					binding_count * sizeof(*beta_bindings));
-				memcpy(beta_arguments, argument_ids,
-					binding_count * sizeof(*beta_arguments));
-			}
-			beta_bindings[binding_count] = function->as.lambda.binding_id;
-			beta_arguments[binding_count] = source->as.app.argument;
-			int beta_equal = checker_term_equal_after_bindings(
-				state, function->as.lambda.body, beta_bindings, beta_arguments,
-				binding_count + 1, target_id, depth + 1
-			);
-			free(beta_bindings);
-			free(beta_arguments);
-			return beta_equal;
-		}
-	}
-	if (target->tag == PROTOTYPE_TERM_APP) {
-		const struct prototype_term* function = checker_term(
-			state, target->as.app.function
-		);
-		if (function && function->tag == PROTOTYPE_TERM_LAMBDA &&
-			!checker_term_contains_binding(
-				state, function->as.lambda.body,
-				function->as.lambda.binding_id, 0
-			)) {
-			return checker_term_equal_after_bindings(
-				state, source_id, binding_ids, argument_ids, binding_count,
-				function->as.lambda.body, depth + 1
-			);
-		}
-	}
-	if (source->tag == PROTOTYPE_TERM_VAR ||
-		source->tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
-		uint32_t source_binding = source->tag == PROTOTYPE_TERM_VAR ?
-			source->as.var.binding_id : source->as.effect_row_var.binding_id;
-		for (size_t i = 0; i < binding_count; ++i) {
-			if (binding_ids[i] == source_binding) {
-				return checker_term_equal_after_bindings(
-					state,
-					argument_ids[i],
-					binding_ids,
-					argument_ids,
-					binding_count,
-					target_id,
-					depth + 1
-				);
-			}
-		}
-	}
-	if (target->tag == PROTOTYPE_TERM_TYPE_VIEW &&
-		source->tag != PROTOTYPE_TERM_TYPE_VIEW) {
-		const struct prototype_term* root = source;
-		while (root && root->tag == PROTOTYPE_TERM_APP) {
-			root = checker_term(state, root->as.app.function);
-		}
-		return checker_term_equal_after_bindings(
-			state,
-			source_id,
-			binding_ids,
-			argument_ids,
-			binding_count,
-			root && root->tag == PROTOTYPE_TERM_TYPE_DECLARATION ?
-				target->as.type_view.source : target->as.type_view.core,
-			depth + 1
-		);
-	}
-	if (source->tag == PROTOTYPE_TERM_TYPE_VIEW &&
-		target->tag != PROTOTYPE_TERM_TYPE_VIEW) {
-		return checker_term_equal_after_bindings(
-			state,
-			source->as.type_view.core,
-			binding_ids,
-			argument_ids,
-			binding_count,
-			target_id,
-			depth + 1
-		);
-	}
-	if (source->tag != target->tag) {
-		return 0;
-	}
-#define COMPARE_CHILD(source_child, target_child) \
-	checker_term_equal_after_bindings( \
-		state, (source_child), binding_ids, argument_ids, binding_count, \
-		(target_child), depth + 1 \
-	)
-	switch (source->tag) {
-		case PROTOTYPE_TERM_VAR:
-			return source->as.var.binding_id == target->as.var.binding_id;
-		case PROTOTYPE_TERM_TYPE_VIEW: {
-			int core_equal = COMPARE_CHILD(
-				source->as.type_view.core, target->as.type_view.core
-			);
-			int source_equal = COMPARE_CHILD(
-				source->as.type_view.source, target->as.type_view.source
-			);
-			return source->as.type_view.view_type_id ==
-				target->as.type_view.view_type_id && core_equal == 1 &&
-				source_equal == 1;
-		}
-		case PROTOTYPE_TERM_APP:
-			return COMPARE_CHILD(
-				source->as.app.function, target->as.app.function
-			) == 1 && COMPARE_CHILD(
-				source->as.app.argument, target->as.app.argument
-			) == 1;
-		case PROTOTYPE_TERM_LAMBDA:
-			if (source->as.lambda.binding_id == target->as.lambda.binding_id) {
-				return COMPARE_CHILD(
-					source->as.lambda.body, target->as.lambda.body
-				);
-			}
-			int source_uses_binding = checker_term_contains_binding(
-				state,
-				source->as.lambda.body,
-				source->as.lambda.binding_id,
-				0
-			);
-			int target_uses_binding = checker_term_contains_binding(
-				state,
-				target->as.lambda.body,
-				target->as.lambda.binding_id,
-				0
-			);
-			if (!source_uses_binding && !target_uses_binding) {
-				return COMPARE_CHILD(
-					source->as.lambda.body, target->as.lambda.body
-				);
-			}
-			if (!source_uses_binding) {
-				return COMPARE_CHILD(
-					source->as.lambda.body, target->as.lambda.body
-				);
-			}
-			if (binding_count == SIZE_MAX) {
-				return -1;
-			}
-			uint32_t target_variable = checker_find_variable_term(
-				state, target->as.lambda.binding_id
-			);
-			if (target_variable == PROTOTYPE_INVALID_ID) {
-				return -1;
-			}
-			uint32_t* nested_bindings = malloc(
-				(binding_count + 1) * sizeof(*nested_bindings)
-			);
-			uint32_t* nested_arguments = malloc(
-				(binding_count + 1) * sizeof(*nested_arguments)
-			);
-			if (!nested_bindings || !nested_arguments) {
-				free(nested_bindings);
-				free(nested_arguments);
-				return -1;
-			}
-			if (binding_count != 0) {
-				memcpy(nested_bindings, binding_ids,
-					binding_count * sizeof(*nested_bindings));
-				memcpy(nested_arguments, argument_ids,
-					binding_count * sizeof(*nested_arguments));
-			}
-			nested_bindings[binding_count] = source->as.lambda.binding_id;
-			nested_arguments[binding_count] = target_variable;
-			int lambda_equal = checker_term_equal_after_bindings(
-				state,
-				source->as.lambda.body,
-				nested_bindings,
-				nested_arguments,
-				binding_count + 1,
-				target->as.lambda.body,
-				depth + 1
-			);
-			free(nested_bindings);
-			free(nested_arguments);
-			return lambda_equal;
-		case PROTOTYPE_TERM_PI:
-			return COMPARE_CHILD(
-				source->as.pi.domain, target->as.pi.domain
-			) == 1 && COMPARE_CHILD(
-				source->as.pi.codomain_family,
-				target->as.pi.codomain_family
-			) == 1;
-		case PROTOTYPE_TERM_CONSTRUCTOR:
-			return source->as.constructor.constructor_id ==
-				target->as.constructor.constructor_id && COMPARE_CHILD(
-					source->as.constructor.owner,
-					target->as.constructor.owner
-				) == 1;
-		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-			return source->as.effect_row_var.binding_id ==
-				target->as.effect_row_var.binding_id;
-		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-			return COMPARE_CHILD(
-				source->as.effect_row_union.left,
-				target->as.effect_row_union.left
-			) == 1 && COMPARE_CHILD(
-				source->as.effect_row_union.right,
-				target->as.effect_row_union.right
-			) == 1;
-		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-			return source->as.effect_row_forall.binding_id ==
-				target->as.effect_row_forall.binding_id && COMPARE_CHILD(
-					source->as.effect_row_forall.body,
-					target->as.effect_row_forall.body
-				) == 1;
-		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-			return source->as.effect_row_operation.operation_id ==
-				target->as.effect_row_operation.operation_id && COMPARE_CHILD(
-					source->as.effect_row_operation.latent_row,
-					target->as.effect_row_operation.latent_row
-				) == 1;
-		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			return source->as.computation_type.totality ==
-				target->as.computation_type.totality && COMPARE_CHILD(
-					source->as.computation_type.label,
-					target->as.computation_type.label
-				) == 1 && COMPARE_CHILD(
-					source->as.computation_type.result,
-					target->as.computation_type.result
-				) == 1;
-		case PROTOTYPE_TERM_THUNK_TYPE:
-			return COMPARE_CHILD(
-				source->as.thunk_type.computation,
-				target->as.thunk_type.computation
-			);
-		case PROTOTYPE_TERM_RETURN:
-			return COMPARE_CHILD(
-				source->as.return_term.value, target->as.return_term.value
-			);
-		case PROTOTYPE_TERM_THUNK:
-			return COMPARE_CHILD(
-				source->as.thunk.computation, target->as.thunk.computation
-			);
-		default:
-			return checker_term_equal_after_binding(
-				state,
-				source_id,
-				PROTOTYPE_INVALID_ID,
-				PROTOTYPE_INVALID_ID,
-				target_id,
-				depth + 1
-			);
-	}
-#undef COMPARE_CHILD
+	return checker_term_equal_under_bindings(
+		state,
+		source_id,
+		binding_ids,
+		argument_ids,
+		binding_count,
+		target_id,
+		NULL,
+		NULL,
+		0,
+		depth
+	);
 }
-
 static int checker_parameter_instantiation(
 	const struct checker_state* state,
 	const struct prototype_semantic_type_declaration* type,
@@ -2323,7 +2003,15 @@ static int checker_occurrence_has_type_after_bindings(
 	for (uint32_t i = 0; i < state->module->occurrences.occurrence_count; ++i) {
 		const struct prototype_semantic_occurrence* occurrence =
 			&state->module->occurrences.occurrences[i];
-		if (occurrence->context_id != context_id ||
+		uint32_t effective_context;
+		if (checker_occurrence_effective_context(
+				state, occurrence, &effective_context
+			) != 0) {
+			return -1;
+		}
+		if (!checker_context_weakens_to(
+				state, effective_context, context_id
+			) ||
 			occurrence->core_term != term_id) {
 			continue;
 		}
@@ -2411,8 +2099,6 @@ static int checker_term_has_type_after_bindings(
 	}
 	const struct prototype_term* classifier = checker_term(state, classifier_id);
 	if (!classifier || classifier->tag != PROTOTYPE_TERM_TYPE_VIEW ||
-		classifier->as.type_view.view_type_id >=
-			state->module->type_schema.type_count ||
 		!checker_constructor_owners_match(
 			state, term->as.constructor.owner, classifier_id
 		)) {
@@ -2420,9 +2106,11 @@ static int checker_term_has_type_after_bindings(
 		return 0;
 	}
 	const struct prototype_semantic_type_declaration* type =
-		&state->module->type_schema.type_declarations[
-			classifier->as.type_view.view_type_id
-		];
+		checker_type_declaration_for_identity(state, classifier->as.type_view.identity);
+	if (!type) {
+		free(arguments);
+		return 0;
+	}
 	if (term->as.constructor.constructor_id >= type->constructor_count) {
 		free(arguments);
 		return 0;
@@ -2593,6 +2281,81 @@ static int checker_context_weakens_to(
 	return 1;
 }
 
+static int checker_occurrence_effective_context(
+	const struct checker_state* state,
+	const struct prototype_semantic_occurrence* occurrence,
+	uint32_t* p_context
+) {
+	if (!state || !occurrence || !p_context) {
+		return -1;
+	}
+	if (occurrence->context_action_substitution == PROTOTYPE_INVALID_ID) {
+		*p_context = occurrence->context_id;
+		return 0;
+	}
+	if (occurrence->context_action_substitution >=
+		state->module->substitutions.substitution_count) {
+		return -1;
+	}
+	const struct prototype_semantic_substitution* action =
+		&state->module->substitutions.substitutions[
+			occurrence->context_action_substitution
+		];
+	if (action->target_context != occurrence->context_id) {
+		return -1;
+	}
+	*p_context = action->source_context;
+	return 0;
+}
+
+static int checker_occurrence_classifier_in_context(
+	const struct checker_state* state,
+	const struct prototype_semantic_occurrence* occurrence,
+	uint32_t context_id,
+	uint32_t* p_classifier
+) {
+	if (!state || !occurrence || !p_classifier) {
+		return -1;
+	}
+	if (checker_context_weakens_to(
+			state, occurrence->context_id, context_id
+		)) {
+		if (occurrence->context_action_substitution == PROTOTYPE_INVALID_ID) {
+			*p_classifier = occurrence->asserted_classifier;
+			return *p_classifier == PROTOTYPE_INVALID_ID ? -1 : 0;
+		}
+		if (occurrence->origin_classifier != PROTOTYPE_INVALID_ID) {
+			*p_classifier = occurrence->origin_classifier;
+			return 0;
+		}
+		int invariant = checker_term_equal_reindexed(
+			state,
+			occurrence->asserted_classifier,
+			occurrence->context_action_substitution,
+			occurrence->asserted_classifier
+		);
+		if (invariant != 1) {
+			return -1;
+		}
+		*p_classifier = occurrence->asserted_classifier;
+		return 0;
+	}
+	if (occurrence->context_action_substitution == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	uint32_t effective_context;
+	if (checker_occurrence_effective_context(
+			state, occurrence, &effective_context
+		) != 0) {
+		return -1;
+	}
+	if (!checker_context_weakens_to(state, effective_context, context_id)) {
+		return -1;
+	}
+	*p_classifier = occurrence->asserted_classifier;
+	return *p_classifier == PROTOTYPE_INVALID_ID ? -1 : 0;
+}
+
 static int checker_check_contexts(struct checker_state* state) {
 	for (uint32_t i = 1; i < state->module->contexts.context_count; ++i) {
 		int status = checker_charge(state, i);
@@ -2617,31 +2380,56 @@ static int checker_check_contexts(struct checker_state* state) {
 		}
 		if (context->extension_kind ==
 				PROTOTYPE_SEMANTIC_CONTEXT_EXTENSION_SEQUENCE_RESULT) {
-			int producer_found = 0;
-			for (uint32_t j = 0;
-				j < state->module->occurrences.occurrence_count;
-				++j) {
-				const struct prototype_semantic_occurrence* producer =
-					&state->module->occurrences.occurrences[j];
-				struct checker_computation_type_view computation;
-				if (producer->classifier_evidence_kind !=
-						PROTOTYPE_SEMANTIC_CLASSIFIER_EXACT ||
-					!checker_context_weakens_to(
-						state, producer->context_id, context->parent
-					) ||
-					producer->core_term != context->producer_computation ||
-					checker_computation_type_view(
-						state, producer->asserted_classifier, &computation
-					) != 0 || checker_computation_view_term_equal(
-						state, &computation, computation.result,
-						context->classifier
-					) != 1) {
-					continue;
-				}
-				producer_found = 1;
-				break;
+			if (context->producer_occurrence >=
+				state->module->occurrences.occurrence_count) {
+				return checker_stop(
+					state,
+					PROTOTYPE_CHECKER_REJECTED,
+					PROTOTYPE_CHECKER_STOP_CONTEXT,
+					i
+				);
 			}
-			if (!producer_found) {
+			const struct prototype_semantic_occurrence* producer =
+				&state->module->occurrences.occurrences[
+					context->producer_occurrence
+				];
+			if (producer->classifier_evidence_kind !=
+					PROTOTYPE_SEMANTIC_CLASSIFIER_EXACT) {
+				return checker_stop(
+					state,
+					PROTOTYPE_CHECKER_REJECTED,
+					PROTOTYPE_CHECKER_STOP_CONTEXT,
+					i
+				);
+			}
+			struct checker_computation_type_view computation;
+			uint32_t producer_classifier;
+			if (checker_occurrence_classifier_in_context(
+					state, producer, context->parent, &producer_classifier
+				) != 0) {
+				return checker_stop(
+					state,
+					PROTOTYPE_CHECKER_REJECTED,
+					PROTOTYPE_CHECKER_STOP_CONTEXT,
+					i
+				);
+			}
+			if (checker_computation_type_view(
+					state, producer_classifier, &computation
+				) != 0) {
+				return checker_stop(
+					state,
+					PROTOTYPE_CHECKER_REJECTED,
+					PROTOTYPE_CHECKER_STOP_CONTEXT,
+					i
+				);
+			}
+			if (checker_computation_view_term_equal(
+					state,
+					&computation,
+					computation.result,
+					context->classifier
+				) != 1) {
 				return checker_stop(
 					state,
 					PROTOTYPE_CHECKER_REJECTED,
@@ -2719,6 +2507,61 @@ static int checker_check_substitution_assignments(
 			);
 		}
 		if (!classifier_equal || !assignment_status) {
+			uint32_t binding_classifier = PROTOTYPE_INVALID_ID;
+			int binding_status =
+				state->module->terms.terms[substitution->term].tag ==
+					PROTOTYPE_TERM_VAR ?
+					checker_context_binding(
+						state,
+						substitution->source_context,
+						state->module->terms.terms[
+							substitution->term
+						].as.var.binding_id,
+						&binding_classifier
+					) : -1;
+			fprintf(
+				stderr,
+				"checker substitution=%u source=%u target=%u first=%u term=%u "
+				"classifier=%u target-classifier=%u term-tag=%d classifier-tag=%d "
+				"classifier-equal=%d "
+				"assignment=%d binding=%u binding-status=%d binding-classifier=%u:%d\n",
+				i, substitution->source_context, substitution->target_context,
+				substitution->first, substitution->term,
+				substitution->term_classifier, target->classifier,
+				state->module->terms.terms[substitution->term].tag,
+				state->module->terms.terms[substitution->term_classifier].tag,
+				classifier_equal, assignment_status,
+				state->module->terms.terms[substitution->term].tag ==
+					PROTOTYPE_TERM_VAR ? state->module->terms.terms[
+						substitution->term
+					].as.var.binding_id : PROTOTYPE_INVALID_ID,
+				binding_status, binding_classifier,
+				binding_classifier < state->module->terms.term_count ?
+					state->module->terms.terms[binding_classifier].tag : -1
+			);
+			const struct prototype_term* expected_term = &state->module->terms.terms[
+				substitution->term_classifier
+			];
+			const struct prototype_term* binding_term = binding_classifier <
+				state->module->terms.term_count ? &state->module->terms.terms[
+					binding_classifier
+				] : NULL;
+			if (expected_term->tag == PROTOTYPE_TERM_TYPE_VIEW && binding_term &&
+				binding_term->tag == PROTOTYPE_TERM_TYPE_VIEW) {
+				fprintf(
+					stderr,
+					"checker substitution type views expected=%d.%d:%u:%u "
+					"binding=%d.%d:%u:%u\n",
+					expected_term->as.type_view.identity.namespace_symbol_id,
+					expected_term->as.type_view.identity.name_symbol_id,
+					expected_term->as.type_view.core,
+					expected_term->as.type_view.source,
+					binding_term->as.type_view.identity.namespace_symbol_id,
+					binding_term->as.type_view.identity.name_symbol_id,
+					binding_term->as.type_view.core,
+					binding_term->as.type_view.source
+				);
+			}
 			return checker_stop(
 				state,
 				PROTOTYPE_CHECKER_REJECTED,
@@ -2944,7 +2787,9 @@ static int checker_type_view_application_matches(
 ) {
 	if (!result || !function || result->tag != PROTOTYPE_TERM_TYPE_VIEW ||
 		function->tag != PROTOTYPE_TERM_TYPE_VIEW ||
-		result->as.type_view.view_type_id != function->as.type_view.view_type_id ||
+		!checker_nominal_identity_equal(
+			result->as.type_view.identity, function->as.type_view.identity
+		) ||
 		!checker_type_view_is_well_formed(state, result)) {
 		return 0;
 	}
@@ -2974,14 +2819,14 @@ static int checker_type_view_classifier_matches(
 	uint32_t asserted_classifier
 ) {
 	const struct prototype_term* view = checker_term(state, type_view_id);
-	if (!view || view->tag != PROTOTYPE_TERM_TYPE_VIEW ||
-		view->as.type_view.view_type_id >= state->module->type_schema.type_count) {
+	if (!view || view->tag != PROTOTYPE_TERM_TYPE_VIEW) {
 		return 0;
 	}
 	const struct prototype_semantic_type_declaration* declaration =
-		&state->module->type_schema.type_declarations[
-			view->as.type_view.view_type_id
-		];
+		checker_type_declaration_for_identity(state, view->as.type_view.identity);
+	if (!declaration) {
+		return 0;
+	}
 	uint32_t type_id;
 	uint32_t arguments[64];
 	size_t argument_count;
@@ -3042,11 +2887,15 @@ static int checker_pure_primitive_classifier_matches(
 		checker_pure_primitive_declaration(
 			state, primitive->as.pure_primitive.primitive_id
 		);
-	if (!declaration || declaration->arity >
+	const struct prototype_core_pure_primitive_declaration* core_declaration =
+		prototype_core_pure_primitive_declaration(
+			primitive->as.pure_primitive.primitive_id
+		);
+	if (!declaration || !core_declaration || core_declaration->arity >
 		PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY) {
 		return 0;
 	}
-	for (uint32_t i = 0; i < declaration->arity; ++i) {
+	for (uint32_t i = 0; i < core_declaration->arity; ++i) {
 		uint32_t domain;
 		uint32_t binding;
 		uint32_t body;
@@ -3080,7 +2929,10 @@ static int checker_effect_operation_classifier_matches(
 		checker_effect_operation_declaration(
 			state, operation->as.effect_operation.operation_id
 		);
-	uint32_t declared_classifier_id = classifier_id;
+	const struct prototype_core_effect_operation_declaration* core_declaration =
+		prototype_core_effect_operation_declaration(
+			operation->as.effect_operation.operation_id
+		);
 	const struct prototype_term* classifier = checker_term(state, classifier_id);
 	uint32_t effect_binding = PROTOTYPE_INVALID_ID;
 	if (classifier && classifier->tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
@@ -3091,8 +2943,7 @@ static int checker_effect_operation_classifier_matches(
 	uint32_t binding;
 	uint32_t body;
 	struct checker_computation_type_view result;
-	if (!declaration || declaration->arity != 1 ||
-		operation->as.effect_operation.classifier != declared_classifier_id ||
+	if (!declaration || !core_declaration || core_declaration->arity != 1 ||
 		checker_pi_parts(
 			state, classifier_id, &domain, &binding, &body
 		) != 0 || checker_computation_type_view(state, body, &result) != 0 ||
@@ -3498,6 +3349,17 @@ static int checker_check_match(
 ) {
 	const struct prototype_semantic_occurrence* occurrence =
 		&state->module->occurrences.occurrences[occurrence_id];
+	uint32_t match_context;
+	if (checker_occurrence_effective_context(
+			state, occurrence, &match_context
+		) != 0) {
+		return checker_stop(
+			state,
+			PROTOTYPE_CHECKER_REJECTED,
+			PROTOTYPE_CHECKER_STOP_CONTEXT,
+			occurrence_id
+		);
+	}
 	const struct prototype_term* match = checker_term(
 		state, occurrence->core_term
 	);
@@ -3538,9 +3400,7 @@ static int checker_check_match(
 	const struct prototype_term* scrutinee_type = checker_term(
 		state, scrutinee->asserted_classifier
 	);
-	if (!scrutinee_type || scrutinee_type->tag != PROTOTYPE_TERM_TYPE_VIEW ||
-		scrutinee_type->as.type_view.view_type_id >=
-			state->module->type_schema.type_count) {
+	if (!scrutinee_type || scrutinee_type->tag != PROTOTYPE_TERM_TYPE_VIEW) {
 		return checker_stop(
 			state,
 			PROTOTYPE_CHECKER_PAUSED,
@@ -3549,9 +3409,15 @@ static int checker_check_match(
 		);
 	}
 	const struct prototype_semantic_type_declaration* declaration =
-		&state->module->type_schema.type_declarations[
-			scrutinee_type->as.type_view.view_type_id
-		];
+		checker_type_declaration_for_identity(
+			state, scrutinee_type->as.type_view.identity
+		);
+	if (!declaration) {
+		return checker_stop(
+			state, PROTOTYPE_CHECKER_PAUSED,
+			PROTOTYPE_CHECKER_STOP_UNSUPPORTED, occurrence_id
+		);
+	}
 	uint32_t scrutinee_type_id;
 	uint32_t scrutinee_arguments[64];
 	size_t scrutinee_argument_count;
@@ -3683,7 +3549,7 @@ static int checker_check_match(
 				&state->module->substitutions.substitutions[
 					branch->context_action_substitution
 				];
-			branch_body_equal = action->source_context == branch->context_id &&
+			branch_body_equal = action->target_context == branch->context_id &&
 				checker_term_equal_reindexed(
 					state,
 					branch->origin_core_term,
@@ -3722,12 +3588,19 @@ static int checker_check_match(
 				&state->module->substitutions.substitutions[
 					semantic_case->refinement_substitution
 				];
-			if (refinement->source_context != semantic_case->context_id ||
-				!checker_context_extends(
+			uint32_t raw_case_extension;
+			uint32_t effective_case_extension;
+			if (checker_context_path_length(
 					state,
+					occurrence->context_id,
+					semantic_case->context_id,
+					&raw_case_extension
+				) != 0 || checker_context_path_length(
+					state,
+					match_context,
 					refinement->target_context,
-					occurrence->context_id
-				) ||
+					&effective_case_extension
+				) != 0 || raw_case_extension != effective_case_extension ||
 				scrutinee->binding_id == PROTOTYPE_INVALID_ID) {
 				return checker_stop(
 					state,
@@ -3823,15 +3696,18 @@ static int checker_type_instance_arguments(
 	size_t capacity,
 	size_t* p_argument_count
 ) {
-	const struct prototype_term* view = checker_term(state, classifier_id);
-	if (!view || view->tag != PROTOTYPE_TERM_TYPE_VIEW ||
-		view->as.type_view.view_type_id >= state->module->type_schema.type_count ||
-		!p_type_id || !p_argument_count) {
+	const struct prototype_term* instance = checker_term(state, classifier_id);
+	if (!instance || !p_type_id || !p_argument_count) {
 		return -1;
 	}
-	const struct prototype_term* cursor = checker_term(
-		state, view->as.type_view.source
-	);
+	struct prototype_qualified_name expected_identity = { -1, -1 };
+	int has_expected_identity = 0;
+	const struct prototype_term* cursor = instance;
+	if (instance->tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		expected_identity = instance->as.type_view.identity;
+		has_expected_identity = 1;
+		cursor = checker_term(state, instance->as.type_view.source);
+	}
 	size_t count = 0;
 	while (cursor && cursor->tag == PROTOTYPE_TERM_APP) {
 		if (count == capacity) {
@@ -3841,7 +3717,16 @@ static int checker_type_instance_arguments(
 		cursor = checker_term(state, cursor->as.app.function);
 	}
 	if (!cursor || cursor->tag != PROTOTYPE_TERM_TYPE_DECLARATION ||
-		cursor->as.type_declaration.type_id != view->as.type_view.view_type_id) {
+		(has_expected_identity && !checker_nominal_identity_equal(
+			cursor->as.type_declaration.identity, expected_identity
+		))) {
+		return -1;
+	}
+	const struct prototype_semantic_type_declaration* declaration =
+		checker_type_declaration_for_identity(
+			state, cursor->as.type_declaration.identity
+		);
+	if (!declaration) {
 		return -1;
 	}
 	for (size_t i = 0; i < count / 2; ++i) {
@@ -3849,7 +3734,7 @@ static int checker_type_instance_arguments(
 		arguments[i] = arguments[count - 1 - i];
 		arguments[count - 1 - i] = temporary;
 	}
-	*p_type_id = view->as.type_view.view_type_id;
+	*p_type_id = declaration->type_index;
 	*p_argument_count = count;
 	return 0;
 }
@@ -3921,23 +3806,6 @@ static int checker_recursive_instance_matches(
 	*p_index_count = type->index_count;
 	return 1;
 }
-
-/* Compare two classifier terms while applying independent substitutions on
- * both sides. Match motives and branch classifiers may each contain a
- * beta-redex: treating only the motive side as substitutable makes equality
- * depend on which side happened to be elaborated first. */
-static int checker_term_equal_under_bindings(
-	const struct checker_state* state,
-	uint32_t left_id,
-	const uint32_t* left_bindings,
-	const uint32_t* left_arguments,
-	size_t left_count,
-	uint32_t right_id,
-	const uint32_t* right_bindings,
-	const uint32_t* right_arguments,
-	size_t right_count,
-	uint32_t depth
-);
 
 static int checker_beta_spine(
 	const struct checker_state* state,
@@ -4025,6 +3893,51 @@ static int checker_binding_argument(
 	return 0;
 }
 
+static int checker_binding_argument_is_identity(
+	const struct checker_state* state,
+	int variable_tag,
+	uint32_t binding,
+	uint32_t argument_id
+) {
+	const struct prototype_term* argument = checker_term(state, argument_id);
+	return argument && argument->tag == variable_tag &&
+		((variable_tag == PROTOTYPE_TERM_VAR &&
+			argument->as.var.binding_id == binding) ||
+		 (variable_tag == PROTOTYPE_TERM_EFFECT_ROW_VAR &&
+			argument->as.effect_row_var.binding_id == binding));
+}
+
+static uint32_t checker_type_view_projection_against(
+	const struct checker_state* state,
+	const struct prototype_term* view,
+	uint32_t other_id
+) {
+	const struct prototype_term* root = checker_term(state, other_id);
+	while (root && root->tag == PROTOTYPE_TERM_APP) {
+		root = checker_term(state, root->as.app.function);
+	}
+	return root && root->tag == PROTOTYPE_TERM_TYPE_DECLARATION ?
+		view->as.type_view.source : view->as.type_view.core;
+}
+
+static int checker_term_unaffected_by_bindings(
+	const struct checker_state* state,
+	uint32_t term_id,
+	const uint32_t* bindings,
+	size_t count
+) {
+	for (size_t i = 0; i < count; ++i) {
+		if (checker_term_contains_binding(state, term_id, bindings[i], 0)) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+/* This is the canonical checker conversion zipper. Both sides carry explicit
+ * substitution environments, so beta reduction and dependent classifiers do
+ * not depend on which elaboration path produced either endpoint. */
+
 static int checker_term_equal_under_bindings(
 	const struct checker_state* state,
 	uint32_t left_id,
@@ -4052,6 +3965,8 @@ static int checker_term_equal_under_bindings(
 		uint32_t argument;
 		if (checker_binding_argument(
 				binding, left_bindings, left_arguments, left_count, &argument
+			) && !checker_binding_argument_is_identity(
+				state, left->tag, binding, argument
 			)) {
 			return checker_term_equal_under_bindings(
 				state, argument, left_bindings, left_arguments, left_count,
@@ -4066,6 +3981,8 @@ static int checker_term_equal_under_bindings(
 		uint32_t argument;
 		if (checker_binding_argument(
 				binding, right_bindings, right_arguments, right_count, &argument
+			) && !checker_binding_argument_is_identity(
+				state, right->tag, binding, argument
 			)) {
 			return checker_term_equal_under_bindings(
 				state, left_id, left_bindings, left_arguments, left_count,
@@ -4112,7 +4029,9 @@ static int checker_term_equal_under_bindings(
 	if (left->tag == PROTOTYPE_TERM_TYPE_VIEW &&
 		right->tag != PROTOTYPE_TERM_TYPE_VIEW) {
 		return checker_term_equal_under_bindings(
-			state, left->as.type_view.core,
+			state, checker_type_view_projection_against(
+				state, left, right_id
+			),
 			left_bindings, left_arguments, left_count,
 			right_id, right_bindings, right_arguments, right_count, depth + 1
 		);
@@ -4121,7 +4040,7 @@ static int checker_term_equal_under_bindings(
 		left->tag != PROTOTYPE_TERM_TYPE_VIEW) {
 		return checker_term_equal_under_bindings(
 			state, left_id, left_bindings, left_arguments, left_count,
-			right->as.type_view.core,
+			checker_type_view_projection_against(state, right, left_id),
 			right_bindings, right_arguments, right_count, depth + 1
 		);
 	}
@@ -4136,6 +4055,44 @@ static int checker_term_equal_under_bindings(
 	switch (left->tag) {
 		case PROTOTYPE_TERM_VAR:
 			return left->as.var.binding_id == right->as.var.binding_id;
+		case PROTOTYPE_TERM_PRIMITIVE_TEXT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT:
+		case PROTOTYPE_TERM_PRIMITIVE_INT64:
+		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
+		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
+		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
+		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
+			return 1;
+		case PROTOTYPE_TERM_UNIVERSE_VAR:
+			return checker_universes_equal(state, left_id, right_id);
+		case PROTOTYPE_TERM_TYPE_FORMER:
+			return left->as.type_former.representation_id ==
+				right->as.type_former.representation_id &&
+				left->as.type_former.constructor_count ==
+					right->as.type_former.constructor_count;
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			return checker_nominal_identity_equal(
+				left->as.type_declaration.identity,
+				right->as.type_declaration.identity
+			);
+		case PROTOTYPE_TERM_TEXT_LITERAL:
+			return left->as.text_literal.text_symbol_id ==
+				right->as.text_literal.text_symbol_id;
+		case PROTOTYPE_TERM_INT_LITERAL:
+			return left->as.int_literal.value == right->as.int_literal.value;
+		case PROTOTYPE_TERM_EXTERNAL_REF:
+			return checker_nominal_identity_equal(
+				left->as.external_ref.name, right->as.external_ref.name
+			);
+		case PROTOTYPE_TERM_PURE_PRIMITIVE:
+			return left->as.pure_primitive.primitive_id ==
+				right->as.pure_primitive.primitive_id &&
+				left->as.pure_primitive.type_symbol_id ==
+					right->as.pure_primitive.type_symbol_id;
+		case PROTOTYPE_TERM_EFFECT_OPERATION:
+			return left->as.effect_operation.operation_id ==
+				right->as.effect_operation.operation_id;
 		case PROTOTYPE_TERM_APP:
 			return COMPARE_BOTH(
 				left->as.app.function, right->as.app.function
@@ -4143,12 +4100,63 @@ static int checker_term_equal_under_bindings(
 				left->as.app.argument, right->as.app.argument
 			) == 1;
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			return left->as.type_view.view_type_id ==
-				right->as.type_view.view_type_id && COMPARE_BOTH(
+			return checker_nominal_identity_equal(
+				left->as.type_view.identity, right->as.type_view.identity
+			) && COMPARE_BOTH(
 					left->as.type_view.core, right->as.type_view.core
 				) == 1 && COMPARE_BOTH(
 					left->as.type_view.source, right->as.type_view.source
 				) == 1;
+		case PROTOTYPE_TERM_LAMBDA: {
+			if (left->as.lambda.binding_id == right->as.lambda.binding_id) {
+				return COMPARE_BOTH(
+					left->as.lambda.body, right->as.lambda.body
+				);
+			}
+			if (left_count == SIZE_MAX) {
+				return -1;
+			}
+			uint32_t right_variable = checker_find_variable_term(
+				state, right->as.lambda.binding_id
+			);
+			if (right_variable == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			uint32_t* nested_bindings = malloc(
+				(left_count + 1) * sizeof(*nested_bindings)
+			);
+			uint32_t* nested_arguments = malloc(
+				(left_count + 1) * sizeof(*nested_arguments)
+			);
+			if (!nested_bindings || !nested_arguments) {
+				free(nested_bindings);
+				free(nested_arguments);
+				return -1;
+			}
+			if (left_count != 0) {
+				memcpy(nested_bindings, left_bindings,
+					left_count * sizeof(*nested_bindings));
+				memcpy(nested_arguments, left_arguments,
+					left_count * sizeof(*nested_arguments));
+			}
+			nested_bindings[left_count] = left->as.lambda.binding_id;
+			nested_arguments[left_count] = right_variable;
+			int equal = checker_term_equal_under_bindings(
+				state,
+				left->as.lambda.body,
+				nested_bindings,
+				nested_arguments,
+				left_count + 1,
+				right->as.lambda.body,
+				right_bindings,
+				right_arguments,
+				right_count,
+				depth + 1
+			);
+			free(nested_bindings);
+			free(nested_arguments);
+			return equal;
+		}
 		case PROTOTYPE_TERM_PI:
 			return COMPARE_BOTH(
 				left->as.pi.domain, right->as.pi.domain
@@ -4169,6 +4177,12 @@ static int checker_term_equal_under_bindings(
 			) == 1 && COMPARE_BOTH(
 				left->as.effect_row_union.right, right->as.effect_row_union.right
 			) == 1;
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			return left->as.effect_row_forall.binding_id ==
+				right->as.effect_row_forall.binding_id && COMPARE_BOTH(
+					left->as.effect_row_forall.body,
+					right->as.effect_row_forall.body
+				) == 1;
 		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
 			return left->as.effect_row_operation.operation_id ==
 				right->as.effect_row_operation.operation_id && COMPARE_BOTH(
@@ -4197,11 +4211,33 @@ static int checker_term_equal_under_bindings(
 			return COMPARE_BOTH(
 				left->as.thunk.computation, right->as.thunk.computation
 			);
-		default:
-			return checker_term_equal_after_binding(
-				state, left_id, PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID,
-				right_id, depth + 1
+		case PROTOTYPE_TERM_FORCE:
+			return COMPARE_BOTH(
+				left->as.force.value, right->as.force.value
 			);
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			return COMPARE_BOTH(
+				left->as.operation_request.operation,
+				right->as.operation_request.operation
+			) == 1 && COMPARE_BOTH(
+				left->as.operation_request.argument,
+				right->as.operation_request.argument
+			) == 1 && COMPARE_BOTH(
+				left->as.operation_request.continuation,
+				right->as.operation_request.continuation
+			) == 1;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			return left->as.dimension_action.operator_id ==
+				right->as.dimension_action.operator_id && COMPARE_BOTH(
+					left->as.dimension_action.source,
+					right->as.dimension_action.source
+				) == 1;
+		default:
+			return left_id == right_id && checker_term_unaffected_by_bindings(
+				state, left_id, left_bindings, left_count
+			) && checker_term_unaffected_by_bindings(
+				state, right_id, right_bindings, right_count
+			) ? 1 : -1;
 	}
 #undef COMPARE_BOTH
 }
@@ -5409,7 +5445,7 @@ static int checker_check_conditional_fold_occurrence(
 		fold->tag != PROTOTYPE_TERM_COMPUTATION_FOLD ||
 		contract->schema_version != 1 ||
 		contract->normalization_profile !=
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF ||
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF ||
 		!checker_contract_has_exact_source_dependency(
 			state, contract_id, occurrence_id
 		) || contract->computation_occurrence >=
@@ -5641,6 +5677,18 @@ static int checker_check_occurrence(
 	const struct prototype_semantic_occurrence* occurrence =
 		&state->module->occurrences.occurrences[occurrence_id];
 	const struct prototype_term* core = checker_term(state, occurrence->core_term);
+	uint32_t effective_context;
+	if (checker_occurrence_effective_context(
+			state, occurrence, &effective_context
+		) != 0) {
+		return checker_stop(
+			state,
+			PROTOTYPE_CHECKER_REJECTED,
+			PROTOTYPE_CHECKER_STOP_CONTEXT,
+			occurrence_id
+		);
+	}
+	(void)effective_context;
 	if (occurrence->classifier_evidence_kind ==
 		PROTOTYPE_SEMANTIC_CLASSIFIER_CONDITIONAL) {
 		return checker_check_conditional_fold_occurrence(
@@ -5713,7 +5761,7 @@ static int checker_check_occurrence(
 					&state->module->substitutions.substitutions[
 						occurrence->context_action_substitution
 					];
-				if (action->source_context != occurrence->context_id ||
+				if (action->target_context != occurrence->context_id ||
 					checker_context_binding(
 						state,
 						action->target_context,
@@ -5863,7 +5911,7 @@ static int checker_check_occurrence(
 				state, function->core_term
 			);
 			if (occurrence->application_role ==
-					PROTOTYPE_TERM_APPLICATION_PURE_TYPE_FAMILY_EVALUATION) {
+					PROTOTYPE_TERM_APPLICATION_TYPE_FAMILY_CALCULATION) {
 				int application_matches = checker_type_view_application_matches(
 					state, core, function_core, argument
 				) || (core->tag == PROTOTYPE_TERM_APP &&
@@ -6327,9 +6375,9 @@ static int checker_runtime_capabilities(
 			if (!operation || operation->tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
 				return -1;
 			}
-			const struct prototype_effect_operation_declaration* declaration =
-				checker_effect_operation_declaration(
-					state, operation->as.effect_operation.operation_id
+			const struct prototype_core_effect_operation_declaration* declaration =
+				prototype_core_effect_operation_declaration(
+					operation->as.effect_operation.operation_id
 				);
 			if (!declaration) {
 				return -1;
@@ -6559,21 +6607,28 @@ static int checker_cross_term_equal_at_depth(
 			return 1;
 		case PROTOTYPE_TERM_TYPE_FORMER: {
 			if (left->as.type_former.constructor_count !=
-				right->as.type_former.constructor_count ||
-				left->as.type_former.declaration_type_id >=
-					left_module->type_schema.type_count ||
-				right->as.type_former.declaration_type_id >=
-					right_module->type_schema.type_count) {
+				right->as.type_former.constructor_count) {
 				return 0;
 			}
-			const struct prototype_semantic_type_declaration* left_type =
-				&left_module->type_schema.type_declarations[
-					left->as.type_former.declaration_type_id
-				];
-			const struct prototype_semantic_type_declaration* right_type =
-				&right_module->type_schema.type_declarations[
-					right->as.type_former.declaration_type_id
-				];
+			const struct prototype_semantic_type_declaration* left_type = NULL;
+			const struct prototype_semantic_type_declaration* right_type = NULL;
+			for (uint32_t i = 0; i < left_module->type_schema.type_count; ++i) {
+				if (left_module->type_schema.type_declarations[i].representation_id ==
+					left->as.type_former.representation_id) {
+					left_type = &left_module->type_schema.type_declarations[i];
+					break;
+				}
+			}
+			for (uint32_t i = 0; i < right_module->type_schema.type_count; ++i) {
+				if (right_module->type_schema.type_declarations[i].representation_id ==
+					right->as.type_former.representation_id) {
+					right_type = &right_module->type_schema.type_declarations[i];
+					break;
+				}
+			}
+			if (!left_type || !right_type) {
+				return 0;
+			}
 			return checker_cross_symbol_equal(
 				left_module, left_type->namespace_symbol_id,
 				right_module, right_type->namespace_symbol_id
@@ -6637,10 +6692,7 @@ static int checker_cross_term_equal_at_depth(
 				);
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			return left->as.effect_operation.operation_id ==
-				right->as.effect_operation.operation_id && CROSS_TERM(
-					left->as.effect_operation.classifier,
-					right->as.effect_operation.classifier
-				);
+				right->as.effect_operation.operation_id;
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 			return checker_cross_bound_equal(
 				bindings, binding_count,
@@ -7010,9 +7062,18 @@ static int checker_check_interface(struct checker_state* state) {
 		);
 		if (!runner_result_term || runner_result_term->tag !=
 				PROTOTYPE_TERM_TYPE_VIEW ||
-			runner_result_term->as.type_view.view_type_id !=
-				result_export->type_declaration ||
 			graph_type->constructor_count == 0) {
+			return checker_stop(
+				state, PROTOTYPE_CHECKER_REJECTED,
+				PROTOTYPE_CHECKER_STOP_INTERFACE, i
+			);
+		}
+		const struct prototype_semantic_type_declaration* runner_result_type =
+			checker_type_declaration_for_identity(
+				state, runner_result_term->as.type_view.identity
+			);
+		if (!runner_result_type || runner_result_type->type_index !=
+			result_export->type_declaration) {
 			return checker_stop(
 				state, PROTOTYPE_CHECKER_REJECTED,
 				PROTOTYPE_CHECKER_STOP_INTERFACE, i

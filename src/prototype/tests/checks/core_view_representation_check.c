@@ -28,6 +28,9 @@ static uint32_t field_types[FIELD_TYPE_CAPACITY];
 static struct prototype_type_expr type_exprs[TYPE_EXPR_CAPACITY];
 static struct prototype_type_representation type_representations[TYPE_CAPACITY];
 static struct prototype_context contexts[8];
+static struct prototype_term_db term_db;
+static struct prototype_type_declaration_db type_db;
+static struct prototype_context_db context_db;
 
 static int add_nullary_constructor(
 	struct prototype_type_declaration_db* types,
@@ -59,7 +62,7 @@ static int add_nullary_type(
 	uint32_t* p_type_id
 ) {
 	uint32_t self_expr;
-	uint32_t view;
+	uint32_t source_instance;
 	uint32_t constructor_id;
 	if (!terms_db || !types_db || !p_type_id || prototype_type_declaration_add(
 			&types_db->semantic_schema,
@@ -71,15 +74,16 @@ static int add_nullary_type(
 	types_db->semantic_schema.type_declarations[*p_type_id].parameter_context = 0;
 	types_db->semantic_schema.type_declarations[*p_type_id].index_context = 0;
 	if (prototype_type_expr_self(&types_db->readback, &self_expr) != 0 ||
-		prototype_term_type_instance_make(
-			terms_db, types_db, *p_type_id, NULL, 0, &view
+		prototype_type_projection_source_instance_make(
+			terms_db, &types_db->semantic_schema, *p_type_id, NULL, 0,
+			&source_instance
 		) != 0) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < constructor_count; ++i) {
 		if (add_nullary_constructor(
 				types_db, *p_type_id, name_symbol_id + i + 1,
-				self_expr, view, &constructor_id
+				self_expr, source_instance, &constructor_id
 			) != 0) {
 			return -1;
 		}
@@ -88,9 +92,6 @@ static int add_nullary_type(
 }
 
 int main(void) {
-	struct prototype_term_db term_db;
-	struct prototype_type_declaration_db type_db;
-	struct prototype_context_db context_db;
 	prototype_term_db_init(
 		&term_db,
 		terms,
@@ -128,37 +129,23 @@ int main(void) {
 
 	uint32_t bool_type_id;
 	uint32_t two_type_id;
-	uint32_t self_expr;
 	uint32_t bool_view;
 	uint32_t two_view;
 	uint32_t ignored_constructor;
-	if (prototype_type_declaration_add(
-			&type_db.semantic_schema,
-			&type_db.readback,
-			&type_db.representation_db, 1, &bool_type_id) != 0) return 10;
-	type_db.semantic_schema.type_declarations[bool_type_id].parameter_context = 0;
-	type_db.semantic_schema.type_declarations[bool_type_id].index_context = 0;
-	if (prototype_type_expr_self(&type_db.readback, &self_expr) != 0) return 12;
-	if (prototype_term_type_instance_make(&term_db, &type_db, bool_type_id, NULL, 0, &bool_view) != 0) return 13;
-	if (add_nullary_constructor(
-		&type_db, bool_type_id, 11, self_expr, bool_view, &ignored_constructor
-	) != 0) return 15;
-	if (add_nullary_constructor(
-		&type_db, bool_type_id, 12, self_expr, bool_view, &ignored_constructor
-	) != 0) return 16;
-	if (prototype_type_declaration_add(
-			&type_db.semantic_schema,
-			&type_db.readback,
-			&type_db.representation_db, 2, &two_type_id) != 0) return 11;
-	type_db.semantic_schema.type_declarations[two_type_id].parameter_context = 0;
-	type_db.semantic_schema.type_declarations[two_type_id].index_context = 0;
-	if (prototype_term_type_instance_make(&term_db, &type_db, two_type_id, NULL, 0, &two_view) != 0) return 14;
-	if (add_nullary_constructor(
-		&type_db, two_type_id, 21, self_expr, two_view, &ignored_constructor
-	) != 0) return 17;
-	if (add_nullary_constructor(
-		&type_db, two_type_id, 22, self_expr, two_view, &ignored_constructor
-	) != 0) return 18;
+	if (add_nullary_type(
+			&term_db, &type_db, 1, 2, &bool_type_id
+		) != 0 || add_nullary_type(
+			&term_db, &type_db, 2, 2, &two_type_id
+		) != 0 || prototype_type_declaration_rebuild_representations(
+			&term_db, &type_db, &context_db
+		) != 0 || prototype_type_projection_instance_make(
+			&term_db, &type_db, bool_type_id, NULL, 0, &bool_view
+		) != 0 || prototype_type_projection_instance_make(
+			&term_db, &type_db, two_type_id, NULL, 0, &two_view
+		) != 0) {
+		return 13;
+	}
+	(void)ignored_constructor;
 
 	/* Constructor classification is schema-derived. Neither a missing cache nor
 	 * corrupted source readback may change the semantic classifier. */
@@ -171,6 +158,8 @@ int main(void) {
 			&type_db.semantic_schema,
 			&type_db.constructor_classifier_cache,
 			&type_db.specialization_stats, &context_db, &term_db, i, &rebuilt_classifier
+			) != 0 || prototype_type_projection_classifier_graph(
+				&term_db, &type_db, rebuilt_classifier, &rebuilt_classifier
 			) != 0 || rebuilt_classifier !=
 				(i < 2 ? bool_view : two_view)) {
 			return 21;
@@ -194,11 +183,26 @@ int main(void) {
 	}
 	uint32_t saved_field_context =
 		type_db.semantic_schema.constructor_declarations[0].field_context;
+	uint32_t saved_representation_count =
+		(uint32_t)type_db.representation_db.representation_count;
+	uint32_t saved_bool_representation =
+		type_db.semantic_schema.type_declarations[bool_type_id].representation_id;
+	uint32_t saved_two_representation =
+		type_db.semantic_schema.type_declarations[two_type_id].representation_id;
 	type_db.semantic_schema.constructor_declarations[0].field_context =
 		PROTOTYPE_INVALID_ID;
 	if (prototype_constructor_telescopes_validate(
 			&type_db.semantic_schema, &context_db, &term_db
-		) == 0) {
+		) == 0 || prototype_type_declaration_rebuild_representations(
+			&term_db, &type_db, &context_db
+		) == 0 || type_db.representation_db.representation_count !=
+			saved_representation_count ||
+		type_db.semantic_schema.type_declarations[
+			bool_type_id
+		].representation_id != saved_bool_representation ||
+		type_db.semantic_schema.type_declarations[
+			two_type_id
+		].representation_id != saved_two_representation) {
 		return 28;
 	}
 	type_db.semantic_schema.constructor_declarations[0].field_context =
@@ -220,8 +224,6 @@ int main(void) {
 			two_representation_before) {
 		return 29;
 	}
-	if (prototype_term_rebind_type_former_anchors(&term_db, &type_db) != 0) return 20;
-
 	int equal = 0;
 	struct prototype_term_conversion_result conversion;
 	if (prototype_term_core_shape_equal(&term_db, bool_view, two_view, &equal) != 0 || !equal) {
@@ -229,9 +231,8 @@ int main(void) {
 	}
 	if (prototype_term_compare_for_conversion(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			bool_view,
 			two_view,
 			UINT64_MAX,
@@ -249,9 +250,8 @@ int main(void) {
 		prototype_term_pi(&term_db, two_view, two_view, &two_classifier) != 0 ||
 		prototype_term_compare_for_conversion(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			bool_classifier,
 			two_classifier,
 			UINT64_MAX,
@@ -272,7 +272,6 @@ int main(void) {
 		prototype_term_app(&term_db, identity_core, bool_zero, &application) != 0 ||
 		prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			application,
@@ -283,9 +282,9 @@ int main(void) {
 
 	uint32_t bool_view_after;
 	uint32_t two_view_after;
-	if (prototype_term_type_instance_make(
+	if (prototype_type_projection_instance_make(
 			&term_db, &type_db, bool_type_id, NULL, 0, &bool_view_after
-		) != 0 || prototype_term_type_instance_make(
+		) != 0 || prototype_type_projection_instance_make(
 			&term_db, &type_db, two_type_id, NULL, 0, &two_view_after
 		) != 0 ||
 		term_db.terms[bool_view_after].tag != PROTOTYPE_TERM_TYPE_VIEW ||
@@ -299,16 +298,14 @@ int main(void) {
 	uint32_t two_whnf;
 	if (prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			shared_core,
 			&bool_whnf
 		) != 0 || prototype_term_normalize_complete_with_profile(
 			&term_db,
-			&type_db,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			term_db.terms[two_view_after].as.type_view.core,
 			&two_whnf
 		) != 0 || bool_whnf != shared_core || two_whnf != shared_core) {

@@ -1,4 +1,4 @@
-A_PROGRAM_ARTIFACT 86
+A_PROGRAM_ARTIFACT 87
 
 This file is the canonical semantic manifest for artifact version 86. The
 artifact header carries the SHA-256 digest of these exact bytes. A reader must
@@ -20,7 +20,7 @@ literal or primitive Claims. In the default environment, Int and Int32 name
 HOST_TYPE_INT32 and unsuffixed integer literals have exactly that principal;
 Int64 remains distinct. INT_LITERAL_ADMISSIBILITY is retained in the numeric
 wire vocabulary only as a reserved historical ordinal and is not emitted or
-accepted by the v86 compiler.
+accepted by the v87 compiler.
 
 The artifact is one dense accepted object graph. Every section uses IDs in
 0..count-1 with no holes. Solver candidates, work queues, HOTT actions, bridges,
@@ -38,6 +38,11 @@ a Context/Substitution action and is intentionally retained.
 
 term_tag VAR=1 CONSTRUCTOR=2 APP=3 LAMBDA=4 PI=5 MATCH=6 TYPE_FORMER=7 TYPE_DECLARATION=8 INDUCTION_HYPOTHESIS=9 UNIVERSE_VAR=10 PRIMITIVE_TEXT=11 TEXT_LITERAL=12 PRIMITIVE_INT=13 PRIMITIVE_INT64=14 INT_LITERAL=15 EXTERNAL_REF=16 PURE_PRIMITIVE=17 EFFECT_OPERATION=18 TYPE_VIEW=19 EFFECT_ROW_EMPTY=20 EFFECT_ROW_VAR=21 EFFECT_ROW_UNION=22 EFFECT_ROW_FORALL=23 COMPUTATION_TYPE=24 THUNK_TYPE=25 RETURN=26 THUNK=27 FORCE=28 OPERATION_REQUEST=29 COMPUTATION_FOLD=30 EFFECT_ROW_OPERATION=31 DIMENSION_ACTION=34 TERMINATES_TYPE_FORMER=37 TERMINATES_WITNESS_FORMER=38
 computation_totality UNKNOWN=0 TOTAL=1 MAY_DIVERGE=2
+
+EFFECT_OPERATION serializes only its intrinsic operation name. Its classifier
+is Layer T evidence reconstructed from the intrinsic environment and validated
+through the accepted typed occurrence and Claim/Derivation graph. A classifier
+Term ID is not part of the Core node, its canonical identity, or its wire form.
 
 COMPUTATION_TYPE serializes EFFECT_LABEL, RESULT_TYPE, and TOTALITY. TOTALITY
 must be TOTAL or MAY_DIVERGE. UNKNOWN is a compiler-local unresolved solver
@@ -63,13 +68,13 @@ not alter DefEq or infer termination from effect-row emptiness.
 type_expr_tag UNIVERSE=1 UNIVERSE_VAR=2 SELF=3 VAR=4 NAME=5 APP=6 ARROW=7 PI=8 IMPORTED_TYPE=9 EXTERNAL_TERM=10 PRIMITIVE_TEXT=11 PRIMITIVE_INT=12 PRIMITIVE_INT64=13 LOCAL_TYPE_MEMBER=14
 typed_occurrence_kind ATOM=1 VAR=2 REFERENCE=3 CONSTRUCTOR=4 APP=5 LAMBDA=6 MATCH=7 INDUCTION_HYPOTHESIS=8 EXPECTED_TYPE=9 RETURN=10 THUNK=11 FORCE=12 REQUEST=13 COMPUTATION_FOLD=14
 typed_occurrence_category INVALID=0 VALUE=1 COMPUTATION=2 TYPE=3
-typed_occurrence_application_role NONE=0 FUNCTION_ELIMINATION=1 CONSTRUCTOR_FORMATION=2 PURE_TYPE_FAMILY_EVALUATION=3
+typed_occurrence_application_role NONE=0 FUNCTION_ELIMINATION=1 CONSTRUCTOR_FORMATION=2 TYPE_FAMILY_CALCULATION=3
 typed_occurrence_classifier_status PENDING=0 SOLVED=1 RESIDUAL_VERIFICATION=2
 substitution_kind IDENTITY=1 EMPTY=2 PROJECTION=3 EXTEND=4 COMPOSE=5
 verification_kind COMPUTATION_FOLD_RESULT=1 EFFECT_ROW_EQUATION=2
 verification_state PENDING=1 DISCHARGED=2 FAILED=3
 effect_constraint_kind EXACT=1 COPY=2 UNION=3 RESIDUAL=4
-normalization_profile CORE_WHNF=1 COMPUTATION_WHNF=2 PURE_TYPE_WHNF=3
+normalization_profile CORE_WHNF=1 COMPUTATION_WHNF=2 TYPE_EXPRESSION_WHNF=3
 term_export_evidence ACCEPTED_CLAIM=1 CONDITIONAL=2
 export_transparency OPAQUE=1 TRANSPARENT=2
 compile_policy STRICT=1 HYBRID=2 EXPLORATORY=3
@@ -156,7 +161,7 @@ name, parameter and index Contexts, index count, constructor telescope, result
 classifier, and optional readback/cache data. Every declaration has a name.
 Computed identity and higher-dimensional families are DIMENSION_ACTION Terms,
 not anonymous declarations. No declaration origin or generated carrier field
-exists in v86.
+exists in v87.
 
 type_declarations N
 type_decl ID NAME NAMESPACE TYPE_INDEX FIRST_PARAMETER PARAMETER_COUNT FIRST_CONSTRUCTOR CONSTRUCTOR_COUNT FORMATION_CLASSIFIER PARAMETER_CONTEXT INDEX_CONTEXT INDEX_COUNT
@@ -215,7 +220,7 @@ HAS_TYPE Claim for the exported occurrence, subject, classifier, and Context.
 CONDITIONAL evidence has nonzero CONDITION_COUNT. ID is either the exact
 accepted HAS_TYPE Claim for the exported occurrence, subject, classifier, and
 Context, or INVALID only when one exact classifier-closing residual obligation
-is the base evidence. In v86 that exceptional base is a
+is the base evidence. In v87 that exceptional base is a
 COMPUTATION_FOLD_RESULT whose kind descriptor permits later Claim
 reconstruction; an EFFECT_ROW_EQUATION can never be the base typing evidence.
 An occurrence may already have a SOLVED classifier while a distinct pending
@@ -300,7 +305,7 @@ verification_dependencies N
 verification_dependency ID OCCURRENCE OBLIGATION_ID
 
 Dependency records are sorted by `(OCCURRENCE, OBLIGATION_ID)`, contain no
-duplicates, and target only PENDING obligations. In the v86 initial fragment
+duplicates, and target only PENDING obligations. In the v87 initial fragment
 each residual has its exact source edge. Conditional-use propagation is not
 silently approximated: a source consumer that would require a propagated
 condition is rejected until that propagation rule is implemented.
@@ -366,7 +371,7 @@ Dependent computation-fold verification lifecycle:
 - hybrid compilation may publish PENDING obligations only when the selected
   backend declares the computation-fold result verifier and handler
   capabilities;
-- artifact v86 persists only PENDING obligations. DISCHARGED and FAILED are
+- artifact v87 persists only PENDING obligations. DISCHARGED and FAILED are
   execution-instance outcomes and are rejected on readback;
 - execution discharges an obligation by applying its retained pure classifier
   family to the returned value and checking conversion with the continuation
@@ -381,7 +386,7 @@ effect-constraint snapshot. Compile/link discharge must use canonical row
 normal forms; naming a host is not discharge evidence. Successful equation
 checking removes only the dependency edge. It does not fabricate a HAS_TYPE
 Claim: ordinary candidate reconstruction and accepted replay are independently
-required. Host discharge is not part of v86. An effect obligation is never an
+required. Host discharge is not part of v87. An effect obligation is never an
 accepted typing Claim by itself.
 Contextual equivalence is a metatheoretic adequacy target, not an artifact
 record or kernel proof-search rule.

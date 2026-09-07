@@ -73,10 +73,6 @@ static const struct term_field_descriptor match_fields[] = {
 		PROTOTYPE_TERM_FIELD_ROLE_MATCH_IH_SCOPE, PROTOTYPE_TERM_CHILD_INVALID)
 };
 static const struct term_field_descriptor type_former_fields[] = {
-	TERM_REF(as.type_former.declaration_type_id,
-		PROTOTYPE_TERM_FIELD_TYPE_DECLARATION,
-		PROTOTYPE_TERM_FIELD_ROLE_TYPE_FORMER_DECLARATION,
-		PROTOTYPE_TERM_CHILD_INVALID),
 	TERM_REF(as.type_former.representation_id,
 		PROTOTYPE_TERM_FIELD_REPRESENTATION,
 		PROTOTYPE_TERM_FIELD_ROLE_TYPE_FORMER_REPRESENTATION,
@@ -85,9 +81,6 @@ static const struct term_field_descriptor type_former_fields[] = {
 		PROTOTYPE_TERM_FIELD_ROLE_TYPE_FORMER_CONSTRUCTOR_COUNT)
 };
 static const struct term_field_descriptor type_declaration_fields[] = {
-	TERM_REF(as.type_declaration.type_id, PROTOTYPE_TERM_FIELD_TYPE_DECLARATION,
-		PROTOTYPE_TERM_FIELD_ROLE_TYPE_DECLARATION_ID,
-		PROTOTYPE_TERM_CHILD_INVALID),
 	TERM_REF(as.type_declaration.identity.namespace_symbol_id,
 		PROTOTYPE_TERM_FIELD_SYMBOL,
 		PROTOTYPE_TERM_FIELD_ROLE_TYPE_DECLARATION_NAMESPACE,
@@ -98,8 +91,6 @@ static const struct term_field_descriptor type_declaration_fields[] = {
 		PROTOTYPE_TERM_CHILD_INVALID)
 };
 static const struct term_field_descriptor type_view_fields[] = {
-	TERM_REF(as.type_view.view_type_id, PROTOTYPE_TERM_FIELD_TYPE_DECLARATION,
-		PROTOTYPE_TERM_FIELD_ROLE_TYPE_VIEW_ID, PROTOTYPE_TERM_CHILD_INVALID),
 	TERM_REF(as.type_view.identity.namespace_symbol_id,
 		PROTOTYPE_TERM_FIELD_SYMBOL,
 		PROTOTYPE_TERM_FIELD_ROLE_TYPE_VIEW_NAMESPACE,
@@ -149,10 +140,7 @@ static const struct term_field_descriptor pure_primitive_fields[] = {
 static const struct term_field_descriptor effect_operation_fields[] = {
 	TERM_REF(as.effect_operation.operation_id, PROTOTYPE_TERM_FIELD_OPERATION,
 		PROTOTYPE_TERM_FIELD_ROLE_EFFECT_OPERATION_ID,
-		PROTOTYPE_TERM_CHILD_INVALID),
-	TERM_REF(as.effect_operation.classifier, PROTOTYPE_TERM_FIELD_TERM_REQUIRED,
-		PROTOTYPE_TERM_FIELD_ROLE_EFFECT_OPERATION_CLASSIFIER,
-		PROTOTYPE_TERM_CHILD_EFFECT_OPERATION_CLASSIFIER)
+		PROTOTYPE_TERM_CHILD_INVALID)
 };
 static const struct term_field_descriptor effect_row_var_fields[] = {
 	TERM_REF(as.effect_row_var.binding_id, PROTOTYPE_TERM_FIELD_BINDING,

@@ -4,12 +4,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "a_program/kernel/intrinsic.h"
+
 #include "a_program/core/term.h"
 #include "a_program/dimension/types.h"
 #include "a_program/kernel/structural_reader.h"
 
 struct prototype_frozen_module_snapshot;
-struct prototype_intrinsic_environment;
+struct prototype_judgement_db;
+struct prototype_intrinsic_typing_environment;
 struct prototype_type_semantic_schema_db;
 struct prototype_universe_db;
 struct symbol_table;
@@ -17,6 +20,7 @@ struct symbol_table;
 struct prototype_semantic_ih_scope {
 	uint32_t match_term;
 	uint32_t scrutinee_binding_id;
+	uint32_t binding_scope_id;
 };
 
 /* These views expose semantic arena prefixes only. Runtime indices, caches,
@@ -59,7 +63,7 @@ struct prototype_semantic_context {
 	uint32_t binding_id;
 	uint32_t classifier;
 	int extension_kind;
-	uint32_t producer_computation;
+	uint32_t producer_occurrence;
 };
 
 struct prototype_semantic_context_graph_view {
@@ -82,6 +86,8 @@ struct prototype_semantic_substitution {
 	uint32_t first;
 	uint32_t second;
 	uint32_t term;
+	/* Checked projection of the accepted HAS_TYPE evidence. It is not part of
+	 * raw substitution identity and is revalidated against target Context. */
 	uint32_t term_classifier;
 };
 
@@ -392,7 +398,8 @@ enum prototype_semantic_runtime_capability {
  * assertions and exact semantic structure, but no checked capability. */
 struct prototype_elaborated_module_view {
 	uint64_t calculus_fingerprint;
-	uint64_t intrinsic_fingerprint;
+	uint64_t operational_intrinsic_fingerprint;
+	uint64_t typing_intrinsic_fingerprint;
 	struct prototype_semantic_intrinsic_environment intrinsic_environment;
 	struct prototype_semantic_symbol_table_view symbols;
 	struct prototype_semantic_term_graph_view terms;
@@ -464,13 +471,18 @@ int prototype_elaborated_module_project(
 	const struct symbol_table* symbols,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_semantic_schema_db* type_schema,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_universe_db* universes,
+	const struct prototype_judgement_db* judgement,
 	const struct prototype_frozen_module_snapshot* snapshot,
 	struct prototype_elaborated_module* module
 );
 
 int prototype_elaborated_module_validate_structure(
+	const struct prototype_elaborated_module_view* module
+);
+
+uint64_t prototype_elaborated_module_intrinsic_contract_fingerprint(
 	const struct prototype_elaborated_module_view* module
 );
 

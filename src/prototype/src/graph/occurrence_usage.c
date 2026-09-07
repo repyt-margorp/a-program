@@ -1,10 +1,14 @@
 #include "a_program/graph/occurrence_usage.h"
 
+#include "a_program/core/intrinsic.h"
+#include "a_program/core/term.h"
 #include "a_program/graph/typed_occurrence_graph.h"
 
 #include "a_program/kernel/context.h"
 #include "a_program/kernel/resource_usage.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 int prototype_occurrence_usage_solution_view(
@@ -74,14 +78,18 @@ static int accumulate_child(
 	int join
 ) {
 	struct prototype_usage_vector child;
-	return prototype_occurrence_usage_solution_view(
+	int view_status = prototype_occurrence_usage_solution_view(
 		solutions,
 		solution_count,
 		entries,
 		entry_count,
 		child_operation,
 		&child
-	) != 0 || usage_accumulate(target, &child, scalar, join) != 0 ? -1 : 0;
+	);
+	if (view_status != 0) {
+		return -1;
+	}
+	return usage_accumulate(target, &child, scalar, join);
 }
 
 static int clear_case_local_usage(
@@ -367,8 +375,8 @@ int prototype_occurrence_usage_solve(
 				) != 0) {
 				return -1;
 			}
-			const struct prototype_effect_operation_declaration* declaration =
-				prototype_term_effect_operation_declaration(operation_identity);
+			const struct prototype_core_effect_operation_declaration* declaration =
+				prototype_core_effect_operation_declaration(operation_identity);
 			if (!declaration) {
 				return -1;
 			}

@@ -353,7 +353,7 @@ static int hott_bridge_record_is_valid(
 				!(target = prototype_context_get(
 					contexts, face->target_context_id
 				)) || target->binding_id != face->target_binding_id ||
-				prototype_context_classifier_term(target) !=
+				prototype_context_classifier_answer(contexts, target) !=
 					face->classifier_term_id ||
 				!(certificate = prototype_cwf_certificate_db_get_kind(
 					cwf_certificates,
@@ -564,7 +564,9 @@ int prototype_hott_bridge_db_validate(
 				certificate->fiber_witness_claim_id == PROTOTYPE_INVALID_ID ||
 				!witness || witness->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE ||
 				witness->context_id != db->bridges[i].bridge_context_id ||
-				witness->classifier != prototype_context_classifier_term(relation) ||
+				witness->classifier != prototype_context_classifier_answer(
+					contexts, relation
+				) ||
 				!witness_term || witness_term->tag != PROTOTYPE_TERM_VAR ||
 				witness_term->as.var.binding_id != relation->binding_id ||
 				certificate->left_endpoint_context_certificate_id >=
@@ -675,9 +677,9 @@ static int hott_relation_goal_is_valid(
 			goal->right_claim_id, &right_category
 		) != 0 || left_category != right_category ||
 		(goal->category == PROTOTYPE_HOTT_RELATION_VALUE &&
-		 left_category != PROTOTYPE_JUDGEMENT_CATEGORY_VALUE) ||
+		 left_category != PROTOTYPE_CLASSIFIER_CATEGORY_VALUE) ||
 		(goal->category == PROTOTYPE_HOTT_RELATION_COMPUTATION &&
-		 left_category != PROTOTYPE_JUDGEMENT_CATEGORY_COMPUTATION)) {
+		 left_category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION)) {
 		return 0;
 	}
 	const struct prototype_hott_bridge* bridge = prototype_hott_bridge_db_get(
@@ -882,7 +884,7 @@ static int hott_candidate_add_conversion(
 	uint32_t candidate_id,
 	int role,
 	uint32_t ordinal,
-	struct prototype_kernel_conversion_goal request,
+	struct prototype_typing_conversion_goal request,
 	uint64_t graph_revision
 ) {
 	if (!db || candidate_id >= db->candidate_count ||
@@ -1206,7 +1208,7 @@ static int hott_term_fragment_scan(
 		return 1;
 	case PROTOTYPE_TERM_COMPUTATION_TYPE:
 		{
-			int purity = prototype_term_effect_row_purity(
+			int purity = prototype_classifier_effect_row_purity(
 				terms, term->as.computation_type.label
 			);
 			if (purity == PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL) {
@@ -1342,7 +1344,7 @@ static int hott_plan_add_conversion(
 	struct prototype_term_db* terms = kernel->terms;
 	struct prototype_type_declaration_db* type_declarations =
 		kernel->type_declarations;
-	struct prototype_kernel_conversion_goal request = {
+	struct prototype_typing_conversion_goal request = {
 		.id = (uint32_t)candidates->conversion_premise_count,
 		.context_id = context_id,
 		.carrier_classifier = carrier,
@@ -1403,7 +1405,7 @@ static int hott_candidate_add_exposure(
 	uint64_t step_limit,
 	uint64_t* p_steps
 ) {
-	struct prototype_kernel_conversion_goal request = {
+	struct prototype_typing_conversion_goal request = {
 		.id = (uint32_t)candidates->conversion_premise_count,
 		.context_id = context_id,
 		.carrier_classifier = carrier,
@@ -1855,7 +1857,7 @@ int prototype_parametricity_relation_plan(
 			return -1;
 		}
 	} else if (carrier_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
-		int purity = prototype_term_effect_row_purity(
+		int purity = prototype_classifier_effect_row_purity(
 			terms, carrier_term->as.computation_type.label
 		);
 		if (purity != PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
@@ -1868,10 +1870,10 @@ int prototype_parametricity_relation_plan(
 		struct prototype_term_normalization_result left_result;
 		struct prototype_term_normalization_result right_result;
 		if (prototype_term_normalize_with_profile(
-				terms, type_declarations, definitions, normalization_profile,
+				terms, definitions, normalization_profile,
 				left, step_limit, &left_result
 			) != 0 || prototype_term_normalize_with_profile(
-				terms, type_declarations, definitions, normalization_profile,
+				terms, definitions, normalization_profile,
 				right, step_limit, &right_result
 			) != 0) {
 			return -1;
@@ -1964,10 +1966,10 @@ int prototype_parametricity_relation_plan(
 		struct prototype_term_normalization_result left_result;
 		struct prototype_term_normalization_result right_result;
 		if (prototype_term_normalize_with_profile(
-				terms, type_declarations, definitions, normalization_profile,
+				terms, definitions, normalization_profile,
 				left, step_limit, &left_result
 			) != 0 || prototype_term_normalize_with_profile(
-				terms, type_declarations, definitions, normalization_profile,
+				terms, definitions, normalization_profile,
 				right, step_limit, &right_result
 			) != 0) {
 			return -1;

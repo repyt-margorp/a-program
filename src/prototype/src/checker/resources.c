@@ -173,21 +173,13 @@ static int callable_binder_grade(
 	return -1;
 }
 
-static const struct prototype_effect_operation_declaration*
+static const struct prototype_core_effect_operation_declaration*
 effect_declaration(
 	const struct prototype_elaborated_module_view* module,
 	int operation_id
 ) {
-	for (size_t i = 0;
-		i < module->intrinsic_environment.effect_operation_count;
-		++i) {
-		const struct prototype_effect_operation_declaration* declaration =
-			&module->intrinsic_environment.effect_operations[i];
-		if (declaration->operation_id == operation_id) {
-			return declaration;
-		}
-	}
-	return NULL;
+	(void)module;
+	return prototype_core_effect_operation_declaration(operation_id);
 }
 
 static int operation_identity(
@@ -589,7 +581,7 @@ int prototype_checker_reconstruct_usage(
 				) != 0) {
 				goto fail;
 			}
-			const struct prototype_effect_operation_declaration* declaration =
+			const struct prototype_core_effect_operation_declaration* declaration =
 				effect_declaration(module, operation_id);
 			if (!declaration) {
 				goto fail;

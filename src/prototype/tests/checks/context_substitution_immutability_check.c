@@ -15,15 +15,13 @@ int main(void) {
 	uint32_t first_context;
 	uint32_t second_context;
 	if (prototype_context_extend(
-			&contexts, prototype_context_empty(&contexts), 1, 10,
-			PROTOTYPE_INVALID_ID, &first_context
+			&contexts, prototype_context_empty(&contexts), 1, 10, &first_context
 		) != 0) {
 		return 1;
 	}
 	struct prototype_context first_context_snapshot = context_storage[first_context];
 	if (prototype_context_extend(
-			&contexts, prototype_context_empty(&contexts), 2, 11,
-			PROTOTYPE_INVALID_ID, &second_context
+			&contexts, prototype_context_empty(&contexts), 2, 11, &second_context
 		) != 0 || memcmp(
 			&first_context_snapshot, &context_storage[first_context],
 			sizeof(first_context_snapshot)
@@ -43,7 +41,7 @@ int main(void) {
 	if (prototype_substitution_rebase(
 			&substitutions, projection, second_context,
 			prototype_context_empty(&contexts), PROTOTYPE_INVALID_ID,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, &rebased
+			PROTOTYPE_INVALID_ID, &rebased
 		) != 0 || rebased == projection || memcmp(
 			&projection_snapshot, &substitution_storage[projection],
 			sizeof(projection_snapshot)
@@ -54,7 +52,7 @@ int main(void) {
 	if (prototype_substitution_rebase(
 			&substitutions, projection, second_context,
 			prototype_context_empty(&contexts), PROTOTYPE_INVALID_ID,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_INVALID_ID, &repeated
+			PROTOTYPE_INVALID_ID, &repeated
 		) != 0 || repeated != rebased || memcmp(
 			&projection_snapshot, &substitution_storage[projection],
 			sizeof(projection_snapshot)

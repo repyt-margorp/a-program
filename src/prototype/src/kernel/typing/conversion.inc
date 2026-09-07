@@ -2,17 +2,58 @@ static int term_has_tag(const struct prototype_term_db* terms, uint32_t term_id,
 	return terms && term_id < terms->term_count && terms->terms[term_id].tag == tag;
 }
 
+int prototype_judgement_classifier_view_syntax(
+	const struct prototype_term_db* terms,
+	uint32_t classifier,
+	struct prototype_classifier_view* p_ret
+) {
+	if (!terms || !p_ret || classifier >= terms->term_count) {
+		return -1;
+	}
+	memset(p_ret, 0, sizeof(*p_ret));
+	const struct prototype_term* term = &terms->terms[classifier];
+	if (term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
+		if (term->as.computation_type.label >= terms->term_count ||
+			term->as.computation_type.result >= terms->term_count) {
+			return -1;
+		}
+		p_ret->category = PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION;
+		p_ret->computation_kind = PROTOTYPE_COMPUTATION_KIND_RETURNING;
+		p_ret->totality = term->as.computation_type.totality;
+		p_ret->effect_row = term->as.computation_type.label;
+		p_ret->result = term->as.computation_type.result;
+		return 0;
+	}
+	/* PI(A, C) classifies a computation-level function. A source function is a
+	 * value only after THUNK introduces THUNK_TYPE(PI(A, C)). */
+	if (term->tag == PROTOTYPE_TERM_PI) {
+		p_ret->category = PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION;
+		p_ret->computation_kind = PROTOTYPE_COMPUTATION_KIND_FUNCTION;
+		p_ret->effect_row = PROTOTYPE_INVALID_ID;
+		p_ret->result = classifier;
+		return 0;
+	}
+	if (term->tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
+		p_ret->category = PROTOTYPE_CLASSIFIER_CATEGORY_TYPE;
+		p_ret->result = classifier;
+		return 0;
+	}
+	p_ret->category = PROTOTYPE_CLASSIFIER_CATEGORY_VALUE;
+	p_ret->result = classifier;
+	return 0;
+}
+
 static int computation_effect_row_union(
 	struct prototype_term_db* terms,
-	const struct prototype_term_classifier_view* left,
-	const struct prototype_term_classifier_view* right,
+	const struct prototype_classifier_view* left,
+	const struct prototype_classifier_view* right,
 	uint32_t* p_row
 ) {
 	if (!terms || !left || !right || !p_row ||
-		left->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		right->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		left->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		right->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+		left->category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		right->category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		left->computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
+		right->computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 		return -1;
 	}
 	return prototype_term_effect_row_union(terms, left->effect_row, right->effect_row, p_row);
@@ -21,17 +62,17 @@ static int computation_effect_row_union(
 static int computation_effect_row_is_union(
 	const struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_classifier_view* result,
-	const struct prototype_term_classifier_view* left,
-	const struct prototype_term_classifier_view* right
+	const struct prototype_classifier_view* result,
+	const struct prototype_classifier_view* left,
+	const struct prototype_classifier_view* right
 ) {
 	if (!terms || !result || !left || !right ||
-		result->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		left->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		right->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		result->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		left->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		right->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+		result->category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		left->category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		right->category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		result->computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
+		left->computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
+		right->computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 		return 0;
 	}
 	struct prototype_effect_row_normal_form result_normal;
@@ -148,13 +189,13 @@ int prototype_judgement_specialize_fold_operation_classifier(
 	uint32_t* p_specialized
 ) {
 	const struct prototype_effect_operation_declaration* declaration =
-		prototype_term_effect_operation_declaration(operation_id);
+		prototype_intrinsic_effect_operation_declaration(operation_id);
 	if (!terms || !type_declarations || !declaration || !p_specialized) {
 		return -1;
 	}
 	*p_specialized = classifier;
 	int has_suspended_argument;
-	if (prototype_term_effect_operation_classifier_has_suspended_argument(
+	if (prototype_intrinsic_classifier_has_suspended_argument(
 			terms, classifier, &has_suspended_argument
 		) != 0) {
 		return -1;
@@ -222,8 +263,8 @@ static int instantiate_fold_clause_classifier(
 		terms->terms[concrete_domain].tag != PROTOTYPE_TERM_THUNK_TYPE) {
 		return -1;
 	}
-	struct prototype_term_classifier_view generic;
-	struct prototype_term_classifier_view concrete;
+	struct prototype_classifier_view generic;
+	struct prototype_classifier_view concrete;
 	if (prototype_judgement_classifier_view(
 			terms,
 			type_declarations,
@@ -236,10 +277,10 @@ static int instantiate_fold_clause_classifier(
 			NULL,
 			terms->terms[concrete_domain].as.thunk_type.computation,
 			&concrete
-		) != 0 || generic.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		concrete.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		generic.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		concrete.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		) != 0 || generic.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		concrete.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		generic.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
+		concrete.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
 		generic.effect_row >= terms->term_count ||
 		terms->terms[generic.effect_row].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR ||
 		!(prototype_judgement_classifier_conversion(
@@ -248,8 +289,7 @@ static int instantiate_fold_clause_classifier(
 		return -1;
 	}
 	return prototype_term_graph_substitute_bound_var(
-		terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-		classifier,
+		terms, classifier,
 		terms->terms[generic.effect_row].as.effect_row_var.binding_id,
 		concrete.effect_row,
 		p_instantiated
@@ -261,15 +301,15 @@ static int instantiate_fold_clause_classifier(
  * rows on unhandled atoms. Open rows remain solver obligations. */
 static int computation_fold_residual_row(
 	struct prototype_term_db* terms,
-	const struct prototype_term_classifier_view* input,
-	const struct prototype_term_classifier_view* operation,
+	const struct prototype_classifier_view* input,
+	const struct prototype_classifier_view* operation,
 	uint32_t* p_residual
 ) {
 	if (!terms || !input || !operation || !p_residual ||
-		input->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		operation->category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		input->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		operation->computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+		input->category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		operation->category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		input->computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
+		operation->computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 		return 1;
 	}
 	return prototype_term_effect_row_residual(
@@ -692,10 +732,11 @@ static struct prototype_term_conversion_result classifier_kernel_conversion(
 	uint32_t actual
 ) {
 	struct prototype_term_conversion_result result;
+	(void)type_declarations;
 	memset(&result, 0, sizeof(result));
 	result.status = PROTOTYPE_TERM_CONVERSION_INVALID;
 	result.reason = PROTOTYPE_TERM_CONVERSION_REASON_MALFORMED_GRAPH;
-	result.profile = PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF;
+	result.profile = PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF;
 	result.left = expected;
 	result.right = actual;
 	result.left_observation = PROTOTYPE_INVALID_ID;
@@ -726,9 +767,8 @@ static struct prototype_term_conversion_result classifier_kernel_conversion(
 	}
 	if (prototype_term_compare_for_conversion(
 			terms,
-			type_declarations,
 			definitions,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			expected,
 			actual,
 			UINT64_MAX,
@@ -746,25 +786,61 @@ struct prototype_term_conversion_result prototype_judgement_classifier_conversio
 	uint32_t expected,
 	uint32_t actual
 ) {
+	uint32_t value_expected;
+	uint32_t value_actual;
+	uint32_t nominal_expected;
+	uint32_t nominal_actual;
+	uint32_t projected_expected;
+	uint32_t projected_actual;
+	if (!type_declarations || prototype_judgement_classifier_value_whnf(
+			terms, type_declarations, expected, &value_expected
+		) != 0 || prototype_judgement_classifier_value_whnf(
+			terms, type_declarations, actual, &value_actual
+		) != 0) {
+		return classifier_kernel_conversion(
+			terms, type_declarations, NULL, expected, actual
+		);
+	}
+	nominal_expected = value_expected;
+	nominal_actual = value_actual;
+	if (prototype_judgement_project_nominal_classifier_instance(
+			terms, type_declarations, value_expected, &projected_expected
+		) == 0) {
+		nominal_expected = projected_expected;
+	}
+	if (prototype_judgement_project_nominal_classifier_instance(
+			terms, type_declarations, value_actual, &projected_actual
+		) == 0) {
+		nominal_actual = projected_actual;
+	}
+	if (prototype_type_projection_classifier_graph(
+			terms, type_declarations, nominal_expected, &projected_expected
+		) != 0 || prototype_type_projection_classifier_graph(
+			terms, type_declarations, nominal_actual, &projected_actual
+		) != 0) {
+		return classifier_kernel_conversion(
+			terms, type_declarations, NULL, expected, actual
+		);
+	}
 	return classifier_kernel_conversion(
 		terms,
 		type_declarations,
 		NULL,
-		expected,
-		actual
+		projected_expected,
+		projected_actual
 	);
 }
 
 static int kernel_conversion_profile_is_admitted(int profile) {
 	return profile == PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF ||
 		profile == PROTOTYPE_TERM_NORMALIZATION_COMPUTATION_WHNF ||
-		profile == PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF;
+		profile == PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF;
 }
 
 int prototype_judgement_kernel_conversion_goal_validate(
 	const struct prototype_context_db* contexts,
 	const struct prototype_term_db* terms,
-	const struct prototype_kernel_conversion_goal* goal,
+	const struct prototype_typing_conversion_goal* goal,
 	int require_carrier
 ) {
 	if (!contexts || !terms || !goal ||
@@ -785,7 +861,7 @@ int prototype_judgement_kernel_conversion_goal_execute(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
-	struct prototype_kernel_conversion_goal* goal,
+	struct prototype_typing_conversion_goal* goal,
 	int require_carrier
 ) {
 	if (!type_declarations ||
@@ -796,7 +872,6 @@ int prototype_judgement_kernel_conversion_goal_execute(
 	}
 	return prototype_term_compare_for_conversion(
 		terms,
-		type_declarations,
 		definitions,
 		goal->normalization_profile,
 		goal->left_term,
@@ -839,9 +914,8 @@ int prototype_judgement_classifier_value_whnf(
 		uint32_t normalized;
 		if (prototype_term_normalize_complete_with_profile(
 				terms,
-				type_declarations,
 				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 				classifier,
 				&normalized
 			) != 0 || normalized >= terms->term_count) {
@@ -852,13 +926,25 @@ int prototype_judgement_classifier_value_whnf(
 			uint32_t type_id;
 			uint32_t arguments[16];
 			uint32_t argument_count;
-			if (prototype_term_type_instance_info(
-					terms, classifier, &type_id, arguments, &argument_count
-				) == 0 && prototype_term_type_instance_make(
-					terms, type_declarations, type_id, arguments,
-					argument_count, &classifier
-				) != 0) {
-				return -1;
+			if (prototype_type_projection_instance_info(
+					terms,
+		&type_declarations->semantic_schema, classifier, &type_id, arguments, &argument_count
+				) == 0) {
+				if (type_id >= type_declarations->semantic_schema.type_count) {
+					return -1;
+				}
+				const struct prototype_type_declaration* declaration =
+					&type_declarations->semantic_schema.type_declarations[type_id];
+				/* An open declaration has no structural representation yet. Its
+				 * nominal source spine is a Layer T pending value, not malformed
+				 * Core syntax. Project it only after the telescope is closed. */
+				if (declaration->representation_id != PROTOTYPE_INVALID_ID &&
+					prototype_type_projection_instance_make(
+						terms, type_declarations, type_id, arguments,
+						argument_count, &classifier
+					) != 0) {
+					return -1;
+				}
 			}
 			*p_value_classifier = classifier;
 			return 0;
@@ -877,6 +963,9 @@ int prototype_judgement_classifier_reference_equal(
 	uint32_t expected,
 	uint32_t actual
 ) {
+	if (terms && expected == actual && expected < terms->term_count) {
+		return 1;
+	}
 	if (prototype_judgement_classifier_value_whnf(
 			terms, type_declarations, expected, &expected
 		) != 0 || prototype_judgement_classifier_value_whnf(
@@ -920,8 +1009,9 @@ int prototype_judgement_classifier_reference_equal(
 		terms, expected, &external_name, external_arguments,
 		&external_argument_count
 	) == 0;
-	int right_is_instance = prototype_term_type_instance_info(
-		terms, actual, &instance_type_id, instance_arguments,
+	int right_is_instance = prototype_type_projection_instance_info(
+		terms,
+		&type_declarations->semantic_schema, actual, &instance_type_id, instance_arguments,
 		&instance_argument_count
 	) == 0;
 	if (!left_is_external || !right_is_instance) {
@@ -929,8 +1019,9 @@ int prototype_judgement_classifier_reference_equal(
 			terms, actual, &external_name, external_arguments,
 			&external_argument_count
 		) == 0;
-		right_is_instance = prototype_term_type_instance_info(
-			terms, expected, &instance_type_id, instance_arguments,
+		right_is_instance = prototype_type_projection_instance_info(
+			terms,
+		&type_declarations->semantic_schema, expected, &instance_type_id, instance_arguments,
 			&instance_argument_count
 		) == 0;
 	}
@@ -970,9 +1061,8 @@ static int classifier_kernel_whnf(
 	uint32_t evaluated;
 	if (prototype_term_normalize_complete_with_profile(
 			terms,
-			type_declarations,
 			definitions,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			term_id,
 			&evaluated
 		) != 0 ||
@@ -989,7 +1079,7 @@ static int classifier_view_with_depth(
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	uint32_t classifier,
-	struct prototype_term_classifier_view* p_ret,
+	struct prototype_classifier_view* p_ret,
 	uint32_t depth
 ) {
 	uint32_t whnf;
@@ -1030,10 +1120,11 @@ static int classifier_view_with_depth(
 		}
 		struct prototype_match_case_input result_cases[64];
 		uint32_t effect_row = PROTOTYPE_INVALID_ID;
+		int totality = PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN;
 		for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
 			const struct prototype_match_case* match_case =
 				&terms->cases[match->as.match.first_case + i];
-			struct prototype_term_classifier_view branch_view;
+			struct prototype_classifier_view branch_view;
 			if (match_case->first_binder + match_case->binder_count >
 					terms->case_binder_count || classifier_view_with_depth(
 					terms,
@@ -1042,10 +1133,10 @@ static int classifier_view_with_depth(
 					match_case->body,
 					&branch_view,
 					depth - 1
-				) != 0 || branch_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
+				) != 0 || branch_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
 				branch_view.computation_kind !=
-					PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
-				return prototype_term_classifier_view(terms, whnf, p_ret);
+					PROTOTYPE_COMPUTATION_KIND_RETURNING) {
+				return prototype_judgement_classifier_view_syntax(terms, whnf, p_ret);
 			}
 			result_cases[i].case_label_symbol_id =
 				terms->case_label_symbols[match->as.match.first_case + i];
@@ -1061,6 +1152,16 @@ static int classifier_view_with_depth(
 				) != 0) {
 				return -1;
 			}
+			if (i == 0) {
+				totality = branch_view.totality;
+			} else {
+				totality = prototype_classifier_totality_join(
+					totality, branch_view.totality
+				);
+			}
+			if (totality == PROTOTYPE_COMPUTATION_TOTALITY_UNKNOWN) {
+				return -1;
+			}
 		}
 		uint32_t result;
 		if (prototype_term_match(
@@ -1073,13 +1174,14 @@ static int classifier_view_with_depth(
 			return -1;
 		}
 		memset(p_ret, 0, sizeof(*p_ret));
-		p_ret->category = PROTOTYPE_TERM_CATEGORY_COMPUTATION;
-		p_ret->computation_kind = PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING;
+		p_ret->category = PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION;
+		p_ret->computation_kind = PROTOTYPE_COMPUTATION_KIND_RETURNING;
+		p_ret->totality = totality;
 		p_ret->effect_row = effect_row;
 		p_ret->result = result;
 		return 0;
 	}
-	return prototype_term_classifier_view(terms, whnf, p_ret);
+	return prototype_judgement_classifier_view_syntax(terms, whnf, p_ret);
 }
 
 int prototype_judgement_classifier_view(
@@ -1087,7 +1189,7 @@ int prototype_judgement_classifier_view(
 	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	uint32_t classifier,
-	struct prototype_term_classifier_view* p_ret
+	struct prototype_classifier_view* p_ret
 ) {
 	return classifier_view_with_depth(
 		terms, type_declarations, definitions, classifier, p_ret, 256
@@ -1109,7 +1211,7 @@ int prototype_judgement_claim_category(
 		return -1;
 	}
 	if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE) {
-		*p_category = PROTOTYPE_JUDGEMENT_CATEGORY_TYPE;
+		*p_category = PROTOTYPE_CLASSIFIER_CATEGORY_TYPE;
 		return 0;
 	}
 	if (prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind != PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE) {
@@ -1127,20 +1229,20 @@ int prototype_judgement_claim_category(
 			) != 0) {
 			return -1;
 		}
-		*p_category = category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ?
-			PROTOTYPE_JUDGEMENT_CATEGORY_COMPUTATION :
-			PROTOTYPE_JUDGEMENT_CATEGORY_VALUE;
+		*p_category = category == PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ?
+			PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION :
+			PROTOTYPE_CLASSIFIER_CATEGORY_VALUE;
 		return 0;
 	}
-	struct prototype_term_classifier_view view;
+	struct prototype_classifier_view view;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, definitions, prototype_judgement_proposition_get(judgement, claim->proposition_id)->classifier, &view
 		) != 0) {
 		return -1;
 	}
-	*p_category = view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION ?
-		PROTOTYPE_JUDGEMENT_CATEGORY_COMPUTATION :
-		PROTOTYPE_JUDGEMENT_CATEGORY_VALUE;
+	*p_category = view.category == PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ?
+		PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION :
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE;
 	return 0;
 }
 
@@ -2217,11 +2319,11 @@ int prototype_judgement_expose_callable_classifier(
 		return -1;
 	}
 	for (uint32_t depth = 0; depth < 16; ++depth) {
-		struct prototype_term_classifier_view view;
+		struct prototype_classifier_view view;
 		if (prototype_judgement_classifier_view(
 				terms, type_declarations, NULL, classifier, &view
-			) == 0 && view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
-			view.computation_kind == PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+			) == 0 && view.category == PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION &&
+			view.computation_kind == PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 			classifier = view.result;
 			continue;
 		}
@@ -2355,8 +2457,7 @@ int prototype_judgement_specialize_effect_rows_for_argument(
 		}
 		if (row >= terms->term_count ||
 			prototype_term_graph_substitute_bound_var(
-				terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-				quantified->as.effect_row_forall.body,
+				terms, quantified->as.effect_row_forall.body,
 				quantified->as.effect_row_forall.binding_id,
 				row,
 				&function_classifier
@@ -2403,8 +2504,8 @@ int prototype_judgement_dependent_classifier_argument(
 	return 0;
 }
 
-static int instantiate_pure_family_in_context(
-	struct prototype_context_db* contexts,
+static int instantiate_pure_family_in_context_view(
+	const struct prototype_context_classifier_view* context_view,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -2415,9 +2516,14 @@ static int instantiate_pure_family_in_context(
 	uint32_t argument_classifier,
 	uint32_t* p_result
 ) {
+	if (!context_view || !context_view->contexts) {
+		return -1;
+	}
+	struct prototype_context_db* contexts =
+		(struct prototype_context_db*)context_view->contexts;
 	const struct prototype_substitution* prefix =
 		prototype_substitution_get(substitutions, prefix_substitution);
-	if (!contexts || !substitutions || !terms || !type_declarations ||
+	if (!substitutions || !terms || !type_declarations ||
 		!p_result || !prefix ||
 		domain >= terms->term_count || family >= terms->term_count ||
 		argument >= terms->term_count ||
@@ -2445,14 +2551,20 @@ static int instantiate_pure_family_in_context(
 		return -1;
 	}
 	uint32_t family_context;
-	if (prototype_context_extend(
+	int context_status = prototype_context_extend(
 			contexts,
 			prefix->target_context,
 			binding_id,
 			domain,
-			PROTOTYPE_INVALID_ID,
 			&family_context
-		) != 0) {
+		);
+	if (context_status != 0) {
+		if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+			fprintf(stderr,
+				"pure family context extension failed parent=%u binding=%u "
+				"classifier=%u status=%d\n",
+				prefix->target_context, binding_id, domain, context_status);
+		}
 		return -1;
 	}
 	const struct prototype_context* context =
@@ -2466,8 +2578,7 @@ static int instantiate_pure_family_in_context(
 		if (prototype_term_var(
 				terms, context->binding_id, &canonical_var
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-				body,
+				terms, body,
 				binding_id,
 				canonical_var,
 				&body
@@ -2476,20 +2587,28 @@ static int instantiate_pure_family_in_context(
 		}
 	}
 	uint32_t section;
-	if (prototype_substitution_extend(
+	int section_status = prototype_substitution_extend_in_view(
+			context_view,
 			substitutions,
-			contexts,
 			terms,
 			type_declarations,
 		prefix_substitution,
 		family_context,
 		classifier_argument,
-		argument_classifier,
+			argument_classifier,
 			&section
-		) != 0) {
+		);
+	if (section_status != 0) {
+		if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+			fprintf(stderr,
+				"pure family substitution extension failed prefix=%u "
+				"family-context=%u argument=%u classifier=%u status=%d\n",
+				prefix_substitution, family_context, classifier_argument,
+				argument_classifier, section_status);
+		}
 		return -1;
 	}
-	return prototype_term_reindex(
+	int reindex_status = prototype_term_reindex(
 		terms,
 		type_declarations,
 		contexts,
@@ -2498,10 +2617,45 @@ static int instantiate_pure_family_in_context(
 		section,
 		p_result
 	);
+	if (getenv("A_PROGRAM_FORMATION_TRACE") && reindex_status != 0) {
+		fprintf(stderr,
+			"pure family body reindex failed body=%u section=%u status=%d\n",
+			body, section, reindex_status);
+	}
+	return reindex_status;
 }
 
-static int pi_codomain_after_argument_in_context(
+static int instantiate_pure_family_in_context(
 	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t prefix_substitution,
+	uint32_t domain,
+	uint32_t family,
+	uint32_t argument,
+	uint32_t argument_classifier,
+	uint32_t* p_result
+) {
+	const struct prototype_context_classifier_view context_view = {
+		.contexts = contexts
+	};
+	return instantiate_pure_family_in_context_view(
+		&context_view,
+		substitutions,
+		terms,
+		type_declarations,
+		prefix_substitution,
+		domain,
+		family,
+		argument,
+		argument_classifier,
+		p_result
+	);
+}
+
+static int pi_codomain_after_argument_in_context_view(
+	const struct prototype_context_classifier_view* context_view,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -2511,10 +2665,15 @@ static int pi_codomain_after_argument_in_context(
 	uint32_t argument_classifier,
 	uint32_t* p_result
 ) {
+	if (!context_view || !context_view->contexts) {
+		return -1;
+	}
+	struct prototype_context_db* contexts =
+		(struct prototype_context_db*)context_view->contexts;
 	uint32_t domain;
 	uint32_t codomain_family;
 	uint32_t identity;
-	if (!contexts || !substitutions ||
+	if (!substitutions ||
 		!terms || !type_declarations || !p_result ||
 		argument >= terms->term_count ||
 		pi_parts(terms, pi_term, &domain, &codomain_family) != 0) {
@@ -2530,14 +2689,41 @@ static int pi_codomain_after_argument_in_context(
 		return -1;
 	}
 	(void)domain;
-	return instantiate_pure_family_in_context(
-		contexts,
+	return instantiate_pure_family_in_context_view(
+		context_view,
 		substitutions,
 		terms,
 		type_declarations,
 		identity,
 		argument_classifier,
 		codomain_family,
+		argument,
+		argument_classifier,
+		p_result
+	);
+}
+
+static int pi_codomain_after_argument_in_context(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
+	uint32_t pi_term,
+	uint32_t argument,
+	uint32_t argument_classifier,
+	uint32_t* p_result
+) {
+	const struct prototype_context_classifier_view context_view = {
+		.contexts = contexts
+	};
+	return pi_codomain_after_argument_in_context_view(
+		&context_view,
+		substitutions,
+		terms,
+		type_declarations,
+		context_id,
+		pi_term,
 		argument,
 		argument_classifier,
 		p_result
@@ -2581,7 +2767,7 @@ static int static_family_pi_is_pure_total(
 		return 1;
 	}
 	if (terms->terms[body].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
-		prototype_term_computation_type_is_pure_total(terms, body) != 1) {
+		prototype_classifier_computation_type_is_pure_total(terms, body) != 1) {
 		return 0;
 	}
 	uint32_t result = terms->terms[body].as.computation_type.result;
@@ -2591,6 +2777,107 @@ static int static_family_pi_is_pure_total(
 		return 0;
 	}
 	return terms->terms[result].tag == PROTOTYPE_TERM_UNIVERSE_VAR;
+}
+
+static int static_family_classifier_compatible(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t expected,
+	uint32_t actual,
+	uint32_t depth
+) {
+	uint32_t expected_whnf;
+	uint32_t actual_whnf;
+	if (!terms || !type_declarations || depth == 0 ||
+		classifier_kernel_whnf(
+			terms, type_declarations, NULL, expected, &expected_whnf
+		) != 0 || classifier_kernel_whnf(
+			terms, type_declarations, NULL, actual, &actual_whnf
+		) != 0 || expected_whnf >= terms->term_count ||
+		actual_whnf >= terms->term_count) {
+		return 0;
+	}
+	if (prototype_judgement_classifier_conversion(
+			terms, type_declarations, expected_whnf, actual_whnf
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		return 1;
+	}
+	const struct prototype_term* expected_term = &terms->terms[expected_whnf];
+	const struct prototype_term* actual_term = &terms->terms[actual_whnf];
+	if (expected_term->tag == PROTOTYPE_TERM_UNIVERSE_VAR &&
+		actual_term->tag == PROTOTYPE_TERM_UNIVERSE_VAR) {
+		return 1;
+	}
+	if (expected_term->tag == PROTOTYPE_TERM_THUNK_TYPE) {
+		return static_family_classifier_compatible(
+			terms, type_declarations, expected_term->as.thunk_type.computation,
+			actual_whnf, depth - 1
+		);
+	}
+	if (actual_term->tag == PROTOTYPE_TERM_THUNK_TYPE) {
+		return static_family_classifier_compatible(
+			terms, type_declarations, expected_whnf,
+			actual_term->as.thunk_type.computation, depth - 1
+		);
+	}
+	if (expected_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
+		prototype_classifier_computation_type_is_pure_total(
+			terms, expected_whnf
+		) == 1) {
+		return static_family_classifier_compatible(
+			terms, type_declarations, expected_term->as.computation_type.result,
+			actual_whnf, depth - 1
+		);
+	}
+	if (actual_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
+		prototype_classifier_computation_type_is_pure_total(
+			terms, actual_whnf
+		) == 1) {
+		return static_family_classifier_compatible(
+			terms, type_declarations, expected_whnf,
+			actual_term->as.computation_type.result, depth - 1
+		);
+	}
+	if (expected_term->tag != PROTOTYPE_TERM_PI ||
+		actual_term->tag != PROTOTYPE_TERM_PI ||
+		!static_family_classifier_compatible(
+			terms, type_declarations, expected_term->as.pi.domain,
+			actual_term->as.pi.domain, depth - 1
+		)) {
+		if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+			fprintf(stderr,
+				"static family compatibility mismatch expected=%u tag=%d actual=%u "
+				"tag=%d depth=%u expected-domain=%u actual-domain=%u\n",
+				expected_whnf, expected_term->tag, actual_whnf, actual_term->tag,
+				depth,
+				expected_term->tag == PROTOTYPE_TERM_PI ?
+					expected_term->as.pi.domain : PROTOTYPE_INVALID_ID,
+				actual_term->tag == PROTOTYPE_TERM_PI ?
+					actual_term->as.pi.domain : PROTOTYPE_INVALID_ID);
+		}
+		return 0;
+	}
+	uint32_t expected_binding;
+	uint32_t expected_body;
+	uint32_t actual_binding;
+	uint32_t actual_body;
+	uint32_t shared_var;
+	if (prototype_term_pure_family_parts(
+			terms, expected_term->as.pi.codomain_family,
+			&expected_binding, &expected_body
+		) != 0 || prototype_term_pure_family_parts(
+			terms, actual_term->as.pi.codomain_family,
+			&actual_binding, &actual_body
+		) != 0 || prototype_term_var(
+			terms, expected_binding, &shared_var
+		) != 0 || prototype_term_graph_substitute_bound_var(
+			terms, actual_body, actual_binding, shared_var, &actual_body
+		) != 0) {
+		return 0;
+	}
+	return static_family_classifier_compatible(
+		terms, type_declarations, expected_body, actual_body, depth - 1
+	);
 }
 
 int prototype_judgement_static_family_app_classifier(
@@ -2610,6 +2897,11 @@ int prototype_judgement_static_family_app_classifier(
 		argument_classifier >= terms->term_count || classifier_kernel_whnf(
 			terms, type_declarations, NULL, function_classifier, &callable
 		) != 0 || callable >= terms->term_count) {
+		if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+			fprintf(stderr,
+				"static family callable failed function=%u argument=%u classifier=%u\n",
+				function_classifier, argument, argument_classifier);
+		}
 		return -1;
 	}
 	if (terms->terms[callable].tag == PROTOTYPE_TERM_THUNK_TYPE) {
@@ -2630,29 +2922,44 @@ int prototype_judgement_static_family_app_classifier(
 	uint32_t family;
 	uint32_t domain_whnf;
 	uint32_t solved_domain;
+	uint32_t effective_argument_classifier = argument_classifier;
 	if (pi_parts(terms, callable, &domain, &family) != 0 ||
 		classifier_kernel_whnf(
 			terms, type_declarations, NULL, domain, &domain_whnf
 		) != 0 || domain_whnf >= terms->term_count) {
+		if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+			fprintf(stderr,
+				"static family parts failed function=%u callable=%u\n",
+				function_classifier, callable);
+		}
 		return -1;
 	}
 	(void)family;
 	if (terms->terms[domain_whnf].tag == PROTOTYPE_TERM_RETURN) {
 		domain_whnf = terms->terms[domain_whnf].as.return_term.value;
 	}
-	/* Surface type-family application accepts a raw pure Lambda where the value
-	 * domain is its suspended function type. This is the static counterpart of
-	 * compile_ref_open_pure_type_family; it changes only classifier inspection,
-	 * not the shared APP/LAMBDA Core graph. */
+	/* Surface type-family application accepts a raw pure-total family where the
+	 * value domain is its suspended function type. Apply the static coercion to
+	 * the classifier only; the shared Core argument remains unchanged. */
 	if (domain_whnf < terms->term_count &&
-		terms->terms[domain_whnf].tag == PROTOTYPE_TERM_THUNK_TYPE &&
-		terms->terms[argument].tag == PROTOTYPE_TERM_LAMBDA) {
-		domain_whnf = terms->terms[domain_whnf].as.thunk_type.computation;
+		terms->terms[domain_whnf].tag == PROTOTYPE_TERM_THUNK_TYPE) {
+		uint32_t argument_whnf;
 		if (classifier_kernel_whnf(
-				terms, type_declarations, NULL, domain_whnf, &domain_whnf
-			) != 0 || domain_whnf >= terms->term_count ||
-			terms->terms[domain_whnf].tag != PROTOTYPE_TERM_PI) {
+				terms, type_declarations, NULL, argument_classifier, &argument_whnf
+			) != 0 || argument_whnf >= terms->term_count) {
+			if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+				fprintf(stderr,
+					"static family thunk opening failed domain=%u argument-classifier=%u\n",
+					domain_whnf, argument_classifier);
+			}
 			return -1;
+		}
+		if (static_family_pi_is_pure_total(
+				terms, type_declarations, argument_whnf, 64
+			) && static_family_classifier_compatible(
+				terms, type_declarations, domain_whnf, argument_classifier, 64
+			)) {
+			effective_argument_classifier = domain_whnf;
 		}
 	}
 	int domain_status = prototype_judgement_solve_expected_effect_rows(
@@ -2660,15 +2967,23 @@ int prototype_judgement_static_family_app_classifier(
 		type_declarations,
 		NULL,
 		domain_whnf,
-		argument_classifier,
+		effective_argument_classifier,
 		&solved_domain
 	);
 	if (domain_status != 0) {
+		if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+			fprintf(stderr,
+				"static family domain mismatch function=%u domain=%u argument=%u "
+				"argument-classifier=%u status=%d\n",
+				function_classifier, domain_whnf, argument,
+				effective_argument_classifier,
+				domain_status);
+		}
 		return domain_status < 0 ? -1 : 1;
 	}
 	(void)solved_domain;
 	uint32_t result;
-	if (pi_codomain_after_argument_in_context(
+	int codomain_status = pi_codomain_after_argument_in_context(
 			contexts,
 			substitutions,
 			terms,
@@ -2676,11 +2991,20 @@ int prototype_judgement_static_family_app_classifier(
 			context_id,
 			callable,
 			argument,
-			argument_classifier,
+			effective_argument_classifier,
 			&result
-		) != 0 || classifier_kernel_whnf(
+		);
+	if (codomain_status != 0 || classifier_kernel_whnf(
 			terms, type_declarations, NULL, result, &result
 		) != 0 || result >= terms->term_count) {
+		if (getenv("A_PROGRAM_FORMATION_TRACE")) {
+			fprintf(stderr,
+				"static family codomain failed function=%u callable=%u argument=%u "
+				"argument-classifier=%u status=%d result=%u\n",
+				function_classifier, callable, argument,
+				effective_argument_classifier,
+				codomain_status, result);
+		}
 		return -1;
 	}
 	if (terms->terms[result].tag == PROTOTYPE_TERM_PI) {
@@ -2697,7 +3021,7 @@ int prototype_judgement_static_family_app_classifier(
 		return 0;
 	}
 	if (terms->terms[result].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
-		prototype_term_computation_type_is_pure_total(terms, result) != 1) {
+		prototype_classifier_computation_type_is_pure_total(terms, result) != 1) {
 		return 1;
 	}
 	uint32_t value_classifier = terms->terms[result].as.computation_type.result;
@@ -2776,7 +3100,6 @@ static int pi_codomain_at_fresh_binder(
 			base_context_id,
 			terms->terms[binder_var].as.var.binding_id,
 			binder_classifier,
-			PROTOTYPE_INVALID_ID,
 			&premise_context
 		) != 0) {
 		return -1;
@@ -2844,14 +3167,12 @@ static int classifier_instantiate_binding_pair(
 		return -1;
 	}
 	return prototype_term_graph_substitute_bound_var(
-		terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-		expected_body,
+		terms, expected_body,
 		expected_binding,
 		comparison_term,
 		p_expected
 	) != 0 || prototype_term_graph_substitute_bound_var(
-		terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-		actual_body,
+		terms, actual_body,
 		actual_binding,
 		comparison_term,
 		p_actual
@@ -2891,6 +3212,13 @@ static int classifier_kernel_compatible_at_depth(
 	}
 	expected = normalized_expected;
 	actual = normalized_actual;
+	if (prototype_type_projection_classifier_graph(
+			terms, type_declarations, expected, &expected
+		) != 0 || prototype_type_projection_classifier_graph(
+			terms, type_declarations, actual, &actual
+		) != 0) {
+		return 0;
+	}
 	struct prototype_term_conversion_result conversion = classifier_kernel_conversion(
 			terms,
 			type_declarations,
@@ -2938,8 +3266,9 @@ static int classifier_kernel_compatible_at_depth(
 		terms, expected, &external_name, external_arguments,
 		&external_argument_count
 	) == 0;
-	int actual_is_instance = prototype_term_type_instance_info(
-		terms, actual, &instance_type_id, instance_arguments,
+	int actual_is_instance = prototype_type_projection_instance_info(
+		terms,
+		&type_declarations->semantic_schema, actual, &instance_type_id, instance_arguments,
 		&instance_argument_count
 	) == 0;
 	if (!expected_is_external || !actual_is_instance) {
@@ -2947,8 +3276,9 @@ static int classifier_kernel_compatible_at_depth(
 			terms, actual, &external_name, external_arguments,
 			&external_argument_count
 		) == 0;
-		actual_is_instance = prototype_term_type_instance_info(
-			terms, expected, &instance_type_id, instance_arguments,
+		actual_is_instance = prototype_type_projection_instance_info(
+			terms,
+		&type_declarations->semantic_schema, expected, &instance_type_id, instance_arguments,
 			&instance_argument_count
 		) == 0;
 	}
@@ -2980,11 +3310,13 @@ static int classifier_kernel_compatible_at_depth(
 	uint32_t actual_type_id;
 	uint32_t actual_arguments[16];
 	uint32_t actual_argument_count;
-	if (prototype_term_type_instance_info(
-			terms, expected, &expected_type_id,
+	if (prototype_type_projection_instance_info(
+			terms,
+		&type_declarations->semantic_schema, expected, &expected_type_id,
 			expected_arguments, &expected_argument_count
-		) == 0 && prototype_term_type_instance_info(
-			terms, actual, &actual_type_id,
+		) == 0 && prototype_type_projection_instance_info(
+			terms,
+		&type_declarations->semantic_schema, actual, &actual_type_id,
 			actual_arguments, &actual_argument_count
 		) == 0 && expected_type_id == actual_type_id &&
 		expected_argument_count == actual_argument_count) {
@@ -3373,6 +3705,202 @@ static int expected_effect_row_solve_classifier(
 	uint32_t expected,
 	uint32_t actual,
 	uint32_t depth
+);
+
+static int expected_effect_row_solve_nominal_instance(
+	struct expected_effect_row_solver* solver,
+	uint32_t expected,
+	uint32_t actual,
+	uint32_t depth,
+	int* p_handled
+) {
+	if (!solver || !p_handled) {
+		return -1;
+	}
+	*p_handled = 0;
+	struct prototype_qualified_name expected_identity;
+	struct prototype_qualified_name actual_identity;
+	uint32_t expected_arguments[16];
+	uint32_t actual_arguments[16];
+	uint32_t expected_argument_count;
+	uint32_t actual_argument_count;
+	int expected_status = prototype_term_nominal_type_instance_info(
+		solver->terms,
+		expected,
+		&expected_identity,
+		expected_arguments,
+		&expected_argument_count
+	);
+	int actual_status = prototype_term_nominal_type_instance_info(
+		solver->terms,
+		actual,
+		&actual_identity,
+		actual_arguments,
+		&actual_argument_count
+	);
+	if (expected_status != 0 && actual_status != 0) {
+		return 0;
+	}
+	*p_handled = 1;
+	if (expected_status != 0 || actual_status != 0) {
+		return 1;
+	}
+	if (expected_identity.namespace_symbol_id != actual_identity.namespace_symbol_id) {
+		return 1;
+	}
+	if (expected_identity.name_symbol_id != actual_identity.name_symbol_id) {
+		return 1;
+	}
+	if (expected_argument_count != actual_argument_count) {
+		return 1;
+	}
+	for (uint32_t i = 0; i < expected_argument_count; ++i) {
+		int status = expected_effect_row_solve_classifier(
+			solver,
+			expected_arguments[i],
+			actual_arguments[i],
+			depth + 1
+		);
+		if (status != 0) {
+			return status;
+		}
+	}
+	return 0;
+}
+
+static int expected_effect_row_match_case_corresponds(
+	struct expected_effect_row_solver* solver,
+	uint32_t expected_case_id,
+	uint32_t actual_case_id
+) {
+	if (!solver) {
+		return -1;
+	}
+	if (expected_case_id >= solver->terms->case_count) {
+		return -1;
+	}
+	if (actual_case_id >= solver->terms->case_count) {
+		return -1;
+	}
+	const struct prototype_match_case* expected_case =
+		&solver->terms->cases[expected_case_id];
+	const struct prototype_match_case* actual_case =
+		&solver->terms->cases[actual_case_id];
+	if (expected_case->binder_count != actual_case->binder_count) {
+		return 0;
+	}
+	int expected_has_constructor =
+		expected_case->constructor_owner != PROTOTYPE_INVALID_ID;
+	expected_has_constructor = expected_has_constructor &&
+		expected_case->constructor_id != PROTOTYPE_INVALID_ID;
+	int actual_has_constructor =
+		actual_case->constructor_owner != PROTOTYPE_INVALID_ID;
+	actual_has_constructor = actual_has_constructor &&
+		actual_case->constructor_id != PROTOTYPE_INVALID_ID;
+	if (expected_has_constructor && actual_has_constructor) {
+		if (expected_case->constructor_id != actual_case->constructor_id) {
+			return 0;
+		}
+		return classifier_kernel_conversion(
+			solver->terms,
+			solver->type_declarations,
+			solver->definitions,
+			expected_case->constructor_owner,
+			actual_case->constructor_owner
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL;
+	}
+	int expected_label = solver->terms->case_label_symbols[expected_case_id];
+	int actual_label = solver->terms->case_label_symbols[actual_case_id];
+	if (expected_label < 0 || actual_label < 0) {
+		return 0;
+	}
+	return expected_label == actual_label;
+}
+
+static int expected_effect_row_solve_match(
+	struct expected_effect_row_solver* solver,
+	uint32_t expected,
+	uint32_t actual,
+	uint32_t depth
+) {
+	const struct prototype_term* expected_match = &solver->terms->terms[expected];
+	const struct prototype_term* actual_match = &solver->terms->terms[actual];
+	if (expected_match->as.match.case_count != actual_match->as.match.case_count) {
+		return 1;
+	}
+	int status = expected_effect_row_solve_classifier(
+		solver,
+		expected_match->as.match.scrutinee,
+		actual_match->as.match.scrutinee,
+		depth + 1
+	);
+	if (status != 0) {
+		return status;
+	}
+	for (uint32_t i = 0; i < expected_match->as.match.case_count; ++i) {
+		uint32_t expected_case_id = expected_match->as.match.first_case + i;
+		uint32_t actual_case_id = actual_match->as.match.first_case + i;
+		int corresponds = expected_effect_row_match_case_corresponds(
+			solver, expected_case_id, actual_case_id
+		);
+		if (corresponds <= 0) {
+			return corresponds < 0 ? -1 : 1;
+		}
+		const struct prototype_match_case* expected_case =
+			&solver->terms->cases[expected_case_id];
+		const struct prototype_match_case* actual_case =
+			&solver->terms->cases[actual_case_id];
+		uint32_t expected_body = expected_case->body;
+		uint32_t actual_body = actual_case->body;
+		for (uint32_t j = 0; j < expected_case->binder_count; ++j) {
+			uint32_t expected_binder_index = expected_case->first_binder + j;
+			uint32_t actual_binder_index = actual_case->first_binder + j;
+			if (expected_binder_index >= solver->terms->case_binder_count) {
+				return -1;
+			}
+			if (actual_binder_index >= solver->terms->case_binder_count) {
+				return -1;
+			}
+			uint32_t comparison_binding = prototype_term_new_binding(solver->terms);
+			if (comparison_binding == PROTOTYPE_INVALID_ID) {
+				return -1;
+			}
+			uint32_t comparison_var;
+			if (prototype_term_var(
+					solver->terms, comparison_binding, &comparison_var
+				) != 0) {
+				return -1;
+			}
+			if (prototype_term_graph_substitute_bound_var(
+					solver->terms, expected_body,
+					solver->terms->case_binders[expected_binder_index].binding_id,
+					comparison_var, &expected_body
+				) != 0) {
+				return -1;
+			}
+			if (prototype_term_graph_substitute_bound_var(
+					solver->terms, actual_body,
+					solver->terms->case_binders[actual_binder_index].binding_id,
+					comparison_var, &actual_body
+				) != 0) {
+				return -1;
+			}
+		}
+		status = expected_effect_row_solve_classifier(
+			solver, expected_body, actual_body, depth + 1
+		);
+		if (status != 0) {
+			return status;
+		}
+	}
+	return 0;
+}
+
+static int expected_effect_row_solve_classifier(
+	struct expected_effect_row_solver* solver,
+	uint32_t expected,
+	uint32_t actual,
+	uint32_t depth
 ) {
 	if (!solver || expected >= solver->terms->term_count ||
 		actual >= solver->terms->term_count || depth > 32) {
@@ -3421,6 +3949,19 @@ static int expected_effect_row_solve_classifier(
 			depth + 1
 		);
 	}
+	int nominal_handled;
+	int nominal_status = expected_effect_row_solve_nominal_instance(
+		solver, expected, actual, depth, &nominal_handled
+	);
+	if (nominal_status != 0 || nominal_handled) {
+		return nominal_status;
+	}
+	if (expected_term->tag == PROTOTYPE_TERM_MATCH &&
+		actual_term->tag == PROTOTYPE_TERM_MATCH) {
+		return expected_effect_row_solve_match(
+			solver, expected, actual, depth
+		);
+	}
 	if (expected_term->tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL &&
 		actual_term->tag == PROTOTYPE_TERM_EFFECT_ROW_FORALL) {
 		uint32_t expected_row;
@@ -3434,8 +3975,7 @@ static int expected_effect_row_solve_classifier(
 				expected_term->as.effect_row_forall.binding_id,
 				&expected_row
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
-				actual_term->as.effect_row_forall.body,
+				solver->terms, actual_term->as.effect_row_forall.body,
 				actual_term->as.effect_row_forall.binding_id,
 				expected_row,
 				&instantiated_actual
@@ -3478,8 +4018,7 @@ static int expected_effect_row_solve_classifier(
 			}
 		}
 		if (row_status > 0 && prototype_term_graph_substitute_bound_var(
-				solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
-				actual_term->as.effect_row_forall.body,
+				solver->terms, actual_term->as.effect_row_forall.body,
 				actual_term->as.effect_row_forall.binding_id,
 				row,
 				&instantiated
@@ -3574,14 +4113,12 @@ static int expected_effect_row_solve_classifier(
 					prototype_term_var(
 						solver->terms, comparison_binder, &comparison_var
 					) != 0 || prototype_term_graph_substitute_bound_var(
-						solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
-						expected_body,
+						solver->terms, expected_body,
 						solver->terms->case_binders[expected_binder_index].binding_id,
 						comparison_var,
 						&expected_body
 					) != 0 || prototype_term_graph_substitute_bound_var(
-						solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
-						actual_body,
+						solver->terms, actual_body,
 						solver->terms->case_binders[actual_binder_index].binding_id,
 						comparison_var,
 						&actual_body
@@ -3740,14 +4277,12 @@ static int expected_effect_row_solve_classifier(
 			prototype_term_var(
 				solver->terms, comparison_binder, &comparison_var
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
-				expected_body,
+				solver->terms, expected_body,
 				expected_binder,
 				comparison_var,
 				&instantiated_expected
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				solver->terms, prototype_type_view_rebuild_context_from_db(solver->type_declarations),
-				actual_body,
+				solver->terms, actual_body,
 				actual_binder,
 				comparison_var,
 				&instantiated_actual
@@ -3792,27 +4327,29 @@ int prototype_judgement_solve_expected_effect_rows(
 	int status = expected_effect_row_solve_classifier(
 		&solver, expected, actual, 0
 	);
-	if (status != 0) {
+	if (status < 0) {
 		return status;
 	}
 	uint32_t solved = expected;
 	uint32_t solved_actual = actual;
 	for (uint32_t i = 0; i < solver.solution_count; ++i) {
 		if (prototype_term_graph_substitute_bound_var(
-				terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-				solved,
+				terms, solved,
 				solver.solutions[i].binding_id,
 				solver.solutions[i].row,
 				&solved
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-				solved_actual,
+				terms, solved_actual,
 				solver.solutions[i].binding_id,
 				solver.solutions[i].row,
 				&solved_actual
 			) != 0) {
 			return -1;
 		}
+	}
+	*p_solved_expected = solved;
+	if (status > 0) {
+		return status;
 	}
 	/* Recheck with the solved expectation through the same structural procedure.
 	 * Generic conversion deliberately does not instantiate classifier-level row
@@ -3824,8 +4361,140 @@ int prototype_judgement_solve_expected_effect_rows(
 	if (status != 0) {
 		return status;
 	}
-	*p_solved_expected = solved;
 	return 0;
+}
+
+static int classifier_effect_row_includes_at_depth(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t superset,
+	uint32_t subset,
+	uint32_t depth
+) {
+	if (!terms || !type_declarations || superset >= terms->term_count ||
+		subset >= terms->term_count || depth > 256) {
+		return -1;
+	}
+	if (classifier_kernel_conversion(
+			terms, type_declarations, NULL, superset, subset
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		return 1;
+	}
+	const struct prototype_term* left = &terms->terms[superset];
+	const struct prototype_term* right = &terms->terms[subset];
+	if (left->tag != right->tag) {
+		return 0;
+	}
+	switch (left->tag) {
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+		{
+			if (left->as.computation_type.totality !=
+					right->as.computation_type.totality ||
+				classifier_kernel_conversion(
+					terms,
+					type_declarations,
+					NULL,
+					left->as.computation_type.result,
+					right->as.computation_type.result
+				).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+				return 0;
+			}
+			struct prototype_effect_row_normal_form left_row;
+			struct prototype_effect_row_normal_form right_row;
+			if (prototype_term_effect_row_normal_form(
+					terms, left->as.computation_type.label, &left_row
+				) != 0 || prototype_term_effect_row_normal_form(
+					terms, right->as.computation_type.label, &right_row
+				) != 0) {
+				return -1;
+			}
+			return prototype_term_effect_row_normal_form_includes(
+				terms, &left_row, &right_row
+			);
+		}
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			return classifier_effect_row_includes_at_depth(
+				terms,
+				type_declarations,
+				left->as.thunk_type.computation,
+				right->as.thunk_type.computation,
+				depth + 1
+			);
+		case PROTOTYPE_TERM_PI:
+		{
+			if (classifier_kernel_conversion(
+					terms,
+					type_declarations,
+					NULL,
+					left->as.pi.domain,
+					right->as.pi.domain
+				).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+				return 0;
+			}
+			uint32_t left_binder;
+			uint32_t left_body;
+			uint32_t right_binder;
+			uint32_t right_body;
+			uint32_t right_var;
+			uint32_t aligned_left_body;
+			if (prototype_term_pure_family_parts(
+					terms, left->as.pi.codomain_family,
+					&left_binder, &left_body
+				) != 0 || prototype_term_pure_family_parts(
+					terms, right->as.pi.codomain_family,
+					&right_binder, &right_body
+				) != 0 || prototype_term_var(
+					terms, right_binder, &right_var
+				) != 0 || prototype_term_graph_substitute_bound_var(
+					terms, left_body, left_binder, right_var, &aligned_left_body
+				) != 0) {
+				return -1;
+			}
+			return classifier_effect_row_includes_at_depth(
+				terms,
+				type_declarations,
+				aligned_left_body,
+				right_body,
+				depth + 1
+			);
+		}
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+		{
+			uint32_t right_row;
+			uint32_t aligned_left;
+			if (prototype_term_effect_row_var(
+					terms, right->as.effect_row_forall.binding_id, &right_row
+				) != 0 || prototype_term_graph_substitute_bound_var(
+					terms,
+					left->as.effect_row_forall.body,
+					left->as.effect_row_forall.binding_id,
+					right_row,
+					&aligned_left
+				) != 0) {
+				return -1;
+			}
+			return classifier_effect_row_includes_at_depth(
+				terms,
+				type_declarations,
+				aligned_left,
+				right->as.effect_row_forall.body,
+				depth + 1
+			);
+		}
+		default:
+			return 0;
+	}
+}
+
+int prototype_judgement_classifier_effect_row_includes(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t superset,
+	uint32_t subset
+) {
+	return classifier_effect_row_includes_at_depth(
+		terms, type_declarations, superset, subset, 0
+	);
 }
 
 int prototype_judgement_classifier_compatible(
@@ -3834,6 +4503,9 @@ int prototype_judgement_classifier_compatible(
 	uint32_t expected,
 	uint32_t actual
 ) {
+	if (terms && expected == actual && expected < terms->term_count) {
+		return 1;
+	}
 	return classifier_kernel_compatible_no_definitions_at_depth(terms, type_declarations, expected, actual, 0);
 }
 
@@ -3852,4 +4524,348 @@ int prototype_judgement_classifier_compatible_with_definitions(
 		actual,
 		0
 	);
+}
+
+static int guarded_equation_normalize_complete(
+	struct prototype_term_db* terms,
+	uint32_t term,
+	uint32_t* p_normalized
+) {
+	struct prototype_term_normalization_result result;
+	if (!terms || !p_normalized || term >= terms->term_count ||
+		prototype_term_normalize_with_profile(
+			terms,
+			NULL,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
+			term,
+			UINT64_MAX,
+			&result
+		) != 0 || result.status != PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
+		return -1;
+	}
+	*p_normalized = result.term_id;
+	return 0;
+}
+
+static int guarded_equation_find_iota_redex(
+	struct prototype_term_db* terms,
+	uint32_t term,
+	uint8_t* visited,
+	size_t visited_count,
+	uint32_t* p_redex,
+	uint32_t* p_reduct
+) {
+	if (!terms || !visited || !p_redex || !p_reduct ||
+		term >= terms->term_count || term >= visited_count) {
+		return -1;
+	}
+	if (visited[term]) {
+		return 0;
+	}
+	visited[term] = 1;
+	if (terms->terms[term].tag == PROTOTYPE_TERM_MATCH) {
+		uint32_t reduced;
+		if (guarded_equation_normalize_complete(terms, term, &reduced) != 0) {
+			return -1;
+		}
+		if (reduced != term) {
+			*p_redex = term;
+			*p_reduct = reduced;
+			return 1;
+		}
+	}
+	uint32_t child_count;
+	if (prototype_term_child_count(terms, term, &child_count) != 0) {
+		return -1;
+	}
+	for (uint32_t child_index = 0; child_index < child_count; ++child_index) {
+		struct prototype_term_child child;
+		if (prototype_term_child_at(
+				terms, term, child_index, &child
+			) != 0) {
+			return -1;
+		}
+		int status = guarded_equation_find_iota_redex(
+			terms,
+			child.term,
+			visited,
+			visited_count,
+			p_redex,
+			p_reduct
+		);
+		if (status != 0) {
+			return status;
+		}
+	}
+	return 0;
+}
+
+static int guarded_equation_contract_iota_redexes(
+	struct prototype_term_db* terms,
+	uint32_t classifier,
+	uint32_t* p_contracted
+) {
+	if (!terms || !p_contracted || classifier >= terms->term_count) {
+		return -1;
+	}
+	uint32_t contracted = classifier;
+	for (uint32_t step = 0; step < 64; ++step) {
+		size_t visited_count = terms->term_count;
+		uint8_t* visited = calloc(visited_count, sizeof(*visited));
+		uint32_t redex = PROTOTYPE_INVALID_ID;
+		uint32_t reduct = PROTOTYPE_INVALID_ID;
+		if (!visited) {
+			return -1;
+		}
+		int find_status = guarded_equation_find_iota_redex(
+			terms,
+			contracted,
+			visited,
+			visited_count,
+			&redex,
+			&reduct
+		);
+		free(visited);
+		if (find_status < 0) {
+			return -1;
+		}
+		if (find_status == 0) {
+			*p_contracted = contracted;
+			return 0;
+		}
+		uint32_t next;
+		if (prototype_term_graph_replace_exact(
+				terms, contracted, redex, reduct, &next
+			) != 0 || next == contracted) {
+			return -1;
+		}
+		contracted = next;
+	}
+	return -1;
+}
+
+static int guarded_equation_find_ih_reduction(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t expected,
+	uint32_t actual,
+	uint32_t* expected_binders,
+	uint32_t* actual_binders,
+	size_t binder_count,
+	uint32_t depth,
+	uint32_t* p_redex,
+	uint32_t* p_reduct
+) {
+	if (!terms || !type_declarations || !expected_binders || !actual_binders ||
+		!p_redex || !p_reduct || expected >= terms->term_count ||
+		actual >= terms->term_count || binder_count > 64 || depth > 256) {
+		return -1;
+	}
+	const struct prototype_term left = terms->terms[expected];
+	const struct prototype_term right = terms->terms[actual];
+	uint32_t root = expected;
+	while (root < terms->term_count &&
+		terms->terms[root].tag == PROTOTYPE_TERM_APP) {
+		root = terms->terms[root].as.app.function;
+	}
+	if (root < terms->term_count && terms->terms[root].tag ==
+			PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
+		uint32_t reduced;
+		int reduction_status = guarded_equation_normalize_complete(
+			terms, expected, &reduced
+		);
+		uint32_t aligned_actual = actual;
+		struct prototype_binding_replacement replacements[64];
+		int alignment_valid = reduction_status == 0 && reduced != expected;
+		for (size_t binder = 0; alignment_valid && binder < binder_count;
+			++binder) {
+			uint32_t expected_var;
+			if (prototype_term_var(
+					terms, expected_binders[binder], &expected_var
+				) != 0) {
+				alignment_valid = 0;
+				break;
+			}
+			replacements[binder] = (struct prototype_binding_replacement) {
+				.binding_id = actual_binders[binder],
+				.replacement = expected_var
+			};
+		}
+		if (alignment_valid && prototype_term_graph_reindex_bindings(
+				terms,
+				actual,
+				replacements,
+				binder_count,
+				&aligned_actual
+			) != 0) {
+			return -1;
+		}
+		struct prototype_term_conversion_result local_conversion =
+			alignment_valid ? prototype_judgement_classifier_conversion(
+				terms,
+				type_declarations,
+				reduced,
+				aligned_actual
+			) : (struct prototype_term_conversion_result) { 0 };
+		if (alignment_valid && local_conversion.status ==
+				PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			*p_redex = expected;
+			*p_reduct = reduced;
+			return 1;
+		}
+	}
+	if (left.tag != right.tag) {
+		struct prototype_binding_replacement replacements[64];
+		uint32_t aligned_actual = actual;
+		for (size_t binder = 0; binder < binder_count; ++binder) {
+			uint32_t expected_var;
+			if (prototype_term_var(
+					terms, expected_binders[binder], &expected_var
+				) != 0) {
+				return -1;
+			}
+			replacements[binder] = (struct prototype_binding_replacement) {
+				.binding_id = actual_binders[binder],
+				.replacement = expected_var
+			};
+		}
+		if (prototype_term_graph_reindex_bindings(
+				terms,
+				actual,
+				replacements,
+				binder_count,
+				&aligned_actual
+			) != 0) {
+			return -1;
+		}
+		if (prototype_judgement_classifier_conversion(
+				terms, type_declarations, expected, aligned_actual
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			*p_redex = expected;
+			*p_reduct = aligned_actual;
+			return 1;
+		}
+		return 0;
+	}
+	if (left.tag == PROTOTYPE_TERM_LAMBDA) {
+		if (binder_count >= 64) {
+			return -1;
+		}
+		expected_binders[binder_count] = left.as.lambda.binding_id;
+		actual_binders[binder_count] = right.as.lambda.binding_id;
+		return guarded_equation_find_ih_reduction(
+			terms,
+			type_declarations,
+			left.as.lambda.body,
+			right.as.lambda.body,
+			expected_binders,
+			actual_binders,
+			binder_count + 1,
+			depth + 1,
+			p_redex,
+			p_reduct
+		);
+	}
+	uint32_t expected_child_count;
+	uint32_t actual_child_count;
+	if (prototype_term_child_count(
+			terms, expected, &expected_child_count
+		) != 0 || prototype_term_child_count(
+			terms, actual, &actual_child_count
+		) != 0 || expected_child_count != actual_child_count) {
+		return -1;
+	}
+	for (uint32_t child_index = 0; child_index < expected_child_count;
+		++child_index) {
+		struct prototype_term_child expected_child;
+		struct prototype_term_child actual_child;
+		if (prototype_term_child_at(
+				terms, expected, child_index, &expected_child
+			) != 0 || prototype_term_child_at(
+				terms, actual, child_index, &actual_child
+			) != 0 || expected_child.role != actual_child.role ||
+			expected_child.ordinal != actual_child.ordinal) {
+			return -1;
+		}
+		int status = guarded_equation_find_ih_reduction(
+			terms,
+			type_declarations,
+			expected_child.term,
+			actual_child.term,
+			expected_binders,
+			actual_binders,
+			binder_count,
+			depth + 1,
+			p_redex,
+			p_reduct
+		);
+		if (status != 0) {
+			return status;
+		}
+	}
+	return 0;
+}
+
+int prototype_judgement_guarded_classifier_equation(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t expected,
+	uint32_t actual,
+	uint32_t* p_validated_expected
+) {
+	if (!terms || !type_declarations || !p_validated_expected ||
+		expected >= terms->term_count || actual >= terms->term_count) {
+		return -1;
+	}
+	uint32_t normalized_expected;
+	if (guarded_equation_normalize_complete(
+			terms, expected, &normalized_expected
+		) != 0) {
+		return -1;
+	}
+	uint32_t contracted_expected;
+	if (guarded_equation_contract_iota_redexes(
+			terms, normalized_expected, &contracted_expected
+		) != 0) {
+		return -1;
+	}
+	for (uint32_t fold = 0; fold < 64; ++fold) {
+		if (prototype_judgement_classifier_conversion(
+				terms, type_declarations, contracted_expected, actual
+			).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
+			*p_validated_expected = contracted_expected;
+			return 1;
+		}
+		uint32_t expected_binders[64];
+		uint32_t actual_binders[64];
+		uint32_t recursive_redex = PROTOTYPE_INVALID_ID;
+		uint32_t recursive_reduct = PROTOTYPE_INVALID_ID;
+		int correspondence = guarded_equation_find_ih_reduction(
+			terms,
+			type_declarations,
+			contracted_expected,
+			actual,
+			expected_binders,
+			actual_binders,
+			0,
+			0,
+			&recursive_redex,
+			&recursive_reduct
+		);
+		if (correspondence <= 0) {
+			return correspondence;
+		}
+		uint32_t next_expected;
+		if (prototype_term_graph_replace_exact(
+				terms,
+				contracted_expected,
+				recursive_redex,
+				recursive_reduct,
+				&next_expected
+			) != 0 || next_expected == contracted_expected) {
+			return -1;
+		}
+		contracted_expected = next_expected;
+	}
+	return 0;
 }

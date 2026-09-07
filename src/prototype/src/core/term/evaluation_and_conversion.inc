@@ -66,7 +66,6 @@ static int resolve_external_ref_term(
 			}
 			return prototype_term_type_view(
 				db,
-				term->as.type_view.view_type_id,
 				term->as.type_view.identity,
 				core,
 				source,
@@ -396,22 +395,6 @@ static void decompose_app(
 	}
 }
 
-static int type_instance_type_id(
-	const struct prototype_term_db* terms,
-	uint32_t term_id,
-	uint32_t* p_type_id
-) {
-	if (!terms || !p_type_id || term_id >= terms->term_count) {
-		return -1;
-	}
-	uint32_t arg_count;
-	uint32_t args[16];
-	if (prototype_term_type_instance_info(terms, term_id, p_type_id, args, &arg_count) == 0) {
-		return 0;
-	}
-	return -1;
-}
-
 static int constructor_owner_type_former(
 	const struct prototype_term_db* terms,
 	uint32_t owner,
@@ -517,7 +500,6 @@ static int lookup_transparent_definition(
 
 static int evaluate_steps(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -527,7 +509,6 @@ static int evaluate_steps(
 
 static int reduce_host_pure_primitive_step(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -537,7 +518,6 @@ static int reduce_host_pure_primitive_step(
 
 static int dispatch_operation_request_step(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -723,7 +703,6 @@ static int normalization_rebuild_on_pause(
 
 static int conversion_equal_at_depth(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	struct term_scope_env* scope,
@@ -773,9 +752,39 @@ static int conversion_scope_push_frame(
 	return -1;
 }
 
+static int conversion_scope_enter_match_frames(
+	struct prototype_term_reduction_options options,
+	struct term_scope_env* scope,
+	uint32_t left_frame,
+	uint32_t right_frame
+) {
+	if (left_frame == PROTOTYPE_INVALID_ID &&
+		right_frame == PROTOTYPE_INVALID_ID) {
+		return 0;
+	}
+	if (left_frame == PROTOTYPE_INVALID_ID) {
+		if (term_scope_env_mark_unmatched_frame(scope, right_frame, 0) == 0) {
+			return 0;
+		}
+	} else if (right_frame == PROTOTYPE_INVALID_ID) {
+		if (term_scope_env_mark_unmatched_frame(scope, left_frame, 1) == 0) {
+			return 0;
+		}
+	} else {
+		return conversion_scope_push_frame(
+			options, scope, left_frame, right_frame
+		);
+	}
+	normalization_mark_status(
+		options,
+		PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED,
+		PROTOTYPE_TERM_CONVERSION_REASON_DEPTH_LIMIT
+	);
+	return -1;
+}
+
 static int conversion_equal_match_case_bodies(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	struct term_scope_env* scope,
@@ -816,7 +825,6 @@ static int conversion_equal_match_case_bodies(
 
 	return conversion_equal_at_depth(
 		db,
-		type_declarations,
 		definitions,
 		options,
 		&body_scope,
@@ -837,7 +845,6 @@ static int conversion_equal_match_case_bodies(
  * conversion kernel so Lambda checking and every other client share it. */
 static int conversion_equal_computation_match(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	struct term_scope_env* scope,
@@ -859,7 +866,6 @@ static int conversion_equal_computation_match(
 	uint32_t result_whnf;
 	if (prototype_term_perform_with_options(
 			db,
-			type_declarations,
 			definitions,
 			options,
 			computation.as.computation_type.result,
@@ -876,7 +882,6 @@ static int conversion_equal_computation_match(
 	int equal = 0;
 	if (conversion_equal_at_depth(
 			db,
-			type_declarations,
 			definitions,
 			options,
 			scope,
@@ -889,12 +894,7 @@ static int conversion_equal_computation_match(
 	}
 
 	struct term_scope_env match_scope = *scope;
-	/* A solver-generated non-recursive Match may retain an internal frame when
-	 * the corresponding reduced surface family does not. Pair a missing frame
-	 * with INVALID so a vacuous frame is ignored but any IH use is rejected. */
-	if ((result_match.as.match.ih_scope_id != PROTOTYPE_INVALID_ID ||
-		outer_match.as.match.ih_scope_id != PROTOTYPE_INVALID_ID) &&
-		conversion_scope_push_frame(
+	if (conversion_scope_enter_match_frames(
 			options,
 			&match_scope,
 			result_match.as.match.ih_scope_id,
@@ -932,7 +932,6 @@ static int conversion_equal_computation_match(
 				outer_case.constructor_owner == PROTOTYPE_INVALID_ID ||
 				conversion_equal_at_depth(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					&match_scope,
@@ -954,7 +953,6 @@ static int conversion_equal_computation_match(
 				&branch_computation
 			) != 0 || conversion_equal_match_case_bodies(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				&match_scope,
@@ -979,21 +977,10 @@ static struct prototype_term_reduction_options normalize_reduction_options(
 	return options;
 }
 
-static int reduction_is_pure_type(
+static int reduction_is_type_expression(
 	struct prototype_term_reduction_options options
 ) {
-	return (options.flags & PROTOTYPE_TERM_REDUCE_PURE_TYPE) != 0;
-}
-
-static struct prototype_type_view_rebuild_context reduction_substitution_types(
-	const struct prototype_type_declaration_db* type_declarations,
-	struct prototype_term_reduction_options options
-) {
-	/* TypeView rematerialization is part of pure-type normalization. Ordinary
-	 * beta/iota computation performs only structural Core substitution. */
-	return reduction_is_pure_type(options) ?
-		prototype_type_view_rebuild_context_from_db(type_declarations) :
-		(struct prototype_type_view_rebuild_context) {0};
+	return (options.flags & PROTOTYPE_TERM_REDUCE_TYPE_EXPRESSION) != 0;
 }
 
 static void normalization_mark_status(
@@ -1049,12 +1036,12 @@ static int normalization_profile_options(
 				PROTOTYPE_TERM_REDUCE_INDUCTION |
 				PROTOTYPE_TERM_REDUCE_COMPUTATIONS;
 			break;
-		case PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF:
+		case PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF:
 			p_options->flags = PROTOTYPE_TERM_REDUCE_BETA |
 				PROTOTYPE_TERM_REDUCE_MATCH |
 				PROTOTYPE_TERM_REDUCE_INDUCTION |
 				PROTOTYPE_TERM_REDUCE_COMPUTATIONS |
-				PROTOTYPE_TERM_REDUCE_PURE_TYPE;
+				PROTOTYPE_TERM_REDUCE_TYPE_EXPRESSION;
 			break;
 		default:
 			return -1;
@@ -1081,8 +1068,8 @@ static int normalization_profile_from_options(
 			PROTOTYPE_TERM_REDUCE_MATCH |
 			PROTOTYPE_TERM_REDUCE_INDUCTION |
 			PROTOTYPE_TERM_REDUCE_COMPUTATIONS |
-			PROTOTYPE_TERM_REDUCE_PURE_TYPE)) {
-		return PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF;
+			PROTOTYPE_TERM_REDUCE_TYPE_EXPRESSION)) {
+		return PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF;
 	}
 	if (options.flags == (PROTOTYPE_TERM_REDUCE_BETA |
 			PROTOTYPE_TERM_REDUCE_MATCH |
@@ -1097,7 +1084,6 @@ static int normalization_cache_lookup(
 	struct prototype_term_db* db,
 	int profile,
 	uint32_t term_id,
-	uint64_t semantic_revision,
 	uint32_t* p_result
 ) {
 	if (!db || !p_result) {
@@ -1115,13 +1101,6 @@ static int normalization_cache_lookup(
 			&db->normalization_cache[i];
 		if (entry->state == PROTOTYPE_TERM_NORMALIZATION_CACHE_COMPLETE &&
 			entry->graph_revision == db->normalization_graph_revision &&
-			entry->profile == profile && entry->term_id == term_id &&
-			entry->semantic_revision != semantic_revision) {
-			db->normalization_cache_stats.semantic_revision_miss_count++;
-		}
-		if (entry->state == PROTOTYPE_TERM_NORMALIZATION_CACHE_COMPLETE &&
-			entry->graph_revision == db->normalization_graph_revision &&
-			entry->semantic_revision == semantic_revision &&
 			entry->profile == profile &&
 			entry->term_id == term_id &&
 			entry->result_term_id < db->term_count) {
@@ -1134,10 +1113,8 @@ static int normalization_cache_lookup(
 
 static size_t normalization_cache_bucket(
 	int profile,
-	uint32_t term_id,
-	uint64_t semantic_revision
+	uint32_t term_id
 ) {
-	(void)semantic_revision;
 	uint64_t hash = (uint64_t)term_id * UINT64_C(11400714819323198485) ^
 		(uint64_t)(uint32_t)profile * UINT64_C(14029467366897019727);
 	return (size_t)hash &
@@ -1155,7 +1132,7 @@ static void normalization_cache_remove_slot(
 	const struct prototype_term_normalization_cache_entry* entry =
 		&db->normalization_cache[slot];
 	size_t bucket = normalization_cache_bucket(
-		entry->profile, entry->term_id, entry->semantic_revision
+		entry->profile, entry->term_id
 	);
 	uint32_t* link = &db->normalization_cache_buckets[bucket];
 	while (*link != PROTOTYPE_INVALID_ID) {
@@ -1171,8 +1148,7 @@ static void normalization_cache_remove_slot(
 static struct prototype_term_normalization_cache_entry* normalization_cache_reserve(
 	struct prototype_term_db* db,
 	int profile,
-	uint32_t term_id,
-	uint64_t semantic_revision
+	uint32_t term_id
 ) {
 	if (!db) {
 		return NULL;
@@ -1188,82 +1164,15 @@ static struct prototype_term_normalization_cache_entry* normalization_cache_rese
 	entry->term_id = term_id;
 	entry->result_term_id = PROTOTYPE_INVALID_ID;
 	entry->graph_revision = db->normalization_graph_revision;
-	entry->semantic_revision = semantic_revision;
 	entry->profile = profile;
 	entry->state = PROTOTYPE_TERM_NORMALIZATION_CACHE_IN_PROGRESS;
 	size_t bucket = normalization_cache_bucket(
-		profile, term_id, semantic_revision
+		profile, term_id
 	);
 	db->normalization_cache_next_entry[slot] =
 		db->normalization_cache_buckets[bucket];
 	db->normalization_cache_buckets[bucket] = slot;
 	return entry;
-}
-
-static uint64_t normalization_profile_semantic_revision(
-	int profile,
-	const struct prototype_type_declaration_db* type_declarations
-) {
-	return profile == PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF ||
-		!type_declarations ? 0 :
-		type_declarations->semantic_schema.semantic_revision;
-}
-
-static int constant_match_is_exhaustive(
-	const struct prototype_term_db* terms,
-	const struct prototype_type_declaration_db* types,
-	const struct prototype_term* match
-) {
-	if (!terms || !match || match->tag != PROTOTYPE_TERM_MATCH ||
-		match->as.match.case_count == 0 || match->as.match.case_count > 64) {
-		return 0;
-	}
-	const struct prototype_match_case* first_case =
-		&terms->cases[match->as.match.first_case];
-	if (first_case->constructor_owner == PROTOTYPE_INVALID_ID ||
-		first_case->constructor_owner >= terms->term_count) {
-		return 0;
-	}
-	uint32_t constructor_count = 0;
-	const struct prototype_term* type_former;
-	if (constructor_owner_type_former(
-			terms, first_case->constructor_owner, &type_former
-		) == 0) {
-		constructor_count = type_former->as.type_former.constructor_count;
-	} else if (types) {
-		uint32_t type_id;
-		const struct prototype_term* owner =
-			&terms->terms[first_case->constructor_owner];
-		if (owner->tag == PROTOTYPE_TERM_TYPE_VIEW) {
-			type_id = owner->as.type_view.view_type_id;
-		} else if (type_instance_type_id(
-				terms, first_case->constructor_owner, &type_id
-			) != 0) {
-			type_id = PROTOTYPE_INVALID_ID;
-		}
-		if (type_id < types->semantic_schema.type_count) {
-			constructor_count =
-				types->semantic_schema.type_declarations[type_id].constructor_count;
-		}
-	}
-	if (constructor_count != match->as.match.case_count) {
-		return 0;
-	}
-	uint64_t seen = 0;
-	for (uint32_t i = 0; i < match->as.match.case_count; ++i) {
-		const struct prototype_match_case* match_case =
-			&terms->cases[match->as.match.first_case + i];
-		if (match_case->constructor_owner != first_case->constructor_owner ||
-			match_case->constructor_id >= constructor_count) {
-			return 0;
-		}
-		uint64_t bit = UINT64_C(1) << match_case->constructor_id;
-		if (seen & bit) {
-			return 0;
-		}
-		seen |= bit;
-	}
-	return 1;
 }
 
 static int induction_hypothesis_recursive_match(
@@ -1386,7 +1295,6 @@ static int induction_hypothesis_map_value(
 
 static int evaluate_steps(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -1429,7 +1337,6 @@ static int evaluate_steps(
 				}
 					return evaluate_steps(
 						db,
-						type_declarations,
 						definitions,
 						options,
 						definition_term,
@@ -1444,7 +1351,6 @@ static int evaluate_steps(
 			uint32_t function;
 			if (evaluate_steps(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					term->as.app.function,
@@ -1471,7 +1377,6 @@ static int evaluate_steps(
 					db->terms[value].tag == PROTOTYPE_TERM_THUNK &&
 					evaluate_steps(
 						db,
-						type_declarations,
 						definitions,
 						options,
 						db->terms[value].as.thunk.computation,
@@ -1498,7 +1403,6 @@ static int evaluate_steps(
 				uint32_t substituted;
 				if (substitute_term(
 					db,
-					reduction_substitution_types(type_declarations, options),
 					reduced_function->as.lambda.body,
 					reduced_function->as.lambda.binding_id,
 					term->as.app.argument,
@@ -1508,7 +1412,6 @@ static int evaluate_steps(
 				}
 				return evaluate_steps(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					substituted,
@@ -1517,30 +1420,34 @@ static int evaluate_steps(
 				);
 			}
 
-			/* Imported type formers become TYPE_VIEW only after transparent-name
-			 * reduction. Materialize their application here just as graph lowering
-			 * does for an already-local type former. This is type-level graph
-			 * construction, not a runtime APP reduction. */
-			if (reduction_is_pure_type(options) && type_declarations) {
-				uint32_t type_id;
-				uint32_t arguments[16];
-				uint32_t argument_count;
-				if (prototype_term_type_instance_info(
-						db, function, &type_id, arguments, &argument_count
-					) == 0 && type_id < type_declarations->semantic_schema.type_count &&
-					type_declarations->semantic_schema.type_declarations[type_id].parameter_count <=
-						UINT32_MAX - type_declarations->semantic_schema.type_declarations[type_id].index_count &&
-					argument_count <
-						type_declarations->semantic_schema.type_declarations[type_id].parameter_count +
-						type_declarations->semantic_schema.type_declarations[type_id].index_count) {
-					return prototype_term_type_instance_extend(
-						db,
-						type_declarations,
-						function,
-						term->as.app.argument,
-						p_ret
-					);
+			/* TYPE_VIEW is object-language nominal type syntax. Once Layer T has
+			 * admitted the application, distributing APP over its Core/source
+			 * projections is structural calculation and needs no declaration DB. */
+			if (reduction_is_type_expression(options) &&
+				reduced_function->tag == PROTOTYPE_TERM_TYPE_VIEW) {
+				uint32_t core_argument = term->as.app.argument;
+				if (core_argument < db->term_count &&
+					db->terms[core_argument].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+					core_argument = db->terms[core_argument].as.type_view.core;
 				}
+				uint32_t core;
+				uint32_t source;
+				if (prototype_term_app(
+						db, reduced_function->as.type_view.core,
+						core_argument, &core
+					) != 0 || prototype_term_app(
+						db, reduced_function->as.type_view.source,
+						term->as.app.argument, &source
+					) != 0) {
+					return -1;
+				}
+				return prototype_term_type_view(
+					db,
+					reduced_function->as.type_view.identity,
+					core,
+					source,
+					p_ret
+				);
 			}
 
 			uint32_t candidate = term_id;
@@ -1552,21 +1459,21 @@ static int evaluate_steps(
 			 * Execution reduces its application to RETURN(result); it is neither
 			 * an operation request nor a type-conversion rule. */
 			if ((options.flags & PROTOTYPE_TERM_REDUCE_PURE_INTRINSICS) &&
-				!reduction_is_pure_type(options)) {
+				!reduction_is_type_expression(options)) {
 				uint32_t head;
 				uint32_t arguments[64];
 				uint32_t argument_count;
 				decompose_app(db, candidate, &head, arguments, &argument_count);
 				if (head < db->term_count &&
 					db->terms[head].tag == PROTOTYPE_TERM_PURE_PRIMITIVE) {
-					const struct prototype_pure_primitive_declaration* declaration =
-						prototype_term_pure_primitive_declaration(
+					const struct prototype_core_pure_primitive_declaration* declaration =
+						prototype_core_pure_primitive_declaration(
 							db->terms[head].as.pure_primitive.primitive_id
 						);
 					if (declaration) {
 						uint32_t result;
 						int status = reduce_host_pure_primitive_step(
-							db, type_declarations, definitions, options, candidate, &result, depth - 1
+							db, definitions, options, candidate, &result, depth - 1
 						);
 						if (status < 0) {
 							return -1;
@@ -1588,7 +1495,6 @@ static int evaluate_steps(
 			uint32_t scrutinee;
 				if (evaluate_steps(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					term->as.match.scrutinee,
@@ -1609,47 +1515,6 @@ static int evaluate_steps(
 			decompose_app(db, scrutinee, &head, args, &arg_count);
 			if (head >= db->term_count) {
 				return -1;
-			}
-
-			/* A match whose branches share one body independent of every pattern
-			 * binder is a constant eliminator. This is a general reduction rule,
-			 * not a typing shortcut: every normalization client observes the same
-			 * result even while the scrutinee is neutral. */
-			if (constant_match_is_exhaustive(
-					db,
-					reduction_is_pure_type(options) ? type_declarations : NULL,
-					term
-				)) {
-				const struct prototype_match_case* first_case =
-					&db->cases[term->as.match.first_case];
-				int uniform = 1;
-				for (uint32_t i = 0; uniform &&
-					i < term->as.match.case_count; ++i) {
-					const struct prototype_match_case* match_case =
-						&db->cases[term->as.match.first_case + i];
-					uniform = match_case->body == first_case->body;
-					for (uint32_t j = 0; uniform &&
-						j < match_case->binder_count; ++j) {
-						uniform = !prototype_term_contains_free_binding(
-							db,
-							first_case->body,
-							db->case_binders[
-								match_case->first_binder + j
-							].binding_id
-						);
-					}
-				}
-				if (uniform) {
-					return evaluate_steps(
-						db,
-						type_declarations,
-						definitions,
-						options,
-						first_case->body,
-						p_ret,
-						depth - 1
-					);
-				}
 			}
 
 			if (term_is_constructor_like(&db->terms[head]) != 0) {
@@ -1687,9 +1552,6 @@ static int evaluate_steps(
 					if (subject_binding != PROTOTYPE_INVALID_ID &&
 						substitute_term(
 							db,
-							reduction_substitution_types(
-								type_declarations, options
-							),
 							body,
 							subject_binding,
 							scrutinee,
@@ -1702,9 +1564,6 @@ static int evaluate_steps(
 					struct prototype_case_binder binder = db->case_binders[match_case->first_binder + j];
 					if (substitute_term(
 							db,
-							reduction_substitution_types(
-								type_declarations, options
-							),
 							body,
 							binder.binding_id,
 							args[j],
@@ -1715,7 +1574,6 @@ static int evaluate_steps(
 				}
 				return evaluate_steps(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					body,
@@ -1735,7 +1593,6 @@ static int evaluate_steps(
 			uint32_t argument;
 			if (evaluate_steps(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				term->as.induction_hypothesis.argument,
@@ -1770,7 +1627,6 @@ static int evaluate_steps(
 			}
 			return evaluate_steps(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				mapped,
@@ -1787,10 +1643,10 @@ static int evaluate_steps(
 			if (options.operation_dispatch ||
 				(options.flags & PROTOTYPE_TERM_PERFORM_HOST_EFFECT) != 0) {
 				return dispatch_operation_request_step(
-					db, type_declarations, definitions, options, term_id, p_ret, depth - 1
+					db, definitions, options, term_id, p_ret, depth - 1
 				);
 			}
-			if (reduction_is_pure_type(options)) {
+			if (reduction_is_type_expression(options)) {
 				normalization_mark_status(
 					options,
 					PROTOTYPE_TERM_NORMALIZATION_STATUS_BLOCKED_EFFECT,
@@ -1801,7 +1657,7 @@ static int evaluate_steps(
 			return 0;
 		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			if (!(options.flags & PROTOTYPE_TERM_REDUCE_COMPUTATIONS) ||
-				(reduction_is_pure_type(options) && term->as.computation_fold.clause_count > 0)) {
+				(reduction_is_type_expression(options) && term->as.computation_fold.clause_count > 0)) {
 				*p_ret = term_id;
 				return 0;
 			}
@@ -1813,7 +1669,7 @@ static int evaluate_steps(
 			inner_options.operation_dispatch_context = NULL;
 			uint32_t computation;
 			if (evaluate_steps(
-					db, type_declarations, definitions, inner_options,
+					db, definitions, inner_options,
 					term->as.computation_fold.computation, &computation, depth - 1
 				) != 0) {
 				if (computation < db->term_count) {
@@ -1839,7 +1695,7 @@ static int evaluate_steps(
 					return -1;
 				}
 				return evaluate_steps(
-					db, type_declarations, definitions, options, applied, p_ret, depth - 1
+					db, definitions, options, applied, p_ret, depth - 1
 				);
 			}
 			if (computation < db->term_count &&
@@ -1854,7 +1710,7 @@ static int evaluate_steps(
 					return -1;
 				}
 				return evaluate_steps(
-					db, type_declarations, definitions, options, applied, p_ret, depth - 1
+					db, definitions, options, applied, p_ret, depth - 1
 				);
 			}
 			if (computation < db->term_count &&
@@ -1867,7 +1723,7 @@ static int evaluate_steps(
 					return -1;
 				}
 				return evaluate_steps(
-					db, type_declarations, definitions, options, applied, p_ret, depth - 1
+					db, definitions, options, applied, p_ret, depth - 1
 				);
 			}
 			if (computation < db->term_count &&
@@ -1893,7 +1749,7 @@ static int evaluate_steps(
 						return -1;
 					}
 					return evaluate_steps(
-						db, type_declarations, definitions, options,
+						db, definitions, options,
 						clause_application, p_ret, depth - 1
 					);
 				}
@@ -1948,7 +1804,6 @@ static int evaluate_steps(
 			uint32_t value;
 			if (evaluate_steps(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					term->as.force.value,
@@ -1964,11 +1819,10 @@ static int evaluate_steps(
 			}
 			if (value < db->term_count && db->terms[value].tag == PROTOTYPE_TERM_THUNK) {
 				uint32_t computation = db->terms[value].as.thunk.computation;
-				if (reduction_is_pure_type(options)) {
+				if (reduction_is_type_expression(options)) {
 					uint32_t pure_computation;
 					if (evaluate_steps(
 							db,
-							type_declarations,
 							definitions,
 							options,
 							computation,
@@ -2004,7 +1858,6 @@ static int evaluate_steps(
 					}
 					return evaluate_steps(
 						db,
-						type_declarations,
 						definitions,
 						options,
 						pure_computation,
@@ -2014,7 +1867,6 @@ static int evaluate_steps(
 				}
 				return evaluate_steps(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					computation,
@@ -2036,7 +1888,6 @@ static int evaluate_steps(
 
 int prototype_term_normalize_complete_with_profile(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t term_id,
@@ -2050,7 +1901,6 @@ int prototype_term_normalize_complete_with_profile(
 	options.p_normalization_status = &normalization_status;
 	if (prototype_term_perform_with_options(
 		db,
-		type_declarations,
 		definitions,
 		options,
 		term_id,
@@ -2063,7 +1913,6 @@ int prototype_term_normalize_complete_with_profile(
 
 int prototype_term_normalize_with_profile(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t term_id,
@@ -2083,7 +1932,7 @@ int prototype_term_normalize_with_profile(
 	p_result->step_limit = 0;
 	p_result->steps_used = 0;
 	p_result->graph_revision = 0;
-	if (!db || !type_declarations || term_id >= db->term_count ||
+	if (!db || term_id >= db->term_count ||
 		normalization_profile_options(profile, definitions, &options) != 0) {
 		return 0;
 	}
@@ -2095,7 +1944,6 @@ int prototype_term_normalize_with_profile(
 	options.p_steps_used = &steps_used;
 	if (evaluate_steps(
 			db,
-			type_declarations,
 			definitions,
 			options,
 			term_id,
@@ -2121,7 +1969,6 @@ int prototype_term_normalize_with_profile(
 
 struct prototype_term_normalization_machine {
 	struct prototype_term_db* db;
-	struct prototype_type_declaration_db* type_declarations;
 	const struct prototype_term_definition_env* definitions;
 	int profile;
 	int status;
@@ -2131,14 +1978,13 @@ struct prototype_term_normalization_machine {
 
 int prototype_term_normalization_machine_create(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t term_id,
 	struct prototype_term_normalization_machine** p_machine
 ) {
 	struct prototype_term_reduction_options ignored;
-	if (!db || !type_declarations || !p_machine || term_id >= db->term_count ||
+	if (!db || !p_machine || term_id >= db->term_count ||
 		normalization_profile_options(profile, definitions, &ignored) != 0) {
 		return -1;
 	}
@@ -2150,7 +1996,6 @@ int prototype_term_normalization_machine_create(
 		return -1;
 	}
 	machine->db = db;
-	machine->type_declarations = type_declarations;
 	machine->definitions = definitions;
 	machine->profile = profile;
 	machine->status = PROTOTYPE_TERM_NORMALIZATION_STATUS_EXHAUSTED;
@@ -2191,7 +2036,6 @@ int prototype_term_normalization_machine_advance(
 	}
 	if (prototype_term_normalize_with_profile(
 			machine->db,
-			machine->type_declarations,
 			machine->definitions,
 			machine->profile,
 			machine->current_term,
@@ -2222,57 +2066,8 @@ void prototype_term_normalization_machine_destroy(
 	free(machine);
 }
 
-static int constructor_ordinal_for_runtime_owner_label(
-	const struct prototype_term_db* terms,
-	const struct prototype_type_declaration_db* type_declarations,
-	uint32_t owner,
-	int label_symbol_id,
-	uint32_t* p_constructor_id
-) {
-	if (!terms || !type_declarations || !p_constructor_id ||
-		label_symbol_id < 0 || owner >= terms->term_count) {
-		return -1;
-	}
-	uint32_t type_id;
-	if (type_instance_type_id(terms, owner, &type_id) != 0) {
-		uint32_t representation_id;
-		if (constructor_owner_representation_id(
-				terms, owner, &representation_id
-			) != 0) {
-			return -1;
-		}
-		type_id = PROTOTYPE_INVALID_ID;
-		for (uint32_t candidate = 0;
-			candidate < type_declarations->semantic_schema.type_count;
-			++candidate) {
-			if (type_declarations->semantic_schema.type_declarations[
-					candidate
-				].representation_id != representation_id) {
-				continue;
-			}
-			if (type_id != PROTOTYPE_INVALID_ID) {
-				return -1;
-			}
-			type_id = candidate;
-		}
-		if (type_id == PROTOTYPE_INVALID_ID) {
-			return -1;
-		}
-	}
-	const struct prototype_type_constructor_declaration* constructor =
-		prototype_type_declaration_lookup_constructor(
-			&type_declarations->semantic_schema, type_id, label_symbol_id
-		);
-	if (!constructor) {
-		return -1;
-	}
-	*p_constructor_id = constructor->constructor_index;
-	return 0;
-}
-
-static int project_pure_computation_value_at_depth(
+static int project_structural_return_value_at_depth(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	uint32_t computation,
 	uint64_t step_limit,
 	uint32_t* p_value,
@@ -2281,7 +2076,7 @@ static int project_pure_computation_value_at_depth(
 	size_t active_capacity
 ) {
 	struct prototype_term_normalization_result normalization;
-	if (!db || !type_declarations || !p_value || computation >= db->term_count ||
+	if (!db || !p_value || computation >= db->term_count ||
 		!active_terms) {
 		return -1;
 	}
@@ -2302,7 +2097,7 @@ static int project_pure_computation_value_at_depth(
 	if (source_root < db->term_count && db->terms[source_root].tag ==
 		PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
 		/* Do not unfold a guarded recursive call merely to name its result in a
-		 * dependent classifier. Its source APP spine is the stable symbolic
+		 * dependent result-type term. Its source APP spine is the stable symbolic
 		 * value; iota evaluation remains available when the enclosing recursive
 		 * invocation itself reduces. */
 		*p_value = computation;
@@ -2314,7 +2109,6 @@ static int project_pure_computation_value_at_depth(
 	struct prototype_term_normalization_result core_normalization;
 	if (prototype_term_normalize_with_profile(
 			db,
-			type_declarations,
 			NULL,
 			PROTOTYPE_TERM_NORMALIZATION_CORE_WHNF,
 			computation,
@@ -2328,9 +2122,8 @@ static int project_pure_computation_value_at_depth(
 		return 1;
 	}
 	if (core_normalization.term_id != computation) {
-		return project_pure_computation_value_at_depth(
+		return project_structural_return_value_at_depth(
 			db,
-			type_declarations,
 			core_normalization.term_id,
 			step_limit,
 			p_value,
@@ -2346,9 +2139,8 @@ static int project_pure_computation_value_at_depth(
 		normalization.term_id = computation;
 	} else if (prototype_term_normalize_with_profile(
 			db,
-			type_declarations,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			computation,
 			step_limit,
 			&normalization
@@ -2372,10 +2164,31 @@ static int project_pure_computation_value_at_depth(
 			normalized.as.computation_fold.return_clause >= db->term_count) {
 			return normalized.as.computation_fold.clause_count == 0 ? -1 : 1;
 		}
+		const struct prototype_term* continuation =
+			&db->terms[normalized.as.computation_fold.return_clause];
+		if (continuation->tag == PROTOTYPE_TERM_LAMBDA &&
+			!prototype_term_contains_free_binding(
+				db,
+				continuation->as.lambda.body,
+				continuation->as.lambda.binding_id
+			)) {
+			/* Sequencing still performs its input at runtime.  Structural projection
+			 * only asks which value is returned if the computation completes, so an
+			 * input-independent continuation can be projected without interpreting an
+			 * operation request or duplicating its effects. */
+			return project_structural_return_value_at_depth(
+				db,
+				continuation->as.lambda.body,
+				step_limit,
+				p_value,
+				active_terms,
+				active_count,
+				active_capacity
+			);
+		}
 		uint32_t input_value;
-		int input_status = project_pure_computation_value_at_depth(
+		int input_status = project_structural_return_value_at_depth(
 			db,
-			type_declarations,
 			normalized.as.computation_fold.computation,
 			step_limit,
 			&input_value,
@@ -2395,9 +2208,8 @@ static int project_pure_computation_value_at_depth(
 			) != 0) {
 			return -1;
 		}
-		return project_pure_computation_value_at_depth(
+		return project_structural_return_value_at_depth(
 			db,
-			type_declarations,
 			continued,
 			step_limit,
 			p_value,
@@ -2412,9 +2224,8 @@ static int project_pure_computation_value_at_depth(
 		uint32_t function_whnf;
 		if (prototype_term_normalize_complete_with_profile(
 				db,
-				type_declarations,
 				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+				PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 				normalized.as.app.function,
 				&function_whnf
 			) != 0 || function_whnf >= db->term_count) {
@@ -2479,67 +2290,9 @@ static int project_pure_computation_value_at_depth(
 		}
 	}
 	if (has_unresolved_nullary_case) {
-		struct prototype_term_normalization_result scrutinee_normalization;
-		if (prototype_term_normalize_with_profile(
-				db,
-				type_declarations,
-				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-				match.as.match.scrutinee,
-				step_limit,
-				&scrutinee_normalization
-			) != 0 || scrutinee_normalization.status !=
-				PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
-			return 1;
-		}
-		uint32_t scrutinee_head = scrutinee_normalization.term_id;
-		while (scrutinee_head < db->term_count &&
-			db->terms[scrutinee_head].tag == PROTOTYPE_TERM_APP) {
-			scrutinee_head = db->terms[scrutinee_head].as.app.function;
-		}
-		if (scrutinee_head >= db->term_count ||
-			db->terms[scrutinee_head].tag != PROTOTYPE_TERM_CONSTRUCTOR) {
-			return 1;
-		}
-		uint32_t owner = db->terms[scrutinee_head].as.constructor.owner;
-		for (uint32_t i = 0; i < match.as.match.case_count; ++i) {
-			uint32_t constructor_id = source_cases[i].constructor_id;
-			if (source_cases[i].constructor_owner == PROTOTYPE_INVALID_ID &&
-				constructor_ordinal_for_runtime_owner_label(
-					db, type_declarations, owner, source_labels[i], &constructor_id
-				) != 0) {
-				return 1;
-			}
-			cases[i] = (struct prototype_match_case_input) {
-				.case_label_symbol_id = source_labels[i],
-				.constructor_owner = owner,
-				.constructor_id = constructor_id,
-				.binders = NULL,
-				.binder_count = 0,
-				.body = source_cases[i].body
-			};
-		}
-		uint32_t resolved_match;
-		if (prototype_term_match_with_ih_scope(
-				db,
-				match.as.match.scrutinee,
-				cases,
-				match.as.match.case_count,
-				match.as.match.ih_scope_id,
-				&resolved_match
-			) != 0) {
-			return -1;
-		}
-		return project_pure_computation_value_at_depth(
-			db,
-			type_declarations,
-			resolved_match,
-			step_limit,
-			p_value,
-			active_terms,
-			active_count,
-			active_capacity
-		);
+		/* Constructor labels are resolved by the typed-to-Core projection. A
+		 * provisional Match is not executable Core and cannot be repaired here. */
+		return 1;
 	}
 	for (uint32_t i = 0; i < match.as.match.case_count; ++i) {
 		uint32_t body;
@@ -2549,9 +2302,8 @@ static int project_pure_computation_value_at_depth(
 			) != 0) {
 			return -1;
 		}
-		int branch_status = project_pure_computation_value_at_depth(
+		int branch_status = project_structural_return_value_at_depth(
 				db,
-				type_declarations,
 				branch_computation,
 				step_limit,
 				&body,
@@ -2581,17 +2333,15 @@ static int project_pure_computation_value_at_depth(
 	);
 }
 
-int prototype_term_project_pure_computation_value(
+int prototype_term_project_structural_return_value(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	uint32_t computation,
 	uint64_t step_limit,
 	uint32_t* p_value
 ) {
 	uint32_t active_terms[512];
-	return project_pure_computation_value_at_depth(
+	return project_structural_return_value_at_depth(
 		db,
-		type_declarations,
 		computation,
 		step_limit,
 		p_value,
@@ -2603,7 +2353,6 @@ int prototype_term_project_pure_computation_value(
 
 int prototype_term_perform_with_options(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -2614,7 +2363,6 @@ int prototype_term_perform_with_options(
 	if (profile == 0 || !db || !p_ret) {
 		return evaluate_steps(
 			db,
-			type_declarations,
 			definitions,
 			options,
 			term_id,
@@ -2622,13 +2370,9 @@ int prototype_term_perform_with_options(
 			PROTOTYPE_EVALUATION_DEPTH_LIMIT
 		);
 	}
-	uint64_t semantic_revision = normalization_profile_semantic_revision(
-		profile, type_declarations
-	);
-
 	uint32_t cached;
 	if (normalization_cache_lookup(
-			db, profile, term_id, semantic_revision, &cached
+			db, profile, term_id, &cached
 		)) {
 		db->normalization_cache_stats.hit_count++;
 		*p_ret = cached;
@@ -2637,13 +2381,11 @@ int prototype_term_perform_with_options(
 	db->normalization_cache_stats.miss_count++;
 	struct prototype_term_normalization_cache_entry* entry =
 		normalization_cache_reserve(
-			db, profile, term_id, semantic_revision
+			db, profile, term_id
 		);
 	uint64_t entry_revision = db ? db->normalization_graph_revision : 0;
-	uint64_t entry_semantic_revision = semantic_revision;
 	int status = evaluate_steps(
 		db,
-		type_declarations,
 		definitions,
 		options,
 		term_id,
@@ -2653,11 +2395,7 @@ int prototype_term_perform_with_options(
 	if (!entry) {
 		return status;
 	}
-	uint64_t final_semantic_revision = normalization_profile_semantic_revision(
-		profile, type_declarations
-	);
 	if (status == 0 && db && entry_revision == db->normalization_graph_revision &&
-		entry_semantic_revision == final_semantic_revision &&
 		(!options.p_normalization_status ||
 			*options.p_normalization_status == PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE)) {
 		entry->result_term_id = *p_ret;
@@ -2670,7 +2408,6 @@ int prototype_term_perform_with_options(
 
 static int normalize_term_at_depth(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -2680,7 +2417,7 @@ static int normalize_term_at_depth(
 	uint32_t whnf;
 	if (!db || !p_ret || term_id >= db->term_count || depth == 0 ||
 		prototype_term_perform_with_options(
-			db, type_declarations, definitions, options, term_id, &whnf
+			db, definitions, options, term_id, &whnf
 		) != 0 || whnf >= db->term_count) {
 		return -1;
 	}
@@ -2692,11 +2429,11 @@ static int normalize_term_at_depth(
 			uint32_t argument;
 			uint32_t rebuilt;
 			if (normalize_term_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					term->as.app.function, &function, depth - 1
 				) != 0 ||
 				normalize_term_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					term->as.app.argument, &argument, depth - 1
 				) != 0 ||
 				prototype_term_app(db, function, argument, &rebuilt) != 0) {
@@ -2704,13 +2441,13 @@ static int normalize_term_at_depth(
 			}
 			return rebuilt == whnf ? (*p_ret = rebuilt, 0) :
 				normalize_term_at_depth(
-					db, type_declarations, definitions, options, rebuilt, p_ret, depth - 1
+					db, definitions, options, rebuilt, p_ret, depth - 1
 				);
 		}
 		case PROTOTYPE_TERM_LAMBDA: {
 			uint32_t body;
 			if (normalize_term_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					term->as.lambda.body, &body, depth - 1
 				) != 0) {
 				return -1;
@@ -2720,7 +2457,7 @@ static int normalize_term_at_depth(
 		case PROTOTYPE_TERM_RETURN: {
 			uint32_t value;
 			if (normalize_term_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					term->as.return_term.value, &value, depth - 1
 				) != 0) {
 				return -1;
@@ -2730,7 +2467,7 @@ static int normalize_term_at_depth(
 		case PROTOTYPE_TERM_THUNK: {
 			uint32_t computation;
 			if (normalize_term_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					term->as.thunk.computation, &computation, depth - 1
 				) != 0) {
 				return -1;
@@ -2741,11 +2478,11 @@ static int normalize_term_at_depth(
 			uint32_t domain;
 			uint32_t codomain_family;
 			if (normalize_term_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					term->as.pi.domain, &domain, depth - 1
 				) != 0 ||
 				normalize_term_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					term->as.pi.codomain_family, &codomain_family, depth - 1
 				) != 0) {
 				return -1;
@@ -2760,7 +2497,7 @@ static int normalize_term_at_depth(
 			uint32_t rebuilt;
 			if (term->as.match.case_count > 64 ||
 				normalize_term_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					term->as.match.scrutinee, &scrutinee, depth - 1
 				) != 0) {
 				return -1;
@@ -2771,7 +2508,7 @@ static int normalize_term_at_depth(
 				uint32_t body;
 				if (binder_cursor + old_case->binder_count > 256 ||
 					normalize_term_at_depth(
-						db, type_declarations, definitions, options,
+						db, definitions, options,
 						old_case->body, &body, depth - 1
 					) != 0) {
 					return -1;
@@ -2798,14 +2535,13 @@ static int normalize_term_at_depth(
 			}
 			return rebuilt == whnf ? (*p_ret = rebuilt, 0) :
 				normalize_term_at_depth(
-					db, type_declarations, definitions, options, rebuilt, p_ret, depth - 1
+					db, definitions, options, rebuilt, p_ret, depth - 1
 				);
 		}
 		case PROTOTYPE_TERM_DIMENSION_ACTION: {
 			uint32_t source;
 			if (normalize_term_at_depth(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					term->as.dimension_action.source,
@@ -2830,7 +2566,6 @@ static int normalize_term_at_depth(
 
 int prototype_term_nf_with_options(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -2838,7 +2573,6 @@ int prototype_term_nf_with_options(
 ) {
 	return normalize_term_at_depth(
 		db,
-		type_declarations,
 		definitions,
 		normalize_reduction_options(options),
 		term_id,
@@ -2858,7 +2592,6 @@ int prototype_term_nf_with_options(
  * specialization. */
 static int conversion_distribute_app_over_match(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	uint32_t match_id,
 	uint32_t argument,
 	uint32_t* p_result
@@ -2901,8 +2634,8 @@ static int conversion_distribute_app_over_match(
 			return -1;
 		}
 		uint32_t projected_body;
-		int projection_status = prototype_term_project_pure_computation_value(
-			db, type_declarations, body, UINT64_MAX, &projected_body
+		int projection_status = prototype_term_project_structural_return_value(
+			db, body, UINT64_MAX, &projected_body
 		);
 		if (projection_status < 0) {
 			return -1;
@@ -2932,7 +2665,6 @@ static int conversion_distribute_app_over_match(
 
 static int conversion_equal_at_depth(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	struct term_scope_env* scope,
@@ -2956,17 +2688,27 @@ static int conversion_equal_at_depth(
 	if (db->terms[left].tag == PROTOTYPE_TERM_INDUCTION_HYPOTHESIS &&
 		db->terms[right].tag == PROTOTYPE_TERM_INDUCTION_HYPOTHESIS) {
 		int frame_bound = 0;
-		if (!term_scope_frames_equal(
+		int frames_equal = term_scope_frames_equal(
 				scope,
 				db->terms[left].as.induction_hypothesis.ih_scope_id,
 				db->terms[right].as.induction_hypothesis.ih_scope_id,
 				&frame_bound
-			)) {
+			);
+		if (!frames_equal && !frame_bound) {
+			uint32_t left_frame =
+				db->terms[left].as.induction_hypothesis.ih_scope_id;
+			uint32_t right_frame =
+				db->terms[right].as.induction_hypothesis.ih_scope_id;
+			frames_equal = left_frame < db->ih_scope_count &&
+				right_frame < db->ih_scope_count &&
+				db->ih_scopes[left_frame].binding_scope_id ==
+					db->ih_scopes[right_frame].binding_scope_id;
+		}
+		if (!frames_equal) {
 			return 0;
 		}
 		return conversion_equal_at_depth(
 			db,
-			type_declarations,
 			definitions,
 			options,
 			scope,
@@ -2987,9 +2729,9 @@ static int conversion_equal_at_depth(
 		whnf_options.flags &= ~PROTOTYPE_TERM_REDUCE_INDUCTION;
 	}
 	if (prototype_term_perform_with_options(
-			db, type_declarations, definitions, whnf_options, left, &left_whnf
+			db, definitions, whnf_options, left, &left_whnf
 		) != 0 || prototype_term_perform_with_options(
-			db, type_declarations, definitions, whnf_options, right, &right_whnf
+			db, definitions, whnf_options, right, &right_whnf
 		) != 0 ||
 		left_whnf >= db->term_count ||
 		right_whnf >= db->term_count) {
@@ -3017,13 +2759,32 @@ static int conversion_equal_at_depth(
 	const struct prototype_term* left_term = &left_term_value;
 	const struct prototype_term* right_term = &right_term_value;
 	if (left_term->tag != right_term->tag) {
+		/* A typed operation view and its erased Core projection denote the same
+		 * value at the Layer T/Core boundary.  This case must be recursive: an
+		 * indexed classifier can contain a constructor view below an APP spine.
+		 * Two views are still compared nominally by the TYPE_VIEW case below. */
+		if (reduction_is_type_expression(options) &&
+			left_term->tag == PROTOTYPE_TERM_TYPE_VIEW) {
+			return conversion_equal_at_depth(
+				db, definitions, options, scope,
+				left_term->as.type_view.core, right_whnf,
+				p_equal, depth + 1
+			);
+		}
+		if (reduction_is_type_expression(options) &&
+			right_term->tag == PROTOTYPE_TERM_TYPE_VIEW) {
+			return conversion_equal_at_depth(
+				db, definitions, options, scope,
+				left_whnf, right_term->as.type_view.core,
+				p_equal, depth + 1
+			);
+		}
 		if (left_term->tag == PROTOTYPE_TERM_APP &&
 			left_term->as.app.function < db->term_count &&
 			db->terms[left_term->as.app.function].tag == PROTOTYPE_TERM_MATCH) {
 			uint32_t distributed;
 			if (conversion_distribute_app_over_match(
 					db,
-					type_declarations,
 					left_term->as.app.function,
 					left_term->as.app.argument,
 					&distributed
@@ -3031,7 +2792,7 @@ static int conversion_equal_at_depth(
 				return -1;
 			}
 			return conversion_equal_at_depth(
-				db, type_declarations, definitions, options, scope,
+				db, definitions, options, scope,
 				distributed, right_whnf, p_equal, depth + 1
 			);
 		}
@@ -3041,7 +2802,6 @@ static int conversion_equal_at_depth(
 			uint32_t distributed;
 			if (conversion_distribute_app_over_match(
 					db,
-					type_declarations,
 					right_term->as.app.function,
 					right_term->as.app.argument,
 					&distributed
@@ -3049,21 +2809,21 @@ static int conversion_equal_at_depth(
 				return -1;
 			}
 			return conversion_equal_at_depth(
-				db, type_declarations, definitions, options, scope,
+				db, definitions, options, scope,
 				left_whnf, distributed, p_equal, depth + 1
 			);
 		}
 		if (left_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
 			right_term->tag == PROTOTYPE_TERM_MATCH) {
 			return conversion_equal_computation_match(
-				db, type_declarations, definitions, options,
+				db, definitions, options,
 				scope, left_whnf, right_whnf, p_equal, depth + 1
 			);
 		}
 		if (left_term->tag == PROTOTYPE_TERM_MATCH &&
 			right_term->tag == PROTOTYPE_TERM_COMPUTATION_TYPE) {
 			return conversion_equal_computation_match(
-				db, type_declarations, definitions, options,
+				db, definitions, options,
 				scope, right_whnf, left_whnf, p_equal, depth + 1
 			);
 		}
@@ -3103,7 +2863,6 @@ static int conversion_equal_at_depth(
 			int equal = 0;
 			if (conversion_equal_at_depth(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					scope,
@@ -3116,7 +2875,6 @@ static int conversion_equal_at_depth(
 			}
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				scope,
@@ -3138,7 +2896,6 @@ static int conversion_equal_at_depth(
 			}
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				&body_scope,
@@ -3152,7 +2909,6 @@ static int conversion_equal_at_depth(
 			int equal = 0;
 			if (conversion_equal_at_depth(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					scope,
@@ -3165,7 +2921,6 @@ static int conversion_equal_at_depth(
 			}
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				scope,
@@ -3182,7 +2937,6 @@ static int conversion_equal_at_depth(
 			int equal = 0;
 			if (conversion_equal_at_depth(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					scope,
@@ -3190,15 +2944,11 @@ static int conversion_equal_at_depth(
 					right_term->as.match.scrutinee,
 					&equal,
 					depth + 1
-				) != 0 || !equal) {
+			) != 0 || !equal) {
 				return 0;
 			}
 			struct term_scope_env match_scope = *scope;
-			/* Frame presence alone is internal metadata. The INVALID pairing makes
-			 * a one-sided frame observable only through an IH reference. */
-			if ((left_term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID ||
-				right_term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID) &&
-				conversion_scope_push_frame(
+			if (conversion_scope_enter_match_frames(
 					options,
 					&match_scope,
 					left_term->as.match.ih_scope_id,
@@ -3253,7 +3003,6 @@ static int conversion_equal_at_depth(
 				}
 				if (conversion_equal_match_case_bodies(
 						db,
-						type_declarations,
 						definitions,
 						options,
 						&match_scope,
@@ -3282,7 +3031,6 @@ static int conversion_equal_at_depth(
 			}
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				scope,
@@ -3300,7 +3048,6 @@ static int conversion_equal_at_depth(
 			}
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				scope,
@@ -3314,53 +3061,40 @@ static int conversion_equal_at_depth(
 				right_term->as.type_former.representation_id;
 			return 0;
 		case PROTOTYPE_TERM_TYPE_DECLARATION: {
-			if (!type_declarations ||
-				left_term->as.type_declaration.type_id >= type_declarations->semantic_schema.type_count ||
-				right_term->as.type_declaration.type_id >= type_declarations->semantic_schema.type_count) {
-				return -1;
-			}
-			if (type_identity_is_stable(left_term->as.type_declaration.identity) ||
-				type_identity_is_stable(right_term->as.type_declaration.identity)) {
-				*p_equal = type_identity_equal(
-					left_term->as.type_declaration.identity,
-					right_term->as.type_declaration.identity
-				);
-			} else {
-				*p_equal = left_term->as.type_declaration.type_id ==
-					right_term->as.type_declaration.type_id;
-			}
+			*p_equal = qualified_names_equal(
+				left_term->as.type_declaration.identity,
+				right_term->as.type_declaration.identity
+			);
 			return 0;
 		}
 		case PROTOTYPE_TERM_TYPE_VIEW: {
-			if (type_identity_is_stable(left_term->as.type_view.identity) ||
-				type_identity_is_stable(right_term->as.type_view.identity) ?
-					!type_identity_equal(
-						left_term->as.type_view.identity,
-						right_term->as.type_view.identity
-					) : left_term->as.type_view.view_type_id !=
-						right_term->as.type_view.view_type_id) {
+			if (!qualified_names_equal(
+					left_term->as.type_view.identity,
+					right_term->as.type_view.identity
+				)) {
 				*p_equal = 0;
 				return 0;
 			}
-			uint32_t left_type_id;
-			uint32_t right_type_id;
+			struct prototype_qualified_name left_identity;
+			struct prototype_qualified_name right_identity;
 			uint32_t left_arguments[16];
 			uint32_t right_arguments[16];
 			uint32_t left_argument_count;
 			uint32_t right_argument_count;
-			if (prototype_term_type_instance_info(
+			if (prototype_term_nominal_type_instance_info(
 					db,
 					left_whnf,
-					&left_type_id,
+					&left_identity,
 					left_arguments,
 					&left_argument_count
-				) != 0 || prototype_term_type_instance_info(
+				) != 0 || prototype_term_nominal_type_instance_info(
 					db,
 					right_whnf,
-					&right_type_id,
+					&right_identity,
 					right_arguments,
 					&right_argument_count
-				) != 0 || left_argument_count != right_argument_count) {
+				) != 0 || !qualified_names_equal(left_identity, right_identity) ||
+				left_argument_count != right_argument_count) {
 				return -1;
 			}
 			/* TYPE_VIEW is the nominal boundary for a declaration application.
@@ -3372,7 +3106,6 @@ static int conversion_equal_at_depth(
 				int equal = 0;
 				if (conversion_equal_at_depth(
 						db,
-						type_declarations,
 						definitions,
 						options,
 						scope,
@@ -3385,8 +3118,6 @@ static int conversion_equal_at_depth(
 				}
 			}
 			*p_equal = 1;
-			(void)left_type_id;
-			(void)right_type_id;
 			return 0;
 		}
 		case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
@@ -3402,7 +3133,7 @@ static int conversion_equal_at_depth(
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION: {
 			int equal = 0;
 			if (conversion_equal_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					scope,
 					left_term->as.effect_row_union.left,
 					right_term->as.effect_row_union.left,
@@ -3411,7 +3142,7 @@ static int conversion_equal_at_depth(
 				return 0;
 			}
 			return conversion_equal_at_depth(
-				db, type_declarations, definitions, options,
+				db, definitions, options,
 				scope,
 				left_term->as.effect_row_union.right,
 				right_term->as.effect_row_union.right,
@@ -3430,7 +3161,6 @@ static int conversion_equal_at_depth(
 			}
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				&body_scope,
@@ -3448,7 +3178,6 @@ static int conversion_equal_at_depth(
 			}
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				scope,
@@ -3466,7 +3195,6 @@ static int conversion_equal_at_depth(
 			}
 			if (conversion_equal_at_depth(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					scope,
@@ -3479,7 +3207,6 @@ static int conversion_equal_at_depth(
 			}
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				scope,
@@ -3492,7 +3219,6 @@ static int conversion_equal_at_depth(
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				scope,
@@ -3504,7 +3230,6 @@ static int conversion_equal_at_depth(
 		case PROTOTYPE_TERM_RETURN:
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				scope,
@@ -3516,7 +3241,6 @@ static int conversion_equal_at_depth(
 		case PROTOTYPE_TERM_THUNK:
 			return conversion_equal_at_depth(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				scope,
@@ -3528,13 +3252,13 @@ static int conversion_equal_at_depth(
 		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			int equal = 0;
 			if (conversion_equal_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					scope,
 					left_term->as.computation_fold.computation,
 					right_term->as.computation_fold.computation,
 					&equal, depth + 1
 				) != 0 || !equal || conversion_equal_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					scope,
 					left_term->as.computation_fold.return_clause,
 					right_term->as.computation_fold.return_clause,
@@ -3550,11 +3274,11 @@ static int conversion_equal_at_depth(
 				const struct prototype_computation_fold_clause* right_clause =
 					&db->computation_fold_clauses[right_term->as.computation_fold.first_clause + i];
 				if (conversion_equal_at_depth(
-						db, type_declarations, definitions, options,
+						db, definitions, options,
 						scope,
 						left_clause->operation, right_clause->operation, &equal, depth + 1
 					) != 0 || !equal || conversion_equal_at_depth(
-						db, type_declarations, definitions, options,
+						db, definitions, options,
 						scope,
 						left_clause->body, right_clause->body, &equal, depth + 1
 					) != 0 || !equal) {
@@ -3568,13 +3292,13 @@ static int conversion_equal_at_depth(
 		case PROTOTYPE_TERM_OPERATION_REQUEST: {
 			int equal = 0;
 			if (conversion_equal_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					scope,
 					left_term->as.operation_request.operation,
 					right_term->as.operation_request.operation,
 					&equal, depth + 1
 				) != 0 || !equal || conversion_equal_at_depth(
-					db, type_declarations, definitions, options,
+					db, definitions, options,
 					scope,
 					left_term->as.operation_request.argument,
 					right_term->as.operation_request.argument,
@@ -3584,7 +3308,7 @@ static int conversion_equal_at_depth(
 				return 0;
 			}
 			return conversion_equal_at_depth(
-				db, type_declarations, definitions, options,
+				db, definitions, options,
 				scope,
 				left_term->as.operation_request.continuation,
 				right_term->as.operation_request.continuation,
@@ -3670,7 +3394,6 @@ const char* prototype_term_conversion_reason_name(int reason) {
 
 int prototype_term_compare_with_options(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t left,
@@ -3697,7 +3420,7 @@ int prototype_term_compare_with_options(
 	p_result->right_observation = right;
 	p_result->step_limit = step_limit;
 	p_result->graph_revision = db ? db->normalization_graph_revision : 0;
-	if (!db || !type_declarations || left >= db->term_count || right >= db->term_count) {
+	if (!db || left >= db->term_count || right >= db->term_count) {
 		return 0;
 	}
 	if (left == right) {
@@ -3716,7 +3439,6 @@ int prototype_term_compare_with_options(
 	memset(&scope, 0, sizeof(scope));
 	if (conversion_equal_at_depth(
 			db,
-			type_declarations,
 			definitions,
 			options,
 			&scope,
@@ -3741,14 +3463,12 @@ int prototype_term_compare_with_options(
 		observation_options.p_steps_used = NULL;
 		if (prototype_term_perform_with_options(
 				db,
-				type_declarations,
 				definitions,
 				observation_options,
 				left,
 				&p_result->left_observation
 			) != 0 || prototype_term_perform_with_options(
 				db,
-				type_declarations,
 				definitions,
 				observation_options,
 				right,
@@ -3789,8 +3509,8 @@ static int host_oracle_is_integer_arithmetic(int oracle_kind) {
 }
 
 static int int_pure_primitive_arity(int primitive_id) {
-	const struct prototype_pure_primitive_declaration* declaration =
-		prototype_term_pure_primitive_declaration(primitive_id);
+	const struct prototype_core_pure_primitive_declaration* declaration =
+		prototype_core_pure_primitive_declaration(primitive_id);
 	const struct host_pure_primitive_implementation* implementation =
 		host_pure_primitive_implementation(primitive_id);
 	if (!declaration || !implementation ||
@@ -3811,8 +3531,8 @@ static int execute_int_pure_primitive(
 		argument_count != (uint32_t)int_pure_primitive_arity(primitive_id)) {
 		return -1;
 	}
-	const struct prototype_pure_primitive_declaration* declaration =
-		prototype_term_pure_primitive_declaration(primitive_id);
+	const struct prototype_core_pure_primitive_declaration* declaration =
+		prototype_core_pure_primitive_declaration(primitive_id);
 	const struct host_pure_primitive_implementation* implementation =
 		host_pure_primitive_implementation(primitive_id);
 	if (!declaration || !implementation ||
@@ -3820,7 +3540,9 @@ static int execute_int_pure_primitive(
 		return -1;
 	}
 
-	int result_width = prototype_term_host_type_bit_width(declaration->result_type);
+	int result_width = prototype_term_host_type_bit_width(
+		declaration->result_host_type
+	);
 	if (result_width == 32) {
 		for (uint32_t i = 0; i < argument_count; ++i) {
 			if (!int_literal_fits_int32(arguments[i])) {
@@ -3920,7 +3642,6 @@ static int reduce_host_pure_primitive_rebuild_if_changed(
 
 static int reduce_host_pure_primitive_step(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -3946,8 +3667,8 @@ static int reduce_host_pure_primitive_step(
 	}
 
 	int primitive_id = db->terms[head].as.pure_primitive.primitive_id;
-	const struct prototype_pure_primitive_declaration* declaration =
-		prototype_term_pure_primitive_declaration(primitive_id);
+	const struct prototype_core_pure_primitive_declaration* declaration =
+		prototype_core_pure_primitive_declaration(primitive_id);
 	const struct host_pure_primitive_implementation* implementation =
 		host_pure_primitive_implementation(primitive_id);
 	if (!declaration || !implementation || arg_count != declaration->arity) {
@@ -3960,7 +3681,6 @@ static int reduce_host_pure_primitive_step(
 	for (uint32_t i = 0; i < arg_count; ++i) {
 		if (evaluate_steps(
 				db,
-				type_declarations,
 				definitions,
 				options,
 				args[i],
@@ -4109,7 +3829,6 @@ static int reduce_host_pure_primitive_step(
 			uint32_t evaluated_current;
 			if (evaluate_steps(
 					db,
-					type_declarations,
 					definitions,
 					options,
 					current,
@@ -4199,7 +3918,6 @@ static int reduce_host_pure_primitive_step(
 static int default_host_effect_dispatch(
 	void* context,
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	const struct prototype_term_reduction_options* options,
 	uint32_t operation,
@@ -4213,8 +3931,8 @@ static int default_host_effect_dispatch(
 		return -1;
 	}
 	int operation_id = db->terms[operation].as.effect_operation.operation_id;
-	const struct prototype_effect_operation_declaration* declaration =
-		prototype_term_effect_operation_declaration(operation_id);
+	const struct prototype_core_effect_operation_declaration* declaration =
+		prototype_core_effect_operation_declaration(operation_id);
 	const struct host_effect_operation_implementation* implementation =
 		host_effect_operation_implementation(operation_id);
 	if (!declaration || !implementation || declaration->arity != 1 ||
@@ -4224,7 +3942,6 @@ static int default_host_effect_dispatch(
 	uint32_t reduced_argument;
 	if (evaluate_steps(
 			db,
-			type_declarations,
 			definitions,
 			*options,
 			argument,
@@ -4255,7 +3972,6 @@ static int default_host_effect_dispatch(
 
 static int dispatch_operation_request_step(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	struct prototype_term_reduction_options options,
 	uint32_t term_id,
@@ -4275,7 +3991,6 @@ static int dispatch_operation_request_step(
 	int status = dispatch(
 		options.operation_dispatch_context,
 		db,
-		type_declarations,
 		definitions,
 		&options,
 		request->as.operation_request.operation,
@@ -4294,13 +4009,12 @@ static int dispatch_operation_request_step(
 		return -1;
 	}
 	return evaluate_steps(
-		db, type_declarations, definitions, options, resumed, p_ret, depth - 1
+		db, definitions, options, resumed, p_ret, depth - 1
 	);
 }
 
 int prototype_term_compare_for_conversion(
 	struct prototype_term_db* db,
-	struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_definition_env* definitions,
 	int profile,
 	uint32_t left,
@@ -4327,7 +4041,6 @@ int prototype_term_compare_for_conversion(
 	}
 	if (prototype_term_compare_with_options(
 		db,
-		type_declarations,
 		definitions,
 		options,
 		left,
@@ -4340,401 +4053,3 @@ int prototype_term_compare_for_conversion(
 	p_result->profile = profile;
 	return 0;
 }
-
-static const char* safe_symbol_name(const struct symbol_table* symbols, int symbol_id) {
-	if (symbol_id == PROTOTYPE_BASE_NAMESPACE_ID) {
-		return "_";
-	}
-	const char* name = symbol_to_string(symbols, symbol_id);
-	return name ? name : "<unknown>";
-}
-
-static void print_escaped_text(FILE* output, const char* text) {
-	if (!output || !text) {
-		return;
-	}
-	for (const char* p = text; *p != '\0'; ++p) {
-		switch (*p) {
-			case '\n':
-				fprintf(output, "\\n");
-				break;
-			case '\r':
-				fprintf(output, "\\r");
-				break;
-			case '\t':
-				fprintf(output, "\\t");
-				break;
-			case '"':
-				fprintf(output, "\\\"");
-				break;
-			case '\\':
-				fprintf(output, "\\\\");
-				break;
-			default:
-				fputc(*p, output);
-				break;
-		}
-	}
-}
-
-static void print_type_head(
-	FILE* output,
-	const struct symbol_table* symbols,
-	const struct prototype_type_declaration_db* type_declarations,
-	uint32_t type_id
-) {
-	if (type_id >= type_declarations->semantic_schema.type_count) {
-		fprintf(output, "<bad-type:%u>", type_id);
-		return;
-	}
-	fprintf(output, "%s", safe_symbol_name(symbols, type_declarations->semantic_schema.type_declarations[type_id].name_symbol_id));
-}
-
-static void print_term_debug_depth_impl(
-	FILE* output,
-	const struct symbol_table* symbols,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_db* terms,
-	const struct prototype_intrinsic_environment* environment,
-	uint32_t term_id,
-	unsigned depth
-);
-
-#define print_term_debug_depth(output, symbols, type_declarations, terms, term_id, depth) \
-	print_term_debug_depth_impl( \
-		output, symbols, type_declarations, terms, environment, term_id, depth \
-	)
-
-static void print_constructor_name(
-	FILE* output,
-	const struct symbol_table* symbols,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_db* terms,
-	const struct prototype_intrinsic_environment* environment,
-	const struct prototype_term* term
-) {
-	uint32_t type_id;
-	if (type_instance_type_id(terms, term->as.constructor.owner, &type_id) != 0 ||
-		type_id >= type_declarations->semantic_schema.type_count) {
-		uint32_t representation_id;
-		if (constructor_owner_representation_id(
-				terms,
-				term->as.constructor.owner,
-				&representation_id
-			) != 0) {
-			fprintf(output, "<bad-constructor>");
-		} else {
-			fprintf(output, "rep#%u.ordinal#%u", representation_id,
-				term->as.constructor.constructor_id);
-		}
-		return;
-	}
-
-	const struct prototype_type_declaration* type = &type_declarations->semantic_schema.type_declarations[type_id];
-	if (term->as.constructor.constructor_id >= type->constructor_count) {
-		fprintf(output, "<bad-constructor>");
-		return;
-	}
-
-	const struct prototype_type_constructor_declaration* constructor =
-		&type_declarations->semantic_schema.constructor_declarations[type->first_constructor + term->as.constructor.constructor_id];
-	print_term_debug_depth(output, symbols, type_declarations, terms, term->as.constructor.owner, 32);
-	fprintf(output, ".%s", safe_symbol_name(symbols, constructor->name_symbol_id));
-}
-
-static void print_term_debug_depth_impl(
-	FILE* output,
-	const struct symbol_table* symbols,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_db* terms,
-	const struct prototype_intrinsic_environment* environment,
-	uint32_t term_id,
-	unsigned depth
-) {
-	if (!output || !type_declarations || !terms) {
-		return;
-	}
-	if (term_id >= terms->term_count) {
-		fprintf(output, "BAD_TERM(%u)", term_id);
-		return;
-	}
-	if (depth == 0) {
-		fprintf(output, "...");
-		return;
-	}
-
-	const struct prototype_term* term = &terms->terms[term_id];
-	switch (term->tag) {
-		case PROTOTYPE_TERM_VAR:
-			fprintf(output, "VAR(_#%u)", term->as.var.binding_id);
-			break;
-		case PROTOTYPE_TERM_EXTERNAL_REF:
-			fprintf(output, "EXTERNAL_REF(");
-			if (term->as.external_ref.name.namespace_symbol_id >= 0) {
-				fprintf(output, "%s.", safe_symbol_name(symbols, term->as.external_ref.name.namespace_symbol_id));
-			}
-			fprintf(output, "%s)", safe_symbol_name(symbols, term->as.external_ref.name.name_symbol_id));
-			break;
-		case PROTOTYPE_TERM_PURE_PRIMITIVE:
-			fprintf(output, "PURE_PRIMITIVE(");
-			if (environment) {
-				fprintf(output, "%s", prototype_intrinsic_namespace_source_name(
-					environment,
-					PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_PURE_PRIMITIVE,
-					term->as.pure_primitive.primitive_id
-				));
-			} else {
-				fprintf(output, "primitive#%u", term->as.pure_primitive.primitive_id);
-			}
-			if (term->as.pure_primitive.type_symbol_id >= 0) {
-				fprintf(output, ":%s", safe_symbol_name(symbols, term->as.pure_primitive.type_symbol_id));
-			}
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_EFFECT_OPERATION:
-			fprintf(output, "EFFECT_OPERATION(");
-			if (environment) {
-				fprintf(output, "%s", prototype_intrinsic_namespace_source_name(
-					environment,
-					PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
-					term->as.effect_operation.operation_id
-				));
-			} else {
-				fprintf(output, "operation#%u", term->as.effect_operation.operation_id);
-			}
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_RELATION_TYPE_FORMER:
-			fprintf(output, "RELATION_TYPE_FORMER");
-			break;
-		case PROTOTYPE_TERM_RELATION_WITNESS_FORMER:
-			fprintf(output, "RELATION_WITNESS_FORMER");
-			break;
-		case PROTOTYPE_TERM_TERMINATES_TYPE_FORMER:
-			fprintf(output, "TERMINATES_TYPE_FORMER");
-			break;
-		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
-			fprintf(output, "TERMINATES_WITNESS_FORMER");
-			break;
-		case PROTOTYPE_TERM_DIMENSION_ACTION:
-			fprintf(output, "DIMENSION_ACTION(op#%u, ",
-				term->as.dimension_action.operator_id);
-			print_term_debug_depth(
-				output,
-				symbols,
-				type_declarations,
-				terms,
-				term->as.dimension_action.source,
-				depth - 1
-			);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_CONSTRUCTOR:
-			fprintf(output, "CONSTRUCTOR(");
-			print_constructor_name(
-				output, symbols, type_declarations, terms, environment, term
-			);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_APP:
-			fprintf(output, "APP(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.app.function, depth - 1);
-			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.app.argument, depth - 1);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_LAMBDA:
-			fprintf(output,
-				"LAMBDA(_#%u, ",
-				term->as.lambda.binding_id);
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.lambda.body, depth - 1);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_PI:
-			fprintf(output, "PI(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.pi.domain, depth - 1);
-			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.pi.codomain_family, depth - 1);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_MATCH:
-			fprintf(output, "MATCH(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.match.scrutinee, depth - 1);
-			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
-				const struct prototype_match_case* match_case =
-					&terms->cases[term->as.match.first_case + i];
-				fprintf(
-					output,
-					", CASE(%s",
-					safe_symbol_name(symbols, terms->case_label_symbols[term->as.match.first_case + i])
-				);
-				for (uint32_t j = 0; j < match_case->binder_count; ++j) {
-					struct prototype_case_binder binder = terms->case_binders[match_case->first_binder + j];
-					fprintf(output, " _#%u", binder.binding_id);
-				}
-				fprintf(output, " -> ");
-				print_term_debug_depth(output, symbols, type_declarations, terms, match_case->body, depth - 1);
-				fprintf(output, ")");
-			}
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_TYPE_FORMER:
-			fprintf(output, "TYPE_FORMER(rep#%u)", term->as.type_former.representation_id);
-			break;
-		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			fprintf(output, "TYPE_DECLARATION(");
-			print_type_head(output, symbols, type_declarations, term->as.type_declaration.type_id);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_TYPE_VIEW:
-			fprintf(output, "TYPE_VIEW(");
-			print_type_head(output, symbols, type_declarations, term->as.type_view.view_type_id);
-			fprintf(output, ", core=");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.type_view.core, depth - 1);
-			fprintf(output, ", source=");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.type_view.source, depth - 1);
-			fprintf(output, ")");
-			break;
-				case PROTOTYPE_TERM_UNIVERSE_VAR:
-				fprintf(output, "UNIVERSE(?u%u)", term->as.universe_var.level_var);
-				break;
-			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
-				fprintf(output, "PRIMITIVE(Text)");
-				break;
-			case PROTOTYPE_TERM_TEXT_LITERAL:
-				fprintf(output, "TEXT_LITERAL(\"");
-				print_escaped_text(output, safe_symbol_name(symbols, term->as.text_literal.text_symbol_id));
-				fprintf(output, "\")");
-				break;
-			case PROTOTYPE_TERM_PRIMITIVE_INT:
-				fprintf(output, "PRIMITIVE(Int)");
-				break;
-			case PROTOTYPE_TERM_PRIMITIVE_INT64:
-				fprintf(output, "PRIMITIVE(Int64)");
-				break;
-			case PROTOTYPE_TERM_INT_LITERAL:
-				fprintf(output, "INT_LITERAL(%" PRId64 ")", term->as.int_literal.value);
-				break;
-				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
-					fprintf(output, "INDUCTION_HYPOTHESIS(ih_scope#%u, ",
-						term->as.induction_hypothesis.ih_scope_id);
-			print_term_debug_depth(
-				output,
-				symbols,
-				type_declarations,
-				terms,
-				term->as.induction_hypothesis.argument,
-				depth - 1
-			);
-				fprintf(output, ")");
-				break;
-			case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
-				fprintf(output, "EFFECT_ROW_EMPTY");
-				break;
-			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
-				fprintf(output, "EFFECT_ROW_VAR(%u)", term->as.effect_row_var.binding_id);
-				break;
-			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
-				fprintf(output, "EFFECT_ROW_UNION(");
-				print_term_debug_depth(output, symbols, type_declarations, terms,
-					term->as.effect_row_union.left, depth - 1);
-				fprintf(output, ", ");
-				print_term_debug_depth(output, symbols, type_declarations, terms,
-					term->as.effect_row_union.right, depth - 1);
-				fprintf(output, ")");
-				break;
-			case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
-				fprintf(output, "EFFECT_ROW_FORALL(%u, ",
-					term->as.effect_row_forall.binding_id);
-				print_term_debug_depth(output, symbols, type_declarations, terms,
-					term->as.effect_row_forall.body, depth - 1);
-				fprintf(output, ")");
-				break;
-			case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
-				fprintf(output, "EFFECT_ROW_OPERATION(%d, ",
-					term->as.effect_row_operation.operation_id);
-				print_term_debug_depth(output, symbols, type_declarations, terms,
-					term->as.effect_row_operation.latent_row, depth - 1);
-				fprintf(output, ")");
-				break;
-		case PROTOTYPE_TERM_COMPUTATION_TYPE:
-			fprintf(output, "COMPUTATION_TYPE(");
-				print_term_debug_depth(output, symbols, type_declarations, terms, term->as.computation_type.label, depth - 1);
-				fprintf(output, ", ");
-				print_term_debug_depth(output, symbols, type_declarations, terms, term->as.computation_type.result, depth - 1);
-			fprintf(
-				output,
-				", %s)",
-				term->as.computation_type.totality ==
-					PROTOTYPE_COMPUTATION_TOTALITY_TOTAL ? "TOTAL" : "MAY_DIVERGE"
-			);
-			break;
-		case PROTOTYPE_TERM_THUNK_TYPE:
-			fprintf(output, "Thunk(");
-			print_term_debug_depth(
-				output, symbols, type_declarations, terms, term->as.thunk_type.computation, depth - 1
-			);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_RETURN:
-			fprintf(output, "RETURN(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.return_term.value, depth - 1);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_THUNK:
-			fprintf(output, "THUNK(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.thunk.computation, depth - 1);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_FORCE:
-			fprintf(output, "FORCE(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.force.value, depth - 1);
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_COMPUTATION_FOLD:
-			fprintf(output, "COMPUTATION_FOLD(");
-			print_term_debug_depth(output, symbols, type_declarations, terms,
-				term->as.computation_fold.computation, depth - 1);
-			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms,
-				term->as.computation_fold.return_clause, depth - 1);
-			for (uint32_t i = 0; i < term->as.computation_fold.clause_count; ++i) {
-				const struct prototype_computation_fold_clause* clause =
-					&terms->computation_fold_clauses[term->as.computation_fold.first_clause + i];
-				fprintf(output, ", OP_CLAUSE(");
-				print_term_debug_depth(output, symbols, type_declarations, terms,
-					clause->operation, depth - 1);
-				fprintf(output, ", ");
-				print_term_debug_depth(output, symbols, type_declarations, terms,
-					clause->body, depth - 1);
-				fprintf(output, ")");
-			}
-			fprintf(output, ")");
-			break;
-		case PROTOTYPE_TERM_OPERATION_REQUEST:
-			fprintf(output, "OPERATION_REQUEST(");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.operation_request.operation, depth - 1);
-			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.operation_request.argument, depth - 1);
-			fprintf(output, ", ");
-			print_term_debug_depth(output, symbols, type_declarations, terms, term->as.operation_request.continuation, depth - 1);
-			fprintf(output, ")");
-			break;
-			default:
-				fprintf(output, "UNKNOWN_TERM");
-				break;
-	}
-}
-
-void prototype_term_print_debug(
-	FILE* output,
-	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* environment,
-	const struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_term_db* terms,
-	uint32_t term_id
-) {
-	print_term_debug_depth(output, symbols, type_declarations, terms, term_id, 64);
-}
-
-#undef print_term_debug_depth

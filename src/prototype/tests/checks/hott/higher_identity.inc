@@ -91,7 +91,6 @@
 			bool_context,
 			function_binding,
 			bool_to_pure_bool,
-			PROTOTYPE_INVALID_ID,
 			&function_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -173,7 +172,7 @@
 		function_context,
 		applied_function,
 		pure_comp,
-		PROTOTYPE_TERM_CATEGORY_COMPUTATION
+		PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION
 	);
 	uint32_t app_claim = fixture_add_claim(
 		&judgement,
@@ -324,7 +323,6 @@
 			bool_context,
 			lambda_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&lambda_body_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -410,7 +408,7 @@
 		lambda_body_context,
 		returned_outer_bool,
 		pure_bool_computation,
-		PROTOTYPE_TERM_CATEGORY_COMPUTATION
+		PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION
 	);
 	uint32_t returned_outer_bool_claim = fixture_add_claim(
 		&judgement,
@@ -443,7 +441,7 @@
 		bool_context,
 		dependent_lambda,
 		bool_to_pure_bool_computation,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t lambda_claim = fixture_add_claim(
 		&judgement,
@@ -549,39 +547,15 @@
 	};
 	uint32_t value_match;
 	uint32_t motive_binding = prototype_term_new_binding(&term_db);
-	uint32_t motive_variable;
 	if (motive_binding == PROTOTYPE_INVALID_ID || prototype_term_match(
 			&term_db, bool_variable, value_match_cases, 2, &value_match
-		) != 0 || prototype_term_var(
-			&term_db, motive_binding, &motive_variable
 		) != 0) {
 		return 106;
 	}
-	struct prototype_match_case_input motive_cases[2] = {
-		{
-			.case_label_symbol_id = -1,
-			.constructor_owner = bool_view,
-			.constructor_id = 0,
-			.binders = NULL,
-			.binder_count = 0,
-			.body = bool_view
-		},
-		{
-			.case_label_symbol_id = -1,
-			.constructor_owner = bool_view,
-			.constructor_id = 1,
-			.binders = NULL,
-			.binder_count = 0,
-			.body = bool_view
-		}
-	};
-	uint32_t motive_match;
 	uint32_t motive_lambda;
 	uint32_t value_match_classifier;
-	if (prototype_term_match(
-			&term_db, motive_variable, motive_cases, 2, &motive_match
-		) != 0 || prototype_term_lambda(
-			&term_db, motive_binding, motive_match, &motive_lambda
+	if (prototype_term_lambda(
+			&term_db, motive_binding, bool_view, &motive_lambda
 		) != 0 || prototype_term_app(
 			&term_db, motive_lambda, bool_variable, &value_match_classifier
 		) != 0) {
@@ -602,7 +576,7 @@
 		bool_context,
 		value_match,
 		value_match_classifier,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t value_match_claim = fixture_add_claim(
 		&judgement,

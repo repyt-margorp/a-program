@@ -35,6 +35,15 @@ int prototype_function_graph_generate_requested(
 	struct symbol_table* symbols
 );
 
+/* Resolve generated graph selectors while the generated source epoch is still
+ * mutable. Layer C and Layer T construction consume the sealed result and never
+ * rewrite source AST records. */
+int prototype_function_graph_prepare_generated_source(
+	struct prototype_ast_db* asts,
+	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_compile_metadata* metadata
+);
+
 int prototype_function_graph_finalize_associations(
 	struct prototype_ast_db* asts,
 	struct prototype_term_db* terms,
@@ -65,7 +74,7 @@ prototype_function_graph_request_inspection(
 enum prototype_function_graph_inspection_state prototype_function_graph_inspect(
 	FILE* output,
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_compile_metadata* metadata,

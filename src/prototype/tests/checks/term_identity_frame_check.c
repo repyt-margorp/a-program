@@ -135,6 +135,32 @@ static int build_match_with_binder_role(
 	return prototype_term_match(db, scrutinee, &match_case, 1, p_match);
 }
 
+static int build_subject_binding_match(
+	struct prototype_term_db* db,
+	uint32_t subject_binding,
+	uint32_t* p_match
+) {
+	uint32_t frame = prototype_term_new_ih_scope(db);
+	uint32_t subject;
+	struct prototype_match_case_input match_case;
+	if (frame == PROTOTYPE_INVALID_ID ||
+		prototype_term_var(db, subject_binding, &subject) != 0) {
+		return -1;
+	}
+	match_case.case_label_symbol_id = 4;
+	match_case.constructor_owner = PROTOTYPE_INVALID_ID;
+	match_case.constructor_id = 4;
+	match_case.binders = NULL;
+	match_case.binder_count = 0;
+	match_case.body = subject;
+	if (prototype_term_match_with_ih_scope(
+			db, subject, &match_case, 1, frame, p_match
+		) != 0) {
+		return -1;
+	}
+	return prototype_term_set_ih_scope_term(db, frame, *p_match);
+}
+
 int main(void) {
 	struct prototype_term_db left_db;
 	struct prototype_term_db right_db;
@@ -156,6 +182,130 @@ int main(void) {
 		prototype_term_lambda(&left_db, right_binder, right_var, &right_lambda) != 0 ||
 		left_lambda != right_lambda) {
 		return 1;
+	}
+
+	uint32_t subject_binding = prototype_term_new_binding(&left_db);
+	uint32_t subject_match;
+	uint32_t concrete;
+	uint32_t concrete_match;
+	if (subject_binding == PROTOTYPE_INVALID_ID) {
+		return 15;
+	}
+	if (build_subject_binding_match(
+			&left_db, subject_binding, &subject_match
+		) != 0) {
+		return 15;
+	}
+	if (prototype_term_int_literal(&left_db, 7, &concrete) != 0) {
+		return 15;
+	}
+	if (prototype_term_graph_substitute_bound_var(
+			&left_db,
+			subject_match,
+			subject_binding,
+			concrete,
+			&concrete_match
+		) != 0) {
+		return 15;
+	}
+	if (concrete_match == subject_match) {
+		return 15;
+	}
+	const struct prototype_term* concrete_match_term =
+		&left_db.terms[concrete_match];
+	if (concrete_match_term->tag != PROTOTYPE_TERM_MATCH) {
+		return 16;
+	}
+	if (concrete_match_term->as.match.scrutinee != concrete) {
+		return 16;
+	}
+	if (concrete_match_term->as.match.ih_scope_id >= left_db.ih_scope_count) {
+		return 16;
+	}
+	const struct prototype_ih_scope* concrete_scope = &left_db.ih_scopes[
+		concrete_match_term->as.match.ih_scope_id
+	];
+	const struct prototype_match_case* concrete_case = &left_db.cases[
+		concrete_match_term->as.match.first_case
+	];
+	if (concrete_scope->scrutinee_binding_id != subject_binding) {
+		return 17;
+	}
+	if (concrete_case->body >= left_db.term_count) {
+		return 17;
+	}
+	if (left_db.terms[concrete_case->body].tag != PROTOTYPE_TERM_VAR) {
+		return 17;
+	}
+	if (left_db.terms[concrete_case->body].as.var.binding_id != subject_binding) {
+		return 17;
+	}
+	if (prototype_term_contains_free_binding(
+			&left_db, concrete_match, subject_binding
+		)) {
+		return 17;
+	}
+	struct prototype_term_canonical_key concrete_key;
+	if (prototype_term_canonical_key(
+			&left_db, concrete_match, &concrete_key
+		) != 0) {
+		return 18;
+	}
+	if (concrete_key.free_binder_count != 0) {
+		return 18;
+	}
+
+	uint32_t renamed_binding = prototype_term_new_binding(&left_db);
+	uint32_t renamed_var;
+	uint32_t renamed_match;
+	uint32_t closed_renamed_match;
+	struct prototype_term_canonical_key renamed_key;
+	if (renamed_binding == PROTOTYPE_INVALID_ID) {
+		return 19;
+	}
+	if (prototype_term_var(&left_db, renamed_binding, &renamed_var) != 0) {
+		return 19;
+	}
+	if (prototype_term_graph_substitute_bound_var(
+			&left_db,
+			subject_match,
+			subject_binding,
+			renamed_var,
+			&renamed_match
+		) != 0) {
+		return 19;
+	}
+	if (left_db.terms[renamed_match].tag != PROTOTYPE_TERM_MATCH) {
+		return 19;
+	}
+	const struct prototype_term* renamed_match_term = &left_db.terms[renamed_match];
+	const struct prototype_ih_scope* renamed_scope = &left_db.ih_scopes[
+		renamed_match_term->as.match.ih_scope_id
+	];
+	const struct prototype_match_case* renamed_case = &left_db.cases[
+		renamed_match_term->as.match.first_case
+	];
+	if (renamed_match_term->as.match.scrutinee != renamed_var) {
+		return 20;
+	}
+	if (renamed_scope->scrutinee_binding_id != renamed_binding) {
+		return 20;
+	}
+	if (renamed_case->body != renamed_var) {
+		return 20;
+	}
+	if (prototype_term_lambda(
+			&left_db, renamed_binding, renamed_match, &closed_renamed_match
+		) != 0) {
+		return 20;
+	}
+	if (prototype_term_canonical_key(
+			&left_db, closed_renamed_match, &renamed_key
+		) != 0) {
+		return 20;
+	}
+	if (renamed_key.free_binder_count != 0) {
+		return 20;
 	}
 
 	uint32_t left_scrutinee;
@@ -248,8 +398,8 @@ int main(void) {
 		return 6;
 	}
 	if (prototype_term_view_shape_equal_for_link(
-			&left_db, NULL, left_match,
-			&right_db, NULL, right_match_id,
+			&left_db, left_match,
+			&right_db, right_match_id,
 			&equal
 		) != 0 || !equal) {
 		return 7;
@@ -261,8 +411,8 @@ int main(void) {
 		prototype_term_induction_hypothesis(
 			&right_db, right_frame_id, right_argument, &right_free_ih
 		) != 0 || prototype_term_view_shape_equal_for_link(
-			&left_db, NULL, left_free_ih,
-			&right_db, NULL, right_free_ih,
+			&left_db, left_free_ih,
+			&right_db, right_free_ih,
 			&equal
 		) != 0 || !equal) {
 		return 8;
@@ -286,8 +436,8 @@ int main(void) {
 	if (prototype_term_induction_hypothesis(
 			&right_db, mismatched_frame, right_argument, &mismatched_free_ih
 		) != 0 || prototype_term_view_shape_equal_for_link(
-			&left_db, NULL, left_free_ih,
-			&right_db, NULL, mismatched_free_ih,
+			&left_db, left_free_ih,
+			&right_db, mismatched_free_ih,
 			&equal
 		) != 0 || equal) {
 		return 13;
@@ -300,8 +450,8 @@ int main(void) {
 		) != 0 || build_match_with_binder_role(
 			&right_db, right_scrutinee, 0, &plain_role_match
 		) != 0 || prototype_term_view_shape_equal_for_link(
-			&left_db, NULL, recursive_role_match,
-			&right_db, NULL, plain_role_match,
+			&left_db, recursive_role_match,
+			&right_db, plain_role_match,
 			&equal
 		) != 0 || equal) {
 		return 14;

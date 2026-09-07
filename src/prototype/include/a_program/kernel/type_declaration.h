@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "a_program/kernel/type_projection.h"
+
 #include "a_program/support/schema.h"
 
 enum prototype_identity_computation_rule {
@@ -16,6 +18,8 @@ enum prototype_identity_computation_rule {
 
 struct prototype_term_db;
 struct prototype_context_db;
+struct prototype_context_classifier_view;
+
 struct prototype_term_reduction_environment;
 struct symbol_table;
 
@@ -51,6 +55,8 @@ enum prototype_type_expr_tag {
 	PROTOTYPE_TYPE_EXPR_SEMANTIC_RELATION = 16
 };
 
+int prototype_type_expr_tag_from_host_type(int type_id);
+
 struct prototype_type_representation_fingerprint {
 	/*
 	 * Structural fingerprint for the core shape layer. This is not declaration
@@ -65,6 +71,14 @@ struct prototype_type_representation_fingerprint {
 	uint32_t free_binder_count;
 	int has_local_universe_reference;
 	int has_name_reference;
+};
+
+/* Layer T staging projection used while an imported Core graph still contains
+ * unresolved TYPE_FORMER representation handles. The declaration anchor never
+ * occupies a Core Term field. */
+struct prototype_type_representation_anchor_view {
+	const uint32_t* type_ids_by_term;
+	size_t term_count;
 };
 
 struct prototype_type_expr {
@@ -383,6 +397,15 @@ int prototype_type_constructor_classifier(
 	uint32_t constructor_id,
 	uint32_t* p_classifier
 );
+int prototype_type_constructor_classifier_in_context(
+	const struct prototype_type_semantic_schema_db* semantic_schema,
+	struct prototype_constructor_classifier_cache* classifier_cache,
+	struct prototype_constructor_specialization_stats* specialization_stats,
+	const struct prototype_context_classifier_view* context_view,
+	struct prototype_term_db* terms,
+	uint32_t constructor_id,
+	uint32_t* p_classifier
+);
 
 const struct prototype_type_constructor_readback* prototype_type_constructor_readback_get(
 	const struct prototype_type_semantic_schema_db* semantic_schema,
@@ -405,6 +428,14 @@ int prototype_type_constructor_derive_curried_classifier(
 	uint32_t result_classifier,
 	uint32_t* p_classifier
 );
+int prototype_type_constructor_derive_curried_classifier_in_context(
+	struct prototype_term_db* terms,
+	const struct prototype_context_classifier_view* context_view,
+	uint32_t parameter_context,
+	uint32_t field_context,
+	uint32_t result_classifier,
+	uint32_t* p_classifier
+);
 
 int prototype_constructor_telescopes_validate(
 	const struct prototype_type_semantic_schema_db* semantic_schema,
@@ -415,7 +446,7 @@ int prototype_constructor_telescopes_validate(
 int prototype_constructor_curried_caches_validate(
 	const struct prototype_type_semantic_schema_db* semantic_schema,
 	const struct prototype_constructor_classifier_cache* classifier_cache,
-	const struct prototype_context_db* contexts,
+	const struct prototype_context_classifier_view* context_view,
 	struct prototype_term_db* terms
 );
 
@@ -441,6 +472,13 @@ int prototype_type_declaration_representation_fingerprint(
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* db,
 	const struct prototype_context_db* contexts,
+	uint32_t type_id,
+	struct prototype_type_representation_fingerprint* p_key
+);
+int prototype_type_declaration_representation_fingerprint_in_context(
+	const struct prototype_term_db* terms,
+	const struct prototype_type_declaration_db* db,
+	const struct prototype_context_classifier_view* context_view,
 	uint32_t type_id,
 	struct prototype_type_representation_fingerprint* p_key
 );
@@ -501,6 +539,17 @@ int prototype_type_declaration_rebuild_representations(
 	const struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* db,
 	const struct prototype_context_db* contexts
+);
+int prototype_type_declaration_rebuild_representations_in_context(
+	const struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* db,
+	const struct prototype_context_classifier_view* context_view
+);
+int prototype_type_declaration_rebuild_representations_with_anchors(
+	const struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* db,
+	const struct prototype_context_db* contexts,
+	const struct prototype_type_representation_anchor_view* anchors
 );
 int prototype_type_declaration_representations_equal(
 	const struct prototype_term_db* left_terms,

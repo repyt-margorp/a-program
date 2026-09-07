@@ -34,7 +34,6 @@
 			bool_context,
 			object_motive_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&object_motive_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -265,7 +264,6 @@
 			bool_context,
 			stored_unbox_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&unbox_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -349,7 +347,7 @@
 		bool_context,
 		unbox_match,
 		unbox_classifier,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t unbox_claim = fixture_add_claim(
 		&judgement,
@@ -478,7 +476,6 @@
 			empty,
 			nat_binding,
 			nat_view,
-			PROTOTYPE_INVALID_ID,
 			&nat_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -849,15 +846,15 @@
 		return 244;
 	}
 	struct prototype_intrinsic_namespace_binding int64_bindings[32];
-	struct prototype_intrinsic_environment int64_environment;
+	struct prototype_intrinsic_typing_environment int64_environment;
 	if (fixture_int64_intrinsic_environment(
 			int64_bindings,
 			sizeof(int64_bindings) / sizeof(int64_bindings[0]),
 			&int64_environment
-		) != 0 || prototype_intrinsic_environment_fingerprint(
+		) != 0 || prototype_intrinsic_typing_fingerprint(
 			&int64_environment
-		) == prototype_intrinsic_environment_fingerprint(
-			prototype_default_intrinsic_environment()
+		) == prototype_intrinsic_typing_fingerprint(
+			prototype_default_intrinsic_typing_environment()
 		) || write_identity_root_artifact_with_environment(
 			int64_artifact_path,
 			&int64_environment,
@@ -873,7 +870,7 @@
 		) != 0 || fixture_artifact_interface_environment_round_trip(
 			int64_artifact_path,
 			&int64_environment,
-			prototype_default_intrinsic_environment(),
+			prototype_default_intrinsic_typing_environment(),
 			&identity_interface
 		) != 0) {
 		return 274;
@@ -899,7 +896,6 @@
 			empty,
 			unused_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&unused_context
 		) != 0 || prototype_substitution_projection(
 			&substitution_db,
@@ -975,7 +971,7 @@
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db,
 			NULL, nat_constructor_goal, PROTOTYPE_INVALID_ID,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32, &work_id
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF, 32, &work_id
 		) != 0 || count_rule(
 			&candidate_db,
 			nat_constructor_goal,
@@ -1014,46 +1010,12 @@
 		return 145;
 	}
 	uint32_t nat_motive_binding = prototype_term_new_binding(&term_db);
-	uint32_t nat_motive_variable;
-	uint32_t nat_motive_succ_binding = prototype_term_new_binding(&term_db);
-	if (nat_motive_binding == PROTOTYPE_INVALID_ID ||
-		nat_motive_succ_binding == PROTOTYPE_INVALID_ID || prototype_term_var(
-			&term_db, nat_motive_binding, &nat_motive_variable
-		) != 0) {
+	if (nat_motive_binding == PROTOTYPE_INVALID_ID) {
 		return 123;
 	}
-	struct prototype_case_binder nat_motive_succ_binder = {
-		.binding_id = nat_motive_succ_binding,
-		.is_recursive = 0
-	};
-	struct prototype_match_case_input nat_motive_cases[2] = {
-		{
-			.case_label_symbol_id = -1,
-			.constructor_owner = nat_view,
-			.constructor_id = 0,
-			.binders = NULL,
-			.binder_count = 0,
-			.body = nat_view
-		},
-		{
-			.case_label_symbol_id = -1,
-			.constructor_owner = nat_view,
-			.constructor_id = 1,
-			.binders = &nat_motive_succ_binder,
-			.binder_count = 1,
-			.body = nat_view
-		}
-	};
-	uint32_t nat_motive_match;
 	uint32_t nat_motive;
-	if (prototype_term_match(
-			&term_db,
-			nat_motive_variable,
-			nat_motive_cases,
-			2,
-			&nat_motive_match
-		) != 0 || prototype_term_lambda(
-			&term_db, nat_motive_binding, nat_motive_match, &nat_motive
+	if (prototype_term_lambda(
+			&term_db, nat_motive_binding, nat_view, &nat_motive
 		) != 0) {
 		return 124;
 	}
@@ -1117,7 +1079,6 @@
 			nat_context,
 			stored_nat_succ_binding,
 			nat_view,
-			PROTOTYPE_INVALID_ID,
 			&nat_succ_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,

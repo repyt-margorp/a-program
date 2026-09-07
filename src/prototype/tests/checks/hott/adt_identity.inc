@@ -125,15 +125,15 @@
 
 	uint32_t left_operation = add_operation(
 		&operation_graph, empty, left_text, text,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t right_operation = add_operation(
 		&operation_graph, empty, right_text, text,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t sibling_operation = add_operation(
 		&operation_graph, empty, left_text, text,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t text_is_type = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_IS_TYPE,
@@ -220,7 +220,7 @@
 	uint32_t work_id;
 	if (prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, text_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || work_items[work_id].outcome.state != PROTOTYPE_HOTT_WORK_UNSUPPORTED ||
 		work_items[work_id].outcome.residual_reason !=
@@ -249,7 +249,7 @@
 			&diagonal_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, diagonal_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || work_items[work_id].outcome.state != PROTOTYPE_HOTT_WORK_READY ||
 		count_rule(
@@ -263,7 +263,7 @@
 	if (prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db,
 			NULL, diagonal_goal, PROTOTYPE_INVALID_ID,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF, 32,
 			&repeated_diagonal_work
 		) != 0 || repeated_diagonal_work != work_id ||
 		work_db.item_count != work_count_before_repeat ||
@@ -285,7 +285,7 @@
 	}
 	uint32_t beta_operation = add_operation(
 		&operation_graph, empty, beta_text, text,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t beta_claim = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
@@ -300,7 +300,7 @@
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL,
 			conversion_goal, PROTOTYPE_INVALID_ID,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32, &work_id
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF, 32, &work_id
 		) != 0 || work_items[work_id].outcome.state != PROTOTYPE_HOTT_WORK_READY ||
 		count_rule(
 			&candidate_db, conversion_goal, PROTOTYPE_HOTT_RULE_REL_CONVERT
@@ -311,7 +311,7 @@
 	uint32_t binder = prototype_term_new_binding(&term_db);
 	uint32_t extended;
 	if (binder == PROTOTYPE_INVALID_ID || prototype_context_extend(
-			&context_db, empty, binder, text, PROTOTYPE_INVALID_ID, &extended
+			&context_db, empty, binder, text, &extended
 		) != 0) {
 		return 10;
 	}
@@ -789,7 +789,7 @@
 		}
 	}
 	uint32_t box_constructor_id = type_db.semantic_schema.type_declarations[
-		term_db.terms[box_view].as.type_view.view_type_id
+		fixture_type_id_for_instance(&term_db, &type_db, box_view)
 	].first_constructor;
 	struct prototype_constructor_classifier_cache_entry saved_box_cache =
 		type_db.constructor_classifier_cache.entries[box_constructor_id];
@@ -864,11 +864,11 @@
 	}
 	uint32_t false_operation = add_operation(
 		&operation_graph, empty, bool_false, bool_view,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t true_operation = add_operation(
 		&operation_graph, empty, bool_true, bool_view,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t bool_has_type;
 	uint32_t bool_is_type;
@@ -965,10 +965,12 @@
 		) != 0) {
 		return 241;
 	}
-	uint32_t dependent_box_type_id = term_db.terms[
-		dependent_box_view
-	].as.type_view.view_type_id;
-	uint32_t box_type_id = term_db.terms[box_view].as.type_view.view_type_id;
+	uint32_t dependent_box_type_id = fixture_type_id_for_instance(
+		&term_db, &type_db, dependent_box_view
+	);
+	uint32_t box_type_id = fixture_type_id_for_instance(
+		&term_db, &type_db, box_view
+	);
 	const struct prototype_type_declaration* box_declaration =
 		box_type_id < type_db.semantic_schema.type_count ?
 		&type_db.semantic_schema.type_declarations[box_type_id] : NULL;
@@ -1000,7 +1002,9 @@
 	uint32_t dependent_second_is_type;
 	uint32_t dependent_second_context_certificate;
 	uint32_t dependent_classifier = dependent_second_context ?
-		prototype_context_classifier_term(dependent_second_context) :
+		prototype_context_classifier_answer(
+			&context_db, dependent_second_context
+		) :
 		PROTOTYPE_INVALID_ID;
 	const struct prototype_term* dependent_application =
 		dependent_classifier < term_db.term_count ?
@@ -1049,7 +1053,6 @@
 			empty,
 			dependent_family_lambda->as.lambda.binding_id,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&dependent_family_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -1139,7 +1142,9 @@
 			&judgement,
 			&term_db,
 			dependent_second_context->parent,
-			prototype_context_classifier_term(dependent_second_context),
+			prototype_context_classifier_answer(
+				&context_db, dependent_second_context
+			),
 			universe,
 			dependent_second_classifier_claim,
 			&dependent_second_is_type
@@ -1263,7 +1268,6 @@
 				kernel_square_target_context,
 				binder,
 				term_db.terms[kernel_square_cursor].as.pi.domain,
-				PROTOTYPE_INVALID_ID,
 				&next_context
 			) != 0) {
 			return 254;
@@ -1271,9 +1275,9 @@
 		kernel_square_target_context = next_context;
 		kernel_square_cursor = body;
 	}
-	uint32_t square_source_type_id = term_db.terms[
-		dependent_box_view
-	].as.type_view.view_type_id;
+	uint32_t square_source_type_id = fixture_type_id_for_instance(
+		&term_db, &type_db, dependent_box_view
+	);
 	const struct prototype_type_declaration* square_source_type =
 		square_source_type_id < type_db.semantic_schema.type_count ? &type_db.semantic_schema.type_declarations[
 			square_source_type_id
@@ -1560,7 +1564,7 @@
 			&bool_distinct_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, bool_distinct_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || work_items[work_id].outcome.state != PROTOTYPE_HOTT_WORK_READY ||
 			count_rule(
@@ -1590,7 +1594,7 @@
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db,
 			NULL, heterogeneous_goal, PROTOTYPE_INVALID_ID,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32, &work_id
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF, 32, &work_id
 		) != 0 || work_items[work_id].outcome.state !=
 			PROTOTYPE_HOTT_WORK_RESIDUAL ||
 		work_items[work_id].outcome.residual_reason !=
@@ -1604,7 +1608,7 @@
 			&bool_diagonal_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, bool_diagonal_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || count_rule(
 			&candidate_db, bool_diagonal_goal, PROTOTYPE_HOTT_RULE_REL_DIAGONAL
@@ -1638,7 +1642,7 @@
 	}
 	uint32_t neutral_operation = add_operation(
 		&operation_graph, empty, neutral, bool_view,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t neutral_claim = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
@@ -1652,7 +1656,7 @@
 			&neutral_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, neutral_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || count_rule(
 			&candidate_db, neutral_goal, PROTOTYPE_HOTT_RULE_REL_MATCH_ACTION
@@ -1678,7 +1682,7 @@
 	}
 	uint32_t text_type_operation = add_operation(
 		&operation_graph, empty, text, universe,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t universe_has_type = fixture_add_claim(
 		&judgement, PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE,
@@ -1735,7 +1739,7 @@
 			&universe_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, universe_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || work_items[work_id].outcome.state != PROTOTYPE_HOTT_WORK_UNSUPPORTED ||
 		work_items[work_id].outcome.residual_reason != PROTOTYPE_HOTT_RESIDUAL_UNIVERSE) {
@@ -1801,7 +1805,7 @@
 			&computation_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, computation_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || count_rule(
 			&candidate_db, computation_goal, PROTOTYPE_HOTT_RULE_REL_COMP_RETURN
@@ -1859,7 +1863,7 @@
 			&thunk_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, thunk_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || count_rule(
 			&candidate_db, thunk_goal, PROTOTYPE_HOTT_RULE_REL_THUNK_PURE
@@ -1890,7 +1894,7 @@
 			&effect_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, effect_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || work_items[work_id].outcome.state != PROTOTYPE_HOTT_WORK_RESIDUAL ||
 		work_items[work_id].outcome.residual_reason != PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL) {
@@ -1932,7 +1936,7 @@
 			&request_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, request_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || work_items[work_id].outcome.state != PROTOTYPE_HOTT_WORK_UNSUPPORTED ||
 		work_items[work_id].outcome.residual_reason !=
@@ -2000,7 +2004,7 @@
 			&pure_pi_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, pure_pi_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || count_rule(
 			&candidate_db, pure_pi_goal, PROTOTYPE_HOTT_RULE_REL_PI_POINTWISE
@@ -2011,7 +2015,7 @@
 			&effect_pi_goal
 		) != 0 || prototype_parametricity_relation_plan(
 			&goal_db, &candidate_db, &work_db, &kernel_view, &bridge_db, NULL, effect_pi_goal,
-			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_INVALID_ID, PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32, &work_id
 		) != 0 || work_items[work_id].outcome.state != PROTOTYPE_HOTT_WORK_RESIDUAL ||
 		work_items[work_id].outcome.residual_reason != PROTOTYPE_HOTT_RESIDUAL_EFFECTFUL) {
@@ -2116,7 +2120,7 @@
 		.outcome = {
 			.state = PROTOTYPE_HOTT_ACTION_RESULT_READY,
 			.residual_reason = PROTOTYPE_HOTT_RESIDUAL_NONE,
-			.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			.normalization_profile = PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			.step_limit = 0,
 			.term_graph_revision = term_db.term_count
 		}

@@ -539,8 +539,9 @@ int prototype_dimension_action_context_type_classifier(
 				}
 				if (status == 0) {
 					status = prototype_term_graph_reindex_bindings(
-						terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-						prototype_context_classifier_term(source_field),
+						terms, prototype_context_classifier_answer(
+							contexts, source_field
+						),
 						replacements,
 						i,
 						&expected
@@ -550,7 +551,7 @@ int prototype_dimension_action_context_type_classifier(
 				status = prototype_dimension_action_from_zero(
 					terms,
 					dimension_operators,
-					prototype_context_classifier_term(source_field),
+					prototype_context_classifier_answer(contexts, source_field),
 					intrinsic_dimension,
 					&expected
 				);
@@ -580,7 +581,7 @@ int prototype_dimension_action_context_type_classifier(
 			}
 			free(digits);
 			if (status == 0 && expected !=
-					prototype_context_classifier_term(target_field)) {
+					prototype_context_classifier_answer(contexts, target_field)) {
 				status = -1;
 			}
 		}
@@ -632,8 +633,7 @@ int prototype_dimension_action_context_type_classifier(
 			}
 			if (status == 0) {
 				status = prototype_term_graph_reindex_bindings(
-					terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-					source_type,
+					terms, source_type,
 					replacements,
 					source_count,
 					&classifiers[ordinal]

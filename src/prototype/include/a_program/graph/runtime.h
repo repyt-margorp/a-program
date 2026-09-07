@@ -1,6 +1,7 @@
 #ifndef A_PROGRAM_PROTOTYPE_GRAPH_RUNTIME_H
 #define A_PROGRAM_PROTOTYPE_GRAPH_RUNTIME_H
 
+#include "a_program/core/term.h"
 #include "a_program/graph/verification.h"
 
 enum prototype_runtime_failure_kind {

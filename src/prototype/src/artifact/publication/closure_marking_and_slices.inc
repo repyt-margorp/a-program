@@ -1,3 +1,10 @@
+struct artifact_executable_reachability {
+	unsigned char* terms;
+	unsigned char* cases;
+	size_t term_count;
+	size_t case_count;
+};
+
 struct artifact_graph_marks {
 	const struct prototype_type_declaration_db* type_declarations;
 	const struct prototype_judgement_db* judgement;
@@ -76,6 +83,52 @@ struct artifact_substitution_slice {
 static int artifact_derivation_present(
 	const struct prototype_judgement_derivation* derivation
 );
+
+static int artifact_occurrence_publication_context(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t occurrence_id,
+	uint32_t* p_context_id
+) {
+	if (!metadata || !p_context_id) {
+		return -1;
+	}
+	if (occurrence_id >= metadata->typed_occurrences.occurrence_count) {
+		return -1;
+	}
+	const struct prototype_typed_publication_projection* projection;
+	return prototype_typed_publication_view_lookup(
+		&metadata->typed_publication,
+		occurrence_id,
+		&projection,
+		p_context_id
+	);
+}
+
+static int artifact_match_case_accepted_projection(
+	const struct prototype_compile_metadata* metadata,
+	uint32_t case_id,
+	const struct prototype_typed_publication_match_case_projection** p_projection
+) {
+	if (!metadata || !p_projection ||
+		case_id >= metadata->typed_occurrences.case_count) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence_match_case* operation_case =
+		&metadata->typed_occurrences.cases[case_id];
+	const struct prototype_typed_publication_match_case_projection* projection =
+		prototype_typed_publication_view_get_match_case(
+			&metadata->typed_publication, case_id
+		);
+	uint32_t expected_refinement =
+		prototype_typed_occurrence_match_case_is_solved(operation_case) ?
+			operation_case->refinement_substitution : PROTOTYPE_INVALID_ID;
+	if (!projection ||
+		projection->refinement_substitution != expected_refinement) {
+		return -1;
+	}
+	*p_projection = projection;
+	return 0;
+}
 
 static void artifact_context_slice_free(struct artifact_context_slice* slice) {
 	if (!slice) {
@@ -175,6 +228,11 @@ static int artifact_substitution_slice_init(
 			artifact_substitution_slice_mark(
 				slice, substitutions, derivation->semantic_action_id, 0
 			) != 0) {
+			fprintf(stderr,
+				"artifact substitution slice: invalid derivation action derivation=%zu substitution=%u count=%zu\n",
+				i,
+				derivation->semantic_action_id,
+				slice->source_count);
 			artifact_substitution_slice_free(slice);
 			return -1;
 		}
@@ -187,6 +245,12 @@ static int artifact_substitution_slice_init(
 					derivation->premises[j].semantic_action_id,
 					0
 				) != 0) {
+				fprintf(stderr,
+					"artifact substitution slice: invalid premise action derivation=%zu premise=%u substitution=%u count=%zu\n",
+					i,
+					j,
+					derivation->premises[j].semantic_action_id,
+					slice->source_count);
 				artifact_substitution_slice_free(slice);
 				return -1;
 			}
@@ -195,6 +259,26 @@ static int artifact_substitution_slice_init(
 	for (size_t i = 0; i < metadata->typed_occurrences.occurrence_count; ++i) {
 		const struct prototype_typed_occurrence* operation =
 			&metadata->typed_occurrences.occurrences[i];
+		const struct prototype_typed_publication_projection* projection;
+		int publication_status = prototype_typed_publication_view_lookup(
+			&metadata->typed_publication, (uint32_t)i, &projection, NULL
+		);
+		if (publication_status < 0 ||
+			(publication_status == 0 && artifact_substitution_slice_mark(
+				slice,
+				substitutions,
+				projection->substitution,
+				0
+			) != 0)) {
+			fprintf(stderr,
+				"artifact substitution slice: invalid publication action "
+				"occurrence=%zu substitution=%u count=%zu\n",
+				i,
+				projection ? projection->substitution : PROTOTYPE_INVALID_ID,
+				slice->source_count);
+			artifact_substitution_slice_free(slice);
+			return -1;
+		}
 		if (operation->context_action_substitution != PROTOTYPE_INVALID_ID &&
 			artifact_substitution_slice_mark(
 				slice,
@@ -202,6 +286,11 @@ static int artifact_substitution_slice_init(
 				operation->context_action_substitution,
 				0
 			) != 0) {
+			fprintf(stderr,
+				"artifact substitution slice: invalid occurrence action occurrence=%zu substitution=%u count=%zu\n",
+				i,
+				operation->context_action_substitution,
+				slice->source_count);
 			artifact_substitution_slice_free(slice);
 			return -1;
 		}
@@ -209,13 +298,28 @@ static int artifact_substitution_slice_init(
 	for (size_t i = 0; i < metadata->typed_occurrences.case_count; ++i) {
 		const struct prototype_typed_occurrence_match_case* operation_case =
 			&metadata->typed_occurrences.cases[i];
+		const struct prototype_typed_publication_match_case_projection* projection;
+		if (artifact_match_case_accepted_projection(
+				metadata, (uint32_t)i, &projection
+			) != 0) {
+			fprintf(stderr,
+				"artifact substitution slice: missing accepted case projection case=%zu\n",
+				i);
+			artifact_substitution_slice_free(slice);
+			return -1;
+		}
 		if (prototype_typed_occurrence_match_case_is_solved(operation_case) &&
 			artifact_substitution_slice_mark(
 				slice,
 				substitutions,
-				operation_case->refinement_substitution,
+				projection->refinement_substitution,
 				0
 			) != 0) {
+			fprintf(stderr,
+				"artifact substitution slice: invalid case refinement case=%zu substitution=%u count=%zu\n",
+				i,
+				projection->refinement_substitution,
+				slice->source_count);
 			artifact_substitution_slice_free(slice);
 			return -1;
 		}
@@ -245,6 +349,15 @@ static int artifact_substitution_slice_canonicalize(
 		if (substitution_id >= slice->source_count ||
 			!slice->reachable[substitution_id] ||
 			slice->relocation[substitution_id] != PROTOTYPE_INVALID_ID) {
+			fprintf(stderr,
+				"artifact substitution slice: invalid canonical order position=%zu substitution=%u count=%zu reachable=%u relocation=%u\n",
+				position,
+				substitution_id,
+				slice->source_count,
+				substitution_id < slice->source_count ?
+					slice->reachable[substitution_id] : 0,
+				substitution_id < slice->source_count ?
+					slice->relocation[substitution_id] : PROTOTYPE_INVALID_ID);
 			return -1;
 		}
 		slice->relocation[substitution_id] =
@@ -268,12 +381,18 @@ static int artifact_context_slice_mark(
 	uint32_t context_id
 ) {
 	if (!slice || !contexts || context_id >= contexts->context_count) {
+		fprintf(stderr,
+			"artifact Context slice: mark root out of range context=%u count=%zu\n",
+			context_id, contexts ? contexts->context_count : 0);
 		return -1;
 	}
 	while (context_id != prototype_context_empty(contexts)) {
 		const struct prototype_context* context =
 			prototype_context_get(contexts, context_id);
 		if (!context) {
+			fprintf(stderr,
+				"artifact Context slice: missing parent path context=%u count=%zu\n",
+				context_id, contexts->context_count);
 			return -1;
 		}
 		slice->reachable[context_id] = 1;
@@ -324,6 +443,10 @@ static int artifact_context_slice_init(
 			) != 0 || artifact_context_slice_mark(
 				slice, &metadata->contexts, type->index_context
 			) != 0) {
+			fprintf(stderr,
+				"artifact Context slice: invalid type contexts type=%zu parameter=%u index=%u count=%zu\n",
+				i, type->parameter_context, type->index_context,
+				slice->source_count);
 			artifact_context_slice_free(slice);
 			return -1;
 		}
@@ -339,6 +462,10 @@ static int artifact_context_slice_init(
 			) != 0 || artifact_context_slice_mark(
 				slice, &metadata->contexts, constructor->field_context
 			) != 0) {
+			fprintf(stderr,
+				"artifact Context slice: invalid constructor contexts constructor=%zu parameter=%u field=%u count=%zu\n",
+				i, constructor->parameter_context, constructor->field_context,
+				slice->source_count);
 			artifact_context_slice_free(slice);
 			return -1;
 		}
@@ -352,6 +479,9 @@ static int artifact_context_slice_init(
 				&metadata->contexts,
 				proposition->context_id
 			) != 0) {
+			fprintf(stderr,
+				"artifact Context slice: invalid claim context claim=%zu context=%u count=%zu\n",
+				i, proposition->context_id, slice->source_count);
 			artifact_context_slice_free(slice);
 			return -1;
 		}
@@ -373,15 +503,53 @@ static int artifact_context_slice_init(
 			if (!proposition || artifact_context_slice_mark(
 					slice, &metadata->contexts, proposition->context_id
 				) != 0) {
+				fprintf(stderr,
+					"artifact Context slice: invalid premise context derivation=%zu premise=%u context=%u count=%zu\n",
+					i, j, proposition ? proposition->context_id : PROTOTYPE_INVALID_ID,
+					slice->source_count);
 				artifact_context_slice_free(slice);
 				return -1;
 			}
 		}
 	}
 	for (size_t i = 0; i < metadata->typed_occurrences.occurrence_count; ++i) {
-		if (artifact_context_slice_mark(
-			slice, &metadata->contexts, metadata->typed_occurrences.occurrences[i].context_id
+		const struct prototype_typed_occurrence* operation =
+			&metadata->typed_occurrences.occurrences[i];
+		uint32_t accepted_context = PROTOTYPE_INVALID_ID;
+		int publication_status = artifact_occurrence_publication_context(
+				metadata,
+				(uint32_t)i,
+				&accepted_context
+			);
+		if (publication_status < 0 ||
+			(publication_status == 0 && artifact_context_slice_mark(
+				slice, &metadata->contexts, accepted_context
+			) != 0) || artifact_context_slice_mark(
+			slice, &metadata->contexts, operation->context_id
 		) != 0) {
+			fprintf(stderr,
+				"artifact Context slice: invalid occurrence context occurrence=%zu accepted=%u count=%zu\n",
+				i, accepted_context, slice->source_count);
+			artifact_context_slice_free(slice);
+			return -1;
+		}
+	}
+	for (size_t i = 0; i < metadata->typed_occurrences.case_count; ++i) {
+		const struct prototype_typed_occurrence_match_case* operation_case =
+			&metadata->typed_occurrences.cases[i];
+		const struct prototype_typed_publication_match_case_projection* projection =
+			NULL;
+		if (artifact_match_case_accepted_projection(
+				metadata, (uint32_t)i, &projection
+			) != 0 || artifact_context_slice_mark(
+			slice, &metadata->contexts, projection->concrete_context
+		) != 0 || artifact_context_slice_mark(
+			slice, &metadata->contexts, operation_case->context_id
+		) != 0) {
+			fprintf(stderr,
+				"artifact Context slice: invalid case context case=%zu context=%u count=%zu\n",
+				i, projection ? projection->concrete_context : PROTOTYPE_INVALID_ID,
+				slice->source_count);
 			artifact_context_slice_free(slice);
 			return -1;
 		}
@@ -401,6 +569,10 @@ static int artifact_context_slice_init(
 			) != 0 || artifact_context_slice_mark(
 				slice, &metadata->contexts, substitution->target_context
 			) != 0) {
+			fprintf(stderr,
+				"artifact Context slice: invalid substitution contexts substitution=%zu source=%u target=%u count=%zu\n",
+				i, substitution->source_context, substitution->target_context,
+				slice->source_count);
 			artifact_context_slice_free(slice);
 			return -1;
 		}
@@ -695,18 +867,13 @@ static int artifact_mark_substitution(
 	if (!substitution ||
 		(substitution->term != PROTOTYPE_INVALID_ID && artifact_mark_term(
 			marks, terms, substitution->term, depth + 1
-		) != 0) ||
-		(substitution->term_classifier != PROTOTYPE_INVALID_ID &&
-		 artifact_mark_term(
-			marks, terms, substitution->term_classifier, depth + 1
-		 ) != 0)) {
+		) != 0)) {
 		fprintf(stderr,
 			"artifact closure: substitution term traversal failed substitution=%u "
-			"kind=%d term=%u classifier=%u\n",
+			"kind=%d term=%u\n",
 			substitution_id,
 			substitution ? substitution->kind : 0,
-			substitution ? substitution->term : PROTOTYPE_INVALID_ID,
-			substitution ? substitution->term_classifier : PROTOTYPE_INVALID_ID);
+			substitution ? substitution->term : PROTOTYPE_INVALID_ID);
 		return -1;
 	}
 	if (substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
@@ -741,7 +908,7 @@ static int artifact_mark_substitution(
 			evidence_claim = marks->source_substitution_evidence_claims[
 				substitution_id
 			];
-			if (!prototype_cwf_substitution_claim_certifies(
+			if (!prototype_cwf_substitution_claim_matches_assignment(
 					substitutions,
 					marks->judgement,
 					substitution_id,
@@ -766,7 +933,7 @@ static int artifact_mark_substitution(
 		}
 		if (evidence_claim == PROTOTYPE_INVALID_ID) {
 			for (uint32_t i = 0; i < marks->judgement->claim_count; ++i) {
-				if (!prototype_cwf_substitution_claim_certifies(
+				if (!prototype_cwf_substitution_claim_matches_assignment(
 						substitutions, marks->judgement, substitution_id, i
 					) || !artifact_claim_has_derivation(marks->judgement, i)) {
 					continue;
@@ -786,7 +953,7 @@ static int artifact_mark_substitution(
 			) != 0) {
 			fprintf(stderr,
 				"artifact closure: substitution evidence unavailable substitution=%u claim=%u "
-				"source=%u target=%u prefix=%u term=%u tag=%d classifier=%u\n",
+				"source=%u target=%u prefix=%u term=%u tag=%d\n",
 				substitution_id,
 				evidence_claim,
 				substitution->source_context,
@@ -794,8 +961,7 @@ static int artifact_mark_substitution(
 				substitution->first,
 				substitution->term,
 				substitution->term < terms->term_count ?
-					terms->terms[substitution->term].tag : -1,
-				substitution->term_classifier);
+					terms->terms[substitution->term].tag : -1);
 			return -1;
 		}
 		marks->substitution_evidence_claims[substitution_id] = evidence_claim;
@@ -876,10 +1042,6 @@ static int artifact_substitution_candidate_compare(
 	COMPARE_FIELD(
 		artifact_term_publication_rank(marks, left->term),
 		artifact_term_publication_rank(marks, right->term)
-	);
-	COMPARE_FIELD(
-		artifact_term_publication_rank(marks, left->term_classifier),
-		artifact_term_publication_rank(marks, right->term_classifier)
 	);
 	COMPARE_FIELD(left_id, right_id);
 #undef COMPARE_FIELD
@@ -1396,6 +1558,12 @@ static int artifact_mark_frame(
 		) != 0) {
 		return -1;
 	}
+	uint32_t binding_scope_id = terms->ih_scopes[ih_scope_id].binding_scope_id;
+	if (binding_scope_id >= terms->ih_scope_count || artifact_mark_frame(
+			marks, terms, binding_scope_id, depth + 1
+		) != 0) {
+		return -1;
+	}
 	if (terms->ih_scopes[ih_scope_id].match_term != PROTOTYPE_INVALID_ID &&
 		artifact_mark_term(
 			marks,
@@ -1499,14 +1667,26 @@ static int artifact_mark_term(
 				return artifact_mark_type(marks, terms, representative_type_id, depth + 1);
 			}
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			return artifact_mark_type(marks, terms, term->as.type_declaration.type_id, depth + 1);
-		case PROTOTYPE_TERM_TYPE_VIEW:
-			if (artifact_mark_type(
-					marks, terms, term->as.type_view.view_type_id, depth + 1
+		case PROTOTYPE_TERM_TYPE_VIEW: {
+			uint32_t type_id;
+			uint32_t arguments[16];
+			uint32_t argument_count;
+			if (prototype_type_projection_instance_info(
+					terms,
+					&marks->type_declarations->semantic_schema,
+					term_id,
+					&type_id,
+					arguments,
+					&argument_count
+				) != 0 || artifact_mark_type(
+					marks, terms, type_id, depth + 1
 				) != 0) {
-				fprintf(stderr, "artifact closure: type view declaration failed term=%u type=%u\n",
-					term_id, term->as.type_view.view_type_id);
+				fprintf(stderr, "artifact closure: nominal declaration failed term=%u\n",
+					term_id);
 				return -1;
+			}
+			if (term->tag == PROTOTYPE_TERM_TYPE_DECLARATION) {
+				return 0;
 			}
 			if (artifact_mark_term(
 					marks, terms, term->as.type_view.core, depth + 1
@@ -1524,13 +1704,12 @@ static int artifact_mark_term(
 				return -1;
 			}
 			return 0;
+		}
 				case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 				return artifact_mark_frame(marks, terms, term->as.induction_hypothesis.ih_scope_id, depth + 1) == 0 &&
 					artifact_mark_term(marks, terms, term->as.induction_hypothesis.argument, depth + 1) == 0 ? 0 : -1;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
-			return artifact_mark_term(
-				marks, terms, term->as.effect_operation.classifier, depth + 1
-			);
+			return 0;
 		case PROTOTYPE_TERM_COMPUTATION_TYPE:
 			return artifact_mark_term(marks, terms, term->as.computation_type.label, depth + 1) == 0 &&
 				artifact_mark_term(marks, terms, term->as.computation_type.result, depth + 1) == 0 ? 0 : -1;

@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 struct prototype_compile_metadata;
-struct prototype_intrinsic_environment;
+struct prototype_intrinsic_typing_environment;
 struct prototype_term_db;
 struct prototype_type_declaration;
 struct prototype_type_declaration_db;
@@ -27,7 +27,7 @@ void prototype_diagnostic_print_compile_diagnostics(
 void prototype_diagnostic_print_resolution_trace(
 	FILE* stream,
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	const struct prototype_compile_metadata* metadata

@@ -10,6 +10,8 @@
 #include "a_program/kernel/resource_usage.h"
 #include "a_program/support/symbol.h"
 #include "a_program/core/term.h"
+#include "a_program/kernel/classifier.h"
+#include "a_program/kernel/intrinsic.h"
 #include "a_program/kernel/type_declaration.h"
 
 struct prototype_typed_occurrence_graph;
@@ -323,24 +325,10 @@ struct prototype_judgement_computation_constraint {
 	 * also receives their erased TermDB projections below. */
 	uint32_t premise_occurrence_count;
 	uint32_t premise_occurrences[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	uint32_t premise_contexts[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	/* A Lambda operand may be locally classified under assumptions owned by the
-	 * enclosing fold. Such an operand is replayed by the fold rule and is not
-	 * promoted to an independently publishable Claim. */
-	unsigned char premise_states[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	/* Exact body occurrence used when the fold solver weakens the computation
 	 * returned by its return-clause lambda. Context and Core subject are read
 	 * from this Operation authority when the constraint is solved. */
 	uint32_t return_body_occurrence_id;
-	/* Current fixed-point operands selected by the exact premise Operations.
-	 * These are refreshed by the Operation solver before each kernel pass. */
-	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
-	/* Authority-complete evidence selected by the TypedOccurrenceGraph-aware solver.
-	 * premise_occurrences remains the structural child edge; it is not an
-	 * evidence-owner identifier. LOCAL operands deliberately keep zero evidence
-	 * because the enclosing rule replays their scoped assumptions. */
-	struct prototype_judgement_selected_evidence
-		premise_evidence[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
 	uint32_t subject;
 	uint32_t computation;
 	uint32_t continuation;
@@ -348,12 +336,35 @@ struct prototype_judgement_computation_constraint {
 	uint32_t application;
 };
 
+/* Read-only Layer T solution view supplied to one immutable computation edge.
+ * It is rebuilt from current occurrence solutions and is never retained by
+ * JudgementDelta or used as constraint identity. */
+struct prototype_judgement_computation_constraint_input {
+	/* The owner Context projection may legitimately remain pending while a
+	 * branch-refinement equation is still on the fixed-point worklist. */
+	unsigned char state;
+	/* Materialized Layer T Context in which this rule is checked. The
+	 * immutable constraint edge retains its candidate Context identity; this
+	 * invocation-local projection must never be copied back into that edge. */
+	uint32_t context_id;
+	uint32_t subject;
+	uint32_t computation;
+	uint32_t continuation;
+	uint32_t argument;
+	uint32_t application;
+	uint32_t projected_classifier;
+	uint32_t premise_contexts[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	unsigned char premise_states[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	uint32_t premise_classifiers[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+	struct prototype_judgement_selected_evidence
+		premise_evidence[PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES];
+};
+
 /* Invocation-local output for one computation constraint. The kernel resets
  * and fills this record but does not retain it in JudgementDelta. A frontend
  * may provide a projected classifier as an expected representative; the
  * kernel publishes it only after independently deriving a convertible result. */
 struct prototype_judgement_computation_constraint_result {
-	uint32_t projected_classifier;
 	uint32_t solved_classifier;
 	int effect_residual_pending;
 	uint32_t effect_residual_row;
@@ -364,6 +375,9 @@ struct prototype_judgement_computation_constraint_result {
  * not participate in Claim identity and are never serialized. */
 struct prototype_accepted_replay_stats {
 	uint64_t validation_count;
+	uint64_t proposition_full_scan_count;
+	uint64_t claim_full_scan_count;
+	uint64_t derivation_full_scan_count;
 	uint64_t proposition_visit_count;
 	uint64_t claim_visit_count;
 	uint64_t derivation_visit_count;

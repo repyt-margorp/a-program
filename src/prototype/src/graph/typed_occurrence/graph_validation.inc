@@ -16,8 +16,8 @@ static int term_is_saturated_effect_application(
 		terms->terms[head].tag != PROTOTYPE_TERM_EFFECT_OPERATION) {
 		return 0;
 	}
-	const struct prototype_effect_operation_declaration* declaration =
-		prototype_term_effect_operation_declaration(
+	const struct prototype_core_effect_operation_declaration* declaration =
+		prototype_core_effect_operation_declaration(
 			terms->terms[head].as.effect_operation.operation_id
 		);
 	return declaration && argument_count >= declaration->arity;
@@ -139,7 +139,7 @@ int prototype_typed_occurrence_graph_validate(
 		}
 		if (operation->application_role < PROTOTYPE_TERM_APPLICATION_NONE ||
 			operation->application_role >
-				PROTOTYPE_TERM_APPLICATION_PURE_TYPE_FAMILY_EVALUATION ||
+				PROTOTYPE_TERM_APPLICATION_TYPE_FAMILY_CALCULATION ||
 			(operation->tag != PROTOTYPE_TYPED_OCCURRENCE_APP &&
 			 operation->application_role != PROTOTYPE_TERM_APPLICATION_NONE) ||
 			(operation->tag == PROTOTYPE_TYPED_OCCURRENCE_APP &&
@@ -149,9 +149,10 @@ int prototype_typed_occurrence_graph_validate(
 				i, operation->tag, operation->application_role);
 			return -1;
 		}
-		uint32_t term_references[] = {
-			operation->core_term,
-			operation->classifier,
+			uint32_t term_references[] = {
+				operation->core_term,
+				operation->declared_classifier,
+				operation->classifier,
 			operation->binder_classifier,
 			operation->source_core_term,
 			operation->source_classifier
@@ -246,11 +247,11 @@ int prototype_typed_occurrence_graph_validate(
 				 !(semantics.application_role ==
 						PROTOTYPE_TERM_APPLICATION_FUNCTION_ELIMINATION &&
 				   operation->application_role ==
-						PROTOTYPE_TERM_APPLICATION_PURE_TYPE_FAMILY_EVALUATION)) ||
+						PROTOTYPE_TERM_APPLICATION_TYPE_FAMILY_CALCULATION)) ||
 				term_is_saturated_effect_application(terms, structural_core) ||
 				(operation->application_role ==
 						PROTOTYPE_TERM_APPLICATION_CONSTRUCTOR_FORMATION &&
-				 operation->category != PROTOTYPE_TERM_CATEGORY_VALUE)) {
+				 operation->category != PROTOTYPE_CLASSIFIER_CATEGORY_VALUE)) {
 				fprintf(stderr,
 					"typed occurrence APP semantics invalid occurrence=%u core=%u role=%d category=%d\n",
 					i, operation->core_term, operation->application_role,
@@ -367,12 +368,33 @@ int prototype_typed_occurrence_graph_validate(
 	for (uint32_t i = 0; i < graph->case_count; ++i) {
 		const struct prototype_typed_occurrence_match_case* operation_case =
 			prototype_typed_occurrence_graph_get_case(graph, i);
+		int declared_owner_valid = operation_case &&
+			operation_case->declared_constructor_owner != PROTOTYPE_INVALID_ID;
+		int declared_id_valid = operation_case &&
+			operation_case->declared_constructor_id != PROTOTYPE_INVALID_ID;
+		int current_owner_valid = operation_case &&
+			operation_case->constructor_owner != PROTOTYPE_INVALID_ID;
+		int current_id_valid = operation_case &&
+			operation_case->constructor_id != PROTOTYPE_INVALID_ID;
 		if (!operation_case ||
 			operation_case->binder_count >
 				PROTOTYPE_TYPED_OCCURRENCE_MATCH_BINDER_CAPACITY ||
 			!prototype_context_get(contexts, operation_case->context_id) ||
-			operation_case->constructor_owner >= terms->term_count ||
-			terms->terms[operation_case->constructor_owner].tag == 0 ||
+			declared_owner_valid != declared_id_valid ||
+			current_owner_valid != current_id_valid ||
+			(declared_owner_valid &&
+			 (operation_case->declared_constructor_owner >= terms->term_count ||
+			  terms->terms[operation_case->declared_constructor_owner].tag == 0)) ||
+			(current_owner_valid &&
+			 (operation_case->constructor_owner >= terms->term_count ||
+			  terms->terms[operation_case->constructor_owner].tag == 0)) ||
+			(declared_owner_valid &&
+			 (!current_owner_valid ||
+			  operation_case->constructor_owner !=
+				operation_case->declared_constructor_owner ||
+			  operation_case->constructor_id !=
+				operation_case->declared_constructor_id)) ||
+			(graph->frozen && !current_owner_valid) ||
 			operation_case->refinement_status <
 				PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_PENDING ||
 			operation_case->refinement_status >
@@ -386,10 +408,15 @@ int prototype_typed_occurrence_graph_validate(
 				operation_case->refinement_status !=
 					PROTOTYPE_TYPED_OCCURRENCE_MATCH_REFINEMENT_CONSTANT)) {
 			fprintf(stderr,
-				"typed occurrence case invalid case=%u context=%u owner=%u binders=%u refined=%u action=%u\n",
+				"typed occurrence case invalid case=%u context=%u declared=%u:%u current=%u:%u binders=%u refined=%u action=%u\n",
 				i,
 				operation_case ? operation_case->context_id : PROTOTYPE_INVALID_ID,
+				operation_case ? operation_case->declared_constructor_owner :
+					PROTOTYPE_INVALID_ID,
+				operation_case ? operation_case->declared_constructor_id :
+					PROTOTYPE_INVALID_ID,
 				operation_case ? operation_case->constructor_owner : PROTOTYPE_INVALID_ID,
+				operation_case ? operation_case->constructor_id : PROTOTYPE_INVALID_ID,
 				operation_case ? operation_case->binder_count : PROTOTYPE_INVALID_ID,
 				operation_case ? operation_case->refinement_status : -1,
 				operation_case ? operation_case->refinement_substitution :
@@ -432,6 +459,11 @@ int prototype_typed_occurrence_graph_seal(
 	}
 	for (uint32_t i = 0; i < graph->occurrence_count; ++i) {
 		struct prototype_typed_occurrence* occurrence = &graph->occurrences[i];
+		int unreachable =
+			prototype_typed_occurrence_graph_occurrence_is_unreachable(graph, i);
+		if (unreachable < 0) {
+			return -1;
+		}
 		if (occurrence->classifier_status ==
 				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_PENDING &&
 			occurrence->classifier != PROTOTYPE_INVALID_ID) {
@@ -446,8 +478,8 @@ int prototype_typed_occurrence_graph_seal(
 			 (occurrence->classifier != PROTOTYPE_INVALID_ID ||
 			  occurrence->classifier_verification_obligation ==
 				PROTOTYPE_INVALID_ID)) ||
-			occurrence->classifier_status ==
-				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_PENDING) {
+			(occurrence->classifier_status ==
+				PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_PENDING && !unreachable)) {
 			fprintf(stderr,
 				"typed occurrence classifier cannot seal occurrence=%u tag=%d "
 				"core=%u classifier=%u status=%d obligation=%u\n",

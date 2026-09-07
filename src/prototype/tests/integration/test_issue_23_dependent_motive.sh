@@ -136,12 +136,18 @@ then
 	echo 'parallel or history-dependent recursive motive authority remains' >&2
 	exit 1
 fi
-grep -q 'ih_constraint_for_occurrence\[4096\]' \
-	src/prototype/src/frontend/lowering/context_and_type_lowering.inc
+if rg -n \
+	'ih_constraint_for_occurrence|first_ih_constraint_for_owner|next_ih_constraint_for_owner|motive_constraint_for_case' \
+	src/prototype/include/a_program/frontend \
+	src/prototype/src/frontend
+then
+	echo 'occurrence-keyed Match/IH index remains outside canonical equations' >&2
+	exit 1
+fi
 grep -q 'activation_revision' \
-	src/prototype/src/frontend/lowering/context_and_type_lowering.inc
+	src/prototype/include/a_program/frontend/typing_constraint_state.h
 grep -q 'first_branch_ih_dependency' \
-	src/prototype/src/frontend/lowering/context_and_type_lowering.inc
+	src/prototype/include/a_program/frontend/typing_constraint_state.h
 grep -q 'operation_motive_collect_owned_induction_hypotheses' \
 	src/prototype/src/frontend/lowering/constraint/motive_solver.inc
 grep -q 'motive validation mutated solver state' \

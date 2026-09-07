@@ -21,7 +21,7 @@ struct prototype_context_structural_record {
 	uint32_t binding_id;
 	uint32_t classifier;
 	int extension_kind;
-	uint32_t producer_computation;
+	uint32_t producer_occurrence;
 };
 
 struct prototype_context_structural_reader {
@@ -49,7 +49,6 @@ struct prototype_substitution_structural_record {
 	uint32_t first;
 	uint32_t second;
 	uint32_t term;
-	uint32_t term_classifier;
 };
 
 struct prototype_substitution_structural_reader {
@@ -65,6 +64,7 @@ struct prototype_substitution_structural_reader {
 struct prototype_term_structural_ih_scope {
 	uint32_t match_term;
 	uint32_t scrutinee_binding_id;
+	uint32_t binding_scope_id;
 };
 
 struct prototype_term_structural_reader {

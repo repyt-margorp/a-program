@@ -19,13 +19,14 @@ static int context_certificate_is_valid(
 		prototype_context_get(contexts, certificate->structural_id) : NULL;
 	const struct prototype_judgement_claim* claim = certificate ?
 		prototype_judgement_claim_get(judgement, certificate->claim_id) : NULL;
-	uint32_t classifier = prototype_context_classifier_term(context);
+	uint32_t classifier = PROTOTYPE_INVALID_ID;
 	uint32_t classifier_classifier;
 	return certificate && contexts && terms && type_declarations && judgement &&
 		certificate->kind == PROTOTYPE_CWF_CERTIFICATE_CONTEXT_FORMATION &&
 		certificate->structural_id != prototype_context_empty(contexts) &&
-		context && classifier != PROTOTYPE_INVALID_ID &&
-		prototype_context_classifier_variable(context) == PROTOTYPE_INVALID_ID &&
+		context && prototype_context_classifier_read(
+			contexts, certificate->structural_id, &classifier
+		) == 0 &&
 		claim && prototype_judgement_proposition_get(judgement, claim->proposition_id)->kind == PROTOTYPE_JUDGEMENT_KIND_IS_TYPE &&
 		prototype_judgement_proposition_get(judgement, claim->proposition_id)->context_id == context->parent && prototype_judgement_proposition_get(judgement, claim->proposition_id)->subject == classifier &&
 		prototype_judgement_proposition_get(judgement, claim->proposition_id)->occurrence_id == PROTOTYPE_INVALID_ID &&
@@ -37,23 +38,7 @@ static int context_certificate_is_valid(
 		terms->terms[classifier_classifier].tag == PROTOTYPE_TERM_UNIVERSE_VAR;
 }
 
-static int substitution_claim_is_exact(
-	const struct prototype_substitution* substitution,
-	const struct prototype_judgement_db* judgement,
-	uint32_t claim_id
-) {
-	const struct prototype_judgement_claim* claim =
-		prototype_judgement_claim_get(judgement, claim_id);
-	const struct prototype_judgement_proposition* proposition = claim ?
-		prototype_judgement_claim_proposition(judgement, claim_id) : NULL;
-	return substitution && proposition &&
-		proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-		proposition->context_id == substitution->source_context &&
-		proposition->subject == substitution->term &&
-		proposition->classifier == substitution->term_classifier;
-}
-
-int prototype_cwf_substitution_claim_certifies(
+int prototype_cwf_substitution_claim_matches_assignment(
 	const struct prototype_substitution_db* substitutions,
 	const struct prototype_judgement_db* judgement,
 	uint32_t substitution_id,
@@ -61,8 +46,14 @@ int prototype_cwf_substitution_claim_certifies(
 ) {
 	const struct prototype_substitution* substitution =
 		prototype_substitution_get(substitutions, substitution_id);
+	const struct prototype_judgement_claim* claim =
+		prototype_judgement_claim_get(judgement, claim_id);
+	const struct prototype_judgement_proposition* proposition = claim ?
+		prototype_judgement_claim_proposition(judgement, claim_id) : NULL;
 	return substitution && substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND &&
-		substitution_claim_is_exact(substitution, judgement, claim_id);
+		proposition && proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
+		proposition->context_id == substitution->source_context &&
+		proposition->subject == substitution->term;
 }
 
 static int substitution_certificate_id_for_root(
@@ -99,7 +90,7 @@ static int substitution_certificate_is_valid_at_depth(
 		return 0;
 	}
 	if (substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
-		if (!prototype_cwf_substitution_claim_certifies(
+		if (!prototype_cwf_substitution_claim_matches_assignment(
 				substitutions,
 				judgement,
 				certificate->structural_id,
@@ -300,7 +291,7 @@ int prototype_cwf_certificate_db_add_substitution(
 		/* A structurally composed prefix may not have been selected as a
 		 * capability before this EXTEND. Close structural dependencies here,
 		 * while refusing to invent evidence for any nested EXTEND. */
-		if (!prototype_cwf_substitution_claim_certifies(
+		if (!prototype_cwf_substitution_claim_matches_assignment(
 				substitutions, judgement, substitution_id, claim_id
 		)) {
 			return -1;
@@ -534,7 +525,7 @@ static int accepted_substitution_root_is_covered_at_depth(
 	if (substitution->kind == PROTOTYPE_SUBSTITUTION_EXTEND) {
 		int exact_claim_found = 0;
 		for (uint32_t i = 0; i < judgement->claim_count; ++i) {
-			if (prototype_cwf_substitution_claim_certifies(
+			if (prototype_cwf_substitution_claim_matches_assignment(
 					substitutions, judgement, substitution_id, i
 				)) {
 				exact_claim_found = 1;

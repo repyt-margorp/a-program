@@ -107,7 +107,7 @@ static int artifact_parse_pure_pointwise_pi_level(
 			&codomain
 		) != 0 || codomain >= terms->term_count ||
 		terms->terms[codomain].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
-		prototype_term_effect_row_purity(
+		prototype_classifier_effect_row_purity(
 			terms, terms->terms[codomain].as.computation_type.label
 		) != PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
 		return 0;
@@ -170,7 +170,7 @@ static int artifact_pi_identity_family_matches_source(
 		terms->terms[source_codomain].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
 		prototype_term_contains_free_binding(
 			terms, source_codomain, source_codomain_binding
-		) || prototype_term_effect_row_purity(
+		) || prototype_classifier_effect_row_purity(
 			terms, terms->terms[source_codomain].as.computation_type.label
 		) != PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
 		return 0;
@@ -272,8 +272,10 @@ static int artifact_pi_identity_family_matches_source(
 			contexts, family_context->parent
 		);
 		if (!left_context || left_context->parent != source->context_id ||
-			prototype_context_classifier_term(left_context) != source->subject ||
-			prototype_context_classifier_term(family_context) != source->subject ||
+			prototype_context_classifier_answer(contexts, left_context) !=
+				source->subject ||
+			prototype_context_classifier_answer(contexts, family_context) !=
+				source->subject ||
 			!artifact_term_is_binding_var(
 				terms, endpoints[0], left_context->binding_id
 			) || !artifact_term_is_binding_var(
@@ -612,11 +614,11 @@ static int artifact_callable_spine_open(
 			continue;
 		}
 		if (term->tag != PROTOTYPE_TERM_PI) {
-			struct prototype_term_classifier_view view;
+			struct prototype_classifier_view view;
 			if (prototype_judgement_classifier_view(
 					terms, type_declarations, NULL, whnf, &view
-				) == 0 && view.category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
-				view.computation_kind == PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING) {
+				) == 0 && view.category == PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION &&
+				view.computation_kind == PROTOTYPE_COMPUTATION_KIND_RETURNING) {
 				p_spine->result = view.result;
 			} else {
 				p_spine->result = whnf;
@@ -693,8 +695,9 @@ static int artifact_classifier_is_type_instance(
 	int whnf_status = prototype_judgement_classifier_value_whnf(
 		terms, type_declarations, classifier, &whnf
 	);
-	int instance_status = whnf_status == 0 ? prototype_term_type_instance_info(
-		terms, whnf, &type_id, arguments, &argument_count
+	int instance_status = whnf_status == 0 ? prototype_type_projection_instance_info(
+		terms, &type_declarations->semantic_schema,
+		whnf, &type_id, arguments, &argument_count
 	) : -1;
 	if (getenv("A_PROGRAM_FUNCTION_GRAPH_VALIDATION_TRACE") &&
 		(instance_status != 0 || type_id != expected_type)) {
@@ -879,13 +882,14 @@ static int artifact_term_graph_reaches(
 
 static int artifact_term_graph_contains_type_instance(
 	const struct prototype_term_db* terms,
+	const struct prototype_type_semantic_schema_db* semantic_schema,
 	uint32_t root,
 	uint32_t expected_type,
 	unsigned char* visited,
 	uint32_t* stack,
 	size_t scratch_capacity
 ) {
-	if (!terms || root >= terms->term_count || !visited || !stack ||
+	if (!terms || !semantic_schema || root >= terms->term_count || !visited || !stack ||
 		terms->term_count > scratch_capacity) {
 		return -1;
 	}
@@ -902,8 +906,9 @@ static int artifact_term_graph_contains_type_instance(
 		uint32_t type_id;
 		uint32_t arguments[16];
 		uint32_t argument_count;
-		if (prototype_term_type_instance_info(
-				terms, current, &type_id, arguments, &argument_count
+		if (prototype_type_projection_instance_info(
+				terms, semantic_schema,
+				current, &type_id, arguments, &argument_count
 			) == 0 && type_id == expected_type) {
 			result = 1;
 			break;
@@ -1008,7 +1013,8 @@ int prototype_artifact_interface_validate_function_graph_associations(
 				terms, type_declarations, runner->classifier, &runner_spine
 			);
 		int graph_result_matches = artifact_term_graph_contains_type_instance(
-			terms, graph_interface->local_term, graph_type->local_type_id,
+			terms, &type_declarations->semantic_schema,
+			graph_interface->local_term, graph_type->local_type_id,
 			visited, stack, scratch_capacity
 		) == 1;
 		int runner_result_matches = runner_spine_status == 0 &&
@@ -1113,7 +1119,7 @@ int prototype_artifact_interface_validate_function_graph_associations(
 					prototype_judgement_classifier_is_strictly_positive_recursive_field(
 						terms,
 						type_declarations,
-						prototype_context_classifier_term(graph_field),
+						prototype_context_classifier_answer(contexts, graph_field),
 						constructor->result_classifier,
 						&semantic_recursive
 					) != 0 || (semantic_recursive != 0) !=
@@ -1378,25 +1384,6 @@ static int artifact_interface_exports_type_name(
 	return 0;
 }
 
-static int lookup_export_classifier(
-	const struct prototype_judgement_db* judgement,
-	uint32_t subject,
-	uint32_t* p_classifier
-) {
-	if (!judgement || !p_classifier) {
-		return -1;
-	}
-	for (size_t i = judgement->proposition_count; i > 0; --i) {
-		const struct prototype_judgement_proposition* relation = &judgement->propositions[i - 1];
-		if (relation->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-			relation->subject == subject) {
-			*p_classifier = relation->classifier;
-			return 0;
-		}
-	}
-	return -1;
-}
-
 static uint32_t find_export_source_claim(
 	const struct prototype_judgement_db* judgement,
 	uint32_t operation,
@@ -1408,8 +1395,7 @@ static uint32_t find_export_source_claim(
 		classifier == PROTOTYPE_INVALID_ID) {
 		return PROTOTYPE_INVALID_ID;
 	}
-	uint32_t unique_claim = PROTOTYPE_INVALID_ID;
-	int ambiguous = 0;
+	uint32_t canonical_claim = PROTOTYPE_INVALID_ID;
 	for (uint32_t i = 0; i < (uint32_t)judgement->claim_count; ++i) {
 		const struct prototype_judgement_claim* claim =
 			prototype_judgement_claim_get(judgement, i);
@@ -1430,13 +1416,11 @@ static uint32_t find_export_source_claim(
 			proposition->occurrence_id == operation) {
 			return i;
 		}
-		if (unique_claim != PROTOTYPE_INVALID_ID) {
-			ambiguous = 1;
-		} else {
-			unique_claim = i;
+		if (canonical_claim == PROTOTYPE_INVALID_ID) {
+			canonical_claim = i;
 		}
 	}
-	return ambiguous ? PROTOTYPE_INVALID_ID : unique_claim;
+	return canonical_claim;
 }
 
 /* A top-level name is a source projection onto an existing typed operation;
@@ -1572,12 +1556,31 @@ static int artifact_term_export_claim(
 		export->occurrence >= metadata->typed_occurrences.occurrence_count) {
 		return -1;
 	}
+	uint32_t concrete_context;
+	const struct prototype_typed_publication_projection* publication =
+		prototype_typed_publication_view_get(
+			&metadata->typed_publication,
+			export->occurrence,
+			&concrete_context
+		);
+	if (!publication || publication->subject != export->local_term ||
+		publication->classifier != export->classifier) {
+		fprintf(stderr,
+			"artifact export publication mismatch occurrence=%u expected=%u:%u "
+			"actual=%u:%u sealed=%d count=%zu\n",
+			export->occurrence, export->local_term, export->classifier,
+			publication ? publication->subject : PROTOTYPE_INVALID_ID,
+			publication ? publication->classifier : PROTOTYPE_INVALID_ID,
+			metadata->typed_publication.sealed,
+			metadata->typed_publication.count);
+		return -1;
+	}
 	*p_claim = find_export_source_claim(
 		judgement,
 		export->occurrence,
-		metadata->typed_occurrences.occurrences[export->occurrence].context_id,
-		export->local_term,
-		export->classifier
+		concrete_context,
+		publication->subject,
+		publication->classifier
 	);
 	return 0;
 }
@@ -1596,13 +1599,20 @@ static int artifact_term_export_claim_matches(
 		prototype_judgement_claim_get(judgement, claim_id);
 	const struct prototype_judgement_proposition* proposition = claim ?
 		prototype_judgement_proposition_get(judgement, claim->proposition_id) : NULL;
-	const struct prototype_typed_occurrence* occurrence =
-		&metadata->typed_occurrences.occurrences[export->occurrence];
+	uint32_t concrete_context;
+	const struct prototype_typed_publication_projection* publication =
+		prototype_typed_publication_view_get(
+			&metadata->typed_publication,
+			export->occurrence,
+			&concrete_context
+		);
 	return proposition && claim->closure_rank != PROTOTYPE_INVALID_ID &&
+		publication && publication->subject == export->local_term &&
+		publication->classifier == export->classifier &&
 		proposition->kind == PROTOTYPE_JUDGEMENT_KIND_HAS_TYPE &&
-		proposition->context_id == occurrence->context_id &&
-		proposition->subject == export->local_term &&
-		proposition->classifier == export->classifier;
+		proposition->context_id == concrete_context &&
+		proposition->subject == publication->subject &&
+		proposition->classifier == publication->classifier;
 }
 
 static int artifact_term_export_classifier_residual_matches(
@@ -1687,6 +1697,12 @@ int prototype_artifact_interface_refresh_term_export_evidence(
 		} else if (artifact_term_export_claim(
 				export, metadata, judgement, &claim
 			) != 0) {
+			fprintf(stderr,
+				"artifact export evidence refresh has no publication export=%zu "
+				"occurrence=%u subject=%u classifier=%u occurrences=%zu\n",
+				i, export->occurrence, export->local_term,
+				export->classifier,
+				metadata->typed_occurrences.occurrence_count);
 			free(reachable);
 			free(selected);
 			free(stack);
@@ -1707,6 +1723,12 @@ int prototype_artifact_interface_refresh_term_export_evidence(
 				&count
 			) : 0;
 		if (collect_status != 0 || first > UINT32_MAX || count > UINT32_MAX) {
+			fprintf(stderr,
+				"artifact export condition refresh failed export=%zu occurrence=%u "
+				"status=%d first=%zu count=%zu dependencies=%zu obligations=%zu\n",
+				i, export->occurrence, collect_status, first, count,
+				metadata->verification.dependency_count,
+				metadata->verification.obligation_count);
 			free(reachable);
 			free(selected);
 			free(stack);
@@ -1779,13 +1801,17 @@ int prototype_artifact_interface_validate_term_export_evidence(
 	size_t failure_export = 0;
 	for (size_t i = 0; i < interface->term_export_count; ++i) {
 		const struct prototype_artifact_term_export* actual = &interface->term_exports[i];
-		if (actual->occurrence >= occurrence_count ||
-			metadata->typed_occurrences.occurrences[
-				actual->occurrence
-			].core_term != actual->local_term ||
-			metadata->typed_occurrences.occurrences[
-				actual->occurrence
-			].classifier != actual->classifier) {
+		uint32_t publication_context;
+		const struct prototype_typed_publication_projection* publication =
+			actual->occurrence < occurrence_count ?
+				prototype_typed_publication_view_get(
+					&metadata->typed_publication,
+					actual->occurrence,
+					&publication_context
+				) : NULL;
+		(void)publication_context;
+		if (!publication || publication->subject != actual->local_term ||
+			publication->classifier != actual->classifier) {
 			status = -1;
 			failure_stage = "occurrence-projection";
 			failure_export = i;
@@ -1811,13 +1837,16 @@ int prototype_artifact_interface_validate_term_export_evidence(
 			fprintf(
 				stderr,
 				"artifact conditional evidence header mismatch export=%zu kind=%d "
-				"first=%u expected-first=%zu count=%u evidence=%u\n",
+				"first=%u expected-first=%zu count=%u evidence=%u occurrence=%u "
+				"name-symbol=%d\n",
 				i,
 				actual->source_evidence.kind,
 				actual->source_condition_first,
 				condition_offset,
 				actual->source_condition_count,
-				actual->source_evidence.id
+				actual->source_evidence.id,
+				actual->occurrence,
+				actual->name_symbol_id
 			);
 			status = -1;
 			failure_stage = "conditional-header";
@@ -1883,18 +1912,21 @@ int prototype_artifact_interface_validate_term_export_evidence(
 
 int prototype_artifact_interface_build_from_metadata(
 	struct prototype_artifact_interface* interface,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct symbol_table* symbols,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_compile_metadata* metadata,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement
 ) {
-	if (!interface || !intrinsic_environment || !metadata || !terms ||
+	if (!interface || !symbols || !intrinsic_environment || !metadata || !terms ||
 		!type_declarations || !judgement) {
 		return -1;
 	}
-	interface->intrinsic_environment_fingerprint =
-		prototype_intrinsic_environment_fingerprint(intrinsic_environment);
+	interface->operational_intrinsic_fingerprint =
+		prototype_core_intrinsic_fingerprint();
+	interface->typing_intrinsic_fingerprint =
+		prototype_intrinsic_typing_fingerprint(intrinsic_environment);
 	interface->default_integer_host_type =
 		intrinsic_environment->default_integer_host_type;
 	if (metadata->label_count > interface->term_export_capacity ||
@@ -1942,99 +1974,62 @@ int prototype_artifact_interface_build_from_metadata(
 			&interface->term_exports[interface->term_export_count++];
 		export->namespace_symbol_id = -1;
 		export->name_symbol_id = label->name_symbol_id;
-		export->local_term = label->term;
 		if (resolve_export_evidence_occurrence(
 				metadata, label->exposed_occurrence, &export->occurrence
 			) != 0) {
 			return -1;
 		}
+		uint32_t publication_context;
+		const struct prototype_typed_publication_projection* publication =
+			prototype_typed_publication_view_get(
+				&metadata->typed_publication,
+				export->occurrence,
+				&publication_context
+			);
+		if (!publication) {
+			return -1;
+		}
+		export->local_term = publication->subject;
+		export->classifier = publication->classifier;
 		export->source_evidence.kind =
 			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID;
 		export->source_evidence.id = PROTOTYPE_INVALID_ID;
 		export->source_condition_first = 0;
 		export->source_condition_count = 0;
-		export->canonical_key = label->canonical_key;
-		export->transparency = PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT;
-		if (metadata->typed_occurrences.occurrences[export->occurrence].classifier !=
-				PROTOTYPE_INVALID_ID) {
-			export->classifier =
-				metadata->typed_occurrences.occurrences[export->occurrence].classifier;
-		} else if (label->exposed_classifier != PROTOTYPE_INVALID_ID) {
-			export->classifier = label->exposed_classifier;
-		} else if (lookup_export_classifier(judgement, label->term, &export->classifier) != 0) {
-			export->classifier = PROTOTYPE_INVALID_ID;
-		}
-		memset(&export->classifier_key, 0, sizeof(export->classifier_key));
-		if (export->classifier != PROTOTYPE_INVALID_ID &&
-			prototype_term_canonical_key_with_types(
+		if (prototype_artifact_semantic_key_build(
+				symbols,
 				terms,
 				type_declarations,
+				&metadata->dimension_operators,
+				export->local_term,
+				&export->canonical_key
+			) != 0) {
+			return -1;
+		}
+		export->transparency = PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT;
+		memset(&export->classifier_key, 0, sizeof(export->classifier_key));
+		if (export->classifier != PROTOTYPE_INVALID_ID &&
+			prototype_artifact_semantic_key_build(
+				symbols,
+				terms,
+				type_declarations,
+				&metadata->dimension_operators,
 				export->classifier,
 				&export->classifier_key
 			) != 0) {
 			return -1;
 		}
-		if (export->classifier != PROTOTYPE_INVALID_ID) {
-			uint32_t existing_classifier;
-			int found_existing_classifier = prototype_internal_artifact_find_existing_term_by_canonical_key(
-				terms,
-				type_declarations,
-				export->classifier,
-				&export->classifier_key,
-				export->classifier,
-				&existing_classifier
-			);
-			if (found_existing_classifier < 0) {
-				return -1;
-			}
-			if (found_existing_classifier > 0) {
-				export->classifier = existing_classifier;
-				if (prototype_term_canonical_key_with_types(
-						terms,
-						type_declarations,
-						existing_classifier,
-						&export->classifier_key
-					) != 0) {
-					return -1;
-				}
-			}
-		}
 		export->source_evidence.id = find_export_source_claim(
-			judgement,
-			export->occurrence,
-			export->occurrence < metadata->typed_occurrences.occurrence_count ?
-				metadata->typed_occurrences.occurrences[export->occurrence].context_id :
-				PROTOTYPE_INVALID_ID,
-			export->local_term,
-			export->classifier
-		);
+				judgement,
+				export->occurrence,
+				publication_context,
+				publication->subject,
+				publication->classifier
+			);
 		export->source_evidence.kind = export->source_evidence.id ==
 			PROTOTYPE_INVALID_ID ?
 			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_INVALID :
 			PROTOTYPE_ARTIFACT_EVIDENCE_REFERENCE_CLAIM;
-		uint32_t existing_term;
-		int found_existing = prototype_internal_artifact_find_existing_term_by_canonical_key(
-			terms,
-			type_declarations,
-			export->local_term,
-			&export->canonical_key,
-			export->local_term,
-			&existing_term
-		);
-		if (found_existing < 0) {
-			return -1;
-		}
-		if (found_existing > 0) {
-			export->local_term = existing_term;
-			if (prototype_term_canonical_key_with_types(
-					terms,
-					type_declarations,
-					existing_term,
-					&export->canonical_key
-				) != 0) {
-				return -1;
-			}
-		}
 	}
 
 	for (size_t i = 0; i < metadata->type_export_count; ++i) {
@@ -2543,12 +2538,10 @@ int prototype_artifact_interface_build_definition_env(
 			export->name_symbol_id
 		);
 		definitions[i].term = export->local_term;
-		definitions[i].classifier = export->classifier;
 		definitions[i].transparency =
 			export->transparency == PROTOTYPE_ARTIFACT_EXPORT_TRANSPARENT ?
 			PROTOTYPE_TERM_DEFINITION_TRANSPARENT :
 			PROTOTYPE_TERM_DEFINITION_OPAQUE;
-		definitions[i].canonical_key = export->canonical_key;
 	}
 	p_env->definitions = definitions;
 	p_env->definition_count = interface->term_export_count;

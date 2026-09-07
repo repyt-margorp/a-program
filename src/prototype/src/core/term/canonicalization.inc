@@ -1,6 +1,5 @@
 static int substitute_term(
 	struct prototype_term_db* db,
-	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t binding_id,
 	uint32_t replacement,
@@ -125,6 +124,31 @@ static int term_scope_env_push_frame(
 	return 0;
 }
 
+static int term_scope_env_mark_unmatched_frame(
+	struct term_scope_env* env,
+	uint32_t frame,
+	int on_left
+) {
+	if (!env || frame == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	uint32_t* frames = on_left ?
+		env->unmatched_frame_left : env->unmatched_frame_right;
+	uint32_t* count = on_left ?
+		&env->unmatched_frame_left_count : &env->unmatched_frame_right_count;
+	if (*count >= PROTOTYPE_CANONICAL_BINDER_CAPACITY) {
+		return -1;
+	}
+	for (uint32_t i = 0; i < *count; ++i) {
+		if (frames[i] == frame) {
+			return 0;
+		}
+	}
+	frames[*count] = frame;
+	(*count)++;
+	return 0;
+}
+
 static int term_scope_frames_equal(
 	const struct term_scope_env* env,
 	uint32_t left_frame,
@@ -142,6 +166,18 @@ static int term_scope_frames_equal(
 			return env->frame_right[index] == right_frame;
 		}
 		if (env->frame_right[index] == right_frame) {
+			*p_bound = 1;
+			return 0;
+		}
+	}
+	for (uint32_t i = env->unmatched_frame_left_count; i > 0; --i) {
+		if (env->unmatched_frame_left[i - 1] == left_frame) {
+			*p_bound = 1;
+			return 0;
+		}
+	}
+	for (uint32_t i = env->unmatched_frame_right_count; i > 0; --i) {
+		if (env->unmatched_frame_right[i - 1] == right_frame) {
 			*p_bound = 1;
 			return 0;
 		}
@@ -431,10 +467,47 @@ static int shape_terms_equal_at_depth(
 				return 0;
 			}
 			uint32_t saved_frame_count = env->frame_count;
-			if (left_has_frame && term_scope_env_push_frame(
-					env, left->as.match.ih_scope_id, right->as.match.ih_scope_id
-				) != 0) {
-				return 0;
+			uint32_t saved_binder_count = env->count;
+			if (left_has_frame) {
+				if (term_scope_env_push_frame(
+						env,
+						left->as.match.ih_scope_id,
+						right->as.match.ih_scope_id
+					) != 0) {
+					return 0;
+				}
+				if (left->as.match.ih_scope_id >= db->ih_scope_count) {
+					env->frame_count = saved_frame_count;
+					return 0;
+				}
+				if (right->as.match.ih_scope_id >= db->ih_scope_count) {
+					env->frame_count = saved_frame_count;
+					return 0;
+				}
+				const struct prototype_ih_scope* left_scope =
+					&db->ih_scopes[left->as.match.ih_scope_id];
+				const struct prototype_ih_scope* right_scope =
+					&db->ih_scopes[right->as.match.ih_scope_id];
+				int left_binds_subject =
+					left_scope->scrutinee_binding_id != PROTOTYPE_INVALID_ID;
+				int right_binds_subject =
+					right_scope->scrutinee_binding_id != PROTOTYPE_INVALID_ID;
+				if (left_binds_subject != right_binds_subject) {
+					env->frame_count = saved_frame_count;
+					env->count = saved_binder_count;
+					return 0;
+				}
+				if (left_binds_subject) {
+					if (term_scope_env_push_binder(
+							env,
+							left_scope->scrutinee_binding_id,
+							right_scope->scrutinee_binding_id
+						) != 0) {
+						env->frame_count = saved_frame_count;
+						env->count = saved_binder_count;
+						return 0;
+					}
+				}
 			}
 			for (uint32_t i = 0; i < left->as.match.case_count; ++i) {
 				const struct prototype_match_case* left_case =
@@ -450,29 +523,26 @@ static int shape_terms_equal_at_depth(
 							depth + 1
 						)) {
 					env->frame_count = saved_frame_count;
+					env->count = saved_binder_count;
 					return 0;
 				}
 			}
 			env->frame_count = saved_frame_count;
+			env->count = saved_binder_count;
 			return 1;
 		}
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			return left->as.type_former.representation_id ==
 				right->as.type_former.representation_id;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			if (type_identity_is_stable(left->as.type_declaration.identity) ||
-				type_identity_is_stable(right->as.type_declaration.identity)) {
-				return type_identity_equal(
-					left->as.type_declaration.identity,
-					right->as.type_declaration.identity
-				);
-			}
-			return left->as.type_declaration.type_id == right->as.type_declaration.type_id;
+			return qualified_names_equal(
+				left->as.type_declaration.identity,
+				right->as.type_declaration.identity
+			);
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			return (type_identity_is_stable(left->as.type_view.identity) ||
-				type_identity_is_stable(right->as.type_view.identity) ?
-				type_identity_equal(left->as.type_view.identity, right->as.type_view.identity) :
-				left->as.type_view.view_type_id == right->as.type_view.view_type_id) &&
+			return qualified_names_equal(
+				left->as.type_view.identity, right->as.type_view.identity
+			) &&
 				shape_terms_equal_at_depth(
 					db,
 						left->as.type_view.core,
@@ -542,12 +612,8 @@ static int shape_terms_equal_at_depth(
 				return left->as.pure_primitive.primitive_id == right->as.pure_primitive.primitive_id &&
 					left->as.pure_primitive.type_symbol_id == right->as.pure_primitive.type_symbol_id;
 			case PROTOTYPE_TERM_EFFECT_OPERATION:
-				return left->as.effect_operation.operation_id == right->as.effect_operation.operation_id &&
-					shape_terms_equal_at_depth(
-						db, left->as.effect_operation.classifier,
-						right->as.effect_operation.classifier, env,
-						type_view_compare_mode, depth + 1
-					);
+				return left->as.effect_operation.operation_id ==
+					right->as.effect_operation.operation_id;
 			case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 				return 1;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
@@ -634,10 +700,10 @@ static int canonical_keys_equal_local(
 
 static int cross_shape_terms_equal_at_depth(
 	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
+	const void* left_representation_domain,
 	uint32_t left_id,
 	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
+	const void* right_representation_domain,
 	uint32_t right_id,
 	struct term_scope_env* env,
 	int type_view_compare_mode,
@@ -645,13 +711,13 @@ static int cross_shape_terms_equal_at_depth(
 );
 
 static int cross_type_formers_equal(
-	const struct prototype_type_declaration_db* left_type_declarations,
+	const void* left_representation_domain,
 	uint32_t left_type_id,
-	const struct prototype_type_declaration_db* right_type_declarations,
+	const void* right_representation_domain,
 	uint32_t right_type_id
 ) {
-	if (left_type_declarations && right_type_declarations &&
-		left_type_declarations != right_type_declarations) {
+	if (left_representation_domain && right_representation_domain &&
+		left_representation_domain != right_representation_domain) {
 		return 0;
 	}
 	return left_type_id == right_type_id;
@@ -678,10 +744,10 @@ static int cross_frame_keys_equal(
 
 static int cross_free_frames_equal(
 	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
+	const void* left_representation_domain,
 	uint32_t left_frame,
 	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
+	const void* right_representation_domain,
 	uint32_t right_frame,
 	struct term_scope_env* env,
 	int type_view_compare_mode,
@@ -713,10 +779,10 @@ static int cross_free_frames_equal(
 	}
 	int equal = cross_shape_terms_equal_at_depth(
 		left_db,
-		left_type_declarations,
+		left_representation_domain,
 		left_match,
 		right_db,
-		right_type_declarations,
+		right_representation_domain,
 		right_match,
 		env,
 		type_view_compare_mode,
@@ -728,10 +794,10 @@ static int cross_free_frames_equal(
 
 static int cross_shape_match_cases_equal_at_depth(
 	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
+	const void* left_representation_domain,
 	const struct prototype_match_case* left_case,
 	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
+	const void* right_representation_domain,
 	const struct prototype_match_case* right_case,
 	struct term_scope_env* env,
 	int type_view_compare_mode,
@@ -751,10 +817,10 @@ static int cross_shape_match_cases_equal_at_depth(
 		}
 	} else if (!cross_shape_terms_equal_at_depth(
 			left_db,
-			left_type_declarations,
+			left_representation_domain,
 			left_case->constructor_owner,
 			right_db,
-				right_type_declarations,
+				right_representation_domain,
 				right_case->constructor_owner,
 				env,
 				type_view_compare_mode,
@@ -779,10 +845,10 @@ static int cross_shape_match_cases_equal_at_depth(
 	}
 	int equal = cross_shape_terms_equal_at_depth(
 		left_db,
-		left_type_declarations,
+		left_representation_domain,
 		left_case->body,
 		right_db,
-		right_type_declarations,
+		right_representation_domain,
 		right_case->body,
 		env,
 		type_view_compare_mode,
@@ -794,10 +860,10 @@ static int cross_shape_match_cases_equal_at_depth(
 
 static int cross_shape_terms_equal_at_depth(
 	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
+	const void* left_representation_domain,
 	uint32_t left_id,
 	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
+	const void* right_representation_domain,
 	uint32_t right_id,
 	struct term_scope_env* env,
 	int type_view_compare_mode,
@@ -826,10 +892,10 @@ static int cross_shape_terms_equal_at_depth(
 			return left->as.constructor.constructor_id == right->as.constructor.constructor_id &&
 				cross_shape_terms_equal_at_depth(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.constructor.owner,
 					right_db,
-						right_type_declarations,
+						right_representation_domain,
 						right->as.constructor.owner,
 						env,
 						type_view_compare_mode,
@@ -838,10 +904,10 @@ static int cross_shape_terms_equal_at_depth(
 		case PROTOTYPE_TERM_APP:
 			return cross_shape_terms_equal_at_depth(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.app.function,
 					right_db,
-						right_type_declarations,
+						right_representation_domain,
 						right->as.app.function,
 						env,
 						type_view_compare_mode,
@@ -849,10 +915,10 @@ static int cross_shape_terms_equal_at_depth(
 					) &&
 				cross_shape_terms_equal_at_depth(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.app.argument,
 					right_db,
-						right_type_declarations,
+						right_representation_domain,
 						right->as.app.argument,
 						env,
 						type_view_compare_mode,
@@ -866,10 +932,10 @@ static int cross_shape_terms_equal_at_depth(
 			}
 			int equal = cross_shape_terms_equal_at_depth(
 				left_db,
-				left_type_declarations,
+				left_representation_domain,
 				left->as.lambda.body,
 				right_db,
-					right_type_declarations,
+					right_representation_domain,
 					right->as.lambda.body,
 					env,
 					type_view_compare_mode,
@@ -881,10 +947,10 @@ static int cross_shape_terms_equal_at_depth(
 		case PROTOTYPE_TERM_RETURN:
 			return cross_shape_terms_equal_at_depth(
 				left_db,
-				left_type_declarations,
+				left_representation_domain,
 				left->as.return_term.value,
 				right_db,
-				right_type_declarations,
+				right_representation_domain,
 				right->as.return_term.value,
 				env,
 				type_view_compare_mode,
@@ -893,10 +959,10 @@ static int cross_shape_terms_equal_at_depth(
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			return cross_shape_terms_equal_at_depth(
 				left_db,
-				left_type_declarations,
+				left_representation_domain,
 				left->as.thunk_type.computation,
 				right_db,
-				right_type_declarations,
+				right_representation_domain,
 				right->as.thunk_type.computation,
 				env,
 				type_view_compare_mode,
@@ -905,10 +971,10 @@ static int cross_shape_terms_equal_at_depth(
 		case PROTOTYPE_TERM_THUNK:
 			return cross_shape_terms_equal_at_depth(
 				left_db,
-				left_type_declarations,
+				left_representation_domain,
 				left->as.thunk.computation,
 				right_db,
-				right_type_declarations,
+				right_representation_domain,
 				right->as.thunk.computation,
 				env,
 				type_view_compare_mode,
@@ -917,10 +983,10 @@ static int cross_shape_terms_equal_at_depth(
 		case PROTOTYPE_TERM_FORCE:
 			return cross_shape_terms_equal_at_depth(
 				left_db,
-				left_type_declarations,
+				left_representation_domain,
 				left->as.force.value,
 				right_db,
-				right_type_declarations,
+				right_representation_domain,
 				right->as.force.value,
 				env,
 				type_view_compare_mode,
@@ -928,12 +994,12 @@ static int cross_shape_terms_equal_at_depth(
 			);
 		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			if (!cross_shape_terms_equal_at_depth(
-					left_db, left_type_declarations, left->as.computation_fold.computation,
-					right_db, right_type_declarations, right->as.computation_fold.computation,
+					left_db, left_representation_domain, left->as.computation_fold.computation,
+					right_db, right_representation_domain, right->as.computation_fold.computation,
 					env, type_view_compare_mode, depth + 1
 				) || !cross_shape_terms_equal_at_depth(
-					left_db, left_type_declarations, left->as.computation_fold.return_clause,
-					right_db, right_type_declarations, right->as.computation_fold.return_clause,
+					left_db, left_representation_domain, left->as.computation_fold.return_clause,
+					right_db, right_representation_domain, right->as.computation_fold.return_clause,
 					env, type_view_compare_mode, depth + 1
 				) || left->as.computation_fold.clause_count != right->as.computation_fold.clause_count) {
 				return 0;
@@ -944,12 +1010,12 @@ static int cross_shape_terms_equal_at_depth(
 				const struct prototype_computation_fold_clause* right_clause =
 					&right_db->computation_fold_clauses[right->as.computation_fold.first_clause + i];
 				if (!cross_shape_terms_equal_at_depth(
-						left_db, left_type_declarations, left_clause->operation,
-						right_db, right_type_declarations, right_clause->operation,
+						left_db, left_representation_domain, left_clause->operation,
+						right_db, right_representation_domain, right_clause->operation,
 						env, type_view_compare_mode, depth + 1
 					) || !cross_shape_terms_equal_at_depth(
-						left_db, left_type_declarations, left_clause->body,
-						right_db, right_type_declarations, right_clause->body,
+						left_db, left_representation_domain, left_clause->body,
+						right_db, right_representation_domain, right_clause->body,
 						env, type_view_compare_mode, depth + 1
 					)) {
 					return 0;
@@ -959,25 +1025,25 @@ static int cross_shape_terms_equal_at_depth(
 		}
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			return cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.operation_request.operation,
-				right_db, right_type_declarations, right->as.operation_request.operation,
+				left_db, left_representation_domain, left->as.operation_request.operation,
+				right_db, right_representation_domain, right->as.operation_request.operation,
 				env, type_view_compare_mode, depth + 1
 			) && cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.operation_request.argument,
-				right_db, right_type_declarations, right->as.operation_request.argument,
+				left_db, left_representation_domain, left->as.operation_request.argument,
+				right_db, right_representation_domain, right->as.operation_request.argument,
 				env, type_view_compare_mode, depth + 1
 			) && cross_shape_terms_equal_at_depth(
-				left_db, left_type_declarations, left->as.operation_request.continuation,
-				right_db, right_type_declarations, right->as.operation_request.continuation,
+				left_db, left_representation_domain, left->as.operation_request.continuation,
+				right_db, right_representation_domain, right->as.operation_request.continuation,
 				env, type_view_compare_mode, depth + 1
 			);
 		case PROTOTYPE_TERM_PI:
 			return cross_shape_terms_equal_at_depth(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.pi.domain,
 					right_db,
-						right_type_declarations,
+						right_representation_domain,
 						right->as.pi.domain,
 						env,
 						type_view_compare_mode,
@@ -985,10 +1051,10 @@ static int cross_shape_terms_equal_at_depth(
 					) &&
 				cross_shape_terms_equal_at_depth(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.pi.codomain_family,
 					right_db,
-						right_type_declarations,
+						right_representation_domain,
 						right->as.pi.codomain_family,
 						env,
 						type_view_compare_mode,
@@ -997,10 +1063,10 @@ static int cross_shape_terms_equal_at_depth(
 		case PROTOTYPE_TERM_MATCH: {
 			if (!cross_shape_terms_equal_at_depth(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.match.scrutinee,
 					right_db,
-						right_type_declarations,
+						right_representation_domain,
 						right->as.match.scrutinee,
 						env,
 						type_view_compare_mode,
@@ -1015,10 +1081,47 @@ static int cross_shape_terms_equal_at_depth(
 				return 0;
 			}
 			uint32_t saved_frame_count = env->frame_count;
-			if (left_has_frame && term_scope_env_push_frame(
-					env, left->as.match.ih_scope_id, right->as.match.ih_scope_id
-				) != 0) {
-				return 0;
+			uint32_t saved_binder_count = env->count;
+			if (left_has_frame) {
+				if (term_scope_env_push_frame(
+						env,
+						left->as.match.ih_scope_id,
+						right->as.match.ih_scope_id
+					) != 0) {
+					return 0;
+				}
+				if (left->as.match.ih_scope_id >= left_db->ih_scope_count) {
+					env->frame_count = saved_frame_count;
+					return 0;
+				}
+				if (right->as.match.ih_scope_id >= right_db->ih_scope_count) {
+					env->frame_count = saved_frame_count;
+					return 0;
+				}
+				const struct prototype_ih_scope* left_scope =
+					&left_db->ih_scopes[left->as.match.ih_scope_id];
+				const struct prototype_ih_scope* right_scope =
+					&right_db->ih_scopes[right->as.match.ih_scope_id];
+				int left_binds_subject =
+					left_scope->scrutinee_binding_id != PROTOTYPE_INVALID_ID;
+				int right_binds_subject =
+					right_scope->scrutinee_binding_id != PROTOTYPE_INVALID_ID;
+				if (left_binds_subject != right_binds_subject) {
+					env->frame_count = saved_frame_count;
+					env->count = saved_binder_count;
+					return 0;
+				}
+				if (left_binds_subject) {
+					if (term_scope_env_push_binder(
+							env,
+							left_scope->scrutinee_binding_id,
+							right_scope->scrutinee_binding_id
+						) != 0) {
+						env->frame_count = saved_frame_count;
+						env->count = saved_binder_count;
+						return 0;
+					}
+				}
 			}
 			for (uint32_t i = 0; i < left->as.match.case_count; ++i) {
 				const struct prototype_match_case* left_case =
@@ -1027,27 +1130,29 @@ static int cross_shape_terms_equal_at_depth(
 					&right_db->cases[right->as.match.first_case + i];
 				if (!cross_shape_match_cases_equal_at_depth(
 						left_db,
-						left_type_declarations,
+						left_representation_domain,
 						left_case,
 						right_db,
-							right_type_declarations,
+							right_representation_domain,
 							right_case,
 							env,
 							type_view_compare_mode,
 							depth + 1
 						)) {
 					env->frame_count = saved_frame_count;
+					env->count = saved_binder_count;
 					return 0;
 				}
 			}
 			env->frame_count = saved_frame_count;
+			env->count = saved_binder_count;
 			return 1;
 		}
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			return cross_type_formers_equal(
-				left_type_declarations,
+				left_representation_domain,
 				left->as.type_former.representation_id,
-				right_type_declarations,
+				right_representation_domain,
 				right->as.type_former.representation_id
 			);
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
@@ -1062,10 +1167,10 @@ static int cross_shape_terms_equal_at_depth(
 			) &&
 				cross_shape_terms_equal_at_depth(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.type_view.core,
 					right_db,
-						right_type_declarations,
+						right_representation_domain,
 						right->as.type_view.core,
 						env,
 						type_view_compare_mode,
@@ -1073,10 +1178,10 @@ static int cross_shape_terms_equal_at_depth(
 					) &&
 				cross_shape_terms_equal_at_depth(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.type_view.source,
 					right_db,
-						right_type_declarations,
+						right_representation_domain,
 						right->as.type_view.source,
 						env,
 						type_view_compare_mode,
@@ -1095,10 +1200,10 @@ static int cross_shape_terms_equal_at_depth(
 			}
 			if (!frame_is_bound && !cross_free_frames_equal(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.induction_hypothesis.ih_scope_id,
 					right_db,
-					right_type_declarations,
+					right_representation_domain,
 					right->as.induction_hypothesis.ih_scope_id,
 					env,
 					type_view_compare_mode,
@@ -1108,10 +1213,10 @@ static int cross_shape_terms_equal_at_depth(
 			}
 			return cross_shape_terms_equal_at_depth(
 				left_db,
-				left_type_declarations,
+				left_representation_domain,
 				left->as.induction_hypothesis.argument,
 				right_db,
-					right_type_declarations,
+					right_representation_domain,
 					right->as.induction_hypothesis.argument,
 					env,
 					type_view_compare_mode,
@@ -1130,10 +1235,10 @@ static int cross_shape_terms_equal_at_depth(
 					right->as.dimension_action.operator_id &&
 				cross_shape_terms_equal_at_depth(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.dimension_action.source,
 					right_db,
-					right_type_declarations,
+					right_representation_domain,
 					right->as.dimension_action.source,
 					env,
 					type_view_compare_mode,
@@ -1154,14 +1259,8 @@ static int cross_shape_terms_equal_at_depth(
 				return left->as.pure_primitive.primitive_id == right->as.pure_primitive.primitive_id &&
 					left->as.pure_primitive.type_symbol_id == right->as.pure_primitive.type_symbol_id;
 			case PROTOTYPE_TERM_EFFECT_OPERATION:
-				return left->as.effect_operation.operation_id == right->as.effect_operation.operation_id &&
-					cross_shape_terms_equal_at_depth(
-						left_db, left_type_declarations,
-						left->as.effect_operation.classifier,
-						right_db, right_type_declarations,
-						right->as.effect_operation.classifier, env,
-						type_view_compare_mode, depth + 1
-					);
+				return left->as.effect_operation.operation_id ==
+					right->as.effect_operation.operation_id;
 			case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 				return 1;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
@@ -1170,12 +1269,12 @@ static int cross_shape_terms_equal_at_depth(
 				);
 		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				return cross_shape_terms_equal_at_depth(
-					left_db, left_type_declarations, left->as.effect_row_union.left,
-					right_db, right_type_declarations, right->as.effect_row_union.left,
+					left_db, left_representation_domain, left->as.effect_row_union.left,
+					right_db, right_representation_domain, right->as.effect_row_union.left,
 					env, type_view_compare_mode, depth + 1
 				) && cross_shape_terms_equal_at_depth(
-					left_db, left_type_declarations, left->as.effect_row_union.right,
-					right_db, right_type_declarations, right->as.effect_row_union.right,
+					left_db, left_representation_domain, left->as.effect_row_union.right,
+					right_db, right_representation_domain, right->as.effect_row_union.right,
 					env, type_view_compare_mode, depth + 1
 				);
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
@@ -1189,10 +1288,10 @@ static int cross_shape_terms_equal_at_depth(
 			}
 			int equal = cross_shape_terms_equal_at_depth(
 				left_db,
-				left_type_declarations,
+				left_representation_domain,
 				left->as.effect_row_forall.body,
 				right_db,
-				right_type_declarations,
+				right_representation_domain,
 				right->as.effect_row_forall.body,
 				env,
 				type_view_compare_mode,
@@ -1206,10 +1305,10 @@ static int cross_shape_terms_equal_at_depth(
 					right->as.effect_row_operation.operation_id &&
 				cross_shape_terms_equal_at_depth(
 					left_db,
-					left_type_declarations,
+					left_representation_domain,
 					left->as.effect_row_operation.latent_row,
 					right_db,
-					right_type_declarations,
+					right_representation_domain,
 					right->as.effect_row_operation.latent_row,
 					env,
 					type_view_compare_mode,
@@ -1220,10 +1319,10 @@ static int cross_shape_terms_equal_at_depth(
 					right->as.computation_type.totality &&
 				cross_shape_terms_equal_at_depth(
 						left_db,
-						left_type_declarations,
+						left_representation_domain,
 						left->as.computation_type.label,
 						right_db,
-						right_type_declarations,
+						right_representation_domain,
 						right->as.computation_type.label,
 						env,
 						type_view_compare_mode,
@@ -1231,10 +1330,10 @@ static int cross_shape_terms_equal_at_depth(
 					) &&
 					cross_shape_terms_equal_at_depth(
 						left_db,
-						left_type_declarations,
+						left_representation_domain,
 						left->as.computation_type.result,
 						right_db,
-						right_type_declarations,
+						right_representation_domain,
 						right->as.computation_type.result,
 						env,
 						type_view_compare_mode,
@@ -1247,10 +1346,10 @@ static int cross_shape_terms_equal_at_depth(
 
 static int shape_equal_for_link_with_type_view_mode(
 	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
+	const void* left_representation_domain,
 	uint32_t left,
 	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
+	const void* right_representation_domain,
 	uint32_t right,
 	int type_view_compare_mode,
 	int* p_equal
@@ -1269,10 +1368,10 @@ static int shape_equal_for_link_with_type_view_mode(
 	memset(&env, 0, sizeof(env));
 	*p_equal = cross_shape_terms_equal_at_depth(
 			left_db,
-			left_type_declarations,
+			left_representation_domain,
 			left,
 			right_db,
-			right_type_declarations,
+			right_representation_domain,
 			right,
 			&env,
 			type_view_compare_mode,
@@ -1283,19 +1382,17 @@ static int shape_equal_for_link_with_type_view_mode(
 
 int prototype_term_view_shape_equal_for_link(
 	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
 	uint32_t left,
 	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
 	uint32_t right,
 	int* p_equal
 ) {
 	return shape_equal_for_link_with_type_view_mode(
 		left_db,
-		left_type_declarations,
+		left_db,
 		left,
 		right_db,
-		right_type_declarations,
+		right_db,
 		right,
 		PROTOTYPE_TYPE_VIEW_COMPARE_VIEW,
 		p_equal
@@ -1304,19 +1401,17 @@ int prototype_term_view_shape_equal_for_link(
 
 int prototype_term_core_shape_equal_for_link(
 	const struct prototype_term_db* left_db,
-	const struct prototype_type_declaration_db* left_type_declarations,
 	uint32_t left,
 	const struct prototype_term_db* right_db,
-	const struct prototype_type_declaration_db* right_type_declarations,
 	uint32_t right,
 	int* p_equal
 ) {
 	return shape_equal_for_link_with_type_view_mode(
 		left_db,
-		left_type_declarations,
+		left_db,
 		left,
 		right_db,
-		right_type_declarations,
+		right_db,
 		right,
 		PROTOTYPE_TYPE_VIEW_COMPARE_CORE,
 		p_equal
@@ -1429,12 +1524,10 @@ static int term_intern_exact_equal_local(
 		case PROTOTYPE_TERM_TYPE_FORMER:
 			return INTERN_EXACT_FIELD(type_former.representation_id);
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			return type_identity_is_stable(left->as.type_declaration.identity) ||
-				type_identity_is_stable(right->as.type_declaration.identity) ?
-				type_identity_equal(
-					left->as.type_declaration.identity,
-					right->as.type_declaration.identity
-				) : INTERN_EXACT_FIELD(type_declaration.type_id);
+			return qualified_names_equal(
+				left->as.type_declaration.identity,
+				right->as.type_declaration.identity
+			);
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			return INTERN_EXACT_FIELD(induction_hypothesis.ih_scope_id) &&
 				INTERN_EXACT_FIELD(induction_hypothesis.argument);
@@ -1461,14 +1554,11 @@ static int term_intern_exact_equal_local(
 			return INTERN_EXACT_FIELD(pure_primitive.primitive_id) &&
 				INTERN_EXACT_FIELD(pure_primitive.type_symbol_id);
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
-			return INTERN_EXACT_FIELD(effect_operation.operation_id) &&
-				INTERN_EXACT_FIELD(effect_operation.classifier);
+			return INTERN_EXACT_FIELD(effect_operation.operation_id);
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			return (type_identity_is_stable(left->as.type_view.identity) ||
-				type_identity_is_stable(right->as.type_view.identity) ?
-				type_identity_equal(
-					left->as.type_view.identity, right->as.type_view.identity
-				) : INTERN_EXACT_FIELD(type_view.view_type_id)) &&
+			return qualified_names_equal(
+				left->as.type_view.identity, right->as.type_view.identity
+			) &&
 				INTERN_EXACT_FIELD(type_view.core) &&
 				INTERN_EXACT_FIELD(type_view.source);
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
@@ -1712,9 +1802,37 @@ static int canonical_env_push_frame(
 	return env ? prototype_alpha_slot_push(&env->frames, frame_id) : -1;
 }
 
+static int canonical_hash_mix_identity(
+	uint64_t* p_hash,
+	const struct prototype_term_structural_identity_domain* domain,
+	int kind,
+	uint32_t local_identity
+) {
+	if (!p_hash) {
+		return -1;
+	}
+	if (!domain) {
+		canonical_hash_mix_u32(p_hash, local_identity);
+		return 0;
+	}
+	if (!domain->resolve) {
+		return -1;
+	}
+	uint64_t stable_token;
+	if (domain->resolve(
+			domain->context, kind, local_identity, &stable_token
+		) != 0) {
+		return -1;
+	}
+	canonical_hash_mix_u32(p_hash, (uint32_t)kind);
+	canonical_hash_mix_u32(p_hash, (uint32_t)stable_token);
+	canonical_hash_mix_u32(p_hash, (uint32_t)(stable_token >> 32));
+	return 0;
+}
+
 static int canonical_hash_term_at_depth(
 	const struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_structural_identity_domain* semantic_domain,
 	uint32_t term_id,
 	struct canonical_binder_env* env,
 	struct prototype_term_canonical_key* key,
@@ -1725,7 +1843,7 @@ static int canonical_hash_term_at_depth(
 
 static int canonical_hash_match_case_at_depth(
 	const struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_structural_identity_domain* semantic_domain,
 	const struct prototype_match_case* match_case,
 	struct canonical_binder_env* env,
 	struct prototype_term_canonical_key* key,
@@ -1742,7 +1860,7 @@ static int canonical_hash_match_case_at_depth(
 		canonical_hash_mix_u32(p_hash, PROTOTYPE_INVALID_ID);
 	} else if (canonical_hash_term_at_depth(
 			db,
-			type_declarations,
+			semantic_domain,
 			match_case->constructor_owner,
 			env,
 			key,
@@ -1767,7 +1885,7 @@ static int canonical_hash_match_case_at_depth(
 	}
 	int status = canonical_hash_term_at_depth(
 		db,
-		type_declarations,
+		semantic_domain,
 		match_case->body,
 		env,
 		key,
@@ -1781,7 +1899,7 @@ static int canonical_hash_match_case_at_depth(
 
 static int canonical_hash_term_at_depth(
 	const struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_term_structural_identity_domain* semantic_domain,
 	uint32_t term_id,
 	struct canonical_binder_env* env,
 	struct prototype_term_canonical_key* key,
@@ -1813,7 +1931,7 @@ static int canonical_hash_term_at_depth(
 			canonical_hash_mix_u32(p_hash, term->as.constructor.constructor_id);
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.constructor.owner,
 				env,
 				key,
@@ -1824,7 +1942,7 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_APP:
 			if (canonical_hash_term_at_depth(
 					db,
-					type_declarations,
+					semantic_domain,
 					term->as.app.function,
 					env,
 					key,
@@ -1836,7 +1954,7 @@ static int canonical_hash_term_at_depth(
 			}
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.app.argument,
 				env,
 				key,
@@ -1853,7 +1971,7 @@ static int canonical_hash_term_at_depth(
 			key->bound_binder_count++;
 			int status = canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.lambda.body,
 				env,
 				key,
@@ -1870,7 +1988,7 @@ static int canonical_hash_term_at_depth(
 			);
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.effect_row_operation.latent_row,
 				env,
 				key,
@@ -1880,10 +1998,10 @@ static int canonical_hash_term_at_depth(
 			);
 		case PROTOTYPE_TERM_COMPUTATION_FOLD: {
 			if (canonical_hash_term_at_depth(
-					db, type_declarations, term->as.computation_fold.computation,
+					db, semantic_domain, term->as.computation_fold.computation,
 					env, key, p_hash, canonicalize_frame_refs, depth + 1
 				) != 0 || canonical_hash_term_at_depth(
-					db, type_declarations, term->as.computation_fold.return_clause,
+					db, semantic_domain, term->as.computation_fold.return_clause,
 					env, key, p_hash, canonicalize_frame_refs, depth + 1
 				) != 0) {
 				return -1;
@@ -1893,10 +2011,10 @@ static int canonical_hash_term_at_depth(
 				const struct prototype_computation_fold_clause* clause =
 					&db->computation_fold_clauses[term->as.computation_fold.first_clause + i];
 				if (canonical_hash_term_at_depth(
-						db, type_declarations, clause->operation, env, key, p_hash,
+						db, semantic_domain, clause->operation, env, key, p_hash,
 						canonicalize_frame_refs, depth + 1
 					) != 0 || canonical_hash_term_at_depth(
-						db, type_declarations, clause->body, env, key, p_hash,
+						db, semantic_domain, clause->body, env, key, p_hash,
 						canonicalize_frame_refs, depth + 1
 					) != 0) {
 					return -1;
@@ -1906,22 +2024,22 @@ static int canonical_hash_term_at_depth(
 		}
 		case PROTOTYPE_TERM_OPERATION_REQUEST:
 			if (canonical_hash_term_at_depth(
-					db, type_declarations, term->as.operation_request.operation,
+					db, semantic_domain, term->as.operation_request.operation,
 					env, key, p_hash, canonicalize_frame_refs, depth + 1
 				) != 0 || canonical_hash_term_at_depth(
-					db, type_declarations, term->as.operation_request.argument,
+					db, semantic_domain, term->as.operation_request.argument,
 					env, key, p_hash, canonicalize_frame_refs, depth + 1
 				) != 0) {
 				return -1;
 			}
 			return canonical_hash_term_at_depth(
-				db, type_declarations, term->as.operation_request.continuation,
+				db, semantic_domain, term->as.operation_request.continuation,
 				env, key, p_hash, canonicalize_frame_refs, depth + 1
 			);
 		case PROTOTYPE_TERM_PI:
 			if (canonical_hash_term_at_depth(
 					db,
-					type_declarations,
+					semantic_domain,
 					term->as.pi.domain,
 					env,
 					key,
@@ -1933,7 +2051,7 @@ static int canonical_hash_term_at_depth(
 			}
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.pi.codomain_family,
 				env,
 				key,
@@ -1945,6 +2063,8 @@ static int canonical_hash_term_at_depth(
 			{
 			struct prototype_alpha_slot_checkpoint frame_checkpoint =
 				prototype_alpha_slot_checkpoint(&env->frames);
+			struct prototype_alpha_slot_checkpoint binder_checkpoint =
+				prototype_alpha_slot_checkpoint(&env->binders);
 			key->has_frame_local_reference =
 				key->has_frame_local_reference ||
 				(term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID &&
@@ -1962,7 +2082,7 @@ static int canonical_hash_term_at_depth(
 			}
 			if (canonical_hash_term_at_depth(
 					db,
-					type_declarations,
+					semantic_domain,
 					term->as.match.scrutinee,
 					env,
 					key,
@@ -1971,14 +2091,33 @@ static int canonical_hash_term_at_depth(
 					depth + 1
 				) != 0) {
 				prototype_alpha_slot_restore(&env->frames, frame_checkpoint);
+				prototype_alpha_slot_restore(&env->binders, binder_checkpoint);
 				return -1;
+			}
+			uint32_t subject_binding = PROTOTYPE_INVALID_ID;
+			if (term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID &&
+				term->as.match.ih_scope_id < db->ih_scope_count) {
+				subject_binding = db->ih_scopes[
+					term->as.match.ih_scope_id
+				].scrutinee_binding_id;
+			}
+			canonical_hash_mix_u32(
+				p_hash, subject_binding != PROTOTYPE_INVALID_ID
+			);
+			if (subject_binding != PROTOTYPE_INVALID_ID) {
+				if (canonical_env_push(env, subject_binding) != 0) {
+					prototype_alpha_slot_restore(&env->frames, frame_checkpoint);
+					prototype_alpha_slot_restore(&env->binders, binder_checkpoint);
+					return -1;
+				}
+				key->bound_binder_count++;
 			}
 			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
 				const struct prototype_match_case* match_case =
 					&db->cases[term->as.match.first_case + i];
 				if (canonical_hash_match_case_at_depth(
 						db,
-						type_declarations,
+						semantic_domain,
 						match_case,
 						env,
 						key,
@@ -1987,38 +2126,58 @@ static int canonical_hash_term_at_depth(
 						depth + 1
 					) != 0) {
 					prototype_alpha_slot_restore(&env->frames, frame_checkpoint);
+					prototype_alpha_slot_restore(&env->binders, binder_checkpoint);
 					return -1;
 				}
 			}
 			prototype_alpha_slot_restore(&env->frames, frame_checkpoint);
+			prototype_alpha_slot_restore(&env->binders, binder_checkpoint);
 			return 0;
 			}
 		case PROTOTYPE_TERM_TYPE_FORMER:
-			key->has_type_local_reference = 1;
-			canonical_hash_mix_u32(p_hash, term->as.type_former.representation_id);
-			return 0;
-		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			if (type_identity_is_stable(term->as.type_declaration.identity)) {
-				key->has_type_name_reference = 1;
-				canonical_hash_mix_u32(
-					p_hash, term->as.type_declaration.type_id
-				);
-			} else {
+			if (!semantic_domain) {
 				key->has_type_local_reference = 1;
-				canonical_hash_mix_u32(p_hash, term->as.type_declaration.type_id);
 			}
-			return 0;
+			return canonical_hash_mix_identity(
+				p_hash,
+				semantic_domain,
+				PROTOTYPE_TERM_STRUCTURAL_IDENTITY_TYPE_REPRESENTATION,
+				term->as.type_former.representation_id
+			);
+		case PROTOTYPE_TERM_TYPE_DECLARATION:
+			key->has_type_name_reference = 1;
+			if (canonical_hash_mix_identity(
+					p_hash,
+					semantic_domain,
+					PROTOTYPE_TERM_STRUCTURAL_IDENTITY_SYMBOL,
+					(uint32_t)term->as.type_declaration.identity.namespace_symbol_id
+				) != 0) {
+				return -1;
+			}
+			return canonical_hash_mix_identity(
+				p_hash,
+				semantic_domain,
+				PROTOTYPE_TERM_STRUCTURAL_IDENTITY_SYMBOL,
+				(uint32_t)term->as.type_declaration.identity.name_symbol_id
+			);
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			if (type_identity_is_stable(term->as.type_view.identity)) {
-				key->has_type_name_reference = 1;
-				canonical_hash_mix_u32(p_hash, term->as.type_view.view_type_id);
-			} else {
-				key->has_type_local_reference = 1;
-				canonical_hash_mix_u32(p_hash, term->as.type_view.view_type_id);
+			key->has_type_name_reference = 1;
+			if (canonical_hash_mix_identity(
+					p_hash,
+					semantic_domain,
+					PROTOTYPE_TERM_STRUCTURAL_IDENTITY_SYMBOL,
+					(uint32_t)term->as.type_view.identity.namespace_symbol_id
+				) != 0 || canonical_hash_mix_identity(
+					p_hash,
+					semantic_domain,
+					PROTOTYPE_TERM_STRUCTURAL_IDENTITY_SYMBOL,
+					(uint32_t)term->as.type_view.identity.name_symbol_id
+				) != 0) {
+				return -1;
 			}
 			if (canonical_hash_term_at_depth(
 					db,
-					type_declarations,
+					semantic_domain,
 					term->as.type_view.core,
 					env,
 					key,
@@ -2030,7 +2189,7 @@ static int canonical_hash_term_at_depth(
 			}
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.type_view.source,
 				env,
 				key,
@@ -2058,7 +2217,7 @@ static int canonical_hash_term_at_depth(
 			}
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.induction_hypothesis.argument,
 				env,
 				key,
@@ -2075,12 +2234,17 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_TERMINATES_WITNESS_FORMER:
 			return 0;
 		case PROTOTYPE_TERM_DIMENSION_ACTION:
-			canonical_hash_mix_u32(
-				p_hash, term->as.dimension_action.operator_id
-			);
+			if (canonical_hash_mix_identity(
+					p_hash,
+					semantic_domain,
+					PROTOTYPE_TERM_STRUCTURAL_IDENTITY_DIMENSION_OPERATOR,
+					term->as.dimension_action.operator_id
+				) != 0) {
+				return -1;
+			}
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.dimension_action.source,
 				env,
 				key,
@@ -2091,7 +2255,12 @@ static int canonical_hash_term_at_depth(
 			case PROTOTYPE_TERM_PRIMITIVE_TEXT:
 				return 0;
 			case PROTOTYPE_TERM_TEXT_LITERAL:
-				return 0;
+				return semantic_domain ? canonical_hash_mix_identity(
+					p_hash,
+					semantic_domain,
+					PROTOTYPE_TERM_STRUCTURAL_IDENTITY_SYMBOL,
+					(uint32_t)term->as.text_literal.text_symbol_id
+				) : 0;
 			case PROTOTYPE_TERM_PRIMITIVE_INT:
 			case PROTOTYPE_TERM_PRIMITIVE_INT64:
 				return 0;
@@ -2100,16 +2269,34 @@ static int canonical_hash_term_at_depth(
 				canonical_hash_mix_u32(p_hash, (uint32_t)((uint64_t)term->as.int_literal.value >> 32));
 				return 0;
 			case PROTOTYPE_TERM_EXTERNAL_REF:
-				return 0;
+				if (!semantic_domain) {
+					return 0;
+				}
+				if (canonical_hash_mix_identity(
+						p_hash,
+						semantic_domain,
+						PROTOTYPE_TERM_STRUCTURAL_IDENTITY_SYMBOL,
+						(uint32_t)term->as.external_ref.name.namespace_symbol_id
+					) != 0) {
+					return -1;
+				}
+				return canonical_hash_mix_identity(
+					p_hash,
+					semantic_domain,
+					PROTOTYPE_TERM_STRUCTURAL_IDENTITY_SYMBOL,
+					(uint32_t)term->as.external_ref.name.name_symbol_id
+				);
 		case PROTOTYPE_TERM_PURE_PRIMITIVE:
 				canonical_hash_mix_u32(p_hash, (uint32_t)term->as.pure_primitive.primitive_id);
-				return 0;
+				return semantic_domain ? canonical_hash_mix_identity(
+					p_hash,
+					semantic_domain,
+					PROTOTYPE_TERM_STRUCTURAL_IDENTITY_SYMBOL,
+					(uint32_t)term->as.pure_primitive.type_symbol_id
+				) : 0;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			canonical_hash_mix_u32(p_hash, (uint32_t)term->as.effect_operation.operation_id);
-			return canonical_hash_term_at_depth(
-				db, type_declarations, term->as.effect_operation.classifier, env,
-				key, p_hash, canonicalize_frame_refs, depth + 1
-			);
+			return 0;
 			case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:
 				return 0;
 			case PROTOTYPE_TERM_EFFECT_ROW_VAR:
@@ -2126,13 +2313,13 @@ static int canonical_hash_term_at_depth(
 				return 0;
 			case PROTOTYPE_TERM_EFFECT_ROW_UNION:
 				if (canonical_hash_term_at_depth(
-						db, type_declarations, term->as.effect_row_union.left, env, key,
+						db, semantic_domain, term->as.effect_row_union.left, env, key,
 						p_hash, canonicalize_frame_refs, depth + 1
 					) != 0) {
 					return -1;
 				}
 			return canonical_hash_term_at_depth(
-				db, type_declarations, term->as.effect_row_union.right, env, key,
+				db, semantic_domain, term->as.effect_row_union.right, env, key,
 				p_hash, canonicalize_frame_refs, depth + 1
 			);
 		case PROTOTYPE_TERM_EFFECT_ROW_FORALL: {
@@ -2144,7 +2331,7 @@ static int canonical_hash_term_at_depth(
 			key->bound_binder_count++;
 			int status = canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.effect_row_forall.body,
 				env,
 				key,
@@ -2161,7 +2348,7 @@ static int canonical_hash_term_at_depth(
 			);
 			if (canonical_hash_term_at_depth(
 						db,
-						type_declarations,
+						semantic_domain,
 						term->as.computation_type.label,
 						env,
 						key,
@@ -2173,7 +2360,7 @@ static int canonical_hash_term_at_depth(
 				}
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.computation_type.result,
 					env,
 					key,
@@ -2184,7 +2371,7 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_THUNK_TYPE:
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.thunk_type.computation,
 				env,
 				key,
@@ -2195,7 +2382,7 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_RETURN:
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.return_term.value,
 				env,
 				key,
@@ -2206,7 +2393,7 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_THUNK:
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.thunk.computation,
 				env,
 				key,
@@ -2217,7 +2404,7 @@ static int canonical_hash_term_at_depth(
 		case PROTOTYPE_TERM_FORCE:
 			return canonical_hash_term_at_depth(
 				db,
-				type_declarations,
+				semantic_domain,
 				term->as.force.value,
 				env,
 				key,
@@ -2230,18 +2417,10 @@ static int canonical_hash_term_at_depth(
 		}
 	}
 
-int prototype_term_canonical_key(
+int prototype_term_structural_key_in_domain(
 	const struct prototype_term_db* db,
 	uint32_t term_id,
-	struct prototype_term_canonical_key* p_key
-) {
-	return prototype_term_canonical_key_with_types(db, NULL, term_id, p_key);
-}
-
-int prototype_term_canonical_key_with_types(
-	const struct prototype_term_db* db,
-	const struct prototype_type_declaration_db* type_declarations,
-	uint32_t term_id,
+	const struct prototype_term_structural_identity_domain* domain,
 	struct prototype_term_canonical_key* p_key
 ) {
 	if (!db || !p_key || term_id >= db->term_count) {
@@ -2254,7 +2433,7 @@ int prototype_term_canonical_key_with_types(
 	memset(p_key, 0, sizeof(*p_key));
 	if (canonical_hash_term_at_depth(
 			db,
-			type_declarations,
+			domain,
 			term_id,
 			&env,
 			p_key,
@@ -2266,6 +2445,14 @@ int prototype_term_canonical_key_with_types(
 	}
 	p_key->hash = hash;
 	return 0;
+}
+
+int prototype_term_canonical_key(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	struct prototype_term_canonical_key* p_key
+) {
+	return prototype_term_structural_key_in_domain(db, term_id, NULL, p_key);
 }
 
 /* Interning treats an IH frame bound by a Match exactly like a binder. Free
@@ -2325,12 +2512,8 @@ static int term_intern_canonical_key_local(
 			INTERN_MIX(term->as.type_former.representation_id);
 			break;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			if (type_identity_is_stable(term->as.type_declaration.identity)) {
-				INTERN_MIX(term->as.type_declaration.identity.namespace_symbol_id);
-				INTERN_MIX(term->as.type_declaration.identity.name_symbol_id);
-			} else {
-				INTERN_MIX(term->as.type_declaration.type_id);
-			}
+			INTERN_MIX(term->as.type_declaration.identity.namespace_symbol_id);
+			INTERN_MIX(term->as.type_declaration.identity.name_symbol_id);
 			break;
 		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
 			INTERN_MIX(term->as.induction_hypothesis.ih_scope_id);
@@ -2365,15 +2548,10 @@ static int term_intern_canonical_key_local(
 			break;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			INTERN_MIX(term->as.effect_operation.operation_id);
-			INTERN_MIX_CHILD(term->as.effect_operation.classifier);
 			break;
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			if (type_identity_is_stable(term->as.type_view.identity)) {
-				INTERN_MIX(term->as.type_view.identity.namespace_symbol_id);
-				INTERN_MIX(term->as.type_view.identity.name_symbol_id);
-			} else {
-				INTERN_MIX(term->as.type_view.view_type_id);
-			}
+			INTERN_MIX(term->as.type_view.identity.namespace_symbol_id);
+			INTERN_MIX(term->as.type_view.identity.name_symbol_id);
 			INTERN_MIX_CHILD(term->as.type_view.core);
 			INTERN_MIX_CHILD(term->as.type_view.source);
 			break;

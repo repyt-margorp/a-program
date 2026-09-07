@@ -422,31 +422,6 @@ static int candidate_has_derivation_other_than(
 	uint32_t claim_id,
 	int excluded_proof_kind
 ) {
-	uint32_t derivation_id;
-	int status = prototype_judgement_candidate_find_derivation_other_than(
-		claims,
-		claim_count,
-		derivations,
-		derivation_count,
-		claim_id,
-		excluded_proof_kind,
-		&derivation_id
-	);
-	return status == 0 ? 1 : (status > 0 ? 0 : -1);
-}
-
-int prototype_judgement_candidate_find_derivation_other_than(
-	const struct prototype_judgement_proposition* claims,
-	size_t claim_count,
-	const struct prototype_judgement_derivation_candidate* derivations,
-	size_t derivation_count,
-	uint32_t claim_id,
-	int excluded_proof_kind,
-	uint32_t* p_derivation_id
-) {
-	if (!p_derivation_id) {
-		return -1;
-	}
 	uint32_t cursor = 0;
 	uint32_t derivation_id;
 	int status;
@@ -460,11 +435,10 @@ int prototype_judgement_candidate_find_derivation_other_than(
 		&derivation_id
 	)) == 0) {
 		if (derivations[derivation_id].proof_kind != excluded_proof_kind) {
-			*p_derivation_id = derivation_id;
-			return 0;
+			return 1;
 		}
 	}
-	return status < 0 ? -1 : 1;
+	return status < 0 ? -1 : 0;
 }
 
 static int propositions_equal(
@@ -1180,66 +1154,6 @@ static int judgement_transaction_abort(
 		return -1;
 	}
 	return -1;
-}
-
-int prototype_judgement_delta_rebuild_candidate_index(
-	struct prototype_judgement_delta* delta
-) {
-	if (!delta ||
-		delta->derivation_candidate_count >
-			delta->derivation_candidate_capacity) {
-		return -1;
-	}
-	judgement_index_clear(delta->candidate_index_heads);
-	for (uint32_t i = 0; i < (uint32_t)delta->proposition_count; ++i) {
-		delta->propositions[i].first_candidate_derivation = PROTOTYPE_INVALID_ID;
-		delta->propositions[i].last_candidate_derivation = PROTOTYPE_INVALID_ID;
-	}
-	for (uint32_t i = 0;
-		i < (uint32_t)delta->derivation_candidate_count;
-		++i) {
-		struct prototype_judgement_derivation_candidate* candidate =
-			&delta->derivation_candidates[i];
-		if (candidate->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_INVALID) {
-			candidate->key_hash = 0;
-			candidate->hash_next = PROTOTYPE_INVALID_ID;
-			continue;
-		}
-		if (candidate->conclusion_proposition_id >=
-				delta->proposition_count ||
-			candidate->premise_count >
-				PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES ||
-			(candidate->premise_count != 0 && !candidate->premises)) {
-			return -1;
-		}
-		candidate->conclusion = &delta->propositions[
-			candidate->conclusion_proposition_id
-		];
-		candidate->key_hash = proof_candidate_key_hash(candidate);
-		size_t bucket = judgement_index_bucket(candidate->key_hash);
-		for (uint32_t existing = delta->candidate_index_heads[bucket];
-			existing != PROTOTYPE_INVALID_ID;
-			existing = delta->derivation_candidates[existing].hash_next) {
-			if (delta->derivation_candidates[existing].key_hash ==
-					candidate->key_hash && proof_candidates_equal(
-					&delta->derivation_candidates[existing], candidate
-				)) {
-				return -1;
-			}
-		}
-		candidate->hash_next = delta->candidate_index_heads[bucket];
-		delta->candidate_index_heads[bucket] = i;
-		if (judgement_candidate_adjacency_append(
-				delta->propositions,
-				delta->proposition_count,
-				delta->derivation_candidates,
-				delta->derivation_candidate_count,
-				i
-			) != 0) {
-			return -1;
-		}
-	}
-	return 0;
 }
 
 int prototype_judgement_find_exact_derivation(

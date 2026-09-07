@@ -552,7 +552,7 @@ void prototype_judgement_delta_init(
 
 void prototype_judgement_delta_set_intrinsic_environment(
 	struct prototype_judgement_delta* delta,
-	const struct prototype_intrinsic_environment* intrinsic_environment
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment
 ) {
 	if (!delta) {
 		return;
@@ -606,7 +606,22 @@ void prototype_judgement_delta_set_context_store(
 		return;
 	}
 	delta->contexts = contexts;
+	delta->context_classifier_view =
+		(struct prototype_context_classifier_view) {
+			.contexts = contexts
+		};
 	delta->substitutions = substitutions;
+}
+
+void prototype_judgement_delta_set_context_classifier_view(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_context_classifier_view* context_view
+) {
+	if (!delta) {
+		return;
+	}
+	delta->context_classifier_view = context_view ? *context_view :
+		(struct prototype_context_classifier_view) {0};
 }
 
 void prototype_judgement_delta_set_occurrence_store(

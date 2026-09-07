@@ -1,11 +1,13 @@
 #include "a_program/frontend/reader.h"
 
 #include "a_program/driver/compiler_session.h"
+#include "compiler_session_internal.h"
 #include "a_program/driver/diagnostics.h"
 #include "a_program/frontend/function_graph.h"
 #include "a_program/graph/runtime.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "a_program/frontend/ast_inspect.h"
@@ -15,6 +17,7 @@
 #include "a_program/kernel/judgement/conversion.h"
 #include "a_program/kernel/judgement/classifier_solver.h"
 #include "a_program/kernel/universe.h"
+#include "a_program/kernel/type_term_debug.h"
 
 #define INPUT_CAPACITY 8192
 #define LINE_CAPACITY 1024
@@ -54,7 +57,7 @@ static void label_evaluation_root(
 
 static void print_state(
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_ast_db* ast_db,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* term_db,
@@ -107,7 +110,7 @@ static void print_state(
 		for (size_t i = 0; i < metadata->label_count; ++i) {
 			const struct prototype_compile_label* label = &metadata->labels[i];
 			printf("term %s := ", symbol_to_string(symbols, label->name_symbol_id));
-			prototype_term_print_debug(
+			prototype_type_term_print_debug(
 				stdout, symbols, intrinsic_environment,
 				type_declarations, term_db, label->term
 			);
@@ -288,10 +291,12 @@ static int evaluate_for_output(
 
 	*p_host_ran = 0;
 	*p_verification_state = 0;
-	struct prototype_frozen_module_snapshot snapshot;
-	int has_snapshot = metadata &&
-		prototype_compile_metadata_frozen_snapshot(metadata, &snapshot) == 0;
+	struct prototype_frozen_module_snapshot* snapshot = metadata ?
+		malloc(sizeof(*snapshot)) : NULL;
+	int has_snapshot = snapshot &&
+		prototype_compile_metadata_frozen_snapshot(metadata, snapshot) == 0;
 	if (metadata && !has_snapshot) {
+		free(snapshot);
 		return -1;
 	}
 	struct prototype_term_reduction_options options = {
@@ -300,15 +305,15 @@ static int evaluate_for_output(
 		.effect_output = output,
 		.symbols = symbols,
 		.reduction_environment = has_snapshot ?
-			&snapshot.reduction_environment : NULL,
+			&snapshot->reduction_environment : NULL,
 		.effect_capabilities = PROTOTYPE_HOST_EFFECT_TERMINAL,
 		.p_effect_performed = p_host_ran
 	};
-	if (has_snapshot && operation < snapshot.typed_occurrences.occurrence_count) {
+	if (has_snapshot && operation < snapshot->typed_occurrences.occurrence_count) {
 		struct prototype_runtime_trace trace;
 		const struct prototype_runtime_annotations annotations = {
-			.occurrences = &snapshot.typed_occurrences,
-			.verification = &snapshot.verification,
+			.occurrences = &snapshot->typed_occurrences,
+			.verification = &snapshot->verification,
 			.verification_type_declarations = type_declarations
 		};
 		int status = prototype_runtime_evaluate_core_with_annotations(
@@ -339,21 +344,23 @@ static int evaluate_for_output(
 				);
 			}
 		}
+		free(snapshot);
 		return status;
 	}
-	return prototype_term_perform_with_options(
+	int status = prototype_term_perform_with_options(
 		term_db,
-		NULL,
 		NULL,
 		options,
 		term,
 		p_ret
 	);
+	free(snapshot);
+	return status;
 }
 
 static void query_value(
 	struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_db* term_db,
 	struct prototype_compile_metadata* metadata,
@@ -369,7 +376,7 @@ static void query_value(
 	}
 
 	printf("term %s := ", name);
-	prototype_term_print_debug(
+	prototype_type_term_print_debug(
 		stdout, symbols, intrinsic_environment,
 		type_declarations, term_db, label->term
 	);
@@ -408,7 +415,7 @@ static void query_value(
 		printf("verification %s := discharged\n", name);
 	}
 	printf("value %s := ", name);
-	prototype_term_print_debug(
+	prototype_type_term_print_debug(
 		stdout, symbols, intrinsic_environment,
 		type_declarations, term_db, evaluated
 	);
@@ -417,7 +424,7 @@ static void query_value(
 
 static void query_normal_form(
 	struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_db* term_db,
 	struct prototype_compile_metadata* metadata,
@@ -448,17 +455,17 @@ static void query_normal_form(
 	(void)evaluation_operation;
 	int status = full ?
 		prototype_term_nf_with_options(
-			term_db, type_declarations, NULL, options, evaluation_term, &normalized
+			term_db, NULL, options, evaluation_term, &normalized
 		) :
 		prototype_term_perform_with_options(
-			term_db, type_declarations, NULL, options, evaluation_term, &normalized
+			term_db, NULL, options, evaluation_term, &normalized
 		);
 	if (status != 0) {
 		printf("%s %s := <normalization failed>\n", mode_name, name);
 		return;
 	}
 	printf("%s %s := ", mode_name, name);
-	prototype_term_print_debug(
+	prototype_type_term_print_debug(
 		stdout, symbols, intrinsic_environment,
 		type_declarations, term_db, normalized
 	);
@@ -467,7 +474,7 @@ static void query_normal_form(
 
 static void query_type(
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* term_db,
 	const struct prototype_compile_metadata* metadata,
@@ -501,7 +508,7 @@ static void query_type(
 		return;
 	}
 	printf("type %s := ", name);
-	prototype_term_print_debug(
+	prototype_type_term_print_debug(
 		stdout,
 		symbols,
 		intrinsic_environment,
@@ -512,7 +519,7 @@ static void query_type(
 	printf("\n");
 	if (inspection.expectation_classifier != PROTOTYPE_INVALID_ID) {
 		printf("expected %s := ", name);
-		prototype_term_print_debug(
+		prototype_type_term_print_debug(
 			stdout,
 			symbols,
 			intrinsic_environment,
@@ -520,16 +527,13 @@ static void query_type(
 			term_db,
 			inspection.expectation_classifier
 		);
-		printf(
-			" [accepted claim#%u]\n",
-			inspection.expectation_claim_id
-		);
+		printf(" [validated]\n");
 	}
 }
 
 static void query_function_graph(
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* term_db,
 	const struct prototype_compile_metadata* metadata,
@@ -577,7 +581,7 @@ static void query_function_graph(
 
 static int query_existing_value(
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	struct prototype_type_declaration_db* type_declarations,
 	struct prototype_term_db* term_db,
 	struct prototype_compile_metadata* metadata,
@@ -593,7 +597,7 @@ static int query_existing_value(
 
 	name = symbol_to_string(symbols, symbol_id);
 	printf("term %s := ", name ? name : "<unknown>");
-	prototype_term_print_debug(
+	prototype_type_term_print_debug(
 		stdout, symbols, intrinsic_environment,
 		type_declarations, term_db, label->term
 	);
@@ -632,7 +636,7 @@ static int query_existing_value(
 		printf("verification %s := discharged\n", name ? name : "<unknown>");
 	}
 	printf("value %s := ", name ? name : "<unknown>");
-	prototype_term_print_debug(
+	prototype_type_term_print_debug(
 		stdout, symbols, intrinsic_environment,
 		type_declarations, term_db, evaluated
 	);
@@ -675,14 +679,14 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "failed to initialize compiler storage\n");
 		return 1;
 	}
-	symbols = &storage.symbols;
-	type_declarations = &storage.type_declarations;
-	ast_db = &storage.asts;
-	term_db = &storage.terms;
-	universe_db = &storage.universe;
-	judgement_db = &storage.judgement;
-	metadata = &storage.metadata;
-	program = &storage.program;
+	symbols = &storage.private->symbols;
+	type_declarations = &storage.private->type_declarations;
+	ast_db = &storage.private->asts;
+	term_db = &storage.private->core.terms;
+	universe_db = &storage.private->universe;
+	judgement_db = &storage.private->judgement;
+	metadata = &storage.private->metadata;
+	program = &storage.private->program;
 	program->compile_options.definition_thunk_policy = definition_thunk_policy;
 	for (int i = first_file_arg; i < argc; ++i) {
 		if (prototype_read_ast_file(argv[i], program, &error) != 0) {

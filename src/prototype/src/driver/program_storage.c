@@ -1,4 +1,4 @@
-#include "a_program/driver/compiler_session.h"
+#include "compiler_session_internal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +31,7 @@
 #define PROGRAM_TERM_CAPACITY 262144
 #define PROGRAM_MATCH_CASE_CAPACITY 262144
 #define PROGRAM_MATCH_BINDER_CAPACITY 262144
-#define PROGRAM_MATCH_FRAME_CAPACITY 4096
+#define PROGRAM_MATCH_FRAME_CAPACITY PROGRAM_TERM_CAPACITY
 #define PROGRAM_JUDGEMENT_CAPACITY 4096
 #define PROGRAM_COMPILE_LABEL_CAPACITY 512
 #define PROGRAM_COMPILE_TYPE_EXPORT_CAPACITY 256
@@ -148,6 +148,11 @@ struct prototype_program_storage_backing {
 	struct prototype_dimension_axis_image
 		dimension_images[PROGRAM_DIMENSION_IMAGE_CAPACITY];
 	struct prototype_typed_occurrence occurrences[PROGRAM_OPERATION_CAPACITY];
+	struct prototype_typed_publication_projection
+		typed_publication_projections[PROGRAM_OPERATION_CAPACITY];
+	uint32_t typed_publication_contexts[PROGRAM_OPERATION_CAPACITY];
+	struct prototype_typed_publication_match_case_projection
+		typed_publication_match_case_projections[PROGRAM_OPERATION_CASE_CAPACITY];
 	struct prototype_typed_occurrence_edge occurrence_edges[PROGRAM_OCCURRENCE_EDGE_CAPACITY];
 	struct prototype_typed_occurrence_match_case occurrence_cases[PROGRAM_OPERATION_CASE_CAPACITY];
 	struct prototype_typed_occurrence_fold_clause fold_clauses[PROGRAM_OPERATION_FOLD_CLAUSE_CAPACITY];
@@ -211,9 +216,13 @@ struct prototype_artifact_interface_storage_backing {
 		definitions[PROGRAM_ARTIFACT_DEFINITION_CAPACITY];
 };
 
-static void initialize_program_storage_views(
-	struct prototype_program_storage* storage
+static int initialize_program_storage_views(
+	struct prototype_program_storage* storage_handle
 ) {
+	if (!storage_handle || !storage_handle->private) {
+		return -1;
+	}
+	struct prototype_program_storage_private* storage = storage_handle->private;
 	struct prototype_program_storage_backing* b = storage->backing;
 	symbol_table_init(&storage->symbols, b->symbol_ids, b->symbol_hashes,
 		PROGRAM_SYMBOL_MAP_CAPACITY, b->symbol_strings,
@@ -257,10 +266,20 @@ static void initialize_program_storage_views(
 		PROGRAM_UNIVERSE_LEVEL_CAPACITY, b->universe_constraints,
 		PROGRAM_UNIVERSE_CONSTRAINT_CAPACITY, b->universe_obligation_spans,
 		PROTOTYPE_UNIVERSE_OBLIGATION_SPAN_CAPACITY);
-	prototype_term_db_init(&storage->terms, b->terms, PROGRAM_TERM_CAPACITY,
-		b->match_cases, b->match_case_label_symbols, PROGRAM_MATCH_CASE_CAPACITY,
-		b->match_binders, PROGRAM_MATCH_BINDER_CAPACITY, b->ih_scopes,
-		PROGRAM_MATCH_FRAME_CAPACITY);
+	const struct prototype_core_pipeline_storage core_storage = {
+		.terms = b->terms,
+		.term_capacity = PROGRAM_TERM_CAPACITY,
+		.cases = b->match_cases,
+		.case_label_symbols = b->match_case_label_symbols,
+		.case_capacity = PROGRAM_MATCH_CASE_CAPACITY,
+		.case_binders = b->match_binders,
+		.case_binder_capacity = PROGRAM_MATCH_BINDER_CAPACITY,
+		.ih_scopes = b->ih_scopes,
+		.ih_scope_capacity = PROGRAM_MATCH_FRAME_CAPACITY
+	};
+	if (prototype_core_pipeline_init(&storage->core, &core_storage, NULL) != 0) {
+		return -1;
+	}
 	prototype_compile_metadata_init(&storage->metadata, b->compile_labels,
 		PROGRAM_COMPILE_LABEL_CAPACITY, b->compile_type_exports,
 		PROGRAM_COMPILE_TYPE_EXPORT_CAPACITY, b->compile_constructor_exports,
@@ -288,6 +307,14 @@ static void initialize_program_storage_views(
 		b->accepted_substitution_claims,
 		PROTOTYPE_SUBSTITUTION_CAPACITY
 	);
+	prototype_compile_metadata_set_typed_publication_storage(
+		&storage->metadata,
+		b->typed_publication_projections,
+		b->typed_publication_contexts,
+		PROGRAM_OPERATION_CAPACITY,
+		b->typed_publication_match_case_projections,
+		PROGRAM_OPERATION_CASE_CAPACITY
+	);
 	prototype_compile_metadata_set_function_graph_storage(
 		&storage->metadata,
 		b->function_graph_requests,
@@ -307,15 +334,17 @@ static void initialize_program_storage_views(
 		PROGRAM_JUDGEMENT_CAPACITY * PROTOTYPE_JUDGEMENT_PROOF_MAX_PREMISES);
 	prototype_judgement_db_set_resource_usage_storage(&storage->judgement,
 		b->judgement_resource_usage, PROGRAM_JUDGEMENT_CAPACITY * 32);
-	storage->program.intrinsic_environment = prototype_default_intrinsic_environment();
+	storage->program.intrinsic_environment = prototype_default_intrinsic_typing_environment();
+	storage->program.core = &storage->core;
+	storage->program.typing = storage->typing;
 	storage->program.symbols = &storage->symbols;
 	storage->program.namespace_symbol_id = -1;
 	storage->program.asts = &storage->asts;
 	storage->program.type_declarations = &storage->type_declarations;
-	storage->program.terms = &storage->terms;
 	storage->program.judgement = &storage->judgement;
 	storage->program.metadata = &storage->metadata;
 	storage->program.universe = &storage->universe;
+	return 0;
 }
 
 int prototype_program_storage_init(struct prototype_program_storage* storage) {
@@ -323,41 +352,112 @@ int prototype_program_storage_init(struct prototype_program_storage* storage) {
 		return -1;
 	}
 	memset(storage, 0, sizeof(*storage));
-	storage->backing = calloc(1, sizeof(*storage->backing));
-	if (!storage->backing) {
+	storage->private = calloc(1, sizeof(*storage->private));
+	if (!storage->private) {
 		return -1;
 	}
-	initialize_program_storage_views(storage);
+	struct prototype_program_storage_private* private = storage->private;
+	private->backing = calloc(1, sizeof(*private->backing));
+	private->typing = calloc(1, sizeof(*private->typing));
+	if (!private->backing || !private->typing ||
+		prototype_typing_pipeline_init(private->typing) != 0) {
+		free(private->typing);
+		free(private->backing);
+		free(private);
+		memset(storage, 0, sizeof(*storage));
+		return -1;
+	}
+	if (initialize_program_storage_views(storage) != 0) {
+		free(private->typing);
+		free(private->backing);
+		free(private);
+		memset(storage, 0, sizeof(*storage));
+		return -1;
+	}
 	return 0;
 }
 
 int prototype_program_storage_reset(struct prototype_program_storage* storage) {
-	if (!storage || !storage->backing) {
+	if (!storage || !storage->private || !storage->private->backing) {
 		return -1;
 	}
-	prototype_term_db_dispose_runtime_state(&storage->terms);
-	symbol_table_free(&storage->symbols);
-	memset(storage->backing, 0, sizeof(*storage->backing));
-	memset(&storage->program, 0, sizeof(storage->program));
-	memset(&storage->symbols, 0, sizeof(storage->symbols));
-	memset(&storage->type_declarations, 0, sizeof(storage->type_declarations));
-	memset(&storage->asts, 0, sizeof(storage->asts));
-	memset(&storage->terms, 0, sizeof(storage->terms));
-	memset(&storage->judgement, 0, sizeof(storage->judgement));
-	memset(&storage->metadata, 0, sizeof(storage->metadata));
-	memset(&storage->universe, 0, sizeof(storage->universe));
-	initialize_program_storage_views(storage);
-	return 0;
+	struct prototype_program_storage_private* private = storage->private;
+	prototype_core_pipeline_dispose(&private->core);
+	symbol_table_free(&private->symbols);
+	memset(private->backing, 0, sizeof(*private->backing));
+	memset(&private->program, 0, sizeof(private->program));
+	memset(&private->symbols, 0, sizeof(private->symbols));
+	memset(&private->type_declarations, 0, sizeof(private->type_declarations));
+	memset(&private->asts, 0, sizeof(private->asts));
+	memset(&private->core, 0, sizeof(private->core));
+	memset(&private->judgement, 0, sizeof(private->judgement));
+	memset(&private->metadata, 0, sizeof(private->metadata));
+	memset(&private->universe, 0, sizeof(private->universe));
+	prototype_typing_pipeline_dispose(private->typing);
+	if (prototype_typing_pipeline_init(private->typing) != 0) {
+		return -1;
+	}
+	return initialize_program_storage_views(storage);
+}
+
+void prototype_program_storage_exchange(
+	struct prototype_program_storage* left,
+	struct prototype_program_storage* right
+) {
+	if (!left || !right || left == right) {
+		return;
+	}
+	if (!left->private || !right->private) {
+		return;
+	}
+	struct prototype_program_storage_private temporary = *left->private;
+	*left->private = *right->private;
+	*right->private = temporary;
+	left->private->program.symbols = &left->private->symbols;
+	left->private->program.core = &left->private->core;
+	left->private->program.typing = left->private->typing;
+	left->private->program.asts = &left->private->asts;
+	left->private->program.type_declarations = &left->private->type_declarations;
+	left->private->program.judgement = &left->private->judgement;
+	left->private->program.metadata = &left->private->metadata;
+	left->private->program.universe = &left->private->universe;
+	right->private->program.symbols = &right->private->symbols;
+	right->private->program.core = &right->private->core;
+	right->private->program.typing = right->private->typing;
+	right->private->program.asts = &right->private->asts;
+	right->private->program.type_declarations = &right->private->type_declarations;
+	right->private->program.judgement = &right->private->judgement;
+	right->private->program.metadata = &right->private->metadata;
+	right->private->program.universe = &right->private->universe;
 }
 
 void prototype_program_storage_destroy(struct prototype_program_storage* storage) {
 	if (!storage) {
 		return;
 	}
-	prototype_term_db_dispose_runtime_state(&storage->terms);
-	symbol_table_free(&storage->symbols);
-	free(storage->backing);
+	if (storage->private) {
+		prototype_core_pipeline_dispose(&storage->private->core);
+		symbol_table_free(&storage->private->symbols);
+		prototype_typing_pipeline_dispose(storage->private->typing);
+		free(storage->private->typing);
+		free(storage->private->backing);
+		free(storage->private);
+	}
 	memset(storage, 0, sizeof(*storage));
+}
+
+int prototype_program_source_view(
+	struct prototype_program* program,
+	struct prototype_program_source_view* view
+) {
+	if (!program || !view || !program->intrinsic_environment ||
+		!program->symbols || !program->asts) {
+		return -1;
+	}
+	view->intrinsic_environment = program->intrinsic_environment;
+	view->symbols = program->symbols;
+	view->asts = program->asts;
+	return 0;
 }
 
 static void initialize_artifact_interface_storage_views(
@@ -440,6 +540,18 @@ int prototype_artifact_interface_storage_reset(
 	memset(&storage->debug, 0, sizeof(storage->debug));
 	initialize_artifact_interface_storage_views(storage);
 	return 0;
+}
+
+void prototype_artifact_interface_storage_exchange(
+	struct prototype_artifact_interface_storage* left,
+	struct prototype_artifact_interface_storage* right
+) {
+	if (!left || !right || left == right) {
+		return;
+	}
+	struct prototype_artifact_interface_storage temporary = *left;
+	*left = *right;
+	*right = temporary;
 }
 
 void prototype_artifact_interface_storage_destroy(

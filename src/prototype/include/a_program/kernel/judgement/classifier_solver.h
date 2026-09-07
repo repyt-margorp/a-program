@@ -8,6 +8,19 @@ struct prototype_judgement_delta;
 struct prototype_match_constructor_resolution;
 struct prototype_match_resolution_request;
 
+/* Expose a saturated nominal instance from a classifier computation. A
+ * neutral Match is factored only when every branch has one declaration;
+ * branch-varying telescope arguments remain neutral Match terms. This is
+ * dependent family elimination, not the stricter uniform-parameter rule for a
+ * recursive field. Returns 0 when projected, 1 when more classifier
+ * information is required, and -1 for an inconsistent or malformed family. */
+int prototype_judgement_project_nominal_classifier_instance(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t classifier,
+	uint32_t* p_projected
+);
+
 int prototype_judgement_resolve_match_constructor(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -96,6 +109,8 @@ int prototype_judgement_delta_solve_recorded_computation_constraints(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_computation_constraint_input* inputs,
+	size_t input_capacity,
 	struct prototype_judgement_computation_constraint_result* results,
 	size_t result_capacity
 );
@@ -103,17 +118,16 @@ int prototype_judgement_delta_solve_recorded_computation_requests(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_judgement_computation_constraint_input* inputs,
+	size_t input_capacity,
 	struct prototype_judgement_computation_constraint_result* results,
 	size_t result_capacity
 );
 int prototype_judgement_delta_record_computation_constraint(
 	struct prototype_judgement_delta* delta,
-	const struct prototype_term_db* terms,
+	struct prototype_term_db* terms,
 	uint32_t context_id,
 	uint32_t subject
-);
-int prototype_judgement_delta_rebuild_computation_constraint_index(
-	struct prototype_judgement_delta* delta
 );
 int prototype_judgement_delta_computation_constraint_for_occurrence(
 	const struct prototype_judgement_delta* delta,
@@ -125,7 +139,7 @@ int prototype_judgement_delta_computation_constraint_for_occurrence(
 void prototype_judgement_print(
 	FILE* output,
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
 	const struct prototype_judgement_db* judgement

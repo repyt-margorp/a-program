@@ -13,18 +13,18 @@ int prototype_judgement_delta_record_effect_weaken(
 		target_classifier >= terms->term_count) {
 		return -1;
 	}
-	struct prototype_term_classifier_view source;
-	struct prototype_term_classifier_view target;
+	struct prototype_classifier_view source;
+	struct prototype_classifier_view target;
 	struct prototype_effect_row_normal_form source_effects;
 	struct prototype_effect_row_normal_form target_effects;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, source_evidence->classifier, &source
 		) != 0 || prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, target_classifier, &target
-		) != 0 || source.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		target.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		source.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-		target.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		) != 0 || source.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		target.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		source.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
+		target.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
 		!(prototype_judgement_classifier_conversion(
 			terms, type_declarations, source.result, target.result
 		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) || prototype_term_effect_row_normal_form(
@@ -66,8 +66,9 @@ int prototype_judgement_delta_record_type_formation(
 	uint32_t type_id;
 	uint32_t arguments[16];
 	uint32_t argument_count;
-	if (prototype_term_type_instance_info(
-			terms, subject, &type_id, arguments, &argument_count
+	if (prototype_type_projection_instance_info(
+			terms,
+		&type_declarations->semantic_schema, subject, &type_id, arguments, &argument_count
 		) != 0 || type_id >= type_declarations->semantic_schema.type_count ||
 		argument_count > 16) {
 		return -1;
@@ -233,7 +234,7 @@ int prototype_judgement_delta_record_text_literal(
 int prototype_judgement_delta_record_int_literal(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	uint32_t subject,
 	uint32_t classifier
 ) {
@@ -326,7 +327,7 @@ int prototype_judgement_add_expected_type_exposure(
 				operation_id,
 				expected
 			);
-		if (conversion.status != PROTOTYPE_TERM_CONVERSION_NOT_EQUAL ||
+		if (conversion.status == PROTOTYPE_TERM_CONVERSION_INVALID ||
 			(effect_status != 0 && !classifier_kernel_compatible_at_depth(
 				terms,
 				type_declarations,
@@ -409,22 +410,9 @@ int prototype_judgement_delta_record_expected_type_exposure(
 		classifier_kernel_conversion(
 			terms, type_declarations, NULL, expected, source_evidence->classifier
 		);
-	int proof_kind;
-	if (conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
-		proof_kind = PROTOTYPE_JUDGEMENT_PROOF_CONVERSION;
-	} else if (conversion.status == PROTOTYPE_TERM_CONVERSION_NOT_EQUAL &&
-		classifier_kernel_compatible_at_depth(
-			terms,
-			type_declarations,
-			NULL,
-			expected,
-			source_evidence->classifier,
-			0
-		)) {
-		proof_kind = PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE;
-	} else {
-		return -1;
-	}
+	int proof_kind = conversion.status == PROTOTYPE_TERM_CONVERSION_EQUAL ?
+		PROTOTYPE_JUDGEMENT_PROOF_CONVERSION :
+		PROTOTYPE_JUDGEMENT_PROOF_EXPECTED_TYPE_EXPOSURE;
 	uint32_t premise_subjects[1] = { subject };
 	uint32_t premise_classifiers[1] = { source_evidence->classifier };
 	if (conclusion_occurrence_id == PROTOTYPE_INVALID_ID) {

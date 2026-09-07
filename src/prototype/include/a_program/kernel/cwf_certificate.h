@@ -69,10 +69,10 @@ int prototype_cwf_certificate_db_add_substitution(
 	uint32_t claim_id,
 	uint32_t* p_certificate_id
 );
-/* A Claim certifies EXTEND only when it is the exact accepted source-context
- * HAS_TYPE proposition. Its authority may be a Derivation, Operation, or Name;
- * CwF formation must not collapse those distinct acceptance mechanisms. */
-int prototype_cwf_substitution_claim_certifies(
+/* Match accepted HAS_TYPE evidence to the source assignment of EXTEND.
+ * Classifier coherence is checked against the target Context projection; it is
+ * deliberately absent from raw substitution identity. */
+int prototype_cwf_substitution_claim_matches_assignment(
 	const struct prototype_substitution_db* substitutions,
 	const struct prototype_judgement_db* judgement,
 	uint32_t substitution_id,

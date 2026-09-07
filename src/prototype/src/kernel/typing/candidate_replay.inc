@@ -7,46 +7,6 @@ int prototype_judgement_delta_has_pending_classifier_state(
 	return delta->match_motive_result_count > 0 ? 1 : 0;
 }
 
-static int judgement_candidate_claim_has_derivation(
-	const struct prototype_judgement_db* judgement,
-	uint32_t context_id,
-	int kind,
-	uint32_t subject,
-	uint32_t classifier,
-	int include_conversion
-) {
-	if (!judgement) {
-		return -1;
-	}
-	for (size_t i = 0; i < judgement->proposition_count; ++i) {
-		const struct prototype_judgement_proposition* relation = &judgement->propositions[i];
-		if (relation->kind == kind &&
-			relation->context_id == context_id &&
-			relation->subject == subject &&
-			relation->classifier == classifier) {
-			uint32_t cursor = 0;
-			uint32_t derivation_id;
-			while (prototype_judgement_candidate_derivation_for_conclusion_next(
-				judgement->propositions,
-				judgement->proposition_count,
-				judgement->derivation_candidates,
-				judgement->derivation_candidate_count,
-				(uint32_t)i,
-				&cursor,
-				&derivation_id
-			) == 0) {
-				if (!include_conversion &&
-					judgement->derivation_candidates[derivation_id].proof_kind ==
-						PROTOTYPE_JUDGEMENT_PROOF_CONVERSION) {
-					continue;
-				}
-				return 0;
-			}
-		}
-	}
-	return -1;
-}
-
 static void initialize_proof_premises(
 	struct prototype_judgement_derivation_candidate* proof,
 	uint32_t default_context_id,
@@ -106,41 +66,6 @@ static void initialize_proof_rule_parameters(
 			PROTOTYPE_JUDGEMENT_SEMANTIC_ACTION_INVALID;
 		proof->premises[i].semantic_action_id = PROTOTYPE_INVALID_ID;
 	}
-}
-
-static int judgement_operation_candidate_claim_has_derivation(
-	const struct prototype_judgement_db* judgement,
-	uint32_t operation_id,
-	uint32_t context_id,
-	int kind,
-	uint32_t subject,
-	uint32_t classifier
-) {
-	if (!judgement) {
-		return -1;
-	}
-	for (size_t i = judgement->proposition_count; i > 0; --i) {
-		const struct prototype_judgement_proposition* relation =
-			&judgement->propositions[i - 1];
-		if (relation->occurrence_id == operation_id &&
-			relation->context_id == context_id && relation->kind == kind &&
-			relation->subject == subject && relation->classifier == classifier) {
-			uint32_t cursor = 0;
-			uint32_t derivation_id;
-			if (prototype_judgement_candidate_derivation_for_conclusion_next(
-				judgement->propositions,
-				judgement->proposition_count,
-				judgement->derivation_candidates,
-				judgement->derivation_candidate_count,
-				(uint32_t)(i - 1),
-				&cursor,
-				&derivation_id
-			) == 0) {
-				return 0;
-			}
-		}
-	}
-	return 1;
 }
 
 /* Returns zero when this structural premise has an authoritative Operation
@@ -204,6 +129,33 @@ static uint32_t judgement_operation_evidence_source(
 		);
 	}
 	return operation_id;
+}
+
+static int judgement_operation_evidence_path_contains(
+	const struct prototype_typed_occurrence_graph* operations,
+	uint32_t operation_id,
+	uint32_t target_operation_id,
+	uint32_t depth
+) {
+	if (!operations || operation_id >= operations->occurrence_count || depth > 64) {
+		return 0;
+	}
+	if (operation_id == target_operation_id) {
+		return 1;
+	}
+	const struct prototype_typed_occurrence* operation =
+		&operations->occurrences[operation_id];
+	if ((operation->tag == PROTOTYPE_TYPED_OCCURRENCE_REFERENCE ||
+		 operation->tag == PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE) &&
+		operation->wrapped_occurrence < operations->occurrence_count &&
+		operation->classifier ==
+			operations->occurrences[operation->wrapped_occurrence].classifier) {
+		return judgement_operation_evidence_path_contains(
+			operations, operation->wrapped_occurrence, target_operation_id,
+			depth + 1
+		);
+	}
+	return 0;
 }
 
 static int judgement_occurrence_child(
@@ -435,39 +387,10 @@ static int judgement_structural_premise_child(
 	}
 }
 
-static int judgement_expected_premise_operation(
-	const struct prototype_typed_occurrence_graph* operations,
-	const struct prototype_judgement_derivation_candidate* proof,
-	uint32_t premise_index,
-	uint32_t* p_operation_id
-) {
-	if (proof && proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_LAMBDA_INTRO &&
-		premise_index == 0) {
-		*p_operation_id = PROTOTYPE_INVALID_ID;
-		return 0;
-	}
-	uint32_t child_operation_id;
-	int status = judgement_structural_premise_child(
-		operations,
-		proof ? proof->proof_kind : PROTOTYPE_JUDGEMENT_PROOF_INVALID,
-		proof ? proof->conclusion->occurrence_id : PROTOTYPE_INVALID_ID,
-		proof ? proof->premise_count : 0,
-		premise_index,
-		&child_operation_id
-	);
-	if (status != 0) {
-		return status;
-	}
-	*p_operation_id = child_operation_id == PROTOTYPE_INVALID_ID ?
-		PROTOTYPE_INVALID_ID : judgement_operation_evidence_owner(
-			operations, child_operation_id, 0
-		);
-	return 0;
-}
-
 static int judgement_candidate_is_publishable(
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_typed_occurrence_graph* operations,
+	const struct prototype_judgement_occurrence_context_view* occurrence_contexts,
 	const struct prototype_judgement_proposition* candidate,
 	const struct prototype_judgement_derivation_candidate* proof
 );
@@ -592,6 +515,7 @@ static int judgement_premise_is_scoped_rule_parameter(
 static int judgement_candidate_source_claim(
 	struct prototype_judgement_db* judgement,
 	const struct prototype_typed_occurrence_graph* operations,
+	const struct prototype_judgement_occurrence_context_view* occurrence_contexts,
 	const struct prototype_judgement_derivation_candidate* derivation,
 	uint32_t premise_index,
 	uint32_t* p_claim_id
@@ -661,12 +585,13 @@ static int judgement_candidate_source_claim(
 				judgement_operation_evidence_owner(
 					operations, structural_child_operation_id, 0
 				);
-			if (derivation->premises[premise_index].proposition->occurrence_id !=
-					PROTOTYPE_INVALID_ID &&
-				derivation->premises[premise_index].proposition->occurrence_id !=
-					structural_child_operation_id &&
-				derivation->premises[premise_index].proposition->occurrence_id !=
-					structural_operation_id) {
+			uint32_t premise_operation_id =
+				derivation->premises[premise_index].proposition->occurrence_id;
+			if (premise_operation_id != PROTOTYPE_INVALID_ID &&
+				!judgement_operation_evidence_path_contains(
+					operations, structural_child_operation_id,
+					premise_operation_id, 0
+				) && premise_operation_id != structural_operation_id) {
 				fprintf(
 					stderr,
 					"P0 structural operation mismatch rule=%d index=%u "
@@ -795,6 +720,144 @@ static int judgement_candidate_source_claim(
 		selected_claim_id = claim_id;
 	}
 	if (selected_claim_id == PROTOTYPE_INVALID_ID) {
+		if (getenv("A_PROGRAM_CANDIDATE_PUBLICATION_TRACE") &&
+			derivation->proof_kind ==
+				PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE) {
+			const struct prototype_judgement_proposition* premise =
+				derivation->premises[premise_index].proposition;
+			fprintf(stderr,
+				"motive-source missing conclusion-occurrence=%u premise=%u "
+				"stored-context=%u expected-context=%u stored-occurrence=%u "
+				"expected-occurrence=%u authority=%d:%u subject=%u classifier=%u\n",
+				derivation->conclusion->occurrence_id,
+				premise_index,
+				premise->context_id,
+				expected_context_id,
+				premise->occurrence_id,
+				expected_operation_id,
+				expected_authority_kind,
+				expected_authority_id,
+				premise->subject,
+				premise->classifier);
+			for (uint32_t operation_id = premise->occurrence_id, depth = 0;
+				operations && operation_id < operations->occurrence_count && depth < 8;
+				++depth) {
+				const struct prototype_typed_occurrence* operation =
+					&operations->occurrences[operation_id];
+				fprintf(stderr,
+					"motive-source operation=%u tag=%d context=%u action=%u "
+					"source-core=%u core=%u source-classifier=%u classifier=%u "
+					"wrapped=%u status=%d\n",
+					operation_id,
+					operation->tag,
+					operation->context_id,
+					operation->context_action_substitution,
+					operation->source_core_term,
+					operation->core_term,
+					operation->source_classifier,
+					operation->classifier,
+					operation->wrapped_occurrence,
+					operation->classifier_status);
+				if ((operation->tag != PROTOTYPE_TYPED_OCCURRENCE_REFERENCE &&
+					 operation->tag != PROTOTYPE_TYPED_OCCURRENCE_EXPECTED_TYPE) ||
+					operation->wrapped_occurrence >= operations->occurrence_count) {
+					break;
+				}
+				operation_id = operation->wrapped_occurrence;
+			}
+			for (uint32_t claim_id = 0;
+				claim_id < (uint32_t)judgement->claim_count; ++claim_id) {
+				const struct prototype_judgement_proposition* candidate =
+					prototype_judgement_claim_proposition(judgement, claim_id);
+				if (!candidate ||
+					(candidate->occurrence_id != premise->occurrence_id &&
+					 candidate->subject != premise->subject)) {
+					continue;
+				}
+				int candidate_authority_kind;
+				uint32_t candidate_authority_id;
+				candidate_claim_authority(
+					candidate,
+					&candidate_authority_kind,
+					&candidate_authority_id
+				);
+				fprintf(stderr,
+					"motive-source candidate claim=%u kind=%d context=%u "
+					"occurrence=%u authority=%d:%u subject=%u classifier=%u "
+					"derivation=%u\n",
+					claim_id,
+					candidate->kind,
+					candidate->context_id,
+					candidate->occurrence_id,
+					candidate_authority_kind,
+					candidate_authority_id,
+					candidate->subject,
+					candidate->classifier,
+					judgement->claims[claim_id].first_derivation);
+			}
+			for (uint32_t candidate_id = 0;
+				candidate_id <
+					(uint32_t)judgement->derivation_candidate_count;
+				++candidate_id) {
+				const struct prototype_judgement_derivation_candidate* candidate_proof =
+					&judgement->derivation_candidates[candidate_id];
+				if (candidate_proof->conclusion_proposition_id >=
+					judgement->proposition_count) {
+					continue;
+				}
+				const struct prototype_judgement_proposition* candidate =
+					&judgement->propositions[
+						candidate_proof->conclusion_proposition_id
+					];
+				if (candidate->occurrence_id != premise->occurrence_id &&
+					candidate->subject != premise->subject) {
+					continue;
+				}
+				fprintf(stderr,
+					"motive-source pending candidate=%u rule=%d kind=%d context=%u "
+					"occurrence=%u authority=%d:%u subject=%u classifier=%u "
+					"premises=%u publishable=%d\n",
+					candidate_id,
+					candidate_proof->proof_kind,
+					candidate->kind,
+					candidate->context_id,
+					candidate->occurrence_id,
+					candidate->authority_kind,
+					candidate->authority_id,
+					candidate->subject,
+					candidate->classifier,
+					candidate_proof->premise_count,
+					judgement_candidate_is_publishable(
+						judgement, operations, occurrence_contexts,
+						candidate, candidate_proof
+					));
+				for (uint32_t pending_premise = 0;
+					pending_premise < candidate_proof->premise_count;
+					++pending_premise) {
+					const struct prototype_judgement_proposition* source =
+						candidate_proof->premises[pending_premise].proposition;
+					fprintf(stderr,
+						"motive-source pending-premise candidate=%u premise=%u "
+						"kind=%d context=%u occurrence=%u authority=%d:%u "
+						"subject=%u classifier=%u action=%d:%u\n",
+						candidate_id,
+						pending_premise,
+						source->kind,
+						source->context_id,
+						source->occurrence_id,
+						source->authority_kind,
+						source->authority_id,
+						source->subject,
+						source->classifier,
+						candidate_proof->premises[
+							pending_premise
+						].semantic_action_kind,
+						candidate_proof->premises[
+							pending_premise
+						].semantic_action_id);
+				}
+			}
+		}
 		return 1;
 	}
 	*p_claim_id = selected_claim_id;
@@ -804,6 +867,7 @@ static int judgement_candidate_source_claim(
 static int judgement_candidate_is_publishable(
 	const struct prototype_judgement_db* judgement,
 	const struct prototype_typed_occurrence_graph* operations,
+	const struct prototype_judgement_occurrence_context_view* occurrence_contexts,
 	const struct prototype_judgement_proposition* candidate,
 	const struct prototype_judgement_derivation_candidate* proof
 ) {
@@ -827,6 +891,50 @@ static int judgement_candidate_is_publishable(
 	}
 	const struct prototype_typed_occurrence* operation =
 		&operations->occurrences[candidate->occurrence_id];
+	/* Context weakening intentionally derives a Claim outside the principal
+	 * occurrence projection. Its substitution premise is the authority for that
+	 * Context change and accepted replay validates the projection path. */
+	if (proof->proof_kind == PROTOTYPE_JUDGEMENT_PROOF_CONTEXT_WEAKEN) {
+		return 1;
+	}
+	if (occurrence_contexts &&
+		occurrence_contexts->lookup_projection_classifier) {
+		uint32_t projected_classifier;
+		int projection_status =
+			occurrence_contexts->lookup_projection_classifier(
+				occurrence_contexts->projection_authority,
+				candidate->occurrence_id,
+				candidate->context_id,
+				candidate->subject,
+				&projected_classifier
+			);
+		if (projection_status == 0) {
+			return candidate->classifier == projected_classifier ||
+				judgement_rule_derives_alternate_operation_classifier(
+					proof->proof_kind
+				);
+		}
+		if (projection_status < 0) {
+			return 0;
+		}
+	}
+	if (occurrence_contexts && occurrence_contexts->publication) {
+		uint32_t concrete_context;
+		const struct prototype_typed_publication_projection* projection =
+			prototype_typed_publication_view_get(
+				occurrence_contexts->publication,
+				candidate->occurrence_id,
+				&concrete_context
+			);
+		if (!projection || candidate->context_id != concrete_context ||
+			candidate->subject != projection->subject) {
+			return 0;
+		}
+		return candidate->classifier == projection->classifier ||
+			judgement_rule_derives_alternate_operation_classifier(
+				proof->proof_kind
+			);
+	}
 	if (operation->classifier == PROTOTYPE_INVALID_ID) {
 		return 0;
 	}
@@ -841,7 +949,8 @@ static int judgement_candidate_is_publishable(
 
 static int judgement_rebuild_claim_derivations(
 	struct prototype_judgement_db* judgement,
-	const struct prototype_typed_occurrence_graph* operations
+	const struct prototype_typed_occurrence_graph* operations,
+	const struct prototype_judgement_occurrence_context_view* occurrence_contexts
 ) {
 	if (!judgement) {
 		return -1;
@@ -859,15 +968,36 @@ static int judgement_rebuild_claim_derivations(
 			i < (uint32_t)judgement->derivation_candidate_count; ++i) {
 			const struct prototype_judgement_derivation_candidate* proof =
 				&judgement->derivation_candidates[i];
+			int trace_match_motive =
+				getenv("A_PROGRAM_CANDIDATE_PUBLICATION_TRACE") &&
+				proof->proof_kind ==
+					PROTOTYPE_JUDGEMENT_PROOF_SOLVED_MATCH_MOTIVE;
 			if (proof->conclusion_proposition_id >=
 				judgement->proposition_count) {
 				continue;
 			}
 			const struct prototype_judgement_proposition* relation =
 				&judgement->propositions[proof->conclusion_proposition_id];
+			const char* trace_occurrence_text =
+				getenv("A_PROGRAM_CANDIDATE_PUBLICATION_TRACE_OCCURRENCE");
+			uint32_t trace_occurrence = trace_occurrence_text ?
+				(uint32_t)strtoul(trace_occurrence_text, NULL, 10) :
+				PROTOTYPE_INVALID_ID;
+			int trace_candidate = trace_match_motive ||
+				(trace_occurrence_text &&
+				 relation->occurrence_id == trace_occurrence) ||
+				getenv("A_PROGRAM_CANDIDATE_PUBLICATION_TRACE_ALL");
 			if (!judgement_candidate_is_publishable(
-					judgement, operations, relation, proof
+					judgement, operations, occurrence_contexts, relation, proof
 				)) {
+				if (trace_candidate) {
+					fprintf(stderr,
+						"motive-candidate skip-unpublishable candidate=%u rule=%d "
+						"occurrence=%u context=%u subject=%u classifier=%u\n",
+						i, proof->proof_kind, relation->occurrence_id,
+						relation->context_id, relation->subject,
+						relation->classifier);
+				}
 				continue;
 			}
 			struct prototype_judgement_derivation derivation;
@@ -923,12 +1053,25 @@ static int judgement_rebuild_claim_derivations(
 				}
 				uint32_t source_claim_id;
 				int source_status = judgement_candidate_source_claim(
-					judgement, operations, proof, j, &source_claim_id
+					judgement, operations, occurrence_contexts, proof, j,
+					&source_claim_id
 				);
 				if (source_status < 0) {
 					return -1;
 				}
 				if (source_status > 0) {
+					if (trace_candidate) {
+						const struct prototype_judgement_proposition* premise =
+							proof->premises[j].proposition;
+						fprintf(stderr,
+							"motive-candidate unresolved candidate=%u occurrence=%u "
+							"premise=%u premise-context=%u premise-occurrence=%u "
+							"authority=%d:%u subject=%u classifier=%u\n",
+							i, relation->occurrence_id, j,
+							premise->context_id, premise->occurrence_id,
+							premise->authority_kind, premise->authority_id,
+							premise->subject, premise->classifier);
+					}
 					sources_resolved = 0;
 					break;
 				}
@@ -947,11 +1090,45 @@ static int judgement_rebuild_claim_derivations(
 			derivation.conclusion_claim_id = conclusion_claim_id;
 			for (uint32_t j = 0; j < derivation.premise_count; ++j) {
 				if (derivation.premises[j].claim_id == conclusion_claim_id) {
+					if (trace_candidate) {
+						fprintf(stderr,
+							"motive-candidate self-edge candidate=%u occurrence=%u "
+							"claim=%u premise=%u\n",
+							i, relation->occurrence_id,
+							conclusion_claim_id, j);
+					}
 					sources_resolved = 0;
 					break;
 				}
 			}
 			if (!sources_resolved) {
+				continue;
+			}
+			int cycle_status = judgement_derivation_would_create_cycle(
+				judgement, &derivation
+			);
+			if (cycle_status < 0) {
+				fprintf(
+					stderr,
+					"P0 derivation dependency check failed candidate=%u "
+					"conclusion=%u\n",
+					i,
+					conclusion_claim_id
+				);
+				return -1;
+			}
+			if (cycle_status > 0) {
+				if (trace_candidate) {
+					fprintf(stderr,
+						"motive-candidate cycle candidate=%u occurrence=%u claim=%u "
+						"premises=%u\n",
+						i, relation->occurrence_id, conclusion_claim_id,
+						derivation.premise_count);
+				}
+				/* Candidate closure is a search over alternative derivations. A
+				 * cyclic alternative proves nothing and is not part of the accepted
+				 * proof DAG; another grounded derivation may still justify the same
+				 * Claim. */
 				continue;
 			}
 			uint32_t derivation_id;
@@ -961,15 +1138,27 @@ static int judgement_rebuild_claim_derivations(
 				) != 0) {
 				fprintf(
 					stderr,
-					"P0 derivation capacity failed count=%zu capacity=%zu "
-					"candidate=%u\n",
+					"P0 derivation intern failed count=%zu capacity=%zu "
+					"premises=%zu/%zu candidate=%u\n",
 					judgement->derivation_count,
 					judgement->derivation_capacity,
+					judgement->accepted_premise_count,
+					judgement->accepted_premise_capacity,
 					i
 				);
 				return -1;
 			}
-			if (judgement->derivation_count > previous_derivation_count) {
+				if (judgement->derivation_count > previous_derivation_count) {
+					if (trace_candidate) {
+						fprintf(stderr,
+							"motive-candidate accepted candidate=%u occurrence=%u claim=%u "
+							"derivation=%u context=%u authority=%d:%u subject=%u "
+							"classifier=%u\n",
+							i, relation->occurrence_id, conclusion_claim_id,
+							derivation_id, relation->context_id,
+							relation->authority_kind, relation->authority_id,
+							relation->subject, relation->classifier);
+				}
 				changed = 1;
 			}
 		}
@@ -1059,6 +1248,7 @@ int prototype_judgement_recompute_closure_ranks(
 
 int prototype_judgement_publish_candidates(
 	const struct prototype_typed_occurrence_graph* operations,
+	const struct prototype_judgement_occurrence_context_view* occurrence_contexts,
 	struct prototype_judgement_db* judgement
 ) {
 	if (!judgement || (judgement->claim_count != 0 && !judgement->claims) ||
@@ -1072,7 +1262,9 @@ int prototype_judgement_publish_candidates(
 		) != 0) {
 		return -1;
 	}
-	if (judgement_rebuild_claim_derivations(judgement, operations) != 0) {
+	if (judgement_rebuild_claim_derivations(
+			judgement, operations, occurrence_contexts
+		) != 0) {
 		return judgement_transaction_abort(judgement, &transaction);
 	}
 	if (prototype_judgement_transaction_commit(

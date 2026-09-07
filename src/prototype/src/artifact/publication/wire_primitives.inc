@@ -1,5 +1,5 @@
 #include "a_program/artifact/interface.h"
-#include "a_program/artifact/wire_v86.h"
+#include "a_program/artifact/wire_v90.h"
 
 #include "a_program/frontend/universe_collection.h"
 #include "a_program/graph/typed_occurrence_graph.h"
@@ -13,12 +13,30 @@
 
 static void print_artifact_key(
 	FILE* stream,
-	const struct prototype_term_canonical_key* key
+	const struct prototype_artifact_semantic_key* key
 ) {
 	fprintf(
 		stream,
 		"%llu %u %u %u %d %d %d %d",
 		(unsigned long long)key->hash,
+		key->node_count,
+		key->bound_binder_count,
+		key->free_binder_count,
+		key->has_frame_local_reference,
+		key->has_type_local_reference,
+		key->has_type_name_reference,
+		key->has_type_universe_reference
+	);
+}
+
+static void print_core_key(
+	FILE* stream,
+	const struct prototype_term_canonical_key* key
+) {
+	fprintf(
+		stream,
+		"%" PRIu64 " %u %u %u %d %d %d %d",
+		key->hash,
 		key->node_count,
 		key->bound_binder_count,
 		key->free_binder_count,
@@ -139,7 +157,7 @@ static int write_artifact_type_expr(
 static int write_artifact_term(
 	FILE* stream,
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_term_db* terms,
@@ -200,8 +218,7 @@ static int write_artifact_term(
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
 			fprintf(
 				stream,
-				" %u %s %s",
-				term->as.type_declaration.type_id,
+				" %s %s",
 				term->as.type_declaration.identity.namespace_symbol_id >= 0 ?
 					symbol_to_string(
 						symbols,
@@ -217,8 +234,7 @@ static int write_artifact_term(
 		case PROTOTYPE_TERM_TYPE_VIEW:
 			fprintf(
 				stream,
-				" %u %s %s %u %u",
-				term->as.type_view.view_type_id,
+				" %s %s %u %u",
 				term->as.type_view.identity.namespace_symbol_id >= 0 ?
 					symbol_to_string(
 						symbols,
@@ -281,13 +297,12 @@ static int write_artifact_term(
 			case PROTOTYPE_TERM_EFFECT_OPERATION:
 				fprintf(
 					stream,
-					" %s %u",
+					" %s",
 					prototype_intrinsic_namespace_source_name(
 						intrinsic_environment,
 						PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION,
 						term->as.effect_operation.operation_id
-					),
-					term->as.effect_operation.classifier
+					)
 				);
 				break;
 			case PROTOTYPE_TERM_EFFECT_ROW_EMPTY:

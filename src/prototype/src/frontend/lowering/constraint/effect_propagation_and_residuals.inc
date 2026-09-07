@@ -114,8 +114,7 @@ static int operation_solver_close_unowned_effect_rows(
 		uint32_t empty_row;
 		if (prototype_term_effect_row_empty(ctx->terms, &empty_row) != 0 ||
 			prototype_term_graph_substitute_bound_var(
-				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
-				closed,
+				ctx->terms, closed,
 				binding_id,
 				empty_row,
 				&closed
@@ -176,73 +175,98 @@ static int operation_effect_constraint_add(
 	uint32_t right_row,
 	uint32_t origin_constraint_id
 ) {
-	if (!ctx || !ctx->metadata ||
+	if (!ctx || !ctx->metadata || ctx->typing->constraints.topology_sealed ||
 		operation >= ctx->metadata->typed_occurrences.occurrence_count ||
 		result_row >= ctx->terms->term_count ||
 		left_row >= ctx->terms->term_count ||
 		(right_row != PROTOTYPE_INVALID_ID &&
 			right_row >= ctx->terms->term_count) ||
 		(origin_constraint_id != PROTOTYPE_INVALID_ID &&
-			(origin_constraint_id >= ctx->constraints.constraint_count ||
-			 ctx->constraints.constraints[origin_constraint_id].domain !=
+			(origin_constraint_id >= ctx->typing->constraints.constraint_count ||
+			 ctx->typing->constraints.constraints[origin_constraint_id].domain !=
 				OPERATION_CONSTRAINT_DOMAIN_COMPUTATION))) {
 		return -1;
 	}
-	for (size_t i = 0; i < ctx->constraints.effect_constraint_count; ++i) {
-		uint32_t id = ctx->constraints.first_effect_constraint + (uint32_t)i;
-		if (id >= ctx->constraints.constraint_count) {
-			return -1;
-		}
-		const struct operation_constraint* constraint =
-			&ctx->constraints.constraints[id];
-		if (constraint->domain != OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW) {
-			return -1;
-		}
-		if (constraint->kind == kind &&
-			constraint->source_occurrence == operation &&
-			constraint->origin_constraint_id == origin_constraint_id &&
-			constraint->payload.effect.result_row == result_row &&
-			constraint->payload.effect.left_row == left_row &&
-			constraint->payload.effect.right_row == right_row) {
-			return 0;
-		}
-	}
-	if (ctx->constraints.effect_constraint_count >=
-			PROTOTYPE_TYPED_OCCURRENCE_CONSTRAINT_CAPACITY ||
-		ctx->constraints.constraint_count >=
-			PROTOTYPE_COMPILER_CONSTRAINT_CAPACITY) {
-		return -1;
-	}
-	uint32_t id = ctx->constraints.constraint_count++;
-	ctx->constraints.effect_constraint_count++;
-	ctx->constraints.constraints[id] = (struct operation_constraint){
-		.id = id,
+	struct prototype_typing_constraint constraint = {
 		.domain = OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW,
 		.kind = kind,
-		.state = PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_PENDING,
-		.evidence_id = PROTOTYPE_INVALID_ID,
 		.origin_constraint_id = origin_constraint_id,
-		.source_occurrence = operation,
-		.source_ast = ctx->metadata->typed_occurrences.occurrences[
-			operation
-		].source_ast,
-		.context_id = ctx->metadata->typed_occurrences.occurrences[
-			operation
-		].context_id,
+		.classifier_rhs_root = PROTOTYPE_INVALID_ID,
 		.payload.effect = {
-			.effect_meta_id = PROTOTYPE_INVALID_ID,
 			.result_row = result_row,
 			.left_row = left_row,
 			.right_row = right_row
 		}
 	};
+	uint32_t previous_constraint_count =
+		ctx->typing->constraints.constraint_count;
+	uint32_t id;
+	if (operation_solver_intern_constraint(
+			ctx, operation, &constraint, NULL, 0, &id
+		) != 0) return -1;
+	if (id >= previous_constraint_count) {
+		ctx->typing->constraints.next_effect_constraint[id] =
+			ctx->typing->constraints.first_effect_constraint_for_occurrence[
+				operation
+			];
+		ctx->typing->constraints.first_effect_constraint_for_occurrence[operation] =
+			id;
+	}
+	if (ctx->terms->terms[result_row].tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+		uint32_t typed_projection;
+		if (operation_solver_canonical_typed_projection(
+				ctx, operation, &typed_projection
+			) != 0 || typed_projection >=
+				PROTOTYPE_TYPING_CONSTRAINT_PROJECTION_CAPACITY) {
+			return -1;
+		}
+		uint32_t answer_id = ctx->typing->constraints.
+			effect_solution_constraint_for_projection[typed_projection];
+		if (answer_id == PROTOTYPE_INVALID_ID) {
+			struct prototype_typing_constraint answer = {
+				.domain = OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW,
+				.kind = PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION,
+				.origin_constraint_id = PROTOTYPE_INVALID_ID,
+				.classifier_rhs_root = PROTOTYPE_INVALID_ID,
+				.payload.effect = {
+					.result_row = result_row,
+					.left_row = result_row,
+					.right_row = PROTOTYPE_INVALID_ID
+				}
+			};
+			previous_constraint_count = ctx->typing->constraints.constraint_count;
+			if (operation_solver_intern_projected_constraint(
+					ctx, typed_projection, &answer, NULL, 0, &answer_id
+				) != 0) {
+				return -1;
+			}
+			if (answer_id >= previous_constraint_count) {
+				ctx->typing->constraints.next_effect_constraint[answer_id] =
+					ctx->typing->constraints.
+						first_effect_constraint_for_occurrence[operation];
+				ctx->typing->constraints.
+					first_effect_constraint_for_occurrence[operation] = answer_id;
+			}
+			ctx->typing->constraints.
+				effect_solution_constraint_for_projection[typed_projection] =
+				answer_id;
+		} else if (answer_id >= ctx->typing->constraints.constraint_count ||
+			ctx->typing->constraints.constraints[answer_id].domain !=
+				OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW ||
+			ctx->typing->constraints.constraints[answer_id].kind !=
+				PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION ||
+			ctx->typing->constraints.constraints[answer_id].payload.effect.result_row !=
+				result_row) {
+			return -1;
+		}
+	}
 	return 0;
 }
 
 static int operation_classifier_computation_view(
 	struct compile_context* ctx,
 	uint32_t operation,
-	struct prototype_term_classifier_view* p_view
+	struct prototype_classifier_view* p_view
 ) {
 	if (!ctx || !p_view || operation >= ctx->metadata->typed_occurrences.occurrence_count) {
 		return -1;
@@ -260,49 +284,67 @@ static int operation_classifier_computation_view(
 		) != 0) {
 		return -1;
 	}
-	return p_view->category == PROTOTYPE_TERM_CATEGORY_COMPUTATION &&
+	return p_view->category == PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION &&
 		p_view->computation_kind ==
-			PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING &&
+			PROTOTYPE_COMPUTATION_KIND_RETURNING &&
 		p_view->effect_row != PROTOTYPE_INVALID_ID ? 0 : 1;
 }
 
-static int operation_effect_row_meta_find_or_add(
-	struct compile_context* ctx,
+static uint32_t operation_effect_stable_row(
+	const struct compile_context* ctx,
 	uint32_t owner_occurrence,
-	uint32_t placeholder_row,
-	struct operation_effect_row_meta** p_meta
+	uint32_t current_row
 ) {
-	if (!ctx || !p_meta || owner_occurrence >= ctx->metadata->typed_occurrences.occurrence_count ||
-		placeholder_row >= ctx->terms->term_count ||
-		ctx->terms->terms[placeholder_row].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
-		return -1;
+	if (!ctx || owner_occurrence >=
+			ctx->metadata->typed_occurrences.occurrence_count) {
+		return PROTOTYPE_INVALID_ID;
 	}
-	uint32_t existing = ctx->effect_solver.meta_for_occurrence[owner_occurrence];
-	if (existing != PROTOTYPE_INVALID_ID) {
-		if (existing >= ctx->effect_solver.meta_count ||
-			ctx->effect_solver.metas[existing].placeholder_row != placeholder_row) {
-			return -1;
+	uint32_t typed_projection;
+	if (operation_solver_canonical_typed_projection(
+			ctx, owner_occurrence, &typed_projection
+		) != 0 || typed_projection >=
+			PROTOTYPE_TYPING_CONSTRAINT_PROJECTION_CAPACITY) {
+		return PROTOTYPE_INVALID_ID;
+	}
+	uint32_t answer_id = ctx->typing->constraints.
+		effect_solution_constraint_for_projection[typed_projection];
+	if (answer_id != PROTOTYPE_INVALID_ID &&
+		answer_id < ctx->typing->constraints.constraint_count) {
+		const struct prototype_typing_constraint* answer =
+			&ctx->typing->constraints.constraints[answer_id];
+		if (answer->domain == OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW &&
+			answer->kind == PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION) {
+			return answer->payload.effect.result_row;
 		}
-		*p_meta = &ctx->effect_solver.metas[existing];
-		return 0;
 	}
-	if (ctx->effect_solver.meta_count >=
-		PROTOTYPE_TYPED_OCCURRENCE_EFFECT_ROW_META_CAPACITY) {
+	return current_row;
+}
+
+static int operation_effect_solution_equation_for_occurrence(
+	const struct compile_context* ctx,
+	uint32_t owner_occurrence,
+	uint32_t* p_answer_id
+) {
+	uint32_t typed_projection;
+	if (!ctx || !p_answer_id || operation_solver_canonical_typed_projection(
+			ctx, owner_occurrence, &typed_projection
+		) != 0 || typed_projection >=
+			PROTOTYPE_TYPING_CONSTRAINT_PROJECTION_CAPACITY) {
 		return -1;
 	}
-	uint32_t meta_id = ctx->effect_solver.meta_count++;
-	struct operation_effect_row_meta* meta =
-		&ctx->effect_solver.metas[meta_id];
-	*meta = (struct operation_effect_row_meta){
-		.owner_occurrence = owner_occurrence,
-		.placeholder_row = placeholder_row,
-		.first_solution_atom = PROTOTYPE_INVALID_ID,
-		.materialized_row = PROTOTYPE_INVALID_ID,
-		.evidence_constraint_id = PROTOTYPE_INVALID_ID,
-		.state = OPERATION_EFFECT_ROW_META_UNSOLVED
-	};
-	ctx->effect_solver.meta_for_occurrence[owner_occurrence] = meta_id;
-	*p_meta = meta;
+	uint32_t answer_id = ctx->typing->constraints.
+		effect_solution_constraint_for_projection[typed_projection];
+	if (answer_id == PROTOTYPE_INVALID_ID) {
+		return 1;
+	}
+	if (answer_id >= ctx->typing->constraints.constraint_count ||
+		ctx->typing->constraints.constraints[answer_id].domain !=
+			OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW ||
+		ctx->typing->constraints.constraints[answer_id].kind !=
+			PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION) {
+		return -1;
+	}
+	*p_answer_id = answer_id;
 	return 0;
 }
 
@@ -358,62 +400,6 @@ static int operation_effect_normal_equal(
 		prototype_term_effect_row_normal_form_includes(terms, right, left);
 }
 
-static int operation_effect_meta_solution_normal(
-	const struct operation_effect_solver* solver,
-	const struct operation_effect_row_meta* meta,
-	struct prototype_effect_row_normal_form* p_normal
-) {
-	if (!solver || !meta || !p_normal ||
-		meta->state != OPERATION_EFFECT_ROW_META_SOLVED ||
-		meta->first_solution_atom > solver->solution_atom_count ||
-		meta->solution_atom_count > solver->solution_atom_count -
-			meta->first_solution_atom ||
-		meta->solution_atom_count >
-			PROTOTYPE_EFFECT_ROW_NORMAL_FORM_ATOM_CAPACITY) {
-		return -1;
-	}
-	memset(p_normal, 0, sizeof(*p_normal));
-	p_normal->atom_count = meta->solution_atom_count;
-	memcpy(
-		p_normal->atoms,
-		&solver->solution_atoms[meta->first_solution_atom],
-		meta->solution_atom_count * sizeof(*p_normal->atoms)
-	);
-	return 0;
-}
-
-static int operation_effect_meta_store_solution(
-	struct compile_context* ctx,
-	struct operation_effect_solver* solver,
-	struct operation_effect_row_meta* meta,
-	const struct prototype_effect_row_normal_form* normal,
-	uint32_t evidence_constraint_id
-) {
-	if (!ctx || !solver || !meta || !normal ||
-		normal->atom_count > PROTOTYPE_TYPED_OCCURRENCE_EFFECT_ROW_SOLUTION_ATOM_CAPACITY -
-			solver->solution_atom_count) {
-		return -1;
-	}
-	if (meta->state == OPERATION_EFFECT_ROW_META_SOLVED) {
-		struct prototype_effect_row_normal_form existing;
-		return operation_effect_meta_solution_normal(
-			solver, meta, &existing
-		) == 0 && operation_effect_normal_equal(
-			ctx->terms, &existing, normal
-		) ? 0 : -1;
-	}
-	meta->first_solution_atom = solver->solution_atom_count;
-	meta->solution_atom_count = normal->atom_count;
-	memcpy(
-		&solver->solution_atoms[solver->solution_atom_count],
-		normal->atoms,
-		normal->atom_count * sizeof(*normal->atoms)
-	);
-	solver->solution_atom_count += normal->atom_count;
-	meta->state = OPERATION_EFFECT_ROW_META_SOLVED;
-	meta->evidence_constraint_id = evidence_constraint_id;
-	return 0;
-}
 
 static int operation_classifier_canonicalize_effect_rows(
 	struct compile_context* ctx,
@@ -490,9 +476,141 @@ static int operation_classifier_canonicalize_effect_rows(
 	}
 }
 
+/* Effect equations remain immutable inputs. Once an occurrence-owned row
+ * equation has a materialized answer, every classifier projection derived
+ * from that input is read through the same substitution. This prevents a
+ * later source-seed replay from replacing a solved projection with its raw
+ * placeholder while keeping the source equation available for checkpoints. */
+static int operation_effect_apply_materialized_solution(
+	struct compile_context* ctx,
+	uint32_t typed_projection,
+	uint32_t classifier,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !ctx->typing || !p_classifier ||
+		classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	const struct prototype_typed_projection* projection =
+		prototype_typed_projection_get(
+			&ctx->typing->context_projections, typed_projection
+		);
+	if (!projection || projection->source_occurrence >=
+			ctx->metadata->typed_occurrences.occurrence_count) {
+		return -1;
+	}
+	uint32_t answer_id = typed_projection <
+		PROTOTYPE_TYPING_CONSTRAINT_PROJECTION_CAPACITY ?
+		ctx->typing->constraints.effect_solution_constraint_for_projection[
+			typed_projection
+		] : PROTOTYPE_INVALID_ID;
+	if (answer_id == PROTOTYPE_INVALID_ID) {
+		uint32_t canonical_projection;
+		if (operation_solver_canonical_typed_projection(
+				ctx, projection->source_occurrence, &canonical_projection
+			) != 0 || canonical_projection >=
+				PROTOTYPE_TYPING_CONSTRAINT_PROJECTION_CAPACITY) {
+			return -1;
+		}
+		answer_id = ctx->typing->constraints.
+			effect_solution_constraint_for_projection[canonical_projection];
+	}
+	if (answer_id == PROTOTYPE_INVALID_ID) {
+		*p_classifier = classifier;
+		return 0;
+	}
+	if (answer_id >= ctx->typing->constraints.constraint_count) {
+		return -1;
+	}
+	const struct prototype_typing_constraint* answer =
+		&ctx->typing->constraints.constraints[answer_id];
+	const struct prototype_typing_constraint_solution* solution =
+		&ctx->typing->constraints.solutions[answer_id];
+	if (answer->domain != OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW ||
+		answer->kind != PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION) {
+		return -1;
+	}
+	if (solution->result_term == PROTOTYPE_INVALID_ID) {
+		*p_classifier = classifier;
+		return 0;
+	}
+	uint32_t binding_id = ctx->terms->terms[
+		answer->payload.effect.result_row
+	].as.effect_row_var.binding_id;
+	uint32_t substituted;
+	return prototype_term_graph_substitute_bound_var(
+			ctx->terms,
+			classifier,
+			binding_id,
+			solution->result_term,
+			&substituted
+		) != 0 ? -1 : operation_classifier_canonicalize_effect_rows(
+			ctx, substituted, 0, p_classifier
+		);
+}
+
+static int operation_effect_solution_row(
+	struct compile_context* ctx,
+	uint32_t owner_typed_projection,
+	uint32_t placeholder_row,
+	uint32_t* p_solution_row
+) {
+	if (!ctx || !p_solution_row || placeholder_row >= ctx->terms->term_count ||
+		ctx->terms->terms[placeholder_row].tag != PROTOTYPE_TERM_EFFECT_ROW_VAR) {
+		return -1;
+	}
+	uint32_t found = PROTOTYPE_INVALID_ID;
+	uint32_t preferred = owner_typed_projection <
+		PROTOTYPE_TYPING_CONSTRAINT_PROJECTION_CAPACITY ?
+		ctx->typing->constraints.effect_solution_constraint_for_projection[
+			owner_typed_projection
+		] : PROTOTYPE_INVALID_ID;
+	for (uint32_t id = prototype_typing_constraint_first_in_domain(
+			&ctx->typing->constraints, OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW
+		);
+		id != PROTOTYPE_INVALID_ID;
+		id = prototype_typing_constraint_next_in_domain(
+			&ctx->typing->constraints, id
+		)) {
+		const struct prototype_typing_constraint* equation =
+			&ctx->typing->constraints.constraints[id];
+		const struct prototype_typing_constraint_solution* solution =
+			&ctx->typing->constraints.solutions[id];
+		if (equation->kind != PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION ||
+			equation->payload.effect.result_row != placeholder_row ||
+			solution->result_term == PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (found != PROTOTYPE_INVALID_ID) {
+			struct prototype_effect_row_normal_form left;
+			struct prototype_effect_row_normal_form right;
+			if (prototype_term_effect_row_normal_form(
+					ctx->terms, found, &left
+				) != 0 || prototype_term_effect_row_normal_form(
+					ctx->terms, solution->result_term, &right
+				) != 0 || !operation_effect_normal_equal(
+					ctx->terms, &left, &right
+				)) {
+				return -1;
+			}
+		}
+		found = solution->result_term;
+		if (id == preferred) {
+			/* Continue the scan: a shared placeholder must not acquire two
+			 * incompatible projection-local answers. */
+			found = solution->result_term;
+		}
+	}
+	if (found == PROTOTYPE_INVALID_ID) {
+		return 1;
+	}
+	*p_solution_row = found;
+	return 0;
+}
+
 static int operation_effect_resolve_row_normal(
 	struct compile_context* ctx,
-	uint32_t owner_occurrence,
+	uint32_t owner_typed_projection,
 	uint32_t row,
 	struct prototype_effect_row_normal_form* p_normal
 ) {
@@ -504,22 +622,20 @@ static int operation_effect_resolve_row_normal(
 	memset(p_normal, 0, sizeof(*p_normal));
 	for (uint32_t i = 0; i < source.atom_count; ++i) {
 		uint32_t atom = source.atoms[i];
-		struct operation_effect_row_meta* solved_meta = NULL;
+		uint32_t solved_row = PROTOTYPE_INVALID_ID;
 		if (atom < ctx->terms->term_count &&
 			ctx->terms->terms[atom].tag == PROTOTYPE_TERM_EFFECT_ROW_VAR) {
-			uint32_t meta_id = ctx->effect_solver.meta_for_occurrence[owner_occurrence];
-			if (meta_id != PROTOTYPE_INVALID_ID &&
-				meta_id < ctx->effect_solver.meta_count &&
-				ctx->effect_solver.metas[meta_id].placeholder_row == atom &&
-				ctx->effect_solver.metas[meta_id].state ==
-					OPERATION_EFFECT_ROW_META_SOLVED) {
-				solved_meta = &ctx->effect_solver.metas[meta_id];
+			int status = operation_effect_solution_row(
+				ctx, owner_typed_projection, atom, &solved_row
+			);
+			if (status < 0) {
+				return -1;
 			}
 		}
-		if (solved_meta) {
+		if (solved_row != PROTOTYPE_INVALID_ID) {
 			struct prototype_effect_row_normal_form solution;
-			if (operation_effect_meta_solution_normal(
-					&ctx->effect_solver, solved_meta, &solution
+			if (prototype_term_effect_row_normal_form(
+					ctx->terms, solved_row, &solution
 				) != 0 || operation_effect_normal_union(
 					ctx->terms, p_normal, &solution
 				) != 0) {
@@ -534,47 +650,111 @@ static int operation_effect_resolve_row_normal(
 	return 0;
 }
 
-static int operation_effect_materialize_solution(
+static int operation_effect_publish_solution(
 	struct compile_context* ctx,
-	struct operation_effect_row_meta* meta,
-	uint32_t replacement
+	uint32_t answer_id,
+	const struct prototype_effect_row_normal_form* normal,
+	uint32_t producer_constraint_id,
+	int* p_changed
 ) {
-	if (!ctx || !meta || replacement >= ctx->terms->term_count ||
-		meta->owner_occurrence >= ctx->metadata->typed_occurrences.occurrence_count ||
-		meta->placeholder_row >= ctx->terms->term_count ||
-		ctx->terms->terms[meta->placeholder_row].tag !=
+	if (!ctx || !normal || answer_id >=
+			ctx->typing->constraints.constraint_count ||
+		producer_constraint_id >= ctx->typing->constraints.constraint_count) {
+		return -1;
+	}
+	const struct prototype_typing_constraint* answer =
+		&ctx->typing->constraints.constraints[answer_id];
+	struct prototype_typing_constraint_solution* solution =
+		&ctx->typing->constraints.solutions[answer_id];
+	if (answer->domain != OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW ||
+		answer->kind != PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION ||
+		answer->payload.effect.result_row >= ctx->terms->term_count ||
+		ctx->terms->terms[answer->payload.effect.result_row].tag !=
 			PROTOTYPE_TERM_EFFECT_ROW_VAR) {
 		return -1;
 	}
-	uint32_t owner = meta->owner_occurrence;
-	uint32_t binding_id = ctx->terms->terms[
-		meta->placeholder_row
-	].as.effect_row_var.binding_id;
-	uint32_t classifier =
-		ctx->classifier_solver.classifier_metas[owner].classifier;
-	if (classifier != PROTOTYPE_INVALID_ID) {
-		uint32_t rewritten;
-		uint32_t canonical;
-		if (prototype_term_graph_substitute_bound_var(
-				ctx->terms, prototype_type_view_rebuild_context_from_db(ctx->type_declarations),
-				classifier,
-				binding_id,
-				replacement,
-				&rewritten
-			) != 0 || operation_classifier_canonicalize_effect_rows(
-				ctx, rewritten, 0, &canonical
-			) != 0 || operation_classifier_meta_publish(
-				ctx,
-				owner,
-				canonical,
-				ctx->classifier_solver.classifier_metas[owner].
-					evidence_constraint_id
+	uint32_t replacement;
+	if (prototype_term_effect_row_materialize_normal_form(
+			ctx->terms, normal, &replacement
+		) != 0) {
+		return -1;
+	}
+	if (solution->result_term != PROTOTYPE_INVALID_ID) {
+		struct prototype_effect_row_normal_form existing;
+		if (prototype_term_effect_row_normal_form(
+				ctx->terms, solution->result_term, &existing
+			) != 0 || !operation_effect_normal_equal(
+				ctx->terms, &existing, normal
+			)) {
+			(void)prototype_typing_constraint_transition(
+				&ctx->typing->constraints,
+				answer_id,
+				OPERATION_CONSTRAINT_STATE_CONTRADICTION,
+				OPERATION_CLASSIFIER_GOAL_REASON_NONE
+			);
+			return -1;
+		}
+		if (getenv("A_PROGRAM_EFFECT_TRACE") != NULL) {
+			fprintf(stderr,
+				"effect-answer-reused answer=%u producer=%u row=%u revision=%" PRIu64 "\n",
+				answer_id, producer_constraint_id, solution->result_term,
+				solution->answer_revision
+			);
+		}
+		return 0;
+	}
+	solution->result_term = replacement;
+	solution->answer_state = PROTOTYPE_TYPING_EQUATION_ANSWER_VALIDATED;
+	solution->producer_constraint_id = producer_constraint_id;
+	solution->answer_revision++;
+	if (prototype_typing_constraint_transition(
+			&ctx->typing->constraints,
+			answer_id,
+			OPERATION_CONSTRAINT_STATE_SOLVED,
+			OPERATION_CLASSIFIER_GOAL_REASON_NONE
+		) != 0) {
+		return -1;
+	}
+	if (p_changed) *p_changed = 1;
+	if (getenv("A_PROGRAM_EFFECT_TRACE") != NULL) {
+		fprintf(stderr,
+			"effect-answer-published answer=%u producer=%u placeholder=%u row=%u revision=%" PRIu64 "\n",
+			answer_id, producer_constraint_id,
+			answer->payload.effect.result_row, replacement,
+			solution->answer_revision
+		);
+	}
+	/* A materialized effect row changes an explicit input consumed by every
+	 * PROJECTED_CLASSIFIER equation for this source occurrence. It must wake
+	 * those equations; it must never publish their answers itself. */
+	for (uint32_t typed_projection = 0;
+		typed_projection <
+			ctx->typing->context_projections.typed_projection_count;
+		++typed_projection) {
+		const struct prototype_typed_projection* projection =
+			prototype_typed_projection_get(
+				&ctx->typing->context_projections, typed_projection
+			);
+		if (!projection || projection->source_occurrence !=
+				answer->source_occurrence) {
+			continue;
+		}
+		uint32_t equation_id;
+		if (operation_solver_projected_classifier_equation_id(
+				ctx, typed_projection, &equation_id
+			) != 0 || prototype_typing_constraint_mark_input_changed(
+				&ctx->typing->constraints, equation_id
+			) != 0 || prototype_typing_constraint_transition(
+				&ctx->typing->constraints,
+				equation_id,
+				OPERATION_CONSTRAINT_STATE_PENDING,
+				OPERATION_CLASSIFIER_GOAL_REASON_WAITING_DEPENDENCY
+			) != 0 || operation_solver_enqueue_constraint(
+				ctx, equation_id, PROTOTYPE_COMPILE_ENQUEUE_DEPENDENCY
 			) != 0) {
 			return -1;
 		}
 	}
-	meta->materialized_row = replacement;
-	meta->state = OPERATION_EFFECT_ROW_META_SOLVED;
 	return 0;
 }
 
@@ -620,21 +800,36 @@ static int operation_effect_normal_is_ground(
 	return 1;
 }
 
-static int operation_effect_solve_constraints(struct compile_context* ctx) {
+static int operation_effect_solve_constraints(
+	struct compile_context* ctx,
+	int finalize
+) {
 	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
 	for (;;) {
 		int changed = 0;
-		for (size_t i = 0; i < ctx->constraints.effect_constraint_count; ++i) {
-			uint32_t id = ctx->constraints.first_effect_constraint + (uint32_t)i;
-			if (id >= ctx->constraints.constraint_count) {
-				return -1;
-			}
-			struct operation_constraint* constraint =
-				&ctx->constraints.constraints[id];
+		for (uint32_t id = prototype_typing_constraint_first_in_domain(
+				&ctx->typing->constraints,
+				OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW
+			);
+			id != PROTOTYPE_INVALID_ID;
+			id = prototype_typing_constraint_next_in_domain(
+				&ctx->typing->constraints, id
+			)) {
+			struct prototype_typing_constraint* constraint =
+				&ctx->typing->constraints.constraints[id];
+			struct prototype_typing_constraint_solution* solution =
+				&ctx->typing->constraints.solutions[id];
 			if (constraint->domain != OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW) {
 				return -1;
+			}
+			if (constraint->kind ==
+					PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION) {
+				continue;
+			}
+			if (solution->state == OPERATION_CONSTRAINT_STATE_SOLVED) {
+				continue;
 			}
 			if ((constraint->kind ==
 					PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_EXACT ||
@@ -662,8 +857,9 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 				int state = unowned != 0 && has_external_ref != 0 ?
 					OPERATION_CONSTRAINT_STATE_RESIDUAL :
 					OPERATION_CONSTRAINT_STATE_SOLVED;
-				if (operation_constraint_transition(
-						constraint,
+				if (prototype_typing_constraint_transition(
+						&ctx->typing->constraints,
+						id,
 						state,
 						OPERATION_CLASSIFIER_GOAL_REASON_NONE
 					) != 0) {
@@ -678,20 +874,20 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 			int deferred = 0;
 			if (operation_effect_resolve_row_normal(
 					ctx,
-					constraint->source_occurrence,
+					constraint->owner_typed_projection,
 					constraint->payload.effect.left_row,
 					&left
 				) != 0 ||
 				(constraint->payload.effect.right_row != PROTOTYPE_INVALID_ID &&
 				 operation_effect_resolve_row_normal(
 					ctx,
-					constraint->source_occurrence,
+					constraint->owner_typed_projection,
 					constraint->payload.effect.right_row,
 					&right
 				 ) != 0) ||
 				operation_effect_resolve_row_normal(
 					ctx,
-					constraint->source_occurrence,
+					constraint->owner_typed_projection,
 					constraint->payload.effect.result_row,
 					&actual
 				) != 0) {
@@ -760,8 +956,9 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 			if (operation_effect_normal_equal(
 					ctx->terms, &actual, &expected
 				)) {
-				if (operation_constraint_transition(
-						constraint,
+				if (prototype_typing_constraint_transition(
+						&ctx->typing->constraints,
+						id,
 						OPERATION_CONSTRAINT_STATE_SOLVED,
 						OPERATION_CLASSIFIER_GOAL_REASON_NONE
 					) != 0) {
@@ -776,8 +973,9 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 					operation_effect_normal_is_ground(ctx->terms, &expected)) {
 					return -1;
 					}
-				if (operation_constraint_transition(
-						constraint,
+				if (prototype_typing_constraint_transition(
+						&ctx->typing->constraints,
+						id,
 						OPERATION_CONSTRAINT_STATE_PENDING,
 						OPERATION_CLASSIFIER_GOAL_REASON_WAITING_DEPENDENCY
 					) != 0) {
@@ -795,8 +993,9 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 				return -1;
 			}
 			if (owned) {
-				if (operation_constraint_transition(
-						constraint,
+				if (prototype_typing_constraint_transition(
+						&ctx->typing->constraints,
+						id,
 						OPERATION_CONSTRAINT_STATE_PENDING,
 						OPERATION_CLASSIFIER_GOAL_REASON_WAITING_DEPENDENCY
 					) != 0) {
@@ -805,8 +1004,9 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 				continue;
 			}
 			if (!operation_effect_normal_is_ground(ctx->terms, &expected)) {
-				if (operation_constraint_transition(
-						constraint,
+				if (prototype_typing_constraint_transition(
+						&ctx->typing->constraints,
+						id,
 						OPERATION_CONSTRAINT_STATE_PENDING,
 						OPERATION_CLASSIFIER_GOAL_REASON_WAITING_DEPENDENCY
 					) != 0) {
@@ -814,31 +1014,30 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 				}
 				continue;
 			}
-			struct operation_effect_row_meta* meta;
-			if (operation_effect_row_meta_find_or_add(
-					ctx,
-					constraint->source_occurrence,
-					constraint->payload.effect.result_row,
-					&meta
+			if (constraint->owner_typed_projection >=
+					PROTOTYPE_TYPING_CONSTRAINT_PROJECTION_CAPACITY) {
+				return -1;
+			}
+			uint32_t answer_id = ctx->typing->constraints.
+				effect_solution_constraint_for_projection[
+					constraint->owner_typed_projection
+				];
+			int answer_changed = 0;
+			if (answer_id == PROTOTYPE_INVALID_ID ||
+				operation_effect_publish_solution(
+					ctx, answer_id, &expected, constraint->id, &answer_changed
 				) != 0) {
 				return -1;
 			}
-			int was_unsolved = meta->state == OPERATION_EFFECT_ROW_META_UNSOLVED;
-			if (operation_effect_meta_store_solution(
-					ctx, &ctx->effect_solver, meta, &expected, constraint->id
-				) != 0) {
-				return -1;
-			}
-			constraint->payload.effect.effect_meta_id =
-				(uint32_t)(meta - ctx->effect_solver.metas);
-			if (operation_constraint_transition(
-					constraint,
+			if (prototype_typing_constraint_transition(
+					&ctx->typing->constraints,
+					id,
 					OPERATION_CONSTRAINT_STATE_SOLVED,
 					OPERATION_CLASSIFIER_GOAL_REASON_NONE
 				) != 0) {
 				return -1;
 			}
-			if (was_unsolved) {
+			if (answer_changed) {
 				changed = 1;
 			}
 		}
@@ -846,36 +1045,22 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 			break;
 		}
 	}
-	for (size_t i = 0; i < ctx->constraints.effect_constraint_count; ++i) {
-		uint32_t id = ctx->constraints.first_effect_constraint + (uint32_t)i;
-		if (id >= ctx->constraints.constraint_count) {
-			return -1;
-		}
-		struct operation_constraint* constraint =
-			&ctx->constraints.constraints[id];
-		if (constraint->state == OPERATION_CONSTRAINT_STATE_PENDING &&
-			operation_constraint_transition(
-				constraint,
+	for (uint32_t id = finalize ? prototype_typing_constraint_first_in_domain(
+			&ctx->typing->constraints,
+			OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW
+		) : PROTOTYPE_INVALID_ID;
+		id != PROTOTYPE_INVALID_ID;
+		id = prototype_typing_constraint_next_in_domain(
+			&ctx->typing->constraints, id
+		)) {
+		struct prototype_typing_constraint_solution* solution =
+			&ctx->typing->constraints.solutions[id];
+		if (solution->state == OPERATION_CONSTRAINT_STATE_PENDING &&
+			prototype_typing_constraint_transition(
+				&ctx->typing->constraints,
+				id,
 				OPERATION_CONSTRAINT_STATE_RESIDUAL,
 				OPERATION_CLASSIFIER_GOAL_REASON_RESIDUAL_OBLIGATION
-			) != 0) {
-			return -1;
-		}
-	}
-	for (uint32_t i = 0; i < ctx->effect_solver.meta_count; ++i) {
-		struct operation_effect_row_meta* meta = &ctx->effect_solver.metas[i];
-		if (meta->state != OPERATION_EFFECT_ROW_META_SOLVED ||
-			meta->materialized_row != PROTOTYPE_INVALID_ID) {
-			continue;
-		}
-		struct prototype_effect_row_normal_form solution;
-		uint32_t replacement;
-		if (operation_effect_meta_solution_normal(
-				&ctx->effect_solver, meta, &solution
-			) != 0 || prototype_term_effect_row_materialize_normal_form(
-				ctx->terms, &solution, &replacement
-			) != 0 || operation_effect_materialize_solution(
-				ctx, meta, replacement
 			) != 0) {
 			return -1;
 		}
@@ -888,15 +1073,25 @@ static int operation_effect_solve_constraints(struct compile_context* ctx) {
 		0,
 		sizeof(ctx->metadata->effect_constraint_summary)
 	);
-	for (size_t i = 0; i < ctx->constraints.effect_constraint_count; ++i) {
-		uint32_t id = ctx->constraints.first_effect_constraint + (uint32_t)i;
-		const struct operation_constraint* constraint =
-			&ctx->constraints.constraints[id];
-		if (constraint->state == OPERATION_CONSTRAINT_STATE_SOLVED) {
+	for (uint32_t id = prototype_typing_constraint_first_in_domain(
+			&ctx->typing->constraints,
+			OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW
+		);
+		id != PROTOTYPE_INVALID_ID;
+		id = prototype_typing_constraint_next_in_domain(
+			&ctx->typing->constraints, id
+		)) {
+		const struct prototype_typing_constraint_solution* solution =
+			&ctx->typing->constraints.solutions[id];
+		if (ctx->typing->constraints.constraints[id].kind ==
+				PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION) {
+			continue;
+		}
+		if (solution->state == OPERATION_CONSTRAINT_STATE_SOLVED) {
 			ctx->metadata->effect_constraint_summary.solved_count++;
-		} else if (constraint->state == OPERATION_CONSTRAINT_STATE_RESIDUAL) {
+		} else if (solution->state == OPERATION_CONSTRAINT_STATE_RESIDUAL) {
 			ctx->metadata->effect_constraint_summary.residual_count++;
-		} else if (constraint->state == OPERATION_CONSTRAINT_STATE_CONTRADICTION) {
+		} else if (solution->state == OPERATION_CONSTRAINT_STATE_CONTRADICTION) {
 			ctx->metadata->effect_constraint_summary.failed_count++;
 		}
 	}
@@ -929,20 +1124,27 @@ static int operation_effect_import_judgement_constraint(
 		&ctx->judgement_delta.computation_constraints[
 			source->computation_constraint_id
 		];
-	if (computation->subject != source->subject ||
+	if (source->computation_constraint_id >=
+			ctx->computation_constraint_input_capacity ||
+		ctx->computation_constraint_inputs[
+			source->computation_constraint_id
+		].subject != source->subject ||
 		computation->occurrence_id == PROTOTYPE_INVALID_ID ||
 		computation->occurrence_id >=
 			ctx->metadata->typed_occurrences.occurrence_count) {
 		return -1;
 	}
 	uint32_t lifecycle_id = PROTOTYPE_INVALID_ID;
-	for (uint32_t i = 0; i < ctx->constraints.computation_constraint_count; ++i) {
-		uint32_t id = ctx->constraints.first_computation_constraint + i;
-		if (id >= ctx->constraints.constraint_count) {
-			return -1;
-		}
-		const struct operation_constraint* candidate =
-			&ctx->constraints.constraints[id];
+	for (uint32_t id = prototype_typing_constraint_first_in_domain(
+			&ctx->typing->constraints,
+			OPERATION_CONSTRAINT_DOMAIN_COMPUTATION
+		);
+		id != PROTOTYPE_INVALID_ID;
+		id = prototype_typing_constraint_next_in_domain(
+			&ctx->typing->constraints, id
+		)) {
+		const struct prototype_typing_constraint* candidate =
+			&ctx->typing->constraints.constraints[id];
 		if (candidate->domain == OPERATION_CONSTRAINT_DOMAIN_COMPUTATION &&
 			candidate->payload.computation.judgement_delta_constraint_id ==
 				source->computation_constraint_id) {
@@ -953,7 +1155,7 @@ static int operation_effect_import_judgement_constraint(
 	if (lifecycle_id == PROTOTYPE_INVALID_ID) {
 		return -1;
 	}
-	struct prototype_term_classifier_view current_view;
+	struct prototype_classifier_view current_view;
 	if (operation_classifier_computation_view(
 			ctx, computation->occurrence_id, &current_view
 		) != 0) {
@@ -992,33 +1194,41 @@ static int operation_effect_generate_constraints_impl(
 	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
-	/* These constraints are a derived view of the current operation
-	 * classifiers. A fixed-point round may replace a symbolic row with a
-	 * concrete one, so retaining constraints from an earlier round creates
-	 * false residual obligations. */
+	/* Build immutable equations over stable EffectRow placeholders. Repeated
+	 * calls only rediscover the same canonical edges while solutions advance. */
 	uint32_t empty_row;
 	if (prototype_term_effect_row_empty(ctx->terms, &empty_row
 		) != 0) {
 		return -1;
 	}
-	for (uint32_t operation_id = 0;
-		ctx->classifier_solver.initialized &&
+	uint32_t transaction_start = (uint32_t)
+		prototype_typed_occurrence_graph_transaction_start(
+			&ctx->metadata->typed_occurrences
+		);
+	for (uint32_t operation_id = transaction_start;
+		ctx->classifier_workspace.initialized &&
 		operation_id < ctx->metadata->typed_occurrences.occurrence_count;
 		++operation_id) {
 		const struct prototype_typed_occurrence* operation =
 			&ctx->metadata->typed_occurrences.occurrences[operation_id];
-		struct prototype_term_classifier_view result_view;
+		struct prototype_classifier_view result_view;
 		if (operation_classifier_computation_view(
 				ctx, operation_id, &result_view
 			) != 0) {
 			continue;
+		}
+		uint32_t result_row = operation_effect_stable_row(
+			ctx, operation_id, result_view.effect_row
+		);
+		if (result_row == PROTOTYPE_INVALID_ID) {
+			return -1;
 		}
 		if (operation->tag == PROTOTYPE_TYPED_OCCURRENCE_RETURN) {
 			if (operation_effect_constraint_add(
 					ctx,
 					PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_EXACT,
 					operation_id,
-					result_view.effect_row,
+					result_row,
 					empty_row,
 					PROTOTYPE_INVALID_ID,
 					PROTOTYPE_INVALID_ID
@@ -1036,15 +1246,17 @@ static int operation_effect_generate_constraints_impl(
 				) != 0) {
 				return -1;
 			}
-			struct prototype_term_classifier_view child_view;
+			struct prototype_classifier_view child_view;
 			if (operation_classifier_computation_view(
 					ctx, child, &child_view
 				) == 0 && operation_effect_constraint_add(
 					ctx,
 					PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_COPY,
 					operation_id,
-					result_view.effect_row,
-					child_view.effect_row,
+						result_row,
+						operation_effect_stable_row(
+							ctx, child, child_view.effect_row
+						),
 					PROTOTYPE_INVALID_ID,
 					PROTOTYPE_INVALID_ID
 				) != 0) {
@@ -1063,7 +1275,7 @@ static int operation_effect_generate_constraints_impl(
 					) != 0) {
 					return -1;
 				}
-				struct prototype_term_classifier_view case_view;
+				struct prototype_classifier_view case_view;
 				if (operation_classifier_computation_view(
 						ctx, branch_operation, &case_view
 					) != 0) {
@@ -1071,14 +1283,19 @@ static int operation_effect_generate_constraints_impl(
 					break;
 				}
 				if (accumulated == PROTOTYPE_INVALID_ID) {
-					accumulated = case_view.effect_row;
+						accumulated = operation_effect_stable_row(
+							ctx, branch_operation, case_view.effect_row
+						);
 					continue;
 				}
+				uint32_t branch_row = operation_effect_stable_row(
+					ctx, branch_operation, case_view.effect_row
+				);
 				uint32_t union_row;
 				if (prototype_term_effect_row_union(
 						ctx->terms,
 						accumulated,
-						case_view.effect_row,
+						branch_row,
 						&union_row
 					) != 0 || operation_effect_constraint_add(
 						ctx,
@@ -1086,7 +1303,7 @@ static int operation_effect_generate_constraints_impl(
 						operation_id,
 						union_row,
 						accumulated,
-						case_view.effect_row,
+						branch_row,
 						PROTOTYPE_INVALID_ID
 					) != 0) {
 					return -1;
@@ -1098,7 +1315,7 @@ static int operation_effect_generate_constraints_impl(
 					ctx,
 					PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_COPY,
 					operation_id,
-					result_view.effect_row,
+					result_row,
 					accumulated,
 					PROTOTYPE_INVALID_ID,
 					PROTOTYPE_INVALID_ID
@@ -1106,26 +1323,14 @@ static int operation_effect_generate_constraints_impl(
 				return -1;
 			}
 		}
-		int has_constraint = 0;
-		for (size_t constraint_id = 0;
-			constraint_id < ctx->constraints.effect_constraint_count;
-			++constraint_id) {
-			uint32_t id = ctx->constraints.first_effect_constraint +
-				(uint32_t)constraint_id;
-			if (id >= ctx->constraints.constraint_count) {
-				return -1;
-			}
-			if (ctx->constraints.constraints[id].source_occurrence == operation_id) {
-				has_constraint = 1;
-				break;
-			}
-		}
-		if (!has_constraint && operation_effect_constraint_add(
+		if (ctx->typing->constraints.first_effect_constraint_for_occurrence[
+				operation_id
+			] == PROTOTYPE_INVALID_ID && operation_effect_constraint_add(
 				ctx,
 				PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_COPY,
 				operation_id,
-				result_view.effect_row,
-				result_view.effect_row,
+				result_row,
+				result_row,
 				PROTOTYPE_INVALID_ID,
 				PROTOTYPE_INVALID_ID
 			) != 0) {
@@ -1147,38 +1352,51 @@ static int operation_effect_generate_constraints_impl(
 			return -1;
 		}
 	}
-	return operation_effect_solve_constraints(ctx);
+	return 0;
 }
 
-static int operation_effect_generate_constraints(struct compile_context* ctx) {
+static int operation_effect_generate_constraints(
+	struct compile_context* ctx,
+	int finalize
+) {
 	if (!ctx) {
 		return -1;
 	}
-	ctx->constraints.constraint_count = ctx->constraints.first_effect_constraint;
-	ctx->constraints.effect_constraint_count = 0;
-	struct operation_constraint_db_mark mark =
-		operation_constraint_db_mark(&ctx->constraints);
+	if (ctx->typing->constraints.topology_sealed) {
+		ctx->metadata->proof_solver_call_by_domain[
+			PROTOTYPE_COMPILE_SOLUTION_EFFECT
+		]++;
+		return -1;
+	}
+	struct prototype_typing_constraint_db_mark mark =
+		prototype_typing_constraint_db_mark(&ctx->typing->constraints);
 	int status = operation_effect_generate_constraints_impl(ctx);
-	if (status != 0 && operation_constraint_db_rollback(
-			&ctx->constraints, mark
+	if (status != 0 && prototype_typing_constraint_db_rollback(
+			&ctx->typing->constraints, mark
 		) != 0) {
 		return -1;
 	}
-	return status;
+	return status == 0 ? operation_effect_solve_constraints(ctx, finalize) : status;
 }
 
 static size_t operation_effect_unresolved_count(
-	const struct operation_constraint_db* constraints
+	const struct prototype_typing_constraint_db* constraints
 ) {
 	if (!constraints) {
 		return 0;
 	}
 	size_t count = 0;
-	for (size_t i = 0; i < constraints->effect_constraint_count; ++i) {
-		uint32_t id = constraints->first_effect_constraint + (uint32_t)i;
-		if (id >= constraints->constraint_count ||
-			constraints->constraints[id].state !=
-			PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED) {
+	for (uint32_t id = prototype_typing_constraint_first_in_domain(
+			constraints, OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW
+		);
+		id != PROTOTYPE_INVALID_ID;
+		id = prototype_typing_constraint_next_in_domain(constraints, id)) {
+		if (constraints->constraints[id].kind ==
+				PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION) {
+			continue;
+		}
+		if (constraints->solutions[id].state !=
+			OPERATION_CONSTRAINT_STATE_SOLVED) {
 			count++;
 		}
 	}
@@ -1191,15 +1409,22 @@ static int compile_phase_record_residual_effect_constraints(
 	if (!ctx || !ctx->metadata || !ctx->terms) {
 		return -1;
 	}
-	for (size_t i = 0; i < ctx->constraints.effect_constraint_count; ++i) {
-		uint32_t id = ctx->constraints.first_effect_constraint + (uint32_t)i;
-		if (id >= ctx->constraints.constraint_count) {
-			return -1;
+	for (uint32_t id = prototype_typing_constraint_first_in_domain(
+			&ctx->typing->constraints,
+			OPERATION_CONSTRAINT_DOMAIN_EFFECT_ROW
+		);
+		id != PROTOTYPE_INVALID_ID;
+		id = prototype_typing_constraint_next_in_domain(
+			&ctx->typing->constraints, id
+		)) {
+		const struct prototype_typing_constraint* constraint =
+			&ctx->typing->constraints.constraints[id];
+		if (constraint->kind ==
+				PROTOTYPE_TYPING_EFFECT_CONSTRAINT_SOLUTION) {
+			continue;
 		}
-		const struct operation_constraint* constraint =
-			&ctx->constraints.constraints[id];
-		if (constraint->state ==
-			PROTOTYPE_TYPED_OCCURRENCE_EFFECT_CONSTRAINT_SOLVED) {
+		if (ctx->typing->constraints.solutions[id].state ==
+			OPERATION_CONSTRAINT_STATE_SOLVED) {
 			continue;
 		}
 		if (constraint->source_occurrence >=
@@ -1272,17 +1497,22 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 	if (!ctx || !ctx->metadata) {
 		return -1;
 	}
-	for (uint32_t offset = 0;
-		offset < ctx->constraints.branch_refinement_constraint_count;
-		++offset) {
-		uint32_t constraint_id =
-			ctx->constraints.first_branch_refinement_constraint + offset;
-		const struct operation_constraint* constraint =
-			&ctx->constraints.constraints[constraint_id];
+	for (uint32_t constraint_id = prototype_typing_constraint_first_in_domain(
+			&ctx->typing->constraints,
+			OPERATION_CONSTRAINT_DOMAIN_BRANCH_REFINEMENT
+		);
+		constraint_id != PROTOTYPE_INVALID_ID;
+		constraint_id = prototype_typing_constraint_next_in_domain(
+			&ctx->typing->constraints, constraint_id
+		)) {
+		const struct prototype_typing_constraint* constraint =
+			&ctx->typing->constraints.constraints[constraint_id];
 		if (constraint->domain !=
 				OPERATION_CONSTRAINT_DOMAIN_BRANCH_REFINEMENT ||
-			constraint->state != OPERATION_CONSTRAINT_STATE_RESIDUAL ||
-			constraint->payload.branch_refinement.refinement_status !=
+			ctx->typing->constraints.solutions[constraint_id].state !=
+				OPERATION_CONSTRAINT_STATE_RESIDUAL ||
+			ctx->typing->constraints.solutions[constraint_id].branch_refinement.
+				refinement_status !=
 				PROTOTYPE_INDEX_REFINEMENT_RESIDUAL) {
 			continue;
 		}
@@ -1301,27 +1531,154 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 			source_ast,
 			constraint->source_occurrence,
 			constraint_id,
-			constraint->payload.branch_refinement.residual_pattern,
-			constraint->payload.branch_refinement.residual_value,
-			source_ast < ctx->asts->node_count ?
-				ctx->asts->nodes[source_ast].span :
-				(struct prototype_source_span) { 0, 0 }
+			ctx->typing->constraints.solutions[constraint_id].branch_refinement.
+				residual_pattern,
+			ctx->typing->constraints.solutions[constraint_id].branch_refinement.
+				residual_value,
+			compile_source_span(ctx, source_ast)
 		);
 		return -1;
 	}
-	for (uint32_t i = 0; i < ctx->metadata->typed_occurrences.occurrence_count; ++i) {
+	/* A failed motive equation is the cause of any unclassified enclosing
+	 * Lambda/APP chain. Diagnose that authoritative equation before reporting a
+	 * derived parent as generically unsolved. */
+	for (uint32_t constraint_id = prototype_typing_constraint_first_in_domain(
+			&ctx->typing->constraints,
+			OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER
+		);
+		constraint_id != PROTOTYPE_INVALID_ID;
+		constraint_id = prototype_typing_constraint_next_in_domain(
+			&ctx->typing->constraints, constraint_id
+		)) {
+		const struct prototype_typing_constraint* constraint =
+			&ctx->typing->constraints.constraints[constraint_id];
+		const struct prototype_typing_constraint_solution* equation_solution =
+			&ctx->typing->constraints.solutions[constraint_id];
+		if (constraint->kind == OPERATION_CONSTRAINT_PI_EXPECTED &&
+			constraint->payload.classifier.goal.pi.role ==
+				OPERATION_CLASSIFIER_PI_GOAL_ELIM &&
+			equation_solution->state ==
+				OPERATION_CONSTRAINT_STATE_CONTRADICTION &&
+			equation_solution->reason ==
+				OPERATION_CLASSIFIER_GOAL_REASON_PI_ELIM_DOMAIN_CONTRADICTION &&
+			equation_solution->contradiction_expected_classifier <
+				ctx->terms->term_count &&
+			equation_solution->contradiction_actual_classifier <
+				ctx->terms->term_count) {
+			const struct prototype_typed_occurrence* operation =
+				constraint->source_occurrence <
+					ctx->metadata->typed_occurrences.occurrence_count ?
+					&ctx->metadata->typed_occurrences.occurrences[
+						constraint->source_occurrence
+					] : NULL;
+			uint32_t source_ast = operation ? operation->source_ast :
+				constraint->source_ast;
+			(void)add_compile_diagnostic(
+				ctx,
+				PROTOTYPE_COMPILE_DIAGNOSTIC_PHASE_CONSTRAINT_SOLVER,
+				PROTOTYPE_COMPILE_DIAGNOSTIC_CLASSIFIER_EQUATION_CONTRADICTION,
+				source_ast,
+				constraint->source_occurrence,
+				constraint_id,
+				equation_solution->contradiction_expected_classifier,
+				equation_solution->contradiction_actual_classifier,
+				compile_source_span(ctx, source_ast)
+			);
+			return -1;
+		}
+		if (constraint->kind != OPERATION_CONSTRAINT_MOTIVE_EQUATION) {
+			continue;
+		}
+		uint32_t match_projection = constraint->owner_typed_projection;
+		if (match_projection >=
+				ctx->typing->context_projections.typed_projection_count) {
+			return -1;
+		}
+		uint32_t motive = ctx->typing->constraints.
+			motive_solution_for_projection[match_projection].motive;
+		if (motive >= ctx->terms->term_count ||
+			equation_solution->validated_motive != motive ||
+			equation_solution->validation_status !=
+				OPERATION_MOTIVE_EQUATION_MISMATCH) {
+			continue;
+		}
+		/* Completion reports the answer already owned by this equation. Running
+		 * conversion here would create a second, terminal-only Solver path and
+		 * make checkpoint resumption observably different from an in-memory run. */
+		(void)operation_motive_add_terminal_diagnostic(
+			ctx,
+			constraint->source_occurrence,
+			match_projection,
+			constraint->payload.classifier.goal.motive_case.case_index
+		);
+		return -1;
+	}
+	uint32_t transaction_start = (uint32_t)
+		prototype_typed_occurrence_graph_transaction_start(
+			&ctx->metadata->typed_occurrences
+		);
+	for (uint32_t typed_projection = 0;
+		typed_projection <
+			ctx->typing->context_projections.typed_projection_count;
+		++typed_projection) {
+		const struct prototype_typed_projection* projected =
+			prototype_typed_projection_get(
+				&ctx->typing->context_projections, typed_projection
+			);
+		if (!projected || projected->source_occurrence < transaction_start ||
+			projected->source_occurrence >=
+				ctx->metadata->typed_occurrences.occurrence_count) {
+			continue;
+		}
+		const struct prototype_context_projection_solution* projected_context =
+			prototype_context_projection_solution_get(
+				&ctx->typing->context_projections,
+				projected->context_projection
+			);
+		/* Reachability belongs to an exact TypedProjection, not to its shared
+		 * Layer C occurrence. The same erased Lambda or APP may occur in both a
+		 * reachable branch and a branch whose refined Context is contradictory. */
+		if (projected_context && projected_context->state ==
+				PROTOTYPE_CONTEXT_PROJECTION_CONTRADICTION) {
+			continue;
+		}
+		uint32_t equation_id =
+			ctx->typing->constraints.classifier_constraint_for_projection[
+				typed_projection
+			];
+		if (!prototype_typing_constraint_has_domain(
+				&ctx->typing->constraints, equation_id,
+				OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER
+			)) {
+			continue;
+		}
+		uint32_t i = projected->source_occurrence;
 		const struct prototype_typed_occurrence* operation =
 			&ctx->metadata->typed_occurrences.occurrences[i];
+		int impossible_branch = operation_solver_occurrence_is_in_impossible_branch(
+			ctx, i
+		);
+		if (impossible_branch < 0) {
+			return -1;
+		}
+		if (impossible_branch > 0) {
+			continue;
+		}
 		switch (operation->tag) {
 			case PROTOTYPE_TYPED_OCCURRENCE_APP:
 			case PROTOTYPE_TYPED_OCCURRENCE_LAMBDA:
 			case PROTOTYPE_TYPED_OCCURRENCE_MATCH:
 			case PROTOTYPE_TYPED_OCCURRENCE_INDUCTION_HYPOTHESIS:
-				if (ctx->classifier_solver.classifier_metas[i].classifier ==
+				if (operation_solver_classifier_for_projection(
+						ctx, typed_projection
+					) ==
 					PROTOTYPE_INVALID_ID) {
 					fprintf(stderr,
-						"classifier solver incomplete occurrence=%u tag=%d ast=%u context=%u core=%u action=%u ih-owner=%u ih-case=%u ih-field=%u scope=%u\n",
-						i, operation->tag, operation->source_ast,
+						"classifier solver incomplete projection=%u equation=%u "
+						"occurrence=%u tag=%d ast=%u context=%u core=%u action=%u "
+						"ih-owner=%u ih-case=%u ih-field=%u scope=%u\n",
+						typed_projection, equation_id, i, operation->tag,
+						operation->source_ast,
 						operation->context_id, operation->core_term,
 						operation->context_action_substitution,
 						operation->ih_owner_occurrence,
@@ -1332,15 +1689,36 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 						operation->ih_owner_occurrence <
 							ctx->metadata->typed_occurrences.occurrence_count) {
 						uint32_t owner = operation->ih_owner_occurrence;
+						uint32_t ih_constraint = ctx->typing->constraints.
+							ih_constraint_for_projection[typed_projection];
+						uint32_t owner_projection = PROTOTYPE_INVALID_ID;
+						if (prototype_typing_constraint_has_domain(
+								&ctx->typing->constraints, ih_constraint,
+								OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER
+							) &&
+							ctx->typing->constraints.constraints[ih_constraint].
+								operand_count >= 2) {
+							owner_projection =
+								operation_solver_constraint_operand_projection(
+									ctx,
+									&ctx->typing->constraints.constraints[ih_constraint],
+									1
+								);
+						}
 						const struct prototype_typed_occurrence* owner_occurrence =
 							&ctx->metadata->typed_occurrences.occurrences[owner];
 						fprintf(stderr,
 							"  IH owner tag=%d ast=%u context=%u core=%u classifier=%u motive=%u motive-state=%u\n",
 							owner_occurrence->tag, owner_occurrence->source_ast,
 							owner_occurrence->context_id, owner_occurrence->core_term,
-							ctx->classifier_solver.classifier_metas[owner].classifier,
-							ctx->classifier_solver.motive_solutions[owner].motive,
-							ctx->classifier_solver.motive_solutions[owner].state);
+							operation_solver_classifier(ctx, owner),
+							owner_projection < ctx->typing->context_projections.
+								typed_projection_count ? ctx->typing->constraints.
+								motive_solution_for_projection[owner_projection].motive :
+								PROTOTYPE_INVALID_ID,
+							owner_projection < ctx->typing->context_projections.
+								typed_projection_count ? ctx->typing->constraints.
+								motive_solution_for_projection[owner_projection].phase : 0);
 					}
 					for (uint32_t edge = 0; edge < operation->edge_count; ++edge) {
 						const struct prototype_typed_occurrence_edge* child_edge =
@@ -1354,16 +1732,16 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 							child < ctx->metadata->typed_occurrences.occurrence_count ?
 								ctx->metadata->typed_occurrences.occurrences[child].tag : -1,
 							child < ctx->metadata->typed_occurrences.occurrence_count ?
-								ctx->classifier_solver.classifier_metas[child].classifier :
+								operation_solver_classifier(ctx, child) :
 								PROTOTYPE_INVALID_ID);
 						if (child < ctx->metadata->typed_occurrences.occurrence_count &&
-							ctx->classifier_solver.classifier_metas[child].classifier !=
+							operation_solver_classifier(ctx, child) !=
 								PROTOTYPE_INVALID_ID) {
 							fprintf(stderr, "    classifier-term: ");
-							prototype_term_print_debug(
+							prototype_type_term_print_debug(
 								stderr, ctx->symbols, ctx->intrinsic_environment,
 								ctx->type_declarations, ctx->terms,
-								ctx->classifier_solver.classifier_metas[child].classifier
+								operation_solver_classifier(ctx, child)
 							);
 							fprintf(stderr, "\n");
 						}
@@ -1375,8 +1753,8 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 						fprintf(stderr,
 							"nearby occurrence=%u tag=%d ast=%u core=%u classifier=%u term=",
 							debug, nearby->tag, nearby->source_ast, nearby->core_term,
-							ctx->classifier_solver.classifier_metas[debug].classifier);
-						prototype_term_print_debug(
+							operation_solver_classifier(ctx, debug));
+						prototype_type_term_print_debug(
 							stderr, ctx->symbols, ctx->intrinsic_environment,
 							ctx->type_declarations, ctx->terms, nearby->core_term
 						);
@@ -1387,11 +1765,16 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 						uint32_t constraint_id = PROTOTYPE_INVALID_ID;
 						uint32_t expected = PROTOTYPE_INVALID_ID;
 						uint32_t actual = PROTOTYPE_INVALID_ID;
-						for (uint32_t j = 0;
-							j < ctx->constraints.classifier_constraint_count;
-							++j) {
-							const struct operation_constraint* constraint =
-								&ctx->constraints.constraints[j];
+						for (uint32_t j = prototype_typing_constraint_first_in_domain(
+								&ctx->typing->constraints,
+								OPERATION_CONSTRAINT_DOMAIN_CLASSIFIER
+							);
+							j != PROTOTYPE_INVALID_ID;
+							j = prototype_typing_constraint_next_in_domain(
+								&ctx->typing->constraints, j
+							)) {
+							const struct prototype_typing_constraint* constraint =
+								&ctx->typing->constraints.constraints[j];
 							int motive_branch = constraint->kind ==
 								OPERATION_CONSTRAINT_MOTIVE_EQUATION &&
 								constraint->payload.classifier.goal.motive_case.
@@ -1430,10 +1813,11 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 									case OPERATION_CONSTRAINT_MOTIVE_EQUATION:
 										{
 											int diagnostic_status =
-												operation_motive_add_terminal_diagnostic(
-												ctx,
-												constraint->payload.classifier.classifier_meta_id,
-												constraint->payload.classifier.goal.motive_case.
+											operation_motive_add_terminal_diagnostic(
+											ctx,
+											constraint->source_occurrence,
+											constraint->owner_typed_projection,
+											constraint->payload.classifier.goal.motive_case.
 													case_index
 												);
 											if (diagnostic_status < 0) {
@@ -1474,9 +1858,7 @@ static int operation_solver_require_complete(struct compile_context* ctx) {
 							constraint_id,
 							expected,
 							actual,
-							operation->source_ast < ctx->asts->node_count ?
-								ctx->asts->nodes[operation->source_ast].span :
-								(struct prototype_source_span) { 0, 0 }
+							compile_source_span(ctx, operation->source_ast)
 							);
 						}
 					}
@@ -1494,13 +1876,16 @@ static int compile_phase_record_residual_dependent_folds(struct compile_context*
 	if (!ctx || !ctx->metadata || !ctx->terms || !ctx->type_declarations) {
 		return -1;
 	}
-	for (uint32_t operation_id = 0;
+	for (uint32_t operation_id = ctx->accepted_typing.occurrence_count;
 		operation_id < ctx->metadata->typed_occurrences.occurrence_count;
 		++operation_id) {
 		const struct prototype_typed_occurrence* operation =
 			&ctx->metadata->typed_occurrences.occurrences[operation_id];
 		uint32_t computation_occurrence;
 		uint32_t continuation_occurrence;
+		uint32_t fold_projection;
+		uint32_t computation_projection;
+		uint32_t continuation_projection;
 		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ||
 			operation->core_term >= ctx->terms->term_count ||
 			ctx->terms->terms[operation->core_term].tag != PROTOTYPE_TERM_COMPUTATION_FOLD ||
@@ -1514,13 +1899,37 @@ static int compile_phase_record_residual_dependent_folds(struct compile_context*
 			) != 0) {
 			continue;
 		}
-		uint32_t input_classifier = operation_solver_classifier(
-			ctx, computation_occurrence
+		fold_projection = operation_solver_publication_projection(ctx, operation_id);
+		if (fold_projection == PROTOTYPE_INVALID_ID) {
+			return -1;
+		}
+		/* A closed fold classifier is the authoritative solver answer.  Do not
+		 * reconstruct a residual from the fact that normalization of its effectful
+		 * input is blocked: structural return projection may already have closed a
+		 * dependent continuation without performing that effect. */
+		uint32_t fold_classifier = operation_solver_classifier_for_projection(
+			ctx, fold_projection
 		);
-		uint32_t continuation_classifier = operation_solver_classifier(
-			ctx, continuation_occurrence
+		if (fold_classifier != PROTOTYPE_INVALID_ID) {
+			continue;
+		}
+		if (
+			operation_solver_projected_child(
+				ctx, fold_projection, PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION, 0,
+				&computation_projection
+			) != 0 || operation_solver_projected_child(
+				ctx, fold_projection, PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE, 0,
+				&continuation_projection
+			) != 0) {
+			return -1;
+		}
+		uint32_t input_classifier = operation_solver_classifier_for_projection(
+			ctx, computation_projection
 		);
-		struct prototype_term_classifier_view input_view;
+		uint32_t continuation_classifier = operation_solver_classifier_for_projection(
+			ctx, continuation_projection
+		);
+		struct prototype_classifier_view input_view;
 		uint32_t domain;
 		uint32_t classifier_family;
 		uint32_t continuation_binder_id;
@@ -1529,8 +1938,8 @@ static int compile_phase_record_residual_dependent_folds(struct compile_context*
 			continuation_classifier == PROTOTYPE_INVALID_ID ||
 			prototype_judgement_classifier_view(
 				ctx->terms, ctx->type_declarations, NULL, input_classifier, &input_view
-			) != 0 || input_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-			input_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+			) != 0 || input_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+			input_view.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
 			prototype_judgement_pi_parts(
 				ctx->terms, continuation_classifier, &domain, &classifier_family
 			) != 0 || !(prototype_judgement_classifier_conversion(
@@ -1542,21 +1951,26 @@ static int compile_phase_record_residual_dependent_folds(struct compile_context*
 			)) {
 			continue;
 		}
-		struct prototype_term_normalization_result normalized;
-		uint64_t normalization_limit = compile_effort_remaining(ctx);
+		struct prototype_term fold_term;
+		if (typing_core_inspect_term(
+				ctx->core_requests, operation->core_term, &fold_term
+			) != 0 || fold_term.tag != PROTOTYPE_TERM_COMPUTATION_FOLD) {
+			return -1;
+		}
+		struct prototype_core_normalization_request request = {
+			.term_id = fold_term.as.computation_fold.computation,
+			.profile = PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
+			.step_limit = compile_effort_remaining(ctx->metadata)
+		};
+		struct prototype_core_normalization_response normalized;
 		int effort_status = compile_effort_charge(
-			ctx, PROTOTYPE_EFFORT_PHASE_NORMALIZATION, 1
+			ctx->metadata, ctx->effort_atomic, PROTOTYPE_EFFORT_PHASE_NORMALIZATION, 1
 		);
 		if (effort_status != 0) return effort_status;
-		if (prototype_term_normalize_with_profile(
-				ctx->terms,
-				ctx->type_declarations,
-				NULL,
-				PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
-				ctx->terms->terms[operation->core_term].as.computation_fold.computation,
-				normalization_limit,
-				&normalized
-			) != 0 || normalized.status == PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID) {
+		if (prototype_core_request_normalize(
+				ctx->core_requests, &request, &normalized
+			) != 0 || normalized.status ==
+				PROTOTYPE_TERM_NORMALIZATION_STATUS_INVALID) {
 			return -1;
 		}
 		if (normalized.status == PROTOTYPE_TERM_NORMALIZATION_STATUS_COMPLETE) {
@@ -1591,7 +2005,7 @@ static int compile_phase_record_residual_dependent_folds(struct compile_context*
 					.classifier_family = classifier_family,
 					.effect_row = input_view.effect_row,
 					.normalization_profile =
-						PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
+						PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF
 				},
 				&existing_obligation
 			) != 0) {
@@ -1612,7 +2026,7 @@ static int compile_phase_record_residual_computation_fold_results(struct compile
 	if (!ctx || !ctx->metadata || !ctx->terms || !ctx->type_declarations) {
 		return -1;
 	}
-	for (uint32_t operation_id = 0;
+	for (uint32_t operation_id = ctx->accepted_typing.occurrence_count;
 		operation_id < ctx->metadata->typed_occurrences.occurrence_count;
 		++operation_id) {
 		const struct prototype_typed_occurrence* operation =
@@ -1620,6 +2034,10 @@ static int compile_phase_record_residual_computation_fold_results(struct compile
 		uint32_t computation_occurrence;
 		uint32_t return_operation;
 		uint32_t return_body_occurrence;
+		uint32_t fold_projection;
+		uint32_t computation_projection;
+		uint32_t return_projection;
+		uint32_t return_body_projection;
 		if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_COMPUTATION_FOLD ||
 			compile_occurrence_child(
 				ctx, operation_id, PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION, 0,
@@ -1636,22 +2054,38 @@ static int compile_phase_record_residual_computation_fold_results(struct compile
 			ctx->terms->terms[operation->core_term].as.computation_fold.clause_count == 0) {
 			continue;
 		}
-		uint32_t input_classifier = operation_solver_classifier(
-			ctx, computation_occurrence
+		fold_projection = operation_solver_publication_projection(ctx, operation_id);
+		if (fold_projection == PROTOTYPE_INVALID_ID ||
+			operation_solver_projected_child(
+				ctx, fold_projection, PROTOTYPE_TERM_CHILD_FOLD_COMPUTATION, 0,
+				&computation_projection
+			) != 0 || operation_solver_projected_child(
+				ctx, fold_projection, PROTOTYPE_TERM_CHILD_FOLD_RETURN_CLAUSE, 0,
+				&return_projection
+			) != 0 || operation_solver_projected_child(
+				ctx, return_projection, PROTOTYPE_TERM_CHILD_BODY, 0,
+				&return_body_projection
+			) != 0) {
+			return -1;
+		}
+		uint32_t input_classifier = operation_solver_classifier_for_projection(
+			ctx, computation_projection
 		);
-		uint32_t return_classifier = operation_solver_classifier(
-			ctx, return_body_occurrence
+		uint32_t return_classifier = operation_solver_classifier_for_projection(
+			ctx, return_body_projection
 		);
-		struct prototype_term_classifier_view input_view;
+		struct prototype_classifier_view input_view;
+		int return_depends_on_result = return_classifier != PROTOTYPE_INVALID_ID &&
+			prototype_term_contains_free_binding(
+				ctx->terms, return_classifier, operation->fold_return_binder_id
+			);
 		if (input_classifier == PROTOTYPE_INVALID_ID ||
 			return_classifier == PROTOTYPE_INVALID_ID ||
 			prototype_judgement_classifier_view(
 				ctx->terms, ctx->type_declarations, NULL, input_classifier, &input_view
-			) != 0 || input_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-			input_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
-			!prototype_term_contains_free_binding(
-				ctx->terms, return_classifier, operation->fold_return_binder_id
-			)) {
+			) != 0 || input_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+			input_view.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
+			!return_depends_on_result) {
 			continue;
 		}
 		uint32_t classifier_family;
@@ -1688,7 +2122,7 @@ static int compile_phase_record_residual_computation_fold_results(struct compile
 					.classifier_family = classifier_family,
 					.effect_row = input_view.effect_row,
 					.normalization_profile =
-						PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF
+						PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF
 				},
 				&existing_obligation
 			) != 0) {
@@ -1732,5 +2166,42 @@ static int operation_solver_generalize_lambda_effect_rows(
 		}
 	}
 	*p_ret = classifier;
+	return 0;
+}
+
+static int operation_classifier_lambda_intro_result(
+	struct compile_context* ctx,
+	uint32_t operation_id,
+	uint32_t domain,
+	uint32_t body_classifier,
+	uint32_t* p_classifier
+) {
+	if (!ctx || !ctx->metadata || !p_classifier ||
+		operation_id >= ctx->metadata->typed_occurrences.occurrence_count ||
+		domain >= ctx->terms->term_count ||
+		body_classifier >= ctx->terms->term_count) {
+		return -1;
+	}
+	const struct prototype_typed_occurrence* operation =
+		&ctx->metadata->typed_occurrences.occurrences[operation_id];
+	if (operation->tag != PROTOTYPE_TYPED_OCCURRENCE_LAMBDA ||
+		operation->binding_id == PROTOTYPE_INVALID_ID) {
+		return -1;
+	}
+	uint32_t codomain_family;
+	uint32_t classifier;
+	if (prototype_term_pure_family(
+			ctx->terms,
+			operation->binding_id,
+			body_classifier,
+			&codomain_family
+		) != 0 || prototype_term_pi_family(
+			ctx->terms, domain, codomain_family, &classifier
+		) != 0 || operation_solver_generalize_lambda_effect_rows(
+			ctx, operation_id, classifier, &classifier
+		) != 0) {
+		return -1;
+	}
+	*p_classifier = classifier;
 	return 0;
 }

@@ -53,8 +53,9 @@ static int hott_ordinary_adt_identity_supported(
 	uint32_t source_type_id;
 	uint32_t source_arguments[16];
 	uint32_t source_argument_count;
-	if (prototype_term_type_instance_info(
+	if (prototype_type_projection_instance_info(
 			terms,
+			&type_declarations->semantic_schema,
 			source_carrier,
 			&source_type_id,
 			source_arguments,
@@ -93,7 +94,7 @@ static int hott_ordinary_adt_identity_supported(
 				return 0;
 			}
 			uint32_t field_classifier =
-				prototype_context_classifier_term(field);
+				prototype_context_classifier_answer(contexts, field);
 			int dependent = 0;
 			for (uint32_t k = 0; k < j; ++k) {
 				const struct prototype_context* previous =
@@ -154,7 +155,7 @@ static int hott_thunk_return_identity_supported(
 	uint32_t computation = terms->terms[thunk_type].as.thunk_type.computation;
 	int supported = computation < terms->term_count &&
 		terms->terms[computation].tag == PROTOTYPE_TERM_COMPUTATION_TYPE &&
-		prototype_term_effect_row_purity(
+		prototype_classifier_effect_row_purity(
 			terms, terms->terms[computation].as.computation_type.label
 		) == PROTOTYPE_EFFECT_ROW_PURITY_PURE;
 	(void)type_declarations;
@@ -189,7 +190,7 @@ static int hott_thunk_pi_identity_supported(
 		terms->terms[codomain].tag != PROTOTYPE_TERM_COMPUTATION_TYPE ||
 		prototype_term_contains_free_binding(
 			terms, codomain, codomain_binding
-		) || prototype_term_effect_row_purity(
+		) || prototype_classifier_effect_row_purity(
 			terms, terms->terms[codomain].as.computation_type.label
 		) != PROTOTYPE_EFFECT_ROW_PURITY_PURE) {
 		return 0;
@@ -344,9 +345,8 @@ int prototype_hott_type_former_descriptor_query(
 	struct prototype_term_normalization_result exposure;
 	if (prototype_term_normalize_with_profile(
 			terms,
-			type_declarations,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			prototype_judgement_proposition_get(judgement, source->proposition_id)->subject,
 			64,
 			&exposure
@@ -434,7 +434,7 @@ int prototype_hott_type_former_descriptor_query(
 			descriptor.kind = PROTOTYPE_HOTT_TYPE_FORMER_PURE_COMPUTATION;
 			descriptor.relation_type_action_rule =
 				PROTOTYPE_HOTT_RELATION_TYPE_ACTION_RULE_PURE_COMPUTATION;
-			switch (prototype_term_effect_row_purity(
+			switch (prototype_classifier_effect_row_purity(
 				terms, type->as.computation_type.label
 			)) {
 			case PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL:
@@ -458,7 +458,7 @@ int prototype_hott_type_former_descriptor_query(
 			if (type->as.thunk_type.computation < terms->term_count &&
 				terms->terms[type->as.thunk_type.computation].tag ==
 					PROTOTYPE_TERM_COMPUTATION_TYPE) {
-				int purity = prototype_term_effect_row_purity(
+				int purity = prototype_classifier_effect_row_purity(
 					terms,
 					terms->terms[type->as.thunk_type.computation].
 						as.computation_type.label

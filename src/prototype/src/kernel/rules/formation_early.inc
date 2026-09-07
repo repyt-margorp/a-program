@@ -70,8 +70,9 @@ int prototype_judgement_add_type_formation_claim(
 	uint32_t argument_count;
 	if (!p_claim_id || !term_exists(terms, subject) ||
 		!term_exists(terms, classifier) ||
-		prototype_term_type_instance_info(
-			terms, subject, &type_id, arguments, &argument_count
+		prototype_type_projection_instance_info(
+			terms,
+		&type_declarations->semantic_schema, subject, &type_id, arguments, &argument_count
 		) != 0 || type_id >= type_declarations->semantic_schema.type_count) {
 		return -1;
 	}
@@ -526,8 +527,8 @@ static int source_index_unique_free_context_binding(
 	return 0;
 }
 
-int prototype_judgement_source_match_branch_refinement(
-	struct prototype_context_db* contexts,
+int prototype_judgement_source_match_branch_refinement_in_view(
+	const struct prototype_context_classifier_view* context_view,
 	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
@@ -545,17 +546,49 @@ int prototype_judgement_source_match_branch_refinement(
 	uint32_t* p_residual_pattern,
 	uint32_t* p_residual_value
 ) {
+	if (!context_view || !context_view->contexts) {
+		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+	}
+	struct prototype_context_db* contexts =
+		(struct prototype_context_db*)context_view->contexts;
+	#define BRANCH_REFINEMENT_INVALID_AT(stage) \
+		do { \
+			if (getenv("A_PROGRAM_BRANCH_REFINEMENT_TRACE")) { \
+				fprintf( \
+					stderr, \
+					"branch-refinement-trace stage=%s scrutinee-context=%u " \
+					"branch-context=%u constructor=%u binders=%u\n", \
+					(stage), scrutinee_context_id, branch_context_id, \
+					constructor_index, branch_binder_count \
+				); \
+			} \
+			return PROTOTYPE_INDEX_REFINEMENT_INVALID; \
+		} while (0)
+	#define BRANCH_REFINEMENT_RESIDUAL_AT(stage) \
+		do { \
+			if (getenv("A_PROGRAM_BRANCH_REFINEMENT_TRACE")) { \
+				fprintf( \
+					stderr, \
+					"branch-refinement-trace residual-stage=%s scrutinee-context=%u " \
+					"scrutinee-binding=%u branch-context=%u constructor=%u binders=%u\n", \
+					(stage), scrutinee_context_id, scrutinee_binding_id, \
+					branch_context_id, constructor_index, branch_binder_count \
+				); \
+			} \
+			return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL; \
+		} while (0)
 	uint32_t type_id;
 	uint32_t scrutinee_arguments[32];
 	uint32_t scrutinee_argument_count;
-	if (!contexts || !substitutions || !terms || !type_declarations ||
+	if (!substitutions || !terms || !type_declarations ||
 		!p_refined_context_id || !p_refinement_substitution_id ||
 		!p_constructor_term || !p_residual_pattern || !p_residual_value ||
 		branch_binder_count > 64 ||
 		(branch_binder_count != 0 && !branch_binders) ||
 		scrutinee_term >= terms->term_count ||
-		prototype_term_type_instance_info(
-			terms, scrutinee_classifier, &type_id, scrutinee_arguments,
+		prototype_type_projection_instance_info(
+			terms,
+		&type_declarations->semantic_schema, scrutinee_classifier, &type_id, scrutinee_arguments,
 			&scrutinee_argument_count
 		) != 0 || type_id >= type_declarations->semantic_schema.type_count) {
 		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
@@ -568,7 +601,7 @@ int prototype_judgement_source_match_branch_refinement(
 			scrutinee_argument_count || constructor_index >= type->constructor_count ||
 		type->first_constructor + constructor_index >=
 			type_declarations->semantic_schema.constructor_count) {
-		return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+		BRANCH_REFINEMENT_RESIDUAL_AT("declaration-shape");
 	}
 	const struct prototype_type_constructor_declaration* constructor =
 		&type_declarations->semantic_schema.constructor_declarations[
@@ -595,13 +628,14 @@ int prototype_judgement_source_match_branch_refinement(
 		}
 		if (concrete_status > 0) {
 			*p_residual_pattern = scrutinee_term;
-			return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+			BRANCH_REFINEMENT_RESIDUAL_AT("concrete-scrutinee");
 		}
 		uint32_t concrete_type_id;
 		uint32_t concrete_owner_arguments[32];
 		uint32_t concrete_owner_argument_count;
-		if (prototype_term_type_instance_info(
+		if (prototype_type_projection_instance_info(
 				terms,
+		&type_declarations->semantic_schema,
 				concrete_owner,
 				&concrete_type_id,
 				concrete_owner_arguments,
@@ -632,8 +666,9 @@ int prototype_judgement_source_match_branch_refinement(
 	uint32_t raw_result_type_id;
 	uint32_t raw_result_arguments[32];
 	uint32_t raw_result_argument_count;
-	if (prototype_term_type_instance_info(
-			terms, constructor->result_classifier, &raw_result_type_id,
+	if (prototype_type_projection_instance_info(
+			terms,
+		&type_declarations->semantic_schema, constructor->result_classifier, &raw_result_type_id,
 			raw_result_arguments, &raw_result_argument_count
 		) != 0 || raw_result_type_id != type_id || raw_result_argument_count !=
 			type->parameter_count + type->index_count) {
@@ -675,7 +710,7 @@ int prototype_judgement_source_match_branch_refinement(
 		) != 0 || !(scrutinee_context = prototype_context_get(
 			contexts, scrutinee_binding_context
 		))) {
-		return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+		BRANCH_REFINEMENT_RESIDUAL_AT("scrutinee-binding");
 	}
 	uint32_t source_index_contexts[32];
 	uint32_t base_context = scrutinee_context->parent;
@@ -694,7 +729,7 @@ int prototype_judgement_source_match_branch_refinement(
 				scrutinee_arguments[type->parameter_count + i];
 			*p_residual_value =
 				raw_result_arguments[type->parameter_count + i];
-			return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+			BRANCH_REFINEMENT_RESIDUAL_AT("source-index-binding");
 		}
 		if (source_index_contexts[i] != PROTOTYPE_INVALID_ID) {
 			const struct prototype_context* source_index = prototype_context_get(
@@ -716,18 +751,18 @@ int prototype_judgement_source_match_branch_refinement(
 			contexts, scrutinee_context_id, branch_context_id,
 			branch_path, 64, &branch_path_count
 		) != 0 || branch_path_count != branch_binder_count) {
-		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		BRANCH_REFINEMENT_INVALID_AT("branch-path");
 	}
 	uint32_t owner_arguments[32];
 	for (uint32_t i = 0; i < type->parameter_count; ++i) {
 		owner_arguments[i] = scrutinee_arguments[i];
 	}
 	uint32_t owner;
-	if (prototype_term_type_instance_make(
+	if (prototype_type_projection_instance_make(
 			terms, type_declarations, type_id, owner_arguments,
 			type->parameter_count, &owner
 		) != 0) {
-		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		BRANCH_REFINEMENT_INVALID_AT("owner-instance");
 	}
 	uint32_t refined_context = base_context;
 	uint32_t refined_path[64];
@@ -737,26 +772,26 @@ int prototype_judgement_source_match_branch_refinement(
 		);
 		uint32_t field_classifier;
 		if (!target || target->binding_id != branch_binders[i].binding_id ||
-			prototype_judgement_constructor_field_classifier(
-				terms, type_declarations, contexts, substitutions,
+			prototype_judgement_constructor_field_classifier_in_view(
+				terms, type_declarations, context_view, substitutions,
 				refined_context, owner, constructor_index,
 				branch_binders, i, i, &field_classifier
 			) != 0 || prototype_context_extend(
 				contexts, refined_context, branch_binders[i].binding_id,
-				field_classifier, PROTOTYPE_INVALID_ID, &refined_context
+				field_classifier, &refined_context
 			) != 0) {
-			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+			BRANCH_REFINEMENT_INVALID_AT("field-context");
 		}
 		refined_path[i] = refined_context;
 	}
 	uint32_t declaration_substitution;
-	if (prototype_context_substitution_from_terms(
-			contexts, substitutions, terms, type_declarations,
+	if (prototype_context_substitution_from_terms_in_view(
+			context_view, substitutions, terms, type_declarations,
 			refined_context, constructor->parameter_context,
 			scrutinee_arguments, type->parameter_count,
 			&declaration_substitution
 		) != 0) {
-		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		BRANCH_REFINEMENT_INVALID_AT("parameter-substitution");
 	}
 	uint32_t declaration_path[64];
 	uint32_t declaration_count;
@@ -764,33 +799,37 @@ int prototype_judgement_source_match_branch_refinement(
 			contexts, constructor->parameter_context, constructor->field_context,
 			declaration_path, 64, &declaration_count
 		) != 0 || declaration_count != branch_binder_count) {
-		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		BRANCH_REFINEMENT_INVALID_AT("declaration-path");
 	}
 	for (uint32_t i = 0; i < branch_binder_count; ++i) {
 		const struct prototype_context* field_context = prototype_context_get(
 			contexts, refined_path[i]
 		);
 		uint32_t field;
+		uint32_t field_classifier;
 		if (!field_context || prototype_term_var(
 				terms, branch_binders[i].binding_id, &field
-			) != 0 || prototype_substitution_extend(
-				substitutions, contexts, terms, type_declarations,
+			) != 0 || prototype_context_classifier_view_read(
+				context_view, refined_path[i], &field_classifier
+			) != 0 || prototype_substitution_extend_in_view(
+				context_view, substitutions, terms, type_declarations,
 				declaration_substitution, declaration_path[i], field,
-				prototype_context_classifier_term(field_context),
+				field_classifier,
 				&declaration_substitution
 			) != 0) {
-			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+			BRANCH_REFINEMENT_INVALID_AT("declaration-extension");
 		}
 	}
 	uint32_t result_type_id;
 	uint32_t result_arguments[32];
 	uint32_t result_argument_count;
-	if (prototype_term_type_instance_info(
-			terms, constructor->result_classifier, &result_type_id,
+	if (prototype_type_projection_instance_info(
+			terms,
+		&type_declarations->semantic_schema, constructor->result_classifier, &result_type_id,
 			result_arguments, &result_argument_count
 		) != 0 || result_type_id != type_id || result_argument_count !=
 			type->parameter_count + type->index_count) {
-		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		BRANCH_REFINEMENT_INVALID_AT("constructor-result-shape");
 	}
 	uint32_t specialized_arguments[32];
 	for (uint32_t i = 0; i < result_argument_count; ++i) {
@@ -799,7 +838,7 @@ int prototype_judgement_source_match_branch_refinement(
 				result_arguments[i], declaration_substitution,
 				&specialized_arguments[i]
 			) != 0) {
-			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+			BRANCH_REFINEMENT_INVALID_AT("specialized-result");
 		}
 	}
 	uint32_t index_solutions[32];
@@ -849,13 +888,13 @@ int prototype_judgement_source_match_branch_refinement(
 	}
 	uint32_t constructor_result;
 	uint32_t constructor_term;
-	if (prototype_term_type_instance_make(
+	if (prototype_type_projection_instance_make(
 			terms, type_declarations, type_id, specialized_arguments,
 			result_argument_count, &constructor_result
 		) != 0 || prototype_term_constructor(
 			terms, owner, constructor_index, &constructor_term
 		) != 0) {
-		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		BRANCH_REFINEMENT_INVALID_AT("constructor-term");
 	}
 	for (uint32_t i = 0; i < branch_binder_count; ++i) {
 		uint32_t field;
@@ -864,7 +903,7 @@ int prototype_judgement_source_match_branch_refinement(
 			) != 0 || prototype_term_app(
 				terms, constructor_term, field, &constructor_term
 			) != 0) {
-			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+			BRANCH_REFINEMENT_INVALID_AT("constructor-field-term");
 		}
 	}
 	uint32_t substitution;
@@ -872,7 +911,7 @@ int prototype_judgement_source_match_branch_refinement(
 			substitutions, contexts, refined_context, base_context,
 			&substitution
 		) != 0) {
-		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		BRANCH_REFINEMENT_INVALID_AT("base-projection");
 	}
 	uint32_t source_path[512];
 	uint32_t source_path_count;
@@ -880,16 +919,26 @@ int prototype_judgement_source_match_branch_refinement(
 			contexts, base_context, branch_context_id,
 			source_path, 512, &source_path_count
 		) != 0) {
-		return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+		BRANCH_REFINEMENT_INVALID_AT("source-path");
 	}
-	for (uint32_t path_index = 0; path_index < source_path_count; ++path_index) {
-		uint32_t source_extension = source_path[path_index];
-		const struct prototype_context* source_entry = prototype_context_get(
-			contexts, source_extension
-		);
-		if (!source_entry) {
-			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
-		}
+		for (uint32_t path_index = 0; path_index < source_path_count; ++path_index) {
+			uint32_t source_extension = source_path[path_index];
+			const struct prototype_context* source_entry = prototype_context_get(
+				contexts, source_extension
+			);
+			if (!source_entry) {
+				BRANCH_REFINEMENT_INVALID_AT("source-extension");
+			}
+			/* A candidate branch Context may still carry only a Layer T classifier
+			 * solution reference. Substitution formation is a checked CwF boundary and
+			 * therefore waits for the concrete classifier instead of treating pending
+			 * materialization as malformed Context structure. */
+			uint32_t source_classifier;
+			if (prototype_context_classifier_view_read(
+					context_view, source_extension, &source_classifier
+				) != 0) {
+				BRANCH_REFINEMENT_RESIDUAL_AT("source-classifier-pending");
+			}
 		uint32_t image = PROTOTYPE_INVALID_ID;
 		uint32_t image_classifier = PROTOTYPE_INVALID_ID;
 		for (uint32_t i = 0; i < type->index_count; ++i) {
@@ -900,14 +949,14 @@ int prototype_judgement_source_match_branch_refinement(
 				prototype_judgement_classifier_conversion(
 					terms, type_declarations, image, index_solutions[i]
 				).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
-				return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+				BRANCH_REFINEMENT_RESIDUAL_AT("duplicate-index-image");
 			}
 			image = index_solutions[i];
 		}
-		if (source_extension == scrutinee_binding_context) {
-			image = constructor_term;
-			image_classifier = constructor_result;
-		}
+			if (source_extension == scrutinee_binding_context) {
+				image = constructor_term;
+				image_classifier = constructor_result;
+			}
 		for (uint32_t i = 0; i < branch_binder_count; ++i) {
 			if (branch_path[i] != source_extension) {
 				continue;
@@ -917,57 +966,52 @@ int prototype_judgement_source_match_branch_refinement(
 			);
 			if (!field_context || prototype_term_var(
 					terms, branch_binders[i].binding_id, &image
+				) != 0 || prototype_context_classifier_view_read(
+					context_view, refined_path[i], &image_classifier
 				) != 0) {
-				return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+				BRANCH_REFINEMENT_INVALID_AT("source-image");
 			}
-			image_classifier = prototype_context_classifier_term(field_context);
-		}
+			}
 		if (image == PROTOTYPE_INVALID_ID) {
-			uint32_t source_classifier = prototype_context_classifier_term(
-				source_entry
-			);
 			uint32_t classifier;
 			uint32_t target_extension;
 			uint32_t projection;
 			uint32_t weakened_substitution;
 			uint32_t variable;
-			if (source_classifier == PROTOTYPE_INVALID_ID) {
-				return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
-			}
 			if (prototype_term_reindex(
 					terms, type_declarations, contexts, substitutions,
 					source_classifier, substitution, &classifier
 				) != 0) {
-				return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+				BRANCH_REFINEMENT_RESIDUAL_AT("extension-classifier-reindex");
 			}
 			if (prototype_context_extend(
 					contexts, refined_context, source_entry->binding_id,
-					classifier, PROTOTYPE_INVALID_ID, &target_extension
+					classifier, &target_extension
 				) != 0) {
-				return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+				BRANCH_REFINEMENT_RESIDUAL_AT("extension-context");
 			}
 			if (prototype_substitution_projection(
 					substitutions, contexts, target_extension, &projection
 				) != 0) {
-				return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+				BRANCH_REFINEMENT_RESIDUAL_AT("extension-projection");
 			}
 			if (prototype_substitution_compose(
 					substitutions, contexts, substitution, projection,
 					&weakened_substitution
 				) != 0) {
-				return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+				BRANCH_REFINEMENT_RESIDUAL_AT("extension-compose");
 			}
 			if (prototype_term_var(
 					terms, source_entry->binding_id, &variable
 				) != 0) {
-				return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+				BRANCH_REFINEMENT_RESIDUAL_AT("extension-variable");
 			}
-			if (prototype_substitution_extend(
-					substitutions, contexts, terms, type_declarations,
+			if (prototype_substitution_extend_in_view(
+					context_view, substitutions, terms, type_declarations,
 					weakened_substitution, source_extension, variable,
 					classifier, &substitution
 				) != 0) {
-				return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+				BRANCH_REFINEMENT_RESIDUAL_AT("extension-substitution");
 			}
 			refined_context = target_extension;
 			continue;
@@ -975,25 +1019,94 @@ int prototype_judgement_source_match_branch_refinement(
 		if (image_classifier == PROTOTYPE_INVALID_ID &&
 			(prototype_term_reindex(
 				terms, type_declarations, contexts, substitutions,
-				prototype_context_classifier_term(source_entry), substitution,
+				source_classifier, substitution,
 				&image_classifier
 			) != 0 || prototype_judgement_classifier_value_whnf(
 				terms, type_declarations, image_classifier, &image_classifier
 			) != 0)) {
-			return PROTOTYPE_INDEX_REFINEMENT_RESIDUAL;
+			BRANCH_REFINEMENT_RESIDUAL_AT("image-classifier");
 		}
-		if (prototype_substitution_extend(
-				substitutions, contexts, terms, type_declarations,
+			int extension_status = prototype_substitution_extend_in_view(
+				context_view, substitutions, terms, type_declarations,
 				substitution, source_extension, image,
 				image_classifier, &substitution
-			) != 0) {
-			return PROTOTYPE_INDEX_REFINEMENT_INVALID;
+			);
+			if (getenv("A_PROGRAM_BRANCH_REFINEMENT_TRACE")) {
+				fprintf(
+					stderr,
+					"branch-refinement-extension source=%u binding=%u "
+					"source-classifier=%u image=%u image-classifier=%u status=%d\n",
+					source_extension,
+					source_entry->binding_id,
+					source_classifier,
+					image,
+					image_classifier,
+					extension_status
+				);
+			}
+			if (extension_status != 0) {
+			if (getenv("A_PROGRAM_BRANCH_REFINEMENT_TRACE")) {
+				fprintf(
+					stderr,
+					"branch-refinement-trace substitution-extension-status=%d (%s) "
+					"source-extension=%u image=%u classifier=%u\n",
+					extension_status,
+					prototype_substitution_extend_result_name(extension_status),
+					source_extension, image, image_classifier
+				);
+			}
+			BRANCH_REFINEMENT_INVALID_AT("substitution-extension");
 		}
 	}
 	*p_refined_context_id = refined_context;
 	*p_refinement_substitution_id = substitution;
 	*p_constructor_term = constructor_term;
+	#undef BRANCH_REFINEMENT_RESIDUAL_AT
+	#undef BRANCH_REFINEMENT_INVALID_AT
 	return PROTOTYPE_INDEX_REFINEMENT_SOLVED;
+}
+
+int prototype_judgement_source_match_branch_refinement(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t scrutinee_context_id,
+	uint32_t scrutinee_term,
+	uint32_t scrutinee_binding_id,
+	uint32_t scrutinee_classifier,
+	uint32_t constructor_index,
+	uint32_t branch_context_id,
+	const struct prototype_case_binder* branch_binders,
+	uint32_t branch_binder_count,
+	uint32_t* p_refined_context_id,
+	uint32_t* p_refinement_substitution_id,
+	uint32_t* p_constructor_term,
+	uint32_t* p_residual_pattern,
+	uint32_t* p_residual_value
+) {
+	const struct prototype_context_classifier_view context_view = {
+		.contexts = contexts
+	};
+	return prototype_judgement_source_match_branch_refinement_in_view(
+		&context_view,
+		substitutions,
+		terms,
+		type_declarations,
+		scrutinee_context_id,
+		scrutinee_term,
+		scrutinee_binding_id,
+		scrutinee_classifier,
+		constructor_index,
+		branch_context_id,
+		branch_binders,
+		branch_binder_count,
+		p_refined_context_id,
+		p_refinement_substitution_id,
+		p_constructor_term,
+		p_residual_pattern,
+		p_residual_value
+	);
 }
 
 static int dimension_action_nullary_branch_refinement(
@@ -1132,7 +1245,8 @@ static int dimension_action_nullary_branch_refinement(
 		proof_context->parent != right_context_id ||
 		proof_context_id != scrutinee_context_id ||
 		branch_context_id != scrutinee_context_id ||
-		prototype_context_classifier_term(proof_context) != scrutinee_classifier) {
+		prototype_context_classifier_answer(contexts, proof_context) !=
+			scrutinee_classifier) {
 		return -1;
 	}
 	uint32_t base_context_id = left_context->parent;
@@ -1151,7 +1265,7 @@ static int dimension_action_nullary_branch_refinement(
 			substitution,
 			left_context_id,
 			constructor_view.source_constructor_term,
-			prototype_context_classifier_term(left_context),
+			prototype_context_classifier_answer(contexts, left_context),
 			&substitution
 		) != 0 || prototype_substitution_extend(
 			substitutions,
@@ -1161,7 +1275,7 @@ static int dimension_action_nullary_branch_refinement(
 			substitution,
 			right_context_id,
 			constructor_view.source_constructor_term,
-			prototype_context_classifier_term(right_context),
+			prototype_context_classifier_answer(contexts, right_context),
 			&substitution
 		) != 0 || prototype_substitution_extend(
 			substitutions,
@@ -1228,8 +1342,9 @@ int prototype_judgement_identity_relation_branch_refinement(
 		(branch_binder_count != 0 && !branch_binders) ||
 		scrutinee_term >= terms->term_count ||
 		terms->terms[scrutinee_term].tag != PROTOTYPE_TERM_VAR ||
-		prototype_term_type_instance_info(
+		prototype_type_projection_instance_info(
 			terms,
+		&type_declarations->semantic_schema,
 			scrutinee_classifier,
 			&type_id,
 			index_args,
@@ -1277,7 +1392,7 @@ int prototype_judgement_identity_relation_branch_refinement(
 		right_context->parent != left_context_id ||
 		proof_context->parent != right_context_id ||
 		proof_context_id != scrutinee_context_id ||
-		prototype_context_classifier_term(proof_context) !=
+		prototype_context_classifier_answer(contexts, proof_context) !=
 			scrutinee_classifier) {
 		return -1;
 	}
@@ -1300,8 +1415,9 @@ int prototype_judgement_identity_relation_branch_refinement(
 		!parameter_context || !field_context || field_context->depth <
 			parameter_context->depth || field_context->depth -
 			parameter_context->depth != branch_binder_count ||
-		prototype_term_type_instance_info(
+		prototype_type_projection_instance_info(
 			terms,
+		&type_declarations->semantic_schema,
 			constructor->result_classifier,
 			&result_type_id,
 			result_args,
@@ -1326,7 +1442,7 @@ int prototype_judgement_identity_relation_branch_refinement(
 	uint32_t identity_former;
 	uint32_t refined_context_id = base_context_id;
 	uint32_t refined_path[64];
-	if (prototype_term_type_instance_make(
+	if (prototype_type_projection_instance_make(
 			terms, type_declarations, type_id, NULL, 0, &identity_former
 		) != 0) {
 		return -1;
@@ -1356,7 +1472,6 @@ int prototype_judgement_identity_relation_branch_refinement(
 				refined_context_id,
 				branch_binders[i].binding_id,
 				field_classifier,
-				PROTOTYPE_INVALID_ID,
 				&next_context
 			) != 0) {
 			return -1;
@@ -1404,7 +1519,7 @@ int prototype_judgement_identity_relation_branch_refinement(
 				declaration_substitution,
 				declaration_path[i],
 				field,
-				prototype_context_classifier_term(refined_field),
+				prototype_context_classifier_answer(contexts, refined_field),
 				&declaration_substitution
 			) != 0) {
 			return -1;
@@ -1442,7 +1557,7 @@ int prototype_judgement_identity_relation_branch_refinement(
 			substitution,
 			left_context_id,
 			refined_result_args[0],
-			prototype_context_classifier_term(left_context),
+			prototype_context_classifier_answer(contexts, left_context),
 			&substitution
 		) != 0 || prototype_substitution_extend(
 			substitutions,
@@ -1452,9 +1567,9 @@ int prototype_judgement_identity_relation_branch_refinement(
 			substitution,
 			right_context_id,
 			refined_result_args[1],
-			prototype_context_classifier_term(right_context),
+			prototype_context_classifier_answer(contexts, right_context),
 			&substitution
-		) != 0 || prototype_term_type_instance_make(
+		) != 0 || prototype_type_projection_instance_make(
 			terms,
 			type_declarations,
 			type_id,
@@ -1504,7 +1619,7 @@ int prototype_judgement_identity_relation_branch_refinement(
 				substitution,
 				target_branch_path[i],
 				field,
-				prototype_context_classifier_term(refined_field),
+				prototype_context_classifier_answer(contexts, refined_field),
 				&substitution
 			) != 0) {
 			return -1;

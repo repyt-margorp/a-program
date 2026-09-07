@@ -5,10 +5,15 @@
 #include <stdint.h>
 
 #include "a_program/frontend/ast.h"
+#include "a_program/frontend/typing_constraint_state.h"
+#include "a_program/frontend/typing_solution_domain.h"
+#include "a_program/graph/compile_label.h"
 #include "a_program/graph/compile_diagnostic.h"
+#include "a_program/graph/typed_publication_view.h"
 #include "a_program/graph/typed_occurrence_model.h"
 #include "a_program/graph/verification.h"
 #include "a_program/kernel/context.h"
+#include "a_program/kernel/type_declaration.h"
 #include "a_program/producer/effort.h"
 #include "a_program/dimension/operator.h"
 
@@ -221,6 +226,26 @@ enum prototype_backend_target {
 	PROTOTYPE_BACKEND_VERILOG = 3
 };
 
+enum prototype_compile_enqueue_cause {
+	PROTOTYPE_COMPILE_ENQUEUE_SEED = 0,
+	PROTOTYPE_COMPILE_ENQUEUE_DEPENDENCY,
+	PROTOTYPE_COMPILE_ENQUEUE_INVALIDATION,
+	PROTOTYPE_COMPILE_ENQUEUE_MOTIVE,
+	PROTOTYPE_COMPILE_ENQUEUE_EXPECTED_REFINEMENT,
+	PROTOTYPE_COMPILE_ENQUEUE_EFFORT_RESUME,
+	PROTOTYPE_COMPILE_ENQUEUE_RETRY,
+	PROTOTYPE_COMPILE_ENQUEUE_CAUSE_COUNT
+};
+
+enum prototype_compile_scan_domain {
+	PROTOTYPE_COMPILE_SCAN_OCCURRENCE = 0,
+	PROTOTYPE_COMPILE_SCAN_CONSTRAINT,
+	PROTOTYPE_COMPILE_SCAN_CONTEXT,
+	PROTOTYPE_COMPILE_SCAN_CLAIM,
+	PROTOTYPE_COMPILE_SCAN_DERIVATION,
+	PROTOTYPE_COMPILE_SCAN_DOMAIN_COUNT
+};
+
 struct prototype_compile_metadata {
 	int compile_policy;
 	int definition_thunk_policy;
@@ -246,10 +271,27 @@ struct prototype_compile_metadata {
 	uint64_t constraint_enqueue_request_count;
 	uint64_t constraint_enqueue_duplicate_count;
 	uint64_t constraint_enqueue_count;
+	uint64_t constraint_enqueue_by_cause[
+		PROTOTYPE_COMPILE_ENQUEUE_CAUSE_COUNT
+	];
+	uint64_t constraint_enqueue_duplicate_by_cause[
+		PROTOTYPE_COMPILE_ENQUEUE_CAUSE_COUNT
+	];
 	uint64_t constraint_pop_count;
-	uint64_t constraint_pop_by_kind[16];
-	uint64_t constraint_changed_by_kind[16];
-	uint64_t constraint_noop_by_kind[16];
+	uint64_t constraint_pop_by_kind[OPERATION_CLASSIFIER_CONSTRAINT_KIND_COUNT];
+	uint64_t constraint_changed_by_kind[OPERATION_CLASSIFIER_CONSTRAINT_KIND_COUNT];
+	uint64_t constraint_noop_by_kind[OPERATION_CLASSIFIER_CONSTRAINT_KIND_COUNT];
+	uint64_t constraint_topology_digest;
+	uint64_t constraint_topology_validation_count;
+	uint64_t constraint_topology_validation_failure_count;
+	uint32_t constraint_topology_sealed;
+	uint64_t proof_solver_call_by_domain[
+		PROTOTYPE_COMPILE_SOLUTION_DOMAIN_COUNT
+	];
+	uint64_t motive_write_outside_solver_count;
+	uint64_t motive_write_after_solution_seal_count;
+	uint64_t full_scan_count[PROTOTYPE_COMPILE_SCAN_DOMAIN_COUNT];
+	uint64_t full_scan_visit_count[PROTOTYPE_COMPILE_SCAN_DOMAIN_COUNT];
 	uint64_t context_resolution_pass_count;
 	uint64_t context_index_rebuild_count;
 	uint64_t substitution_index_rebuild_count;
@@ -305,6 +347,7 @@ struct prototype_compile_metadata {
 	size_t accepted_substitution_claim_capacity;
 
 	struct prototype_typed_occurrence_graph typed_occurrences;
+	struct prototype_typed_publication_view typed_publication;
 
 	struct prototype_effect_constraint_summary effect_constraint_summary;
 
@@ -365,6 +408,11 @@ struct prototype_frozen_module_snapshot {
 	struct prototype_substitution_db substitutions;
 	struct prototype_dimension_operator_db dimension_operators;
 	struct prototype_typed_occurrence_graph typed_occurrences;
+	struct prototype_typed_publication_view typed_publication;
+	/* Exact accepted HAS_TYPE evidence selected for each raw substitution.
+	 * INVALID entries denote substitutions without an assignment premise. */
+	const uint32_t* accepted_substitution_claims;
+	size_t accepted_substitution_claim_capacity;
 	struct prototype_verification_db verification;
 	const struct prototype_compile_label* labels;
 	size_t label_count;
@@ -387,6 +435,16 @@ struct prototype_frozen_module_snapshot {
 int prototype_compile_metadata_frozen_snapshot(
 	const struct prototype_compile_metadata* metadata,
 	struct prototype_frozen_module_snapshot* p_snapshot
+);
+
+void prototype_compile_metadata_set_typed_publication_storage(
+	struct prototype_compile_metadata* metadata,
+	struct prototype_typed_publication_projection* projections,
+	uint32_t* concrete_contexts,
+	size_t capacity,
+	struct prototype_typed_publication_match_case_projection*
+		match_case_projections,
+	size_t match_case_capacity
 );
 
 void prototype_compile_metadata_set_function_graph_storage(
@@ -447,7 +505,6 @@ struct prototype_type_inspection {
 	uint32_t exposed_occurrence;
 	uint32_t exposed_classifier;
 	uint32_t expectation_classifier;
-	uint32_t expectation_claim_id;
 };
 
 enum prototype_type_inspection_state {

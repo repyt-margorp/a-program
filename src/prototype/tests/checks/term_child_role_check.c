@@ -101,7 +101,7 @@ int main(void) {
 	storage.terms[app_view] = (struct prototype_term) {
 		.tag = PROTOTYPE_TERM_TYPE_VIEW,
 		.as.type_view = {
-			.view_type_id = 0,
+			.identity = { .namespace_symbol_id = -1, .name_symbol_id = 1 },
 			.core = app,
 			.source = app
 		}
@@ -160,18 +160,19 @@ int main(void) {
 	};
 	uint32_t constant_match;
 	uint32_t reduced_constant_match;
+	/* A neutral uniform Match is not Core DefEq. Layer T represents a constant
+	 * classifier with an explicit motive instead. */
 	if (prototype_term_match(
 			&terms, variable, constant_cases, 2, &constant_match
 		) != 0 || prototype_term_perform_with_options(
 			&terms,
-			NULL,
 			NULL,
 			(struct prototype_term_reduction_options) {
 				.flags = PROTOTYPE_TERM_EVALUATE_DEFAULT
 			},
 			constant_match,
 			&reduced_constant_match
-		) != 0 || reduced_constant_match != one) {
+		) != 0 || reduced_constant_match != constant_match) {
 		return 7;
 	}
 

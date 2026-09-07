@@ -516,8 +516,8 @@ static int hott_action_certificate_is_valid(
 				return 0;
 			}
 			return bridge->source_context_id == prototype_judgement_proposition_get(judgement, source->proposition_id)->context_id &&
-				left_type == prototype_context_classifier_term(left_context) &&
-				right_type == prototype_context_classifier_term(right_context) &&
+				left_type == prototype_context_classifier_answer(contexts, left_context) &&
+				right_type == prototype_context_classifier_answer(contexts, right_context) &&
 				left_endpoint < terms->term_count &&
 				terms->terms[left_endpoint].tag == PROTOTYPE_TERM_VAR &&
 				terms->terms[left_endpoint].as.var.binding_id ==
@@ -568,7 +568,7 @@ static int hott_action_certificate_is_valid(
 				result->source_context != source_bridge->bridge_context_id ||
 				result->target_context != target_bridge->bridge_context_id ||
 				action->normalization_profile !=
-					PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF ||
+					PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF ||
 				action->term_graph_revision > terms->term_count ||
 				prototype_substitution_compare_pointwise(
 					(struct prototype_substitution_db*)substitutions,
@@ -877,10 +877,10 @@ static int hott_action_certificate_is_valid(
 						2,
 						&endpoint_count
 					) != 0 || endpoint_count != 2 ||
-					prototype_context_classifier_term(
-						prototype_context_get(contexts, endpoint_path[0])
-					) != expected_left_type || prototype_context_classifier_term(
-						prototype_context_get(contexts, endpoint_path[1])
+					prototype_context_classifier_answer(
+						contexts, prototype_context_get(contexts, endpoint_path[0])
+					) != expected_left_type || prototype_context_classifier_answer(
+						contexts, prototype_context_get(contexts, endpoint_path[1])
 					) != expected_right_type || identity->left_endpoint_binding_id !=
 						prototype_context_get(contexts, endpoint_path[0])->binding_id ||
 					identity->right_endpoint_binding_id !=
@@ -1228,14 +1228,12 @@ static int hott_action_certificate_is_valid(
 			uint32_t expected_family = identity_certificate->data.identity_type.
 				identity_type_term_id;
 			if (prototype_term_graph_substitute_bound_var(
-					(struct prototype_term_db*)terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-					expected_family,
+					(struct prototype_term_db*)terms, expected_family,
 					identity_certificate->data.identity_type.left_endpoint_binding_id,
 					left->subject,
 					&expected_family
 				) != 0 || prototype_term_graph_substitute_bound_var(
-					(struct prototype_term_db*)terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-					expected_family,
+					(struct prototype_term_db*)terms, expected_family,
 					identity_certificate->data.identity_type.right_endpoint_binding_id,
 					right->subject,
 					&expected_family

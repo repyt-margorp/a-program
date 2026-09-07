@@ -204,8 +204,9 @@ static int source_constructor_classifier(
 	uint32_t type_id;
 	uint32_t arguments[16];
 	uint32_t argument_count;
-	if (prototype_term_type_instance_info(
+	if (prototype_type_projection_instance_info(
 			terms,
+			semantic_schema,
 			type_view->source_type_view,
 			&type_id,
 			arguments,
@@ -395,8 +396,7 @@ int prototype_constructor_schema_view_action_classifier(
 					};
 				}
 				status = prototype_term_graph_reindex_bindings(
-					terms, prototype_type_view_rebuild_context_from_db(type_declarations),
-					source_domains[field],
+					terms, source_domains[field],
 					replacements,
 					field,
 					&domain

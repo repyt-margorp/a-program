@@ -26,7 +26,7 @@ struct artifact_append_order {
 	size_t substitution_count;
 };
 
-static inline int canonical_keys_equal(
+static inline int core_canonical_keys_equal(
 	const struct prototype_term_canonical_key* left,
 	const struct prototype_term_canonical_key* right
 ) {
@@ -38,13 +38,6 @@ static inline int canonical_keys_equal(
 		left->has_type_local_reference == right->has_type_local_reference &&
 		left->has_type_name_reference == right->has_type_name_reference &&
 		left->has_type_universe_reference == right->has_type_universe_reference;
-}
-
-static inline int canonical_key_is_cross_artifact_linkable(
-	const struct prototype_term_canonical_key* key
-) {
-	return key && !key->has_type_local_reference &&
-		!key->has_frame_local_reference;
 }
 
 static inline struct prototype_qualified_name qualified_name_make(
@@ -174,6 +167,7 @@ int prototype_internal_artifact_find_existing_term_by_canonical_key(
 
 int prototype_internal_artifact_append_graph_ordered(
 	struct prototype_artifact_interface* appended_interface,
+	const struct symbol_table* symbols,
 	struct prototype_term_db* target_terms,
 	struct prototype_type_declaration_db* target_type_declarations,
 	struct prototype_judgement_db* target_judgement,

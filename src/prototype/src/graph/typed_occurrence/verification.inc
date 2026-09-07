@@ -162,7 +162,7 @@ int prototype_verification_db_validate(
 					obligation->continuation_occurrence >= graph->occurrence_count ||
 					obligation->effect_constraint_kind != 0 ||
 					obligation->normalization_profile !=
-						PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF ||
+						PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF ||
 					!verification_term_reference_present(
 						terms, obligation->input_classifier
 					) ||
@@ -694,7 +694,6 @@ static int verification_db_discharge_family(
 			terms, family_lambda, returned_value, &family_application
 		) != 0 || prototype_term_normalize_complete_with_profile(
 			terms,
-			type_declarations,
 			NULL,
 			obligation->normalization_profile,
 			family_application,
@@ -707,11 +706,11 @@ static int verification_db_discharge_family(
 	if (terms->terms[expected_classifier].tag == PROTOTYPE_TERM_RETURN) {
 		expected_classifier = terms->terms[expected_classifier].as.return_term.value;
 	}
-	struct prototype_term_classifier_view expected_view;
+	struct prototype_classifier_view expected_view;
 	if (prototype_judgement_classifier_view(
 			terms, type_declarations, NULL, expected_classifier, &expected_view
-		) != 0 || expected_view.category != PROTOTYPE_TERM_CATEGORY_COMPUTATION ||
-		expected_view.computation_kind != PROTOTYPE_TERM_COMPUTATION_KIND_RETURNING ||
+		) != 0 || expected_view.category != PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION ||
+		expected_view.computation_kind != PROTOTYPE_COMPUTATION_KIND_RETURNING ||
 		!(prototype_judgement_classifier_conversion(
 			terms,
 			type_declarations,

@@ -13,8 +13,7 @@ int main(void) {
 		.body_classifier = 17,
 		.exposed_occurrence = 0,
 		.exposed_classifier = 17,
-		.expectation_classifier = PROTOTYPE_INVALID_ID,
-		.expectation_claim_id = PROTOTYPE_INVALID_ID
+		.expectation_classifier = PROTOTYPE_INVALID_ID
 	};
 	struct prototype_compile_metadata metadata = {
 		.typed_occurrences = {

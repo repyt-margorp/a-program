@@ -2,6 +2,7 @@
 #define __A_PROGRAM_KERNEL_JUDGEMENT_RULES_H__
 
 #include "a_program/kernel/judgement/db.h"
+#include "a_program/kernel/judgement/occurrence_context_view.h"
 
 int prototype_judgement_result_computation_endpoints_equal(
 	struct prototype_term_db* terms,
@@ -117,6 +118,25 @@ int prototype_judgement_source_match_branch_refinement(
 	uint32_t* p_residual_pattern,
 	uint32_t* p_residual_value
 );
+int prototype_judgement_source_match_branch_refinement_in_view(
+	const struct prototype_context_classifier_view* context_view,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t scrutinee_context_id,
+	uint32_t scrutinee_term,
+	uint32_t scrutinee_binding_id,
+	uint32_t scrutinee_classifier,
+	uint32_t constructor_index,
+	uint32_t branch_context_id,
+	const struct prototype_case_binder* branch_binders,
+	uint32_t branch_binder_count,
+	uint32_t* p_refined_context_id,
+	uint32_t* p_refinement_substitution_id,
+	uint32_t* p_constructor_term,
+	uint32_t* p_residual_pattern,
+	uint32_t* p_residual_value
+);
 int prototype_judgement_delta_record_context_binding_assumption(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
@@ -204,6 +224,18 @@ int prototype_judgement_delta_app_elim_classifier(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	uint32_t function_classifier,
+	uint32_t argument_subject,
+	uint32_t argument_classifier,
+	uint32_t* p_classifier
+);
+
+int prototype_judgement_app_elim_classifier_in_context(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
 	uint32_t function_classifier,
 	uint32_t argument_subject,
 	uint32_t argument_classifier,
@@ -600,6 +632,36 @@ int prototype_judgement_constructor_spine_classifier(
 	uint32_t* p_classifier,
 	int* p_saturated
 );
+int prototype_judgement_constructor_spine_classifier_in_view(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_classifier_view* context_view,
+	struct prototype_substitution_db* substitutions,
+	uint32_t source_context,
+	uint32_t subject,
+	uint32_t constructor_owner_view,
+	const uint32_t* argument_classifiers,
+	uint32_t argument_classifier_count,
+	uint32_t* p_classifier,
+	int* p_saturated
+);
+
+/* Computes the result of a constructor spine whose field domains were already
+ * checked by the caller in their owning Contexts. Unlike the replay-facing
+ * classifier API, this function does not repeat field-domain conversion. */
+int prototype_judgement_constructor_spine_result_in_view(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_classifier_view* context_view,
+	struct prototype_substitution_db* substitutions,
+	uint32_t source_context,
+	uint32_t subject,
+	uint32_t constructor_owner_view,
+	const uint32_t* argument_classifiers,
+	uint32_t argument_classifier_count,
+	uint32_t* p_classifier,
+	int* p_saturated
+);
 
 /* Checked semantic decomposition of one constructor application. Parameters
  * specialize the declaration telescope; indices are read only from the
@@ -632,10 +694,23 @@ int prototype_judgement_constructor_field_classifier(
 	uint32_t field_index,
 	uint32_t* p_classifier
 );
-int prototype_judgement_constructor_spine_expected_domains(
+int prototype_judgement_constructor_field_classifier_in_view(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	struct prototype_context_db* contexts,
+	const struct prototype_context_classifier_view* context_view,
+	struct prototype_substitution_db* substitutions,
+	uint32_t source_context,
+	uint32_t owner,
+	uint32_t constructor_index,
+	const struct prototype_case_binder* previous_binders,
+	uint32_t previous_binder_count,
+	uint32_t field_index,
+	uint32_t* p_classifier
+);
+int prototype_judgement_constructor_spine_expected_domains_in_view(
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_context_classifier_view* context_view,
 	struct prototype_substitution_db* substitutions,
 	uint32_t source_context,
 	uint32_t subject,
@@ -762,7 +837,7 @@ int prototype_judgement_delta_record_text_literal(
 int prototype_judgement_delta_record_int_literal(
 	struct prototype_judgement_delta* delta,
 	struct prototype_term_db* terms,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	uint32_t subject,
 	uint32_t classifier
 );
@@ -778,6 +853,11 @@ int prototype_judgement_effect_operation_classifier(
 	struct prototype_term_db* terms,
 	const struct prototype_term* operation,
 	uint32_t* p_ret
+);
+int prototype_judgement_effect_operation_classifier_matches(
+	const struct prototype_term_db* terms,
+	const struct prototype_term* operation,
+	uint32_t classifier
 );
 
 
@@ -893,11 +973,13 @@ int prototype_judgement_delta_has_pending_classifier_state(
 int prototype_judgement_validate_accepted_graph(
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	struct prototype_context_db* contexts,
+	const struct prototype_context_classifier_view* context_classifiers,
 	struct prototype_substitution_db* substitutions,
 	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_typed_occurrence_graph* operations,
+	const struct prototype_judgement_occurrence_context_view* occurrence_contexts,
 	struct prototype_judgement_db* judgement
 );
 
@@ -927,7 +1009,7 @@ int prototype_judgement_project_principal_occurrence_proposition(
 );
 
 int prototype_judgement_audit_principal_occurrence_claims(
-	const struct prototype_term_db* terms,
+	struct prototype_term_db* terms,
 	const struct prototype_context_db* contexts,
 	const struct prototype_typed_occurrence_graph* operations,
 	const struct prototype_judgement_db* judgement,
@@ -936,13 +1018,7 @@ int prototype_judgement_audit_principal_occurrence_claims(
 
 int prototype_judgement_publish_candidates(
 	const struct prototype_typed_occurrence_graph* operations,
-	struct prototype_judgement_db* judgement
-);
-
-int prototype_judgement_add_normalization_premise_conversions(
-	struct prototype_term_db* terms,
-	struct prototype_type_declaration_db* type_declarations,
-	const struct prototype_typed_occurrence_graph* operations,
+	const struct prototype_judgement_occurrence_context_view* occurrence_contexts,
 	struct prototype_judgement_db* judgement
 );
 

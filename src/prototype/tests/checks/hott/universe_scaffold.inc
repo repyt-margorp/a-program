@@ -225,17 +225,21 @@
 		PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_SOLVED;
 	if (prototype_judgement_delta_commit(&indexed_delta, 0) != 0 ||
 		prototype_judgement_publish_candidates(
-			&indexed_match_operation_graph, &indexed_match_judgement
+			&indexed_match_operation_graph, NULL, &indexed_match_judgement
 		) != 0 || prototype_typed_occurrence_graph_seal(
 			&indexed_match_operation_graph, &term_db, &context_db
 		) != 0 || prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
-			prototype_default_intrinsic_environment(),
+			prototype_default_intrinsic_typing_environment(),
 			&context_db,
+			&(const struct prototype_context_classifier_view) {
+				.contexts = &context_db
+			},
 			&substitution_db,
 			&bridge_dimension_operator_db,
 			&indexed_match_operation_graph,
+			NULL,
 			&indexed_match_judgement
 		) != 0) {
 		return 143;
@@ -272,11 +276,15 @@
 	if (prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
-			prototype_default_intrinsic_environment(),
+			prototype_default_intrinsic_typing_environment(),
 			&context_db,
+			&(const struct prototype_context_classifier_view) {
+				.contexts = &context_db
+			},
 			&substitution_db,
 			&bridge_dimension_operator_db,
 			&indexed_match_operation_graph,
+			NULL,
 			&indexed_match_judgement
 		) == 0) {
 		return 144;
@@ -286,11 +294,15 @@
 	if (prototype_judgement_validate_accepted_graph(
 			&term_db,
 			&type_db,
-			prototype_default_intrinsic_environment(),
+			prototype_default_intrinsic_typing_environment(),
 			&context_db,
+			&(const struct prototype_context_classifier_view) {
+				.contexts = &context_db
+			},
 			&substitution_db,
 			&bridge_dimension_operator_db,
 			&indexed_match_operation_graph,
+			NULL,
 			&indexed_match_judgement
 	) != 0) {
 		return 144;
@@ -356,7 +368,6 @@
 			empty,
 			bool_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&bool_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -549,7 +560,7 @@
 	uint32_t identity_action_result;
 	if (prototype_hott_execute_substitution_action(
 			&action_db, &kernel_builder, &bridge_db, identity_substitution_action_id,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF, 32,
 			&identity_action_result
 		) != 0 || action_results[identity_action_result].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_READY) {
@@ -586,7 +597,7 @@
 			&projection_action_id
 		) != 0 || prototype_hott_execute_substitution_action(
 			&action_db, &kernel_builder, &bridge_db, projection_action_id,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF, 32,
 			&projection_result_id
 		) != 0 || action_results[projection_result_id].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_READY) {
@@ -630,7 +641,7 @@
 			&composition_action_id
 		) != 0 || prototype_hott_execute_substitution_action(
 			&action_db, &kernel_builder, &bridge_db, composition_action_id,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 32,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF, 32,
 			&composition_result_id
 		) != 0 || action_results[composition_result_id].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_READY ||
@@ -869,7 +880,6 @@
 			bool_context,
 			coverage_second_bool_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&coverage_second_bool_context
 		) != 0 || prototype_substitution_extend(
 			&substitution_db,
@@ -927,7 +937,7 @@
 			&action_db, &kernel_view, &bridge_db, extension_action, &extension_action_id
 		) != 0 || prototype_hott_execute_substitution_action(
 			&action_db, &kernel_builder, &bridge_db, extension_action_id,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 64,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF, 64,
 			&extension_result_id
 		) != 0 || action_results[extension_result_id].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_READY ||
@@ -1074,7 +1084,7 @@
 		bool_context,
 		boxed_bool_variable,
 		box_view,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t boxed_claim = fixture_add_claim(
 		&judgement,
@@ -1208,7 +1218,7 @@
 		bool_context,
 		returned_box,
 		pure_box_computation,
-		PROTOTYPE_TERM_CATEGORY_COMPUTATION
+		PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION
 	);
 	uint32_t returned_box_claim = fixture_add_claim(
 		&judgement,
@@ -1311,7 +1321,7 @@
 		bool_context,
 		thunked_box,
 		pure_box_thunk_type,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t thunked_box_claim = fixture_add_claim(
 		&judgement,

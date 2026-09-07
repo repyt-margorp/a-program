@@ -10,9 +10,6 @@ struct prototype_judgement_delta;
 int prototype_judgement_db_rebuild_index(
 	struct prototype_judgement_db* judgement
 );
-int prototype_judgement_delta_rebuild_candidate_index(
-	struct prototype_judgement_delta* delta
-);
 int prototype_judgement_transaction_begin(
 	const struct prototype_judgement_db* judgement,
 	struct prototype_judgement_transaction_mark* mark
@@ -25,13 +22,6 @@ int prototype_judgement_transaction_rollback(
 	struct prototype_judgement_db* judgement,
 	struct prototype_judgement_transaction_mark* mark
 );
-
-enum prototype_judgement_category {
-	PROTOTYPE_JUDGEMENT_CATEGORY_INVALID = 0,
-	PROTOTYPE_JUDGEMENT_CATEGORY_VALUE,
-	PROTOTYPE_JUDGEMENT_CATEGORY_COMPUTATION,
-	PROTOTYPE_JUDGEMENT_CATEGORY_TYPE
-};
 
 const struct prototype_judgement_claim* prototype_judgement_claim_get(
 	const struct prototype_judgement_db* judgement,
@@ -109,7 +99,7 @@ int prototype_judgement_selected_evidence_from_claim(
  * fragment. Successful paths commit the delta into JudgementDB; failed paths
  * rewind it. This is not a semantic typing context. */
 struct prototype_judgement_delta {
-	const struct prototype_intrinsic_environment* intrinsic_environment;
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment;
 	struct prototype_judgement_db* db;
 	struct prototype_judgement_proposition* propositions;
 	struct prototype_judgement_derivation_candidate* derivation_candidates;
@@ -138,6 +128,7 @@ struct prototype_judgement_delta {
 	size_t effect_row_constraint_count;
 	size_t effect_row_constraint_capacity;
 	struct prototype_context_db* contexts;
+	struct prototype_context_classifier_view context_classifier_view;
 	struct prototype_substitution_db* substitutions;
 	const struct prototype_dimension_operator_db* dimension_operators;
 	const struct prototype_typed_occurrence* occurrences;
@@ -220,7 +211,7 @@ void prototype_judgement_delta_init(
 
 void prototype_judgement_delta_set_intrinsic_environment(
 	struct prototype_judgement_delta* delta,
-	const struct prototype_intrinsic_environment* intrinsic_environment
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment
 );
 
 void prototype_judgement_delta_set_context(
@@ -245,6 +236,10 @@ void prototype_judgement_delta_set_context_store(
 	struct prototype_judgement_delta* delta,
 	struct prototype_context_db* contexts,
 	struct prototype_substitution_db* substitutions
+);
+void prototype_judgement_delta_set_context_classifier_view(
+	struct prototype_judgement_delta* delta,
+	const struct prototype_context_classifier_view* context_view
 );
 void prototype_judgement_delta_set_occurrence_store(
 	struct prototype_judgement_delta* delta,
@@ -290,16 +285,5 @@ int prototype_judgement_candidate_find_derivation_kind(
 	int proof_kind,
 	uint32_t* p_derivation_id
 );
-
-int prototype_judgement_candidate_find_derivation_other_than(
-	const struct prototype_judgement_proposition* claims,
-	size_t claim_count,
-	const struct prototype_judgement_derivation_candidate* derivations,
-	size_t derivation_count,
-	uint32_t claim_id,
-	int excluded_proof_kind,
-	uint32_t* p_derivation_id
-);
-
 
 #endif

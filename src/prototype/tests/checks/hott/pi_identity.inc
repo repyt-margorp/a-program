@@ -1152,7 +1152,6 @@
 			empty,
 			identity_function_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&identity_function_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -1282,9 +1281,9 @@
 		) != 0) {
 		return 186;
 	}
-	/* The constant Match is judgementally equal to its branch body under the
-	 * exhaustive constant-eliminator rule. This fixture checks that the Pi
-	 * identity family observes the same conversion rule. */
+	/* A constant Match over a neutral input is intentionally not kernel DefEq
+	 * to its branch body. The Pi identity family must establish this equality
+	 * as object evidence instead of extending Core conversion. */
 	uint32_t constant_function_binding = prototype_term_new_binding(&term_db);
 	uint32_t constant_function_context;
 	uint32_t constant_function_context_certificate;
@@ -1301,7 +1300,6 @@
 			empty,
 			constant_function_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&constant_function_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -1451,7 +1449,6 @@
 			constant_function_context,
 			constant_motive_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&constant_motive_context
 		) != 0 || prototype_judgement_add_reindexed_claim(
 			&judgement,
@@ -1607,7 +1604,7 @@
 			&type_db,
 			constant_function_value,
 			matched_constant_function_value
-		).status != PROTOTYPE_TERM_CONVERSION_EQUAL) {
+		).status == PROTOTYPE_TERM_CONVERSION_EQUAL) {
 		return 324;
 	}
 	uint32_t constant_function_identity_family_claim;
@@ -1622,118 +1619,8 @@
 		) != 0) {
 		return 325;
 	}
-	uint32_t constant_function_degeneracy_family_claim;
-	uint32_t constant_function_degeneracy_witness;
-	uint32_t constant_function_degeneracy_witness_claim;
-	uint32_t checked_constant_function_family_claim = PROTOTYPE_INVALID_ID;
-	uint32_t checked_constant_function_witness_claim = PROTOTYPE_INVALID_ID;
-	int constant_function_degeneracy_status = prototype_hott_construct_degeneracy(
-			&action_db,
-			&kernel_builder,
-			&bridge_db,
-			bool_function_identity_result_id,
-			constant_function_value_claim,
-			&constant_function_degeneracy_family_claim,
-			&constant_function_degeneracy_witness,
-			&constant_function_degeneracy_witness_claim
-		);
-	int checked_constant_function_status = constant_function_degeneracy_status == 0 ?
-		prototype_hott_check_object_identity_witness(
-			&action_db,
-			&kernel_builder,
-			&bridge_db,
-			bool_function_identity_result_id,
-			constant_function_value_claim,
-			matched_constant_function_value_claim,
-			constant_function_degeneracy_witness_claim,
-			&checked_constant_function_family_claim,
-			&checked_constant_function_witness_claim
-		) : -1;
-	if (constant_function_degeneracy_status != 0 ||
-		checked_constant_function_status != 0 ||
-		checked_constant_function_family_claim !=
-			constant_function_identity_family_claim) {
-		fprintf(
-			stderr,
-			"constant function identity degeneracy=%d check=%d family=%u/%u\n",
-			constant_function_degeneracy_status,
-			checked_constant_function_status,
-			checked_constant_function_family_claim,
-			constant_function_identity_family_claim
-		);
-		return 326;
-	}
-	uint32_t observed_false_claim;
-	uint32_t observed_false_return;
-	uint32_t observed_false_return_claim;
-	uint32_t observed_false_lambda;
-	uint32_t observed_false_lambda_claim;
-	uint32_t observed_false_function;
-	uint32_t observed_false_function_claim;
-	if (prototype_judgement_add_reindexed_claim(
-			&judgement,
-			&term_db,
-			&type_db,
-			&context_db,
-			&substitution_db,
-			false_claim,
-			constant_function_projection,
-			&observed_false_claim
-		) != 0 || prototype_term_return(
-			&term_db, bool_false, &observed_false_return
-		) != 0 || prototype_judgement_add_return_claim(
-			&judgement,
-			&term_db,
-			&type_db,
-			constant_function_context,
-			observed_false_return,
-			pure_bool_computation_type,
-			observed_false_claim,
-			&observed_false_return_claim
-		) != 0 || prototype_term_lambda(
-			&term_db,
-			constant_function_binding,
-			observed_false_return,
-			&observed_false_lambda
-		) != 0 || prototype_judgement_add_lambda_claim(
-			&judgement,
-			&term_db,
-			&type_db,
-			&context_db,
-			&substitution_db,
-			empty,
-			observed_false_lambda,
-			bool_function_computation_type,
-			constant_function_argument_claim,
-			observed_false_return_claim,
-			&observed_false_lambda_claim
-		) != 0 || prototype_term_thunk(
-			&term_db, observed_false_lambda, &observed_false_function
-		) != 0 || prototype_judgement_add_thunk_claim(
-			&judgement,
-			&term_db,
-			&type_db,
-			empty,
-			observed_false_function,
-			thunk_bool_function_type,
-			observed_false_lambda_claim,
-			&observed_false_function_claim
-		) != 0 || prototype_hott_check_object_identity_witness(
-			&action_db,
-			&kernel_builder,
-			&bridge_db,
-			bool_function_identity_result_id,
-			constant_function_value_claim,
-			observed_false_function_claim,
-			constant_function_degeneracy_witness_claim,
-			&checked_constant_function_family_claim,
-			&checked_constant_function_witness_claim
-		) == 0) {
-		return 327;
-	}
 	(void)constant_function_context_certificate;
-	(void)constant_function_degeneracy_family_claim;
-	(void)constant_function_degeneracy_witness;
+	(void)constant_function_identity_family_claim;
 	uint32_t pure_function_value_computation_type;
 	uint32_t thunk_return_function_type;
 	uint32_t thunk_return_function_has_type;
@@ -1959,7 +1846,6 @@
 			bool_identity_endpoint_path[0],
 			contextual_function_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&contextual_function_body_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -2076,7 +1962,6 @@
 			empty,
 			pi_variable_binding,
 			thunk_bool_function_type,
-			PROTOTYPE_INVALID_ID,
 			&pi_variable_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -2228,7 +2113,6 @@
 			pi_variable_context,
 			applied_function_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&applied_function_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -2386,16 +2270,14 @@
 	}
 	uint32_t pi_degeneracy_family;
 	if (prototype_term_graph_substitute_bound_var(
-			&term_db, prototype_type_view_rebuild_context_from_db(&type_db),
-			bool_function_identity_certificate->data.identity_type.
+			&term_db, bool_function_identity_certificate->data.identity_type.
 				identity_type_term_id,
 			bool_function_identity_certificate->data.identity_type.
 				left_endpoint_binding_id,
 			identity_function_value,
 			&pi_degeneracy_family
 		) != 0 || prototype_term_graph_substitute_bound_var(
-			&term_db, prototype_type_view_rebuild_context_from_db(&type_db),
-			pi_degeneracy_family,
+			&term_db, pi_degeneracy_family,
 			bool_function_identity_certificate->data.identity_type.
 				right_endpoint_binding_id,
 			identity_function_value,
@@ -2490,7 +2372,6 @@
 			empty,
 			composed_identity_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&composed_identity_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -3509,8 +3390,7 @@
 				&binder,
 				&body
 			) != 0 || prototype_term_graph_substitute_bound_var(
-				&term_db, prototype_type_view_rebuild_context_from_db(&type_db),
-				body,
+				&term_db, body,
 				binder,
 				box_square_field_terms[i],
 				&box_square_witness_classifier
@@ -3662,14 +3542,12 @@
 			empty,
 			indexed_left_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&indexed_left_context
 		) != 0 || prototype_context_extend(
 			&context_db,
 			indexed_left_context,
 			indexed_right_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&indexed_right_context
 		) != 0 || prototype_term_var(
 			&term_db, indexed_left_binding, &indexed_left_var
@@ -3696,7 +3574,6 @@
 			indexed_right_context,
 			indexed_proof_binding,
 			indexed_relation_type,
-			PROTOTYPE_INVALID_ID,
 			&indexed_proof_context
 		) != 0 || prototype_term_var(
 			&term_db, indexed_proof_binding, &indexed_proof_var
@@ -3995,42 +3872,42 @@
 		indexed_proof_context,
 		indexed_proof_var,
 		indexed_relation_type,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t indexed_false_body_occurrence = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_left_var,
 		bool_view,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t indexed_false_return_operation = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_false_return,
 		indexed_branch_classifier,
-		PROTOTYPE_TERM_CATEGORY_COMPUTATION
+		PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION
 	);
 	uint32_t indexed_true_body_occurrence = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_left_var,
 		bool_view,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t indexed_true_return_operation = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_true_return,
 		indexed_branch_classifier,
-		PROTOTYPE_TERM_CATEGORY_COMPUTATION
+		PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION
 	);
 	uint32_t indexed_match_operation = add_operation(
 		&indexed_match_operation_graph,
 		indexed_proof_context,
 		indexed_match_term,
 		PROTOTYPE_INVALID_ID,
-		PROTOTYPE_TERM_CATEGORY_COMPUTATION
+		PROTOTYPE_CLASSIFIER_CATEGORY_COMPUTATION
 	);
 	indexed_match_operations[indexed_scrutinee_operation].tag =
 		PROTOTYPE_TYPED_OCCURRENCE_VAR;

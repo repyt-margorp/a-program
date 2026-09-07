@@ -8,14 +8,20 @@ cd "$ROOT_DIR"
 tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/a-program-spec-consistency.XXXXXX")
 trap 'rm -rf "$tmp_dir"' EXIT
 
-artifact_schema=src/prototype/spec/artifact_v86.schema
-checked_artifact_schema=src/prototype/spec/checked_artifact_v87.schema
+artifact_schema=src/prototype/spec/artifact_v90.schema
+checked_artifact_schema=src/prototype/spec/checked_artifact_v90.schema
 hott_schema=src/prototype/spec/hott_fragment_v6.schema
 calculus_header=src/prototype/calculus.h
 artifact_header=src/prototype/include/a_program/artifact/interface.h
 checked_artifact_header=src/prototype/include/a_program/checker/container.h
 checked_artifact_source=src/prototype/src/checker/container.c
+term_tag_header=src/prototype/include/a_program/protocol/graph.h
 term_header=src/prototype/include/a_program/core/term.h
+normalization_header=src/prototype/include/a_program/protocol/request.h
+computation_header=src/prototype/include/a_program/protocol/graph.h
+core_intrinsic_header=src/prototype/include/a_program/core/intrinsic.h
+typing_intrinsic_header=src/prototype/include/a_program/kernel/intrinsic.h
+classifier_header=src/prototype/include/a_program/kernel/classifier.h
 
 artifact_version=$(awk 'NR == 1 && $1 == "A_PROGRAM_ARTIFACT" { print $2 }' "$artifact_schema")
 header_version=$(awk '/^#define PROTOTYPE_ARTIFACT_FORMAT_VERSION / { print $3 }' "$artifact_header")
@@ -35,9 +41,9 @@ if [ -z "$checked_artifact_version" ] ||
 	echo "checked artifact schema and reader version disagree" >&2
 	exit 1
 fi
-if ! grep -q '^MAGIC is the exact eight-byte sequence `APCHK087`\.$' \
+if ! grep -q '^MAGIC is the exact eight-byte sequence `APCHK090`\.$' \
 	"$checked_artifact_schema" ||
-	! grep -q '^#define CHECKED_WIRE_MAGIC "APCHK087"$' \
+	! grep -q '^#define CHECKED_WIRE_MAGIC "APCHK090"$' \
 	"$checked_artifact_source" ||
 	! grep -q '^section_kind SEMANTIC=1 CONTRACTS=2 PRODUCER=3 DEBUG=4$' \
 	"$checked_artifact_schema"; then
@@ -55,7 +61,7 @@ awk '
 		sub(/,/, "", value)
 		print name "=" value
 	}
-' "$term_header" | sort >"$tmp_dir/header-term-tags"
+' "$term_tag_header" | sort >"$tmp_dir/header-term-tags"
 awk '
 	$1 == "term_tag" {
 		for (i = 2; i <= NF; ++i) print $i
@@ -99,28 +105,23 @@ compare_checked_enum() {
 	fi
 }
 
-compare_checked_enum "$term_header" prototype_term_category \
-	PROTOTYPE_TERM_CATEGORY_ term_category
-compare_checked_enum "$term_header" prototype_term_computation_kind \
-	PROTOTYPE_TERM_COMPUTATION_KIND_ term_computation_kind
+compare_checked_enum "$classifier_header" prototype_classifier_category \
+	PROTOTYPE_CLASSIFIER_CATEGORY_ classifier_category
+compare_checked_enum "$classifier_header" prototype_computation_kind \
+	PROTOTYPE_COMPUTATION_KIND_ computation_kind
 compare_checked_enum "$term_header" prototype_term_application_role \
 	PROTOTYPE_TERM_APPLICATION_ term_application_role
-compare_checked_enum "$term_header" prototype_term_normalization_profile \
+compare_checked_enum "$normalization_header" prototype_term_normalization_profile \
 	PROTOTYPE_TERM_NORMALIZATION_ normalization_profile
-compare_checked_enum "$term_header" prototype_computation_totality \
+compare_checked_enum "$computation_header" prototype_computation_totality \
 	PROTOTYPE_COMPUTATION_TOTALITY_ computation_totality
-compare_checked_enum "$term_header" prototype_pure_primitive_id \
+compare_checked_enum "$core_intrinsic_header" prototype_pure_primitive_id \
 	PROTOTYPE_PURE_PRIMITIVE_ pure_primitive
-compare_checked_enum "$term_header" prototype_effect_operation_id \
+compare_checked_enum "$core_intrinsic_header" prototype_effect_operation_id \
 	PROTOTYPE_EFFECT_OPERATION_ effect_operation
-compare_checked_enum "$term_header" prototype_effect_operation_classifier_schema \
+compare_checked_enum "$typing_intrinsic_header" prototype_effect_operation_classifier_schema \
 	PROTOTYPE_EFFECT_OPERATION_CLASSIFIER_ effect_operation_classifier
-compare_checked_enum "$term_header" prototype_effect_operation_inner_policy \
-	PROTOTYPE_EFFECT_OPERATION_INNER_ effect_operation_inner_policy
-compare_checked_enum "$term_header" \
-	prototype_effect_operation_resumption_multiplicity \
-	PROTOTYPE_EFFECT_OPERATION_RESUMPTION_ effect_operation_resumption
-compare_checked_enum "$term_header" prototype_host_type_id \
+compare_checked_enum "$core_intrinsic_header" prototype_host_type_id \
 	PROTOTYPE_HOST_TYPE_ host_type
 compare_checked_enum src/prototype/include/a_program/checker/module.h \
 	prototype_semantic_context_extension_kind \
@@ -202,9 +203,9 @@ for readme in README.md src/prototype/README.md; do
 		echo "$readme contains an obsolete artifact header" >&2
 		exit 1
 	fi
-	if ! grep -Eiq 'accepted proof artifact (format )?v86' "$readme" ||
-		! grep -Eiq 'checked semantic container (format )?v87' "$readme"; then
-		echo "$readme does not distinguish accepted v86 from checked v87" >&2
+	if ! grep -Eiq 'accepted proof artifact (format )?v90' "$readme" ||
+		! grep -Eiq 'checked semantic container (format )?v90' "$readme"; then
+		echo "$readme does not document both v90 artifact authorities" >&2
 		exit 1
 	fi
 done

@@ -6,7 +6,7 @@
 #include "a_program/checker/session.h"
 #include "a_program/producer/capsule.h"
 
-#define PROTOTYPE_CHECKED_ARTIFACT_VERSION 87
+#define PROTOTYPE_CHECKED_ARTIFACT_VERSION 90
 
 /* Only an opaque checked capability can be published. The reader reconstructs
  * an untrusted module and runs the independent checker again; checked

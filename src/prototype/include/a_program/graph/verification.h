@@ -3,6 +3,8 @@
 
 #include "a_program/graph/typed_occurrence_model.h"
 
+struct prototype_term_db;
+
 struct prototype_compile_metadata;
 struct prototype_type_declaration_db;
 
@@ -77,7 +79,7 @@ struct prototype_verification_obligation {
 	uint32_t schema_version;
 };
 
-/* One immutable semantic dependency edge. The v86 initial fragment records
+/* One immutable semantic dependency edge. The v90 initial fragment records
  * exactly the source occurrence edge. Cross-occurrence propagation remains
  * unsupported and conditional imports are rejected at first use. */
 struct prototype_verification_dependency {

@@ -1,5 +1,6 @@
 #include "a_program/kernel/context.h"
 #include "a_program/core/term.h"
+#include "a_program/kernel/classifier.h"
 #include "a_program/kernel/type_declaration.h"
 
 #include <stdint.h>
@@ -126,7 +127,6 @@ int main(void) {
 			prototype_context_empty(&contexts),
 			100,
 			int_type,
-			PROTOTYPE_INVALID_ID,
 			&outer_context
 		) != 0 || prototype_term_var(
 			&terms,
@@ -156,15 +156,15 @@ int main(void) {
 		return 1;
 	}
 
-	if (prototype_term_effect_row_purity(&terms, empty_row) !=
+	if (prototype_classifier_effect_row_purity(&terms, empty_row) !=
 			PROTOTYPE_EFFECT_ROW_PURITY_PURE ||
-		prototype_term_effect_row_purity(&terms, terminal_row) !=
+		prototype_classifier_effect_row_purity(&terms, terminal_row) !=
 			PROTOTYPE_EFFECT_ROW_PURITY_EFFECTFUL ||
-		prototype_term_effect_row_purity(&terms, symbolic_row) !=
+		prototype_classifier_effect_row_purity(&terms, symbolic_row) !=
 			PROTOTYPE_EFFECT_ROW_PURITY_UNRESOLVED ||
-		prototype_term_effect_row_purity(&terms, symbolic_union) !=
+		prototype_classifier_effect_row_purity(&terms, symbolic_union) !=
 			PROTOTYPE_EFFECT_ROW_PURITY_UNRESOLVED ||
-		prototype_term_effect_row_purity(&terms, PROTOTYPE_INVALID_ID) !=
+		prototype_classifier_effect_row_purity(&terms, PROTOTYPE_INVALID_ID) !=
 			PROTOTYPE_EFFECT_ROW_PURITY_INVALID) {
 		fprintf(stderr, "effect-row purity trichotomy failed\n");
 		return 1;
@@ -191,8 +191,7 @@ int main(void) {
 	if (prototype_term_app(
 			&terms, direct_right, literal_seven, &direct_expected
 		) != 0 || prototype_term_graph_reindex_bindings(
-			&terms, prototype_type_view_rebuild_context_from_db(&types),
-			direct_pair,
+			&terms, direct_pair,
 			direct_bindings,
 			2,
 			&direct_result
@@ -206,8 +205,7 @@ int main(void) {
 	if (prototype_term_app(
 			&terms, direct_right, direct_left, &direct_expected
 		) != 0 || prototype_term_graph_reindex_bindings(
-			&terms, prototype_type_view_rebuild_context_from_db(&types),
-			direct_pair,
+			&terms, direct_pair,
 			direct_bindings,
 			2,
 			&direct_result
@@ -491,7 +489,6 @@ int main(void) {
 			outer_context,
 			101,
 			dependent_classifier,
-			PROTOTYPE_INVALID_ID,
 			&dependent_context
 		) != 0 || prototype_context_telescope_entry_classifier(
 			&contexts,
@@ -512,6 +509,8 @@ int main(void) {
 
 	uint32_t view_type;
 	uint32_t view_parameter_type;
+	uint32_t view_parameter_classifier;
+	uint32_t view_parameter_context;
 	uint32_t named_view;
 	uint32_t expected_named_view;
 	uint32_t reindexed_named_view;
@@ -526,15 +525,33 @@ int main(void) {
 	uint32_t expected_view_argument[] = { literal_seven };
 	if (prototype_type_expr_universe(
 			&types.readback, 0, &view_parameter_type
+		) != 0 || prototype_term_universe_var(
+			&terms, 0, &view_parameter_classifier
 		) != 0 || prototype_type_declaration_add(
 			&types.semantic_schema, &types.readback, &types.representation_db,
 			72, &view_type
 		) != 0 || prototype_type_declaration_add_parameter(
 			&types.semantic_schema, &types.readback, &types.representation_db,
 			view_type, 73, 74, view_parameter_type
-		) != 0 || prototype_term_type_instance_make(
+		) != 0 || prototype_context_extend(
+			&contexts,
+			prototype_context_empty(&contexts),
+			73,
+			view_parameter_classifier,
+			&view_parameter_context
+		) != 0) {
+		fprintf(stderr, "failed to construct named TypeView schema fixture\n");
+		return 1;
+	}
+	types.semantic_schema.type_declarations[view_type].parameter_context =
+		view_parameter_context;
+	types.semantic_schema.type_declarations[view_type].index_context =
+		view_parameter_context;
+	if (prototype_type_declaration_rebuild_representations(
+			&terms, &types, &contexts
+		) != 0 || prototype_type_projection_instance_make(
 			&terms, &types, view_type, view_argument, 1, &named_view
-		) != 0 || prototype_term_type_instance_make(
+		) != 0 || prototype_type_projection_instance_make(
 			&terms, &types, view_type, expected_view_argument, 1,
 			&expected_named_view
 		) != 0) {
@@ -545,12 +562,11 @@ int main(void) {
 		types.representation_db.representation_count;
 	memset(&types.readback, 0, sizeof(types.readback));
 	if (prototype_term_graph_reindex_bindings(
-			&terms, prototype_type_view_rebuild_context_from_db(&types), named_view, &view_binding, 1,
+			&terms, named_view, &view_binding, 1,
 			&reindexed_named_view
 		) != 0 || reindexed_named_view != expected_named_view ||
 		types.representation_db.representation_count !=
 			representation_count_before_reindex ||
-		terms.terms[reindexed_named_view].as.type_view.view_type_id != view_type ||
 		terms.terms[reindexed_named_view].as.type_view.identity.name_symbol_id !=
 			72 || terms.terms[reindexed_named_view].as.type_view.core !=
 			terms.terms[expected_named_view].as.type_view.core ||

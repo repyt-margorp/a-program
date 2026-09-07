@@ -57,7 +57,7 @@
 		nat_context,
 		nat_match,
 		nat_classifier,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t nat_match_claim = fixture_add_claim(
 		&judgement,
@@ -170,7 +170,6 @@
 			bool_context,
 			second_bool_binding,
 			bool_view,
-			PROTOTYPE_INVALID_ID,
 			&second_bool_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -259,7 +258,6 @@
 			bool_context,
 			proof_binding,
 			bool_relation_type,
-			PROTOTYPE_INVALID_ID,
 			&proof_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			&cwf_certificate_db,
@@ -406,7 +404,7 @@
 			&repeated_bool_extension_action_id
 		) != 0 || prototype_hott_execute_substitution_action(
 			&action_db, &kernel_builder, &bridge_db, repeated_bool_extension_action_id,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF, 64,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF, 64,
 			&repeated_bool_extension_result_id
 		) != 0 || action_results[repeated_bool_extension_result_id].outcome.state !=
 			PROTOTYPE_HOTT_ACTION_RESULT_READY ||
@@ -445,7 +443,7 @@
 			&type_db,
 			false_extension,
 			beta_false_extension,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			0,
 			&exhausted_comparison
 		) != 0 || exhausted_comparison.status !=
@@ -457,7 +455,7 @@
 			&type_db,
 			false_extension,
 			beta_false_extension,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			8,
 			&completed_comparison
 		) != 0 || completed_comparison.status !=
@@ -469,7 +467,7 @@
 		empty,
 		beta_false,
 		bool_view,
-		PROTOTYPE_TERM_CATEGORY_VALUE
+		PROTOTYPE_CLASSIFIER_CATEGORY_VALUE
 	);
 	uint32_t beta_false_claim = fixture_add_claim(
 		&judgement,
@@ -507,7 +505,7 @@
 			NULL,
 			bool_conversion_goal,
 			PROTOTYPE_INVALID_ID,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			64,
 			&conversion_execution
 		) != 0 || conversion_execution.materialization_state !=
@@ -544,7 +542,7 @@
 			NULL,
 			bool_distinct_goal,
 			PROTOTYPE_INVALID_ID,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			32,
 			&distinct_execution
 		) != 0 || distinct_execution.relation_type_action_request_id == PROTOTYPE_INVALID_ID ||
@@ -569,7 +567,7 @@
 			NULL,
 			bool_diagonal_goal,
 			PROTOTYPE_INVALID_ID,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			64,
 			&diagonal_execution
 		) != 0 || diagonal_execution.relation_type_action_request_id !=
@@ -730,7 +728,7 @@
 	(void)unrelated_epoch_term;
 
 	if (prototype_judgement_publish_candidates(
-			&operation_graph, &judgement
+			&operation_graph, NULL, &judgement
 		) != 0) {
 		return 222;
 	}

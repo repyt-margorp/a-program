@@ -5,7 +5,12 @@ set -eu
 
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 tmp_dir=$(mktemp -d)
-trap 'rm -rf "$tmp_dir"' EXIT
+if test "${A_PROGRAM_KEEP_TEST_TMP:-0}" = 1
+then
+	printf 'A_PROGRAM_TEST_TMP %s\n' "$tmp_dir" >&2
+else
+	trap 'rm -rf "$tmp_dir"' EXIT
+fi
 
 cd "$root_dir"
 . src/prototype/build/test_support.sh
@@ -520,9 +525,32 @@ then
 	exit 1
 fi
 
-sed -E \
-	's/^(proposition 7 1 1 81) 0 /\1 1 /' \
-	"$tmp_dir/function-graph.apo" >"$tmp_dir/function-graph-wrong-context.apo"
+certified_claim=$(awk '
+	$1 == "term" && $2 == "$certified.length" {
+		for (i = 1; i <= NF; ++i) {
+			if ($i == "evidence" && $(i + 1) == 1) {
+				print $(i + 2)
+				exit
+			}
+		}
+	}
+' "$tmp_dir/function-graph.apo")
+test -n "$certified_claim"
+certified_proposition=$(awk -v claim="$certified_claim" '
+	$1 == "claim" && $2 == claim {
+		print $4
+		exit
+	}
+' "$tmp_dir/function-graph.apo")
+test -n "$certified_proposition"
+awk -v proposition="$certified_proposition" '
+	$1 == "proposition" && $2 == proposition {
+		$6 = $6 == 0 ? 1 : 0
+		changed = 1
+	}
+	{ print }
+	END { if (!changed) exit 1 }
+' "$tmp_dir/function-graph.apo" >"$tmp_dir/function-graph-wrong-context.apo"
 if ./read_file.out --read-graph "$tmp_dir/function-graph-wrong-context.apo" \
 	>"$tmp_dir/wrong-context.out" 2>"$tmp_dir/wrong-context.err"
 then

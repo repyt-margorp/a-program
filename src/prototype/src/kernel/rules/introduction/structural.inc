@@ -194,16 +194,19 @@ int prototype_judgement_delta_record_lambda_intro(
 	);
 }
 
-int prototype_judgement_delta_app_elim_classifier(
-	struct prototype_judgement_delta* delta,
+int prototype_judgement_app_elim_classifier_in_context(
+	struct prototype_context_db* contexts,
+	struct prototype_substitution_db* substitutions,
 	struct prototype_term_db* terms,
 	struct prototype_type_declaration_db* type_declarations,
+	uint32_t context_id,
 	uint32_t function_classifier,
 	uint32_t argument_subject,
 	uint32_t argument_classifier,
 	uint32_t* p_classifier
 ) {
-	if (!delta || !terms || !type_declarations || !p_classifier ||
+	if (!contexts || !substitutions || !terms || !type_declarations ||
+		!p_classifier || !prototype_context_get(contexts, context_id) ||
 		!term_exists(terms, function_classifier) ||
 		!term_exists(terms, argument_subject) ||
 		!term_exists(terms, argument_classifier)) {
@@ -242,9 +245,8 @@ int prototype_judgement_delta_app_elim_classifier(
 	uint32_t domain_whnf;
 	if (prototype_term_normalize_complete_with_profile(
 			terms,
-			type_declarations,
 			NULL,
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF,
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF,
 			domain,
 			&domain_whnf
 		) != 0 || domain_whnf >= terms->term_count) {
@@ -267,12 +269,37 @@ int prototype_judgement_delta_app_elim_classifier(
 	(void)solved_domain;
 	(void)codomain_family;
 	return pi_codomain_after_argument_in_context(
+		contexts,
+		substitutions,
+		terms,
+		type_declarations,
+		context_id,
+		function_pi,
+		argument_subject,
+		argument_classifier,
+		p_classifier
+	);
+}
+
+int prototype_judgement_delta_app_elim_classifier(
+	struct prototype_judgement_delta* delta,
+	struct prototype_term_db* terms,
+	struct prototype_type_declaration_db* type_declarations,
+	uint32_t function_classifier,
+	uint32_t argument_subject,
+	uint32_t argument_classifier,
+	uint32_t* p_classifier
+) {
+	if (!delta) {
+		return -1;
+	}
+	return prototype_judgement_app_elim_classifier_in_context(
 		delta->contexts,
 		delta->substitutions,
 		terms,
 		type_declarations,
 		delta->current_context_id,
-		function_pi,
+		function_classifier,
 		argument_subject,
 		argument_classifier,
 		p_classifier
@@ -719,8 +746,8 @@ int prototype_judgement_add_context_binding_assumption(
 		prototype_context_find_binding(
 			contexts, context_id, binding_id, &entry_context_id
 		) != 0 ||
-		prototype_context_classifier_term(
-			prototype_context_get(contexts, entry_context_id)
+		prototype_context_classifier_answer(
+			contexts, prototype_context_get(contexts, entry_context_id)
 		) != classifier ||
 		prototype_term_var(terms, binding_id, &subject) != 0) {
 		return -1;

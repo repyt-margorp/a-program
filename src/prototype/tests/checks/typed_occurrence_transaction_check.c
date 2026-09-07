@@ -1,5 +1,6 @@
 #include "a_program/core/term.h"
 #include "a_program/graph/typed_occurrence_graph.h"
+#include "a_program/kernel/classifier.h"
 #include "a_program/kernel/context.h"
 
 #include <string.h>
@@ -55,7 +56,7 @@ int main(void) {
 	struct prototype_typed_occurrence occurrence;
 	memset(&occurrence, 0, sizeof(occurrence));
 	occurrence.tag = PROTOTYPE_TYPED_OCCURRENCE_ATOM;
-	occurrence.category = PROTOTYPE_TERM_CATEGORY_VALUE;
+	occurrence.category = PROTOTYPE_CLASSIFIER_CATEGORY_VALUE;
 	occurrence.context_id = empty;
 	occurrence.context_action_substitution = PROTOTYPE_INVALID_ID;
 	occurrence.source_core_term = PROTOTYPE_INVALID_ID;

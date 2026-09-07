@@ -48,8 +48,8 @@ static void compile_metadata_refresh_runtime_capabilities(
 		}
 		if (head < terms->term_count &&
 			terms->terms[head].tag == PROTOTYPE_TERM_EFFECT_OPERATION) {
-			const struct prototype_effect_operation_declaration* declaration =
-				prototype_term_effect_operation_declaration(
+			const struct prototype_core_effect_operation_declaration* declaration =
+				prototype_core_effect_operation_declaration(
 					terms->terms[head].as.effect_operation.operation_id
 				);
 			if (declaration &&

@@ -5,54 +5,49 @@
 #include <stdint.h>
 
 #include "a_program/artifact/interface.h"
-#include "a_program/frontend/lowering.h"
-#include "a_program/kernel/universe.h"
-#include "a_program/support/symbol.h"
 
 struct prototype_artifact_interface;
+struct prototype_ast_db;
+struct prototype_intrinsic_typing_environment;
+struct prototype_program;
+struct prototype_program_storage_private;
 struct prototype_read_error;
+struct symbol_table;
 
 struct prototype_compile_options {
 	int compile_policy;
 	int definition_thunk_policy;
-	int effort_limit_is_set;
-	uint64_t effort_limit;
+	int solve_effort_is_set;
+	uint64_t solve_effort_steps;
 };
 
-/* Driver-owned composition root. Parser APIs receive this object but do not
- * own semantic initialization, system declarations, linking, or solving. */
-struct prototype_program {
-	const struct prototype_intrinsic_environment* intrinsic_environment;
+/* Parser-visible source capability. It deliberately exposes neither semantic
+ * pipeline nor any mutable calculation/typing store. */
+struct prototype_program_source_view {
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment;
 	struct symbol_table* symbols;
-	int namespace_symbol_id;
 	struct prototype_ast_db* asts;
-	struct prototype_type_declaration_db* type_declarations;
-	struct prototype_term_db* terms;
-	struct prototype_judgement_db* judgement;
-	struct prototype_compile_metadata* metadata;
-	struct prototype_universe_db* universe;
-	struct prototype_compile_options compile_options;
 };
 
-struct prototype_program_storage_backing;
+int prototype_program_source_view(
+	struct prototype_program* program,
+	struct prototype_program_source_view* view
+);
+
 struct prototype_artifact_interface_storage_backing;
 
-/* Owns the typed backing arrays for one compiler session. The semantic DBs
- * remain separate typed stores; the backing object only centralizes lifetime. */
+/* Opaque lifetime handle for one compiler session. The concrete Layer C and
+ * Layer T owners are intentionally unavailable through this public header. */
 struct prototype_program_storage {
-	struct prototype_program program;
-	struct symbol_table symbols;
-	struct prototype_type_declaration_db type_declarations;
-	struct prototype_ast_db asts;
-	struct prototype_term_db terms;
-	struct prototype_judgement_db judgement;
-	struct prototype_compile_metadata metadata;
-	struct prototype_universe_db universe;
-	struct prototype_program_storage_backing* backing;
+	struct prototype_program_storage_private* private;
 };
 
 int prototype_program_storage_init(struct prototype_program_storage* storage);
 int prototype_program_storage_reset(struct prototype_program_storage* storage);
+void prototype_program_storage_exchange(
+	struct prototype_program_storage* left,
+	struct prototype_program_storage* right
+);
 void prototype_program_storage_destroy(struct prototype_program_storage* storage);
 
 /* Owns one artifact interface image and its typed relocation/debug/readback
@@ -69,6 +64,10 @@ int prototype_artifact_interface_storage_init(
 );
 int prototype_artifact_interface_storage_reset(
 	struct prototype_artifact_interface_storage* storage
+);
+void prototype_artifact_interface_storage_exchange(
+	struct prototype_artifact_interface_storage* left,
+	struct prototype_artifact_interface_storage* right
 );
 void prototype_artifact_interface_storage_destroy(
 	struct prototype_artifact_interface_storage* storage

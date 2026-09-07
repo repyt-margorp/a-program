@@ -1,5 +1,6 @@
 #include "a_program/checker/module.h"
 #include "a_program/driver/compiler_session.h"
+#include "../support/compiler_session_storage.h"
 #include "a_program/frontend/reader.h"
 #include "a_program/graph/compile_metadata.h"
 
@@ -15,7 +16,9 @@ static int semantic_projection_equal(
 	const struct prototype_elaborated_module_view* a = &left->view;
 	const struct prototype_elaborated_module_view* b = &right->view;
 	if (a->calculus_fingerprint != b->calculus_fingerprint ||
-		a->intrinsic_fingerprint != b->intrinsic_fingerprint ||
+		a->operational_intrinsic_fingerprint !=
+			b->operational_intrinsic_fingerprint ||
+		a->typing_intrinsic_fingerprint != b->typing_intrinsic_fingerprint ||
 		a->symbols.count != b->symbols.count ||
 		a->intrinsic_environment.pure_primitive_count !=
 			b->intrinsic_environment.pure_primitive_count ||
@@ -264,23 +267,24 @@ int main(void) {
 		return 1;
 	}
 	if (prototype_read_string(
-			"<checked-core-projection>", source, &storage.program, &error
+			"<checked-core-projection>", source, &storage.private->program, &error
 		) != 0) {
 		fprintf(stderr, "compile failed: %s\n", error.message);
 		goto cleanup;
 	}
 	if (prototype_compile_metadata_frozen_snapshot(
-			&storage.metadata, &snapshot
+			&storage.private->metadata, &snapshot
 		) != 0) {
 		fprintf(stderr, "completed compile did not freeze\n");
 		goto cleanup;
 	}
 	if (prototype_elaborated_module_project(
-			&storage.symbols,
-			&storage.terms,
-			&storage.type_declarations.semantic_schema,
-			storage.program.intrinsic_environment,
-			&storage.universe,
+			&storage.private->symbols,
+			&storage.private->core.terms,
+			&storage.private->type_declarations.semantic_schema,
+			storage.private->program.intrinsic_environment,
+			&storage.private->universe,
+			&storage.private->judgement,
 			&snapshot,
 			&baseline
 		) != 0) {
@@ -289,8 +293,8 @@ int main(void) {
 	}
 	if (baseline.view.occurrences.occurrence_count == 0 ||
 		baseline.view.occurrences.case_count == 0 ||
-		baseline.view.terms.term_count >= storage.terms.term_count ||
-		baseline.view.symbols.count >= storage.symbols.storage.count) {
+		baseline.view.terms.term_count >= storage.private->core.terms.term_count ||
+		baseline.view.symbols.count >= storage.private->symbols.storage.count) {
 		fprintf(stderr, "completed compile did not produce a dense semantic projection\n");
 		goto cleanup;
 	}
@@ -351,9 +355,9 @@ int main(void) {
 				sizeof(*changed_dimension_operators)
 		);
 	}
-	if (storage.type_declarations.semantic_schema.constructor_count != 0) {
+	if (storage.private->type_declarations.semantic_schema.constructor_count != 0) {
 		changed_constructors = malloc(
-			storage.type_declarations.semantic_schema.constructor_count *
+			storage.private->type_declarations.semantic_schema.constructor_count *
 				sizeof(*changed_constructors)
 		);
 	}
@@ -362,7 +366,7 @@ int main(void) {
 		 !changed_substitutions) ||
 		(snapshot.dimension_operators.operator_count != 0 &&
 		 !changed_dimension_operators) ||
-		(storage.type_declarations.semantic_schema.constructor_count != 0 &&
+		(storage.private->type_declarations.semantic_schema.constructor_count != 0 &&
 		 !changed_constructors)) {
 		goto cleanup;
 	}
@@ -387,11 +391,11 @@ int main(void) {
 				sizeof(*changed_dimension_operators)
 		);
 	}
-	if (storage.type_declarations.semantic_schema.constructor_count != 0) {
+	if (storage.private->type_declarations.semantic_schema.constructor_count != 0) {
 		memcpy(
 			changed_constructors,
-			storage.type_declarations.semantic_schema.constructor_declarations,
-			storage.type_declarations.semantic_schema.constructor_count *
+			storage.private->type_declarations.semantic_schema.constructor_declarations,
+			storage.private->type_declarations.semantic_schema.constructor_count *
 				sizeof(*changed_constructors)
 		);
 	}
@@ -410,7 +414,7 @@ int main(void) {
 		changed_dimension_operators[i].hash_next ^= UINT32_C(0x12121212);
 	}
 	for (size_t i = 0;
-		i < storage.type_declarations.semantic_schema.constructor_count;
+		i < storage.private->type_declarations.semantic_schema.constructor_count;
 		++i) {
 		changed_constructors[i].schema_revision ^= UINT32_C(0x34343434);
 	}
@@ -440,15 +444,16 @@ int main(void) {
 	changed_snapshot.contexts.contexts = changed_contexts;
 	changed_snapshot.substitutions.substitutions = changed_substitutions;
 	changed_snapshot.dimension_operators.operators = changed_dimension_operators;
-	changed_type_schema = storage.type_declarations.semantic_schema;
+	changed_type_schema = storage.private->type_declarations.semantic_schema;
 	changed_type_schema.semantic_revision ^= UINT64_C(0x1122334455667788);
 	changed_type_schema.constructor_declarations = changed_constructors;
 	if (prototype_elaborated_module_project(
-			&storage.symbols,
-			&storage.terms,
+			&storage.private->symbols,
+			&storage.private->core.terms,
 			&changed_type_schema,
-			storage.program.intrinsic_environment,
-			&storage.universe,
+			storage.private->program.intrinsic_environment,
+			&storage.private->universe,
+			&storage.private->judgement,
 			&changed_snapshot,
 			&changed
 		) != 0 || !semantic_projection_equal(&baseline, &changed)) {
@@ -459,11 +464,12 @@ int main(void) {
 	changed_graph.occurrences[0].classifier_status =
 		PROTOTYPE_TYPED_OCCURRENCE_CLASSIFIER_PENDING;
 	if (prototype_elaborated_module_project(
-			&storage.symbols,
-			&storage.terms,
+			&storage.private->symbols,
+			&storage.private->core.terms,
 			&changed_type_schema,
-			storage.program.intrinsic_environment,
-			&storage.universe,
+			storage.private->program.intrinsic_environment,
+			&storage.private->universe,
+			&storage.private->judgement,
 			&changed_snapshot,
 			&invalid
 		) == 0) {

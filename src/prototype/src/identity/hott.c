@@ -12,6 +12,7 @@
 #include "a_program/dimension/face.h"
 #include "a_program/dimension/operator.h"
 #include "a_program/kernel/type_schema_view.h"
+#include "a_program/kernel/type_term_debug.h"
 #include "calculus.h"
 
 #include <stdlib.h>

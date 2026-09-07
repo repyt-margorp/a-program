@@ -69,7 +69,7 @@ struct parser {
 	unsigned line;
 	unsigned column;
 	struct token current;
-	struct prototype_program* program;
+	struct prototype_program_source_view source;
 	struct prototype_read_error* error;
 	struct local_binder* binders;
 	/* Case binders closed while a postfix elimination suffix is still being
@@ -196,7 +196,7 @@ static int read_text_literal_token(struct parser* parser) {
 		}
 		body_end = parser->pos;
 		symbol_id = symbol_intern(
-			parser->program->symbols,
+			parser->source.symbols,
 			&parser->input[body_start],
 			body_end - body_start
 		);
@@ -219,7 +219,7 @@ static int read_text_literal_token(struct parser* parser) {
 			parser->input[parser->pos + delimiter_len] == '"') {
 			body_end = parser->pos;
 			symbol_id = symbol_intern(
-				parser->program->symbols,
+				parser->source.symbols,
 				&parser->input[body_start],
 				body_end - body_start
 			);
@@ -345,7 +345,7 @@ static int read_token(struct parser* parser) {
 		parser->current.kind = TOKEN_IDENT;
 		parser->current.start = &parser->input[start];
 		parser->current.len = parser->pos - start;
-		parser->current.symbol_id = symbol_intern(parser->program->symbols, parser->current.start, parser->current.len);
+		parser->current.symbol_id = symbol_intern(parser->source.symbols, parser->current.start, parser->current.len);
 		if (parser->current.symbol_id < 0) {
 			set_error(parser, "symbol table is full");
 			return -1;
@@ -498,7 +498,7 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 		uint32_t result;
 		if (parse_type_atom(parser, &result) != 0 ||
 			prototype_ast_type_expr_computation_reference(
-				parser->program->asts, result, span, p_ret
+				parser->source.asts, result, span, p_ret
 			) != 0) {
 			set_error(parser, "expected result type after '&'");
 			return -1;
@@ -518,7 +518,7 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 			set_error(parser, "expected system type name after '#.'");
 			return -1;
 		}
-		name = symbol_to_string(parser->program->symbols, parser->current.symbol_id);
+		name = symbol_to_string(parser->source.symbols, parser->current.symbol_id);
 		if (name && strcmp(name, "Terminates") == 0) {
 			uint32_t computation;
 			if (read_token(parser) != 0 || expect(
@@ -529,12 +529,12 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			return prototype_ast_type_expr_terminates(
-				parser->program->asts, computation, span, p_ret
+				parser->source.asts, computation, span, p_ret
 			);
 		}
 		int host_type;
-		int host_status = prototype_term_host_type_from_source_name(
-			parser->program->intrinsic_environment, name, &host_type
+		int host_status = prototype_intrinsic_host_type_from_source_name(
+			parser->source.intrinsic_environment, name, &host_type
 		);
 		if (host_status < 0) {
 			return -1;
@@ -544,7 +544,7 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			return prototype_ast_type_expr_host_type(
-				parser->program->asts,
+				parser->source.asts,
 				host_type,
 				span,
 				p_ret
@@ -554,7 +554,7 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 			set_error(parser, "unknown system type name");
 			return -1;
 		}
-		symbol_id = symbol_intern(parser->program->symbols, "#.Nat", 5);
+		symbol_id = symbol_intern(parser->source.symbols, "#.Nat", 5);
 		if (symbol_id < 0) {
 			set_error(parser, "symbol table is full");
 			return -1;
@@ -562,13 +562,13 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 		if (read_token(parser) != 0) {
 			return -1;
 		}
-		return prototype_ast_type_expr_name(parser->program->asts, symbol_id, span, p_ret);
+		return prototype_ast_type_expr_name(parser->source.asts, symbol_id, span, p_ret);
 	}
 	if (parser->current.kind == TOKEN_STAR) {
 		if (read_token(parser) != 0) {
 			return -1;
 		}
-		return prototype_ast_type_expr_self(parser->program->asts, span, p_ret);
+		return prototype_ast_type_expr_self(parser->source.asts, span, p_ret);
 	}
 	if (parser->current.kind == TOKEN_AT) {
 		if (read_token(parser) != 0) {
@@ -586,7 +586,7 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 			}
 			if (companion) {
 				return prototype_ast_type_expr_var(
-					parser->program->asts,
+					parser->source.asts,
 					companion->ast_binder_id,
 					owner_symbol_id,
 					span,
@@ -594,10 +594,10 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 				);
 			}
 			return prototype_ast_type_expr_function_graph_reference(
-				parser->program->asts, owner_symbol_id, span, p_ret
+				parser->source.asts, owner_symbol_id, span, p_ret
 			);
 		}
-		return prototype_ast_type_expr_fresh_universe(parser->program->asts, span, p_ret);
+		return prototype_ast_type_expr_fresh_universe(parser->source.asts, span, p_ret);
 	}
 	if (parser->current.kind == TOKEN_IDENT) {
 		int symbol_id = parser->current.symbol_id;
@@ -607,7 +607,7 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 		}
 		binder = lookup_binder(parser, symbol_id);
 		if (binder) {
-			return prototype_ast_type_expr_var(parser->program->asts, binder->ast_binder_id, symbol_id, span, p_ret);
+			return prototype_ast_type_expr_var(parser->source.asts, binder->ast_binder_id, symbol_id, span, p_ret);
 		}
 		if (accept(parser, TOKEN_DOT)) {
 			int member_symbol_id;
@@ -620,14 +620,14 @@ static int parse_type_atom(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			return prototype_ast_type_expr_name_in_namespace(
-				parser->program->asts,
+				parser->source.asts,
 				symbol_id,
 				member_symbol_id,
 				span,
 				p_ret
 			);
 		}
-		return prototype_ast_type_expr_name(parser->program->asts, symbol_id, span, p_ret);
+		return prototype_ast_type_expr_name(parser->source.asts, symbol_id, span, p_ret);
 	}
 	if (accept(parser, TOKEN_LPAREN)) {
 		if (parse_type_expr(parser, p_ret) != 0) {
@@ -668,7 +668,7 @@ static int parse_type_app(struct parser* parser, uint32_t* p_ret) {
 		if (parse_type_atom(parser, &argument) != 0) {
 			return -1;
 		}
-		if (prototype_ast_type_expr_app(parser->program->asts, lhs, argument, span, &app) != 0) {
+		if (prototype_ast_type_expr_app(parser->source.asts, lhs, argument, span, &app) != 0) {
 			set_error(parser, "type expression table is full");
 			return -1;
 		}
@@ -732,7 +732,7 @@ static int parse_type_expr(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			if (parser->current.kind == TOKEN_COLON) {
-				uint32_t ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+				uint32_t ast_binder_id = prototype_ast_new_binder(parser->source.asts);
 				uint32_t domain;
 				uint32_t codomain;
 				struct local_binder binder;
@@ -754,7 +754,7 @@ static int parse_type_expr(struct parser* parser, uint32_t* p_ret) {
 				}
 				parser->binders = binder.next;
 				if (prototype_ast_type_expr_pi(
-						parser->program->asts,
+						parser->source.asts,
 						ast_binder_id,
 						symbol_id,
 						domain,
@@ -785,7 +785,7 @@ static int parse_type_expr(struct parser* parser, uint32_t* p_ret) {
 		if (parse_type_expr(parser, &rhs) != 0) {
 			return -1;
 		}
-		return prototype_ast_type_expr_arrow(parser->program->asts, lhs, rhs, span, p_ret);
+		return prototype_ast_type_expr_arrow(parser->source.asts, lhs, rhs, span, p_ret);
 	}
 
 	*p_ret = lhs;
@@ -813,7 +813,7 @@ static int try_parse_constructor_field_binder(
 		return 1;
 	}
 	int symbol_id = parser->current.symbol_id;
-	uint32_t ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+	uint32_t ast_binder_id = prototype_ast_new_binder(parser->source.asts);
 	if (ast_binder_id == PROTOTYPE_INVALID_ID) {
 		set_error(parser, "binder table is full");
 		return -1;
@@ -944,7 +944,7 @@ static int parse_constructor_block(struct parser* parser, uint32_t ast_type_def_
 			return -1;
 		}
 		if (prototype_ast_type_add_constructor(
-			parser->program->asts,
+			parser->source.asts,
 			ast_type_def_id,
 			constructor_symbol,
 			constructor_name_span,
@@ -970,7 +970,7 @@ static int parse_family_body(struct parser* parser, uint32_t ast_type_def_id) {
 	struct local_binder* parameter_binders;
 	uint32_t index_count = 0;
 
-	if (!parser || ast_type_def_id >= parser->program->asts->type_def_count) {
+	if (!parser || ast_type_def_id >= parser->source.asts->type_def_count) {
 		return -1;
 	}
 	parameter_binders = parser->binders;
@@ -1003,13 +1003,13 @@ static int parse_family_body(struct parser* parser, uint32_t ast_type_def_id) {
 		}
 		span = current_span(parser);
 		symbol_id = parser->current.symbol_id;
-		ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+		ast_binder_id = prototype_ast_new_binder(parser->source.asts);
 		if (ast_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
 			expect(parser, TOKEN_COLON, "expected ':' after index binder") != 0 ||
 			parse_type_expr(parser, &classifier) != 0 ||
 			expect(parser, TOKEN_FATARROW, "expected '=>' after index binder") != 0 ||
 			prototype_ast_type_add_family_binder(
-				parser->program->asts,
+				parser->source.asts,
 				ast_type_def_id,
 				ast_binder_id,
 				symbol_id,
@@ -1054,7 +1054,7 @@ static int parse_anonymous_type_literal(
 	uint32_t ast_type_def_id;
 
 	if (prototype_ast_type_add(
-			parser->program->asts,
+			parser->source.asts,
 			namespace_symbol_id,
 			span,
 			span,
@@ -1069,7 +1069,7 @@ static int parse_anonymous_type_literal(
 	if (body_status != 0) {
 		return -1;
 	}
-	if (prototype_ast_type_literal(parser->program->asts, ast_type_def_id, span, p_ret) != 0) {
+	if (prototype_ast_type_literal(parser->source.asts, ast_type_def_id, span, p_ret) != 0) {
 		set_error(parser, "AST table is full");
 		return -1;
 	}
@@ -1089,7 +1089,7 @@ static int parse_anonymous_type_def(
 		return -1;
 	}
 	if (prototype_ast_add_term_assignment(
-		parser->program->asts,
+		parser->source.asts,
 		name_symbol_id,
 		term,
 		source_entry_id,
@@ -1136,7 +1136,7 @@ static int parse_parameterized_type_or_lambda_def(
 		}
 			binder_symbols[binder_count] = parser->current.symbol_id;
 			binder_spans[binder_count] = current_span(parser);
-		ast_binder_ids[binder_count] = prototype_ast_new_binder(parser->program->asts);
+		ast_binder_ids[binder_count] = prototype_ast_new_binder(parser->source.asts);
 		if (ast_binder_ids[binder_count] == PROTOTYPE_INVALID_ID) {
 			set_error(parser, "binder table is full");
 			parser->binders = outer_binders;
@@ -1170,7 +1170,7 @@ static int parse_parameterized_type_or_lambda_def(
 	if (parser->current.kind == TOKEN_AT) {
 		uint32_t ast_type_def_id;
 		if (prototype_ast_type_add(
-				parser->program->asts,
+				parser->source.asts,
 				name_symbol_id,
 				name_span,
 				body_span,
@@ -1182,7 +1182,7 @@ static int parse_parameterized_type_or_lambda_def(
 		}
 		for (uint32_t i = 0; i < binder_count; ++i) {
 				if (prototype_ast_type_add_family_binder(
-					parser->program->asts,
+					parser->source.asts,
 					ast_type_def_id,
 					ast_binder_ids[i],
 					binder_symbols[i],
@@ -1205,7 +1205,7 @@ static int parse_parameterized_type_or_lambda_def(
 		parser->binders = outer_binders;
 		uint32_t term;
 		if (prototype_ast_type_formation(
-			parser->program->asts,
+			parser->source.asts,
 			ast_type_def_id,
 			body_span,
 			&term
@@ -1214,7 +1214,7 @@ static int parse_parameterized_type_or_lambda_def(
 			return -1;
 		}
 		if (prototype_ast_add_term_assignment(
-			parser->program->asts,
+			parser->source.asts,
 			name_symbol_id,
 			term,
 			source_entry_id,
@@ -1240,7 +1240,7 @@ static int parse_parameterized_type_or_lambda_def(
 	for (uint32_t i = binder_count; i > 0; --i) {
 		uint32_t lambda;
 		if (prototype_ast_lambda(
-			parser->program->asts,
+			parser->source.asts,
 			ast_binder_ids[i - 1],
 			binder_symbols[i - 1],
 			binder_types[i - 1],
@@ -1258,7 +1258,7 @@ static int parse_parameterized_type_or_lambda_def(
 		return -1;
 	}
 	if (prototype_ast_add_term_assignment(
-		parser->program->asts,
+		parser->source.asts,
 		name_symbol_id,
 		term,
 		source_entry_id,
@@ -1336,7 +1336,7 @@ static int parse_computation_block(struct parser* parser, uint32_t* p_ret) {
 					TOKEN_SEMI,
 					"expected ';' after Lambda exit"
 				) != 0 || prototype_ast_block_lambda_exit(
-					parser->program->asts, value, item_span, &item_id
+					parser->source.asts, value, item_span, &item_id
 				) != 0) {
 				if (!parser->error || parser->error->message[0] == '\0') {
 					set_error(parser, "AST table is full");
@@ -1361,7 +1361,7 @@ static int parse_computation_block(struct parser* parser, uint32_t* p_ret) {
 				set_error(parser, "duplicate computation block binding");
 				goto fail;
 			}
-			ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+			ast_binder_id = prototype_ast_new_binder(parser->source.asts);
 			if (ast_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0) {
 				goto fail;
 			}
@@ -1375,7 +1375,7 @@ static int parse_computation_block(struct parser* parser, uint32_t* p_ret) {
 					TOKEN_SEMI,
 					"expected ';' after computation block binding"
 				) != 0 || prototype_ast_block_binding(
-					parser->program->asts,
+					parser->source.asts,
 					ast_binder_id,
 					binder_symbol_id,
 					binder_type,
@@ -1402,7 +1402,7 @@ static int parse_computation_block(struct parser* parser, uint32_t* p_ret) {
 					TOKEN_SEMI,
 					"expected ';' after computation block expression"
 				) != 0 || prototype_ast_block_expression(
-					parser->program->asts, term, item_span, &item_id
+					parser->source.asts, term, item_span, &item_id
 				) != 0) {
 				if (!parser->error || parser->error->message[0] == '\0') {
 					set_error(parser, "AST table is full");
@@ -1429,7 +1429,7 @@ static int parse_computation_block(struct parser* parser, uint32_t* p_ret) {
 		int found = 0;
 		for (uint32_t i = 0; i < item_count; ++i) {
 			const struct prototype_ast_node* item =
-				&parser->program->asts->nodes[item_ids[i]];
+				&parser->source.asts->nodes[item_ids[i]];
 			if (item->tag == PROTOTYPE_AST_BLOCK_BINDING &&
 				item->as.block_binding.binder_symbol_id == result_symbol_id) {
 				result_item_index = i;
@@ -1447,7 +1447,7 @@ static int parse_computation_block(struct parser* parser, uint32_t* p_ret) {
 		}
 	}
 	if (prototype_ast_computation_block(
-			parser->program->asts,
+			parser->source.asts,
 			item_ids,
 			item_count,
 			result_item_index,
@@ -1484,7 +1484,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			return prototype_ast_var(
-				parser->program->asts,
+				parser->source.asts,
 				companion->ast_binder_id,
 				symbol_id,
 				span,
@@ -1501,7 +1501,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 			return -1;
 		}
 		return prototype_ast_function_graph_role_reference(
-			parser->program->asts,
+			parser->source.asts,
 			binder->ast_binder_id,
 			symbol_id,
 			PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_GRAPH,
@@ -1514,7 +1514,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		uint32_t computation;
 		if (parse_term_atom(parser, &computation) != 0 ||
 			prototype_ast_quote(
-				parser->program->asts, computation, span, p_ret
+				parser->source.asts, computation, span, p_ret
 			) != 0) {
 			set_error(parser, "expected computation after '&'");
 			return -1;
@@ -1537,7 +1537,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		if (read_token(parser) != 0) {
 			return -1;
 		}
-		namespace_symbol_id = symbol_intern(parser->program->symbols, "#", 1);
+		namespace_symbol_id = symbol_intern(parser->source.symbols, "#", 1);
 		if (namespace_symbol_id < 0) {
 			set_error(parser, "symbol table is full");
 			return -1;
@@ -1550,7 +1550,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 			return -1;
 		}
 			symbol_id = parser->current.symbol_id;
-			name = symbol_to_string(parser->program->symbols, symbol_id);
+			name = symbol_to_string(parser->source.symbols, symbol_id);
 			if (name && strcmp(name, "terminates") == 0) {
 				uint32_t computation;
 				if (read_token(parser) != 0 || expect(
@@ -1563,7 +1563,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 					return -1;
 				}
 				return prototype_ast_terminates_witness(
-					parser->program->asts, computation, span, p_ret
+					parser->source.asts, computation, span, p_ret
 				);
 			}
 			if (name && strcmp(name, "Nat") == 0) {
@@ -1578,7 +1578,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 				set_error(parser, "expected constructor name after '#.Nat.'");
 				return -1;
 			}
-			nat_symbol_id = symbol_intern(parser->program->symbols, "#.Nat", 5);
+			nat_symbol_id = symbol_intern(parser->source.symbols, "#.Nat", 5);
 			if (nat_symbol_id < 0) {
 				set_error(parser, "symbol table is full");
 				return -1;
@@ -1588,7 +1588,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			return prototype_ast_name_in_namespace(
-				parser->program->asts,
+				parser->source.asts,
 				nat_symbol_id,
 				symbol_id,
 					span,
@@ -1597,7 +1597,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 			}
 			struct prototype_intrinsic_namespace_binding binding;
 			int binding_status = prototype_intrinsic_namespace_lookup(
-				parser->program->intrinsic_environment, name, &binding
+				parser->source.intrinsic_environment, name, &binding
 			);
 			if (binding_status < 0) {
 				return -1;
@@ -1614,7 +1614,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 				pure_primitive_id = binding.target_id;
 				if (pure_primitive_id == PROTOTYPE_PURE_PRIMITIVE_TEXT_TO_NAT ||
 					pure_primitive_id == PROTOTYPE_PURE_PRIMITIVE_NAT_TO_TEXT) {
-					type_symbol_id = symbol_intern(parser->program->symbols, "#.Nat", 5);
+					type_symbol_id = symbol_intern(parser->source.symbols, "#.Nat", 5);
 				}
 			} else if (
 				binding.kind == PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION
@@ -1639,7 +1639,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 			return -1;
 		}
 		return prototype_ast_system_name(
-			parser->program->asts,
+			parser->source.asts,
 			namespace_symbol_id,
 			symbol_id,
 			type_symbol_id,
@@ -1657,7 +1657,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		if (read_token(parser) != 0) {
 			return -1;
 		}
-		return prototype_ast_text_literal(parser->program->asts, text_symbol_id, span, p_ret);
+		return prototype_ast_text_literal(parser->source.asts, text_symbol_id, span, p_ret);
 	}
 	if (parser->current.kind == TOKEN_INT_LITERAL) {
 		int64_t value = parser->current.int_value;
@@ -1665,7 +1665,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		if (read_token(parser) != 0) {
 			return -1;
 		}
-		return prototype_ast_int_literal(parser->program->asts, value, span, p_ret);
+		return prototype_ast_int_literal(parser->source.asts, value, span, p_ret);
 	}
 	if (accept(parser, TOKEN_STAR)) {
 		struct prototype_source_span span = current_span(parser);
@@ -1686,7 +1686,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			return prototype_ast_var(
-				parser->program->asts,
+				parser->source.asts,
 				certified->ast_binder_id,
 				symbol_id,
 				span,
@@ -1707,7 +1707,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			return prototype_ast_certified_function_reference(
-				parser->program->asts, symbol_id, span, p_ret
+				parser->source.asts, symbol_id, span, p_ret
 			);
 		}
 		if (!binder->induction_allowed) {
@@ -1719,7 +1719,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		}
 		if (binder->induction_allowed == LOCAL_BINDER_ROLE_FUNCTION_GRAPH_ORIGIN) {
 			return prototype_ast_function_graph_role_reference(
-				parser->program->asts,
+				parser->source.asts,
 				binder->ast_binder_id,
 				symbol_id,
 				PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_INDUCTION_HYPOTHESIS,
@@ -1728,7 +1728,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 			);
 		}
 		return prototype_ast_induction_hypothesis(
-			parser->program->asts,
+			parser->source.asts,
 			binder->ast_binder_id,
 			symbol_id,
 			span,
@@ -1754,7 +1754,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			return prototype_ast_name_in_namespace(
-				parser->program->asts,
+				parser->source.asts,
 				symbol_id,
 				member_symbol_id,
 				span,
@@ -1763,9 +1763,9 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 		}
 		binder = lookup_binder(parser, symbol_id);
 		if (binder) {
-			return prototype_ast_var(parser->program->asts, binder->ast_binder_id, symbol_id, span, p_ret);
+			return prototype_ast_var(parser->source.asts, binder->ast_binder_id, symbol_id, span, p_ret);
 		}
-		return prototype_ast_name(parser->program->asts, symbol_id, span, p_ret);
+		return prototype_ast_name(parser->source.asts, symbol_id, span, p_ret);
 	}
 	if (accept(parser, TOKEN_LPAREN)) {
 		struct prototype_source_span span = current_span(parser);
@@ -1786,7 +1786,7 @@ static int parse_term_atom(struct parser* parser, uint32_t* p_ret) {
 				return -1;
 			}
 			return prototype_ast_name_in_ast_namespace(
-				parser->program->asts,
+				parser->source.asts,
 				*p_ret,
 				member_symbol_id,
 				span,
@@ -1851,7 +1851,7 @@ static int parse_app_term(struct parser* parser, uint32_t* p_ret) {
 		if (parse_term_atom(parser, &argument) != 0) {
 			return -1;
 		}
-		if (prototype_ast_app(parser->program->asts, term, argument, span, &app) != 0) {
+		if (prototype_ast_app(parser->source.asts, term, argument, span, &app) != 0) {
 			set_error(parser, "AST table is full");
 			return -1;
 		}
@@ -1911,9 +1911,9 @@ static int parse_direct_certified_elimination(
 		return -1;
 	}
 	uint32_t result_ast_binder_id =
-		prototype_ast_new_binder(parser->program->asts);
+		prototype_ast_new_binder(parser->source.asts);
 	uint32_t graph_ast_binder_id =
-		prototype_ast_new_binder(parser->program->asts);
+		prototype_ast_new_binder(parser->source.asts);
 	if (result_ast_binder_id == PROTOTYPE_INVALID_ID ||
 		graph_ast_binder_id == PROTOTYPE_INVALID_ID || read_token(parser) != 0 ||
 		expect(parser, TOKEN_FATARROW,
@@ -1935,7 +1935,7 @@ static int parse_direct_certified_elimination(
 	}
 	parser->binders = result_binder.next;
 	if (prototype_ast_certified_elimination(
-			parser->program->asts,
+			parser->source.asts,
 			computation,
 			owner_symbol_id,
 			result_ast_binder_id,
@@ -1990,12 +1990,12 @@ static int parse_elimination_head(
 			set_error(parser, "expected intrinsic clause label after '@#.'");
 			return -1;
 		}
-		namespace_symbol_id = symbol_intern(parser->program->symbols, "#", 1);
+		namespace_symbol_id = symbol_intern(parser->source.symbols, "#", 1);
 		symbol_id = parser->current.symbol_id;
-		name = symbol_to_string(parser->program->symbols, symbol_id);
+		name = symbol_to_string(parser->source.symbols, symbol_id);
 		if (namespace_symbol_id < 0 || !name ||
 			prototype_intrinsic_namespace_lookup(
-				parser->program->intrinsic_environment, name, &binding
+				parser->source.intrinsic_environment, name, &binding
 			) != 0) {
 			set_error(parser, "unknown intrinsic elimination label");
 			return -1;
@@ -2011,7 +2011,7 @@ static int parse_elimination_head(
 		}
 		if (binding.kind != PROTOTYPE_INTRINSIC_NAMESPACE_BINDING_EFFECT_OPERATION ||
 			prototype_ast_system_name(
-				parser->program->asts,
+				parser->source.asts,
 				namespace_symbol_id,
 				symbol_id,
 				-1,
@@ -2046,7 +2046,7 @@ static int parse_elimination_head(
 		}
 		int member_symbol_id = parser->current.symbol_id;
 		if (read_token(parser) != 0 || prototype_ast_name_in_namespace(
-				parser->program->asts,
+				parser->source.asts,
 				symbol_id,
 				member_symbol_id,
 				clause->span,
@@ -2059,13 +2059,13 @@ static int parse_elimination_head(
 		return 0;
 	}
 	if ((local && prototype_ast_var(
-			parser->program->asts,
+			parser->source.asts,
 			local->ast_binder_id,
 			symbol_id,
 			clause->span,
 			&clause->head_ast
 		) != 0) || (!local && prototype_ast_name(
-			parser->program->asts,
+			parser->source.asts,
 			symbol_id,
 			clause->span,
 			&clause->head_ast
@@ -2114,7 +2114,7 @@ static int parse_elimination_suffix(
 				return -1;
 			}
 			binder_storage[binder_cursor].symbol_id = parser->current.symbol_id;
-			binder_storage[binder_cursor].ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+			binder_storage[binder_cursor].ast_binder_id = prototype_ast_new_binder(parser->source.asts);
 			if (binder_storage[binder_cursor].ast_binder_id == PROTOTYPE_INVALID_ID) {
 				set_error(parser, "binder table is full");
 				return -1;
@@ -2175,9 +2175,11 @@ static int parse_elimination_suffix(
 					return -1;
 				}
 				selector->value_ast_binder_id =
-					prototype_ast_new_binder(parser->program->asts);
-				selector->graph_ast_binder_id = PROTOTYPE_INVALID_ID;
+					prototype_ast_new_binder(parser->source.asts);
+				selector->graph_ast_binder_id =
+					prototype_ast_new_binder(parser->source.asts);
 				if (selector->value_ast_binder_id == PROTOTYPE_INVALID_ID ||
+					selector->graph_ast_binder_id == PROTOTYPE_INVALID_ID ||
 					expect(parser, TOKEN_SEMI, "expected ';' after named graph selector") != 0) {
 					return -1;
 				}
@@ -2266,7 +2268,7 @@ static int parse_elimination_suffix(
 			fold_clause_count++;
 		}
 		int status = prototype_ast_computation_fold(
-			parser->program->asts,
+			parser->source.asts,
 			scrutinee,
 			fold_clauses,
 			fold_clause_count,
@@ -2298,14 +2300,14 @@ static int parse_elimination_suffix(
 		match_cases[i].span = clauses[i].span;
 	}
 	int status = prototype_ast_match(
-		parser->program->asts, scrutinee, match_cases, clause_count, span, p_ret
+		parser->source.asts, scrutinee, match_cases, clause_count, span, p_ret
 	);
 	if (status == 0) {
 		const struct prototype_ast_node* match =
-			&parser->program->asts->nodes[*p_ret];
+			&parser->source.asts->nodes[*p_ret];
 		for (uint32_t i = 0; i < clause_count; ++i) {
 			if (clauses[i].selector_count != 0 && prototype_ast_match_case_set_selectors(
-					parser->program->asts,
+					parser->source.asts,
 					match->as.match.first_case + i,
 					clauses[i].selectors,
 					clauses[i].selector_count
@@ -2367,28 +2369,28 @@ static int build_certified_function_companion_type(
 	uint32_t result;
 	if (!parser || !raw || !graph || !p_type ||
 		function_graph_callback_type_parts(
-			parser->program->asts, raw->type_expr, &domain, &result
-		) != 0 || result >= parser->program->asts->type_expr_count) {
+			parser->source.asts, raw->type_expr, &domain, &result
+		) != 0 || result >= parser->source.asts->type_expr_count) {
 		set_error(parser,
 			"certified companion requires a binary callback classifier");
 		return -1;
 	}
 	const struct prototype_ast_type_expr* result_expr =
-		&parser->program->asts->type_exprs[result];
+		&parser->source.asts->type_exprs[result];
 	const char* result_name = result_expr->tag == PROTOTYPE_AST_TYPE_EXPR_NAME ?
-		symbol_to_string(parser->program->symbols, result_expr->as.name.symbol_id) : NULL;
+		symbol_to_string(parser->source.symbols, result_expr->as.name.symbol_id) : NULL;
 	if (!result_name || strcmp(result_name, "Bool") != 0) {
 		set_error(parser,
 			"certified companion currently requires a binary Bool callback");
 		return -1;
 	}
 	int package_symbol = symbol_intern(
-		parser->program->symbols, "$certified.binary-bool", 22
+		parser->source.symbols, "$certified.binary-bool", 22
 	);
-	int left_symbol = symbol_intern(parser->program->symbols, "left", 4);
-	int right_symbol = symbol_intern(parser->program->symbols, "right", 5);
-	uint32_t left_binder = prototype_ast_new_binder(parser->program->asts);
-	uint32_t right_binder = prototype_ast_new_binder(parser->program->asts);
+	int left_symbol = symbol_intern(parser->source.symbols, "left", 4);
+	int right_symbol = symbol_intern(parser->source.symbols, "right", 5);
+	uint32_t left_binder = prototype_ast_new_binder(parser->source.asts);
+	uint32_t right_binder = prototype_ast_new_binder(parser->source.asts);
 	uint32_t package;
 	uint32_t graph_var;
 	uint32_t left_var;
@@ -2396,27 +2398,27 @@ static int build_certified_function_companion_type(
 	if (package_symbol < 0 || left_symbol < 0 || right_symbol < 0 ||
 		left_binder == PROTOTYPE_INVALID_ID || right_binder == PROTOTYPE_INVALID_ID ||
 		prototype_ast_type_expr_name(
-			parser->program->asts, package_symbol, span, &package
+			parser->source.asts, package_symbol, span, &package
 		) != 0 || prototype_ast_type_expr_var(
-			parser->program->asts, graph->ast_binder_id, graph->symbol_id, span,
+			parser->source.asts, graph->ast_binder_id, graph->symbol_id, span,
 			&graph_var
 		) != 0 || prototype_ast_type_expr_var(
-			parser->program->asts, left_binder, left_symbol, span, &left_var
+			parser->source.asts, left_binder, left_symbol, span, &left_var
 		) != 0 || prototype_ast_type_expr_var(
-			parser->program->asts, right_binder, right_symbol, span, &right_var
+			parser->source.asts, right_binder, right_symbol, span, &right_var
 		) != 0 || prototype_ast_type_expr_app(
-			parser->program->asts, package, domain, span, &package
+			parser->source.asts, package, domain, span, &package
 		) != 0 || prototype_ast_type_expr_app(
-			parser->program->asts, package, graph_var, span, &package
+			parser->source.asts, package, graph_var, span, &package
 		) != 0 || prototype_ast_type_expr_app(
-			parser->program->asts, package, left_var, span, &package
+			parser->source.asts, package, left_var, span, &package
 		) != 0 || prototype_ast_type_expr_app(
-			parser->program->asts, package, right_var, span, &package
+			parser->source.asts, package, right_var, span, &package
 		) != 0 || prototype_ast_type_expr_pi(
-			parser->program->asts, right_binder, right_symbol, domain, package,
+			parser->source.asts, right_binder, right_symbol, domain, package,
 			span, &package
 		) != 0 || prototype_ast_type_expr_pi(
-			parser->program->asts, left_binder, left_symbol, domain, package,
+			parser->source.asts, left_binder, left_symbol, domain, package,
 			span, p_type
 		) != 0) {
 		set_error(parser, "certified companion classifier table is full");
@@ -2448,7 +2450,7 @@ static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {
 		return -1;
 	}
 	binder_symbol = parser->current.symbol_id;
-	ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+	ast_binder_id = prototype_ast_new_binder(parser->source.asts);
 	if (ast_binder_id == PROTOTYPE_INVALID_ID) {
 		set_error(parser, "binder table is full");
 		return -1;
@@ -2503,7 +2505,7 @@ static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {
 
 	parser->binders = binder.next;
 	if (prototype_ast_lambda(
-			parser->program->asts, ast_binder_id, binder_symbol, binder_type, body,
+			parser->source.asts, ast_binder_id, binder_symbol, binder_type, body,
 			span, p_ret
 		) != 0) {
 		return -1;
@@ -2514,7 +2516,7 @@ static int parse_lambda_term(struct parser* parser, uint32_t* p_ret) {
 			PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_GRAPH :
 			PROTOTYPE_AST_FUNCTION_GRAPH_ROLE_CERTIFIED_COMPANION;
 		return prototype_ast_lambda_set_function_graph_companion(
-			parser->program->asts, *p_ret, origin->ast_binder_id, ast_role
+			parser->source.asts, *p_ret, origin->ast_binder_id, ast_role
 		);
 	}
 	return 0;
@@ -2541,7 +2543,7 @@ static int parse_bare_lambda_term(struct parser* parser, uint32_t* p_ret) {
 		*parser = saved;
 		return 0;
 	}
-	ast_binder_id = prototype_ast_new_binder(parser->program->asts);
+	ast_binder_id = prototype_ast_new_binder(parser->source.asts);
 	if (ast_binder_id == PROTOTYPE_INVALID_ID) {
 		set_error(parser, "binder table is full");
 		return -1;
@@ -2569,7 +2571,7 @@ static int parse_bare_lambda_term(struct parser* parser, uint32_t* p_ret) {
 	}
 
 	parser->binders = binder.next;
-	if (prototype_ast_lambda(parser->program->asts, ast_binder_id, binder_symbol, binder_type, body, span, p_ret) != 0) {
+	if (prototype_ast_lambda(parser->source.asts, ast_binder_id, binder_symbol, binder_type, body, span, p_ret) != 0) {
 		set_error(parser, "AST table is full");
 		return -1;
 	}
@@ -2596,7 +2598,7 @@ static int parse_term(struct parser* parser, uint32_t* p_ret) {
 				if (parser->current.kind == TOKEN_AT) {
 					int owner_symbol_id;
 					if (certified_application_owner(
-							parser->program->asts, term, &owner_symbol_id
+							parser->source.asts, term, &owner_symbol_id
 						) && current_starts_direct_certified_elimination(parser)) {
 						if (parse_direct_certified_elimination(
 								parser, term, owner_symbol_id, span, p_ret
@@ -2618,7 +2620,7 @@ static int parse_term(struct parser* parser, uint32_t* p_ret) {
 		if (parser->current.kind == TOKEN_AT) {
 			int owner_symbol_id;
 			if (certified_application_owner(
-					parser->program->asts, term, &owner_symbol_id
+					parser->source.asts, term, &owner_symbol_id
 				) && current_starts_direct_certified_elimination(parser)) {
 				if (parse_direct_certified_elimination(
 						parser, term, owner_symbol_id, span, p_ret
@@ -2639,7 +2641,7 @@ static int parse_term(struct parser* parser, uint32_t* p_ret) {
 		if (parse_type_expr(parser, &type_expr) != 0) {
 			return -1;
 		}
-		if (prototype_ast_ascription(parser->program->asts, *p_ret, type_expr, span, &ascribed) != 0) {
+		if (prototype_ast_ascription(parser->source.asts, *p_ret, type_expr, span, &ascribed) != 0) {
 			set_error(parser, "AST table is full");
 			return -1;
 		}
@@ -2672,7 +2674,7 @@ static int parse_case_body(struct parser* parser, uint32_t* p_ret) {
 		if (parse_type_expr(parser, &type_expr) != 0) {
 			return -1;
 		}
-		if (prototype_ast_ascription(parser->program->asts, *p_ret, type_expr, span, &ascribed) != 0) {
+		if (prototype_ast_ascription(parser->source.asts, *p_ret, type_expr, span, &ascribed) != 0) {
 			set_error(parser, "AST table is full");
 			return -1;
 		}
@@ -2697,7 +2699,7 @@ static int parse_term_def(
 		return -1;
 	}
 	if (prototype_ast_add_term_assignment(
-		parser->program->asts,
+		parser->source.asts,
 		name_symbol_id,
 		term,
 		source_entry_id,
@@ -2724,7 +2726,7 @@ static int parse_entry(struct parser* parser) {
 		return -1;
 	}
 	const char* entry_name = symbol_to_string(
-		parser->program->symbols,
+		parser->source.symbols,
 		parser->current.symbol_id
 	);
 	if (entry_name && strcmp(entry_name, "import") == 0) {
@@ -2736,7 +2738,7 @@ static int parse_entry(struct parser* parser) {
 			set_error(parser, "expected imported artifact symbol after 'import'");
 			return -1;
 		}
-		source_entry_id = prototype_ast_new_source_entry(parser->program->asts);
+		source_entry_id = prototype_ast_new_source_entry(parser->source.asts);
 		if (source_entry_id == PROTOTYPE_INVALID_ID) {
 			set_error(parser, "source entry table is full");
 			return -1;
@@ -2750,7 +2752,7 @@ static int parse_entry(struct parser* parser) {
 			return -1;
 		}
 		if (prototype_ast_add_import(
-				parser->program->asts,
+				parser->source.asts,
 				name_symbol_id,
 				source_entry_id,
 				import_span
@@ -2760,7 +2762,7 @@ static int parse_entry(struct parser* parser) {
 		}
 		return 0;
 	}
-	source_entry_id = prototype_ast_new_source_entry(parser->program->asts);
+	source_entry_id = prototype_ast_new_source_entry(parser->source.asts);
 	if (source_entry_id == PROTOTYPE_INVALID_ID) {
 		set_error(parser, "source entry table is full");
 		return -1;
@@ -2784,7 +2786,7 @@ static int parse_entry(struct parser* parser) {
 			return -1;
 		}
 		if (prototype_ast_add_type_expectation(
-			parser->program->asts,
+			parser->source.asts,
 			PROTOTYPE_AST_TYPE_ENTRY_EXPECTATION,
 			name_symbol_id,
 			annotation_type_expr,
@@ -2810,7 +2812,7 @@ static int parse_entry(struct parser* parser) {
 				return -1;
 			}
 			if (prototype_ast_add_type_expectation(
-				parser->program->asts,
+				parser->source.asts,
 				PROTOTYPE_AST_TYPE_ENTRY_DECLARATION,
 				name_symbol_id,
 				annotation_type_expr,
@@ -2879,11 +2881,11 @@ static int finish_definition_block(
 	int selected_symbol_id,
 	struct prototype_source_span select_span
 ) {
-	if (!parser || first_assignment > parser->program->asts->assignment_count) {
+	if (!parser || first_assignment > parser->source.asts->assignment_count) {
 		return -1;
 	}
 	uint32_t assignment_count =
-		(uint32_t)parser->program->asts->assignment_count - first_assignment;
+		(uint32_t)parser->source.asts->assignment_count - first_assignment;
 	if (assignment_count == 0) {
 		set_error(parser, "definition block requires at least one definition");
 		return -1;
@@ -2898,7 +2900,7 @@ static int finish_definition_block(
 		uint32_t assignment_id = first_assignment + i;
 		assignment_ids[i] = assignment_id;
 		struct prototype_ast_term_assignment_def* assignment =
-			&parser->program->asts->assignments[assignment_id];
+			&parser->source.asts->assignments[assignment_id];
 		assignment->definition_value_required = 1;
 		if (selected_symbol_id >= 0 &&
 			assignment->name_symbol_id == selected_symbol_id) {
@@ -2913,7 +2915,7 @@ static int finish_definition_block(
 	}
 	uint32_t definition_block;
 	if (prototype_ast_definition_block(
-			parser->program->asts,
+			parser->source.asts,
 			assignment_ids,
 			assignment_count,
 			block_span,
@@ -2922,11 +2924,11 @@ static int finish_definition_block(
 		set_error(parser, "definition block table is full");
 		return -1;
 	}
-	parser->program->asts->root_definition_block = definition_block;
+	parser->source.asts->root_definition_block = definition_block;
 	if (selected_found == 1) {
 		uint32_t definition_select;
 		if (prototype_ast_definition_select(
-				parser->program->asts,
+				parser->source.asts,
 				definition_block,
 				selected_symbol_id,
 				select_span,
@@ -2935,7 +2937,7 @@ static int finish_definition_block(
 			set_error(parser, "definition selection table is full");
 			return -1;
 		}
-		parser->program->asts->root_definition_select = definition_select;
+		parser->source.asts->root_definition_select = definition_select;
 	}
 	return 0;
 }
@@ -2946,7 +2948,7 @@ static int parse_program(struct parser* parser) {
 	}
 	if (parser->current.kind == TOKEN_LBRACE) {
 		struct prototype_source_span span = current_span(parser);
-		uint32_t first_assignment = (uint32_t)parser->program->asts->assignment_count;
+		uint32_t first_assignment = (uint32_t)parser->source.asts->assignment_count;
 		if (read_token(parser) != 0) {
 			return -1;
 		}
@@ -3061,7 +3063,9 @@ static int read_from_owned_input(
 		memset(error, 0, sizeof(*error));
 	}
 
-	if (!name || !input || !program || !program->symbols || !program->asts) {
+	struct prototype_program_source_view source;
+	if (!name || !input ||
+		prototype_program_source_view(program, &source) != 0) {
 		if (error) {
 			error->filename = name;
 			snprintf(error->message, sizeof(error->message), "%s", "invalid reader arguments");
@@ -3075,7 +3079,7 @@ static int read_from_owned_input(
 	parser.filename = name;
 	parser.line = 1;
 	parser.column = 1;
-	parser.program = program;
+	parser.source = source;
 	parser.error = error;
 	int result = parse_program(&parser);
 	free(parser.input);

@@ -1,16 +1,19 @@
 static int write_artifact_graph_section(
 	FILE* stream,
 	const struct symbol_table* symbols,
-	const struct prototype_intrinsic_environment* intrinsic_environment,
+	const struct prototype_intrinsic_typing_environment* intrinsic_environment,
 	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
 	const struct prototype_judgement_db* judgement,
-	const struct artifact_context_slice* context_slice
+	const struct artifact_context_slice* context_slice,
+	const struct artifact_executable_reachability* executable
 ) {
 	if (!stream || !symbols || !intrinsic_environment || !dimension_operators ||
 		!terms ||
-		!type_declarations || !judgement || !context_slice) {
+		!type_declarations || !judgement || !context_slice || !executable ||
+		executable->term_count < terms->term_count ||
+		executable->case_count < terms->case_count) {
 		return -1;
 	}
 	fprintf(stream, "SECTION graph\n");
@@ -33,6 +36,19 @@ static int write_artifact_graph_section(
 	}
 	for (size_t i = 0; i < terms->case_count; ++i) {
 		if (artifact_case_present(&terms->cases[i])) {
+			if (executable->cases[i] &&
+				(terms->cases[i].constructor_owner == PROTOTYPE_INVALID_ID ||
+				 terms->cases[i].constructor_id == PROTOTYPE_INVALID_ID)) {
+				fprintf(stderr,
+					"artifact graph contains an unresolved Match case id=%zu "
+					"owner=%u constructor=%u body=%u\n",
+					i,
+					terms->cases[i].constructor_owner,
+					terms->cases[i].constructor_id,
+					terms->cases[i].body
+				);
+				return -1;
+			}
 			present_case_count++;
 		}
 	}
@@ -148,6 +164,27 @@ static int write_artifact_graph_section(
 		judgement->claim_count,
 		judgement->derivation_count
 	);
+
+	size_t executable_term_count = 0;
+	size_t executable_case_count = 0;
+	for (size_t i = 0; i < terms->term_count; ++i) {
+		executable_term_count += executable->terms[i] != 0;
+	}
+	for (size_t i = 0; i < terms->case_count; ++i) {
+		executable_case_count += executable->cases[i] != 0;
+	}
+	fprintf(stream, "executable_terms %zu\n", executable_term_count);
+	for (size_t i = 0; i < terms->term_count; ++i) {
+		if (executable->terms[i]) {
+			fprintf(stream, "executable_term %zu\n", i);
+		}
+	}
+	fprintf(stream, "executable_cases %zu\n", executable_case_count);
+	for (size_t i = 0; i < terms->case_count; ++i) {
+		if (executable->cases[i]) {
+			fprintf(stream, "executable_case %zu\n", i);
+		}
+	}
 
 	fprintf(stream, "type_declarations %zu\n", present_type_count);
 	for (size_t i = 0; i < type_declarations->semantic_schema.type_count; ++i) {
@@ -334,6 +371,7 @@ static int write_artifact_graph_section(
 			continue;
 		}
 		if (frame->match_term >= terms->term_count ||
+			frame->binding_scope_id >= terms->ih_scope_count ||
 			terms->terms[frame->match_term].tag != PROTOTYPE_TERM_MATCH ||
 			terms->terms[frame->match_term].as.match.scrutinee >=
 				terms->term_count) {
@@ -349,14 +387,15 @@ static int write_artifact_graph_section(
 		}
 		fprintf(
 			stream,
-			"match_frame %zu %u %u %u %d ",
+			"match_frame %zu %u %u %u %u %d ",
 			i,
 			frame->match_term,
 			frame->scrutinee_binding_id,
+			frame->binding_scope_id,
 			frame->key.case_count,
 			frame->key.is_linkable
 		);
-		print_artifact_key(stream, &frame->key.match_key);
+		print_core_key(stream, &frame->key.match_key);
 		fprintf(stream, "\n");
 	}
 
@@ -960,9 +999,11 @@ static int write_artifact_relocation_section(
 	const struct prototype_artifact_interface* interface,
 	const struct prototype_term_db* terms,
 	const struct prototype_type_declaration_db* type_declarations,
+	const struct prototype_dimension_operator_db* dimension_operators,
 	const struct prototype_judgement_db* judgement
 ) {
-	if (!stream || !symbols || !interface || !terms || !type_declarations || !judgement) {
+	if (!stream || !symbols || !interface || !terms || !type_declarations ||
+		!judgement) {
 		return -1;
 	}
 	size_t external_term_ref_count;
@@ -1167,7 +1208,7 @@ static int write_artifact_relocation_section(
 	fprintf(stream, "resolved_constructor_owner_refs %zu\n", resolved_constructor_owner_ref_count);
 	for (size_t i = 0; i < terms->term_count; ++i) {
 		const struct prototype_term* term = &terms->terms[i];
-		struct prototype_term_canonical_key owner_key;
+		struct prototype_artifact_semantic_key owner_key;
 		int reachable = 0;
 		if (term->tag != PROTOTYPE_TERM_CONSTRUCTOR ||
 			term->as.constructor.owner == PROTOTYPE_INVALID_ID) {
@@ -1185,9 +1226,11 @@ static int write_artifact_relocation_section(
 		if (!reachable) {
 			continue;
 		}
-		if (prototype_term_canonical_key_with_types(
+		if (prototype_artifact_semantic_key_build(
+				symbols,
 				terms,
 				type_declarations,
+				dimension_operators,
 				term->as.constructor.owner,
 				&owner_key
 			) != 0) {
@@ -1205,7 +1248,7 @@ static int write_artifact_relocation_section(
 	}
 	for (size_t i = 0; i < terms->case_count; ++i) {
 		const struct prototype_match_case* match_case = &terms->cases[i];
-		struct prototype_term_canonical_key owner_key;
+		struct prototype_artifact_semantic_key owner_key;
 		int reachable = 0;
 		if (match_case->constructor_owner == PROTOTYPE_INVALID_ID) {
 			continue;
@@ -1222,9 +1265,11 @@ static int write_artifact_relocation_section(
 		if (!reachable) {
 			continue;
 		}
-		if (prototype_term_canonical_key_with_types(
+		if (prototype_artifact_semantic_key_build(
+				symbols,
 				terms,
 				type_declarations,
+				dimension_operators,
 				match_case->constructor_owner,
 				&owner_key
 			) != 0) {
@@ -1394,8 +1439,7 @@ static int write_artifact_debug_section(
 			for (uint32_t j = 0; j < (uint32_t)asts->assignment_count; ++j) {
 				const struct prototype_ast_term_assignment_def* assignment =
 					&asts->assignments[j];
-				if (assignment->name_symbol_id != export->name_symbol_id ||
-					assignment->compiled_term != export->local_term) {
+				if (assignment->name_symbol_id != export->name_symbol_id) {
 					continue;
 				}
 				source_entry_id = assignment->source_entry_id;
@@ -1427,7 +1471,7 @@ static int write_artifact_debug_section(
 		if (asts) {
 			for (uint32_t j = 0; j < (uint32_t)asts->type_def_count; ++j) {
 				const struct prototype_ast_type_def* type = &asts->type_defs[j];
-				if (!type->compiled || type->compiled_type != export->local_type_id) {
+				if (type->name_symbol_id != export->name_symbol_id) {
 					continue;
 				}
 				name_span = type->name_span;
@@ -1457,7 +1501,7 @@ static int write_artifact_debug_section(
 				&interface->type_exports[export->type_export_index];
 			for (uint32_t j = 0; j < (uint32_t)asts->type_def_count; ++j) {
 				const struct prototype_ast_type_def* type = &asts->type_defs[j];
-				if (!type->compiled || type->compiled_type != type_export->local_type_id ||
+				if (type->name_symbol_id != type_export->name_symbol_id ||
 					export->ordinal >= type->constructor_count) {
 					continue;
 				}

@@ -7,6 +7,7 @@
 #include "a_program/graph/typed_occurrence_graph.h"
 #include "a_program/graph/occurrence_usage.h"
 #include "a_program/kernel/type_schema_view.h"
+#include "a_program/kernel/type_term_debug.h"
 
 #include <inttypes.h>
 #include <stdint.h>
@@ -15,6 +16,7 @@
 #include <string.h>
 
 /* Keep the kernel in one translation unit while exposing physical ownership. */
+#include "typing/classifier_expression.inc"
 #include "typing/judgement_db.inc"
 #include "typing/conversion.inc"
 #include "typing/classifier_solver.inc"

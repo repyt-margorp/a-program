@@ -18,7 +18,7 @@ int prototype_hott_execute_substitution_action(
 	if (!actions || !contexts || !substitutions || !cwf_certificates ||
 		!cwf_certificates || !bridges || !terms || !type_declarations ||
 		!judgement || !p_result_id || normalization_profile !=
-			PROTOTYPE_TERM_NORMALIZATION_PURE_TYPE_WHNF ||
+			PROTOTYPE_TERM_NORMALIZATION_TYPE_EXPRESSION_WHNF ||
 		prototype_kernel_builder_view(kernel, &view) != 0 ||
 		prototype_hott_action_db_epoch_matches(actions, &view) != 0) {
 		return -1;
@@ -229,7 +229,7 @@ int prototype_hott_execute_substitution_action(
 					candidate->key.relation_type.source_bridge_id == parent_bridge_id &&
 					prototype_judgement_proposition_get(judgement, type_claim->proposition_id)->context_id == target->parent &&
 					prototype_judgement_proposition_get(judgement, type_claim->proposition_id)->subject ==
-						prototype_context_classifier_term(target) &&
+						prototype_context_classifier_answer(contexts, target) &&
 					hott_action_result_for_request(
 						actions, i, &candidate_result
 					) == 0 && actions->results[candidate_result].outcome.state ==
@@ -506,7 +506,6 @@ static int hott_bridge_db_finish_extension(
 			endpoint_context_id,
 			proof_binding,
 			fiber_type_term_id,
-			PROTOTYPE_INVALID_ID,
 			&bridge_context
 		) != 0 || prototype_cwf_certificate_db_add_context(
 			cwf,
@@ -565,7 +564,7 @@ static int hott_bridge_db_finish_extension(
 			left_prefix,
 			source_context_id,
 			left_endpoint,
-			prototype_context_classifier_term(left_endpoint_context),
+			prototype_context_classifier_answer(contexts, left_endpoint_context),
 			&left_substitution
 		) != 0 || prototype_substitution_extend(
 			substitutions,
@@ -575,7 +574,7 @@ static int hott_bridge_db_finish_extension(
 			right_prefix,
 			source_context_id,
 			right_endpoint,
-			prototype_context_classifier_term(right_endpoint_context),
+			prototype_context_classifier_answer(contexts, right_endpoint_context),
 			&right_substitution
 		) != 0) {
 		return -1;
@@ -590,7 +589,7 @@ static int hott_bridge_db_finish_extension(
 			contexts,
 			bridge_context,
 			left_endpoint_binding_id,
-			prototype_context_classifier_term(left_endpoint_context),
+			prototype_context_classifier_answer(contexts, left_endpoint_context),
 			&left_claim
 		) != 0 || prototype_judgement_add_context_binding_assumption(
 			judgement,
@@ -598,7 +597,7 @@ static int hott_bridge_db_finish_extension(
 			contexts,
 			bridge_context,
 			right_endpoint_binding_id,
-			prototype_context_classifier_term(right_endpoint_context),
+			prototype_context_classifier_answer(contexts, right_endpoint_context),
 			&right_claim
 		) != 0 || prototype_cwf_certificate_db_add_substitution(
 			cwf,
@@ -640,7 +639,7 @@ static int hott_bridge_db_finish_extension(
 			.target_binding_id = left_endpoint_binding_id,
 			.target_context_id = right_endpoint_context->parent,
 			.classifier_term_id =
-				prototype_context_classifier_term(left_endpoint_context),
+				prototype_context_classifier_answer(contexts, left_endpoint_context),
 			.context_certificate_id = left_endpoint_context_certificate_id
 		},
 		{
@@ -651,7 +650,7 @@ static int hott_bridge_db_finish_extension(
 			.target_binding_id = right_endpoint_binding_id,
 			.target_context_id = endpoint_context_id,
 			.classifier_term_id =
-				prototype_context_classifier_term(right_endpoint_context),
+				prototype_context_classifier_answer(contexts, right_endpoint_context),
 			.context_certificate_id = right_endpoint_context_certificate_id
 		},
 		{
@@ -751,7 +750,7 @@ int prototype_hott_bridge_db_construct_extension(
 		type_certificate->kind != PROTOTYPE_HOTT_ACTION_CERTIFICATE_RELATION_TYPE ||
 		!source_type || !parent || source->parent != parent->source_context_id ||
 		prototype_judgement_proposition_get(judgement, source_type->proposition_id)->context_id != source->parent ||
-		prototype_judgement_proposition_get(judgement, source_type->proposition_id)->subject != prototype_context_classifier_term(source)) {
+		prototype_judgement_proposition_get(judgement, source_type->proposition_id)->subject != prototype_context_classifier_answer(contexts, source)) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < bridges->bridge_count; ++i) {
@@ -836,7 +835,7 @@ int prototype_hott_bridge_db_construct_identity_extension(
 			PROTOTYPE_HOTT_BRIDGE_SEMANTICS_OBJECT_IDENTITY) ||
 		source->parent != parent->source_context_id ||
 		source_type->context_id != source->parent ||
-		source_type->subject != prototype_context_classifier_term(source)) {
+		source_type->subject != prototype_context_classifier_answer(contexts, source)) {
 		return -1;
 	}
 	for (uint32_t i = 0; i < bridges->bridge_count; ++i) {
@@ -1438,9 +1437,9 @@ int prototype_hott_action_db_validate(
 		if (source_bridge_id != bridge_certificate->parent_bridge_id ||
 			!source_type || !source || !relation ||
 			prototype_judgement_proposition_get(judgement, source_type->proposition_id)->context_id != source->parent ||
-			prototype_judgement_proposition_get(judgement, source_type->proposition_id)->subject != prototype_context_classifier_term(source) ||
+			prototype_judgement_proposition_get(judgement, source_type->proposition_id)->subject != prototype_context_classifier_answer(contexts, source) ||
 			endpoint_context_id != relation->parent ||
-			fiber_type_term_id != prototype_context_classifier_term(relation) ||
+			fiber_type_term_id != prototype_context_classifier_answer(contexts, relation) ||
 			bridge_certificate->left_endpoint_context_certificate_id !=
 				left_context_certificate_id ||
 			bridge_certificate->right_endpoint_context_certificate_id !=

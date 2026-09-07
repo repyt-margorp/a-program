@@ -47,7 +47,7 @@ c_enum_value_in() {
 }
 
 effect_row_operation_tag=$(c_enum_value_in \
-	src/prototype/include/a_program/core/term.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_OPERATION)
+	src/prototype/include/a_program/protocol/graph.h prototype_term_tag PROTOTYPE_TERM_EFFECT_ROW_OPERATION)
 operation_request_proof_kind=$(c_enum_value_in \
 	src/prototype/include/a_program/kernel/judgement/types.h \
 	prototype_judgement_proof_kind \
@@ -199,12 +199,12 @@ EOF
 	>"$tmp_dir/runtime-strict-dependent.out"
 grep -q '^term main := COMPUTATION_FOLD(COMPUTATION_FOLD(OPERATION_REQUEST' \
 	"$tmp_dir/runtime-strict-dependent.out"
-grep -q 'compile-budget .* residual=1 incomplete=0' \
+grep -q 'compile-budget .* residual=0 incomplete=0' \
 	"$tmp_dir/runtime-strict-dependent.out"
 ./read_file.out --write-artifact "$tmp_dir/runtime-strict-dependent.apo" \
 	"$tmp_dir/runtime-strict-dependent.p" \
 	>"$tmp_dir/runtime-strict-dependent-write.out"
-grep -q '^verification_obligations 1$' \
+grep -q '^verification_obligations 0$' \
 	"$tmp_dir/runtime-strict-dependent.apo"
 
 cat >"$tmp_dir/runtime-strict-type-view.p" <<'EOF'
@@ -300,35 +300,16 @@ EOF
 ./read_file.out "$tmp_dir/dependent-fold-residual.p" \
 	>"$tmp_dir/dependent-fold-residual.out"
 grep -q '^term main := COMPUTATION_FOLD(' "$tmp_dir/dependent-fold-residual.out"
-grep -q 'compile-budget .* residual=1 incomplete=0' \
+grep -q 'compile-budget .* residual=0 incomplete=0' \
 	"$tmp_dir/dependent-fold-residual.out"
 ./read_file.out --write-artifact "$tmp_dir/dependent-fold-residual.apo" \
 	"$tmp_dir/dependent-fold-residual.p" >"$tmp_dir/dependent-fold-residual-write.out"
-awk '$1 == "compile_policy" && $2 == 2 && $8 > 0 { found = 1 }
-END { exit found ? 0 : 1 }' "$tmp_dir/dependent-fold-residual.apo"
-if ./read_file.out --policy strict "$tmp_dir/dependent-fold-residual.p" \
-	>"$tmp_dir/dependent-fold-strict.out" 2>"$tmp_dir/dependent-fold-strict.err"; then
-	echo 'strict policy accepted a residual dependent COMPUTATION_FOLD' >&2
-	exit 1
-fi
-grep -q 'failed to compile AST graph' "$tmp_dir/dependent-fold-strict.err"
-residual_fold_operation=$(awk '
-	/^occurrence#/ && $2 == "computation-fold" && $NF == "name=main" {
-		id = $1
-		sub(/^occurrence#/, "", id)
-		print id
-		exit
-	}
-' "$tmp_dir/dependent-fold-residual.out")
-[ -n "$residual_fold_operation" ]
-./read_file.out --write-artifact "$tmp_dir/dependent-fold-residual.apo" \
-	"$tmp_dir/dependent-fold-residual.p" >"$tmp_dir/dependent-fold-residual-write.out"
-awk '$1 == "verification" { print $5; exit }' \
-	"$tmp_dir/dependent-fold-residual.apo" | grep -qx "$residual_fold_operation"
-grep -q '^verification_obligations 1$' "$tmp_dir/dependent-fold-residual.apo"
+./read_file.out --policy strict "$tmp_dir/dependent-fold-residual.p" \
+	>"$tmp_dir/dependent-fold-strict.out"
+grep -q '^verification_obligations 0$' "$tmp_dir/dependent-fold-residual.apo"
 ./read_file.out --read-graph "$tmp_dir/dependent-fold-residual.apo" \
 	>"$tmp_dir/dependent-fold-residual-read.out"
-grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=2 verification_obligations=1' \
+grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=2 verification_obligations=0' \
 	"$tmp_dir/dependent-fold-residual-read.out"
 ./read_file.out --check-backend c "$tmp_dir/dependent-fold-residual.apo" \
 	>"$tmp_dir/dependent-fold-residual-c.out"
@@ -338,7 +319,7 @@ if ./read_file.out --check-backend verilog \
 	"$tmp_dir/dependent-fold-residual.apo" \
 	>"$tmp_dir/dependent-fold-residual-verilog.out" \
 	2>"$tmp_dir/dependent-fold-residual-verilog.err"; then
-	echo 'verilog backend accepted a residual verifier obligation' >&2
+	echo 'verilog backend accepted an unsupported effect capability' >&2
 	exit 1
 fi
 grep -q 'backend verilog is incompatible' \
@@ -349,7 +330,7 @@ grep -q 'backend verilog is incompatible' \
 	2>"$tmp_dir/higher-order-function-residual-link.err"
 ./read_file.out --read-graph "$tmp_dir/residual-link.apo" \
 	>"$tmp_dir/residual-link-read.out"
-grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=2 verification_obligations=1' \
+grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=2 verification_obligations=0' \
 	"$tmp_dir/residual-link-read.out"
 cat >"$tmp_dir/link-base.p" <<'EOF'
 root := #1;
@@ -361,12 +342,12 @@ EOF
 	>"$tmp_dir/provider-residual-link.out"
 ./read_file.out --read-graph "$tmp_dir/provider-residual-link.apo" \
 	>"$tmp_dir/provider-residual-link-read.out"
-grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=2 verification_obligations=1' \
+grep -Eq 'typed_occurrences=[1-9][0-9]* occurrence_match_cases=2 verification_obligations=0' \
 	"$tmp_dir/provider-residual-link-read.out"
 
-# A residual obligation is immutable artifact data. At evaluation, the input
-# computation runs once, its returned value discharges only a local frame, and
-# the continuation is then evaluated with that value.
+# The effectful prefix has a statically known returned value. Classifier
+# synthesis can therefore close the dependent result without performing the
+# effect; runtime still performs it once for each evaluation.
 printf '%s\n' \
 	'Bool := @{ true : *; false : *; };' \
 	'Nat := @{ zero : *; succ : * -> *; };' \
@@ -376,19 +357,15 @@ printf '%s\n' \
 	'main' \
 	':q' | ./a.out >"$tmp_dir/dependent-fold-residual-eval.out"
 [ "$(grep -cx 'x' "$tmp_dir/dependent-fold-residual-eval.out")" -eq 2 ]
-[ "$(grep -cx 'verification main := discharged' \
-	"$tmp_dir/dependent-fold-residual-eval.out")" -eq 2 ]
-grep -q '^verification main := discharged$' \
-	"$tmp_dir/dependent-fold-residual-eval.out"
-
-
+if grep -q '^verification main :=' "$tmp_dir/dependent-fold-residual-eval.out"; then
+	echo 'closed dependent fold emitted a runtime verification obligation' >&2
+	exit 1
+fi
 [ "$(grep -Ec '^value main := RETURN\(CONSTRUCTOR\(' \
 	"$tmp_dir/dependent-fold-residual-eval.out")" -eq 2 ]
 
-# A residual family can remain symbolic through a nested computation fold. Pointwise
-# computation classifiers factor the common effect row while retaining the
-# Match result family, and the runtime follows occurrence edges through both
-# BINDs before discharging the outer frame.
+# Constant return information propagates through nested computation folds while
+# effect rows remain attached to the runtime computation.
 cat >"$tmp_dir/nested-dependent-fold-residual.p" <<'EOF'
 Bool := @{ true : *; false : *; };
 Nat := @{ zero : *; succ : * -> *; };
@@ -401,15 +378,18 @@ main := {
 EOF
 ./read_file.out "$tmp_dir/nested-dependent-fold-residual.p" \
 	>"$tmp_dir/nested-dependent-fold-residual.out"
-grep -q 'compile-budget .* residual=1 incomplete=0' \
+grep -q 'compile-budget .* residual=0 incomplete=0' \
 	"$tmp_dir/nested-dependent-fold-residual.out"
 {
 	cat "$tmp_dir/nested-dependent-fold-residual.p"
 	printf '%s\n' main ':q'
 } | ./a.out >"$tmp_dir/nested-dependent-fold-residual-eval.out"
 grep -q '^xy$' "$tmp_dir/nested-dependent-fold-residual-eval.out"
-grep -q '^verification main := discharged$' \
-	"$tmp_dir/nested-dependent-fold-residual-eval.out"
+if grep -q '^verification main :=' \
+	"$tmp_dir/nested-dependent-fold-residual-eval.out"; then
+	echo 'closed nested dependent fold emitted a runtime verification obligation' >&2
+	exit 1
+fi
 grep -q '^value main := RETURN(CONSTRUCTOR(' \
 	"$tmp_dir/nested-dependent-fold-residual-eval.out"
 

@@ -135,6 +135,15 @@ static int term_contains_free_binder_at_depth(
 			)) {
 				return 1;
 			}
+			uint32_t subject_binding = PROTOTYPE_INVALID_ID;
+			if (term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID &&
+				term->as.match.ih_scope_id < db->ih_scope_count) {
+				/* The recursive subject is bound in every case body, but remains
+				 * free in the scrutinee expression itself. */
+				subject_binding = db->ih_scopes[
+					term->as.match.ih_scope_id
+				].scrutinee_binding_id;
+			}
 			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
 				const struct prototype_match_case* match_case =
 					&db->cases[term->as.match.first_case + i];
@@ -147,7 +156,7 @@ static int term_contains_free_binder_at_depth(
 					)) {
 					return 1;
 				}
-				int shadowed = 0;
+				int shadowed = subject_binding == binding_id;
 				for (uint32_t j = 0; j < match_case->binder_count; ++j) {
 					const struct prototype_case_binder* case_binder =
 						&db->case_binders[match_case->first_binder + j];
@@ -215,6 +224,302 @@ int prototype_term_contains_free_binding(
 	return term_contains_free_binder_at_depth(db, term_id, binding_id, 0);
 }
 
+struct term_free_binding_query {
+	const struct prototype_term_db* db;
+	prototype_term_free_binding_predicate_fn predicate;
+	void* context;
+	uint32_t* bound_counts;
+	int found;
+};
+
+static int term_free_binding_query_binding(
+	struct term_free_binding_query* query,
+	uint32_t binding_id
+) {
+	if (!query || binding_id >= query->db->next_binding_id) {
+		return -1;
+	}
+	if (query->bound_counts[binding_id] != 0) {
+		return 0;
+	}
+	int matches = query->predicate(query->context, binding_id);
+	if (matches < 0) {
+		return -1;
+	}
+	query->found = matches != 0;
+	return 0;
+}
+
+static int term_free_binding_query_push(
+	struct term_free_binding_query* query,
+	uint32_t binding_id
+) {
+	if (!query || binding_id >= query->db->next_binding_id ||
+		query->bound_counts[binding_id] == UINT32_MAX) {
+		return -1;
+	}
+	query->bound_counts[binding_id]++;
+	return 0;
+}
+
+static void term_free_binding_query_pop(
+	struct term_free_binding_query* query,
+	uint32_t binding_id
+) {
+	if (query && binding_id < query->db->next_binding_id &&
+		query->bound_counts[binding_id] != 0) {
+		query->bound_counts[binding_id]--;
+	}
+}
+
+static int term_any_free_binding_at_depth(
+	struct term_free_binding_query* query,
+	uint32_t term_id,
+	uint32_t depth
+) {
+	if (!query || term_id >= query->db->term_count || depth > 1024) {
+		return -1;
+	}
+	if (query->found) {
+		return 0;
+	}
+	const struct prototype_term* term = &query->db->terms[term_id];
+	#define VISIT_TERM(child) \
+		do { \
+			if (term_any_free_binding_at_depth( \
+					query, (child), depth + 1 \
+				) != 0) { \
+				return -1; \
+			} \
+			if (query->found) return 0; \
+		} while (0)
+	switch (term->tag) {
+		case PROTOTYPE_TERM_VAR:
+			return term_free_binding_query_binding(
+				query, term->as.var.binding_id
+			);
+		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
+			return term_free_binding_query_binding(
+				query, term->as.effect_row_var.binding_id
+			);
+		case PROTOTYPE_TERM_CONSTRUCTOR:
+			VISIT_TERM(term->as.constructor.owner);
+			break;
+		case PROTOTYPE_TERM_RETURN:
+			VISIT_TERM(term->as.return_term.value);
+			break;
+		case PROTOTYPE_TERM_THUNK_TYPE:
+			VISIT_TERM(term->as.thunk_type.computation);
+			break;
+		case PROTOTYPE_TERM_THUNK:
+			VISIT_TERM(term->as.thunk.computation);
+			break;
+		case PROTOTYPE_TERM_FORCE:
+			VISIT_TERM(term->as.force.value);
+			break;
+		case PROTOTYPE_TERM_APP:
+			VISIT_TERM(term->as.app.function);
+			VISIT_TERM(term->as.app.argument);
+			break;
+		case PROTOTYPE_TERM_LAMBDA:
+			if (term_free_binding_query_push(
+					query, term->as.lambda.binding_id
+				) != 0) {
+				return -1;
+			}
+			if (term_any_free_binding_at_depth(
+					query, term->as.lambda.body, depth + 1
+				) != 0) {
+				term_free_binding_query_pop(query, term->as.lambda.binding_id);
+				return -1;
+			}
+			term_free_binding_query_pop(query, term->as.lambda.binding_id);
+			break;
+		case PROTOTYPE_TERM_PI:
+			VISIT_TERM(term->as.pi.domain);
+			VISIT_TERM(term->as.pi.codomain_family);
+			break;
+		case PROTOTYPE_TERM_MATCH: {
+			VISIT_TERM(term->as.match.scrutinee);
+			uint32_t subject_binding = PROTOTYPE_INVALID_ID;
+			if (term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID) {
+				if (term->as.match.ih_scope_id >= query->db->ih_scope_count) {
+					return -1;
+				}
+				subject_binding = query->db->ih_scopes[
+					term->as.match.ih_scope_id
+				].scrutinee_binding_id;
+			}
+			if (term->as.match.first_case > query->db->case_count ||
+				term->as.match.case_count > query->db->case_count -
+					term->as.match.first_case) {
+				return -1;
+			}
+			for (uint32_t i = 0; i < term->as.match.case_count; ++i) {
+				const struct prototype_match_case* match_case =
+					&query->db->cases[term->as.match.first_case + i];
+				if (match_case->constructor_owner != PROTOTYPE_INVALID_ID) {
+					VISIT_TERM(match_case->constructor_owner);
+				}
+				uint32_t pushed = 0;
+				if (subject_binding != PROTOTYPE_INVALID_ID) {
+					if (term_free_binding_query_push(
+							query, subject_binding
+						) != 0) {
+						return -1;
+					}
+					pushed++;
+				}
+				if (match_case->first_binder > query->db->case_binder_count ||
+					match_case->binder_count > query->db->case_binder_count -
+						match_case->first_binder) {
+					if (subject_binding != PROTOTYPE_INVALID_ID) {
+						term_free_binding_query_pop(query, subject_binding);
+					}
+					return -1;
+				}
+				for (uint32_t j = 0; j < match_case->binder_count; ++j) {
+					uint32_t binding_id = query->db->case_binders[
+						match_case->first_binder + j
+					].binding_id;
+					if (term_free_binding_query_push(query, binding_id) != 0) {
+						for (uint32_t k = 0; k < j; ++k) {
+							term_free_binding_query_pop(
+								query,
+								query->db->case_binders[
+									match_case->first_binder + k
+								].binding_id
+							);
+						}
+						if (pushed != 0) {
+							term_free_binding_query_pop(query, subject_binding);
+						}
+						return -1;
+					}
+				}
+				int body_status = term_any_free_binding_at_depth(
+					query, match_case->body, depth + 1
+				);
+				for (uint32_t j = match_case->binder_count; j > 0; --j) {
+					term_free_binding_query_pop(
+						query,
+						query->db->case_binders[
+							match_case->first_binder + j - 1
+						].binding_id
+					);
+				}
+				if (pushed != 0) {
+					term_free_binding_query_pop(query, subject_binding);
+				}
+				if (body_status != 0) {
+					return -1;
+				}
+				if (query->found) return 0;
+			}
+			break;
+		}
+		case PROTOTYPE_TERM_COMPUTATION_FOLD:
+			VISIT_TERM(term->as.computation_fold.computation);
+			VISIT_TERM(term->as.computation_fold.return_clause);
+			if (term->as.computation_fold.first_clause >
+					query->db->computation_fold_clause_count ||
+				term->as.computation_fold.clause_count >
+					query->db->computation_fold_clause_count -
+						term->as.computation_fold.first_clause) {
+				return -1;
+			}
+			for (uint32_t i = 0;
+				i < term->as.computation_fold.clause_count; ++i) {
+				const struct prototype_computation_fold_clause* clause =
+					&query->db->computation_fold_clauses[
+						term->as.computation_fold.first_clause + i
+					];
+				VISIT_TERM(clause->operation);
+				VISIT_TERM(clause->body);
+			}
+			break;
+		case PROTOTYPE_TERM_OPERATION_REQUEST:
+			VISIT_TERM(term->as.operation_request.operation);
+			VISIT_TERM(term->as.operation_request.argument);
+			VISIT_TERM(term->as.operation_request.continuation);
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_UNION:
+			VISIT_TERM(term->as.effect_row_union.left);
+			VISIT_TERM(term->as.effect_row_union.right);
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_FORALL:
+			if (term_free_binding_query_push(
+					query, term->as.effect_row_forall.binding_id
+				) != 0) {
+				return -1;
+			}
+			if (term_any_free_binding_at_depth(
+					query, term->as.effect_row_forall.body, depth + 1
+				) != 0) {
+				term_free_binding_query_pop(
+					query, term->as.effect_row_forall.binding_id
+				);
+				return -1;
+			}
+			term_free_binding_query_pop(
+				query, term->as.effect_row_forall.binding_id
+			);
+			break;
+		case PROTOTYPE_TERM_EFFECT_ROW_OPERATION:
+			VISIT_TERM(term->as.effect_row_operation.latent_row);
+			break;
+		case PROTOTYPE_TERM_TYPE_VIEW:
+			VISIT_TERM(term->as.type_view.core);
+			VISIT_TERM(term->as.type_view.source);
+			break;
+		case PROTOTYPE_TERM_DIMENSION_ACTION:
+			VISIT_TERM(term->as.dimension_action.source);
+			break;
+		case PROTOTYPE_TERM_INDUCTION_HYPOTHESIS:
+			VISIT_TERM(term->as.induction_hypothesis.argument);
+			break;
+		case PROTOTYPE_TERM_COMPUTATION_TYPE:
+			VISIT_TERM(term->as.computation_type.label);
+			VISIT_TERM(term->as.computation_type.result);
+			break;
+		default:
+			break;
+	}
+	#undef VISIT_TERM
+	return 0;
+}
+
+int prototype_term_any_free_binding(
+	const struct prototype_term_db* db,
+	uint32_t term_id,
+	prototype_term_free_binding_predicate_fn predicate,
+	void* context,
+	int* p_found
+) {
+	if (!db || term_id >= db->term_count || !predicate || !p_found) {
+		return -1;
+	}
+	size_t binding_count = db->next_binding_id == 0 ? 1 : db->next_binding_id;
+	uint32_t* bound_counts = calloc(binding_count, sizeof(*bound_counts));
+	if (!bound_counts) {
+		return -1;
+	}
+	struct term_free_binding_query query = {
+		.db = db,
+		.predicate = predicate,
+		.context = context,
+		.bound_counts = bound_counts,
+		.found = 0
+	};
+	int status = term_any_free_binding_at_depth(&query, term_id, 0);
+	free(bound_counts);
+	if (status != 0) {
+		return -1;
+	}
+	*p_found = query.found;
+	return 0;
+}
+
 int prototype_term_pi(
 	struct prototype_term_db* db,
 	uint32_t domain,
@@ -236,7 +541,6 @@ int prototype_term_pi(
 
 static int substitute_term(
 	struct prototype_term_db* db,
-	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t binding_id,
 	uint32_t replacement,
@@ -248,7 +552,7 @@ static int substitute_term(
 	};
 	struct substitution_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
-	ctx.type_views = type_views;
+	ctx.type_view_projection = PROTOTYPE_TYPE_VIEW_COMPARE_VIEW;
 	ctx.bindings = &binding;
 	ctx.binding_count = 1;
 	int status = substitute_term_internal(
@@ -310,11 +614,13 @@ static uint64_t substitution_ih_scope_clone_key(
 
 static uint64_t substitution_memo_hash(
 	uint32_t term_id,
+	uint32_t type_view_projection,
 	uint64_t binding_scope_key,
 	uint64_t ih_scope_clone_key
 ) {
 	uint64_t hash = UINT64_C(1469598103934665603);
 	hash = (hash ^ term_id) * UINT64_C(1099511628211);
+	hash = (hash ^ type_view_projection) * UINT64_C(1099511628211);
 	hash = (hash ^ binding_scope_key) * UINT64_C(1099511628211);
 	hash = (hash ^ ih_scope_clone_key) * UINT64_C(1099511628211);
 	return hash;
@@ -365,6 +671,7 @@ static int substitution_memo_reserve(
 		struct substitution_memo_entry* entry = &ctx->memo[i];
 		size_t bucket = (size_t)substitution_memo_hash(
 			entry->term_id,
+			entry->type_view_projection,
 			entry->binding_scope_key,
 			entry->ih_scope_clone_key
 		) & (bucket_count - 1);
@@ -390,7 +697,8 @@ static int substitution_memo_lookup(
 	uint64_t binding_scope_key = substitution_binding_scope_key(ctx);
 	uint64_t ih_scope_clone_key = substitution_ih_scope_clone_key(ctx);
 	size_t bucket = (size_t)substitution_memo_hash(
-		term_id, binding_scope_key, ih_scope_clone_key
+		term_id, ctx->type_view_projection,
+		binding_scope_key, ih_scope_clone_key
 	) & (ctx->memo_bucket_count - 1);
 	for (uint32_t i = ctx->memo_buckets[bucket];
 		i != PROTOTYPE_INVALID_ID;
@@ -400,6 +708,7 @@ static int substitution_memo_lookup(
 		}
 		const struct substitution_memo_entry* entry = &ctx->memo[i];
 		if (entry->term_id == term_id &&
+			entry->type_view_projection == ctx->type_view_projection &&
 			entry->binding_scope_key == binding_scope_key &&
 			entry->ih_scope_clone_key == ih_scope_clone_key) {
 			*p_result = entry->result;
@@ -423,12 +732,14 @@ static int substitution_memo_store(
 	uint64_t binding_scope_key = substitution_binding_scope_key(ctx);
 	uint64_t ih_scope_clone_key = substitution_ih_scope_clone_key(ctx);
 	size_t bucket = (size_t)substitution_memo_hash(
-		term_id, binding_scope_key, ih_scope_clone_key
+		term_id, ctx->type_view_projection,
+		binding_scope_key, ih_scope_clone_key
 	) & (ctx->memo_bucket_count - 1);
 	uint32_t id = (uint32_t)ctx->memo_count++;
 	ctx->memo[id] = (struct substitution_memo_entry) {
 		.term_id = term_id,
 		.result = result,
+		.type_view_projection = ctx->type_view_projection,
 		.binding_scope_key = binding_scope_key,
 		.ih_scope_clone_key = ih_scope_clone_key,
 		.next = ctx->memo_buckets[bucket]
@@ -699,13 +1010,28 @@ static int substitute_term_internal(
 		*p_ret = ctx->exact_replacement;
 		return 0;
 	}
+	if (ctx->type_views_are_boundaries &&
+		db->terms[term_id].tag == PROTOTYPE_TERM_TYPE_VIEW) {
+		*p_ret = term_id;
+		return 0;
+	}
 	if (substitution_memo_lookup(ctx, term_id, p_ret)) {
 		return 0;
 	}
 	int status = substitute_term_uncached_internal(
 		db, term_id, ctx, p_ret
 	);
+	if (status != 0 && getenv("A_PROGRAM_REINDEX_TRACE") != NULL) {
+		fprintf(stderr,
+			"term graph substitution failed term=%u tag=%d bindings=%zu\n",
+			term_id, db->terms[term_id].tag, ctx->binding_count);
+	}
 	if (status == 0 && substitution_memo_store(ctx, term_id, *p_ret) != 0) {
+		if (getenv("A_PROGRAM_REINDEX_TRACE") != NULL) {
+			fprintf(stderr,
+				"term graph substitution failed term=%u tag=%d stage=memo\n",
+				term_id, db->terms[term_id].tag);
+		}
 		return -1;
 	}
 	return status;
@@ -732,6 +1058,15 @@ static int substitute_term_uncached_internal(
 				ctx, term->as.var.binding_id, &direct_replacement
 			);
 			if (has_replacement) {
+				if (direct_replacement < db->term_count &&
+					db->terms[direct_replacement].tag ==
+						PROTOTYPE_TERM_TYPE_VIEW) {
+					if (ctx->type_view_projection ==
+							PROTOTYPE_TYPE_VIEW_COMPARE_CORE) {
+						direct_replacement = db->terms[direct_replacement].
+							as.type_view.core;
+					}
+				}
 				*p_ret = direct_replacement;
 			} else {
 				*p_ret = term_id;
@@ -824,9 +1159,16 @@ static int substitute_term_uncached_internal(
 			);
 			}
 		case PROTOTYPE_TERM_MATCH: {
+			int reindex_trace = getenv("A_PROGRAM_REINDEX_TRACE") != NULL;
 			uint32_t recursive_subject_binding = PROTOTYPE_INVALID_ID;
 			if (term->as.match.ih_scope_id != PROTOTYPE_INVALID_ID) {
 				if (term->as.match.ih_scope_id >= db->ih_scope_count) {
+					if (reindex_trace) {
+						fprintf(stderr,
+							"term Match substitution failed term=%u stage=ih-scope "
+							"ih=%u count=%zu\n",
+							term_id, term->as.match.ih_scope_id, db->ih_scope_count);
+					}
 					return -1;
 				}
 				recursive_subject_binding = db->ih_scopes[
@@ -840,20 +1182,28 @@ static int substitute_term_uncached_internal(
 					ctx,
 					&scrutinee
 				) != 0) {
+				if (reindex_trace) {
+					fprintf(stderr,
+						"term Match substitution failed term=%u stage=scrutinee "
+						"scrutinee=%u\n",
+						term_id, term->as.match.scrutinee);
+				}
 				return -1;
 			}
-			uint32_t relocated_recursive_subject_binding = PROTOTYPE_INVALID_ID;
-			int preserve_recursive_subject_binding = 0;
+			uint32_t substituted_subject_binding = recursive_subject_binding;
+			int preserve_recursive_subject_binding =
+				recursive_subject_binding != PROTOTYPE_INVALID_ID;
+			/* Renaming a variable scrutinee renames this binder. Substituting a
+			 * concrete scrutinee does not remove it: recursive unfolding still
+			 * binds the source name independently in every case body. */
 			if (recursive_subject_binding != PROTOTYPE_INVALID_ID &&
 				scrutinee < db->term_count &&
 				db->terms[scrutinee].tag == PROTOTYPE_TERM_VAR) {
-				relocated_recursive_subject_binding =
+				substituted_subject_binding =
 					db->terms[scrutinee].as.var.binding_id;
 				preserve_recursive_subject_binding =
-					relocated_recursive_subject_binding ==
-						recursive_subject_binding;
+					substituted_subject_binding == recursive_subject_binding;
 			}
-
 			struct prototype_match_case_input case_inputs[64];
 			struct prototype_case_binder binder_storage[256];
 			struct substitution_binding_scope scope_storage[256];
@@ -863,6 +1213,12 @@ static int substitute_term_uncached_internal(
 			uint32_t binder_cursor = 0;
 			int changed = scrutinee != term->as.match.scrutinee;
 			if (term->as.match.case_count > 64) {
+				if (reindex_trace) {
+					fprintf(stderr,
+						"term Match substitution failed term=%u stage=case-count "
+						"cases=%u\n",
+						term_id, term->as.match.case_count);
+				}
 				return -1;
 			}
 
@@ -870,6 +1226,12 @@ static int substitute_term_uncached_internal(
 				const struct prototype_match_case* old_case =
 					&db->cases[term->as.match.first_case + i];
 				if (old_case->binder_count > 0 && binder_cursor + old_case->binder_count > 256) {
+					if (reindex_trace) {
+						fprintf(stderr,
+							"term Match substitution failed term=%u stage=binder-count "
+							"case=%u cursor=%u binders=%u\n",
+							term_id, i, binder_cursor, old_case->binder_count);
+					}
 					return -1;
 				}
 
@@ -880,6 +1242,8 @@ static int substitute_term_uncached_internal(
 				const struct substitution_binding_scope* saved_binding_scope =
 					ctx->binding_scope;
 				struct substitution_binding_scope subject_scope;
+				/* Each recursive unfold rebinds the source scrutinee name to its
+				 * current argument. Outer substitution must not capture it. */
 				if (ctx->binding_count > 0 &&
 					preserve_recursive_subject_binding) {
 					subject_scope.binding_id = recursive_subject_binding;
@@ -927,6 +1291,11 @@ static int substitute_term_uncached_internal(
 			if (ih_scope_id != PROTOTYPE_INVALID_ID) {
 				uint32_t new_ih_scope_id = prototype_term_new_ih_scope(db);
 				if (new_ih_scope_id == PROTOTYPE_INVALID_ID) {
+					if (reindex_trace) {
+						fprintf(stderr,
+							"term Match substitution failed term=%u stage=new-ih-scope\n",
+							term_id);
+					}
 					return -1;
 				}
 				ih_scope_clone.old_ih_scope_id = ih_scope_id;
@@ -935,7 +1304,9 @@ static int substitute_term_uncached_internal(
 				ih_scope_clone.previous = saved_ih_scope_clone;
 				ctx->ih_scope_clone = &ih_scope_clone;
 				db->ih_scopes[new_ih_scope_id].scrutinee_binding_id =
-					relocated_recursive_subject_binding;
+					substituted_subject_binding;
+				db->ih_scopes[new_ih_scope_id].binding_scope_id =
+					db->ih_scopes[ih_scope_id].binding_scope_id;
 				ih_scope_id = new_ih_scope_id;
 			}
 
@@ -977,6 +1348,12 @@ static int substitute_term_uncached_internal(
 						ctx,
 						&body
 					) != 0) {
+					if (reindex_trace) {
+						fprintf(stderr,
+							"term Match substitution failed term=%u stage=case-body "
+							"case=%u body=%u\n",
+							term_id, i, old_case->body);
+					}
 					ctx->binding_scope = saved_binding_scope;
 					ctx->ih_scope_clone = saved_ih_scope_clone;
 					return -1;
@@ -989,6 +1366,12 @@ static int substitute_term_uncached_internal(
 					ctx,
 						&constructor_owner
 					) != 0) {
+					if (reindex_trace) {
+						fprintf(stderr,
+							"term Match substitution failed term=%u stage=case-owner "
+							"case=%u owner=%u\n",
+							term_id, i, old_case->constructor_owner);
+					}
 					ctx->ih_scope_clone = saved_ih_scope_clone;
 					return -1;
 				}
@@ -1016,6 +1399,13 @@ static int substitute_term_uncached_internal(
 			}
 			ctx->ih_scope_clone = saved_ih_scope_clone;
 			if (status != 0) {
+				if (reindex_trace) {
+					fprintf(stderr,
+						"term Match substitution failed term=%u stage=rebuild "
+						"scrutinee=%u cases=%u ih=%u status=%d\n",
+						term_id, scrutinee, term->as.match.case_count,
+						ih_scope_id, status);
+				}
 				return -1;
 			}
 			*p_ret = match_term;
@@ -1287,42 +1677,39 @@ static int substitute_term_uncached_internal(
 			case PROTOTYPE_TERM_TYPE_VIEW: {
 			uint32_t core;
 			uint32_t source;
+			uint32_t saved_projection = ctx->type_view_projection;
+			ctx->type_view_projection = PROTOTYPE_TYPE_VIEW_COMPARE_CORE;
 			if (substitute_term_internal(
 					db,
 					term->as.type_view.core,
 					ctx,
 					&core
-				) != 0 ||
-				substitute_term_internal(
+				) != 0) {
+				ctx->type_view_projection = saved_projection;
+				return -1;
+			}
+			/* The source projection has a nominal declaration head, but its
+			 * arguments remain complete Terms. Only the erased Core projection
+			 * removes a nested TypeView wrapper. */
+			ctx->type_view_projection = PROTOTYPE_TYPE_VIEW_COMPARE_VIEW;
+			if (substitute_term_internal(
 					db,
 					term->as.type_view.source,
 					ctx,
 					&source
 				) != 0) {
+				ctx->type_view_projection = saved_projection;
 				return -1;
 			}
+			ctx->type_view_projection = saved_projection;
 			if (core == term->as.type_view.core &&
 				source == term->as.type_view.source) {
 				*p_ret = term_id;
 				return 0;
 			}
-			if (!ctx->type_views.semantic_schema) {
-				/* Erased computation substitutes the graph structurally. Recomputing
-				 * a named TypeView is a pure-type elaboration action and must not make
-				 * beta or iota reduction depend on TypeDeclarationDB. */
-				return prototype_term_type_view(
-					db,
-					term->as.type_view.view_type_id,
-					term->as.type_view.identity,
-					core,
-					source,
-					p_ret
-				);
-			}
 			return prototype_term_type_view_rebuild_from_source(
 				db,
-				ctx->type_views,
-				term->as.type_view.view_type_id,
+				term->as.type_view.identity,
 				core,
 				source,
 				p_ret
@@ -1336,18 +1723,16 @@ static int substitute_term_uncached_internal(
 
 int prototype_term_graph_substitute_bound_var(
 	struct prototype_term_db* db,
-	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t binding_id,
 	uint32_t replacement,
 	uint32_t* p_ret
 ) {
-	return substitute_term(db, type_views, term_id, binding_id, replacement, p_ret);
+	return substitute_term(db, term_id, binding_id, replacement, p_ret);
 }
 
 int prototype_term_graph_replace_exact(
 	struct prototype_term_db* db,
-	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	uint32_t exact_term,
 	uint32_t replacement,
@@ -1359,7 +1744,7 @@ int prototype_term_graph_replace_exact(
 	}
 	struct substitution_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
-	ctx.type_views = type_views;
+	ctx.type_view_projection = PROTOTYPE_TYPE_VIEW_COMPARE_VIEW;
 	ctx.exact_term = exact_term;
 	ctx.exact_replacement = replacement;
 	ctx.replace_exact_term = 1;
@@ -1369,9 +1754,32 @@ int prototype_term_graph_replace_exact(
 	return status;
 }
 
+int prototype_term_graph_replace_exact_outside_type_views(
+	struct prototype_term_db* db,
+	uint32_t term_id,
+	uint32_t exact_term,
+	uint32_t replacement,
+	uint32_t* p_ret
+) {
+	if (!db || !p_ret || term_id >= db->term_count ||
+		exact_term >= db->term_count || replacement >= db->term_count) {
+		return -1;
+	}
+	struct substitution_context ctx;
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.type_view_projection = PROTOTYPE_TYPE_VIEW_COMPARE_VIEW;
+	ctx.exact_term = exact_term;
+	ctx.exact_replacement = replacement;
+	ctx.replace_exact_term = 1;
+	ctx.type_views_are_boundaries = 1;
+	int status = substitute_term_internal(db, term_id, &ctx, p_ret);
+	free(ctx.memo);
+	free(ctx.memo_buckets);
+	return status;
+}
+
 int prototype_term_graph_reindex_bindings(
 	struct prototype_term_db* db,
-	struct prototype_type_view_rebuild_context type_views,
 	uint32_t term_id,
 	const struct prototype_binding_replacement* bindings,
 	size_t binding_count,
@@ -1399,7 +1807,7 @@ int prototype_term_graph_reindex_bindings(
 
 	struct substitution_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
-	ctx.type_views = type_views;
+	ctx.type_view_projection = PROTOTYPE_TYPE_VIEW_COMPARE_VIEW;
 	ctx.bindings = bindings;
 	ctx.binding_count = binding_count;
 	int status = substitute_term_internal(

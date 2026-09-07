@@ -216,7 +216,10 @@ grep -q 'diagnostic-code=unsupported-nested-recursion' "$tmp_dir/rose.err"
 	>"$tmp_dir/append.out"
 grep -q '^term append := LAMBDA' "$tmp_dir/append.out"
 grep -q '^term main := APP' "$tmp_dir/append.out"
-grep -q 'expected-type-exposure proof#' "$tmp_dir/append.out"
+if grep -q 'expected-type-exposure proof#' "$tmp_dir/append.out"; then
+	echo "post-synthesis type expectation replaced the inferred classifier" >&2
+	exit 1
+fi
 ./read_file.out --write-artifact "$tmp_dir/append.apo" \
 	src/prototype/tests/fixtures/typing/explicit_index_family_append_check.p \
 	>"$tmp_dir/append-write.out"

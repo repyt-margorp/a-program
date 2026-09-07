@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECKED_WIRE_MAGIC "APCHK087"
+#define CHECKED_WIRE_MAGIC "APCHK090"
 #define CHECKED_WIRE_MAGIC_SIZE 8
 #define CHECKED_WIRE_SECTION_SEMANTIC 1
 #define CHECKED_WIRE_SECTION_CONTRACTS 2
@@ -167,7 +167,8 @@ static int checked_wire_semantic(
 #define WI(value) if (checked_wire_i32(buffer, (int)(value)) != 0) return -1
 #define WC(value) if (checked_wire_count(buffer, (value)) != 0) return -1
 	if (checked_wire_u64(buffer, module->calculus_fingerprint) != 0 ||
-		checked_wire_u64(buffer, module->intrinsic_fingerprint) != 0) {
+		checked_wire_u64(buffer, module->operational_intrinsic_fingerprint) != 0 ||
+		checked_wire_u64(buffer, module->typing_intrinsic_fingerprint) != 0) {
 		return -1;
 	}
 	WC(module->intrinsic_environment.pure_primitive_count);
@@ -176,7 +177,6 @@ static int checked_wire_semantic(
 		const struct prototype_pure_primitive_declaration* value =
 			&module->intrinsic_environment.pure_primitives[i];
 		WI(value->primitive_id);
-		WU(value->arity);
 		for (size_t j = 0; j < PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY; ++j) {
 			WI(value->argument_types[j]);
 		}
@@ -189,10 +189,6 @@ static int checked_wire_semantic(
 			&module->intrinsic_environment.effect_operations[i];
 		WI(value->operation_id);
 		WI(value->classifier_schema);
-		WU(value->required_host_effects);
-		WU(value->arity);
-		WI(value->inner_policy);
-		WI(value->resumption_multiplicity);
 	}
 	WI(module->intrinsic_environment.default_integer_host_type);
 
@@ -223,6 +219,7 @@ static int checked_wire_semantic(
 	for (size_t i = 0; i < module->terms.ih_scope_count; ++i) {
 		WU(module->terms.ih_scopes[i].match_term);
 		WU(module->terms.ih_scopes[i].scrutinee_binding_id);
+		WU(module->terms.ih_scopes[i].binding_scope_id);
 	}
 	WC(module->terms.computation_fold_clause_count);
 	for (size_t i = 0; i < module->terms.computation_fold_clause_count; ++i) {
@@ -235,7 +232,7 @@ static int checked_wire_semantic(
 		const struct prototype_semantic_context* value =
 			&module->contexts.contexts[i];
 		WU(value->parent); WU(value->binding_id); WU(value->classifier);
-		WI(value->extension_kind); WU(value->producer_computation);
+		WI(value->extension_kind); WU(value->producer_occurrence);
 	}
 	WC(module->substitutions.substitution_count);
 	for (size_t i = 0; i < module->substitutions.substitution_count; ++i) {
@@ -566,15 +563,12 @@ static int checked_wire_term(
 			TERM_U32(term->as.match.ih_scope_id);
 			break;
 		case PROTOTYPE_TERM_TYPE_FORMER:
-			TERM_U32(term->as.type_former.declaration_type_id);
 			TERM_U32(term->as.type_former.representation_id);
 			TERM_U32(term->as.type_former.constructor_count);
 			break;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			TERM_U32(term->as.type_declaration.type_id);
 			return checked_wire_name(buffer, term->as.type_declaration.identity);
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			TERM_U32(term->as.type_view.view_type_id);
 			if (checked_wire_name(buffer, term->as.type_view.identity) != 0) return -1;
 			TERM_U32(term->as.type_view.core);
 			TERM_U32(term->as.type_view.source);
@@ -599,7 +593,6 @@ static int checked_wire_term(
 			break;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			TERM_I32(term->as.effect_operation.operation_id);
-			TERM_U32(term->as.effect_operation.classifier);
 			break;
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 			TERM_U32(term->as.effect_row_var.binding_id);
@@ -705,15 +698,12 @@ static int checked_read_term(
 			READ_TERM_U32(term->as.match.ih_scope_id);
 			break;
 		case PROTOTYPE_TERM_TYPE_FORMER:
-			READ_TERM_U32(term->as.type_former.declaration_type_id);
 			READ_TERM_U32(term->as.type_former.representation_id);
 			READ_TERM_U32(term->as.type_former.constructor_count);
 			break;
 		case PROTOTYPE_TERM_TYPE_DECLARATION:
-			READ_TERM_U32(term->as.type_declaration.type_id);
 			return checked_read_name(reader, &term->as.type_declaration.identity);
 		case PROTOTYPE_TERM_TYPE_VIEW:
-			READ_TERM_U32(term->as.type_view.view_type_id);
 			if (checked_read_name(reader, &term->as.type_view.identity) != 0) return -1;
 			READ_TERM_U32(term->as.type_view.core);
 			READ_TERM_U32(term->as.type_view.source);
@@ -738,7 +728,6 @@ static int checked_read_term(
 			break;
 		case PROTOTYPE_TERM_EFFECT_OPERATION:
 			READ_TERM_I32(term->as.effect_operation.operation_id);
-			READ_TERM_U32(term->as.effect_operation.classifier);
 			break;
 		case PROTOTYPE_TERM_EFFECT_ROW_VAR:
 			READ_TERM_U32(term->as.effect_row_var.binding_id);
@@ -868,7 +857,11 @@ static int checked_read_semantic(
 ) {
 	if (!reader || !module ||
 		checked_read_u64(reader, &module->view.calculus_fingerprint) != 0 ||
-		checked_read_u64(reader, &module->view.intrinsic_fingerprint) != 0) {
+		checked_read_u64(
+			reader, &module->view.operational_intrinsic_fingerprint
+		) != 0 || checked_read_u64(
+			reader, &module->view.typing_intrinsic_fingerprint
+		) != 0) {
 		return -1;
 	}
 #define RU(field) if (checked_read_u32(reader, &(field)) != 0) return -1
@@ -886,7 +879,7 @@ static int checked_read_semantic(
 		i < module->view.intrinsic_environment.pure_primitive_count; ++i) {
 		struct prototype_pure_primitive_declaration* value =
 			&module->pure_primitives[i];
-		RI(value->primitive_id); RU(value->arity);
+		RI(value->primitive_id);
 		for (size_t j = 0; j < PROTOTYPE_PURE_PRIMITIVE_MAX_ARITY; ++j) {
 			RI(value->argument_types[j]);
 		}
@@ -902,8 +895,6 @@ static int checked_read_semantic(
 		struct prototype_effect_operation_declaration* value =
 			&module->effect_operations[i];
 		RI(value->operation_id); RI(value->classifier_schema);
-		RU(value->required_host_effects); RU(value->arity);
-		RI(value->inner_policy); RI(value->resumption_multiplicity);
 	}
 	RI(module->view.intrinsic_environment.default_integer_host_type);
 
@@ -939,6 +930,7 @@ static int checked_read_semantic(
 	for (size_t i = 0; i < module->view.terms.ih_scope_count; ++i) {
 		RU(module->ih_scopes[i].match_term);
 		RU(module->ih_scopes[i].scrutinee_binding_id);
+		RU(module->ih_scopes[i].binding_scope_id);
 	}
 	RA(
 		module->computation_fold_clauses,
@@ -958,7 +950,7 @@ static int checked_read_semantic(
 	for (size_t i = 0; i < module->view.contexts.context_count; ++i) {
 		struct prototype_semantic_context* value = &module->contexts[i];
 		RU(value->parent); RU(value->binding_id); RU(value->classifier);
-		RI(value->extension_kind); RU(value->producer_computation);
+		RI(value->extension_kind); RU(value->producer_occurrence);
 	}
 	RA(
 		module->substitutions, module->view.substitutions.substitution_count,
