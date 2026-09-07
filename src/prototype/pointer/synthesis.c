@@ -60,8 +60,14 @@ struct data_result_state {
 	size_t count, next;
 	struct data_result_entry entries[];
 };
+struct declaration_state {
+	struct pg_index names;
+	const struct pg_syntax *constructors;
+	struct pg_synthesis_job **producers;
+	size_t indexed, checked;
+};
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -93,6 +99,8 @@ struct pg_synthesis_job {
 	const struct continuation_frame *application_frame;
 	struct definition_state *definitions;
 	struct data_result_state *data_result;
+	struct declaration_state *declaration;
+	const struct pg_data_schema *schema;
 	const void *inputs[];
 };
 
@@ -130,6 +138,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			pg_reindex_destroy(&job->reindex);
 			if (job->block) pg_index_destroy(&job->block->names);
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
+			if (job->declaration) pg_index_destroy(&job->declaration->names);
 		}
 	pg_index_destroy(&synthesis->jobs);
 	pg_index_destroy(&synthesis->scopes);
@@ -403,6 +412,19 @@ struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *syn
 	if (pg_evidence_context(pg_evidence_premise(substitution, 0)) != pg_evidence_context(extension)->parent) return NULL;
 	const void *inputs[] = {substitution, extension, image};
 	return request_inputs(synthesis, PAIR_JOB, 3, inputs);
+}
+
+struct pg_synthesis_job *pg_synthesis_data_schema(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parameters, const struct pg_syntax *declaration)
+{
+	if (!declaration || declaration->kind != PG_SYNTAX_DECLARATION) return NULL;
+	return request_role(synthesis, parameters, declaration, DATA_SCHEMA_JOB);
+}
+
+const struct pg_data_schema *pg_synthesis_schema_result(const struct pg_synthesis_job *job)
+{
+	if (!job || job->role != DATA_SCHEMA_JOB || job->status != PG_SYNTHESIS_DONE) return NULL;
+	return job->schema;
 }
 
 struct pg_synthesis_job *pg_synthesis_data_result(struct pg_synthesis *synthesis,
@@ -776,6 +798,9 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	struct pg_token token = job->syntax->token;
 	if (job->syntax->kind == PG_SYNTAX_ATOM && token.kind == '@') {
 		job->result = pg_prove_universe(synthesis->typing, synthesis->classifiers, job->scope->context, 0);
+	} else if (job->syntax->kind == PG_SYNTAX_ATOM && token.kind == '*') {
+		/* No recursive Self/IH binding has been admitted by this fragment. */
+		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 	} else {
 		struct source_reference reference;
 		struct pg_synthesis_job *dependency = NULL;
@@ -1206,6 +1231,83 @@ static void pair_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *j
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
+static void constructor_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->left) {
+		if (job->syntax->kind == PG_SYNTAX_LAMBDA) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+		job->left = pg_synthesis_telescope(synthesis, job->scope, job->syntax);
+		depend(synthesis, job, job->left);
+		return;
+	}
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	if (!job->right) {
+		job->right = pg_synthesis_data_result(synthesis, pg_synthesis_telescope_scope(job->left),
+			job->scope->context, job->inputs[1], pg_synthesis_telescope_body(job->left));
+		depend(synthesis, job, job->right);
+		return;
+	}
+	job->result = job->right->result;
+	finish(synthesis, job, job->right->status);
+}
+
+static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->left) {
+		job->left = pg_synthesis_telescope(synthesis, job->scope, job->syntax->left);
+		depend(synthesis, job, job->left);
+		return;
+	}
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	if (!job->declaration) {
+		const struct pg_syntax *constructors = pg_synthesis_telescope_body(job->left);
+		if (constructors->kind != PG_SYNTAX_CONSTRUCTORS) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+		struct declaration_state *state = pg_alloc(synthesis->typing->graph, sizeof(*state));
+		if (!state) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		job->declaration = state;
+		state->constructors = constructors;
+		if (pg_index_init(&state->names) != 0) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		size_t count = constructors->item_count;
+		if (count > SIZE_MAX / sizeof(*state->producers)) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+		}
+		state->producers = pg_alloc(synthesis->typing->graph, count * sizeof(*state->producers));
+		if (count && !state->producers) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	}
+	struct declaration_state *state = job->declaration;
+	if (state->indexed < state->constructors->item_count) {
+		size_t i = state->indexed++;
+		const struct pg_syntax_item *item = &state->constructors->items[i];
+		int status = register_name(synthesis, &state->names, item->name);
+		if (status) { finish(synthesis, job, status > 0 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR); return; }
+		const void *inputs[] = {job->scope, job->left->result, item->expression};
+		struct pg_synthesis_job *producer = request_inputs(synthesis, CONSTRUCTOR_JOB, 3, inputs);
+		if (!producer) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		producer->scope = job->scope;
+		producer->syntax = item->expression;
+		state->producers[i] = producer;
+		enqueue(synthesis, job);
+		return;
+	}
+	if (state->checked == state->constructors->item_count) {
+		struct pg_graph temporary = {0};
+		const struct pg_evidence **results = NULL;
+		if (state->checked <= SIZE_MAX / sizeof(*results))
+			results = pg_alloc(&temporary, state->checked * sizeof(*results));
+		if (state->checked && !results) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		for (size_t i = 0; i < state->checked; ++i) results[i] = state->producers[i]->result;
+		job->schema = pg_data_schema(synthesis->typing, job->scope->context, job->left->result,
+			state->checked, results);
+		pg_graph_destroy(&temporary);
+		finish(synthesis, job, job->schema ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+		return;
+	}
+	struct pg_synthesis_job *producer = state->producers[state->checked];
+	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
+	if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return; }
+	++state->checked;
+	enqueue(synthesis, job);
+}
+
 static enum pg_synthesis_status data_result_start(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_evidence *parameters = job->inputs[1], *indices = job->inputs[2];
@@ -1375,6 +1477,8 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == BINDING_JOB) { binding_step(synthesis, job); return; }
 	if (job->role == TELESCOPE_JOB) { telescope_step(synthesis, job); return; }
 	if (job->role == DATA_RESULT_JOB) { data_result_step(synthesis, job); return; }
+	if (job->role == DATA_SCHEMA_JOB) { data_schema_step(synthesis, job); return; }
+	if (job->role == CONSTRUCTOR_JOB) { constructor_step(synthesis, job); return; }
 	if (job->role == DEFINITION_JOB) { definition_step(synthesis, job); return; }
 	if (job->role == DEFINITION_SCOPE_JOB) { definition_scope_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }

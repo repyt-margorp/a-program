@@ -114,6 +114,14 @@ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthes
 	const struct pg_evidence *right_substitution, size_t count,
 	const struct pg_evidence *const *paths);
 struct pg_data_schema;
+/* Assemble field telescopes and result maps for a parsed @{...} or @\i:T=>
+ * declaration in its already opened parameter scope. Constructors are checked
+ * independently; no schema is exposed until every map has succeeded. The
+ * result is an immutable layout/schema, not a value or an admitted datatype.
+ * Recursive Self fields and nominal fibrancy still require admission rules. */
+struct pg_synthesis_job *pg_synthesis_data_schema(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parameters, const struct pg_syntax *declaration);
+const struct pg_data_schema *pg_synthesis_schema_result(const struct pg_synthesis_job *job);
 /* In an already synthesized constructor field scope, check the syntactic
  * result '* i ...' against the declared index context. Both field and index
  * contexts extend parameters. Parameter images are fixed binder references;

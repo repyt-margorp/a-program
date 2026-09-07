@@ -2168,6 +2168,25 @@ conclusion and all premise pointers; no accepted record is overwritten.
   binaries rebuilt); four computation suites pass at 512 KiB stack.
   Implementation: `synthesis.c` +99/-1, header +9; `typing.c` +13,
   header +4; `iadt.c` +3/-14; tests +57/-1; documentation separate.
+- [x] September 8, after `a9b5055`: `pg_synthesis_data_schema` assembles a
+  parsed declaration in its already opened parameter scope. Index/field
+  telescopes and constructor result maps use the preceding shared jobs.
+  Constructor names use the existing hash-index helper. Each constructor's
+  result-map work can proceed independently even while an earlier constructor
+  waits. The declaration joins all producers before creating its immutable
+  schema/layout; repeated requests reuse it, distinct declarations stay fresh.
+  Work retains producers, not a second persistent array of accepted answers.
+  The result has no term evidence and cannot be published as an admitted type.
+  Recursive Self/IH references explicitly remain UNSUPPORTED, not a missing-name
+  proof of invalidity. Nominal formation, positivity, membership, Match/IH and
+  higher fibrancy remain required; N3 is not complete. Tests cover indexed and
+  empty schemas, exact owner reuse, distinct owners, duplicates, invalid results
+  and fields, scope separation, pending/failed publication and progress of a
+  later constructor's map during an earlier cyclic dependency. Schema checking
+  and final input collection remain synchronous linear traversals.
+  Optimized check: 3.848 s; ASan/UBSan: 10.245 s (synthesis rebuilt); four
+  computation suites pass with 512 KiB stack. Implementation `synthesis.c`
+  +105/-1, header +8; tests +114; documentation separate.
 - [ ] Complete source lowering/synthesis: import providers and full definition diagnostics,
   literals, ADT/IADT, computation blocks/folds, implicit sequencing
   of remaining returning argument/callee cases, computed type

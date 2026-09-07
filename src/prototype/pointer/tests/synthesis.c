@@ -1910,6 +1910,119 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 	puts("source telescopes: shared Lambda/Pi binders, computed domains, parameter/index separation and schema maps passed");
 }
 
+static void source_schemas(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
+	const struct pg_syntax *source = expression_syntax(typing->graph,
+		"Box:=\\A:@ => @\\i:A => {one:(x:A)->* x; two:(x:A)->(y:A)->* y;};");
+	struct pg_synthesis_job *parameters = pg_synthesis_telescope(&synthesis, root, source);
+	const struct pg_evidence *parameter_context = complete(&synthesis, parameters, PG_SYNTHESIS_DONE);
+	const struct pg_source_scope *scope = pg_synthesis_telescope_scope(parameters);
+	const struct pg_syntax *declaration = pg_synthesis_telescope_body(parameters);
+	size_t terms = typing->graph->terms.count, proofs = typing->proofs.count;
+	struct pg_synthesis_job *job = pg_synthesis_data_schema(&synthesis, scope, declaration);
+	assert(job && pg_synthesis_data_schema(&synthesis, scope, declaration) == job);
+	assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+	assert(!pg_synthesis_schema_result(job));
+	unsigned transitions = 0;
+	while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+		assert(++transitions < 10000);
+		assert(!pg_synthesis_schema_result(job) && !pg_synthesis_result(job));
+		pg_synthesis_advance(&synthesis, 1);
+	}
+	assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE && !pg_synthesis_result(job));
+	const struct pg_data_schema *schema = pg_synthesis_schema_result(job);
+	assert(schema);
+	const struct pg_data_layout *layout = pg_data_schema_layout(schema);
+	assert(pg_data_constructor(layout, 0) && pg_data_constructor(layout, 1) && !pg_data_constructor(layout, 2));
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_object *ctor = pg_data_constructor(layout, i);
+		const struct pg_evidence *fields = pg_data_schema_fields(schema, ctor);
+		size_t count;
+		assert(pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(parameter_context), &count) == 0);
+		assert(count == i + 1);
+		const struct pg_evidence *map = pg_data_schema_result(schema, ctor);
+		assert(pg_evidence_premise_count(map) == 4);
+		assert(pg_evidence_subject(pg_evidence_premise(map, 3))->core == pg_reference(typing->graph, pg_evidence_context(fields)->binder));
+	}
+	terms = typing->graph->terms.count; proofs = typing->proofs.count;
+	uint64_t steps = synthesis.steps;
+	assert(pg_synthesis_data_schema(&synthesis, scope, declaration) == job);
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_schema_result(job) == schema && synthesis.steps == steps);
+	assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+	struct pg_synthesis_job *other = pg_synthesis_data_schema(&synthesis, scope,
+		expression_syntax(typing->graph, "Other:=@\\i:A=>{one:(x:A)->* x; two:(x:A)->(y:A)->* y;};"));
+	complete(&synthesis, other, PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_schema_result(other) != schema);
+	assert(pg_data_constructor(pg_data_schema_layout(pg_synthesis_schema_result(other)), 0) != pg_data_constructor(layout, 0));
+	const char *empty[] = {"Empty:=@{};", "Flag:=@{off:*; on:*;};"};
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_synthesis_job *simple = pg_synthesis_data_schema(&synthesis, root, expression_syntax(typing->graph, empty[i]));
+		complete(&synthesis, simple, PG_SYNTHESIS_DONE);
+		const struct pg_data_schema *result = pg_synthesis_schema_result(simple);
+		assert(result && !pg_evidence_context(pg_data_schema_indices(result)));
+		assert(!pg_data_constructor(pg_data_schema_layout(result), i * 2));
+	}
+	const char *bad[] = {
+		"D:=@{a:*; a:*;};", "D:=@{a:*; b:Missing;};", "D:=@{a:Missing->*;};",
+		"D:=@\\i:A=>{a:*;};", "D:=@\\i:A=>{a:i->* i;};", "D:=@{a:\\x:A=>*;};"
+	};
+	for (size_t i = 0; i < sizeof(bad) / sizeof(*bad); ++i) {
+		struct pg_synthesis_job *failed = pg_synthesis_data_schema(&synthesis, scope, expression_syntax(typing->graph, bad[i]));
+		complete(&synthesis, failed, PG_SYNTHESIS_REJECTED);
+		assert(!pg_synthesis_schema_result(failed));
+	}
+	struct pg_synthesis_job *recursive = pg_synthesis_data_schema(&synthesis, root,
+		expression_syntax(typing->graph, "Nat:=@{zero:*; succ:*->*;};"));
+	complete(&synthesis, recursive, PG_SYNTHESIS_UNSUPPORTED);
+	assert(!pg_synthesis_schema_result(recursive));
+	assert(!pg_synthesis_data_schema(&synthesis, NULL, declaration));
+	assert(!pg_synthesis_data_schema(&synthesis, root, NULL));
+	assert(!pg_synthesis_data_schema(&synthesis, root, source));
+	assert(!pg_synthesis_schema_result(parameters) && !pg_synthesis_schema_result(NULL));
+	struct pg_synthesis foreign;
+	assert(pg_synthesis_init(&foreign, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	assert(!pg_synthesis_data_schema(&synthesis, pg_synthesis_root(&foreign), declaration));
+	pg_synthesis_destroy(&foreign);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "D", .length = 1};
+	const struct pg_source_scope *named = pg_synthesis_name_job(&synthesis, root, name, job);
+	complete(&synthesis, request(&synthesis, named, "v:=D;"), PG_SYNTHESIS_UNSUPPORTED);
+	struct pg_synthesis_job *cycle = program(&synthesis, root, "{{T:=T;}}.T;");
+	named = pg_synthesis_name_job(&synthesis, root, (struct pg_token){.kind = PG_TOKEN_IDENT, .text = "T", .length = 1}, cycle);
+	struct pg_synthesis_job *waiting = pg_synthesis_data_schema(&synthesis, named,
+		expression_syntax(typing->graph, "D:=@{ok:*; pending:T->*;};"));
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_status(waiting) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(waiting));
+	assert(!pg_synthesis_schema_result(waiting) && !synthesis.ready);
+	/* A pending first constructor must not prevent later result-map work. */
+	named = pg_synthesis_name_job(&synthesis, scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "T", .length = 1}, cycle);
+	const struct pg_syntax *pending_source = expression_syntax(typing->graph,
+		"D:=@\\i:@=>{pending:* T; ready:* A;};");
+	waiting = pg_synthesis_data_schema(&synthesis, named, pending_source);
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_status(waiting) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(waiting));
+	size_t jobs = synthesis.jobs.count;
+	struct pg_synthesis_job *indices = pg_synthesis_telescope(&synthesis, named, pending_source->left);
+	const struct pg_syntax *ready = pg_synthesis_telescope_body(indices)->items[1].expression;
+	struct pg_synthesis_job *ready_fields = pg_synthesis_telescope(&synthesis, named, ready);
+	struct pg_synthesis_job *ready_map = pg_synthesis_data_result(&synthesis,
+		pg_synthesis_telescope_scope(ready_fields), parameter_context, pg_synthesis_result(indices), ready);
+	assert(synthesis.jobs.count == jobs && pg_synthesis_status(ready_map) == PG_SYNTHESIS_DONE);
+	assert(!pg_synthesis_schema_result(waiting) && !synthesis.ready);
+	steps = synthesis.steps;
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(synthesis.steps == steps);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("source schemas: complete constructor maps, shared owners, rejection and no premature datatype admission passed");
+}
+
 static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	struct pg_graph *graph = typing->graph;
@@ -2164,6 +2277,7 @@ int main(void)
 	pending_names(&typing, &classifiers);
 	source_imports(&typing, &classifiers);
 	source_telescopes(&typing, &classifiers);
+	source_schemas(&typing, &classifiers);
 	definition_selections(&typing, &classifiers);
 	fair_work(&typing, &classifiers);
 	library_levels(&typing, &classifiers);
