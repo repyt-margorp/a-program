@@ -697,6 +697,33 @@ a specified type family, not a global endpoint-only relation.
   `graph.c` +42/-7, `graph.h` +7/-0, `evidence.c` +4/-8, `identity.c` +33/-0
   (implementation net +71); tests `core.c` +25/-0, `identity.c` +43/-8
   (test net +60). Accepted-source and handmade code are unchanged.
+- [x] September 8, after `84e78c7`: schedule diagonal action from source jobs.
+  `pg_synthesis_reflexivity` subscribes to an existing producer in the same
+  job store, waits for synthesis, recovers its checked classifier and invokes
+  the existing reflexivity rule. Requests are keyed by context and producer;
+  they neither execute the source nor provide an expected type to it. Accepted
+  derivations retain the original source evidence. Iteration uses the same
+  scheduler, not another action queue or an erased-term classifier lookup.
+  Value-type formations use the existing Russell type-to-value rule. Raw
+  computation-type formations are not silently treated as universe values.
+  Source rejection/unsupported states propagate; dependency cycles remain
+  pending without fabricating witnesses. Foreign jobs and mismatched contexts
+  cannot supply evidence. Primitive classifier recovery remains synchronous.
+  Tests synthesize a source APP with four pending action consumers, compare
+  split/bulk results, and extract their returned acted values. A source Lambda
+  action converts to a checked expanded Pi and accepts its three boundary
+  arguments via ordinary APP; its returned value is separately normalized.
+  This explicitly respects RETURN's WHNF boundary rather than claiming its
+  contents are already normalized. Tests also cover universe values, exact
+  reuse, failed `::` checks, foreign owners, unselected libraries and cycles.
+  This is a scheduler API, **not new surface syntax**: general contextual
+  action jobs, public Identity/transport syntax, higher computation and N2
+  acceptance remain unfinished. No kernel rule, Core tag or reserved word was
+  added. Sizes excluding docs: `synthesis.c` +36/-1, `synthesis.h` +7/-0
+  (implementation net +42); `tests/synthesis.c` +106/-0.
+  Verification passed: full optimized and ASan/UBSan pointer `make check`,
+  plus synthesis/Identity tests with a 512 KiB stack. The 158 parser outcomes
+  remain parser compatibility only; N2 and legacy semantic parity stay open.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

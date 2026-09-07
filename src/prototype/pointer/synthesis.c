@@ -44,9 +44,10 @@ struct block_state {
 	const struct pg_evidence *tail;
 	struct pg_index names;
 };
-enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB };
+enum job_role { EXPRESSION_JOB, DEFINITION_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, REFLEXIVITY_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
+	const struct pg_synthesis *owner;
 	enum job_role role;
 	const void *inputs[2];
 	const struct pg_source_scope *scope;
@@ -140,6 +141,7 @@ static struct pg_synthesis_job *request_job(struct pg_synthesis *synthesis,
 	}
 	struct pg_synthesis_job *job = pg_alloc(synthesis->typing->graph, sizeof(*job));
 	if (!job) return NULL;
+	job->owner = synthesis;
 	job->role = role;
 	job->inputs[0] = first;
 	job->inputs[1] = second;
@@ -164,6 +166,16 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
 {
 	return request_role(synthesis, scope, syntax, EXPRESSION_JOB);
+}
+
+struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, struct pg_synthesis_job *input)
+{
+	if (!input || input->owner != synthesis) return NULL;
+	if (!context || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
+	struct pg_synthesis_job *job = request_job(synthesis, REFLEXIVITY_JOB, context, input);
+	if (job) job->left = input;
+	return job;
 }
 
 static struct pg_synthesis_job *request_evaluation(struct pg_synthesis *synthesis,
@@ -641,6 +653,29 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->role == REFLEXIVITY_JOB) {
+		if (!job->stage) {
+			job->stage = 1;
+			depend(synthesis, job, job->left);
+			return;
+		}
+		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		const struct pg_evidence *input = job->left->result;
+		if (!input) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		const struct pg_evidence *context = job->inputs[0];
+		if (pg_evidence_context(context) != pg_evidence_context(input)) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		if (pg_prove_projection(synthesis->typing, context, input) != input) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		if (pg_evidence_judgement(input) == PG_JUDGEMENT_VALUE_TYPE) input = value(synthesis, input);
+		const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, input);
+		if (!type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		job->result = pg_prove_reflexivity(synthesis->typing, type, input);
+		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+		return;
+	}
 	if (job->role == NORMALIZATION_JOB) {
 		if (!job->normalizing) job->normalizing = pg_whnf_request(synthesis->normalization,
 			&pg_pure_policy, pg_evidence_subject(job->inputs[1])->core);

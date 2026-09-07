@@ -1,6 +1,7 @@
 #include "synthesis.h"
 #include "computation.h"
 #include "identity.h"
+#include "action.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -70,6 +71,110 @@ static int arbitrary_policy(struct pg_eval *machine)
 {
 	const struct pg_closure *argument = pg_eval_argument(machine, 0);
 	return argument ? pg_eval_enter(machine, *argument, 1) : 1;
+}
+
+static void source_actions(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis split, whole;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&split, typing, classifiers, &work, PG_DEFINITION_IMPLICIT_THUNK) == 0);
+	assert(pg_synthesis_init(&whole, typing, classifiers, &work, PG_DEFINITION_IMPLICIT_THUNK) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *universe = pg_prove_universe(typing, classifiers, empty, 0);
+	const struct pg_object *x = pg_binder(typing->graph);
+	const struct pg_evidence *context = pg_prove_context_extension(typing, empty, x, universe);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .length = 1, .text = "x"};
+	const struct pg_source_scope *scope = pg_synthesis_bind(&split, pg_synthesis_root(&split), name, x, context);
+	const struct pg_source_scope *other_scope = pg_synthesis_bind(&whole, pg_synthesis_root(&whole), name, x, context);
+	const char *source = "answer := (\\y : @ => y) x;";
+	struct pg_synthesis_job *inputs[5] = {request(&split, scope, source)};
+	struct pg_synthesis_job *others[5] = {request(&whole, other_scope, source)};
+	size_t terms = typing->graph->terms.count, proofs = typing->proofs.count;
+	for (size_t i = 1; i < 5; ++i) {
+		inputs[i] = pg_synthesis_reflexivity(&split, context, inputs[i - 1]);
+		others[i] = pg_synthesis_reflexivity(&whole, context, others[i - 1]);
+		assert(inputs[i] && others[i]);
+		assert(pg_synthesis_reflexivity(&split, context, inputs[i - 1]) == inputs[i]);
+		assert(pg_synthesis_status(inputs[i]) == PG_SYNTHESIS_PENDING);
+		assert(!pg_synthesis_result(inputs[i]));
+	}
+	assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+	pg_synthesis_advance(&split, 1);
+	assert(pg_synthesis_dependency(inputs[4]) == inputs[3]);
+	assert(pg_synthesis_status(inputs[0]) == PG_SYNTHESIS_PENDING);
+	complete(&split, inputs[4], PG_SYNTHESIS_DONE);
+	pg_synthesis_advance(&whole, 100000);
+	const struct pg_term *expected = pg_reference(typing->graph, x);
+	for (size_t i = 1; i < 5; ++i) {
+		const struct pg_evidence *acted = pg_synthesis_result(inputs[i]);
+		assert(pg_evidence_rule(acted) == PG_REFLEXIVITY);
+		assert(pg_evidence_premise(acted, 1) == pg_synthesis_result(inputs[i - 1]));
+		same_judgement(acted, pg_synthesis_result(others[i]));
+		expected = pg_identity_action(typing->graph, expected);
+		const struct pg_evidence *result = complete(&split, pg_synthesis_return(&split, context, acted), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(result)->core == expected);
+		assert(pg_prove_classifier(typing, classifiers, context, result));
+	}
+	/* Source Lambda action consumes the same checked triple as its Pi type. */
+	struct pg_synthesis_job *function = request(&split, scope, "f := \\y : @ => y;");
+	const struct pg_evidence *function_action = complete(&split,
+		pg_synthesis_reflexivity(&split, context, function), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *f = pg_synthesis_result(function);
+	const struct pg_evidence *pi = pg_prove_classifier(typing, classifiers, context, f);
+	const struct pg_evidence *expanded = pg_identity_pi_type(typing, classifiers, context, pi, f, f,
+		pg_binder(typing->graph), pg_binder(typing->graph), pg_binder(typing->graph));
+	assert(expanded);
+	struct pg_conversion conversion;
+	assert(pg_conversion_init(&conversion, &work, pg_evidence_classifier(function_action),
+		pg_evidence_subject(expanded)->core) == 0);
+	assert(pg_conversion_advance(&conversion, 100000) == PG_CONVERSION_EQUAL);
+	f = pg_prove_conversion(typing, function_action, expanded, pg_conversion_certificate(&conversion));
+	pg_conversion_destroy(&conversion);
+	const struct pg_evidence *vx = pg_prove_variable(typing, context, x);
+	const struct pg_evidence *px = pg_prove_reflexivity(typing, pg_prove_projection(typing, context, universe), vx);
+	f = pg_prove_application(typing, pg_prove_application(typing, pg_prove_application(typing, f, vx), vx), px);
+	const struct pg_evidence *fx = complete(&split, pg_synthesis_return(&split, context, f), PG_SYNTHESIS_DONE);
+	/* RETURN is WHNF without normalizing its contained action. */
+	fx = normalize(&split, context, fx);
+	assert(pg_evidence_subject(fx)->core == pg_evidence_subject(px)->core);
+	assert(pg_conversion_init(&conversion, &work, pg_evidence_classifier(fx), pg_evidence_classifier(px)) == 0);
+	assert(pg_conversion_advance(&conversion, 100000) == PG_CONVERSION_EQUAL);
+	pg_conversion_destroy(&conversion);
+	terms = typing->graph->terms.count; proofs = typing->proofs.count;
+	for (size_t i = 1; i < 5; ++i) assert(pg_synthesis_reflexivity(&split, context, inputs[i - 1]) == inputs[i]);
+	assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+	assert(!pg_synthesis_reflexivity(&split, context, others[0]));
+	assert(!pg_synthesis_reflexivity(&split, NULL, inputs[0]));
+	assert(!pg_synthesis_reflexivity(&split, universe, inputs[0]));
+	assert(!pg_synthesis_reflexivity(&split, context, NULL));
+	complete(&split, pg_synthesis_reflexivity(&split, empty, inputs[0]), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *bad = request(&split, scope, "answer := missing;");
+	complete(&split, pg_synthesis_reflexivity(&split, context, bad), PG_SYNTHESIS_REJECTED);
+	bad = request(&split, scope, "answer := (\\y : @ => y) :: @;");
+	complete(&split, pg_synthesis_reflexivity(&split, context, bad), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *type = request(&split, scope, "answer := x -> x;");
+	complete(&split, pg_synthesis_reflexivity(&split, context, type), PG_SYNTHESIS_UNSUPPORTED);
+	struct pg_synthesis_job *value = request(&split, scope, "answer := @;");
+	const struct pg_evidence *universe_action = complete(&split,
+		pg_synthesis_reflexivity(&split, context, value), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_judgement(universe_action) == PG_JUDGEMENT_VALUE);
+	struct pg_synthesis_job *library = program(&split, scope, "alias := x;");
+	complete(&split, pg_synthesis_reflexivity(&split, context, library), PG_SYNTHESIS_UNSUPPORTED);
+	struct pg_typing foreign;
+	assert(pg_typing_init(&foreign, typing->graph) == 0);
+	struct pg_synthesis_job *root_value = request(&split, pg_synthesis_root(&split), "answer := @;");
+	complete(&split, pg_synthesis_reflexivity(&split, pg_prove_empty_context(&foreign), root_value), PG_SYNTHESIS_REJECTED);
+	pg_typing_destroy(&foreign);
+	struct pg_synthesis_job *cycle = program(&split, scope, "{{ a := b; b := a; }}.a;");
+	struct pg_synthesis_job *cycle_action = pg_synthesis_reflexivity(&split, context, cycle);
+	pg_synthesis_advance(&split, 1000);
+	assert(pg_synthesis_status(cycle_action) == PG_SYNTHESIS_PENDING);
+	assert(pg_synthesis_cycle(cycle_action));
+	assert(!pg_synthesis_result(cycle_action));
+	pg_synthesis_destroy(&split);
+	pg_synthesis_destroy(&whole);
+	pg_whnf_work_destroy(&work);
 }
 
 static void normalization_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers,
@@ -310,6 +415,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
+	source_actions(&typing, &classifiers);
 	assert(pg_whnf_work_init(&beta, &graph) == 0);
 	assert(pg_synthesis_init(&synthesis, &typing, &classifiers, &beta, PG_DEFINITION_IMPLICIT_THUNK) == 0);
 	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);

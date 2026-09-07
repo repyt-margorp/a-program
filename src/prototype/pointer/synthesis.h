@@ -31,6 +31,13 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_object *binder, const struct pg_evidence *extended_context);
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Diagonal action of an input job, after its own synthesis has succeeded.
+ * Both jobs belong to this store. The supplied context must be exactly the
+ * input judgement's context; no expected classifier guides the producer.
+ * Results use the existing checked reflexivity rule, not a Core-only lookup.
+ * This scheduler API does not introduce a new surface keyword. */
+struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, struct pg_synthesis_job *input);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
  * Requests do not reduce; unsupported neutral heads are not negative proofs.
