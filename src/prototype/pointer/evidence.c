@@ -15,15 +15,24 @@ struct pg_evidence {
 	const struct pg_evidence *premises[];
 };
 
+static int derived_output(enum pg_evidence_rule rule)
+{
+	switch (rule) {
+	case PG_REINDEX: case PG_APP_ELIM: case PG_PI_CODOMAIN:
+		return 1;
+	default: return 0;
+	}
+}
+
 static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_evidence_rule rule,
 	enum pg_evidence_judgement judgement,
 	const struct pg_context *context, const struct pg_occurrence *subject,
 	const struct pg_term *classifier, size_t count, const struct pg_evidence *const *premises,
 	const struct pg_conversion_certificate *conversion, uint64_t *hash_out)
 {
-	/* Reindex output pointers are chosen by capture-avoiding substitution. Its
+	/* These output pointers are chosen by capture-avoiding substitution. Their
 	 * immutable inputs, not newly allocated output binders, identify the work. */
-	if (rule == PG_REINDEX) { subject = NULL; classifier = NULL; }
+	if (derived_output(rule)) { subject = NULL; classifier = NULL; }
 	uint64_t hash = ((uintptr_t)context ^ (uintptr_t)subject ^ (uintptr_t)classifier ^ rule) * UINT64_C(1099511628211);
 	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
 	*hash_out = hash;
@@ -33,7 +42,7 @@ static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_e
 		if (proof->rule != rule) continue;
 		if (proof->judgement != judgement) continue;
 		if (proof->context != context) continue;
-		if (rule != PG_REINDEX) {
+		if (!derived_output(rule)) {
 			if (proof->subject != subject) continue;
 			if (proof->classifier != classifier) continue;
 		}
@@ -307,6 +316,11 @@ const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	if (function->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (argument->judgement != PG_JUDGEMENT_VALUE) return NULL;
 	if (function->context != argument->context) return NULL;
+	const struct pg_evidence *premises[] = {function, argument};
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, PG_APP_ELIM,
+		PG_JUDGEMENT_COMPUTATION, function->context, NULL, NULL, 2, premises, NULL, &hash);
+	if (existing) return existing;
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
 	if (!pg_pi_view(function->classifier, &domain, &binder, &codomain)) return NULL;
@@ -318,7 +332,6 @@ const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_occurrence *operands[] = {function->subject, argument->subject};
 	const struct pg_occurrence *subject = pg_occurrence(typing, function->context, term, NULL, 2, operands);
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {function, argument};
 	return accept(typing, PG_APP_ELIM, PG_JUDGEMENT_COMPUTATION,
 		function->context, subject, classifier, 2, premises);
 }
@@ -606,6 +619,11 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	if (!argument || argument->owner != typing) return NULL;
 	if (argument->judgement != PG_JUDGEMENT_VALUE) return NULL;
 	if (pi->context != argument->context) return NULL;
+	const struct pg_evidence *premises[] = {pi, argument};
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, PG_PI_CODOMAIN,
+		PG_JUDGEMENT_COMPUTATION_TYPE, pi->context, NULL, NULL, 2, premises, NULL, &hash);
+	if (existing) return existing;
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
 	if (!pg_pi_view(pi->subject->core, &domain, &binder, &codomain)) return NULL;
@@ -616,7 +634,6 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_occurrence *operands[] = {pi->subject, argument->subject};
 	const struct pg_occurrence *subject = pg_occurrence(typing, pi->context, type, NULL, 2, operands);
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {pi, argument};
 	return accept(typing, PG_PI_CODOMAIN, PG_JUDGEMENT_COMPUTATION_TYPE,
 		pi->context, subject, pi->classifier, 2, premises);
 }

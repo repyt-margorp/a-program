@@ -522,6 +522,12 @@ conclusion and all premise pointers; no accepted record is overwritten.
   repeated binder-containing reindex/lift requests with identical proof results
   and zero growth in Term and derivation counts. Different inputs are not merged
   by alpha or WHNF equality. This is not memoization of runtime effects.
+  APP elimination and Pi-codomain formation now use this same input-keyed
+  derivation lookup before substitution. A regression returning a dependent
+  Pi exposed fresh classifier binders and duplicate proofs on repeated APP;
+  100 identical APP/regularity requests now return the original proofs without
+  increasing Term or derivation counts. Accepted premises remain part of the
+  key, so distinct typed occurrences are not merged through a shared Core.
   Regularity for unsupported rules returns NULL, not a refutation. Recovery
   currently traverses the relevant proof premises; scheduling/memoization and
   source synthesis still need integration rather than a separate type authority.

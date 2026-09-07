@@ -350,6 +350,25 @@ static void dependent_application_test(struct pg_graph *graph)
 	assert(pg_evidence_classifier(open_app) == pg_return_type(&classifiers, pg_reference(graph, b)));
 	const struct pg_evidence *open_formation = pg_prove_classifier(&typing, &classifiers, b_context, open_app);
 	assert(open_formation && pg_evidence_subject(open_formation)->core == pg_evidence_classifier(open_app));
+	/* A returning function leaves binders in the substituted classifier. */
+	const struct pg_object *x = pg_binder(graph), *g = pg_binder(graph);
+	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
+	const struct pg_evidence *inner_fa = pg_prove_return_type(&typing, &classifiers, pg_prove_variable(&typing, x_context, a));
+	const struct pg_evidence *inner_pi = pg_prove_pi(&typing, &classifiers, a_type, x_context, inner_fa);
+	const struct pg_evidence *outer_pi = pg_prove_pi(&typing, &classifiers, u1, a_context, inner_pi);
+	const struct pg_evidence *g_context = pg_prove_context_extension(&typing, empty, g,
+		pg_prove_thunk_type(&typing, &classifiers, outer_pi));
+	const struct pg_evidence *g_term = pg_prove_force(&typing, pg_prove_variable(&typing, g_context, g));
+	const struct pg_evidence *g_argument = pg_prove_type_value(&typing, pg_prove_universe(&typing, &classifiers, g_context, 0));
+	const struct pg_evidence *g_app = pg_prove_application(&typing, g_term, g_argument);
+	const struct pg_evidence *g_formation = pg_prove_classifier(&typing, &classifiers, g_context, g_app);
+	assert(g_app && g_formation);
+	size_t terms = graph->terms.count, proofs = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i) {
+		assert(pg_prove_application(&typing, g_term, g_argument) == g_app);
+		assert(pg_prove_classifier(&typing, &classifiers, g_context, g_app) == g_formation);
+	}
+	assert(graph->terms.count == terms && typing.proofs.count == proofs);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	puts("dependent application: concrete and open type arguments substitute without executing computations");
