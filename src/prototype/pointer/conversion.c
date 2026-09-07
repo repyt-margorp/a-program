@@ -14,12 +14,24 @@ struct pg_conversion_state {
 	const struct pg_term *left;
 	const struct pg_term *right;
 	const struct pg_conversion_certificate *certificate;
+	uint64_t steps;
+	size_t initial_tasks;
+	int strong;
 	int failed;
 };
 
 static int normalize(void *policy, const struct pg_term *input, const struct pg_term **output)
 {
-	struct pg_whnf_job *job = pg_whnf_request(policy, &pg_pure_policy, input);
+	struct pg_conversion_state *state = policy;
+	if (state->strong) {
+		struct pg_nf_job *job = pg_nf_request(state->work, &pg_pure_policy, input);
+		if (!job) return -1;
+		if (pg_nf_status(job) == PG_NF_PENDING)
+			return pg_nf_advance(job, 1) == PG_NF_ERROR ? -1 : 0;
+		*output = pg_nf_result(job);
+		return *output ? 1 : -1;
+	}
+	struct pg_whnf_job *job = pg_whnf_request(state->work, &pg_pure_policy, input);
 	if (!job) return -1;
 	if (pg_whnf_status(job) == PG_EVAL_PENDING)
 		return pg_whnf_advance(job, 1) == PG_EVAL_ERROR ? -1 : 0;
@@ -33,7 +45,8 @@ enum pg_conversion_status pg_conversion_status(const struct pg_conversion *conve
 	switch (pg_comparison_status(&conversion->state->comparison)) {
 	case PG_COMPARISON_PENDING: return PG_CONVERSION_PENDING;
 	case PG_COMPARISON_EQUAL: return PG_CONVERSION_EQUAL;
-	case PG_COMPARISON_DIFFERENT: return PG_CONVERSION_DIFFERENT;
+	case PG_COMPARISON_DIFFERENT:
+		return conversion->state->strong ? PG_CONVERSION_DIFFERENT : PG_CONVERSION_PENDING;
 	case PG_COMPARISON_ERROR: return PG_CONVERSION_ERROR;
 	}
 	return PG_CONVERSION_ERROR;
@@ -60,7 +73,7 @@ int pg_conversion_init(struct pg_conversion *conversion, struct pg_whnf_work *wo
 	state->work = work;
 	state->left = left;
 	state->right = right;
-	if (pg_comparison_init(&state->comparison, left, right, work, normalize) != 0) goto fail;
+	if (pg_comparison_init(&state->comparison, left, right, state, normalize) != 0) goto fail;
 	certify(conversion);
 	if (pg_conversion_status(conversion) == PG_CONVERSION_ERROR) goto fail;
 	return 0;
@@ -72,7 +85,18 @@ fail:
 enum pg_conversion_status pg_conversion_advance(struct pg_conversion *conversion, uint64_t budget)
 {
 	if (!conversion->state) return PG_CONVERSION_ERROR;
-	pg_comparison_advance(&conversion->state->comparison, budget);
+	struct pg_conversion_state *state = conversion->state;
+	while (pg_conversion_status(conversion) == PG_CONVERSION_PENDING && budget) {
+		--budget;
+		++state->steps;
+		if (pg_comparison_status(&state->comparison) == PG_COMPARISON_DIFFERENT) {
+			state->initial_tasks = pg_comparison_task_count(&state->comparison);
+			pg_comparison_destroy(&state->comparison);
+			state->strong = 1;
+			if (pg_comparison_init(&state->comparison, state->left, state->right, state, normalize) != 0)
+				state->failed = 1;
+		} else pg_comparison_advance(&state->comparison, 1);
+	}
 	certify(conversion);
 	return pg_conversion_status(conversion);
 }
@@ -87,7 +111,7 @@ void pg_conversion_destroy(struct pg_conversion *conversion)
 
 uint64_t pg_conversion_steps(const struct pg_conversion *conversion)
 {
-	return conversion->state ? pg_comparison_steps(&conversion->state->comparison) : 0;
+	return conversion->state ? conversion->state->steps : 0;
 }
 
 const struct pg_conversion_certificate *pg_conversion_certificate(const struct pg_conversion *conversion)
@@ -97,7 +121,7 @@ const struct pg_conversion_certificate *pg_conversion_certificate(const struct p
 
 size_t pg_conversion_task_count(const struct pg_conversion *conversion)
 {
-	return conversion->state ? pg_comparison_task_count(&conversion->state->comparison) : 0;
+	return conversion->state ? conversion->state->initial_tasks + pg_comparison_task_count(&conversion->state->comparison) : 0;
 }
 
 const struct pg_term *pg_conversion_left(const struct pg_conversion_certificate *certificate) { return certificate->left; }

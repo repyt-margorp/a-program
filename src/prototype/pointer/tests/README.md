@@ -16,6 +16,13 @@ units, including right units under suspension. Tests retain typing for both
 U(F A) and U(Pi A B), check closure capture, selected-path action and split
 budgets, and reject constant-return/divergent continuations as unit candidates.
 No thunk body or continuation is executed just to recognize these equations.
+Strong normalization is a separate pure request over the same WHNF store,
+not a different reduction policy or a change to runtime evaluation. Tests
+check child-result sharing, contraction after rebuilding a parent, zero-fuel
+requests, split/bulk budgets, result reuse, 10,000 nested binders and DAGs.
+A retained divergent thunk has no NF result; a discarded divergent argument
+does not block head-first normalization. Conversion uses shared NF work only
+after its WHNF comparison fails, and issues no certificate while pending.
 
 `identity.c` checks symbolic Identity formation, diagonal reflexivity, selected
 universe-family instantiation, iterated diagonal witnesses, CBPV polarity and
@@ -31,8 +38,9 @@ are checked. General U/F transport also agrees with an independently typed
 THUNK/FORCE/FOLD map of a neutral thunk, including substitution after mapping.
 A divergent quoted body remains suspended; a separate runtime probe runs its
 source exactly once per force, never during transport or through a pure cache.
-General dependent lifting and conversion-complete U/F eta coherence remain
-open; the plan records the failing neutral `map refl` conversion experiment.
+The former neutral `map refl` conversion failure now has an accepted typed
+regression in both directions. General dependent lifting and higher U/F
+coherence remain open; these tests do not establish their completeness.
 
 `iadt.c` tests erased constructor/Match references, pointer-labelled clause
 selection, saturation, capture, lazy fields/branches and policy isolation.

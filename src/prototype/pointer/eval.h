@@ -82,6 +82,7 @@ struct pg_whnf_work {
 	struct pg_graph *graph;
 	struct pg_graph storage;
 	struct pg_index jobs;
+	struct pg_index normal_forms;
 };
 int pg_whnf_work_init(struct pg_whnf_work *work, struct pg_graph *graph);
 void pg_whnf_work_destroy(struct pg_whnf_work *work);
@@ -102,5 +103,22 @@ const struct pg_whnf_certificate *pg_whnf_certificate(const struct pg_whnf_job *
 const struct pg_term *pg_whnf_source(const struct pg_whnf_certificate *certificate);
 const struct pg_term *pg_whnf_target(const struct pg_whnf_certificate *certificate);
 const struct pg_eval_policy *pg_whnf_policy(const struct pg_whnf_certificate *certificate);
+
+enum pg_nf_status { PG_NF_PENDING, PG_NF_DONE, PG_NF_ERROR };
+struct pg_nf_job;
+/* Strong normalization shares the same policy-keyed WHNF jobs and exact
+ * pointer-keyed subterm results. It descends beneath Lambda/THUNK, so it is
+ * for pure normalization, not runtime execution of a suspended computation.
+ * Rebuilt parents are reduced again: child reduction may expose an eta rule.
+ * Requests do no evaluation. Fuel bounds traversal/evaluator transitions;
+ * a term without a normal form can remain pending. No recursive C traversal. */
+struct pg_nf_job *pg_nf_request(struct pg_whnf_work *work,
+	const struct pg_eval_policy *policy, const struct pg_term *input);
+enum pg_nf_status pg_nf_advance(struct pg_nf_job *job, uint64_t budget);
+enum pg_nf_status pg_nf_status(const struct pg_nf_job *job);
+const struct pg_term *pg_nf_result(const struct pg_nf_job *job);
+/* Transitions charged to advances of this root, including dependencies;
+ * shared work performed by another root is not charged a second time. */
+uint64_t pg_nf_steps(const struct pg_nf_job *job);
 
 #endif

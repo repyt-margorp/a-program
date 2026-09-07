@@ -393,6 +393,15 @@ static void transport_fields(struct pg_typing *typing, struct pg_classifiers *cl
 		action_result(typing, classifiers, scope, &work,
 			pg_prove_identity_lift(typing, classifiers, u_diagonal, quoted, direction),
 			pg_prove_reflexivity(typing, u_type, quoted));
+		/* The separately typed map exposes its right unit only after reducing
+		 * the continuation body; comparing outer WHNF shapes is insufficient. */
+		const struct pg_object *u = pg_binder(graph);
+		const struct pg_evidence *context = pg_prove_context_extension(typing, scope, u, u_type);
+		const struct pg_evidence *value = pg_prove_variable(typing, context, u);
+		action_result(typing, classifiers, context, &work,
+			pg_prove_identity_transport(typing, classifiers,
+				pg_prove_projection(typing, context, u_diagonal), value, direction),
+			thunk_map(typing, classifiers, context, pg_prove_projection(typing, context, diagonal), value, direction));
 	}
 	/* Unknown families and quoted computations are not execution requests. */
 	const struct pg_object *z = pg_binder(graph);

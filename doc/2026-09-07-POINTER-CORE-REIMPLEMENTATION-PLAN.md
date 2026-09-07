@@ -1293,22 +1293,35 @@ a specified type family, not a global endpoint-only relation.
   affected binaries); core/Identity/synthesis/IADT pass at 512 KiB stack.
   Implementation `identity.c` +16/-8, `identity.h` +3/-1 (net +10);
   tests `identity.c` +87/-5; documentation separate. N2/N3 remain open.
-- [ ] Close the conversion gap exposed by neutral U/F transport before
-  claiming its substitution/degeneracy equations complete. With `R = refl A`,
-  direct transport computes to `u`, whereas the separately built map retains
-  `THUNK(FOLD(FORCE(u), lambda x. RETURN(tr(refl A, x))))` at WHNF.
-  Reducing the continuation body would expose the right unit, but the current
-  pair comparator rejects the outer shape mismatch before this contraction.
-  Reproduced by calling `thunk_transport(typing, classifiers, scope,
-  diagonal, x, x)` after constructing `diagonal` in `transport_fields`:
-  its independently typed map comparison fails in `converts`.
-  This is incomplete conversion, not evidence of mathematical inequality.
-  Resolve it through budgeted pure equational comparison/reduction, shared
-  with existing evaluation; do not eagerly execute discarded continuations
-  in the runtime evaluator or add a `map refl`-specific acceptance exception.
-  General dependent lifting and higher field action/coherence remain separate
-  obligations. Rechecked the primary Narya transport/lifting section linked
-  below; this U/F adaptation and its remaining conversion work are our own.
+- [x] September 8, after `c9fcc1a`: close the concrete neutral `map refl`
+  conversion gap. The typed regression in `transport_fields` compares direct
+  transport with the independently typed U/F map in both directions; the old
+  conversion source fails this test. No Identity-specific comparison exception
+  was added. Failed WHNF comparison now requests budgeted strong normalization
+  through the same pure evaluator, then the same scoped structural comparator.
+  NF jobs share exact `(input pointer, policy pointer)` keys and WHNF work.
+  They normalize children after exposing the head and reduce rebuilt parents
+  again, so a reduced continuation can expose the existing fold right unit.
+  Completed normal forms are registered as their own answers without another
+  traversal. Explicit dependency stacks avoid recursive C descent; interleaved
+  roots reuse child progress. NF step counts charge transitions to the root
+  being advanced, not again to every ancestor of a shared dependency.
+  Runtime WHNF behavior and its suspension discipline are unchanged. Only
+  pure normalization descends into retained Lambda/THUNK bodies; divergence
+  stays pending without a certificate. The fallback does not prove confluence,
+  strong normalization or completeness for unimplemented higher equations.
+  General dependent lifting and higher field action/coherence remain open.
+  Tests cover generic beta-hidden CBPV eta (not only Identity), exact sharing,
+  result reuse, policy separation, split/bulk NF and comparison, 10,000 nested
+  binders, a shared DAG, retained/discarded divergence and accepted typings.
+  Distinct WHNF jobs can still revisit overlapping application spines; shared
+  NF results do not justify a claim of globally linear normalization cost.
+  Optimized pointer `make check`: 7.558 s with affected binaries rebuilt;
+  final added test run: 2.645 s with only core rebuilt. ASan/UBSan: 16.936 s
+  with affected binaries rebuilt; core/Identity/synthesis/IADT pass at 512 KiB.
+  Implementation `eval.c` +137/-1, `eval.h` +18/-0, `conversion.c` +30/-6,
+  `conversion.h` +5/-3 (net +180); tests `core.c` +90, `identity.c` +9;
+  documentation separate. N2/N3/N5 remain open, including NF CLI integration.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

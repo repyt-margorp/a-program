@@ -1284,6 +1284,95 @@ static void conversion_test(struct pg_graph *graph)
 	puts("conversion: explicit beta comparison, binder scope, shared DAG and pending divergence passed");
 }
 
+static void normal_form_test(struct pg_graph *graph)
+{
+	struct pg_whnf_work split_work, whole_work;
+	assert(pg_whnf_work_init(&split_work, graph) == 0);
+	assert(pg_whnf_work_init(&whole_work, graph) == 0);
+	const struct pg_object *x = pg_binder(graph), *u = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x), *vu = pg_reference(graph, u);
+	const struct pg_term *identity = pg_lambda(graph, x, vx);
+	const struct pg_term *delayed_unit = pg_lambda(graph, x, pg_application(graph,
+		pg_reference(graph, &pg_return_operation), pg_application(graph, identity, vx)));
+	const struct pg_term *term = pg_application(graph, pg_reference(graph, &pg_thunk_operation),
+		pg_application(graph, pg_application(graph, pg_reference(graph, &pg_fold_operation),
+			pg_application(graph, pg_reference(graph, &pg_force_operation), vu)), delayed_unit));
+	struct pg_nf_job *split = pg_nf_request(&split_work, &pg_pure_policy, term);
+	assert(split && pg_nf_request(&split_work, &pg_pure_policy, term) == split);
+	assert(split_work.jobs.count == 0 && !pg_nf_result(split));
+	assert(pg_nf_advance(split, 0) == PG_NF_PENDING && pg_nf_steps(split) == 0);
+	while (pg_nf_status(split) == PG_NF_PENDING) {
+		uint64_t steps = pg_nf_steps(split);
+		pg_nf_advance(split, 1);
+		assert(pg_nf_steps(split) == steps + 1 && steps < 10000);
+	}
+	assert(pg_nf_status(split) == PG_NF_DONE && pg_nf_result(split) == vu);
+	struct pg_nf_job *whole = pg_nf_request(&whole_work, &pg_pure_policy, term);
+	assert(pg_nf_advance(whole, 10000) == PG_NF_DONE);
+	assert(pg_nf_result(whole) == vu && pg_nf_steps(whole) == pg_nf_steps(split));
+	size_t count = split_work.normal_forms.count, terms = graph->terms.count;
+	uint64_t steps = pg_nf_steps(split);
+	assert(pg_nf_advance(pg_nf_request(&split_work, &pg_pure_policy, term), 10000) == PG_NF_DONE);
+	assert(pg_nf_steps(split) == steps && split_work.normal_forms.count == count && graph->terms.count == terms);
+	struct pg_nf_job *beta = pg_nf_request(&split_work, &pg_beta_policy, term);
+	assert(beta != split && pg_nf_advance(beta, 10000) == PG_NF_DONE);
+	assert(pg_nf_result(beta) != vu);
+	/* NF strengthens comparison, not the runtime WHNF strategy. */
+	struct pg_whnf_job *weak = pg_whnf_request(&split_work, &pg_pure_policy, term);
+	assert(pg_whnf_advance(weak, 10000) == PG_EVAL_WHNF && pg_whnf_result(weak) == term);
+	struct pg_conversion conversion;
+	assert(pg_conversion_init(&conversion, &whole_work, vu, term) == 0);
+	assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
+	assert(pg_conversion_certificate(&conversion));
+	uint64_t comparison_steps = pg_conversion_steps(&conversion);
+	pg_conversion_destroy(&conversion);
+	assert(pg_conversion_init(&conversion, &split_work, vu, term) == 0);
+	while (pg_conversion_advance(&conversion, 1) == PG_CONVERSION_PENDING)
+		assert(pg_conversion_steps(&conversion) <= comparison_steps);
+	assert(pg_conversion_status(&conversion) == PG_CONVERSION_EQUAL);
+	assert(pg_conversion_steps(&conversion) == comparison_steps);
+	pg_conversion_destroy(&conversion);
+	/* Interleaved requests reuse child progress, with no per-parent copy. */
+	const struct pg_term *body = pg_application(graph, identity, vu);
+	struct pg_nf_job *child = pg_nf_request(&split_work, &pg_beta_policy, body);
+	assert(pg_nf_advance(child, 1) == PG_NF_PENDING);
+	struct pg_nf_job *parent = pg_nf_request(&split_work, &pg_beta_policy, pg_lambda(graph, x, body));
+	assert(pg_nf_advance(parent, 10000) == PG_NF_DONE);
+	assert(pg_nf_status(child) == PG_NF_DONE && pg_nf_result(child) == vu);
+	assert(pg_nf_result(parent) == pg_lambda(graph, x, vu));
+	struct pg_nf_job *answer = pg_nf_request(&split_work, &pg_beta_policy, pg_nf_result(parent));
+	assert(pg_nf_status(answer) == PG_NF_DONE && pg_nf_steps(answer) == 0);
+	/* Demand the head before descending: a discarded divergent argument does
+	 * not prevent normalization. Under a retained thunk it does remain pending. */
+	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
+	const struct pg_term *omega = pg_application(graph, self, self);
+	struct pg_nf_job *discarded = pg_nf_request(&split_work, &pg_pure_policy,
+		pg_application(graph, pg_lambda(graph, x, vu), omega));
+	assert(pg_nf_advance(discarded, 10000) == PG_NF_DONE && pg_nf_result(discarded) == vu);
+	struct pg_nf_job *divergent = pg_nf_request(&split_work, &pg_pure_policy,
+		pg_application(graph, pg_reference(graph, &pg_thunk_operation), omega));
+	assert(pg_nf_advance(divergent, 100) == PG_NF_PENDING && !pg_nf_result(divergent));
+	assert(pg_nf_advance(divergent, 100) == PG_NF_PENDING);
+	assert(pg_conversion_init(&conversion, &split_work, vu,
+		pg_application(graph, pg_reference(graph, &pg_thunk_operation), omega)) == 0);
+	assert(pg_conversion_advance(&conversion, 1000) == PG_CONVERSION_PENDING);
+	assert(!pg_conversion_certificate(&conversion));
+	pg_conversion_destroy(&conversion);
+	const struct pg_term *deep = vu;
+	for (size_t i = 0; i < 10000; ++i) deep = pg_lambda(graph, pg_binder(graph), deep);
+	struct pg_nf_job *nested = pg_nf_request(&split_work, &pg_pure_policy, deep);
+	assert(pg_nf_advance(nested, 1000000) == PG_NF_DONE && pg_nf_result(nested) == deep);
+	const struct pg_term *dag = vu;
+	for (size_t i = 0; i < 20; ++i) dag = pg_application(graph, dag, dag);
+	count = split_work.normal_forms.count;
+	struct pg_nf_job *shared = pg_nf_request(&split_work, &pg_beta_policy, dag);
+	assert(pg_nf_advance(shared, 100000) == PG_NF_DONE && pg_nf_result(shared) == dag);
+	assert(split_work.normal_forms.count - count <= 21);
+	pg_whnf_work_destroy(&whole_work);
+	pg_whnf_work_destroy(&split_work);
+	puts("normal forms: shared pure work, parent contraction, policies, split fuel and suspended divergence passed");
+}
+
 static void beta_work_test(struct pg_graph *graph)
 {
 	struct pg_whnf_work work;
@@ -1689,6 +1778,7 @@ int main(void)
 	classifiers_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);
+	normal_form_test(&graph);
 	beta_work_test(&graph);
 	substitution_test(&graph);
 	evaluation_test(&graph);

@@ -463,11 +463,28 @@ struct pg_whnf_job {
 	uint64_t steps;
 };
 
+struct pg_nf_job {
+	struct pg_index_entry index;
+	struct pg_whnf_work *work;
+	const struct pg_eval_policy *policy;
+	const struct pg_term *input, *body, *result;
+	struct pg_whnf_job *head;
+	struct pg_nf_job *children[2];
+	struct pg_nf_job **stack;
+	size_t depth, capacity;
+	uint64_t steps;
+	enum pg_nf_status status;
+	enum { NF_HEAD, NF_CHILDREN, NF_RECHECK } stage;
+};
+
 int pg_whnf_work_init(struct pg_whnf_work *work, struct pg_graph *graph)
 {
 	memset(work, 0, sizeof(*work));
 	work->graph = graph;
-	return pg_index_init(&work->jobs);
+	if (pg_index_init(&work->jobs) != 0) return -1;
+	if (pg_index_init(&work->normal_forms) == 0) return 0;
+	pg_index_destroy(&work->jobs);
+	return -1;
 }
 
 void pg_whnf_work_destroy(struct pg_whnf_work *work)
@@ -480,6 +497,10 @@ void pg_whnf_work_destroy(struct pg_whnf_work *work)
 		}
 	}
 	pg_index_destroy(&work->jobs);
+	for (size_t i = 0; i < work->normal_forms.capacity; ++i)
+		for (struct pg_index_entry *entry = work->normal_forms.buckets[i]; entry; entry = entry->next)
+			free(((struct pg_nf_job *)entry)->stack);
+	pg_index_destroy(&work->normal_forms);
 	pg_graph_destroy(&work->storage);
 	memset(work, 0, sizeof(*work));
 }
@@ -556,3 +577,118 @@ const struct pg_whnf_certificate *pg_whnf_certificate(const struct pg_whnf_job *
 const struct pg_term *pg_whnf_source(const struct pg_whnf_certificate *certificate) { return certificate->source; }
 const struct pg_term *pg_whnf_target(const struct pg_whnf_certificate *certificate) { return certificate->target; }
 const struct pg_eval_policy *pg_whnf_policy(const struct pg_whnf_certificate *certificate) { return certificate->policy; }
+
+struct pg_nf_job *pg_nf_request(struct pg_whnf_work *work,
+	const struct pg_eval_policy *policy, const struct pg_term *input)
+{
+	if (!input || !policy) return NULL;
+	uint64_t hash = ((uintptr_t)input ^ (uintptr_t)policy) * UINT64_C(1099511628211);
+	for (struct pg_index_entry *entry = pg_index_candidates(&work->normal_forms, hash); entry; entry = entry->next) {
+		if (entry->hash != hash) continue;
+		struct pg_nf_job *job = (struct pg_nf_job *)entry;
+		if (job->input == input && job->policy == policy) return job;
+	}
+	struct pg_nf_job *job = pg_alloc(&work->storage, sizeof(*job));
+	if (!job) return NULL;
+	job->work = work;
+	job->policy = policy;
+	job->input = input;
+	if (pg_index_insert(&work->normal_forms, &job->index, hash) != 0) return NULL;
+	return job;
+}
+
+static void nf_complete(struct pg_nf_job *job, const struct pg_term *result)
+{
+	/* A computed normal form is also its own answer, without another walk. */
+	struct pg_nf_job *canonical = pg_nf_request(job->work, job->policy, result);
+	if (!canonical || canonical->status == PG_NF_ERROR) {
+		job->status = PG_NF_ERROR;
+		return;
+	}
+	if (canonical->status == PG_NF_PENDING) {
+		canonical->result = result;
+		canonical->status = PG_NF_DONE;
+	}
+	job->result = canonical->result;
+	job->status = PG_NF_DONE;
+}
+
+static struct pg_nf_job *nf_step(struct pg_nf_job *job)
+{
+	if (job->stage == NF_CHILDREN) {
+		for (size_t i = 0; i < 2; ++i) {
+			struct pg_nf_job *child = job->children[i];
+			if (!child) continue;
+			if (child->status == PG_NF_ERROR) goto failure;
+			if (child->status == PG_NF_PENDING) return child;
+		}
+		struct pg_graph *graph = job->work->graph;
+		job->body = job->body->kind == PG_LAMBDA
+			? pg_lambda(graph, job->body->as.lambda.binder, job->children[0]->result)
+			: pg_application(graph, job->children[0]->result, job->children[1]->result);
+		job->head = pg_whnf_request(job->work, job->policy, job->body);
+		if (!job->head) goto failure;
+		job->stage = NF_RECHECK;
+	} else {
+		if (!job->head) job->head = pg_whnf_request(job->work, job->policy, job->input);
+		if (!job->head) goto failure;
+		if (pg_whnf_status(job->head) == PG_EVAL_PENDING) {
+			pg_whnf_advance(job->head, 1);
+			return NULL;
+		}
+		const struct pg_term *body = pg_whnf_result(job->head);
+		if (!body) goto failure;
+		if (job->stage == NF_RECHECK && body == job->body) {
+			nf_complete(job, body);
+			return NULL;
+		}
+		job->body = body;
+		if (body->kind == PG_REFERENCE) {
+			nf_complete(job, body);
+			return NULL;
+		}
+		job->children[0] = pg_nf_request(job->work, job->policy,
+			body->kind == PG_LAMBDA ? body->as.lambda.body : body->as.application.function);
+		job->children[1] = body->kind == PG_APPLICATION
+			? pg_nf_request(job->work, job->policy, body->as.application.argument) : NULL;
+		if (!job->children[0]) goto failure;
+		if (body->kind == PG_APPLICATION && !job->children[1]) goto failure;
+		job->stage = NF_CHILDREN;
+	}
+	return NULL;
+failure:
+	job->status = PG_NF_ERROR;
+	return NULL;
+}
+
+enum pg_nf_status pg_nf_advance(struct pg_nf_job *job, uint64_t budget)
+{
+	while (job->status == PG_NF_PENDING && budget) {
+		--budget;
+		++job->steps;
+		struct pg_nf_job *current = job->depth ? job->stack[job->depth - 1] : job;
+		if (current->status != PG_NF_PENDING) {
+			--job->depth;
+			continue;
+		}
+		struct pg_nf_job *dependency = nf_step(current);
+		if (!dependency) continue;
+		if (job->depth == job->capacity) {
+			size_t capacity = job->capacity ? 2 * job->capacity : 16;
+			if (capacity < job->capacity || capacity > SIZE_MAX / sizeof(*job->stack)) {
+				job->status = PG_NF_ERROR;
+				break;
+			}
+			void *stack = realloc(job->stack, capacity * sizeof(*job->stack));
+			if (!stack) { job->status = PG_NF_ERROR; break; }
+			job->stack = stack;
+			job->capacity = capacity;
+		}
+		job->stack[job->depth++] = dependency;
+	}
+	return job->status;
+}
+
+enum pg_nf_status pg_nf_status(const struct pg_nf_job *job) { return job->status; }
+const struct pg_term *pg_nf_result(const struct pg_nf_job *job) { return job->result; }
+uint64_t pg_nf_steps(const struct pg_nf_job *job) { return job->steps; }
