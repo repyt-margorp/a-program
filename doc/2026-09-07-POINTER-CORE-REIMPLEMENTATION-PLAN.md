@@ -500,9 +500,16 @@ conclusion and all premise pointers; no accepted record is overwritten.
 - [ ] Connect these context actions to dimensional action. The current
   substitution checker admits structural alpha equality;
   nonstructural conversion must be made explicit before supplying an image.
-  It does not decide arbitrary effectful equality. Repeated reindexing of
-  binder-containing terms can freshen bound pointers; scheduling must reuse
-  completed actions rather than introduce alpha interning to hide that work.
+  It does not decide arbitrary effectful equality.
+- [x] Reindex results are retrieved from the existing derivation index by their
+  immutable substitution/proof inputs before traversing or freshening binders.
+  The result's fresh pointers are outputs, not the key identifying this work.
+  Context-substitution requests similarly retrieve an accepted derivation before
+  recomputing dependent declaration substitutions. The same index lookup code
+  serves acceptance and reuse; there is no parallel result authority. Test 100
+  repeated binder-containing reindex/lift requests with identical proof results
+  and zero growth in Term and derivation counts. Different inputs are not merged
+  by alpha or WHNF equality. This is not memoization of runtime effects.
   Regularity for unsupported rules returns NULL, not a refutation. Recovery
   currently traverses the relevant proof premises; scheduling/memoization and
   source synthesis still need integration rather than a separate type authority.

@@ -15,6 +15,37 @@ struct pg_evidence {
 	const struct pg_evidence *premises[];
 };
 
+static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_evidence_rule rule,
+	enum pg_evidence_judgement judgement,
+	const struct pg_context *context, const struct pg_occurrence *subject,
+	const struct pg_term *classifier, size_t count, const struct pg_evidence *const *premises,
+	const struct pg_conversion_certificate *conversion, uint64_t *hash_out)
+{
+	/* Reindex output pointers are chosen by capture-avoiding substitution. Its
+	 * immutable inputs, not newly allocated output binders, identify the work. */
+	if (rule == PG_REINDEX) { subject = NULL; classifier = NULL; }
+	uint64_t hash = ((uintptr_t)context ^ (uintptr_t)subject ^ (uintptr_t)classifier ^ rule) * UINT64_C(1099511628211);
+	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
+	*hash_out = hash;
+	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->proofs, hash); candidate; candidate = candidate->next) {
+		if (candidate->hash != hash) continue;
+		const struct pg_evidence *proof = (const struct pg_evidence *)candidate;
+		if (proof->rule != rule) continue;
+		if (proof->judgement != judgement) continue;
+		if (proof->context != context) continue;
+		if (rule != PG_REINDEX) {
+			if (proof->subject != subject) continue;
+			if (proof->classifier != classifier) continue;
+		}
+		if (proof->conversion != conversion) continue;
+		if (proof->premise_count != count) continue;
+		size_t i = 0;
+		while (i < count && proof->premises[i] == premises[i]) ++i;
+		if (i == count) return proof;
+	}
+	return NULL;
+}
+
 static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg_evidence_rule rule,
 	enum pg_evidence_judgement judgement,
 	const struct pg_context *context, const struct pg_occurrence *subject,
@@ -22,22 +53,10 @@ static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg
 	const struct pg_conversion_certificate *conversion,
 	size_t binding_count, const struct pg_binding_value *bindings)
 {
-	uint64_t hash = ((uintptr_t)context ^ (uintptr_t)subject ^ (uintptr_t)classifier ^ rule) * UINT64_C(1099511628211);
-	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
-	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->proofs, hash); candidate; candidate = candidate->next) {
-		if (candidate->hash != hash) continue;
-		const struct pg_evidence *proof = (const struct pg_evidence *)candidate;
-		if (proof->rule != rule) continue;
-		if (proof->judgement != judgement) continue;
-		if (proof->context != context) continue;
-		if (proof->subject != subject) continue;
-		if (proof->classifier != classifier) continue;
-		if (proof->conversion != conversion) continue;
-		if (proof->premise_count != count) continue;
-		size_t i = 0;
-		while (i < count && proof->premises[i] == premises[i]) ++i;
-		if (i == count) return proof;
-	}
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, rule, judgement, context,
+		subject, classifier, count, premises, conversion, &hash);
+	if (existing) return existing;
 	if (count > (SIZE_MAX - sizeof(struct pg_evidence)) / sizeof(*premises)) return NULL;
 	size_t size = sizeof(struct pg_evidence) + count * sizeof(*premises);
 	if (binding_count > (SIZE_MAX - size) / sizeof(*bindings)) return NULL;
@@ -382,11 +401,18 @@ const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
 		if (!image || image->owner != typing) goto done;
 		if (image->judgement != PG_JUDGEMENT_VALUE) goto done;
 		if (image->context != destination->context) goto done;
+		premises[i + 2] = image;
+	}
+	uint64_t hash;
+	result = find_record(typing, PG_CONTEXT_SUBSTITUTION, PG_JUDGEMENT_SUBSTITUTION,
+		destination->context, NULL, NULL, count + 2, premises, NULL, &hash);
+	if (result) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_evidence *image = images[i];
 		const struct pg_term *expected = pg_term_substitute(typing->graph, declarations[i]->declared_type, i, bindings);
 		if (!expected) goto done;
 		if (pg_alpha_equal(expected, image->classifier) != 1) goto done;
 		bindings[i] = (struct pg_binding_value){declarations[i]->binder, image->subject->core};
-		premises[i + 2] = image;
 	}
 	result = accept_record(typing, PG_CONTEXT_SUBSTITUTION, PG_JUDGEMENT_SUBSTITUTION,
 		destination->context, NULL, NULL, count + 2, premises, NULL, count, bindings);
@@ -403,6 +429,11 @@ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	if (!proof || proof->owner != typing) return NULL;
 	if (!proof->subject) return NULL;
 	if (proof->context != substitution->premises[0]->context) return NULL;
+	const struct pg_evidence *premises[] = {substitution, proof};
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, PG_REINDEX, proof->judgement,
+		substitution->context, NULL, NULL, 2, premises, NULL, &hash);
+	if (existing) return existing;
 	size_t count = substitution->premise_count - 2;
 	const struct pg_binding_value *bindings = (const struct pg_binding_value *)(substitution->premises + substitution->premise_count);
 	const struct pg_occurrence *old = proof->subject;
@@ -414,7 +445,6 @@ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	const struct pg_occurrence *subject = pg_occurrence(typing, substitution->context, core,
 		annotation, old->operand_count, old->operands);
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {substitution, proof};
 	return accept(typing, PG_REINDEX, proof->judgement, substitution->context,
 		subject, classifier, 2, premises);
 }

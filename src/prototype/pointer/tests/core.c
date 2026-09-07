@@ -449,6 +449,19 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(content && pg_alpha_equal(pg_evidence_subject(content)->core, pg_evidence_subject(moved_pi)->core) == 1);
 	assert(!pg_prove_thunk_content(&typing, moved_pi));
 	assert(!pg_prove_thunk_content(&typing, universe));
+	const struct pg_object *f = pg_binder(graph), *g = pg_binder(graph);
+	const struct pg_evidence *function_context = pg_prove_context_extension(&typing, source, f, source_upi);
+	const struct pg_evidence *function_lift = pg_prove_substitution_lift(&typing, sigma, function_context, g);
+	assert(function_lift);
+	size_t term_count = graph->terms.count;
+	size_t proof_count = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i) {
+		assert(pg_prove_reindex(&typing, sigma, source_pi) == moved_pi);
+		assert(pg_prove_reindex(&typing, sigma, source_upi) == moved_upi);
+		assert(pg_prove_substitution_lift(&typing, sigma, function_context, g) == function_lift);
+	}
+	assert(graph->terms.count == term_count);
+	assert(typing.proofs.count == proof_count);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	puts("typed substitution: dependent declarations, simultaneous images and shared premise DAG passed");
