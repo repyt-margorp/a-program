@@ -1163,6 +1163,25 @@ static void evaluation_test(struct pg_graph *graph)
 	assert(pg_eval_advance(&whole, 100) == PG_EVAL_WHNF);
 	assert(pg_alpha_equal(pg_eval_readback(&whole, graph), pg_lambda(graph, y, expected)) == 1);
 	pg_eval_destroy(&whole);
+	const struct pg_term *lookup_body = vx;
+	for (size_t i = 0; i < 64; ++i) lookup_body = pg_lambda(graph, pg_binder(graph), lookup_body);
+	const struct pg_term *lookup_input = pg_application(graph, pg_lambda(graph, x, lookup_body), va);
+	for (size_t i = 0; i < 64; ++i) lookup_input = pg_application(graph, lookup_input, vb);
+	pg_eval_init(&whole, lookup_input);
+	pg_eval_init(&split, lookup_input);
+	assert(pg_eval_advance(&split, 130) == PG_EVAL_PENDING);
+	assert(split.current.term == vx);
+	for (size_t i = 0; i < 64; ++i) {
+		assert(pg_eval_advance(&split, 1) == PG_EVAL_PENDING);
+		assert(split.current.term == vx);
+		assert(pg_eval_readback(&split, graph) == va);
+	}
+	assert(pg_eval_advance(&split, 2) == PG_EVAL_WHNF);
+	assert(pg_eval_advance(&whole, 1000) == PG_EVAL_WHNF);
+	assert(split.steps == whole.steps);
+	assert(pg_eval_readback(&whole, graph) == va);
+	pg_eval_destroy(&whole);
+	pg_eval_destroy(&split);
 	puts("evaluation: lexical capture, shared closures, split budgets and divergence passed");
 }
 

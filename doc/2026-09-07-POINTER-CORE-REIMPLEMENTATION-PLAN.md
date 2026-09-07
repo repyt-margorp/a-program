@@ -631,6 +631,12 @@ successful return codes as new-kernel certificates.
   a second term-reconstruction algorithm. Tests cover short execution with deep
   captured readback, split/whole step equivalence, capture avoidance, argument
   order, completed/pending request reuse and destruction during readback.
+- [x] Beta execution now consumes one environment link per variable-lookup
+  transition. For a reference, dropping an unrelated environment prefix changes
+  neither its denotation nor captured argument closures; the shared environment
+  list remains immutable. This removes the synchronous lookup loop without a
+  second cursor/tag in the evaluator. A 64-level environment regression checks
+  suspension at each link, residual readback, and split/whole step equivalence.
 - [ ] Thread resumable substitution through typed evidence/synthesis work and
   budget dispatched evaluation readback. Those call sites still use synchronous wrappers.
   Initialization validates/copies bindings synchronously; allocation and hash

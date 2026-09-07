@@ -114,15 +114,6 @@ struct readback_context {
 	uint64_t steps;
 };
 
-static const struct pg_closure *lookup(const struct pg_environment *environment,
-	const struct pg_object *binder)
-{
-	for (; environment; environment = environment->parent) {
-		if (environment->binder == binder) return &environment->value;
-	}
-	return NULL;
-}
-
 void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)
 {
 	memset(machine, 0, sizeof(*machine));
@@ -156,9 +147,10 @@ static int step(struct pg_eval *machine)
 		return 0;
 	}
 	case PG_REFERENCE: {
-		const struct pg_closure *value = lookup(machine->current.environment, term->as.reference);
-		if (!value) return machine->dispatch ? machine->dispatch(machine) : 1;
-		machine->current = *value;
+		const struct pg_environment *environment = machine->current.environment;
+		if (!environment) return machine->dispatch ? machine->dispatch(machine) : 1;
+		if (environment->binder == term->as.reference) machine->current = environment->value;
+		else machine->current.environment = environment->parent;
 		return 0;
 	}
 	}
