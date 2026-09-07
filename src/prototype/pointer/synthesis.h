@@ -52,6 +52,15 @@ struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
 const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_evidence *proof);
+/* Bind an independently synthesizing producer, without guessing its type or
+ * advancing it. References subscribe and project its eventual term evidence
+ * into their context. Failed/pending producers cannot supply an accepted term;
+ * a completed non-term job is unsupported. Scope compatibility is checked when
+ * the result becomes available. A selected module export can be imported this
+ * way without treating its symbol name as a namespace or a file name. */
+const struct pg_source_scope *pg_synthesis_name_job(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, struct pg_token name,
+	struct pg_synthesis_job *producer);
 /* Publish an immutable closed source scope as a namespace, not a Core term.
  * Every name in exports is public; construct it from a fresh root to select
  * exactly the exports wanted. Member lookup never falls back to the importing

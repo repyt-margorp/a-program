@@ -201,6 +201,74 @@ static const struct pg_syntax *select_definition(struct pg_graph *graph,
 	return selection;
 }
 
+static void pending_names(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "id", .length = 2};
+	struct pg_synthesis_job *export = program(&synthesis, root,
+		"{{export:=&(\\A:@ => \\x:A => x);}}.export;");
+	size_t jobs = synthesis.jobs.count, terms = typing->graph->terms.count, proofs = typing->proofs.count;
+	const struct pg_source_scope *scope = pg_synthesis_name_job(&synthesis, root, name, export);
+	assert(scope && !synthesis.steps && synthesis.jobs.count == jobs);
+	assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+	for (size_t i = 0; i < 100; ++i) assert(pg_synthesis_name_job(&synthesis, root, name, export) == scope);
+	struct pg_synthesis_job *reference = request(&synthesis, scope, "main:=id;");
+	wait_on(&synthesis, reference, export);
+	const struct pg_evidence *answer = complete(&synthesis, reference, PG_SYNTHESIS_DONE);
+	assert(answer == pg_synthesis_result(export));
+	const struct pg_source_scope *accepted = pg_synthesis_name(&synthesis, root, name, answer);
+	assert(accepted == pg_synthesis_name_job(&synthesis, root, name, pg_synthesis_evidence(&synthesis, answer)));
+	const struct pg_evidence *call = complete(&synthesis, request(&synthesis, scope,
+		"main:=\\A:@ => \\x:A => id A x;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	call = complete(&synthesis, pg_synthesis_nf(&synthesis, empty, call), PG_SYNTHESIS_DONE);
+	same_judgement(call, complete(&synthesis, request(&synthesis, root,
+		"main:=\\A:@ => \\x:A => x;"), PG_SYNTHESIS_DONE));
+	assert(!pg_synthesis_name_job(&synthesis, NULL, name, export));
+	assert(!pg_synthesis_name_job(&synthesis, root, (struct pg_token){0}, export));
+	assert(!pg_synthesis_name_job(&synthesis, root, name, NULL));
+	struct pg_synthesis foreign;
+	assert(pg_synthesis_init(&foreign, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	assert(!pg_synthesis_name_job(&foreign, pg_synthesis_root(&foreign), name, export));
+	assert(!pg_synthesis_name_job(&synthesis, pg_synthesis_root(&foreign), name, export));
+	pg_synthesis_destroy(&foreign);
+	const struct pg_object *binder = pg_binder(typing->graph);
+	const struct pg_evidence *context = pg_prove_context_extension(typing, empty, binder,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_source_scope *open = pg_synthesis_bind(&synthesis, root, name, binder, context);
+	const struct pg_source_scope *projected = pg_synthesis_name(&synthesis, open, name, answer);
+	assert(projected == pg_synthesis_name_job(&synthesis, open, name, pg_synthesis_evidence(&synthesis, answer)));
+	same_judgement(complete(&synthesis, request(&synthesis, projected, "main:=id;"), PG_SYNTHESIS_DONE),
+		pg_prove_projection(typing, context, answer));
+	struct pg_synthesis_job *escaping = request(&synthesis, open, "main:=id;");
+	scope = pg_synthesis_name_job(&synthesis, root, name, escaping);
+	complete(&synthesis, request(&synthesis, scope, "main:=id;"), PG_SYNTHESIS_ERROR);
+	struct pg_synthesis_job *not_terms[] = {program(&synthesis, root, "x:=@;"), pg_synthesis_evidence(&synthesis, empty)};
+	for (size_t i = 0; i < sizeof(not_terms) / sizeof(*not_terms); ++i) {
+		scope = pg_synthesis_name_job(&synthesis, root, name, not_terms[i]);
+		complete(&synthesis, request(&synthesis, scope, "main:=id;"), PG_SYNTHESIS_UNSUPPORTED);
+	}
+	struct pg_synthesis_job *failed = request(&synthesis, root, "main:=missing;");
+	scope = pg_synthesis_name_job(&synthesis, root, name, failed);
+	complete(&synthesis, request(&synthesis, scope, "main:=id;"), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *cycle = program(&synthesis, root, "{{a:=b; b:=a;}}.a;");
+	scope = pg_synthesis_name_job(&synthesis, root, name, cycle);
+	reference = request(&synthesis, scope, "main:=id;");
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_status(reference) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(reference));
+	assert(!pg_synthesis_result(reference) && !synthesis.ready);
+	uint64_t steps = synthesis.steps;
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(synthesis.steps == steps);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("pending names: source export reuse, checked projection, failed/non-term inputs and cycle waiting passed");
+}
+
 static void definition_selections(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	struct pg_whnf_work work;
@@ -1784,6 +1852,7 @@ int main(void)
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
 	accepted_inputs(&typing, &classifiers);
+	pending_names(&typing, &classifiers);
 	definition_selections(&typing, &classifiers);
 	fair_work(&typing, &classifiers);
 	library_levels(&typing, &classifiers);

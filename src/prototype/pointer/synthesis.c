@@ -244,10 +244,17 @@ const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 	if (!parent || parent->owner != synthesis) return NULL;
 	if (name.kind != PG_TOKEN_IDENT || !name.text || !name.length) return NULL;
 	if (!pg_evidence_owned_by(proof, synthesis->typing) || !pg_evidence_subject(proof)) return NULL;
-	proof = pg_prove_projection(synthesis->typing, parent->context, proof);
-	if (!proof) return NULL;
-	struct pg_synthesis_job *producer = pg_synthesis_evidence(synthesis, proof);
-	if (!producer) return NULL;
+	if (!pg_prove_projection(synthesis->typing, parent->context, proof)) return NULL;
+	return pg_synthesis_name_job(synthesis, parent, name, pg_synthesis_evidence(synthesis, proof));
+}
+
+const struct pg_source_scope *pg_synthesis_name_job(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, struct pg_token name,
+	struct pg_synthesis_job *producer)
+{
+	if (!parent || parent->owner != synthesis) return NULL;
+	if (name.kind != PG_TOKEN_IDENT || !name.text || !name.length) return NULL;
+	if (!producer || producer->owner != synthesis) return NULL;
 	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent,
 		.name = name, .context = parent->context, .producer = producer});
 }
@@ -641,7 +648,9 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 {
 	if (job->left) {
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-		job->result = pg_prove_projection(synthesis->typing, job->scope->context, job->left->result);
+		const struct pg_evidence *proof = job->left->result;
+		if (!proof || !pg_evidence_subject(proof)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		job->result = pg_prove_projection(synthesis->typing, job->scope->context, proof);
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;
 	}

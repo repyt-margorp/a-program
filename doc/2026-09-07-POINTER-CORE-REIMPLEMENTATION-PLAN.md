@@ -2079,6 +2079,30 @@ conclusion and all premise pointers; no accepted record is overwritten.
   with 512 KiB stack. Implementation `synthesis.c` +67/-17, `synthesis.h` +9;
   tests +93; documentation separate. File resolution, `import` statement wiring,
   recursive module loading, `.a` loading and N2/N5 acceptance remain open.
+- [x] September 8, after `7cd8730`: bind independently pending term producers
+  with `pg_synthesis_name_job`. Existing accepted-name publication delegates to
+  the same scope/producer key; source references use the common subscription
+  and checked projection path. No inferred classifier is copied into the scope.
+  Registration does not advance work, insert CBPV coercions or execute exports.
+  Tests consume a pending source export under an ordinary name, normalize an
+  application, share accepted/pending publication keys (including weakening),
+  reject foreign inputs, preserve failed/cyclic dependencies, and prevent open
+  evidence escaping into a closed context. A completed non-term producer is
+  unsupported. Incompatible projection still uses the kernel API's existing
+  ERROR classification; finer premise/allocation diagnostics remain open.
+  Optimized check: 3.078 s (synthesis rebuilt); ASan/UBSan: 15.978 s (affected
+  binaries rebuilt); four computation suites pass at 512 KiB stack.
+  Implementation `synthesis.c` +14/-5, `synthesis.h` +9; tests +69; docs separate.
+- [ ] Preserve source-import semantics when connecting provider resolution:
+  `import Nat;` selects an exported symbol, not a module/file named Nat
+  (`src/prototype/README.md`, source imports; driver `read_file.c`). Do not
+  substitute namespace mounting for symbol import. A selected export can use
+  the pending-name API above. Old `prototype_ast_add_import` in frontend
+  `ast.c` treats repeated imports of the same symbol as idempotent; preserve and
+  test that behavior. Specify provider ambiguity, local shadowing and re-export
+  rules before wiring imports into definition registration. Filename search
+  remains outside the solver. This checkpoint does not implement import syntax
+  elaboration, filesystem resolution, `.a` loading or full source compatibility.
 - [x] Connect value universes, scoped variables, annotated Lambda, dependent Pi,
   APP, quotation and inline post-synthesis `::`. Lambda bodies retain raw
   computation polarity, while value bodies acquire RETURN. Function-typed
