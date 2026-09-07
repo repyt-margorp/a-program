@@ -2,6 +2,7 @@
 #include "dimension.h"
 #include "eval.h"
 #include "typing.h"
+#include "conversion.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -123,6 +124,55 @@ static void context_test(struct pg_graph *graph)
 	assert(lambda_a == pg_occurrence(&typing, NULL, identity, NULL, 1, &body_a));
 	pg_typing_destroy(&typing);
 	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
+}
+
+static void conversion_test(struct pg_graph *graph)
+{
+	struct pg_beta_work work;
+	assert(pg_beta_work_init(&work, graph) == 0);
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_object *y = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x);
+	const struct pg_term *vy = pg_reference(graph, y);
+	const struct pg_term *identity = pg_lambda(graph, x, vx);
+	const struct pg_term *other_identity = pg_lambda(graph, y, vy);
+	const struct pg_term *left = pg_lambda(graph, x, pg_application(graph, other_identity, vx));
+	struct pg_conversion conversion;
+	assert(pg_conversion_init(&conversion, &work, left, identity) == 0);
+	assert(pg_conversion_advance(&conversion, 0) == PG_CONVERSION_PENDING);
+	while (pg_conversion_advance(&conversion, 1) == PG_CONVERSION_PENDING) assert(conversion.steps < 100);
+	assert(conversion.status == PG_CONVERSION_EQUAL);
+	assert(left != identity);
+	pg_conversion_destroy(&conversion);
+	/* An identical body pointer does not identify a bound variable with a
+	 * free variable on the opposite side. */
+	assert(pg_conversion_init(&conversion, &work, identity, pg_lambda(graph, y, vx)) == 0);
+	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_DIFFERENT);
+	pg_conversion_destroy(&conversion);
+	assert(pg_conversion_init(&conversion, &work, identity, other_identity) == 0);
+	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_EQUAL);
+	pg_conversion_destroy(&conversion);
+	const struct pg_term *dag_x = vx;
+	const struct pg_term *dag_y = vy;
+	for (size_t i = 0; i < 40; ++i) {
+		dag_x = pg_application(graph, dag_x, dag_x);
+		dag_y = pg_application(graph, dag_y, dag_y);
+	}
+	assert(pg_conversion_init(&conversion, &work, pg_lambda(graph, x, dag_x), pg_lambda(graph, y, dag_y)) == 0);
+	assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
+	assert(conversion.visited.count < 100);
+	pg_conversion_destroy(&conversion);
+	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
+	const struct pg_term *omega = pg_application(graph, self, self);
+	assert(pg_conversion_init(&conversion, &work, omega, vy) == 0);
+	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_PENDING);
+	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_PENDING);
+	pg_conversion_destroy(&conversion);
+	assert(pg_conversion_init(&conversion, &work, omega, omega) == 0);
+	assert(pg_conversion_advance(&conversion, 0) == PG_CONVERSION_EQUAL);
+	pg_conversion_destroy(&conversion);
+	pg_beta_work_destroy(&work);
+	puts("conversion: explicit beta comparison, binder scope, shared DAG and pending divergence passed");
 }
 
 static void beta_work_test(struct pg_graph *graph)
@@ -406,6 +456,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	graph_test(&graph);
 	context_test(&graph);
+	conversion_test(&graph);
 	beta_work_test(&graph);
 	substitution_test(&graph);
 	evaluation_test(&graph);

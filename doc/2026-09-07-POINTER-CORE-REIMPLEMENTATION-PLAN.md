@@ -205,6 +205,23 @@ of arbitrary intermediate closure evaluations.
 - [ ] Make readback itself budgetable before claiming a bound on all work:
   the current budget counts machine transitions, not output graph traversal.
 
+`pointer/conversion.c` adds a separate resumable beta-conversion traversal using
+the shared beta jobs. It decomposes normalized Lambda/APP/reference pairs,
+tracks the binder correspondence, and memoizes visited pairs with that scope.
+The pending stack is work, not an equality certificate. The result can be equal,
+different, pending, or allocation error. A same-pointer shortcut is allowed only
+outside a binder correspondence. No result is fed into structural interning.
+
+- [x] Explicit beta conversion under lambdas; reject bound/free confusion; test
+  alpha-renamed shared DAGs and divergence remaining pending under split fuel.
+  Ordinary and ASan/UBSan checks pass.
+- [ ] Connect comparison to typed premises and record conversion evidence.
+  `DIFFERENT` currently means different under beta-only neutral-reference
+  semantics, not inequality in a future owner-reduction policy or object
+  Identity. There are no eta, iota, transport or effect equations in this
+  comparator yet. A successful untyped comparison does not establish that
+  either input is a well-formed classifier.
+
 ## 5. Foundational HOTT Action
 
 Narya sources consulted on 2026-09-07:
