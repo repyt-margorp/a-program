@@ -395,6 +395,67 @@ sharing and kernel conversion do not imply equality reflection.
 
 ### N2 implementation contract: families are not returning computations
 
+#### Next HOTT milestone: polarized family formation, not more evaluator prerequisites
+
+Re-audit after `a7c268f`: the fresh kernel still has no acted-family formation
+rule. The preceding fuel work does not implement Identity. Do not postpone all
+HOTT work until every existing synchronous helper has been converted.
+
+The next implementation must define the following together. These equations
+are an A Program design proposal to validate, not established CBPV-HOTT theorems
+or rules already accepted by the kernel. Here `Id_A`/`Id_C` denote the action of
+a specified type family, not a global endpoint-only relation.
+
+- [ ] Value-family action forms a value type. Computation-family action forms
+  a computation type. This distinction is a judgement, not separate Core
+  Lambda/APP constructors. Both retain the chosen family, its typed boundary
+  substitutions and the dimension operator.
+- [ ] Computational endpoints are retained as checked computational occurrences.
+  Whenever an endpoint must enter a value-only context telescope, use its
+  explicit thunk and U type. Do not insert raw computation into ContextDB, or
+  treat a formation under a telescope as a function returning `F Universe`.
+- [ ] Specify and implement the canonical pure rules:
+
+  ```text
+  Id_(U C) (THUNK M0) (THUNK M1)  computes to U (Id_C M0 M1)
+  Id_(F A) (RETURN v0) (RETURN v1) computes to F (Id_A v0 v1)
+  ```
+
+  With heterogeneous boundaries, `C` and `A` above are selected acted families,
+  including their lower-dimensional base evidence. They are not inferred from
+  two endpoint classifiers. The equations describe classifier computation;
+  they do not claim that arbitrary endpoint pairs have witnesses.
+- [ ] For neutral `M0,M1 : F A`, retain a neutral computation-family instance
+  with those endpoints. Forming it must neither run M0/M1 nor invent returned
+  values. Its introduction/elimination and transport laws remain obligations;
+  successful formation alone cannot discharge equality or termination.
+- [ ] Pi action consumes a value boundary telescope `x0, x1, x01` and returns
+  the acted computation codomain. Lambda and APP action must construct/consume
+  this same telescope. The constant-family homogeneous equations above are
+  not a substitute for dependent codomain instantiation through `x01`.
+- [ ] Universe action needs an inhabitant contract containing transport and
+  lifting plus their higher action, not only an arbitrary binary relation or
+  four unrelated functions. Validate this before introducing a general
+  universe-Identity witness constructor. Preserve distinct choices even when
+  endpoint types coincide.
+- [ ] Add these semantic-family computation rules to a fixed pure conversion
+  policy when implemented. The current conversion wrapper admits beta only;
+  its generic pair walker is not permission to certify an arbitrary callback's
+  answers. Runtime handlers/oracles must not change this policy.
+
+Acceptance examples must cover both polarities, a neutral F endpoint that stays
+neutral, a returned endpoint that computes, dependent Pi action, and a second
+action retaining the first action's chosen family. Transport/lifting boundary
+tests are required before claiming this fragment is HOTT rather than a logical
+relation. Indexed-family fibrancy remains a separate unresolved obligation.
+
+Primary references checked again for this milestone:
+[Narya observational primitives and heterogeneous Identity](https://narya.readthedocs.io/en/latest/observational.html),
+[HOTT transport, lifting, glue and higher bisimulation](https://narya.readthedocs.io/en/latest/hott.html).
+The latter explicitly distinguishes HOTT from parametricity and records limits
+of implemented transport. Neither page specifies our CBPV F/U adaptation.
+These are moving documentation pages, not the pinned Narya source revision.
+
 Rechecked the primary [observational documentation](https://narya.readthedocs.io/en/latest/observational.html#heterogeneous-identity-types)
 and [HOTT documentation](https://narya.readthedocs.io/en/latest/hott.html#transport-and-lifting).
 In Narya a heterogeneous identification retains the base identification through
@@ -439,6 +500,20 @@ but no rule constructs a higher family. Legacy
 builders; they return Term IDs rather than the fresh kernel's accepted formation
 evidence. Reuse their equations only after verifying the premises, not their
 successful return codes as new-kernel certificates.
+
+- [x] Checked telescope pairing is shared with substitution lifting:
+  `pg_prove_substitution_pair(sigma, Gamma.x, a)` constructs `(sigma,a)` using
+  the existing substitution checker and canonical record. It does not add a
+  Core tag, a second substitution authority, or a value-side function type.
+  Reindexing with the result instantiates both value and computation families.
+  Tests reject skipped dependencies, wrong classifiers, raw computations and
+  out-of-context images; repeated pairing reuses the flat substitution result.
+- [x] Family-instance regression: two selected formations may instantiate to
+  the same Core type without losing their distinct formation premises. A
+  subsequent reindex retains that choice and agrees with composed substitution.
+  These are ordinary family formations, **not** Identity formation or a
+  transport/lifting certificate. `PG_PI_CODOMAIN` still uses its valid direct
+  substitution rule; no claim is made that Pi inversion has been migrated.
 
 - [ ] Implement a checked acted-context/center-formation contract using these
   existing proof inputs; test different chosen correspondences with identical

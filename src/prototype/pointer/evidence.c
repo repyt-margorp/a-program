@@ -860,6 +860,43 @@ done:
 	return result;
 }
 
+/* Pairing and lifting differ only in the destination and final image. Prefix
+ * images are shared, or weakened into the extended destination for a lift. */
+static const struct pg_evidence *substitution_pair(struct pg_typing *typing,
+	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
+	const struct pg_evidence *destination, const struct pg_evidence *image)
+{
+	if (!substitution_proof(typing, substitution)) return NULL;
+	if (!context_proof(typing, source_extension)) return NULL;
+	if (source_extension->rule != PG_CONTEXT_EXTEND) return NULL;
+	if (source_extension->context->parent != substitution->premises[0]->context) return NULL;
+	if (!context_proof(typing, destination)) return NULL;
+	size_t count = substitution->premise_count - 2;
+	if (count >= SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence **images = pg_alloc(&temporary, (count + 1) * sizeof(*images));
+	const struct pg_evidence *result = NULL;
+	if (!images) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		images[i] = pg_prove_projection(typing, destination, substitution->premises[i + 2]);
+		if (!images[i]) goto done;
+	}
+	images[count] = image;
+	result = pg_prove_substitution(typing, source_extension, destination, count + 1, images);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
+const struct pg_evidence *pg_prove_substitution_pair(struct pg_typing *typing,
+	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
+	const struct pg_evidence *image)
+{
+	if (!substitution_proof(typing, substitution)) return NULL;
+	return substitution_pair(typing, substitution, source_extension,
+		substitution->premises[1], image);
+}
+
 const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
 	const struct pg_object *binder)
@@ -871,20 +908,8 @@ const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	const struct pg_evidence *domain = pg_prove_reindex(typing, substitution, source_extension->premises[1]);
 	const struct pg_evidence *destination = pg_prove_context_extension(typing, substitution->premises[1], binder, domain);
 	if (!destination) return NULL;
-	size_t count = substitution->premise_count - 2;
-	struct pg_graph temporary = {0};
-	const struct pg_evidence **images = pg_alloc(&temporary, (count + 1) * sizeof(*images));
-	const struct pg_evidence *result = NULL;
-	if (!images) goto done;
-	for (size_t i = 0; i < count; ++i) {
-		images[i] = pg_prove_projection(typing, destination, substitution->premises[i + 2]);
-		if (!images[i]) goto done;
-	}
-	images[count] = pg_prove_variable(typing, destination, binder);
-	result = pg_prove_substitution(typing, source_extension, destination, count + 1, images);
-done:
-	pg_graph_destroy(&temporary);
-	return result;
+	const struct pg_evidence *image = pg_prove_variable(typing, destination, binder);
+	return substitution_pair(typing, substitution, source_extension, destination, image);
 }
 
 const struct pg_evidence *pg_prove_thunk_content(struct pg_typing *typing,

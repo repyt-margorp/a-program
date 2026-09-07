@@ -518,6 +518,17 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(!pg_prove_substitution(&typing, source, destination, 2, bad));
 	const struct pg_evidence *closed = pg_prove_substitution(&typing, empty, destination, 0, NULL);
 	assert(closed && pg_prove_reindex(&typing, closed, universe));
+	/* Telescope instantiation and the flat input API have one authority. */
+	const struct pg_evidence *type_pair = pg_prove_substitution_pair(&typing, closed, a_scope, destination_b);
+	assert(type_pair);
+	assert(pg_prove_substitution_pair(&typing, type_pair, source, destination_y) == sigma);
+	assert(!pg_prove_substitution_pair(&typing, closed, source, destination_y));
+	assert(!pg_prove_substitution_pair(&typing, type_pair, source, destination_b));
+	assert(!pg_prove_substitution_pair(&typing, type_pair, source, source_x));
+	assert(!pg_prove_substitution_pair(&typing, type_pair, source,
+		pg_prove_return(&typing, &classifiers, destination_y)));
+	assert(!pg_prove_substitution_pair(&typing, type_pair, source, NULL));
+	assert(!pg_prove_substitution_pair(&typing, source, source, destination_y));
 	const struct pg_object *c = pg_binder(graph), *z = pg_binder(graph);
 	const struct pg_evidence *c_scope = pg_prove_context_extension(&typing, empty, c, universe);
 	const struct pg_evidence *c_type = pg_prove_variable(&typing, c_scope, c);
@@ -550,6 +561,15 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(!pg_prove_substitution_lift(&typing, sigma, destination, q));
 	const struct pg_evidence *a_extended = pg_prove_variable(&typing, source_extension, a);
 	const struct pg_evidence *fa_extended = pg_prove_return_type(&typing, &classifiers, a_extended);
+	const struct pg_evidence *paired = pg_prove_substitution_pair(&typing, sigma, source_extension, destination_y);
+	assert(paired);
+	const struct pg_evidence *fa_instance = pg_prove_reindex(&typing, paired, fa_extended);
+	assert(fa_instance && pg_evidence_judgement(fa_instance) == PG_JUDGEMENT_COMPUTATION_TYPE);
+	assert(pg_evidence_subject(fa_instance)->core == pg_return_type(&classifiers, pg_reference(graph, b)));
+	const struct pg_evidence *ufa_extended = pg_prove_thunk_type(&typing, &classifiers, fa_extended);
+	const struct pg_evidence *ufa_instance = pg_prove_reindex(&typing, paired, ufa_extended);
+	assert(ufa_instance && pg_evidence_judgement(ufa_instance) == PG_JUDGEMENT_VALUE_TYPE);
+	assert(pg_evidence_subject(ufa_instance)->core == pg_thunk_type(&classifiers, pg_evidence_subject(fa_instance)->core));
 	const struct pg_evidence *source_pi = pg_prove_pi(&typing, &classifiers, a_in_source, source_extension, fa_extended);
 	const struct pg_evidence *source_lambda = pg_prove_lambda(&typing, source_pi,
 		pg_prove_return(&typing, &classifiers, source_p));
@@ -587,6 +607,8 @@ static void typed_substitution_test(struct pg_graph *graph)
 	size_t term_count = graph->terms.count;
 	size_t proof_count = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i) {
+		assert(pg_prove_substitution_pair(&typing, type_pair, source, destination_y) == sigma);
+		assert(pg_prove_substitution_pair(&typing, sigma, source_extension, destination_y) == paired);
 		assert(pg_prove_reindex(&typing, sigma, source_pi) == moved_pi);
 		assert(pg_prove_reindex(&typing, sigma, source_upi) == moved_upi);
 		assert(pg_prove_substitution_lift(&typing, sigma, function_context, g) == function_lift);
@@ -596,6 +618,57 @@ static void typed_substitution_test(struct pg_graph *graph)
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	puts("typed substitution: dependent declarations, simultaneous images and shared premise DAG passed");
+}
+
+static void family_instance_test(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(pg_typing_init(&typing, graph) == 0);
+	assert(pg_classifiers_init(&classifiers, graph) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u1 = pg_prove_universe(&typing, &classifiers, empty, 1);
+	const struct pg_evidence *u0 = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *value = pg_prove_type_value(&typing, u0);
+	const struct pg_object *left = pg_binder(graph), *right = pg_binder(graph);
+	const struct pg_evidence *left_scope = pg_prove_context_extension(&typing, empty, left, u1);
+	const struct pg_evidence *boundary = pg_prove_context_extension(&typing, left_scope, right,
+		pg_prove_projection(&typing, left_scope, u1));
+	const struct pg_evidence *families[] = {
+		pg_prove_value_type(&typing, pg_prove_variable(&typing, boundary, left)),
+		pg_prove_value_type(&typing, pg_prove_variable(&typing, boundary, right))
+	};
+	const struct pg_evidence *sigma = pg_prove_substitution(&typing, empty, empty, 0, NULL);
+	sigma = pg_prove_substitution_pair(&typing, sigma, left_scope, value);
+	sigma = pg_prove_substitution_pair(&typing, sigma, boundary, value);
+	assert(sigma);
+	const struct pg_evidence *instances[2];
+	for (size_t i = 0; i < 2; ++i) {
+		instances[i] = pg_prove_reindex(&typing, sigma, families[i]);
+		assert(instances[i]);
+		assert(pg_evidence_judgement(instances[i]) == PG_JUDGEMENT_VALUE_TYPE);
+		assert(pg_evidence_subject(instances[i])->core == pg_evidence_subject(u0)->core);
+		assert(pg_evidence_premise(instances[i], 0) == sigma);
+		assert(pg_evidence_premise(instances[i], 1) == families[i]);
+	}
+	/* Equal instances do not erase which family was selected. These are ordinary
+	 * formations, not a certificate that either family is an Identity action. */
+	assert(instances[0] != instances[1]);
+	const struct pg_object *z = pg_binder(graph);
+	const struct pg_evidence *target = pg_prove_context_extension(&typing, empty, z, u0);
+	const struct pg_evidence *tau = pg_prove_substitution(&typing, empty, target, 0, NULL);
+	const struct pg_evidence *composite = pg_prove_substitution_compose(&typing, sigma, tau);
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_evidence *direct = pg_prove_reindex(&typing, composite, families[i]);
+		const struct pg_evidence *iterated = pg_prove_reindex(&typing, tau, instances[i]);
+		assert(direct && iterated);
+		assert(pg_evidence_subject(direct)->core == pg_evidence_subject(iterated)->core);
+		assert(pg_evidence_classifier(direct) == pg_evidence_classifier(iterated));
+		assert(pg_evidence_premise(iterated, 1) == instances[i]);
+	}
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	puts("family instances: chosen formation survives equal endpoints and iterated context action");
 }
 
 static void typed_restriction_test(struct pg_graph *graph)
@@ -1372,6 +1445,7 @@ int main(void)
 	evidence_test(&graph);
 	dependent_application_test(&graph);
 	typed_substitution_test(&graph);
+	family_instance_test(&graph);
 	typed_restriction_test(&graph);
 	computation_execution_test(&graph);
 	classifiers_test(&graph);

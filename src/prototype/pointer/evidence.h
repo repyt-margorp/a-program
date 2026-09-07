@@ -135,6 +135,12 @@ const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 /* first : Delta -> Gamma, second : Theta -> Delta; result : Theta -> Gamma. */
 const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second);
+/* Pair sigma : Delta -> Gamma with a : A[sigma] in Delta, producing
+ * (sigma,a) : Delta -> Gamma,x:A. The result uses the ordinary checked
+ * substitution representation; no function application or computation runs. */
+const struct pg_evidence *pg_prove_substitution_pair(struct pg_typing *typing,
+	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
+	const struct pg_evidence *image);
 /* Lift Delta -> Gamma to Delta,y:A[sigma] -> Gamma,x:A, with a fresh y. */
 const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
