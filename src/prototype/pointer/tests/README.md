@@ -19,6 +19,11 @@ The same suite checks the implemented RETURN/THUNK and canonical F/U action
 equations, policy-keyed WHNF caching and fixed pure conversion. It also checks
 the implemented dependent Pi action and diagonal transport/lifting, not general
 higher coherence or observational adequacy.
+Canonical U/F field tests compute transport/lifting of a returned thunk along
+two chosen universe paths, in both directions. Independently derived target
+terms/classifiers agree; lexical capture, split fuel and beta-only isolation
+are checked. A divergent quoted body remains suspended. These tests do not
+establish arbitrary-thunk transport, dependent lifting or U/F eta coherence.
 
 `iadt.c` tests erased constructor/Match references, pointer-labelled clause
 selection, saturation, capture, lazy fields/branches and policy isolation.

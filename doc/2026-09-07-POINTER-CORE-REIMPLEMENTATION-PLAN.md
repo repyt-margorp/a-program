@@ -1214,6 +1214,36 @@ a specified type family, not a global endpoint-only relation.
   ASan/UBSan: 17.149 s (affected binaries rebuilt); synthesis/Identity/IADT pass
   at 512 KiB. Implementation `synthesis.c` +13/-2, `synthesis.h` +6/-0
   (net +17); tests `synthesis.c` +68/-2; docs separate.
+- [x] September 8, after `5de7483`: canonical U/F transport and lifting.
+  Let `R = Act(lambda delta. A) boundary` and
+  `Q = Act(lambda delta. U(F A)) boundary`. For each of the four fields `h`,
+  the fixed pure reducer now computes
+  `h(Q, THUNK(RETURN(v))) -> THUNK(RETURN(h(R,v)))`.
+  Complete selected boundary triples are retained through ordinary Lambda/APP
+  substitution. The Core tags and accepted evidence rules are unchanged.
+  Typed tests derive both sides independently, convert their classifiers, and
+  compare their terms for both directions and lifting/transport, using two
+  distinct selected universe paths. They cover lexical capture, split/bulk
+  evaluation, beta-only policy isolation and a suspended divergent payload.
+  The new conversion test fails against `5de7483` identity.c.
+  This is a canonical computation equation, not general U/F fibrancy. Unknown
+  quoted bodies stay suspended, including bodies whose RETURN would require
+  further reduction; completeness of conversion is not established here.
+  A general transport by `THUNK(FOLD(FORCE(u), lambda x. RETURN(tr(R,x))))`
+  must agree with diagonal transport: for reflexivity this needs the U/F eta
+  and fold right-unit equations, not just beta. General lifting also needs its
+  dependent computation contract without duplicating an effectful evaluation.
+  Implement/check those obligations before extending the rule to arbitrary
+  thunks; do not delete the general U/F/Pi and higher requirements from N2.
+  Rechecked [Narya transport/lifting](https://narya.readthedocs.io/en/latest/hott.html#transport-and-lifting):
+  four fields of a selected universe identification and their uniform higher
+  instances. The polarized U/F equation and its eta obligation are A Program
+  adaptations, not a claim that Narya supplies CBPV rules.
+  Optimized pointer `make check`: 7.508 s (affected binaries rebuilt);
+  ASan/UBSan `make check`: 17.074 s (affected binaries rebuilt);
+  Identity/synthesis/IADT pass at 512 KiB.
+  Implementation `identity.c` +54/-2, `identity.h` +3/-0 (net +55);
+  tests `identity.c` +76/-0; docs separate. N2/N3 remain open.
 - [ ] Universe action needs an inhabitant contract containing transport and
   lifting plus their higher action, not only an arbitrary binary relation or
   four unrelated functions. Validate this before introducing a general

@@ -100,13 +100,18 @@ struct action_scope {
 
 /* A single direction may act on several curried variables. Their triples
  * belong to the same direction, not to iterated applications of refl. */
-static int action_scope(struct pg_eval *machine, const struct pg_term *source, struct action_scope *scope)
+static void source_scope(const struct pg_term *source, struct action_scope *scope)
 {
 	*scope = (struct action_scope){source, source, 0, NULL};
 	while (scope->body->kind == PG_LAMBDA) {
 		++scope->count;
 		scope->body = scope->body->as.lambda.body;
 	}
+}
+
+static int action_scope(struct pg_eval *machine, const struct pg_term *source, struct action_scope *scope)
+{
+	source_scope(source, scope);
 	if (scope->count > SIZE_MAX / sizeof(*scope->bindings)) return -1;
 	if (scope->count && !pg_eval_argument(machine, 3 * scope->count)) return 1;
 	return 0;
@@ -115,6 +120,7 @@ static int action_scope(struct pg_eval *machine, const struct pg_term *source, s
 static int prepare_bindings(struct pg_eval *machine, struct action_scope *scope)
 {
 	if (!scope->count) return 0;
+	if (scope->count > SIZE_MAX / sizeof(*scope->bindings)) return -1;
 	scope->bindings = pg_alloc(&machine->temporary, scope->count * sizeof(*scope->bindings));
 	if (!scope->bindings) return -1;
 	const struct pg_term *source = scope->source;
@@ -354,10 +360,56 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	return enter_action(machine, &scope, result, 0);
 }
 
+static int returned_thunk_family(const struct pg_term *family,
+	struct action_scope *scope, const struct pg_term **content)
+{
+	const struct pg_term *source;
+	size_t count = 0;
+	while (!pg_identity_action_view(family, &source)) {
+		if (family->kind != PG_APPLICATION) return 0;
+		++count;
+		family = family->as.application.function;
+	}
+	source_scope(source, scope);
+	if (!count || count % 3 || scope->count != count / 3) return 0;
+	const struct pg_term *computation;
+	return pg_thunk_type_view(scope->body, &computation) && pg_return_type_view(computation, content);
+}
+
+static int returned_thunk_field(struct pg_eval *machine, const struct pg_term *value)
+{
+	const struct pg_term *body = unary_argument(value, &pg_thunk_operation);
+	const struct pg_term *payload = body ? unary_argument(body, &pg_return_operation) : NULL;
+	if (!payload) return 1;
+	struct action_scope scope;
+	const struct pg_term *content, *family = pg_eval_argument(machine, 0)->term;
+	if (!returned_thunk_family(family, &scope, &content)) return -1;
+	if (prepare_bindings(machine, &scope) != 0) return -1;
+	struct pg_graph *graph = machine->output;
+	int field = field_index(machine->current.term->as.reference);
+	const struct pg_term *result = identity_field(graph, acted_body(graph, &scope, content),
+		payload, (enum pg_identity_direction)(field % 2), field / 2);
+	result = pg_application(graph, pg_reference(graph, &pg_return_operation), result);
+	result = pg_application(graph, pg_reference(graph, &pg_thunk_operation), result);
+	size_t count = 3 * scope.count;
+	const struct pg_term **arguments = pg_alloc(&machine->temporary, count * sizeof(*arguments));
+	if (!arguments) return -1;
+	for (size_t i = count; i; --i, family = family->as.application.function)
+		arguments[i - 1] = family->as.application.argument;
+	for (size_t i = scope.count; i; --i)
+		for (size_t j = 3; j; --j) result = pg_lambda(graph, scope.bindings[i - 1].arguments[j - 1], result);
+	for (size_t i = 0; i < count; ++i) result = pg_application(graph, result, arguments[i]);
+	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 2);
+}
+
 static int field_answer(struct pg_eval *machine, const struct pg_term *family)
 {
 	const struct pg_term *type;
-	if (!pg_identity_action_view(family, &type)) return 1;
+	if (!pg_identity_action_view(family, &type)) {
+		struct action_scope scope;
+		if (!returned_thunk_family(family, &scope, &type)) return 1;
+		return pg_eval_demand(machine, 1, returned_thunk_field);
+	}
 	struct pg_closure value = *pg_eval_argument(machine, 1);
 	if (field_index(machine->current.term->as.reference) < 2)
 		return pg_eval_enter(machine, value, 2);
