@@ -354,6 +354,25 @@ discovery now counts against fuel; this is not evidence of a speedup. General
 former-specific source reconstruction and full `source_scope` scans remain
 outstanding. This checkpoint does not close N2 or any full-language gate.
 
+#### Incremental action result closure
+
+After `99bb2c1`, `enter_action` builds administrative result lambdas through
+the ordinary deferred-work interface. One poll wraps one discarded argument
+or one fixed boundary triple. It retains the existing closure substitution and
+does not demand any boundary computation. Zero-source actions retain their
+direct entry rule. No Core constructor or proof rule is added.
+
+The nested Act/RETURN regression checks every split both by cancelling and
+converting readback, and by retaining the same evaluator and resuming it with
+the remaining budget. Total charged steps agree with uninterrupted evaluation.
+This is an in-process requirement for retained versus discarded work, not an
+implementation or acceptance test of `.a` persistence. Implementation C:
++36/-9; test C: +9/-0. Former-specific body reconstruction and field-family
+recognition remain synchronous; they still require bounded-work treatment.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test pass.
+The cube-function comparison maximum is 243,623 charged transitions, up from
+242,785 because result construction is now charged. N2 remains incomplete.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,

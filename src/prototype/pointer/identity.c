@@ -135,9 +135,9 @@ static int action_scope_resume(struct pg_eval *machine, void *opaque)
 	return work->resume(machine, &work->scope, work->answer);
 }
 
-static void action_scope_destroy(void *opaque)
+static void arena_work_destroy(void *opaque)
 {
-	(void)opaque; /* All discovery storage belongs to the evaluator arena. */
+	(void)opaque; /* This work owns no storage outside the evaluator arena. */
 }
 
 static int with_action_scope(struct pg_eval *machine, const struct pg_term *source,
@@ -151,7 +151,7 @@ static int with_action_scope(struct pg_eval *machine, const struct pg_term *sour
 	pg_eval_next_argument(&work->arguments);
 	work->answer = answer;
 	work->resume = resume;
-	return pg_eval_defer(machine, work, action_scope_poll, action_scope_resume, action_scope_destroy);
+	return pg_eval_defer(machine, work, action_scope_poll, action_scope_resume, arena_work_destroy);
 }
 
 static int source_bindings(struct pg_eval *machine, struct action_scope *scope)
@@ -206,17 +206,44 @@ static const struct pg_term *body_endpoint(struct pg_graph *graph,
 	return result;
 }
 
+struct action_result_work {
+	struct pg_graph *graph;
+	const struct action_binding *bindings;
+	const struct pg_term *result;
+	size_t remaining;
+	size_t discard;
+};
+
+static int action_result_poll(void *opaque)
+{
+	struct action_result_work *work = opaque;
+	if (work->discard) {
+		--work->discard;
+		work->result = pg_lambda(work->graph, pg_binder(work->graph), work->result);
+	} else if (work->remaining) {
+		const struct action_binding *binding = &work->bindings[--work->remaining];
+		for (size_t j = 3; j; --j)
+			work->result = pg_lambda(work->graph, binding->arguments[j - 1], work->result);
+	} else return 1;
+	return work->result ? 0 : -1;
+}
+
+static int action_result_resume(struct pg_eval *machine, void *opaque)
+{
+	struct action_result_work *work = opaque;
+	return pg_eval_enter(machine, (struct pg_closure){work->result, NULL}, 1);
+}
+
 static int enter_action(struct pg_eval *machine, const struct action_scope *scope,
 	const struct pg_term *result, size_t discard)
 {
 	if (!scope->count) return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1 + discard);
 	/* Administrative lambdas reuse the evaluator's capture-avoiding closure
- * substitution. Boundary arguments are not evaluated to build the action. */
-	for (size_t i = 0; i < discard; ++i) result = pg_lambda(machine->output, pg_binder(machine->output), result);
-	for (size_t i = scope->count; i; --i)
-		for (size_t j = 3; j; --j)
-			result = pg_lambda(machine->output, scope->bindings[i - 1].arguments[j - 1], result);
-	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
+	 * substitution. Boundary arguments are not evaluated to build the action. */
+	struct action_result_work *work = pg_alloc(&machine->temporary, sizeof(*work));
+	if (!work) return -1;
+	*work = (struct action_result_work){machine->output, scope->bindings, result, scope->count, discard};
+	return pg_eval_defer(machine, work, action_result_poll, action_result_resume, arena_work_destroy);
 }
 
 static int action_source_body(struct pg_eval *machine, const struct action_scope *scope);

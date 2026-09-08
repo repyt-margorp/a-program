@@ -1315,6 +1315,15 @@ static void lambda_actions(struct pg_classifiers *classifiers)
 		assert(snapshot);
 		pg_eval_destroy(&split);
 		converts(&work, snapshot, nested_expected);
+		/* Retaining the task must agree with discarding its private work. */
+		pg_eval_init(&split, nested_action);
+		split.output = graph;
+		split.dispatch = pg_pure_policy.dispatch;
+		assert(pg_eval_advance(&split, cut) == PG_EVAL_PENDING);
+		assert(pg_eval_advance(&split, nested_steps - cut) == PG_EVAL_WHNF);
+		assert(split.steps == nested_steps);
+		converts(&work, pg_eval_readback(&split, graph), nested_expected);
+		pg_eval_destroy(&split);
 	}
 	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
 	const struct pg_term *omega = pg_application(graph, self, self);
