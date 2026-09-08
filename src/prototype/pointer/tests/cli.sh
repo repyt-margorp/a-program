@@ -29,6 +29,9 @@ check 2 'usage:' '' --unknown
 check 2 'usage:' '' --save
 check 2 'usage:' '' --save -
 check 2 'usage:' '' --load --strict-thunks
+check 2 'usage:' '' --root 1
+check 2 'usage:' '' --load --root 0
+check 2 'usage:' '' --load --root 1 --root 2
 check 2 '-: cannot read or initialize input' 'not an image' --load
 check 2 'usage:' '' --nf
 check 2 'usage:' '' --nf main --whnf main

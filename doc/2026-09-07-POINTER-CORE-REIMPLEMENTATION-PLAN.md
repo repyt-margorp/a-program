@@ -7499,7 +7499,7 @@ src/prototype/pointer/.build/pointer-check --load --nf main program.a
 The first command returns the ordinary pending exit code 3 after a successful
 save. `--save` currently stores RECOMPUTE inputs, not retained execution or
 solver progress; saving before/after acceptance gives identical source bytes.
-`--load` requires one selected image root and applies its stored thunk policy;
+`--load` applies the image's stored thunk policy;
 combining it with `--strict-thunks` is an error rather than silently changing
 the stored input. Source parsing and image loading converge at ordinary Solve.
 The fixed read limit is 1,000,000 entries/bytes according to the codec's separate
@@ -7508,11 +7508,23 @@ budgets. Host effects are not executed by this command.
 - [x] Save unresolved source, load in another invocation and obtain the same NF.
 - [x] Preserve stored definition policy and save rejected inputs without evidence.
 - [x] Re-save loaded inputs with zero transitions; preserve RECOMPUTE bytes.
-- [ ] CLI retention-policy selection, general multi-root selection, filesystem
+- [x] CLI multi-root selection without dropping other roots on save.
+- [ ] CLI retention-policy selection, filesystem
   import resolution and retained-progress CHECKPOINT remain open.
 
 Validation: normal `check`, eight source checks and six execution fixtures pass;
 the rebuilt ASan/UBSan CLI suite passes the save/load and prior diagnostics tests.
+
+Continuation after `f98072e`: `--load --root N` chooses a one-based image root
+(default 1) for status and optional definition normalization. The image's full
+root list remains the save input, in its original order, including duplicate,
+pending and rejected roots. The existing shared Solve queue is unchanged;
+selection is not a declaration that other roots are accepted or irrelevant.
+Out-of-range, zero and source-mode root selection are diagnosed. An integration
+fixture selects a valid nominal type, re-saves identical bytes, then verifies
+the independently rejected root and all nominal/operation roots still exist.
+Normal `check`, source/example execution checks and both rebuilt sanitizer CLI
+suites pass. This adds no retained-progress CHECKPOINT claim.
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.

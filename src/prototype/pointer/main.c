@@ -47,6 +47,7 @@ static int steps_argument(const char *text, uint64_t *steps)
 int main(int argc, char **argv)
 {
 	uint64_t budget = 100000;
+	uint64_t root_index = 0;
 	enum pg_definition_policy policy = PG_DEFINITION_IMPLICIT_THUNK;
 	const char *path = NULL;
 	const char *selected = NULL;
@@ -55,6 +56,8 @@ int main(int argc, char **argv)
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "--steps")) {
 			if (++i == argc || steps_argument(argv[i], &budget) != 0) goto usage;
+		} else if (!strcmp(argv[i], "--root")) {
+			if (root_index || ++i == argc || steps_argument(argv[i], &root_index) || !root_index) goto usage;
 		} else if (!strcmp(argv[i], "--nf") || !strcmp(argv[i], "--whnf")) {
 			if (selected) goto usage;
 			nf = !strcmp(argv[i], "--nf");
@@ -66,9 +69,10 @@ int main(int argc, char **argv)
 			save = argv[i];
 		} else if (!strcmp(argv[i], "--strict-thunks")) policy = PG_DEFINITION_EXPLICIT_THUNK;
 		else if (!strcmp(argv[i], "--help")) {
-			puts("usage: pointer-check [--steps N] [--strict-thunks] [--load] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n"
+			puts("usage: pointer-check [--steps N] [--strict-thunks] [--load [--root N]] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n"
 				"Checks with the pointer-core solver; does not execute host effects.\n"
-				"--load reads a single-root image (limit 1000000); its stored thunk policy applies.\n"
+				"--load reads an image (limit 1000000); its stored thunk policy applies.\n"
+				"--root N selects a loaded root (1-based, default 1); save retains every root.\n"
 				"--save stores RECOMPUTE inputs, including pending/rejected inputs, not progress.\n"
 				"WHNF/NF select a definition, force a stored thunk once, and print its pure Core DAG.\n"
 				"Exit: 0 done, 1 rejected/syntax, 2 input/internal error, 3 pending, 4 unsupported.\n"
@@ -79,15 +83,22 @@ int main(int argc, char **argv)
 			path = argv[i];
 		}
 	}
-	if (!path || (load && policy == PG_DEFINITION_EXPLICIT_THUNK)) goto usage;
+	if (!path || (load && policy == PG_DEFINITION_EXPLICIT_THUNK) || (root_index && !load)) goto usage;
+	if (!root_index) root_index = 1;
 	FILE *file = !strcmp(path, "-") ? stdin : fopen(path, "rb");
 	if (!file) { fprintf(stderr, "%s: cannot open input\n", path); return 2; }
 	struct pg_program *program;
+	size_t count = 1;
+	struct pg_synthesis_job *const *roots = NULL;
 	if (load) {
-		size_t count;
-		struct pg_synthesis_job *const *roots;
 		program = pg_sources_read(file, 1000000, &count, &roots);
-		if (program && count != 1) { pg_program_destroy(program); program = NULL; }
+		if (program && root_index > count) {
+			fprintf(stderr, "%s: root index out of range: %" PRIu64 " (count %zu)\n", path, root_index, count);
+			pg_program_destroy(program);
+			if (file != stdin) fclose(file);
+			return 2;
+		}
+		if (program) program->root = roots[root_index - 1];
 	} else {
 		char *source = NULL;
 		size_t length = 0;
@@ -96,6 +107,7 @@ int main(int argc, char **argv)
 	}
 	if (file != stdin) fclose(file);
 	if (!program) { fprintf(stderr, "%s: cannot read or initialize input\n", path); return 2; }
+	if (!roots) roots = &program->root;
 	int result;
 	if (!program->root) {
 		fprintf(stderr, "%s:%zu:%zu: %s\n", path, program->parser.error_token.line,
@@ -142,7 +154,7 @@ int main(int argc, char **argv)
 			FILE *image = fopen(save, "wb");
 			int failed = !image;
 			if (image) {
-				failed = pg_sources_write(image, &program->synthesis, 1, &program->root);
+				failed = pg_sources_write(image, &program->synthesis, count, roots);
 				if (fclose(image)) failed = 1;
 			}
 			if (failed) { fprintf(stderr, "%s: cannot save input image\n", save); result = 2; }
@@ -151,6 +163,6 @@ int main(int argc, char **argv)
 	pg_program_destroy(program);
 	return result;
 usage:
-	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--load] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n", stderr);
+	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--load [--root N]] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n", stderr);
 	return 2;
 }
