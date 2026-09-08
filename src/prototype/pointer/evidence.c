@@ -222,6 +222,61 @@ done:
 	return result;
 }
 
+/* Expand retained Pi eliminations using their formation premises. Frames
+ * preserve substitution order without recursing on a curried proof spine. */
+static const struct pg_evidence *pi_body(struct pg_typing *typing,
+	const struct pg_evidence *pi, const struct pg_evidence *argument)
+{
+	struct pending {
+		const struct pg_evidence *argument;
+		struct evidence_frame *frames;
+		struct pending *next;
+	};
+	struct pg_graph temporary = {0};
+	struct pending *pending = NULL;
+	struct evidence_frame *frames = NULL;
+	const struct pg_evidence *result = NULL;
+	while (pi) {
+		switch (pi->rule) {
+		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
+			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
+			if (!frame) goto done;
+			*frame = (struct evidence_frame){pi, frames};
+			frames = frame;
+			pi = pi->premises[1];
+			break;
+		}
+		case PG_TYPE_CONVERSION:
+			pi = pi->premises[0]; break;
+		case PG_PI_CODOMAIN: {
+			struct pending *next = pg_alloc(&temporary, sizeof(*next));
+			if (!next) goto done;
+			*next = (struct pending){argument, frames, pending};
+			pending = next;
+			frames = NULL;
+			argument = pi->premises[1];
+			pi = pi->premises[0];
+			break;
+		}
+		case PG_PI_FORM: {
+			const struct pg_evidence *extended = pi->premises[1];
+			const struct pg_evidence *map = evidence_map(typing, extended->premises[0], frames);
+			map = pg_prove_substitution_pair(typing, map, extended, argument);
+			pi = pg_prove_reindex(typing, map, pi->premises[2]);
+			if (!pending) { result = pi; goto done; }
+			argument = pending->argument;
+			frames = pending->frames;
+			pending = pending->next;
+			break;
+		}
+		default: goto done;
+		}
+	}
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *type,
 	struct pg_inductive_instance *output)
 {
@@ -264,13 +319,7 @@ int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *ty
 			formation = formation->premises[0];
 			break;
 		case PG_PI_CODOMAIN: {
-			const struct pg_evidence *pi = formation->premises[0];
-			if (pi->rule != PG_PI_FORM) goto done;
-			const struct pg_evidence *extended = pi->premises[1];
-			const struct pg_evidence *context = extended->premises[0];
-			const struct pg_evidence *map = pg_prove_substitution_projection(typing, context, context);
-			map = pg_prove_substitution_pair(typing, map, extended, formation->premises[1]);
-			formation = pg_prove_reindex(typing, map, pi->premises[2]);
+			formation = pi_body(typing, formation->premises[0], formation->premises[1]);
 			if (!formation) goto done;
 			break;
 		}

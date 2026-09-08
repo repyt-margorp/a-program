@@ -1029,7 +1029,8 @@ static struct source_reference lookup_scope(const struct pg_source_scope *scope,
 }
 
 static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
-	struct source_reference *reference, struct pg_token token, struct pg_synthesis_job **dependency)
+	const struct pg_evidence *context, struct source_reference *reference,
+	struct pg_token token, struct pg_synthesis_job **dependency)
 {
 	if (reference->exports) {
 		*reference = lookup_scope(reference->exports, token);
@@ -1056,6 +1057,26 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 			*reference = lookup_scope(producer->exports, token);
 			return PG_SYNTHESIS_DONE;
 		}
+		const struct pg_evidence *proof = pg_prove_projection(synthesis->typing, context, producer->result);
+		if (!proof) return PG_SYNTHESIS_UNSUPPORTED;
+		if (pg_evidence_judgement(proof) == PG_JUDGEMENT_COMPUTATION) {
+			producer = pg_synthesis_return(synthesis, context, proof);
+			if (!producer) return PG_SYNTHESIS_ERROR;
+			*dependency = producer;
+			if (producer->status != PG_SYNTHESIS_DONE) return producer->status;
+			proof = producer->result;
+		}
+		struct pg_inductive_instance instance;
+		if (!pg_inductive_instance(synthesis->typing, value_type(synthesis, proof), &instance))
+			return PG_SYNTHESIS_UNSUPPORTED;
+		struct pg_synthesis_job *origin = pg_synthesis_evidence(synthesis, instance.formation);
+		if (!origin || !origin->exports) return PG_SYNTHESIS_UNSUPPORTED;
+		struct source_reference member = lookup_scope(origin->exports, token);
+		if (!member.producer) return PG_SYNTHESIS_REJECTED;
+		if (member.producer->role != CONSTRUCTOR_VALUE_JOB) return PG_SYNTHESIS_UNSUPPORTED;
+		const void *inputs[] = {instance.formation, member.producer->inputs[1], instance.parameters};
+		*reference = (struct source_reference){.producer = request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs)};
+		return reference->producer ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR;
 	}
 	/* Nominal members require a typed declaration, never an older namespace. */
 	return reference->binder || reference->producer ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_REJECTED;
@@ -1075,9 +1096,14 @@ static enum pg_synthesis_status resolve_reference(struct pg_synthesis *synthesis
 	const struct pg_syntax *root = syntax;
 	size_t count = 0;
 	while (root->kind == PG_SYNTAX_QUALIFIED) { ++count; root = root->left; }
-	if (root->kind != PG_SYNTAX_ATOM) return PG_SYNTHESIS_UNSUPPORTED;
-	if (root->token.kind != PG_TOKEN_IDENT && root->token.kind != '#') return PG_SYNTHESIS_UNSUPPORTED;
-	*reference = lookup_scope(scope, root->token);
+	if (root->kind == PG_SYNTAX_ATOM) {
+		if (root->token.kind != PG_TOKEN_IDENT && root->token.kind != '#') return PG_SYNTHESIS_UNSUPPORTED;
+		*reference = lookup_scope(scope, root->token);
+	} else {
+		if (!count) return PG_SYNTHESIS_UNSUPPORTED;
+		*reference = (struct source_reference){.producer = pg_synthesis_request(synthesis, scope, root)};
+		if (!reference->producer) return PG_SYNTHESIS_ERROR;
+	}
 	if (!count) return PG_SYNTHESIS_DONE;
 	if (count > SIZE_MAX / sizeof(const struct pg_syntax *)) return PG_SYNTHESIS_ERROR;
 	const struct pg_syntax **path = malloc(count * sizeof(*path));
@@ -1085,7 +1111,7 @@ static enum pg_synthesis_status resolve_reference(struct pg_synthesis *synthesis
 	for (size_t i = count; i; --i, syntax = syntax->left) path[i - 1] = syntax->right;
 	enum pg_synthesis_status status = PG_SYNTHESIS_DONE;
 	for (size_t i = 0; i < count; ++i) {
-		status = resolve_member(synthesis, reference, path[i]->token, dependency);
+		status = resolve_member(synthesis, source_context(scope), reference, path[i]->token, dependency);
 		if (status != PG_SYNTHESIS_DONE) break;
 	}
 	free(path);
@@ -1795,14 +1821,10 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	enqueue(synthesis, job);
 }
 
-/* Each universe candidate owns a distinct conditional Self context. Raising
- * the bound never mutates an accepted assumption or publishes a provisional
- * family. Failure to construct a candidate is not universe inconsistency. */
 static void constructor_value_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	const struct pg_evidence *formation = job->inputs[0], *context = job->inputs[2];
+	const struct pg_evidence *formation = job->inputs[0], *parameters = job->inputs[2];
 	const struct pg_object *constructor = job->inputs[1];
-	const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing, context, context);
 	const struct pg_evidence *function = pg_prove_constructor_function(synthesis->typing,
 		synthesis->classifiers, formation, constructor, parameters);
 	if (!function) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -1812,6 +1834,9 @@ static void constructor_value_step(struct pg_synthesis *synthesis, struct pg_syn
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
+/* Each universe candidate owns a distinct conditional Self context. Raising
+ * the bound never mutates an accepted assumption or publishes a provisional
+ * family. Failure to construct a candidate is not universe inconsistency. */
 static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->syntax->left->kind != PG_SYNTAX_CONSTRUCTORS) {
@@ -1853,7 +1878,9 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	job->exports = intern_scope(synthesis, (struct pg_source_scope){.context_job = job->scope->context_job});
 	const struct pg_syntax *constructors = job->syntax->left;
 	for (size_t i = 0; job->exports && i < constructors->item_count; ++i) {
-		const void *inputs[] = {job->result, pg_data_constructor(pg_data_schema_layout(schema), i), source_context(job->scope)};
+		const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing,
+			source_context(job->scope), source_context(job->scope));
+		const void *inputs[] = {job->result, pg_data_constructor(pg_data_schema_layout(schema), i), parameters};
 		struct pg_synthesis_job *member = request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs);
 		job->exports = pg_synthesis_name_job(synthesis, job->exports, constructors->items[i].name, member);
 	}

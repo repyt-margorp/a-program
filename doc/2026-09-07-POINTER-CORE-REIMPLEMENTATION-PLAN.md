@@ -24,8 +24,8 @@ baseline. `check-acceptance` combines this gate with the component suite.
 It is a necessary gate, not sufficient evidence for execution, effects, IF8,
 higher coherence or full `.a` support.
 
-After connecting nonrecursive source Match, the current result is **5/8**.
-The other three exit 4 (unsupported), not fuel exhaustion. This checks typing,
+After connecting applied-family members, the current result is **6/8**.
+The other two exit 4 (unsupported), not fuel exhaustion. This checks typing,
 not execution results:
 
 | Example | Status | Solve transitions |
@@ -33,11 +33,11 @@ not execution results:
 | 01_bool | done | 172 |
 | 02_nat | done | 64 |
 | 03_main | done | 172 |
-| 04_match | unsupported | 242 |
+| 04_match | done | 402 |
 | 05_bool_to_nat | done | 260 |
 | 06_pred | done | 203 |
 | 07_add | unsupported | 282 |
-| 09_list_induction | unsupported | 362 |
+| 09_list_induction | unsupported | 735 |
 
 ### Applied family provenance progress
 
@@ -52,23 +52,36 @@ not execution results:
 - [x] Check source Match over `List Nat`, repeated proof reuse, the resulting
   constructor reduction and rejection of an argument from another nominal
   family with the same constructor shape.
-- [ ] Resolve members of applied families such as `(List Bool).nil`.
+- [x] Resolve members of applied families such as `(List Bool).nil`.
+  Constructor producer keys now contain the formation, constructor pointer
+  and checked parameter substitution. Ordinary declarations use the identity
+  substitution; applied families use their recovered substitution. Both use
+  the same constructor function builder. Non-atomic qualified roots request
+  ordinary synthesis, and pure type computations use existing RETURN jobs.
+  Declaration exports provide names only, not classifier authority.
+- [x] Expand nested retained Pi codomain eliminations with an iterative
+  substitution stack. This permits direct Match on a curried constructor's
+  result, without a special List rule or erased-Core classifier lookup.
 - [ ] Support general computed-function provenance and recursive IH; the
   current helper only follows retained Lambda introductions. Unavailable
   provenance is not evidence that the program is ill-typed.
 
-Verification: optimized component `check` passed; after adding the negative
-nominality assertion, the rebuilt optimized IADT test passed. ASan/UBSan
-synthesis and IADT tests passed. The unchanged source gate remains 5/8 as
-listed above. This is not full acceptance or completion of the rewrite.
+Verification: optimized component `check` and ASan/UBSan synthesis passed
+after this integration. Tests include applied members, projected contexts,
+computed family aliases, missing members, wrong nominal arguments and
+evaluation of a direct constructor Match to `Nat.zero`. The unchanged source
+gate is 6/8 as listed above. IADT ASan/UBSan also passed at the preceding
+application-provenance checkpoint. This is not full acceptance or completion
+of the rewrite.
 
 Code-level obstruction and implementation order:
 
 1. Ordinary DECLARATION dispatch now admits checked zero-index families.
    Qualified constructor names now use its isolated source export scope.
    Nonrecursive ELIMINATION handles value and supported computation scrutinees
-   with constant computation motives. Indexed declarations and general family instantiation remain
-   unsupported. The separate `pg_synthesis_data_schema` job still builds
+   with constant computation motives. Known zero-index family applications
+   now expose their constructors. Indexed declarations and arbitrary computed
+   family provenance remain unsupported. The separate `pg_synthesis_data_schema` job still builds
    a conditional schema only; its completion never implies type admission.
 2. `pg_data_schema` in `iadt.c` validates field/result substitutions and derives
    erased layout arities. Zero-index nominal formation, constructor membership

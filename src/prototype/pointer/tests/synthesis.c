@@ -2768,6 +2768,24 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "List", .length = 4}, list);
 	complete(&synthesis, request(&synthesis, named,
 		"r:=\\xs:List Nat => xs @nil=>Nat.zero @cons x rest=>x;"), PG_SYNTHESIS_DONE);
+	complete(&synthesis, request(&synthesis, named, "r:=(List Nat).nil;"), PG_SYNTHESIS_DONE);
+	complete(&synthesis, request(&synthesis, named,
+		"r:=(List Nat).cons Nat.zero (List Nat).nil;"), PG_SYNTHESIS_DONE);
+	complete(&synthesis, request(&synthesis, named,
+		"r:=\\x:Nat => (List Nat).cons x (List Nat).nil;"), PG_SYNTHESIS_DONE);
+	alias = request(&synthesis, named, "L:=List Nat;");
+	complete(&synthesis, alias, PG_SYNTHESIS_DONE);
+	named = pg_synthesis_name_job(&synthesis, named,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "L", .length = 1}, alias);
+	complete(&synthesis, request(&synthesis, named, "r:=L.nil;"), PG_SYNTHESIS_DONE);
+	complete(&synthesis, request(&synthesis, named, "r:=L.missing;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, named,
+		"r:=(List Nat).cons Other.zero (List Nat).nil;"), PG_SYNTHESIS_REJECTED);
+	const struct pg_evidence *head = complete(&synthesis, request(&synthesis, named,
+		"r:=((List Nat).cons Nat.zero L.nil) @nil=>Nat.zero @cons x rest=>x;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *head_value = complete(&synthesis,
+		pg_synthesis_return(&synthesis, empty, head), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(head_value)->core == pg_evidence_subject(zero)->core);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("source declarations: nominal formation, conditional universe candidates, no early publication and reuse passed");
