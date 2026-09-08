@@ -247,6 +247,14 @@ static void thunk_transport(struct pg_typing *typing, struct pg_classifiers *cla
 			assert(snapshot);
 			pg_eval_destroy(&machine);
 			converts(&work, snapshot, pg_evidence_subject(mapped)->core);
+			pg_eval_init(&machine, term);
+			machine.output = graph;
+			machine.dispatch = pg_pure_policy.dispatch;
+			assert(pg_eval_advance(&machine, cut) == PG_EVAL_PENDING);
+			assert(pg_eval_advance(&machine, steps - cut) == PG_EVAL_WHNF);
+			assert(machine.steps == steps);
+			converts(&work, pg_eval_readback(&machine, graph), pg_evidence_subject(mapped)->core);
+			pg_eval_destroy(&machine);
 		}
 		struct pg_whnf_job *beta = pg_whnf_request(&work, &pg_beta_policy, term);
 		assert(pg_whnf_advance(beta, 100000) == PG_EVAL_WHNF && pg_whnf_result(beta) == term);

@@ -98,17 +98,6 @@ struct action_scope {
 	struct action_binding *bindings;
 };
 
-/* A single direction may act on several curried variables. Their triples
- * belong to the same direction, not to iterated applications of refl. */
-static void source_scope(const struct pg_term *source, struct action_scope *scope)
-{
-	*scope = (struct action_scope){source, source, 0, NULL};
-	while (scope->body->kind == PG_LAMBDA) {
-		++scope->count;
-		scope->body = scope->body->as.lambda.body;
-	}
-}
-
 struct action_scope_work {
 	struct action_scope scope;
 	const struct pg_argument *arguments;
@@ -758,26 +747,56 @@ static int action_source_body(struct pg_eval *machine, const struct action_scope
 	return enter_action(machine, &scope, result, 0);
 }
 
-static int thunk_family(const struct pg_term *family,
-	struct action_scope *scope, const struct pg_term **content)
+struct family_scope_work {
+	struct action_scope scope;
+	const struct pg_term *cursor;
+	const struct pg_term *content;
+	const struct pg_term *value;
+	size_t supplied;
+	int (*resume)(struct pg_eval *, const struct action_scope *, const struct pg_term *, const struct pg_term *);
+};
+
+static int family_scope_poll(void *opaque)
 {
+	struct family_scope_work *work = opaque;
 	const struct pg_term *source;
-	size_t count = 0;
-	while (!pg_identity_action_view(family, &source)) {
-		if (family->kind != PG_APPLICATION) return 0;
-		++count;
-		family = family->as.application.function;
+	if (!work->scope.source) {
+		if (pg_identity_action_view(work->cursor, &source)) {
+			if (!work->supplied || work->supplied % 3) return 1;
+			work->scope = (struct action_scope){source, source, 0, NULL};
+			return 0;
+		}
+		if (work->cursor->kind != PG_APPLICATION) return 1;
+		if (work->supplied == SIZE_MAX) return -1;
+		++work->supplied;
+		work->cursor = work->cursor->as.application.function;
+		return 0;
 	}
-	source_scope(source, scope);
-	if (!count || count % 3 || scope->count != count / 3) return 0;
-	return pg_thunk_type_view(scope->body, content);
+	if (work->scope.body->kind == PG_LAMBDA) {
+		if (work->scope.count == work->supplied / 3) return 1;
+		++work->scope.count;
+		work->scope.body = work->scope.body->as.lambda.body;
+		return 0;
+	}
+	if (work->scope.count == work->supplied / 3)
+		pg_thunk_type_view(work->scope.body, &work->content);
+	return 1;
 }
 
-static int thunk_return_family(const struct pg_term *family,
-	struct action_scope *scope, const struct pg_term **content)
+static int family_scope_resume(struct pg_eval *machine, void *opaque)
 {
-	const struct pg_term *computation;
-	return thunk_family(family, scope, &computation) && pg_return_type_view(computation, content);
+	struct family_scope_work *work = opaque;
+	return work->resume(machine, &work->scope, work->content, work->value);
+}
+
+static int with_thunk_family(struct pg_eval *machine, const struct pg_term *family,
+	const struct pg_term *value,
+	int (*resume)(struct pg_eval *, const struct action_scope *, const struct pg_term *, const struct pg_term *))
+{
+	struct family_scope_work *work = pg_alloc(&machine->temporary, sizeof(*work));
+	if (!work) return -1;
+	*work = (struct family_scope_work){.cursor = family, .value = value, .resume = resume};
+	return pg_eval_defer(machine, work, family_scope_poll, family_scope_resume, arena_work_destroy);
 }
 
 struct family_result_work {
@@ -850,21 +869,17 @@ static int field_family_result(struct pg_eval *machine, const struct pg_term *re
 	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 2);
 }
 
-int pg_identity_force(struct pg_eval *machine, const struct pg_term *value)
+static int force_family_scoped(struct pg_eval *machine, const struct action_scope *prepared,
+	const struct pg_term *computation, const struct pg_term *value)
 {
-	const struct pg_closure *argument = pg_eval_argument(machine, 1);
-	if (!argument || value->kind != PG_APPLICATION) return 1;
+	if (!computation) return 1;
 	const struct pg_term *prefix = value->as.application.function;
-	if (prefix->kind != PG_APPLICATION) return 1;
 	const struct pg_term *head = prefix->as.application.function;
-	if (head->kind != PG_REFERENCE) return 1;
 	int field = field_index(head->as.reference);
-	if (field < 0 || field > 1) return 1;
 	const struct pg_term *family = prefix->as.application.argument;
-	const struct pg_term *computation, *domain, *codomain;
+	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
-	struct action_scope scope;
-	if (!thunk_family(family, &scope, &computation)) return 1;
+	struct action_scope scope = *prepared;
 	if (!pg_pi_view(computation, &domain, &binder, &codomain)) return 1;
 	if (prepare_bindings(machine, &scope) != 0) return -1;
 	struct pg_graph *graph = machine->output;
@@ -889,15 +904,28 @@ int pg_identity_force(struct pg_eval *machine, const struct pg_term *value)
 	return close_family(machine, &scope, family, pg_lambda(graph, y, result), force_family_result);
 }
 
-static int thunk_return_field(struct pg_eval *machine, const struct pg_term *value)
+int pg_identity_force(struct pg_eval *machine, const struct pg_term *value)
+{
+	if (!pg_eval_argument(machine, 1) || value->kind != PG_APPLICATION) return 1;
+	const struct pg_term *prefix = value->as.application.function;
+	if (prefix->kind != PG_APPLICATION) return 1;
+	const struct pg_term *head = prefix->as.application.function;
+	if (head->kind != PG_REFERENCE) return 1;
+	int field = field_index(head->as.reference);
+	if (field < 0 || field > 1) return 1;
+	return with_thunk_family(machine, prefix->as.application.argument, value, force_family_scoped);
+}
+
+static int thunk_return_scoped(struct pg_eval *machine, const struct action_scope *prepared,
+	const struct pg_term *computation, const struct pg_term *value)
 {
 	const struct pg_term *body = unary_argument(value, &pg_thunk_operation);
 	const struct pg_term *payload = body ? unary_argument(body, &pg_return_operation) : NULL;
 	int field = field_index(machine->current.term->as.reference);
 	if (!payload && field >= 2) return 1;
-	struct action_scope scope;
+	struct action_scope scope = *prepared;
 	const struct pg_term *content, *family = pg_eval_argument(machine, 0)->term;
-	if (!thunk_return_family(family, &scope, &content)) return -1;
+	if (!computation || !pg_return_type_view(computation, &content)) return -1;
 	if (prepare_bindings(machine, &scope) != 0) return -1;
 	struct pg_graph *graph = machine->output;
 	const struct pg_object *binder = payload ? NULL : pg_binder(graph);
@@ -915,14 +943,26 @@ static int thunk_return_field(struct pg_eval *machine, const struct pg_term *val
 	return close_family(machine, &scope, family, result, field_family_result);
 }
 
+static int thunk_return_field(struct pg_eval *machine, const struct pg_term *value)
+{
+	return with_thunk_family(machine, pg_eval_argument(machine, 0)->term, value, thunk_return_scoped);
+}
+
+static int field_family_scoped(struct pg_eval *machine, const struct action_scope *scope,
+	const struct pg_term *computation, const struct pg_term *unused)
+{
+	(void)scope;
+	(void)unused;
+	const struct pg_term *content;
+	if (!computation || !pg_return_type_view(computation, &content)) return 1;
+	return pg_eval_demand(machine, 1, thunk_return_field);
+}
+
 static int field_answer(struct pg_eval *machine, const struct pg_term *family)
 {
 	const struct pg_term *type;
-	if (!pg_identity_action_view(family, &type)) {
-		struct action_scope scope;
-		if (!thunk_return_family(family, &scope, &type)) return 1;
-		return pg_eval_demand(machine, 1, thunk_return_field);
-	}
+	if (!pg_identity_action_view(family, &type))
+		return with_thunk_family(machine, family, NULL, field_family_scoped);
 	struct pg_closure value = *pg_eval_argument(machine, 1);
 	if (field_index(machine->current.term->as.reference) < 2)
 		return pg_eval_enter(machine, value, 2);

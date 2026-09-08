@@ -391,6 +391,27 @@ introduced. Implementation C: +70/-19; test C: +18/-0. N2 remains open.
 Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass;
 the separate cube-function comparison maximum remains 243,623 transitions.
 
+#### Incremental field-family recognition
+
+After `d3411fd`, all three field-family recognition sites use a deferred task
+that consumes one application edge or one source lambda per poll. The old
+`source_scope`, `thunk_family` and `thunk_return_family` synchronous walkers are
+removed. Unlike initial Act discovery, field recognition requires the entire
+lambda prefix to match the number of supplied triples. Partial triples and
+over/under-applied source telescopes do not enable a field equation. Missing
+U/Pi/F shapes retain the former callers' neutral/error behavior.
+
+U(F) cancellation tests now also retain and resume each suspended evaluator,
+checking the same total charged steps as uninterrupted execution. Existing
+forced U(Pi) tests compare split work, normalization evidence and the separately
+constructed transport recipe. Implementation C: +82/-42; test C: +8/-0.
+Source binding preparation and body construction remain synchronous. U(F)
+recognition is still repeated after its value demand; sharing that prepared
+scope across demand continuations remains a separate work-reuse obligation.
+This checkpoint does not complete N2, higher coherence or image persistence.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test pass.
+The separate cube-function comparison maximum remains 243,623 transitions.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,
