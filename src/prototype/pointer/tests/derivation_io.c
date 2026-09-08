@@ -556,12 +556,78 @@ static void operation_proofs(FILE *file, struct pg_typing *typing, struct pg_cla
 	puts("operation derivations: relocated labels, shared premises, handler execution and signature rejection passed");
 }
 
+static struct pg_derivation_input *input_rule(struct pg_graph *graph, enum pg_evidence_rule rule,
+	size_t count, const struct pg_derivation_input *const *premises)
+{
+	struct pg_derivation_input *input = pg_alloc(graph, sizeof(*input) + count * sizeof(*input->premises));
+	assert(input);
+	input->rule = rule;
+	input->count = count;
+	for (size_t i = 0; i < count; ++i) input->premises[i] = premises[i];
+	return input;
+}
+
+static void unaccepted_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers,
+	int writing, uint64_t chunk)
+{
+	struct pg_graph *graph = typing->graph;
+	if (writing) {
+		const struct pg_derivation_input *empty = input_rule(graph, PG_CONTEXT_EMPTY, 0, NULL);
+		const struct pg_derivation_input *universe = input_rule(graph, PG_UNIVERSE_FORM, 1, &empty);
+		const struct pg_derivation_input *value = input_rule(graph, PG_VALUE_FROM_TYPE, 1, &universe);
+		const struct pg_derivation_input *returned = input_rule(graph, PG_RETURN_INTRO, 1, &value);
+		const struct pg_derivation_input *invalid = input_rule(graph, PG_FORCE_ELIM, 1, &value);
+		struct pg_derivation_input *nf = input_rule(graph, PG_PURE_NORMALIZATION, 1, &returned);
+		nf->reduction_kind = PG_REDUCTION_NF;
+		nf->source = nf->target = pg_application(graph, pg_reference(graph, &pg_return_operation), pg_universe(classifiers, 0));
+		const struct pg_derivation_input *roots[] = {returned, returned, invalid, nf};
+		assert(!pg_derivation_inputs_write(file, 4, roots, &pg_builtin_graph_codec, classifiers));
+		assert(!typing->proofs.count);
+		struct pg_derivation_input *cycle = input_rule(graph, PG_RETURN_INTRO, 1, &value);
+		cycle->premises[0] = cycle;
+		const struct pg_derivation_input *cyclic = cycle;
+		FILE *rejected = tmpfile();
+		assert(rejected && pg_derivation_inputs_write(rejected, 1, &cyclic, &pg_builtin_graph_codec, classifiers));
+		assert(!fclose(rejected));
+		return;
+	}
+	size_t count;
+	const struct pg_derivation_input *const *roots;
+	assert(!pg_derivations_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, classifiers, &count, &roots));
+	assert(count == 4 && roots[0] == roots[1] && !typing->proofs.count);
+	assert(roots[3]->reduction_kind == PG_REDUCTION_NF && !roots[3]->parameters.reduction);
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, graph));
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	struct pg_synthesis_job *jobs[4];
+	for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
+	assert(jobs[0] == jobs[1] && !typing->proofs.count);
+	unsigned rounds = 0;
+	for (size_t i = 0; i < count; ++i) {
+		while (pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING) {
+			assert(++rounds < 1000);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		assert(pg_synthesis_status(jobs[i]) == (i == 2 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+	}
+	assert(!pg_synthesis_result(jobs[2]));
+	const struct pg_evidence *value = pg_prove_return_value(typing, pg_synthesis_result(jobs[3]));
+	assert(value && pg_evidence_subject(value)->core == pg_universe(classifiers, 0));
+	/* No-op normalization reuses the source evidence after checking the goal. */
+	assert(pg_synthesis_result(jobs[3]) == pg_synthesis_result(jobs[0]));
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("unaccepted derivations: no pre-solve evidence, shared inputs, rejection and NF obligation passed");
+}
+
 int main(int argc, char **argv)
 {
 	effect_transport();
 	assert(argc == 3);
 	int operation = !strncmp(argv[1], "operation-", 10);
-	const char *mode = operation ? argv[1] + 10 : argv[1];
+	int unaccepted = !strncmp(argv[1], "input-", 6);
+	const char *mode = operation ? argv[1] + 10 : unaccepted ? argv[1] + 6 : argv[1];
 	int writing = !strcmp(mode, "write");
 	int bulk = !strcmp(mode, "read-bulk");
 	assert(writing || bulk || !strcmp(mode, "read"));
@@ -571,7 +637,8 @@ int main(int argc, char **argv)
 	struct pg_classifiers classifiers;
 	assert(file && pg_graph_init(&graph) == 0 && pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
-	if (operation) operation_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
+	if (unaccepted) unaccepted_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
+	else if (operation) operation_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (writing) write_proofs(file, &typing, &classifiers);
 	else read_proofs(file, &typing, &classifiers, bulk ? 64 : 1);
 	assert(fclose(file) == 0);

@@ -21,6 +21,12 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 	const char *(*name)(void *, const struct pg_object *), void *owner);
 int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_evidence *const *roots,
 	const struct pg_graph_codec *codec, void *owner);
+/* Save ordinary, possibly invalid/unaccepted rule inputs without running Solve.
+ * Same record grammar as accepted derivations; no acceptance flag is stored.
+ * Certificate pointers are forbidden: retain comparison endpoints instead.
+ * This does not yet capture pending effect-equation workers or source jobs. */
+int pg_derivation_inputs_write(FILE *file, size_t count, const struct pg_derivation_input *const *roots,
+	const struct pg_graph_codec *codec, void *owner);
 /* Restores inputs only, with one Core relocation table and shared premise DAG.
  * Limits bound records/edges here and records in the nested Core separately.
  * No proof index is accessed, and no evaluation takes place. Outputs publish

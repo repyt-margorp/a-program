@@ -16,6 +16,32 @@ static int premise(void *unused, const void *key, size_t index, const void **chi
 	return 1;
 }
 
+static int input_premise(void *unused, const void *key, size_t index, const void **child)
+{
+	(void)unused;
+	const struct pg_derivation_input *input = key;
+	if (index == input->count) return 0;
+	*child = input->premises[index];
+	return 1;
+}
+
+static int proof_input(const struct pg_evidence *proof, struct pg_derivation_input *input)
+{
+	input->rule = pg_evidence_rule(proof);
+	input->count = pg_evidence_premise_count(proof);
+	if (pg_derivation_parameters(proof, &input->parameters)) return -1;
+	if (input->parameters.conversion) {
+		input->source = pg_conversion_left(input->parameters.conversion);
+		input->target = pg_conversion_right(input->parameters.conversion);
+	}
+	if (input->parameters.reduction) {
+		input->source = pg_reduction_source(input->parameters.reduction);
+		input->target = pg_reduction_target(input->parameters.reduction);
+		input->reduction_kind = pg_reduction_kind(input->parameters.reduction);
+	}
+	return 0;
+}
+
 static int term_reference(FILE *file, const struct pg_term *term,
 	struct pg_dag *terms)
 {
@@ -31,25 +57,30 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 	return pg_derivations_write_descriptors(file, count, roots, &codec, owner);
 }
 
-int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_evidence *const *roots,
+static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *proofs,
+	const struct pg_derivation_input *const *inputs,
 	const struct pg_graph_codec *codec, void *owner)
 {
-	if (!file || (count && !roots)) return -1;
+	if (!file || (count && !proofs && !inputs)) return -1;
 	struct pg_dag dag = {0};
 	struct pg_dag term_roots = {0};
 	struct pg_graph arena = {0};
 	int status = -1;
-	if (pg_dag_init(&dag, premise, NULL) || pg_dag_init(&term_roots, NULL, NULL)
+	if (pg_dag_init(&dag, inputs ? input_premise : premise, NULL) || pg_dag_init(&term_roots, NULL, NULL)
 		|| pg_graph_init(&arena)) goto done;
-	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&dag, roots[i])) goto done;
+	for (size_t i = 0; i < count; ++i)
+		if (pg_dag_add(&dag, inputs ? (const void *)inputs[i] : proofs[i])) goto done;
 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, dag.count) || pg_wire_write_u64(file, count)) goto done;
 	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
-		const struct pg_evidence *proof = node->key;
-		struct pg_derivation_parameters parameters;
-		if (pg_derivation_parameters(proof, &parameters)) goto done;
-		if (pg_wire_write_u64(file, pg_evidence_rule(proof))
+		struct pg_derivation_input input = {0};
+		if (inputs) {
+			input = *(const struct pg_derivation_input *)node->key;
+			if (input.parameters.conversion || input.parameters.reduction) goto done;
+		} else if (proof_input(node->key, &input)) goto done;
+		struct pg_derivation_parameters parameters = input.parameters;
+		if (pg_wire_write_u64(file, input.rule)
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;
-		if (pg_wire_write_u64(file, parameters.reduction ? pg_reduction_kind(parameters.reduction) : PG_REDUCTION_WHNF)) goto done;
+		if (pg_wire_write_u64(file, input.reduction_kind)) goto done;
 		const struct pg_term *binder = parameters.binder ? pg_reference(&arena, parameters.binder) : NULL;
 		if (parameters.binder && !binder) goto done;
 		const struct pg_term *effects = parameters.effects ? pg_effect_reference(&arena, parameters.effects) : NULL;
@@ -57,28 +88,21 @@ int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_e
 		const struct pg_term *operation = parameters.operation_label ? pg_reference(&arena, parameters.operation_label) : NULL;
 		const struct pg_term *handler = pg_handler_signature_reference(&arena, parameters.handler);
 		if ((parameters.operation_label && !operation) || (parameters.handler && !handler)) goto done;
-		const struct pg_term *source = NULL, *target = NULL;
-		if (parameters.conversion) {
-			source = pg_conversion_left(parameters.conversion);
-			target = pg_conversion_right(parameters.conversion);
-		}
-		if (parameters.reduction) {
-			source = pg_reduction_source(parameters.reduction);
-			target = pg_reduction_target(parameters.reduction);
-		}
 		if (term_reference(file, binder, &term_roots) || term_reference(file, effects, &term_roots)
-			|| term_reference(file, source, &term_roots)
-			|| term_reference(file, target, &term_roots)
+			|| term_reference(file, input.source, &term_roots)
+			|| term_reference(file, input.target, &term_roots)
 			|| term_reference(file, operation, &term_roots) || term_reference(file, handler, &term_roots)) goto done;
-		size_t arity = pg_evidence_premise_count(proof);
+		size_t arity = input.count;
 		if (pg_wire_write_u64(file, arity)) goto done;
 		for (size_t i = 0; i < arity; ++i) {
-			const struct pg_dag_node *p = pg_dag_find(&dag, pg_evidence_premise(proof, i));
+			const void *child;
+			if (dag.child(NULL, node->key, i, &child) != 1) goto done;
+			const struct pg_dag_node *p = pg_dag_find(&dag, child);
 			if (!p || pg_wire_write_u64(file, p->id)) goto done;
 		}
 	}
 	for (size_t i = 0; i < count; ++i) {
-		const struct pg_dag_node *node = pg_dag_find(&dag, roots[i]);
+		const struct pg_dag_node *node = pg_dag_find(&dag, inputs ? (const void *)inputs[i] : proofs[i]);
 		if (!node || pg_wire_write_u64(file, node->id)) goto done;
 	}
 	if (term_roots.count > SIZE_MAX / sizeof(void *)) goto done;
@@ -92,6 +116,18 @@ done:
 	pg_dag_destroy(&term_roots);
 	pg_dag_destroy(&dag);
 	return status;
+}
+
+int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_evidence *const *roots,
+	const struct pg_graph_codec *codec, void *owner)
+{
+	return write_dag(file, count, roots, NULL, codec, owner);
+}
+
+int pg_derivation_inputs_write(FILE *file, size_t count, const struct pg_derivation_input *const *roots,
+	const struct pg_graph_codec *codec, void *owner)
+{
+	return write_dag(file, count, NULL, roots, codec, owner);
 }
 
 struct input_record {

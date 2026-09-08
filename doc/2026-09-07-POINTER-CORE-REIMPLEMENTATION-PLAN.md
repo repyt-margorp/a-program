@@ -1174,6 +1174,29 @@ finish general handler source support.
   unsupported after 208 steps. Implementation C/header: +80/-17;
   test C: +91/-7; test shell: +5/-0; documentation separate.
 
+  September 9, after `8dc108d`: `pg_derivation_inputs_write` saves ordinary
+  unaccepted rule DAGs in the same APGDRV v3 grammar as retained evidence. One
+  writer traverses either source via its premise accessor; accepted evidence
+  supplies a transient rule header without copying its premise arrays or
+  modifying its store. No accepted-state bit, proof-search pass or alternate
+  checker is introduced. Unaccepted inputs carry normalization/conversion
+  endpoints, not borrowed local certificate pointers. Cyclic input DAGs fail
+  the shared iterative collector.
+
+  Fresh-process tests construct and save raw context/Universe/RETURN/FORCE/NF
+  rule inputs without creating any typing evidence. Shared roots remain shared,
+  reading and scheduling create no accepted evidence, and ordinary Solve at
+  budgets 1/64 accepts RETURN and rejects FORCE of a non-thunk. A retained NF
+  obligation is checked by subsequent Solve, not by reading; when it does not change the term, the
+  existing kernel correctly reuses source evidence rather than adding a vacuous
+  normalization derivation. This saves static pending rule graphs only. It does
+  not yet export live source-job dependencies, effect-equation workers or a full
+  program checkpoint; those N5 requirements remain open.
+  Normal components, eight source checks, six execution fixtures and rebuilt
+  ASan/UBSan derivation I/O tests pass. The open-family gate remains unsupported
+  after 208 transitions. Implementation C/header: +65/-23; test C: +69/-2;
+  test shell: +5/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 208 transitions; this does not establish full source acceptance.
