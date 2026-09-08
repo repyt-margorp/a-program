@@ -15,6 +15,7 @@ int pg_graph_write(FILE *file, size_t count, const struct pg_term *const *roots,
 /* graph must be initialized. Limits bound record count and descriptor length.
  * Output roots are owned by graph and published only on success. Failure may
  * leave unused arena allocations but cannot publish evidence. Unknown descriptors fail closed.
+ * Distinct object records resolving to one pointer are rejected, not merged.
  * Recursive declaration payloads and accepted evidence are not encoded here. */
 int pg_graph_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	const struct pg_object *(*resolve)(void *, const char *), void *context,

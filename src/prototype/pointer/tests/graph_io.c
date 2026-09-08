@@ -7,12 +7,14 @@
 
 static const struct pg_object_class owner = {"test-descriptor"};
 static const struct pg_object oracle = {PG_SEMANTIC_OBJECT, &owner};
+static const struct pg_object second_oracle = {PG_SEMANTIC_OBJECT, &owner};
 static const struct pg_object owned_binder = {PG_BINDER, &owner};
 
 static const char *name(void *context, const struct pg_object *object)
 {
 	(void)context;
 	if (object == &oracle) return "test/oracle/v1";
+	if (object == &second_oracle) return "test/second-oracle/v1";
 	if (object == &owned_binder) return "test/binder/v1";
 	return NULL;
 }
@@ -21,6 +23,7 @@ static const struct pg_object *resolve(void *context, const char *label)
 {
 	(void)context;
 	if (!strcmp(label, "test/oracle/v1")) return &oracle;
+	if (!strcmp(label, "test/second-oracle/v1")) return &second_oracle;
 	if (!strcmp(label, "test/binder/v1")) return &owned_binder;
 	return NULL;
 }
@@ -36,6 +39,19 @@ int main(void)
 {
 	struct pg_graph source, destination;
 	assert(pg_graph_init(&source) == 0 && pg_graph_init(&destination) == 0);
+	FILE *collision = tmpfile();
+	const struct pg_term *separate[] = {pg_reference(&source, &oracle), pg_reference(&source, &second_oracle)};
+	assert(collision && !pg_graph_write(collision, 2, separate, name, NULL));
+	rewind(collision);
+	size_t separate_count = 0;
+	const struct pg_term *const *separate_roots = NULL;
+	assert(!pg_graph_read(collision, &destination, 100, 100, resolve, NULL, &separate_count, &separate_roots));
+	assert(separate_count == 2 && separate_roots[0] != separate_roots[1]);
+	const struct pg_term *const *unchanged_roots = separate_roots;
+	rewind(collision);
+	assert(pg_graph_read(collision, &destination, 100, 100, wrong_kind, NULL, &separate_count, &separate_roots) == -1);
+	assert(separate_count == 2 && separate_roots == unchanged_roots);
+	assert(!fclose(collision));
 	const struct pg_object *x = pg_binder(&source), *y = pg_binder(&source);
 	const struct pg_term *vx = pg_reference(&source, x), *vy = pg_reference(&source, y);
 	const struct pg_term *id = pg_lambda(&source, x, vx);

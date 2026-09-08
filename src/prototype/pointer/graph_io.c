@@ -77,6 +77,34 @@ done:
 	return status;
 }
 
+static int read_objects(FILE *file, struct pg_graph *graph, size_t count, size_t name_limit,
+	const struct pg_object *(*resolve)(void *, const char *), void *context,
+	const struct pg_object **objects)
+{
+	struct pg_dag seen = {0};
+	int status = -1;
+	if (pg_dag_init(&seen, NULL, NULL)) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		int tag = fgetc(file);
+		if (tag == 0) objects[i] = pg_binder(graph);
+		else if (tag == 1 || tag == 2) {
+			uint64_t length;
+			if (!resolve || pg_wire_read_u64(file, &length) || !length || length > name_limit || length >= SIZE_MAX) goto done;
+			char *label = pg_alloc(graph, (size_t)length + 1);
+			if (!label || fread(label, 1, (size_t)length, file) != length || memchr(label, 0, (size_t)length)) goto done;
+			label[length] = 0;
+			objects[i] = resolve(context, label);
+			if (!objects[i] || objects[i]->kind != (tag == 1 ? PG_BINDER : PG_SEMANTIC_OBJECT)) goto done;
+		} else goto done;
+		/* Distinct object records must remain distinct after relocation. */
+		if (!objects[i] || pg_dag_add(&seen, objects[i]) || seen.count != i + 1) goto done;
+	}
+	status = 0;
+done:
+	pg_dag_destroy(&seen);
+	return status;
+}
+
 int pg_graph_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	const struct pg_object *(*resolve)(void *, const char *), void *context,
 	size_t *count, const struct pg_term *const **roots)
@@ -93,20 +121,7 @@ int pg_graph_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_
 	const struct pg_term **terms = pg_alloc(graph, (size_t)nt * sizeof(*terms));
 	const struct pg_term **result = pg_alloc(graph, (size_t)nr * sizeof(*result));
 	if (!objects || !terms || !result) return -1;
-	for (size_t i = 0; i < no; ++i) {
-		int tag = fgetc(file);
-		if (tag == 0) objects[i] = pg_binder(graph);
-		else if (tag == 1 || tag == 2) {
-			uint64_t length;
-			if (!resolve || pg_wire_read_u64(file, &length) || !length || length > name_limit || length >= SIZE_MAX) return -1;
-			char *label = pg_alloc(graph, (size_t)length + 1);
-			if (!label || fread(label, 1, (size_t)length, file) != length || memchr(label, 0, (size_t)length)) return -1;
-			label[length] = 0;
-			objects[i] = resolve(context, label);
-			if (!objects[i] || objects[i]->kind != (tag == 1 ? PG_BINDER : PG_SEMANTIC_OBJECT)) return -1;
-		} else return -1;
-		if (!objects[i]) return -1;
-	}
+	if (read_objects(file, graph, (size_t)no, name_limit, resolve, context, objects)) return -1;
 	for (size_t i = 0; i < nt; ++i) {
 		int tag = fgetc(file);
 		uint64_t a, b;

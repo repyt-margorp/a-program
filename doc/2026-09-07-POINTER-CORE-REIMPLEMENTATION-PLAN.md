@@ -4354,6 +4354,15 @@ Raw Core section prototype (`graph_io.c`, not accepted evidence):
   references, truncated records, trailing bytes and exceeded input limits fail.
   Owners remain responsible for descriptor meaning and injective naming;
   this codec does not certify an arbitrary resolver or decode IADT payloads.
+- [x] After `9d5a2cd`, enforce injective object relocation within each Core
+  section: different saved object records may not resolve to one pointer.
+  Previously the reader checked kind only, allowing a faulty resolver to
+  collapse distinct semantic references. Reuse `pg_dag` as a temporary pointer
+  index; no quadratic scan, evaluation, alpha merging or permanent authority
+  is added. The two-descriptor regression accepts distinct resolutions and
+  rejects a same-kind collision without publishing output roots. Descriptor
+  semantics still belong to the owner; injectivity alone cannot verify them.
+  Optimized and ASan/UBSan graph tests and full pointer `make check` passed.
 - [x] Share little-endian integer encoding with the seed codec through
   `wire.c`; the existing seed bytes remain unchanged.
   Complete pointer `make check`, ASan/UBSan graph/seed tests and separate-process
