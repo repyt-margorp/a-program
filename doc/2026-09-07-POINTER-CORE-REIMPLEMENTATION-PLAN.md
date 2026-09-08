@@ -4590,6 +4590,17 @@ Derivation input persistence after `48d2923` (`derivation_io.c`):
   WHNF/NF work as source synthesis. Stored endpoints are obligations, not
   receipts: structural alpha comparison checks them against locally recovered
   results before the ordinary derivation constructor accepts anything.
+- [x] After `97b8469`, deduplicate serialized derivation Core references with
+  the existing temporary pointer-keyed DAG index. Previously every non-null
+  binder or comparison endpoint appended another nested Core root, even when
+  it had already been referenced by another rule. Allocate the final root
+  array from the unique count; retain ordered rule premises and public roots
+  unchanged. This is exact pointer indexing, not alpha/normal-form interning
+  or evidence merging, and requires no wire format change. A regression reads
+  the nested root table, checks uniqueness and verifies that it is smaller
+  than the number of references. Optimized and ASan/UBSan separate-process
+  tests pass; chunk sizes 1 and 64 still take 363 Solve transitions. This is
+  component storage cleanup, not completion of CHECKPOINT or typed symmetry.
 - [x] Retain the producing WHNF/NF mode in normalization receipts and the
   experimental derivation section (version byte 1). Do not guess the mode by
   trying different evaluators. A separate-process six-root test covers duplicate

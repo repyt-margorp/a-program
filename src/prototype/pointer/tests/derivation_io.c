@@ -2,6 +2,8 @@
 #include "graph_io.h"
 #include "computation.h"
 #include "synthesis.h"
+#include "wire.h"
+#include "dag.h"
 
 #include <assert.h>
 #include <string.h>
@@ -102,6 +104,40 @@ static void rejected_prefixes(FILE *file)
 	}
 }
 
+static void unique_term_roots(FILE *file, struct pg_graph *graph,
+	struct pg_classifiers *classifiers)
+{
+	rewind(file);
+	char header[8];
+	uint64_t records, roots, word;
+	assert(fread(header, 1, sizeof(header), file) == sizeof(header));
+	assert(!pg_wire_read_u64(file, &records) && !pg_wire_read_u64(file, &roots));
+	size_t references = 0;
+	for (uint64_t i = 0; i < records; ++i) {
+		/* Rule, level, direction, reduction mode, then three Core references. */
+		for (unsigned j = 0; j < 7; ++j) {
+			assert(!pg_wire_read_u64(file, &word));
+			if (j >= 4 && word) ++references;
+		}
+		uint64_t premises;
+		assert(!pg_wire_read_u64(file, &premises));
+		for (uint64_t j = 0; j < premises; ++j) assert(!pg_wire_read_u64(file, &word));
+	}
+	for (uint64_t i = 0; i < roots; ++i) assert(!pg_wire_read_u64(file, &word));
+	size_t count;
+	const struct pg_term *const *terms;
+	assert(!pg_graph_read(file, graph, 1000, 100, resolve, classifiers, &count, &terms));
+	struct pg_dag unique;
+	assert(!pg_dag_init(&unique, NULL, NULL));
+	for (size_t i = 0; i < count; ++i) {
+		assert(!pg_dag_add(&unique, terms[i]));
+		assert(unique.count == i + 1);
+	}
+	assert(count < references);
+	pg_dag_destroy(&unique);
+	rewind(file);
+}
+
 static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	classifier_transport(classifiers);
@@ -188,6 +224,7 @@ static struct pg_synthesis_job *source_use(struct pg_synthesis *synthesis,
 
 static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers, uint64_t chunk)
 {
+	unique_term_roots(file, typing->graph, classifiers);
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing->graph, 1000, 100, resolve, classifiers, &count, &roots) == 0);
