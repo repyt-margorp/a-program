@@ -3931,6 +3931,18 @@ static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthes
 	finish(synthesis, job, declaration ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 }
 
+static const struct pg_term *continuation_effect_structure(struct pg_synthesis *synthesis,
+	const struct pg_term *type, const struct pg_term *row)
+{
+	const struct pg_term *domain, *codomain, *following, *result;
+	const struct pg_object *binder;
+	if (!pg_pi_view(type, &domain, &binder, &codomain)) return NULL;
+	if (pg_term_independent(codomain, binder) != 1) return NULL;
+	if (!pg_effect_type_spine_view(codomain, &following, &result)) return NULL;
+	return pg_effect_type_spine(synthesis->classifiers,
+		pg_effect_join_term(synthesis->typing->graph, row, following), result);
+}
+
 static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
@@ -4006,6 +4018,8 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 			job->left = pg_synthesis_classifier_structure(synthesis, premise); break;
 		case PG_CONTEXT_PROJECTION:
 			job->left = pg_synthesis_classifier_structure(synthesis, rule_premise(synthesis, producer, 1)); break;
+		case PG_REQUEST_INTRO:
+			job->left = pg_synthesis_classifier_structure(synthesis, rule_premise(synthesis, producer, 3)); break;
 		case PG_LAMBDA_INTRO:
 			job->left = pg_synthesis_type_structure(synthesis, premise); break;
 		default: break;
@@ -4015,19 +4029,25 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 		if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 		const struct pg_term *type = pg_synthesis_type_structure_result(job->left);
+		if (input->rule == PG_REQUEST_INTRO) {
+			const struct pg_object *label = pg_operation_label(input->parameters.operation);
+			if (!label) goto accepted_classifier;
+			const struct pg_effect_row *row = pg_effect_row(synthesis->typing->graph, 1, &label);
+			job->type_structure = continuation_effect_structure(synthesis, type,
+				pg_effect_reference(synthesis->typing->graph, row));
+			if (!job->type_structure) goto accepted_classifier;
+			finish(synthesis, job, PG_SYNTHESIS_DONE);
+			return;
+		}
 		if (input->rule == PG_FOLD_ELIM) {
 			if (!job->right) job->right = pg_synthesis_classifier_structure(synthesis, rule_premise(synthesis, producer, 1));
 			if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
 			if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
-			const struct pg_term *row, *value, *domain, *codomain, *following, *result;
-			const struct pg_object *binder;
+			const struct pg_term *row, *value;
 			if (!pg_effect_type_spine_view(type, &row, &value)) goto accepted_classifier;
-			if (!pg_pi_view(job->right->type_structure, &domain, &binder, &codomain)) goto accepted_classifier;
-			if (pg_term_independent(codomain, binder) != 1) goto accepted_classifier;
-			if (!pg_effect_type_spine_view(codomain, &following, &result)) goto accepted_classifier;
-			const struct pg_term *joined = pg_effect_join_term(synthesis->typing->graph, row, following);
-			job->type_structure = pg_effect_type_spine(synthesis->classifiers, joined, result);
+			job->type_structure = continuation_effect_structure(synthesis, job->right->type_structure, row);
+			if (!job->type_structure) goto accepted_classifier;
 			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 			return;
 		}

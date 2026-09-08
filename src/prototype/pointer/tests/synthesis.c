@@ -443,6 +443,45 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, continuation_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(continuation_type) == symbolic_pi);
 		assert(!pg_synthesis_result(continuation));
+		const struct pg_evidence *request_signature = pg_prove_universe(typing, classifiers,
+			pg_prove_empty_context(typing), 1);
+		const struct pg_operation_declaration *request_op = pg_operation_declaration(typing, request_signature, request_signature);
+		struct pg_synthesis_job *signature_job = pg_synthesis_evidence(&synthesis, request_signature);
+		struct pg_synthesis_job *request_domain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){context, signature_job});
+		struct pg_synthesis_job *request_context = rule_job(&synthesis, PG_CONTEXT_EXTEND, pg_binder(typing->graph), 2,
+			(struct pg_synthesis_job *[]){context, request_domain});
+		struct pg_synthesis_job *request_body = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){request_context, body});
+		struct pg_synthesis_job *request_continuation = pg_synthesis_lambda_body(&synthesis,
+			request_domain, request_context, request_body);
+		struct pg_synthesis_job *payload_value = rule_job(&synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &universe);
+		struct pg_synthesis_job *request_payload = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){context, payload_value});
+		struct pg_derivation_input request_input = {.rule = PG_REQUEST_INTRO, .count = 4,
+			.parameters.operation = request_op};
+		struct pg_synthesis_job *request_job = pg_synthesis_rule(&synthesis, &request_input,
+			(struct pg_synthesis_job *[]){signature_job, signature_job, request_payload, request_continuation}, NULL, NULL);
+		struct pg_synthesis_job *request_type = pg_synthesis_classifier_structure(&synthesis, request_job);
+		assert(!complete(&synthesis, request_type, PG_SYNTHESIS_DONE));
+		const struct pg_object *request_label = pg_operation_label(request_op);
+		const struct pg_effect_row *request_row = pg_effect_row(typing->graph, 1, &request_label);
+		const struct pg_term *request_effect, *request_result;
+		assert(pg_effect_type_spine_view(pg_synthesis_type_structure_result(request_type), &request_effect, &request_result));
+		assert(request_result == pg_universe(classifiers, 0));
+		assert(request_effect == pg_effect_join_term(typing->graph,
+			pg_effect_reference(typing->graph, request_row), row_parameter));
+		assert(!pg_synthesis_result(request_job) && !pg_synthesis_result(request_continuation));
+		struct pg_synthesis_job *invalid_request = pg_synthesis_rule(&synthesis, &request_input,
+			(struct pg_synthesis_job *[]){signature_job, signature_job, request_domain, request_continuation}, NULL, NULL);
+		struct pg_synthesis_job *invalid_request_type = pg_synthesis_classifier_structure(&synthesis, invalid_request);
+		assert(!complete(&synthesis, invalid_request_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(invalid_request_type) == pg_synthesis_type_structure_result(request_type));
+		assert(!pg_synthesis_result(invalid_request));
+		struct pg_effect_equation *request_target = pg_effect_equation(&effects, no_effects);
+		assert(!complete(&synthesis, pg_synthesis_row_contribution(&synthesis, &effects,
+			request_target, no_effects, request_effect), PG_SYNTHESIS_DONE));
+		assert(!pg_effect_inference_result(&effects, request_target));
 		const struct pg_object *result_binder = pg_binder(typing->graph);
 		struct pg_synthesis_job *result_context = pg_synthesis_result_context(&synthesis, context, body, result_binder);
 		assert(result_context == pg_synthesis_result_context(&synthesis, context, body, result_binder));
@@ -712,6 +751,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_effect_inference_result(&effects, collected) == row);
 		assert(pg_effect_inference_result(&effects, masked) == no_effects);
 		assert(pg_effect_inference_result(&effects, joined_target) == other_row);
+		const struct pg_effect_row *request_final_row = pg_effect_union(typing->graph, row, request_row);
+		assert(pg_effect_inference_result(&effects, request_target) == request_final_row);
+		const struct pg_evidence *request_proof = complete(&synthesis, request_job, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_classifier(request_proof) == pg_effect_type(classifiers, request_final_row,
+			pg_universe(classifiers, 0)));
+		assert(!complete(&synthesis, invalid_request, PG_SYNTHESIS_REJECTED));
 		assert(contribution == pg_synthesis_effect_contribution(&synthesis,
 			&effects, collected, no_effects, derived_carrier));
 		assert(!complete(&synthesis, contribution, PG_SYNTHESIS_DONE));

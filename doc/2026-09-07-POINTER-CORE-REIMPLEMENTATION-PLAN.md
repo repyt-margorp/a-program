@@ -945,6 +945,24 @@ finish general handler source support.
   Implementation C/header: +16/-2; tests: +48/-1;
   documentation separate.
 
+  September 9, after `dbec4ab`: request classifier structure now propagates
+  the operation's singleton effect joined with the continuation's effect row
+  before that row is solved. Request and sequencing use the same constant
+  continuation-codomain projection; no new Core tag or acceptance rule is added.
+  The projection is structural information, not evidence. A request with an
+  invalid payload may expose that structure but must still fail ordinary
+  REQUEST_INTRO checking after its premises become available.
+  Regressions exercise an unsealed row, a pending continuation/context, row
+  dependency collection, final union and invalid-payload rejection. They run
+  with scheduler chunks 1 and 64. Normal components, eight source checks and
+  six execution fixtures pass; the final negative regression also passes in
+  the rebuilt synthesis suite.
+  The rebuilt ASan/UBSan synthesis suite passes as well.
+  Implementation C: +27/-7; test C: +45/-0; documentation separate.
+  This is local request constraint propagation, not complete source operation
+  elaboration, handler dependency generation or descriptor checkpoint transport.
+  These and the existing open-family/IADT/higher gates remain required.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.
