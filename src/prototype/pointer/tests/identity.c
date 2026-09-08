@@ -1838,14 +1838,15 @@ static void action_scope_exchange(struct pg_classifiers *classifiers)
 }
 
 static void iterated_lambda_suspension(struct pg_graph *graph, struct pg_whnf_work *work,
-	const struct pg_term *id)
+	const struct pg_term *function, size_t binders, size_t selected)
 {
-	const struct pg_term *source = pg_identity_action(graph, pg_identity_action(graph, id));
+	const struct pg_term *source = pg_identity_action(graph, pg_identity_action(graph, function));
 	normalizes(work, source, source);
 	const struct pg_term *expected = NULL;
-	for (size_t i = 0; i < 9; ++i) {
-		expected = pg_reference(graph, pg_binder(graph));
-		source = pg_application(graph, source, expected);
+	for (size_t i = 0; i < 9 * binders; ++i) {
+		const struct pg_term *argument = pg_reference(graph, pg_binder(graph));
+		if (i == 9 * selected + 8) expected = argument;
+		source = pg_application(graph, source, argument);
 		if (i < 2) normalizes(work, source, source);
 	}
 	struct pg_eval whole;
@@ -1885,7 +1886,9 @@ static void lambda_actions(struct pg_classifiers *classifiers)
 	const struct pg_term *a = pg_reference(graph, pg_binder(graph));
 	const struct pg_term *b = pg_reference(graph, pg_binder(graph));
 	const struct pg_term *id = pg_lambda(graph, x, vx);
-	iterated_lambda_suspension(graph, &work, id);
+	iterated_lambda_suspension(graph, &work, id, 1, 0);
+	iterated_lambda_suspension(graph, &work, pg_lambda(graph, x, pg_lambda(graph, y, vx)), 2, 0);
+	iterated_lambda_suspension(graph, &work, pg_lambda(graph, x, pg_lambda(graph, y, vy)), 2, 1);
 	normalizes(&work, pg_identity_apply(graph, id, a, b, p), p);
 	normalizes(&work, pg_identity_apply(graph, id, a, b, q), q);
 	/* Reusing a binder pointer still selects its innermost complete triple. */

@@ -169,8 +169,9 @@ static void identity_instance_jobs(struct pg_typing *typing, struct pg_classifie
 	pg_whnf_work_destroy(&work);
 }
 
-static void cube_application_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers)
+static void cube_application_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers, size_t arity)
 {
+	unsigned budget = arity == 1 ? 10000000 : 50000000;
 	struct pg_dimensions dimensions;
 	assert(pg_dimensions_init(&dimensions, typing->graph) == 0);
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
@@ -182,6 +183,14 @@ static void cube_application_jobs(struct pg_typing *typing, struct pg_classifier
 	const struct pg_evidence *domain = pg_prove_projection(typing, source, a_type);
 	const struct pg_evidence *body_context = pg_prove_context_extension(typing, source, y, domain);
 	const struct pg_evidence *body = pg_prove_return(typing, classifiers, pg_prove_variable(typing, body_context, y));
+	if (arity == 2) {
+		const struct pg_object *z = pg_binder(typing->graph);
+		const struct pg_evidence *inner_domain = pg_prove_projection(typing, body_context, domain);
+		const struct pg_evidence *inner_context = pg_prove_context_extension(typing, body_context, z, inner_domain);
+		const struct pg_evidence *inner_body = pg_prove_projection(typing, inner_context, body);
+		body = pg_prove_lambda(typing, pg_prove_pi(typing, classifiers, inner_domain, inner_context,
+			pg_prove_classifier(typing, classifiers, inner_context, inner_body)), inner_body);
+	}
 	const struct pg_evidence *function = pg_prove_lambda(typing,
 		pg_prove_pi(typing, classifiers, domain, body_context,
 			pg_prove_classifier(typing, classifiers, body_context, body)), body);
@@ -203,24 +212,24 @@ static void cube_application_jobs(struct pg_typing *typing, struct pg_classifier
 			assert(pg_whnf_work_init(&work, typing->graph) == 0);
 			assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
 			struct pg_synthesis_job *applied = pg_synthesis_evidence(&synthesis, acted);
-			for (size_t i = 0; i < count; ++i)
-				applied = pg_synthesis_application(&synthesis, context, applied, pg_synthesis_evidence(&synthesis, arguments[i]));
+			for (size_t i = 0; i < count * arity; ++i)
+				applied = pg_synthesis_application(&synthesis, context, applied, pg_synthesis_evidence(&synthesis, arguments[i % count]));
 			assert(applied && !pg_synthesis_result(applied));
 			for (size_t steps = 0; pg_synthesis_status(applied) == PG_SYNTHESIS_PENDING; steps += chunk) {
-				assert(steps < 10000000);
+				assert(steps < budget);
 				pg_synthesis_advance(&synthesis, chunk);
 			}
 			assert(pg_synthesis_status(applied) == PG_SYNTHESIS_DONE);
 			const struct pg_evidence *exposed = complete_with_budget(&synthesis,
-				pg_synthesis_normalize_classifier(&synthesis, context, pg_synthesis_result(applied)), PG_SYNTHESIS_DONE, 10000000);
+				pg_synthesis_normalize_classifier(&synthesis, context, pg_synthesis_result(applied)), PG_SYNTHESIS_DONE, budget);
 			const struct pg_evidence *value = complete_with_budget(&synthesis,
-				pg_synthesis_return(&synthesis, context, exposed), PG_SYNTHESIS_DONE, 10000000);
-			value = complete_with_budget(&synthesis, pg_synthesis_normalize(&synthesis, context, value), PG_SYNTHESIS_DONE, 10000000);
+				pg_synthesis_return(&synthesis, context, exposed), PG_SYNTHESIS_DONE, budget);
+			value = complete_with_budget(&synthesis, pg_synthesis_normalize(&synthesis, context, value), PG_SYNTHESIS_DONE, budget);
 			value = complete_with_budget(&synthesis, pg_synthesis_expect(&synthesis, pg_synthesis_evidence(&synthesis, value),
 				pg_synthesis_evidence(&synthesis, pg_prove_classifier(typing, classifiers, context, arguments[count - 1]))),
-				PG_SYNTHESIS_DONE, 10000000);
+				PG_SYNTHESIS_DONE, budget);
 			same_judgement(value, arguments[count - 1]);
-			printf("cube lambda application: dimension %zu, chunk %zu, %llu steps\n", d, chunk,
+			printf("cube lambda application: arity %zu, dimension %zu, chunk %zu, %llu steps\n", arity, d, chunk,
 				(unsigned long long)synthesis.steps);
 			pg_synthesis_destroy(&synthesis);
 			pg_whnf_work_destroy(&work);
@@ -2917,7 +2926,8 @@ int main(void)
 	dependent_cube_substitution(&typing, &classifiers);
 	dependent_application_jobs(&typing, &classifiers);
 	identity_instance_jobs(&typing, &classifiers);
-	cube_application_jobs(&typing, &classifiers);
+	cube_application_jobs(&typing, &classifiers, 1);
+	cube_application_jobs(&typing, &classifiers, 2);
 	shared_conversion_jobs(&typing, &classifiers);
 	library_levels(&typing, &classifiers);
 	named_identity(&typing, &classifiers);

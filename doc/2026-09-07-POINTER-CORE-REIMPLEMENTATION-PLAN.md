@@ -82,6 +82,24 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Correct the first-binder-only limitation of `639214a`. A curried
+  `lambda x. lambda y. RETURN(x)` still remained neutral in dimensions two
+  and three after all arguments were supplied. Scan all leading Lambdas of
+  the retained Act source and expose one complete boundary cube per binder,
+  using the same suspended scope worker and checked size multiplication.
+  Do not infer a function from a bare APP argument count.
+  Twice-acted first/second projections now pass every suspension point,
+  retained resumption and readback/recomputation with distinct arguments.
+  Typed dependent cube applications test one and two curried arguments in
+  dimensions one through three. The two-argument totals are
+  7,256 / 395,551 / 27,721,123 transitions for both scheduling chunks;
+  its separate test ceiling is fifty million. Unary totals become
+  2,339 / 94,825 / 6,185,924 from the additional binder traversal.
+  This repairs Act application, not the still-missing typed symmetry rule.
+  The large cubic cost remains an explicit performance obligation.
+  Complete pointer `make check` and ASan/UBSan `identity_test` and
+  `synthesis_test` passed; the existing higher-function maximum is now
+  255,053 comparison transitions (previously 255,049).
 - [x] Remove aligned-pointer bucket clustering in the shared index. Profiling
   `synthesis_test` at `639214a` with `-O2 -pg` attributed 72.85% of sampled
   self time to Term `intern` (2,377,343 calls). The old modulo selection used

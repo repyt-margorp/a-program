@@ -702,8 +702,8 @@ struct higher_scope_work {
 	struct pg_graph *graph, *arena;
 	const struct pg_term *source, *cursor, *body;
 	const struct pg_object **binders;
-	size_t arity, position;
-	int wrapping;
+	size_t arity, position, lambda_count;
+	int wrapping, collecting;
 };
 
 static int higher_scope_poll(void *opaque)
@@ -711,13 +711,22 @@ static int higher_scope_poll(void *opaque)
 	struct higher_scope_work *work = opaque;
 	if (!work->body) {
 		const struct pg_term *inner;
-		if (pg_identity_action_view(work->cursor, &inner)) {
+		if (!work->collecting && pg_identity_action_view(work->cursor, &inner)) {
 			if (work->arity > SIZE_MAX / 3) return -1;
 			work->arity *= 3;
 			work->cursor = inner;
 			return 0;
 		}
-		if (work->cursor->kind != PG_LAMBDA) return 1;
+		work->collecting = 1;
+		if (work->cursor->kind == PG_LAMBDA) {
+			if (work->lambda_count == SIZE_MAX) return -1;
+			++work->lambda_count;
+			work->cursor = work->cursor->as.lambda.body;
+			return 0;
+		}
+		if (!work->lambda_count) return 1;
+		if (work->arity > SIZE_MAX / work->lambda_count) return -1;
+		work->arity *= work->lambda_count;
 		if (work->arity > SIZE_MAX / sizeof(*work->binders)) return -1;
 		work->binders = pg_alloc(work->arena, work->arity * sizeof(*work->binders));
 		if (!work->binders) return -1;
