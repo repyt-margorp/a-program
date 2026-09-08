@@ -50,9 +50,10 @@ int pg_dag_add(struct pg_dag *dag, const void *root)
 		r->active = 1;
 		const void *key = NULL;
 		int status = dag->child ? dag->child(dag->context, r->node.key, r->cursor, &key) : 0;
-		if (status == 1) {
+		if (status == 1 || status == 2) {
 			if (r->cursor == SIZE_MAX) goto fail;
 			++r->cursor;
+			if (status == 2) continue;
 			struct record *child = record(dag, key);
 			if (!child || child->active) goto fail;
 			if (child->node.id) continue;

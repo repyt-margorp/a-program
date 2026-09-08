@@ -5,7 +5,8 @@
 
 /* Temporary pointer-keyed dependency order, not semantic interning. Children
  * are enumerated in order: callback returns 1 and a non-NULL child, 0 for end,
- * or -1 for error. NULL callback means leaf. Input objects remain immutable. */
+ * 2 for an absent optional slot, or -1 for error. NULL callback means leaf.
+ * Input objects remain immutable. Sparse slots advance without a child lookup. */
 struct pg_dag_node {
 	struct pg_index_entry index;
 	const void *key;

@@ -7363,6 +7363,30 @@ Normal pointer checks and the changed synthesis test under ASan/UBSan pass.
 
 ## 8. Program Image and Persistence
 
+September 9 continuation after `1852c9a`: `syntax_io.c` transports unresolved
+`pg_syntax` DAGs without reparsing source, constructing Core or running Solve.
+All node kinds use the same fields and ordered item arrays; shared pointers,
+token bytes, integer payloads and diagnostic locations survive relocation.
+The existing dependency collector now supports explicit absent optional slots,
+so left/right and item edges are visited once without rescanning item prefixes.
+The wire format is `APGSYN` version 1, a component rather than a final `.a` file.
+
+- [x] Preserve source-node sharing without alpha/conversion interning.
+- [x] Round-trip all node-kind payloads, embedded NUL text and signed integers.
+- [x] Feed a restored parsed definition block to the existing synthesis API.
+- [x] Reject truncated prefixes without publishing outputs; detect cycles and
+  transport a 40,000-level shared DAG with iterative traversal.
+- [ ] Validate complete grammar shape before admitting arbitrary external
+  syntax as a program; field decoding alone is not syntactic/type acceptance.
+- [ ] Attach module names/scopes and retained producers through one program
+  image, then integrate RECOMPUTE/CHECKPOINT policies and CLI resumption.
+
+This does not replace `seed.c` yet and does not serialize live solver state.
+Synthetic all-kind payload fixtures test structural transport only; only the
+separately parsed definition block is submitted to Solve.
+Normal `check`, `check-examples`, `check-example-results` and the rebuilt
+ASan/UBSan syntax-image test pass. N5 and the full reimplementation remain open.
+
 In-memory entry after `3fd0b99`: `program.c` owns the existing graph, typing,
 classifiers, evaluation store, synthesis store and copied source. Creation uses
 the existing program parser and creates an unresolved root without advancing
