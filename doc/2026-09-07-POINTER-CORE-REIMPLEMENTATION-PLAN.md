@@ -1046,6 +1046,21 @@ finish general handler source support.
   208 steps, so full acceptance and the Main push remain unfulfilled.
   Implementation C: +51/-0; tests: +22/-0; documentation separate.
 
+  September 9, after `8bfbfaa`: inferred source handlers now retain clause
+  producers rather than snapshots of accepted clause proofs. The ordinary
+  handler rule receives those jobs directly; carrier, return and clause proof
+  waits are handled by its premise dependencies. Source preparation exposes
+  that rule before acceptance. Clause jobs still validate their operation aliases,
+  so seeing a nominal descriptor early cannot bypass a failing alias check.
+  Unresolved-context fixtures obtain the Core of one- and two-operation surface
+  handlers, then check exact Core reuse after acceptance at chunks 1/64.
+  Explicit supplied-carrier requests still use the existing accepted-carrier
+  canonical entry. Descriptor transport and the open-family/full-source gates
+  remain open; this is not completion of N0-N7.
+  Normal components, eight source checks, six execution fixtures and rebuilt
+  ASan/UBSan synthesis pass, including existing invalid operation-alias cases.
+  Implementation C: +18/-16; tests: +14/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 208 transitions; this does not establish full source acceptance.

@@ -97,6 +97,10 @@ struct family_state {
 	const struct pg_evidence **paths;
 	size_t count, common, next;
 };
+struct source_handler_clause {
+	const struct pg_operation_declaration *operation;
+	struct pg_synthesis_job *body;
+};
 struct handler_state {
 	size_t scanned, next, count;
 	struct pg_effect_inference effects;
@@ -111,7 +115,7 @@ struct handler_state {
 	size_t registering;
 	int registered;
 	enum pg_synthesis_status failure;
-	struct pg_handler_clause clauses[];
+	struct source_handler_clause clauses[];
 };
 struct derivation_state {
 	size_t next;
@@ -2750,7 +2754,7 @@ static struct pg_synthesis_job *plain_rule(struct pg_synthesis *synthesis,
 
 static struct pg_synthesis_job *handler_rule(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *body, struct pg_synthesis_job *returned,
-	struct pg_synthesis_job *carrier, size_t count, const struct pg_handler_clause *clauses)
+	struct pg_synthesis_job *carrier, size_t count, const struct source_handler_clause *clauses)
 {
 	body = request_job(synthesis, BODY_JOB, body, NULL);
 	if (!count) {
@@ -2770,7 +2774,7 @@ static struct pg_synthesis_job *handler_rule(struct pg_synthesis *synthesis,
 		operations[i] = clauses[i].operation;
 		premises[3 + 3 * i] = pg_synthesis_evidence(synthesis, pg_operation_payload_type(operations[i]));
 		premises[4 + 3 * i] = pg_synthesis_evidence(synthesis, pg_operation_response_type(operations[i]));
-		premises[5 + 3 * i] = pg_synthesis_evidence(synthesis, clauses[i].body);
+		premises[5 + 3 * i] = clauses[i].body;
 	}
 	struct pg_derivation_input input = {.rule = PG_HANDLER_ELIM, .count = 3 + 3 * count,
 		.parameters.handler = pg_handler_signature(synthesis->typing->graph, count, operations)};
@@ -2901,10 +2905,10 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 	}
 	size_t count = job->syntax->item_count;
 	if (!job->handler) {
-		if (count > (SIZE_MAX - sizeof(*job->handler)) / sizeof(struct pg_handler_clause)) {
+		if (count > (SIZE_MAX - sizeof(*job->handler)) / sizeof(struct source_handler_clause)) {
 			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 		}
-		job->handler = pg_alloc(synthesis->typing->graph, sizeof(*job->handler) + count * sizeof(struct pg_handler_clause));
+		job->handler = pg_alloc(synthesis->typing->graph, sizeof(*job->handler) + count * sizeof(struct source_handler_clause));
 		if (!job->handler) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		job->handler->scope = job->scope;
 		if (!carrier) {
@@ -3002,8 +3006,6 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 				if (!pg_synthesis_effect_inference(synthesis, &owner->effects)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			}
 		}
-		if (carrier->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, carrier); return; }
-		if (carrier->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, carrier->status); return; }
 	}
 	if (state->next < count) {
 		const struct pg_syntax *clause = job->syntax->items[state->next].expression;
@@ -3011,20 +3013,19 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 			struct pg_synthesis_job *operation = pg_synthesis_operation_reference(synthesis,
 				pg_synthesis_request(synthesis, scope, clause->left));
 			struct pg_synthesis_job *body = pg_synthesis_handler_clause(synthesis, scope, carrier, clause);
-			struct pg_synthesis_job *inputs[] = {operation, body};
-			for (size_t i = 0; i < 2; ++i) {
-				if (!inputs[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-				if (inputs[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, inputs[i]); return; }
-				if (inputs[i]->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, inputs[i]->status); return; }
+			if (!operation || !body) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			const struct pg_operation_declaration *declaration = pg_synthesis_operation_declaration(operation);
+			if (!declaration) {
+				if (operation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, operation); return; }
+				finish(synthesis, job, operation->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : operation->status);
+				return;
 			}
-			state->clauses[state->count++] = (struct pg_handler_clause){pg_synthesis_operation_declaration(operation), body->result};
+			state->clauses[state->count++] = (struct source_handler_clause){declaration, body};
 		}
 		++state->next;
 		enqueue(synthesis, job);
 		return;
 	}
-	if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
-	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
 	if (!job->value_job) job->value_job = handler_rule(synthesis, job->left, job->right,
 		carrier, state->count, state->clauses);
 	forward_proof(synthesis, job, job->value_job);
@@ -3724,6 +3725,7 @@ static void forward_structure(struct pg_synthesis *synthesis, struct pg_synthesi
 static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_job *job)
 {
 	if (job->role == OPERATION_JOB) return job->left;
+	if (job->role == HANDLER_JOB) return job->value_job;
 	if (job->role == HANDLER_RETURN_JOB || job->role == HANDLER_CLAUSE_JOB) return job->value_job;
 	if (job->role == SEQUENCE_JOB) return job->value_job ? job->value_job : job->right;
 	if (job->role != EXPRESSION_JOB) return NULL;
@@ -3753,7 +3755,7 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 	case SEQUENCE_JOB:
 		preparing = !producer->value_job && !producer->right && source_value_kind(producer->inputs[1]) >= 0;
 		break;
-	case HANDLER_RETURN_JOB: case HANDLER_CLAUSE_JOB:
+	case HANDLER_RETURN_JOB: case HANDLER_CLAUSE_JOB: case HANDLER_JOB:
 		preparing = !producer->value_job;
 		break;
 	case EXPRESSION_JOB:

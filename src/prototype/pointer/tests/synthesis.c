@@ -693,6 +693,17 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			"h := (@) @Op req resume => resume req @#.return x => x;");
 		struct pg_synthesis_job *open_handler_type = pg_synthesis_classifier_structure(&synthesis, open_handler);
 		assert(!complete(&synthesis, open_handler_type, PG_SYNTHESIS_DONE));
+		struct pg_synthesis_job *open_handler_term = pg_synthesis_term_structure(&synthesis, open_handler);
+		assert(!complete(&synthesis, open_handler_term, PG_SYNTHESIS_DONE));
+		assert(!pg_synthesis_result(open_handler));
+		const struct pg_source_scope *multiple_scope = pg_synthesis_name_job(&synthesis, pending_op_scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Op2", .length = 3},
+			pg_synthesis_operation(&synthesis, second_pending_op));
+		struct pg_synthesis_job *multiple_source = request(&synthesis, multiple_scope,
+			"h := (@) @Op req resume => resume req @Op2 req resume => resume req @#.return x => x;");
+		struct pg_synthesis_job *multiple_source_term = pg_synthesis_term_structure(&synthesis, multiple_source);
+		assert(!complete(&synthesis, multiple_source_term, PG_SYNTHESIS_DONE));
+		assert(!pg_synthesis_result(multiple_source));
 		const struct pg_term *handler_row, *handler_value;
 		assert(pg_effect_type_spine_view(pg_synthesis_type_structure_result(open_handler_type), &handler_row, &handler_value));
 		assert(handler_value == pg_universe(classifiers, 1));
@@ -839,6 +850,9 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
 		const struct pg_evidence *open_handler_proof = complete(&synthesis, open_handler, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(open_handler_proof)->core == pg_synthesis_type_structure_result(open_handler_term));
+		assert(pg_evidence_subject(complete(&synthesis, multiple_source, PG_SYNTHESIS_DONE))->core
+			== pg_synthesis_type_structure_result(multiple_source_term));
 		const struct pg_evidence *raw_handler_proof = complete(&synthesis, raw_handler, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(raw_handler_proof)->core == pg_synthesis_type_structure_result(raw_handler_term));
 		assert(pg_evidence_subject(complete(&synthesis, multiple_handler, PG_SYNTHESIS_DONE))->core
