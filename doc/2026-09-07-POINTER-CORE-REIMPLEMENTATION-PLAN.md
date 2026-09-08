@@ -24,6 +24,21 @@ baseline. `check-acceptance` combines this gate with the component suite.
 It is a necessary gate, not sufficient evidence for execution, effects, IF8,
 higher coherence or full `.a` support.
 
+`check-example-results` now executes the six unchanged examples with `main`
+(03, 04, 05, 06, 07, 09) through their accepted evidence and the common pure
+NF jobs. It checks Bool.true, Bool.true, Nat 1, Nat 0, Nat 5 and Nat 3
+respectively. Each file is solved/executed with chunks of one and 10,000
+transitions. Expected constructors are resolved in the source declaration and
+applied with checked APP/RETURN operations; constructor ordinals, host integers
+and unrelated nominal types are not substituted for the result. This gate is
+part of `check-acceptance`, independently of the typechecking-only gate.
+01/02 have no main and remain library/typechecking fixtures. This is pure
+execution coverage, not a completed host-effect CLI or `.a` execution path.
+Verification after `c3c5317`: all six result fixtures passed in optimized and
+ASan/UBSan builds, with both budgets. Full `check-acceptance` passed components,
+01--09 typechecking and these result checks before failing open-family. Delta:
+test code +90/-1, prototype Makefile +10/-2; no kernel/runtime change.
+
 After restoring computational references to implicitly quoted definitions,
 the existing 01--09 source gate is **8/8**. This checks typing, not execution
 results. Full `check-acceptance` still fails the open-family fixture

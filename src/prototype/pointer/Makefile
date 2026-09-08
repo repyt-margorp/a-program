@@ -4,14 +4,22 @@ ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)evidence.c $(ROOT)derivation.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c
 
-.PHONY: check check-examples check-open-families check-acceptance
+.PHONY: check check-examples check-example-results check-open-families check-acceptance
 check-examples: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 
 check-open-families: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(ROOT)tests/acceptance/open-family.p
 
-check-acceptance: check check-examples check-open-families
+check-example-results: $(BUILD)/program_test
+	$(BUILD)/program_test $(ROOT)../../../examples/03_main.p Bool true true 0
+	$(BUILD)/program_test $(ROOT)../../../examples/04_match.p Bool true true 0
+	$(BUILD)/program_test $(ROOT)../../../examples/05_bool_to_nat.p Nat zero succ 1
+	$(BUILD)/program_test $(ROOT)../../../examples/06_pred.p Nat zero succ 0
+	$(BUILD)/program_test $(ROOT)../../../examples/07_add.p Nat zero succ 5
+	$(BUILD)/program_test $(ROOT)../../../examples/09_list_induction.p Nat zero succ 3
+
+check-acceptance: check check-examples check-example-results check-open-families
 
 check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test $(BUILD)/occurrence_io_test $(BUILD)/derivation_io_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test $(BUILD)/program_test $(BUILD)/seed_test $(BUILD)/pointer-check
 	$(BUILD)/core_test
