@@ -100,6 +100,7 @@ struct pg_synthesis_job {
 	struct pg_synthesis_job *right;
 	const struct pg_source_scope *inner;
 	const struct pg_evidence *domain;
+	const struct pg_object *binder;
 	const struct pg_evidence *result;
 	const struct pg_evidence *checking_term;
 	const struct pg_evidence *checking_type;
@@ -242,6 +243,10 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 	job->role = role;
 	job->input_count = count;
 	for (size_t i = 0; i < count; ++i) job->inputs[i] = inputs[i];
+	if (role == BINDING_JOB) {
+		job->binder = pg_binder(synthesis->typing->graph);
+		if (!job->binder) return NULL;
+	}
 	if (pg_index_insert(&synthesis->jobs, &job->index, hash) != 0) return NULL;
 	if (role == EVIDENCE_JOB) {
 		job->result = inputs[0];
@@ -278,6 +283,18 @@ struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
 {
 	return request_role(synthesis, scope, syntax, TELESCOPE_JOB);
+}
+
+struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
+{
+	if (!syntax || (syntax->kind != PG_SYNTAX_LAMBDA && syntax->kind != PG_SYNTAX_PI)) return NULL;
+	return request_role(synthesis, scope, syntax, BINDING_JOB);
+}
+
+const struct pg_object *pg_synthesis_binding_binder(const struct pg_synthesis_job *job)
+{
+	return job && job->role == BINDING_JOB ? job->binder : NULL;
 }
 
 const struct pg_source_scope *pg_synthesis_telescope_scope(const struct pg_synthesis_job *job)
@@ -819,9 +836,8 @@ static void binding_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 		name = syntax->left->token;
 		if (syntax->left->kind != PG_SYNTAX_BINDER) name = (struct pg_token){0};
 	}
-	const struct pg_object *binder = pg_binder(synthesis->typing->graph);
-	job->result = pg_prove_context_extension(synthesis->typing, job->scope->context, binder, job->domain);
-	job->inner = pg_synthesis_bind(synthesis, job->scope, name, binder, job->result);
+	job->result = pg_prove_context_extension(synthesis->typing, job->scope->context, job->binder, job->domain);
+	job->inner = pg_synthesis_bind(synthesis, job->scope, name, job->binder, job->result);
 	finish(synthesis, job, job->inner ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
@@ -840,7 +856,7 @@ static void telescope_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		finish(synthesis, job, PG_SYNTHESIS_DONE);
 		return;
 	}
-	job->left = request_role(synthesis, job->inner, job->tail, BINDING_JOB);
+	job->left = pg_synthesis_binding(synthesis, job->inner, job->tail);
 	depend(synthesis, job, job->left);
 }
 
@@ -2125,7 +2141,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	if ((syntax->kind == PG_SYNTAX_LAMBDA || syntax->kind == PG_SYNTAX_PI) && job->stage < 2) {
 		if (!job->left) {
-			job->left = request_role(synthesis, job->scope, syntax, BINDING_JOB);
+			job->left = pg_synthesis_binding(synthesis, job->scope, syntax);
 			depend(synthesis, job, job->left);
 			return;
 		}

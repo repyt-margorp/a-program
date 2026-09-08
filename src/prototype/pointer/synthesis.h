@@ -37,6 +37,13 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_object *binder, const struct pg_evidence *extended_context);
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Reserve the lexical binder before solving its Lambda/Pi domain. Requests
+ * share by exact source scope and syntax, and create no context/evidence.
+ * Completion yields context-extension evidence; reservation alone never does. */
+struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Stable even while pending or rejected; not proof that the binder is typed. */
+const struct pg_object *pg_synthesis_binding_binder(const struct pg_synthesis_job *job);
 /* Open the maximal leading Lambda or Pi telescope (not both mixed), using
  * the same domain synthesis and binding jobs as ordinary expressions. Other
  * heads give an empty telescope. Only domains are synthesized: the remaining

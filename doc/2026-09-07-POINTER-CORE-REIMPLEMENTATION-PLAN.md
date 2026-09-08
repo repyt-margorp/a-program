@@ -255,6 +255,21 @@ Likewise nonrecursive closed declarations still need a formation rule, but do
 not require a hypothetical Self assumption. The implementation must not invent
 either dependency solely to force all cases through a special-case workaround.
 
+First source-structure change after `3b2b3f3`: binding-job creation now reserves
+its binder pointer, before the domain is solved. `pg_synthesis_binding` and
+`pg_synthesis_binding_binder` expose that existing shared job/identity, and
+ordinary Lambda/Pi synthesis and telescope opening use the same request.
+`binding_step` no longer allocates a new binder after checking the domain.
+Requests create no context or evidence and perform no Solve transitions.
+Pending and rejected domains retain their reserved pointer without yielding
+an accepted variable; successful context extension uses exactly that pointer.
+Tests exercise both expression/telescope request orders, cycles, rejection and
+repeated requests. The parent source scope still requires accepted context
+evidence: reservation is the first separation of lexical identity from proof,
+not completion of provisional Self formation, universe solving or admission.
+Component `make check` and the ASan/UBSan synthesis suite passed. No source
+acceptance gate is marked complete by this change.
+
 - A scoped family signature supplies its fixed parameter context and index
   telescope. Instantiating that signature consumes checked index images and
   forms a type symbolically. It is not APP elimination of a `Comp Universe`
