@@ -1174,6 +1174,19 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *both_handled = pg_prove_handler(typing, classifiers,
 		both, returned_clause, carrier, 2, both_clauses);
 	assert(both_handled);
+	struct pg_derivation_input handler_rule_input = {.rule = PG_HANDLER_ELIM, .count = 9};
+	assert(!pg_derivation_parameters(both_handled, &handler_rule_input.parameters));
+	struct pg_synthesis_job *handler_premises[9];
+	for (size_t i = 0; i < 9; ++i)
+		handler_premises[i] = pg_synthesis_evidence(&synthesis, pg_evidence_premise(both_handled, i));
+	struct pg_synthesis_job *handler_rule_job = pg_synthesis_rule(&synthesis, &handler_rule_input, handler_premises, NULL, NULL);
+	assert(handler_rule_job == pg_synthesis_rule(&synthesis, &handler_rule_input, handler_premises, NULL, NULL));
+	assert(complete(&synthesis, handler_rule_job, PG_SYNTHESIS_DONE) == both_handled);
+	handler_rule_input.parameters.handler = pg_handler_signature(typing->graph, 2,
+		(const struct pg_operation_declaration *[]){operation, fetch});
+	struct pg_synthesis_job *wrong_handler = pg_synthesis_rule(&synthesis, &handler_rule_input, handler_premises, NULL, NULL);
+	assert(wrong_handler != handler_rule_job);
+	assert(!complete(&synthesis, wrong_handler, PG_SYNTHESIS_REJECTED));
 	const struct pg_evidence *both_value = pg_prove_return_value(typing,
 		normalize(&synthesis, context, both_handled));
 	assert(both_value && pg_evidence_subject(both_value)->core == pg_evidence_subject(u0)->core);

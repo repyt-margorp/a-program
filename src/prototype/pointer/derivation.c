@@ -27,7 +27,8 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 	}
 	/* Nominal schema descriptors are not transported by this codec yet. */
 	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: return -1;
-	case PG_HANDLER_ELIM: return -1;
+	case PG_HANDLER_ELIM:
+		result.handler = pg_evidence_handler_signature(evidence); break;
 	case PG_REQUEST_INTRO:
 		result.operation = pg_evidence_request_declaration(evidence); break;
 	case PG_CONTEXT_EXTEND:
@@ -100,6 +101,19 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_PI_CONSTANT_CODOMAIN, 1, pg_prove_pi_constant_codomain(typing, p[0]));
 	RULE(PG_FOLD_ELIM, 2, pg_prove_fold(typing, classifiers, p[0], p[1]));
 	RULE(PG_REQUEST_INTRO, 4, pg_prove_request(typing, classifiers, parameters->operation, p[2], p[3]));
+	case PG_HANDLER_ELIM: {
+		size_t clauses = pg_handler_signature_count(parameters->handler);
+		if (!clauses || clauses > (SIZE_MAX - 3) / 3 || count != 3 + 3 * clauses) return NULL;
+		if (clauses > SIZE_MAX / sizeof(struct pg_handler_clause)) return NULL;
+		struct pg_graph temporary = {0};
+		struct pg_handler_clause *bodies = pg_alloc(&temporary, clauses * sizeof(*bodies));
+		if (!bodies) { pg_graph_destroy(&temporary); return NULL; }
+		for (size_t i = 0; i < clauses; ++i)
+			bodies[i] = (struct pg_handler_clause){pg_handler_signature_operation(parameters->handler, i), p[5 + 3 * i]};
+		result = pg_prove_handler(typing, classifiers, p[0], p[1], p[2], clauses, bodies);
+		pg_graph_destroy(&temporary);
+		break;
+	}
 	RULE(PG_EFFECT_SUBSUMPTION, 2, pg_prove_effect_subsumption(typing, p[0], p[1]));
 	RULE(PG_IDENTITY_FORM, 3, pg_prove_identity_type(typing, p[0], p[1], p[2]));
 	RULE(PG_IDENTITY_INSTANCE, 3, pg_prove_identity_instance(typing, classifiers, p[0], p[1], p[2]));
@@ -135,7 +149,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	switch (rule) {
 	case PG_IDENTITY_TRANSPORT: case PG_REFLEXIVITY:
 	case PG_IDENTITY_LIFT: case PG_FAMILY_ACTION:
-	case PG_REQUEST_INTRO:
+	case PG_REQUEST_INTRO: case PG_HANDLER_ELIM:
 		return retained_premises(result, rule, count, p);
 	default: return result;
 	}

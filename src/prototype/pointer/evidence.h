@@ -45,6 +45,14 @@ struct pg_handler_clause {
 	const struct pg_operation_declaration *operation;
 	const struct pg_evidence *body;
 };
+/* Ordered nominal declarations only; bodies remain ordinary proof premises. */
+struct pg_handler_signature;
+const struct pg_handler_signature *pg_handler_signature(struct pg_graph *graph,
+	size_t count, const struct pg_operation_declaration *const *operations);
+size_t pg_handler_signature_count(const struct pg_handler_signature *signature);
+const struct pg_operation_declaration *pg_handler_signature_operation(
+	const struct pg_handler_signature *signature, size_t index);
+const struct pg_handler_signature *pg_evidence_handler_signature(const struct pg_evidence *evidence);
 /* Extend the carrier's context by payload:A and resume:U(Pi(B,carrier)).
  * Only binder types are supplied; a clause body must still synthesize its
  * own classifier and pass pg_prove_handler. No handler term is accepted here. */

@@ -4,6 +4,7 @@
 #include "identity.h"
 #include "iadt.h"
 #include <stdlib.h>
+#include <string.h>
 
 struct pg_evidence {
 	struct pg_index_entry index;
@@ -24,6 +25,53 @@ struct pg_operation_declaration {
 };
 
 static const struct pg_object_class operation_label_class = {"operation-label"};
+static const struct pg_object_class handler_signature_class = {"handler-signature"};
+struct pg_handler_signature {
+	struct pg_object_entry base;
+	size_t count;
+	const struct pg_operation_declaration *operations[];
+};
+
+const struct pg_handler_signature *pg_handler_signature(struct pg_graph *graph,
+	size_t count, const struct pg_operation_declaration *const *operations)
+{
+	if (!graph || !count || !operations) return NULL;
+	if (count > (SIZE_MAX - sizeof(struct pg_handler_signature)) / sizeof(*operations)) return NULL;
+	if (!graph->objects.capacity && pg_index_init(&graph->objects)) return NULL;
+	uint64_t hash = UINT64_C(1469598103934665603) ^ count;
+	for (size_t i = 0; i < count; ++i) {
+		if (!operations[i]) return NULL;
+		hash = (hash ^ (uintptr_t)operations[i]) * UINT64_C(1099511628211);
+	}
+	for (struct pg_index_entry *p = pg_index_candidates(&graph->objects, hash); p; p = p->next) {
+		const struct pg_object_entry *base = (const struct pg_object_entry *)p;
+		if (base->object.owner != &handler_signature_class) continue;
+		const struct pg_handler_signature *signature = (const void *)base;
+		if (signature->count == count && !memcmp(signature->operations, operations, count * sizeof(*operations))) return signature;
+	}
+	struct pg_handler_signature *signature = pg_alloc(graph, sizeof(*signature) + count * sizeof(*operations));
+	if (!signature) return NULL;
+	signature->base.object = (struct pg_object){PG_SEMANTIC_OBJECT, &handler_signature_class};
+	signature->count = count;
+	memcpy(signature->operations, operations, count * sizeof(*operations));
+	return pg_index_insert(&graph->objects, &signature->base.index, hash) ? NULL : signature;
+}
+
+size_t pg_handler_signature_count(const struct pg_handler_signature *signature)
+{
+	return signature ? signature->count : 0;
+}
+
+const struct pg_operation_declaration *pg_handler_signature_operation(
+	const struct pg_handler_signature *signature, size_t index)
+{
+	return signature && index < signature->count ? signature->operations[index] : NULL;
+}
+
+const struct pg_handler_signature *pg_evidence_handler_signature(const struct pg_evidence *evidence)
+{
+	return evidence && evidence->rule == PG_HANDLER_ELIM ? evidence->certificate : NULL;
+}
 
 static int derived_output(enum pg_evidence_rule rule)
 {
@@ -2004,9 +2052,10 @@ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_c
 	const struct pg_evidence **premises = pg_alloc(&temporary, n * sizeof(*premises));
 	const struct pg_object **labels = pg_alloc(&temporary, count * sizeof(*labels));
 	struct pg_operation_clause *raw = pg_alloc(&temporary, count * sizeof(*raw));
+	const struct pg_operation_declaration **operations = pg_alloc(&temporary, count * sizeof(*operations));
 	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 2) * sizeof(*operands));
 	const struct pg_evidence *result = NULL;
-	if (!premises || !labels || !raw || !operands) goto done;
+	if (!premises || !labels || !raw || !operands || !operations) goto done;
 	premises[0] = computation; premises[1] = returned; premises[2] = carrier;
 	operands[0] = computation->subject; operands[1] = returned->subject;
 	for (size_t i = 0; i < count; ++i) {
@@ -2018,6 +2067,7 @@ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_c
 		if (body->judgement != PG_JUDGEMENT_COMPUTATION || body->context != computation->context) goto done;
 		if (!handler_clause_type(body->classifier, operation, carrier->subject->core)) goto done;
 		labels[i] = pg_operation_label(operation);
+		operations[i] = operation;
 		raw[i] = (struct pg_operation_clause){labels[i], body->subject->core};
 		operands[i + 2] = body->subject;
 		premises[3 + 3 * i] = operation->payload_type;
@@ -2032,8 +2082,10 @@ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_c
 	if (!core) goto done;
 	const struct pg_occurrence *subject = pg_occurrence(typing, computation->context, core, NULL, count + 2, operands);
 	if (!subject) goto done;
-	result = accept(typing, PG_HANDLER_ELIM, PG_JUDGEMENT_COMPUTATION,
-		computation->context, subject, carrier->subject->core, n, premises);
+	const struct pg_handler_signature *signature = pg_handler_signature(typing->graph, count, operations);
+	if (!signature) goto done;
+	result = accept_record(typing, PG_HANDLER_ELIM, PG_JUDGEMENT_COMPUTATION,
+		computation->context, subject, carrier->subject->core, n, premises, signature, 0, NULL);
 done:
 	pg_graph_destroy(&temporary);
 	return result;

@@ -21,11 +21,10 @@ Historical audit against `9777de9`; the sites below describe that revision,
 not the current implementation. By `44307c5`, clause contexts and ordinary
 operation functions use pending derivation jobs. Source handlers collect
 masked input, return and clause effect dependencies before sealing their row.
-The unfinished integration is no longer the absence of clause-context jobs:
-handler acceptance still calls `pg_prove_handler` directly, and the common
-derivation input does not retain the ordered operation declarations needed
-to reconstruct its clauses. General pending inference and descriptor transport
-must still pass the full source/image gates. The original cycle was:
+The unfinished integration is no longer the absence of clause-context jobs.
+Current handler acceptance uses the common derivation dispatcher with an
+interned ordered declaration signature. General pending inference and descriptor
+transport must still pass the full source/image gates. The original cycle was:
 
 ```
 accepted resumption context requires closed G
@@ -1004,6 +1003,22 @@ finish general handler source support.
   Handler common-rule dispatch still requires an ordered declaration descriptor
   representation and exact signature-premise checks; reconstructing declarations
   from equal payload/response types would incorrectly merge nominal operations.
+
+  September 9, after `5dddede`: handler evidence retains an immutable ordered
+  operation signature, interned by declaration pointers in the existing graph
+  object index. Bodies remain ordinary premises. Common derivation dispatch
+  reconstructs the handler through `pg_prove_handler` and checks all retained
+  signature/body premises exactly. The shared Solve key includes this signature.
+  Source handlers now submit that ordinary rule job; zero-clause handlers use
+  Fold plus effect subsumption. No new Core term tag or effect execution is added.
+  Tests cover declaration order, repeated reuse, identical-signature distinct
+  operations, wrong arity/premise rejection, and source multi-clause handlers.
+  The derivation writer explicitly refuses handler descriptors until relocation
+  is implemented; local parameter extraction is not checkpoint support.
+  Normal components, eight source checks, six execution fixtures and rebuilt
+  ASan/UBSan Core and synthesis tests pass. The derivation-image regression
+  also passes, including refusal of a pure-input handler with no request premise.
+  Implementation C/header: +118/-9; tests: +43/-1; documentation separate.
 
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains

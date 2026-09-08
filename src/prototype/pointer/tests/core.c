@@ -2912,6 +2912,22 @@ static void request_typing_test(struct pg_graph *graph)
 	assert(pg_evidence_classifier(handled) == pg_evidence_subject(carrier)->core);
 	assert(pg_prove_classifier(&typing, &classifiers, empty, handled) == carrier);
 	assert(pg_prove_handler(&typing, &classifiers, two, k, carrier, 2, clauses) == handled);
+	const struct pg_handler_signature *signature = pg_evidence_handler_signature(handled);
+	assert(signature && pg_handler_signature_count(signature) == 2);
+	assert(pg_handler_signature_operation(signature, 0) == op);
+	assert(pg_handler_signature_operation(signature, 1) == other);
+	assert(!pg_handler_signature_operation(signature, 2));
+	assert(signature == pg_handler_signature(graph, 2,
+		(const struct pg_operation_declaration *[]){op, other}));
+	struct pg_derivation_parameters handler_parameters;
+	assert(!pg_derivation_parameters(handled, &handler_parameters) && handler_parameters.handler == signature);
+	const struct pg_evidence *handler_premises[9];
+	for (size_t i = 0; i < 9; ++i) handler_premises[i] = pg_evidence_premise(handled, i);
+	assert(pg_prove_derivation(&typing, &classifiers, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == handled);
+	assert(!pg_prove_derivation(&typing, &classifiers, PG_HANDLER_ELIM, &handler_parameters, 8, handler_premises));
+	handler_premises[3] = u0;
+	assert(!pg_prove_derivation(&typing, &classifiers, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises));
+	handler_premises[3] = pg_evidence_premise(handled, 3);
 	normal = checked_normalize(&typing, &work, handled);
 	const struct pg_evidence *answer = pg_prove_return_value(&typing, normal);
 	assert(answer && pg_evidence_subject(answer)->core == pg_evidence_subject(payload)->core);
@@ -2921,6 +2937,9 @@ static void request_typing_test(struct pg_graph *graph)
 	clauses[0].operation = other; clauses[1].operation = op;
 	const struct pg_evidence *reordered = pg_prove_handler(&typing, &classifiers, two, k, carrier, 2, clauses);
 	assert(reordered);
+	assert(pg_evidence_handler_signature(reordered) != signature);
+	handler_parameters.handler = pg_evidence_handler_signature(reordered);
+	assert(pg_prove_derivation(&typing, &classifiers, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == reordered);
 	normal = checked_normalize(&typing, &work, reordered);
 	assert(pg_evidence_subject(pg_prove_return_value(&typing, normal))->core == pg_evidence_subject(payload)->core);
 	const struct pg_evidence *forward_carrier = pg_prove_effect_type(&typing, &classifiers,
@@ -2950,7 +2969,6 @@ static void request_typing_test(struct pg_graph *graph)
 	normal = checked_normalize(&typing, &work, swapped);
 	assert(pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &a, &continuation));
 	assert(label == other_label);
-	assert(pg_derivation_parameters(handled, &parameters));
 	pg_whnf_work_destroy(&work);
 	struct pg_typing separate;
 	assert(!pg_typing_init(&separate, graph));

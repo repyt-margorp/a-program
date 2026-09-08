@@ -272,6 +272,17 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 		FILE *unsupported = tmpfile();
 		assert(unsupported && pg_derivations_write(unsupported, 1, &request, name, classifiers) == -1);
 		fclose(unsupported);
+		const struct pg_evidence *pure = pg_prove_return(typing, classifiers, pg_prove_type_value(typing, u));
+		const struct pg_evidence *carrier = pg_prove_classifier(typing, classifiers, empty, pure);
+		const struct pg_evidence *scope = pg_prove_handler_context(typing, classifiers, op, empty,
+			carrier, pg_binder(graph), pg_binder(graph));
+		struct pg_handler_clause clause = {op, pg_prove_abstract(typing, classifiers, empty,
+			scope, pg_prove_projection(typing, scope, pure))};
+		const struct pg_evidence *handled = pg_prove_handler(typing, classifiers, pure, continuation, carrier, 1, &clause);
+		assert(handled && !pg_derivation_parameters(handled, &parameters) && parameters.handler);
+		unsupported = tmpfile();
+		assert(unsupported && pg_derivations_write(unsupported, 1, &handled, name, classifiers) == -1);
+		fclose(unsupported);
 	}
 	const struct pg_object *a = pg_binder(graph), *b = pg_binder(graph), *x = pg_binder(graph);
 	const struct pg_evidence *ca = pg_prove_context_extension(typing, empty, a, u);

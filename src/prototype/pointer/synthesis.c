@@ -305,7 +305,7 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 		.binder = binder, .context_job = pg_synthesis_evidence(synthesis, extended_context)});
 }
 
-enum { RULE_KEY_FIELDS = 12 };
+enum { RULE_KEY_FIELDS = 13 };
 
 static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 {
@@ -314,6 +314,7 @@ static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 		input->parameters.level, input->parameters.direction,
 		(uintptr_t)input->parameters.conversion, (uintptr_t)input->parameters.reduction,
 		(uintptr_t)input->parameters.operation,
+		(uintptr_t)input->parameters.handler,
 		(uintptr_t)input->source, (uintptr_t)input->target, input->reduction_kind, input->count};
 	memcpy(key, fields, sizeof(fields));
 }
@@ -2742,6 +2743,38 @@ static struct pg_synthesis_job *plain_rule(struct pg_synthesis *synthesis,
 	return pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
 }
 
+static struct pg_synthesis_job *handler_rule(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *body, struct pg_synthesis_job *returned,
+	struct pg_synthesis_job *carrier, size_t count, const struct pg_handler_clause *clauses)
+{
+	body = request_job(synthesis, BODY_JOB, body, NULL);
+	if (!count) {
+		struct pg_synthesis_job *fold = plain_rule(synthesis, PG_FOLD_ELIM, NULL, 2,
+			(struct pg_synthesis_job *[]){body, returned});
+		return plain_rule(synthesis, PG_EFFECT_SUBSUMPTION, NULL, 2,
+			(struct pg_synthesis_job *[]){fold, carrier});
+	}
+	if (count > (SIZE_MAX / sizeof(struct pg_synthesis_job *) - 3) / 3) return NULL;
+	struct pg_graph temporary = {0};
+	struct pg_synthesis_job **premises = pg_alloc(&temporary, (3 + 3 * count) * sizeof(*premises));
+	const struct pg_operation_declaration **operations = pg_alloc(&temporary, count * sizeof(*operations));
+	struct pg_synthesis_job *result = NULL;
+	if (!premises || !operations) goto done;
+	premises[0] = body; premises[1] = returned; premises[2] = carrier;
+	for (size_t i = 0; i < count; ++i) {
+		operations[i] = clauses[i].operation;
+		premises[3 + 3 * i] = pg_synthesis_evidence(synthesis, pg_operation_payload_type(operations[i]));
+		premises[4 + 3 * i] = pg_synthesis_evidence(synthesis, pg_operation_response_type(operations[i]));
+		premises[5 + 3 * i] = pg_synthesis_evidence(synthesis, clauses[i].body);
+	}
+	struct pg_derivation_input input = {.rule = PG_HANDLER_ELIM, .count = 3 + 3 * count,
+		.parameters.handler = pg_handler_signature(synthesis->typing->graph, count, operations)};
+	if (input.parameters.handler) result = pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 static void operation_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (!job->left) {
@@ -2987,9 +3020,9 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 	}
 	if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
 	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
-	job->result = pg_prove_handler(synthesis->typing, synthesis->classifiers,
-		computation(synthesis, job->left->result), job->right->result, carrier->result, state->count, state->clauses);
-	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+	if (!job->value_job) job->value_job = handler_rule(synthesis, job->left, job->right,
+		carrier, state->count, state->clauses);
+	forward_proof(synthesis, job, job->value_job);
 	return;
 rejected:
 	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
