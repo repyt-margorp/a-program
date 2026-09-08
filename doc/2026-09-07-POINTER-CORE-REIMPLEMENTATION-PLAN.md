@@ -164,6 +164,17 @@ pending substitution -> reindex -> formation -> face pipeline, completed-input
 sharing, and both failure categories. Typed center symmetry remains open.
 Complete pointer `make check` and ASan/UBSan `synthesis_test` passed.
 
+Face execution now also converges on the recovered formation-evidence pointer,
+context and selected face. Different retained wrappers can therefore share
+the face traversal, not only formation recovery. This is exact evidence-key
+sharing, not WHNF interning or merging typed occurrences. The original request
+remains a dependency on the canonical job. Proof-result forwarding is shared
+with expectation, reindex and formation jobs; namespace/schema payloads are
+not routed through this helper. Tests require the recovered face request to
+be already complete and a separately wrapped input to return the same evidence.
+Typed center symmetry and persistence remain open.
+Complete pointer `make check` and ASan/UBSan `synthesis_test` passed for this change.
+
 - [x] Preserve exact descriptor/application interning: a permutation with
   fixed leading axes remains a distinct raw node from its shorter form.
 - [x] Reduce fixed leading axes during evaluation, with one coordinate per

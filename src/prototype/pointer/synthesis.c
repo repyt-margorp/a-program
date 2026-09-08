@@ -694,6 +694,20 @@ static void depend(struct pg_synthesis *synthesis, struct pg_synthesis_job *pare
 	parent->dependency = waiter;
 }
 
+/* Forward proof-result jobs only; schema/namespace outputs have other payloads. */
+static int forward_proof(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	struct pg_synthesis_job *canonical)
+{
+	if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
+	if (canonical == job) return 0;
+	if (canonical->status == PG_SYNTHESIS_PENDING) depend(synthesis, job, canonical);
+	else {
+		job->result = canonical->result;
+		finish(synthesis, job, canonical->status);
+	}
+	return 1;
+}
+
 static const struct pg_evidence *value_type(struct pg_synthesis *synthesis, const struct pg_evidence *proof)
 {
 	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_COMPUTATION_TYPE)
@@ -1028,13 +1042,7 @@ static void expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 		}
 		struct pg_synthesis_job *canonical = pg_synthesis_expect(synthesis,
 			pg_synthesis_evidence(synthesis, term), pg_synthesis_evidence(synthesis, type));
-		if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		if (canonical != job) {
-			if (canonical->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, canonical); return; }
-			job->result = canonical->result;
-			finish(synthesis, job, canonical->status);
-			return;
-		}
+		if (forward_proof(synthesis, job, canonical)) return;
 		job->checking_term = term;
 		job->checking_type = type;
 	}
@@ -1421,13 +1429,7 @@ static void reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 		/* All producer paths converge on the accepted evidence tuple before
 		 * allocating traversal state. Distinct producers may prove the same map. */
 		struct pg_synthesis_job *canonical = pg_synthesis_reindex(synthesis, substitution, proof);
-		if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		if (canonical != job) {
-			if (canonical->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, canonical); return; }
-			job->result = canonical->result;
-			finish(synthesis, job, canonical->status);
-			return;
-		}
+		if (forward_proof(synthesis, job, canonical)) return;
 		if (pg_reindex_init(&job->reindex, synthesis->typing, substitution, proof) != 0) {
 			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 		}
@@ -1742,13 +1744,7 @@ static void formation_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
 		struct pg_synthesis_job *canonical = pg_synthesis_identity_formation(synthesis, pg_synthesis_evidence(synthesis, proof));
-		if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		if (canonical != job) {
-			if (canonical->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, canonical); return; }
-			job->result = canonical->result;
-			finish(synthesis, job, canonical->status);
-			return;
-		}
+		if (forward_proof(synthesis, job, canonical)) return;
 		job->formation = pg_identity_formation_init(synthesis->typing, synthesis->classifiers, proof);
 		if (!job->formation) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
@@ -1776,17 +1772,13 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 			}
 			struct pg_synthesis_job *canonical = pg_synthesis_identity_face(synthesis,
 				job->inputs[0], producer->result, job->inputs[2]);
-			if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			if (canonical != job) {
-				if (canonical->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, canonical); return; }
-				job->result = canonical->result;
-				finish(synthesis, job, canonical->status);
-				return;
-			}
+			if (forward_proof(synthesis, job, canonical)) return;
 			if (!job->left) job->left = pg_synthesis_identity_formation(synthesis, producer);
 			if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 			if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+			canonical = pg_synthesis_identity_face(synthesis, job->inputs[0], job->left->result, job->inputs[2]);
+			if (forward_proof(synthesis, job, canonical)) return;
 			job->face = pg_identity_face_init(synthesis->typing, synthesis->classifiers,
 				job->inputs[0], job->left->result, job->inputs[2]);
 			if (!job->face) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }

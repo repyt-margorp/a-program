@@ -1223,6 +1223,12 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 	struct pg_synthesis_job *selected_canonical = pg_synthesis_identity_face(&synthesis, destination, type, face);
 	assert(pg_synthesis_status(selected_canonical) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_result(selected_canonical) == endpoint);
+	struct pg_synthesis_job *recovered_face = pg_synthesis_identity_face(&synthesis, destination, recovered, face);
+	assert(pg_synthesis_status(recovered_face) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(recovered_face) == endpoint);
+	const struct pg_evidence *wrapped_type = pg_prove_value_type(typing, pg_prove_type_value(typing, type));
+	assert(complete(&synthesis, pg_synthesis_identity_face(&synthesis, destination, wrapped_type, face),
+		PG_SYNTHESIS_DONE) == endpoint);
 	const struct pg_evidence *map = pg_synthesis_result(map_job);
 	assert(map);
 	struct pg_synthesis_job *canonical = pg_synthesis_reindex(&synthesis, map, pg_evidence_premise(opposite, 1));
