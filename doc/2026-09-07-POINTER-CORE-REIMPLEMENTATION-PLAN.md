@@ -1034,9 +1034,21 @@ finish general handler source support.
   ASan/UBSan synthesis pass.
   Implementation C: +5/-1; tests: +41/-0; documentation separate.
 
+  September 9, after `a8b683d`: raw handler term projection now waits on the
+  source/return structures and visits each clause once, retaining its position
+  across scheduler yields. The completed parts use the existing Core Fold
+  constructor; no reduction or evidence acceptance occurs in this worker.
+  Effect subsumption projects the unchanged input Core. Unsealed-row tests
+  cover one and two clauses (distinct operations with identical signatures),
+  budgets 1/64, no premature proof and exact Core reuse after acceptance.
+  Normal components, eight source checks, six execution fixtures and rebuilt
+  ASan/UBSan synthesis pass. `check-open-families` remains unsupported after
+  208 steps, so full acceptance and the Main push remain unfulfilled.
+  Implementation C: +51/-0; tests: +22/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
-unsupported at 88 transitions; this does not establish full source acceptance.
+unsupported at 208 transitions; this does not establish full source acceptance.
 
 ### September 8 positive effect-equation closure
 
