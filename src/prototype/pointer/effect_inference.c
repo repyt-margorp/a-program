@@ -4,6 +4,7 @@
 
 struct pg_effect_equation {
 	const struct pg_effect_inference *owner;
+	const struct pg_object *parameter;
 	const struct pg_effect_row *seed;
 	const struct pg_effect_row *value;
 	struct pg_effect_dependency *outgoing;
@@ -47,9 +48,17 @@ struct pg_effect_equation *pg_effect_equation(struct pg_effect_inference *work,
 	if (!work->rows || work->sealed || work->failed || !seed) return NULL;
 	struct pg_effect_equation *equation = pg_alloc(&work->arena, sizeof(*equation));
 	if (!equation) { work->failed = 1; return NULL; }
-	*equation = (struct pg_effect_equation){.owner = work, .seed = seed, .value = seed};
+	const struct pg_object *parameter = pg_binder(work->rows);
+	if (!parameter) { work->failed = 1; return NULL; }
+	*equation = (struct pg_effect_equation){.owner = work, .parameter = parameter, .seed = seed, .value = seed};
 	enqueue(work, equation);
 	return equation;
+}
+
+const struct pg_object *pg_effect_equation_parameter(const struct pg_effect_inference *work,
+	const struct pg_effect_equation *equation)
+{
+	return equation && equation->owner == work ? equation->parameter : NULL;
 }
 
 int pg_effect_dependency(struct pg_effect_inference *work,

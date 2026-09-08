@@ -105,6 +105,17 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		struct pg_effect_equation *c = pg_effect_equation(&work, rows[0]);
 		struct pg_effect_equation *other = pg_effect_equation(&foreign, rows[0]);
 		assert(a && b && c && other);
+		const struct pg_object *parameter = pg_effect_equation_parameter(&work, a);
+		assert(parameter && parameter->kind == PG_BINDER);
+		assert(parameter == pg_effect_equation_parameter(&work, a));
+		assert(parameter != pg_effect_equation_parameter(&work, b));
+		assert(!pg_effect_equation_parameter(&work, other));
+		const struct pg_term *row_term = pg_reference(typing->graph, parameter);
+		const struct pg_term *value_type = pg_universe(classifiers, 0);
+		const struct pg_term *pending_type = pg_effect_type_spine(classifiers, row_term, value_type);
+		const struct pg_effect_row *closed_row;
+		const struct pg_term *result_type;
+		assert(!pg_effect_type_view(pending_type, &closed_row, &result_type));
 		assert(!pg_effect_inference_result(&work, a));
 		assert(!pg_synthesis_effect_inference(&synthesis, &work));
 		assert(pg_effect_dependency(&work, other, rows[0], a) == -1);
@@ -138,9 +149,18 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		assert(pg_effect_inference_result(&work, c) == rows[(2 | (seed & ~mask)) & ~1u]);
 		assert(!pg_effect_inference_result(&work, other));
 		assert(pg_effect_inference_advance(&work, 0) == 1);
+		struct pg_binding_value binding = {parameter,
+			pg_effect_reference(typing->graph, pg_effect_inference_result(&work, a))};
+		const struct pg_term *resolved_type = pg_term_substitute(typing->graph, pending_type, 1, &binding);
+		assert(resolved_type == pg_effect_type(classifiers, rows[seed | 2], value_type));
+		assert(!pg_effect_type_view(pending_type, &closed_row, &result_type));
 		pg_synthesis_destroy(&synthesis);
 		pg_effect_inference_destroy(&foreign);
 		pg_effect_inference_destroy(&work);
+		/* Core retains graph-owned parameters, never a freed equation pointer. */
+		assert(pg_reference(typing->graph, parameter) == row_term);
+		assert(parameter->kind == PG_BINDER);
+		assert(pg_term_substitute(typing->graph, pending_type, 1, &binding) == resolved_type);
 	}
 	pg_whnf_work_destroy(&normalization);
 	puts("effect equations: least closure, masks, cycles, shared edges, sealed results and split Solve passed");

@@ -71,6 +71,13 @@ Next implementation sequence (prerequisite for automatic source handlers):
   A pending row must not pass the closed-row view or yield accepted F formation.
   Specify owner lifetime/relocation before inserting equation references into
   longer-lived Core: current equation storage is freed with its worker.
+  Implemented prerequisite: each equation now owns a distinct graph-allocated
+  binder parameter exposed by `pg_effect_equation_parameter`. Its object has
+  no pointer back into the worker. Tests substitute converged rows into F
+  spines and continue inspecting/substituting the original graph after worker
+  destruction. The original parameter remains unresolved structurally; no
+  accepted evidence is produced. Connecting this to pending source/rule jobs
+  and serializing the equation-to-parameter association remain open.
 - [ ] Generalize existing unaccepted rule inputs to await parameter producers
   as well as premise producers. Reuse ordinary `pg_prove_derivation` acceptance;
   do not add provisional evidence or a second rule checker. A loaded `.a` uses

@@ -26,6 +26,15 @@ int pg_effect_inference_init(struct pg_effect_inference *work, struct pg_graph *
 void pg_effect_inference_destroy(struct pg_effect_inference *work);
 struct pg_effect_equation *pg_effect_equation(struct pg_effect_inference *work,
 	const struct pg_effect_row *seed);
+/* Structural parameter for unaccepted classifier spines. Its binder object
+ * lives in rows, outliving the worker; it has no pointer back to work/equation.
+ * Distinct equations have distinct parameters even for equal seeds/results.
+ * This is not a value binder declaration, operation label or formation proof.
+ * After convergence, ordinary substitution can replace its references by the
+ * closed result's pg_effect_reference. The original graph remains unchanged.
+ * The equation handle itself must still be live when calling this accessor. */
+const struct pg_object *pg_effect_equation_parameter(const struct pg_effect_inference *work,
+	const struct pg_effect_equation *equation);
 int pg_effect_dependency(struct pg_effect_inference *work,
 	struct pg_effect_equation *source, const struct pg_effect_row *mask,
 	struct pg_effect_equation *target);
