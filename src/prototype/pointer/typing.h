@@ -22,6 +22,9 @@ struct pg_occurrence {
 
 struct pg_typing {
 	struct pg_graph *graph;
+	/* Fresh arena-owned identity per initialization, never a reusable address
+	 * of this mutable index container. Not a serialized identifier. */
+	const void *owner_key;
 	struct pg_index contexts;
 	struct pg_index occurrences;
 	struct pg_index proofs;

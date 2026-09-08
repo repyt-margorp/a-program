@@ -211,6 +211,26 @@ Admission audit after `8b3105b`:
 
 Ownership audit after `2e71ac3`:
 
+Lifetime correction after `0608b0d`:
+
+- [x] Reproduce that `pg_typing_destroy` followed by reinitialization at the
+  same C address could identify surviving arena-owned evidence with the new
+  store. The regression failed even immediately after destruction: the old
+  ownership predicate compared only the reusable container address.
+- [x] Allocate a fresh graph-owned `owner_key` for each typing initialization.
+  Evidence retains that pointer, while destroy clears the container's key.
+  No numeric generation counter, serialized host pointer or global registry
+  is introduced. Ordinary ownership checking stays constant-time and exact.
+- [x] Remove the separate owner field from `pg_data_signature`; its retained
+  parameter evidence supplies ownership through the common predicate. Reject
+  an old signature after store reinitialization, including the zero-constructor
+  case which would otherwise skip per-constructor premise checks.
+  Final component `make check` and rebuilt ASan/UBSan Core/IADT tests passed.
+  This repairs lifetime isolation, not recursive formation or source acceptance.
+- [ ] Audit other pending-work owner pointers for the same lifecycle pattern
+  before allowing their handles to cross image/resume or temporary-store
+  boundaries. This fix concerns evidence/signatures, not every work handle.
+
 - [x] Route all 38 primitive evidence ownership guards through the existing
   `pg_evidence_owned_by` predicate, already used by generic derivation
   reconstruction. Its meaning remains exact typing-store identity, including

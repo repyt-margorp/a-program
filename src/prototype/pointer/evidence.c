@@ -6,7 +6,7 @@
 
 struct pg_evidence {
 	struct pg_index_entry index;
-	const struct pg_typing *owner;
+	const void *owner;
 	enum pg_evidence_rule rule;
 	enum pg_evidence_judgement judgement;
 	const struct pg_context *context;
@@ -75,7 +75,7 @@ static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg
 	if (binding_count > (SIZE_MAX - size) / sizeof(*bindings)) return NULL;
 	struct pg_evidence *proof = pg_alloc(typing->graph, size + binding_count * sizeof(*bindings));
 	if (!proof) return NULL;
-	proof->owner = typing;
+	proof->owner = typing->owner_key;
 	proof->rule = rule;
 	proof->judgement = judgement;
 	proof->context = context;
@@ -1293,7 +1293,7 @@ int pg_identity_boundary_view(const struct pg_evidence *formation, struct pg_ide
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence) { return evidence->judgement; }
 int pg_evidence_owned_by(const struct pg_evidence *evidence, const struct pg_typing *typing)
 {
-	return evidence && evidence->owner == typing;
+	return evidence && typing && typing->owner_key && evidence->owner == typing->owner_key;
 }
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence) { return evidence->context; }
 const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence) { return evidence->subject; }

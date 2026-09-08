@@ -184,7 +184,6 @@ int pg_data_dispatch(struct pg_eval *machine)
 }
 
 struct pg_data_signature {
-	const struct pg_typing *owner;
 	const struct pg_evidence *parameters;
 	const struct pg_evidence *indices;
 };
@@ -205,7 +204,7 @@ const struct pg_data_signature *pg_data_signature(struct pg_typing *typing,
 	if (pg_context_extension_size(pg_evidence_context(indices), pg_evidence_context(parameters), &count)) return NULL;
 	struct pg_data_signature *signature = pg_alloc(typing->graph, sizeof(*signature));
 	if (!signature) return NULL;
-	*signature = (struct pg_data_signature){typing, parameters, indices};
+	*signature = (struct pg_data_signature){parameters, indices};
 	return signature;
 }
 
@@ -249,7 +248,7 @@ const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
 	const struct pg_data_signature *signature,
 	size_t count, const struct pg_evidence *const *results)
 {
-	if (!signature || signature->owner != typing || (count && !results)) return NULL;
+	if (!signature || !pg_evidence_owned_by(signature->parameters, typing) || (count && !results)) return NULL;
 	const struct pg_evidence *parameters = signature->parameters, *indices = signature->indices;
 	const struct pg_context *prefix = pg_evidence_context(parameters);
 	size_t parameter_count;
@@ -377,7 +376,7 @@ static const struct pg_evidence *signature_suffix(struct pg_typing *typing,
 	const struct pg_evidence *parameters, size_t count,
 	const struct pg_evidence *const *values)
 {
-	if (!signature || signature->owner != typing) return NULL;
+	if (!signature || !pg_evidence_owned_by(signature->parameters, typing)) return NULL;
 	if (!fields || !pg_evidence_owned_by(parameters, typing) || (count && !values)) return NULL;
 	if (pg_evidence_rule(parameters) != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (pg_evidence_context(pg_evidence_premise(parameters, 0)) != pg_evidence_context(signature->parameters)) return NULL;

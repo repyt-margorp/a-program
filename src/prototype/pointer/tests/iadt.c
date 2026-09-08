@@ -165,6 +165,11 @@ static void schema_positivity(void)
 	const struct pg_data_schema *indexed = pg_data_schema(&typing,
 		pg_data_signature(&typing, parameters, indices), 1, &indexed_result);
 	assert(indexed && !pg_data_schema_field_level(indexed, &level) && level == 0);
+	/* A retained signature does not belong to a reinitialized typing store,
+	 * even when no constructors would otherwise force a premise check. */
+	pg_typing_destroy(&typing);
+	assert(!pg_typing_init(&typing, &graph));
+	assert(!pg_data_schema(&typing, signature, 0, NULL));
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);

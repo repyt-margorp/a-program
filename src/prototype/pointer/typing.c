@@ -16,7 +16,9 @@ int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph)
 {
 	memset(typing, 0, sizeof(*typing));
 	typing->graph = graph;
-	if (pg_index_init(&typing->contexts) != 0) return -1;
+	typing->owner_key = pg_alloc(graph, 1);
+	if (!typing->owner_key) return -1;
+	if (pg_index_init(&typing->contexts) != 0) goto fail;
 	if (pg_index_init(&typing->occurrences) != 0) goto fail;
 	if (pg_index_init(&typing->proofs) == 0) return 0;
 fail:

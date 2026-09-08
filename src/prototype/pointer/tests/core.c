@@ -2373,10 +2373,22 @@ static void evidence_owner_test(struct pg_graph *graph)
 		assert(store->proofs.count == count);
 		assert(pg_prove_universe(store, &classifiers, contexts[i], 0) == types[i]);
 	}
+	/* Arena-owned evidence survives index disposal, but not as accepted input
+	 * to another initialization of the same C storage address. */
+	pg_typing_destroy(&second);
+	assert(!pg_evidence_owned_by(types[1], &second));
+	assert(!pg_typing_init(&second, graph));
+	assert(!pg_evidence_owned_by(types[1], &second));
+	assert(!pg_prove_value_type(&second, types[1]));
+	assert(!pg_prove_universe(&second, &classifiers, contexts[1], 0));
+	assert(second.proofs.count == 0);
+	const struct pg_evidence *fresh = pg_prove_empty_context(&second);
+	assert(fresh && fresh != contexts[1] && pg_evidence_owned_by(fresh, &second));
+	assert(pg_prove_universe(&second, &classifiers, fresh, 0));
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&second);
 	pg_typing_destroy(&first);
-	puts("evidence ownership: shared Core/context does not transfer acceptance between stores");
+	puts("evidence ownership: shared Core and reused storage do not transfer acceptance between stores");
 }
 
 int main(void)
