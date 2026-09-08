@@ -2446,6 +2446,20 @@ transport tests or further permutation-group tests cannot close them.
   Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test
   pass. Tests: +23/-0; implementation unchanged; documentation excluded.
 
+- [x] After `f8c4a05`, centralize the three explicit Identity formations'
+  premise layout in `pg_identity_boundary_view`. This is an allocation-free
+  borrowed view of accepted immutable evidence, not another stored boundary
+  record or authority. Recovery and cube endpoint tests use named components
+  rather than calculating premise offsets. Family paths alias the accepted
+  premise array; the computation-Identity regression no longer copies them.
+  A homogeneous family's formation and a selected universe-identification
+  value remain distinct kinds of premise. Only Family Identity supplies maps
+  and paths, and their count must not be interpreted as an axis dimension.
+  Other derivations return failure without replacing the caller's view.
+  No typing rule, Core form, dimensional equation or solver is added.
+  Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test
+  pass. Implementation C/header: +52/-14; tests: +22/-10; docs excluded.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action

@@ -21,6 +21,22 @@ enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_SUBSTITUTION };
 struct pg_evidence;
 
+/* Borrowed view of an explicit Identity formation's immutable premises.
+ * family is a formation for IDENTITY_FORM/FAMILY_IDENTITY_FORM and a selected
+ * universe identification value for IDENTITY_INSTANCE. Substitutions/paths
+ * occur only for FAMILY_IDENTITY_FORM; path_count is not a cube dimension. */
+struct pg_identity_boundary {
+	const struct pg_evidence *family;
+	const struct pg_evidence *left, *right;
+	const struct pg_evidence *left_substitution, *right_substitution;
+	size_t path_count;
+	const struct pg_evidence *const *paths;
+};
+/* No traversal, allocation or conversion. Returns zero without modifying
+ * output for any other derivation. Reindex recovery belongs to action.h. */
+int pg_identity_boundary_view(const struct pg_evidence *formation,
+	struct pg_identity_boundary *output);
+
 /* Checked primitive derivations, owned by typing->graph. NULL means a failed
  * premise check or allocation, not a proof of negation. No mutable proof API. */
 const struct pg_evidence *pg_prove_empty_context(struct pg_typing *typing);

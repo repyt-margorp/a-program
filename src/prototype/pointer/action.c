@@ -106,30 +106,28 @@ const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 		if (!map) return NULL;
 	}
 	enum pg_evidence_rule rule = pg_evidence_rule(formation);
-	switch (rule) {
-	case PG_IDENTITY_FORM: case PG_IDENTITY_INSTANCE: case PG_FAMILY_IDENTITY_FORM: break;
-	default: return NULL;
-	}
+	struct pg_identity_boundary boundary;
+	if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
 	if (!map) return formation;
 	if (rule != PG_FAMILY_IDENTITY_FORM) {
-		const struct pg_evidence *family = pg_prove_reindex(typing, map, pg_evidence_premise(formation, 0));
-		const struct pg_evidence *left = pg_prove_reindex(typing, map, pg_evidence_premise(formation, 1));
-		const struct pg_evidence *right = pg_prove_reindex(typing, map, pg_evidence_premise(formation, 2));
+		const struct pg_evidence *family = pg_prove_reindex(typing, map, boundary.family);
+		const struct pg_evidence *left = pg_prove_reindex(typing, map, boundary.left);
+		const struct pg_evidence *right = pg_prove_reindex(typing, map, boundary.right);
 		return rule == PG_IDENTITY_FORM ? pg_prove_identity_type(typing, family, left, right)
 			: pg_prove_identity_instance(typing, classifiers, family, left, right);
 	}
-	size_t count = pg_evidence_premise_count(formation) - 5;
+	size_t count = boundary.path_count;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence **paths = pg_alloc(&temporary, count * sizeof(*paths));
 	if (count && !paths) { pg_graph_destroy(&temporary); return NULL; }
 	for (size_t i = 0; i < count; ++i)
-		paths[i] = pg_prove_reindex(typing, map, pg_evidence_premise(formation, i + 3));
-	const struct pg_evidence *left = pg_prove_reindex(typing, map, pg_evidence_premise(formation, count + 3));
-	const struct pg_evidence *right = pg_prove_reindex(typing, map, pg_evidence_premise(formation, count + 4));
-	const struct pg_evidence *ls = pg_prove_substitution_compose(typing, pg_evidence_premise(formation, 1), map);
-	const struct pg_evidence *rs = pg_prove_substitution_compose(typing, pg_evidence_premise(formation, 2), map);
+		paths[i] = pg_prove_reindex(typing, map, boundary.paths[i]);
+	const struct pg_evidence *left = pg_prove_reindex(typing, map, boundary.left);
+	const struct pg_evidence *right = pg_prove_reindex(typing, map, boundary.right);
+	const struct pg_evidence *ls = pg_prove_substitution_compose(typing, boundary.left_substitution, map);
+	const struct pg_evidence *rs = pg_prove_substitution_compose(typing, boundary.right_substitution, map);
 	const struct pg_evidence *result = pg_prove_family_identity_type(typing,
-		pg_evidence_premise(formation, 0), ls, rs, count, paths, left, right);
+		boundary.family, ls, rs, count, paths, left, right);
 	pg_graph_destroy(&temporary);
 	return result;
 }

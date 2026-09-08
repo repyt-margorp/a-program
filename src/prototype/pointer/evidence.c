@@ -1240,6 +1240,30 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 }
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }
+int pg_identity_boundary_view(const struct pg_evidence *formation, struct pg_identity_boundary *output)
+{
+	if (!formation || !output) return 0;
+	struct pg_identity_boundary view = {0};
+	switch (formation->rule) {
+	case PG_IDENTITY_FORM: case PG_IDENTITY_INSTANCE:
+		view.left = formation->premises[1];
+		view.right = formation->premises[2];
+		break;
+	case PG_FAMILY_IDENTITY_FORM:
+		view.path_count = formation->premise_count - 5;
+		view.paths = formation->premises + 3;
+		view.left_substitution = formation->premises[1];
+		view.right_substitution = formation->premises[2];
+		view.left = formation->premises[view.path_count + 3];
+		view.right = formation->premises[view.path_count + 4];
+		break;
+	default: return 0;
+	}
+	view.family = formation->premises[0];
+	*output = view;
+	return 1;
+}
+
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence) { return evidence->judgement; }
 int pg_evidence_owned_by(const struct pg_evidence *evidence, const struct pg_typing *typing)
 {

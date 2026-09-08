@@ -827,15 +827,19 @@ static void square_transposition_boundary(struct pg_typing *typing, struct pg_cl
 	/* Reuse the selected boundary for computation Identity, not a value-side
 	 * encoding or a conversion of its polarity. */
 	const struct pg_evidence *original = pg_evidence_premise(extensions[8], 1);
-	size_t count = pg_evidence_premise_count(original) - 5;
-	const struct pg_evidence **paths = pg_alloc(graph, count * sizeof(*paths));
-	assert(!count || paths);
-	for (size_t i = 0; i < count; ++i) paths[i] = pg_evidence_premise(original, i + 3);
+	struct pg_identity_boundary original_boundary;
+	assert(pg_identity_boundary_view(original, &original_boundary));
+	for (size_t i = 0; i < original_boundary.path_count; ++i)
+		assert(original_boundary.paths[i] == pg_evidence_premise(original, i + 3));
+	assert(!pg_identity_boundary_view(center, &original_boundary));
+	assert(!pg_identity_boundary_view(NULL, &original_boundary));
+	assert(original_boundary.family == pg_evidence_premise(original, 0));
 	const struct pg_evidence *computation = pg_prove_family_identity_type(typing,
-		pg_prove_return_type(typing, classifiers, pg_evidence_premise(original, 0)),
-		pg_evidence_premise(original, 1), pg_evidence_premise(original, 2), count, paths,
-		pg_prove_return(typing, classifiers, pg_evidence_premise(original, count + 3)),
-		pg_prove_return(typing, classifiers, pg_evidence_premise(original, count + 4)));
+		pg_prove_return_type(typing, classifiers, original_boundary.family),
+		original_boundary.left_substitution, original_boundary.right_substitution,
+		original_boundary.path_count, original_boundary.paths,
+		pg_prove_return(typing, classifiers, original_boundary.left),
+		pg_prove_return(typing, classifiers, original_boundary.right));
 	assert(computation && pg_evidence_judgement(computation) == PG_JUDGEMENT_COMPUTATION_TYPE);
 	const struct pg_evidence *computation_source = computation;
 	computation = pg_prove_reindex(typing, map, computation);
@@ -896,6 +900,10 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 		const struct pg_evidence *homogeneous = pg_prove_projection(typing, input_context, relation);
 		const struct pg_evidence *homogeneous_boundary = pg_identity_formation(typing, classifiers, homogeneous);
 		assert(homogeneous_boundary && pg_evidence_rule(homogeneous_boundary) == PG_IDENTITY_FORM);
+		struct pg_identity_boundary view;
+		assert(pg_identity_boundary_view(homogeneous_boundary, &view));
+		assert(!view.path_count && !view.paths && !view.left_substitution && !view.right_substitution);
+		assert(pg_evidence_judgement(view.family) == PG_JUDGEMENT_VALUE_TYPE);
 		assert(pg_alpha_equal(pg_evidence_subject(homogeneous_boundary)->core, pg_evidence_subject(homogeneous)->core) == 1);
 		const struct pg_evidence *transport = pg_prove_identity_transport(typing, classifiers,
 			pg_prove_variable(typing, input_context, r), pg_prove_variable(typing, input_context, x),
@@ -922,6 +930,9 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 		const struct pg_evidence *extra_instance = pg_prove_projection(typing, extra_context, expected);
 		const struct pg_evidence *instance_boundary = pg_identity_formation(typing, classifiers, extra_instance);
 		assert(instance_boundary && pg_evidence_rule(instance_boundary) == PG_IDENTITY_INSTANCE);
+		assert(pg_identity_boundary_view(instance_boundary, &view));
+		assert(!view.path_count && !view.paths && !view.left_substitution && !view.right_substitution);
+		assert(pg_evidence_judgement(view.family) == PG_JUDGEMENT_VALUE);
 		assert(pg_alpha_equal(pg_evidence_subject(instance_boundary)->core, pg_evidence_subject(extra_instance)->core) == 1);
 		const struct pg_evidence *checked = convert_to(typing, &work, acted, expected);
 		assert(checked && pg_evidence_judgement(checked) == PG_JUDGEMENT_VALUE);
@@ -1081,6 +1092,8 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 				if (!face->face->source) { assert(!recovered); continue; }
 				assert(recovered && pg_evidence_context(recovered) == pg_evidence_context(all));
 				assert(pg_evidence_rule(recovered) == PG_FAMILY_IDENTITY_FORM);
+				struct pg_identity_boundary boundary_view;
+				assert(pg_identity_boundary_view(recovered, &boundary_view));
 				assert(pg_evidence_classifier(recovered) == pg_evidence_classifier(formation));
 				assert(pg_alpha_equal(pg_evidence_subject(recovered)->core, pg_evidence_subject(formation)->core) == 1);
 				size_t d = face->face->source;
@@ -1090,8 +1103,7 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 					endpoint_coordinates[d - 1] = (struct pg_coordinate){side ? PG_ENDPOINT_ONE : PG_ENDPOINT_ZERO, 0};
 					const struct pg_binding_face *endpoint = pg_binding_restrict(&dimensions, face,
 						pg_dimension_map(&dimensions, d - 1, d, endpoint_coordinates));
-					const struct pg_evidence *value = pg_evidence_premise(recovered,
-						pg_evidence_premise_count(recovered) - 2 + side);
+					const struct pg_evidence *value = side ? boundary_view.right : boundary_view.left;
 					assert(endpoint && pg_evidence_subject(value)->core == pg_reference(typing->graph, &endpoint->variable));
 				}
 			}
