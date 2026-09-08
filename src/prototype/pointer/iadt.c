@@ -84,6 +84,22 @@ done:
 	return result;
 }
 
+const struct pg_term *pg_data_recursive_match(struct pg_graph *graph,
+	const struct pg_data_layout *layout, const struct pg_object *recursion,
+	const struct pg_term *scrutinee, size_t count, const struct pg_match_clause *clauses)
+{
+	if (!graph || !recursion || recursion->kind != PG_BINDER || !scrutinee) return NULL;
+	const struct pg_object *argument = pg_binder(graph), *self = pg_binder(graph);
+	const struct pg_term *body = pg_data_match(graph, layout,
+		pg_reference(graph, argument), count, clauses);
+	if (!body) return NULL;
+	const struct pg_term *function = pg_lambda(graph, recursion, pg_lambda(graph, argument, body));
+	const struct pg_term *reference = pg_reference(graph, self);
+	const struct pg_term *unfold = pg_lambda(graph, self,
+		pg_application(graph, function, pg_application(graph, reference, reference)));
+	return pg_application(graph, pg_application(graph, unfold, unfold), scrutinee);
+}
+
 static int apply_fields(struct pg_eval *machine, struct pg_closure branch,
 	size_t count, const struct pg_term *const *fields, size_t consume)
 {

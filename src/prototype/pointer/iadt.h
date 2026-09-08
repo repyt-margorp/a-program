@@ -24,6 +24,14 @@ const struct pg_object *pg_data_matcher(const struct pg_data_layout *layout);
  * substitution/readback needs no traversal into opaque descriptor payloads. */
 const struct pg_term *pg_data_match(struct pg_graph *graph, const struct pg_data_layout *layout,
 	const struct pg_term *scrutinee, size_t count, const struct pg_match_clause *clauses);
+/* Erased recursive case template. Free occurrences of recursion in branches
+ * denote the whole case function. This is Lambda/Application fixed-point
+ * encoding, NOT a typing or termination rule. A typed caller must separately
+ * establish that its recursive uses are permitted by the declaration.
+ * Branches and their captured variables remain ordinary visible Core edges. */
+const struct pg_term *pg_data_recursive_match(struct pg_graph *graph,
+	const struct pg_data_layout *layout, const struct pg_object *recursion,
+	const struct pg_term *scrutinee, size_t count, const struct pg_match_clause *clauses);
 int pg_data_dispatch(struct pg_eval *machine);
 /* Fixed one-direction action on an erased matcher and any supplied prefix.
  * Called with the materialized source of Act; adds no typing evidence. */

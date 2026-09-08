@@ -927,6 +927,29 @@ int main(void)
 	const struct pg_term *omega = pg_application(&graph, delta, delta);
 	struct pg_match_clause clauses[] = {{z, zero}, {s, id}};
 	const struct pg_term *one = pg_application(&graph, succ, zero);
+	const struct pg_object *recursion = pg_binder(&graph);
+	struct pg_match_clause recursive[] = {
+		{z, zero},
+		{s, pg_lambda(&graph, x, pg_application(&graph, pg_reference(&graph, recursion), vx))}
+	};
+	const struct pg_term *deep = zero;
+	for (size_t i = 0; i < 64; ++i) deep = pg_application(&graph, succ, deep);
+	const struct pg_term *countdown = pg_data_recursive_match(&graph, nat, recursion, deep, 2, recursive);
+	assert(countdown);
+	check(&work, countdown, zero);
+	/* Recursive branches keep their lexical environment; the fixed point does
+	 * not serialize a captured term inside a runtime descriptor. */
+	recursive[0].branch = vy;
+	const struct pg_term *captured_recursion = pg_lambda(&graph, y,
+		pg_data_recursive_match(&graph, nat, recursion, deep, 2, recursive));
+	check(&work, pg_application(&graph, captured_recursion, foreign), foreign);
+	recursive[1].branch = pg_lambda(&graph, x, omega);
+	check(&work, pg_application(&graph, pg_lambda(&graph, y,
+		pg_data_recursive_match(&graph, nat, recursion, zero, 2, recursive)), foreign), foreign);
+	assert(!pg_data_recursive_match(&graph, nat, z, zero, 2, recursive));
+	assert(!pg_data_recursive_match(&graph, nat, recursion, zero, 1, recursive));
+	assert(!pg_data_recursive_match(&graph, nat, recursion, zero, 2, NULL));
+	assert(!pg_data_recursive_match(&graph, nat, recursion, NULL, 2, recursive));
 	const struct pg_term *pred = pg_data_match(&graph, nat, one, 2, clauses);
 	assert(pred);
 	check(&work, pred, zero);

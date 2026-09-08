@@ -74,6 +74,36 @@ gate is 6/8 as listed above. IADT ASan/UBSan also passed at the preceding
 application-provenance checkpoint. This is not full acceptance or completion
 of the rewrite.
 
+### Recursive elimination implementation boundary
+
+- [x] Add `pg_data_recursive_match` as an erased template builder. A free
+  recursive-function binder in branch terms is closed by ordinary untyped
+  Lambda/Application self-application; the existing pointer-labelled matcher
+  still selects cases. There is no new Core tag, hidden closure payload,
+  evaluator recursion loop or accepted fixed-point typing axiom.
+- [x] Exercise 64 recursive steps with one-step normalization budgets, lexical
+  capture, an unselected divergent branch and invalid template inputs.
+- [ ] Add a typed induction rule with retained field/IH contexts and motive
+  instantiations. The raw recursive-function binder must NOT become an
+  unrestricted source binding. A source `*k` must be justified by the admitted
+  recursive field and its telescope, including Pi-shaped recursive fields for
+  Acc; a same-typed arbitrary argument is not a structural decrease proof.
+- [ ] Derive the branch IH computation classifier from that field and the
+  motive. Source synthesis must retain unresolved motive constraints when
+  necessary, rather than accepting an expected type as synthesis evidence.
+- [ ] Instantiate the erased template only from the checked induction
+  derivation. Ordinary substitution keeps branch/captured operands visible;
+  record all field and IH premises in the immutable proof DAG. Establish the
+  selected-constructor computation rule and dimensional action compatibility
+  before claiming typed higher induction or artifact support.
+
+The raw builder intentionally accepts templates that can diverge: Core is
+untyped. Its existence proves neither termination nor datatype fibrancy.
+It is not exposed as a source-language general recursion primitive. Existing
+07/09 acceptance remains open until the typed rule and synthesis are connected.
+Verification: optimized `check` and ASan/UBSan IADT tests passed; the source
+acceptance gate remains 6/8 with unchanged transition counts.
+
 Code-level obstruction and implementation order:
 
 1. Ordinary DECLARATION dispatch now admits checked zero-index families.
