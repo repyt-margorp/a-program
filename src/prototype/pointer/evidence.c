@@ -201,6 +201,11 @@ const struct pg_data_declaration *pg_evidence_inductive_declaration(const struct
 	return evidence && evidence->rule == PG_INDUCTIVE_FORM ? pg_data_schema_declaration(evidence->certificate) : NULL;
 }
 
+const struct pg_object *pg_evidence_constructor(const struct pg_evidence *evidence)
+{
+	return evidence && evidence->rule == PG_CONSTRUCTOR_INTRO ? evidence->certificate : NULL;
+}
+
 const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_data_schema *schema)
 {

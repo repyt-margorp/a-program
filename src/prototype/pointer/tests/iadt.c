@@ -4,9 +4,45 @@
 #include "identity.h"
 #include "action.h"
 #include "derivation.h"
+#include "synthesis.h"
 
 #include <assert.h>
 #include <stdio.h>
+
+static void common_rule(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_evidence *proof)
+{
+	struct pg_derivation_input input;
+	assert(!pg_derivation_input_header(proof, &input));
+	const struct pg_evidence **premises = pg_alloc(typing->graph, input.count * sizeof(*premises));
+	assert(premises && input.count);
+	for (size_t i = 0; i < input.count; ++i) premises[i] = pg_evidence_premise(proof, i);
+	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
+	assert(pg_prove_derivation(typing, classifiers, input.rule, &input.parameters, input.count, premises) == proof);
+	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_whnf_work work;
+		struct pg_synthesis synthesis;
+		assert(!pg_whnf_work_init(&work, typing->graph));
+		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_synthesis_job **jobs = pg_alloc(typing->graph, input.count * sizeof(*jobs));
+		assert(jobs);
+		for (size_t i = 0; i < input.count; ++i) jobs[i] = pg_synthesis_evidence(&synthesis, premises[i]);
+		struct pg_synthesis_job *job = pg_synthesis_rule(&synthesis, &input, jobs, NULL, NULL);
+		assert(job && job == pg_synthesis_rule(&synthesis, &input, jobs, NULL, NULL));
+		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+			assert(synthesis.steps < 10000);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		assert(pg_synthesis_result(job) == proof && typing->proofs.count == proofs);
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&work);
+	}
+	assert(!pg_prove_derivation(typing, classifiers, input.rule, &input.parameters, input.count - 1, premises));
+	assert(premises[input.count - 1] != premises[0]);
+	premises[input.count - 1] = premises[0];
+	assert(!pg_prove_derivation(typing, classifiers, input.rule, &input.parameters, input.count, premises));
+}
 
 static void positive_fields(void)
 {
@@ -244,7 +280,10 @@ static void schema_positivity(void)
 	proofs = typing.proofs.count;
 	assert(pg_prove_derivation(&typing, &classifiers, PG_INDUCTIVE_FORM, &wire_parameters, 3, formation_premises) == nat);
 	assert(typing.proofs.count == proofs);
-	assert(pg_derivation_parameters(succ, &wire_parameters) == -1);
+	assert(!pg_derivation_parameters(succ, &wire_parameters));
+	assert(wire_parameters.constructor == pg_data_constructor(nat_layout, 1));
+	common_rule(&typing, &classifiers, zero);
+	common_rule(&typing, &classifiers, succ);
 	const struct pg_evidence *successor_function = pg_prove_constructor_function(&typing,
 		&classifiers, nat, pg_data_constructor(nat_layout, 1), identity);
 	assert(successor_function && pg_evidence_rule(successor_function) == PG_LAMBDA_INTRO);
@@ -347,7 +386,8 @@ static void schema_positivity(void)
 	assert(pg_prove_induction(&typing, &classifiers, nat, identity, twice,
 		z_context, nat_motive, 2, recursive_branches) == countdown);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
-	assert(pg_derivation_parameters(countdown, &wire_parameters) == -1);
+	assert(!pg_derivation_parameters(countdown, &wire_parameters));
+	common_rule(&typing, &classifiers, countdown);
 	assert(!pg_prove_match(&typing, &classifiers, nat, identity, twice,
 		z_context, nat_motive, 2, recursive_branches));
 	const struct pg_evidence *pred_branches[] = {zero_function, pred_branch};
@@ -368,7 +408,8 @@ static void schema_positivity(void)
 	assert(pg_prove_match(&typing, &classifiers, nat, identity, succ,
 		z_context, nat_motive, 2, pred_branches) == pred);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
-	assert(pg_derivation_parameters(pred, &wire_parameters) == -1);
+	assert(!pg_derivation_parameters(pred, &wire_parameters));
+	common_rule(&typing, &classifiers, pred);
 	assert(!pg_prove_match(&typing, &classifiers, nat, identity, succ, z_context, nat_motive, 1, pred_branches));
 	const struct pg_evidence *wrong_branches[] = {zero_function, zero_function};
 	assert(!pg_prove_match(&typing, &classifiers, nat, identity, zero, z_context, nat_motive, 2, wrong_branches));

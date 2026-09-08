@@ -13,6 +13,30 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Constructor and Elimination Inputs Through Common Solve
+
+Continuation after `13a25cf`. Constructor introduction, Match and direct IH
+elimination now use the common derivation dispatcher. No new logical rule is
+introduced. Constructor inputs retain the constructor pointer and recover field
+evidence from the already retained field substitution. Match/IH inputs retain
+the motive, formation, parameter map, scrutinee, motive context, branches and
+result formation. Reconstructed evidence must retain every supplied premise;
+the dispatcher cannot silently replace a supplied result formation.
+
+- [x] Extract constructor pointers and include them in exact producer keys.
+- [x] Reconstruct all three rules using the existing named kernel constructors.
+- [x] Reuse original evidence through ordinary Solve at budgets 1/64; reject
+  wrong premise counts and substituted field-map/result-formation premises.
+- [x] Keep nominal derivation I/O explicitly unsupported until family relocation
+  is implemented, rather than write an image omitting semantic parameters.
+- [ ] Complete family-reference relocation and whole-file nominal derivations.
+
+This covers only the existing zero-index/direct-IH fragment. It does not add
+indexed elimination, generalized recursion or a new reduction rule.
+Normal `check`, eight source checks and six runtime fixtures pass. Rebuilt
+ASan/UBSan IADT and derivation-image tests pass. Implementation C/header:
++36/-4; test C: +44/-3; prototype test build: +2/-2; documentation separate.
+
 ### September 9: Nominal Formation Through Common Solve
 
 Continuation after `d100db7`. The common derivation input can now carry an inert

@@ -48,8 +48,8 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 		if (!pg_effect_type_view(subject->core, &result.effects, &value)) return -1;
 		break;
 	}
-	/* Nominal schema descriptors are not transported by this codec yet. */
-	case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: return -1;
+	case PG_CONSTRUCTOR_INTRO:
+		result.constructor = pg_evidence_constructor(evidence); break;
 	case PG_INDUCTIVE_FORM:
 		result.declaration = pg_evidence_inductive_declaration(evidence); break;
 	case PG_HANDLER_ELIM:
@@ -98,10 +98,32 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	if (!typing || !classifiers || classifiers->graph != typing->graph || !parameters) return NULL;
 	if (count && !p) return NULL;
 	if (parameters->declaration && rule != PG_INDUCTIVE_FORM) return NULL;
+	if (parameters->constructor && rule != PG_CONSTRUCTOR_INTRO) return NULL;
 	for (size_t i = 0; i < count; ++i) if (!pg_evidence_owned_by(p[i], typing)) return NULL;
 	const struct pg_evidence *result = NULL;
 	struct pg_identity_boundary boundary;
 	switch (rule) {
+	case PG_CONSTRUCTOR_INTRO: {
+		const struct pg_data_layout *layout;
+		size_t position, arity;
+		if (count != 4 || !pg_data_constructor_view(parameters->constructor, &layout, &position, &arity)) return NULL;
+		if (pg_evidence_rule(p[3]) != PG_CONTEXT_SUBSTITUTION) return NULL;
+		size_t retained = pg_evidence_premise_count(p[3]);
+		if (retained < 2 || arity > retained - 2 || arity > SIZE_MAX / sizeof(void *)) return NULL;
+		struct pg_graph temporary = {0};
+		const struct pg_evidence **fields = pg_alloc(&temporary, arity * sizeof(*fields));
+		if (!fields) return NULL;
+		for (size_t i = 0; i < arity; ++i) fields[i] = pg_evidence_premise(p[3], retained - arity + i);
+		result = pg_prove_constructor(typing, p[1], parameters->constructor, p[2], arity, fields);
+		pg_graph_destroy(&temporary);
+		break;
+	}
+	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
+		if (count < 6) return NULL;
+		result = rule == PG_MATCH_ELIM
+			? pg_prove_match(typing, classifiers, p[1], p[2], p[3], p[4], p[0], count - 6, p + 5)
+			: pg_prove_induction(typing, classifiers, p[1], p[2], p[3], p[4], p[0], count - 6, p + 5);
+		break;
 	case PG_INDUCTIVE_FORM: {
 		if (!count || !parameters->declaration) return NULL;
 		const struct pg_data_signature *signature = pg_data_signature(typing, p[0], p[0]);
@@ -186,6 +208,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	case PG_IDENTITY_TRANSPORT: case PG_REFLEXIVITY:
 	case PG_IDENTITY_LIFT: case PG_FAMILY_ACTION:
 	case PG_REQUEST_INTRO: case PG_HANDLER_ELIM:
+	case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
 		return retained_premises(result, rule, count, p);
 	default: return result;
 	}

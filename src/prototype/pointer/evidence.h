@@ -96,6 +96,7 @@ const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_data_schema *schema);
 const struct pg_data_declaration *pg_evidence_inductive_declaration(const struct pg_evidence *evidence);
+const struct pg_object *pg_evidence_constructor(const struct pg_evidence *evidence);
 struct pg_inductive_instance {
 	const struct pg_data_schema *schema;
 	const struct pg_evidence *formation;
