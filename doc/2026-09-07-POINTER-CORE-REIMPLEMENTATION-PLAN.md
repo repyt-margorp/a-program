@@ -2169,6 +2169,57 @@ Next implementation order, retaining the existing three Core forms:
 The general four-item contract remains unchecked. Passing first-order transport
 tests does not discharge it, and datatype admission must not assume completion.
 
+##### Typed symmetry contract, rechecked after `2567a26`
+
+Primary references rechecked on September 8:
+[Narya symmetry and degeneracy](https://narya.readthedocs.io/en/latest/observational.html#symmetries-and-degeneracies)
+and [uniform transport fields](https://narya.readthedocs.io/en/latest/hott.html#transport-and-lifting).
+Narya symmetry transforms both a higher term and its type; higher boundary
+faces may themselves require symmetry. Its uniform fields select a dimension,
+and are distinct from scalar fields of an instantiated higher type. These are
+reference requirements, not a derivation of equations for our CBPV kernel.
+
+Current code evidence:
+
+- `pg_binding_permute` transforms geometric references only.
+- `pg_identity_cube_context` constructs either orientation, with a separate
+  assumed center; it does not construct a map between the centers.
+- `square_transposition_boundary` pairs the eight proper faces through ordinary
+  checked substitution but rejects pairing the untransformed center.
+- `uniform_transport` now checks iterated actions on transport/lift in both
+  orientations. Neither these derivations nor their WHNF receipts connect
+  the two oriented centers.
+
+Design consequence for A Program (our inference): a typed symmetry action must
+be an explicit term operation, not pointer renaming, classifier conversion, or
+a supplied target classifier blessed by a new acceptance rule. Keep the three
+Core forms. If a semantic reference implements this operation, its canonical
+payload is the dimension map; its application spine must retain the source
+term and the family/boundary arguments needed by its computation rules.
+Do not add a tag or a proof rule for each dimension.
+
+Before accepting the first such derivation:
+
+1. Recover the source family, selected faces and orientation from checked
+   evidence. Derive the target classifier, rather than trusting a caller's
+   arbitrary claimed target. Operation-level evidence remains authoritative.
+2. For every proper face, derive the induced permutation and its typed action.
+   Moving a face to another position is not enough when its own orientation
+   changes. Existing dimension composition supplies geometry, not this proof.
+3. Specify the primitive center action and its typing rule together. Ordinary
+   Act preserves families; the existing APIs do not already derive this rule.
+   Retain the negative raw-center substitution regression.
+4. Check identity/composition/inverse laws on terms AND classifiers, followed
+   by restriction and substitution laws. Test a 3-cycle and adjacent-swap
+   composition in addition to the square involution.
+5. Only then connect axis-selected uniform fields and Pi lifting. Well-typed
+   neutral field terms are not evidence of their computation equations.
+
+This audit changes the next implementation target from more scalar cases to
+the typed symmetry operation and its boundary contract. It does not authorize
+an arbitrary relation-to-Identity cast, identify orientations by Core interning,
+or claim a completed HOTT model. Items 1-5 above remain unimplemented gates.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action
