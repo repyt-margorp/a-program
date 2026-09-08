@@ -184,6 +184,17 @@ const struct pg_binding_face *pg_binding_restrict(struct pg_dimensions *dimensio
 	return pg_binding_face(dimensions, binding->cube, composite);
 }
 
+const struct pg_binding_face *pg_binding_permute(struct pg_dimensions *dimensions,
+	const struct pg_binding_face *binding, const struct pg_dimension_map *permutation)
+{
+	if (!binding || !permutation) return NULL;
+	if (permutation->source != binding->cube->dimension || permutation->target != binding->cube->dimension) return NULL;
+	permutation = pg_dimension_face(dimensions, permutation);
+	if (!permutation) return NULL;
+	return pg_binding_face(dimensions, binding->cube,
+		pg_dimension_compose(dimensions, permutation, binding->face));
+}
+
 const struct pg_term *pg_term_restrict_bindings(struct pg_dimensions *dimensions,
 	const struct pg_term *term, const struct pg_dimension_map *face,
 	size_t count, const struct pg_binding_face *const *bindings)

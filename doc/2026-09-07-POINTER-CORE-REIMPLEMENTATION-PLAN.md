@@ -1725,6 +1725,17 @@ tests does not discharge it, and datatype admission must not assume completion.
   field computation rule, or Pi lifting. Unknown acted fields remain neutral.
   Optimized and ASan/UBSan pointer checks pass; Identity also passes with a
   512 KiB stack. Implementation unchanged; tests +56 lines; docs separate.
+- [x] September 8, after `f6566c7`: add geometric cube-axis permutation via
+  `pg_binding_permute`. For a face `f : k -> n`, restriction precomposes on
+  its intrinsic k coordinates; permuting the owning n-cube instead forms
+  `p o f`. Both use the existing map and binding interner. Only bijective
+  dimension-preserving maps are accepted. Tests cover corners/edges, inverse
+  swaps, a 3-cycle, identity, composition and commutation with restriction;
+  dimension-dropping and constant-coordinate maps are rejected. This supplies
+  geometric input to item 2, not a typed Identity transposition rule. No Core
+  tag, proof rule or context algorithm was added. Implementation +16 lines;
+  tests +19; documentation separate. Optimized and ASan/UBSan pointer checks
+  pass; Core also passes with a 512 KiB stack.
 
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD

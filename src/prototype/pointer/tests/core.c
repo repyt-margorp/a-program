@@ -1758,6 +1758,25 @@ static void dimension_test(struct pg_graph *graph)
 	const struct pg_binding_face *side = pg_binding_face(&dimensions, square,
 		pg_dimension_map(&dimensions, 1, 2, left));
 	assert(pg_binding_restrict(&dimensions, bottom, zero) == pg_binding_restrict(&dimensions, side, zero));
+	/* Cube permutations postcompose every face; restrictions precompose it. */
+	struct pg_coordinate swap_axes[] = {{PG_AXIS, 1}, {PG_AXIS, 0}};
+	const struct pg_dimension_map *swap = pg_dimension_map(&dimensions, 2, 2, swap_axes);
+	assert(pg_binding_permute(&dimensions, bottom, swap) == side);
+	assert(pg_binding_permute(&dimensions, side, swap) == bottom);
+	assert(pg_binding_permute(&dimensions, pg_binding_restrict(&dimensions, bottom, zero), swap)
+		== pg_binding_restrict(&dimensions, pg_binding_permute(&dimensions, bottom, swap), zero));
+	const struct pg_binding_face *rotated = pg_binding_permute(&dimensions, line, cycle);
+	assert(rotated && rotated != line && rotated->cube == cube);
+	assert(pg_binding_permute(&dimensions, rotated, twice) == line);
+	assert(pg_binding_permute(&dimensions, rotated, cycle) == pg_binding_permute(&dimensions, line, twice));
+	assert(pg_binding_permute(&dimensions, surface, pg_dimension_identity(&dimensions, 3)) == surface);
+	assert(pg_binding_restrict(&dimensions, pg_binding_permute(&dimensions, surface, cycle), edge) == rotated);
+	assert(!pg_binding_permute(&dimensions, NULL, cycle));
+	assert(!pg_binding_permute(&dimensions, surface, NULL));
+	assert(!pg_binding_permute(&dimensions, bottom, cycle));
+	assert(!pg_binding_permute(&dimensions, surface, projection));
+	struct pg_coordinate constant_axes[] = {{PG_ENDPOINT_ZERO, 0}, {PG_AXIS, 0}};
+	assert(!pg_binding_permute(&dimensions, bottom, pg_dimension_map(&dimensions, 2, 2, constant_axes)));
 	/* Dropping a source dimension cannot introduce an independent binder. */
 	assert(!pg_binding_face(&dimensions, square, projection));
 	assert(!pg_binding_restrict(&dimensions, top, edge));

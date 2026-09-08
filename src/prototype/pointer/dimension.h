@@ -52,6 +52,11 @@ const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
 	const struct pg_binding_cube *cube, const struct pg_dimension_map *face);
 const struct pg_binding_face *pg_binding_restrict(struct pg_dimensions *dimensions,
 	const struct pg_binding_face *binding, const struct pg_dimension_map *face);
+/* Postcompose the face with a permutation of its owning cube's axes. Unlike
+ * restriction, this also acts on corners and lower-dimensional faces. This
+ * only renames geometric bindings; it does not transpose an Identity proof. */
+const struct pg_binding_face *pg_binding_permute(struct pg_dimensions *dimensions,
+	const struct pg_binding_face *binding, const struct pg_dimension_map *permutation);
 
 /* Substitute the listed free boundary bindings along a strict face. Other
  * references are unchanged. This is syntactic restriction, not typed Act,
