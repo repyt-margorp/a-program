@@ -293,6 +293,28 @@ does not supply a Self formation rule or solve recursive universe obligations.
 Component `make check` and ASan/UBSan synthesis tests passed. Source admission
 and the remaining full-plan acceptance requirements are still unfulfilled.
 
+After `2c39e29`, telescope structure is a shared source producer distinct from
+the request for its context proof. `pg_synthesis_telescope_structure` opens one
+binding per transition and exposes scope/body without claiming evidence.
+The ordinary checked telescope consumes that structure and awaits the final
+context producer; it does not rebuild the binder chain. Both run on the same
+queue and retain the same binding jobs, with no extra Core/proof former.
+
+Source schema preparation can now start constructor-field jobs after index
+structure is known, even while an index domain remains pending. Constructor
+result-map checking still awaits the checked index telescope. The checked
+`pg_data_signature` is created at schema assembly, not installed as a pending
+assumption; its unused intermediate state pointer was removed. Pending Self
+formation will need the structural inputs, not a falsely certified signature.
+
+Tests demonstrate complete structure with a pending context, independent
+field formation under an unresolved index domain, and withholding even an
+empty-constructor schema until its index context is checked. This changes work
+scheduling, not which nominal declarations are admitted. Scoped Self, universe
+constraints, admission and typed elimination remain unfinished.
+Component `make check` and ASan/UBSan synthesis tests passed with the new
+producer scheduling and pending-index regressions.
+
 - A scoped family signature supplies its fixed parameter context and index
   telescope. Instantiating that signature consumes checked index images and
   forms a type symbolically. It is not APP elimination of a `Comp Universe`

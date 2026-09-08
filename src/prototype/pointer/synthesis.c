@@ -64,7 +64,6 @@ struct substitution_state {
 };
 struct declaration_state {
 	struct pg_index names;
-	const struct pg_data_signature *signature;
 	const struct pg_syntax *constructors;
 	struct pg_synthesis_job **producers;
 	size_t indexed, checked;
@@ -82,7 +81,7 @@ struct derivation_state {
 	const struct pg_reduction_certificate *reduction;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, DERIVATION_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, DERIVATION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -294,6 +293,12 @@ struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,
 	return request_role(synthesis, scope, syntax, TELESCOPE_JOB);
 }
 
+struct pg_synthesis_job *pg_synthesis_telescope_structure(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
+{
+	return request_role(synthesis, scope, syntax, TELESCOPE_STRUCTURE_JOB);
+}
+
 struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
 {
@@ -322,7 +327,8 @@ const struct pg_source_scope *pg_synthesis_binding_scope(const struct pg_synthes
 
 const struct pg_source_scope *pg_synthesis_telescope_scope(const struct pg_synthesis_job *job)
 {
-	if (!job || job->role != TELESCOPE_JOB || job->status != PG_SYNTHESIS_DONE) return NULL;
+	if (!job || job->status != PG_SYNTHESIS_DONE) return NULL;
+	if (job->role != TELESCOPE_JOB && job->role != TELESCOPE_STRUCTURE_JOB) return NULL;
 	return job->inner;
 }
 
@@ -858,16 +864,12 @@ static void binding_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
-static void telescope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+static void telescope_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (!job->inner) { job->inner = job->scope; job->tail = job->syntax; }
 	if (job->tail->kind != job->syntax->kind ||
 		(job->tail->kind != PG_SYNTAX_LAMBDA && job->tail->kind != PG_SYNTAX_PI)) {
-		struct pg_synthesis_job *context = job->inner->context_job;
-		if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
-		if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return; }
-		job->result = source_context(job->inner);
-		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+		finish(synthesis, job, PG_SYNTHESIS_DONE);
 		return;
 	}
 	struct pg_synthesis_job *binding = pg_synthesis_binding(synthesis, job->inner, job->tail);
@@ -875,6 +877,23 @@ static void telescope_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	job->inner = binding->inner;
 	job->tail = job->tail->right;
 	enqueue(synthesis, job);
+}
+
+static void telescope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->left) {
+		job->left = pg_synthesis_telescope_structure(synthesis, job->scope, job->syntax);
+		depend(synthesis, job, job->left);
+		return;
+	}
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	job->inner = job->left->inner;
+	job->tail = job->left->tail;
+	struct pg_synthesis_job *context = job->inner->context_job;
+	if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
+	if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return; }
+	job->result = source_context(job->inner);
+	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
 static void classifier_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -1663,9 +1682,12 @@ static void constructor_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		return;
 	}
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	struct pg_synthesis_job *indices = (struct pg_synthesis_job *)job->inputs[1];
+	if (indices->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, indices); return; }
+	if (indices->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, indices->status); return; }
 	if (!job->right) {
 		job->right = pg_synthesis_data_result(synthesis, pg_synthesis_telescope_scope(job->left),
-			source_context(job->scope), job->inputs[1], pg_synthesis_telescope_body(job->left));
+			source_context(job->scope), indices->result, pg_synthesis_telescope_body(job->left));
 		depend(synthesis, job, job->right);
 		return;
 	}
@@ -1677,19 +1699,19 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 {
 	if (!job->left) {
 		job->left = pg_synthesis_telescope(synthesis, job->scope, job->syntax->left);
-		depend(synthesis, job, job->left);
+		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		job->right = pg_synthesis_telescope_structure(synthesis, job->scope, job->syntax->left);
+		depend(synthesis, job, job->right);
 		return;
 	}
-	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
 	if (!job->declaration) {
-		const struct pg_syntax *constructors = pg_synthesis_telescope_body(job->left);
+		const struct pg_syntax *constructors = pg_synthesis_telescope_body(job->right);
 		if (constructors->kind != PG_SYNTAX_CONSTRUCTORS) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 		struct declaration_state *state = pg_alloc(synthesis->typing->graph, sizeof(*state));
 		if (!state) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		job->declaration = state;
 		state->constructors = constructors;
-		state->signature = pg_data_signature(synthesis->typing, source_context(job->scope), job->left->result);
-		if (!state->signature) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		if (pg_index_init(&state->names) != 0) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		size_t count = constructors->item_count;
 		if (count > SIZE_MAX / sizeof(*state->producers)) {
@@ -1704,7 +1726,7 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		const struct pg_syntax_item *item = &state->constructors->items[i];
 		int status = register_name(synthesis, &state->names, item->name);
 		if (status) { finish(synthesis, job, status > 0 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR); return; }
-		const void *inputs[] = {job->scope, job->left->result, item->expression};
+		const void *inputs[] = {job->scope, job->left, item->expression};
 		struct pg_synthesis_job *producer = request_inputs(synthesis, CONSTRUCTOR_JOB, 3, inputs);
 		if (!producer) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		producer->scope = job->scope;
@@ -1714,13 +1736,17 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		return;
 	}
 	if (state->checked == state->constructors->item_count) {
+		if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		const struct pg_data_signature *signature = pg_data_signature(synthesis->typing, source_context(job->scope), job->left->result);
+		if (!signature) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		struct pg_graph temporary = {0};
 		const struct pg_evidence **results = NULL;
 		if (state->checked <= SIZE_MAX / sizeof(*results))
 			results = pg_alloc(&temporary, state->checked * sizeof(*results));
 		if (state->checked && !results) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		for (size_t i = 0; i < state->checked; ++i) results[i] = state->producers[i]->result;
-		job->schema = pg_data_schema(synthesis->typing, state->signature,
+		job->schema = pg_data_schema(synthesis->typing, signature,
 			state->checked, results);
 		pg_graph_destroy(&temporary);
 		finish(synthesis, job, job->schema ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
@@ -2057,7 +2083,7 @@ static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (job->scope && job->role != TELESCOPE_JOB) {
+	if (job->scope && job->role != TELESCOPE_JOB && job->role != TELESCOPE_STRUCTURE_JOB) {
 		struct pg_synthesis_job *context = job->scope->context_job;
 		if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
 		if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return; }
@@ -2143,6 +2169,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == RETURN_JOB || job->role == THUNK_JOB) { contents_step(synthesis, job); return; }
 	if (job->role == BINDING_JOB) { binding_step(synthesis, job); return; }
 	if (job->role == TELESCOPE_JOB) { telescope_step(synthesis, job); return; }
+	if (job->role == TELESCOPE_STRUCTURE_JOB) { telescope_structure_step(synthesis, job); return; }
 	if (job->role == DATA_RESULT_JOB || job->role == SUBSTITUTION_JOB) { substitution_step(synthesis, job); return; }
 	if (job->role == DATA_SCHEMA_JOB) { data_schema_step(synthesis, job); return; }
 	if (job->role == CONSTRUCTOR_JOB) { constructor_step(synthesis, job); return; }

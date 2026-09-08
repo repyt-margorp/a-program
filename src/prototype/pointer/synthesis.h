@@ -54,8 +54,13 @@ const struct pg_source_scope *pg_synthesis_binding_scope(const struct pg_synthes
  * context evidence, not a datatype admission or Pi formation certificate. */
 struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
-/* Available only after this telescope completes. The scope retains the same
- * pointer binders used by ordinary Lambda/Pi synthesis of the source. */
+/* Structural producer shared with the checked telescope above. Completion
+ * exposes lexical scope/body even if domain checking is pending or failed;
+ * its proof result is always NULL. One binding is opened per transition. */
+struct pg_synthesis_job *pg_synthesis_telescope_structure(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Available after either telescope producer completes. Structural completion
+ * is not context certification. Both retain the same source binder pointers. */
 const struct pg_source_scope *pg_synthesis_telescope_scope(const struct pg_synthesis_job *job);
 const struct pg_syntax *pg_synthesis_telescope_body(const struct pg_synthesis_job *job);
 /* Register an already accepted proof as a completed producer. The exact

@@ -2526,6 +2526,10 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 	assert(pg_synthesis_status(pending_body) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(pending_body));
 	assert(pg_synthesis_status(pending_telescope) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(pending_telescope));
 	assert(!pg_synthesis_result(pending_body) && !pg_synthesis_telescope_scope(pending_telescope));
+	struct pg_synthesis_job *structure = pg_synthesis_telescope_structure(&synthesis, pending_scope, pending_source);
+	assert(pg_synthesis_status(structure) == PG_SYNTHESIS_DONE && !pg_synthesis_result(structure));
+	assert(pg_synthesis_telescope_scope(structure) == second_inner);
+	assert(pg_synthesis_telescope_body(structure) == pending_source->right->right);
 	assert(!pg_synthesis_namespace(&synthesis, root,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Bad", .length = 3}, second_inner));
 	struct pg_synthesis_job *invalid_binding = pg_synthesis_binding(&synthesis, root,
@@ -2644,6 +2648,23 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 	steps = synthesis.steps;
 	pg_synthesis_advance(&synthesis, 1000);
 	assert(synthesis.steps == steps);
+	/* An unresolved index domain does not block independent field formation. */
+	const struct pg_syntax *pending_index_source = expression_syntax(typing->graph,
+		"D:=@\\i:T=>{ready:(x:@)->* x;};");
+	struct pg_synthesis_job *pending_index_schema = pg_synthesis_data_schema(&synthesis, pending, pending_index_source);
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_status(pending_index_schema) == PG_SYNTHESIS_PENDING);
+	jobs = synthesis.jobs.count;
+	struct pg_synthesis_job *index_structure = pg_synthesis_telescope_structure(&synthesis, pending, pending_index_source->left);
+	assert(pg_synthesis_status(index_structure) == PG_SYNTHESIS_DONE && !pg_synthesis_result(index_structure));
+	const struct pg_syntax *independent = pg_synthesis_telescope_body(index_structure)->items[0].expression;
+	struct pg_synthesis_job *independent_fields = pg_synthesis_telescope(&synthesis, pending, independent);
+	assert(synthesis.jobs.count == jobs && pg_synthesis_status(independent_fields) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(independent_fields) && !pg_synthesis_schema_result(pending_index_schema));
+	struct pg_synthesis_job *empty_pending = pg_synthesis_data_schema(&synthesis, pending,
+		expression_syntax(typing->graph, "D:=@\\i:T=>{};"));
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_status(empty_pending) == PG_SYNTHESIS_PENDING && !pg_synthesis_schema_result(empty_pending));
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("source telescopes: shared Lambda/Pi binders, computed domains, parameter/index separation and schema maps passed");
