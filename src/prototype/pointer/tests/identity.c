@@ -837,6 +837,9 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 	static const size_t permutations[6][3] = {
 		{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}
 	};
+	const struct pg_evidence *source_call = pg_prove_application(typing,
+		pg_prove_projection(typing, body_context, functions[0]), body_variable);
+	assert(source_call);
 	for (size_t dimension = 0, expected_count = 1; dimension <= 3; ++dimension, expected_count *= 3) {
 		const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, dimension);
 		for (size_t p = 0; p < (dimension == 3 ? 6u : 1u); ++p) {
@@ -897,6 +900,11 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 			converts(&cube_work, pg_evidence_subject(joint_action)->core, pg_evidence_subject(joint_variable)->core);
 			assert(pg_term_independent(pg_evidence_classifier(joint_variable), &center->variable) == 0);
 			assert(pg_identity_cube_context(typing, &dimensions, body_context, 2, cubes, order) == joint);
+			const struct pg_evidence *call_action = pg_identity_cube_action(typing, classifiers, &dimensions,
+				body_context, source_call, 2, cubes, order);
+			const struct pg_evidence *call_expected = pg_prove_return(typing, classifiers, joint_variable);
+			assert(call_action && pg_evidence_judgement(call_action) == PG_JUDGEMENT_COMPUTATION);
+			assert(action_result(typing, classifiers, joint, &cube_work, call_action, call_expected));
 			cubes[1] = cube;
 			assert(!pg_identity_cube_context(typing, &dimensions, body_context, 2, cubes, order));
 		}

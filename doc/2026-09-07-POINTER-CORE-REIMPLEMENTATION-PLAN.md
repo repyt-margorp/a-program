@@ -1866,6 +1866,18 @@ tests does not discharge it, and datatype admission must not assume completion.
   This removes the one-declaration restriction, not the pending typed
   transposition rule or synchronous construction cost (count * 3^dimension).
 
+- [x] September 8, after `249f671`: check application elimination through
+  dependent cube action, not only variable/constructor action. In A:Universe,
+  x:A form a checked application of lambda y:A. RETURN(y) to x, then act on
+  both declarations together. Dimensions 0-3 (six orders in dimension three)
+  normalize to RETURN of the x-center. The shared `action_result` test helper
+  checks the reduction certificate, regularity, and explicit classifier
+  conversion as ordinary accepted evidence. No new implementation rule is
+  required. Optimized/ASan/UBSan pointer checks and 512 KiB Identity execution
+  pass. Tests +8/-0; documentation separate. This does not yet cover arbitrary
+  neutral function application across permuted higher boundaries or supply
+  the missing center-transposition rule.
+
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
   and the implemented F/U/Pi Identity, RETURN/THUNK/FORCE action and diagonal
