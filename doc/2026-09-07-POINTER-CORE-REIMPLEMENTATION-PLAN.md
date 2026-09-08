@@ -317,6 +317,23 @@ Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass.
 The same cube-function comparison metric is 237,379 transitions, versus 256,454
 before indexing. This is a logical-work comparison, not a wall-time benchmark.
 
+#### Incremental nested-source rebuilding
+
+After `8fc703f`, the nested-body task collects and restores one source binder
+per poll after a DIFFERENT alpha result. Its resume callback no longer calls
+the synchronous source-binding and abstraction loops. An unchanged body still
+returns neutral; no new action or equality equation is introduced.
+
+A nested Act/RETURN regression cancels and destroys execution at every machine
+step before WHNF, then checks each readback against the expected result using
+ordinary conversion. RETURN contents may remain reducible at WHNF, so pointer
+identity with the fully reduced result is deliberately not the assertion.
+Implementation C: +35/-6; test C: +24/-0, documentation excluded. Initial
+`action_scope` discovery and other former-specific reconstruction paths remain
+separate outstanding bounded-work obligations.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass;
+the cube-function comparison maximum is 238,143 charged transitions.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,

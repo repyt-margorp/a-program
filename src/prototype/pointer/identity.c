@@ -544,14 +544,43 @@ struct action_body_work {
 	struct pg_comparison comparison;
 	struct action_scope scope;
 	const struct pg_term *answer;
+	const struct pg_term *cursor;
+	struct pg_graph *arena, *output;
+	size_t position;
+	enum { BODY_COMPARE, BODY_COLLECT, BODY_WRAP, BODY_READY } phase;
 };
 
 static int action_body_poll(void *opaque)
 {
 	struct action_body_work *work = opaque;
-	enum pg_comparison_status status = pg_comparison_advance(&work->comparison, 1);
-	if (status == PG_COMPARISON_PENDING) return 0;
-	return status == PG_COMPARISON_ERROR ? -1 : 1;
+	switch (work->phase) {
+	case BODY_COMPARE: {
+		enum pg_comparison_status status = pg_comparison_advance(&work->comparison, 1);
+		if (status == PG_COMPARISON_PENDING) return 0;
+		if (status == PG_COMPARISON_ERROR) return -1;
+		if (status == PG_COMPARISON_EQUAL) { work->phase = BODY_READY; return 0; }
+		work->scope.bindings = pg_alloc(work->arena, work->scope.count * sizeof(*work->scope.bindings));
+		if (!work->scope.bindings) return -1;
+		work->cursor = work->scope.source;
+		work->phase = BODY_COLLECT;
+		return 0;
+	}
+	case BODY_COLLECT:
+		if (work->position == work->scope.count) { work->phase = BODY_WRAP; return 0; }
+		work->scope.bindings[work->position++].source = work->cursor->as.lambda.binder;
+		work->cursor = work->cursor->as.lambda.body;
+		return 0;
+	case BODY_WRAP:
+		if (work->position) {
+			work->answer = pg_lambda(work->output, work->scope.bindings[--work->position].source, work->answer);
+		} else {
+			work->answer = pg_identity_action(work->output, work->answer);
+			work->phase = BODY_READY;
+		}
+		return work->answer ? 0 : -1;
+	case BODY_READY: return 1;
+	}
+	return -1;
 }
 
 static void action_body_destroy(void *opaque)
@@ -564,9 +593,7 @@ static int action_body_resume(struct pg_eval *machine, void *opaque)
 {
 	struct action_body_work *work = opaque;
 	if (pg_comparison_status(&work->comparison) == PG_COMPARISON_EQUAL) return 1;
-	if (source_bindings(machine, &work->scope) != 0) return -1;
-	const struct pg_term *source = abstract_body(machine->output, &work->scope, work->answer);
-	return pg_eval_enter(machine, (struct pg_closure){pg_identity_action(machine->output, source), NULL}, 1);
+	return pg_eval_enter(machine, (struct pg_closure){work->answer, NULL}, 1);
 }
 
 static int action_body(struct pg_eval *machine, const struct pg_term *answer)
@@ -574,6 +601,8 @@ static int action_body(struct pg_eval *machine, const struct pg_term *answer)
 	struct action_body_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work) return -1;
 	work->answer = answer;
+	work->arena = &machine->temporary;
+	work->output = machine->output;
 	int status = action_scope(machine, pg_eval_argument(machine, 0)->term, &work->scope);
 	if (status) return status;
 	if (pg_comparison_init(&work->comparison, work->scope.body, answer, NULL, NULL) != 0) return -1;

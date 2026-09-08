@@ -1304,6 +1304,30 @@ static void lambda_actions(struct pg_classifiers *classifiers)
 	const struct pg_term *id = pg_lambda(graph, x, vx);
 	normalizes(&work, pg_identity_apply(graph, id, a, b, p), p);
 	normalizes(&work, pg_identity_apply(graph, id, a, b, q), q);
+	const struct pg_term *returned_y = pg_application(graph, pg_reference(graph, &pg_return_operation), vy);
+	const struct pg_term *inner = pg_identity_apply(graph, pg_lambda(graph, y, returned_y), a, b, vx);
+	const struct pg_term *nested_action = pg_identity_apply(graph, pg_lambda(graph, x, inner), a, b, p);
+	const struct pg_term *nested_expected = pg_application(graph, pg_reference(graph, &pg_return_operation), p);
+	struct pg_eval nested_whole;
+	pg_eval_init(&nested_whole, nested_action);
+	nested_whole.output = graph;
+	nested_whole.dispatch = pg_pure_policy.dispatch;
+	assert(pg_eval_advance(&nested_whole, 10000) == PG_EVAL_WHNF);
+	converts(&work, pg_eval_readback(&nested_whole, graph), nested_expected);
+	uint64_t nested_steps = nested_whole.steps;
+	pg_eval_destroy(&nested_whole);
+	/* Cancel through comparison and rebuilding of the acted source prefix. */
+	for (uint64_t cut = 0; cut < nested_steps; ++cut) {
+		struct pg_eval split;
+		pg_eval_init(&split, nested_action);
+		split.output = graph;
+		split.dispatch = pg_pure_policy.dispatch;
+		assert(pg_eval_advance(&split, cut) == PG_EVAL_PENDING);
+		const struct pg_term *snapshot = pg_eval_readback(&split, graph);
+		assert(snapshot);
+		pg_eval_destroy(&split);
+		converts(&work, snapshot, nested_expected);
+	}
 	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
 	const struct pg_term *omega = pg_application(graph, self, self);
 	/* Complex constant families prune scope even with neutral endpoints;
