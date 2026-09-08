@@ -91,6 +91,14 @@ struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_handler_return(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_synthesis_job *input,
 	const struct pg_syntax *clause);
+/* Await the inferred carrier and resolve the operation label through ordinary
+ * source aliases, then synthesize the clause in its checked payload/resumption
+ * context. The body receives no expected result type. Completion returns its
+ * nested Lambda proof; final pg_prove_handler still checks carrier/effect
+ * compatibility. This API does not guess or infer a missing carrier. */
+struct pg_synthesis_job *pg_synthesis_handler_clause(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
+	const struct pg_syntax *clause);
 struct pg_effect_inference;
 /* Borrow a sealed positive effect-equation graph into ordinary budgeted Solve.
  * Completion has no proof result: closed rows are read from work and must still

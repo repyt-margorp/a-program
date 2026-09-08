@@ -266,18 +266,31 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	complete(&synthesis, request(&synthesis, scope, "bad := M @#.return x y => x;"), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *carrier = pg_prove_return_type(typing, classifiers, u1);
 	const struct pg_object *req = pg_binder(typing->graph), *resume = pg_binder(typing->graph);
-	const struct pg_evidence *clause_context = pg_prove_handler_context(typing, classifiers,
-		operation, context, carrier, req, resume);
-	assert(clause_context);
-	const struct pg_source_scope *clause_scope = pg_synthesis_bind(&synthesis, scope,
-		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="req", .length=3}, req, pg_evidence_premise(clause_context, 0));
-	clause_scope = pg_synthesis_bind(&synthesis, clause_scope,
-		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="k", .length=1}, resume, clause_context);
-	assert(clause_scope);
-	const struct pg_evidence *clause_body = complete(&synthesis,
-		request(&synthesis, clause_scope, "body := k req;"), PG_SYNTHESIS_DONE);
-	const struct pg_evidence *clause_function = pg_prove_abstract(typing, classifiers, context, clause_context, clause_body);
+	struct pg_parser clause_parser;
+	struct pg_definition clause_definition;
+	const char *clause_source = "handler := (Op Arg) @Alias req k => k req;";
+	pg_parser_init(&clause_parser, typing->graph, clause_source, strlen(clause_source));
+	assert(pg_parser_next(&clause_parser, &clause_definition) == 1);
+	const struct pg_syntax *operation_clause = clause_definition.expression->items[0].expression;
+	struct pg_synthesis_job *carrier_job = pg_synthesis_normalize(&synthesis, context, carrier);
+	struct pg_synthesis_job *clause_job = pg_synthesis_handler_clause(&synthesis, scope, carrier_job, operation_clause);
+	assert(clause_job && !pg_synthesis_result(clause_job));
+	assert(pg_synthesis_handler_clause(&synthesis, scope, carrier_job, operation_clause) == clause_job);
+	const struct pg_evidence *clause_function = complete(&synthesis, clause_job, PG_SYNTHESIS_DONE);
 	assert(clause_function);
+	assert(complete(&synthesis, pg_synthesis_handler_clause(&synthesis, scope,
+		pg_synthesis_evidence(&synthesis, pg_synthesis_result(carrier_job)), operation_clause),
+		PG_SYNTHESIS_DONE) == clause_function);
+	complete(&synthesis, pg_synthesis_handler_clause(&synthesis, scope,
+		pg_synthesis_evidence(&synthesis, u1), operation_clause), PG_SYNTHESIS_REJECTED);
+	const char *bad_clauses[] = {"handler := M @Alias req => req;",
+		"handler := M @Arg req k => k req;"};
+	for (size_t i = 0; i < sizeof(bad_clauses) / sizeof(*bad_clauses); ++i) {
+		pg_parser_init(&clause_parser, typing->graph, bad_clauses[i], strlen(bad_clauses[i]));
+		assert(pg_parser_next(&clause_parser, &clause_definition) == 1);
+		complete(&synthesis, pg_synthesis_handler_clause(&synthesis, scope, carrier_job,
+			clause_definition.expression->items[0].expression), PG_SYNTHESIS_REJECTED);
+	}
 	scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Result", .length=6}, u1);
 	struct pg_parser handler_parser;
@@ -363,6 +376,13 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(both_value && pg_evidence_subject(both_value)->core == pg_evidence_subject(u0)->core);
 	const struct pg_evidence *called = complete(&synthesis,
 		request(&synthesis, scope, "called := Op Arg;"), PG_SYNTHESIS_DONE);
+	const char *wrong_body = "handler := (Op Arg) @Op req k => Result;";
+	pg_parser_init(&clause_parser, typing->graph, wrong_body, strlen(wrong_body));
+	assert(pg_parser_next(&clause_parser, &clause_definition) == 1);
+	struct pg_handler_clause incompatible_clause = {operation,
+		complete(&synthesis, pg_synthesis_handler_clause(&synthesis, scope, carrier_job,
+			clause_definition.expression->items[0].expression), PG_SYNTHESIS_DONE)};
+	assert(!pg_prove_handler(typing, classifiers, called, returned_clause, carrier, 1, &incompatible_clause));
 	struct pg_handler_clause clause = {operation, clause_function};
 	const struct pg_evidence *handled = pg_prove_handler(typing, classifiers, called, returned_clause, carrier, 1, &clause);
 	assert(handled);
@@ -386,16 +406,13 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_effect_row *inferred = pg_effect_inference_result(&inference, output_effect);
 	assert(inferred == input_row);
 	const struct pg_evidence *inferred_carrier = pg_prove_effect_type(typing, classifiers, inferred, u1);
-	const struct pg_evidence *inferred_context = pg_prove_handler_context(typing, classifiers,
-		operation, context, inferred_carrier, req, resume);
-	const struct pg_source_scope *inferred_scope = pg_synthesis_bind(&synthesis, scope,
-		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="req", .length=3}, req, pg_evidence_premise(inferred_context, 0));
-	inferred_scope = pg_synthesis_bind(&synthesis, inferred_scope,
-		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="k", .length=1}, resume, inferred_context);
-	const struct pg_evidence *emitting_body = complete(&synthesis,
-		request(&synthesis, inferred_scope, "body := {x := Op req; k x;};"), PG_SYNTHESIS_DONE);
-	struct pg_handler_clause emitting_clause = {operation,
-		pg_prove_abstract(typing, classifiers, context, inferred_context, emitting_body)};
+	const char *emitting_source = "handler := (Op Arg) @Op req k => {x := Op req; k x;};";
+	pg_parser_init(&clause_parser, typing->graph, emitting_source, strlen(emitting_source));
+	assert(pg_parser_next(&clause_parser, &clause_definition) == 1);
+	const struct pg_evidence *emitting_function = complete(&synthesis,
+		pg_synthesis_handler_clause(&synthesis, scope, pg_synthesis_evidence(&synthesis, inferred_carrier),
+			clause_definition.expression->items[0].expression), PG_SYNTHESIS_DONE);
+	struct pg_handler_clause emitting_clause = {operation, emitting_function};
 	const struct pg_evidence *emitting_handler = pg_prove_handler(typing, classifiers,
 		called, returned_clause, inferred_carrier, 1, &emitting_clause);
 	assert(emitting_handler);

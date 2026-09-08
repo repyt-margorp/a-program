@@ -15,6 +15,16 @@ criteria for merging different Lambda or semantic-object references.
 
 ### September 8 handler effect-equation boundary
 
+- [x] Add shared `pg_synthesis_handler_clause(scope, carrier_producer, clause)`.
+  It awaits operation alias resolution and the independently supplied carrier,
+  constructs the existing checked payload/resumption context, and synthesizes
+  the body without an expected codomain. Equivalent carrier producers converge
+  on accepted evidence before allocating clause binders. Final handler checking
+  remains separate: a well-typed body with the wrong result carrier is rejected
+  by `pg_prove_handler`, not coerced during synthesis.
+  Fixtures now use this API for alias-based resumption and reissuing clauses,
+  rather than manually constructing their source binder scopes. Invalid carrier,
+  binder arity and non-operation labels are rejected.
 - [x] Centralize deep-handler edges in `pg_effect_handler_dependencies`:
   subtract the handled set only from the input; preserve return/clause effects.
   Validate every equation owner before adding any edge. Recursive resumption
