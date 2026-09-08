@@ -666,6 +666,18 @@ finish general handler source support.
   newly demanded bodies after component sealing; foreign symbolic row references
   remain rejected, not guessed empty. General callable/dependent carriers and
   equation relocation in pending `.a` images remain separate open gates.
+- [x] September 9: return-only source folds prepare through the same sequence
+  producer before context or continuation acceptance. The late source dispatch
+  and continuation-proof wait are removed. Structural consumers follow that
+  ordinary producer rather than wait for a completed source expression.
+  Tests obtain its symbolic result under an unsealed effect-dependent context,
+  then accept and normalize after sealing. A thunk input stays a returned thunk,
+  not an implicitly executed computation. Nested return-only clauses consume
+  outer resumptions; effects emitted in their return body remain in the output
+  row and normalize to an escaping request. Both nested fixtures run in chunks
+  1 and 64. No new proof rule, Core constructor or equation worker is added.
+  Normal checks, eight source/six runtime cases and rebuilt ASan/UBSan synthesis
+  tests pass. Implementation C changes by +8/-14; regression tests by +16/-0.
 - [ ] Automatic equation generation from arbitrary source bodies remains open.
   This fixture supplies the graph explicitly before checking the source body;
   it does not infer latent callable effects or a general dependent carrier.

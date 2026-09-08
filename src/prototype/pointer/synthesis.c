@@ -2648,7 +2648,7 @@ static int return_clause(const struct pg_syntax *clause)
 
 static int handler_syntax(const struct pg_syntax *syntax)
 {
-	if (syntax->kind != PG_SYNTAX_ELIMINATION || syntax->item_count < 2) return 0;
+	if (syntax->kind != PG_SYNTAX_ELIMINATION || !syntax->item_count) return 0;
 	for (size_t i = 0; i < syntax->item_count; ++i)
 		if (return_clause(syntax->items[i].expression)) return 1;
 	return 0;
@@ -2687,16 +2687,14 @@ error:
 
 static void return_handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (!job->right) {
+	if (!job->value_job) {
 		job->left = pg_synthesis_request(synthesis, job->scope, job->syntax->left);
 		job->right = pg_synthesis_handler_return(synthesis, job->scope, job->left,
 			job->syntax->items[0].expression);
-		depend(synthesis, job, job->right);
-		return;
+		if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		job->value_job = pg_synthesis_sequence(synthesis, job->scope->context_job,
+			job->right->left, job->right);
 	}
-	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
-	if (!job->value_job) job->value_job = pg_synthesis_sequence(synthesis, job->scope->context_job,
-		job->right->left, job->right);
 	forward_proof(synthesis, job, job->value_job);
 }
 
@@ -3369,7 +3367,7 @@ static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_j
 	if (job->role == HANDLER_RETURN_JOB || job->role == HANDLER_CLAUSE_JOB) return job->value_job;
 	if (job->role == SEQUENCE_JOB) return job->value_job ? job->value_job : job->right;
 	if (job->role != EXPRESSION_JOB) return NULL;
-	if (job->syntax->kind == PG_SYNTAX_ELIMINATION && job->value_job && job->value_job->role == HANDLER_JOB)
+	if (handler_syntax(job->syntax))
 		return job->value_job;
 	if (job->block && job->block->tail && !job->block->frames) return job->block->tail;
 	if (job->syntax->kind == PG_SYNTAX_APPLICATION && job->stage == APPLICATION_RULE_READY) return job->value_job;
@@ -4159,6 +4157,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }
 	if (job->role == HANDLER_JOB) { handler_step(synthesis, job); return; }
 	if (job->role == EXPRESSION_JOB && handler_syntax(job->syntax)) {
+		if (job->syntax->item_count == 1) { return_handler_step(synthesis, job); return; }
 		if (!job->value_job) job->value_job = pg_synthesis_handler(synthesis, job->scope, NULL, job->syntax);
 		forward_proof(synthesis, job, job->value_job);
 		return;
@@ -4353,12 +4352,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (hypothesis_reference(synthesis, job)) return;
 	if (!prepare_expression(synthesis, job)) return;
 	if (syntax->kind == PG_SYNTAX_DECLARATION) { declaration_step(synthesis, job); return; }
-	if (syntax->kind == PG_SYNTAX_ELIMINATION) {
-		if (syntax->item_count == 1 && return_clause(syntax->items[0].expression))
-			return_handler_step(synthesis, job);
-		else match_step(synthesis, job);
-		return;
-	}
+	if (syntax->kind == PG_SYNTAX_ELIMINATION) { match_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_ATOM || syntax->kind == PG_SYNTAX_QUALIFIED || syntax->kind == PG_SYNTAX_IMPORT) {

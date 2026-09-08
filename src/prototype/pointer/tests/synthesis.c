@@ -513,6 +513,14 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(return_domain == pg_universe(classifiers, 0));
 		assert(return_codomain == pg_return_type(classifiers, return_domain));
 		assert(!pg_synthesis_result(return_clause_job));
+		struct pg_synthesis_job *source_return_handler = request(&synthesis, scope,
+			"h := k @#.return r => r;");
+		struct pg_synthesis_job *source_return_type = pg_synthesis_classifier_structure(&synthesis, source_return_handler);
+		assert(!complete(&synthesis, source_return_type, PG_SYNTHESIS_DONE));
+		const struct pg_term *return_row, *return_value;
+		assert(pg_effect_type_spine_view(pg_synthesis_type_structure_result(source_return_type), &return_row, &return_value));
+		assert(return_value == pg_thunk_type(classifiers, symbolic_f));
+		assert(!pg_synthesis_result(context) && !pg_synthesis_result(source_return_handler));
 		struct pg_synthesis_job *open_carrier = pg_synthesis_handler_carrier(&synthesis,
 			context, return_clause_job, &effects, equation);
 		assert(open_carrier == pg_synthesis_handler_carrier(&synthesis, context, return_clause_job, &effects, equation));
@@ -694,6 +702,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_evidence_context(open_handler_proof) == pg_evidence_context(expected_context));
 		assert(pg_evidence_classifier(open_handler_proof) == pg_effect_type(classifiers, no_effects, handler_value));
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *source_return_proof = complete(&synthesis, source_return_handler, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_classifier(source_return_proof) == pg_effect_type(classifiers, no_effects,
+			pg_evidence_subject(pg_synthesis_result(thunk))->core));
+		const struct pg_evidence *returned_thunk = pg_prove_return_value(typing,
+			normalize(&synthesis, expected_context, source_return_proof));
+		assert(returned_thunk && pg_evidence_subject(returned_thunk)->core == pg_reference(typing->graph, k));
 		assert(!complete(&synthesis, pending_op_reference, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_operation_declaration(pending_op_reference) == pending_op);
 		same_judgement(complete(&synthesis, open_carrier, PG_SYNTHESIS_DONE),
@@ -1083,6 +1097,8 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		enum pg_synthesis_status status;
 		int emits, requests;
 	} nested_handlers[] = {
+		{"h := (Op Arg) @Op req k => ((k req) @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => ((k req) @#.return x => Op x) @#.return x => x;", PG_SYNTHESIS_DONE, 1, 1},
 		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => resume req @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
 		{"h := (Op Arg) @#.return x => x @Op req k => ((k req) @#.return x => x @Alias req resume => resume req);", PG_SYNTHESIS_DONE, 0, 0},
 		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => {x := Op req; resume x;} @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 1, 0},
