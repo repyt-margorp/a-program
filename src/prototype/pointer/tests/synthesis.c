@@ -2670,6 +2670,49 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 	puts("source telescopes: shared Lambda/Pi binders, computed domains, parameter/index separation and schema maps passed");
 }
 
+static void source_declarations(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
+	const char *sources[] = {
+		"D:=@{};", "D:=@{zero:*; succ:*->*;};", "D:=@{pack:(A:@)->A->*;};",
+		"D:=@{pack:(A:@)->A->*; next:*->*;};"};
+	const uint64_t levels[] = {0, 0, 1, 1};
+	for (size_t i = 0; i < sizeof(sources) / sizeof(*sources); ++i) {
+		const struct pg_syntax *syntax = expression_syntax(typing->graph, sources[i]);
+		struct pg_synthesis_job *job = pg_synthesis_request(&synthesis, root, syntax);
+		unsigned steps = 0;
+		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+			assert(!pg_synthesis_result(job) && ++steps < 10000);
+			pg_synthesis_advance(&synthesis, 1);
+		}
+		const struct pg_evidence *type = pg_synthesis_result(job);
+		assert(type && pg_evidence_rule(type) == PG_INDUCTIVE_FORM);
+		assert(!pg_evidence_context(type));
+		uint64_t level;
+		assert(pg_universe_level(pg_evidence_classifier(type), &level) && level == levels[i]);
+		const struct pg_evidence *self = pg_evidence_premise(type, 0);
+		assert(pg_universe_level(pg_evidence_context(self)->declared_type, &level) && level == levels[i]);
+		assert(pg_term_independent(pg_evidence_subject(type)->core, pg_evidence_context(self)->binder) == 1);
+		size_t terms = typing->graph->terms.count, proofs = typing->proofs.count;
+		assert(pg_synthesis_request(&synthesis, root, syntax) == job);
+		assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+		const struct pg_evidence *other = complete(&synthesis,
+			pg_synthesis_request(&synthesis, root, expression_syntax(typing->graph, sources[i])), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(other)->core != pg_evidence_subject(type)->core);
+	}
+	complete(&synthesis, pg_synthesis_request(&synthesis, root,
+		expression_syntax(typing->graph, "D:=@{bad:(* -> @)->*;};")), PG_SYNTHESIS_UNSUPPORTED);
+	complete(&synthesis, pg_synthesis_request(&synthesis, root,
+		expression_syntax(typing->graph, "D:=@\\i:@=>{mk:* i;};")), PG_SYNTHESIS_UNSUPPORTED);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("source declarations: nominal formation, conditional universe candidates, no early publication and reuse passed");
+}
+
 static void source_schemas(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	struct pg_whnf_work work;
@@ -2983,7 +3026,10 @@ static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifi
 	complete(&split, pg_synthesis_data_case(&split, bad, schema, ctor, motive), PG_SYNTHESIS_REJECTED);
 	struct pg_synthesis_job *outside = request(&split, pg_synthesis_root(&split), "outside := \\x : @ => x;");
 	complete(&split, pg_synthesis_data_case(&split, outside, schema, ctor, motive), PG_SYNTHESIS_REJECTED);
-	struct pg_synthesis_job *unsupported = request(&split, scope, "type := @{ nil : *; };");
+	struct pg_synthesis_job *type_body = request(&split, scope, "type := @{ nil : *; };");
+	complete(&split, type_body, PG_SYNTHESIS_DONE);
+	complete(&split, pg_synthesis_data_case(&split, type_body, schema, ctor, motive), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *unsupported = request(&split, scope, "type := @\\i:A => { nil : * i; };");
 	complete(&split, pg_synthesis_data_case(&split, unsupported, schema, ctor, motive), PG_SYNTHESIS_UNSUPPORTED);
 	/* Assemble the acted result map through scheduled, explicit post-checks. */
 	struct pg_dimensions dimensions;
@@ -3143,6 +3189,7 @@ int main(void)
 	source_imports(&typing, &classifiers);
 	source_telescopes(&typing, &classifiers);
 	source_schemas(&typing, &classifiers);
+	source_declarations(&typing, &classifiers);
 	definition_selections(&typing, &classifiers);
 	fair_work(&typing, &classifiers);
 	endpoint_jobs(&typing, &classifiers);
@@ -3601,7 +3648,7 @@ int main(void)
 		assert(pg_evidence_subject(value)->core == pg_reference(&graph, x));
 		assert(pg_evidence_classifier(value) == pg_reference(&graph, a));
 	}
-	complete(&synthesis, request(&synthesis, root, "Nat := @{zero:*; succ:*->*;};"), PG_SYNTHESIS_UNSUPPORTED);
+	complete(&synthesis, request(&synthesis, root, "Nat := @{zero:*; succ:*->*;};"), PG_SYNTHESIS_DONE);
 	const char *blocks[] = {
 		"main := { alias := x; alias; };",
 		"main := { first := (\\y : A => y) x; second := (\\y : A => y) first; second; };",

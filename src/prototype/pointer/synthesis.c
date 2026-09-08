@@ -1768,6 +1768,48 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	enqueue(synthesis, job);
 }
 
+/* Each universe candidate owns a distinct conditional Self context. Raising
+ * the bound never mutates an accepted assumption or publishes a provisional
+ * family. Failure to construct a candidate is not universe inconsistency. */
+static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (job->syntax->left->kind != PG_SYNTAX_CONSTRUCTORS) {
+		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+	}
+	if (!job->domain)
+		job->domain = pg_prove_universe(synthesis->typing, synthesis->classifiers, source_context(job->scope), 0);
+	if (!job->left) {
+		job->binder = pg_binder(synthesis->typing->graph);
+		const struct pg_evidence *self = pg_prove_context_extension(synthesis->typing,
+			source_context(job->scope), job->binder, job->domain);
+		job->inner = pg_synthesis_bind(synthesis, job->scope, (struct pg_token){.kind = '*'}, job->binder, self);
+		job->left = pg_synthesis_data_schema(synthesis, job->inner, job->syntax);
+		depend(synthesis, job, job->left);
+		return;
+	}
+	if (job->left->status != PG_SYNTHESIS_DONE) {
+		enum pg_synthesis_status status = job->left->status;
+		if (status == PG_SYNTHESIS_REJECTED) status = PG_SYNTHESIS_UNSUPPORTED;
+		finish(synthesis, job, status); return;
+	}
+	const struct pg_data_schema *schema = pg_synthesis_schema_result(job->left);
+	uint64_t candidate, bound;
+	if (!job->domain || !pg_universe_level(pg_evidence_subject(job->domain)->core, &candidate) ||
+		pg_data_schema_field_level(schema, &bound)) {
+		finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+	}
+	if (bound > candidate) {
+		job->domain = pg_prove_universe(synthesis->typing, synthesis->classifiers, source_context(job->scope), bound);
+		if (!job->domain) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		job->left = NULL;
+		enqueue(synthesis, job);
+		return;
+	}
+	job->result = pg_prove_inductive_type(synthesis->typing, synthesis->classifiers, schema);
+	if (job->result) job->schema = schema;
+	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+}
+
 static struct substitution_state *substitution_start(struct pg_synthesis *synthesis,
 	const struct pg_evidence *source, const struct pg_evidence *destination, size_t count)
 {
@@ -2184,6 +2226,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == CONSTRUCTOR_JOB) { constructor_step(synthesis, job); return; }
 	if (job->role == DEFINITION_JOB) { definition_step(synthesis, job); return; }
 	if (job->role == DEFINITION_SCOPE_JOB) { definition_scope_step(synthesis, job); return; }
+	if (syntax->kind == PG_SYNTAX_DECLARATION) { declaration_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_BLOCK) { block_step(synthesis, job); return; }

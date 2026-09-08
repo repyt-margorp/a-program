@@ -13,7 +13,7 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
-### Source acceptance recheck after `84e99fb`
+### Source acceptance recheck after `cf41ee8`
 
 The recent storage work does not close source IADT admission. Do not use the
 green component `check` target as evidence that the replacement runs existing
@@ -24,24 +24,27 @@ baseline. `check-acceptance` combines this gate with the component suite.
 It is a necessary gate, not sufficient evidence for execution, effects, IF8,
 higher coherence or full `.a` support.
 
-The current result is **0/8**, all exit 4 (unsupported), not fuel exhaustion:
+After connecting zero-index source formation, the current result is **1/8**.
+The other seven exit 4 (unsupported), not fuel exhaustion. This checks typing,
+not execution results:
 
-| Example | Solve transitions |
-| --- | ---: |
-| 01_bool | 39 |
-| 02_nat | 9 |
-| 03_main | 39 |
-| 04_match | 54 |
-| 05_bool_to_nat | 42 |
-| 06_pred | 32 |
-| 07_add | 54 |
-| 09_list_induction | 119 |
+| Example | Status | Solve transitions |
+| --- | --- | ---: |
+| 01_bool | unsupported | 107 |
+| 02_nat | done | 62 |
+| 03_main | unsupported | 107 |
+| 04_match | unsupported | 224 |
+| 05_bool_to_nat | unsupported | 138 |
+| 06_pred | unsupported | 126 |
+| 07_add | unsupported | 148 |
+| 09_list_induction | unsupported | 340 |
 
 Code-level obstruction and implementation order:
 
-1. `syntax.h` represents DECLARATION and ELIMINATION, but the ordinary
-   expression dispatch in `synthesis.c` does not implement either. The separate
-   `pg_synthesis_data_schema` job builds a schema, not a typed declaration.
+1. Ordinary DECLARATION dispatch now admits checked zero-index families.
+   ELIMINATION, indexed declarations and qualified constructor publication
+   remain unsupported. The separate `pg_synthesis_data_schema` job still builds
+   a conditional schema only; its completion never implies type admission.
 2. `pg_data_schema` in `iadt.c` validates field/result substitutions and derives
    erased layout arities. Zero-index nominal formation, constructor membership
    and dependent case elimination now have evidence rules (see the progress
@@ -211,6 +214,30 @@ Admission audit after `8b3105b`:
 ### Next Implementation Boundary: Pending Recursive Formation
 
 Zero-index inductive rules after `d952804`:
+
+Source formation after `cf41ee8`:
+
+- [x] Connect zero-index DECLARATION to conditional schema checking and the
+  existing inductive formation rule. Start with a concrete Self universe
+  candidate zero. If the retained field formations require a greater bound,
+  allocate a *new* Self binder/context and schema job at that bound. Only a
+  schema passing kernel positivity and universe checks becomes an expression
+  result. Do not overwrite an accepted classifier or use `::` as input.
+- [x] Test empty and recursive small types, dependent stored-type fields at
+  universe one, recursive fields alongside such stored types, nominal
+  distinction between source declarations, shared-job reuse, and no premature
+  publication while solving. `examples/02_nat.p` is now accepted unchanged.
+  Full component `check` and rebuilt ASan/UBSan synthesis tests pass. The
+  existing case-producer regression now distinguishes an admitted type used
+  incorrectly as a computation from an unsupported indexed declaration.
+- [ ] General Self universe obligations: candidate construction can fail before
+  a field bound is available, so failure of this search remains unsupported,
+  not proof of ill-typedness. This concrete ascending-candidate implementation
+  is sound on success, but is not a complete symbolic universe solver. Pending
+  indexed formation and higher rules must not be replaced by this fragment.
+- [ ] Publish qualified constructors from the admitted typed declaration, then
+  connect source Match and recursive IH. Never discover nominal membership by
+  looking up an erased constructor Core's classifier.
 
 Dependent case elimination after `581ab95`:
 
