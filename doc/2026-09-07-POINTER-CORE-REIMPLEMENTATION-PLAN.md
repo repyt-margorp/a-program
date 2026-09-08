@@ -2395,6 +2395,25 @@ its computation contract first; never recover erased typing information by
 looking up a Core pointer's classifier. Steps 1-5 remain open, and scalar
 transport tests or further permutation-group tests cannot close them.
 
+- [x] After `a4bc683`, `pg_identity_formation` recovers an explicit Identity
+  formation through a chain of accepted reindex/projection derivations. It
+  composes their substitutions and rebuilds homogeneous Identity, selected
+  universe-family instantiation, or Family Identity with the existing rules.
+  For Family Identity the source formation stays fixed; both endpoint maps,
+  selected paths and endpoints are substituted together. There is no new
+  proof rule, raw APP-shape inference, copied boundary database or automatic
+  conversion search. Repeated recovery reuses accepted evidence.
+  Tests cover the square-center formation under reindex and later projection,
+  retained source family, alpha agreement with ordinary reindex, homogeneous
+  formation and selected instantiation under projection, and rejection of a
+  value or plain universe formation. The raw-center rejection remains intact.
+  This implements structural provenance recovery for these three formers, not
+  a complete multidimensional boundary view. Normalization/conversion and
+  other formation rules remain unsupported rather than being silently stripped.
+  Work is currently synchronous; budgeted proof traversal remains necessary.
+  Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test
+  pass. Implementation C/header: +66/-0; tests: +25/-0; documentation excluded.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action

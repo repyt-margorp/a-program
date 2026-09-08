@@ -810,6 +810,20 @@ static void square_transposition_boundary(struct pg_typing *typing, struct pg_cl
 	assert(center_orientation == swap);
 	const struct pg_evidence *expected = pg_prove_reindex(typing, map, pg_evidence_premise(extensions[8], 1));
 	assert(center && expected);
+	const struct pg_evidence *recovered = pg_identity_formation(typing, classifiers, expected);
+	assert(recovered && pg_evidence_rule(recovered) == PG_FAMILY_IDENTITY_FORM);
+	assert(pg_evidence_context(recovered) == pg_evidence_context(expected));
+	assert(pg_evidence_premise(recovered, 0) == pg_evidence_premise(pg_evidence_premise(extensions[8], 1), 0));
+	assert(pg_alpha_equal(pg_evidence_subject(recovered)->core, pg_evidence_subject(expected)->core) == 1);
+	assert(pg_identity_formation(typing, classifiers, expected) == recovered);
+	const struct pg_evidence *extended = pg_prove_context_extension(typing, contexts[1], pg_binder(graph),
+		pg_prove_universe(typing, classifiers, contexts[1], 0));
+	const struct pg_evidence *projected = pg_prove_projection(typing, extended, expected);
+	const struct pg_evidence *projected_boundary = pg_identity_formation(typing, classifiers, projected);
+	assert(projected_boundary && pg_evidence_context(projected_boundary) == pg_evidence_context(extended));
+	assert(pg_alpha_equal(pg_evidence_subject(projected_boundary)->core, pg_evidence_subject(projected)->core) == 1);
+	assert(!pg_identity_formation(typing, classifiers, center));
+	assert(!pg_identity_formation(typing, classifiers, pg_prove_universe(typing, classifiers, empty, 0)));
 	assert(!pg_prove_substitution_pair(typing, map, extensions[8], center));
 	struct pg_conversion comparison;
 	assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(center), pg_evidence_subject(expected)->core) == 0);
@@ -846,6 +860,10 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 	for (unsigned side = 0; side < 2; ++side) {
 		const struct pg_evidence *input_type = pg_prove_value_type(typing, pg_prove_variable(typing, source, side ? b : a));
 		const struct pg_evidence *input_context = pg_prove_context_extension(typing, source, x, input_type);
+		const struct pg_evidence *homogeneous = pg_prove_projection(typing, input_context, relation);
+		const struct pg_evidence *homogeneous_boundary = pg_identity_formation(typing, classifiers, homogeneous);
+		assert(homogeneous_boundary && pg_evidence_rule(homogeneous_boundary) == PG_IDENTITY_FORM);
+		assert(pg_alpha_equal(pg_evidence_subject(homogeneous_boundary)->core, pg_evidence_subject(homogeneous)->core) == 1);
 		const struct pg_evidence *transport = pg_prove_identity_transport(typing, classifiers,
 			pg_prove_variable(typing, input_context, r), pg_prove_variable(typing, input_context, x),
 			(enum pg_identity_direction)side);
@@ -865,6 +883,13 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 		const struct pg_evidence *expected = pg_prove_identity_instance(typing, classifiers, edge,
 			pg_prove_reindex(typing, left, transport), pg_prove_reindex(typing, right, transport));
 		assert(expected);
+		assert(pg_identity_formation(typing, classifiers, expected) == expected);
+		const struct pg_evidence *extra_context = pg_prove_context_extension(typing, boundary, pg_binder(graph),
+			pg_prove_universe(typing, classifiers, boundary, 0));
+		const struct pg_evidence *extra_instance = pg_prove_projection(typing, extra_context, expected);
+		const struct pg_evidence *instance_boundary = pg_identity_formation(typing, classifiers, extra_instance);
+		assert(instance_boundary && pg_evidence_rule(instance_boundary) == PG_IDENTITY_INSTANCE);
+		assert(pg_alpha_equal(pg_evidence_subject(instance_boundary)->core, pg_evidence_subject(extra_instance)->core) == 1);
 		const struct pg_evidence *checked = convert_to(typing, &work, acted, expected);
 		assert(checked && pg_evidence_judgement(checked) == PG_JUDGEMENT_VALUE);
 		assert(pg_evidence_subject(checked)->core == pg_evidence_subject(acted)->core);

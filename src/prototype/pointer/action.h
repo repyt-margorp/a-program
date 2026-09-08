@@ -4,6 +4,15 @@
 #include "dimension.h"
 #include "evidence.h"
 
+/* Recover an explicit Identity formation through reindex/projection premises.
+ * Rebuild with the ordinary formation rules and composed substitutions, keeping
+ * the selected family and paths. This is not normalization or proof search:
+ * unsupported formation/conversion rules return NULL. The rebuilt subject may
+ * be alpha-equivalent rather than pointer-identical to the input subject.
+ * Work is synchronous; no new acceptance rule or cached boundary authority. */
+const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation);
+
 /* Extend Gamma by x0 : A, x1 : B, x01 : R x0 x1 for a supplied checked
  * R : Id Universe_i A B in Gamma. Binders may be binding-cube faces, but
  * their pointers alone supply no typing. No transport or new R is inferred. */
