@@ -3551,10 +3551,10 @@ int main(void)
 		pg_prove_reindex(&typing, sigma, pg_evidence_premise(second_application, 0)),
 		pg_prove_reindex(&typing, sigma, x_value));
 	same_judgement(reindexed_application, distributed_application);
-	const struct pg_evidence *m_fold = pg_prove_fold(&typing, pg_prove_force(&typing, m_value),
+	const struct pg_evidence *m_fold = pg_prove_fold(&typing, &classifiers, pg_prove_force(&typing, m_value),
 		pg_prove_projection(&typing, m_context, typed_reduct));
 	const struct pg_evidence *substituted_fold = pg_prove_reindex(&typing, m_substitution, m_fold);
-	const struct pg_evidence *distributed_fold = pg_prove_fold(&typing, substituted_force,
+	const struct pg_evidence *distributed_fold = pg_prove_fold(&typing, &classifiers, substituted_force,
 		pg_prove_reindex(&typing, m_substitution, pg_evidence_premise(m_fold, 1)));
 	same_judgement(substituted_fold, distributed_fold);
 	struct pg_synthesis_job *substituted_return = pg_synthesis_return(&synthesis, x_context, substituted_force);

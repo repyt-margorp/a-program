@@ -1437,7 +1437,7 @@ static const struct pg_evidence *close_continuation(struct pg_synthesis *synthes
 	const struct pg_evidence *result;
 	if (!job->value_job) {
 		if (!frame->value) {
-			result = pg_prove_fold(synthesis->typing, frame->input, job->continuation);
+			result = pg_prove_fold(synthesis->typing, synthesis->classifiers, frame->input, job->continuation);
 			if (result) { job->continuation = NULL; return result; }
 		}
 		/* A dependent result needs an actual checked value producer, not an

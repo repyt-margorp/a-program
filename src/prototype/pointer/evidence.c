@@ -1726,7 +1726,8 @@ const struct pg_evidence *pg_prove_return_content(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(return_type, typing)) return NULL;
 	if (return_type->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	const struct pg_term *content;
-	if (!pg_return_type_view(return_type->subject->core, &content)) return NULL;
+	const struct pg_effect_row *effects;
+	if (!pg_effect_type_view(return_type->subject->core, &effects, &content)) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, return_type->context, content,
 		NULL, 1, &return_type->subject);
 	if (!subject) return NULL;
@@ -1760,10 +1761,11 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 		pi->context, subject, pi->classifier, 1, &pi);
 }
 
-const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
+const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_evidence *computation, const struct pg_evidence *continuation)
 {
 	if (!pg_evidence_owned_by(computation, typing)) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	if (!pg_evidence_owned_by(continuation, typing)) return NULL;
 	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (continuation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
@@ -1775,11 +1777,17 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 	if (existing) return existing;
 	const struct pg_term *value_type, *domain, *codomain;
 	const struct pg_object *binder;
-	if (!pg_return_type_view(computation->classifier, &value_type)) return NULL;
+	const struct pg_effect_row *effects, *following;
+	if (!pg_effect_type_view(computation->classifier, &effects, &value_type)) return NULL;
 	if (!pg_pi_view(continuation->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, value_type) != 1) return NULL;
 	codomain = constant_codomain(continuation->classifier);
 	if (!codomain) return NULL;
+	const struct pg_term *result_type;
+	if (pg_effect_type_view(codomain, &following, &result_type)) {
+		codomain = pg_effect_type(classifiers, pg_effect_union(typing->graph, effects, following), result_type);
+		if (!codomain) return NULL;
+	} else if (pg_effect_count(effects)) return NULL;
 	const struct pg_term *head = pg_application(typing->graph,
 		pg_reference(typing->graph, &pg_fold_operation), computation->subject->core);
 	const struct pg_term *core = pg_application(typing->graph, head, continuation->subject->core);
@@ -1938,6 +1946,13 @@ unwind:
 			break;
 		case PG_FOLD_ELIM:
 			formation = pg_prove_pi_constant_codomain(typing, formation);
+			if (formation && formation->subject->core != term->classifier) {
+				const struct pg_effect_row *effects;
+				const struct pg_term *result_type;
+				if (pg_effect_type_view(term->classifier, &effects, &result_type))
+					formation = pg_prove_effect_type(typing, classifiers, effects,
+						pg_prove_return_content(typing, formation));
+			}
 			break;
 		case PG_REINDEX:
 			formation = pg_prove_reindex(typing, term->premises[0], formation);

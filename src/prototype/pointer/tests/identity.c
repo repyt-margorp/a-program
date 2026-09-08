@@ -174,7 +174,7 @@ static const struct pg_evidence *thunk_map(struct pg_typing *typing, struct pg_c
 		pg_prove_classifier(typing, classifiers, extended, body));
 	const struct pg_evidence *continuation = pg_prove_lambda(typing, pi, body);
 	return pg_prove_thunk(typing, classifiers,
-		pg_prove_fold(typing, pg_prove_force(typing, input), continuation));
+		pg_prove_fold(typing, classifiers, pg_prove_force(typing, input), continuation));
 }
 
 static void thunk_transport(struct pg_typing *typing, struct pg_classifiers *classifiers,

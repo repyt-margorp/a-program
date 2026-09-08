@@ -37,8 +37,8 @@ criteria for merging different Lambda or semantic-object references.
   `pg_prove_effect_type` takes an explicit row; `pg_prove_return_type` is its
   empty-row specialization. The subject Core retains the row, and generic
   derivation parameters recover it from that subject rather than maintaining
-  another evidence field. NULL is not an empty row. Pure-only inversion and
-  value extraction continue to reject effectful classifiers.
+  another evidence field. NULL is not an empty row. Pure-only evaluation views
+  and value extraction continue to reject effectful classifiers.
 - [x] Retain that parameter in the experimental APGDRV version 2 codec.
   Missing rows, non-row references, rows on unrelated rules, and version 1
   inputs are rejected. Decoding creates unaccepted inputs; the ordinary Solve
@@ -51,7 +51,27 @@ criteria for merging different Lambda or semantic-object references.
   transitions. Complete program-image CHECKPOINT support remains open.
   The rebuilt ASan/UBSan component suite also passes, including the new
   transport rejection fixtures and three-dimensional action tests.
-- [ ] Add request/fold evidence, row constraints,
+- [x] Extend existing zero-clause `PG_FOLD_ELIM` to closed-row sequencing:
+  `M : F E A`, `K : Pi(x:A,F G B)` with B independent of x gives
+  `fold(M,K) : F (E union G) B`. Classifier recovery reconstructs that union,
+  rather than returning K's codomain and losing E. Formation inversion
+  `PG_RETURN_CONTENT` now extracts the *type* A from `F E A` for any closed E;
+  unlike `PG_RETURN_VALUE`, this neither executes M nor extracts its value.
+  This corrects the preceding overly restrictive formation-inversion test.
+  Tests cover distinct-row union, exact evidence reuse, classifier recovery,
+  rejection of value extraction and two-arena derivation transport through
+  ordinary Solve. No new Core kind, proof rule or effect-state cache is added.
+  The full ASan/UBSan component suite passes. The final exact-classifier reuse
+  fast path additionally passes the rebuilt sanitizer Core suite; it retains
+  the original continuation-codomain formation when the union changes nothing.
+  Final optimized acceptance passes components, eight examples and six result
+  fixtures, then fails the unchanged open-family admission at 88 transitions.
+- [ ] Extend nonempty-row sequencing to general computation carriers if the
+  chosen effect semantics requires it. Existing pure-source sequencing into
+  raw Pi is retained; a nonempty source into raw Pi is rejected rather than
+  erasing effects or moving their execution underneath a Lambda. This remains
+  an explicit admission limitation, not a claim of complete CBPV effects.
+- [ ] Add request/multi-clause fold evidence, row constraints,
   source application/handler elaboration and signature transport. This step
   supplies the shared representation; it does not yet admit effectful source
   programs, prove termination from an empty row, or implement open row metas.

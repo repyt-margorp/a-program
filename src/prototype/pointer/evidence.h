@@ -292,11 +292,15 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *argument);
 const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 	const struct pg_evidence *pi);
+/* F E A formation implies A formation, even for nonempty E. This does not
+ * extract a value from an effectful computation. */
 const struct pg_evidence *pg_prove_return_content(struct pg_typing *typing,
 	const struct pg_evidence *return_type);
 const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing,
 	const struct pg_evidence *pi);
-const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
+/* Closed-row sequencing unions source/returning-continuation effects.
+ * A raw Pi result is currently admitted only for an empty source row. */
+const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_evidence *computation, const struct pg_evidence *continuation);
 /* Recover formation of an already synthesized classifier, not an expected
  * type. NULL also covers rules whose regularity action is not implemented. */

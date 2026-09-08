@@ -395,8 +395,8 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *ignore_function = pg_prove_lambda(&typing, f_pi, f_body);
 	assert(pg_prove_application(&typing, ignore_function, quoted_function));
 	assert(!pg_prove_application(&typing, ignore_function, delayed));
-	assert(pg_prove_fold(&typing, pg_prove_return(&typing, &classifiers, quoted_function), ignore_function));
-	assert(!pg_prove_fold(&typing, returned, ignore_function));
+	assert(pg_prove_fold(&typing, &classifiers, pg_prove_return(&typing, &classifiers, quoted_function), ignore_function));
+	assert(!pg_prove_fold(&typing, &classifiers, returned, ignore_function));
 	assert(pg_evidence_classifier(quoted_function) == old_classifier);
 	struct pg_whnf_work work;
 	struct pg_conversion comparison;
@@ -422,13 +422,13 @@ static void evidence_test(struct pg_graph *graph)
 	assert(!pg_prove_conversion(&typing, quoted_function, ufa, certificate));
 	assert(!pg_prove_conversion(&typing, quoted_function, pi_z, certificate));
 	assert(pg_prove_application(&typing, pg_prove_force(&typing, converted), x_term));
-	const struct pg_evidence *folded = pg_prove_fold(&typing, returned, identity_y);
+	const struct pg_evidence *folded = pg_prove_fold(&typing, &classifiers, returned, identity_y);
 	assert(folded && pg_evidence_classifier(folded) == pg_evidence_classifier(returned));
-	assert(!pg_prove_fold(&typing, x_term, identity_y));
-	assert(!pg_prove_fold(&typing, returned, quoted_function));
+	assert(!pg_prove_fold(&typing, &classifiers, x_term, identity_y));
+	assert(!pg_prove_fold(&typing, &classifiers, returned, quoted_function));
 	assert(pg_evidence_subject(checked_normalize(&typing, &evaluation, folded))->core
 		== pg_evidence_subject(returned)->core);
-	const struct pg_evidence *reindexed_fold = pg_prove_fold(&typing, reduct, identity_y);
+	const struct pg_evidence *reindexed_fold = pg_prove_fold(&typing, &classifiers, reduct, identity_y);
 	const struct pg_evidence *reindexed_result = checked_normalize(&typing, &evaluation, reindexed_fold);
 	assert(pg_evidence_premise(reindexed_result, 0) == reindexed_fold);
 	assert(reindexed_result && pg_evidence_subject(reindexed_result)->core == pg_evidence_subject(returned)->core);
@@ -439,7 +439,7 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_evidence_premise(weak_result, 0) == weakened_forced);
 	assert(pg_evidence_subject(weak_result)->core == pg_evidence_subject(weakened_return)->core);
 	assert(pg_evidence_classifier(weak_result) == pg_evidence_classifier(weakened_return));
-	const struct pg_evidence *weakened_fold = pg_prove_fold(&typing, weakened_return, weakened_function);
+	const struct pg_evidence *weakened_fold = pg_prove_fold(&typing, &classifiers, weakened_return, weakened_function);
 	const struct pg_evidence *weakened_fold_result = checked_normalize(&typing, &evaluation, weakened_fold);
 	assert(weakened_fold_result && pg_evidence_context(weakened_fold_result) == pg_evidence_context(y_context));
 	assert(pg_evidence_subject(weakened_fold_result)->core == pg_evidence_subject(weakened_return)->core);
@@ -468,7 +468,7 @@ static void evidence_test(struct pg_graph *graph)
 	assert(fold_formation && pg_evidence_subject(fold_formation)->core == pg_evidence_classifier(folded));
 	size_t fold_terms = graph->terms.count, fold_proofs = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i) {
-		assert(pg_prove_fold(&typing, returned, identity_y) == folded);
+		assert(pg_prove_fold(&typing, &classifiers, returned, identity_y) == folded);
 		assert(pg_prove_classifier(&typing, &classifiers, x_context, folded) == fold_formation);
 	}
 	assert(graph->terms.count == fold_terms && typing.proofs.count == fold_proofs);
@@ -488,7 +488,7 @@ static void evidence_test(struct pg_graph *graph)
 		assert(pg_prove_classifier(&typing, &classifiers, context, normal));
 		if (i) continue;
 		const struct pg_evidence *unit = pg_prove_projection(&typing, context, identity_y);
-		const struct pg_evidence *sequence = pg_prove_fold(&typing, code, unit);
+		const struct pg_evidence *sequence = pg_prove_fold(&typing, &classifiers, code, unit);
 		normal = checked_normalize(&typing, &evaluation, sequence);
 		assert(pg_evidence_subject(normal)->core == pg_evidence_subject(code)->core);
 		assert(pg_evidence_classifier(normal) == pg_evidence_classifier(code));
@@ -583,7 +583,7 @@ static void dependent_application_test(struct pg_graph *graph)
 	assert(pg_evidence_classifier(app) == pg_return_type(&classifiers, pg_universe(&classifiers, 0)));
 	assert(pg_evidence_premise(app, 1) == argument);
 	assert(!pg_prove_pi_constant_codomain(&typing, pi));
-	assert(!pg_prove_fold(&typing, pg_prove_return(&typing, &classifiers, argument), function));
+	assert(!pg_prove_fold(&typing, &classifiers, pg_prove_return(&typing, &classifiers, argument), function));
 	const struct pg_evidence *app_formation = pg_prove_classifier(&typing, &classifiers, f_context, app);
 	assert(app_formation && pg_evidence_subject(app_formation)->core == pg_evidence_classifier(app));
 	assert(!pg_prove_application(&typing, function, u0));
@@ -2624,7 +2624,7 @@ static void effect_classifier_test(struct pg_graph *graph)
 	assert(pg_evidence_subject(formation)->core == effectful);
 	assert(formation == pg_prove_effect_type(&typing, &classifiers, ab, universe));
 	assert(!pg_prove_effect_type(&typing, &classifiers, NULL, universe));
-	assert(!pg_prove_return_content(&typing, formation));
+	assert(pg_evidence_subject(pg_prove_return_content(&typing, formation))->core == u);
 	struct pg_derivation_parameters parameters;
 	assert(!pg_derivation_parameters(formation, &parameters) && parameters.effects == ab);
 	const struct pg_evidence *premises[] = {pg_evidence_premise(formation, 0)};
@@ -2638,6 +2638,35 @@ static void effect_classifier_test(struct pg_graph *graph)
 	assert(force && pg_evidence_classifier(force) == effectful);
 	assert(!pg_prove_return_value(&typing, force));
 	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, scope, force))->core == effectful);
+	const struct pg_object *x = pg_binder(graph), *k = pg_binder(graph);
+	const struct pg_evidence *domain = pg_prove_projection(&typing, scope, universe);
+	const struct pg_evidence *body_scope = pg_prove_context_extension(&typing, scope, x, domain);
+	const struct pg_evidence *following_type = pg_prove_effect_type(&typing, &classifiers, only_c,
+		pg_prove_projection(&typing, body_scope, universe));
+	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, domain, body_scope, following_type);
+	const struct pg_evidence *both = pg_prove_context_extension(&typing, scope, k,
+		pg_prove_thunk_type(&typing, &classifiers, pi));
+	const struct pg_evidence *source = pg_prove_projection(&typing, both, force);
+	const struct pg_evidence *continuation = pg_prove_force(&typing, pg_prove_variable(&typing, both, k));
+	const struct pg_evidence *fold = pg_prove_fold(&typing, &classifiers, source, continuation);
+	const struct pg_effect_row *abc = pg_effect_union(graph, ab, only_c);
+	assert(fold && pg_effect_type_view(pg_evidence_classifier(fold), &row, &value));
+	assert(row == abc && value == u && pg_effect_count(row) == 3);
+	assert(pg_prove_fold(&typing, &classifiers, source, continuation) == fold);
+	const struct pg_evidence *recovered = pg_prove_classifier(&typing, &classifiers, both, fold);
+	assert(recovered && pg_evidence_subject(recovered)->core == pg_evidence_classifier(fold));
+	assert(!pg_prove_return_value(&typing, fold));
+	assert(!pg_derivation_parameters(fold, &parameters));
+	const struct pg_evidence *fold_premises[] = {source, continuation};
+	assert(pg_prove_derivation(&typing, &classifiers, PG_FOLD_ELIM, &parameters, 2, fold_premises) == fold);
+	const struct pg_object *ignored = pg_binder(graph);
+	const struct pg_evidence *raw_scope = pg_prove_context_extension(&typing, both, ignored,
+		pg_prove_projection(&typing, both, universe));
+	const struct pg_evidence *raw_pi = pg_prove_pi(&typing, &classifiers,
+		pg_prove_projection(&typing, both, universe), raw_scope, pg_prove_projection(&typing, raw_scope, pi));
+	const struct pg_evidence *raw_continuation = pg_prove_lambda(&typing, raw_pi,
+		pg_prove_projection(&typing, raw_scope, continuation));
+	assert(raw_continuation && !pg_prove_fold(&typing, &classifiers, source, raw_continuation));
 	pg_typing_destroy(&typing);
 	pg_classifiers_destroy(&classifiers);
 	puts("effects: explicit closed sets, union laws, unknown is not empty, and pure-only views passed");
