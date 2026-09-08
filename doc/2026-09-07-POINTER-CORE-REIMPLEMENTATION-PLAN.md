@@ -4363,6 +4363,18 @@ Raw Core section prototype (`graph_io.c`, not accepted evidence):
   evidence records and ordinary acceptance. No typing status is transported
   by this Core codec. Recursive declaration allocation/linking and complete
   `.a` program-root persistence remain unimplemented.
+- [x] After `0e4670e`, exercise relocated Core through ordinary acceptance in
+  separate writer/reader processes (`tests/graph_acceptance.c` and `.sh`).
+  In the reader's checked context `A : U, B : U`, the identical relocated
+  `lambda x. RETURN x` Core receives distinct derivations for `Pi A (F A)`
+  and `Pi B (F B)`. Typed occurrences/classifiers remain distinct; repeated
+  acceptance of identical premises reuses evidence. Swapping the two bodies'
+  context premises is rejected, as is looking up x before its declaration.
+  Descriptor resolution uses the fixed RETURN operation, not host addresses.
+  This is an integration regression, not a generic derivation loader: the
+  declarations and rule applications are fixture-supplied, not serialized.
+  Full pointer `make check` and ASan/UBSan separate-process acceptance passed.
+  N5 remains open; no independent Replay implementation has been introduced.
 
 Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
 
