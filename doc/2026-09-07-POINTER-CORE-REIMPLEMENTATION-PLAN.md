@@ -293,6 +293,17 @@ Next implementation sequence (prerequisite for automatic source handlers):
   exact request reuse and the accepted parent context. No Core/job tag or second
   Context representation is added. Existing source block/open_continuation paths
   still require migration to these producers; fold closure is not yet connected.
+  `pg_synthesis_lambda_body` now shares body adaptation, classifier recovery,
+  Pi formation and Lambda introduction between source lambdas, continuation
+  closure and handler return clauses. The synchronous continuation_function
+  implementation is removed. Tests read an unsealed continuation classifier
+  and later compare its accepted judgement with ordinary Lambda derivation.
+  Source open_continuation still waits for accepted computation/context, and
+  fold acceptance/dependent pure-result fallback remain unchanged. These are
+  remaining migration sites, not a completed source handler pipeline.
+  Normal checks, examples and rebuilt ASan/UBSan synthesis tests pass. List
+  synthesis transitions increase from 1156 to 1233 as continuation formation
+  becomes scheduled; this is not an execution-speed improvement.
   Normal `check`, eight example synthesis cases, six runtime cases and rebuilt
   ASan/UBSan synthesis tests pass.
   Validation: normal `check`, eight example synthesis cases, six runtime cases

@@ -383,6 +383,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(body_type == pg_synthesis_classifier_structure(&synthesis, body));
 		assert(!complete(&synthesis, body_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(body_type) == symbolic_f);
+		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(&synthesis, thunk, context, body);
+		assert(continuation == pg_synthesis_lambda_body(&synthesis, thunk, context, body));
+		struct pg_synthesis_job *continuation_type = pg_synthesis_classifier_structure(&synthesis, continuation);
+		assert(!complete(&synthesis, continuation_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(continuation_type) == symbolic_pi);
+		assert(!pg_synthesis_result(continuation));
 		const struct pg_object *result_binder = pg_binder(typing->graph);
 		struct pg_synthesis_job *result_context = pg_synthesis_result_context(&synthesis, context, body, result_binder);
 		assert(result_context == pg_synthesis_result_context(&synthesis, context, body, result_binder));
@@ -474,6 +480,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_advance(&synthesis, chunk);
 		}
 		assert(pg_synthesis_status(lambda) == PG_SYNTHESIS_DONE);
+		same_judgement(complete(&synthesis, continuation, PG_SYNTHESIS_DONE), pg_synthesis_result(lambda));
 		const struct pg_evidence *expected_context = pg_prove_context_extension(typing,
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);

@@ -810,6 +810,26 @@ struct pg_synthesis_job *pg_synthesis_application_jobs(struct pg_synthesis *synt
 	return pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
 }
 
+struct pg_synthesis_job *pg_synthesis_lambda_body(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *domain, struct pg_synthesis_job *context,
+	struct pg_synthesis_job *body)
+{
+	if (!domain || domain->owner != synthesis->owner_key) return NULL;
+	if (!context || context->owner != synthesis->owner_key) return NULL;
+	if (!body || body->owner != synthesis->owner_key) return NULL;
+	body = request_job(synthesis, BODY_JOB, body, NULL);
+	if (!body) return NULL;
+	struct pg_synthesis_job *codomain = request_job(synthesis, CLASSIFIER_FORMATION_JOB, context, body);
+	if (!codomain) return NULL;
+	struct pg_derivation_input pi_input = {.rule = PG_PI_FORM, .count = 3};
+	struct pg_synthesis_job *premises[] = {domain, context, codomain};
+	struct pg_synthesis_job *pi = pg_synthesis_rule(synthesis, &pi_input, premises, NULL, NULL);
+	if (!pi) return NULL;
+	struct pg_derivation_input lambda_input = {.rule = PG_LAMBDA_INTRO, .count = 2};
+	struct pg_synthesis_job *lambda_premises[] = {pi, body};
+	return pg_synthesis_rule(synthesis, &lambda_input, lambda_premises, NULL, NULL);
+}
+
 struct pg_synthesis_job *pg_synthesis_result_context(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *computation,
 	const struct pg_object *binder)
@@ -1749,21 +1769,19 @@ static struct continuation_frame *open_continuation(struct pg_synthesis *synthes
 	return frame;
 }
 
-static const struct pg_evidence *continuation_function(struct pg_synthesis *synthesis,
-	const struct continuation_frame *frame, const struct pg_evidence *body)
-{
-	const struct pg_evidence *codomain = pg_prove_classifier(synthesis->typing, synthesis->classifiers, frame->context, body);
-	const struct pg_evidence *pi = pg_prove_pi(synthesis->typing, synthesis->classifiers, frame->domain, frame->context, codomain);
-	return pg_prove_lambda(synthesis->typing, pi, body);
-}
-
 static const struct pg_evidence *close_continuation(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct continuation_frame *frame,
 	const struct pg_evidence *body)
 {
 	if (!job->continuation) {
-		job->continuation = continuation_function(synthesis, frame, body);
-		if (!job->continuation) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return NULL; }
+		if (!job->value_job) job->value_job = pg_synthesis_lambda_body(synthesis,
+			pg_synthesis_evidence(synthesis, frame->domain), pg_synthesis_evidence(synthesis, frame->context),
+			pg_synthesis_evidence(synthesis, body));
+		if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL; }
+		if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return NULL; }
+		if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return NULL; }
+		job->continuation = job->value_job->result;
+		job->value_job = NULL;
 	}
 	const struct pg_evidence *result;
 	if (!job->value_job) {
@@ -2477,14 +2495,11 @@ static void handler_return_step(struct pg_synthesis *synthesis, struct pg_synthe
 			pg_evidence_context(context)->binder, context);
 		if (!job->inner) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		job->right = pg_synthesis_request(synthesis, job->inner, clause->right);
-		depend(synthesis, job, job->right);
-		return;
 	}
-	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
-	const struct pg_evidence *body = computation(synthesis, job->right->result);
-	if (!body) goto unsupported;
-	job->result = continuation_function(synthesis, job->application_frame, body);
-	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+	if (!job->value_job) job->value_job = pg_synthesis_lambda_body(synthesis,
+		pg_synthesis_evidence(synthesis, job->application_frame->domain),
+		pg_synthesis_evidence(synthesis, job->application_frame->context), job->right);
+	forward_proof(synthesis, job, job->value_job);
 	return;
 rejected:
 	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
@@ -3661,17 +3676,7 @@ static int prepare_expression(struct pg_synthesis *synthesis, struct pg_synthesi
 		if (!job->right) goto error;
 	}
 	if (syntax->kind == PG_SYNTAX_LAMBDA) {
-		struct pg_synthesis_job *body = request_job(synthesis, BODY_JOB, job->right, NULL);
-		if (!body) goto error;
-		struct pg_synthesis_job *codomain = request_job(synthesis, CLASSIFIER_FORMATION_JOB, job->left, body);
-		if (!codomain) goto error;
-		struct pg_derivation_input pi_input = {.rule = PG_PI_FORM, .count = 3};
-		struct pg_synthesis_job *premises[] = {job->left->right, job->left, codomain};
-		struct pg_synthesis_job *pi = pg_synthesis_rule(synthesis, &pi_input, premises, NULL, NULL);
-		if (!pi) goto error;
-		struct pg_derivation_input lambda_input = {.rule = PG_LAMBDA_INTRO, .count = 2};
-		struct pg_synthesis_job *lambda_premises[] = {pi, body};
-		job->value_job = pg_synthesis_rule(synthesis, &lambda_input, lambda_premises, NULL, NULL);
+		job->value_job = pg_synthesis_lambda_body(synthesis, job->left->right, job->left, job->right);
 		if (!job->value_job) goto error;
 	}
 	job->stage = 2;

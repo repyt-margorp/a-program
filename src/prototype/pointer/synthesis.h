@@ -325,6 +325,12 @@ struct pg_synthesis_job *pg_synthesis_application_jobs(struct pg_synthesis *synt
 struct pg_synthesis_job *pg_synthesis_result_context(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *computation,
 	const struct pg_object *binder);
+/* Shared source/continuation Lambda construction. Context already contains
+ * the binder with the supplied domain. Value bodies are lifted by RETURN;
+ * raw computation bodies remain raw. All three producers may be pending. */
+struct pg_synthesis_job *pg_synthesis_lambda_body(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *domain, struct pg_synthesis_job *context,
+	struct pg_synthesis_job *body);
 /* Instantiate an independently produced Universe Identity family at two
  * value endpoints. Post-check each against its own endpoint type; never
  * replace the chosen family with a homogeneous or inferred relation. */
