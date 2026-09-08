@@ -237,7 +237,13 @@ static void schema_positivity(void)
 		pg_data_constructor(pg_data_schema_layout(other_schema), 1), identity, 1, &zero));
 	assert(!pg_prove_constructor(&typing, nat, pg_data_constructor(nat_layout, 1), identity, 0, NULL));
 	struct pg_derivation_parameters wire_parameters;
-	assert(pg_derivation_parameters(nat, &wire_parameters) == -1);
+	assert(!pg_derivation_parameters(nat, &wire_parameters));
+	assert(wire_parameters.declaration == pg_data_schema_declaration(nat_schema));
+	const struct pg_evidence *formation_premises[] = {pg_evidence_premise(nat, 0),
+		pg_evidence_premise(nat, 1), pg_evidence_premise(nat, 2)};
+	proofs = typing.proofs.count;
+	assert(pg_prove_derivation(&typing, &classifiers, PG_INDUCTIVE_FORM, &wire_parameters, 3, formation_premises) == nat);
+	assert(typing.proofs.count == proofs);
 	assert(pg_derivation_parameters(succ, &wire_parameters) == -1);
 	const struct pg_evidence *successor_function = pg_prove_constructor_function(&typing,
 		&classifiers, nat, pg_data_constructor(nat_layout, 1), identity);

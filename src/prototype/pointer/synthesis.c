@@ -321,7 +321,7 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 		.binder = binder, .context_job = pg_synthesis_evidence(synthesis, extended_context)});
 }
 
-enum { RULE_KEY_FIELDS = 13 };
+enum { RULE_KEY_FIELDS = 14 };
 
 static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 {
@@ -331,6 +331,7 @@ static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 		(uintptr_t)input->parameters.conversion, (uintptr_t)input->parameters.reduction,
 		(uintptr_t)input->parameters.operation_label,
 		(uintptr_t)input->parameters.handler,
+		(uintptr_t)input->parameters.declaration,
 		(uintptr_t)input->source, (uintptr_t)input->target, input->reduction_kind, input->count};
 	memcpy(key, fields, sizeof(fields));
 }

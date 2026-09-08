@@ -22,6 +22,7 @@ enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_SUBSTITUTION };
 struct pg_evidence;
 struct pg_data_schema;
+struct pg_data_declaration;
 struct pg_operation_declaration;
 /* Fresh inert label with immutable raw signature terms, not typing evidence.
  * Owned by graph; referenced terms must outlive it. No interning by signature. */
@@ -94,6 +95,7 @@ const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
  * Indexed formation and datatype higher computation are not implemented here. */
 const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_data_schema *schema);
+const struct pg_data_declaration *pg_evidence_inductive_declaration(const struct pg_evidence *evidence);
 struct pg_inductive_instance {
 	const struct pg_data_schema *schema;
 	const struct pg_evidence *formation;

@@ -4288,6 +4288,34 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		size_t terms = typing->graph->terms.count, proofs = typing->proofs.count;
 		assert(pg_synthesis_request(&synthesis, root, syntax) == job);
 		assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+		struct pg_derivation_input input;
+		assert(!pg_derivation_input_header(type, &input) && input.parameters.declaration);
+		struct pg_synthesis rule_synthesis;
+		assert(!pg_synthesis_init(&rule_synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_synthesis_job **premises = pg_alloc(typing->graph, input.count * sizeof(*premises));
+		assert(premises);
+		for (size_t j = 0; j < input.count; ++j)
+			premises[j] = pg_synthesis_evidence(&rule_synthesis, pg_evidence_premise(type, j));
+		struct pg_synthesis_job *formation = pg_synthesis_rule(&rule_synthesis, &input, premises, NULL, NULL);
+		assert(formation == pg_synthesis_rule(&rule_synthesis, &input, premises, NULL, NULL));
+		assert(!pg_synthesis_result(formation) && typing->proofs.count == proofs);
+		assert(complete(&rule_synthesis, formation, PG_SYNTHESIS_DONE) == type);
+		assert(typing->proofs.count == proofs);
+		size_t nc, nt;
+		const struct pg_context *const *contexts;
+		const struct pg_term *const *roots;
+		assert(!pg_data_declaration_pack(input.parameters.declaration, typing->graph, &nc, &contexts, &nt, &roots));
+		input.parameters.declaration = pg_data_declaration_unpack(typing->graph, nc, contexts, nt, roots);
+		assert(input.parameters.declaration);
+		struct pg_synthesis_job *fresh = pg_synthesis_rule(&rule_synthesis, &input, premises, NULL, NULL);
+		assert(fresh && fresh != formation && !pg_synthesis_result(fresh));
+		assert(typing->proofs.count == proofs);
+		const struct pg_evidence *fresh_type = complete(&rule_synthesis, fresh, PG_SYNTHESIS_DONE);
+		assert(fresh_type && pg_evidence_subject(fresh_type)->core != pg_evidence_subject(type)->core);
+		assert(pg_evidence_inductive_declaration(fresh_type) == input.parameters.declaration);
+		input.parameters.declaration = NULL;
+		complete(&rule_synthesis, pg_synthesis_rule(&rule_synthesis, &input, premises, NULL, NULL), PG_SYNTHESIS_REJECTED);
+		pg_synthesis_destroy(&rule_synthesis);
 		const struct pg_evidence *other = complete(&synthesis,
 			pg_synthesis_request(&synthesis, root, expression_syntax(typing->graph, sources[i])), PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(other)->core != pg_evidence_subject(type)->core);

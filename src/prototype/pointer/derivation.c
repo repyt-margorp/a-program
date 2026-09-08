@@ -1,4 +1,5 @@
 #include "derivation.h"
+#include "iadt.h"
 
 int pg_derivation_input_header(const struct pg_evidence *proof, struct pg_derivation_input *input)
 {
@@ -48,7 +49,9 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 		break;
 	}
 	/* Nominal schema descriptors are not transported by this codec yet. */
-	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: return -1;
+	case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: return -1;
+	case PG_INDUCTIVE_FORM:
+		result.declaration = pg_evidence_inductive_declaration(evidence); break;
 	case PG_HANDLER_ELIM:
 		result.handler = pg_evidence_handler_signature(evidence); break;
 	case PG_REQUEST_INTRO:
@@ -94,10 +97,19 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 {
 	if (!typing || !classifiers || classifiers->graph != typing->graph || !parameters) return NULL;
 	if (count && !p) return NULL;
+	if (parameters->declaration && rule != PG_INDUCTIVE_FORM) return NULL;
 	for (size_t i = 0; i < count; ++i) if (!pg_evidence_owned_by(p[i], typing)) return NULL;
 	const struct pg_evidence *result = NULL;
 	struct pg_identity_boundary boundary;
 	switch (rule) {
+	case PG_INDUCTIVE_FORM: {
+		if (!count || !parameters->declaration) return NULL;
+		const struct pg_data_signature *signature = pg_data_signature(typing, p[0], p[0]);
+		const struct pg_data_schema *schema = pg_data_schema_check(typing, parameters->declaration,
+			signature, count - 1, p + 1);
+		result = pg_prove_inductive_type(typing, classifiers, schema);
+		break;
+	}
 	RULE(PG_CONTEXT_EMPTY, 0, pg_prove_empty_context(typing));
 	RULE(PG_CONTEXT_EXTEND, 2, pg_prove_context_extension(typing, p[0], parameters->binder, p[1]));
 	RULE(PG_UNIVERSE_FORM, 1, pg_prove_universe(typing, classifiers, p[0], parameters->level));

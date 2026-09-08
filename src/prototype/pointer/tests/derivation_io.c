@@ -823,6 +823,21 @@ static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_clas
 		assert(pg_synthesis_export_rules(&synthesis, 2, overlap, &storage, &image, &inputs) == -1 && !inputs && image.failed);
 		pg_effect_inference_destroy(&image);
 		pg_graph_destroy(&storage);
+		const char declaration_source[] = "D := @{};";
+		pg_parser_init(&parser, graph, declaration_source, strlen(declaration_source));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *declaration = pg_synthesis_request(&synthesis, pg_synthesis_root(&synthesis), definition.expression);
+		uint64_t limit = synthesis.steps + 1000;
+		while (pg_synthesis_status(declaration) == PG_SYNTHESIS_PENDING) {
+			assert(synthesis.steps < limit);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		const struct pg_evidence *declared_type = pg_synthesis_result(declaration);
+		assert(declared_type);
+		FILE *unsupported = tmpfile();
+		assert(unsupported && pg_derivations_write_descriptors(unsupported, 1, &declared_type,
+			&pg_builtin_graph_codec, classifiers) == -1);
+		assert(!fclose(unsupported));
 		pg_synthesis_destroy(&synthesis);
 		pg_effect_inference_destroy(&conflict);
 		pg_effect_inference_destroy(&first);

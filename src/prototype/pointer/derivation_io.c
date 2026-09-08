@@ -66,6 +66,8 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 			}
 		} else if (pg_derivation_input_header(node->key, &input)) goto done;
 		struct pg_derivation_parameters parameters = input.parameters;
+		/* The payload adapter exists, but family reference relocation is pending. */
+		if (parameters.declaration || input.rule == PG_INDUCTIVE_FORM) goto done;
 		if (pg_wire_write_u64(file, input.rule)
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;
 		if (pg_wire_write_u64(file, input.reduction_kind)) goto done;

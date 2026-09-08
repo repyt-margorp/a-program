@@ -13,6 +13,33 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Nominal Formation Through Common Solve
+
+Continuation after `d100db7`. The common derivation input can now carry an inert
+declaration for `PG_INDUCTIVE_FORM`. Its premises are the distinguished Self
+context and constructor-result substitutions. The rule checks those premises
+against the declaration, then calls the existing zero-index inductive formation
+rule. This does not extend positivity, universes or indexed formation.
+
+The producer key includes declaration identity. Accepted formation keys now use
+that same declaration identity plus their ordinary context/premise keys, rather
+than the address of a freshly reconstructed checked-schema wrapper. The evidence
+still retains the checked schema for elimination; no accepted record is mutated.
+
+- [x] Extract formation inputs and run them through the ordinary rule producer.
+- [x] Reuse existing evidence for the same declaration and premises; do not
+  conflate fresh declarations with equal payloads or shared erased layouts.
+- [x] Reject missing declarations and retain the source example synthesis path.
+- [x] Explicitly reject nominal formation in derivation I/O until its family
+  references can be relocated; do not silently omit the new input parameter.
+- [ ] Integrate full family relocation and constructor/Match/IH rule inputs.
+- [ ] Finish file-to-Solve round trips and whole-module checkpoint support.
+
+Normal `check`, eight source checks and six runtime fixtures pass; rebuilt
+ASan/UBSan IADT and derivation-image suites pass. The reuse test isolates its
+queue from unrelated source preparation, which can legitimately add evidence.
+Implementation C/header: +34/-4; test C: +50/-1; documentation separate.
+
 ### September 9: Declaration Payload Round Trip
 
 Continuation after `e5a1bd7`. `pg_data_declaration_pack/unpack` projects the

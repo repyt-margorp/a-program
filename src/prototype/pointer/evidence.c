@@ -103,6 +103,12 @@ static int derived_output(enum pg_evidence_rule rule)
 	}
 }
 
+static const void *certificate_key(enum pg_evidence_rule rule, const void *certificate)
+{
+	/* Schema wrappers attest premises; they do not introduce another family. */
+	return rule == PG_INDUCTIVE_FORM ? pg_data_schema_declaration(certificate) : certificate;
+}
+
 static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_evidence_rule rule,
 	enum pg_evidence_judgement judgement,
 	const struct pg_context *context, const struct pg_occurrence *subject,
@@ -113,7 +119,8 @@ static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_e
 	 * before substitution or independence checks allocate temporary binders. */
 	if (derived_output(rule)) { subject = NULL; classifier = NULL; }
 	uint64_t hash = ((uintptr_t)context ^ (uintptr_t)subject ^ (uintptr_t)classifier ^ rule) * UINT64_C(1099511628211);
-	hash = (hash ^ (uintptr_t)certificate ^ judgement) * UINT64_C(1099511628211);
+	const void *key = certificate_key(rule, certificate);
+	hash = (hash ^ (uintptr_t)key ^ judgement) * UINT64_C(1099511628211);
 	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
 	*hash_out = hash;
 	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->proofs, hash); candidate; candidate = candidate->next) {
@@ -126,7 +133,7 @@ static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_e
 			if (proof->subject != subject) continue;
 			if (proof->classifier != classifier) continue;
 		}
-		if (proof->certificate != certificate) continue;
+		if (certificate_key(rule, proof->certificate) != key) continue;
 		if (proof->premise_count != count) continue;
 		size_t i = 0;
 		while (i < count && proof->premises[i] == premises[i]) ++i;
@@ -187,6 +194,11 @@ static int context_proof(const struct pg_typing *typing, const struct pg_evidenc
 {
 	if (!pg_evidence_owned_by(proof, typing)) return 0;
 	return proof->judgement == PG_JUDGEMENT_CONTEXT;
+}
+
+const struct pg_data_declaration *pg_evidence_inductive_declaration(const struct pg_evidence *evidence)
+{
+	return evidence && evidence->rule == PG_INDUCTIVE_FORM ? pg_data_schema_declaration(evidence->certificate) : NULL;
 }
 
 const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
