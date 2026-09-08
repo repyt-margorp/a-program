@@ -20,6 +20,14 @@ int pg_contexts_write(FILE *file, size_t count, const struct pg_context *const *
 	size_t term_count, const struct pg_term *const *terms,
 	const char *(*name)(void *, const struct pg_object *), void *owner)
 {
+	const struct pg_graph_codec codec = {.name = name};
+	return pg_contexts_write_descriptors(file, count, contexts, term_count, terms, &codec, owner);
+}
+
+int pg_contexts_write_descriptors(FILE *file, size_t count,
+	const struct pg_context *const *contexts, size_t term_count,
+	const struct pg_term *const *terms, const struct pg_graph_codec *codec, void *owner)
+{
 	if (!file || (count && !contexts) || (term_count && !terms)) return -1;
 	struct pg_graph arena = {0};
 	struct pg_dag dag = {0};
@@ -49,7 +57,7 @@ int pg_contexts_write(FILE *file, size_t count, const struct pg_context *const *
 		if (pg_wire_write_u64(file, r ? r->id : 0)) goto done;
 	}
 	for (size_t i = 0; i < term_count; ++i) roots[2 * size + i] = terms[i];
-	status = pg_graph_write(file, total, roots, name, owner);
+	status = pg_graph_write_descriptors(file, total, roots, codec, owner);
 done:
 	pg_dag_destroy(&dag);
 	pg_graph_destroy(&arena);
@@ -58,6 +66,16 @@ done:
 
 int pg_contexts_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
 	const struct pg_object *(*resolve)(void *, const char *), void *owner,
+	size_t *count, const struct pg_context *const **contexts,
+	size_t *term_count, const struct pg_term *const **terms)
+{
+	const struct pg_graph_codec codec = {.resolve = resolve};
+	return pg_contexts_read_descriptors(file, typing, limit, name_limit, &codec, owner,
+		count, contexts, term_count, terms);
+}
+
+int pg_contexts_read_descriptors(FILE *file, struct pg_typing *typing,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_context *const **contexts,
 	size_t *term_count, const struct pg_term *const **terms)
 {
@@ -81,7 +99,7 @@ int pg_contexts_read(FILE *file, struct pg_typing *typing, size_t limit, size_t 
 		if (pg_wire_read_u64(file, &ids[i]) || ids[i] > n) return -1;
 	size_t total = 0;
 	const struct pg_term *const *roots = NULL;
-	if (pg_graph_read(file, graph, limit, name_limit, resolve, owner, &total, &roots)) return -1;
+	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, owner, &total, &roots)) return -1;
 	if (total != 2 * n + nt) return -1;
 	for (size_t i = 0; i < n; ++i) {
 		const struct pg_term *binder = roots[2 * i];

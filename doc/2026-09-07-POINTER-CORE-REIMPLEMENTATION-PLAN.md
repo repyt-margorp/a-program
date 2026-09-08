@@ -13,6 +13,32 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Context and Layout Relocation Share One Core Table
+
+Continuation after `f9a7272`. Context transport now uses the existing generic
+descriptor codec, retaining the name/resolver APIs as thin adapters to the same
+implementation. No second context reader or proof checker is introduced.
+Declared types, context binders and additional computation roots share one Core
+table, including constructor/layout payloads. APGCTX metadata is unchanged.
+
+`pg_data_declaration_at_layout` connects inert declaration inputs to an already
+relocated layout after checking count and every field arity. It uses the same
+declaration builder as fresh construction and does not create another layout
+or accept evidence. The family is fresh: full relocation of references to a
+nominal family is still a separate incomplete step, not silently solved here.
+
+- [x] Preserve shared context prefixes, selected roots, binders and constructors
+  across a fresh-process round trip; resume erased iota at budgets 1/100.
+- [x] Retain deliberately unverified annotations without producing evidence.
+- [x] Reuse loaded layout pointers and reject mismatched field counts/arities.
+- [x] Reject truncated context/descriptor images without publishing outputs.
+- [ ] Complete nominal family/context dependency relocation and connect loaded
+  schema premises to common formation producers; full checkpoint remains open.
+
+Verification: final normal `check`, eight source checks and six runtime fixtures
+pass. Rebuilt ASan/UBSan graph-image and IADT suites pass. Implementation
+C/header: +61/-5; test C: +30/-8; documentation separate.
+
 ### September 9: Inert Nominal Declaration Before Schema Acceptance
 
 Continuation after `24ccbb6`. Inspection found that `pg_data_schema` embedded

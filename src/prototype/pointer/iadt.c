@@ -256,11 +256,13 @@ struct pg_data_schema {
 	const struct pg_evidence *results[];
 };
 
-const struct pg_data_declaration *pg_data_declaration(struct pg_graph *graph,
+static const struct pg_data_declaration *declaration_build(struct pg_graph *graph,
+	const struct pg_data_layout *layout,
 	const struct pg_context *parameters, const struct pg_context *indices,
 	size_t count, const struct pg_data_constructor_input *constructors)
 {
 	if (!graph || (count && !constructors)) return NULL;
+	if (layout && layout->count != count) return NULL;
 	size_t suffix, images;
 	if (pg_context_extension_size(indices, parameters, &suffix)
 		|| pg_context_extension_size(indices, NULL, &images)) return NULL;
@@ -272,10 +274,11 @@ const struct pg_data_declaration *pg_data_declaration(struct pg_graph *graph,
 	if (!arities) goto done;
 	for (size_t i = 0; i < count; ++i) {
 		if (pg_context_extension_size(constructors[i].fields, parameters, &arities[i])) goto done;
+		if (layout && layout->constructors[i].arity != arities[i]) goto done;
 		if (images && !constructors[i].images) goto done;
 		for (size_t j = 0; j < images; ++j) if (!constructors[i].images[j]) goto done;
 	}
-	const struct pg_data_layout *layout = pg_data_layout(graph, count, arities);
+	if (!layout) layout = pg_data_layout(graph, count, arities);
 	if (!layout) goto done;
 	declaration = pg_alloc(graph, sizeof(*declaration) + count * sizeof(*constructors));
 	if (!declaration) goto done;
@@ -293,6 +296,26 @@ const struct pg_data_declaration *pg_data_declaration(struct pg_graph *graph,
 done:
 	pg_graph_destroy(&temporary);
 	return declaration;
+}
+
+const struct pg_data_declaration *pg_data_declaration(struct pg_graph *graph,
+	const struct pg_context *parameters, const struct pg_context *indices,
+	size_t count, const struct pg_data_constructor_input *constructors)
+{
+	return declaration_build(graph, NULL, parameters, indices, count, constructors);
+}
+
+const struct pg_data_declaration *pg_data_declaration_at_layout(struct pg_graph *graph,
+	const struct pg_data_layout *layout, const struct pg_context *parameters,
+	const struct pg_context *indices, size_t count,
+	const struct pg_data_constructor_input *constructors)
+{
+	return layout ? declaration_build(graph, layout, parameters, indices, count, constructors) : NULL;
+}
+
+const struct pg_data_layout *pg_data_declaration_layout(const struct pg_data_declaration *declaration)
+{
+	return declaration ? declaration->layout : NULL;
 }
 
 const struct pg_object *pg_data_declaration_family(const struct pg_data_declaration *declaration)
@@ -429,7 +452,7 @@ const struct pg_data_schema *pg_data_schema_check(struct pg_typing *typing,
 
 const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *schema)
 {
-	return schema ? schema->declaration->layout : NULL;
+	return pg_data_declaration_layout(pg_data_schema_declaration(schema));
 }
 
 const struct pg_object *pg_data_family_object(const struct pg_data_schema *schema)

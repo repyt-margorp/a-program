@@ -61,6 +61,13 @@ struct pg_data_constructor_input {
 const struct pg_data_declaration *pg_data_declaration(struct pg_graph *graph,
 	const struct pg_context *parameters, const struct pg_context *indices,
 	size_t count, const struct pg_data_constructor_input *constructors);
+/* Reuse an already relocated erased layout, checking every field arity.
+ * The nominal family is still fresh; this does not attach typing evidence. */
+const struct pg_data_declaration *pg_data_declaration_at_layout(struct pg_graph *graph,
+	const struct pg_data_layout *layout, const struct pg_context *parameters,
+	const struct pg_context *indices, size_t count,
+	const struct pg_data_constructor_input *constructors);
+const struct pg_data_layout *pg_data_declaration_layout(const struct pg_data_declaration *declaration);
 const struct pg_object *pg_data_declaration_family(const struct pg_data_declaration *declaration);
 const struct pg_data_declaration *pg_data_schema_declaration(const struct pg_data_schema *schema);
 /* Checked parameter/index telescopes, available before checking fields.

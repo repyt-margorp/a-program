@@ -25,7 +25,7 @@ static const struct pg_object *resolve(void *owner, const char *label)
 	return object ? object : pg_computation_resolve(label);
 }
 
-static void rejected_prefixes(FILE *file)
+static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 {
 	unsigned char bytes[4096];
 	rewind(file);
@@ -45,7 +45,7 @@ static void rejected_prefixes(FILE *file)
 		size_t nc = 71, nt = 72;
 		const struct pg_context *const *contexts = NULL;
 		const struct pg_term *const *terms = NULL;
-		assert(pg_contexts_read(fragment, &typing, 100, 100, resolve, &classifiers,
+		assert(pg_contexts_read_descriptors(fragment, &typing, 100, 100, codec, &classifiers,
 			&nc, &contexts, &nt, &terms) == -1);
 		assert(nc == 71 && nt == 72 && !contexts && !terms && typing.proofs.count == 0);
 		assert(fclose(fragment) == 0);
@@ -157,7 +157,7 @@ static void read_graph(FILE *file, struct pg_graph *graph)
 	assert(pg_evidence_classifier(identity[0]) != pg_evidence_classifier(identity[1]));
 	assert(!pg_prove_lambda(&typing, pi[0], body[1]));
 	assert(!pg_prove_lambda(&typing, pi[1], body[0]));
-	rejected_prefixes(file);
+	rejected_prefixes(file, &(const struct pg_graph_codec){.resolve = resolve});
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 }
@@ -323,18 +323,40 @@ static void layout_graph(FILE *file, struct pg_graph *graph, int writing, uint64
 		const struct pg_term *foreign = pg_reference(graph, pg_data_constructor(b, 0));
 		const struct pg_term *roots[] = {zero, successor, match, match, foreign,
 			pg_data_match(graph, a, foreign, 2, clauses), pg_reference(graph, pg_data_matcher(pg_data_layout(graph, 0, NULL)))};
+		const struct pg_object *family = pg_binder(graph);
+		const struct pg_context *prefix = pg_context_bind(&typing, NULL, family, pg_universe(&classifiers, 0));
+		/* Deliberately only declared, not well-typed: no family formation exists. */
+		const struct pg_context *field = pg_context_bind(&typing, prefix, x,
+			pg_application(graph, pg_reference(graph, family), zero));
+		const struct pg_context *contexts[] = {prefix, field, field, NULL};
 		size_t terms = graph->terms.count, objects = graph->objects.count;
-		assert(!pg_graph_write_descriptors(file, 7, roots, &pg_builtin_graph_codec, &classifiers));
+		assert(!pg_contexts_write_descriptors(file, 4, contexts, 7, roots, &pg_builtin_graph_codec, &classifiers));
 		assert(terms == graph->terms.count && objects == graph->objects.count && !typing.proofs.count);
 	} else {
-		size_t count;
+		size_t count, context_count;
 		const struct pg_term *const *roots;
-		assert(!pg_graph_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, &classifiers, &count, &roots));
+		const struct pg_context *const *contexts;
+		assert(!pg_contexts_read_descriptors(file, &typing, 1000, 100, &pg_builtin_graph_codec,
+			&classifiers, &context_count, &contexts, &count, &roots));
 		assert(count == 7 && roots[2] == roots[3] && !typing.proofs.count);
+		assert(context_count == 4 && contexts[1] == contexts[2] && !contexts[3]);
+		assert(contexts[1]->parent == contexts[0] && !contexts[0]->parent);
+		const struct pg_term *declared = contexts[1]->declared_type;
+		assert(declared->kind == PG_APPLICATION && declared->as.application.argument == roots[0]);
+		assert(declared->as.application.function->as.reference == contexts[0]->binder);
+		assert(roots[2]->as.application.argument->as.lambda.binder == contexts[1]->binder);
 		const struct pg_data_layout *a, *b;
 		size_t position, arity;
 		assert(pg_data_constructor_view(roots[0]->as.reference, &a, &position, &arity) && position == 0 && arity == 0);
 		assert(pg_data_layout_count(a) == 2);
+		const struct pg_term *images[] = {declared->as.application.function};
+		struct pg_data_constructor_input inputs[] = {{contexts[0], images}, {contexts[1], images}};
+		const struct pg_data_declaration *declaration = pg_data_declaration_at_layout(graph,
+			a, contexts[0], contexts[0], 2, inputs);
+		assert(declaration && pg_data_declaration_layout(declaration) == a && !typing.proofs.count);
+		assert(!pg_data_declaration_at_layout(graph, a, contexts[0], contexts[0], 1, inputs));
+		inputs[1].fields = contexts[0];
+		assert(!pg_data_declaration_at_layout(graph, a, contexts[0], contexts[0], 2, inputs));
 		assert(pg_data_constructor_view(roots[4]->as.reference, &b, &position, &arity) && a != b);
 		assert(!pg_data_constructor_position(a, roots[4]->as.reference, &position));
 		const struct pg_term *head = roots[1]->as.application.function;
@@ -359,8 +381,8 @@ static void layout_graph(FILE *file, struct pg_graph *graph, int writing, uint64
 		assert(pg_whnf_status(match) == PG_EVAL_WHNF && pg_alpha_equal(pg_whnf_result(match), roots[5]) == 1);
 		assert(!typing.proofs.count);
 		pg_whnf_work_destroy(&work);
-		descriptor_boundaries(file);
-		puts("layout image: distinct layouts, shared constructors, scalar metadata and resumed iota passed");
+		rejected_prefixes(file, &pg_builtin_graph_codec);
+		puts("layout image: shared contexts/constructors, inert annotations, distinct layouts and resumed iota passed");
 	}
 	pg_typing_destroy(&typing);
 	pg_classifiers_destroy(&classifiers);
