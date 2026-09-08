@@ -152,7 +152,8 @@ const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
 	size_t count, const struct pg_evidence *const *images);
 /* Extend a substitution into a prefix to the supplied full source context.
  * Exactly the remaining declarations receive values, checked by the ordinary
- * simultaneous substitution rule. No new derivation rule or normalization. */
+ * simultaneous substitution rule; the accepted prefix is not rechecked.
+ * No new derivation rule or normalization. */
 const struct pg_evidence *pg_prove_substitution_extend(struct pg_typing *typing,
 	const struct pg_evidence *prefix, const struct pg_evidence *source,
 	size_t count, const struct pg_evidence *const *values);

@@ -628,53 +628,71 @@ const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
 		context->context, subject, proof->classifier, 2, premises);
 }
 
-const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
+static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *destination,
+	const struct pg_evidence *prefix,
 	size_t count, const struct pg_evidence *const *images)
 {
 	if (!context_proof(typing, source)) return NULL;
 	if (!context_proof(typing, destination)) return NULL;
 	if (count && !images) return NULL;
-	size_t arity = 0;
-	for (const struct pg_context *scope = source->context; scope; scope = scope->parent) ++arity;
-	if (arity != count) return NULL;
-	if (count > SIZE_MAX / sizeof(struct pg_binding_value)) return NULL;
+	size_t retained = prefix ? prefix->premise_count - 2 : 0, suffix;
+	const struct pg_context *base = prefix ? prefix->premises[0]->context : NULL;
+	if (pg_context_extension_size(source->context, base, &suffix) || suffix != count) return NULL;
+	if (count > SIZE_MAX - retained) return NULL;
+	size_t total = retained + count;
+	if (total > SIZE_MAX / sizeof(struct pg_binding_value)) return NULL;
 	if (count > SIZE_MAX / sizeof(const struct pg_context *)) return NULL;
-	if (count > SIZE_MAX / sizeof(const struct pg_evidence *) - 2) return NULL;
+	if (total > SIZE_MAX / sizeof(const struct pg_evidence *) - 2) return NULL;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence *result = NULL;
 	const struct pg_context **declarations = pg_alloc(&temporary, count * sizeof(*declarations));
-	struct pg_binding_value *bindings = pg_alloc(&temporary, count * sizeof(*bindings));
-	const struct pg_evidence **premises = pg_alloc(&temporary, (count + 2) * sizeof(*premises));
+	struct pg_binding_value *bindings = pg_alloc(&temporary, total * sizeof(*bindings));
+	const struct pg_evidence **premises = pg_alloc(&temporary, (total + 2) * sizeof(*premises));
 	if (!premises) goto done;
-	if (count && (!declarations || !bindings)) goto done;
+	if (count && !declarations) goto done;
+	if (total && !bindings) goto done;
 	const struct pg_context *scope = source->context;
 	for (size_t i = count; i; --i) { declarations[i - 1] = scope; scope = scope->parent; }
 	premises[0] = source;
 	premises[1] = destination;
+	if (prefix) {
+		const struct pg_binding_value *known = (const struct pg_binding_value *)(prefix->premises + prefix->premise_count);
+		for (size_t i = 0; i < retained; ++i) {
+			premises[i + 2] = prefix->premises[i + 2];
+			bindings[i] = known[i];
+		}
+	}
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_evidence *image = images[i];
 		if (!image || image->owner != typing) goto done;
 		if (image->judgement != PG_JUDGEMENT_VALUE) goto done;
 		if (image->context != destination->context) goto done;
-		premises[i + 2] = image;
+		premises[retained + i + 2] = image;
 	}
 	uint64_t hash;
 	result = find_record(typing, PG_CONTEXT_SUBSTITUTION, PG_JUDGEMENT_SUBSTITUTION,
-		destination->context, NULL, NULL, count + 2, premises, NULL, &hash);
+		destination->context, NULL, NULL, total + 2, premises, NULL, &hash);
 	if (result) goto done;
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_evidence *image = images[i];
-		const struct pg_term *expected = pg_term_substitute(typing->graph, declarations[i]->declared_type, i, bindings);
+		const struct pg_term *expected = pg_term_substitute(typing->graph, declarations[i]->declared_type, retained + i, bindings);
 		if (!expected) goto done;
 		if (pg_alpha_equal(expected, image->classifier) != 1) goto done;
-		bindings[i] = (struct pg_binding_value){declarations[i]->binder, image->subject->core};
+		bindings[retained + i] = (struct pg_binding_value){declarations[i]->binder, image->subject->core};
 	}
 	result = accept_record(typing, PG_CONTEXT_SUBSTITUTION, PG_JUDGEMENT_SUBSTITUTION,
-		destination->context, NULL, NULL, count + 2, premises, NULL, count, bindings);
+		destination->context, NULL, NULL, total + 2, premises, NULL, total, bindings);
 done:
 	pg_graph_destroy(&temporary);
 	return result;
+}
+
+const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_evidence *destination,
+	size_t count, const struct pg_evidence *const *images)
+{
+	return substitution_build(typing, source, destination, NULL, count, images);
 }
 
 struct pg_reindex_state {
@@ -948,21 +966,7 @@ const struct pg_evidence *pg_prove_substitution_extend(struct pg_typing *typing,
 	size_t count, const struct pg_evidence *const *values)
 {
 	if (!prefix || prefix->owner != typing || prefix->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (!context_proof(typing, source) || (count && !values)) return NULL;
-	size_t suffix;
-	if (pg_context_extension_size(source->context, prefix->premises[0]->context, &suffix) || suffix != count) return NULL;
-	size_t n = prefix->premise_count - 2;
-	if (count > SIZE_MAX / sizeof(*values) || n > SIZE_MAX / sizeof(*values) - count) return NULL;
-	struct pg_graph temporary = {0};
-	const struct pg_evidence **images = pg_alloc(&temporary, (n + count) * sizeof(*images));
-	const struct pg_evidence *result = NULL;
-	if (n + count && !images) goto done;
-	for (size_t i = 0; i < n; ++i) images[i] = prefix->premises[i + 2];
-	for (size_t i = 0; i < count; ++i) images[n + i] = values[i];
-	result = pg_prove_substitution(typing, source, prefix->premises[1], n + count, images);
-done:
-	pg_graph_destroy(&temporary);
-	return result;
+	return substitution_build(typing, source, prefix->premises[1], prefix, count, values);
 }
 
 const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,

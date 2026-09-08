@@ -49,6 +49,50 @@ static void positive_fields(void)
 	pg_graph_destroy(&graph);
 }
 
+static void retained_substitution_prefix(void)
+{
+	struct pg_graph graph;
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+	assert(!pg_classifiers_init(&classifiers, &graph));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *contexts[2], *function_types[2], *images[2];
+	const struct pg_object *function_binders[2];
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_object *a = pg_binder(&graph), *x = pg_binder(&graph);
+		function_binders[i] = pg_binder(&graph);
+		const struct pg_evidence *base = pg_prove_context_extension(&typing, empty, a, u);
+		const struct pg_evidence *domain = pg_prove_variable(&typing, base, a);
+		const struct pg_evidence *body = pg_prove_context_extension(&typing, base, x, domain);
+		function_types[i] = pg_prove_thunk_type(&typing, &classifiers,
+			pg_prove_pi(&typing, &classifiers, domain, body,
+				pg_prove_return_type(&typing, &classifiers, pg_prove_variable(&typing, body, a))));
+		contexts[i] = pg_prove_context_extension(&typing, base, function_binders[i], function_types[i]);
+		assert(contexts[i]);
+		if (i) {
+			images[0] = pg_prove_variable(&typing, contexts[i], a);
+			images[1] = pg_prove_variable(&typing, contexts[i], function_binders[i]);
+		}
+	}
+	const struct pg_evidence *prefix = pg_prove_substitution(&typing, contexts[0], contexts[1], 2, images);
+	assert(prefix);
+	const struct pg_evidence *alternate = pg_prove_context_extension(&typing,
+		pg_evidence_premise(contexts[0], 0), function_binders[0],
+		pg_prove_value_type(&typing, pg_prove_type_value(&typing, function_types[0])));
+	assert(alternate != contexts[0] && pg_evidence_context(alternate) == pg_evidence_context(contexts[0]));
+	size_t terms = graph.terms.count;
+	const struct pg_evidence *result = pg_prove_substitution_extend(&typing, prefix, alternate, 0, NULL);
+	assert(result && result != prefix && graph.terms.count == terms);
+	assert(pg_evidence_premise(result, 0) == alternate);
+	assert(pg_prove_substitution(&typing, alternate, contexts[1], 2, images) == result);
+	assert(pg_evidence_premise(result, 2) == images[0] && pg_evidence_premise(result, 3) == images[1]);
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+}
+
 static void check(struct pg_whnf_work *work, const struct pg_term *term, const struct pg_term *expected)
 {
 	struct pg_whnf_job *job = pg_whnf_request(work, &pg_pure_policy, term);
@@ -563,6 +607,7 @@ static void schemas(struct pg_graph *graph)
 int main(void)
 {
 	positive_fields();
+	retained_substitution_prefix();
 	struct pg_graph graph;
 	struct pg_whnf_work work;
 	assert(pg_graph_init(&graph) == 0);

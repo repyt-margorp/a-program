@@ -145,6 +145,17 @@ Next declaration-admission contract:
   This produces substitution evidence only, not nominal type formation.
   Full component `make check` and ASan/UBSan IADT tests pass. Source declaration
   acceptance, typed symmetry and the other full-plan gates remain incomplete.
+- [x] After `44c61ca`, remove repeated validation of the accepted substitution
+  prefix. Full substitution and extension use one builder and the same flat
+  evidence key; extension checks only new images and their dependent domains.
+  The prefix must belong to this typing store and its exact source context must
+  be a prefix of the supplied context. No accepted flag or new rule is added.
+  A regression changes the source context derivation without changing its
+  context, retaining a nonidentity substitution through a dependent Pi type:
+  extension creates no new Core terms and ordinary construction finds the same
+  evidence. Flat premise/binding arrays are still copied, not claimed O(1).
+  Full component `make check` and ASan/UBSan IADT tests pass. These tests do not
+  establish source datatype admission or completion of `check-acceptance`.
 
 - A scoped family signature supplies its fixed parameter context and index
   telescope. Instantiating that signature consumes checked index images and
