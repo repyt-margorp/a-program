@@ -108,7 +108,7 @@ struct effect_substitution_state {
 	struct pg_substitution work;
 	const struct pg_term *result;
 };
-enum job_role { TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
+enum job_role { DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, HANDLER_CARRIER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
@@ -539,8 +539,19 @@ struct pg_synthesis_job *pg_synthesis_type_structure(struct pg_synthesis *synthe
 
 const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthesis_job *job)
 {
-	return job && job->role == TYPE_STRUCTURE_JOB && job->status == PG_SYNTHESIS_DONE
-		? job->type_structure : NULL;
+	if (!job || job->status != PG_SYNTHESIS_DONE) return NULL;
+	switch (job->role) {
+	case TYPE_STRUCTURE_JOB: case CLASSIFIER_STRUCTURE_JOB: case DECLARED_TYPE_JOB:
+		return job->type_structure;
+	default: return NULL;
+	}
+}
+
+struct pg_synthesis_job *pg_synthesis_classifier_structure(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *term)
+{
+	if (!term || term->owner != synthesis->owner_key) return NULL;
+	return request_job(synthesis, CLASSIFIER_STRUCTURE_JOB, term, NULL);
 }
 
 struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
@@ -3026,6 +3037,75 @@ static struct pg_synthesis_job *rule_premise(struct pg_synthesis *synthesis,
 		: (void *)job->inputs[index + 3];
 }
 
+static void forward_structure(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+	job->type_structure = pg_synthesis_type_structure_result(job->left);
+	finish(synthesis, job, job->left->status);
+}
+
+static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *context = (void *)job->inputs[0];
+	const struct pg_object *binder = job->inputs[1];
+	if (!job->left && context->role == SCOPE_CONTEXT_JOB)
+		job->left = request_job(synthesis, DECLARED_TYPE_JOB, context->inputs[2], binder);
+	if (!job->left && context->role == DERIVATION_JOB) {
+		const struct pg_derivation_input *input = context->inputs[0];
+		if (input->rule == PG_CONTEXT_EXTEND) {
+			struct pg_synthesis_job *premise = rule_premise(synthesis, context,
+				input->parameters.binder == binder ? 1 : 0);
+			if (!premise) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+			job->left = input->parameters.binder == binder
+				? pg_synthesis_type_structure(synthesis, premise)
+				: request_job(synthesis, DECLARED_TYPE_JOB, premise, binder);
+		}
+	}
+	if (job->left) { forward_structure(synthesis, job); return; }
+	if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
+	if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return; }
+	if (!context->result || pg_evidence_judgement(context->result) != PG_JUDGEMENT_CONTEXT) {
+		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+	}
+	const struct pg_context *declaration = pg_context_lookup(pg_evidence_context(context->result), binder);
+	job->type_structure = declaration ? declaration->declared_type : NULL;
+	finish(synthesis, job, declaration ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+}
+
+static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	const struct pg_derivation_input *input = producer->role == DERIVATION_JOB ? producer->inputs[0] : NULL;
+	if (!job->left && input) {
+		struct pg_synthesis_job *premise = rule_premise(synthesis, producer, 0);
+		if (premise) switch (input->rule) {
+		case PG_VARIABLE:
+			job->left = request_job(synthesis, DECLARED_TYPE_JOB, premise, input->parameters.binder); break;
+		case PG_FORCE_ELIM: case PG_THUNK_INTRO:
+			job->left = pg_synthesis_classifier_structure(synthesis, premise); break;
+		case PG_LAMBDA_INTRO:
+			job->left = pg_synthesis_type_structure(synthesis, premise); break;
+		default: break;
+		}
+	}
+	if (job->left) {
+		if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		const struct pg_term *type = pg_synthesis_type_structure_result(job->left);
+		if (input->rule == PG_FORCE_ELIM) {
+			if (!pg_thunk_type_view(type, &type)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		} else if (input->rule == PG_THUNK_INTRO) type = pg_thunk_type(synthesis->classifiers, type);
+		job->type_structure = type;
+		finish(synthesis, job, type ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+		return;
+	}
+	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
+	if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return; }
+	job->type_structure = producer->result ? pg_evidence_classifier(producer->result) : NULL;
+	finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+}
+
 static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
@@ -3368,6 +3448,8 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	if (job->role == DERIVATION_JOB) { derivation_step(synthesis, job); return; }
 	if (job->role == TYPE_STRUCTURE_JOB) { type_structure_step(synthesis, job); return; }
+	if (job->role == CLASSIFIER_STRUCTURE_JOB) { classifier_structure_step(synthesis, job); return; }
+	if (job->role == DECLARED_TYPE_JOB) { declared_type_step(synthesis, job); return; }
 	if (job->role == CONSTRUCTOR_VALUE_JOB) { constructor_value_step(synthesis, job); return; }
 	if (job->role == CONVERSION_JOB) { conversion_step(synthesis, job); return; }
 	if (job->role == EXPECT_JOB) { expect_step(synthesis, job); return; }

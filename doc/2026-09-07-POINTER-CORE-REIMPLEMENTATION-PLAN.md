@@ -173,6 +173,18 @@ Next implementation sequence (prerequisite for automatic source handlers):
   freshens binders). An invalid U(Universe) structure can be built but its
   formation is rejected. No extra Core tag or Context representation is added.
   Source variable/application classifier propagation is still outstanding.
+  Rule-level classifier projection now covers VARIABLE, FORCE, THUNK and Lambda.
+  VARIABLE follows the context-producer chain by exact binder identity and
+  projects the selected declaration's formation structure. Scope guards do not
+  manufacture evidence; their underlying declaration input may be inspected
+  but the original guard must still pass. Traversal uses shared scheduled jobs,
+  not a second Context container. FORCE removes the structural U wrapper; THUNK
+  preserves the full latent classifier beneath U. Tests obtain these structures
+  before sealing and follow an outer binder through an intervening declaration,
+  then complete the original accepted variable/formation jobs. Source APP and
+  dependent result substitution still need integration with these projections.
+  Validation: normal `check`, eight example synthesis cases, six runtime cases
+  and rebuilt ASan/UBSan synthesis tests pass for the classifier projections.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
   pointer-equality assumption about capture-avoiding substitution.

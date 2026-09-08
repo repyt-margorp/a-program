@@ -329,6 +329,23 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_universe(classifiers, 0));
 		assert(symbolic_pi == pg_pi(typing->graph, pg_thunk_type(classifiers, symbolic_f), k, symbolic_f));
 		assert(!pg_synthesis_result(pi) && !pg_synthesis_result(context));
+		struct pg_synthesis_job *body_type = pg_synthesis_classifier_structure(&synthesis, body);
+		assert(body_type == pg_synthesis_classifier_structure(&synthesis, body));
+		assert(!complete(&synthesis, body_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(body_type) == symbolic_f);
+		struct pg_synthesis_job *quoted_lambda = rule_job(&synthesis, PG_THUNK_INTRO, NULL, 1, &lambda);
+		struct pg_synthesis_job *quoted_type = pg_synthesis_classifier_structure(&synthesis, quoted_lambda);
+		assert(!complete(&synthesis, quoted_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(quoted_type) == pg_thunk_type(classifiers, symbolic_pi));
+		assert(!pg_synthesis_result(body) && !pg_synthesis_result(quoted_lambda));
+		struct pg_synthesis_job *projected_thunk = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){context, thunk});
+		struct pg_synthesis_job *extended = rule_job(&synthesis, PG_CONTEXT_EXTEND, pg_binder(typing->graph), 2,
+			(struct pg_synthesis_job *[]){context, projected_thunk});
+		struct pg_synthesis_job *outer_variable = rule_job(&synthesis, PG_VARIABLE, k, 1, &extended);
+		struct pg_synthesis_job *outer_type = pg_synthesis_classifier_structure(&synthesis, outer_variable);
+		assert(!complete(&synthesis, outer_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(outer_type) == pg_thunk_type(classifiers, symbolic_f));
 		pg_effect_inference_seal(&effects);
 		assert(pg_synthesis_effect_inference(&synthesis, &effects));
 		for (unsigned steps = 0; pg_synthesis_status(lambda) == PG_SYNTHESIS_PENDING; ++steps) {
@@ -339,6 +356,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_evidence *expected_context = pg_prove_context_extension(typing,
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
+		complete(&synthesis, outer_variable, PG_SYNTHESIS_DONE);
 		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));
 		complete(&synthesis, source_lambda, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *quoted = complete(&synthesis, source_quote, PG_SYNTHESIS_DONE);
