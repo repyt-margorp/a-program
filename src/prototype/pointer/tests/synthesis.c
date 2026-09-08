@@ -455,6 +455,14 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, result_classifier, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(result_classifier) == pg_universe(classifiers, 0));
 		assert(!pg_synthesis_result(result_context) && !pg_synthesis_result(result_variable));
+		struct pg_synthesis_job *computed_argument = request(&synthesis, result_scope,
+			"v := (\\x : @ => x) ((\\x : @ => x) result);");
+		struct pg_synthesis_job *computed_argument_type = pg_synthesis_classifier_structure(&synthesis, computed_argument);
+		assert(!complete(&synthesis, computed_argument_type, PG_SYNTHESIS_DONE));
+		const struct pg_term *computed_row, *computed_value;
+		assert(pg_effect_type_spine_view(pg_synthesis_type_structure_result(computed_argument_type), &computed_row, &computed_value));
+		assert(computed_value == pg_universe(classifiers, 0));
+		assert(!pg_synthesis_result(computed_argument) && !pg_synthesis_result(context));
 		struct pg_synthesis_job *result_domain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){context, universe});
 		struct pg_synthesis_job *result_function = pg_synthesis_lambda_body(&synthesis,
@@ -748,6 +756,10 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(response_result == pg_effect_type(classifiers, row, response_domain));
 		assert(pg_evidence_classifier(return_proof) == pg_synthesis_type_structure_result(return_clause_type));
 		const struct pg_evidence *result_proof = complete(&synthesis, result_variable, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *computed_proof = complete(&synthesis, computed_argument, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_classifier(computed_proof) == pg_return_type(classifiers, computed_value));
+		const struct pg_evidence *computed_normal = normalize(&synthesis, pg_synthesis_result(result_context), computed_proof);
+		assert(pg_evidence_subject(computed_normal)->core == pg_evidence_subject(pg_prove_return(typing, classifiers, result_proof))->core);
 		assert(pg_evidence_subject(result_proof)->core == pg_reference(typing->graph, result_binder));
 		assert(pg_evidence_classifier(result_proof) == pg_universe(classifiers, 0));
 		assert(pg_evidence_rule(result_proof) == PG_VARIABLE);
@@ -1097,6 +1109,11 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		enum pg_synthesis_status status;
 		int emits, requests;
 	} nested_handlers[] = {
+		{"h := ((\\x : Result => Op x) (Op Arg)) @Op req k => k req @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => (\\x : Result => x) (k req) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => (&(\\x : Result => x)) (k req) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => (\\x : Result => Op x) (k req) @#.return x => x;", PG_SYNTHESIS_DONE, 1, 1},
+		{"h := (Op Arg) @Op req k => (\\x : @ => x) (k req) @#.return x => x;", PG_SYNTHESIS_REJECTED, 0, 0},
 		{"h := (Op Arg) @Op req k => ((k req) @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
 		{"h := (Op Arg) @Op req k => ((k req) @#.return x => Op x) @#.return x => x;", PG_SYNTHESIS_DONE, 1, 1},
 		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => resume req @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},

@@ -678,6 +678,28 @@ finish general handler source support.
   1 and 64. No new proof rule, Core constructor or equation worker is added.
   Normal checks, eight source/six runtime cases and rebuilt ASan/UBSan synthesis
   tests pass. Implementation C changes by +8/-14; regression tests by +16/-0.
+- [x] September 9: a structurally known Pi callee now accepts a computation
+  argument through pending result-context, projection, ordinary APP, Lambda
+  and sequence jobs. The result binder is allocated once after both classifier
+  structures are available. Source proof acceptance is not a prerequisite for
+  collecting the argument/body effect union. Existing sequence checking retains
+  the checked pure-return fallback for dependent results; no expected argument
+  type is used to synthesize the argument and no new proof rule is introduced.
+  Named value-type domains also expose their existing type structure before
+  context acceptance, as literal universes and bound type variables already did.
+  Tests inspect a nested source application's classifier under a pending
+  context, later check/normalize it, and run handler cases for pending resumption
+  arguments, emitted effects, wrong argument types, and requests in both the
+  argument and body. Handler cases use chunks 1 and 64.
+  Both raw and thunked Pi callees are exercised. Normal component checks,
+  eight source cases, six runtime cases and rebuilt ASan/UBSan synthesis pass.
+  Moving synchronous work into ordinary jobs raises transition counts: 05
+  350->389, 06 272->311, 07 744->921, 09 1718->1987. These are scheduling counts,
+  not evidence of a wall-time speedup. Implementation C changes +31/-9, tests
+  +17/-0. Source 01-04 and higher Identity transition counts are unchanged.
+  Effectful callee discovery and unknown producer polarity still use the old
+  accepted-operand path; removing that path remains required. This entry does
+  not complete arbitrary source APP, general dependent effects or N4.
 - [ ] Automatic equation generation from arbitrary source bodies remains open.
   This fixture supplies the graph explicitly before checking the source body;
   it does not infer latent callable effects or a general dependent carrier.

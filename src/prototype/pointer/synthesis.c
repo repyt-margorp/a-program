@@ -3762,12 +3762,17 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		return;
 	}
 	if (producer->role == DOMAIN_JOB) {
+		if (await_source_preparation(synthesis, job, producer->left)) return;
+		if (source_value_kind(producer->left) == 2) {
+			if (!job->left) job->left = pg_synthesis_type_structure(synthesis, producer->left);
+			forward_structure(synthesis, job);
+			return;
+		}
 		struct pg_synthesis_job *rule = prepared_source_rule(producer->left);
 		if (rule && rule->role == DERIVATION_JOB) {
 			const struct pg_derivation_input *domain = rule->inputs[0];
-			if (domain->rule == PG_UNIVERSE_FORM || domain->rule == PG_VARIABLE) {
-				if (!job->left) job->left = domain->rule == PG_VARIABLE
-					? pg_synthesis_term_structure(synthesis, rule) : pg_synthesis_type_structure(synthesis, rule);
+			if (domain->rule == PG_VARIABLE) {
+				if (!job->left) job->left = pg_synthesis_term_structure(synthesis, rule);
 				forward_structure(synthesis, job);
 				return;
 			}
@@ -4098,9 +4103,9 @@ error:
 	return 0;
 }
 
-/* Prepare ordinary value-argument application without accepted contexts.
- * Sequencing still uses application_step until its continuation migration. */
-static int prepare_value_application(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+/* Pi application prepares its argument continuation before proof acceptance.
+ * Effectful callee discovery still uses application_step. */
+static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_APPLICATION) return 0;
 	if (job->stage == APPLICATION_RULE_READY) { forward_proof(synthesis, job, job->value_job); return 1; }
@@ -4119,11 +4124,28 @@ static int prepare_value_application(struct pg_synthesis *synthesis, struct pg_s
 	struct pg_synthesis_job *argument = job->right;
 	if (await_source_preparation(synthesis, job, argument)) return 1;
 	int kind = source_value_kind(argument);
-	if (kind < 1) goto sequencing;
+	if (kind < 0) goto sequencing;
 	struct pg_synthesis_job *callee = (void *)job->value_job->inputs[0];
 	if (force) callee = plain_rule(synthesis, PG_FORCE_ELIM, NULL, 1, &callee);
 	if (kind == 2) argument = plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &argument);
-	job->value_job = pg_synthesis_application_jobs(synthesis, job->scope->context_job, callee, argument);
+	struct pg_synthesis_job *context = job->scope->context_job;
+	if (!kind) {
+		argument = pg_synthesis_normalize_classifier_jobs(synthesis, context, argument);
+		struct pg_synthesis_job *shape = pg_synthesis_classifier_structure(synthesis, argument);
+		if (!shape) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
+		if (shape->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, shape); return 1; }
+		if (shape->status != PG_SYNTHESIS_DONE) goto sequencing;
+		const struct pg_term *row, *result;
+		if (!pg_effect_type_spine_view(pg_synthesis_type_structure_result(shape), &row, &result)) goto sequencing;
+		const struct pg_object *result_binder = pg_binder(synthesis->typing->graph);
+		struct pg_synthesis_job *extended = pg_synthesis_result_context(synthesis, context, argument, result_binder);
+		if (!extended) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
+		callee = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, (struct pg_synthesis_job *[]){extended, callee});
+		struct pg_synthesis_job *variable = plain_rule(synthesis, PG_VARIABLE, result_binder, 1, &extended);
+		struct pg_synthesis_job *body = pg_synthesis_application_jobs(synthesis, extended, callee, variable);
+		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(synthesis, rule_premise(synthesis, extended, 1), extended, body);
+		job->value_job = pg_synthesis_sequence(synthesis, context, argument, continuation);
+	} else job->value_job = pg_synthesis_application_jobs(synthesis, context, callee, argument);
 	if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
 	job->stage = APPLICATION_RULE_READY;
 	forward_proof(synthesis, job, job->value_job);
@@ -4141,7 +4163,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	/* Self application and IH notation share syntax until scope resolution. */
 	if (job->role == EXPRESSION_JOB && !hypothesis_syntax(job->syntax))
 		if (!prepare_expression(synthesis, job)) return;
-	if (prepare_value_application(synthesis, job)) return;
+	if (prepare_application(synthesis, job)) return;
 	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_QUOTE) {
 		forward_proof(synthesis, job, job->right);
 		return;
