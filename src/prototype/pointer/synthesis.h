@@ -127,6 +127,14 @@ struct pg_synthesis_job *pg_synthesis_handler_carrier(struct pg_synthesis *synth
  * be checked by typing rules. Work outlives this synthesis store. */
 struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synthesis,
 	struct pg_effect_inference *work);
+/* Substitute selected converged equation parameters in an unaccepted term.
+ * Uses ordinary capture-avoiding substitution, without normalization or proof
+ * acceptance. Work must be sealed and outlive synthesis. The equation array is
+ * copied; unselected parameters remain unchanged. Completed terms live in graph. */
+struct pg_synthesis_job *pg_synthesis_effect_substitution(struct pg_synthesis *synthesis,
+	const struct pg_term *term, struct pg_effect_inference *work, size_t count,
+	const struct pg_effect_equation *const *equations);
+const struct pg_term *pg_synthesis_effect_substitution_result(const struct pg_synthesis_job *job);
 /* Resolve nominal operation identity through completed lexical aliases,
  * definition storage, quotation and successful source expectations. This is
  * shared budgeted work over producer links, not Core recognition or function

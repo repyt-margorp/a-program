@@ -78,6 +78,14 @@ Next implementation sequence (prerequisite for automatic source handlers):
   destruction. The original parameter remains unresolved structurally; no
   accepted evidence is produced. Connecting this to pending source/rule jobs
   and serializing the equation-to-parameter association remain open.
+  `pg_synthesis_effect_substitution` now awaits the sealed row producer and
+  feeds selected parameter images to the existing resumable substitution
+  walker. Its separate result accessor returns an unaccepted term, never
+  evidence. Exact requests share work; temporary image arrays are released
+  after initialization. Tests compare the result with ordinary substitution,
+  reject foreign equations, preserve the input graph, and destroy work during
+  image preparation/traversal. Source classifier propagation and checkpoint
+  relocation are still open; this is the materialization operation they need.
 - [ ] Generalize existing unaccepted rule inputs to await parameter producers
   as well as premise producers. Reuse ordinary `pg_prove_derivation` acceptance;
   do not add provisional evidence or a second rule checker. A loaded `.a` uses

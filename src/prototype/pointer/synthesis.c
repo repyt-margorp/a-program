@@ -102,8 +102,14 @@ struct derivation_state {
 	struct pg_comparison endpoint;
 	const struct pg_reduction_certificate *reduction;
 };
+struct effect_substitution_state {
+	size_t next;
+	struct pg_binding_value *bindings;
+	struct pg_substitution work;
+	const struct pg_term *result;
+};
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, HANDLER_CARRIER_JOB, SCOPE_CONTEXT_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, HANDLER_CARRIER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const void *owner;
@@ -145,6 +151,7 @@ struct pg_synthesis_job {
 	struct handler_state *handler;
 	struct family_state *family;
 	struct derivation_state *derivation;
+	struct effect_substitution_state *effect_substitution;
 	const void *inputs[];
 };
 
@@ -193,6 +200,10 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			pg_identity_face_destroy(job->face);
 			pg_identity_formation_destroy(job->formation);
 			if (job->derivation) pg_comparison_destroy(&job->derivation->endpoint);
+			if (job->effect_substitution) {
+				pg_substitution_destroy(&job->effect_substitution->work);
+				free(job->effect_substitution->bindings);
+			}
 			if (job->block) pg_index_destroy(&job->block->names);
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
 			if (job->declaration) pg_index_destroy(&job->declaration->names);
@@ -341,6 +352,31 @@ struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synt
 {
 	if (!work || work->rows != synthesis->typing->graph || !work->sealed) return NULL;
 	return request_job(synthesis, EFFECT_INFERENCE_JOB, work, NULL);
+}
+
+struct pg_synthesis_job *pg_synthesis_effect_substitution(struct pg_synthesis *synthesis,
+	const struct pg_term *term, struct pg_effect_inference *work, size_t count,
+	const struct pg_effect_equation *const *equations)
+{
+	if (!term || (count && !equations) || count > SIZE_MAX / sizeof(void *) - 2) return NULL;
+	struct pg_synthesis_job *effects = pg_synthesis_effect_inference(synthesis, work);
+	if (!effects) return NULL;
+	for (size_t i = 0; i < count; ++i)
+		if (!pg_effect_equation_parameter(work, equations[i])) return NULL;
+	struct pg_graph temporary = {0};
+	const void **inputs = pg_alloc(&temporary, (count + 2) * sizeof(*inputs));
+	if (!inputs) return NULL;
+	inputs[0] = term; inputs[1] = effects;
+	for (size_t i = 0; i < count; ++i) inputs[i + 2] = equations[i];
+	struct pg_synthesis_job *job = request_inputs(synthesis, EFFECT_SUBSTITUTION_JOB, count + 2, inputs);
+	pg_graph_destroy(&temporary);
+	return job;
+}
+
+const struct pg_term *pg_synthesis_effect_substitution_result(const struct pg_synthesis_job *job)
+{
+	if (!job || job->role != EFFECT_SUBSTITUTION_JOB || job->status != PG_SYNTHESIS_DONE) return NULL;
+	return job->effect_substitution->result;
 }
 
 struct pg_synthesis_job *pg_synthesis_handler_clause(struct pg_synthesis *synthesis,
@@ -3051,6 +3087,48 @@ static void operation_reference_step(struct pg_synthesis *synthesis, struct pg_s
 	finish(synthesis, job, job->left->status);
 }
 
+static void effect_substitution_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *effects = (void *)job->inputs[1];
+	if (effects->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, effects); return; }
+	if (effects->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, effects->status); return; }
+	size_t count = job->input_count - 2;
+	if (!job->effect_substitution) {
+		if (count > SIZE_MAX / sizeof(struct pg_binding_value)) goto error;
+		job->effect_substitution = pg_alloc(synthesis->typing->graph, sizeof(*job->effect_substitution));
+		if (!job->effect_substitution) goto error;
+		if (count) {
+			job->effect_substitution->bindings = malloc(count * sizeof(struct pg_binding_value));
+			if (!job->effect_substitution->bindings) goto error;
+		}
+	}
+	struct effect_substitution_state *state = job->effect_substitution;
+	if (state->next < count) {
+		const struct pg_effect_equation *equation = job->inputs[state->next + 2];
+		const struct pg_effect_row *row = pg_effect_inference_result(effects->inputs[0], equation);
+		const struct pg_term *value = pg_effect_reference(synthesis->typing->graph, row);
+		if (!value) goto error;
+		state->bindings[state->next++] = (struct pg_binding_value){
+			pg_effect_equation_parameter(effects->inputs[0], equation), value};
+		enqueue(synthesis, job);
+		return;
+	}
+	if (!state->work.state) {
+		int status = pg_substitution_init(&state->work, synthesis->typing->graph, job->inputs[0], count, state->bindings);
+		free(state->bindings); state->bindings = NULL;
+		if (status) goto error;
+	}
+	enum pg_substitution_status status = pg_substitution_advance(&state->work, 1);
+	if (status == PG_SUBSTITUTION_PENDING) { enqueue(synthesis, job); return; }
+	if (status != PG_SUBSTITUTION_DONE) goto error;
+	state->result = pg_substitution_result(&state->work);
+	pg_substitution_destroy(&state->work);
+	finish(synthesis, job, PG_SYNTHESIS_DONE);
+	return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+}
+
 static int lexical_variable_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_ATOM) return 0;
@@ -3126,6 +3204,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		finish(synthesis, job, PG_SYNTHESIS_DONE);
 		return;
 	}
+	if (job->role == EFFECT_SUBSTITUTION_JOB) { effect_substitution_step(synthesis, job); return; }
 	if (job->role == OPERATION_REFERENCE_JOB) { operation_reference_step(synthesis, job); return; }
 	if (job->role == HANDLER_RETURN_JOB) { handler_return_step(synthesis, job); return; }
 	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }
