@@ -472,6 +472,14 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(request_effect == pg_effect_join_term(typing->graph,
 			pg_effect_reference(typing->graph, request_row), row_parameter));
 		assert(!pg_synthesis_result(request_job) && !pg_synthesis_result(request_continuation));
+		struct pg_synthesis_job *request_term = pg_synthesis_term_structure(&synthesis, request_job);
+		assert(!complete(&synthesis, request_term, PG_SYNTHESIS_DONE));
+		const struct pg_term *request_core = pg_synthesis_type_structure_result(request_term);
+		const struct pg_object *core_label;
+		const struct pg_term *core_payload, *core_continuation;
+		assert(pg_computation_request_view(request_core, &core_label, &core_payload, &core_continuation));
+		assert(core_label == request_label && core_payload == pg_universe(classifiers, 0));
+		assert(!pg_synthesis_result(request_job));
 		struct pg_synthesis_job *invalid_request = pg_synthesis_rule(&synthesis, &request_input,
 			(struct pg_synthesis_job *[]){signature_job, signature_job, request_domain, request_continuation}, NULL, NULL);
 		struct pg_synthesis_job *invalid_request_type = pg_synthesis_classifier_structure(&synthesis, invalid_request);
@@ -754,6 +762,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_effect_row *request_final_row = pg_effect_union(typing->graph, row, request_row);
 		assert(pg_effect_inference_result(&effects, request_target) == request_final_row);
 		const struct pg_evidence *request_proof = complete(&synthesis, request_job, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(request_proof)->core == request_core);
 		assert(pg_evidence_classifier(request_proof) == pg_effect_type(classifiers, request_final_row,
 			pg_universe(classifiers, 0)));
 		assert(!complete(&synthesis, invalid_request, PG_SYNTHESIS_REJECTED));
@@ -968,6 +977,17 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(pg_synthesis_operation(&synthesis, operation) == operation_job);
 	assert(!pg_synthesis_operation(&synthesis, NULL));
 	assert(typing->graph->terms.count == term_count && typing->proofs.count == proof_count);
+	for (size_t steps = 0; !pg_synthesis_dependency(operation_job); ++steps) {
+		assert(steps < 1000);
+		pg_synthesis_advance(&synthesis, 1);
+	}
+	assert(!pg_synthesis_result(operation_job));
+	const struct pg_synthesis_job *operation_body = pg_synthesis_dependency(operation_job);
+	assert(operation_body && !pg_synthesis_result(operation_body));
+	term_count = typing->graph->terms.count;
+	assert(pg_synthesis_operation(&synthesis, operation) == operation_job);
+	assert(pg_synthesis_dependency(operation_job) == operation_body);
+	assert(typing->graph->terms.count == term_count);
 	scope = pg_synthesis_name_job(&synthesis, scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Op", .length=2}, operation_job);
 	scope = pg_synthesis_name_job(&synthesis, scope,

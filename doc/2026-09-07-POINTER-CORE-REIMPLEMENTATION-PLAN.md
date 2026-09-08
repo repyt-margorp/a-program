@@ -963,6 +963,24 @@ finish general handler source support.
   elaboration, handler dependency generation or descriptor checkpoint transport.
   These and the existing open-family/IADT/higher gates remain required.
 
+  September 9, after `33b2677`: source operation functions now prepare ordinary
+  Context/Variable/Return/Lambda/Request jobs instead of synchronously building
+  the entire derivation through `pg_prove_operation_function`. A shared operation
+  job creates its two binders once and waits for its ordinary Lambda producer.
+  Foreign signature evidence remains rejected at the entry boundary.
+  Request term projection now uses payload and continuation structure directly,
+  without waiting for accepted evidence or executing the request. After effect
+  solving, the accepted occurrence retains that exact Core pointer.
+  Tests cover pause before acceptance, repeated job/binder reuse, pending request
+  structure, and the existing source operation/alias/handler execution cases.
+  Normal components, eight source checks and six execution fixtures pass.
+  The rebuilt ASan/UBSan synthesis suite also passes.
+  The synchronous kernel convenience constructor remains available; the source
+  path no longer calls it. This changes scheduling, not request semantics or
+  the operation signature rules. General descriptor transport, pending handler
+  preparation and the full acceptance gates remain open.
+  Implementation C: +42/-5; tests: +20/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.
