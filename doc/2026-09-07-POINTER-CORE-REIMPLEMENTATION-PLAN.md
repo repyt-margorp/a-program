@@ -3877,6 +3877,17 @@ Dependent-context obstruction, verified after `5606df8`:
   a Core-pointer type lookup, or a new conversion equality. This test does not
   discharge center symmetry, reduction preservation or higher coherence.
 
+Closed degenerate square check after `da8c039`: the square-template fixture
+now uses `A : Universe(1)` so it also admits the closed value `Universe(0)`.
+Starting from that value, two ordinary reflexivity introductions supply a
+square. Its eight proper faces instantiate the transposed template through the
+shared substitution/reindex solver. The reconstructed type is convertible to
+the original closed square type, and ordinary `pg_prove_conversion` accepts
+the existing center at that type. This supplies a positive, closed test beside
+the abstract-center rejection above. It neither admits `S_swap(center)` nor
+proves a general permutation/degeneracy equation; such an evaluator rule still
+needs preservation under the accepted typed action and its instantiations.
+
 ## 8. Program Image and Persistence
 
 One in-memory program owns graph roots, typed occurrences, declarations and work

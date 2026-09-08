@@ -1178,7 +1178,7 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
 	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, pg_binder(typing->graph),
-		pg_prove_universe(typing, classifiers, empty, 0));
+		pg_prove_universe(typing, classifiers, empty, 1));
 	const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, 2);
 	struct pg_coordinate axes[] = {{PG_AXIS, 1}, {PG_AXIS, 0}};
 	const struct pg_evidence *original = pg_identity_cube_context(typing, &dimensions, source, 1, &cube,
@@ -1225,6 +1225,34 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 	assert(pg_evidence_judgement(type) == PG_JUDGEMENT_VALUE_TYPE);
 	assert(pg_evidence_classifier(type) == pg_evidence_classifier(pg_evidence_premise(original, 1)));
 	assert(!pg_context_lookup(pg_evidence_context(destination), pg_evidence_context(opposite)->binder));
+	/* A fully degenerate square supplies all its boundaries without a center
+	 * assumption. Test the transposed classifier independently of a symmetry rule. */
+	const struct pg_evidence *closed_type = pg_prove_universe(typing, classifiers, empty, 1);
+	const struct pg_evidence *closed_value = pg_prove_type_value(typing,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_evidence *next = pg_prove_identity_type(typing, closed_type, closed_value, closed_value);
+		closed_value = pg_prove_reflexivity(typing, closed_type, closed_value);
+		closed_type = next;
+		assert(closed_type && closed_value);
+	}
+	cursor = template;
+	for (size_t i = 8; i; --i, cursor = pg_evidence_premise(cursor, 0)) {
+		const struct pg_binding_face *binding = pg_binding_face_view(pg_evidence_context(cursor)->binder);
+		const struct pg_dimension_map *ordered, *intrinsic;
+		assert(pg_dimension_face_factor(&dimensions, binding->face, &ordered, &intrinsic) == 0);
+		assert(intrinsic == pg_dimension_identity(&dimensions, ordered->source));
+		images[i - 1] = pg_synthesis_identity_face(&synthesis, empty, closed_type, ordered);
+	}
+	struct pg_synthesis_job *closed_map = pg_synthesis_substitution(&synthesis, template, empty, 8, images);
+	const struct pg_evidence *transposed_type = complete(&synthesis,
+		pg_synthesis_reindex_jobs(&synthesis, closed_map, formation), PG_SYNTHESIS_DONE);
+	struct pg_conversion conversion;
+	assert(pg_conversion_init(&conversion, &work, pg_evidence_subject(closed_type)->core,
+		pg_evidence_subject(transposed_type)->core) == 0);
+	assert(pg_conversion_advance(&conversion, 100000) == PG_CONVERSION_EQUAL);
+	assert(pg_prove_conversion(typing, closed_value, transposed_type, pg_conversion_certificate(&conversion)));
+	pg_conversion_destroy(&conversion);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	pg_dimensions_destroy(&dimensions);
