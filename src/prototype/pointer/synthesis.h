@@ -145,6 +145,14 @@ struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synt
 struct pg_synthesis_job *pg_synthesis_effect_contribution(struct pg_synthesis *synthesis,
 	struct pg_effect_inference *work, struct pg_effect_equation *target,
 	const struct pg_effect_row *mask, struct pg_synthesis_job *formation);
+/* Same registration from a raw row-expression DAG: closed/parameter leaves
+ * and union nodes. Each exact row/target/mask request shares work. No row is
+ * accepted as a type; await completion before sealing, as above. A rejected
+ * expression may already have registered valid leaves; these are not proof
+ * that the whole expression succeeded. Consumers must check the job status. */
+struct pg_synthesis_job *pg_synthesis_row_contribution(struct pg_synthesis *synthesis,
+	struct pg_effect_inference *work, struct pg_effect_equation *target,
+	const struct pg_effect_row *mask, const struct pg_term *row);
 /* Substitute selected converged equation parameters in an unaccepted term.
  * Uses ordinary capture-avoiding substitution, without normalization or proof
  * acceptance. Work must outlive synthesis; notify sealing as above. The equation array is

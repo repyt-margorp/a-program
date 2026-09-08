@@ -444,6 +444,22 @@ Next implementation sequence (prerequisite for automatic source handlers):
   for `{ a := k; b := a; b; }` while k's latent effect row is unresolved, then
   verifies Core identity after acceptance. This does not infer the effect union
   of computation-input sequences; their equation connection remains open.
+  September 9: row unions now have an unaccepted APP-spine representation
+  with a fixed `solver/effect-union/v1` descriptor. Exact pointer tuples share;
+  even two closed operands are not evaluated or identified with their union
+  during construction. No new Core tag or kernel conversion rule is added.
+  Shared row-contribution jobs interpret this DAG into the existing equation
+  graph, distributing a fixed mask over each union. Formation-based collection
+  delegates to these same jobs. Unknown leaves reject; unfinished jobs must not
+  be treated as successful registrations when the coordinator seals equations.
+  A rejected expression can have registered valid leaves already, so those
+  edges alone never establish acceptance of its producer.
+  Tests cover a 64-level shared diamond within 512 scheduler advances, exact
+  request reuse, no premature evidence, closed-union non-reduction, unknown
+  leaf rejection, and preservation/removal of distinct labels after sealing.
+  FOLD/source sequence classifier projection must still construct these row
+  expressions; automatic handler collection/sealing and pending image transport
+  remain open. This foundation does not complete those milestones.
   Normal checks, eight source/six runtime cases and rebuilt normal/ASan/UBSan
   synthesis tests pass. Wrong-context value application is rejected. Existing
   example transition counts remain unchanged (List 1682).

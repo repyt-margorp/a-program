@@ -255,6 +255,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 {
 	static const struct pg_object_class label_class = {"pending-context-effect"};
 	static const struct pg_object label = {PG_SEMANTIC_OBJECT, &label_class};
+	static const struct pg_object other_label = {PG_SEMANTIC_OBJECT, &label_class};
 	const struct pg_object *labels[] = {&label};
 	const struct pg_effect_row *row = pg_effect_row(typing->graph, 1, labels);
 	for (unsigned chunk = 1; chunk <= 64; chunk *= 64) {
@@ -412,6 +413,25 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			&effects, collected, no_effects, universe), PG_SYNTHESIS_REJECTED);
 		assert(!pg_effect_inference_result(&effects, collected));
 		assert(!pg_synthesis_result(derived_carrier));
+		const struct pg_effect_row *other_row = pg_effect_row(typing->graph, 1,
+			(const struct pg_object *[]){&other_label});
+		const struct pg_term *row_parameter = pg_reference(typing->graph,
+			pg_effect_equation_parameter(&effects, equation));
+		const struct pg_term *joined = pg_effect_join_term(typing->graph, row_parameter,
+			pg_effect_reference(typing->graph, other_row));
+		assert(joined == pg_effect_join_term(typing->graph, row_parameter, pg_effect_reference(typing->graph, other_row)));
+		assert(!pg_effect_row_view(joined));
+		const struct pg_term *closed_join = pg_effect_join_term(typing->graph,
+			pg_effect_reference(typing->graph, row), pg_effect_reference(typing->graph, other_row));
+		assert(!pg_effect_row_view(closed_join));
+		assert(closed_join != pg_effect_reference(typing->graph, pg_effect_union(typing->graph, row, other_row)));
+		for (size_t i = 0; i < 64; ++i) joined = pg_effect_join_term(typing->graph, joined, joined);
+		struct pg_effect_equation *joined_target = pg_effect_equation(&effects, no_effects);
+		struct pg_synthesis_job *joined_job = pg_synthesis_row_contribution(&synthesis, &effects, joined_target, row, joined);
+		assert(!complete_with_budget(&synthesis, joined_job, PG_SYNTHESIS_DONE, 512));
+		assert(joined_job == pg_synthesis_row_contribution(&synthesis, &effects, joined_target, row, joined));
+		complete(&synthesis, pg_synthesis_row_contribution(&synthesis, &effects, joined_target, row,
+			pg_reference(typing->graph, pg_binder(typing->graph))), PG_SYNTHESIS_REJECTED);
 		assert(!pg_synthesis_result(pi) && !pg_synthesis_result(context));
 		struct pg_synthesis_job *body_type = pg_synthesis_classifier_structure(&synthesis, body);
 		assert(body_type == pg_synthesis_classifier_structure(&synthesis, body));
@@ -581,6 +601,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_status(lambda) == PG_SYNTHESIS_DONE);
 		assert(pg_effect_inference_result(&effects, collected) == row);
 		assert(pg_effect_inference_result(&effects, masked) == no_effects);
+		assert(pg_effect_inference_result(&effects, joined_target) == other_row);
 		assert(contribution == pg_synthesis_effect_contribution(&synthesis,
 			&effects, collected, no_effects, derived_carrier));
 		assert(!complete(&synthesis, contribution, PG_SYNTHESIS_DONE));

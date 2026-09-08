@@ -14,6 +14,8 @@ static const struct pg_object_class thunk_type_class = {"thunk-type-former"};
 static const struct pg_object return_type_former = {PG_SEMANTIC_OBJECT, &return_type_class};
 static const struct pg_object thunk_type_former = {PG_SEMANTIC_OBJECT, &thunk_type_class};
 static const struct pg_object_class effect_row_class = {"closed-effect-row"};
+static const struct pg_object_class effect_join_class = {"effect-row-union"};
+static const struct pg_object effect_join = {PG_SEMANTIC_OBJECT, &effect_join_class};
 
 struct pg_effect_row {
 	struct pg_object_entry base;
@@ -29,6 +31,7 @@ static const struct {
 	const char *name;
 } descriptors[] = {
 	{&pi_former, "kernel/pi/v1"},
+	{&effect_join, "solver/effect-union/v1"},
 	{&return_type_former, "kernel/return-type/v2"},
 	{&empty_effects.base.object, "kernel/effect-row/empty/v1"},
 	{&thunk_type_former, "kernel/thunk-type/v1"}
@@ -321,6 +324,22 @@ int pg_effect_type_spine_view(const struct pg_term *term,
 	if (!unary_view(term->as.application.function, &return_type_former, &row)) return 0;
 	*effects = row;
 	*value_type = term->as.application.argument;
+	return 1;
+}
+
+const struct pg_term *pg_effect_join_term(struct pg_graph *graph,
+	const struct pg_term *left, const struct pg_term *right)
+{
+	if (!graph || !left || !right) return NULL;
+	return pg_application(graph, pg_application(graph, pg_reference(graph, &effect_join), left), right);
+}
+
+int pg_effect_join_view(const struct pg_term *term,
+	const struct pg_term **left, const struct pg_term **right)
+{
+	if (!term || !left || !right || term->kind != PG_APPLICATION) return 0;
+	if (!unary_view(term->as.application.function, &effect_join, left)) return 0;
+	*right = term->as.application.argument;
 	return 1;
 }
 

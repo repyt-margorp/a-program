@@ -39,6 +39,13 @@ int pg_effect_contains(const struct pg_effect_row *row, const struct pg_object *
 int pg_effect_subset(const struct pg_effect_row *left, const struct pg_effect_row *right);
 const struct pg_term *pg_effect_reference(struct pg_graph *graph, const struct pg_effect_row *row);
 const struct pg_effect_row *pg_effect_row_view(const struct pg_term *term);
+/* Unaccepted set-expression graph. Construction interns exact APP tuples;
+ * even closed operands are not evaluated here. The expression is not a
+ * closed row or a formation proof. Solve interprets union distributively. */
+const struct pg_term *pg_effect_join_term(struct pg_graph *graph,
+	const struct pg_term *left, const struct pg_term *right);
+int pg_effect_join_view(const struct pg_term *term,
+	const struct pg_term **left, const struct pg_term **right);
 /* Structural F spine, including unresolved row terms in unaccepted inputs.
  * These functions neither interpret the row nor establish formation. Closed
  * kernel consumers must continue using pg_effect_type_view below. */
