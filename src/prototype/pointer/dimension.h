@@ -34,6 +34,12 @@ struct pg_binding_face {
 };
 
 int pg_dimensions_init(struct pg_dimensions *dimensions, struct pg_graph *graph);
+/* Decode a cube's boundary argument slot in lexicographic 0,1,axis order
+ * (last coordinate varies fastest). Includes the center as the last slot.
+ * Writes dimension coordinates and their source-axis count without allocation.
+ * Rejects overflow/out-of-range input without changing either output. */
+int pg_dimension_cube_coordinates(size_t dimension, size_t slot,
+	struct pg_coordinate *coordinates, size_t *source);
 /* Frees the index; maps remain owned by graph. */
 void pg_dimensions_destroy(struct pg_dimensions *dimensions);
 const struct pg_dimension_map *pg_dimension_map(struct pg_dimensions *dimensions,

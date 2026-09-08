@@ -709,11 +709,9 @@ static const struct pg_evidence *cube_action(struct pg_typing *typing, struct pg
 		size_t active = count * faces;
 		for (size_t i = 0; i < active; ++i) {
 			const struct pg_binding_cube *cube = cubes[i / faces];
-			size_t axes = 0, divisor = faces / 3;
-			for (size_t j = 0; j + 1 < d; ++j, divisor /= 3) {
-				size_t digit = (i / divisor) % 3;
-				coordinates[j] = digit == 2 ? (struct pg_coordinate){PG_AXIS, axes++}
-					: (struct pg_coordinate){digit ? PG_ENDPOINT_ONE : PG_ENDPOINT_ZERO, 0};
+			size_t axes;
+			if (pg_dimension_cube_coordinates(d - 1, i % faces, coordinates, &axes) != 0) {
+				context = NULL; goto done;
 			}
 			coordinates[d - 1] = (struct pg_coordinate){PG_AXIS, axes++};
 			centers[i] = pg_binding_face(dimensions, cube, pg_dimension_map(dimensions, axes, cube->dimension, coordinates));

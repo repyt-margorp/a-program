@@ -82,6 +82,15 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Share the existing cube argument order through
+  `pg_dimension_cube_coordinates`: lexicographic endpoint-zero, endpoint-one,
+  axis, with the final coordinate varying fastest. `cube_action` now uses
+  this allocation-free decoder instead of its private ternary loop. Slots are
+  traversal positions, not new persistent binder IDs; the resulting maps and
+  bindings still use the existing pointer interner. Tests exhaust dimensions
+  zero through five, center identity, invalid slots and arithmetic overflow.
+  Complete pointer `make check` and ASan/UBSan `core_test` passed; existing
+  dependent cube action/classifier comparisons remain unchanged.
 - [ ] Connect permutation evaluation with the supplied argument boundaries
   of Act before adding a special equation for `S(Act(Act(t)))`. The existing
   permutation evaluator composes permutations and removes fixed prefixes;

@@ -1833,6 +1833,32 @@ static const struct pg_term *symmetry_normalize(struct pg_graph *graph, const st
 
 static void induced_face_permutations(struct pg_dimensions *dimensions)
 {
+	for (size_t dimension = 0, slots = 1; dimension <= 5; ++dimension, slots *= 3) {
+		struct pg_coordinate coordinates[5];
+		for (size_t slot = 0; slot < slots; ++slot) {
+			size_t source = SIZE_MAX;
+			assert(pg_dimension_cube_coordinates(dimension, slot, coordinates, &source) == 0);
+			size_t encoded = 0, axes = 0;
+			for (size_t i = 0; i < dimension; ++i) {
+				size_t digit = coordinates[i].kind;
+				if (coordinates[i].kind == PG_AXIS) assert(coordinates[i].axis == axes++);
+				encoded = 3 * encoded + digit;
+			}
+			assert(encoded == slot && source == axes);
+			const struct pg_dimension_map *face = pg_dimension_map(dimensions, source, dimension, coordinates);
+			assert(face && pg_dimension_face(dimensions, face) == face);
+			if (slot + 1 == slots) assert(face == pg_dimension_identity(dimensions, dimension));
+		}
+		coordinates[0] = (struct pg_coordinate){PG_AXIS, 42};
+		size_t source = 42;
+		assert(pg_dimension_cube_coordinates(dimension, slots, coordinates, &source) == -1);
+		assert(source == 42 && coordinates[0].axis == 42);
+		assert(pg_dimension_cube_coordinates(SIZE_MAX, 0, coordinates, &source) == -1);
+		assert(source == 42 && coordinates[0].axis == 42);
+	}
+	size_t empty_source = SIZE_MAX;
+	assert(pg_dimension_cube_coordinates(0, 0, NULL, &empty_source) == 0 && !empty_source);
+	assert(pg_dimension_cube_coordinates(1, 0, NULL, &empty_source) == -1);
 	const size_t orders[6][3] = {{0,1,2}, {0,2,1}, {1,0,2}, {1,2,0}, {2,0,1}, {2,1,0}};
 	const struct pg_dimension_map *permutations[6];
 	struct pg_coordinate coordinates[3];

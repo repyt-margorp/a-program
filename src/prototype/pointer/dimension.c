@@ -157,6 +157,27 @@ const struct pg_dimension_map *pg_dimension_face(struct pg_dimensions *dimension
 	return used_axes == face->source ? face : NULL;
 }
 
+int pg_dimension_cube_coordinates(size_t dimension, size_t slot,
+	struct pg_coordinate *coordinates, size_t *source)
+{
+	if (!source || (dimension && !coordinates)) return -1;
+	size_t slots = 1;
+	for (size_t i = 0; i < dimension; ++i) {
+		if (slots > SIZE_MAX / 3) return -1;
+		slots *= 3;
+	}
+	if (slot >= slots) return -1;
+	size_t axes = 0;
+	for (size_t i = 0; i < dimension; ++i) {
+		slots /= 3;
+		size_t digit = (slot / slots) % 3;
+		coordinates[i] = digit == 2 ? (struct pg_coordinate){PG_AXIS, axes++}
+			: (struct pg_coordinate){digit ? PG_ENDPOINT_ONE : PG_ENDPOINT_ZERO, 0};
+	}
+	*source = axes;
+	return 0;
+}
+
 const struct pg_dimension_map *pg_dimension_inverse(struct pg_dimensions *dimensions,
 	const struct pg_dimension_map *permutation)
 {
