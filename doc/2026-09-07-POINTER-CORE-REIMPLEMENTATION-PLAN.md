@@ -4470,7 +4470,17 @@ Classifier descriptor transport after `499cabb`:
   Structural transport of a level is not a universe-formation proof; ordinary
   evidence rules continue to decide admissibility.
   Optimized and ASan/UBSan derivation transport tests passed with these cases.
-- [ ] Owned dimension binders, Identity operators, recursive IADT descriptors
+- [x] The Identity owner names its fixed Act, left/right transport and
+  left/right lifting references. Versioned names restore the existing pure
+  operators, not a witness or a replacement reduction equation. Graph tests
+  round-trip all five references, retaining argument sharing and direction.
+  The derivation fixture now has eleven roots, adding reflexivity and both
+  directional fields. Ordinary Solve takes 227 transitions with either chunk
+  size 1 or 64. Changing only a transport direction is rejected even when the
+  endpoint types coincide: its retained directional premise must still match.
+  Optimized and ASan/UBSan separate-process runs passed. This tests the existing
+  Identity rules' persistence, not new general higher coherence or fibrancy.
+- [ ] Owned dimension binders, general symmetry, recursive IADT descriptors
   and module provenance still need their corresponding owner transport. These
   classifier names alone do not complete the `.a` descriptor format.
 

@@ -2,6 +2,7 @@
 #include "classifier.h"
 #include "computation.h"
 #include "iadt.h"
+#include <string.h>
 
 static const struct pg_object_class identity_class = {"identity-action"};
 static const struct pg_object identity_action = {PG_SEMANTIC_OBJECT, &identity_class};
@@ -10,6 +11,32 @@ static const struct pg_object identity_fields[] = {
 	{PG_SEMANTIC_OBJECT, &field_class}, {PG_SEMANTIC_OBJECT, &field_class},
 	{PG_SEMANTIC_OBJECT, &field_class}, {PG_SEMANTIC_OBJECT, &field_class}
 };
+
+static const struct {
+	const struct pg_object *object;
+	const char *name;
+} descriptors[] = {
+	{&identity_action, "kernel/identity/action/v1"},
+	{&identity_fields[0], "kernel/identity/transport-right/v1"},
+	{&identity_fields[1], "kernel/identity/transport-left/v1"},
+	{&identity_fields[2], "kernel/identity/lift-right/v1"},
+	{&identity_fields[3], "kernel/identity/lift-left/v1"}
+};
+
+const char *pg_identity_name(const struct pg_object *object)
+{
+	for (size_t i = 0; i < sizeof(descriptors) / sizeof(*descriptors); ++i)
+		if (object == descriptors[i].object) return descriptors[i].name;
+	return NULL;
+}
+
+const struct pg_object *pg_identity_resolve(const char *name)
+{
+	if (!name) return NULL;
+	for (size_t i = 0; i < sizeof(descriptors) / sizeof(*descriptors); ++i)
+		if (!strcmp(name, descriptors[i].name)) return descriptors[i].object;
+	return NULL;
+}
 
 static int field_index(const struct pg_object *object)
 {

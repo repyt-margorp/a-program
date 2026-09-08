@@ -18,6 +18,8 @@ static const char *name(void *owner, const struct pg_object *object)
 	static char buffer[64];
 	const char *label = pg_classifier_name(object, buffer, sizeof(buffer));
 	if (label) return label;
+	label = pg_identity_name(object);
+	if (label) return label;
 	for (size_t i = 0; i < 3; ++i) if (object == operations[i]) return labels[i];
 	return NULL;
 }
@@ -25,6 +27,8 @@ static const char *name(void *owner, const struct pg_object *object)
 static const struct pg_object *resolve(void *owner, const char *label)
 {
 	const struct pg_object *object = pg_classifier_resolve(owner, label);
+	if (object) return object;
+	object = pg_identity_resolve(label);
 	if (object) return object;
 	for (size_t i = 0; i < 3; ++i) if (!strcmp(label, labels[i])) return operations[i];
 	return NULL;
@@ -39,20 +43,33 @@ static void classifier_transport(struct pg_classifiers *source)
 	const struct pg_term *domain = pg_universe(source, UINT64_MAX);
 	const struct pg_term *codomain = pg_return_type(source, pg_reference(source->graph, binder));
 	const struct pg_term *pi = pg_pi(source->graph, domain, binder, codomain);
-	const struct pg_term *roots[] = {domain, pi, pg_thunk_type(source, pi)};
+	const struct pg_term *roots[8] = {domain, pi, pg_thunk_type(source, pi),
+		pg_identity_action(source->graph, domain)};
+	for (unsigned side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
+		roots[4 + 2 * side] = pg_identity_transport(source->graph, roots[3], domain, side);
+		roots[5 + 2 * side] = pg_identity_lift(source->graph, roots[3], domain, side);
+	}
 	FILE *file = tmpfile();
-	assert(file && !pg_graph_write(file, 3, roots, name, source));
+	assert(file && !pg_graph_write(file, 8, roots, name, source));
 	rewind(file);
 	size_t count;
 	const struct pg_term *const *loaded;
 	assert(!pg_graph_read(file, &graph, 100, 100, resolve, &destination, &count, &loaded));
-	assert(count == 3 && loaded[0] != domain);
+	assert(count == 8 && loaded[0] != domain);
 	assert(loaded[0] == pg_universe(&destination, UINT64_MAX));
 	const struct pg_term *d, *c, *t;
 	const struct pg_object *b;
 	assert(pg_pi_view(loaded[1], &d, &b, &c) && d == loaded[0] && b != binder);
 	assert(pg_return_type_view(c, &t) && t->as.reference == b);
 	assert(pg_thunk_type_view(loaded[2], &t) && t == loaded[1]);
+	assert(loaded[3] == pg_identity_action(&graph, loaded[0]));
+	for (unsigned side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
+		assert(loaded[4 + 2 * side] == pg_identity_transport(&graph, loaded[3], loaded[0], side));
+		assert(loaded[5 + 2 * side] == pg_identity_lift(&graph, loaded[3], loaded[0], side));
+	}
+	assert(!pg_identity_name(binder));
+	assert(!pg_identity_resolve("kernel/identity/action/v2"));
+	assert(!pg_identity_resolve("kernel/identity/transport/v1"));
 	const char *invalid[] = {"kernel/universe/01/v1", "kernel/universe/-1/v1",
 		"kernel/universe/+1/v1", "kernel/universe/ 1/v1", "kernel/universe//v1",
 		"kernel/universe/18446744073709551616/v1", "kernel/universe/1/v2",
@@ -103,7 +120,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, classifiers, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[6];
+	const struct pg_evidence *roots[11];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -134,7 +151,15 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(under_lambda)->core);
 	assert(nf && pg_nf_advance(nf, 10000) == PG_NF_DONE);
 	roots[5] = pg_prove_normalization(typing, under_lambda, pg_nf_certificate(nf));
-	assert(roots[3] && roots[4] && roots[5] && pg_derivations_write(file, 6, roots, name, classifiers) == 0);
+	const struct pg_evidence *u2 = pg_prove_universe(typing, classifiers, empty, 2);
+	roots[6] = pg_prove_reflexivity(typing, u2, pg_prove_type_value(typing, u1));
+	for (unsigned side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
+		const struct pg_evidence *value = pg_prove_type_value(typing, u);
+		roots[7 + 2 * side] = pg_prove_identity_transport(typing, classifiers, roots[6], value, side);
+		roots[8 + 2 * side] = pg_prove_identity_lift(typing, classifiers, roots[6], value, side);
+	}
+	for (size_t i = 0; i < 11; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 11, roots, name, classifiers) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -144,13 +169,13 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing->graph, 1000, 100, resolve, classifiers, &count, &roots) == 0);
-	assert(count == 6 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 11 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[6];
+	struct pg_synthesis_job *jobs[11];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -167,6 +192,17 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	assert(pg_evidence_classifier(left) != pg_evidence_classifier(right));
 	assert(pg_reduction_kind(pg_evidence_normalization(pg_synthesis_result(jobs[3]))) == PG_REDUCTION_WHNF);
 	assert(pg_reduction_kind(pg_evidence_normalization(pg_synthesis_result(jobs[5]))) == PG_REDUCTION_NF);
+	assert(pg_evidence_rule(pg_synthesis_result(jobs[6])) == PG_REFLEXIVITY);
+	for (unsigned side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
+		const struct pg_evidence *transport = pg_synthesis_result(jobs[7 + 2 * side]);
+		const struct pg_evidence *lift = pg_synthesis_result(jobs[8 + 2 * side]);
+		assert(pg_evidence_rule(transport) == PG_IDENTITY_TRANSPORT);
+		assert(pg_evidence_rule(lift) == PG_IDENTITY_LIFT);
+		assert(pg_evidence_premise(transport, 1) == pg_synthesis_result(jobs[6]));
+		assert(pg_evidence_premise(lift, 1) == transport);
+		struct pg_derivation_parameters parameters;
+		assert(!pg_derivation_parameters(transport, &parameters) && parameters.direction == side);
+	}
 	printf("derivation solve: %llu steps\n", (unsigned long long)synthesis.steps);
 	const struct pg_derivation_input *saved = roots[3];
 	size_t bytes = sizeof(*saved) + saved->count * sizeof(*saved->premises);
@@ -188,6 +224,17 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	bad = pg_synthesis_derivation(&synthesis, wrong_mode);
 	assert(bad && pg_synthesis_status(bad) == PG_SYNTHESIS_PENDING);
 	pg_synthesis_advance(&synthesis, 10000);
+	assert(pg_synthesis_status(bad) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(bad));
+	saved = roots[7];
+	bytes = sizeof(*saved) + saved->count * sizeof(*saved->premises);
+	struct pg_derivation_input *wrong_direction = pg_alloc(typing->graph, bytes);
+	assert(wrong_direction);
+	memcpy(wrong_direction, saved, bytes);
+	wrong_direction->parameters.direction = PG_IDENTITY_LEFT;
+	bad = pg_synthesis_derivation(&synthesis, wrong_direction);
+	assert(bad);
+	pg_synthesis_advance(&synthesis, 10000);
+	/* Equal endpoint types do not authorize changing the directional premise. */
 	assert(pg_synthesis_status(bad) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(bad));
 	assert(pg_synthesis_result(jobs[0]) == left);
 	pg_synthesis_destroy(&synthesis);

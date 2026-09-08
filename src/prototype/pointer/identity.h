@@ -5,6 +5,10 @@
 struct pg_eval;
 
 enum pg_identity_direction { PG_IDENTITY_RIGHT, PG_IDENTITY_LEFT };
+/* Fixed owner-controlled graph descriptors, not Identity evidence. Unknown
+ * names/objects fail; names are borrowed static strings with explicit versions. */
+const char *pg_identity_name(const struct pg_object *object);
+const struct pg_object *pg_identity_resolve(const char *name);
 /* One-dimensional fields of a selected universe identification. These build
  * pure value expressions, not ordinary Pi functions or effect requests.
  * Only checked typing can authorize the family's field contract. */
