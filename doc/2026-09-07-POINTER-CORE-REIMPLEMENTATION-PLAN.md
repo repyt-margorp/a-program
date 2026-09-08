@@ -3897,6 +3897,16 @@ without an external conversion loop, and verifies rejection of a formation
 used as a term. This is scheduling of the existing conversion rule, not a new
 symmetry introduction or a general higher-dimensional coherence proof.
 
+After `df89baf`, synthesis comparisons share a conversion job keyed by the
+ordered Core endpoint pair under the fixed pure policy. Classifier exposure,
+application checks, constructor checks, family paths and `::` still accept
+their own typed evidence; only conversion traversal is shared. Finished jobs
+release comparison work and retain their status/certificate. The regression
+checks that `x:A` and `y:A` have distinct accepted proofs but create only one
+conversion job. This does not intern terms by conversion, merge occurrences,
+or share runtime effect executions. Standalone conversion callers outside this
+synthesis store retain their existing lifetime and ownership contract.
+
 ## 8. Program Image and Persistence
 
 One in-memory program owns graph roots, typed occurrences, declarations and work

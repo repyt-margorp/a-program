@@ -74,7 +74,7 @@ struct family_state {
 	size_t count, common, next;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FACE_JOB, EXPECT_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FACE_JOB, EXPECT_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -99,10 +99,10 @@ struct pg_synthesis_job {
 	const struct pg_evidence *function;
 	const struct pg_evidence *continuation;
 	struct pg_conversion comparison;
+	const struct pg_conversion_certificate *certificate;
 	struct pg_reindex reindex;
 	struct pg_identity_face_work *face;
 	union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
-	int comparing;
 	struct block_state *block;
 	const struct continuation_frame *application_frame;
 	struct definition_state *definitions;
@@ -962,24 +962,34 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
-static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+static void conversion_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (!job->comparing) {
+	if (!job->comparison.state) {
 		if (pg_conversion_init(&job->comparison, synthesis->normalization,
-			pg_evidence_classifier(job->checking_term), pg_evidence_subject(job->checking_type)->core) != 0) {
-			finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL;
+			job->inputs[0], job->inputs[1]) != 0) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 		}
-		job->comparing = 1;
 	}
 	enum pg_conversion_status status = pg_conversion_advance(&job->comparison, 1);
 	if (status == PG_CONVERSION_PENDING) {
 		enqueue(synthesis, job);
-		return NULL;
+		return;
 	}
-	if (status == PG_CONVERSION_DIFFERENT) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return NULL; }
-	if (status == PG_CONVERSION_ERROR) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL; }
+	job->certificate = pg_conversion_certificate(&job->comparison);
+	pg_conversion_destroy(&job->comparison);
+	if (status == PG_CONVERSION_DIFFERENT) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+	finish(synthesis, job, status == PG_CONVERSION_EQUAL ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+}
+
+static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *comparison = request_job(synthesis, CONVERSION_JOB,
+		pg_evidence_classifier(job->checking_term), pg_evidence_subject(job->checking_type)->core);
+	if (!comparison) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL; }
+	if (comparison->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, comparison); return NULL; }
+	if (comparison->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, comparison->status); return NULL; }
 	const struct pg_evidence *result = pg_prove_conversion(synthesis->typing,
-		job->checking_term, job->checking_type, pg_conversion_certificate(&job->comparison));
+		job->checking_term, job->checking_type, comparison->certificate);
 	if (!result) finish(synthesis, job, PG_SYNTHESIS_ERROR);
 	return result;
 }
@@ -1697,8 +1707,6 @@ static int family_paths(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 		state->maps[side] = pg_prove_substitution_pair(synthesis->typing, state->maps[side], state->declarations[i],
 			pg_evidence_premise(job->inputs[side], state->common + i + 2));
 	if (!state->maps[0] || !state->maps[1]) goto rejected;
-	pg_conversion_destroy(&job->comparison);
-	job->comparing = 0;
 	job->checking_type = NULL;
 	++state->next;
 	enqueue(synthesis, job);
@@ -1714,6 +1722,7 @@ error:
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->role == CONVERSION_JOB) { conversion_step(synthesis, job); return; }
 	if (job->role == EXPECT_JOB) { expect_step(synthesis, job); return; }
 	if (job->role == FACE_JOB) {
 		if (!job->face) {

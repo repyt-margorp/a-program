@@ -1323,6 +1323,38 @@ static void dependent_cube_substitution(struct pg_typing *typing, struct pg_clas
 	pg_dimensions_destroy(&dimensions);
 }
 
+static void shared_conversion_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_evidence *context = pg_prove_empty_context(typing);
+	const struct pg_object *a = pg_binder(typing->graph), *x = pg_binder(typing->graph), *y = pg_binder(typing->graph);
+	context = pg_prove_context_extension(typing, context, a, pg_prove_universe(typing, classifiers, context, 0));
+	context = pg_prove_context_extension(typing, context, x,
+		pg_prove_value_type(typing, pg_prove_variable(typing, context, a)));
+	context = pg_prove_context_extension(typing, context, y,
+		pg_prove_value_type(typing, pg_prove_variable(typing, context, a)));
+	size_t before = synthesis.jobs.count;
+	struct pg_synthesis_job *type = pg_synthesis_evidence(&synthesis,
+		pg_prove_value_type(typing, pg_prove_variable(typing, context, a)));
+	struct pg_synthesis_job *left = pg_synthesis_expect(&synthesis,
+		pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, x)), type);
+	struct pg_synthesis_job *right = pg_synthesis_expect(&synthesis,
+		pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, y)), type);
+	assert(synthesis.jobs.count == before + 5);
+	const struct pg_evidence *left_result = complete(&synthesis, left, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *right_result = complete(&synthesis, right, PG_SYNTHESIS_DONE);
+	/* Three evidence producers and two typed checks share one Core comparison. */
+	assert(synthesis.jobs.count == before + 6);
+	assert(left_result != right_result);
+	assert(pg_evidence_subject(left_result)->core == pg_reference(typing->graph, x));
+	assert(pg_evidence_subject(right_result)->core == pg_reference(typing->graph, y));
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+}
+
 static int arbitrary_policy(struct pg_eval *machine)
 {
 	const struct pg_closure *argument = pg_eval_argument(machine, 0);
@@ -2601,6 +2633,7 @@ int main(void)
 	substitution_jobs(&typing, &classifiers);
 	square_template_jobs(&typing, &classifiers);
 	dependent_cube_substitution(&typing, &classifiers);
+	shared_conversion_jobs(&typing, &classifiers);
 	library_levels(&typing, &classifiers);
 	named_identity(&typing, &classifiers);
 	named_transport(&typing, &classifiers);
