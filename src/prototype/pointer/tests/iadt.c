@@ -243,7 +243,43 @@ static void schema_positivity(void)
 		empty, n_context, pg_prove_return(&typing, &classifiers, n_value));
 	const struct pg_evidence *nat_motive = pg_prove_return_type(&typing, &classifiers,
 		pg_prove_projection(&typing, z_context, nat));
+	const struct pg_evidence *induction_scope = pg_prove_induction_scope(&typing,
+		&classifiers, nat, pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive);
+	assert(induction_scope);
+	const struct pg_evidence *ih_context = pg_evidence_premise(induction_scope, 1);
+	const struct pg_evidence *ih = pg_prove_variable(&typing, ih_context, pg_evidence_context(ih_context)->binder);
+	const struct pg_evidence *ih_call = pg_prove_force(&typing, ih);
+	assert(ih_call && pg_evidence_classifier(ih_call) == pg_return_type(&classifiers, pg_evidence_subject(nat)->core));
+	size_t induction_bindings;
+	assert(!pg_context_extension_size(pg_evidence_context(ih_context), NULL, &induction_bindings));
+	assert(induction_bindings == 2);
+	assert(!pg_prove_projection(&typing, empty, ih_call));
+	const struct pg_evidence *base_scope = pg_prove_induction_scope(&typing,
+		&classifiers, nat, pg_data_constructor(nat_layout, 0), identity, z_context, nat_motive);
+	assert(base_scope && !pg_evidence_context(base_scope));
+	assert(!pg_prove_induction_scope(&typing, &classifiers, other,
+		pg_data_constructor(pg_data_schema_layout(other_schema), 1), identity, z_context, nat_motive));
+	const struct pg_evidence *recursive_branch = pg_prove_abstract(&typing,
+		&classifiers, empty, ih_context, ih_call);
+	const struct pg_evidence *recursive_branches[] = {zero_function, recursive_branch};
+	const struct pg_evidence *twice = pg_prove_constructor(&typing, nat,
+		pg_data_constructor(nat_layout, 1), identity, 1, &succ);
+	const struct pg_evidence *countdown = pg_prove_induction(&typing, &classifiers,
+		nat, identity, twice, z_context, nat_motive, 2, recursive_branches);
+	assert(countdown && pg_evidence_rule(countdown) == PG_INDUCTION_ELIM);
+	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, empty, countdown))->core
+		== pg_return_type(&classifiers, pg_evidence_subject(nat)->core));
+	check(&constructor_work, pg_evidence_subject(countdown)->core, pg_evidence_subject(zero_function)->core);
+	proofs = typing.proofs.count; terms = graph.terms.count;
+	assert(pg_prove_induction(&typing, &classifiers, nat, identity, twice,
+		z_context, nat_motive, 2, recursive_branches) == countdown);
+	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	assert(pg_derivation_parameters(countdown, &wire_parameters) == -1);
+	assert(!pg_prove_match(&typing, &classifiers, nat, identity, twice,
+		z_context, nat_motive, 2, recursive_branches));
 	const struct pg_evidence *pred_branches[] = {zero_function, pred_branch};
+	assert(!pg_prove_induction(&typing, &classifiers, nat, identity, twice,
+		z_context, nat_motive, 2, pred_branches));
 	const struct pg_evidence *pred = pg_prove_match(&typing, &classifiers, nat,
 		identity, succ, z_context, nat_motive, 2, pred_branches);
 	assert(pred && pg_evidence_rule(pred) == PG_MATCH_ELIM);
@@ -269,6 +305,17 @@ static void schema_positivity(void)
 	const struct pg_evidence *z_value = pg_prove_variable(&typing, z_context, z);
 	const struct pg_evidence *path_motive = pg_prove_return_type(&typing, &classifiers,
 		pg_prove_identity_type(&typing, pg_prove_projection(&typing, z_context, nat), z_value, z_value));
+	const struct pg_evidence *dependent_scope = pg_prove_induction_scope(&typing,
+		&classifiers, nat, pg_data_constructor(nat_layout, 1), identity, z_context, path_motive);
+	assert(dependent_scope);
+	const struct pg_evidence *dependent_context = pg_evidence_premise(dependent_scope, 1);
+	const struct pg_evidence *recursive_field = pg_evidence_premise(dependent_scope, 3);
+	const struct pg_evidence *field_identity = pg_prove_identity_type(&typing,
+		pg_prove_projection(&typing, dependent_context, nat), recursive_field, recursive_field);
+	const struct pg_evidence *dependent_ih = pg_prove_force(&typing,
+		pg_prove_variable(&typing, dependent_context, pg_evidence_context(dependent_context)->binder));
+	assert(field_identity && dependent_ih);
+	assert(pg_evidence_classifier(dependent_ih) == pg_return_type(&classifiers, pg_evidence_subject(field_identity)->core));
 	const struct pg_evidence *n_parameters = pg_prove_substitution(&typing, empty, n_context, 0, NULL);
 	const struct pg_evidence *open_z_context = pg_prove_context_extension(&typing, n_context,
 		pg_binder(&graph), pg_prove_projection(&typing, n_context, nat));

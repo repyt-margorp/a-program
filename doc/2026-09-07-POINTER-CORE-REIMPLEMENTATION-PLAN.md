@@ -83,6 +83,21 @@ of the rewrite.
   evaluator recursion loop or accepted fixed-point typing axiom.
 - [x] Exercise 64 recursive steps with one-step normalization budgets, lexical
   capture, an unselected divergent branch and invalid template inputs.
+- [x] Introduce `pg_prove_induction_scope` for direct zero-index Self fields.
+  It projects the existing field substitution into a context extended by
+  `IH : U(M(field))` assumptions, in field order. The motive substitution is
+  checked even for a dependent Identity-valued motive. Assumptions cannot be
+  projected out of their scope. Unsupported recursive shapes are rejected by
+  this helper rather than silently treated as nonrecursive fields.
+- [x] Add `PG_INDUCTION_ELIM` / `pg_prove_induction` for that direct fragment.
+  Case and induction retain distinct rules while sharing nominal scrutinee,
+  motive, coverage and branch-classifier checks. Branches abstract fields then
+  IH values; no unrestricted recursive-function typing assumption is exposed.
+  A shared field classification governs both IH formation and erasure.
+  Erasure supplies `thunk(rec field)` only for those declared recursive fields.
+  Repeated accepted requests reuse the proof before creating fresh scopes.
+  Classifier inversion retains the output formation. Wire encoding explicitly
+  remains unsupported until nominal schema transport is implemented.
 - [ ] Add a typed induction rule with retained field/IH contexts and motive
   instantiations. The raw recursive-function binder must NOT become an
   unrestricted source binding. A source `*k` must be justified by the admitted
@@ -91,8 +106,11 @@ of the rewrite.
 - [ ] Derive the branch IH computation classifier from that field and the
   motive. Source synthesis must retain unresolved motive constraints when
   necessary, rather than accepting an expected type as synthesis evidence.
-- [ ] Instantiate the erased template only from the checked induction
-  derivation. Ordinary substitution keeps branch/captured operands visible;
+- [x] Instantiate the erased template from the checked direct induction
+  derivation; verify a two-step Nat countdown and rejection of swapped case/
+  induction branch signatures. No unrestricted fixed-point typing rule added.
+- [ ] Generalize beyond direct recursive fields and establish higher induction.
+  Ordinary substitution keeps branch/captured operands visible;
   record all field and IH premises in the immutable proof DAG. Establish the
   selected-constructor computation rule and dimensional action compatibility
   before claiming typed higher induction or artifact support.
@@ -100,7 +118,8 @@ of the rewrite.
 The raw builder intentionally accepts templates that can diverge: Core is
 untyped. Its existence proves neither termination nor datatype fibrancy.
 It is not exposed as a source-language general recursion primitive. Existing
-07/09 acceptance remains open until the typed rule and synthesis are connected.
+07/09 acceptance remains open until source synthesis is connected to the typed
+rule. Indexed/Pi-shaped recursive IH and general higher induction remain open.
 Verification: optimized `check` and ASan/UBSan IADT tests passed; the source
 acceptance gate remains 6/8 with unchanged transition counts.
 

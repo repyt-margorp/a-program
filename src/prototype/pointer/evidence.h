@@ -16,7 +16,7 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION,
 	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION,
 	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT, PG_INDUCTIVE_FORM, PG_CONSTRUCTOR_INTRO,
-	PG_MATCH_ELIM };
+	PG_MATCH_ELIM, PG_INDUCTION_ELIM };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -66,6 +66,23 @@ const struct pg_evidence *pg_prove_constructor_scope(struct pg_typing *typing,
  * instantiated at that constructor; no branch synthesis or conversion search.
  * The result has motive[scrutinee/z], including a raw Pi when appropriate. */
 const struct pg_evidence *pg_prove_match(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+	size_t count, const struct pg_evidence *const *branches);
+/* Conditional induction branch context for direct zero-index Self fields.
+ * Returns the constructor field substitution projected into a destination
+ * extended by one IH : U(motive[field/z]) per recursive field, in field order.
+ * IHs are assumptions, not proven inhabitants or a completed induction rule.
+ * Non-direct recursive field shapes currently return NULL, never omit an IH. */
+const struct pg_evidence *pg_prove_induction_scope(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters,
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive);
+/* Direct zero-index induction. Branches abstract fields, then the IH values
+ * from induction_scope. No unrestricted recursive function enters their
+ * typing context. Pi-shaped recursive fields remain unsupported. */
+const struct pg_evidence *pg_prove_induction(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
