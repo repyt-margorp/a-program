@@ -2708,6 +2708,35 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		expression_syntax(typing->graph, "D:=@{bad:(* -> @)->*;};")), PG_SYNTHESIS_UNSUPPORTED);
 	complete(&synthesis, pg_synthesis_request(&synthesis, root,
 		expression_syntax(typing->graph, "D:=@\\i:@=>{mk:* i;};")), PG_SYNTHESIS_UNSUPPORTED);
+	struct pg_synthesis_job *nat_job = request(&synthesis, root, "Nat:=@{zero:*; succ:*->*;};");
+	const struct pg_evidence *nat = complete(&synthesis, nat_job, PG_SYNTHESIS_DONE);
+	struct pg_token nat_name = {.kind = PG_TOKEN_IDENT, .text = "Nat", .length = 3};
+	const struct pg_source_scope *named = pg_synthesis_name_job(&synthesis, root, nat_name, nat_job);
+	struct pg_synthesis_job *alias = request(&synthesis, named, "Alias:=Nat :: @;");
+	complete(&synthesis, alias, PG_SYNTHESIS_DONE);
+	named = pg_synthesis_name_job(&synthesis, named,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Alias", .length = 5}, alias);
+	const struct pg_evidence *zero = complete(&synthesis, request(&synthesis, named, "r:=Alias.zero;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *succ = complete(&synthesis, request(&synthesis, named, "r:=Alias.succ;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *same_succ = complete(&synthesis, request(&synthesis, named, "r:=Nat.succ;"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_judgement(zero) == PG_JUDGEMENT_VALUE);
+	assert(pg_evidence_judgement(succ) == PG_JUDGEMENT_COMPUTATION);
+	assert(pg_evidence_subject(succ)->core == pg_evidence_subject(same_succ)->core);
+	const struct pg_evidence *applied = complete(&synthesis,
+		request(&synthesis, named, "r:=Alias.succ (Nat.succ Alias.zero);"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *two = complete(&synthesis,
+		pg_synthesis_return(&synthesis, empty, applied), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_classifier(two) == pg_evidence_subject(nat)->core);
+	const struct pg_term *one_core = pg_evidence_subject(two)->core->as.application.argument;
+	assert(one_core->kind == PG_APPLICATION && one_core->as.application.argument == pg_evidence_subject(zero)->core);
+	complete(&synthesis, request(&synthesis, named, "r:=Nat.Alias;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, named, "r:=succ;"), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *other_job = request(&synthesis, root, "Other:=@{zero:*; succ:*->*;};");
+	complete(&synthesis, other_job, PG_SYNTHESIS_DONE);
+	named = pg_synthesis_name_job(&synthesis, named,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Other", .length = 5}, other_job);
+	complete(&synthesis, request(&synthesis, named, "r:=Nat.succ Other.zero;"), PG_SYNTHESIS_REJECTED);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("source declarations: nominal formation, conditional universe candidates, no early publication and reuse passed");

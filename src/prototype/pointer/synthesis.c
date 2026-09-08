@@ -81,7 +81,7 @@ struct derivation_state {
 	const struct pg_reduction_certificate *reduction;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, DERIVATION_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, DERIVATION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const void *owner;
@@ -118,6 +118,7 @@ struct pg_synthesis_job {
 	struct substitution_state *substitution;
 	struct declaration_state *declaration;
 	const struct pg_data_schema *schema;
+	const struct pg_source_scope *exports;
 	struct family_state *family;
 	struct derivation_state *derivation;
 	const void *inputs[];
@@ -1033,6 +1034,15 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 		*reference = (struct source_reference){.producer = member->producer};
 		return PG_SYNTHESIS_DONE;
 	}
+	if (reference->producer) {
+		struct pg_synthesis_job *producer = reference->producer;
+		*dependency = producer;
+		if (producer->status != PG_SYNTHESIS_DONE) return producer->status;
+		if (producer->exports) {
+			*reference = lookup_scope(producer->exports, token);
+			return PG_SYNTHESIS_DONE;
+		}
+	}
 	/* Nominal members require a typed declaration, never an older namespace. */
 	return reference->binder || reference->producer ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_REJECTED;
 }
@@ -1078,6 +1088,7 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
 		job->result = pg_prove_projection(synthesis->typing, source_context(job->scope), proof);
+		job->exports = job->left->exports;
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;
 	}
@@ -1524,6 +1535,7 @@ static void definition_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 		result = pg_prove_thunk(synthesis->typing, synthesis->classifiers, result);
 	}
 	job->result = result;
+	job->exports = job->left->exports;
 	finish(synthesis, job, result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
@@ -1622,6 +1634,7 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			return;
 		}
 		job->result = job->value_job->result;
+		job->exports = job->value_job->exports;
 	} else if (state->next < state->count) {
 		job->left = state->entries[state->next++];
 		depend(synthesis, job, job->left);
@@ -1771,6 +1784,31 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 /* Each universe candidate owns a distinct conditional Self context. Raising
  * the bound never mutates an accepted assumption or publishes a provisional
  * family. Failure to construct a candidate is not universe inconsistency. */
+static void constructor_value_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	const struct pg_evidence *formation = job->inputs[0], *context = job->inputs[2];
+	const struct pg_object *constructor = job->inputs[1];
+	size_t count;
+	if (pg_context_extension_size(pg_evidence_context(context), NULL, &count) ||
+		count > SIZE_MAX / sizeof(const struct pg_evidence *)) {
+		finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+	}
+	const struct pg_evidence **images = malloc(count * sizeof(*images));
+	if (count && !images) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	const struct pg_context *cursor = pg_evidence_context(context);
+	for (size_t i = count; i; --i, cursor = cursor->parent)
+		images[i - 1] = pg_prove_variable(synthesis->typing, context, cursor->binder);
+	const struct pg_evidence *parameters = pg_prove_substitution(synthesis->typing, context, context, count, images);
+	free(images);
+	const struct pg_evidence *function = pg_prove_constructor_function(synthesis->typing,
+		synthesis->classifiers, formation, constructor, parameters);
+	if (!function) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	/* Nullary constructors are values; field-bearing ones are raw functions. */
+	job->result = pg_evidence_rule(function) == PG_RETURN_INTRO
+		? pg_prove_return_value(synthesis->typing, function) : function;
+	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+}
+
 static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->syntax->left->kind != PG_SYNTAX_CONSTRUCTORS) {
@@ -1806,8 +1844,17 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		return;
 	}
 	job->result = pg_prove_inductive_type(synthesis->typing, synthesis->classifiers, schema);
-	if (job->result) job->schema = schema;
-	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+	if (!job->result) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+	job->schema = schema;
+	/* Export only declared members, never fall back to enclosing lexical names. */
+	job->exports = intern_scope(synthesis, (struct pg_source_scope){.context_job = job->scope->context_job});
+	const struct pg_syntax *constructors = job->syntax->left;
+	for (size_t i = 0; job->exports && i < constructors->item_count; ++i) {
+		const void *inputs[] = {job->result, pg_data_constructor(pg_data_schema_layout(schema), i), source_context(job->scope)};
+		struct pg_synthesis_job *member = request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs);
+		job->exports = pg_synthesis_name_job(synthesis, job->exports, constructors->items[i].name, member);
+	}
+	finish(synthesis, job, job->exports ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
 static struct substitution_state *substitution_start(struct pg_synthesis *synthesis,
@@ -2142,6 +2189,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	const struct pg_syntax *syntax = job->syntax;
 	if (job->role == DERIVATION_JOB) { derivation_step(synthesis, job); return; }
+	if (job->role == CONSTRUCTOR_VALUE_JOB) { constructor_value_step(synthesis, job); return; }
 	if (job->role == CONVERSION_JOB) { conversion_step(synthesis, job); return; }
 	if (job->role == EXPECT_JOB) { expect_step(synthesis, job); return; }
 	if (job->role == FORMATION_JOB) { formation_step(synthesis, job); return; }
@@ -2318,6 +2366,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		}
 		if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return; }
 		job->result = job->value_job->result;
+		job->exports = job->left->exports;
 		break;
 	}
 	default: break;

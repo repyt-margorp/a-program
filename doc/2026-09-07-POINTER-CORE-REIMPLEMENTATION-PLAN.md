@@ -13,7 +13,7 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
-### Source acceptance recheck after `cf41ee8`
+### Source acceptance recheck after `5833634`
 
 The recent storage work does not close source IADT admission. Do not use the
 green component `check` target as evidence that the replacement runs existing
@@ -24,26 +24,27 @@ baseline. `check-acceptance` combines this gate with the component suite.
 It is a necessary gate, not sufficient evidence for execution, effects, IF8,
 higher coherence or full `.a` support.
 
-After connecting zero-index source formation, the current result is **1/8**.
-The other seven exit 4 (unsupported), not fuel exhaustion. This checks typing,
+After connecting zero-index constructor names, the current result is **3/8**.
+The other five exit 4 (unsupported), not fuel exhaustion. This checks typing,
 not execution results:
 
 | Example | Status | Solve transitions |
 | --- | --- | ---: |
-| 01_bool | unsupported | 107 |
-| 02_nat | done | 62 |
-| 03_main | unsupported | 107 |
-| 04_match | unsupported | 224 |
-| 05_bool_to_nat | unsupported | 138 |
-| 06_pred | unsupported | 126 |
-| 07_add | unsupported | 148 |
-| 09_list_induction | unsupported | 340 |
+| 01_bool | done | 172 |
+| 02_nat | done | 64 |
+| 03_main | done | 172 |
+| 04_match | unsupported | 228 |
+| 05_bool_to_nat | unsupported | 142 |
+| 06_pred | unsupported | 130 |
+| 07_add | unsupported | 250 |
+| 09_list_induction | unsupported | 346 |
 
 Code-level obstruction and implementation order:
 
 1. Ordinary DECLARATION dispatch now admits checked zero-index families.
-   ELIMINATION, indexed declarations and qualified constructor publication
-   remain unsupported. The separate `pg_synthesis_data_schema` job still builds
+   Qualified constructor names now use its isolated source export scope.
+   ELIMINATION, indexed declarations and general family instantiation remain
+   unsupported. The separate `pg_synthesis_data_schema` job still builds
    a conditional schema only; its completion never implies type admission.
 2. `pg_data_schema` in `iadt.c` validates field/result substitutions and derives
    erased layout arities. Zero-index nominal formation, constructor membership
@@ -214,6 +215,28 @@ Admission audit after `8b3105b`:
 ### Next Implementation Boundary: Pending Recursive Formation
 
 Zero-index inductive rules after `d952804`:
+
+Qualified constructor publication after `5833634`:
+
+- [x] Publish constructor producers only after nominal formation succeeds.
+  Reuse ordinary source export scopes and name-job resolution; exports contain
+  only members, never enclosing lexical names. The producer key includes the
+  admitted formation, constructor pointer and parameter context. One producer
+  derives one wrapper, shared by references rather than freshening on each use.
+- [x] Nullary members synthesize values; members with fields synthesize raw
+  curried computations through the existing constructor-function derivation.
+  References, definitions, definition selections and successful post-expect
+  expressions preserve source exports. This is lexical metadata, not reverse
+  classifier lookup by Core pointer or an alternative schema authority.
+- [x] Test qualified and post-expect aliases, repeated wrapper identity,
+  two nested successor applications and their result classifier, absent
+  unqualified names, no lexical fallback from a member lookup, and rejection
+  of a different nominal family's constructor argument.
+  Full component `check` and rebuilt ASan/UBSan synthesis tests pass. The
+  unchanged source gate is 3/8 as recorded above, not full acceptance.
+- [ ] Instantiate exported constructor signatures for general applied family
+  values; source exports are not yet transported through arbitrary application
+  or serialized nominal `.a` descriptors. Source Match/IH remain open.
 
 Source formation after `cf41ee8`:
 
