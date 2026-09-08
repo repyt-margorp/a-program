@@ -22,7 +22,7 @@ static int derived_output(enum pg_evidence_rule rule)
 {
 	switch (rule) {
 	case PG_REINDEX: case PG_APP_ELIM: case PG_PI_CODOMAIN:
-	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN:
+	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN: case PG_EFFECT_SUBSUMPTION:
 	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION:
 	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
 		return 1;
@@ -1761,6 +1761,29 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 		pi->context, subject, pi->classifier, 1, &pi);
 }
 
+const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
+	const struct pg_evidence *computation, const struct pg_evidence *target_type)
+{
+	if (!pg_evidence_owned_by(computation, typing)) return NULL;
+	if (!pg_evidence_owned_by(target_type, typing)) return NULL;
+	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (target_type->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	if (computation->context != target_type->context) return NULL;
+	const struct pg_evidence *premises[] = {computation, target_type};
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, PG_EFFECT_SUBSUMPTION,
+		PG_JUDGEMENT_COMPUTATION, computation->context, NULL, NULL, 2, premises, NULL, &hash);
+	if (existing) return existing;
+	const struct pg_effect_row *source_row, *target_row;
+	const struct pg_term *source_value, *target_value;
+	if (!pg_effect_type_view(computation->classifier, &source_row, &source_value)) return NULL;
+	if (!pg_effect_type_view(target_type->subject->core, &target_row, &target_value)) return NULL;
+	if (pg_effect_subset(source_row, target_row) != 1) return NULL;
+	if (pg_alpha_equal(source_value, target_value) != 1) return NULL;
+	return accept(typing, PG_EFFECT_SUBSUMPTION, PG_JUDGEMENT_COMPUTATION,
+		computation->context, computation->subject, target_type->subject->core, 2, premises);
+}
+
 const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_evidence *computation, const struct pg_evidence *continuation)
 {
@@ -1869,7 +1892,7 @@ static const struct pg_evidence *classifier_leaf(struct pg_typing *typing,
 	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
 		formation = term->premises[term->premise_count - 1];
 		break;
-	case PG_TYPE_CONVERSION:
+	case PG_TYPE_CONVERSION: case PG_EFFECT_SUBSUMPTION:
 		formation = term->premises[1];
 		break;
 	default:

@@ -33,6 +33,8 @@ const struct pg_effect_row *pg_effect_union(struct pg_graph *graph,
 /* Invalid row: count returns SIZE_MAX; membership returns -1. */
 size_t pg_effect_count(const struct pg_effect_row *row);
 int pg_effect_contains(const struct pg_effect_row *row, const struct pg_object *label);
+/* Directed inclusion of closed sets; -1 for invalid/unknown rows. */
+int pg_effect_subset(const struct pg_effect_row *left, const struct pg_effect_row *right);
 const struct pg_term *pg_effect_reference(struct pg_graph *graph, const struct pg_effect_row *row);
 const struct pg_effect_row *pg_effect_row_view(const struct pg_term *term);
 const struct pg_term *pg_effect_type(struct pg_classifiers *classifiers,

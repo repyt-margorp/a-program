@@ -76,21 +76,26 @@ static void effect_transport(void)
 	const struct pg_evidence *continuation = pg_prove_lambda(&typings[0], pi,
 		pg_prove_projection(&typings[0], extended, source));
 	const struct pg_evidence *fold = pg_prove_fold(&typings[0], &classifiers[0], source, continuation);
-	const struct pg_evidence *saved[] = {formation, fold};
+	const struct pg_evidence *returned = pg_prove_return(&typings[0], &classifiers[0],
+		pg_prove_variable(&typings[0], extended, x));
+	const struct pg_evidence *widened = pg_prove_effect_subsumption(&typings[0], returned,
+		pg_prove_projection(&typings[0], extended, formation));
+	const struct pg_evidence *saved[] = {formation, fold, widened};
 	FILE *file = tmpfile();
-	assert(file && formation && fold && !pg_derivations_write(file, 2, saved, effect_name, &owners[0]));
+	assert(file && formation && fold && widened && !pg_derivations_write(file, 3, saved, effect_name, &owners[0]));
 	rewind(file);
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(!pg_derivations_read(file, &graphs[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
-	assert(count == 2 && roots[0]->parameters.effects == rows[1] && !typings[1].proofs.count);
+	assert(count == 3 && roots[0]->parameters.effects == rows[1] && !typings[1].proofs.count);
 	struct pg_whnf_work work;
 	struct pg_synthesis synthesis;
 	assert(!pg_whnf_work_init(&work, &graphs[1]));
 	assert(!pg_synthesis_init(&synthesis, &typings[1], &classifiers[1], &work, PG_DEFINITION_EXPLICIT_THUNK));
 	struct pg_synthesis_job *job = pg_synthesis_derivation(&synthesis, roots[0]);
 	struct pg_synthesis_job *fold_job = pg_synthesis_derivation(&synthesis, roots[1]);
-	assert(job && fold_job);
+	struct pg_synthesis_job *widening_job = pg_synthesis_derivation(&synthesis, roots[2]);
+	assert(job && fold_job && widening_job);
 	pg_synthesis_advance(&synthesis, 1000);
 	assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE);
 	const struct pg_evidence *result = pg_synthesis_result(job);
@@ -100,6 +105,11 @@ static void effect_transport(void)
 	assert(pg_evidence_subject(pg_prove_return_content(&typings[1], result))->core == value);
 	assert(pg_synthesis_status(fold_job) == PG_SYNTHESIS_DONE);
 	assert(pg_effect_type_view(pg_evidence_classifier(pg_synthesis_result(fold_job)), &row, &value) && row == rows[1]);
+	assert(pg_synthesis_status(widening_job) == PG_SYNTHESIS_DONE);
+	const struct pg_evidence *loaded = pg_synthesis_result(widening_job);
+	assert(pg_evidence_rule(loaded) == PG_EFFECT_SUBSUMPTION);
+	assert(pg_evidence_subject(loaded) == pg_evidence_subject(pg_evidence_premise(loaded, 0)));
+	assert(pg_effect_type_view(pg_evidence_classifier(loaded), &row, &value) && row == rows[1]);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	/* Locate the explicit row field through the record grammar, not a proof ID. */
@@ -118,7 +128,7 @@ static void effect_transport(void)
 		assert(!pg_wire_read_u64(file, &arity));
 		for (uint64_t j = 0; j < arity; ++j) assert(!pg_wire_read_u64(file, &ignored));
 	}
-	assert(root_count == 2 && row_offset >= 0 && row_id);
+	assert(root_count == 3 && row_offset >= 0 && row_id);
 	assert(!fseek(file, row_offset, SEEK_SET) && !pg_wire_write_u64(file, 0));
 	rewind(file);
 	assert(pg_derivations_read(file, &graphs[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));

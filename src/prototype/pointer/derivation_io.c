@@ -104,7 +104,8 @@ int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t
 	size_t available = limit - (size_t)n - (size_t)nr;
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t rule, level, direction, arity, reduction_kind;
-		if (pg_wire_read_u64(file, &rule) || rule > PG_IDENTITY_LIFT) return -1;
+		if (pg_wire_read_u64(file, &rule)) return -1;
+		if (rule > PG_IDENTITY_LIFT && rule != PG_EFFECT_SUBSUMPTION) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
 		if (pg_wire_read_u64(file, &reduction_kind) || reduction_kind > PG_REDUCTION_NF) return -1;
 		if (pg_wire_read_u64(file, &records[i].binder) || pg_wire_read_u64(file, &records[i].effects)

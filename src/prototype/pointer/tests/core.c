@@ -2595,6 +2595,20 @@ static void effect_classifier_test(struct pg_graph *graph)
 	assert(pg_effect_union(graph, ab, ab) == ab);
 	assert(pg_effect_union(graph, ab, only_c) == pg_effect_union(graph, only_a, pg_effect_union(graph, only_b, only_c)));
 	assert(!pg_effect_union(graph, NULL, empty));
+	assert(pg_effect_subset(NULL, empty) == -1 && pg_effect_subset(empty, NULL) == -1);
+	const struct pg_effect_row *sets[8];
+	const struct pg_object *alphabet[] = {&a, &b, &c};
+	for (unsigned mask = 0; mask < 8; ++mask) {
+		const struct pg_object *selected[3];
+		size_t count = 0;
+		for (unsigned bit = 0; bit < 3; ++bit)
+			if (mask & (1u << bit)) selected[count++] = alphabet[bit];
+		sets[mask] = pg_effect_row(graph, count, selected);
+		assert(sets[mask]);
+	}
+	for (unsigned i = 0; i < 8; ++i)
+		for (unsigned j = 0; j < 8; ++j)
+			assert(pg_effect_subset(sets[i], sets[j]) == ((i & j) == i));
 	assert(!pg_effect_row(graph, 1, NULL));
 	const struct pg_object *invalid[] = {pg_binder(graph)};
 	assert(!pg_effect_row(graph, 1, invalid));
@@ -2667,6 +2681,24 @@ static void effect_classifier_test(struct pg_graph *graph)
 	const struct pg_evidence *raw_continuation = pg_prove_lambda(&typing, raw_pi,
 		pg_prove_projection(&typing, raw_scope, continuation));
 	assert(raw_continuation && !pg_prove_fold(&typing, &classifiers, source, raw_continuation));
+	const struct pg_evidence *target = pg_prove_effect_type(&typing, &classifiers, abc,
+		pg_prove_projection(&typing, scope, universe));
+	const struct pg_evidence *widened = pg_prove_effect_subsumption(&typing, force, target);
+	assert(widened && pg_evidence_rule(widened) == PG_EFFECT_SUBSUMPTION);
+	assert(pg_evidence_subject(widened) == pg_evidence_subject(force));
+	assert(pg_evidence_classifier(force) == effectful);
+	assert(pg_evidence_classifier(widened) == pg_evidence_subject(target)->core);
+	assert(pg_prove_classifier(&typing, &classifiers, scope, widened) == target);
+	assert(pg_prove_effect_subsumption(&typing, force, target) == widened);
+	assert(!pg_prove_effect_subsumption(&typing, widened, pg_prove_projection(&typing, scope, formation)));
+	assert(!pg_prove_effect_subsumption(&typing, force, formation));
+	const struct pg_evidence *wrong_type = pg_prove_effect_type(&typing, &classifiers, abc,
+		pg_prove_universe(&typing, &classifiers, scope, 1));
+	assert(!pg_prove_effect_subsumption(&typing, force, wrong_type));
+	assert(!pg_prove_return_value(&typing, widened));
+	assert(!pg_derivation_parameters(widened, &parameters));
+	const struct pg_evidence *widening_premises[] = {force, target};
+	assert(pg_prove_derivation(&typing, &classifiers, PG_EFFECT_SUBSUMPTION, &parameters, 2, widening_premises) == widened);
 	pg_typing_destroy(&typing);
 	pg_classifiers_destroy(&classifiers);
 	puts("effects: explicit closed sets, union laws, unknown is not empty, and pure-only views passed");

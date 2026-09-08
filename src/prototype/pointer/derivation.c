@@ -86,6 +86,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_PI_DOMAIN, 1, pg_prove_pi_domain(typing, p[0]));
 	RULE(PG_PI_CONSTANT_CODOMAIN, 1, pg_prove_pi_constant_codomain(typing, p[0]));
 	RULE(PG_FOLD_ELIM, 2, pg_prove_fold(typing, classifiers, p[0], p[1]));
+	RULE(PG_EFFECT_SUBSUMPTION, 2, pg_prove_effect_subsumption(typing, p[0], p[1]));
 	RULE(PG_IDENTITY_FORM, 3, pg_prove_identity_type(typing, p[0], p[1], p[2]));
 	RULE(PG_IDENTITY_INSTANCE, 3, pg_prove_identity_instance(typing, classifiers, p[0], p[1], p[2]));
 	RULE(PG_IDENTITY_LEFT_TYPE, 1, pg_prove_identity_endpoint_type(typing, classifiers, p[0], rule));

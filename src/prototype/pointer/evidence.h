@@ -16,7 +16,7 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION,
 	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION,
 	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT, PG_INDUCTIVE_FORM, PG_CONSTRUCTOR_INTRO,
-	PG_MATCH_ELIM, PG_INDUCTION_ELIM };
+	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -27,6 +27,10 @@ struct pg_data_schema;
 const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_effect_row *effects,
 	const struct pg_evidence *value_type);
+/* Directed closed-row widening, retaining the already synthesized computation.
+ * Target formation and result-type agreement are premises, not inference hints. */
+const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
+	const struct pg_evidence *computation, const struct pg_evidence *target_type);
 
 /* Zero-index strictly-positive inductive formation. The schema parameter
  * context must end in the distinguished Self : Universe_l assumption.

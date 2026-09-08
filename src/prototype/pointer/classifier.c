@@ -113,6 +113,20 @@ const struct pg_effect_row *pg_effect_union(struct pg_graph *graph,
 
 size_t pg_effect_count(const struct pg_effect_row *row) { return row ? row->count : SIZE_MAX; }
 
+int pg_effect_subset(const struct pg_effect_row *left, const struct pg_effect_row *right)
+{
+	if (!left || !right) return -1;
+	if (left == right) return 1;
+	if (left->count > right->count) return 0;
+	size_t i = 0, j = 0;
+	while (i < left->count && j < right->count) {
+		if (left->labels[i] == right->labels[j]) { ++i; ++j; }
+		else if ((uintptr_t)left->labels[i] < (uintptr_t)right->labels[j]) return 0;
+		else ++j;
+	}
+	return i == left->count;
+}
+
 int pg_effect_contains(const struct pg_effect_row *row, const struct pg_object *label)
 {
 	if (!row || !label) return -1;

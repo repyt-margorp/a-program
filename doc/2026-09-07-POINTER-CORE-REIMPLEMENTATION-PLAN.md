@@ -71,6 +71,24 @@ criteria for merging different Lambda or semantic-object references.
   raw Pi is retained; a nonempty source into raw Pi is rejected rather than
   erasing effects or moving their execution underneath a Lambda. This remains
   an explicit admission limitation, not a claim of complete CBPV effects.
+- [x] Add directed closed-row subsumption as `PG_EFFECT_SUBSUMPTION`:
+  `M : F E A`, a checked formation of `F G A`, and `E subset G` yield the
+  same computation occurrence at `F G A`. Rows here bound possible requests;
+  they are not assertions that every listed operation executes. This does not
+  add requests, normalize code, identify types by DefEq, or remove effects.
+  Both source evidence and target formation remain immutable premises. The
+  existing derivation dispatcher and codec transport this named kernel rule;
+  no additional row payload or acceptance flag is serialized for it.
+  Classifier recovery uses the retained target formation directly.
+  Inclusion uses one allocation-free merge scan over canonical closed sets;
+  NULL remains invalid. Tests cover all 64 pairs of three-label subsets,
+  directed widening, unchanged occurrence, exact proof reuse, changed-result
+  rejection, context mismatch, narrowing rejection, and two-arena ordinary
+  Solve of a widened RETURN. This supplies an explicit rule, not automatic
+  effect inference or permission for expected types to guide synthesis.
+  Optimized components, eight examples and six execution fixtures pass;
+  full acceptance still fails open-family at 88 transitions. The complete
+  rebuilt ASan/UBSan component suite passes with this rule and its transport.
 - [ ] Add request/multi-clause fold evidence, row constraints,
   source application/handler elaboration and signature transport. This step
   supplies the shared representation; it does not yet admit effectful source
