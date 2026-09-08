@@ -2220,6 +2220,17 @@ the typed symmetry operation and its boundary contract. It does not authorize
 an arbitrary relation-to-Identity cast, identify orientations by Core interning,
 or claim a completed HOTT model. Items 1-5 above remain unimplemented gates.
 
+After `26fbb3c`, item 2's geometry is checked without introducing a redundant
+permutation-plan API. For an ordered face `f`, factor `p o f = h o u`, where
+`h` selects the moved face and `u` acts inside it. If `q o h = j o v`, direct
+factorization of `(q o p) o f` must yield `j` and `v o u`. The Core regression
+checks this law for all 27 ordered faces of a 3-cube and all 36 pairs of its
+six permutations. Existing composition and face-factor interners suffice.
+This also covers the center and vertices, but remains map algebra: the typed
+action of `u` on a selected face proof is still required, not inferred from
+pointer equality. No new implementation API or accepted proof rule is added.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action

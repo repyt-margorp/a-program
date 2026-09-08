@@ -1818,10 +1818,44 @@ static void enumerate(struct pg_dimensions *dimensions, size_t source,
 	}
 }
 
+static void induced_face_permutations(struct pg_dimensions *dimensions)
+{
+	const size_t orders[6][3] = {{0,1,2}, {0,2,1}, {1,0,2}, {1,2,0}, {2,0,1}, {2,1,0}};
+	const struct pg_dimension_map *permutations[6];
+	struct pg_coordinate coordinates[3];
+	for (size_t p = 0; p < 6; ++p) {
+		for (size_t i = 0; i < 3; ++i) coordinates[i] = (struct pg_coordinate){PG_AXIS, orders[p][i]};
+		permutations[p] = pg_dimension_map(dimensions, 3, 3, coordinates);
+		assert(permutations[p]);
+	}
+	for (size_t code = 0; code < 27; ++code) {
+		size_t rest = code, axes = 0;
+		for (size_t i = 0; i < 3; ++i, rest /= 3) {
+			size_t digit = rest % 3;
+			coordinates[i] = (struct pg_coordinate){(enum pg_coordinate_kind)digit, digit == 2 ? axes++ : 0};
+		}
+		const struct pg_dimension_map *face = pg_dimension_map(dimensions, axes, 3, coordinates);
+		assert(face);
+		for (size_t p = 0; p < 6; ++p) {
+			const struct pg_dimension_map *moved, *local;
+			assert(pg_dimension_face_factor(dimensions, pg_dimension_compose(dimensions, permutations[p], face), &moved, &local) == 0);
+			for (size_t q = 0; q < 6; ++q) {
+				const struct pg_dimension_map *twice, *second, *direct, *combined;
+				assert(pg_dimension_face_factor(dimensions, pg_dimension_compose(dimensions, permutations[q], moved), &twice, &second) == 0);
+				const struct pg_dimension_map *composition = pg_dimension_compose(dimensions, permutations[q], permutations[p]);
+				assert(pg_dimension_face_factor(dimensions, pg_dimension_compose(dimensions, composition, face), &direct, &combined) == 0);
+				assert(twice == direct);
+				assert(pg_dimension_compose(dimensions, second, local) == combined);
+			}
+		}
+	}
+}
+
 static void dimension_test(struct pg_graph *graph)
 {
 	struct pg_dimensions dimensions;
 	assert(pg_dimensions_init(&dimensions, graph) == 0);
+	induced_face_permutations(&dimensions);
 	struct pg_coordinate coordinates[3];
 	for (size_t source = 0; source <= 2; ++source) {
 		for (size_t target = 0; target <= 2; ++target) {
