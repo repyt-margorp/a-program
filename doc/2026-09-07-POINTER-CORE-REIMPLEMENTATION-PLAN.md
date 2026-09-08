@@ -1117,6 +1117,38 @@ finish general handler source support.
   unchanged; the open-family gate remains unsupported after 208 steps.
   Implementation C/header: +104/-41; test C: +36/-13; docs separate.
 
+  September 9, after `0bb7e3d`: the existing Core codec now supports inert
+  descriptor payloads in its one Term relocation table. Owner callbacks enumerate
+  immutable Term dependencies and reconstruct an object; they cannot confer
+  typing acceptance. The old external-name APIs are wrappers over this same
+  implementation, not another reader/writer. Temporary reference terms belong
+  to a scratch arena, leaving the source graph unchanged. The iterative DAG
+  collector orders signature dependencies before uses; descriptor argument edges
+  count against the read limit. Unresolved/cyclic references and object records
+  collapsed to one pointer cannot be accepted. Recursive descriptor schemes
+  are not implemented by this acyclic payload format.
+
+  Built-in descriptor callbacks support fresh operation labels and closed effect
+  rows, with existing classifier/computation/Identity formers resolved by their
+  versioned names. Graph object tags 3/4 identify payload-bearing binders/semantic
+  objects; their zero-terminated Term IDs share the ordinary Term table. Older
+  external-only readers refuse those tags rather than interpreting them as
+  addresses. Identical operation signatures do not merge nominal labels. A row
+  is rebuilt from the relocated label references, not from host pointer values.
+
+  Fresh-process tests retain two distinct same-signature operations, shared
+  REQUEST roots, row membership and a nested U/F operation signature. Reading
+  creates no typing evidence; later local declaration checking accepts the
+  correct signature and rejects a changed one. All truncated prefixes and a
+  complete image lacking its descriptor restorer are rejected without publishing
+  outputs. This is raw graph transport only: derivation parameter encoding,
+  pending-work checkpointing, imported nominal identities and general IADT image
+  schemas remain open. N5 and the full-language goal are not complete.
+  Normal `check`, eight example source checks and six execution fixtures pass;
+  rebuilt ASan/UBSan graph I/O and fresh-process graph acceptance tests pass.
+  Implementation C/header: +264/-34; test C: +76/-3; shell: +2/-0;
+  prototype build: +1/-1; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 208 transitions; this does not establish full source acceptance.

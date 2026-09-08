@@ -134,6 +134,10 @@ const struct pg_effect_row *pg_effect_difference(struct pg_graph *graph,
 }
 
 size_t pg_effect_count(const struct pg_effect_row *row) { return row ? row->count : SIZE_MAX; }
+const struct pg_object *pg_effect_label(const struct pg_effect_row *row, size_t index)
+{
+	return row && index < row->count ? row->labels[index] : NULL;
+}
 
 int pg_effect_subset(const struct pg_effect_row *left, const struct pg_effect_row *right)
 {

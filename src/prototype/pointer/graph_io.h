@@ -8,6 +8,28 @@
  * identities or addresses. No reduction, descriptor execution or graph edits. */
 int pg_graph_print(FILE *file, const struct pg_term *root);
 
+/* Optional immutable descriptor payloads in the same Term relocation table.
+ * child: 1 child, 0 end, -1 error, -2 external object (index zero only).
+ * name identifies an external object or, for a payload, its descriptor format.
+ * child receives a scratch arena for temporary reference terms; it must not
+ * change the source graph. restore constructs an inert object, never accepted
+ * evidence or host effects.
+ * Repeated format names may create distinct nominal objects. Payload references
+ * must be acyclic with the containing Term graph. restore may retain the terms,
+ * not its temporary input array. Limits include descriptor argument edges. */
+struct pg_graph_codec {
+	const char *(*name)(void *, const struct pg_object *);
+	const struct pg_object *(*resolve)(void *, const char *);
+	int (*child)(void *, struct pg_graph *, const struct pg_object *, size_t, const struct pg_term **);
+	const struct pg_object *(*restore)(void *, struct pg_graph *, const char *, size_t,
+		const struct pg_term *const *);
+};
+int pg_graph_write_descriptors(FILE *file, size_t count, const struct pg_term *const *roots,
+	const struct pg_graph_codec *codec, void *context);
+int pg_graph_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *context,
+	size_t *count, const struct pg_term *const **roots);
+
 /* Raw acyclic Core graph transport, not typing evidence or a program image.
  * Plain binders are relocated freshly. Owned binders and semantic objects need
  * stable, versioned descriptor names supplied by the owner. The codec never

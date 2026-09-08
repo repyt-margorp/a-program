@@ -4,4 +4,6 @@ directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 "$1" write "$directory/core.graph"
 "$1" read "$directory/core.graph"
+"$1" operation-write "$directory/operations.graph"
+"$1" operation-read "$directory/operations.graph"
 printf '%s\n' 'graph acceptance: fresh-process relocation, shared Core and distinct typed evidence passed'

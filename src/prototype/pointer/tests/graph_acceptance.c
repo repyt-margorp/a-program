@@ -3,6 +3,7 @@
 #include "evidence.h"
 #include "derivation.h"
 #include "computation.h"
+#include "descriptor_io.h"
 
 #include <assert.h>
 #include <string.h>
@@ -158,16 +159,88 @@ static void read_graph(FILE *file, struct pg_graph *graph)
 	pg_typing_destroy(&typing);
 }
 
+static void descriptor_boundaries(FILE *file)
+{
+	unsigned char bytes[4096];
+	rewind(file);
+	size_t length = fread(bytes, 1, sizeof(bytes), file);
+	assert(feof(file) && !ferror(file) && length);
+	for (size_t cut = 0; cut <= length; ++cut) {
+		struct pg_graph graph;
+		struct pg_classifiers classifiers;
+		assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+		FILE *fragment = tmpfile();
+		assert(fragment && fwrite(bytes, 1, cut, fragment) == cut);
+		rewind(fragment);
+		size_t count = 71;
+		const struct pg_term *const *roots = NULL;
+		struct pg_graph_codec codec = pg_builtin_graph_codec;
+		/* Complete stream, but no implementation of its descriptor contract. */
+		if (cut == length) codec.restore = NULL;
+		assert(pg_graph_read_descriptors(fragment, &graph, 1000, 100, &codec, &classifiers, &count, &roots));
+		assert(count == 71 && !roots && !fclose(fragment));
+		pg_classifiers_destroy(&classifiers);
+		pg_graph_destroy(&graph);
+	}
+}
+
+static void operation_graph(FILE *file, struct pg_graph *graph, int writing)
+{
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(!pg_typing_init(&typing, graph) && !pg_classifiers_init(&classifiers, graph));
+	if (writing) {
+		const struct pg_term *u = pg_universe(&classifiers, 0);
+		const struct pg_object *labels[] = {pg_operation_label_create(graph, u, u), pg_operation_label_create(graph, u, u)};
+		const struct pg_effect_row *row = pg_effect_row(graph, 2, labels);
+		const struct pg_term *delayed = pg_thunk_type(&classifiers, pg_effect_type(&classifiers, row, u));
+		const struct pg_object *higher = pg_operation_label_create(graph, delayed, u), *x = pg_binder(graph);
+		const struct pg_term *request = pg_computation_request(graph, labels[0], u,
+			pg_lambda(graph, x, pg_application(graph, pg_reference(graph, &pg_return_operation), pg_reference(graph, x))));
+		const struct pg_term *roots[] = {pg_reference(graph, labels[0]), pg_reference(graph, labels[1]),
+			pg_reference(graph, higher), pg_effect_reference(graph, row), request, request, u};
+		size_t terms = graph->terms.count, objects = graph->objects.count;
+		assert(!pg_graph_write_descriptors(file, 7, roots, &pg_builtin_graph_codec, &classifiers));
+		assert(terms == graph->terms.count && objects == graph->objects.count && !typing.proofs.count);
+	} else {
+		size_t count = 0;
+		const struct pg_term *const *roots = NULL;
+		assert(!pg_graph_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, &classifiers, &count, &roots));
+		assert(count == 7 && roots[4] == roots[5] && roots[0] != roots[1] && !typing.proofs.count);
+		const struct pg_object *a = roots[0]->as.reference, *b = roots[1]->as.reference;
+		const struct pg_term *payload, *response;
+		assert(pg_operation_label_types(a, &payload, &response) && payload == roots[6] && response == roots[6]);
+		assert(pg_operation_label_types(b, &payload, &response) && payload == roots[6] && response == roots[6]);
+		const struct pg_effect_row *row = pg_effect_row_view(roots[3]);
+		assert(pg_effect_count(row) == 2 && pg_effect_contains(row, a) == 1 && pg_effect_contains(row, b) == 1);
+		assert(pg_operation_label_types(roots[2]->as.reference, &payload, &response) && response == roots[6]);
+		assert(payload == pg_thunk_type(&classifiers, pg_effect_type(&classifiers, row, roots[6])));
+		const struct pg_object *label;
+		const struct pg_term *argument, *continuation;
+		assert(pg_computation_request_view(roots[4], &label, &argument, &continuation));
+		assert(label == a && argument == roots[6]);
+		const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+		const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+		assert(pg_operation_declaration_at(&typing, a, u, u));
+		assert(!pg_operation_declaration_at(&typing, a, pg_prove_universe(&typing, &classifiers, empty, 1), u));
+		descriptor_boundaries(file);
+	}
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
-	int writing = !strcmp(argv[1], "write");
-	assert(writing || !strcmp(argv[1], "read"));
+	int operation = !strcmp(argv[1], "operation-write") || !strcmp(argv[1], "operation-read");
+	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "operation-write");
+	assert(writing || !strcmp(argv[1], "read") || operation);
 	FILE *file = fopen(argv[2], writing ? "wb" : "rb");
 	assert(file);
 	struct pg_graph graph;
 	assert(pg_graph_init(&graph) == 0);
-	if (writing) write_graph(file, &graph);
+	if (operation) operation_graph(file, &graph, writing);
+	else if (writing) write_graph(file, &graph);
 	else read_graph(file, &graph);
 	assert(fclose(file) == 0);
 	pg_graph_destroy(&graph);
