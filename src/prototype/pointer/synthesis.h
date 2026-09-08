@@ -50,6 +50,22 @@ const struct pg_source_scope *pg_synthesis_bind_context(struct pg_synthesis *syn
 	const struct pg_object *binder, struct pg_synthesis_job *context);
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Borrow immutable source inputs even after Solve. No progress/evidence fields
+ * are exported. Only ordinary source-expression producers have this view. */
+int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
+	const struct pg_syntax **syntax);
+/* Closed lexical environment input, not a copied scope or another authority.
+ * A parentless empty view denotes the ordinary root. At most one of producer,
+ * module, exports and imports is present. Binder/definition-registration/
+ * handler-local scopes require their own source reconstruction, not this view. */
+struct pg_source_environment {
+	const struct pg_source_scope *parent, *exports, *imports;
+	struct pg_token name;
+	struct pg_synthesis_job *producer, *module;
+};
+int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_source_environment *input);
 /* Reserve the lexical binder before solving its Lambda/Pi domain. Requests
  * share by exact source scope and syntax, and create no context/evidence.
  * Completion yields context-extension evidence; reservation alone never does. */

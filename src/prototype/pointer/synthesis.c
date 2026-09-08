@@ -299,6 +299,28 @@ const struct pg_source_scope *pg_synthesis_root(struct pg_synthesis *synthesis)
 		pg_synthesis_evidence(synthesis, pg_prove_empty_context(synthesis->typing))});
 }
 
+int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
+	const struct pg_syntax **syntax)
+{
+	if (!synthesis || !job || !scope || !syntax) return -1;
+	if (job->owner != synthesis->owner_key || job->role != EXPRESSION_JOB) return -1;
+	*scope = job->scope; *syntax = job->syntax;
+	return 0;
+}
+
+int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_source_environment *input)
+{
+	if (!synthesis || !scope || !input || scope->owner != synthesis->owner_key) return -1;
+	if (scope->binder || scope->hypothesis_for || scope->definitions || scope->effect_owner) return -1;
+	const struct pg_evidence *context = source_context(scope);
+	if (!context || pg_evidence_context(context)) return -1;
+	*input = (struct pg_source_environment){scope->parent, scope->exports, scope->imports,
+		scope->name, scope->producer, scope->module};
+	return 0;
+}
+
 static int binding_context(struct pg_synthesis *synthesis, const struct pg_source_scope *parent,
 	const struct pg_object *binder, const struct pg_evidence *extended_context)
 {

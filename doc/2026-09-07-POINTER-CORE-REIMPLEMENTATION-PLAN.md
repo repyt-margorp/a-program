@@ -7384,8 +7384,38 @@ The wire format is `APGSYN` version 1, a component rather than a final `.a` file
 - [ ] Attach module names/scopes and retained producers through one program
   image, then integrate RECOMPUTE/CHECKPOINT policies and CLI resumption.
 
-Follow-up after `ac7afa0`: `APGSEED` version 1 now embeds one syntax DAG and
-the definition policy, replacing source-byte persistence in `seed.c`.
+Continuation after `21e97c7`: closed source environments now use `source_io.c`
+(`APGSRC` version 1). Read-only synthesis views expose expression inputs and
+lexical environment dependencies; they do not copy progress or evidence.
+Environment parents, source-name producers, module namespaces, explicit export
+namespaces and supplied import scopes share one dependency table and one syntax
+DAG. Loading calls the existing request/name/namespace/import APIs. The source
+of truth remains those APIs' interned scopes and jobs, not the transport records.
+
+- [x] Fresh-process module, source alias, export namespace and explicit-import
+  reconstruction with repeated roots sharing the same producer.
+- [x] Export does not advance Solve or mutate scopes/jobs/proofs; exporting
+  before and after source acceptance yields identical RECOMPUTE bytes.
+- [x] Use the same codec for single-source seed convenience functions; remove
+  the separate `APGSEED` read/write implementation rather than keep two paths.
+- [ ] Reconstruct selected-definition producers and accepted/rule producers in
+  external environments; these currently fail explicitly, without dropping
+  their dependencies or substituting a Core-only value.
+- [ ] Retain partial source-preparation and rule work as CHECKPOINT, and connect
+  the common program image to CLI/file import selection.
+
+Binder, definition-registration and handler-local scopes are not misrepresented
+as closed environments. They require reconstruction from their source inputs.
+The module fixture completes in 118 transitions for budgets 1 and 64 and reuses
+the same accepted exported evidence across namespace and import paths. This
+closes a RECOMPUTE fragment, not N5 or full source-language compatibility.
+Normal `check`, eight source checks and six execution fixtures pass. Rebuilt
+ASan/UBSan source-image and seed tests, including separate-process loading,
+also pass. No Main promotion is justified by this partial image support.
+
+Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
+and the definition policy, replacing source-byte persistence in `seed.c`.
+The common `APGSRC` path above now supersedes that intermediate framing.
 `pg_program_allocate` shares store initialization with ordinary source creation.
 Reading a seed validates structural shape and its definition-block root, then
 schedules ordinary synthesis without invoking the parser or advancing Solve.

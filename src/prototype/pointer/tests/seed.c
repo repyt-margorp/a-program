@@ -1,5 +1,6 @@
 #include "seed.h"
 #include "syntax_io.h"
+#include "source_io.h"
 
 #include <assert.h>
 #include <string.h>
@@ -64,9 +65,8 @@ int main(int argc, char **argv)
 		rewind(file);
 		size_t length = fread(bytes, 1, sizeof(bytes), file);
 		assert(feof(file) && !ferror(file) && fclose(file) == 0);
-		assert(length > 17 && !memcmp(bytes, "APGSEED\1", 8));
-		assert(bytes[8] == (policy == PG_DEFINITION_EXPLICIT_THUNK ? 0 : 1));
-		assert(!memcmp(bytes + 9, "APGSYN\1", 8));
+		assert(length > 32 && !memcmp(bytes, "APGSRC\1", 8));
+		assert(bytes[8] == policy);
 		compare(read_bytes(bytes, length, 4096), source, policy);
 		assert(!read_bytes(bytes, length, 0));
 		for (size_t cut = 0; cut < length; ++cut) assert(!read_bytes(bytes, cut, 4096));
@@ -75,10 +75,10 @@ int main(int argc, char **argv)
 		bytes[8] = 2;
 		assert(!read_bytes(bytes, length, 4096));
 		bytes[8] = 0;
-		bytes[7] = 0;
+		bytes[6] = 0;
 		assert(!read_bytes(bytes, length, 4096));
-		bytes[7] = 1;
-		memset(bytes + 17, 255, 8);
+		bytes[6] = 1;
+		memset(bytes + 16, 255, 8);
 		assert(!read_bytes(bytes, length, 4096));
 	}
 	FILE *file = tmpfile();
@@ -86,14 +86,15 @@ int main(int argc, char **argv)
 	assert(fclose(file) == 0);
 	/* Structurally decoded nodes are not automatically admissible programs. */
 	file = tmpfile();
-	const unsigned char header[] = {'A', 'P', 'G', 'S', 'E', 'E', 'D', 1, 0};
-	assert(file && fwrite(header, 1, sizeof(header), file) == sizeof(header));
+	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+	assert(file && p);
 	const struct pg_syntax malformed = {.kind = PG_SYNTAX_APPLICATION};
-	const struct pg_syntax *root = &malformed;
-	assert(!pg_syntax_write(file, 1, &root));
+	struct pg_synthesis_job *root = pg_synthesis_request(&p->synthesis, p->scope, &malformed);
+	assert(root && !pg_sources_write(file, &p->synthesis, 1, &root));
 	rewind(file);
 	assert(!pg_seed_read(file, 4096));
 	assert(!fclose(file));
+	pg_program_destroy(p);
 	assert(pg_seed_write(NULL, source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK) == -1);
 	assert(!pg_seed_read(NULL, 4096));
 	puts("seed: unresolved syntax graph, exact policy, fresh solve without reparsing and input validation passed");
