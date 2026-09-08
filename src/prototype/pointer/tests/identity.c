@@ -786,15 +786,28 @@ static void square_transposition_boundary(struct pg_typing *typing, struct pg_cl
 		cursor = pg_evidence_premise(cursor, 0);
 	}
 	const struct pg_evidence *map = pg_prove_substitution(typing, empty, contexts[1], 0, NULL);
+	const struct pg_dimension_map *inverse = pg_dimension_inverse(&dimensions, swap);
 	for (size_t i = 0; i < 8; ++i) {
 		/* Match geometric corners/edges, not declaration-list positions. */
-		const struct pg_evidence *value = pg_prove_variable(typing, contexts[1], pg_evidence_context(extensions[i])->binder);
+		const struct pg_binding_face *face = pg_binding_face_view(pg_evidence_context(extensions[i])->binder);
+		const struct pg_dimension_map *ordered, *intrinsic;
+		assert(pg_dimension_face_factor(&dimensions, pg_dimension_compose(&dimensions, inverse, face->face),
+			&ordered, &intrinsic) == 0);
+		const struct pg_binding_face *image = pg_binding_face(&dimensions, cube,
+			pg_dimension_compose(&dimensions, swap, ordered));
+		assert(intrinsic == pg_dimension_identity(&dimensions, face->face->source));
+		assert(pg_dimension_compose(&dimensions, image->face, intrinsic) == face->face);
+		const struct pg_evidence *value = pg_prove_variable(typing, contexts[1], &image->variable);
 		assert(value);
 		value = convert_to(typing, &work, value, pg_prove_reindex(typing, map, pg_evidence_premise(extensions[i], 1)));
 		map = pg_prove_substitution_pair(typing, map, extensions[i], value);
 		assert(map);
 	}
 	const struct pg_evidence *center = pg_prove_variable(typing, contexts[1], &transposed->variable);
+	const struct pg_dimension_map *center_face, *center_orientation;
+	assert(pg_dimension_face_factor(&dimensions, inverse, &center_face, &center_orientation) == 0);
+	assert(center_face == pg_dimension_identity(&dimensions, 2));
+	assert(center_orientation == swap);
 	const struct pg_evidence *expected = pg_prove_reindex(typing, map, pg_evidence_premise(extensions[8], 1));
 	assert(center && expected);
 	assert(!pg_prove_substitution_pair(typing, map, extensions[8], center));

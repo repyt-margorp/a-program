@@ -157,6 +157,22 @@ const struct pg_dimension_map *pg_dimension_face(struct pg_dimensions *dimension
 	return used_axes == face->source ? face : NULL;
 }
 
+const struct pg_dimension_map *pg_dimension_inverse(struct pg_dimensions *dimensions,
+	const struct pg_dimension_map *permutation)
+{
+	if (!permutation || permutation->source != permutation->target) return NULL;
+	permutation = pg_dimension_face(dimensions, permutation);
+	if (!permutation) return NULL;
+	size_t n = permutation->source;
+	struct pg_coordinate *coordinates = calloc(n ? n : 1, sizeof(*coordinates));
+	if (!coordinates) return NULL;
+	for (size_t i = 0; i < n; ++i)
+		coordinates[permutation->coordinates[i].axis] = (struct pg_coordinate){PG_AXIS, i};
+	const struct pg_dimension_map *result = pg_dimension_map(dimensions, n, n, coordinates);
+	free(coordinates);
+	return result;
+}
+
 int pg_dimension_face_factor(struct pg_dimensions *dimensions,
 	const struct pg_dimension_map *face, const struct pg_dimension_map **ordered,
 	const struct pg_dimension_map **intrinsic)

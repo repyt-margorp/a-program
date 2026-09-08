@@ -1828,6 +1828,10 @@ static void induced_face_permutations(struct pg_dimensions *dimensions)
 		for (size_t i = 0; i < 3; ++i) coordinates[i] = (struct pg_coordinate){PG_AXIS, orders[p][i]};
 		permutations[p] = pg_dimension_map(dimensions, 3, 3, coordinates);
 		assert(permutations[p]);
+		const struct pg_dimension_map *inverse = pg_dimension_inverse(dimensions, permutations[p]);
+		assert(inverse && pg_dimension_inverse(dimensions, inverse) == permutations[p]);
+		assert(pg_dimension_compose(dimensions, inverse, permutations[p]) == pg_dimension_identity(dimensions, 3));
+		assert(pg_dimension_compose(dimensions, permutations[p], inverse) == pg_dimension_identity(dimensions, 3));
 	}
 	for (size_t code = 0; code < 27; ++code) {
 		size_t rest = code, axes = 0;
@@ -1997,9 +2001,13 @@ static void dimension_test(struct pg_graph *graph)
 	const struct pg_dimension_map *reverse = pg_dimension_map(&dimensions, 128, 128, reverse_axes);
 	const struct pg_term *wide_symmetry = pg_symmetry(graph, reverse, pg_symmetry(graph, reverse, line_term));
 	assert(!pg_symmetry(graph, projection, line_term));
+	assert(!pg_dimension_inverse(&dimensions, projection));
+	assert(!pg_dimension_inverse(&dimensions, NULL));
+	assert(pg_dimension_inverse(&dimensions, pg_dimension_identity(&dimensions, 0)) == pg_dimension_identity(&dimensions, 0));
 	struct pg_coordinate repeated_axes[] = {{PG_AXIS, 0}, {PG_AXIS, 0}};
 	struct pg_dimension_map invalid_permutation = {2, 2, repeated_axes};
 	assert(!pg_symmetry(graph, &invalid_permutation, line_term));
+	assert(!pg_dimension_inverse(&dimensions, &invalid_permutation));
 	printf("dimension: %zu maps, %zu composable triples; 3D faces/permutations passed\n", map_count, triples);
 	pg_dimensions_destroy(&dimensions);
 	/* Operator lifetime follows the graph, and composition retains capture. */

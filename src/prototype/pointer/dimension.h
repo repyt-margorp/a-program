@@ -42,6 +42,10 @@ const struct pg_dimension_map *pg_dimension_identity(struct pg_dimensions *dimen
 /* Validate/intern a map and require every source axis: no degeneracy. */
 const struct pg_dimension_map *pg_dimension_face(struct pg_dimensions *dimensions,
 	const struct pg_dimension_map *map);
+/* Invert a permutation, rejecting endpoint coordinates and dropped axes.
+ * The result uses the same map interner; this is geometry, not typed symmetry. */
+const struct pg_dimension_map *pg_dimension_inverse(struct pg_dimensions *dimensions,
+	const struct pg_dimension_map *permutation);
 /* Factor a strict face f:k->n as ordered o intrinsic. ordered retains the
  * endpoint coordinates and uses axes in increasing occurrence order;
  * intrinsic:k->k retains f's local orientation. Outputs change only on success.

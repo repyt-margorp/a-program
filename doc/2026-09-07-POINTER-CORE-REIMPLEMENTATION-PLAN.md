@@ -2317,6 +2317,30 @@ Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
   Optimized and ASan/UBSan full pointer checks and 512 KiB Core/Identity tests
   pass. Implementation C/header delta: +15/-2; tests: +22/-0; docs excluded.
 
+- [x] After `8c9d167`, add inverse permutation to the existing dimension-map
+  algebra. It validates a strict endomap and interns the reversed coordinates;
+  no extra map representation or proof rule is introduced. The square boundary
+  regression now recovers each source face `f` from its binder and factors
+  `inverse(p) o f = h o u` in destination orientation `p`. Its destination
+  binder is `p o h`, so `(p o h) o u = f`. For corners/edges, `u` is identity
+  and the usual checked substitution accepts the images. At the center,
+  `u` is the swap and the unchanged center is still rejected. Core checks both
+  inverse laws and double inversion for all six 3D permutations, zero dimension,
+  and rejection of a projection, duplicate axes and NULL.
+  Optimized and ASan/UBSan full pointer checks pass. Implementation C/header:
+  +20/-0; tests: +22/-1. Typed center symmetry and full N2 remain incomplete.
+
+The remaining typed rule must produce `S_u(value)` at the source declaration's
+formation reindexed by the already checked partial substitution. In particular,
+when `u` is identity, that formation must be convertible to the value's own
+classifier: `S_identity(value)` reduces to `value`. A primitive admission that
+simply attaches the requested formation could violate subject reduction.
+For dependent later cubes, the partial substitution includes earlier center
+transformations; equations for symmetry of family instantiation must agree with
+those replacements. Identity/composition of the raw operators alone does not
+establish this condition. Keep this as a prerequisite for the typed rule, not
+an accepted conversion axiom or a reason to discard the dependent case.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action
