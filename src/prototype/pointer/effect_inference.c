@@ -107,6 +107,14 @@ const struct pg_effect_row *pg_effect_equation_seed(const struct pg_effect_infer
 	return equation && equation->owner == work ? equation->seed : NULL;
 }
 
+struct pg_effect_equation *pg_effect_equation_find(const struct pg_effect_inference *work,
+	const struct pg_object *parameter)
+{
+	if (!work || !work->rows || work->failed || !parameter) return NULL;
+	if (parameter->kind != PG_BINDER || parameter->owner) return NULL;
+	return row_source(work, parameter);
+}
+
 int pg_effect_inference_visit(const struct pg_effect_inference *work, void *context,
 	int (*equation)(void *, const struct pg_effect_equation *, const struct pg_effect_row *),
 	int (*dependency)(void *, const struct pg_effect_equation *, const struct pg_effect_row *, const struct pg_effect_equation *))

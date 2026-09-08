@@ -589,6 +589,12 @@ static void unaccepted_proofs(FILE *file, struct pg_typing *typing, struct pg_cl
 		FILE *rejected = tmpfile();
 		assert(rejected && pg_derivation_inputs_write(rejected, 1, &cyclic, &pg_builtin_graph_codec, classifiers));
 		assert(!fclose(rejected));
+		struct pg_derivation_input *open = input_rule(graph, PG_RETURN_TYPE_FORM, 1, &universe);
+		open->effect_parameter = pg_binder(graph);
+		const struct pg_derivation_input *unresolved = open;
+		rejected = tmpfile();
+		assert(rejected && pg_derivation_inputs_write(rejected, 1, &unresolved, &pg_builtin_graph_codec, classifiers));
+		assert(!fclose(rejected));
 		return;
 	}
 	size_t count;

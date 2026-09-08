@@ -131,6 +131,101 @@ static void effect_definition_restore(struct pg_graph *graph, const struct pg_ef
 	pg_effect_inference_destroy(&restored);
 }
 
+static struct pg_derivation_input *stored_rule(struct pg_graph *graph, enum pg_evidence_rule rule,
+	size_t count, const struct pg_derivation_input *const *premises)
+{
+	struct pg_derivation_input *input = pg_alloc(graph, sizeof(*input) + count * sizeof(*premises));
+	assert(input);
+	input->rule = rule;
+	input->count = count;
+	for (size_t i = 0; i < count; ++i) input->premises[i] = premises[i];
+	return input;
+}
+
+static void stored_effect_derivation(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_effect_row *empty, const struct pg_effect_row *seed, uint64_t budget)
+{
+	struct pg_graph *graph = typing->graph;
+	struct pg_effect_inference source, restored;
+	assert(!pg_effect_inference_init(&source, graph) && !pg_effect_inference_init(&restored, graph));
+	struct pg_effect_equation *target = pg_effect_equation(&source, empty);
+	const struct pg_object *parameter = pg_effect_equation_parameter(&source, target), *binder = pg_binder(graph);
+	assert(!pg_effect_dependency(&source, pg_effect_equation(&source, seed), empty, target));
+	size_t equations, count;
+	const struct pg_term *const *roots;
+	assert(!pg_effect_inference_pack(&source, graph, &equations, &count, &roots));
+	assert(!pg_effect_inference_unpack(&restored, equations, count, roots));
+	pg_effect_inference_destroy(&source);
+	struct pg_derivation_input *context = stored_rule(graph, PG_CONTEXT_EMPTY, 0, NULL);
+	struct pg_derivation_input *u = stored_rule(graph, PG_UNIVERSE_FORM, 1, (const struct pg_derivation_input *[]){context});
+	struct pg_derivation_input *f = stored_rule(graph, PG_RETURN_TYPE_FORM, 1, (const struct pg_derivation_input *[]){u});
+	f->effect_parameter = parameter;
+	struct pg_derivation_input *thunk = stored_rule(graph, PG_THUNK_TYPE_FORM, 1, (const struct pg_derivation_input *[]){f});
+	struct pg_derivation_input *extended = stored_rule(graph, PG_CONTEXT_EXTEND, 2, (const struct pg_derivation_input *[]){context, thunk});
+	extended->parameters.binder = binder;
+	struct pg_derivation_input *inner_u = stored_rule(graph, PG_UNIVERSE_FORM, 1, (const struct pg_derivation_input *[]){extended});
+	struct pg_derivation_input *inner_f = stored_rule(graph, PG_RETURN_TYPE_FORM, 1, (const struct pg_derivation_input *[]){inner_u});
+	inner_f->effect_parameter = parameter;
+	struct pg_derivation_input *pi = stored_rule(graph, PG_PI_FORM, 3, (const struct pg_derivation_input *[]){thunk, extended, inner_f});
+	struct pg_derivation_input *variable = stored_rule(graph, PG_VARIABLE, 1, (const struct pg_derivation_input *[]){extended});
+	variable->parameters.binder = binder;
+	struct pg_whnf_work normalization;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&normalization, graph));
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+	size_t proofs = typing->proofs.count;
+	struct pg_synthesis_job *job = pg_synthesis_derivation_inference(&synthesis, pi, &restored);
+	assert(job == pg_synthesis_derivation_inference(&synthesis, pi, &restored));
+	struct pg_synthesis_job *structure = pg_synthesis_type_structure(&synthesis, job);
+	struct pg_synthesis_job *variable_type = pg_synthesis_classifier_structure(&synthesis,
+		pg_synthesis_derivation_inference(&synthesis, variable, &restored));
+	struct pg_synthesis_job *missing = pg_synthesis_derivation(&synthesis, f);
+	struct pg_derivation_input *conflict = stored_rule(graph, PG_RETURN_TYPE_FORM, 1, (const struct pg_derivation_input *[]){u});
+	conflict->effect_parameter = parameter;
+	conflict->parameters.effects = empty;
+	struct pg_synthesis_job *conflicting = pg_synthesis_derivation_inference(&synthesis, conflict, &restored);
+	assert(typing->proofs.count == proofs);
+	unsigned steps = 0;
+	while (synthesis.ready) { assert(++steps < 2000); pg_synthesis_advance(&synthesis, budget); }
+	const struct pg_term *pending = pg_effect_type_spine(classifiers, pg_reference(graph, parameter), pg_universe(classifiers, 0));
+	assert(pg_synthesis_type_structure_result(structure) == pg_pi(graph, pg_thunk_type(classifiers, pending), binder, pending));
+	assert(pg_synthesis_type_structure_result(variable_type) == pg_thunk_type(classifiers, pending));
+	assert(!pg_synthesis_result(job) && !synthesis.ready);
+	assert(pg_synthesis_status(missing) == PG_SYNTHESIS_REJECTED);
+	assert(pg_synthesis_status(conflicting) == PG_SYNTHESIS_REJECTED);
+	size_t jobs = synthesis.jobs.count;
+	struct pg_synthesis_job *direct_context = pg_synthesis_rule(&synthesis, context, NULL, NULL, NULL);
+	struct pg_synthesis_job *direct_u = pg_synthesis_rule(&synthesis, u, &direct_context, NULL, NULL);
+	struct pg_derivation_input header = *f;
+	header.effect_parameter = NULL;
+	struct pg_synthesis_job *direct_f = pg_synthesis_rule(&synthesis, &header, &direct_u, &restored,
+		pg_effect_equation_find(&restored, parameter));
+	assert(direct_f && synthesis.jobs.count == jobs && !pg_synthesis_result(direct_f));
+	pg_effect_inference_seal(&restored);
+	assert(pg_synthesis_effect_inference(&synthesis, &restored));
+	while (synthesis.ready) { assert(++steps < 2000); pg_synthesis_advance(&synthesis, budget); }
+	assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE);
+	const struct pg_term *closed = pg_effect_type(classifiers, seed, pg_universe(classifiers, 0));
+	assert(pg_evidence_subject(pg_synthesis_result(job))->core == pg_pi(graph, pg_thunk_type(classifiers, closed), binder, closed));
+	assert(pg_synthesis_type_structure_result(structure) == pg_pi(graph, pg_thunk_type(classifiers, pending), binder, pending));
+	/* Expanding a deep stored DAG waits on preparation events, not repeated
+	 * ancestor polling or recursive C calls. */
+	const struct pg_derivation_input *deep = u;
+	for (unsigned i = 0; i < 2048; ++i)
+		deep = stored_rule(graph, PG_CONTEXT_PROJECTION, 2, (const struct pg_derivation_input *[]){context, deep});
+	uint64_t before = synthesis.steps;
+	struct pg_synthesis_job *deep_job = pg_synthesis_derivation_inference(&synthesis, deep, &restored);
+	while (synthesis.ready) {
+		assert(synthesis.steps - before < 24 * 2048);
+		pg_synthesis_advance(&synthesis, budget);
+	}
+	assert(pg_synthesis_status(deep_job) == PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(pg_synthesis_result(deep_job))->core == pg_universe(classifiers, 0));
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&normalization);
+	pg_effect_inference_destroy(&restored);
+}
+
 static void effect_equations(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	static const struct pg_object_class label_class = {"effect-equation-test"};
@@ -146,6 +241,8 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		assert(rows[bits]);
 	}
 	effect_definition_restore(typing->graph, rows[0], rows[1]);
+	stored_effect_derivation(typing, classifiers, rows[0], rows[1], 1);
+	stored_effect_derivation(typing, classifiers, rows[0], rows[1], 64);
 	struct pg_whnf_work normalization;
 	assert(!pg_whnf_work_init(&normalization, typing->graph));
 	for (unsigned reverse = 0; reverse < 2; ++reverse)

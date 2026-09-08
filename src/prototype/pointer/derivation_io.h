@@ -12,6 +12,9 @@
 struct pg_derivation_input {
 	enum pg_evidence_rule rule;
 	struct pg_derivation_parameters parameters;
+	/* Unresolved F-row site, mutually exclusive with parameters.effects.
+	 * Its graph identity is persistent; the Solve worker is supplied separately. */
+	const struct pg_object *effect_parameter;
 	const struct pg_term *source, *target;
 	enum pg_reduction_kind reduction_kind;
 	size_t count;

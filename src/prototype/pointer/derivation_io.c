@@ -76,6 +76,8 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 		if (inputs) {
 			input = *(const struct pg_derivation_input *)node->key;
 			if (input.parameters.conversion || input.parameters.reduction) goto done;
+			/* Open-row input encoding is not part of APGDRV v3 yet. */
+			if (input.effect_parameter) goto done;
 		} else if (proof_input(node->key, &input)) goto done;
 		struct pg_derivation_parameters parameters = input.parameters;
 		if (pg_wire_write_u64(file, input.rule)

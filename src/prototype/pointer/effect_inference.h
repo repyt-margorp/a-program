@@ -32,6 +32,8 @@ struct pg_effect_equation *pg_effect_equation(struct pg_effect_inference *work,
  * approximation or accepted-state flag is imported by this operation. */
 struct pg_effect_equation *pg_effect_equation_at(struct pg_effect_inference *work,
 	const struct pg_object *parameter, const struct pg_effect_row *seed);
+struct pg_effect_equation *pg_effect_equation_find(const struct pg_effect_inference *work,
+	const struct pg_object *parameter);
 const struct pg_effect_row *pg_effect_equation_seed(const struct pg_effect_inference *work,
 	const struct pg_effect_equation *equation);
 /* Read immutable definitions, equations before edges, once each. Callbacks

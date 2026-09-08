@@ -13,6 +13,51 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Stored Inputs Use Ordinary Rule Producers
+
+Continuation after `05b04d4`. Stored rule DAGs now expand, under the normal fuel
+budget, into the same structurally keyed rule jobs used by source elaboration.
+The rule evaluator no longer selects between stored-premise and producer-premise
+layouts. Expansion retains one preparation cursor; it does not check a theorem
+or duplicate kernel acceptance. Prepared child producers are shared before their
+proofs finish. Existing dependency subscriptions also notify preparation for
+these input jobs, avoiding recursive traversal or repeated ancestor polling.
+
+An unresolved F-formation input retains only an `effect_parameter` graph object.
+Its invocation supplies the effect worker separately. Expansion resolves that
+object to the registered equation, then requests ordinary F formation with the
+existing effect-result dependency. A missing site, conflicting closed row, or
+wrong rule is rejected; unknown is never empty. Structural Pi/U/F and variable
+classifier queries may finish while their formation proofs remain pending.
+
+- [x] Route stored inputs through ordinary rule producers; no separate Replay.
+- [x] Resolve restored equation identities without storing worker pointers in
+  immutable rule inputs or publishing provisional formation evidence.
+- [x] Add tests at budgets 1/64 for pending Pi structure and variable classifiers,
+  post-seal acceptance, missing/conflicting parameter rejection, and reuse of
+  the same rule jobs by direct callers (no additional solver cells).
+- [x] Bound scheduler work on 2,048 nested stored projections to a linear test
+  limit; source and image expansion must not rewalk the ancestor chain.
+- [ ] Encode unresolved rule parameters and effect definition slices together
+  in the derivation/program image's shared Core relocation table. APGDRV v3
+  deliberately still refuses open-row inputs rather than dropping their link.
+- [ ] Complete live source-job export, contribution-completeness restoration,
+  full checkpoint/CLI/import support and all original N0-N7 gates.
+
+The new open-row synthesis regression reconstructs equation definitions in
+memory, destroys the original worker, and only then expands the stored inputs.
+It is not yet an end-to-end open-row file round trip. Closed APGDRV fixtures
+continue to exercise the same file reader and ordinary Solve.
+
+Verification: normal components, eight example source checks and six runtime
+fixtures pass. Rebuilt ASan/UBSan synthesis and derivation-image fixtures pass.
+The small stored-derivation fixture now uses 565 scheduler steps (previously
+365): preparation is an explicit budgeted phase, not a speedup claim. The
+2,048-depth regression bounds total transitions rather than elapsed time.
+Source example step counts are unchanged. The open-family acceptance gate
+still reports unsupported after 208 steps; the full rewrite is not complete.
+Implementation C/header: +112/-16; test C: +103/-0; documentation separate.
+
 ### September 9: Effect Definitions in the Shared Image Graph
 
 Continuation after `d12d312`. Independent Replay remains excluded. Effect

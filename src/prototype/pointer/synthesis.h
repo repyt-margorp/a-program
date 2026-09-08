@@ -211,6 +211,12 @@ struct pg_synthesis_job *pg_synthesis_term_structure(struct pg_synthesis *synthe
  * outlive synthesis. Uses ordinary dependencies, rules and pure work. */
 struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *input);
+/* Expand the same immutable rule DAG with relocated effect parameters resolved
+ * in work. Definitions must already be registered; work outlives synthesis.
+ * No worker address lives in the stored inputs. Expansion is fuel-accounted;
+ * ordinary rule jobs await sealing/convergence before accepting F formation. */
+struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *synthesis,
+	const struct pg_derivation_input *input, struct pg_effect_inference *work);
 /* Same unaccepted rule evaluator, with producer premises instead of loaded
  * input->premises. The input header is copied and structurally keyed together
  * with exact premise/parameter producer pointers; header allocation identity
