@@ -114,6 +114,13 @@ struct pg_synthesis_job *pg_synthesis_handler(struct pg_synthesis *synthesis,
 	const struct pg_syntax *syntax);
 struct pg_effect_inference;
 struct pg_effect_equation;
+/* Source sequencing with an independently synthesized raw continuation.
+ * Pending inputs are shared. Computations use the checked fold rule; values
+ * use application. If a computation has a dependent result, only a checked
+ * pure RETURN may supply the argument. No host effects are executed here. */
+struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *input,
+	struct pg_synthesis_job *continuation);
 /* Recover a constant result value type from an independently synthesized
  * return continuation, then form F G C using the converged equation G.
  * Work outlives synthesis; notify sealing through effect_inference below. No clause body

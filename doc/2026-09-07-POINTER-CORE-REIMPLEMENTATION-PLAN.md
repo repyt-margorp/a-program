@@ -395,6 +395,22 @@ Next implementation sequence (prerequisite for automatic source handlers):
   equation `E_sequence = E_input union E_continuation`. Its symbolic row must
   remain an equation dependency, not be guessed empty or forced closed by
   waiting for the sequence's own proof. General block migration remains open.
+  `pg_synthesis_sequence(context, input, continuation)` now shares source
+  sequencing over producer identities. It retains the existing checked FOLD
+  path for computation inputs, APP for known values, and checked pure RETURN
+  extraction for dependent results that cannot be folded. No effectful result
+  is invented as a value. The continuation is independently synthesized.
+  `close_continuation` delegates to this job instead of storing a second
+  continuation-proof state in each parent. Return-only handlers pass their
+  existing input/continuation producers directly; their redundant accepted
+  continuation-frame allocation is removed. Tests request sequencing while
+  contexts/effects are pending, reuse the exact request and resulting FOLD
+  proof, and reject wrong contexts/non-term inputs. The job still awaits its
+  premises before selecting FOLD/APP; pending block preparation and structural
+  sequence-effect equations remain open. List transitions are 1682 rather than
+  1668; this scheduling migration is not a performance improvement.
+  Normal checks, eight source cases, six runtime cases and rebuilt ASan/UBSan
+  synthesis tests pass. Implementation C: +57/-37; header: +7; test C: +7.
   Normal checks, eight source cases, six runtime cases and rebuilt normal and
   ASan/UBSan synthesis tests (including invalid-input rejection) pass.
   Normal `check`, eight example synthesis cases, six runtime cases and rebuilt

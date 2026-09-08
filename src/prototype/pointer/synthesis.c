@@ -108,7 +108,7 @@ struct effect_substitution_state {
 	struct pg_substitution work;
 	const struct pg_term *result;
 };
-enum job_role { EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
+enum job_role { SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
 enum { APPLICATION_RULE_READY = 6, APPLICATION_NEEDS_SEQUENCING = 7 };
 struct pg_synthesis_job {
@@ -136,7 +136,6 @@ struct pg_synthesis_job {
 	const struct pg_term *type_structure;
 	struct pg_substitution structural_substitution;
 	const struct pg_evidence *function;
-	const struct pg_evidence *continuation;
 	struct pg_conversion comparison;
 	const struct pg_conversion_certificate *certificate;
 	struct pg_reindex reindex;
@@ -1795,40 +1794,68 @@ static struct continuation_frame *open_continuation(struct pg_synthesis *synthes
 	return frame;
 }
 
+struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *input,
+	struct pg_synthesis_job *continuation)
+{
+	struct pg_synthesis_job *producers[] = {context, input, continuation};
+	for (size_t i = 0; i < 3; ++i)
+		if (!producers[i] || producers[i]->owner != synthesis->owner_key) return NULL;
+	const void *inputs[] = {context, input, continuation};
+	return request_inputs(synthesis, SEQUENCE_JOB, 3, inputs);
+}
+
+static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	for (size_t i = 0; i < 3; ++i) {
+		struct pg_synthesis_job *input = (void *)job->inputs[i];
+		if (input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, input); return; }
+		if (input->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, input->status); return; }
+	}
+	if (!job->value_job) {
+		const struct pg_evidence *context = ((const struct pg_synthesis_job *)job->inputs[0])->result;
+		const struct pg_evidence *input = ((const struct pg_synthesis_job *)job->inputs[1])->result;
+		const struct pg_evidence *continuation = ((const struct pg_synthesis_job *)job->inputs[2])->result;
+		if (!context || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT || !input || !continuation) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		if (pg_evidence_context(input) != pg_evidence_context(context) ||
+			pg_evidence_context(continuation) != pg_evidence_context(context)) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		const struct pg_evidence *argument_value = value(synthesis, input);
+		if (!argument_value) {
+			if (pg_evidence_judgement(input) != PG_JUDGEMENT_COMPUTATION) {
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+			}
+			job->result = pg_prove_fold(synthesis->typing, synthesis->classifiers, input, continuation);
+			if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
+		}
+		struct pg_synthesis_job *argument = argument_value ? pg_synthesis_evidence(synthesis, argument_value)
+			: pg_synthesis_return(synthesis, context, input);
+		job->value_job = pg_synthesis_application(synthesis, context,
+			(void *)job->inputs[2], argument);
+	}
+	forward_proof(synthesis, job, job->value_job);
+}
+
 static const struct pg_evidence *close_continuation(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct continuation_frame *frame,
 	const struct pg_evidence *body)
 {
-	if (!job->continuation) {
-		if (!job->value_job) job->value_job = pg_synthesis_lambda_body(synthesis,
+	if (!job->value_job) {
+		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(synthesis,
 			pg_synthesis_evidence(synthesis, frame->domain), pg_synthesis_evidence(synthesis, frame->context),
 			pg_synthesis_evidence(synthesis, body));
-		if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL; }
-		if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return NULL; }
-		if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return NULL; }
-		job->continuation = job->value_job->result;
-		job->value_job = NULL;
+		job->value_job = pg_synthesis_sequence(synthesis,
+			pg_synthesis_evidence(synthesis, pg_evidence_premise(frame->context, 0)),
+			pg_synthesis_evidence(synthesis, frame->value ? frame->value : frame->input), continuation);
 	}
-	const struct pg_evidence *result;
-	if (!job->value_job) {
-		if (!frame->value) {
-			result = pg_prove_fold(synthesis->typing, synthesis->classifiers, frame->input, job->continuation);
-			if (result) { job->continuation = NULL; return result; }
-		}
-		/* A dependent result needs an actual checked value producer, not an
-		 * assumed execution result in the classifier. */
-		const struct pg_evidence *context = pg_evidence_premise(frame->context, 0);
-		struct pg_synthesis_job *argument = frame->value ? pg_synthesis_evidence(synthesis, frame->value)
-			: pg_synthesis_return(synthesis, context, frame->input);
-		job->value_job = pg_synthesis_application(synthesis, context,
-			pg_synthesis_evidence(synthesis, job->continuation), argument);
-		if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL; }
-	}
+	if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL; }
 	if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return NULL; }
 	if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return NULL; }
-	result = job->value_job->result;
+	const struct pg_evidence *result = job->value_job->result;
 	job->value_job = NULL;
-	job->continuation = NULL;
 	return result;
 }
 
@@ -2521,13 +2548,6 @@ static void handler_return_step(struct pg_synthesis *synthesis, struct pg_synthe
 	if (!job->value_job) goto error;
 	if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return; }
 	if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return; }
-	const struct pg_evidence *context = source_context(job->inner);
-	if (!context) goto error;
-	struct continuation_frame *frame = pg_alloc(synthesis->typing->graph, sizeof(*frame));
-	if (!frame) goto error;
-	*frame = (struct continuation_frame){.input = job->left->result,
-		.domain = pg_evidence_premise(context, 1), .context = context};
-	job->application_frame = frame;
 	job->result = job->value_job->result;
 	finish(synthesis, job, PG_SYNTHESIS_DONE);
 	return;
@@ -2548,10 +2568,9 @@ static void return_handler_step(struct pg_synthesis *synthesis, struct pg_synthe
 		return;
 	}
 	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
-	job->continuation = job->right->result;
-	job->result = close_continuation(synthesis, job, job->right->application_frame,
-		computation(synthesis, job->right->right->result));
-	if (job->result) finish(synthesis, job, PG_SYNTHESIS_DONE);
+	if (!job->value_job) job->value_job = pg_synthesis_sequence(synthesis, job->scope->context_job,
+		job->right->left, job->right);
+	forward_proof(synthesis, job, job->value_job);
 }
 
 static struct pg_synthesis_job *plain_rule(struct pg_synthesis *synthesis,
@@ -3855,6 +3874,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		return;
 	}
 	if (job->role == EFFECT_SUBSTITUTION_JOB) { effect_substitution_step(synthesis, job); return; }
+	if (job->role == SEQUENCE_JOB) { sequence_step(synthesis, job); return; }
 	if (job->role == OPERATION_REFERENCE_JOB) { operation_reference_step(synthesis, job); return; }
 	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }
 	if (job->role == HANDLER_JOB) { handler_step(synthesis, job); return; }
