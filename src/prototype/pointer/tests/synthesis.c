@@ -380,7 +380,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_universe(classifiers, 0));
 		assert(symbolic_pi == pg_pi(typing->graph, pg_thunk_type(classifiers, symbolic_f), k, symbolic_f));
 		struct pg_synthesis_job *derived_carrier = pg_synthesis_handler_carrier(&synthesis,
-			complete(&synthesis, empty, PG_SYNTHESIS_DONE), lambda, &effects, equation);
+			empty, lambda, &effects, equation);
 		struct pg_synthesis_job *derived_structure = pg_synthesis_type_structure(&synthesis, derived_carrier);
 		assert(!complete(&synthesis, derived_structure, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(derived_structure) == symbolic_f);
@@ -513,6 +513,13 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(return_domain == pg_universe(classifiers, 0));
 		assert(return_codomain == pg_return_type(classifiers, return_domain));
 		assert(!pg_synthesis_result(return_clause_job));
+		struct pg_synthesis_job *open_carrier = pg_synthesis_handler_carrier(&synthesis,
+			context, return_clause_job, &effects, equation);
+		assert(open_carrier == pg_synthesis_handler_carrier(&synthesis, context, return_clause_job, &effects, equation));
+		struct pg_synthesis_job *open_carrier_structure = pg_synthesis_type_structure(&synthesis, open_carrier);
+		assert(!complete(&synthesis, open_carrier_structure, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(open_carrier_structure) == symbolic_f);
+		assert(!pg_synthesis_result(context) && !pg_synthesis_result(open_carrier));
 		const struct pg_evidence *signature = complete(&synthesis, universe, PG_SYNTHESIS_DONE);
 		const struct pg_operation_declaration *pending_op = pg_operation_declaration(typing, signature, signature);
 		struct pg_token op_name = {.kind = PG_TOKEN_IDENT, .text = "Op", .length = 2};
@@ -663,6 +670,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
+		same_judgement(complete(&synthesis, open_carrier, PG_SYNTHESIS_DONE),
+			pg_prove_projection(typing, pg_synthesis_result(context), pg_synthesis_result(carrier)));
 		const struct pg_evidence *op_proof = complete(&synthesis, op_clause, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *block_clause_proof = complete(&synthesis, block_clause, PG_SYNTHESIS_DONE);
 		assert(pg_pi_view(pg_evidence_classifier(block_clause_proof), &block_domain, &block_binder, &block_resume));
@@ -1051,10 +1060,11 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	struct pg_synthesis_job *emitting_input = pg_synthesis_request(&synthesis, scope, clause_definition.expression->left);
 	struct pg_synthesis_job *emitting_return = pg_synthesis_handler_return(&synthesis, scope,
 		emitting_input, clause_definition.expression->items[1].expression);
-	struct pg_synthesis_job *inferred_job = pg_synthesis_handler_carrier(&synthesis, context,
+	struct pg_synthesis_job *context_job = pg_synthesis_evidence(&synthesis, context);
+	struct pg_synthesis_job *inferred_job = pg_synthesis_handler_carrier(&synthesis, context_job,
 		emitting_return, &inference, output_effect);
 	assert(inferred_job && !pg_synthesis_result(inferred_job));
-	assert(inferred_job == pg_synthesis_handler_carrier(&synthesis, context,
+	assert(inferred_job == pg_synthesis_handler_carrier(&synthesis, context_job,
 		emitting_return, &inference, output_effect));
 	struct pg_synthesis_job *emitting_job = pg_synthesis_handler(&synthesis, scope,
 		inferred_job, clause_definition.expression);
@@ -1066,11 +1076,11 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(inferred == input_row);
 	const struct pg_evidence *inferred_carrier = pg_synthesis_result(inferred_job);
 	same_judgement(inferred_carrier, pg_prove_effect_type(typing, classifiers, inferred, u1));
-	complete(&synthesis, pg_synthesis_handler_carrier(&synthesis, context,
+	complete(&synthesis, pg_synthesis_handler_carrier(&synthesis, context_job,
 		pg_synthesis_evidence(&synthesis, u1), &inference, output_effect), PG_SYNTHESIS_UNSUPPORTED);
 	struct pg_synthesis_job *dependent_return = request(&synthesis, scope,
 		"dependent := \\T:Result => \\x:T => x;");
-	complete(&synthesis, pg_synthesis_handler_carrier(&synthesis, context,
+	complete(&synthesis, pg_synthesis_handler_carrier(&synthesis, context_job,
 		dependent_return, &inference, output_effect), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *emitting_function = complete(&synthesis,
 		pg_synthesis_handler_clause(&synthesis, scope, pg_synthesis_evidence(&synthesis, inferred_carrier),

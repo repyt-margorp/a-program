@@ -506,6 +506,17 @@ Next implementation sequence (prerequisite for automatic source handlers):
   This completes the tested closed-outer-context source path, not all handlers:
   nested inference under unresolved outer contexts, arbitrary computed source
   arguments and pending equation image transport still need implementation.
+  Carrier construction now takes the existing context producer directly,
+  rather than requiring accepted context evidence and immediately wrapping it
+  again. All call sites use this one API. Tests obtain the carrier structure
+  under an unsealed outer context, retain the original pending context, then
+  compare its accepted result with ordinary context projection after sealing.
+  This removes an acceptance prerequisite, not the nested-equation problem:
+  inner rows that mention outer parameters need a common dependency component
+  (or an equivalent symbolic equation connection), with closure only after all
+  participating handlers register their contributions. A separate inner worker
+  must not treat an unrecognized outer parameter as empty or seal that outer
+  worker. Removing the scope wait alone would therefore be insufficient.
   Normal component checks, eight source examples, six execution cases and
   rebuilt ASan/UBSan synthesis tests pass. List now takes 1718 transitions;
   explicit projection jobs change scheduling, not a claimed runtime speedup.

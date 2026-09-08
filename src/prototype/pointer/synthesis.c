@@ -486,12 +486,11 @@ struct pg_synthesis_job *pg_synthesis_constant_result(struct pg_synthesis *synth
 }
 
 struct pg_synthesis_job *pg_synthesis_handler_carrier(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, struct pg_synthesis_job *returned,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *returned,
 	struct pg_effect_inference *work, const struct pg_effect_equation *equation)
 {
-	if (!pg_evidence_owned_by(context, synthesis->typing) || !equation) return NULL;
-	struct pg_synthesis_job *result = pg_synthesis_constant_result(synthesis,
-		pg_synthesis_evidence(synthesis, context), returned, 1);
+	if (!equation) return NULL;
+	struct pg_synthesis_job *result = pg_synthesis_constant_result(synthesis, context, returned, 1);
 	struct pg_derivation_input content = {.rule = PG_RETURN_CONTENT, .count = 1};
 	result = pg_synthesis_rule(synthesis, &content, &result, NULL, NULL);
 	struct pg_derivation_input carrier = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
@@ -2786,7 +2785,7 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 			if (pg_effect_count(state->handled) != state->count) goto rejected;
 			state->count = 0;
 			state->equation = pg_effect_equation(&state->effects, empty);
-			state->carrier = pg_synthesis_handler_carrier(synthesis, source_context(job->scope), job->right,
+			state->carrier = pg_synthesis_handler_carrier(synthesis, job->scope->context_job, job->right,
 				&state->effects, state->equation);
 			if (!state->carrier) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}

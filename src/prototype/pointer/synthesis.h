@@ -131,11 +131,12 @@ struct pg_synthesis_job *pg_synthesis_constant_result(struct pg_synthesis *synth
 	struct pg_synthesis_job *context, struct pg_synthesis_job *callable, size_t parameters);
 /* Recover a constant result value type from an independently synthesized
  * return continuation, then form F G C using the converged equation G.
+ * The context is a producer and may be unresolved; acceptance awaits it.
  * Work outlives synthesis; notify sealing through effect_inference below. No clause body
  * is checked against an expected type here; final handler checking remains
  * required. Dependent/raw-Pi codomains are not coerced to F G C. */
 struct pg_synthesis_job *pg_synthesis_handler_carrier(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, struct pg_synthesis_job *returned,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *returned,
 	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
 /* Borrow a positive effect-equation graph into ordinary budgeted Solve.
  * Completion has no proof result: closed rows are read from work and must still
