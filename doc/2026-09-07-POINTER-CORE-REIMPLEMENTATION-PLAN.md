@@ -1772,6 +1772,17 @@ tests does not discharge it, and datatype admission must not assume completion.
   Source/header changes +7/-4; tests +21/-21; documentation counted separately.
   Typed center transposition and suspended cube construction remain pending.
 
+- [x] September 8, after `8c9f198`: validate cube axis orders before allocating
+  the exponential boundary workspace. Reuse `pg_dimension_face` and require
+  matching source/target dimensions; no separate validator is introduced.
+  Extend the dimension-0-through-3 context test to all six orders in dimension
+  three, checking all 27 declaration classifiers, the exact center binder and
+  repeated-request term/proof sharing. Reject a dimension-32 request with a
+  mismatched order without creating boundary faces or evidence. This validates
+  oriented assumption construction, not higher symmetry or coherence rules.
+  Optimized and ASan/UBSan pointer checks pass; Identity passes at 512 KiB stack.
+  Implementation +3/-0; tests +24/-11; documentation separate.
+
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
   and the implemented F/U/Pi Identity, RETURN/THUNK/FORCE action and diagonal

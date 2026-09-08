@@ -257,6 +257,9 @@ const struct pg_evidence *pg_identity_cube_context(struct pg_typing *typing,
 {
 	if (!cube || !order || dimensions->graph != typing->graph) return NULL;
 	if (!pg_evidence_owned_by(source, typing) || pg_evidence_rule(source) != PG_CONTEXT_EXTEND) return NULL;
+	if (order->source != cube->dimension || order->target != cube->dimension) return NULL;
+	order = pg_dimension_face(dimensions, order);
+	if (!order) return NULL;
 	if (cube->dimension > SIZE_MAX / sizeof(struct pg_coordinate)) return NULL;
 	size_t capacity = 1;
 	for (size_t d = 1; d < cube->dimension; ++d) {
