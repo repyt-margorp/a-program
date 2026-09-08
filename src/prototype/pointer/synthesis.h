@@ -160,6 +160,13 @@ struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesi
  * inserted here. Surface :: performs its existing exposure before this step. */
 struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term, struct pg_synthesis_job *type);
+/* Raw CBPV application of independent producers. Exposes the computation
+ * classifier, post-checks the value argument and uses ordinary APP evidence.
+ * No implicit force, thunk, return or sequencing; no expected type flows
+ * into either producer. Canonical completed inputs share the same work. */
+struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, struct pg_synthesis_job *function,
+	struct pg_synthesis_job *argument);
 /* Recover retained Identity formation after its producer completes. Shared
  * by accepted input evidence, including requests from distinct producers.
  * The output is convertible to the input, not a conversion certificate;

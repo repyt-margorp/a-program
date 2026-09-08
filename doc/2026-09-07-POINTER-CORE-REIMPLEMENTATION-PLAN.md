@@ -82,6 +82,18 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Expose raw typed application on the shared synthesis queue with
+  `pg_synthesis_application`. Independently completed producers converge on
+  their evidence pointers, expose the callee classifier, use the existing
+  EXPECT job for the domain, and construct ordinary APP evidence. Surface
+  application now uses this job after its coercion/sequencing preparation;
+  it no longer has its own final domain comparison. The raw API inserts no
+  force/thunk/return or sequencing. Tests cover pending producers, canonical
+  reuse, shared Core with distinct classifiers, wrong contexts, computation
+  arguments, thunked callees and completed namespace-only producers. This
+  supports typed construction of future permuted applications; it does not
+  yet certify a permuted center or a family instantiation.
+  Complete pointer `make check` and ASan/UBSan `synthesis_test` passed.
 - [x] Add `pg_dimension_cube_permute_slot` for moving a known cube argument:
   compose its face with the permutation, factor through an ordered face, and
   return that source slot plus the intrinsic orientation. This is geometry

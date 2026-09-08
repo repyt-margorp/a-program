@@ -173,6 +173,35 @@ static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *cla
 	other_context = pg_prove_context_extension(typing, empty, fresh,
 		pg_prove_universe(typing, classifiers, empty, 0));
 	assert(pg_synthesis_bind(&synthesis, root, name, fresh, other_context) != bound);
+	const struct pg_evidence *argument = pg_prove_type_value(typing, pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_evidence *returned = pg_prove_return(typing, classifiers, argument);
+	struct pg_synthesis_job *pending_function = request(&synthesis, typed[1], "main := f;");
+	struct pg_synthesis_job *pending_argument = pg_synthesis_return(&synthesis, empty, returned);
+	struct pg_synthesis_job *application = pg_synthesis_application(&synthesis, empty, pending_function, pending_argument);
+	assert(application && pg_synthesis_application(&synthesis, empty, pending_function, pending_argument) == application);
+	assert(!pg_synthesis_result(application));
+	const struct pg_evidence *result = complete(&synthesis, application, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *computed_argument = pg_synthesis_result(pending_argument);
+	same_judgement(result, pg_prove_application(typing, proofs[1], computed_argument));
+	struct pg_synthesis_job *arg_job = pg_synthesis_evidence(&synthesis, computed_argument);
+	struct pg_synthesis_job *canonical = pg_synthesis_application(&synthesis, empty, second, arg_job);
+	assert(pg_synthesis_status(canonical) == PG_SYNTHESIS_DONE && pg_synthesis_result(canonical) == result);
+	/* The same function Core at U0 cannot consume a value of U1. */
+	complete(&synthesis, pg_synthesis_application(&synthesis, empty, first, arg_job), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, pg_synthesis_application(&synthesis, empty, arg_job, arg_job), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, pg_synthesis_application(&synthesis, empty, second,
+		pg_synthesis_evidence(&synthesis, returned)), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, pg_synthesis_application(&synthesis, context, second, arg_job), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *thunked = pg_synthesis_evidence(&synthesis, pg_prove_thunk(typing, classifiers, proofs[1]));
+	complete(&synthesis, pg_synthesis_application(&synthesis, empty, thunked, arg_job), PG_SYNTHESIS_REJECTED);
+	struct pg_parser empty_parser;
+	pg_parser_init(&empty_parser, typing->graph, "", 0);
+	const struct pg_syntax *empty_program = pg_parser_program(&empty_parser);
+	assert(empty_program);
+	struct pg_synthesis_job *namespace_only = pg_synthesis_request(&synthesis, root, empty_program);
+	assert(!complete(&synthesis, namespace_only, PG_SYNTHESIS_DONE));
+	complete(&synthesis, pg_synthesis_application(&synthesis, empty, namespace_only, arg_job), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, pg_synthesis_application(&synthesis, empty, second, namespace_only), PG_SYNTHESIS_REJECTED);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 }
