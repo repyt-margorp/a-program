@@ -1,6 +1,7 @@
 #include "graph_io.h"
 #include "eval.h"
 #include "wire.h"
+#include "symmetry.h"
 
 #include <assert.h>
 #include <string.h>
@@ -16,7 +17,8 @@ static const char *name(void *context, const struct pg_object *object)
 	if (object == &oracle) return "test/oracle/v1";
 	if (object == &second_oracle) return "test/second-oracle/v1";
 	if (object == &owned_binder) return "test/binder/v1";
-	return NULL;
+	static char buffer[128];
+	return pg_symmetry_name(object, buffer, sizeof(buffer));
 }
 
 static const struct pg_object *resolve(void *context, const char *label)
@@ -25,7 +27,67 @@ static const struct pg_object *resolve(void *context, const char *label)
 	if (!strcmp(label, "test/oracle/v1")) return &oracle;
 	if (!strcmp(label, "test/second-oracle/v1")) return &second_oracle;
 	if (!strcmp(label, "test/binder/v1")) return &owned_binder;
-	return NULL;
+	return pg_symmetry_resolve(context, label);
+}
+
+static void symmetry_transport(struct pg_graph *source, struct pg_graph *destination)
+{
+	const char *names[] = {"kernel/symmetry/v1/", "kernel/symmetry/v1/0",
+		"kernel/symmetry/v1/0,1,2", "kernel/symmetry/v1/0,2,1",
+		"kernel/symmetry/v1/1,0,2", "kernel/symmetry/v1/1,2,0",
+		"kernel/symmetry/v1/2,0,1", "kernel/symmetry/v1/2,1,0"};
+	const struct pg_term *input[8];
+	const struct pg_term *argument = pg_reference(source, pg_binder(source));
+	for (size_t i = 0; i < 8; ++i) {
+		const struct pg_object *object = pg_symmetry_resolve(source, names[i]);
+		assert(object && object == pg_symmetry_resolve(source, names[i]));
+		input[i] = pg_application(source, pg_reference(source, object), argument);
+	}
+	FILE *file = tmpfile();
+	assert(file && !pg_graph_write(file, 8, input, name, NULL));
+	rewind(file);
+	size_t count;
+	const struct pg_term *const *roots;
+	assert(!pg_graph_read(file, destination, 100, 128, resolve, destination, &count, &roots));
+	assert(count == 8);
+	const struct pg_term *loaded_argument = NULL;
+	for (size_t i = 0; i < count; ++i) {
+		size_t dimension;
+		const size_t *axes;
+		const struct pg_term *term;
+		assert(pg_symmetry_view(roots[i], &dimension, &axes, &term));
+		if (!i) loaded_argument = term;
+		assert(term == loaded_argument && term != argument);
+		assert(dimension == (i < 2 ? i : 3));
+		char buffer[128];
+		const struct pg_object *object = roots[i]->as.application.function->as.reference;
+		assert(!strcmp(pg_symmetry_name(object, buffer, sizeof(buffer)), names[i]));
+		assert(object != input[i]->as.application.function->as.reference);
+		struct pg_coordinate coordinates[3];
+		for (size_t j = 0; j < dimension; ++j)
+			coordinates[j] = (struct pg_coordinate){PG_AXIS, axes[j]};
+		struct pg_dimension_map map = {.source = dimension, .target = dimension, .coordinates = coordinates};
+		assert(pg_symmetry(destination, &map, term) == roots[i]);
+		assert(!pg_symmetry_name(object, buffer, 2));
+	}
+	assert(roots[0] != loaded_argument && roots[1] != roots[0] && roots[2] != roots[1]);
+	/* Identity erasure is evaluation, never descriptor relocation. */
+	struct pg_eval evaluation;
+	pg_eval_init(&evaluation, roots[2]);
+	evaluation.dispatch = pg_symmetry_dispatch;
+	assert(pg_eval_advance(&evaluation, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&evaluation, destination) == loaded_argument);
+	pg_eval_destroy(&evaluation);
+	const char *invalid[] = {"kernel/symmetry/v2/0", "kernel/symmetry/v1/00",
+		"kernel/symmetry/v1/0,0", "kernel/symmetry/v1/2,0", "kernel/symmetry/v1/0,",
+		"kernel/symmetry/v1/,0", "kernel/symmetry/v1/-1", "kernel/symmetry/v1/+0",
+		"kernel/symmetry/v1/ 0", "kernel/symmetry/v1/0/x",
+		"kernel/symmetry/v1/184467440737095516160"};
+	size_t before = destination->objects.count;
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
+		assert(!pg_symmetry_resolve(destination, invalid[i]));
+	assert(destination->objects.count == before);
+	assert(!fclose(file));
 }
 
 static const struct pg_object *wrong_kind(void *context, const char *label)
@@ -39,6 +101,7 @@ int main(void)
 {
 	struct pg_graph source, destination;
 	assert(pg_graph_init(&source) == 0 && pg_graph_init(&destination) == 0);
+	symmetry_transport(&source, &destination);
 	FILE *collision = tmpfile();
 	const struct pg_term *separate[] = {pg_reference(&source, &oracle), pg_reference(&source, &second_oracle)};
 	assert(collision && !pg_graph_write(collision, 2, separate, name, NULL));

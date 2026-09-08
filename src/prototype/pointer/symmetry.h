@@ -15,6 +15,11 @@
  * allocation remain synchronous; fuel is not a wall-clock bound. */
 const struct pg_term *pg_symmetry(struct pg_graph *graph,
 	const struct pg_dimension_map *permutation, const struct pg_term *term);
+/* Versioned descriptor transport. Names preserve every axis, including fixed
+ * prefixes; resolving interns the raw operator, without reduction or typing.
+ * The caller supplies name storage. Invalid names do not intern descriptors. */
+const char *pg_symmetry_name(const struct pg_object *object, char *buffer, size_t capacity);
+const struct pg_object *pg_symmetry_resolve(struct pg_graph *graph, const char *name);
 /* Inspect exactly one raw symmetry application, without reduction, allocation
  * or typing. axes is graph-owned and includes fixed prefixes. Outputs remain
  * unchanged on failure. Additional APP arguments are not silently consumed. */

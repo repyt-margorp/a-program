@@ -1,6 +1,10 @@
 #include "symmetry.h"
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <inttypes.h>
+#include <errno.h>
 
 static const struct pg_object_class symmetry_class = {"dimension-permutation"};
 struct symmetry_entry {
@@ -10,11 +14,32 @@ struct symmetry_entry {
 	size_t fixed_prefix;
 };
 
+static const struct symmetry_entry *object_owner(const struct pg_object *reference)
+{
+	if (!reference || reference->owner != &symmetry_class) return NULL;
+	const char *object = (const char *)reference;
+	return (const struct symmetry_entry *)(object - offsetof(struct pg_object_entry, object));
+}
+
 static const struct symmetry_entry *owner(const struct pg_term *term)
 {
-	if (term->kind != PG_REFERENCE || term->as.reference->owner != &symmetry_class) return NULL;
-	const char *object = (const char *)term->as.reference;
-	return (const struct symmetry_entry *)(object - offsetof(struct pg_object_entry, object));
+	return term->kind == PG_REFERENCE ? object_owner(term->as.reference) : NULL;
+}
+
+static const char name_prefix[] = "kernel/symmetry/v1/";
+
+const char *pg_symmetry_name(const struct pg_object *object, char *buffer, size_t capacity)
+{
+	const struct symmetry_entry *entry = object_owner(object);
+	if (!entry || !buffer || capacity < sizeof(name_prefix)) return NULL;
+	memcpy(buffer, name_prefix, sizeof(name_prefix));
+	size_t used = sizeof(name_prefix) - 1;
+	for (size_t i = 0; i < entry->dimension; ++i) {
+		int length = snprintf(buffer + used, capacity - used, "%s%zu", i ? "," : "", entry->axes[i]);
+		if (length < 0 || (size_t)length >= capacity - used) return NULL;
+		used += (size_t)length;
+	}
+	return buffer;
 }
 
 int pg_symmetry_view(const struct pg_term *term, size_t *dimension,
@@ -58,6 +83,37 @@ static const struct pg_term *operator(struct pg_graph *graph, size_t dimension, 
 	}
 	if (pg_index_insert(&graph->objects, &entry->base.index, hash) != 0) return NULL;
 	return pg_reference(graph, &entry->base.object);
+}
+
+const struct pg_object *pg_symmetry_resolve(struct pg_graph *graph, const char *name)
+{
+	if (!graph || !name || strncmp(name, name_prefix, sizeof(name_prefix) - 1)) return NULL;
+	const char *digits = name + sizeof(name_prefix) - 1;
+	size_t dimension = *digits ? 1 : 0;
+	for (const char *p = digits; *p; ++p) if (*p == ',') ++dimension;
+	if (dimension > SIZE_MAX / sizeof(size_t)) return NULL;
+	size_t *axes = malloc((dimension ? dimension : 1) * sizeof(*axes));
+	unsigned char *seen = calloc(dimension ? dimension : 1, 1);
+	const struct pg_object *result = NULL;
+	if (!axes || !seen) goto done;
+	for (size_t i = 0; i < dimension; ++i) {
+		if (*digits < '0' || *digits > '9') goto done;
+		char *end;
+		errno = 0;
+		uintmax_t axis = strtoumax(digits, &end, 10);
+		if (errno == ERANGE || axis >= dimension) goto done;
+		if (*digits == '0' && end != digits + 1) goto done;
+		if (seen[axis] || *end != (i + 1 < dimension ? ',' : '\0')) goto done;
+		seen[axis] = 1;
+		axes[i] = (size_t)axis;
+		digits = i + 1 < dimension ? end + 1 : end;
+	}
+	const struct pg_term *term = operator(graph, dimension, axes);
+	if (term) result = term->as.reference;
+done:
+	free(axes);
+	free(seen);
+	return result;
 }
 
 const struct pg_term *pg_symmetry(struct pg_graph *graph,

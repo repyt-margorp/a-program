@@ -4559,7 +4559,20 @@ Classifier descriptor transport after `499cabb`:
   endpoint types coincide: its retained directional premise must still match.
   Optimized and ASan/UBSan separate-process runs passed. This tests the existing
   Identity rules' persistence, not new general higher coherence or fibrancy.
-- [ ] Owned dimension binders, general symmetry, recursive IADT descriptors
+- [x] After `4801800`, give raw symmetry operators owner-controlled versioned
+  names containing their complete ordered axis list. Resolve through the same
+  exact descriptor interner used by construction; preserve dimension and fixed
+  prefixes rather than reducing identities on load. The caller owns the name
+  buffer; descriptors gain no persistent string cache. Reject duplicate or
+  out-of-range axes, numeric aliases, overflow and unknown versions before
+  interning. Cross-arena graph tests cover all six cubic permutations, zero-
+  and one-dimensional identities, exact reconstruction through `pg_symmetry`,
+  shared relocated arguments and explicit post-load identity reduction.
+  Full pointer `make check` and ASan/UBSan graph transport tests pass. The
+  examples/inventory portion still checks parsing, not semantic parity.
+  This transports raw Core
+  references only; it neither introduces nor verifies a typed central symmetry.
+- [ ] Owned dimension binders, typed general symmetry, recursive IADT descriptors
   and module provenance still need their corresponding owner transport. These
   classifier names alone do not complete the `.a` descriptor format.
 
