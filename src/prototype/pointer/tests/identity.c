@@ -1098,6 +1098,17 @@ static void reflexive_instance_boundary(struct pg_typing *typing, struct pg_clas
 		assert(pg_identity_endpoint_result(pending) == path);
 		pg_identity_endpoint_destroy(pending);
 	}
+	struct pg_coordinate coordinate = {PG_ENDPOINT_ZERO, 0};
+	struct pg_dimension_map face = {0, 1, &coordinate};
+	assert(!pg_identity_face_init(typing, classifiers, empty, path, &face));
+	for (uint64_t split = 0; split <= 131; ++split) {
+		struct pg_identity_face_work *pending = pg_identity_face_init(typing, classifiers, empty, wrapped, &face);
+		assert(pending && pg_identity_face_advance(pending, split) == (split == 131));
+		assert(pg_identity_face_result(pending) == (split == 131 ? path : NULL));
+		assert(pg_identity_face_advance(pending, 131 - split) == 1);
+		assert(pg_identity_face_result(pending) == path);
+		pg_identity_face_destroy(pending);
+	}
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	const struct pg_evidence *identity_map = pg_prove_substitution(typing, empty, empty, 0, NULL);

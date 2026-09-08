@@ -135,7 +135,9 @@ const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,
 	const struct pg_binding_face *const *bindings);
 
 /* Resumable ordered proper-face selection. The immutable face must outlive
- * the worker. Fuel counts traversal steps; individual proof rules remain
+ * the worker. Layer-origin wrappers use the shared suspended traversal, and
+ * the first recovered formation is reused for endpoint selection. Fuel counts
+ * traversal steps; individual proof rules and inner family recovery remain
  * synchronous. No partial result is exposed; -1 includes unsupported input. */
 struct pg_identity_face_work;
 struct pg_identity_face_work *pg_identity_face_init(struct pg_typing *typing,

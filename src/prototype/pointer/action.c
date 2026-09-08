@@ -305,7 +305,7 @@ const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
 struct pg_identity_face_work {
 	struct pg_typing *typing;
 	struct pg_classifiers *classifiers;
-	const struct pg_evidence *context, *formation, *layer, *result;
+	const struct pg_evidence *context, *formation, *layer, *result, *origin_map;
 	const struct pg_dimension_map *face;
 	struct pg_identity_endpoint_work *endpoint;
 	size_t checked, axes, next, retained, remaining;
@@ -317,9 +317,12 @@ struct pg_identity_face_work *pg_identity_face_init(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_dimension_map *face)
 {
 	if (!face || face->source >= face->target || !face->coordinates) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!pg_evidence_owned_by(formation, typing)) return NULL;
+	if (pg_evidence_judgement(formation) != PG_JUDGEMENT_VALUE_TYPE &&
+		pg_evidence_judgement(formation) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	if (!pg_evidence_owned_by(context, typing)) return NULL;
 	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (!pg_evidence_owned_by(formation, typing)) return NULL;
 	if (pg_evidence_context(context) != pg_evidence_context(formation)) return NULL;
 	struct pg_identity_face_work *work = calloc(1, sizeof(*work));
 	if (!work) return NULL;
@@ -337,6 +340,8 @@ static int face_step(struct pg_identity_face_work *work)
 {
 	const struct pg_dimension_map *face = work->face;
 	if (work->checked < face->target) {
+		int status = origin_step(work->typing, &work->layer, &work->origin_map);
+		if (status <= 0) return status;
 		struct pg_coordinate coordinate = face->coordinates[work->checked];
 		switch (coordinate.kind) {
 		case PG_AXIS:
@@ -345,9 +350,12 @@ static int face_step(struct pg_identity_face_work *work)
 		case PG_ENDPOINT_ZERO: case PG_ENDPOINT_ONE: break;
 		default: return -1;
 		}
-		const struct pg_evidence *layer = pg_identity_formation(work->typing, work->classifiers, work->layer);
+		const struct pg_evidence *layer = formation_from_origin(work->typing, work->classifiers,
+			work->layer, work->origin_map);
+		work->origin_map = NULL;
 		struct pg_identity_boundary boundary;
 		if (!pg_identity_boundary_view(layer, &boundary)) return -1;
+		if (!work->checked) work->formation = layer;
 		work->layer = boundary.family;
 		++work->checked;
 		return 0;
