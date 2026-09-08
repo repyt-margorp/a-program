@@ -207,6 +207,54 @@ Admission audit after `8b3105b`:
   schema-only job.
   Optimized and ASan/UBSan synthesis suites passed with these source cases.
 
+### Next Implementation Boundary: Pending Recursive Formation
+
+Audit at `b87f7b1`: the three recent schema helpers do not implement recursive
+declaration checking. Re-running `check-examples` still gives 0/8, with the same
+transition counts above; `check-open-families` still fails at 86 transitions.
+These are missing implementations, not successful negative tests or a resource
+limit. Stop adding independent schema-helper checkpoints as a substitute for
+the following source-to-evidence path.
+
+The concrete dependency is in `synthesis.c`: `pg_source_scope.context` is an
+accepted context proof; `intern_scope` requires it; `pg_synthesis_bind` checks
+the extension through `pg_prove_variable`. `binding_step` waits for a completed
+domain proof before allocating the binder and inner scope. `constructor_step`
+uses that path for all fields before requesting the result map. Thus the
+current producer graph can wait for external definitions, but cannot express
+the provisional Self-family formation needed inside its own constructor fields.
+Changing the final result-map checker cannot repair this ordering.
+
+- [ ] Represent the pending declaration's Self signature, index applications
+  and universe obligations in its existing synthesis work, before requiring
+  accepted field-context proofs. Reuse binding pointers and source expressions;
+  do not introduce a second erased computation graph or accepted placeholder
+  proofs. A task dependency by itself is not a logical Self assumption.
+- [ ] Specify and implement the scoped formation rule and its discharge.
+  Field derivations may use the declared signature conditionally, but a public
+  formation must retain the checked discharge. The implementation must make
+  escaping an undischarged assumption impossible; merely keeping its source
+  name private is not sufficient. Do not automatically turn a signature into
+  an ordinary CBPV function or a universe inhabitant.
+- [ ] Generate the pending universe conditions, solve them through the same
+  work scheduling, and build final immutable derivations at the resulting
+  levels. Keep syntax/name resolution, pending constraints and accepted evidence
+  distinct without duplicating their authority. A global rewrite of all source
+  scopes is not yet justified: first implement the actual recursive formation
+  contract, then change shared scope APIs where that contract requires it.
+- [ ] Exercise the complete path on `@{zero:*; succ:*->*;}`, a field which
+  stores a universe, and an indexed constructor using `* index`. A rejected
+  negative recursive field must not publish a formation. Check split budgets,
+  repeated requests, two distinct nominal declarations and `::` post-checking.
+- [ ] Add constructor membership and typed Match/IH, then close the existing
+  source and execution gates. No helper success stands in for these gates.
+
+This is not a requirement to solve arbitrary open computation-valued families
+before admitting every nominal declaration. That separate issue remains open.
+Likewise nonrecursive closed declarations still need a formation rule, but do
+not require a hypothetical Self assumption. The implementation must not invent
+either dependency solely to force all cases through a special-case workaround.
+
 - A scoped family signature supplies its fixed parameter context and index
   telescope. Instantiating that signature consumes checked index images and
   forms a type symbolically. It is not APP elimination of a `Comp Universe`
