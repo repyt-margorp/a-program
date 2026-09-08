@@ -99,6 +99,13 @@ struct pg_synthesis_job *pg_synthesis_handler_return(struct pg_synthesis *synthe
 struct pg_synthesis_job *pg_synthesis_handler_clause(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
 	const struct pg_syntax *clause);
+/* Assemble all clauses through the shared producers and final kernel rule.
+ * Exactly one #.return clause is required, in any position. The carrier must
+ * come from independent inference; this is not a source :: expectation and
+ * does not implement automatic carrier/effect generation from arbitrary syntax. */
+struct pg_synthesis_job *pg_synthesis_handler(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
+	const struct pg_syntax *syntax);
 struct pg_effect_inference;
 /* Borrow a sealed positive effect-equation graph into ordinary budgeted Solve.
  * Completion has no proof result: closed rows are read from work and must still

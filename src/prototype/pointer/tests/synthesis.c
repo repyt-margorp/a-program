@@ -374,6 +374,33 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *both_value = pg_prove_return_value(typing,
 		normalize(&synthesis, context, both_handled));
 	assert(both_value && pg_evidence_subject(both_value)->core == pg_evidence_subject(u0)->core);
+	const struct pg_source_scope *handler_scope = pg_synthesis_name(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Given", .length=5}, quoted_function);
+	const char *handlers[] = {
+		"h := (Fetch Arg) (Op Arg) @Alias req k => k req @#.return x => x @Fetch req k => k Given;",
+		"h := (Fetch Arg) (Op Arg) @#.return x => x @Fetch req k => k Given @Op req k => k req;",
+		"h := (Fetch Arg) (Op Arg) @Fetch req k => k Given @Alias req k => k req @#.return x => x;",
+		"h := (Op Arg) @Op req k => k req @Alias req k => k req @#.return x => x;",
+		"h := (Op Arg) @Op req k => k req;",
+		"h := (Op Arg) @#.return x => x @Op req k => k req @#.return y => y;",
+		"h := (Op Arg) @Op req k => Result @#.return x => x;"
+	};
+	for (size_t i = 0; i < sizeof(handlers) / sizeof(*handlers); ++i) {
+		pg_parser_init(&handler_parser, typing->graph, handlers[i], strlen(handlers[i]));
+		assert(pg_parser_next(&handler_parser, &handler_definition) == 1);
+		struct pg_synthesis_job *assembled = pg_synthesis_handler(&synthesis, handler_scope,
+			carrier_job, handler_definition.expression);
+		assert(assembled && !pg_synthesis_result(assembled));
+		assert(assembled == pg_synthesis_handler(&synthesis, handler_scope,
+			carrier_job, handler_definition.expression));
+		const struct pg_evidence *proof = complete(&synthesis, assembled,
+			i < 3 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+		if (i >= 3) continue;
+		assert(proof == complete(&synthesis, pg_synthesis_handler(&synthesis, handler_scope,
+			pg_synthesis_evidence(&synthesis, carrier), handler_definition.expression), PG_SYNTHESIS_DONE));
+		const struct pg_evidence *value = pg_prove_return_value(typing, normalize(&synthesis, context, proof));
+		assert(value && pg_evidence_subject(value)->core == pg_evidence_subject(u0)->core);
+	}
 	const struct pg_evidence *called = complete(&synthesis,
 		request(&synthesis, scope, "called := Op Arg;"), PG_SYNTHESIS_DONE);
 	const char *wrong_body = "handler := (Op Arg) @Op req k => Result;";

@@ -92,6 +92,10 @@ struct family_state {
 	const struct pg_evidence **paths;
 	size_t count, common, next;
 };
+struct handler_state {
+	size_t scanned, next, count;
+	struct pg_handler_clause clauses[];
+};
 struct derivation_state {
 	size_t next;
 	const struct pg_evidence **premises;
@@ -99,7 +103,7 @@ struct derivation_state {
 	const struct pg_reduction_certificate *reduction;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const void *owner;
@@ -138,6 +142,7 @@ struct pg_synthesis_job {
 	const struct pg_data_schema *schema;
 	const struct pg_source_scope *exports;
 	struct match_state *match;
+	struct handler_state *handler;
 	struct family_state *family;
 	struct derivation_state *derivation;
 	const void *inputs[];
@@ -342,6 +347,19 @@ struct pg_synthesis_job *pg_synthesis_handler_clause(struct pg_synthesis *synthe
 	const void *inputs[] = {scope, carrier, clause};
 	struct pg_synthesis_job *job = request_inputs(synthesis, HANDLER_CLAUSE_JOB, 3, inputs);
 	if (job) { job->scope = scope; job->syntax = clause; }
+	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_handler(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
+	const struct pg_syntax *syntax)
+{
+	if (!scope || scope->owner != synthesis->owner_key) return NULL;
+	if (!carrier || carrier->owner != synthesis->owner_key) return NULL;
+	if (!syntax || syntax->kind != PG_SYNTAX_ELIMINATION) return NULL;
+	const void *inputs[] = {scope, carrier, syntax};
+	struct pg_synthesis_job *job = request_inputs(synthesis, HANDLER_JOB, 3, inputs);
+	if (job) { job->scope = scope; job->syntax = syntax; }
 	return job;
 }
 
@@ -2349,6 +2367,65 @@ rejected:
 	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
 }
 
+static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *carrier = (void *)job->inputs[1];
+	if (carrier->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, carrier); return; }
+	if (carrier->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, carrier->status); return; }
+	if (!pg_evidence_owned_by(carrier->result, synthesis->typing)) goto rejected;
+	struct pg_synthesis_job *canonical = pg_synthesis_handler(synthesis, job->scope,
+		pg_synthesis_evidence(synthesis, carrier->result), job->syntax);
+	if (forward_proof(synthesis, job, canonical)) return;
+	size_t count = job->syntax->item_count;
+	if (!job->handler) {
+		if (count > (SIZE_MAX - sizeof(*job->handler)) / sizeof(struct pg_handler_clause)) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+		}
+		job->handler = pg_alloc(synthesis->typing->graph, sizeof(*job->handler) + count * sizeof(struct pg_handler_clause));
+		if (!job->handler) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		job->left = pg_synthesis_request(synthesis, job->scope, job->syntax->left);
+		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	}
+	struct handler_state *state = job->handler;
+	if (state->scanned < count) {
+		const struct pg_syntax *clause = job->syntax->items[state->scanned++].expression;
+		if (return_clause(clause)) {
+			if (job->right) goto rejected;
+			job->right = pg_synthesis_handler_return(synthesis, job->scope, job->left, clause);
+			if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		}
+		enqueue(synthesis, job);
+		return;
+	}
+	if (!job->right) goto rejected;
+	if (state->next < count) {
+		const struct pg_syntax *clause = job->syntax->items[state->next].expression;
+		if (!return_clause(clause)) {
+			struct pg_synthesis_job *operation = pg_synthesis_operation_reference(synthesis,
+				pg_synthesis_request(synthesis, job->scope, clause->left));
+			struct pg_synthesis_job *body = pg_synthesis_handler_clause(synthesis, job->scope, carrier, clause);
+			struct pg_synthesis_job *inputs[] = {operation, body};
+			for (size_t i = 0; i < 2; ++i) {
+				if (!inputs[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+				if (inputs[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, inputs[i]); return; }
+				if (inputs[i]->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, inputs[i]->status); return; }
+			}
+			state->clauses[state->count++] = (struct pg_handler_clause){pg_synthesis_operation_declaration(operation), body->result};
+		}
+		++state->next;
+		enqueue(synthesis, job);
+		return;
+	}
+	if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
+	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
+	job->result = pg_prove_handler(synthesis->typing, synthesis->classifiers,
+		computation(synthesis, job->left->result), job->right->result, carrier->result, state->count, state->clauses);
+	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+	return;
+rejected:
+	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
+}
+
 static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->result) goto complete;
@@ -2887,6 +2964,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == OPERATION_REFERENCE_JOB) { operation_reference_step(synthesis, job); return; }
 	if (job->role == HANDLER_RETURN_JOB) { handler_return_step(synthesis, job); return; }
 	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }
+	if (job->role == HANDLER_JOB) { handler_step(synthesis, job); return; }
 	if (job->role == EFFECT_INFERENCE_JOB) {
 		int status = pg_effect_inference_advance((void *)job->inputs[0], 1);
 		if (!status) enqueue(synthesis, job);

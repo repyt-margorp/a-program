@@ -15,6 +15,15 @@ criteria for merging different Lambda or semantic-object references.
 
 ### September 8 handler effect-equation boundary
 
+- [x] Assemble parsed multi-clause handlers through
+  `pg_synthesis_handler(scope, carrier_producer, syntax)`. Share the existing
+  return/clause jobs and nominal operation resolver; finish with the existing
+  kernel handler rule. Require exactly one explicit `#.return`, in any position.
+  Tests execute Fetch/Op handlers in three clause orders and check producer
+  reuse, duplicate operation aliases, missing/duplicate returns and incompatible
+  clause results. This internal API takes an independently supplied carrier;
+  ordinary source dispatch must not guess that carrier from `::` or assume an
+  empty effect row. Automatic source carrier/effect inference remains open.
 - [x] Add shared `pg_synthesis_handler_clause(scope, carrier_producer, clause)`.
   It awaits operation alias resolution and the independently supplied carrier,
   constructs the existing checked payload/resumption context, and synthesizes
