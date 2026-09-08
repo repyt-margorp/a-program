@@ -135,6 +135,15 @@ passing value evidence instead of type formation is rejected at initialization.
 No persistent cache or independent boundary authority is introduced.
 Complete pointer `make check` and ASan/UBSan `identity_test` passed.
 
+Selected-family follow-up: one `formation_origin` cursor now records both
+outer and family origins and their composed substitutions. Synchronous
+recovery, endpoint traversal and proper-face validation use the same step
+function. This supersedes the synchronous family-origin traversal limitation
+above; reconstruction and individual proof rules remain synchronous.
+A 64-conversion family chain checks every fuel split and publishes no partial
+endpoint. The cursor is invocation-local, not another accepted-result store.
+Complete pointer `make check` and ASan/UBSan `identity_test` passed.
+
 - [x] Preserve exact descriptor/application interning: a permutation with
   fixed leading axes remains a distinct raw node from its shorter form.
 - [x] Reduce fixed leading axes during evaluation, with one coordinate per

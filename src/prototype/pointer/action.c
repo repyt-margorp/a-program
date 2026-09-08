@@ -107,13 +107,19 @@ static int origin_step(struct pg_typing *typing,
 	return 0;
 }
 
-static const struct pg_evidence *retained_origin(struct pg_typing *typing,
-	const struct pg_evidence *formation, const struct pg_evidence **substitution)
+struct formation_origin {
+	const struct pg_evidence *term, *map, *family, *family_map;
+};
+
+static int formation_origin_step(struct pg_typing *typing, struct formation_origin *origin)
 {
-	int status;
-	while ((status = origin_step(typing, &formation, substitution)) == 0) {}
-	if (status < 0) return NULL;
-	return formation;
+	if (!origin->family) {
+		int status = origin_step(typing, &origin->term, &origin->map);
+		if (status <= 0) return status;
+		if (pg_evidence_rule(origin->term) != PG_IDENTITY_INSTANCE) return 1;
+		origin->family = pg_evidence_premise(origin->term, 0);
+	}
+	return origin_step(typing, &origin->family, &origin->family_map);
 }
 
 static const struct pg_evidence *rebuild_family(struct pg_typing *typing,
@@ -136,17 +142,17 @@ static const struct pg_evidence *rebuild_family(struct pg_typing *typing,
 }
 
 static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
-	const struct pg_evidence *map)
+	struct pg_classifiers *classifiers, const struct formation_origin *origin)
 {
+	const struct pg_evidence *formation = origin->term, *map = origin->map;
 	enum pg_evidence_rule rule = pg_evidence_rule(formation);
 	struct pg_identity_boundary boundary;
 	if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
 	/* A checked refl A selects the ordinary Identity family of A. Recover it
 	 * from its premise, never from the shape of the family Core application. */
 	if (rule == PG_IDENTITY_INSTANCE) {
-		const struct pg_evidence *family_map = NULL;
-		const struct pg_evidence *family = retained_origin(typing, boundary.family, &family_map);
+		const struct pg_evidence *family_map = origin->family_map;
+		const struct pg_evidence *family = origin->family;
 		if (!family) return NULL;
 		if (pg_evidence_rule(family) == PG_REFLEXIVITY) {
 			const struct pg_evidence *type = pg_prove_value_type(typing, pg_evidence_premise(family, 1));
@@ -185,9 +191,10 @@ const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
 	default: return NULL;
 	}
-	const struct pg_evidence *map = NULL;
-	formation = retained_origin(typing, formation, &map);
-	return formation ? formation_from_origin(typing, classifiers, formation, map) : NULL;
+	struct formation_origin origin = {.term = formation};
+	int status;
+	while ((status = formation_origin_step(typing, &origin)) == 0) {}
+	return status > 0 ? formation_from_origin(typing, classifiers, &origin) : NULL;
 }
 
 struct endpoint_frame {
@@ -200,7 +207,8 @@ struct pg_identity_endpoint_work {
 	struct pg_graph temporary;
 	struct pg_typing *typing;
 	struct pg_classifiers *classifiers;
-	const struct pg_evidence *context, *formation, *result, *origin_map;
+	const struct pg_evidence *context, *formation, *result;
+	struct formation_origin origin;
 	struct endpoint_frame *stack;
 	size_t depth;
 	enum pg_identity_direction side;
@@ -234,11 +242,11 @@ static int endpoint_step(struct pg_identity_endpoint_work *work)
 {
 	struct pg_typing *typing = work->typing;
 	if (!work->result) {
-		int status = origin_step(typing, &work->formation, &work->origin_map);
+		if (!work->origin.term) work->origin.term = work->formation;
+		int status = formation_origin_step(typing, &work->origin);
 		if (status <= 0) return status;
-		const struct pg_evidence *formation = formation_from_origin(typing, work->classifiers,
-			work->formation, work->origin_map);
-		work->origin_map = NULL;
+		const struct pg_evidence *formation = formation_from_origin(typing, work->classifiers, &work->origin);
+		work->origin = (struct formation_origin){0};
 		struct pg_identity_boundary boundary;
 		if (!pg_identity_boundary_view(formation, &boundary)) return -1;
 		if (!work->depth) {
@@ -305,7 +313,8 @@ const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
 struct pg_identity_face_work {
 	struct pg_typing *typing;
 	struct pg_classifiers *classifiers;
-	const struct pg_evidence *context, *formation, *layer, *result, *origin_map;
+	const struct pg_evidence *context, *formation, *layer, *result;
+	struct formation_origin origin;
 	const struct pg_dimension_map *face;
 	struct pg_identity_endpoint_work *endpoint;
 	size_t checked, axes, next, retained, remaining;
@@ -340,7 +349,8 @@ static int face_step(struct pg_identity_face_work *work)
 {
 	const struct pg_dimension_map *face = work->face;
 	if (work->checked < face->target) {
-		int status = origin_step(work->typing, &work->layer, &work->origin_map);
+		if (!work->origin.term) work->origin.term = work->layer;
+		int status = formation_origin_step(work->typing, &work->origin);
 		if (status <= 0) return status;
 		struct pg_coordinate coordinate = face->coordinates[work->checked];
 		switch (coordinate.kind) {
@@ -350,9 +360,8 @@ static int face_step(struct pg_identity_face_work *work)
 		case PG_ENDPOINT_ZERO: case PG_ENDPOINT_ONE: break;
 		default: return -1;
 		}
-		const struct pg_evidence *layer = formation_from_origin(work->typing, work->classifiers,
-			work->layer, work->origin_map);
-		work->origin_map = NULL;
+		const struct pg_evidence *layer = formation_from_origin(work->typing, work->classifiers, &work->origin);
+		work->origin = (struct formation_origin){0};
 		struct pg_identity_boundary boundary;
 		if (!pg_identity_boundary_view(layer, &boundary)) return -1;
 		if (!work->checked) work->formation = layer;

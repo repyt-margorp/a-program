@@ -1117,6 +1117,21 @@ static void reflexive_instance_boundary(struct pg_typing *typing, struct pg_clas
 		identity_map, identity_map, 0, NULL);
 	const struct pg_evidence *family_type = pg_prove_identity_type(typing,
 		pg_prove_classifier(typing, classifiers, empty, line_value), line_value, line_value);
+	const struct pg_evidence *converted_family = family;
+	for (size_t i = 0; i < 64; ++i) converted_family = convert_to(typing, &work, converted_family, family_type);
+	const struct pg_evidence *converted_instance = pg_prove_identity_instance(typing, classifiers,
+		converted_family, path, path);
+	assert(converted_instance);
+	for (uint64_t split = 0; split <= 64; ++split) {
+		struct pg_identity_endpoint_work *pending = pg_identity_endpoint_init(typing, classifiers,
+			empty, converted_instance, 0, PG_IDENTITY_LEFT);
+		assert(pending && pg_identity_endpoint_advance(pending, split) == 0);
+		assert(!pg_identity_endpoint_result(pending));
+		assert(pg_identity_endpoint_advance(pending, 64 - split) == 0);
+		assert(pg_identity_endpoint_advance(pending, 1) == 1);
+		assert(pg_identity_endpoint_result(pending) == path);
+		pg_identity_endpoint_destroy(pending);
+	}
 	acted_family = convert_to(typing, &work, acted_family, family_type);
 	const struct pg_evidence *acted_instance = pg_prove_identity_instance(typing, classifiers, acted_family, path, path);
 	assert(acted_instance);
