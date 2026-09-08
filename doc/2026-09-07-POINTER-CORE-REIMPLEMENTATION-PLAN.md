@@ -781,6 +781,22 @@ finish general handler source support.
   This is not a wall-time speedup claim. Implementation C/header: +52/-28;
   tests: +11/-0; documentation separate.
 
+  September 9, after `9f72ac9`: substitution formation now accepts pending
+  source/destination context producers through `pg_synthesis_substitution_jobs`.
+  Accepted context inputs delegate to this same worker. It awaits both contexts,
+  checks their judgements and source arity, then uses the existing ordered image
+  synthesis, conversion and pairing operations. No partial map is published.
+  Tests suspend an identity map under an unsealed effect row, then check its
+  context endpoints, image judgement, accepted reconstruction and agreement
+  with the accepted-input API. Different image proof paths need not have the
+  same proof pointer; reconstructing from the actual checked premises must.
+  Wrong arity and non-context producers reject. Constructor scope lifting still
+  needs composition from these producers; this prerequisite does not complete
+  pending Match or pending artifact transport.
+  Normal components, eight source cases, six runtime cases and rebuilt
+  ASan/UBSan synthesis tests pass; example transition counts are unchanged.
+  Implementation C/header: +31/-1; tests: +23/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.

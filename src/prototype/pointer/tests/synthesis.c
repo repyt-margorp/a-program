@@ -455,6 +455,13 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, result_classifier, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(result_classifier) == pg_universe(classifiers, 0));
 		assert(!pg_synthesis_result(result_context) && !pg_synthesis_result(result_variable));
+		struct pg_synthesis_job *pending_images[] = {source_variable};
+		struct pg_synthesis_job *pending_map = pg_synthesis_substitution_jobs(&synthesis, context, context, 1, pending_images);
+		struct pg_synthesis_job *wrong_arity_map = pg_synthesis_substitution_jobs(&synthesis, context, context, 0, NULL);
+		assert(pending_map == pg_synthesis_substitution_jobs(&synthesis, context, context, 1, pending_images));
+		pg_synthesis_advance(&synthesis, 100);
+		assert(pg_synthesis_status(pending_map) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(pending_map));
+		assert(pg_synthesis_status(wrong_arity_map) == PG_SYNTHESIS_PENDING);
 		struct pg_synthesis_job *computed_argument = request(&synthesis, result_scope,
 			"v := (\\x : @ => x) ((\\x : @ => x) result);");
 		struct pg_synthesis_job *computed_argument_type = pg_synthesis_classifier_structure(&synthesis, computed_argument);
@@ -763,6 +770,16 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(response_result == pg_effect_type(classifiers, row, response_domain));
 		assert(pg_evidence_classifier(return_proof) == pg_synthesis_type_structure_result(return_clause_type));
 		const struct pg_evidence *result_proof = complete(&synthesis, result_variable, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *map_proof = complete(&synthesis, pending_map, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *map_image = complete(&synthesis, source_variable, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_rule(map_proof) == PG_CONTEXT_SUBSTITUTION);
+		assert(pg_evidence_premise(map_proof, 0) == expected_context && pg_evidence_premise(map_proof, 1) == expected_context);
+		const struct pg_evidence *checked_image = pg_evidence_premise(map_proof, 2);
+		same_judgement(checked_image, map_image);
+		assert(map_proof == pg_prove_substitution(typing, expected_context, expected_context, 1, &checked_image));
+		assert(map_proof == complete(&synthesis,
+			pg_synthesis_substitution(&synthesis, expected_context, expected_context, 1, pending_images), PG_SYNTHESIS_DONE));
+		complete(&synthesis, wrong_arity_map, PG_SYNTHESIS_REJECTED);
 		const struct pg_evidence *computed_proof = complete(&synthesis, computed_argument, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *function_proof = complete(&synthesis, computed_function, PG_SYNTHESIS_DONE);
 		assert(!complete(&synthesis, computed_function_core, PG_SYNTHESIS_DONE));
@@ -2622,6 +2639,8 @@ static void substitution_jobs(struct pg_typing *typing, struct pg_classifiers *c
 			pg_synthesis_return(&synthesis, destination, computation)};
 		struct pg_synthesis_job *job = pg_synthesis_substitution(&synthesis, source, destination, 2, images);
 		assert(job && pg_synthesis_substitution(&synthesis, source, destination, 2, images) == job);
+		assert(job == pg_synthesis_substitution_jobs(&synthesis, pg_synthesis_evidence(&synthesis, source),
+			pg_synthesis_evidence(&synthesis, destination), 2, images));
 		pg_synthesis_advance(&synthesis, 8);
 		assert(pg_synthesis_status(job) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(job));
 		for (unsigned i = 0; pg_synthesis_status(job) == PG_SYNTHESIS_PENDING; ++i) {
@@ -2637,6 +2656,10 @@ static void substitution_jobs(struct pg_typing *typing, struct pg_classifiers *c
 		struct pg_synthesis_job *wrong[] = {images[1], images[0]};
 		complete(&synthesis, pg_synthesis_substitution(&synthesis, source, destination, 2, wrong), PG_SYNTHESIS_REJECTED);
 		assert(!pg_synthesis_substitution(&synthesis, source, destination, 1, images));
+		complete(&synthesis, pg_synthesis_substitution_jobs(&synthesis, pg_synthesis_evidence(&synthesis, source),
+			pg_synthesis_evidence(&synthesis, destination), 1, images), PG_SYNTHESIS_REJECTED);
+		complete(&synthesis, pg_synthesis_substitution_jobs(&synthesis, images[0],
+			pg_synthesis_evidence(&synthesis, destination), 0, NULL), PG_SYNTHESIS_REJECTED);
 		complete(&synthesis, pg_synthesis_substitution(&synthesis, empty, destination, 0, NULL), PG_SYNTHESIS_DONE);
 		pg_synthesis_destroy(&synthesis);
 		pg_whnf_work_destroy(&work);

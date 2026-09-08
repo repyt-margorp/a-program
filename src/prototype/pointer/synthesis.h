@@ -432,6 +432,11 @@ struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *syn
 struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesis,
 	const struct pg_evidence *source, const struct pg_evidence *destination,
 	size_t count, struct pg_synthesis_job *const *images);
+/* Same worker with pending source/destination contexts. Arity and context
+ * validity are checked after those producers finish, before forming a map. */
+struct pg_synthesis_job *pg_synthesis_substitution_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *source, struct pg_synthesis_job *destination,
+	size_t count, struct pg_synthesis_job *const *images);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
  * Requests do not reduce; unsupported neutral heads are not negative proofs.

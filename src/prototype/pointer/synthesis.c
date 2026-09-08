@@ -1042,6 +1042,17 @@ struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesi
 	size_t arity;
 	if (pg_context_extension_size(pg_evidence_context(source), NULL, &arity) != 0) return NULL;
 	if (arity != count || (count && !images)) return NULL;
+	return pg_synthesis_substitution_jobs(synthesis, pg_synthesis_evidence(synthesis, source),
+		pg_synthesis_evidence(synthesis, destination), count, images);
+}
+
+struct pg_synthesis_job *pg_synthesis_substitution_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *source, struct pg_synthesis_job *destination,
+	size_t count, struct pg_synthesis_job *const *images)
+{
+	if (!source || source->owner != synthesis->owner_key) return NULL;
+	if (!destination || destination->owner != synthesis->owner_key) return NULL;
+	if (count && !images) return NULL;
 	if (count > SIZE_MAX / sizeof(const void *) - 2) return NULL;
 	struct pg_graph temporary = {0};
 	const void **inputs = pg_alloc(&temporary, (count + 2) * sizeof(*inputs));
@@ -3068,7 +3079,21 @@ static void substitution_step(struct pg_synthesis *synthesis, struct pg_synthesi
 			if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return; }
 		} else {
 			size_t count = job->input_count - 2;
-			job->substitution = substitution_start(synthesis, job->inputs[0], job->inputs[1], count);
+			const struct pg_evidence *contexts[2];
+			for (size_t i = 0; i < 2; ++i) {
+				struct pg_synthesis_job *producer = (void *)job->inputs[i];
+				if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
+				if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return; }
+				contexts[i] = producer->result;
+				if (!contexts[i] || pg_evidence_judgement(contexts[i]) != PG_JUDGEMENT_CONTEXT) {
+					finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+				}
+			}
+			size_t arity;
+			if (pg_context_extension_size(pg_evidence_context(contexts[0]), NULL, &arity) || arity != count) {
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+			}
+			job->substitution = substitution_start(synthesis, contexts[0], contexts[1], count);
 			if (!job->substitution) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			for (size_t i = 0; i < count; ++i)
 				job->substitution->entries[i].image = (struct pg_synthesis_job *)job->inputs[i + 2];
