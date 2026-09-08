@@ -525,6 +525,13 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_token op_name = {.kind = PG_TOKEN_IDENT, .text = "Op", .length = 2};
 		const struct pg_source_scope *op_scope = pg_synthesis_name_job(&synthesis, root, op_name,
 			pg_synthesis_operation(&synthesis, pending_op));
+		const struct pg_source_scope *pending_op_scope = pg_synthesis_name_job(&synthesis, scope, op_name,
+			pg_synthesis_operation(&synthesis, pending_op));
+		struct pg_synthesis_job *pending_op_name = request(&synthesis, pending_op_scope, "v := Op;");
+		struct pg_synthesis_job *pending_op_reference = pg_synthesis_operation_reference(&synthesis, pending_op_name);
+		assert(pg_synthesis_operation_declaration(pending_op_reference) == pending_op);
+		assert(pg_synthesis_status(pending_op_reference) == PG_SYNTHESIS_PENDING);
+		assert(!pg_synthesis_result(context) && !pg_synthesis_result(pending_op_name));
 		const char *op_source = "h := M @Op req resume => resume req;";
 		struct pg_parser op_parser;
 		struct pg_definition op_definition;
@@ -537,6 +544,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *op_term = pg_synthesis_term_structure(&synthesis, op_clause);
 		assert(!complete(&synthesis, op_type, PG_SYNTHESIS_DONE));
 		assert(!complete(&synthesis, op_term, PG_SYNTHESIS_DONE));
+		struct pg_synthesis_job *open_clause = pg_synthesis_handler_clause(&synthesis, pending_op_scope,
+			open_carrier, op_definition.expression->items[0].expression);
+		struct pg_synthesis_job *open_clause_type = pg_synthesis_classifier_structure(&synthesis, open_clause);
+		assert(!complete(&synthesis, open_clause_type, PG_SYNTHESIS_DONE));
+		assert(pg_alpha_equal(pg_synthesis_type_structure_result(open_clause_type), pg_synthesis_type_structure_result(op_type)) == 1);
+		assert(!pg_synthesis_result(open_clause) && !pg_synthesis_result(context));
 		const struct pg_term *payload_domain, *resume_pi, *resume_domain, *clause_result;
 		const struct pg_object *payload_binder, *resume_binder;
 		assert(pg_pi_view(pg_synthesis_type_structure_result(op_type), &payload_domain, &payload_binder, &resume_pi));
@@ -670,9 +683,13 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
+		assert(!complete(&synthesis, pending_op_reference, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_operation_declaration(pending_op_reference) == pending_op);
 		same_judgement(complete(&synthesis, open_carrier, PG_SYNTHESIS_DONE),
 			pg_prove_projection(typing, pg_synthesis_result(context), pg_synthesis_result(carrier)));
 		const struct pg_evidence *op_proof = complete(&synthesis, op_clause, PG_SYNTHESIS_DONE);
+		same_judgement(complete(&synthesis, open_clause, PG_SYNTHESIS_DONE),
+			pg_prove_projection(typing, pg_synthesis_result(context), op_proof));
 		const struct pg_evidence *block_clause_proof = complete(&synthesis, block_clause, PG_SYNTHESIS_DONE);
 		assert(pg_pi_view(pg_evidence_classifier(block_clause_proof), &block_domain, &block_binder, &block_resume));
 		assert(pg_pi_view(block_resume, &block_domain, &block_binder, &block_result));
@@ -812,7 +829,8 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	struct pg_synthesis_job *operation_job = pg_synthesis_operation(&synthesis, operation);
 	assert(operation_job && !pg_synthesis_result(operation_job));
 	struct pg_synthesis_job *operation_reference = pg_synthesis_operation_reference(&synthesis, operation_job);
-	assert(operation_reference && !pg_synthesis_operation_declaration(operation_reference));
+	assert(operation_reference && pg_synthesis_operation_declaration(operation_reference) == operation);
+	assert(pg_synthesis_status(operation_reference) == PG_SYNTHESIS_PENDING);
 	assert(pg_synthesis_operation_reference(&synthesis, operation_job) == operation_reference);
 	assert(pg_synthesis_operation(&synthesis, operation) == operation_job);
 	assert(!pg_synthesis_operation(&synthesis, NULL));
@@ -858,7 +876,9 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	for (size_t i = 0; i < sizeof(aliases) / sizeof(*aliases); ++i) {
 		struct pg_synthesis_job *alias = request(&synthesis, scope, aliases[i]);
 		struct pg_synthesis_job *reference = pg_synthesis_operation_reference(&synthesis, alias);
-		assert(reference && !pg_synthesis_operation_declaration(reference));
+		assert(reference && pg_synthesis_status(reference) == PG_SYNTHESIS_PENDING);
+		const struct pg_operation_declaration *structural = pg_synthesis_operation_declaration(reference);
+		assert(!structural || structural == operation);
 		assert(!complete(&synthesis, reference, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_operation_declaration(reference) == operation);
 		assert(pg_synthesis_operation_reference(&synthesis, alias) == reference);
@@ -995,6 +1015,9 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(both_value && pg_evidence_subject(both_value)->core == pg_evidence_subject(u0)->core);
 	const struct pg_source_scope *handler_scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Given", .length=5}, quoted_function);
+	handler_scope = pg_synthesis_name_job(&synthesis, handler_scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="WrongOp", .length=7},
+		request(&synthesis, scope, "bad := Op :: Result;"));
 	const char *handlers[] = {
 		"h := (Fetch Arg) (Op Arg) @Alias req k => k req @#.return x => x @Fetch req k => k Given;",
 		"h := (Fetch Arg) (Op Arg) @#.return x => x @Fetch req k => k Given @Op req k => k req;",
@@ -1002,7 +1025,8 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		"h := (Op Arg) @Op req k => k req @Alias req k => k req @#.return x => x;",
 		"h := (Op Arg) @Op req k => k req;",
 		"h := (Op Arg) @#.return x => x @Op req k => k req @#.return y => y;",
-		"h := (Op Arg) @Op req k => Result @#.return x => x;"
+		"h := (Op Arg) @Op req k => Result @#.return x => x;",
+		"h := (Op Arg) @WrongOp req k => k req @#.return x => x;"
 	};
 	for (size_t i = 0; i < sizeof(handlers) / sizeof(*handlers); ++i) {
 		pg_parser_init(&handler_parser, typing->graph, handlers[i], strlen(handlers[i]));

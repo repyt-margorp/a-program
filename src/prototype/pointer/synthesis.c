@@ -517,13 +517,6 @@ struct pg_synthesis_job *pg_synthesis_operation_reference(struct pg_synthesis *s
 	return request_job(synthesis, OPERATION_REFERENCE_JOB, producer, NULL);
 }
 
-const struct pg_operation_declaration *pg_synthesis_operation_declaration(const struct pg_synthesis_job *job)
-{
-	if (!job || job->status != PG_SYNTHESIS_DONE) return NULL;
-	if (job->role != OPERATION_REFERENCE_JOB) return NULL;
-	return job->right ? job->right->inputs[0] : NULL;
-}
-
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
 {
@@ -1437,6 +1430,44 @@ static struct source_reference lookup_scope(const struct pg_source_scope *scope,
 		return (struct source_reference){scope->binder, scope->producer, scope->exports, scope->module};
 	}
 	return (struct source_reference){0};
+}
+
+static struct pg_synthesis_job *operation_origin(const struct pg_synthesis_job *producer)
+{
+	if (!producer) return NULL;
+	if (producer->role == OPERATION_REFERENCE_JOB) return producer->right ? producer->right : (void *)producer->inputs[0];
+	if (producer->role == DEFINITION_JOB) return producer->left;
+	if (producer->role != EXPRESSION_JOB) return NULL;
+	const struct pg_syntax *syntax = producer->syntax;
+	switch (syntax->kind) {
+	case PG_SYNTAX_ATOM:
+		if (producer->left) return producer->left;
+		if (syntax->token.kind != PG_TOKEN_IDENT) return NULL;
+		for (const struct pg_source_scope *scope = producer->scope; scope; scope = scope->parent)
+			if (scope->definitions && scope->definitions->indexed < scope->definitions->count) return NULL;
+		return lookup_scope(producer->scope, syntax->token).producer;
+	case PG_SYNTAX_IMPORT: case PG_SYNTAX_QUOTE: case PG_SYNTAX_EXPECT:
+		return producer->left;
+	case PG_SYNTAX_QUALIFIED:
+		if (syntax->left->kind == PG_SYNTAX_DEFINITIONS) return producer->value_job;
+		return syntax->left->kind != PG_SYNTAX_BLOCK ? producer->left : NULL;
+	default: return NULL;
+	}
+}
+
+const struct pg_operation_declaration *pg_synthesis_operation_declaration(const struct pg_synthesis_job *job)
+{
+	if (!job || job->role != OPERATION_REFERENCE_JOB) return NULL;
+	if (job->status != PG_SYNTHESIS_PENDING && job->status != PG_SYNTHESIS_DONE) return NULL;
+	const struct pg_synthesis_job *slow = job, *fast = job;
+	while (slow) {
+		if (slow->status != PG_SYNTHESIS_PENDING && slow->status != PG_SYNTHESIS_DONE) return NULL;
+		if (slow->role == OPERATION_JOB) return slow->inputs[0];
+		slow = operation_origin(slow);
+		fast = operation_origin(operation_origin(fast));
+		if (slow && slow == fast && slow->role != OPERATION_JOB) return NULL;
+	}
+	return NULL;
 }
 
 static const struct pg_syntax *block_syntax(const struct pg_syntax *syntax)
@@ -2693,14 +2724,15 @@ static void handler_clause_step(struct pg_synthesis *synthesis, struct pg_synthe
 	if (!job->left) {
 		job->left = pg_synthesis_operation_reference(synthesis,
 			pg_synthesis_request(synthesis, job->scope, clause->left));
-		depend(synthesis, job, job->left);
-		return;
+		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
 	struct pg_synthesis_job *carrier = (void *)job->inputs[1];
-	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
-	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 	if (!job->inner) {
 		const struct pg_operation_declaration *operation = pg_synthesis_operation_declaration(job->left);
+		if (!operation) {
+			if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+			finish(synthesis, job, job->left->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : job->left->status); return;
+		}
 		const struct pg_object *payload = pg_binder(synthesis->typing->graph);
 		const struct pg_object *resume = pg_binder(synthesis->typing->graph);
 		if (!payload || !resume) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -2721,6 +2753,8 @@ static void handler_clause_step(struct pg_synthesis *synthesis, struct pg_synthe
 	if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return; }
 	if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return; }
+	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 	const struct pg_effect_row *effects;
 	const struct pg_term *value;
 	if (!carrier->result || pg_evidence_judgement(carrier->result) != PG_JUDGEMENT_COMPUTATION_TYPE) goto rejected;
@@ -3901,22 +3935,7 @@ static void operation_reference_step(struct pg_synthesis *synthesis, struct pg_s
 		return;
 	}
 	if (!job->left) {
-		struct pg_synthesis_job *source = NULL;
-		if (producer->role == DEFINITION_JOB) source = producer->left;
-		if (producer->role == EXPRESSION_JOB) {
-			const struct pg_syntax *syntax = producer->syntax;
-			switch (syntax->kind) {
-			case PG_SYNTAX_ATOM: case PG_SYNTAX_IMPORT:
-			case PG_SYNTAX_QUOTE: case PG_SYNTAX_EXPECT:
-				source = producer->left;
-				break;
-			case PG_SYNTAX_QUALIFIED:
-				if (syntax->left->kind == PG_SYNTAX_DEFINITIONS) source = producer->value_job;
-				else if (syntax->left->kind != PG_SYNTAX_BLOCK) source = producer->left;
-				break;
-			default: break;
-			}
-		}
+		struct pg_synthesis_job *source = operation_origin(producer);
 		if (!source) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 		job->left = pg_synthesis_operation_reference(synthesis, source);
 		depend(synthesis, job, job->left);
@@ -4102,6 +4121,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		block_step(synthesis, job);
 		return;
 	}
+	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }
 	if (job->scope && job->role != TELESCOPE_JOB && job->role != TELESCOPE_STRUCTURE_JOB) {
 		struct pg_synthesis_job *context = job->scope->context_job;
 		if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
@@ -4123,7 +4143,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == EFFECT_SUBSTITUTION_JOB) { effect_substitution_step(synthesis, job); return; }
 	if (job->role == SEQUENCE_JOB) { sequence_step(synthesis, job); return; }
 	if (job->role == OPERATION_REFERENCE_JOB) { operation_reference_step(synthesis, job); return; }
-	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }
 	if (job->role == HANDLER_JOB) { handler_step(synthesis, job); return; }
 	if (job->role == EFFECT_INFERENCE_JOB) {
 		struct pg_effect_inference *work = (void *)job->inputs[0];

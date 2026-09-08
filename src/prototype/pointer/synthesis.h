@@ -175,9 +175,13 @@ const struct pg_term *pg_synthesis_effect_substitution_result(const struct pg_sy
  * shared budgeted work over producer links, not Core recognition or function
  * evaluation. Arbitrary functions and bare evidence registrations do not
  * acquire operation identity. Failed/pending producers retain their status.
- * Completion has no proof result; the getter returns the checked declaration. */
+ * Completion has no proof result and validates the original producer chain. */
 struct pg_synthesis_job *pg_synthesis_operation_reference(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *producer);
+/* Structural declaration lookup, possibly before reference validation. NULL
+ * means unavailable, not a negative proof. Cyclic producer chains stop without
+ * evaluation. Consumers must still await reference completion before accepting
+ * a clause; knowing the signature does not validate an alias or expectation. */
 const struct pg_operation_declaration *pg_synthesis_operation_declaration(const struct pg_synthesis_job *job);
 struct pg_derivation_input;
 /* Structural subject of an unaccepted formation producer. Universe/F/U/Pi

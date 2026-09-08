@@ -526,6 +526,18 @@ Next implementation sequence (prerequisite for automatic source handlers):
   the same symbolic classifier through both APIs before either handler proof
   completes. This exposes the row reference needed by a future shared nested
   equation component; it does not yet connect independently owned workers.
+  Operation identity lookup now shares its producer-origin traversal with
+  checked reference resolution. Structural lookup can find a known declaration
+  through an unresolved lexical reference, without executing or accepting that
+  reference. Cyclic chains stop, incomplete definition indexes do not reveal
+  shadowed outer names, and rejected reference jobs expose no declaration.
+  Clause preparation uses the signature before outer context acceptance, then
+  awaits both its Lambda proof and the original operation-reference validation
+  before accepting. Tests construct clauses under pending outer contexts,
+  compare their eventual proofs with ordinary projection, retain pending status
+  after structural lookup, and reject incorrect operation-head expectations.
+  This removes the signature/context wait, not the still-open shared equation
+  ownership and closure protocol for general nested handlers.
   Normal component checks, eight source examples, six execution cases and
   rebuilt ASan/UBSan synthesis tests pass. List now takes 1718 transitions;
   explicit projection jobs change scheduling, not a claimed runtime speedup.
