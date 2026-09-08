@@ -1069,6 +1069,30 @@ static void endpoint_jobs(struct pg_typing *typing, struct pg_classifiers *class
 		}
 		assert(pg_synthesis_status(consumer) == PG_SYNTHESIS_DONE);
 		assert(pg_synthesis_result(job) == expected);
+		for (unsigned code = 0; code < 26; ++code) {
+			struct pg_coordinate selected[3];
+			size_t axes = 0;
+			unsigned digits = code;
+			for (size_t i = 0; i < 3; ++i, digits /= 3) {
+				selected[i] = (struct pg_coordinate){PG_ENDPOINT_ZERO, 0};
+				if (digits % 3 == 1) selected[i].kind = PG_ENDPOINT_ONE;
+				if (digits % 3 == 2) selected[i] = (struct pg_coordinate){PG_AXIS, axes++};
+			}
+			const struct pg_dimension_map *face = pg_dimension_map(&dimensions, axes, 3, selected);
+			struct pg_synthesis_job *face_job = pg_synthesis_identity_face(&synthesis, context, type, face);
+			assert(face_job && pg_synthesis_identity_face(&synthesis, context, type, face) == face_job);
+			assert(!pg_synthesis_result(face_job));
+			for (unsigned i = 0; pg_synthesis_status(face_job) == PG_SYNTHESIS_PENDING; ++i) {
+				assert(i < 100);
+				pg_synthesis_advance(&synthesis, split ? 1 : 100);
+			}
+			assert(pg_synthesis_status(face_job) == PG_SYNTHESIS_DONE);
+			assert(pg_synthesis_result(face_job) == pg_identity_proper_face(typing, classifiers, context, type, face));
+		}
+		assert(!pg_synthesis_identity_face(&synthesis, context, type, pg_dimension_identity(&dimensions, 3)));
+		struct pg_coordinate reversed[] = {{PG_AXIS, 1}, {PG_AXIS, 0}, {PG_ENDPOINT_ZERO, 0}};
+		complete(&synthesis, pg_synthesis_identity_face(&synthesis, context, type,
+			pg_dimension_map(&dimensions, 2, 3, reversed)), PG_SYNTHESIS_UNSUPPORTED);
 		const struct pg_evidence *roundtrip = pg_prove_value_type(typing, pg_prove_type_value(typing, type));
 		assert(pg_synthesis_identity_endpoint(&synthesis, context, roundtrip, selector) != job);
 		assert(!pg_synthesis_identity_endpoint(&synthesis, context, value, selector));
@@ -1084,6 +1108,11 @@ static void endpoint_jobs(struct pg_typing *typing, struct pg_classifiers *class
 			pg_dimension_map(&dimensions, 2, 3, coordinates));
 		pg_synthesis_advance(&synthesis, 1);
 		assert(pg_synthesis_status(cancelled) == PG_SYNTHESIS_PENDING);
+		struct pg_synthesis_job *cancelled_face = pg_synthesis_identity_face(&synthesis, context, roundtrip, selector);
+		pg_synthesis_advance(&synthesis, 0);
+		assert(pg_synthesis_status(cancelled_face) == PG_SYNTHESIS_PENDING);
+		pg_synthesis_advance(&synthesis, 6);
+		assert(!pg_synthesis_result(cancelled_face));
 		pg_synthesis_destroy(&synthesis);
 		pg_whnf_work_destroy(&work);
 	}
@@ -1162,10 +1191,10 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 		const struct pg_dimension_map *ordered, *intrinsic;
 		assert(pg_dimension_face_factor(&dimensions, binding->face, &ordered, &intrinsic) == 0);
 		assert(intrinsic == pg_dimension_identity(&dimensions, ordered->source));
-		const struct pg_evidence *image = pg_identity_proper_face(typing, classifiers, destination,
+		images[i - 1] = pg_synthesis_identity_face(&synthesis, destination,
 			pg_evidence_premise(original, 1), ordered);
-		images[i - 1] = pg_synthesis_evidence(&synthesis, image);
 		assert(images[i - 1]);
+		assert(!pg_synthesis_result(images[i - 1]));
 	}
 	const struct pg_evidence *map = complete(&synthesis,
 		pg_synthesis_substitution(&synthesis, template, destination, 8, images), PG_SYNTHESIS_DONE);

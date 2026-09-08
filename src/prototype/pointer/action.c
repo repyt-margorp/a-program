@@ -242,7 +242,17 @@ const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
 	return result;
 }
 
-const struct pg_evidence *pg_identity_proper_face(struct pg_typing *typing,
+struct pg_identity_face_work {
+	struct pg_typing *typing;
+	struct pg_classifiers *classifiers;
+	const struct pg_evidence *context, *formation, *layer, *result;
+	const struct pg_dimension_map *face;
+	struct pg_identity_endpoint_work *endpoint;
+	size_t checked, axes, next, retained, remaining;
+	int failed;
+};
+
+struct pg_identity_face_work *pg_identity_face_init(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *formation, const struct pg_dimension_map *face)
 {
@@ -251,35 +261,90 @@ const struct pg_evidence *pg_identity_proper_face(struct pg_typing *typing,
 	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
 	if (!pg_evidence_owned_by(formation, typing)) return NULL;
 	if (pg_evidence_context(context) != pg_evidence_context(formation)) return NULL;
-	size_t axes = 0;
-	const struct pg_evidence *layer = formation;
-	for (size_t i = 0; i < face->target; ++i) {
-		struct pg_coordinate coordinate = face->coordinates[i];
+	struct pg_identity_face_work *work = calloc(1, sizeof(*work));
+	if (!work) return NULL;
+	work->typing = typing;
+	work->classifiers = classifiers;
+	work->context = context;
+	work->formation = work->layer = formation;
+	work->face = face;
+	work->next = face->target;
+	work->remaining = face->target - face->source;
+	return work;
+}
+
+static int face_step(struct pg_identity_face_work *work)
+{
+	const struct pg_dimension_map *face = work->face;
+	if (work->checked < face->target) {
+		struct pg_coordinate coordinate = face->coordinates[work->checked];
 		switch (coordinate.kind) {
 		case PG_AXIS:
-			if (coordinate.axis != axes++) return NULL;
+			if (coordinate.axis != work->axes++) return -1;
 			break;
 		case PG_ENDPOINT_ZERO: case PG_ENDPOINT_ONE: break;
-		default: return NULL;
+		default: return -1;
 		}
-		layer = pg_identity_formation(typing, classifiers, layer);
+		const struct pg_evidence *layer = pg_identity_formation(work->typing, work->classifiers, work->layer);
 		struct pg_identity_boundary boundary;
-		if (!pg_identity_boundary_view(layer, &boundary)) return NULL;
-		layer = boundary.family;
+		if (!pg_identity_boundary_view(layer, &boundary)) return -1;
+		work->layer = boundary.family;
+		++work->checked;
+		return 0;
 	}
-	if (axes != face->source) return NULL;
-	const struct pg_evidence *result = NULL;
-	size_t retained = 0, remaining = face->target - face->source;
-	for (size_t i = face->target; i; --i) {
-		enum pg_coordinate_kind kind = face->coordinates[i - 1].kind;
-		if (kind == PG_AXIS) { ++retained; continue; }
-		result = pg_identity_face_endpoint(typing, classifiers, context, formation, retained,
+	if (work->axes != face->source) return -1;
+	if (!work->endpoint) {
+		if (!work->next) return -1;
+		enum pg_coordinate_kind kind = face->coordinates[--work->next].kind;
+		if (kind == PG_AXIS) { ++work->retained; return 0; }
+		work->endpoint = pg_identity_endpoint_init(work->typing, work->classifiers,
+			work->context, work->formation, work->retained,
 			kind == PG_ENDPOINT_ZERO ? PG_IDENTITY_LEFT : PG_IDENTITY_RIGHT);
-		if (!result) return NULL;
-		if (!--remaining) return result;
-		formation = pg_prove_classifier(typing, classifiers, context, result);
-		if (!formation) return NULL;
+		if (!work->endpoint) return -1;
+		return 0;
 	}
+	int status = pg_identity_endpoint_advance(work->endpoint, 1);
+	if (status <= 0) return status;
+	const struct pg_evidence *result = pg_identity_endpoint_result(work->endpoint);
+	pg_identity_endpoint_destroy(work->endpoint);
+	work->endpoint = NULL;
+	if (!--work->remaining) { work->result = result; return 1; }
+	work->formation = pg_prove_classifier(work->typing, work->classifiers, work->context, result);
+	return work->formation ? 0 : -1;
+}
+
+int pg_identity_face_advance(struct pg_identity_face_work *work, uint64_t fuel)
+{
+	if (!work || work->failed) return -1;
+	if (work->result) return 1;
+	while (fuel--) {
+		int status = face_step(work);
+		if (status < 0) work->failed = 1;
+		if (status) return status;
+	}
+	return 0;
+}
+
+const struct pg_evidence *pg_identity_face_result(const struct pg_identity_face_work *work)
+{
+	return work && !work->failed ? work->result : NULL;
+}
+
+void pg_identity_face_destroy(struct pg_identity_face_work *work)
+{
+	if (!work) return;
+	pg_identity_endpoint_destroy(work->endpoint);
+	free(work);
+}
+
+const struct pg_evidence *pg_identity_proper_face(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *formation, const struct pg_dimension_map *face)
+{
+	struct pg_identity_face_work *work = pg_identity_face_init(typing, classifiers, context, formation, face);
+	while (pg_identity_face_advance(work, UINT64_MAX) == 0) {}
+	const struct pg_evidence *result = pg_identity_face_result(work);
+	pg_identity_face_destroy(work);
 	return result;
 }
 

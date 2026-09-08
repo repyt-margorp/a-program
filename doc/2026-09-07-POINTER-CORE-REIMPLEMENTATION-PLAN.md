@@ -3829,6 +3829,24 @@ asynchronous higher symmetry operation. N2/N3 remain incomplete.
 Implementation C: +68/-23; header: +7/-0; tests: +92/-0. Normal pointer checks pass.
 ASan/UBSan pointer checks also pass.
 
+### Resumable proper-face selection (September 8, after e4f948b)
+
+- [x] Replace synchronous proper-face traversal with one resumable worker;
+  the synchronous API drains that same worker. Retained-family validation,
+  coordinate selection and endpoint traversal retain their progress.
+- [x] Schedule immutable context/formation/face requests on the existing
+  synthesis queue. Publish only complete evidence; cancellation releases the
+  worker, and unsupported dimensions do not become rejected propositions.
+- [x] Feed pending face jobs directly into the square-template substitution
+  test, removing its synchronous precomputation of the eight boundary images.
+- [x] Check all 26 proper faces in three dimensions with split/bulk budgets,
+  shared requests, unsupported permutations and pending-worker destruction.
+- Fuel bounds traversal steps, not the cost of individual acceptance rules.
+  Typed center symmetry, induced face permutations and N2 remain unfinished.
+- Verification: pointer `check` and ASan/UBSan `check` passed. The existing
+  geometric face tests still compare against independently generated binders;
+  split/bulk tests additionally cover scheduling, not a new equality theorem.
+
 ## 8. Program Image and Persistence
 
 One in-memory program owns graph roots, typed occurrences, declarations and work

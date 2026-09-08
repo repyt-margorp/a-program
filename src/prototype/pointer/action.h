@@ -128,4 +128,15 @@ const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,
 	const struct pg_dimension_map *face, size_t count,
 	const struct pg_binding_face *const *bindings);
 
+/* Resumable ordered proper-face selection. The immutable face must outlive
+ * the worker. Fuel counts traversal steps; individual proof rules remain
+ * synchronous. No partial result is exposed; -1 includes unsupported input. */
+struct pg_identity_face_work;
+struct pg_identity_face_work *pg_identity_face_init(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *formation, const struct pg_dimension_map *face);
+int pg_identity_face_advance(struct pg_identity_face_work *work, uint64_t fuel);
+const struct pg_evidence *pg_identity_face_result(const struct pg_identity_face_work *work);
+void pg_identity_face_destroy(struct pg_identity_face_work *work);
+
 #endif

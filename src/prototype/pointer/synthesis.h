@@ -161,6 +161,12 @@ struct pg_dimension_map;
 struct pg_synthesis_job *pg_synthesis_identity_endpoint(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *formation,
 	const struct pg_dimension_map *face);
+/* Select an ordered proper face, suspending between retained-family checks
+ * and endpoint traversal steps. The same immutable-input lifetime applies.
+ * Permutations and hidden Identity dimensions remain unsupported. */
+struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *formation,
+	const struct pg_dimension_map *face);
 /* Extend a checked substitution with an independently typed value. The
  * expected dependent field type is reindexed and compared using shared work;
  * only completed conversion evidence reaches the ordinary pairing rule. */
