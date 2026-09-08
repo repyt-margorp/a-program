@@ -1318,6 +1318,13 @@ static void lambda_actions(struct pg_classifiers *classifiers)
 	const struct pg_term *id = pg_lambda(graph, x, vx);
 	normalizes(&work, pg_identity_apply(graph, id, a, b, p), p);
 	normalizes(&work, pg_identity_apply(graph, id, a, b, q), q);
+	/* Reusing a binder pointer still selects its innermost complete triple. */
+	const struct pg_term *rebound = pg_identity_apply(graph, pg_lambda(graph, x, id), a, b, p);
+	rebound = pg_application(graph, pg_identity_instance(graph, rebound, a, b), q);
+	normalizes(&work, rebound, q);
+	const struct pg_term *outer = pg_identity_apply(graph, pg_lambda(graph, x, pg_lambda(graph, y, vx)), a, b, p);
+	outer = pg_application(graph, pg_identity_instance(graph, outer, a, b), q);
+	normalizes(&work, outer, p);
 	const struct pg_term *returned_y = pg_application(graph, pg_reference(graph, &pg_return_operation), vy);
 	const struct pg_term *inner = pg_identity_apply(graph, pg_lambda(graph, y, returned_y), a, b, vx);
 	const struct pg_term *nested_action = pg_identity_apply(graph, pg_lambda(graph, x, inner), a, b, p);

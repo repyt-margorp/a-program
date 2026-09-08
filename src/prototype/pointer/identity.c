@@ -101,14 +101,25 @@ struct action_scope {
 struct action_scope_work {
 	struct action_scope scope;
 	const struct pg_argument *arguments;
-	const struct pg_term *answer;
-	int (*resume)(struct pg_eval *, const struct action_scope *, const struct pg_term *);
+	const struct pg_term *cursor;
+	size_t position;
+	size_t center;
 };
+
+static int action_source_scoped(struct pg_eval *, const struct action_scope *, size_t);
 
 static int action_scope_poll(void *opaque)
 {
 	struct action_scope_work *work = opaque;
 	struct action_scope *scope = &work->scope;
+	if (scope->body->kind == PG_REFERENCE) {
+		if (work->position == scope->count) return 1;
+		++work->position;
+		if (work->cursor->as.lambda.binder == scope->body->as.reference)
+			work->center = 3 * work->position;
+		work->cursor = work->cursor->as.lambda.body;
+		return 0;
+	}
 	if (scope->body->kind != PG_LAMBDA) return 1;
 	/* A partial triple does not consume another source binder. */
 	for (size_t i = 0; i < 3; ++i) if (!pg_eval_next_argument(&work->arguments)) return 1;
@@ -121,7 +132,7 @@ static int action_scope_poll(void *opaque)
 static int action_scope_resume(struct pg_eval *machine, void *opaque)
 {
 	struct action_scope_work *work = opaque;
-	return work->resume(machine, &work->scope, work->answer);
+	return action_source_scoped(machine, &work->scope, work->center);
 }
 
 static void arena_work_destroy(void *opaque)
@@ -129,17 +140,16 @@ static void arena_work_destroy(void *opaque)
 	(void)opaque; /* This work owns no storage outside the evaluator arena. */
 }
 
-static int with_action_scope(struct pg_eval *machine, const struct pg_term *source,
-	const struct pg_term *answer,
-	int (*resume)(struct pg_eval *, const struct action_scope *, const struct pg_term *))
+static int with_action_scope(struct pg_eval *machine, const struct pg_term *source)
 {
 	struct action_scope_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work) return -1;
 	work->scope = (struct action_scope){source, source, 0, NULL};
 	work->arguments = machine->arguments;
 	pg_eval_next_argument(&work->arguments);
-	work->answer = answer;
-	work->resume = resume;
+	work->cursor = source;
+	work->position = 0;
+	work->center = 0;
 	return pg_eval_defer(machine, work, action_scope_poll, action_scope_resume, arena_work_destroy);
 }
 
@@ -665,9 +675,8 @@ static int action_body(struct pg_eval *machine, const struct pg_term *answer, co
 	return action_body_scoped(machine, state, answer);
 }
 
-static int action_source_scoped(struct pg_eval *machine, const struct action_scope *prepared, const struct pg_term *unused)
+static int action_source_scoped(struct pg_eval *machine, const struct action_scope *prepared, size_t center)
 {
-	(void)unused;
 	struct action_scope scope = *prepared;
 	const struct pg_term *source = scope.source;
 	int status;
@@ -682,12 +691,6 @@ static int action_source_scoped(struct pg_eval *machine, const struct action_sco
 		return enter_action(machine, &scope, acted_body(machine->output, &scope, contracted), 0);
 	}
 	if (body->kind == PG_REFERENCE) {
-		size_t center = 0;
-		const struct pg_term *binder = source;
-		for (size_t i = 0; i < scope.count; ++i) {
-			if (binder->as.lambda.binder == body->as.reference) center = 3 * (i + 1);
-			binder = binder->as.lambda.body;
-		}
 		if (center) return pg_eval_enter(machine, *pg_eval_argument(machine, center), 1 + 3 * scope.count);
 		if (!scope.count) return 1;
 		const struct pg_term *result = pg_identity_action(machine->output, body);
@@ -699,7 +702,7 @@ static int action_source_scoped(struct pg_eval *machine, const struct action_sco
 static int action_source(struct pg_eval *machine, const struct pg_term *source, const void *unused)
 {
 	(void)unused;
-	return with_action_scope(machine, source, NULL, action_source_scoped);
+	return with_action_scope(machine, source);
 }
 
 static int action_source_body(struct pg_eval *machine, const struct action_scope *prepared)

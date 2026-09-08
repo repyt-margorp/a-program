@@ -435,6 +435,24 @@ from 243,623 to 243,107 charged steps; no wall-time speedup is claimed. N2 and
 the full rewrite remain incomplete.
 Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass.
 
+#### Incremental reference-center selection
+
+After `d854188`, initial scope discovery also selects the center for a reference
+body, inspecting one source binder per poll. The final action callback no longer
+rescans the whole prefix synchronously. Repeated binder pointers select the
+innermost supplied triple, as before. Initial discovery now has only one caller,
+so its unused generic answer/callback fields are removed rather than preserving
+an obsolete abstraction. No interning or reduction equation changes.
+
+Regressions explicitly distinguish reuse of a binder pointer from a reference
+to an outer binder beneath a different binder. Existing every-step cancellation
+and split-budget tests cover the additional charged traversal. Implementation C:
++20/-17; test C: +7/-0. Source binding preparation, body construction and some
+argument-list operations remain synchronous; N2 is not complete.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass.
+The cube-function maximum is 243,489 charged transitions, versus 243,107 before
+charging reference-center selection; this is not a wall-time comparison.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,
