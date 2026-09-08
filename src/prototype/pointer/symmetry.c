@@ -70,14 +70,9 @@ done:
 	return result;
 }
 
-int pg_symmetry_dispatch(struct pg_eval *machine)
+static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, const void *state)
 {
-	const struct symmetry_entry *outer = owner(machine->current.term);
-	if (!outer) return 1;
-	const struct pg_closure *argument = pg_eval_argument(machine, 0);
-	if (!argument) return 1;
-	if (outer->identity) return pg_eval_enter(machine, *argument, 1);
-	const struct pg_term *term = argument->term;
+	const struct symmetry_entry *outer = state;
 	if (term->kind != PG_APPLICATION) return 1;
 	const struct symmetry_entry *inner = owner(term->as.application.function);
 	if (!inner || inner->dimension != outer->dimension) return 1;
@@ -87,5 +82,15 @@ int pg_symmetry_dispatch(struct pg_eval *machine)
 	for (size_t i = 0; i < n; ++i) axes[i] = inner->axes[outer->axes[i]];
 	const struct pg_term *composed = operator(machine->output, n, axes);
 	const struct pg_term *result = pg_application(machine->output, composed, term->as.application.argument);
-	return pg_eval_enter(machine, (struct pg_closure){result, argument->environment}, 1);
+	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
+}
+
+int pg_symmetry_dispatch(struct pg_eval *machine)
+{
+	const struct symmetry_entry *outer = owner(machine->current.term);
+	if (!outer) return 1;
+	const struct pg_closure *argument = pg_eval_argument(machine, 0);
+	if (!argument) return 1;
+	if (outer->identity) return pg_eval_enter(machine, *argument, 1);
+	return pg_eval_demand(machine, 0, symmetry_answer, outer);
 }

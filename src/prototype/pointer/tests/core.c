@@ -1990,6 +1990,8 @@ static void dimension_test(struct pg_graph *graph)
 	const struct pg_term *captured_value = pg_reference(graph, captured);
 	const struct pg_term *twice_swapped = pg_symmetry(graph, swap, pg_symmetry(graph, swap, captured_value));
 	const struct pg_term *closed_symmetry = pg_application(graph, pg_lambda(graph, captured, twice_swapped), line_term);
+	const struct pg_term *hidden_symmetry = pg_symmetry(graph, swap,
+		pg_application(graph, pg_lambda(graph, captured, pg_symmetry(graph, swap, captured_value)), line_term));
 	assert(!pg_symmetry(graph, projection, line_term));
 	struct pg_coordinate repeated_axes[] = {{PG_AXIS, 0}, {PG_AXIS, 0}};
 	struct pg_dimension_map invalid_permutation = {2, 2, repeated_axes};
@@ -1997,9 +1999,31 @@ static void dimension_test(struct pg_graph *graph)
 	printf("dimension: %zu maps, %zu composable triples; 3D faces/permutations passed\n", map_count, triples);
 	pg_dimensions_destroy(&dimensions);
 	/* Operator lifetime follows the graph, and composition retains capture. */
-	for (uint64_t cut = 0; cut < 16; ++cut) {
+	const struct pg_term *symmetry_cases[] = {closed_symmetry, hidden_symmetry};
+	for (size_t test = 0; test < 2; ++test) {
+		struct pg_eval whole;
+		pg_eval_init(&whole, symmetry_cases[test]);
+		whole.output = graph;
+		whole.dispatch = pg_pure_policy.dispatch;
+		assert(pg_eval_advance(&whole, 100) == PG_EVAL_WHNF);
+		uint64_t steps = whole.steps;
+		assert(pg_eval_readback(&whole, graph) == line_term);
+		pg_eval_destroy(&whole);
+		for (uint64_t cut = 0; cut <= steps; ++cut) {
+			struct pg_eval split;
+			pg_eval_init(&split, symmetry_cases[test]);
+			split.output = graph;
+			split.dispatch = pg_pure_policy.dispatch;
+			pg_eval_advance(&split, cut);
+			assert(pg_eval_advance(&split, steps - cut) == PG_EVAL_WHNF);
+			assert(split.steps == steps);
+			assert(pg_eval_readback(&split, graph) == line_term);
+			pg_eval_destroy(&split);
+		}
+	}
+	for (size_t test = 0; test < 2; ++test) for (uint64_t cut = 0; cut < 32; ++cut) {
 		struct pg_eval machine;
-		pg_eval_init(&machine, closed_symmetry);
+		pg_eval_init(&machine, symmetry_cases[test]);
 		machine.output = graph;
 		machine.dispatch = pg_pure_policy.dispatch;
 		pg_eval_advance(&machine, cut);
@@ -2013,6 +2037,15 @@ static void dimension_test(struct pg_graph *graph)
 		assert(pg_eval_readback(&machine, graph) == line_term);
 		pg_eval_destroy(&machine);
 	}
+	const struct pg_term *self = pg_lambda(graph, captured, pg_application(graph, captured_value, captured_value));
+	const struct pg_term *divergent = pg_symmetry(graph, swap, pg_application(graph, self, self));
+	struct pg_eval pending;
+	pg_eval_init(&pending, divergent);
+	pending.output = graph;
+	pending.dispatch = pg_pure_policy.dispatch;
+	assert(pg_eval_advance(&pending, 100) == PG_EVAL_PENDING);
+	assert(pg_eval_readback(&pending, graph));
+	pg_eval_destroy(&pending);
 }
 
 int main(void)

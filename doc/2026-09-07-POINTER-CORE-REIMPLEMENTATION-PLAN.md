@@ -2250,6 +2250,21 @@ Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
   operator. This checkpoint does not close N2 or the typed symmetry gate.
   Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
 
+- [x] After `b3ce150`, permutation elimination demands its argument through
+  the existing evaluator frame before inspecting a nonidentity composition.
+  Syntactic-only recognition missed inverse permutations hidden behind beta
+  redexes. Identity still enters its argument directly. Callback input is
+  materialized by the ordinary demand mechanism, preserving captured values.
+  Tests cover both direct and beta-hidden inverse composition after registry
+  destruction and readback/restart budget cuts 0-31. Retaining the evaluator
+  and splitting at every transition also preserves the exact total step count
+  and result; this uses the same demand frames, not a Replay implementation.
+  An argument that diverges remains Pending
+  at finite fuel; it is not classified as a completed neutral permutation.
+  This is a refinement of formal computation, not a typed symmetry theorem.
+  Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
+  The syntax inventory remains parsing evidence only; N2 and N5 stay open.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action
