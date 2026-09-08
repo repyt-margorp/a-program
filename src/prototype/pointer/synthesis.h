@@ -198,8 +198,9 @@ struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof);
 /* Post-check independently produced term/type evidence with matching context
- * and polarity. No expectation reaches the producer, and no coercion is
- * inserted here. Surface :: performs its existing exposure before this step. */
+ * and polarity. Explicit closed F rows permit directed effect widening after
+ * result-type conversion. No expectation reaches the producer, and no Core
+ * coercion is inserted. Surface :: performs its exposure before this step. */
 struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term, struct pg_synthesis_job *type);
 /* Raw CBPV application of independent producers. Exposes the computation

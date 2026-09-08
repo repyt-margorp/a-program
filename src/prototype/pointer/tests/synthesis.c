@@ -62,6 +62,53 @@ static const struct pg_evidence *normalize(struct pg_synthesis *synthesis,
 	return complete(synthesis, pg_synthesis_normalize(synthesis, context, input), PG_SYNTHESIS_DONE);
 }
 
+static void effect_expectations(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	static const struct pg_object_class label_class = {"effect-expectation"};
+	static const struct pg_object label = {PG_SEMANTIC_OBJECT, &label_class};
+	const struct pg_object *labels[] = {&label};
+	const struct pg_effect_row *row = pg_effect_row(typing->graph, 1, labels);
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	const struct pg_evidence *context = pg_prove_empty_context(typing);
+	const struct pg_evidence *u0 = pg_prove_universe(typing, classifiers, context, 0);
+	const struct pg_evidence *u1 = pg_prove_universe(typing, classifiers, context, 1);
+	const struct pg_evidence *returned = pg_prove_return(typing, classifiers, pg_prove_type_value(typing, u0));
+	const struct pg_evidence *target = pg_prove_effect_type(typing, classifiers, row, u1);
+	struct pg_synthesis_job *producer = pg_synthesis_normalize(&synthesis, context, returned);
+	struct pg_synthesis_job *type = pg_synthesis_evidence(&synthesis, target);
+	struct pg_synthesis_job *check = pg_synthesis_expect(&synthesis, producer, type);
+	assert(check && !pg_synthesis_result(check) && !pg_synthesis_result(producer));
+	const struct pg_evidence *result = complete(&synthesis, check, PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(result) == PG_EFFECT_SUBSUMPTION);
+	assert(pg_evidence_subject(result)->core == pg_evidence_subject(returned)->core);
+	assert(pg_evidence_classifier(result) == pg_evidence_subject(target)->core);
+	assert(pg_evidence_classifier(pg_synthesis_result(producer)) == pg_evidence_classifier(returned));
+	assert(pg_synthesis_expect(&synthesis, producer, type) == check);
+	struct pg_conversion conversion;
+	assert(!pg_conversion_init(&conversion, &work, pg_evidence_classifier(returned), pg_evidence_classifier(result)));
+	assert(pg_conversion_advance(&conversion, 1000) == PG_CONVERSION_DIFFERENT);
+	pg_conversion_destroy(&conversion);
+	const struct pg_evidence *pure_type = pg_prove_return_type(typing, classifiers, u1);
+	complete(&synthesis, pg_synthesis_expect(&synthesis, pg_synthesis_evidence(&synthesis, result),
+		pg_synthesis_evidence(&synthesis, pure_type)), PG_SYNTHESIS_REJECTED);
+	const struct pg_evidence *wrong = pg_prove_effect_type(typing, classifiers, row, u0);
+	complete(&synthesis, pg_synthesis_expect(&synthesis, producer,
+		pg_synthesis_evidence(&synthesis, wrong)), PG_SYNTHESIS_REJECTED);
+	const struct pg_source_scope *scope = pg_synthesis_name_job(&synthesis, pg_synthesis_root(&synthesis),
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="M", .length=1}, producer);
+	scope = pg_synthesis_name_job(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="T", .length=1}, type);
+	assert(scope);
+	const struct pg_evidence *surface = complete(&synthesis, request(&synthesis, scope, "checked := M :: T;"), PG_SYNTHESIS_DONE);
+	same_judgement(surface, result);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("effect expectations: post-synthesis widening, unchanged producers and directed rejection passed");
+}
+
 static void recursive_field_aliases(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	struct pg_whnf_work work;
@@ -3408,6 +3455,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
+	effect_expectations(&typing, &classifiers);
 	synthesis_lifetime(&typing, &classifiers);
 	accepted_inputs(&typing, &classifiers);
 	pending_names(&typing, &classifiers);

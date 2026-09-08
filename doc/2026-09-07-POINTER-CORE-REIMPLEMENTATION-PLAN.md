@@ -89,6 +89,22 @@ criteria for merging different Lambda or semantic-object references.
   Optimized components, eight examples and six execution fixtures pass;
   full acceptance still fails open-family at 88 transitions. The complete
   rebuilt ASan/UBSan component suite passes with this rule and its transport.
+- [x] Connect explicit closed-row subsumption to ordinary post-synthesis
+  expectation. For exposed `F E A` and target `F G B` with `E subset G`,
+  first check conversion against `F E B`, then retain the directed widening
+  proof to `F G B`. The conversion job remains symmetric and unchanged.
+  Source `M :: T` uses that same expectation job; neither producer receives
+  the expected type, and no RETURN/THUNK/FORCE or runtime wrapper is inserted.
+  Tests cover pending independent producers, repeated job reuse, source `::`,
+  unchanged producer evidence/Core, rejection of narrowing and a different
+  result type, and the fact that the widened classifiers are not DefEq.
+  This does not yet infer row metavariables or expose a neutral computation
+  classifier merely from its expected type. Non-exposed heads still follow
+  ordinary conversion; general subsumption through such heads remains open.
+  Optimized components, eight examples and six result fixtures pass; the
+  open-family gate remains unsupported at 88 transitions.
+  The rebuilt ASan/UBSan synthesis suite passes, including this source
+  expectation fixture and the existing three-dimensional application actions.
 - [ ] Add request/multi-clause fold evidence, row constraints,
   source application/handler elaboration and signature transport. This step
   supplies the shared representation; it does not yet admit effectful source

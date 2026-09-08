@@ -1375,6 +1375,22 @@ static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct 
 	return result;
 }
 
+static const struct pg_evidence *post_check_type(struct pg_synthesis *synthesis,
+	const struct pg_evidence *term, const struct pg_evidence *target)
+{
+	if (pg_evidence_judgement(term) != PG_JUDGEMENT_COMPUTATION) return target;
+	const struct pg_effect_row *source_row, *target_row;
+	const struct pg_term *source_value, *target_value;
+	if (!pg_effect_type_view(pg_evidence_classifier(term), &source_row, &source_value)) return target;
+	if (!pg_effect_type_view(pg_evidence_subject(target)->core, &target_row, &target_value)) return target;
+	if (source_row == target_row) return target;
+	if (pg_effect_subset(source_row, target_row) != 1) return target;
+	/* Compare result types at the source row before widening. Conversion
+	 * remains symmetric and does not silently become effect subtyping. */
+	return pg_prove_effect_type(synthesis->typing, synthesis->classifiers,
+		source_row, pg_prove_return_content(synthesis->typing, target));
+}
+
 static void expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (!job->checking_term) {
@@ -1401,9 +1417,15 @@ static void expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 			pg_synthesis_evidence(synthesis, term), pg_synthesis_evidence(synthesis, type));
 		if (forward_proof(synthesis, job, canonical)) return;
 		job->checking_term = term;
-		job->checking_type = type;
+		job->checking_type = post_check_type(synthesis, term, type);
+		if (!job->checking_type) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
 	job->result = compare(synthesis, job);
+	const struct pg_evidence *target = ((const struct pg_synthesis_job *)job->inputs[1])->result;
+	if (job->result && job->checking_type != target) {
+		job->result = pg_prove_effect_subsumption(synthesis->typing, job->result, target);
+		if (!job->result) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	}
 	if (job->result) finish(synthesis, job, PG_SYNTHESIS_DONE);
 	return;
 rejected:
