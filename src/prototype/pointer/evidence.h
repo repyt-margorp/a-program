@@ -16,7 +16,7 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION,
 	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION,
 	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT, PG_INDUCTIVE_FORM, PG_CONSTRUCTOR_INTRO,
-	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION, PG_REQUEST_INTRO };
+	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION, PG_REQUEST_INTRO, PG_HANDLER_ELIM };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -38,6 +38,16 @@ const struct pg_evidence *pg_prove_operation_function(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_operation_declaration *declaration,
 	const struct pg_evidence *payload, const struct pg_evidence *continuation);
+struct pg_handler_clause {
+	const struct pg_operation_declaration *operation;
+	const struct pg_evidence *body;
+};
+/* Nondependent deep handler at a checked F G C carrier. Clauses are raw
+ * Lambda payload. Lambda (U(Pi(response,F G C))). computation.
+ * Input effects not handled here and all clause/return effects must fit G. */
+const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_evidence *computation, const struct pg_evidence *returned,
+	const struct pg_evidence *carrier, size_t count, const struct pg_handler_clause *clauses);
 /* Closed-row computation-type formation. The row is a syntactic set of labels,
  * not evidence of an operation's signature, execution, or termination. */
 const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,

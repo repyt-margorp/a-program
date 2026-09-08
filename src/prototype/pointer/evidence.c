@@ -1849,6 +1849,98 @@ const struct pg_evidence *pg_prove_operation_function(struct pg_typing *typing,
 	return pg_prove_lambda(typing, pi, body);
 }
 
+static int returning_within(const struct pg_term *actual, const struct pg_term *carrier)
+{
+	const struct pg_effect_row *effects, *allowed;
+	const struct pg_term *value, *result;
+	if (!pg_effect_type_view(actual, &effects, &value)) return 0;
+	if (!pg_effect_type_view(carrier, &allowed, &result)) return 0;
+	if (pg_effect_subset(effects, allowed) != 1) return 0;
+	return pg_alpha_equal(value, result) == 1;
+}
+
+static int handler_clause_type(const struct pg_term *type,
+	const struct pg_operation_declaration *operation, const struct pg_term *carrier)
+{
+	const struct pg_term *domain, *codomain, *resume;
+	const struct pg_object *binder;
+	if (!pg_pi_view(type, &domain, &binder, &codomain)) return 0;
+	if (pg_alpha_equal(domain, operation->payload_type->subject->core) != 1) return 0;
+	type = constant_codomain(type);
+	if (!pg_pi_view(type, &domain, &binder, &codomain)) return 0;
+	if (!returning_within(constant_codomain(type), carrier)) return 0;
+	if (!pg_thunk_type_view(domain, &resume)) return 0;
+	if (!pg_pi_view(resume, &domain, &binder, &codomain)) return 0;
+	if (pg_alpha_equal(domain, operation->response_type->subject->core) != 1) return 0;
+	return pg_alpha_equal(constant_codomain(resume), carrier) == 1;
+}
+
+const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_evidence *computation, const struct pg_evidence *returned,
+	const struct pg_evidence *carrier, size_t count, const struct pg_handler_clause *clauses)
+{
+	if (!count) return pg_prove_effect_subsumption(typing,
+		pg_prove_fold(typing, classifiers, computation, returned), carrier);
+	if (!clauses || count > (SIZE_MAX - 3) / 3) return NULL;
+	size_t n = 3 + 3 * count;
+	if (n > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	if (count > SIZE_MAX / sizeof(struct pg_operation_clause)) return NULL;
+	if (!pg_evidence_owned_by(computation, typing)) return NULL;
+	if (!pg_evidence_owned_by(returned, typing)) return NULL;
+	if (!pg_evidence_owned_by(carrier, typing)) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (returned->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (carrier->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	if (computation->context != returned->context) return NULL;
+	if (computation->context != carrier->context) return NULL;
+	const struct pg_effect_row *input_effects, *output_effects;
+	const struct pg_term *input_type, *result_type, *domain, *codomain;
+	const struct pg_object *binder;
+	if (!pg_effect_type_view(computation->classifier, &input_effects, &input_type)) return NULL;
+	if (!pg_effect_type_view(carrier->subject->core, &output_effects, &result_type)) return NULL;
+	if (!pg_pi_view(returned->classifier, &domain, &binder, &codomain)) return NULL;
+	if (pg_alpha_equal(domain, input_type) != 1) return NULL;
+	if (!returning_within(constant_codomain(returned->classifier), carrier->subject->core)) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence **premises = pg_alloc(&temporary, n * sizeof(*premises));
+	const struct pg_object **labels = pg_alloc(&temporary, count * sizeof(*labels));
+	struct pg_operation_clause *raw = pg_alloc(&temporary, count * sizeof(*raw));
+	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 2) * sizeof(*operands));
+	const struct pg_evidence *result = NULL;
+	if (!premises || !labels || !raw || !operands) goto done;
+	premises[0] = computation; premises[1] = returned; premises[2] = carrier;
+	operands[0] = computation->subject; operands[1] = returned->subject;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_operation_declaration *operation = clauses[i].operation;
+		const struct pg_evidence *body = clauses[i].body;
+		if (!operation || !pg_evidence_owned_by(body, typing)) goto done;
+		if (!pg_evidence_owned_by(operation->payload_type, typing)) goto done;
+		if (!pg_evidence_owned_by(operation->response_type, typing)) goto done;
+		if (body->judgement != PG_JUDGEMENT_COMPUTATION || body->context != computation->context) goto done;
+		if (!handler_clause_type(body->classifier, operation, carrier->subject->core)) goto done;
+		labels[i] = pg_operation_label(operation);
+		raw[i] = (struct pg_operation_clause){labels[i], body->subject->core};
+		operands[i + 2] = body->subject;
+		premises[3 + 3 * i] = operation->payload_type;
+		premises[4 + 3 * i] = operation->response_type;
+		premises[5 + 3 * i] = body;
+	}
+	const struct pg_effect_row *handled = pg_effect_row(typing->graph, count, labels);
+	const struct pg_effect_row *forwarded = pg_effect_difference(typing->graph, input_effects, handled);
+	if (pg_effect_subset(forwarded, output_effects) != 1) goto done;
+	const struct pg_term *core = pg_computation_fold(typing->graph, computation->subject->core,
+		returned->subject->core, count, raw);
+	if (!core) goto done;
+	const struct pg_occurrence *subject = pg_occurrence(typing, computation->context, core, NULL, count + 2, operands);
+	if (!subject) goto done;
+	result = accept(typing, PG_HANDLER_ELIM, PG_JUDGEMENT_COMPUTATION,
+		computation->context, subject, carrier->subject->core, n, premises);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *target_type)
 {
@@ -1982,6 +2074,9 @@ static const struct pg_evidence *classifier_leaf(struct pg_typing *typing,
 		break;
 	case PG_TYPE_CONVERSION: case PG_EFFECT_SUBSUMPTION:
 		formation = term->premises[1];
+		break;
+	case PG_HANDLER_ELIM:
+		formation = term->premises[2];
 		break;
 	default:
 		return NULL;

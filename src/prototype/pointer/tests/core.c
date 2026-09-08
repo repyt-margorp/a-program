@@ -2607,8 +2607,11 @@ static void effect_classifier_test(struct pg_graph *graph)
 		assert(sets[mask]);
 	}
 	for (unsigned i = 0; i < 8; ++i)
-		for (unsigned j = 0; j < 8; ++j)
+		for (unsigned j = 0; j < 8; ++j) {
 			assert(pg_effect_subset(sets[i], sets[j]) == ((i & j) == i));
+			assert(pg_effect_difference(graph, sets[i], sets[j]) == sets[i & ~j]);
+		}
+	assert(!pg_effect_difference(graph, empty, NULL));
 	assert(!pg_effect_row(graph, 1, NULL));
 	const struct pg_object *invalid[] = {pg_binder(graph)};
 	assert(!pg_effect_row(graph, 1, invalid));
@@ -2733,6 +2736,28 @@ static void deep_classifier_test(void)
 	puts("classifier: 40000 retained-premise steps, exact formation reuse, no recursive recovery");
 }
 
+static const struct pg_evidence *resume_clause(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_evidence *type, const struct pg_evidence *carrier, const struct pg_operation_declaration *emit)
+{
+	const struct pg_object *a = pg_binder(typing->graph), *b = pg_binder(typing->graph), *k = pg_binder(typing->graph);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *response_scope = pg_prove_context_extension(typing, empty, b, type);
+	const struct pg_evidence *resume_type = pg_prove_thunk_type(typing, classifiers,
+		pg_prove_pi(typing, classifiers, type, response_scope, pg_prove_projection(typing, response_scope, carrier)));
+	const struct pg_evidence *scope = pg_prove_context_extension(typing, empty, a, type);
+	const struct pg_evidence *extended = pg_prove_context_extension(typing, scope, k,
+		pg_prove_projection(typing, scope, resume_type));
+	const struct pg_evidence *resume = pg_prove_force(typing, pg_prove_variable(typing, extended, k));
+	const struct pg_evidence *argument = pg_prove_variable(typing, extended, a);
+	const struct pg_evidence *body = emit ? pg_prove_request(typing, classifiers, emit, argument, resume)
+		: pg_prove_application(typing, resume, argument);
+	const struct pg_evidence *inner = pg_prove_lambda(typing,
+		pg_prove_pi(typing, classifiers, pg_prove_projection(typing, scope, resume_type), extended,
+			pg_prove_classifier(typing, classifiers, extended, body)), body);
+	return pg_prove_lambda(typing,
+		pg_prove_pi(typing, classifiers, type, scope, pg_prove_classifier(typing, classifiers, scope, inner)), inner);
+}
+
 static void request_typing_test(struct pg_graph *graph)
 {
 	struct pg_typing typing;
@@ -2801,6 +2826,59 @@ static void request_typing_test(struct pg_graph *graph)
 	normal = checked_normalize(&typing, &work, application);
 	assert(normal && pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &a, &continuation));
 	assert(label == pg_operation_label(op) && a == pg_evidence_subject(payload)->core);
+	const struct pg_evidence *carrier = pg_prove_return_type(&typing, &classifiers, u1);
+	const struct pg_evidence *clause = resume_clause(&typing, &classifiers, u1, carrier, NULL);
+	assert(clause);
+	const struct pg_evidence *second_request = pg_prove_request(&typing, &classifiers, other,
+		pg_prove_variable(&typing, scope, x), pg_prove_projection(&typing, scope, k));
+	const struct pg_evidence *second_continuation = pg_prove_lambda(&typing,
+		pg_prove_pi(&typing, &classifiers, u1, scope, pg_prove_classifier(&typing, &classifiers, scope, second_request)), second_request);
+	const struct pg_evidence *two = pg_prove_request(&typing, &classifiers, op, payload, second_continuation);
+	struct pg_handler_clause clauses[] = {{op, clause}, {other, clause}};
+	const struct pg_evidence *handled = pg_prove_handler(&typing, &classifiers, two, k, carrier, 2, clauses);
+	assert(handled && pg_evidence_rule(handled) == PG_HANDLER_ELIM);
+	assert(pg_evidence_classifier(handled) == pg_evidence_subject(carrier)->core);
+	assert(pg_prove_classifier(&typing, &classifiers, empty, handled) == carrier);
+	assert(pg_prove_handler(&typing, &classifiers, two, k, carrier, 2, clauses) == handled);
+	normal = checked_normalize(&typing, &work, handled);
+	const struct pg_evidence *answer = pg_prove_return_value(&typing, normal);
+	assert(answer && pg_evidence_subject(answer)->core == pg_evidence_subject(payload)->core);
+	assert(!pg_prove_handler(&typing, &classifiers, two, k, carrier, 1, clauses));
+	clauses[1] = clauses[0];
+	assert(!pg_prove_handler(&typing, &classifiers, two, k, carrier, 2, clauses));
+	clauses[0].operation = other; clauses[1].operation = op;
+	const struct pg_evidence *reordered = pg_prove_handler(&typing, &classifiers, two, k, carrier, 2, clauses);
+	assert(reordered);
+	normal = checked_normalize(&typing, &work, reordered);
+	assert(pg_evidence_subject(pg_prove_return_value(&typing, normal))->core == pg_evidence_subject(payload)->core);
+	const struct pg_evidence *forward_carrier = pg_prove_effect_type(&typing, &classifiers,
+		pg_effect_row(graph, 1, &other_label), u1);
+	struct pg_handler_clause forward = {op, resume_clause(&typing, &classifiers, u1, forward_carrier, NULL)};
+	const struct pg_evidence *forwarded = pg_prove_handler(&typing, &classifiers, two, k, forward_carrier, 1, &forward);
+	assert(forwarded);
+	normal = checked_normalize(&typing, &work, forwarded);
+	assert(pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &a, &continuation));
+	assert(label == other_label);
+	forward.body = clause;
+	assert(!pg_prove_handler(&typing, &classifiers, two, k, forward_carrier, 1, &forward));
+	assert(!pg_prove_handler(&typing, &classifiers, two, second_continuation, carrier, 2, clauses));
+	struct pg_handler_clause extra = {op, resume_clause(&typing, &classifiers, u1, carrier, other)};
+	assert(extra.body && !pg_prove_handler(&typing, &classifiers, request, k, carrier, 1, &extra));
+	const struct pg_evidence *pure_input = pg_prove_return(&typing, &classifiers, payload);
+	assert(pg_prove_handler(&typing, &classifiers, pure_input, k, carrier, 0, NULL));
+	const struct pg_object *both_labels[] = {pg_operation_label(op), other_label};
+	const struct pg_evidence *swap_carrier = pg_prove_effect_type(&typing, &classifiers,
+		pg_effect_row(graph, 2, both_labels), u1);
+	struct pg_handler_clause swaps[] = {
+		{op, resume_clause(&typing, &classifiers, u1, swap_carrier, other)},
+		{other, resume_clause(&typing, &classifiers, u1, swap_carrier, op)}
+	};
+	const struct pg_evidence *swapped = pg_prove_handler(&typing, &classifiers, two, k, swap_carrier, 2, swaps);
+	assert(swapped);
+	normal = checked_normalize(&typing, &work, swapped);
+	assert(pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &a, &continuation));
+	assert(label == other_label);
+	assert(pg_derivation_parameters(handled, &parameters));
 	pg_whnf_work_destroy(&work);
 	struct pg_typing separate;
 	assert(!pg_typing_init(&separate, graph));
@@ -2808,7 +2886,7 @@ static void request_typing_test(struct pg_graph *graph)
 	pg_typing_destroy(&separate);
 	pg_typing_destroy(&typing);
 	pg_classifiers_destroy(&classifiers);
-	puts("typed requests: nominal signatures, response checking, effect union and inert normalization passed");
+	puts("typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed");
 }
 
 int main(void)

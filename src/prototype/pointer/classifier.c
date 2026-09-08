@@ -111,6 +111,25 @@ const struct pg_effect_row *pg_effect_union(struct pg_graph *graph,
 	return result;
 }
 
+const struct pg_effect_row *pg_effect_difference(struct pg_graph *graph,
+	const struct pg_effect_row *left, const struct pg_effect_row *right)
+{
+	if (!graph || !left || !right) return NULL;
+	if (left == right) return pg_effect_row(graph, 0, NULL);
+	if (!right->count || !left->count) return left;
+	const struct pg_object **labels = malloc(left->count * sizeof(*labels));
+	if (!labels) return NULL;
+	size_t i = 0, j = 0, count = 0;
+	while (i < left->count) {
+		while (j < right->count && (uintptr_t)right->labels[j] < (uintptr_t)left->labels[i]) ++j;
+		if (j == right->count || right->labels[j] != left->labels[i]) labels[count++] = left->labels[i];
+		++i;
+	}
+	const struct pg_effect_row *result = intern_effects(graph, count, labels);
+	free(labels);
+	return result;
+}
+
 size_t pg_effect_count(const struct pg_effect_row *row) { return row ? row->count : SIZE_MAX; }
 
 int pg_effect_subset(const struct pg_effect_row *left, const struct pg_effect_row *right)

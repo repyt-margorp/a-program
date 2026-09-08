@@ -135,7 +135,32 @@ criteria for merging different Lambda or semantic-object references.
   Parameterized/dependent signatures, declaration surface syntax, host request
   handling and higher action on these proofs remain open. The source tests
   use driver-supplied checked operations, not implemented terminal intrinsics.
-- [ ] Add multi-clause fold evidence, row constraints,
+- [x] Add nondependent multi-clause `PG_HANDLER_ELIM` over the existing raw
+  deep fold. A checked carrier `F G C` is explicit; source, return and clause
+  terms are already synthesized evidence, not terms inferred from that carrier.
+  Return has domain equal to the source result type and returns C within G.
+  A clause for `op : A -> B` takes A and `U(Pi(B,F G C))`, then returns C
+  within G. Local payload/resumption binders may not escape in the carrier.
+  Check `input_effects minus handled_labels subset G`; every clause and return
+  effect must also fit G. Duplicate labels are rejected by the shared raw
+  layout builder. Zero clauses use existing sequencing and subsumption rules.
+  Formation of the result is the retained carrier premise; no copied classifier
+  authority or second execution engine is introduced.
+  Closed-set difference shares the existing row interner and a sorted scan.
+  Tests cover all 64 three-label set differences, two-request deep resumption,
+  clause order, duplicate rejection, unhandled forwarding, wrong resumption
+  effects, unreported clause/return effects, zero clauses and simultaneous
+  operation swaps without recapturing clause-emitted requests.
+  Optimized components, eight examples and six result fixtures pass before
+  the unchanged open-family failure at 88 transitions. The complete rebuilt
+  ASan/UBSan component suite passes, including the typed handler regressions.
+- [ ] Infer/check the carrier and clause binders from surface handler syntax
+  using constraints, and transport nominal handler evidence. The typed kernel
+  entry currently requires explicit checked clause functions and a carrier;
+  the derivation codec rejects it until nominal signature relocation exists.
+  Dependent carriers, row metavariables, handler capabilities, and higher
+  action on handler evidence remain open.
+- [ ] Add row constraints,
   source application/handler elaboration and signature transport. This step
   supplies the shared representation; it does not yet admit effectful source
   programs, prove termination from an empty row, or implement open row metas.

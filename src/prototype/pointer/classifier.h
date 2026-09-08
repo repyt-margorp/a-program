@@ -30,6 +30,8 @@ const struct pg_effect_row *pg_effect_row(struct pg_graph *graph,
 	size_t count, const struct pg_object *const *labels);
 const struct pg_effect_row *pg_effect_union(struct pg_graph *graph,
 	const struct pg_effect_row *left, const struct pg_effect_row *right);
+const struct pg_effect_row *pg_effect_difference(struct pg_graph *graph,
+	const struct pg_effect_row *left, const struct pg_effect_row *right);
 /* Invalid row: count returns SIZE_MAX; membership returns -1. */
 size_t pg_effect_count(const struct pg_effect_row *row);
 int pg_effect_contains(const struct pg_effect_row *row, const struct pg_object *label);
