@@ -15,6 +15,15 @@ criteria for merging different Lambda or semantic-object references.
 
 ### September 8 handler effect-equation boundary
 
+- [x] September 9: `pg_synthesis_handler_carrier(context, returned, work,
+  equation)` awaits the independently synthesized return continuation and the
+  sealed effect closure through ordinary Solve. Existing Pi-codomain and F
+  inversion rules recover the constant result value type; ordinary F formation
+  constructs the carrier. The reissuing-handler fixture now runs this producer
+  directly into whole-handler synthesis, without manually building its carrier.
+  Non-Pi and dependent/raw-Pi return codomains remain unsupported rather than
+  coerced. The effect graph is still explicitly supplied: automatic generation
+  of its contributions and latent callable effects remains unfinished.
 - [x] Assemble parsed multi-clause handlers through
   `pg_synthesis_handler(scope, carrier_producer, syntax)`. Share the existing
   return/clause jobs and nominal operation resolver; finish with the existing

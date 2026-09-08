@@ -429,19 +429,34 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(!pg_effect_handler_dependencies(&inference, output_effect, input_effect,
 		input_row, return_effect, 1, &clause_effect));
 	pg_effect_inference_seal(&inference);
-	complete(&synthesis, pg_synthesis_effect_inference(&synthesis, &inference), PG_SYNTHESIS_DONE);
-	const struct pg_effect_row *inferred = pg_effect_inference_result(&inference, output_effect);
-	assert(inferred == input_row);
-	const struct pg_evidence *inferred_carrier = pg_prove_effect_type(typing, classifiers, inferred, u1);
-	const char *emitting_source = "handler := (Op Arg) @Op req k => {x := Op req; k x;};";
+	const char *emitting_source = "handler := (Op Arg) @Op req k => {x := Op req; k x;} @#.return x => x;";
 	pg_parser_init(&clause_parser, typing->graph, emitting_source, strlen(emitting_source));
 	assert(pg_parser_next(&clause_parser, &clause_definition) == 1);
+	struct pg_synthesis_job *emitting_input = pg_synthesis_request(&synthesis, scope, clause_definition.expression->left);
+	struct pg_synthesis_job *emitting_return = pg_synthesis_handler_return(&synthesis, scope,
+		emitting_input, clause_definition.expression->items[1].expression);
+	struct pg_synthesis_job *inferred_job = pg_synthesis_handler_carrier(&synthesis, context,
+		emitting_return, &inference, output_effect);
+	assert(inferred_job && !pg_synthesis_result(inferred_job));
+	assert(inferred_job == pg_synthesis_handler_carrier(&synthesis, context,
+		emitting_return, &inference, output_effect));
+	struct pg_synthesis_job *emitting_job = pg_synthesis_handler(&synthesis, scope,
+		inferred_job, clause_definition.expression);
+	const struct pg_evidence *emitting_handler = complete(&synthesis, emitting_job, PG_SYNTHESIS_DONE);
+	const struct pg_effect_row *inferred = pg_effect_inference_result(&inference, output_effect);
+	assert(inferred == input_row);
+	const struct pg_evidence *inferred_carrier = pg_synthesis_result(inferred_job);
+	same_judgement(inferred_carrier, pg_prove_effect_type(typing, classifiers, inferred, u1));
+	complete(&synthesis, pg_synthesis_handler_carrier(&synthesis, context,
+		pg_synthesis_evidence(&synthesis, u1), &inference, output_effect), PG_SYNTHESIS_UNSUPPORTED);
+	struct pg_synthesis_job *dependent_return = request(&synthesis, scope,
+		"dependent := \\T:Result => \\x:T => x;");
+	complete(&synthesis, pg_synthesis_handler_carrier(&synthesis, context,
+		dependent_return, &inference, output_effect), PG_SYNTHESIS_UNSUPPORTED);
 	const struct pg_evidence *emitting_function = complete(&synthesis,
 		pg_synthesis_handler_clause(&synthesis, scope, pg_synthesis_evidence(&synthesis, inferred_carrier),
 			clause_definition.expression->items[0].expression), PG_SYNTHESIS_DONE);
 	struct pg_handler_clause emitting_clause = {operation, emitting_function};
-	const struct pg_evidence *emitting_handler = pg_prove_handler(typing, classifiers,
-		called, returned_clause, inferred_carrier, 1, &emitting_clause);
 	assert(emitting_handler);
 	assert(!pg_prove_handler(typing, classifiers, called, returned_clause, carrier, 1, &emitting_clause));
 	const struct pg_evidence *emitted = normalize(&synthesis, context, emitting_handler);
