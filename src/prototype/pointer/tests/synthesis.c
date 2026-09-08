@@ -4,6 +4,7 @@
 #include "action.h"
 #include "iadt.h"
 #include "prelude.h"
+#include "effect_inference.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -73,6 +74,74 @@ static const struct pg_evidence *normalize(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *input)
 {
 	return complete(synthesis, pg_synthesis_normalize(synthesis, context, input), PG_SYNTHESIS_DONE);
+}
+
+static void effect_equations(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	static const struct pg_object_class label_class = {"effect-equation-test"};
+	static const struct pg_object labels[] = {
+		{PG_SEMANTIC_OBJECT, &label_class}, {PG_SEMANTIC_OBJECT, &label_class},
+		{PG_SEMANTIC_OBJECT, &label_class}};
+	const struct pg_effect_row *rows[8];
+	for (unsigned bits = 0; bits < 8; ++bits) {
+		const struct pg_object *members[3];
+		size_t count = 0;
+		for (unsigned i = 0; i < 3; ++i) if (bits & (1u << i)) members[count++] = &labels[i];
+		rows[bits] = pg_effect_row(typing->graph, count, members);
+		assert(rows[bits]);
+	}
+	struct pg_whnf_work normalization;
+	assert(!pg_whnf_work_init(&normalization, typing->graph));
+	for (unsigned reverse = 0; reverse < 2; ++reverse)
+	for (unsigned seed = 0; seed < 8; ++seed)
+	for (unsigned mask = 0; mask < 8; ++mask) {
+		struct pg_effect_inference work, foreign;
+		struct pg_synthesis synthesis;
+		assert(!pg_effect_inference_init(&work, typing->graph));
+		assert(!pg_effect_inference_init(&foreign, typing->graph));
+		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_effect_equation *a = pg_effect_equation(&work, rows[seed]);
+		struct pg_effect_equation *b = pg_effect_equation(&work, rows[2]);
+		struct pg_effect_equation *c = pg_effect_equation(&work, rows[0]);
+		struct pg_effect_equation *other = pg_effect_equation(&foreign, rows[0]);
+		assert(a && b && c && other);
+		assert(!pg_effect_inference_result(&work, a));
+		assert(!pg_synthesis_effect_inference(&synthesis, &work));
+		assert(pg_effect_dependency(&work, other, rows[0], a) == -1);
+		struct pg_effect_equation *sources[] = {a, b, b, b};
+		struct pg_effect_equation *targets[] = {b, a, b, c};
+		const struct pg_effect_row *masks[] = {rows[mask], rows[0], rows[0], rows[1]};
+		for (unsigned i = 0; i < 4; ++i) {
+			unsigned edge = reverse ? 3 - i : i;
+			assert(!pg_effect_dependency(&work, sources[edge], masks[edge], targets[edge]));
+			assert(!pg_effect_dependency(&work, sources[edge], masks[edge], targets[edge]));
+		}
+		assert(work.dependencies.count == 4);
+		assert(pg_effect_inference_advance(&work, 100) == 0);
+		assert(!pg_effect_inference_result(&work, a));
+		pg_effect_inference_seal(&work);
+		assert(!pg_effect_equation(&work, rows[0]));
+		assert(pg_effect_dependency(&work, a, rows[0], c) == -1);
+		struct pg_synthesis_job *job = pg_synthesis_effect_inference(&synthesis, &work);
+		assert(job && pg_synthesis_effect_inference(&synthesis, &work) == job);
+		unsigned steps = 0;
+		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+			assert(++steps < 100);
+			assert(!pg_effect_inference_result(&work, a));
+			pg_synthesis_advance(&synthesis, reverse ? 1 : 64);
+		}
+		assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE && !pg_synthesis_result(job));
+		assert(pg_effect_inference_result(&work, a) == rows[seed | 2]);
+		assert(pg_effect_inference_result(&work, b) == rows[2 | (seed & ~mask)]);
+		assert(pg_effect_inference_result(&work, c) == rows[(2 | (seed & ~mask)) & ~1u]);
+		assert(!pg_effect_inference_result(&work, other));
+		assert(pg_effect_inference_advance(&work, 0) == 1);
+		pg_synthesis_destroy(&synthesis);
+		pg_effect_inference_destroy(&foreign);
+		pg_effect_inference_destroy(&work);
+	}
+	pg_whnf_work_destroy(&normalization);
+	puts("effect equations: least closure, masks, cycles, shared edges, sealed results and split Solve passed");
 }
 
 static void effect_expectations(struct pg_typing *typing, struct pg_classifiers *classifiers)
@@ -3621,6 +3690,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
+	effect_equations(&typing, &classifiers);
 	effect_expectations(&typing, &classifiers);
 	synthesis_lifetime(&typing, &classifiers);
 	accepted_inputs(&typing, &classifiers);

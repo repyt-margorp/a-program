@@ -13,6 +13,64 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 8 positive effect-equation closure
+
+The next surface-handler obstacle is circular effect inference, not merely
+clause parsing. `pg_prove_handler_context` requires `F G C` to bind the deep
+resumption, while clause synthesis contributes constraints on G. The existing
+kernel checks a supplied closed G; it does not infer this fixed point.
+
+- [x] Add positive set-equation work to ordinary Solve. An equation has an
+  immutable closed seed and incoming `(source, constant_mask, target)` edges:
+  `target = seed union UNION(source minus mask)`. Repeated exact edges are
+  interned; only changed sources revisit outgoing edges. Sites have distinct
+  pointer identity, not equality based on their current approximation.
+- [x] Retain source equations separately from their one mutable approximation.
+  Construction must be sealed before Solve; no row is exposed until the finite
+  system converges. A partially constructed or pending equation is never a
+  certified empty effect row. Results are not typing certificates.
+- [ ] Generate these equations from source clause constraints before constructing
+  accepted resumption contexts. Result-type constraints and latent function
+  effects still need representation; this worker alone does not synthesize a
+  complete handler. Do not bind k under a guessed empty row to bypass this step.
+- [ ] Add declaration/equation relocation to `.a`; present work is invocation
+  local, and no checkpoint capability is claimed.
+
+For the current first-order, nondependent carrier, generation must account for
+`G >= (input_effects minus handled) union return_effects union clause_effects`.
+A resumed k contributes G. Clause-issued operations are outside this handler,
+so handled labels are removed from the input edge, NOT from all clause effects.
+Nested handlers may mask their own input edges. All masks must be closed.
+
+Termination argument for this worker: only labels in the finite seed union can
+enter any approximation; each update strictly adds labels. Union and subtraction
+of a constant set are monotone. Fair propagation reaches the least solution.
+This is not a termination proof for programs, general row unification, open-row
+polymorphism, or a proof that source constraint generation is sound. An empty
+unseeded cycle is the least solution of an explicitly complete equation system,
+not the answer to an unspecified effect metavariable. One budget transition
+visits an edge (or an empty adjacency); set union/interner costs remain unbounded
+in wall time, as with other allocation operations.
+
+References checked on 2026-09-08:
+
+- [Leijen, Koka: Programming with Row Polymorphic Effect Types (2014)](https://arxiv.org/abs/1406.2061).
+  Its inference uses row polymorphism with duplicate labels. A Program currently
+  uses idempotent sets, so that unifier is not adopted unchanged.
+- [Plotkin and Pretnar, Handling Algebraic Effects (2013)](https://arxiv.org/abs/1312.1399).
+  The model/homomorphism account motivates checking the output carrier; it is
+  not a ready-made inference algorithm for this pointer implementation.
+
+The positive set-equation algorithm and its boundary above are our engineering
+construction for the current closed-set model, not a claimed implementation of
+either paper's full calculus.
+
+Verification: 128 combinations of seeds, masks and edge insertion order compare
+against direct finite-set expectations, including mutual/self cycles, duplicate
+edges, sealed mutation rejection, foreign equation rejection and split Solve.
+Regular components and rebuilt ASan/UBSan `synthesis_test` pass. Eight example
+checks and six execution fixtures pass; open-family still fails at 88 steps.
+
 ### September 8 nominal operation reference resolution
 
 - [x] Resolve an operation label through the existing producer graph with a

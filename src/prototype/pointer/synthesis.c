@@ -3,6 +3,7 @@
 #include "iadt.h"
 #include "action.h"
 #include "derivation_io.h"
+#include "effect_inference.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -98,7 +99,7 @@ struct derivation_state {
 	const struct pg_reduction_certificate *reduction;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const void *owner;
@@ -309,6 +310,13 @@ struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
 	const struct pg_operation_declaration *declaration)
 {
 	return declaration ? request_job(synthesis, OPERATION_JOB, declaration, NULL) : NULL;
+}
+
+struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synthesis,
+	struct pg_effect_inference *work)
+{
+	if (!work || work->rows != synthesis->typing->graph || !work->sealed) return NULL;
+	return request_job(synthesis, EFFECT_INFERENCE_JOB, work, NULL);
 }
 
 struct pg_synthesis_job *pg_synthesis_operation_reference(struct pg_synthesis *synthesis,
@@ -2780,6 +2788,12 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	const struct pg_syntax *syntax = job->syntax;
 	if (job->role == OPERATION_REFERENCE_JOB) { operation_reference_step(synthesis, job); return; }
+	if (job->role == EFFECT_INFERENCE_JOB) {
+		int status = pg_effect_inference_advance((void *)job->inputs[0], 1);
+		if (!status) enqueue(synthesis, job);
+		else finish(synthesis, job, status > 0 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+		return;
+	}
 	if (job->role == OPERATION_JOB) {
 		job->result = pg_prove_operation_function(synthesis->typing, synthesis->classifiers, job->inputs[0]);
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);

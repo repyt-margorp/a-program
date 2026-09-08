@@ -83,6 +83,12 @@ struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
  * The declaration and its signature evidence outlive this synthesis store. */
 struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
 	const struct pg_operation_declaration *declaration);
+struct pg_effect_inference;
+/* Borrow a sealed positive effect-equation graph into ordinary budgeted Solve.
+ * Completion has no proof result: closed rows are read from work and must still
+ * be checked by typing rules. Work outlives this synthesis store. */
+struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synthesis,
+	struct pg_effect_inference *work);
 /* Resolve nominal operation identity through completed lexical aliases,
  * definition storage, quotation and successful source expectations. This is
  * shared budgeted work over producer links, not Core recognition or function
