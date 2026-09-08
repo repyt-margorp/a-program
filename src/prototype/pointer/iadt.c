@@ -189,6 +189,42 @@ struct pg_data_schema {
 	const struct pg_evidence *results[];
 };
 
+int pg_data_field_positive(const struct pg_term *type,
+	const struct pg_object *self, size_t index_count)
+{
+	if (!type || !self || self->kind != PG_BINDER) return -1;
+	for (;;) {
+		const struct pg_term *domain, *codomain;
+		const struct pg_object *binder;
+		if (pg_pi_view(type, &domain, &binder, &codomain)) {
+			int independent = pg_term_independent(domain, self);
+			if (independent != 1) return independent;
+			if (binder == self) return 1;
+			type = codomain;
+			continue;
+		}
+		if (pg_return_type_view(type, &codomain) || pg_thunk_type_view(type, &codomain)) {
+			type = codomain;
+			continue;
+		}
+		const struct pg_term *head = type;
+		size_t count = 0;
+		while (head->kind == PG_APPLICATION) {
+			++count;
+			head = head->as.application.function;
+		}
+		if (head->kind != PG_REFERENCE || head->as.reference != self)
+			return pg_term_independent(type, self);
+		if (count != index_count) return 0;
+		while (type->kind == PG_APPLICATION) {
+			int independent = pg_term_independent(type->as.application.argument, self);
+			if (independent != 1) return independent;
+			type = type->as.application.function;
+		}
+		return 1;
+	}
+}
+
 const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
 	const struct pg_evidence *parameters, const struct pg_evidence *indices,
 	size_t count, const struct pg_evidence *const *results)

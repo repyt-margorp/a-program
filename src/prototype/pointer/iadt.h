@@ -30,6 +30,15 @@ struct pg_typing;
 struct pg_classifiers;
 struct pg_evidence;
 struct pg_data_schema;
+/* Conservative syntactic strict positivity of a field classifier relative
+ * to a dedicated Self binder. Recognizes saturated Self applications with
+ * independent indices, Pi with independent domains, and F/U wrappers.
+ * Other forms must be independent of Self. No reduction is performed.
+ * 1 establishes this syntactic condition; 0 means not established, -1 error.
+ * This is not formation, universe checking, membership or fibrancy evidence.
+ * The caller must supply the resolved, scoped classifier and index arity. */
+int pg_data_field_positive(const struct pg_term *type,
+	const struct pg_object *self, size_t index_count);
 /* indices extends parameters. Each result is a checked substitution from
  * its field context into indices, leaving the parameter prefix unchanged.
  * Fields and arities are derived from those substitutions, not copied into

@@ -66,6 +66,27 @@ Prioritize these missing admission rules and general typed symmetry over more
 isolated storage conveniences. The failing gate is intentionally retained;
 unsupported must not be changed to success without the required evidence.
 
+- [x] After `9d6d361`, implement `pg_data_field_positive` as the conservative
+  syntactic condition needed by recursive field admission. It follows existing
+  Pi/F/U views and uses existing binder-aware independence checking. Self must
+  be a dedicated binder; a recursive application must supply exactly the index
+  arity, with Self-independent index arguments. Pi domains must be independent;
+  only codomains may recurse. Unknown constructors receive no guessed variance.
+  The traversal is iterative, adds no graph tags or persistent schema cache,
+  and does not normalize or allocate accepted evidence. Zero means this check
+  did not establish the condition, not proof of semantic impossibility.
+  Tests cover direct/indexed and Acc-shaped output recursion, negative and
+  double-negative fields, opaque applications, lexical shadowing, a redex
+  which would discard Self, invalid inputs and 10,000 F/U wrapper pairs.
+  Optimized and ASan/UBSan IADT suites pass. Full source acceptance remains
+  failing and was not reclassified as a successful negative test.
+- [ ] Integrate this condition with checked, scoped Self-family formation and
+  declaration admission. A positive raw expression need not itself be a valid
+  classifier; formation, universe bounds and higher obligations must still be
+  established. Nested positive type constructors need checked variance rules,
+  not blanket acceptance. No source declaration is admitted by this helper
+  alone; the 0/8 source gate is not fixed by this isolated prerequisite.
+
 ### Progress: Identity-prefix permutation reduction (2026-09-08)
 
 ### Next implementation contract: typed permutation (2026-09-08)

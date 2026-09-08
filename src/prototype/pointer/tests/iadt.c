@@ -7,6 +7,48 @@
 #include <assert.h>
 #include <stdio.h>
 
+static void positive_fields(void)
+{
+	struct pg_graph graph;
+	struct pg_classifiers classifiers;
+	assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+	const struct pg_object *self = pg_binder(&graph), *x = pg_binder(&graph);
+	const struct pg_term *recursive = pg_reference(&graph, self);
+	const struct pg_term *index = pg_reference(&graph, x);
+	const struct pg_term *a = pg_universe(&classifiers, 0);
+	const struct pg_term *fiber = pg_application(&graph, recursive, index);
+	assert(pg_data_field_positive(recursive, self, 0) == 1);
+	assert(pg_data_field_positive(fiber, self, 1) == 1);
+	assert(pg_data_field_positive(fiber, self, 0) == 0);
+	assert(pg_data_field_positive(recursive, self, 1) == 0);
+	assert(pg_data_field_positive(pg_application(&graph, recursive, recursive), self, 1) == 0);
+	/* Acc-shaped recursion: independent quantified inputs, recursive output. */
+	const struct pg_term *positive = pg_thunk_type(&classifiers,
+		pg_pi(&graph, a, x, pg_return_type(&classifiers, fiber)));
+	assert(pg_data_field_positive(positive, self, 1) == 1);
+	const struct pg_term *negative = pg_thunk_type(&classifiers,
+		pg_pi(&graph, recursive, x, pg_return_type(&classifiers, a)));
+	assert(pg_data_field_positive(negative, self, 0) == 0);
+	/* Double negation is not strict positivity. */
+	assert(pg_data_field_positive(pg_thunk_type(&classifiers,
+		pg_pi(&graph, negative, x, pg_return_type(&classifiers, a))), self, 0) == 0);
+	/* Unknown type constructors do not acquire an assumed variance. */
+	assert(pg_data_field_positive(pg_application(&graph, index, recursive), self, 0) == 0);
+	assert(pg_data_field_positive(pg_application(&graph, index, a), self, 0) == 1);
+	assert(pg_data_field_positive(pg_lambda(&graph, self, recursive), self, 0) == 1);
+	assert(pg_data_field_positive(pg_pi(&graph, a, self, recursive), self, 0) == 1);
+	const struct pg_term *redex = pg_application(&graph, pg_lambda(&graph, x, a), recursive);
+	assert(pg_data_field_positive(redex, self, 0) == 0);
+	assert(pg_data_field_positive(a, self, 0) == 1);
+	for (size_t i = 0; i < 10000; ++i)
+		positive = pg_thunk_type(&classifiers, pg_return_type(&classifiers, positive));
+	assert(pg_data_field_positive(positive, self, 1) == 1);
+	assert(pg_data_field_positive(NULL, self, 0) == -1);
+	assert(pg_data_field_positive(a, a->as.reference, 0) == -1);
+	pg_classifiers_destroy(&classifiers);
+	pg_graph_destroy(&graph);
+}
+
 static void check(struct pg_whnf_work *work, const struct pg_term *term, const struct pg_term *expected)
 {
 	struct pg_whnf_job *job = pg_whnf_request(work, &pg_pure_policy, term);
@@ -498,6 +540,7 @@ static void schemas(struct pg_graph *graph)
 
 int main(void)
 {
+	positive_fields();
 	struct pg_graph graph;
 	struct pg_whnf_work work;
 	assert(pg_graph_init(&graph) == 0);
