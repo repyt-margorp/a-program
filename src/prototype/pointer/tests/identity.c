@@ -1120,7 +1120,7 @@ static void reflexive_instance_boundary(struct pg_typing *typing, struct pg_clas
 	}
 }
 
-static void dependent_instance_boundary(struct pg_typing *typing, struct pg_classifiers *classifiers)
+static void dependent_instance_boundary(struct pg_typing *typing, struct pg_classifiers *classifiers, int value_dependency)
 {
 	struct pg_dimensions dimensions;
 	struct pg_whnf_work work;
@@ -1132,17 +1132,26 @@ static void dependent_instance_boundary(struct pg_typing *typing, struct pg_clas
 		pg_prove_universe(typing, classifiers, empty, 1));
 	const struct pg_evidence *universe = pg_prove_universe(typing, classifiers, source, 1);
 	const struct pg_evidence *point = pg_prove_variable(typing, source, a);
+	if (value_dependency) {
+		const struct pg_object *x = pg_binder(typing->graph);
+		const struct pg_evidence *type = pg_prove_value_type(typing, point);
+		source = pg_prove_context_extension(typing, source, x, type);
+		universe = pg_prove_projection(typing, source, type);
+		point = pg_prove_variable(typing, source, x);
+	}
 	const struct pg_evidence *line = pg_prove_identity_type(typing, universe, point, point);
 	const struct pg_evidence *line_value = pg_prove_type_value(typing, line);
 	const struct pg_evidence *path = pg_prove_reflexivity(typing, universe, point);
-	const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, 1);
-	const struct pg_binding_face *center = pg_binding_face(&dimensions, cube, pg_dimension_identity(&dimensions, 1));
-	const struct pg_evidence *left, *right, *paths[1];
-	const struct pg_evidence *context = pg_identity_context(typing, &dimensions, source, 1,
-		&center, &left, &right, paths);
+	size_t count = value_dependency ? 2 : 1;
+	const struct pg_binding_face *centers[2];
+	for (size_t i = 0; i < count; ++i) centers[i] = pg_binding_face(&dimensions,
+		pg_binding_cube(&dimensions, 1), pg_dimension_identity(&dimensions, 1));
+	const struct pg_evidence *left, *right, *paths[2];
+	const struct pg_evidence *context = pg_identity_context(typing, &dimensions, source, count,
+		centers, &left, &right, paths);
 	assert(context);
 	const struct pg_evidence *family = pg_prove_family_action(typing,
-		pg_prove_classifier(typing, classifiers, source, line_value), line_value, left, right, 1, paths);
+		pg_prove_classifier(typing, classifiers, source, line_value), line_value, left, right, count, paths);
 	const struct pg_evidence *family_type = pg_prove_identity_type(typing,
 		pg_prove_reindex(typing, left, pg_prove_classifier(typing, classifiers, source, line_value)),
 		pg_prove_reindex(typing, left, line_value), pg_prove_reindex(typing, right, line_value));
@@ -1154,7 +1163,8 @@ static void dependent_instance_boundary(struct pg_typing *typing, struct pg_clas
 	struct pg_identity_boundary boundary;
 	assert(pg_identity_boundary_view(formation, &boundary));
 	assert(pg_evidence_rule(formation) == PG_FAMILY_IDENTITY_FORM);
-	assert(boundary.path_count == 1 && boundary.paths[0] == paths[0]);
+	assert(boundary.path_count == count);
+	for (size_t i = 0; i < count; ++i) assert(boundary.paths[i] == paths[i]);
 	assert(boundary.left_substitution == left && boundary.right_substitution == right);
 	assert(pg_alpha_equal(pg_evidence_classifier(boundary.left), pg_evidence_classifier(boundary.right)) == 0);
 	assert(pg_evidence_subject(formation)->core == pg_evidence_subject(instance)->core);
@@ -1169,7 +1179,8 @@ static void dependent_instance_boundary(struct pg_typing *typing, struct pg_clas
 static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	reflexive_instance_boundary(typing, classifiers);
-	dependent_instance_boundary(typing, classifiers);
+	dependent_instance_boundary(typing, classifiers, 0);
+	dependent_instance_boundary(typing, classifiers, 1);
 	square_transposition_boundary(typing, classifiers);
 	uniform_transport(typing, classifiers);
 	struct pg_dimensions dimensions;

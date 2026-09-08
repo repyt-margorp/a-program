@@ -60,6 +60,10 @@ retains the exact selected path and both substitutions, and obtains both
 inner endpoints without changing the instance Core. The test derives the
 family's Universe from classifier evidence rather than assuming a numeric
 level. This establishes the one-parameter case, not arbitrary higher action.
+The same fixture now also covers `A : U1, x : A |- Id A x x`. Recovery
+retains both the type path and the dependent value path, their declaration
+order and both substitutions; the endpoint classifiers remain distinct.
+The production recovery code required no additional case for this extension.
 
 Rechecked `action.h`, `evidence.c` and `square_template_jobs` /
 `dependent_cube_substitution` after `253e690`. The current proper-face API
