@@ -7468,12 +7468,24 @@ CHECKPOINT must preserve those producers, not weaken this requirement.
 - [x] An unaccepted return-type rule computes its imported effect row normally;
   an invalid application rule remains rejected rather than becoming evidence.
 - [x] Reject unsealed effect work; permit sealed but unsolved work.
-- [ ] Exercise nominal and operation-bearing external names through this whole
+- [x] Exercise nominal and operation-bearing external names through this whole
   image, beyond their existing standalone derivation transport tests.
 
 Validation: normal `check`, eight source checks and six runtime fixtures with
 both budgets pass. Rebuilt ASan/UBSan source-image and seed tests also pass.
 These results do not establish retained-progress CHECKPOINT or full N5.
+
+Continuation after `502a049`: a separate-process whole-image fixture exports
+two structurally identical but nominally distinct ADTs, their constructor
+values, and an operation function whose payload/response use the first ADT.
+After loading, ordinary source references accept the matching value and reject
+the other declaration's value under post-synthesis `::`. Classifier pointers
+share the relocated declaration roots. Calling the operation through its
+external name retains exactly one latent effect and the nominal result type.
+Both one-step and bulk Solve schedules pass. This tests explicit lexical
+exports of type/value/function proofs; it does not infer original constructor
+spellings from a bare type proof or complete retained source preparation.
+The expanded source-image suite passes in normal and rebuilt ASan/UBSan builds.
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.

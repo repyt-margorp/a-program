@@ -170,14 +170,74 @@ static void read_sources(FILE *file, uint64_t chunk)
 	pg_program_destroy(p);
 }
 
+static void nominal_sources(FILE *file, int writing, uint64_t chunk)
+{
+	if (writing) {
+		const char text[] = "D:=@{z:*;}; E:=@{z:*;}; d:=D.z; e:=E.z;";
+		struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+		assert(p && p->root);
+		while (p->synthesis.ready) { assert(p->synthesis.steps < 10000); pg_synthesis_advance(&p->synthesis, 64); }
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+		const char *names[] = {"D", "E", "d", "e"};
+		struct pg_synthesis_job *values[4];
+		const struct pg_source_scope *scope = p->scope;
+		for (size_t i = 0; i < 4; ++i) {
+			struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = names[i], .length = 1};
+			const struct pg_evidence *proof = pg_synthesis_result(pg_synthesis_definition(p->root, name));
+			assert(proof);
+			values[i] = pg_synthesis_evidence(&p->synthesis, proof);
+			scope = pg_synthesis_name_job(&p->synthesis, scope, name, values[i]);
+			assert(scope);
+		}
+		const struct pg_evidence *type = pg_synthesis_result(values[0]);
+		const struct pg_operation_declaration *declaration = pg_operation_declaration(&p->typing, type, type);
+		const struct pg_evidence *function = pg_prove_operation_function(&p->typing, &p->classifiers, declaration);
+		assert(function);
+		struct pg_synthesis_job *operation = pg_synthesis_evidence(&p->synthesis, function);
+		scope = pg_synthesis_name_job(&p->synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "ask", .length = 3}, operation);
+		assert(scope);
+		struct pg_synthesis_job *roots[] = {
+			parse(p, scope, "{{ main:=d; main::D; }}.main"),
+			parse(p, scope, "{{ main:=e; main::D; }}.main"),
+			parse(p, scope, "{{ main:=&(ask d); }}.main"), values[0], values[1], values[2], values[3], operation};
+		assert(!pg_sources_write(file, &p->synthesis, 8, roots));
+		pg_program_destroy(p);
+	} else {
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		struct pg_program *p = pg_sources_read(file, 10000, &count, &roots);
+		assert(p && count == 8 && !p->synthesis.steps);
+		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
+		while (p->synthesis.ready) { assert(p->synthesis.steps < 10000); pg_synthesis_advance(&p->synthesis, chunk); }
+		for (size_t i = 0; i < count; ++i)
+			assert(pg_synthesis_status(roots[i]) == (i == 1 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_result(roots[0]) == pg_synthesis_result(roots[5]));
+		const struct pg_term *d = pg_evidence_subject(pg_synthesis_result(roots[3]))->core;
+		const struct pg_term *e = pg_evidence_subject(pg_synthesis_result(roots[4]))->core;
+		assert(d != e);
+		assert(pg_evidence_classifier(pg_synthesis_result(roots[5])) == d);
+		assert(pg_evidence_classifier(pg_synthesis_result(roots[6])) == e);
+		const struct pg_term *computation, *value;
+		const struct pg_effect_row *effects;
+		assert(pg_thunk_type_view(pg_evidence_classifier(pg_synthesis_result(roots[2])), &computation));
+		assert(pg_effect_type_view(computation, &effects, &value));
+		assert(pg_effect_count(effects) == 1 && value == d);
+		pg_program_destroy(p);
+		puts("source image: nominal external names, distinct declarations and operation wrapper passed");
+	}
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
-	int writing = !strcmp(argv[1], "write");
+	int nominal = !strncmp(argv[1], "nominal-", 8);
+	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "nominal-write");
 	if (writing) { definition_boundaries(); rule_environments(); }
 	FILE *file = fopen(argv[2], writing ? "w+b" : "rb");
 	assert(file);
-	if (writing) write_sources(file);
+	if (nominal) nominal_sources(file, writing, !strcmp(argv[1], "nominal-read-bulk") ? 64 : 1);
+	else if (writing) write_sources(file);
 	else read_sources(file, !strcmp(argv[1], "read-bulk") ? 64 : 1);
 	assert(!fclose(file));
 	return 0;
