@@ -3906,6 +3906,11 @@ checks that `x:A` and `y:A` have distinct accepted proofs but create only one
 conversion job. This does not intern terms by conversion, merge occurrences,
 or share runtime effect executions. Standalone conversion callers outside this
 synthesis store retain their existing lifetime and ownership contract.
+The follow-up after `4cd6e67` verifies negative sharing too: two independent
+values checked against the same incompatible type add one comparison, expose
+no result, and leave earlier accepted evidence unchanged. Zero fuel leaves both
+checks pending; requesting the completed failure again consumes no solver work.
+Normal pointer checks and the changed synthesis test under ASan/UBSan pass.
 
 ## 8. Program Image and Persistence
 

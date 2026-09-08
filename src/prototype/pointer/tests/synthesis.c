@@ -1351,6 +1351,28 @@ static void shared_conversion_jobs(struct pg_typing *typing, struct pg_classifie
 	assert(left_result != right_result);
 	assert(pg_evidence_subject(left_result)->core == pg_reference(typing->graph, x));
 	assert(pg_evidence_subject(right_result)->core == pg_reference(typing->graph, y));
+	before = synthesis.jobs.count;
+	struct pg_synthesis_job *wrong_type = pg_synthesis_evidence(&synthesis,
+		pg_prove_universe(typing, classifiers, context, 0));
+	struct pg_synthesis_job *wrong_left = pg_synthesis_expect(&synthesis,
+		pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, x)), wrong_type);
+	struct pg_synthesis_job *wrong_right = pg_synthesis_expect(&synthesis,
+		pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, y)), wrong_type);
+	assert(synthesis.jobs.count == before + 3);
+	pg_synthesis_advance(&synthesis, 0);
+	assert(pg_synthesis_status(wrong_left) == PG_SYNTHESIS_PENDING);
+	assert(pg_synthesis_status(wrong_right) == PG_SYNTHESIS_PENDING);
+	assert(!complete(&synthesis, wrong_left, PG_SYNTHESIS_REJECTED));
+	assert(!complete(&synthesis, wrong_right, PG_SYNTHESIS_REJECTED));
+	/* A failed comparison is also shared, but cannot retract accepted proofs. */
+	assert(synthesis.jobs.count == before + 4);
+	assert(pg_synthesis_result(left) == left_result);
+	assert(pg_synthesis_result(right) == right_result);
+	uint64_t steps = synthesis.steps;
+	assert(pg_synthesis_expect(&synthesis,
+		pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, x)), wrong_type) == wrong_left);
+	pg_synthesis_advance(&synthesis, 100);
+	assert(synthesis.steps == steps);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 }
