@@ -480,6 +480,15 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_computation_request_view(request_core, &core_label, &core_payload, &core_continuation));
 		assert(core_label == request_label && core_payload == pg_universe(classifiers, 0));
 		assert(!pg_synthesis_result(request_job));
+		struct pg_synthesis_job *request_lambda = pg_synthesis_lambda_body(&synthesis, thunk, context, request_job);
+		struct pg_synthesis_job *request_lambda_term = pg_synthesis_term_structure(&synthesis, request_lambda);
+		struct pg_synthesis_job *request_lambda_type = pg_synthesis_classifier_structure(&synthesis, request_lambda);
+		assert(!complete(&synthesis, request_lambda_term, PG_SYNTHESIS_DONE));
+		assert(!complete(&synthesis, request_lambda_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(request_lambda_term) == pg_lambda(typing->graph, k, request_core));
+		assert(pg_synthesis_type_structure_result(request_lambda_type) == pg_pi(typing->graph,
+			pg_thunk_type(classifiers, symbolic_f), k, pg_synthesis_type_structure_result(request_type)));
+		assert(!pg_synthesis_result(request_lambda));
 		struct pg_synthesis_job *invalid_request = pg_synthesis_rule(&synthesis, &request_input,
 			(struct pg_synthesis_job *[]){signature_job, signature_job, request_domain, request_continuation}, NULL, NULL);
 		struct pg_synthesis_job *invalid_request_type = pg_synthesis_classifier_structure(&synthesis, invalid_request);
@@ -763,6 +772,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_effect_inference_result(&effects, request_target) == request_final_row);
 		const struct pg_evidence *request_proof = complete(&synthesis, request_job, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(request_proof)->core == request_core);
+		const struct pg_evidence *request_lambda_proof = complete(&synthesis, request_lambda, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(request_lambda_proof)->core == pg_synthesis_type_structure_result(request_lambda_term));
 		assert(pg_evidence_classifier(request_proof) == pg_effect_type(classifiers, request_final_row,
 			pg_universe(classifiers, 0)));
 		assert(!complete(&synthesis, invalid_request, PG_SYNTHESIS_REJECTED));

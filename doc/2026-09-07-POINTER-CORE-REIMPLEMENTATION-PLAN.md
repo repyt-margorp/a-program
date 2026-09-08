@@ -17,7 +17,15 @@ criteria for merging different Lambda or semantic-object references.
 
 #### September 9 audit: remaining source-inference cycle
 
-Checked against `9777de9`. The carrier APIs below do not remove this cycle:
+Historical audit against `9777de9`; the sites below describe that revision,
+not the current implementation. By `44307c5`, clause contexts and ordinary
+operation functions use pending derivation jobs. Source handlers collect
+masked input, return and clause effect dependencies before sealing their row.
+The unfinished integration is no longer the absence of clause-context jobs:
+handler acceptance still calls `pg_prove_handler` directly, and the common
+derivation input does not retain the ordered operation declarations needed
+to reconstruct its clauses. General pending inference and descriptor transport
+must still pass the full source/image gates. The original cycle was:
 
 ```
 accepted resumption context requires closed G
@@ -980,6 +988,22 @@ finish general handler source support.
   the operation signature rules. General descriptor transport, pending handler
   preparation and the full acceptance gates remain open.
   Implementation C: +42/-5; tests: +20/-0; documentation separate.
+
+  September 9, after `44307c5`: a regression with a Lambda whose body is a
+  request and whose context contains an unsealed effect row exhausted the
+  10,000-step test limit while requesting only term structure. REQUEST_INTRO
+  was absent from structural computation polarity, so BODY_JOB waited for
+  acceptance. It now follows the same computation-body path as Return/Fold.
+  Prepared operation functions likewise expose their ordinary Lambda producer
+  through the existing source preparation protocol. The regression obtains
+  both Core and classifier structure before acceptance, then checks exact
+  Core reuse after solving, with scheduler chunks 1 and 64.
+  Normal components, eight source checks, six execution fixtures and rebuilt
+  ASan/UBSan synthesis pass. No operation execution occurs during projection.
+  Implementation C: +6/-1; tests: +11/-0; documentation separate.
+  Handler common-rule dispatch still requires an ordered declaration descriptor
+  representation and exact signature-premise checks; reconstructing declarations
+  from equal payload/response types would incorrectly merge nominal operations.
 
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains

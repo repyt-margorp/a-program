@@ -3685,6 +3685,7 @@ static void forward_structure(struct pg_synthesis *synthesis, struct pg_synthesi
 
 static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_job *job)
 {
+	if (job->role == OPERATION_JOB) return job->left;
 	if (job->role == HANDLER_RETURN_JOB || job->role == HANDLER_CLAUSE_JOB) return job->value_job;
 	if (job->role == SEQUENCE_JOB) return job->value_job ? job->value_job : job->right;
 	if (job->role != EXPRESSION_JOB) return NULL;
@@ -3708,6 +3709,9 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 	if (producer->status != PG_SYNTHESIS_PENDING) return 0;
 	int preparing = 0;
 	switch (producer->role) {
+	case OPERATION_JOB:
+		preparing = !producer->left;
+		break;
 	case SEQUENCE_JOB:
 		preparing = !producer->value_job && !producer->right && source_value_kind(producer->inputs[1]) >= 0;
 		break;
@@ -3780,7 +3784,8 @@ static int body_rule_polarity(const struct pg_synthesis_job *rule)
 	const struct pg_derivation_input *input = rule->inputs[0];
 	switch (input->rule) {
 	case PG_VARIABLE: case PG_THUNK_INTRO: case PG_VALUE_FROM_TYPE: case PG_UNIVERSE_FORM: return 1;
-	case PG_LAMBDA_INTRO: case PG_APP_ELIM: case PG_FORCE_ELIM: case PG_RETURN_INTRO: case PG_FOLD_ELIM: return 0;
+	case PG_LAMBDA_INTRO: case PG_APP_ELIM: case PG_FORCE_ELIM: case PG_RETURN_INTRO:
+	case PG_FOLD_ELIM: case PG_REQUEST_INTRO: return 0;
 	default: return -1;
 	}
 }
