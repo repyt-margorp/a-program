@@ -27,6 +27,19 @@ int pg_effect_inference_init(struct pg_effect_inference *work, struct pg_graph *
 void pg_effect_inference_destroy(struct pg_effect_inference *work);
 struct pg_effect_equation *pg_effect_equation(struct pg_effect_inference *work,
 	const struct pg_effect_row *seed);
+/* Register a relocated plain parameter. Its immutable seed must agree on reuse.
+ * Existing sites remain queryable after sealing; new sites do not. No saved
+ * approximation or accepted-state flag is imported by this operation. */
+struct pg_effect_equation *pg_effect_equation_at(struct pg_effect_inference *work,
+	const struct pg_object *parameter, const struct pg_effect_row *seed);
+const struct pg_effect_row *pg_effect_equation_seed(const struct pg_effect_inference *work,
+	const struct pg_effect_equation *equation);
+/* Read immutable definitions, equations before edges, once each. Callbacks
+ * return zero to continue and must not mutate work. Queue/value approximations
+ * and the disposable constant-source lookup cache are not exported. */
+int pg_effect_inference_visit(const struct pg_effect_inference *work, void *context,
+	int (*equation)(void *, const struct pg_effect_equation *, const struct pg_effect_row *),
+	int (*dependency)(void *, const struct pg_effect_equation *, const struct pg_effect_row *, const struct pg_effect_equation *));
 /* Structural parameter for unaccepted classifier spines. Its binder object
  * lives in rows, outliving the worker; it has no pointer back to work/equation.
  * Distinct equations have distinct parameters even for equal seeds/results.

@@ -19,28 +19,28 @@ struct pg_effect_dependency {
 };
 struct row_source {
 	struct pg_index_entry index;
-	const struct pg_term *term;
+	const struct pg_object *object;
 	struct pg_effect_equation *equation;
 };
 
 static struct pg_effect_equation *row_source(const struct pg_effect_inference *work,
-	const struct pg_term *term)
+	const struct pg_object *object)
 {
-	uint64_t hash = ((uintptr_t)term >> 3) * UINT64_C(1099511628211);
+	uint64_t hash = ((uintptr_t)object >> 3) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *entry = pg_index_candidates(&work->row_sources, hash); entry; entry = entry->next) {
 		struct row_source *source = (void *)entry;
-		if (entry->hash == hash && source->term == term) return source->equation;
+		if (entry->hash == hash && source->object == object) return source->equation;
 	}
 	return NULL;
 }
 
-static int register_source(struct pg_effect_inference *work, const struct pg_term *term,
+static int register_source(struct pg_effect_inference *work, const struct pg_object *object,
 	struct pg_effect_equation *equation)
 {
 	struct row_source *source = pg_alloc(&work->arena, sizeof(*source));
 	if (!source) { work->failed = 1; return -1; }
-	*source = (struct row_source){.term = term, .equation = equation};
-	uint64_t hash = ((uintptr_t)term >> 3) * UINT64_C(1099511628211);
+	*source = (struct row_source){.object = object, .equation = equation};
+	uint64_t hash = ((uintptr_t)object >> 3) * UINT64_C(1099511628211);
 	if (pg_index_insert(&work->row_sources, &source->index, hash)) {
 		work->failed = 1; return -1;
 	}
@@ -80,16 +80,50 @@ struct pg_effect_equation *pg_effect_equation(struct pg_effect_inference *work,
 	const struct pg_effect_row *seed)
 {
 	if (!work->rows || work->sealed || work->failed || !seed) return NULL;
-	struct pg_effect_equation *equation = pg_alloc(&work->arena, sizeof(*equation));
-	if (!equation) { work->failed = 1; return NULL; }
 	const struct pg_object *parameter = pg_binder(work->rows);
 	if (!parameter) { work->failed = 1; return NULL; }
+	return pg_effect_equation_at(work, parameter, seed);
+}
+
+struct pg_effect_equation *pg_effect_equation_at(struct pg_effect_inference *work,
+	const struct pg_object *parameter, const struct pg_effect_row *seed)
+{
+	if (!work->rows || work->failed || !seed || !parameter) return NULL;
+	if (parameter->kind != PG_BINDER || parameter->owner) return NULL;
+	struct pg_effect_equation *existing = row_source(work, parameter);
+	if (existing) return existing->seed == seed ? existing : NULL;
+	if (work->sealed) return NULL;
+	struct pg_effect_equation *equation = pg_alloc(&work->arena, sizeof(*equation));
+	if (!equation) { work->failed = 1; return NULL; }
 	*equation = (struct pg_effect_equation){.owner = work, .parameter = parameter, .seed = seed, .value = seed};
-	const struct pg_term *term = pg_reference(work->rows, parameter);
-	if (!term) { work->failed = 1; return NULL; }
-	if (register_source(work, term, equation)) return NULL;
+	if (register_source(work, parameter, equation)) return NULL;
 	enqueue(work, equation);
 	return equation;
+}
+
+const struct pg_effect_row *pg_effect_equation_seed(const struct pg_effect_inference *work,
+	const struct pg_effect_equation *equation)
+{
+	return equation && equation->owner == work ? equation->seed : NULL;
+}
+
+int pg_effect_inference_visit(const struct pg_effect_inference *work, void *context,
+	int (*equation)(void *, const struct pg_effect_equation *, const struct pg_effect_row *),
+	int (*dependency)(void *, const struct pg_effect_equation *, const struct pg_effect_row *, const struct pg_effect_equation *))
+{
+	if (!work->rows || work->failed) return -1;
+	if (equation) for (size_t i = 0; i < work->row_sources.capacity; ++i)
+		for (const struct pg_index_entry *entry = work->row_sources.buckets[i]; entry; entry = entry->next) {
+			const struct row_source *source = (const void *)entry;
+			if (source->object != source->equation->parameter) continue;
+			if (equation(context, source->equation, source->equation->seed)) return -1;
+		}
+	if (dependency) for (size_t i = 0; i < work->dependencies.capacity; ++i)
+		for (const struct pg_index_entry *entry = work->dependencies.buckets[i]; entry; entry = entry->next) {
+			const struct pg_effect_dependency *edge = (const void *)entry;
+			if (dependency(context, edge->source, edge->mask, edge->target)) return -1;
+		}
+	return 0;
 }
 
 const struct pg_object *pg_effect_equation_parameter(const struct pg_effect_inference *work,
@@ -104,12 +138,13 @@ int pg_effect_contribution(struct pg_effect_inference *work,
 {
 	if (!work->rows || work->sealed || work->failed || !row_term || !mask || !target) return -1;
 	if (target->owner != work) return -1;
-	struct pg_effect_equation *source = row_source(work, row_term);
+	if (row_term->kind != PG_REFERENCE) return -1;
+	struct pg_effect_equation *source = row_source(work, row_term->as.reference);
 	if (!source) {
 		const struct pg_effect_row *row = pg_effect_row_view(row_term);
 		if (!row) return -1;
 		source = pg_effect_equation(work, row);
-		if (!source || register_source(work, row_term, source)) return -1;
+		if (!source || register_source(work, row_term->as.reference, source)) return -1;
 	}
 	return pg_effect_dependency(work, source, mask, target);
 }

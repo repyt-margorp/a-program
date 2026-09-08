@@ -1197,6 +1197,27 @@ finish general handler source support.
   after 208 transitions. Implementation C/header: +65/-23; test C: +69/-2;
   test shell: +5/-0; documentation separate.
 
+  September 9, after `8fc3b5f`: effect equation registration now accepts an
+  existing plain parameter through `pg_effect_equation_at`. Fresh creation
+  delegates to this same path. Exact parameter/seed reuse returns the existing
+  site, including after sealing; a different seed or a new post-seal site rejects.
+  The source index keys the referenced object directly, so registration/querying
+  does not intern an auxiliary REFERENCE merely to find its equation.
+
+  A read-only visitor exposes original equation seeds followed by dependency
+  edges using the existing indices. It does not export mutable approximations,
+  scheduler cursors or the disposable closed-row source cache. No second
+  equation store was added. Reconstruction tests copy a partially advanced
+  cyclic/masked graph into a new worker, destroy the original, seal and solve
+  from its original seeds, obtaining the same least closure. The zero seed
+  remains zero even when the computed result grows. Parameter ownership,
+  conflicting seeds and fresh operation-label misuse are also checked.
+  This is the prerequisite for pending-equation image transport, not that codec
+  or a live source-job checkpoint. Those N5 requirements remain open.
+  Normal components, eight example source checks, six runtime fixtures and
+  rebuilt ASan/UBSan synthesis tests pass. Implementation C/header: +62/-14;
+  test C: +58/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 208 transitions; this does not establish full source acceptance.

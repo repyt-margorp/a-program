@@ -77,6 +77,60 @@ static const struct pg_evidence *normalize(struct pg_synthesis *synthesis,
 	return complete(synthesis, pg_synthesis_normalize(synthesis, context, input), PG_SYNTHESIS_DONE);
 }
 
+struct effect_copy {
+	const struct pg_effect_inference *source;
+	struct pg_effect_inference *destination;
+	size_t equations, edges;
+};
+
+static int copy_effect_equation(void *context, const struct pg_effect_equation *equation, const struct pg_effect_row *seed)
+{
+	struct effect_copy *copy = context;
+	++copy->equations;
+	return !pg_effect_equation_at(copy->destination, pg_effect_equation_parameter(copy->source, equation), seed);
+}
+
+static int copy_effect_edge(void *context, const struct pg_effect_equation *source,
+	const struct pg_effect_row *mask, const struct pg_effect_equation *target)
+{
+	struct effect_copy *copy = context;
+	++copy->edges;
+	return pg_effect_dependency(copy->destination,
+		pg_effect_equation_at(copy->destination, pg_effect_equation_parameter(copy->source, source), pg_effect_equation_seed(copy->source, source)),
+		mask, pg_effect_equation_at(copy->destination, pg_effect_equation_parameter(copy->source, target), pg_effect_equation_seed(copy->source, target)));
+}
+
+static void effect_definition_restore(struct pg_graph *graph, const struct pg_effect_row *empty, const struct pg_effect_row *seed)
+{
+	struct pg_effect_inference source, restored;
+	assert(!pg_effect_inference_init(&source, graph) && !pg_effect_inference_init(&restored, graph));
+	struct pg_effect_equation *a = pg_effect_equation(&source, seed), *b = pg_effect_equation(&source, empty);
+	const struct pg_object *pa = pg_effect_equation_parameter(&source, a), *pb = pg_effect_equation_parameter(&source, b);
+	assert(!pg_effect_dependency(&source, a, empty, b));
+	assert(!pg_effect_dependency(&source, b, empty, a));
+	assert(!pg_effect_contribution(&source, pg_effect_reference(graph, seed), seed, b));
+	pg_effect_inference_seal(&source);
+	assert(!pg_effect_inference_advance(&source, 1));
+	assert(!pg_effect_inference_result(&source, b) && pg_effect_equation_seed(&source, b) == empty);
+	struct effect_copy copy = {&source, &restored, 0, 0};
+	assert(!pg_effect_inference_visit(&source, &copy, copy_effect_equation, copy_effect_edge));
+	assert(copy.equations == 3 && copy.edges == 3);
+	struct pg_effect_equation *ra = pg_effect_equation_at(&restored, pa, seed), *rb = pg_effect_equation_at(&restored, pb, empty);
+	assert(ra && rb && pg_effect_equation_seed(&restored, rb) == empty);
+	assert(!pg_effect_equation_at(&restored, pb, seed));
+	assert(!pg_effect_equation_seed(&restored, b));
+	pg_effect_inference_destroy(&source);
+	assert(!pg_effect_inference_result(&restored, rb));
+	pg_effect_inference_seal(&restored);
+	assert(pg_effect_equation_at(&restored, pa, seed) == ra);
+	assert(!pg_effect_equation_at(&restored, pg_binder(graph), empty));
+	unsigned steps = 0;
+	while (!pg_effect_inference_advance(&restored, 1)) assert(++steps < 20);
+	assert(pg_effect_inference_result(&restored, ra) == seed && pg_effect_inference_result(&restored, rb) == seed);
+	assert(pg_effect_equation_seed(&restored, rb) == empty);
+	pg_effect_inference_destroy(&restored);
+}
+
 static void effect_equations(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	static const struct pg_object_class label_class = {"effect-equation-test"};
@@ -91,6 +145,7 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		rows[bits] = pg_effect_row(typing->graph, count, members);
 		assert(rows[bits]);
 	}
+	effect_definition_restore(typing->graph, rows[0], rows[1]);
 	struct pg_whnf_work normalization;
 	assert(!pg_whnf_work_init(&normalization, typing->graph));
 	for (unsigned reverse = 0; reverse < 2; ++reverse)
@@ -109,6 +164,9 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		const struct pg_object *parameter = pg_effect_equation_parameter(&work, a);
 		assert(parameter && parameter->kind == PG_BINDER);
 		assert(parameter == pg_effect_equation_parameter(&work, a));
+		assert(pg_effect_equation_at(&work, parameter, rows[seed]) == a);
+		assert(!pg_effect_equation_at(&work, parameter, rows[seed ^ 1]));
+		assert(!pg_effect_equation_at(&work, &labels[0], rows[0]));
 		assert(parameter != pg_effect_equation_parameter(&work, b));
 		assert(!pg_effect_equation_parameter(&work, other));
 		const struct pg_term *row_term = pg_reference(typing->graph, parameter);
