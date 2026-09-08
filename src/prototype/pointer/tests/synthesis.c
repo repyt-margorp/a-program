@@ -459,7 +459,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *request_payload = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){context, payload_value});
 		struct pg_derivation_input request_input = {.rule = PG_REQUEST_INTRO, .count = 4,
-			.parameters.operation = request_op};
+			.parameters.operation_label = pg_operation_label(request_op)};
 		struct pg_synthesis_job *request_job = pg_synthesis_rule(&synthesis, &request_input,
 			(struct pg_synthesis_job *[]){signature_job, signature_job, request_payload, request_continuation}, NULL, NULL);
 		struct pg_synthesis_job *request_type = pg_synthesis_classifier_structure(&synthesis, request_job);
@@ -656,7 +656,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *returned_variable = rule_job(&synthesis, PG_VARIABLE, returned_binder, 1, &return_scope);
 		struct pg_synthesis_job *raw_return = pg_synthesis_lambda_body(&synthesis, raw_return_domain, return_scope, returned_variable);
 		struct pg_derivation_input raw_handler_input = {.rule = PG_HANDLER_ELIM, .count = 6,
-			.parameters.handler = pg_handler_signature(typing->graph, 1, &pending_op)};
+			.parameters.handler = pg_handler_signature(typing->graph, 1,
+				(const struct pg_object *[]){pg_operation_label(pending_op)})};
 		struct pg_synthesis_job *raw_handler = pg_synthesis_rule(&synthesis, &raw_handler_input,
 			(struct pg_synthesis_job *[]){body, raw_return, open_carrier, universe, universe, open_clause}, NULL, NULL);
 		struct pg_synthesis_job *raw_handler_type = pg_synthesis_classifier_structure(&synthesis, raw_handler);
@@ -669,7 +670,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_operation_declaration *second_pending_op = pg_operation_declaration(typing, signature, signature);
 		struct pg_derivation_input multiple_input = {.rule = PG_HANDLER_ELIM, .count = 9,
 			.parameters.handler = pg_handler_signature(typing->graph, 2,
-				(const struct pg_operation_declaration *[]){pending_op, second_pending_op})};
+				(const struct pg_object *[]){pg_operation_label(pending_op), pg_operation_label(second_pending_op)})};
 		struct pg_synthesis_job *multiple_handler = pg_synthesis_rule(&synthesis, &multiple_input,
 			(struct pg_synthesis_job *[]){body, raw_return, open_carrier,
 				universe, universe, open_clause, universe, universe, open_clause}, NULL, NULL);
@@ -1058,16 +1059,17 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		const struct pg_evidence *payload = pg_prove_type_value(typing, u0);
 		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(&synthesis, u1), pg_synthesis_evidence(&synthesis, u1),
 			pg_synthesis_evidence(&synthesis, payload), pg_synthesis_evidence(&synthesis, continuation)};
-		struct pg_derivation_input input = {.rule = PG_REQUEST_INTRO, .count = 4, .parameters.operation = operation};
+		struct pg_derivation_input input = {.rule = PG_REQUEST_INTRO, .count = 4, .parameters.operation_label = pg_operation_label(operation)};
 		struct pg_synthesis_job *first = pg_synthesis_rule(&synthesis, &input, premises, NULL, NULL);
 		assert(first == pg_synthesis_rule(&synthesis, &input, premises, NULL, NULL));
-		input.parameters.operation = pg_operation_declaration(typing, u1, u1);
+		input.parameters.operation_label = pg_operation_label_create(typing->graph,
+			pg_evidence_subject(u1)->core, pg_evidence_subject(u1)->core);
 		struct pg_synthesis_job *second = pg_synthesis_rule(&synthesis, &input, premises, NULL, NULL);
 		assert(first && second && first != second);
 		const struct pg_evidence *first_result = complete(&synthesis, first, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *second_result = complete(&synthesis, second, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_request_declaration(first_result) == operation);
-		assert(pg_evidence_request_declaration(second_result) == input.parameters.operation);
+		assert(pg_operation_label(pg_evidence_request_declaration(second_result)) == input.parameters.operation_label);
 		assert(pg_evidence_subject(first_result)->core != pg_evidence_subject(second_result)->core);
 	}
 	size_t term_count = typing->graph->terms.count, proof_count = typing->proofs.count;
@@ -1275,7 +1277,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(handler_rule_job == pg_synthesis_rule(&synthesis, &handler_rule_input, handler_premises, NULL, NULL));
 	assert(complete(&synthesis, handler_rule_job, PG_SYNTHESIS_DONE) == both_handled);
 	handler_rule_input.parameters.handler = pg_handler_signature(typing->graph, 2,
-		(const struct pg_operation_declaration *[]){operation, fetch});
+		(const struct pg_object *[]){pg_operation_label(operation), pg_operation_label(fetch)});
 	struct pg_synthesis_job *wrong_handler = pg_synthesis_rule(&synthesis, &handler_rule_input, handler_premises, NULL, NULL);
 	assert(wrong_handler != handler_rule_job);
 	assert(!complete(&synthesis, wrong_handler, PG_SYNTHESIS_REJECTED));

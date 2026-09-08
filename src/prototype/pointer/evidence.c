@@ -20,40 +20,47 @@ struct pg_evidence {
 };
 
 struct pg_operation_declaration {
-	struct pg_object label;
+	struct pg_object_entry base;
+	const struct pg_object *label;
 	const struct pg_evidence *payload_type, *response_type;
 };
 
 static const struct pg_object_class operation_label_class = {"operation-label"};
+static const struct pg_object_class operation_declaration_class = {"operation-declaration"};
+struct operation_label {
+	struct pg_object object;
+	const struct pg_term *payload, *response;
+};
 static const struct pg_object_class handler_signature_class = {"handler-signature"};
 struct pg_handler_signature {
 	struct pg_object_entry base;
 	size_t count;
-	const struct pg_operation_declaration *operations[];
+	const struct pg_object *labels[];
 };
 
 const struct pg_handler_signature *pg_handler_signature(struct pg_graph *graph,
-	size_t count, const struct pg_operation_declaration *const *operations)
+	size_t count, const struct pg_object *const *labels)
 {
-	if (!graph || !count || !operations) return NULL;
-	if (count > (SIZE_MAX - sizeof(struct pg_handler_signature)) / sizeof(*operations)) return NULL;
+	if (!graph || !count || !labels) return NULL;
+	if (count > (SIZE_MAX - sizeof(struct pg_handler_signature)) / sizeof(*labels)) return NULL;
 	if (!graph->objects.capacity && pg_index_init(&graph->objects)) return NULL;
 	uint64_t hash = UINT64_C(1469598103934665603) ^ count;
 	for (size_t i = 0; i < count; ++i) {
-		if (!operations[i]) return NULL;
-		hash = (hash ^ (uintptr_t)operations[i]) * UINT64_C(1099511628211);
+		const struct pg_term *payload, *response;
+		if (!pg_operation_label_types(labels[i], &payload, &response)) return NULL;
+		hash = (hash ^ (uintptr_t)labels[i]) * UINT64_C(1099511628211);
 	}
 	for (struct pg_index_entry *p = pg_index_candidates(&graph->objects, hash); p; p = p->next) {
 		const struct pg_object_entry *base = (const struct pg_object_entry *)p;
 		if (base->object.owner != &handler_signature_class) continue;
 		const struct pg_handler_signature *signature = (const void *)base;
-		if (signature->count == count && !memcmp(signature->operations, operations, count * sizeof(*operations))) return signature;
+		if (signature->count == count && !memcmp(signature->labels, labels, count * sizeof(*labels))) return signature;
 	}
-	struct pg_handler_signature *signature = pg_alloc(graph, sizeof(*signature) + count * sizeof(*operations));
+	struct pg_handler_signature *signature = pg_alloc(graph, sizeof(*signature) + count * sizeof(*labels));
 	if (!signature) return NULL;
 	signature->base.object = (struct pg_object){PG_SEMANTIC_OBJECT, &handler_signature_class};
 	signature->count = count;
-	memcpy(signature->operations, operations, count * sizeof(*operations));
+	memcpy(signature->labels, labels, count * sizeof(*labels));
 	return pg_index_insert(&graph->objects, &signature->base.index, hash) ? NULL : signature;
 }
 
@@ -62,10 +69,10 @@ size_t pg_handler_signature_count(const struct pg_handler_signature *signature)
 	return signature ? signature->count : 0;
 }
 
-const struct pg_operation_declaration *pg_handler_signature_operation(
+const struct pg_object *pg_handler_signature_label(
 	const struct pg_handler_signature *signature, size_t index)
 {
-	return signature && index < signature->count ? signature->operations[index] : NULL;
+	return signature && index < signature->count ? signature->labels[index] : NULL;
 }
 
 const struct pg_handler_signature *pg_evidence_handler_signature(const struct pg_evidence *evidence)
@@ -1873,6 +1880,55 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 		pi->context, subject, pi->classifier, 1, &pi);
 }
 
+const struct pg_object *pg_operation_label_create(struct pg_graph *graph,
+	const struct pg_term *payload, const struct pg_term *response)
+{
+	if (!graph || !payload || !response) return NULL;
+	struct operation_label *label = pg_alloc(graph, sizeof(*label));
+	if (!label) return NULL;
+	*label = (struct operation_label){
+		.object = {PG_SEMANTIC_OBJECT, &operation_label_class}, .payload = payload, .response = response};
+	return &label->object;
+}
+
+int pg_operation_label_types(const struct pg_object *object,
+	const struct pg_term **payload, const struct pg_term **response)
+{
+	if (!object || object->owner != &operation_label_class || object->kind != PG_SEMANTIC_OBJECT) return 0;
+	if (!payload || !response) return 0;
+	const struct operation_label *label = (const void *)object;
+	*payload = label->payload;
+	*response = label->response;
+	return 1;
+}
+
+const struct pg_operation_declaration *pg_operation_declaration_at(struct pg_typing *typing,
+	const struct pg_object *label, const struct pg_evidence *payload_type,
+	const struct pg_evidence *response_type)
+{
+	const struct pg_term *payload, *response;
+	if (!pg_operation_label_types(label, &payload, &response)) return NULL;
+	payload_type = pg_prove_value_type(typing, payload_type);
+	response_type = pg_prove_value_type(typing, response_type);
+	if (!payload_type || !response_type) return NULL;
+	if (payload_type->context || response_type->context) return NULL;
+	if (payload_type->subject->core != payload || response_type->subject->core != response) return NULL;
+	struct pg_index *index = &typing->graph->objects;
+	if (!index->capacity && pg_index_init(index)) return NULL;
+	uint64_t hash = ((uintptr_t)label ^ (uintptr_t)payload_type) * UINT64_C(1099511628211) ^ (uintptr_t)response_type;
+	for (struct pg_index_entry *p = pg_index_candidates(index, hash); p; p = p->next) {
+		const struct pg_operation_declaration *old = (const void *)p;
+		if (old->base.object.owner != &operation_declaration_class) continue;
+		if (old->label == label && old->payload_type == payload_type && old->response_type == response_type) return old;
+	}
+	struct pg_operation_declaration *declaration = pg_alloc(typing->graph, sizeof(*declaration));
+	if (!declaration) return NULL;
+	*declaration = (struct pg_operation_declaration){
+		.base.object = {PG_SEMANTIC_OBJECT, &operation_declaration_class}, .label = label,
+		.payload_type = payload_type, .response_type = response_type};
+	return pg_index_insert(index, &declaration->base.index, hash) ? NULL : declaration;
+}
+
 const struct pg_operation_declaration *pg_operation_declaration(struct pg_typing *typing,
 	const struct pg_evidence *payload_type, const struct pg_evidence *response_type)
 {
@@ -1880,12 +1936,8 @@ const struct pg_operation_declaration *pg_operation_declaration(struct pg_typing
 	response_type = pg_prove_value_type(typing, response_type);
 	if (!payload_type || !response_type) return NULL;
 	if (payload_type->context || response_type->context) return NULL;
-	struct pg_operation_declaration *declaration = pg_alloc(typing->graph, sizeof(*declaration));
-	if (!declaration) return NULL;
-	*declaration = (struct pg_operation_declaration){
-		.label = {PG_SEMANTIC_OBJECT, &operation_label_class},
-		.payload_type = payload_type, .response_type = response_type};
-	return declaration;
+	return pg_operation_declaration_at(typing, pg_operation_label_create(typing->graph,
+		payload_type->subject->core, response_type->subject->core), payload_type, response_type);
 }
 
 const struct pg_evidence *pg_operation_payload_type(const struct pg_operation_declaration *declaration)
@@ -1900,7 +1952,7 @@ const struct pg_evidence *pg_operation_response_type(const struct pg_operation_d
 
 const struct pg_object *pg_operation_label(const struct pg_operation_declaration *declaration)
 {
-	return declaration ? &declaration->label : NULL;
+	return declaration ? declaration->label : NULL;
 }
 
 const struct pg_operation_declaration *pg_evidence_request_declaration(const struct pg_evidence *evidence)
@@ -2052,10 +2104,9 @@ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_c
 	const struct pg_evidence **premises = pg_alloc(&temporary, n * sizeof(*premises));
 	const struct pg_object **labels = pg_alloc(&temporary, count * sizeof(*labels));
 	struct pg_operation_clause *raw = pg_alloc(&temporary, count * sizeof(*raw));
-	const struct pg_operation_declaration **operations = pg_alloc(&temporary, count * sizeof(*operations));
 	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 2) * sizeof(*operands));
 	const struct pg_evidence *result = NULL;
-	if (!premises || !labels || !raw || !operands || !operations) goto done;
+	if (!premises || !labels || !raw || !operands) goto done;
 	premises[0] = computation; premises[1] = returned; premises[2] = carrier;
 	operands[0] = computation->subject; operands[1] = returned->subject;
 	for (size_t i = 0; i < count; ++i) {
@@ -2067,7 +2118,6 @@ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_c
 		if (body->judgement != PG_JUDGEMENT_COMPUTATION || body->context != computation->context) goto done;
 		if (!handler_clause_type(body->classifier, operation, carrier->subject->core)) goto done;
 		labels[i] = pg_operation_label(operation);
-		operations[i] = operation;
 		raw[i] = (struct pg_operation_clause){labels[i], body->subject->core};
 		operands[i + 2] = body->subject;
 		premises[3 + 3 * i] = operation->payload_type;
@@ -2082,7 +2132,7 @@ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_c
 	if (!core) goto done;
 	const struct pg_occurrence *subject = pg_occurrence(typing, computation->context, core, NULL, count + 2, operands);
 	if (!subject) goto done;
-	const struct pg_handler_signature *signature = pg_handler_signature(typing->graph, count, operations);
+	const struct pg_handler_signature *signature = pg_handler_signature(typing->graph, count, labels);
 	if (!signature) goto done;
 	result = accept_record(typing, PG_HANDLER_ELIM, PG_JUDGEMENT_COMPUTATION,
 		computation->context, subject, carrier->subject->core, n, premises, signature, 0, NULL);

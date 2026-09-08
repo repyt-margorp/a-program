@@ -322,7 +322,7 @@ static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 		(uintptr_t)input->parameters.binder, (uintptr_t)input->parameters.effects,
 		input->parameters.level, input->parameters.direction,
 		(uintptr_t)input->parameters.conversion, (uintptr_t)input->parameters.reduction,
-		(uintptr_t)input->parameters.operation,
+		(uintptr_t)input->parameters.operation_label,
 		(uintptr_t)input->parameters.handler,
 		(uintptr_t)input->source, (uintptr_t)input->target, input->reduction_kind, input->count};
 	memcpy(key, fields, sizeof(fields));
@@ -2766,18 +2766,18 @@ static struct pg_synthesis_job *handler_rule(struct pg_synthesis *synthesis,
 	if (count > (SIZE_MAX / sizeof(struct pg_synthesis_job *) - 3) / 3) return NULL;
 	struct pg_graph temporary = {0};
 	struct pg_synthesis_job **premises = pg_alloc(&temporary, (3 + 3 * count) * sizeof(*premises));
-	const struct pg_operation_declaration **operations = pg_alloc(&temporary, count * sizeof(*operations));
+	const struct pg_object **labels = pg_alloc(&temporary, count * sizeof(*labels));
 	struct pg_synthesis_job *result = NULL;
-	if (!premises || !operations) goto done;
+	if (!premises || !labels) goto done;
 	premises[0] = body; premises[1] = returned; premises[2] = carrier;
 	for (size_t i = 0; i < count; ++i) {
-		operations[i] = clauses[i].operation;
-		premises[3 + 3 * i] = pg_synthesis_evidence(synthesis, pg_operation_payload_type(operations[i]));
-		premises[4 + 3 * i] = pg_synthesis_evidence(synthesis, pg_operation_response_type(operations[i]));
+		labels[i] = pg_operation_label(clauses[i].operation);
+		premises[3 + 3 * i] = pg_synthesis_evidence(synthesis, pg_operation_payload_type(clauses[i].operation));
+		premises[4 + 3 * i] = pg_synthesis_evidence(synthesis, pg_operation_response_type(clauses[i].operation));
 		premises[5 + 3 * i] = clauses[i].body;
 	}
 	struct pg_derivation_input input = {.rule = PG_HANDLER_ELIM, .count = 3 + 3 * count,
-		.parameters.handler = pg_handler_signature(synthesis->typing->graph, count, operations)};
+		.parameters.handler = pg_handler_signature(synthesis->typing->graph, count, labels)};
 	if (input.parameters.handler) result = pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
 done:
 	pg_graph_destroy(&temporary);
@@ -2809,7 +2809,7 @@ static void operation_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		struct pg_synthesis_job *returned = plain_rule(synthesis, PG_RETURN_INTRO, NULL, 1, &value);
 		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(synthesis, domain, response_scope, returned);
 		struct pg_synthesis_job *argument = plain_rule(synthesis, PG_VARIABLE, a, 1, &scope);
-		struct pg_derivation_input input = {.rule = PG_REQUEST_INTRO, .count = 4, .parameters.operation = operation};
+		struct pg_derivation_input input = {.rule = PG_REQUEST_INTRO, .count = 4, .parameters.operation_label = pg_operation_label(operation)};
 		struct pg_synthesis_job *request = pg_synthesis_rule(synthesis, &input,
 			(struct pg_synthesis_job *[]){payload, response, argument, continuation}, NULL, NULL);
 		job->left = pg_synthesis_lambda_body(synthesis, payload, scope, request);
@@ -3884,7 +3884,7 @@ static void handler_structure_step(struct pg_synthesis *synthesis, struct pg_syn
 		if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return; }
 		if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return; }
 		state->clauses[state->next] = (struct pg_operation_clause){
-			pg_operation_label(pg_handler_signature_operation(input->parameters.handler, state->next)),
+			pg_handler_signature_label(input->parameters.handler, state->next),
 			pg_synthesis_type_structure_result(job->value_job)};
 		++state->next;
 		job->value_job = NULL;
@@ -3985,7 +3985,7 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 				job->type_structure = pg_computation_fold(synthesis->typing->graph, left, right, 0, NULL);
 			else if (input->rule == PG_REQUEST_INTRO)
 				job->type_structure = pg_computation_request(synthesis->typing->graph,
-					pg_operation_label(input->parameters.operation), left, right);
+					input->parameters.operation_label, left, right);
 			else job->type_structure = pg_application(synthesis->typing->graph, left, right);
 			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 			return;
@@ -4161,7 +4161,7 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 		const struct pg_term *type = pg_synthesis_type_structure_result(job->left);
 		if (input->rule == PG_REQUEST_INTRO) {
-			const struct pg_object *label = pg_operation_label(input->parameters.operation);
+			const struct pg_object *label = input->parameters.operation_label;
 			if (!label) goto accepted_classifier;
 			const struct pg_effect_row *row = pg_effect_row(synthesis->typing->graph, 1, &label);
 			job->type_structure = continuation_effect_structure(synthesis, type,

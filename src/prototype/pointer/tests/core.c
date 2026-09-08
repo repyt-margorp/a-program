@@ -2820,6 +2820,27 @@ static void request_typing_test(struct pg_graph *graph)
 	const struct pg_operation_declaration *op = pg_operation_declaration(&typing, u1, u1);
 	const struct pg_operation_declaration *other = pg_operation_declaration(&typing, u1, u1);
 	assert(op && other && pg_operation_label(op) != pg_operation_label(other));
+	size_t proofs_before = typing.proofs.count;
+	const struct pg_term *u1_core = pg_evidence_subject(u1)->core, *raw_payload, *raw_response;
+	const struct pg_object *raw_label = pg_operation_label_create(graph, u1_core, u1_core);
+	assert(raw_label && raw_label != pg_operation_label(op) && typing.proofs.count == proofs_before);
+	assert(pg_operation_label_types(raw_label, &raw_payload, &raw_response));
+	assert(raw_payload == u1_core && raw_response == u1_core);
+	assert(!pg_operation_label_types(pg_binder(graph), &raw_payload, &raw_response));
+	const struct pg_operation_declaration *checked = pg_operation_declaration_at(&typing, raw_label, u1, u1);
+	assert(checked && pg_operation_label(checked) == raw_label);
+	assert(checked == pg_operation_declaration_at(&typing, raw_label, u1, u1));
+	assert(op == pg_operation_declaration_at(&typing, pg_operation_label(op), u1, u1));
+	assert(!pg_operation_declaration_at(&typing, raw_label, u0, u1));
+	assert(!pg_operation_declaration_at(&typing, raw_label, u1, u0));
+	struct pg_typing local;
+	assert(!pg_typing_init(&local, graph));
+	assert(!pg_operation_declaration_at(&local, raw_label, u1, u1));
+	const struct pg_evidence *local_u1 = pg_prove_universe(&local, &classifiers, pg_prove_empty_context(&local), 1);
+	const struct pg_operation_declaration *local_declaration = pg_operation_declaration_at(&local, raw_label, local_u1, local_u1);
+	assert(local_declaration && local_declaration != checked && pg_operation_label(local_declaration) == raw_label);
+	assert(!pg_operation_declaration_at(&typing, raw_label, local_u1, local_u1));
+	pg_typing_destroy(&local);
 	const struct pg_object *x = pg_binder(graph);
 	const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, x, u1);
 	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, scope, x));
@@ -2845,7 +2866,7 @@ static void request_typing_test(struct pg_graph *graph)
 	assert(!pg_prove_return_value(&typing, request));
 	struct pg_derivation_parameters parameters;
 	assert(!pg_derivation_parameters(request, &parameters));
-	assert(parameters.operation == op && pg_evidence_request_declaration(request) == op);
+	assert(parameters.operation_label == pg_operation_label(op) && pg_evidence_request_declaration(request) == op);
 	assert(!pg_evidence_request_declaration(payload));
 	const struct pg_evidence *request_premises[] = {
 		pg_operation_payload_type(op), pg_operation_response_type(op), payload, k
@@ -2855,7 +2876,7 @@ static void request_typing_test(struct pg_graph *graph)
 	request_premises[0] = u0;
 	assert(!pg_prove_derivation(&typing, &classifiers, PG_REQUEST_INTRO, &parameters, 4, request_premises));
 	request_premises[0] = pg_operation_payload_type(op);
-	parameters.operation = other;
+	parameters.operation_label = pg_operation_label(other);
 	const struct pg_evidence *other_request = pg_prove_derivation(&typing, &classifiers, PG_REQUEST_INTRO, &parameters, 4, request_premises);
 	assert(other_request && other_request != request && pg_evidence_request_declaration(other_request) == other);
 	assert(!pg_prove_request(&typing, &classifiers, op, pg_prove_type_value(&typing, u1), k));
@@ -2914,11 +2935,11 @@ static void request_typing_test(struct pg_graph *graph)
 	assert(pg_prove_handler(&typing, &classifiers, two, k, carrier, 2, clauses) == handled);
 	const struct pg_handler_signature *signature = pg_evidence_handler_signature(handled);
 	assert(signature && pg_handler_signature_count(signature) == 2);
-	assert(pg_handler_signature_operation(signature, 0) == op);
-	assert(pg_handler_signature_operation(signature, 1) == other);
-	assert(!pg_handler_signature_operation(signature, 2));
+	assert(pg_handler_signature_label(signature, 0) == pg_operation_label(op));
+	assert(pg_handler_signature_label(signature, 1) == pg_operation_label(other));
+	assert(!pg_handler_signature_label(signature, 2));
 	assert(signature == pg_handler_signature(graph, 2,
-		(const struct pg_operation_declaration *[]){op, other}));
+		(const struct pg_object *[]){pg_operation_label(op), pg_operation_label(other)}));
 	struct pg_derivation_parameters handler_parameters;
 	assert(!pg_derivation_parameters(handled, &handler_parameters) && handler_parameters.handler == signature);
 	const struct pg_evidence *handler_premises[9];

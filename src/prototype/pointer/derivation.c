@@ -30,7 +30,7 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 	case PG_HANDLER_ELIM:
 		result.handler = pg_evidence_handler_signature(evidence); break;
 	case PG_REQUEST_INTRO:
-		result.operation = pg_evidence_request_declaration(evidence); break;
+		result.operation_label = pg_operation_label(pg_evidence_request_declaration(evidence)); break;
 	case PG_CONTEXT_EXTEND:
 		result.binder = pg_evidence_context(evidence)->binder; break;
 	case PG_VARIABLE:
@@ -100,7 +100,8 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_PI_DOMAIN, 1, pg_prove_pi_domain(typing, p[0]));
 	RULE(PG_PI_CONSTANT_CODOMAIN, 1, pg_prove_pi_constant_codomain(typing, p[0]));
 	RULE(PG_FOLD_ELIM, 2, pg_prove_fold(typing, classifiers, p[0], p[1]));
-	RULE(PG_REQUEST_INTRO, 4, pg_prove_request(typing, classifiers, parameters->operation, p[2], p[3]));
+	RULE(PG_REQUEST_INTRO, 4, pg_prove_request(typing, classifiers,
+		pg_operation_declaration_at(typing, parameters->operation_label, p[0], p[1]), p[2], p[3]));
 	case PG_HANDLER_ELIM: {
 		size_t clauses = pg_handler_signature_count(parameters->handler);
 		if (!clauses || clauses > (SIZE_MAX - 3) / 3 || count != 3 + 3 * clauses) return NULL;
@@ -109,7 +110,8 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 		struct pg_handler_clause *bodies = pg_alloc(&temporary, clauses * sizeof(*bodies));
 		if (!bodies) { pg_graph_destroy(&temporary); return NULL; }
 		for (size_t i = 0; i < clauses; ++i)
-			bodies[i] = (struct pg_handler_clause){pg_handler_signature_operation(parameters->handler, i), p[5 + 3 * i]};
+			bodies[i] = (struct pg_handler_clause){pg_operation_declaration_at(typing,
+				pg_handler_signature_label(parameters->handler, i), p[3 + 3 * i], p[4 + 3 * i]), p[5 + 3 * i]};
 		result = pg_prove_handler(typing, classifiers, p[0], p[1], p[2], clauses, bodies);
 		pg_graph_destroy(&temporary);
 		break;

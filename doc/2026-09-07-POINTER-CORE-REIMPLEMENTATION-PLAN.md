@@ -1084,6 +1084,39 @@ finish general handler source support.
   Rebuilt ASan/UBSan synthesis tests also pass. Implementation C: +17/-16;
   test C: +25/-2; documentation counted separately.
 
+  September 9, after `e113b75`: operation relocation exposed a representation
+  dependency: the nominal label was embedded in a checked declaration holding
+  accepted signature evidence. It could not be restored independently of those
+  proofs. Labels now own immutable raw payload/response terms only; creating a
+  label does not accept a type or execute a request. A checked declaration binds
+  that label to local closed value-type proofs whose subjects are exactly its
+  stored signature terms. Distinct labels with identical signatures stay
+  distinct; conflicting signatures cannot be installed on an existing label.
+  Exact label/proof tuples reuse a declaration through the existing object
+  index. Different typing stores need their own signature evidence even when
+  they share the Core graph and label.
+
+  REQUEST rule inputs now retain the label, not an already checked declaration.
+  HANDLER signatures likewise retain only the ordered label array; signature
+  proofs remain the ordinary premises. The common derivation dispatcher checks
+  those premises and obtains declarations through the same constructor used by
+  local source requests. This removes one temporary declaration array from
+  handler evidence construction. It adds neither a Core term tag nor a second
+  checking/Replay algorithm. The label-signature pointer check is descriptor
+  fidelity, not a new DefEq rule or normalization-based label interning.
+
+  Tests cover fresh raw labels without additional evidence, same-tuple reuse,
+  payload/response mismatch rejection, local evidence ownership across typing
+  stores, and a REQUEST job whose label has no pre-existing checked declaration.
+  The wire codec still explicitly refuses these parameters: raw label/signature
+  relocation, closed-row relocation and pending-image transport must be connected
+  before removing that refusal. This is an N5 prerequisite, not a checkpoint or
+  full-language completion claim.
+  Normal components, eight source checks, six runtime fixtures and rebuilt
+  ASan/UBSan Core and synthesis tests pass. Example transition counts are
+  unchanged; the open-family gate remains unsupported after 208 steps.
+  Implementation C/header: +104/-41; test C: +36/-13; docs separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 208 transitions; this does not establish full source acceptance.

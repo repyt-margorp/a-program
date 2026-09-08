@@ -23,8 +23,19 @@ enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 struct pg_evidence;
 struct pg_data_schema;
 struct pg_operation_declaration;
+/* Fresh inert label with immutable raw signature terms, not typing evidence.
+ * Owned by graph; referenced terms must outlive it. No interning by signature. */
+const struct pg_object *pg_operation_label_create(struct pg_graph *graph,
+	const struct pg_term *payload, const struct pg_term *response);
+int pg_operation_label_types(const struct pg_object *label,
+	const struct pg_term **payload, const struct pg_term **response);
+/* Check the signature of an existing label using local, closed value-type
+ * evidence. Exact label/signature-proof tuples reuse the same declaration. */
+const struct pg_operation_declaration *pg_operation_declaration_at(struct pg_typing *typing,
+	const struct pg_object *label, const struct pg_evidence *payload_type,
+	const struct pg_evidence *response_type);
 /* Fresh nominal operation with closed value-type payload/response signatures.
- * The typed declaration owns its label; aliases reuse that same pointer.
+ * Aliases reuse its label; a label alone does not confer typing acceptance.
  * No runtime implementation, handler permission or totality is asserted. */
 const struct pg_operation_declaration *pg_operation_declaration(struct pg_typing *typing,
 	const struct pg_evidence *payload_type, const struct pg_evidence *response_type);
@@ -45,12 +56,12 @@ struct pg_handler_clause {
 	const struct pg_operation_declaration *operation;
 	const struct pg_evidence *body;
 };
-/* Ordered nominal declarations only; bodies remain ordinary proof premises. */
+/* Ordered nominal labels only; signature evidence and bodies are premises. */
 struct pg_handler_signature;
 const struct pg_handler_signature *pg_handler_signature(struct pg_graph *graph,
-	size_t count, const struct pg_operation_declaration *const *operations);
+	size_t count, const struct pg_object *const *labels);
 size_t pg_handler_signature_count(const struct pg_handler_signature *signature);
-const struct pg_operation_declaration *pg_handler_signature_operation(
+const struct pg_object *pg_handler_signature_label(
 	const struct pg_handler_signature *signature, size_t index);
 const struct pg_handler_signature *pg_evidence_handler_signature(const struct pg_evidence *evidence);
 /* Extend the carrier's context by payload:A and resume:U(Pi(B,carrier)).
