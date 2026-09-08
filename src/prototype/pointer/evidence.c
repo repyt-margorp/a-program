@@ -109,7 +109,7 @@ static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_eviden
 
 static int context_proof(const struct pg_typing *typing, const struct pg_evidence *proof)
 {
-	if (!proof || proof->owner != typing) return 0;
+	if (!pg_evidence_owned_by(proof, typing)) return 0;
 	return proof->judgement == PG_JUDGEMENT_CONTEXT;
 }
 
@@ -120,7 +120,7 @@ const struct pg_evidence *pg_prove_empty_context(struct pg_typing *typing)
 
 const struct pg_evidence *pg_prove_value_type(struct pg_typing *typing, const struct pg_evidence *value)
 {
-	if (!value || value->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(value, typing)) return NULL;
 	if (value->judgement == PG_JUDGEMENT_VALUE_TYPE) return value;
 	if (value->judgement != PG_JUDGEMENT_VALUE) return NULL;
 	uint64_t level;
@@ -131,7 +131,7 @@ const struct pg_evidence *pg_prove_value_type(struct pg_typing *typing, const st
 
 const struct pg_evidence *pg_prove_type_value(struct pg_typing *typing, const struct pg_evidence *type)
 {
-	if (!type || type->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(type, typing)) return NULL;
 	if (type->judgement != PG_JUDGEMENT_VALUE_TYPE) return NULL;
 	return accept(typing, PG_VALUE_FROM_TYPE, PG_JUDGEMENT_VALUE,
 		type->context, type->subject, type->classifier, 1, &type);
@@ -184,7 +184,7 @@ static const struct pg_evidence *unary_formation(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *argument,
 	enum pg_evidence_rule rule)
 {
-	if (!argument || argument->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(argument, typing)) return NULL;
 	if (classifiers->graph != typing->graph) return NULL;
 	enum pg_evidence_judgement output;
 	const struct pg_term *term;
@@ -216,7 +216,7 @@ static int endpoint(const struct pg_typing *typing, const struct pg_evidence *te
 	enum pg_evidence_judgement judgement, const struct pg_context *context,
 	const struct pg_term *type)
 {
-	if (!term || term->owner != typing) return 0;
+	if (!pg_evidence_owned_by(term, typing)) return 0;
 	if (term->judgement != judgement) return 0;
 	if (term->context != context) return 0;
 	return pg_alpha_equal(term->classifier, type) == 1;
@@ -226,7 +226,7 @@ const struct pg_evidence *pg_prove_identity_type(struct pg_typing *typing,
 	const struct pg_evidence *type, const struct pg_evidence *left,
 	const struct pg_evidence *right)
 {
-	if (!type || type->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(type, typing)) return NULL;
 	enum pg_evidence_judgement elements;
 	switch (type->judgement) {
 	case PG_JUDGEMENT_VALUE_TYPE: elements = PG_JUDGEMENT_VALUE; break;
@@ -251,7 +251,7 @@ static int universe_identity(const struct pg_typing *typing,
 	const struct pg_evidence *family, const struct pg_term **left,
 	const struct pg_term **right, uint64_t *level)
 {
-	if (!family || family->owner != typing) return 0;
+	if (!pg_evidence_owned_by(family, typing)) return 0;
 	if (family->judgement != PG_JUDGEMENT_VALUE) return 0;
 	const struct pg_term *universe;
 	if (!pg_identity_view(family->classifier, &universe, left, right)) return 0;
@@ -377,7 +377,7 @@ const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classi
 	const struct pg_context *scope = extended_context->context;
 	if (!scope || scope->parent != domain->context) return NULL;
 	if (scope->declared_type != domain->subject->core) return NULL;
-	if (!codomain || codomain->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(codomain, typing)) return NULL;
 	if (codomain->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	if (codomain->context != scope) return NULL;
 	uint64_t left, right;
@@ -413,7 +413,7 @@ static const struct pg_evidence *unary_term(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_return(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *value)
 {
-	if (!value || value->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(value, typing)) return NULL;
 	if (value->judgement != PG_JUDGEMENT_VALUE) return NULL;
 	if (classifiers->graph != typing->graph) return NULL;
 	return unary_term(typing, value, &pg_return_operation,
@@ -423,7 +423,7 @@ const struct pg_evidence *pg_prove_return(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_thunk(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *computation)
 {
-	if (!computation || computation->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(computation, typing)) return NULL;
 	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (classifiers->graph != typing->graph) return NULL;
 	return unary_term(typing, computation, &pg_thunk_operation,
@@ -432,7 +432,7 @@ const struct pg_evidence *pg_prove_thunk(struct pg_typing *typing,
 
 const struct pg_evidence *pg_prove_force(struct pg_typing *typing, const struct pg_evidence *value)
 {
-	if (!value || value->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(value, typing)) return NULL;
 	if (value->judgement != PG_JUDGEMENT_VALUE) return NULL;
 	const struct pg_term *classifier;
 	if (!pg_thunk_type_view(value->classifier, &classifier)) return NULL;
@@ -442,9 +442,9 @@ const struct pg_evidence *pg_prove_force(struct pg_typing *typing, const struct 
 const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *body)
 {
-	if (!pi || pi->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(pi, typing)) return NULL;
 	if (pi->rule != PG_PI_FORM) return NULL;
-	if (!body || body->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(body, typing)) return NULL;
 	if (body->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
@@ -467,7 +467,7 @@ const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
 {
 	if (classifiers->graph != typing->graph) return NULL;
 	if (!context_proof(typing, prefix) || !context_proof(typing, context)) return NULL;
-	if (!body || body->owner != typing || body->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (!pg_evidence_owned_by(body, typing) || body->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (body->context != context->context) return NULL;
 	const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, body);
 	if (!type) return NULL;
@@ -500,7 +500,7 @@ static const struct pg_evidence *term_content(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 	const struct pg_evidence *computation)
 {
-	if (!computation || computation->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(computation, typing)) return NULL;
 	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (computation->rule == PG_RETURN_INTRO) return computation->premises[0];
 	const struct pg_term *classifier;
@@ -512,7 +512,7 @@ const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 	const struct pg_evidence *value)
 {
-	if (!value || value->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(value, typing)) return NULL;
 	if (value->judgement != PG_JUDGEMENT_VALUE) return NULL;
 	if (value->rule == PG_THUNK_INTRO) return value->premises[0];
 	const struct pg_term *classifier;
@@ -525,8 +525,8 @@ const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument)
 {
-	if (!function || function->owner != typing) return NULL;
-	if (!argument || argument->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(function, typing)) return NULL;
+	if (!pg_evidence_owned_by(argument, typing)) return NULL;
 	if (function->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (argument->judgement != PG_JUDGEMENT_VALUE) return NULL;
 	if (function->context != argument->context) return NULL;
@@ -555,8 +555,8 @@ const struct pg_evidence *pg_prove_conversion(struct pg_typing *typing,
 	const struct pg_conversion_certificate *certificate)
 {
 	if (!certificate) return NULL;
-	if (!term || term->owner != typing) return NULL;
-	if (!target_type || target_type->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(term, typing)) return NULL;
+	if (!pg_evidence_owned_by(target_type, typing)) return NULL;
 	if (term->context != target_type->context) return NULL;
 	switch (term->judgement) {
 	case PG_JUDGEMENT_VALUE:
@@ -589,7 +589,7 @@ const struct pg_reduction_certificate *pg_evidence_normalization(const struct pg
 const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_reduction_certificate *certificate)
 {
-	if (!source || source->owner != typing || !certificate) return NULL;
+	if (!pg_evidence_owned_by(source, typing) || !certificate) return NULL;
 	if (!source->subject) return NULL;
 	switch (source->judgement) {
 	case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION:
@@ -610,7 +610,7 @@ const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *proof)
 {
 	if (!context_proof(typing, context)) return NULL;
-	if (!proof || proof->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(proof, typing)) return NULL;
 	if (proof->judgement == PG_JUDGEMENT_CONTEXT) return NULL;
 	if (proof->judgement == PG_JUDGEMENT_SUBSTITUTION) return NULL;
 	const struct pg_context *cursor = context->context;
@@ -665,7 +665,7 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	}
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_evidence *image = images[i];
-		if (!image || image->owner != typing) goto done;
+		if (!pg_evidence_owned_by(image, typing)) goto done;
 		if (image->judgement != PG_JUDGEMENT_VALUE) goto done;
 		if (image->context != destination->context) goto done;
 		premises[retained + i + 2] = image;
@@ -709,9 +709,9 @@ struct pg_reindex_state {
 static int reindex_prepare(struct pg_reindex_state *state, struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof)
 {
-	if (!substitution || substitution->owner != typing) return -1;
+	if (!pg_evidence_owned_by(substitution, typing)) return -1;
 	if (substitution->rule != PG_CONTEXT_SUBSTITUTION) return -1;
-	if (!proof || proof->owner != typing) return -1;
+	if (!pg_evidence_owned_by(proof, typing)) return -1;
 	if (!proof->subject) return -1;
 	if (proof->context != substitution->premises[0]->context) return -1;
 	state->typing = typing;
@@ -817,7 +817,7 @@ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 
 static int substitution_proof(const struct pg_typing *typing, const struct pg_evidence *proof)
 {
-	if (!proof || proof->owner != typing) return 0;
+	if (!pg_evidence_owned_by(proof, typing)) return 0;
 	return proof->rule == PG_CONTEXT_SUBSTITUTION;
 }
 
@@ -852,7 +852,7 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	const struct pg_evidence *const *paths,
 	const struct pg_evidence *left, const struct pg_evidence *right)
 {
-	if (!family || family->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(family, typing)) return NULL;
 	enum pg_evidence_judgement elements;
 	switch (family->judgement) {
 	case PG_JUDGEMENT_VALUE_TYPE: elements = PG_JUDGEMENT_VALUE; break;
@@ -931,7 +931,7 @@ const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
 	const struct pg_evidence *right_substitution, size_t count,
 	const struct pg_evidence *const *paths)
 {
-	if (!family || family->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(family, typing)) return NULL;
 	enum pg_evidence_judgement elements;
 	switch (family->judgement) {
 	case PG_JUDGEMENT_VALUE_TYPE: elements = PG_JUDGEMENT_VALUE; break;
@@ -965,7 +965,7 @@ const struct pg_evidence *pg_prove_substitution_extend(struct pg_typing *typing,
 	const struct pg_evidence *prefix, const struct pg_evidence *source,
 	size_t count, const struct pg_evidence *const *values)
 {
-	if (!prefix || prefix->owner != typing || prefix->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (!pg_evidence_owned_by(prefix, typing) || prefix->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	return substitution_build(typing, source, prefix->premises[1], prefix, count, values);
 }
 
@@ -1001,7 +1001,7 @@ static const struct pg_evidence *substitution_pair(struct pg_typing *typing,
 	if (source_extension->rule != PG_CONTEXT_EXTEND) return NULL;
 	if (source_extension->context->parent != substitution->premises[0]->context) return NULL;
 	if (!context_proof(typing, destination)) return NULL;
-	if (!image || image->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(image, typing)) return NULL;
 	if (image->judgement != PG_JUDGEMENT_VALUE) return NULL;
 	if (image->context != destination->context) return NULL;
 	size_t count = substitution->premise_count - 2;
@@ -1078,7 +1078,7 @@ const struct pg_evidence *pg_prove_thunk_content(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_return_content(struct pg_typing *typing,
 	const struct pg_evidence *return_type)
 {
-	if (!return_type || return_type->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(return_type, typing)) return NULL;
 	if (return_type->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	const struct pg_term *content;
 	if (!pg_return_type_view(return_type->subject->core, &content)) return NULL;
@@ -1101,7 +1101,7 @@ static const struct pg_term *constant_codomain(const struct pg_term *pi)
 const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing,
 	const struct pg_evidence *pi)
 {
-	if (!pi || pi->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(pi, typing)) return NULL;
 	if (pi->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	uint64_t hash;
 	const struct pg_evidence *existing = find_record(typing, PG_PI_CONSTANT_CODOMAIN,
@@ -1118,8 +1118,8 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *continuation)
 {
-	if (!computation || computation->owner != typing) return NULL;
-	if (!continuation || continuation->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(computation, typing)) return NULL;
+	if (!pg_evidence_owned_by(continuation, typing)) return NULL;
 	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (continuation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (computation->context != continuation->context) return NULL;
@@ -1149,7 +1149,7 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 	const struct pg_evidence *pi)
 {
-	if (!pi || pi->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(pi, typing)) return NULL;
 	if (pi->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
@@ -1163,9 +1163,9 @@ const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *argument)
 {
-	if (!pi || pi->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(pi, typing)) return NULL;
 	if (pi->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
-	if (!argument || argument->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(argument, typing)) return NULL;
 	if (argument->judgement != PG_JUDGEMENT_VALUE) return NULL;
 	if (pi->context != argument->context) return NULL;
 	const struct pg_evidence *premises[] = {pi, argument};
@@ -1193,7 +1193,7 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 {
 	if (!context_proof(typing, context)) return NULL;
 	if (classifiers->graph != typing->graph) return NULL;
-	if (!term || term->owner != typing) return NULL;
+	if (!pg_evidence_owned_by(term, typing)) return NULL;
 	if (context->context != term->context) return NULL;
 	/* These steps retain the classifier. Inspect their source without copying
 	 * the DAG, then project the recovered formation to the requested context. */

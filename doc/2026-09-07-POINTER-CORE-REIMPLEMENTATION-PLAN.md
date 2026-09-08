@@ -209,6 +209,26 @@ Admission audit after `8b3105b`:
 
 ### Next Implementation Boundary: Pending Recursive Formation
 
+Ownership audit after `2e71ac3`:
+
+- [x] Route all 38 primitive evidence ownership guards through the existing
+  `pg_evidence_owned_by` predicate, already used by generic derivation
+  reconstruction. Its meaning remains exact typing-store identity, including
+  rejection of NULL. No ancestor-store acceptance, copied proof or exception
+  for a shared Core graph is introduced.
+- [x] Add a regression with two typing stores on the same Core graph. Their
+  empty contexts and universe Core terms coincide, but their accepted evidence
+  does not. Formation, projection and substitution reject foreign premises
+  without adding proof records; each store still interns its own derivations.
+  Full component `make check` and rebuilt ASan/UBSan Core tests passed.
+- A scoped temporary typing store is not by itself the mathematical discharge
+  rule for a recursive signature. It would also require an explicit, checked
+  bridge for the admitted declaration. Conversely, adding type-family
+  assumptions to ordinary value contexts requires changing their formation
+  and substitution rules. Neither representation is authorized by simply
+  relaxing ownership checks. Keep the predicate exact until that logical
+  contract has been implemented; this consolidation changes no theorem.
+
 Conditional field synthesis after `2f59743`:
 
 - [x] Allow the existing checked `pg_synthesis_bind` to expose an explicitly

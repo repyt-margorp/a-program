@@ -2341,6 +2341,44 @@ static void dimension_test(struct pg_graph *graph)
 	pg_eval_destroy(&pending);
 }
 
+static void evidence_owner_test(struct pg_graph *graph)
+{
+	struct pg_typing first, second;
+	struct pg_classifiers classifiers;
+	assert(!pg_typing_init(&first, graph) && !pg_typing_init(&second, graph));
+	assert(!pg_classifiers_init(&classifiers, graph));
+	const struct pg_evidence *contexts[] = {
+		pg_prove_empty_context(&first), pg_prove_empty_context(&second)};
+	const struct pg_evidence *types[] = {
+		pg_prove_universe(&first, &classifiers, contexts[0], 0),
+		pg_prove_universe(&second, &classifiers, contexts[1], 0)};
+	assert(types[0] && types[1] && types[0] != types[1]);
+	assert(pg_evidence_context(types[0]) == pg_evidence_context(types[1]));
+	assert(pg_evidence_subject(types[0])->core == pg_evidence_subject(types[1])->core);
+	struct pg_typing *stores[] = {&first, &second};
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typing *store = stores[i];
+		const struct pg_evidence *foreign = types[1 - i];
+		size_t count = store->proofs.count;
+		assert(pg_evidence_owned_by(types[i], store));
+		assert(!pg_evidence_owned_by(foreign, store));
+		assert(!pg_evidence_owned_by(NULL, store));
+		assert(!pg_evidence_owned_by(types[i], NULL));
+		assert(!pg_prove_value_type(store, foreign));
+		assert(!pg_prove_type_value(store, foreign));
+		assert(!pg_prove_return_type(store, &classifiers, foreign));
+		assert(!pg_prove_universe(store, &classifiers, contexts[1 - i], 0));
+		assert(!pg_prove_projection(store, contexts[i], foreign));
+		assert(!pg_prove_substitution(store, contexts[i], contexts[1 - i], 0, NULL));
+		assert(store->proofs.count == count);
+		assert(pg_prove_universe(store, &classifiers, contexts[i], 0) == types[i]);
+	}
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&second);
+	pg_typing_destroy(&first);
+	puts("evidence ownership: shared Core/context does not transfer acceptance between stores");
+}
+
 int main(void)
 {
 	dag_test();
@@ -2350,6 +2388,7 @@ int main(void)
 	graph_test(&graph);
 	context_test(&graph);
 	evidence_test(&graph);
+	evidence_owner_test(&graph);
 	dependent_application_test(&graph);
 	typed_substitution_test(&graph);
 	family_instance_test(&graph);
