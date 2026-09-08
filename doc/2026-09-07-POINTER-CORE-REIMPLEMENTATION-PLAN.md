@@ -3849,6 +3849,11 @@ ASan/UBSan pointer checks also pass.
   before allocating reindex traversal state. The square-template test now
   schedules face selection, substitution and result formation without an
   external wait between stages; incompatible completed inputs are rejected.
+- [x] After `1dbb73c`, allow face selection to consume a pending formation
+  producer, converging on the same accepted-evidence job before traversal.
+  The square-template test now selects a vertex of its reconstructed type
+  without external staging. Non-formation results reject; allocation errors
+  are not logical rejection. No new evidence rule or center action is added.
 - [x] Check all 26 proper faces in three dimensions with split/bulk budgets,
   shared requests, unsupported permutations and pending-worker destruction.
 - Fuel bounds traversal steps, not the cost of individual acceptance rules.

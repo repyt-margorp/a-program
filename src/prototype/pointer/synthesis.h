@@ -173,6 +173,11 @@ struct pg_synthesis_job *pg_synthesis_identity_endpoint(struct pg_synthesis *syn
 struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *formation,
 	const struct pg_dimension_map *face);
+/* Wait for a formation producer, then share the accepted-evidence face job.
+ * A failed producer propagates its status; a completed non-formation rejects. */
+struct pg_synthesis_job *pg_synthesis_identity_face_job(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, struct pg_synthesis_job *formation,
+	const struct pg_dimension_map *face);
 /* Extend a checked substitution with an independently typed value. The
  * expected dependent field type is reindexed and compared using shared work;
  * only completed conversion evidence reaches the ordinary pairing rule. */
