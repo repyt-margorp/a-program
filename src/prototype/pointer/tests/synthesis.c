@@ -35,6 +35,19 @@ static struct pg_synthesis_job *request(struct pg_synthesis *synthesis,
 	return job;
 }
 
+static struct pg_synthesis_job *program(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const char *source)
+{
+	struct pg_parser parser;
+	pg_parser_init(&parser, synthesis->typing->graph, source, strlen(source));
+	const struct pg_syntax *syntax = pg_parser_program(&parser);
+	assert(syntax);
+	struct pg_synthesis_job *job = pg_synthesis_request(synthesis, scope, syntax);
+	assert(job && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
+	assert(pg_synthesis_request(synthesis, scope, syntax) == job);
+	return job;
+}
+
 static const struct pg_evidence *complete_with_budget(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, enum pg_synthesis_status expected, unsigned budget)
 {
@@ -108,6 +121,9 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	size_t term_count = typing->graph->terms.count, proof_count = typing->proofs.count;
 	struct pg_synthesis_job *operation_job = pg_synthesis_operation(&synthesis, operation);
 	assert(operation_job && !pg_synthesis_result(operation_job));
+	struct pg_synthesis_job *operation_reference = pg_synthesis_operation_reference(&synthesis, operation_job);
+	assert(operation_reference && !pg_synthesis_operation_declaration(operation_reference));
+	assert(pg_synthesis_operation_reference(&synthesis, operation_job) == operation_reference);
 	assert(pg_synthesis_operation(&synthesis, operation) == operation_job);
 	assert(!pg_synthesis_operation(&synthesis, NULL));
 	assert(typing->graph->terms.count == term_count && typing->proofs.count == proof_count);
@@ -143,6 +159,34 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	proof_count = typing->proofs.count;
 	assert(complete(&synthesis, pg_synthesis_operation(&synthesis, operation), PG_SYNTHESIS_DONE) == operation_function);
 	assert(typing->graph->terms.count == term_count && typing->proofs.count == proof_count);
+	assert(!complete(&synthesis, operation_reference, PG_SYNTHESIS_DONE));
+	assert(pg_synthesis_operation_declaration(operation_reference) == operation);
+	scope = pg_synthesis_name(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Signature", .length=9},
+		pg_prove_classifier(typing, classifiers, context, operation_function));
+	const char *aliases[] = {"alias := Op;", "alias := &Alias;", "alias := Op :: Signature;"};
+	for (size_t i = 0; i < sizeof(aliases) / sizeof(*aliases); ++i) {
+		struct pg_synthesis_job *alias = request(&synthesis, scope, aliases[i]);
+		struct pg_synthesis_job *reference = pg_synthesis_operation_reference(&synthesis, alias);
+		assert(reference && !pg_synthesis_operation_declaration(reference));
+		assert(!complete(&synthesis, reference, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_operation_declaration(reference) == operation);
+		assert(pg_synthesis_operation_reference(&synthesis, alias) == reference);
+	}
+	struct pg_synthesis_job *module_alias = pg_synthesis_operation_reference(&synthesis,
+		program(&synthesis, scope, "{{copy := &Op;}}.copy;"));
+	complete(&synthesis, module_alias, PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_operation_declaration(module_alias) == operation);
+	const char *not_labels[] = {"not_label := Op Arg;", "not_label := & (\\x:@ => x);",
+		"not_label := Missing;"};
+	for (size_t i = 0; i < sizeof(not_labels) / sizeof(*not_labels); ++i) {
+		struct pg_synthesis_job *reference = pg_synthesis_operation_reference(&synthesis,
+			request(&synthesis, scope, not_labels[i]));
+		complete(&synthesis, reference, PG_SYNTHESIS_REJECTED);
+		assert(!pg_synthesis_operation_declaration(reference));
+	}
+	complete(&synthesis, pg_synthesis_operation_reference(&synthesis,
+		pg_synthesis_evidence(&synthesis, operation_function)), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *mapped = complete(&synthesis,
 		request(&synthesis, scope, "mapped := M @#.return x => x;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *mapped_value = pg_prove_return_value(typing, normalize(&synthesis, context, mapped));
@@ -617,19 +661,6 @@ static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *cla
 	complete(&synthesis, pg_synthesis_application(&synthesis, empty, second, namespace_only), PG_SYNTHESIS_REJECTED);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
-}
-
-static struct pg_synthesis_job *program(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, const char *source)
-{
-	struct pg_parser parser;
-	pg_parser_init(&parser, synthesis->typing->graph, source, strlen(source));
-	const struct pg_syntax *syntax = pg_parser_program(&parser);
-	assert(syntax);
-	struct pg_synthesis_job *job = pg_synthesis_request(synthesis, scope, syntax);
-	assert(job && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
-	assert(pg_synthesis_request(synthesis, scope, syntax) == job);
-	return job;
 }
 
 static const struct pg_syntax *select_definition(struct pg_graph *graph,

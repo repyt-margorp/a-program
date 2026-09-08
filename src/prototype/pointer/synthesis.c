@@ -98,7 +98,7 @@ struct derivation_state {
 	const struct pg_reduction_certificate *reduction;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const void *owner;
@@ -309,6 +309,20 @@ struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
 	const struct pg_operation_declaration *declaration)
 {
 	return declaration ? request_job(synthesis, OPERATION_JOB, declaration, NULL) : NULL;
+}
+
+struct pg_synthesis_job *pg_synthesis_operation_reference(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *producer)
+{
+	if (!producer || producer->owner != synthesis->owner_key) return NULL;
+	return request_job(synthesis, OPERATION_REFERENCE_JOB, producer, NULL);
+}
+
+const struct pg_operation_declaration *pg_synthesis_operation_declaration(const struct pg_synthesis_job *job)
+{
+	if (!job || job->status != PG_SYNTHESIS_DONE) return NULL;
+	if (job->role != OPERATION_REFERENCE_JOB) return NULL;
+	return job->right ? job->right->inputs[0] : NULL;
 }
 
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
@@ -2720,6 +2734,42 @@ static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
 }
 
+static void operation_reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
+	if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return; }
+	if (producer->role == OPERATION_JOB) {
+		job->right = producer;
+		finish(synthesis, job, PG_SYNTHESIS_DONE);
+		return;
+	}
+	if (!job->left) {
+		struct pg_synthesis_job *source = NULL;
+		if (producer->role == DEFINITION_JOB) source = producer->left;
+		if (producer->role == EXPRESSION_JOB) {
+			const struct pg_syntax *syntax = producer->syntax;
+			switch (syntax->kind) {
+			case PG_SYNTAX_ATOM: case PG_SYNTAX_IMPORT:
+			case PG_SYNTAX_QUOTE: case PG_SYNTAX_EXPECT:
+				source = producer->left;
+				break;
+			case PG_SYNTAX_QUALIFIED:
+				if (syntax->left->kind == PG_SYNTAX_DEFINITIONS) source = producer->value_job;
+				else if (syntax->left->kind != PG_SYNTAX_BLOCK) source = producer->left;
+				break;
+			default: break;
+			}
+		}
+		if (!source) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+		job->left = pg_synthesis_operation_reference(synthesis, source);
+		depend(synthesis, job, job->left);
+		return;
+	}
+	job->right = job->left->right;
+	finish(synthesis, job, job->left->status);
+}
+
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->scope && job->role != TELESCOPE_JOB && job->role != TELESCOPE_STRUCTURE_JOB) {
@@ -2729,6 +2779,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		if (!source_context(job->scope)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->role == OPERATION_REFERENCE_JOB) { operation_reference_step(synthesis, job); return; }
 	if (job->role == OPERATION_JOB) {
 		job->result = pg_prove_operation_function(synthesis->typing, synthesis->classifiers, job->inputs[0]);
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);

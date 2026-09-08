@@ -13,6 +13,30 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 8 nominal operation reference resolution
+
+- [x] Resolve an operation label through the existing producer graph with a
+  shared, budgeted `pg_synthesis_operation_reference` job. Its output points
+  back to the checked operation producer; no declaration metadata is copied
+  into Core, contexts, or every expression job, and no new proof is invented.
+- [x] Preserve identity through lexical references, definitions, explicit
+  quotation and successful source expectations. A selected definition block
+  waits for whole-module validity before exposing its selected declaration.
+- [x] Test pending resolution, request reuse, quoted aliases, selected exports,
+  post-synthesis checking, missing names, and rejection of Lambda/application
+  results and bare evidence registration as nominal operation labels.
+- [ ] Connect the resolver to general handler clause elaboration together with
+  output carrier/effect constraints. Dynamic operation parameters, imported
+  declaration relocation and full surface handler synthesis are not complete.
+
+The distinction here is nominal declaration identity, not equality of callable
+functions: a function invoking an operation does not become that operation's
+label. Alias resolution never evaluates or pattern-matches its erased Core.
+
+Verification: regular components, eight examples, six execution fixtures and
+rebuilt ASan/UBSan source synthesis pass. The unchanged open-family acceptance
+failure remains `unsupported steps=88`; the full goal remains incomplete.
+
 ### September 8 shared operation producers
 
 - [x] Add `pg_synthesis_operation`, keyed by the exact declaration pointer in
@@ -22,8 +46,8 @@ criteria for merging different Lambda or semantic-object references.
 - [x] Test pending registration, exact job reuse, unchanged Core/proof counts
   on repeated completed requests, source-name reuse, and rejection of a
   declaration whose signature evidence belongs to another typing store.
-- [ ] Operation-clause label resolution through source aliases and general
-  output-carrier synthesis remain open. Sharing the callable producer is not
+- [ ] General clause integration and output-carrier synthesis remain open;
+  the nominal alias resolver is recorded above. Sharing the callable producer is not
   permission to classify arbitrary functions as operation declarations by
   inspecting their erased Core, and adds no such heuristic.
 

@@ -83,6 +83,15 @@ struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
  * The declaration and its signature evidence outlive this synthesis store. */
 struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
 	const struct pg_operation_declaration *declaration);
+/* Resolve nominal operation identity through completed lexical aliases,
+ * definition storage, quotation and successful source expectations. This is
+ * shared budgeted work over producer links, not Core recognition or function
+ * evaluation. Arbitrary functions and bare evidence registrations do not
+ * acquire operation identity. Failed/pending producers retain their status.
+ * Completion has no proof result; the getter returns the checked declaration. */
+struct pg_synthesis_job *pg_synthesis_operation_reference(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *producer);
+const struct pg_operation_declaration *pg_synthesis_operation_declaration(const struct pg_synthesis_job *job);
 struct pg_derivation_input;
 /* Unaccepted stored rule DAG; request does not traverse or accept it. Inputs
  * outlive synthesis. Uses ordinary dependencies, rules and pure work. */
