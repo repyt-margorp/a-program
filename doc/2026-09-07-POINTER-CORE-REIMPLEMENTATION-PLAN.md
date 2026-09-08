@@ -109,6 +109,14 @@ Next implementation sequence (prerequisite for automatic source handlers):
   binders and unrelated parent contexts. This does not yet let body constraint
   generation run ahead of context acceptance; it adds no provisional proof or
   alternate Context representation.
+  Ordinary lexical identifier references now build their unaccepted VARIABLE
+  rule before waiting on context formation. The test keeps effect closure
+  pending and verifies this additional rule dependency exists without a result.
+  This is the first source rule migrated, not a general pre-acceptance classifier
+  generator; APP/Lambda and symbolic classifier propagation remain open.
+  Scheduling now counts those rule transitions: examples still pass (List 989
+  versus 977 transitions), and open-family remains unsupported at 94 rather than
+  88 transitions. This change is not claimed as a performance improvement.
 - [ ] Use the existing expression traversal for APP, force/thunk, sequencing
   and clause bodies to construct pending rule applications and row dependencies.
   Carry latent effects through callable types, not a flat side table keyed by

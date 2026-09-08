@@ -206,6 +206,13 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!pg_effect_inference_init(&effects, typing->graph));
 		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
 		struct pg_effect_equation *equation = pg_effect_equation(&effects, row);
+		const struct pg_effect_row *no_effects = pg_effect_row(typing->graph, 0, NULL);
+		struct pg_effect_equation *tail = equation;
+		for (size_t i = 0; i < 64; ++i) {
+			struct pg_effect_equation *next = pg_effect_equation(&effects, no_effects);
+			assert(!pg_effect_dependency(&effects, tail, no_effects, next));
+			tail = next;
+		}
 		pg_effect_inference_seal(&effects);
 		const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
 		size_t proofs = typing->proofs.count;
@@ -229,8 +236,18 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_source_scope *scope = pg_synthesis_bind_context(&synthesis, root, name, k, context);
 		assert(scope && scope == pg_synthesis_bind_context(&synthesis, root, name, k, context));
 		struct pg_synthesis_job *source_variable = request(&synthesis, scope, "v := k;");
+		struct pg_synthesis_job *source_lambda = request(&synthesis, scope, "v := \\x : @ => k;");
 		assert(lambda && !pg_synthesis_result(context) && !pg_synthesis_result(lambda));
 		assert(typing->proofs.count == proofs);
+		for (unsigned steps = 0; !pg_synthesis_dependency(source_variable) || !pg_synthesis_dependency(source_lambda); ++steps) {
+			assert(steps < 100);
+			pg_synthesis_advance(&synthesis, 1);
+		}
+		assert(pg_synthesis_status(context) == PG_SYNTHESIS_PENDING);
+		assert(!pg_synthesis_result(source_variable));
+		/* The variable has built its rule dependency before context acceptance;
+		 * the Lambda still waits directly on the scope's formation guard. */
+		assert(pg_synthesis_dependency(source_variable) != pg_synthesis_dependency(source_lambda));
 		for (unsigned steps = 0; pg_synthesis_status(lambda) == PG_SYNTHESIS_PENDING; ++steps) {
 			assert(steps < 1000);
 			pg_synthesis_advance(&synthesis, chunk);
@@ -240,6 +257,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
 		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));
+		complete(&synthesis, source_lambda, PG_SYNTHESIS_DONE);
 		const struct pg_source_scope *bad_scope = pg_synthesis_bind_context(&synthesis, root, name,
 			pg_binder(typing->graph), context);
 		complete(&synthesis, request(&synthesis, bad_scope, "v := k;"), PG_SYNTHESIS_REJECTED);

@@ -3046,8 +3046,31 @@ static void operation_reference_step(struct pg_synthesis *synthesis, struct pg_s
 	finish(synthesis, job, job->left->status);
 }
 
+static int lexical_variable_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_ATOM) return 0;
+	if (job->syntax->token.kind != PG_TOKEN_IDENT) return 0;
+	if (!job->binder) {
+		if (job->left) return 0;
+		/* Unindexed definitions may shadow an outer binder. */
+		for (const struct pg_source_scope *scope = job->scope; scope; scope = scope->parent)
+			if (scope->definitions && scope->definitions->indexed < scope->definitions->count) return 0;
+		struct source_reference reference = lookup_scope(job->scope, job->syntax->token);
+		if (!reference.binder) return 0;
+		struct pg_derivation_input *input = pg_alloc(synthesis->typing->graph, sizeof(*input));
+		if (!input) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
+		*input = (struct pg_derivation_input){.rule = PG_VARIABLE,
+			.parameters.binder = reference.binder, .count = 1};
+		job->binder = reference.binder;
+		job->left = pg_synthesis_rule(synthesis, input, &job->scope->context_job, NULL, NULL);
+	}
+	forward_proof(synthesis, job, job->left);
+	return 1;
+}
+
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
+	if (lexical_variable_step(synthesis, job)) return;
 	if (job->scope && job->role != TELESCOPE_JOB && job->role != TELESCOPE_STRUCTURE_JOB) {
 		struct pg_synthesis_job *context = job->scope->context_job;
 		if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
