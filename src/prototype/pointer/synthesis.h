@@ -156,7 +156,8 @@ struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
  * directions, not the full dimension of the input. Its pointer, context and
  * formation identify the request. One queue step advances one traversal
  * step, not a bounded-cost primitive proof rule. Unsupported is not rejection.
- * No surface syntax or typed center symmetry rule is introduced. */
+ * This is a restricted entry to identity_face, sharing its job and result;
+ * it adds no surface syntax or typed center symmetry rule. */
 struct pg_dimension_map;
 struct pg_synthesis_job *pg_synthesis_identity_endpoint(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *formation,

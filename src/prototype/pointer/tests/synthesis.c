@@ -1059,6 +1059,7 @@ static void endpoint_jobs(struct pg_typing *typing, struct pg_classifiers *class
 		assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
 		struct pg_synthesis_job *job = pg_synthesis_identity_endpoint(&synthesis, context, type, selector);
 		assert(job && pg_synthesis_identity_endpoint(&synthesis, context, type, selector) == job);
+		assert(pg_synthesis_identity_face(&synthesis, context, type, selector) == job);
 		assert(!pg_synthesis_result(job));
 		pg_synthesis_advance(&synthesis, 0);
 		assert(pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
@@ -1081,7 +1082,7 @@ static void endpoint_jobs(struct pg_typing *typing, struct pg_classifiers *class
 			const struct pg_dimension_map *face = pg_dimension_map(&dimensions, axes, 3, selected);
 			struct pg_synthesis_job *face_job = pg_synthesis_identity_face(&synthesis, context, type, face);
 			assert(face_job && pg_synthesis_identity_face(&synthesis, context, type, face) == face_job);
-			assert(!pg_synthesis_result(face_job));
+			if (face_job != job) assert(!pg_synthesis_result(face_job));
 			for (unsigned i = 0; pg_synthesis_status(face_job) == PG_SYNTHESIS_PENDING; ++i) {
 				assert(i < 100);
 				pg_synthesis_advance(&synthesis, split ? 1 : 100);
@@ -1102,13 +1103,14 @@ static void endpoint_jobs(struct pg_typing *typing, struct pg_classifiers *class
 		complete(&synthesis, unsupported, PG_SYNTHESIS_UNSUPPORTED);
 		pg_synthesis_advance(&synthesis, 100);
 		assert(!synthesis.ready);
-		/* Release a worker while it retains descent frames. */
+		/* Release workers while face validation is still pending. */
 		coordinates[0].kind = PG_ENDPOINT_ONE;
-		struct pg_synthesis_job *cancelled = pg_synthesis_identity_endpoint(&synthesis, context, type,
+		const struct pg_evidence *cancel_type = pg_prove_value_type(typing, pg_prove_type_value(typing, roundtrip));
+		struct pg_synthesis_job *cancelled = pg_synthesis_identity_endpoint(&synthesis, context, cancel_type,
 			pg_dimension_map(&dimensions, 2, 3, coordinates));
 		pg_synthesis_advance(&synthesis, 1);
 		assert(pg_synthesis_status(cancelled) == PG_SYNTHESIS_PENDING);
-		struct pg_synthesis_job *cancelled_face = pg_synthesis_identity_face(&synthesis, context, roundtrip, selector);
+		struct pg_synthesis_job *cancelled_face = pg_synthesis_identity_face(&synthesis, context, cancel_type, selector);
 		pg_synthesis_advance(&synthesis, 0);
 		assert(pg_synthesis_status(cancelled_face) == PG_SYNTHESIS_PENDING);
 		pg_synthesis_advance(&synthesis, 6);

@@ -74,7 +74,7 @@ struct family_state {
 	size_t count, common, next;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, ENDPOINT_JOB, FACE_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FACE_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -100,7 +100,6 @@ struct pg_synthesis_job {
 	const struct pg_evidence *continuation;
 	struct pg_conversion comparison;
 	struct pg_reindex reindex;
-	struct pg_identity_endpoint_work *endpoint;
 	struct pg_identity_face_work *face;
 	union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
 	int comparing;
@@ -146,7 +145,6 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			pg_conversion_destroy(&job->comparison);
 			pg_reindex_destroy(&job->reindex);
-			pg_identity_endpoint_destroy(job->endpoint);
 			pg_identity_face_destroy(job->face);
 			if (job->block) pg_index_destroy(&job->block->names);
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
@@ -562,16 +560,7 @@ struct pg_synthesis_job *pg_synthesis_identity_endpoint(struct pg_synthesis *syn
 	const struct pg_dimension_map *face)
 {
 	if (!endpoint_selector(face)) return NULL;
-	if (!pg_evidence_owned_by(context, synthesis->typing)) return NULL;
-	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (!pg_evidence_owned_by(formation, synthesis->typing)) return NULL;
-	if (pg_evidence_context(context) != pg_evidence_context(formation)) return NULL;
-	switch (pg_evidence_judgement(formation)) {
-	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
-	default: return NULL;
-	}
-	const void *inputs[] = {context, formation, face};
-	return request_inputs(synthesis, ENDPOINT_JOB, 3, inputs);
+	return pg_synthesis_identity_face(synthesis, context, formation, face);
 }
 
 struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
@@ -1635,23 +1624,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		job->result = pg_identity_face_result(job->face);
 		pg_identity_face_destroy(job->face);
 		job->face = NULL;
-		finish(synthesis, job, status > 0 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
-		return;
-	}
-	if (job->role == ENDPOINT_JOB) {
-		if (!job->endpoint) {
-			const struct pg_dimension_map *face = job->inputs[2];
-			enum pg_identity_direction side = face->coordinates[0].kind == PG_ENDPOINT_ZERO
-				? PG_IDENTITY_LEFT : PG_IDENTITY_RIGHT;
-			job->endpoint = pg_identity_endpoint_init(synthesis->typing, synthesis->classifiers,
-				job->inputs[0], job->inputs[1], face->source, side);
-			if (!job->endpoint) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		}
-		int status = pg_identity_endpoint_advance(job->endpoint, 1);
-		if (!status) { enqueue(synthesis, job); return; }
-		job->result = pg_identity_endpoint_result(job->endpoint);
-		pg_identity_endpoint_destroy(job->endpoint);
-		job->endpoint = NULL;
 		finish(synthesis, job, status > 0 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 		return;
 	}

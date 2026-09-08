@@ -3837,6 +3837,10 @@ ASan/UBSan pointer checks also pass.
 - [x] Schedule immutable context/formation/face requests on the existing
   synthesis queue. Publish only complete evidence; cancellation releases the
   worker, and unsupported dimensions do not become rejected propositions.
+- [x] After `457681b`, make the canonical endpoint API a restricted entry to
+  the same face request. Remove the separate endpoint job role, state pointer,
+  dispatch and disposal path. Identical inputs through either API share work;
+  the endpoint traversal remains a subroutine of the face worker.
 - [x] Feed pending face jobs directly into the square-template substitution
   test, removing its synchronous precomputation of the eight boundary images.
 - [x] Check all 26 proper faces in three dimensions with split/bulk budgets,
