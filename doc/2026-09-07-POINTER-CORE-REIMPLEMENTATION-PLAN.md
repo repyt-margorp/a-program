@@ -57,6 +57,14 @@ later widening its type would invalidate that previously accepted derivation.
 
 Next implementation sequence (prerequisite for automatic source handlers):
 
+- [x] Expose the existing F application spine independently of closed-row
+  interpretation (`pg_effect_type_spine` and its view). Closed construction and
+  inspection delegate to this one layout; kernel callers still reject unknown
+  rows. A graph-owned binder reference can occur inside latent U/Pi classifiers
+  and be replaced by ordinary capture-avoiding substitution, without mutating
+  the pending graph. Tests also retain it in unaccepted Context/Occurrence
+  records without adding accepted evidence. This is structural infrastructure,
+  not an effect-variable formation rule or completed source inference.
 - [ ] Represent pending classifier parameters as references to existing
   producers/equation sites in the unaccepted graph. Keep exact pointer interning
   and the same Lambda/APP/Reference Core; do not add a second Pi/Context family.

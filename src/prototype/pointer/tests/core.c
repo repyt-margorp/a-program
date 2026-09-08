@@ -2629,6 +2629,31 @@ static void effect_classifier_test(struct pg_graph *graph)
 	assert(!pg_return_type_view(effectful, &value) && value == u);
 	assert(pg_return_type_view(pure, &value) && value == u);
 	assert(!pg_effect_type(&classifiers, NULL, u));
+	/* A structural row parameter is not a nominal operation or a closed row.
+	 * Its binder lives in the graph, not in a temporary effect worker. */
+	const struct pg_object *rho = pg_binder(graph);
+	const struct pg_term *row_parameter = pg_reference(graph, rho);
+	const struct pg_term *pending = pg_effect_type_spine(&classifiers, row_parameter, u);
+	assert(pending == pg_effect_type_spine(&classifiers, row_parameter, u));
+	const struct pg_term *row_term;
+	assert(pg_effect_type_spine_view(pending, &row_term, &value));
+	assert(row_term == row_parameter && value == u);
+	row = ab;
+	assert(!pg_effect_type_view(pending, &row, &value) && row == ab);
+	assert(!pg_return_type_view(pending, &value));
+	assert(!pg_effect_row_view(row_parameter));
+	const struct pg_object *parameter_label[] = {rho};
+	assert(!pg_effect_row(graph, 1, parameter_label));
+	assert(!pg_effect_type_spine(&classifiers, NULL, u));
+	assert(!pg_effect_type_spine_view(u, &row_term, &value));
+	struct pg_binding_value row_binding = {rho, pg_effect_reference(graph, ab)};
+	assert(pg_term_substitute(graph, pending, 1, &row_binding) == effectful);
+	const struct pg_object *argument = pg_binder(graph);
+	const struct pg_term *latent = pg_thunk_type(&classifiers, pg_pi(graph, u, argument, pending));
+	const struct pg_term *resolved = pg_term_substitute(graph, latent, 1, &row_binding);
+	assert(pg_alpha_equal(resolved, pg_thunk_type(&classifiers,
+		pg_pi(graph, u, argument, effectful))) == 1);
+	assert(!pg_effect_type_view(pending, &row, &value));
 	assert(!pg_classifier_resolve(&classifiers, "kernel/return-type/v1"));
 	assert(pg_classifier_resolve(&classifiers, "kernel/return-type/v2"));
 	assert(pg_classifier_resolve(&classifiers, "kernel/effect-row/empty/v1"));
@@ -2636,6 +2661,11 @@ static void effect_classifier_test(struct pg_graph *graph)
 	assert(!pg_typing_init(&typing, graph));
 	const struct pg_evidence *context = pg_prove_empty_context(&typing);
 	const struct pg_evidence *universe = pg_prove_universe(&typing, &classifiers, context, 0);
+	size_t accepted_before = typing.proofs.count;
+	const struct pg_context *pending_scope = pg_context_bind(&typing, NULL, argument, latent);
+	assert(pending_scope && pending_scope->declared_type == latent);
+	assert(pg_occurrence(&typing, pending_scope, pg_reference(graph, argument), latent, 0, NULL));
+	assert(typing.proofs.count == accepted_before);
 	const struct pg_evidence *formation = pg_prove_effect_type(&typing, &classifiers, ab, universe);
 	assert(formation && pg_evidence_rule(formation) == PG_RETURN_TYPE_FORM);
 	assert(pg_evidence_subject(formation)->core == effectful);

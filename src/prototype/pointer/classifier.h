@@ -39,6 +39,13 @@ int pg_effect_contains(const struct pg_effect_row *row, const struct pg_object *
 int pg_effect_subset(const struct pg_effect_row *left, const struct pg_effect_row *right);
 const struct pg_term *pg_effect_reference(struct pg_graph *graph, const struct pg_effect_row *row);
 const struct pg_effect_row *pg_effect_row_view(const struct pg_term *term);
+/* Structural F spine, including unresolved row terms in unaccepted inputs.
+ * These functions neither interpret the row nor establish formation. Closed
+ * kernel consumers must continue using pg_effect_type_view below. */
+const struct pg_term *pg_effect_type_spine(struct pg_classifiers *classifiers,
+	const struct pg_term *effects, const struct pg_term *value_type);
+int pg_effect_type_spine_view(const struct pg_term *term,
+	const struct pg_term **effects, const struct pg_term **value_type);
 const struct pg_term *pg_effect_type(struct pg_classifiers *classifiers,
 	const struct pg_effect_row *effects, const struct pg_term *value_type);
 int pg_effect_type_view(const struct pg_term *term,

@@ -290,9 +290,15 @@ const struct pg_term *pg_return_type(struct pg_classifiers *classifiers, const s
 const struct pg_term *pg_effect_type(struct pg_classifiers *classifiers,
 	const struct pg_effect_row *effects, const struct pg_term *value_type)
 {
+	if (!classifiers) return NULL;
+	return pg_effect_type_spine(classifiers, pg_effect_reference(classifiers->graph, effects), value_type);
+}
+
+const struct pg_term *pg_effect_type_spine(struct pg_classifiers *classifiers,
+	const struct pg_term *effects, const struct pg_term *value_type)
+{
 	if (!classifiers || !effects || !value_type) return NULL;
-	const struct pg_term *head = unary_type(classifiers, &return_type_former,
-		pg_effect_reference(classifiers->graph, effects));
+	const struct pg_term *head = unary_type(classifiers, &return_type_former, effects);
 	return pg_application(classifiers->graph, head, value_type);
 }
 
@@ -307,16 +313,26 @@ const struct pg_effect_row *pg_effect_row_view(const struct pg_term *term)
 	return (const struct pg_effect_row *)((const char *)term->as.reference - offsetof(struct pg_object_entry, object));
 }
 
-int pg_effect_type_view(const struct pg_term *term,
-	const struct pg_effect_row **effects, const struct pg_term **value_type)
+int pg_effect_type_spine_view(const struct pg_term *term,
+	const struct pg_term **effects, const struct pg_term **value_type)
 {
 	if (!term || !effects || !value_type || term->kind != PG_APPLICATION) return 0;
 	const struct pg_term *row;
 	if (!unary_view(term->as.application.function, &return_type_former, &row)) return 0;
+	*effects = row;
+	*value_type = term->as.application.argument;
+	return 1;
+}
+
+int pg_effect_type_view(const struct pg_term *term,
+	const struct pg_effect_row **effects, const struct pg_term **value_type)
+{
+	const struct pg_term *row, *value;
+	if (!effects || !value_type || !pg_effect_type_spine_view(term, &row, &value)) return 0;
 	const struct pg_effect_row *found = pg_effect_row_view(row);
 	if (!found) return 0;
 	*effects = found;
-	*value_type = term->as.application.argument;
+	*value_type = value;
 	return 1;
 }
 const struct pg_term *pg_thunk_type(struct pg_classifiers *classifiers, const struct pg_term *computation_type)
