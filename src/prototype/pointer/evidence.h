@@ -16,12 +16,28 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION,
 	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION,
 	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT, PG_INDUCTIVE_FORM, PG_CONSTRUCTOR_INTRO,
-	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION };
+	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION, PG_REQUEST_INTRO };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
 struct pg_evidence;
 struct pg_data_schema;
+struct pg_operation_declaration;
+/* Fresh nominal operation with closed value-type payload/response signatures.
+ * The typed declaration owns its label; aliases reuse that same pointer.
+ * No runtime implementation, handler permission or totality is asserted. */
+const struct pg_operation_declaration *pg_operation_declaration(struct pg_typing *typing,
+	const struct pg_evidence *payload_type, const struct pg_evidence *response_type);
+const struct pg_object *pg_operation_label(const struct pg_operation_declaration *declaration);
+/* Derived raw Lambda a. request op a (Lambda b. RETURN b). Like constructor
+ * wrappers, allocates fresh lexical binders; schedule once per named producer. */
+const struct pg_evidence *pg_prove_operation_function(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_operation_declaration *declaration);
+/* Request op a k, with k : Pi(B,F E C) independent of its response binder.
+ * Produces F ({op} union E) C without executing the operation. */
+const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_operation_declaration *declaration,
+	const struct pg_evidence *payload, const struct pg_evidence *continuation);
 /* Closed-row computation-type formation. The row is a syntactic set of labels,
  * not evidence of an operation's signature, execution, or termination. */
 const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,

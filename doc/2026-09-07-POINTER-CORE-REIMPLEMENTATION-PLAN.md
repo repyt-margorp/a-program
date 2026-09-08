@@ -105,7 +105,37 @@ criteria for merging different Lambda or semantic-object references.
   open-family gate remains unsupported at 88 transitions.
   The rebuilt ASan/UBSan synthesis suite passes, including this source
   expectation fixture and the existing three-dimensional application actions.
-- [ ] Add request/multi-clause fold evidence, row constraints,
+- [x] Add closed generative operation declarations and `PG_REQUEST_INTRO`.
+  Each declaration has a fresh opaque label and retains exactly its checked
+  payload/response type formations. Both must be closed value types. Reusing
+  the declaration preserves identity; equal signatures do not merge distinct
+  declarations, and callers cannot reassign a label to another signature.
+  A request checks its value payload against A and its raw continuation against
+  `Pi(B,F E C)` with constant codomain, then produces `F ({op} union E) C`.
+  The proof retains signature formations, payload and continuation premises;
+  its nominal declaration key is not an executable callback or success flag.
+  Classifier recovery uses the same continuation-codomain/row reconstruction
+  as sequencing. Core remains the existing request APP spine.
+- [x] Derive `Lambda a. request op a (Lambda b. RETURN b)` using ordinary
+  evidence rules. Like constructor wrappers, construct it once per named
+  producer; fresh lexical binders are not alpha-interned. Driver-supplied
+  operation names and aliases now work through ordinary source application,
+  including `{x := Op Arg; x;}`. Tests check effect retention and that pure
+  normalization reaches an inert request with the same label and payload.
+  Additional tests cover distinct nominal identities, exact request-proof
+  reuse, wrong payload/response types, quoted-continuation rejection, open
+  signatures, foreign proof stores, continuation effect union and regularity.
+  Optimized components, eight unchanged examples and six result fixtures pass;
+  full acceptance still fails open-family at 88 transitions. The complete
+  rebuilt ASan/UBSan component suite passes, including typed requests and
+  driver-supplied source operation applications/aliases/sequencing.
+- [ ] Transport nominal operation declarations and their signature premises
+  before admitting `PG_REQUEST_INTRO` into the derivation codec. It currently
+  rejects export rather than reconstructing acceptance from a raw label.
+  Parameterized/dependent signatures, declaration surface syntax, host request
+  handling and higher action on these proofs remain open. The source tests
+  use driver-supplied checked operations, not implemented terminal intrinsics.
+- [ ] Add multi-clause fold evidence, row constraints,
   source application/handler elaboration and signature transport. This step
   supplies the shared representation; it does not yet admit effectful source
   programs, prove termination from an empty row, or implement open row metas.

@@ -104,6 +104,30 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(scope);
 	const struct pg_evidence *surface = complete(&synthesis, request(&synthesis, scope, "checked := M :: T;"), PG_SYNTHESIS_DONE);
 	same_judgement(surface, result);
+	const struct pg_operation_declaration *operation = pg_operation_declaration(typing, u1, u1);
+	const struct pg_evidence *function = pg_prove_operation_function(typing, classifiers, operation);
+	assert(function);
+	scope = pg_synthesis_name(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Op", .length=2}, function);
+	scope = pg_synthesis_name(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Alias", .length=5}, function);
+	scope = pg_synthesis_name(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Arg", .length=3}, pg_prove_type_value(typing, u0));
+	assert(scope);
+	const char *calls[] = {"called := Op Arg;", "called := Alias Arg;", "called := {x := Op Arg; x;};"};
+	for (size_t i = 0; i < 3; ++i) {
+		const struct pg_evidence *call = complete(&synthesis, request(&synthesis, scope, calls[i]), PG_SYNTHESIS_DONE);
+		const struct pg_effect_row *effects;
+		const struct pg_term *response;
+		assert(pg_effect_type_view(pg_evidence_classifier(call), &effects, &response));
+		assert(pg_effect_count(effects) == 1 && pg_effect_contains(effects, pg_operation_label(operation)) == 1);
+		const struct pg_evidence *normal = normalize(&synthesis, context, call);
+		const struct pg_object *operation_label;
+		const struct pg_term *payload, *continuation;
+		assert(pg_computation_request_view(pg_evidence_subject(normal)->core, &operation_label, &payload, &continuation));
+		assert(operation_label == pg_operation_label(operation));
+		assert(payload == pg_evidence_subject(u0)->core);
+	}
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("effect expectations: post-synthesis widening, unchanged producers and directed rejection passed");

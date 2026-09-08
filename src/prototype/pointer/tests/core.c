@@ -2733,6 +2733,84 @@ static void deep_classifier_test(void)
 	puts("classifier: 40000 retained-premise steps, exact formation reuse, no recursive recovery");
 }
 
+static void request_typing_test(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(!pg_typing_init(&typing, graph) && !pg_classifiers_init(&classifiers, graph));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u0 = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *u1 = pg_prove_universe(&typing, &classifiers, empty, 1);
+	const struct pg_operation_declaration *op = pg_operation_declaration(&typing, u1, u1);
+	const struct pg_operation_declaration *other = pg_operation_declaration(&typing, u1, u1);
+	assert(op && other && pg_operation_label(op) != pg_operation_label(other));
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, x, u1);
+	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, scope, x));
+	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, u1, scope,
+		pg_prove_classifier(&typing, &classifiers, scope, body));
+	const struct pg_evidence *k = pg_prove_lambda(&typing, pi, body);
+	const struct pg_evidence *payload = pg_prove_type_value(&typing, u0);
+	const struct pg_evidence *request = pg_prove_request(&typing, &classifiers, op, payload, k);
+	assert(request && pg_evidence_rule(request) == PG_REQUEST_INTRO);
+	assert(pg_prove_request(&typing, &classifiers, op, payload, k) == request);
+	const struct pg_object *label;
+	const struct pg_term *a, *continuation;
+	assert(pg_computation_request_view(pg_evidence_subject(request)->core, &label, &a, &continuation));
+	assert(label == pg_operation_label(op) && a == pg_evidence_subject(payload)->core);
+	assert(continuation == pg_evidence_subject(k)->core);
+	const struct pg_effect_row *row;
+	const struct pg_term *result_type;
+	assert(pg_effect_type_view(pg_evidence_classifier(request), &row, &result_type));
+	assert(pg_effect_count(row) == 1 && pg_effect_contains(row, label) == 1);
+	assert(result_type == pg_evidence_subject(u1)->core);
+	const struct pg_evidence *formation = pg_prove_classifier(&typing, &classifiers, empty, request);
+	assert(formation && pg_evidence_subject(formation)->core == pg_evidence_classifier(request));
+	assert(!pg_prove_return_value(&typing, request));
+	struct pg_derivation_parameters parameters;
+	assert(pg_derivation_parameters(request, &parameters));
+	assert(!pg_prove_request(&typing, &classifiers, op, pg_prove_type_value(&typing, u1), k));
+	const struct pg_operation_declaration *wrong_response = pg_operation_declaration(&typing, u1, u0);
+	assert(wrong_response && !pg_prove_request(&typing, &classifiers, wrong_response, payload, k));
+	assert(!pg_operation_declaration(&typing, pg_prove_projection(&typing, scope, u1), u1));
+	assert(!pg_prove_request(&typing, &classifiers, op, payload, pg_prove_thunk(&typing, &classifiers, k)));
+	const struct pg_object *other_label = pg_operation_label(other);
+	const struct pg_evidence *effect_type = pg_prove_effect_type(&typing, &classifiers,
+		pg_effect_row(graph, 1, &other_label), pg_prove_projection(&typing, scope, u1));
+	const struct pg_evidence *effect_pi = pg_prove_pi(&typing, &classifiers, u1, scope, effect_type);
+	const struct pg_object *f = pg_binder(graph);
+	const struct pg_evidence *function_scope = pg_prove_context_extension(&typing, empty, f,
+		pg_prove_thunk_type(&typing, &classifiers, effect_pi));
+	const struct pg_evidence *effect_k = pg_prove_force(&typing, pg_prove_variable(&typing, function_scope, f));
+	const struct pg_evidence *chained = pg_prove_request(&typing, &classifiers, op,
+		pg_prove_projection(&typing, function_scope, payload), effect_k);
+	assert(chained && pg_effect_type_view(pg_evidence_classifier(chained), &row, &result_type));
+	assert(pg_effect_count(row) == 2 && pg_effect_contains(row, label) == 1 && pg_effect_contains(row, other_label) == 1);
+	formation = pg_prove_classifier(&typing, &classifiers, function_scope, chained);
+	assert(formation && pg_evidence_subject(formation)->core == pg_evidence_classifier(chained));
+	struct pg_whnf_work work;
+	assert(!pg_whnf_work_init(&work, graph));
+	const struct pg_evidence *normal = checked_normalize(&typing, &work, request);
+	assert(normal && pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &a, &continuation));
+	assert(label == pg_operation_label(op));
+	const struct pg_evidence *function = pg_prove_operation_function(&typing, &classifiers, op);
+	assert(function && pg_evidence_rule(function) == PG_LAMBDA_INTRO);
+	const struct pg_evidence *application = pg_prove_application(&typing, function, payload);
+	assert(application && pg_effect_type_view(pg_evidence_classifier(application), &row, &result_type));
+	assert(pg_effect_count(row) == 1 && pg_effect_contains(row, pg_operation_label(op)) == 1);
+	normal = checked_normalize(&typing, &work, application);
+	assert(normal && pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &a, &continuation));
+	assert(label == pg_operation_label(op) && a == pg_evidence_subject(payload)->core);
+	pg_whnf_work_destroy(&work);
+	struct pg_typing separate;
+	assert(!pg_typing_init(&separate, graph));
+	assert(!pg_prove_request(&separate, &classifiers, op, payload, k));
+	pg_typing_destroy(&separate);
+	pg_typing_destroy(&typing);
+	pg_classifiers_destroy(&classifiers);
+	puts("typed requests: nominal signatures, response checking, effect union and inert normalization passed");
+}
+
 int main(void)
 {
 	deep_classifier_test();
@@ -2755,6 +2833,7 @@ int main(void)
 	deferred_work_test(&graph);
 	classifiers_test(&graph);
 	effect_classifier_test(&graph);
+	request_typing_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);
 	normal_form_test(&graph);

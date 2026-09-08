@@ -18,11 +18,18 @@ struct pg_evidence {
 	const struct pg_evidence *premises[];
 };
 
+struct pg_operation_declaration {
+	struct pg_object label;
+	const struct pg_evidence *payload_type, *response_type;
+};
+
+static const struct pg_object_class operation_label_class = {"operation-label"};
+
 static int derived_output(enum pg_evidence_rule rule)
 {
 	switch (rule) {
 	case PG_REINDEX: case PG_APP_ELIM: case PG_PI_CODOMAIN:
-	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN: case PG_EFFECT_SUBSUMPTION:
+	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN: case PG_EFFECT_SUBSUMPTION: case PG_REQUEST_INTRO:
 	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION:
 	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
 		return 1;
@@ -1761,6 +1768,87 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 		pi->context, subject, pi->classifier, 1, &pi);
 }
 
+const struct pg_operation_declaration *pg_operation_declaration(struct pg_typing *typing,
+	const struct pg_evidence *payload_type, const struct pg_evidence *response_type)
+{
+	payload_type = pg_prove_value_type(typing, payload_type);
+	response_type = pg_prove_value_type(typing, response_type);
+	if (!payload_type || !response_type) return NULL;
+	if (payload_type->context || response_type->context) return NULL;
+	struct pg_operation_declaration *declaration = pg_alloc(typing->graph, sizeof(*declaration));
+	if (!declaration) return NULL;
+	*declaration = (struct pg_operation_declaration){
+		.label = {PG_SEMANTIC_OBJECT, &operation_label_class},
+		.payload_type = payload_type, .response_type = response_type};
+	return declaration;
+}
+
+const struct pg_object *pg_operation_label(const struct pg_operation_declaration *declaration)
+{
+	return declaration ? &declaration->label : NULL;
+}
+
+const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_operation_declaration *declaration,
+	const struct pg_evidence *payload, const struct pg_evidence *continuation)
+{
+	if (!declaration) return NULL;
+	if (!pg_evidence_owned_by(declaration->payload_type, typing)) return NULL;
+	if (!pg_evidence_owned_by(declaration->response_type, typing)) return NULL;
+	if (!pg_evidence_owned_by(payload, typing)) return NULL;
+	if (!pg_evidence_owned_by(continuation, typing)) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	if (payload->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (continuation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (payload->context != continuation->context) return NULL;
+	const struct pg_evidence *premises[] = {declaration->payload_type, declaration->response_type, payload, continuation};
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, PG_REQUEST_INTRO,
+		PG_JUDGEMENT_COMPUTATION, payload->context, NULL, NULL, 4, premises, declaration, &hash);
+	if (existing) return existing;
+	if (pg_alpha_equal(payload->classifier, declaration->payload_type->subject->core) != 1) return NULL;
+	const struct pg_term *domain, *codomain, *result_type;
+	const struct pg_object *binder;
+	if (!pg_pi_view(continuation->classifier, &domain, &binder, &codomain)) return NULL;
+	if (pg_alpha_equal(domain, declaration->response_type->subject->core) != 1) return NULL;
+	codomain = constant_codomain(continuation->classifier);
+	const struct pg_effect_row *effects;
+	if (!pg_effect_type_view(codomain, &effects, &result_type)) return NULL;
+	const struct pg_object *label = pg_operation_label(declaration);
+	const struct pg_effect_row *row = pg_effect_union(typing->graph, pg_effect_row(typing->graph, 1, &label), effects);
+	const struct pg_term *classifier = pg_effect_type(classifiers, row, result_type);
+	const struct pg_term *core = pg_computation_request(typing->graph, label, payload->subject->core, continuation->subject->core);
+	if (!classifier || !core) return NULL;
+	const struct pg_occurrence *operands[] = {payload->subject, continuation->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, payload->context, core, NULL, 2, operands);
+	if (!subject) return NULL;
+	return accept_record(typing, PG_REQUEST_INTRO, PG_JUDGEMENT_COMPUTATION,
+		payload->context, subject, classifier, 4, premises, declaration, 0, NULL);
+}
+
+const struct pg_evidence *pg_prove_operation_function(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_operation_declaration *declaration)
+{
+	if (!declaration || !classifiers) return NULL;
+	if (!pg_evidence_owned_by(declaration->payload_type, typing)) return NULL;
+	if (!pg_evidence_owned_by(declaration->response_type, typing)) return NULL;
+	if (classifiers->graph != typing->graph) return NULL;
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_object *a = pg_binder(typing->graph), *b = pg_binder(typing->graph);
+	const struct pg_evidence *scope = pg_prove_context_extension(typing, empty, a, declaration->payload_type);
+	const struct pg_evidence *response_type = pg_prove_projection(typing, scope, declaration->response_type);
+	const struct pg_evidence *response_scope = pg_prove_context_extension(typing, scope, b, response_type);
+	const struct pg_evidence *returned = pg_prove_return(typing, classifiers, pg_prove_variable(typing, response_scope, b));
+	const struct pg_evidence *response_pi = pg_prove_pi(typing, classifiers, response_type, response_scope,
+		pg_prove_classifier(typing, classifiers, response_scope, returned));
+	const struct pg_evidence *continuation = pg_prove_lambda(typing, response_pi, returned);
+	const struct pg_evidence *body = pg_prove_request(typing, classifiers, declaration,
+		pg_prove_variable(typing, scope, a), continuation);
+	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, declaration->payload_type, scope,
+		pg_prove_classifier(typing, classifiers, scope, body));
+	return pg_prove_lambda(typing, pi, body);
+}
+
 const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *target_type)
 {
@@ -1931,6 +2019,9 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 		case PG_FOLD_ELIM:
 			input = term->premises[1];
 			break;
+		case PG_REQUEST_INTRO:
+			input = term->premises[3];
+			break;
 		case PG_REINDEX:
 			input_context = term->premises[0]->premises[0];
 			input = term->premises[1];
@@ -1967,7 +2058,7 @@ unwind:
 			formation = pg_prove_pi_codomain(typing, formation,
 				pg_prove_projection(typing, context, term->premises[1]));
 			break;
-		case PG_FOLD_ELIM:
+		case PG_FOLD_ELIM: case PG_REQUEST_INTRO:
 			formation = pg_prove_pi_constant_codomain(typing, formation);
 			if (formation && formation->subject->core != term->classifier) {
 				const struct pg_effect_row *effects;

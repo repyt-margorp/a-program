@@ -27,6 +27,7 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 	}
 	/* Nominal schema descriptors are not transported by this codec yet. */
 	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: return -1;
+	case PG_REQUEST_INTRO: return -1;
 	case PG_CONTEXT_EXTEND:
 		result.binder = pg_evidence_context(evidence)->binder; break;
 	case PG_VARIABLE:
