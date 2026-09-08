@@ -962,7 +962,8 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 	assert(!pg_identity_endpoint_result(unfinished));
 	pg_identity_endpoint_destroy(unfinished);
 	unfinished = pg_identity_endpoint_init(typing, classifiers, source, square_type, SIZE_MAX, PG_IDENTITY_LEFT);
-	assert(unfinished && pg_identity_endpoint_advance(unfinished, 3) == -1);
+	assert(unfinished && pg_identity_endpoint_advance(unfinished, 3) == 0);
+	assert(pg_identity_endpoint_advance(unfinished, 100) == -1);
 	assert(!pg_identity_endpoint_result(unfinished));
 	assert(pg_identity_endpoint_advance(unfinished, 0) == -1);
 	pg_identity_endpoint_destroy(unfinished);
@@ -1084,6 +1085,19 @@ static void reflexive_instance_boundary(struct pg_typing *typing, struct pg_clas
 		assert(endpoint && pg_evidence_subject(endpoint)->core == pg_evidence_subject(path)->core);
 	}
 	assert(!pg_identity_face_endpoint(typing, classifiers, empty, instance, 2, PG_IDENTITY_LEFT));
+	const struct pg_evidence *wrapped = instance;
+	for (size_t i = 0; i < 64; ++i)
+		wrapped = pg_prove_value_type(typing, pg_prove_type_value(typing, wrapped));
+	for (uint64_t split = 0; split <= 128; ++split) {
+		struct pg_identity_endpoint_work *pending = pg_identity_endpoint_init(typing, classifiers,
+			empty, wrapped, 0, PG_IDENTITY_LEFT);
+		assert(pending && pg_identity_endpoint_advance(pending, split) == 0);
+		assert(!pg_identity_endpoint_result(pending));
+		assert(pg_identity_endpoint_advance(pending, 128 - split) == 0);
+		assert(pg_identity_endpoint_advance(pending, 1) == 1);
+		assert(pg_identity_endpoint_result(pending) == path);
+		pg_identity_endpoint_destroy(pending);
+	}
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	const struct pg_evidence *identity_map = pg_prove_substitution(typing, empty, empty, 0, NULL);
@@ -1397,7 +1411,17 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 							formation, depth, side ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT);
 						assert(endpoint && selected);
 						if (d == dimension) {
-							uint64_t steps = 2 * depth + 1;
+							struct pg_identity_endpoint_work *measured = pg_identity_endpoint_init(typing,
+								classifiers, all, formation, depth, side ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT);
+							assert(measured);
+							uint64_t steps = 0;
+							int measured_status;
+							do {
+								assert(++steps < 1000);
+								measured_status = pg_identity_endpoint_advance(measured, 1);
+							} while (!measured_status);
+							assert(measured_status == 1 && pg_identity_endpoint_result(measured) == endpoint);
+							pg_identity_endpoint_destroy(measured);
 							for (uint64_t cut = 0; cut <= steps; ++cut) {
 								struct pg_identity_endpoint_work *pending = pg_identity_endpoint_init(typing,
 									classifiers, all, formation, depth, side ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT);

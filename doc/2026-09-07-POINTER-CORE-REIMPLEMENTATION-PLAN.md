@@ -113,6 +113,20 @@ is changed by this contract, and N2 remains incomplete.
 
 ### Prefix-reduction verification
 
+Endpoint-budget follow-up after `bcba4aa`: the endpoint worker now retains
+its formation-origin cursor and composed substitution between transitions.
+Each outer retained projection/reindex/conversion/presentation wrapper is
+visited in its own transition; synchronous formation recovery drains the
+same `origin_step` implementation. No second proof traversal or result store.
+The 128-wrapper regression checks every budget split and delayed publication
+of the endpoint. Existing cube endpoint tests now measure traversal steps
+before checking all splits, replacing the obsolete `2*depth+1` assumption.
+Inner selected-family recovery and primitive proof/substitution construction
+remain synchronous, as does proper-face layer validation. This is not a
+wall-clock fuel bound and does not complete N2 or typed center symmetry.
+Verification: complete pointer `make check` and ASan/UBSan `identity_test`
+passed; higher-application comparison maximum remains 243,489 transitions.
+
 - [x] Preserve exact descriptor/application interning: a permutation with
   fixed leading axes remains a distinct raw node from its shorter form.
 - [x] Reduce fixed leading axes during evaluation, with one coordinate per

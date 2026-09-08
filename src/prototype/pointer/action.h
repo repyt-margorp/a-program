@@ -35,8 +35,9 @@ const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
 
 /* The same derivation construction, suspended between descent/unwind steps.
  * advance: 0 pending, 1 complete, -1 unsupported or allocation failure (not a
- * proof of uninhabitance). No partial result is exposed. Formation recovery
- * and individual proof-rule applications remain synchronous within a step;
+ * proof of uninhabitance). No partial result is exposed. Retained formation
+ * wrappers consume one transition each. Family-origin recovery, projection
+ * construction and individual proof-rule applications remain synchronous;
  * fuel does not bound their cost. The typing/classifier stores must outlive
  * this work. Destroying pending work does not retract accepted premises. */
 struct pg_identity_endpoint_work;

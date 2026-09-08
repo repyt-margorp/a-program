@@ -74,37 +74,45 @@ static const struct pg_evidence *projection_substitution(struct pg_typing *typin
 	return result;
 }
 
+static int origin_step(struct pg_typing *typing,
+	const struct pg_evidence **current, const struct pg_evidence **substitution)
+{
+	const struct pg_evidence *formation = *current, *map = *substitution;
+	const struct pg_evidence *step;
+	enum pg_evidence_rule rule = pg_evidence_rule(formation);
+	switch (rule) {
+	case PG_PURE_NORMALIZATION:
+	case PG_TYPE_CONVERSION:
+	case PG_TYPE_FROM_VALUE: case PG_VALUE_FROM_TYPE:
+		*current = pg_evidence_premise(formation, 0);
+		return 0;
+	default: break;
+	}
+	if (rule == PG_REINDEX) {
+		step = pg_evidence_premise(formation, 0);
+		formation = pg_evidence_premise(formation, 1);
+	} else if (rule == PG_CONTEXT_PROJECTION) {
+		const struct pg_evidence *destination = pg_evidence_premise(formation, 0);
+		formation = pg_evidence_premise(formation, 1);
+		const struct pg_evidence *source = destination;
+		while (pg_evidence_context(source) != pg_evidence_context(formation))
+			source = pg_evidence_premise(source, 0);
+		step = projection_substitution(typing, source, destination);
+	} else return 1;
+	if (!step) return -1;
+	map = map ? pg_prove_substitution_compose(typing, step, map) : step;
+	if (!map) return -1;
+	*current = formation;
+	*substitution = map;
+	return 0;
+}
+
 static const struct pg_evidence *retained_origin(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_evidence **substitution)
 {
-	const struct pg_evidence *map = NULL;
-	for (;;) {
-		const struct pg_evidence *step;
-		enum pg_evidence_rule rule = pg_evidence_rule(formation);
-		switch (rule) {
-		case PG_PURE_NORMALIZATION:
-		case PG_TYPE_CONVERSION:
-		case PG_TYPE_FROM_VALUE: case PG_VALUE_FROM_TYPE:
-			formation = pg_evidence_premise(formation, 0);
-			continue;
-		default: break;
-		}
-		if (rule == PG_REINDEX) {
-			step = pg_evidence_premise(formation, 0);
-			formation = pg_evidence_premise(formation, 1);
-		} else if (rule == PG_CONTEXT_PROJECTION) {
-			const struct pg_evidence *destination = pg_evidence_premise(formation, 0);
-			formation = pg_evidence_premise(formation, 1);
-			const struct pg_evidence *source = destination;
-			while (pg_evidence_context(source) != pg_evidence_context(formation))
-				source = pg_evidence_premise(source, 0);
-			step = projection_substitution(typing, source, destination);
-		} else break;
-		if (!step) return NULL;
-		map = map ? pg_prove_substitution_compose(typing, step, map) : step;
-		if (!map) return NULL;
-	}
-	*substitution = map;
+	int status;
+	while ((status = origin_step(typing, &formation, substitution)) == 0) {}
+	if (status < 0) return NULL;
 	return formation;
 }
 
@@ -127,18 +135,10 @@ static const struct pg_evidence *rebuild_family(struct pg_typing *typing,
 	return result;
 }
 
-const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation)
+static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *map)
 {
-	if (!pg_evidence_owned_by(formation, typing)) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
-	switch (pg_evidence_judgement(formation)) {
-	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
-	default: return NULL;
-	}
-	const struct pg_evidence *map = NULL;
-	formation = retained_origin(typing, formation, &map);
-	if (!formation) return NULL;
 	enum pg_evidence_rule rule = pg_evidence_rule(formation);
 	struct pg_identity_boundary boundary;
 	if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
@@ -176,6 +176,20 @@ const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 	return rebuild_family(typing, boundary.family, &boundary, map, left, right);
 }
 
+const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation)
+{
+	if (!pg_evidence_owned_by(formation, typing)) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	switch (pg_evidence_judgement(formation)) {
+	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
+	default: return NULL;
+	}
+	const struct pg_evidence *map = NULL;
+	formation = retained_origin(typing, formation, &map);
+	return formation ? formation_from_origin(typing, classifiers, formation, map) : NULL;
+}
+
 struct endpoint_frame {
 	struct endpoint_frame *previous;
 	const struct pg_evidence *context;
@@ -186,7 +200,7 @@ struct pg_identity_endpoint_work {
 	struct pg_graph temporary;
 	struct pg_typing *typing;
 	struct pg_classifiers *classifiers;
-	const struct pg_evidence *context, *formation, *result;
+	const struct pg_evidence *context, *formation, *result, *origin_map;
 	struct endpoint_frame *stack;
 	size_t depth;
 	enum pg_identity_direction side;
@@ -200,6 +214,8 @@ struct pg_identity_endpoint_work *pg_identity_endpoint_init(struct pg_typing *ty
 	if (!pg_evidence_owned_by(context, typing)) return NULL;
 	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
 	if (!pg_evidence_owned_by(formation, typing)) return NULL;
+	if (pg_evidence_judgement(formation) != PG_JUDGEMENT_VALUE_TYPE &&
+		pg_evidence_judgement(formation) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	if (pg_evidence_context(context) != pg_evidence_context(formation)) return NULL;
 	if (side != PG_IDENTITY_LEFT && side != PG_IDENTITY_RIGHT) return NULL;
 	if (!classifiers || classifiers->graph != typing->graph) return NULL;
@@ -218,7 +234,11 @@ static int endpoint_step(struct pg_identity_endpoint_work *work)
 {
 	struct pg_typing *typing = work->typing;
 	if (!work->result) {
-		const struct pg_evidence *formation = pg_identity_formation(typing, work->classifiers, work->formation);
+		int status = origin_step(typing, &work->formation, &work->origin_map);
+		if (status <= 0) return status;
+		const struct pg_evidence *formation = formation_from_origin(typing, work->classifiers,
+			work->formation, work->origin_map);
+		work->origin_map = NULL;
 		struct pg_identity_boundary boundary;
 		if (!pg_identity_boundary_view(formation, &boundary)) return -1;
 		if (!work->depth) {
