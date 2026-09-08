@@ -1628,7 +1628,8 @@ static void application_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			const struct pg_object *binder;
 			if (pg_pi_view(pg_evidence_classifier(function), &domain, &binder, &codomain)) job->stage = 3;
 			else {
-				if (!pg_return_type_view(pg_evidence_classifier(function), &domain)) goto rejected;
+				const struct pg_effect_row *effects;
+				if (!pg_effect_type_view(pg_evidence_classifier(function), &effects, &domain)) goto rejected;
 				if (sequence_operand(synthesis, &job->application_frame, &context, &job->function, &job->checking_term) != 0)
 					goto unsupported;
 			}

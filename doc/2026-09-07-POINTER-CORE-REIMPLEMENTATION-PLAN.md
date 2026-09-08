@@ -13,6 +13,23 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 8 effectful callee sequencing
+
+- [x] Remove the empty-row-only gate on a callee of type `F E (U Pi)`.
+  Both operands now use the existing checked continuation/fold path; this is
+  not an effectful computation-to-value cast or eager compile-time execution.
+- [x] Test `(Fetch Arg) Arg` where Fetch returns a quoted function, and
+  `(Fetch Arg) (Op Arg)` where both operands have effects. Check the combined
+  row, callee-first request order, and final value after checked handlers.
+  Continue rejecting a computation whose result is not callable.
+
+Regular components, eight example checks and six result fixtures pass.
+The rebuilt ASan/UBSan source synthesis suite also passes.
+The full acceptance gate remains open at `open-family.p`, unsupported at 88
+transitions. Operation aliases and source handler carrier inference remain
+separate unfinished work; no Core-shape heuristic was added to identify an
+operation declaration from an arbitrary function.
+
 ### September 8 return-only surface handler
 
 - [x] Elaborate `M @#.return x => body` through the existing continuation

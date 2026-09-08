@@ -157,6 +157,59 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(changed_value && pg_evidence_subject(changed_value)->core == pg_evidence_subject(u1)->core);
 	const struct pg_evidence *returned_clause = complete(&synthesis,
 		request(&synthesis, scope, "returned := \\x:Result => x;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *quoted_function = pg_prove_thunk(typing, classifiers, returned_clause);
+	const struct pg_evidence *function_type = pg_prove_classifier(typing, classifiers, context, quoted_function);
+	const struct pg_operation_declaration *fetch = pg_operation_declaration(typing, u1, function_type);
+	assert(fetch);
+	scope = pg_synthesis_name(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Fetch", .length=5},
+		pg_prove_operation_function(typing, classifiers, fetch));
+	const struct pg_evidence *fetched_call = complete(&synthesis,
+		request(&synthesis, scope, "fetched := (Fetch Arg) Arg;"), PG_SYNTHESIS_DONE);
+	const struct pg_effect_row *call_effects;
+	const struct pg_term *call_result;
+	assert(pg_effect_type_view(pg_evidence_classifier(fetched_call), &call_effects, &call_result));
+	assert(pg_effect_count(call_effects) == 1);
+	assert(pg_effect_contains(call_effects, pg_operation_label(fetch)) == 1);
+	assert(call_result == pg_evidence_subject(u1)->core);
+	const struct pg_evidence *fetch_context = pg_prove_handler_context(typing, classifiers,
+		fetch, context, carrier, req, resume);
+	const struct pg_source_scope *fetch_scope = pg_synthesis_name(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Given", .length=5}, quoted_function);
+	fetch_scope = pg_synthesis_bind(&synthesis, fetch_scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="req", .length=3}, req, pg_evidence_premise(fetch_context, 0));
+	fetch_scope = pg_synthesis_bind(&synthesis, fetch_scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="k", .length=1}, resume, fetch_context);
+	const struct pg_evidence *fetch_body = complete(&synthesis,
+		request(&synthesis, fetch_scope, "body := k Given;"), PG_SYNTHESIS_DONE);
+	struct pg_handler_clause fetch_clause = {fetch,
+		pg_prove_abstract(typing, classifiers, context, fetch_context, fetch_body)};
+	const struct pg_evidence *fetched_handled = pg_prove_handler(typing, classifiers,
+		fetched_call, returned_clause, carrier, 1, &fetch_clause);
+	assert(fetched_handled);
+	const struct pg_evidence *fetched_value = pg_prove_return_value(typing,
+		normalize(&synthesis, context, fetched_handled));
+	assert(fetched_value && pg_evidence_subject(fetched_value)->core == pg_evidence_subject(u0)->core);
+	const struct pg_evidence *both = complete(&synthesis,
+		request(&synthesis, scope, "both := (Fetch Arg) (Op Arg);"), PG_SYNTHESIS_DONE);
+	assert(pg_effect_type_view(pg_evidence_classifier(both), &call_effects, &call_result));
+	assert(pg_effect_count(call_effects) == 2);
+	assert(pg_effect_contains(call_effects, pg_operation_label(fetch)) == 1);
+	assert(pg_effect_contains(call_effects, pg_operation_label(operation)) == 1);
+	const struct pg_evidence *both_normal = normalize(&synthesis, context, both);
+	const struct pg_object *first_label;
+	const struct pg_term *first_payload, *first_continuation;
+	assert(pg_computation_request_view(pg_evidence_subject(both_normal)->core,
+		&first_label, &first_payload, &first_continuation));
+	assert(first_label == pg_operation_label(fetch));
+	complete(&synthesis, request(&synthesis, scope, "bad := (Op Arg) Arg;"), PG_SYNTHESIS_REJECTED);
+	struct pg_handler_clause both_clauses[] = {fetch_clause, {operation, clause_function}};
+	const struct pg_evidence *both_handled = pg_prove_handler(typing, classifiers,
+		both, returned_clause, carrier, 2, both_clauses);
+	assert(both_handled);
+	const struct pg_evidence *both_value = pg_prove_return_value(typing,
+		normalize(&synthesis, context, both_handled));
+	assert(both_value && pg_evidence_subject(both_value)->core == pg_evidence_subject(u0)->core);
 	const struct pg_evidence *called = complete(&synthesis,
 		request(&synthesis, scope, "called := Op Arg;"), PG_SYNTHESIS_DONE);
 	struct pg_handler_clause clause = {operation, clause_function};
