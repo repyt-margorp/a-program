@@ -271,9 +271,21 @@ void pg_index_destroy(struct pg_index *index)
 	memset(index, 0, sizeof(*index));
 }
 
+static size_t index_bucket(uint64_t hash, size_t capacity)
+{
+	/* Avalanche high pointer bits before reducing to a power-of-two table.
+	 * The stored hash and exact-key comparison remain unchanged. */
+	hash ^= hash >> 33;
+	hash *= UINT64_C(0xff51afd7ed558ccd);
+	hash ^= hash >> 33;
+	hash *= UINT64_C(0xc4ceb9fe1a85ec53);
+	hash ^= hash >> 33;
+	return hash % capacity;
+}
+
 struct pg_index_entry *pg_index_candidates(const struct pg_index *index, uint64_t hash)
 {
-	return index->buckets[hash % index->capacity];
+	return index->buckets[index_bucket(hash, index->capacity)];
 }
 
 static int grow_index(struct pg_index *index)
@@ -287,7 +299,7 @@ static int grow_index(struct pg_index *index)
 		struct pg_index_entry *entry = index->buckets[i];
 		while (entry) {
 			struct pg_index_entry *next = entry->next;
-			size_t bucket = entry->hash % capacity;
+			size_t bucket = index_bucket(entry->hash, capacity);
 			entry->next = buckets[bucket];
 			buckets[bucket] = entry;
 			entry = next;
@@ -302,7 +314,7 @@ static int grow_index(struct pg_index *index)
 int pg_index_insert(struct pg_index *index, struct pg_index_entry *entry, uint64_t hash)
 {
 	if (grow_index(index) != 0) return -1;
-	size_t bucket = hash % index->capacity;
+	size_t bucket = index_bucket(hash, index->capacity);
 	entry->hash = hash;
 	entry->next = index->buckets[bucket];
 	index->buckets[bucket] = entry;

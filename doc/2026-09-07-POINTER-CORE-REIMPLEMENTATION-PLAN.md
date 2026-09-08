@@ -82,6 +82,21 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Remove aligned-pointer bucket clustering in the shared index. Profiling
+  `synthesis_test` at `639214a` with `-O2 -pg` attributed 72.85% of sampled
+  self time to Term `intern` (2,377,343 calls). The old modulo selection used
+  only low bits of pointer-derived hashes. A deterministic 1,024-key test
+  varying high bits occupied one bucket with a 1,024-entry chain before the
+  fix, versus 638 buckets and maximum chain six after avalanche mixing at
+  bucket selection. Lookup, insertion and growth use the same function;
+  stored hashes and exact-key equality remain unchanged. Tests retain equal
+  hash collisions and find every entry after another resize. No new cache,
+  Core equality or acceptance rule is added.
+  Single uninstrumented `time .../.build/synthesis_test` runs measured
+  2.169 s before versus 0.894 s after (indicative, not a controlled benchmark).
+  All cube solver step counts remain unchanged: this addresses lookup cost,
+  not the outstanding cubic transition count or typed symmetry.
+  Complete pointer `make check` passed under both `-O2` and ASan/UBSan.
 - [x] Repair iterated action application on known Lambdas. The new dependent
   cube test exposed `Act(Act(lambda y. RETURN(y)))` with nine arguments staying
   neutral: scope discovery could not see the inner action's function binders.
