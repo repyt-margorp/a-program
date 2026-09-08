@@ -218,6 +218,16 @@ Next implementation sequence (prerequisite for automatic source handlers):
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass. List now uses 984 transitions
   rather than 977; this restructuring is not a performance improvement claim.
+  Source binder domain adaptation is now a shared producer, using the same
+  checked type-input/value-type operations previously embedded in binding_step.
+  Context acceptance consumes that producer's result. Structural declaration
+  lookup can inspect supported source Universe/variable domains before that
+  acceptance; computed domains still await checked type evaluation. Tests obtain
+  the classifiers of x in `lambda x : Universe` and y in nested `lambda y : x`
+  under an unaccepted outer context, then verify the eventual ordinary variable
+  judgements. No unresolved domain is published as accepted formation.
+  Validation: normal `check`, eight example synthesis cases, six runtime cases
+  and rebuilt ASan/UBSan synthesis tests pass, including dependent source domains.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
   pointer-equality assumption about capture-avoiding substitution.

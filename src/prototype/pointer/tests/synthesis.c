@@ -327,6 +327,23 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, domain_structure, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(domain_structure) == pg_universe(classifiers, 0));
 		assert(!pg_synthesis_result(source_domain));
+		struct pg_synthesis_job *bound_x = request(&synthesis, pg_synthesis_binding_scope(source_binding), "v := x;");
+		struct pg_synthesis_job *bound_x_type = pg_synthesis_classifier_structure(&synthesis, bound_x);
+		assert(!complete(&synthesis, bound_x_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(bound_x_type) == pg_universe(classifiers, 0));
+		assert(!pg_synthesis_result(bound_x) && !pg_synthesis_result(source_binding));
+		const char *dependent_source = "v := \\y : x => y;";
+		struct pg_definition dependent_definition;
+		pg_parser_init(&parser, typing->graph, dependent_source, strlen(dependent_source));
+		assert(pg_parser_next(&parser, &dependent_definition) == 1);
+		struct pg_synthesis_job *dependent_binding = pg_synthesis_binding(&synthesis,
+			pg_synthesis_binding_scope(source_binding), dependent_definition.expression);
+		struct pg_synthesis_job *bound_y = request(&synthesis, pg_synthesis_binding_scope(dependent_binding), "v := y;");
+		struct pg_synthesis_job *bound_y_type = pg_synthesis_classifier_structure(&synthesis, bound_y);
+		assert(!complete(&synthesis, bound_y_type, PG_SYNTHESIS_DONE));
+		const struct pg_term *x_term = pg_reference(typing->graph, pg_synthesis_binding_binder(source_binding));
+		assert(pg_synthesis_type_structure_result(bound_y_type) == x_term);
+		assert(!pg_synthesis_result(dependent_binding));
 		assert(!complete(&synthesis, structure, PG_SYNTHESIS_DONE));
 		const struct pg_term *symbolic_pi = pg_synthesis_type_structure_result(structure);
 		const struct pg_term *symbolic_f = pg_effect_type_spine(classifiers,
@@ -405,6 +422,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_evidence_classifier(applied) == pg_effect_type(classifiers, row, pg_reference(typing->graph, b)));
 		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));
 		complete(&synthesis, source_lambda, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_classifier(complete(&synthesis, bound_x, PG_SYNTHESIS_DONE)) == pg_universe(classifiers, 0));
+		assert(pg_evidence_classifier(complete(&synthesis, bound_y, PG_SYNTHESIS_DONE)) == x_term);
 		const struct pg_evidence *quoted = complete(&synthesis, source_quote, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_rule(quoted) == PG_THUNK_INTRO);
 		assert(pg_evidence_classifier(quoted) == pg_thunk_type(classifiers,
