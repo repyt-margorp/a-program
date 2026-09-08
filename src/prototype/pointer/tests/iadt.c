@@ -206,6 +206,76 @@ static void schema_positivity(void)
 		&classifiers, nat, pg_data_constructor(nat_layout, 0), identity);
 	assert(zero_function && pg_evidence_rule(zero_function) == PG_RETURN_INTRO);
 	assert(pg_prove_return_value(&typing, zero_function) == zero);
+	/* Case elimination checks synthesized branches, not just the chosen branch. */
+	const struct pg_object *z = pg_binder(&graph), *n = pg_binder(&graph);
+	const struct pg_evidence *z_context = pg_prove_context_extension(&typing, empty, z, nat);
+	const struct pg_evidence *n_context = pg_prove_context_extension(&typing, empty, n, nat);
+	const struct pg_evidence *n_value = pg_prove_variable(&typing, n_context, n);
+	const struct pg_evidence *pred_branch = pg_prove_abstract(&typing, &classifiers,
+		empty, n_context, pg_prove_return(&typing, &classifiers, n_value));
+	const struct pg_evidence *nat_motive = pg_prove_return_type(&typing, &classifiers,
+		pg_prove_projection(&typing, z_context, nat));
+	const struct pg_evidence *pred_branches[] = {zero_function, pred_branch};
+	const struct pg_evidence *pred = pg_prove_match(&typing, &classifiers, nat,
+		identity, succ, z_context, nat_motive, 2, pred_branches);
+	assert(pred && pg_evidence_rule(pred) == PG_MATCH_ELIM);
+	check(&constructor_work, pg_evidence_subject(pred)->core, pg_evidence_subject(zero_function)->core);
+	const struct pg_reduction_certificate *pred_receipt = pg_whnf_certificate(
+		pg_whnf_request(&constructor_work, &pg_pure_policy, pg_evidence_subject(pred)->core));
+	const struct pg_evidence *pred_reduced = pg_prove_normalization(&typing, pred, pred_receipt);
+	assert(pred_reduced && pg_prove_return_value(&typing, pred_reduced));
+	assert(pg_evidence_classifier(pred_reduced) == pg_evidence_classifier(pred));
+	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, empty, pred))->core ==
+		pg_return_type(&classifiers, pg_evidence_subject(nat)->core));
+	proofs = typing.proofs.count; terms = graph.terms.count;
+	assert(pg_prove_match(&typing, &classifiers, nat, identity, succ,
+		z_context, nat_motive, 2, pred_branches) == pred);
+	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	assert(pg_derivation_parameters(pred, &wire_parameters) == -1);
+	assert(!pg_prove_match(&typing, &classifiers, nat, identity, succ, z_context, nat_motive, 1, pred_branches));
+	const struct pg_evidence *wrong_branches[] = {zero_function, zero_function};
+	assert(!pg_prove_match(&typing, &classifiers, nat, identity, zero, z_context, nat_motive, 2, wrong_branches));
+	assert(!pg_prove_match(&typing, &classifiers, other, identity, succ, z_context, nat_motive, 2, pred_branches));
+	assert(!pg_prove_match(&typing, &classifiers, nat, identity, succ, z_context, nat, 2, pred_branches));
+	/* A genuinely dependent motive: z |-> F (Identity Nat z z). */
+	const struct pg_evidence *z_value = pg_prove_variable(&typing, z_context, z);
+	const struct pg_evidence *path_motive = pg_prove_return_type(&typing, &classifiers,
+		pg_prove_identity_type(&typing, pg_prove_projection(&typing, z_context, nat), z_value, z_value));
+	const struct pg_evidence *n_parameters = pg_prove_substitution(&typing, empty, n_context, 0, NULL);
+	const struct pg_evidence *open_z_context = pg_prove_context_extension(&typing, n_context,
+		pg_binder(&graph), pg_prove_projection(&typing, n_context, nat));
+	const struct pg_evidence *open_motive = pg_prove_return_type(&typing, &classifiers,
+		pg_prove_projection(&typing, open_z_context, nat));
+	const struct pg_evidence *open_branches[] = {pg_prove_projection(&typing, n_context, zero_function),
+		pg_prove_projection(&typing, n_context, pred_branch)};
+	const struct pg_evidence *neutral_match = pg_prove_match(&typing, &classifiers, nat,
+		n_parameters, n_value, open_z_context, open_motive, 2, open_branches);
+	assert(neutral_match && pg_evidence_context(neutral_match) == pg_evidence_context(n_context));
+	check(&constructor_work, pg_evidence_subject(neutral_match)->core, pg_evidence_subject(neutral_match)->core);
+	const struct pg_evidence *succ_n = pg_prove_constructor(&typing, nat,
+		pg_data_constructor(nat_layout, 1), n_parameters, 1, &n_value);
+	const struct pg_evidence *path_branches[] = {
+		pg_prove_return(&typing, &classifiers, pg_prove_reflexivity(&typing, nat, zero)),
+		pg_prove_abstract(&typing, &classifiers, empty, n_context,
+			pg_prove_return(&typing, &classifiers, pg_prove_reflexivity(&typing,
+				pg_prove_projection(&typing, n_context, nat), succ_n)))};
+	const struct pg_evidence *path_match = pg_prove_match(&typing, &classifiers, nat,
+		identity, succ, z_context, path_motive, 2, path_branches);
+	assert(path_match);
+	const struct pg_evidence *succ_path = pg_prove_identity_type(&typing, nat, succ, succ);
+	assert(pg_evidence_classifier(path_match) == pg_return_type(&classifiers, pg_evidence_subject(succ_path)->core));
+	/* Match may return a raw function computation, not F(U(Pi ...)). */
+	const struct pg_evidence *function_type = pg_prove_classifier(&typing, &classifiers, empty, successor_function);
+	const struct pg_evidence *function_motive = pg_prove_projection(&typing, z_context, function_type);
+	const struct pg_evidence *function_branches[] = {successor_function,
+		pg_prove_abstract(&typing, &classifiers, empty, n_context,
+			pg_prove_projection(&typing, n_context, successor_function))};
+	const struct pg_evidence *function_match = pg_prove_match(&typing, &classifiers, nat,
+		identity, succ, z_context, function_motive, 2, function_branches);
+	assert(function_match);
+	const struct pg_evidence *match_app = pg_prove_application(&typing, function_match, zero);
+	assert(match_app);
+	check(&constructor_work, pg_evidence_subject(match_app)->core, returned_successor);
 	pg_whnf_work_destroy(&constructor_work);
 	/* Positivity does not establish the universe bound. */
 	const struct pg_evidence *stored_universe = pg_prove_context_extension(&typing, parameters,
@@ -267,6 +337,16 @@ static void schema_positivity(void)
 	assert(boxed && !pg_evidence_context(boxed));
 	assert(pg_evidence_classifier(boxed) == pg_application(&graph,
 		pg_reference(&graph, pg_data_family_object(box_schema)), pg_evidence_subject(nat)->core));
+	const struct pg_evidence *boxed_type = pg_prove_classifier(&typing, &classifiers, empty, boxed);
+	const struct pg_evidence *box_motive_context = pg_prove_context_extension(&typing, empty, pg_binder(&graph), boxed_type);
+	const struct pg_evidence *box_motive = pg_prove_return_type(&typing, &classifiers,
+		pg_prove_projection(&typing, box_motive_context, nat));
+	const struct pg_evidence *unboxed = pg_prove_match(&typing, &classifiers, box,
+		box_arguments, boxed, box_motive_context, box_motive, 1, &pred_branch);
+	assert(unboxed);
+	assert(!pg_whnf_work_init(&constructor_work, &graph));
+	check(&constructor_work, pg_evidence_subject(unboxed)->core, pg_evidence_subject(zero_function)->core);
+	pg_whnf_work_destroy(&constructor_work);
 	const struct pg_evidence *other_value = pg_prove_type_value(&typing, other);
 	const struct pg_evidence *wrong_arguments = pg_prove_substitution(&typing, a_context, empty, 1, &other_value);
 	assert(!pg_prove_constructor(&typing, box, box_constructor, wrong_arguments, 1, &zero));

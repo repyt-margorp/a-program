@@ -15,7 +15,8 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_IDENTITY_FORM, PG_IDENTITY_INSTANCE, PG_REFLEXIVITY,
 	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION,
 	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION,
-	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT, PG_INDUCTIVE_FORM, PG_CONSTRUCTOR_INTRO };
+	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT, PG_INDUCTIVE_FORM, PG_CONSTRUCTOR_INTRO,
+	PG_MATCH_ELIM };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION };
@@ -40,6 +41,17 @@ const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters);
+/* Zero-index dependent case elimination (no recursive IH). Motive is a
+ * computation-type formation in destination,z:Family. Branches are already
+ * synthesized computations in destination, ordered by the schema, curried
+ * over each constructor's fields. Check their classifiers against the motive
+ * instantiated at that constructor; no branch synthesis or conversion search.
+ * The result has motive[scrutinee/z], including a raw Pi when appropriate. */
+const struct pg_evidence *pg_prove_match(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+	size_t count, const struct pg_evidence *const *branches);
 
 /* Borrowed view of an explicit Identity formation's immutable premises.
  * family is a formation for IDENTITY_FORM/FAMILY_IDENTITY_FORM and a selected

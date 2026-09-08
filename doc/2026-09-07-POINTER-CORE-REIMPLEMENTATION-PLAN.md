@@ -43,9 +43,10 @@ Code-level obstruction and implementation order:
    expression dispatch in `synthesis.c` does not implement either. The separate
    `pg_synthesis_data_schema` job builds a schema, not a typed declaration.
 2. `pg_data_schema` in `iadt.c` validates field/result substitutions and derives
-   erased layout arities. `evidence.h` has no nominal datatype formation,
-   constructor membership or Match elimination rule. Connecting the syntax
-   directly to that schema would skip the missing theorem, not fix dispatch.
+   erased layout arities. Zero-index nominal formation, constructor membership
+   and dependent case elimination now have evidence rules (see the progress
+   section below). Indexed formation, recursive IH and source integration remain
+   missing. Connecting syntax directly to an unadmitted schema is still invalid.
 3. Implement recursive Self-family checking with the fixed parameter prefix
    and explicit indices, strict positivity, universe obligations and retained
    evidence. The source declaration's own name must not substitute for `*`.
@@ -210,6 +211,33 @@ Admission audit after `8b3105b`:
 ### Next Implementation Boundary: Pending Recursive Formation
 
 Zero-index inductive rules after `d952804`:
+
+Dependent case elimination after `581ab95`:
+
+- [x] Add `PG_MATCH_ELIM` for the admitted zero-index families. Given an
+  independently formed computation motive in `Delta,z:D`, check every already
+  synthesized branch at `Pi(fields, motive[constructor fields/z])`. Substitute
+  the scrutinee in the conclusion. No expected-type-guided branch synthesis,
+  recursive IH, value-side Pi, or new Core node is introduced.
+- [x] Share fresh field-context construction with constructor function
+  derivation. Retain the original formation, parameter map, motive/context,
+  scrutinee, all branches and output formation as immutable premises. Repeated
+  accepted requests use their proof key before fresh field-context construction.
+  Alpha checking compares field binders without merging their Core identities.
+- [x] Add tests for predecessor iota and typed subject reduction, neutral
+  scrutinees under an outer context, an Identity-dependent result motive,
+  raw-Pi branch results followed by application, instantiated Box parameters,
+  missing/wrong-arity branches, nominal mismatch and repeated-request reuse.
+  Full component `check` and rebuilt ASan/UBSan IADT tests pass. A fresh
+  `check-examples` still reports 0/8 unsupported at the unchanged transition
+  counts above; this is not a completed source-language implementation.
+- [ ] Complete source Match dispatch, recursive IH, indexed elimination and
+  datatype higher equations. This rule supplies dependent *case analysis*,
+  not recursive induction. Ordinary examples are not claimed to pass.
+- [ ] Extend nominal `.a` descriptor storage. The new Match rule, like its
+  nominal formation premises, is explicitly rejected by the existing generic
+  codec until the schema/object transport is implemented. No second Replay
+  engine is planned: stored inputs must use the same checked rules as source.
 
 Constructor function derivation after `75c100c`:
 
