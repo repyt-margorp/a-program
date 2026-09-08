@@ -422,7 +422,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_token op_name = {.kind = PG_TOKEN_IDENT, .text = "Op", .length = 2};
 		const struct pg_source_scope *op_scope = pg_synthesis_name_job(&synthesis, root, op_name,
 			pg_synthesis_operation(&synthesis, pending_op));
-		const char *op_source = "h := M @Op req resume => req;";
+		const char *op_source = "h := M @Op req resume => resume req;";
 		struct pg_parser op_parser;
 		struct pg_definition op_definition;
 		pg_parser_init(&op_parser, typing->graph, op_source, strlen(op_source));
@@ -441,7 +441,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_pi_view(pg_synthesis_type_structure_result(op_type), &payload_domain, &payload_binder, &resume_pi));
 		assert(pg_pi_view(resume_pi, &resume_domain, &resume_binder, &clause_result));
 		assert(payload_domain == pg_universe(classifiers, 0));
-		assert(clause_result == pg_return_type(classifiers, payload_domain));
+		assert(clause_result == symbolic_f);
 		const struct pg_term *resume_function, *response_domain, *response_result;
 		const struct pg_object *response_binder;
 		assert(pg_thunk_type_view(resume_domain, &resume_function));

@@ -339,6 +339,21 @@ Next implementation sequence (prerequisite for automatic source handlers):
   closure remains missing. Operation-name lookup also still needs its outer
   source context. Normal checks, examples and rebuilt ASan/UBSan synthesis tests
   pass; this is not completion of automatic handler inference.
+  Source application now prepares Pi/U(Pi) calls with known value arguments
+  before context acceptance, using classifier-normalization, optional FORCE,
+  optional type/value bridging and the same post-checked APP rule producer.
+  Argument classification reuses body-rule polarity or an already accepted
+  judgement; expected domains never drive operand synthesis. The pending clause
+  test now uses `@Op req resume => resume req`, retaining the symbolic row in
+  both its result and latent continuation type until sealing. Known direct-call
+  preparation is exposed to structural projection after its rule link exists.
+  Sequencing/computed arguments and unsupported structural producers still use
+  the accepted-operand application path. This coexistence is transitional, not
+  the final source architecture; automatic equation collection/sealing and
+  preparation readiness across all source forms remain open. Normal checks,
+  examples and rebuilt ASan/UBSan synthesis tests pass. List transitions increase
+  from 1233 to 1662 due to preparatory work and retained fallback scheduling;
+  no performance improvement is claimed.
   Normal `check`, eight example synthesis cases, six runtime cases and rebuilt
   ASan/UBSan synthesis tests pass.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
