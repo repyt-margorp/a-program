@@ -17,6 +17,22 @@ criteria for merging different Lambda or semantic-object references.
 
 ### Next implementation contract: typed permutation (2026-09-08)
 
+Implemented after `e88e280`: formation recovery now recognizes an Identity
+instance whose selected family has an explicit `PG_REFLEXIVITY` derivation.
+Its premise supplies A, so ordinary `pg_prove_identity_type` reconstructs
+`Id A x y` with exactly the same Core subject as `(refl A) x y`. This exposes
+retained inner Identity formations without inspecting APP arity or accepting
+an arbitrary family as reflexivity. The existing projection/substitution
+reconstruction then applies unchanged. No new Core tag or equality rule.
+
+The new regression instantiates a reflexive family over an Identity type,
+checks both inner endpoints, exact recovered Core identity, and rejection of
+an excessive depth. Existing opaque-family tests remain unchanged. This
+removes one formation-recovery obstruction, not the missing typed central
+symmetry rule described below.
+Verification: complete pointer `make check` and ASan/UBSan `identity_test`
+passed. The higher-application comparison maximum remains 243,489 steps.
+
 Rechecked `action.h`, `evidence.c` and `square_template_jobs` /
 `dependent_cube_substitution` after `253e690`. The current proper-face API
 explicitly excludes centers. `PG_IDENTITY_INSTANCE` retains a checked family

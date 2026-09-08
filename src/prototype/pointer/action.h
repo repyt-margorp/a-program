@@ -7,7 +7,9 @@
 /* Recover an explicit Identity formation through reindex/projection and
  * accepted pure-normalization and type-as-universe-value premises.
  * The input must be a type formation. Following a universe value without a
- * retained formation does not infer an Identity from its Core syntax.
+ * retained formation does not infer an Identity from its Core syntax. An
+ * instance of an explicitly proved refl A recovers ordinary Identity on A
+ * from that proof's premise, allowing descent through nested instances.
  * Rebuild with the ordinary formation rules and composed substitutions, keeping
  * the selected family and paths. This is not normalization or proof search:
  * unsupported formation/conversion rules return NULL. The rebuilt subject is

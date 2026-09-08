@@ -1062,8 +1062,33 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 	pg_dimensions_destroy(&dimensions);
 }
 
+static void reflexive_instance_boundary(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *universe = pg_prove_universe(typing, classifiers, empty, 1);
+	const struct pg_evidence *point = pg_prove_type_value(typing,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_evidence *line = pg_prove_identity_type(typing, universe, point, point);
+	const struct pg_evidence *path = pg_prove_reflexivity(typing, universe, point);
+	const struct pg_evidence *line_value = pg_prove_type_value(typing, line);
+	const struct pg_evidence *family = pg_prove_reflexivity(typing,
+		pg_prove_classifier(typing, classifiers, empty, line_value), line_value);
+	const struct pg_evidence *instance = pg_prove_identity_instance(typing, classifiers, family, path, path);
+	assert(instance);
+	const struct pg_evidence *recovered = pg_identity_formation(typing, classifiers, instance);
+	assert(recovered && pg_evidence_rule(recovered) == PG_IDENTITY_FORM);
+	assert(pg_evidence_subject(recovered)->core == pg_evidence_subject(instance)->core);
+	assert(pg_identity_face_endpoint(typing, classifiers, empty, instance, 0, PG_IDENTITY_LEFT) == path);
+	for (enum pg_identity_direction side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
+		const struct pg_evidence *endpoint = pg_identity_face_endpoint(typing, classifiers, empty, instance, 1, side);
+		assert(endpoint && pg_evidence_subject(endpoint)->core == pg_evidence_subject(path)->core);
+	}
+	assert(!pg_identity_face_endpoint(typing, classifiers, empty, instance, 2, PG_IDENTITY_LEFT));
+}
+
 static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
+	reflexive_instance_boundary(typing, classifiers);
 	square_transposition_boundary(typing, classifiers);
 	uniform_transport(typing, classifiers);
 	struct pg_dimensions dimensions;

@@ -112,6 +112,14 @@ const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 	enum pg_evidence_rule rule = pg_evidence_rule(formation);
 	struct pg_identity_boundary boundary;
 	if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
+	/* A checked refl A selects the ordinary Identity family of A. Recover it
+	 * from its premise, never from the shape of the family Core application. */
+	if (rule == PG_IDENTITY_INSTANCE && pg_evidence_rule(boundary.family) == PG_REFLEXIVITY) {
+		const struct pg_evidence *type = pg_prove_value_type(typing, pg_evidence_premise(boundary.family, 1));
+		formation = pg_prove_identity_type(typing, type, boundary.left, boundary.right);
+		if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
+		rule = PG_IDENTITY_FORM;
+	}
 	if (!map) return formation;
 	if (rule != PG_FAMILY_IDENTITY_FORM) {
 		const struct pg_evidence *family = pg_prove_reindex(typing, map, boundary.family);
