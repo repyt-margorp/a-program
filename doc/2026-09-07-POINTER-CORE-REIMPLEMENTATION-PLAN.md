@@ -369,6 +369,20 @@ Next implementation sequence (prerequisite for automatic source handlers):
   transitions; this is a readiness fix, not a performance improvement. General
   pending blocks/sequencing and automatic handler equation collection/sealing
   remain incomplete; no full-inference milestone is marked complete here.
+  Zero-clause FOLD now exposes its Core from premise producers before their
+  evidence is accepted. Structural projection and `pg_prove_fold` both use
+  `pg_computation_fold`; there is no second fold layout or new Core tag.
+  The pending-context test sequences a forced computation through a result
+  binder, obtains the Core before sealing and compares it by pointer after
+  acceptance. A value supplied as the input also permits raw construction but
+  must be rejected by the ordinary FOLD rule after sealing. Construction is
+  not a certificate. Source `block_step` still awaits each statement; the next
+  missing connection is pending frame/rule assembly plus the structural row
+  equation `E_sequence = E_input union E_continuation`. Its symbolic row must
+  remain an equation dependency, not be guessed empty or forced closed by
+  waiting for the sequence's own proof. General block migration remains open.
+  Normal checks, eight source cases, six runtime cases and rebuilt normal and
+  ASan/UBSan synthesis tests (including invalid-input rejection) pass.
   Normal `check`, eight example synthesis cases, six runtime cases and rebuilt
   ASan/UBSan synthesis tests pass.
   Validation: normal `check`, eight example synthesis cases, six runtime cases

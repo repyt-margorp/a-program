@@ -407,6 +407,20 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, result_classifier, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(result_classifier) == pg_universe(classifiers, 0));
 		assert(!pg_synthesis_result(result_context) && !pg_synthesis_result(result_variable));
+		struct pg_synthesis_job *result_domain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){context, universe});
+		struct pg_synthesis_job *result_function = pg_synthesis_lambda_body(&synthesis,
+			result_domain, result_context, result_variable);
+		struct pg_synthesis_job *sequence = rule_job(&synthesis, PG_FOLD_ELIM, NULL, 2,
+			(struct pg_synthesis_job *[]){body, result_function});
+		struct pg_synthesis_job *sequence_term = pg_synthesis_term_structure(&synthesis, sequence);
+		assert(!complete(&synthesis, sequence_term, PG_SYNTHESIS_DONE));
+		assert(!pg_synthesis_result(sequence) && !pg_synthesis_result(result_function));
+		struct pg_synthesis_job *invalid_sequence = rule_job(&synthesis, PG_FOLD_ELIM, NULL, 2,
+			(struct pg_synthesis_job *[]){result_variable, result_function});
+		struct pg_synthesis_job *invalid_sequence_term = pg_synthesis_term_structure(&synthesis, invalid_sequence);
+		assert(!complete(&synthesis, invalid_sequence_term, PG_SYNTHESIS_DONE));
+		assert(!pg_synthesis_result(invalid_sequence));
 		const char *return_source = "h := M @#.return r => r;";
 		struct pg_parser return_parser;
 		struct pg_definition return_definition;
@@ -537,6 +551,10 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_result(context) == expected_context);
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *op_proof = complete(&synthesis, op_clause, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *sequence_proof = complete(&synthesis, sequence, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(sequence_proof)->core == pg_synthesis_type_structure_result(sequence_term));
+		assert(pg_evidence_classifier(sequence_proof) == pg_effect_type(classifiers, row, pg_universe(classifiers, 0)));
+		complete(&synthesis, invalid_sequence, PG_SYNTHESIS_REJECTED);
 		same_judgement(complete(&synthesis, derived_carrier, PG_SYNTHESIS_DONE),
 			complete(&synthesis, carrier, PG_SYNTHESIS_DONE));
 		assert(pg_evidence_subject(op_proof)->core == pg_synthesis_type_structure_result(op_term));

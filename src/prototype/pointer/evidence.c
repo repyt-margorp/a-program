@@ -2027,9 +2027,8 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_clas
 		codomain = pg_effect_type(classifiers, pg_effect_union(typing->graph, effects, following), result_type);
 		if (!codomain) return NULL;
 	} else if (pg_effect_count(effects)) return NULL;
-	const struct pg_term *head = pg_application(typing->graph,
-		pg_reference(typing->graph, &pg_fold_operation), computation->subject->core);
-	const struct pg_term *core = pg_application(typing->graph, head, continuation->subject->core);
+	const struct pg_term *core = pg_computation_fold(typing->graph,
+		computation->subject->core, continuation->subject->core, 0, NULL);
 	if (!core) return NULL;
 	const struct pg_occurrence *operands[] = {computation->subject, continuation->subject};
 	const struct pg_occurrence *subject = pg_occurrence(typing, computation->context, core, NULL, 2, operands);
