@@ -258,14 +258,18 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		pg_parser_init(&parser, typing->graph, source, strlen(source));
 		assert(pg_parser_next(&parser, &definition) == 1);
 		struct pg_synthesis_job *source_lambda = pg_synthesis_request(&synthesis, scope, definition.expression);
+		struct pg_synthesis_job *source_quote = request(&synthesis, scope, "v := &(\\x : @ => k);");
 		assert(lambda && !pg_synthesis_result(context) && !pg_synthesis_result(lambda));
 		assert(typing->proofs.count == proofs);
-		for (unsigned steps = 0; !pg_synthesis_dependency(source_variable) || !pg_synthesis_dependency(source_lambda); ++steps) {
+		for (unsigned steps = 0; !pg_synthesis_dependency(source_variable) || !pg_synthesis_dependency(source_lambda)
+			|| !pg_synthesis_dependency(source_quote); ++steps) {
 			assert(steps < 100);
 			pg_synthesis_advance(&synthesis, 1);
 		}
 		assert(pg_synthesis_status(context) == PG_SYNTHESIS_PENDING);
 		assert(!pg_synthesis_result(source_variable));
+		assert(!pg_synthesis_result(source_quote));
+		assert(pg_synthesis_dependency(source_quote) != pg_synthesis_dependency(source_lambda));
 		/* The variable has built its rule dependency before context acceptance;
 		 * the Lambda still waits directly on the scope's formation guard. */
 		assert(pg_synthesis_dependency(source_variable) != pg_synthesis_dependency(source_lambda));
@@ -284,6 +288,11 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_result(context) == expected_context);
 		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));
 		complete(&synthesis, source_lambda, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *quoted = complete(&synthesis, source_quote, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_rule(quoted) == PG_THUNK_INTRO);
+		assert(pg_evidence_classifier(quoted) == pg_thunk_type(classifiers,
+			pg_evidence_classifier(pg_evidence_premise(quoted, 0))));
+		complete(&synthesis, request(&synthesis, scope, "v := &k;"), PG_SYNTHESIS_REJECTED);
 		const struct pg_source_scope *bad_scope = pg_synthesis_bind_context(&synthesis, root, name,
 			pg_binder(typing->graph), context);
 		complete(&synthesis, request(&synthesis, bad_scope, "v := k;"), PG_SYNTHESIS_REJECTED);

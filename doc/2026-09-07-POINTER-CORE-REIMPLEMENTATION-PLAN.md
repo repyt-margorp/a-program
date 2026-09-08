@@ -138,6 +138,14 @@ Next implementation sequence (prerequisite for automatic source handlers):
   and clause bodies to construct pending rule applications and row dependencies.
   Carry latent effects through callable types, not a flat side table keyed by
   erased Core. Keep `::` exclusively downstream of independent synthesis.
+  Source quotation now prepares a THUNK_INTRO rule with its independent operand
+  producer before context acceptance, and forwards the ordinary rule result.
+  This replaces direct source-side thunk acceptance; loaded and source rules use
+  the same evaluator. Pending-context tests cover delayed quotation, preservation
+  of its operand classifier under U, and rejection of quoting an existing value.
+  `make check`, eight example synthesis cases and six runtime result cases pass.
+  This does not yet expose symbolic classifier conclusions or generate handler
+  row dependencies; the overall item remains open.
 - [ ] Seal effect work only when all reachable contributions are generated.
   Resolve row parameters, then check the retained rule applications using the
   ordinary kernel. Solve must not resynthesize the source under successive G

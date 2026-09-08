@@ -3169,7 +3169,13 @@ static int prepare_expression(struct pg_synthesis *synthesis, struct pg_synthesi
 	default: return 1;
 	}
 	if (!job->left) goto error;
-	if (syntax->kind != PG_SYNTAX_QUOTE) {
+	if (syntax->kind == PG_SYNTAX_QUOTE) {
+		struct pg_derivation_input *input = pg_alloc(synthesis->typing->graph, sizeof(*input));
+		if (!input) goto error;
+		*input = (struct pg_derivation_input){.rule = PG_THUNK_INTRO, .count = 1};
+		job->right = pg_synthesis_rule(synthesis, input, &job->left, NULL, NULL);
+		if (!job->right) goto error;
+	} else {
 		job->right = pg_synthesis_request(synthesis, right_scope, syntax->right);
 		if (!job->right) goto error;
 	}
@@ -3186,6 +3192,10 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	/* Self application and IH notation share syntax until scope resolution. */
 	if (job->role == EXPRESSION_JOB && !hypothesis_syntax(job->syntax))
 		if (!prepare_expression(synthesis, job)) return;
+	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_QUOTE) {
+		forward_proof(synthesis, job, job->right);
+		return;
+	}
 	if (job->scope && job->role != TELESCOPE_JOB && job->role != TELESCOPE_STRUCTURE_JOB) {
 		struct pg_synthesis_job *context = job->scope->context_job;
 		if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
@@ -3334,11 +3344,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-	if (syntax->kind == PG_SYNTAX_QUOTE) {
-		job->result = pg_prove_thunk(synthesis->typing, synthesis->classifiers, job->left->result);
-		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
-		return;
-	}
 	if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
 	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
 	const struct pg_evidence *left = job->left->result, *right = job->right->result;
