@@ -2777,10 +2777,6 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 		struct pg_synthesis_job *canonical = pg_synthesis_handler(synthesis, job->scope,
 			pg_synthesis_evidence(synthesis, carrier->result), job->syntax);
 		if (forward_proof(synthesis, job, canonical)) return;
-	} else {
-		struct pg_synthesis_job *context = job->scope->context_job;
-		if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
-		if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return; }
 	}
 	size_t count = job->syntax->item_count;
 	if (!job->handler) {
@@ -2810,9 +2806,13 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 			struct pg_synthesis_job *operation = pg_synthesis_operation_reference(synthesis,
 				pg_synthesis_request(synthesis, job->scope, clause->left));
 			if (!operation) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			if (operation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, operation); return; }
-			if (operation->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, operation->status); return; }
-			state->labels[state->count++] = pg_operation_label(pg_synthesis_operation_declaration(operation));
+			const struct pg_operation_declaration *declaration = pg_synthesis_operation_declaration(operation);
+			if (!declaration) {
+				if (operation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, operation); return; }
+				finish(synthesis, job, operation->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : operation->status);
+				return;
+			}
+			state->labels[state->count++] = pg_operation_label(declaration);
 		}
 		++state->scanned;
 		enqueue(synthesis, job);
@@ -4122,6 +4122,12 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		return;
 	}
 	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }
+	if (job->role == HANDLER_JOB) { handler_step(synthesis, job); return; }
+	if (job->role == EXPRESSION_JOB && handler_syntax(job->syntax)) {
+		if (!job->value_job) job->value_job = pg_synthesis_handler(synthesis, job->scope, NULL, job->syntax);
+		forward_proof(synthesis, job, job->value_job);
+		return;
+	}
 	if (job->scope && job->role != TELESCOPE_JOB && job->role != TELESCOPE_STRUCTURE_JOB) {
 		struct pg_synthesis_job *context = job->scope->context_job;
 		if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
@@ -4143,7 +4149,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == EFFECT_SUBSTITUTION_JOB) { effect_substitution_step(synthesis, job); return; }
 	if (job->role == SEQUENCE_JOB) { sequence_step(synthesis, job); return; }
 	if (job->role == OPERATION_REFERENCE_JOB) { operation_reference_step(synthesis, job); return; }
-	if (job->role == HANDLER_JOB) { handler_step(synthesis, job); return; }
 	if (job->role == EFFECT_INFERENCE_JOB) {
 		struct pg_effect_inference *work = (void *)job->inputs[0];
 		if (!work->sealed && !work->failed) {
@@ -4316,10 +4321,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (syntax->kind == PG_SYNTAX_ELIMINATION) {
 		if (syntax->item_count == 1 && return_clause(syntax->items[0].expression))
 			return_handler_step(synthesis, job);
-		else if (job->value_job || handler_syntax(syntax)) {
-			if (!job->value_job) job->value_job = pg_synthesis_handler(synthesis, job->scope, NULL, syntax);
-			forward_proof(synthesis, job, job->value_job);
-		} else match_step(synthesis, job);
+		else match_step(synthesis, job);
 		return;
 	}
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }

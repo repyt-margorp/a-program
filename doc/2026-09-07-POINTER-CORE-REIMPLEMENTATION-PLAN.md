@@ -538,6 +538,20 @@ Next implementation sequence (prerequisite for automatic source handlers):
   after structural lookup, and reject incorrect operation-head expectations.
   This removes the signature/context wait, not the still-open shared equation
   ownership and closure protocol for general nested handlers.
+  September 9 follow-up: inferred handler dispatch and operation-label scanning
+  now prepare before the surrounding context is accepted. The source expression
+  forwards to the same handler job; its former post-context dispatch is removed.
+  Label scanning uses structural declaration lookup, while final acceptance
+  still checks the original operation reference, clause proofs and carrier.
+  A regression obtains the classifier of a whole source handler under an
+  unsealed effect-dependent context without obtaining its proof, then accepts
+  it after the context is solved. An invalid binding context rejects the same
+  handler. Normal checks, eight source cases, six runtime cases and rebuilt
+  ASan/UBSan synthesis tests pass.
+  This establishes pending-context preparation, not shared nested equations:
+  each inferred handler still owns a separate worker. Next, register nested
+  contributions in one inference component and seal only after all producers
+  have registered; test resumption-dependent inner rows and failure propagation.
   Normal component checks, eight source examples, six execution cases and
   rebuilt ASan/UBSan synthesis tests pass. List now takes 1718 transitions;
   explicit projection jobs change scheduling, not a claimed runtime speedup.

@@ -550,6 +550,14 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, open_clause_type, PG_SYNTHESIS_DONE));
 		assert(pg_alpha_equal(pg_synthesis_type_structure_result(open_clause_type), pg_synthesis_type_structure_result(op_type)) == 1);
 		assert(!pg_synthesis_result(open_clause) && !pg_synthesis_result(context));
+		struct pg_synthesis_job *open_handler = request(&synthesis, pending_op_scope,
+			"h := (@) @Op req resume => resume req @#.return x => x;");
+		struct pg_synthesis_job *open_handler_type = pg_synthesis_classifier_structure(&synthesis, open_handler);
+		assert(!complete(&synthesis, open_handler_type, PG_SYNTHESIS_DONE));
+		const struct pg_term *handler_row, *handler_value;
+		assert(pg_effect_type_spine_view(pg_synthesis_type_structure_result(open_handler_type), &handler_row, &handler_value));
+		assert(handler_value == pg_universe(classifiers, 1));
+		assert(!pg_synthesis_result(context) && !pg_synthesis_result(open_handler));
 		const struct pg_term *payload_domain, *resume_pi, *resume_domain, *clause_result;
 		const struct pg_object *payload_binder, *resume_binder;
 		assert(pg_pi_view(pg_synthesis_type_structure_result(op_type), &payload_domain, &payload_binder, &resume_pi));
@@ -682,6 +690,9 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_evidence *expected_context = pg_prove_context_extension(typing,
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
+		const struct pg_evidence *open_handler_proof = complete(&synthesis, open_handler, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_context(open_handler_proof) == pg_evidence_context(expected_context));
+		assert(pg_evidence_classifier(open_handler_proof) == pg_effect_type(classifiers, no_effects, handler_value));
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
 		assert(!complete(&synthesis, pending_op_reference, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_operation_declaration(pending_op_reference) == pending_op);
@@ -755,6 +766,10 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_source_scope *bad_scope = pg_synthesis_bind_context(&synthesis, root, name,
 			pg_binder(typing->graph), context);
 		complete(&synthesis, request(&synthesis, bad_scope, "v := k;"), PG_SYNTHESIS_REJECTED);
+		const struct pg_source_scope *bad_handler_scope = pg_synthesis_name_job(&synthesis, bad_scope, op_name,
+			pg_synthesis_operation(&synthesis, pending_op));
+		complete(&synthesis, request(&synthesis, bad_handler_scope,
+			"h := (@) @Op req resume => resume req @#.return x => x;"), PG_SYNTHESIS_REJECTED);
 		bad_scope = pg_synthesis_bind_context(&synthesis, scope, name, k, context);
 		complete(&synthesis, request(&synthesis, bad_scope, "v := k;"), PG_SYNTHESIS_REJECTED);
 		assert(pg_evidence_subject(pg_synthesis_result(variable))->core == pg_reference(typing->graph, k));
