@@ -164,6 +164,45 @@ static void schema_positivity(void)
 	assert(pg_inductive_instance(&typing, nat, &recovered));
 	assert(recovered.schema == nat_schema && recovered.formation == nat);
 	assert(pg_evidence_premise_count(recovered.parameters) == 2);
+	{
+		const struct pg_evidence *context = empty, *projected = nat;
+		for (size_t i = 0; i < 32; ++i) {
+			context = pg_prove_context_extension(&typing, context, pg_binder(&graph), projected);
+			projected = pg_prove_projection(&typing, context, projected);
+			assert(projected);
+		}
+		struct pg_inductive_recovery work;
+		assert(!pg_inductive_recovery_init(&work, &typing, projected));
+		assert(!pg_inductive_recovery_advance(&work, 0));
+		assert(!pg_inductive_recovery_advance(&work, 32));
+		assert(work.formation == nat && !work.map && !work.result.formation);
+		assert(!pg_inductive_recovery_advance(&work, 33));
+		assert(work.map && !work.frames && !work.result.formation);
+		assert(pg_inductive_recovery_advance(&work, 1) == 1);
+		struct pg_inductive_instance expected = work.result;
+		assert(expected.formation == nat && expected.schema == nat_schema);
+		assert(pg_evidence_context(expected.parameters) == pg_evidence_context(context));
+		pg_inductive_recovery_destroy(&work);
+		size_t saved_proofs = typing.proofs.count, saved_terms = graph.terms.count;
+		const size_t chunks[] = {1, 7, 64};
+		for (size_t i = 0; i < sizeof(chunks) / sizeof(*chunks); ++i) {
+			assert(!pg_inductive_recovery_init(&work, &typing, projected));
+			size_t calls = 0;
+			while (!pg_inductive_recovery_advance(&work, chunks[i])) assert(++calls < 100);
+			assert(work.status == 1 && work.result.parameters == expected.parameters);
+			pg_inductive_recovery_destroy(&work);
+		}
+		struct pg_inductive_instance sync;
+		assert(pg_inductive_instance(&typing, projected, &sync));
+		assert(sync.parameters == expected.parameters);
+		assert(typing.proofs.count == saved_proofs && graph.terms.count == saved_terms);
+		assert(!pg_inductive_recovery_init(&work, &typing, projected));
+		assert(!pg_inductive_recovery_advance(&work, 37));
+		pg_inductive_recovery_destroy(&work);
+		assert(pg_inductive_recovery_init(&work, &typing, NULL) == -1);
+		assert(pg_inductive_recovery_advance(&work, 1) == -1);
+		pg_inductive_recovery_destroy(&work);
+	}
 	assert(!pg_evidence_context(nat));
 	assert(pg_evidence_premise(nat, 0) == parameters);
 	assert(pg_evidence_premise_count(nat) == 3);

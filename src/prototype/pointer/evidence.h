@@ -77,6 +77,21 @@ struct pg_inductive_instance {
 	const struct pg_evidence *formation;
 	const struct pg_evidence *parameters;
 };
+/* Traversal fuel counts retained wrappers and map frames. Individual kernel
+ * operations (including application/Pi body recovery) retain their own cost. */
+struct pg_inductive_recovery {
+	struct pg_typing *typing;
+	struct pg_graph temporary;
+	struct evidence_frame *frames;
+	const struct pg_evidence *type, *formation, *map;
+	size_t return_contents, return_values;
+	struct pg_inductive_instance result;
+	int status;
+};
+int pg_inductive_recovery_init(struct pg_inductive_recovery *work,
+	struct pg_typing *typing, const struct pg_evidence *type);
+int pg_inductive_recovery_advance(struct pg_inductive_recovery *work, size_t steps);
+void pg_inductive_recovery_destroy(struct pg_inductive_recovery *work);
 /* Recover nominal formation and its parameter map from retained evidence,
  * including projection, reindex, type/value coercion, type conversion,
  * RETURN-type inversion and codomain instantiation of a direct Pi formation.

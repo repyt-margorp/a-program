@@ -209,21 +209,22 @@ static const struct pg_evidence *rebase_map(struct pg_typing *typing,
 	return result;
 }
 
+static const struct pg_evidence *evidence_map_step(struct pg_typing *typing,
+	const struct pg_evidence *map, const struct pg_evidence *step)
+{
+	if (step->rule == PG_PI_CONSTANT_CODOMAIN)
+		return rebase_map(typing, step->premises[0]->premises[1]->premises[0], map);
+	const struct pg_evidence *substitution = step->premises[0];
+	if (step->rule == PG_CONTEXT_PROJECTION)
+		substitution = pg_prove_substitution_projection(typing, map->premises[1], substitution);
+	return pg_prove_substitution_compose(typing, map, substitution);
+}
+
 static const struct pg_evidence *evidence_map(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct evidence_frame *frames)
 {
 	const struct pg_evidence *map = pg_prove_substitution_projection(typing, context, context);
-	for (; map && frames; frames = frames->next) {
-		const struct pg_evidence *step = frames->proof;
-		if (step->rule == PG_PI_CONSTANT_CODOMAIN) {
-			map = rebase_map(typing, step->premises[0]->premises[1]->premises[0], map);
-			continue;
-		}
-		const struct pg_evidence *substitution = step->premises[0];
-		if (step->rule == PG_CONTEXT_PROJECTION)
-			substitution = pg_prove_substitution_projection(typing, map->premises[1], substitution);
-		map = pg_prove_substitution_compose(typing, map, substitution);
-	}
+	for (; map && frames; frames = frames->next) map = evidence_map_step(typing, map, frames->proof);
 	return map;
 }
 
@@ -338,23 +339,27 @@ done:
 	return result;
 }
 
-int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *type,
-	struct pg_inductive_instance *output)
+int pg_inductive_recovery_init(struct pg_inductive_recovery *work,
+	struct pg_typing *typing, const struct pg_evidence *type)
 {
-	if (!output || !pg_evidence_owned_by(type, typing)) return 0;
-	if (type->judgement != PG_JUDGEMENT_VALUE_TYPE) return 0;
-	struct pg_graph temporary = {0};
-	struct evidence_frame *frames = NULL;
-	const struct pg_evidence *formation = type;
-	size_t return_contents = 0, return_values = 0;
-	int result = 0;
-	while (formation->rule != PG_INDUCTIVE_FORM) {
+	*work = (struct pg_inductive_recovery){.typing = typing, .type = type, .formation = type, .status = -1};
+	if (!pg_evidence_owned_by(type, typing)) return -1;
+	if (type->judgement != PG_JUDGEMENT_VALUE_TYPE) return -1;
+	work->status = 0;
+	return 0;
+}
+
+static void inductive_recovery_step(struct pg_inductive_recovery *work)
+{
+	struct pg_typing *typing = work->typing;
+	const struct pg_evidence *formation = work->formation;
+	if (formation->rule != PG_INDUCTIVE_FORM) {
 		switch (formation->rule) {
 		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
-			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
-			if (!frame) goto done;
-			*frame = (struct evidence_frame){formation, frames};
-			frames = frame;
+			struct evidence_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
+			if (!frame) goto failed;
+			*frame = (struct evidence_frame){formation, work->frames};
+			work->frames = frame;
 			formation = formation->premises[1];
 			break;
 		}
@@ -362,56 +367,93 @@ int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *ty
 			formation = formation->premises[0];
 			break;
 		case PG_VARIABLE:
-			formation = variable_frame(typing, formation, &frames);
-			if (!formation) goto done;
+			formation = variable_frame(typing, formation, &work->frames);
+			if (!formation) goto failed;
 			break;
 		case PG_RETURN_VALUE:
-			++return_values; formation = formation->premises[0]; break;
+			++work->return_values; formation = formation->premises[0]; break;
 		case PG_RETURN_INTRO:
-			if (!return_values) goto done;
-			--return_values; formation = formation->premises[0]; break;
+			if (!work->return_values) goto failed;
+			--work->return_values; formation = formation->premises[0]; break;
 		case PG_APP_ELIM:
 			formation = pg_prove_application_body(typing, formation->premises[0], formation->premises[1]);
-			if (!formation) goto done;
+			if (!formation) goto failed;
 			break;
 		case PG_RETURN_CONTENT:
-			++return_contents;
+			++work->return_contents;
 			formation = formation->premises[0];
 			break;
 		case PG_RETURN_TYPE_FORM:
-			if (!return_contents) goto done;
-			--return_contents;
+			if (!work->return_contents) goto failed;
+			--work->return_contents;
 			formation = formation->premises[0];
 			break;
 		case PG_PI_CODOMAIN: {
 			formation = pi_body(typing, formation->premises[0], formation->premises[1]);
-			if (!formation) goto done;
+			if (!formation) goto failed;
 			break;
 		}
 		case PG_PI_CONSTANT_CODOMAIN: {
 			const struct pg_evidence *pi = formation->premises[0];
-			if (pi->rule != PG_PI_FORM) goto done;
-			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
-			if (!frame) goto done;
-			*frame = (struct evidence_frame){formation, frames};
-			frames = frame;
+			if (pi->rule != PG_PI_FORM) goto failed;
+			struct evidence_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
+			if (!frame) goto failed;
+			*frame = (struct evidence_frame){formation, work->frames};
+			work->frames = frame;
 			formation = pi->premises[2];
 			break;
 		}
-		default: goto done;
+		default: goto failed;
 		}
+		work->formation = formation;
+		return;
 	}
-	if (return_contents || return_values) goto done;
-	const struct pg_evidence *context = formation->premises[0]->premises[0];
-	const struct pg_evidence *map = evidence_map(typing, context, frames);
-	if (!map || map->context != type->context) goto done;
-	const struct pg_evidence *instance = pg_prove_reindex(typing, map, formation);
-	if (!instance || pg_alpha_equal(instance->subject->core, type->subject->core) != 1) goto done;
-	*output = (struct pg_inductive_instance){formation->certificate, formation, map};
-	result = 1;
-done:
-	pg_graph_destroy(&temporary);
-	return result;
+	if (work->return_contents || work->return_values) goto failed;
+	if (!work->map) {
+		const struct pg_evidence *context = formation->premises[0]->premises[0];
+		work->map = pg_prove_substitution_projection(typing, context, context);
+		if (!work->map) goto failed;
+		return;
+	}
+	if (work->frames) {
+		work->map = evidence_map_step(typing, work->map, work->frames->proof);
+		work->frames = work->frames->next;
+		if (!work->map) goto failed;
+		return;
+	}
+	if (work->map->context != work->type->context) goto failed;
+	const struct pg_evidence *instance = pg_prove_reindex(typing, work->map, formation);
+	if (!instance || pg_alpha_equal(instance->subject->core, work->type->subject->core) != 1) goto failed;
+	work->result = (struct pg_inductive_instance){formation->certificate, formation, work->map};
+	work->status = 1;
+	return;
+failed:
+	work->status = -1;
+}
+
+int pg_inductive_recovery_advance(struct pg_inductive_recovery *work, size_t steps)
+{
+	while (!work->status && steps--) inductive_recovery_step(work);
+	return work->status;
+}
+
+void pg_inductive_recovery_destroy(struct pg_inductive_recovery *work)
+{
+	pg_graph_destroy(&work->temporary);
+	*work = (struct pg_inductive_recovery){0};
+}
+
+int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *type,
+	struct pg_inductive_instance *output)
+{
+	if (!output) return 0;
+	struct pg_inductive_recovery work;
+	pg_inductive_recovery_init(&work, typing, type);
+	while (!pg_inductive_recovery_advance(&work, 1024)) {}
+	int success = work.status > 0;
+	if (success) *output = work.result;
+	pg_inductive_recovery_destroy(&work);
+	return success;
 }
 
 const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,

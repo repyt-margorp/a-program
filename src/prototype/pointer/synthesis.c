@@ -157,6 +157,7 @@ struct pg_synthesis_job {
 	const struct pg_conversion_certificate *certificate;
 	struct pg_reindex reindex;
 	struct pg_classifier_recovery *classifier_recovery;
+	struct pg_inductive_recovery *inductive_recovery;
 	struct pg_identity_face_work *face;
 	struct pg_identity_formation_work *formation;
 	union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
@@ -219,6 +220,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			pg_conversion_destroy(&job->comparison);
 			pg_reindex_destroy(&job->reindex);
 			if (job->classifier_recovery) pg_classifier_recovery_destroy(job->classifier_recovery);
+			if (job->inductive_recovery) pg_inductive_recovery_destroy(job->inductive_recovery);
 			pg_substitution_destroy(&job->structural_substitution);
 			pg_identity_face_destroy(job->face);
 			pg_identity_formation_destroy(job->formation);
@@ -3214,10 +3216,16 @@ static void inductive_instance_step(struct pg_synthesis *synthesis, struct pg_sy
 		finish(synthesis, job, canonical->status);
 		return;
 	}
-	struct pg_inductive_instance instance;
-	if (!pg_inductive_instance(synthesis->typing, type->result, &instance)) {
-		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+	if (!job->inductive_recovery) {
+		job->inductive_recovery = pg_alloc(synthesis->typing->graph, sizeof(*job->inductive_recovery));
+		if (!job->inductive_recovery) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		pg_inductive_recovery_init(job->inductive_recovery, synthesis->typing, type->result);
 	}
+	int status = pg_inductive_recovery_advance(job->inductive_recovery, 1);
+	if (!status) { enqueue(synthesis, job); return; }
+	struct pg_inductive_instance instance = job->inductive_recovery->result;
+	pg_inductive_recovery_destroy(job->inductive_recovery);
+	if (status < 0) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 	job->schema = instance.schema;
 	job->function = instance.formation;
 	job->result = instance.parameters;

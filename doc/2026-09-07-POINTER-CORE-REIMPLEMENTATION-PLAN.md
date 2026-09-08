@@ -910,6 +910,24 @@ finish general handler source support.
   Rebuilt ASan/UBSan synthesis tests pass.
   Implementation C/header: +67/-6; tests: +17/-0; documentation separate.
 
+  September 9, after `530b77a`: nominal-instance recovery now suspends between
+  retained proof wrappers and between substitution-history frames. The
+  synchronous `pg_inductive_instance` and shared Solve job drive the same
+  worker; application/Pi recovery and the worker share one map-frame operation.
+  Final parameter-context and nominal endpoint checks precede result exposure.
+  Tests suspend a 32-projection chain before map creation and before its final
+  check, resume in chunks of 1/7/64, compare exact recovered evidence with the
+  synchronous API, verify no additional retained allocation on repeated recovery,
+  cancel during map composition and reject invalid initialization.
+  Normal components, eight source checks and six execution fixtures pass.
+  The worker counts outer traversal steps, not the cost of nested application
+  or Pi-body recovery, substitution composition or alpha comparison. Those
+  costs and the general open-family/IADT/checkpoint gates remain open; no new
+  formation rule or Core tag was added. Example 07/09 take 1487/3450 scheduler
+  transitions with unchanged runtime results, not a claimed speed improvement.
+  Rebuilt ASan/UBSan IADT and synthesis tests also pass.
+  Implementation C/header: +120/-55; tests: +39/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.
