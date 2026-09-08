@@ -1647,6 +1647,18 @@ a specified type family, not a global endpoint-only relation.
   Implementation: `synthesis.c` +78/-8, `synthesis.h` +3/-1;
   tests: +15/-5; documentation separate. Optimized and ASan/UBSan pointer
   checks pass; synthesis also passes with a 512 KiB stack.
+- [x] September 8, after `fec03b8`: family action accepts pending boundary
+  producers through `pg_synthesis_family_action_jobs`. The evidence-input API
+  only wraps paths with existing evidence jobs and delegates to the same
+  request, preserving exact job sharing. Each path uses the ordinary dependency
+  subscription before post-checking; failure propagates and a cycle waits
+  without polling. Tests cover shared requests through both APIs, pending
+  normalization, cyclic/non-term/failed paths, foreign producers, and the same
+  accepted judgement as explicit converted evidence. This enables scheduling
+  source-produced paths but does not add a surface Act notation or new rules.
+  Implementation: `synthesis.c` +26/-4, `synthesis.h` +6/-0;
+  tests: +19/-0; documentation separate. Optimized and ASan/UBSan pointer
+  checks pass; synthesis also passes with a 512 KiB stack.
 - [ ] Resolve this N2 equational choice before enabling structural U/Pi
   transport or using it to justify nominal datatype fibrancy. If the
   elimination-driven alternative is insufficient, either admit

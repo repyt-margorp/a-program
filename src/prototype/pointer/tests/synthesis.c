@@ -1162,6 +1162,8 @@ static void selected_instances(struct pg_typing *typing, struct pg_classifiers *
 	struct pg_synthesis_job *other = pg_synthesis_family_action(&whole, other_producer, ls, rs, 2, paths);
 	assert(job && other && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
 	assert(pg_synthesis_family_action(&split, producer, ls, rs, 2, paths) == job);
+	struct pg_synthesis_job *path_jobs[] = {pg_synthesis_evidence(&split, paths[0]), pg_synthesis_evidence(&split, paths[1])};
+	assert(pg_synthesis_family_action_jobs(&split, producer, ls, rs, 2, path_jobs) == job);
 	assert(graph->terms.count == terms && typing->proofs.count == proofs);
 	wait_on(&split, job, producer);
 	assert(pg_synthesis_status(producer) == PG_SYNTHESIS_PENDING);
@@ -1241,6 +1243,14 @@ static void selected_instances(struct pg_typing *typing, struct pg_classifiers *
 	const struct pg_evidence *p0 = complete(&split, original, PG_SYNTHESIS_DONE);
 	const struct pg_evidence *p1 = complete(&split, changed, PG_SYNTHESIS_DONE);
 	same_judgement(automatic, p1);
+	struct pg_synthesis_job *pending_paths[] = {pg_synthesis_normalize(&split, choices, selected[0]),
+		pg_synthesis_normalize(&split, choices, selected[1])};
+	struct pg_synthesis_job *pending_action = pg_synthesis_family_action_jobs(&split, producer, cl, cr, 2, pending_paths);
+	assert(pg_synthesis_status(pending_action) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(pending_action));
+	same_judgement(complete(&split, pending_action, PG_SYNTHESIS_DONE), p1);
+	struct pg_synthesis_job *foreign_paths[] = {other_producer, pending_paths[1]};
+	assert(!pg_synthesis_family_action_jobs(&split, producer, cl, cr, 2, foreign_paths));
+	assert(!pg_synthesis_family_action_jobs(&split, producer, cl, cr, 2, NULL));
 	assert(pg_conversion_init(&comparison, &work, pg_evidence_subject(p0)->core, pg_evidence_subject(p1)->core) == 0);
 	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_DIFFERENT);
 	pg_conversion_destroy(&comparison);
@@ -1465,6 +1475,15 @@ static void source_actions(struct pg_typing *typing, struct pg_classifiers *clas
 	struct pg_synthesis_job *family_cycle = pg_synthesis_family_action(&split, cycle, sigma, sigma, 1, &px);
 	pg_synthesis_advance(&split, 1000);
 	assert(pg_synthesis_status(family_cycle) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(family_cycle));
+	struct pg_synthesis_job *path_cycle = pg_synthesis_family_action_jobs(&split, function, sigma, sigma, 1, &cycle);
+	pg_synthesis_advance(&split, 1000);
+	assert(pg_synthesis_status(path_cycle) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(path_cycle));
+	assert(!pg_synthesis_result(path_cycle));
+	uint64_t idle_steps = split.steps;
+	pg_synthesis_advance(&split, 1000);
+	assert(split.steps == idle_steps);
+	complete(&split, pg_synthesis_family_action_jobs(&split, function, sigma, sigma, 1, &bad), PG_SYNTHESIS_REJECTED);
+	complete(&split, pg_synthesis_family_action_jobs(&split, function, sigma, sigma, 1, &library), PG_SYNTHESIS_REJECTED);
 	pg_synthesis_destroy(&split);
 	pg_synthesis_destroy(&whole);
 	pg_whnf_work_destroy(&work);

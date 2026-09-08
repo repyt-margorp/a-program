@@ -365,10 +365,10 @@ struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis
 	return job;
 }
 
-struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthesis,
+struct pg_synthesis_job *pg_synthesis_family_action_jobs(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
 	const struct pg_evidence *right_substitution, size_t count,
-	const struct pg_evidence *const *paths)
+	struct pg_synthesis_job *const *paths)
 {
 	if (!input || input->owner != synthesis) return NULL;
 	if (!pg_evidence_owned_by(left_substitution, synthesis->typing)) return NULL;
@@ -385,7 +385,7 @@ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthes
 	inputs[1] = right_substitution;
 	inputs[2] = input;
 	for (size_t i = 0; i < count; ++i) {
-		if (!paths[i]) goto done;
+		if (!paths[i] || paths[i]->owner != synthesis) goto done;
 		inputs[i + 3] = paths[i];
 	}
 	job = request_inputs(synthesis, FAMILY_ACTION_JOB, count + 3, inputs);
@@ -393,6 +393,25 @@ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthes
 done:
 	pg_graph_destroy(&temporary);
 	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
+	const struct pg_evidence *right_substitution, size_t count,
+	const struct pg_evidence *const *paths)
+{
+	if (count && !paths) return NULL;
+	if (count > SIZE_MAX / sizeof(struct pg_synthesis_job *)) return NULL;
+	for (size_t i = 0; i < count; ++i)
+		if (!pg_evidence_owned_by(paths[i], synthesis->typing)) return NULL;
+	struct pg_graph temporary = {0};
+	struct pg_synthesis_job **jobs = pg_alloc(&temporary, count * sizeof(*jobs));
+	if (count && !jobs) { pg_graph_destroy(&temporary); return NULL; }
+	for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_evidence(synthesis, paths[i]);
+	struct pg_synthesis_job *result = pg_synthesis_family_action_jobs(synthesis,
+		input, left_substitution, right_substitution, count, jobs);
+	pg_graph_destroy(&temporary);
+	return result;
 }
 
 struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
@@ -1457,7 +1476,10 @@ static int family_paths(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 	if (state->next == state->count) return 1;
 	size_t i = state->next;
 	if (!job->checking_type) {
-		job->checking_term = job->inputs[i + 3];
+		struct pg_synthesis_job *producer = (struct pg_synthesis_job *)job->inputs[i + 3];
+		if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return 0; }
+		if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return 0; }
+		job->checking_term = producer->result;
 		if (!pg_evidence_owned_by(job->checking_term, synthesis->typing)) goto rejected;
 		if (pg_evidence_judgement(job->checking_term) != PG_JUDGEMENT_VALUE) goto rejected;
 		if (pg_evidence_context(job->checking_term) != pg_evidence_context(left)) goto rejected;

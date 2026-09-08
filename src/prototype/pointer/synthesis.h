@@ -115,6 +115,12 @@ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthes
 	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
 	const struct pg_evidence *right_substitution, size_t count,
 	const struct pg_evidence *const *paths);
+/* Same request with pending path producers. Completed evidence enters through
+ * pg_synthesis_evidence; it has no separate action/checking implementation. */
+struct pg_synthesis_job *pg_synthesis_family_action_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
+	const struct pg_evidence *right_substitution, size_t count,
+	struct pg_synthesis_job *const *paths);
 struct pg_data_schema;
 /* Assemble field telescopes and result maps for a parsed @{...} or @\i:T=>
  * declaration in its already opened parameter scope. Constructors are checked
