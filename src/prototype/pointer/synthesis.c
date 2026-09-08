@@ -622,6 +622,26 @@ static int face_formation(struct pg_synthesis *synthesis,
 	}
 }
 
+struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
+	struct pg_dimensions *dimensions, const struct pg_evidence *context,
+	struct pg_synthesis_job *formation, const struct pg_dimension_map *permutation,
+	const struct pg_dimension_map *target_face, const struct pg_dimension_map **intrinsic)
+{
+	if (!dimensions || dimensions->graph != synthesis->typing->graph) return NULL;
+	if (!intrinsic || !permutation || !target_face) return NULL;
+	if (permutation->source != permutation->target) return NULL;
+	if (target_face->source >= target_face->target) return NULL;
+	permutation = pg_dimension_face(dimensions, permutation);
+	if (!permutation) return NULL;
+	const struct pg_dimension_map *composed = pg_dimension_compose(dimensions, permutation, target_face);
+	const struct pg_dimension_map *ordered, *orientation;
+	if (pg_dimension_face_factor(dimensions, composed, &ordered, &orientation) != 0) return NULL;
+	struct pg_synthesis_job *job = pg_synthesis_identity_face_job(synthesis, context, formation, ordered);
+	if (!job) return NULL;
+	*intrinsic = orientation;
+	return job;
+}
+
 struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *formation,
 	const struct pg_dimension_map *face)

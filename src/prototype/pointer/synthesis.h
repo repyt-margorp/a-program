@@ -189,6 +189,17 @@ struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthes
 struct pg_synthesis_job *pg_synthesis_identity_face_job(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *formation,
 	const struct pg_dimension_map *face);
+/* Select the source boundary for a permutation: permutation composed with
+ * target_face = ordered composed with intrinsic. The returned producer proves
+ * only the ordered source face; the caller must still act by intrinsic.
+ * That permutation has strictly smaller dimension. No center is requested,
+ * no typed symmetry is admitted, and intrinsic changes only on success.
+ * Geometry is interned in dimensions, which must use the same graph. */
+struct pg_dimensions;
+struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
+	struct pg_dimensions *dimensions, const struct pg_evidence *context,
+	struct pg_synthesis_job *formation, const struct pg_dimension_map *permutation,
+	const struct pg_dimension_map *target_face, const struct pg_dimension_map **intrinsic);
 /* Extend a checked substitution with an independently typed value. The
  * expected dependent field type is reindexed and compared using shared work;
  * only completed conversion evidence reaches the ordinary pairing rule. */

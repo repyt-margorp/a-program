@@ -82,6 +82,14 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Add `pg_synthesis_permutation_source_face`: factor the composed proper
+  face using the existing dimension algebra and request its ordered source
+  boundary from a pending formation producer. Return the lower-dimensional
+  intrinsic permutation separately; the source evidence is not yet an acted
+  boundary. This introduces no job role, Core form or typing rule. Tests cover
+  all 26 proper faces under six cubic permutations, exact existing-job reuse,
+  excluded centers, and a pending square producer with no eager solve.
+  Complete pointer `make check` and ASan/UBSan `synthesis_test` passed.
 - [ ] Request a typed action with the accepted occurrence/formation and a
   permutation, never a bare Core pointer plus a guessed classifier.
 - [ ] For each target proper face f, factor permutation composed with f into

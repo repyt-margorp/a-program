@@ -1092,6 +1092,37 @@ static void endpoint_jobs(struct pg_typing *typing, struct pg_classifiers *class
 			assert(pg_synthesis_result(face_job) == pg_identity_proper_face(typing, classifiers, context, type, face));
 		}
 		assert(!pg_synthesis_identity_face(&synthesis, context, type, pg_dimension_identity(&dimensions, 3)));
+		static const size_t permutations[6][3] = {
+			{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}
+		};
+		struct pg_synthesis_job *producer = pg_synthesis_evidence(&synthesis, type);
+		for (size_t p = 0; p < 6; ++p) {
+			struct pg_coordinate axes[3];
+			for (size_t i = 0; i < 3; ++i) axes[i] = (struct pg_coordinate){PG_AXIS, permutations[p][i]};
+			const struct pg_dimension_map *permutation = pg_dimension_map(&dimensions, 3, 3, axes);
+			for (unsigned code = 0; code < 26; ++code) {
+				struct pg_coordinate selected[3];
+				size_t n = 0;
+				unsigned digits = code;
+				for (size_t i = 0; i < 3; ++i, digits /= 3)
+					selected[i] = digits % 3 == 2 ? (struct pg_coordinate){PG_AXIS, n++}
+						: (struct pg_coordinate){digits % 3 ? PG_ENDPOINT_ONE : PG_ENDPOINT_ZERO, 0};
+				const struct pg_dimension_map *face = pg_dimension_map(&dimensions, n, 3, selected);
+				const struct pg_dimension_map *ordered, *orientation, *intrinsic = NULL;
+				const struct pg_dimension_map *composed = pg_dimension_compose(&dimensions, permutation, face);
+				assert(pg_dimension_face_factor(&dimensions, composed, &ordered, &orientation) == 0);
+				struct pg_synthesis_job *source = pg_synthesis_permutation_source_face(&synthesis,
+					&dimensions, context, producer, permutation, face, &intrinsic);
+				assert(source == pg_synthesis_identity_face_job(&synthesis, context, producer, ordered));
+				assert(intrinsic == orientation && intrinsic->source < 3);
+				assert(pg_dimension_compose(&dimensions, ordered, intrinsic) == composed);
+				assert(pg_synthesis_status(source) == PG_SYNTHESIS_DONE);
+			}
+			const struct pg_dimension_map *unchanged = permutation;
+			assert(!pg_synthesis_permutation_source_face(&synthesis, &dimensions, context, producer,
+				permutation, pg_dimension_identity(&dimensions, 3), &unchanged));
+			assert(unchanged == permutation);
+		}
 		struct pg_coordinate reversed[] = {{PG_AXIS, 1}, {PG_AXIS, 0}, {PG_ENDPOINT_ZERO, 0}};
 		complete(&synthesis, pg_synthesis_identity_face(&synthesis, context, type,
 			pg_dimension_map(&dimensions, 2, 3, reversed)), PG_SYNTHESIS_UNSUPPORTED);
@@ -1211,6 +1242,15 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 	const struct pg_dimension_map *face = pg_dimension_map(&dimensions, 0, 2, vertex);
 	struct pg_synthesis_job *selected = pg_synthesis_identity_face_job(&synthesis, destination, type_job, face);
 	assert(selected && pg_synthesis_identity_face_job(&synthesis, destination, type_job, face) == selected);
+	struct pg_coordinate swapped_axes[] = {{PG_AXIS, 1}, {PG_AXIS, 0}};
+	struct pg_coordinate swapped_vertex[] = {{PG_ENDPOINT_ONE, 0}, {PG_ENDPOINT_ZERO, 0}};
+	const struct pg_dimension_map *intrinsic = NULL;
+	uint64_t before_request = synthesis.steps;
+	assert(pg_synthesis_permutation_source_face(&synthesis, &dimensions, destination, type_job,
+		pg_dimension_map(&dimensions, 2, 2, swapped_axes),
+		pg_dimension_map(&dimensions, 0, 2, swapped_vertex), &intrinsic) == selected);
+	assert(intrinsic == pg_dimension_identity(&dimensions, 0));
+	assert(synthesis.steps == before_request && !pg_synthesis_result(selected));
 	const struct pg_evidence *endpoint = complete(&synthesis, selected, PG_SYNTHESIS_DONE);
 	const struct pg_evidence *type = pg_synthesis_result(type_job);
 	assert(type && endpoint);
