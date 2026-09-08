@@ -4456,6 +4456,24 @@ Shared dependency collection after `f7f0d49` (`dag.c`):
 - [x] Use this same collection path for the derivation wire section described
   below instead of introducing a fourth traversal.
 
+Classifier descriptor transport after `499cabb`:
+
+- [x] The classifier owner supplies canonical versioned names and resolves its
+  own Universe/Pi/F/U references. Universe levels are parsed without truncation;
+  signs, whitespace, leading-zero aliases, overflow, unknown versions and
+  trailing content fail before allocation. No Core tag or global classifier
+  lookup is introduced. Callers supply name storage, so graph transport needs
+  neither persistent name caches nor string fields in every universe object.
+- [x] The derivation transport fixture uses this owner API instead of naming
+  only Universe 0/1. Additional graph round trips cover dependent Pi binders,
+  F/U spines and the full uint64 level representation in a distinct arena.
+  Structural transport of a level is not a universe-formation proof; ordinary
+  evidence rules continue to decide admissibility.
+  Optimized and ASan/UBSan derivation transport tests passed with these cases.
+- [ ] Owned dimension binders, Identity operators, recursive IADT descriptors
+  and module provenance still need their corresponding owner transport. These
+  classifier names alone do not complete the `.a` descriptor format.
+
 Derivation input persistence after `48d2923` (`derivation_io.c`):
 
 - [x] Serialize shared accepted derivations as rule applications, their ordered

@@ -1,4 +1,5 @@
 #include "derivation_io.h"
+#include "graph_io.h"
 #include "computation.h"
 #include "synthesis.h"
 
@@ -12,18 +13,60 @@ static const char *const labels[] = {"kernel/return/v1", "kernel/thunk/v1", "ker
 
 static const char *name(void *owner, const struct pg_object *object)
 {
-	if (object == pg_universe(owner, 0)->as.reference) return "kernel/universe/0/v1";
-	if (object == pg_universe(owner, 1)->as.reference) return "kernel/universe/1/v1";
+	(void)owner;
+	/* The writer consumes each label before the next callback. */
+	static char buffer[64];
+	const char *label = pg_classifier_name(object, buffer, sizeof(buffer));
+	if (label) return label;
 	for (size_t i = 0; i < 3; ++i) if (object == operations[i]) return labels[i];
 	return NULL;
 }
 
 static const struct pg_object *resolve(void *owner, const char *label)
 {
-	if (!strcmp(label, "kernel/universe/0/v1")) return pg_universe(owner, 0)->as.reference;
-	if (!strcmp(label, "kernel/universe/1/v1")) return pg_universe(owner, 1)->as.reference;
+	const struct pg_object *object = pg_classifier_resolve(owner, label);
+	if (object) return object;
 	for (size_t i = 0; i < 3; ++i) if (!strcmp(label, labels[i])) return operations[i];
 	return NULL;
+}
+
+static void classifier_transport(struct pg_classifiers *source)
+{
+	struct pg_graph graph;
+	struct pg_classifiers destination;
+	assert(!pg_graph_init(&graph) && !pg_classifiers_init(&destination, &graph));
+	const struct pg_object *binder = pg_binder(source->graph);
+	const struct pg_term *domain = pg_universe(source, UINT64_MAX);
+	const struct pg_term *codomain = pg_return_type(source, pg_reference(source->graph, binder));
+	const struct pg_term *pi = pg_pi(source->graph, domain, binder, codomain);
+	const struct pg_term *roots[] = {domain, pi, pg_thunk_type(source, pi)};
+	FILE *file = tmpfile();
+	assert(file && !pg_graph_write(file, 3, roots, name, source));
+	rewind(file);
+	size_t count;
+	const struct pg_term *const *loaded;
+	assert(!pg_graph_read(file, &graph, 100, 100, resolve, &destination, &count, &loaded));
+	assert(count == 3 && loaded[0] != domain);
+	assert(loaded[0] == pg_universe(&destination, UINT64_MAX));
+	const struct pg_term *d, *c, *t;
+	const struct pg_object *b;
+	assert(pg_pi_view(loaded[1], &d, &b, &c) && d == loaded[0] && b != binder);
+	assert(pg_return_type_view(c, &t) && t->as.reference == b);
+	assert(pg_thunk_type_view(loaded[2], &t) && t == loaded[1]);
+	const char *invalid[] = {"kernel/universe/01/v1", "kernel/universe/-1/v1",
+		"kernel/universe/+1/v1", "kernel/universe/ 1/v1", "kernel/universe//v1",
+		"kernel/universe/18446744073709551616/v1", "kernel/universe/1/v2",
+		"kernel/universe/1/v1/extra", "kernel/pi/v2", "other/pi/v1"};
+	size_t before = destination.universes.count;
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
+		assert(!pg_classifier_resolve(&destination, invalid[i]));
+	assert(destination.universes.count == before);
+	char small[2];
+	assert(!pg_classifier_name(domain->as.reference, small, sizeof(small)));
+	assert(!pg_classifier_name(binder, small, sizeof(small)));
+	assert(!fclose(file));
+	pg_classifiers_destroy(&destination);
+	pg_graph_destroy(&graph);
 }
 
 static void rejected_prefixes(FILE *file)
@@ -51,6 +94,7 @@ static void rejected_prefixes(FILE *file)
 
 static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
+	classifier_transport(classifiers);
 	struct pg_graph *graph = typing->graph;
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
 	const struct pg_evidence *u = pg_prove_universe(typing, classifiers, empty, 0);
