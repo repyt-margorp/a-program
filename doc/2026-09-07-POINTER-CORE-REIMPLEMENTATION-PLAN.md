@@ -411,6 +411,27 @@ Next implementation sequence (prerequisite for automatic source handlers):
   1668; this scheduling migration is not a performance improvement.
   Normal checks, eight source cases, six runtime cases and rebuilt ASan/UBSan
   synthesis tests pass. Implementation C: +57/-37; header: +7; test C: +7.
+  Block source assembly now creates statement producers and named result
+  contexts before their proofs finish, then assembles continuation/sequence
+  producers in reverse. The old accepted-statement/block-frame path is removed.
+  Pending block frames contain producer references, not copied evidence;
+  accepted continuation frames still used by source application are separate
+  migration work, not a new permanent semantic layer. Unnamed statements do
+  not extend the source scope: after checking, values are discarded unchanged,
+  while computations project the following body into a result context and use
+  the same sequence job. This preserves the existing no-dead-scope test rather
+  than weakening it. Source sequence now normalizes computation classifiers
+  through shared work, preserving subjects, before attempting FOLD.
+  Single-statement blocks expose prepared classifier/Core structure even with
+  pending outer effects. Multi-statement tests resume after sealing and check
+  the normalized result. Raw Pi result binding is rejected by RETURN_CONTENT
+  rather than the old block wrapper's unsupported status. Non-F computations
+  are not silently thunked. General multi-statement classifier structure still
+  needs sequence row equations and source-sequence structural projection;
+  automatic handler effect inference is not complete.
+  Normal checks, eight source cases, six runtime cases and rebuilt ASan/UBSan
+  synthesis tests pass. Example transition counts remain unchanged (List 1682).
+  Implementation C: +78/-46; test C: +14/-1. No Core tags or kernel rules added.
   Normal checks, eight source cases, six runtime cases and rebuilt normal and
   ASan/UBSan synthesis tests (including invalid-input rejection) pass.
   Normal `check`, eight example synthesis cases, six runtime cases and rebuilt

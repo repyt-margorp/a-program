@@ -384,6 +384,15 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, derived_structure, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(derived_structure) == symbolic_f);
 		assert(!pg_synthesis_result(derived_carrier) && !pg_synthesis_result(lambda));
+		struct pg_synthesis_job *single_block = request(&synthesis, scope, "v := { k; };");
+		struct pg_synthesis_job *single_block_type = pg_synthesis_classifier_structure(&synthesis, single_block);
+		struct pg_synthesis_job *single_block_term = pg_synthesis_term_structure(&synthesis, single_block);
+		assert(!complete(&synthesis, single_block_type, PG_SYNTHESIS_DONE));
+		assert(!complete(&synthesis, single_block_term, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(single_block_type)
+			== pg_return_type(classifiers, pg_thunk_type(classifiers, symbolic_f)));
+		assert(!pg_synthesis_result(single_block));
+		struct pg_synthesis_job *pending_block = request(&synthesis, scope, "v := { a := k; b := a; b; };");
 		struct pg_effect_equation *collected = pg_effect_equation(&effects, no_effects);
 		struct pg_effect_equation *masked = pg_effect_equation(&effects, no_effects);
 		struct pg_synthesis_job *contribution = pg_synthesis_effect_contribution(&synthesis,
@@ -576,6 +585,10 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_result(context) == expected_context);
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *op_proof = complete(&synthesis, op_clause, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *block_proof = complete(&synthesis, single_block, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(block_proof)->core == pg_synthesis_type_structure_result(single_block_term));
+		const struct pg_evidence *multi_block = complete(&synthesis, pending_block, PG_SYNTHESIS_DONE);
+		same_judgement(complete(&synthesis, pg_synthesis_nf(&synthesis, pg_synthesis_result(context), multi_block), PG_SYNTHESIS_DONE), block_proof);
 		const struct pg_evidence *sequence_proof = complete(&synthesis, sequence, PG_SYNTHESIS_DONE);
 		assert(complete(&synthesis, source_sequence, PG_SYNTHESIS_DONE) == sequence_proof);
 		complete(&synthesis, wrong_sequence_context, PG_SYNTHESIS_REJECTED);
@@ -2148,7 +2161,7 @@ static void named_transport(struct pg_typing *typing, struct pg_classifiers *cla
 	assert(pg_thunk_type_view(pg_evidence_classifier(result), &content));
 	result = complete(&synthesis, pg_synthesis_unthunk(&synthesis, context, result), PG_SYNTHESIS_DONE);
 	assert(pg_alpha_equal(pg_evidence_subject(result)->core, pg_evidence_subject(computed_path)->core) == 1);
-	complete(&synthesis, request(&synthesis, scope, "main := { f := acted; f; };"), PG_SYNTHESIS_UNSUPPORTED);
+	complete(&synthesis, request(&synthesis, scope, "main := { f := acted; f; };"), PG_SYNTHESIS_REJECTED);
 	size_t jobs = synthesis.jobs.count;
 	struct pg_synthesis_job *exposure = pg_synthesis_normalize_classifier(&synthesis, context, acted);
 	assert(exposure && pg_synthesis_status(exposure) == PG_SYNTHESIS_DONE && synthesis.jobs.count == jobs);
