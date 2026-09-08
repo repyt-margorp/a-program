@@ -1072,6 +1072,73 @@ static void request_forwarding_test(struct pg_graph *graph)
 	assert(machine.status == PG_EVAL_WHNF);
 	pg_eval_destroy(&machine);
 	puts("requests: inert pointer labels, zero-clause forwarding, captured continuations and split resume passed");
+	/* Clauses receive a suspended deep continuation; label order is arbitrary. */
+	const struct pg_term *force = pg_reference(graph, &pg_force_operation);
+	const struct pg_term *invoke = pg_application(graph, force, pg_reference(graph, r));
+	const struct pg_term *first_clause = pg_lambda(graph, x, pg_lambda(graph, r,
+		pg_application(graph, invoke, vy)));
+	const struct pg_term *second_clause = pg_lambda(graph, x, pg_lambda(graph, r,
+		pg_application(graph, invoke, vx)));
+	struct pg_operation_clause clauses[] = {{&second, second_clause}, {&first, first_clause}};
+	const struct pg_term *handled = pg_computation_fold(graph, request, ret, 2, clauses);
+	assert(handled && handled == pg_computation_fold(graph, request, ret, 2, clauses));
+	assert(pg_computation_fold(graph, request, return_r, 0, NULL) == body);
+	assert(request_whnf(graph, handled, 1) == pg_application(graph, ret, vy));
+	assert(request_whnf(graph, handled, 10000) == pg_application(graph, ret, vy));
+	pg_computation_eval_init(&machine, graph, handled);
+	while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) {
+		assert(machine.steps < 10000);
+		assert(request_whnf(graph, pg_eval_readback(&machine, graph), 10000) == pg_application(graph, ret, vy));
+	}
+	assert(machine.status == PG_EVAL_WHNF);
+	pg_eval_destroy(&machine);
+	size_t owners = graph->objects.count;
+	struct pg_operation_clause duplicate[] = {{&first, first_clause}, {&first, second_clause}};
+	assert(!pg_computation_fold(graph, request, ret, 2, duplicate));
+	assert(graph->objects.count == owners);
+	/* A simultaneous swap must not recapture a request emitted by its clause. */
+	clauses[0].body = pg_lambda(graph, x, pg_lambda(graph, r,
+		pg_computation_request(graph, &first, vx, ret)));
+	clauses[1].body = pg_lambda(graph, x, pg_lambda(graph, r,
+		pg_computation_request(graph, &second, vx, ret)));
+	const struct pg_object *inputs[] = {&first, &second};
+	const struct pg_object *outputs[] = {&second, &first};
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_term *input = pg_computation_request(graph, inputs[i], vy, ret);
+		const struct pg_term *swapped = request_whnf(graph, pg_computation_fold(graph, input, ret, 2, clauses), 1);
+		assert(pg_computation_request_view(swapped, &label, &payload, &continuation));
+		assert(label == outputs[i] && payload == vy);
+	}
+	assert(graph->objects.count == owners);
+	static const struct pg_object third = {PG_SEMANTIC_OBJECT, &operation_class};
+	const struct pg_term *unhandled = pg_computation_request(graph, &third, vx,
+		pg_lambda(graph, r, pg_computation_request(graph, &first, vy, ret)));
+	const struct pg_term *forwarded = request_whnf(graph, pg_computation_fold(graph, unhandled, ret, 2, clauses), 1);
+	assert(pg_computation_request_view(forwarded, &label, &payload, &continuation));
+	assert(label == &third && payload == vx);
+	forwarded = request_whnf(graph, pg_application(graph, continuation, vy), 1);
+	assert(pg_computation_request_view(forwarded, &label, &payload, &continuation));
+	assert(label == &second && payload == vy);
+	/* Resume the same k twice. Expose both observable requests, not a cached
+	 * receipt of an earlier invocation. An unused divergent clause stays inert. */
+	const struct pg_term *reply1 = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *reply2 = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *twice = pg_computation_fold(graph,
+		pg_application(graph, invoke, reply1),
+		pg_lambda(graph, pg_binder(graph), pg_application(graph, invoke, reply2)), 0, NULL);
+	clauses[0].body = omega;
+	clauses[1].body = pg_lambda(graph, x, pg_lambda(graph, r, twice));
+	const struct pg_term *trace_return = pg_lambda(graph, x, pg_computation_request(graph, &third, vx, ret));
+	const struct pg_term *multi = pg_computation_fold(graph,
+		pg_computation_request(graph, &first, vx, ret), trace_return, 2, clauses);
+	multi = request_whnf(graph, multi, 1);
+	assert(pg_computation_request_view(multi, &label, &payload, &continuation));
+	assert(label == &third && payload == reply1);
+	multi = request_whnf(graph, pg_application(graph, continuation, vx), 1);
+	assert(pg_computation_request_view(multi, &label, &payload, &continuation));
+	assert(label == &third && payload == reply2);
+	assert(request_whnf(graph, pg_application(graph, continuation, vy), 1) == pg_application(graph, ret, vy));
+	puts("fold clauses: simultaneous swaps, deep resumption, unhandled forwarding and exact layout reuse passed");
 }
 
 static void computation_execution_test(struct pg_graph *graph)

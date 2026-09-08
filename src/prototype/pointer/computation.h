@@ -21,6 +21,17 @@ const struct pg_term *pg_computation_request(struct pg_graph *graph,
 int pg_computation_request_view(const struct pg_term *term,
 	const struct pg_object **label, const struct pg_term **payload,
 	const struct pg_term **continuation);
+struct pg_operation_clause {
+	const struct pg_object *label;
+	const struct pg_term *body;
+};
+/* Raw deep fold. Each clause is a computation over payload and a THUNK of
+ * the recursively handled continuation. Clause code remains outside its own
+ * handler. Zero clauses use pg_fold_operation. Duplicate labels are invalid.
+ * No signature, effect row or accepted typing is inferred by this builder. */
+const struct pg_term *pg_computation_fold(struct pg_graph *graph,
+	const struct pg_term *source, const struct pg_term *returned,
+	size_t count, const struct pg_operation_clause *clauses);
 /* Versioned names of the fixed pure operators for graph relocation. These
  * neither execute a computation nor certify a typed use of an operator. */
 const char *pg_computation_name(const struct pg_object *object);

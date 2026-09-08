@@ -2,6 +2,7 @@
 #include "identity.h"
 #include "iadt.h"
 #include "symmetry.h"
+#include <stdlib.h>
 #include <string.h>
 
 static const struct pg_object_class return_class = {"return"};
@@ -9,11 +10,101 @@ static const struct pg_object_class thunk_class = {"thunk"};
 static const struct pg_object_class force_class = {"force"};
 static const struct pg_object_class fold_class = {"computation-fold"};
 static const struct pg_object_class request_class = {"operation-request"};
+static const struct pg_object_class handler_class = {"computation-fold-clauses"};
 const struct pg_object pg_return_operation = {PG_SEMANTIC_OBJECT, &return_class};
 const struct pg_object pg_thunk_operation = {PG_SEMANTIC_OBJECT, &thunk_class};
 const struct pg_object pg_force_operation = {PG_SEMANTIC_OBJECT, &force_class};
 const struct pg_object pg_fold_operation = {PG_SEMANTIC_OBJECT, &fold_class};
 const struct pg_object pg_request_operation = {PG_SEMANTIC_OBJECT, &request_class};
+
+struct clause_position {
+	const struct pg_object *label;
+	size_t position;
+};
+struct handler_entry {
+	struct pg_object_entry base;
+	size_t count;
+	struct clause_position *positions;
+};
+
+static const struct handler_entry *handler_owner(const struct pg_object *object)
+{
+	if (object->owner != &handler_class) return NULL;
+	return (const struct handler_entry *)((const char *)object - offsetof(struct pg_object_entry, object));
+}
+
+static int compare_labels(const void *left, const void *right)
+{
+	uintptr_t a = (uintptr_t)((const struct clause_position *)left)->label;
+	uintptr_t b = (uintptr_t)((const struct clause_position *)right)->label;
+	return a < b ? -1 : a != b;
+}
+
+static const struct pg_object *handler(struct pg_graph *graph,
+	size_t count, const struct pg_operation_clause *clauses)
+{
+	if (!count) return &pg_fold_operation;
+	if (!graph->objects.capacity && pg_index_init(&graph->objects)) return NULL;
+	uint64_t hash = UINT64_C(1469598103934665603) ^ count;
+	for (size_t i = 0; i < count; ++i) {
+		if (!clauses[i].label || clauses[i].label->kind != PG_SEMANTIC_OBJECT || !clauses[i].body) return NULL;
+		hash = (hash ^ (uintptr_t)clauses[i].label) * UINT64_C(1099511628211);
+	}
+	for (struct pg_index_entry *p = pg_index_candidates(&graph->objects, hash); p; p = p->next) {
+		const struct pg_object_entry *base = (const struct pg_object_entry *)p;
+		const struct handler_entry *entry = handler_owner(&base->object);
+		if (!entry || entry->count != count) continue;
+		size_t i = 0;
+		while (i < count && entry->positions[i].label == clauses[entry->positions[i].position].label) ++i;
+		if (i == count) return &base->object;
+	}
+	struct pg_graph temporary = {0};
+	struct clause_position *positions = pg_alloc(&temporary, count * sizeof(*positions));
+	const struct pg_object *result = NULL;
+	if (!positions) goto done;
+	for (size_t i = 0; i < count; ++i) positions[i] = (struct clause_position){clauses[i].label, i};
+	qsort(positions, count, sizeof(*positions), compare_labels);
+	for (size_t i = 1; i < count; ++i) if (positions[i - 1].label == positions[i].label) goto done;
+	struct handler_entry *entry = pg_alloc(graph, sizeof(*entry));
+	if (!entry) goto done;
+	entry->positions = pg_alloc(graph, count * sizeof(*positions));
+	if (!entry->positions) goto done;
+	entry->base.object = (struct pg_object){PG_SEMANTIC_OBJECT, &handler_class};
+	entry->count = count;
+	memcpy(entry->positions, positions, count * sizeof(*positions));
+	if (!pg_index_insert(&graph->objects, &entry->base.index, hash)) result = &entry->base.object;
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
+const struct pg_term *pg_computation_fold(struct pg_graph *graph,
+	const struct pg_term *source, const struct pg_term *returned,
+	size_t count, const struct pg_operation_clause *clauses)
+{
+	if (!graph || !source || !returned || (count && !clauses)) return NULL;
+	if (count > SIZE_MAX / sizeof(struct clause_position) - 2) return NULL;
+	const struct pg_object *object = handler(graph, count, clauses);
+	if (!object) return NULL;
+	const struct pg_term *term = pg_application(graph, pg_reference(graph, object), source);
+	term = pg_application(graph, term, returned);
+	for (size_t i = 0; i < count; ++i) term = pg_application(graph, term, clauses[i].body);
+	return term;
+}
+
+static size_t clause_index(const struct handler_entry *handler, const struct pg_object *label)
+{
+	if (!handler) return 0;
+	size_t low = 0, high = handler->count;
+	while (low < high) {
+		size_t middle = low + (high - low) / 2;
+		const struct clause_position *entry = &handler->positions[middle];
+		if (entry->label == label) return entry->position;
+		if ((uintptr_t)entry->label < (uintptr_t)label) low = middle + 1;
+		else high = middle;
+	}
+	return handler->count;
+}
 
 static const struct {
 	const struct pg_object *object;
@@ -121,25 +212,41 @@ static int force_answer(struct pg_eval *machine, const struct pg_term *answer, c
 	return body ? pg_eval_enter(machine, (struct pg_closure){body, NULL}, 1) : pg_identity_force(machine, answer);
 }
 
-static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
+static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
-	(void)unused;
+	const struct handler_entry *handler = state;
+	size_t count = handler ? handler->count : 0;
 	const struct pg_term *value = unary_argument(answer, &pg_return_operation);
 	struct pg_closure continuation = *pg_eval_argument(machine, 1);
-	if (value) return pg_eval_apply(machine, continuation, (struct pg_closure){value, NULL}, 2);
+	if (value) return pg_eval_apply(machine, continuation, (struct pg_closure){value, NULL}, count + 2);
 	const struct pg_object *label;
 	const struct pg_term *payload, *resume;
 	if (!pg_computation_request_view(answer, &label, &payload, &resume)) return 1;
-	/* Capture R as a closure, without demanding it:
-	 * fold(request op a k, R) = request op a (\x. fold(k x, R)). */
+	/* Bind the existing argument closures without demanding them. Only k is
+	 * recursively handled; a selected clause runs outside this handler. */
 	struct pg_graph *graph = machine->output;
-	const struct pg_object *r = pg_binder(graph), *x = pg_binder(graph);
+	struct pg_graph temporary = {0};
+	const struct pg_object **binders = pg_alloc(&temporary, (count + 2) * sizeof(*binders));
+	int status = -1;
+	if (!binders) goto done;
+	for (size_t i = 0; i < count + 2; ++i) binders[i] = pg_binder(graph);
+	const struct pg_object *x = pg_binder(graph);
 	const struct pg_term *next = pg_application(graph, resume, pg_reference(graph, x));
-	next = pg_application(graph, pg_reference(graph, &pg_fold_operation), next);
-	next = pg_application(graph, next, pg_reference(graph, r));
-	next = pg_computation_request(graph, label, payload, pg_lambda(graph, x, next));
-	next = pg_lambda(graph, r, next);
-	return pg_eval_apply(machine, (struct pg_closure){next, NULL}, continuation, 2);
+	next = pg_application(graph, machine->current.term, next);
+	for (size_t i = 1; i < count + 2; ++i) next = pg_application(graph, next, pg_reference(graph, binders[i]));
+	next = pg_lambda(graph, x, next);
+	size_t index = clause_index(handler, label);
+	if (index == count) next = pg_computation_request(graph, label, payload, next);
+	else {
+		next = pg_application(graph, pg_reference(graph, &pg_thunk_operation), next);
+		const struct pg_term *clause = pg_application(graph, pg_reference(graph, binders[index + 2]), payload);
+		next = pg_application(graph, clause, next);
+	}
+	for (size_t i = count + 2; i; --i) next = pg_lambda(graph, binders[i - 1], next);
+	status = pg_eval_enter(machine, (struct pg_closure){next, NULL}, 0);
+done:
+	pg_graph_destroy(&temporary);
+	return status;
 }
 
 static int dispatch(struct pg_eval *machine)
@@ -160,13 +267,15 @@ static int dispatch(struct pg_eval *machine)
 		if (!pg_eval_argument(machine, 0)) return 1;
 		return pg_eval_demand(machine, 0, force_answer, NULL);
 	}
-	if (operation == &pg_fold_operation) {
+	const struct handler_entry *handler = handler_owner(operation);
+	if (operation == &pg_fold_operation || handler) {
+		if (handler && !pg_eval_argument(machine, handler->count + 1)) return 1;
 		const struct pg_closure *continuation = pg_eval_argument(machine, 1);
 		if (!continuation) return 1;
 		/* Recognize the right unit without evaluating a continuation that M
 		 * might never invoke. The returned reference must be this lambda's binder. */
-		if (return_continuation(continuation->term)) return pg_eval_enter(machine, *pg_eval_argument(machine, 0), 2);
-		return pg_eval_demand(machine, 0, fold_answer, NULL);
+		if (!handler && return_continuation(continuation->term)) return pg_eval_enter(machine, *pg_eval_argument(machine, 0), 2);
+		return pg_eval_demand(machine, 0, fold_answer, handler);
 	}
 	int data = pg_data_dispatch(machine);
 	if (data != 1) return data;

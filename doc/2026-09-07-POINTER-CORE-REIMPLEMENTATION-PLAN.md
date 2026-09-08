@@ -31,9 +31,27 @@ criteria for merging different Lambda or semantic-object references.
   Optimized acceptance passes components, eight source examples and six result
   fixtures before the unchanged open-family failure at 86 steps. Rebuilt
   ASan/UBSan core tests pass.
-- [ ] Add multiple operation clauses to this fold mechanism, with deep
-  continuation rebinding and unhandled forwarding. Do not implement nested
-  one-clause handlers as the semantics of a simultaneous clause set.
+- [x] Extend the raw reducer with a simultaneous operation-clause set after
+  `469a815`. `pg_computation_fold` constructs the existing zero-clause form or
+  an exact-pointer-interned clause layout applied to M, R and the clause terms.
+  Layouts hold only label/argument-position pairs; all executable code and
+  captured terms remain ordinary APP operands. Label selection is binary
+  search, duplicate labels are rejected before publishing a layout.
+  The same fold callback handles RETURN, selected requests and forwarding.
+  A selected clause receives payload and `THUNK(lambda x. H(k x))`; its body
+  runs outside H. Unhandled requests receive the raw `lambda x. H(k x)`.
+  No nested one-clause translation, host callback or new Core kind is added.
+- [x] Verify simultaneous two-label swaps without recapture, deep continuation
+  invocation, unhandled forwarding back into H, two invocations of one
+  continuation, an unused divergent clause, exact layout reuse and pending
+  readback restart. Components, eight examples and six result fixtures pass;
+  full acceptance still fails open-family at 86 transitions. Rebuilt ASan/UBSan
+  core tests pass. This extension changes `computation.c` by +123/-14,
+  `computation.h` by +11/-0 and `tests/core.c` by +67/-0; docs excluded.
+- [ ] Clause-layout relocation and typed/surface admission remain unimplemented.
+  The runtime continuation template currently takes O(clause count) synchronous
+  construction work inside its callback; resumable template construction is
+  still required for a per-transition traversal bound on large handlers.
 - [ ] Add checked operation signatures, effect rows, source alias/application
   elaboration, typed fold output-carrier rules, and explicit runtime handlers.
   Requests currently have no source admission rule. This does not establish
