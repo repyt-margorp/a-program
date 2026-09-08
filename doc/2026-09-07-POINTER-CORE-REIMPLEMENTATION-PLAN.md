@@ -4376,8 +4376,6 @@ Raw Core section prototype (`graph_io.c`, not accepted evidence):
   Full pointer `make check` and ASan/UBSan separate-process acceptance passed.
   N5 remains open; no independent Replay implementation has been introduced.
 
-Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
-
 Context declaration transport after `d8ffe86` (`context_io.c`):
 
 - [x] Store a shared parent-first telescope forest and extra Core roots in one
@@ -4399,7 +4397,25 @@ Context declaration transport after `d8ffe86` (`context_io.c`):
   and recursive semantic descriptor payloads. Context transport does not
   implement these or complete the `.a` format. N5 remains open.
 
-Input capsule status:
+Occurrence input transport after `a11577d` (`occurrence_io.c`):
+
+- [x] Store the ordered operand DAG, declaration contexts, Core and optional
+  annotations using the existing context/Core codecs. Reconstruct through
+  `pg_occurrence`, not through a Core-to-classifier lookup. Duplicate roots and
+  operands remain shared; distinct annotations/contexts over the same Core
+  remain distinct occurrences. Missing annotation is not an inferred answer.
+- [x] Use iterative indexed collection, reject operand cycles and forward
+  references, and bound operand edges in addition to record counts on input.
+  Test separate processes, ten-thousand-level shared operand DAGs, truncated
+  prefixes and invalid annotation flags. No source acceptance or evidence
+  validity follows from restoring this graph; the proof index stays empty.
+  Full pointer `make check` and ASan/UBSan occurrence transport passed; empty
+  input and an explicit self/forward operand reference are also covered.
+- [ ] Connect the stored input roots to the program image and ordinary solver;
+  accepted derivation records, pending work and recursive descriptor payloads
+  are not yet persisted. This component does not close N5 or replace N2/N3.
+
+Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
 
 - [x] Store a single immutable source and explicit definition policy in a
   versioned, little-endian input capsule. No addresses or accepted-state flags.

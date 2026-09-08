@@ -5,10 +5,11 @@ BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)evidence.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c
 
 .PHONY: check
-check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test $(BUILD)/program_test $(BUILD)/seed_test $(BUILD)/pointer-check
+check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test $(BUILD)/occurrence_io_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test $(BUILD)/program_test $(BUILD)/seed_test $(BUILD)/pointer-check
 	$(BUILD)/core_test
 	$(BUILD)/graph_io_test
 	bash $(ROOT)tests/graph_acceptance.sh $(BUILD)/graph_acceptance_test
+	bash $(ROOT)tests/occurrence_io.sh $(BUILD)/occurrence_io_test
 	$(BUILD)/reader_test
 	$(BUILD)/synthesis_test
 	$(BUILD)/program_test
@@ -51,6 +52,10 @@ $(BUILD)/graph_io_test: $(ROOT)graph.c $(ROOT)eval.c $(ROOT)graph_io.c $(ROOT)wi
 $(BUILD)/graph_acceptance_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)wire.c $(ROOT)tests/graph_acceptance.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)wire.c $(ROOT)tests/graph_acceptance.c -o $@
+
+$(BUILD)/occurrence_io_test: $(ROOT)graph.c $(ROOT)typing.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(ROOT)tests/occurrence_io.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)graph.c $(ROOT)typing.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(ROOT)tests/occurrence_io.c -o $@
 
 .PHONY: pointer-check
 pointer-check: $(BUILD)/pointer-check
