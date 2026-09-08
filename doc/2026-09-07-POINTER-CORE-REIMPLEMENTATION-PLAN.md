@@ -33,11 +33,11 @@ not execution results:
 | 01_bool | done | 172 |
 | 02_nat | done | 64 |
 | 03_main | done | 172 |
-| 04_match | done | 402 |
-| 05_bool_to_nat | done | 260 |
-| 06_pred | done | 203 |
-| 07_add | unsupported | 282 |
-| 09_list_induction | unsupported | 735 |
+| 04_match | done | 408 |
+| 05_bool_to_nat | done | 268 |
+| 06_pred | done | 208 |
+| 07_add | unsupported | 286 |
+| 09_list_induction | unsupported | 739 |
 
 ### Applied family provenance progress
 
@@ -119,6 +119,15 @@ of the rewrite.
   motive dependencies through the common producer graph and retain the actual
   independent branch information that justifies a solution. This connection,
   not parsing or the raw recursion evaluator, now blocks existing 07/09.
+- [x] Extract `pg_synthesis_constant_motive` as a shared producer keyed by the
+  destination context, field context and independent body job. Ordinary Match
+  now consumes this producer instead of reimplementing binder removal. Each
+  Pi codomain independence step advances separately on the Solve queue. The
+  accepted branch function and resulting formation are retained by that job;
+  no expected type is an input. Remove the redundant stored field count from
+  Match branches. A genuinely field-dependent result remains unsupported by
+  this constant-motive fragment. This is not a general unification solver or
+  evidence that an arbitrary branch equation uniquely determines a motive.
 - [ ] Add a typed induction rule with retained field/IH contexts and motive
   instantiations. The raw recursive-function binder must NOT become an
   unrestricted source binding. A source `*k` must be justified by the admitted
@@ -150,6 +159,9 @@ verify request reuse and reject accidental capture after field-name shadowing.
 The ordinary source gate remains 6/8; these explicit-motive tests do not replace it.
 The marked-operand correction also passed optimized `check` and ASan/UBSan
 reader/synthesis tests. The source gate still has the same 6/8 result.
+The constant-motive producer passed optimized `check` and ASan/UBSan synthesis,
+including pending requests, reuse and a field-dependent rejection boundary.
+The source gate remains 6/8; its current transition counts are in the top table.
 
 Code-level obstruction and implementation order:
 

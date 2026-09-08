@@ -181,6 +181,13 @@ struct pg_synthesis_job *pg_synthesis_induction_branch(struct pg_synthesis *synt
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_syntax *clause);
+/* Derive a constant computation motive from an independent branch producer.
+ * The field context must extend the destination. Each removed binder needs
+ * checked codomain independence; dependent results remain unsupported rather
+ * than being filled from an expected classifier. */
+struct pg_synthesis_job *pg_synthesis_constant_motive(struct pg_synthesis *synthesis,
+	const struct pg_evidence *destination, const struct pg_evidence *fields,
+	struct pg_synthesis_job *body);
 /* Shared suspended typed substitution; the checked substitution/proof pair
  * determines a job. Uses the existing reindex machine, not a second traversal. */
 struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,

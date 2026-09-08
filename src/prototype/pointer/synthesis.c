@@ -73,7 +73,6 @@ struct match_branch {
 	const struct pg_source_scope *scope;
 	struct pg_synthesis_job *body;
 	const struct pg_evidence *function;
-	size_t fields;
 };
 struct match_state {
 	struct pg_inductive_instance instance;
@@ -95,7 +94,7 @@ struct derivation_state {
 	const struct pg_reduction_certificate *reduction;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, DERIVATION_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const void *owner;
@@ -642,6 +641,17 @@ struct pg_synthesis_job *pg_synthesis_induction_branch(struct pg_synthesis *synt
 	struct pg_synthesis_job *job = request_inputs(synthesis, INDUCTION_BRANCH_JOB, 7, inputs);
 	if (job) { job->scope = scope; job->syntax = clause; }
 	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_constant_motive(struct pg_synthesis *synthesis,
+	const struct pg_evidence *destination, const struct pg_evidence *fields,
+	struct pg_synthesis_job *body)
+{
+	if (!body || body->owner != synthesis->owner_key) return NULL;
+	if (!pg_evidence_owned_by(destination, synthesis->typing) || pg_evidence_judgement(destination) != PG_JUDGEMENT_CONTEXT) return NULL;
+	if (!pg_evidence_owned_by(fields, synthesis->typing) || pg_evidence_judgement(fields) != PG_JUDGEMENT_CONTEXT) return NULL;
+	const void *inputs[] = {destination, fields, body};
+	return request_inputs(synthesis, CONSTANT_MOTIVE_JOB, 3, inputs);
 }
 
 struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesis,
@@ -1984,6 +1994,36 @@ error:
 	finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
+static void constant_motive_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	const struct pg_evidence *destination = job->inputs[0];
+	if (!job->checking_type) {
+		struct pg_synthesis_job *body = (void *)job->inputs[2];
+		if (body->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, body); return; }
+		if (body->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, body->status); return; }
+		const struct pg_evidence *fields = job->inputs[1];
+		const struct pg_evidence *term = computation(synthesis, body->result);
+		if (!term || pg_evidence_context(term) != pg_evidence_context(fields)) goto unsupported;
+		job->function = pg_prove_abstract(synthesis->typing, synthesis->classifiers, destination, fields, term);
+		if (!job->function) goto unsupported;
+		job->checking_type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, destination, job->function);
+		if (!job->checking_type) goto unsupported;
+		job->domain = fields;
+	}
+	if (pg_evidence_context(job->domain) == pg_evidence_context(destination)) {
+		job->result = job->checking_type;
+		finish(synthesis, job, PG_SYNTHESIS_DONE);
+		return;
+	}
+	job->checking_type = pg_prove_pi_constant_codomain(synthesis->typing, job->checking_type);
+	if (!job->checking_type) goto unsupported;
+	job->domain = pg_evidence_premise(job->domain, 0);
+	enqueue(synthesis, job);
+	return;
+unsupported:
+	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
+}
+
 static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->result) goto complete;
@@ -2065,7 +2105,6 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (!scope) goto error;
 		struct match_branch *branch = &state->branches[ordinal];
 		branch->scope = scope;
-		branch->fields = count;
 		branch->body = pg_synthesis_request(synthesis, scope, clause->right);
 		if (!branch->body) goto error;
 		++state->next;
@@ -2074,15 +2113,13 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	}
 	if (state->checked < state->count) {
 		struct match_branch *branch = &state->branches[state->checked];
-		if (branch->body->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->body); return; }
-		if (branch->body->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, branch->body->status); return; }
-		branch->function = pg_prove_abstract(synthesis->typing, synthesis->classifiers, context,
-			source_context(branch->scope), computation(synthesis, branch->body->result));
-		if (!branch->function) goto unsupported;
-		const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, branch->function);
-		for (size_t i = 0; type && i < branch->fields; ++i)
-			type = pg_prove_pi_constant_codomain(synthesis->typing, type);
-		if (!type) goto unsupported;
+		struct pg_synthesis_job *candidate = pg_synthesis_constant_motive(synthesis, context,
+			source_context(branch->scope), branch->body);
+		if (!candidate) goto error;
+		if (candidate->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, candidate); return; }
+		if (candidate->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, candidate->status); return; }
+		branch->function = candidate->function;
+		const struct pg_evidence *type = candidate->result;
 		if (!state->motive) state->motive = type;
 		else if (pg_alpha_equal(pg_evidence_subject(state->motive)->core, pg_evidence_subject(type)->core) != 1)
 			goto unsupported;
@@ -2487,6 +2524,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == PAIR_JOB) { pair_step(synthesis, job); return; }
 	if (job->role == DATA_CASE_JOB) { data_case_step(synthesis, job); return; }
 	if (job->role == INDUCTION_BRANCH_JOB) { induction_branch_step(synthesis, job); return; }
+	if (job->role == CONSTANT_MOTIVE_JOB) { constant_motive_step(synthesis, job); return; }
 	if (job->role == CLASSIFIER_JOB) { classifier_step(synthesis, job); return; }
 	if (job->role == APPLICATION_JOB) { raw_application_step(synthesis, job); return; }
 	if (job->role == INSTANCE_JOB) { instance_step(synthesis, job); return; }

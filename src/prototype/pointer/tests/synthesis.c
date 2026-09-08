@@ -2725,6 +2725,24 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *applied = complete(&synthesis,
 		request(&synthesis, named, "r:=Alias.succ (Nat.succ Alias.zero);"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_object *field_binder = pg_binder(typing->graph);
+	const struct pg_evidence *field_context = pg_prove_context_extension(typing, empty, field_binder, nat);
+	const struct pg_source_scope *field_scope = pg_synthesis_bind(&synthesis, named,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "field", .length = 5}, field_binder, field_context);
+	struct pg_synthesis_job *field_body = request(&synthesis, field_scope, "r:=field;");
+	struct pg_synthesis_job *constant = pg_synthesis_constant_motive(&synthesis, empty, field_context, field_body);
+	assert(constant && pg_synthesis_status(constant) == PG_SYNTHESIS_PENDING);
+	const struct pg_evidence *constant_type = complete(&synthesis, constant, PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(constant_type)->core == pg_return_type(classifiers, pg_evidence_subject(nat)->core));
+	assert(pg_synthesis_constant_motive(&synthesis, empty, field_context, field_body) == constant);
+	const struct pg_object *type_binder = pg_binder(typing->graph), *dependent_binder = pg_binder(typing->graph);
+	const struct pg_evidence *type_context = pg_prove_context_extension(typing, empty, type_binder,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_evidence *dependent_type = pg_prove_value_type(typing, pg_prove_variable(typing, type_context, type_binder));
+	const struct pg_evidence *dependent_context = pg_prove_context_extension(typing, type_context, dependent_binder, dependent_type);
+	const struct pg_evidence *dependent_value = pg_prove_variable(typing, dependent_context, dependent_binder);
+	complete(&synthesis, pg_synthesis_constant_motive(&synthesis, empty, dependent_context,
+		pg_synthesis_evidence(&synthesis, dependent_value)), PG_SYNTHESIS_UNSUPPORTED);
 	const struct pg_evidence *two = complete(&synthesis,
 		pg_synthesis_return(&synthesis, empty, applied), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_classifier(two) == pg_evidence_subject(nat)->core);
