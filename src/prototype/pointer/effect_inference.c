@@ -74,6 +74,24 @@ int pg_effect_dependency(struct pg_effect_inference *work,
 	return 0;
 }
 
+int pg_effect_handler_dependencies(struct pg_effect_inference *work,
+	struct pg_effect_equation *target, struct pg_effect_equation *input,
+	const struct pg_effect_row *handled, struct pg_effect_equation *returned,
+	size_t count, struct pg_effect_equation *const *clauses)
+{
+	if (!target || !input || !returned || !handled) return -1;
+	if (target->owner != work || input->owner != work || returned->owner != work) return -1;
+	if (count && !clauses) return -1;
+	for (size_t i = 0; i < count; ++i)
+		if (!clauses[i] || clauses[i]->owner != work) return -1;
+	const struct pg_effect_row *empty = pg_effect_row(work->rows, 0, NULL);
+	if (pg_effect_dependency(work, input, handled, target)) return -1;
+	if (pg_effect_dependency(work, returned, empty, target)) return -1;
+	for (size_t i = 0; i < count; ++i)
+		if (pg_effect_dependency(work, clauses[i], empty, target)) return -1;
+	return 0;
+}
+
 void pg_effect_inference_seal(struct pg_effect_inference *work)
 {
 	work->sealed = 1;

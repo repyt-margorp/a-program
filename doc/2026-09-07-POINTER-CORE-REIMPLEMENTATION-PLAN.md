@@ -13,6 +13,25 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 8 handler effect-equation boundary
+
+- [x] Centralize deep-handler edges in `pg_effect_handler_dependencies`:
+  subtract the handled set only from the input; preserve return/clause effects.
+  Validate every equation owner before adding any edge. Recursive resumption
+  dependencies use the same ordinary effect graph, not a second solver.
+- [x] Exercise the inferred row through `pg_prove_handler_context`, source
+  clause synthesis, `pg_prove_handler` and normalization. The fixture clause
+  `{x := Op req; k x;}` reissues the handled operation: its output row retains
+  Op, the emitted request escapes the inner handler, and an outer handler can
+  consume it and obtain the original value. An empty carrier is rejected.
+- [ ] Automatic equation generation from arbitrary source bodies remains open.
+  This fixture supplies the graph explicitly before checking the source body;
+  it does not infer latent callable effects or a general dependent carrier.
+
+Verification: regular components, eight example checks, six execution fixtures
+and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
+unsupported at 88 transitions; this does not establish full source acceptance.
+
 ### September 8 positive effect-equation closure
 
 The next surface-handler obstacle is circular effect inference, not merely

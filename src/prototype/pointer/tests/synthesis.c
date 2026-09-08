@@ -108,6 +108,8 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		assert(!pg_effect_inference_result(&work, a));
 		assert(!pg_synthesis_effect_inference(&synthesis, &work));
 		assert(pg_effect_dependency(&work, other, rows[0], a) == -1);
+		assert(pg_effect_handler_dependencies(&work, c, a, rows[0], b, 1, &other) == -1);
+		assert(work.dependencies.count == 0);
 		struct pg_effect_equation *sources[] = {a, b, b, b};
 		struct pg_effect_equation *targets[] = {b, a, b, c};
 		const struct pg_effect_row *masks[] = {rows[mask], rows[0], rows[0], rows[1]};
@@ -344,6 +346,49 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(handled);
 	const struct pg_evidence *answer = pg_prove_return_value(typing, normalize(&synthesis, context, handled));
 	assert(answer && pg_evidence_subject(answer)->core == pg_evidence_subject(u0)->core);
+	struct pg_effect_inference inference;
+	assert(!pg_effect_inference_init(&inference, typing->graph));
+	const struct pg_effect_row *input_row;
+	const struct pg_term *input_value;
+	assert(pg_effect_type_view(pg_evidence_classifier(called), &input_row, &input_value));
+	const struct pg_effect_row *empty = pg_effect_row(typing->graph, 0, NULL);
+	struct pg_effect_equation *input_effect = pg_effect_equation(&inference, input_row);
+	struct pg_effect_equation *return_effect = pg_effect_equation(&inference, empty);
+	struct pg_effect_equation *clause_effect = pg_effect_equation(&inference, input_row);
+	struct pg_effect_equation *output_effect = pg_effect_equation(&inference, empty);
+	assert(!pg_effect_dependency(&inference, output_effect, empty, clause_effect));
+	assert(!pg_effect_handler_dependencies(&inference, output_effect, input_effect,
+		input_row, return_effect, 1, &clause_effect));
+	pg_effect_inference_seal(&inference);
+	complete(&synthesis, pg_synthesis_effect_inference(&synthesis, &inference), PG_SYNTHESIS_DONE);
+	const struct pg_effect_row *inferred = pg_effect_inference_result(&inference, output_effect);
+	assert(inferred == input_row);
+	const struct pg_evidence *inferred_carrier = pg_prove_effect_type(typing, classifiers, inferred, u1);
+	const struct pg_evidence *inferred_context = pg_prove_handler_context(typing, classifiers,
+		operation, context, inferred_carrier, req, resume);
+	const struct pg_source_scope *inferred_scope = pg_synthesis_bind(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="req", .length=3}, req, pg_evidence_premise(inferred_context, 0));
+	inferred_scope = pg_synthesis_bind(&synthesis, inferred_scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="k", .length=1}, resume, inferred_context);
+	const struct pg_evidence *emitting_body = complete(&synthesis,
+		request(&synthesis, inferred_scope, "body := {x := Op req; k x;};"), PG_SYNTHESIS_DONE);
+	struct pg_handler_clause emitting_clause = {operation,
+		pg_prove_abstract(typing, classifiers, context, inferred_context, emitting_body)};
+	const struct pg_evidence *emitting_handler = pg_prove_handler(typing, classifiers,
+		called, returned_clause, inferred_carrier, 1, &emitting_clause);
+	assert(emitting_handler);
+	assert(!pg_prove_handler(typing, classifiers, called, returned_clause, carrier, 1, &emitting_clause));
+	const struct pg_evidence *emitted = normalize(&synthesis, context, emitting_handler);
+	const struct pg_object *emitted_label;
+	const struct pg_term *emitted_payload, *emitted_continuation;
+	assert(pg_computation_request_view(pg_evidence_subject(emitted)->core,
+		&emitted_label, &emitted_payload, &emitted_continuation));
+	assert(emitted_label == pg_operation_label(operation));
+	const struct pg_evidence *outer = pg_prove_handler(typing, classifiers,
+		emitting_handler, returned_clause, carrier, 1, &clause);
+	assert(outer);
+	const struct pg_evidence *outer_value = pg_prove_return_value(typing, normalize(&synthesis, context, outer));
+	assert(outer_value && pg_evidence_subject(outer_value)->core == pg_evidence_subject(u0)->core);
 	struct pg_typing foreign;
 	assert(!pg_typing_init(&foreign, typing->graph));
 	const struct pg_evidence *foreign_context = pg_prove_empty_context(&foreign);
@@ -352,6 +397,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(foreign_operation);
 	complete(&synthesis, pg_synthesis_operation(&synthesis, foreign_operation), PG_SYNTHESIS_REJECTED);
 	pg_synthesis_destroy(&synthesis);
+	pg_effect_inference_destroy(&inference);
 	pg_typing_destroy(&foreign);
 	pg_whnf_work_destroy(&work);
 	puts("effect expectations: post-synthesis widening, unchanged producers and directed rejection passed");

@@ -29,6 +29,13 @@ struct pg_effect_equation *pg_effect_equation(struct pg_effect_inference *work,
 int pg_effect_dependency(struct pg_effect_inference *work,
 	struct pg_effect_equation *source, const struct pg_effect_row *mask,
 	struct pg_effect_equation *target);
+/* Deep-handler effect equation. Only the input edge subtracts handled labels;
+ * return/clause effects escape this handler. A clause may depend on target
+ * through its resumption. All equation handles must belong to work. */
+int pg_effect_handler_dependencies(struct pg_effect_inference *work,
+	struct pg_effect_equation *target, struct pg_effect_equation *input,
+	const struct pg_effect_row *handled, struct pg_effect_equation *returned,
+	size_t count, struct pg_effect_equation *const *clauses);
 void pg_effect_inference_seal(struct pg_effect_inference *work);
 /* -1 failure, 0 pending, 1 converged. One transition processes one edge or
  * one empty adjacency list. Row set operations are not wall-time bounded. */
