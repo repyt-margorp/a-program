@@ -324,6 +324,21 @@ Next implementation sequence (prerequisite for automatic source handlers):
   projection request through the loaded-input Solve path as well. Normal checks,
   examples and rebuilt ASan/UBSan synthesis tests pass. Operation-clause generation
   and full automatic handler effect inference remain incomplete.
+  Operation clauses now prepare payload/resumption contexts and their two
+  Lambda producers before carrier acceptance. Read-only signature accessors
+  expose the declaration's existing evidence; no signature copy is introduced.
+  The old synchronous handler-context/abstract calls are removed from this source
+  path. Carrier F-shape and context checks remain mandatory before publishing
+  the clause result. The clause keeps its initially allocated binders instead of
+  redirecting to another carrier producer after acceptance. Distinct producer
+  requests may therefore yield alpha-equivalent, not pointer-identical proofs;
+  exact repeated requests still share. Tests track binder identity across sealing
+  and the symbolic-to-closed row inside the latent resumption type.
+  The pre-sealing source test uses `@Op req resume => req`. Existing `k req`
+  cases still pass after acceptance, but source APP preparation before carrier
+  closure remains missing. Operation-name lookup also still needs its outer
+  source context. Normal checks, examples and rebuilt ASan/UBSan synthesis tests
+  pass; this is not completion of automatic handler inference.
   Normal `check`, eight example synthesis cases, six runtime cases and rebuilt
   ASan/UBSan synthesis tests pass.
   Validation: normal `check`, eight example synthesis cases, six runtime cases

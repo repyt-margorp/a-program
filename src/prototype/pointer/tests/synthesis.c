@@ -417,6 +417,37 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(return_domain == pg_universe(classifiers, 0));
 		assert(return_codomain == pg_return_type(classifiers, return_domain));
 		assert(!pg_synthesis_result(return_clause_job));
+		const struct pg_evidence *signature = complete(&synthesis, universe, PG_SYNTHESIS_DONE);
+		const struct pg_operation_declaration *pending_op = pg_operation_declaration(typing, signature, signature);
+		struct pg_token op_name = {.kind = PG_TOKEN_IDENT, .text = "Op", .length = 2};
+		const struct pg_source_scope *op_scope = pg_synthesis_name_job(&synthesis, root, op_name,
+			pg_synthesis_operation(&synthesis, pending_op));
+		const char *op_source = "h := M @Op req resume => req;";
+		struct pg_parser op_parser;
+		struct pg_definition op_definition;
+		pg_parser_init(&op_parser, typing->graph, op_source, strlen(op_source));
+		assert(pg_parser_next(&op_parser, &op_definition) == 1);
+		struct pg_synthesis_job *op_clause = pg_synthesis_handler_clause(&synthesis, op_scope,
+			carrier, op_definition.expression->items[0].expression);
+		/* Complete operation-name resolution, but keep carrier acceptance pending. */
+		for (unsigned steps = 0; synthesis.ready; ++steps) {
+			assert(steps < 10000);
+			pg_synthesis_advance(&synthesis, 1);
+		}
+		struct pg_synthesis_job *op_type = pg_synthesis_classifier_structure(&synthesis, op_clause);
+		assert(!complete(&synthesis, op_type, PG_SYNTHESIS_DONE));
+		const struct pg_term *payload_domain, *resume_pi, *resume_domain, *clause_result;
+		const struct pg_object *payload_binder, *resume_binder;
+		assert(pg_pi_view(pg_synthesis_type_structure_result(op_type), &payload_domain, &payload_binder, &resume_pi));
+		assert(pg_pi_view(resume_pi, &resume_domain, &resume_binder, &clause_result));
+		assert(payload_domain == pg_universe(classifiers, 0));
+		assert(clause_result == pg_return_type(classifiers, payload_domain));
+		const struct pg_term *resume_function, *response_domain, *response_result;
+		const struct pg_object *response_binder;
+		assert(pg_thunk_type_view(resume_domain, &resume_function));
+		assert(pg_pi_view(resume_function, &response_domain, &response_binder, &response_result));
+		assert(response_domain == payload_domain && response_result == symbolic_f);
+		assert(!pg_synthesis_result(op_clause) && !pg_synthesis_result(carrier));
 		struct pg_synthesis_job *source_type = pg_synthesis_classifier_structure(&synthesis, source_variable);
 		struct pg_synthesis_job *source_term = pg_synthesis_term_structure(&synthesis, source_variable);
 		assert(!complete(&synthesis, source_type, PG_SYNTHESIS_DONE));
@@ -501,6 +532,14 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *op_proof = complete(&synthesis, op_clause, PG_SYNTHESIS_DONE);
+		const struct pg_object *accepted_payload, *accepted_resume;
+		assert(pg_pi_view(pg_evidence_classifier(op_proof), &payload_domain, &accepted_payload, &resume_pi));
+		assert(pg_pi_view(resume_pi, &resume_domain, &accepted_resume, &clause_result));
+		assert(accepted_payload == payload_binder && accepted_resume == resume_binder);
+		assert(pg_thunk_type_view(resume_domain, &resume_function));
+		assert(pg_pi_view(resume_function, &response_domain, &response_binder, &response_result));
+		assert(response_result == pg_effect_type(classifiers, row, response_domain));
 		assert(pg_evidence_classifier(return_proof) == pg_synthesis_type_structure_result(return_clause_type));
 		const struct pg_evidence *result_proof = complete(&synthesis, result_variable, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(result_proof)->core == pg_reference(typing->graph, result_binder));
@@ -694,9 +733,9 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(pg_synthesis_handler_clause(&synthesis, scope, carrier_job, operation_clause) == clause_job);
 	const struct pg_evidence *clause_function = complete(&synthesis, clause_job, PG_SYNTHESIS_DONE);
 	assert(clause_function);
-	assert(complete(&synthesis, pg_synthesis_handler_clause(&synthesis, scope,
+	same_judgement(complete(&synthesis, pg_synthesis_handler_clause(&synthesis, scope,
 		pg_synthesis_evidence(&synthesis, pg_synthesis_result(carrier_job)), operation_clause),
-		PG_SYNTHESIS_DONE) == clause_function);
+		PG_SYNTHESIS_DONE), clause_function);
 	complete(&synthesis, pg_synthesis_handler_clause(&synthesis, scope,
 		pg_synthesis_evidence(&synthesis, u1), operation_clause), PG_SYNTHESIS_REJECTED);
 	const char *bad_clauses[] = {"handler := M @Alias req => req;",

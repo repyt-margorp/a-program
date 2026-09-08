@@ -1783,6 +1783,16 @@ const struct pg_operation_declaration *pg_operation_declaration(struct pg_typing
 	return declaration;
 }
 
+const struct pg_evidence *pg_operation_payload_type(const struct pg_operation_declaration *declaration)
+{
+	return declaration ? declaration->payload_type : NULL;
+}
+
+const struct pg_evidence *pg_operation_response_type(const struct pg_operation_declaration *declaration)
+{
+	return declaration ? declaration->response_type : NULL;
+}
+
 const struct pg_object *pg_operation_label(const struct pg_operation_declaration *declaration)
 {
 	return declaration ? &declaration->label : NULL;
