@@ -314,8 +314,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!pg_synthesis_result(source_variable));
 		assert(!pg_synthesis_result(source_quote));
 		assert(pg_synthesis_dependency(source_quote) != pg_synthesis_dependency(source_lambda));
-		/* The variable has built its rule dependency before context acceptance;
-		 * the Lambda still waits directly on the scope's formation guard. */
+		/* Both source nodes depend on their distinct ordinary rule producers. */
 		assert(pg_synthesis_dependency(source_variable) != pg_synthesis_dependency(source_lambda));
 		size_t prepared_jobs = synthesis.jobs.count;
 		struct pg_synthesis_job *source_binding = pg_synthesis_binding(&synthesis, scope, definition.expression);
@@ -344,6 +343,29 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_term *x_term = pg_reference(typing->graph, pg_synthesis_binding_binder(source_binding));
 		assert(pg_synthesis_type_structure_result(bound_y_type) == x_term);
 		assert(!pg_synthesis_result(dependent_binding));
+		struct pg_synthesis_job *source_lambda_type = pg_synthesis_classifier_structure(&synthesis, source_lambda);
+		assert(!complete(&synthesis, source_lambda_type, PG_SYNTHESIS_DONE));
+		const struct pg_term *source_carrier = pg_effect_type_spine(classifiers,
+			pg_reference(typing->graph, pg_effect_equation_parameter(&effects, equation)), pg_universe(classifiers, 0));
+		const struct pg_term *expected_source_pi = pg_pi(typing->graph, pg_universe(classifiers, 0),
+			pg_synthesis_binding_binder(source_binding), pg_return_type(classifiers, pg_thunk_type(classifiers, source_carrier)));
+		assert(pg_synthesis_type_structure_result(source_lambda_type) == expected_source_pi);
+		struct pg_synthesis_job *source_quote_type = pg_synthesis_classifier_structure(&synthesis, source_quote);
+		assert(!complete(&synthesis, source_quote_type, PG_SYNTHESIS_DONE));
+		assert(pg_alpha_equal(pg_synthesis_type_structure_result(source_quote_type),
+			pg_thunk_type(classifiers, expected_source_pi)) == 1);
+		assert(!pg_synthesis_result(source_lambda) && !pg_synthesis_result(source_quote));
+		struct pg_synthesis_job *nested_source = request(&synthesis, scope, "v := \\A : @ => \\a : A => a;");
+		struct pg_synthesis_job *nested_type = pg_synthesis_classifier_structure(&synthesis, nested_source);
+		assert(!complete(&synthesis, nested_type, PG_SYNTHESIS_DONE));
+		const struct pg_term *outer_domain, *inner_pi, *inner_domain, *inner_result;
+		const struct pg_object *type_binder, *value_binder;
+		assert(pg_pi_view(pg_synthesis_type_structure_result(nested_type), &outer_domain, &type_binder, &inner_pi));
+		assert(outer_domain == pg_universe(classifiers, 0));
+		assert(pg_pi_view(inner_pi, &inner_domain, &value_binder, &inner_result));
+		assert(inner_domain == pg_reference(typing->graph, type_binder));
+		assert(inner_result == pg_return_type(classifiers, inner_domain));
+		assert(!pg_synthesis_result(nested_source));
 		assert(!complete(&synthesis, structure, PG_SYNTHESIS_DONE));
 		const struct pg_term *symbolic_pi = pg_synthesis_type_structure_result(structure);
 		const struct pg_term *symbolic_f = pg_effect_type_spine(classifiers,
@@ -422,6 +444,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_evidence_classifier(applied) == pg_effect_type(classifiers, row, pg_reference(typing->graph, b)));
 		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));
 		complete(&synthesis, source_lambda, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_classifier(complete(&synthesis, nested_source, PG_SYNTHESIS_DONE))
+			== pg_synthesis_type_structure_result(nested_type));
 		assert(pg_evidence_classifier(complete(&synthesis, bound_x, PG_SYNTHESIS_DONE)) == pg_universe(classifiers, 0));
 		assert(pg_evidence_classifier(complete(&synthesis, bound_y, PG_SYNTHESIS_DONE)) == x_term);
 		const struct pg_evidence *quoted = complete(&synthesis, source_quote, PG_SYNTHESIS_DONE);
@@ -1981,7 +2005,11 @@ static void fair_work(struct pg_typing *typing, struct pg_classifiers *classifie
 	/* Newly arriving work must also run while an older reduction is pending. */
 	struct pg_synthesis_job *later = request(&synthesis, scope, "main := \\A : @ => A;");
 	struct pg_synthesis_job *consumer = pg_synthesis_reflexivity(&synthesis, context, slow);
-	pg_synthesis_advance(&synthesis, 32);
+	for (unsigned steps = 0; pg_synthesis_status(later) == PG_SYNTHESIS_PENDING; ++steps) {
+		assert(steps < 128);
+		pg_synthesis_advance(&synthesis, 1);
+		assert(pg_synthesis_status(slow) == PG_SYNTHESIS_PENDING);
+	}
 	assert(pg_synthesis_status(later) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_status(slow) == PG_SYNTHESIS_PENDING);
 	assert(pg_synthesis_dependency(consumer) == slow);

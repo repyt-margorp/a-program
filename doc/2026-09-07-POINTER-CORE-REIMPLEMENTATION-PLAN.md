@@ -228,6 +228,22 @@ Next implementation sequence (prerequisite for automatic source handlers):
   judgements. No unresolved domain is published as accepted formation.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass, including dependent source domains.
+  Source Lambda now prepares a shared body-adaptation producer, classifier
+  formation recovery, Pi formation and Lambda introduction rule DAG before
+  context acceptance. The former direct source Lambda proof-construction path
+  is removed. Structural projection handles the known value/computation rule
+  cases of the body adapter; unknown cases await its original acceptance.
+  Tests read source Lambda/quotation classifiers before sealing and cover raw
+  nested dependent lambdas without an extra U/F wrapper between their Pis.
+  The scheduler fairness test now checks at each bounded transition that later
+  Lambda work completes while the older slow reduction remains pending, rather
+  than assuming its former fixed 32-transition proof-construction cost.
+  Source APP adaptation, blocks and automatic handler equation sealing remain
+  open; these changes do not complete those source workflows.
+  Validation: normal `check`, eight example synthesis cases, six runtime cases
+  and rebuilt ASan/UBSan synthesis tests pass. List synthesis now takes 1044
+  transitions as proof recovery/acceptance is exposed to scheduling; no speedup
+  is claimed from this source Lambda migration.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
   pointer-equality assumption about capture-avoiding substitution.
