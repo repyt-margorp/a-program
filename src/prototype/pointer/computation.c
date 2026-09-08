@@ -8,10 +8,12 @@ static const struct pg_object_class return_class = {"return"};
 static const struct pg_object_class thunk_class = {"thunk"};
 static const struct pg_object_class force_class = {"force"};
 static const struct pg_object_class fold_class = {"computation-fold"};
+static const struct pg_object_class request_class = {"operation-request"};
 const struct pg_object pg_return_operation = {PG_SEMANTIC_OBJECT, &return_class};
 const struct pg_object pg_thunk_operation = {PG_SEMANTIC_OBJECT, &thunk_class};
 const struct pg_object pg_force_operation = {PG_SEMANTIC_OBJECT, &force_class};
 const struct pg_object pg_fold_operation = {PG_SEMANTIC_OBJECT, &fold_class};
+const struct pg_object pg_request_operation = {PG_SEMANTIC_OBJECT, &request_class};
 
 static const struct {
 	const struct pg_object *object;
@@ -20,7 +22,8 @@ static const struct {
 	{&pg_return_operation, "kernel/return/v1"},
 	{&pg_thunk_operation, "kernel/thunk/v1"},
 	{&pg_force_operation, "kernel/force/v1"},
-	{&pg_fold_operation, "kernel/fold/v1"}
+	{&pg_fold_operation, "kernel/fold/v1"},
+	{&pg_request_operation, "kernel/request/v1"}
 };
 
 const char *pg_computation_name(const struct pg_object *object)
@@ -36,6 +39,38 @@ const struct pg_object *pg_computation_resolve(const char *name)
 	for (size_t i = 0; i < sizeof(descriptors) / sizeof(*descriptors); ++i)
 		if (!strcmp(name, descriptors[i].name)) return descriptors[i].object;
 	return NULL;
+}
+
+const struct pg_term *pg_computation_request(struct pg_graph *graph,
+	const struct pg_object *label, const struct pg_term *payload,
+	const struct pg_term *continuation)
+{
+	if (!graph || !label || label->kind != PG_SEMANTIC_OBJECT) return NULL;
+	if (!payload || !continuation) return NULL;
+	const struct pg_term *term = pg_reference(graph, &pg_request_operation);
+	term = pg_application(graph, term, pg_reference(graph, label));
+	term = pg_application(graph, term, payload);
+	return pg_application(graph, term, continuation);
+}
+
+int pg_computation_request_view(const struct pg_term *term,
+	const struct pg_object **label, const struct pg_term **payload,
+	const struct pg_term **continuation)
+{
+	if (!term || !label || !payload || !continuation) return 0;
+	const struct pg_term *arguments[3];
+	for (size_t i = 3; i; --i) {
+		if (term->kind != PG_APPLICATION) return 0;
+		arguments[i - 1] = term->as.application.argument;
+		term = term->as.application.function;
+	}
+	if (term->kind != PG_REFERENCE || term->as.reference != &pg_request_operation) return 0;
+	if (arguments[0]->kind != PG_REFERENCE) return 0;
+	if (arguments[0]->as.reference->kind != PG_SEMANTIC_OBJECT) return 0;
+	*label = arguments[0]->as.reference;
+	*payload = arguments[1];
+	*continuation = arguments[2];
+	return 1;
 }
 
 static const struct pg_term *unary_argument(const struct pg_term *term, const struct pg_object *operation)
@@ -90,9 +125,21 @@ static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, co
 {
 	(void)unused;
 	const struct pg_term *value = unary_argument(answer, &pg_return_operation);
-	if (!value) return 1;
 	struct pg_closure continuation = *pg_eval_argument(machine, 1);
-	return pg_eval_apply(machine, continuation, (struct pg_closure){value, NULL}, 2);
+	if (value) return pg_eval_apply(machine, continuation, (struct pg_closure){value, NULL}, 2);
+	const struct pg_object *label;
+	const struct pg_term *payload, *resume;
+	if (!pg_computation_request_view(answer, &label, &payload, &resume)) return 1;
+	/* Capture R as a closure, without demanding it:
+	 * fold(request op a k, R) = request op a (\x. fold(k x, R)). */
+	struct pg_graph *graph = machine->output;
+	const struct pg_object *r = pg_binder(graph), *x = pg_binder(graph);
+	const struct pg_term *next = pg_application(graph, resume, pg_reference(graph, x));
+	next = pg_application(graph, pg_reference(graph, &pg_fold_operation), next);
+	next = pg_application(graph, next, pg_reference(graph, r));
+	next = pg_computation_request(graph, label, payload, pg_lambda(graph, x, next));
+	next = pg_lambda(graph, r, next);
+	return pg_eval_apply(machine, (struct pg_closure){next, NULL}, continuation, 2);
 }
 
 static int dispatch(struct pg_eval *machine)

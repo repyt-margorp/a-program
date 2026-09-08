@@ -13,6 +13,35 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 8 inert requests and fold forwarding
+
+- [x] Represent requests as `APP(APP(APP(request, label), payload), k)`.
+  The fixed request object has descriptor `kernel/request/v1`; operation
+  identity is the label pointer. Payload and continuation remain visible Core
+  edges. Builders/views neither establish a signature nor accept a judgement.
+- [x] Extend the existing zero-clause fold reducer with
+  `fold(request op a k, R) = request op a (lambda x. fold(k x, R))`.
+  Capture R through the ordinary evaluator closure, without evaluating it.
+  Reuse the existing demand/readback machinery. Beta-only evaluation remains
+  neutral; the structural pure policy never executes a host operation.
+- [x] Test exact request interning, distinct same-class labels, two sequential
+  forwarded requests, captured R, divergent payload/R remaining suspended,
+  split budgets and restarting every pending readback. Explicit alpha comparison
+  checks reified binders; readback is not required to intern by alpha equality.
+  Optimized acceptance passes components, eight source examples and six result
+  fixtures before the unchanged open-family failure at 86 steps. Rebuilt
+  ASan/UBSan core tests pass.
+- [ ] Add multiple operation clauses to this fold mechanism, with deep
+  continuation rebinding and unhandled forwarding. Do not implement nested
+  one-clause handlers as the semantics of a simultaneous clause set.
+- [ ] Add checked operation signatures, effect rows, source alias/application
+  elaboration, typed fold output-carrier rules, and explicit runtime handlers.
+  Requests currently have no source admission rule. This does not establish
+  effectful conversion, higher action on requests, or nominal image transport.
+
+Delta excluding documentation: `computation.c` +50/-3, `computation.h` +12/-1,
+`tests/core.c` +73/-0. N4 and the full goal remain incomplete.
+
 ### September 8 classifier recovery stack removal
 
 - [x] Replace recursive calls in `pg_prove_classifier` with an iterative walk

@@ -11,6 +11,16 @@ extern const struct pg_object pg_thunk_operation;
 extern const struct pg_object pg_force_operation;
 /* Zero-operation-clause fold: applied to M and its raw return continuation. */
 extern const struct pg_object pg_fold_operation;
+/* Request(label, payload, continuation) is an inert computation description.
+ * The label is an exact semantic-object pointer; all term operands are Core
+ * edges. These builders/views establish no operation signature or typing. */
+extern const struct pg_object pg_request_operation;
+const struct pg_term *pg_computation_request(struct pg_graph *graph,
+	const struct pg_object *label, const struct pg_term *payload,
+	const struct pg_term *continuation);
+int pg_computation_request_view(const struct pg_term *term,
+	const struct pg_object **label, const struct pg_term **payload,
+	const struct pg_term **continuation);
 /* Versioned names of the fixed pure operators for graph relocation. These
  * neither execute a computation nor certify a typed use of an operator. */
 const char *pg_computation_name(const struct pg_object *object);
@@ -22,7 +32,8 @@ const struct pg_term *pg_computation_eta(struct pg_graph *graph, const struct pg
  * user handler overrides. Unknown references remain neutral. */
 extern const struct pg_eval_policy pg_pure_policy;
 /* Pure CBPV semantic WHNF, sharing beta steps with pg_eval. The output graph
- * owns materialized demanded arguments. Effect requests are not implemented. */
+ * owns materialized demanded arguments. Requests stay inert; zero-clause fold
+ * forwards them with its return continuation. No host operation is executed. */
 void pg_computation_eval_init(struct pg_eval *machine, struct pg_graph *output,
 	const struct pg_term *term);
 

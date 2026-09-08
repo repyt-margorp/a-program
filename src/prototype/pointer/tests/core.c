@@ -13,6 +13,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 struct dag_fixture {
 	size_t count;
@@ -1000,6 +1001,77 @@ static void typed_restriction_test(struct pg_graph *graph)
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	puts("typed restriction: dependent context faces preserve classifiers and compose without new Identity axioms");
+}
+
+static const struct pg_term *request_whnf(struct pg_graph *graph,
+	const struct pg_term *term, uint64_t chunk)
+{
+	struct pg_eval machine;
+	pg_computation_eval_init(&machine, graph, term);
+	while (pg_eval_advance(&machine, chunk) == PG_EVAL_PENDING) assert(machine.steps < 10000);
+	assert(machine.status == PG_EVAL_WHNF);
+	const struct pg_term *result = pg_eval_readback(&machine, graph);
+	assert(result);
+	pg_eval_destroy(&machine);
+	return result;
+}
+
+static void request_forwarding_test(struct pg_graph *graph)
+{
+	static const struct pg_object_class operation_class = {"test-operation"};
+	static const struct pg_object first = {PG_SEMANTIC_OBJECT, &operation_class};
+	static const struct pg_object second = {PG_SEMANTIC_OBJECT, &operation_class};
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph), *r = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x), *vy = pg_reference(graph, y);
+	const struct pg_term *ret = pg_reference(graph, &pg_return_operation);
+	const struct pg_term *fold = pg_reference(graph, &pg_fold_operation);
+	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
+	const struct pg_term *omega = pg_application(graph, self, self);
+	const struct pg_term *inner = pg_computation_request(graph, &second, vx,
+		pg_lambda(graph, y, pg_application(graph, ret, vx)));
+	const struct pg_term *resume = pg_lambda(graph, x, inner);
+	const struct pg_term *request = pg_computation_request(graph, &first, omega, resume);
+	assert(request && request == pg_computation_request(graph, &first, omega, resume));
+	assert(!strcmp(pg_computation_name(&pg_request_operation), "kernel/request/v1"));
+	assert(pg_computation_resolve("kernel/request/v1") == &pg_request_operation);
+	const struct pg_object *label = NULL;
+	const struct pg_term *payload = NULL, *continuation = NULL;
+	assert(pg_computation_request_view(request, &label, &payload, &continuation));
+	assert(label == &first && payload == omega && continuation == resume);
+	assert(!pg_computation_request(graph, x, vx, ret));
+	assert(!pg_computation_request_view(pg_application(graph, request, vx), &label, &payload, &continuation));
+	assert(label == &first && payload == omega && continuation == resume);
+	assert(request_whnf(graph, request, 1) == request);
+	/* Captured R must survive forwarding; neither the payload nor R is run
+	 * while the request is exposed. The two labels share a class, not identity. */
+	const struct pg_term *return_r = pg_lambda(graph, y, pg_application(graph, ret, pg_reference(graph, r)));
+	const struct pg_term *body = pg_application(graph, pg_application(graph, fold, request), return_r);
+	const struct pg_term *source = pg_application(graph, pg_lambda(graph, r, body), vy);
+	const struct pg_term *expected = request_whnf(graph, source, 10000);
+	assert(pg_alpha_equal(expected, request_whnf(graph, source, 1)) == 1);
+	assert(pg_computation_request_view(expected, &label, &payload, &continuation));
+	assert(label == &first && pg_alpha_equal(payload, omega) == 1);
+	const struct pg_term *next = request_whnf(graph, pg_application(graph, continuation, vx), 1);
+	assert(pg_computation_request_view(next, &label, &payload, &continuation));
+	assert(label == &second && payload == vx);
+	const struct pg_term *result = request_whnf(graph, pg_application(graph, continuation, vy), 1);
+	assert(result == pg_application(graph, ret, vy));
+	const struct pg_term *diverging_return = pg_application(graph, pg_application(graph, fold, request), omega);
+	assert(pg_computation_request_view(request_whnf(graph, diverging_return, 1), &label, &payload, &continuation));
+	assert(label == &first && pg_alpha_equal(payload, omega) == 1);
+	struct pg_eval machine;
+	pg_eval_init(&machine, body);
+	assert(pg_eval_advance(&machine, 1000) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, graph) == body);
+	pg_eval_destroy(&machine);
+	pg_computation_eval_init(&machine, graph, source);
+	while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) {
+		assert(machine.steps < 10000);
+		assert(pg_alpha_equal(expected, request_whnf(graph, pg_eval_readback(&machine, graph), 10000)) == 1);
+	}
+	assert(machine.status == PG_EVAL_WHNF);
+	pg_eval_destroy(&machine);
+	puts("requests: inert pointer labels, zero-clause forwarding, captured continuations and split resume passed");
 }
 
 static void computation_execution_test(struct pg_graph *graph)
@@ -2444,6 +2516,7 @@ int main(void)
 	family_instance_test(&graph);
 	typed_restriction_test(&graph);
 	computation_execution_test(&graph);
+	request_forwarding_test(&graph);
 	demand_budget_test(&graph);
 	auxiliary_demand_test(&graph);
 	deferred_work_test(&graph);
