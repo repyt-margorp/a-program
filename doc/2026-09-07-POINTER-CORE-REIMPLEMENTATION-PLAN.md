@@ -89,23 +89,50 @@ unsupported must not be changed to success without the required evidence.
 
 Positivity integration audit after `c1e520f`:
 
-Before adding nominal Self formation, rechecked an ordinary open family after
+While auditing nominal Self formation, rechecked an ordinary open family after
 `855f75a`: `f := &(\F : (@ -> @) => \A : @ => \x : (F A) => x);`
 returns unsupported after 86 transitions. This is not a parser or fuel failure.
 `type_input` requires `pg_synthesis_return`; the neutral application of the
 function parameter cannot expose a canonical RETURN. Thus ordinary symbolic
 type-family use is missing independently of recursive datatype admission.
 
-- [ ] Close this shared type-family boundary before installing a Self-only
-  exception. `check-open-families` checks the new source fixture and is part of
+- [ ] Close ordinary open type-family use. `check-open-families` checks the new
+  source fixture and is part of
   `check-acceptance`; unsupported remains failure. This concretizes the existing
   N2 neutral/open pure family obligation below, rather than a new feature request.
 - [ ] Define the retained formation/totality requirements for observing an open
   pure family result as a type. A `Comp A` classifier alone must not silently
   give a value of A. Preserve symbolic dependence without executing a future
-  effect, and keep `::` post-synthesis. The same rule must serve source family
-  parameters and constructor field/index checking; do not add ValuePi or an
-  unproved computation-to-value coercion to make this example green.
+  effect, and keep `::` post-synthesis. Do not add ValuePi or an unproved
+  computation-to-value coercion to make this example green.
+
+Dependency correction after `8a53197`: that open-function issue is not a
+prerequisite for every nominal family formation. `data_result_start` already
+checks `* indices` by building a substitution into the declared index context;
+it does not execute an arbitrary function returning a Universe value. The two
+paths share ordinary typed substitution, not necessarily an elimination rule.
+The earlier requirement that both use the same rule was too strong.
+
+Next declaration-admission contract:
+
+- A scoped family signature supplies its fixed parameter context and index
+  telescope. Instantiating that signature consumes checked index images and
+  forms a type symbolically. It is not APP elimination of a `Comp Universe`
+  value and must not require canonical RETURN readback.
+- Field checking may refer to that signature, but it must not thereby obtain
+  constructor membership, a Match rule, an IH, or general indexed fibrancy.
+  Admission must retain and discharge the recursive signature assumptions
+  after all fields, index maps, universe and positivity obligations are checked.
+- Do not expose a globally accepted partial declaration or mutate an accepted
+  evidence record when the remaining constructors arrive. Use the existing
+  declaration producer and immutable premises as the publication boundary.
+- This needs no separate ValuePi Core node. The current raw field/result
+  telescope and binding pointers remain the data to use; the additional work
+  is the checked declaration rule and its scoped assumptions.
+- An arbitrary source field such as `R y x` can still encounter the independent
+  open-function boundary. Acc acceptance must close that obligation too; Bool
+  and a direct Self field must not be held behind an unrelated generic RUN
+  operator. Keep both acceptance gates failing until their actual rules exist.
 
 - The pinned Narya
   [`positivity.ml`](https://github.com/gwaithimirdain/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/lib/core/positivity.ml)
