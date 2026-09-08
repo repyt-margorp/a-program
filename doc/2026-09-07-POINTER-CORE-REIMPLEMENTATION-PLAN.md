@@ -1736,6 +1736,17 @@ tests does not discharge it, and datatype admission must not assume completion.
   tag, proof rule or context algorithm was added. Implementation +16 lines;
   tests +19; documentation separate. Optimized and ASan/UBSan pointer checks
   pass; Core also passes with a 512 KiB stack.
+- [x] September 8, after `0d04553`: localize the typed transposition gap with
+  `square_transposition_boundary`. Construct both orientations of the same
+  geometric universe square using ordinary context action. All four corners
+  and four edges map by their geometric binders through checked substitution
+  and conversion, despite their different declaration orders. The final
+  center cannot be paired: its two oriented Identity classifiers are not
+  current DefEq. This is an expected negative test, not evidence that square
+  transposition is impossible. The next rule must transform the center proof
+  with its boundary, not alpha-rename it or loosen substitution checking.
+  Context/evidence algorithms remain unchanged; tests +56 lines; docs separate.
+  Optimized and ASan/UBSan pointer checks pass; Identity passes at 512 KiB stack.
 
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD

@@ -696,6 +696,61 @@ static void transport_fields(struct pg_typing *typing, struct pg_classifiers *cl
 	pg_whnf_work_destroy(&work);
 }
 
+static void square_transposition_boundary(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_graph *graph = typing->graph;
+	struct pg_dimensions dimensions;
+	struct pg_whnf_work work;
+	assert(pg_dimensions_init(&dimensions, graph) == 0);
+	assert(pg_whnf_work_init(&work, graph) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, pg_binder(graph),
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, 2);
+	struct pg_coordinate coordinates[] = {{PG_AXIS, 0}, {PG_ENDPOINT_ZERO, 0}};
+	const struct pg_binding_face *line = pg_binding_face(&dimensions, cube, pg_dimension_map(&dimensions, 1, 2, coordinates));
+	const struct pg_evidence *left, *right, *paths[3], *contexts[2];
+	const struct pg_evidence *line_context = pg_identity_context(typing, &dimensions, source, 1, &line, &left, &right, paths);
+	struct pg_coordinate swap_axes[] = {{PG_AXIS, 1}, {PG_AXIS, 0}};
+	const struct pg_dimension_map *swap = pg_dimension_map(&dimensions, 2, 2, swap_axes);
+	const struct pg_binding_face *centers[3];
+	coordinates[0] = (struct pg_coordinate){PG_ENDPOINT_ZERO, 0};
+	coordinates[1] = (struct pg_coordinate){PG_AXIS, 0};
+	centers[0] = pg_binding_face(&dimensions, cube, pg_dimension_map(&dimensions, 1, 2, coordinates));
+	coordinates[0].kind = PG_ENDPOINT_ONE;
+	centers[1] = pg_binding_face(&dimensions, cube, pg_dimension_map(&dimensions, 1, 2, coordinates));
+	centers[2] = pg_binding_face(&dimensions, cube, pg_dimension_identity(&dimensions, 2));
+	contexts[0] = pg_identity_context(typing, &dimensions, line_context, 3, centers, &left, &right, paths);
+	for (size_t i = 0; i < 3; ++i) centers[i] = pg_binding_permute(&dimensions, centers[i], swap);
+	contexts[1] = pg_identity_context(typing, &dimensions, line_context, 3, centers, &left, &right, paths);
+	assert(contexts[0] && contexts[1]);
+	const struct pg_evidence *extensions[9], *cursor = contexts[0];
+	for (size_t i = 9; i; --i) {
+		extensions[i - 1] = cursor;
+		cursor = pg_evidence_premise(cursor, 0);
+	}
+	const struct pg_evidence *map = pg_prove_substitution(typing, empty, contexts[1], 0, NULL);
+	for (size_t i = 0; i < 8; ++i) {
+		/* Match geometric corners/edges, not declaration-list positions. */
+		const struct pg_evidence *value = pg_prove_variable(typing, contexts[1], pg_evidence_context(extensions[i])->binder);
+		assert(value);
+		value = convert_to(typing, &work, value, pg_prove_reindex(typing, map, pg_evidence_premise(extensions[i], 1)));
+		map = pg_prove_substitution_pair(typing, map, extensions[i], value);
+		assert(map);
+	}
+	const struct pg_evidence *center = pg_prove_variable(typing, contexts[1], &centers[2]->variable);
+	const struct pg_evidence *expected = pg_prove_reindex(typing, map, pg_evidence_premise(extensions[8], 1));
+	assert(center && expected);
+	assert(!pg_prove_substitution_pair(typing, map, extensions[8], center));
+	struct pg_conversion comparison;
+	assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(center), pg_evidence_subject(expected)->core) == 0);
+	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_DIFFERENT);
+	assert(!pg_conversion_certificate(&comparison));
+	pg_conversion_destroy(&comparison);
+	pg_whnf_work_destroy(&work);
+	pg_dimensions_destroy(&dimensions);
+}
+
 static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	struct pg_graph *graph = typing->graph;
@@ -753,6 +808,7 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 
 static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
+	square_transposition_boundary(typing, classifiers);
 	uniform_transport(typing, classifiers);
 	struct pg_dimensions dimensions;
 	assert(pg_dimensions_init(&dimensions, typing->graph) == 0);
