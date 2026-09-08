@@ -1109,6 +1109,9 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		enum pg_synthesis_status status;
 		int emits, requests;
 	} nested_handlers[] = {
+		{"h := (Op Arg) @Op req k => (&{ &(\\x : Result => x); }) (k req) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => (k req) req @#.return x => x;", PG_SYNTHESIS_REJECTED, 0, 0},
+		{"h := (Op Arg) @Op req k => (((Fetch req) (k req)) @Fetch q resume => resume Given @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
 		{"h := ((\\x : Result => Op x) (Op Arg)) @Op req k => k req @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
 		{"h := (Op Arg) @Op req k => (\\x : Result => x) (k req) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
 		{"h := (Op Arg) @Op req k => (&(\\x : Result => x)) (k req) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},

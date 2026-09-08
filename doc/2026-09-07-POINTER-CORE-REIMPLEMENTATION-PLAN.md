@@ -697,9 +697,31 @@ finish general handler source support.
   350->389, 06 272->311, 07 744->921, 09 1718->1987. These are scheduling counts,
   not evidence of a wall-time speedup. Implementation C changes +31/-9, tests
   +17/-0. Source 01-04 and higher Identity transition counts are unchanged.
-  Effectful callee discovery and unknown producer polarity still use the old
-  accepted-operand path; removing that path remains required. This entry does
-  not complete arbitrary source APP, general dependent effects or N4.
+  This checkpoint left effectful callee discovery on the accepted-operand path;
+  the following entry removes that path. General dependent effects and N4 are
+  not completed by either entry.
+- [x] September 9: source APP now has one pending preparation path. It exposes
+  the callee through U/F before sequencing the argument, storing both kinds of
+  result bindings in the same frame structure used by blocks. The frames close
+  through ordinary Lambda and sequence jobs in reverse order. No recursive C
+  elaboration, generated surface syntax, new Core constructor or kernel rule is
+  used. Removed application_step, sequence_operand and the fallback stage.
+  The remaining accepted-input frame belongs only to Match; rename it accordingly
+  and remove its unused value and parent fields. Match preparation remains open.
+  Removing the fallback exposed a provisional-classifier bug: an inapplicable
+  FOLD candidate was propagated as failure before the sequence's checked pure
+  APP fallback finished. Classifier projection now awaits the sequence's final
+  evidence in that case; actual errors still propagate. The existing higher
+  named Identity example reproduces this dependency and passes again.
+  Added split/bulk regressions for Fetch as callee with a pending resumption
+  argument, repeated U/F exposure of a delayed function, and rejection of a
+  computed nonfunction. Accepted evidence still validates both original operands.
+  Normal checks, eight source cases, six execution cases and rebuilt ASan/UBSan
+  synthesis pass. Implementation C changes +109/-138; tests +3/-0. Example
+  transition counts are 295, 63, 295, 591, 396, 317, 975, 2203 (01-07, 09).
+  This is a pipeline unification, not a demonstrated wall-time improvement.
+  This does not establish all structural subject projections for dependent
+  sequence fallback; audit those separately before retaining them in `.a`.
 - [ ] Automatic equation generation from arbitrary source bodies remains open.
   This fixture supplies the graph explicitly before checking the source body;
   it does not infer latent callable effects or a general dependent carrier.
