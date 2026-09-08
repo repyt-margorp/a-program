@@ -2432,6 +2432,20 @@ transport tests or further permutation-group tests cannot close them.
   Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test
   pass. Implementation C/header: +10/-3; tests: +33/-0; documentation excluded.
 
+- [x] After `34605ab`, exercise formation recovery throughout generated cube
+  contexts for `A : Universe, x : A, f : U(Pi A (F A))`. Dimensions 0-3 and
+  all six 3D orientations cover 525 declarations, including 360 positive-
+  dimensional faces. For each such face, recover a Family Identity in the
+  complete context, preserving its universe bound and alpha-equivalent subject.
+  Independently restrict the face's last intrinsic axis to each endpoint and
+  require the recovered endpoint proof to reference exactly that binder.
+  The 165 vertices do not acquire an Identity dimension merely by belonging
+  to a cube. This checks dependent type/value/function boundary provenance,
+  not just agreement of erased classifier shapes. No implementation or
+  acceptance rule is added, and no map between different centers is inferred.
+  Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test
+  pass. Tests: +23/-0; implementation unchanged; documentation excluded.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action

@@ -1072,6 +1072,29 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 			const struct pg_binding_cube *all_cubes[] = {cube, cubes[1], pg_binding_cube(&dimensions, dimension)};
 			const struct pg_evidence *all = pg_identity_cube_context(typing, &dimensions, neutral_source, 3, all_cubes, order);
 			assert(all);
+			for (const struct pg_context *c = pg_evidence_context(all); c; c = c->parent) {
+				const struct pg_binding_face *face = pg_binding_face_view(c->binder);
+				assert(face);
+				const struct pg_evidence *formation = pg_prove_classifier(typing, classifiers, all,
+					pg_prove_variable(typing, all, c->binder));
+				const struct pg_evidence *recovered = pg_identity_formation(typing, classifiers, formation);
+				if (!face->face->source) { assert(!recovered); continue; }
+				assert(recovered && pg_evidence_context(recovered) == pg_evidence_context(all));
+				assert(pg_evidence_rule(recovered) == PG_FAMILY_IDENTITY_FORM);
+				assert(pg_evidence_classifier(recovered) == pg_evidence_classifier(formation));
+				assert(pg_alpha_equal(pg_evidence_subject(recovered)->core, pg_evidence_subject(formation)->core) == 1);
+				size_t d = face->face->source;
+				struct pg_coordinate endpoint_coordinates[3];
+				for (size_t i = 0; i + 1 < d; ++i) endpoint_coordinates[i] = (struct pg_coordinate){PG_AXIS, i};
+				for (size_t side = 0; side < 2; ++side) {
+					endpoint_coordinates[d - 1] = (struct pg_coordinate){side ? PG_ENDPOINT_ONE : PG_ENDPOINT_ZERO, 0};
+					const struct pg_binding_face *endpoint = pg_binding_restrict(&dimensions, face,
+						pg_dimension_map(&dimensions, d - 1, d, endpoint_coordinates));
+					const struct pg_evidence *value = pg_evidence_premise(recovered,
+						pg_evidence_premise_count(recovered) - 2 + side);
+					assert(endpoint && pg_evidence_subject(value)->core == pg_reference(typing->graph, &endpoint->variable));
+				}
+			}
 			const struct pg_binding_face *fcenter = pg_binding_face(&dimensions, all_cubes[2], order);
 			const struct pg_evidence *applied = expose_classifier(typing, classifiers, &cube_work, all,
 				pg_prove_variable(typing, all, &fcenter->variable));
