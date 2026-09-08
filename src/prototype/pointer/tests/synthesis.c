@@ -105,12 +105,16 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *surface = complete(&synthesis, request(&synthesis, scope, "checked := M :: T;"), PG_SYNTHESIS_DONE);
 	same_judgement(surface, result);
 	const struct pg_operation_declaration *operation = pg_operation_declaration(typing, u1, u1);
-	const struct pg_evidence *function = pg_prove_operation_function(typing, classifiers, operation);
-	assert(function);
-	scope = pg_synthesis_name(&synthesis, scope,
-		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Op", .length=2}, function);
-	scope = pg_synthesis_name(&synthesis, scope,
-		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Alias", .length=5}, function);
+	size_t term_count = typing->graph->terms.count, proof_count = typing->proofs.count;
+	struct pg_synthesis_job *operation_job = pg_synthesis_operation(&synthesis, operation);
+	assert(operation_job && !pg_synthesis_result(operation_job));
+	assert(pg_synthesis_operation(&synthesis, operation) == operation_job);
+	assert(!pg_synthesis_operation(&synthesis, NULL));
+	assert(typing->graph->terms.count == term_count && typing->proofs.count == proof_count);
+	scope = pg_synthesis_name_job(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Op", .length=2}, operation_job);
+	scope = pg_synthesis_name_job(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Alias", .length=5}, operation_job);
 	scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Arg", .length=3}, pg_prove_type_value(typing, u0));
 	assert(scope);
@@ -129,6 +133,16 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		assert(operation_label == pg_operation_label(operation));
 		assert(payload == pg_evidence_subject(u0)->core);
 	}
+	assert(pg_synthesis_operation(&synthesis, operation) == operation_job);
+	const struct pg_evidence *operation_function = pg_synthesis_result(operation_job);
+	assert(operation_function);
+	const struct pg_evidence *source_alias = complete(&synthesis,
+		request(&synthesis, scope, "alias := Op;"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(source_alias)->core == pg_evidence_subject(operation_function)->core);
+	term_count = typing->graph->terms.count;
+	proof_count = typing->proofs.count;
+	assert(complete(&synthesis, pg_synthesis_operation(&synthesis, operation), PG_SYNTHESIS_DONE) == operation_function);
+	assert(typing->graph->terms.count == term_count && typing->proofs.count == proof_count);
 	const struct pg_evidence *mapped = complete(&synthesis,
 		request(&synthesis, scope, "mapped := M @#.return x => x;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *mapped_value = pg_prove_return_value(typing, normalize(&synthesis, context, mapped));
@@ -161,9 +175,9 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *function_type = pg_prove_classifier(typing, classifiers, context, quoted_function);
 	const struct pg_operation_declaration *fetch = pg_operation_declaration(typing, u1, function_type);
 	assert(fetch);
-	scope = pg_synthesis_name(&synthesis, scope,
+	scope = pg_synthesis_name_job(&synthesis, scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Fetch", .length=5},
-		pg_prove_operation_function(typing, classifiers, fetch));
+		pg_synthesis_operation(&synthesis, fetch));
 	const struct pg_evidence *fetched_call = complete(&synthesis,
 		request(&synthesis, scope, "fetched := (Fetch Arg) Arg;"), PG_SYNTHESIS_DONE);
 	const struct pg_effect_row *call_effects;
@@ -217,7 +231,15 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(handled);
 	const struct pg_evidence *answer = pg_prove_return_value(typing, normalize(&synthesis, context, handled));
 	assert(answer && pg_evidence_subject(answer)->core == pg_evidence_subject(u0)->core);
+	struct pg_typing foreign;
+	assert(!pg_typing_init(&foreign, typing->graph));
+	const struct pg_evidence *foreign_context = pg_prove_empty_context(&foreign);
+	const struct pg_evidence *foreign_type = pg_prove_universe(&foreign, classifiers, foreign_context, 1);
+	const struct pg_operation_declaration *foreign_operation = pg_operation_declaration(&foreign, foreign_type, foreign_type);
+	assert(foreign_operation);
+	complete(&synthesis, pg_synthesis_operation(&synthesis, foreign_operation), PG_SYNTHESIS_REJECTED);
 	pg_synthesis_destroy(&synthesis);
+	pg_typing_destroy(&foreign);
 	pg_whnf_work_destroy(&work);
 	puts("effect expectations: post-synthesis widening, unchanged producers and directed rejection passed");
 }

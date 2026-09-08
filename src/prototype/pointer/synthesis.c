@@ -98,7 +98,7 @@ struct derivation_state {
 	const struct pg_reduction_certificate *reduction;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const void *owner;
@@ -303,6 +303,12 @@ static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job = request_job(synthesis, role, scope, syntax);
 	if (job) { job->scope = scope; job->syntax = syntax; }
 	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
+	const struct pg_operation_declaration *declaration)
+{
+	return declaration ? request_job(synthesis, OPERATION_JOB, declaration, NULL) : NULL;
 }
 
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
@@ -2723,6 +2729,11 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		if (!source_context(job->scope)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->role == OPERATION_JOB) {
+		job->result = pg_prove_operation_function(synthesis->typing, synthesis->classifiers, job->inputs[0]);
+		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+		return;
+	}
 	if (job->role == DERIVATION_JOB) { derivation_step(synthesis, job); return; }
 	if (job->role == CONSTRUCTOR_VALUE_JOB) { constructor_value_step(synthesis, job); return; }
 	if (job->role == CONVERSION_JOB) { conversion_step(synthesis, job); return; }

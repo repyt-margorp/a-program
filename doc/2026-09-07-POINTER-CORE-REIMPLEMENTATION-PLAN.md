@@ -13,6 +13,25 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 8 shared operation producers
+
+- [x] Add `pg_synthesis_operation`, keyed by the exact declaration pointer in
+  the existing job index. Requesting it creates no Core or accepted proof;
+  ordinary Solve builds the existing Lambda/request/RETURN callable once.
+  Repeated driver names use `pg_synthesis_name_job` and share this producer.
+- [x] Test pending registration, exact job reuse, unchanged Core/proof counts
+  on repeated completed requests, source-name reuse, and rejection of a
+  declaration whose signature evidence belongs to another typing store.
+- [ ] Operation-clause label resolution through source aliases and general
+  output-carrier synthesis remain open. Sharing the callable producer is not
+  permission to classify arbitrary functions as operation declarations by
+  inspecting their erased Core, and adds no such heuristic.
+
+Verification: regular components, eight examples, six execution fixtures and
+rebuilt ASan/UBSan `synthesis_test` pass. Full acceptance still fails the known
+`open-family.p` gate at 88 transitions. No Main promotion is authorized by
+these partial results.
+
 ### September 8 effectful callee sequencing
 
 - [x] Remove the empty-row-only gate on a callee of type `F E (U Pi)`.

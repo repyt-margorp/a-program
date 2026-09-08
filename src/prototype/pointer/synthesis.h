@@ -76,6 +76,13 @@ const struct pg_syntax *pg_synthesis_telescope_body(const struct pg_synthesis_jo
  * this store's typing arena is accepted; this is not a serialized-proof loader. */
 struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
 	const struct pg_evidence *proof);
+/* One pending callable producer per exact operation declaration. Ordinary
+ * Solve constructs its Lambda/request/RETURN evidence once; names and aliases
+ * can refer to this producer before completion. Signature ownership is checked
+ * by the same operation function builder, not inferred from the erased Core.
+ * The declaration and its signature evidence outlive this synthesis store. */
+struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
+	const struct pg_operation_declaration *declaration);
 struct pg_derivation_input;
 /* Unaccepted stored rule DAG; request does not traverse or accept it. Inputs
  * outlive synthesis. Uses ordinary dependencies, rules and pure work. */
