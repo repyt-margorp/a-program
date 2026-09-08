@@ -4162,6 +4162,28 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		assert(pg_evidence_subject(result)->core == pg_evidence_subject(zero)->core);
 		assert(pg_evidence_classifier(result) == pg_evidence_subject(nat)->core);
 	}
+	/* An induction also adapts branches that bind recursive fields but never
+	 * use their IHs. Keep field order and discard only the unused assumptions. */
+	{
+		struct pg_synthesis_job *tree = request(&synthesis, named,
+			"Tree:=@{leaf:*; left:*->*; right:*->*; fork:*->*->*;};");
+		complete(&synthesis, tree, PG_SYNTHESIS_DONE);
+		const struct pg_source_scope *tree_scope = pg_synthesis_name_job(&synthesis, named,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Tree", .length = 4}, tree);
+		const char *cases[] = {
+			"r:=(\\t:Tree=>t @leaf=>Tree.leaf @left k=>Tree.left *k @right k=>k @fork a b=>b) (Tree.left (Tree.right (Tree.left Tree.leaf)));",
+			"r:=(\\t:Tree=>t @leaf=>Tree.leaf @left k=>Tree.left *k @right k=>k @fork a b=>b) (Tree.fork Tree.leaf (Tree.left (Tree.left Tree.leaf)));"
+		};
+		const struct pg_evidence *expected = complete(&synthesis, request(&synthesis, tree_scope,
+			"r:=Tree.left (Tree.left Tree.leaf);"), PG_SYNTHESIS_DONE);
+		expected = complete(&synthesis, pg_synthesis_nf(&synthesis, empty, expected), PG_SYNTHESIS_DONE);
+		for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+			const struct pg_evidence *result = complete(&synthesis,
+				request(&synthesis, tree_scope, cases[i]), PG_SYNTHESIS_DONE);
+			result = complete(&synthesis, pg_synthesis_nf(&synthesis, empty, result), PG_SYNTHESIS_DONE);
+			assert(pg_evidence_subject(result)->core == pg_evidence_subject(expected)->core);
+		}
+	}
 	const char *bad_matches[] = {
 		"r:=Nat.zero @zero=>Nat.zero;",
 		"r:=Nat.zero @zero=>Nat.zero @zero=>Nat.zero;",

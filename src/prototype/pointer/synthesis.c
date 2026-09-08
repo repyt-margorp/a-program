@@ -77,6 +77,7 @@ struct match_branch {
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *clause;
 	struct pg_synthesis_job *body;
+	struct pg_synthesis_job *adapted;
 	const struct pg_evidence *function;
 	int needs_ih;
 };
@@ -85,6 +86,7 @@ struct match_state {
 	const struct pg_source_scope *labels;
 	const struct pg_evidence *motive;
 	const struct pg_evidence *motive_context;
+	struct pg_synthesis_job *motive_context_job, *motive_job;
 	size_t count, next, checked, prepared;
 	int induction;
 	struct match_branch branches[];
@@ -2934,6 +2936,14 @@ rejected:
 	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
 }
 
+static struct pg_synthesis_job *projected_image(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *image)
+{
+	struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, image)};
+	struct pg_derivation_input input = {.rule = PG_CONTEXT_PROJECTION, .count = 2};
+	return pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
+}
+
 static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->result) goto complete;
@@ -3062,11 +3072,22 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	}
 	if (!state->motive) goto unsupported;
 	if (!state->motive_context) {
-		const struct pg_evidence *family = pg_prove_reindex(synthesis->typing, state->instance.parameters, state->instance.formation);
-		state->motive_context = pg_prove_context_extension(synthesis->typing, context,
-			pg_binder(synthesis->typing->graph), family);
-		state->motive = pg_prove_projection(synthesis->typing, state->motive_context, state->motive);
-		if (!state->motive) goto error;
+		if (!state->motive_job) {
+			struct pg_synthesis_job *family = pg_synthesis_reindex(synthesis, state->instance.parameters, state->instance.formation);
+			struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, context), family};
+			struct pg_derivation_input extend = {.rule = PG_CONTEXT_EXTEND, .count = 2,
+				.parameters.binder = pg_binder(synthesis->typing->graph)};
+			state->motive_context_job = pg_synthesis_rule(synthesis, &extend, premises, NULL, NULL);
+			premises[0] = state->motive_context_job;
+			premises[1] = pg_synthesis_evidence(synthesis, state->motive);
+			struct pg_derivation_input project = {.rule = PG_CONTEXT_PROJECTION, .count = 2};
+			state->motive_job = pg_synthesis_rule(synthesis, &project, premises, NULL, NULL);
+			if (!state->motive_job) goto error;
+		}
+		if (state->motive_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, state->motive_job); return; }
+		if (state->motive_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, state->motive_job->status); return; }
+		state->motive_context = state->motive_context_job->result;
+		state->motive = state->motive_job->result;
 	}
 	if (state->induction && state->prepared < state->count) {
 		struct match_branch *branch = &state->branches[state->prepared];
@@ -3079,9 +3100,27 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			if (branch->body->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->body); return; }
 			if (branch->body->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, branch->body->status); return; }
 			branch->function = branch->body->result;
-		} else branch->function = pg_prove_induction_case(synthesis->typing, synthesis->classifiers,
-			state->instance.formation, constructor, state->instance.parameters,
-			state->motive_context, state->motive, branch->function);
+		} else {
+			if (!branch->adapted) {
+				struct pg_synthesis_job *scope = pg_synthesis_induction_scope(synthesis,
+					pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
+					pg_synthesis_evidence(synthesis, state->instance.parameters),
+					pg_synthesis_evidence(synthesis, state->motive_context), pg_synthesis_evidence(synthesis, state->motive));
+				if (!scope) goto error;
+				if (scope->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, scope); return; }
+				if (scope->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, scope->status); return; }
+				const struct pg_evidence *map = scope->result, *destination = pg_evidence_premise(map, 1);
+				struct pg_synthesis_job *body = projected_image(synthesis, destination, branch->function);
+				for (size_t i = pg_evidence_premise_count(state->instance.parameters) + 1; i < pg_evidence_premise_count(map); ++i)
+					body = pg_synthesis_application(synthesis, destination, body,
+						projected_image(synthesis, destination, pg_evidence_premise(map, i)));
+				branch->adapted = pg_synthesis_abstract(synthesis, context, destination, body);
+				if (!branch->adapted) goto error;
+			}
+			if (branch->adapted->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->adapted); return; }
+			if (branch->adapted->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, branch->adapted->status); return; }
+			branch->function = branch->adapted->result;
+		}
 		if (!branch->function) goto unsupported;
 		++state->prepared;
 		enqueue(synthesis, job);
@@ -3185,14 +3224,6 @@ rejected:
 	finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 error:
 	finish(synthesis, job, PG_SYNTHESIS_ERROR);
-}
-
-static struct pg_synthesis_job *projected_image(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, const struct pg_evidence *image)
-{
-	struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, image)};
-	struct pg_derivation_input input = {.rule = PG_CONTEXT_PROJECTION, .count = 2};
-	return pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
 }
 
 static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)

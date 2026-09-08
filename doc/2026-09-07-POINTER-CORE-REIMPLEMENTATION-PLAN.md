@@ -855,6 +855,24 @@ finish general handler source support.
   `pg_prove_induction_case`; this change does not claim their migration.
   Implementation C/header: +120/-4; tests: +21/-0; documentation separate.
 
+  September 9, after `902a718`: non-IH source branches in an induction now
+  await the same induction scope, project their independently synthesized
+  function, apply the original fields through ordinary application jobs and
+  abstract over the extended context. Source synthesis no longer calls
+  `pg_prove_induction_case`. Motive context extension and motive projection
+  likewise use ordinary pending rule jobs. The kernel's induction verification
+  remains unchanged; no new job role or Core node was necessary.
+  A four-constructor Tree regression checks recursive branches that ignore
+  one or two IHs while still using the field values in the correct order.
+  Both resulting programs normalize to the independently constructed expected
+  Tree under single-step Solve. Normal components, eight source checks and six
+  execution fixtures pass. Example transitions (01-07, 09): 318, 142, 318,
+  1211, 557, 498, 1271, 3059. These schedule formerly synchronous work and are
+  not evidence of a performance improvement. Pending instance recovery and
+  general dependent motive inference remain open.
+  Rebuilt ASan/UBSan synthesis checks pass as well.
+  Implementation C: +47/-16; tests: +22/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.
