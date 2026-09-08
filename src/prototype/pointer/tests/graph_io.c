@@ -122,6 +122,19 @@ int main(void)
 	const struct pg_term *redex = pg_application(&source, id, vy);
 	const struct pg_term *dag = vx;
 	for (size_t i = 0; i < 40; ++i) dag = pg_application(&source, dag, dag);
+	FILE *listing = tmpfile();
+	size_t before_print = source.terms.count;
+	assert(listing && !pg_graph_print(listing, dag));
+	assert(source.terms.count == before_print);
+	rewind(listing);
+	char line[256];
+	size_t lines = 0;
+	while (fgets(line, sizeof(line), listing)) ++lines;
+	assert(lines == 43 && !strcmp(line, "root := n41\n"));
+	assert(!pg_graph_print(listing, redex));
+	assert(source.terms.count == before_print);
+	assert(pg_graph_print(NULL, dag) == -1 && pg_graph_print(listing, NULL) == -1);
+	assert(!fclose(listing));
 	const struct pg_term *input[] = {id, other_id, id, redex, dag,
 		pg_reference(&source, &oracle), pg_lambda(&source, &owned_binder, pg_reference(&source, &owned_binder))};
 	FILE *file = tmpfile();

@@ -1,4 +1,5 @@
 #include "program.h"
+#include "graph_io.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -47,13 +48,21 @@ int main(int argc, char **argv)
 	uint64_t budget = 100000;
 	enum pg_definition_policy policy = PG_DEFINITION_IMPLICIT_THUNK;
 	const char *path = NULL;
+	const char *selected = NULL;
+	int nf = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "--steps")) {
 			if (++i == argc || steps_argument(argv[i], &budget) != 0) goto usage;
+		} else if (!strcmp(argv[i], "--nf") || !strcmp(argv[i], "--whnf")) {
+			if (selected) goto usage;
+			nf = !strcmp(argv[i], "--nf");
+			if (++i == argc || !*argv[i]) goto usage;
+			selected = argv[i];
 		} else if (!strcmp(argv[i], "--strict-thunks")) policy = PG_DEFINITION_EXPLICIT_THUNK;
 		else if (!strcmp(argv[i], "--help")) {
-			puts("usage: pointer-check [--steps N] [--strict-thunks] SOURCE.p|-\n"
+			puts("usage: pointer-check [--steps N] [--strict-thunks] [--whnf NAME|--nf NAME] SOURCE.p|-\n"
 				"Checks with the pointer-core solver; does not execute host effects.\n"
+				"WHNF/NF select a definition, force a stored thunk once, and print its pure Core DAG.\n"
 				"Exit: 0 done, 1 rejected/syntax, 2 input/internal error, 3 pending, 4 unsupported.\n"
 				"Steps bound solver transitions, not parsing time or individual rule cost.");
 			return 0;
@@ -80,8 +89,33 @@ int main(int argc, char **argv)
 		result = 1;
 	} else {
 		pg_synthesis_advance(&program->synthesis, budget);
+		struct pg_synthesis_job *job = program->root;
+		if (selected && pg_synthesis_status(job) == PG_SYNTHESIS_DONE) {
+			struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = selected, .length = strlen(selected)};
+			struct pg_synthesis_job *definition = pg_synthesis_definition(job, name);
+			if (!definition) {
+				fprintf(stderr, "%s: definition not found: %s\n", path, selected);
+				pg_program_destroy(program);
+				return 1;
+			}
+			const struct pg_evidence *proof = pg_synthesis_result(definition);
+			const struct pg_term *content;
+			if (pg_evidence_judgement(proof) == PG_JUDGEMENT_VALUE &&
+				pg_thunk_type_view(pg_evidence_classifier(proof), &content))
+				proof = pg_prove_force(&program->typing, proof);
+			const struct pg_evidence *context = pg_prove_empty_context(&program->typing);
+			job = nf ? pg_synthesis_nf(&program->synthesis, context, proof)
+				: pg_synthesis_normalize(&program->synthesis, context, proof);
+			if (!job) {
+				fputs("unsupported selected definition\n", stderr);
+				pg_program_destroy(program);
+				return 4;
+			}
+			uint64_t remaining = program->synthesis.steps < budget ? budget - program->synthesis.steps : 0;
+			pg_synthesis_advance(&program->synthesis, remaining);
+		}
 		const char *status;
-		switch (pg_synthesis_status(program->root)) {
+		switch (pg_synthesis_status(job)) {
 		case PG_SYNTHESIS_DONE: status = "done"; result = 0; break;
 		case PG_SYNTHESIS_REJECTED: status = "rejected"; result = 1; break;
 		case PG_SYNTHESIS_PENDING: status = "pending"; result = 3; break;
@@ -89,10 +123,11 @@ int main(int argc, char **argv)
 		default: status = "error"; result = 2; break;
 		}
 		printf("%s steps=%" PRIu64 "\n", status, program->synthesis.steps);
+		if (selected && !result && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core)) result = 2;
 	}
 	pg_program_destroy(program);
 	return result;
 usage:
-	fputs("usage: pointer-check [--steps N] [--strict-thunks] SOURCE.p|-\n", stderr);
+	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--whnf NAME|--nf NAME] SOURCE.p|-\n", stderr);
 	return 2;
 }

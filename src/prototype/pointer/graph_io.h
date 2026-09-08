@@ -4,6 +4,10 @@
 #include "graph.h"
 #include <stdio.h>
 
+/* Diagnostic shared-DAG listing. IDs are local display labels, not semantic
+ * identities or addresses. No reduction, descriptor execution or graph edits. */
+int pg_graph_print(FILE *file, const struct pg_term *root);
+
 /* Raw acyclic Core graph transport, not typing evidence or a program image.
  * Plain binders are relocated freshly. Owned binders and semantic objects need
  * stable, versioned descriptor names supplied by the owner. The codec never

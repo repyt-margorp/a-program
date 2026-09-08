@@ -5300,9 +5300,31 @@ specified budget. It prints status and consumed solver steps. Exit codes are
 0 done, 1 rejected/parser error, 2 input/internal error, 3 pending, 4 unsupported.
 Parsing and individual rules are not wall-clock bounded by `--steps`. This
 command checks only the implemented source fragment; it does not run host
-effects, save `.a`, restore work between processes, select `main` implicitly,
-or provide WHNF/NF/REPL parity yet. `tests/cli.sh` is part of pointer `check` and
-checks stdin, zero budget, cyclic pending work, rejection and malformed options.
+effects, save `.a`, restore work between processes or select `main` implicitly.
+`tests/cli.sh` is part of pointer `check` and checks stdin, zero budget, cyclic
+pending work, rejection and malformed options.
+
+After `c885b7b`, explicit pure evaluation is available:
+
+```sh
+src/prototype/pointer/.build/pointer-check --nf main examples/07_add.p
+src/prototype/pointer/.build/pointer-check --whnf main examples/07_add.p
+```
+
+The source root must first succeed. The selected stored thunk is forced once;
+the remaining budget advances an ordinary typed normalization job. Pending
+normalization never prints a completed result. The graph listing shares the
+existing iterative dependency collector with graph transport and prints each
+shared node once. Display IDs are local, not semantic identities, addresses or
+new Core tags. Semantic objects are currently opaque labels, not source-level
+constructor readback. This is not full REPL/readback or host-effect parity.
+Tests distinguish WHNF from NF beneath Lambda, check exact combined fuel
+boundaries, missing/duplicate selections, and print a depth-40 duplicated DAG
+in 43 lines without changing the graph or exponentially expanding its tree.
+Verification: optimized component checks, source examples and example results
+passed; ASan/UBSan CLI and graph I/O checks passed. Full acceptance still stops
+at open-family. Delta: implementation +81/-3, prototype build +2/-2, tests +29;
+documentation separate. Printed semantic-object labels are diagnostic only.
 
 One in-memory program owns graph roots, typed occurrences, declarations and work
 results. Parsing/lowering creates its initial unresolved state; bounded solving

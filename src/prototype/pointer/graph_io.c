@@ -26,6 +26,45 @@ static int dependency(void *owner, const void *key, size_t index, const void **c
 	}
 }
 
+int pg_graph_print(FILE *file, const struct pg_term *root)
+{
+	if (!file || !root) return -1;
+	struct pg_dag terms = {0}, objects = {0};
+	int status = -1;
+	if (pg_dag_init(&objects, NULL, NULL) || pg_dag_init(&terms, dependency, &objects)) goto done;
+	if (pg_dag_add(&terms, root)) goto done;
+	for (const struct pg_dag_node *r = objects.first; r; r = r->next) {
+		const struct pg_object *object = r->key;
+		if (fprintf(file, "o%zu := %s\n", r->id,
+			object->kind == PG_BINDER ? "binder" : "semantic-object") < 0) goto done;
+	}
+	for (const struct pg_dag_node *r = terms.first; r; r = r->next) {
+		const struct pg_term *term = r->key;
+		int written;
+		switch (term->kind) {
+		case PG_LAMBDA:
+			written = fprintf(file, "n%zu := LAMBDA(o%zu, n%zu)\n", r->id,
+				pg_dag_find(&objects, term->as.lambda.binder)->id,
+				pg_dag_find(&terms, term->as.lambda.body)->id); break;
+		case PG_APPLICATION:
+			written = fprintf(file, "n%zu := APP(n%zu, n%zu)\n", r->id,
+				pg_dag_find(&terms, term->as.application.function)->id,
+				pg_dag_find(&terms, term->as.application.argument)->id); break;
+		case PG_REFERENCE:
+			written = fprintf(file, "n%zu := REF(o%zu)\n", r->id,
+				pg_dag_find(&objects, term->as.reference)->id); break;
+		default: goto done;
+		}
+		if (written < 0) goto done;
+	}
+	if (fprintf(file, "root := n%zu\n", pg_dag_find(&terms, root)->id) < 0) goto done;
+	status = ferror(file) ? -1 : 0;
+done:
+	pg_dag_destroy(&terms);
+	pg_dag_destroy(&objects);
+	return status;
+}
+
 int pg_graph_write(FILE *file, size_t count, const struct pg_term *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *context)
 {
