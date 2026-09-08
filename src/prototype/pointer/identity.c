@@ -153,24 +153,21 @@ static int with_action_scope(struct pg_eval *machine, const struct pg_term *sour
 	return pg_eval_defer(machine, work, action_scope_poll, action_scope_resume, arena_work_destroy);
 }
 
-static int source_bindings(struct pg_eval *machine, struct action_scope *scope)
-{
-	if (!scope->count || scope->bindings) return 0;
-	if (scope->count > SIZE_MAX / sizeof(*scope->bindings)) return -1;
-	scope->bindings = pg_alloc(&machine->temporary, scope->count * sizeof(*scope->bindings));
-	if (!scope->bindings) return -1;
-	const struct pg_term *source = scope->source;
-	for (size_t i = 0; i < scope->count; ++i) {
-		scope->bindings[i].source = source->as.lambda.binder;
-		source = source->as.lambda.body;
-	}
-	return 0;
-}
-
 static int prepare_bindings(struct pg_eval *machine, struct action_scope *scope)
 {
-	if (source_bindings(machine, scope) != 0) return -1;
+	if (!scope->count) return 0;
+	const struct pg_term *source = NULL;
+	if (!scope->bindings) {
+		if (scope->count > SIZE_MAX / sizeof(*scope->bindings)) return -1;
+		scope->bindings = pg_alloc(&machine->temporary, scope->count * sizeof(*scope->bindings));
+		if (!scope->bindings) return -1;
+		source = scope->source;
+	}
 	for (size_t i = 0; i < scope->count; ++i) {
+		if (source) {
+			scope->bindings[i].source = source->as.lambda.binder;
+			source = source->as.lambda.body;
+		}
 		for (size_t j = 0; j < 3; ++j) {
 			scope->bindings[i].arguments[j] = pg_binder(machine->output);
 			if (!scope->bindings[i].arguments[j]) return -1;

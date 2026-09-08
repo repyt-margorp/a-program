@@ -453,6 +453,14 @@ Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass.
 The cube-function maximum is 243,489 charged transitions, versus 243,107 before
 charging reference-center selection; this is not a wall-time comparison.
 
+After `e8bba19`, source collection and fresh boundary-binder allocation share
+one preparation loop; the single-use `source_bindings` helper is removed.
+Already collected source arrays are reused. Implementation C: +12/-15.
+This eliminates a separate pass, not the outstanding synchronous-preparation
+obligation. Existing field, source-action and cancellation tests cover both
+fresh and prepopulated source arrays; no semantic rule changes.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,
