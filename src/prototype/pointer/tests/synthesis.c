@@ -429,13 +429,11 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_parser_next(&op_parser, &op_definition) == 1);
 		struct pg_synthesis_job *op_clause = pg_synthesis_handler_clause(&synthesis, op_scope,
 			carrier, op_definition.expression->items[0].expression);
-		/* Complete operation-name resolution, but keep carrier acceptance pending. */
-		for (unsigned steps = 0; synthesis.ready; ++steps) {
-			assert(steps < 10000);
-			pg_synthesis_advance(&synthesis, 1);
-		}
+		/* Request structure immediately, before operation-name preparation. */
 		struct pg_synthesis_job *op_type = pg_synthesis_classifier_structure(&synthesis, op_clause);
+		struct pg_synthesis_job *op_term = pg_synthesis_term_structure(&synthesis, op_clause);
 		assert(!complete(&synthesis, op_type, PG_SYNTHESIS_DONE));
+		assert(!complete(&synthesis, op_term, PG_SYNTHESIS_DONE));
 		const struct pg_term *payload_domain, *resume_pi, *resume_domain, *clause_result;
 		const struct pg_object *payload_binder, *resume_binder;
 		assert(pg_pi_view(pg_synthesis_type_structure_result(op_type), &payload_domain, &payload_binder, &resume_pi));
@@ -533,6 +531,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_result(context) == expected_context);
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *op_proof = complete(&synthesis, op_clause, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(op_proof)->core == pg_synthesis_type_structure_result(op_term));
 		const struct pg_object *accepted_payload, *accepted_resume;
 		assert(pg_pi_view(pg_evidence_classifier(op_proof), &payload_domain, &accepted_payload, &resume_pi));
 		assert(pg_pi_view(resume_pi, &resume_domain, &accepted_resume, &clause_result));

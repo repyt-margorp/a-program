@@ -354,6 +354,21 @@ Next implementation sequence (prerequisite for automatic source handlers):
   examples and rebuilt ASan/UBSan synthesis tests pass. List transitions increase
   from 1233 to 1662 due to preparatory work and retained fallback scheduling;
   no performance improvement is claimed.
+  A follow-up readiness regression removes the test's explicit queue drain
+  before requesting operation-clause structure. The old path exhausted its
+  10000-step budget: a metadata consumer waited for final clause acceptance
+  instead of the prerequisite that prepares its rule. Structural consumers now
+  follow that existing prerequisite during preparation, then use the published
+  rule link. A producer already queued is not enqueued twice. Lambda/APP source
+  polarity is computational and quotation polarity is value even before their
+  rules are prepared; this classification does not establish typing evidence.
+  The test requests both classifier and Core immediately for `resume req`,
+  obtains them before sealing, and checks exact Core identity after acceptance.
+  Normal checks, eight source cases, six runtime cases and rebuilt ASan/UBSan
+  synthesis tests pass. List uses 1668
+  transitions; this is a readiness fix, not a performance improvement. General
+  pending blocks/sequencing and automatic handler equation collection/sealing
+  remain incomplete; no full-inference milestone is marked complete here.
   Normal `check`, eight example synthesis cases, six runtime cases and rebuilt
   ASan/UBSan synthesis tests pass.
   Validation: normal `check`, eight example synthesis cases, six runtime cases

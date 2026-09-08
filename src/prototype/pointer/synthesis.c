@@ -3149,9 +3149,45 @@ static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_j
 	return NULL;
 }
 
+/* Preparation can publish a rule before it publishes accepted evidence. Wait
+ * for its current prerequisite, not for proof acceptance of the whole source. */
+static int await_source_preparation(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, struct pg_synthesis_job *producer)
+{
+	if (producer->status != PG_SYNTHESIS_PENDING) return 0;
+	int preparing = 0;
+	switch (producer->role) {
+	case HANDLER_RETURN_JOB: case HANDLER_CLAUSE_JOB:
+		preparing = !producer->value_job;
+		break;
+	case EXPRESSION_JOB:
+		switch (producer->syntax->kind) {
+		case PG_SYNTAX_APPLICATION:
+			preparing = !producer->stage || (producer->stage == 2 && !producer->function);
+			break;
+		case PG_SYNTAX_LAMBDA: case PG_SYNTAX_QUOTE: preparing = !producer->stage; break;
+		default: break;
+		}
+		break;
+	default: break;
+	}
+	if (!preparing) return 0;
+	if (producer->dependency)
+		depend(synthesis, job, producer->dependency->child);
+	else enqueue(synthesis, job);
+	return 1;
+}
+
 /* Structural polarity from known rules; unknown producers await acceptance. */
 static int body_rule_polarity(const struct pg_synthesis_job *rule)
 {
+	if (rule->role == EXPRESSION_JOB) {
+		switch (rule->syntax->kind) {
+		case PG_SYNTAX_LAMBDA: case PG_SYNTAX_APPLICATION: return 0;
+		case PG_SYNTAX_QUOTE: return 1;
+		default: return -1;
+		}
+	}
 	if (rule->role != DERIVATION_JOB) return -1;
 	const struct pg_derivation_input *input = rule->inputs[0];
 	switch (input->rule) {
@@ -3171,6 +3207,7 @@ static struct pg_synthesis_job *body_rule(const struct pg_synthesis_job *adapter
 static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	if (await_source_preparation(synthesis, job, producer)) return;
 	/* Classifier conversion and post-checking never rewrite the subject. */
 	if (producer->role == CLASSIFIER_JOB || producer->role == EXPECT_JOB) {
 		if (!job->left) job->left = pg_synthesis_term_structure(synthesis,
@@ -3299,6 +3336,7 @@ static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthes
 static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	if (await_source_preparation(synthesis, job, producer)) return;
 	if (producer->role == CLASSIFIER_JOB) {
 		if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, (void *)producer->inputs[1]);
 		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -3399,6 +3437,7 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	if (await_source_preparation(synthesis, job, producer)) return;
 	if (producer->role == CLASSIFIER_FORMATION_JOB) {
 		if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, (void *)producer->inputs[1]);
 		forward_structure(synthesis, job);
