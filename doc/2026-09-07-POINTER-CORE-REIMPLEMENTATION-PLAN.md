@@ -548,10 +548,8 @@ Next implementation sequence (prerequisite for automatic source handlers):
   it after the context is solved. An invalid binding context rejects the same
   handler. Normal checks, eight source cases, six runtime cases and rebuilt
   ASan/UBSan synthesis tests pass.
-  This establishes pending-context preparation, not shared nested equations:
-  each inferred handler still owns a separate worker. Next, register nested
-  contributions in one inference component and seal only after all producers
-  have registered; test resumption-dependent inner rows and failure propagation.
+  This checkpoint established pending-context preparation. Shared nested
+  equations are implemented by the subsequent September 9 entry below.
   Normal component checks, eight source examples, six execution cases and
   rebuilt ASan/UBSan synthesis tests pass. List now takes 1718 transitions;
   explicit projection jobs change scheduling, not a claimed runtime speedup.
@@ -646,6 +644,28 @@ finish general handler source support.
   `{x := Op req; k x;}` reissues the handled operation: its output row retains
   Op, the emitted request escapes the inner handler, and an outer handler can
   consume it and obtain the original value. An empty carrier is rejected.
+- [x] September 9: lexically nested inferred handlers share one equation worker.
+  The source scope carries the inference owner, not the Core or accepted proof.
+  Each handler registers its own equation and contribution edges; the owner
+  seals only when all participating handlers finish registration. Reissued
+  clause effects are not masked; only the input contribution subtracts labels.
+  A failed registration wakes the shared worker and propagates failure instead
+  of leaving other carriers waiting indefinitely. Only the owner destroys work.
+  Existing scopes with the same owner are reused without extra scope wrappers.
+  An exposed handler is a computation before acceptance; missing this polarity
+  fact previously made an enclosing body's classifier await its own effect
+  solution. No new term tag, inference rule, Replay engine or expected-type
+  producer inference is introduced.
+  Seven fixtures run with chunks 1 and 64: outer resumption as inner input,
+  reordered/aliased clauses, latent and executed reissued operations, three
+  nested handlers, duplicate inner labels, and incompatible inner result types.
+  They check inferred rows, actual returned/requested Core and rejection.
+  Normal component checks, eight source examples, six runtime cases and rebuilt
+  ASan/UBSan synthesis tests pass; example transition counts are unchanged.
+  This does not establish inference across arbitrary imported producers or
+  newly demanded bodies after component sealing; foreign symbolic row references
+  remain rejected, not guessed empty. General callable/dependent carriers and
+  equation relocation in pending `.a` images remain separate open gates.
 - [ ] Automatic equation generation from arbitrary source bodies remains open.
   This fixture supplies the graph explicitly before checking the source body;
   it does not infer latent callable effects or a general dependent carrier.

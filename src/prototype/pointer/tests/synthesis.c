@@ -1078,6 +1078,44 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		const struct pg_evidence *value = pg_prove_return_value(typing, normalize(&synthesis, context, proof));
 		assert(value && pg_evidence_subject(value)->core == pg_evidence_subject(u0)->core);
 	}
+	const struct {
+		const char *source;
+		enum pg_synthesis_status status;
+		int emits, requests;
+	} nested_handlers[] = {
+		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => resume req @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @#.return x => x @Op req k => ((k req) @#.return x => x @Alias req resume => resume req);", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => {x := Op req; resume x;} @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 1, 0},
+		{"h := (Op Arg) @Op req k => (({x := Op req; k x;}) @Op req resume => {x := Op req; resume x;} @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 1, 1},
+		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => ((resume req) @Op req r => r req @#.return x => x) @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => resume req @Alias req resume => resume req @#.return x => x) @#.return x => x;", PG_SYNTHESIS_REJECTED, 0, 0},
+		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => Result @#.return x => x) @#.return x => x;", PG_SYNTHESIS_REJECTED, 0, 0}
+	};
+	for (size_t chunk = 1; chunk <= 64; chunk *= 64)
+	for (size_t i = 0; i < sizeof(nested_handlers) / sizeof(*nested_handlers); ++i) {
+		struct pg_synthesis_job *nested = request(&synthesis, handler_scope, nested_handlers[i].source);
+		for (size_t turns = 0; pg_synthesis_status(nested) == PG_SYNTHESIS_PENDING; ++turns) {
+			assert(turns < 10000);
+			assert(!pg_synthesis_result(nested));
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		const struct pg_evidence *proof = complete(&synthesis, nested, nested_handlers[i].status);
+		if (!proof) continue;
+		const struct pg_effect_row *effects;
+		const struct pg_term *value;
+		assert(pg_effect_type_view(pg_evidence_classifier(proof), &effects, &value));
+		assert(pg_effect_count(effects) == (size_t)nested_handlers[i].emits);
+		if (nested_handlers[i].emits) assert(pg_effect_contains(effects, pg_operation_label(operation)) == 1);
+		const struct pg_evidence *normal = normalize(&synthesis, context, proof);
+		assert(normal);
+		if (nested_handlers[i].requests) {
+			const struct pg_object *label;
+			const struct pg_term *payload, *continuation;
+			assert(pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &payload, &continuation));
+			assert(label == pg_operation_label(operation));
+			assert(payload == pg_evidence_subject(u0)->core);
+		} else assert(pg_evidence_subject(normal)->core == pg_evidence_subject(returned)->core);
+	}
 	const struct pg_evidence *called = complete(&synthesis,
 		request(&synthesis, scope, "called := Op Arg;"), PG_SYNTHESIS_DONE);
 	const char *wrong_body = "handler := (Op Arg) @Op req k => Result;";
