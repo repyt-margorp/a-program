@@ -1138,6 +1138,40 @@ static void request_forwarding_test(struct pg_graph *graph)
 	assert(pg_computation_request_view(multi, &label, &payload, &continuation));
 	assert(label == &third && payload == reply2);
 	assert(request_whnf(graph, pg_application(graph, continuation, vy), 1) == pg_application(graph, ret, vy));
+	struct pg_operation_clause many[256];
+	for (size_t i = 0; i < 256; ++i) {
+		struct pg_object *object = pg_alloc(graph, sizeof(*object));
+		assert(object);
+		*object = (struct pg_object){PG_SEMANTIC_OBJECT, &operation_class};
+		many[i] = (struct pg_operation_clause){object, omega};
+	}
+	many[255].body = pg_lambda(graph, x, pg_lambda(graph, r, pg_application(graph, ret, vx)));
+	const struct pg_term *large = pg_computation_fold(graph,
+		pg_computation_request(graph, many[255].label, vy, ret), ret, 256, many);
+	pg_computation_eval_init(&machine, graph, large);
+	for (;;) {
+		size_t before = graph->terms.count;
+		enum pg_eval_status status = pg_eval_advance(&machine, 1);
+		assert(graph->terms.count - before <= 16);
+		assert(machine.steps < 100000);
+		if (status != PG_EVAL_PENDING) break;
+	}
+	assert(machine.status == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, graph) == pg_application(graph, ret, vy));
+	uint64_t large_steps = machine.steps;
+	pg_eval_destroy(&machine);
+	pg_computation_eval_init(&machine, graph, large);
+	assert(pg_eval_advance(&machine, 100000) == PG_EVAL_WHNF);
+	assert(machine.steps == large_steps);
+	pg_eval_destroy(&machine);
+	pg_computation_eval_init(&machine, graph, large);
+	while (!machine.task) {
+		assert(pg_eval_advance(&machine, 1) == PG_EVAL_PENDING);
+		assert(machine.steps < large_steps);
+	}
+	assert(pg_eval_advance(&machine, 16) == PG_EVAL_PENDING);
+	assert(machine.task && pg_alpha_equal(pg_eval_readback(&machine, graph), large) == 1);
+	pg_eval_destroy(&machine);
 	puts("fold clauses: simultaneous swaps, deep resumption, unhandled forwarding and exact layout reuse passed");
 }
 

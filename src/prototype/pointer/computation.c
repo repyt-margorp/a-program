@@ -212,6 +212,72 @@ static int force_answer(struct pg_eval *machine, const struct pg_term *answer, c
 	return body ? pg_eval_enter(machine, (struct pg_closure){body, NULL}, 1) : pg_identity_force(machine, answer);
 }
 
+struct fold_work {
+	struct pg_graph *graph;
+	const struct pg_term *head, *resume, *payload, *next;
+	const struct pg_object *label, *x;
+	const struct pg_object **binders;
+	size_t count, index, position;
+	enum { FOLD_BINDERS, FOLD_ARGUMENTS, FOLD_CLAUSE, FOLD_ABSTRACT } phase;
+};
+
+static int fold_poll(void *state)
+{
+	struct fold_work *work = state;
+	struct pg_graph *graph = work->graph;
+	switch (work->phase) {
+	case FOLD_BINDERS:
+		if (work->position < work->count + 2) {
+			const struct pg_object *binder = pg_binder(graph);
+			if (!binder) return -1;
+			work->binders[work->position++] = binder;
+			return 0;
+		}
+		work->x = pg_binder(graph);
+		work->next = pg_application(graph, work->resume, pg_reference(graph, work->x));
+		work->next = pg_application(graph, work->head, work->next);
+		work->position = 1;
+		work->phase = FOLD_ARGUMENTS;
+		break;
+	case FOLD_ARGUMENTS:
+		if (work->position < work->count + 2) {
+			work->next = pg_application(graph, work->next, pg_reference(graph, work->binders[work->position++]));
+			break;
+		}
+		work->phase = FOLD_CLAUSE;
+		break;
+	case FOLD_CLAUSE:
+		work->next = pg_lambda(graph, work->x, work->next);
+		if (work->index == work->count)
+			work->next = pg_computation_request(graph, work->label, work->payload, work->next);
+		else {
+			work->next = pg_application(graph, pg_reference(graph, &pg_thunk_operation), work->next);
+			const struct pg_term *clause = pg_application(graph,
+				pg_reference(graph, work->binders[work->index + 2]), work->payload);
+			work->next = pg_application(graph, clause, work->next);
+		}
+		work->position = work->count + 2;
+		work->phase = FOLD_ABSTRACT;
+		break;
+	case FOLD_ABSTRACT:
+		if (!work->position) return 1;
+		work->next = pg_lambda(graph, work->binders[--work->position], work->next);
+		break;
+	}
+	return work->next ? 0 : -1;
+}
+
+static int fold_resume(struct pg_eval *machine, void *state)
+{
+	struct fold_work *work = state;
+	return pg_eval_enter(machine, (struct pg_closure){work->next, NULL}, 0);
+}
+
+static void fold_destroy(void *state)
+{
+	(void)state; /* The evaluator's temporary arena owns the work and binder array. */
+}
+
 static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
 	const struct handler_entry *handler = state;
@@ -224,29 +290,14 @@ static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, co
 	if (!pg_computation_request_view(answer, &label, &payload, &resume)) return 1;
 	/* Bind the existing argument closures without demanding them. Only k is
 	 * recursively handled; a selected clause runs outside this handler. */
-	struct pg_graph *graph = machine->output;
-	struct pg_graph temporary = {0};
-	const struct pg_object **binders = pg_alloc(&temporary, (count + 2) * sizeof(*binders));
-	int status = -1;
-	if (!binders) goto done;
-	for (size_t i = 0; i < count + 2; ++i) binders[i] = pg_binder(graph);
-	const struct pg_object *x = pg_binder(graph);
-	const struct pg_term *next = pg_application(graph, resume, pg_reference(graph, x));
-	next = pg_application(graph, machine->current.term, next);
-	for (size_t i = 1; i < count + 2; ++i) next = pg_application(graph, next, pg_reference(graph, binders[i]));
-	next = pg_lambda(graph, x, next);
-	size_t index = clause_index(handler, label);
-	if (index == count) next = pg_computation_request(graph, label, payload, next);
-	else {
-		next = pg_application(graph, pg_reference(graph, &pg_thunk_operation), next);
-		const struct pg_term *clause = pg_application(graph, pg_reference(graph, binders[index + 2]), payload);
-		next = pg_application(graph, clause, next);
-	}
-	for (size_t i = count + 2; i; --i) next = pg_lambda(graph, binders[i - 1], next);
-	status = pg_eval_enter(machine, (struct pg_closure){next, NULL}, 0);
-done:
-	pg_graph_destroy(&temporary);
-	return status;
+	struct fold_work *work = pg_alloc(&machine->temporary, sizeof(*work));
+	if (!work) return -1;
+	*work = (struct fold_work){.graph = machine->output, .head = machine->current.term,
+		.resume = resume, .payload = payload, .label = label,
+		.count = count, .index = clause_index(handler, label), .phase = FOLD_BINDERS};
+	work->binders = pg_alloc(&machine->temporary, (count + 2) * sizeof(*work->binders));
+	if (!work->binders) return -1;
+	return pg_eval_defer(machine, work, fold_poll, fold_resume, fold_destroy);
 }
 
 static int dispatch(struct pg_eval *machine)

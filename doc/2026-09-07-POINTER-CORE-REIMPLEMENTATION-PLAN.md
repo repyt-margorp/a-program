@@ -49,9 +49,20 @@ criteria for merging different Lambda or semantic-object references.
   core tests pass. This extension changes `computation.c` by +123/-14,
   `computation.h` by +11/-0 and `tests/core.c` by +67/-0; docs excluded.
 - [ ] Clause-layout relocation and typed/surface admission remain unimplemented.
-  The runtime continuation template currently takes O(clause count) synchronous
-  construction work inside its callback; resumable template construction is
-  still required for a per-transition traversal bound on large handlers.
+- [x] After `eec2f5c`, move runtime continuation-template construction to the
+  existing `pg_eval_defer` worker protocol. Binder allocation, argument-spine
+  construction and abstraction advance incrementally; pending readback keeps
+  the caller and cancellation releases the evaluator-owned temporary state.
+  A 256-clause regression fails on the preceding synchronous builder because
+  one advance creates more than 16 Core nodes; it passes with the worker.
+  Bulk/split step counts agree, and cancellation during construction is tested.
+  This does not bound allocation/hash-table cost or the existing synchronous
+  argument-arity/consumption scans in the evaluator interface. No new queue,
+  typing rule or semantic reduction equation is introduced.
+  Components, eight examples and six result fixtures pass; the complete gate
+  still fails open-family at 86 transitions. Rebuilt ASan/UBSan core tests pass.
+  Implementation +74/-23 and tests
+  +34/-0, excluding documentation.
 - [ ] Add checked operation signatures, effect rows, source alias/application
   elaboration, typed fold output-carrier rules, and explicit runtime handlers.
   Requests currently have no source admission rule. This does not establish
