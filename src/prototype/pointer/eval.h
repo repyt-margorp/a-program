@@ -6,6 +6,7 @@
 struct pg_environment;
 struct pg_argument;
 struct pg_eval_frame;
+struct pg_eval_task;
 struct pg_closure {
 	const struct pg_term *term;
 	const struct pg_environment *environment;
@@ -22,6 +23,7 @@ struct pg_eval {
 	struct pg_graph *output;
 	struct pg_eval_frame *frames;
 	int head_ready;
+	struct pg_eval_task *task;
 };
 
 void pg_eval_init(struct pg_eval *machine, const struct pg_term *term);
@@ -49,6 +51,14 @@ int pg_eval_demand(struct pg_eval *machine, size_t index,
  * use for pure work, not an effect whose result could be discarded. */
 int pg_eval_demand_closure(struct pg_eval *machine, struct pg_closure value,
 	int (*resume)(struct pg_eval *machine, const struct pg_term *answer));
+/* Pure auxiliary traversal. Each poll consumes one machine transition:
+ * 0 pending, 1 ready, -1 error. Poll must preserve the caller configuration.
+ * Resume uses the dispatcher protocol and runs after detaching the task.
+ * After successful registration, destroy runs once, including on error or
+ * destruction while pending. Failure to register leaves ownership with caller.
+ * Pending readback retains the caller; state must outlive the task. */
+int pg_eval_defer(struct pg_eval *machine, void *state, int (*poll)(void *),
+	int (*resume)(struct pg_eval *, void *), void (*destroy)(void *));
 
 struct pg_binding_value {
 	const struct pg_object *binder;

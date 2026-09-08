@@ -162,8 +162,39 @@ void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)
 	machine->status = term ? PG_EVAL_PENDING : PG_EVAL_ERROR;
 }
 
+struct pg_eval_task {
+	void *state;
+	int (*poll)(void *);
+	int (*resume)(struct pg_eval *, void *);
+	void (*destroy)(void *);
+};
+
+int pg_eval_defer(struct pg_eval *machine, void *state, int (*poll)(void *),
+	int (*resume)(struct pg_eval *, void *), void (*destroy)(void *))
+{
+	if (machine->status != PG_EVAL_PENDING) return -1;
+	if (machine->task || !state || !poll || !resume || !destroy) return -1;
+	struct pg_eval_task *task = pg_alloc(&machine->temporary, sizeof(*task));
+	if (!task) return -1;
+	*task = (struct pg_eval_task){state, poll, resume, destroy};
+	machine->task = task;
+	return 0;
+}
+
+static int task_step(struct pg_eval *machine)
+{
+	struct pg_eval_task *task = machine->task;
+	int status = task->poll(task->state);
+	if (!status) return 0;
+	machine->task = NULL;
+	int result = status < 0 ? -1 : task->resume(machine, task->state);
+	task->destroy(task->state);
+	return result;
+}
+
 static int step(struct pg_eval *machine)
 {
+	if (machine->task) return task_step(machine);
 	if (machine->head_ready) return resume_frame(machine);
 	const struct pg_term *term = machine->current.term;
 	switch (term->kind) {
@@ -452,6 +483,7 @@ const struct pg_term *pg_term_substitute(struct pg_graph *graph,
 
 void pg_eval_destroy(struct pg_eval *machine)
 {
+	if (machine->task) machine->task->destroy(machine->task->state);
 	for (struct pg_eval_frame *frame = machine->frames; frame; frame = frame->parent)
 		materialize_destroy(&frame->answer);
 	pg_graph_destroy(&machine->temporary);

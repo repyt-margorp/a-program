@@ -1068,6 +1068,71 @@ static void auxiliary_demand_test(struct pg_graph *graph)
 	puts("auxiliary demand: unchanged caller arguments, pending readback and every split budget passed");
 }
 
+struct deferred_test_work {
+	size_t remaining;
+	int fail;
+	const struct pg_term *answer;
+};
+static size_t deferred_destroyed, deferred_resumed;
+
+static int deferred_poll(void *opaque)
+{
+	struct deferred_test_work *work = opaque;
+	if (--work->remaining) return 0;
+	return work->fail ? -1 : 1;
+}
+
+static int deferred_resume(struct pg_eval *machine, void *opaque)
+{
+	struct deferred_test_work *work = opaque;
+	assert(!machine->task);
+	++deferred_resumed;
+	return pg_eval_enter(machine, (struct pg_closure){work->answer, NULL}, 0);
+}
+
+static void deferred_destroy(void *opaque)
+{
+	assert(opaque);
+	++deferred_destroyed;
+}
+
+static void deferred_work_test(struct pg_graph *graph)
+{
+	const struct pg_term *input = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *answer = pg_reference(graph, pg_binder(graph));
+	for (size_t cut = 0; cut < 5; ++cut) {
+		for (int cancel = 0; cancel < 2; ++cancel) {
+			struct pg_eval machine;
+			pg_eval_init(&machine, input);
+			struct deferred_test_work work = {5, 0, answer};
+			deferred_destroyed = deferred_resumed = 0;
+			assert(pg_eval_defer(&machine, &work, deferred_poll, deferred_resume, deferred_destroy) == 0);
+			assert(pg_eval_defer(&machine, &work, deferred_poll, deferred_resume, deferred_destroy) == -1);
+			assert(pg_eval_advance(&machine, cut) == PG_EVAL_PENDING);
+			assert(work.remaining == 5 - cut && machine.steps == cut);
+			assert(pg_eval_readback(&machine, graph) == input);
+			assert(!deferred_destroyed && !deferred_resumed);
+			if (!cancel) {
+				assert(pg_eval_advance(&machine, 10) == PG_EVAL_WHNF);
+				assert(machine.steps == 6 && deferred_resumed == 1);
+				assert(deferred_destroyed == 1 && pg_eval_readback(&machine, graph) == answer);
+			}
+			pg_eval_destroy(&machine);
+			assert(deferred_destroyed == 1);
+		}
+	}
+	struct pg_eval machine;
+	pg_eval_init(&machine, input);
+	struct deferred_test_work failure = {1, 1, answer};
+	deferred_destroyed = deferred_resumed = 0;
+	assert(pg_eval_defer(&machine, &failure, deferred_poll, deferred_resume, deferred_destroy) == 0);
+	assert(pg_eval_advance(&machine, 1) == PG_EVAL_ERROR);
+	assert(deferred_destroyed == 1 && !deferred_resumed);
+	pg_eval_destroy(&machine);
+	assert(deferred_destroyed == 1);
+	puts("deferred pure work: exact fuel, split resume, pending readback, cancellation and failure cleanup passed");
+}
+
 static void demand_budget_test(struct pg_graph *graph)
 {
 	const size_t depth = 5000;
@@ -1876,6 +1941,7 @@ int main(void)
 	computation_execution_test(&graph);
 	demand_budget_test(&graph);
 	auxiliary_demand_test(&graph);
+	deferred_work_test(&graph);
 	classifiers_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);

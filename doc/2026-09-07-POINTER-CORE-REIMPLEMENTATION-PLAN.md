@@ -176,6 +176,31 @@ Optimized and ASan/UBSan full pointer checks, plus the 512 KiB Identity run,
 pass after these changes. The pending bounded-work and general N2 obligations
 are unchanged.
 
+#### Bounded auxiliary work: first integration
+
+The evaluator now accepts a pure traversal task through `pg_eval_defer`.
+Each poll consumes one existing evaluator transition. The caller term and
+argument spine remain unchanged while pending, so readback retains the caller
+rather than serializing C task state. Completion detaches the task before
+resuming ordinary evaluation; cancellation and error destroy it exactly once.
+This is evaluator scheduling, not a second solver, proof rule or Replay engine.
+
+The nested-Act alpha no-progress comparison uses the existing incremental
+comparison walker through this interface instead of synchronous `pg_alpha_equal`.
+Tests cover exact poll counts, every split before completion, pending readback,
+duplicate-task rejection, cancellation, error cleanup, and destruction of an
+actual suspended Identity comparison followed by re-evaluation of its readback.
+The ordering walker, scope preparation and result rebuilding are still
+synchronous: this checkpoint does not close the whole bounded-action gate.
+Implementation/header diff for this step: +79/-8; test C: +80/-0, excluding
+documentation. Next use the same task mechanism for the scope-order traversal
+and its binder lookup/rebuild stages, rather than introducing an Identity-only
+execution engine or silently charging a whole traversal as one reduction.
+Verification: the latest optimized and ASan/UBSan full pointer checks pass,
+as does Identity with a 512 KiB stack. The recorded cube-function comparison
+maximum is now 192,056 transitions (previously 191,710); previously synchronous
+comparison work is now charged, so this is not evidence of a runtime slowdown.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,

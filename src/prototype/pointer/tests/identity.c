@@ -1170,6 +1170,20 @@ static void action_scope_exchange(struct pg_classifiers *classifiers)
 				acted[order] = pg_application(graph, acted[order], boundary[i ^ order][j]);
 	}
 	converts(&work, acted[0], acted[1]);
+	struct pg_eval split;
+	pg_eval_init(&split, acted[0]);
+	split.output = graph;
+	split.dispatch = pg_pure_policy.dispatch;
+	while (!split.task) {
+		assert(pg_eval_advance(&split, 1) == PG_EVAL_PENDING);
+		assert(split.steps < 10000);
+	}
+	const struct pg_term *suspended = pg_eval_readback(&split, graph);
+	assert(suspended);
+	/* Destroy an actual suspended Identity comparison, then resume its graph
+	 * through the ordinary evaluator. No task state is encoded as evidence. */
+	pg_eval_destroy(&split);
+	converts(&work, suspended, acted[0]);
 	const struct pg_object *u = pg_binder(graph), *v = pg_binder(graph);
 	const struct pg_binding_value rename[] = {
 		{x, pg_reference(graph, u)}, {y, pg_reference(graph, v)}

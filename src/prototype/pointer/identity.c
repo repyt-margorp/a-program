@@ -411,17 +411,46 @@ static int order_scope(struct pg_eval *machine, struct action_scope *scope)
 	return enter_action(machine, scope, result, 0);
 }
 
+struct action_body_work {
+	struct pg_comparison comparison;
+	struct action_scope scope;
+	const struct pg_term *answer;
+};
+
+static int action_body_poll(void *opaque)
+{
+	struct action_body_work *work = opaque;
+	enum pg_comparison_status status = pg_comparison_advance(&work->comparison, 1);
+	if (status == PG_COMPARISON_PENDING) return 0;
+	return status == PG_COMPARISON_ERROR ? -1 : 1;
+}
+
+static void action_body_destroy(void *opaque)
+{
+	struct action_body_work *work = opaque;
+	pg_comparison_destroy(&work->comparison);
+}
+
+static int action_body_resume(struct pg_eval *machine, void *opaque)
+{
+	struct action_body_work *work = opaque;
+	if (pg_comparison_status(&work->comparison) == PG_COMPARISON_EQUAL) return 1;
+	if (source_bindings(machine, &work->scope) != 0) return -1;
+	const struct pg_term *source = abstract_body(machine->output, &work->scope, work->answer);
+	return pg_eval_enter(machine, (struct pg_closure){pg_identity_action(machine->output, source), NULL}, 1);
+}
+
 static int action_body(struct pg_eval *machine, const struct pg_term *answer)
 {
-	struct action_scope scope;
-	int status = action_scope(machine, pg_eval_argument(machine, 0)->term, &scope);
+	struct action_body_work *work = pg_alloc(&machine->temporary, sizeof(*work));
+	if (!work) return -1;
+	work->answer = answer;
+	int status = action_scope(machine, pg_eval_argument(machine, 0)->term, &work->scope);
 	if (status) return status;
-	int unchanged = pg_alpha_equal(scope.body, answer);
-	if (unchanged < 0) return -1;
-	if (unchanged) return 1;
-	if (source_bindings(machine, &scope) != 0) return -1;
-	const struct pg_term *source = abstract_body(machine->output, &scope, answer);
-	return pg_eval_enter(machine, (struct pg_closure){pg_identity_action(machine->output, source), NULL}, 1);
+	if (pg_comparison_init(&work->comparison, work->scope.body, answer, NULL, NULL) != 0) return -1;
+	status = pg_eval_defer(machine, work, action_body_poll, action_body_resume, action_body_destroy);
+	if (status) action_body_destroy(work);
+	return status;
 }
 
 static int action_source(struct pg_eval *machine, const struct pg_term *source)
