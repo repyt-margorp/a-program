@@ -9,7 +9,7 @@
 
 struct pg_source_scope {
 	struct pg_index_entry index;
-	const struct pg_synthesis *owner;
+	const void *owner;
 	const struct pg_source_scope *parent;
 	struct pg_token name;
 	const struct pg_object *binder;
@@ -84,7 +84,7 @@ enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_J
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, DERIVATION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
-	const struct pg_synthesis *owner;
+	const void *owner;
 	enum job_role role;
 	size_t input_count;
 	const struct pg_source_scope *scope;
@@ -150,8 +150,11 @@ int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
 	synthesis->normalization = normalization;
 	synthesis->definition_policy = definition_policy;
 	if (pg_index_init(&synthesis->jobs) != 0) return -1;
-	if (pg_index_init(&synthesis->scopes) == 0) return 0;
-	pg_index_destroy(&synthesis->jobs);
+	if (pg_index_init(&synthesis->scopes) == 0) {
+		synthesis->owner_key = pg_alloc(typing->graph, 1);
+		if (synthesis->owner_key) return 0;
+	}
+	pg_synthesis_destroy(synthesis);
 	return -1;
 }
 
@@ -179,7 +182,7 @@ static int same_name(struct pg_token left, struct pg_token right);
 
 static const struct pg_source_scope *intern_scope(struct pg_synthesis *synthesis, struct pg_source_scope input)
 {
-	if (!input.context_job || input.context_job->owner != synthesis) return NULL;
+	if (!input.context_job || input.context_job->owner != synthesis->owner_key) return NULL;
 	/* Special roots carry their spelling in kind, not borrowed text. */
 	if (input.name.kind == '#' || input.name.kind == '*')
 		input.name = (struct pg_token){.kind = input.name.kind};
@@ -205,7 +208,7 @@ static const struct pg_source_scope *intern_scope(struct pg_synthesis *synthesis
 	struct pg_source_scope *scope = pg_alloc(synthesis->typing->graph, sizeof(*scope));
 	if (!scope) return NULL;
 	*scope = input;
-	scope->owner = synthesis;
+	scope->owner = synthesis->owner_key;
 	return pg_index_insert(&synthesis->scopes, &scope->index, hash) == 0 ? scope : NULL;
 }
 
@@ -219,7 +222,7 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_object *binder, const struct pg_evidence *extended_context)
 {
-	if (!parent || parent->owner != synthesis || !extended_context) return NULL;
+	if (!parent || parent->owner != synthesis->owner_key || !extended_context) return NULL;
 	if (pg_evidence_judgement(extended_context) != PG_JUDGEMENT_CONTEXT) return NULL;
 	const struct pg_context *context = pg_evidence_context(extended_context);
 	if (!source_context(parent)) return NULL;
@@ -248,7 +251,7 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 	}
 	struct pg_synthesis_job *job = pg_alloc(synthesis->typing->graph, sizeof(*job) + count * sizeof(*inputs));
 	if (!job) return NULL;
-	job->owner = synthesis;
+	job->owner = synthesis->owner_key;
 	job->role = role;
 	job->input_count = count;
 	for (size_t i = 0; i < count; ++i) job->inputs[i] = inputs[i];
@@ -276,7 +279,7 @@ static struct pg_synthesis_job *request_job(struct pg_synthesis *synthesis,
 static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax, enum job_role role)
 {
-	if (!scope || scope->owner != synthesis || !syntax) return NULL;
+	if (!scope || scope->owner != synthesis->owner_key || !syntax) return NULL;
 	struct pg_synthesis_job *job = request_job(synthesis, role, scope, syntax);
 	if (job) { job->scope = scope; job->syntax = syntax; }
 	return job;
@@ -358,7 +361,7 @@ const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_evidence *proof)
 {
-	if (!parent || parent->owner != synthesis) return NULL;
+	if (!parent || parent->owner != synthesis->owner_key) return NULL;
 	if (name.kind != PG_TOKEN_IDENT || !name.text || !name.length) return NULL;
 	if (!pg_evidence_owned_by(proof, synthesis->typing) || !pg_evidence_subject(proof)) return NULL;
 	if (!pg_prove_projection(synthesis->typing, source_context(parent), proof)) return NULL;
@@ -369,9 +372,9 @@ const struct pg_source_scope *pg_synthesis_name_job(struct pg_synthesis *synthes
 	const struct pg_source_scope *parent, struct pg_token name,
 	struct pg_synthesis_job *producer)
 {
-	if (!parent || parent->owner != synthesis) return NULL;
+	if (!parent || parent->owner != synthesis->owner_key) return NULL;
 	if (name.kind != PG_TOKEN_IDENT || !name.text || !name.length) return NULL;
-	if (!producer || producer->owner != synthesis) return NULL;
+	if (!producer || producer->owner != synthesis->owner_key) return NULL;
 	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent,
 		.name = name, .context_job = parent->context_job, .producer = producer});
 }
@@ -379,8 +382,8 @@ const struct pg_source_scope *pg_synthesis_name_job(struct pg_synthesis *synthes
 const struct pg_source_scope *pg_synthesis_import_scope(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, const struct pg_source_scope *bindings)
 {
-	if (!parent || parent->owner != synthesis) return NULL;
-	if (!bindings || bindings->owner != synthesis) return NULL;
+	if (!parent || parent->owner != synthesis->owner_key) return NULL;
+	if (!bindings || bindings->owner != synthesis->owner_key) return NULL;
 	if (!source_context(bindings) || pg_evidence_context(source_context(bindings))) return NULL;
 	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent,
 		.context_job = parent->context_job, .imports = bindings});
@@ -390,7 +393,7 @@ static const struct pg_source_scope *publish_namespace(struct pg_synthesis *synt
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_source_scope *exports, struct pg_synthesis_job *module)
 {
-	if (!parent || parent->owner != synthesis) return NULL;
+	if (!parent || parent->owner != synthesis->owner_key) return NULL;
 	if (name.kind != '#') {
 		if (name.kind != PG_TOKEN_IDENT || !name.text || !name.length) return NULL;
 	}
@@ -408,7 +411,7 @@ const struct pg_source_scope *pg_synthesis_namespace(struct pg_synthesis *synthe
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_source_scope *exports)
 {
-	if (!exports || exports->owner != synthesis) return NULL;
+	if (!exports || exports->owner != synthesis->owner_key) return NULL;
 	if (!source_context(exports) || pg_evidence_context(source_context(exports))) return NULL;
 	return publish_namespace(synthesis, parent, name, exports, NULL);
 }
@@ -417,7 +420,7 @@ const struct pg_source_scope *pg_synthesis_module_namespace(struct pg_synthesis 
 	const struct pg_source_scope *parent, struct pg_token name,
 	struct pg_synthesis_job *module)
 {
-	if (!module || module->owner != synthesis || module->role != EXPRESSION_JOB) return NULL;
+	if (!module || module->owner != synthesis->owner_key || module->role != EXPRESSION_JOB) return NULL;
 	if (!source_context(module->scope) || pg_evidence_context(source_context(module->scope))) return NULL;
 	const struct pg_syntax *syntax = module->syntax;
 	if (syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
@@ -428,7 +431,7 @@ const struct pg_source_scope *pg_synthesis_module_namespace(struct pg_synthesis 
 struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *input)
 {
-	if (!input || input->owner != synthesis) return NULL;
+	if (!input || input->owner != synthesis->owner_key) return NULL;
 	if (!context || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
 	struct pg_synthesis_job *job = request_job(synthesis, REFLEXIVITY_JOB, context, input);
 	if (job) job->left = input;
@@ -440,7 +443,7 @@ struct pg_synthesis_job *pg_synthesis_family_action_jobs(struct pg_synthesis *sy
 	const struct pg_evidence *right_substitution, size_t count,
 	struct pg_synthesis_job *const *paths)
 {
-	if (!input || input->owner != synthesis) return NULL;
+	if (!input || input->owner != synthesis->owner_key) return NULL;
 	if (!pg_evidence_owned_by(left_substitution, synthesis->typing)) return NULL;
 	if (!pg_evidence_owned_by(right_substitution, synthesis->typing)) return NULL;
 	if (pg_evidence_judgement(left_substitution) != PG_JUDGEMENT_SUBSTITUTION) return NULL;
@@ -455,7 +458,7 @@ struct pg_synthesis_job *pg_synthesis_family_action_jobs(struct pg_synthesis *sy
 	inputs[1] = right_substitution;
 	inputs[2] = input;
 	for (size_t i = 0; i < count; ++i) {
-		if (!paths[i] || paths[i]->owner != synthesis) goto done;
+		if (!paths[i] || paths[i]->owner != synthesis->owner_key) goto done;
 		inputs[i + 3] = paths[i];
 	}
 	job = request_inputs(synthesis, FAMILY_ACTION_JOB, count + 3, inputs);
@@ -497,8 +500,8 @@ static int reindex_inputs(struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof)
 {
-	if (!substitution || substitution->owner != synthesis) return NULL;
-	if (!proof || proof->owner != synthesis) return NULL;
+	if (!substitution || substitution->owner != synthesis->owner_key) return NULL;
+	if (!proof || proof->owner != synthesis->owner_key) return NULL;
 	const void *inputs[] = {substitution, proof};
 	return request_inputs(synthesis, REINDEX_JOB, 2, inputs);
 }
@@ -506,8 +509,8 @@ struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesi
 struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term, struct pg_synthesis_job *type)
 {
-	if (!term || term->owner != synthesis) return NULL;
-	if (!type || type->owner != synthesis) return NULL;
+	if (!term || term->owner != synthesis->owner_key) return NULL;
+	if (!type || type->owner != synthesis->owner_key) return NULL;
 	const void *inputs[] = {term, type};
 	return request_inputs(synthesis, EXPECT_JOB, 2, inputs);
 }
@@ -518,8 +521,8 @@ struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis
 {
 	if (!pg_evidence_owned_by(context, synthesis->typing)) return NULL;
 	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (!function || function->owner != synthesis) return NULL;
-	if (!argument || argument->owner != synthesis) return NULL;
+	if (!function || function->owner != synthesis->owner_key) return NULL;
+	if (!argument || argument->owner != synthesis->owner_key) return NULL;
 	const void *inputs[] = {context, function, argument};
 	return request_inputs(synthesis, APPLICATION_JOB, 3, inputs);
 }
@@ -530,9 +533,9 @@ struct pg_synthesis_job *pg_synthesis_identity_instance(struct pg_synthesis *syn
 {
 	if (!pg_evidence_owned_by(context, synthesis->typing)) return NULL;
 	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (!family || family->owner != synthesis) return NULL;
-	if (!left || left->owner != synthesis) return NULL;
-	if (!right || right->owner != synthesis) return NULL;
+	if (!family || family->owner != synthesis->owner_key) return NULL;
+	if (!left || left->owner != synthesis->owner_key) return NULL;
+	if (!right || right->owner != synthesis->owner_key) return NULL;
 	const void *inputs[] = {context, family, left, right};
 	return request_inputs(synthesis, INSTANCE_JOB, 4, inputs);
 }
@@ -578,7 +581,7 @@ struct pg_synthesis_job *pg_synthesis_data_result(struct pg_synthesis *synthesis
 	const struct pg_source_scope *fields, const struct pg_evidence *parameters,
 	const struct pg_evidence *indices, const struct pg_syntax *result)
 {
-	if (!fields || fields->owner != synthesis || !result) return NULL;
+	if (!fields || fields->owner != synthesis->owner_key || !result) return NULL;
 	if (!pg_evidence_owned_by(parameters, synthesis->typing)) return NULL;
 	if (!pg_evidence_owned_by(indices, synthesis->typing)) return NULL;
 	if (pg_evidence_judgement(parameters) != PG_JUDGEMENT_CONTEXT) return NULL;
@@ -593,7 +596,7 @@ struct pg_synthesis_job *pg_synthesis_data_case(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *body, const struct pg_data_schema *schema,
 	const struct pg_object *constructor, const struct pg_evidence *motive)
 {
-	if (!body || body->owner != synthesis) return NULL;
+	if (!body || body->owner != synthesis->owner_key) return NULL;
 	if (!pg_evidence_owned_by(motive, synthesis->typing)) return NULL;
 	if (pg_evidence_judgement(motive) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	const struct pg_evidence *result = pg_data_schema_result(schema, constructor);
@@ -624,7 +627,7 @@ struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesi
 	inputs[0] = source;
 	inputs[1] = destination;
 	for (size_t i = 0; i < count; ++i) {
-		if (!images[i] || images[i]->owner != synthesis) goto done;
+		if (!images[i] || images[i]->owner != synthesis->owner_key) goto done;
 		inputs[i + 2] = images[i];
 	}
 	result = request_inputs(synthesis, SUBSTITUTION_JOB, count + 2, inputs);
@@ -683,7 +686,7 @@ struct pg_synthesis_job *pg_synthesis_identity_endpoint(struct pg_synthesis *syn
 struct pg_synthesis_job *pg_synthesis_identity_formation(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *producer)
 {
-	if (!producer || producer->owner != synthesis) return NULL;
+	if (!producer || producer->owner != synthesis->owner_key) return NULL;
 	const void *inputs[] = {producer};
 	return request_inputs(synthesis, FORMATION_JOB, 1, inputs);
 }
@@ -695,7 +698,7 @@ struct pg_synthesis_job *pg_synthesis_identity_face_job(struct pg_synthesis *syn
 	if (!face || face->source >= face->target || !face->coordinates) return NULL;
 	if (!pg_evidence_owned_by(context, synthesis->typing)) return NULL;
 	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (!formation || formation->owner != synthesis) return NULL;
+	if (!formation || formation->owner != synthesis->owner_key) return NULL;
 	const void *inputs[] = {context, formation, face};
 	return request_inputs(synthesis, FACE_JOB, 3, inputs);
 }

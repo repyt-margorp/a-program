@@ -11,6 +11,9 @@ struct pg_synthesis_job;
 enum pg_definition_policy { PG_DEFINITION_IMPLICIT_THUNK, PG_DEFINITION_EXPLICIT_THUNK };
 struct pg_synthesis {
 	struct pg_typing *typing;
+	/* Arena-owned initialization identity for pending jobs and source scopes.
+	 * Accepted evidence has the independent lifetime of its typing store. */
+	const void *owner_key;
 	struct pg_classifiers *classifiers;
 	struct pg_whnf_work *normalization;
 	struct pg_index jobs;

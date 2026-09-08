@@ -3072,6 +3072,38 @@ static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifi
 	puts("case synthesis: independent producers, index motives, post-check evidence and shared scheduling passed");
 }
 
+static void synthesis_lifetime(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	const struct pg_source_scope *old_scope = pg_synthesis_root(&synthesis);
+	struct pg_synthesis_job *done = request(&synthesis, old_scope, "T:=@;");
+	const struct pg_evidence *proof = complete(&synthesis, done, PG_SYNTHESIS_DONE);
+	struct pg_synthesis_job *pending = request(&synthesis, old_scope, "p:=\\x:@=>x;");
+	assert(pg_synthesis_status(pending) == PG_SYNTHESIS_PENDING);
+	pg_synthesis_destroy(&synthesis);
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	const struct pg_source_scope *fresh = pg_synthesis_root(&synthesis);
+	const struct pg_syntax *syntax = expression_syntax(typing->graph, "T:=@;");
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "T", .length = 1};
+	size_t jobs = synthesis.jobs.count, scopes = synthesis.scopes.count;
+	assert(!pg_synthesis_request(&synthesis, old_scope, syntax));
+	assert(!pg_synthesis_name_job(&synthesis, fresh, name, done));
+	assert(!pg_synthesis_name_job(&synthesis, fresh, name, pending));
+	assert(!pg_synthesis_import_scope(&synthesis, fresh, old_scope));
+	assert(synthesis.jobs.count == jobs && synthesis.scopes.count == scopes);
+	/* Accepted evidence belongs to typing, not the discarded Solve queue. */
+	struct pg_synthesis_job *retained = pg_synthesis_evidence(&synthesis, proof);
+	assert(retained && retained != done && pg_synthesis_result(retained) == proof);
+	assert(pg_synthesis_evidence(&synthesis, proof) == retained);
+	assert(complete(&synthesis, pg_synthesis_request(&synthesis, fresh, syntax), PG_SYNTHESIS_DONE) == proof);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("synthesis lifetime: stale scopes/jobs rejected; retained typing evidence reused");
+}
+
 int main(void)
 {
 	struct pg_graph graph;
@@ -3082,6 +3114,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
+	synthesis_lifetime(&typing, &classifiers);
 	accepted_inputs(&typing, &classifiers);
 	pending_names(&typing, &classifiers);
 	source_imports(&typing, &classifiers);

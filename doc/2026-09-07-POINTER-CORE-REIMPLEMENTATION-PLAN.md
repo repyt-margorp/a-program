@@ -231,6 +231,26 @@ Lifetime correction after `0608b0d`:
   before allowing their handles to cross image/resume or temporary-store
   boundaries. This fix concerns evidence/signatures, not every work handle.
 
+Solve-handle lifetime correction after `1986ad2`:
+
+- [x] Reproduce that a source scope from a destroyed Solve instance was
+  accepted after reinitializing the same `pg_synthesis` storage. Both source
+  scopes and pending/completed job handles now retain a fresh graph-owned
+  initialization key, rather than the mutable container's C address.
+- [x] Reject old scopes, old completed jobs, old pending jobs and old import
+  scopes at request boundaries, before allocating new work. Retain the
+  existing pointer-key job interning and ordinary scheduler; no generation
+  table or separate Replay queue is added.
+- [x] Preserve accepted evidence across Solve disposal when its typing store
+  remains alive. A new `pg_synthesis_evidence` wrapper can use that evidence,
+  and ordinary resynthesis finds the identical accepted universe derivation.
+  Invalid work handles must not force valid proof results to be discarded.
+  Full component `make check` and rebuilt ASan/UBSan synthesis tests passed.
+- The outstanding broader handle audit above remains open. Syntax buffers,
+  typing, classifiers and normalization work must still outlive the Solve
+  instance as documented; this change does not permit violating those inputs'
+  lifetimes or claim complete image checkpoint/resumption.
+
 - [x] Route all 38 primitive evidence ownership guards through the existing
   `pg_evidence_owned_by` predicate, already used by generic derivation
   reconstruction. Its meaning remains exact typing-store identity, including
