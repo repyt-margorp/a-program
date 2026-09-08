@@ -1206,6 +1206,19 @@ static void dependent_instance_boundary(struct pg_typing *typing, struct pg_clas
 	const struct pg_evidence *context = pg_identity_context(typing, &dimensions, source, count,
 		centers, &left, &right, paths);
 	assert(context);
+	/* Multiple dependent declarations vary along one common direction.
+	 * The number of path premises does not supply extra Identity dimensions. */
+	const struct pg_evidence *simultaneous = pg_prove_family_action(typing,
+		universe, point, left, right, count, paths);
+	assert(simultaneous);
+	const struct pg_evidence *simultaneous_type = pg_prove_classifier(typing, classifiers, context, simultaneous);
+	struct pg_identity_boundary simultaneous_boundary;
+	assert(pg_identity_boundary_view(simultaneous_type, &simultaneous_boundary));
+	assert(simultaneous_boundary.path_count == count);
+	for (enum pg_identity_direction side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
+		assert(pg_identity_face_endpoint(typing, classifiers, context, simultaneous_type, 0, side));
+		assert(!pg_identity_face_endpoint(typing, classifiers, context, simultaneous_type, 1, side));
+	}
 	const struct pg_evidence *family = pg_prove_family_action(typing,
 		pg_prove_classifier(typing, classifiers, source, line_value), line_value, left, right, count, paths);
 	const struct pg_evidence *family_type = pg_prove_identity_type(typing,

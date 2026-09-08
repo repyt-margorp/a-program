@@ -82,6 +82,18 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] After `c5379a9`, test the distinction between simultaneous dependent
+  variation and iterated Identity before admitting typed permutations. The
+  `A : U1, x : A` fixture acts on x along two path premises, but has only one
+  direction: outer endpoint extraction succeeds and requesting an inner
+  direction is unsupported on both sides. The same fixture separately acts
+  on an actual Identity type and recovers the second direction successfully.
+  Thus `path_count == 2` is not dimensional evidence; the retained formation,
+  not premise count or raw APP arity, must establish the dimensions on which
+  a symmetry acts. Existing production rules pass without weakening recovery
+  or adding another Core/formation tag. This does not implement central symmetry.
+  Optimized and ASan/UBSan Identity suites passed; the comparison maximum
+  remains 205,367 transitions.
 - [x] After `fd902c5`, filter Act scope references through the existing source
   binder index before checking lexical shadows. Ambient/semantic references and
   already discovered sources cannot alter first-use order. Only an undiscovered
