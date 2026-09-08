@@ -74,7 +74,7 @@ struct family_state {
 	size_t count, common, next;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -457,6 +457,19 @@ struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis
 	if (!argument || argument->owner != synthesis) return NULL;
 	const void *inputs[] = {context, function, argument};
 	return request_inputs(synthesis, APPLICATION_JOB, 3, inputs);
+}
+
+struct pg_synthesis_job *pg_synthesis_identity_instance(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, struct pg_synthesis_job *family,
+	struct pg_synthesis_job *left, struct pg_synthesis_job *right)
+{
+	if (!pg_evidence_owned_by(context, synthesis->typing)) return NULL;
+	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
+	if (!family || family->owner != synthesis) return NULL;
+	if (!left || left->owner != synthesis) return NULL;
+	if (!right || right->owner != synthesis) return NULL;
+	const void *inputs[] = {context, family, left, right};
+	return request_inputs(synthesis, INSTANCE_JOB, 4, inputs);
 }
 
 struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
@@ -1166,6 +1179,58 @@ static const struct pg_evidence *classifier_input(struct pg_synthesis *synthesis
 	return producer->result;
 }
 
+static void instance_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	const struct pg_evidence *context = job->inputs[0];
+	if (!job->function) {
+		const struct pg_evidence *values[3];
+		for (size_t i = 0; i < 3; ++i) {
+			struct pg_synthesis_job *producer = (void *)job->inputs[i + 1];
+			if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
+			if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return; }
+			values[i] = producer->result;
+			if (!pg_evidence_owned_by(values[i], synthesis->typing)) goto rejected;
+			if (pg_evidence_judgement(values[i]) != PG_JUDGEMENT_VALUE) goto rejected;
+			if (pg_evidence_context(values[i]) != pg_evidence_context(context)) goto rejected;
+		}
+		struct pg_synthesis_job *canonical = pg_synthesis_identity_instance(synthesis, context,
+			pg_synthesis_evidence(synthesis, values[0]), pg_synthesis_evidence(synthesis, values[1]),
+			pg_synthesis_evidence(synthesis, values[2]));
+		if (forward_proof(synthesis, job, canonical)) return;
+		job->function = values[0];
+	}
+	if (!job->stage) {
+		const struct pg_evidence *family = classifier_input(synthesis, job, context, job->function);
+		if (!family) return;
+		job->function = family;
+		job->stage = 1;
+	}
+	if (!job->value_job) {
+		enum pg_evidence_rule side = job->stage == 1 ? PG_IDENTITY_LEFT_TYPE : PG_IDENTITY_RIGHT_TYPE;
+		const struct pg_evidence *type = pg_prove_identity_endpoint_type(synthesis->typing,
+			synthesis->classifiers, job->function, side);
+		if (!type) goto rejected;
+		job->value_job = pg_synthesis_expect(synthesis, (void *)job->inputs[job->stage + 1],
+			pg_synthesis_evidence(synthesis, type));
+		if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	}
+	if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return; }
+	if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return; }
+	if (job->stage == 1) {
+		job->checking_term = job->value_job->result;
+		job->value_job = NULL;
+		job->stage = 2;
+		enqueue(synthesis, job);
+		return;
+	}
+	job->result = pg_prove_identity_instance(synthesis->typing, synthesis->classifiers,
+		job->function, job->checking_term, job->value_job->result);
+	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+	return;
+rejected:
+	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
+}
+
 static void raw_application_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_evidence *context = job->inputs[0];
@@ -1869,6 +1934,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == DATA_CASE_JOB) { data_case_step(synthesis, job); return; }
 	if (job->role == CLASSIFIER_JOB) { classifier_step(synthesis, job); return; }
 	if (job->role == APPLICATION_JOB) { raw_application_step(synthesis, job); return; }
+	if (job->role == INSTANCE_JOB) { instance_step(synthesis, job); return; }
 	if (job->role == REFLEXIVITY_JOB || job->role == FAMILY_ACTION_JOB) {
 		if (!job->stage) {
 			job->stage = 1;

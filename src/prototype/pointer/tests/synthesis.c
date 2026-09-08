@@ -97,6 +97,45 @@ static void dependent_application_jobs(struct pg_typing *typing, struct pg_class
 	}
 }
 
+static void identity_instance_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	const struct pg_evidence *context = pg_prove_empty_context(typing);
+	const struct pg_object *a = pg_binder(typing->graph), *b = pg_binder(typing->graph);
+	const struct pg_object *x = pg_binder(typing->graph), *y = pg_binder(typing->graph), *r = pg_binder(typing->graph);
+	context = pg_prove_context_extension(typing, context, a, pg_prove_universe(typing, classifiers, context, 1));
+	context = pg_prove_context_extension(typing, context, b, pg_prove_universe(typing, classifiers, context, 1));
+	context = pg_prove_context_extension(typing, context, x, pg_prove_value_type(typing, pg_prove_variable(typing, context, a)));
+	context = pg_prove_context_extension(typing, context, y, pg_prove_value_type(typing, pg_prove_variable(typing, context, b)));
+	const struct pg_evidence *family_type = pg_prove_identity_type(typing, pg_prove_universe(typing, classifiers, context, 1),
+		pg_prove_variable(typing, context, a), pg_prove_variable(typing, context, b));
+	context = pg_prove_context_extension(typing, context, r, family_type);
+	const struct pg_evidence *family = pg_prove_variable(typing, context, r);
+	const struct pg_evidence *left = pg_prove_variable(typing, context, x), *right = pg_prove_variable(typing, context, y);
+	const struct pg_evidence *expected = pg_prove_identity_instance(typing, classifiers, family, left, right);
+	assert(expected && pg_evidence_classifier(left) != pg_evidence_classifier(right));
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	struct pg_synthesis_job *producer = pg_synthesis_return(&synthesis, context, pg_prove_return(typing, classifiers, family));
+	struct pg_synthesis_job *l = pg_synthesis_evidence(&synthesis, left), *rr = pg_synthesis_evidence(&synthesis, right);
+	struct pg_synthesis_job *instance = pg_synthesis_identity_instance(&synthesis, context, producer, l, rr);
+	assert(instance && !pg_synthesis_result(instance));
+	assert(pg_synthesis_identity_instance(&synthesis, context, producer, l, rr) == instance);
+	const struct pg_evidence *result = complete(&synthesis, instance, PG_SYNTHESIS_DONE);
+	same_judgement(result, expected);
+	assert(pg_evidence_subject(pg_evidence_premise(result, 0))->core == pg_evidence_subject(family)->core);
+	struct pg_synthesis_job *f = pg_synthesis_evidence(&synthesis, pg_synthesis_result(producer));
+	struct pg_synthesis_job *canonical = pg_synthesis_identity_instance(&synthesis, context, f, l, rr);
+	assert(pg_synthesis_status(canonical) == PG_SYNTHESIS_DONE && pg_synthesis_result(canonical) == result);
+	complete(&synthesis, pg_synthesis_identity_instance(&synthesis, context, f, rr, l), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, pg_synthesis_identity_instance(&synthesis, context, l, l, rr), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, pg_synthesis_identity_instance(&synthesis, context, f,
+		pg_synthesis_evidence(&synthesis, pg_prove_return(typing, classifiers, left)), rr), PG_SYNTHESIS_REJECTED);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+}
+
 static void wait_on(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
 	struct pg_synthesis_job *child)
 {
@@ -2784,6 +2823,7 @@ int main(void)
 	square_template_jobs(&typing, &classifiers);
 	dependent_cube_substitution(&typing, &classifiers);
 	dependent_application_jobs(&typing, &classifiers);
+	identity_instance_jobs(&typing, &classifiers);
 	shared_conversion_jobs(&typing, &classifiers);
 	library_levels(&typing, &classifiers);
 	named_identity(&typing, &classifiers);

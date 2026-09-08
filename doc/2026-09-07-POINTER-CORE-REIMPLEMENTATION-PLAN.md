@@ -82,6 +82,16 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Schedule selected-family instantiation through
+  `pg_synthesis_identity_instance`. It waits for three independent value
+  producers, exposes the family's classifier, obtains its two endpoint types,
+  and reuses EXPECT separately for each endpoint before ordinary
+  `PG_IDENTITY_INSTANCE` acceptance. No homogeneous family is substituted.
+  Tests use an assumed `r : Id U1 A B`, `x : A`, `y : B` with distinct
+  endpoint classifiers; they check retained family, pending/canonical reuse,
+  swapped endpoints, a non-family value and a computation endpoint. This is
+  not Pi application or a new symmetry/transport rule.
+  Complete pointer `make check` and ASan/UBSan `synthesis_test` passed.
 - [x] Route continuation closing through the same raw application job.
   A nondependent fold still uses its ordinary rule; when an actual return
   value is required, its pending producer feeds the application rather than

@@ -167,6 +167,12 @@ struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *function,
 	struct pg_synthesis_job *argument);
+/* Instantiate an independently produced Universe Identity family at two
+ * value endpoints. Post-check each against its own endpoint type; never
+ * replace the chosen family with a homogeneous or inferred relation. */
+struct pg_synthesis_job *pg_synthesis_identity_instance(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, struct pg_synthesis_job *family,
+	struct pg_synthesis_job *left, struct pg_synthesis_job *right);
 /* Recover retained Identity formation after its producer completes. Shared
  * by accepted input evidence, including requests from distinct producers.
  * The output is convertible to the input, not a conversion certificate;
