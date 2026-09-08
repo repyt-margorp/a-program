@@ -432,6 +432,21 @@ Next implementation sequence (prerequisite for automatic source handlers):
   Normal checks, eight source cases, six runtime cases and rebuilt ASan/UBSan
   synthesis tests pass. Example transition counts remain unchanged (List 1682).
   Implementation C: +78/-46; test C: +14/-1. No Core tags or kernel rules added.
+  Value-input sequence preparation now emits the ordinary post-checked APP
+  producer before context acceptance. Source APP and sequence share the same
+  structural value/type-value classification; no expected domain participates
+  in it. The redundant late value branch is removed from sequence evaluation.
+  Structural consumers follow the prepared sequence application. Classifier
+  normalization preserves its input polarity, and BODY/sequence adapters produce
+  computations; failing to propagate these facts had left a metadata consumer
+  waiting for final context evidence. A regression exhausted 10000 transitions
+  before this correction. The test now obtains both classifier and exact Core
+  for `{ a := k; b := a; b; }` while k's latent effect row is unresolved, then
+  verifies Core identity after acceptance. This does not infer the effect union
+  of computation-input sequences; their equation connection remains open.
+  Normal checks, eight source/six runtime cases and rebuilt normal/ASan/UBSan
+  synthesis tests pass. Wrong-context value application is rejected. Existing
+  example transition counts remain unchanged (List 1682).
   Normal checks, eight source cases, six runtime cases and rebuilt normal and
   ASan/UBSan synthesis tests (including invalid-input rejection) pass.
   Normal `check`, eight example synthesis cases, six runtime cases and rebuilt

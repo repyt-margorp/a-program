@@ -393,6 +393,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			== pg_return_type(classifiers, pg_thunk_type(classifiers, symbolic_f)));
 		assert(!pg_synthesis_result(single_block));
 		struct pg_synthesis_job *pending_block = request(&synthesis, scope, "v := { a := k; b := a; b; };");
+		struct pg_synthesis_job *pending_block_type = pg_synthesis_classifier_structure(&synthesis, pending_block);
+		struct pg_synthesis_job *pending_block_term = pg_synthesis_term_structure(&synthesis, pending_block);
+		assert(!complete(&synthesis, pending_block_type, PG_SYNTHESIS_DONE));
+		assert(!complete(&synthesis, pending_block_term, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(pending_block_type) == pg_synthesis_type_structure_result(single_block_type));
+		assert(!pg_synthesis_result(pending_block));
 		struct pg_effect_equation *collected = pg_effect_equation(&effects, no_effects);
 		struct pg_effect_equation *masked = pg_effect_equation(&effects, no_effects);
 		struct pg_synthesis_job *contribution = pg_synthesis_effect_contribution(&synthesis,
@@ -588,10 +594,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_evidence *block_proof = complete(&synthesis, single_block, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(block_proof)->core == pg_synthesis_type_structure_result(single_block_term));
 		const struct pg_evidence *multi_block = complete(&synthesis, pending_block, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(multi_block)->core == pg_synthesis_type_structure_result(pending_block_term));
 		same_judgement(complete(&synthesis, pg_synthesis_nf(&synthesis, pg_synthesis_result(context), multi_block), PG_SYNTHESIS_DONE), block_proof);
 		const struct pg_evidence *sequence_proof = complete(&synthesis, sequence, PG_SYNTHESIS_DONE);
 		assert(complete(&synthesis, source_sequence, PG_SYNTHESIS_DONE) == sequence_proof);
 		complete(&synthesis, wrong_sequence_context, PG_SYNTHESIS_REJECTED);
+		complete(&synthesis, pg_synthesis_sequence(&synthesis, context, result_variable, result_function), PG_SYNTHESIS_REJECTED);
 		complete(&synthesis, pg_synthesis_sequence(&synthesis, context, codomain, result_function), PG_SYNTHESIS_REJECTED);
 		assert(pg_evidence_subject(sequence_proof)->core == pg_synthesis_type_structure_result(sequence_term));
 		assert(pg_evidence_classifier(sequence_proof) == pg_effect_type(classifiers, row, pg_universe(classifiers, 0)));

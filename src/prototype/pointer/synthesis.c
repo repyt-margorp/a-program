@@ -1817,8 +1817,24 @@ struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
 	return request_inputs(synthesis, SEQUENCE_JOB, 3, inputs);
 }
 
+static int source_value_kind(const struct pg_synthesis_job *producer);
+
 static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
+	if (!job->value_job) {
+		struct pg_synthesis_job *argument = (void *)job->inputs[1];
+		int kind = source_value_kind(argument);
+		if (kind > 0) {
+			if (kind == 2) {
+				struct pg_derivation_input input = {.rule = PG_VALUE_FROM_TYPE, .count = 1};
+				argument = pg_synthesis_rule(synthesis, &input, &argument, NULL, NULL);
+			}
+			job->value_job = pg_synthesis_application_jobs(synthesis, (void *)job->inputs[0],
+				(void *)job->inputs[2], argument);
+			if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		}
+	}
+	if (job->value_job) { forward_proof(synthesis, job, job->value_job); return; }
 	for (size_t i = 0; i < 3; ++i) {
 		struct pg_synthesis_job *input = (void *)job->inputs[i];
 		if (input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, input); return; }
@@ -1835,21 +1851,17 @@ static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 			pg_evidence_context(continuation) != pg_evidence_context(context)) {
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
-		const struct pg_evidence *argument_value = value(synthesis, input);
-		if (!argument_value) {
-			if (pg_evidence_judgement(input) != PG_JUDGEMENT_COMPUTATION) {
-				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-			}
-			if (!job->left) job->left = pg_synthesis_normalize_classifier(synthesis, context, input);
-			if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
-			if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-			input = job->left->result;
-			job->result = pg_prove_fold(synthesis->typing, synthesis->classifiers, input, continuation);
-			if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
+		if (pg_evidence_judgement(input) != PG_JUDGEMENT_COMPUTATION) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
-		struct pg_synthesis_job *argument = argument_value ? pg_synthesis_evidence(synthesis, argument_value)
-			: pg_synthesis_return(synthesis, context, input);
+		if (!job->left) job->left = pg_synthesis_normalize_classifier(synthesis, context, input);
+		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		input = job->left->result;
+		job->result = pg_prove_fold(synthesis->typing, synthesis->classifiers, input, continuation);
+		if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
+		struct pg_synthesis_job *argument = pg_synthesis_return(synthesis, context, input);
 		job->value_job = pg_synthesis_application(synthesis, context,
 			(void *)job->inputs[2], argument);
 	}
@@ -3175,6 +3187,7 @@ static void forward_structure(struct pg_synthesis *synthesis, struct pg_synthesi
 static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_job *job)
 {
 	if (job->role == HANDLER_RETURN_JOB || job->role == HANDLER_CLAUSE_JOB) return job->value_job;
+	if (job->role == SEQUENCE_JOB) return job->value_job;
 	if (job->role != EXPRESSION_JOB) return NULL;
 	if (job->block && job->block->tail && !job->block->frames) return job->block->tail;
 	if (job->syntax->kind == PG_SYNTAX_APPLICATION && job->stage == APPLICATION_RULE_READY) return job->value_job;
@@ -3193,6 +3206,9 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 	if (producer->status != PG_SYNTHESIS_PENDING) return 0;
 	int preparing = 0;
 	switch (producer->role) {
+	case SEQUENCE_JOB:
+		preparing = !producer->value_job && source_value_kind(producer->inputs[1]) > 0;
+		break;
 	case HANDLER_RETURN_JOB: case HANDLER_CLAUSE_JOB:
 		preparing = !producer->value_job;
 		break;
@@ -3221,6 +3237,8 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 /* Structural polarity from known rules; unknown producers await acceptance. */
 static int body_rule_polarity(const struct pg_synthesis_job *rule)
 {
+	while (rule->role == CLASSIFIER_JOB) rule = rule->inputs[1];
+	if (rule->role == SEQUENCE_JOB || rule->role == BODY_JOB) return 0;
 	if (rule->role == EXPRESSION_JOB) {
 		if (block_syntax(rule->syntax)) return 0;
 		switch (rule->syntax->kind) {
@@ -3236,6 +3254,23 @@ static int body_rule_polarity(const struct pg_synthesis_job *rule)
 	case PG_LAMBDA_INTRO: case PG_APP_ELIM: case PG_FORCE_ELIM: case PG_RETURN_INTRO: case PG_FOLD_ELIM: return 0;
 	default: return -1;
 	}
+}
+
+/* 2 is a type used as a value, 1 a value, 0 computation, -1 unknown. */
+static int source_value_kind(const struct pg_synthesis_job *producer)
+{
+	const struct pg_synthesis_job *rule = prepared_source_rule(producer);
+	if (!rule) rule = producer;
+	int kind = body_rule_polarity(rule);
+	if (kind == 1 && rule->role == DERIVATION_JOB &&
+		((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_UNIVERSE_FORM) return 2;
+	if (kind < 0 && producer->result) {
+		enum pg_evidence_judgement judgement = pg_evidence_judgement(producer->result);
+		if (judgement == PG_JUDGEMENT_VALUE_TYPE) return 2;
+		if (judgement == PG_JUDGEMENT_VALUE) return 1;
+		if (judgement == PG_JUDGEMENT_COMPUTATION) return 0;
+	}
+	return kind;
 }
 
 static struct pg_synthesis_job *body_rule(const struct pg_synthesis_job *adapter)
@@ -3844,20 +3879,11 @@ static int prepare_value_application(struct pg_synthesis *synthesis, struct pg_s
 	if (force) type = forced;
 	if (!pg_pi_view(type, &domain, &binder, &codomain)) goto sequencing;
 	struct pg_synthesis_job *argument = job->right;
-	struct pg_synthesis_job *rule = prepared_source_rule(argument);
-	if (!rule) rule = argument;
-	int polarity = body_rule_polarity(rule), type_value = 0;
-	if (rule->role == DERIVATION_JOB)
-		type_value = ((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_UNIVERSE_FORM;
-	if (polarity < 0 && argument->result) {
-		enum pg_evidence_judgement kind = pg_evidence_judgement(argument->result);
-		type_value = kind == PG_JUDGEMENT_VALUE_TYPE;
-		polarity = type_value || kind == PG_JUDGEMENT_VALUE;
-	}
-	if (polarity != 1) goto sequencing;
+	int kind = source_value_kind(argument);
+	if (kind < 1) goto sequencing;
 	struct pg_synthesis_job *callee = (void *)job->value_job->inputs[0];
 	if (force) callee = plain_rule(synthesis, PG_FORCE_ELIM, NULL, 1, &callee);
-	if (type_value) argument = plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &argument);
+	if (kind == 2) argument = plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &argument);
 	job->value_job = pg_synthesis_application_jobs(synthesis, job->scope->context_job, callee, argument);
 	if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
 	job->stage = APPLICATION_RULE_READY;
