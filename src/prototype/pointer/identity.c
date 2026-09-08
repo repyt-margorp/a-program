@@ -111,9 +111,18 @@ static void source_scope(const struct pg_term *source, struct action_scope *scop
 
 static int action_scope(struct pg_eval *machine, const struct pg_term *source, struct action_scope *scope)
 {
-	source_scope(source, scope);
-	if (scope->count > SIZE_MAX / sizeof(*scope->bindings)) return -1;
-	if (scope->count && !pg_eval_argument(machine, 3 * scope->count)) return 1;
+	*scope = (struct action_scope){source, source, 0, NULL};
+	const struct pg_argument *arguments = machine->arguments;
+	pg_eval_next_argument(&arguments);
+	/* Process supplied boundary triples without waiting for the remaining
+	 * curried arguments. Otherwise an unused outer binder can block THUNK's
+	 * action equation solely because its body returns a function. */
+	while (scope->body->kind == PG_LAMBDA) {
+		for (size_t i = 0; i < 3; ++i) if (!pg_eval_next_argument(&arguments)) return 0;
+		if (scope->count == SIZE_MAX / sizeof(*scope->bindings)) return -1;
+		++scope->count;
+		scope->body = scope->body->as.lambda.body;
+	}
 	return 0;
 }
 

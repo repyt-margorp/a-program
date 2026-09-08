@@ -36,14 +36,21 @@ static void normalizes(struct pg_whnf_work *work, const struct pg_term *input, c
 	assert(pg_whnf_result(job) == expected);
 }
 
-static void converts(struct pg_whnf_work *work, const struct pg_term *left, const struct pg_term *right)
+static uint64_t converts_budget(struct pg_whnf_work *work, const struct pg_term *left, const struct pg_term *right, uint64_t budget)
 {
 	struct pg_conversion comparison;
 	assert(pg_conversion_init(&comparison, work, left, right) == 0);
 	while (pg_conversion_advance(&comparison, 1) == PG_CONVERSION_PENDING)
-		assert(pg_conversion_steps(&comparison) < 100000);
+		assert(pg_conversion_steps(&comparison) < budget);
 	assert(pg_conversion_status(&comparison) == PG_CONVERSION_EQUAL);
+	uint64_t steps = pg_conversion_steps(&comparison);
 	pg_conversion_destroy(&comparison);
+	return steps;
+}
+
+static void converts(struct pg_whnf_work *work, const struct pg_term *left, const struct pg_term *right)
+{
+	converts_budget(work, left, right, 100000);
 }
 
 static const struct pg_evidence *action_result(struct pg_typing *typing,
@@ -809,9 +816,24 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 	const struct pg_evidence *universe = pg_prove_universe(typing, classifiers, empty, 0);
 	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, pg_binder(typing->graph), universe);
 	const struct pg_evidence *initial = source;
+	uint64_t comparison_max = 0;
 	struct pg_whnf_work cube_work;
 	assert(pg_whnf_work_init(&cube_work, typing->graph) == 0);
 	const struct pg_evidence *input = pg_prove_variable(typing, initial, pg_evidence_context(initial)->binder);
+	const struct pg_evidence *domain = pg_prove_value_type(typing, input);
+	const struct pg_object *argument = pg_binder(typing->graph);
+	const struct pg_evidence *body_context = pg_prove_context_extension(typing, initial, argument, domain);
+	const struct pg_evidence *body_variable = pg_prove_variable(typing, body_context, argument);
+	const struct pg_evidence *functions[2];
+	for (size_t dependent = 0; dependent < 2; ++dependent) {
+		const struct pg_evidence *value = dependent ? pg_prove_reflexivity(typing,
+			pg_prove_projection(typing, body_context, domain), body_variable) : body_variable;
+		const struct pg_evidence *body = pg_prove_return(typing, classifiers, value);
+		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domain, body_context,
+			pg_prove_classifier(typing, classifiers, body_context, body));
+		functions[dependent] = pg_prove_lambda(typing, pi, body);
+		assert(functions[dependent]);
+	}
 	static const size_t permutations[6][3] = {
 		{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}
 	};
@@ -846,9 +868,24 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 			assert(returned && pg_evidence_judgement(returned) == PG_JUDGEMENT_COMPUTATION);
 			converts(&cube_work, pg_evidence_classifier(returned), pg_evidence_classifier(expected_return));
 			converts(&cube_work, pg_evidence_subject(returned)->core, pg_evidence_subject(expected_return)->core);
+			for (size_t dependent = 0; dependent < 2; ++dependent) {
+				const struct pg_evidence *function = pg_identity_cube_action(typing, classifiers, &dimensions,
+					initial, functions[dependent], cube, order);
+				assert(function && pg_evidence_judgement(function) == PG_JUDGEMENT_COMPUTATION);
+				assert(pg_prove_classifier(typing, classifiers, boundary, function));
+				const struct pg_evidence *thunk = pg_identity_cube_action(typing, classifiers, &dimensions, initial,
+					pg_prove_thunk(typing, classifiers, functions[dependent]), cube, order);
+				const struct pg_evidence *expected_thunk = pg_prove_thunk(typing, classifiers, function);
+				assert(thunk && expected_thunk && pg_evidence_judgement(thunk) == PG_JUDGEMENT_VALUE);
+				uint64_t steps = converts_budget(&cube_work, pg_evidence_classifier(thunk), pg_evidence_classifier(expected_thunk), 1000000);
+				if (steps > comparison_max) comparison_max = steps;
+				steps = converts_budget(&cube_work, pg_evidence_subject(thunk)->core, pg_evidence_subject(expected_thunk)->core, 1000000);
+				if (steps > comparison_max) comparison_max = steps;
+			}
 		}
 	}
 	pg_whnf_work_destroy(&cube_work);
+	printf("cube function action: maximum comparison steps %llu (limit 1000000)\n", (unsigned long long)comparison_max);
 	const struct pg_dimension_map *order = pg_dimension_identity(&dimensions, 1);
 	assert(!pg_identity_cube_action(typing, classifiers, &dimensions, initial, NULL, pg_binding_cube(&dimensions, 1), order));
 	assert(!pg_identity_cube_action(typing, classifiers, &dimensions, initial, empty, pg_binding_cube(&dimensions, 1), order));
@@ -1100,7 +1137,13 @@ static void lambda_actions(struct pg_classifiers *classifiers)
 	converts(&work, scoped, retained);
 	const struct pg_term *shadowed = pg_identity_apply(graph,
 		pg_lambda(graph, x, pg_lambda(graph, x, family)), omega, omega, omega);
-	normalizes(&work, shadowed, shadowed); /* Incomplete triples stay neutral. */
+	/* The complete outer triple is unused because the inner binder shadows it. */
+	converts(&work, shadowed, pg_identity_action(graph, pg_lambda(graph, x, family)));
+	const struct pg_term *incomplete = pg_application(graph,
+		pg_identity_action(graph, pg_lambda(graph, x, family)), a);
+	normalizes(&work, incomplete, incomplete);
+	incomplete = pg_application(graph, incomplete, b);
+	normalizes(&work, incomplete, incomplete);
 	shadowed = pg_application(graph, pg_identity_instance(graph, shadowed, a, b), p);
 	converts(&work, shadowed, retained);
 	struct pg_whnf_work pruning_whole;

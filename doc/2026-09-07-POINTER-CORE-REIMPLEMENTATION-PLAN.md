@@ -1827,6 +1827,27 @@ tests does not discharge it, and datatype admission must not assume completion.
   remain synchronous. This constructs action in each oriented context, not a
   transposition between them; the typed symmetry gate remains open.
 
+- [x] September 8, after `530e3b3`: typed cube-function tests exposed a real
+  partial-action mismatch. Acting on THUNK(lambda x. RETURN(x)) under an
+  unused type parameter reduced, but THUNK of the raw-function action waited
+  for the inner function's boundary arguments. `action_scope` now consumes
+  only complete supplied triples, using the existing argument cursor. The
+  ordinary unused-binder rule can simplify this prefix; no eta rule or
+  THUNK-specific comparison exception is added. Update the old shadowed-binder
+  test, which incorrectly required the complete unused outer triple to remain
+  neutral; add tests that one/two arguments of a triple still remain neutral.
+  Typed raw Pi functions returning x or refl(x), and their THUNK values, now
+  pass cube action/classifier comparisons in dimensions 0-3, including all six
+  dimension-three orders. One new high-dimensional classifier comparison
+  takes 161145 steps, exceeding the previous generic test cap of 100000 but
+  terminating below its explicit per-case cap of 1000000. Print this maximum;
+  retain the old cap for other comparisons. Optimized Identity execution was
+  about 0.47 seconds locally (not a cross-machine performance guarantee).
+  Optimized/ASan/UBSan pointer checks and 512 KiB Identity execution pass.
+  Implementation/header +14/-3; tests +46/-3; documentation separate. This
+  fixes partial-action coherence for the tested functions, not general
+  higher-field computation, typed transposition or nominal datatype admission.
+
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
   and the implemented F/U/Pi Identity, RETURN/THUNK/FORCE action and diagonal
