@@ -148,6 +148,14 @@ struct pg_synthesis_job *pg_synthesis_operation_reference(struct pg_synthesis *s
 	struct pg_synthesis_job *producer);
 const struct pg_operation_declaration *pg_synthesis_operation_declaration(const struct pg_synthesis_job *job);
 struct pg_derivation_input;
+/* Structural subject of an unaccepted formation producer. Universe/F/U/Pi
+ * inputs can be inspected before row closure. Unknown rule forms await their
+ * accepted formation instead. No normalization or type certificate is issued;
+ * callers must retain/check the original formation producer. Symbolic row
+ * parameters remain symbolic even if that producer has already completed. */
+struct pg_synthesis_job *pg_synthesis_type_structure(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *formation);
+const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthesis_job *job);
 /* Unaccepted stored rule DAG; request does not traverse or accept it. Inputs
  * outlive synthesis. Uses ordinary dependencies, rules and pure work. */
 struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,

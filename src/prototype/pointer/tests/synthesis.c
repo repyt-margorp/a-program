@@ -272,7 +272,6 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			assert(!pg_effect_dependency(&effects, tail, no_effects, next));
 			tail = next;
 		}
-		pg_effect_inference_seal(&effects);
 		const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
 		size_t proofs = typing->proofs.count;
 		struct pg_synthesis_job *empty = rule_job(&synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
@@ -291,6 +290,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			(struct pg_synthesis_job *[]){thunk, context, codomain});
 		struct pg_synthesis_job *lambda = rule_job(&synthesis, PG_LAMBDA_INTRO, NULL, 2,
 			(struct pg_synthesis_job *[]){pi, body});
+		struct pg_synthesis_job *structure = pg_synthesis_type_structure(&synthesis, pi);
+		assert(structure && structure == pg_synthesis_type_structure(&synthesis, pi));
 		struct pg_token name = {.kind=PG_TOKEN_IDENT, .text="k", .length=1};
 		const struct pg_source_scope *scope = pg_synthesis_bind_context(&synthesis, root, name, k, context);
 		assert(scope && scope == pg_synthesis_bind_context(&synthesis, root, name, k, context));
@@ -321,6 +322,15 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_request(&synthesis, pg_synthesis_binding_scope(source_binding), definition.expression->right));
 		assert(synthesis.jobs.count == prepared_jobs);
 		assert(!pg_synthesis_result(source_binding));
+		assert(!complete(&synthesis, structure, PG_SYNTHESIS_DONE));
+		const struct pg_term *symbolic_pi = pg_synthesis_type_structure_result(structure);
+		const struct pg_term *symbolic_f = pg_effect_type_spine(classifiers,
+			pg_reference(typing->graph, pg_effect_equation_parameter(&effects, equation)),
+			pg_universe(classifiers, 0));
+		assert(symbolic_pi == pg_pi(typing->graph, pg_thunk_type(classifiers, symbolic_f), k, symbolic_f));
+		assert(!pg_synthesis_result(pi) && !pg_synthesis_result(context));
+		pg_effect_inference_seal(&effects);
+		assert(pg_synthesis_effect_inference(&synthesis, &effects));
 		for (unsigned steps = 0; pg_synthesis_status(lambda) == PG_SYNTHESIS_PENDING; ++steps) {
 			assert(steps < 1000);
 			pg_synthesis_advance(&synthesis, chunk);
@@ -347,6 +357,18 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_effect_type_view(pg_evidence_classifier(pg_synthesis_result(body)), &actual, &value));
 		assert(actual == row && value == pg_universe(classifiers, 0));
 		assert(pg_synthesis_result(lambda) == pg_prove_lambda(typing, pg_synthesis_result(pi), pg_synthesis_result(body)));
+		struct pg_binding_value image = {pg_effect_equation_parameter(&effects, equation),
+			pg_effect_reference(typing->graph, row)};
+		/* Capture-avoiding substitution freshens the Pi binder. */
+		assert(pg_alpha_equal(pg_term_substitute(typing->graph, symbolic_pi, 1, &image),
+			pg_evidence_subject(pg_synthesis_result(pi))->core) == 1);
+		assert(pg_synthesis_type_structure_result(structure) == symbolic_pi);
+		struct pg_synthesis_job *invalid = rule_job(&synthesis, PG_THUNK_TYPE_FORM, NULL, 1, &universe);
+		struct pg_synthesis_job *invalid_structure = pg_synthesis_type_structure(&synthesis, invalid);
+		assert(!complete(&synthesis, invalid_structure, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(invalid_structure)
+			== pg_thunk_type(classifiers, pg_universe(classifiers, 0)));
+		complete(&synthesis, invalid, PG_SYNTHESIS_REJECTED);
 		pg_synthesis_destroy(&synthesis);
 		pg_effect_inference_destroy(&effects);
 		pg_whnf_work_destroy(&normalization);

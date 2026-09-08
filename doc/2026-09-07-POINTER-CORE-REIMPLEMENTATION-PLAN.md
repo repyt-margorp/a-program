@@ -162,6 +162,20 @@ Next implementation sequence (prerequisite for automatic source handlers):
   and clause bodies to construct pending rule applications and row dependencies.
   Carry latent effects through callable types, not a flat side table keyed by
   erased Core. Keep `::` exclusively downstream of independent synthesis.
+  `pg_synthesis_type_structure` now projects the structural subject of pending
+  Universe/F/U/Pi formation rules (and context projections) using the existing
+  producer-premise graph. Unknown rules await accepted formation instead of
+  guessing. Dynamic F rows remain parameter references regardless of whether
+  closure happened before or after the request. The result is a raw Term, not
+  an occurrence annotation or evidence; its original formation still must pass.
+  Tests construct a symbolic Pi before sealing, then compare its row-substituted
+  form with the kernel's result using explicit alpha comparison (substitution
+  freshens binders). An invalid U(Universe) structure can be built but its
+  formation is rejected. No extra Core tag or Context representation is added.
+  Source variable/application classifier propagation is still outstanding.
+  Validation: normal `check`, eight example synthesis cases, six runtime cases
+  and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
+  pointer-equality assumption about capture-avoiding substitution.
   Source quotation now prepares a THUNK_INTRO rule with its independent operand
   producer before context acceptance, and forwards the ordinary rule result.
   This replaces direct source-side thunk acceptance; loaded and source rules use
