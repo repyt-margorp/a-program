@@ -1742,6 +1742,26 @@ static void substitution_test(struct pg_graph *graph)
 	const struct pg_term *vx = pg_reference(graph, x);
 	const struct pg_term *vy = pg_reference(graph, y);
 	struct pg_binding_value bindings[] = {{x, vy}, {y, vx}};
+	const struct pg_term *semantic = pg_reference(graph, &pg_return_operation);
+	struct pg_binding_value irrelevant[64];
+	const struct pg_term *closed_function = semantic;
+	for (size_t i = 0; i < 64; ++i) {
+		irrelevant[i] = (struct pg_binding_value){pg_binder(graph), vx};
+		closed_function = pg_lambda(graph, irrelevant[i].binder, closed_function);
+	}
+	struct pg_substitution closed;
+	assert(!pg_substitution_init(&closed, graph, semantic, 64, irrelevant));
+	assert(pg_substitution_result(&closed) == semantic && pg_substitution_steps(&closed) == 0);
+	pg_substitution_destroy(&closed);
+	struct pg_binding_value invalid_binding = {&pg_return_operation, vx};
+	assert(pg_substitution_init(&closed, graph, semantic, 1, &invalid_binding) == -1);
+	for (size_t i = 0; i < 64; ++i) closed_function = pg_application(graph, closed_function, vx);
+	struct pg_eval constant;
+	pg_eval_init(&constant, closed_function);
+	/* 64 APP steps, 64 beta steps, then the semantic head without 64 lookups. */
+	assert(pg_eval_advance(&constant, 129) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&constant, graph) == semantic);
+	pg_eval_destroy(&constant);
 	const struct pg_term *app = pg_application(graph, vx, vy);
 	assert(pg_term_substitute(graph, app, 0, NULL) == app);
 	assert(pg_term_substitute(graph, app, 2, bindings) == pg_application(graph, vy, vx));

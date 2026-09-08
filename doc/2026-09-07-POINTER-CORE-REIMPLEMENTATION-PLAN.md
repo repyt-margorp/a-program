@@ -82,6 +82,19 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] After `7a56733`, skip lexical environments for semantic references in
+  evaluation and readback. Lambda and explicit substitution construction only
+  bind `PG_BINDER`; semantic references could never match an environment entry.
+  Readback therefore keys these constants without an irrelevant environment,
+  while ordinary/owned binders retain capture-avoiding substitution unchanged.
+  Tests reject a semantic substitution key and check a constant under 64
+  bindings: substitution returns the identical pointer without traversal;
+  beta evaluation takes 64 APP + 64 Lambda + one head step, not a further
+  64 failed environment lookups. Full pointer `make check` and ASan/UBSan Core
+  and synthesis tests pass. Unary cube counts become 2,079 / 83,456 / 5,429,901; binary counts
+  become 6,356 / 337,312 / 24,330,848, agreeing at chunks 1 and 64. The higher
+  function comparison maximum is 215,677. This reduces redundant traversal,
+  not the unresolved general typed symmetry or all fresh-binder readback.
 - [x] After `a65dd1e`, retain the current shared normalization job in each
   conversion instead of searching its index on every suspension step. Switching
   endpoint changes the borrowed handle; the WHNF-to-NF fallback clears it before

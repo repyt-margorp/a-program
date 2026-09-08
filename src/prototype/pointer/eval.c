@@ -220,6 +220,7 @@ static int step(struct pg_eval *machine)
 		return 0;
 	}
 	case PG_REFERENCE: {
+		if (term->as.reference->kind == PG_SEMANTIC_OBJECT) machine->current.environment = NULL;
 		const struct pg_environment *environment = machine->current.environment;
 		if (!environment) return machine->dispatch ? machine->dispatch(machine) : 1;
 		if (environment->binder == term->as.reference) machine->current = environment->value;
@@ -250,6 +251,9 @@ enum pg_eval_status pg_eval_advance(struct pg_eval *machine, uint64_t budget)
 static struct readback_entry *reify_request(struct readback_context *context, struct pg_closure closure)
 {
 	if (!closure.term) return NULL;
+	/* Environments contain binder substitutions, never semantic references. */
+	if (closure.term->kind == PG_REFERENCE && closure.term->as.reference->kind == PG_SEMANTIC_OBJECT)
+		closure.environment = NULL;
 	uint64_t hash = ((uintptr_t)closure.term * UINT64_C(1099511628211)) ^ (uintptr_t)closure.environment;
 	for (struct pg_index_entry *candidate = pg_index_candidates(&context->results, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
