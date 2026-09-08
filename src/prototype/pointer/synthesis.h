@@ -437,6 +437,17 @@ struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesi
 struct pg_synthesis_job *pg_synthesis_substitution_jobs(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *source, struct pg_synthesis_job *destination,
 	size_t count, struct pg_synthesis_job *const *images);
+/* Lift a checked substitution over one source extension using ordinary
+ * reindex, context-extension, variable, projection and substitution producers.
+ * The caller supplies the stable destination binder. */
+struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *synthesis,
+	const struct pg_evidence *substitution, const struct pg_evidence *extension,
+	const struct pg_object *binder);
+/* Instantiate Self, then lift each constructor field. Formation and parameter
+ * substitution are pending producers; fresh field binders belong to this job. */
+struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *formation, const struct pg_object *constructor,
+	struct pg_synthesis_job *parameters);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
  * Requests do not reduce; unsupported neutral heads are not negative proofs.

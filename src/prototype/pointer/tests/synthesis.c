@@ -2653,6 +2653,21 @@ static void substitution_jobs(struct pg_typing *typing, struct pg_classifiers *c
 		assert(pg_evidence_premise(map, 0) == source && pg_evidence_premise(map, 1) == destination);
 		const struct pg_evidence *reindexed = pg_prove_reindex(typing, map, pg_prove_variable(typing, source, x));
 		same_judgement(reindexed, b_value);
+		const struct pg_evidence *extension = pg_prove_context_extension(typing, source, pg_binder(typing->graph),
+			pg_prove_value_type(typing, pg_prove_variable(typing, source, a)));
+		const struct pg_object *lift_binder = pg_binder(typing->graph);
+		struct pg_synthesis_job *lift = pg_synthesis_substitution_lift(&synthesis, map, extension, lift_binder);
+		assert(lift && pg_synthesis_status(lift) == PG_SYNTHESIS_PENDING);
+		assert(lift == pg_synthesis_substitution_lift(&synthesis, map, extension, lift_binder));
+		assert(!pg_synthesis_substitution_lift(&synthesis, map, source, lift_binder));
+		const struct pg_evidence *lifted = complete(&synthesis, lift, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *direct_lift = pg_prove_substitution_lift(typing, map, extension, lift_binder);
+		assert(direct_lift && pg_evidence_premise(lifted, 0) == extension);
+		assert(pg_evidence_premise(lifted, 1) == pg_evidence_premise(direct_lift, 1));
+		assert(pg_evidence_context(lifted)->binder == lift_binder);
+		assert(pg_evidence_premise_count(lifted) == pg_evidence_premise_count(direct_lift));
+		for (size_t i = 2; i < pg_evidence_premise_count(lifted); ++i)
+			same_judgement(pg_evidence_premise(lifted, i), pg_evidence_premise(direct_lift, i));
 		struct pg_synthesis_job *wrong[] = {images[1], images[0]};
 		complete(&synthesis, pg_synthesis_substitution(&synthesis, source, destination, 2, wrong), PG_SYNTHESIS_REJECTED);
 		assert(!pg_synthesis_substitution(&synthesis, source, destination, 1, images));
@@ -3933,6 +3948,22 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		request(&synthesis, named, "r:=Alias.succ (Nat.succ Alias.zero);"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
 	const struct pg_object *field_binder = pg_binder(typing->graph);
+	struct pg_inductive_instance nat_instance;
+	assert(pg_inductive_instance(typing, nat, &nat_instance));
+	const struct pg_object *succ_label = pg_data_constructor(pg_data_schema_layout(nat_instance.schema), 1);
+	struct pg_synthesis_job *parameter_job = pg_synthesis_substitution(&synthesis, empty, empty, 0, NULL);
+	struct pg_synthesis_job *scope_job = pg_synthesis_constructor_scope(&synthesis, nat_job, succ_label, parameter_job);
+	assert(scope_job && !pg_synthesis_result(scope_job));
+	assert(scope_job == pg_synthesis_constructor_scope(&synthesis, nat_job, succ_label, parameter_job));
+	const struct pg_evidence *scope_map = complete(&synthesis, scope_job, PG_SYNTHESIS_DONE);
+	assert(pg_evidence_premise(scope_map, 0) == pg_data_schema_fields(nat_instance.schema, succ_label));
+	assert(pg_evidence_context(scope_map)->parent == NULL);
+	assert(pg_evidence_context(scope_map)->declared_type == pg_evidence_subject(nat)->core);
+	const struct pg_context *scope_context = pg_evidence_context(scope_map);
+	assert(complete(&synthesis, scope_job, PG_SYNTHESIS_DONE) == scope_map);
+	assert(pg_evidence_context(pg_synthesis_result(scope_job)) == scope_context);
+	complete(&synthesis, pg_synthesis_constructor_scope(&synthesis, nat_job,
+		pg_binder(typing->graph), parameter_job), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *field_context = pg_prove_context_extension(typing, empty, field_binder, nat);
 	const struct pg_source_scope *field_scope = pg_synthesis_bind(&synthesis, named,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "field", .length = 5}, field_binder, field_context);
@@ -3984,7 +4015,6 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *body_value = complete(&synthesis,
 		pg_synthesis_return(&synthesis, empty, body), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(body_value)->core == one_core);
-	struct pg_inductive_instance nat_instance;
 	assert(pg_inductive_instance(typing, nat, &nat_instance));
 	const struct pg_data_layout *nat_layout = pg_data_schema_layout(nat_instance.schema);
 	const struct pg_evidence *motive_context = pg_prove_context_extension(typing, empty, pg_binder(typing->graph), nat);

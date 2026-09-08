@@ -797,6 +797,26 @@ finish general handler source support.
   ASan/UBSan synthesis tests pass; example transition counts are unchanged.
   Implementation C/header: +31/-1; tests: +23/-0; documentation separate.
 
+  September 9, after `efa3c71`: constructor field scope requests now await
+  formation and parameter-map producers, instantiate Self through reindex and
+  value coercion, then lift fields through ordinary substitution producers.
+  Each field's destination binder is allocated once when its lift is requested.
+  Exact scope requests share the complete job and its binders. Source Match
+  now awaits this scope producer instead of calling `pg_prove_constructor_scope`.
+  `pg_synthesis_substitution_lift` composes reindex, context extension, variable,
+  projection and image checking; no new evidence rule or Core constructor was
+  added. Tests compare dependent lift images and contexts with the accepted
+  reference implementation, check exact request reuse, scope signatures and
+  rejection of unrelated extensions/constructor labels. Fresh scopes are not
+  equated by alpha or normalization. Named constructor wrappers and IH-scope
+  preparation still contain synchronous derived operations; general pending
+  Match inference and indexed-family admission remain open.
+  Normal checks, eight source cases, six runtime cases and rebuilt ASan/UBSan
+  synthesis tests pass. Source 04-07 and 09 take 786, 447, 397, 1065 and 2410
+  scheduler transitions; separating previously synchronous work changes these
+  counts without changing the runtime results. No speedup is claimed.
+  Implementation C/header: +119/-4; tests: +31/-1; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.
