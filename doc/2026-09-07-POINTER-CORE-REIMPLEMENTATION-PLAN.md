@@ -82,6 +82,17 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] After `fd902c5`, filter Act scope references through the existing source
+  binder index before checking lexical shadows. Ambient/semantic references and
+  already discovered sources cannot alter first-use order. Only an undiscovered
+  source enters the suspended shadow traversal; retain its source position
+  instead of looking it up again afterwards. This removes the redundant final
+  used-state branch without changing source order or shadowing. Existing tests
+  exercise shared subterms under different shadows, duplicate source binders,
+  unused boundaries, renaming, deep scopes and every suspension boundary.
+  Full pointer `make check` and ASan/UBSan Identity tests pass. The higher
+  function comparison maximum decreases from 215,677 to 205,367 transitions.
+  No Core/typing rule changes; general typed symmetry remains open.
 - [x] After `7a56733`, skip lexical environments for semantic references in
   evaluation and readback. Lambda and explicit substitution construction only
   bind `PG_BINDER`; semantic references could never match an environment entry.

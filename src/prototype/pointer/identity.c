@@ -431,6 +431,7 @@ struct scope_work {
 	struct scope_visit *pending;
 	const struct pg_term *reference;
 	const struct scope_shadow *shadow;
+	size_t reference_position;
 	size_t *order;
 	unsigned char *used;
 	size_t count;
@@ -451,17 +452,11 @@ static int scope_visit_poll(struct scope_work *work)
 			work->shadow = work->shadow->parent;
 			return 0;
 		}
-		const struct pg_object *binder = work->reference->as.reference;
 		work->reference = NULL;
-		/* Hash-bucket traversal, like index growth, is not logical fuel. */
-		const struct scope_binding_index *source = scope_binding_find(&work->sources, binder);
-		if (!source) return 0;
-		size_t i = source->position;
-		if (!work->used[i]) {
-			work->used[i] = 1;
-			if (i != work->count) work->changed = 1;
-			work->order[work->count++] = i;
-		}
+		size_t i = work->reference_position;
+		work->used[i] = 1;
+		if (i != work->count) work->changed = 1;
+		work->order[work->count++] = i;
 		return 0;
 	}
 	if (!work->pending) return 1;
@@ -491,8 +486,13 @@ static int scope_visit_poll(struct scope_work *work)
 		if (!status) status = scope_push(work->arena, &work->seen, &work->pending, term->as.application.function, visit->shadow);
 		break;
 	case PG_REFERENCE: {
+		/* Only an undiscovered source binder can affect first-use order.
+		 * Ambient and semantic references need no shadow-chain traversal. */
+		const struct scope_binding_index *source = scope_binding_find(&work->sources, term->as.reference);
+		if (!source || work->used[source->position]) break;
 		work->reference = term;
 		work->shadow = visit->shadow;
+		work->reference_position = source->position;
 		break;
 	}
 	}
