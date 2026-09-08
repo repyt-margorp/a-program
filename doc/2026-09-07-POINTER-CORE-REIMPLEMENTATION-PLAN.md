@@ -203,10 +203,20 @@ The broader gate is still incomplete. Keep the following obstructions open:
   stored values. Tests cover computed arguments, aliases, sequential blocks,
   explicitly quoting a named function for higher-order use, post-checks and
   rejection of explicit returning thunks used as ordinary value arguments.
-- [ ] Nominal provenance through constant Pi codomain elimination: directly
-  matching a nested computed constructor result encounters
-  `PG_RETURN_CONTENT(PG_PI_CONSTANT_CODOMAIN(...))`; the instance traversal
-  does not yet recover its admitted family. This is unsupported, not invalid.
+- [x] Nominal provenance through constant codomain elimination of a retained
+  `PG_PI_FORM`: the traversal retains the context-removal boundary, then
+  reconstructs the nominal parameter substitution in its parent context.
+  Images must have an existing proof there (possibly after stripping retained
+  projection/reindex wrappers or following an exact variable image). Both Core
+  and classifier are checked against the original image before accepting the
+  recovered proof; the entire substitution is checked normally afterwards.
+  This is not general strengthening or untyped erasure of a context dependency.
+  Tests directly Match nested computed Nat/List constructors, verify recursive
+  results, and accept an open `List A` parameter in the same path.
+- [ ] Generalize constant-codomain provenance when the Pi formation itself is
+  derived rather than a retained `PG_PI_FORM`, and image recovery beyond the
+  supported retained unary/substitution spine. Missing evidence remains
+  unsupported; do not manufacture a parameter proof from its erased Core.
 - [x] Nominal provenance of recursive fields through the checked Self map:
   `pg_substitution_image` borrows the accepted image of an exact source binder.
   The retained-evidence traversal consumes one substitution/projection frame
@@ -218,9 +228,9 @@ The broader gate is still incomplete. Keep the following obstructions open:
   absent/invalid inputs and no new term/proof allocation. The current lookup
   is linear in a substitution's stored bindings, not a new persistent index.
 
-The constant-codomain fixture still explicitly records unsupported work in
-component tests; it is not a substitute for successful source compatibility
-acceptance. The recursive-field fixture is now an execution success test.
+The original constant-codomain and recursive-field fixtures are now execution
+success tests. General derived-Pi provenance and open family result formation
+remain separate unmet requirements.
 Verification of this connection: optimized `check` and rebuilt ASan/UBSan
 `synthesis_test` passed. `check-examples` still fails 07/09 as recorded above.
 Implementation delta: `evidence.c` +16, `evidence.h` +7, `synthesis.c` +175/-14;
@@ -239,6 +249,12 @@ tests +12/-1; documentation separate. No independent Replay path was added.
 Optimized component tests and rebuilt ASan/UBSan synthesis passed.
 `check-acceptance` reached the open-family failure after passing those component
 tests and all eight unchanged examples; it did not pass as a whole.
+After `17e202a`, retained constant-codomain provenance passed component tests,
+all eight source checks, all six example results, and rebuilt ASan/UBSan
+synthesis. Full acceptance still fails open-family at 86 transitions.
+Implementation delta: `evidence.c` +47; tests +10/-4; documentation separate.
+Context image recovery is an explicit synchronous traversal; budgeting and
+sharing of the broader derived-formation normalization remain required.
 
 Code-level obstruction and implementation order:
 

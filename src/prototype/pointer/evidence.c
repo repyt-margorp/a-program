@@ -168,12 +168,49 @@ struct evidence_frame {
 	struct evidence_frame *next;
 };
 
+/* Recover an already justified image in a smaller context. This is not a
+ * strengthening rule: only explicit weakening and variable images are undone. */
+static const struct pg_evidence *rebase_image(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *image)
+{
+	const struct pg_term *core = image->subject->core, *classifier = image->classifier;
+	while (image) {
+		const struct pg_evidence *result = pg_prove_projection(typing, context, image);
+		if (!result && image->rule == PG_VARIABLE)
+			result = pg_prove_variable(typing, context, image->subject->core->as.reference);
+		if (result && pg_alpha_equal(result->subject->core, core) == 1 &&
+			pg_alpha_equal(result->classifier, classifier) == 1) return result;
+		if (image->rule == PG_CONTEXT_PROJECTION) image = image->premises[1];
+		else if (image->rule == PG_REINDEX && image->premises[1]->rule == PG_VARIABLE)
+			image = pg_substitution_image(typing, image->premises[0], image->premises[1]->subject->core->as.reference);
+		else if (image->rule == PG_REINDEX) image = image->premises[1];
+		else return NULL;
+	}
+	return NULL;
+}
+
+static const struct pg_evidence *rebase_map(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *map)
+{
+	size_t count = map->premise_count - 2;
+	const struct pg_evidence **images = malloc(count * sizeof(*images));
+	if (count && !images) return NULL;
+	for (size_t i = 0; i < count; ++i) images[i] = rebase_image(typing, context, map->premises[i + 2]);
+	const struct pg_evidence *result = pg_prove_substitution(typing, map->premises[0], context, count, images);
+	free(images);
+	return result;
+}
+
 static const struct pg_evidence *evidence_map(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct evidence_frame *frames)
 {
 	const struct pg_evidence *map = pg_prove_substitution_projection(typing, context, context);
 	for (; map && frames; frames = frames->next) {
 		const struct pg_evidence *step = frames->proof;
+		if (step->rule == PG_PI_CONSTANT_CODOMAIN) {
+			map = rebase_map(typing, step->premises[0]->premises[1]->premises[0], map);
+			continue;
+		}
 		const struct pg_evidence *substitution = step->premises[0];
 		if (step->rule == PG_CONTEXT_PROJECTION)
 			substitution = pg_prove_substitution_projection(typing, map->premises[1], substitution);
@@ -341,6 +378,16 @@ int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *ty
 		case PG_PI_CODOMAIN: {
 			formation = pi_body(typing, formation->premises[0], formation->premises[1]);
 			if (!formation) goto done;
+			break;
+		}
+		case PG_PI_CONSTANT_CODOMAIN: {
+			const struct pg_evidence *pi = formation->premises[0];
+			if (pi->rule != PG_PI_FORM) goto done;
+			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
+			if (!frame) goto done;
+			*frame = (struct evidence_frame){formation, frames};
+			frames = frame;
+			formation = pi->premises[2];
 			break;
 		}
 		default: goto done;

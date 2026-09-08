@@ -2825,6 +2825,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	/* The ordinary source path discovers the constant motive before opening
 	 * IH assumptions. No expected type or explicit motive is supplied here. */
 	const char *source_inductions[] = {
+		"r:=(Nat.succ (Nat.succ Nat.zero)) @zero=>Nat.zero @succ k=>Nat.succ *k;",
 		"r:=(\\n:Nat=>n @zero=>Nat.zero @succ k=>Nat.succ *k) (Nat.succ (Nat.succ Nat.zero));",
 		"r:=(\\n:Nat=>n @succ k=>Nat.succ *k @zero=>Nat.zero) (Nat.succ (Nat.succ Nat.zero));",
 		"r:=((\\n:Nat=>n @zero=>(\\m:Nat=>m) @succ k=>(\\m:Nat=>Nat.succ (*k m))) (Nat.succ Nat.zero)) (Nat.succ Nat.zero);",
@@ -2849,10 +2850,6 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		"r:=\\n:Nat=>n @zero=>(\\m:Nat=>m) @succ k=>(\\k:Nat=>*k);"), PG_SYNTHESIS_UNSUPPORTED);
 	complete(&synthesis, request(&synthesis, named,
 		"r:=\\n:Nat=>n @zero=>Nat.zero @succ k=>{k:=Nat.zero; *k;};"), PG_SYNTHESIS_UNSUPPORTED);
-	/* A retained constant Pi codomain currently loses nominal provenance.
-	 * Keep this boundary explicit until derived formation traversal is fixed. */
-	complete(&synthesis, request(&synthesis, named,
-		"r:=(Nat.succ (Nat.succ Nat.zero)) @zero=>Nat.zero @succ k=>Nat.succ *k;"), PG_SYNTHESIS_UNSUPPORTED);
 	/* Nested Match resolves the field through the accepted Self substitution;
 	 * the first body uses the outer IH, the second shadows it with an inner IH. */
 	const char *nested[] = {
@@ -2927,6 +2924,15 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *length_nf = complete(&synthesis,
 		pg_synthesis_nf(&synthesis, empty, length), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(pg_prove_return_value(typing, length_nf))->core == pg_evidence_subject(two)->core);
+	const struct pg_evidence *direct_length = complete(&synthesis, request(&synthesis, named,
+		"r:=((List Nat).cons Nat.zero ((List Nat).cons Nat.zero L.nil)) @cons x rest=>Nat.succ *rest @nil=>Nat.zero;"),
+		PG_SYNTHESIS_DONE);
+	const struct pg_evidence *direct_nf = complete(&synthesis,
+		pg_synthesis_nf(&synthesis, empty, direct_length), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(pg_prove_return_value(typing, direct_nf))->core == pg_evidence_subject(two)->core);
+	complete(&synthesis, request(&synthesis, named,
+		"r:=\\A:@=>\\x:A=>((List A).cons x ((List A).cons x (List A).nil)) @cons y rest=>Nat.succ *rest @nil=>Nat.zero;"),
+		PG_SYNTHESIS_DONE);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("source declarations: nominal formation, conditional universe candidates, no early publication and reuse passed");
