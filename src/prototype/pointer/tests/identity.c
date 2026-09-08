@@ -1837,6 +1837,42 @@ static void action_scope_exchange(struct pg_classifiers *classifiers)
 	pg_whnf_work_destroy(&work);
 }
 
+static void iterated_lambda_suspension(struct pg_graph *graph, struct pg_whnf_work *work,
+	const struct pg_term *id)
+{
+	const struct pg_term *source = pg_identity_action(graph, pg_identity_action(graph, id));
+	normalizes(work, source, source);
+	const struct pg_term *expected = NULL;
+	for (size_t i = 0; i < 9; ++i) {
+		expected = pg_reference(graph, pg_binder(graph));
+		source = pg_application(graph, source, expected);
+		if (i < 2) normalizes(work, source, source);
+	}
+	struct pg_eval whole;
+	pg_eval_init(&whole, source);
+	whole.output = graph;
+	whole.dispatch = pg_pure_policy.dispatch;
+	assert(pg_eval_advance(&whole, 10000) == PG_EVAL_WHNF);
+	converts(work, pg_eval_readback(&whole, graph), expected);
+	uint64_t steps = whole.steps;
+	pg_eval_destroy(&whole);
+	for (uint64_t cut = 0; cut < steps; ++cut) {
+		struct pg_eval split;
+		pg_eval_init(&split, source);
+		split.output = graph;
+		split.dispatch = pg_pure_policy.dispatch;
+		assert(pg_eval_advance(&split, cut) == PG_EVAL_PENDING);
+		const struct pg_term *snapshot = pg_eval_readback(&split, graph);
+		assert(snapshot);
+		converts(work, snapshot, expected);
+		assert(pg_eval_advance(&split, steps - cut) == PG_EVAL_WHNF);
+		assert(split.steps == steps);
+		converts(work, pg_eval_readback(&split, graph), expected);
+		pg_eval_destroy(&split);
+		converts(work, snapshot, expected);
+	}
+}
+
 static void lambda_actions(struct pg_classifiers *classifiers)
 {
 	struct pg_graph *graph = classifiers->graph;
@@ -1849,6 +1885,7 @@ static void lambda_actions(struct pg_classifiers *classifiers)
 	const struct pg_term *a = pg_reference(graph, pg_binder(graph));
 	const struct pg_term *b = pg_reference(graph, pg_binder(graph));
 	const struct pg_term *id = pg_lambda(graph, x, vx);
+	iterated_lambda_suspension(graph, &work, id);
 	normalizes(&work, pg_identity_apply(graph, id, a, b, p), p);
 	normalizes(&work, pg_identity_apply(graph, id, a, b, q), q);
 	/* Reusing a binder pointer still selects its innermost complete triple. */

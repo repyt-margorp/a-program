@@ -82,6 +82,35 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Repair iterated action application on known Lambdas. The new dependent
+  cube test exposed `Act(Act(lambda y. RETURN(y)))` with nine arguments staying
+  neutral: scope discovery could not see the inner action's function binders.
+  With a complete outer triple, scan the retained Act chain for a Lambda,
+  eta-expose the first binder's 3^n boundary arguments, and reuse scoped Act.
+  Discovery/construction are suspended; scratch arrays use the evaluator arena.
+  Opaque sources and unapplied actions are not treated as functions.
+  This is local function eta exposure under Act, not global eta interning,
+  an arbitrary APP-arity rule or a new equality reflection rule.
+- [x] Test dependent cube Lambda application in dimensions 1, 2 and 3, with
+  both the type and value cubes varying. Feed 3, 9 and 27 independently typed
+  arguments through the shared raw application jobs, evaluate RETURN's content,
+  and post-check its classifier against the center's type. RETURN extraction
+  alone is not normalization of its content; alpha comparison of unnormalized
+  classifiers is not the acceptance criterion. One-step and 64-step scheduling
+  agree: 2,339 / 94,824 / 6,185,814 solver transitions respectively.
+- [x] Test every evaluator suspension point of a twice-acted identity Lambda
+  applied to nine distinct boundary variables. Both retained-work resumption
+  and readback/recomputation yield the ninth variable; the unapplied action
+  and prefixes shorter than one triple remain neutral. This exercises the
+  new scope worker without assuming typed central symmetry.
+  Complete pointer `make check` and ASan/UBSan `identity_test` and
+  `synthesis_test` passed. The syntax inventory remains parsing-only evidence.
+- [ ] Reduce the measured cubic application cost. The new test has an explicit
+  ten-million transition ceiling; other tests retain their existing limits.
+  Passing this budget is not a performance claim or general HOTT acceptance.
+  The pre-existing higher-function comparison maximum also changed from
+  243,489 to 255,049 transitions with the new exposure; retain this regression
+  measurement when optimizing rather than claiming unchanged evaluation cost.
 - [x] Exercise the combined pending family -> instance -> formation -> face
   pipeline on a reflexive family over a line. Requests do not advance the
   solver or publish partial results; the resulting square retains its Core

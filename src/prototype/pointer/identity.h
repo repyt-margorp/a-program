@@ -32,6 +32,11 @@ int pg_identity_view(const struct pg_term *term, const struct pg_term **type,
  * remains distinct. Pi/U endpoints are retained without execution.
  * Complete supplied triples can simplify a curried prefix without waiting
  * for later arguments; an incomplete triple is not consumed.
+ * When an outer action receives a complete triple and its source is an
+ * iterated action of a known Lambda, expose that first binder's boundary
+ * arguments by eta expansion and reuse ordinary scoped action. Construction
+ * is suspended per binder/application; opaque sources stay neutral. This
+ * does not infer a function from the number of supplied APP arguments alone.
  * Diagonal value transport returns its input; diagonal lifting acts on it.
  * For an acted U(F A) family, all four fields on THUNK(RETURN(v)) reduce
  * to THUNK(RETURN(the corresponding field of the acted A on v)). Other

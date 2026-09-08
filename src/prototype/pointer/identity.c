@@ -698,9 +698,64 @@ static int action_source_scoped(struct pg_eval *machine, const struct action_sco
 	return analyze_scope(machine, prepared);
 }
 
+struct higher_scope_work {
+	struct pg_graph *graph, *arena;
+	const struct pg_term *source, *cursor, *body;
+	const struct pg_object **binders;
+	size_t arity, position;
+	int wrapping;
+};
+
+static int higher_scope_poll(void *opaque)
+{
+	struct higher_scope_work *work = opaque;
+	if (!work->body) {
+		const struct pg_term *inner;
+		if (pg_identity_action_view(work->cursor, &inner)) {
+			if (work->arity > SIZE_MAX / 3) return -1;
+			work->arity *= 3;
+			work->cursor = inner;
+			return 0;
+		}
+		if (work->cursor->kind != PG_LAMBDA) return 1;
+		if (work->arity > SIZE_MAX / sizeof(*work->binders)) return -1;
+		work->binders = pg_alloc(work->arena, work->arity * sizeof(*work->binders));
+		if (!work->binders) return -1;
+		work->body = work->source;
+		return 0;
+	}
+	if (!work->wrapping) {
+		if (work->position == work->arity) { work->wrapping = 1; return 0; }
+		const struct pg_object *binder = pg_binder(work->graph);
+		if (!binder) return -1;
+		work->binders[work->position++] = binder;
+		work->body = pg_application(work->graph, work->body, pg_reference(work->graph, binder));
+		return work->body ? 0 : -1;
+	}
+	if (!work->position) return 1;
+	work->body = pg_lambda(work->graph, work->binders[--work->position], work->body);
+	return work->body ? 0 : -1;
+}
+
+static int higher_scope_resume(struct pg_eval *machine, void *opaque)
+{
+	struct higher_scope_work *work = opaque;
+	return with_action_scope(machine, work->body ? work->body : work->source);
+}
+
 static int action_source(struct pg_eval *machine, const struct pg_term *source, const void *unused)
 {
 	(void)unused;
+	const struct pg_term *inner;
+	if (pg_eval_argument(machine, 3) && pg_identity_action_view(source, &inner)) {
+		/* Expose the boundary arguments of a known iterated function action.
+		 * Opaque sources are not inferred to be functions from APP arity. */
+		struct higher_scope_work *work = pg_alloc(&machine->temporary, sizeof(*work));
+		if (!work) return -1;
+		*work = (struct higher_scope_work){.graph = machine->output, .arena = &machine->temporary,
+			.source = source, .cursor = source, .arity = 1};
+		return pg_eval_defer(machine, work, higher_scope_poll, higher_scope_resume, arena_work_destroy);
+	}
 	return with_action_scope(machine, source);
 }
 
