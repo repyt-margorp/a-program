@@ -484,9 +484,31 @@ Next implementation sequence (prerequisite for automatic source handlers):
   Tests register both return and computation-block clause effects into one
   target before sealing, reject a remaining Pi as a non-F contribution, and
   check the converged row against the accepted clause result. The callable's
-  original proof remains pending throughout structural collection. This is the
-  collection primitive; handler-owned equation lifecycle/sealing and complete
-  source coordination are still required, not implemented by this helper.
+  original proof remains pending throughout structural collection.
+  September 9: a handler without an explicit carrier now owns its positive
+  equation work. It resolves operation aliases, rejects duplicate labels and
+  missing/duplicate return clauses, derives the return result independently,
+  and collects input-minus-handled, return and clause rows. Only after all
+  registrations succeed does it seal the equations and request ordinary Solve;
+  final acceptance still uses pg_prove_handler and the original clause proofs.
+  Surface eliminations containing #.return and operation clauses enter this
+  same handler job. No host operation runs during collection. Work destruction
+  releases owned equations even when inference is pending or rejected.
+  Integration exposed an existing wait cycle for accepted names referenced
+  from unresolved clause contexts. Such references now prepare ordinary
+  context-projection rules before acceptance. Polarity follows that same
+  producer/projection chain, preserving the original operation-name source.
+  Non-term bindings remain unsupported; implicit definition quotation retains
+  its existing separate adaptation and is not silently treated as a value.
+  Tests compare automatic and explicit-carrier handlers for three clause
+  orders, aliases, simultaneous handling, invalid clauses and duplicate labels.
+  A clause reissuing its own operation retains that effect in the inferred row.
+  This completes the tested closed-outer-context source path, not all handlers:
+  nested inference under unresolved outer contexts, arbitrary computed source
+  arguments and pending equation image transport still need implementation.
+  Normal component checks, eight source examples, six execution cases and
+  rebuilt ASan/UBSan synthesis tests pass. List now takes 1718 transitions;
+  explicit projection jobs change scheduling, not a claimed runtime speedup.
   Normal checks, eight source cases and six runtime cases pass. List synthesis
   now takes 1717 transitions rather than 1682 as FOLD acceptance is scheduled;
   this is not a performance improvement claim.

@@ -1005,6 +1005,12 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 			carrier_job, handler_definition.expression));
 		const struct pg_evidence *proof = complete(&synthesis, assembled,
 			i < 3 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+		struct pg_synthesis_job *inferred_handler = pg_synthesis_handler(&synthesis, handler_scope, NULL, handler_definition.expression);
+		const struct pg_evidence *inferred_proof = complete(&synthesis, inferred_handler,
+			i < 3 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+		if (i < 3) same_judgement(inferred_proof, proof);
+		if (i < 3) assert(complete(&synthesis,
+			pg_synthesis_request(&synthesis, handler_scope, handler_definition.expression), PG_SYNTHESIS_DONE) == inferred_proof);
 		if (i >= 3) continue;
 		assert(proof == complete(&synthesis, pg_synthesis_handler(&synthesis, handler_scope,
 			pg_synthesis_evidence(&synthesis, carrier), handler_definition.expression), PG_SYNTHESIS_DONE));
@@ -1053,6 +1059,9 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	struct pg_synthesis_job *emitting_job = pg_synthesis_handler(&synthesis, scope,
 		inferred_job, clause_definition.expression);
 	const struct pg_evidence *emitting_handler = complete(&synthesis, emitting_job, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *automatic_emitting = complete(&synthesis,
+		pg_synthesis_request(&synthesis, scope, clause_definition.expression), PG_SYNTHESIS_DONE);
+	same_judgement(automatic_emitting, emitting_handler);
 	const struct pg_effect_row *inferred = pg_effect_inference_result(&inference, output_effect);
 	assert(inferred == input_row);
 	const struct pg_evidence *inferred_carrier = pg_synthesis_result(inferred_job);
@@ -1371,8 +1380,8 @@ static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *cla
 		assert(scope && synthesis.jobs.count == jobs);
 		assert(pg_synthesis_name(&synthesis, root, name, proofs[i]) == scope);
 		assert(complete(&synthesis, request(&synthesis, scope, "main := f;"), PG_SYNTHESIS_DONE) == proofs[i]);
-		/* Only the expression request is new, not another accepted producer. */
-		assert(synthesis.jobs.count == jobs + 1);
+		/* Expression and projection requests reuse the accepted producer. */
+		assert(synthesis.jobs.count == jobs + 2);
 		if (!i) root = scope;
 	}
 	const char *prefixes[] = {"Low", "High"};

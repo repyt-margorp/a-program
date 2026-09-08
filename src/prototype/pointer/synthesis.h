@@ -106,9 +106,11 @@ struct pg_synthesis_job *pg_synthesis_handler_clause(struct pg_synthesis *synthe
 	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
 	const struct pg_syntax *clause);
 /* Assemble all clauses through the shared producers and final kernel rule.
- * Exactly one #.return clause is required, in any position. The carrier must
- * come from independent inference; this is not a source :: expectation and
- * does not implement automatic carrier/effect generation from arbitrary syntax. */
+ * Exactly one #.return clause is required, in any position. A NULL carrier
+ * requests independent return-type and least positive effect inference. The
+ * handler owns that equation work until synthesis destruction; all structural
+ * contributions precede sealing and final kernel acceptance. Explicit carriers
+ * remain post-synthesis bounds, not expected types for clause elaboration. */
 struct pg_synthesis_job *pg_synthesis_handler(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
 	const struct pg_syntax *syntax);

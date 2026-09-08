@@ -99,6 +99,13 @@ struct family_state {
 };
 struct handler_state {
 	size_t scanned, next, count;
+	struct pg_effect_inference effects;
+	struct pg_effect_equation *equation;
+	struct pg_synthesis_job *carrier, *collection;
+	const struct pg_effect_row *handled;
+	const struct pg_object **labels;
+	size_t collected;
+	int owns_effects;
 	struct pg_handler_clause clauses[];
 };
 struct derivation_state {
@@ -213,6 +220,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 				free(job->effect_substitution->bindings);
 			}
 			if (job->block) pg_index_destroy(&job->block->names);
+			if (job->handler && job->handler->owns_effects) pg_effect_inference_destroy(&job->handler->effects);
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
 			if (job->declaration) pg_index_destroy(&job->declaration->names);
 		}
@@ -495,7 +503,7 @@ struct pg_synthesis_job *pg_synthesis_handler(struct pg_synthesis *synthesis,
 	const struct pg_syntax *syntax)
 {
 	if (!scope || scope->owner != synthesis->owner_key) return NULL;
-	if (!carrier || carrier->owner != synthesis->owner_key) return NULL;
+	if (carrier && carrier->owner != synthesis->owner_key) return NULL;
 	if (!syntax || syntax->kind != PG_SYNTAX_ELIMINATION) return NULL;
 	const void *inputs[] = {scope, carrier, syntax};
 	struct pg_synthesis_job *job = request_inputs(synthesis, HANDLER_JOB, 3, inputs);
@@ -2721,12 +2729,18 @@ rejected:
 static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *carrier = (void *)job->inputs[1];
-	if (carrier->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, carrier); return; }
-	if (carrier->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, carrier->status); return; }
-	if (!pg_evidence_owned_by(carrier->result, synthesis->typing)) goto rejected;
-	struct pg_synthesis_job *canonical = pg_synthesis_handler(synthesis, job->scope,
-		pg_synthesis_evidence(synthesis, carrier->result), job->syntax);
-	if (forward_proof(synthesis, job, canonical)) return;
+	if (carrier) {
+		if (carrier->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, carrier); return; }
+		if (carrier->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, carrier->status); return; }
+		if (!pg_evidence_owned_by(carrier->result, synthesis->typing)) goto rejected;
+		struct pg_synthesis_job *canonical = pg_synthesis_handler(synthesis, job->scope,
+			pg_synthesis_evidence(synthesis, carrier->result), job->syntax);
+		if (forward_proof(synthesis, job, canonical)) return;
+	} else {
+		struct pg_synthesis_job *context = job->scope->context_job;
+		if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
+		if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return; }
+	}
 	size_t count = job->syntax->item_count;
 	if (!job->handler) {
 		if (count > (SIZE_MAX - sizeof(*job->handler)) / sizeof(struct pg_handler_clause)) {
@@ -2734,21 +2748,82 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 		}
 		job->handler = pg_alloc(synthesis->typing->graph, sizeof(*job->handler) + count * sizeof(struct pg_handler_clause));
 		if (!job->handler) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (!carrier) {
+			job->handler->labels = pg_alloc(synthesis->typing->graph, count * sizeof(*job->handler->labels));
+			if (!job->handler->labels || pg_effect_inference_init(&job->handler->effects, synthesis->typing->graph)) {
+				finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+			}
+			job->handler->owns_effects = 1;
+		}
 		job->left = pg_synthesis_request(synthesis, job->scope, job->syntax->left);
 		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
 	struct handler_state *state = job->handler;
 	if (state->scanned < count) {
-		const struct pg_syntax *clause = job->syntax->items[state->scanned++].expression;
+		const struct pg_syntax *clause = job->syntax->items[state->scanned].expression;
 		if (return_clause(clause)) {
 			if (job->right) goto rejected;
 			job->right = pg_synthesis_handler_return(synthesis, job->scope, job->left, clause);
 			if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		} else if (!carrier) {
+			struct pg_synthesis_job *operation = pg_synthesis_operation_reference(synthesis,
+				pg_synthesis_request(synthesis, job->scope, clause->left));
+			if (!operation) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			if (operation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, operation); return; }
+			if (operation->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, operation->status); return; }
+			state->labels[state->count++] = pg_operation_label(pg_synthesis_operation_declaration(operation));
 		}
+		++state->scanned;
 		enqueue(synthesis, job);
 		return;
 	}
 	if (!job->right) goto rejected;
+	if (!carrier) {
+		const struct pg_effect_row *empty = pg_effect_row(synthesis->typing->graph, 0, NULL);
+		if (!state->carrier) {
+			state->handled = pg_effect_row(synthesis->typing->graph, state->count, state->labels);
+			if (!state->handled) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			if (pg_effect_count(state->handled) != state->count) goto rejected;
+			state->count = 0;
+			state->equation = pg_effect_equation(&state->effects, empty);
+			state->carrier = pg_synthesis_handler_carrier(synthesis, source_context(job->scope), job->right,
+				&state->effects, state->equation);
+			if (!state->carrier) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		}
+		carrier = state->carrier;
+		if (state->collected < count + 2) {
+			if (!state->collection) {
+				struct pg_synthesis_job *body;
+				size_t parameters;
+				if (!state->collected) {
+					body = request_job(synthesis, BODY_JOB, job->left, NULL);
+					parameters = 0;
+				} else if (state->collected == 1) { body = job->right; parameters = 1; }
+				else {
+					const struct pg_syntax *clause = job->syntax->items[state->collected - 2].expression;
+					if (return_clause(clause)) { ++state->collected; enqueue(synthesis, job); return; }
+					body = pg_synthesis_handler_clause(synthesis, job->scope, carrier, clause);
+					parameters = 2;
+				}
+				struct pg_synthesis_job *formation = pg_synthesis_constant_result(synthesis, job->scope->context_job, body, parameters);
+				state->collection = pg_synthesis_effect_contribution(synthesis, &state->effects, state->equation,
+					state->collected ? empty : state->handled, formation);
+			}
+			if (!state->collection) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			if (state->collection->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, state->collection); return; }
+			if (state->collection->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, state->collection->status); return; }
+			state->collection = NULL;
+			++state->collected;
+			enqueue(synthesis, job);
+			return;
+		}
+		if (!state->effects.sealed) {
+			pg_effect_inference_seal(&state->effects);
+			if (!pg_synthesis_effect_inference(synthesis, &state->effects)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		}
+		if (carrier->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, carrier); return; }
+		if (carrier->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, carrier->status); return; }
+	}
 	if (state->next < count) {
 		const struct pg_syntax *clause = job->syntax->items[state->next].expression;
 		if (!return_clause(clause)) {
@@ -3223,6 +3298,7 @@ static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_j
 	if (job->syntax->kind == PG_SYNTAX_QUOTE) return job->right;
 	if (job->syntax->kind == PG_SYNTAX_LAMBDA) return job->value_job;
 	if (job->syntax->kind == PG_SYNTAX_ATOM && job->binder) return job->left;
+	if (job->syntax->kind == PG_SYNTAX_ATOM && job->value_job) return job->value_job;
 	if (job->syntax->kind == PG_SYNTAX_ATOM && job->syntax->token.kind == '@') return job->left;
 	return NULL;
 }
@@ -3251,6 +3327,13 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 			preparing = !producer->stage || (producer->stage == 2 && !producer->function);
 			break;
 		case PG_SYNTAX_LAMBDA: case PG_SYNTAX_QUOTE: preparing = !producer->stage; break;
+		case PG_SYNTAX_ATOM:
+			if (producer->syntax->token.kind == PG_TOKEN_IDENT && !producer->value_job && !producer->binder) {
+				struct source_reference reference = lookup_scope(producer->scope, producer->syntax->token);
+				preparing = reference.producer && reference.producer->status == PG_SYNTHESIS_DONE
+					&& reference.producer->role != DEFINITION_JOB;
+			}
+			break;
 		default: break;
 		}
 		break;
@@ -3264,9 +3347,28 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 }
 
 /* Structural polarity from known rules; unknown producers await acceptance. */
+static const struct pg_synthesis_job *polarity_origin(const struct pg_synthesis_job *rule)
+{
+	for (;;) {
+		const struct pg_synthesis_job *prepared = prepared_source_rule(rule);
+		if (prepared) { rule = prepared; continue; }
+		if (rule->role == CLASSIFIER_JOB) { rule = rule->inputs[1]; continue; }
+		if (rule->role == DERIVATION_JOB && rule->input_count > 4 &&
+			((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_CONTEXT_PROJECTION) {
+			rule = rule->inputs[4]; continue;
+		}
+		return rule;
+	}
+}
+
 static int body_rule_polarity(const struct pg_synthesis_job *rule)
 {
-	while (rule->role == CLASSIFIER_JOB) rule = rule->inputs[1];
+	rule = polarity_origin(rule);
+	if (rule->result) {
+		enum pg_evidence_judgement judgement = pg_evidence_judgement(rule->result);
+		if (judgement == PG_JUDGEMENT_VALUE || judgement == PG_JUDGEMENT_VALUE_TYPE) return 1;
+		if (judgement == PG_JUDGEMENT_COMPUTATION) return 0;
+	}
 	if (rule->role == SEQUENCE_JOB || rule->role == BODY_JOB) return 0;
 	if (rule->role == EXPRESSION_JOB) {
 		if (block_syntax(rule->syntax)) return 0;
@@ -3288,13 +3390,13 @@ static int body_rule_polarity(const struct pg_synthesis_job *rule)
 /* 2 is a type used as a value, 1 a value, 0 computation, -1 unknown. */
 static int source_value_kind(const struct pg_synthesis_job *producer)
 {
-	const struct pg_synthesis_job *rule = prepared_source_rule(producer);
-	if (!rule) rule = producer;
+	const struct pg_synthesis_job *rule = polarity_origin(producer);
 	int kind = body_rule_polarity(rule);
 	if (kind == 1 && rule->role == DERIVATION_JOB &&
 		((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_UNIVERSE_FORM) return 2;
-	if (kind < 0 && producer->result) {
-		enum pg_evidence_judgement judgement = pg_evidence_judgement(producer->result);
+	const struct pg_evidence *result = rule->result ? rule->result : producer->result;
+	if (result) {
+		enum pg_evidence_judgement judgement = pg_evidence_judgement(result);
 		if (judgement == PG_JUDGEMENT_VALUE_TYPE) return 2;
 		if (judgement == PG_JUDGEMENT_VALUE) return 1;
 		if (judgement == PG_JUDGEMENT_COMPUTATION) return 0;
@@ -3853,12 +3955,25 @@ static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 		return 1;
 	}
 	if (job->syntax->token.kind != PG_TOKEN_IDENT) return 0;
+	if (job->value_job) { forward_proof(synthesis, job, job->value_job); return 1; }
 	if (!job->binder) {
 		if (job->left) return 0;
 		/* Unindexed definitions may shadow an outer binder. */
 		for (const struct pg_source_scope *scope = job->scope; scope; scope = scope->parent)
 			if (scope->definitions && scope->definitions->indexed < scope->definitions->count) return 0;
 		struct source_reference reference = lookup_scope(job->scope, job->syntax->token);
+		if (reference.producer && reference.producer->status == PG_SYNTHESIS_DONE
+			&& reference.producer->role != DEFINITION_JOB) {
+			if (!reference.producer->result || !pg_evidence_subject(reference.producer->result)) {
+				finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return 1;
+			}
+			job->left = reference.producer;
+			job->exports = reference.producer->exports;
+			job->value_job = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+				(struct pg_synthesis_job *[]){job->scope->context_job, reference.producer});
+			forward_proof(synthesis, job, job->value_job);
+			return 1;
+		}
 		if (!reference.binder) return 0;
 		struct pg_derivation_input input = {.rule = PG_VARIABLE,
 			.parameters.binder = reference.binder, .count = 1};
@@ -3925,6 +4040,7 @@ static int prepare_value_application(struct pg_synthesis *synthesis, struct pg_s
 	if (force) type = forced;
 	if (!pg_pi_view(type, &domain, &binder, &codomain)) goto sequencing;
 	struct pg_synthesis_job *argument = job->right;
+	if (await_source_preparation(synthesis, job, argument)) return 1;
 	int kind = source_value_kind(argument);
 	if (kind < 1) goto sequencing;
 	struct pg_synthesis_job *callee = (void *)job->value_job->inputs[0];
@@ -4156,7 +4272,18 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (syntax->kind == PG_SYNTAX_ELIMINATION) {
 		if (syntax->item_count == 1 && return_clause(syntax->items[0].expression))
 			return_handler_step(synthesis, job);
-		else match_step(synthesis, job);
+		else {
+			if (!job->value_job) {
+				for (size_t i = 0; i < syntax->item_count; ++i)
+					if (return_clause(syntax->items[i].expression)) {
+						job->value_job = pg_synthesis_handler(synthesis, job->scope, NULL, syntax);
+						if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+						break;
+					}
+			}
+			if (job->value_job) forward_proof(synthesis, job, job->value_job);
+			else match_step(synthesis, job);
+		}
 		return;
 	}
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
