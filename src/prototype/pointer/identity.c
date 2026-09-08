@@ -242,7 +242,7 @@ static int enter_action(struct pg_eval *machine, const struct action_scope *scop
 	return pg_eval_defer(machine, work, action_result_poll, action_result_resume, arena_work_destroy);
 }
 
-static int action_source_body(struct pg_eval *machine, const struct action_scope *scope);
+static int action_source_body(struct pg_eval *machine, const struct action_scope *scope, const struct pg_term *head);
 
 /* Orient ap f (refl a) toward refl (f a), never the converse for a neutral
  * application. Four administrative binders preserve all incoming closures. */
@@ -396,6 +396,7 @@ static struct scope_binding_index *scope_binding_find(const struct pg_index *ind
 
 struct scope_work {
 	struct pg_graph *arena;
+	const struct pg_term *head;
 	struct pg_graph *output;
 	struct action_scope scope;
 	struct pg_index seen;
@@ -497,6 +498,7 @@ static int scope_poll(void *opaque)
 			return 0;
 		}
 		work->canonical = work->cursor->kind == PG_REFERENCE && work->cursor->as.reference == &identity_action;
+		work->head = work->cursor;
 		work->phase = SCOPE_VISIT;
 		return 0;
 	case SCOPE_VISIT: {
@@ -573,13 +575,13 @@ static void scope_destroy(void *opaque)
 static int scope_resume(struct pg_eval *machine, void *opaque)
 {
 	struct scope_work *work = opaque;
-	if (!work->changed) return action_source_body(machine, &work->scope);
+	if (!work->changed) return action_source_body(machine, &work->scope, work->head);
 	return pg_eval_enter(machine, (struct pg_closure){work->result, NULL}, 1);
 }
 
 static int analyze_scope(struct pg_eval *machine, const struct action_scope *scope)
 {
-	if (!scope->count) return action_source_body(machine, scope);
+	if (!scope->count) return action_source_body(machine, scope, NULL);
 	struct scope_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work) return -1;
 	work->arena = &machine->temporary;
@@ -702,7 +704,7 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source, 
 	return with_action_scope(machine, source);
 }
 
-static int action_source_body(struct pg_eval *machine, const struct action_scope *prepared)
+static int action_source_body(struct pg_eval *machine, const struct action_scope *prepared, const struct pg_term *head)
 {
 	struct action_scope scope = *prepared;
 	const struct pg_term *body = scope.body;
@@ -724,20 +726,18 @@ static int action_source_body(struct pg_eval *machine, const struct action_scope
 		if (!pg_eval_argument(machine, 2 + 3 * scope.count)) return 1;
 		return pg_eval_demand(machine, 1 + 3 * scope.count, left_endpoint, prepared);
 	}
-	const struct pg_term *head = body;
-	while (head->kind == PG_APPLICATION) head = head->as.application.function;
+	/* With no varying binder, congruence would rebuild ap f (refl a) and
+	 * loop with diagonal_argument. Keep refl of a neutral APP as its form. */
+	if (!scope.count) return 1;
 	if (head->kind == PG_REFERENCE) {
 		if (head->as.reference == &identity_action) {
-			if (!scope.count) return 1;
 			return pg_eval_demand_closure(machine, (struct pg_closure){body, NULL}, action_body, prepared);
 		}
 		/* Uniform higher fields need their own boundary rules, not ordinary
 		 * Pi congruence applied to an untyped field reference. */
 		if (field_index(head->as.reference) >= 0) return 1;
 	}
-	/* With no varying binder, congruence would rebuild ap f (refl a) and
-	 * loop with diagonal_argument. Keep refl of a neutral APP as its form. */
-	if (!scope.count || body->kind != PG_APPLICATION) return 1;
+	if (body->kind != PG_APPLICATION) return 1;
 	if (prepare_bindings(machine, &scope) != 0) return -1;
 	struct pg_graph *graph = machine->output;
 	const struct pg_term *function = acted_body(graph, &scope, body->as.application.function);

@@ -461,6 +461,15 @@ obligation. Existing field, source-action and cancellation tests cover both
 fresh and prepopulated source arrays; no semantic rule changes.
 Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass.
 
+After `326d9d4`, scope analysis passes its already discovered neutral head into
+action construction. The second application-spine scan is removed. Zero-source
+actions return neutral after the existing former rules, without discovering a
+head they cannot use for congruence. This preserves the diagonal loop guard.
+Implementation C: +10/-10. Head discovery remains charged in `SCOPE_HEAD`; no
+additional proof authority or normalization equation is introduced.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass;
+the cube-function maximum remains 243,489 charged transitions. N2 remains open.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,
