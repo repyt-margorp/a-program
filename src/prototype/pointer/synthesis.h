@@ -308,9 +308,14 @@ struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
 /* Raw CBPV application of independent producers. Exposes the computation
  * classifier, post-checks the value argument and uses ordinary APP evidence.
  * No implicit force, thunk, return or sequencing; no expected type flows
- * into either producer. Canonical completed inputs share the same work. */
+ * into either producer. Accepted inputs reuse normalization and comparison;
+ * rule scheduling may remain pending even when those computations are cached. */
 struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *function,
+	struct pg_synthesis_job *argument);
+/* Same rule graph with a pending context producer. */
+struct pg_synthesis_job *pg_synthesis_application_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *function,
 	struct pg_synthesis_job *argument);
 /* Instantiate an independently produced Universe Identity family at two
  * value endpoints. Post-check each against its own endpoint type; never
@@ -392,6 +397,8 @@ struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
  * from Core. An unchanged classifier preserves the original proof. */
 struct pg_synthesis_job *pg_synthesis_normalize_classifier(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *proof);
+struct pg_synthesis_job *pg_synthesis_normalize_classifier_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *proof);
 /* Expose checked THUNK code through shared normalization and typed inversion.
  * This does not execute the stored computation or cache an effect result. */
 struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,

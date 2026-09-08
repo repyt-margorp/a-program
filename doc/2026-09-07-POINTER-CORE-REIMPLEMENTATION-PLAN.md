@@ -255,6 +255,24 @@ Next implementation sequence (prerequisite for automatic source handlers):
   and rebuilt ASan/UBSan synthesis tests pass. Example transition counts are
   unchanged; source APP adaptation, blocks and automatic handler sealing remain
   incomplete.
+  Raw application now assembles classifier normalization, classifier formation,
+  PI_DOMAIN, post-check and APP_ELIM producers. The separate APPLICATION_JOB and
+  direct raw-application proof-construction function are removed. Both context
+  and operands may be pending; accepted-context callers use the same graph.
+  Classifier normalization now awaits context/term producers and shares its
+  accepted-input work. Term projection through normalization and post-check
+  preserves the original subject without asserting that either check passed.
+  Tests build this application before effect sealing, obtain its exact Core,
+  then verify its accepted judgement and retained argument-conversion premise.
+  A directly supplied APP derivation is not required to be the same proof.
+  API scheduling change: re-requesting application with accepted operands may
+  need Solve transitions, rather than immediately reporting DONE. A regression
+  test verifies the same final evidence and no additional normalization jobs;
+  this does not promise zero additional rule scheduling. Source force/sequence
+  adaptation and automatic handler effect inference remain unfinished.
+  Validation: normal `check`, eight example synthesis cases, six runtime cases,
+  and rebuilt ASan/UBSan synthesis tests pass. List transitions rise from 1044
+  to 1156 as ordinary rule dependencies become scheduled; no speedup is claimed.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
   pointer-equality assumption about capture-avoiding substitution.

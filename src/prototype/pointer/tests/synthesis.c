@@ -439,6 +439,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_application(typing->graph, pg_reference(typing->graph, &pg_force_operation),
 				pg_reference(typing->graph, f)), pg_reference(typing->graph, b));
 		assert(pg_synthesis_type_structure_result(application_term) == expected_application);
+		struct pg_synthesis_job *checked_application = pg_synthesis_application_jobs(&synthesis, b_context, function, argument);
+		assert(checked_application == pg_synthesis_application_jobs(&synthesis, b_context, function, argument));
+		struct pg_synthesis_job *checked_term = pg_synthesis_term_structure(&synthesis, checked_application);
+		assert(!complete(&synthesis, checked_term, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(checked_term) == expected_application);
+		assert(!pg_synthesis_result(checked_application));
 		assert(!pg_synthesis_result(application) && !pg_synthesis_result(argument));
 		pg_effect_inference_seal(&effects);
 		assert(pg_synthesis_effect_inference(&synthesis, &effects));
@@ -454,6 +460,10 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		complete(&synthesis, invalid_quote, PG_SYNTHESIS_REJECTED);
 		const struct pg_evidence *applied = complete(&synthesis, application, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(applied)->core == expected_application);
+		const struct pg_evidence *checked = complete(&synthesis, checked_application, PG_SYNTHESIS_DONE);
+		same_judgement(checked, applied);
+		assert(pg_evidence_subject(checked)->core == expected_application);
+		assert(pg_evidence_rule(pg_evidence_premise(checked, 1)) == PG_TYPE_CONVERSION);
 		assert(pg_evidence_classifier(applied) == pg_effect_type(classifiers, row, pg_reference(typing->graph, b)));
 		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));
 		complete(&synthesis, source_lambda, PG_SYNTHESIS_DONE);
@@ -1188,8 +1198,10 @@ static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *cla
 	const struct pg_evidence *computed_argument = pg_synthesis_result(pending_argument);
 	same_judgement(result, pg_prove_application(typing, proofs[1], computed_argument));
 	struct pg_synthesis_job *arg_job = pg_synthesis_evidence(&synthesis, computed_argument);
+	reductions = work.jobs.count;
 	struct pg_synthesis_job *canonical = pg_synthesis_application(&synthesis, empty, second, arg_job);
-	assert(pg_synthesis_status(canonical) == PG_SYNTHESIS_DONE && pg_synthesis_result(canonical) == result);
+	assert(complete(&synthesis, canonical, PG_SYNTHESIS_DONE) == result);
+	assert(work.jobs.count == reductions);
 	/* The same function Core at U0 cannot consume a value of U1. */
 	complete(&synthesis, pg_synthesis_application(&synthesis, empty, first, arg_job), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, pg_synthesis_application(&synthesis, empty, arg_job, arg_job), PG_SYNTHESIS_REJECTED);
