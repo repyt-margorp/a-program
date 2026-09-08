@@ -7526,6 +7526,51 @@ the independently rejected root and all nominal/operation roots still exist.
 Normal `check`, source/example execution checks and both rebuilt sanitizer CLI
 suites pass. This adds no retained-progress CHECKPOINT claim.
 
+### Source Allocation Identity Gate (After `0133db1`)
+
+New failing acceptance command:
+
+```sh
+make -s -f src/prototype/pointer/Makefile check-image-origins
+```
+
+The fixture saves the same nominal declaration through both its source module
+and retained type/value/operation evidence, then loads in a separate process.
+The evidence roots share their relocated family correctly, but resynthesizing
+the original source creates a different family. The test reports
+`source and retained evidence split one nominal declaration` and fails.
+It is part of `check-acceptance`, not silently treated as an expected success.
+The existing disjoint-source/retained-evidence tests still pass; they did not
+cover this overlap. No unsound acceptance is demonstrated by this test: the
+failure is loss of sharing/generative identity and potential rejection of
+previously compatible values.
+
+Cause: `declaration_step` allocates Self binders; source schema construction
+calls `pg_data_schema`, which allocates a fresh declaration. The rule codec
+instead reconstructs an existing declaration and checks it with
+`pg_data_schema_check`. Syntax and Core currently have separate relocation
+tables without a source-allocation dependency connecting these two paths.
+Structural schema interning is not a fix: distinct declarations must remain
+nominally distinct. Reusing an accepted proof without checking its source is
+also not a fix.
+
+This is now a prerequisite for CHECKPOINT and general mixed-image import:
+
+- [x] Reproduce shared-origin failure across processes without changing DefEq.
+- [ ] Identify allocation-producing source inputs for Self, telescope binders
+  and nominal declarations; preserve their exact producer identity rather than
+  names, addresses in another process, or allocation counters.
+- [ ] Retain these allocation dependencies in the program input graph and
+  relocate their objects through the same Core table as stored derivations.
+- [ ] Reconstruct source preparation using those inputs. Check regenerated
+  schema premises against the retained declaration, including binder/context
+  correspondence, rather than allocating an unrelated family or accepting a
+  cached proof. A declaration's existence is still not its formation evidence.
+- [ ] Reject mismatched source/schema associations and preserve two distinct
+  sites with identical source shapes. Cover partial universe-candidate work.
+- [ ] Pass `check-image-origins`, then integrate the allocation mechanism into
+  retained partial source preparation before adding further image features.
+
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.
 The common `APGSRC` path above now supersedes that intermediate framing.

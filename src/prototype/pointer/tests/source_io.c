@@ -1,6 +1,7 @@
 #include "source_io.h"
 #include "derivation.h"
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 static struct pg_synthesis_job *parse(struct pg_program *program,
@@ -170,7 +171,7 @@ static void read_sources(FILE *file, uint64_t chunk)
 	pg_program_destroy(p);
 }
 
-static void nominal_sources(FILE *file, int writing, uint64_t chunk)
+static void nominal_sources(FILE *file, int writing, uint64_t chunk, int origins)
 {
 	if (writing) {
 		const char text[] = "D:=@{z:*;}; E:=@{z:*;}; d:=D.z; e:=E.z;";
@@ -200,14 +201,14 @@ static void nominal_sources(FILE *file, int writing, uint64_t chunk)
 		struct pg_synthesis_job *roots[] = {
 			parse(p, scope, "{{ main:=d; main::D; }}.main"),
 			parse(p, scope, "{{ main:=e; main::D; }}.main"),
-			parse(p, scope, "{{ main:=&(ask d); }}.main"), values[0], values[1], values[2], values[3], operation};
-		assert(!pg_sources_write(file, &p->synthesis, 8, roots));
+			parse(p, scope, "{{ main:=&(ask d); }}.main"), values[0], values[1], values[2], values[3], operation, p->root};
+		assert(!pg_sources_write(file, &p->synthesis, origins ? 9 : 8, roots));
 		pg_program_destroy(p);
 	} else {
 		size_t count;
 		struct pg_synthesis_job *const *roots;
 		struct pg_program *p = pg_sources_read(file, 10000, &count, &roots);
-		assert(p && count == 8 && !p->synthesis.steps);
+		assert(p && count == (origins ? 9u : 8u) && !p->synthesis.steps);
 		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
 		while (p->synthesis.ready) { assert(p->synthesis.steps < 10000); pg_synthesis_advance(&p->synthesis, chunk); }
 		for (size_t i = 0; i < count; ++i)
@@ -223,6 +224,16 @@ static void nominal_sources(FILE *file, int writing, uint64_t chunk)
 		assert(pg_thunk_type_view(pg_evidence_classifier(pg_synthesis_result(roots[2])), &computation));
 		assert(pg_effect_type_view(computation, &effects, &value));
 		assert(pg_effect_count(effects) == 1 && value == d);
+		if (origins) {
+			struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "D", .length = 1};
+			const struct pg_evidence *source_type = pg_synthesis_result(pg_synthesis_definition(roots[8], name));
+			assert(source_type);
+			if (pg_evidence_subject(source_type)->core != d) {
+				fputs("source image: source and retained evidence split one nominal declaration\n", stderr);
+				pg_program_destroy(p);
+				exit(1);
+			}
+		}
 		pg_program_destroy(p);
 		puts("source image: nominal external names, distinct declarations and operation wrapper passed");
 	}
@@ -231,12 +242,13 @@ static void nominal_sources(FILE *file, int writing, uint64_t chunk)
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
-	int nominal = !strncmp(argv[1], "nominal-", 8);
-	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "nominal-write");
+	int origins = !strncmp(argv[1], "origin-", 7);
+	int nominal = origins || !strncmp(argv[1], "nominal-", 8);
+	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "nominal-write") || !strcmp(argv[1], "origin-write");
 	if (writing) { definition_boundaries(); rule_environments(); }
 	FILE *file = fopen(argv[2], writing ? "w+b" : "rb");
 	assert(file);
-	if (nominal) nominal_sources(file, writing, !strcmp(argv[1], "nominal-read-bulk") ? 64 : 1);
+	if (nominal) nominal_sources(file, writing, !strcmp(argv[1], "nominal-read-bulk") ? 64 : 1, origins);
 	else if (writing) write_sources(file);
 	else read_sources(file, !strcmp(argv[1], "read-bulk") ? 64 : 1);
 	assert(!fclose(file));
