@@ -306,6 +306,115 @@ static int pi_action(struct pg_eval *machine, struct action_scope *scope, const 
 	return enter_action(machine, scope, result, 0);
 }
 
+struct scope_shadow {
+	const struct pg_object *binder;
+	const struct scope_shadow *parent;
+};
+
+struct scope_visit {
+	struct pg_index_entry index;
+	const struct pg_term *term;
+	const struct scope_shadow *shadow;
+	struct scope_visit *next;
+};
+
+static int scope_push(struct pg_graph *arena, struct pg_index *seen, struct scope_visit **pending,
+	const struct pg_term *term, const struct scope_shadow *shadow)
+{
+	uint64_t hash = (uint64_t)(uintptr_t)term ^ ((uint64_t)(uintptr_t)shadow * UINT64_C(1099511628211));
+	for (struct pg_index_entry *entry = pg_index_candidates(seen, hash); entry; entry = entry->next) {
+		const struct scope_visit *visit = (const struct scope_visit *)entry;
+		if (entry->hash != hash) continue;
+		if (visit->term == term && visit->shadow == shadow) return 0;
+	}
+	struct scope_visit *visit = pg_alloc(arena, sizeof(*visit));
+	if (!visit) return -1;
+	*visit = (struct scope_visit){.term = term, .shadow = shadow, .next = *pending};
+	visit->index.hash = hash;
+	*pending = visit;
+	return 0;
+}
+
+/* Residual action carries a binder-to-triple assignment. Exchange only this
+ * administrative environment, never accepted dependent contexts or cube axes. */
+static int order_scope(struct pg_eval *machine, struct action_scope *scope)
+{
+	if (scope->count < 2) return 1;
+	size_t *order = pg_alloc(&machine->temporary, scope->count * sizeof(*order));
+	if (!order || prepare_bindings(machine, scope) != 0) return -1;
+	struct pg_index seen;
+	if (pg_index_init(&seen) != 0) return -1;
+	struct scope_visit *pending = NULL;
+	int status = scope_push(&machine->temporary, &seen, &pending, scope->body, NULL);
+	size_t count = 0;
+	while (!status && pending && count < scope->count) {
+		struct scope_visit *visit = pending;
+		pending = visit->next;
+		/* Mark on visitation, not scheduling: an argument also reached through
+		 * the function must receive its first position on the function path. */
+		struct pg_index_entry *entry = pg_index_candidates(&seen, visit->index.hash);
+		for (; entry; entry = entry->next) {
+			const struct scope_visit *previous = (const struct scope_visit *)entry;
+			if (previous->term == visit->term && previous->shadow == visit->shadow) break;
+		}
+		if (entry) continue;
+		if (pg_index_insert(&seen, &visit->index, visit->index.hash) != 0) { status = -1; break; }
+		const struct pg_term *term = visit->term;
+		switch (term->kind) {
+		case PG_LAMBDA: {
+			struct scope_shadow *shadow = pg_alloc(&machine->temporary, sizeof(*shadow));
+			if (!shadow) { status = -1; break; }
+			*shadow = (struct scope_shadow){term->as.lambda.binder, visit->shadow};
+			status = scope_push(&machine->temporary, &seen, &pending, term->as.lambda.body, shadow);
+			break;
+		}
+		case PG_APPLICATION:
+			status = scope_push(&machine->temporary, &seen, &pending, term->as.application.argument, visit->shadow);
+			if (!status) status = scope_push(&machine->temporary, &seen, &pending, term->as.application.function, visit->shadow);
+			break;
+		case PG_REFERENCE: {
+			const struct scope_shadow *shadow = visit->shadow;
+			while (shadow && shadow->binder != term->as.reference) shadow = shadow->parent;
+			if (shadow) break;
+			for (size_t i = 0; i < scope->count; ++i) {
+				if (scope->bindings[i].source != term->as.reference) continue;
+				size_t j = 0;
+				while (j < count && order[j] != i) ++j;
+				if (j == count) order[count++] = i;
+				break;
+			}
+			break;
+		}
+		}
+	}
+	pg_index_destroy(&seen);
+	if (status || count != scope->count) return -1;
+	size_t i = 0;
+	while (i < count && order[i] == i) ++i;
+	if (i == count) return 1;
+	struct pg_graph *graph = machine->output;
+	const struct pg_term *result = scope->body;
+	for (i = count; i; --i) result = pg_lambda(graph, scope->bindings[order[i - 1]].source, result);
+	result = pg_identity_action(graph, result);
+	for (i = 0; i < count; ++i)
+		for (size_t j = 0; j < 3; ++j)
+			result = pg_application(graph, result, pg_reference(graph, scope->bindings[order[i]].arguments[j]));
+	return enter_action(machine, scope, result, 0);
+}
+
+static int action_body(struct pg_eval *machine, const struct pg_term *answer)
+{
+	struct action_scope scope;
+	int status = action_scope(machine, pg_eval_argument(machine, 0)->term, &scope);
+	if (status) return status;
+	int unchanged = pg_alpha_equal(scope.body, answer);
+	if (unchanged < 0) return -1;
+	if (unchanged) return 1;
+	if (prepare_bindings(machine, &scope) != 0) return -1;
+	const struct pg_term *source = abstract_body(machine->output, &scope, answer);
+	return pg_eval_enter(machine, (struct pg_closure){pg_identity_action(machine->output, source), NULL}, 1);
+}
+
 static int action_source(struct pg_eval *machine, const struct pg_term *source)
 {
 	struct action_scope scope;
@@ -356,7 +465,12 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	const struct pg_term *head = body;
 	while (head->kind == PG_APPLICATION) head = head->as.application.function;
 	if (head->kind == PG_REFERENCE) {
-		if (head->as.reference == &identity_action) return 1;
+		if (head->as.reference == &identity_action) {
+			if (!scope.count) return 1;
+			status = order_scope(machine, &scope);
+			if (status != 1) return status;
+			return pg_eval_demand_closure(machine, (struct pg_closure){body, NULL}, action_body);
+		}
 		/* Uniform higher fields need their own boundary rules, not ordinary
 		 * Pi congruence applied to an untyped field reference. */
 		if (field_index(head->as.reference) >= 0) return 1;

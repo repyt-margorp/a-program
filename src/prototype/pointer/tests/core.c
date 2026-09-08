@@ -1019,6 +1019,55 @@ static int demand_dispatch(struct pg_eval *machine)
 	return pg_eval_demand(machine, 63, demand_answer);
 }
 
+static const struct pg_argument *auxiliary_arguments;
+static const struct pg_term *auxiliary_source;
+
+static int auxiliary_answer(struct pg_eval *machine, const struct pg_term *answer)
+{
+	assert(machine->arguments == auxiliary_arguments);
+	assert(pg_eval_argument(machine, 0)->term == auxiliary_source);
+	++demand_resumes;
+	return pg_eval_enter(machine, (struct pg_closure){answer, NULL}, 1);
+}
+
+static int auxiliary_dispatch(struct pg_eval *machine)
+{
+	if (machine->current.term->as.reference != &demand_operation) return 1;
+	auxiliary_arguments = machine->arguments;
+	auxiliary_source = pg_eval_argument(machine, 0)->term;
+	return pg_eval_demand_closure(machine, *pg_eval_argument(machine, 0), auxiliary_answer);
+}
+
+static void auxiliary_demand_test(struct pg_graph *graph)
+{
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x), *vy = pg_reference(graph, y);
+	const struct pg_term *source = pg_application(graph, pg_lambda(graph, x, vx), vy);
+	const struct pg_term *input = pg_application(graph,
+		pg_application(graph, pg_reference(graph, &demand_operation), source), vx);
+	const struct pg_term *expected = pg_application(graph, vy, vx);
+	struct pg_eval full;
+	pg_eval_init(&full, input);
+	full.output = graph; full.dispatch = auxiliary_dispatch;
+	demand_resumes = 0;
+	assert(pg_eval_advance(&full, 1000) == PG_EVAL_WHNF && demand_resumes == 1);
+	assert(pg_eval_readback(&full, graph) == expected);
+	uint64_t steps = full.steps;
+	pg_eval_destroy(&full);
+	for (uint64_t cut = 0; cut < steps; ++cut) {
+		struct pg_eval split;
+		pg_eval_init(&split, input);
+		split.output = graph; split.dispatch = auxiliary_dispatch;
+		demand_resumes = 0;
+		assert(pg_eval_advance(&split, cut) == PG_EVAL_PENDING);
+		if (split.frames) assert(pg_eval_readback(&split, graph) == input);
+		assert(pg_eval_advance(&split, 1000) == PG_EVAL_WHNF && demand_resumes == 1);
+		assert(split.steps == steps && pg_eval_readback(&split, graph) == expected);
+		pg_eval_destroy(&split);
+	}
+	puts("auxiliary demand: unchanged caller arguments, pending readback and every split budget passed");
+}
+
 static void demand_budget_test(struct pg_graph *graph)
 {
 	const size_t depth = 5000;
@@ -1826,6 +1875,7 @@ int main(void)
 	typed_restriction_test(&graph);
 	computation_execution_test(&graph);
 	demand_budget_test(&graph);
+	auxiliary_demand_test(&graph);
 	classifiers_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);

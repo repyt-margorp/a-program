@@ -44,6 +44,11 @@ int pg_eval_apply(struct pg_eval *machine, struct pg_closure function,
 	struct pg_closure argument, size_t consume);
 int pg_eval_demand(struct pg_eval *machine, size_t index,
 	int (*resume)(struct pg_eval *machine, const struct pg_term *answer));
+/* Evaluate auxiliary work on this machine, preserving the caller's arguments.
+ * Resume must incorporate the answer. Pending readback retains the caller;
+ * use for pure work, not an effect whose result could be discarded. */
+int pg_eval_demand_closure(struct pg_eval *machine, struct pg_closure value,
+	int (*resume)(struct pg_eval *machine, const struct pg_term *answer));
 
 struct pg_binding_value {
 	const struct pg_object *binder;

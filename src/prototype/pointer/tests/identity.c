@@ -304,17 +304,35 @@ static void thunk_transport(struct pg_typing *typing, struct pg_classifiers *cla
 	pg_whnf_work_destroy(&work);
 }
 
-static const struct pg_evidence *convert_to(struct pg_typing *typing, struct pg_whnf_work *work,
-	const struct pg_evidence *value, const struct pg_evidence *type)
+static const struct pg_evidence *convert_to_budget(struct pg_typing *typing, struct pg_whnf_work *work,
+	const struct pg_evidence *value, const struct pg_evidence *type, uint64_t budget)
 {
 	assert(value && type);
 	struct pg_conversion comparison;
 	assert(pg_conversion_init(&comparison, work, pg_evidence_classifier(value), pg_evidence_subject(type)->core) == 0);
-	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
+	assert(pg_conversion_advance(&comparison, budget) == PG_CONVERSION_EQUAL);
 	const struct pg_evidence *result = pg_prove_conversion(typing, value, type, pg_conversion_certificate(&comparison));
 	pg_conversion_destroy(&comparison);
 	assert(result);
 	return result;
+}
+
+static const struct pg_evidence *convert_to(struct pg_typing *typing, struct pg_whnf_work *work,
+	const struct pg_evidence *value, const struct pg_evidence *type)
+{
+	return convert_to_budget(typing, work, value, type, 100000);
+}
+
+static const struct pg_evidence *expose_classifier(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	struct pg_whnf_work *work, const struct pg_evidence *context, const struct pg_evidence *term)
+{
+	const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, term);
+	assert(type);
+	struct pg_whnf_job *job = pg_whnf_request(work, &pg_pure_policy, pg_evidence_subject(type)->core);
+	assert(pg_whnf_advance(job, 1000000) == PG_EVAL_WHNF);
+	type = pg_prove_normalization(typing, type, pg_whnf_certificate(job));
+	assert(type);
+	return convert_to_budget(typing, work, term, type, 1000000);
 }
 
 /* A well-typed transport recipe is not yet an admissible computation rule. */
@@ -840,6 +858,15 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 	const struct pg_evidence *source_call = pg_prove_application(typing,
 		pg_prove_projection(typing, body_context, functions[0]), body_variable);
 	assert(source_call);
+	const struct pg_evidence *function_type = pg_prove_thunk_type(typing, classifiers,
+		pg_prove_classifier(typing, classifiers, initial, functions[0]));
+	const struct pg_object *function_name = pg_binder(typing->graph);
+	const struct pg_evidence *neutral_source = pg_prove_context_extension(typing, body_context, function_name,
+		pg_prove_projection(typing, body_context, function_type));
+	const struct pg_evidence *neutral_call = pg_prove_application(typing,
+		pg_prove_force(typing, pg_prove_variable(typing, neutral_source, function_name)),
+		pg_prove_projection(typing, neutral_source, body_variable));
+	assert(neutral_call);
 	for (size_t dimension = 0, expected_count = 1; dimension <= 3; ++dimension, expected_count *= 3) {
 		const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, dimension);
 		for (size_t p = 0; p < (dimension == 3 ? 6u : 1u); ++p) {
@@ -905,6 +932,29 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 			const struct pg_evidence *call_expected = pg_prove_return(typing, classifiers, joint_variable);
 			assert(call_action && pg_evidence_judgement(call_action) == PG_JUDGEMENT_COMPUTATION);
 			assert(action_result(typing, classifiers, joint, &cube_work, call_action, call_expected));
+			const struct pg_binding_cube *all_cubes[] = {cube, cubes[1], pg_binding_cube(&dimensions, dimension)};
+			const struct pg_evidence *all = pg_identity_cube_context(typing, &dimensions, neutral_source, 3, all_cubes, order);
+			assert(all);
+			const struct pg_binding_face *fcenter = pg_binding_face(&dimensions, all_cubes[2], order);
+			const struct pg_evidence *applied = expose_classifier(typing, classifiers, &cube_work, all,
+				pg_prove_variable(typing, all, &fcenter->variable));
+			applied = pg_prove_force(typing, applied);
+			assert(applied);
+			const struct pg_context *arguments[27], *cursor = pg_evidence_context(joint);
+			for (size_t i = expected_count; i; --i) { arguments[i - 1] = cursor; cursor = cursor->parent; }
+			for (size_t i = 0; i < expected_count; ++i) {
+				applied = expose_classifier(typing, classifiers, &cube_work, all, applied);
+				const struct pg_evidence *pi = pg_prove_classifier(typing, classifiers, all, applied);
+				const struct pg_evidence *arg = convert_to(typing, &cube_work,
+					pg_prove_variable(typing, all, arguments[i]->binder), pg_prove_pi_domain(typing, pi));
+				applied = pg_prove_application(typing, applied, arg);
+				assert(applied);
+			}
+			const struct pg_evidence *neutral_action = pg_identity_cube_action(typing, classifiers, &dimensions,
+				neutral_source, neutral_call, 3, all_cubes, order);
+			assert(neutral_action);
+			converts_budget(&cube_work, pg_evidence_classifier(neutral_action), pg_evidence_classifier(applied), 1000000);
+			converts_budget(&cube_work, pg_evidence_subject(neutral_action)->core, pg_evidence_subject(applied)->core, 1000000);
 			cubes[1] = cube;
 			assert(!pg_identity_cube_context(typing, &dimensions, body_context, 2, cubes, order));
 		}
@@ -1084,6 +1134,49 @@ static void neutral_thunks(struct pg_typing *typing, struct pg_classifiers *clas
 	assert(pg_typing_init(&foreign, typing->graph) == 0);
 	assert(!pg_identity_thunk_type(&foreign, classifiers, u, left, right));
 	pg_typing_destroy(&foreign);
+	pg_whnf_work_destroy(&work);
+}
+
+static void action_scope_exchange(struct pg_classifiers *classifiers)
+{
+	struct pg_graph *graph = classifiers->graph;
+	struct pg_whnf_work work;
+	assert(pg_whnf_work_init(&work, graph) == 0);
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
+	const struct pg_term *a = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *boundary[2][3];
+	for (size_t i = 0; i < 2; ++i)
+		for (size_t j = 0; j < 3; ++j) boundary[i][j] = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *body = pg_identity_instance(graph, pg_identity_action(graph, a),
+		pg_reference(graph, x), pg_reference(graph, y));
+	const struct pg_term *sources[] = {
+		pg_lambda(graph, x, pg_lambda(graph, y, body)),
+		pg_lambda(graph, y, pg_lambda(graph, x, body))
+	};
+	/* Exchange of two independent declarations, not a swap of cube axes.
+	 * Both ordinary endpoint substitutions agree before action is compared. */
+	for (size_t side = 0; side < 2; ++side) {
+		const struct pg_term *left = pg_application(graph,
+			pg_application(graph, sources[0], boundary[0][side]), boundary[1][side]);
+		const struct pg_term *right = pg_application(graph,
+			pg_application(graph, sources[1], boundary[1][side]), boundary[0][side]);
+		converts(&work, left, right);
+	}
+	const struct pg_term *acted[2];
+	for (size_t order = 0; order < 2; ++order) {
+		acted[order] = pg_identity_action(graph, sources[order]);
+		for (size_t i = 0; i < 2; ++i)
+			for (size_t j = 0; j < 3; ++j)
+				acted[order] = pg_application(graph, acted[order], boundary[i ^ order][j]);
+	}
+	converts(&work, acted[0], acted[1]);
+	/* Environment exchange must not forget the selected center proof. */
+	const struct pg_term *changed = pg_application(graph, acted[0]->as.application.function,
+		pg_reference(graph, pg_binder(graph)));
+	struct pg_conversion comparison;
+	assert(pg_conversion_init(&comparison, &work, acted[0], changed) == 0);
+	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_DIFFERENT);
+	pg_conversion_destroy(&comparison);
 	pg_whnf_work_destroy(&work);
 }
 
@@ -2039,6 +2132,7 @@ int main(void)
 	assert(!pg_prove_identity_instance(&foreign, &classifiers, pp, xx, yy));
 	pg_typing_destroy(&foreign);
 	neutral_thunks(&typing, &classifiers);
+	action_scope_exchange(&classifiers);
 	generated_contexts(&typing, &classifiers);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);

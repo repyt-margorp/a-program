@@ -98,20 +98,31 @@ int pg_eval_apply(struct pg_eval *machine, struct pg_closure function,
 	return 0;
 }
 
-int pg_eval_demand(struct pg_eval *machine, size_t index,
+static int demand(struct pg_eval *machine, struct pg_closure value, size_t index,
 	int (*resume)(struct pg_eval *machine, const struct pg_term *answer))
 {
-	if (!machine->output || !resume) return -1;
-	const struct pg_closure *argument = pg_eval_argument(machine, index);
-	if (!argument) return -1;
+	if (!machine->output || !resume || !value.term) return -1;
 	struct pg_eval_frame *frame = pg_alloc(&machine->temporary, sizeof(*frame));
 	if (!frame) return -1;
 	*frame = (struct pg_eval_frame){.caller = machine->current, .arguments = machine->arguments,
 		.index = index, .resume = resume, .parent = machine->frames, .cursor = machine->arguments};
 	machine->frames = frame;
-	machine->current = *argument;
+	machine->current = value;
 	machine->arguments = NULL;
 	return 0;
+}
+
+int pg_eval_demand(struct pg_eval *machine, size_t index,
+	int (*resume)(struct pg_eval *machine, const struct pg_term *answer))
+{
+	const struct pg_closure *value = pg_eval_argument(machine, index);
+	return value ? demand(machine, *value, index, resume) : -1;
+}
+
+int pg_eval_demand_closure(struct pg_eval *machine, struct pg_closure value,
+	int (*resume)(struct pg_eval *machine, const struct pg_term *answer))
+{
+	return demand(machine, value, SIZE_MAX, resume);
 }
 
 static int resume_frame(struct pg_eval *machine)
@@ -121,19 +132,23 @@ static int resume_frame(struct pg_eval *machine)
 		int status = materialize_step(&frame->answer, machine->output, machine->current, machine->arguments);
 		return status < 0 ? -1 : 0;
 	}
-	/* Rebuild one prefix link per step; the untouched tail remains shared. */
-	struct pg_argument *copy = pg_alloc(&machine->temporary, sizeof(*copy));
-	if (!copy || !frame->cursor) return -1;
-	*copy = *frame->cursor;
-	if (frame->last) frame->last->next = copy;
-	else frame->first = copy;
-	frame->last = copy;
-	frame->cursor = frame->cursor->next;
-	if (frame->copied++ != frame->index) return 0;
 	const struct pg_term *answer = frame->answer.partial;
-	copy->value = (struct pg_closure){answer, NULL};
+	const struct pg_argument *arguments = frame->arguments;
+	if (frame->index != SIZE_MAX) {
+		/* Rebuild one prefix link per step; the untouched tail remains shared. */
+		struct pg_argument *copy = pg_alloc(&machine->temporary, sizeof(*copy));
+		if (!copy || !frame->cursor) return -1;
+		*copy = *frame->cursor;
+		if (frame->last) frame->last->next = copy;
+		else frame->first = copy;
+		frame->last = copy;
+		frame->cursor = frame->cursor->next;
+		if (frame->copied++ != frame->index) return 0;
+		copy->value = (struct pg_closure){answer, NULL};
+		arguments = frame->first;
+	}
 	machine->current = frame->caller;
-	machine->arguments = frame->first;
+	machine->arguments = arguments;
 	machine->frames = frame->parent;
 	machine->head_ready = 0;
 	materialize_destroy(&frame->answer);

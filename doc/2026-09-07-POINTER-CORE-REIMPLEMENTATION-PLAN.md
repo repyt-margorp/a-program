@@ -13,6 +13,150 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### Investigation record: neutral higher application (2026-09-08)
+
+The failure states below describe the investigation before the residual-scope
+normalization described at the end of this record; do not read them as the
+latest test result.
+
+This checkpoint is not an acceptance result. HEAD before these edits is
+`e042fea`; the working tree adds a deliberately failing positive regression.
+The normal Identity suite currently fails in `generated_contexts`, dimension
+2, identity axis order, comparing the classifier of acted neutral application
+against application of the checked central function. N2 remains open. Do not
+weaken conversion, change this assertion into an expected inequality, or push
+this state to main.
+
+The source context is `A : Universe, x : A, f : U(Pi(A, F A))`. Compare:
+
+1. Cube action on the checked source `APP(FORCE(f), x)`.
+2. FORCE the central function, then apply the checked faces of x in telescope
+   order, using ordinary classifier normalization and conversion.
+
+Dimensions 0 and 1 reach equal classifiers and terms. At dimension 2 the
+classifier comparison reaches DIFFERENT after 5,522 comparison transitions
+with a 1,000,000 transition limit; this is not fuel exhaustion. Strong normal
+forms retain nested Act expressions. One source abstraction orders arguments
+as `A-faces, x-endpoints, f-endpoints`, the other as
+`A-faces, f-endpoints, x-endpoints`, with correspondingly reordered supplied
+triples. Their inner applications still denote the corresponding `f x`.
+This does not justify alpha equality: the remaining issue is the action rule
+for instantiated higher families and its compatibility with substitution.
+The dimension-3 cases are not reached by this failing run.
+
+Before this mismatch, FORCE failed because a reducible nested Act hid the
+function classifier. The working evaluator change requests that inner pure
+closure on the existing demand-frame machine, rather than running a second
+normalizer inside the callback. Caller arguments remain unchanged for this
+auxiliary request; unfinished readback retains the original caller. This API
+is unsuitable for effectful work that cannot be discarded and recomputed.
+The new Core regression checks argument-list identity, callback delivery,
+pending readback and every fuel split. It does not establish higher action
+coherence. Source rebuilding and the alpha no-progress check in the Identity
+callback remain synchronous, as do existing action-scope traversals.
+
+Verification at this checkpoint: optimized and ASan/UBSan `core_test` pass.
+`make -f src/prototype/pointer/Makefile check` passes Core, reader and synthesis,
+then fails the positive Identity regression above; later test targets are not
+reached. `git diff --check` passes. These working changes are uncommitted.
+
+- [x] Reproduce the neutral application failure and distinguish it from fuel
+  exhaustion and incorrect FORCE polarity.
+- [x] Check auxiliary demand on the ordinary evaluator with every budget split.
+- [ ] Complete and justify higher Act instantiation/substitution computation;
+  preserve selected boundary evidence, not just untyped argument permutations.
+- [ ] Pass the retained positive regression through dimension 3 and all tested
+  orientations, then rerun the full optimized and sanitizer suites.
+- [ ] Audit bounded traversal and auxiliary readback before accepting N2.
+
+#### Reduced cause: action environments must respect declaration exchange
+
+The next investigation reduced the mismatch to `action_scope_exchange` in
+`tests/identity.c`, with no cube construction or dimension-map permutation:
+
+```text
+S = lambda x. lambda y. (Act A) x y
+T = lambda y. lambda x. (Act A) x y
+
+S x0 y0 =beta T y0 x0
+S x1 y1 =beta T y1 x1
+
+(Act S) x0 x1 px y0 y1 py
+  ?= (Act T) y0 y1 py x0 x1 px
+```
+
+The endpoint equalities pass; the last comparison reports DIFFERENT after
+543 transitions, including strong normalization. The new regression runs
+before `generated_contexts`, so it is now the first Identity failure. This
+small test is an operational equation with symbolic references, not independent
+evidence of formation; the preceding checked cube example supplies the typed
+motivation. Interpret x and y as independent declarations of the same A.
+
+This exchanges declarations in one action direction, not the two directions
+of a square. Therefore implementing cube-axis transposition alone does not
+resolve the observed failure. The current neutral Act residual preserves a
+lambda telescope and its argument triples as an ordered spine. It has no
+computation rule for two such spines that represent the same binding-to-triple
+assignment after declaration exchange.
+
+The next implementation obligation is to make residual action environments
+respect that assignment without identifying arbitrary lambda programs:
+
+- Preserve association of each binder with its complete endpoint/witness
+  triple. Do not sort or discard witnesses independently of their binders.
+- Keep source-context exchange separate from higher-axis symmetry and its
+  selected-face evidence. Do not reorder accepted dependent declarations just
+  because erased Core has no classifier fields.
+- A proposed residual normalization must be an explicit Act computation rule,
+  not a change to pointer interning or a special comparison success case.
+- Check renaming, lexical shadowing, substitution composition, partial triples
+  and repeated selected paths. An ordering derived from allocation addresses
+  is not alpha-stable and is not an acceptable canonicalization rule.
+- Retain both positive regressions. The reduced example must not replace the
+  checked dimension-2/3 application gate or stand in for higher coherence.
+
+#### Implemented candidate: residual action environment exchange
+
+`identity.c:order_scope` now orients administrative action environments by the
+first free occurrence of each source binder in the residual body. Lambda
+shadowing is tracked explicitly; a scoped DAG visitation index prevents repeated
+visits without equating different binders. Marking is on visitation rather than
+scheduling so sharing an argument with the function cannot change occurrence
+order. Rebuild both the source abstractions and complete argument triples with
+the same permutation, using ordinary closure substitution. No accepted context,
+Core interning key, alpha rule or conversion success condition changes.
+
+The proposed operational law is environment equivariance: acting on a body
+under a finite binder-to-triple assignment does not depend on the storage order
+of that assignment. The variable rule selects the same triple; structural
+application uses the same assignments for its operands; lexical abstraction
+removes shadowed bindings. A residual nested Act must retain this invariant too.
+This is not an assertion that higher-dimensional axes or dependent declarations
+can be exchanged without evidence. It is an A Program rule for the erased
+administrative action closure; a general preservation/coherence argument remains
+part of N2, and is not established by this regression alone.
+
+Both the reduced exchange and the checked neutral application now pass through
+dimensions 0-3, including all six dimension-3 axis orders. Changing the selected
+center proof is separately required to remain distinguishable. The new
+`expose_classifier` test helper uses a 1,000,000-transition conversion budget:
+the previous 100,000 bound was reached while still PENDING in dimension 3.
+Existing unrelated `convert_to` calls retain their 100,000 limit. This is a test
+budget change, not an evaluator optimization or a change to acceptance rules.
+
+Remaining engineering obligations: the scope walker and alpha no-progress check
+are synchronous; building scope bindings can allocate unused administrative
+binders. Integrate this traversal with bounded work and measure allocations
+before N2 acceptance. Do not claim the entire action/transport/lifting fragment
+complete from these passing examples.
+
+Checkpoint verification: optimized `make check`, the same full target under
+ASan/UBSan, and Identity with a 512 KiB stack pass. The syntax inventory is
+still parsing evidence only, not semantic compatibility. Relative to `e042fea`,
+implementation/header changes are +151/-17 lines, test C +147/-3 (documentation
+excluded). This checkpoint is suitable for the rewrite branch, not main or
+N0-N7 completion.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,
