@@ -477,6 +477,16 @@ Next implementation sequence (prerequisite for automatic source handlers):
   `@Op req resume => { x := resume req; x; }` both before and after row closure.
   Automatic handler collection/sealing and pending image transport remain open.
   These changes do not complete those milestones.
+  Callable result recovery is now composed uniformly from classifier formation
+  and a declared number of ordinary PI_CONSTANT_CODOMAIN producers. Handler
+  carrier construction uses the same helper. One Pi is removed for a return
+  clause, two for an operation clause; neither creates a new inference rule.
+  Tests register both return and computation-block clause effects into one
+  target before sealing, reject a remaining Pi as a non-F contribution, and
+  check the converged row against the accepted clause result. The callable's
+  original proof remains pending throughout structural collection. This is the
+  collection primitive; handler-owned equation lifecycle/sealing and complete
+  source coordination are still required, not implemented by this helper.
   Normal checks, eight source cases and six runtime cases pass. List synthesis
   now takes 1717 transitions rather than 1682 as FOLD acceptance is scheduled;
   this is not a performance improvement claim.

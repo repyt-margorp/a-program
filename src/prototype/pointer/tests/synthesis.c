@@ -558,6 +558,18 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_effect_type_spine_view(block_result, &block_row, &block_value));
 		assert(block_row == sequence_row && block_value == sequence_result);
 		assert(!pg_synthesis_result(block_clause));
+		struct pg_synthesis_job *block_carrier = pg_synthesis_constant_result(&synthesis, empty, block_clause, 2);
+		assert(block_carrier == pg_synthesis_constant_result(&synthesis, empty, block_clause, 2));
+		struct pg_effect_equation *clause_effects = pg_effect_equation(&effects, no_effects);
+		assert(!complete(&synthesis, pg_synthesis_effect_contribution(&synthesis, &effects,
+			clause_effects, no_effects, block_carrier), PG_SYNTHESIS_DONE));
+		assert(!pg_synthesis_result(block_carrier) && !pg_effect_inference_result(&effects, clause_effects));
+		struct pg_synthesis_job *returned_carrier = pg_synthesis_constant_result(&synthesis, context, return_clause_job, 1);
+		assert(!complete(&synthesis, pg_synthesis_effect_contribution(&synthesis, &effects,
+			clause_effects, no_effects, returned_carrier), PG_SYNTHESIS_DONE));
+		complete(&synthesis, pg_synthesis_effect_contribution(&synthesis, &effects,
+			clause_effects, no_effects, pg_synthesis_constant_result(&synthesis, empty, block_clause, 1)),
+			PG_SYNTHESIS_REJECTED);
 		struct pg_synthesis_job *source_type = pg_synthesis_classifier_structure(&synthesis, source_variable);
 		struct pg_synthesis_job *source_term = pg_synthesis_term_structure(&synthesis, source_variable);
 		assert(!complete(&synthesis, source_type, PG_SYNTHESIS_DONE));
@@ -656,6 +668,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_pi_view(pg_evidence_classifier(block_clause_proof), &block_domain, &block_binder, &block_resume));
 		assert(pg_pi_view(block_resume, &block_domain, &block_binder, &block_result));
 		assert(block_result == pg_effect_type(classifiers, row, sequence_result));
+		assert(pg_effect_inference_result(&effects, clause_effects) == row);
+		assert(pg_evidence_subject(complete(&synthesis, block_carrier, PG_SYNTHESIS_DONE))->core == block_result);
 		const struct pg_evidence *block_proof = complete(&synthesis, single_block, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(block_proof)->core == pg_synthesis_type_structure_result(single_block_term));
 		const struct pg_evidence *multi_block = complete(&synthesis, pending_block, PG_SYNTHESIS_DONE);

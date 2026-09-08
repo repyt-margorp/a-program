@@ -465,16 +465,25 @@ struct pg_synthesis_job *pg_synthesis_handler_clause(struct pg_synthesis *synthe
 	return job;
 }
 
+struct pg_synthesis_job *pg_synthesis_constant_result(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *callable, size_t parameters)
+{
+	if (!context || context->owner != synthesis->owner_key) return NULL;
+	if (!callable || callable->owner != synthesis->owner_key) return NULL;
+	struct pg_synthesis_job *result = request_job(synthesis, CLASSIFIER_FORMATION_JOB, context, callable);
+	struct pg_derivation_input codomain = {.rule = PG_PI_CONSTANT_CODOMAIN, .count = 1};
+	for (size_t i = 0; result && i < parameters; ++i)
+		result = pg_synthesis_rule(synthesis, &codomain, &result, NULL, NULL);
+	return result;
+}
+
 struct pg_synthesis_job *pg_synthesis_handler_carrier(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *returned,
 	struct pg_effect_inference *work, const struct pg_effect_equation *equation)
 {
-	if (!pg_evidence_owned_by(context, synthesis->typing)) return NULL;
-	if (!returned || returned->owner != synthesis->owner_key || !equation) return NULL;
-	struct pg_synthesis_job *formation = request_job(synthesis, CLASSIFIER_FORMATION_JOB,
-		pg_synthesis_evidence(synthesis, context), returned);
-	struct pg_derivation_input codomain = {.rule = PG_PI_CONSTANT_CODOMAIN, .count = 1};
-	struct pg_synthesis_job *result = pg_synthesis_rule(synthesis, &codomain, &formation, NULL, NULL);
+	if (!pg_evidence_owned_by(context, synthesis->typing) || !equation) return NULL;
+	struct pg_synthesis_job *result = pg_synthesis_constant_result(synthesis,
+		pg_synthesis_evidence(synthesis, context), returned, 1);
 	struct pg_derivation_input content = {.rule = PG_RETURN_CONTENT, .count = 1};
 	result = pg_synthesis_rule(synthesis, &content, &result, NULL, NULL);
 	struct pg_derivation_input carrier = {.rule = PG_RETURN_TYPE_FORM, .count = 1};

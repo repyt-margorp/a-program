@@ -121,6 +121,12 @@ struct pg_effect_equation;
 struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *input,
 	struct pg_synthesis_job *continuation);
+/* Recover a callable's classifier and remove the given Pi prefix with the
+ * ordinary constant-codomain rules. Dependent results are not generalized.
+ * Structural consumers may inspect the result before evidence acceptance;
+ * use one parameter for return clauses, two for operation clauses. */
+struct pg_synthesis_job *pg_synthesis_constant_result(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *callable, size_t parameters);
 /* Recover a constant result value type from an independently synthesized
  * return continuation, then form F G C using the converged equation G.
  * Work outlives synthesis; notify sealing through effect_inference below. No clause body
