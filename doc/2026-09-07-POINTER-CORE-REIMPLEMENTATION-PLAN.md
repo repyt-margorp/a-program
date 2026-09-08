@@ -53,6 +53,14 @@ These tests do not yet establish recovery for every nonconstant dependent
 family, or general typed center symmetry. Those acceptance gates remain open.
 Complete pointer `make check` and ASan/UBSan `identity_test` pass this change.
 
+Nonconstant follow-up: `dependent_instance_boundary` acts on
+`A : U1 |- Id U1 A A` along an assumed path between distinct type variables.
+The instance endpoints have non-alpha-equal classifiers. Formation recovery
+retains the exact selected path and both substitutions, and obtains both
+inner endpoints without changing the instance Core. The test derives the
+family's Universe from classifier evidence rather than assuming a numeric
+level. This establishes the one-parameter case, not arbitrary higher action.
+
 Rechecked `action.h`, `evidence.c` and `square_template_jobs` /
 `dependent_cube_substitution` after `253e690`. The current proper-face API
 explicitly excludes centers. `PG_IDENTITY_INSTANCE` retains a checked family
