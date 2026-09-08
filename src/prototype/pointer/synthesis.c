@@ -3405,6 +3405,7 @@ static int source_value_kind(const struct pg_synthesis_job *producer)
 static struct pg_synthesis_job *body_rule(const struct pg_synthesis_job *adapter)
 {
 	struct pg_synthesis_job *body = (void *)adapter->inputs[0];
+	if (body->role == SEQUENCE_JOB) return body;
 	struct pg_synthesis_job *rule = prepared_source_rule(body);
 	return rule ? rule : body;
 }
@@ -3437,6 +3438,28 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 	}
 	struct pg_synthesis_job *source_rule = prepared_source_rule(producer);
 	if (source_rule) {
+		/* A source sequence may replace a rejected fold with checked pure application. */
+		if (producer->role == SEQUENCE_JOB && source_rule == producer->right) {
+			struct pg_synthesis_job *shapes[] = {
+				pg_synthesis_classifier_structure(synthesis, rule_premise(synthesis, source_rule, 0)),
+				pg_synthesis_classifier_structure(synthesis, rule_premise(synthesis, source_rule, 1))};
+			for (size_t i = 0; i < 2; ++i) {
+				if (!shapes[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+				if (shapes[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, shapes[i]); return; }
+				if (shapes[i]->status == PG_SYNTHESIS_ERROR) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+				if (shapes[i]->status != PG_SYNTHESIS_DONE) goto accepted_subject;
+			}
+			const struct pg_term *row, *value, *domain, *codomain, *following, *result;
+			const struct pg_object *binder;
+			if (!pg_effect_type_spine_view(shapes[0]->type_structure, &row, &value)) goto accepted_subject;
+			if (!pg_pi_view(shapes[1]->type_structure, &domain, &binder, &codomain)) goto accepted_subject;
+			if (pg_alpha_equal(domain, value) != 1) goto accepted_subject;
+			if (pg_term_independent(codomain, binder) != 1) goto accepted_subject;
+			if (!pg_effect_type_spine_view(codomain, &following, &result)) {
+				const struct pg_effect_row *closed = pg_effect_row_view(row);
+				if (!closed || pg_effect_count(closed)) goto accepted_subject;
+			}
+		}
 		if (!job->left) job->left = pg_synthesis_term_structure(synthesis, source_rule);
 		forward_structure(synthesis, job);
 		return;
@@ -3502,6 +3525,7 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;
 	}
+accepted_subject:
 	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
 	if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return; }
 	const struct pg_occurrence *subject = producer->result ? pg_evidence_subject(producer->result) : NULL;

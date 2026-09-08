@@ -463,6 +463,13 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_effect_type_spine_view(pg_synthesis_type_structure_result(computed_argument_type), &computed_row, &computed_value));
 		assert(computed_value == pg_universe(classifiers, 0));
 		assert(!pg_synthesis_result(computed_argument) && !pg_synthesis_result(context));
+		struct pg_synthesis_job *computed_function = request(&synthesis, result_scope,
+			"v := (\\a : @ => \\b : a => b) ((\\a : @ => a) result);");
+		struct pg_synthesis_job *computed_function_core = pg_synthesis_term_structure(&synthesis, computed_function);
+		pg_synthesis_advance(&synthesis, 1000);
+		assert(pg_synthesis_status(computed_function_core) == PG_SYNTHESIS_PENDING);
+		assert(!pg_synthesis_type_structure_result(computed_function_core));
+		assert(!pg_synthesis_result(computed_function));
 		struct pg_synthesis_job *result_domain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){context, universe});
 		struct pg_synthesis_job *result_function = pg_synthesis_lambda_body(&synthesis,
@@ -757,6 +764,9 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_evidence_classifier(return_proof) == pg_synthesis_type_structure_result(return_clause_type));
 		const struct pg_evidence *result_proof = complete(&synthesis, result_variable, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *computed_proof = complete(&synthesis, computed_argument, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *function_proof = complete(&synthesis, computed_function, PG_SYNTHESIS_DONE);
+		assert(!complete(&synthesis, computed_function_core, PG_SYNTHESIS_DONE));
+		assert(pg_evidence_subject(function_proof)->core == pg_synthesis_type_structure_result(computed_function_core));
 		assert(pg_evidence_classifier(computed_proof) == pg_return_type(classifiers, computed_value));
 		const struct pg_evidence *computed_normal = normalize(&synthesis, pg_synthesis_result(result_context), computed_proof);
 		assert(pg_evidence_subject(computed_normal)->core == pg_evidence_subject(pg_prove_return(typing, classifiers, result_proof))->core);
@@ -2062,7 +2072,11 @@ static void named_identity(struct pg_typing *typing, struct pg_classifiers *clas
 		"{{ duplicate := &refl; proof := &(\\A : @ => \\x : A => duplicate A x :: Eq A x x); }}.proof;"
 	};
 	for (size_t i = 0; i < sizeof(sources) / sizeof(*sources); ++i) {
-		const struct pg_evidence *answer = complete(&synthesis, request(&synthesis, scope, sources[i]), PG_SYNTHESIS_DONE);
+		struct pg_synthesis_job *source_job = request(&synthesis, scope, sources[i]);
+		struct pg_synthesis_job *source_core = pg_synthesis_term_structure(&synthesis, source_job);
+		assert(!complete(&synthesis, source_core, PG_SYNTHESIS_DONE));
+		const struct pg_evidence *answer = complete(&synthesis, source_job, PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_type_structure_result(source_core) == pg_evidence_subject(answer)->core);
 		struct pg_synthesis_job *bulk = request(&synthesis, scope, sources[i]);
 		pg_synthesis_advance(&synthesis, 10000);
 		assert(pg_synthesis_status(bulk) == PG_SYNTHESIS_DONE);

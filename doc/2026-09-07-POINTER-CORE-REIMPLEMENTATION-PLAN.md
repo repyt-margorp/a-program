@@ -477,6 +477,23 @@ Next implementation sequence (prerequisite for automatic source handlers):
   `@Op req resume => { x := resume req; x; }` both before and after row closure.
   Automatic handler collection/sealing and pending image transport remain open.
   These changes do not complete those milestones.
+  September 9, after `35ed151`: a regression exposed unstable source-sequence
+  Core projection. `(\a : @ => \b : a => b) ((\a : @ => a) result)` under an
+  unresolved outer effect context published FOLD before acceptance, but its
+  dependent continuation required the existing checked pure-APP fallback.
+  BODY now preserves the sequence producer instead of bypassing that choice.
+  Sequence Core projection checks structural fold eligibility before exposing
+  the candidate; otherwise it awaits the original sequence's final decision.
+  This check does not accept evidence. Fixed raw FOLD candidates retain their
+  structural projection, and ordinary proof acceptance remains authoritative.
+  The regression requires no provisional Core before row sealing and exact
+  projected/accepted Core identity afterwards, with split scheduling. Named
+  Identity programs also compare early projection with the accepted subject.
+  Pending effect transport and general source completion remain open.
+  Verification passed: `check check-examples check-example-results` and rebuilt
+  ASan/UBSan `synthesis_test`. Eight source cases and six runtime cases retain
+  their previous results and transition counts. Implementation C: +24/-0;
+  test C: +15/-1; documentation counted separately.
   Callable result recovery is now composed uniformly from classifier formation
   and a declared number of ordinary PI_CONSTANT_CODOMAIN producers. Handler
   carrier construction uses the same helper. One Pi is removed for a return
