@@ -1268,6 +1268,25 @@ static void action_scope_exchange(struct pg_classifiers *classifiers)
 	assert(pg_conversion_init(&comparison, &work, acted[0], changed) == 0);
 	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_DIFFERENT);
 	pg_conversion_destroy(&comparison);
+	/* Grow the transient source index while retaining only its outermost and
+	 * innermost declarations. Unused boundary computations must not run. */
+	const struct pg_object *many[96];
+	for (size_t i = 0; i < 96; ++i) many[i] = pg_binder(graph);
+	const struct pg_term *large = pg_identity_instance(graph, pg_identity_action(graph, a),
+		pg_reference(graph, many[0]), pg_reference(graph, many[95]));
+	for (size_t i = 96; i; --i) large = pg_lambda(graph, many[i - 1], large);
+	large = pg_identity_action(graph, large);
+	const struct pg_term *self = pg_lambda(graph, x,
+		pg_application(graph, pg_reference(graph, x), pg_reference(graph, x)));
+	const struct pg_term *unused = pg_application(graph, self, self);
+	for (size_t i = 0; i < 96; ++i)
+		for (size_t j = 0; j < 3; ++j) {
+			const struct pg_term *argument = unused;
+			if (i == 0) argument = boundary[0][j];
+			if (i == 95) argument = boundary[1][j];
+			large = pg_application(graph, large, argument);
+		}
+	converts(&work, large, acted[0]);
 	pg_whnf_work_destroy(&work);
 }
 

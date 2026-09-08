@@ -316,17 +316,39 @@ static int scope_push(struct pg_graph *arena, struct pg_index *seen, struct scop
 
 /* Residual action carries a binder-to-triple assignment. Exchange only this
  * administrative environment, never accepted dependent contexts or cube axes. */
+struct scope_binding_index {
+	struct pg_index_entry index;
+	const struct pg_object *binder;
+	size_t position;
+};
+
+static uint64_t scope_binding_hash(const struct pg_object *binder)
+{
+	uint64_t pointer = (uintptr_t)binder;
+	return (pointer >> 4) ^ (pointer >> 17);
+}
+
+static struct scope_binding_index *scope_binding_find(const struct pg_index *index, const struct pg_object *binder)
+{
+	for (struct pg_index_entry *entry = pg_index_candidates(index, scope_binding_hash(binder)); entry; entry = entry->next) {
+		struct scope_binding_index *candidate = (struct scope_binding_index *)entry;
+		if (candidate->binder == binder) return candidate;
+	}
+	return NULL;
+}
+
 struct scope_work {
 	struct pg_graph *arena;
 	struct pg_graph *output;
 	struct action_scope scope;
 	struct pg_index seen;
+	struct pg_index sources;
 	struct scope_visit *pending;
 	const struct pg_term *reference;
 	const struct scope_shadow *shadow;
 	size_t *order;
 	unsigned char *used;
-	size_t count, lookup;
+	size_t count;
 	enum { SCOPE_SOURCES, SCOPE_HEAD, SCOPE_VISIT, SCOPE_FILTER, SCOPE_ABSTRACT, SCOPE_APPLY, SCOPE_WRAP, SCOPE_READY } phase;
 	const struct pg_term *cursor, *result;
 	size_t position, selected;
@@ -344,15 +366,17 @@ static int scope_visit_poll(struct scope_work *work)
 			work->shadow = work->shadow->parent;
 			return 0;
 		}
-		if (!work->lookup) { work->reference = NULL; return 0; }
-		size_t i = --work->lookup;
-		if (work->scope.bindings[i].source != work->reference->as.reference) return 0;
+		const struct pg_object *binder = work->reference->as.reference;
+		work->reference = NULL;
+		/* Hash-bucket traversal, like index growth, is not logical fuel. */
+		const struct scope_binding_index *source = scope_binding_find(&work->sources, binder);
+		if (!source) return 0;
+		size_t i = source->position;
 		if (!work->used[i]) {
 			work->used[i] = 1;
 			if (i != work->count) work->changed = 1;
 			work->order[work->count++] = i;
 		}
-		work->reference = NULL;
 		return 0;
 	}
 	if (!work->pending) return 1;
@@ -384,7 +408,6 @@ static int scope_visit_poll(struct scope_work *work)
 	case PG_REFERENCE: {
 		work->reference = term;
 		work->shadow = visit->shadow;
-		work->lookup = work->scope.count;
 		break;
 	}
 	}
@@ -398,7 +421,17 @@ static int scope_poll(void *opaque)
 	switch (work->phase) {
 	case SCOPE_SOURCES:
 		if (work->position == scope->count) { work->phase = SCOPE_HEAD; return 0; }
-		scope->bindings[work->position++].source = work->cursor->as.lambda.binder;
+		const struct pg_object *binder = work->cursor->as.lambda.binder;
+		struct scope_binding_index *source = scope_binding_find(&work->sources, binder);
+		if (!source) {
+			source = pg_alloc(work->arena, sizeof(*source));
+			if (!source) return -1;
+			source->binder = binder;
+			if (pg_index_insert(&work->sources, &source->index, scope_binding_hash(binder)) != 0) return -1;
+		}
+		/* Only the transient index changes; the innermost source declaration wins. */
+		source->position = work->position;
+		scope->bindings[work->position++].source = binder;
 		work->cursor = work->cursor->as.lambda.body;
 		return 0;
 	case SCOPE_HEAD:
@@ -477,6 +510,7 @@ static void scope_destroy(void *opaque)
 {
 	struct scope_work *work = opaque;
 	pg_index_destroy(&work->seen);
+	pg_index_destroy(&work->sources);
 }
 
 static int scope_resume(struct pg_eval *machine, void *opaque)
@@ -499,6 +533,7 @@ static int analyze_scope(struct pg_eval *machine, struct action_scope *scope)
 	work->order = pg_alloc(work->arena, scope->count * sizeof(*work->order));
 	work->used = pg_alloc(work->arena, scope->count);
 	if (!work->scope.bindings || !work->order || !work->used || pg_index_init(&work->seen) != 0) return -1;
+	if (pg_index_init(&work->sources) != 0) { scope_destroy(work); return -1; }
 	int status = scope_push(work->arena, &work->seen, &work->pending, scope->body, NULL);
 	if (!status) status = pg_eval_defer(machine, work, scope_poll, scope_resume, scope_destroy);
 	if (status) scope_destroy(work);

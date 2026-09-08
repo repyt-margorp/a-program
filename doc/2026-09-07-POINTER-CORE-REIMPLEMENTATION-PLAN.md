@@ -296,6 +296,27 @@ Identity run pass. The cube-function comparison maximum is 256,454 transitions;
 that metric covers different comparisons from the debugger's 1,842,740-step
 classifier conversion and must not be presented as a direct speedup ratio.
 
+#### Indexed source binding lookup
+
+After `19da0f6`, scope support lookup uses the existing hash index, keyed by
+binder pointer, instead of scanning the source prefix for each free reference.
+Source initialization updates the transient entry to the innermost position
+for repeated binders. Index construction and querying share one lookup helper;
+the index is discarded with the work and is not a new semantic authority.
+Pointer alignment bits are mixed before bucket selection.
+
+An initial attempt charged each collision link as a separate fuel step. The
+existing whole-versus-split test detected allocation-dependent step counts.
+The retained version charges one lookup, consistent with other index operations;
+hash collisions and growth remain outside the logical-transition budget. The
+test was not weakened. A new 96-binder regression forces source-index growth,
+retains the first and last bindings and supplies divergent computations for all
+unused triples, checking that they are never evaluated. Implementation C:
++42/-7; test C: +19/-0. Lexical-shadow lookup remains incremental and linear.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass.
+The same cube-function comparison metric is 237,379 transitions, versus 256,454
+before indexing. This is a logical-work comparison, not a wall-time benchmark.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,
