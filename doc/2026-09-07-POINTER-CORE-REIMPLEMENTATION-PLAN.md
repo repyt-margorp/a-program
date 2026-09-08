@@ -207,6 +207,17 @@ Next implementation sequence (prerequisite for automatic source handlers):
   Lambda rule construction before acceptance remain to be connected.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass for these source projections.
+  Lambda/Pi binding reservation now registers the independent domain producer
+  immediately, before the outer context is accepted. Source `@` prepares an
+  ordinary UNIVERSE_FORM rule just as lexical variables prepare VARIABLE rules;
+  the old direct source universe acceptance path is removed. Formation-structure
+  projection follows that same prepared rule. Tests inspect the domain of a
+  source Lambda in an unresolved effect-dependent context without accepting
+  either the domain or context. This does not yet finish pending domain adapters
+  for computed type expressions or source Lambda rule assembly.
+  Validation: normal `check`, eight example synthesis cases, six runtime cases
+  and rebuilt ASan/UBSan synthesis tests pass. List now uses 984 transitions
+  rather than 977; this restructuring is not a performance improvement claim.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
   pointer-equality assumption about capture-avoiding substitution.

@@ -320,8 +320,13 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		size_t prepared_jobs = synthesis.jobs.count;
 		struct pg_synthesis_job *source_binding = pg_synthesis_binding(&synthesis, scope, definition.expression);
 		assert(pg_synthesis_request(&synthesis, pg_synthesis_binding_scope(source_binding), definition.expression->right));
+		struct pg_synthesis_job *source_domain = pg_synthesis_request(&synthesis, scope, definition.expression->left);
 		assert(synthesis.jobs.count == prepared_jobs);
 		assert(!pg_synthesis_result(source_binding));
+		struct pg_synthesis_job *domain_structure = pg_synthesis_type_structure(&synthesis, source_domain);
+		assert(!complete(&synthesis, domain_structure, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(domain_structure) == pg_universe(classifiers, 0));
+		assert(!pg_synthesis_result(source_domain));
 		assert(!complete(&synthesis, structure, PG_SYNTHESIS_DONE));
 		const struct pg_term *symbolic_pi = pg_synthesis_type_structure_result(structure);
 		const struct pg_term *symbolic_f = pg_effect_type_spine(classifiers,

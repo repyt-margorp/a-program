@@ -492,6 +492,12 @@ struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
 	if (!syntax || (syntax->kind != PG_SYNTAX_LAMBDA && syntax->kind != PG_SYNTAX_PI)) return NULL;
 	struct pg_synthesis_job *job = request_role(synthesis, scope, syntax, BINDING_JOB);
 	if (!job) return NULL;
+	if (!job->left) {
+		const struct pg_syntax *domain = syntax->left;
+		if (syntax->kind == PG_SYNTAX_PI && domain->kind == PG_SYNTAX_BINDER) domain = domain->left;
+		job->left = pg_synthesis_request(synthesis, scope, domain);
+		if (!job->left) return NULL;
+	}
 	if (!job->inner) {
 		struct pg_token name = syntax->token;
 		if (syntax->kind == PG_SYNTAX_PI)
@@ -1137,13 +1143,7 @@ static void binding_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 {
 	const struct pg_syntax *syntax = job->syntax;
 	if (syntax->binder_marker) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-	if (!job->left) {
-		const struct pg_syntax *domain = syntax->left;
-		if (syntax->kind == PG_SYNTAX_PI && domain->kind == PG_SYNTAX_BINDER) domain = domain->left;
-		job->left = pg_synthesis_request(synthesis, job->scope, domain);
-		depend(synthesis, job, job->left);
-		return;
-	}
+	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 	const struct pg_evidence *input = type_input(synthesis, job, source_context(job->scope), job->left->result);
 	if (!input) return;
@@ -1555,9 +1555,7 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		return;
 	}
 	struct pg_token token = job->syntax->token;
-	if (job->syntax->kind == PG_SYNTAX_ATOM && token.kind == '@') {
-		job->result = pg_prove_universe(synthesis->typing, synthesis->classifiers, source_context(job->scope), 0);
-	} else if (job->syntax->kind == PG_SYNTAX_ATOM && token.kind == '*') {
+	if (job->syntax->kind == PG_SYNTAX_ATOM && token.kind == '*') {
 		/* An explicitly supplied type assumption stays in the proof context.
 		 * This is not recursive declaration admission or an IH lookup. */
 		struct source_reference reference = lookup_scope(job->scope, token);
@@ -3059,6 +3057,7 @@ static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_j
 	if (job->role != EXPRESSION_JOB) return NULL;
 	if (job->syntax->kind == PG_SYNTAX_QUOTE) return job->right;
 	if (job->syntax->kind == PG_SYNTAX_ATOM && job->binder) return job->left;
+	if (job->syntax->kind == PG_SYNTAX_ATOM && job->syntax->token.kind == '@') return job->left;
 	return NULL;
 }
 
@@ -3202,6 +3201,12 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	struct pg_synthesis_job *source_rule = prepared_source_rule(producer);
+	if (source_rule) {
+		if (!job->left) job->left = pg_synthesis_type_structure(synthesis, source_rule);
+		forward_structure(synthesis, job);
+		return;
+	}
 	const struct pg_derivation_input *input = producer->role == DERIVATION_JOB ? producer->inputs[0] : NULL;
 	if (input) {
 		switch (input->rule) {
@@ -3438,9 +3443,17 @@ error:
 	finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
-static int lexical_variable_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_ATOM) return 0;
+	if (job->syntax->token.kind == '@') {
+		if (!job->left) {
+			struct pg_derivation_input input = {.rule = PG_UNIVERSE_FORM, .count = 1};
+			job->left = pg_synthesis_rule(synthesis, &input, &job->scope->context_job, NULL, NULL);
+		}
+		forward_proof(synthesis, job, job->left);
+		return 1;
+	}
 	if (job->syntax->token.kind != PG_TOKEN_IDENT) return 0;
 	if (!job->binder) {
 		if (job->left) return 0;
@@ -3493,7 +3506,7 @@ error:
 
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (lexical_variable_step(synthesis, job)) return;
+	if (atomic_rule_step(synthesis, job)) return;
 	/* Self application and IH notation share syntax until scope resolution. */
 	if (job->role == EXPRESSION_JOB && !hypothesis_syntax(job->syntax))
 		if (!prepare_expression(synthesis, job)) return;
