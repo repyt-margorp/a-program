@@ -13,6 +13,37 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Inert Nominal Declaration Before Schema Acceptance
+
+Continuation after `24ccbb6`. Inspection found that `pg_data_schema` embedded
+both the nominal family object and checked premises. Restoring only its family
+label and erased arities would allow unrelated schemas to be attached to the
+same identity. That shortcut is rejected: equal arities do not fix a type.
+
+`pg_data_declaration` now owns the inert identity, erased layout and immutable
+declared contexts/result-image terms. Its construction checks structural shape,
+not typing, positivity or universes. `pg_data_schema_check` requires locally
+accepted signature/substitution premises matching those exact inputs. It does
+not mutate the declaration or accept nominal formation. Existing generative
+schema construction uses the same builder and retains fresh family identities.
+The runtime layout still contains no typed context or proof; Core interning
+still compares reference pointers, never declaration contents.
+
+- [x] Separate the complete inert declaration from checked schema premises.
+- [x] Check exact contexts and result images, not layout shape alone.
+- [x] Test array ownership, fresh identities, repeated attachment to the same
+  identity, wrong images/counts, foreign evidence and absence of new proofs.
+- [ ] Encode declaration contexts/images using the shared relocation graph.
+- [ ] Preserve its layout pointers across import rather than allocate a second
+  layout when attaching restored premises.
+- [ ] Connect these inputs to ordinary schema/formation producers and complete
+  nominal derivation file round trips. Current codecs still reject them.
+
+This is a prerequisite for checkpointing, not a second Replay implementation.
+Normal `check`, eight source checks and six runtime fixtures pass with unchanged
+example Solve steps. The final IADT tests also pass under rebuilt ASan/UBSan.
+Implementation C/header: +126/-16; test C: +26/-0; documentation separate.
+
 ### September 9: Erased Constructor Layout Transport
 
 Continuation after `e6a35dc`. Erased constructors and their matcher can now

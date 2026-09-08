@@ -48,6 +48,21 @@ struct pg_classifiers;
 struct pg_evidence;
 struct pg_data_schema;
 struct pg_data_signature;
+struct pg_context;
+struct pg_data_declaration;
+struct pg_data_constructor_input {
+	const struct pg_context *fields;
+	const struct pg_term *const *images;
+};
+/* Inert nominal declaration. Images are ordered over the entire index
+ * context, including parameters. Copies the arrays, borrows immutable terms
+ * and contexts; creates no typing evidence. Each call is generative.
+ * The family fixes its complete declaration, not just erased arities. */
+const struct pg_data_declaration *pg_data_declaration(struct pg_graph *graph,
+	const struct pg_context *parameters, const struct pg_context *indices,
+	size_t count, const struct pg_data_constructor_input *constructors);
+const struct pg_object *pg_data_declaration_family(const struct pg_data_declaration *declaration);
+const struct pg_data_declaration *pg_data_schema_declaration(const struct pg_data_schema *schema);
 /* Checked parameter/index telescopes, available before checking fields.
  * Immutable and owned by typing->graph; not nominal formation or membership.
  * No layout, constructor, universe bound or accepted-declaration flag lives
@@ -79,6 +94,12 @@ int pg_data_direct_recursion(const struct pg_term *type, const struct pg_object 
  * Fields and arities are derived from those substitutions, not copied into
  * a second semantic schema. Positivity and fibrancy are not certified here. */
 const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
+	const struct pg_data_signature *signature,
+	size_t count, const struct pg_evidence *const *results);
+/* Attach checked premises to the exact inert declaration. Never replace its
+ * contexts, images or nominal identity with facts supplied by a caller. */
+const struct pg_data_schema *pg_data_schema_check(struct pg_typing *typing,
+	const struct pg_data_declaration *declaration,
 	const struct pg_data_signature *signature,
 	size_t count, const struct pg_evidence *const *results);
 /* Apply the syntactic positivity condition to every field in the checked

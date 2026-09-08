@@ -683,6 +683,32 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_data_schema *another = pg_data_schema(&typing, signature, 3, results);
 	assert(another && pg_data_schema_layout(another) != layout);
 	assert(typing.proofs.count == proof_count);
+	const struct pg_term *images[] = {pg_reference(graph, a)};
+	struct pg_data_constructor_input raw[] = {
+		{pg_evidence_context(parameters), images},
+		{pg_evidence_context(first), images},
+		{pg_evidence_context(fields), images}
+	};
+	const struct pg_data_declaration *raw_declaration = pg_data_declaration(graph,
+		pg_evidence_context(parameters), pg_evidence_context(parameters), 3, raw);
+	assert(raw_declaration && typing.proofs.count == proof_count);
+	const struct pg_data_schema *checked = pg_data_schema_check(&typing, raw_declaration, signature, 3, results);
+	assert(checked && pg_data_schema_declaration(checked) == raw_declaration);
+	assert(pg_data_family_object(checked) == pg_data_declaration_family(raw_declaration));
+	assert(pg_data_family_object(checked) != pg_data_family_object(schema));
+	const struct pg_data_schema *checked_again = pg_data_schema_check(&typing, raw_declaration, signature, 3, results);
+	assert(checked_again && pg_data_family_object(checked_again) == pg_data_family_object(checked));
+	assert(pg_data_schema_layout(checked_again) == pg_data_schema_layout(checked));
+	/* Caller arrays are copied; another same-arity map cannot redefine a family. */
+	images[0] = pg_reference(graph, x);
+	assert(pg_data_schema_check(&typing, raw_declaration, signature, 3, results));
+	const struct pg_data_declaration *wrong = pg_data_declaration(graph,
+		pg_evidence_context(parameters), pg_evidence_context(parameters), 3, raw);
+	assert(wrong && !pg_data_schema_check(&typing, wrong, signature, 3, results));
+	assert(!pg_data_schema_check(&typing, raw_declaration, signature, 2, results));
+	assert(!pg_data_schema_check(&foreign, raw_declaration, signature, 3, results));
+	assert(!pg_data_schema_check(&typing, NULL, signature, 3, results));
+	assert(typing.proofs.count == proof_count && !foreign.proofs.count);
 	assert(!pg_data_schema_fields(schema, pg_data_constructor(pg_data_schema_layout(another), 2)));
 	const struct pg_evidence *params = pg_prove_substitution(&typing, parameters, parameters, 1, &av);
 	assert(pg_data_instance(&typing, schema, pg_data_constructor(layout, 0), params, 0, NULL) == params);

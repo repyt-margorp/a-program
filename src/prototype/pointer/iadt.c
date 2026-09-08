@@ -242,12 +242,68 @@ struct pg_data_signature {
 	const struct pg_evidence *indices;
 };
 
-struct pg_data_schema {
+struct pg_data_declaration {
 	struct pg_object family;
 	const struct pg_data_layout *layout;
+	const struct pg_context *parameters, *indices;
+	size_t image_count;
+	struct pg_data_constructor_input constructors[];
+};
+
+struct pg_data_schema {
+	const struct pg_data_declaration *declaration;
 	const struct pg_data_signature *signature;
 	const struct pg_evidence *results[];
 };
+
+const struct pg_data_declaration *pg_data_declaration(struct pg_graph *graph,
+	const struct pg_context *parameters, const struct pg_context *indices,
+	size_t count, const struct pg_data_constructor_input *constructors)
+{
+	if (!graph || (count && !constructors)) return NULL;
+	size_t suffix, images;
+	if (pg_context_extension_size(indices, parameters, &suffix)
+		|| pg_context_extension_size(indices, NULL, &images)) return NULL;
+	if (count > (SIZE_MAX - sizeof(struct pg_data_declaration)) / sizeof(*constructors)) return NULL;
+	if (images > SIZE_MAX / sizeof(const struct pg_term *)) return NULL;
+	struct pg_graph temporary = {0};
+	size_t *arities = pg_alloc(&temporary, count * sizeof(*arities));
+	struct pg_data_declaration *declaration = NULL;
+	if (!arities) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		if (pg_context_extension_size(constructors[i].fields, parameters, &arities[i])) goto done;
+		if (images && !constructors[i].images) goto done;
+		for (size_t j = 0; j < images; ++j) if (!constructors[i].images[j]) goto done;
+	}
+	const struct pg_data_layout *layout = pg_data_layout(graph, count, arities);
+	if (!layout) goto done;
+	declaration = pg_alloc(graph, sizeof(*declaration) + count * sizeof(*constructors));
+	if (!declaration) goto done;
+	declaration->family = (struct pg_object){PG_SEMANTIC_OBJECT, &family_class};
+	declaration->layout = layout;
+	declaration->parameters = parameters;
+	declaration->indices = indices;
+	declaration->image_count = images;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_term **copy = pg_alloc(graph, images * sizeof(*copy));
+		if (!copy) { declaration = NULL; goto done; }
+		for (size_t j = 0; j < images; ++j) copy[j] = constructors[i].images[j];
+		declaration->constructors[i] = (struct pg_data_constructor_input){constructors[i].fields, copy};
+	}
+done:
+	pg_graph_destroy(&temporary);
+	return declaration;
+}
+
+const struct pg_object *pg_data_declaration_family(const struct pg_data_declaration *declaration)
+{
+	return declaration ? &declaration->family : NULL;
+}
+
+const struct pg_data_declaration *pg_data_schema_declaration(const struct pg_data_schema *schema)
+{
+	return schema ? schema->declaration : NULL;
+}
 
 const struct pg_data_signature *pg_data_signature(struct pg_typing *typing,
 	const struct pg_evidence *parameters, const struct pg_evidence *indices)
@@ -299,59 +355,91 @@ int pg_data_field_positive(const struct pg_term *type,
 	}
 }
 
-const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
+static const struct pg_data_schema *schema_build(struct pg_typing *typing,
+	const struct pg_data_declaration *declaration,
 	const struct pg_data_signature *signature,
 	size_t count, const struct pg_evidence *const *results)
 {
 	if (!signature || !pg_evidence_owned_by(signature->parameters, typing) || (count && !results)) return NULL;
 	const struct pg_evidence *parameters = signature->parameters, *indices = signature->indices;
 	const struct pg_context *prefix = pg_evidence_context(parameters);
+	if (declaration && (declaration->parameters != prefix
+		|| declaration->indices != pg_evidence_context(indices) || declaration->layout->count != count)) return NULL;
 	size_t parameter_count;
 	if (pg_context_extension_size(prefix, NULL, &parameter_count) != 0) return NULL;
 	if (count > (SIZE_MAX - sizeof(struct pg_data_schema)) / sizeof(*results)) return NULL;
-	if (count > SIZE_MAX / sizeof(size_t)) return NULL;
+	if (count > SIZE_MAX / sizeof(struct pg_data_constructor_input)) return NULL;
 	struct pg_graph temporary = {0};
-	size_t *arities = pg_alloc(&temporary, count * sizeof(*arities));
 	struct pg_data_schema *schema = NULL;
-	if (count && !arities) goto done;
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_evidence *result = results[i];
 		if (!pg_evidence_owned_by(result, typing)) goto done;
 		if (pg_evidence_rule(result) != PG_CONTEXT_SUBSTITUTION) goto done;
 		if (pg_evidence_context(pg_evidence_premise(result, 0)) != pg_evidence_context(indices)) goto done;
-		if (pg_context_extension_size(pg_evidence_context(result), prefix, &arities[i]) != 0) goto done;
+		size_t fields;
+		if (pg_context_extension_size(pg_evidence_context(result), prefix, &fields) != 0) goto done;
+		if (declaration) {
+			const struct pg_data_constructor_input *input = &declaration->constructors[i];
+			if (input->fields != pg_evidence_context(result)) goto done;
+			if (pg_evidence_premise_count(result) != declaration->image_count + 2) goto done;
+			for (size_t j = 0; j < declaration->image_count; ++j)
+				if (input->images[j] != pg_evidence_subject(pg_evidence_premise(result, j + 2))->core) goto done;
+		}
 		const struct pg_context *parameter = prefix;
 		for (size_t j = parameter_count; j; --j, parameter = parameter->parent) {
 			const struct pg_term *image = pg_evidence_subject(pg_evidence_premise(result, j + 1))->core;
 			if (image->kind != PG_REFERENCE || image->as.reference != parameter->binder) goto done;
 		}
 	}
-	const struct pg_data_layout *layout = pg_data_layout(typing->graph, count, arities);
-	if (!layout) goto done;
+	if (!declaration) {
+		struct pg_data_constructor_input *inputs = pg_alloc(&temporary, count * sizeof(*inputs));
+		if (!inputs) goto done;
+		for (size_t i = 0; i < count; ++i) {
+			size_t images = pg_evidence_premise_count(results[i]) - 2;
+			const struct pg_term **terms = pg_alloc(&temporary, images * sizeof(*terms));
+			if (!terms) goto done;
+			for (size_t j = 0; j < images; ++j) terms[j] = pg_evidence_subject(pg_evidence_premise(results[i], j + 2))->core;
+			inputs[i] = (struct pg_data_constructor_input){pg_evidence_context(results[i]), terms};
+		}
+		declaration = pg_data_declaration(typing->graph, prefix, pg_evidence_context(indices), count, inputs);
+		if (!declaration) goto done;
+	}
 	schema = pg_alloc(typing->graph, sizeof(*schema) + count * sizeof(*results));
 	if (!schema) goto done;
 	schema->signature = signature;
-	schema->family = (struct pg_object){PG_SEMANTIC_OBJECT, &family_class};
-	schema->layout = layout;
+	schema->declaration = declaration;
 	for (size_t i = 0; i < count; ++i) schema->results[i] = results[i];
 done:
 	pg_graph_destroy(&temporary);
 	return schema;
 }
 
+const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
+	const struct pg_data_signature *signature, size_t count, const struct pg_evidence *const *results)
+{
+	return schema_build(typing, NULL, signature, count, results);
+}
+
+const struct pg_data_schema *pg_data_schema_check(struct pg_typing *typing,
+	const struct pg_data_declaration *declaration, const struct pg_data_signature *signature,
+	size_t count, const struct pg_evidence *const *results)
+{
+	return declaration ? schema_build(typing, declaration, signature, count, results) : NULL;
+}
+
 const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *schema)
 {
-	return schema ? schema->layout : NULL;
+	return schema ? schema->declaration->layout : NULL;
 }
 
 const struct pg_object *pg_data_family_object(const struct pg_data_schema *schema)
 {
-	return schema ? &schema->family : NULL;
+	return pg_data_declaration_family(pg_data_schema_declaration(schema));
 }
 
 size_t pg_data_constructor_count(const struct pg_data_schema *schema)
 {
-	return schema ? schema->layout->count : 0;
+	return schema ? schema->declaration->layout->count : 0;
 }
 
 const struct pg_evidence *pg_data_schema_parameters(const struct pg_data_schema *schema)
@@ -366,7 +454,7 @@ static int schema_fields_check(const struct pg_data_schema *schema,
 	struct pg_dag checked;
 	if (pg_dag_init(&checked, NULL, NULL)) return -1;
 	int result = 1;
-	for (size_t i = 0; i < schema->layout->count; ++i) {
+	for (size_t i = 0; i < pg_data_constructor_count(schema); ++i) {
 		const struct pg_evidence *fields = pg_evidence_premise(schema->results[i], 1);
 		for (; pg_evidence_context(fields) != prefix; fields = pg_evidence_premise(fields, 0)) {
 			if (pg_dag_find(&checked, fields)) break;
@@ -424,8 +512,9 @@ const struct pg_evidence *pg_data_schema_result(const struct pg_data_schema *sch
 	const struct pg_object *object)
 {
 	if (!schema) return NULL;
-	const struct pg_constructor *c = constructor(object, schema->layout);
-	return c ? schema->results[c - schema->layout->constructors] : NULL;
+	const struct pg_data_layout *layout = pg_data_schema_layout(schema);
+	const struct pg_constructor *c = constructor(object, layout);
+	return c ? schema->results[c - layout->constructors] : NULL;
 }
 
 const struct pg_evidence *pg_data_schema_fields(const struct pg_data_schema *schema,
