@@ -2399,8 +2399,38 @@ static void evidence_owner_test(struct pg_graph *graph)
 	puts("evidence ownership: shared Core and reused storage do not transfer acceptance between stores");
 }
 
+static void deep_classifier_test(void)
+{
+	struct pg_graph graph;
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(!pg_graph_init(&graph));
+	assert(!pg_typing_init(&typing, &graph));
+	assert(!pg_classifiers_init(&classifiers, &graph));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *universe = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *value = pg_prove_type_value(&typing, universe);
+	for (size_t i = 0; i < 20000; ++i) {
+		value = pg_prove_thunk(&typing, &classifiers,
+			pg_prove_return(&typing, &classifiers, value));
+		assert(value);
+	}
+	const struct pg_evidence *formation = pg_prove_classifier(&typing, &classifiers, empty, value);
+	assert(formation && pg_evidence_judgement(formation) == PG_JUDGEMENT_VALUE_TYPE);
+	assert(pg_evidence_subject(formation)->core == pg_evidence_classifier(value));
+	size_t proofs = typing.proofs.count, terms = graph.terms.count;
+	assert(pg_prove_classifier(&typing, &classifiers, empty, value) == formation);
+	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	assert(!pg_prove_classifier(&typing, NULL, empty, value));
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+	puts("classifier: 40000 retained-premise steps, exact formation reuse, no recursive recovery");
+}
+
 int main(void)
 {
+	deep_classifier_test();
 	dag_test();
 	index_distribution_test();
 	struct pg_graph graph;

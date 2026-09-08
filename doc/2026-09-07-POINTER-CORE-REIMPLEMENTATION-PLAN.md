@@ -13,6 +13,27 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 8 classifier recovery stack removal
+
+- [x] Replace recursive calls in `pg_prove_classifier` with an iterative walk
+  along retained premises and temporary continuation frames. Formation leaves
+  and reconstruction still use the existing kernel rules. No classifier cache,
+  new proof rule, Core tag, evaluator or Replay path is added.
+- [x] Test 40,000 retained-premise steps from nested RETURN/THUNK evidence;
+  the recovered formation has the exact original classifier Core. A second
+  recovery returns the same evidence without adding Core terms or proofs.
+  The temporary traversal is still repeated; this does not claim zero work.
+- [x] Run component `check`, rebuilt ASan/UBSan core tests, and the complete
+  acceptance command. Components, eight unchanged examples and six main-result
+  checks pass. Acceptance still fails at open-family after 86 transitions.
+- [ ] Recovery remains synchronous and uses temporary memory proportional to
+  the traversed premise depth. This change removes its C-stack dependence,
+  not all synchronous kernel work or the pending open-family formation rule.
+
+Delta excluding documentation: `evidence.c` +84/-45, `tests/core.c` +30/-0.
+General indexed formation and Pi-shaped IH still require their planned rules;
+the zero-index restrictions were not removed to manufacture acceptance.
+
 ### Source acceptance recheck after `9e1984a`
 
 The recent storage work does not close source IADT admission. Do not use the
@@ -336,6 +357,67 @@ checks `* indices` by building a substitution into the declared index context;
 it does not execute an arbitrary function returning a Universe value. The two
 paths share ordinary typed substitution, not necessarily an elimination rule.
 The earlier requirement that both use the same rule was too strong.
+
+#### September 8 open-family rule audit
+
+Revalidated at `e4e3c51`: `make -f src/prototype/pointer/Makefile
+check-open-families` fails with `unsupported steps=86`. This positive acceptance
+requirement remains open. More fuel, artifact loading, or another Replay path
+cannot supply the missing formation rule.
+
+Current rule boundary, checked against the implementation:
+
+| Location | Established fact | Missing fact |
+| --- | --- | --- |
+| `classifier.h:pg_return_type` | A computation has a specified result type | The classifier carries no effect or totality contract |
+| `evidence.c:pg_prove_application` | Applying a checked Pi substitutes the argument into its codomain | It does not extract a value from the resulting computation |
+| `evidence.c:pg_prove_return_value` | An accepted canonical RETURN exposes its argument | A neutral computation is not a RETURN constructor |
+| `synthesis.c:type_input` | Type use waits for the ordinary returned-value job | An open family cannot presently form a symbolic result type |
+| `tests/synthesis.c`, neutral `m` fixture | Unknown `m : U(F A)` cannot be unthunked or observed as a returned value; substitution of a concrete thunk later permits progress | This negative test is not a solution to the positive open-family requirement |
+
+Reference inspected: Matthijs Vakar, *An Effectful Treatment of Dependent
+Types*, arXiv:1603.04298v1, sections 1--3 and abstract,
+<https://arxiv.org/html/1603.04298> (accessed September 8, 2026).
+The paper distinguishes dependence on values, including thunks, from dependence
+on computations. Its dCBPV+ adds dependent Kleisli extension; normalization and
+subject reduction depend on the effects admitted. This is not a general license
+to turn an arbitrary computation into a value.
+
+The following is an A Program design obligation, not a theorem imported from
+that paper. To admit the existing open-family syntax, its function parameter
+must carry enough information to justify symbolic type use under every allowed
+substitution. Merely observing that today's implementations contain no typed
+print operation does not establish that contract. Purity alone also does not
+establish termination or production of a result.
+
+Implement this prerequisite in the following order:
+
+- [ ] Specify the contract of the source arrow used by an open type family.
+  Decide whether it denotes a pure total fragment, or carries a separately
+  justified stability/result obligation. State its introduction and application
+  rules before adding a kernel constructor. Do not infer this contract from
+  `::`, a closed example's normal form, or a scan for operation nodes.
+- [ ] Specify symbolic result formation and substitution together. Under a
+  substitution that makes the computation `RETURN A`, its symbolic result must
+  agree with A. Substitution of an effectful or partial computation must not
+  satisfy a stronger contract without evidence. No universal `U(F A) -> A`
+  coercion follows from the present rules.
+- [ ] Establish compatibility with dependent Pi formation, ordinary reindex,
+  and the accepted induction fragment. A successful syntactic purity check
+  alone is not a totality argument. Keep one Pi representation and the three
+  existing Core forms; place justification above Core, not in pointer interning.
+- [ ] Define the rule's Act behavior and relocatable premise structure before
+  accepting it in saved derivations. Use the same kernel rule from source and
+  loaded inputs. A serialized flag must not supply the missing contract.
+- [ ] Add positive open-family tests, substitution-to-RETURN agreement, nested
+  family dependence and `::` non-interference tests. Retain the unrestricted
+  neutral-computation negative fixture; add effect/partiality counterexamples
+  when their checked syntax is available. Run the full acceptance gate, not
+  only the new fixture.
+
+No new rule or claimed totality theorem is introduced by this audit. The
+remaining choice concerns what the annotated family promises, not a need for
+a second value-side evaluator, ValuePi, or a separate Replay engine.
 
 Next declaration-admission contract:
 

@@ -1823,21 +1823,10 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 		pi->context, subject, pi->classifier, 2, premises);
 }
 
-const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
+static const struct pg_evidence *classifier_leaf(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *term)
 {
-	if (!context_proof(typing, context)) return NULL;
-	if (classifiers->graph != typing->graph) return NULL;
-	if (!pg_evidence_owned_by(term, typing)) return NULL;
-	if (context->context != term->context) return NULL;
-	/* These steps retain the classifier. Inspect their source without copying
-	 * the DAG, then project the recovered formation to the requested context. */
-	for (;;) {
-		if (term->rule == PG_CONTEXT_PROJECTION) term = term->premises[1];
-		else if (term->rule == PG_PURE_NORMALIZATION) term = term->premises[0];
-		else break;
-	}
 	const struct pg_evidence *formation = NULL;
 	switch (term->rule) {
 	case PG_REFLEXIVITY: case PG_FAMILY_ACTION:
@@ -1857,52 +1846,102 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 		if (!pg_universe_level(term->classifier, &level)) return NULL;
 		return pg_prove_universe(typing, classifiers, context, level);
 	}
-	case PG_RETURN_INTRO:
-	case PG_THUNK_INTRO: {
-		const struct pg_evidence *argument = pg_prove_projection(typing, context, term->premises[0]);
-		formation = pg_prove_classifier(typing, classifiers, context, argument);
-		if (term->rule == PG_RETURN_INTRO) return pg_prove_return_type(typing, classifiers, formation);
-		return pg_prove_thunk_type(typing, classifiers, formation);
-	}
-	case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION: case PG_RETURN_VALUE: {
-		const struct pg_evidence *argument = pg_prove_projection(typing, context, term->premises[0]);
-		formation = pg_prove_classifier(typing, classifiers, context, argument);
-		formation = term->rule == PG_RETURN_VALUE ? pg_prove_return_content(typing, formation)
-			: pg_prove_thunk_content(typing, formation);
-		break;
-	}
 	case PG_LAMBDA_INTRO:
 		formation = term->premises[0];
 		break;
 	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
 		formation = term->premises[term->premise_count - 1];
 		break;
-	case PG_APP_ELIM: {
-		const struct pg_evidence *function = pg_prove_projection(typing, context, term->premises[0]);
-		const struct pg_evidence *pi = pg_prove_classifier(typing, classifiers, context, function);
-		const struct pg_evidence *argument = pg_prove_projection(typing, context, term->premises[1]);
-		formation = pg_prove_pi_codomain(typing, pi, argument);
-		break;
-	}
 	case PG_TYPE_CONVERSION:
 		formation = term->premises[1];
 		break;
-	case PG_FOLD_ELIM: {
-		const struct pg_evidence *continuation = pg_prove_projection(typing, context, term->premises[1]);
-		const struct pg_evidence *pi = pg_prove_classifier(typing, classifiers, context, continuation);
-		formation = pg_prove_pi_constant_codomain(typing, pi);
-		break;
-	}
-	case PG_REINDEX: {
-		const struct pg_evidence *substitution = term->premises[0];
-		formation = pg_prove_classifier(typing, classifiers, substitution->premises[0], term->premises[1]);
-		formation = pg_prove_reindex(typing, substitution, formation);
-		break;
-	}
 	default:
 		return NULL;
 	}
 	return pg_prove_projection(typing, context, formation);
+}
+
+const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *term)
+{
+	if (!context_proof(typing, context)) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!pg_evidence_owned_by(term, typing)) return NULL;
+	if (context->context != term->context) return NULL;
+	struct classifier_frame {
+		const struct pg_evidence *term, *context;
+		struct classifier_frame *next;
+	};
+	struct pg_graph temporary = {0};
+	struct classifier_frame *frames = NULL;
+	const struct pg_evidence *formation = NULL;
+	/* Classifier recovery follows one retained premise at each step. Keep its
+	 * continuations off the C stack; this neither searches nor copies proofs. */
+	while (term) {
+		if (term->rule == PG_CONTEXT_PROJECTION) { term = term->premises[1]; continue; }
+		if (term->rule == PG_PURE_NORMALIZATION) { term = term->premises[0]; continue; }
+		const struct pg_evidence *input, *input_context = context;
+		switch (term->rule) {
+		case PG_RETURN_INTRO: case PG_THUNK_INTRO:
+		case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION: case PG_RETURN_VALUE:
+		case PG_APP_ELIM:
+			input = term->premises[0];
+			break;
+		case PG_FOLD_ELIM:
+			input = term->premises[1];
+			break;
+		case PG_REINDEX:
+			input_context = term->premises[0]->premises[0];
+			input = term->premises[1];
+			break;
+		default:
+			formation = classifier_leaf(typing, classifiers, context, term);
+			goto unwind;
+		}
+		struct classifier_frame *frame = pg_alloc(&temporary, sizeof(*frame));
+		if (!frame) goto done;
+		*frame = (struct classifier_frame){term, context, frames};
+		frames = frame;
+		context = input_context;
+		term = pg_prove_projection(typing, context, input);
+	}
+unwind:
+	for (; formation && frames; frames = frames->next) {
+		term = frames->term;
+		context = frames->context;
+		switch (term->rule) {
+		case PG_RETURN_INTRO:
+			formation = pg_prove_return_type(typing, classifiers, formation);
+			break;
+		case PG_THUNK_INTRO:
+			formation = pg_prove_thunk_type(typing, classifiers, formation);
+			break;
+		case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION:
+			formation = pg_prove_thunk_content(typing, formation);
+			break;
+		case PG_RETURN_VALUE:
+			formation = pg_prove_return_content(typing, formation);
+			break;
+		case PG_APP_ELIM:
+			formation = pg_prove_pi_codomain(typing, formation,
+				pg_prove_projection(typing, context, term->premises[1]));
+			break;
+		case PG_FOLD_ELIM:
+			formation = pg_prove_pi_constant_codomain(typing, formation);
+			break;
+		case PG_REINDEX:
+			formation = pg_prove_reindex(typing, term->premises[0], formation);
+			break;
+		default:
+			formation = NULL;
+			break;
+		}
+		formation = pg_prove_projection(typing, context, formation);
+	}
+done:
+	pg_graph_destroy(&temporary);
+	return formation;
 }
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }
