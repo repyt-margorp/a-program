@@ -13,6 +13,59 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### Source acceptance recheck after `84e99fb`
+
+The recent storage work does not close source IADT admission. Do not use the
+green component `check` target as evidence that the replacement runs existing
+programs. `make -f src/prototype/pointer/Makefile check-examples` now invokes
+ordinary `pointer-check` on every existing 01--09 example, with one million
+Solve transitions per file. It requires success, not an expected unsupported
+baseline. `check-acceptance` combines this gate with the component suite.
+It is a necessary gate, not sufficient evidence for execution, effects, IF8,
+higher coherence or full `.a` support.
+
+The current result is **0/8**, all exit 4 (unsupported), not fuel exhaustion:
+
+| Example | Solve transitions |
+| --- | ---: |
+| 01_bool | 39 |
+| 02_nat | 9 |
+| 03_main | 39 |
+| 04_match | 54 |
+| 05_bool_to_nat | 42 |
+| 06_pred | 32 |
+| 07_add | 54 |
+| 09_list_induction | 119 |
+
+Code-level obstruction and implementation order:
+
+1. `syntax.h` represents DECLARATION and ELIMINATION, but the ordinary
+   expression dispatch in `synthesis.c` does not implement either. The separate
+   `pg_synthesis_data_schema` job builds a schema, not a typed declaration.
+2. `pg_data_schema` in `iadt.c` validates field/result substitutions and derives
+   erased layout arities. `evidence.h` has no nominal datatype formation,
+   constructor membership or Match elimination rule. Connecting the syntax
+   directly to that schema would skip the missing theorem, not fix dispatch.
+3. Implement recursive Self-family checking with the fixed parameter prefix
+   and explicit indices, strict positivity, universe obligations and retained
+   evidence. The source declaration's own name must not substitute for `*`.
+   Keep this information in the typed declaration; the Core layout remains
+   an erased pointer-labelled execution descriptor.
+4. Establish nominal family formation and constructor membership from the
+   admitted schema, then expose those derivations through ordinary synthesis.
+   Do not assert general indexed fibrancy from a result substitution or an
+   erased matcher; the N2/N3 higher obligations below remain prerequisites
+   wherever a rule depends on them.
+5. Add typed Match/IH with independently synthesized branches, retained motive
+   checking and subject reduction through typed substitution. Only then wire
+   source elimination to those rules and require this source gate to pass.
+   Add execution-result and negative-admission checks as further gates, not as
+   replacements for checking the unchanged sources.
+
+Prioritize these missing admission rules and general typed symmetry over more
+isolated storage conveniences. The failing gate is intentionally retained;
+unsupported must not be changed to success without the required evidence.
+
 ### Progress: Identity-prefix permutation reduction (2026-09-08)
 
 ### Next implementation contract: typed permutation (2026-09-08)
