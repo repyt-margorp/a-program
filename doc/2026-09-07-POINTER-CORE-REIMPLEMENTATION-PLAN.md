@@ -117,6 +117,15 @@ Next implementation sequence (prerequisite for automatic source handlers):
   Scheduling now counts those rule transitions: examples still pass (List 989
   versus 977 transitions), and open-family remains unsupported at 94 rather than
   88 transitions. This change is not claimed as a performance improvement.
+  Follow-up: one `prepare_expression` path now reserves Lambda/Pi bindings and
+  both child producers for APP/EXPECT (the one child for quotation) before
+  context acceptance. It replaces the old left-completes-before-right staging;
+  kernel acceptance still awaits the premises. Self/IH shared syntax is resolved
+  before ordinary APP preparation. The pending-context test confirms Lambda
+  binding/body requests already exist without an accepted binding. Examples
+  remain 8/8 with six checked runtime results; List now uses 979 transitions,
+  and open-family remains unsupported at 101. Symbolic classifier propagation
+  and automatic handler equation generation are still not implemented.
 - [ ] Use the existing expression traversal for APP, force/thunk, sequencing
   and clause bodies to construct pending rule applications and row dependencies.
   Carry latent effects through callable types, not a flat side table keyed by

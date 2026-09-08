@@ -236,7 +236,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_source_scope *scope = pg_synthesis_bind_context(&synthesis, root, name, k, context);
 		assert(scope && scope == pg_synthesis_bind_context(&synthesis, root, name, k, context));
 		struct pg_synthesis_job *source_variable = request(&synthesis, scope, "v := k;");
-		struct pg_synthesis_job *source_lambda = request(&synthesis, scope, "v := \\x : @ => k;");
+		const char *source = "v := \\x : @ => k;";
+		struct pg_parser parser;
+		struct pg_definition definition;
+		pg_parser_init(&parser, typing->graph, source, strlen(source));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *source_lambda = pg_synthesis_request(&synthesis, scope, definition.expression);
 		assert(lambda && !pg_synthesis_result(context) && !pg_synthesis_result(lambda));
 		assert(typing->proofs.count == proofs);
 		for (unsigned steps = 0; !pg_synthesis_dependency(source_variable) || !pg_synthesis_dependency(source_lambda); ++steps) {
@@ -248,6 +253,11 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		/* The variable has built its rule dependency before context acceptance;
 		 * the Lambda still waits directly on the scope's formation guard. */
 		assert(pg_synthesis_dependency(source_variable) != pg_synthesis_dependency(source_lambda));
+		size_t prepared_jobs = synthesis.jobs.count;
+		struct pg_synthesis_job *source_binding = pg_synthesis_binding(&synthesis, scope, definition.expression);
+		assert(pg_synthesis_request(&synthesis, pg_synthesis_binding_scope(source_binding), definition.expression->right));
+		assert(synthesis.jobs.count == prepared_jobs);
+		assert(!pg_synthesis_result(source_binding));
 		for (unsigned steps = 0; pg_synthesis_status(lambda) == PG_SYNTHESIS_PENDING; ++steps) {
 			assert(steps < 1000);
 			pg_synthesis_advance(&synthesis, chunk);
