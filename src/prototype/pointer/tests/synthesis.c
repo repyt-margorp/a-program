@@ -128,6 +128,31 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		assert(operation_label == pg_operation_label(operation));
 		assert(payload == pg_evidence_subject(u0)->core);
 	}
+	const struct pg_evidence *carrier = pg_prove_return_type(typing, classifiers, u1);
+	const struct pg_object *req = pg_binder(typing->graph), *resume = pg_binder(typing->graph);
+	const struct pg_evidence *clause_context = pg_prove_handler_context(typing, classifiers,
+		operation, context, carrier, req, resume);
+	assert(clause_context);
+	const struct pg_source_scope *clause_scope = pg_synthesis_bind(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="req", .length=3}, req, pg_evidence_premise(clause_context, 0));
+	clause_scope = pg_synthesis_bind(&synthesis, clause_scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="k", .length=1}, resume, clause_context);
+	assert(clause_scope);
+	const struct pg_evidence *clause_body = complete(&synthesis,
+		request(&synthesis, clause_scope, "body := k req;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *clause_function = pg_prove_abstract(typing, classifiers, context, clause_context, clause_body);
+	assert(clause_function);
+	scope = pg_synthesis_name(&synthesis, scope,
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Result", .length=6}, u1);
+	const struct pg_evidence *returned_clause = complete(&synthesis,
+		request(&synthesis, scope, "returned := \\x:Result => x;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *called = complete(&synthesis,
+		request(&synthesis, scope, "called := Op Arg;"), PG_SYNTHESIS_DONE);
+	struct pg_handler_clause clause = {operation, clause_function};
+	const struct pg_evidence *handled = pg_prove_handler(typing, classifiers, called, returned_clause, carrier, 1, &clause);
+	assert(handled);
+	const struct pg_evidence *answer = pg_prove_return_value(typing, normalize(&synthesis, context, handled));
+	assert(answer && pg_evidence_subject(answer)->core == pg_evidence_subject(u0)->core);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("effect expectations: post-synthesis widening, unchanged producers and directed rejection passed");

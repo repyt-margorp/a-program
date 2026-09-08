@@ -154,6 +154,21 @@ criteria for merging different Lambda or semantic-object references.
   Optimized components, eight examples and six result fixtures pass before
   the unchanged open-family failure at 88 transitions. The complete rebuilt
   ASan/UBSan component suite passes, including the typed handler regressions.
+- [x] Centralize handler binder-context construction in
+  `pg_prove_handler_context`: from the selected operation and checked carrier,
+  extend the existing context by payload:A and resume:U(Pi(B,carrier)). Use
+  ordinary context extension, projection, Pi and U formation, not another
+  environment representation or a new proof rule. This establishes only the
+  binder types; body synthesis and final handler checking remain separate.
+  Replace the test's manual construction by this helper and ordinary
+  `pg_prove_abstract`. Test an open enclosing context, invalid carriers,
+  context mismatch and duplicate binders. A source `k req` body is synthesized
+  under these bindings, abstracted, checked as a handler clause and executed
+  with a source operation application and return clause.
+  Optimized components, eight examples and six execution fixtures pass before
+  the unchanged open-family failure at 88 transitions. Rebuilt ASan/UBSan Core
+  and synthesis suites pass. Whole `M @...` handler elaboration is not yet
+  connected; this test supplies the checked carrier and selected declaration.
 - [ ] Infer/check the carrier and clause binders from surface handler syntax
   using constraints, and transport nominal handler evidence. The typed kernel
   entry currently requires explicit checked clause functions and a carrier;

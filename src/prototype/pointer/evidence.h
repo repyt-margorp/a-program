@@ -42,6 +42,12 @@ struct pg_handler_clause {
 	const struct pg_operation_declaration *operation;
 	const struct pg_evidence *body;
 };
+/* Extend the carrier's context by payload:A and resume:U(Pi(B,carrier)).
+ * Only binder types are supplied; a clause body must still synthesize its
+ * own classifier and pass pg_prove_handler. No handler term is accepted here. */
+const struct pg_evidence *pg_prove_handler_context(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_operation_declaration *operation, const struct pg_evidence *context,
+	const struct pg_evidence *carrier, const struct pg_object *payload, const struct pg_object *resume);
 /* Nondependent deep handler at a checked F G C carrier. Clauses are raw
  * Lambda payload. Lambda (U(Pi(response,F G C))). computation.
  * Input effects not handled here and all clause/return effects must fit G. */

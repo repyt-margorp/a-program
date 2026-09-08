@@ -1849,6 +1849,32 @@ const struct pg_evidence *pg_prove_operation_function(struct pg_typing *typing,
 	return pg_prove_lambda(typing, pi, body);
 }
 
+const struct pg_evidence *pg_prove_handler_context(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_operation_declaration *operation, const struct pg_evidence *context,
+	const struct pg_evidence *carrier, const struct pg_object *payload, const struct pg_object *resume)
+{
+	if (!operation || !context_proof(typing, context)) return NULL;
+	if (!pg_evidence_owned_by(operation->payload_type, typing)) return NULL;
+	if (!pg_evidence_owned_by(operation->response_type, typing)) return NULL;
+	if (!pg_evidence_owned_by(carrier, typing)) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	if (carrier->context != context->context) return NULL;
+	if (carrier->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	const struct pg_effect_row *effects;
+	const struct pg_term *result;
+	if (!pg_effect_type_view(carrier->subject->core, &effects, &result)) return NULL;
+	const struct pg_evidence *response_type = pg_prove_projection(typing, context, operation->response_type);
+	const struct pg_evidence *response_scope = pg_prove_context_extension(typing, context,
+		pg_binder(typing->graph), response_type);
+	const struct pg_evidence *resume_type = pg_prove_thunk_type(typing, classifiers,
+		pg_prove_pi(typing, classifiers, response_type, response_scope,
+			pg_prove_projection(typing, response_scope, carrier)));
+	const struct pg_evidence *payload_scope = pg_prove_context_extension(typing, context, payload,
+		pg_prove_projection(typing, context, operation->payload_type));
+	return pg_prove_context_extension(typing, payload_scope, resume,
+		pg_prove_projection(typing, payload_scope, resume_type));
+}
+
 static int returning_within(const struct pg_term *actual, const struct pg_term *carrier)
 {
 	const struct pg_effect_row *effects, *allowed;
