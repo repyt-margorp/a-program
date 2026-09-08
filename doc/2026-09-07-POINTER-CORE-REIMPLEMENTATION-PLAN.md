@@ -3924,6 +3924,13 @@ source-buffer independence, equal split/bulk solver progress, pending-cycle
 destruction and initialization/parse errors. This is an ownership boundary,
 not a second representation of terms or proofs. It does not implement `.a`
 encoding/loading, host execution or full language acceptance; N5 stays open.
+After `9206226`, `pg_program_source` adds another owned source to a selected
+scope in the same stores. Initial creation uses this same path. A pending
+provider and a client module share registration, solving and accepted export
+evidence through the existing namespace API. Per-source parser diagnostics do
+not overwrite the original root's diagnostic or accepted results. The program
+test mutates the caller's source buffer before solving and checks a subsequent
+parse failure. This does not add filesystem import discovery or an image loader.
 
 CLI entry after `7a738da`:
 

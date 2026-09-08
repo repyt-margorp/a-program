@@ -3,6 +3,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+struct pg_synthesis_job *pg_program_source(struct pg_program *program,
+	const struct pg_source_scope *scope, const char *source, size_t length,
+	struct pg_parser *diagnostic)
+{
+	if (!diagnostic) return NULL;
+	memset(diagnostic, 0, sizeof(*diagnostic));
+	if (!program || !scope || (!source && length)) return NULL;
+	char *copy = pg_alloc(&program->graph, length ? length : 1);
+	if (!copy) return NULL;
+	if (length) memcpy(copy, source, length);
+	pg_parser_init(diagnostic, &program->graph, copy, length);
+	const struct pg_syntax *syntax = pg_parser_program(diagnostic);
+	return syntax ? pg_synthesis_request(&program->synthesis, scope, syntax) : NULL;
+}
+
 struct pg_program *pg_program_create(const char *source, size_t length,
 	enum pg_definition_policy policy)
 {
@@ -15,15 +30,10 @@ struct pg_program *pg_program_create(const char *source, size_t length,
 	if (pg_whnf_work_init(&program->evaluation, &program->graph) != 0) goto fail;
 	if (pg_synthesis_init(&program->synthesis, &program->typing, &program->classifiers,
 		&program->evaluation, policy) != 0) goto fail;
-	char *copy = pg_alloc(&program->graph, length ? length : 1);
-	if (!copy) goto fail;
-	if (length) memcpy(copy, source, length);
-	pg_parser_init(&program->parser, &program->graph, copy, length);
-	program->syntax = pg_parser_program(&program->parser);
-	if (!program->syntax) return program;
 	program->scope = pg_synthesis_root(&program->synthesis);
 	if (!program->scope) goto fail;
-	program->root = pg_synthesis_request(&program->synthesis, program->scope, program->syntax);
+	program->root = pg_program_source(program, program->scope, source, length, &program->parser);
+	if (program->parser.error) return program;
 	if (!program->root) goto fail;
 	return program;
 fail:

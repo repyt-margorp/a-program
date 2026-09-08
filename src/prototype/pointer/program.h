@@ -14,7 +14,6 @@ struct pg_program {
 	struct pg_whnf_work evaluation;
 	struct pg_synthesis synthesis;
 	struct pg_parser parser;
-	const struct pg_syntax *syntax;
 	const struct pg_source_scope *scope;
 	struct pg_synthesis_job *root;
 };
@@ -24,6 +23,13 @@ struct pg_program {
  * root and the ordinary parser diagnostic; destroy it normally. */
 struct pg_program *pg_program_create(const char *source, size_t length,
 	enum pg_definition_policy policy);
+/* Parse another owned source in a caller-selected scope of this program.
+ * The returned root may be published using the existing module/import APIs.
+ * No filesystem resolution or solver advancement occurs. The caller owns the
+ * diagnostic parser object; its token text remains owned by the program. */
+struct pg_synthesis_job *pg_program_source(struct pg_program *program,
+	const struct pg_source_scope *scope, const char *source, size_t length,
+	struct pg_parser *diagnostic);
 void pg_program_destroy(struct pg_program *program);
 
 #endif

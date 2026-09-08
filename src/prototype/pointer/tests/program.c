@@ -12,8 +12,38 @@ static void solve(struct pg_program *program, uint64_t budget)
 	}
 }
 
+static void modules(void)
+{
+	const char *library = "id:=&(\\A:@ => \\x:A => x);";
+	struct pg_program *program = pg_program_create(library, strlen(library), PG_DEFINITION_EXPLICIT_THUNK);
+	assert(program && program->root);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "lib", .length = 3};
+	const struct pg_source_scope *scope = pg_synthesis_module_namespace(&program->synthesis,
+		program->scope, name, program->root);
+	struct pg_parser parser;
+	char client[] = "{{ main:=lib.id; }}.main";
+	struct pg_synthesis_job *root = pg_program_source(program, scope, client, strlen(client), &parser);
+	assert(root && !parser.error && !program->synthesis.steps);
+	memset(client, '?', sizeof(client));
+	for (size_t i = 0; pg_synthesis_status(root) == PG_SYNTHESIS_PENDING; ++i) {
+		assert(i < 10000);
+		pg_synthesis_advance(&program->synthesis, 1);
+	}
+	assert(pg_synthesis_status(root) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_status(program->root) == PG_SYNTHESIS_DONE);
+	struct pg_token id = {.kind = PG_TOKEN_IDENT, .text = "id", .length = 2};
+	struct pg_synthesis_job *exported = pg_synthesis_definition(program->root, id);
+	assert(exported && pg_synthesis_result(exported) == pg_synthesis_result(root));
+	const struct pg_evidence *accepted = pg_synthesis_result(root);
+	assert(!pg_program_source(program, scope, "bad:=", 5, &parser));
+	assert(parser.error);
+	assert(pg_synthesis_result(root) == accepted && !program->parser.error);
+	pg_program_destroy(program);
+}
+
 int main(void)
 {
+	modules();
 	char source[] = "{{ id := &(\\A:@ => \\x:A => x); id :: (A:@)->A->A; }}.id";
 	struct pg_program *split = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
 	struct pg_program *whole = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
