@@ -452,13 +452,6 @@ static const struct pg_evidence *motive_at(struct pg_typing *typing,
 	return pg_prove_reindex(typing, map, motive);
 }
 
-/* One classification is shared by the IH telescope and its erasure. */
-static int direct_field_recursion(const struct pg_term *type, const struct pg_object *self)
-{
-	if (type->kind == PG_REFERENCE && type->as.reference == self) return 1;
-	return pg_term_independent(type, self) == 1 ? 0 : -1;
-}
-
 const struct pg_evidence *pg_prove_induction_scope(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
@@ -485,7 +478,7 @@ const struct pg_evidence *pg_prove_induction_scope(struct pg_typing *typing,
 	for (size_t i = count; i; --i, fields = fields->premises[0])
 		types[i - 1] = fields->context->declared_type;
 	for (size_t i = 0; i < count; ++i) {
-		int recursive = direct_field_recursion(types[i], self);
+		int recursive = pg_data_direct_recursion(types[i], self);
 		if (!recursive) continue;
 		if (recursive < 0) goto done;
 		const struct pg_evidence *field = pg_prove_projection(typing, context, map->premises[prefix + 3 + i]);
@@ -520,7 +513,7 @@ static const struct pg_term *induction_branch_core(struct pg_typing *typing,
 	for (size_t i = 0; i < count; ++i)
 		body = pg_application(typing->graph, body, map->premises[offset + i]->subject->core);
 	for (size_t i = 0; i < count; ++i) {
-		int recursive = direct_field_recursion(types[i], self);
+		int recursive = pg_data_direct_recursion(types[i], self);
 		if (!recursive) continue;
 		if (recursive < 0) goto done;
 		const struct pg_term *call = pg_application(typing->graph, pg_reference(typing->graph, recursion),

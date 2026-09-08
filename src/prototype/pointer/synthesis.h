@@ -173,6 +173,14 @@ struct pg_synthesis_job *pg_synthesis_data_result(struct pg_synthesis *synthesis
 struct pg_synthesis_job *pg_synthesis_data_case(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *body, const struct pg_data_schema *schema,
 	const struct pg_object *constructor, const struct pg_evidence *motive);
+/* Synthesize a clause under checked field/IH assumptions from an already
+ * established motive. No expected result guides body synthesis; whole
+ * induction checks the returned branch function separately. */
+struct pg_synthesis_job *pg_synthesis_induction_branch(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters,
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+	const struct pg_syntax *clause);
 /* Shared suspended typed substitution; the checked substitution/proof pair
  * determines a job. Uses the existing reindex machine, not a second traversal. */
 struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,

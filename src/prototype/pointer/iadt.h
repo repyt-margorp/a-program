@@ -65,6 +65,9 @@ const struct pg_evidence *pg_data_signature_instance(struct pg_typing *typing,
  * inputs to declaration admission merely because this helper returns 1. */
 int pg_data_field_positive(const struct pg_term *type,
 	const struct pg_object *self, size_t index_count);
+/* Current direct-IH fragment: 1 exact Self, 0 Self-independent, -1 other or
+ * invalid. Shared by IH typing, source binding and erasure; not positivity. */
+int pg_data_direct_recursion(const struct pg_term *type, const struct pg_object *self);
 /* indices extends parameters. Each result is a checked substitution from
  * its field context into indices, leaving the parameter prefix unchanged.
  * Fields and arities are derived from those substitutions, not copied into

@@ -98,6 +98,22 @@ of the rewrite.
   Repeated accepted requests reuse the proof before creating fresh scopes.
   Classifier inversion retains the output formation. Wire encoding explicitly
   remains unsupported until nominal schema transport is implemented.
+- [x] Add the shared `pg_synthesis_induction_branch` job for a known checked
+  motive. It builds the field/IH telescope once, synthesizes the clause body
+  independently and abstracts the resulting function. Whole-induction branch
+  checking remains in the kernel. Source `*k` selects the IH by the resolved
+  field binder, then uses ordinary FORCE. Shadowing `k` does not select an
+  outer IH. Conditional declaration Self application retains its old meaning.
+  Scope interning includes the IH-to-field association; it is lexical metadata,
+  not another accepted classifier. Direct-field classification is shared by
+  source binding, kernel IH formation and erasure.
+- [ ] Connect ordinary Match motive constraints to these branch jobs. Current
+  ordinary Match still synthesizes fields-only branches and therefore cannot
+  yet use `*k`. Do not install an expected result as a synthesized motive or
+  retry failed accepted proofs with a different classifier. Schedule unresolved
+  motive dependencies through the common producer graph and retain the actual
+  independent branch information that justifies a solution. This connection,
+  not parsing or the raw recursion evaluator, now blocks existing 07/09.
 - [ ] Add a typed induction rule with retained field/IH contexts and motive
   instantiations. The raw recursive-function binder must NOT become an
   unrestricted source binding. A source `*k` must be justified by the admitted
@@ -122,6 +138,11 @@ It is not exposed as a source-language general recursion primitive. Existing
 rule. Indexed/Pi-shaped recursive IH and general higher induction remain open.
 Verification: optimized `check` and ASan/UBSan IADT tests passed; the source
 acceptance gate remains 6/8 with unchanged transition counts.
+The subsequent source-IH integration passed optimized `check`, the rebuilt
+synthesis test including function-valued motives, and ASan/UBSan synthesis.
+Tests connect parsed `*k` and `*k m` branches to checked induction and execution,
+verify request reuse and reject accidental capture after field-name shadowing.
+The ordinary source gate remains 6/8; these explicit-motive tests do not replace it.
 
 Code-level obstruction and implementation order:
 

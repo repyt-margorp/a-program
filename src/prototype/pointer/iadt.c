@@ -8,6 +8,13 @@ static const struct pg_object_class family_class = {"data-family"};
 static const struct pg_object_class match_action_class = {"match-action"};
 static const struct pg_object match_action = {PG_SEMANTIC_OBJECT, &match_action_class};
 
+int pg_data_direct_recursion(const struct pg_term *type, const struct pg_object *self)
+{
+	if (!type || !self || self->kind != PG_BINDER) return -1;
+	if (type->kind == PG_REFERENCE && type->as.reference == self) return 1;
+	return pg_term_independent(type, self) == 1 ? 0 : -1;
+}
+
 struct pg_constructor {
 	struct pg_object object;
 	const struct pg_data_layout *layout;

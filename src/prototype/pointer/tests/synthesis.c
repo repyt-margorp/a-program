@@ -2730,6 +2730,50 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	assert(pg_evidence_classifier(two) == pg_evidence_subject(nat)->core);
 	const struct pg_term *one_core = pg_evidence_subject(two)->core->as.application.argument;
 	assert(one_core->kind == PG_APPLICATION && one_core->as.application.argument == pg_evidence_subject(zero)->core);
+	struct pg_inductive_instance nat_instance;
+	assert(pg_inductive_instance(typing, nat, &nat_instance));
+	const struct pg_data_layout *nat_layout = pg_data_schema_layout(nat_instance.schema);
+	const struct pg_evidence *motive_context = pg_prove_context_extension(typing, empty, pg_binder(typing->graph), nat);
+	const struct pg_evidence *motive = pg_prove_return_type(typing, classifiers,
+		pg_prove_projection(typing, motive_context, nat));
+	const struct pg_syntax *induction = expression_syntax(typing->graph,
+		"r:=Nat.zero @zero=>Nat.zero @succ k=>*k;");
+	const struct pg_evidence *induction_branches[2];
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_synthesis_job *branch = pg_synthesis_induction_branch(&synthesis, named,
+			nat, pg_data_constructor(nat_layout, i), nat_instance.parameters, motive_context, motive,
+			induction->items[i].expression);
+		induction_branches[i] = complete(&synthesis, branch, PG_SYNTHESIS_DONE);
+		size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
+		assert(pg_synthesis_induction_branch(&synthesis, named, nat, pg_data_constructor(nat_layout, i),
+			nat_instance.parameters, motive_context, motive, induction->items[i].expression) == branch);
+		assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
+	}
+	const struct pg_evidence *countdown = pg_prove_induction(typing, classifiers, nat,
+		nat_instance.parameters, two, motive_context, motive, 2, induction_branches);
+	assert(countdown);
+	const struct pg_evidence *countdown_result = complete(&synthesis,
+		pg_synthesis_return(&synthesis, empty, countdown), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(countdown_result)->core == pg_evidence_subject(zero)->core);
+	const struct pg_evidence *function_motive = pg_prove_projection(typing, motive_context,
+		pg_prove_classifier(typing, classifiers, empty, succ));
+	const struct pg_syntax *function_induction = expression_syntax(typing->graph,
+		"r:=Nat.zero @zero=>(\\m:Nat=>m) @succ k=>(\\m:Nat=>*k m);");
+	for (size_t i = 0; i < 2; ++i)
+		induction_branches[i] = complete(&synthesis, pg_synthesis_induction_branch(&synthesis, named,
+			nat, pg_data_constructor(nat_layout, i), nat_instance.parameters, motive_context, function_motive,
+			function_induction->items[i].expression), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *recursive_function = pg_prove_induction(typing, classifiers,
+		nat, nat_instance.parameters, two, motive_context, function_motive, 2, induction_branches);
+	assert(recursive_function);
+	const struct pg_evidence *function_result = complete(&synthesis, pg_synthesis_return(&synthesis, empty,
+		pg_prove_application(typing, recursive_function, zero)), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(function_result)->core == pg_evidence_subject(zero)->core);
+	const struct pg_syntax *shadow = expression_syntax(typing->graph,
+		"r:=Nat.zero @succ k=>(\\k:Nat=>*k);");
+	complete(&synthesis, pg_synthesis_induction_branch(&synthesis, named, nat,
+		pg_data_constructor(nat_layout, 1), nat_instance.parameters, motive_context, motive,
+		shadow->items[0].expression), PG_SYNTHESIS_UNSUPPORTED);
 	complete(&synthesis, request(&synthesis, named, "r:=Nat.Alias;"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, named, "r:=succ;"), PG_SYNTHESIS_REJECTED);
 	struct pg_synthesis_job *other_job = request(&synthesis, root, "Other:=@{zero:*; succ:*->*;};");
