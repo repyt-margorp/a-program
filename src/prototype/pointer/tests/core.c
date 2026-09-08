@@ -96,6 +96,21 @@ static void graph_test(struct pg_graph *graph)
 	assert(left_lambda != right_lambda);
 	assert(pg_alpha_equal(left_lambda, right_lambda) == 1);
 	assert(pg_alpha_equal(left_dag, right_dag) == 0);
+	/* Identical scopes do not require traversing a shared body again. */
+	const struct pg_term *shared_left = pg_lambda(graph, x,
+		pg_application(graph, left_dag, pg_lambda(graph, y, vy)));
+	const struct pg_term *shared_right = pg_lambda(graph, x,
+		pg_application(graph, left_dag, pg_lambda(graph, z, vz)));
+	struct pg_comparison shared;
+	assert(pg_comparison_init(&shared, shared_left, shared_right, NULL, NULL) == 0);
+	assert(pg_comparison_advance(&shared, 100) == PG_COMPARISON_EQUAL);
+	assert(pg_comparison_task_count(&shared) == 4);
+	pg_comparison_destroy(&shared);
+	/* An identical inner binder masks a nonidentity outer correspondence. */
+	assert(pg_alpha_equal(pg_lambda(graph, x, pg_lambda(graph, x, vx)),
+		pg_lambda(graph, y, pg_lambda(graph, x, vx))) == 1);
+	assert(pg_alpha_equal(pg_lambda(graph, x, pg_lambda(graph, z, vx)),
+		pg_lambda(graph, y, pg_lambda(graph, z, vx))) == 0);
 	assert(pg_term_independent(vx, x) == 0);
 	assert(pg_term_independent(vy, x) == 1);
 	assert(pg_term_independent(identity, x) == 1);
@@ -1419,6 +1434,14 @@ static void conversion_test(struct pg_graph *graph)
 	assert(pg_conversion_init(&conversion, &work, pg_lambda(graph, x, dag_x), pg_lambda(graph, y, dag_y)) == 0);
 	assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
 	assert(pg_conversion_task_count(&conversion) < 100);
+	pg_conversion_destroy(&conversion);
+	/* Distinct inputs that expose the exact same DAG need one comparison
+	 * task; reduction remains explicit and is not interned as equality. */
+	const struct pg_term *beta_dag = pg_application(graph, identity, dag_x);
+	assert(beta_dag != dag_x);
+	assert(pg_conversion_init(&conversion, &work, beta_dag, dag_x) == 0);
+	assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
+	assert(pg_conversion_task_count(&conversion) == 1);
 	pg_conversion_destroy(&conversion);
 	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
 	const struct pg_term *omega = pg_application(graph, self, self);

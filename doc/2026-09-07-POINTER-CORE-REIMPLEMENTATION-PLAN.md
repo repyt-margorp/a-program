@@ -82,6 +82,18 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Elide identity-only alpha-comparison scopes instead of rebuilding
+  their shared subgraphs. Equal binder pointers in an empty correspondence
+  need no map; under a nonidentity correspondence the pair must remain to
+  mask outer bindings. After explicit normalization, identical pointers in
+  an empty correspondence also finish that comparison task immediately.
+  Tests check four tasks for a shared forty-node DAG under identical binders,
+  one task when beta exposes the same DAG, and positive/negative shadowing
+  cases. Independence checking retains its nonidentity sentinel scope.
+  This does not alpha-intern terms or equate distinct normal forms. Current
+  cubic application counts are unchanged, so it does not close the measured
+  cubic-cost obligation.
+  Complete pointer `make check` and ASan/UBSan `core_test` passed.
 - [x] Correct the first-binder-only limitation of `639214a`. A curried
   `lambda x. lambda y. RETURN(x)` still remained neutral in dimensions two
   and three after all arguments were supplied. Scan all leading Lambdas of

@@ -127,6 +127,10 @@ static enum pg_comparison_status comparison_step(struct pg_comparison_state *con
 		return PG_COMPARISON_PENDING;
 	}
 	const struct pg_term *left = entry->normalized[0], *right = entry->normalized[1];
+	if (left == right && !entry->scope) {
+		context->pending = entry->next;
+		return context->pending ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
+	}
 	if (left->kind != right->kind) return PG_COMPARISON_DIFFERENT;
 	if (left->kind == PG_REFERENCE) {
 		const struct binder_pair *scope = entry->cursor;
@@ -147,10 +151,16 @@ static enum pg_comparison_status comparison_step(struct pg_comparison_state *con
 		if (comparison_push(context, left->as.application.function, right->as.application.function, entry->scope) != 0) return PG_COMPARISON_ERROR;
 		break;
 	case PG_LAMBDA: {
-		struct binder_pair *binder = pg_alloc(&context->arena, sizeof(*binder));
-		if (!binder) return PG_COMPARISON_ERROR;
-		*binder = (struct binder_pair){left->as.lambda.binder, right->as.lambda.binder, entry->scope};
-		if (comparison_push(context, left->as.lambda.body, right->as.lambda.body, binder) != 0) return PG_COMPARISON_ERROR;
+		const struct binder_pair *scope = entry->scope;
+		/* An identical binder needs no map in an already identical scope.
+		 * Under a nonidentity map it must still shadow older pairs. */
+		if (scope || left->as.lambda.binder != right->as.lambda.binder) {
+			struct binder_pair *binder = pg_alloc(&context->arena, sizeof(*binder));
+			if (!binder) return PG_COMPARISON_ERROR;
+			*binder = (struct binder_pair){left->as.lambda.binder, right->as.lambda.binder, scope};
+			scope = binder;
+		}
+		if (comparison_push(context, left->as.lambda.body, right->as.lambda.body, scope) != 0) return PG_COMPARISON_ERROR;
 		break;
 	}
 	case PG_REFERENCE: break;
