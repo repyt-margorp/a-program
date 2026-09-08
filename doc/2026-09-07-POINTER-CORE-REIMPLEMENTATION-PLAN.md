@@ -836,6 +836,25 @@ finish general handler source support.
   runtime results are unchanged and no wall-time improvement is asserted.
   Implementation C: +36/-6; tests: +8/-0; documentation separate.
 
+  September 9, after `2fd2628`: source IH branches now request a shared
+  induction-scope producer instead of synchronously constructing that scope.
+  It reuses constructor field scopes, checks the motive against the nominal
+  family, and instantiates each direct recursive field through ordinary
+  substitution, reindex, Thunk formation and Context extension jobs. The final
+  substitution projects the same original field images into the extended
+  scope. Exact repeated requests reuse binders; no Core tag, proof rule or
+  Replay engine was introduced. Tests check reuse, zero/successor IH counts,
+  the thunked motive classifier and rejection of a non-computation motive.
+  Normal components, eight source checks and six execution fixtures pass.
+  Rebuilt ASan/UBSan synthesis tests also pass.
+  Example 07 and 09 now require 1246 and 3021 scheduler transitions because
+  previously synchronous scope work is scheduled; runtime results are unchanged.
+  General recursive fields, pending instance recovery, source indexed-family
+  admission and checkpoint retention remain open. The existing synchronous
+  kernel scope checker is still used by induction-rule verification and by
+  `pg_prove_induction_case`; this change does not claim their migration.
+  Implementation C/header: +120/-4; tests: +21/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.

@@ -448,6 +448,12 @@ struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *syn
 struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation, const struct pg_object *constructor,
 	struct pg_synthesis_job *parameters);
+/* Extend the shared field scope with thunked motives for direct recursive
+ * fields. Input producers must ultimately justify the same nominal family. */
+struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *formation, const struct pg_object *constructor,
+	struct pg_synthesis_job *parameters, struct pg_synthesis_job *motive_context,
+	struct pg_synthesis_job *motive);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
  * Requests do not reduce; unsupported neutral heads are not negative proofs.

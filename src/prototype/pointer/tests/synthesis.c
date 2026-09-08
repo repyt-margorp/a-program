@@ -4032,6 +4032,27 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		"r:=Nat.zero @zero=>Nat.zero @succ k=>*k;");
 	const struct pg_evidence *induction_branches[2];
 	for (size_t i = 0; i < 2; ++i) {
+		struct pg_synthesis_job *formation_job = pg_synthesis_evidence(&synthesis, nat);
+		struct pg_synthesis_job *parameters_job = pg_synthesis_evidence(&synthesis, nat_instance.parameters);
+		struct pg_synthesis_job *context_job = pg_synthesis_evidence(&synthesis, motive_context);
+		struct pg_synthesis_job *motive_job = pg_synthesis_evidence(&synthesis, motive);
+		const struct pg_object *constructor = pg_data_constructor(nat_layout, i);
+		struct pg_synthesis_job *scope_job = pg_synthesis_induction_scope(&synthesis,
+			formation_job, constructor, parameters_job, context_job, motive_job);
+		assert(scope_job == pg_synthesis_induction_scope(&synthesis,
+			formation_job, constructor, parameters_job, context_job, motive_job));
+		const struct pg_evidence *scope_map = complete(&synthesis, scope_job, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *field_map = complete(&synthesis, pg_synthesis_constructor_scope(&synthesis,
+			formation_job, constructor, parameters_job), PG_SYNTHESIS_DONE);
+		size_t ih_count;
+		assert(!pg_context_extension_size(pg_evidence_context(pg_evidence_premise(scope_map, 1)),
+			pg_evidence_context(pg_evidence_premise(field_map, 1)), &ih_count));
+		assert(ih_count == i);
+		assert(pg_evidence_premise(scope_map, 0) == pg_evidence_premise(field_map, 0));
+		if (i) assert(pg_alpha_equal(pg_evidence_context(pg_evidence_premise(scope_map, 1))->declared_type,
+			pg_evidence_subject(pg_prove_thunk_type(typing, classifiers, motive))->core) == 1);
+		complete(&synthesis, pg_synthesis_induction_scope(&synthesis, formation_job, constructor,
+			parameters_job, context_job, formation_job), PG_SYNTHESIS_REJECTED);
 		struct pg_synthesis_job *branch = pg_synthesis_induction_branch(&synthesis, named,
 			nat, pg_data_constructor(nat_layout, i), nat_instance.parameters, motive_context, motive,
 			induction->items[i].expression);
