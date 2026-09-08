@@ -1245,14 +1245,20 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 		images[i - 1] = pg_synthesis_identity_face(&synthesis, empty, closed_type, ordered);
 	}
 	struct pg_synthesis_job *closed_map = pg_synthesis_substitution(&synthesis, template, empty, 8, images);
-	const struct pg_evidence *transposed_type = complete(&synthesis,
-		pg_synthesis_reindex_jobs(&synthesis, closed_map, formation), PG_SYNTHESIS_DONE);
-	struct pg_conversion conversion;
-	assert(pg_conversion_init(&conversion, &work, pg_evidence_subject(closed_type)->core,
-		pg_evidence_subject(transposed_type)->core) == 0);
-	assert(pg_conversion_advance(&conversion, 100000) == PG_CONVERSION_EQUAL);
-	assert(pg_prove_conversion(typing, closed_value, transposed_type, pg_conversion_certificate(&conversion)));
-	pg_conversion_destroy(&conversion);
+	struct pg_synthesis_job *target_type = pg_synthesis_reindex_jobs(&synthesis, closed_map, formation);
+	struct pg_synthesis_job *center = pg_synthesis_evidence(&synthesis, closed_value);
+	struct pg_synthesis_job *checked = pg_synthesis_expect(&synthesis, center, target_type);
+	assert(checked && pg_synthesis_expect(&synthesis, center, target_type) == checked);
+	assert(!pg_synthesis_result(target_type));
+	const struct pg_evidence *checked_center = complete(&synthesis, checked, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *transposed_type = pg_synthesis_result(target_type);
+	assert(pg_evidence_classifier(checked_center) == pg_evidence_subject(transposed_type)->core);
+	assert(pg_evidence_subject(checked_center)->core == pg_evidence_subject(closed_value)->core);
+	struct pg_synthesis_job *canonical_check = pg_synthesis_expect(&synthesis, center,
+		pg_synthesis_evidence(&synthesis, transposed_type));
+	assert(pg_synthesis_status(canonical_check) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(canonical_check) == checked_center);
+	complete(&synthesis, pg_synthesis_expect(&synthesis, target_type, target_type), PG_SYNTHESIS_REJECTED);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	pg_dimensions_destroy(&dimensions);

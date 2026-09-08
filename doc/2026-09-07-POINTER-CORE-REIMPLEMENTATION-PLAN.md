@@ -3888,6 +3888,15 @@ the abstract-center rejection above. It neither admits `S_swap(center)` nor
 proves a general permutation/degeneracy equation; such an evaluator rule still
 needs preservation under the accepted typed action and its instantiations.
 
+After `5cdf62f`, post-checking independently produced term/type evidence is a
+shared synthesis request. Surface `::` keeps its existing type exposure and
+polarity coercions, then uses this same request; no expected type enters term
+synthesis. Completed evidence pairs converge before conversion. The closed
+square test now schedules boundary construction, reindex and center checking
+without an external conversion loop, and verifies rejection of a formation
+used as a term. This is scheduling of the existing conversion rule, not a new
+symmetry introduction or a general higher-dimensional coherence proof.
+
 ## 8. Program Image and Persistence
 
 One in-memory program owns graph roots, typed occurrences, declarations and work

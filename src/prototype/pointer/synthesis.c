@@ -74,7 +74,7 @@ struct family_state {
 	size_t count, common, next;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FACE_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FACE_JOB, EXPECT_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -434,6 +434,15 @@ struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesi
 	if (!proof || proof->owner != synthesis) return NULL;
 	const void *inputs[] = {substitution, proof};
 	return request_inputs(synthesis, REINDEX_JOB, 2, inputs);
+}
+
+struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *term, struct pg_synthesis_job *type)
+{
+	if (!term || term->owner != synthesis) return NULL;
+	if (!type || type->owner != synthesis) return NULL;
+	const void *inputs[] = {term, type};
+	return request_inputs(synthesis, EXPECT_JOB, 2, inputs);
 }
 
 struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
@@ -973,6 +982,47 @@ static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct 
 		job->checking_term, job->checking_type, pg_conversion_certificate(&job->comparison));
 	if (!result) finish(synthesis, job, PG_SYNTHESIS_ERROR);
 	return result;
+}
+
+static void expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->checking_term) {
+		for (size_t i = 0; i < 2; ++i) {
+			struct pg_synthesis_job *input = (struct pg_synthesis_job *)job->inputs[i];
+			if (input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, input); return; }
+			if (input->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, input->status); return; }
+		}
+		const struct pg_evidence *term = ((const struct pg_synthesis_job *)job->inputs[0])->result;
+		const struct pg_evidence *type = ((const struct pg_synthesis_job *)job->inputs[1])->result;
+		if (!pg_evidence_owned_by(term, synthesis->typing)) goto rejected;
+		if (!pg_evidence_owned_by(type, synthesis->typing)) goto rejected;
+		if (pg_evidence_context(term) != pg_evidence_context(type)) goto rejected;
+		switch (pg_evidence_judgement(term)) {
+		case PG_JUDGEMENT_VALUE:
+			if (pg_evidence_judgement(type) != PG_JUDGEMENT_VALUE_TYPE) goto rejected;
+			break;
+		case PG_JUDGEMENT_COMPUTATION:
+			if (pg_evidence_judgement(type) != PG_JUDGEMENT_COMPUTATION_TYPE) goto rejected;
+			break;
+		default: goto rejected;
+		}
+		struct pg_synthesis_job *canonical = pg_synthesis_expect(synthesis,
+			pg_synthesis_evidence(synthesis, term), pg_synthesis_evidence(synthesis, type));
+		if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (canonical != job) {
+			if (canonical->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, canonical); return; }
+			job->result = canonical->result;
+			finish(synthesis, job, canonical->status);
+			return;
+		}
+		job->checking_term = term;
+		job->checking_type = type;
+	}
+	job->result = compare(synthesis, job);
+	if (job->result) finish(synthesis, job, PG_SYNTHESIS_DONE);
+	return;
+rejected:
+	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
 }
 
 static struct continuation_frame *open_continuation(struct pg_synthesis *synthesis,
@@ -1664,6 +1714,7 @@ error:
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->role == EXPECT_JOB) { expect_step(synthesis, job); return; }
 	if (job->role == FACE_JOB) {
 		if (!job->face) {
 			struct pg_synthesis_job *producer = (struct pg_synthesis_job *)job->inputs[1];
@@ -1836,8 +1887,15 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 			job->checking_term = left;
 			job->checking_type = right;
 		}
-		job->result = compare(synthesis, job);
-		if (!job->result) return;
+		if (!job->value_job) {
+			job->value_job = pg_synthesis_expect(synthesis,
+				pg_synthesis_evidence(synthesis, job->checking_term),
+				pg_synthesis_evidence(synthesis, job->checking_type));
+			depend(synthesis, job, job->value_job);
+			return;
+		}
+		if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return; }
+		job->result = job->value_job->result;
 		break;
 	}
 	default: break;
