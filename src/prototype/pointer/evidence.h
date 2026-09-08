@@ -29,6 +29,17 @@ struct pg_data_schema;
  * Indexed formation and datatype higher computation are not implemented here. */
 const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_data_schema *schema);
+struct pg_inductive_instance {
+	const struct pg_data_schema *schema;
+	const struct pg_evidence *formation;
+	const struct pg_evidence *parameters;
+};
+/* Recover nominal formation and its parameter map from retained evidence,
+ * including projection, reindex, type/value coercion and type conversion.
+ * No global search by Core. Returns zero and leaves output unchanged when
+ * provenance is unavailable; this is not evidence of a non-inductive type. */
+int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *type,
+	struct pg_inductive_instance *output);
 /* Instantiate Gamma, then Self with the admitted family, then all fields.
  * No caller-provided result type or expected-type-guided field inference. */
 const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
@@ -182,6 +193,10 @@ const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *destination,
 	size_t count, const struct pg_evidence *const *images);
+/* Prefix projection destination -> source (identity when contexts coincide).
+ * Uses ordinary variable and substitution evidence, without another rule. */
+const struct pg_evidence *pg_prove_substitution_projection(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_evidence *destination);
 /* Extend a substitution into a prefix to the supplied full source context.
  * Exactly the remaining declarations receive values, checked by the ordinary
  * simultaneous substitution rule; the accepted prefix is not rechecked.

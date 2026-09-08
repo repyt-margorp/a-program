@@ -216,6 +216,27 @@ Admission audit after `8b3105b`:
 
 Zero-index inductive rules after `d952804`:
 
+Typed instance recovery after `f50f399`:
+
+- [x] Recover the original nominal formation and checked parameter map from
+  formation evidence under reindex, projection, type/value coercions and type
+  conversion. Walk the retained proof chain iteratively; compose substitutions
+  in order. Check that the reconstructed instance matches the input type.
+  No global classifier lookup, new Core tag or new evidence rule is introduced.
+- [x] Centralize prefix projection/identity substitution using ordinary
+  variable/substitution evidence. Constructor producers and Match motive
+  instantiation now share it; the latter is projection followed by pairing.
+- [x] Test a variable's nominal classifier, instantiated Box, projection then
+  substitution back to the empty context, type/value wrappers, exact repeated
+  evidence reuse, invalid projection direction, and unchanged output when
+  provenance cannot be recovered.
+  Full component `check` and rebuilt ASan/UBSan IADT tests pass. This supplies
+  typed instance recovery, not source Match admission or full acceptance.
+- [ ] Use this recovery in source Match and general constructor instantiation.
+  An unavailable provenance chain is unsupported, not evidence that the type
+  is non-inductive. Recovery through arbitrary computation/normalization and
+  nominal `.a` transport still require their corresponding typed rules.
+
 Qualified constructor publication after `5833634`:
 
 - [x] Publish constructor producers only after nominal formation succeeds.

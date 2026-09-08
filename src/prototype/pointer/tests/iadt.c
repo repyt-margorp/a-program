@@ -160,6 +160,10 @@ static void schema_positivity(void)
 	const struct pg_data_schema *nat_schema = pg_data_schema(&typing, signature, 2, results);
 	const struct pg_evidence *nat = pg_prove_inductive_type(&typing, &classifiers, nat_schema);
 	assert(nat && pg_evidence_rule(nat) == PG_INDUCTIVE_FORM);
+	struct pg_inductive_instance recovered;
+	assert(pg_inductive_instance(&typing, nat, &recovered));
+	assert(recovered.schema == nat_schema && recovered.formation == nat);
+	assert(pg_evidence_premise_count(recovered.parameters) == 2);
 	assert(!pg_evidence_context(nat));
 	assert(pg_evidence_premise(nat, 0) == parameters);
 	assert(pg_evidence_premise_count(nat) == 3);
@@ -211,6 +215,14 @@ static void schema_positivity(void)
 	const struct pg_evidence *z_context = pg_prove_context_extension(&typing, empty, z, nat);
 	const struct pg_evidence *n_context = pg_prove_context_extension(&typing, empty, n, nat);
 	const struct pg_evidence *n_value = pg_prove_variable(&typing, n_context, n);
+	const struct pg_evidence *n_type = pg_prove_classifier(&typing, &classifiers, n_context, n_value);
+	assert(pg_inductive_instance(&typing, n_type, &recovered));
+	assert(recovered.formation == nat && pg_evidence_context(recovered.parameters) == pg_evidence_context(n_context));
+	struct pg_inductive_instance unchanged = recovered;
+	assert(!pg_inductive_instance(&typing, u, &recovered));
+	assert(recovered.formation == unchanged.formation && recovered.parameters == unchanged.parameters);
+	assert(!pg_inductive_instance(&typing, zero, &recovered));
+	assert(!pg_prove_substitution_projection(&typing, n_context, empty));
 	const struct pg_evidence *pred_branch = pg_prove_abstract(&typing, &classifiers,
 		empty, n_context, pg_prove_return(&typing, &classifiers, n_value));
 	const struct pg_evidence *nat_motive = pg_prove_return_type(&typing, &classifiers,
@@ -338,6 +350,22 @@ static void schema_positivity(void)
 	assert(pg_evidence_classifier(boxed) == pg_application(&graph,
 		pg_reference(&graph, pg_data_family_object(box_schema)), pg_evidence_subject(nat)->core));
 	const struct pg_evidence *boxed_type = pg_prove_classifier(&typing, &classifiers, empty, boxed);
+	assert(pg_inductive_instance(&typing, boxed_type, &recovered));
+	assert(recovered.formation == box && recovered.schema == box_schema);
+	assert(pg_evidence_subject(pg_evidence_premise(recovered.parameters, 2))->core == pg_evidence_subject(nat)->core);
+	const struct pg_evidence *projected_box = pg_prove_projection(&typing, n_context, boxed_type);
+	const struct pg_evidence *substituted_box = pg_prove_reindex(&typing,
+		pg_prove_substitution(&typing, n_context, empty, 1, &zero), projected_box);
+	const struct pg_evidence *coerced_box = pg_prove_value_type(&typing, pg_prove_type_value(&typing, substituted_box));
+	assert(pg_inductive_instance(&typing, coerced_box, &recovered));
+	assert(recovered.formation == box && !pg_evidence_context(recovered.parameters));
+	assert(pg_evidence_subject(pg_evidence_premise(recovered.parameters, 2))->core == pg_evidence_subject(nat)->core);
+	const struct pg_evidence *reconstructed_box = pg_prove_reindex(&typing, recovered.parameters, recovered.formation);
+	assert(pg_evidence_subject(reconstructed_box)->core == pg_evidence_subject(boxed_type)->core);
+	proofs = typing.proofs.count; terms = graph.terms.count;
+	const struct pg_evidence *recovered_map = recovered.parameters;
+	assert(pg_inductive_instance(&typing, coerced_box, &recovered) && recovered.parameters == recovered_map);
+	assert(typing.proofs.count == proofs && graph.terms.count == terms);
 	const struct pg_evidence *box_motive_context = pg_prove_context_extension(&typing, empty, pg_binder(&graph), boxed_type);
 	const struct pg_evidence *box_motive = pg_prove_return_type(&typing, &classifiers,
 		pg_prove_projection(&typing, box_motive_context, nat));

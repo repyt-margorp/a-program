@@ -1788,18 +1788,7 @@ static void constructor_value_step(struct pg_synthesis *synthesis, struct pg_syn
 {
 	const struct pg_evidence *formation = job->inputs[0], *context = job->inputs[2];
 	const struct pg_object *constructor = job->inputs[1];
-	size_t count;
-	if (pg_context_extension_size(pg_evidence_context(context), NULL, &count) ||
-		count > SIZE_MAX / sizeof(const struct pg_evidence *)) {
-		finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-	}
-	const struct pg_evidence **images = malloc(count * sizeof(*images));
-	if (count && !images) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-	const struct pg_context *cursor = pg_evidence_context(context);
-	for (size_t i = count; i; --i, cursor = cursor->parent)
-		images[i - 1] = pg_prove_variable(synthesis->typing, context, cursor->binder);
-	const struct pg_evidence *parameters = pg_prove_substitution(synthesis->typing, context, context, count, images);
-	free(images);
+	const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing, context, context);
 	const struct pg_evidence *function = pg_prove_constructor_function(synthesis->typing,
 		synthesis->classifiers, formation, constructor, parameters);
 	if (!function) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
