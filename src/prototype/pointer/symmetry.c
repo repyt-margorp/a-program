@@ -17,6 +17,19 @@ static const struct symmetry_entry *owner(const struct pg_term *term)
 	return (const struct symmetry_entry *)(object - offsetof(struct pg_object_entry, object));
 }
 
+int pg_symmetry_view(const struct pg_term *term, size_t *dimension,
+	const size_t **axes, const struct pg_term **argument)
+{
+	if (!term || !dimension || !axes || !argument) return 0;
+	if (term->kind != PG_APPLICATION) return 0;
+	const struct symmetry_entry *entry = owner(term->as.application.function);
+	if (!entry) return 0;
+	*dimension = entry->dimension;
+	*axes = entry->axes;
+	*argument = term->as.application.argument;
+	return 1;
+}
+
 static const struct pg_term *operator(struct pg_graph *graph, size_t dimension, const size_t *axes)
 {
 	if (!graph->objects.capacity && pg_index_init(&graph->objects) != 0) return NULL;

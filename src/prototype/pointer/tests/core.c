@@ -1884,6 +1884,20 @@ static void induced_face_permutations(struct pg_dimensions *dimensions)
 		const struct pg_term *once = pg_symmetry(graph, permutations[p], value);
 		assert(once && once != value);
 		assert(pg_symmetry(graph, permutations[p], value) == once);
+		size_t dimension = 0;
+		const size_t *axes = NULL;
+		const struct pg_term *argument = NULL;
+		size_t terms = graph->terms.count, objects = graph->objects.count;
+		assert(pg_symmetry_view(once, &dimension, &axes, &argument));
+		assert(dimension == 3 && argument == value);
+		for (size_t i = 0; i < dimension; ++i) assert(axes[i] == permutations[p]->coordinates[i].axis);
+		assert(graph->terms.count == terms && graph->objects.count == objects);
+		const size_t *saved_axes = axes;
+		assert(!pg_symmetry_view(NULL, &dimension, &axes, &argument));
+		assert(!pg_symmetry_view(value, &dimension, &axes, &argument));
+		assert(!pg_symmetry_view(once->as.application.function, &dimension, &axes, &argument));
+		assert(!pg_symmetry_view(pg_application(graph, once, value), &dimension, &axes, &argument));
+		assert(dimension == 3 && axes == saved_axes && argument == value);
 		for (size_t q = 0; q < 6; ++q) {
 			const struct pg_term *input = pg_symmetry(graph, permutations[q], once);
 			const struct pg_dimension_map *map = pg_dimension_compose(dimensions, permutations[q], permutations[p]);

@@ -82,6 +82,13 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Expose `pg_symmetry_view` over exactly one raw symmetry application.
+  The Core-owned descriptor supplies its dimension and axes, including fixed
+  prefixes; no duplicate descriptor is added to evidence. Inspection neither
+  reduces nor accepts the term. Tests cover all cubic permutations, no graph
+  allocation, bare operators, additional applications and unchanged failure
+  outputs. This is an input inspector for the future central rule, not that rule.
+  Complete pointer `make check` and ASan/UBSan `core_test` passed.
 - [x] Add `pg_synthesis_permutation_source_face`: factor the composed proper
   face using the existing dimension algebra and request its ordered source
   boundary from a pending formation producer. Return the lower-dimensional
