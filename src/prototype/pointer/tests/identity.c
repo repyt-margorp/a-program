@@ -765,6 +765,42 @@ static void square_transposition_boundary(struct pg_typing *typing, struct pg_cl
 	contexts[0] = pg_identity_cube_context(typing, &dimensions, source, 1, &cube, pg_dimension_identity(&dimensions, 2));
 	contexts[1] = pg_identity_cube_context(typing, &dimensions, source, 1, &cube, swap);
 	assert(contexts[0] && contexts[1]);
+	/* Instantiate the opposite orientation's boundary template using only the
+	 * original proper faces. Neither context supplies a center inhabitant. */
+	const struct pg_evidence *proper_context = pg_evidence_premise(contexts[0], 0);
+	const struct pg_evidence *original_type = pg_evidence_premise(contexts[0], 1);
+	const struct pg_evidence *opposite_extensions[9], *opposite_cursor = contexts[1];
+	for (size_t i = 9; i; --i) {
+		opposite_extensions[i - 1] = opposite_cursor;
+		opposite_cursor = pg_evidence_premise(opposite_cursor, 0);
+	}
+	const struct pg_evidence *boundary_map = pg_prove_substitution(typing, empty, proper_context, 0, NULL);
+	for (size_t i = 0; i < 8; ++i) {
+		const struct pg_binding_face *face = pg_binding_face_view(pg_evidence_context(opposite_extensions[i])->binder);
+		const struct pg_dimension_map *ordered, *intrinsic;
+		assert(pg_dimension_face_factor(&dimensions, face->face, &ordered, &intrinsic) == 0);
+		assert(intrinsic == pg_dimension_identity(&dimensions, ordered->source));
+		const struct pg_evidence *image = pg_identity_proper_face(typing, classifiers, proper_context, original_type, ordered);
+		assert(image);
+		const struct pg_evidence *required = pg_prove_reindex(typing, boundary_map,
+			pg_evidence_premise(opposite_extensions[i], 1));
+		image = convert_to(typing, &work, image, required);
+		boundary_map = pg_prove_substitution_pair(typing, boundary_map, opposite_extensions[i], image);
+		assert(boundary_map);
+	}
+	const struct pg_evidence *opposite_type = pg_prove_reindex(typing, boundary_map,
+		pg_evidence_premise(contexts[1], 1));
+	assert(opposite_type && pg_evidence_context(opposite_type) == pg_evidence_context(proper_context));
+	assert(pg_evidence_judgement(opposite_type) == pg_evidence_judgement(original_type));
+	assert(pg_evidence_classifier(opposite_type) == pg_evidence_classifier(original_type));
+	assert(!pg_context_lookup(pg_evidence_context(proper_context), &transposed->variable));
+	assert(!pg_context_lookup(pg_evidence_context(proper_context),
+		&pg_binding_face(&dimensions, cube, pg_dimension_identity(&dimensions, 2))->variable));
+	struct pg_conversion opposite_comparison;
+	assert(pg_conversion_init(&opposite_comparison, &work,
+		pg_evidence_subject(original_type)->core, pg_evidence_subject(opposite_type)->core) == 0);
+	assert(pg_conversion_advance(&opposite_comparison, 100000) == PG_CONVERSION_DIFFERENT);
+	pg_conversion_destroy(&opposite_comparison);
 	for (size_t orientation = 0; orientation < 2; ++orientation) {
 		const struct pg_evidence *declaration = contexts[orientation];
 		for (size_t i = 0; i < 9; ++i) {

@@ -2465,6 +2465,26 @@ family under a nonidentity permutation. Do not add a center witness on the
 strength of these tests. Test C: +31/-0; implementation C unchanged.
 ASan/UBSan pointer checks and the 512 KiB-stack Identity test also pass.
 
+September 8, after `3bdf30e`: the square transposition regression now constructs
+the opposite center's *type* in a context containing only the original eight
+proper faces. It takes the opposite cube telescope as a formation template,
+selects each supplied image from the original formation using
+`pg_identity_proper_face`, checks its classifier against the progressively
+substituted declaration, and pairs it into an ordinary substitution. Finally,
+`pg_prove_reindex` instantiates the template's center formation. Neither center
+binder is in the resulting context. Polarity and universe bound are preserved.
+
+The derived type is not definitionally equal to the original square type under
+the current pure rules (the regression checks `PG_CONVERSION_DIFFERENT`). Thus
+existing Context/substitution machinery can construct this target without a new
+boundary registry, but cannot type the unchanged original center there. A typed
+symmetry operation is still needed. This is a 2D formation-construction test,
+not admission of a dimension-specific center rule. In higher dimension the same
+template method additionally requires actions for induced proper-face
+permutations; no such evidence is fabricated. Test C: +36/-0, implementation
+unchanged. Normal and ASan/UBSan pointer checks pass, as does the 512 KiB-stack
+Identity test.
+
 - [x] After `a4bc683`, `pg_identity_formation` recovers an explicit Identity
   formation through a chain of accepted reindex/projection derivations. It
   composes their substitutions and rebuilds homogeneous Identity, selected
