@@ -760,6 +760,27 @@ finish general handler source support.
   The earlier explicit-carrier fixture supplies the graph before checking the source body;
   it does not infer latent callable effects or a general dependent carrier.
 
+  September 9, after `b4eb838`: source branch abstraction now builds ordinary
+  Lambda producers with `pg_synthesis_abstract`. It retains the accepted field
+  context's binders and can register the derivation before the body completes.
+  Constant-motive and induction-branch synthesis share this operation; constant
+  codomain removal uses the same producer chain as handler result inference.
+  The source synthesizer no longer calls the synchronous `pg_prove_abstract`.
+  BODY checks an explicitly supplied context even for zero abstractions, so an
+  empty suffix cannot silently accept a body from a different context.
+  Tests check pending construction, exact producer reuse, retained Core identity
+  against direct accepted abstraction, invalid prefixes and zero-suffix scope
+  rejection. Constructor scope still synchronously extends/lifts substitutions;
+  it is not a primitive rule to rename into a new kernel rule. Pending scope
+  formation and general dependent branch motives remain open. No Replay,
+  expected-type inference or provisional evidence is introduced.
+  Validation passed: normal component checks, eight source cases, six runtime
+  cases and rebuilt ASan/UBSan synthesis tests. Example transitions for 04-07
+  and 09 are 625, 409, 336, 1006 and 2246; splitting synchronous derivations into
+  producer work increases these scheduling counts, not the runtime results.
+  This is not a wall-time speedup claim. Implementation C/header: +52/-28;
+  tests: +11/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.

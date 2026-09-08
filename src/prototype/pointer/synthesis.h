@@ -321,6 +321,12 @@ struct pg_synthesis_job *pg_synthesis_induction_branch(struct pg_synthesis *synt
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_syntax *clause);
+/* Abstract an independently synthesized body over an accepted context suffix.
+ * Builds ordinary Lambda producers without waiting for the body. Context
+ * binders are retained; no fresh binders or provisional proofs are created. */
+struct pg_synthesis_job *pg_synthesis_abstract(struct pg_synthesis *synthesis,
+	const struct pg_evidence *prefix, const struct pg_evidence *context,
+	struct pg_synthesis_job *body);
 /* Derive a constant computation motive from an independent branch producer.
  * The field context must extend the destination. Each removed binder needs
  * checked codomain independence; dependent results remain unsupported rather

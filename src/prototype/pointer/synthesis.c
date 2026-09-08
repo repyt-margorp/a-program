@@ -872,7 +872,7 @@ struct pg_synthesis_job *pg_synthesis_lambda_body(struct pg_synthesis *synthesis
 	if (!domain || domain->owner != synthesis->owner_key) return NULL;
 	if (!context || context->owner != synthesis->owner_key) return NULL;
 	if (!body || body->owner != synthesis->owner_key) return NULL;
-	body = request_job(synthesis, BODY_JOB, body, NULL);
+	body = request_job(synthesis, BODY_JOB, body, context);
 	if (!body) return NULL;
 	struct pg_synthesis_job *codomain = request_job(synthesis, CLASSIFIER_FORMATION_JOB, context, body);
 	if (!codomain) return NULL;
@@ -999,6 +999,25 @@ struct pg_synthesis_job *pg_synthesis_induction_branch(struct pg_synthesis *synt
 	struct pg_synthesis_job *job = request_inputs(synthesis, INDUCTION_BRANCH_JOB, 7, inputs);
 	if (job) { job->scope = scope; job->syntax = clause; }
 	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_abstract(struct pg_synthesis *synthesis,
+	const struct pg_evidence *prefix, const struct pg_evidence *context,
+	struct pg_synthesis_job *body)
+{
+	if (!body || body->owner != synthesis->owner_key) return NULL;
+	if (!pg_evidence_owned_by(prefix, synthesis->typing) || pg_evidence_judgement(prefix) != PG_JUDGEMENT_CONTEXT) return NULL;
+	if (!pg_evidence_owned_by(context, synthesis->typing) || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
+	size_t count;
+	if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(prefix), &count)) return NULL;
+	if (!count) return request_job(synthesis, BODY_JOB, body, pg_synthesis_evidence(synthesis, context));
+	for (size_t i = 0; body && i < count; ++i) {
+		body = pg_synthesis_lambda_body(synthesis,
+			pg_synthesis_evidence(synthesis, pg_evidence_premise(context, 1)),
+			pg_synthesis_evidence(synthesis, context), body);
+		context = pg_evidence_premise(context, 0);
+	}
+	return body;
 }
 
 struct pg_synthesis_job *pg_synthesis_constant_motive(struct pg_synthesis *synthesis,
@@ -2495,13 +2514,14 @@ static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synt
 		if (!scope) goto error;
 		job->inner = scope;
 		job->left = pg_synthesis_request(synthesis, scope, job->syntax->right);
-		depend(synthesis, job, job->left);
+		if (!job->left) goto error;
+		enqueue(synthesis, job);
 		return;
 	}
-	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-	job->result = pg_prove_abstract(synthesis->typing, synthesis->classifiers,
-		source_context(job->scope), source_context(job->inner), computation(synthesis, job->left->result));
-	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+	if (!job->value_job) job->value_job = pg_synthesis_abstract(synthesis,
+		source_context(job->scope), source_context(job->inner), job->left);
+	if (!job->value_job) goto error;
+	forward_proof(synthesis, job, job->value_job);
 	return;
 error:
 	finish(synthesis, job, PG_SYNTHESIS_ERROR);
@@ -2510,28 +2530,19 @@ error:
 static void constant_motive_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_evidence *destination = job->inputs[0];
-	if (!job->checking_type) {
-		struct pg_synthesis_job *body = (void *)job->inputs[2];
-		if (body->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, body); return; }
-		if (body->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, body->status); return; }
+	if (!job->left) {
 		const struct pg_evidence *fields = job->inputs[1];
-		const struct pg_evidence *term = computation(synthesis, body->result);
-		if (!term || pg_evidence_context(term) != pg_evidence_context(fields)) goto unsupported;
-		job->function = pg_prove_abstract(synthesis->typing, synthesis->classifiers, destination, fields, term);
-		if (!job->function) goto unsupported;
-		job->checking_type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, destination, job->function);
-		if (!job->checking_type) goto unsupported;
-		job->domain = fields;
+		size_t count;
+		if (pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(destination), &count)) goto unsupported;
+		job->left = pg_synthesis_abstract(synthesis, destination, fields, (void *)job->inputs[2]);
+		job->right = pg_synthesis_constant_result(synthesis, pg_synthesis_evidence(synthesis, destination), job->left, count);
+		if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
-	if (pg_evidence_context(job->domain) == pg_evidence_context(destination)) {
-		job->result = job->checking_type;
-		finish(synthesis, job, PG_SYNTHESIS_DONE);
-		return;
-	}
-	job->checking_type = pg_prove_pi_constant_codomain(synthesis->typing, job->checking_type);
-	if (!job->checking_type) goto unsupported;
-	job->domain = pg_evidence_premise(job->domain, 0);
-	enqueue(synthesis, job);
+	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	job->function = job->left->result;
+	if (job->right->status == PG_SYNTHESIS_REJECTED) goto unsupported;
+	forward_proof(synthesis, job, job->right);
 	return;
 unsupported:
 	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
@@ -4250,13 +4261,20 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == DERIVATION_JOB) { derivation_step(synthesis, job); return; }
 	if (job->role == TYPE_STRUCTURE_JOB) { type_structure_step(synthesis, job); return; }
 	if (job->role == BODY_JOB || job->role == CLASSIFIER_FORMATION_JOB) {
-		for (size_t i = 0; i < (job->role == BODY_JOB ? 1u : 2u); ++i) {
+		for (size_t i = 0; i < 2; ++i) {
 			struct pg_synthesis_job *premise = (void *)job->inputs[i];
+			if (!premise) continue;
 			if (premise->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, premise); return; }
 			if (premise->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, premise->status); return; }
 		}
 		const struct pg_synthesis_job *first = job->inputs[0];
-		if (job->role == BODY_JOB) job->result = computation(synthesis, first->result);
+		if (job->role == BODY_JOB) {
+			const struct pg_synthesis_job *context = job->inputs[1];
+			if (context && pg_evidence_context(first->result) != pg_evidence_context(context->result)) {
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+			}
+			job->result = computation(synthesis, first->result);
+		}
 		else {
 			const struct pg_synthesis_job *body = job->inputs[1];
 			job->result = pg_prove_classifier(synthesis->typing, synthesis->classifiers, first->result, body->result);

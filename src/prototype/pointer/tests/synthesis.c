@@ -3914,6 +3914,17 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_source_scope *field_scope = pg_synthesis_bind(&synthesis, named,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "field", .length = 5}, field_binder, field_context);
 	struct pg_synthesis_job *field_body = request(&synthesis, field_scope, "r:=field;");
+	struct pg_synthesis_job *abstracted = pg_synthesis_abstract(&synthesis, empty, field_context, field_body);
+	assert(abstracted && pg_synthesis_status(abstracted) == PG_SYNTHESIS_PENDING);
+	assert(pg_synthesis_abstract(&synthesis, empty, field_context, field_body) == abstracted);
+	assert(!pg_synthesis_result(field_body));
+	assert(!pg_synthesis_abstract(&synthesis, field_context, empty, field_body));
+	const struct pg_evidence *abstract_proof = complete(&synthesis, abstracted, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *body_return = pg_prove_return(typing, classifiers, pg_synthesis_result(field_body));
+	const struct pg_evidence *direct_abstract = pg_prove_abstract(typing, classifiers, empty, field_context, body_return);
+	same_judgement(abstract_proof, direct_abstract);
+	assert(pg_evidence_subject(abstract_proof)->core == pg_evidence_subject(direct_abstract)->core);
+	complete(&synthesis, pg_synthesis_abstract(&synthesis, empty, empty, field_body), PG_SYNTHESIS_REJECTED);
 	struct pg_synthesis_job *constant = pg_synthesis_constant_motive(&synthesis, empty, field_context, field_body);
 	assert(constant && pg_synthesis_status(constant) == PG_SYNTHESIS_PENDING);
 	const struct pg_evidence *constant_type = complete(&synthesis, constant, PG_SYNTHESIS_DONE);
