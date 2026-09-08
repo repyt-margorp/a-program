@@ -205,6 +205,49 @@ done:
 	return result;
 }
 
+const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters)
+{
+	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
+	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	if (parameters->premises[0]->context != formation->context) return NULL;
+	const struct pg_data_schema *schema = formation->certificate;
+	const struct pg_evidence *fields = pg_data_schema_fields(schema, constructor);
+	if (!fields) return NULL;
+	const struct pg_evidence *self_context = formation->premises[0];
+	size_t count;
+	if (pg_context_extension_size(fields->context, self_context->context, &count)) return NULL;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	const struct pg_evidence *family = pg_prove_reindex(typing, parameters, formation);
+	const struct pg_evidence *self = pg_prove_type_value(typing, family);
+	if (!self) return NULL;
+	const struct pg_evidence *map = pg_prove_substitution_extend(typing, parameters, self_context, 1, &self);
+	if (!map) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence *result = NULL;
+	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
+	if (count && !extensions) goto done;
+	for (size_t i = count; i; --i, fields = fields->premises[0]) extensions[i - 1] = fields;
+	for (size_t i = 0; i < count; ++i) {
+		map = pg_prove_substitution_lift(typing, map, extensions[i], pg_binder(typing->graph));
+		if (!map) goto done;
+	}
+	size_t prefix = parameters->premise_count - 2;
+	const struct pg_evidence *context = map->premises[1];
+	const struct pg_evidence *arguments = pg_prove_substitution(typing,
+		parameters->premises[0], context, prefix, map->premises + 2);
+	const struct pg_evidence *body = pg_prove_constructor(typing, formation, constructor,
+		arguments, count, map->premises + prefix + 3);
+	body = pg_prove_return(typing, classifiers, body);
+	if (!body) goto done;
+	result = pg_prove_abstract(typing, classifiers, parameters->premises[1], context, body);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_evidence *pg_prove_empty_context(struct pg_typing *typing)
 {
 	return accept(typing, PG_CONTEXT_EMPTY, PG_JUDGEMENT_CONTEXT, NULL, NULL, NULL, 0, NULL);

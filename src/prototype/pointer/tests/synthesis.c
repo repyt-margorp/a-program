@@ -2795,6 +2795,15 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	const struct pg_evidence *application = complete(&synthesis,
 		request(&synthesis, nat_scope, "v:=(\\n:Nat=>n) zero;"), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_classifier(application) == pg_return_type(classifiers, pg_evidence_subject(admitted)->core));
+	const struct pg_evidence *succ_function = pg_prove_constructor_function(typing, classifiers,
+		admitted, successor, parameter_map);
+	assert(succ_function);
+	nat_scope = pg_synthesis_name(&synthesis, nat_scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "succ", .length = 4}, succ_function);
+	assert(nat_scope);
+	const struct pg_evidence *successor_call = complete(&synthesis,
+		request(&synthesis, nat_scope, "v:=succ zero;"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_classifier(successor_call) == pg_return_type(classifiers, pg_evidence_subject(admitted)->core));
 	/* A value of Self cannot shadow the type assumption as another type. */
 	const struct pg_object *element = pg_binder(typing->graph);
 	const struct pg_evidence *element_context = pg_prove_context_extension(typing, self_context, element,

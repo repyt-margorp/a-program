@@ -34,6 +34,12 @@ const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_object *constructor,
 	const struct pg_evidence *parameters, size_t count,
 	const struct pg_evidence *const *fields);
+/* Derived curried constructor computation: Lambda fields. RETURN constructor.
+ * Zero fields yields RETURN directly. Uses fresh lexical field binders, not
+ * a value-side Pi or a new proof rule. Schedule once per wrapper request. */
+const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters);
 
 /* Borrowed view of an explicit Identity formation's immutable premises.
  * family is a formation for IDENTITY_FORM/FAMILY_IDENTITY_FORM and a selected

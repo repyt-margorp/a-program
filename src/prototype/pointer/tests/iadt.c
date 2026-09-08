@@ -192,6 +192,21 @@ static void schema_positivity(void)
 	struct pg_derivation_parameters wire_parameters;
 	assert(pg_derivation_parameters(nat, &wire_parameters) == -1);
 	assert(pg_derivation_parameters(succ, &wire_parameters) == -1);
+	const struct pg_evidence *successor_function = pg_prove_constructor_function(&typing,
+		&classifiers, nat, pg_data_constructor(nat_layout, 1), identity);
+	assert(successor_function && pg_evidence_rule(successor_function) == PG_LAMBDA_INTRO);
+	const struct pg_evidence *successor_application = pg_prove_application(&typing, successor_function, zero);
+	assert(successor_application);
+	struct pg_whnf_work constructor_work;
+	assert(!pg_whnf_work_init(&constructor_work, &graph));
+	const struct pg_term *returned_successor = pg_application(&graph,
+		pg_reference(&graph, &pg_return_operation), pg_evidence_subject(succ)->core);
+	check(&constructor_work, pg_evidence_subject(successor_application)->core, returned_successor);
+	const struct pg_evidence *zero_function = pg_prove_constructor_function(&typing,
+		&classifiers, nat, pg_data_constructor(nat_layout, 0), identity);
+	assert(zero_function && pg_evidence_rule(zero_function) == PG_RETURN_INTRO);
+	assert(pg_prove_return_value(&typing, zero_function) == zero);
+	pg_whnf_work_destroy(&constructor_work);
 	/* Positivity does not establish the universe bound. */
 	const struct pg_evidence *stored_universe = pg_prove_context_extension(&typing, parameters,
 		pg_binder(&graph), pg_prove_projection(&typing, parameters, u));
@@ -208,6 +223,27 @@ static void schema_positivity(void)
 		pg_data_signature(&typing, wide_parameters, wide_parameters), 1, &wide_result);
 	const struct pg_evidence *wide = pg_prove_inductive_type(&typing, &classifiers, wide_schema);
 	assert(wide && pg_evidence_classifier(wide) == pg_universe(&classifiers, 1));
+	/* Dependent fields become ordinary nested Pi/Lambda, not tuple metadata. */
+	const struct pg_object *packed_type = pg_binder(&graph);
+	const struct pg_evidence *packed_prefix = pg_prove_context_extension(&typing, wide_parameters,
+		packed_type, pg_prove_projection(&typing, wide_parameters, u));
+	const struct pg_evidence *packed_fields = pg_prove_context_extension(&typing, packed_prefix,
+		pg_binder(&graph), pg_prove_variable(&typing, packed_prefix, packed_type));
+	const struct pg_evidence *packed_result = parameter_result(&typing, wide_parameters, packed_fields);
+	const struct pg_data_schema *packed_schema = pg_data_schema(&typing,
+		pg_data_signature(&typing, wide_parameters, wide_parameters), 1, &packed_result);
+	const struct pg_evidence *packed = pg_prove_inductive_type(&typing, &classifiers, packed_schema);
+	const struct pg_object *packed_constructor = pg_data_constructor(pg_data_schema_layout(packed_schema), 0);
+	const struct pg_evidence *packed_function = pg_prove_constructor_function(&typing,
+		&classifiers, packed, packed_constructor, identity);
+	assert(packed_function && pg_evidence_rule(packed_function) == PG_LAMBDA_INTRO);
+	const struct pg_evidence *packed_first = pg_prove_application(&typing, packed_function,
+		pg_prove_type_value(&typing, nat));
+	const struct pg_evidence *packed_second = pg_prove_application(&typing, packed_first, zero);
+	assert(packed_second && pg_evidence_classifier(packed_second) ==
+		pg_return_type(&classifiers, pg_evidence_subject(packed)->core));
+	assert(!pg_prove_constructor_function(&typing, &classifiers, packed,
+		pg_data_constructor(nat_layout, 0), identity));
 	/* Parameters survive discharge and are actual operands of the family. */
 	const struct pg_object *a = pg_binder(&graph), *box_self = pg_binder(&graph);
 	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, u);

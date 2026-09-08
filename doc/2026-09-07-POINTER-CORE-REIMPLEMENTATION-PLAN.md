@@ -211,6 +211,21 @@ Admission audit after `8b3105b`:
 
 Zero-index inductive rules after `d952804`:
 
+Constructor function derivation after `75c100c`:
+
+- [x] Derive a curried constructor computation with ordinary checked
+  substitution lifting, constructor introduction, RETURN, and Pi/Lambda
+  abstraction. Fresh field binders avoid capture by the destination parameter
+  context. Zero fields gives RETURN; there is no value-side Pi or additional
+  kernel rule. This synchronous builder creates a fresh lexical abstraction;
+  source integration must request it once per shared constructor producer.
+- [x] Test successor application reducing to RETURN of the admitted successor,
+  zero-field inversion, and a two-field dependent constructor taking a type
+  followed by its element. A named derived successor also works through
+  ordinary source application. Constructor names in these source tests are
+  supplied explicitly; automatic qualified-name publication remains open.
+  Full component `make check` and rebuilt ASan/UBSan IADT/synthesis tests pass.
+
 - [x] Implement `PG_INDUCTIVE_FORM` with retained conditional Self-context and
   constructor result-map premises. The signature must have zero indices and
   end in `Self : Universe_l`; positivity and every stored-field universe bound
