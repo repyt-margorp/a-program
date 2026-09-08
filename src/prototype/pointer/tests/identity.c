@@ -894,6 +894,21 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 	const struct pg_evidence *relation = pg_prove_identity_type(typing, pg_prove_universe(typing, classifiers, source, 0),
 		pg_prove_variable(typing, source, a), pg_prove_variable(typing, source, b));
 	source = pg_prove_context_extension(typing, source, r, relation);
+	const struct pg_evidence *r_value = pg_prove_variable(typing, source, r);
+	const struct pg_evidence *square_type = pg_prove_identity_type(typing,
+		pg_prove_projection(typing, source, relation), r_value, r_value);
+	assert(square_type);
+	for (unsigned side = 0; side < 2; ++side) {
+		const struct pg_evidence *endpoint = pg_identity_face_endpoint(typing, classifiers,
+			source, square_type, 1, side ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT);
+		const struct pg_evidence *expected = pg_prove_reflexivity(typing,
+			pg_prove_universe(typing, classifiers, source, 0),
+			pg_prove_variable(typing, source, side ? b : a));
+		assert(action_result(typing, classifiers, source, &work, endpoint, expected));
+	}
+	assert(!pg_identity_face_endpoint(typing, classifiers, empty, square_type, 0, PG_IDENTITY_LEFT));
+	assert(!pg_identity_face_endpoint(typing, classifiers, source, square_type, 0, (enum pg_identity_direction)2));
+	assert(!pg_identity_face_endpoint(typing, classifiers, source, square_type, SIZE_MAX, PG_IDENTITY_LEFT));
 	const struct pg_binding_cube *square = pg_binding_cube(&dimensions, 2);
 	struct pg_coordinate coordinates[2] = {{PG_ENDPOINT_ZERO, 0}, {PG_AXIS, 0}};
 	const struct pg_binding_face *centers[4];
@@ -936,6 +951,9 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 			pg_prove_reindex(typing, left, transport), pg_prove_reindex(typing, right, transport));
 		assert(expected);
 		assert(pg_identity_formation(typing, classifiers, expected) == expected);
+		assert(pg_identity_face_endpoint(typing, classifiers, boundary, expected, 0, PG_IDENTITY_LEFT)
+			== pg_evidence_premise(expected, 1));
+		assert(!pg_identity_face_endpoint(typing, classifiers, boundary, expected, 1, PG_IDENTITY_LEFT));
 		assert(pg_identity_formation(typing, classifiers,
 			pg_prove_value_type(typing, pg_prove_type_value(typing, expected))) == expected);
 		const struct pg_evidence *extra_context = pg_prove_context_extension(typing, boundary, pg_binder(graph),
@@ -1136,6 +1154,24 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 				assert(pg_evidence_classifier(recovered) == pg_evidence_classifier(formation));
 				assert(pg_alpha_equal(pg_evidence_subject(recovered)->core, pg_evidence_subject(formation)->core) == 1);
 				size_t d = face->face->source;
+				for (size_t depth = 0; depth < d; ++depth) {
+					for (unsigned side = 0; side < 2; ++side) {
+						struct pg_coordinate coordinates[3];
+						size_t axis = 0;
+						for (size_t i = 0; i < d; ++i)
+							coordinates[i] = i == d - 1 - depth
+								? (struct pg_coordinate){side ? PG_ENDPOINT_ONE : PG_ENDPOINT_ZERO, 0}
+								: (struct pg_coordinate){PG_AXIS, axis++};
+						const struct pg_binding_face *selected = pg_binding_restrict(&dimensions, face,
+							pg_dimension_map(&dimensions, d - 1, d, coordinates));
+						const struct pg_evidence *endpoint = pg_identity_face_endpoint(typing, classifiers, all,
+							formation, depth, side ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT);
+						assert(endpoint && selected);
+						assert(action_result(typing, classifiers, all, &cube_work, endpoint,
+							pg_prove_variable(typing, all, &selected->variable)));
+					}
+				}
+				assert(!pg_identity_face_endpoint(typing, classifiers, all, formation, d, PG_IDENTITY_LEFT));
 				struct pg_coordinate endpoint_coordinates[3];
 				for (size_t i = 0; i + 1 < d; ++i) endpoint_coordinates[i] = (struct pg_coordinate){PG_AXIS, i};
 				for (size_t side = 0; side < 2; ++side) {

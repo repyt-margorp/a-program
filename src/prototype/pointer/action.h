@@ -18,6 +18,16 @@
 const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation);
 
+/* Select a codimension-one endpoint of an explicit iterated Identity.
+ * depth zero selects the outermost direction; larger depths descend through
+ * retained family formations and act the endpoint back through those families.
+ * Does not inspect APP arity or manufacture a center. Opaque selected families
+ * without an inner formation return NULL. Work is synchronous and uses an
+ * explicit stack. The result is checked evidence, not a conversion certificate. */
+const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side);
+
 /* Extend Gamma by x0 : A, x1 : B, x01 : R x0 x1 for a supplied checked
  * R : Id Universe_i A B in Gamma. Binders may be binding-cube faces, but
  * their pointers alone supply no typing. No transport or new R is inferred. */

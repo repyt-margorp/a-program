@@ -135,6 +135,57 @@ const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 	return result;
 }
 
+struct endpoint_frame {
+	struct endpoint_frame *previous;
+	const struct pg_evidence *context;
+	struct pg_identity_boundary boundary;
+};
+
+const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side)
+{
+	if (!pg_evidence_owned_by(context, typing)) return NULL;
+	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
+	if (!pg_evidence_owned_by(formation, typing)) return NULL;
+	if (pg_evidence_context(context) != pg_evidence_context(formation)) return NULL;
+	if (side != PG_IDENTITY_LEFT && side != PG_IDENTITY_RIGHT) return NULL;
+	struct pg_graph temporary = {0};
+	struct endpoint_frame *stack = NULL;
+	const struct pg_evidence *result = NULL;
+	for (;;) {
+		formation = pg_identity_formation(typing, classifiers, formation);
+		struct pg_identity_boundary boundary;
+		if (!pg_identity_boundary_view(formation, &boundary)) goto done;
+		if (!depth) {
+			result = side == PG_IDENTITY_LEFT ? boundary.left : boundary.right;
+			break;
+		}
+		if (pg_evidence_rule(formation) == PG_IDENTITY_INSTANCE) goto done;
+		struct endpoint_frame *frame = pg_alloc(&temporary, sizeof(*frame));
+		if (!frame) goto done;
+		*frame = (struct endpoint_frame){stack, context, boundary};
+		stack = frame;
+		if (boundary.left_substitution) context = pg_evidence_premise(boundary.left_substitution, 0);
+		formation = boundary.family;
+		--depth;
+	}
+	while (stack) {
+		const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, result);
+		const struct pg_identity_boundary *boundary = &stack->boundary;
+		result = boundary->left_substitution
+			? pg_prove_family_action(typing, type, result, boundary->left_substitution,
+				boundary->right_substitution, boundary->path_count, boundary->paths)
+			: pg_prove_reflexivity(typing, type, result);
+		if (!result) goto done;
+		context = stack->context;
+		stack = stack->previous;
+	}
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_evidence *pg_identity_context_extend(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *family, const struct pg_object *left,

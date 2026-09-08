@@ -2408,6 +2408,29 @@ its computation contract first; never recover erased typing information by
 looking up a Core pointer's classifier. Steps 1-5 remain open, and scalar
 transport tests or further permutation-group tests cannot close them.
 
+September 8, after `ffcf1bb`: `pg_identity_face_endpoint` selects a
+codimension-one endpoint from an explicit iterated Identity formation. Depth
+zero returns its retained endpoint evidence. Deeper selection descends through
+the source family formation, then transports that selection outward by the
+existing Family Action rule (or reflexivity for homogeneous Identity). An
+explicit temporary stack avoids recursive C calls. This is checked derivation
+construction, not a new endpoint axiom, classifier cache or Core operator.
+
+Tests enumerate every intrinsic endpoint of the generated 1-3 dimensional
+`A : Universe, x : A, f : U(Pi A (F A))` boundary contexts, including all six
+3D orientations. Both term reduction and classifier conversion are checked
+against the independently selected geometric binder. Homogeneous nested
+Identity, opaque selected-family rejection, wrong context, invalid side and
+excess depth also have tests. A selected opaque universe identification still
+supports its immediate endpoints, but not guessed internal directions.
+
+This advances proper-face extraction in step 2. It does not provide induced
+nonidentity action on those faces, reconstruct a permuted instantiated family,
+or authorize the center action. Steps 2-5 and N2 remain incomplete. Construction
+is synchronous; no bounded wall-clock or general higher-family coverage claim.
+Implementation/header: +61/-0 lines; tests: +36/-0. Normal and ASan/UBSan
+pointer checks pass; the expanded Identity test also passes with a 512 KiB stack.
+
 - [x] After `a4bc683`, `pg_identity_formation` recovers an explicit Identity
   formation through a chain of accepted reindex/projection derivations. It
   composes their substitutions and rebuilds homogeneous Identity, selected
