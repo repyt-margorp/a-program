@@ -4341,6 +4341,24 @@ the core evaluator. Exact old wire compatibility is not promised by this plan.
 
 ### September 8 decision: no independent Replay engine
 
+Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
+
+- [x] Store a single immutable source and explicit definition policy in a
+  versioned, little-endian input capsule. No addresses or accepted-state flags.
+  `pg_seed_read` creates an ordinary unresolved `pg_program`; parsing and Solve
+  use the existing implementations. The writer takes input, not a purported
+  snapshot of a mutated program. Parse caches and all solver work are omitted.
+- [x] Exercise separate writer/reader processes, split versus bulk solving,
+  exact wire policy/length, truncation, unknown version/policy, trailing data,
+  caller input limits and ordinary syntax-error diagnostics.
+  Complete pointer `make check`, ASan/UBSan `seed_test`, and the separate-process
+  seed test under the same sanitizers passed.
+- [ ] Extend image roots to external module registrations and descriptor
+  provenance, Core/occurrence/evidence references and retained results. The
+  single-source capsule cannot stand in for these roots or CHECKPOINT.
+  It is deliberately named `.seed` in tests, not advertised as completed `.a`
+  persistence. N5 and the full rewrite acceptance gates remain open.
+
 RECOMPUTE and CHECKPOINT differ in retention, not in language semantics or
 acceptance rules. Loading restores graph references and establishes retained
 evidence before publishing solved results to the ordinary solver. It does not
