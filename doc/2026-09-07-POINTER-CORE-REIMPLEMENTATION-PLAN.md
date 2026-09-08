@@ -4341,6 +4341,29 @@ the core evaluator. Exact old wire compatibility is not promised by this plan.
 
 ### September 8 decision: no independent Replay engine
 
+Raw Core section prototype (`graph_io.c`, not accepted evidence):
+
+- [x] Serialize reachable Lambda/Application/Reference DAGs in dependency
+  order using file-local object/term references. Restore plain binders freshly
+  and re-intern exact pointer structures; shared roots/subgraphs remain shared,
+  alpha-equivalent distinct binders stay distinct, and redexes stay unevaluated.
+  Collection is iterative and indexed, rejecting cyclic raw Term structures.
+- [x] Require explicit versioned descriptor naming/resolution for semantic
+  objects and owned binders. Never downgrade a cube-owned binder to a plain
+  binder. Unknown descriptors, wrong resolved object kinds, forward term
+  references, truncated records, trailing bytes and exceeded input limits fail.
+  Owners remain responsible for descriptor meaning and injective naming;
+  this codec does not certify an arbitrary resolver or decode IADT payloads.
+- [x] Share little-endian integer encoding with the seed codec through
+  `wire.c`; the existing seed bytes remain unchanged.
+  Complete pointer `make check`, ASan/UBSan graph/seed tests and separate-process
+  seed tests passed. Graph coverage includes a ten-thousand-level shared DAG,
+  every truncated prefix of the small fixture, and a forward/self reference.
+- [ ] Integrate these raw roots with context/occurrence/declaration and
+  evidence records and ordinary acceptance. No typing status is transported
+  by this Core codec. Recursive declaration allocation/linking and complete
+  `.a` program-root persistence remain unimplemented.
+
 Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
 
 - [x] Store a single immutable source and explicit definition policy in a
