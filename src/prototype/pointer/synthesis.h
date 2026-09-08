@@ -150,7 +150,7 @@ const struct pg_operation_declaration *pg_synthesis_operation_declaration(const 
 struct pg_derivation_input;
 /* Structural subject of an unaccepted formation producer. Universe/F/U/Pi
  * inputs can be inspected before row closure. Unknown rule forms await their
- * accepted formation instead. No normalization or type certificate is issued;
+ * accepted formation instead. No accepted type certificate is issued;
  * callers must retain/check the original formation producer. Symbolic row
  * parameters remain symbolic even if that producer has already completed. */
 struct pg_synthesis_job *pg_synthesis_type_structure(struct pg_synthesis *synthesis,
@@ -159,7 +159,9 @@ const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthes
 /* Structural classifier for pending VARIABLE/FORCE/THUNK/LAMBDA/APP rule inputs.
  * Prepared source VARIABLE/quotation rules share this projection too.
  * Uses binder identity through context producers, not names or accepted proof
- * guesses. Other producers await acceptance. Read the raw result with the same
+ * guesses. Explicit classifier-normalization producers use shared pure WHNF;
+ * post-check producers expose their target, without proving the check passes.
+ * Other producers await acceptance. Read the raw result with the same
  * type_structure_result accessor; it supplies no typing evidence. */
 struct pg_synthesis_job *pg_synthesis_classifier_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term);

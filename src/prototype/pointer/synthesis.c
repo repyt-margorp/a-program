@@ -3218,6 +3218,23 @@ static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthes
 static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	if (producer->role == CLASSIFIER_JOB) {
+		if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, (void *)producer->inputs[1]);
+		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		const struct pg_reduction_certificate *receipt = normalization_receipt(synthesis, job,
+			pg_synthesis_type_structure_result(job->left), PG_REDUCTION_WHNF);
+		if (!receipt) return;
+		job->type_structure = pg_reduction_target(receipt);
+		finish(synthesis, job, PG_SYNTHESIS_DONE);
+		return;
+	}
+	if (producer->role == EXPECT_JOB) {
+		if (!job->left) job->left = pg_synthesis_type_structure(synthesis, (void *)producer->inputs[1]);
+		forward_structure(synthesis, job);
+		return;
+	}
 	if (producer->role == BODY_JOB) {
 		struct pg_synthesis_job *rule = body_rule(producer);
 		int returns_value = body_rule_polarity(rule);
@@ -3330,7 +3347,8 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		case PG_UNIVERSE_FORM:
 			job->type_structure = pg_universe(synthesis->classifiers, input->parameters.level);
 			goto done;
-		case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM: case PG_PI_FORM: case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE:
+		case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM: case PG_PI_FORM: case PG_PI_DOMAIN:
+		case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE:
 			break;
 		default: input = NULL; break;
 		}
@@ -3371,6 +3389,12 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		job->type_structure = pg_thunk_type(synthesis->classifiers, left); break;
 	case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE:
 		job->type_structure = left; break;
+	case PG_PI_DOMAIN: {
+		const struct pg_term *codomain;
+		const struct pg_object *binder;
+		if (!pg_pi_view(left, &job->type_structure, &binder, &codomain)) goto unsupported;
+		break;
+	}
 	case PG_PI_FORM: {
 		struct pg_synthesis_job *context = rule_premise(synthesis, producer, 1);
 		if (!context) goto unsupported;

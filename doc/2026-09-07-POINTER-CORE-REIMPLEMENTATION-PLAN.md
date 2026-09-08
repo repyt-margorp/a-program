@@ -273,6 +273,16 @@ Next implementation sequence (prerequisite for automatic source handlers):
   Validation: normal `check`, eight example synthesis cases, six runtime cases,
   and rebuilt ASan/UBSan synthesis tests pass. List transitions rise from 1044
   to 1156 as ordinary rule dependencies become scheduled; no speedup is claimed.
+  Classifier projection now follows explicit normalization producers through
+  shared pure WHNF work, and post-check producers through their target formation.
+  PI_DOMAIN projects its existing Pi spine without accepting that formation.
+  The pending-context test obtains the post-checked application's symbolic
+  result before sealing; a separate post-check exposes its target but is later
+  rejected for mismatched contexts. Candidate structure never certifies typing.
+  Normal `check`, eight example synthesis cases, six runtime cases and rebuilt
+  ASan/UBSan synthesis tests pass; example transition counts are unchanged.
+  This connects pending raw application classifier propagation, not source
+  force/sequencing adaptation or automatic handler inference.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
   pointer-equality assumption about capture-avoiding substitution.

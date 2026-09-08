@@ -444,7 +444,16 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *checked_term = pg_synthesis_term_structure(&synthesis, checked_application);
 		assert(!complete(&synthesis, checked_term, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(checked_term) == expected_application);
+		struct pg_synthesis_job *checked_type = pg_synthesis_classifier_structure(&synthesis, checked_application);
+		assert(!complete(&synthesis, checked_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(checked_type) == symbolic_result);
 		assert(!pg_synthesis_result(checked_application));
+		struct pg_synthesis_job *pending_domain = rule_job(&synthesis, PG_PI_DOMAIN, NULL, 1, &dependent_pi);
+		struct pg_synthesis_job *postcheck = pg_synthesis_expect(&synthesis, a_value, pending_domain);
+		struct pg_synthesis_job *postcheck_type = pg_synthesis_classifier_structure(&synthesis, postcheck);
+		assert(!complete(&synthesis, postcheck_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(postcheck_type) == pg_universe(classifiers, 0));
+		assert(!pg_synthesis_result(postcheck));
 		assert(!pg_synthesis_result(application) && !pg_synthesis_result(argument));
 		pg_effect_inference_seal(&effects);
 		assert(pg_synthesis_effect_inference(&synthesis, &effects));
@@ -459,6 +468,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		complete(&synthesis, outer_variable, PG_SYNTHESIS_DONE);
 		complete(&synthesis, invalid_quote, PG_SYNTHESIS_REJECTED);
 		const struct pg_evidence *applied = complete(&synthesis, application, PG_SYNTHESIS_DONE);
+		/* The candidate classifier does not erase a context mismatch. */
+		complete(&synthesis, postcheck, PG_SYNTHESIS_REJECTED);
 		assert(pg_evidence_subject(applied)->core == expected_application);
 		const struct pg_evidence *checked = complete(&synthesis, checked_application, PG_SYNTHESIS_DONE);
 		same_judgement(checked, applied);
