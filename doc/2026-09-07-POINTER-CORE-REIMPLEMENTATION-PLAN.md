@@ -2303,6 +2303,20 @@ Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
   Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
   Implementation C/header delta: +41/-7; tests: +11/-5 (documentation excluded).
 
+- [x] After `0ce4bfb`, expose `pg_binding_face_view` for recovering embedded
+  cube/face geometry from a context's binder pointer. Boundary binders retain
+  `PG_BINDER`; the existing owner pointer identifies their containing object.
+  No new Core kind, name lookup, reverse index or copied classifier is added.
+  Geometry remains graph-owned after the Dimensions indices are destroyed.
+  Ordinary binders, NULL and non-binder references are rejected by the view.
+  Binding a face still obeys ordinary Lambda alpha comparison without merging
+  distinct pointer structures. Both oriented square contexts recover all nine
+  faces through accepted variable/regularity evidence; the negative raw-center
+  substitution test remains unchanged. This provides input recovery for the
+  typed boundary transformation, not permission to transpose a center proof.
+  Optimized and ASan/UBSan full pointer checks and 512 KiB Core/Identity tests
+  pass. Implementation C/header delta: +15/-2; tests: +22/-0; docs excluded.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action

@@ -57,6 +57,10 @@ const struct pg_binding_cube *pg_binding_cube(struct pg_dimensions *dimensions, 
 /* Faces use every source axis. Degeneracies are actions, not new variables. */
 const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
 	const struct pg_binding_cube *cube, const struct pg_dimension_map *face);
+/* Recover embedded geometry from a boundary binder, without an index lookup.
+ * Ordinary binders and semantic references return NULL. This supplies no
+ * classifier or Identity evidence. The view has the owning graph's lifetime. */
+const struct pg_binding_face *pg_binding_face_view(const struct pg_object *binder);
 const struct pg_binding_face *pg_binding_restrict(struct pg_dimensions *dimensions,
 	const struct pg_binding_face *binding, const struct pg_dimension_map *face);
 /* Postcompose the face with a permutation of its owning cube's axes. Unlike

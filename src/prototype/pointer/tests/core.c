@@ -2003,6 +2003,16 @@ static void dimension_test(struct pg_graph *graph)
 	printf("dimension: %zu maps, %zu composable triples; 3D faces/permutations passed\n", map_count, triples);
 	pg_dimensions_destroy(&dimensions);
 	/* Operator lifetime follows the graph, and composition retains capture. */
+	assert(pg_binding_face_view(&top->variable) == top);
+	assert(pg_binding_face_view(&bottom->variable) == bottom);
+	assert(!pg_binding_face_view(captured));
+	assert(!pg_binding_face_view(NULL));
+	struct pg_object semantic = {PG_SEMANTIC_OBJECT, top->variable.owner};
+	assert(!pg_binding_face_view(&semantic));
+	const struct pg_term *face_identity = pg_lambda(graph, &top->variable, pg_reference(graph, &top->variable));
+	const struct pg_term *ordinary_identity = pg_lambda(graph, captured, captured_value);
+	assert(face_identity != ordinary_identity);
+	assert(pg_alpha_equal(face_identity, ordinary_identity) == 1);
 	const struct pg_term *symmetry_cases[] = {closed_symmetry, hidden_symmetry, wide_symmetry};
 	size_t case_count = sizeof(symmetry_cases) / sizeof(*symmetry_cases);
 	for (size_t test = 0; test < case_count; ++test) {

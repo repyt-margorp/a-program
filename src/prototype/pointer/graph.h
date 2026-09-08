@@ -29,7 +29,8 @@ int pg_index_insert(struct pg_index *index, struct pg_index_entry *entry, uint64
 enum pg_term_kind { PG_LAMBDA, PG_APPLICATION, PG_REFERENCE };
 enum pg_object_kind { PG_BINDER, PG_SEMANTIC_OBJECT };
 
-/* Semantic owners embed this header; Core does not inspect their payloads. */
+/* Owners embed this header; Core does not inspect their payloads. A binder
+ * may have an owner (for example, cube geometry) without becoming a constant. */
 struct pg_object_class {
 	const char *name;
 };

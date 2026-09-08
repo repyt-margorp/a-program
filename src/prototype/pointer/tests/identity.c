@@ -765,6 +765,18 @@ static void square_transposition_boundary(struct pg_typing *typing, struct pg_cl
 	contexts[0] = pg_identity_cube_context(typing, &dimensions, source, 1, &cube, pg_dimension_identity(&dimensions, 2));
 	contexts[1] = pg_identity_cube_context(typing, &dimensions, source, 1, &cube, swap);
 	assert(contexts[0] && contexts[1]);
+	for (size_t orientation = 0; orientation < 2; ++orientation) {
+		const struct pg_evidence *declaration = contexts[orientation];
+		for (size_t i = 0; i < 9; ++i) {
+			const struct pg_binding_face *face = pg_binding_face_view(pg_evidence_context(declaration)->binder);
+			assert(face && face->cube == cube);
+			const struct pg_evidence *value = pg_prove_variable(typing, contexts[orientation], &face->variable);
+			assert(value && pg_evidence_subject(value)->core == pg_reference(graph, &face->variable));
+			assert(pg_prove_classifier(typing, classifiers, contexts[orientation], value));
+			declaration = pg_evidence_premise(declaration, 0);
+		}
+		assert(declaration == empty);
+	}
 	size_t terms = graph->terms.count, proofs = typing->proofs.count;
 	assert(pg_identity_cube_context(typing, &dimensions, source, 1, &cube, swap) == contexts[1]);
 	assert(graph->terms.count == terms && typing->proofs.count == proofs);

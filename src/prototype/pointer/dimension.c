@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const struct pg_object_class binding_face_class = {"cube-boundary-binding"};
+
 struct pg_map_entry {
 	struct pg_index_entry index;
 	struct pg_dimension_map map;
@@ -200,9 +202,15 @@ const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
 	}
 	struct pg_binding_entry *entry = pg_alloc(dimensions->graph, sizeof(*entry));
 	if (!entry) return NULL;
-	entry->binding = (struct pg_binding_face){{.kind = PG_BINDER}, cube, face};
+	entry->binding = (struct pg_binding_face){{PG_BINDER, &binding_face_class}, cube, face};
 	if (pg_index_insert(&dimensions->binding_faces, &entry->index, hash) != 0) return NULL;
 	return &entry->binding;
+}
+
+const struct pg_binding_face *pg_binding_face_view(const struct pg_object *binder)
+{
+	if (!binder || binder->kind != PG_BINDER || binder->owner != &binding_face_class) return NULL;
+	return (const struct pg_binding_face *)binder;
 }
 
 const struct pg_binding_face *pg_binding_restrict(struct pg_dimensions *dimensions,
