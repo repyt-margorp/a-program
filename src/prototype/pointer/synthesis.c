@@ -277,18 +277,41 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 		.binder = binder, .context_job = pg_synthesis_evidence(synthesis, extended_context)});
 }
 
+enum { RULE_KEY_FIELDS = 11 };
+
+static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
+{
+	const uint64_t fields[RULE_KEY_FIELDS] = {input->rule,
+		(uintptr_t)input->parameters.binder, (uintptr_t)input->parameters.effects,
+		input->parameters.level, input->parameters.direction,
+		(uintptr_t)input->parameters.conversion, (uintptr_t)input->parameters.reduction,
+		(uintptr_t)input->source, (uintptr_t)input->target, input->reduction_kind, input->count};
+	memcpy(key, fields, sizeof(fields));
+}
+
 static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 	enum job_role role, size_t count, const void *const *inputs)
 {
 	if (count > (SIZE_MAX - sizeof(struct pg_synthesis_job)) / sizeof(*inputs)) return NULL;
 	uint64_t hash = ((unsigned)role ^ count) * UINT64_C(1099511628211);
-	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)inputs[i]) * UINT64_C(1099511628211);
+	int producer_rule = role == DERIVATION_JOB && count > 1;
+	uint64_t key[RULE_KEY_FIELDS];
+	if (producer_rule) {
+		rule_key(inputs[0], key);
+		for (size_t i = 0; i < RULE_KEY_FIELDS; ++i) hash = (hash ^ key[i]) * UINT64_C(1099511628211);
+	}
+	for (size_t i = producer_rule; i < count; ++i) hash = (hash ^ (uintptr_t)inputs[i]) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->jobs, hash); entry; entry = entry->next) {
 		if (entry->hash != hash) continue;
 		struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 		if (job->role != role) continue;
 		if (job->input_count != count) continue;
-		size_t i = 0;
+		if (producer_rule) {
+			uint64_t candidate[RULE_KEY_FIELDS];
+			rule_key(job->inputs[0], candidate);
+			if (memcmp(key, candidate, sizeof(key))) continue;
+		}
+		size_t i = producer_rule;
 		while (i < count && job->inputs[i] == inputs[i]) ++i;
 		if (i == count) return job;
 	}
@@ -298,6 +321,12 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 	job->role = role;
 	job->input_count = count;
 	for (size_t i = 0; i < count; ++i) job->inputs[i] = inputs[i];
+	if (producer_rule) {
+		struct pg_derivation_input *input = pg_alloc(synthesis->typing->graph, sizeof(*input));
+		if (!input) return NULL;
+		*input = *(const struct pg_derivation_input *)inputs[0];
+		job->inputs[0] = input;
+	}
 	if (role == BINDING_JOB) {
 		job->binder = pg_binder(synthesis->typing->graph);
 		if (!job->binder) return NULL;
@@ -2487,11 +2516,9 @@ static void handler_carrier_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (!pg_effect_equation_parameter(effects->inputs[0], job->inputs[3])) {
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
-		struct pg_derivation_input *input = pg_alloc(synthesis->typing->graph, sizeof(*input));
-		if (!input) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		*input = (struct pg_derivation_input){.rule = PG_RETURN_TYPE_FORM, .count = 1};
+		struct pg_derivation_input input = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
 		struct pg_synthesis_job *premise = pg_synthesis_evidence(synthesis, value);
-		job->value_job = pg_synthesis_rule(synthesis, input, &premise,
+		job->value_job = pg_synthesis_rule(synthesis, &input, &premise,
 			(void *)effects->inputs[0], job->inputs[3]);
 		if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
@@ -3145,12 +3172,10 @@ static int lexical_variable_step(struct pg_synthesis *synthesis, struct pg_synth
 			if (scope->definitions && scope->definitions->indexed < scope->definitions->count) return 0;
 		struct source_reference reference = lookup_scope(job->scope, job->syntax->token);
 		if (!reference.binder) return 0;
-		struct pg_derivation_input *input = pg_alloc(synthesis->typing->graph, sizeof(*input));
-		if (!input) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
-		*input = (struct pg_derivation_input){.rule = PG_VARIABLE,
+		struct pg_derivation_input input = {.rule = PG_VARIABLE,
 			.parameters.binder = reference.binder, .count = 1};
 		job->binder = reference.binder;
-		job->left = pg_synthesis_rule(synthesis, input, &job->scope->context_job, NULL, NULL);
+		job->left = pg_synthesis_rule(synthesis, &input, &job->scope->context_job, NULL, NULL);
 	}
 	forward_proof(synthesis, job, job->left);
 	return 1;
@@ -3175,10 +3200,8 @@ static int prepare_expression(struct pg_synthesis *synthesis, struct pg_synthesi
 	}
 	if (!job->left) goto error;
 	if (syntax->kind == PG_SYNTAX_QUOTE) {
-		struct pg_derivation_input *input = pg_alloc(synthesis->typing->graph, sizeof(*input));
-		if (!input) goto error;
-		*input = (struct pg_derivation_input){.rule = PG_THUNK_INTRO, .count = 1};
-		job->right = pg_synthesis_rule(synthesis, input, &job->left, NULL, NULL);
+		struct pg_derivation_input input = {.rule = PG_THUNK_INTRO, .count = 1};
+		job->right = pg_synthesis_rule(synthesis, &input, &job->left, NULL, NULL);
 		if (!job->right) goto error;
 	} else {
 		job->right = pg_synthesis_request(synthesis, right_scope, syntax->right);

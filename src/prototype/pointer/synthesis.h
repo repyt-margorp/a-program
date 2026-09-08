@@ -153,7 +153,9 @@ struct pg_derivation_input;
 struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *input);
 /* Same unaccepted rule evaluator, with producer premises instead of loaded
- * input->premises. Borrow input for the synthesis lifetime. If work/equation
+ * input->premises. The input header is copied and structurally keyed together
+ * with exact premise/parameter producer pointers; header allocation identity
+ * does not distinguish otherwise identical rule calls. If work/equation
  * are supplied, await their closed result as the F-formation row parameter;
  * input->parameters.effects must then be NULL. No provisional proof is made.
  * The supplied array has input->count entries and is copied into the job key. */

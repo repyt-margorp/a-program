@@ -167,6 +167,16 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		struct pg_synthesis_job *type_job = pg_synthesis_rule(&synthesis, &type_input, &universe_job, &work, a);
 		assert(type_job && !pg_synthesis_result(type_job));
 		assert(type_job == pg_synthesis_rule(&synthesis, &type_input, &universe_job, &work, a));
+		struct pg_derivation_input copied_input = type_input;
+		assert(type_job == pg_synthesis_rule(&synthesis, &copied_input, &universe_job, &work, a));
+		assert(type_job != pg_synthesis_rule(&synthesis, &copied_input, &universe_job, &work, b));
+		/* Caller-owned headers may be reused immediately; producer keys and
+		 * eventual acceptance retain the fields captured at registration. */
+		copied_input = universe_input;
+		copied_input.parameters.level = 1;
+		struct pg_synthesis_job *higher_universe = pg_synthesis_rule(&synthesis, &copied_input, &context_job, NULL, NULL);
+		assert(higher_universe && higher_universe != universe_job);
+		copied_input.parameters.level = 2;
 		assert(!pg_synthesis_rule(&synthesis, &type_input, &universe_job, &work, other));
 		assert(!pg_synthesis_rule(&synthesis, &universe_input, &context_job, &work, a));
 		struct pg_derivation_input conflicting = {.rule = PG_RETURN_TYPE_FORM,
@@ -200,6 +210,8 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		assert(!pg_effect_inference_result(&work, other));
 		assert(pg_effect_inference_advance(&work, 0) == 1);
 		const struct pg_evidence *type_proof = complete(&synthesis, type_job, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(complete(&synthesis, higher_universe, PG_SYNTHESIS_DONE))->core
+			== pg_universe(classifiers, 1));
 		assert(pg_evidence_subject(type_proof)->core == pg_effect_type(classifiers, rows[seed | 2], value_type));
 		assert(!type_input.parameters.effects);
 		struct pg_binding_value binding = {parameter,

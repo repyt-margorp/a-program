@@ -110,6 +110,19 @@ Next implementation sequence (prerequisite for automatic source handlers):
   parameter rules and conflicting row sources. Loaded derivation inputs retain
   their existing wire format; pending parameter transport/source generation
   and more general classifier constraints remain unfinished.
+  Producer-rule calls now share by rule/header fields and exact premise/effect
+  producer pointers, rather than the allocation address of the input header.
+  Headers are copied on first registration; source variable, quotation and
+  handler-carrier preparation use temporary headers. Different premise DAGs,
+  binders, row equation sites, levels and conversion endpoints remain distinct.
+  This is exact rule-call sharing, not proof irrelevance or Core normalization.
+  Loaded recursive rule inputs retain their separate input-DAG identity until
+  traversal; no eager recursive interning or second acceptance checker is added.
+  Tests cover independently allocated equivalent headers, distinct row sites
+  and levels, and mutation of caller storage after registration.
+  Validation: normal `check`, eight example synthesis cases, six runtime result
+  cases and rebuilt ASan/UBSan synthesis tests pass. List synthesis takes 977
+  transitions instead of 979; this is not a general performance claim.
 - [ ] Let source binders retain the unaccepted context and its formation
   producer. Generate body constraints without claiming that this context is
   accepted. Allocate each binder once; publishing the eventual formation must
