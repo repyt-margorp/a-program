@@ -15,6 +15,81 @@ criteria for merging different Lambda or semantic-object references.
 
 ### September 8 handler effect-equation boundary
 
+#### September 9 audit: remaining source-inference cycle
+
+Checked against `9777de9`. The carrier APIs below do not remove this cycle:
+
+```
+accepted resumption context requires closed G
+    -> clause source synthesis requires that context
+    -> clause effects contribute to G
+```
+
+Concrete sites:
+
+- `synthesis.c:handler_clause_step` calls `pg_prove_handler_context` before
+  binding the payload/resumption names and requesting the clause body.
+- `evidence.c:pg_prove_handler_context` requires accepted `F G C` formation.
+- `synthesis.c:raw_application_step` waits for both accepted operands before
+  recovering the Pi domain/codomain; `open_continuation` likewise requires
+  accepted F formation before introducing a result binder.
+- `classifier.h` explicitly represents CLOSED sets, not row metavariables.
+- `typing.h` already has unaccepted `pg_context` and `pg_occurrence` structures;
+  the missing facility is their use by pending synthesis, not another ContextDB.
+- `derivation_io.h:pg_derivation_input` already represents unaccepted rule
+  applications, but its parameters currently contain a closed effects pointer
+  and its premises are fixed rule inputs. It cannot yet refer to a pending
+  effect-equation result as a parameter producer.
+
+Do not add another complete syntax walker to guess effects, or keep extending
+explicit-carrier wrappers and call that automatic source inference. Higher-order
+values carry latent effects inside `U(Pi(A,F G C))`: inspecting only the outer
+effect of an expression loses these dependencies. A quoted resumption is a value
+but still contains G in its callable classifier.
+
+A fresh operation label is NOT a sound encoding of an unknown row. Let rho be
+such a label and H = {print}. Computing `{rho} minus H` retains rho. Substituting
+rho := {print} afterwards yields {print}, whereas substituting before subtraction
+yields the empty set. Unknown rows must retain the subtraction dependency, not
+be treated as nominal operations by closed-row set operations. Similarly, first
+checking k under an empty G can incorrectly discharge a pure-effect expectation;
+later widening its type would invalidate that previously accepted derivation.
+
+Next implementation sequence (prerequisite for automatic source handlers):
+
+- [ ] Represent pending classifier parameters as references to existing
+  producers/equation sites in the unaccepted graph. Keep exact pointer interning
+  and the same Lambda/APP/Reference Core; do not add a second Pi/Context family.
+  A pending row must not pass the closed-row view or yield accepted F formation.
+  Specify owner lifetime/relocation before inserting equation references into
+  longer-lived Core: current equation storage is freed with its worker.
+- [ ] Generalize existing unaccepted rule inputs to await parameter producers
+  as well as premise producers. Reuse ordinary `pg_prove_derivation` acceptance;
+  do not add provisional evidence or a second rule checker. A loaded `.a` uses
+  the same producer graph, with no separate Replay semantics.
+- [ ] Let source binders retain the unaccepted context and its formation
+  producer. Generate body constraints without claiming that this context is
+  accepted. Allocate each binder once; publishing the eventual formation must
+  neither rename it nor mutate an earlier accepted context.
+- [ ] Use the existing expression traversal for APP, force/thunk, sequencing
+  and clause bodies to construct pending rule applications and row dependencies.
+  Carry latent effects through callable types, not a flat side table keyed by
+  erased Core. Keep `::` exclusively downstream of independent synthesis.
+- [ ] Seal effect work only when all reachable contributions are generated.
+  Resolve row parameters, then check the retained rule applications using the
+  ordinary kernel. Solve must not resynthesize the source under successive G
+  guesses; accepted proofs stay immutable.
+- [ ] Connect this path to ordinary handler source dispatch. Retain regressions
+  for reissuing clauses, nested masks, quoted/passed resumptions, invalid pure
+  expectations, aliases, and split budgets. The hand-supplied effect graph in
+  the current fixture is not evidence that this gate passes.
+
+This is an implementation gap in pending elaboration, not a contradiction in
+the deep-handler equation or a reason to change its kernel typing rule. The
+existing closed-effect worker and final handler checker remain reusable. This
+audit supersedes any expectation that wiring the last carrier API alone would
+finish general handler source support.
+
 - [x] September 9: `pg_synthesis_handler_carrier(context, returned, work,
   equation)` awaits the independently synthesized return continuation and the
   sealed effect closure through ordinary Solve. Existing Pi-codomain and F
