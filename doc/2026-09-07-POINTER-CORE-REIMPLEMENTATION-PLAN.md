@@ -107,6 +107,11 @@ of the rewrite.
   Scope interning includes the IH-to-field association; it is lexical metadata,
   not another accepted classifier. Direct-field classification is shared by
   source binding, kernel IH formation and erasure.
+- [x] Fix marked-operand precedence: `f *x` now parses as `f (*x)`, rather
+  than `(f *) x`. The marker remains an ordinary source APP shape, so
+  declaration `* i` still resolves as indexed Self. Bare terminal Self is
+  unchanged. Parser tests cover spacing/parentheses; an explicit-motive
+  induction test synthesizes `Nat.succ *k` and normalizes to the original Nat.
 - [ ] Connect ordinary Match motive constraints to these branch jobs. Current
   ordinary Match still synthesizes fields-only branches and therefore cannot
   yet use `*k`. Do not install an expected result as a synthesized motive or
@@ -143,6 +148,8 @@ synthesis test including function-valued motives, and ASan/UBSan synthesis.
 Tests connect parsed `*k` and `*k m` branches to checked induction and execution,
 verify request reuse and reject accidental capture after field-name shadowing.
 The ordinary source gate remains 6/8; these explicit-motive tests do not replace it.
+The marked-operand correction also passed optimized `check` and ASan/UBSan
+reader/synthesis tests. The source gate still has the same 6/8 result.
 
 Code-level obstruction and implementation order:
 

@@ -2755,6 +2755,18 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *countdown_result = complete(&synthesis,
 		pg_synthesis_return(&synthesis, empty, countdown), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(countdown_result)->core == pg_evidence_subject(zero)->core);
+	const struct pg_syntax *copy_induction = expression_syntax(typing->graph,
+		"r:=Nat.zero @zero=>Nat.zero @succ k=>Nat.succ *k;");
+	for (size_t i = 0; i < 2; ++i)
+		induction_branches[i] = complete(&synthesis, pg_synthesis_induction_branch(&synthesis, named,
+			nat, pg_data_constructor(nat_layout, i), nat_instance.parameters, motive_context, motive,
+			copy_induction->items[i].expression), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *copy = pg_prove_induction(typing, classifiers, nat,
+		nat_instance.parameters, two, motive_context, motive, 2, induction_branches);
+	assert(copy);
+	const struct pg_evidence *copied = complete(&synthesis, pg_synthesis_nf(&synthesis, empty, copy), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *copied_value = pg_prove_return_value(typing, copied);
+	assert(copied_value && pg_evidence_subject(copied_value)->core == pg_evidence_subject(two)->core);
 	const struct pg_evidence *function_motive = pg_prove_projection(typing, motive_context,
 		pg_prove_classifier(typing, classifiers, empty, succ));
 	const struct pg_syntax *function_induction = expression_syntax(typing->graph,

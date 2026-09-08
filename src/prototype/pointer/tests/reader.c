@@ -388,6 +388,26 @@ static void programs(void)
 	puts("program syntax: flat/explicit definition arrays retain checks, imports and selection without Core construction");
 }
 
+static void marked_applications(void)
+{
+	const char *sources[] = {"r:=f *x;", "r:=f (*x);", "r:=f * x;", "r:=f *(x);"};
+	struct pg_graph arena = {0};
+	for (size_t i = 0; i < sizeof(sources) / sizeof(*sources); ++i) {
+		struct pg_parser parser;
+		struct pg_definition definition;
+		pg_parser_init(&parser, &arena, sources[i], strlen(sources[i]));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		const struct pg_syntax *application = definition.expression;
+		assert(application->kind == PG_SYNTAX_APPLICATION && application->left->kind == PG_SYNTAX_ATOM);
+		assert(application->left->token.text[0] == 'f');
+		assert(application->right->kind == PG_SYNTAX_APPLICATION);
+		assert(application->right->left->token.kind == '*');
+		assert(application->right->right->token.text[0] == 'x');
+	}
+	assert(!arena.terms.count);
+	pg_graph_destroy(&arena);
+}
+
 int main(void)
 {
 	tokens();
@@ -398,6 +418,7 @@ int main(void)
 	declarations();
 	blocks();
 	eliminations();
+	marked_applications();
 	companions();
 	programs();
 	puts("reader: symbolic syntax, contextual names, literals, comments and bounded input passed");

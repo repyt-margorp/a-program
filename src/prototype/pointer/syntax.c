@@ -235,6 +235,11 @@ static const struct pg_syntax *atom(struct pg_parser *parser)
 		if (require(parser, ')', "expected ')' after expression") != 0) return NULL;
 	} else if (token.kind == '&') {
 		result = node(parser, PG_SYNTAX_QUOTE, token, atom(parser), NULL);
+	} else if (token.kind == '*' && atom_start(parser->reader.token.kind)) {
+		/* Keep the marked operand together in f *x. The same APP shape
+		 * represents indexed Self in declarations; resolution distinguishes it. */
+		const struct pg_syntax *marker = node(parser, PG_SYNTAX_ATOM, token, NULL, NULL);
+		result = node(parser, PG_SYNTAX_APPLICATION, token, marker, atom(parser));
 	} else {
 		if (token.kind == '@') {
 			int next = parser->reader.token.kind;
