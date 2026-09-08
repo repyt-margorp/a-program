@@ -9,4 +9,7 @@ trap 'rm -rf "$directory"' EXIT
 "$1" effect-write "$directory/effects.graph"
 "$1" effect-read "$directory/effects.graph"
 "$1" effect-read-bulk "$directory/effects.graph"
+"$1" layout-write "$directory/layout.graph"
+"$1" layout-read "$directory/layout.graph"
+"$1" layout-read-bulk "$directory/layout.graph"
 printf '%s\n' 'graph acceptance: fresh-process relocation, shared Core and distinct typed evidence passed'

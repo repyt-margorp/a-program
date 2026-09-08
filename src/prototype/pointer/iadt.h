@@ -19,6 +19,12 @@ const struct pg_object *pg_data_constructor(const struct pg_data_layout *layout,
 int pg_data_constructor_position(const struct pg_data_layout *layout,
 	const struct pg_object *constructor, size_t *position);
 const struct pg_object *pg_data_matcher(const struct pg_data_layout *layout);
+/* Inert representation inspection for shared graph transport. No schema or
+ * typing-store lookup occurs and no nominal formation is established. */
+const struct pg_data_layout *pg_data_layout_view(const struct pg_object *matcher);
+size_t pg_data_layout_count(const struct pg_data_layout *layout);
+int pg_data_constructor_view(const struct pg_object *constructor,
+	const struct pg_data_layout **layout, size_t *position, size_t *arity);
 /* Complete pointer-labelled clauses, in any order. Branches are ordinary
  * lambda terms over erased fields. Core operands retain every branch, so
  * substitution/readback needs no traversal into opaque descriptor payloads. */

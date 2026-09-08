@@ -16,13 +16,16 @@ int pg_graph_print(FILE *file, const struct pg_term *root);
  * evidence or host effects.
  * Repeated format names may create distinct nominal objects. Payload references
  * must be acyclic with the containing Term graph. restore may retain the terms,
- * not its temporary input array. Limits include descriptor argument edges. */
+ * not its temporary input arrays. scalar enumerates unsigned metadata with
+ * 1 item, 0 end, -1 error; NULL means none. Scalars are not Term dependencies
+ * or type evidence. Limits include descriptor edges and metadata items. */
 struct pg_graph_codec {
 	const char *(*name)(void *, const struct pg_object *);
 	const struct pg_object *(*resolve)(void *, const char *);
 	int (*child)(void *, struct pg_graph *, const struct pg_object *, size_t, const struct pg_term **);
+	int (*scalar)(void *, const struct pg_object *, size_t, uint64_t *);
 	const struct pg_object *(*restore)(void *, struct pg_graph *, const char *, size_t,
-		const struct pg_term *const *);
+		const struct pg_term *const *, size_t, const uint64_t *);
 };
 int pg_graph_write_descriptors(FILE *file, size_t count, const struct pg_term *const *roots,
 	const struct pg_graph_codec *codec, void *context);

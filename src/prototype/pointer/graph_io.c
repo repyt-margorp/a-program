@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-static const unsigned char magic[8] = {'A', 'P', 'G', 'C', 'O', 'R', 'E', 0};
+static const unsigned char magic[8] = {'A', 'P', 'G', 'C', 'O', 'R', 'E', 1};
 
 struct transport {
 	struct pg_dag *objects;
@@ -134,6 +134,12 @@ int pg_graph_write_descriptors(FILE *file, size_t count, const struct pg_term *c
 					status = codec->child(context, &transport.scratch, object, i + 1, &payload);
 				}
 				if (status || pg_wire_write_u64(file, 0)) goto done;
+				for (size_t i = 0;; ++i) {
+					uint64_t value;
+					int item = codec->scalar ? codec->scalar(context, object, i, &value) : 0;
+					if (!item) { if (fputc(0, file) == EOF) goto done; break; }
+					if (item != 1 || i == SIZE_MAX || fputc(1, file) == EOF || pg_wire_write_u64(file, value)) goto done;
+				}
 			}
 		}
 	}
@@ -167,7 +173,7 @@ done:
 }
 
 struct payload_edge {
-	size_t term;
+	uint64_t value;
 	struct payload_edge *next;
 };
 struct object_input {
@@ -176,6 +182,8 @@ struct object_input {
 	enum pg_object_kind kind;
 	size_t count;
 	struct payload_edge *first;
+	size_t scalar_count;
+	struct payload_edge *scalars;
 };
 
 static int read_objects(FILE *file, struct pg_graph *graph, size_t count, size_t name_limit,
@@ -205,9 +213,20 @@ static int read_objects(FILE *file, struct pg_graph *graph, size_t count, size_t
 					--*available;
 					*next = pg_alloc(graph, sizeof(**next));
 					if (!*next) return -1;
-					(*next)->term = (size_t)id;
+					(*next)->value = id;
 					next = &(*next)->next;
 					++record->count;
+				}
+				next = &record->scalars;
+				for (;;) {
+					int item = fgetc(file);
+					if (!item) break;
+					if (item != 1 || !*available) return -1;
+					--*available;
+					*next = pg_alloc(graph, sizeof(**next));
+					if (!*next || pg_wire_read_u64(file, &(*next)->value)) return -1;
+					next = &(*next)->next;
+					++record->scalar_count;
 				}
 				continue;
 			}
@@ -231,10 +250,14 @@ static const struct pg_object *restore_object(struct pg_graph *graph, struct obj
 	if (!payload) return NULL;
 	size_t i = 0;
 	for (const struct payload_edge *edge = input->first; edge; edge = edge->next) {
-		if (edge->term > count) return NULL;
-		payload[i++] = terms[edge->term - 1];
+		if (edge->value > count) return NULL;
+		payload[i++] = terms[edge->value - 1];
 	}
-	const struct pg_object *object = codec->restore(context, graph, input->name, input->count, payload);
+	uint64_t *scalars = pg_alloc(graph, input->scalar_count * sizeof(*scalars));
+	if (!scalars) return NULL;
+	i = 0;
+	for (const struct payload_edge *item = input->scalars; item; item = item->next) scalars[i++] = item->value;
+	const struct pg_object *object = codec->restore(context, graph, input->name, input->count, payload, input->scalar_count, scalars);
 	if (!object || object->kind != input->kind || pg_dag_find(seen, object) || pg_dag_add(seen, object)) return NULL;
 	input->object = object;
 	return object;

@@ -204,7 +204,7 @@ int main(void)
 	assert(file && pg_graph_write(file, 1, &cyclic, name, NULL) == -1);
 	assert(fclose(file) == 0);
 	file = tmpfile();
-	assert(file && fwrite("APGCORE\0", 1, 8, file) == 8);
+	assert(file && fwrite("APGCORE\1", 1, 8, file) == 8);
 	assert(!pg_wire_write_u64(file, 0) && !pg_wire_write_u64(file, 1) && !pg_wire_write_u64(file, 1));
 	assert(fputc(PG_APPLICATION, file) != EOF);
 	assert(!pg_wire_write_u64(file, 1) && !pg_wire_write_u64(file, 1) && !pg_wire_write_u64(file, 1));

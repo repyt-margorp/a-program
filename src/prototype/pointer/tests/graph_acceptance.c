@@ -6,6 +6,7 @@
 #include "descriptor_io.h"
 #include "effect_inference.h"
 #include "wire.h"
+#include "iadt.h"
 
 #include <assert.h>
 #include <string.h>
@@ -305,18 +306,80 @@ static void effect_graph(FILE *file, struct pg_graph *graph, int writing, uint64
 	pg_classifiers_destroy(&classifiers);
 }
 
+static void layout_graph(FILE *file, struct pg_graph *graph, int writing, uint64_t budget)
+{
+	struct pg_classifiers classifiers;
+	struct pg_typing typing;
+	assert(!pg_classifiers_init(&classifiers, graph) && !pg_typing_init(&typing, graph));
+	if (writing) {
+		const size_t arities[] = {0, 1};
+		const struct pg_data_layout *a = pg_data_layout(graph, 2, arities), *b = pg_data_layout(graph, 2, arities);
+		const struct pg_term *zero = pg_reference(graph, pg_data_constructor(a, 0));
+		const struct pg_object *x = pg_binder(graph);
+		const struct pg_match_clause clauses[] = {{pg_data_constructor(a, 0), zero},
+			{pg_data_constructor(a, 1), pg_lambda(graph, x, pg_reference(graph, x))}};
+		const struct pg_term *successor = pg_application(graph, pg_reference(graph, pg_data_constructor(a, 1)), zero);
+		const struct pg_term *match = pg_data_match(graph, a, successor, 2, clauses);
+		const struct pg_term *foreign = pg_reference(graph, pg_data_constructor(b, 0));
+		const struct pg_term *roots[] = {zero, successor, match, match, foreign,
+			pg_data_match(graph, a, foreign, 2, clauses), pg_reference(graph, pg_data_matcher(pg_data_layout(graph, 0, NULL)))};
+		size_t terms = graph->terms.count, objects = graph->objects.count;
+		assert(!pg_graph_write_descriptors(file, 7, roots, &pg_builtin_graph_codec, &classifiers));
+		assert(terms == graph->terms.count && objects == graph->objects.count && !typing.proofs.count);
+	} else {
+		size_t count;
+		const struct pg_term *const *roots;
+		assert(!pg_graph_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, &classifiers, &count, &roots));
+		assert(count == 7 && roots[2] == roots[3] && !typing.proofs.count);
+		const struct pg_data_layout *a, *b;
+		size_t position, arity;
+		assert(pg_data_constructor_view(roots[0]->as.reference, &a, &position, &arity) && position == 0 && arity == 0);
+		assert(pg_data_layout_count(a) == 2);
+		assert(pg_data_constructor_view(roots[4]->as.reference, &b, &position, &arity) && a != b);
+		assert(!pg_data_constructor_position(a, roots[4]->as.reference, &position));
+		const struct pg_term *head = roots[1]->as.application.function;
+		assert(head->as.reference == pg_data_constructor(a, 1));
+		assert(pg_data_constructor_view(head->as.reference, &b, &position, &arity) && b == a && position == 1 && arity == 1);
+		assert(roots[1]->as.application.argument == roots[0]);
+		const struct pg_data_layout *empty = pg_data_layout_view(roots[6]->as.reference);
+		assert(empty && !pg_data_layout_count(empty) && !pg_data_constructor(empty, 0));
+		const struct pg_term *owner = pg_reference(graph, pg_data_matcher(a));
+		const uint64_t out_of_range = 2;
+		assert(!pg_builtin_graph_codec.restore(&classifiers, graph, "data-constructor/v1", 1, &owner, 1, &out_of_range));
+		assert(!pg_builtin_graph_codec.restore(&classifiers, graph, "data-constructor/v1", 1, &owner, 0, NULL));
+		assert(!pg_builtin_graph_codec.restore(&classifiers, graph, "data-layout/v1", 1, &owner, 0, NULL));
+		assert(!pg_builtin_graph_codec.restore(&classifiers, graph, "effect-row/v1", 0, NULL, 1, &out_of_range));
+		struct pg_whnf_work work;
+		assert(!pg_whnf_work_init(&work, graph));
+		struct pg_whnf_job *match = pg_whnf_request(&work, &pg_pure_policy, roots[2]);
+		while (pg_whnf_advance(match, budget) == PG_EVAL_PENDING) assert(pg_whnf_steps(match) < 1000);
+		assert(pg_whnf_status(match) == PG_EVAL_WHNF && pg_whnf_result(match) == roots[0]);
+		match = pg_whnf_request(&work, &pg_pure_policy, roots[5]);
+		while (pg_whnf_advance(match, budget) == PG_EVAL_PENDING) assert(pg_whnf_steps(match) < 1000);
+		assert(pg_whnf_status(match) == PG_EVAL_WHNF && pg_alpha_equal(pg_whnf_result(match), roots[5]) == 1);
+		assert(!typing.proofs.count);
+		pg_whnf_work_destroy(&work);
+		descriptor_boundaries(file);
+		puts("layout image: distinct layouts, shared constructors, scalar metadata and resumed iota passed");
+	}
+	pg_typing_destroy(&typing);
+	pg_classifiers_destroy(&classifiers);
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
 	int operation = !strcmp(argv[1], "operation-write") || !strcmp(argv[1], "operation-read");
 	int effect = !strcmp(argv[1], "effect-write") || !strcmp(argv[1], "effect-read") || !strcmp(argv[1], "effect-read-bulk");
-	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "operation-write") || !strcmp(argv[1], "effect-write");
-	assert(writing || !strcmp(argv[1], "read") || operation || effect);
+	int layout = !strcmp(argv[1], "layout-write") || !strcmp(argv[1], "layout-read") || !strcmp(argv[1], "layout-read-bulk");
+	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "operation-write") || !strcmp(argv[1], "effect-write") || !strcmp(argv[1], "layout-write");
+	assert(writing || !strcmp(argv[1], "read") || operation || effect || layout);
 	FILE *file = fopen(argv[2], writing ? "wb" : "rb");
 	assert(file);
 	struct pg_graph graph;
 	assert(pg_graph_init(&graph) == 0);
-	if (effect) effect_graph(file, &graph, writing, !strcmp(argv[1], "effect-read-bulk") ? 100 : 1);
+	if (layout) layout_graph(file, &graph, writing, !strcmp(argv[1], "layout-read-bulk") ? 100 : 1);
+	else if (effect) effect_graph(file, &graph, writing, !strcmp(argv[1], "effect-read-bulk") ? 100 : 1);
 	else if (operation) operation_graph(file, &graph, writing);
 	else if (writing) write_graph(file, &graph);
 	else read_graph(file, &graph);

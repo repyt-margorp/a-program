@@ -2,6 +2,7 @@
 #include "evidence.h"
 #include "computation.h"
 #include "identity.h"
+#include "iadt.h"
 #include <string.h>
 
 static const struct pg_effect_row *object_row(const struct pg_object *object)
@@ -20,6 +21,10 @@ static const char *descriptor_name(void *context, const struct pg_object *object
 {
 	(void)context;
 	const struct pg_term *payload, *response;
+	const struct pg_data_layout *layout;
+	size_t position, arity;
+	if (pg_data_layout_view(object)) return "data-layout/v1";
+	if (pg_data_constructor_view(object, &layout, &position, &arity)) return "data-constructor/v1";
 	if (pg_operation_label_types(object, &payload, &response)) return "operation-label/v1";
 	if (object_row(object)) return "effect-row/v1";
 	if (object_handler(object)) return "handler-signature/v1";
@@ -42,6 +47,14 @@ static int descriptor_child(void *context, struct pg_graph *scratch,
 	const struct pg_object *object, size_t index, const struct pg_term **child)
 {
 	(void)context;
+	if (pg_data_layout_view(object)) return 0;
+	const struct pg_data_layout *layout;
+	size_t position, arity;
+	if (pg_data_constructor_view(object, &layout, &position, &arity)) {
+		if (index) return 0;
+		*child = pg_reference(scratch, pg_data_matcher(layout));
+		return *child ? 1 : -1;
+	}
 	const struct pg_term *payload, *response;
 	if (pg_operation_label_types(object, &payload, &response)) {
 		if (index >= 2) return 0;
@@ -56,10 +69,48 @@ static int descriptor_child(void *context, struct pg_graph *scratch,
 	return *child ? 1 : -1;
 }
 
-static const struct pg_object *descriptor_restore(void *context, struct pg_graph *graph,
-	const char *name, size_t count, const struct pg_term *const *terms)
+static int descriptor_scalar(void *context, const struct pg_object *object, size_t index, uint64_t *value)
 {
 	(void)context;
+	const struct pg_data_layout *layout = pg_data_layout_view(object);
+	size_t position, arity;
+	if (layout) {
+		if (index >= pg_data_layout_count(layout)) return 0;
+		if (!pg_data_constructor_view(pg_data_constructor(layout, index), &layout, &position, &arity)) return -1;
+		*value = arity;
+		return 1;
+	}
+	if (!pg_data_constructor_view(object, &layout, &position, &arity) || index) return 0;
+	*value = position;
+	return 1;
+}
+
+static const struct pg_object *descriptor_restore(void *context, struct pg_graph *graph,
+	const char *name, size_t count, const struct pg_term *const *terms,
+	size_t scalar_count, const uint64_t *scalars)
+{
+	(void)context;
+	if (!strcmp(name, "data-layout/v1")) {
+		if (count || scalar_count > SIZE_MAX / sizeof(size_t)) return NULL;
+		struct pg_graph temporary = {0};
+		size_t *arities = pg_alloc(&temporary, scalar_count * sizeof(*arities));
+		if (!arities) return NULL;
+		const struct pg_data_layout *layout = NULL;
+		for (size_t i = 0; i < scalar_count; ++i) {
+			arities[i] = (size_t)scalars[i];
+			if ((uint64_t)arities[i] != scalars[i]) goto layout_done;
+		}
+		layout = pg_data_layout(graph, scalar_count, arities);
+layout_done:
+		pg_graph_destroy(&temporary);
+		return pg_data_matcher(layout);
+	}
+	if (!strcmp(name, "data-constructor/v1")) {
+		if (count != 1 || scalar_count != 1 || terms[0]->kind != PG_REFERENCE) return NULL;
+		if ((uint64_t)(size_t)scalars[0] != scalars[0]) return NULL;
+		return pg_data_constructor(pg_data_layout_view(terms[0]->as.reference), (size_t)scalars[0]);
+	}
+	if (scalar_count) return NULL;
 	if (!strcmp(name, "operation-label/v1"))
 		return count == 2 ? pg_operation_label_create(graph, terms[0], terms[1]) : NULL;
 	int handler = !strcmp(name, "handler-signature/v1");
@@ -87,5 +138,5 @@ done:
 
 const struct pg_graph_codec pg_builtin_graph_codec = {
 	.name = descriptor_name, .resolve = descriptor_resolve,
-	.child = descriptor_child, .restore = descriptor_restore
+	.child = descriptor_child, .scalar = descriptor_scalar, .restore = descriptor_restore
 };

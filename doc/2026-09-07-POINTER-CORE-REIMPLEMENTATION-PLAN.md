@@ -13,6 +13,45 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Erased Constructor Layout Transport
+
+Continuation after `e6a35dc`. Erased constructors and their matcher can now
+travel through the shared Core relocation table. A layout carries constructor
+arities; each constructor references its owning layout and position. Separate
+layouts with identical arities remain separate, while repeated constructor
+references retain sharing. Positions are transport metadata, not replacement
+runtime identities: execution continues to select constructors by pointers.
+
+The generic descriptor payload adds unsigned scalar metadata rather than
+encoding arities as Universe or Lambda terms. The experimental APGCORE header
+is version 1; previous layouts are rejected. Scalars consume the existing
+reader item budget. No new Core term tag or typed evidence is introduced.
+APGDRV remains version 4 with the updated nested Core format.
+
+- [x] Transport empty and nonempty erased layouts and shared constructor roots.
+- [x] Resume iota in a separate process using the ordinary pure evaluator, with
+  budgets 1/100; retain neutrality for a constructor from a different layout.
+- [x] Reject missing/out-of-range constructor metadata and unexpected scalar
+  payloads; reject truncated images without publishing roots.
+- [x] Keep source term/object counts unchanged during export and create no
+  typing evidence during import or erased evaluation.
+- [ ] Transport nominal schema inputs and their dependent formation premises.
+- [ ] Admit restored constructor/Match/IH derivations through ordinary Solve.
+- [ ] Preserve complete unfinished modules, imports and CLI `.a` checkpoints.
+
+Replay clarification: do not implement a second rule interpreter or reconstruct
+the original search history. Loading relocates inert graph/input structures;
+ordinary Solve accepts derivations and advances unresolved obligations. A saved
+acceptance flag alone is not evidence. Retention modes may omit recomputable
+work or retain derivations, but cannot change the rule for accepting them.
+Checking saved premises need not repeat proof search; reduction obligations may
+still require computation. This does not yet claim a complete checkpoint mode.
+
+Verification: normal `check`, eight example source checks and six runtime
+fixtures pass. Rebuilt ASan/UBSan graph and derivation image suites pass,
+including cross-process layout identity and resumed iota. Nominal IADT typing
+transport remains explicitly unsupported; these tests do not establish it.
+
 ### September 9: Read-Only Producer Export
 
 Continuation after `055a3af`. `pg_derivation_input` now belongs to the common

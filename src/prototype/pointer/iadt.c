@@ -50,6 +50,29 @@ const struct pg_object *pg_data_matcher(const struct pg_data_layout *layout)
 	return layout ? &layout->matcher : NULL;
 }
 
+const struct pg_data_layout *pg_data_layout_view(const struct pg_object *object)
+{
+	if (!object || object->kind != PG_SEMANTIC_OBJECT || object->owner != &match_class) return NULL;
+	return (const struct pg_data_layout *)object;
+}
+
+size_t pg_data_layout_count(const struct pg_data_layout *layout)
+{
+	return layout ? layout->count : 0;
+}
+
+int pg_data_constructor_view(const struct pg_object *object,
+	const struct pg_data_layout **layout, size_t *position, size_t *arity)
+{
+	if (!object || object->kind != PG_SEMANTIC_OBJECT || object->owner != &constructor_class) return 0;
+	if (!layout || !position || !arity) return 0;
+	const struct pg_constructor *constructor = (const struct pg_constructor *)object;
+	*layout = constructor->layout;
+	*position = (size_t)(constructor - constructor->layout->constructors);
+	*arity = constructor->arity;
+	return 1;
+}
+
 static const struct pg_constructor *constructor(const struct pg_object *object,
 	const struct pg_data_layout *layout)
 {
@@ -140,9 +163,7 @@ static int match_answer(struct pg_eval *machine, const struct pg_term *answer, c
 static const struct pg_data_layout *matcher(const struct pg_term *term)
 {
 	if (term->kind != PG_REFERENCE) return NULL;
-	const struct pg_object *object = term->as.reference;
-	if (object->kind != PG_SEMANTIC_OBJECT || object->owner != &match_class) return NULL;
-	return (const struct pg_data_layout *)object;
+	return pg_data_layout_view(term->as.reference);
 }
 
 static int action_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
