@@ -47,11 +47,12 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 	const struct pg_evidence **left, const struct pg_evidence **right,
 	const struct pg_evidence **paths);
 /* Replace the last declaration of source by the entire boundary telescope of
- * cube, including its assumed center. Repeats the ordinary context action;
+ * cube in the specified axis order, including its assumed center.
+ * order must be a permutation of the cube axes. Repeats the ordinary context action;
  * no filler, transport or dimension-specific proof rule is introduced. */
 const struct pg_evidence *pg_identity_cube_context(struct pg_typing *typing,
 	struct pg_dimensions *dimensions, const struct pg_evidence *source,
-	const struct pg_binding_cube *cube);
+	const struct pg_binding_cube *cube, const struct pg_dimension_map *order);
 
 /* Act on the final image_count images of sigma : Delta -> Gamma along a
  * checked boundary into Delta. Each result is ordinary family-action evidence

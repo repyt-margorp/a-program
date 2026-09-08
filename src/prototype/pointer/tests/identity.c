@@ -707,23 +707,16 @@ static void square_transposition_boundary(struct pg_typing *typing, struct pg_cl
 	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, pg_binder(graph),
 		pg_prove_universe(typing, classifiers, empty, 0));
 	const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, 2);
-	struct pg_coordinate coordinates[] = {{PG_AXIS, 0}, {PG_ENDPOINT_ZERO, 0}};
-	const struct pg_binding_face *line = pg_binding_face(&dimensions, cube, pg_dimension_map(&dimensions, 1, 2, coordinates));
-	const struct pg_evidence *left, *right, *paths[3], *contexts[2];
-	const struct pg_evidence *line_context = pg_identity_context(typing, &dimensions, source, 1, &line, &left, &right, paths);
+	const struct pg_evidence *contexts[2];
 	struct pg_coordinate swap_axes[] = {{PG_AXIS, 1}, {PG_AXIS, 0}};
 	const struct pg_dimension_map *swap = pg_dimension_map(&dimensions, 2, 2, swap_axes);
-	const struct pg_binding_face *centers[3];
-	coordinates[0] = (struct pg_coordinate){PG_ENDPOINT_ZERO, 0};
-	coordinates[1] = (struct pg_coordinate){PG_AXIS, 0};
-	centers[0] = pg_binding_face(&dimensions, cube, pg_dimension_map(&dimensions, 1, 2, coordinates));
-	coordinates[0].kind = PG_ENDPOINT_ONE;
-	centers[1] = pg_binding_face(&dimensions, cube, pg_dimension_map(&dimensions, 1, 2, coordinates));
-	centers[2] = pg_binding_face(&dimensions, cube, pg_dimension_identity(&dimensions, 2));
-	contexts[0] = pg_identity_cube_context(typing, &dimensions, source, cube);
-	for (size_t i = 0; i < 3; ++i) centers[i] = pg_binding_permute(&dimensions, centers[i], swap);
-	contexts[1] = pg_identity_context(typing, &dimensions, line_context, 3, centers, &left, &right, paths);
+	const struct pg_binding_face *transposed = pg_binding_face(&dimensions, cube, swap);
+	contexts[0] = pg_identity_cube_context(typing, &dimensions, source, cube, pg_dimension_identity(&dimensions, 2));
+	contexts[1] = pg_identity_cube_context(typing, &dimensions, source, cube, swap);
 	assert(contexts[0] && contexts[1]);
+	size_t terms = graph->terms.count, proofs = typing->proofs.count;
+	assert(pg_identity_cube_context(typing, &dimensions, source, cube, swap) == contexts[1]);
+	assert(graph->terms.count == terms && typing->proofs.count == proofs);
 	const struct pg_evidence *extensions[9], *cursor = contexts[0];
 	for (size_t i = 9; i; --i) {
 		extensions[i - 1] = cursor;
@@ -738,7 +731,7 @@ static void square_transposition_boundary(struct pg_typing *typing, struct pg_cl
 		map = pg_prove_substitution_pair(typing, map, extensions[i], value);
 		assert(map);
 	}
-	const struct pg_evidence *center = pg_prove_variable(typing, contexts[1], &centers[2]->variable);
+	const struct pg_evidence *center = pg_prove_variable(typing, contexts[1], &transposed->variable);
 	const struct pg_evidence *expected = pg_prove_reindex(typing, map, pg_evidence_premise(extensions[8], 1));
 	assert(center && expected);
 	assert(!pg_prove_substitution_pair(typing, map, extensions[8], center));
@@ -818,7 +811,8 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 	const struct pg_evidence *initial = source;
 	for (size_t dimension = 0, expected_count = 1; dimension <= 3; ++dimension, expected_count *= 3) {
 		const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, dimension);
-		const struct pg_evidence *boundary = pg_identity_cube_context(typing, &dimensions, initial, cube);
+		const struct pg_dimension_map *order = pg_dimension_identity(&dimensions, dimension);
+		const struct pg_evidence *boundary = pg_identity_cube_context(typing, &dimensions, initial, cube, order);
 		assert(boundary);
 		size_t count = 0;
 		for (const struct pg_context *c = pg_evidence_context(boundary); c; c = c->parent) {
@@ -827,13 +821,19 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 		}
 		assert(count == expected_count);
 		size_t terms = typing->graph->terms.count, proofs = typing->proofs.count;
-		assert(pg_identity_cube_context(typing, &dimensions, initial, cube) == boundary);
+		assert(pg_identity_cube_context(typing, &dimensions, initial, cube, order) == boundary);
 		assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
 	}
-	assert(!pg_identity_cube_context(typing, &dimensions, empty, pg_binding_cube(&dimensions, 1)));
-	assert(!pg_identity_cube_context(typing, &dimensions, initial, NULL));
+	const struct pg_dimension_map *order = pg_dimension_identity(&dimensions, 1);
+	assert(!pg_identity_cube_context(typing, &dimensions, empty, pg_binding_cube(&dimensions, 1), order));
+	assert(!pg_identity_cube_context(typing, &dimensions, initial, NULL, order));
+	assert(!pg_identity_cube_context(typing, &dimensions, initial, pg_binding_cube(&dimensions, 1), NULL));
+	assert(!pg_identity_cube_context(typing, &dimensions, initial, pg_binding_cube(&dimensions, 2), order));
+	struct pg_coordinate constant = {PG_ENDPOINT_ZERO, 0};
+	assert(!pg_identity_cube_context(typing, &dimensions, initial, pg_binding_cube(&dimensions, 1),
+		pg_dimension_map(&dimensions, 1, 1, &constant)));
 	const struct pg_binding_cube excessive = {SIZE_MAX};
-	assert(!pg_identity_cube_context(typing, &dimensions, initial, &excessive));
+	assert(!pg_identity_cube_context(typing, &dimensions, initial, &excessive, order));
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	const struct pg_binding_face *centers[9];
@@ -891,7 +891,7 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 	const struct pg_object *e = pg_binder(typing->graph);
 	const struct pg_evidence *dependent = pg_prove_context_extension(typing, initial, e, ztype);
 	const struct pg_evidence *dependent_cube = pg_identity_cube_context(typing, &dimensions, dependent,
-		pg_binding_cube(&dimensions, 2));
+		pg_binding_cube(&dimensions, 2), pg_dimension_identity(&dimensions, 2));
 	assert(dependent_cube);
 	const struct pg_context *ambient = pg_evidence_context(dependent_cube);
 	for (size_t i = 0; i < 9; ++i) ambient = ambient->parent;

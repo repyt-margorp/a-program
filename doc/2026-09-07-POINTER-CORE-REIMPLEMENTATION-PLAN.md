@@ -1760,6 +1760,18 @@ tests does not discharge it, and datatype admission must not assume completion.
   center transposition rule and higher computation remain open.
   Optimized and ASan/UBSan pointer checks pass; Identity passes at 512 KiB stack.
 
+- [x] September 8, after `d6445d4`: give cube-context construction an explicit
+  axis permutation, using the existing binding permutation/composition path.
+  Both square orientations now use the same repeated context-action algorithm;
+  remove the manually assembled transposed telescope from the test. Repeated
+  transposed construction shares terms and proofs. Null, wrong-dimensional and
+  non-bijective orders are rejected. The corner/edge substitution succeeds and
+  the center mismatch remains an expected negative test: constructing an
+  oriented assumption context is not a rule transposing its center evidence.
+  Optimized and ASan/UBSan pointer checks pass; Identity passes at 512 KiB stack.
+  Source/header changes +7/-4; tests +21/-21; documentation counted separately.
+  Typed center transposition and suspended cube construction remain pending.
+
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
   and the implemented F/U/Pi Identity, RETURN/THUNK/FORCE action and diagonal
