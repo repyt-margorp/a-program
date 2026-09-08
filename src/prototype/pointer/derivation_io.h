@@ -12,6 +12,7 @@ struct pg_derivation_input {
 	enum pg_evidence_rule rule;
 	struct pg_derivation_parameters parameters;
 	const struct pg_term *source, *target;
+	enum pg_reduction_kind reduction_kind;
 	size_t count;
 	const struct pg_derivation_input *premises[];
 };

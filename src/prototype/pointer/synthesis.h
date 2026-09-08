@@ -54,6 +54,11 @@ const struct pg_syntax *pg_synthesis_telescope_body(const struct pg_synthesis_jo
  * this store's typing arena is accepted; this is not a serialized-proof loader. */
 struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
 	const struct pg_evidence *proof);
+struct pg_derivation_input;
+/* Unaccepted stored rule DAG; request does not traverse or accept it. Inputs
+ * outlive synthesis. Uses ordinary dependencies, rules and pure work. */
+struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
+	const struct pg_derivation_input *input);
 /* Publish a checked term or formation under an ordinary lexical name. This
  * does not extend the typing context or insert THUNK/RETURN/FORCE. The proof
  * must be available in the parent context (prefix projection is permitted).

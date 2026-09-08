@@ -58,9 +58,9 @@ $(BUILD)/occurrence_io_test: $(ROOT)graph.c $(ROOT)dag.c $(ROOT)typing.c $(ROOT)
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)graph.c $(ROOT)dag.c $(ROOT)typing.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(ROOT)tests/occurrence_io.c -o $@
 
-$(BUILD)/derivation_io_test: $(SOURCES) $(ROOT)graph_io.c $(ROOT)derivation_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(ROOT)tests/derivation_io.c
+$(BUILD)/derivation_io_test: $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)graph_io.c $(ROOT)derivation_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(ROOT)tests/derivation_io.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)graph_io.c $(ROOT)derivation_io.c $(ROOT)wire.c $(ROOT)tests/derivation_io.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)graph_io.c $(ROOT)derivation_io.c $(ROOT)wire.c $(ROOT)tests/derivation_io.c -o $@
 
 .PHONY: pointer-check
 pointer-check: $(BUILD)/pointer-check

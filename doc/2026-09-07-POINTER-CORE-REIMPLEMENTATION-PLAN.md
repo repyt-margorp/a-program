@@ -4476,10 +4476,28 @@ Derivation input persistence after `48d2923` (`derivation_io.c`):
   tested. This fixture is not a general resumed-load scheduler.
   Pointer `make check` passed; the final conversion-extended fixture also passed
   optimized and ASan/UBSan separate-process runs.
-- [ ] Connect these inputs to ordinary solver jobs with shared scheduling,
-  bounded suspension and complete module/export roots. General NF receipt
-  recovery, dependent/higher descriptor relocation and source/image integration
-  remain open. This is not yet a complete CHECKPOINT or N5 acceptance.
+- [x] Connect restored inputs to ordinary `pg_synthesis_derivation` jobs. Job
+  identity is the immutable input pointer; ordered premises use the existing
+  dependency/wakeup mechanism. No separate replay queue or evaluator is added.
+  Conversion uses shared conversion jobs; directed normalization uses the same
+  WHNF/NF work as source synthesis. Stored endpoints are obligations, not
+  receipts: structural alpha comparison checks them against locally recovered
+  results before the ordinary derivation constructor accepts anything.
+- [x] Retain the producing WHNF/NF mode in normalization receipts and the
+  experimental derivation section (version byte 1). Do not guess the mode by
+  trying different evaluators. A separate-process six-root test covers duplicate
+  roots, distinct typed identities sharing Core, conversion, WHNF, and NF below
+  Lambda. Chunk sizes 1 and 64 both finish in 175 scheduler transitions; zero
+  fuel accepts nothing. Wrong saved targets and a WHNF mode substituted for an
+  NF result are rejected. The former fixture-specific proof loop is removed.
+  Full pointer `make check` and ASan/UBSan Core, synthesis and separate-process
+  derivation tests passed. Syntax inventory success remains parsing evidence,
+  not evidence of full semantic compatibility with the old implementation.
+- [ ] Complete module/export roots, dependent/higher descriptor relocation and
+  source/image integration. Scheduler transitions are bounded, but synchronous
+  primitive evidence constructors are not yet all incrementally budgeted.
+  This is not yet a complete CHECKPOINT or N5 acceptance. The tests above do not
+  establish general higher Identity support or full source-program acceptance.
 
 Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
 

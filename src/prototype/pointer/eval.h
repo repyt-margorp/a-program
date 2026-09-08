@@ -93,6 +93,7 @@ struct pg_eval_policy { int (*dispatch)(struct pg_eval *machine); };
 extern const struct pg_eval_policy pg_beta_policy;
 struct pg_whnf_job;
 struct pg_reduction_certificate;
+enum pg_reduction_kind { PG_REDUCTION_WHNF, PG_REDUCTION_NF };
 /* Keys are (input term, policy pointer), with empty environments. Captured
  * environments remain inside jobs. All referenced graphs outlive the store. */
 struct pg_whnf_work {
@@ -122,6 +123,7 @@ const struct pg_reduction_certificate *pg_whnf_certificate(const struct pg_whnf_
 const struct pg_term *pg_reduction_source(const struct pg_reduction_certificate *certificate);
 const struct pg_term *pg_reduction_target(const struct pg_reduction_certificate *certificate);
 const struct pg_eval_policy *pg_reduction_policy(const struct pg_reduction_certificate *certificate);
+enum pg_reduction_kind pg_reduction_kind(const struct pg_reduction_certificate *certificate);
 
 enum pg_nf_status { PG_NF_PENDING, PG_NF_DONE, PG_NF_ERROR };
 struct pg_nf_job;

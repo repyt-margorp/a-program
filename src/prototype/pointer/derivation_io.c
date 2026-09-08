@@ -5,7 +5,7 @@
 
 #include <string.h>
 
-static const char magic[8] = "APGDRV\0";
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 1};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {
@@ -44,6 +44,7 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 		if (pg_derivation_parameters(proof, &parameters)) goto done;
 		if (pg_wire_write_u64(file, pg_evidence_rule(proof))
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;
+		if (pg_wire_write_u64(file, parameters.reduction ? pg_reduction_kind(parameters.reduction) : PG_REDUCTION_WHNF)) goto done;
 		const struct pg_term *binder = parameters.binder ? pg_reference(&arena, parameters.binder) : NULL;
 		if (parameters.binder && !binder) goto done;
 		const struct pg_term *source = NULL, *target = NULL;
@@ -96,9 +97,10 @@ int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t
 	if (!records || !result) return -1;
 	size_t available = limit - (size_t)n - (size_t)nr;
 	for (size_t i = 0; i < n; ++i) {
-		uint64_t rule, level, direction, arity;
+		uint64_t rule, level, direction, arity, reduction_kind;
 		if (pg_wire_read_u64(file, &rule) || rule > PG_IDENTITY_LIFT) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
+		if (pg_wire_read_u64(file, &reduction_kind) || reduction_kind > PG_REDUCTION_NF) return -1;
 		if (pg_wire_read_u64(file, &records[i].binder) || pg_wire_read_u64(file, &records[i].source)
 			|| pg_wire_read_u64(file, &records[i].target) || pg_wire_read_u64(file, &arity)) return -1;
 		if (arity > available || arity > (SIZE_MAX - sizeof(struct pg_derivation_input)) / sizeof(void *)) return -1;
@@ -109,6 +111,7 @@ int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t
 		input->rule = (enum pg_evidence_rule)rule;
 		input->parameters.level = level;
 		input->parameters.direction = (enum pg_identity_direction)direction;
+		input->reduction_kind = (enum pg_reduction_kind)reduction_kind;
 		input->count = (size_t)arity;
 		for (size_t j = 0; j < arity; ++j) {
 			uint64_t id;

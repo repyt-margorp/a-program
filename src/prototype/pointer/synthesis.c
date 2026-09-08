@@ -2,6 +2,7 @@
 #include "computation.h"
 #include "iadt.h"
 #include "action.h"
+#include "derivation_io.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -73,8 +74,14 @@ struct family_state {
 	const struct pg_evidence **paths;
 	size_t count, common, next;
 };
+struct derivation_state {
+	size_t next;
+	const struct pg_evidence **premises;
+	struct pg_comparison endpoint;
+	const struct pg_reduction_certificate *reduction;
+};
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, DERIVATION_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -111,6 +118,7 @@ struct pg_synthesis_job {
 	struct declaration_state *declaration;
 	const struct pg_data_schema *schema;
 	struct family_state *family;
+	struct derivation_state *derivation;
 	const void *inputs[];
 };
 
@@ -148,6 +156,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			pg_reindex_destroy(&job->reindex);
 			pg_identity_face_destroy(job->face);
 			pg_identity_formation_destroy(job->formation);
+			if (job->derivation) pg_comparison_destroy(&job->derivation->endpoint);
 			if (job->block) pg_index_destroy(&job->block->names);
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
 			if (job->declaration) pg_index_destroy(&job->declaration->names);
@@ -287,6 +296,14 @@ struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
 	if (!pg_evidence_owned_by(proof, synthesis->typing)) return NULL;
 	const void *inputs[] = {proof};
 	return request_inputs(synthesis, EVIDENCE_JOB, 1, inputs);
+}
+
+struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
+	const struct pg_derivation_input *input)
+{
+	if (!input) return NULL;
+	const void *inputs[] = {input};
+	return request_inputs(synthesis, DERIVATION_JOB, 1, inputs);
 }
 
 const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
@@ -1894,9 +1911,118 @@ static void formation_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	finish(synthesis, job, status > 0 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 }
 
+static const struct pg_reduction_certificate *normalization_receipt(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, const struct pg_term *input, enum pg_reduction_kind kind)
+{
+	const struct pg_reduction_certificate *certificate;
+	if (kind == PG_REDUCTION_NF) {
+		if (!job->normalizing.nf) job->normalizing.nf = pg_nf_request(synthesis->normalization, &pg_pure_policy, input);
+		if (!job->normalizing.nf || pg_nf_advance(job->normalizing.nf, 1) == PG_NF_ERROR) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL;
+		}
+		certificate = pg_nf_certificate(job->normalizing.nf);
+	} else if (kind == PG_REDUCTION_WHNF) {
+		if (!job->normalizing.whnf) job->normalizing.whnf = pg_whnf_request(synthesis->normalization, &pg_pure_policy, input);
+		if (!job->normalizing.whnf || pg_whnf_advance(job->normalizing.whnf, 1) == PG_EVAL_ERROR) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL;
+		}
+		certificate = pg_whnf_certificate(job->normalizing.whnf);
+	} else { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return NULL; }
+	if (!certificate) enqueue(synthesis, job);
+	return certificate;
+}
+
+static int derivation_endpoint(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	const struct pg_term *actual, const struct pg_term *stored)
+{
+	struct pg_comparison *work = &job->derivation->endpoint;
+	if (!actual || !stored) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return 0; }
+	if (!work->state && pg_comparison_init(work, actual, stored, NULL, NULL)) {
+		finish(synthesis, job, PG_SYNTHESIS_ERROR); return 0;
+	}
+	enum pg_comparison_status status = pg_comparison_advance(work, 1);
+	if (status == PG_COMPARISON_PENDING) { enqueue(synthesis, job); return 0; }
+	pg_comparison_destroy(work);
+	if (status == PG_COMPARISON_EQUAL) return 1;
+	finish(synthesis, job, status == PG_COMPARISON_DIFFERENT ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR);
+	return 0;
+}
+
+static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	const struct pg_derivation_input *input = job->inputs[0];
+	if (!job->derivation) {
+		if (input->parameters.conversion || input->parameters.reduction) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		if (input->count > SIZE_MAX / sizeof(const struct pg_evidence *)) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+		}
+		job->derivation = pg_alloc(synthesis->typing->graph, sizeof(*job->derivation));
+		if (!job->derivation) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		job->derivation->premises = pg_alloc(synthesis->typing->graph, input->count * sizeof(const struct pg_evidence *));
+		if (!job->derivation->premises) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	}
+	struct derivation_state *state = job->derivation;
+	if (state->next < input->count) {
+		struct pg_synthesis_job *p = pg_synthesis_derivation(synthesis, input->premises[state->next]);
+		if (!p) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (p->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, p); return; }
+		if (p->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, p->status); return; }
+		state->premises[state->next++] = p->result;
+		enqueue(synthesis, job);
+		return;
+	}
+	int converting = input->rule == PG_TYPE_CONVERSION;
+	int normalizing = input->rule == PG_PURE_NORMALIZATION;
+	struct pg_derivation_parameters parameters = input->parameters;
+	if (converting || normalizing) {
+		if (input->count != (converting ? 2u : 1u) || !input->source || !input->target) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		const struct pg_evidence *source = state->premises[0];
+		const struct pg_occurrence *subject = pg_evidence_subject(source);
+		if (!subject) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+		const struct pg_term *actual_source = converting ? pg_evidence_classifier(source) : subject->core;
+		const struct pg_term *actual_target = NULL;
+		if (converting) {
+			const struct pg_occurrence *target = pg_evidence_subject(state->premises[1]);
+			if (!target) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+			actual_target = target->core;
+		}
+		if (!job->stage) {
+			if (!derivation_endpoint(synthesis, job, actual_source, input->source)) return;
+			job->stage = 1;
+		}
+		if (job->stage == 1) {
+			if (converting) {
+				struct pg_synthesis_job *comparison = request_job(synthesis, CONVERSION_JOB, actual_source, actual_target);
+				if (!comparison) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+				if (comparison->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, comparison); return; }
+				if (comparison->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, comparison->status); return; }
+				job->certificate = comparison->certificate;
+			} else {
+				state->reduction = normalization_receipt(synthesis, job, actual_source, input->reduction_kind);
+				if (!state->reduction) return;
+			}
+			job->stage = 2;
+		}
+		if (normalizing) actual_target = pg_reduction_target(state->reduction);
+		if (!derivation_endpoint(synthesis, job, actual_target, input->target)) return;
+		parameters.conversion = job->certificate;
+		parameters.reduction = state->reduction;
+	} else if (input->source || input->target) {
+		finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+	}
+	job->result = pg_prove_derivation(synthesis->typing, synthesis->classifiers,
+		input->rule, &parameters, input->count, state->premises);
+	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+}
+
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->role == DERIVATION_JOB) { derivation_step(synthesis, job); return; }
 	if (job->role == CONVERSION_JOB) { conversion_step(synthesis, job); return; }
 	if (job->role == EXPECT_JOB) { expect_step(synthesis, job); return; }
 	if (job->role == FORMATION_JOB) { formation_step(synthesis, job); return; }
@@ -1965,21 +2091,9 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	if (job->role == NORMALIZATION_JOB || job->role == NF_JOB) {
 		const struct pg_term *input = pg_evidence_subject(job->inputs[1])->core;
-		const struct pg_reduction_certificate *certificate;
-		if (job->role == NF_JOB) {
-			if (!job->normalizing.nf) job->normalizing.nf = pg_nf_request(synthesis->normalization, &pg_pure_policy, input);
-			if (!job->normalizing.nf || pg_nf_advance(job->normalizing.nf, 1) == PG_NF_ERROR) {
-				finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-			}
-			certificate = pg_nf_certificate(job->normalizing.nf);
-		} else {
-			if (!job->normalizing.whnf) job->normalizing.whnf = pg_whnf_request(synthesis->normalization, &pg_pure_policy, input);
-			if (!job->normalizing.whnf || pg_whnf_advance(job->normalizing.whnf, 1) == PG_EVAL_ERROR) {
-				finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-			}
-			certificate = pg_whnf_certificate(job->normalizing.whnf);
-		}
-		if (!certificate) { enqueue(synthesis, job); return; }
+		const struct pg_reduction_certificate *certificate = normalization_receipt(synthesis, job, input,
+			job->role == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
+		if (!certificate) return;
 		job->result = pg_prove_normalization(synthesis->typing, job->inputs[1], certificate);
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;
