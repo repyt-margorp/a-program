@@ -1198,10 +1198,18 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 		assert(images[i - 1]);
 		assert(!pg_synthesis_result(images[i - 1]));
 	}
-	const struct pg_evidence *map = complete(&synthesis,
-		pg_synthesis_substitution(&synthesis, template, destination, 8, images), PG_SYNTHESIS_DONE);
-	const struct pg_evidence *type = complete(&synthesis,
-		pg_synthesis_reindex(&synthesis, map, pg_evidence_premise(opposite, 1)), PG_SYNTHESIS_DONE);
+	struct pg_synthesis_job *map_job = pg_synthesis_substitution(&synthesis, template, destination, 8, images);
+	struct pg_synthesis_job *formation = pg_synthesis_evidence(&synthesis, pg_evidence_premise(opposite, 1));
+	struct pg_synthesis_job *type_job = pg_synthesis_reindex_jobs(&synthesis, map_job, formation);
+	assert(type_job && pg_synthesis_reindex_jobs(&synthesis, map_job, formation) == type_job);
+	assert(!pg_synthesis_result(map_job) && !pg_synthesis_result(type_job));
+	const struct pg_evidence *type = complete(&synthesis, type_job, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *map = pg_synthesis_result(map_job);
+	assert(map);
+	struct pg_synthesis_job *canonical = pg_synthesis_reindex(&synthesis, map, pg_evidence_premise(opposite, 1));
+	assert(pg_synthesis_status(canonical) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(canonical) == type);
+	complete(&synthesis, pg_synthesis_reindex_jobs(&synthesis, formation, formation), PG_SYNTHESIS_REJECTED);
 	assert(pg_evidence_context(type) == pg_evidence_context(destination));
 	assert(pg_evidence_judgement(type) == PG_JUDGEMENT_VALUE_TYPE);
 	assert(pg_evidence_classifier(type) == pg_evidence_classifier(pg_evidence_premise(original, 1)));

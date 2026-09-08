@@ -3843,6 +3843,12 @@ ASan/UBSan pointer checks also pass.
   the endpoint traversal remains a subroutine of the face worker.
 - [x] Feed pending face jobs directly into the square-template substitution
   test, removing its synchronous precomputation of the eight boundary images.
+- [x] After `2379a8f`, let reindex consume pending substitution/proof producers
+  on the same queue. Both the evidence and producer APIs use one job role.
+  Once inputs complete, requests converge on their accepted evidence tuple
+  before allocating reindex traversal state. The square-template test now
+  schedules face selection, substitution and result formation without an
+  external wait between stages; incompatible completed inputs are rejected.
 - [x] Check all 26 proper faces in three dimensions with split/bulk budgets,
   shared requests, unsupported permutations and pending-worker destruction.
 - Fuel bounds traversal steps, not the cost of individual acceptance rules.

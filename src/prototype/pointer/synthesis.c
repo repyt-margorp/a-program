@@ -417,15 +417,31 @@ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthes
 	return result;
 }
 
+static int reindex_inputs(struct pg_synthesis *synthesis,
+	const struct pg_evidence *substitution, const struct pg_evidence *proof)
+{
+	if (!pg_evidence_owned_by(substitution, synthesis->typing)) return 0;
+	if (!pg_evidence_owned_by(proof, synthesis->typing)) return 0;
+	if (pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return 0;
+	if (!pg_evidence_subject(proof)) return 0;
+	return pg_evidence_context(proof) == pg_evidence_context(pg_evidence_premise(substitution, 0));
+}
+
+struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof)
+{
+	if (!substitution || substitution->owner != synthesis) return NULL;
+	if (!proof || proof->owner != synthesis) return NULL;
+	const void *inputs[] = {substitution, proof};
+	return request_inputs(synthesis, REINDEX_JOB, 2, inputs);
+}
+
 struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof)
 {
-	if (!pg_evidence_owned_by(substitution, synthesis->typing)) return NULL;
-	if (!pg_evidence_owned_by(proof, synthesis->typing)) return NULL;
-	if (pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (!pg_evidence_subject(proof)) return NULL;
-	if (pg_evidence_context(proof) != pg_evidence_context(pg_evidence_premise(substitution, 0))) return NULL;
-	return request_job(synthesis, REINDEX_JOB, substitution, proof);
+	if (!reindex_inputs(synthesis, substitution, proof)) return NULL;
+	return pg_synthesis_reindex_jobs(synthesis, pg_synthesis_evidence(synthesis, substitution),
+		pg_synthesis_evidence(synthesis, proof));
 }
 
 struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *synthesis,
@@ -1307,7 +1323,27 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 static void reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (!job->reindex.state) {
-		if (pg_reindex_init(&job->reindex, synthesis->typing, job->inputs[0], job->inputs[1]) != 0) {
+		for (size_t i = 0; i < 2; ++i) {
+			struct pg_synthesis_job *input = (struct pg_synthesis_job *)job->inputs[i];
+			if (input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, input); return; }
+			if (input->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, input->status); return; }
+		}
+		const struct pg_evidence *substitution = ((const struct pg_synthesis_job *)job->inputs[0])->result;
+		const struct pg_evidence *proof = ((const struct pg_synthesis_job *)job->inputs[1])->result;
+		if (!reindex_inputs(synthesis, substitution, proof)) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		/* All producer paths converge on the accepted evidence tuple before
+		 * allocating traversal state. Distinct producers may prove the same map. */
+		struct pg_synthesis_job *canonical = pg_synthesis_reindex(synthesis, substitution, proof);
+		if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (canonical != job) {
+			if (canonical->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, canonical); return; }
+			job->result = canonical->result;
+			finish(synthesis, job, canonical->status);
+			return;
+		}
+		if (pg_reindex_init(&job->reindex, synthesis->typing, substitution, proof) != 0) {
 			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 		}
 	}

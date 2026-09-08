@@ -150,6 +150,11 @@ struct pg_synthesis_job *pg_synthesis_data_case(struct pg_synthesis *synthesis,
  * determines a job. Uses the existing reindex machine, not a second traversal. */
 struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
+/* Record dependencies before either input completes. The evidence API above
+ * uses this same request with evidence producers; no second reindex machine.
+ * Completed incompatible inputs are rejected without exposing partial proof. */
+struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof);
 /* Share a suspended endpoint derivation on the ordinary work queue. face is
  * an immutable, graph-lived canonical endpoint selector: its first coordinate
  * is fixed, followed by its ordered axes. Those axes count outer Identity
