@@ -44,8 +44,9 @@ const struct pg_term *pg_computation_eta(struct pg_graph *graph, const struct pg
 	return source ? pg_application(graph, term->as.application.function, source) : NULL;
 }
 
-static int force_answer(struct pg_eval *machine, const struct pg_term *answer)
+static int force_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
 {
+	(void)unused;
 	const struct pg_term *source;
 	if (pg_identity_action_view(answer, &source)) {
 		/* Keep reflexivity outside a neutral observation, so pre-normalizing a
@@ -58,8 +59,9 @@ static int force_answer(struct pg_eval *machine, const struct pg_term *answer)
 	return body ? pg_eval_enter(machine, (struct pg_closure){body, NULL}, 1) : pg_identity_force(machine, answer);
 }
 
-static int fold_answer(struct pg_eval *machine, const struct pg_term *answer)
+static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
 {
+	(void)unused;
 	const struct pg_term *value = unary_argument(answer, &pg_return_operation);
 	if (!value) return 1;
 	struct pg_closure continuation = *pg_eval_argument(machine, 1);
@@ -82,7 +84,7 @@ static int dispatch(struct pg_eval *machine)
 	}
 	if (operation == &pg_force_operation) {
 		if (!pg_eval_argument(machine, 0)) return 1;
-		return pg_eval_demand(machine, 0, force_answer);
+		return pg_eval_demand(machine, 0, force_answer, NULL);
 	}
 	if (operation == &pg_fold_operation) {
 		const struct pg_closure *continuation = pg_eval_argument(machine, 1);
@@ -90,7 +92,7 @@ static int dispatch(struct pg_eval *machine)
 		/* Recognize the right unit without evaluating a continuation that M
 		 * might never invoke. The returned reference must be this lambda's binder. */
 		if (return_continuation(continuation->term)) return pg_eval_enter(machine, *pg_eval_argument(machine, 0), 2);
-		return pg_eval_demand(machine, 0, fold_answer);
+		return pg_eval_demand(machine, 0, fold_answer, NULL);
 	}
 	int data = pg_data_dispatch(machine);
 	return data == 1 ? pg_identity_dispatch(machine) : data;

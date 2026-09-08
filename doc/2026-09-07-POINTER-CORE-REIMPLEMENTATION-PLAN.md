@@ -412,6 +412,29 @@ This checkpoint does not complete N2, higher coherence or image persistence.
 Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test pass.
 The separate cube-function comparison maximum remains 243,623 transitions.
 
+#### Reuse prepared scopes across demand continuations
+
+After `a82906c`, the existing demand APIs carry a borrowed state pointer to
+their continuation. All callers migrate to this one signature; there is no
+legacy adapter, alternative evaluator or second frame kind. The frame retains
+state until completion; pending readback retains the original computation, not
+an unvalidated serialized continuation. Callers own state lifetime, normally
+through the evaluator arena.
+
+U(F) field recognition now passes its prepared scope through the value demand
+instead of rediscovering it. Left/right endpoint and nested-body demands also
+reuse prepared action scopes. The zero-source route passes the original
+arena-backed scope rather than a local copy, so suspended callbacks never retain
+stack storage. Source binding preparation/body reconstruction remain open work.
+
+Core demand and auxiliary-demand tests now assert state delivery, alongside
+their existing split-budget, readback and callback-count tests. Identity tests
+retain every-boundary cancellation/resumption checks. Implementation C/headers:
++49/-38; test C: +6/-4. The same cube-function comparison maximum decreases
+from 243,623 to 243,107 charged steps; no wall-time speedup is claimed. N2 and
+the full rewrite remain incomplete.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,

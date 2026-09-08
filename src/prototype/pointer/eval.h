@@ -44,13 +44,15 @@ const struct pg_closure *pg_eval_next_argument(const struct pg_argument **cursor
 int pg_eval_enter(struct pg_eval *machine, struct pg_closure value, size_t consume);
 int pg_eval_apply(struct pg_eval *machine, struct pg_closure function,
 	struct pg_closure argument, size_t consume);
+/* State is borrowed until resume or machine destruction; arena storage is
+ * suitable. It is not serialized by pending readback. */
 int pg_eval_demand(struct pg_eval *machine, size_t index,
-	int (*resume)(struct pg_eval *machine, const struct pg_term *answer));
+	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state);
 /* Evaluate auxiliary work on this machine, preserving the caller's arguments.
  * Resume must incorporate the answer. Pending readback retains the caller;
  * use for pure work, not an effect whose result could be discarded. */
 int pg_eval_demand_closure(struct pg_eval *machine, struct pg_closure value,
-	int (*resume)(struct pg_eval *machine, const struct pg_term *answer));
+	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state);
 /* Pure auxiliary traversal. Each poll consumes one machine transition:
  * 0 pending, 1 ready, -1 error. Poll must preserve the caller configuration.
  * Resume uses the dispatcher protocol and runs after detaching the task.

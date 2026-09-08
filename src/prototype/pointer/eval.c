@@ -43,7 +43,8 @@ struct pg_eval_frame {
 	struct pg_closure caller;
 	const struct pg_argument *arguments;
 	size_t index;
-	int (*resume)(struct pg_eval *machine, const struct pg_term *answer);
+	int (*resume)(struct pg_eval *, const struct pg_term *, const void *);
+	const void *state;
 	struct pg_eval_frame *parent;
 	struct materialization answer;
 	const struct pg_argument *cursor;
@@ -99,13 +100,13 @@ int pg_eval_apply(struct pg_eval *machine, struct pg_closure function,
 }
 
 static int demand(struct pg_eval *machine, struct pg_closure value, size_t index,
-	int (*resume)(struct pg_eval *machine, const struct pg_term *answer))
+	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state)
 {
 	if (!machine->output || !resume || !value.term) return -1;
 	struct pg_eval_frame *frame = pg_alloc(&machine->temporary, sizeof(*frame));
 	if (!frame) return -1;
 	*frame = (struct pg_eval_frame){.caller = machine->current, .arguments = machine->arguments,
-		.index = index, .resume = resume, .parent = machine->frames, .cursor = machine->arguments};
+		.index = index, .resume = resume, .state = state, .parent = machine->frames, .cursor = machine->arguments};
 	machine->frames = frame;
 	machine->current = value;
 	machine->arguments = NULL;
@@ -113,16 +114,16 @@ static int demand(struct pg_eval *machine, struct pg_closure value, size_t index
 }
 
 int pg_eval_demand(struct pg_eval *machine, size_t index,
-	int (*resume)(struct pg_eval *machine, const struct pg_term *answer))
+	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state)
 {
 	const struct pg_closure *value = pg_eval_argument(machine, index);
-	return value ? demand(machine, *value, index, resume) : -1;
+	return value ? demand(machine, *value, index, resume, state) : -1;
 }
 
 int pg_eval_demand_closure(struct pg_eval *machine, struct pg_closure value,
-	int (*resume)(struct pg_eval *machine, const struct pg_term *answer))
+	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state)
 {
-	return demand(machine, value, SIZE_MAX, resume);
+	return demand(machine, value, SIZE_MAX, resume, state);
 }
 
 static int resume_frame(struct pg_eval *machine)
@@ -152,7 +153,7 @@ static int resume_frame(struct pg_eval *machine)
 	machine->frames = frame->parent;
 	machine->head_ready = 0;
 	materialize_destroy(&frame->answer);
-	return frame->resume(machine, answer);
+	return frame->resume(machine, answer, frame->state);
 }
 
 void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)

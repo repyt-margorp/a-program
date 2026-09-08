@@ -83,8 +83,9 @@ static int apply_fields(struct pg_eval *machine, struct pg_closure branch,
 	return pg_eval_apply(machine, (struct pg_closure){pg_lambda(machine->output, k, body), NULL}, branch, consume);
 }
 
-static int match_answer(struct pg_eval *machine, const struct pg_term *answer)
+static int match_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
 {
+	(void)unused;
 	const struct pg_data_layout *layout = (const struct pg_data_layout *)machine->current.term->as.reference;
 	const struct pg_term *head = answer;
 	size_t count = 0;
@@ -110,8 +111,9 @@ static const struct pg_data_layout *matcher(const struct pg_term *term)
 	return (const struct pg_data_layout *)object;
 }
 
-static int action_answer(struct pg_eval *machine, const struct pg_term *answer)
+static int action_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
 {
+	(void)unused;
 	const struct pg_data_layout *layout = matcher(pg_eval_argument(machine, 0)->term);
 	const struct pg_term *prefix = answer, *source;
 	size_t supplied = 0;
@@ -172,12 +174,12 @@ int pg_data_dispatch(struct pg_eval *machine)
 		if (!layout) return 1;
 		if (layout->count > (SIZE_MAX - 4) / 3) return -1;
 		if (!pg_eval_argument(machine, 3 * (layout->count + 1))) return 1;
-		return pg_eval_demand(machine, 3, action_answer);
+		return pg_eval_demand(machine, 3, action_answer, NULL);
 	}
 	if (object->kind != PG_SEMANTIC_OBJECT || object->owner != &match_class) return 1;
 	const struct pg_data_layout *layout = (const struct pg_data_layout *)object;
 	if (!pg_eval_argument(machine, layout->count)) return 1;
-	return pg_eval_demand(machine, 0, match_answer);
+	return pg_eval_demand(machine, 0, match_answer, NULL);
 }
 
 struct pg_data_schema {

@@ -1005,8 +1005,9 @@ static size_t demand_resumes;
 static const struct pg_object_class demand_class = {"test-demand"};
 static const struct pg_object demand_operation = {PG_SEMANTIC_OBJECT, &demand_class};
 
-static int demand_answer(struct pg_eval *machine, const struct pg_term *answer)
+static int demand_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
+	assert(state == &demand_operation);
 	const struct pg_closure *argument = pg_eval_argument(machine, 63);
 	assert(argument && !argument->environment && argument->term == answer);
 	++demand_resumes;
@@ -1016,14 +1017,15 @@ static int demand_answer(struct pg_eval *machine, const struct pg_term *answer)
 static int demand_dispatch(struct pg_eval *machine)
 {
 	if (machine->current.term->as.reference != &demand_operation) return 1;
-	return pg_eval_demand(machine, 63, demand_answer);
+	return pg_eval_demand(machine, 63, demand_answer, &demand_operation);
 }
 
 static const struct pg_argument *auxiliary_arguments;
 static const struct pg_term *auxiliary_source;
 
-static int auxiliary_answer(struct pg_eval *machine, const struct pg_term *answer)
+static int auxiliary_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
+	assert(state == auxiliary_source);
 	assert(machine->arguments == auxiliary_arguments);
 	assert(pg_eval_argument(machine, 0)->term == auxiliary_source);
 	++demand_resumes;
@@ -1035,7 +1037,7 @@ static int auxiliary_dispatch(struct pg_eval *machine)
 	if (machine->current.term->as.reference != &demand_operation) return 1;
 	auxiliary_arguments = machine->arguments;
 	auxiliary_source = pg_eval_argument(machine, 0)->term;
-	return pg_eval_demand_closure(machine, *pg_eval_argument(machine, 0), auxiliary_answer);
+	return pg_eval_demand_closure(machine, *pg_eval_argument(machine, 0), auxiliary_answer, auxiliary_source);
 }
 
 static void auxiliary_demand_test(struct pg_graph *graph)
