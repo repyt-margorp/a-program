@@ -53,6 +53,14 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 const struct pg_evidence *pg_identity_cube_context(struct pg_typing *typing,
 	struct pg_dimensions *dimensions, const struct pg_evidence *source,
 	const struct pg_binding_cube *cube, const struct pg_dimension_map *order);
+/* Act on a term in source along the same cube construction. Dimension zero
+ * reindexes its last variable to the zero vertex. Each subsequent dimension
+ * uses checked family action, retaining polarity and selected boundaries.
+ * The source term must have exactly source's context. No center is invented. */
+const struct pg_evidence *pg_identity_cube_action(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, struct pg_dimensions *dimensions,
+	const struct pg_evidence *source, const struct pg_evidence *term,
+	const struct pg_binding_cube *cube, const struct pg_dimension_map *order);
 
 /* Act on the final image_count images of sigma : Delta -> Gamma along a
  * checked boundary into Delta. Each result is ordinary family-action evidence

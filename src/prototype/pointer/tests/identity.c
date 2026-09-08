@@ -809,6 +809,9 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 	const struct pg_evidence *universe = pg_prove_universe(typing, classifiers, empty, 0);
 	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, pg_binder(typing->graph), universe);
 	const struct pg_evidence *initial = source;
+	struct pg_whnf_work cube_work;
+	assert(pg_whnf_work_init(&cube_work, typing->graph) == 0);
+	const struct pg_evidence *input = pg_prove_variable(typing, initial, pg_evidence_context(initial)->binder);
 	static const size_t permutations[6][3] = {
 		{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}
 	};
@@ -831,9 +834,24 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 			size_t terms = typing->graph->terms.count, proofs = typing->proofs.count;
 			assert(pg_identity_cube_context(typing, &dimensions, initial, cube, order) == boundary);
 			assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+			const struct pg_evidence *action = pg_identity_cube_action(typing, classifiers, &dimensions, initial, input, cube, order);
+			assert(action && pg_evidence_context(action) == pg_evidence_context(boundary));
+			const struct pg_evidence *variable = pg_prove_variable(typing, boundary, &center->variable);
+			converts(&cube_work, pg_evidence_classifier(action), pg_evidence_classifier(variable));
+			converts(&cube_work, pg_evidence_subject(action)->core, pg_evidence_subject(variable)->core);
+			assert(pg_identity_cube_action(typing, classifiers, &dimensions, initial, input, cube, order) == action);
+			const struct pg_evidence *returned = pg_identity_cube_action(typing, classifiers, &dimensions, initial,
+				pg_prove_return(typing, classifiers, input), cube, order);
+			const struct pg_evidence *expected_return = pg_prove_return(typing, classifiers, variable);
+			assert(returned && pg_evidence_judgement(returned) == PG_JUDGEMENT_COMPUTATION);
+			converts(&cube_work, pg_evidence_classifier(returned), pg_evidence_classifier(expected_return));
+			converts(&cube_work, pg_evidence_subject(returned)->core, pg_evidence_subject(expected_return)->core);
 		}
 	}
+	pg_whnf_work_destroy(&cube_work);
 	const struct pg_dimension_map *order = pg_dimension_identity(&dimensions, 1);
+	assert(!pg_identity_cube_action(typing, classifiers, &dimensions, initial, NULL, pg_binding_cube(&dimensions, 1), order));
+	assert(!pg_identity_cube_action(typing, classifiers, &dimensions, initial, empty, pg_binding_cube(&dimensions, 1), order));
 	assert(!pg_identity_cube_context(typing, &dimensions, empty, pg_binding_cube(&dimensions, 1), order));
 	assert(!pg_identity_cube_context(typing, &dimensions, initial, NULL, order));
 	assert(!pg_identity_cube_context(typing, &dimensions, initial, pg_binding_cube(&dimensions, 1), NULL));

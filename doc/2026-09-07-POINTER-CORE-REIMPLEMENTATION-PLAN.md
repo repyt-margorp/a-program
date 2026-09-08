@@ -1811,6 +1811,22 @@ tests does not discharge it, and datatype admission must not assume completion.
   admitting a center transposition rule. Current factorization alone grants
   none of those proof-level equations and does not complete the N2 gate.
 
+- [x] September 8, after `9d07e36`: connect typed term action to the same
+  oriented cube-construction algorithm (`pg_identity_cube_action`). Initially
+  reindex the source term to the zero vertex by a checked substitution, then
+  use each stage's checked boundary substitutions and selected paths for
+  ordinary family action. Recover classifiers through the existing regularity
+  operation. The context-only API uses this same constructor without a term;
+  no new proof rule, Core tag, or alternative boundary generator is added.
+  Tests in dimensions 0-3 (all six cube orders in dimension three) check that
+  variable action converts to the center with the expected classifier; the
+  same checks on RETURN preserve computation polarity. Repeated action shares
+  evidence, and missing/non-term input is rejected. Optimized and ASan/UBSan
+  pointer checks pass; Identity passes with a 512 KiB stack. Source/header
+  +39/-3; tests +18/-0; documentation separate. Construction and regularity
+  remain synchronous. This constructs action in each oriented context, not a
+  transposition between them; the typed symmetry gate remains open.
+
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
   and the implemented F/U/Pi Identity, RETURN/THUNK/FORCE action and diagonal
