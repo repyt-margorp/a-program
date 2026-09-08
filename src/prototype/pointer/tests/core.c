@@ -1,4 +1,5 @@
 #include "graph.h"
+#include "dag.h"
 #include "dimension.h"
 #include "eval.h"
 #include "typing.h"
@@ -12,6 +13,41 @@
 
 #include <assert.h>
 #include <stdio.h>
+
+struct dag_fixture {
+	size_t count;
+	const struct dag_fixture *children[2];
+};
+
+static int dag_child(void *context, const void *key, size_t index, const void **child)
+{
+	++*(size_t *)context;
+	const struct dag_fixture *node = key;
+	if (index == node->count) return 0;
+	*child = node->children[index];
+	return 1;
+}
+
+static void dag_test(void)
+{
+	struct dag_fixture leaf = {0}, middle = {2, {&leaf, &leaf}}, root = {2, {&middle, &middle}};
+	struct pg_dag dag;
+	size_t visits = 0;
+	assert(pg_dag_init(&dag, dag_child, &visits) == 0);
+	assert(pg_dag_add(&dag, &root) == 0 && dag.count == 3 && visits == 7);
+	assert(pg_dag_find(&dag, &leaf)->id == 1 && pg_dag_find(&dag, &root)->id == 3);
+	assert(pg_dag_add(&dag, &root) == 0 && visits == 7);
+	assert(pg_dag_add(&dag, &leaf) == 0 && visits == 7);
+	struct dag_fixture cycle = {1, {NULL}};
+	cycle.children[0] = &cycle;
+	assert(pg_dag_add(&dag, &cycle) == -1 && dag.failed);
+	assert(pg_dag_add(&dag, &root) == -1);
+	pg_dag_destroy(&dag);
+	assert(pg_dag_init(&dag, dag_child, &visits) == 0);
+	struct dag_fixture missing = {1, {NULL}};
+	assert(pg_dag_add(&dag, &missing) == -1);
+	pg_dag_destroy(&dag);
+}
 
 static void reconstruct_derivation(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_evidence *source)
@@ -2284,6 +2320,7 @@ static void dimension_test(struct pg_graph *graph)
 
 int main(void)
 {
+	dag_test();
 	index_distribution_test();
 	struct pg_graph graph;
 	assert(pg_graph_init(&graph) == 0);

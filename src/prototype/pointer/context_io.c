@@ -1,31 +1,19 @@
 #include "context_io.h"
 #include "graph_io.h"
 #include "wire.h"
+#include "dag.h"
 
 #include <string.h>
 
 static const char magic[8] = "APGCTX\0";
 
-struct context_record {
-	struct pg_index_entry index;
-	const struct pg_context *context;
-	struct context_record *parent, *next;
-	size_t id;
-};
-
-static struct context_record *lookup(struct pg_graph *arena, struct pg_index *index,
-	const struct pg_context *context)
+static int parent(void *unused, const void *key, size_t index, const void **child)
 {
-	uint64_t hash = (uintptr_t)context;
-	for (struct pg_index_entry *p = pg_index_candidates(index, hash); p; p = p->next) {
-		struct context_record *r = (struct context_record *)p;
-		if (r->context == context) return r;
-	}
-	struct context_record *r = pg_alloc(arena, sizeof(*r));
-	if (!r) return NULL;
-	r->context = context;
-	if (pg_index_insert(index, &r->index, hash) != 0) return NULL;
-	return r;
+	(void)unused;
+	const struct pg_context *context = key;
+	if (index || !context->parent) return 0;
+	*child = context->parent;
+	return 1;
 }
 
 int pg_contexts_write(FILE *file, size_t count, const struct pg_context *const *contexts,
@@ -34,35 +22,12 @@ int pg_contexts_write(FILE *file, size_t count, const struct pg_context *const *
 {
 	if (!file || (count && !contexts) || (term_count && !terms)) return -1;
 	struct pg_graph arena = {0};
-	struct pg_index index = {0};
-	struct context_record *first = NULL, *last = NULL;
-	size_t size = 0;
+	struct pg_dag dag = {0};
 	int status = -1;
-	if (pg_graph_init(&arena) || pg_index_init(&index)) goto done;
-	for (size_t i = 0; i < count; ++i) {
-		const struct pg_context *cursor = contexts[i];
-		struct context_record *stack = NULL, *parent = NULL;
-		while (cursor) {
-			struct context_record *r = lookup(&arena, &index, cursor);
-			if (!r) goto done;
-			if (r->id) { parent = r; break; }
-			/* A previously entered unfinished declaration is a parent cycle. */
-			if (r->next) goto done;
-			r->next = stack ? stack : r;
-			stack = r;
-			cursor = cursor->parent;
-		}
-		while (stack) {
-			struct context_record *r = stack;
-			stack = r->next == r ? NULL : r->next;
-			r->next = NULL;
-			r->parent = parent;
-			r->id = ++size;
-			if (last) last->next = r;
-			else first = r;
-			last = parent = r;
-		}
-	}
+	if (pg_graph_init(&arena) || pg_dag_init(&dag, parent, NULL)) goto done;
+	for (size_t i = 0; i < count; ++i)
+		if (contexts[i] && pg_dag_add(&dag, contexts[i])) goto done;
+	size_t size = dag.count;
 	if (term_count > SIZE_MAX / sizeof(void *)) goto done;
 	if (size > (SIZE_MAX / sizeof(void *) - term_count) / 2) goto done;
 	size_t total = 2 * size + term_count;
@@ -70,21 +35,23 @@ int pg_contexts_write(FILE *file, size_t count, const struct pg_context *const *
 	if (!roots) goto done;
 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, size)
 		|| pg_wire_write_u64(file, count) || pg_wire_write_u64(file, term_count)) goto done;
-	for (struct context_record *r = first; r; r = r->next) {
-		if (!r->context->binder || r->context->binder->kind != PG_BINDER || !r->context->declared_type) goto done;
-		if (pg_wire_write_u64(file, r->parent ? r->parent->id : 0)) goto done;
-		roots[2 * (r->id - 1)] = pg_reference(&arena, r->context->binder);
-		roots[2 * (r->id - 1) + 1] = r->context->declared_type;
+	for (const struct pg_dag_node *r = dag.first; r; r = r->next) {
+		const struct pg_context *context = r->key;
+		const struct pg_dag_node *prefix = pg_dag_find(&dag, context->parent);
+		if (!context->binder || context->binder->kind != PG_BINDER || !context->declared_type) goto done;
+		if (pg_wire_write_u64(file, prefix ? prefix->id : 0)) goto done;
+		roots[2 * (r->id - 1)] = pg_reference(&arena, context->binder);
+		roots[2 * (r->id - 1) + 1] = context->declared_type;
 	}
 	for (size_t i = 0; i < count; ++i) {
-		struct context_record *r = contexts[i] ? lookup(&arena, &index, contexts[i]) : NULL;
+		const struct pg_dag_node *r = pg_dag_find(&dag, contexts[i]);
 		if (contexts[i] && !r) goto done;
 		if (pg_wire_write_u64(file, r ? r->id : 0)) goto done;
 	}
 	for (size_t i = 0; i < term_count; ++i) roots[2 * size + i] = terms[i];
 	status = pg_graph_write(file, total, roots, name, owner);
 done:
-	pg_index_destroy(&index);
+	pg_dag_destroy(&dag);
 	pg_graph_destroy(&arena);
 	return status;
 }

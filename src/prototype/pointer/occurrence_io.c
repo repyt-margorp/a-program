@@ -1,33 +1,19 @@
 #include "occurrence_io.h"
 #include "context_io.h"
 #include "wire.h"
+#include "dag.h"
 
 #include <string.h>
 
 static const char magic[8] = "APGOCC\0";
 
-struct record {
-	struct pg_index_entry index;
-	const struct pg_occurrence *source;
-	size_t id, cursor;
-	int active;
-	struct record *pending, *next;
-};
-
-static struct record *record(struct pg_graph *arena, struct pg_index *index,
-	const struct pg_occurrence *source)
+static int operand(void *unused, const void *key, size_t index, const void **child)
 {
-	if (!source) return NULL;
-	uint64_t hash = (uintptr_t)source;
-	for (struct pg_index_entry *p = pg_index_candidates(index, hash); p; p = p->next) {
-		struct record *r = (struct record *)p;
-		if (r->source == source) return r;
-	}
-	struct record *r = pg_alloc(arena, sizeof(*r));
-	if (!r) return NULL;
-	r->source = source;
-	if (pg_index_insert(index, &r->index, hash)) return NULL;
-	return r;
+	(void)unused;
+	const struct pg_occurrence *source = key;
+	if (index == source->operand_count) return 0;
+	*child = source->operands[index];
+	return 1;
 }
 
 int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *const *roots,
@@ -35,56 +21,34 @@ int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *c
 {
 	if (!file || (count && !roots)) return -1;
 	struct pg_graph arena = {0};
-	struct pg_index index = {0};
-	struct record *first = NULL, *last = NULL;
-	size_t size = 0;
+	struct pg_dag dag = {0};
 	int status = -1;
-	if (pg_graph_init(&arena) || pg_index_init(&index)) goto done;
-	for (size_t i = 0; i < count; ++i) {
-		struct record *r = record(&arena, &index, roots[i]);
-		if (!r) goto done;
-		if (r->id) continue;
-		while (r) {
-			r->active = 1;
-			if (r->cursor < r->source->operand_count) {
-				struct record *child = record(&arena, &index, r->source->operands[r->cursor++]);
-				if (!child || child->active) goto done;
-				if (child->id) continue;
-				child->pending = r;
-				r = child;
-			} else {
-				r->id = ++size;
-				r->active = 0;
-				if (last) last->next = r;
-				else first = r;
-				last = r;
-				r = r->pending;
-			}
-		}
-	}
+	if (pg_graph_init(&arena) || pg_dag_init(&dag, operand, NULL)) goto done;
+	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&dag, roots[i])) goto done;
+	size_t size = dag.count;
 	if (size > SIZE_MAX / sizeof(void *) / 2) goto done;
 	const struct pg_context **contexts = pg_alloc(&arena, size * sizeof(*contexts));
 	const struct pg_term **terms = pg_alloc(&arena, 2 * size * sizeof(*terms));
 	if (!contexts || !terms) goto done;
 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, size) || pg_wire_write_u64(file, count)) goto done;
-	for (struct record *r = first; r; r = r->next) {
-		const struct pg_occurrence *o = r->source;
+	for (const struct pg_dag_node *r = dag.first; r; r = r->next) {
+		const struct pg_occurrence *o = r->key;
 		contexts[r->id - 1] = o->context;
 		terms[2 * (r->id - 1)] = o->core;
 		terms[2 * (r->id - 1) + 1] = o->annotation ? o->annotation : o->core;
 		if (fputc(o->annotation != NULL, file) == EOF || pg_wire_write_u64(file, o->operand_count)) goto done;
 		for (size_t i = 0; i < o->operand_count; ++i) {
-			struct record *child = record(&arena, &index, o->operands[i]);
+			const struct pg_dag_node *child = pg_dag_find(&dag, o->operands[i]);
 			if (!child || pg_wire_write_u64(file, child->id)) goto done;
 		}
 	}
 	for (size_t i = 0; i < count; ++i) {
-		struct record *r = record(&arena, &index, roots[i]);
+		const struct pg_dag_node *r = pg_dag_find(&dag, roots[i]);
 		if (!r || pg_wire_write_u64(file, r->id)) goto done;
 	}
 	status = pg_contexts_write(file, size, contexts, 2 * size, terms, name, owner);
 done:
-	pg_index_destroy(&index);
+	pg_dag_destroy(&dag);
 	pg_graph_destroy(&arena);
 	return status;
 }

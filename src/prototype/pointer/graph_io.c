@@ -1,101 +1,42 @@
 #include "graph_io.h"
 #include "wire.h"
+#include "dag.h"
 
 #include <string.h>
 
 static const unsigned char magic[8] = {'A', 'P', 'G', 'C', 'O', 'R', 'E', 0};
 
-struct record {
-	struct pg_index_entry index;
-	const void *key;
-	size_t id;
-	unsigned stage;
-	struct record *next, *pending;
-};
-
-struct records {
-	struct pg_index index;
-	struct record *first, *last;
-	size_t written;
-};
-
-static struct record *record(struct pg_graph *arena, struct records *records, const void *key)
+static int dependency(void *owner, const void *key, size_t index, const void **child)
 {
-	if (!key) return NULL;
-	uint64_t hash = (uintptr_t)key;
-	for (struct pg_index_entry *p = pg_index_candidates(&records->index, hash); p; p = p->next) {
-		struct record *r = (struct record *)p;
-		if (r->key == key) return r;
+	struct pg_dag *objects = owner;
+	const struct pg_term *term = key;
+	switch (term->kind) {
+	case PG_APPLICATION:
+		if (index == 2) return 0;
+		*child = index ? term->as.application.argument : term->as.application.function;
+		return 1;
+	case PG_LAMBDA:
+		if (index) return 0;
+		if (pg_dag_add(objects, term->as.lambda.binder)) return -1;
+		*child = term->as.lambda.body;
+		return 1;
+	case PG_REFERENCE:
+		return pg_dag_add(objects, term->as.reference);
+	default: return -1;
 	}
-	struct record *r = pg_alloc(arena, sizeof(*r));
-	if (!r) return NULL;
-	r->key = key;
-	if (pg_index_insert(&records->index, &r->index, hash) != 0) return NULL;
-	return r;
-}
-
-static void finish(struct records *records, struct record *r)
-{
-	r->id = ++records->written;
-	if (records->last) records->last->next = r;
-	else records->first = r;
-	records->last = r;
-}
-
-static int collect(struct pg_graph *arena, struct records *terms, struct records *objects,
-	const struct pg_term *root)
-{
-	struct record *pending = record(arena, terms, root);
-	if (!pending) return -1;
-	if (pending->id) return 0;
-	while (pending) {
-		const struct pg_term *term = pending->key;
-		const struct pg_term *child = NULL;
-		const struct pg_object *object = NULL;
-		switch (term->kind) {
-		case PG_APPLICATION:
-			if (pending->stage == 0) child = term->as.application.function;
-			else if (pending->stage == 1) child = term->as.application.argument;
-			break;
-		case PG_LAMBDA:
-			if (!pending->stage) { object = term->as.lambda.binder; child = term->as.lambda.body; }
-			break;
-		case PG_REFERENCE: object = term->as.reference; break;
-		default: return -1;
-		}
-		if (object) {
-			struct record *r = record(arena, objects, object);
-			if (!r) return -1;
-			if (!r->id) finish(objects, r);
-		}
-		++pending->stage;
-		if (child) {
-			struct record *r = record(arena, terms, child);
-			if (!r) return -1;
-			if (r->id) continue;
-			if (r->stage) return -1;
-			r->pending = pending;
-			pending = r;
-		} else {
-			finish(terms, pending);
-			pending = pending->pending;
-		}
-	}
-	return 0;
 }
 
 int pg_graph_write(FILE *file, size_t count, const struct pg_term *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *context)
 {
 	if (!file || (count && !roots)) return -1;
-	struct pg_graph arena = {0};
-	struct records terms = {0}, objects = {0};
+	struct pg_dag terms = {0}, objects = {0};
 	int status = -1;
-	if (pg_index_init(&terms.index) != 0 || pg_index_init(&objects.index) != 0) goto done;
-	for (size_t i = 0; i < count; ++i) if (collect(&arena, &terms, &objects, roots[i]) != 0) goto done;
+	if (pg_dag_init(&objects, NULL, NULL) || pg_dag_init(&terms, dependency, &objects)) goto done;
+	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&terms, roots[i])) goto done;
 	if (fwrite(magic, 1, 8, file) != 8) goto done;
-	if (pg_wire_write_u64(file, objects.written) || pg_wire_write_u64(file, terms.written) || pg_wire_write_u64(file, count)) goto done;
-	for (struct record *r = objects.first; r; r = r->next) {
+	if (pg_wire_write_u64(file, objects.count) || pg_wire_write_u64(file, terms.count) || pg_wire_write_u64(file, count)) goto done;
+	for (const struct pg_dag_node *r = objects.first; r; r = r->next) {
 		const struct pg_object *object = r->key;
 		if (object->kind != PG_BINDER && object->kind != PG_SEMANTIC_OBJECT) goto done;
 		if (object->kind == PG_BINDER && !object->owner) {
@@ -108,17 +49,17 @@ int pg_graph_write(FILE *file, size_t count, const struct pg_term *const *roots,
 			if (fwrite(label, 1, length, file) != length) goto done;
 		}
 	}
-	for (struct record *r = terms.first; r; r = r->next) {
+	for (const struct pg_dag_node *r = terms.first; r; r = r->next) {
 		const struct pg_term *term = r->key;
-		struct record *a, *b = NULL;
+		const struct pg_dag_node *a, *b = NULL;
 		switch (term->kind) {
 		case PG_LAMBDA:
-			a = record(&arena, &objects, term->as.lambda.binder);
-			b = record(&arena, &terms, term->as.lambda.body); break;
+			a = pg_dag_find(&objects, term->as.lambda.binder);
+			b = pg_dag_find(&terms, term->as.lambda.body); break;
 		case PG_APPLICATION:
-			a = record(&arena, &terms, term->as.application.function);
-			b = record(&arena, &terms, term->as.application.argument); break;
-		case PG_REFERENCE: a = record(&arena, &objects, term->as.reference); break;
+			a = pg_dag_find(&terms, term->as.application.function);
+			b = pg_dag_find(&terms, term->as.application.argument); break;
+		case PG_REFERENCE: a = pg_dag_find(&objects, term->as.reference); break;
 		default: goto done;
 		}
 		if (!a || !a->id || (term->kind != PG_REFERENCE && (!b || !b->id))) goto done;
@@ -126,14 +67,13 @@ int pg_graph_write(FILE *file, size_t count, const struct pg_term *const *roots,
 		if (b && pg_wire_write_u64(file, b->id)) goto done;
 	}
 	for (size_t i = 0; i < count; ++i) {
-		struct record *r = record(&arena, &terms, roots[i]);
+		const struct pg_dag_node *r = pg_dag_find(&terms, roots[i]);
 		if (!r || pg_wire_write_u64(file, r->id)) goto done;
 	}
 	status = ferror(file) ? -1 : 0;
 done:
-	pg_index_destroy(&terms.index);
-	pg_index_destroy(&objects.index);
-	pg_graph_destroy(&arena);
+	pg_dag_destroy(&terms);
+	pg_dag_destroy(&objects);
 	return status;
 }
 

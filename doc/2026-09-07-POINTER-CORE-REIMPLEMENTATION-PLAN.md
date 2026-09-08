@@ -4415,8 +4415,6 @@ Occurrence input transport after `a11577d` (`occurrence_io.c`):
   accepted derivation records, pending work and recursive descriptor payloads
   are not yet persisted. This component does not close N5 or replace N2/N3.
 
-Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
-
 Ordinary derivation reconstruction after `6471af6` (`derivation.c`):
 
 - [x] Add a call adapter for the existing `pg_prove_*` constructors, not a
@@ -4440,7 +4438,26 @@ Ordinary derivation reconstruction after `6471af6` (`derivation.c`):
   necessary. Shared suspended loading, complete conclusion matching and `.a`
   integration remain open. No CHECKPOINT completion is claimed here.
 
-Input capsule status:
+Shared dependency collection after `f7f0d49` (`dag.c`):
+
+- [x] Replace the Core, Context and occurrence codecs' three independent
+  pointer-indexed DFS implementations with one iterative dependency-order
+  collector. Clients enumerate only their own dependencies. Object discovery
+  remains separate from term dependencies; no contexts become Core terms and
+  no traversal establishes semantic equality or accepts a proof.
+- [x] Preserve postorder IDs and sharing. Re-adding a completed root performs
+  no dependency callbacks. Cycles, missing children and callback failures
+  invalidate the temporary collector. A diamond fixture checks exactly one
+  callback per edge plus one completion per node, despite repeated roots.
+- [x] Full pointer `make check` and ASan/UBSan Core/graph/context/occurrence
+  tests passed. Before/after writer binaries produce byte-identical Context
+  and occurrence fixtures (including the nested Core section). Existing deep
+  DAG and malformed-input tests remain enabled.
+- [ ] Use this same collection path for the forthcoming derivation wire
+  section instead of introducing a fourth traversal. Proof persistence and
+  pending solver/image integration remain unfinished; N5 is still open.
+
+Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
 
 - [x] Store a single immutable source and explicit definition policy in a
   versioned, little-endian input capsule. No addresses or accepted-state flags.
