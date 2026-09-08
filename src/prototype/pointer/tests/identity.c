@@ -696,8 +696,64 @@ static void transport_fields(struct pg_typing *typing, struct pg_classifiers *cl
 	pg_whnf_work_destroy(&work);
 }
 
+static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_graph *graph = typing->graph;
+	struct pg_dimensions dimensions;
+	struct pg_whnf_work work;
+	assert(pg_dimensions_init(&dimensions, graph) == 0);
+	assert(pg_whnf_work_init(&work, graph) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_object *a = pg_binder(graph), *b = pg_binder(graph), *r = pg_binder(graph), *x = pg_binder(graph);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, a,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	source = pg_prove_context_extension(typing, source, b, pg_prove_universe(typing, classifiers, source, 0));
+	const struct pg_evidence *relation = pg_prove_identity_type(typing, pg_prove_universe(typing, classifiers, source, 0),
+		pg_prove_variable(typing, source, a), pg_prove_variable(typing, source, b));
+	source = pg_prove_context_extension(typing, source, r, relation);
+	const struct pg_binding_cube *square = pg_binding_cube(&dimensions, 2);
+	struct pg_coordinate coordinates[2] = {{PG_ENDPOINT_ZERO, 0}, {PG_AXIS, 0}};
+	const struct pg_binding_face *centers[4];
+	centers[0] = pg_binding_face(&dimensions, square, pg_dimension_map(&dimensions, 1, 2, coordinates));
+	coordinates[0].kind = PG_ENDPOINT_ONE;
+	centers[1] = pg_binding_face(&dimensions, square, pg_dimension_map(&dimensions, 1, 2, coordinates));
+	centers[2] = pg_binding_face(&dimensions, square, pg_dimension_identity(&dimensions, 2));
+	centers[3] = pg_binding_face(&dimensions, pg_binding_cube(&dimensions, 1), pg_dimension_identity(&dimensions, 1));
+	for (unsigned side = 0; side < 2; ++side) {
+		const struct pg_evidence *input_type = pg_prove_value_type(typing, pg_prove_variable(typing, source, side ? b : a));
+		const struct pg_evidence *input_context = pg_prove_context_extension(typing, source, x, input_type);
+		const struct pg_evidence *transport = pg_prove_identity_transport(typing, classifiers,
+			pg_prove_variable(typing, input_context, r), pg_prove_variable(typing, input_context, x),
+			(enum pg_identity_direction)side);
+		const struct pg_evidence *left, *right, *paths[4];
+		const struct pg_evidence *boundary = pg_identity_context(typing, &dimensions, input_context, 4,
+			centers, &left, &right, paths);
+		assert(boundary && transport);
+		const struct pg_evidence *acted = pg_prove_family_action(typing,
+			pg_prove_classifier(typing, classifiers, input_context, transport), transport, left, right, 4, paths);
+		assert(acted);
+		/* The destination edge relates the transported corners. The square
+		 * center is an assumption; this does not manufacture a square filler. */
+		size_t destination = side ? 0 : 1;
+		const struct pg_evidence *edge = convert_to(typing, &work, paths[destination],
+			pg_prove_identity_type(typing, pg_prove_universe(typing, classifiers, boundary, 0),
+				pg_evidence_premise(left, destination + 2), pg_evidence_premise(right, destination + 2)));
+		const struct pg_evidence *expected = pg_prove_identity_instance(typing, classifiers, edge,
+			pg_prove_reindex(typing, left, transport), pg_prove_reindex(typing, right, transport));
+		assert(expected);
+		const struct pg_evidence *checked = convert_to(typing, &work, acted, expected);
+		assert(checked && pg_evidence_judgement(checked) == PG_JUDGEMENT_VALUE);
+		assert(pg_evidence_subject(checked)->core == pg_evidence_subject(acted)->core);
+		assert(!pg_prove_identity_instance(typing, classifiers, edge,
+			pg_prove_reindex(typing, right, transport), pg_prove_reindex(typing, left, transport)));
+	}
+	pg_whnf_work_destroy(&work);
+	pg_dimensions_destroy(&dimensions);
+}
+
 static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
+	uniform_transport(typing, classifiers);
 	struct pg_dimensions dimensions;
 	assert(pg_dimensions_init(&dimensions, typing->graph) == 0);
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);

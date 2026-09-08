@@ -1709,8 +1709,22 @@ Next implementation order, retaining the existing three Core forms:
    verify its endpoints against the implemented application transport, then
    check faces, substitutions and diagonal computation before enabling it.
 
-These four items remain unchecked. Passing first-order transport tests does
-not discharge them, and datatype admission must not assume their completion.
+The general four-item contract remains unchecked. Passing first-order transport
+tests does not discharge it, and datatype admission must not assume completion.
+
+- [x] September 8, after `01201c3`: `tests/identity.c:uniform_transport`
+  constructs a selected universe square boundary by ordinary context action.
+  Acting on a scalar transport term yields a value proof relating the two
+  transported corners along the destination edge, in both transport directions.
+  This uses existing family action, reindexing, classifier formation and
+  explicit conversion; it adds no higher-field tag or proof rule. Swapping
+  the destination endpoints is rejected. The square center remains a supplied
+  assumption, not a derived filler. This verifies the initial square typing
+  example in item 1 and shows that uniform transport's typing can arise from
+  scalar term action. It does not establish direction transposition, a higher
+  field computation rule, or Pi lifting. Unknown acted fields remain neutral.
+  Optimized and ASan/UBSan pointer checks pass; Identity also passes with a
+  512 KiB stack. Implementation unchanged; tests +56 lines; docs separate.
 
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
