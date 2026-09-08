@@ -28,7 +28,7 @@ int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
 	enum pg_definition_policy definition_policy);
 void pg_synthesis_destroy(struct pg_synthesis *synthesis);
 /* Scope construction interns immutable binding inputs within this store.
- * Name spelling matters; token source offsets do not. Exact parent, context,
+ * Name spelling matters; token source offsets do not. Exact parent, context producer,
  * binder, evidence producer and export-scope pointers remain distinct keys.
  * This never compares Core by alpha/conversion or merges typed evidence. */
 const struct pg_source_scope *pg_synthesis_root(struct pg_synthesis *synthesis);
@@ -44,6 +44,9 @@ struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
 /* Stable even while pending or rejected; not proof that the binder is typed. */
 const struct pg_object *pg_synthesis_binding_binder(const struct pg_synthesis_job *job);
+/* Lexical scope is available before proof completion. Expressions requested
+ * here await its context producer; no assumed domain certificate is exposed. */
+const struct pg_source_scope *pg_synthesis_binding_scope(const struct pg_synthesis_job *job);
 /* Open the maximal leading Lambda or Pi telescope (not both mixed), using
  * the same domain synthesis and binding jobs as ordinary expressions. Other
  * heads give an empty telescope. Only domains are synthesized: the remaining

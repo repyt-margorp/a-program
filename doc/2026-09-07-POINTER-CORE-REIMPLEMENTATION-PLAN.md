@@ -270,6 +270,29 @@ not completion of provisional Self formation, universe solving or admission.
 Component `make check` and the ASan/UBSan synthesis suite passed. No source
 acceptance gate is marked complete by this change.
 
+After `b3ad153`, source scopes retain a context producer instead of copying its
+accepted proof pointer. Checked external contexts enter through the existing
+evidence producer; pending bindings refer to their own binding job. The one
+source-context accessor returns evidence only for a completed context producer.
+There is no parallel pending-context database or mutable proof snapshot.
+
+`pg_synthesis_binding_scope` exposes lexical structure while the domain is
+pending. Telescope opening now constructs its binding chain incrementally,
+without waiting between domains, then awaits the final context producer.
+Ordinary source evaluation/typing jobs subscribe to their context producer
+before invoking any proof rule. Failed context production propagates failure,
+and namespace publication requires an actually checked closed context.
+
+Regressions request bodies before their binding proofs, confirm they wake with
+the correct context, retain two nested binders across an unresolved domain
+cycle, reject bodies under failed domains, and reject publishing pending scopes
+as closed namespaces. A test's absolute job count was replaced with its actual
+invariant (one new expression job), because roots now also have a shared
+completed context producer. This prepares pending declaration structure; it
+does not supply a Self formation rule or solve recursive universe obligations.
+Component `make check` and ASan/UBSan synthesis tests passed. Source admission
+and the remaining full-plan acceptance requirements are still unfulfilled.
+
 - A scoped family signature supplies its fixed parameter context and index
   telescope. Instantiating that signature consumes checked index images and
   forms a type symbolically. It is not APP elimination of a `Comp Universe`

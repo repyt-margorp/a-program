@@ -340,7 +340,7 @@ static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *cla
 		assert(pg_synthesis_name(&synthesis, root, name, proofs[i]) == scope);
 		assert(complete(&synthesis, request(&synthesis, scope, "main := f;"), PG_SYNTHESIS_DONE) == proofs[i]);
 		/* Only the expression request is new, not another accepted producer. */
-		assert(synthesis.jobs.count == 3 + i);
+		assert(synthesis.jobs.count == jobs + 1);
 		if (!i) root = scope;
 	}
 	const char *prefixes[] = {"Low", "High"};
@@ -2467,6 +2467,8 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 			struct pg_synthesis_job *binding = pg_synthesis_binding(&synthesis, root, syntax);
 			const struct pg_object *reserved = pg_synthesis_binding_binder(binding);
 			assert(reserved && pg_synthesis_binding(&synthesis, root, syntax) == binding);
+			struct pg_synthesis_job *inner_expression = pg_synthesis_request(&synthesis,
+				pg_synthesis_binding_scope(binding), syntax->right);
 			assert(job && pg_synthesis_telescope(&synthesis, root, syntax) == job);
 			assert(!pg_synthesis_telescope_scope(job) && !pg_synthesis_telescope_body(job));
 			size_t contexts = typing->contexts.count;
@@ -2476,6 +2478,7 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 			const struct pg_context *last = pg_evidence_context(context);
 			assert(last && last->parent && !last->parent->parent);
 			assert(last->parent->binder == reserved);
+			assert(pg_evidence_context(complete(&synthesis, inner_expression, PG_SYNTHESIS_DONE)) == last->parent);
 			const struct pg_source_scope *scope = pg_synthesis_telescope_scope(job);
 			assert(pg_synthesis_telescope_body(job) == syntax->right->right);
 			const struct pg_evidence *body = complete(&synthesis,
@@ -2499,7 +2502,7 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 	struct pg_synthesis_job *pending_cycle = program(&synthesis, root, "{{T:=T;}}.T;");
 	const struct pg_source_scope *pending_scope = pg_synthesis_name_job(&synthesis, root,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "T", .length = 1}, pending_cycle);
-	const struct pg_syntax *pending_source = expression_syntax(typing->graph, "f:=\\x:T=>x;");
+	const struct pg_syntax *pending_source = expression_syntax(typing->graph, "f:=\\x:T=>\\y:T=>x;");
 	size_t before_contexts = typing->contexts.count, before_proofs = typing->proofs.count;
 	uint64_t before_steps = synthesis.steps;
 	struct pg_synthesis_job *pending_binding = pg_synthesis_binding(&synthesis, pending_scope, pending_source);
@@ -2507,18 +2510,36 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 	assert(pending_binder && !pg_synthesis_result(pending_binding));
 	assert(typing->contexts.count == before_contexts && typing->proofs.count == before_proofs);
 	assert(synthesis.steps == before_steps && !pg_prove_variable(typing, empty, pending_binder));
+	const struct pg_source_scope *pending_inner = pg_synthesis_binding_scope(pending_binding);
+	assert(pending_inner);
+	struct pg_synthesis_job *second_binding = pg_synthesis_binding(&synthesis, pending_inner, pending_source->right);
+	const struct pg_source_scope *second_inner = pg_synthesis_binding_scope(second_binding);
+	assert(second_inner && pg_synthesis_binding_binder(second_binding) != pending_binder);
+	struct pg_synthesis_job *pending_body = pg_synthesis_request(&synthesis, second_inner, pending_source->right->right);
+	struct pg_synthesis_job *pending_telescope = pg_synthesis_telescope(&synthesis, pending_scope, pending_source);
+	assert(typing->contexts.count == before_contexts && typing->proofs.count == before_proofs);
 	pg_synthesis_advance(&synthesis, 1000);
 	assert(pg_synthesis_status(pending_binding) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(pending_binding));
 	assert(pg_synthesis_binding(&synthesis, pending_scope, pending_source) == pending_binding);
 	assert(pg_synthesis_binding_binder(pending_binding) == pending_binder && !pg_synthesis_result(pending_binding));
+	assert(pg_synthesis_status(second_binding) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(second_binding));
+	assert(pg_synthesis_status(pending_body) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(pending_body));
+	assert(pg_synthesis_status(pending_telescope) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(pending_telescope));
+	assert(!pg_synthesis_result(pending_body) && !pg_synthesis_telescope_scope(pending_telescope));
+	assert(!pg_synthesis_namespace(&synthesis, root,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Bad", .length = 3}, second_inner));
 	struct pg_synthesis_job *invalid_binding = pg_synthesis_binding(&synthesis, root,
 		expression_syntax(typing->graph, "f:=\\x:Missing=>x;"));
 	const struct pg_object *invalid_binder = pg_synthesis_binding_binder(invalid_binding);
+	struct pg_synthesis_job *invalid_body = pg_synthesis_request(&synthesis,
+		pg_synthesis_binding_scope(invalid_binding), pending_source->right->right);
 	complete(&synthesis, invalid_binding, PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, invalid_body, PG_SYNTHESIS_REJECTED);
+	assert(!pg_synthesis_result(invalid_body));
 	assert(invalid_binder && invalid_binder != pending_binder);
 	assert(pg_synthesis_binding_binder(invalid_binding) == invalid_binder && !pg_synthesis_result(invalid_binding));
 	assert(!pg_synthesis_binding_binder(NULL) && !pg_synthesis_binding_binder(pending_cycle));
-	assert(!pg_synthesis_binding(&synthesis, root, pending_source->right));
+	assert(!pg_synthesis_binding(&synthesis, root, pending_source->right->right));
 	/* Parameters and indices have separate scopes. Constructor fields extend
 	 * parameters, not the index binders; the result map relates those contexts. */
 	const struct pg_syntax *source = expression_syntax(typing->graph,
