@@ -1819,6 +1819,18 @@ static void enumerate(struct pg_dimensions *dimensions, size_t source,
 	}
 }
 
+static const struct pg_term *symmetry_normalize(struct pg_graph *graph, const struct pg_term *term)
+{
+	struct pg_eval machine;
+	pg_eval_init(&machine, term);
+	machine.output = graph;
+	machine.dispatch = pg_pure_policy.dispatch;
+	assert(pg_eval_advance(&machine, 1000) == PG_EVAL_WHNF);
+	const struct pg_term *result = pg_eval_readback(&machine, graph);
+	pg_eval_destroy(&machine);
+	return result;
+}
+
 static void induced_face_permutations(struct pg_dimensions *dimensions)
 {
 	const size_t orders[6][3] = {{0,1,2}, {0,2,1}, {1,0,2}, {1,2,0}, {2,0,1}, {2,1,0}};
@@ -1876,19 +1888,21 @@ static void induced_face_permutations(struct pg_dimensions *dimensions)
 			const struct pg_term *input = pg_symmetry(graph, permutations[q], once);
 			const struct pg_dimension_map *map = pg_dimension_compose(dimensions, permutations[q], permutations[p]);
 			const struct pg_term *expected = pg_symmetry(graph, map, value);
-			struct pg_eval machine;
-			pg_eval_init(&machine, input);
-			machine.output = graph;
-			machine.dispatch = pg_pure_policy.dispatch;
-			assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
-			const struct pg_term *result = pg_eval_readback(&machine, graph);
-			pg_eval_destroy(&machine);
-			pg_eval_init(&machine, expected);
-			machine.output = graph;
-			machine.dispatch = pg_pure_policy.dispatch;
-			assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
-			assert(pg_eval_readback(&machine, graph) == result);
-			pg_eval_destroy(&machine);
+			assert(symmetry_normalize(graph, input) == symmetry_normalize(graph, expected));
+		}
+	}
+	/* Prefix extension must respect composition, including noncommuting cycles. */
+	for (size_t p = 0; p < 6; ++p) for (size_t q = 0; q < 6; ++q) {
+		const struct pg_dimension_map *combined = pg_dimension_compose(dimensions,
+			permutations[q], permutations[p]);
+		const struct pg_term *expected = symmetry_normalize(graph, pg_symmetry(graph, combined, value));
+		for (size_t left = 0; left < 3; ++left) for (size_t right = 0; right < 3; ++right) {
+			const struct pg_dimension_map *inner = pg_dimension_prefix(dimensions, left, permutations[p]);
+			const struct pg_dimension_map *outer = pg_dimension_prefix(dimensions, right, permutations[q]);
+			const struct pg_term *input = pg_symmetry(graph, outer, pg_symmetry(graph, inner, value));
+			assert(symmetry_normalize(graph, input) == expected);
+			/* Normalization never changes the exact interner's answer. */
+			assert(input == pg_symmetry(graph, outer, pg_symmetry(graph, inner, value)));
 		}
 	}
 }

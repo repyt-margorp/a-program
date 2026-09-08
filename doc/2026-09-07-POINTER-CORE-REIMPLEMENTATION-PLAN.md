@@ -24,6 +24,9 @@ criteria for merging different Lambda or semantic-object references.
   three-dimensional composition regression; both rules are necessary.
 - [x] Test captured arguments, trailing applications, every fuel split and
   suspended readback/restart, including a 126-axis identity prefix.
+- [x] Compare 324 combinations of three-axis permutations and independent
+  zero/one/two-axis prefix extensions against explicit map composition.
+  This includes noncommuting cycles, not only the involutive swap case.
 - [x] Run the complete pointer `make check` and ASan/UBSan `core_test`.
 - [ ] Supply the typed central action and its classifier preservation rule.
 
