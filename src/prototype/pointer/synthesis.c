@@ -109,7 +109,7 @@ struct effect_substitution_state {
 	const struct pg_term *result;
 };
 enum job_role { BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, HANDLER_CARRIER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
 enum { APPLICATION_RULE_READY = 6, APPLICATION_NEEDS_SEQUENCING = 7 };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
@@ -445,10 +445,14 @@ struct pg_synthesis_job *pg_synthesis_handler_carrier(struct pg_synthesis *synth
 {
 	if (!pg_evidence_owned_by(context, synthesis->typing)) return NULL;
 	if (!returned || returned->owner != synthesis->owner_key || !equation) return NULL;
-	struct pg_synthesis_job *effects = pg_synthesis_effect_inference(synthesis, work);
-	if (!effects) return NULL;
-	const void *inputs[] = {context, returned, effects, equation};
-	return request_inputs(synthesis, HANDLER_CARRIER_JOB, 4, inputs);
+	struct pg_synthesis_job *formation = request_job(synthesis, CLASSIFIER_FORMATION_JOB,
+		pg_synthesis_evidence(synthesis, context), returned);
+	struct pg_derivation_input codomain = {.rule = PG_PI_CONSTANT_CODOMAIN, .count = 1};
+	struct pg_synthesis_job *result = pg_synthesis_rule(synthesis, &codomain, &formation, NULL, NULL);
+	struct pg_derivation_input content = {.rule = PG_RETURN_CONTENT, .count = 1};
+	result = pg_synthesis_rule(synthesis, &content, &result, NULL, NULL);
+	struct pg_derivation_input carrier = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
+	return pg_synthesis_rule(synthesis, &carrier, &result, work, equation);
 }
 
 struct pg_synthesis_job *pg_synthesis_handler(struct pg_synthesis *synthesis,
@@ -2618,30 +2622,6 @@ rejected:
 	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
 }
 
-static void handler_carrier_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct pg_synthesis_job *returned = (void *)job->inputs[1];
-	struct pg_synthesis_job *effects = (void *)job->inputs[2];
-	if (returned->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, returned); return; }
-	if (returned->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, returned->status); return; }
-	if (!job->value_job) {
-		const struct pg_evidence *pi = pg_prove_classifier(synthesis->typing, synthesis->classifiers,
-			job->inputs[0], returned->result);
-		const struct pg_evidence *codomain = pg_prove_pi_constant_codomain(synthesis->typing, pi);
-		const struct pg_evidence *value = pg_prove_return_content(synthesis->typing, codomain);
-		if (!value) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		if (!pg_effect_equation_parameter(effects->inputs[0], job->inputs[3])) {
-			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-		}
-		struct pg_derivation_input input = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
-		struct pg_synthesis_job *premise = pg_synthesis_evidence(synthesis, value);
-		job->value_job = pg_synthesis_rule(synthesis, &input, &premise,
-			(void *)effects->inputs[0], job->inputs[3]);
-		if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-	}
-	forward_proof(synthesis, job, job->value_job);
-}
-
 static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *carrier = (void *)job->inputs[1];
@@ -3468,7 +3448,7 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 			job->type_structure = pg_universe(synthesis->classifiers, input->parameters.level);
 			goto done;
 		case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM: case PG_PI_FORM: case PG_PI_DOMAIN: case PG_RETURN_CONTENT:
-		case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE:
+		case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE: case PG_PI_CONSTANT_CODOMAIN:
 			break;
 		default: input = NULL; break;
 		}
@@ -3518,6 +3498,13 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		const struct pg_term *codomain;
 		const struct pg_object *binder;
 		if (!pg_pi_view(left, &job->type_structure, &binder, &codomain)) goto unsupported;
+		break;
+	}
+	case PG_PI_CONSTANT_CODOMAIN: {
+		const struct pg_term *domain;
+		const struct pg_object *binder;
+		if (!pg_pi_view(left, &domain, &binder, &job->type_structure)) goto unsupported;
+		if (pg_term_independent(job->type_structure, binder) != 1) goto unsupported;
 		break;
 	}
 	case PG_PI_FORM: {
@@ -3857,7 +3844,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == OPERATION_REFERENCE_JOB) { operation_reference_step(synthesis, job); return; }
 	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }
 	if (job->role == HANDLER_JOB) { handler_step(synthesis, job); return; }
-	if (job->role == HANDLER_CARRIER_JOB) { handler_carrier_step(synthesis, job); return; }
 	if (job->role == EFFECT_INFERENCE_JOB) {
 		struct pg_effect_inference *work = (void *)job->inputs[0];
 		if (!work->sealed && !work->failed) {

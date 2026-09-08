@@ -409,13 +409,20 @@ audit supersedes any expectation that wiring the last carrier API alone would
 finish general handler source support.
 
 - [x] September 9: `pg_synthesis_handler_carrier(context, returned, work,
-  equation)` awaits the independently synthesized return continuation and the
-  sealed effect closure through ordinary Solve. Existing Pi-codomain and F
-  inversion rules recover the constant result value type; ordinary F formation
-  constructs the carrier. The reissuing-handler fixture now runs this producer
-  directly into whole-handler synthesis, without manually building its carrier.
-  Non-Pi and dependent/raw-Pi return codomains remain unsupported rather than
-  coerced. The effect graph is still explicitly supplied: automatic generation
+  equation)` now assembles classifier formation, constant Pi codomain,
+  return-content elimination and equation-parameterized F formation as ordinary
+  rule jobs. The separate HANDLER_CARRIER_JOB and its synchronous proof-builder
+  step are removed. Structural projection handles constant Pi codomains using
+  the existing binder-independence check, without accepting the source proof.
+  A pending-context test recovers the symbolic carrier before the return
+  continuation is accepted, then checks its judgement after sealing. The
+  reissuing-handler fixture still feeds this producer into whole-handler
+  synthesis. Dependent codomain extraction is now rejected by the ordinary rule,
+  rather than reported as an unsupported wrapper operation. Non-Pi inputs
+  lacking classifier recovery remain unsupported; no coercion is added.
+  Normal checks, rebuilt ASan/UBSan synthesis tests and all eight source/six
+  runtime cases pass with unchanged example transition counts. Implementation
+  C changes by +17/-31; test C by +9/-1. The effect graph is still explicitly supplied: automatic generation
   of its contributions and latent callable effects remains unfinished.
 - [x] Assemble parsed multi-clause handlers through
   `pg_synthesis_handler(scope, carrier_producer, syntax)`. Share the existing
