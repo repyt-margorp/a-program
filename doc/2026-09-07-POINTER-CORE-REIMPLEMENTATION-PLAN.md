@@ -33,7 +33,25 @@ criteria for merging different Lambda or semantic-object references.
   because the classifier has an additional structural application.
   The complete rebuilt ASan/UBSan component `check` also passes, including
   higher action, derivation transport and source synthesis tests.
-- [ ] Add nonempty-row formation and request/fold evidence, row constraints,
+- [x] Admit closed nonempty rows through the same `PG_RETURN_TYPE_FORM` rule.
+  `pg_prove_effect_type` takes an explicit row; `pg_prove_return_type` is its
+  empty-row specialization. The subject Core retains the row, and generic
+  derivation parameters recover it from that subject rather than maintaining
+  another evidence field. NULL is not an empty row. Pure-only inversion and
+  value extraction continue to reject effectful classifiers.
+- [x] Retain that parameter in the experimental APGDRV version 2 codec.
+  Missing rows, non-row references, rows on unrelated rules, and version 1
+  inputs are rejected. Decoding creates unaccepted inputs; the ordinary Solve
+  queue calls the same formation rule. A two-arena fixture verifies relocated
+  nonempty rows and acceptance only after Solve, plus missing-row and old-version
+  rejection. Its descriptor resolver explicitly supplies the destination row;
+  this is not yet general operation-signature or row-schema serialization.
+  Regular `check` passes; `check-acceptance` passes eight unchanged examples
+  and six execution fixtures before the existing open-family failure at 88
+  transitions. Complete program-image CHECKPOINT support remains open.
+  The rebuilt ASan/UBSan component suite also passes, including the new
+  transport rejection fixtures and three-dimensional action tests.
+- [ ] Add request/fold evidence, row constraints,
   source application/handler elaboration and signature transport. This step
   supplies the shared representation; it does not yet admit effectful source
   programs, prove termination from an empty row, or implement open row metas.

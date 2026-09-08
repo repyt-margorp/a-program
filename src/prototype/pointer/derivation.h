@@ -9,6 +9,7 @@
  * they cannot be manufactured from serialized addresses or accepted flags. */
 struct pg_derivation_parameters {
 	const struct pg_object *binder;
+	const struct pg_effect_row *effects;
 	uint64_t level;
 	enum pg_identity_direction direction;
 	const struct pg_conversion_certificate *conversion;

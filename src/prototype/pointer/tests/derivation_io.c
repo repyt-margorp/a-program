@@ -29,6 +29,96 @@ static const struct pg_object *resolve(void *owner, const char *label)
 	return pg_computation_resolve(label);
 }
 
+struct effect_owner {
+	struct pg_classifiers *classifiers;
+	const struct pg_object *row;
+};
+
+static const char *effect_name(void *owner, const struct pg_object *object)
+{
+	struct effect_owner *context = owner;
+	return object == context->row ? "test/closed-effect-row/v1" : name(context->classifiers, object);
+}
+
+static const struct pg_object *effect_resolve(void *owner, const char *label)
+{
+	struct effect_owner *context = owner;
+	return !strcmp(label, "test/closed-effect-row/v1") ? context->row : resolve(context->classifiers, label);
+}
+
+static void effect_transport(void)
+{
+	static const struct pg_object_class label_class = {"test-row-label"};
+	static const struct pg_object label = {PG_SEMANTIC_OBJECT, &label_class};
+	const struct pg_object *labels[] = {&label};
+	struct pg_graph graphs[2];
+	struct pg_typing typings[2];
+	struct pg_classifiers classifiers[2];
+	struct effect_owner owners[2];
+	const struct pg_effect_row *rows[2];
+	for (size_t i = 0; i < 2; ++i) {
+		assert(!pg_graph_init(&graphs[i]) && !pg_typing_init(&typings[i], &graphs[i]));
+		assert(!pg_classifiers_init(&classifiers[i], &graphs[i]));
+		rows[i] = pg_effect_row(&graphs[i], 1, labels);
+		owners[i] = (struct effect_owner){&classifiers[i], pg_effect_reference(&graphs[i], rows[i])->as.reference};
+	}
+	assert(rows[0] != rows[1]);
+	const struct pg_evidence *universe = pg_prove_universe(&typings[0], &classifiers[0], pg_prove_empty_context(&typings[0]), 0);
+	const struct pg_evidence *formation = pg_prove_effect_type(&typings[0], &classifiers[0], rows[0], universe);
+	FILE *file = tmpfile();
+	assert(file && formation && !pg_derivations_write(file, 1, &formation, effect_name, &owners[0]));
+	rewind(file);
+	size_t count;
+	const struct pg_derivation_input *const *roots;
+	assert(!pg_derivations_read(file, &graphs[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
+	assert(count == 1 && roots[0]->parameters.effects == rows[1] && !typings[1].proofs.count);
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, &graphs[1]));
+	assert(!pg_synthesis_init(&synthesis, &typings[1], &classifiers[1], &work, PG_DEFINITION_EXPLICIT_THUNK));
+	struct pg_synthesis_job *job = pg_synthesis_derivation(&synthesis, roots[0]);
+	assert(job);
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE);
+	const struct pg_evidence *result = pg_synthesis_result(job);
+	const struct pg_effect_row *row;
+	const struct pg_term *value;
+	assert(pg_effect_type_view(pg_evidence_subject(result)->core, &row, &value) && row == rows[1]);
+	assert(!pg_prove_return_content(&typings[1], result));
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	/* Locate the explicit row field through the record grammar, not a proof ID. */
+	assert(!fseek(file, 8, SEEK_SET));
+	uint64_t records, root_count, row_id = 0;
+	assert(!pg_wire_read_u64(file, &records) && !pg_wire_read_u64(file, &root_count));
+	long row_offset = -1;
+	for (uint64_t i = 0; i < records; ++i) {
+		uint64_t rule, ignored, arity;
+		assert(!pg_wire_read_u64(file, &rule));
+		for (unsigned j = 0; j < 4; ++j) assert(!pg_wire_read_u64(file, &ignored));
+		long offset = ftell(file);
+		assert(offset >= 0 && !pg_wire_read_u64(file, &ignored));
+		if (rule == PG_RETURN_TYPE_FORM) { row_offset = offset; row_id = ignored; }
+		for (unsigned j = 0; j < 2; ++j) assert(!pg_wire_read_u64(file, &ignored));
+		assert(!pg_wire_read_u64(file, &arity));
+		for (uint64_t j = 0; j < arity; ++j) assert(!pg_wire_read_u64(file, &ignored));
+	}
+	assert(root_count == 1 && row_offset >= 0 && row_id);
+	assert(!fseek(file, row_offset, SEEK_SET) && !pg_wire_write_u64(file, 0));
+	rewind(file);
+	assert(pg_derivations_read(file, &graphs[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
+	assert(!fseek(file, row_offset, SEEK_SET) && !pg_wire_write_u64(file, row_id));
+	assert(!fseek(file, 7, SEEK_SET) && fputc(1, file) != EOF);
+	rewind(file);
+	assert(pg_derivations_read(file, &graphs[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
+	assert(!fclose(file));
+	for (size_t i = 0; i < 2; ++i) {
+		pg_classifiers_destroy(&classifiers[i]);
+		pg_typing_destroy(&typings[i]);
+		pg_graph_destroy(&graphs[i]);
+	}
+}
+
 static void classifier_transport(struct pg_classifiers *source)
 {
 	struct pg_graph graph;
@@ -114,8 +204,8 @@ static void unique_term_roots(FILE *file, struct pg_graph *graph,
 	assert(!pg_wire_read_u64(file, &records) && !pg_wire_read_u64(file, &roots));
 	size_t references = 0;
 	for (uint64_t i = 0; i < records; ++i) {
-		/* Rule, level, direction, reduction mode, then three Core references. */
-		for (unsigned j = 0; j < 7; ++j) {
+		/* Rule, level, direction, reduction mode, then four Core references. */
+		for (unsigned j = 0; j < 8; ++j) {
 			assert(!pg_wire_read_u64(file, &word));
 			if (j >= 4 && word) ++references;
 		}
@@ -318,6 +408,7 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 
 int main(int argc, char **argv)
 {
+	effect_transport();
 	assert(argc == 3);
 	int writing = !strcmp(argv[1], "write");
 	int bulk = !strcmp(argv[1], "read-bulk");

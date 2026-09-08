@@ -20,6 +20,11 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 	struct pg_derivation_parameters result = {0};
 	const struct pg_occurrence *subject = pg_evidence_subject(evidence);
 	switch (pg_evidence_rule(evidence)) {
+	case PG_RETURN_TYPE_FORM: {
+		const struct pg_term *value;
+		if (!pg_effect_type_view(subject->core, &result.effects, &value)) return -1;
+		break;
+	}
 	/* Nominal schema descriptors are not transported by this codec yet. */
 	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: return -1;
 	case PG_CONTEXT_EXTEND:
@@ -63,7 +68,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_VARIABLE, 1, pg_prove_variable(typing, p[0], parameters->binder));
 	RULE(PG_TYPE_FROM_VALUE, 1, pg_prove_value_type(typing, p[0]));
 	RULE(PG_VALUE_FROM_TYPE, 1, pg_prove_type_value(typing, p[0]));
-	RULE(PG_RETURN_TYPE_FORM, 1, pg_prove_return_type(typing, classifiers, p[0]));
+	RULE(PG_RETURN_TYPE_FORM, 1, pg_prove_effect_type(typing, classifiers, parameters->effects, p[0]));
 	RULE(PG_THUNK_TYPE_FORM, 1, pg_prove_thunk_type(typing, classifiers, p[0]));
 	RULE(PG_PI_FORM, 3, pg_prove_pi(typing, classifiers, p[0], p[1], p[2]));
 	RULE(PG_RETURN_INTRO, 1, pg_prove_return(typing, classifiers, p[0]));

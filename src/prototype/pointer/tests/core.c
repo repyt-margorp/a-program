@@ -2615,6 +2615,30 @@ static void effect_classifier_test(struct pg_graph *graph)
 	assert(!pg_classifier_resolve(&classifiers, "kernel/return-type/v1"));
 	assert(pg_classifier_resolve(&classifiers, "kernel/return-type/v2"));
 	assert(pg_classifier_resolve(&classifiers, "kernel/effect-row/empty/v1"));
+	struct pg_typing typing;
+	assert(!pg_typing_init(&typing, graph));
+	const struct pg_evidence *context = pg_prove_empty_context(&typing);
+	const struct pg_evidence *universe = pg_prove_universe(&typing, &classifiers, context, 0);
+	const struct pg_evidence *formation = pg_prove_effect_type(&typing, &classifiers, ab, universe);
+	assert(formation && pg_evidence_rule(formation) == PG_RETURN_TYPE_FORM);
+	assert(pg_evidence_subject(formation)->core == effectful);
+	assert(formation == pg_prove_effect_type(&typing, &classifiers, ab, universe));
+	assert(!pg_prove_effect_type(&typing, &classifiers, NULL, universe));
+	assert(!pg_prove_return_content(&typing, formation));
+	struct pg_derivation_parameters parameters;
+	assert(!pg_derivation_parameters(formation, &parameters) && parameters.effects == ab);
+	const struct pg_evidence *premises[] = {pg_evidence_premise(formation, 0)};
+	assert(pg_prove_derivation(&typing, &classifiers, PG_RETURN_TYPE_FORM, &parameters, 1, premises) == formation);
+	parameters.effects = NULL;
+	assert(!pg_prove_derivation(&typing, &classifiers, PG_RETURN_TYPE_FORM, &parameters, 1, premises));
+	const struct pg_object *m = pg_binder(graph);
+	const struct pg_evidence *scope = pg_prove_context_extension(&typing, context, m,
+		pg_prove_thunk_type(&typing, &classifiers, formation));
+	const struct pg_evidence *force = pg_prove_force(&typing, pg_prove_variable(&typing, scope, m));
+	assert(force && pg_evidence_classifier(force) == effectful);
+	assert(!pg_prove_return_value(&typing, force));
+	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, scope, force))->core == effectful);
+	pg_typing_destroy(&typing);
 	pg_classifiers_destroy(&classifiers);
 	puts("effects: explicit closed sets, union laws, unknown is not empty, and pure-only views passed");
 }

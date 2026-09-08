@@ -5,7 +5,7 @@
 
 #include <string.h>
 
-static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 1};
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 2};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {
@@ -45,6 +45,8 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 		if (pg_wire_write_u64(file, parameters.reduction ? pg_reduction_kind(parameters.reduction) : PG_REDUCTION_WHNF)) goto done;
 		const struct pg_term *binder = parameters.binder ? pg_reference(&arena, parameters.binder) : NULL;
 		if (parameters.binder && !binder) goto done;
+		const struct pg_term *effects = parameters.effects ? pg_effect_reference(&arena, parameters.effects) : NULL;
+		if (parameters.effects && !effects) goto done;
 		const struct pg_term *source = NULL, *target = NULL;
 		if (parameters.conversion) {
 			source = pg_conversion_left(parameters.conversion);
@@ -54,7 +56,7 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 			source = pg_reduction_source(parameters.reduction);
 			target = pg_reduction_target(parameters.reduction);
 		}
-		if (term_reference(file, binder, &term_roots)
+		if (term_reference(file, binder, &term_roots) || term_reference(file, effects, &term_roots)
 			|| term_reference(file, source, &term_roots)
 			|| term_reference(file, target, &term_roots)) goto done;
 		size_t arity = pg_evidence_premise_count(proof);
@@ -83,7 +85,7 @@ done:
 
 struct input_record {
 	struct pg_derivation_input *input;
-	uint64_t binder, source, target;
+	uint64_t binder, effects, source, target;
 };
 
 int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
@@ -105,7 +107,8 @@ int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t
 		if (pg_wire_read_u64(file, &rule) || rule > PG_IDENTITY_LIFT) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
 		if (pg_wire_read_u64(file, &reduction_kind) || reduction_kind > PG_REDUCTION_NF) return -1;
-		if (pg_wire_read_u64(file, &records[i].binder) || pg_wire_read_u64(file, &records[i].source)
+		if (pg_wire_read_u64(file, &records[i].binder) || pg_wire_read_u64(file, &records[i].effects)
+			|| pg_wire_read_u64(file, &records[i].source)
 			|| pg_wire_read_u64(file, &records[i].target) || pg_wire_read_u64(file, &arity)) return -1;
 		if (arity > available || arity > (SIZE_MAX - sizeof(struct pg_derivation_input)) / sizeof(void *)) return -1;
 		available -= (size_t)arity;
@@ -133,7 +136,12 @@ int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t
 	if (pg_graph_read(file, graph, limit, name_limit, resolve, owner, &term_count, &terms)) return -1;
 	for (size_t i = 0; i < n; ++i) {
 		const struct input_record *r = &records[i];
-		if (r->binder > term_count || r->source > term_count || r->target > term_count) return -1;
+		if (r->binder > term_count || r->effects > term_count || r->source > term_count || r->target > term_count) return -1;
+		if (r->input->rule == PG_RETURN_TYPE_FORM) {
+			if (!r->effects) return -1;
+			r->input->parameters.effects = pg_effect_row_view(terms[r->effects - 1]);
+			if (!r->input->parameters.effects) return -1;
+		} else if (r->effects) return -1;
 		if (r->binder) {
 			const struct pg_term *binder = terms[r->binder - 1];
 			if (binder->kind != PG_REFERENCE || binder->as.reference->kind != PG_BINDER) return -1;

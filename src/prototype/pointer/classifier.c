@@ -259,8 +259,19 @@ const struct pg_term *pg_effect_type(struct pg_classifiers *classifiers,
 {
 	if (!classifiers || !effects || !value_type) return NULL;
 	const struct pg_term *head = unary_type(classifiers, &return_type_former,
-		pg_reference(classifiers->graph, &effects->base.object));
+		pg_effect_reference(classifiers->graph, effects));
 	return pg_application(classifiers->graph, head, value_type);
+}
+
+const struct pg_term *pg_effect_reference(struct pg_graph *graph, const struct pg_effect_row *row)
+{
+	return graph && row ? pg_reference(graph, &row->base.object) : NULL;
+}
+
+const struct pg_effect_row *pg_effect_row_view(const struct pg_term *term)
+{
+	if (!term || term->kind != PG_REFERENCE || term->as.reference->owner != &effect_row_class) return NULL;
+	return (const struct pg_effect_row *)((const char *)term->as.reference - offsetof(struct pg_object_entry, object));
 }
 
 int pg_effect_type_view(const struct pg_term *term,
@@ -269,8 +280,9 @@ int pg_effect_type_view(const struct pg_term *term,
 	if (!term || !effects || !value_type || term->kind != PG_APPLICATION) return 0;
 	const struct pg_term *row;
 	if (!unary_view(term->as.application.function, &return_type_former, &row)) return 0;
-	if (row->kind != PG_REFERENCE || row->as.reference->owner != &effect_row_class) return 0;
-	*effects = (const struct pg_effect_row *)((const char *)row->as.reference - offsetof(struct pg_object_entry, object));
+	const struct pg_effect_row *found = pg_effect_row_view(row);
+	if (!found) return 0;
+	*effects = found;
 	*value_type = term->as.application.argument;
 	return 1;
 }

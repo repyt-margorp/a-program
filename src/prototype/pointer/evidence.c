@@ -788,17 +788,17 @@ const struct pg_evidence *pg_prove_variable(struct pg_typing *typing,
 
 static const struct pg_evidence *unary_formation(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *argument,
-	enum pg_evidence_rule rule)
+	enum pg_evidence_rule rule, const struct pg_effect_row *effects)
 {
 	if (!pg_evidence_owned_by(argument, typing)) return NULL;
-	if (classifiers->graph != typing->graph) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	enum pg_evidence_judgement output;
 	const struct pg_term *term;
 	if (rule == PG_RETURN_TYPE_FORM) {
 		argument = pg_prove_value_type(typing, argument);
 		if (!argument) return NULL;
 		output = PG_JUDGEMENT_COMPUTATION_TYPE;
-		term = pg_return_type(classifiers, argument->subject->core);
+		term = pg_effect_type(classifiers, effects, argument->subject->core);
 	} else {
 		if (argument->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 		output = PG_JUDGEMENT_VALUE_TYPE;
@@ -815,7 +815,16 @@ static const struct pg_evidence *unary_formation(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_return_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *value_type)
 {
-	return unary_formation(typing, classifiers, value_type, PG_RETURN_TYPE_FORM);
+	if (!typing) return NULL;
+	return pg_prove_effect_type(typing, classifiers, pg_effect_row(typing->graph, 0, NULL), value_type);
+}
+
+const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_effect_row *effects,
+	const struct pg_evidence *value_type)
+{
+	if (!effects) return NULL;
+	return unary_formation(typing, classifiers, value_type, PG_RETURN_TYPE_FORM, effects);
 }
 
 static int endpoint(const struct pg_typing *typing, const struct pg_evidence *term,
@@ -969,7 +978,7 @@ const struct pg_evidence *pg_prove_identity_lift(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *computation_type)
 {
-	return unary_formation(typing, classifiers, computation_type, PG_THUNK_TYPE_FORM);
+	return unary_formation(typing, classifiers, computation_type, PG_THUNK_TYPE_FORM, NULL);
 }
 
 const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classifiers *classifiers,

@@ -22,6 +22,11 @@ enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_SUBSTITUTION };
 struct pg_evidence;
 struct pg_data_schema;
+/* Closed-row computation-type formation. The row is a syntactic set of labels,
+ * not evidence of an operation's signature, execution, or termination. */
+const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_effect_row *effects,
+	const struct pg_evidence *value_type);
 
 /* Zero-index strictly-positive inductive formation. The schema parameter
  * context must end in the distinguished Self : Universe_l assumption.
