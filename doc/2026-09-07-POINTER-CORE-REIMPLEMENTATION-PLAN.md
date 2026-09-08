@@ -2408,11 +2408,29 @@ transport tests or further permutation-group tests cannot close them.
   formation and selected instantiation under projection, and rejection of a
   value or plain universe formation. The raw-center rejection remains intact.
   This implements structural provenance recovery for these three formers, not
-  a complete multidimensional boundary view. Normalization/conversion and
-  other formation rules remain unsupported rather than being silently stripped.
+  a complete multidimensional boundary view. At this checkpoint normalization,
+  conversion and other formation rules were unsupported (pure normalization
+  is handled in the following checkpoint).
   Work is currently synchronous; budgeted proof traversal remains necessary.
   Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test
   pass. Implementation C/header: +66/-0; tests: +25/-0; documentation excluded.
+
+- [x] After `41c6952`, follow accepted pure-normalization premises during
+  Identity-formation recovery. Such a premise keeps its source formation and
+  fixed pure-reduction certificate; recovering the source does not require
+  repeating evaluation or adding another evidence rule. The returned formation
+  can have a different, convertible subject, not merely an alpha-renamed one.
+  The API now makes that contract explicit: consumers retain the input proof
+  and check conversion when using the recovered formation to type the input.
+  General type conversion is still unsupported; do not discard a changed
+  classifier or its universe bound by following it like pure normalization.
+  Tests reuse the square's selected boundary for a computation Identity over
+  F, checking that reindex/recovery retains computation polarity and universe
+  bound and cannot be injected as a value type. Normalization before and after
+  reindex recovers the same formation, while ordinary conversion relates the
+  resulting subjects. This is provenance recovery, not typed center symmetry.
+  Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test
+  pass. Implementation C/header: +10/-3; tests: +33/-0; documentation excluded.
 
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.

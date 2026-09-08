@@ -824,6 +824,39 @@ static void square_transposition_boundary(struct pg_typing *typing, struct pg_cl
 	assert(pg_alpha_equal(pg_evidence_subject(projected_boundary)->core, pg_evidence_subject(projected)->core) == 1);
 	assert(!pg_identity_formation(typing, classifiers, center));
 	assert(!pg_identity_formation(typing, classifiers, pg_prove_universe(typing, classifiers, empty, 0)));
+	/* Reuse the selected boundary for computation Identity, not a value-side
+	 * encoding or a conversion of its polarity. */
+	const struct pg_evidence *original = pg_evidence_premise(extensions[8], 1);
+	size_t count = pg_evidence_premise_count(original) - 5;
+	const struct pg_evidence **paths = pg_alloc(graph, count * sizeof(*paths));
+	assert(!count || paths);
+	for (size_t i = 0; i < count; ++i) paths[i] = pg_evidence_premise(original, i + 3);
+	const struct pg_evidence *computation = pg_prove_family_identity_type(typing,
+		pg_prove_return_type(typing, classifiers, pg_evidence_premise(original, 0)),
+		pg_evidence_premise(original, 1), pg_evidence_premise(original, 2), count, paths,
+		pg_prove_return(typing, classifiers, pg_evidence_premise(original, count + 3)),
+		pg_prove_return(typing, classifiers, pg_evidence_premise(original, count + 4)));
+	assert(computation && pg_evidence_judgement(computation) == PG_JUDGEMENT_COMPUTATION_TYPE);
+	const struct pg_evidence *computation_source = computation;
+	computation = pg_prove_reindex(typing, map, computation);
+	const struct pg_evidence *computation_boundary = pg_identity_formation(typing, classifiers, computation);
+	assert(computation_boundary && pg_evidence_judgement(computation_boundary) == PG_JUDGEMENT_COMPUTATION_TYPE);
+	assert(pg_evidence_classifier(computation_boundary) == pg_evidence_classifier(computation));
+	assert(pg_alpha_equal(pg_evidence_subject(computation_boundary)->core, pg_evidence_subject(computation)->core) == 1);
+	assert(!pg_prove_type_value(typing, computation_boundary));
+	struct pg_whnf_job *normalized_job = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(computation)->core);
+	assert(pg_whnf_advance(normalized_job, 100000) == PG_EVAL_WHNF);
+	const struct pg_evidence *normalized = pg_prove_normalization(typing, computation, pg_whnf_certificate(normalized_job));
+	assert(normalized && pg_evidence_rule(normalized) == PG_PURE_NORMALIZATION);
+	assert(pg_identity_formation(typing, classifiers, normalized) == computation_boundary);
+	assert(pg_evidence_subject(normalized)->core != pg_evidence_subject(computation_boundary)->core);
+	converts(&work, pg_evidence_subject(normalized)->core, pg_evidence_subject(computation_boundary)->core);
+	normalized_job = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(computation_source)->core);
+	assert(pg_whnf_advance(normalized_job, 100000) == PG_EVAL_WHNF);
+	const struct pg_evidence *normalized_source = pg_prove_normalization(typing, computation_source, pg_whnf_certificate(normalized_job));
+	const struct pg_evidence *normalized_then_mapped = pg_prove_reindex(typing, map, normalized_source);
+	assert(normalized_then_mapped && pg_identity_formation(typing, classifiers, normalized_then_mapped) == computation_boundary);
+	converts(&work, pg_evidence_subject(normalized_then_mapped)->core, pg_evidence_subject(normalized)->core);
 	assert(!pg_prove_substitution_pair(typing, map, extensions[8], center));
 	struct pg_conversion comparison;
 	assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(center), pg_evidence_subject(expected)->core) == 0);

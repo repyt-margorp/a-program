@@ -86,6 +86,10 @@ const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 	for (;;) {
 		const struct pg_evidence *step;
 		enum pg_evidence_rule rule = pg_evidence_rule(formation);
+		if (rule == PG_PURE_NORMALIZATION) {
+			formation = pg_evidence_premise(formation, 0);
+			continue;
+		}
 		if (rule == PG_REINDEX) {
 			step = pg_evidence_premise(formation, 0);
 			formation = pg_evidence_premise(formation, 1);

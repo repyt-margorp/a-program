@@ -4,11 +4,14 @@
 #include "dimension.h"
 #include "evidence.h"
 
-/* Recover an explicit Identity formation through reindex/projection premises.
+/* Recover an explicit Identity formation through reindex/projection and
+ * accepted pure-normalization premises.
  * Rebuild with the ordinary formation rules and composed substitutions, keeping
  * the selected family and paths. This is not normalization or proof search:
- * unsupported formation/conversion rules return NULL. The rebuilt subject may
- * be alpha-equivalent rather than pointer-identical to the input subject.
+ * unsupported formation/conversion rules return NULL. The rebuilt subject is
+ * convertible, not necessarily alpha-equivalent, to the input subject. Callers
+ * must retain the input derivation and check conversion when typing at that
+ * input; this result does not certify a new equality or a shared Core pointer.
  * Work is synchronous; no new acceptance rule or cached boundary authority. */
 const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation);
