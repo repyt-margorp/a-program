@@ -309,6 +309,18 @@ int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
 	return 0;
 }
 
+int pg_synthesis_definition_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
+	const struct pg_syntax **definitions, const struct pg_syntax **expression)
+{
+	if (!synthesis || !job || !scope || !definitions || !expression) return -1;
+	if (job->owner != synthesis->owner_key || job->role != DEFINITION_JOB) return -1;
+	const struct pg_synthesis_job *registration = job->inputs[0];
+	*scope = registration->scope; *definitions = registration->syntax;
+	*expression = job->inputs[1];
+	return 0;
+}
+
 int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_source_environment *input)
 {
@@ -1398,6 +1410,21 @@ static void depend(struct pg_synthesis *synthesis, struct pg_synthesis_job *pare
 	subscribe(synthesis, parent, child, 0);
 }
 
+struct pg_synthesis_job *pg_synthesis_definition_request(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *definitions,
+	const struct pg_syntax *expression)
+{
+	if (!definitions || definitions->kind != PG_SYNTAX_DEFINITIONS || !expression) return NULL;
+	struct pg_synthesis_job *registration = request_role(synthesis, scope, definitions, DEFINITION_SCOPE_JOB);
+	if (!registration) return NULL;
+	struct pg_synthesis_job *job = request_job(synthesis, DEFINITION_JOB, registration, expression);
+	if (job && !job->syntax) {
+		job->syntax = expression;
+		depend(synthesis, job, registration);
+	}
+	return job;
+}
+
 /* Forward proof-result jobs only; schema/namespace outputs have other payloads. */
 static int forward_proof(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	struct pg_synthesis_job *canonical)
@@ -2295,6 +2322,12 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 
 static void definition_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
+	if (!job->stage) {
+		struct pg_synthesis_job *registration = (void *)job->inputs[0];
+		if (registration->status == PG_SYNTHESIS_PENDING) depend(synthesis, job, registration);
+		else finish(synthesis, job, registration->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : registration->status);
+		return;
+	}
 	if (!job->left) {
 		job->left = pg_synthesis_request(synthesis, job->scope, job->syntax);
 		depend(synthesis, job, job->left);
@@ -2349,7 +2382,11 @@ static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synt
 				state->entries[i] = name->imported;
 			} else {
 				if (name->producer) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-				name->producer = request_role(synthesis, state->scope, item->expression, DEFINITION_JOB);
+				name->producer = request_job(synthesis, DEFINITION_JOB, job, item->expression);
+				if (name->producer) {
+					name->producer->scope = state->scope;
+					name->producer->syntax = item->expression;
+				}
 				state->entries[i] = name->producer;
 			}
 			if (!state->entries[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -2363,7 +2400,7 @@ static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synt
 			struct pg_synthesis_job *producer = state->entries[i];
 			if (producer->role == DEFINITION_JOB && !producer->stage) {
 				producer->stage = 1;
-				enqueue(synthesis, producer);
+				if (!producer->dependency) enqueue(synthesis, producer);
 			}
 		} else {
 			const struct pg_syntax_item *item = &state->syntax->items[i];

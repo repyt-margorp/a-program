@@ -4,15 +4,23 @@
 #include "wire.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\1";
+static const char magic[8] = "APGSRC\2";
 enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS };
 
 struct environment {
 	enum environment_kind kind;
 	struct pg_token name;
 	const struct pg_source_scope *parent, *target;
-	const struct pg_syntax *syntax;
+	const struct pg_syntax *syntax, *definitions;
 };
+
+static int source_input(const struct pg_synthesis *synthesis, const struct pg_synthesis_job *job,
+	const struct pg_source_scope **scope, const struct pg_syntax **syntax, const struct pg_syntax **definitions)
+{
+	*definitions = NULL;
+	if (!pg_synthesis_source_input(synthesis, job, scope, syntax)) return 0;
+	return pg_synthesis_definition_input(synthesis, job, scope, definitions, syntax);
+}
 
 static int environment(const struct pg_synthesis *synthesis, const struct pg_source_scope *scope,
 	struct environment *output)
@@ -23,7 +31,7 @@ static int environment(const struct pg_synthesis *synthesis, const struct pg_sou
 	struct pg_synthesis_job *job = input.producer ? input.producer : input.module;
 	if (job) {
 		output->kind = input.producer ? NAME : MODULE;
-		return pg_synthesis_source_input(synthesis, job, &output->target, &output->syntax);
+		return source_input(synthesis, job, &output->target, &output->syntax, &output->definitions);
 	}
 	if (input.exports) { output->kind = NAMESPACE; output->target = input.exports; }
 	else if (input.imports) { output->kind = IMPORTS; output->target = input.imports; }
@@ -57,14 +65,16 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	if (pg_dag_init(&scopes, child, &synthesis) || pg_dag_init(&syntax, NULL, NULL)) goto done;
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_source_scope *scope;
-		const struct pg_syntax *term;
-		if (pg_synthesis_source_input(synthesis, roots[i], &scope, &term)
+		const struct pg_syntax *term, *definitions;
+		if (source_input(synthesis, roots[i], &scope, &term, &definitions)
 			|| pg_dag_add(&scopes, scope) || pg_dag_add(&syntax, term)) goto done;
+		if (definitions && pg_dag_add(&syntax, definitions)) goto done;
 	}
 	for (const struct pg_dag_node *node = scopes.first; node; node = node->next) {
 		struct environment input;
 		if (environment(synthesis, node->key, &input)) goto done;
 		if (input.syntax && pg_dag_add(&syntax, input.syntax)) goto done;
+		if (input.definitions && pg_dag_add(&syntax, input.definitions)) goto done;
 	}
 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, synthesis->definition_policy)
 		|| pg_wire_write_u64(file, scopes.count) || pg_wire_write_u64(file, count)) goto done;
@@ -72,15 +82,16 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 		struct environment input;
 		if (environment(synthesis, node->key, &input)) goto done;
 		uint64_t words[] = {input.kind, id(&scopes, input.parent), id(&scopes, input.target),
-			id(&syntax, input.syntax), input.name.kind, input.name.length};
-		for (size_t i = 0; i < 6; ++i) if (pg_wire_write_u64(file, words[i])) goto done;
+			id(&syntax, input.syntax), id(&syntax, input.definitions), input.name.kind, input.name.length};
+		for (size_t i = 0; i < 7; ++i) if (pg_wire_write_u64(file, words[i])) goto done;
 		if (input.name.length && fwrite(input.name.text, 1, input.name.length, file) != input.name.length) goto done;
 	}
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_source_scope *scope;
-		const struct pg_syntax *term;
-		if (pg_synthesis_source_input(synthesis, roots[i], &scope, &term)) goto done;
-		if (pg_wire_write_u64(file, id(&scopes, scope)) || pg_wire_write_u64(file, id(&syntax, term))) goto done;
+		const struct pg_syntax *term, *definitions;
+		if (source_input(synthesis, roots[i], &scope, &term, &definitions)) goto done;
+		if (pg_wire_write_u64(file, id(&scopes, scope)) || pg_wire_write_u64(file, id(&syntax, term))
+			|| pg_wire_write_u64(file, id(&syntax, definitions))) goto done;
 	}
 	if (syntax.count > SIZE_MAX / sizeof(void *)) goto done;
 	const struct pg_syntax **terms = pg_alloc(&syntax.storage, syntax.count * sizeof(*terms));
@@ -93,7 +104,7 @@ done:
 }
 
 struct record {
-	uint64_t kind, parent, target, syntax;
+	uint64_t kind, parent, target, syntax, definitions;
 	struct pg_token name;
 };
 
@@ -106,50 +117,52 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return NULL;
 	if (pg_wire_read_u64(file, &policy) || policy > PG_DEFINITION_EXPLICIT_THUNK) return NULL;
 	if (pg_wire_read_u64(file, &n) || pg_wire_read_u64(file, &nr)) return NULL;
-	if (n > limit || nr > (limit - n) / 2 || limit > SIZE_MAX / sizeof(struct record)) return NULL;
+	if (n > limit || nr > (limit - n) / 3 || limit > SIZE_MAX / sizeof(struct record)) return NULL;
 	struct pg_program *program = pg_program_allocate((enum pg_definition_policy)policy);
 	if (!program) return NULL;
 	struct pg_graph *graph = &program->graph;
 	struct record *records = pg_alloc(graph, (size_t)n * sizeof(*records));
 	const struct pg_source_scope **scopes = pg_alloc(graph, (size_t)n * sizeof(*scopes));
-	uint64_t *ids = pg_alloc(graph, (size_t)nr * 2 * sizeof(*ids));
+	uint64_t *ids = pg_alloc(graph, (size_t)nr * 3 * sizeof(*ids));
 	struct pg_synthesis_job **jobs = pg_alloc(graph, (size_t)nr * sizeof(*jobs));
 	if (!records || !scopes || !ids || !jobs) goto fail;
-	size_t remaining = limit - (size_t)n - 2 * (size_t)nr;
+	size_t remaining = limit - (size_t)n - 3 * (size_t)nr;
 	for (size_t i = 0; i < n; ++i) {
-		uint64_t w[6];
-		for (size_t j = 0; j < 6; ++j) if (pg_wire_read_u64(file, &w[j])) goto fail;
-		if (w[0] > IMPORTS || w[1] > i || w[2] > i || w[4] > PG_TOKEN_ERROR || w[5] > remaining) goto fail;
-		char *name = pg_alloc(graph, (size_t)w[5]);
-		if (!name || fread(name, 1, (size_t)w[5], file) != w[5]) goto fail;
-		remaining -= (size_t)w[5];
-		records[i] = (struct record){w[0], w[1], w[2], w[3],
-			{.kind = w[4], .text = name, .length = w[5], .text_length = w[5]}};
+		uint64_t w[7];
+		for (size_t j = 0; j < 7; ++j) if (pg_wire_read_u64(file, &w[j])) goto fail;
+		if (w[0] > IMPORTS || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
+		char *name = pg_alloc(graph, (size_t)w[6]);
+		if (!name || fread(name, 1, (size_t)w[6], file) != w[6]) goto fail;
+		remaining -= (size_t)w[6];
+		records[i] = (struct record){w[0], w[1], w[2], w[3], w[4],
+			{.kind = w[5], .text = name, .length = w[6], .text_length = w[6]}};
 	}
-	for (size_t i = 0; i < 2 * nr; ++i) if (pg_wire_read_u64(file, &ids[i])) goto fail;
+	for (size_t i = 0; i < 3 * nr; ++i) if (pg_wire_read_u64(file, &ids[i])) goto fail;
 	size_t nt;
 	const struct pg_syntax *const *terms;
 	if (pg_syntax_read(file, graph, limit, &nt, &terms) || pg_syntax_validate(nt, terms)) goto fail;
 	if (fgetc(file) != EOF || ferror(file)) goto fail;
 	for (size_t i = 0; i < n; ++i) {
 		const struct record *r = &records[i];
-		if (r->syntax > nt) goto fail;
+		if (r->syntax > nt || r->definitions > nt) goto fail;
 		const struct pg_source_scope *parent = r->parent ? scopes[r->parent - 1] : NULL;
 		const struct pg_source_scope *target = r->target ? scopes[r->target - 1] : NULL;
 		struct pg_synthesis *s = &program->synthesis;
 		if (r->kind == ROOT) {
-			if (parent || target || r->syntax || r->name.kind || r->name.length) goto fail;
+			if (parent || target || r->syntax || r->definitions || r->name.kind || r->name.length) goto fail;
 			scopes[i] = program->scope;
 			continue;
 		}
 		if (!parent || !target) goto fail;
 		if (r->kind == NAME || r->kind == MODULE) {
 			if (!r->syntax) goto fail;
-			struct pg_synthesis_job *job = pg_synthesis_request(s, target, terms[r->syntax - 1]);
+			struct pg_synthesis_job *job = r->definitions
+				? pg_synthesis_definition_request(s, target, terms[r->definitions - 1], terms[r->syntax - 1])
+				: pg_synthesis_request(s, target, terms[r->syntax - 1]);
 			scopes[i] = r->kind == NAME ? pg_synthesis_name_job(s, parent, r->name, job)
 				: pg_synthesis_module_namespace(s, parent, r->name, job);
 		} else {
-			if (r->syntax) goto fail;
+			if (r->syntax || r->definitions) goto fail;
 			if (r->kind == IMPORTS) {
 				if (r->name.kind || r->name.length) goto fail;
 				scopes[i] = pg_synthesis_import_scope(s, parent, target);
@@ -158,8 +171,11 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		if (!scopes[i]) goto fail;
 	}
 	for (size_t i = 0; i < nr; ++i) {
-		if (!ids[2 * i] || ids[2 * i] > n || !ids[2 * i + 1] || ids[2 * i + 1] > nt) goto fail;
-		jobs[i] = pg_synthesis_request(&program->synthesis, scopes[ids[2 * i] - 1], terms[ids[2 * i + 1] - 1]);
+		uint64_t scope = ids[3 * i], syntax = ids[3 * i + 1], definitions = ids[3 * i + 2];
+		if (!scope || scope > n || !syntax || syntax > nt || definitions > nt) goto fail;
+		jobs[i] = definitions ? pg_synthesis_definition_request(&program->synthesis,
+			scopes[scope - 1], terms[definitions - 1], terms[syntax - 1])
+			: pg_synthesis_request(&program->synthesis, scopes[scope - 1], terms[syntax - 1]);
 		if (!jobs[i]) goto fail;
 	}
 	program->root = nr ? jobs[0] : NULL;

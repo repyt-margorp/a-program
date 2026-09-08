@@ -55,6 +55,19 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
 	const struct pg_syntax **syntax);
+/* A definition is keyed by its registration producer and expression, not by
+ * the registration worker's allocated scope. Borrow its reconstructible source
+ * inputs without claiming whole-module acceptance. Available while dormant. */
+int pg_synthesis_definition_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
+	const struct pg_syntax **definitions, const struct pg_syntax **expression);
+/* Reserve the same definition producer before registration. Ordinary
+ * registration supplies its lexical scope and activates it. An expression not
+ * registered by that block is rejected, not treated as an independent body.
+ * This does not add whole-module checking to a direct definition reference. */
+struct pg_synthesis_job *pg_synthesis_definition_request(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *definitions,
+	const struct pg_syntax *expression);
 /* Closed lexical environment input, not a copied scope or another authority.
  * A parentless empty view denotes the ordinary root. At most one of producer,
  * module, exports and imports is present. Binder/definition-registration/

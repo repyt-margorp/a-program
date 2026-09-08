@@ -7385,7 +7385,7 @@ The wire format is `APGSYN` version 1, a component rather than a final `.a` file
   image, then integrate RECOMPUTE/CHECKPOINT policies and CLI resumption.
 
 Continuation after `21e97c7`: closed source environments now use `source_io.c`
-(`APGSRC` version 1). Read-only synthesis views expose expression inputs and
+(`APGSRC` version 2). Read-only synthesis views expose expression inputs and
 lexical environment dependencies; they do not copy progress or evidence.
 Environment parents, source-name producers, module namespaces, explicit export
 namespaces and supplied import scopes share one dependency table and one syntax
@@ -7398,20 +7398,33 @@ of truth remains those APIs' interned scopes and jobs, not the transport records
   before and after source acceptance yields identical RECOMPUTE bytes.
 - [x] Use the same codec for single-source seed convenience functions; remove
   the separate `APGSEED` read/write implementation rather than keep two paths.
-- [ ] Reconstruct selected-definition producers and accepted/rule producers in
-  external environments; these currently fail explicitly, without dropping
+- [x] Reconstruct selected-definition producers, including external aliases,
+  from the registration producer and original RHS syntax. Reserve the existing
+  definition job before registration; do not create a second producer kind.
+- [ ] Reconstruct accepted/rule producers in external environments;
+  these currently fail explicitly, without dropping
   their dependencies or substituting a Core-only value.
 - [ ] Retain partial source-preparation and rule work as CHECKPOINT, and connect
   the common program image to CLI/file import selection.
 
 Binder, definition-registration and handler-local scopes are not misrepresented
 as closed environments. They require reconstruction from their source inputs.
-The module fixture completes in 118 transitions for budgets 1 and 64 and reuses
+The module fixture completes in 119 transitions for budgets 1 and 64 and reuses
 the same accepted exported evidence across namespace and import paths. This
 closes a RECOMPUTE fragment, not N5 or full source-language compatibility.
 Normal `check`, eight source checks and six execution fixtures pass. Rebuilt
 ASan/UBSan source-image and seed tests, including separate-process loading,
 also pass. No Main promotion is justified by this partial image support.
+
+Definition identity now uses the exact `(registration producer, RHS syntax)`
+pointer tuple, not a scope containing allocated mutable registration state.
+The registered lexical scope still governs body synthesis. A direct definition
+reference is not rewritten into qualified module selection: the latter waits
+for all module obligations and would change pending/rejected behavior.
+Round-trip tests keep a valid definition available when a sibling is rejected
+or cyclic, reject duplicate registration, and reject a reserved expression
+absent from the completed registration. Source bytes remain unchanged before
+and after Solve. This retains immutable inputs only, not completed proof work.
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.

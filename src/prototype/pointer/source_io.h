@@ -3,7 +3,7 @@
 #include "program.h"
 #include <stdio.h>
 
-/* Closed source environments and expression roots, including pending modules.
+/* Closed source environments and expression/definition roots, including pending modules.
  * Reuses immutable syntax, lexical parents, namespaces and import bindings;
  * no search state or accepted proof is retained. Unsupported producer/scope
  * kinds fail explicitly instead of being omitted. This is RECOMPUTE, not a
