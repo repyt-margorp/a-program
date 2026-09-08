@@ -2804,6 +2804,42 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	complete(&synthesis, pg_synthesis_induction_branch(&synthesis, named, nat,
 		pg_data_constructor(nat_layout, 1), nat_instance.parameters, motive_context, motive,
 		shadow->items[0].expression), PG_SYNTHESIS_UNSUPPORTED);
+	/* The ordinary source path discovers the constant motive before opening
+	 * IH assumptions. No expected type or explicit motive is supplied here. */
+	const char *source_inductions[] = {
+		"r:=(\\n:Nat=>n @zero=>Nat.zero @succ k=>Nat.succ *k) (Nat.succ (Nat.succ Nat.zero));",
+		"r:=(\\n:Nat=>n @succ k=>Nat.succ *k @zero=>Nat.zero) (Nat.succ (Nat.succ Nat.zero));",
+		"r:=((\\n:Nat=>n @zero=>(\\m:Nat=>m) @succ k=>(\\m:Nat=>Nat.succ (*k m))) (Nat.succ Nat.zero)) (Nat.succ Nat.zero);",
+		"r:=(\\n:Nat=>n @zero=>Nat.zero @succ k=>{rest:=*k; Nat.succ rest;}) (Nat.succ (Nat.succ Nat.zero));"
+	};
+	for (size_t i = 0; i < sizeof(source_inductions) / sizeof(*source_inductions); ++i) {
+		struct pg_synthesis_job *job = request(&synthesis, named, source_inductions[i]);
+		const struct pg_evidence *term = complete(&synthesis, job, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *nf = complete(&synthesis,
+			pg_synthesis_nf(&synthesis, empty, term), PG_SYNTHESIS_DONE);
+		const struct pg_evidence *result = pg_prove_return_value(typing, nf);
+		assert(result && pg_evidence_subject(result)->core == pg_evidence_subject(two)->core);
+		assert(pg_evidence_classifier(result) == pg_evidence_subject(nat)->core);
+	}
+	const struct pg_evidence *selected = complete(&synthesis, request(&synthesis, named,
+		"r:=(\\n:Nat=>n @zero=>Nat.zero @succ k=>{answer:=Nat.zero; *k;}.answer) (Nat.succ Nat.zero);"),
+		PG_SYNTHESIS_DONE);
+	const struct pg_evidence *selected_value = complete(&synthesis,
+		pg_synthesis_return(&synthesis, empty, selected), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(selected_value)->core == pg_evidence_subject(zero)->core);
+	complete(&synthesis, request(&synthesis, named,
+		"r:=\\n:Nat=>n @zero=>(\\m:Nat=>m) @succ k=>(\\k:Nat=>*k);"), PG_SYNTHESIS_UNSUPPORTED);
+	complete(&synthesis, request(&synthesis, named,
+		"r:=\\n:Nat=>n @zero=>Nat.zero @succ k=>{k:=Nat.zero; *k;};"), PG_SYNTHESIS_UNSUPPORTED);
+	/* A retained constant Pi codomain currently loses nominal provenance.
+	 * Keep this boundary explicit until derived formation traversal is fixed. */
+	complete(&synthesis, request(&synthesis, named,
+		"r:=(Nat.succ (Nat.succ Nat.zero)) @zero=>Nat.zero @succ k=>Nat.succ *k;"), PG_SYNTHESIS_UNSUPPORTED);
+	/* Recovering a recursive field's nominal origin through its Self map is
+	 * also required before nested Match can exercise the outer/inner IH scopes. */
+	complete(&synthesis, request(&synthesis, named,
+		"r:=(\\n:Nat=>n @zero=>Nat.zero @succ k=>(k @zero=>*k @succ j=>*k)) (Nat.succ Nat.zero);"),
+		PG_SYNTHESIS_UNSUPPORTED);
 	complete(&synthesis, request(&synthesis, named, "r:=Nat.Alias;"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, named, "r:=succ;"), PG_SYNTHESIS_REJECTED);
 	struct pg_synthesis_job *other_job = request(&synthesis, root, "Other:=@{zero:*; succ:*->*;};");
@@ -2860,6 +2896,12 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *head_value = complete(&synthesis,
 		pg_synthesis_return(&synthesis, empty, head), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(head_value)->core == pg_evidence_subject(zero)->core);
+	const struct pg_evidence *length = complete(&synthesis, request(&synthesis, named,
+		"r:=(\\xs:List Nat=>xs @cons x rest=>Nat.succ *rest @nil=>Nat.zero) ((List Nat).cons Nat.zero ((List Nat).cons Nat.zero L.nil));"),
+		PG_SYNTHESIS_DONE);
+	const struct pg_evidence *length_nf = complete(&synthesis,
+		pg_synthesis_nf(&synthesis, empty, length), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(pg_prove_return_value(typing, length_nf))->core == pg_evidence_subject(two)->core);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("source declarations: nominal formation, conditional universe candidates, no early publication and reuse passed");

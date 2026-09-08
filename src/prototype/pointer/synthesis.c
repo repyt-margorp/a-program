@@ -71,14 +71,18 @@ struct declaration_state {
 };
 struct match_branch {
 	const struct pg_source_scope *scope;
+	const struct pg_syntax *clause;
 	struct pg_synthesis_job *body;
 	const struct pg_evidence *function;
+	int needs_ih;
 };
 struct match_state {
 	struct pg_inductive_instance instance;
 	const struct pg_source_scope *labels;
 	const struct pg_evidence *motive;
-	size_t count, next, checked;
+	const struct pg_evidence *motive_context;
+	size_t count, next, checked, prepared;
+	int induction;
 	struct match_branch branches[];
 };
 struct family_state {
@@ -1059,6 +1063,129 @@ static struct source_reference lookup_scope(const struct pg_source_scope *scope,
 	return (struct source_reference){0};
 }
 
+static size_t block_end(const struct pg_syntax *syntax)
+{
+	if (syntax->kind == PG_SYNTAX_BLOCK) return syntax->item_count;
+	const struct pg_syntax *block = syntax->left;
+	for (size_t i = 0; i < block->item_count; ++i) {
+		struct pg_token name = block->items[i].name;
+		if (name.length && same_name(name, syntax->right->token)) return i + 1;
+	}
+	return 0;
+}
+
+struct marker_shadow {
+	struct pg_token name;
+	const struct marker_shadow *parent;
+};
+struct marker_task {
+	const struct pg_syntax *syntax;
+	const struct marker_shadow *shadow;
+	struct marker_task *next;
+};
+
+static int marker_push(struct pg_graph *arena, struct marker_task **tasks,
+	const struct pg_syntax *syntax, const struct marker_shadow *shadow)
+{
+	if (!syntax) return 0;
+	struct marker_task *task = pg_alloc(arena, sizeof(*task));
+	if (!task) return -1;
+	*task = (struct marker_task){syntax, shadow, *tasks};
+	*tasks = task;
+	return 0;
+}
+
+static const struct marker_shadow *marker_bind(struct pg_graph *arena,
+	const struct marker_shadow *parent, struct pg_token name)
+{
+	struct marker_shadow *shadow = pg_alloc(arena, sizeof(*shadow));
+	if (shadow) *shadow = (struct marker_shadow){name, parent};
+	return shadow;
+}
+
+/* Lexical dependency discovery only. The normal binder resolver and kernel
+ * still check every use. Nested pattern/Lambda/block binders shadow names;
+ * declarations introduce their own Self marker. No classifier is guessed. */
+static int branch_needs_ih(const struct pg_source_scope *scope,
+	const struct pg_context *prefix, const struct pg_syntax *body)
+{
+	if (lookup_scope(scope, (struct pg_token){.kind = '*'}).binder) return 0;
+	struct pg_graph arena = {0};
+	struct marker_task *tasks = NULL;
+	int result = -1;
+	if (marker_push(&arena, &tasks, body, NULL)) goto done;
+	while (tasks) {
+		const struct pg_syntax *syntax = tasks->syntax;
+		const struct marker_shadow *shadow = tasks->shadow;
+		tasks = tasks->next;
+		size_t count = syntax->item_count;
+		if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_BLOCK) {
+			count = block_end(syntax);
+			syntax = syntax->left;
+		}
+		if (syntax->kind == PG_SYNTAX_DECLARATION) continue;
+		if (syntax->kind == PG_SYNTAX_APPLICATION && syntax->left->kind == PG_SYNTAX_ATOM &&
+			syntax->left->token.kind == '*' && syntax->right->kind == PG_SYNTAX_ATOM) {
+			struct pg_token name = syntax->right->token;
+			const struct marker_shadow *bound = shadow;
+			while (bound && !same_name(bound->name, name)) bound = bound->parent;
+			if (!bound) {
+				struct source_reference field = lookup_scope(scope, name);
+				for (const struct pg_context *context = pg_evidence_context(source_context(scope));
+					context && context != prefix; context = context->parent) {
+					if (context->binder == field.binder) { result = 1; goto done; }
+				}
+			}
+		}
+		if (syntax->kind == PG_SYNTAX_LAMBDA || syntax->kind == PG_SYNTAX_PI) {
+			struct pg_token name = syntax->kind == PG_SYNTAX_LAMBDA ? syntax->token
+				: syntax->left->kind == PG_SYNTAX_BINDER ? syntax->left->token : (struct pg_token){0};
+			const struct marker_shadow *inner = shadow;
+			if (name.kind == PG_TOKEN_IDENT) {
+				inner = marker_bind(&arena, shadow, name);
+				if (!inner) goto done;
+			}
+			if (marker_push(&arena, &tasks, syntax->left, shadow)) goto done;
+			if (marker_push(&arena, &tasks, syntax->right, inner)) goto done;
+			continue;
+		}
+		if (syntax->kind == PG_SYNTAX_ELIMINATION) {
+			if (marker_push(&arena, &tasks, syntax->left, shadow)) goto done;
+			for (size_t i = 0; i < syntax->item_count; ++i) {
+				const struct pg_syntax *clause = syntax->items[i].expression;
+				const struct marker_shadow *inner = shadow;
+				for (size_t j = 0; j < clause->item_count; ++j) {
+					inner = marker_bind(&arena, inner, clause->items[j].name);
+					if (!inner) goto done;
+				}
+				if (marker_push(&arena, &tasks, clause->left, shadow)) goto done;
+				if (marker_push(&arena, &tasks, clause->right, inner)) goto done;
+			}
+			continue;
+		}
+		if (syntax->kind == PG_SYNTAX_DEFINITIONS) {
+			for (size_t i = 0; i < syntax->item_count; ++i) {
+				shadow = marker_bind(&arena, shadow, syntax->items[i].name);
+				if (!shadow) goto done;
+			}
+		}
+		if (marker_push(&arena, &tasks, syntax->left, shadow)) goto done;
+		if (marker_push(&arena, &tasks, syntax->right, shadow)) goto done;
+		for (size_t i = 0; i < count; ++i) {
+			if (marker_push(&arena, &tasks, syntax->items[i].expression, shadow)) goto done;
+			if (marker_push(&arena, &tasks, syntax->items[i].annotation, shadow)) goto done;
+			if (syntax->kind == PG_SYNTAX_BLOCK && syntax->items[i].name.kind == PG_TOKEN_IDENT) {
+				shadow = marker_bind(&arena, shadow, syntax->items[i].name);
+				if (!shadow) goto done;
+			}
+		}
+	}
+	result = 0;
+done:
+	pg_graph_destroy(&arena);
+	return result;
+}
+
 static int hypothesis_reference(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
@@ -1541,10 +1668,7 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (pg_index_init(&block->names) != 0) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		if (job->syntax->kind == PG_SYNTAX_QUALIFIED) {
 			block->syntax = job->syntax->left;
-			for (size_t i = 0; i < block->syntax->item_count; ++i) {
-				struct pg_token name = block->syntax->items[i].name;
-				if (name.length && same_name(name, job->syntax->right->token)) { block->end = i + 1; break; }
-			}
+			block->end = block_end(job->syntax);
 			if (!block->end) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 		} else block->end = block->syntax->item_count;
 	}
@@ -2082,7 +2206,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		const struct pg_object *constructor = label.producer->inputs[1];
 		size_t ordinal;
 		if (!pg_data_constructor_position(layout, constructor, &ordinal)) goto rejected;
-		if (state->branches[ordinal].body) goto rejected;
+		if (state->branches[ordinal].clause) goto rejected;
 		const struct pg_evidence *map = pg_prove_constructor_scope(synthesis->typing,
 			state->instance.formation, constructor, state->instance.parameters);
 		if (!map) goto error;
@@ -2105,14 +2229,25 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (!scope) goto error;
 		struct match_branch *branch = &state->branches[ordinal];
 		branch->scope = scope;
-		branch->body = pg_synthesis_request(synthesis, scope, clause->right);
-		if (!branch->body) goto error;
+		branch->clause = clause;
+		branch->needs_ih = branch_needs_ih(scope, pg_evidence_context(context), clause->right);
+		if (branch->needs_ih < 0) goto error;
+		if (branch->needs_ih) state->induction = 1;
+		else {
+			branch->body = pg_synthesis_request(synthesis, scope, clause->right);
+			if (!branch->body) goto error;
+		}
 		++state->next;
 		enqueue(synthesis, job);
 		return;
 	}
 	if (state->checked < state->count) {
 		struct match_branch *branch = &state->branches[state->checked];
+		if (branch->needs_ih) {
+			++state->checked;
+			enqueue(synthesis, job);
+			return;
+		}
 		struct pg_synthesis_job *candidate = pg_synthesis_constant_motive(synthesis, context,
 			source_context(branch->scope), branch->body);
 		if (!candidate) goto error;
@@ -2127,15 +2262,41 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		enqueue(synthesis, job);
 		return;
 	}
-	const struct pg_evidence *family = pg_prove_reindex(synthesis->typing, state->instance.parameters, state->instance.formation);
-	const struct pg_evidence *extended = pg_prove_context_extension(synthesis->typing, context,
-		pg_binder(synthesis->typing->graph), family);
-	const struct pg_evidence *motive = pg_prove_projection(synthesis->typing, extended, state->motive);
+	if (!state->motive) goto unsupported;
+	if (!state->motive_context) {
+		const struct pg_evidence *family = pg_prove_reindex(synthesis->typing, state->instance.parameters, state->instance.formation);
+		state->motive_context = pg_prove_context_extension(synthesis->typing, context,
+			pg_binder(synthesis->typing->graph), family);
+		state->motive = pg_prove_projection(synthesis->typing, state->motive_context, state->motive);
+		if (!state->motive) goto error;
+	}
+	if (state->induction && state->prepared < state->count) {
+		struct match_branch *branch = &state->branches[state->prepared];
+		const struct pg_object *constructor = pg_data_constructor(layout, state->prepared);
+		if (branch->needs_ih) {
+			if (!branch->body) branch->body = pg_synthesis_induction_branch(synthesis, job->inner,
+				state->instance.formation, constructor, state->instance.parameters,
+				state->motive_context, state->motive, branch->clause);
+			if (!branch->body) goto error;
+			if (branch->body->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->body); return; }
+			if (branch->body->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, branch->body->status); return; }
+			branch->function = branch->body->result;
+		} else branch->function = pg_prove_induction_case(synthesis->typing, synthesis->classifiers,
+			state->instance.formation, constructor, state->instance.parameters,
+			state->motive_context, state->motive, branch->function);
+		if (!branch->function) goto unsupported;
+		++state->prepared;
+		enqueue(synthesis, job);
+		return;
+	}
 	const struct pg_evidence **branches = malloc(state->count * sizeof(*branches));
 	if (!branches) goto error;
 	for (size_t i = 0; i < state->count; ++i) branches[i] = state->branches[i].function;
-	job->result = pg_prove_match(synthesis->typing, synthesis->classifiers, state->instance.formation,
-		state->instance.parameters, scrutinee, extended, motive, state->count, branches);
+	job->result = state->induction
+		? pg_prove_induction(synthesis->typing, synthesis->classifiers, state->instance.formation,
+			state->instance.parameters, scrutinee, state->motive_context, state->motive, state->count, branches)
+		: pg_prove_match(synthesis->typing, synthesis->classifiers, state->instance.formation,
+			state->instance.parameters, scrutinee, state->motive_context, state->motive, state->count, branches);
 	free(branches);
 	if (!job->result) goto unsupported;
 complete:

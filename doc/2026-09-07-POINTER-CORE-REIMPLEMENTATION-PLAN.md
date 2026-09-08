@@ -24,9 +24,9 @@ baseline. `check-acceptance` combines this gate with the component suite.
 It is a necessary gate, not sufficient evidence for execution, effects, IF8,
 higher coherence or full `.a` support.
 
-After connecting applied-family members, the current result is **6/8**.
-The other two exit 4 (unsupported), not fuel exhaustion. This checks typing,
-not execution results:
+After connecting source direct induction, the current result is **6/8**.
+The other two are rejected later in synthesis, not fuel exhaustion. This checks
+typing, not execution results; source compatibility remains incomplete:
 
 | Example | Status | Solve transitions |
 | --- | --- | ---: |
@@ -36,8 +36,8 @@ not execution results:
 | 04_match | done | 408 |
 | 05_bool_to_nat | done | 268 |
 | 06_pred | done | 208 |
-| 07_add | unsupported | 286 |
-| 09_list_induction | unsupported | 739 |
+| 07_add | rejected | 459 |
+| 09_list_induction | rejected | 852 |
 
 ### Applied family provenance progress
 
@@ -112,13 +112,18 @@ of the rewrite.
   declaration `* i` still resolves as indexed Self. Bare terminal Self is
   unchanged. Parser tests cover spacing/parentheses; an explicit-motive
   induction test synthesizes `Nat.succ *k` and normalizes to the original Nat.
-- [ ] Connect ordinary Match motive constraints to these branch jobs. Current
-  ordinary Match still synthesizes fields-only branches and therefore cannot
-  yet use `*k`. Do not install an expected result as a synthesized motive or
-  retry failed accepted proofs with a different classifier. Schedule unresolved
-  motive dependencies through the common producer graph and retain the actual
-  independent branch information that justifies a solution. This connection,
-  not parsing or the raw recursion evaluator, now blocks existing 07/09.
+- [x] Connect ordinary Match to direct IH branch jobs for independently
+  synthesized constant motives. Lexical marker dependency discovery delays
+  only branches using their own fields' IHs. Independent branch producers
+  establish the motive; the checked induction scope then supplies IH types.
+  Existing fields-only branch proofs are adapted by ordinary projection,
+  application and abstraction, not synthesized twice. Discovery respects
+  Lambda/block/pattern shadowing and the selected block prefix. Its traversal
+  is currently synchronous and must be included in future fuel accounting.
+- [ ] Generalize motive solving beyond the independent constant seed fragment.
+  No independent seed or a dependent result remains unsupported. Do not install
+  an expected result as a synthesized motive or retry accepted proofs with a
+  different classifier. Retain actual branch constraints and dependencies.
 - [x] Extract `pg_synthesis_constant_motive` as a shared producer keyed by the
   destination context, field context and independent body job. Ordinary Match
   now consumes this producer instead of reimplementing binder removal. Each
@@ -148,8 +153,9 @@ of the rewrite.
 The raw builder intentionally accepts templates that can diverge: Core is
 untyped. Its existence proves neither termination nor datatype fibrancy.
 It is not exposed as a source-language general recursion primitive. Existing
-07/09 acceptance remains open until source synthesis is connected to the typed
-rule. Indexed/Pi-shaped recursive IH and general higher induction remain open.
+07/09 acceptance remains open: the source connection below does not close
+definition-use compatibility. Indexed/Pi-shaped recursive IH and general higher
+induction remain open.
 Verification: optimized `check` and ASan/UBSan IADT tests passed; the source
 acceptance gate remains 6/8 with unchanged transition counts.
 The subsequent source-IH integration passed optimized `check`, the rebuilt
@@ -162,6 +168,35 @@ reader/synthesis tests. The source gate still has the same 6/8 result.
 The constant-motive producer passed optimized `check` and ASan/UBSan synthesis,
 including pending requests, reuse and a field-dependent rejection boundary.
 The source gate remains 6/8; its current transition counts are in the top table.
+
+September 8, after `54e99b4`: ordinary source tests now construct and evaluate
+Nat copy, reordered clauses, addition with a raw Pi motive, an IH used inside
+a sequential block, and `List Nat` length. A block selector excludes an unused
+tail containing `*k`; shadowed Lambda/block names cannot capture an outer IH.
+These are computation-result tests, not only acceptance tests.
+
+The broader gate is still incomplete. Keep the following obstructions open:
+
+- [ ] Definition quotation and use policy: `two := Nat.succ ...` becomes
+  `U(F Nat)` under implicit definition quotation. `Nat.succ two` currently
+  checks that value against `Nat` and rejects. Do not resolve this by guessing
+  coercions from an expected type or by forcing explicit quoted arguments.
+- [ ] Nominal provenance through constant Pi codomain elimination: directly
+  matching a nested computed constructor result encounters
+  `PG_RETURN_CONTENT(PG_PI_CONSTANT_CODOMAIN(...))`; the instance traversal
+  does not yet recover its admitted family. This is unsupported, not invalid.
+- [ ] Nominal provenance of recursive fields through the checked Self map:
+  nested Match on such a field currently stops before branch synthesis.
+  Keep the diagnostic fixture until this shared provenance operation is fixed;
+  do not add an erased-Core-to-classifier registry or a Nat-specific fallback.
+
+The latter two fixtures explicitly record unsupported work in component tests;
+they are not substitutes for successful source compatibility acceptance.
+Verification of this connection: optimized `check` and rebuilt ASan/UBSan
+`synthesis_test` passed. `check-examples` still fails 07/09 as recorded above.
+Implementation delta: `evidence.c` +16, `evidence.h` +7, `synthesis.c` +175/-14;
+tests +42. Documentation is counted separately. No Main promotion or full
+goal-completion claim is justified by this checkpoint.
 
 Code-level obstruction and implementation order:
 
