@@ -1,6 +1,7 @@
 #include "computation.h"
 #include "identity.h"
 #include "iadt.h"
+#include "symmetry.h"
 
 static const struct pg_object_class return_class = {"return"};
 static const struct pg_object_class thunk_class = {"thunk"};
@@ -95,7 +96,9 @@ static int dispatch(struct pg_eval *machine)
 		return pg_eval_demand(machine, 0, fold_answer, NULL);
 	}
 	int data = pg_data_dispatch(machine);
-	return data == 1 ? pg_identity_dispatch(machine) : data;
+	if (data != 1) return data;
+	int identity = pg_identity_dispatch(machine);
+	return identity == 1 ? pg_symmetry_dispatch(machine) : identity;
 }
 
 const struct pg_eval_policy pg_pure_policy = {dispatch};

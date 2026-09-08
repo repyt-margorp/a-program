@@ -56,6 +56,7 @@ void pg_graph_destroy(struct pg_graph *graph)
 		graph->blocks = next;
 	}
 	pg_index_destroy(&graph->terms);
+	pg_index_destroy(&graph->objects);
 	memset(graph, 0, sizeof(*graph));
 }
 

@@ -2,7 +2,7 @@ CC ?= cc
 CFLAGS ?= -std=c11 -Wall -Wextra -Werror -O2
 ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 BUILD := $(ROOT).build
-SOURCES := $(ROOT)graph.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)evidence.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)iadt.c $(ROOT)prelude.c
+SOURCES := $(ROOT)graph.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)evidence.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c
 
 .PHONY: check
 check: $(BUILD)/core_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test

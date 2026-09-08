@@ -17,6 +17,8 @@ struct pg_index {
 struct pg_graph {
 	struct pg_block *blocks;
 	struct pg_index terms;
+	/* Lazy structural semantic-owner index; entries start with pg_object_entry. */
+	struct pg_index objects;
 };
 
 int pg_index_init(struct pg_index *index);
@@ -34,6 +36,11 @@ struct pg_object_class {
 struct pg_object {
 	enum pg_object_kind kind;
 	const struct pg_object_class *owner;
+};
+
+struct pg_object_entry {
+	struct pg_index_entry index;
+	struct pg_object object;
 };
 
 struct pg_term {

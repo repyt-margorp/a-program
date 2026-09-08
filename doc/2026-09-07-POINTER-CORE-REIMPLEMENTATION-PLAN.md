@@ -2231,6 +2231,25 @@ action of `u` on a selected face proof is still required, not inferred from
 pointer equality. No new implementation API or accepted proof rule is added.
 Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
 
+- [x] After `da6f9f1`, add the formal permutation computation operator in
+  `symmetry.c`. It is an ordinary Reference/Application spine, with no new
+  Core form. Construction retains identity and composition explicitly; the
+  pure evaluator contracts identity and composes adjacent equal-dimensional
+  permutations. The composed operator retains the argument closure environment.
+  This is the free permutation-action fragment, NOT a typed symmetry rule:
+  no classifier, center witness, surface syntax or arbitrary cast is admitted.
+  Its interaction with Act, restriction and typed boundaries remains open.
+  A lazy graph-owned structural semantic-owner index interns the immutable
+  permutation payload by its axis sequence. It has graph lifetime, so neither
+  the operator nor its evaluator depends on a destroyed Dimensions registry.
+  Core does not interpret the payload. No WHNF/alpha interning is introduced.
+  Tests cover all 36 compositions in dimension three, exact repeated structure,
+  non-collapsing construction, invalid maps, capture and readback after registry
+  destruction. Composition currently scans the finite permutation synchronously;
+  dimensional fuel accounting is still required before this is a bounded-work
+  operator. This checkpoint does not close N2 or the typed symmetry gate.
+  Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action

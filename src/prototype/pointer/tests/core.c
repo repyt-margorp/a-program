@@ -7,6 +7,7 @@
 #include "evidence.h"
 #include "computation.h"
 #include "action.h"
+#include "symmetry.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -1849,6 +1850,32 @@ static void induced_face_permutations(struct pg_dimensions *dimensions)
 			}
 		}
 	}
+	struct pg_graph *graph = dimensions->graph;
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_term *value = pg_reference(graph, x);
+	for (size_t p = 0; p < 6; ++p) {
+		const struct pg_term *once = pg_symmetry(graph, permutations[p], value);
+		assert(once && once != value);
+		assert(pg_symmetry(graph, permutations[p], value) == once);
+		for (size_t q = 0; q < 6; ++q) {
+			const struct pg_term *input = pg_symmetry(graph, permutations[q], once);
+			const struct pg_dimension_map *map = pg_dimension_compose(dimensions, permutations[q], permutations[p]);
+			const struct pg_term *expected = pg_symmetry(graph, map, value);
+			struct pg_eval machine;
+			pg_eval_init(&machine, input);
+			machine.output = graph;
+			machine.dispatch = pg_pure_policy.dispatch;
+			assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
+			const struct pg_term *result = pg_eval_readback(&machine, graph);
+			pg_eval_destroy(&machine);
+			pg_eval_init(&machine, expected);
+			machine.output = graph;
+			machine.dispatch = pg_pure_policy.dispatch;
+			assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
+			assert(pg_eval_readback(&machine, graph) == result);
+			pg_eval_destroy(&machine);
+		}
+	}
 }
 
 static void dimension_test(struct pg_graph *graph)
@@ -1959,8 +1986,33 @@ static void dimension_test(struct pg_graph *graph)
 	for (size_t n = 4; n < 150; ++n) assert(pg_dimension_identity(&dimensions, n));
 	assert(dimensions.maps.capacity > 64);
 	assert(cycle == pg_dimension_map(&dimensions, 3, 3, permutation));
+	const struct pg_object *captured = pg_binder(graph);
+	const struct pg_term *captured_value = pg_reference(graph, captured);
+	const struct pg_term *twice_swapped = pg_symmetry(graph, swap, pg_symmetry(graph, swap, captured_value));
+	const struct pg_term *closed_symmetry = pg_application(graph, pg_lambda(graph, captured, twice_swapped), line_term);
+	assert(!pg_symmetry(graph, projection, line_term));
+	struct pg_coordinate repeated_axes[] = {{PG_AXIS, 0}, {PG_AXIS, 0}};
+	struct pg_dimension_map invalid_permutation = {2, 2, repeated_axes};
+	assert(!pg_symmetry(graph, &invalid_permutation, line_term));
 	printf("dimension: %zu maps, %zu composable triples; 3D faces/permutations passed\n", map_count, triples);
 	pg_dimensions_destroy(&dimensions);
+	/* Operator lifetime follows the graph, and composition retains capture. */
+	for (uint64_t cut = 0; cut < 16; ++cut) {
+		struct pg_eval machine;
+		pg_eval_init(&machine, closed_symmetry);
+		machine.output = graph;
+		machine.dispatch = pg_pure_policy.dispatch;
+		pg_eval_advance(&machine, cut);
+		const struct pg_term *snapshot = pg_eval_readback(&machine, graph);
+		assert(snapshot);
+		pg_eval_destroy(&machine);
+		pg_eval_init(&machine, snapshot);
+		machine.output = graph;
+		machine.dispatch = pg_pure_policy.dispatch;
+		assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&machine, graph) == line_term);
+		pg_eval_destroy(&machine);
+	}
 }
 
 int main(void)
