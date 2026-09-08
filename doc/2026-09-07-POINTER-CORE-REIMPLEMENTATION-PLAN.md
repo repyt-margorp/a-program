@@ -82,6 +82,16 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [ ] Connect permutation evaluation with the supplied argument boundaries
+  of Act before adding a special equation for `S(Act(Act(t)))`. The existing
+  permutation evaluator composes permutations and removes fixed prefixes;
+  `symmetry_answer` otherwise leaves the application neutral. It does not
+  implement the action on a function's supplied higher boundary arguments.
+  Keep partial applications neutral, as the existing Act evaluator does.
+- [ ] Check application/Act/permutation critical pairs with complete and
+  incomplete boundary triples, captures and independently evaluated arguments.
+  Test the target classifier as well as Core results. A rewrite recognizing
+  only a syntactic chain of Act nodes would not discharge these obligations.
 - [x] Expose `pg_symmetry_view` over exactly one raw symmetry application.
   The Core-owned descriptor supplies its dimension and axes, including fixed
   prefixes; no duplicate descriptor is added to evidence. Inspection neither
@@ -125,6 +135,23 @@ Opaque families require a rule for recovering their instantiated boundary from
 typed evidence; absence of a retained inner formation remains unsupported,
 not proof that the requested equality is empty. No runtime or kernel behavior
 is changed by this contract, and N2 remains incomplete.
+
+Evaluation audit after `ddb0238`: a probe using the ordinary pure evaluator
+on `Act(Act(lambda x. x))`, then on its transposition before/after that WHNF,
+reported `expanded_is_lambda=0`, both transpositions still recognized by
+`pg_symmetry_view`, and alpha-equal results. Thus the conjectured immediate
+Lambda-expansion critical pair is **not** an observed current bug. Inspection
+of `identity.c:action_source_body` confirms that complete boundary arguments
+matter; an unapplied Act is not an eager Lambda translation. Do not describe
+this probe as proof of general confluence or typed symmetry.
+
+The [Narya symmetry/degeneracy documentation](https://narya.readthedocs.io/en/latest/observational.html#symmetries-and-degeneracies)
+and the pinned `act.ml` source cited above motivate treating these as a
+compositional action rather than isolated simplifications. This is guidance
+for A Program's missing rule, not an imported soundness theorem: our raw
+curried APP encoding must specify how the supplied boundary arguments move,
+including their intrinsic orientations. The next rule must agree with the
+existing dimension factorization and retain the selected typed families.
 
 ### Prefix-reduction verification
 
