@@ -1672,6 +1672,21 @@ static void enumerate(struct pg_dimensions *dimensions, size_t source,
 	if (position == target) {
 		const struct pg_dimension_map *map = pg_dimension_map(dimensions, source, target, coordinates);
 		if (map) {
+			const struct pg_dimension_map *ordered = map, *intrinsic = map;
+			int factored = pg_dimension_face_factor(dimensions, map, &ordered, &intrinsic);
+			if (pg_dimension_face(dimensions, map)) {
+				assert(factored == 0);
+				assert(pg_dimension_compose(dimensions, ordered, intrinsic) == map);
+				assert(intrinsic->source == source && intrinsic->target == source);
+				for (size_t i = 0, axis = 0; i < target; ++i) {
+					if (ordered->coordinates[i].kind == PG_AXIS) assert(ordered->coordinates[i].axis == axis++);
+				}
+				const struct pg_dimension_map *again, *identity;
+				assert(pg_dimension_face_factor(dimensions, ordered, &again, &identity) == 0);
+				assert(again == ordered && identity == pg_dimension_identity(dimensions, source));
+			} else {
+				assert(factored == -1 && ordered == map && intrinsic == map);
+			}
 			assert(map_count < sizeof(maps) / sizeof(*maps));
 			maps[map_count++] = map;
 		}
@@ -1725,11 +1740,21 @@ static void dimension_test(struct pg_graph *graph)
 	assert(!pg_dimension_map(&dimensions, 0, 1, &invalid));
 	struct pg_coordinate permutation[] = {{PG_AXIS, 2}, {PG_AXIS, 0}, {PG_AXIS, 1}};
 	const struct pg_dimension_map *cycle = pg_dimension_map(&dimensions, 3, 3, permutation);
+	const struct pg_dimension_map *ordered, *intrinsic;
+	assert(pg_dimension_face_factor(&dimensions, cycle, &ordered, &intrinsic) == 0);
+	assert(ordered == pg_dimension_identity(&dimensions, 3) && intrinsic == cycle);
+	assert(pg_dimension_face_factor(&dimensions, NULL, &ordered, &intrinsic) == -1);
+	assert(pg_dimension_face_factor(&dimensions, cycle, NULL, &intrinsic) == -1);
 	const struct pg_dimension_map *twice = pg_dimension_compose(&dimensions, cycle, cycle);
 	assert(pg_dimension_compose(&dimensions, cycle, twice) == pg_dimension_identity(&dimensions, 3));
 	struct pg_coordinate face_coordinates[] = {{PG_AXIS, 0}, {PG_ENDPOINT_ONE, 0}, {PG_AXIS, 1}};
 	struct pg_coordinate projection_coordinates[] = {{PG_AXIS, 0}, {PG_AXIS, 2}};
 	const struct pg_dimension_map *face = pg_dimension_map(&dimensions, 2, 3, face_coordinates);
+	const struct pg_dimension_map *moved = pg_dimension_compose(&dimensions, cycle, face);
+	assert(pg_dimension_face_factor(&dimensions, moved, &ordered, &intrinsic) == 0);
+	assert(pg_dimension_compose(&dimensions, ordered, intrinsic) == moved);
+	assert(intrinsic->coordinates[0].axis == 1 && intrinsic->coordinates[1].axis == 0);
+	assert(ordered->coordinates[2].kind == PG_ENDPOINT_ONE);
 	const struct pg_dimension_map *projection = pg_dimension_map(&dimensions, 3, 2, projection_coordinates);
 	assert(pg_dimension_compose(&dimensions, projection, face) == pg_dimension_identity(&dimensions, 2));
 	assert(!pg_dimension_compose(&dimensions, face, face));

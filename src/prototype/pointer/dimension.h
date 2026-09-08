@@ -42,6 +42,13 @@ const struct pg_dimension_map *pg_dimension_identity(struct pg_dimensions *dimen
 /* Validate/intern a map and require every source axis: no degeneracy. */
 const struct pg_dimension_map *pg_dimension_face(struct pg_dimensions *dimensions,
 	const struct pg_dimension_map *map);
+/* Factor a strict face f:k->n as ordered o intrinsic. ordered retains the
+ * endpoint coordinates and uses axes in increasing occurrence order;
+ * intrinsic:k->k retains f's local orientation. Outputs change only on success.
+ * This is map algebra, not evidence that Identity proofs can be permuted. */
+int pg_dimension_face_factor(struct pg_dimensions *dimensions,
+	const struct pg_dimension_map *face, const struct pg_dimension_map **ordered,
+	const struct pg_dimension_map **intrinsic);
 /* outer : m -> n, inner : l -> m; result : l -> n. */
 const struct pg_dimension_map *pg_dimension_compose(struct pg_dimensions *dimensions,
 	const struct pg_dimension_map *outer, const struct pg_dimension_map *inner);

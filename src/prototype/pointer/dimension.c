@@ -155,6 +155,35 @@ const struct pg_dimension_map *pg_dimension_face(struct pg_dimensions *dimension
 	return used_axes == face->source ? face : NULL;
 }
 
+int pg_dimension_face_factor(struct pg_dimensions *dimensions,
+	const struct pg_dimension_map *face, const struct pg_dimension_map **ordered,
+	const struct pg_dimension_map **intrinsic)
+{
+	if (!ordered || !intrinsic) return -1;
+	face = pg_dimension_face(dimensions, face);
+	if (!face) return -1;
+	struct pg_coordinate *outer = calloc(face->target ? face->target : 1, sizeof(*outer));
+	struct pg_coordinate *inner = calloc(face->source ? face->source : 1, sizeof(*inner));
+	int status = -1;
+	if (!outer || !inner) goto done;
+	for (size_t i = 0, axis = 0; i < face->target; ++i) {
+		outer[i] = face->coordinates[i];
+		if (outer[i].kind != PG_AXIS) continue;
+		inner[axis] = outer[i];
+		outer[i].axis = axis++;
+	}
+	const struct pg_dimension_map *o = pg_dimension_map(dimensions, face->source, face->target, outer);
+	const struct pg_dimension_map *p = pg_dimension_map(dimensions, face->source, face->source, inner);
+	if (!o || !p) goto done;
+	*ordered = o;
+	*intrinsic = p;
+	status = 0;
+done:
+	free(outer);
+	free(inner);
+	return status;
+}
+
 const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
 	const struct pg_binding_cube *cube, const struct pg_dimension_map *face)
 {

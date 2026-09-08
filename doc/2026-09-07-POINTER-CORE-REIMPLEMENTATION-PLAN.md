@@ -1783,6 +1783,34 @@ tests does not discharge it, and datatype admission must not assume completion.
   Optimized and ASan/UBSan pointer checks pass; Identity passes at 512 KiB stack.
   Implementation +3/-0; tests +24/-11; documentation separate.
 
+- [x] September 8, after `2929d12`: factor strict dimension faces into their
+  position and intrinsic orientation (`pg_dimension_face_factor`). For
+  f:k->n the outputs satisfy f = ordered o intrinsic, with intrinsic:k->k a
+  permutation and ordered retaining endpoints while numbering encountered
+  axes increasingly. Both outputs reuse the existing map interner. This does
+  not canonicalize terms or add a typing rule. Tests factor every strict face
+  among the existing 38 maps in dimensions 0-2, reject degeneracies without
+  changing outputs, reconstruct exact maps and check ordered-factor
+  idempotence. A 3-cycle moving a square face exposes a nontrivial local swap.
+  Optimized/ASan/UBSan pointer checks and 512 KiB Core execution pass.
+  Source/header +36/-0; tests +25/-0; documentation separate.
+
+  Rationale: [Narya's symmetry contract](https://narya.readthedocs.io/en/latest/observational.html#symmetries-and-degeneracies)
+  permutes dimensions and also transforms some higher boundary terms, not
+  merely their positions. Its three-dimensional example includes symmetrized
+  square faces; permutation composition obeys group equations. This is a
+  reference requirement, not a proof of our CBPV extension.
+
+  A Program implementation consequence: for ambient permutation p and face f,
+  factor p o f. The ordered component identifies the destination face; the
+  intrinsic component specifies the operation needed on that face's evidence.
+  Do not replace this operation by binder substitution or classifier casts.
+  Next, typed action must retain the selected family and all proper-face
+  evidence, synthesize the permuted classifier, and use intrinsic actions on
+  higher faces. Verify involution, composition and face compatibility before
+  admitting a center transposition rule. Current factorization alone grants
+  none of those proof-level equations and does not complete the N2 gate.
+
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
   and the implemented F/U/Pi Identity, RETURN/THUNK/FORCE action and diagonal
