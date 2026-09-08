@@ -28,12 +28,26 @@ the existing kernel constructors. No nominal replay engine was introduced.
   accepted proofs before Solve and reject a substituted wrong-arity constructor.
 - [x] Update record-grammar tests, retaining explicit rejection when callers
   supply a codec that cannot transport nominal declarations.
-- [ ] Add whole-file Match/direct-IH derivation cases and their iota results.
+- [x] Add whole-file Match/direct-IH derivation cases and their iota results.
 - [ ] Complete unfinished source/module checkpointing and general indexed rules.
 
 Normal `check`, `check-examples`, `check-example-results` and rebuilt ASan/UBSan
 derivation-image tests pass. Existing stored-derivation Solve remains 565 steps.
 The general reimplementation goal and Main promotion remain incomplete.
+
+Follow-up after `e1e9bb3`: the fresh-process nominal fixture now retains a
+predecessor Match and a two-step direct-IH countdown. Both are checked by common
+Solve at budgets 1/64 and normalized to the relocated family's zero constructor.
+Swapping Match/induction rule names while retaining their branch premises is
+rejected without changing the already accepted roots. No runtime or kernel
+special case was needed. Normal checks, eight source cases, six execution
+fixtures and rebuilt ASan/UBSan derivation-image tests pass.
+
+Next image boundary: `seed.c` still stores source bytes and policy only;
+`program.c` owns a live source graph but does not serialize modules/scopes.
+Neither should be presented as the final `.a` checkpoint. Preserve unresolved
+source/module inputs and producer references before claiming whole-program
+resumption; keep nominal rule transport on the path above.
 
 ### September 9: Shared Context Payload and Nominal Family Relocation
 

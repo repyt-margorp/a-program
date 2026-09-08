@@ -907,15 +907,37 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		const struct pg_evidence *identity = pg_prove_substitution(typing, empty, empty, 0, NULL);
 		const struct pg_evidence *zero = pg_prove_constructor(typing, formation, pg_data_constructor(layout, 0), identity, 0, NULL);
 		const struct pg_evidence *succ = pg_prove_constructor(typing, formation, pg_data_constructor(layout, 1), identity, 1, &zero);
-		const struct pg_evidence *roots[] = {formation, zero, succ, formation};
 		assert(formation && zero && succ);
-		assert(!pg_derivations_write_descriptors(file, 4, roots, &pg_declaration_graph_codec, &io));
+		const struct pg_object *z = pg_binder(graph), *p = pg_binder(graph);
+		const struct pg_evidence *z_context = pg_prove_context_extension(typing, empty, z, formation);
+		const struct pg_evidence *p_context = pg_prove_context_extension(typing, empty, p, formation);
+		const struct pg_evidence *motive = pg_prove_return_type(typing, classifiers,
+			pg_prove_projection(typing, z_context, formation));
+		const struct pg_evidence *base = pg_prove_return(typing, classifiers, zero);
+		const struct pg_evidence *predecessor = pg_prove_abstract(typing, classifiers, empty, p_context,
+			pg_prove_return(typing, classifiers, pg_prove_variable(typing, p_context, p)));
+		const struct pg_evidence *branches[] = {base, predecessor};
+		const struct pg_evidence *match = pg_prove_match(typing, classifiers, formation,
+			identity, succ, z_context, motive, 2, branches);
+		const struct pg_evidence *scope = pg_prove_induction_scope(typing, classifiers, formation,
+			pg_data_constructor(layout, 1), identity, z_context, motive);
+		assert(scope);
+		const struct pg_evidence *ih_context = pg_evidence_premise(scope, 1);
+		const struct pg_evidence *ih = pg_prove_variable(typing, ih_context, pg_evidence_context(ih_context)->binder);
+		branches[1] = pg_prove_abstract(typing, classifiers, empty, ih_context, pg_prove_force(typing, ih));
+		const struct pg_evidence *twice = pg_prove_constructor(typing, formation,
+			pg_data_constructor(layout, 1), identity, 1, &succ);
+		const struct pg_evidence *induction = pg_prove_induction(typing, classifiers, formation,
+			identity, twice, z_context, motive, 2, branches);
+		assert(match && induction);
+		const struct pg_evidence *roots[] = {formation, zero, succ, formation, match, induction};
+		assert(!pg_derivations_write_descriptors(file, 6, roots, &pg_declaration_graph_codec, &io));
 	} else {
 		size_t count;
 		const struct pg_derivation_input *const *inputs;
 		assert(!pg_derivations_read_descriptors(file, graph, 2000, 100,
 			&pg_declaration_graph_codec, &io, &count, &inputs));
-		assert(count == 4 && inputs[0] == inputs[3] && !typing->proofs.count);
+		assert(count == 6 && inputs[0] == inputs[3] && !typing->proofs.count);
 		const struct pg_data_layout *layout = pg_data_declaration_layout(inputs[0]->parameters.declaration);
 		assert(inputs[1]->parameters.constructor == pg_data_constructor(layout, 0));
 		assert(inputs[2]->parameters.constructor == pg_data_constructor(layout, 1));
@@ -923,7 +945,7 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		struct pg_synthesis synthesis;
 		assert(!pg_whnf_work_init(&work, graph));
 		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
-		struct pg_synthesis_job *jobs[4];
+		struct pg_synthesis_job *jobs[6];
 		for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_derivation(&synthesis, inputs[i]);
 		assert(!typing->proofs.count && jobs[0] == jobs[3]);
 		while (synthesis.ready) { assert(synthesis.steps < 2000); pg_synthesis_advance(&synthesis, chunk); }
@@ -935,18 +957,34 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		const struct pg_term *succ = pg_evidence_subject(pg_synthesis_result(jobs[2]))->core;
 		assert(succ == pg_application(graph, pg_reference(graph, pg_data_constructor(layout, 1)),
 			pg_evidence_subject(pg_synthesis_result(jobs[1]))->core));
-		/* A valid pointer with the wrong constructor arity is still not a proof. */
-		struct pg_derivation_input *wrong = pg_alloc(graph, sizeof(*wrong) + inputs[2]->count * sizeof(void *));
-		assert(wrong);
-		*wrong = *inputs[2];
-		memcpy(wrong->premises, inputs[2]->premises, wrong->count * sizeof(void *));
-		wrong->parameters.constructor = pg_data_constructor(layout, 0);
-		struct pg_synthesis_job *bad = pg_synthesis_derivation(&synthesis, wrong);
-		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
-		assert(pg_synthesis_status(bad) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(bad));
+		for (size_t i = 4; i < count; ++i) {
+			const struct pg_evidence *proof = pg_synthesis_result(jobs[i]);
+			assert(pg_evidence_rule(proof) == (i == 4 ? PG_MATCH_ELIM : PG_INDUCTION_ELIM));
+			struct pg_synthesis_job *nf = pg_synthesis_nf(&synthesis, pg_prove_empty_context(typing), proof);
+			while (synthesis.ready) { assert(synthesis.steps < 3000); pg_synthesis_advance(&synthesis, chunk); }
+			assert(pg_synthesis_status(nf) == PG_SYNTHESIS_DONE);
+			const struct pg_evidence *value = pg_prove_return_value(typing, pg_synthesis_result(nf));
+			assert(value && pg_evidence_subject(value)->core == pg_evidence_subject(pg_synthesis_result(jobs[1]))->core);
+			assert(pg_evidence_classifier(value) == family);
+		}
+		/* Pointer validity does not establish arity or the recursive branch contract. */
+		const size_t invalid_roots[] = {2, 4, 5};
+		for (size_t i = 0; i < 3; ++i) {
+			const struct pg_derivation_input *original = inputs[invalid_roots[i]];
+			struct pg_derivation_input *wrong = pg_alloc(graph, sizeof(*wrong) + original->count * sizeof(void *));
+			assert(wrong);
+			*wrong = *original;
+			memcpy(wrong->premises, original->premises, wrong->count * sizeof(void *));
+			if (!i) wrong->parameters.constructor = pg_data_constructor(layout, 0);
+			else wrong->rule = i == 1 ? PG_INDUCTION_ELIM : PG_MATCH_ELIM;
+			struct pg_synthesis_job *bad = pg_synthesis_derivation(&synthesis, wrong);
+			while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
+			assert(pg_synthesis_status(bad) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(bad));
+			assert(pg_synthesis_status(jobs[invalid_roots[i]]) == PG_SYNTHESIS_DONE);
+		}
 		pg_synthesis_destroy(&synthesis);
 		pg_whnf_work_destroy(&work);
-		puts("nominal derivations: shared family, formation/constructor Solve and wrong-arity rejection passed");
+		puts("nominal derivations: shared family, constructor/Match/IH Solve, iota results and branch-contract rejection passed");
 	}
 	pg_declaration_io_destroy(&io);
 }
