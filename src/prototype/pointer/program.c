@@ -26,6 +26,7 @@ struct pg_program *pg_program_allocate(enum pg_definition_policy policy)
 	if (pg_typing_init(&program->typing, &program->graph) != 0) goto fail;
 	if (pg_classifiers_init(&program->classifiers, &program->graph) != 0) goto fail;
 	if (pg_whnf_work_init(&program->evaluation, &program->graph) != 0) goto fail;
+	if (pg_effect_inference_init(&program->imported_effects, &program->graph) != 0) goto fail;
 	if (pg_synthesis_init(&program->synthesis, &program->typing, &program->classifiers,
 		&program->evaluation, policy) != 0) goto fail;
 	program->scope = pg_synthesis_root(&program->synthesis);
@@ -55,6 +56,7 @@ void pg_program_destroy(struct pg_program *program)
 {
 	if (!program) return;
 	pg_synthesis_destroy(&program->synthesis);
+	pg_effect_inference_destroy(&program->imported_effects);
 	pg_whnf_work_destroy(&program->evaluation);
 	pg_classifiers_destroy(&program->classifiers);
 	pg_typing_destroy(&program->typing);

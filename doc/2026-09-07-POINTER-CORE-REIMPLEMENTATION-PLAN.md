@@ -7385,7 +7385,7 @@ The wire format is `APGSYN` version 1, a component rather than a final `.a` file
   image, then integrate RECOMPUTE/CHECKPOINT policies and CLI resumption.
 
 Continuation after `21e97c7`: closed source environments now use `source_io.c`
-(`APGSRC` version 2). Read-only synthesis views expose expression inputs and
+(`APGSRC` version 3). Read-only synthesis views expose expression inputs and
 lexical environment dependencies; they do not copy progress or evidence.
 Environment parents, source-name producers, module namespaces, explicit export
 namespaces and supplied import scopes share one dependency table and one syntax
@@ -7401,9 +7401,10 @@ of truth remains those APIs' interned scopes and jobs, not the transport records
 - [x] Reconstruct selected-definition producers, including external aliases,
   from the registration producer and original RHS syntax. Reserve the existing
   definition job before registration; do not create a second producer kind.
-- [ ] Reconstruct accepted/rule producers in external environments;
-  these currently fail explicitly, without dropping
-  their dependencies or substituting a Core-only value.
+- [x] Reconstruct accepted/prepared/stored rule producers in closed external
+  environments through the existing derivation codec and ordinary Solve.
+  Unprepared non-source producers still fail explicitly rather than being
+  replaced by a provisional Core-only value.
 - [ ] Retain partial source-preparation and rule work as CHECKPOINT, and connect
   the common program image to CLI/file import selection.
 
@@ -7439,13 +7440,40 @@ preserved and process-local comparison receipts remain forbidden.
 - [x] Verify identical bytes after partial expansion, effect convergence and
   acceptance; duplicate roots remain shared.
 - [x] Preserve rejected rule inputs across Solve without claiming evidence.
-- [ ] Join these rule roots to source-name environments in the common image;
-  rule export alone does not close the external-environment item above.
+- [x] Join these rule roots to source-name environments in the common image.
 
 Validation: normal `check`, `check-examples` (8/8) and
 `check-example-results` (six fixtures, two budgets) pass. The rebuilt
 ASan/UBSan derivation-image suite also passes, including fresh-process loading
 and progress-independent re-export. Full CHECKPOINT remains open.
+
+Continuation after `4920059`: `APGSRC` version 3 joins lexical source inputs
+and selected rule producers. A name can refer to an unaccepted rule producer;
+its derivation inputs and effect definitions use the existing `APGDRV` codec
+and one shared Core relocation table, including nominal declaration descriptors.
+Source expressions retain their original syntax even after acceptance. Loading
+restores rule requests, then lexical names; neither step accepts the proof.
+`pg_program` owns the imported effect worker until synthesis is destroyed.
+
+This self-contained image requires all imported effect contributions to be
+known. `require_closed` on rule export checks the original workers are sealed;
+it does not require convergence or a result. An extensible worker is rejected
+before writing, because its missing future contributions cannot be guessed or
+treated as empty. Standalone rule-image APIs may still export partial equation
+inputs when their caller separately retains the remaining producers. General
+CHECKPOINT must preserve those producers, not weaken this requirement.
+
+- [x] Mixed source/rule roots, repeated references and an external type name
+  resume in fresh stores after destroying the original program.
+- [x] An unaccepted return-type rule computes its imported effect row normally;
+  an invalid application rule remains rejected rather than becoming evidence.
+- [x] Reject unsealed effect work; permit sealed but unsolved work.
+- [ ] Exercise nominal and operation-bearing external names through this whole
+  image, beyond their existing standalone derivation transport tests.
+
+Validation: normal `check`, eight source checks and six runtime fixtures with
+both budgets pass. Rebuilt ASan/UBSan source-image and seed tests also pass.
+These results do not establish retained-progress CHECKPOINT or full N5.
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.

@@ -768,7 +768,7 @@ static FILE *producer_snapshot(struct pg_synthesis *synthesis, size_t count,
 	const struct pg_derivation_input *const *inputs;
 	uint64_t steps = synthesis->steps;
 	size_t proofs = synthesis->typing->proofs.count, requests = synthesis->jobs.count;
-	assert(!pg_synthesis_export_rules(synthesis, count, jobs, &storage, &effects, &inputs));
+	assert(!pg_synthesis_export_rules(synthesis, count, jobs, &storage, &effects, 0, &inputs));
 	assert(synthesis->steps == steps && synthesis->typing->proofs.count == proofs && synthesis->jobs.count == requests);
 	FILE *file = tmpfile();
 	assert(file && !pg_derivation_inputs_write_inference(file, count, inputs, &effects, &pg_builtin_graph_codec, classifiers));
@@ -807,7 +807,7 @@ static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_clas
 		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
 		const struct pg_derivation_input *const *inputs = NULL;
 		size_t jobs = synthesis.jobs.count, proofs = typing->proofs.count;
-		assert(pg_synthesis_export_rules(&synthesis, 1, &identity, &storage, &image, &inputs) == 1);
+		assert(pg_synthesis_export_rules(&synthesis, 1, &identity, &storage, &image, 0, &inputs) == 1);
 		assert(!inputs && image.failed && synthesis.jobs.count == jobs && typing->proofs.count == proofs);
 		pg_effect_inference_destroy(&image);
 		pg_graph_destroy(&storage);
@@ -834,7 +834,7 @@ static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_clas
 		jobs = synthesis.jobs.count; proofs = typing->proofs.count;
 		size_t terms = graph->terms.count;
 		uint64_t steps = synthesis.steps;
-		assert(!pg_synthesis_export_rules(&synthesis, 4, selected, &storage, &image, &inputs));
+		assert(!pg_synthesis_export_rules(&synthesis, 4, selected, &storage, &image, 0, &inputs));
 		assert(inputs[0] == inputs[3] && inputs[1]->effect_parameter != inputs[2]->effect_parameter);
 		assert(image.row_sources.count == 3 && !image.sealed);
 		assert(jobs == synthesis.jobs.count && proofs == typing->proofs.count && steps == synthesis.steps && terms == graph->terms.count);
@@ -849,7 +849,7 @@ static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_clas
 		struct pg_synthesis_job *overlap[] = {selected[1], pg_synthesis_rule(&synthesis, &header, &universe, &conflict, duplicate)};
 		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
 		inputs = NULL;
-		assert(pg_synthesis_export_rules(&synthesis, 2, overlap, &storage, &image, &inputs) == -1 && !inputs && image.failed);
+		assert(pg_synthesis_export_rules(&synthesis, 2, overlap, &storage, &image, 0, &inputs) == -1 && !inputs && image.failed);
 		pg_effect_inference_destroy(&image);
 		pg_graph_destroy(&storage);
 		const char declaration_source[] = "D := @{};";

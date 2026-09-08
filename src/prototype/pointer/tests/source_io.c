@@ -1,4 +1,5 @@
 #include "source_io.h"
+#include "derivation.h"
 #include <assert.h>
 #include <string.h>
 
@@ -42,6 +43,47 @@ static void definition_boundaries(void)
 		pg_program_destroy(loaded);
 		pg_program_destroy(original);
 	}
+}
+
+static void rule_environments(void)
+{
+	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p);
+	struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+	struct pg_derivation_input universe = {.rule = PG_UNIVERSE_FORM, .count = 1};
+	struct pg_synthesis_job *type = pg_synthesis_rule(&p->synthesis, &universe, &context, NULL, NULL);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "T", .length = 1};
+	const struct pg_source_scope *scope = pg_synthesis_name_job(&p->synthesis, p->scope, name, type);
+	assert(scope);
+	struct pg_synthesis_job *consumer = parse(p, scope, "{{ main:=&(\\x:T => x); }}.main");
+	const struct pg_effect_row *empty = pg_effect_row(&p->graph, 0, NULL);
+	struct pg_effect_equation *equation = pg_effect_equation(&p->imported_effects, empty);
+	struct pg_derivation_input carrier = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
+	struct pg_synthesis_job *result = pg_synthesis_rule(&p->synthesis, &carrier, &type, &p->imported_effects, equation);
+	struct pg_derivation_input invalid = {.rule = PG_APP_ELIM};
+	struct pg_synthesis_job *bad = pg_synthesis_derivation(&p->synthesis, &invalid);
+	struct pg_synthesis_job *selected[] = {consumer, type, result, bad, type};
+	FILE *file = tmpfile();
+	assert(file && pg_sources_write(file, &p->synthesis, 5, selected) == -1 && ftell(file) == 0);
+	pg_effect_inference_seal(&p->imported_effects);
+	assert(!pg_sources_write(file, &p->synthesis, 5, selected));
+	assert(!p->synthesis.steps && !pg_synthesis_result(type));
+	pg_program_destroy(p);
+	rewind(file);
+	size_t count;
+	struct pg_synthesis_job *const *roots;
+	p = pg_sources_read(file, 10000, &count, &roots);
+	assert(p && count == 5 && roots[1] == roots[4] && !p->synthesis.steps);
+	for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
+	while (p->synthesis.ready) { assert(p->synthesis.steps < 10000); pg_synthesis_advance(&p->synthesis, 1); }
+	for (size_t i = 0; i < count; ++i)
+		assert(pg_synthesis_status(roots[i]) == (i == 3 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+	const struct pg_effect_row *row;
+	const struct pg_term *value;
+	assert(pg_effect_type_view(pg_evidence_subject(pg_synthesis_result(roots[2]))->core, &row, &value));
+	assert(!pg_effect_count(row) && value == pg_universe(&p->classifiers, 0));
+	assert(!fclose(file));
+	pg_program_destroy(p);
 }
 
 static void write_sources(FILE *file)
@@ -100,11 +142,11 @@ static void write_sources(FILE *file)
 	int a, b;
 	do { a = fgetc(file); b = fgetc(accepted); assert(a == b); } while (a != EOF);
 	assert(!ferror(file) && !ferror(accepted) && !fclose(accepted));
-	FILE *unsupported = tmpfile();
-	assert(unsupported);
+	FILE *retained = tmpfile();
+	assert(retained);
 	struct pg_synthesis_job *evidence = pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(client));
-	assert(pg_sources_write(unsupported, &p->synthesis, 1, &evidence) == -1);
-	assert(ftell(unsupported) == 0 && !fclose(unsupported));
+	assert(!pg_sources_write(retained, &p->synthesis, 1, &evidence));
+	assert(!fclose(retained));
 	pg_program_destroy(p);
 }
 
@@ -132,7 +174,7 @@ int main(int argc, char **argv)
 {
 	assert(argc == 3);
 	int writing = !strcmp(argv[1], "write");
-	if (writing) definition_boundaries();
+	if (writing) { definition_boundaries(); rule_environments(); }
 	FILE *file = fopen(argv[2], writing ? "w+b" : "rb");
 	assert(file);
 	if (writing) write_sources(file);

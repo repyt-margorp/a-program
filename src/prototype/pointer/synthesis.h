@@ -264,11 +264,14 @@ struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
  * storage owns the transport inputs, which borrow Core objects from synthesis.
  * effects is empty and initialized with storage; it receives immutable
  * definitions from all reached workers, never their solutions/sealing flags.
+ * require_closed rejects still-extensible workers with result 1. Use it for
+ * self-contained images which do not retain contribution-generating work.
  * On failure effects is poisoned and roots is unchanged. This is not a whole
  * module checkpoint: callers must retain all other source obligations too. */
 int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count,
 	struct pg_synthesis_job *const *jobs, struct pg_graph *storage,
-	struct pg_effect_inference *effects, const struct pg_derivation_input *const **roots);
+	struct pg_effect_inference *effects, int require_closed,
+	const struct pg_derivation_input *const **roots);
 /* Publish a checked term or formation under an ordinary lexical name. This
  * does not extend the typing context or insert THUNK/RETURN/FORCE. The proof
  * must be available in the parent context (prefix projection is permitted).

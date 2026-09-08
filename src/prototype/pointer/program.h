@@ -2,6 +2,7 @@
 #define A_PROGRAM_POINTER_PROGRAM_H
 
 #include "synthesis.h"
+#include "effect_inference.h"
 
 /* One owner, not another compilation state machine. Do not copy or move this
  * object: its stores point to each other. Source tokens borrow owned storage.
@@ -13,6 +14,8 @@ struct pg_program {
 	struct pg_classifiers classifiers;
 	struct pg_whnf_work evaluation;
 	struct pg_synthesis synthesis;
+	/* Own imported immutable effect equations; ordinary Solve computes them. */
+	struct pg_effect_inference imported_effects;
 	struct pg_parser parser;
 	const struct pg_source_scope *scope;
 	struct pg_synthesis_job *root;

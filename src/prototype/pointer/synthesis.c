@@ -4524,7 +4524,7 @@ static struct pg_derivation_input *export_header(struct pg_graph *storage, const
 
 int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count,
 	struct pg_synthesis_job *const *roots, struct pg_graph *storage,
-	struct pg_effect_inference *effects, const struct pg_derivation_input *const **result)
+	struct pg_effect_inference *effects, int require_closed, const struct pg_derivation_input *const **result)
 {
 	if (!synthesis || !storage || !effects || !result || (count && !roots)) {
 		if (effects) effects->failed = 1;
@@ -4543,6 +4543,7 @@ int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count
 		if (pg_dag_add(&jobs, roots[i])) goto done;
 	for (const struct pg_dag_node *node = export.workers.first; node; node = node->next) {
 		export.source_effects = node->key;
+		if (require_closed && !export.source_effects->sealed) { export.status = 1; goto done; }
 		if (pg_effect_inference_visit(node->key, &export, export_equation, export_dependency)) goto done;
 	}
 	if (jobs.count > SIZE_MAX / sizeof(void *) || export.proofs.count > SIZE_MAX / sizeof(void *)
