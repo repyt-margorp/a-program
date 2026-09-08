@@ -125,7 +125,7 @@ struct effect_substitution_state {
 	struct pg_substitution work;
 	const struct pg_term *result;
 };
-enum job_role { INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
+enum job_role { INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
 enum { APPLICATION_RULE_READY = 6 };
 struct pg_synthesis_job {
@@ -1103,6 +1103,22 @@ struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *syn
 	return result;
 }
 
+struct pg_synthesis_job *pg_synthesis_inductive_instance(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *type)
+{
+	if (!type || type->owner != synthesis->owner_key) return NULL;
+	if (type->status == PG_SYNTHESIS_DONE) type = pg_synthesis_evidence(synthesis, type->result);
+	return type ? request_job(synthesis, INDUCTIVE_INSTANCE_JOB, type, NULL) : NULL;
+}
+
+int pg_synthesis_inductive_instance_result(const struct pg_synthesis_job *job,
+	struct pg_inductive_instance *output)
+{
+	if (!output || !job || job->role != INDUCTIVE_INSTANCE_JOB || job->status != PG_SYNTHESIS_DONE) return 0;
+	*output = (struct pg_inductive_instance){job->schema, job->function, job->result};
+	return 1;
+}
+
 struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation, const struct pg_object *constructor,
 	struct pg_synthesis_job *parameters)
@@ -1762,9 +1778,13 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 			if (producer->status != PG_SYNTHESIS_DONE) return producer->status;
 			proof = producer->result;
 		}
+		struct pg_synthesis_job *instance_job = pg_synthesis_inductive_instance(synthesis,
+			pg_synthesis_evidence(synthesis, value_type(synthesis, proof)));
+		if (!instance_job) return PG_SYNTHESIS_UNSUPPORTED;
+		*dependency = instance_job;
+		if (instance_job->status != PG_SYNTHESIS_DONE) return instance_job->status;
 		struct pg_inductive_instance instance;
-		if (!pg_inductive_instance(synthesis->typing, value_type(synthesis, proof), &instance))
-			return PG_SYNTHESIS_UNSUPPORTED;
+		if (!pg_synthesis_inductive_instance_result(instance_job, &instance)) return PG_SYNTHESIS_ERROR;
 		struct pg_synthesis_job *origin = pg_synthesis_evidence(synthesis, instance.formation);
 		if (!origin || !origin->exports) return PG_SYNTHESIS_UNSUPPORTED;
 		struct source_reference member = lookup_scope(origin->exports, token);
@@ -2985,9 +3005,12 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (!job->right) goto error;
 		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
 		if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
-		const struct pg_evidence *type = job->right->result;
+		struct pg_synthesis_job *instance_job = pg_synthesis_inductive_instance(synthesis, job->right);
+		if (!instance_job) goto error;
+		if (instance_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, instance_job); return; }
+		if (instance_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, instance_job->status); return; }
 		struct pg_inductive_instance instance;
-		if (!pg_inductive_instance(synthesis->typing, type, &instance)) goto unsupported;
+		if (!pg_synthesis_inductive_instance_result(instance_job, &instance)) goto error;
 		size_t count = pg_data_constructor_count(instance.schema);
 		if (count != job->syntax->item_count) goto rejected;
 		if (!count) goto unsupported;
@@ -3174,6 +3197,33 @@ static struct substitution_state *substitution_start(struct pg_synthesis *synthe
 	return state->map ? state : NULL;
 }
 
+static void inductive_instance_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *type = (void *)job->inputs[0];
+	if (type->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, type); return; }
+	if (type->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, type->status); return; }
+	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, type->result);
+	if (!accepted) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+	if (accepted != type) {
+		struct pg_synthesis_job *canonical = pg_synthesis_inductive_instance(synthesis, accepted);
+		if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (canonical->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, canonical); return; }
+		job->schema = canonical->schema;
+		job->function = canonical->function;
+		job->result = canonical->result;
+		finish(synthesis, job, canonical->status);
+		return;
+	}
+	struct pg_inductive_instance instance;
+	if (!pg_inductive_instance(synthesis->typing, type->result, &instance)) {
+		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+	}
+	job->schema = instance.schema;
+	job->function = instance.formation;
+	job->result = instance.parameters;
+	finish(synthesis, job, PG_SYNTHESIS_DONE);
+}
+
 static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (!job->substitution) {
@@ -3188,8 +3238,12 @@ static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_syn
 		if (!formation || !parameters) goto rejected;
 		if (pg_evidence_rule(formation) != PG_INDUCTIVE_FORM || pg_evidence_rule(parameters) != PG_CONTEXT_SUBSTITUTION) goto rejected;
 		if (pg_evidence_context(pg_evidence_premise(parameters, 0)) != pg_evidence_context(formation)) goto rejected;
+		struct pg_synthesis_job *instance_job = pg_synthesis_inductive_instance(synthesis, (void *)job->inputs[0]);
+		if (!instance_job) goto error;
+		if (instance_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, instance_job); return; }
+		if (instance_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, instance_job->status); return; }
 		struct pg_inductive_instance instance;
-		if (!pg_inductive_instance(synthesis->typing, formation, &instance)) goto rejected;
+		if (!pg_synthesis_inductive_instance_result(instance_job, &instance)) goto error;
 		const struct pg_evidence *fields = pg_data_schema_fields(instance.schema, job->inputs[2]);
 		const struct pg_evidence *self = pg_evidence_premise(formation, 0);
 		size_t count;
@@ -4686,6 +4740,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == TELESCOPE_JOB) { telescope_step(synthesis, job); return; }
 	if (job->role == TELESCOPE_STRUCTURE_JOB) { telescope_structure_step(synthesis, job); return; }
 	if (job->role == CONSTRUCTOR_SCOPE_JOB) { constructor_scope_step(synthesis, job); return; }
+	if (job->role == INDUCTIVE_INSTANCE_JOB) { inductive_instance_step(synthesis, job); return; }
 	if (job->role == INDUCTION_SCOPE_JOB) { induction_scope_step(synthesis, job); return; }
 	if (job->role == DATA_RESULT_JOB || job->role == SUBSTITUTION_JOB) { substitution_step(synthesis, job); return; }
 	if (job->role == DATA_SCHEMA_JOB) { data_schema_step(synthesis, job); return; }

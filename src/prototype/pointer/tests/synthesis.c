@@ -3931,7 +3931,20 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	complete(&synthesis, pg_synthesis_request(&synthesis, root,
 		expression_syntax(typing->graph, "D:=@\\i:@=>{mk:* i;};")), PG_SYNTHESIS_UNSUPPORTED);
 	struct pg_synthesis_job *nat_job = request(&synthesis, root, "Nat:=@{zero:*; succ:*->*;};");
+	struct pg_synthesis_job *pending_instance = pg_synthesis_inductive_instance(&synthesis, nat_job);
+	assert(pending_instance == pg_synthesis_inductive_instance(&synthesis, nat_job));
+	struct pg_inductive_instance recovered = {0};
+	assert(!pg_synthesis_inductive_instance_result(pending_instance, &recovered));
+	assert(!recovered.schema && !recovered.formation && !recovered.parameters);
 	const struct pg_evidence *nat = complete(&synthesis, nat_job, PG_SYNTHESIS_DONE);
+	complete(&synthesis, pending_instance, PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_inductive_instance_result(pending_instance, &recovered));
+	struct pg_inductive_instance direct;
+	assert(pg_inductive_instance(typing, nat, &direct));
+	assert(recovered.schema == direct.schema && recovered.formation == direct.formation && recovered.parameters == direct.parameters);
+	struct pg_synthesis_job *canonical_instance = pg_synthesis_inductive_instance(&synthesis, nat_job);
+	assert(canonical_instance == pg_synthesis_inductive_instance(&synthesis, pg_synthesis_evidence(&synthesis, nat)));
+	assert(pg_synthesis_result(canonical_instance) == recovered.parameters);
 	struct pg_token nat_name = {.kind = PG_TOKEN_IDENT, .text = "Nat", .length = 3};
 	const struct pg_source_scope *named = pg_synthesis_name_job(&synthesis, root, nat_name, nat_job);
 	struct pg_synthesis_job *alias = request(&synthesis, named, "Alias:=Nat :: @;");
@@ -3942,6 +3955,10 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *succ = complete(&synthesis, request(&synthesis, named, "r:=Alias.succ;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *same_succ = complete(&synthesis, request(&synthesis, named, "r:=Nat.succ;"), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_judgement(zero) == PG_JUDGEMENT_VALUE);
+	struct pg_synthesis_job *not_a_type = pg_synthesis_inductive_instance(&synthesis, pg_synthesis_evidence(&synthesis, zero));
+	complete(&synthesis, not_a_type, PG_SYNTHESIS_UNSUPPORTED);
+	assert(!pg_synthesis_inductive_instance_result(not_a_type, &recovered));
+	assert(recovered.formation == nat);
 	assert(pg_evidence_judgement(succ) == PG_JUDGEMENT_COMPUTATION);
 	assert(pg_evidence_subject(succ)->core == pg_evidence_subject(same_succ)->core);
 	const struct pg_evidence *applied = complete(&synthesis,

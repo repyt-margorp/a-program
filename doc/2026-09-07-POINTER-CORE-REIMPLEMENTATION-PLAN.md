@@ -894,6 +894,22 @@ finish general handler source support.
   Rebuilt ASan/UBSan Core and synthesis tests pass, including partial-work cleanup.
   Implementation C/header: +119/-46; tests: +29/-0; documentation separate.
 
+  September 9, after `fd79963`: nominal-instance requests accept pending type
+  producers and converge on one request keyed by the accepted type evidence.
+  Match, constructor scope and qualified constructor lookup reuse this result
+  instead of independently walking the same retained provenance. The result
+  remains the selected schema, formation and checked parameter substitution;
+  no lookup by erased Core, new proof rule or persistent authority is added.
+  Tests register before declaration acceptance, check that no result is exposed
+  early, compare all three outputs with kernel recovery, verify convergence
+  onto the accepted-evidence request and preserve output on unsupported inputs.
+  Normal components, eight source checks and six execution fixtures pass.
+  This shares repeated recovery; `pg_inductive_instance` still walks its
+  internal provenance synchronously. Full traversal fuel, general open-family
+  formation, IADT admission and checkpoint retention remain open.
+  Rebuilt ASan/UBSan synthesis tests pass.
+  Implementation C/header: +67/-6; tests: +17/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.

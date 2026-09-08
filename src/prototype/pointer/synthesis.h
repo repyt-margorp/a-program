@@ -321,6 +321,12 @@ struct pg_synthesis_job *pg_synthesis_induction_branch(struct pg_synthesis *synt
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_syntax *clause);
+/* Recover the selected nominal declaration and parameter map, never by Core
+ * lookup. Pending producers converge on the same accepted-evidence request. */
+struct pg_synthesis_job *pg_synthesis_inductive_instance(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *type);
+int pg_synthesis_inductive_instance_result(const struct pg_synthesis_job *job,
+	struct pg_inductive_instance *output);
 /* Abstract an independently synthesized body over an accepted context suffix.
  * Builds ordinary Lambda producers without waiting for the body. Context
  * binders are retained; no fresh binders or provisional proofs are created. */
