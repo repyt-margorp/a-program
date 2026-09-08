@@ -144,6 +144,16 @@ A 64-conversion family chain checks every fuel split and publishes no partial
 endpoint. The cursor is invocation-local, not another accepted-result store.
 Complete pointer `make check` and ASan/UBSan `identity_test` passed.
 
+Formation recovery now has an init/advance/result/destroy API for scheduling
+as its own producer. It uses the same origin cursor as face and endpoint
+traversal. The synchronous API drains a stack-owned worker, without additional
+heap allocation. Requesting work does not reconstruct evidence. Tests cover
+every split of 128 retained wrappers, exact agreement with the synchronous
+result, invalid value input, and persistent unsupported status without a
+published result. Shared solver-job integration remains the next step; this
+API alone does not implement typed symmetry or image persistence.
+Complete pointer `make check` and ASan/UBSan `identity_test` passed.
+
 - [x] Preserve exact descriptor/application interning: a permutation with
   fixed leading axes remains a distinct raw node from its shorter form.
 - [x] Reduce fixed leading axes during evaluation, with one coordinate per

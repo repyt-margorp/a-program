@@ -23,6 +23,17 @@
 const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation);
 
+/* The same recovery suspended between retained origin wrappers. No work at
+ * request time and no partial result. Returns 0 pending, 1 done, -1 unsupported
+ * or allocation failure; failure does not assert uninhabitance. Primitive
+ * proof reconstruction remains synchronous. Destroying work retains evidence. */
+struct pg_identity_formation_work;
+struct pg_identity_formation_work *pg_identity_formation_init(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation);
+int pg_identity_formation_advance(struct pg_identity_formation_work *work, uint64_t fuel);
+const struct pg_evidence *pg_identity_formation_result(const struct pg_identity_formation_work *work);
+void pg_identity_formation_destroy(struct pg_identity_formation_work *work);
+
 /* Select a codimension-one endpoint of an explicit iterated Identity.
  * depth zero selects the outermost direction; larger depths descend through
  * retained family formations and act the endpoint back through those families.

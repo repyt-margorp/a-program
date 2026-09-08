@@ -182,19 +182,66 @@ static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
 	return rebuild_family(typing, boundary.family, &boundary, map, left, right);
 }
 
+struct pg_identity_formation_work {
+	struct pg_typing *typing;
+	struct pg_classifiers *classifiers;
+	struct formation_origin origin;
+	const struct pg_evidence *result;
+	int failed;
+};
+
+static int formation_initialize(struct pg_identity_formation_work *work, struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation)
+{
+	if (!pg_evidence_owned_by(formation, typing)) return -1;
+	if (!classifiers || classifiers->graph != typing->graph) return -1;
+	switch (pg_evidence_judgement(formation)) {
+	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
+	default: return -1;
+	}
+	*work = (struct pg_identity_formation_work){.typing = typing, .classifiers = classifiers,
+		.origin = {.term = formation}};
+	return 0;
+}
+
+struct pg_identity_formation_work *pg_identity_formation_init(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation)
+{
+	struct pg_identity_formation_work *work = malloc(sizeof(*work));
+	if (!work) return NULL;
+	if (formation_initialize(work, typing, classifiers, formation) != 0) { free(work); return NULL; }
+	return work;
+}
+
+int pg_identity_formation_advance(struct pg_identity_formation_work *work, uint64_t fuel)
+{
+	if (!work || work->failed) return -1;
+	while (!work->result) {
+		if (!fuel--) return 0;
+		int status = formation_origin_step(work->typing, &work->origin);
+		if (status > 0) {
+			work->result = formation_from_origin(work->typing, work->classifiers, &work->origin);
+			if (!work->result) status = -1;
+		}
+		if (status < 0) { work->failed = 1; return -1; }
+	}
+	return 1;
+}
+
+const struct pg_evidence *pg_identity_formation_result(const struct pg_identity_formation_work *work)
+{
+	return work && !work->failed ? work->result : NULL;
+}
+
+void pg_identity_formation_destroy(struct pg_identity_formation_work *work) { free(work); }
+
 const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation)
 {
-	if (!pg_evidence_owned_by(formation, typing)) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
-	switch (pg_evidence_judgement(formation)) {
-	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
-	default: return NULL;
-	}
-	struct formation_origin origin = {.term = formation};
-	int status;
-	while ((status = formation_origin_step(typing, &origin)) == 0) {}
-	return status > 0 ? formation_from_origin(typing, classifiers, &origin) : NULL;
+	struct pg_identity_formation_work work;
+	if (formation_initialize(&work, typing, classifiers, formation) != 0) return NULL;
+	while (pg_identity_formation_advance(&work, UINT64_MAX) == 0) {}
+	return pg_identity_formation_result(&work);
 }
 
 struct endpoint_frame {

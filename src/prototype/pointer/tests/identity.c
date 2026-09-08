@@ -1088,6 +1088,22 @@ static void reflexive_instance_boundary(struct pg_typing *typing, struct pg_clas
 	const struct pg_evidence *wrapped = instance;
 	for (size_t i = 0; i < 64; ++i)
 		wrapped = pg_prove_value_type(typing, pg_prove_type_value(typing, wrapped));
+	assert(!pg_identity_formation_init(typing, classifiers, path));
+	for (uint64_t split = 0; split <= 129; ++split) {
+		struct pg_identity_formation_work *pending = pg_identity_formation_init(typing, classifiers, wrapped);
+		assert(pending && !pg_identity_formation_result(pending));
+		assert(pg_identity_formation_advance(pending, split) == (split == 129));
+		assert(pg_identity_formation_result(pending) == (split == 129 ? recovered : NULL));
+		assert(pg_identity_formation_advance(pending, 129 - split) == 1);
+		assert(pg_identity_formation_result(pending) == recovered);
+		pg_identity_formation_destroy(pending);
+	}
+	struct pg_identity_formation_work *unsupported = pg_identity_formation_init(typing, classifiers, universe);
+	assert(unsupported && pg_identity_formation_advance(unsupported, 0) == 0);
+	assert(pg_identity_formation_advance(unsupported, 1) == -1);
+	assert(pg_identity_formation_advance(unsupported, 0) == -1);
+	assert(!pg_identity_formation_result(unsupported));
+	pg_identity_formation_destroy(unsupported);
 	for (uint64_t split = 0; split <= 128; ++split) {
 		struct pg_identity_endpoint_work *pending = pg_identity_endpoint_init(typing, classifiers,
 			empty, wrapped, 0, PG_IDENTITY_LEFT);
