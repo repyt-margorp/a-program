@@ -2449,6 +2449,22 @@ on a selected face or the transformed-family formation for the center. N2 stays
 open. Implementation/header: +49/-0; test C: +33/-0. Normal and ASan/UBSan
 pointer checks and the 512 KiB-stack Identity test pass.
 
+September 8, after `174f02c`: typed face-composition regression gates now compare
+both orders of fixing each pair of distinct axes, with all endpoint choices,
+for full dependent type/value/function cubes in dimensions 2-3 and the tested
+orientations. Each intermediate classifier comes from ordinary regularity;
+the final comparison checks classifier conversion and term reduction, not just
+the geometric binder identity. A second gate checks that endpoint selection
+commutes with the checked square-boundary substitution, in both directions
+and on both axes. Normal pointer checks pass without changing production rules.
+
+This is concrete evidence that these boundary paths agree, not a proof of a
+general coherence theorem. It narrows the next action: keep the ordinary face
+selection rules and address the still-missing transformation of the instantiated
+family under a nonidentity permutation. Do not add a center witness on the
+strength of these tests. Test C: +31/-0; implementation C unchanged.
+ASan/UBSan pointer checks and the 512 KiB-stack Identity test also pass.
+
 - [x] After `a4bc683`, `pg_identity_formation` recovers an explicit Identity
   formation through a chain of accepted reindex/projection derivations. It
   composes their substitutions and rebuilds homogeneous Identity, selected

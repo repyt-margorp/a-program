@@ -816,6 +816,17 @@ static void square_transposition_boundary(struct pg_typing *typing, struct pg_cl
 	assert(pg_evidence_premise(recovered, 0) == pg_evidence_premise(pg_evidence_premise(extensions[8], 1), 0));
 	assert(pg_alpha_equal(pg_evidence_subject(recovered)->core, pg_evidence_subject(expected)->core) == 1);
 	assert(pg_identity_formation(typing, classifiers, expected) == recovered);
+	for (size_t depth = 0; depth < 2; ++depth) {
+		for (unsigned side = 0; side < 2; ++side) {
+			enum pg_identity_direction direction = side ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT;
+			const struct pg_evidence *before = pg_identity_face_endpoint(typing, classifiers,
+				pg_evidence_premise(map, 0), pg_evidence_premise(extensions[8], 1), depth, direction);
+			const struct pg_evidence *after = pg_identity_face_endpoint(typing, classifiers,
+				contexts[1], expected, depth, direction);
+			assert(action_result(typing, classifiers, contexts[1], &work, after,
+				pg_prove_reindex(typing, map, before)));
+		}
+	}
 	const struct pg_evidence *type_value = pg_prove_type_value(typing, expected);
 	assert(type_value && !pg_identity_formation(typing, classifiers, type_value));
 	assert(pg_identity_formation(typing, classifiers, pg_prove_value_type(typing, type_value)) == recovered);
@@ -1161,6 +1172,26 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 				assert(pg_alpha_equal(pg_evidence_subject(recovered)->core, pg_evidence_subject(formation)->core) == 1);
 				size_t d = face->face->source;
 				if (d == dimension) {
+					/* Two orders of fixing coordinates must agree as typed terms,
+					 * not merely as maps between geometric binder labels. */
+					for (size_t a = 0; a < d; ++a) {
+						for (size_t b = a + 1; b < d; ++b) {
+							for (unsigned choices = 0; choices < 4; ++choices) {
+								enum pg_identity_direction sa = choices & 1 ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT;
+								enum pg_identity_direction sb = choices & 2 ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT;
+								const struct pg_evidence *first_a = pg_identity_face_endpoint(typing, classifiers,
+									all, formation, d - 1 - a, sa);
+								const struct pg_evidence *first_b = pg_identity_face_endpoint(typing, classifiers,
+									all, formation, d - 1 - b, sb);
+								assert(first_a && first_b);
+								const struct pg_evidence *ab = pg_identity_face_endpoint(typing, classifiers, all,
+									pg_prove_classifier(typing, classifiers, all, first_a), d - 1 - b, sb);
+								const struct pg_evidence *ba = pg_identity_face_endpoint(typing, classifiers, all,
+									pg_prove_classifier(typing, classifiers, all, first_b), d - 2 - a, sa);
+								assert(action_result(typing, classifiers, all, &cube_work, ab, ba));
+							}
+						}
+					}
 					size_t cases = 1;
 					for (size_t i = 0; i < d; ++i) cases *= 3;
 					for (size_t code = 0; code + 1 < cases; ++code) {
