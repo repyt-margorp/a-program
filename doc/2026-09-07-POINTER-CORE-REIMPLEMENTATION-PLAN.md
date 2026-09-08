@@ -39,7 +39,19 @@ helper composes the retained substitutions for both formation and family
 recovery; the reconstructed type is reindexed before endpoint checking.
 Regressions cover both ways to move a family into an extended context and
 verify that the recovered formation keeps that context and its exact Core.
-This is not recovery from arbitrary conversion or an opaque family assumption.
+This is not recovery from an unproved conversion or an opaque family assumption.
+
+After `b280060`, explicit `PG_FAMILY_ACTION` families also recover their
+source type and retained boundary maps/paths through ordinary family Identity
+formation. The same reconstruction helper applies any outer substitution;
+no separate family-map authority is stored. `PG_TYPE_CONVERSION` is followed
+to its term premise because that accepted rule preserves the subject and
+context, not because any equality witness supplies an action.
+New tests cover a closed action instance, nested endpoints, and projected and
+reindexed action families with exact recovered Core and destination context.
+These tests do not yet establish recovery for every nonconstant dependent
+family, or general typed center symmetry. Those acceptance gates remain open.
+Complete pointer `make check` and ASan/UBSan `identity_test` pass this change.
 
 Rechecked `action.h`, `evidence.c` and `square_template_jobs` /
 `dependent_cube_substitution` after `253e690`. The current proper-face API

@@ -10,6 +10,9 @@
  * retained formation does not infer an Identity from its Core syntax. An
  * instance of an explicitly proved refl A recovers ordinary Identity on A
  * from that proof's premise, allowing descent through nested instances.
+ * Explicit family action likewise recovers its source type, selected maps and
+ * paths. Accepted classifier conversions preserve the term's origin; no
+ * arbitrary equality witness is treated as reflexivity or family action.
  * Rebuild with the ordinary formation rules and composed substitutions, keeping
  * the selected family and paths. This is not normalization or proof search:
  * unsupported formation/conversion rules return NULL. The rebuilt subject is

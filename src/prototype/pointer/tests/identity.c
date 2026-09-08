@@ -1084,19 +1084,37 @@ static void reflexive_instance_boundary(struct pg_typing *typing, struct pg_clas
 		assert(endpoint && pg_evidence_subject(endpoint)->core == pg_evidence_subject(path)->core);
 	}
 	assert(!pg_identity_face_endpoint(typing, classifiers, empty, instance, 2, PG_IDENTITY_LEFT));
+	struct pg_whnf_work work;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	const struct pg_evidence *identity_map = pg_prove_substitution(typing, empty, empty, 0, NULL);
+	const struct pg_evidence *acted_family = pg_prove_family_action(typing,
+		pg_prove_classifier(typing, classifiers, empty, line_value), line_value,
+		identity_map, identity_map, 0, NULL);
+	const struct pg_evidence *family_type = pg_prove_identity_type(typing,
+		pg_prove_classifier(typing, classifiers, empty, line_value), line_value, line_value);
+	acted_family = convert_to(typing, &work, acted_family, family_type);
+	const struct pg_evidence *acted_instance = pg_prove_identity_instance(typing, classifiers, acted_family, path, path);
+	assert(acted_instance);
+	const struct pg_evidence *acted_formation = pg_identity_formation(typing, classifiers, acted_instance);
+	assert(acted_formation && pg_evidence_rule(acted_formation) == PG_FAMILY_IDENTITY_FORM);
+	assert(pg_evidence_subject(acted_formation)->core == pg_evidence_subject(acted_instance)->core);
+	assert(pg_identity_face_endpoint(typing, classifiers, empty, acted_instance, 1, PG_IDENTITY_LEFT));
+	pg_whnf_work_destroy(&work);
 	const struct pg_evidence *extended = pg_prove_context_extension(typing, empty,
 		pg_binder(typing->graph), universe);
 	const struct pg_evidence *projected_path = pg_prove_projection(typing, extended, path);
 	const struct pg_evidence *projection = pg_prove_substitution(typing, empty, extended, 0, NULL);
 	const struct pg_evidence *families[] = {
 		pg_prove_projection(typing, extended, family),
-		pg_prove_reindex(typing, projection, family)};
-	for (size_t i = 0; i < 2; ++i) {
+		pg_prove_reindex(typing, projection, family),
+		pg_prove_projection(typing, extended, acted_family),
+		pg_prove_reindex(typing, projection, acted_family)};
+	for (size_t i = 0; i < 4; ++i) {
 		const struct pg_evidence *moved = pg_prove_identity_instance(typing, classifiers,
 			families[i], projected_path, projected_path);
 		const struct pg_evidence *restored = pg_identity_formation(typing, classifiers, moved);
 		assert(restored && pg_evidence_context(restored) == pg_evidence_context(extended));
-		assert(pg_evidence_rule(restored) == PG_IDENTITY_FORM);
+		assert(pg_evidence_rule(restored) == (i < 2 ? PG_IDENTITY_FORM : PG_FAMILY_IDENTITY_FORM));
 		assert(pg_evidence_subject(restored)->core == pg_evidence_subject(moved)->core);
 		assert(pg_identity_face_endpoint(typing, classifiers, extended, moved, 1, PG_IDENTITY_LEFT));
 	}
