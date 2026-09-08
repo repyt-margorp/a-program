@@ -2169,6 +2169,20 @@ Next implementation order, retaining the existing three Core forms:
 The general four-item contract remains unchecked. Passing first-order transport
 tests does not discharge it, and datatype admission must not assume completion.
 
+- [x] After `411ef62`, the uniform-field regression acts on both scalar
+  transport and lifting over the dependent context `A, B, r : Id A B, x`.
+  Four fresh cubes supply the assumed boundary data. One and two action
+  dimensions, both transport directions and both two-dimensional axis orders
+  produce checked value evidence with well-formed classifiers. Ordinary pure
+  WHNF results also receive normalization evidence; repeated construction
+  reuses the accepted derivation. Tests: +28/-0, implementation unchanged.
+  This extends item 3's typing evidence beyond the original square example,
+  but does not compare the two orientations or compute unknown higher fields.
+  Typed transposition, uniform field equations and Pi lifting coherence remain
+  open. Well-formed iterated action must not be reported as those theorems.
+  Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test
+  pass. No new proof rule or dimension-specific Core constructor is introduced.
+
 - [x] September 8, after `01201c3`: `tests/identity.c:uniform_transport`
   constructs a selected universe square boundary by ordinary context action.
   Acting on a scalar transport term yields a value proof relating the two

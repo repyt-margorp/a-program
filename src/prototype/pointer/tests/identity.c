@@ -845,6 +845,34 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 		assert(pg_evidence_subject(checked)->core == pg_evidence_subject(acted)->core);
 		assert(!pg_prove_identity_instance(typing, classifiers, edge,
 			pg_prove_reindex(typing, right, transport), pg_prove_reindex(typing, left, transport)));
+		const struct pg_evidence *lift = pg_prove_identity_lift(typing, classifiers,
+			pg_prove_variable(typing, input_context, r), pg_prove_variable(typing, input_context, x),
+			(enum pg_identity_direction)side);
+		assert(lift);
+		const struct pg_evidence *fields[] = {transport, lift};
+		for (size_t dimension = 1; dimension <= 2; ++dimension) {
+			const struct pg_binding_cube *cubes[4];
+			for (size_t i = 0; i < 4; ++i) cubes[i] = pg_binding_cube(&dimensions, dimension);
+			for (size_t swap = 0; swap < dimension; ++swap) {
+				struct pg_coordinate axes[2] = {{PG_AXIS, swap}, {PG_AXIS, 1 - swap}};
+				const struct pg_dimension_map *order = pg_dimension_map(&dimensions, dimension, dimension, axes);
+				const struct pg_evidence *cube_context = pg_identity_cube_context(typing, &dimensions,
+					input_context, 4, cubes, order);
+				assert(cube_context);
+				for (size_t field = 0; field < 2; ++field) {
+					const struct pg_evidence *higher = pg_identity_cube_action(typing, classifiers, &dimensions,
+						input_context, fields[field], 4, cubes, order);
+					assert(higher && pg_evidence_context(higher) == pg_evidence_context(cube_context));
+					assert(pg_evidence_judgement(higher) == PG_JUDGEMENT_VALUE);
+					assert(pg_prove_classifier(typing, classifiers, cube_context, higher));
+					struct pg_whnf_job *normal = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(higher)->core);
+					assert(pg_whnf_advance(normal, 100000) == PG_EVAL_WHNF);
+					assert(pg_prove_normalization(typing, higher, pg_whnf_certificate(normal)));
+					assert(pg_identity_cube_action(typing, classifiers, &dimensions,
+						input_context, fields[field], 4, cubes, order) == higher);
+				}
+			}
+		}
 	}
 	pg_whnf_work_destroy(&work);
 	pg_dimensions_destroy(&dimensions);
