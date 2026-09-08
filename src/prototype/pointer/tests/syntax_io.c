@@ -1,6 +1,7 @@
 #include "syntax_io.h"
 #include "synthesis.h"
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 static void compare_files(FILE *a, FILE *b)
@@ -13,6 +14,7 @@ static void compare_files(FILE *a, FILE *b)
 
 static void run(struct pg_graph *graph, const struct pg_syntax *syntax)
 {
+	assert(!pg_syntax_validate(1, &syntax));
 	struct pg_typing typing;
 	struct pg_classifiers classifiers;
 	struct pg_whnf_work work;
@@ -30,8 +32,36 @@ static void run(struct pg_graph *graph, const struct pg_syntax *syntax)
 	pg_typing_destroy(&typing);
 }
 
-int main(void)
+static void source_file(const char *path)
 {
+	FILE *file = fopen(path, "rb");
+	assert(file && !fseek(file, 0, SEEK_END));
+	long length = ftell(file);
+	assert(length >= 0 && !fseek(file, 0, SEEK_SET));
+	char *text = malloc((size_t)length + 1);
+	assert(text && fread(text, 1, (size_t)length, file) == (size_t)length);
+	assert(!fclose(file));
+	struct pg_graph graph;
+	struct pg_parser parser;
+	assert(!pg_graph_init(&graph));
+	pg_parser_init(&parser, &graph, text, (size_t)length);
+	const struct pg_syntax *root = pg_parser_program(&parser);
+	assert(root && !parser.error && !pg_syntax_validate(1, &root));
+	file = tmpfile();
+	assert(file && !pg_syntax_write(file, 1, &root));
+	rewind(file);
+	size_t count;
+	const struct pg_syntax *const *loaded;
+	assert(!pg_syntax_read(file, &graph, 1000000, &count, &loaded));
+	assert(count == 1 && !pg_syntax_validate(count, loaded));
+	assert(!fclose(file));
+	pg_graph_destroy(&graph);
+	free(text);
+}
+
+int main(int argc, char **argv)
+{
+	for (int i = 1; i < argc; ++i) source_file(argv[i]);
 	struct pg_graph source, destination;
 	assert(!pg_graph_init(&source) && !pg_graph_init(&destination));
 	const char text[] = "{{ id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A; }}.id";
@@ -39,6 +69,15 @@ int main(void)
 	pg_parser_init(&parser, &source, text, strlen(text));
 	const struct pg_syntax *program = pg_parser_program(&parser);
 	assert(program && !parser.error);
+	assert(!pg_syntax_validate(1, &program));
+	struct pg_syntax bad = {.kind = PG_SYNTAX_APPLICATION, .left = program};
+	const struct pg_syntax *invalid = &bad;
+	assert(pg_syntax_validate(1, &invalid) == -1);
+	bad = (struct pg_syntax){.kind = PG_SYNTAX_LAMBDA, .left = program, .right = program,
+		.token = {.kind = PG_TOKEN_IDENT, .text = "x", .length = 2, .text_length = 1}};
+	assert(pg_syntax_validate(1, &invalid) == -1);
+	bad = (struct pg_syntax){.kind = PG_SYNTAX_BLOCK};
+	assert(pg_syntax_validate(1, &invalid) == -1);
 	struct pg_syntax nodes[PG_SYNTAX_IMPORT + 1] = {0};
 	const struct pg_syntax_item item = {.name = {.kind = PG_TOKEN_IDENT, .text = "x", .text_length = 1},
 		.expression = program, .annotation = program, .operation = PG_TOKEN_EXPECT};
@@ -49,6 +88,7 @@ int main(void)
 				.offset = 2, .length = 5, .line = 3, .column = 4, .integer = INT64_MIN}};
 	}
 	const struct pg_syntax *roots[] = {program, &nodes[PG_SYNTAX_IMPORT], program};
+	assert(pg_syntax_validate(3, roots) == -1);
 	FILE *file = tmpfile(), *copy = tmpfile();
 	assert(file && copy && !pg_syntax_write(file, 3, roots));
 	rewind(file);
@@ -96,6 +136,7 @@ int main(void)
 	assert(!fclose(deep));
 	nodes[0].left = &nodes[PG_SYNTAX_IMPORT];
 	assert(pg_syntax_write(copy, 3, roots) == -1);
+	assert(pg_syntax_validate(3, roots) == -1);
 	assert(!fclose(file) && !fclose(copy));
 	pg_graph_destroy(&destination); pg_graph_destroy(&source);
 	puts("syntax image: exact DAG/token transport, ordinary Solve, sparse edges, truncation and deep sharing passed");

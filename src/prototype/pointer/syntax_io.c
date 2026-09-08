@@ -19,6 +19,122 @@ static int child(void *unused, const void *key, size_t index, const void **resul
 	return *result ? 1 : 2;
 }
 
+static int named(const struct pg_token *token)
+{
+	return token->kind == PG_TOKEN_IDENT && token->text && token->text_length
+		&& token->length == token->text_length;
+}
+
+static int atom_name(const struct pg_syntax *s)
+{
+	return s && s->kind == PG_SYNTAX_ATOM && named(&s->token);
+}
+
+static int shape(const struct pg_syntax *s)
+{
+	if (s->token.kind < 0 || s->token.kind > PG_TOKEN_ERROR) return 0;
+	if (s->token.text_length && !s->token.text) return 0;
+	if (s->token.kind == PG_TOKEN_IDENT && !named(&s->token)) return 0;
+	if (s->binder_marker && s->kind != PG_SYNTAX_LAMBDA) return 0;
+	int left = s->left != NULL, right = s->right != NULL;
+	int items = 0;
+	switch (s->kind) {
+	case PG_SYNTAX_ATOM:
+		if (left || right) return 0;
+		switch (s->token.kind) {
+		case PG_TOKEN_IDENT: case PG_TOKEN_TEXT: case PG_TOKEN_INT: case '@': case '#': case '*': break;
+		default: return 0;
+		}
+		break;
+	case PG_SYNTAX_QUALIFIED:
+		if (!left || !atom_name(s->right)) return 0;
+		break;
+	case PG_SYNTAX_APPLICATION: case PG_SYNTAX_PI: case PG_SYNTAX_EXPECT:
+		if (!left || !right) return 0;
+		break;
+	case PG_SYNTAX_LAMBDA:
+		if (!right || !named(&s->token)) return 0;
+		switch (s->binder_marker) {
+		case 0: case '@': if (!left) return 0; break;
+		case '*': if (left) return 0; break;
+		default: return 0;
+		}
+		break;
+	case PG_SYNTAX_BINDER:
+		if (!left || right || !named(&s->token)) return 0;
+		break;
+	case PG_SYNTAX_QUOTE: case PG_SYNTAX_DECLARATION: case PG_SYNTAX_EXIT:
+		if (!left || right) return 0;
+		break;
+	case PG_SYNTAX_GRAPH_REFERENCE: case PG_SYNTAX_IMPORT:
+		if (!atom_name(s->left) || right) return 0;
+		break;
+	case PG_SYNTAX_BLOCK:
+		if (!s->item_count) return 0;
+		/* fall through */
+	case PG_SYNTAX_CONSTRUCTORS: case PG_SYNTAX_DEFINITIONS:
+		if (left || right) return 0;
+		items = 1;
+		break;
+	case PG_SYNTAX_ELIMINATION:
+		if (!left || right || !s->item_count) return 0;
+		items = 1;
+		break;
+	case PG_SYNTAX_CLAUSE:
+		if (!left || !right) return 0;
+		items = 1;
+		break;
+	default: return 0;
+	}
+	if (s->item_count && (!items || !s->items)) return 0;
+	int selector_mode = s->item_count ? s->items[0].operation : 0;
+	for (size_t i = 0; i < s->item_count; ++i) {
+		const struct pg_syntax_item *item = &s->items[i];
+		if (item->annotation && s->kind != PG_SYNTAX_BLOCK) return 0;
+		if (s->kind == PG_SYNTAX_CLAUSE) {
+			if (!named(&item->name) || item->operation != selector_mode) return 0;
+			if (!item->operation) { if (item->expression) return 0; }
+			else if (item->operation != PG_TOKEN_ASSIGN || !atom_name(item->expression)) return 0;
+			continue;
+		}
+		if (!item->expression) return 0;
+		if (s->kind == PG_SYNTAX_ELIMINATION) {
+			if (item->operation || item->name.kind || item->expression->kind != PG_SYNTAX_CLAUSE) return 0;
+			continue;
+		}
+		if (s->kind == PG_SYNTAX_BLOCK && !item->operation) {
+			if (item->name.kind || item->annotation) return 0;
+			continue;
+		}
+		if (!named(&item->name)) return 0;
+		if (s->kind == PG_SYNTAX_CONSTRUCTORS) {
+			if (item->operation != ':') return 0;
+		} else if (s->kind == PG_SYNTAX_BLOCK) {
+			if (item->operation != PG_TOKEN_ASSIGN) return 0;
+		} else switch (item->operation) {
+		case PG_TOKEN_ASSIGN: case PG_TOKEN_EXPECT: break;
+		case PG_SYNTAX_IMPORT: if (item->expression->kind != PG_SYNTAX_IMPORT) return 0; break;
+		default: return 0;
+		}
+	}
+	return 1;
+}
+
+int pg_syntax_validate(size_t count, const struct pg_syntax *const *roots)
+{
+	if (count && !roots) return -1;
+	struct pg_dag dag = {0};
+	int status = -1;
+	if (pg_dag_init(&dag, child, NULL)) goto done;
+	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&dag, roots[i])) goto done;
+	for (const struct pg_dag_node *node = dag.first; node; node = node->next)
+		if (!shape(node->key)) goto done;
+	status = 0;
+done:
+	pg_dag_destroy(&dag);
+	return status;
+}
+
 static int write_token(FILE *file, const struct pg_token *token)
 {
 	if (token->kind < 0 || token->kind > PG_TOKEN_ERROR || (token->text_length && !token->text)) return -1;

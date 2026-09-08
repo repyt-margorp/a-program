@@ -27,7 +27,7 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	bash $(ROOT)tests/graph_acceptance.sh $(BUILD)/graph_acceptance_test
 	bash $(ROOT)tests/occurrence_io.sh $(BUILD)/occurrence_io_test
 	bash $(ROOT)tests/derivation_io.sh $(BUILD)/derivation_io_test
-	$(BUILD)/syntax_io_test
+	$(BUILD)/syntax_io_test $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 	$(BUILD)/reader_test
 	$(BUILD)/synthesis_test
 	$(BUILD)/program_test
@@ -59,9 +59,9 @@ $(BUILD)/program_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)tests/program.c -o $@
 
-$(BUILD)/seed_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)seed.c $(ROOT)wire.c $(ROOT)tests/seed.c
+$(BUILD)/seed_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)seed.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/seed.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)seed.c $(ROOT)wire.c $(ROOT)tests/seed.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)seed.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/seed.c -o $@
 
 $(BUILD)/syntax_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/syntax_io.c
 	mkdir -p $(BUILD)

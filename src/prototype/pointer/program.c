@@ -18,10 +18,8 @@ struct pg_synthesis_job *pg_program_source(struct pg_program *program,
 	return syntax ? pg_synthesis_request(&program->synthesis, scope, syntax) : NULL;
 }
 
-struct pg_program *pg_program_create(const char *source, size_t length,
-	enum pg_definition_policy policy)
+struct pg_program *pg_program_allocate(enum pg_definition_policy policy)
 {
-	if (!source && length) return NULL;
 	struct pg_program *program = calloc(1, sizeof(*program));
 	if (!program) return NULL;
 	if (pg_graph_init(&program->graph) != 0) goto fail;
@@ -32,6 +30,18 @@ struct pg_program *pg_program_create(const char *source, size_t length,
 		&program->evaluation, policy) != 0) goto fail;
 	program->scope = pg_synthesis_root(&program->synthesis);
 	if (!program->scope) goto fail;
+	return program;
+fail:
+	pg_program_destroy(program);
+	return NULL;
+}
+
+struct pg_program *pg_program_create(const char *source, size_t length,
+	enum pg_definition_policy policy)
+{
+	if (!source && length) return NULL;
+	struct pg_program *program = pg_program_allocate(policy);
+	if (!program) return NULL;
 	program->root = pg_program_source(program, program->scope, source, length, &program->parser);
 	if (program->parser.error) return program;
 	if (!program->root) goto fail;

@@ -18,6 +18,9 @@ struct pg_program {
 	struct pg_synthesis_job *root;
 };
 
+/* Initialize the same stores without a source/root. Image loading can populate
+ * this graph before scheduling the ordinary synthesis root. */
+struct pg_program *pg_program_allocate(enum pg_definition_policy policy);
 /* Copies the input and parses without advancing synthesis. NULL indicates
  * initialization failure. Syntax errors return an owned program with a NULL
  * root and the ordinary parser diagnostic; destroy it normally. */

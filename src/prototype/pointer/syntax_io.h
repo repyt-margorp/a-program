@@ -11,4 +11,8 @@
 int pg_syntax_write(FILE *file, size_t count, const struct pg_syntax *const *roots);
 int pg_syntax_read(FILE *file, struct pg_graph *graph, size_t limit,
 	size_t *count, const struct pg_syntax *const **roots);
+/* Check structural source contracts before submitting externally reconstructed
+ * syntax to synthesis. Does not resolve names, classify terms, or assert that
+ * a node is legal in every lexical position. Returns 0 or -1. */
+int pg_syntax_validate(size_t count, const struct pg_syntax *const *roots);
 #endif

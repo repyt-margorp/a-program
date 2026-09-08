@@ -1,10 +1,9 @@
 #include "seed.h"
-#include "wire.h"
+#include "syntax_io.h"
 
-#include <stdlib.h>
 #include <string.h>
 
-static const unsigned char magic[8] = {'A', 'P', 'G', 'S', 'E', 'E', 'D', 0};
+static const unsigned char magic[8] = {'A', 'P', 'G', 'S', 'E', 'E', 'D', 1};
 
 int pg_seed_write(FILE *file, const char *source, size_t length,
 	enum pg_definition_policy policy)
@@ -17,12 +16,18 @@ int pg_seed_write(FILE *file, const char *source, size_t length,
 	case PG_DEFINITION_IMPLICIT_THUNK: header[8] = 1; break;
 	default: return -1;
 	}
-	uint64_t size = length;
-	if ((size_t)size != length) return -1;
-	if (fwrite(header, 1, sizeof(header), file) != sizeof(header)) return -1;
-	if (pg_wire_write_u64(file, size)) return -1;
-	if (length && fwrite(source, 1, length, file) != length) return -1;
-	return ferror(file) ? -1 : 0;
+	struct pg_graph graph;
+	if (pg_graph_init(&graph)) return -1;
+	struct pg_parser parser;
+	pg_parser_init(&parser, &graph, source, length);
+	const struct pg_syntax *syntax = pg_parser_program(&parser);
+	int status = -1;
+	if (!syntax || pg_syntax_validate(1, &syntax)) goto done;
+	if (fwrite(header, 1, sizeof(header), file) != sizeof(header)) goto done;
+	status = pg_syntax_write(file, 1, &syntax);
+done:
+	pg_graph_destroy(&graph);
+	return status;
 }
 
 struct pg_program *pg_seed_read(FILE *file, size_t limit)
@@ -37,17 +42,19 @@ struct pg_program *pg_seed_read(FILE *file, size_t limit)
 	case 1: policy = PG_DEFINITION_IMPLICIT_THUNK; break;
 	default: return NULL;
 	}
-	uint64_t size;
-	if (pg_wire_read_u64(file, &size)) return NULL;
-	if (size > SIZE_MAX || size > limit) return NULL;
-	size_t length = (size_t)size;
-	char *source = malloc(length ? length : 1);
-	if (!source) return NULL;
-	struct pg_program *program = NULL;
-	if (length && fread(source, 1, length, file) != length) goto done;
-	if (fgetc(file) != EOF || ferror(file)) goto done;
-	program = pg_program_create(source, length, policy);
-done:
-	free(source);
+	struct pg_program *program = pg_program_allocate(policy);
+	if (!program) return NULL;
+	size_t count;
+	const struct pg_syntax *const *roots;
+	if (pg_syntax_read(file, &program->graph, limit, &count, &roots) || count != 1) goto fail;
+	if (fgetc(file) != EOF || ferror(file) || pg_syntax_validate(count, roots)) goto fail;
+	const struct pg_syntax *body = roots[0];
+	if (body->kind == PG_SYNTAX_QUALIFIED) body = body->left;
+	if (body->kind != PG_SYNTAX_DEFINITIONS) goto fail;
+	program->root = pg_synthesis_request(&program->synthesis, program->scope, roots[0]);
+	if (!program->root) goto fail;
 	return program;
+fail:
+	pg_program_destroy(program);
+	return NULL;
 }

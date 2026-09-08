@@ -43,9 +43,10 @@ rejected without changing the already accepted roots. No runtime or kernel
 special case was needed. Normal checks, eight source cases, six execution
 fixtures and rebuilt ASan/UBSan derivation-image tests pass.
 
-Next image boundary: `seed.c` still stores source bytes and policy only;
-`program.c` owns a live source graph but does not serialize modules/scopes.
-Neither should be presented as the final `.a` checkpoint. Preserve unresolved
+At this checkpoint `seed.c` stored source bytes and policy only; section 8's
+follow-up replaces those bytes with unresolved syntax. `program.c` owns a live
+source graph but does not serialize modules/scopes. Neither is the final `.a`
+checkpoint. Preserve unresolved
 source/module inputs and producer references before claiming whole-program
 resumption; keep nominal rule transport on the path above.
 
@@ -7376,16 +7377,29 @@ The wire format is `APGSYN` version 1, a component rather than a final `.a` file
 - [x] Feed a restored parsed definition block to the existing synthesis API.
 - [x] Reject truncated prefixes without publishing outputs; detect cycles and
   transport a 40,000-level shared DAG with iterative traversal.
-- [ ] Validate complete grammar shape before admitting arbitrary external
-  syntax as a program; field decoding alone is not syntactic/type acceptance.
+- [x] Check node arities, item contracts, marker positions and identifier byte
+  extents before submitting restored syntax to synthesis.
+- [ ] Complete lexical-position admissibility for externally supplied syntax;
+  structural validation does not establish scope or type acceptance.
 - [ ] Attach module names/scopes and retained producers through one program
   image, then integrate RECOMPUTE/CHECKPOINT policies and CLI resumption.
 
-This does not replace `seed.c` yet and does not serialize live solver state.
-Synthetic all-kind payload fixtures test structural transport only; only the
-separately parsed definition block is submitted to Solve.
+Follow-up after `ac7afa0`: `APGSEED` version 1 now embeds one syntax DAG and
+the definition policy, replacing source-byte persistence in `seed.c`.
+`pg_program_allocate` shares store initialization with ordinary source creation.
+Reading a seed validates structural shape and its definition-block root, then
+schedules ordinary synthesis without invoking the parser or advancing Solve.
+Syntactically invalid source is rejected by the writer rather than retained as
+a source-text archive. The read limit counts graph/items/token bytes now.
+
+This is single-source RECOMPUTE, not retained-progress CHECKPOINT or external
+module registration. Synthetic all-kind payload fixtures test raw transport
+only and are rejected by structural validation; parsed definition blocks and
+the eight existing examples pass that validation before and after relocation.
+Seed tests compare fresh-source and restored-graph Solve results and step counts,
+assert no parser input on load, and reject decoded malformed application nodes.
 Normal `check`, `check-examples`, `check-example-results` and the rebuilt
-ASan/UBSan syntax-image test pass. N5 and the full reimplementation remain open.
+ASan/UBSan syntax-image and seed tests pass. N5 and the full reimplementation remain open.
 
 In-memory entry after `3fd0b99`: `program.c` owns the existing graph, typing,
 classifiers, evaluation store, synthesis store and copied source. Creation uses
