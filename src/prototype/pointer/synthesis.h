@@ -160,6 +160,12 @@ struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesi
  * inserted here. Surface :: performs its existing exposure before this step. */
 struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term, struct pg_synthesis_job *type);
+/* Recover retained Identity formation after its producer completes. Shared
+ * by accepted input evidence, including requests from distinct producers.
+ * The output is convertible to the input, not a conversion certificate;
+ * callers requiring the original classifier must still post-check it. */
+struct pg_synthesis_job *pg_synthesis_identity_formation(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *producer);
 /* Share a suspended endpoint derivation on the ordinary work queue. face is
  * an immutable, graph-lived canonical endpoint selector: its first coordinate
  * is fixed, followed by its ordered axes. Those axes count outer Identity

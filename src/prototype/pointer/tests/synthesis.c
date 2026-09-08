@@ -1204,6 +1204,9 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 	struct pg_synthesis_job *type_job = pg_synthesis_reindex_jobs(&synthesis, map_job, formation);
 	assert(type_job && pg_synthesis_reindex_jobs(&synthesis, map_job, formation) == type_job);
 	assert(!pg_synthesis_result(map_job) && !pg_synthesis_result(type_job));
+	struct pg_synthesis_job *recovery = pg_synthesis_identity_formation(&synthesis, type_job);
+	assert(recovery && pg_synthesis_identity_formation(&synthesis, type_job) == recovery);
+	assert(!pg_synthesis_result(recovery));
 	struct pg_coordinate vertex[] = {{PG_ENDPOINT_ZERO, 0}, {PG_ENDPOINT_ONE, 0}};
 	const struct pg_dimension_map *face = pg_dimension_map(&dimensions, 0, 2, vertex);
 	struct pg_synthesis_job *selected = pg_synthesis_identity_face_job(&synthesis, destination, type_job, face);
@@ -1211,6 +1214,12 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 	const struct pg_evidence *endpoint = complete(&synthesis, selected, PG_SYNTHESIS_DONE);
 	const struct pg_evidence *type = pg_synthesis_result(type_job);
 	assert(type && endpoint);
+	const struct pg_evidence *recovered = pg_synthesis_result(recovery);
+	assert(recovered && recovered == pg_identity_formation(typing, classifiers, type));
+	struct pg_synthesis_job *canonical_recovery = pg_synthesis_identity_formation(&synthesis,
+		pg_synthesis_evidence(&synthesis, type));
+	assert(pg_synthesis_status(canonical_recovery) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(canonical_recovery) == recovered);
 	struct pg_synthesis_job *selected_canonical = pg_synthesis_identity_face(&synthesis, destination, type, face);
 	assert(pg_synthesis_status(selected_canonical) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_result(selected_canonical) == endpoint);
@@ -1221,6 +1230,9 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 	assert(pg_synthesis_result(canonical) == type);
 	complete(&synthesis, pg_synthesis_reindex_jobs(&synthesis, formation, formation), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, pg_synthesis_identity_face_job(&synthesis, destination, map_job, face), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, pg_synthesis_identity_formation(&synthesis, map_job), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, pg_synthesis_identity_formation(&synthesis,
+		pg_synthesis_evidence(&synthesis, pg_prove_universe(typing, classifiers, empty, 0))), PG_SYNTHESIS_UNSUPPORTED);
 	assert(pg_evidence_context(type) == pg_evidence_context(destination));
 	assert(pg_evidence_judgement(type) == PG_JUDGEMENT_VALUE_TYPE);
 	assert(pg_evidence_classifier(type) == pg_evidence_classifier(pg_evidence_premise(original, 1)));

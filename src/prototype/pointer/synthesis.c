@@ -74,7 +74,7 @@ struct family_state {
 	size_t count, common, next;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FACE_JOB, EXPECT_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const struct pg_synthesis *owner;
@@ -102,6 +102,7 @@ struct pg_synthesis_job {
 	const struct pg_conversion_certificate *certificate;
 	struct pg_reindex reindex;
 	struct pg_identity_face_work *face;
+	struct pg_identity_formation_work *formation;
 	union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
 	struct block_state *block;
 	const struct continuation_frame *application_frame;
@@ -146,6 +147,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			pg_conversion_destroy(&job->comparison);
 			pg_reindex_destroy(&job->reindex);
 			pg_identity_face_destroy(job->face);
+			pg_identity_formation_destroy(job->formation);
 			if (job->block) pg_index_destroy(&job->block->names);
 			if (job->definitions) pg_index_destroy(&job->definitions->names);
 			if (job->declaration) pg_index_destroy(&job->declaration->names);
@@ -586,6 +588,14 @@ struct pg_synthesis_job *pg_synthesis_identity_endpoint(struct pg_synthesis *syn
 {
 	if (!endpoint_selector(face)) return NULL;
 	return pg_synthesis_identity_face(synthesis, context, formation, face);
+}
+
+struct pg_synthesis_job *pg_synthesis_identity_formation(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *producer)
+{
+	if (!producer || producer->owner != synthesis) return NULL;
+	const void *inputs[] = {producer};
+	return request_inputs(synthesis, FORMATION_JOB, 1, inputs);
 }
 
 struct pg_synthesis_job *pg_synthesis_identity_face_job(struct pg_synthesis *synthesis,
@@ -1719,11 +1729,43 @@ error:
 	return 0;
 }
 
+static void formation_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->formation) {
+		struct pg_synthesis_job *producer = (struct pg_synthesis_job *)job->inputs[0];
+		if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
+		if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return; }
+		const struct pg_evidence *proof = producer->result;
+		if (!pg_evidence_owned_by(proof, synthesis->typing)) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+		enum pg_evidence_judgement kind = pg_evidence_judgement(proof);
+		if (kind != PG_JUDGEMENT_VALUE_TYPE && kind != PG_JUDGEMENT_COMPUTATION_TYPE) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		struct pg_synthesis_job *canonical = pg_synthesis_identity_formation(synthesis, pg_synthesis_evidence(synthesis, proof));
+		if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (canonical != job) {
+			if (canonical->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, canonical); return; }
+			job->result = canonical->result;
+			finish(synthesis, job, canonical->status);
+			return;
+		}
+		job->formation = pg_identity_formation_init(synthesis->typing, synthesis->classifiers, proof);
+		if (!job->formation) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	}
+	int status = pg_identity_formation_advance(job->formation, 1);
+	if (!status) { enqueue(synthesis, job); return; }
+	job->result = pg_identity_formation_result(job->formation);
+	pg_identity_formation_destroy(job->formation);
+	job->formation = NULL;
+	finish(synthesis, job, status > 0 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+}
+
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
 	if (job->role == CONVERSION_JOB) { conversion_step(synthesis, job); return; }
 	if (job->role == EXPECT_JOB) { expect_step(synthesis, job); return; }
+	if (job->role == FORMATION_JOB) { formation_step(synthesis, job); return; }
 	if (job->role == FACE_JOB) {
 		if (!job->face) {
 			struct pg_synthesis_job *producer = (struct pg_synthesis_job *)job->inputs[1];
@@ -1741,8 +1783,12 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 				finish(synthesis, job, canonical->status);
 				return;
 			}
+			if (!job->left) job->left = pg_synthesis_identity_formation(synthesis, producer);
+			if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+			if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 			job->face = pg_identity_face_init(synthesis->typing, synthesis->classifiers,
-				job->inputs[0], producer->result, job->inputs[2]);
+				job->inputs[0], job->left->result, job->inputs[2]);
 			if (!job->face) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
 		int status = pg_identity_face_advance(job->face, 1);

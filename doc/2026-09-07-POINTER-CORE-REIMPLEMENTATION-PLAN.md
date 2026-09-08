@@ -150,9 +150,19 @@ traversal. The synchronous API drains a stack-owned worker, without additional
 heap allocation. Requesting work does not reconstruct evidence. Tests cover
 every split of 128 retained wrappers, exact agreement with the synchronous
 result, invalid value input, and persistent unsupported status without a
-published result. Shared solver-job integration remains the next step; this
-API alone does not implement typed symmetry or image persistence.
+published result. This API alone does not implement typed symmetry or image persistence.
 Complete pointer `make check` and ASan/UBSan `identity_test` passed.
+
+Shared solver integration: `pg_synthesis_identity_formation` accepts a pending
+producer and schedules the existing worker. Requests converge on the accepted
+formation-evidence pointer before traversal; this does not merge Core terms or
+different typing occurrences. Face jobs share that recovery rather than each
+repeating its outer traversal. The ordinary queue owns suspension, dependency
+wakeup and cleanup. Invalid evidence kinds reject; unsupported formation
+recovery remains unsupported, not a proof of inequality. Tests cover the
+pending substitution -> reindex -> formation -> face pipeline, completed-input
+sharing, and both failure categories. Typed center symmetry remains open.
+Complete pointer `make check` and ASan/UBSan `synthesis_test` passed.
 
 - [x] Preserve exact descriptor/application interning: a permutation with
   fixed leading axes remains a distinct raw node from its shorter form.
