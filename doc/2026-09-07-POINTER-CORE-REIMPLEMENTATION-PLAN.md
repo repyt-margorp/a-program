@@ -4417,6 +4417,31 @@ Occurrence input transport after `a11577d` (`occurrence_io.c`):
 
 Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
 
+Ordinary derivation reconstruction after `6471af6` (`derivation.c`):
+
+- [x] Add a call adapter for the existing `pg_prove_*` constructors, not a
+  second set of typing rules. It dispatches a rule, accepted premises and its
+  non-premise arguments (binder, level, direction or local receipt). No caller
+  supplies an authoritative conclusion; the existing rule computes it.
+- [x] Recover those arguments as a borrowed view of accepted evidence, without
+  storing duplicate mutable recipes in proofs. Reconstructed applications must
+  retain the exact claimed rule and ordered premises, including intermediate
+  Identity formation/endpoint premises; matching endpoint Core alone is not
+  sufficient. A loader must still compare the computed conclusion with the
+  record's declared conclusion before publishing that root.
+- [x] Check representative Context/Pi/CBPV/conversion/substitution and Identity
+  family/action/transport/lift derivations, invalid arity/null premises and the
+  wrong directional premise with coincident endpoint types. The separate-process
+  relocated Lambda test now constructs its new evidence through this adapter.
+  Full pointer `make check`, ASan/UBSan Core and graph-acceptance tests passed.
+- [ ] Encode the DAG and connect loading to this adapter. Conversion and
+  normalization parameters still borrow genuine local receipts; no bytes or
+  accepted flag can manufacture one. Recompute them with ordinary work where
+  necessary. Shared suspended loading, complete conclusion matching and `.a`
+  integration remain open. No CHECKPOINT completion is claimed here.
+
+Input capsule status:
+
 - [x] Store a single immutable source and explicit definition policy in a
   versioned, little-endian input capsule. No addresses or accepted-state flags.
   `pg_seed_read` creates an ordinary unresolved `pg_program`; parsing and Solve

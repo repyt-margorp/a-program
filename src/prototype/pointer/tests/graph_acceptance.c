@@ -1,6 +1,7 @@
 #include "graph_io.h"
 #include "context_io.h"
 #include "evidence.h"
+#include "derivation.h"
 #include "computation.h"
 
 #include <assert.h>
@@ -139,7 +140,9 @@ static void read_graph(FILE *file, struct pg_graph *graph)
 			pg_prove_variable(&typing, extended, types[i]));
 		pi[i] = pg_prove_pi(&typing, &classifiers, domain, extended, codomain);
 		body[i] = pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, extended, x));
-		identity[i] = pg_prove_lambda(&typing, pi[i], body[i]);
+		const struct pg_evidence *premises[] = {pi[i], body[i]};
+		struct pg_derivation_parameters parameters = {0};
+		identity[i] = pg_prove_derivation(&typing, &classifiers, PG_LAMBDA_INTRO, &parameters, 2, premises);
 		assert(identity[i] && pg_evidence_subject(identity[i])->core == roots[3]);
 		assert(pg_prove_lambda(&typing, pi[i], body[i]) == identity[i]);
 	}

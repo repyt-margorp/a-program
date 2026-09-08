@@ -5,12 +5,32 @@
 #include "conversion.h"
 #include "classifier.h"
 #include "evidence.h"
+#include "derivation.h"
 #include "computation.h"
 #include "action.h"
 #include "symmetry.h"
 
 #include <assert.h>
 #include <stdio.h>
+
+static void reconstruct_derivation(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_evidence *source)
+{
+	assert(source);
+	struct pg_derivation_parameters parameters;
+	assert(pg_derivation_parameters(source, &parameters) == 0);
+	size_t count = pg_evidence_premise_count(source);
+	const struct pg_evidence **premises = pg_alloc(typing->graph, (count + 1) * sizeof(*premises));
+	assert(premises);
+	for (size_t i = 0; i < count; ++i) premises[i] = pg_evidence_premise(source, i);
+	assert(pg_prove_derivation(typing, classifiers, pg_evidence_rule(source), &parameters, count, premises) == source);
+	premises[count] = source;
+	assert(!pg_prove_derivation(typing, classifiers, pg_evidence_rule(source), &parameters, count + 1, premises));
+	if (count) {
+		premises[0] = NULL;
+		assert(!pg_prove_derivation(typing, classifiers, pg_evidence_rule(source), &parameters, count, premises));
+	}
+}
 
 static void index_distribution_test(void)
 {
@@ -485,6 +505,11 @@ static void evidence_test(struct pg_graph *graph)
 	for (uint64_t i = 2; i < 300; ++i) assert(pg_prove_universe(&typing, &classifiers, empty, i));
 	assert(u0 == pg_prove_universe(&typing, &classifiers, empty, 0));
 	assert(pg_evidence_premise(a_context, 1) == u0);
+	const struct pg_evidence *records[] = {empty, u0, a_context, a_type, x_context,
+		fa, ufa, pi, high_pi, x_term, returned, delayed, forced, identity,
+		identity_y, app, converted, projected_x, projected_formation};
+	for (size_t i = 0; i < sizeof(records) / sizeof(*records); ++i)
+		reconstruct_derivation(&typing, &classifiers, records[i]);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	puts("evidence: checked contexts, stratified universes and occurrence-based variable derivations passed");
@@ -752,6 +777,9 @@ static void typed_substitution_test(struct pg_graph *graph)
 	}
 	assert(graph->terms.count == term_count);
 	assert(typing.proofs.count == proof_count);
+	const struct pg_evidence *records[] = {sigma, paired, moved_pi, moved_upi, content, codomain, function_lift, last_pair};
+	for (size_t i = 0; i < sizeof(records) / sizeof(*records); ++i)
+		reconstruct_derivation(&typing, &classifiers, records[i]);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	puts("typed substitution: dependent declarations, simultaneous images and shared premise DAG passed");
@@ -795,6 +823,30 @@ static void family_instance_test(struct pg_graph *graph)
 	const struct pg_evidence *target = pg_prove_context_extension(&typing, empty, z, u0);
 	const struct pg_evidence *tau = pg_prove_substitution(&typing, empty, target, 0, NULL);
 	const struct pg_evidence *composite = pg_prove_substitution_compose(&typing, sigma, tau);
+	const struct pg_evidence *family = pg_prove_projection(&typing, boundary, u1);
+	const struct pg_evidence *term = pg_prove_variable(&typing, boundary, left);
+	const struct pg_evidence *action = pg_prove_family_action(&typing, family, term, sigma, sigma, 0, NULL);
+	reconstruct_derivation(&typing, &classifiers, action);
+	reconstruct_derivation(&typing, &classifiers, pg_evidence_premise(action, 0));
+	const struct pg_evidence *u2 = pg_prove_universe(&typing, &classifiers, empty, 2);
+	const struct pg_evidence *reflexivity = pg_prove_reflexivity(&typing, u2, pg_prove_type_value(&typing, u1));
+	reconstruct_derivation(&typing, &classifiers, reflexivity);
+	reconstruct_derivation(&typing, &classifiers, pg_evidence_premise(reflexivity, 0));
+	for (unsigned side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
+		const struct pg_evidence *transport = pg_prove_identity_transport(&typing, &classifiers, reflexivity, value, side);
+		const struct pg_evidence *lift = pg_prove_identity_lift(&typing, &classifiers, reflexivity, value, side);
+		reconstruct_derivation(&typing, &classifiers, transport);
+		reconstruct_derivation(&typing, &classifiers, pg_evidence_premise(transport, 0));
+		reconstruct_derivation(&typing, &classifiers, lift);
+		reconstruct_derivation(&typing, &classifiers, pg_evidence_premise(lift, 0));
+		struct pg_derivation_parameters parameters;
+		assert(pg_derivation_parameters(transport, &parameters) == 0);
+		const struct pg_evidence *wrong_target = pg_prove_identity_endpoint_type(&typing, &classifiers,
+			reflexivity, side == PG_IDENTITY_RIGHT ? PG_IDENTITY_LEFT_TYPE : PG_IDENTITY_RIGHT_TYPE);
+		const struct pg_evidence *wrong[] = {wrong_target, reflexivity, value};
+		/* The endpoint types coincide here, but the directional premise does not. */
+		assert(!pg_prove_derivation(&typing, &classifiers, PG_IDENTITY_TRANSPORT, &parameters, 3, wrong));
+	}
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *direct = pg_prove_reindex(&typing, composite, families[i]);
 		const struct pg_evidence *iterated = pg_prove_reindex(&typing, tau, instances[i]);
