@@ -15,6 +15,56 @@ criteria for merging different Lambda or semantic-object references.
 
 ### Progress: Identity-prefix permutation reduction (2026-09-08)
 
+### Next implementation contract: typed permutation (2026-09-08)
+
+Rechecked `action.h`, `evidence.c` and `square_template_jobs` /
+`dependent_cube_substitution` after `253e690`. The current proper-face API
+explicitly excludes centers. `PG_IDENTITY_INSTANCE` retains a checked family
+value, whereas `PG_IDENTITY_FORM` retains a type formation. Both use APP in
+Core; APP arity cannot distinguish their semantic roles. Keep that distinction
+in the existing derivations, not in new Value/Computation Core tags.
+
+The pinned Narya source `c7c92b4ec01ae2f528b97207256549242bd21334`,
+[`act.ml`, `act_normal`, `gact_ty`, `gact_ty_instargs`](https://github.com/gwaithimirdain/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/lib/core/act.ml),
+distinguishes acting on a type as a term from reconstructing the classifier
+of an acted term. The latter acts on instantiated dimensions. For symmetries
+its boundary construction does not require the central term; demanding that
+term would create a cycle for neutrals. This is a design constraint to adapt,
+not a claim that A Program already implements Narya's typing rules.
+
+Required implementation sequence within N2:
+
+- [ ] Request a typed action with the accepted occurrence/formation and a
+  permutation, never a bare Core pointer plus a guessed classifier.
+- [ ] For each target proper face f, factor permutation composed with f into
+  ordered face o and intrinsic permutation i. Obtain the source face at o
+  using the existing face job; recursively act on it by i. The recursive
+  dimension is strictly smaller because f is proper. Identity i reuses the
+  existing evidence producer. Do not introduce a square-only acceptance rule.
+- [ ] Reconstruct the target formation from those checked boundary images
+  through the existing substitution/reindex jobs. Preserve selected families,
+  ambient context and polarity. Do not substitute S(classifier) for this step.
+- [ ] Specify and check the central symmetry inference using that boundary
+  construction. Its subject is S(term), not the old term with a new type.
+  The certificate must retain enough premises to check the construction;
+  completed job status or matching geometric binders is not a premise.
+- [ ] Discharge preservation obligations for prefix reduction and composition
+  before using those raw equations on newly admitted typed symmetry evidence.
+- [ ] Add a positive dependent square substitution using acted centers, while
+  retaining the negative test that supplies unacted centers. Then test cubic
+  proper faces, substitution naturality and composition with independent
+  synthesis/fuel splits. A closed degenerate square is insufficient evidence.
+
+The existing negative test localizes the first missing central derivation:
+the eight proper faces of the type square substitute successfully, but its
+ninth, unacted center does not. This is not a reason to weaken conversion.
+Opaque families require a rule for recovering their instantiated boundary from
+typed evidence; absence of a retained inner formation remains unsupported,
+not proof that the requested equality is empty. No runtime or kernel behavior
+is changed by this contract, and N2 remains incomplete.
+
+### Prefix-reduction verification
+
 - [x] Preserve exact descriptor/application interning: a permutation with
   fixed leading axes remains a distinct raw node from its shorter form.
 - [x] Reduce fixed leading axes during evaluation, with one coordinate per
