@@ -5,7 +5,7 @@
 
 #include <string.h>
 
-static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 2};
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 3};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {
@@ -27,6 +27,13 @@ static int term_reference(FILE *file, const struct pg_term *term,
 int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner)
 {
+	const struct pg_graph_codec codec = {.name = name};
+	return pg_derivations_write_descriptors(file, count, roots, &codec, owner);
+}
+
+int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_evidence *const *roots,
+	const struct pg_graph_codec *codec, void *owner)
+{
 	if (!file || (count && !roots)) return -1;
 	struct pg_dag dag = {0};
 	struct pg_dag term_roots = {0};
@@ -40,9 +47,6 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 		const struct pg_evidence *proof = node->key;
 		struct pg_derivation_parameters parameters;
 		if (pg_derivation_parameters(proof, &parameters)) goto done;
-		/* Operation descriptors do not yet have a relocatable image section. */
-		if (parameters.operation_label) goto done;
-		if (parameters.handler) goto done;
 		if (pg_wire_write_u64(file, pg_evidence_rule(proof))
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;
 		if (pg_wire_write_u64(file, parameters.reduction ? pg_reduction_kind(parameters.reduction) : PG_REDUCTION_WHNF)) goto done;
@@ -50,6 +54,9 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 		if (parameters.binder && !binder) goto done;
 		const struct pg_term *effects = parameters.effects ? pg_effect_reference(&arena, parameters.effects) : NULL;
 		if (parameters.effects && !effects) goto done;
+		const struct pg_term *operation = parameters.operation_label ? pg_reference(&arena, parameters.operation_label) : NULL;
+		const struct pg_term *handler = pg_handler_signature_reference(&arena, parameters.handler);
+		if ((parameters.operation_label && !operation) || (parameters.handler && !handler)) goto done;
 		const struct pg_term *source = NULL, *target = NULL;
 		if (parameters.conversion) {
 			source = pg_conversion_left(parameters.conversion);
@@ -61,7 +68,8 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 		}
 		if (term_reference(file, binder, &term_roots) || term_reference(file, effects, &term_roots)
 			|| term_reference(file, source, &term_roots)
-			|| term_reference(file, target, &term_roots)) goto done;
+			|| term_reference(file, target, &term_roots)
+			|| term_reference(file, operation, &term_roots) || term_reference(file, handler, &term_roots)) goto done;
 		size_t arity = pg_evidence_premise_count(proof);
 		if (pg_wire_write_u64(file, arity)) goto done;
 		for (size_t i = 0; i < arity; ++i) {
@@ -78,7 +86,7 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 	if (!terms) goto done;
 	for (const struct pg_dag_node *node = term_roots.first; node; node = node->next)
 		terms[node->id - 1] = node->key;
-	status = pg_graph_write(file, term_roots.count, terms, name, owner);
+	status = pg_graph_write_descriptors(file, term_roots.count, terms, codec, owner);
 done:
 	pg_graph_destroy(&arena);
 	pg_dag_destroy(&term_roots);
@@ -88,11 +96,19 @@ done:
 
 struct input_record {
 	struct pg_derivation_input *input;
-	uint64_t binder, effects, source, target;
+	uint64_t binder, effects, source, target, operation, handler;
 };
 
 int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	const struct pg_object *(*resolve)(void *, const char *), void *owner,
+	size_t *count, const struct pg_derivation_input *const **roots)
+{
+	const struct pg_graph_codec codec = {.resolve = resolve};
+	return pg_derivations_read_descriptors(file, graph, limit, name_limit, &codec, owner, count, roots);
+}
+
+int pg_derivations_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots)
 {
 	if (!file || !graph || !graph->terms.capacity || !count || !roots) return -1;
@@ -108,12 +124,15 @@ int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t rule, level, direction, arity, reduction_kind;
 		if (pg_wire_read_u64(file, &rule)) return -1;
-		if (rule > PG_IDENTITY_LIFT && rule != PG_EFFECT_SUBSUMPTION) return -1;
+		if (rule > PG_HANDLER_ELIM) return -1;
+		/* Nominal datatype parameters still lack their image schema. */
+		if (rule >= PG_INDUCTIVE_FORM && rule <= PG_INDUCTION_ELIM) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
 		if (pg_wire_read_u64(file, &reduction_kind) || reduction_kind > PG_REDUCTION_NF) return -1;
 		if (pg_wire_read_u64(file, &records[i].binder) || pg_wire_read_u64(file, &records[i].effects)
 			|| pg_wire_read_u64(file, &records[i].source)
-			|| pg_wire_read_u64(file, &records[i].target) || pg_wire_read_u64(file, &arity)) return -1;
+			|| pg_wire_read_u64(file, &records[i].target) || pg_wire_read_u64(file, &records[i].operation)
+			|| pg_wire_read_u64(file, &records[i].handler) || pg_wire_read_u64(file, &arity)) return -1;
 		if (arity > available || arity > (SIZE_MAX - sizeof(struct pg_derivation_input)) / sizeof(void *)) return -1;
 		available -= (size_t)arity;
 		struct pg_derivation_input *input = pg_alloc(graph, sizeof(*input) + (size_t)arity * sizeof(*input->premises));
@@ -137,10 +156,22 @@ int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t
 	}
 	size_t term_count;
 	const struct pg_term *const *terms;
-	if (pg_graph_read(file, graph, limit, name_limit, resolve, owner, &term_count, &terms)) return -1;
+	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, owner, &term_count, &terms)) return -1;
 	for (size_t i = 0; i < n; ++i) {
 		const struct input_record *r = &records[i];
 		if (r->binder > term_count || r->effects > term_count || r->source > term_count || r->target > term_count) return -1;
+		if (r->operation > term_count || r->handler > term_count) return -1;
+		if (r->input->rule == PG_REQUEST_INTRO) {
+			if (!r->operation || terms[r->operation - 1]->kind != PG_REFERENCE) return -1;
+			const struct pg_term *payload, *response;
+			r->input->parameters.operation_label = terms[r->operation - 1]->as.reference;
+			if (!pg_operation_label_types(r->input->parameters.operation_label, &payload, &response)) return -1;
+		} else if (r->operation) return -1;
+		if (r->input->rule == PG_HANDLER_ELIM) {
+			if (!r->handler) return -1;
+			r->input->parameters.handler = pg_handler_signature_view(terms[r->handler - 1]);
+			if (!r->input->parameters.handler) return -1;
+		} else if (r->handler) return -1;
 		if (r->input->rule == PG_RETURN_TYPE_FORM) {
 			if (!r->effects) return -1;
 			r->input->parameters.effects = pg_effect_row_view(terms[r->effects - 1]);

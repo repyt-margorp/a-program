@@ -2,6 +2,7 @@
 #define A_PROGRAM_POINTER_DERIVATION_IO_H
 
 #include "derivation.h"
+#include "graph_io.h"
 #include <stdio.h>
 
 /* Unaccepted rule application. source/target are comparison endpoints for
@@ -18,12 +19,17 @@ struct pg_derivation_input {
 };
 int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner);
+int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_evidence *const *roots,
+	const struct pg_graph_codec *codec, void *owner);
 /* Restores inputs only, with one Core relocation table and shared premise DAG.
  * Limits bound records/edges here and records in the nested Core separately.
  * No proof index is accessed, and no evaluation takes place. Outputs publish
  * only on success. Descriptor contracts are those of graph_io.h. */
 int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	const struct pg_object *(*resolve)(void *, const char *), void *owner,
+	size_t *count, const struct pg_derivation_input *const **roots);
+int pg_derivations_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots);
 
 #endif

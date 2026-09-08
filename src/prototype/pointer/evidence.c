@@ -80,6 +80,17 @@ const struct pg_handler_signature *pg_evidence_handler_signature(const struct pg
 	return evidence && evidence->rule == PG_HANDLER_ELIM ? evidence->certificate : NULL;
 }
 
+const struct pg_term *pg_handler_signature_reference(struct pg_graph *graph, const struct pg_handler_signature *signature)
+{
+	return signature ? pg_reference(graph, &signature->base.object) : NULL;
+}
+
+const struct pg_handler_signature *pg_handler_signature_view(const struct pg_term *term)
+{
+	if (!term || term->kind != PG_REFERENCE || term->as.reference->owner != &handler_signature_class) return NULL;
+	return (const void *)((const char *)term->as.reference - offsetof(struct pg_object_entry, object));
+}
+
 static int derived_output(enum pg_evidence_rule rule)
 {
 	switch (rule) {

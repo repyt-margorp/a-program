@@ -1149,6 +1149,31 @@ finish general handler source support.
   Implementation C/header: +264/-34; test C: +76/-3; shell: +2/-0;
   prototype build: +1/-1; documentation separate.
 
+  September 9, after `c25a119`: experimental APGDRV v3 carries operation-label
+  and ordered handler-signature references in the same Core table as binder,
+  effect-row and conversion/reduction endpoint references. Handler signatures
+  use the inert descriptor codec and contain no accepted proofs. Reading restores
+  unaccepted rule inputs; `pg_synthesis_derivation` uses ordinary REQUEST/HANDLER
+  constructors after the signature premises finish. The external-only API remains
+  a wrapper over the same codec; it still refuses objects that its supplied owner
+  cannot name/resolve. There is no fallback silently dropping these parameters.
+  Previous experimental versions are rejected instead of guessing record layout.
+
+  Fresh-process regressions save a request and a two-clause handler with distinct
+  same-signature operations and a shared root. Budgets 1/64 accept the same result;
+  the request and handler use the same relocated label, and normalizing the
+  handled request produces the expected returned Universe term. Reading alone
+  leaves the typing proof store empty. Replacing a loaded request's signature
+  premise with the wrong Universe rejects through the ordinary solver. Existing
+  prefix, row-field and version rejection tests use the v3 record grammar.
+  This is retained derivation transport, not a full program CHECKPOINT: pending
+  equations, program work, imported nominal contracts and IADT schema parameters
+  remain open. Their absence must not be hidden by marking N5 complete.
+  Normal components, eight source checks and six runtime fixtures pass, as do
+  rebuilt ASan/UBSan derivation I/O tests. The open-family gate still reports
+  unsupported after 208 steps. Implementation C/header: +80/-17;
+  test C: +91/-7; test shell: +5/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 208 transitions; this does not establish full source acceptance.
