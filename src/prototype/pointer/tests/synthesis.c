@@ -114,8 +114,9 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Arg", .length=3}, pg_prove_type_value(typing, u0));
 	assert(scope);
-	const char *calls[] = {"called := Op Arg;", "called := Alias Arg;", "called := {x := Op Arg; x;};"};
-	for (size_t i = 0; i < 3; ++i) {
+	const char *calls[] = {"called := Op Arg;", "called := Alias Arg;", "called := {x := Op Arg; x;};",
+		"called := (Op Arg) @#.return x => x;"};
+	for (size_t i = 0; i < sizeof(calls) / sizeof(*calls); ++i) {
 		const struct pg_evidence *call = complete(&synthesis, request(&synthesis, scope, calls[i]), PG_SYNTHESIS_DONE);
 		const struct pg_effect_row *effects;
 		const struct pg_term *response;
@@ -128,6 +129,12 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		assert(operation_label == pg_operation_label(operation));
 		assert(payload == pg_evidence_subject(u0)->core);
 	}
+	const struct pg_evidence *mapped = complete(&synthesis,
+		request(&synthesis, scope, "mapped := M @#.return x => x;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *mapped_value = pg_prove_return_value(typing, normalize(&synthesis, context, mapped));
+	assert(mapped_value && pg_evidence_subject(mapped_value)->core == pg_evidence_subject(u0)->core);
+	complete(&synthesis, request(&synthesis, scope, "bad := M @#.return => Arg;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope, "bad := M @#.return x y => x;"), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *carrier = pg_prove_return_type(typing, classifiers, u1);
 	const struct pg_object *req = pg_binder(typing->graph), *resume = pg_binder(typing->graph);
 	const struct pg_evidence *clause_context = pg_prove_handler_context(typing, classifiers,
@@ -144,6 +151,10 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(clause_function);
 	scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Result", .length=6}, u1);
+	const struct pg_evidence *changed = complete(&synthesis,
+		request(&synthesis, scope, "changed := M @#.return x => Result;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *changed_value = pg_prove_return_value(typing, normalize(&synthesis, context, changed));
+	assert(changed_value && pg_evidence_subject(changed_value)->core == pg_evidence_subject(u1)->core);
 	const struct pg_evidence *returned_clause = complete(&synthesis,
 		request(&synthesis, scope, "returned := \\x:Result => x;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *called = complete(&synthesis,

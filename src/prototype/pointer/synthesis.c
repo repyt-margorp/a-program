@@ -2176,6 +2176,53 @@ unsupported:
 	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
 }
 
+static int return_clause(const struct pg_syntax *clause)
+{
+	const struct pg_syntax *head = clause->left;
+	if (head->kind != PG_SYNTAX_QUALIFIED) return 0;
+	if (head->left->kind != PG_SYNTAX_ATOM) return 0;
+	struct pg_token root = head->left->token, name = head->right->token;
+	return root.kind == '#' &&
+		name.length == 6 && !memcmp(name.text, "return", 6);
+}
+
+static void return_handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	const struct pg_syntax *clause = job->syntax->items[0].expression;
+	if (clause->item_count != 1) goto rejected;
+	if (clause->items[0].operation) goto rejected;
+	if (!job->left) {
+		job->left = pg_synthesis_request(synthesis, job->scope, job->syntax->left);
+		depend(synthesis, job, job->left);
+		return;
+	}
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	if (!job->inner) {
+		const struct pg_evidence *input = computation(synthesis, job->left->result);
+		if (!input) goto unsupported;
+		job->application_frame = open_continuation(synthesis, source_context(job->scope), input);
+		if (!job->application_frame) goto unsupported;
+		const struct pg_evidence *context = job->application_frame->context;
+		job->inner = pg_synthesis_bind(synthesis, job->scope, clause->items[0].name,
+			pg_evidence_context(context)->binder, context);
+		if (!job->inner) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		job->right = pg_synthesis_request(synthesis, job->inner, clause->right);
+		depend(synthesis, job, job->right);
+		return;
+	}
+	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
+	const struct pg_evidence *body = computation(synthesis, job->right->result);
+	if (!body) goto unsupported;
+	job->result = close_continuation(synthesis, job, job->application_frame, body);
+	if (job->result) finish(synthesis, job, PG_SYNTHESIS_DONE);
+	return;
+rejected:
+	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
+	return;
+unsupported:
+	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
+}
+
 static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->result) goto complete;
@@ -2765,7 +2812,12 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == DEFINITION_SCOPE_JOB) { definition_scope_step(synthesis, job); return; }
 	if (hypothesis_reference(synthesis, job)) return;
 	if (syntax->kind == PG_SYNTAX_DECLARATION) { declaration_step(synthesis, job); return; }
-	if (syntax->kind == PG_SYNTAX_ELIMINATION) { match_step(synthesis, job); return; }
+	if (syntax->kind == PG_SYNTAX_ELIMINATION) {
+		if (syntax->item_count == 1 && return_clause(syntax->items[0].expression))
+			return_handler_step(synthesis, job);
+		else match_step(synthesis, job);
+		return;
+	}
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_BLOCK) { block_step(synthesis, job); return; }

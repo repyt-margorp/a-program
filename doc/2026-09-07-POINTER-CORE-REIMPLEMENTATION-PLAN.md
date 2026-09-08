@@ -13,6 +13,28 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 8 return-only surface handler
+
+- [x] Elaborate `M @#.return x => body` through the existing continuation
+  context and `pg_prove_fold`, without a new Core node or proof rule. Synthesize
+  the body independently; value bodies use the existing RETURN insertion.
+  The return label is explicitly intrinsic-qualified, not an unqualified keyword.
+- [x] Cover pure return mapping, changed result type, unhandled operation
+  forwarding, and rejection of missing or extra return binders. Ordinary ADT
+  elimination keeps its existing path.
+- [ ] General operation-clause source elaboration remains open. The checked
+  multi-clause kernel API is not evidence of surface carrier inference or
+  operation alias/signature resolution. Do not guess an empty output effect row.
+
+Verification: regular component `check` and rebuilt ASan/UBSan `synthesis_test`
+pass. Eight unchanged examples and six execution fixtures pass; the full
+acceptance gate still fails `open-family.p` with `unsupported steps=88`.
+This is partial progress, not completion of the reimplementation.
+
+Replay clarification: keep one Solve/acceptance implementation. Restoring saved
+derivations may check their premises with those same rules, but must not create
+an independent replay rule engine or trust a serialized completion flag.
+
 ### September 8 explicit closed effect rows
 
 - [x] Change the shared computation classifier from unary `F A` to `F E A`.
