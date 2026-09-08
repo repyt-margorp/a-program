@@ -7,6 +7,7 @@
 #include "effect_inference.h"
 #include "wire.h"
 #include "iadt.h"
+#include "declaration_io.h"
 
 #include <assert.h>
 #include <string.h>
@@ -37,6 +38,9 @@ static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 		struct pg_classifiers classifiers;
 		assert(pg_graph_init(&graph) == 0 && pg_typing_init(&typing, &graph) == 0);
 		assert(pg_classifiers_init(&classifiers, &graph) == 0);
+		struct pg_declaration_io io;
+		int declarations = codec == &pg_declaration_graph_codec;
+		if (declarations) assert(!pg_declaration_io_init(&io, &typing, &classifiers));
 		FILE *fragment = tmpfile();
 		/* The complete-sized final case has an invalid parent reference. */
 		if (cut == length) bytes[32] = 255;
@@ -45,10 +49,11 @@ static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 		size_t nc = 71, nt = 72;
 		const struct pg_context *const *contexts = NULL;
 		const struct pg_term *const *terms = NULL;
-		assert(pg_contexts_read_descriptors(fragment, &typing, 100, 100, codec, &classifiers,
+		assert(pg_contexts_read_descriptors(fragment, &typing, 100, 100, codec, declarations ? (void *)&io : &classifiers,
 			&nc, &contexts, &nt, &terms) == -1);
 		assert(nc == 71 && nt == 72 && !contexts && !terms && typing.proofs.count == 0);
 		assert(fclose(fragment) == 0);
+		if (declarations) pg_declaration_io_destroy(&io);
 		pg_classifiers_destroy(&classifiers);
 		pg_typing_destroy(&typing);
 		pg_graph_destroy(&graph);
@@ -393,6 +398,8 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 	struct pg_typing typing;
 	struct pg_classifiers classifiers;
 	assert(!pg_typing_init(&typing, graph) && !pg_classifiers_init(&classifiers, graph));
+	struct pg_declaration_io io;
+	assert(!pg_declaration_io_init(&io, &typing, &classifiers));
 	if (writing) {
 		const struct pg_object *self = pg_binder(graph), *n = pg_binder(graph);
 		const struct pg_term *image = pg_reference(graph, self);
@@ -403,6 +410,9 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 		const struct pg_data_layout *layout = pg_data_declaration_layout(declaration);
 		const struct pg_term *zero = pg_reference(graph, pg_data_constructor(layout, 0));
 		const struct pg_term *successor = pg_application(graph, pg_reference(graph, pg_data_constructor(layout, 1)), zero);
+		const struct pg_term *family = pg_reference(graph, pg_data_declaration_family(declaration));
+		const struct pg_term *other_family = pg_reference(graph, pg_data_declaration_family(
+			pg_data_declaration(graph, parameters, parameters, 2, constructors)));
 		struct pg_graph storage;
 		assert(!pg_graph_init(&storage));
 		size_t nc, nt, before = graph->terms.count;
@@ -410,20 +420,25 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 		const struct pg_term *const *terms;
 		assert(!pg_data_declaration_pack(declaration, &storage, &nc, &contexts, &nt, &terms));
 		assert(nc == 4 && nt == 3);
-		const struct pg_term *roots[] = {terms[0], terms[1], terms[2], successor};
-		assert(!pg_contexts_write_descriptors(file, nc, contexts, 4, roots, &pg_builtin_graph_codec, &classifiers));
+		const struct pg_context *selected[] = {contexts[0], contexts[1], contexts[2], contexts[3],
+			pg_context_bind(&typing, NULL, pg_binder(graph), family)};
+		const struct pg_term *roots[] = {terms[0], terms[1], terms[2], successor, family, family, other_family};
+		assert(!pg_contexts_write_descriptors(file, 5, selected, 7, roots, &pg_declaration_graph_codec, &io));
+		assert(io.payloads.count == 2);
 		assert(graph->terms.count == before && !typing.proofs.count);
 		pg_graph_destroy(&storage);
 	} else {
 		size_t nc, nt;
 		const struct pg_context *const *contexts;
 		const struct pg_term *const *terms;
-		assert(!pg_contexts_read_descriptors(file, &typing, 1000, 100, &pg_builtin_graph_codec,
-			&classifiers, &nc, &contexts, &nt, &terms));
-		assert(nc == 4 && nt == 4 && !typing.proofs.count);
-		const struct pg_data_declaration *declaration = pg_data_declaration_unpack(graph, nc, contexts, 3, terms);
+		assert(!pg_contexts_read_descriptors(file, &typing, 1000, 100, &pg_declaration_graph_codec,
+			&io, &nc, &contexts, &nt, &terms));
+		assert(nc == 5 && nt == 7 && terms[4] == terms[5] && terms[4] != terms[6] && !typing.proofs.count);
+		assert(contexts[4]->declared_type == terms[4]);
+		const struct pg_data_declaration *declaration = pg_data_declaration_view(terms[4]->as.reference);
 		assert(declaration && !typing.proofs.count);
 		const struct pg_data_layout *layout = pg_data_declaration_layout(declaration);
+		assert(pg_data_declaration_layout(pg_data_declaration_view(terms[6]->as.reference)) != layout);
 		assert(terms[3]->as.application.function->as.reference == pg_data_constructor(layout, 1));
 		assert(terms[3]->as.application.argument->as.reference == pg_data_constructor(layout, 0));
 		const struct pg_evidence *empty = pg_prove_empty_context(&typing);
@@ -442,16 +457,17 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 		assert(pg_prove_inductive_type(&typing, &classifiers, schema) == formation);
 		size_t proofs = typing.proofs.count;
 		const struct pg_term *wrong[] = {terms[0], contexts[0]->declared_type, terms[2]};
-		const struct pg_data_declaration *changed = pg_data_declaration_unpack(graph, nc, contexts, 3, wrong);
+		const struct pg_data_declaration *changed = pg_data_declaration_unpack(graph, 4, contexts, 3, wrong);
 		assert(changed && !pg_data_schema_check(&typing, changed, signature, 2, results));
-		assert(!pg_data_declaration_unpack(graph, nc, contexts, 2, terms));
-		assert(!pg_data_declaration_unpack(graph, nc - 1, contexts, 3, terms));
+		assert(!pg_data_declaration_unpack(graph, 4, contexts, 2, terms));
+		assert(!pg_data_declaration_unpack(graph, 3, contexts, 3, terms));
 		wrong[0] = terms[3];
-		assert(!pg_data_declaration_unpack(graph, nc, contexts, 3, wrong));
+		assert(!pg_data_declaration_unpack(graph, 4, contexts, 3, wrong));
 		assert(typing.proofs.count == proofs);
-		rejected_prefixes(file, &pg_builtin_graph_codec);
-		puts("declaration image: complete inputs, shared layout, local formation and changed-map rejection passed");
+		rejected_prefixes(file, &pg_declaration_graph_codec);
+		puts("declaration image: relocated family, shared contexts/layout, local formation and changed-map rejection passed");
 	}
+	pg_declaration_io_destroy(&io);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 }

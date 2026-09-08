@@ -13,6 +13,37 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Shared Context Payload and Nominal Family Relocation
+
+Continuation after `fb3fc1e`. Context relocation now has one pack/unpack
+algorithm, shared by standalone context images and nominal family descriptors.
+The descriptor carries the declaration contexts, erased layout and result
+images through one Core relocation table. Its temporary pointer-keyed packing
+cache is not another semantic authority. Reconstruction uses the destination
+context interner and creates no accepted evidence.
+
+- [x] Extract `context_payload.c`; make `context_io.c` a framing adapter.
+- [x] Add `declaration_io.c` for inert family descriptors and delegate existing
+  descriptor kinds to their existing implementation.
+- [x] Preserve repeated family references and shared contexts, including an
+  external context whose classifier references the transported family.
+- [x] Keep distinct, structurally identical declarations nominally distinct.
+- [x] Test fresh-process formation, changed-map rejection, incomplete input,
+  no evidence on load and the empty-context zero-budget boundary.
+- [ ] Integrate these descriptors and nominal rule parameters into whole-file
+  derivation transport, then feed them through the existing common Solve.
+
+The extracted context framing is `APGCTX` version 1; `APGCORE` remains version
+1. This is not completion of nominal derivation I/O or a general `.a` checkpoint.
+Normal `check`, `check-examples` and `check-example-results` pass. Rebuilt
+ASan/UBSan graph-acceptance and occurrence-image tests also pass.
+
+Replay clarification: there must not be an independent artifact typing engine.
+Loaded inputs resume ordinary Solve. Stored derivations can avoid rediscovering
+proofs, but loading their pointer graph does not establish their validity.
+Verification uses the same named kernel rules as fresh synthesis, not a second
+set of acceptance rules. Recompute/cache policies must not change this invariant.
+
 ### September 9: Constructor and Elimination Inputs Through Common Solve
 
 Continuation after `13a25cf`. Constructor introduction, Match and direct IH

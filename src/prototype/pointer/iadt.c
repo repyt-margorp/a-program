@@ -323,6 +323,12 @@ const struct pg_object *pg_data_declaration_family(const struct pg_data_declarat
 	return declaration ? &declaration->family : NULL;
 }
 
+const struct pg_data_declaration *pg_data_declaration_view(const struct pg_object *object)
+{
+	if (!object || object->kind != PG_SEMANTIC_OBJECT || object->owner != &family_class) return NULL;
+	return (const struct pg_data_declaration *)object;
+}
+
 const struct pg_data_declaration *pg_data_schema_declaration(const struct pg_data_schema *schema)
 {
 	return schema ? schema->declaration : NULL;
