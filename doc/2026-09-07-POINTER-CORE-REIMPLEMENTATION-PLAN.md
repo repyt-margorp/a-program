@@ -87,6 +87,35 @@ unsupported must not be changed to success without the required evidence.
   not blanket acceptance. No source declaration is admitted by this helper
   alone; the 0/8 source gate is not fixed by this isolated prerequisite.
 
+Positivity integration audit after `c1e520f`:
+
+- The pinned Narya
+  [`positivity.ml`](https://github.com/gwaithimirdain/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/lib/core/positivity.ml)
+  records recursive references during checking, including dependencies hidden
+  in let values and unresolved holes. Its introduction explicitly describes
+  strict positivity checking as future work at this revision. Do not cite it
+  as an implemented strict-positivity algorithm to copy.
+- A Program's `reference_step` projects a completed producer's evidence,
+  preserving its subject Core rather than replacing a definition by a new
+  opaque constant. New synthesis tests publish pending positive and negative
+  field classifiers through an alias, await ordinary Solve and check that the
+  alias retains both the exact Core and its Self occurrence polarity. This
+  establishes the current ordinary-name path, not arbitrary opaque definitions.
+  Optimized and ASan/UBSan synthesis suites pass with the new fixture. Since
+  these fixtures share proof stores, changed aggregate transition counts are
+  not claimed as a performance improvement from this test-only change.
+- Strengthen the positivity API contract accordingly: syntactic independence
+  cannot discharge unresolved/hidden definition dependencies. Admission must
+  wait for producers and preserve their dependencies, rather than treating
+  absence of a visible Self pointer as semantic independence. No new recursion
+  flag cache or parallel resolution engine is justified by the reference code.
+- Narya's local `check_data` also scopes the under-construction declaration
+  during constructor checking. For A Program, the outstanding equivalent is
+  a scoped Self-family signature with explicit indices and discharged admission
+  premises, not a globally accepted partial datatype or an ordinary CBPV
+  function value. This remains an implementation obligation; the alias tests
+  do not implement it or admit indexed recursion.
+
 ### Progress: Identity-prefix permutation reduction (2026-09-08)
 
 ### Next implementation contract: typed permutation (2026-09-08)

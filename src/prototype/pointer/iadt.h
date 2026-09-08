@@ -36,7 +36,10 @@ struct pg_data_schema;
  * Other forms must be independent of Self. No reduction is performed.
  * 1 establishes this syntactic condition; 0 means not established, -1 error.
  * This is not formation, universe checking, membership or fibrancy evidence.
- * The caller must supply the resolved, scoped classifier and index arity. */
+ * The caller must supply the resolved, scoped classifier and index arity.
+ * Independence is syntactic: opaque aliases, unsolved producers and hidden
+ * descriptor definitions must not be treated as established independent
+ * inputs to declaration admission merely because this helper returns 1. */
 int pg_data_field_positive(const struct pg_term *type,
 	const struct pg_object *self, size_t index_count);
 /* indices extends parameters. Each result is a checked substitution from

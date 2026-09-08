@@ -62,6 +62,37 @@ static const struct pg_evidence *normalize(struct pg_synthesis *synthesis,
 	return complete(synthesis, pg_synthesis_normalize(synthesis, context, input), PG_SYNTHESIS_DONE);
 }
 
+static void recursive_field_aliases(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_object *self = pg_binder(typing->graph);
+	const struct pg_evidence *context = pg_prove_context_extension(typing, empty, self,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	struct pg_token token = {.kind = PG_TOKEN_IDENT, .text = "Self", .length = 4};
+	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis,
+		pg_synthesis_root(&synthesis), token, self, context);
+	assert(scope);
+	const char *sources[] = {"field := @ -> Self;", "field := Self -> @;"};
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_synthesis_job *producer = request(&synthesis, scope, sources[i]);
+		struct pg_token alias = {.kind = PG_TOKEN_IDENT, .text = "Alias", .length = 5};
+		const struct pg_source_scope *named = pg_synthesis_name_job(&synthesis, scope, alias, producer);
+		assert(named);
+		struct pg_synthesis_job *consumer = request(&synthesis, named, "field := Alias;");
+		assert(!pg_synthesis_result(producer) && !pg_synthesis_result(consumer));
+		const struct pg_evidence *proof = complete(&synthesis, consumer, PG_SYNTHESIS_DONE);
+		const struct pg_term *core = pg_evidence_subject(proof)->core;
+		assert(core == pg_evidence_subject(pg_synthesis_result(producer))->core);
+		assert(pg_data_field_positive(core, self, 0) == (i ? 0 : 1));
+	}
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+}
+
 static void dependent_application_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
@@ -2943,6 +2974,7 @@ int main(void)
 	square_template_jobs(&typing, &classifiers);
 	dependent_cube_substitution(&typing, &classifiers);
 	dependent_application_jobs(&typing, &classifiers);
+	recursive_field_aliases(&typing, &classifiers);
 	identity_instance_jobs(&typing, &classifiers);
 	cube_application_jobs(&typing, &classifiers, 1);
 	cube_application_jobs(&typing, &classifiers, 2);
