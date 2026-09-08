@@ -70,6 +70,18 @@ const struct pg_data_declaration *pg_data_declaration_at_layout(struct pg_graph 
 const struct pg_data_layout *pg_data_declaration_layout(const struct pg_data_declaration *declaration);
 const struct pg_object *pg_data_declaration_family(const struct pg_data_declaration *declaration);
 const struct pg_data_declaration *pg_data_schema_declaration(const struct pg_data_schema *schema);
+/* Declaration payload root slices: contexts = parameters, indices, fields...;
+ * terms = matcher, then each constructor's ordered result images. Pack borrows
+ * immutable nodes and allocates arrays in storage. Include these slices in the
+ * same relocation table as other module roots. Unpack creates no evidence.
+ * This payload alone does not relocate references to the nominal family. */
+int pg_data_declaration_pack(const struct pg_data_declaration *declaration,
+	struct pg_graph *storage, size_t *context_count,
+	const struct pg_context *const **contexts, size_t *term_count,
+	const struct pg_term *const **terms);
+const struct pg_data_declaration *pg_data_declaration_unpack(struct pg_graph *graph,
+	size_t context_count, const struct pg_context *const *contexts,
+	size_t term_count, const struct pg_term *const *terms);
 /* Checked parameter/index telescopes, available before checking fields.
  * Immutable and owned by typing->graph; not nominal formation or membership.
  * No layout, constructor, universe bound or accepted-declaration flag lives

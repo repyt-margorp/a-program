@@ -388,19 +388,89 @@ static void layout_graph(FILE *file, struct pg_graph *graph, int writing, uint64
 	pg_classifiers_destroy(&classifiers);
 }
 
+static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
+{
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(!pg_typing_init(&typing, graph) && !pg_classifiers_init(&classifiers, graph));
+	if (writing) {
+		const struct pg_object *self = pg_binder(graph), *n = pg_binder(graph);
+		const struct pg_term *image = pg_reference(graph, self);
+		const struct pg_context *parameters = pg_context_bind(&typing, NULL, self, pg_universe(&classifiers, 0));
+		const struct pg_context *fields = pg_context_bind(&typing, parameters, n, image);
+		const struct pg_data_constructor_input constructors[] = {{parameters, &image}, {fields, &image}};
+		const struct pg_data_declaration *declaration = pg_data_declaration(graph, parameters, parameters, 2, constructors);
+		const struct pg_data_layout *layout = pg_data_declaration_layout(declaration);
+		const struct pg_term *zero = pg_reference(graph, pg_data_constructor(layout, 0));
+		const struct pg_term *successor = pg_application(graph, pg_reference(graph, pg_data_constructor(layout, 1)), zero);
+		struct pg_graph storage;
+		assert(!pg_graph_init(&storage));
+		size_t nc, nt, before = graph->terms.count;
+		const struct pg_context *const *contexts;
+		const struct pg_term *const *terms;
+		assert(!pg_data_declaration_pack(declaration, &storage, &nc, &contexts, &nt, &terms));
+		assert(nc == 4 && nt == 3);
+		const struct pg_term *roots[] = {terms[0], terms[1], terms[2], successor};
+		assert(!pg_contexts_write_descriptors(file, nc, contexts, 4, roots, &pg_builtin_graph_codec, &classifiers));
+		assert(graph->terms.count == before && !typing.proofs.count);
+		pg_graph_destroy(&storage);
+	} else {
+		size_t nc, nt;
+		const struct pg_context *const *contexts;
+		const struct pg_term *const *terms;
+		assert(!pg_contexts_read_descriptors(file, &typing, 1000, 100, &pg_builtin_graph_codec,
+			&classifiers, &nc, &contexts, &nt, &terms));
+		assert(nc == 4 && nt == 4 && !typing.proofs.count);
+		const struct pg_data_declaration *declaration = pg_data_declaration_unpack(graph, nc, contexts, 3, terms);
+		assert(declaration && !typing.proofs.count);
+		const struct pg_data_layout *layout = pg_data_declaration_layout(declaration);
+		assert(terms[3]->as.application.function->as.reference == pg_data_constructor(layout, 1));
+		assert(terms[3]->as.application.argument->as.reference == pg_data_constructor(layout, 0));
+		const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+		const struct pg_evidence *universe = pg_prove_universe(&typing, &classifiers, empty, 0);
+		const struct pg_evidence *parameters = pg_prove_context_extension(&typing, empty, contexts[0]->binder, universe);
+		const struct pg_evidence *self = pg_prove_variable(&typing, parameters, contexts[0]->binder);
+		const struct pg_evidence *fields = pg_prove_context_extension(&typing, parameters, contexts[3]->binder, self);
+		const struct pg_evidence *field_self = pg_prove_variable(&typing, fields, contexts[0]->binder);
+		const struct pg_evidence *results[] = {pg_prove_substitution(&typing, parameters, parameters, 1, &self),
+			pg_prove_substitution(&typing, parameters, fields, 1, &field_self)};
+		const struct pg_data_signature *signature = pg_data_signature(&typing, parameters, parameters);
+		const struct pg_data_schema *schema = pg_data_schema_check(&typing, declaration, signature, 2, results);
+		assert(schema && pg_data_schema_layout(schema) == layout);
+		const struct pg_evidence *formation = pg_prove_inductive_type(&typing, &classifiers, schema);
+		assert(formation && pg_evidence_subject(formation)->core->as.reference == pg_data_declaration_family(declaration));
+		assert(pg_prove_inductive_type(&typing, &classifiers, schema) == formation);
+		size_t proofs = typing.proofs.count;
+		const struct pg_term *wrong[] = {terms[0], contexts[0]->declared_type, terms[2]};
+		const struct pg_data_declaration *changed = pg_data_declaration_unpack(graph, nc, contexts, 3, wrong);
+		assert(changed && !pg_data_schema_check(&typing, changed, signature, 2, results));
+		assert(!pg_data_declaration_unpack(graph, nc, contexts, 2, terms));
+		assert(!pg_data_declaration_unpack(graph, nc - 1, contexts, 3, terms));
+		wrong[0] = terms[3];
+		assert(!pg_data_declaration_unpack(graph, nc, contexts, 3, wrong));
+		assert(typing.proofs.count == proofs);
+		rejected_prefixes(file, &pg_builtin_graph_codec);
+		puts("declaration image: complete inputs, shared layout, local formation and changed-map rejection passed");
+	}
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
 	int operation = !strcmp(argv[1], "operation-write") || !strcmp(argv[1], "operation-read");
 	int effect = !strcmp(argv[1], "effect-write") || !strcmp(argv[1], "effect-read") || !strcmp(argv[1], "effect-read-bulk");
 	int layout = !strcmp(argv[1], "layout-write") || !strcmp(argv[1], "layout-read") || !strcmp(argv[1], "layout-read-bulk");
-	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "operation-write") || !strcmp(argv[1], "effect-write") || !strcmp(argv[1], "layout-write");
-	assert(writing || !strcmp(argv[1], "read") || operation || effect || layout);
+	int declaration = !strcmp(argv[1], "declaration-write") || !strcmp(argv[1], "declaration-read");
+	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "operation-write") || !strcmp(argv[1], "effect-write") || !strcmp(argv[1], "layout-write") || !strcmp(argv[1], "declaration-write");
+	assert(writing || !strcmp(argv[1], "read") || operation || effect || layout || declaration);
 	FILE *file = fopen(argv[2], writing ? "wb" : "rb");
 	assert(file);
 	struct pg_graph graph;
 	assert(pg_graph_init(&graph) == 0);
-	if (layout) layout_graph(file, &graph, writing, !strcmp(argv[1], "layout-read-bulk") ? 100 : 1);
+	if (declaration) declaration_graph(file, &graph, writing);
+	else if (layout) layout_graph(file, &graph, writing, !strcmp(argv[1], "layout-read-bulk") ? 100 : 1);
 	else if (effect) effect_graph(file, &graph, writing, !strcmp(argv[1], "effect-read-bulk") ? 100 : 1);
 	else if (operation) operation_graph(file, &graph, writing);
 	else if (writing) write_graph(file, &graph);

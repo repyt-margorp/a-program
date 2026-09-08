@@ -12,4 +12,6 @@ trap 'rm -rf "$directory"' EXIT
 "$1" layout-write "$directory/layout.graph"
 "$1" layout-read "$directory/layout.graph"
 "$1" layout-read-bulk "$directory/layout.graph"
+"$1" declaration-write "$directory/declaration.graph"
+"$1" declaration-read "$directory/declaration.graph"
 printf '%s\n' 'graph acceptance: fresh-process relocation, shared Core and distinct typed evidence passed'

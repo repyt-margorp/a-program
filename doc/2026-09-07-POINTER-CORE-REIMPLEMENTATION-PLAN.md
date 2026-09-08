@@ -13,6 +13,33 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Declaration Payload Round Trip
+
+Continuation after `e5a1bd7`. `pg_data_declaration_pack/unpack` projects the
+immutable declaration to shared context/term root slices: parameter and index
+contexts, constructor field contexts, matcher, and ordered result images.
+Unpack checks structural counts and reuses the loaded layout through the
+ordinary declaration builder. No second schema format, proof store or replay
+interpreter is introduced. Packing uses caller storage without changing the
+source graph; the declaration owns copied arrays, not the transport slice.
+
+- [x] Fresh-process payload round trip for a recursive Nat-shaped declaration
+  whose constructor references are also present in an additional Core root.
+- [x] No evidence on load/unpack; reconstruct local context/substitution proofs
+  and use the existing schema-check and inductive-formation rules afterwards.
+- [x] Reject changed result images when attaching the original premises;
+  malformed counts and wrong layout roots cannot create a declaration.
+- [ ] Relocate nominal family references themselves in the same graph. Payload
+  unpack currently creates a fresh family; it is not a complete module linker.
+- [ ] Carry the formation inputs through common Solve and derivation I/O rather
+  than the fixture explicitly constructing ordinary kernel premises.
+
+The fixture establishes a declaration-payload boundary, not general IADT
+admission, complete `.a` support or completion of N0-N7.
+Normal `check`, eight source checks and six runtime fixtures pass; rebuilt
+ASan/UBSan graph-image tests pass. Implementation C/header: +62/-0; test C:
++73/-3; shell: +2/-0; documentation separate.
+
 ### September 9: Context and Layout Relocation Share One Core Table
 
 Continuation after `f9a7272`. Context transport now uses the existing generic

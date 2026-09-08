@@ -328,6 +328,56 @@ const struct pg_data_declaration *pg_data_schema_declaration(const struct pg_dat
 	return schema ? schema->declaration : NULL;
 }
 
+int pg_data_declaration_pack(const struct pg_data_declaration *declaration,
+	struct pg_graph *storage, size_t *context_count,
+	const struct pg_context *const **contexts, size_t *term_count,
+	const struct pg_term *const **terms)
+{
+	if (!declaration || !storage || !context_count || !contexts || !term_count || !terms) return -1;
+	size_t count = declaration->layout->count, images = declaration->image_count;
+	if (count > SIZE_MAX / sizeof(void *) - 2) return -1;
+	if (images && count > (SIZE_MAX / sizeof(void *) - 1) / images) return -1;
+	size_t total = 1 + count * images;
+	const struct pg_context **scopes = pg_alloc(storage, (count + 2) * sizeof(*scopes));
+	const struct pg_term **roots = pg_alloc(storage, total * sizeof(*roots));
+	if (!scopes || !roots) return -1;
+	scopes[0] = declaration->parameters;
+	scopes[1] = declaration->indices;
+	roots[0] = pg_reference(storage, pg_data_matcher(declaration->layout));
+	if (!roots[0]) return -1;
+	for (size_t i = 0; i < count; ++i) {
+		scopes[i + 2] = declaration->constructors[i].fields;
+		for (size_t j = 0; j < images; ++j) roots[1 + i * images + j] = declaration->constructors[i].images[j];
+	}
+	*context_count = count + 2;
+	*contexts = scopes;
+	*term_count = total;
+	*terms = roots;
+	return 0;
+}
+
+const struct pg_data_declaration *pg_data_declaration_unpack(struct pg_graph *graph,
+	size_t context_count, const struct pg_context *const *contexts,
+	size_t term_count, const struct pg_term *const *terms)
+{
+	if (!graph || context_count < 2 || !contexts || !term_count || !terms || !terms[0]) return NULL;
+	if (terms[0]->kind != PG_REFERENCE) return NULL;
+	const struct pg_data_layout *layout = pg_data_layout_view(terms[0]->as.reference);
+	size_t count = context_count - 2, images;
+	if (!layout || layout->count != count || pg_context_extension_size(contexts[1], NULL, &images)) return NULL;
+	if (images && count > (SIZE_MAX - 1) / images) return NULL;
+	if (term_count != 1 + count * images || count > SIZE_MAX / sizeof(struct pg_data_constructor_input)) return NULL;
+	struct pg_graph temporary = {0};
+	struct pg_data_constructor_input *inputs = pg_alloc(&temporary, count * sizeof(*inputs));
+	if (!inputs) return NULL;
+	for (size_t i = 0; i < count; ++i)
+		inputs[i] = (struct pg_data_constructor_input){contexts[i + 2], terms + 1 + i * images};
+	const struct pg_data_declaration *result = pg_data_declaration_at_layout(graph, layout,
+		contexts[0], contexts[1], count, inputs);
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_data_signature *pg_data_signature(struct pg_typing *typing,
 	const struct pg_evidence *parameters, const struct pg_evidence *indices)
 {
