@@ -3914,6 +3914,17 @@ Normal pointer checks and the changed synthesis test under ASan/UBSan pass.
 
 ## 8. Program Image and Persistence
 
+In-memory entry after `3fd0b99`: `program.c` owns the existing graph, typing,
+classifiers, evaluation store, synthesis store and copied source. Creation uses
+the existing program parser and creates an unresolved root without advancing
+the solver. Callers use the existing synthesis API directly; there is no new
+progress state machine. Parser failures retain ordinary diagnostics, and
+destruction releases stores before their graph. The new `program_test` checks
+source-buffer independence, equal split/bulk solver progress, pending-cycle
+destruction and initialization/parse errors. This is an ownership boundary,
+not a second representation of terms or proofs. It does not implement `.a`
+encoding/loading, host execution or full language acceptance; N5 stays open.
+
 One in-memory program owns graph roots, typed occurrences, declarations and work
 results. Parsing/lowering creates its initial unresolved state; bounded solving
 advances it. Execution is an explicit request using the same computation engine
