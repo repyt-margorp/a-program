@@ -148,7 +148,23 @@ static void schema_positivity(void)
 	assert(pg_data_schema_positive(none, self) == 1);
 	assert(pg_data_schema_positive(NULL, self) == -1);
 	assert(pg_data_schema_positive(good, NULL) == -1);
+	uint64_t level = UINT64_MAX;
+	assert(!pg_data_schema_field_level(good, &level) && level == 0);
+	assert(!pg_data_schema_field_level(bad, &level) && level == 1);
+	assert(!pg_data_schema_field_level(none, &level) && level == 0);
+	level = 42;
+	assert(pg_data_schema_field_level(NULL, &level) == -1 && level == 42);
+	assert(pg_data_schema_field_level(good, NULL) == -1);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	/* A large index universe does not become a constructor field bound. */
+	const struct pg_evidence *large = pg_prove_universe(&typing, &classifiers, parameters, 4);
+	const struct pg_evidence *indices = pg_prove_context_extension(&typing, parameters, pg_binder(&graph), large);
+	const struct pg_evidence *images[] = {pg_prove_variable(&typing, parameters, self),
+		pg_prove_type_value(&typing, pg_prove_universe(&typing, &classifiers, parameters, 3))};
+	const struct pg_evidence *indexed_result = pg_prove_substitution(&typing, indices, parameters, 2, images);
+	const struct pg_data_schema *indexed = pg_data_schema(&typing,
+		pg_data_signature(&typing, parameters, indices), 1, &indexed_result);
+	assert(indexed && !pg_data_schema_field_level(indexed, &level) && level == 0);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);

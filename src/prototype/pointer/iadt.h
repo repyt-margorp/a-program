@@ -67,6 +67,11 @@ const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
  * does not discharge Self, check universe bounds or admit the declaration. */
 int pg_data_schema_positive(const struct pg_data_schema *schema,
 	const struct pg_object *self);
+/* Maximum universe bound of retained field formations (zero for no fields).
+ * Parameters and indices are not stored fields. This is a necessary lower
+ * bound for predicative admission, not formation/cumulativity evidence.
+ * Returns 0 on success; failure leaves the output unchanged. */
+int pg_data_schema_field_level(const struct pg_data_schema *schema, uint64_t *level);
 const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *schema);
 const struct pg_evidence *pg_data_schema_indices(const struct pg_data_schema *schema);
 const struct pg_evidence *pg_data_schema_fields(const struct pg_data_schema *schema,

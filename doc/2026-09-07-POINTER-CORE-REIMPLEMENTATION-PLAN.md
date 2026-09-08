@@ -166,6 +166,20 @@ Next declaration-admission contract:
   This is a syntactic condition only. It neither scopes/discharges Self nor
   admits a type into a universe. The pending admission item above remains open.
   Component `make check` and rebuilt optimized/ASan/UBSan IADT tests passed.
+- [x] After `51c9adb`, derive the constructor-field universe lower bound from
+  the existing context-extension formation premises (`pg_data_schema_field_level`).
+  No classifier synthesis, Core evaluation or stored copy of the bound is
+  added. Empty fields require bound zero; parameters and index domains are
+  not constructor fields and are not included. The bound is necessary for
+  predicative admission, not a new universe formation or cumulativity proof.
+  Positivity and bound extraction share one traversal of retained field
+  derivations, with a temporary pointer index. Distinct derivations of the
+  same context remain distinct inputs; shared derivation tails are visited once.
+  Regressions cover field bounds zero/one, unchanged output on failure,
+  no new Core/evidence, and a large index universe with no stored fields.
+  Scoped Self, admission/discharge and higher datatype action are still open.
+  Component `make check` and ASan/UBSan IADT tests passed; the full source
+  acceptance gate remains unfulfilled.
 
 - A scoped family signature supplies its fixed parameter context and index
   telescope. Instantiating that signature consumes checked index images and

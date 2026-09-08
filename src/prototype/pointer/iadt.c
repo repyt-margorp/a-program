@@ -289,28 +289,60 @@ const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *
 	return schema ? schema->layout : NULL;
 }
 
-int pg_data_schema_positive(const struct pg_data_schema *schema,
-	const struct pg_object *self)
+static int schema_fields_check(const struct pg_data_schema *schema,
+	int (*check)(const struct pg_evidence *, void *), void *state)
 {
-	if (!schema || !self || self->kind != PG_BINDER) return -1;
 	const struct pg_context *prefix = pg_evidence_context(schema->signature->parameters);
-	size_t indices;
-	if (pg_context_extension_size(pg_evidence_context(schema->signature->indices), prefix, &indices)) return -1;
 	struct pg_dag checked;
 	if (pg_dag_init(&checked, NULL, NULL)) return -1;
 	int result = 1;
 	for (size_t i = 0; i < schema->layout->count; ++i) {
-		const struct pg_context *field = pg_evidence_context(schema->results[i]);
-		for (; field != prefix; field = field->parent) {
-			if (pg_dag_find(&checked, field)) break;
-			result = pg_data_field_positive(field->declared_type, self, indices);
+		const struct pg_evidence *fields = pg_evidence_premise(schema->results[i], 1);
+		for (; pg_evidence_context(fields) != prefix; fields = pg_evidence_premise(fields, 0)) {
+			if (pg_dag_find(&checked, fields)) break;
+			result = check(pg_evidence_premise(fields, 1), state);
 			if (result != 1) goto done;
-			if (pg_dag_add(&checked, field)) { result = -1; goto done; }
+			if (pg_dag_add(&checked, fields)) { result = -1; goto done; }
 		}
 	}
 done:
 	pg_dag_destroy(&checked);
 	return result;
+}
+
+struct positivity_check { const struct pg_object *self; size_t indices; };
+
+static int field_positive(const struct pg_evidence *formation, void *state)
+{
+	struct positivity_check *check = state;
+	return pg_data_field_positive(pg_evidence_subject(formation)->core, check->self, check->indices);
+}
+
+int pg_data_schema_positive(const struct pg_data_schema *schema,
+	const struct pg_object *self)
+{
+	if (!schema || !self || self->kind != PG_BINDER) return -1;
+	struct positivity_check check = {self, 0};
+	if (pg_context_extension_size(pg_evidence_context(schema->signature->indices),
+		pg_evidence_context(schema->signature->parameters), &check.indices)) return -1;
+	return schema_fields_check(schema, field_positive, &check);
+}
+
+static int field_level(const struct pg_evidence *formation, void *state)
+{
+	uint64_t *bound = state, current;
+	if (!pg_universe_level(pg_evidence_classifier(formation), &current)) return -1;
+	if (current > *bound) *bound = current;
+	return 1;
+}
+
+int pg_data_schema_field_level(const struct pg_data_schema *schema, uint64_t *level)
+{
+	if (!schema || !level) return -1;
+	uint64_t bound = 0;
+	if (schema_fields_check(schema, field_level, &bound) != 1) return -1;
+	*level = bound;
+	return 0;
 }
 
 const struct pg_evidence *pg_data_schema_indices(const struct pg_data_schema *schema)
