@@ -177,6 +177,11 @@ const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *body);
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
+/* Derived beta body for retained Lambda introduction, including checked
+ * projection/reindex and force/thunk wrappers. Uses ordinary substitution;
+ * NULL when introduction provenance cannot be recovered. No evaluation. */
+const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
+	const struct pg_evidence *function, const struct pg_evidence *argument);
 /* The certificate and its endpoint graphs must outlive typing->graph. */
 const struct pg_evidence *pg_prove_conversion(struct pg_typing *typing,
 	const struct pg_evidence *term, const struct pg_evidence *target_type,

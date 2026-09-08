@@ -163,29 +163,96 @@ done:
 	return result;
 }
 
+struct evidence_frame {
+	const struct pg_evidence *proof;
+	struct evidence_frame *next;
+};
+
+static const struct pg_evidence *evidence_map(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct evidence_frame *frames)
+{
+	const struct pg_evidence *map = pg_prove_substitution_projection(typing, context, context);
+	for (; map && frames; frames = frames->next) {
+		const struct pg_evidence *step = frames->proof;
+		const struct pg_evidence *substitution = step->premises[0];
+		if (step->rule == PG_CONTEXT_PROJECTION)
+			substitution = pg_prove_substitution_projection(typing, map->premises[1], substitution);
+		map = pg_prove_substitution_compose(typing, map, substitution);
+	}
+	return map;
+}
+
+const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
+	const struct pg_evidence *function, const struct pg_evidence *argument)
+{
+	if (!pg_evidence_owned_by(function, typing) || function->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (!pg_evidence_owned_by(argument, typing) || argument->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (function->context != argument->context) return NULL;
+	struct pg_graph temporary = {0};
+	struct evidence_frame *frames = NULL;
+	const struct pg_evidence *result = NULL;
+	size_t forces = 0;
+	while (function->rule != PG_LAMBDA_INTRO) {
+		switch (function->rule) {
+		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
+			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
+			if (!frame) goto done;
+			*frame = (struct evidence_frame){function, frames};
+			frames = frame;
+			function = function->premises[1];
+			break;
+		}
+		case PG_PURE_NORMALIZATION: case PG_TYPE_CONVERSION:
+			function = function->premises[0]; break;
+		case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION:
+			++forces; function = function->premises[0]; break;
+		case PG_THUNK_INTRO:
+			if (!forces) goto done;
+			--forces; function = function->premises[0]; break;
+		default: goto done;
+		}
+	}
+	if (forces) goto done;
+	const struct pg_evidence *extended = function->premises[0]->premises[1];
+	const struct pg_evidence *map = evidence_map(typing, extended->premises[0], frames);
+	map = pg_prove_substitution_pair(typing, map, extended, argument);
+	result = pg_prove_reindex(typing, map, function->premises[1]);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *type,
 	struct pg_inductive_instance *output)
 {
 	if (!output || !pg_evidence_owned_by(type, typing)) return 0;
 	if (type->judgement != PG_JUDGEMENT_VALUE_TYPE) return 0;
-	struct frame { const struct pg_evidence *proof; struct frame *next; };
 	struct pg_graph temporary = {0};
-	struct frame *frames = NULL;
+	struct evidence_frame *frames = NULL;
 	const struct pg_evidence *formation = type;
-	size_t return_contents = 0;
+	size_t return_contents = 0, return_values = 0;
 	int result = 0;
 	while (formation->rule != PG_INDUCTIVE_FORM) {
 		switch (formation->rule) {
 		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
-			struct frame *frame = pg_alloc(&temporary, sizeof(*frame));
+			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
 			if (!frame) goto done;
-			*frame = (struct frame){formation, frames};
+			*frame = (struct evidence_frame){formation, frames};
 			frames = frame;
 			formation = formation->premises[1];
 			break;
 		}
-		case PG_TYPE_FROM_VALUE: case PG_VALUE_FROM_TYPE: case PG_TYPE_CONVERSION:
+		case PG_TYPE_FROM_VALUE: case PG_VALUE_FROM_TYPE: case PG_TYPE_CONVERSION: case PG_PURE_NORMALIZATION:
 			formation = formation->premises[0];
+			break;
+		case PG_RETURN_VALUE:
+			++return_values; formation = formation->premises[0]; break;
+		case PG_RETURN_INTRO:
+			if (!return_values) goto done;
+			--return_values; formation = formation->premises[0]; break;
+		case PG_APP_ELIM:
+			formation = pg_prove_application_body(typing, formation->premises[0], formation->premises[1]);
+			if (!formation) goto done;
 			break;
 		case PG_RETURN_CONTENT:
 			++return_contents;
@@ -210,16 +277,9 @@ int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *ty
 		default: goto done;
 		}
 	}
-	if (return_contents) goto done;
+	if (return_contents || return_values) goto done;
 	const struct pg_evidence *context = formation->premises[0]->premises[0];
-	const struct pg_evidence *map = pg_prove_substitution_projection(typing, context, context);
-	for (struct frame *frame = frames; map && frame; frame = frame->next) {
-		const struct pg_evidence *step = frame->proof;
-		const struct pg_evidence *substitution = step->premises[0];
-		if (step->rule == PG_CONTEXT_PROJECTION)
-			substitution = pg_prove_substitution_projection(typing, map->premises[1], substitution);
-		map = pg_prove_substitution_compose(typing, map, substitution);
-	}
+	const struct pg_evidence *map = evidence_map(typing, context, frames);
 	if (!map || map->context != type->context) goto done;
 	const struct pg_evidence *instance = pg_prove_reindex(typing, map, formation);
 	if (!instance || pg_alpha_equal(instance->subject->core, type->subject->core) != 1) goto done;

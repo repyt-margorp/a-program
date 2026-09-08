@@ -2762,6 +2762,12 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	};
 	for (size_t i = 0; i < sizeof(bad_matches) / sizeof(*bad_matches); ++i)
 		complete(&synthesis, request(&synthesis, named, bad_matches[i]), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis_job *list = request(&synthesis, named, "List:=&(\\A:@=>@{nil:*; cons:A->*->*;});");
+	complete(&synthesis, list, PG_SYNTHESIS_DONE);
+	named = pg_synthesis_name_job(&synthesis, named,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "List", .length = 4}, list);
+	complete(&synthesis, request(&synthesis, named,
+		"r:=\\xs:List Nat => xs @nil=>Nat.zero @cons x rest=>x;"), PG_SYNTHESIS_DONE);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("source declarations: nominal formation, conditional universe candidates, no early publication and reuse passed");

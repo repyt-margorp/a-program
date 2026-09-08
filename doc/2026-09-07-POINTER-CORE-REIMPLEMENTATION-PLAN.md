@@ -33,11 +33,34 @@ not execution results:
 | 01_bool | done | 172 |
 | 02_nat | done | 64 |
 | 03_main | done | 172 |
-| 04_match | unsupported | 230 |
+| 04_match | unsupported | 242 |
 | 05_bool_to_nat | done | 260 |
 | 06_pred | done | 203 |
 | 07_add | unsupported | 282 |
-| 09_list_induction | unsupported | 348 |
+| 09_list_induction | unsupported | 362 |
+
+### Applied family provenance progress
+
+- [x] Recover a known Lambda body through retained typed substitutions and
+  force/thunk introductions with `pg_prove_application_body`. This derived
+  helper uses existing substitution and reindex rules, not a new Core form
+  or a lookup from erased terms to classifiers.
+- [x] Follow returned, normalized type-family applications in
+  `pg_inductive_instance`. The reconstructed nominal instance must still
+  match the requested type; evidence traversal does not equate arbitrary
+  normalized terms or change pointer interning.
+- [x] Check source Match over `List Nat`, repeated proof reuse, the resulting
+  constructor reduction and rejection of an argument from another nominal
+  family with the same constructor shape.
+- [ ] Resolve members of applied families such as `(List Bool).nil`.
+- [ ] Support general computed-function provenance and recursive IH; the
+  current helper only follows retained Lambda introductions. Unavailable
+  provenance is not evidence that the program is ill-typed.
+
+Verification: optimized component `check` passed; after adding the negative
+nominality assertion, the rebuilt optimized IADT test passed. ASan/UBSan
+synthesis and IADT tests passed. The unchanged source gate remains 5/8 as
+listed above. This is not full acceptance or completion of the rewrite.
 
 Code-level obstruction and implementation order:
 

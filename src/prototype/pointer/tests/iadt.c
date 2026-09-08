@@ -205,11 +205,23 @@ static void schema_positivity(void)
 	assert(successor_function && pg_evidence_rule(successor_function) == PG_LAMBDA_INTRO);
 	const struct pg_evidence *successor_application = pg_prove_application(&typing, successor_function, zero);
 	assert(successor_application);
+	const struct pg_evidence *successor_body = pg_prove_application_body(&typing, successor_function, zero);
+	assert(successor_body && pg_evidence_rule(successor_body) == PG_REINDEX);
+	assert(pg_evidence_classifier(successor_body) == pg_evidence_classifier(successor_application));
+	proofs = typing.proofs.count; terms = graph.terms.count;
+	assert(pg_prove_application_body(&typing, successor_function, zero) == successor_body);
+	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	assert(!pg_prove_application_body(&typing, zero, zero));
+	const struct pg_evidence *other_zero = pg_prove_constructor(&typing, other,
+		pg_data_constructor(pg_data_schema_layout(other_schema), 0), identity, 0, NULL);
+	assert(other_zero);
+	assert(!pg_prove_application_body(&typing, successor_function, other_zero));
 	struct pg_whnf_work constructor_work;
 	assert(!pg_whnf_work_init(&constructor_work, &graph));
 	const struct pg_term *returned_successor = pg_application(&graph,
 		pg_reference(&graph, &pg_return_operation), pg_evidence_subject(succ)->core);
 	check(&constructor_work, pg_evidence_subject(successor_application)->core, returned_successor);
+	check(&constructor_work, pg_evidence_subject(successor_body)->core, returned_successor);
 	const struct pg_evidence *zero_function = pg_prove_constructor_function(&typing,
 		&classifiers, nat, pg_data_constructor(nat_layout, 0), identity);
 	assert(zero_function && pg_evidence_rule(zero_function) == PG_RETURN_INTRO);
