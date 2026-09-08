@@ -13,6 +13,28 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Nominal Derivation Parameters in the Shared Image
+
+Continuation after `a995988`. `APGDRV` version 5 adds declaration and constructor
+references to the existing term-reference table. The reader checks their object
+kinds and applicable rule, then produces ordinary unaccepted rule inputs.
+Formation and constructor acceptance still go through the common Solve and
+the existing kernel constructors. No nominal replay engine was introduced.
+
+- [x] Serialize nominal rule parameters without copying accepted flags or
+  creating a separate family/context relocation table.
+- [x] Fresh-process formation and zero/successor introduction at budgets 1/64.
+- [x] Preserve repeated formation roots and constructor ownership; require zero
+  accepted proofs before Solve and reject a substituted wrong-arity constructor.
+- [x] Update record-grammar tests, retaining explicit rejection when callers
+  supply a codec that cannot transport nominal declarations.
+- [ ] Add whole-file Match/direct-IH derivation cases and their iota results.
+- [ ] Complete unfinished source/module checkpointing and general indexed rules.
+
+Normal `check`, `check-examples`, `check-example-results` and rebuilt ASan/UBSan
+derivation-image tests pass. Existing stored-derivation Solve remains 565 steps.
+The general reimplementation goal and Main promotion remain incomplete.
+
 ### September 9: Shared Context Payload and Nominal Family Relocation
 
 Continuation after `fb3fc1e`. Context relocation now has one pack/unpack

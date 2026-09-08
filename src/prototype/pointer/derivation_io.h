@@ -7,6 +7,9 @@
 
 struct pg_effect_inference;
 
+/* Nominal rules require the declaration graph codec (declaration_io.h).
+ * Family/constructor parameters share the same Core relocation table as all
+ * other terms. Their reconstruction is not evidence of rule validity. */
 int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner);
 int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_evidence *const *roots,

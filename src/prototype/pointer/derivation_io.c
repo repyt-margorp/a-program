@@ -3,10 +3,11 @@
 #include "graph_io.h"
 #include "wire.h"
 #include "effect_inference.h"
+#include "iadt.h"
 
 #include <string.h>
 
-static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 4};
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 5};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {
@@ -66,9 +67,6 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 			}
 		} else if (pg_derivation_input_header(node->key, &input)) goto done;
 		struct pg_derivation_parameters parameters = input.parameters;
-		/* The payload adapter exists, but family reference relocation is pending. */
-		if (parameters.declaration || parameters.constructor) goto done;
-		if (input.rule >= PG_INDUCTIVE_FORM && input.rule <= PG_INDUCTION_ELIM) goto done;
 		if (pg_wire_write_u64(file, input.rule)
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;
 		if (pg_wire_write_u64(file, input.reduction_kind)) goto done;
@@ -83,10 +81,15 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 		const struct pg_term *operation = parameters.operation_label ? pg_reference(&arena, parameters.operation_label) : NULL;
 		const struct pg_term *handler = pg_handler_signature_reference(&arena, parameters.handler);
 		if ((parameters.operation_label && !operation) || (parameters.handler && !handler)) goto done;
+		const struct pg_term *declaration = parameters.declaration ?
+			pg_reference(&arena, pg_data_declaration_family(parameters.declaration)) : NULL;
+		const struct pg_term *constructor = parameters.constructor ? pg_reference(&arena, parameters.constructor) : NULL;
+		if ((parameters.declaration && !declaration) || (parameters.constructor && !constructor)) goto done;
 		if (term_reference(file, binder, &term_roots) || term_reference(file, effects, &term_roots)
 			|| term_reference(file, input.source, &term_roots)
 			|| term_reference(file, input.target, &term_roots)
-			|| term_reference(file, operation, &term_roots) || term_reference(file, handler, &term_roots)) goto done;
+			|| term_reference(file, operation, &term_roots) || term_reference(file, handler, &term_roots)
+			|| term_reference(file, declaration, &term_roots) || term_reference(file, constructor, &term_roots)) goto done;
 		size_t arity = input.count;
 		if (pg_wire_write_u64(file, arity)) goto done;
 		for (size_t i = 0; i < arity; ++i) {
@@ -140,7 +143,7 @@ int pg_derivation_inputs_write_inference(FILE *file, size_t count,
 
 struct input_record {
 	struct pg_derivation_input *input;
-	uint64_t binder, effects, source, target, operation, handler;
+	uint64_t binder, effects, source, target, operation, handler, declaration, constructor;
 };
 
 int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
@@ -170,14 +173,14 @@ static int read_dag(FILE *file, struct pg_graph *graph, size_t limit, size_t nam
 		uint64_t rule, level, direction, arity, reduction_kind;
 		if (pg_wire_read_u64(file, &rule)) return -1;
 		if (rule > PG_HANDLER_ELIM) return -1;
-		/* Nominal datatype parameters still lack their image schema. */
-		if (rule >= PG_INDUCTIVE_FORM && rule <= PG_INDUCTION_ELIM) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
 		if (pg_wire_read_u64(file, &reduction_kind) || reduction_kind > PG_REDUCTION_NF) return -1;
 		if (pg_wire_read_u64(file, &records[i].binder) || pg_wire_read_u64(file, &records[i].effects)
 			|| pg_wire_read_u64(file, &records[i].source)
 			|| pg_wire_read_u64(file, &records[i].target) || pg_wire_read_u64(file, &records[i].operation)
-			|| pg_wire_read_u64(file, &records[i].handler) || pg_wire_read_u64(file, &arity)) return -1;
+			|| pg_wire_read_u64(file, &records[i].handler)
+			|| pg_wire_read_u64(file, &records[i].declaration) || pg_wire_read_u64(file, &records[i].constructor)
+			|| pg_wire_read_u64(file, &arity)) return -1;
 		if (arity > available || arity > (SIZE_MAX - sizeof(struct pg_derivation_input)) / sizeof(void *)) return -1;
 		available -= (size_t)arity;
 		struct pg_derivation_input *input = pg_alloc(graph, sizeof(*input) + (size_t)arity * sizeof(*input->premises));
@@ -220,6 +223,19 @@ static int read_dag(FILE *file, struct pg_graph *graph, size_t limit, size_t nam
 		const struct input_record *r = &records[i];
 		if (r->binder > term_count || r->effects > term_count || r->source > term_count || r->target > term_count) return -1;
 		if (r->operation > term_count || r->handler > term_count) return -1;
+		if (r->declaration > term_count || r->constructor > term_count) return -1;
+		if (r->input->rule == PG_INDUCTIVE_FORM) {
+			if (!r->declaration || terms[r->declaration - 1]->kind != PG_REFERENCE) return -1;
+			r->input->parameters.declaration = pg_data_declaration_view(terms[r->declaration - 1]->as.reference);
+			if (!r->input->parameters.declaration) return -1;
+		} else if (r->declaration) return -1;
+		if (r->input->rule == PG_CONSTRUCTOR_INTRO) {
+			if (!r->constructor || terms[r->constructor - 1]->kind != PG_REFERENCE) return -1;
+			r->input->parameters.constructor = terms[r->constructor - 1]->as.reference;
+			const struct pg_data_layout *layout;
+			size_t index, arity;
+			if (!pg_data_constructor_view(r->input->parameters.constructor, &layout, &index, &arity)) return -1;
+		} else if (r->constructor) return -1;
 		if (r->input->rule == PG_REQUEST_INTRO) {
 			if (!r->operation || terms[r->operation - 1]->kind != PG_REFERENCE) return -1;
 			const struct pg_term *payload, *response;

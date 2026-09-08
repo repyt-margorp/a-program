@@ -26,4 +26,9 @@ single_producers=$("$1" producer-read "$directory/producers.graph")
 bulk_producers=$("$1" producer-read-bulk "$directory/producers.graph")
 test "$single_producers" = "$bulk_producers"
 printf '%s\n' "$single_producers"
+"$1" nominal-write "$directory/nominal.graph"
+single_nominal=$("$1" nominal-read "$directory/nominal.graph")
+bulk_nominal=$("$1" nominal-read-bulk "$directory/nominal.graph")
+test "$single_nominal" = "$bulk_nominal"
+printf '%s\n' "$single_nominal"
 printf '%s\n' "$single" 'derivation io: shared premises, split-budget Solve, receipt recovery and rejection passed'
