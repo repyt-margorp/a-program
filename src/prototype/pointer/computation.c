@@ -2,6 +2,7 @@
 #include "identity.h"
 #include "iadt.h"
 #include "symmetry.h"
+#include <string.h>
 
 static const struct pg_object_class return_class = {"return"};
 static const struct pg_object_class thunk_class = {"thunk"};
@@ -11,6 +12,31 @@ const struct pg_object pg_return_operation = {PG_SEMANTIC_OBJECT, &return_class}
 const struct pg_object pg_thunk_operation = {PG_SEMANTIC_OBJECT, &thunk_class};
 const struct pg_object pg_force_operation = {PG_SEMANTIC_OBJECT, &force_class};
 const struct pg_object pg_fold_operation = {PG_SEMANTIC_OBJECT, &fold_class};
+
+static const struct {
+	const struct pg_object *object;
+	const char *name;
+} descriptors[] = {
+	{&pg_return_operation, "kernel/return/v1"},
+	{&pg_thunk_operation, "kernel/thunk/v1"},
+	{&pg_force_operation, "kernel/force/v1"},
+	{&pg_fold_operation, "kernel/fold/v1"}
+};
+
+const char *pg_computation_name(const struct pg_object *object)
+{
+	for (size_t i = 0; i < sizeof(descriptors) / sizeof(*descriptors); ++i)
+		if (object == descriptors[i].object) return descriptors[i].name;
+	return NULL;
+}
+
+const struct pg_object *pg_computation_resolve(const char *name)
+{
+	if (!name) return NULL;
+	for (size_t i = 0; i < sizeof(descriptors) / sizeof(*descriptors); ++i)
+		if (!strcmp(name, descriptors[i].name)) return descriptors[i].object;
+	return NULL;
+}
 
 static const struct pg_term *unary_argument(const struct pg_term *term, const struct pg_object *operation)
 {

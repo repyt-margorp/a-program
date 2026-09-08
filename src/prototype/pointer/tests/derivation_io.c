@@ -6,11 +6,6 @@
 #include <assert.h>
 #include <string.h>
 
-static const struct pg_object *const operations[] = {
-	&pg_return_operation, &pg_thunk_operation, &pg_force_operation
-};
-static const char *const labels[] = {"kernel/return/v1", "kernel/thunk/v1", "kernel/force/v1"};
-
 static const char *name(void *owner, const struct pg_object *object)
 {
 	(void)owner;
@@ -20,8 +15,7 @@ static const char *name(void *owner, const struct pg_object *object)
 	if (label) return label;
 	label = pg_identity_name(object);
 	if (label) return label;
-	for (size_t i = 0; i < 3; ++i) if (object == operations[i]) return labels[i];
-	return NULL;
+	return pg_computation_name(object);
 }
 
 static const struct pg_object *resolve(void *owner, const char *label)
@@ -30,8 +24,7 @@ static const struct pg_object *resolve(void *owner, const char *label)
 	if (object) return object;
 	object = pg_identity_resolve(label);
 	if (object) return object;
-	for (size_t i = 0; i < 3; ++i) if (!strcmp(label, labels[i])) return operations[i];
-	return NULL;
+	return pg_computation_resolve(label);
 }
 
 static void classifier_transport(struct pg_classifiers *source)
@@ -120,7 +113,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, classifiers, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[11];
+	const struct pg_evidence *roots[12];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -158,8 +151,20 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 		roots[7 + 2 * side] = pg_prove_identity_transport(typing, classifiers, roots[6], value, side);
 		roots[8 + 2 * side] = pg_prove_identity_lift(typing, classifiers, roots[6], value, side);
 	}
-	for (size_t i = 0; i < 11; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 11, roots, name, classifiers) == 0);
+	const struct pg_object *z = pg_binder(graph);
+	const struct pg_evidence *extended = pg_prove_context_extension(typing, empty, z, u1);
+	const struct pg_evidence *codomain = pg_prove_return_type(typing, classifiers,
+		pg_prove_universe(typing, classifiers, extended, 1));
+	const struct pg_evidence *continuation = pg_prove_lambda(typing,
+		pg_prove_pi(typing, classifiers, u1, extended, codomain),
+		pg_prove_return(typing, classifiers, pg_prove_variable(typing, extended, z)));
+	const struct pg_evidence *fold = pg_prove_fold(typing, forced, continuation);
+	assert(fold);
+	job = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(fold)->core);
+	assert(job && pg_whnf_advance(job, 10000) == PG_EVAL_WHNF);
+	roots[11] = pg_prove_normalization(typing, fold, pg_whnf_certificate(job));
+	for (size_t i = 0; i < 12; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 12, roots, name, classifiers) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -186,13 +191,13 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing->graph, 1000, 100, resolve, classifiers, &count, &roots) == 0);
-	assert(count == 11 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 12 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[11];
+	struct pg_synthesis_job *jobs[12];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -219,6 +224,10 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	assert(pg_reduction_kind(pg_evidence_normalization(pg_synthesis_result(jobs[3]))) == PG_REDUCTION_WHNF);
 	assert(pg_reduction_kind(pg_evidence_normalization(pg_synthesis_result(jobs[5]))) == PG_REDUCTION_NF);
 	assert(pg_evidence_rule(pg_synthesis_result(jobs[6])) == PG_REFLEXIVITY);
+	const struct pg_evidence *fold_result = pg_synthesis_result(jobs[11]);
+	assert(pg_evidence_rule(pg_evidence_premise(fold_result, 0)) == PG_FOLD_ELIM);
+	assert(pg_evidence_subject(fold_result)->core == pg_evidence_subject(pg_synthesis_result(jobs[3]))->core);
+	assert(!pg_computation_resolve("kernel/fold/v2"));
 	for (unsigned side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
 		const struct pg_evidence *transport = pg_synthesis_result(jobs[7 + 2 * side]);
 		const struct pg_evidence *lift = pg_synthesis_result(jobs[8 + 2 * side]);

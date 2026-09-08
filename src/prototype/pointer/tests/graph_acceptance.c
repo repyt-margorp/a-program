@@ -9,14 +9,16 @@
 
 static const char *name(void *owner, const struct pg_object *object)
 {
-	if (object == pg_universe(owner, 0)->as.reference) return "kernel/universe/0/v1";
-	return object == &pg_return_operation ? "kernel/return/v1" : NULL;
+	(void)owner;
+	static char buffer[64];
+	const char *label = pg_classifier_name(object, buffer, sizeof(buffer));
+	return label ? label : pg_computation_name(object);
 }
 
 static const struct pg_object *resolve(void *owner, const char *label)
 {
-	if (!strcmp(label, "kernel/universe/0/v1")) return pg_universe(owner, 0)->as.reference;
-	return !strcmp(label, "kernel/return/v1") ? &pg_return_operation : NULL;
+	const struct pg_object *object = pg_classifier_resolve(owner, label);
+	return object ? object : pg_computation_resolve(label);
 }
 
 static void rejected_prefixes(FILE *file)

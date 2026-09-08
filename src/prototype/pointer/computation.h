@@ -11,6 +11,10 @@ extern const struct pg_object pg_thunk_operation;
 extern const struct pg_object pg_force_operation;
 /* Zero-operation-clause fold: applied to M and its raw return continuation. */
 extern const struct pg_object pg_fold_operation;
+/* Versioned names of the fixed pure operators for graph relocation. These
+ * neither execute a computation nor certify a typed use of an operator. */
+const char *pg_computation_name(const struct pg_object *object);
+const struct pg_object *pg_computation_resolve(const char *name);
 /* One structural eta contraction, or NULL. Never evaluates the operands.
  * Shared by semantic evaluation and action under a binder. */
 const struct pg_term *pg_computation_eta(struct pg_graph *graph, const struct pg_term *term);

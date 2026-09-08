@@ -4528,6 +4528,15 @@ Shared dependency collection after `f7f0d49` (`dag.c`):
 
 Classifier descriptor transport after `499cabb`:
 
+- [x] After `57aefbd`, move fixed RETURN/THUNK/FORCE/FOLD descriptor names
+  into their computation owner; acceptance and derivation fixtures no longer
+  maintain private operation-name tables. Extend the separate-process derivation
+  fixture with a checked zero-clause FOLD and its directed WHNF obligation.
+  The reader retains the FOLD premise and obtains the same result as its source
+  computation through ordinary Solve. Twelve roots plus source consumers take
+  363 transitions for either scheduling chunk. Optimized acceptance/derivation
+  tests and ASan/UBSan derivation tests passed. This covers the fixed pure
+  operator, not general handler clauses, effect requests or completed `.a` roots.
 - [x] The classifier owner supplies canonical versioned names and resolves its
   own Universe/Pi/F/U references. Universe levels are parsed without truncation;
   signs, whitespace, leading-zero aliases, overflow, unknown versions and
