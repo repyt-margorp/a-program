@@ -3772,6 +3772,24 @@ test C: +9/-0. This reduces generated scopes, not source LOC, and does not close
 the outstanding effects, exit, image or typed-symmetry gates.
 Normal and ASan/UBSan pointer checks pass.
 
+September 8 endpoint-work checkpoint after `a84c7d2`: the synchronous
+`pg_identity_face_endpoint` now drives the same resumable endpoint worker that
+callers can advance explicitly. A fuel unit performs one descent or unwind
+step. Zero fuel does not progress, intermediate endpoint evidence is not exposed
+as the final result, and cancellation frees temporary frames without retracting
+already accepted premises. There is no parallel extraction algorithm or new
+evidence rule. The worker borrows the typing/classifier stores and is not an
+image persistence format.
+
+Tests split every traversal of the tested full 1-3D cube endpoints at every
+step: final evidence and total traversal steps match the synchronous result.
+They also cover pending cancellation, unsupported depth, sticky failure and
+completion with zero additional fuel. Formation recovery and individual rule
+applications remain synchronous inside a step; this is not a wall-clock bound
+or completed budgeted kernel. Typed center symmetry and N2 remain open.
+Implementation C: +86/-30; header: +14/-0; tests: +29/-0.
+Normal and ASan/UBSan pointer checks and the 512 KiB-stack Identity test pass.
+
 ## 8. Program Image and Persistence
 
 One in-memory program owns graph roots, typed occurrences, declarations and work

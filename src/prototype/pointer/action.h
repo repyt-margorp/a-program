@@ -28,6 +28,20 @@ const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side);
 
+/* The same derivation construction, suspended between descent/unwind steps.
+ * advance: 0 pending, 1 complete, -1 unsupported or allocation failure (not a
+ * proof of uninhabitance). No partial result is exposed. Formation recovery
+ * and individual proof-rule applications remain synchronous within a step;
+ * fuel does not bound their cost. The typing/classifier stores must outlive
+ * this work. Destroying pending work does not retract accepted premises. */
+struct pg_identity_endpoint_work;
+struct pg_identity_endpoint_work *pg_identity_endpoint_init(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side);
+int pg_identity_endpoint_advance(struct pg_identity_endpoint_work *work, uint64_t fuel);
+const struct pg_evidence *pg_identity_endpoint_result(const struct pg_identity_endpoint_work *work);
+void pg_identity_endpoint_destroy(struct pg_identity_endpoint_work *work);
+
 /* Select an ordered proper face of the outer face->target Identity directions.
  * Validate those directions from formation evidence, then compose endpoint
  * selections. No center, degeneracy or nonidentity axis permutation is admitted.

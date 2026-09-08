@@ -956,6 +956,18 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 	assert(!pg_identity_face_endpoint(typing, classifiers, empty, square_type, 0, PG_IDENTITY_LEFT));
 	assert(!pg_identity_face_endpoint(typing, classifiers, source, square_type, 0, (enum pg_identity_direction)2));
 	assert(!pg_identity_face_endpoint(typing, classifiers, source, square_type, SIZE_MAX, PG_IDENTITY_LEFT));
+	struct pg_identity_endpoint_work *unfinished = pg_identity_endpoint_init(typing, classifiers,
+		source, square_type, 1, PG_IDENTITY_LEFT);
+	assert(unfinished && pg_identity_endpoint_advance(unfinished, 1) == 0);
+	assert(!pg_identity_endpoint_result(unfinished));
+	pg_identity_endpoint_destroy(unfinished);
+	unfinished = pg_identity_endpoint_init(typing, classifiers, source, square_type, SIZE_MAX, PG_IDENTITY_LEFT);
+	assert(unfinished && pg_identity_endpoint_advance(unfinished, 3) == -1);
+	assert(!pg_identity_endpoint_result(unfinished));
+	assert(pg_identity_endpoint_advance(unfinished, 0) == -1);
+	pg_identity_endpoint_destroy(unfinished);
+	assert(pg_identity_endpoint_advance(NULL, 0) == -1);
+	pg_identity_endpoint_destroy(NULL);
 	const struct pg_binding_cube *square = pg_binding_cube(&dimensions, 2);
 	struct pg_coordinate coordinates[2] = {{PG_ENDPOINT_ZERO, 0}, {PG_AXIS, 0}};
 	const struct pg_binding_face *centers[4];
@@ -1267,6 +1279,23 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 						const struct pg_evidence *endpoint = pg_identity_face_endpoint(typing, classifiers, all,
 							formation, depth, side ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT);
 						assert(endpoint && selected);
+						if (d == dimension) {
+							uint64_t steps = 2 * depth + 1;
+							for (uint64_t cut = 0; cut <= steps; ++cut) {
+								struct pg_identity_endpoint_work *pending = pg_identity_endpoint_init(typing,
+									classifiers, all, formation, depth, side ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT);
+								assert(pending && !pg_identity_endpoint_result(pending));
+								int status = pg_identity_endpoint_advance(pending, cut);
+								assert(status == (cut == steps));
+								assert(pg_identity_endpoint_result(pending) == (status ? endpoint : NULL));
+								uint64_t consumed = cut;
+								while (!status) { status = pg_identity_endpoint_advance(pending, 1); ++consumed; }
+								assert(status == 1 && consumed == steps);
+								assert(pg_identity_endpoint_result(pending) == endpoint);
+								assert(pg_identity_endpoint_advance(pending, 0) == 1);
+								pg_identity_endpoint_destroy(pending);
+							}
+						}
 						assert(action_result(typing, classifiers, all, &cube_work, endpoint,
 							pg_prove_variable(typing, all, &selected->variable)));
 					}

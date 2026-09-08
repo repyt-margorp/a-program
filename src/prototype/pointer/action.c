@@ -1,4 +1,5 @@
 #include "action.h"
+#include <stdlib.h>
 
 int pg_identity_substitution_images(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
@@ -141,7 +142,18 @@ struct endpoint_frame {
 	struct pg_identity_boundary boundary;
 };
 
-const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
+struct pg_identity_endpoint_work {
+	struct pg_graph temporary;
+	struct pg_typing *typing;
+	struct pg_classifiers *classifiers;
+	const struct pg_evidence *context, *formation, *result;
+	struct endpoint_frame *stack;
+	size_t depth;
+	enum pg_identity_direction side;
+	int failed;
+};
+
+struct pg_identity_endpoint_work *pg_identity_endpoint_init(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side)
 {
@@ -150,39 +162,83 @@ const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(formation, typing)) return NULL;
 	if (pg_evidence_context(context) != pg_evidence_context(formation)) return NULL;
 	if (side != PG_IDENTITY_LEFT && side != PG_IDENTITY_RIGHT) return NULL;
-	struct pg_graph temporary = {0};
-	struct endpoint_frame *stack = NULL;
-	const struct pg_evidence *result = NULL;
-	for (;;) {
-		formation = pg_identity_formation(typing, classifiers, formation);
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	struct pg_identity_endpoint_work *work = calloc(1, sizeof(*work));
+	if (!work) return NULL;
+	work->typing = typing;
+	work->classifiers = classifiers;
+	work->context = context;
+	work->formation = formation;
+	work->depth = depth;
+	work->side = side;
+	return work;
+}
+
+static int endpoint_step(struct pg_identity_endpoint_work *work)
+{
+	struct pg_typing *typing = work->typing;
+	if (!work->result) {
+		const struct pg_evidence *formation = pg_identity_formation(typing, work->classifiers, work->formation);
 		struct pg_identity_boundary boundary;
-		if (!pg_identity_boundary_view(formation, &boundary)) goto done;
-		if (!depth) {
-			result = side == PG_IDENTITY_LEFT ? boundary.left : boundary.right;
-			break;
+		if (!pg_identity_boundary_view(formation, &boundary)) return -1;
+		if (!work->depth) {
+			work->result = work->side == PG_IDENTITY_LEFT ? boundary.left : boundary.right;
+			return 0;
 		}
-		if (pg_evidence_rule(formation) == PG_IDENTITY_INSTANCE) goto done;
-		struct endpoint_frame *frame = pg_alloc(&temporary, sizeof(*frame));
-		if (!frame) goto done;
-		*frame = (struct endpoint_frame){stack, context, boundary};
-		stack = frame;
-		if (boundary.left_substitution) context = pg_evidence_premise(boundary.left_substitution, 0);
-		formation = boundary.family;
-		--depth;
+		if (pg_evidence_rule(formation) == PG_IDENTITY_INSTANCE) return -1;
+		struct endpoint_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
+		if (!frame) return -1;
+		*frame = (struct endpoint_frame){work->stack, work->context, boundary};
+		work->stack = frame;
+		if (boundary.left_substitution) work->context = pg_evidence_premise(boundary.left_substitution, 0);
+		work->formation = boundary.family;
+		--work->depth;
+		return 0;
 	}
-	while (stack) {
-		const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, result);
-		const struct pg_identity_boundary *boundary = &stack->boundary;
-		result = boundary->left_substitution
-			? pg_prove_family_action(typing, type, result, boundary->left_substitution,
-				boundary->right_substitution, boundary->path_count, boundary->paths)
-			: pg_prove_reflexivity(typing, type, result);
-		if (!result) goto done;
-		context = stack->context;
-		stack = stack->previous;
+	const struct endpoint_frame *frame = work->stack;
+	const struct pg_evidence *type = pg_prove_classifier(typing, work->classifiers, work->context, work->result);
+	const struct pg_identity_boundary *boundary = &frame->boundary;
+	work->result = boundary->left_substitution
+		? pg_prove_family_action(typing, type, work->result, boundary->left_substitution,
+			boundary->right_substitution, boundary->path_count, boundary->paths)
+		: pg_prove_reflexivity(typing, type, work->result);
+	if (!work->result) return -1;
+	work->context = frame->context;
+	work->stack = frame->previous;
+	return 0;
+}
+
+int pg_identity_endpoint_advance(struct pg_identity_endpoint_work *work, uint64_t fuel)
+{
+	if (!work || work->failed) return -1;
+	while (!work->result || work->stack) {
+		if (!fuel) return 0;
+		--fuel;
+		if (endpoint_step(work) < 0) { work->failed = 1; return -1; }
 	}
-done:
-	pg_graph_destroy(&temporary);
+	return 1;
+}
+
+const struct pg_evidence *pg_identity_endpoint_result(const struct pg_identity_endpoint_work *work)
+{
+	return work && !work->failed && !work->stack ? work->result : NULL;
+}
+
+void pg_identity_endpoint_destroy(struct pg_identity_endpoint_work *work)
+{
+	if (!work) return;
+	pg_graph_destroy(&work->temporary);
+	free(work);
+}
+
+const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side)
+{
+	struct pg_identity_endpoint_work *work = pg_identity_endpoint_init(typing, classifiers, context, formation, depth, side);
+	while (pg_identity_endpoint_advance(work, UINT64_MAX) == 0) {}
+	const struct pg_evidence *result = pg_identity_endpoint_result(work);
+	pg_identity_endpoint_destroy(work);
 	return result;
 }
 
