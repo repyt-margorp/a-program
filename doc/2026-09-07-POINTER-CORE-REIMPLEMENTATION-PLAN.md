@@ -1747,6 +1747,18 @@ tests does not discharge it, and datatype admission must not assume completion.
   with its boundary, not alpha-rename it or loosen substitution checking.
   Context/evidence algorithms remain unchanged; tests +56 lines; docs separate.
   Optimized and ASan/UBSan pointer checks pass; Identity passes at 512 KiB stack.
+- [x] September 8, after `e169882`: share full cube-context construction in
+  `pg_identity_cube_context`. It replaces the final declaration with a cube's
+  complete boundary telescope by repeated ordinary context action, retaining
+  the ambient prefix and using one supplied cube for all geometric binders.
+  Tests cover dimensions 0-3, declaration classifiers, exact repeated-request
+  sharing, dependent ambient prefixes and invalid inputs. The transposition
+  boundary test uses this constructor. It introduces no proof rule or filler.
+  Construction is synchronous and materializes 3^n declarations; a future
+  solver request must suspend this work rather than charge it one fuel step.
+  Implementation +51 lines; tests +25/-1; documentation separate. The typed
+  center transposition rule and higher computation remain open.
+  Optimized and ASan/UBSan pointer checks pass; Identity passes at 512 KiB stack.
 
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD

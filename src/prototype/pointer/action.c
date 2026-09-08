@@ -251,6 +251,51 @@ done:
 	return result;
 }
 
+const struct pg_evidence *pg_identity_cube_context(struct pg_typing *typing,
+	struct pg_dimensions *dimensions, const struct pg_evidence *source,
+	const struct pg_binding_cube *cube)
+{
+	if (!cube || dimensions->graph != typing->graph) return NULL;
+	if (!pg_evidence_owned_by(source, typing) || pg_evidence_rule(source) != PG_CONTEXT_EXTEND) return NULL;
+	if (cube->dimension > SIZE_MAX / sizeof(struct pg_coordinate)) return NULL;
+	size_t capacity = 1;
+	for (size_t d = 1; d < cube->dimension; ++d) {
+		if (capacity > SIZE_MAX / 3) return NULL;
+		capacity *= 3;
+	}
+	if (capacity > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	struct pg_graph temporary = {0};
+	struct pg_coordinate *coordinates = pg_alloc(&temporary, cube->dimension * sizeof(*coordinates));
+	const struct pg_binding_face **centers = pg_alloc(&temporary, capacity * sizeof(*centers));
+	const struct pg_evidence **paths = pg_alloc(&temporary, capacity * sizeof(*paths));
+	const struct pg_evidence *context = NULL, *left, *right;
+	if ((cube->dimension && !coordinates) || !centers || !paths) goto done;
+	/* Start at the all-zero vertex; later actions replace the entire active
+	 * suffix, retaining the original ambient context. */
+	const struct pg_binding_face *vertex = pg_binding_face(dimensions, cube,
+		pg_dimension_map(dimensions, 0, cube->dimension, coordinates));
+	if (!vertex) goto done;
+	context = pg_prove_context_extension(typing, pg_evidence_premise(source, 0),
+		&vertex->variable, pg_evidence_premise(source, 1));
+	for (size_t d = 1, count = 1; context && d <= cube->dimension; ++d) {
+		for (size_t i = 0; i < count; ++i) {
+			size_t axes = 0, divisor = count / 3;
+			for (size_t j = 0; j + 1 < d; ++j, divisor /= 3) {
+				size_t digit = (i / divisor) % 3;
+				coordinates[j] = digit == 2 ? (struct pg_coordinate){PG_AXIS, axes++}
+					: (struct pg_coordinate){digit ? PG_ENDPOINT_ONE : PG_ENDPOINT_ZERO, 0};
+			}
+			coordinates[d - 1] = (struct pg_coordinate){PG_AXIS, axes++};
+			centers[i] = pg_binding_face(dimensions, cube, pg_dimension_map(dimensions, axes, cube->dimension, coordinates));
+		}
+		context = pg_identity_context(typing, dimensions, context, count, centers, &left, &right, paths);
+		if (d < cube->dimension) count *= 3;
+	}
+done:
+	pg_graph_destroy(&temporary);
+	return context;
+}
+
 const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,
 	struct pg_dimensions *dimensions, const struct pg_evidence *source,
 	const struct pg_dimension_map *face, size_t count,
