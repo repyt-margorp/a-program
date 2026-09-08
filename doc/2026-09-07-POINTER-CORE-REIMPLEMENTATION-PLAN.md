@@ -1535,6 +1535,20 @@ The broader gate is still incomplete. Keep the following obstructions open:
   derived rather than a retained `PG_PI_FORM`, and image recovery beyond the
   supported retained unary/substitution spine. Missing evidence remains
   unsupported; do not manufacture a parameter proof from its erased Core.
+  September 9, after `1eb7977`: recovery now commutes constant-codomain
+  elimination with retained projection/reindex and expands retained curried
+  Pi elimination using its original formation and argument. A regression
+  reproduced failure on projected Pi before the change; all three cases now
+  recover the same nominal Nat and parameter context. Both original and
+  reindexed genuinely dependent Pi types
+  still reject constant-codomain elimination. The worker reuses existing rules
+  and retains its final context/endpoint checks; it does not infer a declaration
+  from Core. Arbitrary converted/normalized Pi provenance and broader image
+  recovery remain open, so this overall item is not checked off.
+  Normal components, eight source checks and six runtime fixtures pass with
+  unchanged example transition counts. Rebuilt ASan/UBSan IADT and synthesis
+  tests pass. Implementation C: +14/-0; tests:
+  +28/-0; documentation separate.
 - [x] Nominal provenance of recursive fields through the checked Self map:
   `pg_substitution_image` borrows the accepted image of an exact source binder.
   The retained-evidence traversal consumes one substitution/projection frame

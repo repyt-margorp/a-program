@@ -395,6 +395,20 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		}
 		case PG_PI_CONSTANT_CODOMAIN: {
 			const struct pg_evidence *pi = formation->premises[0];
+			if (pi->rule == PG_CONTEXT_PROJECTION || pi->rule == PG_REINDEX) {
+				const struct pg_evidence *content = pg_prove_pi_constant_codomain(typing, pi->premises[1]);
+				formation = pi->rule == PG_CONTEXT_PROJECTION
+					? pg_prove_projection(typing, pi->premises[0], content)
+					: pg_prove_reindex(typing, pi->premises[0], content);
+				if (!formation) goto failed;
+				break;
+			}
+			if (pi->rule == PG_PI_CODOMAIN) {
+				const struct pg_evidence *body = pi_body(typing, pi->premises[0], pi->premises[1]);
+				formation = pg_prove_pi_constant_codomain(typing, body);
+				if (!formation) goto failed;
+				break;
+			}
 			if (pi->rule != PG_PI_FORM) goto failed;
 			struct evidence_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
 			if (!frame) goto failed;

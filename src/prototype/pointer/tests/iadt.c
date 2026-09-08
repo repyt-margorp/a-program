@@ -278,6 +278,34 @@ static void schema_positivity(void)
 	assert(recovered.formation == unchanged.formation && recovered.parameters == unchanged.parameters);
 	assert(!pg_inductive_instance(&typing, zero, &recovered));
 	assert(!pg_prove_substitution_projection(&typing, n_context, empty));
+	{
+		const struct pg_evidence *result_type = pg_prove_return_type(&typing, &classifiers,
+			pg_prove_projection(&typing, z_context, nat));
+		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, nat, z_context, result_type);
+		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
+		const struct pg_evidence *curried = pg_prove_pi(&typing, &classifiers, nat, z_context,
+			pg_prove_projection(&typing, z_context, pi));
+		const struct pg_evidence *derived[] = {
+			pg_prove_projection(&typing, n_context, pi),
+			pg_prove_reindex(&typing, map, pi),
+			pg_prove_projection(&typing, n_context, pg_prove_pi_codomain(&typing, curried, zero))
+		};
+		for (size_t i = 0; i < sizeof(derived) / sizeof(*derived); ++i) {
+			const struct pg_evidence *content = pg_prove_return_content(&typing,
+				pg_prove_pi_constant_codomain(&typing, derived[i]));
+			assert(content);
+			struct pg_inductive_instance instance;
+			assert(pg_inductive_instance(&typing, content, &instance));
+			assert(instance.formation == nat && instance.schema == nat_schema);
+			assert(pg_evidence_context(instance.parameters) == pg_evidence_context(n_context));
+		}
+		const struct pg_evidence *z_value = pg_prove_variable(&typing, z_context, z);
+		const struct pg_evidence *dependent = pg_prove_pi(&typing, &classifiers, nat, z_context,
+			pg_prove_return_type(&typing, &classifiers, pg_prove_identity_type(&typing,
+				pg_prove_projection(&typing, z_context, nat), z_value, z_value)));
+		assert(dependent && !pg_prove_pi_constant_codomain(&typing, dependent));
+		assert(!pg_prove_pi_constant_codomain(&typing, pg_prove_reindex(&typing, map, dependent)));
+	}
 	const struct pg_evidence *pred_branch = pg_prove_abstract(&typing, &classifiers,
 		empty, n_context, pg_prove_return(&typing, &classifiers, n_value));
 	const struct pg_evidence *nat_motive = pg_prove_return_type(&typing, &classifiers,
