@@ -167,6 +167,13 @@ struct pg_synthesis_job *pg_synthesis_identity_endpoint(struct pg_synthesis *syn
 struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *synthesis,
 	const struct pg_evidence *substitution, const struct pg_evidence *extension,
 	const struct pg_evidence *image);
+/* Build a complete substitution from independently synthesized image jobs in
+ * source declaration order. Shares the index-result substitution worker: each
+ * image is post-checked after preceding images determine its dependent type.
+ * Requests never supply expected types to producers or publish a partial map. */
+struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesis,
+	const struct pg_evidence *source, const struct pg_evidence *destination,
+	size_t count, struct pg_synthesis_job *const *images);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
  * Requests do not reduce; unsupported neutral heads are not negative proofs.

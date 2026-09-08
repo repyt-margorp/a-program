@@ -3809,6 +3809,26 @@ it does not complete typed symmetry, image resumption or N2.
 Implementation C: +58/-1; header: +11/-0; test C: +56/-0.
 Normal and ASan/UBSan pointer checks pass.
 
+September 8 shared substitution scheduling after `68cc0f3`: extracted the
+existing IADT index-result builder into `substitution_state` and one shared
+stepping path. The new `pg_synthesis_substitution` records source/destination
+context proofs and independent image jobs in declaration order. The same worker
+waits for each image, exposes it through the existing value-input protocol,
+post-checks its dependent classifier through the existing pairing job, and
+publishes only the completed substitution. IADT syntax still generates its own
+image requests; it no longer owns a separate stepping algorithm. No expected
+classifier is passed into an image producer and no new kernel rule is added.
+
+Tests check shared requests, a pending second image dependent on the first,
+split/bulk budgets, reindexing the resulting dependent variable, wrong image
+order, wrong arity and the empty substitution. A square boundary template is
+also instantiated by this shared queue and then reindexed to obtain its opposite
+center formation without that center in the destination context. Face evidence
+is currently supplied before this template request; this is not a fully
+asynchronous higher symmetry operation. N2/N3 remain incomplete.
+Implementation C: +68/-23; header: +7/-0; tests: +92/-0. Normal pointer checks pass.
+ASan/UBSan pointer checks also pass.
+
 ## 8. Program Image and Persistence
 
 One in-memory program owns graph roots, typed occurrences, declarations and work

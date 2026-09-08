@@ -1090,6 +1090,96 @@ static void endpoint_jobs(struct pg_typing *typing, struct pg_classifiers *class
 	pg_dimensions_destroy(&dimensions);
 }
 
+static void substitution_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_object *a = pg_binder(typing->graph), *x = pg_binder(typing->graph), *b = pg_binder(typing->graph);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, a,
+		pg_prove_universe(typing, classifiers, empty, 1));
+	source = pg_prove_context_extension(typing, source, x,
+		pg_prove_value_type(typing, pg_prove_variable(typing, source, a)));
+	const struct pg_evidence *destination = pg_prove_context_extension(typing, empty, b,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_evidence *b_value = pg_prove_variable(typing, destination, b);
+	const struct pg_evidence *a_value = pg_prove_type_value(typing,
+		pg_prove_universe(typing, classifiers, destination, 0));
+	const struct pg_evidence *computation = pg_prove_return(typing, classifiers, b_value);
+	for (unsigned i = 0; i < 32; ++i)
+		computation = pg_prove_force(typing, pg_prove_thunk(typing, classifiers, computation));
+	for (unsigned split = 0; split < 2; ++split) {
+		struct pg_whnf_work work;
+		struct pg_synthesis synthesis;
+		assert(pg_whnf_work_init(&work, typing->graph) == 0);
+		assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+		struct pg_synthesis_job *images[] = {pg_synthesis_evidence(&synthesis, a_value),
+			pg_synthesis_return(&synthesis, destination, computation)};
+		struct pg_synthesis_job *job = pg_synthesis_substitution(&synthesis, source, destination, 2, images);
+		assert(job && pg_synthesis_substitution(&synthesis, source, destination, 2, images) == job);
+		pg_synthesis_advance(&synthesis, 8);
+		assert(pg_synthesis_status(job) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(job));
+		for (unsigned i = 0; pg_synthesis_status(job) == PG_SYNTHESIS_PENDING; ++i) {
+			assert(i < 10000);
+			pg_synthesis_advance(&synthesis, split ? 1 : 10000);
+		}
+		assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *map = pg_synthesis_result(job);
+		assert(pg_evidence_rule(map) == PG_CONTEXT_SUBSTITUTION);
+		assert(pg_evidence_premise(map, 0) == source && pg_evidence_premise(map, 1) == destination);
+		const struct pg_evidence *reindexed = pg_prove_reindex(typing, map, pg_prove_variable(typing, source, x));
+		same_judgement(reindexed, b_value);
+		struct pg_synthesis_job *wrong[] = {images[1], images[0]};
+		complete(&synthesis, pg_synthesis_substitution(&synthesis, source, destination, 2, wrong), PG_SYNTHESIS_REJECTED);
+		assert(!pg_synthesis_substitution(&synthesis, source, destination, 1, images));
+		complete(&synthesis, pg_synthesis_substitution(&synthesis, empty, destination, 0, NULL), PG_SYNTHESIS_DONE);
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&work);
+	}
+}
+
+static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_dimensions dimensions;
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_dimensions_init(&dimensions, typing->graph) == 0);
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, pg_binder(typing->graph),
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_binding_cube *cube = pg_binding_cube(&dimensions, 2);
+	struct pg_coordinate axes[] = {{PG_AXIS, 1}, {PG_AXIS, 0}};
+	const struct pg_evidence *original = pg_identity_cube_context(typing, &dimensions, source, 1, &cube,
+		pg_dimension_identity(&dimensions, 2));
+	const struct pg_evidence *opposite = pg_identity_cube_context(typing, &dimensions, source, 1, &cube,
+		pg_dimension_map(&dimensions, 2, 2, axes));
+	const struct pg_evidence *destination = pg_evidence_premise(original, 0);
+	const struct pg_evidence *template = pg_evidence_premise(opposite, 0);
+	const struct pg_evidence *cursor = template;
+	struct pg_synthesis_job *images[8];
+	for (size_t i = 8; i; --i, cursor = pg_evidence_premise(cursor, 0)) {
+		const struct pg_binding_face *binding = pg_binding_face_view(pg_evidence_context(cursor)->binder);
+		const struct pg_dimension_map *ordered, *intrinsic;
+		assert(pg_dimension_face_factor(&dimensions, binding->face, &ordered, &intrinsic) == 0);
+		assert(intrinsic == pg_dimension_identity(&dimensions, ordered->source));
+		const struct pg_evidence *image = pg_identity_proper_face(typing, classifiers, destination,
+			pg_evidence_premise(original, 1), ordered);
+		images[i - 1] = pg_synthesis_evidence(&synthesis, image);
+		assert(images[i - 1]);
+	}
+	const struct pg_evidence *map = complete(&synthesis,
+		pg_synthesis_substitution(&synthesis, template, destination, 8, images), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *type = complete(&synthesis,
+		pg_synthesis_reindex(&synthesis, map, pg_evidence_premise(opposite, 1)), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_context(type) == pg_evidence_context(destination));
+	assert(pg_evidence_judgement(type) == PG_JUDGEMENT_VALUE_TYPE);
+	assert(pg_evidence_classifier(type) == pg_evidence_classifier(pg_evidence_premise(original, 1)));
+	assert(!pg_context_lookup(pg_evidence_context(destination), pg_evidence_context(opposite)->binder));
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	pg_dimensions_destroy(&dimensions);
+}
+
 static int arbitrary_policy(struct pg_eval *machine)
 {
 	const struct pg_closure *argument = pg_eval_argument(machine, 0);
@@ -2365,6 +2455,8 @@ int main(void)
 	definition_selections(&typing, &classifiers);
 	fair_work(&typing, &classifiers);
 	endpoint_jobs(&typing, &classifiers);
+	substitution_jobs(&typing, &classifiers);
+	square_template_jobs(&typing, &classifiers);
 	library_levels(&typing, &classifiers);
 	named_identity(&typing, &classifiers);
 	named_transport(&typing, &classifiers);
