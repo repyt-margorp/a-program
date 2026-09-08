@@ -2220,6 +2220,32 @@ the typed symmetry operation and its boundary contract. It does not authorize
 an arbitrary relation-to-Identity cast, identify orientations by Core interning,
 or claim a completed HOTT model. Items 1-5 above remain unimplemented gates.
 
+September 8 follow-up against `f2dfb22`: the next typed rule must also preserve
+dependency order across multiple source declarations. `cube_action` builds
+each declaration from the already transformed preceding declarations; a map
+between two resulting telescopes must do the same. For each target declaration,
+first reindex its formation by the partial checked substitution, then construct
+the image of the corresponding source face. Do not pair faces by list position
+or infer a classifier from the erased permutation term. Proper faces of positive
+dimension may themselves require symmetry, so checking only corner references
+does not establish that the partial substitution extends to the center.
+
+`PG_FAMILY_IDENTITY_FORM` already retains the source formation, both endpoint
+substitutions, selected paths and endpoints in its immutable premises.
+`PG_FAMILY_ACTION` retains that formation as premise zero. Reindex and projection
+preserve provenance through premises rather than erasing it. Recover and compose
+these premises when implementing the boundary contract; do not add a competing
+mutable boundary registry. A geometric `pg_binding_face` alone is insufficient.
+An unknown center requires an explicit primitive typed symmetry rule, not an
+application of ordinary family action to an arbitrarily supplied target type.
+This is a remaining implementation requirement, not an admitted axiom here.
+
+Reference rechecked September 8:
+[Narya higher-dimensional cubes and symmetries](https://narya.readthedocs.io/en/latest/observational.html#symmetries-and-degeneracies).
+Narya transforms the synthesized type together with the term. Its cube boundary
+conventions motivate this audit, but do not prove the CBPV rules above for
+A Program; preserving value/computation polarity remains our proof obligation.
+
 After `26fbb3c`, item 2's geometry is checked without introducing a redundant
 permutation-plan API. For an ordered face `f`, factor `p o f = h o u`, where
 `h` selects the moved face and `u` acts inside it. If `q o h = j o v`, direct
@@ -2264,6 +2290,18 @@ Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
   This is a refinement of formal computation, not a typed symmetry theorem.
   Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
   The syntax inventory remains parsing evidence only; N2 and N5 stay open.
+
+- [x] After `f2dfb22`, permutation coordinate composition uses the existing
+  deferred evaluator task: one axis per traversal transition, with caller
+  configuration retained until completion. There is no second scheduler or
+  serialized continuation format. A 128-axis reversal composed with itself
+  exercises all retained-machine budget splits and readback/restart cuts 0-159,
+  including task destruction while pending. The small capture and beta-hidden
+  fixtures use the same checks. Allocation and structural operator interning
+  remain synchronous; this is not a wall-clock bound or complete dimensional
+  resource accounting. The typed symmetry gates above remain open.
+  Optimized and ASan/UBSan full pointer checks and the 512 KiB Core test pass.
+  Implementation C/header delta: +41/-7; tests: +11/-5 (documentation excluded).
 
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.

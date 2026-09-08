@@ -70,6 +70,35 @@ done:
 	return result;
 }
 
+struct composition_work {
+	const struct symmetry_entry *outer, *inner;
+	const struct pg_term *argument;
+	size_t *axes;
+	size_t position;
+};
+
+static int composition_poll(void *state)
+{
+	struct composition_work *work = state;
+	if (work->position == work->outer->dimension) return 1;
+	size_t i = work->position++;
+	work->axes[i] = work->inner->axes[work->outer->axes[i]];
+	return 0;
+}
+
+static int composition_resume(struct pg_eval *machine, void *state)
+{
+	struct composition_work *work = state;
+	const struct pg_term *composed = operator(machine->output, work->outer->dimension, work->axes);
+	const struct pg_term *result = pg_application(machine->output, composed, work->argument);
+	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
+}
+
+static void composition_destroy(void *state)
+{
+	(void)state; /* Work is owned by the evaluator's temporary arena. */
+}
+
 static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, const void *state)
 {
 	const struct symmetry_entry *outer = state;
@@ -77,12 +106,15 @@ static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, 
 	const struct symmetry_entry *inner = owner(term->as.application.function);
 	if (!inner || inner->dimension != outer->dimension) return 1;
 	size_t n = outer->dimension;
-	size_t *axes = pg_alloc(&machine->temporary, n * sizeof(*axes));
-	if (!axes) return -1;
-	for (size_t i = 0; i < n; ++i) axes[i] = inner->axes[outer->axes[i]];
-	const struct pg_term *composed = operator(machine->output, n, axes);
-	const struct pg_term *result = pg_application(machine->output, composed, term->as.application.argument);
-	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
+	struct composition_work *work = pg_alloc(&machine->temporary, sizeof(*work));
+	if (!work) return -1;
+	work->outer = outer;
+	work->inner = inner;
+	work->argument = term->as.application.argument;
+	work->position = 0;
+	work->axes = pg_alloc(&machine->temporary, n * sizeof(*work->axes));
+	if (!work->axes) return -1;
+	return pg_eval_defer(machine, work, composition_poll, composition_resume, composition_destroy);
 }
 
 int pg_symmetry_dispatch(struct pg_eval *machine)
