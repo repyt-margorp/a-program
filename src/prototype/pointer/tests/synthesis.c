@@ -207,6 +207,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
 		struct pg_effect_equation *equation = pg_effect_equation(&effects, row);
 		pg_effect_inference_seal(&effects);
+		const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
 		size_t proofs = typing->proofs.count;
 		struct pg_synthesis_job *empty = rule_job(&synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
 		struct pg_synthesis_job *universe = rule_job(&synthesis, PG_UNIVERSE_FORM, NULL, 1, &empty);
@@ -224,6 +225,10 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			(struct pg_synthesis_job *[]){thunk, context, codomain});
 		struct pg_synthesis_job *lambda = rule_job(&synthesis, PG_LAMBDA_INTRO, NULL, 2,
 			(struct pg_synthesis_job *[]){pi, body});
+		struct pg_token name = {.kind=PG_TOKEN_IDENT, .text="k", .length=1};
+		const struct pg_source_scope *scope = pg_synthesis_bind_context(&synthesis, root, name, k, context);
+		assert(scope && scope == pg_synthesis_bind_context(&synthesis, root, name, k, context));
+		struct pg_synthesis_job *source_variable = request(&synthesis, scope, "v := k;");
 		assert(lambda && !pg_synthesis_result(context) && !pg_synthesis_result(lambda));
 		assert(typing->proofs.count == proofs);
 		for (unsigned steps = 0; pg_synthesis_status(lambda) == PG_SYNTHESIS_PENDING; ++steps) {
@@ -234,6 +239,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_evidence *expected_context = pg_prove_context_extension(typing,
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
+		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));
+		const struct pg_source_scope *bad_scope = pg_synthesis_bind_context(&synthesis, root, name,
+			pg_binder(typing->graph), context);
+		complete(&synthesis, request(&synthesis, bad_scope, "v := k;"), PG_SYNTHESIS_REJECTED);
+		bad_scope = pg_synthesis_bind_context(&synthesis, scope, name, k, context);
+		complete(&synthesis, request(&synthesis, bad_scope, "v := k;"), PG_SYNTHESIS_REJECTED);
 		assert(pg_evidence_subject(pg_synthesis_result(variable))->core == pg_reference(typing->graph, k));
 		const struct pg_effect_row *actual;
 		const struct pg_term *value;

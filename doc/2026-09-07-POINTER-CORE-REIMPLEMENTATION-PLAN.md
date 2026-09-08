@@ -102,6 +102,13 @@ Next implementation sequence (prerequisite for automatic source handlers):
   supplied k binder. No additional Context representation was needed for this
   delayed-acceptance test. Source constraint generation before that acceptance
   is still missing; this fixture must not be counted as closing the source gate.
+  Source attachment is now available through `pg_synthesis_bind_context`: it
+  reserves a lexical binder over the existing context producer and shares the
+  same parent/binder validation as accepted `pg_synthesis_bind`. Source variable
+  requests wait and recover the ordinary variable evidence. Tests reject wrong
+  binders and unrelated parent contexts. This does not yet let body constraint
+  generation run ahead of context acceptance; it adds no provisional proof or
+  alternate Context representation.
 - [ ] Use the existing expression traversal for APP, force/thunk, sequencing
   and clause bodies to construct pending rule applications and row dependencies.
   Carry latent effects through callable types, not a flat side table keyed by

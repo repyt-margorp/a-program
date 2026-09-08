@@ -103,7 +103,7 @@ struct derivation_state {
 	const struct pg_reduction_certificate *reduction;
 };
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, HANDLER_CARRIER_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, APPLICATION_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, HANDLER_CARRIER_JOB, SCOPE_CONTEXT_JOB };
 struct pg_synthesis_job {
 	struct pg_index_entry index;
 	const void *owner;
@@ -244,18 +244,24 @@ const struct pg_source_scope *pg_synthesis_root(struct pg_synthesis *synthesis)
 		pg_synthesis_evidence(synthesis, pg_prove_empty_context(synthesis->typing))});
 }
 
+static int binding_context(struct pg_synthesis *synthesis, const struct pg_source_scope *parent,
+	const struct pg_object *binder, const struct pg_evidence *extended_context)
+{
+	if (!parent || parent->owner != synthesis->owner_key || !extended_context) return 0;
+	if (pg_evidence_judgement(extended_context) != PG_JUDGEMENT_CONTEXT) return 0;
+	const struct pg_context *context = pg_evidence_context(extended_context);
+	if (!source_context(parent)) return 0;
+	if (!context || context->parent != pg_evidence_context(source_context(parent))) return 0;
+	if (context->binder != binder) return 0;
+	/* Check ownership through a primitive judgement, not just a context pointer. */
+	return pg_prove_variable(synthesis->typing, extended_context, binder) != NULL;
+}
+
 const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_object *binder, const struct pg_evidence *extended_context)
 {
-	if (!parent || parent->owner != synthesis->owner_key || !extended_context) return NULL;
-	if (pg_evidence_judgement(extended_context) != PG_JUDGEMENT_CONTEXT) return NULL;
-	const struct pg_context *context = pg_evidence_context(extended_context);
-	if (!source_context(parent)) return NULL;
-	if (!context || context->parent != pg_evidence_context(source_context(parent))) return NULL;
-	if (context->binder != binder) return NULL;
-	/* Check ownership through a primitive judgement, not just a context pointer. */
-	if (!pg_prove_variable(synthesis->typing, extended_context, binder)) return NULL;
+	if (!binding_context(synthesis, parent, binder, extended_context)) return NULL;
 	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent, .name = name,
 		.binder = binder, .context_job = pg_synthesis_evidence(synthesis, extended_context)});
 }
@@ -459,6 +465,21 @@ struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
 	if (!input) return NULL;
 	const void *inputs[] = {input};
 	return request_inputs(synthesis, DERIVATION_JOB, 1, inputs);
+}
+
+const struct pg_source_scope *pg_synthesis_bind_context(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, struct pg_token name,
+	const struct pg_object *binder, struct pg_synthesis_job *context)
+{
+	if (!parent || parent->owner != synthesis->owner_key) return NULL;
+	if (!binder || binder->kind != PG_BINDER) return NULL;
+	if (!context || context->owner != synthesis->owner_key) return NULL;
+	const void *inputs[] = {parent, binder, context};
+	struct pg_synthesis_job *checked = request_inputs(synthesis, SCOPE_CONTEXT_JOB, 3, inputs);
+	if (!checked) return NULL;
+	checked->scope = parent;
+	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent, .name = name,
+		.binder = binder, .context_job = checked});
 }
 
 struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
@@ -3034,6 +3055,17 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		if (!source_context(job->scope)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
 	const struct pg_syntax *syntax = job->syntax;
+	if (job->role == SCOPE_CONTEXT_JOB) {
+		struct pg_synthesis_job *context = (void *)job->inputs[2];
+		if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
+		if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return; }
+		if (!binding_context(synthesis, job->scope, job->inputs[1], context->result)) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		job->result = context->result;
+		finish(synthesis, job, PG_SYNTHESIS_DONE);
+		return;
+	}
 	if (job->role == OPERATION_REFERENCE_JOB) { operation_reference_step(synthesis, job); return; }
 	if (job->role == HANDLER_RETURN_JOB) { handler_return_step(synthesis, job); return; }
 	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }

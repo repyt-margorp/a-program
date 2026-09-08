@@ -42,6 +42,12 @@ const struct pg_source_scope *pg_synthesis_root(struct pg_synthesis *synthesis);
 const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_object *binder, const struct pg_evidence *extended_context);
+/* Reserve a lexical name over a pending context-formation producer. Consumers
+ * await it and validate the exact parent/binder with the same check as bind.
+ * No new context or accepted proof is fabricated by this reservation. */
+const struct pg_source_scope *pg_synthesis_bind_context(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, struct pg_token name,
+	const struct pg_object *binder, struct pg_synthesis_job *context);
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
 /* Reserve the lexical binder before solving its Lambda/Pi domain. Requests
