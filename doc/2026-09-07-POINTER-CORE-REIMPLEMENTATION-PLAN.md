@@ -95,6 +95,13 @@ Next implementation sequence (prerequisite for automatic source handlers):
   producer. Generate body constraints without claiming that this context is
   accepted. Allocate each binder once; publishing the eventual formation must
   neither rename it nor mutate an earlier accepted context.
+  Verified prerequisite: a pending rule DAG now forms `F G A`, `U(F G A)`,
+  context `k : U(F G A)`, `force k`, and its enclosing Lambda after the effect
+  equation resolves. Budget-1 and budget-64 runs use existing Context/variable/
+  Pi/Lambda rules, allocate no evidence while assembling jobs, and preserve the
+  supplied k binder. No additional Context representation was needed for this
+  delayed-acceptance test. Source constraint generation before that acceptance
+  is still missing; this fixture must not be counted as closing the source gate.
 - [ ] Use the existing expression traversal for APP, force/thunk, sequencing
   and clause bodies to construct pending rule applications and row dependencies.
   Carry latent effects through callable types, not a flat side table keyed by

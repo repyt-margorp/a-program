@@ -182,6 +182,71 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 	puts("effect equations: least closure, masks, cycles, shared edges, sealed results and split Solve passed");
 }
 
+static struct pg_synthesis_job *rule_job(struct pg_synthesis *synthesis,
+	enum pg_evidence_rule rule, const struct pg_object *binder, size_t count,
+	struct pg_synthesis_job *const *premises)
+{
+	struct pg_derivation_input *input = pg_alloc(synthesis->typing->graph, sizeof(*input));
+	assert(input);
+	*input = (struct pg_derivation_input){.rule = rule, .parameters.binder = binder, .count = count};
+	return pg_synthesis_rule(synthesis, input, premises, NULL, NULL);
+}
+
+static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	static const struct pg_object_class label_class = {"pending-context-effect"};
+	static const struct pg_object label = {PG_SEMANTIC_OBJECT, &label_class};
+	const struct pg_object *labels[] = {&label};
+	const struct pg_effect_row *row = pg_effect_row(typing->graph, 1, labels);
+	for (unsigned chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_whnf_work normalization;
+		struct pg_effect_inference effects;
+		struct pg_synthesis synthesis;
+		assert(!pg_whnf_work_init(&normalization, typing->graph));
+		assert(!pg_effect_inference_init(&effects, typing->graph));
+		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_effect_equation *equation = pg_effect_equation(&effects, row);
+		pg_effect_inference_seal(&effects);
+		size_t proofs = typing->proofs.count;
+		struct pg_synthesis_job *empty = rule_job(&synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
+		struct pg_synthesis_job *universe = rule_job(&synthesis, PG_UNIVERSE_FORM, NULL, 1, &empty);
+		struct pg_derivation_input formation = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
+		struct pg_synthesis_job *carrier = pg_synthesis_rule(&synthesis, &formation, &universe, &effects, equation);
+		struct pg_synthesis_job *thunk = rule_job(&synthesis, PG_THUNK_TYPE_FORM, NULL, 1, &carrier);
+		const struct pg_object *k = pg_binder(typing->graph);
+		struct pg_synthesis_job *context = rule_job(&synthesis, PG_CONTEXT_EXTEND, k, 2,
+			(struct pg_synthesis_job *[]){empty, thunk});
+		struct pg_synthesis_job *variable = rule_job(&synthesis, PG_VARIABLE, k, 1, &context);
+		struct pg_synthesis_job *body = rule_job(&synthesis, PG_FORCE_ELIM, NULL, 1, &variable);
+		struct pg_synthesis_job *codomain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){context, carrier});
+		struct pg_synthesis_job *pi = rule_job(&synthesis, PG_PI_FORM, NULL, 3,
+			(struct pg_synthesis_job *[]){thunk, context, codomain});
+		struct pg_synthesis_job *lambda = rule_job(&synthesis, PG_LAMBDA_INTRO, NULL, 2,
+			(struct pg_synthesis_job *[]){pi, body});
+		assert(lambda && !pg_synthesis_result(context) && !pg_synthesis_result(lambda));
+		assert(typing->proofs.count == proofs);
+		for (unsigned steps = 0; pg_synthesis_status(lambda) == PG_SYNTHESIS_PENDING; ++steps) {
+			assert(steps < 1000);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		assert(pg_synthesis_status(lambda) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *expected_context = pg_prove_context_extension(typing,
+			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
+		assert(pg_synthesis_result(context) == expected_context);
+		assert(pg_evidence_subject(pg_synthesis_result(variable))->core == pg_reference(typing->graph, k));
+		const struct pg_effect_row *actual;
+		const struct pg_term *value;
+		assert(pg_effect_type_view(pg_evidence_classifier(pg_synthesis_result(body)), &actual, &value));
+		assert(actual == row && value == pg_universe(classifiers, 0));
+		assert(pg_synthesis_result(lambda) == pg_prove_lambda(typing, pg_synthesis_result(pi), pg_synthesis_result(body)));
+		pg_synthesis_destroy(&synthesis);
+		pg_effect_inference_destroy(&effects);
+		pg_whnf_work_destroy(&normalization);
+	}
+	puts("pending contexts: effect-dependent U/F, stable binders and ordinary Lambda derivations passed");
+}
+
 static void effect_expectations(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	static const struct pg_object_class label_class = {"effect-expectation"};
@@ -3854,6 +3919,7 @@ int main(void)
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
 	effect_equations(&typing, &classifiers);
+	pending_effect_contexts(&typing, &classifiers);
 	effect_expectations(&typing, &classifiers);
 	synthesis_lifetime(&typing, &classifiers);
 	accepted_inputs(&typing, &classifiers);
