@@ -3,6 +3,7 @@
 #include "conversion.h"
 #include "identity.h"
 #include "action.h"
+#include "derivation.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -156,6 +157,83 @@ static void schema_positivity(void)
 	assert(pg_data_schema_field_level(NULL, &level) == -1 && level == 42);
 	assert(pg_data_schema_field_level(good, NULL) == -1);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	const struct pg_data_schema *nat_schema = pg_data_schema(&typing, signature, 2, results);
+	const struct pg_evidence *nat = pg_prove_inductive_type(&typing, &classifiers, nat_schema);
+	assert(nat && pg_evidence_rule(nat) == PG_INDUCTIVE_FORM);
+	assert(!pg_evidence_context(nat));
+	assert(pg_evidence_premise(nat, 0) == parameters);
+	assert(pg_evidence_premise_count(nat) == 3);
+	assert(pg_evidence_classifier(nat) == pg_universe(&classifiers, 0));
+	assert(pg_term_independent(pg_evidence_subject(nat)->core, self) == 1);
+	assert(!pg_prove_inductive_type(&typing, &classifiers, bad));
+	assert(!pg_prove_inductive_type(&typing, &classifiers, NULL));
+	const struct pg_evidence *identity = pg_prove_substitution(&typing, empty, empty, 0, NULL);
+	const struct pg_data_layout *nat_layout = pg_data_schema_layout(nat_schema);
+	const struct pg_evidence *zero = pg_prove_constructor(&typing, nat,
+		pg_data_constructor(nat_layout, 0), identity, 0, NULL);
+	const struct pg_evidence *succ = pg_prove_constructor(&typing, nat,
+		pg_data_constructor(nat_layout, 1), identity, 1, &zero);
+	assert(zero && succ && pg_evidence_rule(succ) == PG_CONSTRUCTOR_INTRO);
+	assert(pg_evidence_classifier(succ) == pg_evidence_subject(nat)->core);
+	assert(pg_evidence_subject(succ)->core == pg_application(&graph,
+		pg_reference(&graph, pg_data_constructor(nat_layout, 1)), pg_evidence_subject(zero)->core));
+	assert(pg_prove_classifier(&typing, &classifiers, empty, succ) == pg_evidence_premise(succ, 0));
+	proofs = typing.proofs.count; terms = graph.terms.count;
+	assert(pg_prove_inductive_type(&typing, &classifiers, nat_schema) == nat);
+	assert(pg_prove_constructor(&typing, nat, pg_data_constructor(nat_layout, 1), identity, 1, &zero) == succ);
+	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	const struct pg_data_schema *other_schema = pg_data_schema(&typing, signature, 2, results);
+	const struct pg_evidence *other = pg_prove_inductive_type(&typing, &classifiers, other_schema);
+	assert(other && pg_evidence_subject(other)->core != pg_evidence_subject(nat)->core);
+	assert(!pg_prove_constructor(&typing, other, pg_data_constructor(nat_layout, 0), identity, 0, NULL));
+	assert(!pg_prove_constructor(&typing, other,
+		pg_data_constructor(pg_data_schema_layout(other_schema), 1), identity, 1, &zero));
+	assert(!pg_prove_constructor(&typing, nat, pg_data_constructor(nat_layout, 1), identity, 0, NULL));
+	struct pg_derivation_parameters wire_parameters;
+	assert(pg_derivation_parameters(nat, &wire_parameters) == -1);
+	assert(pg_derivation_parameters(succ, &wire_parameters) == -1);
+	/* Positivity does not establish the universe bound. */
+	const struct pg_evidence *stored_universe = pg_prove_context_extension(&typing, parameters,
+		pg_binder(&graph), pg_prove_projection(&typing, parameters, u));
+	const struct pg_evidence *stored_result = parameter_result(&typing, parameters, stored_universe);
+	const struct pg_data_schema *too_large = pg_data_schema(&typing, signature, 1, &stored_result);
+	assert(too_large && pg_data_schema_positive(too_large, self) == 1);
+	assert(!pg_prove_inductive_type(&typing, &classifiers, too_large));
+	const struct pg_evidence *wide_parameters = pg_prove_context_extension(&typing, empty,
+		pg_binder(&graph), pg_prove_universe(&typing, &classifiers, empty, 1));
+	const struct pg_evidence *wide_fields = pg_prove_context_extension(&typing, wide_parameters,
+		pg_binder(&graph), pg_prove_projection(&typing, wide_parameters, u));
+	const struct pg_evidence *wide_result = parameter_result(&typing, wide_parameters, wide_fields);
+	const struct pg_data_schema *wide_schema = pg_data_schema(&typing,
+		pg_data_signature(&typing, wide_parameters, wide_parameters), 1, &wide_result);
+	const struct pg_evidence *wide = pg_prove_inductive_type(&typing, &classifiers, wide_schema);
+	assert(wide && pg_evidence_classifier(wide) == pg_universe(&classifiers, 1));
+	/* Parameters survive discharge and are actual operands of the family. */
+	const struct pg_object *a = pg_binder(&graph), *box_self = pg_binder(&graph);
+	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, u);
+	const struct pg_evidence *box_parameters = pg_prove_context_extension(&typing, a_context, box_self,
+		pg_prove_universe(&typing, &classifiers, a_context, 0));
+	const struct pg_evidence *box_fields = pg_prove_context_extension(&typing, box_parameters,
+		pg_binder(&graph), pg_prove_variable(&typing, box_parameters, a));
+	const struct pg_evidence *box_images[] = {
+		pg_prove_variable(&typing, box_fields, a), pg_prove_variable(&typing, box_fields, box_self)};
+	const struct pg_evidence *box_result = pg_prove_substitution(&typing, box_parameters, box_fields, 2, box_images);
+	const struct pg_data_schema *box_schema = pg_data_schema(&typing,
+		pg_data_signature(&typing, box_parameters, box_parameters), 1, &box_result);
+	const struct pg_evidence *box = pg_prove_inductive_type(&typing, &classifiers, box_schema);
+	assert(box && pg_evidence_context(box) == pg_evidence_context(a_context));
+	assert(pg_evidence_subject(box)->core == pg_application(&graph,
+		pg_reference(&graph, pg_data_family_object(box_schema)), pg_reference(&graph, a)));
+	const struct pg_evidence *nat_value = pg_prove_type_value(&typing, nat);
+	const struct pg_evidence *box_arguments = pg_prove_substitution(&typing, a_context, empty, 1, &nat_value);
+	const struct pg_object *box_constructor = pg_data_constructor(pg_data_schema_layout(box_schema), 0);
+	const struct pg_evidence *boxed = pg_prove_constructor(&typing, box, box_constructor, box_arguments, 1, &zero);
+	assert(boxed && !pg_evidence_context(boxed));
+	assert(pg_evidence_classifier(boxed) == pg_application(&graph,
+		pg_reference(&graph, pg_data_family_object(box_schema)), pg_evidence_subject(nat)->core));
+	const struct pg_evidence *other_value = pg_prove_type_value(&typing, other);
+	const struct pg_evidence *wrong_arguments = pg_prove_substitution(&typing, a_context, empty, 1, &other_value);
+	assert(!pg_prove_constructor(&typing, box, box_constructor, wrong_arguments, 1, &zero));
 	/* A large index universe does not become a constructor field bound. */
 	const struct pg_evidence *large = pg_prove_universe(&typing, &classifiers, parameters, 4);
 	const struct pg_evidence *indices = pg_prove_context_extension(&typing, parameters, pg_binder(&graph), large);
@@ -165,6 +243,7 @@ static void schema_positivity(void)
 	const struct pg_data_schema *indexed = pg_data_schema(&typing,
 		pg_data_signature(&typing, parameters, indices), 1, &indexed_result);
 	assert(indexed && !pg_data_schema_field_level(indexed, &level) && level == 0);
+	assert(!pg_prove_inductive_type(&typing, &classifiers, indexed));
 	/* A retained signature does not belong to a reinitialized typing store,
 	 * even when no constructors would otherwise force a premise check. */
 	pg_typing_destroy(&typing);

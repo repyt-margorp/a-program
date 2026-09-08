@@ -2781,6 +2781,20 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	const struct pg_evidence *successor_fields = pg_data_schema_fields(conditional_schema, successor);
 	assert(pg_evidence_context(successor_fields)->declared_type == pg_reference(typing->graph, self));
 	assert(pg_evidence_context(successor_fields)->parent == pg_evidence_context(self_context));
+	const struct pg_evidence *admitted = pg_prove_inductive_type(typing, classifiers, conditional_schema);
+	assert(admitted && !pg_evidence_context(admitted));
+	const struct pg_source_scope *nat_scope = pg_synthesis_name(&synthesis, root,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Nat", .length = 3}, admitted);
+	const struct pg_evidence *parameter_map = pg_prove_substitution(typing, empty_context, empty_context, 0, NULL);
+	const struct pg_evidence *zero_value = pg_prove_constructor(typing, admitted,
+		pg_data_constructor(pg_data_schema_layout(conditional_schema), 0), parameter_map, 0, NULL);
+	assert(zero_value);
+	nat_scope = pg_synthesis_name(&synthesis, nat_scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "zero", .length = 4}, zero_value);
+	assert(nat_scope);
+	const struct pg_evidence *application = complete(&synthesis,
+		request(&synthesis, nat_scope, "v:=(\\n:Nat=>n) zero;"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_classifier(application) == pg_return_type(classifiers, pg_evidence_subject(admitted)->core));
 	/* A value of Self cannot shadow the type assumption as another type. */
 	const struct pg_object *element = pg_binder(typing->graph);
 	const struct pg_evidence *element_context = pg_prove_context_extension(typing, self_context, element,

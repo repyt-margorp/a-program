@@ -73,6 +73,10 @@ int pg_data_schema_positive(const struct pg_data_schema *schema,
  * Returns 0 on success; failure leaves the output unchanged. */
 int pg_data_schema_field_level(const struct pg_data_schema *schema, uint64_t *level);
 const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *schema);
+/* Raw nominal reference and retained signature, not formation evidence. */
+const struct pg_object *pg_data_family_object(const struct pg_data_schema *schema);
+size_t pg_data_constructor_count(const struct pg_data_schema *schema);
+const struct pg_evidence *pg_data_schema_parameters(const struct pg_data_schema *schema);
 const struct pg_evidence *pg_data_schema_indices(const struct pg_data_schema *schema);
 const struct pg_evidence *pg_data_schema_fields(const struct pg_data_schema *schema,
 	const struct pg_object *constructor);

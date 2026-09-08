@@ -2,6 +2,7 @@
 #include "computation.h"
 #include "eval.h"
 #include "identity.h"
+#include "iadt.h"
 #include <stdlib.h>
 
 struct pg_evidence {
@@ -23,6 +24,7 @@ static int derived_output(enum pg_evidence_rule rule)
 	case PG_REINDEX: case PG_APP_ELIM: case PG_PI_CODOMAIN:
 	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN:
 	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION:
+	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO:
 		return 1;
 	default: return 0;
 	}
@@ -38,6 +40,7 @@ static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_e
 	 * before substitution or independence checks allocate temporary binders. */
 	if (derived_output(rule)) { subject = NULL; classifier = NULL; }
 	uint64_t hash = ((uintptr_t)context ^ (uintptr_t)subject ^ (uintptr_t)classifier ^ rule) * UINT64_C(1099511628211);
+	hash = (hash ^ (uintptr_t)certificate ^ judgement) * UINT64_C(1099511628211);
 	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
 	*hash_out = hash;
 	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->proofs, hash); candidate; candidate = candidate->next) {
@@ -111,6 +114,95 @@ static int context_proof(const struct pg_typing *typing, const struct pg_evidenc
 {
 	if (!pg_evidence_owned_by(proof, typing)) return 0;
 	return proof->judgement == PG_JUDGEMENT_CONTEXT;
+}
+
+const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_data_schema *schema)
+{
+	const struct pg_evidence *self = pg_data_schema_parameters(schema);
+	if (!context_proof(typing, self) || self->rule != PG_CONTEXT_EXTEND) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	const struct pg_evidence *indices = pg_data_schema_indices(schema);
+	if (!context_proof(typing, indices) || indices->context != self->context) return NULL;
+	uint64_t level, bound;
+	if (!pg_universe_level(self->context->declared_type, &level)) return NULL;
+	const struct pg_evidence *parent = self->premises[0];
+	size_t count = pg_data_constructor_count(schema), parameters;
+	if (count > SIZE_MAX / sizeof(void *) - 1) return NULL;
+	if (pg_context_extension_size(parent->context, NULL, &parameters)) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence *result = NULL;
+	const struct pg_evidence **premises = pg_alloc(&temporary, (count + 1) * sizeof(*premises));
+	if (!premises) goto done;
+	premises[0] = self;
+	for (size_t i = 0; i < count; ++i)
+		premises[i + 1] = pg_data_schema_result(schema,
+			pg_data_constructor(pg_data_schema_layout(schema), i));
+	uint64_t hash;
+	result = find_record(typing, PG_INDUCTIVE_FORM, PG_JUDGEMENT_VALUE_TYPE,
+		parent->context, NULL, NULL, count + 1, premises, schema, &hash);
+	if (result) goto done;
+	if (pg_data_schema_positive(schema, self->context->binder) != 1) goto done;
+	if (pg_data_schema_field_level(schema, &bound) || bound > level) goto done;
+	if (parameters > SIZE_MAX / sizeof(const struct pg_object *)) goto done;
+	const struct pg_object **binders = pg_alloc(&temporary, parameters * sizeof(*binders));
+	if (parameters && !binders) goto done;
+	const struct pg_context *context = parent->context;
+	for (size_t i = parameters; i; --i, context = context->parent) binders[i - 1] = context->binder;
+	const struct pg_term *core = pg_reference(typing->graph, pg_data_family_object(schema));
+	for (size_t i = 0; i < parameters; ++i)
+		core = pg_application(typing->graph, core, pg_reference(typing->graph, binders[i]));
+	const struct pg_term *universe = pg_universe(classifiers, level);
+	if (!core || !universe) goto done;
+	const struct pg_occurrence *subject = pg_occurrence(typing, parent->context, core, NULL, 0, NULL);
+	if (!subject) goto done;
+	result = accept_record(typing, PG_INDUCTIVE_FORM, PG_JUDGEMENT_VALUE_TYPE,
+		parent->context, subject, universe, count + 1, premises, schema, 0, NULL);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
+const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters, size_t count,
+	const struct pg_evidence *const *fields)
+{
+	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
+	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (parameters->premises[0]->context != formation->context) return NULL;
+	const struct pg_data_schema *schema = formation->certificate;
+	if (!pg_data_schema_fields(schema, constructor)) return NULL;
+	const struct pg_evidence *family = pg_prove_reindex(typing, parameters, formation);
+	const struct pg_evidence *self = pg_prove_type_value(typing, family);
+	if (!self) return NULL;
+	const struct pg_evidence *extended = pg_prove_substitution_extend(typing, parameters,
+		formation->premises[0], 1, &self);
+	const struct pg_evidence *instance = pg_data_instance(typing, schema, constructor, extended, count, fields);
+	if (!instance) return NULL;
+	const struct pg_evidence *premises[] = {family, formation, parameters, instance};
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, PG_CONSTRUCTOR_INTRO,
+		PG_JUDGEMENT_VALUE, instance->context, NULL, NULL, 4, premises, constructor, &hash);
+	if (existing) return existing;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence *result = NULL;
+	if (count > SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
+	const struct pg_occurrence **operands = pg_alloc(&temporary, count * sizeof(*operands));
+	if (count && !operands) goto done;
+	const struct pg_term *core = pg_reference(typing->graph, constructor);
+	for (size_t i = 0; i < count; ++i) {
+		operands[i] = fields[i]->subject;
+		core = pg_application(typing->graph, core, operands[i]->core);
+	}
+	if (!core) goto done;
+	const struct pg_occurrence *subject = pg_occurrence(typing, instance->context, core, NULL, count, operands);
+	if (!subject) goto done;
+	result = accept_record(typing, PG_CONSTRUCTOR_INTRO, PG_JUDGEMENT_VALUE,
+		instance->context, subject, family->subject->core, 4, premises, constructor, 0, NULL);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
 }
 
 const struct pg_evidence *pg_prove_empty_context(struct pg_typing *typing)
@@ -1205,6 +1297,7 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	const struct pg_evidence *formation = NULL;
 	switch (term->rule) {
 	case PG_REFLEXIVITY: case PG_FAMILY_ACTION:
+	case PG_CONSTRUCTOR_INTRO:
 	case PG_IDENTITY_TRANSPORT: case PG_IDENTITY_LIFT:
 		formation = term->premises[0];
 		break;

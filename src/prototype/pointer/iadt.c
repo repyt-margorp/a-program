@@ -4,6 +4,7 @@
 
 static const struct pg_object_class constructor_class = {"constructor"};
 static const struct pg_object_class match_class = {"match"};
+static const struct pg_object_class family_class = {"data-family"};
 static const struct pg_object_class match_action_class = {"match-action"};
 static const struct pg_object match_action = {PG_SEMANTIC_OBJECT, &match_action_class};
 
@@ -189,6 +190,7 @@ struct pg_data_signature {
 };
 
 struct pg_data_schema {
+	struct pg_object family;
 	const struct pg_data_layout *layout;
 	const struct pg_data_signature *signature;
 	const struct pg_evidence *results[];
@@ -276,6 +278,7 @@ const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
 	schema = pg_alloc(typing->graph, sizeof(*schema) + count * sizeof(*results));
 	if (!schema) goto done;
 	schema->signature = signature;
+	schema->family = (struct pg_object){PG_SEMANTIC_OBJECT, &family_class};
 	schema->layout = layout;
 	for (size_t i = 0; i < count; ++i) schema->results[i] = results[i];
 done:
@@ -286,6 +289,21 @@ done:
 const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *schema)
 {
 	return schema ? schema->layout : NULL;
+}
+
+const struct pg_object *pg_data_family_object(const struct pg_data_schema *schema)
+{
+	return schema ? &schema->family : NULL;
+}
+
+size_t pg_data_constructor_count(const struct pg_data_schema *schema)
+{
+	return schema ? schema->layout->count : 0;
+}
+
+const struct pg_evidence *pg_data_schema_parameters(const struct pg_data_schema *schema)
+{
+	return schema ? schema->signature->parameters : NULL;
 }
 
 static int schema_fields_check(const struct pg_data_schema *schema,

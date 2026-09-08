@@ -209,6 +209,45 @@ Admission audit after `8b3105b`:
 
 ### Next Implementation Boundary: Pending Recursive Formation
 
+Zero-index inductive rules after `d952804`:
+
+- [x] Implement `PG_INDUCTIVE_FORM` with retained conditional Self-context and
+  constructor result-map premises. The signature must have zero indices and
+  end in `Self : Universe_l`; positivity and every stored-field universe bound
+  are checked before admission. The conclusion discharges exactly that final
+  binder. This is the explicit inductive formation rule, not projection or a
+  substitution accepting an arbitrary replacement for Self.
+- [x] Give each schema a fresh nominal family reference. All remaining
+  parameters occur explicitly in its APP spine; they are not hidden free
+  variables in a descriptor. Repeated formation reuses evidence, whereas a
+  distinct schema with the same shape denotes a different type. Include the
+  certificate pointer in proof hashing as well as equality, so these distinct
+  nominal derivations do not all collide when their premises coincide.
+- [x] Implement `PG_CONSTRUCTOR_INTRO`: instantiate the retained outer
+  parameters, substitute the admitted type for Self, and check actual field
+  values through ordinary typed substitution. The result classifier comes from
+  the instantiated formation, not a caller's expected type. Classifier recovery
+  reads that retained formation. Core constructors still contain erased fields.
+- [x] Test Nat zero/successor, exact repeated-evidence reuse, distinct nominal
+  schemas, wrong fields/arity, negative fields, universe-zero rejection of a
+  stored universe and corresponding universe-one admission, explicit Box
+  parameters and mismatched Box instances. Indexed input remains rejected by
+  this rule. Feed a source-synthesized conditional Nat schema through formation
+  and use the admitted Nat/zero in ordinary source Lambda application.
+  Full component `make check` and rebuilt ASan/UBSan IADT/synthesis tests pass.
+- [ ] Connect ordinary DECLARATION dispatch, automatic Self/universe obligation
+  generation, and qualified constructor names to these rules. The source test
+  above explicitly supplies the kernel formation; unchanged examples are not
+  thereby accepted. Add typed Match/IH and runtime-result checks afterwards.
+- [ ] Extend the nominal descriptor/rules to indexed formation and the required
+  datatype Identity/action, transport, lifting and higher coherence. None is
+  inferred merely from these new rule tags. Raw higher reductions can remain
+  neutral at this intermediate checkpoint, not falsely prove conversion.
+- [ ] Transport nominal schemas and these rule applications through `.a`.
+  `pg_derivation_parameters` currently rejects the two new rules explicitly;
+  their schema/object certificates must not be omitted or serialized as host
+  pointers. No unsupported nominal proof is silently exported as accepted.
+
 Ownership audit after `2e71ac3`:
 
 Lifetime correction after `0608b0d`:
