@@ -1170,6 +1170,30 @@ static void action_scope_exchange(struct pg_classifiers *classifiers)
 				acted[order] = pg_application(graph, acted[order], boundary[i ^ order][j]);
 	}
 	converts(&work, acted[0], acted[1]);
+	const struct pg_object *u = pg_binder(graph), *v = pg_binder(graph);
+	const struct pg_binding_value rename[] = {
+		{x, pg_reference(graph, u)}, {y, pg_reference(graph, v)}
+	};
+	const struct pg_term *renamed = pg_term_substitute(graph, body, 2, rename);
+	renamed = pg_identity_action(graph, pg_lambda(graph, v, pg_lambda(graph, u, renamed)));
+	for (size_t i = 2; i; --i)
+		for (size_t j = 0; j < 3; ++j) renamed = pg_application(graph, renamed, boundary[i - 1][j]);
+	converts(&work, acted[0], renamed);
+	/* A nested binder shadows x only within its own body. The repeated
+	 * subterm is reached both as function content and as an argument. */
+	const struct pg_term *shared = pg_application(graph, pg_reference(graph, y), pg_reference(graph, x));
+	const struct pg_term *nested = pg_identity_instance(graph, pg_identity_action(graph, a),
+		pg_lambda(graph, x, shared), pg_application(graph, shared, shared));
+	const struct pg_term *shadow_actions[2];
+	for (size_t order = 0; order < 2; ++order) {
+		const struct pg_object *binders[] = {x, y};
+		shadow_actions[order] = pg_identity_action(graph,
+			pg_lambda(graph, binders[order], pg_lambda(graph, binders[order ^ 1], nested)));
+		for (size_t i = 0; i < 2; ++i)
+			for (size_t j = 0; j < 3; ++j)
+				shadow_actions[order] = pg_application(graph, shadow_actions[order], boundary[i ^ order][j]);
+	}
+	converts(&work, shadow_actions[0], shadow_actions[1]);
 	/* Environment exchange must not forget the selected center proof. */
 	const struct pg_term *changed = pg_application(graph, acted[0]->as.application.function,
 		pg_reference(graph, pg_binder(graph)));

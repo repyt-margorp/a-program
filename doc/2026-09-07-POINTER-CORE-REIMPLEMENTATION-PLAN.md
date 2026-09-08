@@ -157,6 +157,25 @@ implementation/header changes are +151/-17 lines, test C +147/-3 (documentation
 excluded). This checkpoint is suitable for the rewrite branch, not main or
 N0-N7 completion.
 
+#### Follow-up: scope reuse and capture regressions
+
+After `0a3d2ec`, split preparation of the source-binder array from allocation of
+fresh administrative triple binders. `order_scope` now allocates triples only
+when it actually rebuilds the environment; `action_body` rebuilding the original
+source prefix allocates none. Both reuse the same `action_binding` structure,
+without an additional graph or evidence representation. This removes 3*n fresh
+binders per unchanged n-binding ordering check and per source-only rebuild;
+it is not a measured whole-compiler speedup. Source traversal is still synchronous.
+
+The exchange regression additionally checks alpha-renamed source binders,
+lexical shadowing and a shared subterm reached both under a binder and outside
+it. These are operational scope tests, supplementary to the existing typed
+cube test, not new higher equality axioms. Implementation C: +14/-5;
+test C: +24/-0, documentation excluded.
+Optimized and ASan/UBSan full pointer checks, plus the 512 KiB Identity run,
+pass after these changes. The pending bounded-work and general N2 obligations
+are unchanged.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,

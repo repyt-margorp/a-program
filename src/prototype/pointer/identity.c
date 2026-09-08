@@ -126,20 +126,28 @@ static int action_scope(struct pg_eval *machine, const struct pg_term *source, s
 	return 0;
 }
 
-static int prepare_bindings(struct pg_eval *machine, struct action_scope *scope)
+static int source_bindings(struct pg_eval *machine, struct action_scope *scope)
 {
-	if (!scope->count) return 0;
+	if (!scope->count || scope->bindings) return 0;
 	if (scope->count > SIZE_MAX / sizeof(*scope->bindings)) return -1;
 	scope->bindings = pg_alloc(&machine->temporary, scope->count * sizeof(*scope->bindings));
 	if (!scope->bindings) return -1;
 	const struct pg_term *source = scope->source;
 	for (size_t i = 0; i < scope->count; ++i) {
 		scope->bindings[i].source = source->as.lambda.binder;
+		source = source->as.lambda.body;
+	}
+	return 0;
+}
+
+static int prepare_bindings(struct pg_eval *machine, struct action_scope *scope)
+{
+	if (source_bindings(machine, scope) != 0) return -1;
+	for (size_t i = 0; i < scope->count; ++i) {
 		for (size_t j = 0; j < 3; ++j) {
 			scope->bindings[i].arguments[j] = pg_binder(machine->output);
 			if (!scope->bindings[i].arguments[j]) return -1;
 		}
-		source = source->as.lambda.body;
 	}
 	return 0;
 }
@@ -341,7 +349,7 @@ static int order_scope(struct pg_eval *machine, struct action_scope *scope)
 {
 	if (scope->count < 2) return 1;
 	size_t *order = pg_alloc(&machine->temporary, scope->count * sizeof(*order));
-	if (!order || prepare_bindings(machine, scope) != 0) return -1;
+	if (!order || source_bindings(machine, scope) != 0) return -1;
 	struct pg_index seen;
 	if (pg_index_init(&seen) != 0) return -1;
 	struct scope_visit *pending = NULL;
@@ -392,6 +400,7 @@ static int order_scope(struct pg_eval *machine, struct action_scope *scope)
 	size_t i = 0;
 	while (i < count && order[i] == i) ++i;
 	if (i == count) return 1;
+	if (prepare_bindings(machine, scope) != 0) return -1;
 	struct pg_graph *graph = machine->output;
 	const struct pg_term *result = scope->body;
 	for (i = count; i; --i) result = pg_lambda(graph, scope->bindings[order[i - 1]].source, result);
@@ -410,7 +419,7 @@ static int action_body(struct pg_eval *machine, const struct pg_term *answer)
 	int unchanged = pg_alpha_equal(scope.body, answer);
 	if (unchanged < 0) return -1;
 	if (unchanged) return 1;
-	if (prepare_bindings(machine, &scope) != 0) return -1;
+	if (source_bindings(machine, &scope) != 0) return -1;
 	const struct pg_term *source = abstract_body(machine->output, &scope, answer);
 	return pg_eval_enter(machine, (struct pg_closure){pg_identity_action(machine->output, source), NULL}, 1);
 }
