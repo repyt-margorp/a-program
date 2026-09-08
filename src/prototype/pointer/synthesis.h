@@ -130,6 +130,14 @@ struct pg_synthesis_job *pg_synthesis_handler_carrier(struct pg_synthesis *synth
  * Rules may register dependencies before sealing, without accepting a row. */
 struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synthesis,
 	struct pg_effect_inference *work);
+/* Register (the structural F row of formation minus mask) in target. This
+ * awaits structural information, not accepted evidence or row convergence.
+ * Completion has no proof result. The owner must await every contribution
+ * before sealing work, and retain/check the original formation producer.
+ * Work and target outlive synthesis. Non-F/foreign rows are never guessed. */
+struct pg_synthesis_job *pg_synthesis_effect_contribution(struct pg_synthesis *synthesis,
+	struct pg_effect_inference *work, struct pg_effect_equation *target,
+	const struct pg_effect_row *mask, struct pg_synthesis_job *formation);
 /* Substitute selected converged equation parameters in an unaccepted term.
  * Uses ordinary capture-avoiding substitution, without normalization or proof
  * acceptance. Work must outlive synthesis; notify sealing as above. The equation array is

@@ -95,6 +95,20 @@ Next implementation sequence (prerequisite for automatic source handlers):
   Exhaustive three-label seed/mask tests retain the dependency until convergence,
   including the case where an unknown row later contains a handled operation.
   Automatic source classifier propagation and equation transport remain open.
+  `pg_synthesis_effect_contribution` now awaits the existing structural
+  formation producer and registers its F row (minus a supplied closed mask)
+  through `pg_effect_contribution`. It neither waits for the original proof
+  nor runs a separate syntax/effect walker. Exact work/target/mask/producer
+  requests share one scheduling job; the existing equation graph owns the
+  dependency and solution. Completion is registration, not accepted evidence.
+  The owner must finish all registrations before sealing; late jobs reject.
+  Tests register both masked and unmasked edges from an unaccepted carrier,
+  reject non-F formation, keep its evidence pending, and check both converged
+  results and completed-request reuse after sealing. This connects structural
+  jobs to equations; automatic handler contribution enumeration, pending block
+  assembly and equation transport are still unfinished.
+  Normal checks, all eight source/six runtime cases and rebuilt ASan/UBSan
+  synthesis tests pass; existing example transition counts are unchanged.
   Validation: normal `check`, eight example synthesis cases, six runtime result
   cases, and rebuilt ASan/UBSan synthesis tests pass for this change.
 - [ ] Generalize existing unaccepted rule inputs to await parameter producers

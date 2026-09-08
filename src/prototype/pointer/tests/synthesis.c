@@ -384,6 +384,19 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, derived_structure, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(derived_structure) == symbolic_f);
 		assert(!pg_synthesis_result(derived_carrier) && !pg_synthesis_result(lambda));
+		struct pg_effect_equation *collected = pg_effect_equation(&effects, no_effects);
+		struct pg_effect_equation *masked = pg_effect_equation(&effects, no_effects);
+		struct pg_synthesis_job *contribution = pg_synthesis_effect_contribution(&synthesis,
+			&effects, collected, no_effects, derived_carrier);
+		assert(contribution == pg_synthesis_effect_contribution(&synthesis,
+			&effects, collected, no_effects, derived_carrier));
+		assert(!complete(&synthesis, contribution, PG_SYNTHESIS_DONE));
+		assert(!complete(&synthesis, pg_synthesis_effect_contribution(&synthesis,
+			&effects, masked, row, derived_carrier), PG_SYNTHESIS_DONE));
+		complete(&synthesis, pg_synthesis_effect_contribution(&synthesis,
+			&effects, collected, no_effects, universe), PG_SYNTHESIS_REJECTED);
+		assert(!pg_effect_inference_result(&effects, collected));
+		assert(!pg_synthesis_result(derived_carrier));
 		assert(!pg_synthesis_result(pi) && !pg_synthesis_result(context));
 		struct pg_synthesis_job *body_type = pg_synthesis_classifier_structure(&synthesis, body);
 		assert(body_type == pg_synthesis_classifier_structure(&synthesis, body));
@@ -538,6 +551,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_type_structure_result(postcheck_type) == pg_universe(classifiers, 0));
 		assert(!pg_synthesis_result(postcheck));
 		assert(!pg_synthesis_result(application) && !pg_synthesis_result(argument));
+		struct pg_synthesis_job *late_contribution = pg_synthesis_effect_contribution(&synthesis,
+			&effects, masked, no_effects, derived_carrier);
 		pg_effect_inference_seal(&effects);
 		assert(pg_synthesis_effect_inference(&synthesis, &effects));
 		for (unsigned steps = 0; pg_synthesis_status(lambda) == PG_SYNTHESIS_PENDING; ++steps) {
@@ -545,6 +560,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_advance(&synthesis, chunk);
 		}
 		assert(pg_synthesis_status(lambda) == PG_SYNTHESIS_DONE);
+		assert(pg_effect_inference_result(&effects, collected) == row);
+		assert(pg_effect_inference_result(&effects, masked) == no_effects);
+		assert(contribution == pg_synthesis_effect_contribution(&synthesis,
+			&effects, collected, no_effects, derived_carrier));
+		assert(!complete(&synthesis, contribution, PG_SYNTHESIS_DONE));
+		complete(&synthesis, late_contribution, PG_SYNTHESIS_REJECTED);
 		same_judgement(complete(&synthesis, continuation, PG_SYNTHESIS_DONE), pg_synthesis_result(lambda));
 		const struct pg_evidence *expected_context = pg_prove_context_extension(typing,
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));

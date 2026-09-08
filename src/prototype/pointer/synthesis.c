@@ -108,7 +108,7 @@ struct effect_substitution_state {
 	struct pg_substitution work;
 	const struct pg_term *result;
 };
-enum job_role { BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
+enum job_role { EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
 enum { APPLICATION_RULE_READY = 6, APPLICATION_NEEDS_SEQUENCING = 7 };
 struct pg_synthesis_job {
@@ -399,6 +399,18 @@ struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synt
 		enqueue(synthesis, job);
 	}
 	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_effect_contribution(struct pg_synthesis *synthesis,
+	struct pg_effect_inference *work, struct pg_effect_equation *target,
+	const struct pg_effect_row *mask, struct pg_synthesis_job *formation)
+{
+	if (!work || work->rows != synthesis->typing->graph || !mask) return NULL;
+	if (!pg_effect_equation_parameter(work, target)) return NULL;
+	struct pg_synthesis_job *structure = pg_synthesis_type_structure(synthesis, formation);
+	if (!structure) return NULL;
+	const void *inputs[] = {work, target, mask, structure};
+	return request_inputs(synthesis, EFFECT_CONTRIBUTION_JOB, 4, inputs);
 }
 
 struct pg_synthesis_job *pg_synthesis_effect_substitution(struct pg_synthesis *synthesis,
@@ -3855,6 +3867,22 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		int status = pg_effect_inference_advance(work, 1);
 		if (!status) enqueue(synthesis, job);
 		else finish(synthesis, job, status > 0 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+		return;
+	}
+	if (job->role == EFFECT_CONTRIBUTION_JOB) {
+		struct pg_effect_inference *work = (void *)job->inputs[0];
+		struct pg_synthesis_job *structure = (void *)job->inputs[3];
+		if (work->failed) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (work->sealed) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+		if (structure->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, structure); return; }
+		if (structure->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, structure->status); return; }
+		const struct pg_term *row, *value;
+		if (!pg_effect_type_spine_view(structure->type_structure, &row, &value)) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		int status = pg_effect_contribution(work, row, job->inputs[2], (void *)job->inputs[1]);
+		finish(synthesis, job, !status ? PG_SYNTHESIS_DONE
+			: work->failed ? PG_SYNTHESIS_ERROR : PG_SYNTHESIS_REJECTED);
 		return;
 	}
 	if (job->role == OPERATION_JOB) {
