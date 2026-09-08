@@ -116,20 +116,23 @@ struct pg_effect_inference;
 struct pg_effect_equation;
 /* Recover a constant result value type from an independently synthesized
  * return continuation, then form F G C using the converged equation G.
- * Work is sealed before requesting and outlives synthesis. No clause body
+ * Work outlives synthesis; notify sealing through effect_inference below. No clause body
  * is checked against an expected type here; final handler checking remains
  * required. Dependent/raw-Pi codomains are not coerced to F G C. */
 struct pg_synthesis_job *pg_synthesis_handler_carrier(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *returned,
 	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
-/* Borrow a sealed positive effect-equation graph into ordinary budgeted Solve.
+/* Borrow a positive effect-equation graph into ordinary budgeted Solve.
  * Completion has no proof result: closed rows are read from work and must still
- * be checked by typing rules. Work outlives this synthesis store. */
+ * be checked by typing rules. Work outlives this synthesis store. Unsealed work
+ * parks without polling. After sealing (or construction failure), call this
+ * function again to notify this store; it wakes the same producer once.
+ * Rules may register dependencies before sealing, without accepting a row. */
 struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synthesis,
 	struct pg_effect_inference *work);
 /* Substitute selected converged equation parameters in an unaccepted term.
  * Uses ordinary capture-avoiding substitution, without normalization or proof
- * acceptance. Work must be sealed and outlive synthesis. The equation array is
+ * acceptance. Work must outlive synthesis; notify sealing as above. The equation array is
  * copied; unselected parameters remain unchanged. Completed terms live in graph. */
 struct pg_synthesis_job *pg_synthesis_effect_substitution(struct pg_synthesis *synthesis,
 	const struct pg_term *term, struct pg_effect_inference *work, size_t count,

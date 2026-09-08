@@ -350,8 +350,13 @@ struct pg_synthesis_job *pg_synthesis_handler_return(struct pg_synthesis *synthe
 struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synthesis,
 	struct pg_effect_inference *work)
 {
-	if (!work || work->rows != synthesis->typing->graph || !work->sealed) return NULL;
-	return request_job(synthesis, EFFECT_INFERENCE_JOB, work, NULL);
+	if (!work || work->rows != synthesis->typing->graph) return NULL;
+	struct pg_synthesis_job *job = request_job(synthesis, EFFECT_INFERENCE_JOB, work, NULL);
+	if (job && job->stage && (work->sealed || work->failed)) {
+		job->stage = 0;
+		enqueue(synthesis, job);
+	}
+	return job;
 }
 
 struct pg_synthesis_job *pg_synthesis_effect_substitution(struct pg_synthesis *synthesis,
@@ -3221,7 +3226,12 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == HANDLER_JOB) { handler_step(synthesis, job); return; }
 	if (job->role == HANDLER_CARRIER_JOB) { handler_carrier_step(synthesis, job); return; }
 	if (job->role == EFFECT_INFERENCE_JOB) {
-		int status = pg_effect_inference_advance((void *)job->inputs[0], 1);
+		struct pg_effect_inference *work = (void *)job->inputs[0];
+		if (!work->sealed && !work->failed) {
+			job->stage = 1;
+			return;
+		}
+		int status = pg_effect_inference_advance(work, 1);
 		if (!status) enqueue(synthesis, job);
 		else finish(synthesis, job, status > 0 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;

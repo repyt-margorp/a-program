@@ -118,7 +118,7 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		const struct pg_term *result_type;
 		assert(!pg_effect_type_view(pending_type, &closed_row, &result_type));
 		assert(!pg_effect_inference_result(&work, a));
-		assert(!pg_synthesis_effect_inference(&synthesis, &work));
+		assert(pg_synthesis_effect_inference(&synthesis, &work));
 		assert(pg_effect_dependency(&work, other, rows[0], a) == -1);
 		assert(pg_effect_handler_dependencies(&work, c, a, rows[0], b, 1, &other) == -1);
 		assert(pg_effect_contribution(&work, pg_reference(typing->graph,
@@ -152,10 +152,6 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		assert(work.row_sources.count == source_count && work.dependencies.count == 5);
 		assert(pg_effect_inference_advance(&work, 100) == 0);
 		assert(!pg_effect_inference_result(&work, a));
-		pg_effect_inference_seal(&work);
-		assert(!pg_effect_equation(&work, rows[0]));
-		assert(pg_effect_dependency(&work, a, rows[0], c) == -1);
-		assert(pg_effect_contribution(&work, row_term, rows[0], c) == -1);
 		struct pg_synthesis_job *job = pg_synthesis_effect_inference(&synthesis, &work);
 		assert(job && pg_synthesis_effect_inference(&synthesis, &work) == job);
 		const struct pg_effect_equation *selected[] = {a};
@@ -176,6 +172,21 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		struct pg_derivation_input conflicting = {.rule = PG_RETURN_TYPE_FORM,
 			.parameters.effects = rows[0], .count = 1};
 		assert(!pg_synthesis_rule(&synthesis, &conflicting, &universe_job, &work, a));
+		pg_synthesis_advance(&synthesis, 100);
+		assert(!synthesis.ready);
+		assert(pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
+		assert(!pg_synthesis_result(type_job));
+		assert(!pg_synthesis_effect_substitution_result(materialized));
+		assert(pg_synthesis_effect_inference(&synthesis, &work) == job);
+		assert(!synthesis.ready);
+		/* Graph construction can continue after all consumers have parked. */
+		assert(!pg_effect_contribution(&work, constant_row, rows[7], a));
+		pg_effect_inference_seal(&work);
+		assert(!pg_effect_equation(&work, rows[0]));
+		assert(pg_effect_dependency(&work, a, rows[0], c) == -1);
+		assert(pg_effect_contribution(&work, row_term, rows[0], c) == -1);
+		assert(pg_synthesis_effect_inference(&synthesis, &work) == job);
+		assert(pg_synthesis_effect_inference(&synthesis, &work) == job);
 		unsigned steps = 0;
 		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
 			assert(++steps < 100);

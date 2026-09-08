@@ -161,6 +161,17 @@ Next implementation sequence (prerequisite for automatic source handlers):
   Resolve row parameters, then check the retained rule applications using the
   ordinary kernel. Solve must not resynthesize the source under successive G
   guesses; accepted proofs stay immutable.
+  Corrected an API ordering obstacle: effect producers, parameterized rules and
+  substitutions can now be registered BEFORE sealing. An unsealed effect job
+  parks off the ready queue instead of repeatedly consuming Solve budget.
+  After sealing (or construction failure), the owner re-requests
+  `pg_synthesis_effect_inference` to wake that same producer once. Sealed-at-entry
+  use remains supported. Tests park rule/substitution consumers, add a further
+  dependency, then notify sealing twice and finish with the expected least row.
+  Source traversal still needs to determine when all contributions are present;
+  this change removes premature-seal requirements, not that outstanding task.
+  Validation: `check`, example synthesis/runtime gates and rebuilt ASan/UBSan
+  synthesis tests pass with pre-seal consumers and repeated notification.
 - [ ] Connect this path to ordinary handler source dispatch. Retain regressions
   for reissuing clauses, nested masks, quoted/passed resumptions, invalid pure
   expectations, aliases, and split budgets. The hand-supplied effect graph in
