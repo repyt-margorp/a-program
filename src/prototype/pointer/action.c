@@ -186,6 +186,47 @@ done:
 	return result;
 }
 
+const struct pg_evidence *pg_identity_proper_face(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *formation, const struct pg_dimension_map *face)
+{
+	if (!face || face->source >= face->target || !face->coordinates) return NULL;
+	if (!pg_evidence_owned_by(context, typing)) return NULL;
+	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
+	if (!pg_evidence_owned_by(formation, typing)) return NULL;
+	if (pg_evidence_context(context) != pg_evidence_context(formation)) return NULL;
+	size_t axes = 0;
+	const struct pg_evidence *layer = formation;
+	for (size_t i = 0; i < face->target; ++i) {
+		struct pg_coordinate coordinate = face->coordinates[i];
+		switch (coordinate.kind) {
+		case PG_AXIS:
+			if (coordinate.axis != axes++) return NULL;
+			break;
+		case PG_ENDPOINT_ZERO: case PG_ENDPOINT_ONE: break;
+		default: return NULL;
+		}
+		layer = pg_identity_formation(typing, classifiers, layer);
+		struct pg_identity_boundary boundary;
+		if (!pg_identity_boundary_view(layer, &boundary)) return NULL;
+		layer = boundary.family;
+	}
+	if (axes != face->source) return NULL;
+	const struct pg_evidence *result = NULL;
+	size_t retained = 0, remaining = face->target - face->source;
+	for (size_t i = face->target; i; --i) {
+		enum pg_coordinate_kind kind = face->coordinates[i - 1].kind;
+		if (kind == PG_AXIS) { ++retained; continue; }
+		result = pg_identity_face_endpoint(typing, classifiers, context, formation, retained,
+			kind == PG_ENDPOINT_ZERO ? PG_IDENTITY_LEFT : PG_IDENTITY_RIGHT);
+		if (!result) return NULL;
+		if (!--remaining) return result;
+		formation = pg_prove_classifier(typing, classifiers, context, result);
+		if (!formation) return NULL;
+	}
+	return result;
+}
+
 const struct pg_evidence *pg_identity_context_extend(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *family, const struct pg_object *left,

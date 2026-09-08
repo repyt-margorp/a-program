@@ -28,6 +28,14 @@ const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side);
 
+/* Select an ordered proper face of the outer face->target Identity directions.
+ * Validate those directions from formation evidence, then compose endpoint
+ * selections. No center, degeneracy or nonidentity axis permutation is admitted.
+ * An inherited Identity below the selected directions is left intact. */
+const struct pg_evidence *pg_identity_proper_face(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *formation, const struct pg_dimension_map *face);
+
 /* Extend Gamma by x0 : A, x1 : B, x01 : R x0 x1 for a supplied checked
  * R : Id Universe_i A B in Gamma. Binders may be binding-cube faces, but
  * their pointers alone supply no typing. No transport or new R is inferred. */

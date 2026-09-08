@@ -1045,6 +1045,12 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 		} else {
 			assert(pg_evidence_rule(recovered) == PG_FAMILY_IDENTITY_FORM);
 			assert(pg_identity_formation(typing, classifiers, boundary.family));
+			struct pg_coordinate zero = {PG_ENDPOINT_ZERO, 0};
+			const struct pg_evidence *selected = pg_identity_proper_face(typing, classifiers, path_context,
+				formation, pg_dimension_map(&dimensions, 0, 1, &zero));
+			assert(selected == boundary.left);
+			assert(pg_identity_formation(typing, classifiers,
+				pg_prove_classifier(typing, classifiers, path_context, selected)));
 		}
 	}
 	const struct pg_evidence *functions[2];
@@ -1154,6 +1160,33 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 				assert(pg_evidence_classifier(recovered) == pg_evidence_classifier(formation));
 				assert(pg_alpha_equal(pg_evidence_subject(recovered)->core, pg_evidence_subject(formation)->core) == 1);
 				size_t d = face->face->source;
+				if (d == dimension) {
+					size_t cases = 1;
+					for (size_t i = 0; i < d; ++i) cases *= 3;
+					for (size_t code = 0; code + 1 < cases; ++code) {
+						struct pg_coordinate coordinates[3];
+						size_t digits = code, axes = 0;
+						for (size_t i = 0; i < d; ++i, digits /= 3)
+							coordinates[i] = digits % 3 == 2 ? (struct pg_coordinate){PG_AXIS, axes++}
+								: (struct pg_coordinate){digits % 3 ? PG_ENDPOINT_ONE : PG_ENDPOINT_ZERO, 0};
+						const struct pg_dimension_map *selection = pg_dimension_map(&dimensions, axes, d, coordinates);
+						const struct pg_binding_face *selected = pg_binding_restrict(&dimensions, face, selection);
+						const struct pg_evidence *value = pg_identity_proper_face(typing, classifiers, all, formation, selection);
+						assert(value && selected);
+						assert(action_result(typing, classifiers, all, &cube_work, value,
+							pg_prove_variable(typing, all, &selected->variable)));
+					}
+					assert(!pg_identity_proper_face(typing, classifiers, all, formation,
+						pg_dimension_identity(&dimensions, d)));
+					if (d == 3) {
+						struct pg_coordinate permuted[] = {{PG_AXIS, 1}, {PG_AXIS, 0}, {PG_ENDPOINT_ZERO, 0}};
+						assert(!pg_identity_proper_face(typing, classifiers, all, formation,
+							pg_dimension_map(&dimensions, 2, 3, permuted)));
+					}
+					struct pg_coordinate excessive[4] = {{PG_ENDPOINT_ZERO, 0}};
+					assert(!pg_identity_proper_face(typing, classifiers, all, formation,
+						pg_dimension_map(&dimensions, 0, d + 1, excessive)));
+				}
 				for (size_t depth = 0; depth < d; ++depth) {
 					for (unsigned side = 0; side < 2; ++side) {
 						struct pg_coordinate coordinates[3];

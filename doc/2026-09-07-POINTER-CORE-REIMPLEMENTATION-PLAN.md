@@ -2431,6 +2431,24 @@ is synchronous; no bounded wall-clock or general higher-family coverage claim.
 Implementation/header: +61/-0 lines; tests: +36/-0. Normal and ASan/UBSan
 pointer checks pass; the expanded Identity test also passes with a 512 KiB stack.
 
+September 8, after `0b2040b`: `pg_identity_proper_face` composes the endpoint
+operation for ordered proper faces. It verifies the selected outer directions
+against retained formations, fixes coordinates from the outside inward, and
+uses ordinary regularity between successive endpoint selections. It stops after
+the final fixed coordinate without recovering an unused classifier. Inherited
+Identity directions below the selected suffix remain intact. The center,
+nonidentity permutations, missing directions and opaque unexposed inner
+formations are not silently accepted. No new evidence rule or Core node.
+
+Tests select every proper face of full 1-3D cubes for the dependent type/value/
+function context in each tested orientation. Results and classifiers are checked
+against independent geometric restrictions. Additional tests retain an inherited
+path type and reject excessive dimensions, centers and a permuted square face.
+This supplies ordered boundary extraction, not the missing intrinsic symmetry
+on a selected face or the transformed-family formation for the center. N2 stays
+open. Implementation/header: +49/-0; test C: +33/-0. Normal and ASan/UBSan
+pointer checks and the 512 KiB-stack Identity test pass.
+
 - [x] After `a4bc683`, `pg_identity_formation` recovers an explicit Identity
   formation through a chain of accepted reindex/projection derivations. It
   composes their substitutions and rebuilds homogeneous Identity, selected
