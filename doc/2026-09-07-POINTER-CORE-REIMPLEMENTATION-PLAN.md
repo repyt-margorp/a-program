@@ -82,6 +82,14 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Route continuation closing through the same raw application job.
+  A nondependent fold still uses its ordinary rule; when an actual return
+  value is required, its pending producer feeds the application rather than
+  a separate synchronous APP path. `synthesis.c` now has one
+  `pg_prove_application` call site. A two-argument dependent identity test
+  checks that the first value substitutes the second domain under both
+  one-step and 64-step scheduling, against independently constructed evidence.
+  Complete pointer `make check` and ASan/UBSan `synthesis_test` passed.
 - [x] Expose raw typed application on the shared synthesis queue with
   `pg_synthesis_application`. Independently completed producers converge on
   their evidence pointers, expose the callee classifier, use the existing

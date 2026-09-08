@@ -56,6 +56,47 @@ static const struct pg_evidence *normalize(struct pg_synthesis *synthesis,
 	return complete(synthesis, pg_synthesis_normalize(synthesis, context, input), PG_SYNTHESIS_DONE);
 }
 
+static void dependent_application_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *domain = pg_prove_universe(typing, classifiers, empty, 2);
+	const struct pg_object *a = pg_binder(typing->graph), *x = pg_binder(typing->graph);
+	const struct pg_evidence *a_context = pg_prove_context_extension(typing, empty, a, domain);
+	const struct pg_evidence *a_type = pg_prove_value_type(typing, pg_prove_variable(typing, a_context, a));
+	const struct pg_evidence *x_context = pg_prove_context_extension(typing, a_context, x, a_type);
+	const struct pg_evidence *body = pg_prove_return(typing, classifiers, pg_prove_variable(typing, x_context, x));
+	const struct pg_evidence *inner = pg_prove_lambda(typing,
+		pg_prove_pi(typing, classifiers, a_type, x_context, pg_prove_classifier(typing, classifiers, x_context, body)), body);
+	const struct pg_evidence *function = pg_prove_lambda(typing,
+		pg_prove_pi(typing, classifiers, domain, a_context, pg_prove_classifier(typing, classifiers, a_context, inner)), inner);
+	const struct pg_evidence *type_argument = pg_prove_type_value(typing, pg_prove_universe(typing, classifiers, empty, 1));
+	const struct pg_evidence *value_argument = pg_prove_type_value(typing, pg_prove_universe(typing, classifiers, empty, 0));
+	assert(function && type_argument && value_argument);
+	const struct pg_evidence *expected = pg_prove_application(typing,
+		pg_prove_application(typing, function, type_argument), value_argument);
+	assert(expected);
+	for (size_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_whnf_work work;
+		struct pg_synthesis synthesis;
+		assert(pg_whnf_work_init(&work, typing->graph) == 0);
+		assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+		struct pg_synthesis_job *first = pg_synthesis_application(&synthesis, empty,
+			pg_synthesis_normalize(&synthesis, empty, function),
+			pg_synthesis_return(&synthesis, empty, pg_prove_return(typing, classifiers, type_argument)));
+		struct pg_synthesis_job *second = pg_synthesis_application(&synthesis, empty, first,
+			pg_synthesis_evidence(&synthesis, value_argument));
+		assert(first && second && !pg_synthesis_result(first) && !pg_synthesis_result(second));
+		for (size_t count = 0; pg_synthesis_status(second) == PG_SYNTHESIS_PENDING; ++count) {
+			assert(count < 10000);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		assert(pg_synthesis_status(second) == PG_SYNTHESIS_DONE);
+		same_judgement(pg_synthesis_result(second), expected);
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&work);
+	}
+}
+
 static void wait_on(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
 	struct pg_synthesis_job *child)
 {
@@ -2742,6 +2783,7 @@ int main(void)
 	substitution_jobs(&typing, &classifiers);
 	square_template_jobs(&typing, &classifiers);
 	dependent_cube_substitution(&typing, &classifiers);
+	dependent_application_jobs(&typing, &classifiers);
 	shared_conversion_jobs(&typing, &classifiers);
 	library_levels(&typing, &classifiers);
 	named_identity(&typing, &classifiers);

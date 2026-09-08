@@ -1110,26 +1110,25 @@ static const struct pg_evidence *close_continuation(struct pg_synthesis *synthes
 		if (!job->continuation) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return NULL; }
 	}
 	const struct pg_evidence *result;
-	if (frame->value) result = pg_prove_application(synthesis->typing, job->continuation, frame->value);
-	else if (!job->value_job) {
-		result = pg_prove_fold(synthesis->typing, frame->input, job->continuation);
-		if (!result) {
-			/* A dependent result needs an actual checked value, not an
-			 * assumed execution result in the classifier. */
-			job->value_job = pg_synthesis_return(synthesis,
-				pg_evidence_premise(frame->context, 0), frame->input);
-			depend(synthesis, job, job->value_job);
-			return NULL;
+	if (!job->value_job) {
+		if (!frame->value) {
+			result = pg_prove_fold(synthesis->typing, frame->input, job->continuation);
+			if (result) { job->continuation = NULL; return result; }
 		}
-	} else {
-		if (job->value_job->status != PG_SYNTHESIS_DONE) {
-			finish(synthesis, job, job->value_job->status); return NULL;
-		}
-		result = pg_prove_application(synthesis->typing, job->continuation, job->value_job->result);
-		job->value_job = NULL;
+		/* A dependent result needs an actual checked value producer, not an
+		 * assumed execution result in the classifier. */
+		const struct pg_evidence *context = pg_evidence_premise(frame->context, 0);
+		struct pg_synthesis_job *argument = frame->value ? pg_synthesis_evidence(synthesis, frame->value)
+			: pg_synthesis_return(synthesis, context, frame->input);
+		job->value_job = pg_synthesis_application(synthesis, context,
+			pg_synthesis_evidence(synthesis, job->continuation), argument);
+		if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL; }
 	}
+	if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return NULL; }
+	if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return NULL; }
+	result = job->value_job->result;
+	job->value_job = NULL;
 	job->continuation = NULL;
-	if (!result) finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
 	return result;
 }
 
