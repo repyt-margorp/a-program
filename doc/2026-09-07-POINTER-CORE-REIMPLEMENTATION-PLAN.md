@@ -245,6 +245,57 @@ Allocation, hash growth and index cleanup also remain outside a wall-time bound.
 Verification: optimized and ASan/UBSan full pointer checks and the 512 KiB
 Identity run pass; the recorded comparison maximum is 199,049 transitions.
 
+#### In-progress pruning audit (after e5e7ee8)
+
+The working tree makes `prune_scope` poll the existing independence walker
+instead of calling its synchronous wrapper, resuming body dispatch directly
+when no declaration is dropped. This exposes an algorithmic issue: support is
+still rediscovered separately for every source binder, then traversed again by
+the residual-order task. The current full check fails at the 1,000,000-step
+`expose_classifier` conversion limit in dimension 3, identity order, application
+argument 1. Continuing that exact debugger-stopped comparison returns EQUAL at
+1,842,740 total transitions. It is pending work, not a discovered inequality.
+No global budget increase or acceptance exception has been made. These edits
+are uncommitted; the previous accepted checkpoint remains `e5e7ee8`.
+
+Next: unify the support-discovery and residual-order walks. Both need a scoped
+mapping from free source binder to its retained triple. A single DAG visitation
+can collect the used flags and first-occurrence order, avoiding n independent
+walks followed by another ordering walk. Preserve lexical shadowing, especially
+repeated pointers in the source prefix: the innermost source binder must win.
+Do not turn this into context exchange or merge Core terms. For non-residual
+bodies retain declaration order when pruning; only the already admitted
+residual environment rule canonicalizes its ordering. Reuse the incremental
+reconstruction and ordinary body dispatcher rather than maintain two pipelines.
+Revisit the cancellation fixtures: a new pruning task is currently first, so
+tests intended to cover ordering phases must not silently test only pruning.
+
+#### Unified support and residual-order discovery
+
+The working pruning experiment is superseded: `analyze_scope` now discovers
+support and first-occurrence order in one scoped DAG walk. The standalone
+pruning task and per-binder independence comparisons are removed. Source lookup
+starts at the innermost prefix binder, preserving repeated-pointer shadowing.
+If some bindings are unused, an incremental filter retains the original source
+order; otherwise only a nested neutral Act head enables the existing residual
+ordering rule. One reconstruction task handles both cases. Its unchanged case
+resumes body dispatch directly, without repeating either analysis.
+
+The optimized full pointer check passes with the existing 1,000,000-transition
+limit unchanged. This supersedes the preceding budget failure, not the need
+for general N2 verification. Existing tests exercise unused/duplicate binders,
+selected proofs, shared subterms, all reordering cancellation boundaries and
+checked dimensions 0-3. They now encounter one combined task, so reordering
+cancellation coverage is retained rather than displaced by a preliminary task.
+Relative to `e5e7ee8`, implementation C is +63/-57 (net +6); the uncommitted
+per-binder asynchronous pruning implementation is not retained. Source lookup
+still scans prefix entries and lexical shadows incrementally; do not claim
+constant-time lookup or complete elimination of repeated compilation work.
+Final verification: optimized and ASan/UBSan full pointer checks and the 512 KiB
+Identity run pass. The cube-function comparison maximum is 256,454 transitions;
+that metric covers different comparisons from the debugger's 1,842,740-step
+classifier conversion and must not be presented as a direct speedup ratio.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,

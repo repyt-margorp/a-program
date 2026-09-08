@@ -191,36 +191,7 @@ static int enter_action(struct pg_eval *machine, const struct action_scope *scop
 	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
 }
 
-static int prune_scope(struct pg_eval *machine, struct action_scope *scope)
-{
-	if (!scope->count) return 1;
-	unsigned char *keep = pg_alloc(&machine->temporary, scope->count);
-	if (!keep) return -1;
-	const struct pg_term *source = scope->source;
-	size_t retained = 0;
-	for (size_t i = 0; i < scope->count; ++i) {
-		/* Inspect the remaining lambda tail so repeated binder pointers shadow
-		 * outer declarations, just as they do in ordinary substitution. */
-		int absent = pg_term_independent(source->as.lambda.body, source->as.lambda.binder);
-		if (absent < 0) return -1;
-		keep[i] = !absent;
-		retained += keep[i];
-		source = source->as.lambda.body;
-	}
-	if (retained == scope->count) return 1;
-	if (prepare_bindings(machine, scope) != 0) return -1;
-	struct pg_graph *graph = machine->output;
-	const struct pg_term *result = scope->body;
-	for (size_t i = scope->count; i; --i)
-		if (keep[i - 1]) result = pg_lambda(graph, scope->bindings[i - 1].source, result);
-	result = pg_identity_action(graph, result);
-	for (size_t i = 0; i < scope->count; ++i) {
-		if (!keep[i]) continue;
-		for (size_t j = 0; j < 3; ++j)
-			result = pg_application(graph, result, pg_reference(graph, scope->bindings[i].arguments[j]));
-	}
-	return enter_action(machine, scope, result, 0);
-}
+static int action_source_body(struct pg_eval *machine, const struct action_scope *scope);
 
 /* Orient ap f (refl a) toward refl (f a), never the converse for a neutral
  * application. Four administrative binders preserve all incoming closures. */
@@ -345,7 +316,7 @@ static int scope_push(struct pg_graph *arena, struct pg_index *seen, struct scop
 
 /* Residual action carries a binder-to-triple assignment. Exchange only this
  * administrative environment, never accepted dependent contexts or cube axes. */
-struct scope_order_work {
+struct scope_work {
 	struct pg_graph *arena;
 	struct pg_graph *output;
 	struct action_scope scope;
@@ -356,15 +327,15 @@ struct scope_order_work {
 	size_t *order;
 	unsigned char *used;
 	size_t count, lookup;
-	enum { SCOPE_SOURCES, SCOPE_VISIT, SCOPE_ABSTRACT, SCOPE_APPLY, SCOPE_WRAP, SCOPE_READY } phase;
+	enum { SCOPE_SOURCES, SCOPE_HEAD, SCOPE_VISIT, SCOPE_FILTER, SCOPE_ABSTRACT, SCOPE_APPLY, SCOPE_WRAP, SCOPE_READY } phase;
 	const struct pg_term *cursor, *result;
-	size_t position;
-	int changed;
+	size_t position, selected;
+	int changed, canonical;
 };
 
 static int action_body(struct pg_eval *machine, const struct pg_term *answer);
 
-static int scope_visit_poll(struct scope_order_work *work)
+static int scope_visit_poll(struct scope_work *work)
 {
 	if (work->count == work->scope.count) return 1;
 	if (work->reference) {
@@ -373,8 +344,8 @@ static int scope_visit_poll(struct scope_order_work *work)
 			work->shadow = work->shadow->parent;
 			return 0;
 		}
-		if (work->lookup == work->scope.count) { work->reference = NULL; return 0; }
-		size_t i = work->lookup++;
+		if (!work->lookup) { work->reference = NULL; return 0; }
+		size_t i = --work->lookup;
 		if (work->scope.bindings[i].source != work->reference->as.reference) return 0;
 		if (!work->used[i]) {
 			work->used[i] = 1;
@@ -384,7 +355,7 @@ static int scope_visit_poll(struct scope_order_work *work)
 		work->reference = NULL;
 		return 0;
 	}
-	if (!work->pending) return -1;
+	if (!work->pending) return 1;
 	struct scope_visit *visit = work->pending;
 	work->pending = visit->next;
 	/* Mark on visitation, not scheduling: an argument also reached through
@@ -413,31 +384,56 @@ static int scope_visit_poll(struct scope_order_work *work)
 	case PG_REFERENCE: {
 		work->reference = term;
 		work->shadow = visit->shadow;
-		work->lookup = 0;
+		work->lookup = work->scope.count;
 		break;
 	}
 	}
 	return status;
 }
 
-static int scope_order_poll(void *opaque)
+static int scope_poll(void *opaque)
 {
-	struct scope_order_work *work = opaque;
+	struct scope_work *work = opaque;
 	struct action_scope *scope = &work->scope;
 	switch (work->phase) {
 	case SCOPE_SOURCES:
-		if (work->position == scope->count) { work->phase = SCOPE_VISIT; return 0; }
+		if (work->position == scope->count) { work->phase = SCOPE_HEAD; return 0; }
 		scope->bindings[work->position++].source = work->cursor->as.lambda.binder;
 		work->cursor = work->cursor->as.lambda.body;
+		return 0;
+	case SCOPE_HEAD:
+		if (work->cursor->kind == PG_APPLICATION) {
+			work->cursor = work->cursor->as.application.function;
+			return 0;
+		}
+		work->canonical = work->cursor->kind == PG_REFERENCE && work->cursor->as.reference == &identity_action;
+		work->phase = SCOPE_VISIT;
 		return 0;
 	case SCOPE_VISIT: {
 		int status = scope_visit_poll(work);
 		if (status != 1) return status;
+		if (work->count != scope->count) {
+			work->changed = 1;
+			work->position = 0;
+			work->phase = SCOPE_FILTER;
+			work->result = scope->body;
+			return 0;
+		}
+		if (!work->canonical) work->changed = 0;
 		work->phase = work->changed ? SCOPE_ABSTRACT : SCOPE_READY;
 		work->position = scope->count;
 		work->result = scope->body;
 		return 0;
 	}
+	case SCOPE_FILTER:
+		if (work->position == scope->count) {
+			work->position = work->count;
+			work->phase = SCOPE_ABSTRACT;
+			return 0;
+		}
+		if (work->used[work->position]) work->order[work->selected++] = work->position;
+		++work->position;
+		return 0;
 	case SCOPE_ABSTRACT:
 		if (work->position) {
 			const struct pg_object *binder = scope->bindings[work->order[--work->position]].source;
@@ -448,7 +444,11 @@ static int scope_order_poll(void *opaque)
 		}
 		return work->result ? 0 : -1;
 	case SCOPE_APPLY:
-		if (work->position == scope->count) { work->phase = SCOPE_WRAP; return 0; }
+		if (work->position == work->count) {
+			work->position = scope->count;
+			work->phase = SCOPE_WRAP;
+			return 0;
+		}
 		struct action_binding *binding = &scope->bindings[work->order[work->position++]];
 		for (size_t j = 0; j < 3; ++j) {
 			binding->arguments[j] = pg_binder(work->output);
@@ -461,6 +461,9 @@ static int scope_order_poll(void *opaque)
 		if (!work->position) { work->phase = SCOPE_READY; return 0; }
 		--work->position;
 		for (size_t j = 3; j; --j) {
+			if (!scope->bindings[work->position].arguments[j - 1])
+				scope->bindings[work->position].arguments[j - 1] = pg_binder(work->output);
+			if (!scope->bindings[work->position].arguments[j - 1]) return -1;
 			work->result = pg_lambda(work->output, scope->bindings[work->position].arguments[j - 1], work->result);
 			if (!work->result) return -1;
 		}
@@ -470,23 +473,23 @@ static int scope_order_poll(void *opaque)
 	return -1;
 }
 
-static void scope_order_destroy(void *opaque)
+static void scope_destroy(void *opaque)
 {
-	struct scope_order_work *work = opaque;
+	struct scope_work *work = opaque;
 	pg_index_destroy(&work->seen);
 }
 
-static int scope_order_resume(struct pg_eval *machine, void *opaque)
+static int scope_resume(struct pg_eval *machine, void *opaque)
 {
-	struct scope_order_work *work = opaque;
-	if (!work->changed) return pg_eval_demand_closure(machine, (struct pg_closure){work->scope.body, NULL}, action_body);
+	struct scope_work *work = opaque;
+	if (!work->changed) return action_source_body(machine, &work->scope);
 	return pg_eval_enter(machine, (struct pg_closure){work->result, NULL}, 1);
 }
 
-static int order_scope(struct pg_eval *machine, struct action_scope *scope)
+static int analyze_scope(struct pg_eval *machine, struct action_scope *scope)
 {
-	if (scope->count < 2) return 1;
-	struct scope_order_work *work = pg_alloc(&machine->temporary, sizeof(*work));
+	if (!scope->count) return action_source_body(machine, scope);
+	struct scope_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work) return -1;
 	work->arena = &machine->temporary;
 	work->output = machine->output;
@@ -497,8 +500,8 @@ static int order_scope(struct pg_eval *machine, struct action_scope *scope)
 	work->used = pg_alloc(work->arena, scope->count);
 	if (!work->scope.bindings || !work->order || !work->used || pg_index_init(&work->seen) != 0) return -1;
 	int status = scope_push(work->arena, &work->seen, &work->pending, scope->body, NULL);
-	if (!status) status = pg_eval_defer(machine, work, scope_order_poll, scope_order_resume, scope_order_destroy);
-	if (status) scope_order_destroy(work);
+	if (!status) status = pg_eval_defer(machine, work, scope_poll, scope_resume, scope_destroy);
+	if (status) scope_destroy(work);
 	return status;
 }
 
@@ -571,8 +574,13 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 		const struct pg_term *result = pg_identity_action(machine->output, body);
 		return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1 + 3 * scope.count);
 	}
-	status = prune_scope(machine, &scope);
-	if (status != 1) return status;
+	return analyze_scope(machine, &scope);
+}
+
+static int action_source_body(struct pg_eval *machine, const struct action_scope *prepared)
+{
+	struct action_scope scope = *prepared;
+	const struct pg_term *body = scope.body;
 	const struct pg_term *argument = unary_argument(body, &pg_return_operation);
 	if (!argument) argument = unary_argument(body, &pg_thunk_operation);
 	if (!argument && scope.count) argument = unary_argument(body, &pg_force_operation);
@@ -596,8 +604,6 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 	if (head->kind == PG_REFERENCE) {
 		if (head->as.reference == &identity_action) {
 			if (!scope.count) return 1;
-			status = order_scope(machine, &scope);
-			if (status != 1) return status;
 			return pg_eval_demand_closure(machine, (struct pg_closure){body, NULL}, action_body);
 		}
 		/* Uniform higher fields need their own boundary rules, not ordinary
