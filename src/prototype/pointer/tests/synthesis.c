@@ -280,6 +280,28 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(clause_function);
 	scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Result", .length=6}, u1);
+	struct pg_parser handler_parser;
+	struct pg_definition handler_definition;
+	const char *handler_source = "handler := (Op Arg) @#.return x => Result;";
+	pg_parser_init(&handler_parser, typing->graph, handler_source, strlen(handler_source));
+	assert(pg_parser_next(&handler_parser, &handler_definition) == 1);
+	const struct pg_syntax *handler_syntax = handler_definition.expression;
+	struct pg_synthesis_job *handler_input = pg_synthesis_request(&synthesis, scope, handler_syntax->left);
+	struct pg_synthesis_job *handler_return = pg_synthesis_handler_return(&synthesis, scope,
+		handler_input, handler_syntax->items[0].expression);
+	assert(handler_return && !pg_synthesis_result(handler_return));
+	assert(pg_synthesis_handler_return(&synthesis, scope, handler_input,
+		handler_syntax->items[0].expression) == handler_return);
+	const struct pg_evidence *return_function = complete(&synthesis, handler_return, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *return_pi = pg_prove_classifier(typing, classifiers, context, return_function);
+	const struct pg_evidence *return_carrier = pg_prove_pi_constant_codomain(typing, return_pi);
+	same_judgement(return_carrier, pg_prove_return_type(typing, classifiers,
+		pg_prove_universe(typing, classifiers, context, 2)));
+	assert(complete(&synthesis, handler_return, PG_SYNTHESIS_DONE) == return_function);
+	complete(&synthesis, request(&synthesis, scope,
+		"dependent := M @#.return T => \\x:T => x;"), PG_SYNTHESIS_DONE);
+	complete(&synthesis, request(&synthesis, scope,
+		"dependent := (Op Arg) @#.return T => \\x:T => x;"), PG_SYNTHESIS_UNSUPPORTED);
 	const struct pg_evidence *changed = complete(&synthesis,
 		request(&synthesis, scope, "changed := M @#.return x => Result;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *changed_value = pg_prove_return_value(typing, normalize(&synthesis, context, changed));

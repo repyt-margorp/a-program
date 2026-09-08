@@ -83,6 +83,14 @@ struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
  * The declaration and its signature evidence outlive this synthesis store. */
 struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
 	const struct pg_operation_declaration *declaration);
+/* Independently synthesize a #.return clause as a raw continuation Lambda.
+ * The input supplies its result-domain type, not an expected clause codomain.
+ * Shared by exact scope/input/clause; input computations are not executed.
+ * Recover the resulting Pi classifier to obtain the return clause's carrier.
+ * This alone neither infers operation-clause effects nor accepts a handler. */
+struct pg_synthesis_job *pg_synthesis_handler_return(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_synthesis_job *input,
+	const struct pg_syntax *clause);
 struct pg_effect_inference;
 /* Borrow a sealed positive effect-equation graph into ordinary budgeted Solve.
  * Completion has no proof result: closed rows are read from work and must still

@@ -152,6 +152,16 @@ operation declaration from an arbitrary function.
 
 ### September 8 return-only surface handler
 
+- [x] Share independent return-clause synthesis through
+  `pg_synthesis_handler_return(scope, input_producer, clause)`. It produces the
+  raw continuation Lambda and its Pi classifier, using only the input result
+  domain to bind the return variable. No expected codomain is supplied.
+  Return-only handler elaboration now consumes that same producer; continuation
+  Lambda construction is shared with ordinary sequencing. This prepares the
+  result-type input for full handler constraints without guessing output effects.
+  Tests recover a changed return carrier independently, check exact job reuse,
+  and preserve dependent-result handling: a known pure RETURN can instantiate
+  it, while an unresolved operation result remains unsupported.
 - [x] Elaborate `M @#.return x => body` through the existing continuation
   context and `pg_prove_fold`, without a new Core node or proof rule. Synthesize
   the body independently; value bodies use the existing RETURN insertion.
