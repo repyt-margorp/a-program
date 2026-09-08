@@ -135,6 +135,14 @@ struct pg_derivation_input;
  * outlive synthesis. Uses ordinary dependencies, rules and pure work. */
 struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *input);
+/* Same unaccepted rule evaluator, with producer premises instead of loaded
+ * input->premises. Borrow input for the synthesis lifetime. If work/equation
+ * are supplied, await their closed result as the F-formation row parameter;
+ * input->parameters.effects must then be NULL. No provisional proof is made.
+ * The supplied array has input->count entries and is copied into the job key. */
+struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
+	const struct pg_derivation_input *input, struct pg_synthesis_job *const *premises,
+	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
 /* Publish a checked term or formation under an ordinary lexical name. This
  * does not extend the typing context or insert THUNK/RETURN/FORCE. The proof
  * must be available in the parent context (prefix projection is permitted).

@@ -82,6 +82,15 @@ Next implementation sequence (prerequisite for automatic source handlers):
   as well as premise producers. Reuse ordinary `pg_prove_derivation` acceptance;
   do not add provisional evidence or a second rule checker. A loaded `.a` uses
   the same producer graph, with no separate Replay semantics.
+  Implemented prerequisite: `pg_synthesis_rule` supplies premise producers to
+  the same `DERIVATION_JOB` evaluator used by loaded derivations. F formation
+  may await a sealed effect equation instead of a closed row parameter; supplying
+  both is rejected. No provisional conclusion or new kernel rule is added.
+  Handler carrier construction now uses this path. Tests cover chained pending
+  universe/F formation, exact request reuse, foreign equations, inappropriate
+  parameter rules and conflicting row sources. Loaded derivation inputs retain
+  their existing wire format; pending parameter transport/source generation
+  and more general classifier constraints remain unfinished.
 - [ ] Let source binders retain the unaccepted context and its formation
   producer. Generate body constraints without claiming that this context is
   accepted. Allocate each binder once; publishing the eventual formation must

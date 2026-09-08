@@ -5,6 +5,7 @@
 #include "iadt.h"
 #include "prelude.h"
 #include "effect_inference.h"
+#include "derivation_io.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -137,6 +138,18 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		assert(pg_effect_dependency(&work, a, rows[0], c) == -1);
 		struct pg_synthesis_job *job = pg_synthesis_effect_inference(&synthesis, &work);
 		assert(job && pg_synthesis_effect_inference(&synthesis, &work) == job);
+		struct pg_derivation_input universe_input = {.rule = PG_UNIVERSE_FORM, .count = 1};
+		struct pg_synthesis_job *context_job = pg_synthesis_evidence(&synthesis, pg_prove_empty_context(typing));
+		struct pg_synthesis_job *universe_job = pg_synthesis_rule(&synthesis, &universe_input, &context_job, NULL, NULL);
+		struct pg_derivation_input type_input = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
+		struct pg_synthesis_job *type_job = pg_synthesis_rule(&synthesis, &type_input, &universe_job, &work, a);
+		assert(type_job && !pg_synthesis_result(type_job));
+		assert(type_job == pg_synthesis_rule(&synthesis, &type_input, &universe_job, &work, a));
+		assert(!pg_synthesis_rule(&synthesis, &type_input, &universe_job, &work, other));
+		assert(!pg_synthesis_rule(&synthesis, &universe_input, &context_job, &work, a));
+		struct pg_derivation_input conflicting = {.rule = PG_RETURN_TYPE_FORM,
+			.parameters.effects = rows[0], .count = 1};
+		assert(!pg_synthesis_rule(&synthesis, &conflicting, &universe_job, &work, a));
 		unsigned steps = 0;
 		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
 			assert(++steps < 100);
@@ -149,6 +162,9 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		assert(pg_effect_inference_result(&work, c) == rows[(2 | (seed & ~mask)) & ~1u]);
 		assert(!pg_effect_inference_result(&work, other));
 		assert(pg_effect_inference_advance(&work, 0) == 1);
+		const struct pg_evidence *type_proof = complete(&synthesis, type_job, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(type_proof)->core == pg_effect_type(classifiers, rows[seed | 2], value_type));
+		assert(!type_input.parameters.effects);
 		struct pg_binding_value binding = {parameter,
 			pg_effect_reference(typing->graph, pg_effect_inference_result(&work, a))};
 		const struct pg_term *resolved_type = pg_term_substitute(typing->graph, pending_type, 1, &binding);
