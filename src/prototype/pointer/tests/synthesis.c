@@ -383,6 +383,18 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(body_type == pg_synthesis_classifier_structure(&synthesis, body));
 		assert(!complete(&synthesis, body_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(body_type) == symbolic_f);
+		const struct pg_object *result_binder = pg_binder(typing->graph);
+		struct pg_synthesis_job *result_context = pg_synthesis_result_context(&synthesis, context, body, result_binder);
+		assert(result_context == pg_synthesis_result_context(&synthesis, context, body, result_binder));
+		struct pg_token result_name = {.kind = PG_TOKEN_IDENT, .text = "result", .length = 6};
+		const struct pg_source_scope *result_scope = pg_synthesis_bind_context(&synthesis, scope,
+			result_name, result_binder, result_context);
+		assert(result_scope);
+		struct pg_synthesis_job *result_variable = request(&synthesis, result_scope, "v := result;");
+		struct pg_synthesis_job *result_classifier = pg_synthesis_classifier_structure(&synthesis, result_variable);
+		assert(!complete(&synthesis, result_classifier, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(result_classifier) == pg_universe(classifiers, 0));
+		assert(!pg_synthesis_result(result_context) && !pg_synthesis_result(result_variable));
 		struct pg_synthesis_job *source_type = pg_synthesis_classifier_structure(&synthesis, source_variable);
 		struct pg_synthesis_job *source_term = pg_synthesis_term_structure(&synthesis, source_variable);
 		assert(!complete(&synthesis, source_type, PG_SYNTHESIS_DONE));
@@ -465,6 +477,13 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_evidence *expected_context = pg_prove_context_extension(typing,
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
+		const struct pg_evidence *result_proof = complete(&synthesis, result_variable, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(result_proof)->core == pg_reference(typing->graph, result_binder));
+		assert(pg_evidence_classifier(result_proof) == pg_universe(classifiers, 0));
+		assert(pg_evidence_rule(result_proof) == PG_VARIABLE);
+		assert(pg_evidence_context(pg_synthesis_result(result_context))->parent == pg_evidence_context(expected_context));
+		complete(&synthesis, pg_synthesis_result_context(&synthesis, context, variable,
+			pg_binder(typing->graph)), PG_SYNTHESIS_REJECTED);
 		complete(&synthesis, outer_variable, PG_SYNTHESIS_DONE);
 		complete(&synthesis, invalid_quote, PG_SYNTHESIS_REJECTED);
 		const struct pg_evidence *applied = complete(&synthesis, application, PG_SYNTHESIS_DONE);

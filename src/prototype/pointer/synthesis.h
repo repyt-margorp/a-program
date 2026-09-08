@@ -319,6 +319,12 @@ struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis
 struct pg_synthesis_job *pg_synthesis_application_jobs(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *function,
 	struct pg_synthesis_job *argument);
+/* Prepare Gamma,x:A from a pending M:F E A, without executing M or supplying
+ * its result. The caller owns the stable binder; the result is a context
+ * formation producer, usable by pg_synthesis_bind_context. */
+struct pg_synthesis_job *pg_synthesis_result_context(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *computation,
+	const struct pg_object *binder);
 /* Instantiate an independently produced Universe Identity family at two
  * value endpoints. Post-check each against its own endpoint type; never
  * replace the chosen family with a homogeneous or inferred relation. */

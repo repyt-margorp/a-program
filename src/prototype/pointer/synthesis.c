@@ -810,6 +810,22 @@ struct pg_synthesis_job *pg_synthesis_application_jobs(struct pg_synthesis *synt
 	return pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
 }
 
+struct pg_synthesis_job *pg_synthesis_result_context(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *computation,
+	const struct pg_object *binder)
+{
+	if (!context || context->owner != synthesis->owner_key) return NULL;
+	if (!computation || computation->owner != synthesis->owner_key || !binder) return NULL;
+	struct pg_synthesis_job *formation = request_job(synthesis, CLASSIFIER_FORMATION_JOB, context, computation);
+	if (!formation) return NULL;
+	struct pg_derivation_input content_input = {.rule = PG_RETURN_CONTENT, .count = 1};
+	struct pg_synthesis_job *domain = pg_synthesis_rule(synthesis, &content_input, &formation, NULL, NULL);
+	if (!domain) return NULL;
+	struct pg_derivation_input extension = {.rule = PG_CONTEXT_EXTEND, .parameters.binder = binder, .count = 2};
+	struct pg_synthesis_job *premises[] = {context, domain};
+	return pg_synthesis_rule(synthesis, &extension, premises, NULL, NULL);
+}
+
 struct pg_synthesis_job *pg_synthesis_identity_instance(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *family,
 	struct pg_synthesis_job *left, struct pg_synthesis_job *right)
@@ -3347,7 +3363,7 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		case PG_UNIVERSE_FORM:
 			job->type_structure = pg_universe(synthesis->classifiers, input->parameters.level);
 			goto done;
-		case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM: case PG_PI_FORM: case PG_PI_DOMAIN:
+		case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM: case PG_PI_FORM: case PG_PI_DOMAIN: case PG_RETURN_CONTENT:
 		case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE:
 			break;
 		default: input = NULL; break;
@@ -3389,6 +3405,11 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		job->type_structure = pg_thunk_type(synthesis->classifiers, left); break;
 	case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE:
 		job->type_structure = left; break;
+	case PG_RETURN_CONTENT: {
+		const struct pg_term *row;
+		if (!pg_effect_type_spine_view(left, &row, &job->type_structure)) goto unsupported;
+		break;
+	}
 	case PG_PI_DOMAIN: {
 		const struct pg_term *codomain;
 		const struct pg_object *binder;

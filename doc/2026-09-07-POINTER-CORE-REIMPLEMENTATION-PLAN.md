@@ -283,6 +283,18 @@ Next implementation sequence (prerequisite for automatic source handlers):
   ASan/UBSan synthesis tests pass; example transition counts are unchanged.
   This connects pending raw application classifier propagation, not source
   force/sequencing adaptation or automatic handler inference.
+  `pg_synthesis_result_context` now assembles classifier formation,
+  RETURN_CONTENT and CONTEXT_EXTEND producers for a chosen continuation binder.
+  RETURN_CONTENT structurally projects A from F E A without closing E. A source
+  variable attached to this pending context exposes A before effect sealing;
+  ordinary context/variable evidence is accepted afterwards with the same binder.
+  This prepares a hypothetical continuation argument, not the execution result
+  of M. Tests reject passing a value instead of an F computation, and verify
+  exact request reuse and the accepted parent context. No Core/job tag or second
+  Context representation is added. Existing source block/open_continuation paths
+  still require migration to these producers; fold closure is not yet connected.
+  Normal `check`, eight example synthesis cases, six runtime cases and rebuilt
+  ASan/UBSan synthesis tests pass.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
   pointer-equality assumption about capture-avoiding substitution.
