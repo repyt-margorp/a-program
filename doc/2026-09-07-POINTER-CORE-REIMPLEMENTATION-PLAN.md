@@ -43,8 +43,8 @@ Code-level obstruction and implementation order:
 
 1. Ordinary DECLARATION dispatch now admits checked zero-index families.
    Qualified constructor names now use its isolated source export scope.
-   Nonrecursive ELIMINATION handles value scrutinees and constant computation
-   motives. Indexed declarations and general family instantiation remain
+   Nonrecursive ELIMINATION handles value and supported computation scrutinees
+   with constant computation motives. Indexed declarations and general family instantiation remain
    unsupported. The separate `pg_synthesis_data_schema` job still builds
    a conditional schema only; its completion never implies type admission.
 2. `pg_data_schema` in `iadt.c` validates field/result substitutions and derives
@@ -219,6 +219,24 @@ Zero-index inductive rules after `d952804`:
 
 Source Match after `9e1984a`:
 
+Computed scrutinees after `7ab727d`:
+
+- [x] Open the existing sequencing continuation for a computation scrutinee,
+  synthesize branches under its result binder, and close with the same
+  continuation/FOLD mechanism used by applications and blocks. A source Match
+  does not require the scrutinee to be executed during synthesis.
+- [x] Extend nominal provenance recovery through RETURN-type inversion and
+  codomain instantiation of a directly retained Pi formation. The latter uses
+  ordinary projection, pairing and reindex evidence, not raw Core lookup.
+- [x] Test a computation block and a successor application as scrutinees.
+  Their synthesized evidence is FOLD, and explicit subsequent normalization
+  yields the expected predecessor value with its original nominal classifier.
+  Full component `check` and rebuilt ASan/UBSan synthesis tests pass; unchanged
+  examples remain 5/8. This is not full source or runtime acceptance.
+- [ ] Broaden formation inversion for noncanonical Pi provenance and dependent
+  sequencing. This does not complete arbitrary effectful source execution,
+  indexed family instances, recursive IH, or dependent motive inference.
+
 - [x] Recover the scrutinee's admitted family from its classifier evidence and
   get lexical labels from that formation's existing source export scope. This
   metadata never determines membership or replaces the semantic schema.
@@ -236,8 +254,8 @@ Source Match after `9e1984a`:
   field arity and leakage of a field name into another branch. Existing 05 and
   06 are accepted unchanged; the overall source gate is still incomplete.
   Full component `check` and rebuilt ASan/UBSan synthesis tests pass.
-- [ ] Extend computed scrutinees through ordinary sequencing, infer dependent
-  motives, support named selectors and general label aliases, and implement
+- [ ] Complete general computed-scrutinee provenance, infer dependent motives,
+  support named selectors and general label aliases, and implement
   recursive IH. Empty elimination still needs a synthesizable result source;
   `::` must not supply one before synthesis. Differing branch result types
   remain unsupported here, not a claimed inconsistency: a dependent motive

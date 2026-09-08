@@ -35,7 +35,8 @@ struct pg_inductive_instance {
 	const struct pg_evidence *parameters;
 };
 /* Recover nominal formation and its parameter map from retained evidence,
- * including projection, reindex, type/value coercion and type conversion.
+ * including projection, reindex, type/value coercion, type conversion,
+ * RETURN-type inversion and codomain instantiation of a direct Pi formation.
  * No global search by Core. Returns zero and leaves output unchanged when
  * provenance is unavailable; this is not evidence of a non-inductive type. */
 int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *type,

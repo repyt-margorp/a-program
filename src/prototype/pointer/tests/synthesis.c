@@ -2738,12 +2738,15 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Other", .length = 5}, other_job);
 	complete(&synthesis, request(&synthesis, named, "r:=Nat.succ Other.zero;"), PG_SYNTHESIS_REJECTED);
 	const char *matches[] = {
+		"r:={Nat.zero;} @zero=>Nat.zero @succ k=>k;",
+		"r:=(Nat.succ Nat.zero) @zero=>Nat.zero @succ k=>k;",
 		"r:=(\\n:Nat => n @succ k => k @zero => Nat.zero) (Nat.succ Nat.zero);",
 		"r:=Nat.zero @Alias.zero => Nat.zero @Nat.succ k => k;",
 		"r:=((\\n:Nat => n @zero => (\\m:Nat=>m) @succ k => (\\m:Nat=>m)) Nat.zero) Nat.zero;"
 	};
 	for (size_t i = 0; i < sizeof(matches) / sizeof(*matches); ++i) {
 		const struct pg_evidence *term = complete(&synthesis, request(&synthesis, named, matches[i]), PG_SYNTHESIS_DONE);
+		if (i < 2) assert(pg_evidence_rule(term) == PG_FOLD_ELIM);
 		const struct pg_evidence *result = complete(&synthesis,
 			pg_synthesis_return(&synthesis, empty, term), PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(result)->core == pg_evidence_subject(zero)->core);

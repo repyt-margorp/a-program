@@ -1865,13 +1865,27 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 
 static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
+	if (job->result) goto complete;
 	if (!job->left) {
 		job->left = pg_synthesis_request(synthesis, job->scope, job->syntax->left);
 		depend(synthesis, job, job->left);
 		return;
 	}
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-	const struct pg_evidence *context = source_context(job->scope), *scrutinee = job->left->result;
+	if (!job->inner) {
+		job->inner = job->scope;
+		job->checking_term = job->left->result;
+		if (job->checking_term && pg_evidence_judgement(job->checking_term) == PG_JUDGEMENT_COMPUTATION) {
+			const struct continuation_frame *frame = open_continuation(synthesis, source_context(job->scope), job->checking_term);
+			if (!frame) goto unsupported;
+			job->application_frame = frame;
+			const struct pg_object *binder = pg_evidence_context(frame->context)->binder;
+			job->inner = pg_synthesis_bind(synthesis, job->scope, (struct pg_token){0}, binder, frame->context);
+			if (!job->inner) goto error;
+			job->checking_term = pg_prove_variable(synthesis->typing, frame->context, binder);
+		}
+	}
+	const struct pg_evidence *context = source_context(job->inner), *scrutinee = job->checking_term;
 	if (!scrutinee || pg_evidence_judgement(scrutinee) != PG_JUDGEMENT_VALUE) goto unsupported;
 	if (!job->match) {
 		const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, scrutinee);
@@ -1898,7 +1912,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			label = lookup_scope(state->labels, clause->left->token);
 		else {
 			struct pg_synthesis_job *dependency = NULL;
-			enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, clause->left, &label, &dependency);
+			enum pg_synthesis_status status = resolve_reference(synthesis, job->inner, clause->left, &label, &dependency);
 			if (status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, dependency); return; }
 			if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return; }
 		}
@@ -1919,7 +1933,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		const struct pg_evidence **extensions = malloc(count * sizeof(*extensions));
 		if (count && !extensions) goto error;
 		for (size_t i = count; i; --i, fields = pg_evidence_premise(fields, 0)) extensions[i - 1] = fields;
-		const struct pg_source_scope *scope = job->scope;
+		const struct pg_source_scope *scope = job->inner;
 		for (size_t i = 0; i < count; ++i) {
 			if (clause->items[i].operation) { free(extensions); goto unsupported; }
 			scope = pg_synthesis_bind(synthesis, scope, clause->items[i].name,
@@ -1966,6 +1980,13 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		state->instance.parameters, scrutinee, extended, motive, state->count, branches);
 	free(branches);
 	if (!job->result) goto unsupported;
+complete:
+	if (job->application_frame) {
+		const struct pg_evidence *result = close_continuation(synthesis, job, job->application_frame, job->result);
+		if (!result) return;
+		job->result = result;
+		job->application_frame = NULL;
+	}
 	finish(synthesis, job, PG_SYNTHESIS_DONE);
 	return;
 rejected:

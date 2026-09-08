@@ -172,6 +172,7 @@ int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *ty
 	struct pg_graph temporary = {0};
 	struct frame *frames = NULL;
 	const struct pg_evidence *formation = type;
+	size_t return_contents = 0;
 	int result = 0;
 	while (formation->rule != PG_INDUCTIVE_FORM) {
 		switch (formation->rule) {
@@ -186,9 +187,30 @@ int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *ty
 		case PG_TYPE_FROM_VALUE: case PG_VALUE_FROM_TYPE: case PG_TYPE_CONVERSION:
 			formation = formation->premises[0];
 			break;
+		case PG_RETURN_CONTENT:
+			++return_contents;
+			formation = formation->premises[0];
+			break;
+		case PG_RETURN_TYPE_FORM:
+			if (!return_contents) goto done;
+			--return_contents;
+			formation = formation->premises[0];
+			break;
+		case PG_PI_CODOMAIN: {
+			const struct pg_evidence *pi = formation->premises[0];
+			if (pi->rule != PG_PI_FORM) goto done;
+			const struct pg_evidence *extended = pi->premises[1];
+			const struct pg_evidence *context = extended->premises[0];
+			const struct pg_evidence *map = pg_prove_substitution_projection(typing, context, context);
+			map = pg_prove_substitution_pair(typing, map, extended, formation->premises[1]);
+			formation = pg_prove_reindex(typing, map, pi->premises[2]);
+			if (!formation) goto done;
+			break;
+		}
 		default: goto done;
 		}
 	}
+	if (return_contents) goto done;
 	const struct pg_evidence *context = formation->premises[0]->premises[0];
 	const struct pg_evidence *map = pg_prove_substitution_projection(typing, context, context);
 	for (struct frame *frame = frames; map && frame; frame = frame->next) {
