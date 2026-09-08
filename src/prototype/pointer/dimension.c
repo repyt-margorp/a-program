@@ -173,6 +173,27 @@ const struct pg_dimension_map *pg_dimension_inverse(struct pg_dimensions *dimens
 	return result;
 }
 
+const struct pg_dimension_map *pg_dimension_prefix(struct pg_dimensions *dimensions,
+	size_t fixed, const struct pg_dimension_map *map)
+{
+	if (!map) return NULL;
+	if (fixed > SIZE_MAX - map->source) return NULL;
+	if (fixed > SIZE_MAX - map->target) return NULL;
+	map = pg_dimension_map(dimensions, map->source, map->target, map->coordinates);
+	if (!map || !fixed) return map;
+	size_t target = fixed + map->target;
+	struct pg_coordinate *coordinates = calloc(target, sizeof(*coordinates));
+	if (!coordinates) return NULL;
+	for (size_t i = 0; i < fixed; ++i) coordinates[i] = (struct pg_coordinate){PG_AXIS, i};
+	for (size_t i = 0; i < map->target; ++i) {
+		coordinates[fixed + i] = map->coordinates[i];
+		if (coordinates[fixed + i].kind == PG_AXIS) coordinates[fixed + i].axis += fixed;
+	}
+	const struct pg_dimension_map *result = pg_dimension_map(dimensions, fixed + map->source, target, coordinates);
+	free(coordinates);
+	return result;
+}
+
 int pg_dimension_face_factor(struct pg_dimensions *dimensions,
 	const struct pg_dimension_map *face, const struct pg_dimension_map **ordered,
 	const struct pg_dimension_map **intrinsic)

@@ -2460,6 +2460,23 @@ transport tests or further permutation-group tests cannot close them.
   Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test
   pass. Implementation C/header: +52/-14; tests: +22/-10; docs excluded.
 
+- [x] After `c1b1244`, test a source declaration already typed by Identity:
+  `A : Universe, x : A, p : Id A x x`. Replacing p by a zero-dimensional cube
+  preserves its Identity formation, and adding one cube direction produces a
+  Family Identity whose source family is itself an Identity. Thus the geometric
+  dimension of a binding face cannot specify the full instantiated classifier
+  dimension. The earlier vertex-negative regression concerned different source
+  types; it is not a general rule that vertices cannot be paths.
+  Add `pg_dimension_prefix` for identity(fixed) + map using the existing map
+  interner. This supplies geometry for fixing earlier axes while acting on a
+  suffix, not an inference of which axes the typed operation selects. Tests
+  check unchanged prefix coordinates, zero extension, identity/inverse laws,
+  composition with all 27 ordered 3D faces and six permutations, and invalid
+  size/NULL rejection. Typed symmetry must obtain the selected axis layout
+  from the recovered formation rather than guessing it from a binder's cube.
+  Optimized and ASan/UBSan full pointer checks and 512 KiB Core/Identity tests
+  pass. Implementation C/header: +25/-0; tests: +37/-0; docs excluded.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action

@@ -46,6 +46,10 @@ const struct pg_dimension_map *pg_dimension_face(struct pg_dimensions *dimension
  * The result uses the same map interner; this is geometry, not typed symmetry. */
 const struct pg_dimension_map *pg_dimension_inverse(struct pg_dimensions *dimensions,
 	const struct pg_dimension_map *permutation);
+/* Disjoint sum identity(fixed) + map. Prefix axes are unchanged; this is
+ * dimension algebra, not renumbering lexical binders or typed admission. */
+const struct pg_dimension_map *pg_dimension_prefix(struct pg_dimensions *dimensions,
+	size_t fixed, const struct pg_dimension_map *map);
 /* Factor a strict face f:k->n as ordered o intrinsic. ordered retains the
  * endpoint coordinates and uses axes in increasing occurrence order;
  * intrinsic:k->k retains f's local orientation. Outputs change only on success.

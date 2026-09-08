@@ -990,6 +990,32 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 	const struct pg_object *argument = pg_binder(typing->graph);
 	const struct pg_evidence *body_context = pg_prove_context_extension(typing, initial, argument, domain);
 	const struct pg_evidence *body_variable = pg_prove_variable(typing, body_context, argument);
+	/* A vertex can already denote a path. Geometric binder dimension is not
+	 * the number of instantiated Identity directions in its classifier. */
+	const struct pg_evidence *path_type = pg_prove_identity_type(typing,
+		pg_prove_projection(typing, body_context, domain), body_variable, body_variable);
+	const struct pg_evidence *path_source = pg_prove_context_extension(typing, body_context,
+		pg_binder(typing->graph), path_type);
+	for (size_t d = 0; d < 2; ++d) {
+		const struct pg_binding_cube *path_cube = pg_binding_cube(&dimensions, d);
+		const struct pg_dimension_map *order = pg_dimension_identity(&dimensions, d);
+		const struct pg_binding_face *path_center = pg_binding_face(&dimensions, path_cube, order);
+		const struct pg_evidence *path_context = pg_identity_cube_context(typing, &dimensions, path_source, 1, &path_cube, order);
+		assert(path_context);
+		const struct pg_evidence *formation = pg_prove_classifier(typing, classifiers, path_context,
+			pg_prove_variable(typing, path_context, &path_center->variable));
+		const struct pg_evidence *recovered = pg_identity_formation(typing, classifiers, formation);
+		struct pg_identity_boundary boundary;
+		assert(recovered && pg_identity_boundary_view(recovered, &boundary));
+		assert(path_center->face->source == d);
+		if (d == 0) {
+			assert(pg_evidence_rule(recovered) == PG_IDENTITY_FORM);
+			assert(pg_evidence_subject(boundary.left)->core == pg_evidence_subject(body_variable)->core);
+		} else {
+			assert(pg_evidence_rule(recovered) == PG_FAMILY_IDENTITY_FORM);
+			assert(pg_identity_formation(typing, classifiers, boundary.family));
+		}
+	}
 	const struct pg_evidence *functions[2];
 	for (size_t dependent = 0; dependent < 2; ++dependent) {
 		const struct pg_evidence *value = dependent ? pg_prove_reflexivity(typing,

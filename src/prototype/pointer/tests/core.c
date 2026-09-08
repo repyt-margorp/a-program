@@ -1832,7 +1832,15 @@ static void induced_face_permutations(struct pg_dimensions *dimensions)
 		assert(inverse && pg_dimension_inverse(dimensions, inverse) == permutations[p]);
 		assert(pg_dimension_compose(dimensions, inverse, permutations[p]) == pg_dimension_identity(dimensions, 3));
 		assert(pg_dimension_compose(dimensions, permutations[p], inverse) == pg_dimension_identity(dimensions, 3));
+		assert(pg_dimension_prefix(dimensions, 0, permutations[p]) == permutations[p]);
+		const struct pg_dimension_map *extended = pg_dimension_prefix(dimensions, 1, permutations[p]);
+		assert(extended && extended->coordinates[0].kind == PG_AXIS && extended->coordinates[0].axis == 0);
+		for (size_t i = 0; i < 3; ++i) assert(extended->coordinates[i + 1].axis == orders[p][i] + 1);
+		assert(pg_dimension_inverse(dimensions, extended) == pg_dimension_prefix(dimensions, 1, inverse));
 	}
+	assert(pg_dimension_prefix(dimensions, 1, permutations[0]) == pg_dimension_identity(dimensions, 4));
+	assert(!pg_dimension_prefix(dimensions, SIZE_MAX, permutations[0]));
+	assert(!pg_dimension_prefix(dimensions, 1, NULL));
 	for (size_t code = 0; code < 27; ++code) {
 		size_t rest = code, axes = 0;
 		for (size_t i = 0; i < 3; ++i, rest /= 3) {
@@ -1843,6 +1851,9 @@ static void induced_face_permutations(struct pg_dimensions *dimensions)
 		assert(face);
 		for (size_t p = 0; p < 6; ++p) {
 			const struct pg_dimension_map *moved, *local;
+			assert(pg_dimension_prefix(dimensions, 1, pg_dimension_compose(dimensions, permutations[p], face)) ==
+				pg_dimension_compose(dimensions, pg_dimension_prefix(dimensions, 1, permutations[p]),
+					pg_dimension_prefix(dimensions, 1, face)));
 			assert(pg_dimension_face_factor(dimensions, pg_dimension_compose(dimensions, permutations[p], face), &moved, &local) == 0);
 			for (size_t q = 0; q < 6; ++q) {
 				const struct pg_dimension_map *twice, *second, *direct, *combined;
