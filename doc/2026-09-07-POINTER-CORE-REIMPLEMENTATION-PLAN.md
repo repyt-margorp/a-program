@@ -1674,6 +1674,44 @@ a specified type family, not a global endpoint-only relation.
   four unrelated functions. Validate this before introducing a general
   universe-Identity witness constructor. Preserve distinct choices even when
   endpoint types coincide.
+
+#### Next N2 gate: typed higher fields, not more scalar transport cases
+
+September 8 audit after `918e1cd`:
+
+- `identity.c` has four scalar field owners. `action_source` deliberately keeps
+  an acted field application neutral. Adding Pi application transport has not
+  supplied a reduction for acting on transport/lifting themselves.
+- `dimension.h:pg_term_restrict_bindings` explicitly specifies syntactic
+  restriction only. `action.h:pg_context_restrict` checks a context substitution;
+  neither contract alone supplies a transposed higher Identity classifier or
+  uniform higher transport. Do not infer either from equal face pointers.
+- The pinned [Narya Pi fibrancy construction](https://github.com/gwaithimirdain/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/test/black/hct-hott.t/fibrant_types.ny#L118)
+  uses Identity fibrancy and direction symmetry in its lifting clauses, beyond
+  the scalar argument/result transport recipe. Its parametrical encoding is a
+  reference derivation, not a proof of our CBPV equations.
+- [Narya's field contract](https://narya.readthedocs.io/en/latest/hott.html#transport-and-lifting)
+  distinguishes dimension-selected uniform fields from scalar fields on an
+  instantiated higher type. These must not be conflated during lowering.
+
+Next implementation order, retaining the existing three Core forms:
+
+1. Construct a checked square boundary with selected edge proofs and a center
+   assumption. Specify the exact input/output classifiers for transport in
+   either direction, including transported corners. A square assumption is
+   not a generated filler.
+2. Derive the corresponding direction permutation on typed boundaries, not
+   merely binder pointers. Preserve which path was selected on each edge.
+3. Give iterated field action a dimension-uniform typing/elimination contract;
+   reuse APP/Reference and checked context substitutions. Do not allocate a
+   new Core tag per dimension or insert arbitrary relation-to-Identity casts.
+4. Adapt the Pi lifting derivation through U/ FORCE on computation results;
+   verify its endpoints against the implemented application transport, then
+   check faces, substitutions and diagonal computation before enabling it.
+
+These four items remain unchecked. Passing first-order transport tests does
+not discharge them, and datatype admission must not assume their completion.
+
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
   and the implemented F/U/Pi Identity, RETURN/THUNK/FORCE action and diagonal
