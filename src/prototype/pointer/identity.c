@@ -109,21 +109,49 @@ static void source_scope(const struct pg_term *source, struct action_scope *scop
 	}
 }
 
-static int action_scope(struct pg_eval *machine, const struct pg_term *source, struct action_scope *scope)
+struct action_scope_work {
+	struct action_scope scope;
+	const struct pg_argument *arguments;
+	const struct pg_term *answer;
+	int (*resume)(struct pg_eval *, const struct action_scope *, const struct pg_term *);
+};
+
+static int action_scope_poll(void *opaque)
 {
-	*scope = (struct action_scope){source, source, 0, NULL};
-	const struct pg_argument *arguments = machine->arguments;
-	pg_eval_next_argument(&arguments);
-	/* Process supplied boundary triples without waiting for the remaining
-	 * curried arguments. Otherwise an unused outer binder can block THUNK's
-	 * action equation solely because its body returns a function. */
-	while (scope->body->kind == PG_LAMBDA) {
-		for (size_t i = 0; i < 3; ++i) if (!pg_eval_next_argument(&arguments)) return 0;
-		if (scope->count == SIZE_MAX / sizeof(*scope->bindings)) return -1;
-		++scope->count;
-		scope->body = scope->body->as.lambda.body;
-	}
+	struct action_scope_work *work = opaque;
+	struct action_scope *scope = &work->scope;
+	if (scope->body->kind != PG_LAMBDA) return 1;
+	/* A partial triple does not consume another source binder. */
+	for (size_t i = 0; i < 3; ++i) if (!pg_eval_next_argument(&work->arguments)) return 1;
+	if (scope->count == SIZE_MAX / sizeof(*scope->bindings)) return -1;
+	++scope->count;
+	scope->body = scope->body->as.lambda.body;
 	return 0;
+}
+
+static int action_scope_resume(struct pg_eval *machine, void *opaque)
+{
+	struct action_scope_work *work = opaque;
+	return work->resume(machine, &work->scope, work->answer);
+}
+
+static void action_scope_destroy(void *opaque)
+{
+	(void)opaque; /* All discovery storage belongs to the evaluator arena. */
+}
+
+static int with_action_scope(struct pg_eval *machine, const struct pg_term *source,
+	const struct pg_term *answer,
+	int (*resume)(struct pg_eval *, const struct action_scope *, const struct pg_term *))
+{
+	struct action_scope_work *work = pg_alloc(&machine->temporary, sizeof(*work));
+	if (!work) return -1;
+	work->scope = (struct action_scope){source, source, 0, NULL};
+	work->arguments = machine->arguments;
+	pg_eval_next_argument(&work->arguments);
+	work->answer = answer;
+	work->resume = resume;
+	return pg_eval_defer(machine, work, action_scope_poll, action_scope_resume, action_scope_destroy);
 }
 
 static int source_bindings(struct pg_eval *machine, struct action_scope *scope)
@@ -216,11 +244,9 @@ static int diagonal_argument(struct pg_eval *machine)
 	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 0);
 }
 
-static int right_endpoint(struct pg_eval *machine, const struct pg_term *right)
+static int right_endpoint_scoped(struct pg_eval *machine, const struct action_scope *prepared, const struct pg_term *right)
 {
-	struct action_scope scope;
-	int status = action_scope(machine, pg_eval_argument(machine, 0)->term, &scope);
-	if (status) return status;
+	struct action_scope scope = *prepared;
 	const struct pg_term *content;
 	if (!pg_return_type_view(scope.body, &content)) return -1;
 	const struct pg_term *r = unary_argument(right, &pg_return_operation);
@@ -234,15 +260,23 @@ static int right_endpoint(struct pg_eval *machine, const struct pg_term *right)
 	return enter_action(machine, &scope, result, 2);
 }
 
-static int left_endpoint(struct pg_eval *machine, const struct pg_term *left)
+static int right_endpoint(struct pg_eval *machine, const struct pg_term *right)
 {
-	struct action_scope scope;
-	int status = action_scope(machine, pg_eval_argument(machine, 0)->term, &scope);
-	if (status) return status;
+	return with_action_scope(machine, pg_eval_argument(machine, 0)->term, right, right_endpoint_scoped);
+}
+
+static int left_endpoint_scoped(struct pg_eval *machine, const struct action_scope *prepared, const struct pg_term *left)
+{
+	struct action_scope scope = *prepared;
 	const struct pg_term *content;
 	if (!pg_return_type_view(scope.body, &content)) return -1;
 	if (!unary_argument(left, &pg_return_operation)) return 1;
 	return pg_eval_demand(machine, 2 + 3 * scope.count, right_endpoint);
+}
+
+static int left_endpoint(struct pg_eval *machine, const struct pg_term *left)
+{
+	return with_action_scope(machine, pg_eval_argument(machine, 0)->term, left, left_endpoint_scoped);
 }
 
 static int thunk_type_action(struct pg_eval *machine, struct action_scope *scope,
@@ -596,26 +630,31 @@ static int action_body_resume(struct pg_eval *machine, void *opaque)
 	return pg_eval_enter(machine, (struct pg_closure){work->answer, NULL}, 1);
 }
 
-static int action_body(struct pg_eval *machine, const struct pg_term *answer)
+static int action_body_scoped(struct pg_eval *machine, const struct action_scope *prepared, const struct pg_term *answer)
 {
 	struct action_body_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work) return -1;
 	work->answer = answer;
 	work->arena = &machine->temporary;
 	work->output = machine->output;
-	int status = action_scope(machine, pg_eval_argument(machine, 0)->term, &work->scope);
-	if (status) return status;
+	work->scope = *prepared;
 	if (pg_comparison_init(&work->comparison, work->scope.body, answer, NULL, NULL) != 0) return -1;
-	status = pg_eval_defer(machine, work, action_body_poll, action_body_resume, action_body_destroy);
+	int status = pg_eval_defer(machine, work, action_body_poll, action_body_resume, action_body_destroy);
 	if (status) action_body_destroy(work);
 	return status;
 }
 
-static int action_source(struct pg_eval *machine, const struct pg_term *source)
+static int action_body(struct pg_eval *machine, const struct pg_term *answer)
 {
-	struct action_scope scope;
-	int status = action_scope(machine, source, &scope);
-	if (status) return status;
+	return with_action_scope(machine, pg_eval_argument(machine, 0)->term, answer, action_body_scoped);
+}
+
+static int action_source_scoped(struct pg_eval *machine, const struct action_scope *prepared, const struct pg_term *unused)
+{
+	(void)unused;
+	struct action_scope scope = *prepared;
+	const struct pg_term *source = scope.source;
+	int status;
 	if (!scope.count) {
 		status = pg_data_action(machine, source);
 		if (status != 1) return status;
@@ -639,6 +678,11 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source)
 		return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1 + 3 * scope.count);
 	}
 	return analyze_scope(machine, &scope);
+}
+
+static int action_source(struct pg_eval *machine, const struct pg_term *source)
+{
+	return with_action_scope(machine, source, NULL, action_source_scoped);
 }
 
 static int action_source_body(struct pg_eval *machine, const struct action_scope *prepared)

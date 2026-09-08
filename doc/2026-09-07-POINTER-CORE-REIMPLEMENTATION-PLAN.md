@@ -334,6 +334,26 @@ separate outstanding bounded-work obligations.
 Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass;
 the cube-function comparison maximum is 238,143 charged transitions.
 
+#### Incremental initial scope discovery
+
+After `013e7b7`, all four initial action-scope callers share a deferred discovery
+task. Each poll consumes at most one source binder and its complete boundary
+triple. Partial triples leave that binder unapplied; the caller's argument list
+is never mutated by discovery. Completion continues through the existing action
+or endpoint rule, with no additional reduction equation or evidence authority.
+
+The exchange regression now cancels at every machine step, rather than assuming
+that scope ordering is the first deferred task. Each snapshot survives evaluator
+destruction and converts to the original expression. This tests discovery as
+well as ordering and reconstruction. The deep-source cancellation fixture still
+checks exact charged steps across task transitions.
+
+Optimized and ASan/UBSan pointer checks and the 512 KiB Identity run pass. The recorded
+cube-function comparison maximum is 242,785 transitions (previously 238,143):
+discovery now counts against fuel; this is not evidence of a speedup. General
+former-specific source reconstruction and full `source_scope` scans remain
+outstanding. This checkpoint does not close N2 or any full-language gate.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,
