@@ -253,44 +253,64 @@ done:
 
 static const struct pg_evidence *cube_action(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	struct pg_dimensions *dimensions, const struct pg_evidence *source,
-	const struct pg_binding_cube *cube, const struct pg_dimension_map *order, const struct pg_evidence *term)
+	size_t count, const struct pg_binding_cube *const *cubes,
+	const struct pg_dimension_map *order, const struct pg_evidence *term)
 {
-	if (!cube || !order || dimensions->graph != typing->graph) return NULL;
-	if (!pg_evidence_owned_by(source, typing) || pg_evidence_rule(source) != PG_CONTEXT_EXTEND) return NULL;
+	if (!count || !cubes || !order || dimensions->graph != typing->graph) return NULL;
+	if (!pg_evidence_owned_by(source, typing)) return NULL;
 	if (term && pg_prove_projection(typing, source, term) != term) return NULL;
-	if (order->source != cube->dimension || order->target != cube->dimension) return NULL;
+	if (order->source != order->target) return NULL;
+	const struct pg_evidence *prefix = source;
+	for (size_t i = 0; i < count; ++i) {
+		if (pg_evidence_rule(prefix) != PG_CONTEXT_EXTEND) return NULL;
+		if (!cubes[i] || cubes[i]->dimension != order->source) return NULL;
+		prefix = pg_evidence_premise(prefix, 0);
+	}
 	order = pg_dimension_face(dimensions, order);
 	if (!order) return NULL;
-	if (cube->dimension > SIZE_MAX / sizeof(struct pg_coordinate)) return NULL;
-	size_t capacity = 1;
-	for (size_t d = 1; d < cube->dimension; ++d) {
+	size_t dimension = order->source, capacity = count;
+	if (dimension > SIZE_MAX / sizeof(struct pg_coordinate)) return NULL;
+	for (size_t d = 1; d < dimension; ++d) {
 		if (capacity > SIZE_MAX / 3) return NULL;
 		capacity *= 3;
 	}
 	if (capacity > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	struct pg_graph temporary = {0};
-	struct pg_coordinate *coordinates = pg_alloc(&temporary, cube->dimension * sizeof(*coordinates));
+	struct pg_coordinate *coordinates = pg_alloc(&temporary, dimension * sizeof(*coordinates));
+	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
 	const struct pg_binding_face **centers = pg_alloc(&temporary, capacity * sizeof(*centers));
 	const struct pg_evidence **paths = pg_alloc(&temporary, capacity * sizeof(*paths));
 	const struct pg_evidence *context = NULL, *left, *right;
-	if ((cube->dimension && !coordinates) || !centers || !paths) goto done;
-	/* Start at the all-zero vertex; later actions replace the entire active
-	 * suffix, retaining the original ambient context. */
-	const struct pg_binding_face *vertex = pg_binding_face(dimensions, cube,
-		pg_dimension_map(dimensions, 0, cube->dimension, coordinates));
-	vertex = pg_binding_permute(dimensions, vertex, order);
-	if (!vertex) goto done;
-	context = pg_prove_context_extension(typing, pg_evidence_premise(source, 0),
-		&vertex->variable, pg_evidence_premise(source, 1));
+	if ((dimension && !coordinates) || !centers || !paths || !extensions) goto done;
+	context = source;
+	for (size_t i = count; i; --i) {
+		extensions[i - 1] = context;
+		context = pg_evidence_premise(context, 0);
+	}
+	/* Rename the entire dependent suffix to zero vertices with one checked
+	 * substitution. Later declarations use the preceding renamed images. */
+	const struct pg_evidence *map = projection_substitution(typing, prefix, context);
+	const struct pg_dimension_map *zero = pg_dimension_map(dimensions, 0, dimension, coordinates);
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_binding_face *vertex = pg_binding_face(dimensions, cubes[i], zero);
+		if (!vertex) { context = NULL; goto done; }
+		const struct pg_evidence *previous = context;
+		context = pg_prove_context_extension(typing, context, &vertex->variable,
+			pg_prove_reindex(typing, map, pg_evidence_premise(extensions[i], 1)));
+		if (!context) goto done;
+		map = pg_prove_substitution_compose(typing, map, projection_substitution(typing, previous, context));
+		map = pg_prove_substitution_pair(typing, map, extensions[i], pg_prove_variable(typing, context, &vertex->variable));
+		if (!map) { context = NULL; goto done; }
+	}
 	if (term) {
-		const struct pg_evidence *map = projection_substitution(typing, pg_evidence_premise(source, 0), context);
-		map = pg_prove_substitution_pair(typing, map, source, pg_prove_variable(typing, context, &vertex->variable));
 		term = pg_prove_reindex(typing, map, term);
 		if (!term || !pg_prove_classifier(typing, classifiers, context, term)) { context = NULL; goto done; }
 	}
-	for (size_t d = 1, count = 1; context && d <= cube->dimension; ++d) {
-		for (size_t i = 0; i < count; ++i) {
-			size_t axes = 0, divisor = count / 3;
+	for (size_t d = 1, faces = 1; context && d <= dimension; ++d) {
+		size_t active = count * faces;
+		for (size_t i = 0; i < active; ++i) {
+			const struct pg_binding_cube *cube = cubes[i / faces];
+			size_t axes = 0, divisor = faces / 3;
 			for (size_t j = 0; j + 1 < d; ++j, divisor /= 3) {
 				size_t digit = (i / divisor) % 3;
 				coordinates[j] = digit == 2 ? (struct pg_coordinate){PG_AXIS, axes++}
@@ -301,12 +321,12 @@ static const struct pg_evidence *cube_action(struct pg_typing *typing, struct pg
 			centers[i] = pg_binding_permute(dimensions, centers[i], order);
 		}
 		const struct pg_evidence *type = term ? pg_prove_classifier(typing, classifiers, context, term) : NULL;
-		context = pg_identity_context(typing, dimensions, context, count, centers, &left, &right, paths);
+		context = pg_identity_context(typing, dimensions, context, active, centers, &left, &right, paths);
 		if (term && context) {
-			term = pg_prove_family_action(typing, type, term, left, right, count, paths);
+			term = pg_prove_family_action(typing, type, term, left, right, active, paths);
 			if (!term) context = NULL;
 		}
-		if (d < cube->dimension) count *= 3;
+		if (d < dimension) faces *= 3;
 	}
 done:
 	pg_graph_destroy(&temporary);
@@ -315,18 +335,18 @@ done:
 
 const struct pg_evidence *pg_identity_cube_context(struct pg_typing *typing,
 	struct pg_dimensions *dimensions, const struct pg_evidence *source,
-	const struct pg_binding_cube *cube, const struct pg_dimension_map *order)
+	size_t count, const struct pg_binding_cube *const *cubes, const struct pg_dimension_map *order)
 {
-	return cube_action(typing, NULL, dimensions, source, cube, order, NULL);
+	return cube_action(typing, NULL, dimensions, source, count, cubes, order, NULL);
 }
 
 const struct pg_evidence *pg_identity_cube_action(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, struct pg_dimensions *dimensions,
 	const struct pg_evidence *source, const struct pg_evidence *term,
-	const struct pg_binding_cube *cube, const struct pg_dimension_map *order)
+	size_t count, const struct pg_binding_cube *const *cubes, const struct pg_dimension_map *order)
 {
 	if (!classifiers || !pg_evidence_owned_by(term, typing)) return NULL;
-	return cube_action(typing, classifiers, dimensions, source, cube, order, term);
+	return cube_action(typing, classifiers, dimensions, source, count, cubes, order, term);
 }
 
 const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,

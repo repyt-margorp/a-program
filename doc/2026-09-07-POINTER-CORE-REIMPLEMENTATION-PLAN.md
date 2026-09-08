@@ -1848,6 +1848,24 @@ tests does not discharge it, and datatype admission must not assume completion.
   fixes partial-action coherence for the tested functions, not general
   higher-field computation, typed transposition or nominal datatype admission.
 
+- [x] September 8, after `5e5bb0b`: generalize the existing cube-context and
+  cube-action APIs to a nonempty dependent suffix with one supplied cube per
+  declaration. All cubes use the same dimension and axis order. Build the
+  zero-vertex suffix through checked reindexing, projection/composition and
+  substitution pairing, so later declarations use earlier renamed images.
+  Each iteration acts on all declaration faces through the existing context
+  action; no parallel multi-variable construction path or new rule is added.
+  Tests jointly vary A:Universe and x:A in dimensions 0-3, including all six
+  dimension-three orders. The x-center classifier retains the selected
+  A-center, variable action converts to the x-center, repeated construction
+  shares evidence, and the A telescope is the same prefix produced alone.
+  Duplicate cube owners and empty suffix requests reject; existing fixed
+  ambient-prefix and single-variable tests still pass. Optimized and
+  ASan/UBSan pointer checks and 512 KiB Identity execution pass. Source/header
+  +55/-35; tests +44/-20 (including API migration); documentation separate.
+  This removes the one-declaration restriction, not the pending typed
+  transposition rule or synchronous construction cost (count * 3^dimension).
+
 - [ ] Add these semantic-family computation rules to a fixed pure conversion
   policy when implemented. The current wrapper admits beta, pure FORCE/FOLD
   and the implemented F/U/Pi Identity, RETURN/THUNK/FORCE action and diagonal
