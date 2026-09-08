@@ -150,6 +150,17 @@ struct pg_synthesis_job *pg_synthesis_data_case(struct pg_synthesis *synthesis,
  * determines a job. Uses the existing reindex machine, not a second traversal. */
 struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
+/* Share a suspended endpoint derivation on the ordinary work queue. face is
+ * an immutable, graph-lived canonical endpoint selector: its first coordinate
+ * is fixed, followed by its ordered axes. Those axes count outer Identity
+ * directions, not the full dimension of the input. Its pointer, context and
+ * formation identify the request. One queue step advances one traversal
+ * step, not a bounded-cost primitive proof rule. Unsupported is not rejection.
+ * No surface syntax or typed center symmetry rule is introduced. */
+struct pg_dimension_map;
+struct pg_synthesis_job *pg_synthesis_identity_endpoint(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *formation,
+	const struct pg_dimension_map *face);
 /* Extend a checked substitution with an independently typed value. The
  * expected dependent field type is reindexed and compared using shared work;
  * only completed conversion evidence reaches the ordinary pairing rule. */

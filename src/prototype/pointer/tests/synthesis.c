@@ -1035,6 +1035,61 @@ static void fair_work(struct pg_typing *typing, struct pg_classifiers *classifie
 	pg_whnf_work_destroy(&work);
 }
 
+static void endpoint_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	const struct pg_evidence *context = pg_prove_empty_context(typing);
+	const struct pg_evidence *type = pg_prove_universe(typing, classifiers, context, 1);
+	const struct pg_evidence *value = pg_prove_type_value(typing, pg_prove_universe(typing, classifiers, context, 0));
+	for (size_t i = 0; i < 3; ++i) {
+		const struct pg_evidence *next = pg_prove_identity_type(typing, type, value, value);
+		value = pg_prove_reflexivity(typing, type, value);
+		type = next;
+		assert(type && value);
+	}
+	struct pg_dimensions dimensions;
+	assert(pg_dimensions_init(&dimensions, typing->graph) == 0);
+	struct pg_coordinate coordinates[] = {{PG_ENDPOINT_ZERO, 0}, {PG_AXIS, 0}, {PG_AXIS, 1}};
+	const struct pg_dimension_map *selector = pg_dimension_map(&dimensions, 2, 3, coordinates);
+	const struct pg_evidence *expected = pg_identity_face_endpoint(typing, classifiers, context, type, 2, PG_IDENTITY_LEFT);
+	assert(expected);
+	for (unsigned split = 0; split < 2; ++split) {
+		struct pg_whnf_work work;
+		struct pg_synthesis synthesis;
+		assert(pg_whnf_work_init(&work, typing->graph) == 0);
+		assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+		struct pg_synthesis_job *job = pg_synthesis_identity_endpoint(&synthesis, context, type, selector);
+		assert(job && pg_synthesis_identity_endpoint(&synthesis, context, type, selector) == job);
+		assert(!pg_synthesis_result(job));
+		pg_synthesis_advance(&synthesis, 0);
+		assert(pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
+		struct pg_synthesis_job *consumer = pg_synthesis_reflexivity(&synthesis, context, job);
+		for (unsigned i = 0; pg_synthesis_status(consumer) == PG_SYNTHESIS_PENDING; ++i) {
+			assert(i < 100);
+			pg_synthesis_advance(&synthesis, split ? 1 : 100);
+		}
+		assert(pg_synthesis_status(consumer) == PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_result(job) == expected);
+		const struct pg_evidence *roundtrip = pg_prove_value_type(typing, pg_prove_type_value(typing, type));
+		assert(pg_synthesis_identity_endpoint(&synthesis, context, roundtrip, selector) != job);
+		assert(!pg_synthesis_identity_endpoint(&synthesis, context, value, selector));
+		assert(!pg_synthesis_identity_endpoint(&synthesis, context, type, pg_dimension_identity(&dimensions, 3)));
+		struct pg_synthesis_job *unsupported = pg_synthesis_identity_endpoint(&synthesis, context,
+			pg_prove_universe(typing, classifiers, context, 0), selector);
+		complete(&synthesis, unsupported, PG_SYNTHESIS_UNSUPPORTED);
+		pg_synthesis_advance(&synthesis, 100);
+		assert(!synthesis.ready);
+		/* Release a worker while it retains descent frames. */
+		coordinates[0].kind = PG_ENDPOINT_ONE;
+		struct pg_synthesis_job *cancelled = pg_synthesis_identity_endpoint(&synthesis, context, type,
+			pg_dimension_map(&dimensions, 2, 3, coordinates));
+		pg_synthesis_advance(&synthesis, 1);
+		assert(pg_synthesis_status(cancelled) == PG_SYNTHESIS_PENDING);
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&work);
+	}
+	pg_dimensions_destroy(&dimensions);
+}
+
 static int arbitrary_policy(struct pg_eval *machine)
 {
 	const struct pg_closure *argument = pg_eval_argument(machine, 0);
@@ -2309,6 +2364,7 @@ int main(void)
 	source_schemas(&typing, &classifiers);
 	definition_selections(&typing, &classifiers);
 	fair_work(&typing, &classifiers);
+	endpoint_jobs(&typing, &classifiers);
 	library_levels(&typing, &classifiers);
 	named_identity(&typing, &classifiers);
 	named_transport(&typing, &classifiers);

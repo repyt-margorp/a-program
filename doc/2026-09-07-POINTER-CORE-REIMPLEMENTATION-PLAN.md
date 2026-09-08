@@ -3790,6 +3790,25 @@ or completed budgeted kernel. Typed center symmetry and N2 remain open.
 Implementation C: +86/-30; header: +14/-0; tests: +29/-0.
 Normal and ASan/UBSan pointer checks and the 512 KiB-stack Identity test pass.
 
+September 8 endpoint scheduling after `5a497d0`: endpoint derivation requests
+now use the ordinary synthesis job table and ready queue. The key is the
+accepted context, accepted formation and immutable canonical endpoint-selector
+map, never a Core pointer alone. The selector fixes its first coordinate and
+retains the outer directions to its right; it describes a depth, not the full
+dimension of the input. Validation precedes interning, and queue execution
+advances the existing endpoint worker once without rescanning the selector.
+The selector must remain immutable and graph-lived; equal requests using the
+same interned map share work. No new public language syntax or acceptance rule.
+
+Tests cover repeated requests, zero fuel, split/bulk budgets, ordinary dependent
+consumer wakeup, distinct formation evidence over the same Core, invalid inputs,
+unsupported formations and destroying a store with an active worker. Results
+are published only after completion. Primitive proof work inside each traversal
+step remains synchronous. This connects boundary work to the shared solver;
+it does not complete typed symmetry, image resumption or N2.
+Implementation C: +58/-1; header: +11/-0; test C: +56/-0.
+Normal and ASan/UBSan pointer checks pass.
+
 ## 8. Program Image and Persistence
 
 One in-memory program owns graph roots, typed occurrences, declarations and work
