@@ -4378,6 +4378,29 @@ Raw Core section prototype (`graph_io.c`, not accepted evidence):
 
 Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
 
+Context declaration transport after `d8ffe86` (`context_io.c`):
+
+- [x] Store a shared parent-first telescope forest and extra Core roots in one
+  container, using the existing Core codec for every binder and declared type.
+  Contexts are not encoded as executable Lambdas and do not carry accepted
+  flags. File-local parent references preserve shared prefixes; empty contexts
+  use zero. An iterative indexed traversal detects parent cycles.
+- [x] Restore through `pg_context_bind`, retaining exact sharing with the
+  relocated Core roots. The same binder may appear in distinct alternative
+  contexts without merging their declared types. Declaration validity remains
+  the ordinary evidence rules' responsibility: loading produces zero proofs.
+- [x] Extend the separate-process acceptance test to load the declarations,
+  verify their exact reuse by ordinary context formation and reject crossed
+  Lambda premises. Full pointer `make check` and ASan/UBSan pass, including
+  every truncated prefix of the fixture, an invalid parent reference and a
+  ten-thousand-declaration telescope. Failed loads leave outputs unpublished;
+  arena allocations may remain until graph destruction.
+- [ ] Persist typed occurrence operands, accepted premise DAGs, pending jobs
+  and recursive semantic descriptor payloads. Context transport does not
+  implement these or complete the `.a` format. N5 remains open.
+
+Input capsule status:
+
 - [x] Store a single immutable source and explicit definition policy in a
   versioned, little-endian input capsule. No addresses or accepted-state flags.
   `pg_seed_read` creates an ordinary unresolved `pg_program`; parsing and Solve

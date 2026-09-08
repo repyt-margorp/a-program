@@ -48,9 +48,9 @@ $(BUILD)/graph_io_test: $(ROOT)graph.c $(ROOT)eval.c $(ROOT)graph_io.c $(ROOT)wi
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)graph.c $(ROOT)eval.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)tests/graph_io.c -o $@
 
-$(BUILD)/graph_acceptance_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)tests/graph_acceptance.c
+$(BUILD)/graph_acceptance_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)wire.c $(ROOT)tests/graph_acceptance.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)tests/graph_acceptance.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)wire.c $(ROOT)tests/graph_acceptance.c -o $@
 
 .PHONY: pointer-check
 pointer-check: $(BUILD)/pointer-check
