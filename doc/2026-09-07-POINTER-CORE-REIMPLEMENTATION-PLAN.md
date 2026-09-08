@@ -2387,6 +2387,19 @@ Consequently, the next typed-symmetry implementation must follow this sequence:
    oriented cube contexts. Do not treat a free formal permutation action as
    already providing those instantiation equations.
 
+September 8 provenance correction after `4bdca64`: formation recovery must also
+follow `TYPE_FROM_VALUE` / `VALUE_FROM_TYPE`. A value-type formation can pass
+through its universe-value presentation, including intervening checked reindex
+and context projection, without losing its selected Identity boundary. The
+implementation now follows these existing premises in the same iterative walk.
+It still requires a formation as input and rejects an opaque universe variable
+with no retained Identity formation; it does not infer Identity from APP shape.
+The regression failed before the change and passes for homogeneous, selected
+family-instance and square Family Identity, including substitution/projection.
+This repairs step 1 provenance coverage, not steps 2-5 or typed center symmetry.
+Implementation/header: +7/-2 lines; test C: +13/-0. Normal and ASan/UBSan pointer
+checks pass, as does the Identity test with a 512 KiB stack limit.
+
 This audit does not introduce a new primitive or conclude that a separate
 instantiation node is necessary. If elaboration can construct the required
 family/boundary action explicitly as Reference/Application spines, preserve
