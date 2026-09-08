@@ -222,6 +222,29 @@ Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass.
 The recorded comparison maximum is 198,563 transitions, now including the
 incremental scope work. This does not change the remaining N0-N7 acceptance gates.
 
+#### Incremental scope initialization and reconstruction
+
+The residual-scope task now has explicit scheduling phases for source-binder
+setup, visitation, source abstraction, triple application and administrative
+wrapping. Each poll handles one binder or one fixed-size triple. Discovery
+records whether a permutation is necessary, removing the final order rescan.
+The resume callback only enters the prepared result or requests the inner body;
+it no longer traverses the telescope to construct that result synchronously.
+These phases are C work states, not new Core node kinds or CBPV distinctions.
+
+The exchange test measures a whole reordering task and destroys a fresh run at
+every poll boundary, checking exact fuel and unchanged caller readback even
+while replacement nodes have been partially allocated. Existing typed higher
+application and selected-witness regressions remain mandatory. Implementation
+C: +64/-19; test C: +30/-0, excluding documentation.
+
+This closes the source-setup and result-rebuild substeps of `order_scope` only.
+Other action paths still call synchronous `action_scope`, `prune_scope`,
+`prepare_bindings` and `abstract_body`; do not mark all action work bounded.
+Allocation, hash growth and index cleanup also remain outside a wall-time bound.
+Verification: optimized and ASan/UBSan full pointer checks and the 512 KiB
+Identity run pass; the recorded comparison maximum is 199,049 transitions.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,

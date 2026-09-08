@@ -1184,6 +1184,36 @@ static void action_scope_exchange(struct pg_classifiers *classifiers)
 	 * through the ordinary evaluator. No task state is encoded as evidence. */
 	pg_eval_destroy(&split);
 	converts(&work, suspended, acted[0]);
+	/* Measure one reordering task, then cancel at every poll boundary,
+	 * including source setup and construction of the replacement spine. */
+	pg_eval_init(&split, acted[1]);
+	split.output = graph;
+	split.dispatch = pg_pure_policy.dispatch;
+	while (!split.task) {
+		assert(pg_eval_advance(&split, 1) == PG_EVAL_PENDING);
+		assert(split.steps < 10000);
+	}
+	struct pg_eval_task *task = split.task;
+	uint64_t polls = 0;
+	suspended = pg_eval_readback(&split, graph);
+	while (split.task == task) {
+		assert(pg_eval_advance(&split, 1) == PG_EVAL_PENDING);
+		assert(++polls < 10000);
+	}
+	pg_eval_destroy(&split);
+	for (uint64_t cut = 0; cut < polls; ++cut) {
+		pg_eval_init(&split, acted[1]);
+		split.output = graph;
+		split.dispatch = pg_pure_policy.dispatch;
+		while (!split.task) assert(pg_eval_advance(&split, 1) == PG_EVAL_PENDING);
+		task = split.task;
+		uint64_t start = split.steps;
+		assert(pg_eval_advance(&split, cut) == PG_EVAL_PENDING);
+		assert(split.task == task && split.steps == start + cut);
+		assert(pg_alpha_equal(pg_eval_readback(&split, graph), suspended) == 1);
+		pg_eval_destroy(&split);
+	}
+	converts(&work, suspended, acted[1]);
 	const struct pg_object *u = pg_binder(graph), *v = pg_binder(graph);
 	const struct pg_binding_value rename[] = {
 		{x, pg_reference(graph, u)}, {y, pg_reference(graph, v)}
