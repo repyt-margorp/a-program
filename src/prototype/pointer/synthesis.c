@@ -156,6 +156,7 @@ struct pg_synthesis_job {
 	struct pg_conversion comparison;
 	const struct pg_conversion_certificate *certificate;
 	struct pg_reindex reindex;
+	struct pg_classifier_recovery *classifier_recovery;
 	struct pg_identity_face_work *face;
 	struct pg_identity_formation_work *formation;
 	union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
@@ -217,6 +218,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			pg_conversion_destroy(&job->comparison);
 			pg_reindex_destroy(&job->reindex);
+			if (job->classifier_recovery) pg_classifier_recovery_destroy(job->classifier_recovery);
 			pg_substitution_destroy(&job->structural_substitution);
 			pg_identity_face_destroy(job->face);
 			pg_identity_formation_destroy(job->formation);
@@ -1421,10 +1423,11 @@ static void classifier_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 		if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 		if (forward_proof(synthesis, job, canonical)) return;
 		job->checking_term = term->result;
-		const struct pg_evidence *formation = pg_prove_classifier(synthesis->typing,
-			synthesis->classifiers, context->result, job->checking_term);
-		if (!formation) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		job->left = pg_synthesis_normalize(synthesis, context->result, formation);
+		if (!job->right) job->right = request_job(synthesis, CLASSIFIER_FORMATION_JOB, context, term);
+		if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
+		if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
+		job->left = pg_synthesis_normalize(synthesis, context->result, job->right->result);
 		depend(synthesis, job, job->left);
 		return;
 	}
@@ -2977,7 +2980,12 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	const struct pg_evidence *context = source_context(job->inner), *scrutinee = job->checking_term;
 	if (!scrutinee || pg_evidence_judgement(scrutinee) != PG_JUDGEMENT_VALUE) goto unsupported;
 	if (!job->match) {
-		const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, scrutinee);
+		if (!job->right) job->right = request_job(synthesis, CLASSIFIER_FORMATION_JOB,
+			pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, scrutinee));
+		if (!job->right) goto error;
+		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
+		if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
+		const struct pg_evidence *type = job->right->result;
 		struct pg_inductive_instance instance;
 		if (!pg_inductive_instance(synthesis->typing, type, &instance)) goto unsupported;
 		size_t count = pg_data_constructor_count(instance.schema);
@@ -4574,7 +4582,15 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		}
 		else {
 			const struct pg_synthesis_job *body = job->inputs[1];
-			job->result = pg_prove_classifier(synthesis->typing, synthesis->classifiers, first->result, body->result);
+			if (!job->classifier_recovery) {
+				job->classifier_recovery = pg_alloc(synthesis->typing->graph, sizeof(*job->classifier_recovery));
+				if (!job->classifier_recovery) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+				pg_classifier_recovery_init(job->classifier_recovery, synthesis->typing, synthesis->classifiers, first->result, body->result);
+			}
+			int status = pg_classifier_recovery_advance(job->classifier_recovery, 1);
+			if (!status) { enqueue(synthesis, job); return; }
+			job->result = status > 0 ? job->classifier_recovery->result : NULL;
+			pg_classifier_recovery_destroy(job->classifier_recovery);
 		}
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE
 			: job->role == BODY_JOB ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_UNSUPPORTED);
@@ -4641,8 +4657,12 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
 		if (pg_evidence_judgement(input) == PG_JUDGEMENT_VALUE_TYPE) input = value(synthesis, input);
-		const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, input);
-		if (!type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		if (!job->right) job->right = request_job(synthesis, CLASSIFIER_FORMATION_JOB,
+			pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, input));
+		if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
+		if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
+		const struct pg_evidence *type = job->right->result;
 		if (job->role == FAMILY_ACTION_JOB) {
 			if (!family_paths(synthesis, job)) return;
 			job->result = pg_prove_family_action(synthesis->typing, type, input,

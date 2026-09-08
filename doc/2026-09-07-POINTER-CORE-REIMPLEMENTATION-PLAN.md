@@ -873,6 +873,27 @@ finish general handler source support.
   Rebuilt ASan/UBSan synthesis checks pass as well.
   Implementation C: +47/-16; tests: +22/-0; documentation separate.
 
+  September 9, after `0d3417c`: classifier recovery now has one resumable
+  retained-premise traversal. `pg_prove_classifier` drives this worker to
+  completion; source Solve advances the same worker one traversal step at a
+  time. Match, classifier normalization, reflexivity and family action request
+  the existing shared classifier-formation job instead of synchronous recovery.
+  Variable declaration lookup is also interruptible. This adds no proof rule,
+  alternate checker, Core tag or trusted result flag. Traversal fuel does not
+  bound the internal cost of individual kernel reindex/projection operations.
+  Tests resume the 40,000-premise example in chunks of 1 and 64, check identical
+  accepted formation without new proof/Term allocation, cancel partial work,
+  reject invalid initialization, and suspend a 64-extension variable lookup.
+  Normal components, eight source checks, six execution fixtures and the rebuilt
+  focused Core test pass. Source transitions (01-07, 09): 345, 144, 345, 1274,
+  655, 552, 1474, 3411; no speedup is asserted by scheduling previously hidden
+  traversal steps. Rechecked `check-open-families`: unsupported at 208 steps.
+  Its missing stable symbolic result contract is not an IADT parser failure
+  and is not repaired by relaxing purity or pretending a neutral computation
+  is a RETURN. General IADT admission and checkpoint retention remain open.
+  Rebuilt ASan/UBSan Core and synthesis tests pass, including partial-work cleanup.
+  Implementation C/header: +119/-46; tests: +29/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.

@@ -2760,6 +2760,35 @@ static void deep_classifier_test(void)
 	assert(pg_prove_classifier(&typing, &classifiers, empty, value) == formation);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
 	assert(!pg_prove_classifier(&typing, NULL, empty, value));
+	for (size_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_classifier_recovery work;
+		assert(!pg_classifier_recovery_init(&work, &typing, &classifiers, empty, value));
+		assert(!pg_classifier_recovery_advance(&work, 0));
+		assert(!work.result);
+		size_t calls = 0;
+		while (!pg_classifier_recovery_advance(&work, chunk)) assert(++calls < 100000);
+		assert(work.status == 1 && work.result == formation);
+		assert(typing.proofs.count == proofs && graph.terms.count == terms);
+		pg_classifier_recovery_destroy(&work);
+	}
+	struct pg_classifier_recovery cancelled;
+	assert(!pg_classifier_recovery_init(&cancelled, &typing, &classifiers, empty, value));
+	assert(!pg_classifier_recovery_advance(&cancelled, 100));
+	pg_classifier_recovery_destroy(&cancelled);
+	assert(pg_classifier_recovery_init(&cancelled, &typing, NULL, empty, value) == -1);
+	assert(pg_classifier_recovery_advance(&cancelled, 10) == -1);
+	pg_classifier_recovery_destroy(&cancelled);
+	const struct pg_object *binder = pg_binder(&graph);
+	const struct pg_evidence *context = pg_prove_context_extension(&typing, empty, binder, universe);
+	for (size_t i = 0; i < 64; ++i)
+		context = pg_prove_context_extension(&typing, context, pg_binder(&graph), pg_prove_projection(&typing, context, universe));
+	const struct pg_evidence *variable = pg_prove_variable(&typing, context, binder);
+	assert(!pg_classifier_recovery_init(&cancelled, &typing, &classifiers, context, variable));
+	assert(!pg_classifier_recovery_advance(&cancelled, 64));
+	assert(!cancelled.result);
+	assert(pg_classifier_recovery_advance(&cancelled, 1) == 1);
+	assert(cancelled.result == pg_prove_projection(&typing, context, universe));
+	pg_classifier_recovery_destroy(&cancelled);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);

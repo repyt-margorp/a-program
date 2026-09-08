@@ -2090,13 +2090,6 @@ static const struct pg_evidence *classifier_leaf(struct pg_typing *typing,
 	case PG_IDENTITY_TRANSPORT: case PG_IDENTITY_LIFT:
 		formation = term->premises[0];
 		break;
-	case PG_VARIABLE: {
-		const struct pg_evidence *declaration = term->premises[0];
-		const struct pg_object *binder = term->subject->core->as.reference;
-		while (declaration->context->binder != binder) declaration = declaration->premises[0];
-		formation = declaration->premises[1];
-		break;
-	}
 	case PG_VALUE_FROM_TYPE: {
 		uint64_t level;
 		if (!pg_universe_level(term->classifier, &level)) return NULL;
@@ -2120,26 +2113,43 @@ static const struct pg_evidence *classifier_leaf(struct pg_typing *typing,
 	return pg_prove_projection(typing, context, formation);
 }
 
-const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
+struct pg_classifier_frame {
+	const struct pg_evidence *term, *context;
+	struct pg_classifier_frame *next;
+};
+
+int pg_classifier_recovery_init(struct pg_classifier_recovery *work,
+	struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *term)
 {
-	if (!context_proof(typing, context)) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
-	if (!pg_evidence_owned_by(term, typing)) return NULL;
-	if (context->context != term->context) return NULL;
-	struct classifier_frame {
-		const struct pg_evidence *term, *context;
-		struct classifier_frame *next;
-	};
-	struct pg_graph temporary = {0};
-	struct classifier_frame *frames = NULL;
-	const struct pg_evidence *formation = NULL;
-	/* Classifier recovery follows one retained premise at each step. Keep its
-	 * continuations off the C stack; this neither searches nor copies proofs. */
-	while (term) {
-		if (term->rule == PG_CONTEXT_PROJECTION) { term = term->premises[1]; continue; }
-		if (term->rule == PG_PURE_NORMALIZATION) { term = term->premises[0]; continue; }
+	*work = (struct pg_classifier_recovery){.typing = typing, .classifiers = classifiers, .context = context, .term = term, .status = -1};
+	if (!context_proof(typing, context)) return -1;
+	if (!classifiers || classifiers->graph != typing->graph) return -1;
+	if (!pg_evidence_owned_by(term, typing)) return -1;
+	if (context->context != term->context) return -1;
+	work->status = 0;
+	return 0;
+}
+
+static void classifier_recovery_step(struct pg_classifier_recovery *work)
+{
+	struct pg_typing *typing = work->typing;
+	struct pg_classifiers *classifiers = work->classifiers;
+	const struct pg_evidence *context = work->context, *term = work->term;
+	const struct pg_evidence *formation = work->result;
+	if (!work->unwinding) {
+		if (term->rule == PG_CONTEXT_PROJECTION) { work->term = term->premises[1]; return; }
+		if (term->rule == PG_PURE_NORMALIZATION) { work->term = term->premises[0]; return; }
+		if (term->rule == PG_VARIABLE) {
+			if (!work->declaration) work->declaration = term->premises[0];
+			if (work->declaration->context->binder != term->subject->core->as.reference) {
+				work->declaration = work->declaration->premises[0];
+				return;
+			}
+			formation = pg_prove_projection(typing, context, work->declaration->premises[1]);
+			goto leaf;
+		}
 		const struct pg_evidence *input, *input_context = context;
 		switch (term->rule) {
 		case PG_RETURN_INTRO: case PG_THUNK_INTRO:
@@ -2159,19 +2169,21 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 			break;
 		default:
 			formation = classifier_leaf(typing, classifiers, context, term);
-			goto unwind;
+			goto leaf;
 		}
-		struct classifier_frame *frame = pg_alloc(&temporary, sizeof(*frame));
-		if (!frame) goto done;
-		*frame = (struct classifier_frame){term, context, frames};
-		frames = frame;
-		context = input_context;
-		term = pg_prove_projection(typing, context, input);
+		struct pg_classifier_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
+		if (!frame) { work->status = -1; return; }
+		*frame = (struct pg_classifier_frame){term, context, work->frames};
+		work->frames = frame;
+		work->context = input_context;
+		work->term = pg_prove_projection(typing, input_context, input);
+		if (!work->term) work->status = -1;
+		return;
 	}
-unwind:
-	for (; formation && frames; frames = frames->next) {
-		term = frames->term;
-		context = frames->context;
+	if (work->frames) {
+		term = work->frames->term;
+		context = work->frames->context;
+		work->frames = work->frames->next;
 		switch (term->rule) {
 		case PG_RETURN_INTRO:
 			formation = pg_prove_return_type(typing, classifiers, formation);
@@ -2208,9 +2220,35 @@ unwind:
 		}
 		formation = pg_prove_projection(typing, context, formation);
 	}
-done:
-	pg_graph_destroy(&temporary);
-	return formation;
+leaf:
+	work->unwinding = 1;
+	work->result = formation;
+	if (!formation) work->status = -1;
+	else if (!work->frames) work->status = 1;
+}
+
+int pg_classifier_recovery_advance(struct pg_classifier_recovery *work, size_t steps)
+{
+	while (!work->status && steps--) classifier_recovery_step(work);
+	return work->status;
+}
+
+void pg_classifier_recovery_destroy(struct pg_classifier_recovery *work)
+{
+	pg_graph_destroy(&work->temporary);
+	*work = (struct pg_classifier_recovery){0};
+}
+
+const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *term)
+{
+	struct pg_classifier_recovery work;
+	pg_classifier_recovery_init(&work, typing, classifiers, context, term);
+	while (!pg_classifier_recovery_advance(&work, 1024)) {}
+	const struct pg_evidence *result = work.status > 0 ? work.result : NULL;
+	pg_classifier_recovery_destroy(&work);
+	return result;
 }
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }

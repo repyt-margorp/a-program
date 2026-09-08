@@ -342,6 +342,21 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_clas
 	const struct pg_evidence *computation, const struct pg_evidence *continuation);
 /* Recover formation of an already synthesized classifier, not an expected
  * type. NULL also covers rules whose regularity action is not implemented. */
+/* One retained-premise traversal shared by synchronous callers and Solve.
+ * Each advance counts traversal steps, not the cost of kernel rule checks. */
+struct pg_classifier_recovery {
+	struct pg_typing *typing;
+	struct pg_classifiers *classifiers;
+	struct pg_graph temporary;
+	struct pg_classifier_frame *frames;
+	const struct pg_evidence *context, *term, *declaration, *result;
+	int status, unwinding;
+};
+int pg_classifier_recovery_init(struct pg_classifier_recovery *work,
+	struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_evidence *context, const struct pg_evidence *term);
+int pg_classifier_recovery_advance(struct pg_classifier_recovery *work, size_t steps);
+void pg_classifier_recovery_destroy(struct pg_classifier_recovery *work);
 const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	const struct pg_evidence *term);
