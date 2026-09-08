@@ -4453,9 +4453,33 @@ Shared dependency collection after `f7f0d49` (`dag.c`):
   tests passed. Before/after writer binaries produce byte-identical Context
   and occurrence fixtures (including the nested Core section). Existing deep
   DAG and malformed-input tests remain enabled.
-- [ ] Use this same collection path for the forthcoming derivation wire
-  section instead of introducing a fourth traversal. Proof persistence and
-  pending solver/image integration remain unfinished; N5 is still open.
+- [x] Use this same collection path for the derivation wire section described
+  below instead of introducing a fourth traversal.
+
+Derivation input persistence after `48d2923` (`derivation_io.c`):
+
+- [x] Serialize shared accepted derivations as rule applications, their ordered
+  premise DAG and non-premise arguments. Use `pg_dag` and the existing Core
+  codec for binder/endpoint relocation. There is no authoritative conclusion
+  copy: applying the ordinary rules computes each conclusion. A separate export
+  declaration, when added, must still be checked against that result.
+- [x] Read into immutable, unaccepted `pg_derivation_input` nodes, not proof
+  records. Save conversion and directed normalization endpoints as obligations;
+  restore neither receipt pointers nor accepted flags. No evaluation occurs
+  during input loading. Unknown rules/directions, forward premises, malformed
+  endpoint references and truncated records are rejected structurally.
+- [x] A separate-process fixture reconstructs distinct typed identities sharing
+  Core using the existing constructors. It explicitly recomputes a conversion
+  and FORCE/THUNK normalization using ordinary work before supplying genuine
+  local receipts. Without those receipts, the rule adapter rejects acceptance.
+  Shared proof roots survive; every truncated prefix and an unknown rule are
+  tested. This fixture is not a general resumed-load scheduler.
+  Pointer `make check` passed; the final conversion-extended fixture also passed
+  optimized and ASan/UBSan separate-process runs.
+- [ ] Connect these inputs to ordinary solver jobs with shared scheduling,
+  bounded suspension and complete module/export roots. General NF receipt
+  recovery, dependent/higher descriptor relocation and source/image integration
+  remain open. This is not yet a complete CHECKPOINT or N5 acceptance.
 
 Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
 

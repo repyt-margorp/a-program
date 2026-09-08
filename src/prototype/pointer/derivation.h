@@ -17,9 +17,9 @@ struct pg_derivation_parameters {
 int pg_derivation_parameters(const struct pg_evidence *evidence,
 	struct pg_derivation_parameters *parameters);
 /* Reconstruct from accepted premises using only pg_prove_* rules. The returned
- * conclusion is computed, not supplied by the caller. An image loader must
- * additionally match it against its declared conclusion before publishing a
- * root. NULL includes invalid arity/parameters and canonicalized-away rules. */
+ * conclusion is computed, not supplied by the caller. If an image separately
+ * declares a conclusion/export type, the loader must match it before publishing
+ * that export. NULL includes invalid arity/parameters and canonicalized-away rules. */
 const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, enum pg_evidence_rule rule,
 	const struct pg_derivation_parameters *parameters, size_t count,
