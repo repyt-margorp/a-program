@@ -13,6 +13,54 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Read-Only Producer Export
+
+Continuation after `055a3af`. `pg_derivation_input` now belongs to the common
+derivation module, not I/O. `pg_derivation_input_header` extracts an unaccepted
+header from evidence, replacing receipts by endpoint obligations. The writer
+and producer export use this same extraction; synthesis no longer includes the
+I/O interface merely to describe its rule inputs.
+
+`pg_synthesis_export_rules` builds a temporary transport DAG from selected
+ordinary rule producers, their prepared input aliases, and completed proof
+jobs. Source elaboration that is still incomplete returns not-ready instead
+of silently exporting its provisional term as the complete computation.
+The exporter traverses jobs and existing evidence with the shared iterative DAG
+collector. It allocates neither source jobs nor new typing evidence and does
+not advance Solve. Temporary ordering tables are discarded; the caller owns
+the transport inputs, which borrow Core objects until serialization finishes.
+
+Distinct reached effect workers contribute immutable equation definitions to
+the temporary image worker. Each worker is visited once. Distinct workers
+redefining the same equation parameter are rejected, even if seeds agree;
+their different contribution sets cannot be silently unioned into one meaning.
+The temporary worker remains unsealed. It is not a second live solver authority.
+
+- [x] Move the common rule input out of I/O and share evidence-header extraction.
+- [x] Export selected prepared rules without source mutation or proof acceptance.
+- [x] Transport a function synthesized from actual source together with two
+  pending F formations from distinct effect workers through APGDRV v4.
+- [x] Restore in a fresh process, park unsealed formations, then finish via
+  ordinary Solve at budgets 1/64 and use the restored function from source.
+- [x] Reject unprepared source jobs without publishing roots; detect overlapping
+  equation authorities rather than merging their definitions.
+- [ ] Preserve arbitrary unfinished source preparation, all module obligations,
+  nominal datatype schemas and imports in the full program checkpoint.
+- [ ] Complete full CLI/REPL `.a` support and the original acceptance gates.
+
+The export above is deliberately a selected derivation transport view, not a
+claim that all source jobs or a complete module can already be checkpointed.
+Completed proof jobs may supply their accepted derivation; preparation and
+solver search histories are not substituted for that derivation.
+
+Verification: normal `check`, eight example source checks and six runtime
+fixtures pass. After the final test extension, rebuilt normal and ASan/UBSan
+producer-image fixtures also pass: a source application of the loaded identity
+normalizes to its original Lambda up to explicit alpha comparison. Export leaves
+source job/proof/term counts and scheduler steps unchanged. Implementation
+C/header: +182/-34; test C: +114/-3; shell: +5/-0; documentation separate.
+The original full-language and program-checkpoint gates remain open.
+
 ### September 9: Open-Row Derivation File Round Trips
 
 Continuation after `abdbaf4`. Experimental APGDRV v4 adds an effect-definition

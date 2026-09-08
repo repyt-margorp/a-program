@@ -1,5 +1,27 @@
 #include "derivation.h"
 
+int pg_derivation_input_header(const struct pg_evidence *proof, struct pg_derivation_input *input)
+{
+	if (!proof || !input) return -1;
+	struct pg_derivation_input header = {0};
+	header.rule = pg_evidence_rule(proof);
+	header.count = pg_evidence_premise_count(proof);
+	if (pg_derivation_parameters(proof, &header.parameters)) return -1;
+	if (header.parameters.conversion) {
+		header.source = pg_conversion_left(header.parameters.conversion);
+		header.target = pg_conversion_right(header.parameters.conversion);
+	}
+	if (header.parameters.reduction) {
+		header.source = pg_reduction_source(header.parameters.reduction);
+		header.target = pg_reduction_target(header.parameters.reduction);
+		header.reduction_kind = pg_reduction_kind(header.parameters.reduction);
+	}
+	header.parameters.conversion = NULL;
+	header.parameters.reduction = NULL;
+	*input = header;
+	return 0;
+}
+
 static int transport_direction(const struct pg_evidence *transport,
 	enum pg_identity_direction *direction)
 {

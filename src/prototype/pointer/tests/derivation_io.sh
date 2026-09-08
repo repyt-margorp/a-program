@@ -21,4 +21,9 @@ single_effects=$("$1" effect-read "$directory/effects.graph")
 bulk_effects=$("$1" effect-read-bulk "$directory/effects.graph")
 test "$single_effects" = "$bulk_effects"
 printf '%s\n' "$single_effects"
+"$1" producer-write "$directory/producers.graph"
+single_producers=$("$1" producer-read "$directory/producers.graph")
+bulk_producers=$("$1" producer-read-bulk "$directory/producers.graph")
+test "$single_producers" = "$bulk_producers"
+printf '%s\n' "$single_producers"
 printf '%s\n' "$single" 'derivation io: shared premises, split-budget Solve, receipt recovery and rejection passed'

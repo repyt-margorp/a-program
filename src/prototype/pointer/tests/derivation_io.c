@@ -757,6 +757,115 @@ static void pending_effect_proofs(FILE *file, struct pg_typing *typing, struct p
 	pg_effect_inference_destroy(&effects);
 }
 
+static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers,
+	int writing, uint64_t chunk)
+{
+	struct pg_graph *graph = typing->graph;
+	struct pg_whnf_work normalization;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&normalization, graph));
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+	if (writing) {
+		const char source[] = "identity := \\x : @ => x;";
+		struct pg_parser parser;
+		struct pg_definition definition;
+		pg_parser_init(&parser, graph, source, strlen(source));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *identity = pg_synthesis_request(&synthesis, pg_synthesis_root(&synthesis), definition.expression);
+		assert(identity);
+		struct pg_graph storage;
+		struct pg_effect_inference image;
+		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
+		const struct pg_derivation_input *const *inputs = NULL;
+		size_t jobs = synthesis.jobs.count, proofs = typing->proofs.count;
+		assert(pg_synthesis_export_rules(&synthesis, 1, &identity, &storage, &image, &inputs) == 1);
+		assert(!inputs && image.failed && synthesis.jobs.count == jobs && typing->proofs.count == proofs);
+		pg_effect_inference_destroy(&image);
+		pg_graph_destroy(&storage);
+		while (pg_synthesis_status(identity) == PG_SYNTHESIS_PENDING) {
+			assert(synthesis.steps < 1000);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		assert(pg_synthesis_status(identity) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *u = pg_prove_universe(typing, classifiers, pg_prove_empty_context(typing), 0);
+		struct pg_synthesis_job *universe = pg_synthesis_evidence(&synthesis, u);
+		const struct pg_term *type = pg_evidence_subject(u)->core;
+		const struct pg_object *op = pg_operation_label_create(graph, type, type);
+		const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL), *seed = pg_effect_row(graph, 1, &op);
+		struct pg_effect_inference first, second;
+		assert(!pg_effect_inference_init(&first, graph) && !pg_effect_inference_init(&second, graph));
+		struct pg_effect_equation *a = pg_effect_equation(&first, empty), *b = pg_effect_equation(&second, empty);
+		assert(!pg_effect_dependency(&first, pg_effect_equation(&first, seed), empty, a));
+		struct pg_derivation_input header = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
+		struct pg_synthesis_job *selected[] = {identity,
+			pg_synthesis_rule(&synthesis, &header, &universe, &first, a),
+			pg_synthesis_rule(&synthesis, &header, &universe, &second, b), identity};
+		assert(selected[1] && selected[2]);
+		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
+		jobs = synthesis.jobs.count; proofs = typing->proofs.count;
+		size_t terms = graph->terms.count;
+		uint64_t steps = synthesis.steps;
+		assert(!pg_synthesis_export_rules(&synthesis, 4, selected, &storage, &image, &inputs));
+		assert(inputs[0] == inputs[3] && inputs[1]->effect_parameter != inputs[2]->effect_parameter);
+		assert(image.row_sources.count == 3 && !image.sealed);
+		assert(jobs == synthesis.jobs.count && proofs == typing->proofs.count && steps == synthesis.steps && terms == graph->terms.count);
+		assert(!pg_synthesis_result(selected[1]) && !pg_synthesis_result(selected[2]));
+		assert(!pg_derivation_inputs_write_inference(file, 4, inputs, &image, &pg_builtin_graph_codec, classifiers));
+		pg_effect_inference_destroy(&image);
+		pg_graph_destroy(&storage);
+		/* Independent workers cannot define the same equation site twice. */
+		struct pg_effect_inference conflict;
+		assert(!pg_effect_inference_init(&conflict, graph));
+		struct pg_effect_equation *duplicate = pg_effect_equation_at(&conflict, pg_effect_equation_parameter(&first, a), empty);
+		struct pg_synthesis_job *overlap[] = {selected[1], pg_synthesis_rule(&synthesis, &header, &universe, &conflict, duplicate)};
+		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
+		inputs = NULL;
+		assert(pg_synthesis_export_rules(&synthesis, 2, overlap, &storage, &image, &inputs) == -1 && !inputs && image.failed);
+		pg_effect_inference_destroy(&image);
+		pg_graph_destroy(&storage);
+		pg_synthesis_destroy(&synthesis);
+		pg_effect_inference_destroy(&conflict);
+		pg_effect_inference_destroy(&first);
+		pg_effect_inference_destroy(&second);
+	} else {
+		struct pg_effect_inference image;
+		assert(!pg_effect_inference_init(&image, graph));
+		size_t count;
+		const struct pg_derivation_input *const *inputs;
+		assert(!pg_derivations_read_inference(file, graph, 1000, 100, &image, &pg_builtin_graph_codec, classifiers, &count, &inputs));
+		assert(count == 4 && inputs[0] == inputs[3] && !typing->proofs.count);
+		struct pg_synthesis_job *jobs[4];
+		for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_derivation_inference(&synthesis, inputs[i], &image);
+		while (synthesis.ready) { assert(synthesis.steps < 2000); pg_synthesis_advance(&synthesis, chunk); }
+		assert(pg_synthesis_status(jobs[0]) == PG_SYNTHESIS_DONE && jobs[0] == jobs[3]);
+		assert(!pg_synthesis_result(jobs[1]) && !pg_synthesis_result(jobs[2]));
+		pg_effect_inference_seal(&image);
+		assert(pg_synthesis_effect_inference(&synthesis, &image));
+		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
+		for (size_t i = 0; i < count; ++i) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(pg_synthesis_result(jobs[0]))->core->kind == PG_LAMBDA);
+		for (size_t i = 1; i < 3; ++i) {
+			const struct pg_effect_row *row;
+			const struct pg_term *type;
+			assert(pg_effect_type_view(pg_evidence_subject(pg_synthesis_result(jobs[i]))->core, &row, &type));
+			assert(pg_effect_count(row) == (i == 1 ? 1u : 0u) && type == pg_universe(classifiers, 0));
+		}
+		struct pg_synthesis_job *use = source_use(&synthesis, jobs[0], "main := \\a : @ => loaded a;");
+		while (synthesis.ready) { assert(synthesis.steps < 6000); pg_synthesis_advance(&synthesis, chunk); }
+		assert(pg_synthesis_status(use) == PG_SYNTHESIS_DONE);
+		struct pg_synthesis_job *nf = pg_synthesis_nf(&synthesis, pg_prove_empty_context(typing), pg_synthesis_result(use));
+		assert(nf);
+		while (synthesis.ready) { assert(synthesis.steps < 8000); pg_synthesis_advance(&synthesis, chunk); }
+		assert(pg_synthesis_status(nf) == PG_SYNTHESIS_DONE);
+		assert(pg_alpha_equal(pg_evidence_subject(pg_synthesis_result(nf))->core,
+			pg_evidence_subject(pg_synthesis_result(jobs[0]))->core) == 1);
+		pg_synthesis_destroy(&synthesis);
+		pg_effect_inference_destroy(&image);
+		puts("producer image: source identity, pending rule export, worker union, no source mutation and ordinary Solve passed");
+	}
+	pg_whnf_work_destroy(&normalization);
+}
+
 int main(int argc, char **argv)
 {
 	effect_transport();
@@ -764,7 +873,8 @@ int main(int argc, char **argv)
 	int operation = !strncmp(argv[1], "operation-", 10);
 	int unaccepted = !strncmp(argv[1], "input-", 6);
 	int effects = !strncmp(argv[1], "effect-", 7);
-	const char *mode = operation ? argv[1] + 10 : unaccepted ? argv[1] + 6 : effects ? argv[1] + 7 : argv[1];
+	int producer = !strncmp(argv[1], "producer-", 9);
+	const char *mode = operation ? argv[1] + 10 : unaccepted ? argv[1] + 6 : effects ? argv[1] + 7 : producer ? argv[1] + 9 : argv[1];
 	int writing = !strcmp(mode, "write");
 	int bulk = !strcmp(mode, "read-bulk");
 	assert(writing || bulk || !strcmp(mode, "read"));
@@ -774,7 +884,8 @@ int main(int argc, char **argv)
 	struct pg_classifiers classifiers;
 	assert(file && pg_graph_init(&graph) == 0 && pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
-	if (effects) pending_effect_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
+	if (producer) producer_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
+	else if (effects) pending_effect_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (unaccepted) unaccepted_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (operation) operation_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (writing) write_proofs(file, &typing, &classifiers);

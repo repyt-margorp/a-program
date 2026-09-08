@@ -7,21 +7,6 @@
 
 struct pg_effect_inference;
 
-/* Unaccepted rule application. source/target are comparison endpoints for
- * conversion, directed endpoints for normalization, otherwise NULL. They are
- * obligations, not receipts. The parameter certificate pointers remain NULL.
- * The ordinary constructors compute the conclusion after checking premises. */
-struct pg_derivation_input {
-	enum pg_evidence_rule rule;
-	struct pg_derivation_parameters parameters;
-	/* Unresolved F-row site, mutually exclusive with parameters.effects.
-	 * Its graph identity is persistent; the Solve worker is supplied separately. */
-	const struct pg_object *effect_parameter;
-	const struct pg_term *source, *target;
-	enum pg_reduction_kind reduction_kind;
-	size_t count;
-	const struct pg_derivation_input *premises[];
-};
 int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner);
 int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_evidence *const *roots,

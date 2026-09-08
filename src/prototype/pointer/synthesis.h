@@ -227,6 +227,17 @@ struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *
 struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *input, struct pg_synthesis_job *const *premises,
 	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
+/* Read-only export of selected prepared rule DAGs or completed proof jobs.
+ * 0 ready, 1 an input is not prepared, -1 unsupported/error. No Solve occurs.
+ * Unfinished source elaboration is not replaced by its provisional term.
+ * storage owns the transport inputs, which borrow Core objects from synthesis.
+ * effects is empty and initialized with storage; it receives immutable
+ * definitions from all reached workers, never their solutions/sealing flags.
+ * On failure effects is poisoned and roots is unchanged. This is not a whole
+ * module checkpoint: callers must retain all other source obligations too. */
+int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count,
+	struct pg_synthesis_job *const *jobs, struct pg_graph *storage,
+	struct pg_effect_inference *effects, const struct pg_derivation_input *const **roots);
 /* Publish a checked term or formation under an ordinary lexical name. This
  * does not extend the typing context or insert THUNK/RETURN/FORCE. The proof
  * must be available in the parent context (prefix projection is permitted).

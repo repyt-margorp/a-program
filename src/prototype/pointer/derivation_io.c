@@ -26,23 +26,6 @@ static int input_premise(void *unused, const void *key, size_t index, const void
 	return 1;
 }
 
-static int proof_input(const struct pg_evidence *proof, struct pg_derivation_input *input)
-{
-	input->rule = pg_evidence_rule(proof);
-	input->count = pg_evidence_premise_count(proof);
-	if (pg_derivation_parameters(proof, &input->parameters)) return -1;
-	if (input->parameters.conversion) {
-		input->source = pg_conversion_left(input->parameters.conversion);
-		input->target = pg_conversion_right(input->parameters.conversion);
-	}
-	if (input->parameters.reduction) {
-		input->source = pg_reduction_source(input->parameters.reduction);
-		input->target = pg_reduction_target(input->parameters.reduction);
-		input->reduction_kind = pg_reduction_kind(input->parameters.reduction);
-	}
-	return 0;
-}
-
 static int term_reference(FILE *file, const struct pg_term *term,
 	struct pg_dag *terms)
 {
@@ -81,7 +64,7 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 				if (input.rule != PG_RETURN_TYPE_FORM || input.parameters.effects) goto done;
 				if (!pg_effect_equation_find(work, input.effect_parameter)) goto done;
 			}
-		} else if (proof_input(node->key, &input)) goto done;
+		} else if (pg_derivation_input_header(node->key, &input)) goto done;
 		struct pg_derivation_parameters parameters = input.parameters;
 		if (pg_wire_write_u64(file, input.rule)
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;

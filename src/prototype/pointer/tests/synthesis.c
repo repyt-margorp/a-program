@@ -5,7 +5,7 @@
 #include "iadt.h"
 #include "prelude.h"
 #include "effect_inference.h"
-#include "derivation_io.h"
+#include "derivation.h"
 
 #include <assert.h>
 #include <stdio.h>

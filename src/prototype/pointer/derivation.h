@@ -17,6 +17,23 @@ struct pg_derivation_parameters {
 	const struct pg_conversion_certificate *conversion;
 	const struct pg_reduction_certificate *reduction;
 };
+/* Immutable unaccepted rule application, shared by synthesis and images.
+ * Endpoints are obligations, not receipts. Constructors compute conclusions
+ * after checking premises. The certificate parameter pointers remain NULL. */
+struct pg_derivation_input {
+	enum pg_evidence_rule rule;
+	struct pg_derivation_parameters parameters;
+	/* An unresolved F row is identified by its graph object, not its worker.
+	 * Mutually exclusive with parameters.effects. */
+	const struct pg_object *effect_parameter;
+	const struct pg_term *source, *target;
+	enum pg_reduction_kind reduction_kind;
+	size_t count;
+	const struct pg_derivation_input *premises[];
+};
+/* Extract a header only; callers traverse the ordinary premise DAG separately.
+ * Receipt endpoints become obligations and no acceptance flag is copied. */
+int pg_derivation_input_header(const struct pg_evidence *proof, struct pg_derivation_input *input);
 int pg_derivation_parameters(const struct pg_evidence *evidence,
 	struct pg_derivation_parameters *parameters);
 /* Reconstruct from accepted premises using only pg_prove_* rules. The returned
