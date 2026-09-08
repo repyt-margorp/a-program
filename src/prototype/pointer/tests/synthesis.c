@@ -2521,7 +2521,7 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 	assert(pg_evidence_context(source_map) == pg_evidence_context(map));
 	for (size_t i = 2; i < pg_evidence_premise_count(map); ++i)
 		same_judgement(pg_evidence_premise(source_map, i), pg_evidence_premise(map, i));
-	const struct pg_data_schema *schema = pg_data_schema(typing, parameter_context, index_context, 1, &source_map);
+	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, parameter_context, index_context), 1, &source_map);
 	assert(schema && pg_data_schema_fields(schema, pg_data_constructor(pg_data_schema_layout(schema), 0)) == field_context);
 	/* Checked telescopes do not turn this source into an admitted nominal type. */
 	complete(&synthesis, pg_synthesis_request(&synthesis, root, source), PG_SYNTHESIS_UNSUPPORTED);
@@ -2739,7 +2739,7 @@ static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifi
 	const struct pg_evidence *images[] = {pg_prove_variable(typing, fields, a), pg_prove_variable(typing, fields, x),
 		pg_prove_variable(typing, fields, p)};
 	const struct pg_evidence *result_map = pg_prove_substitution(typing, indices, fields, 3, images);
-	const struct pg_data_schema *schema = pg_data_schema(typing, parameters, indices, 1, &result_map);
+	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, parameters, indices), 1, &result_map);
 	assert(schema);
 	const struct pg_object *ctor = pg_data_constructor(pg_data_schema_layout(schema), 0);
 	const struct pg_evidence *iv = pg_prove_variable(typing, indices, i);
@@ -2773,7 +2773,7 @@ static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifi
 			same_judgement(pg_evidence_premise(map, j + 2), images[j]);
 			same_judgement(pg_evidence_premise(map, j + 2), pg_evidence_premise(pg_synthesis_result(bulk), j + 2));
 		}
-		assert(pg_data_schema(typing, parameters, indices, 1, &map));
+		assert(pg_data_schema(typing, pg_data_signature(typing, parameters, indices), 1, &map));
 		if (!n) {
 			const struct pg_source_scope *shadow = pg_synthesis_name(&split, scope, names[0], images[1]);
 			const struct pg_evidence *shadow_map = complete(&split,

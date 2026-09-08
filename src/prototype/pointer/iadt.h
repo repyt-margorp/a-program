@@ -30,6 +30,13 @@ struct pg_typing;
 struct pg_classifiers;
 struct pg_evidence;
 struct pg_data_schema;
+struct pg_data_signature;
+/* Checked parameter/index telescopes, available before checking fields.
+ * Immutable and owned by typing->graph; not nominal formation or membership.
+ * No layout, constructor, universe bound or accepted-declaration flag lives
+ * here. The same scoped signature may be used by distinct generative schemas. */
+const struct pg_data_signature *pg_data_signature(struct pg_typing *typing,
+	const struct pg_evidence *parameters, const struct pg_evidence *indices);
 /* Conservative syntactic strict positivity of a field classifier relative
  * to a dedicated Self binder. Recognizes saturated Self applications with
  * independent indices, Pi with independent domains, and F/U wrappers.
@@ -47,7 +54,7 @@ int pg_data_field_positive(const struct pg_term *type,
  * Fields and arities are derived from those substitutions, not copied into
  * a second semantic schema. Positivity and fibrancy are not certified here. */
 const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
-	const struct pg_evidence *parameters, const struct pg_evidence *indices,
+	const struct pg_data_signature *signature,
 	size_t count, const struct pg_evidence *const *results);
 const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *schema);
 const struct pg_evidence *pg_data_schema_indices(const struct pg_data_schema *schema);

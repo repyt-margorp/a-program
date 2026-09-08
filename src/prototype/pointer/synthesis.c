@@ -64,6 +64,7 @@ struct substitution_state {
 };
 struct declaration_state {
 	struct pg_index names;
+	const struct pg_data_signature *signature;
 	const struct pg_syntax *constructors;
 	struct pg_synthesis_job **producers;
 	size_t indexed, checked;
@@ -1654,6 +1655,8 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		if (!state) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		job->declaration = state;
 		state->constructors = constructors;
+		state->signature = pg_data_signature(synthesis->typing, job->scope->context, job->left->result);
+		if (!state->signature) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		if (pg_index_init(&state->names) != 0) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		size_t count = constructors->item_count;
 		if (count > SIZE_MAX / sizeof(*state->producers)) {
@@ -1684,7 +1687,7 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			results = pg_alloc(&temporary, state->checked * sizeof(*results));
 		if (state->checked && !results) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		for (size_t i = 0; i < state->checked; ++i) results[i] = state->producers[i]->result;
-		job->schema = pg_data_schema(synthesis->typing, job->scope->context, job->left->result,
+		job->schema = pg_data_schema(synthesis->typing, state->signature,
 			state->checked, results);
 		pg_graph_destroy(&temporary);
 		finish(synthesis, job, job->schema ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);

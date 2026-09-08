@@ -115,6 +115,23 @@ The earlier requirement that both use the same rule was too strong.
 
 Next declaration-admission contract:
 
+- [x] After `20148f3`, extract `pg_data_signature` from the schema's parameter
+  and index context references. Its constructor checks ownership and the exact
+  context-prefix relation; it adds no accepted evidence or Core object. The
+  declaration producer builds it after the index telescope and before any
+  constructor producer. `pg_data_schema` now takes this signature instead of
+  repeating the two contexts; no compatibility overload or copied context
+  arrays remain. Existing result-map checks and erased layouts are unchanged.
+  Tests reuse one signature for two fresh schemas, check distinct constructor
+  identities and unchanged proof counts, and reject foreign owners, invalid
+  prefixes and malformed result maps. This is the scoped signature preparation,
+  not Self-family formation, a Universe axiom, or completed source admission.
+  Full component `make check` and ASan/UBSan IADT tests pass. This is not a
+  passing `check-acceptance`; its source admission obligations remain open.
+- [ ] Add the scoped Self assumption and its discharge using that signature;
+  the preparation above intentionally carries no acceptance flag or mutable
+  constructor list. Universe bounds and formation evidence are still required.
+
 - A scoped family signature supplies its fixed parameter context and index
   telescope. Instantiating that signature consumes checked index images and
   forms a type symbolically. It is not APP elimination of a `Comp Universe`

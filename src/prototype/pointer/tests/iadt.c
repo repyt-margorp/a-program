@@ -216,13 +216,17 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *fields = pg_prove_context_extension(&typing, first, p, id);
 	const struct pg_evidence *results[] = {parameter_result(&typing, parameters, parameters),
 		parameter_result(&typing, parameters, first), parameter_result(&typing, parameters, fields)};
-	const struct pg_data_schema *schema = pg_data_schema(&typing, parameters, parameters, 3, results);
+	size_t proof_count = typing.proofs.count;
+	const struct pg_data_signature *signature = pg_data_signature(&typing, parameters, parameters);
+	assert(signature && typing.proofs.count == proof_count);
+	const struct pg_data_schema *schema = pg_data_schema(&typing, signature, 3, results);
 	assert(schema);
 	const struct pg_data_layout *layout = pg_data_schema_layout(schema);
 	const struct pg_object *ctor = pg_data_constructor(layout, 2);
 	assert(pg_data_schema_fields(schema, ctor) == fields);
-	const struct pg_data_schema *another = pg_data_schema(&typing, parameters, parameters, 3, results);
+	const struct pg_data_schema *another = pg_data_schema(&typing, signature, 3, results);
 	assert(another && pg_data_schema_layout(another) != layout);
+	assert(typing.proofs.count == proof_count);
 	assert(!pg_data_schema_fields(schema, pg_data_constructor(pg_data_schema_layout(another), 2)));
 	const struct pg_evidence *params = pg_prove_substitution(&typing, parameters, parameters, 1, &av);
 	assert(pg_data_instance(&typing, schema, pg_data_constructor(layout, 0), params, 0, NULL) == params);
@@ -248,10 +252,10 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *index_images[] = {pg_prove_variable(&typing, fields, a),
 		pg_prove_variable(&typing, fields, x), pv};
 	const struct pg_evidence *index_map = pg_prove_substitution(&typing, indices, fields, 3, index_images);
-	const struct pg_data_schema *indexed = pg_data_schema(&typing, parameters, indices, 1, &index_map);
+	const struct pg_data_schema *indexed = pg_data_schema(&typing, pg_data_signature(&typing, parameters, indices), 1, &index_map);
 	assert(indexed);
 	assert(pg_data_schema_indices(indexed) == indices);
-	assert(pg_data_schema_indices(pg_data_schema(&typing, parameters, indices, 0, NULL)) == indices);
+	assert(pg_data_schema_indices(pg_data_schema(&typing, pg_data_signature(&typing, parameters, indices), 0, NULL)) == indices);
 	const struct pg_object *indexed_ctor = pg_data_constructor(pg_data_schema_layout(indexed), 0);
 	assert(pg_data_schema_result(indexed, indexed_ctor) == index_map);
 	assert(pg_data_schema_fields(indexed, indexed_ctor) == fields);
@@ -261,8 +265,8 @@ static void schemas(struct pg_graph *graph)
 	assert(pg_data_result(&typing, indexed, indexed_ctor, instance) == index_result);
 	for (size_t n = 0; n < 2; ++n)
 		assert(pg_evidence_subject(pg_evidence_premise(index_result, n + 3))->core == pg_evidence_subject(values[n])->core);
-	assert(!pg_data_schema(&typing, parameters, indices, 1, results));
-	assert(!pg_data_schema(&typing, parameters, empty, 0, NULL));
+	assert(!pg_data_schema(&typing, pg_data_signature(&typing, parameters, indices), 1, results));
+	assert(!pg_data_schema(&typing, pg_data_signature(&typing, parameters, empty), 0, NULL));
 	assert(!pg_data_result(&typing, indexed, indexed_ctor, params));
 	assert(!pg_data_result(&typing, indexed, ctor, instance));
 	assert(!pg_data_result(&foreign, indexed, indexed_ctor, instance));
@@ -273,7 +277,7 @@ static void schemas(struct pg_graph *graph)
 		pg_prove_projection(&typing, parameters, u));
 	const struct pg_evidence *bv = pg_prove_variable(&typing, with_b, b);
 	const struct pg_evidence *changed_parameter = pg_prove_substitution(&typing, parameters, with_b, 1, &bv);
-	assert(changed_parameter && !pg_data_schema(&typing, parameters, parameters, 1, &changed_parameter));
+	assert(changed_parameter && !pg_data_schema(&typing, pg_data_signature(&typing, parameters, parameters), 1, &changed_parameter));
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, graph) == 0);
 	const struct pg_term *vx = pg_evidence_subject(xv)->core;
@@ -383,24 +387,25 @@ static void schemas(struct pg_graph *graph)
 	bad[1] = values[1];
 	assert(!pg_data_instance(&typing, schema, ctor, params, 2, bad));
 	assert(!pg_data_instance(&foreign, schema, ctor, params, 2, values));
-	assert(!pg_data_schema(&foreign, parameters, parameters, 3, results));
-	assert(!pg_data_schema(&typing, u, parameters, 0, NULL));
-	assert(!pg_data_schema(&typing, parameters, parameters, 1, &empty));
-	assert(!pg_data_schema(&typing, parameters, parameters, 1, NULL));
+	assert(!pg_data_schema(&foreign, signature, 3, results));
+	assert(!pg_data_schema(&foreign, pg_data_signature(&foreign, parameters, parameters), 3, results));
+	assert(!pg_data_schema(&typing, pg_data_signature(&typing, u, parameters), 0, NULL));
+	assert(!pg_data_schema(&typing, pg_data_signature(&typing, parameters, parameters), 1, &empty));
+	assert(!pg_data_schema(&typing, pg_data_signature(&typing, parameters, parameters), 1, NULL));
 	const struct pg_evidence *foreign_empty = pg_prove_empty_context(&foreign);
-	assert(!pg_data_schema(&typing, empty, empty, 1, &foreign_empty));
+	assert(!pg_data_schema(&typing, pg_data_signature(&typing, empty, empty), 1, &foreign_empty));
 	const struct pg_evidence *empty_sub = pg_prove_substitution(&typing, empty, empty, 0, NULL);
-	const struct pg_data_schema *unit_schema = pg_data_schema(&typing, empty, empty, 1, &empty_sub);
+	const struct pg_data_schema *unit_schema = pg_data_schema(&typing, pg_data_signature(&typing, empty, empty), 1, &empty_sub);
 	assert(unit_schema && pg_data_instance(&typing, unit_schema,
 		pg_data_constructor(pg_data_schema_layout(unit_schema), 0), empty_sub, 0, NULL) == empty_sub);
-	assert(pg_data_schema(&typing, empty, empty, 0, NULL));
+	assert(pg_data_schema(&typing, pg_data_signature(&typing, empty, empty), 0, NULL));
 	assert(!pg_data_schema_layout(NULL) && !pg_data_schema_fields(NULL, ctor));
 	/* Context identity, not a chosen derivation of that context, selects the
 	 * parameter prefix. Both derivations remain available as immutable evidence. */
 	const struct pg_evidence *alternate = pg_prove_context_extension(&typing, empty, a,
 		pg_prove_value_type(&typing, pg_prove_type_value(&typing, u)));
 	assert(alternate != parameters && pg_evidence_context(alternate) == pg_evidence_context(parameters));
-	assert(pg_data_schema(&typing, alternate, parameters, 3, results));
+	assert(pg_data_schema(&typing, pg_data_signature(&typing, alternate, parameters), 3, results));
 	const struct pg_evidence *alternate_params = pg_prove_substitution(&typing, alternate, dest, 1, &av);
 	assert(pg_data_instance(&typing, schema, ctor, alternate_params, 2, values) == instance);
 	const struct pg_object *y = pg_binder(graph);
@@ -421,7 +426,7 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *boundary = pg_identity_context(&typing, &dimensions, fields, 2, centers, &left, &right, paths);
 	assert(boundary);
 	const struct pg_evidence *boundary_result = parameter_result(&typing, parameters, boundary);
-	assert(pg_data_schema(&typing, parameters, parameters, 1, &boundary_result));
+	assert(pg_data_schema(&typing, pg_data_signature(&typing, parameters, parameters), 1, &boundary_result));
 	const struct pg_evidence *sides[] = {left, right};
 	for (size_t side = 0; side < 2; ++side) {
 		av = pg_evidence_premise(sides[side], 2);

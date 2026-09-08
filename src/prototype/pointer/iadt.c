@@ -182,12 +182,31 @@ int pg_data_dispatch(struct pg_eval *machine)
 	return pg_eval_demand(machine, 0, match_answer, NULL);
 }
 
-struct pg_data_schema {
-	const struct pg_data_layout *layout;
+struct pg_data_signature {
+	const struct pg_typing *owner;
 	const struct pg_evidence *parameters;
 	const struct pg_evidence *indices;
+};
+
+struct pg_data_schema {
+	const struct pg_data_layout *layout;
+	const struct pg_data_signature *signature;
 	const struct pg_evidence *results[];
 };
+
+const struct pg_data_signature *pg_data_signature(struct pg_typing *typing,
+	const struct pg_evidence *parameters, const struct pg_evidence *indices)
+{
+	if (!pg_evidence_owned_by(parameters, typing) || !pg_evidence_owned_by(indices, typing)) return NULL;
+	if (pg_evidence_judgement(parameters) != PG_JUDGEMENT_CONTEXT
+		|| pg_evidence_judgement(indices) != PG_JUDGEMENT_CONTEXT) return NULL;
+	size_t count;
+	if (pg_context_extension_size(pg_evidence_context(indices), pg_evidence_context(parameters), &count)) return NULL;
+	struct pg_data_signature *signature = pg_alloc(typing->graph, sizeof(*signature));
+	if (!signature) return NULL;
+	*signature = (struct pg_data_signature){typing, parameters, indices};
+	return signature;
+}
 
 int pg_data_field_positive(const struct pg_term *type,
 	const struct pg_object *self, size_t index_count)
@@ -226,16 +245,13 @@ int pg_data_field_positive(const struct pg_term *type,
 }
 
 const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
-	const struct pg_evidence *parameters, const struct pg_evidence *indices,
+	const struct pg_data_signature *signature,
 	size_t count, const struct pg_evidence *const *results)
 {
-	if (!pg_evidence_owned_by(parameters, typing) || (count && !results)) return NULL;
-	if (pg_evidence_judgement(parameters) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (!pg_evidence_owned_by(indices, typing)) return NULL;
-	if (pg_evidence_judgement(indices) != PG_JUDGEMENT_CONTEXT) return NULL;
+	if (!signature || signature->owner != typing || (count && !results)) return NULL;
+	const struct pg_evidence *parameters = signature->parameters, *indices = signature->indices;
 	const struct pg_context *prefix = pg_evidence_context(parameters);
-	size_t index_count, parameter_count;
-	if (pg_context_extension_size(pg_evidence_context(indices), prefix, &index_count) != 0) return NULL;
+	size_t parameter_count;
 	if (pg_context_extension_size(prefix, NULL, &parameter_count) != 0) return NULL;
 	if (count > (SIZE_MAX - sizeof(struct pg_data_schema)) / sizeof(*results)) return NULL;
 	if (count > SIZE_MAX / sizeof(size_t)) return NULL;
@@ -259,8 +275,7 @@ const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
 	if (!layout) goto done;
 	schema = pg_alloc(typing->graph, sizeof(*schema) + count * sizeof(*results));
 	if (!schema) goto done;
-	schema->parameters = parameters;
-	schema->indices = indices;
+	schema->signature = signature;
 	schema->layout = layout;
 	for (size_t i = 0; i < count; ++i) schema->results[i] = results[i];
 done:
@@ -275,7 +290,7 @@ const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *
 
 const struct pg_evidence *pg_data_schema_indices(const struct pg_data_schema *schema)
 {
-	return schema ? schema->indices : NULL;
+	return schema ? schema->signature->indices : NULL;
 }
 
 const struct pg_evidence *pg_data_schema_result(const struct pg_data_schema *schema,
@@ -308,7 +323,7 @@ const struct pg_evidence *pg_data_instance(struct pg_typing *typing,
 	const struct pg_evidence *fields = pg_data_schema_fields(schema, object);
 	if (!fields || !pg_evidence_owned_by(parameters, typing) || (count && !values)) return NULL;
 	if (pg_evidence_rule(parameters) != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (pg_evidence_context(pg_evidence_premise(parameters, 0)) != pg_evidence_context(schema->parameters)) return NULL;
+	if (pg_evidence_context(pg_evidence_premise(parameters, 0)) != pg_evidence_context(schema->signature->parameters)) return NULL;
 	const struct pg_constructor *c = constructor(object, schema->layout);
 	if (count != c->arity) return NULL;
 	size_t prefix = pg_evidence_premise_count(parameters) - 2;
@@ -331,7 +346,7 @@ const struct pg_evidence *pg_data_branch(struct pg_typing *typing,
 	const struct pg_object *object, const struct pg_evidence *body)
 {
 	const struct pg_evidence *context = pg_data_schema_fields(schema, object);
-	return context ? pg_prove_abstract(typing, classifiers, schema->parameters, context, body) : NULL;
+	return context ? pg_prove_abstract(typing, classifiers, schema->signature->parameters, context, body) : NULL;
 }
 
 const struct pg_evidence *pg_data_branch_motive(struct pg_typing *typing,
