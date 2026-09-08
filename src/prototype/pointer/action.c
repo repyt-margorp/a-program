@@ -74,15 +74,9 @@ static const struct pg_evidence *projection_substitution(struct pg_typing *typin
 	return result;
 }
 
-const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation)
+static const struct pg_evidence *retained_origin(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_evidence **substitution)
 {
-	if (!pg_evidence_owned_by(formation, typing)) return NULL;
-	if (classifiers->graph != typing->graph) return NULL;
-	switch (pg_evidence_judgement(formation)) {
-	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
-	default: return NULL;
-	}
 	const struct pg_evidence *map = NULL;
 	for (;;) {
 		const struct pg_evidence *step;
@@ -109,16 +103,38 @@ const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
 		map = map ? pg_prove_substitution_compose(typing, step, map) : step;
 		if (!map) return NULL;
 	}
+	*substitution = map;
+	return formation;
+}
+
+const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation)
+{
+	if (!pg_evidence_owned_by(formation, typing)) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	switch (pg_evidence_judgement(formation)) {
+	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
+	default: return NULL;
+	}
+	const struct pg_evidence *map = NULL;
+	formation = retained_origin(typing, formation, &map);
+	if (!formation) return NULL;
 	enum pg_evidence_rule rule = pg_evidence_rule(formation);
 	struct pg_identity_boundary boundary;
 	if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
 	/* A checked refl A selects the ordinary Identity family of A. Recover it
 	 * from its premise, never from the shape of the family Core application. */
-	if (rule == PG_IDENTITY_INSTANCE && pg_evidence_rule(boundary.family) == PG_REFLEXIVITY) {
-		const struct pg_evidence *type = pg_prove_value_type(typing, pg_evidence_premise(boundary.family, 1));
-		formation = pg_prove_identity_type(typing, type, boundary.left, boundary.right);
-		if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
-		rule = PG_IDENTITY_FORM;
+	if (rule == PG_IDENTITY_INSTANCE) {
+		const struct pg_evidence *family_map = NULL;
+		const struct pg_evidence *family = retained_origin(typing, boundary.family, &family_map);
+		if (!family) return NULL;
+		if (pg_evidence_rule(family) == PG_REFLEXIVITY) {
+			const struct pg_evidence *type = pg_prove_value_type(typing, pg_evidence_premise(family, 1));
+			if (family_map) type = pg_prove_reindex(typing, family_map, type);
+			formation = pg_prove_identity_type(typing, type, boundary.left, boundary.right);
+			if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
+			rule = PG_IDENTITY_FORM;
+		}
 	}
 	if (!map) return formation;
 	if (rule != PG_FAMILY_IDENTITY_FORM) {

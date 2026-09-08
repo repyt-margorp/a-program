@@ -33,6 +33,14 @@ symmetry rule described below.
 Verification: complete pointer `make check` and ASan/UBSan `identity_test`
 passed. The higher-application comparison maximum remains 243,489 steps.
 
+Follow-up: the same recovery now follows family projection/reindex premises,
+not only an immediately visible reflexivity rule. A shared `retained_origin`
+helper composes the retained substitutions for both formation and family
+recovery; the reconstructed type is reindexed before endpoint checking.
+Regressions cover both ways to move a family into an extended context and
+verify that the recovered formation keeps that context and its exact Core.
+This is not recovery from arbitrary conversion or an opaque family assumption.
+
 Rechecked `action.h`, `evidence.c` and `square_template_jobs` /
 `dependent_cube_substitution` after `253e690`. The current proper-face API
 explicitly excludes centers. `PG_IDENTITY_INSTANCE` retains a checked family
