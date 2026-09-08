@@ -82,6 +82,17 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] After `c638e8c`, compute cube-slot permutation directly from coordinates.
+  The previous helper interned an input face, composed face and ordered face
+  merely to obtain the new slot and intrinsic orientation. Decode once, collect
+  endpoint digits and surviving axes, then intern only the output orientation.
+  Existing three-dimensional tests cover all six permutations and 27 slots,
+  inverse restoration and equality with general face composition/factorization.
+  A new allocation regression permits at most one new map per slot request.
+  This removes intermediate persistent geometry, not a typing distinction;
+  it does not implement the missing typed center symmetry or demonstrate a
+  source-level speedup. Permutation validation still uses the shared map owner.
+  Optimized and ASan/UBSan Core tests passed.
 - [x] Audit opaque family instantiation before extending symmetry acceptance.
   With assumed `A,B : Universe`, `x : A`, `y : B`, `r : Id Universe A B`,
   the existing instance/formation/face jobs preserve `r x y` and recover x/y

@@ -2022,7 +2022,10 @@ static void induced_face_permutations(struct pg_dimensions *dimensions)
 		for (size_t slot = 0; slot < 27; ++slot) {
 			size_t moved = SIZE_MAX, source;
 			const struct pg_dimension_map *intrinsic = NULL;
+			size_t maps_before = dimensions->maps.count;
 			assert(pg_dimension_cube_permute_slot(dimensions, permutations[p], slot, &moved, &intrinsic) == 0);
+			/* Only the resulting intrinsic map may be new, not temporary faces. */
+			assert(dimensions->maps.count <= maps_before + 1);
 			assert(moved < 27 && !visited[moved]++);
 			size_t digits[] = {slot / 9, (slot / 3) % 3, slot % 3};
 			assert(moved == 9 * digits[orders[p][0]] + 3 * digits[orders[p][1]] + digits[orders[p][2]]);

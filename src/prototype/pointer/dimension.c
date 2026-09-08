@@ -257,18 +257,22 @@ int pg_dimension_cube_permute_slot(struct pg_dimensions *dimensions,
 	struct pg_coordinate *coordinates = calloc(n ? n : 1, sizeof(*coordinates));
 	if (!coordinates) return -1;
 	int status = pg_dimension_cube_coordinates(n, slot, coordinates, &source);
-	const struct pg_dimension_map *face = status ? NULL : pg_dimension_map(dimensions, source, n, coordinates);
-	free(coordinates);
-	if (!face) return -1;
-	const struct pg_dimension_map *ordered, *orientation;
-	if (pg_dimension_face_factor(dimensions, pg_dimension_compose(dimensions, permutation, face),
-		&ordered, &orientation) != 0) return -1;
-	size_t index = 0;
+	if (status) { free(coordinates); return -1; }
+	struct pg_coordinate *axes = calloc(source ? source : 1, sizeof(*axes));
+	if (!axes) { free(coordinates); return -1; }
+	/* Factor the permuted coordinates directly: endpoint digits give the
+	 * ordered slot, while encountered source axes give its local orientation. */
+	size_t index = 0, axis = 0;
 	for (size_t i = 0; i < n; ++i) {
-		struct pg_coordinate coordinate = ordered->coordinates[i];
+		struct pg_coordinate coordinate = coordinates[permutation->coordinates[i].axis];
 		size_t digit = coordinate.kind == PG_AXIS ? 2 : coordinate.kind == PG_ENDPOINT_ONE;
 		index = 3 * index + digit;
+		if (coordinate.kind == PG_AXIS) axes[axis++] = coordinate;
 	}
+	const struct pg_dimension_map *orientation = pg_dimension_map(dimensions, source, source, axes);
+	free(axes);
+	free(coordinates);
+	if (!orientation) return -1;
 	*source_slot = index;
 	*intrinsic = orientation;
 	return 0;
