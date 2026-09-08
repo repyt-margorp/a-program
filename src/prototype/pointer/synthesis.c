@@ -28,11 +28,6 @@ struct waiter {
 	struct pg_synthesis_job *child;
 	struct waiter *next;
 };
-struct match_frame {
-	const struct pg_evidence *input;
-	const struct pg_evidence *domain;
-	const struct pg_evidence *context;
-};
 struct block_name {
 	struct pg_index_entry index;
 	struct pg_token name;
@@ -164,7 +159,7 @@ struct pg_synthesis_job {
 	union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
 	struct block_state *block;
 	struct application_state *application;
-	const struct match_frame *match_frame;
+	const struct block_frame *match_frame;
 	struct definition_state *definitions;
 	struct substitution_state *substitution;
 	struct declaration_state *declaration;
@@ -1868,20 +1863,6 @@ rejected:
 	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
 }
 
-static struct match_frame *open_match_input(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, const struct pg_evidence *input)
-{
-	const struct pg_evidence *return_type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, input);
-	const struct pg_evidence *domain = pg_prove_return_content(synthesis->typing, return_type);
-	if (!domain) return NULL;
-	const struct pg_object *binder = pg_binder(synthesis->typing->graph);
-	context = pg_prove_context_extension(synthesis->typing, context, binder, domain);
-	if (!context) return NULL;
-	struct match_frame *frame = pg_alloc(synthesis->typing->graph, sizeof(*frame));
-	if (frame) *frame = (struct match_frame){.input = input, .domain = domain, .context = context};
-	return frame;
-}
-
 struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *input,
 	struct pg_synthesis_job *continuation)
@@ -1954,17 +1935,19 @@ static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 	forward_proof(synthesis, job, job->value_job);
 }
 
+static struct pg_synthesis_job *rule_premise(struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, size_t index);
+
 static const struct pg_evidence *close_match_input(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *job, const struct match_frame *frame,
+	struct pg_synthesis_job *job, const struct block_frame *frame,
 	const struct pg_evidence *body)
 {
 	if (!job->value_job) {
 		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(synthesis,
-			pg_synthesis_evidence(synthesis, frame->domain), pg_synthesis_evidence(synthesis, frame->context),
+			rule_premise(synthesis, frame->context, 1), frame->context,
 			pg_synthesis_evidence(synthesis, body));
 		job->value_job = pg_synthesis_sequence(synthesis,
-			pg_synthesis_evidence(synthesis, pg_evidence_premise(frame->context, 0)),
-			pg_synthesis_evidence(synthesis, frame->input), continuation);
+			rule_premise(synthesis, frame->context, 0), frame->input, continuation);
 	}
 	if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL; }
 	if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return NULL; }
@@ -2055,9 +2038,6 @@ static int register_name(struct pg_synthesis *synthesis, struct pg_index *names,
 	entry->name = name;
 	return pg_index_insert(names, &entry->index, name_hash(name));
 }
-
-static struct pg_synthesis_job *rule_premise(struct pg_synthesis *synthesis,
-	const struct pg_synthesis_job *job, size_t index);
 
 static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
@@ -2857,17 +2837,25 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	}
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 	if (!job->inner) {
-		job->inner = job->scope;
 		job->checking_term = job->left->result;
 		if (job->checking_term && pg_evidence_judgement(job->checking_term) == PG_JUDGEMENT_COMPUTATION) {
-			const struct match_frame *frame = open_match_input(synthesis, source_context(job->scope), job->checking_term);
-			if (!frame) goto unsupported;
-			job->match_frame = frame;
-			const struct pg_object *binder = pg_evidence_context(frame->context)->binder;
-			job->inner = pg_synthesis_bind(synthesis, job->scope, (struct pg_token){0}, binder, frame->context);
+			if (!job->match_frame) {
+				struct block_frame *frame = pg_alloc(synthesis->typing->graph, sizeof(*frame));
+				if (!frame) goto error;
+				*frame = (struct block_frame){.input = job->left, .binds = 1,
+					.context = pg_synthesis_result_context(synthesis, job->scope->context_job,
+						job->left, pg_binder(synthesis->typing->graph))};
+				if (!frame->context) goto error;
+				job->match_frame = frame;
+			}
+			struct pg_synthesis_job *extension = job->match_frame->context;
+			if (extension->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, extension); return; }
+			if (extension->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, extension->status); return; }
+			const struct pg_object *binder = pg_evidence_context(extension->result)->binder;
+			job->inner = pg_synthesis_bind(synthesis, job->scope, (struct pg_token){0}, binder, extension->result);
 			if (!job->inner) goto error;
-			job->checking_term = pg_prove_variable(synthesis->typing, frame->context, binder);
-		}
+			job->checking_term = pg_prove_variable(synthesis->typing, extension->result, binder);
+		} else job->inner = job->scope;
 	}
 	const struct pg_evidence *context = source_context(job->inner), *scrutinee = job->checking_term;
 	if (!scrutinee || pg_evidence_judgement(scrutinee) != PG_JUDGEMENT_VALUE) goto unsupported;

@@ -4058,7 +4058,8 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		"r:=(Nat.succ Nat.zero) @zero=>Nat.zero @succ k=>k;",
 		"r:=(\\n:Nat => n @succ k => k @zero => Nat.zero) (Nat.succ Nat.zero);",
 		"r:=Nat.zero @Alias.zero => Nat.zero @Nat.succ k => k;",
-		"r:=((\\n:Nat => n @zero => (\\m:Nat=>m) @succ k => (\\m:Nat=>m)) Nat.zero) Nat.zero;"
+		"r:=((\\n:Nat => n @zero => (\\m:Nat=>m) @succ k => (\\m:Nat=>m)) Nat.zero) Nat.zero;",
+		"r:=({Nat.succ Nat.zero;} @zero=>Nat.zero @succ k=>{k;}) @zero=>Nat.zero @succ k=>k;"
 	};
 	for (size_t i = 0; i < sizeof(matches) / sizeof(*matches); ++i) {
 		const struct pg_evidence *term = complete(&synthesis, request(&synthesis, named, matches[i]), PG_SYNTHESIS_DONE);
@@ -4078,6 +4079,21 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	};
 	for (size_t i = 0; i < sizeof(bad_matches) / sizeof(*bad_matches); ++i)
 		complete(&synthesis, request(&synthesis, named, bad_matches[i]), PG_SYNTHESIS_REJECTED);
+	const struct pg_operation_declaration *choose = pg_operation_declaration(typing, nat, nat);
+	const struct pg_source_scope *effect_scope = pg_synthesis_name_job(&synthesis, named,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Choose", .length = 6}, pg_synthesis_operation(&synthesis, choose));
+	const struct pg_evidence *effect_match = complete(&synthesis, request(&synthesis, effect_scope,
+		"r:=(Choose Nat.zero) @zero=>Nat.zero @succ k=>k;"), PG_SYNTHESIS_DONE);
+	const struct pg_effect_row *match_effects;
+	const struct pg_term *match_result;
+	assert(pg_effect_type_view(pg_evidence_classifier(effect_match), &match_effects, &match_result));
+	assert(match_result == pg_evidence_subject(nat)->core);
+	assert(pg_effect_count(match_effects) == 1 && pg_effect_contains(match_effects, pg_operation_label(choose)) == 1);
+	const struct pg_evidence *handled_match = complete(&synthesis, request(&synthesis, effect_scope,
+		"r:=((Choose Nat.zero) @zero=>Nat.zero @succ k=>k) @Choose req resume=>resume req @#.return x=>x;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *handled_result = complete(&synthesis,
+		pg_synthesis_return(&synthesis, empty, handled_match), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(handled_result)->core == pg_evidence_subject(zero)->core);
 	struct pg_synthesis_job *list = request(&synthesis, named, "List:=&(\\A:@=>@{nil:*; cons:A->*->*;});");
 	complete(&synthesis, list, PG_SYNTHESIS_DONE);
 	named = pg_synthesis_name_job(&synthesis, named,

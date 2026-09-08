@@ -740,7 +740,24 @@ finish general handler source support.
   This does not establish all structural subject projections for dependent
   sequence fallback; audit those separately before retaining them in `.a`.
 - [ ] Automatic equation generation from arbitrary source bodies remains open.
-  This fixture supplies the graph explicitly before checking the source body;
+  September 9, after `d97b722`: removed the dedicated accepted-evidence
+  `match_frame` and synchronous `open_match_input` formation path. Computed
+  Match scrutinees now use the block/application frame and ordinary result
+  context producer. The binder is allocated once, context formation is awaited,
+  and closing uses its original domain/context premises through Lambda and
+  sequence jobs. No new Core node or proof rule is introduced.
+  Tests cover nested computed scrutinees, preservation of a requested operation
+  in the output row, and resuming that request through a source handler to the
+  expected constructor. The ordinary Match branch/motive path still requires
+  accepted contexts and instance metadata: this is a shared-context prerequisite,
+  not completion of pending Match inference. Next, migrate instance/constructor
+  scope and branch-motive producers without inventing provisional evidence.
+  Invalid result-context formation now propagates the ordinary producer's
+  rejection/error instead of collapsing every failure to unsupported.
+  Implementation C: +23/-35; regression C: +17/-1; documentation separate.
+  Validation: component checks, eight source cases and six runtime cases pass;
+  expanded synthesis tests pass in normal and rebuilt ASan/UBSan builds.
+  The earlier explicit-carrier fixture supplies the graph before checking the source body;
   it does not infer latent callable effects or a general dependent carrier.
 
 Verification: regular components, eight example checks, six execution fixtures
