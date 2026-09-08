@@ -82,6 +82,20 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Add `pg_dimension_cube_permute_slot` for moving a known cube argument:
+  compose its face with the permutation, factor through an ordered face, and
+  return that source slot plus the intrinsic orientation. This is geometry
+  only, including the center; it neither constructs nor accepts an acted term.
+  Cubic tests check all 27 slots under six permutations, independent numeric
+  positions, bijectivity, face recomposition and inverse orientations.
+  Complete pointer `make check` and ASan/UBSan `core_test` passed.
+- [ ] Do not dispatch a new generic APP reduction merely because 3^n
+  arguments are available. `pg_prove_application` requires a computation Pi
+  and a value; `pg_prove_identity_instance` takes a value family over Universe
+  and two endpoints, but both erase to APP. The typed action builder must
+  select the applicable construction from retained evidence. Keep this
+  distinction above Core; do not introduce ValuePi or query a global
+  Core-to-classifier table. The slot planner does not resolve this obligation.
 - [x] Share the existing cube argument order through
   `pg_dimension_cube_coordinates`: lexicographic endpoint-zero, endpoint-one,
   axis, with the final coordinate varying fastest. `cube_action` now uses

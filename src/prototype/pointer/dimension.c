@@ -244,6 +244,36 @@ done:
 	return status;
 }
 
+int pg_dimension_cube_permute_slot(struct pg_dimensions *dimensions,
+	const struct pg_dimension_map *permutation, size_t slot,
+	size_t *source_slot, const struct pg_dimension_map **intrinsic)
+{
+	if (!source_slot || !intrinsic || !permutation) return -1;
+	if (permutation->source != permutation->target) return -1;
+	permutation = pg_dimension_face(dimensions, permutation);
+	if (!permutation) return -1;
+	size_t n = permutation->target, source;
+	if (n > SIZE_MAX / sizeof(struct pg_coordinate)) return -1;
+	struct pg_coordinate *coordinates = calloc(n ? n : 1, sizeof(*coordinates));
+	if (!coordinates) return -1;
+	int status = pg_dimension_cube_coordinates(n, slot, coordinates, &source);
+	const struct pg_dimension_map *face = status ? NULL : pg_dimension_map(dimensions, source, n, coordinates);
+	free(coordinates);
+	if (!face) return -1;
+	const struct pg_dimension_map *ordered, *orientation;
+	if (pg_dimension_face_factor(dimensions, pg_dimension_compose(dimensions, permutation, face),
+		&ordered, &orientation) != 0) return -1;
+	size_t index = 0;
+	for (size_t i = 0; i < n; ++i) {
+		struct pg_coordinate coordinate = ordered->coordinates[i];
+		size_t digit = coordinate.kind == PG_AXIS ? 2 : coordinate.kind == PG_ENDPOINT_ONE;
+		index = 3 * index + digit;
+	}
+	*source_slot = index;
+	*intrinsic = orientation;
+	return 0;
+}
+
 const struct pg_binding_face *pg_binding_face(struct pg_dimensions *dimensions,
 	const struct pg_binding_cube *cube, const struct pg_dimension_map *face)
 {

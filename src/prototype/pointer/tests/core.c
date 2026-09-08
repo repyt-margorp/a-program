@@ -1875,6 +1875,31 @@ static void induced_face_permutations(struct pg_dimensions *dimensions)
 		assert(extended && extended->coordinates[0].kind == PG_AXIS && extended->coordinates[0].axis == 0);
 		for (size_t i = 0; i < 3; ++i) assert(extended->coordinates[i + 1].axis == orders[p][i] + 1);
 		assert(pg_dimension_inverse(dimensions, extended) == pg_dimension_prefix(dimensions, 1, inverse));
+		unsigned char visited[27] = {0};
+		for (size_t slot = 0; slot < 27; ++slot) {
+			size_t moved = SIZE_MAX, source;
+			const struct pg_dimension_map *intrinsic = NULL;
+			assert(pg_dimension_cube_permute_slot(dimensions, permutations[p], slot, &moved, &intrinsic) == 0);
+			assert(moved < 27 && !visited[moved]++);
+			size_t digits[] = {slot / 9, (slot / 3) % 3, slot % 3};
+			assert(moved == 9 * digits[orders[p][0]] + 3 * digits[orders[p][1]] + digits[orders[p][2]]);
+			assert(pg_dimension_cube_coordinates(3, slot, coordinates, &source) == 0);
+			const struct pg_dimension_map *face = pg_dimension_map(dimensions, source, 3, coordinates);
+			assert(pg_dimension_cube_coordinates(3, moved, coordinates, &source) == 0);
+			const struct pg_dimension_map *ordered = pg_dimension_map(dimensions, source, 3, coordinates);
+			assert(pg_dimension_compose(dimensions, ordered, intrinsic) ==
+				pg_dimension_compose(dimensions, permutations[p], face));
+			if (slot == 26) assert(intrinsic == permutations[p]);
+			size_t restored;
+			const struct pg_dimension_map *back;
+			assert(pg_dimension_cube_permute_slot(dimensions, inverse, moved, &restored, &back) == 0);
+			assert(restored == slot);
+			assert(pg_dimension_compose(dimensions, back, intrinsic) == pg_dimension_identity(dimensions, source));
+		}
+		size_t unchanged = 42;
+		const struct pg_dimension_map *orientation = inverse;
+		assert(pg_dimension_cube_permute_slot(dimensions, permutations[p], 27, &unchanged, &orientation) == -1);
+		assert(unchanged == 42 && orientation == inverse);
 	}
 	assert(pg_dimension_prefix(dimensions, 1, permutations[0]) == pg_dimension_identity(dimensions, 4));
 	assert(!pg_dimension_prefix(dimensions, SIZE_MAX, permutations[0]));

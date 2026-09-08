@@ -40,6 +40,13 @@ int pg_dimensions_init(struct pg_dimensions *dimensions, struct pg_graph *graph)
  * Rejects overflow/out-of-range input without changing either output. */
 int pg_dimension_cube_coordinates(size_t dimension, size_t slot,
 	struct pg_coordinate *coordinates, size_t *source);
+/* Factor permutation composed with the ordered face at slot. Return the slot
+ * of the ordered source face and its intrinsic orientation, including centers.
+ * This only plans argument movement; it does not apply/force a term or infer
+ * that a raw APP spine represents a cube. Outputs change only on success. */
+int pg_dimension_cube_permute_slot(struct pg_dimensions *dimensions,
+	const struct pg_dimension_map *permutation, size_t slot,
+	size_t *source_slot, const struct pg_dimension_map **intrinsic);
 /* Frees the index; maps remain owned by graph. */
 void pg_dimensions_destroy(struct pg_dimensions *dimensions);
 const struct pg_dimension_map *pg_dimension_map(struct pg_dimensions *dimensions,
