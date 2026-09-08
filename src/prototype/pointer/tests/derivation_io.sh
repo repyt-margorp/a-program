@@ -16,4 +16,9 @@ single_inputs=$("$1" input-read "$directory/inputs.graph")
 bulk_inputs=$("$1" input-read-bulk "$directory/inputs.graph")
 test "$single_inputs" = "$bulk_inputs"
 printf '%s\n' "$single_inputs"
+"$1" effect-write "$directory/effects.graph"
+single_effects=$("$1" effect-read "$directory/effects.graph")
+bulk_effects=$("$1" effect-read-bulk "$directory/effects.graph")
+test "$single_effects" = "$bulk_effects"
+printf '%s\n' "$single_effects"
 printf '%s\n' "$single" 'derivation io: shared premises, split-budget Solve, receipt recovery and rejection passed'

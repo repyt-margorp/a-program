@@ -5,6 +5,8 @@
 #include "graph_io.h"
 #include <stdio.h>
 
+struct pg_effect_inference;
+
 /* Unaccepted rule application. source/target are comparison endpoints for
  * conversion, directed endpoints for normalization, otherwise NULL. They are
  * obligations, not receipts. The parameter certificate pointers remain NULL.
@@ -27,8 +29,14 @@ int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_e
 /* Save ordinary, possibly invalid/unaccepted rule inputs without running Solve.
  * Same record grammar as accepted derivations; no acceptance flag is stored.
  * Certificate pointers are forbidden: retain comparison endpoints instead.
- * This does not yet capture pending effect-equation workers or source jobs. */
+ * Without an inference worker, open-row parameters are rejected. */
 int pg_derivation_inputs_write(FILE *file, size_t count, const struct pg_derivation_input *const *roots,
+	const struct pg_graph_codec *codec, void *owner);
+/* Same format, with immutable effect definitions sharing the Core table.
+ * No approximations, queue positions, sealing or acceptance flags are saved.
+ * This captures a rule DAG, not yet all pending source-elaboration jobs. */
+int pg_derivation_inputs_write_inference(FILE *file, size_t count,
+	const struct pg_derivation_input *const *roots, const struct pg_effect_inference *work,
 	const struct pg_graph_codec *codec, void *owner);
 /* Restores inputs only, with one Core relocation table and shared premise DAG.
  * Limits bound records/edges here and records in the nested Core separately.
@@ -39,6 +47,13 @@ int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t
 	size_t *count, const struct pg_derivation_input *const **roots);
 int pg_derivations_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	const struct pg_graph_codec *codec, void *owner,
+	size_t *count, const struct pg_derivation_input *const **roots);
+/* work is empty, initialized with graph, and remains unsealed on success.
+ * The caller establishes contribution completeness before sealing and Solve.
+ * Any failure poisons work until destroy; no roots are published on failure.
+ * A NULL worker accepts only images without effect definitions/open rows. */
+int pg_derivations_read_inference(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots);
 
 #endif

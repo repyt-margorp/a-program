@@ -13,6 +13,48 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Open-Row Derivation File Round Trips
+
+Continuation after `abdbaf4`. Experimental APGDRV v4 adds an effect-definition
+root slice after the derivation roots and before the single nested Core image.
+An F-rule's effect argument is either a closed row reference or its unresolved
+equation parameter. Seeds, masks and endpoints use that same relocation table;
+the existing descriptor codec reconstructs operation labels and closed rows.
+Older experimental APGDRV versions are rejected, not silently reinterpreted.
+
+The ordinary reader/writer implementations handle both closed and open input
+DAGs. A supplied effect worker is restored through the existing unpack API;
+without it, an image containing definitions is rejected. The worker remains
+unsealed and no evidence is created. On any failure it is poisoned, including
+late input validation failures after the equations were already reconstructed.
+Outputs publish only on full success. Neither solver approximations nor saved
+sealing/acceptance flags enter the image. The caller must establish contribution
+completeness before sealing, then ordinary Solve handles the loaded inputs.
+
+- [x] Save open-row input parameters and immutable equation definitions together.
+- [x] Fresh-process restore of shared Pi/U/F derivations at budgets 1/64, after
+  partial effect solving in the writing process.
+- [x] Preserve one parameter across distinct contexts, shared premise roots,
+  and two distinct same-signature operation labels across a masked cycle.
+- [x] Check pre-seal structural queries without formation evidence; after
+  sealing, ordinary Solve accepts the Pi and rejects an invalid F premise.
+- [x] Reject every truncated fixture, missing worker, and a complete image with
+  invalid rule parameters. A late failure cannot expose a partial equation solve.
+- [ ] Export all live source producers and their contribution-completeness
+  dependencies, including nominal schema/import descriptors, in a program image.
+- [ ] Connect full `.a` checkpoint/CLI resumption and close the original gates.
+
+This is an end-to-end rule-DAG/effect-definition transport test, not yet a full
+source-program checkpoint. It deliberately resumes effect calculation from
+definitions rather than trusting a previously computed least solution.
+
+Verification: normal `check`, eight example source checks and six runtime
+fixtures passed. Rebuilt ASan/UBSan derivation-image fixtures passed, including
+all prefixes and late validation failure after effect reconstruction. Closed
+derivation fixture steps remain 565; source example counts are unchanged.
+Implementation C/header: +81/-11; test C: +134/-2; shell: +5/-0; docs separate.
+N5 and the full reimplementation goal remain incomplete.
+
 ### September 9: Stored Inputs Use Ordinary Rule Producers
 
 Continuation after `05b04d4`. Stored rule DAGs now expand, under the normal fuel
@@ -38,9 +80,10 @@ classifier queries may finish while their formation proofs remain pending.
   the same rule jobs by direct callers (no additional solver cells).
 - [x] Bound scheduler work on 2,048 nested stored projections to a linear test
   limit; source and image expansion must not rewalk the ancestor chain.
-- [ ] Encode unresolved rule parameters and effect definition slices together
-  in the derivation/program image's shared Core relocation table. APGDRV v3
-  deliberately still refuses open-row inputs rather than dropping their link.
+- [x] Encode unresolved rule parameters and effect definition slices together
+  in the derivation image's shared Core relocation table (APGDRV v4, above).
+  At this earlier commit APGDRV v3 still refused open-row inputs; full program
+  producer export remains separately incomplete.
 - [ ] Complete live source-job export, contribution-completeness restoration,
   full checkpoint/CLI/import support and all original N0-N7 gates.
 

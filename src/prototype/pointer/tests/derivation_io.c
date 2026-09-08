@@ -1,4 +1,5 @@
 #include "derivation_io.h"
+#include "effect_inference.h"
 #include "graph_io.h"
 #include "computation.h"
 #include "synthesis.h"
@@ -240,6 +241,8 @@ static void unique_term_roots(FILE *file, struct pg_graph *graph,
 		for (uint64_t j = 0; j < premises; ++j) assert(!pg_wire_read_u64(file, &word));
 	}
 	for (uint64_t i = 0; i < roots; ++i) assert(!pg_wire_read_u64(file, &word));
+	assert(!pg_wire_read_u64(file, &word) && !word);
+	assert(!pg_wire_read_u64(file, &word) && !word);
 	size_t count;
 	const struct pg_term *const *terms;
 	assert(!pg_graph_read(file, graph, 1000, 100, resolve, classifiers, &count, &terms));
@@ -627,13 +630,141 @@ static void unaccepted_proofs(FILE *file, struct pg_typing *typing, struct pg_cl
 	puts("unaccepted derivations: no pre-solve evidence, shared inputs, rejection and NF obligation passed");
 }
 
+static void rejected_effect_images(FILE *file)
+{
+	unsigned char bytes[8192];
+	rewind(file);
+	size_t length = fread(bytes, 1, sizeof(bytes), file);
+	assert(feof(file) && !ferror(file) && length);
+	for (size_t cut = 0; cut <= length; ++cut) {
+		struct pg_graph graph;
+		struct pg_classifiers classifiers;
+		struct pg_effect_inference effects;
+		assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+		assert(!pg_effect_inference_init(&effects, &graph));
+		FILE *fragment = tmpfile();
+		assert(fragment && fwrite(bytes, 1, cut, fragment) == cut);
+		/* Complete stream whose first rule now requires a missing row. This
+		 * fails after definition reconstruction, not during byte decoding. */
+		if (cut == length) {
+			assert(!fseek(fragment, 24, SEEK_SET));
+			assert(!pg_wire_write_u64(fragment, PG_RETURN_TYPE_FORM));
+		}
+		rewind(fragment);
+		size_t count = 71;
+		const struct pg_derivation_input *const *roots = NULL;
+		assert(pg_derivations_read_inference(fragment, &graph, 1000, 100, &effects,
+			&pg_builtin_graph_codec, &classifiers, &count, &roots));
+		assert(count == 71 && !roots && effects.failed);
+		if (cut == length) assert(effects.row_sources.count == 2);
+		pg_effect_inference_seal(&effects);
+		assert(pg_effect_inference_advance(&effects, 1000) == -1);
+		assert(!fclose(fragment));
+		pg_effect_inference_destroy(&effects);
+		pg_classifiers_destroy(&classifiers);
+		pg_graph_destroy(&graph);
+	}
+}
+
+static void pending_effect_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers,
+	int writing, uint64_t chunk)
+{
+	struct pg_graph *graph = typing->graph;
+	struct pg_effect_inference effects;
+	assert(!pg_effect_inference_init(&effects, graph));
+	const struct pg_effect_row *empty_row = pg_effect_row(graph, 0, NULL);
+	if (writing) {
+		const struct pg_term *u = pg_universe(classifiers, 0);
+		const struct pg_object *labels[] = {pg_operation_label_create(graph, u, u), pg_operation_label_create(graph, u, u)};
+		const struct pg_effect_row *seed = pg_effect_row(graph, 2, labels);
+		struct pg_effect_equation *source = pg_effect_equation(&effects, seed), *target = pg_effect_equation(&effects, empty_row);
+		assert(!pg_effect_dependency(&effects, source, pg_effect_row(graph, 1, labels), target));
+		assert(!pg_effect_dependency(&effects, target, empty_row, source));
+		const struct pg_derivation_input *empty = input_rule(graph, PG_CONTEXT_EMPTY, 0, NULL);
+		const struct pg_derivation_input *universe = input_rule(graph, PG_UNIVERSE_FORM, 1, &empty);
+		struct pg_derivation_input *f = input_rule(graph, PG_RETURN_TYPE_FORM, 1, &universe);
+		f->effect_parameter = pg_effect_equation_parameter(&effects, target);
+		const struct pg_derivation_input *f_input = f;
+		const struct pg_derivation_input *thunk = input_rule(graph, PG_THUNK_TYPE_FORM, 1, &f_input);
+		struct pg_derivation_input *context = input_rule(graph, PG_CONTEXT_EXTEND, 2,
+			(const struct pg_derivation_input *[]){empty, thunk});
+		context->parameters.binder = pg_binder(graph);
+		const struct pg_derivation_input *context_input = context;
+		const struct pg_derivation_input *inner_u = input_rule(graph, PG_UNIVERSE_FORM, 1, &context_input);
+		struct pg_derivation_input *inner_f = input_rule(graph, PG_RETURN_TYPE_FORM, 1, &inner_u);
+		inner_f->effect_parameter = f->effect_parameter;
+		const struct pg_derivation_input *pi = input_rule(graph, PG_PI_FORM, 3,
+			(const struct pg_derivation_input *[]){thunk, context, inner_f});
+		struct pg_derivation_input *invalid = input_rule(graph, PG_RETURN_TYPE_FORM, 1, &empty);
+		invalid->effect_parameter = f->effect_parameter;
+		const struct pg_derivation_input *roots[] = {f, inner_f, pi, pi, invalid};
+		pg_effect_inference_seal(&effects);
+		assert(!pg_effect_inference_advance(&effects, 1));
+		assert(!pg_effect_inference_result(&effects, target));
+		assert(!pg_derivation_inputs_write_inference(file, 5, roots, &effects, &pg_builtin_graph_codec, classifiers));
+		assert(!typing->proofs.count);
+	} else {
+		size_t count;
+		const struct pg_derivation_input *const *roots;
+		assert(!pg_derivations_read_inference(file, graph, 1000, 100, &effects, &pg_builtin_graph_codec, classifiers, &count, &roots));
+		assert(count == 5 && roots[2] == roots[3] && !typing->proofs.count && !effects.sealed);
+		const struct pg_object *parameter = roots[0]->effect_parameter;
+		assert(parameter && parameter == roots[1]->effect_parameter && parameter == roots[4]->effect_parameter);
+		struct pg_effect_equation *target = pg_effect_equation_find(&effects, parameter);
+		assert(target && pg_effect_equation_seed(&effects, target) == empty_row);
+		struct pg_whnf_work normalization;
+		struct pg_synthesis synthesis;
+		assert(!pg_whnf_work_init(&normalization, graph));
+		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_synthesis_job *jobs[5];
+		for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_derivation_inference(&synthesis, roots[i], &effects);
+		assert(jobs[2] == jobs[3] && !typing->proofs.count);
+		struct pg_synthesis_job *structure = pg_synthesis_type_structure(&synthesis, jobs[2]);
+		while (synthesis.ready) { assert(synthesis.steps < 2000); pg_synthesis_advance(&synthesis, chunk); }
+		assert(!pg_synthesis_result(jobs[0]) && !pg_synthesis_result(jobs[2]));
+		const struct pg_term *pending = pg_effect_type_spine(classifiers, pg_reference(graph, parameter), pg_universe(classifiers, 0));
+		const struct pg_object *binder = roots[2]->premises[1]->parameters.binder;
+		assert(pg_synthesis_type_structure_result(structure) == pg_pi(graph, pg_thunk_type(classifiers, pending), binder, pending));
+		pg_effect_inference_seal(&effects);
+		assert(pg_synthesis_effect_inference(&synthesis, &effects));
+		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
+		for (size_t i = 0; i < count; ++i)
+			assert(pg_synthesis_status(jobs[i]) == (i == 4 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+		const struct pg_effect_row *row = pg_effect_inference_result(&effects, target);
+		assert(pg_effect_count(row) == 1);
+		size_t equation_count, term_count;
+		const struct pg_term *const *definitions;
+		assert(!pg_effect_inference_pack(&effects, graph, &equation_count, &term_count, &definitions));
+		assert(equation_count == 2 && term_count == 10);
+		unsigned masks = 0;
+		for (size_t i = 2 * equation_count; i < term_count; i += 3) {
+			const struct pg_effect_row *mask = pg_effect_row_view(definitions[i + 1]);
+			if (!pg_effect_count(mask)) continue;
+			assert(pg_effect_count(mask) == 1 && !pg_effect_contains(row, pg_effect_label(mask, 0)));
+			++masks;
+		}
+		assert(masks == 1);
+		const struct pg_term *closed = pg_effect_type(classifiers, row, pg_universe(classifiers, 0));
+		assert(pg_evidence_subject(pg_synthesis_result(jobs[2]))->core == pg_pi(graph, pg_thunk_type(classifiers, closed), binder, closed));
+		assert(pg_effect_equation_seed(&effects, target) == empty_row);
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&normalization);
+		rewind(file);
+		assert(pg_derivations_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, classifiers, &count, &roots));
+		rejected_effect_images(file);
+		puts("pending effect derivations: relocated open Pi, no early evidence, masked cyclic Solve and rejection passed");
+	}
+	pg_effect_inference_destroy(&effects);
+}
+
 int main(int argc, char **argv)
 {
 	effect_transport();
 	assert(argc == 3);
 	int operation = !strncmp(argv[1], "operation-", 10);
 	int unaccepted = !strncmp(argv[1], "input-", 6);
-	const char *mode = operation ? argv[1] + 10 : unaccepted ? argv[1] + 6 : argv[1];
+	int effects = !strncmp(argv[1], "effect-", 7);
+	const char *mode = operation ? argv[1] + 10 : unaccepted ? argv[1] + 6 : effects ? argv[1] + 7 : argv[1];
 	int writing = !strcmp(mode, "write");
 	int bulk = !strcmp(mode, "read-bulk");
 	assert(writing || bulk || !strcmp(mode, "read"));
@@ -643,7 +774,8 @@ int main(int argc, char **argv)
 	struct pg_classifiers classifiers;
 	assert(file && pg_graph_init(&graph) == 0 && pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
-	if (unaccepted) unaccepted_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
+	if (effects) pending_effect_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
+	else if (unaccepted) unaccepted_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (operation) operation_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (writing) write_proofs(file, &typing, &classifiers);
 	else read_proofs(file, &typing, &classifiers, bulk ? 64 : 1);

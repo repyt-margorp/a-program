@@ -2,10 +2,11 @@
 #include "dag.h"
 #include "graph_io.h"
 #include "wire.h"
+#include "effect_inference.h"
 
 #include <string.h>
 
-static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 3};
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 4};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {
@@ -58,7 +59,7 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 }
 
 static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *proofs,
-	const struct pg_derivation_input *const *inputs,
+	const struct pg_derivation_input *const *inputs, const struct pg_effect_inference *work,
 	const struct pg_graph_codec *codec, void *owner)
 {
 	if (!file || (count && !proofs && !inputs)) return -1;
@@ -76,8 +77,10 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 		if (inputs) {
 			input = *(const struct pg_derivation_input *)node->key;
 			if (input.parameters.conversion || input.parameters.reduction) goto done;
-			/* Open-row input encoding is not part of APGDRV v3 yet. */
-			if (input.effect_parameter) goto done;
+			if (input.effect_parameter) {
+				if (input.rule != PG_RETURN_TYPE_FORM || input.parameters.effects) goto done;
+				if (!pg_effect_equation_find(work, input.effect_parameter)) goto done;
+			}
 		} else if (proof_input(node->key, &input)) goto done;
 		struct pg_derivation_parameters parameters = input.parameters;
 		if (pg_wire_write_u64(file, input.rule)
@@ -87,6 +90,10 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 		if (parameters.binder && !binder) goto done;
 		const struct pg_term *effects = parameters.effects ? pg_effect_reference(&arena, parameters.effects) : NULL;
 		if (parameters.effects && !effects) goto done;
+		if (input.effect_parameter) {
+			effects = pg_reference(&arena, input.effect_parameter);
+			if (!effects) goto done;
+		}
 		const struct pg_term *operation = parameters.operation_label ? pg_reference(&arena, parameters.operation_label) : NULL;
 		const struct pg_term *handler = pg_handler_signature_reference(&arena, parameters.handler);
 		if ((parameters.operation_label && !operation) || (parameters.handler && !handler)) goto done;
@@ -107,6 +114,12 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 		const struct pg_dag_node *node = pg_dag_find(&dag, inputs ? (const void *)inputs[i] : proofs[i]);
 		if (!node || pg_wire_write_u64(file, node->id)) goto done;
 	}
+	size_t equations = 0, effect_count = 0;
+	const struct pg_term *const *effect_roots = NULL;
+	if (work && pg_effect_inference_pack(work, &arena, &equations, &effect_count, &effect_roots)) goto done;
+	if (pg_wire_write_u64(file, equations) || pg_wire_write_u64(file, effect_count)) goto done;
+	for (size_t i = 0; i < effect_count; ++i)
+		if (term_reference(file, effect_roots[i], &term_roots)) goto done;
 	if (term_roots.count > SIZE_MAX / sizeof(void *)) goto done;
 	const struct pg_term **terms = pg_alloc(&arena, term_roots.count * sizeof(*terms));
 	if (!terms) goto done;
@@ -123,13 +136,20 @@ done:
 int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_evidence *const *roots,
 	const struct pg_graph_codec *codec, void *owner)
 {
-	return write_dag(file, count, roots, NULL, codec, owner);
+	return write_dag(file, count, roots, NULL, NULL, codec, owner);
 }
 
 int pg_derivation_inputs_write(FILE *file, size_t count, const struct pg_derivation_input *const *roots,
 	const struct pg_graph_codec *codec, void *owner)
 {
-	return write_dag(file, count, NULL, roots, codec, owner);
+	return pg_derivation_inputs_write_inference(file, count, roots, NULL, codec, owner);
+}
+
+int pg_derivation_inputs_write_inference(FILE *file, size_t count,
+	const struct pg_derivation_input *const *roots, const struct pg_effect_inference *work,
+	const struct pg_graph_codec *codec, void *owner)
+{
+	return write_dag(file, count, NULL, roots, work, codec, owner);
 }
 
 struct input_record {
@@ -145,11 +165,12 @@ int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t
 	return pg_derivations_read_descriptors(file, graph, limit, name_limit, &codec, owner, count, roots);
 }
 
-int pg_derivations_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
-	const struct pg_graph_codec *codec, void *owner,
+static int read_dag(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots)
 {
 	if (!file || !graph || !graph->terms.capacity || !count || !roots) return -1;
+	if (work && (work->rows != graph || work->sealed || work->failed || work->row_sources.count)) return -1;
 	char header[8];
 	uint64_t n, nr;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return -1;
@@ -192,9 +213,23 @@ int pg_derivations_read_descriptors(FILE *file, struct pg_graph *graph, size_t l
 		if (pg_wire_read_u64(file, &id) || !id || id > n) return -1;
 		result[i] = records[id - 1].input;
 	}
+	uint64_t equations, effect_count;
+	if (pg_wire_read_u64(file, &equations) || pg_wire_read_u64(file, &effect_count)) return -1;
+	if (effect_count > available || equations > effect_count / 2) return -1;
+	if ((effect_count - 2 * equations) % 3 || (effect_count && !work)) return -1;
+	uint64_t *effect_ids = pg_alloc(graph, (size_t)effect_count * sizeof(*effect_ids));
+	const struct pg_term **effect_roots = pg_alloc(graph, (size_t)effect_count * sizeof(*effect_roots));
+	if (!effect_ids || !effect_roots) return -1;
+	for (size_t i = 0; i < effect_count; ++i)
+		if (pg_wire_read_u64(file, &effect_ids[i])) return -1;
 	size_t term_count;
 	const struct pg_term *const *terms;
 	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, owner, &term_count, &terms)) return -1;
+	for (size_t i = 0; i < effect_count; ++i) {
+		if (!effect_ids[i] || effect_ids[i] > term_count) return -1;
+		effect_roots[i] = terms[effect_ids[i] - 1];
+	}
+	if (work && pg_effect_inference_unpack(work, (size_t)equations, (size_t)effect_count, effect_roots)) return -1;
 	for (size_t i = 0; i < n; ++i) {
 		const struct input_record *r = &records[i];
 		if (r->binder > term_count || r->effects > term_count || r->source > term_count || r->target > term_count) return -1;
@@ -212,8 +247,12 @@ int pg_derivations_read_descriptors(FILE *file, struct pg_graph *graph, size_t l
 		} else if (r->handler) return -1;
 		if (r->input->rule == PG_RETURN_TYPE_FORM) {
 			if (!r->effects) return -1;
-			r->input->parameters.effects = pg_effect_row_view(terms[r->effects - 1]);
-			if (!r->input->parameters.effects) return -1;
+			const struct pg_term *row = terms[r->effects - 1];
+			r->input->parameters.effects = pg_effect_row_view(row);
+			if (!r->input->parameters.effects) {
+				if (row->kind != PG_REFERENCE || !pg_effect_equation_find(work, row->as.reference)) return -1;
+				r->input->effect_parameter = row->as.reference;
+			}
 		} else if (r->effects) return -1;
 		if (r->binder) {
 			const struct pg_term *binder = terms[r->binder - 1];
@@ -234,4 +273,20 @@ int pg_derivations_read_descriptors(FILE *file, struct pg_graph *graph, size_t l
 	*count = (size_t)nr;
 	*roots = result;
 	return 0;
+}
+
+int pg_derivations_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner,
+	size_t *count, const struct pg_derivation_input *const **roots)
+{
+	return pg_derivations_read_inference(file, graph, limit, name_limit, NULL, codec, owner, count, roots);
+}
+
+int pg_derivations_read_inference(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner,
+	size_t *count, const struct pg_derivation_input *const **roots)
+{
+	int status = read_dag(file, graph, limit, name_limit, work, codec, owner, count, roots);
+	if (status && work) work->failed = 1;
+	return status;
 }
