@@ -256,9 +256,11 @@ struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *
 struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *input, struct pg_synthesis_job *const *premises,
 	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
-/* Read-only export of selected prepared rule DAGs or completed proof jobs.
+/* Read-only export of stored input DAGs, prepared rule DAGs or completed proof jobs.
  * 0 ready, 1 an input is not prepared, -1 unsupported/error. No Solve occurs.
  * Unfinished source elaboration is not replaced by its provisional term.
+ * Stored derivation inputs retain their original DAG before, during and after
+ * Solve, including rejected inputs. Export does not force their expansion.
  * storage owns the transport inputs, which borrow Core objects from synthesis.
  * effects is empty and initialized with storage; it receives immutable
  * definitions from all reached workers, never their solutions/sealing flags.

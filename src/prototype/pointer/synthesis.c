@@ -4450,7 +4450,7 @@ unsupported:
 
 struct rule_export {
 	const struct pg_synthesis *synthesis;
-	struct pg_dag proofs, workers;
+	struct pg_dag proofs, workers, raw;
 	const struct pg_effect_inference *source_effects;
 	struct pg_effect_inference *effects;
 	int status;
@@ -4465,11 +4465,25 @@ static int export_proof_child(void *unused, const void *key, size_t index, const
 	return 1;
 }
 
+static int export_input_child(void *unused, const void *key, size_t index, const void **child)
+{
+	(void)unused;
+	const struct pg_derivation_input *input = key;
+	if (input->parameters.conversion || input->parameters.reduction) return -1;
+	if (index == input->count) return 0;
+	*child = input->premises[index];
+	return *child ? 1 : -1;
+}
+
 static int export_job_child(void *context, const void *key, size_t index, const void **child)
 {
 	struct rule_export *export = context;
 	const struct pg_synthesis_job *job = key;
 	if (job->owner != export->synthesis->owner_key) return -1;
+	if (job->role == DERIVATION_INPUT_JOB) {
+		if (pg_dag_add(&export->raw, job->inputs[0])) return -1;
+		return job->inputs[1] ? pg_dag_add(&export->workers, job->inputs[1]) : 0;
+	}
 	if (job->role == DERIVATION_JOB) {
 		const struct pg_derivation_input *input = job->inputs[0];
 		if (index < input->count) { *child = job->inputs[index + 3]; return 1; }
@@ -4478,11 +4492,6 @@ static int export_job_child(void *context, const void *key, size_t index, const 
 	}
 	if (job->status == PG_SYNTHESIS_DONE && job->result)
 		return pg_dag_add(&export->proofs, job->result);
-	if (job->role == DERIVATION_INPUT_JOB && job->left) {
-		if (index) return 0;
-		*child = job->left;
-		return 1;
-	}
 	export->status = job->status == PG_SYNTHESIS_PENDING ? 1 : -1;
 	return -1;
 }
@@ -4528,6 +4537,7 @@ int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count
 	struct rule_export export = {.synthesis = synthesis, .effects = effects, .status = -1};
 	struct pg_dag jobs = {0};
 	if (pg_dag_init(&export.proofs, export_proof_child, NULL) || pg_dag_init(&export.workers, NULL, NULL)
+		|| pg_dag_init(&export.raw, export_input_child, NULL)
 		|| pg_dag_init(&jobs, export_job_child, &export)) goto done;
 	for (size_t i = 0; i < count; ++i)
 		if (pg_dag_add(&jobs, roots[i])) goto done;
@@ -4536,11 +4546,20 @@ int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count
 		if (pg_effect_inference_visit(node->key, &export, export_equation, export_dependency)) goto done;
 	}
 	if (jobs.count > SIZE_MAX / sizeof(void *) || export.proofs.count > SIZE_MAX / sizeof(void *)
-		|| count > SIZE_MAX / sizeof(void *)) goto done;
+		|| export.raw.count > SIZE_MAX / sizeof(void *) || count > SIZE_MAX / sizeof(void *)) goto done;
 	const struct pg_derivation_input **proofs = pg_alloc(&jobs.storage, export.proofs.count * sizeof(*proofs));
 	const struct pg_derivation_input **inputs = pg_alloc(&jobs.storage, jobs.count * sizeof(*inputs));
 	const struct pg_derivation_input **selected = pg_alloc(storage, count * sizeof(*selected));
-	if (!proofs || !inputs || !selected) goto done;
+	const struct pg_derivation_input **raw = pg_alloc(&jobs.storage, export.raw.count * sizeof(*raw));
+	if (!proofs || !inputs || !selected || !raw) goto done;
+	for (const struct pg_dag_node *node = export.raw.first; node; node = node->next) {
+		const struct pg_derivation_input *source = node->key;
+		struct pg_derivation_input *input = export_header(storage, source);
+		if (!input) goto done;
+		for (size_t i = 0; i < input->count; ++i)
+			input->premises[i] = raw[pg_dag_find(&export.raw, source->premises[i])->id - 1];
+		raw[node->id - 1] = input;
+	}
 	for (const struct pg_dag_node *node = export.proofs.first; node; node = node->next) {
 		struct pg_derivation_input header;
 		if (pg_derivation_input_header(node->key, &header)) goto done;
@@ -4562,9 +4581,10 @@ int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count
 			for (size_t i = 0; i < input->count; ++i)
 				input->premises[i] = inputs[pg_dag_find(&jobs, job->inputs[i + 3])->id - 1];
 			inputs[node->id - 1] = input;
-		} else if (job->status == PG_SYNTHESIS_DONE && job->result)
+		} else if (job->role == DERIVATION_INPUT_JOB)
+			inputs[node->id - 1] = raw[pg_dag_find(&export.raw, job->inputs[0])->id - 1];
+		else
 			inputs[node->id - 1] = proofs[pg_dag_find(&export.proofs, job->result)->id - 1];
-		else inputs[node->id - 1] = inputs[pg_dag_find(&jobs, job->left)->id - 1];
 	}
 	for (size_t i = 0; i < count; ++i) selected[i] = inputs[pg_dag_find(&jobs, roots[i])->id - 1];
 	*result = selected;
@@ -4573,6 +4593,7 @@ done:
 	pg_dag_destroy(&jobs);
 	pg_dag_destroy(&export.proofs);
 	pg_dag_destroy(&export.workers);
+	pg_dag_destroy(&export.raw);
 	if (export.status) effects->failed = 1;
 	return export.status;
 }

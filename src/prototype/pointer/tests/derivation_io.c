@@ -759,6 +759,33 @@ static void pending_effect_proofs(FILE *file, struct pg_typing *typing, struct p
 	pg_effect_inference_destroy(&effects);
 }
 
+static FILE *producer_snapshot(struct pg_synthesis *synthesis, size_t count,
+	struct pg_synthesis_job **jobs, struct pg_classifiers *classifiers)
+{
+	struct pg_graph storage;
+	struct pg_effect_inference effects;
+	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&effects, &storage));
+	const struct pg_derivation_input *const *inputs;
+	uint64_t steps = synthesis->steps;
+	size_t proofs = synthesis->typing->proofs.count, requests = synthesis->jobs.count;
+	assert(!pg_synthesis_export_rules(synthesis, count, jobs, &storage, &effects, &inputs));
+	assert(synthesis->steps == steps && synthesis->typing->proofs.count == proofs && synthesis->jobs.count == requests);
+	FILE *file = tmpfile();
+	assert(file && !pg_derivation_inputs_write_inference(file, count, inputs, &effects, &pg_builtin_graph_codec, classifiers));
+	pg_effect_inference_destroy(&effects);
+	pg_graph_destroy(&storage);
+	rewind(file);
+	return file;
+}
+
+static void same_snapshot(FILE *before, FILE *after)
+{
+	rewind(before);
+	int a, b;
+	do { a = fgetc(before); b = fgetc(after); assert(a == b); } while (a != EOF);
+	assert(!ferror(before) && !ferror(after) && !fclose(after));
+}
+
 static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers,
 	int writing, uint64_t chunk)
 {
@@ -853,6 +880,10 @@ static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_clas
 		assert(count == 4 && inputs[0] == inputs[3] && !typing->proofs.count);
 		struct pg_synthesis_job *jobs[4];
 		for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_derivation_inference(&synthesis, inputs[i], &image);
+		/* Loaded inputs can be saved before any expansion or acceptance. */
+		FILE *snapshot = producer_snapshot(&synthesis, count, jobs, classifiers);
+		pg_synthesis_advance(&synthesis, 1);
+		same_snapshot(snapshot, producer_snapshot(&synthesis, count, jobs, classifiers));
 		while (synthesis.ready) { assert(synthesis.steps < 2000); pg_synthesis_advance(&synthesis, chunk); }
 		assert(pg_synthesis_status(jobs[0]) == PG_SYNTHESIS_DONE && jobs[0] == jobs[3]);
 		assert(!pg_synthesis_result(jobs[1]) && !pg_synthesis_result(jobs[2]));
@@ -860,6 +891,15 @@ static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_clas
 		assert(pg_synthesis_effect_inference(&synthesis, &image));
 		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
 		for (size_t i = 0; i < count; ++i) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
+		same_snapshot(snapshot, producer_snapshot(&synthesis, count, jobs, classifiers));
+		assert(!fclose(snapshot));
+		struct pg_derivation_input invalid = {.rule = PG_APP_ELIM};
+		struct pg_synthesis_job *rejected = pg_synthesis_derivation(&synthesis, &invalid);
+		snapshot = producer_snapshot(&synthesis, 1, &rejected, classifiers);
+		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
+		assert(pg_synthesis_status(rejected) == PG_SYNTHESIS_REJECTED);
+		same_snapshot(snapshot, producer_snapshot(&synthesis, 1, &rejected, classifiers));
+		assert(!fclose(snapshot));
 		assert(pg_evidence_subject(pg_synthesis_result(jobs[0]))->core->kind == PG_LAMBDA);
 		for (size_t i = 1; i < 3; ++i) {
 			const struct pg_effect_row *row;

@@ -7426,6 +7426,27 @@ or cyclic, reject duplicate registration, and reject a reserved expression
 absent from the completed registration. Source bytes remain unchanged before
 and after Solve. This retains immutable inputs only, not completed proof work.
 
+Continuation after `e1f0a40`: the rule exporter now also handles unexpanded
+stored derivation inputs. Previously their export depended on Solve having
+created an internal rule job, or on an accepted result; that made an untouched
+loaded input less persistable than the original input file. The exporter now
+copies the immutable premise DAG with the common DAG collector and includes
+its effect definitions without running Solve. It does not serialize queue
+positions, acceptance flags or effect approximations. Raw input sharing is
+preserved and process-local comparison receipts remain forbidden.
+
+- [x] Re-export stored rule inputs before their first Solve transition.
+- [x] Verify identical bytes after partial expansion, effect convergence and
+  acceptance; duplicate roots remain shared.
+- [x] Preserve rejected rule inputs across Solve without claiming evidence.
+- [ ] Join these rule roots to source-name environments in the common image;
+  rule export alone does not close the external-environment item above.
+
+Validation: normal `check`, `check-examples` (8/8) and
+`check-example-results` (six fixtures, two budgets) pass. The rebuilt
+ASan/UBSan derivation-image suite also passes, including fresh-process loading
+and progress-independent re-export. Full CHECKPOINT remains open.
+
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.
 The common `APGSRC` path above now supersedes that intermediate framing.
