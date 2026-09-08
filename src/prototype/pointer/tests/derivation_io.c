@@ -164,6 +164,23 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	pg_whnf_work_destroy(&work);
 }
 
+static struct pg_synthesis_job *source_use(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *producer, const char *source)
+{
+	struct pg_token token = {.kind = PG_TOKEN_IDENT, .text = "loaded", .length = 6};
+	const struct pg_source_scope *scope = pg_synthesis_name_job(synthesis,
+		pg_synthesis_root(synthesis), token, producer);
+	assert(scope);
+	struct pg_parser parser;
+	struct pg_definition definition;
+	pg_parser_init(&parser, synthesis->typing->graph, source, strlen(source));
+	assert(pg_parser_next(&parser, &definition) == 1);
+	struct pg_synthesis_job *job = pg_synthesis_request(synthesis, scope, definition.expression);
+	assert(job && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
+	assert(!pg_synthesis_result(job) && pg_parser_next(&parser, &definition) == 0);
+	return job;
+}
+
 static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers, uint64_t chunk)
 {
 	size_t count;
@@ -181,10 +198,19 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
 	}
 	assert(jobs[0] == jobs[2] && typing->proofs.count == 0);
+	struct pg_synthesis_job *consumer = source_use(&synthesis, jobs[6], "copy := loaded;");
+	struct pg_synthesis_job *expect = source_use(&synthesis, jobs[6], "copy := loaded :: @;");
+	/* Source scope construction establishes the empty context, not imports. */
+	size_t before_fuel = typing->proofs.count;
 	pg_synthesis_advance(&synthesis, 0);
-	assert(typing->proofs.count == 0);
+	assert(typing->proofs.count == before_fuel);
+	for (size_t i = 0; i < count; ++i)
+		assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(jobs[i]));
 	for (size_t step = 0; step < 10000 && synthesis.ready; ++step) pg_synthesis_advance(&synthesis, chunk);
 	for (size_t i = 0; i < count; ++i) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_status(consumer) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(consumer) == pg_synthesis_result(jobs[6]));
+	assert(pg_synthesis_status(expect) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(expect));
 	const struct pg_evidence *left = pg_synthesis_result(jobs[0]);
 	const struct pg_evidence *right = pg_synthesis_result(jobs[1]);
 	assert(pg_evidence_subject(left)->core == pg_evidence_subject(right)->core);
@@ -212,8 +238,10 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	wrong->target = saved->source;
 	struct pg_synthesis_job *bad = pg_synthesis_derivation(&synthesis, wrong);
 	assert(bad && pg_synthesis_status(bad) == PG_SYNTHESIS_PENDING);
+	struct pg_synthesis_job *bad_consumer = source_use(&synthesis, bad, "copy := loaded;");
 	pg_synthesis_advance(&synthesis, 10000);
 	assert(pg_synthesis_status(bad) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(bad));
+	assert(pg_synthesis_status(bad_consumer) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(bad_consumer));
 	saved = roots[5];
 	bytes = sizeof(*saved) + saved->count * sizeof(*saved->premises);
 	/* A different immutable input needs its own pointer/job identity. */

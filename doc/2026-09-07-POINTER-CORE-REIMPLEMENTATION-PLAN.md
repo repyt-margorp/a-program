@@ -4535,6 +4535,18 @@ Derivation input persistence after `48d2923` (`derivation_io.c`):
   primitive evidence constructors are not yet all incrementally budgeted.
   This is not yet a complete CHECKPOINT or N5 acceptance. The tests above do not
   establish general higher Identity support or full source-program acceptance.
+- [x] After `9179c24`, exercise the restored producer together with source
+  consumers in the ordinary queue. Register a pending closed reflexivity
+  derivation through `pg_synthesis_name_job`; parsing `copy := loaded;` waits
+  and returns its checked evidence. `copy := loaded :: @;` independently fails
+  its post-synthesis expectation without changing the producer's result.
+  A source reference to an invalid saved normalization fails with its producer
+  and receives no evidence. With both initial consumers, chunk sizes 1 and 64
+  take 316 transitions. Source root creation proves the empty context, but
+  zero fuel neither advances nor accepts any of the imported derivations.
+  This integration uses existing APIs, not a new export-acceptance mechanism.
+  Optimized and ASan/UBSan separate-process derivation tests passed.
+  Persistent module bindings and full `.a` roots are still required.
 
 Input-only round-trip prototype (`seed.c`, not the final `.a` wire format):
 
