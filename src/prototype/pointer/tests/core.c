@@ -2844,7 +2844,20 @@ static void request_typing_test(struct pg_graph *graph)
 	assert(formation && pg_evidence_subject(formation)->core == pg_evidence_classifier(request));
 	assert(!pg_prove_return_value(&typing, request));
 	struct pg_derivation_parameters parameters;
-	assert(pg_derivation_parameters(request, &parameters));
+	assert(!pg_derivation_parameters(request, &parameters));
+	assert(parameters.operation == op && pg_evidence_request_declaration(request) == op);
+	assert(!pg_evidence_request_declaration(payload));
+	const struct pg_evidence *request_premises[] = {
+		pg_operation_payload_type(op), pg_operation_response_type(op), payload, k
+	};
+	assert(pg_prove_derivation(&typing, &classifiers, PG_REQUEST_INTRO, &parameters, 4, request_premises) == request);
+	assert(!pg_prove_derivation(&typing, &classifiers, PG_REQUEST_INTRO, &parameters, 3, request_premises));
+	request_premises[0] = u0;
+	assert(!pg_prove_derivation(&typing, &classifiers, PG_REQUEST_INTRO, &parameters, 4, request_premises));
+	request_premises[0] = pg_operation_payload_type(op);
+	parameters.operation = other;
+	const struct pg_evidence *other_request = pg_prove_derivation(&typing, &classifiers, PG_REQUEST_INTRO, &parameters, 4, request_premises);
+	assert(other_request && other_request != request && pg_evidence_request_declaration(other_request) == other);
 	assert(!pg_prove_request(&typing, &classifiers, op, pg_prove_type_value(&typing, u1), k));
 	const struct pg_operation_declaration *wrong_response = pg_operation_declaration(&typing, u1, u0);
 	assert(wrong_response && !pg_prove_request(&typing, &classifiers, wrong_response, payload, k));

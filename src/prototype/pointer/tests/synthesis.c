@@ -893,6 +893,26 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *surface = complete(&synthesis, request(&synthesis, scope, "checked := M :: T;"), PG_SYNTHESIS_DONE);
 	same_judgement(surface, result);
 	const struct pg_operation_declaration *operation = pg_operation_declaration(typing, u1, u1);
+	{
+		const struct pg_object *binder = pg_binder(typing->graph);
+		const struct pg_evidence *extended = pg_prove_context_extension(typing, context, binder, u1);
+		const struct pg_evidence *body = pg_prove_return(typing, classifiers, pg_prove_variable(typing, extended, binder));
+		const struct pg_evidence *continuation = pg_prove_abstract(typing, classifiers, context, extended, body);
+		const struct pg_evidence *payload = pg_prove_type_value(typing, u0);
+		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(&synthesis, u1), pg_synthesis_evidence(&synthesis, u1),
+			pg_synthesis_evidence(&synthesis, payload), pg_synthesis_evidence(&synthesis, continuation)};
+		struct pg_derivation_input input = {.rule = PG_REQUEST_INTRO, .count = 4, .parameters.operation = operation};
+		struct pg_synthesis_job *first = pg_synthesis_rule(&synthesis, &input, premises, NULL, NULL);
+		assert(first == pg_synthesis_rule(&synthesis, &input, premises, NULL, NULL));
+		input.parameters.operation = pg_operation_declaration(typing, u1, u1);
+		struct pg_synthesis_job *second = pg_synthesis_rule(&synthesis, &input, premises, NULL, NULL);
+		assert(first && second && first != second);
+		const struct pg_evidence *first_result = complete(&synthesis, first, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *second_result = complete(&synthesis, second, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_request_declaration(first_result) == operation);
+		assert(pg_evidence_request_declaration(second_result) == input.parameters.operation);
+		assert(pg_evidence_subject(first_result)->core != pg_evidence_subject(second_result)->core);
+	}
 	size_t term_count = typing->graph->terms.count, proof_count = typing->proofs.count;
 	struct pg_synthesis_job *operation_job = pg_synthesis_operation(&synthesis, operation);
 	assert(operation_job && !pg_synthesis_result(operation_job));

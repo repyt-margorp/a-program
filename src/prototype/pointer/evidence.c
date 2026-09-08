@@ -1855,6 +1855,11 @@ const struct pg_object *pg_operation_label(const struct pg_operation_declaration
 	return declaration ? &declaration->label : NULL;
 }
 
+const struct pg_operation_declaration *pg_evidence_request_declaration(const struct pg_evidence *evidence)
+{
+	return evidence && evidence->rule == PG_REQUEST_INTRO ? evidence->certificate : NULL;
+}
+
 const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_operation_declaration *declaration,
 	const struct pg_evidence *payload, const struct pg_evidence *continuation)

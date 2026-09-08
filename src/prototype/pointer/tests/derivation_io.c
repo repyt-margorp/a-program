@@ -259,6 +259,20 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	struct pg_graph *graph = typing->graph;
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
 	const struct pg_evidence *u = pg_prove_universe(typing, classifiers, empty, 0);
+	{
+		const struct pg_evidence *u1 = pg_prove_universe(typing, classifiers, empty, 1);
+		const struct pg_operation_declaration *op = pg_operation_declaration(typing, u1, u1);
+		const struct pg_object *binder = pg_binder(graph);
+		const struct pg_evidence *extended = pg_prove_context_extension(typing, empty, binder, u1);
+		const struct pg_evidence *body = pg_prove_return(typing, classifiers, pg_prove_variable(typing, extended, binder));
+		const struct pg_evidence *continuation = pg_prove_abstract(typing, classifiers, empty, extended, body);
+		const struct pg_evidence *request = pg_prove_request(typing, classifiers, op, pg_prove_type_value(typing, u), continuation);
+		struct pg_derivation_parameters parameters;
+		assert(request && !pg_derivation_parameters(request, &parameters));
+		FILE *unsupported = tmpfile();
+		assert(unsupported && pg_derivations_write(unsupported, 1, &request, name, classifiers) == -1);
+		fclose(unsupported);
+	}
 	const struct pg_object *a = pg_binder(graph), *b = pg_binder(graph), *x = pg_binder(graph);
 	const struct pg_evidence *ca = pg_prove_context_extension(typing, empty, a, u);
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,

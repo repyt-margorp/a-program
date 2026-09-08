@@ -928,6 +928,23 @@ finish general handler source support.
   Rebuilt ASan/UBSan IADT and synthesis tests also pass.
   Implementation C/header: +120/-55; tests: +39/-0; documentation separate.
 
+  September 9, after `f0d26a5`: ordinary derivation dispatch now supports
+  REQUEST_INTRO with the selected operation declaration as a borrowed parameter.
+  Its four supplied premises must exactly match the signature and operands
+  retained by the existing request rule. Solve's shared rule key includes
+  the declaration pointer, so identical signatures never merge distinct labels.
+  Tests check reconstruction, wrong arity/signature rejection, distinct-label
+  requests and repeated job reuse. No request is executed by this acceptance.
+  Normal components, eight source checks and six execution fixtures pass.
+  The current derivation codec explicitly rejects this descriptor-bearing
+  parameter until operation relocation is implemented; a new writer regression
+  verifies that boundary, and the rebuilt derivation image tests pass.
+  This enables common local rule checking, not effectful CHECKPOINT support.
+  Handler descriptors, nominal descriptors and general source/image parity
+  remain open. Rebuilt ASan/UBSan Core and synthesis tests pass.
+  Implementation C/header: +16/-2; tests: +48/-1;
+  documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.

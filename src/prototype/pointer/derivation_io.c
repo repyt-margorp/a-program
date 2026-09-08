@@ -40,6 +40,8 @@ int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *con
 		const struct pg_evidence *proof = node->key;
 		struct pg_derivation_parameters parameters;
 		if (pg_derivation_parameters(proof, &parameters)) goto done;
+		/* Operation descriptors do not yet have a relocatable image section. */
+		if (parameters.operation) goto done;
 		if (pg_wire_write_u64(file, pg_evidence_rule(proof))
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;
 		if (pg_wire_write_u64(file, parameters.reduction ? pg_reduction_kind(parameters.reduction) : PG_REDUCTION_WHNF)) goto done;

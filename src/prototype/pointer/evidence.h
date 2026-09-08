@@ -29,6 +29,7 @@ struct pg_operation_declaration;
 const struct pg_operation_declaration *pg_operation_declaration(struct pg_typing *typing,
 	const struct pg_evidence *payload_type, const struct pg_evidence *response_type);
 const struct pg_object *pg_operation_label(const struct pg_operation_declaration *declaration);
+const struct pg_operation_declaration *pg_evidence_request_declaration(const struct pg_evidence *evidence);
 const struct pg_evidence *pg_operation_payload_type(const struct pg_operation_declaration *declaration);
 const struct pg_evidence *pg_operation_response_type(const struct pg_operation_declaration *declaration);
 /* Derived raw Lambda a. request op a (Lambda b. RETURN b). Like constructor

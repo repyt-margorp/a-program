@@ -10,6 +10,7 @@
 struct pg_derivation_parameters {
 	const struct pg_object *binder;
 	const struct pg_effect_row *effects;
+	const struct pg_operation_declaration *operation;
 	uint64_t level;
 	enum pg_identity_direction direction;
 	const struct pg_conversion_certificate *conversion;
