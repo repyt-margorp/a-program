@@ -457,9 +457,16 @@ Next implementation sequence (prerequisite for automatic source handlers):
   Tests cover a 64-level shared diamond within 512 scheduler advances, exact
   request reuse, no premature evidence, closed-union non-reduction, unknown
   leaf rejection, and preservation/removal of distinct labels after sealing.
-  FOLD/source sequence classifier projection must still construct these row
-  expressions; automatic handler collection/sealing and pending image transport
-  remain open. This foundation does not complete those milestones.
+  FOLD classifier projection now constructs `F (E_input union E_body) B`
+  from pending premise classifiers when the continuation has an independent
+  F codomain. Row-contribution jobs consume that expression before acceptance;
+  the converged row is checked against the eventual ordinary FOLD conclusion.
+  This projection does not certify the input/continuation domain match: tests
+  construct a mismatched-domain skeleton and require ordinary FOLD rejection.
+  Other codomain forms still await the original producer rather than assume
+  purity or invent an effect-dependent result value. Source sequence rule
+  preparation, automatic handler collection/sealing and pending image transport
+  remain open. These changes do not complete those milestones.
   Normal checks, eight source/six runtime cases and rebuilt normal/ASan/UBSan
   synthesis tests pass. Wrong-context value application is rejected. Existing
   example transition counts remain unchanged (List 1682).
