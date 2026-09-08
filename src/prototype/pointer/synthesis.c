@@ -3074,9 +3074,43 @@ static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_j
 	return NULL;
 }
 
+/* Structural polarity from known rules; unknown producers await acceptance. */
+static int body_rule_polarity(const struct pg_synthesis_job *rule)
+{
+	if (rule->role != DERIVATION_JOB) return -1;
+	const struct pg_derivation_input *input = rule->inputs[0];
+	switch (input->rule) {
+	case PG_VARIABLE: case PG_THUNK_INTRO: case PG_VALUE_FROM_TYPE: case PG_UNIVERSE_FORM: return 1;
+	case PG_LAMBDA_INTRO: case PG_APP_ELIM: case PG_FORCE_ELIM: case PG_RETURN_INTRO: return 0;
+	default: return -1;
+	}
+}
+
+static struct pg_synthesis_job *body_rule(const struct pg_synthesis_job *adapter)
+{
+	struct pg_synthesis_job *body = (void *)adapter->inputs[0];
+	struct pg_synthesis_job *rule = prepared_source_rule(body);
+	return rule ? rule : body;
+}
+
 static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	if (producer->role == BODY_JOB) {
+		struct pg_synthesis_job *rule = body_rule(producer);
+		int polarity = body_rule_polarity(rule);
+		if (polarity >= 0) {
+			if (!job->left) job->left = pg_synthesis_term_structure(synthesis, rule);
+			if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+			if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+			const struct pg_term *term = pg_synthesis_type_structure_result(job->left);
+			job->type_structure = polarity ? pg_application(synthesis->typing->graph,
+				pg_reference(synthesis->typing->graph, &pg_return_operation), term) : term;
+			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+			return;
+		}
+	}
 	struct pg_synthesis_job *source_rule = prepared_source_rule(producer);
 	if (source_rule) {
 		if (!job->left) job->left = pg_synthesis_term_structure(synthesis, source_rule);
@@ -3086,6 +3120,35 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 	const struct pg_derivation_input *input = producer->role == DERIVATION_JOB ? producer->inputs[0] : NULL;
 	const struct pg_object *operation = NULL;
 	if (input) {
+		if (input->rule == PG_UNIVERSE_FORM) {
+			job->type_structure = pg_universe(synthesis->classifiers, input->parameters.level);
+			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+			return;
+		}
+		if (input->rule == PG_LAMBDA_INTRO || input->rule == PG_APP_ELIM) {
+			if (!job->left) {
+				struct pg_synthesis_job *first = rule_premise(synthesis, producer, 0);
+				job->left = input->rule == PG_LAMBDA_INTRO ? pg_synthesis_type_structure(synthesis, first)
+					: pg_synthesis_term_structure(synthesis, first);
+				job->right = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, 1));
+			}
+			struct pg_synthesis_job *parts[] = {job->left, job->right};
+			for (size_t i = 0; i < 2; ++i) {
+				if (!parts[i]) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+				if (parts[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, parts[i]); return; }
+				if (parts[i]->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, parts[i]->status); return; }
+			}
+			const struct pg_term *left = pg_synthesis_type_structure_result(job->left);
+			const struct pg_term *right = pg_synthesis_type_structure_result(job->right);
+			if (input->rule == PG_LAMBDA_INTRO) {
+				const struct pg_term *domain, *codomain;
+				const struct pg_object *binder;
+				if (!pg_pi_view(left, &domain, &binder, &codomain)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+				job->type_structure = pg_lambda(synthesis->typing->graph, binder, right);
+			} else job->type_structure = pg_application(synthesis->typing->graph, left, right);
+			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+			return;
+		}
 		if (input->rule == PG_VARIABLE) {
 			job->type_structure = pg_reference(synthesis->typing->graph, input->parameters.binder);
 			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
@@ -3155,28 +3218,17 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
 	if (producer->role == BODY_JOB) {
-		struct pg_synthesis_job *body = (void *)producer->inputs[0];
-		struct pg_synthesis_job *rule = prepared_source_rule(body);
-		if (!rule) rule = body;
-		if (rule->role == DERIVATION_JOB) {
-			const struct pg_derivation_input *body_input = rule->inputs[0];
-			int returns_value = 0, known = 1;
-			switch (body_input->rule) {
-			case PG_VARIABLE: case PG_THUNK_INTRO: case PG_VALUE_FROM_TYPE: case PG_UNIVERSE_FORM:
-				returns_value = 1; break;
-			case PG_LAMBDA_INTRO: case PG_APP_ELIM: case PG_FORCE_ELIM: case PG_RETURN_INTRO: break;
-			default: known = 0; break;
-			}
-			if (known) {
-				if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, rule);
-				if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-				if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
-				if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-				const struct pg_term *type = pg_synthesis_type_structure_result(job->left);
-				job->type_structure = returns_value ? pg_return_type(synthesis->classifiers, type) : type;
-				finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-				return;
-			}
+		struct pg_synthesis_job *rule = body_rule(producer);
+		int returns_value = body_rule_polarity(rule);
+		if (returns_value >= 0) {
+			if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, rule);
+			if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+			if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+			const struct pg_term *type = pg_synthesis_type_structure_result(job->left);
+			job->type_structure = returns_value ? pg_return_type(synthesis->classifiers, type) : type;
+			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+			return;
 		}
 	}
 	struct pg_synthesis_job *source_rule = prepared_source_rule(producer);
@@ -3196,7 +3248,7 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 		if (premise) switch (input->rule) {
 		case PG_VARIABLE:
 			job->left = request_job(synthesis, DECLARED_TYPE_JOB, premise, input->parameters.binder); break;
-		case PG_FORCE_ELIM: case PG_THUNK_INTRO: case PG_APP_ELIM:
+		case PG_FORCE_ELIM: case PG_THUNK_INTRO: case PG_APP_ELIM: case PG_RETURN_INTRO: case PG_VALUE_FROM_TYPE:
 			job->left = pg_synthesis_classifier_structure(synthesis, premise); break;
 		case PG_CONTEXT_PROJECTION:
 			job->left = pg_synthesis_classifier_structure(synthesis, rule_premise(synthesis, producer, 1)); break;
@@ -3234,6 +3286,7 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 		if (input->rule == PG_FORCE_ELIM) {
 			if (!pg_thunk_type_view(type, &type)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		} else if (input->rule == PG_THUNK_INTRO) type = pg_thunk_type(synthesis->classifiers, type);
+		else if (input->rule == PG_RETURN_INTRO) type = pg_return_type(synthesis->classifiers, type);
 		job->type_structure = type;
 		finish(synthesis, job, type ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;

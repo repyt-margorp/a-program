@@ -365,6 +365,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_pi_view(inner_pi, &inner_domain, &value_binder, &inner_result));
 		assert(inner_domain == pg_reference(typing->graph, type_binder));
 		assert(inner_result == pg_return_type(classifiers, inner_domain));
+		struct pg_synthesis_job *nested_term = pg_synthesis_term_structure(&synthesis, nested_source);
+		assert(!complete(&synthesis, nested_term, PG_SYNTHESIS_DONE));
+		const struct pg_term *expected_nested = pg_lambda(typing->graph, type_binder,
+			pg_lambda(typing->graph, value_binder, pg_application(typing->graph,
+				pg_reference(typing->graph, &pg_return_operation), pg_reference(typing->graph, value_binder))));
+		assert(pg_synthesis_type_structure_result(nested_term) == expected_nested);
 		assert(!pg_synthesis_result(nested_source));
 		assert(!complete(&synthesis, structure, PG_SYNTHESIS_DONE));
 		const struct pg_term *symbolic_pi = pg_synthesis_type_structure_result(structure);
@@ -427,6 +433,12 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_term *symbolic_result = pg_effect_type_spine(classifiers,
 			pg_reference(typing->graph, pg_effect_equation_parameter(&effects, equation)), pg_reference(typing->graph, b));
 		assert(pg_synthesis_type_structure_result(application_type) == symbolic_result);
+		struct pg_synthesis_job *application_term = pg_synthesis_term_structure(&synthesis, application);
+		assert(!complete(&synthesis, application_term, PG_SYNTHESIS_DONE));
+		const struct pg_term *expected_application = pg_application(typing->graph,
+			pg_application(typing->graph, pg_reference(typing->graph, &pg_force_operation),
+				pg_reference(typing->graph, f)), pg_reference(typing->graph, b));
+		assert(pg_synthesis_type_structure_result(application_term) == expected_application);
 		assert(!pg_synthesis_result(application) && !pg_synthesis_result(argument));
 		pg_effect_inference_seal(&effects);
 		assert(pg_synthesis_effect_inference(&synthesis, &effects));
@@ -441,11 +453,13 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		complete(&synthesis, outer_variable, PG_SYNTHESIS_DONE);
 		complete(&synthesis, invalid_quote, PG_SYNTHESIS_REJECTED);
 		const struct pg_evidence *applied = complete(&synthesis, application, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(applied)->core == expected_application);
 		assert(pg_evidence_classifier(applied) == pg_effect_type(classifiers, row, pg_reference(typing->graph, b)));
 		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));
 		complete(&synthesis, source_lambda, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_classifier(complete(&synthesis, nested_source, PG_SYNTHESIS_DONE))
 			== pg_synthesis_type_structure_result(nested_type));
+		assert(pg_evidence_subject(pg_synthesis_result(nested_source))->core == expected_nested);
 		assert(pg_evidence_classifier(complete(&synthesis, bound_x, PG_SYNTHESIS_DONE)) == pg_universe(classifiers, 0));
 		assert(pg_evidence_classifier(complete(&synthesis, bound_y, PG_SYNTHESIS_DONE)) == x_term);
 		const struct pg_evidence *quoted = complete(&synthesis, source_quote, PG_SYNTHESIS_DONE);

@@ -164,7 +164,7 @@ const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthes
 struct pg_synthesis_job *pg_synthesis_classifier_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term);
 /* Raw subject of supported pending rules (variables, value/type bridge,
- * projection and unary CBPV introductions/elimination). Other rules await
+ * projection, Lambda/APP and unary CBPV introductions/elimination). Other rules await
  * accepted subjects. No execution: an effectful computation is not its result.
  * The same type_structure_result accessor returns the structural term. */
 struct pg_synthesis_job *pg_synthesis_term_structure(struct pg_synthesis *synthesis,

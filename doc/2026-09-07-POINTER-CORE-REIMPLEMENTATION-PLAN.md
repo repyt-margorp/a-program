@@ -244,6 +244,17 @@ Next implementation sequence (prerequisite for automatic source handlers):
   and rebuilt ASan/UBSan synthesis tests pass. List synthesis now takes 1044
   transitions as proof recovery/acceptance is exposed to scheduling; no speedup
   is claimed from this source Lambda migration.
+  Pending term projection now constructs Lambda/APP subjects without reduction,
+  using the same body-rule polarity classification as classifier projection.
+  RETURN and value/type bridge classifiers propagate through their premises.
+  Tests obtain nested dependent Lambda and dependent APP subjects before effect
+  sealing, assert that no producer evidence exists yet, and compare exact Core
+  pointers with eventual accepted subjects. Structural availability is not
+  proof acceptance. No Core tag, second checker or Replay path was introduced.
+  Validation: normal `check`, eight example synthesis cases, six runtime cases
+  and rebuilt ASan/UBSan synthesis tests pass. Example transition counts are
+  unchanged; source APP adaptation, blocks and automatic handler sealing remain
+  incomplete.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
   pointer-equality assumption about capture-avoiding substitution.
