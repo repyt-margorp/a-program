@@ -3857,6 +3857,21 @@ ASan/UBSan pointer checks also pass.
   geometric face tests still compare against independently generated binders;
   split/bulk tests additionally cover scheduling, not a new equality theorem.
 
+Dependent-context obstruction, verified after `5606df8`:
+
+- [x] Exercise the same substitution solver on full cubes of `A : Universe,
+  x : A`. The one-dimensional telescope accepts all six images.
+- [x] For the transposed square, retaining the original center while matching
+  geometric proper faces accepts the first eight images, but rejects the ninth
+  (the type's center); the full eighteen-image map is also rejected and never
+  published. This is a regression against silently identifying orientations,
+  not a claim that a typed transposition is impossible.
+- Consequently, the next rule must supply a checked transposed type-center
+  before transporting the dependent element telescope. A boundary-only map
+  does not finish that task. Do not bypass this failure with nominal matching,
+  a Core-pointer type lookup, or a new conversion equality. This test does not
+  discharge center symmetry, reduction preservation or higher coherence.
+
 ## 8. Program Image and Persistence
 
 One in-memory program owns graph roots, typed occurrences, declarations and work

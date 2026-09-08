@@ -1219,6 +1219,65 @@ static void square_template_jobs(struct pg_typing *typing, struct pg_classifiers
 	pg_dimensions_destroy(&dimensions);
 }
 
+static void dependent_cube_substitution(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_dimensions dimensions;
+	assert(pg_dimensions_init(&dimensions, typing->graph) == 0);
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_object *a = pg_binder(typing->graph), *x = pg_binder(typing->graph);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, a,
+		pg_prove_universe(typing, classifiers, empty, 0));
+	source = pg_prove_context_extension(typing, source, x,
+		pg_prove_value_type(typing, pg_prove_variable(typing, source, a)));
+	for (size_t dimension = 1; dimension <= 2; ++dimension) {
+		struct pg_whnf_work work;
+		struct pg_synthesis synthesis;
+		assert(pg_whnf_work_init(&work, typing->graph) == 0);
+		assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+		const struct pg_binding_cube *cubes[] = {
+			pg_binding_cube(&dimensions, dimension), pg_binding_cube(&dimensions, dimension)};
+		struct pg_coordinate swap[] = {{PG_AXIS, 1}, {PG_AXIS, 0}};
+		const struct pg_dimension_map *order = dimension == 1 ? pg_dimension_identity(&dimensions, 1)
+			: pg_dimension_map(&dimensions, 2, 2, swap);
+		const struct pg_evidence *original = pg_identity_cube_context(typing, &dimensions, source, 2, cubes,
+			pg_dimension_identity(&dimensions, dimension));
+		const struct pg_evidence *target = pg_identity_cube_context(typing, &dimensions, source, 2, cubes, order);
+		assert(original && target);
+		size_t count = dimension == 1 ? 6 : 18;
+		struct pg_synthesis_job *images[18];
+		const struct pg_evidence *cursor = target;
+		for (size_t i = count; i; --i, cursor = pg_evidence_premise(cursor, 0)) {
+			const struct pg_binding_face *binding = pg_binding_face_view(pg_evidence_context(cursor)->binder);
+			const struct pg_dimension_map *ordered, *intrinsic;
+			assert(pg_dimension_face_factor(&dimensions, binding->face, &ordered, &intrinsic) == 0);
+			/* Deliberately omit the intrinsic center permutation. Geometry alone
+			 * must not certify a substitution of the dependent telescope. */
+			const struct pg_binding_face *image = pg_binding_face(&dimensions, binding->cube, ordered);
+			const struct pg_evidence *value = pg_prove_variable(typing, original, &image->variable);
+			assert(value);
+			images[i - 1] = pg_synthesis_evidence(&synthesis, value);
+		}
+		assert(cursor == empty);
+		struct pg_synthesis_job *map = pg_synthesis_substitution(&synthesis, target, original, count, images);
+		if (dimension == 1) {
+			const struct pg_evidence *result = complete(&synthesis, map, PG_SYNTHESIS_DONE);
+			assert(pg_evidence_premise(result, 0) == target);
+		} else {
+			const struct pg_evidence *type_cube = target;
+			for (size_t i = 0; i < 9; ++i) type_cube = pg_evidence_premise(type_cube, 0);
+			complete(&synthesis, pg_synthesis_substitution(&synthesis,
+				pg_evidence_premise(type_cube, 0), original, 8, images), PG_SYNTHESIS_DONE);
+			complete(&synthesis, pg_synthesis_substitution(&synthesis,
+				type_cube, original, 9, images), PG_SYNTHESIS_REJECTED);
+			complete(&synthesis, map, PG_SYNTHESIS_REJECTED);
+			assert(!pg_synthesis_result(map));
+		}
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&work);
+	}
+	pg_dimensions_destroy(&dimensions);
+}
+
 static int arbitrary_policy(struct pg_eval *machine)
 {
 	const struct pg_closure *argument = pg_eval_argument(machine, 0);
@@ -2496,6 +2555,7 @@ int main(void)
 	endpoint_jobs(&typing, &classifiers);
 	substitution_jobs(&typing, &classifiers);
 	square_template_jobs(&typing, &classifiers);
+	dependent_cube_substitution(&typing, &classifiers);
 	library_levels(&typing, &classifiers);
 	named_identity(&typing, &classifiers);
 	named_transport(&typing, &classifiers);
