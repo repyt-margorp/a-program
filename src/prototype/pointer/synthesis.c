@@ -1300,6 +1300,12 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 		const struct pg_evidence *proof = job->left->result;
 		if (!proof || !pg_evidence_subject(proof)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		/* Definition storage quotes a raw computation; a source reference keeps
+		 * that computation's meaning. Explicit source quotation remains a value. */
+		if (job->left->role == DEFINITION_JOB &&
+			pg_evidence_judgement(job->left->left->result) == PG_JUDGEMENT_COMPUTATION)
+			proof = pg_prove_force(synthesis->typing, proof);
+		if (!proof) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		if (job->syntax->kind == PG_SYNTAX_IMPORT && pg_evidence_context(proof)) {
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}

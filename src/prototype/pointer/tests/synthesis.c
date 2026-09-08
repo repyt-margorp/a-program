@@ -3952,7 +3952,12 @@ int main(void)
 		"{{ main := id x; id := \\y:A=>y; }}.main",
 		"{{ main :: A -> A; main := id; id := \\y:A=>y; }}.main",
 		"{{ id := \\y:Alias=>y; Alias:=A; main:=id x; }}.main",
-		"{{ main:=alias x; alias:=id; id:=\\y:A=>y; }}.main"
+		"{{ main:=alias x; alias:=id; id:=\\y:A=>y; }}.main",
+		"{{ main:=id result; result:=id x; id:=\\y:A=>y; }}.main",
+		"{{ main:=id alias; alias:=result; result:=id x; id:=\\y:A=>y; }}.main",
+		"{{ main:={v:=result; id v;}; result:=id x; id:=\\y:A=>y; }}.main",
+		"{{ main:=(\\f:A->A=>f x) &id; id:=\\y:A=>y; }}.main",
+		"{{ main:=id (result::A); result:=id x; id:=\\y:A=>y; }}.main"
 	};
 	for (size_t i = 0; i < sizeof(modules) / sizeof(*modules); ++i) {
 		const struct pg_evidence *result = complete(&synthesis, program(&synthesis, scope, modules[i]), PG_SYNTHESIS_DONE);
@@ -3965,6 +3970,12 @@ int main(void)
 		assert(pg_eval_readback(&machine, &graph) == expected);
 		pg_eval_destroy(&machine);
 	}
+	/* Explicitly quoted returning computations are not silently run to satisfy
+	 * an argument type. Definition adaptation is not expected-type coercion. */
+	complete(&synthesis, program(&synthesis, scope,
+		"{{main:=id delayed; delayed:=&{x;}; id:=\\y:A=>y;}}.main"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, program(&synthesis, scope,
+		"{{main:=id &(id x); id:=\\y:A=>y;}}.main"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, program(&synthesis, scope, "id:=\\y:A=>y; id::A->A;"), PG_SYNTHESIS_DONE);
 	struct pg_synthesis_job *library = program(&synthesis, scope, "left:=id; right:=id; id:=\\y:A=>y;");
 	struct pg_token left_name = {.text="left", .length=4}, right_name = {.text="right", .length=5};

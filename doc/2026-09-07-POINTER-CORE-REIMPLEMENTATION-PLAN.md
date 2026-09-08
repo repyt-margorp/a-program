@@ -24,20 +24,21 @@ baseline. `check-acceptance` combines this gate with the component suite.
 It is a necessary gate, not sufficient evidence for execution, effects, IF8,
 higher coherence or full `.a` support.
 
-After connecting source direct induction, the current result is **6/8**.
-The other two are rejected later in synthesis, not fuel exhaustion. This checks
-typing, not execution results; source compatibility remains incomplete:
+After restoring computational references to implicitly quoted definitions,
+the existing 01--09 source gate is **8/8**. This checks typing, not execution
+results. Full `check-acceptance` still fails the open-family fixture
+(`unsupported steps=86`); source compatibility remains incomplete:
 
 | Example | Status | Solve transitions |
 | --- | --- | ---: |
-| 01_bool | done | 172 |
+| 01_bool | done | 163 |
 | 02_nat | done | 64 |
-| 03_main | done | 172 |
-| 04_match | done | 408 |
-| 05_bool_to_nat | done | 268 |
-| 06_pred | done | 208 |
-| 07_add | rejected | 459 |
-| 09_list_induction | rejected | 852 |
+| 03_main | done | 163 |
+| 04_match | done | 386 |
+| 05_bool_to_nat | done | 250 |
+| 06_pred | done | 199 |
+| 07_add | done | 450 |
+| 09_list_induction | done | 944 |
 
 ### Applied family provenance progress
 
@@ -177,10 +178,16 @@ These are computation-result tests, not only acceptance tests.
 
 The broader gate is still incomplete. Keep the following obstructions open:
 
-- [ ] Definition quotation and use policy: `two := Nat.succ ...` becomes
-  `U(F Nat)` under implicit definition quotation. `Nat.succ two` currently
-  checks that value against `Nat` and rejects. Do not resolve this by guessing
-  coercions from an expected type or by forcing explicit quoted arguments.
+- [x] Definition quotation and use policy: storage still quotes a raw
+  computation under the implicit policy. A source reference to such a producer
+  uses ordinary FORCE before projection, preserving its original computational
+  meaning. The producer's independently synthesized RHS determines this step;
+  no expected classifier is consulted and no new mutable polarity flag exists.
+  Explicitly quoted definitions remain values. Strict mode still rejects raw
+  computation definitions. Definition selection/storage APIs retain their
+  stored values. Tests cover computed arguments, aliases, sequential blocks,
+  explicitly quoting a named function for higher-order use, post-checks and
+  rejection of explicit returning thunks used as ordinary value arguments.
 - [ ] Nominal provenance through constant Pi codomain elimination: directly
   matching a nested computed constructor result encounters
   `PG_RETURN_CONTENT(PG_PI_CONSTANT_CODOMAIN(...))`; the instance traversal
@@ -210,6 +217,13 @@ whose Lambda body is recovered without evaluation. An open function variable
 without a supplied image still has no recoverable body. Source acceptance is
 unchanged at 6/8. Delta: implementation +36 lines; tests +38/-5; documentation
 separate. The constant-codomain and definition-use issues remain open.
+After `12a4bcc`, the definition-use correction above closes the 01--09 gate
+without changing its source files. The constant-codomain provenance issue and
+general open type-family synthesis remain open. Implementation delta +6 lines;
+tests +12/-1; documentation separate. No independent Replay path was added.
+Optimized component tests and rebuilt ASan/UBSan synthesis passed.
+`check-acceptance` reached the open-family failure after passing those component
+tests and all eight unchanged examples; it did not pass as a whole.
 
 Code-level obstruction and implementation order:
 
