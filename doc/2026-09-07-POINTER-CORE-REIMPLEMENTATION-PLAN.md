@@ -2341,6 +2341,60 @@ those replacements. Identity/composition of the raw operators alone does not
 establish this condition. Keep this as a prerequisite for the typed rule, not
 an accepted conversion axiom or a reason to discard the dependent case.
 
+### Typed symmetry: pinned implementation audit after `7da9160`
+
+The comparison source is Narya revision
+`c7c92b4ec01ae2f528b97207256549242bd21334`, inspected locally on September 8.
+This exposes a more specific missing contract than the map algebra above:
+
+- [check.ml, synthesized Act](https://github.com/gwaithimirdain/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/lib/core/check.ml#L3555)
+  synthesizes the operand and computes the result classifier with `act_ty`.
+- [act.ml, act_normal and gact_ty](https://github.com/gwaithimirdain/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/lib/core/act.ml#L408)
+  distinguishes action on a term from computation of the classifier of that
+  acted term. These are not interchangeable calls on the same input type.
+- [act.ml, gact_ty_instargs](https://github.com/gwaithimirdain/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/lib/core/act.ml#L485)
+  factors the dimension action against proper faces, transforms their normals,
+  and excludes the center from the boundary traversal. Pure permutations do
+  not require the center term to construct that transformed boundary. General
+  degeneracies can require it, as reflexivity's classifier contains its operand.
+
+The distinction is between *uninstantiated* dimensions of a family-as-term and
+*instantiated* dimensions in a term's classifier. It does not justify ValuePi,
+another Core graph, or a second equality authority. Narya's dimensional values
+already carry instantiation structure. Our ordinary APP spines do not identify
+that structure by themselves. For example, a neutral `R x y` cannot tell Core
+whether it is an ordinary application or a selected universe identification.
+The accepted formation/derivation supplies this interpretation.
+
+Consequently, the next typed-symmetry implementation must follow this sequence:
+
+1. Recover a fully instantiated boundary from the accepted formation, following
+   reindex/projection provenance and preserving the selected family. Do not
+   infer its dimension merely by counting APP nodes or repeated Act heads.
+2. Reuse inverse/composition/face factorization to select each destination
+   proper face. Recursively transform its term AND its classifier at the
+   induced intrinsic permutation. This recursion decreases face dimension;
+   do not include the center and recurse on the original typing request.
+3. Reconstruct the result formation from the transformed family and boundary
+   with the original universe bound and CBPV polarity. The result classifier
+   is not in general `pg_symmetry(p, old_classifier)`.
+4. Admit the center action only with this reconstructed formation and the
+   selected source formation as premises. The Core term must contain every
+   operand required by its fixed computation rules; runtime must not consult
+   the typing database to interpret an ambiguous application.
+5. Validate reduction preservation for identity/inverse/composition, including
+   dependent `A : Universe, x : A` cubes. Then connect the rule to canonical
+   oriented cube contexts. Do not treat a free formal permutation action as
+   already providing those instantiation equations.
+
+This audit does not introduce a new primitive or conclude that a separate
+instantiation node is necessary. If elaboration can construct the required
+family/boundary action explicitly as Reference/Application spines, preserve
+that representation. If an additional semantic operator is necessary, justify
+its computation contract first; never recover erased typing information by
+looking up a Core pointer's classifier. Steps 1-5 remain open, and scalar
+transport tests or further permutation-group tests cannot close them.
+
 - [x] After `411ef62`, the uniform-field regression acts on both scalar
   transport and lifting over the dependent context `A, B, r : Id A B, x`.
   Four fresh cubes supply the assumed boundary data. One and two action
