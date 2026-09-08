@@ -226,6 +226,10 @@ const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
  * destination, in declaration order (outermost first). Dependent declaration
  * types are checked after simultaneous substitution of preceding images.
  * This rule admits structural alpha equality, not implicit beta conversion. */
+/* Borrow the accepted image of an exact source binder; no proof or term is
+ * rebuilt. An absent binder or a foreign/non-substitution proof returns NULL. */
+const struct pg_evidence *pg_substitution_image(struct pg_typing *typing,
+	const struct pg_evidence *substitution, const struct pg_object *binder);
 const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *destination,
 	size_t count, const struct pg_evidence *const *images);

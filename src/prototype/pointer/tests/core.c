@@ -697,6 +697,14 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(!pg_prove_substitution(&typing, source, destination, 2, bad));
 	const struct pg_evidence *closed = pg_prove_substitution(&typing, empty, destination, 0, NULL);
 	assert(closed && pg_prove_reindex(&typing, closed, universe));
+	size_t image_proofs = typing.proofs.count, image_terms = graph->terms.count;
+	assert(pg_substitution_image(&typing, sigma, a) == destination_b);
+	assert(pg_substitution_image(&typing, sigma, x) == destination_y);
+	assert(!pg_substitution_image(&typing, closed, a));
+	assert(!pg_substitution_image(&typing, sigma, NULL));
+	assert(!pg_substitution_image(&typing, source, a));
+	assert(!pg_substitution_image(&typing, NULL, a));
+	assert(typing.proofs.count == image_proofs && graph->terms.count == image_terms);
 	/* Telescope instantiation and the flat input API have one authority. */
 	const struct pg_evidence *type_pair = pg_prove_substitution_pair(&typing, closed, a_scope, destination_b);
 	assert(type_pair);

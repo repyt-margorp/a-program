@@ -185,18 +185,31 @@ The broader gate is still incomplete. Keep the following obstructions open:
   matching a nested computed constructor result encounters
   `PG_RETURN_CONTENT(PG_PI_CONSTANT_CODOMAIN(...))`; the instance traversal
   does not yet recover its admitted family. This is unsupported, not invalid.
-- [ ] Nominal provenance of recursive fields through the checked Self map:
-  nested Match on such a field currently stops before branch synthesis.
-  Keep the diagnostic fixture until this shared provenance operation is fixed;
-  do not add an erased-Core-to-classifier registry or a Nat-specific fallback.
+- [x] Nominal provenance of recursive fields through the checked Self map:
+  `pg_substitution_image` borrows the accepted image of an exact source binder.
+  The retained-evidence traversal consumes one substitution/projection frame
+  when it reaches a variable, rather than trying to discover a type from Core.
+  The same operation supports retained function-body provenance. Open variables
+  without an image remain unresolved. No new Core/proof rule or answer registry
+  is introduced. Source tests now evaluate nested Match using an outer IH and
+  an inner shadowing IH, both over two successors. Image lookup tests check
+  absent/invalid inputs and no new term/proof allocation. The current lookup
+  is linear in a substitution's stored bindings, not a new persistent index.
 
-The latter two fixtures explicitly record unsupported work in component tests;
-they are not substitutes for successful source compatibility acceptance.
+The constant-codomain fixture still explicitly records unsupported work in
+component tests; it is not a substitute for successful source compatibility
+acceptance. The recursive-field fixture is now an execution success test.
 Verification of this connection: optimized `check` and rebuilt ASan/UBSan
 `synthesis_test` passed. `check-examples` still fails 07/09 as recorded above.
 Implementation delta: `evidence.c` +16, `evidence.h` +7, `synthesis.c` +175/-14;
 tests +42. Documentation is counted separately. No Main promotion or full
 goal-completion claim is justified by this checkpoint.
+After `a6aa273`, the substitution-image correction passed optimized `check`
+and rebuilt ASan/UBSan `synthesis_test`, including a substituted function thunk
+whose Lambda body is recovered without evaluation. An open function variable
+without a supplied image still has no recoverable body. Source acceptance is
+unchanged at 6/8. Delta: implementation +36 lines; tests +38/-5; documentation
+separate. The constant-codomain and definition-use issues remain open.
 
 Code-level obstruction and implementation order:
 

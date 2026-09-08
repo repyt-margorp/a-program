@@ -2748,6 +2748,24 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	assert(pg_evidence_classifier(two) == pg_evidence_subject(nat)->core);
 	const struct pg_term *one_core = pg_evidence_subject(two)->core->as.application.argument;
 	assert(one_core->kind == PG_APPLICATION && one_core->as.application.argument == pg_evidence_subject(zero)->core);
+	/* Function provenance also follows a substituted thunk variable, without
+	 * executing the body to discover which Lambda supplied its annotation. */
+	const struct pg_evidence *succ_pi = pg_prove_classifier(typing, classifiers, empty, succ);
+	const struct pg_object *function_binder = pg_binder(typing->graph);
+	const struct pg_evidence *function_context = pg_prove_context_extension(typing, empty, function_binder,
+		pg_prove_thunk_type(typing, classifiers, succ_pi));
+	const struct pg_evidence *function_variable = pg_prove_force(typing,
+		pg_prove_variable(typing, function_context, function_binder));
+	assert(!pg_prove_application_body(typing, function_variable,
+		pg_prove_projection(typing, function_context, zero)));
+	const struct pg_evidence *function_image = pg_prove_thunk(typing, classifiers, succ);
+	const struct pg_evidence *function_map = pg_prove_substitution(typing, function_context, empty, 1, &function_image);
+	const struct pg_evidence *body = pg_prove_application_body(typing,
+		pg_prove_reindex(typing, function_map, function_variable), zero);
+	assert(body);
+	const struct pg_evidence *body_value = complete(&synthesis,
+		pg_synthesis_return(&synthesis, empty, body), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(body_value)->core == one_core);
 	struct pg_inductive_instance nat_instance;
 	assert(pg_inductive_instance(typing, nat, &nat_instance));
 	const struct pg_data_layout *nat_layout = pg_data_schema_layout(nat_instance.schema);
@@ -2835,11 +2853,18 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	 * Keep this boundary explicit until derived formation traversal is fixed. */
 	complete(&synthesis, request(&synthesis, named,
 		"r:=(Nat.succ (Nat.succ Nat.zero)) @zero=>Nat.zero @succ k=>Nat.succ *k;"), PG_SYNTHESIS_UNSUPPORTED);
-	/* Recovering a recursive field's nominal origin through its Self map is
-	 * also required before nested Match can exercise the outer/inner IH scopes. */
-	complete(&synthesis, request(&synthesis, named,
-		"r:=(\\n:Nat=>n @zero=>Nat.zero @succ k=>(k @zero=>*k @succ j=>*k)) (Nat.succ Nat.zero);"),
-		PG_SYNTHESIS_UNSUPPORTED);
+	/* Nested Match resolves the field through the accepted Self substitution;
+	 * the first body uses the outer IH, the second shadows it with an inner IH. */
+	const char *nested[] = {
+		"r:=(\\n:Nat=>n @zero=>Nat.zero @succ k=>(k @zero=>*k @succ j=>*k)) (Nat.succ (Nat.succ Nat.zero));",
+		"r:=(\\n:Nat=>n @zero=>Nat.zero @succ k=>(k @zero=>Nat.zero @succ k=>*k)) (Nat.succ (Nat.succ Nat.zero));"
+	};
+	for (size_t i = 0; i < sizeof(nested) / sizeof(*nested); ++i) {
+		const struct pg_evidence *term = complete(&synthesis, request(&synthesis, named, nested[i]), PG_SYNTHESIS_DONE);
+		const struct pg_evidence *result = complete(&synthesis,
+			pg_synthesis_return(&synthesis, empty, term), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(result)->core == pg_evidence_subject(zero)->core);
+	}
 	complete(&synthesis, request(&synthesis, named, "r:=Nat.Alias;"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, named, "r:=succ;"), PG_SYNTHESIS_REJECTED);
 	struct pg_synthesis_job *other_job = request(&synthesis, root, "Other:=@{zero:*; succ:*->*;};");

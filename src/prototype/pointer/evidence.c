@@ -182,6 +182,18 @@ static const struct pg_evidence *evidence_map(struct pg_typing *typing,
 	return map;
 }
 
+static const struct pg_evidence *variable_frame(struct pg_typing *typing,
+	const struct pg_evidence *variable, struct evidence_frame **frames)
+{
+	if (!*frames) return NULL;
+	const struct pg_evidence *step = (*frames)->proof;
+	*frames = (*frames)->next;
+	const struct pg_object *binder = variable->subject->core->as.reference;
+	if (step->rule == PG_CONTEXT_PROJECTION)
+		return pg_prove_variable(typing, step->premises[0], binder);
+	return pg_substitution_image(typing, step->premises[0], binder);
+}
+
 const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument)
 {
@@ -209,6 +221,10 @@ const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 		case PG_THUNK_INTRO:
 			if (!forces) goto done;
 			--forces; function = function->premises[0]; break;
+		case PG_VARIABLE:
+			function = variable_frame(typing, function, &frames);
+			if (!function) goto done;
+			break;
 		default: goto done;
 		}
 	}
@@ -299,6 +315,10 @@ int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *ty
 		}
 		case PG_TYPE_FROM_VALUE: case PG_VALUE_FROM_TYPE: case PG_TYPE_CONVERSION: case PG_PURE_NORMALIZATION:
 			formation = formation->premises[0];
+			break;
+		case PG_VARIABLE:
+			formation = variable_frame(typing, formation, &frames);
+			if (!formation) goto done;
 			break;
 		case PG_RETURN_VALUE:
 			++return_values; formation = formation->premises[0]; break;
@@ -1225,6 +1245,18 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 done:
 	pg_graph_destroy(&temporary);
 	return result;
+}
+
+const struct pg_evidence *pg_substitution_image(struct pg_typing *typing,
+	const struct pg_evidence *substitution, const struct pg_object *binder)
+{
+	if (!pg_evidence_owned_by(substitution, typing)) return NULL;
+	if (substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	const struct pg_binding_value *bindings =
+		(const struct pg_binding_value *)(substitution->premises + substitution->premise_count);
+	for (size_t i = 0; i < substitution->premise_count - 2; ++i)
+		if (bindings[i].binder == binder) return substitution->premises[i + 2];
+	return NULL;
 }
 
 const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
