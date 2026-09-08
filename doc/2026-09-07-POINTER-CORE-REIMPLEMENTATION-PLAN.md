@@ -156,6 +156,16 @@ Next declaration-admission contract:
   evidence. Flat premise/binding arrays are still copied, not claimed O(1).
   Full component `make check` and ASan/UBSan IADT tests pass. These tests do not
   establish source datatype admission or completion of `check-acceptance`.
+- [x] After `931e731`, connect field positivity to the complete prepared schema
+  through `pg_data_schema_positive`. It reads declared field types from the
+  existing checked contexts and derives recursive arity from the index
+  telescope, without copying a semantic schema. A temporary pointer index
+  avoids revisiting shared field-context suffixes across constructors.
+  Tests cover empty/null input, shared positive fields and a later constructor
+  with a negative function domain; checking allocates no Core or evidence.
+  This is a syntactic condition only. It neither scopes/discharges Self nor
+  admits a type into a universe. The pending admission item above remains open.
+  Component `make check` and rebuilt optimized/ASan/UBSan IADT tests passed.
 
 - A scoped family signature supplies its fixed parameter context and index
   telescope. Instantiating that signature consumes checked index images and

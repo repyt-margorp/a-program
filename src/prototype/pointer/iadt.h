@@ -61,6 +61,12 @@ int pg_data_field_positive(const struct pg_term *type,
 const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
 	const struct pg_data_signature *signature,
 	size_t count, const struct pg_evidence *const *results);
+/* Apply the syntactic positivity condition to every field in the checked
+ * schema. Index arity comes from the signature, not the erased layout.
+ * Same return convention and limitations as pg_data_field_positive; this
+ * does not discharge Self, check universe bounds or admit the declaration. */
+int pg_data_schema_positive(const struct pg_data_schema *schema,
+	const struct pg_object *self);
 const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *schema);
 const struct pg_evidence *pg_data_schema_indices(const struct pg_data_schema *schema);
 const struct pg_evidence *pg_data_schema_fields(const struct pg_data_schema *schema,

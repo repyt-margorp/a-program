@@ -1,5 +1,6 @@
 #include "iadt.h"
 #include "evidence.h"
+#include "dag.h"
 
 static const struct pg_object_class constructor_class = {"constructor"};
 static const struct pg_object_class match_class = {"match"};
@@ -286,6 +287,30 @@ done:
 const struct pg_data_layout *pg_data_schema_layout(const struct pg_data_schema *schema)
 {
 	return schema ? schema->layout : NULL;
+}
+
+int pg_data_schema_positive(const struct pg_data_schema *schema,
+	const struct pg_object *self)
+{
+	if (!schema || !self || self->kind != PG_BINDER) return -1;
+	const struct pg_context *prefix = pg_evidence_context(schema->signature->parameters);
+	size_t indices;
+	if (pg_context_extension_size(pg_evidence_context(schema->signature->indices), prefix, &indices)) return -1;
+	struct pg_dag checked;
+	if (pg_dag_init(&checked, NULL, NULL)) return -1;
+	int result = 1;
+	for (size_t i = 0; i < schema->layout->count; ++i) {
+		const struct pg_context *field = pg_evidence_context(schema->results[i]);
+		for (; field != prefix; field = field->parent) {
+			if (pg_dag_find(&checked, field)) break;
+			result = pg_data_field_positive(field->declared_type, self, indices);
+			if (result != 1) goto done;
+			if (pg_dag_add(&checked, field)) { result = -1; goto done; }
+		}
+	}
+done:
+	pg_dag_destroy(&checked);
+	return result;
 }
 
 const struct pg_evidence *pg_data_schema_indices(const struct pg_data_schema *schema)

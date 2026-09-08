@@ -116,6 +116,44 @@ static const struct pg_term *boundary_apply(struct pg_graph *graph, const struct
 	return pg_application(graph, pg_identity_instance(graph, function, left, right), path);
 }
 
+static void schema_positivity(void)
+{
+	struct pg_graph graph;
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+	assert(!pg_classifiers_init(&classifiers, &graph));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_object *self = pg_binder(&graph), *x = pg_binder(&graph);
+	/* An ordinary assumed type supplies test fields, not an admitted Self. */
+	const struct pg_evidence *parameters = pg_prove_context_extension(&typing, empty, self, u);
+	const struct pg_evidence *type = pg_prove_value_type(&typing, pg_prove_variable(&typing, parameters, self));
+	const struct pg_evidence *fields = pg_prove_context_extension(&typing, parameters, x, type);
+	const struct pg_evidence *negative = pg_prove_thunk_type(&typing, &classifiers,
+		pg_prove_pi(&typing, &classifiers, type, fields,
+			pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, fields, u))));
+	const struct pg_evidence *bad_fields = pg_prove_context_extension(&typing, parameters, pg_binder(&graph), negative);
+	const struct pg_data_signature *signature = pg_data_signature(&typing, parameters, parameters);
+	const struct pg_evidence *recursive_result = parameter_result(&typing, parameters, fields);
+	const struct pg_evidence *results[] = {parameter_result(&typing, parameters, parameters),
+		recursive_result, recursive_result, parameter_result(&typing, parameters, bad_fields)};
+	const struct pg_data_schema *good = pg_data_schema(&typing, signature, 3, results);
+	const struct pg_data_schema *bad = pg_data_schema(&typing, signature, 4, results);
+	const struct pg_data_schema *none = pg_data_schema(&typing, signature, 0, NULL);
+	assert(good && bad && none);
+	size_t proofs = typing.proofs.count, terms = graph.terms.count;
+	assert(pg_data_schema_positive(good, self) == 1);
+	assert(pg_data_schema_positive(bad, self) == 0);
+	assert(pg_data_schema_positive(none, self) == 1);
+	assert(pg_data_schema_positive(NULL, self) == -1);
+	assert(pg_data_schema_positive(good, NULL) == -1);
+	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+}
+
 static const struct pg_term *action_match(struct pg_graph *graph, const struct pg_term *matcher,
 	const struct pg_term *left, const struct pg_term *right, const struct pg_term *path,
 	size_t count, const struct pg_term *const *branches)
@@ -607,6 +645,7 @@ static void schemas(struct pg_graph *graph)
 int main(void)
 {
 	positive_fields();
+	schema_positivity();
 	retained_substitution_prefix();
 	struct pg_graph graph;
 	struct pg_whnf_work work;
