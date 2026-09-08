@@ -250,7 +250,7 @@ done:
 	return result;
 }
 
-static const struct pg_evidence *constructor_scope(struct pg_typing *typing,
+const struct pg_evidence *pg_prove_constructor_scope(struct pg_typing *typing,
 	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters)
 {
@@ -302,7 +302,7 @@ const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing
 	const struct pg_object *constructor, const struct pg_evidence *parameters)
 {
 	if (!classifiers || classifiers->graph != typing->graph) return NULL;
-	const struct pg_evidence *map = constructor_scope(typing, formation, constructor, parameters);
+	const struct pg_evidence *map = pg_prove_constructor_scope(typing, formation, constructor, parameters);
 	if (!map) return NULL;
 	const struct pg_evidence *body = constructor_in_scope(typing, formation, constructor, parameters, map);
 	body = pg_prove_return(typing, classifiers, body);
@@ -374,7 +374,7 @@ const struct pg_evidence *pg_prove_match(struct pg_typing *typing,
 	operands[0] = scrutinee->subject;
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_object *constructor = pg_data_constructor(layout, i);
-		const struct pg_evidence *map = constructor_scope(typing, formation, constructor, parameters);
+		const struct pg_evidence *map = pg_prove_constructor_scope(typing, formation, constructor, parameters);
 		if (!map) goto done;
 		const struct pg_evidence *context = map->premises[1];
 		const struct pg_evidence *value = constructor_in_scope(typing, formation, constructor, parameters, map);

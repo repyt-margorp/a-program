@@ -2737,6 +2737,28 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	named = pg_synthesis_name_job(&synthesis, named,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Other", .length = 5}, other_job);
 	complete(&synthesis, request(&synthesis, named, "r:=Nat.succ Other.zero;"), PG_SYNTHESIS_REJECTED);
+	const char *matches[] = {
+		"r:=(\\n:Nat => n @succ k => k @zero => Nat.zero) (Nat.succ Nat.zero);",
+		"r:=Nat.zero @Alias.zero => Nat.zero @Nat.succ k => k;",
+		"r:=((\\n:Nat => n @zero => (\\m:Nat=>m) @succ k => (\\m:Nat=>m)) Nat.zero) Nat.zero;"
+	};
+	for (size_t i = 0; i < sizeof(matches) / sizeof(*matches); ++i) {
+		const struct pg_evidence *term = complete(&synthesis, request(&synthesis, named, matches[i]), PG_SYNTHESIS_DONE);
+		const struct pg_evidence *result = complete(&synthesis,
+			pg_synthesis_return(&synthesis, empty, term), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(result)->core == pg_evidence_subject(zero)->core);
+		assert(pg_evidence_classifier(result) == pg_evidence_subject(nat)->core);
+	}
+	const char *bad_matches[] = {
+		"r:=Nat.zero @zero=>Nat.zero;",
+		"r:=Nat.zero @zero=>Nat.zero @zero=>Nat.zero;",
+		"r:=Nat.zero @zero k=>Nat.zero @succ k=>k;",
+		"r:=Nat.zero @zero=>k @succ k=>k;",
+		"r:=Nat.zero @Other.zero=>Nat.zero @succ k=>k;",
+		"r:=Nat.zero @missing=>Nat.zero @succ k=>k;"
+	};
+	for (size_t i = 0; i < sizeof(bad_matches) / sizeof(*bad_matches); ++i)
+		complete(&synthesis, request(&synthesis, named, bad_matches[i]), PG_SYNTHESIS_REJECTED);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("source declarations: nominal formation, conditional universe candidates, no early publication and reuse passed");

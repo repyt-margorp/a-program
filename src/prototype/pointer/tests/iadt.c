@@ -173,6 +173,10 @@ static void schema_positivity(void)
 	assert(!pg_prove_inductive_type(&typing, &classifiers, NULL));
 	const struct pg_evidence *identity = pg_prove_substitution(&typing, empty, empty, 0, NULL);
 	const struct pg_data_layout *nat_layout = pg_data_schema_layout(nat_schema);
+	size_t position = 99;
+	assert(pg_data_constructor_position(nat_layout, pg_data_constructor(nat_layout, 1), &position) && position == 1);
+	assert(!pg_data_constructor_position(nat_layout, self, &position) && position == 1);
+	assert(!pg_data_constructor_position(NULL, pg_data_constructor(nat_layout, 0), &position));
 	const struct pg_evidence *zero = pg_prove_constructor(&typing, nat,
 		pg_data_constructor(nat_layout, 0), identity, 0, NULL);
 	const struct pg_evidence *succ = pg_prove_constructor(&typing, nat,

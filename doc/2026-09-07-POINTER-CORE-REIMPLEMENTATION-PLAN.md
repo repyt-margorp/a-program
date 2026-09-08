@@ -13,7 +13,7 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
-### Source acceptance recheck after `5833634`
+### Source acceptance recheck after `9e1984a`
 
 The recent storage work does not close source IADT admission. Do not use the
 green component `check` target as evidence that the replacement runs existing
@@ -24,8 +24,8 @@ baseline. `check-acceptance` combines this gate with the component suite.
 It is a necessary gate, not sufficient evidence for execution, effects, IF8,
 higher coherence or full `.a` support.
 
-After connecting zero-index constructor names, the current result is **3/8**.
-The other five exit 4 (unsupported), not fuel exhaustion. This checks typing,
+After connecting nonrecursive source Match, the current result is **5/8**.
+The other three exit 4 (unsupported), not fuel exhaustion. This checks typing,
 not execution results:
 
 | Example | Status | Solve transitions |
@@ -33,17 +33,18 @@ not execution results:
 | 01_bool | done | 172 |
 | 02_nat | done | 64 |
 | 03_main | done | 172 |
-| 04_match | unsupported | 228 |
-| 05_bool_to_nat | unsupported | 142 |
-| 06_pred | unsupported | 130 |
-| 07_add | unsupported | 250 |
-| 09_list_induction | unsupported | 346 |
+| 04_match | unsupported | 230 |
+| 05_bool_to_nat | done | 260 |
+| 06_pred | done | 203 |
+| 07_add | unsupported | 282 |
+| 09_list_induction | unsupported | 348 |
 
 Code-level obstruction and implementation order:
 
 1. Ordinary DECLARATION dispatch now admits checked zero-index families.
    Qualified constructor names now use its isolated source export scope.
-   ELIMINATION, indexed declarations and general family instantiation remain
+   Nonrecursive ELIMINATION handles value scrutinees and constant computation
+   motives. Indexed declarations and general family instantiation remain
    unsupported. The separate `pg_synthesis_data_schema` job still builds
    a conditional schema only; its completion never implies type admission.
 2. `pg_data_schema` in `iadt.c` validates field/result substitutions and derives
@@ -215,6 +216,32 @@ Admission audit after `8b3105b`:
 ### Next Implementation Boundary: Pending Recursive Formation
 
 Zero-index inductive rules after `d952804`:
+
+Source Match after `9e1984a`:
+
+- [x] Recover the scrutinee's admitted family from its classifier evidence and
+  get lexical labels from that formation's existing source export scope. This
+  metadata never determines membership or replaces the semantic schema.
+  Check constructor identity and coverage before forming any Match evidence.
+- [x] Share instantiated constructor field contexts with introduction; bind
+  positional pattern names to their fresh field binders. Synthesize every
+  branch without a supplied expected type, then abstract its fields. Recover
+  a constant computation motive via Pi codomain inversion and post-check all
+  branches through `pg_prove_match`. Raw function results stay computations.
+- [x] Resolve layout positions in constant time from the constructor pointer,
+  using the same operation as erased Match assembly. Do not scan every
+  constructor again for each clause or store another ordinal authority.
+- [x] Test reordered and qualified clauses, predecessor reduction, raw-Lambda
+  branch results followed by application, wrong/missing/repeated constructors,
+  field arity and leakage of a field name into another branch. Existing 05 and
+  06 are accepted unchanged; the overall source gate is still incomplete.
+  Full component `check` and rebuilt ASan/UBSan synthesis tests pass.
+- [ ] Extend computed scrutinees through ordinary sequencing, infer dependent
+  motives, support named selectors and general label aliases, and implement
+  recursive IH. Empty elimination still needs a synthesizable result source;
+  `::` must not supply one before synthesis. Differing branch result types
+  remain unsupported here, not a claimed inconsistency: a dependent motive
+  may relate them. Indexed families and higher equations remain open.
 
 Typed instance recovery after `f50f399`:
 

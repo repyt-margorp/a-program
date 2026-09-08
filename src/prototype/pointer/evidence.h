@@ -52,6 +52,12 @@ const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters);
+/* Fresh instantiated field telescope, returned as a checked substitution into
+ * the conditional schema context. Its destination extends parameters'
+ * destination by exactly the fields. Shared by introduction and elimination. */
+const struct pg_evidence *pg_prove_constructor_scope(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters);
 /* Zero-index dependent case elimination (no recursive IH). Motive is a
  * computation-type formation in destination,z:Family. Branches are already
  * synthesized computations in destination, ordered by the schema, curried

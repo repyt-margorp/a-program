@@ -68,6 +68,19 @@ struct declaration_state {
 	struct pg_synthesis_job **producers;
 	size_t indexed, checked;
 };
+struct match_branch {
+	const struct pg_source_scope *scope;
+	struct pg_synthesis_job *body;
+	const struct pg_evidence *function;
+	size_t fields;
+};
+struct match_state {
+	struct pg_inductive_instance instance;
+	const struct pg_source_scope *labels;
+	const struct pg_evidence *motive;
+	size_t count, next, checked;
+	struct match_branch branches[];
+};
 struct family_state {
 	const struct pg_evidence *maps[2];
 	const struct pg_evidence **declarations;
@@ -119,6 +132,7 @@ struct pg_synthesis_job {
 	struct declaration_state *declaration;
 	const struct pg_data_schema *schema;
 	const struct pg_source_scope *exports;
+	struct match_state *match;
 	struct family_state *family;
 	struct derivation_state *derivation;
 	const void *inputs[];
@@ -1843,7 +1857,123 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		struct pg_synthesis_job *member = request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs);
 		job->exports = pg_synthesis_name_job(synthesis, job->exports, constructors->items[i].name, member);
 	}
+	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, job->result);
+	if (!accepted) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	accepted->exports = job->exports;
 	finish(synthesis, job, job->exports ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+}
+
+static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->left) {
+		job->left = pg_synthesis_request(synthesis, job->scope, job->syntax->left);
+		depend(synthesis, job, job->left);
+		return;
+	}
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	const struct pg_evidence *context = source_context(job->scope), *scrutinee = job->left->result;
+	if (!scrutinee || pg_evidence_judgement(scrutinee) != PG_JUDGEMENT_VALUE) goto unsupported;
+	if (!job->match) {
+		const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, scrutinee);
+		struct pg_inductive_instance instance;
+		if (!pg_inductive_instance(synthesis->typing, type, &instance)) goto unsupported;
+		size_t count = pg_data_constructor_count(instance.schema);
+		if (count != job->syntax->item_count) goto rejected;
+		if (!count) goto unsupported;
+		if (count > (SIZE_MAX - sizeof(struct match_state)) / sizeof(struct match_branch)) goto error;
+		struct pg_synthesis_job *origin = pg_synthesis_evidence(synthesis, instance.formation);
+		if (!origin || !origin->exports) goto unsupported;
+		job->match = pg_alloc(synthesis->typing->graph, sizeof(struct match_state) + count * sizeof(struct match_branch));
+		if (!job->match) goto error;
+		job->match->instance = instance;
+		job->match->count = count;
+		job->match->labels = origin->exports;
+	}
+	struct match_state *state = job->match;
+	const struct pg_data_layout *layout = pg_data_schema_layout(state->instance.schema);
+	if (state->next < state->count) {
+		const struct pg_syntax *clause = job->syntax->items[state->next].expression;
+		struct source_reference label;
+		if (clause->left->kind == PG_SYNTAX_ATOM)
+			label = lookup_scope(state->labels, clause->left->token);
+		else {
+			struct pg_synthesis_job *dependency = NULL;
+			enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, clause->left, &label, &dependency);
+			if (status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, dependency); return; }
+			if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return; }
+		}
+		if (!label.producer) goto rejected;
+		if (label.producer->role != CONSTRUCTOR_VALUE_JOB) goto unsupported;
+		const struct pg_object *constructor = label.producer->inputs[1];
+		size_t ordinal;
+		if (!pg_data_constructor_position(layout, constructor, &ordinal)) goto rejected;
+		if (state->branches[ordinal].body) goto rejected;
+		const struct pg_evidence *map = pg_prove_constructor_scope(synthesis->typing,
+			state->instance.formation, constructor, state->instance.parameters);
+		if (!map) goto error;
+		const struct pg_evidence *fields = pg_evidence_premise(map, 1);
+		size_t count;
+		if (pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(context), &count)) goto error;
+		if (count != clause->item_count) goto rejected;
+		if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto error;
+		const struct pg_evidence **extensions = malloc(count * sizeof(*extensions));
+		if (count && !extensions) goto error;
+		for (size_t i = count; i; --i, fields = pg_evidence_premise(fields, 0)) extensions[i - 1] = fields;
+		const struct pg_source_scope *scope = job->scope;
+		for (size_t i = 0; i < count; ++i) {
+			if (clause->items[i].operation) { free(extensions); goto unsupported; }
+			scope = pg_synthesis_bind(synthesis, scope, clause->items[i].name,
+				pg_evidence_context(extensions[i])->binder, extensions[i]);
+			if (!scope) break;
+		}
+		free(extensions);
+		if (!scope) goto error;
+		struct match_branch *branch = &state->branches[ordinal];
+		branch->scope = scope;
+		branch->fields = count;
+		branch->body = pg_synthesis_request(synthesis, scope, clause->right);
+		if (!branch->body) goto error;
+		++state->next;
+		enqueue(synthesis, job);
+		return;
+	}
+	if (state->checked < state->count) {
+		struct match_branch *branch = &state->branches[state->checked];
+		if (branch->body->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->body); return; }
+		if (branch->body->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, branch->body->status); return; }
+		branch->function = pg_prove_abstract(synthesis->typing, synthesis->classifiers, context,
+			source_context(branch->scope), computation(synthesis, branch->body->result));
+		if (!branch->function) goto unsupported;
+		const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, branch->function);
+		for (size_t i = 0; type && i < branch->fields; ++i)
+			type = pg_prove_pi_constant_codomain(synthesis->typing, type);
+		if (!type) goto unsupported;
+		if (!state->motive) state->motive = type;
+		else if (pg_alpha_equal(pg_evidence_subject(state->motive)->core, pg_evidence_subject(type)->core) != 1)
+			goto unsupported;
+		++state->checked;
+		enqueue(synthesis, job);
+		return;
+	}
+	const struct pg_evidence *family = pg_prove_reindex(synthesis->typing, state->instance.parameters, state->instance.formation);
+	const struct pg_evidence *extended = pg_prove_context_extension(synthesis->typing, context,
+		pg_binder(synthesis->typing->graph), family);
+	const struct pg_evidence *motive = pg_prove_projection(synthesis->typing, extended, state->motive);
+	const struct pg_evidence **branches = malloc(state->count * sizeof(*branches));
+	if (!branches) goto error;
+	for (size_t i = 0; i < state->count; ++i) branches[i] = state->branches[i].function;
+	job->result = pg_prove_match(synthesis->typing, synthesis->classifiers, state->instance.formation,
+		state->instance.parameters, scrutinee, extended, motive, state->count, branches);
+	free(branches);
+	if (!job->result) goto unsupported;
+	finish(synthesis, job, PG_SYNTHESIS_DONE);
+	return;
+rejected:
+	finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+unsupported:
+	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
 static struct substitution_state *substitution_start(struct pg_synthesis *synthesis,
@@ -2264,6 +2394,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == DEFINITION_JOB) { definition_step(synthesis, job); return; }
 	if (job->role == DEFINITION_SCOPE_JOB) { definition_scope_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DECLARATION) { declaration_step(synthesis, job); return; }
+	if (syntax->kind == PG_SYNTAX_ELIMINATION) { match_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_BLOCK) { block_step(synthesis, job); return; }

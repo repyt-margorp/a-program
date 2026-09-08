@@ -51,6 +51,16 @@ static const struct pg_constructor *constructor(const struct pg_object *object,
 	return result->layout == layout ? result : NULL;
 }
 
+int pg_data_constructor_position(const struct pg_data_layout *layout,
+	const struct pg_object *object, size_t *position)
+{
+	if (!layout || !position) return 0;
+	const struct pg_constructor *found = constructor(object, layout);
+	if (!found) return 0;
+	*position = (size_t)(found - layout->constructors);
+	return 1;
+}
+
 const struct pg_term *pg_data_match(struct pg_graph *graph, const struct pg_data_layout *layout,
 	const struct pg_term *scrutinee, size_t count, const struct pg_match_clause *clauses)
 {
@@ -62,9 +72,8 @@ const struct pg_term *pg_data_match(struct pg_graph *graph, const struct pg_data
 	const struct pg_term *result = NULL;
 	if (count && !branches) goto done;
 	for (size_t i = 0; i < count; ++i) {
-		const struct pg_constructor *c = constructor(clauses[i].constructor, layout);
-		if (!c || !clauses[i].branch) goto done;
-		size_t position = (size_t)(c - layout->constructors);
+		size_t position;
+		if (!pg_data_constructor_position(layout, clauses[i].constructor, &position) || !clauses[i].branch) goto done;
 		if (branches[position]) goto done;
 		branches[position] = clauses[i].branch;
 	}

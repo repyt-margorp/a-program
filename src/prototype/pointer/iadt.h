@@ -15,6 +15,9 @@ struct pg_match_clause {
 const struct pg_data_layout *pg_data_layout(struct pg_graph *graph,
 	size_t count, const size_t *arities);
 const struct pg_object *pg_data_constructor(const struct pg_data_layout *layout, size_t index);
+/* Constant-time inverse in this exact layout; not nominal type membership. */
+int pg_data_constructor_position(const struct pg_data_layout *layout,
+	const struct pg_object *constructor, size_t *position);
 const struct pg_object *pg_data_matcher(const struct pg_data_layout *layout);
 /* Complete pointer-labelled clauses, in any order. Branches are ordinary
  * lambda terms over erased fields. Core operands retain every branch, so
