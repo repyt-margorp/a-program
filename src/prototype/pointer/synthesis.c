@@ -1066,6 +1066,14 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		const struct pg_evidence *proof = job->left->result;
 		const struct pg_evidence *input = computation(synthesis, proof);
 		if (!input) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+		/* Discarding a checked returned value needs neither execution nor a
+		 * binding. Keep checking the statement, but do not build a dead scope. */
+		if (pg_evidence_rule(input) == PG_RETURN_INTRO && block->next < block->end &&
+			!block->syntax->items[block->next - 1].name.length) {
+			job->left = NULL;
+			enqueue(synthesis, job);
+			return;
+		}
 		input = classifier_input(synthesis, job, block->scope->context, input);
 		if (!input) return;
 		if (block->next == block->end) {

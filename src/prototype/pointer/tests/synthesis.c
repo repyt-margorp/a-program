@@ -2781,6 +2781,15 @@ int main(void)
 		assert(pg_evidence_subject(value)->core == pg_reference(&graph, x));
 		assert(pg_evidence_classifier(value) == pg_reference(&graph, a));
 	}
+	const struct pg_evidence *discarded_values = complete(&synthesis, request(&synthesis, scope,
+		"main := { x; x; x; };"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(discarded_values) == PG_RETURN_INTRO);
+	assert(pg_evidence_subject(discarded_values)->core == expected);
+	const struct pg_evidence *discarded_computation = complete(&synthesis, request(&synthesis, scope,
+		"main := { (\\y : A => y) x; x; };"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(discarded_computation) == PG_FOLD_ELIM);
+	complete(&synthesis, request(&synthesis, scope,
+		"main := { missing; x; };"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope, "main := { temp := x; }.missing;"), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *ordered = complete(&synthesis, request(&synthesis, scope,
 		"main := { &(\\y : A => y); } { x; };"), PG_SYNTHESIS_DONE);

@@ -3758,6 +3758,20 @@ layout are not language semantics. Replace those assertions with results, types,
 effect traces, rejection reasons or retained-evidence validation. Record each disposition;
 do not delete a failing semantic test to make the new implementation pass.
 
+September 8 source-block correction after `b4eb821`: an unnamed, nonfinal
+statement whose accepted computation is directly `PG_RETURN_INTRO` no longer
+allocates a continuation binder and scope. Its producer is still synthesized
+and checked before this decision. The ordinary RETURN rule, not a guessed
+effect row or source syntax, authorizes discarding the returned value. Named
+bindings, selected/final results and general computations retain their existing
+paths. No normalization search is run to discover additional discardable terms.
+Tests assert that `{ x; x; x; }` produces direct RETURN evidence, a discarded
+application remains a FOLD, and an undefined discarded name is rejected. The
+direct-RETURN regression fails before this change. Implementation C: +8/-0;
+test C: +9/-0. This reduces generated scopes, not source LOC, and does not close
+the outstanding effects, exit, image or typed-symmetry gates.
+Normal and ASan/UBSan pointer checks pass.
+
 ## 8. Program Image and Persistence
 
 One in-memory program owns graph roots, typed occurrences, declarations and work
