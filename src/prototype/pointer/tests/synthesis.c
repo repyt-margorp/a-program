@@ -346,6 +346,32 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *outer_type = pg_synthesis_classifier_structure(&synthesis, outer_variable);
 		assert(!complete(&synthesis, outer_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(outer_type) == pg_thunk_type(classifiers, symbolic_f));
+		const struct pg_object *a = pg_binder(typing->graph), *f = pg_binder(typing->graph), *b = pg_binder(typing->graph);
+		struct pg_synthesis_job *a_context = rule_job(&synthesis, PG_CONTEXT_EXTEND, a, 2,
+			(struct pg_synthesis_job *[]){empty, universe});
+		struct pg_synthesis_job *a_value = rule_job(&synthesis, PG_VARIABLE, a, 1, &a_context);
+		struct pg_synthesis_job *a_type = rule_job(&synthesis, PG_TYPE_FROM_VALUE, NULL, 1, &a_value);
+		struct pg_synthesis_job *dependent_f = pg_synthesis_rule(&synthesis, &formation, &a_type, &effects, equation);
+		struct pg_synthesis_job *dependent_pi = rule_job(&synthesis, PG_PI_FORM, NULL, 3,
+			(struct pg_synthesis_job *[]){universe, a_context, dependent_f});
+		struct pg_synthesis_job *function_type = rule_job(&synthesis, PG_THUNK_TYPE_FORM, NULL, 1, &dependent_pi);
+		struct pg_synthesis_job *f_context = rule_job(&synthesis, PG_CONTEXT_EXTEND, f, 2,
+			(struct pg_synthesis_job *[]){empty, function_type});
+		struct pg_synthesis_job *argument_type = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){f_context, universe});
+		struct pg_synthesis_job *b_context = rule_job(&synthesis, PG_CONTEXT_EXTEND, b, 2,
+			(struct pg_synthesis_job *[]){f_context, argument_type});
+		struct pg_synthesis_job *f_value = rule_job(&synthesis, PG_VARIABLE, f, 1, &b_context);
+		struct pg_synthesis_job *function = rule_job(&synthesis, PG_FORCE_ELIM, NULL, 1, &f_value);
+		struct pg_synthesis_job *argument = rule_job(&synthesis, PG_VARIABLE, b, 1, &b_context);
+		struct pg_synthesis_job *application = rule_job(&synthesis, PG_APP_ELIM, NULL, 2,
+			(struct pg_synthesis_job *[]){function, argument});
+		struct pg_synthesis_job *application_type = pg_synthesis_classifier_structure(&synthesis, application);
+		assert(!complete(&synthesis, application_type, PG_SYNTHESIS_DONE));
+		const struct pg_term *symbolic_result = pg_effect_type_spine(classifiers,
+			pg_reference(typing->graph, pg_effect_equation_parameter(&effects, equation)), pg_reference(typing->graph, b));
+		assert(pg_synthesis_type_structure_result(application_type) == symbolic_result);
+		assert(!pg_synthesis_result(application) && !pg_synthesis_result(argument));
 		pg_effect_inference_seal(&effects);
 		assert(pg_synthesis_effect_inference(&synthesis, &effects));
 		for (unsigned steps = 0; pg_synthesis_status(lambda) == PG_SYNTHESIS_PENDING; ++steps) {
@@ -357,6 +383,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
 		complete(&synthesis, outer_variable, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *applied = complete(&synthesis, application, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_classifier(applied) == pg_effect_type(classifiers, row, pg_reference(typing->graph, b)));
 		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));
 		complete(&synthesis, source_lambda, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *quoted = complete(&synthesis, source_quote, PG_SYNTHESIS_DONE);

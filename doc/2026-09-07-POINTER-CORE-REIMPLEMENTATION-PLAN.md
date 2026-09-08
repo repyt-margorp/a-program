@@ -185,6 +185,18 @@ Next implementation sequence (prerequisite for automatic source handlers):
   dependent result substitution still need integration with these projections.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass for the classifier projections.
+  APP classifier projection now substitutes the independently obtained argument
+  subject into the structural Pi codomain using the existing budgeted,
+  capture-avoiding substitution walker. Pending subjects support variables,
+  value/type bridges, context projections and unary CBPV structure; they never
+  execute a computation to obtain its value. Unknown subject rules await their
+  original producer. Tests use `f : U(Pi(A : Universe, F rho A))` and a distinct
+  variable B: before sealing, APP has structural classifier `F rho B` while both
+  operand/application proofs remain pending; after sealing the ordinary kernel
+  accepts the corresponding `F E B` judgement. This is rule-graph propagation,
+  not completed source APP elaboration or automatic handler effect inference.
+  Validation: normal `check`, eight example synthesis cases, six runtime cases
+  and rebuilt ASan/UBSan synthesis tests pass for dependent APP projection.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
   pointer-equality assumption about capture-avoiding substitution.

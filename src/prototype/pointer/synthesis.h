@@ -156,11 +156,17 @@ struct pg_derivation_input;
 struct pg_synthesis_job *pg_synthesis_type_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation);
 const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthesis_job *job);
-/* Structural classifier for pending VARIABLE/FORCE/THUNK/LAMBDA rule inputs.
+/* Structural classifier for pending VARIABLE/FORCE/THUNK/LAMBDA/APP rule inputs.
  * Uses binder identity through context producers, not names or accepted proof
  * guesses. Other producers await acceptance. Read the raw result with the same
  * type_structure_result accessor; it supplies no typing evidence. */
 struct pg_synthesis_job *pg_synthesis_classifier_structure(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *term);
+/* Raw subject of supported pending rules (variables, value/type bridge,
+ * projection and unary CBPV introductions/elimination). Other rules await
+ * accepted subjects. No execution: an effectful computation is not its result.
+ * The same type_structure_result accessor returns the structural term. */
+struct pg_synthesis_job *pg_synthesis_term_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term);
 /* Unaccepted stored rule DAG; request does not traverse or accept it. Inputs
  * outlive synthesis. Uses ordinary dependencies, rules and pure work. */
