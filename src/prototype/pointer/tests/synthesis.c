@@ -121,21 +121,41 @@ static void effect_equations(struct pg_typing *typing, struct pg_classifiers *cl
 		assert(!pg_synthesis_effect_inference(&synthesis, &work));
 		assert(pg_effect_dependency(&work, other, rows[0], a) == -1);
 		assert(pg_effect_handler_dependencies(&work, c, a, rows[0], b, 1, &other) == -1);
+		assert(pg_effect_contribution(&work, pg_reference(typing->graph,
+			pg_effect_equation_parameter(&foreign, other)), rows[0], a) == -1);
+		assert(pg_effect_contribution(&work, value_type, rows[0], a) == -1);
+		assert(pg_effect_contribution(&work, row_term, rows[0], other) == -1);
 		assert(work.dependencies.count == 0);
 		struct pg_effect_equation *sources[] = {a, b, b, b};
 		struct pg_effect_equation *targets[] = {b, a, b, c};
 		const struct pg_effect_row *masks[] = {rows[mask], rows[0], rows[0], rows[1]};
 		for (unsigned i = 0; i < 4; ++i) {
 			unsigned edge = reverse ? 3 - i : i;
-			assert(!pg_effect_dependency(&work, sources[edge], masks[edge], targets[edge]));
+			const struct pg_term *source_row = pg_reference(typing->graph,
+				pg_effect_equation_parameter(&work, sources[edge]));
+			const struct pg_term *latent = pg_thunk_type(classifiers,
+				pg_effect_type_spine(classifiers, source_row, value_type));
+			const struct pg_term *computation_type, *observed_row, *observed_value;
+			assert(pg_thunk_type_view(latent, &computation_type));
+			assert(pg_effect_type_spine_view(computation_type, &observed_row, &observed_value));
+			assert(observed_value == value_type);
+			assert(!pg_effect_contribution(&work, observed_row, masks[edge], targets[edge]));
 			assert(!pg_effect_dependency(&work, sources[edge], masks[edge], targets[edge]));
 		}
 		assert(work.dependencies.count == 4);
+		/* A fully masked closed contribution adds no result labels. Its source
+		 * and edge are still shared rather than recreated on repeated requests. */
+		const struct pg_term *constant_row = pg_effect_reference(typing->graph, rows[7]);
+		assert(!pg_effect_contribution(&work, constant_row, rows[7], c));
+		size_t source_count = work.row_sources.count;
+		assert(!pg_effect_contribution(&work, constant_row, rows[7], c));
+		assert(work.row_sources.count == source_count && work.dependencies.count == 5);
 		assert(pg_effect_inference_advance(&work, 100) == 0);
 		assert(!pg_effect_inference_result(&work, a));
 		pg_effect_inference_seal(&work);
 		assert(!pg_effect_equation(&work, rows[0]));
 		assert(pg_effect_dependency(&work, a, rows[0], c) == -1);
+		assert(pg_effect_contribution(&work, row_term, rows[0], c) == -1);
 		struct pg_synthesis_job *job = pg_synthesis_effect_inference(&synthesis, &work);
 		assert(job && pg_synthesis_effect_inference(&synthesis, &work) == job);
 		const struct pg_effect_equation *selected[] = {a};

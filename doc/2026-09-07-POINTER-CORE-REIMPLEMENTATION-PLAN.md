@@ -86,6 +86,17 @@ Next implementation sequence (prerequisite for automatic source handlers):
   reject foreign equations, preserve the input graph, and destroy work during
   image preparation/traversal. Source classifier propagation and checkpoint
   relocation are still open; this is the materialization operation they need.
+  The worker now indexes row-term references back to their equation sites.
+  `pg_effect_contribution` turns a structural F row parameter (including one
+  recovered from a latent U/F classifier) into an ordinary masked dependency.
+  Closed row sources and repeated edges are shared; foreign/unknown parameters
+  are rejected without being interpreted as operation labels or empty rows.
+  The index dies with the worker and introduces no worker pointer into Core.
+  Exhaustive three-label seed/mask tests retain the dependency until convergence,
+  including the case where an unknown row later contains a handled operation.
+  Automatic source classifier propagation and equation transport remain open.
+  Validation: normal `check`, eight example synthesis cases, six runtime result
+  cases, and rebuilt ASan/UBSan synthesis tests pass for this change.
 - [ ] Generalize existing unaccepted rule inputs to await parameter producers
   as well as premise producers. Reuse ordinary `pg_prove_derivation` acceptance;
   do not add provisional evidence or a second rule checker. A loaded `.a` uses

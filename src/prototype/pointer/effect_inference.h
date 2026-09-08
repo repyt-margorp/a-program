@@ -9,6 +9,7 @@ struct pg_effect_inference {
 	struct pg_graph arena;
 	struct pg_graph *rows;
 	struct pg_index dependencies;
+	struct pg_index row_sources;
 	struct pg_effect_equation *head, *tail, *current;
 	struct pg_effect_dependency *cursor;
 	int sealed, failed;
@@ -35,6 +36,14 @@ struct pg_effect_equation *pg_effect_equation(struct pg_effect_inference *work,
  * The equation handle itself must still be live when calling this accessor. */
 const struct pg_object *pg_effect_equation_parameter(const struct pg_effect_inference *work,
 	const struct pg_effect_equation *equation);
+/* Add (row_term minus mask) to target. row_term is either a closed row
+ * reference or an exact parameter reference owned by this worker. Unknown
+ * references are rejected, never interpreted as empty or as operation labels.
+ * Constant sources and dependency edges are shared. This reads unaccepted
+ * classifier structure only; it does not certify that structure as a type. */
+int pg_effect_contribution(struct pg_effect_inference *work,
+	const struct pg_term *row_term, const struct pg_effect_row *mask,
+	struct pg_effect_equation *target);
 int pg_effect_dependency(struct pg_effect_inference *work,
 	struct pg_effect_equation *source, const struct pg_effect_row *mask,
 	struct pg_effect_equation *target);
