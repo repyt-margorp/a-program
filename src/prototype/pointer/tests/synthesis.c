@@ -2626,6 +2626,8 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE && !pg_synthesis_result(job));
 	const struct pg_data_schema *schema = pg_synthesis_schema_result(job);
 	assert(schema);
+	uint64_t field_level;
+	assert(!pg_data_schema_field_level(schema, &field_level) && field_level == 0);
 	const struct pg_data_layout *layout = pg_data_schema_layout(schema);
 	assert(pg_data_constructor(layout, 0) && pg_data_constructor(layout, 1) && !pg_data_constructor(layout, 2));
 	for (size_t i = 0; i < 2; ++i) {
@@ -2657,9 +2659,21 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 		assert(result && !pg_evidence_context(pg_data_schema_indices(result)));
 		assert(!pg_data_constructor(pg_data_schema_layout(result), i * 2));
 	}
+	/* Admission must use synthesized field formations, including pure type
+	 * computations, rather than guessing a universe from source syntax. */
+	const char *type_fields[] = {"D:=@{mk:@->*;};", "D:=@{mk:((\\X:@=>@) A)->*;};"};
+	for (size_t i = 0; i < sizeof(type_fields) / sizeof(*type_fields); ++i) {
+		struct pg_synthesis_job *typed = pg_synthesis_data_schema(&synthesis, scope,
+			expression_syntax(typing->graph, type_fields[i]));
+		complete(&synthesis, typed, PG_SYNTHESIS_DONE);
+		const struct pg_data_schema *result = pg_synthesis_schema_result(typed);
+		assert(result && !pg_synthesis_result(typed));
+		assert(!pg_data_schema_field_level(result, &field_level) && field_level == 1);
+	}
 	const char *bad[] = {
 		"D:=@{a:*; a:*;};", "D:=@{a:*; b:Missing;};", "D:=@{a:Missing->*;};",
-		"D:=@\\i:A=>{a:*;};", "D:=@\\i:A=>{a:i->* i;};", "D:=@{a:\\x:A=>*;};"
+		"D:=@\\i:A=>{a:*;};", "D:=@\\i:A=>{a:i->* i;};", "D:=@{a:\\x:A=>*;};",
+		"D:=@{mk:((\\X:@=>X) (@))->*;};"
 	};
 	for (size_t i = 0; i < sizeof(bad) / sizeof(*bad); ++i) {
 		struct pg_synthesis_job *failed = pg_synthesis_data_schema(&synthesis, scope, expression_syntax(typing->graph, bad[i]));

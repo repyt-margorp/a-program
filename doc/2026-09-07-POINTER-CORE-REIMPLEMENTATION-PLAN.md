@@ -181,6 +181,32 @@ Next declaration-admission contract:
   Component `make check` and ASan/UBSan IADT tests passed; the full source
   acceptance gate remains unfulfilled.
 
+Admission audit after `8b3105b`:
+
+- `constructor_step` synthesizes its telescope before `data_result_start`
+  recognizes the final `* indices`. Consequently the latter does not supply
+  a Self assumption to field checking. A successful result map is not the
+  missing recursive formation rule. Ordinary reference synthesis still rejects
+  a field-position `*` as unsupported.
+- `pg_prove_context_extension` retains field formation and its concrete
+  universe classifier. `pg_universe` currently takes a numeric level; there is
+  no symbolic Self-level obligation in this path. Do not check Self at level
+  zero, compute a larger field bound afterwards, and change Self's accepted
+  classifier. For example a stored universe-valued field requires level one,
+  whereas a field of the assumed small type parameter requires level zero.
+- Before final recursive evidence construction, retain and solve the Self
+  universe obligation along with the scoped signature. Construct the accepted
+  premises with the chosen level; no overwrite or unchecked universe lift is
+  allowed. The existing field-level helper verifies concrete premises but does
+  not implement this pre-admission constraint stage. This is part of the open
+  admission task, not a reason to add another cache/helper-only milestone.
+- Source regressions compare a directly written universe field with the same
+  field produced by pure application under `A : @`, and reject passing `@`
+  itself to a function requiring an element of `@`. They check schema bounds,
+  not nominal membership, and continue to require no expression proof from a
+  schema-only job.
+  Optimized and ASan/UBSan synthesis suites passed with these source cases.
+
 - A scoped family signature supplies its fixed parameter context and index
   telescope. Instantiating that signature consumes checked index images and
   forms a type symbolically. It is not APP elimination of a `Comp Universe`
