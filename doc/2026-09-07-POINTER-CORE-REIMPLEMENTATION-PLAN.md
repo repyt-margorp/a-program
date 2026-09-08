@@ -517,6 +517,15 @@ Next implementation sequence (prerequisite for automatic source handlers):
   participating handlers register their contributions. A separate inner worker
   must not treat an unrecognized outer parameter as empty or seal that outer
   worker. Removing the scope wait alone would therefore be insufficient.
+  Handler classifier projection now forwards its supplied or independently
+  prepared carrier's structural formation instead of awaiting handler evidence.
+  While preparation is incomplete it follows the handler's actual prerequisite;
+  it does not enqueue the handler twice or report a missing classifier as done.
+  Surface handler expressions expose the same producer, and handler syntax
+  detection is shared with source dispatch. Tests for three clause orders obtain
+  the same symbolic classifier through both APIs before either handler proof
+  completes. This exposes the row reference needed by a future shared nested
+  equation component; it does not yet connect independently owned workers.
   Normal component checks, eight source examples, six execution cases and
   rebuilt ASan/UBSan synthesis tests pass. List now takes 1718 transitions;
   explicit projection jobs change scheduling, not a claimed runtime speedup.

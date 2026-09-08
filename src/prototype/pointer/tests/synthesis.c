@@ -1015,6 +1015,19 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		const struct pg_evidence *proof = complete(&synthesis, assembled,
 			i < 3 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
 		struct pg_synthesis_job *inferred_handler = pg_synthesis_handler(&synthesis, handler_scope, NULL, handler_definition.expression);
+		if (i < 3) {
+			struct pg_synthesis_job *handler_type = pg_synthesis_classifier_structure(&synthesis, inferred_handler);
+			struct pg_synthesis_job *source_handler = pg_synthesis_request(&synthesis, handler_scope, handler_definition.expression);
+			struct pg_synthesis_job *source_handler_type = pg_synthesis_classifier_structure(&synthesis, source_handler);
+			assert(!complete(&synthesis, handler_type, PG_SYNTHESIS_DONE));
+			assert(!complete(&synthesis, source_handler_type, PG_SYNTHESIS_DONE));
+			assert(pg_synthesis_type_structure_result(source_handler_type) == pg_synthesis_type_structure_result(handler_type));
+			const struct pg_term *pending_row, *pending_value;
+			assert(pg_effect_type_spine_view(pg_synthesis_type_structure_result(handler_type), &pending_row, &pending_value));
+			assert(!pg_effect_row_view(pending_row));
+			assert(!pg_synthesis_result(inferred_handler));
+			assert(!pg_synthesis_result(source_handler));
+		}
 		const struct pg_evidence *inferred_proof = complete(&synthesis, inferred_handler,
 			i < 3 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
 		if (i < 3) same_judgement(inferred_proof, proof);

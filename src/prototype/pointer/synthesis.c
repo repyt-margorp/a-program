@@ -2599,6 +2599,14 @@ static int return_clause(const struct pg_syntax *clause)
 		name.length == 6 && !memcmp(name.text, "return", 6);
 }
 
+static int handler_syntax(const struct pg_syntax *syntax)
+{
+	if (syntax->kind != PG_SYNTAX_ELIMINATION || syntax->item_count < 2) return 0;
+	for (size_t i = 0; i < syntax->item_count; ++i)
+		if (return_clause(syntax->items[i].expression)) return 1;
+	return 0;
+}
+
 static void handler_return_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *clause = job->syntax;
@@ -3292,6 +3300,8 @@ static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_j
 	if (job->role == HANDLER_RETURN_JOB || job->role == HANDLER_CLAUSE_JOB) return job->value_job;
 	if (job->role == SEQUENCE_JOB) return job->value_job ? job->value_job : job->right;
 	if (job->role != EXPRESSION_JOB) return NULL;
+	if (job->syntax->kind == PG_SYNTAX_ELIMINATION && job->value_job && job->value_job->role == HANDLER_JOB)
+		return job->value_job;
 	if (job->block && job->block->tail && !job->block->frames) return job->block->tail;
 	if (job->syntax->kind == PG_SYNTAX_APPLICATION && job->stage == APPLICATION_RULE_READY) return job->value_job;
 	if (job->syntax->kind == PG_SYNTAX_QUOTE) return job->right;
@@ -3317,6 +3327,7 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 		preparing = !producer->value_job;
 		break;
 	case EXPRESSION_JOB:
+		if (!producer->value_job && handler_syntax(producer->syntax)) { preparing = 1; break; }
 		if (block_syntax(producer->syntax)) {
 			preparing = !producer->block || !producer->block->tail || producer->block->frames;
 			break;
@@ -3545,6 +3556,21 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
 	if (await_source_preparation(synthesis, job, producer)) return;
+	if (producer->role == HANDLER_JOB) {
+		struct pg_synthesis_job *carrier = (void *)producer->inputs[1];
+		if (!carrier && producer->handler) carrier = producer->handler->carrier;
+		if (!carrier) {
+			if (producer->status != PG_SYNTHESIS_PENDING) {
+				finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status); return;
+			}
+			if (producer->dependency) depend(synthesis, job, producer->dependency->child);
+			else enqueue(synthesis, job);
+			return;
+		}
+		if (!job->left) job->left = pg_synthesis_type_structure(synthesis, carrier);
+		forward_structure(synthesis, job);
+		return;
+	}
 	if (producer->role == CLASSIFIER_JOB) {
 		if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, (void *)producer->inputs[1]);
 		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -4271,18 +4297,10 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (syntax->kind == PG_SYNTAX_ELIMINATION) {
 		if (syntax->item_count == 1 && return_clause(syntax->items[0].expression))
 			return_handler_step(synthesis, job);
-		else {
-			if (!job->value_job) {
-				for (size_t i = 0; i < syntax->item_count; ++i)
-					if (return_clause(syntax->items[i].expression)) {
-						job->value_job = pg_synthesis_handler(synthesis, job->scope, NULL, syntax);
-						if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-						break;
-					}
-			}
-			if (job->value_job) forward_proof(synthesis, job, job->value_job);
-			else match_step(synthesis, job);
-		}
+		else if (job->value_job || handler_syntax(syntax)) {
+			if (!job->value_job) job->value_job = pg_synthesis_handler(synthesis, job->scope, NULL, syntax);
+			forward_proof(synthesis, job, job->value_job);
+		} else match_step(synthesis, job);
 		return;
 	}
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
