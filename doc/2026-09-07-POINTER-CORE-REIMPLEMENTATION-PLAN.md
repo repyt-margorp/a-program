@@ -7487,6 +7487,33 @@ exports of type/value/function proofs; it does not infer original constructor
 spellings from a bare type proof or complete retained source preparation.
 The expanded source-image suite passes in normal and rebuilt ASan/UBSan builds.
 
+Continuation after `5ab371e`: `pointer-check` exposes the same input image via
+`--save FILE.a` and `--load`. No second verifier is introduced. A zero-step
+source invocation can persist the parsed unresolved program immediately:
+
+```sh
+src/prototype/pointer/.build/pointer-check --steps 0 --save program.a program.p
+src/prototype/pointer/.build/pointer-check --load --nf main program.a
+```
+
+The first command returns the ordinary pending exit code 3 after a successful
+save. `--save` currently stores RECOMPUTE inputs, not retained execution or
+solver progress; saving before/after acceptance gives identical source bytes.
+`--load` requires one selected image root and applies its stored thunk policy;
+combining it with `--strict-thunks` is an error rather than silently changing
+the stored input. Source parsing and image loading converge at ordinary Solve.
+The fixed read limit is 1,000,000 entries/bytes according to the codec's separate
+budgets. Host effects are not executed by this command.
+
+- [x] Save unresolved source, load in another invocation and obtain the same NF.
+- [x] Preserve stored definition policy and save rejected inputs without evidence.
+- [x] Re-save loaded inputs with zero transitions; preserve RECOMPUTE bytes.
+- [ ] CLI retention-policy selection, general multi-root selection, filesystem
+  import resolution and retained-progress CHECKPOINT remain open.
+
+Validation: normal `check`, eight source checks and six execution fixtures pass;
+the rebuilt ASan/UBSan CLI suite passes the save/load and prior diagnostics tests.
+
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.
 The common `APGSRC` path above now supersedes that intermediate framing.

@@ -1,5 +1,6 @@
 #include "program.h"
 #include "graph_io.h"
+#include "source_io.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -49,7 +50,8 @@ int main(int argc, char **argv)
 	enum pg_definition_policy policy = PG_DEFINITION_IMPLICIT_THUNK;
 	const char *path = NULL;
 	const char *selected = NULL;
-	int nf = 0;
+	const char *save = NULL;
+	int nf = 0, load = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "--steps")) {
 			if (++i == argc || steps_argument(argv[i], &budget) != 0) goto usage;
@@ -58,10 +60,16 @@ int main(int argc, char **argv)
 			nf = !strcmp(argv[i], "--nf");
 			if (++i == argc || !*argv[i]) goto usage;
 			selected = argv[i];
+		} else if (!strcmp(argv[i], "--load")) load = 1;
+		else if (!strcmp(argv[i], "--save")) {
+			if (save || ++i == argc || !*argv[i] || !strcmp(argv[i], "-")) goto usage;
+			save = argv[i];
 		} else if (!strcmp(argv[i], "--strict-thunks")) policy = PG_DEFINITION_EXPLICIT_THUNK;
 		else if (!strcmp(argv[i], "--help")) {
-			puts("usage: pointer-check [--steps N] [--strict-thunks] [--whnf NAME|--nf NAME] SOURCE.p|-\n"
+			puts("usage: pointer-check [--steps N] [--strict-thunks] [--load] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n"
 				"Checks with the pointer-core solver; does not execute host effects.\n"
+				"--load reads a single-root image (limit 1000000); its stored thunk policy applies.\n"
+				"--save stores RECOMPUTE inputs, including pending/rejected inputs, not progress.\n"
 				"WHNF/NF select a definition, force a stored thunk once, and print its pure Core DAG.\n"
 				"Exit: 0 done, 1 rejected/syntax, 2 input/internal error, 3 pending, 4 unsupported.\n"
 				"Steps bound solver transitions, not parsing time or individual rule cost.");
@@ -71,17 +79,23 @@ int main(int argc, char **argv)
 			path = argv[i];
 		}
 	}
-	if (!path) goto usage;
+	if (!path || (load && policy == PG_DEFINITION_EXPLICIT_THUNK)) goto usage;
 	FILE *file = !strcmp(path, "-") ? stdin : fopen(path, "rb");
-	if (!file) { fprintf(stderr, "%s: cannot open source\n", path); return 2; }
-	char *source = NULL;
-	size_t length = 0;
-	int read = read_source(file, &source, &length);
+	if (!file) { fprintf(stderr, "%s: cannot open input\n", path); return 2; }
+	struct pg_program *program;
+	if (load) {
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		program = pg_sources_read(file, 1000000, &count, &roots);
+		if (program && count != 1) { pg_program_destroy(program); program = NULL; }
+	} else {
+		char *source = NULL;
+		size_t length = 0;
+		program = read_source(file, &source, &length) ? NULL : pg_program_create(source, length, policy);
+		free(source);
+	}
 	if (file != stdin) fclose(file);
-	if (read != 0) { fprintf(stderr, "%s: cannot read source\n", path); return 2; }
-	struct pg_program *program = pg_program_create(source, length, policy);
-	free(source);
-	if (!program) { fputs("cannot initialize program\n", stderr); return 2; }
+	if (!program) { fprintf(stderr, "%s: cannot read or initialize input\n", path); return 2; }
 	int result;
 	if (!program->root) {
 		fprintf(stderr, "%s:%zu:%zu: %s\n", path, program->parser.error_token.line,
@@ -124,10 +138,19 @@ int main(int argc, char **argv)
 		}
 		printf("%s steps=%" PRIu64 "\n", status, program->synthesis.steps);
 		if (selected && !result && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core)) result = 2;
+		if (save) {
+			FILE *image = fopen(save, "wb");
+			int failed = !image;
+			if (image) {
+				failed = pg_sources_write(image, &program->synthesis, 1, &program->root);
+				if (fclose(image)) failed = 1;
+			}
+			if (failed) { fprintf(stderr, "%s: cannot save input image\n", save); result = 2; }
+		}
 	}
 	pg_program_destroy(program);
 	return result;
 usage:
-	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--whnf NAME|--nf NAME] SOURCE.p|-\n", stderr);
+	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--load] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n", stderr);
 	return 2;
 }

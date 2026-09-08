@@ -26,6 +26,10 @@ check 2 'usage:' '' --steps -1
 check 2 'usage:' '' --steps 18446744073709551616
 check 2 'usage:' '' --steps 2x
 check 2 'usage:' '' --unknown
+check 2 'usage:' '' --save
+check 2 'usage:' '' --save -
+check 2 'usage:' '' --load --strict-thunks
+check 2 '-: cannot read or initialize input' 'not an image' --load
 check 2 'usage:' '' --nf
 check 2 'usage:' '' --nf main --whnf main
 check 3 'pending steps=0' 'main:=&(\A:@=>A);' --nf main --steps 0
@@ -42,4 +46,23 @@ steps=${nf%%$'\n'*}
 steps=${steps#'done steps='}
 check 3 "pending steps=$((steps - 1))" "$source" --nf main --steps "$((steps - 1))"
 check 0 "done steps=$steps" "$source" --nf main --steps "$steps"
+directory=$(mktemp -d)
+trap 'rm -rf "$directory"' EXIT
+check 3 'pending steps=0' "$source" --steps 0 --save "$directory/pending.a"
+restored=$("$binary" --load --nf main "$directory/pending.a")
+test "$restored" = "$nf"
+check 0 "done steps=$steps" "$source" --nf main --save "$directory/solved.a"
+# RECOMPUTE keeps inputs, not the solver's accumulated progress.
+cmp "$directory/pending.a" "$directory/solved.a"
+code=0
+output=$("$binary" --load --steps 0 --save "$directory/copied.a" "$directory/solved.a") || code=$?
+test "$code" = 3 && test "$output" = 'pending steps=0'
+cmp "$directory/pending.a" "$directory/copied.a"
+check 3 'pending steps=0' 'main:=&(\A:@=>A);' --strict-thunks --steps 0 --save "$directory/strict.a"
+"$binary" --load --nf main "$directory/strict.a" > "$directory/result"
+check 1 'rejected steps=' 'main:=missing;' --save "$directory/rejected.a"
+code=0
+output=$("$binary" --load "$directory/rejected.a") || code=$?
+test "$code" = 1
+case "$output" in 'rejected steps='*) ;; *) exit 1 ;; esac
 printf '%s\n' 'cli: bounded source checking, pending, rejection and argument diagnostics passed'
