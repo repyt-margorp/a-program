@@ -293,6 +293,46 @@ Conditional field synthesis after `2f59743`:
 
 Formation audit at `2f59743` (after pending telescope scheduling):
 
+Scheduling correction after `0380589`: do not interpret this audit as requiring
+all higher datatype computation to be finished before implementing any
+inductive formation rule. The pinned Narya documentation
+[`docs/source/hott.rst`](https://github.com/gwaithimirdain/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/docs/source/hott.rst)
+describes a partial implementation of transport/lifting computation, and
+separately notes the fibrant-replacement problem for indexed inductives.
+Its `check_data` still implements datatype checking. These are distinct
+implementation obligations. This observation is not a soundness proof for an
+A Program rule, nor permission to call an arbitrary relation Identity.
+
+Our next concrete rule-development path is:
+
+1. For zero indices, use the already implemented conditional field judgement
+   in `Gamma, Self : Universe_l`. Retain that context and every constructor's
+   field/result derivation as the premises of inductive formation. Require
+   syntactic strict positivity and field universe bounds at most `l`; do not
+   infer a fixpoint solely from the existence of a schema. This is the
+   ordinary strictly-positive initial-algebra formation obligation, not an
+   ordinary substitution that can choose any type for Self.
+2. Allocate a nominal family descriptor whose applications expose every free
+   parameter as a Core operand. Close the conclusion over Gamma, explicitly
+   discharging the distinguished Self assumption. Constructor membership
+   subsequently substitutes this admitted family into the retained field
+   telescope using the existing checked substitution rules. The resulting
+   evidence DAG must remain acyclic: hypothetical field premises do not depend
+   on their final nominal formation proof.
+3. Implement that rule and membership together with their ordinary source
+   integration tests, while tracking the corresponding Identity/action,
+   transport, lifting and subject-reduction equations as unfinished. Do not
+   invent a conversion result when an equation is missing. Source acceptance
+   of a formation is not evidence of complete HOTT execution or the final goal.
+4. Extend to indexed signatures with the explicit conditional family judgement
+   and index-boundary/fibrancy construction. Do not encode that signature as
+   a CBPV value Pi, or equate the zero-index implementation with completion of
+   Acc/Vec/IF8. Those requirements remain in the full acceptance gate.
+
+This corrects an implementation-order restriction, not the final scope. The
+kernel rule and its semantic justification still have to be supplied; the
+steps above are not checked boxes or permission to trust a schema flag.
+
 - Do not implement a schema-to-Universe shortcut as the next admission rule.
   `pg_prove_type_value` turns any accepted value-type formation into a universe
   value. `pg_prove_reflexivity` and `pg_prove_identity_transport` then expose
@@ -304,8 +344,8 @@ Formation audit at `2f59743` (after pending telescope scheduling):
   `pg_data_action` for an acted matcher. It does not supply a nominal family
   descriptor with dependent Identity/transport behavior. A checked result
   substitution is not that descriptor or a proof of those rules.
-- A nonrecursive declaration is a useful eventual case of the same admission
-  rule, not an excuse to publish an unsupported nominal Universe inhabitant.
+- A nonrecursive declaration is a case of the same justified admission rule,
+  not a separate blanket schema-to-Universe axiom.
   For an indexed constructor, the field telescope and its result substitution
   must also determine how the index boundary is respected by action and
   elimination. Do not erase that obligation by testing only unindexed Bool.
