@@ -7,7 +7,7 @@ struct symmetry_entry {
 	struct pg_object_entry base;
 	size_t dimension;
 	const size_t *axes;
-	int identity;
+	size_t fixed_prefix;
 };
 
 static const struct symmetry_entry *owner(const struct pg_term *term)
@@ -38,10 +38,10 @@ static const struct pg_term *operator(struct pg_graph *graph, size_t dimension, 
 	entry->base.object = (struct pg_object){PG_SEMANTIC_OBJECT, &symmetry_class};
 	entry->dimension = dimension;
 	entry->axes = copy;
-	entry->identity = 1;
+	entry->fixed_prefix = 0;
 	for (size_t i = 0; i < dimension; ++i) {
 		copy[i] = axes[i];
-		if (axes[i] != i) entry->identity = 0;
+		if (entry->fixed_prefix == i && axes[i] == i) ++entry->fixed_prefix;
 	}
 	if (pg_index_insert(&graph->objects, &entry->base.index, hash) != 0) return NULL;
 	return pg_reference(graph, &entry->base.object);
@@ -75,21 +75,29 @@ struct composition_work {
 	const struct pg_term *argument;
 	size_t *axes;
 	size_t position;
+	size_t dimension;
 };
+
+static size_t extended_axis(const struct symmetry_entry *entry, size_t dimension, size_t axis)
+{
+	size_t prefix = dimension - entry->dimension;
+	return axis < prefix ? axis : prefix + entry->axes[axis - prefix];
+}
 
 static int composition_poll(void *state)
 {
 	struct composition_work *work = state;
-	if (work->position == work->outer->dimension) return 1;
+	if (work->position == work->dimension) return 1;
 	size_t i = work->position++;
-	work->axes[i] = work->inner->axes[work->outer->axes[i]];
+	work->axes[i] = extended_axis(work->inner, work->dimension,
+		extended_axis(work->outer, work->dimension, i));
 	return 0;
 }
 
 static int composition_resume(struct pg_eval *machine, void *state)
 {
 	struct composition_work *work = state;
-	const struct pg_term *composed = operator(machine->output, work->outer->dimension, work->axes);
+	const struct pg_term *composed = operator(machine->output, work->dimension, work->axes);
 	const struct pg_term *result = pg_application(machine->output, composed, work->argument);
 	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
 }
@@ -104,17 +112,44 @@ static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, 
 	const struct symmetry_entry *outer = state;
 	if (term->kind != PG_APPLICATION) return 1;
 	const struct symmetry_entry *inner = owner(term->as.application.function);
-	if (!inner || inner->dimension != outer->dimension) return 1;
-	size_t n = outer->dimension;
+	if (!inner) return 1;
+	size_t n = outer->dimension > inner->dimension ? outer->dimension : inner->dimension;
 	struct composition_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work) return -1;
 	work->outer = outer;
 	work->inner = inner;
 	work->argument = term->as.application.argument;
 	work->position = 0;
+	work->dimension = n;
 	work->axes = pg_alloc(&machine->temporary, n * sizeof(*work->axes));
 	if (!work->axes) return -1;
 	return pg_eval_defer(machine, work, composition_poll, composition_resume, composition_destroy);
+}
+
+struct prefix_work {
+	const struct symmetry_entry *outer;
+	struct pg_closure argument;
+	size_t *axes;
+	size_t position;
+};
+
+static int prefix_poll(void *state)
+{
+	struct prefix_work *work = state;
+	size_t prefix = work->outer->fixed_prefix;
+	if (work->position == work->outer->dimension - prefix) return 1;
+	size_t i = work->position++;
+	work->axes[i] = work->outer->axes[prefix + i] - prefix;
+	return 0;
+}
+
+static int prefix_resume(struct pg_eval *machine, void *state)
+{
+	struct prefix_work *work = state;
+	const struct pg_term *reduced = operator(machine->output,
+		work->outer->dimension - work->outer->fixed_prefix, work->axes);
+	if (!reduced) return -1;
+	return pg_eval_apply(machine, (struct pg_closure){reduced, NULL}, work->argument, 1);
 }
 
 int pg_symmetry_dispatch(struct pg_eval *machine)
@@ -123,6 +158,17 @@ int pg_symmetry_dispatch(struct pg_eval *machine)
 	if (!outer) return 1;
 	const struct pg_closure *argument = pg_eval_argument(machine, 0);
 	if (!argument) return 1;
-	if (outer->identity) return pg_eval_enter(machine, *argument, 1);
+	if (outer->fixed_prefix == outer->dimension) return pg_eval_enter(machine, *argument, 1);
+	if (outer->fixed_prefix) {
+		struct prefix_work *work = pg_alloc(&machine->temporary, sizeof(*work));
+		if (!work) return -1;
+		work->outer = outer;
+		work->argument = *argument;
+		work->position = 0;
+		work->axes = pg_alloc(&machine->temporary,
+			(outer->dimension - outer->fixed_prefix) * sizeof(*work->axes));
+		if (!work->axes) return -1;
+		return pg_eval_defer(machine, work, prefix_poll, prefix_resume, composition_destroy);
+	}
 	return pg_eval_demand(machine, 0, symmetry_answer, outer);
 }

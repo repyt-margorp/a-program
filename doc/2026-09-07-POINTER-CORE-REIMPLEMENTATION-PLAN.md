@@ -13,6 +13,28 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### Progress: Identity-prefix permutation reduction (2026-09-08)
+
+- [x] Preserve exact descriptor/application interning: a permutation with
+  fixed leading axes remains a distinct raw node from its shorter form.
+- [x] Reduce fixed leading axes during evaluation, with one coordinate per
+  deferred copy transition and the original argument closure retained.
+- [x] Compose permutations of unequal dimensions by extending the shorter
+  one with fixed leading axes. Prefix reduction alone failed the existing
+  three-dimensional composition regression; both rules are necessary.
+- [x] Test captured arguments, trailing applications, every fuel split and
+  suspended readback/restart, including a 126-axis identity prefix.
+- [x] Run the complete pointer `make check` and ASan/UBSan `core_test`.
+- [ ] Supply the typed central action and its classifier preservation rule.
+
+The raw convention follows [Narya's symmetry specification](https://narya.readthedocs.io/en/latest/observational.html#symmetries-and-degeneracies):
+leading identity extensions denote the same action on the last dimensions.
+For example, one-based `132` reduces to `21`. This is an explicit computation
+equation, not a new interning criterion. It does not by itself establish the
+typed center permutation, dependent classifier reconstruction, or higher
+coherence. All N0-N7 completion gates remain subject to their existing scope;
+syntax inventory success is not source semantic acceptance. No main push.
+
 ### Investigation record: neutral higher application (2026-09-08)
 
 The failure states below describe the investigation before the residual-scope

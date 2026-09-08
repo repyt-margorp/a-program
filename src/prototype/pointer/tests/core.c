@@ -2011,6 +2011,18 @@ static void dimension_test(struct pg_graph *graph)
 	for (size_t i = 0; i < 128; ++i) reverse_axes[i] = (struct pg_coordinate){PG_AXIS, 127 - i};
 	const struct pg_dimension_map *reverse = pg_dimension_map(&dimensions, 128, 128, reverse_axes);
 	const struct pg_term *wide_symmetry = pg_symmetry(graph, reverse, pg_symmetry(graph, reverse, line_term));
+	const struct pg_dimension_map *prefixed_swap = pg_dimension_prefix(&dimensions, 126, swap);
+	const struct pg_term *prefixed = pg_symmetry(graph, prefixed_swap, captured_value);
+	assert(prefixed && prefixed != pg_symmetry(graph, swap, captured_value));
+	assert(prefixed == pg_symmetry(graph, prefixed_swap, captured_value));
+	const struct pg_term *prefix_capture = pg_application(graph,
+		pg_lambda(graph, captured, pg_symmetry(graph, swap, prefixed)), line_term);
+	const struct pg_term *prefix_outer = pg_application(graph,
+		pg_lambda(graph, captured, pg_symmetry(graph, prefixed_swap,
+			pg_symmetry(graph, swap, captured_value))), line_term);
+	const struct pg_term *prefix_applied = pg_application(graph,
+		pg_symmetry(graph, prefixed_swap, pg_symmetry(graph, swap,
+			pg_lambda(graph, captured, captured_value))), line_term);
 	assert(!pg_symmetry(graph, projection, line_term));
 	assert(!pg_dimension_inverse(&dimensions, projection));
 	assert(!pg_dimension_inverse(&dimensions, NULL));
@@ -2032,7 +2044,8 @@ static void dimension_test(struct pg_graph *graph)
 	const struct pg_term *ordinary_identity = pg_lambda(graph, captured, captured_value);
 	assert(face_identity != ordinary_identity);
 	assert(pg_alpha_equal(face_identity, ordinary_identity) == 1);
-	const struct pg_term *symmetry_cases[] = {closed_symmetry, hidden_symmetry, wide_symmetry};
+	const struct pg_term *symmetry_cases[] = {closed_symmetry, hidden_symmetry, wide_symmetry,
+		prefix_capture, prefix_outer, prefix_applied};
 	size_t case_count = sizeof(symmetry_cases) / sizeof(*symmetry_cases);
 	for (size_t test = 0; test < case_count; ++test) {
 		struct pg_eval whole;
