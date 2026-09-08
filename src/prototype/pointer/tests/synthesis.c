@@ -636,6 +636,18 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, open_clause_type, PG_SYNTHESIS_DONE));
 		assert(pg_alpha_equal(pg_synthesis_type_structure_result(open_clause_type), pg_synthesis_type_structure_result(op_type)) == 1);
 		assert(!pg_synthesis_result(open_clause) && !pg_synthesis_result(context));
+		const struct pg_source_scope *explicit_scope = pg_synthesis_name_job(&synthesis, pending_op_scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "M", .length = 1}, body);
+		const char *explicit_source = "h := M @Op req resume => resume req @#.return x => x;";
+		struct pg_parser explicit_parser;
+		struct pg_definition explicit_definition;
+		pg_parser_init(&explicit_parser, typing->graph, explicit_source, strlen(explicit_source));
+		assert(pg_parser_next(&explicit_parser, &explicit_definition) == 1);
+		struct pg_synthesis_job *explicit_handler = pg_synthesis_handler(&synthesis, explicit_scope,
+			open_carrier, explicit_definition.expression);
+		struct pg_synthesis_job *explicit_term = pg_synthesis_term_structure(&synthesis, explicit_handler);
+		assert(!complete(&synthesis, explicit_term, PG_SYNTHESIS_DONE));
+		assert(!pg_synthesis_result(explicit_handler) && !pg_synthesis_result(open_carrier));
 		struct pg_synthesis_job *raw_return_domain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){context, universe});
 		const struct pg_object *returned_binder = pg_binder(typing->graph);
@@ -850,6 +862,9 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
 		const struct pg_evidence *open_handler_proof = complete(&synthesis, open_handler, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *explicit_proof = complete(&synthesis, explicit_handler, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(explicit_proof)->core == pg_synthesis_type_structure_result(explicit_term));
+		assert(explicit_handler == pg_synthesis_handler(&synthesis, explicit_scope, open_carrier, explicit_definition.expression));
 		assert(pg_evidence_subject(open_handler_proof)->core == pg_synthesis_type_structure_result(open_handler_term));
 		assert(pg_evidence_subject(complete(&synthesis, multiple_source, PG_SYNTHESIS_DONE))->core
 			== pg_synthesis_type_structure_result(multiple_source_term));
@@ -1312,7 +1327,9 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		if (i < 3) assert(complete(&synthesis,
 			pg_synthesis_request(&synthesis, handler_scope, handler_definition.expression), PG_SYNTHESIS_DONE) == inferred_proof);
 		if (i >= 3) continue;
-		assert(proof == complete(&synthesis, pg_synthesis_handler(&synthesis, handler_scope,
+		assert(assembled == pg_synthesis_handler(&synthesis, handler_scope, carrier_job, handler_definition.expression));
+		/* A different producer is not a reason to merge freshly bound Core. */
+		same_judgement(proof, complete(&synthesis, pg_synthesis_handler(&synthesis, handler_scope,
 			pg_synthesis_evidence(&synthesis, carrier), handler_definition.expression), PG_SYNTHESIS_DONE));
 		const struct pg_evidence *value = pg_prove_return_value(typing, normalize(&synthesis, context, proof));
 		assert(value && pg_evidence_subject(value)->core == pg_evidence_subject(u0)->core);
@@ -1885,7 +1902,13 @@ static void pending_names(struct pg_typing *typing, struct pg_classifiers *class
 		pg_prove_projection(typing, context, answer));
 	struct pg_synthesis_job *escaping = request(&synthesis, open, "main:=id;");
 	scope = pg_synthesis_name_job(&synthesis, root, name, escaping);
-	complete(&synthesis, request(&synthesis, scope, "main:=id;"), PG_SYNTHESIS_ERROR);
+	/* A pending producer cannot export a variable out of its proof context. */
+	complete(&synthesis, request(&synthesis, scope, "main:=id;"), PG_SYNTHESIS_REJECTED);
+	const struct pg_evidence *escaped = complete(&synthesis, escaping, PG_SYNTHESIS_DONE);
+	assert(!pg_prove_projection(typing, empty, escaped));
+	assert(!pg_synthesis_name(&synthesis, root, name, escaped));
+	scope = pg_synthesis_name_job(&synthesis, root, name, pg_synthesis_evidence(&synthesis, escaped));
+	complete(&synthesis, request(&synthesis, scope, "main:=id;"), PG_SYNTHESIS_REJECTED);
 	struct pg_synthesis_job *not_terms[] = {program(&synthesis, root, "x:=@;"), pg_synthesis_evidence(&synthesis, empty)};
 	for (size_t i = 0; i < sizeof(not_terms) / sizeof(*not_terms); ++i) {
 		scope = pg_synthesis_name_job(&synthesis, root, name, not_terms[i]);

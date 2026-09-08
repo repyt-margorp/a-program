@@ -1054,12 +1054,35 @@ finish general handler source support.
   so seeing a nominal descriptor early cannot bypass a failing alias check.
   Unresolved-context fixtures obtain the Core of one- and two-operation surface
   handlers, then check exact Core reuse after acceptance at chunks 1/64.
-  Explicit supplied-carrier requests still use the existing accepted-carrier
-  canonical entry. Descriptor transport and the open-family/full-source gates
+  At this revision, explicit supplied-carrier requests still used the
+  accepted-carrier canonical entry (removed in the next entry below).
+  Descriptor transport and the open-family/full-source gates
   remain open; this is not completion of N0-N7.
   Normal components, eight source checks, six execution fixtures and rebuilt
   ASan/UBSan synthesis pass, including existing invalid operation-alias cases.
   Implementation C: +18/-16; tests: +14/-0; documentation separate.
+
+  September 9, after `fad1dae`: explicit-carrier handlers retain their original
+  producer rather than waiting for its acceptance and redirecting to a second
+  handler keyed by the accepted proof. Named pending term producers likewise
+  use ordinary context-projection jobs when their term polarity is structurally
+  available. Namespace/definition resolution remains separate from term
+  projection; this does not infer a classifier from a Core pointer.
+  A source handler over a named pending FORCE now exposes its Core before the
+  carrier is accepted and keeps that exact Core afterwards. The previous path
+  exhausted the fixture's 10,000 scheduler-step limit. Tests also require exact
+  request reuse for the original carrier producer; independently supplied proof
+  producers may establish the same judgement without sharing fresh binders.
+  Escaping an open-context variable rejects through the common derivation rule,
+  both before and after its producer finishes. The former pending-name fallback
+  reported an internal ERROR for this invalid projection; the test now requires
+  REJECTED and independently checks the kernel projection cannot be constructed.
+  Normal `check`, eight example source checks and six runtime fixtures pass;
+  example transition counts are unchanged. `check-open-families` still reports
+  unsupported at 208 steps. Descriptor checkpoint transport and the remaining
+  N0-N7 requirements stay open; this change does not authorize a Main push.
+  Rebuilt ASan/UBSan synthesis tests also pass. Implementation C: +17/-16;
+  test C: +25/-2; documentation counted separately.
 
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains

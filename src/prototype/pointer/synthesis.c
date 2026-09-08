@@ -2895,14 +2895,6 @@ rejected:
 static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *carrier = (void *)job->inputs[1];
-	if (carrier) {
-		if (carrier->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, carrier); return; }
-		if (carrier->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, carrier->status); return; }
-		if (!pg_evidence_owned_by(carrier->result, synthesis->typing)) goto rejected;
-		struct pg_synthesis_job *canonical = pg_synthesis_handler(synthesis, job->scope,
-			pg_synthesis_evidence(synthesis, carrier->result), job->syntax);
-		if (forward_proof(synthesis, job, canonical)) return;
-	}
 	size_t count = job->syntax->item_count;
 	if (!job->handler) {
 		if (count > (SIZE_MAX - sizeof(*job->handler)) / sizeof(struct source_handler_clause)) {
@@ -3741,8 +3733,15 @@ static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_j
 	return NULL;
 }
 
-/* Preparation can publish a rule before it publishes accepted evidence. Wait
- * for its current prerequisite, not for proof acceptance of the whole source. */
+/* A known term producer can be projected before acceptance; namespace-only
+ * producers still need name resolution rather than a typing rule. */
+static int named_term_ready(const struct pg_synthesis_job *producer)
+{
+	if (!producer || producer->role == DEFINITION_JOB) return 0;
+	return producer->status == PG_SYNTHESIS_DONE || source_value_kind(producer) >= 0;
+}
+
+/* Wait for preparation's current prerequisite, not whole-source acceptance. */
 static int await_source_preparation(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, struct pg_synthesis_job *producer)
 {
@@ -3772,8 +3771,7 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 		case PG_SYNTAX_ATOM:
 			if (producer->syntax->token.kind == PG_TOKEN_IDENT && !producer->value_job && !producer->binder) {
 				struct source_reference reference = lookup_scope(producer->scope, producer->syntax->token);
-				preparing = reference.producer && reference.producer->status == PG_SYNTHESIS_DONE
-					&& reference.producer->role != DEFINITION_JOB;
+				preparing = named_term_ready(reference.producer);
 			}
 			break;
 		default: break;
@@ -4506,16 +4504,19 @@ static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 		return 1;
 	}
 	if (job->syntax->token.kind != PG_TOKEN_IDENT) return 0;
-	if (job->value_job) { forward_proof(synthesis, job, job->value_job); return 1; }
+	if (job->value_job) {
+		if (job->left) job->exports = job->left->exports;
+		forward_proof(synthesis, job, job->value_job); return 1;
+	}
 	if (!job->binder) {
 		if (job->left) return 0;
 		/* Unindexed definitions may shadow an outer binder. */
 		for (const struct pg_source_scope *scope = job->scope; scope; scope = scope->parent)
 			if (scope->definitions && scope->definitions->indexed < scope->definitions->count) return 0;
 		struct source_reference reference = lookup_scope(job->scope, job->syntax->token);
-		if (reference.producer && reference.producer->status == PG_SYNTHESIS_DONE
-			&& reference.producer->role != DEFINITION_JOB) {
-			if (!reference.producer->result || !pg_evidence_subject(reference.producer->result)) {
+		if (named_term_ready(reference.producer)) {
+			if (reference.producer->status == PG_SYNTHESIS_DONE &&
+				(!reference.producer->result || !pg_evidence_subject(reference.producer->result))) {
 				finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return 1;
 			}
 			job->left = reference.producer;
