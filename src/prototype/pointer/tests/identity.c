@@ -230,6 +230,24 @@ static void thunk_transport(struct pg_typing *typing, struct pg_classifiers *cla
 		assert(pg_whnf_advance(bulk, 100000) == PG_EVAL_WHNF);
 		assert(pg_whnf_steps(split) == pg_whnf_steps(bulk));
 		assert(pg_alpha_equal(pg_whnf_result(split), pg_whnf_result(bulk)) == 1);
+		struct pg_eval machine;
+		pg_eval_init(&machine, term);
+		machine.output = graph;
+		machine.dispatch = pg_pure_policy.dispatch;
+		assert(pg_eval_advance(&machine, 100000) == PG_EVAL_WHNF);
+		uint64_t steps = machine.steps;
+		pg_eval_destroy(&machine);
+		/* Family closure construction can be abandoned at every boundary. */
+		for (uint64_t cut = 0; cut < steps; ++cut) {
+			pg_eval_init(&machine, term);
+			machine.output = graph;
+			machine.dispatch = pg_pure_policy.dispatch;
+			assert(pg_eval_advance(&machine, cut) == PG_EVAL_PENDING);
+			const struct pg_term *snapshot = pg_eval_readback(&machine, graph);
+			assert(snapshot);
+			pg_eval_destroy(&machine);
+			converts(&work, snapshot, pg_evidence_subject(mapped)->core);
+		}
 		struct pg_whnf_job *beta = pg_whnf_request(&work, &pg_beta_policy, term);
 		assert(pg_whnf_advance(beta, 100000) == PG_EVAL_WHNF && pg_whnf_result(beta) == term);
 		/* Substitution after mapping agrees with transport of the substituted value. */

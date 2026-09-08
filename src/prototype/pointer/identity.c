@@ -780,19 +780,74 @@ static int thunk_return_family(const struct pg_term *family,
 	return thunk_family(family, scope, &computation) && pg_return_type_view(computation, content);
 }
 
-static const struct pg_term *close_family(struct pg_eval *machine,
-	const struct action_scope *scope, const struct pg_term *family, const struct pg_term *result)
+struct family_result_work {
+	struct action_result_work closure;
+	const struct pg_term *family;
+	const struct pg_term **arguments;
+	size_t count;
+	size_t position;
+	enum { FAMILY_COLLECT, FAMILY_WRAP, FAMILY_APPLY } phase;
+	int (*resume)(struct pg_eval *, const struct pg_term *);
+};
+
+static int family_result_poll(void *opaque)
 {
-	size_t count = 3 * scope->count;
-	const struct pg_term **arguments = pg_alloc(&machine->temporary, count * sizeof(*arguments));
-	if (!arguments) return NULL;
-	for (size_t i = count; i; --i, family = family->as.application.function)
-		arguments[i - 1] = family->as.application.argument;
-	for (size_t i = scope->count; i; --i)
-		for (size_t j = 3; j; --j)
-			result = pg_lambda(machine->output, scope->bindings[i - 1].arguments[j - 1], result);
-	for (size_t i = 0; i < count; ++i) result = pg_application(machine->output, result, arguments[i]);
-	return result;
+	struct family_result_work *work = opaque;
+	switch (work->phase) {
+	case FAMILY_COLLECT:
+		if (!work->position) {
+			work->phase = FAMILY_WRAP;
+			return 0;
+		}
+		work->arguments[--work->position] = work->family->as.application.argument;
+		work->family = work->family->as.application.function;
+		return 0;
+	case FAMILY_WRAP: {
+		int status = action_result_poll(&work->closure);
+		if (status != 1) return status;
+		work->phase = FAMILY_APPLY;
+		return 0;
+	}
+	case FAMILY_APPLY:
+		if (work->position == work->count) return 1;
+		work->closure.result = pg_application(work->closure.graph, work->closure.result,
+			work->arguments[work->position++]);
+		return work->closure.result ? 0 : -1;
+	}
+	return -1;
+}
+
+static int family_result_resume(struct pg_eval *machine, void *opaque)
+{
+	struct family_result_work *work = opaque;
+	return work->resume(machine, work->closure.result);
+}
+
+static int close_family(struct pg_eval *machine, const struct action_scope *scope,
+	const struct pg_term *family, const struct pg_term *result,
+	int (*resume)(struct pg_eval *, const struct pg_term *))
+{
+	struct family_result_work *work = pg_alloc(&machine->temporary, sizeof(*work));
+	if (!work || scope->count > SIZE_MAX / 3 / sizeof(*work->arguments)) return -1;
+	work->count = 3 * scope->count;
+	work->arguments = pg_alloc(&machine->temporary, work->count * sizeof(*work->arguments));
+	if (!work->arguments) return -1;
+	work->closure = (struct action_result_work){machine->output, scope->bindings, result, scope->count, 0};
+	work->family = family;
+	work->position = work->count;
+	work->phase = FAMILY_COLLECT;
+	work->resume = resume;
+	return pg_eval_defer(machine, work, family_result_poll, family_result_resume, arena_work_destroy);
+}
+
+static int force_family_result(struct pg_eval *machine, const struct pg_term *result)
+{
+	return pg_eval_apply(machine, (struct pg_closure){result, NULL}, *pg_eval_argument(machine, 1), 2);
+}
+
+static int field_family_result(struct pg_eval *machine, const struct pg_term *result)
+{
+	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 2);
 }
 
 int pg_identity_force(struct pg_eval *machine, const struct pg_term *value)
@@ -831,9 +886,7 @@ int pg_identity_force(struct pg_eval *machine, const struct pg_term *value)
 	const struct pg_term *result = pg_application(graph, pg_reference(graph, &pg_thunk_operation), call);
 	result = pg_application(graph, pg_reference(graph, &pg_force_operation),
 		pg_identity_transport(graph, result_path, result, direction));
-	result = close_family(machine, &scope, family, pg_lambda(graph, y, result));
-	if (!result) return -1;
-	return pg_eval_apply(machine, (struct pg_closure){result, NULL}, *argument, 2);
+	return close_family(machine, &scope, family, pg_lambda(graph, y, result), force_family_result);
 }
 
 static int thunk_return_field(struct pg_eval *machine, const struct pg_term *value)
@@ -859,9 +912,7 @@ static int thunk_return_field(struct pg_eval *machine, const struct pg_term *val
 			pg_application(graph, pg_reference(graph, &pg_fold_operation), source), pg_lambda(graph, binder, result));
 	}
 	result = pg_application(graph, pg_reference(graph, &pg_thunk_operation), result);
-	result = close_family(machine, &scope, family, result);
-	if (!result) return -1;
-	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 2);
+	return close_family(machine, &scope, family, result, field_family_result);
 }
 
 static int field_answer(struct pg_eval *machine, const struct pg_term *family)

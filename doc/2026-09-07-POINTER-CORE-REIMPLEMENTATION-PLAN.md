@@ -373,6 +373,24 @@ Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity test pass.
 The cube-function comparison maximum is 243,623 charged transitions, up from
 242,785 because result construction is now charged. N2 remains incomplete.
 
+#### Incremental transported family closure
+
+After `b780755`, `close_family` collects one supplied argument per poll, reuses
+the action-result wrapper for one boundary triple per poll, and reapplies one
+argument per poll. Both U(F) fields and forced U(Pi) transport use this task.
+Completion uses their existing enter/apply rules; caller arguments remain intact
+while the task is pending. The temporary argument-array size is checked before
+multiplication. Family recognition and former-specific body construction remain
+synchronous and are not covered by this bounded-work claim.
+
+The checked U(F) transport fixture now cancels at every machine step in both
+directions, destroys task storage and converts each readback to the separately
+constructed thunk map. Existing U(Pi) tests retain their split-budget and typed
+normalization checks. No new equality equation, Core form or Replay path is
+introduced. Implementation C: +70/-19; test C: +18/-0. N2 remains open.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass;
+the separate cube-function comparison maximum remains 243,623 transitions.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,
