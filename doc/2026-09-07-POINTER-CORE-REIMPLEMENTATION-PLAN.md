@@ -3660,12 +3660,12 @@ fixtures/options and distinguish old bugs from intended behavior.
 | Acc, totality, generated function graphs | `test_if8_fuel_free_quicksort.sh`, `test_totality_evidence.sh`, function-graph tests | general indexed elimination; no Acc or QuickSort special primitive |
 | Identity and higher supported fragments | `src/prototype/src/identity/`, HOTT/Identity tests | port supported rules with explicit premises; no inferred full HOTT claim |
 | universes, resources, effect constraints | universe/resource tests and kernel sources | distinguish pending, rejected and proved; no empty-row/unknown conflation |
-| checked artifacts and resumption | checker/container and compilation-image tests | valid evidence replay, rejection of invalid references, resumable `.a` contract |
+| checked artifacts and resumption | checker/container and compilation-image tests | retained evidence checked by ordinary acceptance rules, rejection of invalid references, resumable `.a` contract |
 
 Paths abbreviated as `test_*.sh` refer to `src/prototype/tests/integration/`.
 Legacy tests that assert enum numbers, old Core pretty-print tags or internal DB
 layout are not language semantics. Replace those assertions with results, types,
-effect traces, rejection reasons or evidence replay. Record each disposition;
+effect traces, rejection reasons or retained-evidence validation. Record each disposition;
 do not delete a failing semantic test to make the new implementation pass.
 
 ## 8. Program Image and Persistence
@@ -3688,6 +3688,31 @@ round-trip prototype must demonstrate which roots suffice before freezing wire
 format. Legacy `.apo/.ao` import, if retained, belongs in a conversion tool, not
 the core evaluator. Exact old wire compatibility is not promised by this plan.
 
+### September 8 decision: no independent Replay engine
+
+RECOMPUTE and CHECKPOINT differ in retention, not in language semantics or
+acceptance rules. Loading restores graph references and establishes retained
+evidence before publishing solved results to the ordinary solver. It does not
+re-enact the producer's search order. Pending is not rejected, and retained is
+not automatically accepted. A discarded cache is not a discarded obligation.
+
+The existing conversion certificate stores endpoints, not a checkable reduction
+trace. CHECKPOINT therefore cannot currently promise to avoid that reduction on
+load. Keep this limitation explicit rather than introducing a second evaluator
+or trusting a serialized certificate flag. This decision changes N5's contract;
+it does not establish that an image loader has been implemented.
+
+- [ ] Fresh-process CHECKPOINT: check each retained shared derivation once,
+  publish it through ordinary acceptance, and resume only unresolved work.
+- [ ] Fresh-process RECOMPUTE: reconstruct omitted results from semantic inputs
+  through the same solver; compare accepted results with CHECKPOINT.
+- [ ] Retained conversion endpoints: re-establish conversion with the ordinary
+  pure evaluator; never treat the endpoint pair as portable proof evidence.
+- [ ] Budget exhaustion while checking: retain pending work; do not report a
+  logical rejection or publish an unchecked solved result.
+- [ ] Neither load mode executes host operation requests. Distinguish program
+  image resumption from checkpointing an effectful runtime session.
+
 ## 9. Implementation and Progress
 
 Complete one vertical slice at a time. Update this table with commit, commands,
@@ -3701,7 +3726,7 @@ results, timing and net source/test LOC. An unchecked row is not implemented.
 | [ ] | N2 Typed HOTT vertical slice | reader, synthesis, contexts; typed Act, Identity and initial transport/lifting computation | shared Core with distinct typing; post-check `::`; iterated action on Lambda/APP, checked boundaries and supported equality operations |
 | [ ] | N3 Dimensional ADT/IADT | parameters/indices, self family, telescope action, nominal declarations, Match/IH and their higher rules | Nat/List/Vec/Acc; higher constructors and Match; indexed transport obligations recorded; producer-order-independent goals |
 | [ ] | N4 CBPV and effects | remaining block/quote/exit forms; structural references; request/fold reducers; effect rows and continuation rules | 01-09, single versus repeated execution, nested exit boundary, operation alias, multi-clause deep handler and unhandled forwarding |
-| [ ] | N5 Image/CLI | `.a` relocation, seed/checkpoint retention, imports, CLI and REPL parity | fresh-process round trips, nominal identity, split-budget solve equivalence, WHNF/NF; replay rejects malformed evidence |
+| [ ] | N5 Image/CLI | `.a` relocation, seed/checkpoint retention, imports, CLI and REPL parity | fresh-process round trips, nominal identity, split-budget solve equivalence, WHNF/NF; ordinary acceptance rejects malformed retained evidence |
 | [ ] | N6 Proof feature parity | supported totality, generated graph IADTs and resources over the foundational HOTT system | IF8, supported function properties and expanded Identity fixtures; negative cases reject; remaining theory limits recorded |
 | [ ] | N7 Acceptance | finish manifest, benchmark and review deletion/transfer plan | all agreed supported cases pass; per-module old/new LOC and timings; no hidden use of old solver or runtime |
 
@@ -3740,7 +3765,7 @@ input/options on consecutive implementations; do not infer speed from LOC.
   every dependent/higher/Universe rule remains a separate mathematical claim;
   record coverage and missing equations without weakening the initial design.
 - A complete parser does not mean a complete type checker. Maintain separate
-  parsing, typing, evaluation and replay status for each compatibility case.
+  parsing, typing, evaluation and image-validation status for each compatibility case.
 - Main replacement requires the N7 evidence and explicit acceptance. The failed
   branch remains available. No deletion of the old implementation is needed to
   start this independent prototype.
