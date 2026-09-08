@@ -5,11 +5,12 @@ BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)evidence.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c
 
 .PHONY: check
-check: $(BUILD)/core_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test $(BUILD)/program_test
+check: $(BUILD)/core_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test $(BUILD)/program_test $(BUILD)/pointer-check
 	$(BUILD)/core_test
 	$(BUILD)/reader_test
 	$(BUILD)/synthesis_test
 	$(BUILD)/program_test
+	bash $(ROOT)tests/cli.sh $(BUILD)/pointer-check
 	$(BUILD)/identity_test
 	$(BUILD)/iadt_test
 	$(BUILD)/parse_files $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
@@ -34,6 +35,13 @@ $(BUILD)/synthesis_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROO
 $(BUILD)/program_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)tests/program.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)tests/program.c -o $@
+
+.PHONY: pointer-check
+pointer-check: $(BUILD)/pointer-check
+
+$(BUILD)/pointer-check: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)main.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)main.c -o $@
 
 $(BUILD)/reader_test: $(ROOT)reader.c $(ROOT)reader.h $(ROOT)syntax.c $(ROOT)syntax.h $(ROOT)graph.c $(ROOT)graph.h $(ROOT)tests/reader.c
 	mkdir -p $(BUILD)

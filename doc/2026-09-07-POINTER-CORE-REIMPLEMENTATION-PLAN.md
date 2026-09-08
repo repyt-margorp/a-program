@@ -3925,6 +3925,23 @@ destruction and initialization/parse errors. This is an ownership boundary,
 not a second representation of terms or proofs. It does not implement `.a`
 encoding/loading, host execution or full language acceptance; N5 stays open.
 
+CLI entry after `7a738da`:
+
+```sh
+make -f src/prototype/pointer/Makefile pointer-check
+src/prototype/pointer/.build/pointer-check --steps 100000 source.p
+```
+
+`-` reads standard input; `--strict-thunks` selects the existing explicit policy.
+The driver owns a `pg_program` and advances its existing solver once with the
+specified budget. It prints status and consumed solver steps. Exit codes are
+0 done, 1 rejected/parser error, 2 input/internal error, 3 pending, 4 unsupported.
+Parsing and individual rules are not wall-clock bounded by `--steps`. This
+command checks only the implemented source fragment; it does not run host
+effects, save `.a`, restore work between processes, select `main` implicitly,
+or provide WHNF/NF/REPL parity yet. `tests/cli.sh` is part of pointer `check` and
+checks stdin, zero budget, cyclic pending work, rejection and malformed options.
+
 One in-memory program owns graph roots, typed occurrences, declarations and work
 results. Parsing/lowering creates its initial unresolved state; bounded solving
 advances it. Execution is an explicit request using the same computation engine
