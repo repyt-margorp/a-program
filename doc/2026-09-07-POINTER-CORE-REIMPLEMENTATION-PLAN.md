@@ -82,6 +82,16 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Audit opaque family instantiation before extending symmetry acceptance.
+  With assumed `A,B : Universe`, `x : A`, `y : B`, `r : Id Universe A B`,
+  the existing instance/formation/face jobs preserve `r x y` and recover x/y
+  as its supplied outer endpoints. A request for an extra direction is
+  unsupported without retracting that accepted instance. The new regression
+  passes without a production change: outer endpoint extraction was not a
+  missing rule. Do not replace an arbitrary selected r by refl or infer a
+  higher cube from its APP spine. General symmetry needs retained dimensional
+  formation premises; not every opaque-family limitation is a recovery bug.
+  Complete pointer `make check` and ASan/UBSan `synthesis_test` passed.
 - [x] Elide identity-only alpha-comparison scopes instead of rebuilding
   their shared subgraphs. Equal binder pointers in an empty correspondence
   need no map; under a nonidentity correspondence the pair must remain to

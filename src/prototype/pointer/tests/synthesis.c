@@ -134,6 +134,24 @@ static void identity_instance_jobs(struct pg_typing *typing, struct pg_classifie
 	struct pg_synthesis_job *f = pg_synthesis_evidence(&synthesis, pg_synthesis_result(producer));
 	struct pg_synthesis_job *canonical = pg_synthesis_identity_instance(&synthesis, context, f, l, rr);
 	assert(pg_synthesis_status(canonical) == PG_SYNTHESIS_DONE && pg_synthesis_result(canonical) == result);
+	/* An opaque selected family still exposes its supplied outer endpoints.
+	 * It does not supply an additional Identity direction by assumption. */
+	struct pg_dimensions opaque_dimensions;
+	assert(pg_dimensions_init(&opaque_dimensions, typing->graph) == 0);
+	struct pg_synthesis_job *opaque_formation = pg_synthesis_identity_formation(&synthesis, instance);
+	assert(complete(&synthesis, opaque_formation, PG_SYNTHESIS_DONE) == result);
+	for (size_t side = 0; side < 2; ++side) {
+		struct pg_coordinate coordinate = {side ? PG_ENDPOINT_ONE : PG_ENDPOINT_ZERO, 0};
+		const struct pg_dimension_map *outer = pg_dimension_map(&opaque_dimensions, 0, 1, &coordinate);
+		const struct pg_evidence *endpoint = complete(&synthesis,
+			pg_synthesis_identity_face_job(&synthesis, context, instance, outer), PG_SYNTHESIS_DONE);
+		same_judgement(endpoint, side ? right : left);
+	}
+	struct pg_coordinate extra[] = {{PG_ENDPOINT_ZERO, 0}, {PG_AXIS, 0}};
+	complete(&synthesis, pg_synthesis_identity_face_job(&synthesis, context, instance,
+		pg_dimension_map(&opaque_dimensions, 1, 2, extra)), PG_SYNTHESIS_UNSUPPORTED);
+	assert(pg_synthesis_result(instance) == result);
+	pg_dimensions_destroy(&opaque_dimensions);
 	complete(&synthesis, pg_synthesis_identity_instance(&synthesis, context, f, rr, l), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, pg_synthesis_identity_instance(&synthesis, context, l, l, rr), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, pg_synthesis_identity_instance(&synthesis, context, f,
