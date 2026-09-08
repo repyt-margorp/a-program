@@ -13,6 +13,40 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Effect Definitions in the Shared Image Graph
+
+Continuation after `d12d312`. Independent Replay remains excluded. Effect
+definitions can now be packed as a root slice in the ordinary Core relocation
+table: `(parameter, seed)` pairs followed by `(source, mask, target)` triples.
+Classifier roots use those same parameter objects. The slice is a temporary
+transport view, not a second mutable equation authority or an additional Core
+former. Constant-source lookup aliases and approximate solutions are omitted.
+
+Unpacking into an empty worker invokes the existing equation/dependency
+constructors. It neither seals the worker nor accepts typing evidence. The
+program image owner must establish that all contributions are present before
+sealing. Invalid or partial restoration poisons the worker, preventing a
+solution of an accidentally incomplete graph from being exposed. Later Solve
+uses the existing positive-set worklist; no file-specific solver is added.
+
+- [x] Pack immutable definitions and restore relocated parameter identities.
+- [x] Add fresh-process tests sharing a pending classifier parameter with its
+  equation, including cyclic dependencies and a masked constant contribution.
+- [x] Test malformed tuple counts, duplicate sites and a late undeclared edge;
+  failed workers cannot advance into an accepted solution.
+- [ ] Connect these slices and pending rule producers to the full program image,
+  retaining the image's contribution-completeness condition.
+- [ ] Complete full N5 checkpoint/CLI/import and original language gates.
+
+The test envelope carries the equation count plus the shared Core roots. This
+does not yet define a complete `.a` program format. It exercises reconstruction
+after partial solving with budgets 1/100, not retention of solver approximations.
+
+Verification: normal `check`, eight example source checks and six runtime
+fixtures passed. The final graph acceptance fixtures passed after rebuilding
+both normal and ASan/UBSan binaries. Implementation C/header: +87/-0; test C:
++81/-3; test shell: +3/-0; documentation separate. N5 remains incomplete.
+
 ### September 8 handler effect-equation boundary
 
 #### September 9 audit: remaining source-inference cycle

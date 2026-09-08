@@ -4,6 +4,8 @@
 #include "derivation.h"
 #include "computation.h"
 #include "descriptor_io.h"
+#include "effect_inference.h"
+#include "wire.h"
 
 #include <assert.h>
 #include <string.h>
@@ -229,17 +231,93 @@ static void operation_graph(FILE *file, struct pg_graph *graph, int writing)
 	pg_typing_destroy(&typing);
 }
 
+static void effect_graph(FILE *file, struct pg_graph *graph, int writing, uint64_t budget)
+{
+	struct pg_classifiers classifiers;
+	struct pg_effect_inference work;
+	assert(!pg_classifiers_init(&classifiers, graph) && !pg_effect_inference_init(&work, graph));
+	const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL);
+	if (writing) {
+		const struct pg_term *u = pg_universe(&classifiers, 0);
+		const struct pg_object *op = pg_operation_label_create(graph, u, u);
+		const struct pg_effect_row *seed = pg_effect_row(graph, 1, &op);
+		struct pg_effect_equation *a = pg_effect_equation(&work, seed), *b = pg_effect_equation(&work, empty);
+		assert(!pg_effect_dependency(&work, a, empty, b) && !pg_effect_dependency(&work, b, empty, a));
+		assert(!pg_effect_contribution(&work, pg_effect_reference(graph, seed), seed, b));
+		pg_effect_inference_seal(&work);
+		assert(!pg_effect_inference_advance(&work, 1));
+		size_t equations, count;
+		const struct pg_term *const *definitions;
+		assert(!pg_effect_inference_pack(&work, graph, &equations, &count, &definitions));
+		assert(equations == 3 && count == 15);
+		const struct pg_term **roots = pg_alloc(graph, (count + 1) * sizeof(*roots));
+		assert(roots);
+		memcpy(roots, definitions, count * sizeof(*roots));
+		roots[count] = pg_effect_type_spine(&classifiers,
+			pg_reference(graph, pg_effect_equation_parameter(&work, b)), u);
+		assert(!pg_wire_write_u64(file, equations));
+		assert(!pg_graph_write_descriptors(file, count + 1, roots, &pg_builtin_graph_codec, &classifiers));
+	} else {
+		uint64_t equations;
+		size_t count;
+		const struct pg_term *const *roots;
+		assert(!pg_wire_read_u64(file, &equations) && equations == 3);
+		assert(!pg_graph_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, &classifiers, &count, &roots));
+		assert(count == 16);
+		const struct pg_term *parameter, *value;
+		assert(pg_effect_type_spine_view(roots[count - 1], &parameter, &value));
+		assert(value == pg_universe(&classifiers, 0));
+		assert(!pg_effect_inference_unpack(&work, equations, count - 1, roots));
+		struct pg_effect_equation *b = NULL;
+		const struct pg_effect_row *seed = NULL;
+		for (size_t i = 0; i < 2 * equations; i += 2) {
+			const struct pg_effect_row *row = pg_effect_row_view(roots[i + 1]);
+			if (pg_effect_count(row)) seed = row;
+			if (roots[i] == parameter) b = pg_effect_equation_at(&work, parameter->as.reference, empty);
+		}
+		assert(b && seed && !pg_effect_inference_result(&work, b));
+		assert(!pg_effect_inference_advance(&work, 100) && !work.sealed);
+		pg_effect_inference_seal(&work);
+		int status = 0;
+		unsigned steps = 0;
+		while (!status) { status = pg_effect_inference_advance(&work, budget); assert(++steps < 20); }
+		assert(status == 1 && pg_effect_inference_result(&work, b) == seed);
+		assert(pg_effect_equation_seed(&work, b) == empty);
+		/* Reject incomplete definitions, duplicate sites and undeclared endpoints.
+		 * Failed imports cannot later publish a least solution of a partial graph. */
+		for (unsigned variant = 0; variant < 3; ++variant) {
+			struct pg_effect_inference bad;
+			assert(!pg_effect_inference_init(&bad, graph));
+			const struct pg_term *changed[15];
+			memcpy(changed, roots, sizeof(changed));
+			size_t n = 15;
+			if (!variant) --n;
+			if (variant == 1) changed[2] = changed[0];
+			if (variant == 2) changed[12] = pg_reference(graph, pg_binder(graph));
+			assert(pg_effect_inference_unpack(&bad, equations, n, changed) == -1);
+			pg_effect_inference_seal(&bad);
+			assert(pg_effect_inference_advance(&bad, 100) == -1);
+			pg_effect_inference_destroy(&bad);
+		}
+		puts("effect image: shared classifier parameter, immutable seeds, cyclic Solve and failed-import isolation passed");
+	}
+	pg_effect_inference_destroy(&work);
+	pg_classifiers_destroy(&classifiers);
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
 	int operation = !strcmp(argv[1], "operation-write") || !strcmp(argv[1], "operation-read");
-	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "operation-write");
-	assert(writing || !strcmp(argv[1], "read") || operation);
+	int effect = !strcmp(argv[1], "effect-write") || !strcmp(argv[1], "effect-read") || !strcmp(argv[1], "effect-read-bulk");
+	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "operation-write") || !strcmp(argv[1], "effect-write");
+	assert(writing || !strcmp(argv[1], "read") || operation || effect);
 	FILE *file = fopen(argv[2], writing ? "wb" : "rb");
 	assert(file);
 	struct pg_graph graph;
 	assert(pg_graph_init(&graph) == 0);
-	if (operation) operation_graph(file, &graph, writing);
+	if (effect) effect_graph(file, &graph, writing, !strcmp(argv[1], "effect-read-bulk") ? 100 : 1);
+	else if (operation) operation_graph(file, &graph, writing);
 	else if (writing) write_graph(file, &graph);
 	else read_graph(file, &graph);
 	assert(fclose(file) == 0);

@@ -40,6 +40,17 @@ const struct pg_effect_row *pg_effect_equation_seed(const struct pg_effect_infer
 int pg_effect_inference_visit(const struct pg_effect_inference *work, void *context,
 	int (*equation)(void *, const struct pg_effect_equation *, const struct pg_effect_row *),
 	int (*dependency)(void *, const struct pg_effect_equation *, const struct pg_effect_row *, const struct pg_effect_equation *));
+/* Image root slice: equation pairs (parameter, seed), then dependency triples
+ * (source parameter, mask, target parameter). Pack allocates in storage and
+ * borrows descriptor objects from rows. Include these roots in the SAME Core
+ * relocation table as classifier/rule roots, not an independent effect file.
+ * Unpack requires an empty initialized worker; failure poisons it until destroy.
+ * It restores definitions only and leaves the worker unsealed. The image owner
+ * decides when all contributions are known; no queue or solution is imported. */
+int pg_effect_inference_pack(const struct pg_effect_inference *work, struct pg_graph *storage,
+	size_t *equations, size_t *count, const struct pg_term *const **roots);
+int pg_effect_inference_unpack(struct pg_effect_inference *work,
+	size_t equations, size_t count, const struct pg_term *const *roots);
 /* Structural parameter for unaccepted classifier spines. Its binder object
  * lives in rows, outliving the worker; it has no pointer back to work/equation.
  * Distinct equations have distinct parameters even for equal seeds/results.

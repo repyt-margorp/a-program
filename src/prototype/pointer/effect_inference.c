@@ -132,6 +132,82 @@ const struct pg_object *pg_effect_equation_parameter(const struct pg_effect_infe
 	return equation && equation->owner == work ? equation->parameter : NULL;
 }
 
+struct effect_pack {
+	struct pg_graph *storage;
+	const struct pg_term **roots;
+	size_t equations, count;
+};
+
+static int pack_equation(void *context, const struct pg_effect_equation *equation,
+	const struct pg_effect_row *seed)
+{
+	struct effect_pack *pack = context;
+	const struct pg_term *parameter = pg_reference(pack->storage, equation->parameter);
+	const struct pg_term *row = pg_effect_reference(pack->storage, seed);
+	if (!parameter || !row) return -1;
+	pack->roots[pack->count++] = parameter;
+	pack->roots[pack->count++] = row;
+	++pack->equations;
+	return 0;
+}
+
+static int pack_dependency(void *context, const struct pg_effect_equation *source,
+	const struct pg_effect_row *mask, const struct pg_effect_equation *target)
+{
+	struct effect_pack *pack = context;
+	const struct pg_term *a = pg_reference(pack->storage, source->parameter);
+	const struct pg_term *b = pg_reference(pack->storage, target->parameter);
+	const struct pg_term *row = pg_effect_reference(pack->storage, mask);
+	if (!a || !b || !row) return -1;
+	pack->roots[pack->count++] = a;
+	pack->roots[pack->count++] = row;
+	pack->roots[pack->count++] = b;
+	return 0;
+}
+
+int pg_effect_inference_pack(const struct pg_effect_inference *work, struct pg_graph *storage,
+	size_t *equations, size_t *count, const struct pg_term *const **roots)
+{
+	if (!work->rows || work->failed || !storage || !equations || !count || !roots) return -1;
+	/* row_sources includes disposable constant aliases; this is an upper bound. */
+	size_t limit = SIZE_MAX / sizeof(struct pg_term *);
+	if (work->row_sources.count > limit / 2) return -1;
+	size_t capacity = 2 * work->row_sources.count;
+	if (work->dependencies.count > (limit - capacity) / 3) return -1;
+	capacity += 3 * work->dependencies.count;
+	struct effect_pack pack = {.storage = storage};
+	pack.roots = pg_alloc(storage, capacity * sizeof(*pack.roots));
+	if (!pack.roots || pg_effect_inference_visit(work, &pack, pack_equation, pack_dependency)) return -1;
+	*equations = pack.equations;
+	*count = pack.count;
+	*roots = pack.roots;
+	return 0;
+}
+
+int pg_effect_inference_unpack(struct pg_effect_inference *work,
+	size_t equations, size_t count, const struct pg_term *const *roots)
+{
+	if (!work->rows || work->failed || work->sealed || work->row_sources.count) goto fail;
+	if (equations > count / 2 || (count - 2 * equations) % 3) goto fail;
+	if (count && !roots) goto fail;
+	for (size_t i = 0; i < count; ++i)
+		if (!roots[i] || roots[i]->kind != PG_REFERENCE) goto fail;
+	for (size_t i = 0; i < 2 * equations; i += 2) {
+		const struct pg_object *parameter = roots[i]->as.reference;
+		if (row_source(work, parameter)) goto fail;
+		if (!pg_effect_equation_at(work, parameter, pg_effect_row_view(roots[i + 1]))) goto fail;
+	}
+	for (size_t i = 2 * equations; i < count; i += 3) {
+		struct pg_effect_equation *source = row_source(work, roots[i]->as.reference);
+		struct pg_effect_equation *target = row_source(work, roots[i + 2]->as.reference);
+		if (pg_effect_dependency(work, source, pg_effect_row_view(roots[i + 1]), target)) goto fail;
+	}
+	return 0;
+fail:
+	work->failed = 1;
+	return -1;
+}
+
 int pg_effect_contribution(struct pg_effect_inference *work,
 	const struct pg_term *row_term, const struct pg_effect_row *mask,
 	struct pg_effect_equation *target)
