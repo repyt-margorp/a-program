@@ -89,6 +89,24 @@ unsupported must not be changed to success without the required evidence.
 
 Positivity integration audit after `c1e520f`:
 
+Before adding nominal Self formation, rechecked an ordinary open family after
+`855f75a`: `f := &(\F : (@ -> @) => \A : @ => \x : (F A) => x);`
+returns unsupported after 86 transitions. This is not a parser or fuel failure.
+`type_input` requires `pg_synthesis_return`; the neutral application of the
+function parameter cannot expose a canonical RETURN. Thus ordinary symbolic
+type-family use is missing independently of recursive datatype admission.
+
+- [ ] Close this shared type-family boundary before installing a Self-only
+  exception. `check-open-families` checks the new source fixture and is part of
+  `check-acceptance`; unsupported remains failure. This concretizes the existing
+  N2 neutral/open pure family obligation below, rather than a new feature request.
+- [ ] Define the retained formation/totality requirements for observing an open
+  pure family result as a type. A `Comp A` classifier alone must not silently
+  give a value of A. Preserve symbolic dependence without executing a future
+  effect, and keep `::` post-synthesis. The same rule must serve source family
+  parameters and constructor field/index checking; do not add ValuePi or an
+  unproved computation-to-value coercion to make this example green.
+
 - The pinned Narya
   [`positivity.ml`](https://github.com/gwaithimirdain/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/lib/core/positivity.ml)
   records recursive references during checking, including dependencies hidden
