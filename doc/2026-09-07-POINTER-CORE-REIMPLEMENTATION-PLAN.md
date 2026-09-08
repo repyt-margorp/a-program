@@ -201,6 +201,27 @@ as does Identity with a 512 KiB stack. The recorded cube-function comparison
 maximum is now 192,056 transitions (previously 191,710); previously synchronous
 comparison work is now charged, so this is not evidence of a runtime slowdown.
 
+#### Incremental residual-scope visitation
+
+After `e35745c`, the existing `pg_eval_defer` task owns the scope visitation
+index, pending nodes, lexical-shadow cursor and source-binding lookup position.
+One poll visits a node or advances one shadow/source lookup link. A per-source
+visited byte replaces the former repeated search through the discovered order.
+The same environment permutation is produced; no equality rule is added.
+Task destruction releases the index even when traversal is cancelled.
+
+The regression retains a 64-lambda nested body and cancels at 0, 1, 7 and 31
+polls after task creation. It checks exact charged steps, still-pending work,
+readback and re-evaluation. Existing alpha-renaming, shadowing, selected-proof
+distinction and checked dimension-3 tests remain enabled. Initialization,
+final ordering comparison and graph reconstruction are still synchronous;
+allocator/hash-table operations do not have a wall-time fuel bound. Finish
+those remaining traversal stages before closing the bounded-action gate.
+Implementation C: +95/-49; test C: +24/-1, documentation excluded.
+Optimized and ASan/UBSan full pointer checks and the 512 KiB Identity run pass.
+The recorded comparison maximum is 198,563 transitions, now including the
+incremental scope work. This does not change the remaining N0-N7 acceptance gates.
+
 ## 1. Objective and Source of Decisions
 
 Reimplement A Program around an erased pointer graph with Lambda, Application,

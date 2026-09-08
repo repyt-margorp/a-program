@@ -1180,7 +1180,7 @@ static void action_scope_exchange(struct pg_classifiers *classifiers)
 	}
 	const struct pg_term *suspended = pg_eval_readback(&split, graph);
 	assert(suspended);
-	/* Destroy an actual suspended Identity comparison, then resume its graph
+	/* Destroy an actual suspended Identity traversal, then resume its graph
 	 * through the ordinary evaluator. No task state is encoded as evidence. */
 	pg_eval_destroy(&split);
 	converts(&work, suspended, acted[0]);
@@ -1208,6 +1208,29 @@ static void action_scope_exchange(struct pg_classifiers *classifiers)
 				shadow_actions[order] = pg_application(graph, shadow_actions[order], boundary[i ^ order][j]);
 	}
 	converts(&work, shadow_actions[0], shadow_actions[1]);
+	const struct pg_term *deep = pg_reference(graph, y);
+	for (size_t i = 0; i < 64; ++i) deep = pg_lambda(graph, pg_binder(graph), deep);
+	deep = pg_identity_instance(graph, pg_identity_action(graph, a), deep, pg_reference(graph, x));
+	deep = pg_identity_action(graph, pg_lambda(graph, x, pg_lambda(graph, y, deep)));
+	for (size_t i = 0; i < 2; ++i)
+		for (size_t j = 0; j < 3; ++j) deep = pg_application(graph, deep, boundary[i][j]);
+	const uint64_t cuts[] = {0, 1, 7, 31};
+	for (size_t i = 0; i < sizeof(cuts) / sizeof(*cuts); ++i) {
+		pg_eval_init(&split, deep);
+		split.output = graph;
+		split.dispatch = pg_pure_policy.dispatch;
+		while (!split.task) {
+			assert(pg_eval_advance(&split, 1) == PG_EVAL_PENDING);
+			assert(split.steps < 10000);
+		}
+		uint64_t before = split.steps;
+		assert(pg_eval_advance(&split, cuts[i]) == PG_EVAL_PENDING);
+		assert(split.task && split.steps == before + cuts[i]);
+		suspended = pg_eval_readback(&split, graph);
+		assert(suspended);
+		pg_eval_destroy(&split);
+		converts(&work, suspended, deep);
+	}
 	/* Environment exchange must not forget the selected center proof. */
 	const struct pg_term *changed = pg_application(graph, acted[0]->as.application.function,
 		pg_reference(graph, pg_binder(graph)));
