@@ -209,6 +209,64 @@ Admission audit after `8b3105b`:
 
 ### Next Implementation Boundary: Pending Recursive Formation
 
+Conditional field synthesis after `2f59743`:
+
+- [x] Allow the existing checked `pg_synthesis_bind` to expose an explicitly
+  supplied universe-classified binder as the special `*` token. Reference
+  synthesis uses ordinary VARIABLE and TYPE_FROM_VALUE evidence. Punctuation
+  spelling is canonicalized in the scope key, as for the intrinsic root.
+  No new Context kind, proof rule, acceptance flag or nominal type is added.
+- [x] Exercise `@{zero:*; succ:*->*;}` under the explicit assumption
+  `Self : Universe_0`. The result is a conditional schema with Self still in
+  its parameter context; the successor field is exactly that binder reference.
+  Positivity and field-level checks succeed, but the job has no expression
+  proof. Reading Self cannot be weakened into the empty context. Shadowing
+  `*` with an element of Self is rejected; an unbound `*` remains unsupported.
+  Full component `make check` and rebuilt ASan/UBSan synthesis tests passed.
+  These results do not establish ordinary source declaration acceptance.
+- [ ] Discharge that assumption through the actual inductive formation rule.
+  The conditional schema above is a family parameterized by an arbitrary type,
+  not its fixpoint. It must not be exported as a closed Nat declaration.
+  Source declarations still do not allocate Self automatically. General
+  indexed Self signatures, pending universe constraints and nominal HOTT
+  action remain required; this change does not manufacture them from a Pi.
+
+Formation audit at `2f59743` (after pending telescope scheduling):
+
+- Do not implement a schema-to-Universe shortcut as the next admission rule.
+  `pg_prove_type_value` turns any accepted value-type formation into a universe
+  value. `pg_prove_reflexivity` and `pg_prove_identity_transport` then expose
+  Identity and transport without a datatype-specific capability check. A new
+  formation therefore commits to their meaning as well as ordinary membership.
+  A stuck reduction alone would not prove inconsistency, but omitting datatype
+  action would not meet the requested computational HOTT implementation.
+- `iadt.c` currently supplies erased constructor/matcher descriptors and
+  `pg_data_action` for an acted matcher. It does not supply a nominal family
+  descriptor with dependent Identity/transport behavior. A checked result
+  substitution is not that descriptor or a proof of those rules.
+- A nonrecursive declaration is a useful eventual case of the same admission
+  rule, not an excuse to publish an unsupported nominal Universe inhabitant.
+  For an indexed constructor, the field telescope and its result substitution
+  must also determine how the index boundary is respected by action and
+  elimination. Do not erase that obligation by testing only unindexed Bool.
+- The pinned Narya checkout at
+  `c7c92b4ec01ae2f528b97207256549242bd21334`,
+  `lib/core/check.ml:2258` (`check_data`), checks constructor fields inside a
+  scoped `run_with_definition` for the declaration currently being checked.
+  It separately checks the output head and index arity. This is evidence for
+  the need for scoped recursive checking, not permission to mutate accepted
+  A Program evidence or to copy Narya's checking-directed surface policy.
+  Source: https://github.com/mikeshulman/narya/blob/c7c92b4ec01ae2f528b97207256549242bd21334/lib/core/check.ml
+- Next implementation must specify the conditional judgement used by field
+  checking and the admission rule which discharges it, together with nominal
+  family action. Ordinary `pg_context` contains value declarations, not an
+  implicit total type-family assumption. An owned pending job is not a proof
+  of such an assumption. Do not add another helper-only milestone here.
+
+Rechecked `check-examples` at this revision: still 0/8, unsupported with the
+same transition counts recorded above. This audit adds no accepted formation
+and does not advance the source-acceptance checkbox.
+
 Audit at `b87f7b1`: the three recent schema helpers do not implement recursive
 declaration checking. Re-running `check-examples` still gives 0/8, with the same
 transition counts above; `check-open-families` still fails at 86 transitions.
@@ -4749,6 +4807,35 @@ format. Legacy `.apo/.ao` import, if retained, belongs in a conversion tool, not
 the core evaluator. Exact old wire compatibility is not promised by this plan.
 
 ### September 8 decision: no independent Replay engine
+
+Continuation audit after `2f59743`, following the renewed Replay question:
+
+- `pg_derivations_read` restores unaccepted rule inputs only. It neither
+  evaluates terms nor installs accepted proof flags.
+- `synthesis.c:derivation_step` schedules premises on the ordinary Solve queue
+  and calls `pg_prove_derivation`, whose dispatch invokes the same named kernel
+  constructors as source processing. Keep this shared rule implementation;
+  do not introduce an artifact-specific copy of the typing semantics.
+- Current conversion/normalization records contain endpoints, not retained
+  reduction certificates. Loading them deliberately recomputes conversion or
+  normalization through ordinary jobs. This is the recomputation variant,
+  **not** completion of the retained-intermediate-results variant of `.a`.
+- [ ] For retained-result images, specify relocatable evidence for the pure
+  reduction steps and validate it with the common reduction rules. Neither a
+  saved success flag nor a pair of endpoints establishes a reduction. Account
+  for validation cost separately from search/reduction cost; do not promise
+  zero work when loading an untrusted image.
+- [ ] Expose the retained/discarded intermediate-work policy in complete
+  program images and their CLI options. Omitted work may be recomputed; valid
+  retained work must not trigger independent proof search merely because its
+  origin was an image rather than source. Complete program images remain open.
+- Effect requests are descriptions, not reusable receipts for host execution.
+  Reloading a program must not suppress a requested print because an earlier
+  run printed it. Pure calculation reuse and effect execution are distinct.
+
+This audit does not change the priority of recursive datatype admission above.
+It records the actual limitation of the existing codec, rather than adding a
+second Replay subsystem to address it.
 
 Raw Core section prototype (`graph_io.c`, not accepted evidence):
 

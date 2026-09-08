@@ -2755,6 +2755,41 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 		expression_syntax(typing->graph, "Nat:=@{zero:*; succ:*->*;};"));
 	complete(&synthesis, recursive, PG_SYNTHESIS_UNSUPPORTED);
 	assert(!pg_synthesis_schema_result(recursive));
+	/* Check recursive fields conditionally, without admitting the fixpoint. */
+	const struct pg_evidence *empty_context = pg_prove_empty_context(typing);
+	const struct pg_object *self = pg_binder(typing->graph);
+	const struct pg_evidence *self_context = pg_prove_context_extension(typing, empty_context, self,
+		pg_prove_universe(typing, classifiers, empty_context, 0));
+	const struct pg_source_scope *self_scope = pg_synthesis_bind(&synthesis, root,
+		(struct pg_token){.kind = '*'}, self, self_context);
+	assert(self_scope && pg_synthesis_bind(&synthesis, root,
+		(struct pg_token){.kind = '*', .text = "*", .length = 1}, self, self_context) == self_scope);
+	const struct pg_evidence *self_type = complete(&synthesis,
+		request(&synthesis, self_scope, "S:=*;"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_context(self_type) == pg_evidence_context(self_context));
+	assert(pg_evidence_subject(self_type)->core == pg_reference(typing->graph, self));
+	assert(!pg_prove_projection(typing, empty_context, self_type));
+	struct pg_synthesis_job *conditional = pg_synthesis_data_schema(&synthesis, self_scope,
+		expression_syntax(typing->graph, "Nat:=@{zero:*; succ:*->*;};"));
+	complete(&synthesis, conditional, PG_SYNTHESIS_DONE);
+	const struct pg_data_schema *conditional_schema = pg_synthesis_schema_result(conditional);
+	assert(conditional_schema && !pg_synthesis_result(conditional));
+	assert(pg_evidence_context(pg_data_schema_indices(conditional_schema)) == pg_evidence_context(self_context));
+	assert(pg_data_schema_positive(conditional_schema, self) == 1);
+	assert(!pg_data_schema_field_level(conditional_schema, &field_level) && field_level == 0);
+	const struct pg_object *successor = pg_data_constructor(pg_data_schema_layout(conditional_schema), 1);
+	const struct pg_evidence *successor_fields = pg_data_schema_fields(conditional_schema, successor);
+	assert(pg_evidence_context(successor_fields)->declared_type == pg_reference(typing->graph, self));
+	assert(pg_evidence_context(successor_fields)->parent == pg_evidence_context(self_context));
+	/* A value of Self cannot shadow the type assumption as another type. */
+	const struct pg_object *element = pg_binder(typing->graph);
+	const struct pg_evidence *element_context = pg_prove_context_extension(typing, self_context, element,
+		pg_prove_value_type(typing, pg_prove_variable(typing, self_context, self)));
+	const struct pg_source_scope *bad_self = pg_synthesis_bind(&synthesis, self_scope,
+		(struct pg_token){.kind = '*'}, element, element_context);
+	assert(bad_self);
+	complete(&synthesis, request(&synthesis, bad_self, "S:=*;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, root, "S:=*;"), PG_SYNTHESIS_UNSUPPORTED);
 	assert(!pg_synthesis_data_schema(&synthesis, NULL, declaration));
 	assert(!pg_synthesis_data_schema(&synthesis, root, NULL));
 	assert(!pg_synthesis_data_schema(&synthesis, root, source));

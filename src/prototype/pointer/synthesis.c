@@ -180,8 +180,9 @@ static int same_name(struct pg_token left, struct pg_token right);
 static const struct pg_source_scope *intern_scope(struct pg_synthesis *synthesis, struct pg_source_scope input)
 {
 	if (!input.context_job || input.context_job->owner != synthesis) return NULL;
-	/* The intrinsic root is a punctuation token with no borrowed spelling. */
-	if (input.name.kind == '#') input.name = (struct pg_token){.kind = '#'};
+	/* Special roots carry their spelling in kind, not borrowed text. */
+	if (input.name.kind == '#' || input.name.kind == '*')
+		input.name = (struct pg_token){.kind = input.name.kind};
 	if (input.name.length && !input.name.text) return NULL;
 	uint64_t hash = name_hash(input.name) ^ (unsigned)input.name.kind;
 	const void *pointers[] = {input.parent, input.context_job, input.binder, input.definitions, input.producer, input.exports, input.module, input.imports};
@@ -1000,7 +1001,7 @@ static struct source_reference lookup_scope(const struct pg_source_scope *scope,
 		}
 		if (scope->name.kind != token.kind) continue;
 		/* Punctuation tokens carry their spelling in kind, not text. */
-		if (token.kind != '#') {
+		if (token.kind != '#' && token.kind != '*') {
 			if (scope->name.length != token.length) continue;
 			if (memcmp(scope->name.text, token.text, token.length) != 0) continue;
 		}
@@ -1081,8 +1082,13 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	if (job->syntax->kind == PG_SYNTAX_ATOM && token.kind == '@') {
 		job->result = pg_prove_universe(synthesis->typing, synthesis->classifiers, source_context(job->scope), 0);
 	} else if (job->syntax->kind == PG_SYNTAX_ATOM && token.kind == '*') {
-		/* No recursive Self/IH binding has been admitted by this fragment. */
-		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+		/* An explicitly supplied type assumption stays in the proof context.
+		 * This is not recursive declaration admission or an IH lookup. */
+		struct source_reference reference = lookup_scope(job->scope, token);
+		if (!reference.binder) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		job->result = pg_prove_value_type(synthesis->typing,
+			pg_prove_variable(synthesis->typing, source_context(job->scope), reference.binder));
+		if (!job->result) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 	} else {
 		struct source_reference reference;
 		struct pg_synthesis_job *dependency = NULL;

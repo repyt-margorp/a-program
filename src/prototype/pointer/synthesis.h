@@ -32,6 +32,10 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis);
  * binder, evidence producer and export-scope pointers remain distinct keys.
  * This never compares Core by alpha/conversion or merges typed evidence. */
 const struct pg_source_scope *pg_synthesis_root(struct pg_synthesis *synthesis);
+/* A '*' token can name an explicitly supplied type assumption. Reading it
+ * requires a universe-classified variable and retains extended_context in
+ * the result. This does not create/discharge a recursive datatype signature;
+ * ordinary declarations do not implicitly acquire this binding. */
 const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_object *binder, const struct pg_evidence *extended_context);
