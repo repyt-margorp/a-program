@@ -1020,6 +1020,20 @@ finish general handler source support.
   also passes, including refusal of a pure-input handler with no request premise.
   Implementation C/header: +118/-9; tests: +43/-1; documentation separate.
 
+  September 9, after `7016c0c`: raw handler and effect-subsumption jobs now
+  project classifier structure from their carrier producer before acceptance.
+  A new unsealed-row fixture previously exhausted the 10,000-step test limit
+  waiting for handler acceptance. It now exposes the symbolic F row and allows
+  enclosing Lambda classifier structure to be formed without closing that row.
+  Both rules are recognized as computation bodies. Final rule checking remains
+  mandatory: a malformed return clause exposes the same structure but is
+  rejected after solving. Tests use chunks 1 and 64 and check that no pending
+  projection publishes evidence. This does not yet add structural raw handler
+  Core projection or descriptor relocation.
+  Normal components, eight source checks, six execution fixtures and rebuilt
+  ASan/UBSan synthesis pass.
+  Implementation C: +5/-1; tests: +41/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.

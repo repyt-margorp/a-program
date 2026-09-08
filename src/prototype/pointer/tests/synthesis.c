@@ -636,6 +636,42 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, open_clause_type, PG_SYNTHESIS_DONE));
 		assert(pg_alpha_equal(pg_synthesis_type_structure_result(open_clause_type), pg_synthesis_type_structure_result(op_type)) == 1);
 		assert(!pg_synthesis_result(open_clause) && !pg_synthesis_result(context));
+		struct pg_synthesis_job *raw_return_domain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){context, universe});
+		const struct pg_object *returned_binder = pg_binder(typing->graph);
+		struct pg_synthesis_job *return_scope = rule_job(&synthesis, PG_CONTEXT_EXTEND, returned_binder, 2,
+			(struct pg_synthesis_job *[]){context, raw_return_domain});
+		struct pg_synthesis_job *returned_variable = rule_job(&synthesis, PG_VARIABLE, returned_binder, 1, &return_scope);
+		struct pg_synthesis_job *raw_return = pg_synthesis_lambda_body(&synthesis, raw_return_domain, return_scope, returned_variable);
+		struct pg_derivation_input raw_handler_input = {.rule = PG_HANDLER_ELIM, .count = 6,
+			.parameters.handler = pg_handler_signature(typing->graph, 1, &pending_op)};
+		struct pg_synthesis_job *raw_handler = pg_synthesis_rule(&synthesis, &raw_handler_input,
+			(struct pg_synthesis_job *[]){body, raw_return, open_carrier, universe, universe, open_clause}, NULL, NULL);
+		struct pg_synthesis_job *raw_handler_type = pg_synthesis_classifier_structure(&synthesis, raw_handler);
+		assert(!complete(&synthesis, raw_handler_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(raw_handler_type) == symbolic_f);
+		assert(!pg_synthesis_result(raw_handler));
+		struct pg_synthesis_job *invalid_handler = pg_synthesis_rule(&synthesis, &raw_handler_input,
+			(struct pg_synthesis_job *[]){body, universe, open_carrier, universe, universe, open_clause}, NULL, NULL);
+		struct pg_synthesis_job *invalid_handler_type = pg_synthesis_classifier_structure(&synthesis, invalid_handler);
+		assert(!complete(&synthesis, invalid_handler_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(invalid_handler_type) == symbolic_f);
+		assert(!pg_synthesis_result(invalid_handler));
+		struct pg_synthesis_job *raw_widening = rule_job(&synthesis, PG_EFFECT_SUBSUMPTION, NULL, 2,
+			(struct pg_synthesis_job *[]){body, open_carrier});
+		struct pg_synthesis_job *raw_widening_type = pg_synthesis_classifier_structure(&synthesis, raw_widening);
+		assert(!complete(&synthesis, raw_widening_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(raw_widening_type) == symbolic_f);
+		assert(!pg_synthesis_result(raw_widening));
+		struct pg_synthesis_job *carrier_bodies[] = {raw_handler, raw_widening};
+		struct pg_synthesis_job *carrier_lambdas[2];
+		for (size_t i = 0; i < 2; ++i) {
+			carrier_lambdas[i] = pg_synthesis_lambda_body(&synthesis, thunk, context, carrier_bodies[i]);
+			struct pg_synthesis_job *shape = pg_synthesis_classifier_structure(&synthesis, carrier_lambdas[i]);
+			assert(!complete(&synthesis, shape, PG_SYNTHESIS_DONE));
+			assert(pg_synthesis_type_structure_result(shape) == symbolic_pi);
+			assert(!pg_synthesis_result(carrier_lambdas[i]));
+		}
 		struct pg_synthesis_job *open_handler = request(&synthesis, pending_op_scope,
 			"h := (@) @Op req resume => resume req @#.return x => x;");
 		struct pg_synthesis_job *open_handler_type = pg_synthesis_classifier_structure(&synthesis, open_handler);
@@ -786,6 +822,11 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
 		const struct pg_evidence *open_handler_proof = complete(&synthesis, open_handler, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *raw_handler_proof = complete(&synthesis, raw_handler, PG_SYNTHESIS_DONE);
+		assert(!complete(&synthesis, invalid_handler, PG_SYNTHESIS_REJECTED));
+		assert(pg_evidence_classifier(raw_handler_proof) == pg_evidence_subject(pg_synthesis_result(open_carrier))->core);
+		assert(pg_evidence_classifier(complete(&synthesis, raw_widening, PG_SYNTHESIS_DONE)) == pg_evidence_classifier(raw_handler_proof));
+		for (size_t i = 0; i < 2; ++i) assert(complete(&synthesis, carrier_lambdas[i], PG_SYNTHESIS_DONE));
 		assert(pg_evidence_context(open_handler_proof) == pg_evidence_context(expected_context));
 		assert(pg_evidence_classifier(open_handler_proof) == pg_effect_type(classifiers, no_effects, handler_value));
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);

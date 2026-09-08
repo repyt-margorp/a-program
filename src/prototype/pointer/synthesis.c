@@ -3818,7 +3818,7 @@ static int body_rule_polarity(const struct pg_synthesis_job *rule)
 	switch (input->rule) {
 	case PG_VARIABLE: case PG_THUNK_INTRO: case PG_VALUE_FROM_TYPE: case PG_UNIVERSE_FORM: return 1;
 	case PG_LAMBDA_INTRO: case PG_APP_ELIM: case PG_FORCE_ELIM: case PG_RETURN_INTRO:
-	case PG_FOLD_ELIM: case PG_REQUEST_INTRO: return 0;
+	case PG_FOLD_ELIM: case PG_REQUEST_INTRO: case PG_HANDLER_ELIM: case PG_EFFECT_SUBSUMPTION: return 0;
 	default: return -1;
 	}
 }
@@ -4096,6 +4096,10 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 			job->left = pg_synthesis_classifier_structure(synthesis, rule_premise(synthesis, producer, 1)); break;
 		case PG_REQUEST_INTRO:
 			job->left = pg_synthesis_classifier_structure(synthesis, rule_premise(synthesis, producer, 3)); break;
+		case PG_HANDLER_ELIM:
+			job->left = pg_synthesis_type_structure(synthesis, rule_premise(synthesis, producer, 2)); break;
+		case PG_EFFECT_SUBSUMPTION:
+			job->left = pg_synthesis_type_structure(synthesis, rule_premise(synthesis, producer, 1)); break;
 		case PG_LAMBDA_INTRO:
 			job->left = pg_synthesis_type_structure(synthesis, premise); break;
 		default: break;
