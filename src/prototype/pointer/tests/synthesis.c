@@ -476,6 +476,13 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(input_row == row_parameter);
 		assert(pg_effect_row_view(following_row) == no_effects);
 		assert(sequence_result == pg_universe(classifiers, 0));
+		struct pg_synthesis_job *source_sequence_type = pg_synthesis_classifier_structure(&synthesis, source_sequence);
+		assert(!complete(&synthesis, source_sequence_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(source_sequence_type) == pg_synthesis_type_structure_result(sequence_type));
+		struct pg_synthesis_job *source_sequence_term = pg_synthesis_term_structure(&synthesis, source_sequence);
+		assert(!complete(&synthesis, source_sequence_term, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(source_sequence_term) == pg_synthesis_type_structure_result(sequence_term));
+		assert(!pg_synthesis_result(source_sequence));
 		struct pg_effect_equation *sequence_effects = pg_effect_equation(&effects, no_effects);
 		assert(!complete(&synthesis, pg_synthesis_row_contribution(&synthesis,
 			&effects, sequence_effects, no_effects, sequence_row), PG_SYNTHESIS_DONE));
@@ -535,6 +542,22 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_pi_view(resume_function, &response_domain, &response_binder, &response_result));
 		assert(response_domain == payload_domain && response_result == symbolic_f);
 		assert(!pg_synthesis_result(op_clause) && !pg_synthesis_result(carrier));
+		const char *block_clause_source = "h := M @Op req resume => { x := resume req; x; };";
+		struct pg_parser block_clause_parser;
+		struct pg_definition block_clause_definition;
+		pg_parser_init(&block_clause_parser, typing->graph, block_clause_source, strlen(block_clause_source));
+		assert(pg_parser_next(&block_clause_parser, &block_clause_definition) == 1);
+		struct pg_synthesis_job *block_clause = pg_synthesis_handler_clause(&synthesis, op_scope,
+			carrier, block_clause_definition.expression->items[0].expression);
+		struct pg_synthesis_job *block_clause_type = pg_synthesis_classifier_structure(&synthesis, block_clause);
+		assert(!complete(&synthesis, block_clause_type, PG_SYNTHESIS_DONE));
+		const struct pg_term *block_domain, *block_resume, *block_result, *block_row, *block_value;
+		const struct pg_object *block_binder;
+		assert(pg_pi_view(pg_synthesis_type_structure_result(block_clause_type), &block_domain, &block_binder, &block_resume));
+		assert(pg_pi_view(block_resume, &block_domain, &block_binder, &block_result));
+		assert(pg_effect_type_spine_view(block_result, &block_row, &block_value));
+		assert(block_row == sequence_row && block_value == sequence_result);
+		assert(!pg_synthesis_result(block_clause));
 		struct pg_synthesis_job *source_type = pg_synthesis_classifier_structure(&synthesis, source_variable);
 		struct pg_synthesis_job *source_term = pg_synthesis_term_structure(&synthesis, source_variable);
 		assert(!complete(&synthesis, source_type, PG_SYNTHESIS_DONE));
@@ -629,6 +652,10 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_result(context) == expected_context);
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *op_proof = complete(&synthesis, op_clause, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *block_clause_proof = complete(&synthesis, block_clause, PG_SYNTHESIS_DONE);
+		assert(pg_pi_view(pg_evidence_classifier(block_clause_proof), &block_domain, &block_binder, &block_resume));
+		assert(pg_pi_view(block_resume, &block_domain, &block_binder, &block_result));
+		assert(block_result == pg_effect_type(classifiers, row, sequence_result));
 		const struct pg_evidence *block_proof = complete(&synthesis, single_block, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(block_proof)->core == pg_synthesis_type_structure_result(single_block_term));
 		const struct pg_evidence *multi_block = complete(&synthesis, pending_block, PG_SYNTHESIS_DONE);

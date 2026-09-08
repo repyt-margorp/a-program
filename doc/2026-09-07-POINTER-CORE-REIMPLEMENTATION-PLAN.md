@@ -464,9 +464,22 @@ Next implementation sequence (prerequisite for automatic source handlers):
   This projection does not certify the input/continuation domain match: tests
   construct a mismatched-domain skeleton and require ordinary FOLD rejection.
   Other codomain forms still await the original producer rather than assume
-  purity or invent an effect-dependent result value. Source sequence rule
-  preparation, automatic handler collection/sealing and pending image transport
-  remain open. These changes do not complete those milestones.
+  purity or invent an effect-dependent result value.
+  Source sequence now prepares classifier normalization and an ordinary
+  FOLD_ELIM producer from computation inputs before context acceptance. Its
+  direct pg_prove_fold path is removed; checked pure RETURN extraction remains
+  the fallback when the FOLD rule rejects a dependent continuation. Structural
+  consumers follow the prepared rule; final acceptance still checks the source
+  context and all premises. Unknown input polarity awaits its original producer,
+  never an expected argument type or a guessed empty row.
+  Tests obtain source-sequence Core/classifier before sealing, compare the Core
+  and eventual proof with direct FOLD, and check the actual source clause
+  `@Op req resume => { x := resume req; x; }` both before and after row closure.
+  Automatic handler collection/sealing and pending image transport remain open.
+  These changes do not complete those milestones.
+  Normal checks, eight source cases and six runtime cases pass. List synthesis
+  now takes 1717 transitions rather than 1682 as FOLD acceptance is scheduled;
+  this is not a performance improvement claim.
   Normal checks, eight source/six runtime cases and rebuilt normal/ASan/UBSan
   synthesis tests pass. Wrong-context value application is rejected. Existing
   example transition counts remain unchanged (List 1682).

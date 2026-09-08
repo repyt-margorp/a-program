@@ -1831,9 +1831,14 @@ static int source_value_kind(const struct pg_synthesis_job *producer);
 
 static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (!job->value_job) {
+	if (!job->value_job && !job->right) {
 		struct pg_synthesis_job *argument = (void *)job->inputs[1];
 		int kind = source_value_kind(argument);
+		if (kind < 0) {
+			if (argument->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, argument); return; }
+			finish(synthesis, job, argument->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : argument->status);
+			return;
+		}
 		if (kind > 0) {
 			if (kind == 2) {
 				struct pg_derivation_input input = {.rule = PG_VALUE_FROM_TYPE, .count = 1};
@@ -1842,6 +1847,13 @@ static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 			job->value_job = pg_synthesis_application_jobs(synthesis, (void *)job->inputs[0],
 				(void *)job->inputs[2], argument);
 			if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		} else {
+			job->left = pg_synthesis_normalize_classifier_jobs(synthesis, (void *)job->inputs[0], argument);
+			if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			struct pg_synthesis_job *premises[] = {job->left, (void *)job->inputs[2]};
+			struct pg_derivation_input input = {.rule = PG_FOLD_ELIM, .count = 2};
+			job->right = pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
+			if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
 	}
 	if (job->value_job) { forward_proof(synthesis, job, job->value_job); return; }
@@ -1864,13 +1876,11 @@ static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 		if (pg_evidence_judgement(input) != PG_JUDGEMENT_COMPUTATION) {
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
-		if (!job->left) job->left = pg_synthesis_normalize_classifier(synthesis, context, input);
-		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 		input = job->left->result;
-		job->result = pg_prove_fold(synthesis->typing, synthesis->classifiers, input, continuation);
-		if (job->result) { finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
+		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
+		if (job->right->status != PG_SYNTHESIS_REJECTED) { forward_proof(synthesis, job, job->right); return; }
 		struct pg_synthesis_job *argument = pg_synthesis_return(synthesis, context, input);
 		job->value_job = pg_synthesis_application(synthesis, context,
 			(void *)job->inputs[2], argument);
@@ -3197,7 +3207,7 @@ static void forward_structure(struct pg_synthesis *synthesis, struct pg_synthesi
 static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_job *job)
 {
 	if (job->role == HANDLER_RETURN_JOB || job->role == HANDLER_CLAUSE_JOB) return job->value_job;
-	if (job->role == SEQUENCE_JOB) return job->value_job;
+	if (job->role == SEQUENCE_JOB) return job->value_job ? job->value_job : job->right;
 	if (job->role != EXPRESSION_JOB) return NULL;
 	if (job->block && job->block->tail && !job->block->frames) return job->block->tail;
 	if (job->syntax->kind == PG_SYNTAX_APPLICATION && job->stage == APPLICATION_RULE_READY) return job->value_job;
@@ -3217,7 +3227,7 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 	int preparing = 0;
 	switch (producer->role) {
 	case SEQUENCE_JOB:
-		preparing = !producer->value_job && source_value_kind(producer->inputs[1]) > 0;
+		preparing = !producer->value_job && !producer->right && source_value_kind(producer->inputs[1]) >= 0;
 		break;
 	case HANDLER_RETURN_JOB: case HANDLER_CLAUSE_JOB:
 		preparing = !producer->value_job;
