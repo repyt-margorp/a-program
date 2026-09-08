@@ -37,6 +37,11 @@ struct pg_data_signature;
  * here. The same scoped signature may be used by distinct generative schemas. */
 const struct pg_data_signature *pg_data_signature(struct pg_typing *typing,
 	const struct pg_evidence *parameters, const struct pg_evidence *indices);
+/* Instantiate its indices after a checked parameter substitution. The result
+ * is a substitution into the signature, not yet a nominal type formation. */
+const struct pg_evidence *pg_data_signature_instance(struct pg_typing *typing,
+	const struct pg_data_signature *signature, const struct pg_evidence *parameters,
+	size_t count, const struct pg_evidence *const *indices);
 /* Conservative syntactic strict positivity of a field classifier relative
  * to a dedicated Self binder. Recognizes saturated Self applications with
  * independent indices, Pi with independent domains, and F/U wrappers.

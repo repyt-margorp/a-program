@@ -943,6 +943,28 @@ const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
 }
 
 
+const struct pg_evidence *pg_prove_substitution_extend(struct pg_typing *typing,
+	const struct pg_evidence *prefix, const struct pg_evidence *source,
+	size_t count, const struct pg_evidence *const *values)
+{
+	if (!prefix || prefix->owner != typing || prefix->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (!context_proof(typing, source) || (count && !values)) return NULL;
+	size_t suffix;
+	if (pg_context_extension_size(source->context, prefix->premises[0]->context, &suffix) || suffix != count) return NULL;
+	size_t n = prefix->premise_count - 2;
+	if (count > SIZE_MAX / sizeof(*values) || n > SIZE_MAX / sizeof(*values) - count) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence **images = pg_alloc(&temporary, (n + count) * sizeof(*images));
+	const struct pg_evidence *result = NULL;
+	if (n + count && !images) goto done;
+	for (size_t i = 0; i < n; ++i) images[i] = prefix->premises[i + 2];
+	for (size_t i = 0; i < count; ++i) images[n + i] = values[i];
+	result = pg_prove_substitution(typing, source, prefix->premises[1], n + count, images);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second)
 {

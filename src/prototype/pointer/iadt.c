@@ -315,30 +315,31 @@ const struct pg_evidence *pg_data_result(struct pg_typing *typing,
 	return pg_prove_substitution_compose(typing, pg_data_schema_result(schema, object), instance);
 }
 
+static const struct pg_evidence *signature_suffix(struct pg_typing *typing,
+	const struct pg_data_signature *signature, const struct pg_evidence *fields,
+	const struct pg_evidence *parameters, size_t count,
+	const struct pg_evidence *const *values)
+{
+	if (!signature || signature->owner != typing) return NULL;
+	if (!fields || !pg_evidence_owned_by(parameters, typing) || (count && !values)) return NULL;
+	if (pg_evidence_rule(parameters) != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (pg_evidence_context(pg_evidence_premise(parameters, 0)) != pg_evidence_context(signature->parameters)) return NULL;
+	return pg_prove_substitution_extend(typing, parameters, fields, count, values);
+}
+
+const struct pg_evidence *pg_data_signature_instance(struct pg_typing *typing,
+	const struct pg_data_signature *signature, const struct pg_evidence *parameters,
+	size_t count, const struct pg_evidence *const *indices)
+{
+	return signature ? signature_suffix(typing, signature, signature->indices, parameters, count, indices) : NULL;
+}
+
 const struct pg_evidence *pg_data_instance(struct pg_typing *typing,
 	const struct pg_data_schema *schema, const struct pg_object *object,
 	const struct pg_evidence *parameters, size_t count,
 	const struct pg_evidence *const *values)
 {
-	const struct pg_evidence *fields = pg_data_schema_fields(schema, object);
-	if (!fields || !pg_evidence_owned_by(parameters, typing) || (count && !values)) return NULL;
-	if (pg_evidence_rule(parameters) != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (pg_evidence_context(pg_evidence_premise(parameters, 0)) != pg_evidence_context(schema->signature->parameters)) return NULL;
-	const struct pg_constructor *c = constructor(object, schema->layout);
-	if (count != c->arity) return NULL;
-	size_t prefix = pg_evidence_premise_count(parameters) - 2;
-	if (count > SIZE_MAX / sizeof(*values)) return NULL;
-	if (prefix > SIZE_MAX / sizeof(*values) - count) return NULL;
-	struct pg_graph temporary = {0};
-	const struct pg_evidence **images = pg_alloc(&temporary, (prefix + count) * sizeof(*images));
-	const struct pg_evidence *result = NULL;
-	if (prefix + count && !images) goto done;
-	for (size_t i = 0; i < prefix; ++i) images[i] = pg_evidence_premise(parameters, i + 2);
-	for (size_t i = 0; i < count; ++i) images[prefix + i] = values[i];
-	result = pg_prove_substitution(typing, fields, pg_evidence_premise(parameters, 1), prefix + count, images);
-done:
-	pg_graph_destroy(&temporary);
-	return result;
+	return schema ? signature_suffix(typing, schema->signature, pg_data_schema_fields(schema, object), parameters, count, values) : NULL;
 }
 
 const struct pg_evidence *pg_data_branch(struct pg_typing *typing,

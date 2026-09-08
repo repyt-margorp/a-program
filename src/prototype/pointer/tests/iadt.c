@@ -249,10 +249,23 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *index_type = pg_prove_value_type(&typing, pg_prove_variable(&typing, index_first, a));
 	const struct pg_evidence *indices = pg_prove_context_extension(&typing, index_first, q,
 		pg_prove_identity_type(&typing, index_type, iv, iv));
+	const struct pg_data_signature *indexed_signature = pg_data_signature(&typing, parameters, indices);
+	const struct pg_evidence *index_instance = pg_data_signature_instance(&typing, indexed_signature, params, 2, values);
+	assert(index_instance && pg_evidence_premise(index_instance, 0) == indices);
+	assert(pg_data_signature_instance(&typing, indexed_signature, params, 2, values) == index_instance);
+	assert(!pg_data_signature_instance(&typing, indexed_signature, params, 1, values));
+	assert(!pg_data_signature_instance(&typing, indexed_signature, params, 2, NULL));
+	assert(!pg_data_signature_instance(&foreign, indexed_signature, params, 2, values));
+	assert(!pg_data_signature_instance(&typing, indexed_signature, empty, 2, values));
+	assert(!pg_data_signature_instance(&typing, NULL, params, 0, NULL));
+	const struct pg_evidence *wrong_indices[] = {values[1], values[0]};
+	assert(!pg_data_signature_instance(&typing, indexed_signature, params, 2, wrong_indices));
+	assert(pg_data_signature_instance(&typing, signature, params, 0, NULL) == params);
+	assert(!pg_prove_substitution_extend(&typing, params, empty, 0, NULL));
 	const struct pg_evidence *index_images[] = {pg_prove_variable(&typing, fields, a),
 		pg_prove_variable(&typing, fields, x), pv};
 	const struct pg_evidence *index_map = pg_prove_substitution(&typing, indices, fields, 3, index_images);
-	const struct pg_data_schema *indexed = pg_data_schema(&typing, pg_data_signature(&typing, parameters, indices), 1, &index_map);
+	const struct pg_data_schema *indexed = pg_data_schema(&typing, indexed_signature, 1, &index_map);
 	assert(indexed);
 	assert(pg_data_schema_indices(indexed) == indices);
 	assert(pg_data_schema_indices(pg_data_schema(&typing, pg_data_signature(&typing, parameters, indices), 0, NULL)) == indices);
@@ -262,6 +275,10 @@ static void schemas(struct pg_graph *graph)
 	assert(pg_data_instance(&typing, indexed, indexed_ctor, params, 2, values) == instance);
 	const struct pg_evidence *index_result = pg_data_result(&typing, indexed, indexed_ctor, instance);
 	assert(index_result && pg_evidence_premise(index_result, 0) == indices);
+	assert(pg_evidence_context(index_result) == pg_evidence_context(index_instance));
+	for (size_t n = 0; n < 3; ++n)
+		assert(pg_evidence_subject(pg_evidence_premise(index_result, n + 2))->core
+			== pg_evidence_subject(pg_evidence_premise(index_instance, n + 2))->core);
 	assert(pg_data_result(&typing, indexed, indexed_ctor, instance) == index_result);
 	for (size_t n = 0; n < 2; ++n)
 		assert(pg_evidence_subject(pg_evidence_premise(index_result, n + 3))->core == pg_evidence_subject(values[n])->core);

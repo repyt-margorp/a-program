@@ -131,6 +131,20 @@ Next declaration-admission contract:
 - [ ] Add the scoped Self assumption and its discharge using that signature;
   the preparation above intentionally carries no acceptance flag or mutable
   constructor list. Universe bounds and formation evidence are still required.
+- [x] After `78f3b53`, instantiate a signature's index telescope from a checked
+  parameter substitution and independently checked index values. Share the
+  suffix assembly with constructor field instantiation through
+  `pg_prove_substitution_extend`, which delegates to the existing simultaneous
+  substitution rule. The full typed context determines the remaining arity;
+  constructor instantiation no longer reads the erased runtime arity for this
+  semantic check. No new evidence rule or normalization policy is introduced.
+  Tests instantiate dependent `(i : A, q : Id A i i)` before constructing a
+  schema, compare its images with the constructor result-map composition,
+  preserve zero-index identity and repeated evidence sharing, and reject
+  mismatched counts, wrong dependent values, foreign stores and invalid maps.
+  This produces substitution evidence only, not nominal type formation.
+  Full component `make check` and ASan/UBSan IADT tests pass. Source declaration
+  acceptance, typed symmetry and the other full-plan gates remain incomplete.
 
 - A scoped family signature supplies its fixed parameter context and index
   telescope. Instantiating that signature consumes checked index images and
