@@ -817,6 +817,25 @@ finish general handler source support.
   counts without changing the runtime results. No speedup is claimed.
   Implementation C/header: +119/-4; tests: +31/-1; documentation separate.
 
+  September 9, after `99a0165`: named constructor wrappers now await the same
+  field-scope producer used by Match, form the lifted parameter substitution,
+  introduce the constructor using the existing rule and abstract through
+  ordinary Lambda producers. Nullary constructors return the value directly.
+  The source path no longer calls `pg_prove_constructor_function`. A regression
+  checks that the exported successor's Pi binder is the shared scope binder.
+  This exposed a retained-evidence gap: direct Match on constructed `List Nat`
+  failed when rebasing a parameter image wrapped by post-check conversions.
+  `rebase_image` now follows TYPE_CONVERSION's original premise while retaining
+  the final subject/classifier alpha checks. It does not introduce strengthening
+  or accept a differently typed image. The existing direct recursive List Match
+  test reproduced this failure and passes with the repair. General pending
+  instance recovery, IH-scope producers and indexed-family admission remain open.
+  Normal checks, eight source cases, six runtime cases and rebuilt ASan/UBSan
+  synthesis tests pass. Example transitions (01-07, 09) are 318, 142, 318, 1203,
+  541, 490, 1158 and 2897. These include the newly scheduled constructor work;
+  runtime results are unchanged and no wall-time improvement is asserted.
+  Implementation C: +36/-6; tests: +8/-0; documentation separate.
+
 Verification: regular components, eight example checks, six execution fixtures
 and rebuilt ASan/UBSan source synthesis pass. The open-family gate remains
 unsupported at 88 transitions; this does not establish full source acceptance.

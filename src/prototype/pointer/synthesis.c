@@ -2456,13 +2456,42 @@ static void constructor_value_step(struct pg_synthesis *synthesis, struct pg_syn
 {
 	const struct pg_evidence *formation = job->inputs[0], *parameters = job->inputs[2];
 	const struct pg_object *constructor = job->inputs[1];
-	const struct pg_evidence *function = pg_prove_constructor_function(synthesis->typing,
-		synthesis->classifiers, formation, constructor, parameters);
-	if (!function) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	if (!job->left) job->left = pg_synthesis_constructor_scope(synthesis,
+		pg_synthesis_evidence(synthesis, formation), constructor, pg_synthesis_evidence(synthesis, parameters));
+	if (!job->left) goto error;
+	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	const struct pg_evidence *map = job->left->result, *context = pg_evidence_premise(map, 1);
+	size_t prefix = pg_evidence_premise_count(parameters) - 2;
+	if (!job->right) {
+		if (prefix > SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
+		struct pg_synthesis_job **images = malloc(prefix * sizeof(*images));
+		if (prefix && !images) goto error;
+		for (size_t i = 0; i < prefix; ++i) images[i] = pg_synthesis_evidence(synthesis, pg_evidence_premise(map, i + 2));
+		job->right = pg_synthesis_substitution(synthesis, pg_evidence_premise(parameters, 0), context, prefix, images);
+		free(images);
+		if (!job->right) goto error;
+	}
+	if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
+	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
+	if (!job->value_job) {
+		size_t count = pg_evidence_premise_count(map) - prefix - 3;
+		if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto error;
+		const struct pg_evidence **fields = malloc(count * sizeof(*fields));
+		if (count && !fields) goto error;
+		for (size_t i = 0; i < count; ++i) fields[i] = pg_evidence_premise(map, prefix + 3 + i);
+		const struct pg_evidence *body = pg_prove_constructor(synthesis->typing, formation, constructor, job->right->result, count, fields);
+		free(fields);
+		if (!body) goto error;
+		if (!count) { job->result = body; finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
+		job->value_job = pg_synthesis_abstract(synthesis, pg_evidence_premise(parameters, 1), context, pg_synthesis_evidence(synthesis, body));
+		if (!job->value_job) goto error;
+	}
 	/* Nullary constructors are values; field-bearing ones are raw functions. */
-	job->result = pg_evidence_rule(function) == PG_RETURN_INTRO
-		? pg_prove_return_value(synthesis->typing, function) : function;
-	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+	forward_proof(synthesis, job, job->value_job);
+	return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
 /* Each universe candidate owns a distinct conditional Self context. Raising

@@ -188,6 +188,7 @@ static const struct pg_evidence *rebase_image(struct pg_typing *typing,
 		if (result && pg_alpha_equal(result->subject->core, core) == 1 &&
 			pg_alpha_equal(result->classifier, classifier) == 1) return result;
 		if (image->rule == PG_CONTEXT_PROJECTION) image = image->premises[1];
+		else if (image->rule == PG_TYPE_CONVERSION) image = image->premises[0];
 		else if (image->rule == PG_REINDEX && image->premises[1]->rule == PG_VARIABLE)
 			image = pg_substitution_image(typing, image->premises[0], image->premises[1]->subject->core->as.reference);
 		else if (image->rule == PG_REINDEX) image = image->premises[1];

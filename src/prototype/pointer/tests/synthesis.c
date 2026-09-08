@@ -3951,6 +3951,14 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	struct pg_inductive_instance nat_instance;
 	assert(pg_inductive_instance(typing, nat, &nat_instance));
 	const struct pg_object *succ_label = pg_data_constructor(pg_data_schema_layout(nat_instance.schema), 1);
+	const struct pg_evidence *shared_scope = complete(&synthesis,
+		pg_synthesis_constructor_scope(&synthesis, pg_synthesis_evidence(&synthesis, nat), succ_label,
+			pg_synthesis_evidence(&synthesis, nat_instance.parameters)), PG_SYNTHESIS_DONE);
+	const struct pg_term *constructor_domain, *constructor_codomain;
+	const struct pg_object *constructor_binder;
+	assert(pg_pi_view(pg_evidence_classifier(succ), &constructor_domain, &constructor_binder, &constructor_codomain));
+	assert(constructor_domain == pg_evidence_subject(nat)->core);
+	assert(constructor_binder == pg_evidence_context(shared_scope)->binder);
 	struct pg_synthesis_job *parameter_job = pg_synthesis_substitution(&synthesis, empty, empty, 0, NULL);
 	struct pg_synthesis_job *scope_job = pg_synthesis_constructor_scope(&synthesis, nat_job, succ_label, parameter_job);
 	assert(scope_job && !pg_synthesis_result(scope_job));
