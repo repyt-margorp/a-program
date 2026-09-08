@@ -82,6 +82,14 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] Exercise the combined pending family -> instance -> formation -> face
+  pipeline on a reflexive family over a line. Requests do not advance the
+  solver or publish partial results; the resulting square retains its Core
+  through explicit formation recovery, and its edge agrees with the original
+  path. A face request on the recovered formation is already completed with
+  the same evidence. This test covers a degenerate square, not general central
+  symmetry, and required no additional production rule.
+  Complete pointer `make check` and ASan/UBSan `synthesis_test` passed.
 - [x] Schedule selected-family instantiation through
   `pg_synthesis_identity_instance`. It waits for three independent value
   producers, exposes the family's classifier, obtains its two endpoint types,

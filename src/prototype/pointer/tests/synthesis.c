@@ -132,6 +132,33 @@ static void identity_instance_jobs(struct pg_typing *typing, struct pg_classifie
 	complete(&synthesis, pg_synthesis_identity_instance(&synthesis, context, l, l, rr), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, pg_synthesis_identity_instance(&synthesis, context, f,
 		pg_synthesis_evidence(&synthesis, pg_prove_return(typing, classifiers, left)), rr), PG_SYNTHESIS_REJECTED);
+	/* A selected reflexive family over a line forms a square. Run the full
+	 * pending instance -> recovered formation -> boundary pipeline. */
+	const struct pg_evidence *base = pg_prove_universe(typing, classifiers, context, 1);
+	const struct pg_evidence *point = pg_prove_type_value(typing, pg_prove_universe(typing, classifiers, context, 0));
+	const struct pg_evidence *line = pg_prove_identity_type(typing, base, point, point);
+	const struct pg_evidence *path = pg_prove_reflexivity(typing, base, point);
+	struct pg_dimensions dimensions;
+	assert(pg_dimensions_init(&dimensions, typing->graph) == 0);
+	struct pg_coordinate coordinates[] = {{PG_AXIS, 0}, {PG_ENDPOINT_ZERO, 0}};
+	const struct pg_dimension_map *face = pg_dimension_map(&dimensions, 1, 2, coordinates);
+	uint64_t steps = synthesis.steps;
+	struct pg_synthesis_job *line_family = pg_synthesis_reflexivity(&synthesis, context,
+		pg_synthesis_evidence(&synthesis, pg_prove_type_value(typing, line)));
+	struct pg_synthesis_job *path_job = pg_synthesis_return(&synthesis, context, pg_prove_return(typing, classifiers, path));
+	struct pg_synthesis_job *square = pg_synthesis_identity_instance(&synthesis, context, line_family, path_job, path_job);
+	struct pg_synthesis_job *formation = pg_synthesis_identity_formation(&synthesis, square);
+	struct pg_synthesis_job *boundary = pg_synthesis_identity_face_job(&synthesis, context, square, face);
+	assert(square && formation && boundary && synthesis.steps == steps);
+	assert(!pg_synthesis_result(square) && !pg_synthesis_result(formation) && !pg_synthesis_result(boundary));
+	const struct pg_evidence *edge = complete(&synthesis, boundary, PG_SYNTHESIS_DONE);
+	same_judgement(edge, path);
+	const struct pg_evidence *recovered = complete(&synthesis, formation, PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(recovered) == PG_IDENTITY_FORM);
+	assert(pg_evidence_subject(recovered)->core == pg_evidence_subject(pg_synthesis_result(square))->core);
+	struct pg_synthesis_job *shared_face = pg_synthesis_identity_face(&synthesis, context, recovered, face);
+	assert(pg_synthesis_status(shared_face) == PG_SYNTHESIS_DONE && pg_synthesis_result(shared_face) == edge);
+	pg_dimensions_destroy(&dimensions);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 }
