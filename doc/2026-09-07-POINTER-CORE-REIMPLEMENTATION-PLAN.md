@@ -82,6 +82,20 @@ not a claim that A Program already implements Narya's typing rules.
 
 Required implementation sequence within N2:
 
+- [x] After `a65dd1e`, retain the current shared normalization job in each
+  conversion instead of searching its index on every suspension step. Switching
+  endpoint changes the borrowed handle; the WHNF-to-NF fallback clears it before
+  requesting the stronger mode. No result cache, acceptance rule or scheduling
+  step is added. `-O2 -pg` synthesis runs before/after this isolated change
+  reduced `pg_whnf_request` calls from 67,566,269 to 129,705. Core intern calls
+  remained 11,060,609 and index insertions 18,968,153: materialization cost is
+  not solved by this change. The before profile attributed 50.00% sampled self
+  time to intern and 15.39% to index insertion; these are instrumented samples,
+  not stable wall-clock benchmarks. Only completed runs' matching `gmon.out`
+  and binaries were used. Full pointer `make check`, profiled synthesis and
+  ASan/UBSan Core tests passed with unchanged cubic solver step counts.
+  General typed symmetry and the high-dimensional reconstruction cost remain
+  open; neither is replaced by a more permissive conversion rule.
 - [x] After `c638e8c`, compute cube-slot permutation directly from coordinates.
   The previous helper interned an input face, composed face and ordered face
   merely to obtain the new slot and intrinsic orientation. Decode once, collect

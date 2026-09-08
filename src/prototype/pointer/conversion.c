@@ -14,6 +14,12 @@ struct pg_conversion_state {
 	const struct pg_term *left;
 	const struct pg_term *right;
 	const struct pg_conversion_certificate *certificate;
+	/* Borrow the shared job while a comparison endpoint is suspended. */
+	const struct pg_term *normalizing;
+	union {
+		struct pg_whnf_job *whnf;
+		struct pg_nf_job *nf;
+	} normalization;
 	uint64_t steps;
 	size_t initial_tasks;
 	int strong;
@@ -24,14 +30,22 @@ static int normalize(void *policy, const struct pg_term *input, const struct pg_
 {
 	struct pg_conversion_state *state = policy;
 	if (state->strong) {
-		struct pg_nf_job *job = pg_nf_request(state->work, &pg_pure_policy, input);
+		if (state->normalizing != input) {
+			state->normalization.nf = pg_nf_request(state->work, &pg_pure_policy, input);
+			state->normalizing = input;
+		}
+		struct pg_nf_job *job = state->normalization.nf;
 		if (!job) return -1;
 		if (pg_nf_status(job) == PG_NF_PENDING)
 			return pg_nf_advance(job, 1) == PG_NF_ERROR ? -1 : 0;
 		*output = pg_nf_result(job);
 		return *output ? 1 : -1;
 	}
-	struct pg_whnf_job *job = pg_whnf_request(state->work, &pg_pure_policy, input);
+	if (state->normalizing != input) {
+		state->normalization.whnf = pg_whnf_request(state->work, &pg_pure_policy, input);
+		state->normalizing = input;
+	}
+	struct pg_whnf_job *job = state->normalization.whnf;
 	if (!job) return -1;
 	if (pg_whnf_status(job) == PG_EVAL_PENDING)
 		return pg_whnf_advance(job, 1) == PG_EVAL_ERROR ? -1 : 0;
@@ -93,6 +107,7 @@ enum pg_conversion_status pg_conversion_advance(struct pg_conversion *conversion
 			state->initial_tasks = pg_comparison_task_count(&state->comparison);
 			pg_comparison_destroy(&state->comparison);
 			state->strong = 1;
+			state->normalizing = NULL;
 			if (pg_comparison_init(&state->comparison, state->left, state->right, state, normalize) != 0)
 				state->failed = 1;
 		} else pg_comparison_advance(&state->comparison, 1);
