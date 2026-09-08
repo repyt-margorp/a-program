@@ -391,6 +391,25 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 		assert(!pg_derivation_parameters(transport, &parameters) && parameters.direction == side);
 	}
 	printf("derivation solve: %llu steps\n", (unsigned long long)synthesis.steps);
+	/* Loaded rule requests may simplify; their result remains ordinary evidence. */
+	struct pg_derivation_input *projection = pg_alloc(typing->graph,
+		sizeof(*projection) + 2 * sizeof(*projection->premises));
+	assert(projection);
+	assert(roots[0]->rule == PG_LAMBDA_INTRO);
+	assert(roots[0]->premises[0]->rule == PG_PI_FORM);
+	const struct pg_derivation_input *extended = roots[0]->premises[0]->premises[1];
+	assert(extended->rule == PG_CONTEXT_EXTEND);
+	*projection = (struct pg_derivation_input){.rule = PG_CONTEXT_PROJECTION, .count = 2};
+	projection->premises[0] = extended->premises[0];
+	projection->premises[1] = roots[0];
+	struct pg_synthesis_job *projected = pg_synthesis_derivation(&synthesis, projection);
+	assert(projected);
+	for (unsigned steps = 0; pg_synthesis_status(projected) == PG_SYNTHESIS_PENDING; ++steps) {
+		assert(steps < 1000);
+		pg_synthesis_advance(&synthesis, chunk);
+	}
+	assert(pg_synthesis_status(projected) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(projected) == left);
 	const struct pg_derivation_input *saved = roots[3];
 	size_t bytes = sizeof(*saved) + saved->count * sizeof(*saved->premises);
 	struct pg_derivation_input *wrong = pg_alloc(typing->graph, bytes);

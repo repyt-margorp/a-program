@@ -49,6 +49,16 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 	return 0;
 }
 
+/* Expanded encodings carry formation choices not passed directly to the
+ * public constructor. Do not silently replace those supplied premises. */
+static const struct pg_evidence *retained_premises(const struct pg_evidence *result,
+	enum pg_evidence_rule rule, size_t count, const struct pg_evidence *const *premises)
+{
+	if (!result || pg_evidence_rule(result) != rule || pg_evidence_premise_count(result) != count) return NULL;
+	for (size_t i = 0; i < count; ++i) if (pg_evidence_premise(result, i) != premises[i]) return NULL;
+	return result;
+}
+
 /* Arity selection is plumbing only: semantic checks stay in the named rules. */
 #define RULE(tag, arity, call) case tag: if (count != arity) return NULL; result = (call); break
 
@@ -116,11 +126,15 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 			boundary.right_substitution, boundary.path_count, boundary.paths); break;
 	default: return NULL;
 	}
-	/* Rules may canonicalize an inversion or derive intermediate premises.
-	 * An archived rule application must retain exactly its claimed premises. */
-	if (!result || pg_evidence_rule(result) != rule || pg_evidence_premise_count(result) != count) return NULL;
-	for (size_t i = 0; i < count; ++i) if (pg_evidence_premise(result, i) != p[i]) return NULL;
-	return result;
+	/* Rule inputs are requests, including after loading. Ordinary constructors
+	 * may return an existing proof (identity projection, content inversion).
+	 * The serializer records that resulting proof, not the original request. */
+	switch (rule) {
+	case PG_IDENTITY_TRANSPORT: case PG_REFLEXIVITY:
+	case PG_IDENTITY_LIFT: case PG_FAMILY_ACTION:
+		return retained_premises(result, rule, count, p);
+	default: return result;
+	}
 }
 
 #undef RULE

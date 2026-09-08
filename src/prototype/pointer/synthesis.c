@@ -375,7 +375,16 @@ struct pg_synthesis_job *pg_synthesis_handler_return(struct pg_synthesis *synthe
 	if (!clause || clause->kind != PG_SYNTAX_CLAUSE) return NULL;
 	const void *inputs[] = {scope, input, clause};
 	struct pg_synthesis_job *job = request_inputs(synthesis, HANDLER_RETURN_JOB, 3, inputs);
-	if (job) { job->scope = scope; job->syntax = clause; job->left = input; }
+	if (job && !job->left) {
+		job->scope = scope;
+		job->syntax = clause;
+		struct pg_synthesis_job *body = request_job(synthesis, BODY_JOB, input, NULL);
+		if (!body) return NULL;
+		struct pg_derivation_input projection = {.rule = PG_CONTEXT_PROJECTION, .count = 2};
+		struct pg_synthesis_job *premises[] = {scope->context_job, body};
+		job->left = pg_synthesis_rule(synthesis, &projection, premises, NULL, NULL);
+		if (!job->left) return NULL;
+	}
 	return job;
 }
 
@@ -2471,41 +2480,45 @@ static int return_clause(const struct pg_syntax *clause)
 		name.length == 6 && !memcmp(name.text, "return", 6);
 }
 
+static struct pg_synthesis_job *rule_premise(struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, size_t index);
+
 static void handler_return_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *clause = job->syntax;
 	if (!return_clause(clause)) goto rejected;
 	if (clause->item_count != 1) goto rejected;
 	if (clause->items[0].operation) goto rejected;
-	if (job->left->status == PG_SYNTHESIS_PENDING) {
-		depend(synthesis, job, job->left);
-		return;
-	}
-	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 	if (!job->inner) {
-		const struct pg_evidence *input = pg_prove_projection(synthesis->typing,
-			source_context(job->scope), job->left->result);
-		if (!input) goto unsupported;
-		input = computation(synthesis, input);
-		if (!input) goto unsupported;
-		job->application_frame = open_continuation(synthesis, source_context(job->scope), input);
-		if (!job->application_frame) goto unsupported;
-		const struct pg_evidence *context = job->application_frame->context;
-		job->inner = pg_synthesis_bind(synthesis, job->scope, clause->items[0].name,
-			pg_evidence_context(context)->binder, context);
+		job->binder = pg_binder(synthesis->typing->graph);
+		struct pg_synthesis_job *context = pg_synthesis_result_context(synthesis,
+			job->scope->context_job, job->left, job->binder);
+		if (!context) goto error;
+		job->inner = pg_synthesis_bind_context(synthesis, job->scope, clause->items[0].name,
+			job->binder, context);
 		if (!job->inner) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		job->right = pg_synthesis_request(synthesis, job->inner, clause->right);
+		job->value_job = pg_synthesis_lambda_body(synthesis, rule_premise(synthesis, context, 1),
+			context, job->right);
 	}
-	if (!job->value_job) job->value_job = pg_synthesis_lambda_body(synthesis,
-		pg_synthesis_evidence(synthesis, job->application_frame->domain),
-		pg_synthesis_evidence(synthesis, job->application_frame->context), job->right);
-	forward_proof(synthesis, job, job->value_job);
+	if (!job->value_job) goto error;
+	if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return; }
+	if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return; }
+	const struct pg_evidence *context = source_context(job->inner);
+	if (!context) goto error;
+	struct continuation_frame *frame = pg_alloc(synthesis->typing->graph, sizeof(*frame));
+	if (!frame) goto error;
+	*frame = (struct continuation_frame){.input = job->left->result,
+		.domain = pg_evidence_premise(context, 1), .context = context};
+	job->application_frame = frame;
+	job->result = job->value_job->result;
+	finish(synthesis, job, PG_SYNTHESIS_DONE);
 	return;
 rejected:
 	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
 	return;
-unsupported:
-	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
 static void return_handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -3091,6 +3104,7 @@ static void forward_structure(struct pg_synthesis *synthesis, struct pg_synthesi
 
 static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_job *job)
 {
+	if (job->role == HANDLER_RETURN_JOB) return job->value_job;
 	if (job->role != EXPRESSION_JOB) return NULL;
 	if (job->syntax->kind == PG_SYNTAX_QUOTE) return job->right;
 	if (job->syntax->kind == PG_SYNTAX_LAMBDA) return job->value_job;
@@ -3689,6 +3703,7 @@ error:
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (atomic_rule_step(synthesis, job)) return;
+	if (job->role == HANDLER_RETURN_JOB) { handler_return_step(synthesis, job); return; }
 	/* Self application and IH notation share syntax until scope resolution. */
 	if (job->role == EXPRESSION_JOB && !hypothesis_syntax(job->syntax))
 		if (!prepare_expression(synthesis, job)) return;
@@ -3720,7 +3735,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	if (job->role == EFFECT_SUBSTITUTION_JOB) { effect_substitution_step(synthesis, job); return; }
 	if (job->role == OPERATION_REFERENCE_JOB) { operation_reference_step(synthesis, job); return; }
-	if (job->role == HANDLER_RETURN_JOB) { handler_return_step(synthesis, job); return; }
 	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }
 	if (job->role == HANDLER_JOB) { handler_step(synthesis, job); return; }
 	if (job->role == HANDLER_CARRIER_JOB) { handler_carrier_step(synthesis, job); return; }

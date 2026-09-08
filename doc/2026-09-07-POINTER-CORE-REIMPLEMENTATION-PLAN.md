@@ -304,6 +304,26 @@ Next implementation sequence (prerequisite for automatic source handlers):
   Normal checks, examples and rebuilt ASan/UBSan synthesis tests pass. List
   synthesis transitions increase from 1156 to 1233 as continuation formation
   becomes scheduled; this is not an execution-speed improvement.
+  Handler-return migration exposed an overconstraint in derivation.c: every
+  rule request was required to retain its requested proof shape, rejecting a
+  valid identity projection that returns its input evidence. Corrected uniformly
+  for producer and loaded inputs: ordinary pg_prove_* constructors validate all
+  arguments and may return canonical evidence. Transport, reflexivity, lift and
+  family action retain exact formation-premise checks because their encodings
+  supply additional formation choices reconstructed by the constructor adapter.
+  Existing wrong-direction/premise rejection tests remain unchanged and pass.
+  There is no source-only bypass, second checker or new input-mode flag.
+  The writer serializes the actual accepted evidence, not a claim that the
+  requested rule shape survived. Loaded inputs compute their own conclusions;
+  separately declared export conclusions still require matching before exposure.
+  Pending equation/parameter checkpoint transport remains unfinished.
+  Handler return clauses now prepare projection, result context, source body and
+  Lambda producers before input/context acceptance; accepted continuation frames
+  are obtained only at completion. Tests obtain the return classifier before row
+  sealing, preserve its binder through acceptance, and run a canonicalizing
+  projection request through the loaded-input Solve path as well. Normal checks,
+  examples and rebuilt ASan/UBSan synthesis tests pass. Operation-clause generation
+  and full automatic handler effect inference remain incomplete.
   Normal `check`, eight example synthesis cases, six runtime cases and rebuilt
   ASan/UBSan synthesis tests pass.
   Validation: normal `check`, eight example synthesis cases, six runtime cases

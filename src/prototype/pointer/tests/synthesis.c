@@ -401,6 +401,22 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, result_classifier, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(result_classifier) == pg_universe(classifiers, 0));
 		assert(!pg_synthesis_result(result_context) && !pg_synthesis_result(result_variable));
+		const char *return_source = "h := M @#.return r => r;";
+		struct pg_parser return_parser;
+		struct pg_definition return_definition;
+		pg_parser_init(&return_parser, typing->graph, return_source, strlen(return_source));
+		assert(pg_parser_next(&return_parser, &return_definition) == 1);
+		struct pg_synthesis_job *return_clause_job = pg_synthesis_handler_return(&synthesis, scope, body,
+			return_definition.expression->items[0].expression);
+		struct pg_synthesis_job *return_clause_type = pg_synthesis_classifier_structure(&synthesis, return_clause_job);
+		assert(!complete(&synthesis, return_clause_type, PG_SYNTHESIS_DONE));
+		const struct pg_term *return_domain, *return_codomain;
+		const struct pg_object *return_binder;
+		assert(pg_pi_view(pg_synthesis_type_structure_result(return_clause_type),
+			&return_domain, &return_binder, &return_codomain));
+		assert(return_domain == pg_universe(classifiers, 0));
+		assert(return_codomain == pg_return_type(classifiers, return_domain));
+		assert(!pg_synthesis_result(return_clause_job));
 		struct pg_synthesis_job *source_type = pg_synthesis_classifier_structure(&synthesis, source_variable);
 		struct pg_synthesis_job *source_term = pg_synthesis_term_structure(&synthesis, source_variable);
 		assert(!complete(&synthesis, source_type, PG_SYNTHESIS_DONE));
@@ -484,6 +500,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_evidence *expected_context = pg_prove_context_extension(typing,
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
+		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_classifier(return_proof) == pg_synthesis_type_structure_result(return_clause_type));
 		const struct pg_evidence *result_proof = complete(&synthesis, result_variable, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(result_proof)->core == pg_reference(typing->graph, result_binder));
 		assert(pg_evidence_classifier(result_proof) == pg_universe(classifiers, 0));
