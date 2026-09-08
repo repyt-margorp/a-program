@@ -3054,9 +3054,23 @@ static void forward_structure(struct pg_synthesis *synthesis, struct pg_synthesi
 	finish(synthesis, job, job->left->status);
 }
 
+static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_job *job)
+{
+	if (job->role != EXPRESSION_JOB) return NULL;
+	if (job->syntax->kind == PG_SYNTAX_QUOTE) return job->right;
+	if (job->syntax->kind == PG_SYNTAX_ATOM && job->binder) return job->left;
+	return NULL;
+}
+
 static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	struct pg_synthesis_job *source_rule = prepared_source_rule(producer);
+	if (source_rule) {
+		if (!job->left) job->left = pg_synthesis_term_structure(synthesis, source_rule);
+		forward_structure(synthesis, job);
+		return;
+	}
 	const struct pg_derivation_input *input = producer->role == DERIVATION_JOB ? producer->inputs[0] : NULL;
 	const struct pg_object *operation = NULL;
 	if (input) {
@@ -3125,6 +3139,12 @@ static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthes
 static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	struct pg_synthesis_job *source_rule = prepared_source_rule(producer);
+	if (source_rule) {
+		if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, source_rule);
+		forward_structure(synthesis, job);
+		return;
+	}
 	const struct pg_derivation_input *input = producer->role == DERIVATION_JOB ? producer->inputs[0] : NULL;
 	if (!job->left && input) {
 		struct pg_synthesis_job *premise = rule_premise(synthesis, producer, 0);

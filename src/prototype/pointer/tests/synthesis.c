@@ -333,6 +333,18 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(body_type == pg_synthesis_classifier_structure(&synthesis, body));
 		assert(!complete(&synthesis, body_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(body_type) == symbolic_f);
+		struct pg_synthesis_job *source_type = pg_synthesis_classifier_structure(&synthesis, source_variable);
+		struct pg_synthesis_job *source_term = pg_synthesis_term_structure(&synthesis, source_variable);
+		assert(!complete(&synthesis, source_type, PG_SYNTHESIS_DONE));
+		assert(!complete(&synthesis, source_term, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(source_type) == pg_thunk_type(classifiers, symbolic_f));
+		assert(pg_synthesis_type_structure_result(source_term) == pg_reference(typing->graph, k));
+		assert(!pg_synthesis_result(source_variable));
+		struct pg_synthesis_job *invalid_quote = request(&synthesis, scope, "v := &k;");
+		struct pg_synthesis_job *quote_type = pg_synthesis_classifier_structure(&synthesis, invalid_quote);
+		assert(!complete(&synthesis, quote_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(quote_type)
+			== pg_thunk_type(classifiers, pg_thunk_type(classifiers, symbolic_f)));
 		struct pg_synthesis_job *quoted_lambda = rule_job(&synthesis, PG_THUNK_INTRO, NULL, 1, &lambda);
 		struct pg_synthesis_job *quoted_type = pg_synthesis_classifier_structure(&synthesis, quoted_lambda);
 		assert(!complete(&synthesis, quoted_type, PG_SYNTHESIS_DONE));
@@ -383,6 +395,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
 		complete(&synthesis, outer_variable, PG_SYNTHESIS_DONE);
+		complete(&synthesis, invalid_quote, PG_SYNTHESIS_REJECTED);
 		const struct pg_evidence *applied = complete(&synthesis, application, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_classifier(applied) == pg_effect_type(classifiers, row, pg_reference(typing->graph, b)));
 		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));

@@ -157,6 +157,7 @@ struct pg_synthesis_job *pg_synthesis_type_structure(struct pg_synthesis *synthe
 	struct pg_synthesis_job *formation);
 const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthesis_job *job);
 /* Structural classifier for pending VARIABLE/FORCE/THUNK/LAMBDA/APP rule inputs.
+ * Prepared source VARIABLE/quotation rules share this projection too.
  * Uses binder identity through context producers, not names or accepted proof
  * guesses. Other producers await acceptance. Read the raw result with the same
  * type_structure_result accessor; it supplies no typing evidence. */

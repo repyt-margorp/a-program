@@ -197,6 +197,16 @@ Next implementation sequence (prerequisite for automatic source handlers):
   not completed source APP elaboration or automatic handler effect inference.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass for dependent APP projection.
+  Prepared source VARIABLE and quotation now expose their existing rule
+  producers to structural subject/classifier jobs. There is no second source
+  traversal or name resolver. Tests read a source variable's symbolic U/F type
+  and exact binder term before context acceptance; a source quotation's raw
+  structure remains distinct from the later rejection of quoting a value.
+  Unprepared/unsupported source forms still await their original producer.
+  General source APP adaptation (including sequential arguments), aliases and
+  Lambda rule construction before acceptance remain to be connected.
+  Validation: normal `check`, eight example synthesis cases, six runtime cases
+  and rebuilt ASan/UBSan synthesis tests pass for these source projections.
   Validation: normal `check`, eight example synthesis cases, six runtime cases
   and rebuilt ASan/UBSan synthesis tests pass after correcting the test's
   pointer-equality assumption about capture-avoiding substitution.
