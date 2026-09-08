@@ -1213,10 +1213,19 @@ static void selected_instances(struct pg_typing *typing, struct pg_classifiers *
 		pg_prove_projection(typing, choices, paths[1])};
 	struct pg_synthesis_job *original = pg_synthesis_family_action(&split, producer, cl, cr, 2, selected);
 	selected[0] = pg_prove_variable(typing, choices, alternative);
-	struct pg_synthesis_job *incoherent = pg_synthesis_family_action(&split, producer, cl, cr, 2, selected);
-	complete(&split, incoherent, PG_SYNTHESIS_UNSUPPORTED);
+	assert(!pg_prove_family_action(typing, kind, input, cl, cr, 2, selected));
+	struct pg_synthesis_job *unconverted = pg_synthesis_family_action(&split, producer, cl, cr, 2, selected);
+	struct pg_synthesis_job *bulk_unconverted = pg_synthesis_family_action(&whole, other_producer, cl, cr, 2, selected);
+	const struct pg_evidence *automatic = complete(&split, unconverted, PG_SYNTHESIS_DONE);
+	pg_synthesis_advance(&whole, 100000);
+	assert(pg_synthesis_status(bulk_unconverted) == PG_SYNTHESIS_DONE);
+	same_judgement(automatic, pg_synthesis_result(bulk_unconverted));
+	const struct pg_evidence *converted_path = pg_evidence_premise(pg_evidence_premise(automatic, 0), 4);
+	assert(pg_evidence_rule(converted_path) == PG_TYPE_CONVERSION);
+	assert(pg_evidence_premise(converted_path, 0) == selected[1]);
 	/* The second path's family still mentions the first chosen path, even for
-	 * a constant B. Rebase it by explicit conversion, not inside the rule. */
+	 * a constant B. The solver builds the same explicit conversion as below;
+	 * the kernel rule itself still requires the converted premise. */
 	const struct pg_evidence *prefix = pg_evidence_premise(source, 0);
 	const struct pg_evidence *second_type = pg_prove_family_identity_type(typing, pg_evidence_premise(source, 1),
 		pg_prove_substitution(typing, prefix, choices, 4, li), pg_prove_substitution(typing, prefix, choices, 4, ri),
@@ -1227,10 +1236,11 @@ static void selected_instances(struct pg_typing *typing, struct pg_classifiers *
 	selected[1] = pg_prove_conversion(typing, selected[1], second_type, pg_conversion_certificate(&comparison));
 	pg_conversion_destroy(&comparison);
 	struct pg_synthesis_job *changed = pg_synthesis_family_action(&split, producer, cl, cr, 2, selected);
-	assert(original && changed && original != changed && incoherent != changed);
+	assert(original && changed && original != changed && unconverted != changed);
 	assert(pg_synthesis_family_action(&split, producer, cl, cr, 2, selected) == changed);
 	const struct pg_evidence *p0 = complete(&split, original, PG_SYNTHESIS_DONE);
 	const struct pg_evidence *p1 = complete(&split, changed, PG_SYNTHESIS_DONE);
+	same_judgement(automatic, p1);
 	assert(pg_conversion_init(&comparison, &work, pg_evidence_subject(p0)->core, pg_evidence_subject(p1)->core) == 0);
 	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_DIFFERENT);
 	pg_conversion_destroy(&comparison);
@@ -1241,7 +1251,7 @@ static void selected_instances(struct pg_typing *typing, struct pg_classifiers *
 	assert(!pg_synthesis_family_action(&split, producer, ls, rs, 2, missing));
 	struct pg_synthesis_job *wrong = pg_synthesis_family_action(&split, producer, rs, ls, 2, paths);
 	assert(wrong && wrong != job);
-	complete(&split, wrong, PG_SYNTHESIS_UNSUPPORTED);
+	complete(&split, wrong, PG_SYNTHESIS_REJECTED);
 	pg_synthesis_destroy(&split);
 	pg_synthesis_destroy(&whole);
 	pg_whnf_work_destroy(&work);

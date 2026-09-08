@@ -108,7 +108,9 @@ struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis
 /* Act on a synthesized input along checked substitutions and selected paths.
  * Input belongs to this store; its source context comes from the substitutions.
  * The request does not synthesize or act immediately. Boundary evidence must
- * outlive the store. All selected paths participate in the immutable job key. */
+ * outlive the store. All selected paths participate in the immutable job key.
+ * After synthesis, check each path against its prefix-dependent family using
+ * ordinary conversion evidence; expected families never guide input synthesis. */
 struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
 	const struct pg_evidence *right_substitution, size_t count,

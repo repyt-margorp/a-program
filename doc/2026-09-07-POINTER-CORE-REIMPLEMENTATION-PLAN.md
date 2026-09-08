@@ -1631,6 +1631,22 @@ a specified type family, not a global endpoint-only relation.
   Substituting the domain path for a distinct result path is not DefEq, even
   though their endpoint types coincide. No implementation rule was changed.
   Higher coherence and general datatype fibrancy remain unproved.
+- [x] September 8, after `46b59d2`: move boundary-path post-checking into
+  the existing family-action synthesis job. The input synthesizes first;
+  then each supplied path is checked against its prefix-dependent family
+  with the ordinary conversion machine. Accepted prefix substitutions grow
+  by the existing pairing rule. The final action receives explicit converted
+  path evidence; the kernel rule, Core and pure conversion policy are unchanged.
+  Pending conversion uses ordinary scheduler transitions, not another solver.
+  `selected_instances` now compares automatic and manual rebasing, inspects
+  the retained conversion premise, tests split/bulk completion, and confirms
+  that the raw kernel call still rejects an unconverted boundary. Reversed
+  endpoints are rejected rather than reported as unsupported. All originally
+  selected path proofs remain part of the immutable request key.
+  This is not surface Act completion or higher-coherence certification.
+  Implementation: `synthesis.c` +78/-8, `synthesis.h` +3/-1;
+  tests: +15/-5; documentation separate. Optimized and ASan/UBSan pointer
+  checks pass; synthesis also passes with a 512 KiB stack.
 - [ ] Resolve this N2 equational choice before enabling structural U/Pi
   transport or using it to justify nominal datatype fibrancy. If the
   elimination-driven alternative is insufficient, either admit

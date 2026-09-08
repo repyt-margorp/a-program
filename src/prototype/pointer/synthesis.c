@@ -66,6 +66,12 @@ struct declaration_state {
 	struct pg_synthesis_job **producers;
 	size_t indexed, checked;
 };
+struct family_state {
+	const struct pg_evidence *maps[2];
+	const struct pg_evidence **declarations;
+	const struct pg_evidence **paths;
+	size_t count, common, next;
+};
 enum job_role { EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, BINDING_JOB, TELESCOPE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB };
 struct pg_synthesis_job {
@@ -101,6 +107,7 @@ struct pg_synthesis_job {
 	struct data_result_state *data_result;
 	struct declaration_state *declaration;
 	const struct pg_data_schema *schema;
+	struct family_state *family;
 	const void *inputs[];
 };
 
@@ -364,7 +371,8 @@ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthes
 	const struct pg_evidence *const *paths)
 {
 	if (!input || input->owner != synthesis) return NULL;
-	if (!left_substitution || !right_substitution) return NULL;
+	if (!pg_evidence_owned_by(left_substitution, synthesis->typing)) return NULL;
+	if (!pg_evidence_owned_by(right_substitution, synthesis->typing)) return NULL;
 	if (pg_evidence_judgement(left_substitution) != PG_JUDGEMENT_SUBSTITUTION) return NULL;
 	if (pg_evidence_judgement(right_substitution) != PG_JUDGEMENT_SUBSTITUTION) return NULL;
 	if (count && !paths) return NULL;
@@ -1412,6 +1420,73 @@ static void data_case_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 }
 
+static int family_paths(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	const struct pg_evidence *left = job->inputs[0], *right = job->inputs[1];
+	if (!job->family) {
+		size_t arity = pg_evidence_premise_count(left) - 2, count = job->input_count - 3;
+		if (count > arity || pg_evidence_premise_count(right) != arity + 2) goto rejected;
+		if (pg_evidence_context(left) != pg_evidence_context(right)) goto rejected;
+		if (pg_evidence_context(pg_evidence_premise(left, 0)) != pg_evidence_context(pg_evidence_premise(right, 0))) goto rejected;
+		struct family_state *state = pg_alloc(synthesis->typing->graph, sizeof(*state));
+		if (!state) goto error;
+		job->family = state;
+		state->count = count;
+		state->common = arity - count;
+		state->declarations = pg_alloc(synthesis->typing->graph, count * sizeof(*state->declarations));
+		state->paths = pg_alloc(synthesis->typing->graph, count * sizeof(*state->paths));
+		if (count && (!state->declarations || !state->paths)) goto error;
+		const struct pg_evidence *prefix = pg_evidence_premise(left, 0);
+		for (size_t i = count; i; --i) {
+			state->declarations[i - 1] = prefix;
+			prefix = pg_evidence_premise(prefix, 0);
+		}
+		struct pg_graph temporary = {0};
+		const struct pg_evidence **images = pg_alloc(&temporary, state->common * sizeof(*images));
+		if (state->common && !images) { pg_graph_destroy(&temporary); goto error; }
+		for (size_t side = 0; side < 2; ++side) {
+			const struct pg_evidence *map = job->inputs[side];
+			for (size_t i = 0; i < state->common; ++i) images[i] = pg_evidence_premise(map, i + 2);
+			state->maps[side] = pg_prove_substitution(synthesis->typing, prefix,
+				pg_evidence_premise(map, 1), state->common, images);
+		}
+		pg_graph_destroy(&temporary);
+		if (!state->maps[0] || !state->maps[1]) goto rejected;
+	}
+	struct family_state *state = job->family;
+	if (state->next == state->count) return 1;
+	size_t i = state->next;
+	if (!job->checking_type) {
+		job->checking_term = job->inputs[i + 3];
+		if (!pg_evidence_owned_by(job->checking_term, synthesis->typing)) goto rejected;
+		if (pg_evidence_judgement(job->checking_term) != PG_JUDGEMENT_VALUE) goto rejected;
+		if (pg_evidence_context(job->checking_term) != pg_evidence_context(left)) goto rejected;
+		job->checking_type = pg_prove_family_identity_type(synthesis->typing,
+			pg_evidence_premise(state->declarations[i], 1), state->maps[0], state->maps[1], i, state->paths,
+			pg_evidence_premise(left, state->common + i + 2), pg_evidence_premise(right, state->common + i + 2));
+		if (!job->checking_type) goto rejected;
+	}
+	const struct pg_evidence *checked = compare(synthesis, job);
+	if (!checked) return 0;
+	state->paths[i] = checked;
+	for (size_t side = 0; side < 2; ++side)
+		state->maps[side] = pg_prove_substitution_pair(synthesis->typing, state->maps[side], state->declarations[i],
+			pg_evidence_premise(job->inputs[side], state->common + i + 2));
+	if (!state->maps[0] || !state->maps[1]) goto rejected;
+	pg_conversion_destroy(&job->comparison);
+	job->comparing = 0;
+	job->checking_type = NULL;
+	++state->next;
+	enqueue(synthesis, job);
+	return 0;
+rejected:
+	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
+	return 0;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+	return 0;
+}
+
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
@@ -1440,14 +1515,9 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, input);
 		if (!type) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		if (job->role == FAMILY_ACTION_JOB) {
-			size_t count = job->input_count - 3;
-			struct pg_graph temporary = {0};
-			const struct pg_evidence **paths = pg_alloc(&temporary, count * sizeof(*paths));
-			if (count && !paths) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			for (size_t i = 0; i < count; ++i) paths[i] = job->inputs[i + 3];
+			if (!family_paths(synthesis, job)) return;
 			job->result = pg_prove_family_action(synthesis->typing, type, input,
-				job->inputs[0], job->inputs[1], count, paths);
-			pg_graph_destroy(&temporary);
+				job->inputs[0], job->inputs[1], job->family->count, job->family->paths);
 		} else job->result = pg_prove_reflexivity(synthesis->typing, type, input);
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 		return;
