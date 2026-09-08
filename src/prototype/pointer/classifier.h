@@ -22,6 +22,22 @@ const struct pg_term *pg_pi(struct pg_graph *graph,
 	const struct pg_term *domain, const struct pg_object *binder, const struct pg_term *codomain);
 int pg_pi_view(const struct pg_term *term, const struct pg_term **domain,
 	const struct pg_object **binder, const struct pg_term **codomain);
+struct pg_effect_row;
+/* Closed sets of exact operation-label pointers. NULL is invalid/unknown,
+ * never the empty set. Rows and referenced labels must outlive their uses.
+ * This representation does not implement row metavariables or signatures. */
+const struct pg_effect_row *pg_effect_row(struct pg_graph *graph,
+	size_t count, const struct pg_object *const *labels);
+const struct pg_effect_row *pg_effect_union(struct pg_graph *graph,
+	const struct pg_effect_row *left, const struct pg_effect_row *right);
+/* Invalid row: count returns SIZE_MAX; membership returns -1. */
+size_t pg_effect_count(const struct pg_effect_row *row);
+int pg_effect_contains(const struct pg_effect_row *row, const struct pg_object *label);
+const struct pg_term *pg_effect_type(struct pg_classifiers *classifiers,
+	const struct pg_effect_row *effects, const struct pg_term *value_type);
+int pg_effect_type_view(const struct pg_term *term,
+	const struct pg_effect_row **effects, const struct pg_term **value_type);
+/* Pure F is the empty-row instance; its view rejects nonempty rows. */
 const struct pg_term *pg_return_type(struct pg_classifiers *classifiers, const struct pg_term *value_type);
 const struct pg_term *pg_thunk_type(struct pg_classifiers *classifiers, const struct pg_term *computation_type);
 int pg_return_type_view(const struct pg_term *term, const struct pg_term **value_type);

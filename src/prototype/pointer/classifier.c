@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <errno.h>
+#include <stdlib.h>
 
 static const struct pg_object_class universe_class = {"universe"};
 static const struct pg_object_class pi_class = {"pi-former"};
@@ -12,15 +13,118 @@ static const struct pg_object_class return_type_class = {"return-type-former"};
 static const struct pg_object_class thunk_type_class = {"thunk-type-former"};
 static const struct pg_object return_type_former = {PG_SEMANTIC_OBJECT, &return_type_class};
 static const struct pg_object thunk_type_former = {PG_SEMANTIC_OBJECT, &thunk_type_class};
+static const struct pg_object_class effect_row_class = {"closed-effect-row"};
+
+struct pg_effect_row {
+	struct pg_object_entry base;
+	size_t count;
+	const struct pg_object **labels;
+};
+static const struct pg_effect_row empty_effects = {
+	.base.object = {PG_SEMANTIC_OBJECT, &effect_row_class}
+};
 
 static const struct {
 	const struct pg_object *object;
 	const char *name;
 } descriptors[] = {
 	{&pi_former, "kernel/pi/v1"},
-	{&return_type_former, "kernel/return-type/v1"},
+	{&return_type_former, "kernel/return-type/v2"},
+	{&empty_effects.base.object, "kernel/effect-row/empty/v1"},
 	{&thunk_type_former, "kernel/thunk-type/v1"}
 };
+
+static int compare_effects(const void *left, const void *right)
+{
+	uintptr_t a = (uintptr_t)*(const struct pg_object *const *)left;
+	uintptr_t b = (uintptr_t)*(const struct pg_object *const *)right;
+	return a < b ? -1 : a != b;
+}
+
+static const struct pg_effect_row *intern_effects(struct pg_graph *graph,
+	size_t count, const struct pg_object *const *labels)
+{
+	if (!count) return &empty_effects;
+	if (!graph->objects.capacity && pg_index_init(&graph->objects)) return NULL;
+	uint64_t hash = UINT64_C(1469598103934665603) ^ count;
+	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)labels[i]) * UINT64_C(1099511628211);
+	for (struct pg_index_entry *p = pg_index_candidates(&graph->objects, hash); p; p = p->next) {
+		const struct pg_object_entry *base = (const struct pg_object_entry *)p;
+		if (base->object.owner != &effect_row_class) continue;
+		const struct pg_effect_row *row = (const struct pg_effect_row *)base;
+		if (row->count == count && !memcmp(row->labels, labels, count * sizeof(*labels))) return row;
+	}
+	struct pg_effect_row *row = pg_alloc(graph, sizeof(*row));
+	if (!row) return NULL;
+	row->labels = pg_alloc(graph, count * sizeof(*row->labels));
+	if (!row->labels) return NULL;
+	memcpy(row->labels, labels, count * sizeof(*labels));
+	row->count = count;
+	row->base.object = (struct pg_object){PG_SEMANTIC_OBJECT, &effect_row_class};
+	return pg_index_insert(&graph->objects, &row->base.index, hash) ? NULL : row;
+}
+
+const struct pg_effect_row *pg_effect_row(struct pg_graph *graph,
+	size_t count, const struct pg_object *const *labels)
+{
+	if (!graph || (count && !labels) || count > SIZE_MAX / sizeof(*labels)) return NULL;
+	if (!count) return &empty_effects;
+	const struct pg_object **sorted = malloc(count * sizeof(*sorted));
+	if (!sorted) return NULL;
+	const struct pg_effect_row *result = NULL;
+	for (size_t i = 0; i < count; ++i) {
+		if (!labels[i] || labels[i]->kind != PG_SEMANTIC_OBJECT) goto done;
+		sorted[i] = labels[i];
+	}
+	qsort(sorted, count, sizeof(*sorted), compare_effects);
+	size_t unique = 1;
+	for (size_t i = 1; i < count; ++i) if (sorted[i] != sorted[unique - 1]) sorted[unique++] = sorted[i];
+	result = intern_effects(graph, unique, sorted);
+done:
+	free(sorted);
+	return result;
+}
+
+const struct pg_effect_row *pg_effect_union(struct pg_graph *graph,
+	const struct pg_effect_row *left, const struct pg_effect_row *right)
+{
+	if (!graph || !left || !right) return NULL;
+	if (left == right) return left;
+	if (!left->count) return right;
+	if (!right->count) return left;
+	if (left->count > SIZE_MAX - right->count) return NULL;
+	size_t capacity = left->count + right->count;
+	if (capacity > SIZE_MAX / sizeof(const struct pg_object *)) return NULL;
+	const struct pg_object **labels = malloc(capacity * sizeof(*labels));
+	if (!labels) return NULL;
+	size_t i = 0, j = 0, count = 0;
+	while (i < left->count && j < right->count) {
+		const struct pg_object *a = left->labels[i], *b = right->labels[j];
+		if (a == b) { labels[count++] = a; ++i; ++j; }
+		else if ((uintptr_t)a < (uintptr_t)b) { labels[count++] = a; ++i; }
+		else { labels[count++] = b; ++j; }
+	}
+	while (i < left->count) labels[count++] = left->labels[i++];
+	while (j < right->count) labels[count++] = right->labels[j++];
+	const struct pg_effect_row *result = intern_effects(graph, count, labels);
+	free(labels);
+	return result;
+}
+
+size_t pg_effect_count(const struct pg_effect_row *row) { return row ? row->count : SIZE_MAX; }
+
+int pg_effect_contains(const struct pg_effect_row *row, const struct pg_object *label)
+{
+	if (!row || !label) return -1;
+	size_t low = 0, high = row->count;
+	while (low < high) {
+		size_t middle = low + (high - low) / 2;
+		if (row->labels[middle] == label) return 1;
+		if ((uintptr_t)row->labels[middle] < (uintptr_t)label) low = middle + 1;
+		else high = middle;
+	}
+	return 0;
+}
 
 struct universe_object {
 	struct pg_object object;
@@ -147,7 +251,28 @@ static int unary_view(const struct pg_term *term, const struct pg_object *former
 
 const struct pg_term *pg_return_type(struct pg_classifiers *classifiers, const struct pg_term *value_type)
 {
-	return unary_type(classifiers, &return_type_former, value_type);
+	return pg_effect_type(classifiers, &empty_effects, value_type);
+}
+
+const struct pg_term *pg_effect_type(struct pg_classifiers *classifiers,
+	const struct pg_effect_row *effects, const struct pg_term *value_type)
+{
+	if (!classifiers || !effects || !value_type) return NULL;
+	const struct pg_term *head = unary_type(classifiers, &return_type_former,
+		pg_reference(classifiers->graph, &effects->base.object));
+	return pg_application(classifiers->graph, head, value_type);
+}
+
+int pg_effect_type_view(const struct pg_term *term,
+	const struct pg_effect_row **effects, const struct pg_term **value_type)
+{
+	if (!term || !effects || !value_type || term->kind != PG_APPLICATION) return 0;
+	const struct pg_term *row;
+	if (!unary_view(term->as.application.function, &return_type_former, &row)) return 0;
+	if (row->kind != PG_REFERENCE || row->as.reference->owner != &effect_row_class) return 0;
+	*effects = (const struct pg_effect_row *)((const char *)row->as.reference - offsetof(struct pg_object_entry, object));
+	*value_type = term->as.application.argument;
+	return 1;
 }
 const struct pg_term *pg_thunk_type(struct pg_classifiers *classifiers, const struct pg_term *computation_type)
 {
@@ -155,7 +280,11 @@ const struct pg_term *pg_thunk_type(struct pg_classifiers *classifiers, const st
 }
 int pg_return_type_view(const struct pg_term *term, const struct pg_term **value_type)
 {
-	return unary_view(term, &return_type_former, value_type);
+	const struct pg_effect_row *effects;
+	const struct pg_term *value;
+	if (!value_type || !pg_effect_type_view(term, &effects, &value) || effects->count) return 0;
+	*value_type = value;
+	return 1;
 }
 int pg_thunk_type_view(const struct pg_term *term, const struct pg_term **computation_type)
 {

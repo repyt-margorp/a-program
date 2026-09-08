@@ -13,6 +13,34 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 8 explicit closed effect rows
+
+- [x] Change the shared computation classifier from unary `F A` to `F E A`.
+  Existing pure formation/conversion/action paths use the explicit empty-row
+  instance through `pg_return_type`. Its view rejects nonempty rows, so this
+  migration does not authorize effectful computation in existing pure rules.
+- [x] Intern closed sets of exact operation pointers in the existing semantic
+  object index. Canonicalize label order and duplicates, merge unions linearly,
+  and keep NULL invalid rather than interpreting it as an empty set. Rows are
+  immutable semantic inputs, not another mutable solver-state authority.
+- [x] Test union commutativity/associativity/idempotence/unit, exact set reuse,
+  invalid inputs, distinct pure/effectful classifiers, and pure-view rejection.
+  Update the former descriptor to `kernel/return-type/v2`; reject the old name
+  instead of decoding a different arity under it. Empty rows have a fixed
+  descriptor; nonempty label relocation still requires owner-aware transport.
+  Regular components, eight unchanged examples and six result fixtures pass.
+  Full acceptance still fails open-family, now at 88 rather than 86 transitions
+  because the classifier has an additional structural application.
+  The complete rebuilt ASan/UBSan component `check` also passes, including
+  higher action, derivation transport and source synthesis tests.
+- [ ] Add nonempty-row formation and request/fold evidence, row constraints,
+  source application/handler elaboration and signature transport. This step
+  supplies the shared representation; it does not yet admit effectful source
+  programs, prove termination from an empty row, or implement open row metas.
+
+Delta excluding documentation: `classifier.c` +132/-3, `classifier.h` +16/-0,
+`tests/core.c` +48/-0. No Core tag or value-side Pi is introduced.
+
 ### September 8 inert requests and fold forwarding
 
 - [x] Represent requests as `APP(APP(APP(request, label), payload), k)`.
@@ -423,11 +451,11 @@ check-open-families` fails with `unsupported steps=86`. This positive acceptance
 requirement remains open. More fuel, artifact loading, or another Replay path
 cannot supply the missing formation rule.
 
-Current rule boundary, checked against the implementation:
+Rule boundary audited at `e4e3c51`, with the closed-row update noted below:
 
 | Location | Established fact | Missing fact |
 | --- | --- | --- |
-| `classifier.h:pg_return_type` | A computation has a specified result type | The classifier carries no effect or totality contract |
+| `classifier.h:pg_return_type` | A computation has a specified result type; the later closed-row migration explicitly selects the empty effect set | A totality/stable-result contract is still missing; an empty effect set alone does not provide it |
 | `evidence.c:pg_prove_application` | Applying a checked Pi substitutes the argument into its codomain | It does not extract a value from the resulting computation |
 | `evidence.c:pg_prove_return_value` | An accepted canonical RETURN exposes its argument | A neutral computation is not a RETURN constructor |
 | `synthesis.c:type_input` | Type use waits for the ordinary returned-value job | An open family cannot presently form a symbolic result type |

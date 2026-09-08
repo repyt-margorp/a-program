@@ -2572,6 +2572,53 @@ static void evidence_owner_test(struct pg_graph *graph)
 	puts("evidence ownership: shared Core and reused storage do not transfer acceptance between stores");
 }
 
+static void effect_classifier_test(struct pg_graph *graph)
+{
+	static const struct pg_object_class label_class = {"test-effect-label"};
+	static const struct pg_object a = {PG_SEMANTIC_OBJECT, &label_class};
+	static const struct pg_object b = {PG_SEMANTIC_OBJECT, &label_class};
+	static const struct pg_object c = {PG_SEMANTIC_OBJECT, &label_class};
+	const struct pg_object *labels[] = {&b, &a, &b};
+	const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL);
+	const struct pg_effect_row *ab = pg_effect_row(graph, 3, labels);
+	const struct pg_effect_row *only_b = pg_effect_row(graph, 1, labels);
+	const struct pg_effect_row *only_a = pg_effect_row(graph, 1, labels + 1);
+	const struct pg_object *third[] = {&c};
+	const struct pg_effect_row *only_c = pg_effect_row(graph, 1, third);
+	assert(empty && ab && only_a && only_b && only_c);
+	assert(pg_effect_count(empty) == 0 && pg_effect_count(ab) == 2);
+	assert(pg_effect_count(NULL) == SIZE_MAX && pg_effect_contains(NULL, &a) == -1);
+	assert(pg_effect_contains(ab, &a) == 1 && pg_effect_contains(ab, &c) == 0);
+	assert(pg_effect_union(graph, only_a, only_b) == ab);
+	assert(pg_effect_union(graph, only_b, only_a) == ab);
+	assert(pg_effect_union(graph, empty, ab) == ab && pg_effect_union(graph, ab, empty) == ab);
+	assert(pg_effect_union(graph, ab, ab) == ab);
+	assert(pg_effect_union(graph, ab, only_c) == pg_effect_union(graph, only_a, pg_effect_union(graph, only_b, only_c)));
+	assert(!pg_effect_union(graph, NULL, empty));
+	assert(!pg_effect_row(graph, 1, NULL));
+	const struct pg_object *invalid[] = {pg_binder(graph)};
+	assert(!pg_effect_row(graph, 1, invalid));
+	struct pg_classifiers classifiers;
+	assert(!pg_classifiers_init(&classifiers, graph));
+	const struct pg_term *u = pg_universe(&classifiers, 0);
+	const struct pg_term *pure = pg_return_type(&classifiers, u);
+	assert(pure == pg_effect_type(&classifiers, empty, u));
+	const struct pg_term *effectful = pg_effect_type(&classifiers, ab, u);
+	assert(effectful && pg_alpha_equal(pure, effectful) == 0);
+	const struct pg_effect_row *row = NULL;
+	const struct pg_term *value = NULL;
+	assert(pg_effect_type_view(pure, &row, &value) && row == empty && value == u);
+	assert(pg_effect_type_view(effectful, &row, &value) && row == ab && value == u);
+	assert(!pg_return_type_view(effectful, &value) && value == u);
+	assert(pg_return_type_view(pure, &value) && value == u);
+	assert(!pg_effect_type(&classifiers, NULL, u));
+	assert(!pg_classifier_resolve(&classifiers, "kernel/return-type/v1"));
+	assert(pg_classifier_resolve(&classifiers, "kernel/return-type/v2"));
+	assert(pg_classifier_resolve(&classifiers, "kernel/effect-row/empty/v1"));
+	pg_classifiers_destroy(&classifiers);
+	puts("effects: explicit closed sets, union laws, unknown is not empty, and pure-only views passed");
+}
+
 static void deep_classifier_test(void)
 {
 	struct pg_graph graph;
@@ -2622,6 +2669,7 @@ int main(void)
 	auxiliary_demand_test(&graph);
 	deferred_work_test(&graph);
 	classifiers_test(&graph);
+	effect_classifier_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);
 	normal_form_test(&graph);
