@@ -464,6 +464,23 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Retain raw symmetry composition (`APGSYM1`) using the original
+  `composition_work` and its polling/resumption descriptor. Original outer and
+  inner owners, argument and caller roots share one Term table; retain the
+  already-computed axis prefix and position without rerunning composition.
+  An allocation length precedes the prefix and is checked against the maximum
+  restored owner dimension. The Term table remains last, preserving its existing
+  complete-stream validation; no second array copy or second graph decoder.
+- [x] At every task cut of a 3D reversal composed with itself, destroy arenas
+  and resave twice; preserve owner/caller/argument sharing and the exact prefix.
+  Resumption uses the original evaluator and produces the identical value with
+  the same total steps. Reject mismatched allocation length, invalid position
+  and out-of-range prefix coordinates with cleared output handles. This retains
+  raw progress, not proof of a correct prefix. Prefix-removal work and whole
+  machine integration remain open. Normal/ASan/UBSan component tests and
+  `check check-prepared-modules` pass. The separately rerun open-family gate
+  still fails three of four fixtures at 209/280/323 steps; no acceptance waiver.
+
 - [x] Share the existing `fold_work` layout between computation and transport
   through `computation_internal.h`; expose its original work-operation descriptor.
   Move the existing evaluator task layout to `eval_internal.h` without changing

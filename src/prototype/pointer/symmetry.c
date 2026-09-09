@@ -1,4 +1,4 @@
-#include "symmetry.h"
+#include "symmetry_internal.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -7,14 +7,7 @@
 #include <errno.h>
 
 static const struct pg_object_class symmetry_class = {"dimension-permutation"};
-struct symmetry_entry {
-	struct pg_object_entry base;
-	size_t dimension;
-	const size_t *axes;
-	size_t fixed_prefix;
-};
-
-static const struct symmetry_entry *object_owner(const struct pg_object *reference)
+const struct symmetry_entry *pg_symmetry_owner(const struct pg_object *reference)
 {
 	if (!reference || reference->owner != &symmetry_class) return NULL;
 	const char *object = (const char *)reference;
@@ -23,12 +16,12 @@ static const struct symmetry_entry *object_owner(const struct pg_object *referen
 
 static const struct symmetry_entry *owner(const struct pg_term *term)
 {
-	return term->kind == PG_REFERENCE ? object_owner(term->as.reference) : NULL;
+	return term->kind == PG_REFERENCE ? pg_symmetry_owner(term->as.reference) : NULL;
 }
 
 int pg_symmetry_object_view(const struct pg_object *object, size_t *dimension, const size_t **axes)
 {
-	const struct symmetry_entry *entry = object_owner(object);
+	const struct symmetry_entry *entry = pg_symmetry_owner(object);
 	if (!entry) return 0;
 	*dimension = entry->dimension;
 	*axes = entry->axes;
@@ -39,7 +32,7 @@ static const char name_prefix[] = "kernel/symmetry/v1/";
 
 const char *pg_symmetry_name(const struct pg_object *object, char *buffer, size_t capacity)
 {
-	const struct symmetry_entry *entry = object_owner(object);
+	const struct symmetry_entry *entry = pg_symmetry_owner(object);
 	if (!entry || !buffer || capacity < sizeof(name_prefix)) return NULL;
 	memcpy(buffer, name_prefix, sizeof(name_prefix));
 	size_t used = sizeof(name_prefix) - 1;
@@ -164,14 +157,6 @@ done:
 	return result;
 }
 
-struct composition_work {
-	const struct symmetry_entry *outer, *inner;
-	const struct pg_term *argument;
-	size_t *axes;
-	size_t position;
-	size_t dimension;
-};
-
 static size_t extended_axis(const struct symmetry_entry *entry, size_t dimension, size_t axis)
 {
 	size_t prefix = dimension - entry->dimension;
@@ -201,7 +186,7 @@ static void composition_destroy(void *state)
 	(void)state; /* Work is owned by the evaluator's temporary arena. */
 }
 
-static const struct pg_eval_work_operation composition_operation = {
+const struct pg_eval_work_operation pg_symmetry_composition_operation = {
 	composition_poll, composition_resume, composition_destroy
 };
 
@@ -227,7 +212,7 @@ static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, 
 	work->dimension = n;
 	work->axes = pg_alloc(&machine->temporary, n * sizeof(*work->axes));
 	if (!work->axes) return -1;
-	return pg_eval_defer(machine, &composition_operation, work);
+	return pg_eval_defer(machine, &pg_symmetry_composition_operation, work);
 }
 
 struct prefix_work {
