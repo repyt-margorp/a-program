@@ -27,6 +27,64 @@ static const struct pg_object *resolve(void *unused, const char *text)
 }
 static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
 
+static void shadow_forest(void)
+{
+	struct pg_graph graph, arena = {0};
+	assert(!pg_graph_init(&graph));
+	const struct pg_object *binder = pg_binder(&graph);
+	const struct scope_shadow *tail = NULL;
+	for (size_t i = 0; i < 2048; ++i) {
+		struct scope_shadow *node = pg_alloc(&arena, sizeof(*node));
+		assert(node);
+		*node = (struct scope_shadow){binder, tail};
+		tail = node;
+	}
+	struct scope_shadow other = {binder, tail->parent};
+	const struct scope_shadow *initial[] = {tail, tail, &other, NULL, tail->parent};
+	const struct scope_shadow *const *shadows = initial;
+	const struct pg_term *term = pg_lambda(&graph, binder, pg_reference(&graph, binder));
+	for (size_t round = 0; round < 2; ++round) {
+		FILE *file = tmpfile();
+		assert(file && !pg_scope_shadows_write(file, 5, shadows, 1, &term, &codec, NULL));
+		pg_graph_destroy(&arena);
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		rewind(file);
+		size_t count, n;
+		const struct pg_term *const *roots;
+		assert(!pg_scope_shadows_read(file, &arena, &graph, 10000, 100, &codec, NULL, &n, &shadows, &count, &roots));
+		assert(n == 5 && count == 1 && !fclose(file));
+		term = roots[0];
+		assert(shadows[0] == shadows[1] && shadows[0] != shadows[2] && !shadows[3]);
+		assert(shadows[0]->parent == shadows[4] && shadows[2]->parent == shadows[4]);
+		assert(shadows[0]->binder == term->as.lambda.binder && shadows[2]->binder == shadows[0]->binder);
+		size_t depth = 0;
+		for (tail = shadows[0]; tail; tail = tail->parent) ++depth;
+		assert(depth == 2048);
+	}
+	for (size_t variant = 0; variant < 2; ++variant) {
+		FILE *file = tmpfile();
+		assert(file && !pg_scope_shadows_write(file, 5, shadows, 1, &term, &codec, NULL));
+		assert(!fseek(file, variant ? 64 : 24, SEEK_SET));
+		assert(!pg_wire_write_u64(file, variant ? 1 : 2050));
+		rewind(file);
+		size_t count, n;
+		const struct scope_shadow *const *rejected;
+		const struct pg_term *const *roots;
+		assert(pg_scope_shadows_read(file, &arena, &graph, 10000, 100, &codec, NULL,
+			&n, &rejected, &count, &roots) == -1);
+		assert(!n && !rejected && !count && !roots && !fclose(file));
+	}
+	struct scope_shadow cycle = {.binder = term->as.lambda.binder};
+	cycle.parent = &cycle;
+	const struct scope_shadow *cyclic = &cycle;
+	FILE *file = tmpfile();
+	assert(file && pg_scope_shadows_write(file, 1, &cyclic, 0, NULL, &codec, NULL) == -1);
+	assert(!fclose(file));
+	pg_graph_destroy(&arena);
+	pg_graph_destroy(&graph);
+}
+
 static void scope_indexes(void)
 {
 	unsigned phases = 0;
@@ -1644,6 +1702,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
+	shadow_forest();
 	scope_indexes();
 	family_discovery();
 	family_resume();

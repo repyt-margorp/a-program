@@ -19,6 +19,14 @@ struct scope_shadow {
 	const struct pg_object *binder;
 	const struct scope_shadow *parent;
 };
+/* Exact shadow identity and shared tails, not alpha equivalence. Extra Terms
+ * share the binder relocation table. This transports no accepted evidence. */
+int pg_scope_shadows_write(FILE *file, size_t shadow_count, const struct scope_shadow *const *shadows,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
+int pg_scope_shadows_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	size_t *shadow_count, const struct scope_shadow *const **shadows,
+	size_t *count, const struct pg_term *const **roots);
 struct scope_visit {
 	struct pg_index_entry index;
 	const struct pg_term *term;

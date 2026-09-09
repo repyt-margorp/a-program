@@ -464,6 +464,20 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Retain scope shadow forests (`APGSHD1`) through the existing pointer-keyed
+  DAG collector and Term relocation table. Preserve NULL roots, repeated roots,
+  shared parent tails and distinct nodes with identical binder/parent contents.
+  Parents precede children in the stream; reject cycles, invalid references,
+  unreachable records and non-binder payloads. No alpha/content interning.
+- [x] Resave a 2048-level shadow forest twice after destroying source arenas.
+  Verify sharing, distinct identities and binder sharing with an extra Lambda
+  root; reject out-of-range roots, cyclic parent IDs and a cyclic input graph.
+  This is a scope-analysis ownership component, not complete scope-work or
+  evaluator checkpoint transport. Visit entries, pending order and work arrays
+  remain to be connected to the same table.
+  Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
+  `check-identity-io check-eval-io` pass.
+
 - [x] Expose the actual scope-analysis work and its original descriptor to
   transport. Share `(term, shadow)` lookup between scheduling and visitation;
   retain their different insertion timing. Restore source/visited indexes from

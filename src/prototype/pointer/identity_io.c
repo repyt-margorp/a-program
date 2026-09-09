@@ -11,6 +11,95 @@ static const char higher_magic[8] = "APGHSC\1";
 static const char discovery_magic[8] = "APGASW\1";
 static const char family_magic[8] = "APGFSW\1";
 static const char family_result_magic[8] = "APGFRW\1";
+static const char shadow_magic[8] = "APGSHD\1";
+
+static int shadow_child(void *unused, const void *key, size_t index, const void **child)
+{
+	(void)unused;
+	const struct scope_shadow *shadow = key;
+	if (index || !shadow->parent) return 0;
+	*child = shadow->parent;
+	return 1;
+}
+
+int pg_scope_shadows_write(FILE *file, size_t shadow_count, const struct scope_shadow *const *shadows,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || (shadow_count && !shadows) || (count && !roots)) return -1;
+	struct pg_dag dag = {0};
+	int status = -1;
+	if (pg_dag_init(&dag, shadow_child, NULL) || pg_graph_init(&dag.storage)) goto done;
+	for (size_t i = 0; i < shadow_count; ++i)
+		if (shadows[i] && pg_dag_add(&dag, shadows[i])) goto done;
+	size_t maximum = SIZE_MAX / sizeof(const struct pg_term *);
+	if (dag.count > maximum || count > maximum - dag.count) goto done;
+	const struct pg_term **all = pg_alloc(&dag.storage, (dag.count + count) * sizeof(*all));
+	if (!all) goto done;
+	if (fwrite(shadow_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, dag.count)
+		|| pg_wire_write_u64(file, shadow_count)) goto done;
+	for (size_t i = 0; i < shadow_count; ++i) {
+		const struct pg_dag_node *node = pg_dag_find(&dag, shadows[i]);
+		if (pg_wire_write_u64(file, node ? node->id : 0)) goto done;
+	}
+	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
+		const struct scope_shadow *shadow = node->key;
+		if (!shadow->binder || shadow->binder->kind != PG_BINDER) goto done;
+		const struct pg_dag_node *parent = pg_dag_find(&dag, shadow->parent);
+		if (pg_wire_write_u64(file, parent ? parent->id : 0)) goto done;
+		all[node->id - 1] = pg_reference(&dag.storage, shadow->binder);
+	}
+	for (size_t i = 0; i < count; ++i) all[dag.count + i] = roots[i];
+	status = pg_graph_write_descriptors(file, dag.count + count, all, codec, owner);
+done:
+	pg_dag_destroy(&dag);
+	return status;
+}
+
+int pg_scope_shadows_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	size_t *shadow_count, const struct scope_shadow *const **shadows,
+	size_t *count, const struct pg_term *const **roots)
+{
+	if (!shadow_count || !shadows || !count || !roots) return -1;
+	*shadow_count = 0;
+	*shadows = NULL;
+	*count = 0;
+	*roots = NULL;
+	if (!file || !arena || !output) return -1;
+	char header[8];
+	uint64_t amount, root_count, id;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, shadow_magic, 8)
+		|| pg_wire_read_u64(file, &amount) || pg_wire_read_u64(file, &root_count)) return -1;
+	if (amount > limit || root_count > limit || amount > SIZE_MAX / sizeof(struct scope_shadow)
+		|| root_count > SIZE_MAX / sizeof(const struct scope_shadow *)) return -1;
+	struct scope_shadow *nodes = pg_alloc(arena, (size_t)amount * sizeof(*nodes));
+	const struct scope_shadow **selected = pg_alloc(arena, (size_t)root_count * sizeof(*selected));
+	unsigned char *used = pg_alloc(arena, (size_t)amount);
+	if (!nodes || !selected || !used) return -1;
+	for (size_t i = 0; i < root_count; ++i) {
+		if (pg_wire_read_u64(file, &id) || id > amount) return -1;
+		selected[i] = id ? &nodes[id - 1] : NULL;
+		if (id) used[id - 1] = 1;
+	}
+	for (size_t i = 0; i < amount; ++i) {
+		if (pg_wire_read_u64(file, &id) || id > i) return -1;
+		nodes[i].parent = id ? &nodes[id - 1] : NULL;
+		if (id) used[id - 1] = 1;
+	}
+	for (size_t i = 0; i < amount; ++i) if (!used[i]) return -1;
+	size_t total;
+	const struct pg_term *const *all;
+	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &total, &all) || total < amount) return -1;
+	for (size_t i = 0; i < amount; ++i) {
+		if (all[i]->kind != PG_REFERENCE || all[i]->as.reference->kind != PG_BINDER) return -1;
+		nodes[i].binder = all[i]->as.reference;
+	}
+	*shadow_count = (size_t)root_count;
+	*shadows = selected;
+	*count = total - (size_t)amount;
+	*roots = all + (size_t)amount;
+	return 0;
+}
 
 static int family_result_cursor(const struct family_result_work *work)
 {
