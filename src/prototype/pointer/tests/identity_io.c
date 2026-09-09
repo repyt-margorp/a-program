@@ -1,5 +1,6 @@
 #include "identity_internal.h"
 #include "eval_io.h"
+#include "eval_internal.h"
 #include "wire.h"
 
 #include <assert.h>
@@ -17,6 +18,122 @@ static const struct pg_object *resolve(void *unused, const char *text)
 	return pg_identity_resolve(text);
 }
 static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
+
+struct scope_frame_codec {
+	struct pg_graph *arena;
+	struct action_scope *scope;
+	int omit_root;
+};
+
+static size_t scope_answers;
+
+static int write_scope_terms(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	struct scope_frame_codec *context = opaque;
+	return pg_action_scope_write(file, context->scope, count, roots, &codec, NULL);
+}
+
+static int read_scope_terms(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_term *const **roots, void *opaque)
+{
+	struct scope_frame_codec *context = opaque;
+	int status = pg_action_scope_read(file, context->arena, graph, limit, name_limit, &codec, NULL,
+		&context->scope, count, roots);
+	if (!status && context->omit_root && *count) --*count;
+	return status;
+}
+
+static int scope_answer(struct pg_eval *machine, const struct pg_term *answer, const void *opaque)
+{
+	++scope_answers;
+	const struct action_scope *scope = opaque;
+	assert(scope->source == machine->current.term);
+	assert(scope->bindings[0].source == machine->current.environment->binder);
+	return pg_eval_enter(machine, (struct pg_closure){answer, NULL}, 0);
+}
+
+static void scope_frames(void)
+{
+	uint64_t total_steps = 0;
+	for (uint64_t cut = 0; ; ++cut) {
+		scope_answers = 0;
+		struct pg_graph graph, arena = {0};
+		assert(!pg_graph_init(&graph));
+		const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
+		const struct pg_term *vx = pg_reference(&graph, x), *vy = pg_reference(&graph, y);
+		const struct pg_term *source = pg_lambda(&graph, x, vx);
+		const struct pg_term *body = pg_lambda(&graph, y, vx);
+		struct action_binding binding = {.source = x, .arguments = {y, NULL, y}};
+		struct action_scope initial = {source, body, 1, &binding};
+		struct pg_environment environment = {x, {vy, NULL}, NULL};
+		struct pg_eval machine;
+		pg_eval_init(&machine, source);
+		machine.current.environment = &environment;
+		machine.output = &graph;
+		assert(!pg_eval_demand_closure(&machine, (struct pg_closure){body, &environment}, scope_answer, &initial));
+		pg_eval_advance(&machine, cut);
+		if (!machine.frames) {
+			pg_eval_destroy(&machine);
+			pg_graph_destroy(&graph);
+			break;
+		}
+		assert(!scope_answers);
+		struct scope_frame_codec context = {.arena = &arena, .scope = &initial};
+		for (unsigned round = 0; round < 2; ++round) {
+			FILE *file = tmpfile();
+			struct pg_eval_configuration current = {machine.current, machine.arguments};
+			assert(file && !pg_eval_frames_payload_write_with(file, machine.frames, &current, write_scope_terms, &context));
+			uint64_t steps = machine.steps;
+			int ready = machine.head_ready;
+			pg_eval_destroy(&machine);
+			pg_graph_destroy(&arena);
+			pg_graph_destroy(&graph);
+			assert(!pg_graph_init(&graph));
+			rewind(file);
+			struct pg_eval_frame *frames;
+			assert(!pg_eval_frames_payload_read_with(file, &arena, &graph, 10000, 100,
+				read_scope_terms, &context, &frames, &current));
+			/* Failure outside a successfully restored owner must not publish
+			 * a partially connected frame. Scope storage is arena-owned. */
+			rewind(file);
+			struct scope_frame_codec bad = {.arena = &arena, .omit_root = 1};
+			struct pg_eval_frame *rejected;
+			struct pg_eval_configuration unused;
+			assert(pg_eval_frames_payload_read_with(file, &arena, &graph, 10000, 100,
+				read_scope_terms, &bad, &rejected, &unused));
+			assert(bad.scope && !rejected && !unused.head.term && !unused.arguments);
+			assert(!fclose(file));
+			assert(frames->caller.term == context.scope->source);
+			assert(frames->caller.environment->binder == context.scope->bindings[0].source);
+			assert(context.scope->body->as.lambda.binder == context.scope->bindings[0].arguments[0]);
+			assert(context.scope->bindings[0].arguments[0] == context.scope->bindings[0].arguments[2]);
+			assert(!context.scope->bindings[0].arguments[1]);
+			pg_eval_init(&machine, current.head.term);
+			machine.current = current.head;
+			machine.arguments = current.arguments;
+			machine.output = &graph;
+			machine.frames = frames;
+			machine.steps = steps;
+			machine.head_ready = ready;
+			/* Test supplies the known continuation; callback selection is not
+			 * part of the data codec and no host address came from the file. */
+			frames->resume = scope_answer;
+			frames->state = context.scope;
+		}
+		assert(pg_eval_advance(&machine, 1000) == PG_EVAL_WHNF);
+		assert(scope_answers == 1);
+		if (!cut) total_steps = machine.steps;
+		assert(machine.steps == total_steps);
+		const struct pg_term *answer = pg_eval_readback(&machine, &graph);
+		assert(answer->kind == PG_LAMBDA);
+		assert(answer->as.lambda.binder != context.scope->bindings[0].arguments[0]);
+		assert(answer->as.lambda.body->as.reference == context.scope->bindings[0].arguments[0]);
+		pg_eval_destroy(&machine);
+		pg_graph_destroy(&arena);
+		pg_graph_destroy(&graph);
+		assert(cut < 1000);
+	}
+}
 
 static void scopes(void)
 {
@@ -325,9 +442,10 @@ int main(int argc, char **argv)
 	}
 	assert(argc == 1);
 	scopes();
+	scope_frames();
 	all_cuts();
 	configurations();
 	configuration_failure();
-	puts("Identity body: compare/collect/wrap/ready preserve owner sharing and resume through the original operation");
+	puts("Identity ownership: scope/frame sharing and body work resume through the original evaluator");
 	return 0;
 }

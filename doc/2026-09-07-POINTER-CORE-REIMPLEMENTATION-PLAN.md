@@ -354,10 +354,24 @@ these owner payloads, deferred tasks and policy are connected together.
   cleared outputs. Normal and ASan/UBSan `check-identity-io` pass. The full
   `check check-prepared-modules` regression run also passes; final allocation
   simplification and zero-arity cases were rechecked by both component builds.
-- [ ] Compose these scope roots with Demand-frame/configuration roots and bind
-  each continuation to its existing implementation. Standalone scope transport
-  is not a runnable continuation checkpoint. Retain other owner payloads and
-  policy before claiming whole-machine or source-level CHECKPOINT support.
+- [x] Compose scope roots with Demand-frame/configuration roots. The existing
+  readback/materialization codec now passes its ordered Term roots to the same
+  owning-payload callback contract as configuration forests. Plain callers use
+  the existing descriptor adapter; their formats and transition functions are
+  unchanged. Stack, readback and scope use one Term table, not separately
+  decoded tables with later binder reconciliation.
+- [x] At every active cut of an auxiliary Demand, save a partially prepared
+  scope together with captured caller bindings and answer readback. Destroy
+  both arenas and resave twice; assert scope/caller/binder sharing, capture
+  avoidance, identical total steps and one continuation call. An owner decoded
+  successfully followed by outer configuration failure leaves frame outputs
+  empty. Normal and ASan/UBSan component tests pass, as does the full
+  `check check-prepared-modules` run. The added outer-failure assertion was
+  rechecked in both component builds after that run began.
+- [ ] Bind each retained continuation to its existing implementation and owner
+  payload. The composition test supplies its known callback and machine flags
+  explicitly; it does not serialize/resolve a C callback address. Retain other
+  owners and policy before claiming whole-machine or source-level CHECKPOINT.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 

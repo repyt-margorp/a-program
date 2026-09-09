@@ -75,4 +75,15 @@ int pg_eval_frames_payload_read(FILE *file, struct pg_graph *arena, struct pg_gr
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	struct pg_eval_frame **frames, struct pg_eval_configuration *current);
 
+/* Owning payload composition, using the same callback contract as configuration
+ * forests above. Callback state needs cleanup even after an outer read failure.
+ * All frame, readback and owner Term roots must share one relocation table. */
+int pg_eval_frames_payload_write_with(FILE *file, const struct pg_eval_frame *frames,
+	const struct pg_eval_configuration *current,
+	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner);
+int pg_eval_frames_payload_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit,
+	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *, const struct pg_term *const **, void *), void *owner,
+	struct pg_eval_frame **frames, struct pg_eval_configuration *current);
+
 #endif
