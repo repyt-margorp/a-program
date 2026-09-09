@@ -1887,6 +1887,56 @@ static void nf_dependencies(struct pg_graph *graph, const struct pg_reduction_ce
 	assert(count && expected == pg_reduction_source(certificate));
 }
 
+static void reduction_congruence_test(struct pg_graph *graph)
+{
+	const struct pg_object *binder = pg_binder(graph);
+	const struct pg_term *x = pg_reference(graph, binder);
+	const struct pg_term *y = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *lambda = pg_lambda(graph, binder, x);
+	/* Synthetic premises test only the congruence rule, not leaf acceptance. */
+	struct pg_reduction_certificate head = {.kind = PG_REDUCTION_WHNF,
+		.policy = &pg_beta_policy, .source = lambda, .target = lambda};
+	struct pg_reduction_certificate child = {.kind = PG_REDUCTION_NF,
+		.policy = &pg_beta_policy, .source = x, .target = y};
+	assert(pg_reduction_phase_rebuild(graph, &head, &child, NULL) == pg_lambda(graph, binder, y));
+	assert(pg_reduction_phase_rebuild(graph, &head, NULL, NULL) == lambda);
+	assert(!pg_reduction_phase_rebuild(graph, &head, &child, &child));
+	assert(!pg_reduction_phase_rebuild(graph, &head, NULL, &child));
+	assert(!pg_reduction_phase_rebuild(graph, NULL, &child, NULL));
+	struct pg_reduction_certificate bad = child;
+	bad.kind = PG_REDUCTION_WHNF;
+	assert(!pg_reduction_phase_rebuild(graph, &head, &bad, NULL));
+	bad = child;
+	bad.policy = &pg_pure_policy;
+	assert(!pg_reduction_phase_rebuild(graph, &head, &bad, NULL));
+	bad = child;
+	bad.source = y;
+	assert(!pg_reduction_phase_rebuild(graph, &head, &bad, NULL));
+	bad = child;
+	bad.target = NULL;
+	assert(!pg_reduction_phase_rebuild(graph, &head, &bad, NULL));
+	bad = head;
+	bad.kind = PG_REDUCTION_NF;
+	assert(!pg_reduction_phase_rebuild(graph, &bad, NULL, NULL));
+	bad = head;
+	bad.policy = NULL;
+	assert(!pg_reduction_phase_rebuild(graph, &bad, NULL, NULL));
+	head.source = head.target = pg_application(graph, x, x);
+	assert(pg_reduction_phase_rebuild(graph, &head, &child, &child) == pg_application(graph, y, y));
+	assert(!pg_reduction_phase_rebuild(graph, &head, &child, NULL));
+	bad = child;
+	bad.source = y;
+	assert(!pg_reduction_phase_rebuild(graph, &head, &child, &bad));
+	assert(!pg_reduction_phase_rebuild(graph, &head, &bad, &child));
+	bad = child;
+	bad.policy = &pg_pure_policy;
+	assert(!pg_reduction_phase_rebuild(graph, &head, &child, &bad));
+	head.source = head.target = x;
+	assert(pg_reduction_phase_rebuild(graph, &head, NULL, NULL) == x);
+	assert(!pg_reduction_phase_rebuild(graph, &head, &child, NULL));
+	puts("NF congruence: shared reconstruction rejects mismatched premise endpoints, kinds and policies");
+}
+
 static void normal_form_test(struct pg_graph *graph)
 {
 	struct pg_whnf_work split_work, whole_work;
@@ -3292,6 +3342,7 @@ int main(void)
 	request_typing_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);
+	reduction_congruence_test(&graph);
 	normal_form_test(&graph);
 	beta_work_test(&graph);
 	substitution_test(&graph);

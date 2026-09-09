@@ -685,15 +685,43 @@ static void nf_complete(struct pg_nf_job *job, const struct pg_term *result)
 	job->status = PG_NF_DONE;
 }
 
-static int nf_phase(struct pg_nf_job *job, const struct pg_term *rebuilt, int children)
+static int nf_premise(const struct pg_reduction_certificate *child, const struct pg_eval_policy *policy)
 {
-	struct pg_reduction_phase *phase = pg_alloc(job->request.work->graph, sizeof(*phase));
-	if (!phase) return -1;
-	*phase = (struct pg_reduction_phase){.previous = job->phases,
-		.head = pg_whnf_certificate(job->head), .rebuilt = rebuilt};
+	return child && child->kind == PG_REDUCTION_NF && child->policy == policy && child->source && child->target;
+}
+
+const struct pg_term *pg_reduction_phase_rebuild(struct pg_graph *graph,
+	const struct pg_reduction_certificate *head,
+	const struct pg_reduction_certificate *left, const struct pg_reduction_certificate *right)
+{
+	if (!head || head->kind != PG_REDUCTION_WHNF || !head->policy || !head->source || !head->target) return NULL;
+	const struct pg_term *body = head->target;
+	if (!left) return right ? NULL : body;
+	if (!nf_premise(left, head->policy)) return NULL;
+	switch (body->kind) {
+	case PG_LAMBDA:
+		if (right || left->source != body->as.lambda.body) return NULL;
+		return pg_lambda(graph, body->as.lambda.binder, left->target);
+	case PG_APPLICATION:
+		if (!nf_premise(right, head->policy)) return NULL;
+		if (left->source != body->as.application.function || right->source != body->as.application.argument) return NULL;
+		return pg_application(graph, left->target, right->target);
+	default:
+		return NULL;
+	}
+}
+
+static int nf_phase(struct pg_nf_job *job, int children)
+{
+	struct pg_reduction_phase result = {.previous = job->phases, .head = pg_whnf_certificate(job->head)};
 	if (children)
 		for (size_t i = 0; i < 2; ++i)
-			if (job->children[i]) phase->children[i] = pg_nf_certificate(job->children[i]);
+			if (job->children[i]) result.children[i] = pg_nf_certificate(job->children[i]);
+	result.rebuilt = pg_reduction_phase_rebuild(job->request.work->graph, result.head, result.children[0], result.children[1]);
+	if (!result.rebuilt) return -1;
+	struct pg_reduction_phase *phase = pg_alloc(job->request.work->graph, sizeof(*phase));
+	if (!phase) return -1;
+	*phase = result;
 	job->phases = phase;
 	return 0;
 }
@@ -707,11 +735,8 @@ static struct pg_nf_job *nf_step(struct pg_nf_job *job)
 			if (child->status == PG_NF_ERROR) goto failure;
 			if (child->status == PG_NF_PENDING) return child;
 		}
-		struct pg_graph *graph = job->request.work->graph;
-		job->body = job->body->kind == PG_LAMBDA
-			? pg_lambda(graph, job->body->as.lambda.binder, pg_nf_result(job->children[0]))
-			: pg_application(graph, pg_nf_result(job->children[0]), pg_nf_result(job->children[1]));
-		if (!job->body || nf_phase(job, job->body, 1)) goto failure;
+		if (nf_phase(job, 1)) goto failure;
+		job->body = job->phases->rebuilt;
 		job->head = pg_whnf_request(job->request.work, job->request.policy, job->body);
 		if (!job->head) goto failure;
 		job->stage = NF_RECHECK;
@@ -725,13 +750,13 @@ static struct pg_nf_job *nf_step(struct pg_nf_job *job)
 		const struct pg_term *body = pg_whnf_result(job->head);
 		if (!body) goto failure;
 		if (job->stage == NF_RECHECK && body == job->body) {
-			if (nf_phase(job, body, 0)) goto failure;
+			if (nf_phase(job, 0)) goto failure;
 			nf_complete(job, body);
 			return NULL;
 		}
 		job->body = body;
 		if (body->kind == PG_REFERENCE) {
-			if (nf_phase(job, body, 0)) goto failure;
+			if (nf_phase(job, 0)) goto failure;
 			nf_complete(job, body);
 			return NULL;
 		}

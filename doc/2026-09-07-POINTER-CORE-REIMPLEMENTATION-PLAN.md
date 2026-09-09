@@ -683,6 +683,15 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   roots pass; cyclic predecessors and certificate/phase root reinterpretation
   fail. Normal `check check-prepared-modules` and ASan/UBSan `check-identity-io`
   pass. Whole-job continuation/stack ownership remains unfinished.
+- [x] Factor NF phase congruence into `pg_reduction_phase_rebuild`, used by
+  the actual NF executor. It rebuilds Lambda/Application from head/child
+  endpoints with matching reduction kinds and policy. Head-only phases do not
+  establish normality; the existing executor still checks completion. Future
+  retained-evidence checking must use this rule, not a parallel NF algorithm.
+  This is not an imported-leaf acceptance API. Synthetic-premise tests reject
+  wrong endpoint, policy, kind and child arity; the existing independent NF
+  dependency assertions remain. Normal and ASan/UBSan `core_test`, plus
+  `check check-prepared-modules` (758 module boundaries), pass.
 - [ ] Validate retained derivations before any archive root can be published
   as accepted reduction evidence. Connect pending NF jobs and shared
   WHNF/NF jobs to this record ownership, then to source CHECKPOINT. None of
