@@ -503,10 +503,22 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Test rejection after frame restoration and owner cleanup. Normal
   `check check-prepared-modules` (758 save boundaries), a final regular
   `check-identity-io check-eval-io` rerun and the ASan/UBSan component gate pass.
-- [ ] Connect action-scope discovery to these shared roots. Its standalone
-  codec still owns a configuration forest; do not nest a second forest below
-  the frame's Term callback. Full task dispatch, machine-header retention,
-  source-image integration and accepted-progress provenance remain required.
+- [x] Connect action-scope discovery through the same owning-configuration
+  interface as Symmetry prefix work. The original standalone API delegates to
+  the shared scalar/cursor validation; frame callbacks include the pending
+  argument tail and source/body roots in the same environment forest. Reading
+  neither rescans the source nor allocates replacement source binders.
+- [x] Exercise all discovery positions with and without a real parent Force
+  frame, two destroying resaves, shared parent-argument environments and exact
+  resumed step counts. Reuse the same test frame owner for Symmetry and scope
+  work. Invalid center progress is rejected even after frame restoration, with
+  explicit cleanup and no published work. Normal `check check-prepared-modules`
+  (758 save boundaries) and ASan/UBSan `check-identity-io check-eval-io` pass.
+- [ ] Complete whole-machine task dispatch and header retention. The two
+  configuration-owning tasks can now include frame roots, but their individual
+  tests still register the original task and restore flags/steps themselves.
+  Source-image integration and accepted-progress provenance remain required;
+  these component codecs are not a complete CHECKPOINT implementation.
 
 - [x] Give all twelve existing work descriptors owner-local versioned names
   (Force/field variants share algorithms but have distinct resume descriptors).

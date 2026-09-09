@@ -113,6 +113,16 @@ int pg_family_scope_read(FILE *file, struct pg_graph *arena, struct pg_graph *ou
 struct pg_eval_configuration;
 /* Raw scope discovery, before binding preparation. Cursor and caller argument
  * tails use the same configuration forest; reading does not scan the source. */
+int pg_action_scope_work_write_with(FILE *file, const struct action_scope_work *work,
+	size_t count, const struct pg_eval_configuration *roots,
+	int (*write_configurations)(FILE *, size_t, const struct pg_eval_configuration *, void *), void *owner);
+/* The configuration owner may restore frames; it must clean up their active
+ * materialization if subsequent scope validation fails. No work is run here. */
+int pg_action_scope_work_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit,
+	int (*read_configurations)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
+		const struct pg_eval_configuration **, void *), void *owner,
+	struct action_scope_work **work, size_t *count, const struct pg_eval_configuration **roots);
 int pg_action_scope_work_write(FILE *file, const struct action_scope_work *work,
 	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner);
 int pg_action_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,

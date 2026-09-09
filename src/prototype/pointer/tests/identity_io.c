@@ -1008,44 +1008,44 @@ static void symmetry_progress(void)
 	assert(positions == 15);
 }
 
-struct prefix_frames {
+struct work_frames {
 	struct pg_graph *arena;
 	struct pg_eval_frame *frames;
 	struct pg_eval_configuration current;
 };
 
-static int prefix_scopes_write(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
+static int work_scopes_write(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
 	size_t count, const struct pg_term *const *roots, void *unused)
 {
 	(void)unused;
 	return pg_action_scopes_write(file, scope_count, scopes, count, roots, &pg_builtin_graph_codec, NULL);
 }
 
-static int prefix_scopes_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+static int work_scopes_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	size_t *scope_count, struct action_scope *const **scopes, size_t *count,
 	const struct pg_term *const **roots, void *opaque)
 {
-	struct prefix_frames *context = opaque;
+	struct work_frames *context = opaque;
 	return pg_action_scopes_read(file, context->arena, graph, limit, name_limit,
 		&pg_builtin_graph_codec, NULL, scope_count, scopes, count, roots);
 }
 
-static int prefix_frames_write(FILE *file, size_t count, const struct pg_eval_configuration *roots, void *opaque)
+static int work_frames_write(FILE *file, size_t count, const struct pg_eval_configuration *roots, void *opaque)
 {
-	struct prefix_frames *context = opaque;
+	struct work_frames *context = opaque;
 	if (pg_wire_write_u64(file, count)) return -1;
 	return pg_computation_frames_write_with(file, context->frames, &context->current,
-		count, roots, prefix_scopes_write, context);
+		count, roots, work_scopes_write, context);
 }
 
-static int prefix_frames_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+static int work_frames_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	size_t *count, const struct pg_eval_configuration **roots, void *opaque)
 {
-	struct prefix_frames *context = opaque;
+	struct work_frames *context = opaque;
 	uint64_t n;
 	if (pg_wire_read_u64(file, &n) || n > limit) return -1;
 	if (pg_computation_frames_read_with(file, context->arena, graph, limit, name_limit,
-		prefix_scopes_read, context, &context->frames, &context->current, (size_t)n, roots)) return -1;
+		work_scopes_read, context, &context->frames, &context->current, (size_t)n, roots)) return -1;
 	*count = (size_t)n;
 	return 0;
 }
@@ -1082,10 +1082,10 @@ static void prefix_progress(int framed)
 			positions |= 1u << work->position;
 			for (unsigned round = 0; round < 2; ++round) {
 				struct pg_eval_configuration inputs[] = {{machine.current, machine.arguments}, {{value, NULL}, NULL}};
-				struct prefix_frames context = {.arena = &arena, .frames = machine.frames, .current = inputs[0]};
+				struct work_frames context = {.arena = &arena, .frames = machine.frames, .current = inputs[0]};
 				FILE *file = tmpfile();
 				assert(file);
-				if (framed) assert(!pg_symmetry_prefix_write_with(file, work, 2, inputs, prefix_frames_write, &context));
+				if (framed) assert(!pg_symmetry_prefix_write_with(file, work, 2, inputs, work_frames_write, &context));
 				else assert(!pg_symmetry_prefix_write(file, work, 2, inputs, &pg_builtin_graph_codec, NULL));
 				uint64_t steps = machine.steps;
 				int ready = machine.head_ready;
@@ -1099,7 +1099,7 @@ static void prefix_progress(int framed)
 				context.frames = NULL;
 				if (framed) {
 					assert(!pg_symmetry_prefix_read_with(file, &arena, &graph, 10000, 100,
-						prefix_frames_read, &context, &work, &n, &restored));
+						work_frames_read, &context, &work, &n, &restored));
 					assert(context.frames && context.current.head.term == restored[0].head.term);
 					assert(context.current.arguments == restored[0].arguments);
 					assert(context.current.head.environment == restored[0].head.environment);
@@ -1119,9 +1119,9 @@ static void prefix_progress(int framed)
 				struct prefix_work *rejected;
 				const struct pg_eval_configuration *unused;
 				if (framed) {
-					struct prefix_frames bad = {.arena = &arena};
+					struct work_frames bad = {.arena = &arena};
 					assert(pg_symmetry_prefix_read_with(file, &arena, &graph, 10000, 100,
-						prefix_frames_read, &bad, &rejected, &n, &unused));
+						work_frames_read, &bad, &rejected, &n, &unused));
 					assert(bad.frames);
 					pg_materialize_destroy(&bad.frames->answer);
 				} else assert(pg_symmetry_prefix_read(file, &arena, &graph, 10000, 100,
@@ -1651,7 +1651,7 @@ static void result_frames(void)
 	assert(retained);
 }
 
-static void discovery_progress(void)
+static void discovery_progress(int framed)
 {
 	uint64_t total = 0;
 	unsigned positions = 0;
@@ -1660,10 +1660,15 @@ static void discovery_progress(void)
 		assert(!pg_graph_init(&graph));
 		const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
 		const struct pg_term *other = pg_reference(&graph, pg_binder(&graph));
+		const struct pg_object *captured = pg_binder(&graph);
+		if (framed) value = pg_application(&graph, pg_reference(&graph, &pg_thunk_operation), value);
+		const struct pg_term *argument = framed ? pg_reference(&graph, captured) : value;
 		const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
 		const struct pg_term *source = pg_lambda(&graph, x, pg_lambda(&graph, y, pg_reference(&graph, x)));
 		const struct pg_term *term = pg_identity_action(&graph, source);
-		for (size_t i = 0; i < 6; ++i) term = pg_application(&graph, term, i < 3 ? value : other);
+		for (size_t i = 0; i < 6; ++i) term = pg_application(&graph, term, i < 3 ? argument : other);
+		if (framed) term = pg_application(&graph, pg_lambda(&graph, captured,
+			pg_application(&graph, pg_reference(&graph, &pg_force_operation), term)), value);
 		struct pg_eval machine;
 		pg_computation_eval_init(&machine, &graph, term);
 		if (pg_eval_advance(&machine, cut) == PG_EVAL_WHNF) {
@@ -1673,13 +1678,16 @@ static void discovery_progress(void)
 			break;
 		}
 		if (machine.task && machine.task->operation == &pg_action_scope_operation) {
-			assert(!machine.frames);
+			assert((machine.frames != NULL) == framed);
 			struct action_scope_work *work = machine.task->state;
 			positions |= 1u << work->position;
 			for (unsigned round = 0; round < 2; ++round) {
 				struct pg_eval_configuration inputs[] = {{machine.current, machine.arguments}, {{value, NULL}, NULL}};
+				struct work_frames context = {.arena = &arena, .frames = machine.frames, .current = inputs[0]};
 				FILE *file = tmpfile();
-				assert(file && !pg_action_scope_work_write(file, work, 2, inputs, &pg_builtin_graph_codec, NULL));
+				assert(file);
+				if (framed) assert(!pg_action_scope_work_write_with(file, work, 2, inputs, work_frames_write, &context));
+				else assert(!pg_action_scope_work_write(file, work, 2, inputs, &pg_builtin_graph_codec, NULL));
 				uint64_t steps = machine.steps;
 				int ready = machine.head_ready;
 				pg_eval_destroy(&machine);
@@ -1689,7 +1697,15 @@ static void discovery_progress(void)
 				rewind(file);
 				size_t n;
 				const struct pg_eval_configuration *restored;
-				assert(!pg_action_scope_work_read(file, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &work, &n, &restored));
+				context.frames = NULL;
+				if (framed) {
+					assert(!pg_action_scope_work_read_with(file, &arena, &graph, 10000, 100,
+						work_frames_read, &context, &work, &n, &restored));
+					assert(context.current.arguments == restored[0].arguments);
+					assert(context.current.head.term == restored[0].head.term);
+					assert(restored[0].arguments->next->value.environment == context.frames->arguments->value.environment);
+				} else assert(!pg_action_scope_work_read(file, &arena, &graph, 10000, 100,
+					&pg_builtin_graph_codec, NULL, &work, &n, &restored));
 				assert(n == 2 && !work->scope.bindings);
 				assert(work->scope.source == restored[0].arguments->value.term);
 				const struct pg_argument *tail = restored[0].arguments->next;
@@ -1699,7 +1715,14 @@ static void discovery_progress(void)
 				rewind(file);
 				struct action_scope_work *rejected;
 				const struct pg_eval_configuration *unused;
-				assert(pg_action_scope_work_read(file, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &rejected, &n, &unused));
+				if (framed) {
+					struct work_frames bad = {.arena = &arena};
+					assert(pg_action_scope_work_read_with(file, &arena, &graph, 10000, 100,
+						work_frames_read, &bad, &rejected, &n, &unused));
+					assert(bad.frames);
+					pg_materialize_destroy(&bad.frames->answer);
+				} else assert(pg_action_scope_work_read(file, &arena, &graph, 10000, 100,
+					&pg_builtin_graph_codec, NULL, &rejected, &n, &unused));
 				assert(!rejected && !n && !unused && !fclose(file));
 				value = restored[1].head.term;
 				pg_computation_eval_init(&machine, &graph, restored[0].head.term);
@@ -1707,11 +1730,12 @@ static void discovery_progress(void)
 				machine.arguments = restored[0].arguments;
 				machine.steps = steps;
 				machine.head_ready = ready;
+				machine.frames = context.frames;
 				assert(!pg_eval_defer(&machine, &pg_action_scope_operation, work));
 			}
 		}
 		assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF);
-		assert(pg_eval_readback(&machine, &graph) == value);
+		assert(pg_eval_readback(&machine, &graph) == (framed ? value->as.application.argument : value));
 		if (!cut) total = machine.steps;
 		assert(machine.steps == total);
 		pg_eval_destroy(&machine);
@@ -2062,7 +2086,8 @@ int main(int argc, char **argv)
 	scope_sharing();
 	result_ownership();
 	result_frames();
-	discovery_progress();
+	discovery_progress(0);
+	discovery_progress(1);
 	continuation_frames();
 	force_frames();
 	fold_progress();

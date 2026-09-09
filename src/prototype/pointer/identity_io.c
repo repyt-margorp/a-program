@@ -523,10 +523,11 @@ static int scope_cursor(const struct action_scope_work *work)
 	return work->position == work->scope.count || work->cursor->kind == PG_LAMBDA;
 }
 
-int pg_action_scope_work_write(FILE *file, const struct action_scope_work *work,
-	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner)
+int pg_action_scope_work_write_with(FILE *file, const struct action_scope_work *work,
+	size_t count, const struct pg_eval_configuration *roots,
+	int (*write_configurations)(FILE *, size_t, const struct pg_eval_configuration *, void *), void *owner)
 {
-	if (!file || !work || (count && !roots) || !scope_cursor(work)) return -1;
+	if (!file || !work || !write_configurations || (count && !roots) || !scope_cursor(work)) return -1;
 	if (count > SIZE_MAX / sizeof(struct pg_eval_configuration) - 3) return -1;
 	struct pg_graph temporary = {0};
 	int status = -1;
@@ -538,21 +539,23 @@ int pg_action_scope_work_write(FILE *file, const struct action_scope_work *work,
 	for (size_t i = 0; i < count; ++i) all[i + 3] = roots[i];
 	if (fwrite(discovery_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, work->scope.count)
 		|| pg_wire_write_u64(file, work->position) || pg_wire_write_u64(file, work->center)) goto done;
-	status = pg_eval_configurations_write(file, count + 3, all, codec, owner);
+	status = write_configurations(file, count + 3, all, owner);
 done:
 	pg_graph_destroy(&temporary);
 	return status;
 }
 
-int pg_action_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
-	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+int pg_action_scope_work_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit,
+	int (*read_configurations)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
+		const struct pg_eval_configuration **, void *), void *owner,
 	struct action_scope_work **work, size_t *count, const struct pg_eval_configuration **roots)
 {
 	if (!work || !count || !roots) return -1;
 	*work = NULL;
 	*count = 0;
 	*roots = NULL;
-	if (!file || !arena || !output) return -1;
+	if (!file || !arena || !output || !read_configurations) return -1;
 	char header[8];
 	uint64_t arity, position, center;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, discovery_magic, 8)
@@ -561,7 +564,7 @@ int pg_action_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_grap
 	if (arity > limit || arity > SIZE_MAX / 3 || position > arity || center > SIZE_MAX) return -1;
 	size_t total;
 	const struct pg_eval_configuration *all;
-	if (pg_eval_configurations_read(file, output, limit, name_limit, codec, owner, &total, &all) || total < 3) return -1;
+	if (read_configurations(file, output, limit, name_limit, &total, &all, owner) || total < 3) return -1;
 	for (size_t i = 0; i < 3; ++i) if (all[i].head.environment) return -1;
 	if (all[1].arguments || all[2].arguments) return -1;
 	struct action_scope_work *candidate = pg_alloc(arena, sizeof(*candidate));
@@ -576,6 +579,41 @@ int pg_action_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_grap
 	*count = total - 3;
 	*roots = all + 3;
 	return 0;
+}
+
+struct discovery_configuration_codec {
+	const struct pg_graph_codec *codec;
+	void *owner;
+};
+
+static int discovery_configurations_write(FILE *file, size_t count,
+	const struct pg_eval_configuration *roots, void *opaque)
+{
+	struct discovery_configuration_codec *context = opaque;
+	return pg_eval_configurations_write(file, count, roots, context->codec, context->owner);
+}
+
+static int discovery_configurations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_eval_configuration **roots, void *opaque)
+{
+	struct discovery_configuration_codec *context = opaque;
+	return pg_eval_configurations_read(file, graph, limit, name_limit, context->codec, context->owner, count, roots);
+}
+
+int pg_action_scope_work_write(FILE *file, const struct action_scope_work *work,
+	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	struct discovery_configuration_codec context = {codec, owner};
+	return pg_action_scope_work_write_with(file, work, count, roots, discovery_configurations_write, &context);
+}
+
+int pg_action_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct action_scope_work **work, size_t *count, const struct pg_eval_configuration **roots)
+{
+	struct discovery_configuration_codec context = {codec, owner};
+	return pg_action_scope_work_read_with(file, arena, output, limit, name_limit,
+		discovery_configurations_read, &context, work, count, roots);
 }
 
 static int higher_state(size_t arity, size_t position, size_t lambdas, unsigned flags)
