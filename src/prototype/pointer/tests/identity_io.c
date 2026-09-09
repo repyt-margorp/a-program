@@ -221,19 +221,30 @@ static void shadow_forest(void)
 struct analysis_codec {
 	struct scope_work *work;
 	struct pg_graph *arena;
+	const struct action_scope *scopes[4];
 };
 
 static int analysis_write(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
 {
 	struct analysis_codec *state = opaque;
-	return pg_scope_work_write(file, state->work, count, roots, &codec, NULL);
+	return pg_scope_work_write(file, state->work, 4, state->scopes, count, roots, &codec, NULL);
 }
 
 static int analysis_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	size_t *count, const struct pg_term *const **roots, void *opaque)
 {
 	struct analysis_codec *state = opaque;
-	return pg_scope_work_read(file, state->arena, graph, limit, name_limit, &codec, NULL, &state->work, count, roots);
+	size_t scope_count;
+	struct action_scope *const *scopes;
+	int status = pg_scope_work_read(file, state->arena, graph, limit, name_limit, &codec, NULL,
+		&state->work, &scope_count, &scopes, count, roots);
+	if (!status) {
+		assert(scope_count == 4 && scopes[0] == &state->work->scope && scopes[2] == scopes[0]);
+		assert(scopes[1] != scopes[0] && !scopes[3]);
+		assert(scopes[1]->bindings == state->work->scope.bindings);
+		for (size_t i = 0; i < 4; ++i) state->scopes[i] = scopes[i];
+	}
+	return status;
 }
 
 static void scope_indexes(void)
@@ -264,7 +275,7 @@ static void scope_indexes(void)
 			if (work->phase == SCOPE_SOURCES && !work->position) {
 				for (size_t variant = 0; variant < 3; ++variant) {
 					FILE *file = tmpfile();
-					assert(file && !pg_scope_work_write(file, work, 0, NULL, &codec, NULL));
+					assert(file && !pg_scope_work_write(file, work, 0, NULL, 0, NULL, &codec, NULL));
 					const long offsets[] = {8, 16, 88};
 					const uint64_t values[] = {0, SCOPE_READY + 1, work->scope.count};
 					assert(!fseek(file, offsets[variant], SEEK_SET) && !pg_wire_write_u64(file, values[variant]));
@@ -272,9 +283,11 @@ static void scope_indexes(void)
 					struct scope_work *rejected;
 					size_t n;
 					const struct pg_term *const *roots;
+					size_t scope_count;
+					struct action_scope *const *scopes;
 					assert(pg_scope_work_read(file, &arena, &graph, 10000, 100, &codec, NULL,
-						&rejected, &n, &roots) == -1);
-					assert(!rejected && !n && !roots && !fclose(file));
+						&rejected, &scope_count, &scopes, &n, &roots) == -1);
+					assert(!rejected && !scope_count && !scopes && !n && !roots && !fclose(file));
 				}
 			}
 			for (size_t round = 0; round < 2; ++round) {
@@ -297,7 +310,8 @@ static void scope_indexes(void)
 				assert(!pg_scope_indexes_restore(work, n, visits, m, sources));
 			}
 			assert(!machine.frames);
-			struct analysis_codec state = {work, &arena};
+			struct action_scope distinct = work->scope;
+			struct analysis_codec state = {work, &arena, {&work->scope, &distinct, &work->scope, NULL}};
 			for (size_t round = 0; round < 2; ++round) {
 				struct pg_eval_configuration inputs[] = {{machine.current, machine.arguments}, {{expected, NULL}, NULL}};
 				FILE *file = tmpfile();

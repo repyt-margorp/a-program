@@ -31,9 +31,12 @@ static int scope_work_cursor(const struct scope_work *work)
 }
 
 int pg_scope_work_write(FILE *file, const struct scope_work *work,
+	size_t scope_count, const struct action_scope *const *scopes,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
 {
 	if (!file || !work || (count && !roots) || !scope_work_cursor(work)) return -1;
+	if (scope_count && !scopes) return -1;
+	if (scope_count >= SIZE_MAX / sizeof(const struct action_scope *)) return -1;
 	size_t seen = work->seen.count, sources = work->sources.count;
 	size_t maximum = SIZE_MAX / sizeof(const struct pg_term *);
 	if (sources > maximum - 4 || count > maximum - 4 - sources
@@ -42,8 +45,11 @@ int pg_scope_work_write(FILE *file, const struct scope_work *work,
 	int status = -1;
 	if (pg_graph_init(&temporary)) return -1;
 	struct scope_visit **visits = pg_alloc(&temporary, (seen + 1) * sizeof(*visits));
+	const struct action_scope **owned = pg_alloc(&temporary, (scope_count + 1) * sizeof(*owned));
 	const struct pg_term **terms = pg_alloc(&temporary, (4 + sources + count) * sizeof(*terms));
-	if (!visits || !terms) goto done;
+	if (!visits || !terms || !owned) goto done;
+	owned[0] = &work->scope;
+	for (size_t i = 0; i < scope_count; ++i) owned[i + 1] = scopes[i];
 	const struct pg_term *optional[] = {work->head, work->reference, work->cursor, work->result};
 	unsigned mask = 0;
 	for (size_t i = 0; i < 4; ++i) {
@@ -76,9 +82,8 @@ int pg_scope_work_write(FILE *file, const struct scope_work *work,
 		}
 	if (n != seen) goto done;
 	for (size_t i = 0; i < count; ++i) terms[4 + sources + i] = roots[i];
-	const struct action_scope *scope = &work->scope;
 	status = pg_scope_visits_write(file, seen + 1, visits, 1, &work->shadow,
-		1, &scope, 4 + sources + count, terms, codec, owner);
+		scope_count + 1, owned, 4 + sources + count, terms, codec, owner);
 done:
 	pg_graph_destroy(&temporary);
 	return status;
@@ -86,10 +91,13 @@ done:
 
 int pg_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
-	struct scope_work **work, size_t *count, const struct pg_term *const **roots)
+	struct scope_work **work, size_t *scope_count, struct action_scope *const **owned,
+	size_t *count, const struct pg_term *const **roots)
 {
-	if (!work || !count || !roots) return -1;
+	if (!work || !count || !roots || !scope_count || !owned) return -1;
 	*work = NULL;
+	*scope_count = 0;
+	*owned = NULL;
 	*count = 0;
 	*roots = NULL;
 	if (!file || !arena || !output) return -1;
@@ -135,7 +143,7 @@ int pg_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *outp
 	const struct pg_term *const *terms;
 	if (pg_scope_visits_read(file, arena, output, limit, name_limit, codec, owner,
 		&nv, &visits, &ns, &shadows, &no, &scopes, &nt, &terms)) return -1;
-	if (nv != f[8] + 1 || ns != 1 || no != 1 || !scopes[0] || scopes[0]->count != f[0]
+	if (nv != f[8] + 1 || ns != 1 || !no || !scopes[0] || scopes[0]->count != f[0]
 		|| nt < 4 || f[9] > nt - 4) return -1;
 	candidate->scope = *scopes[0];
 	candidate->pending = visits[0];
@@ -153,8 +161,16 @@ int pg_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *outp
 		sources[i]->binder = term->as.reference;
 		if (candidate->scope.bindings[sources[i]->position].source != sources[i]->binder) return -1;
 	}
+	if (no - 1 > SIZE_MAX / sizeof(struct action_scope *)) return -1;
+	struct action_scope **external = pg_alloc(arena, (no - 1) * sizeof(*external));
+	if (!external) return -1;
+	/* The embedded scope's final address is part of work identity. */
+	for (size_t i = 1; i < no; ++i)
+		external[i - 1] = scopes[i] == scopes[0] ? &candidate->scope : scopes[i];
 	if (pg_scope_indexes_restore(candidate, (size_t)f[8], visits + 1, (size_t)f[9], sources)) return -1;
 	*work = candidate;
+	*scope_count = no - 1;
+	*owned = external;
 	*count = nt - 4 - (size_t)f[9];
 	*roots = terms + 4 + (size_t)f[9];
 	return 0;

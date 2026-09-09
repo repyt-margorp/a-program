@@ -537,6 +537,20 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   owner codecs are tested individually, not yet selected by one full reader.
   Source-image integration, WHNF/NF job ownership and accepted-progress
   provenance remain required. This is not full `.a` CHECKPOINT completion.
+- [x] Let scope-analysis work retain additional scope roots through its existing
+  visit/shadow/scope ownership table. Its own embedded scope is the first root;
+  references to it are rebound to the restored work's embedded address, not an
+  independent copied scope. Distinct scopes remain distinct while binding-array
+  sharing is preserved. The internal API returns these extra roots explicitly
+  for the eventual frame/task owner, rather than dropping their identities.
+- [x] Exercise all eight scope-analysis phases with repeated embedded-scope
+  references, a distinct equal-content scope sharing its binding array, and a
+  NULL scope. Retain those same roots across two destroying resaves and preserve
+  the original evaluation result/charged steps. Malformed work clears additional
+  outputs as well. This prepares scope-analysis/frame composition; it does not
+  yet select this task through the whole-machine payload dispatcher.
+  Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
+  `check-identity-io check-eval-io` pass.
 
 - [x] Give all twelve existing work descriptors owner-local versioned names
   (Force/field variants share algorithms but have distinct resume descriptors).

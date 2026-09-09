@@ -74,12 +74,15 @@ struct scope_work {
 };
 extern const struct pg_eval_work_operation pg_scope_operation;
 /* Raw scope analysis, with exact pending/seen selection and retained arrays.
+ * Extra scopes share binding storage and exact scope identity with the work.
  * Destroy restored work via pg_scope_operation before arena/output. */
 int pg_scope_work_write(FILE *file, const struct scope_work *work,
+	size_t scope_count, const struct action_scope *const *scopes,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
 int pg_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
-	struct scope_work **work, size_t *count, const struct pg_term *const **roots);
+	struct scope_work **work, size_t *scope_count, struct action_scope *const **scopes,
+	size_t *count, const struct pg_term *const **roots);
 /* Rebuild only address-keyed buckets from retained entries, not source scope
  * discovery. The arrays must contain unique entries and unique logical keys.
  * Inputs must be detached from other indexes. Destination indexes must be
