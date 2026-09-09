@@ -2,6 +2,7 @@
 #include "eval.h"
 #include "wire.h"
 #include "symmetry.h"
+#include "dag.h"
 
 #include <assert.h>
 #include <string.h>
@@ -10,6 +11,16 @@ static const struct pg_object_class owner = {"test-descriptor"};
 static const struct pg_object oracle = {PG_SEMANTIC_OBJECT, &owner};
 static const struct pg_object second_oracle = {PG_SEMANTIC_OBJECT, &owner};
 static const struct pg_object owned_binder = {PG_BINDER, &owner};
+
+static int payload_child(void *context, struct pg_graph *scratch,
+	const struct pg_object *object, size_t index, const struct pg_term **child)
+{
+	(void)scratch;
+	if (object != &oracle) return -2;
+	if (index) return 0;
+	*child = context;
+	return 1;
+}
 
 static const char *name(void *context, const struct pg_object *object)
 {
@@ -215,6 +226,20 @@ int main(void)
 	const struct pg_term *deep = vx;
 	for (size_t i = 0; i < 10000; ++i) deep = pg_application(&source, deep, deep);
 	deep = pg_lambda(&source, x, deep);
+	struct pg_dag reachable = {0};
+	assert(!pg_dag_init(&reachable, NULL, NULL));
+	size_t allocated = source.terms.count;
+	assert(!pg_graph_collect_objects(&reachable, 1, &deep, NULL, NULL));
+	assert(reachable.count == 1 && pg_dag_find(&reachable, x));
+	assert(!pg_graph_collect_objects(&reachable, 1, &deep, NULL, NULL));
+	assert(reachable.count == 1 && source.terms.count == allocated);
+	const struct pg_term *opaque = pg_reference(&source, &oracle);
+	const struct pg_graph_codec codec = {.child = payload_child};
+	assert(!pg_graph_collect_objects(&reachable, 1, &opaque, &codec, (void *)deep));
+	assert(reachable.count == 2 && pg_dag_find(&reachable, &oracle));
+	assert(!pg_dag_find(&reachable, &second_oracle));
+	assert(pg_graph_collect_objects(&reachable, 1, &cyclic, NULL, NULL) == -1);
+	pg_dag_destroy(&reachable);
 	file = tmpfile();
 	assert(file && pg_graph_write(file, 1, &deep, NULL, NULL) == 0);
 	rewind(file);

@@ -7789,6 +7789,27 @@ Next correction:
 No runtime or kernel semantics changed in this audit. The original full goal
 remains open; the newly exposed acceptance failure is not marked complete.
 
+Next step after `e2f093e`: dependency selection now has shared transport
+primitives rather than another hand-maintained interpretation of rule payloads.
+`pg_derivation_input_terms` extracts the existing eight optional Core slots in
+wire order, and the derivation writer uses it. `pg_graph_collect_objects` uses
+the same `transport_dependency` callback as Core serialization, including
+descriptor payloads and owned binders. Neither operation invokes Solve or
+accepts evidence; the wire format is unchanged.
+
+- [x] Replace inline derivation parameter-to-Core packing with the shared
+  helper; existing descriptor and derivation round trips still exercise it.
+- [x] Add collection tests for a deeply shared graph, duplicate roots, hidden
+  descriptor dependencies, absent unrelated objects and cyclic input rejection.
+- [ ] Wire this dependency closure into source-origin selection. These shared
+  primitives alone do not fix example 07 export; the acceptance gate remains
+  open. Keep the incremental closure/export work in the correction above rather
+  than adding repeated whole-store scans or a temporary-file analysis pass.
+
+Validation: rebuilt `check` passes, including the new object-collection checks.
+`check-image-origins` still fails at example 07 saving after its identity-sharing
+fixtures pass. No full-acceptance or Main-promotion claim is made.
+
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.

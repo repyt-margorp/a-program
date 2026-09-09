@@ -7,6 +7,15 @@
 
 struct pg_effect_inference;
 
+enum { PG_DERIVATION_TERM_SLOTS = 8 };
+/* Wire-order Core inputs: binder, effects, source, target, operation, handler,
+ * declaration, constructor. Optional slots are NULL. Reference wrappers belong
+ * to scratch; input objects are borrowed. This does not check an inference rule
+ * or accept evidence. Shared by transport and dependency selection. */
+int pg_derivation_input_terms(struct pg_graph *scratch,
+	const struct pg_derivation_input *input,
+	const struct pg_term *terms[PG_DERIVATION_TERM_SLOTS]);
+
 /* Nominal rules require the declaration graph codec (declaration_io.h).
  * Family/constructor parameters share the same Core relocation table as all
  * other terms. Their reconstruction is not evidence of rule validity. */

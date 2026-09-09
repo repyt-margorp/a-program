@@ -35,6 +35,29 @@ static int term_reference(FILE *file, const struct pg_term *term,
 	return pg_wire_write_u64(file, pg_dag_find(terms, term)->id);
 }
 
+int pg_derivation_input_terms(struct pg_graph *scratch,
+	const struct pg_derivation_input *input,
+	const struct pg_term *terms[PG_DERIVATION_TERM_SLOTS])
+{
+	if (!scratch || !input || !terms) return -1;
+	const struct pg_derivation_parameters *p = &input->parameters;
+	const struct pg_object *objects[PG_DERIVATION_TERM_SLOTS] = {
+		p->binder, input->effect_parameter, NULL, NULL, p->operation_label, NULL,
+		p->declaration ? pg_data_declaration_family(p->declaration) : NULL, p->constructor
+	};
+	for (size_t i = 0; i < PG_DERIVATION_TERM_SLOTS; ++i) {
+		terms[i] = objects[i] ? pg_reference(scratch, objects[i]) : NULL;
+		if (objects[i] && !terms[i]) return -1;
+	}
+	if (!input->effect_parameter && p->effects) {
+		terms[1] = pg_effect_reference(scratch, p->effects);
+		if (!terms[1]) return -1;
+	}
+	terms[2] = input->source; terms[3] = input->target;
+	terms[5] = pg_handler_signature_reference(scratch, p->handler);
+	return p->handler && !terms[5] ? -1 : 0;
+}
+
 int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner)
 {
@@ -70,26 +93,10 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 		if (pg_wire_write_u64(file, input.rule)
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;
 		if (pg_wire_write_u64(file, input.reduction_kind)) goto done;
-		const struct pg_term *binder = parameters.binder ? pg_reference(&arena, parameters.binder) : NULL;
-		if (parameters.binder && !binder) goto done;
-		const struct pg_term *effects = parameters.effects ? pg_effect_reference(&arena, parameters.effects) : NULL;
-		if (parameters.effects && !effects) goto done;
-		if (input.effect_parameter) {
-			effects = pg_reference(&arena, input.effect_parameter);
-			if (!effects) goto done;
-		}
-		const struct pg_term *operation = parameters.operation_label ? pg_reference(&arena, parameters.operation_label) : NULL;
-		const struct pg_term *handler = pg_handler_signature_reference(&arena, parameters.handler);
-		if ((parameters.operation_label && !operation) || (parameters.handler && !handler)) goto done;
-		const struct pg_term *declaration = parameters.declaration ?
-			pg_reference(&arena, pg_data_declaration_family(parameters.declaration)) : NULL;
-		const struct pg_term *constructor = parameters.constructor ? pg_reference(&arena, parameters.constructor) : NULL;
-		if ((parameters.declaration && !declaration) || (parameters.constructor && !constructor)) goto done;
-		if (term_reference(file, binder, &term_roots) || term_reference(file, effects, &term_roots)
-			|| term_reference(file, input.source, &term_roots)
-			|| term_reference(file, input.target, &term_roots)
-			|| term_reference(file, operation, &term_roots) || term_reference(file, handler, &term_roots)
-			|| term_reference(file, declaration, &term_roots) || term_reference(file, constructor, &term_roots)) goto done;
+		const struct pg_term *terms[PG_DERIVATION_TERM_SLOTS];
+		if (pg_derivation_input_terms(&arena, &input, terms)) goto done;
+		for (size_t i = 0; i < PG_DERIVATION_TERM_SLOTS; ++i)
+			if (term_reference(file, terms[i], &term_roots)) goto done;
 		size_t arity = input.count;
 		if (pg_wire_write_u64(file, arity)) goto done;
 		for (size_t i = 0; i < arity; ++i) {

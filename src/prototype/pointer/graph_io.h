@@ -4,6 +4,8 @@
 #include "graph.h"
 #include <stdio.h>
 
+struct pg_dag;
+
 /* Diagnostic shared-DAG listing. IDs are local display labels, not semantic
  * identities or addresses. No reduction, descriptor execution or graph edits. */
 int pg_graph_print(FILE *file, const struct pg_term *root);
@@ -27,6 +29,11 @@ struct pg_graph_codec {
 	const struct pg_object *(*restore)(void *, struct pg_graph *, const char *, size_t,
 		const struct pg_term *const *, size_t, const uint64_t *);
 };
+/* Add reachable objects to an initialized leaf DAG using the exact transport
+ * dependency traversal, including descriptor payloads. No bytes, evaluation or
+ * graph mutations. Keys borrow objects from roots and codec-owned storage. */
+int pg_graph_collect_objects(struct pg_dag *objects, size_t count,
+	const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *context);
 int pg_graph_write_descriptors(FILE *file, size_t count, const struct pg_term *const *roots,
 	const struct pg_graph_codec *codec, void *context);
 int pg_graph_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,

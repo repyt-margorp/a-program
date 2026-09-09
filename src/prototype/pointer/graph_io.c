@@ -52,6 +52,23 @@ static int transport_dependency(void *owner, const void *key, size_t index, cons
 	return status;
 }
 
+int pg_graph_collect_objects(struct pg_dag *objects, size_t count,
+	const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *context)
+{
+	if (!objects || objects->child || (count && !roots)) return -1;
+	struct pg_dag terms = {0};
+	struct transport transport = {.objects = objects, .codec = codec, .context = context};
+	int status = -1;
+	if (pg_graph_init(&transport.scratch) || pg_dag_init(&terms, transport_dependency, &transport)) goto done;
+	for (size_t i = 0; i < count; ++i)
+		if (roots[i] && pg_dag_add(&terms, roots[i])) goto done;
+	status = 0;
+done:
+	pg_dag_destroy(&terms);
+	pg_graph_destroy(&transport.scratch);
+	return status;
+}
+
 int pg_graph_print(FILE *file, const struct pg_term *root)
 {
 	if (!file || !root) return -1;
