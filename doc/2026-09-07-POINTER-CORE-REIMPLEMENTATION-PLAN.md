@@ -168,6 +168,15 @@ remain required before a completed-checkpoint claim.
   roots and partially rebuilt application spine. `APGSUB1` currently restores
   raw work only, not evidence of its saved results' provenance; neither it nor
   `APGCFG1` is wired into accepted normalization or full source checkpoints.
+- [x] Enforce the complete pending-work partition on substitution import.
+  A reproduced missing-parent queue previously reached `DONE` with no root
+  result. The reader now requires every record to be reachable from the root,
+  and precisely the unfinished records to occur in dependency order in the
+  pending chain. Reverse reachability and chain scans are linear in retained
+  records; neither re-evaluates substitution. Regression tests remove a parent,
+  remove a child, and select an incomplete reachable subgraph. Valid all-cut
+  resumption and ASan/UBSan `check-eval-io` pass. This checks work-graph shape,
+  not the semantic provenance of stored completed results.
 
 The callback refactor is not the remaining implementation plan by itself.
 Inspection of the actual work records found the following transitive payloads.

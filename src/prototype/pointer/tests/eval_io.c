@@ -251,6 +251,20 @@ static void substitution_resume(void)
 		assert(pg_substitution_steps(&work) == steps);
 		assert(pg_alpha_equal(pg_substitution_result(&work), relocated_expected) == 1);
 		pg_substitution_destroy(&work);
+		if (cut == 1) {
+			/* Missing parent, missing child and an unreachable retained node. */
+			const long offsets[] = {80, 24, 16};
+			const uint64_t invalid[] = {0, 2, 1};
+			for (size_t i = 0; i < 3; ++i) {
+				uint64_t prior;
+				assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_read_u64(file, &prior));
+				assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, invalid[i]));
+				rewind(file);
+				assert(pg_substitution_read(file, &restored, 10000, 100, NULL, NULL, &work));
+				assert(!work.state);
+				assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, prior));
+			}
+		}
 		if (!cut) {
 			const long offsets[] = {24, 40, 64, 80};
 			const uint64_t invalid[] = {2, 3, 1, 1};

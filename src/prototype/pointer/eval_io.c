@@ -263,9 +263,27 @@ int pg_substitution_read(FILE *file, struct pg_graph *graph, size_t limit,
 	}
 	context->pending = pending ? &entries[pending - 1] : NULL;
 	restored.state->root = &entries[root - 1];
-	size_t remaining = (size_t)n;
-	for (const struct readback_entry *entry = context->pending; entry; entry = entry->next) {
-		if (!remaining-- || entry->result) goto done;
+	struct membership { unsigned char reachable, queued; };
+	struct membership *members = pg_alloc(&scratch, (size_t)n * sizeof(*members));
+	if (!members) goto done;
+	memset(members, 0, (size_t)n * sizeof(*members));
+	/* Child IDs precede parents, so one reverse pass establishes reachability. */
+	members[root - 1].reachable = 1;
+	for (size_t i = (size_t)n; i; --i) {
+		if (!members[i - 1].reachable) continue;
+		uint64_t *r = &records[6 * (i - 1)];
+		if (r[3]) members[r[3] - 1].reachable = 1;
+		if (r[4]) members[r[4] - 1].reachable = 1;
+	}
+	for (uint64_t id = pending; id;) {
+		members[id - 1].queued = 1;
+		uint64_t next = records[6 * (id - 1) + 5];
+		if (next && next <= id) goto done;
+		id = next;
+	}
+	for (size_t i = 0; i < n; ++i) {
+		if (!members[i].reachable) goto done;
+		if (members[i].queued != (entries[i].result == NULL)) goto done;
 	}
 	if ((context->pending == NULL) != (restored.state->root->result != NULL)) goto done;
 	restored.state->status = context->pending ? PG_SUBSTITUTION_PENDING : PG_SUBSTITUTION_DONE;
