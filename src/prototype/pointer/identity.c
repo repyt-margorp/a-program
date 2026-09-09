@@ -149,7 +149,7 @@ static void arena_work_destroy(void *opaque)
 }
 
 const struct pg_eval_work_operation pg_action_scope_operation = {
-	action_scope_poll, action_scope_resume, arena_work_destroy
+	action_scope_poll, action_scope_resume, arena_work_destroy, "identity/action_scope/v1"
 };
 
 static int with_action_scope(struct pg_eval *machine, const struct pg_term *source)
@@ -235,7 +235,7 @@ static int action_result_resume(struct pg_eval *machine, void *opaque)
 }
 
 const struct pg_eval_work_operation pg_action_result_operation = {
-	action_result_poll, action_result_resume, arena_work_destroy
+	action_result_poll, action_result_resume, arena_work_destroy, "identity/action_result/v1"
 };
 
 static int enter_action(struct pg_eval *machine, const struct action_scope *scope,
@@ -589,7 +589,7 @@ static int scope_resume(struct pg_eval *machine, void *opaque)
 }
 
 const struct pg_eval_work_operation pg_scope_operation = {
-	scope_poll, scope_resume, scope_destroy
+	scope_poll, scope_resume, scope_destroy, "identity/scope_analysis/v1"
 };
 
 static int analyze_scope(struct pg_eval *machine, const struct action_scope *scope)
@@ -659,7 +659,7 @@ static int action_body_resume(struct pg_eval *machine, void *opaque)
 }
 
 const struct pg_eval_work_operation pg_action_body_operation = {
-	action_body_poll, action_body_resume, action_body_destroy
+	action_body_poll, action_body_resume, action_body_destroy, "identity/action_body/v1"
 };
 
 static int action_body_scoped(struct pg_eval *machine, const struct action_scope *prepared, const struct pg_term *answer)
@@ -757,7 +757,7 @@ static int higher_scope_resume(struct pg_eval *machine, void *opaque)
 }
 
 const struct pg_eval_work_operation pg_higher_scope_operation = {
-	higher_scope_poll, higher_scope_resume, arena_work_destroy
+	higher_scope_poll, higher_scope_resume, arena_work_destroy, "identity/higher_scope/v1"
 };
 
 static int action_source(struct pg_eval *machine, const struct pg_term *source, const void *unused);
@@ -911,7 +911,7 @@ static int force_family_result(struct pg_eval *machine, void *opaque)
 }
 
 const struct pg_eval_work_operation pg_force_family_result_operation = {
-	family_result_poll, force_family_result, arena_work_destroy
+	family_result_poll, force_family_result, arena_work_destroy, "identity/force_family_result/v1"
 };
 
 static int field_family_result(struct pg_eval *machine, void *opaque)
@@ -921,7 +921,7 @@ static int field_family_result(struct pg_eval *machine, void *opaque)
 }
 
 const struct pg_eval_work_operation pg_field_family_result_operation = {
-	family_result_poll, field_family_result, arena_work_destroy
+	family_result_poll, field_family_result, arena_work_destroy, "identity/field_family_result/v1"
 };
 
 static int force_family_scoped(struct pg_eval *machine, void *opaque)
@@ -961,7 +961,7 @@ static int force_family_scoped(struct pg_eval *machine, void *opaque)
 }
 
 const struct pg_eval_work_operation pg_force_family_scope_operation = {
-	family_scope_poll, force_family_scoped, arena_work_destroy
+	family_scope_poll, force_family_scoped, arena_work_destroy, "identity/force_family_scope/v1"
 };
 
 int pg_identity_force(struct pg_eval *machine, const struct pg_term *value)
@@ -1025,7 +1025,7 @@ static int field_family_scoped(struct pg_eval *machine, void *opaque)
 }
 
 const struct pg_eval_work_operation pg_field_family_scope_operation = {
-	family_scope_poll, field_family_scoped, arena_work_destroy
+	family_scope_poll, field_family_scoped, arena_work_destroy, "identity/field_family_scope/v1"
 };
 
 static int field_answer(struct pg_eval *machine, const struct pg_term *family, const void *unused);
@@ -1044,6 +1044,17 @@ static int field_answer(struct pg_eval *machine, const struct pg_term *family, c
 		return pg_eval_enter(machine, value, 2);
 	struct pg_closure action = {pg_reference(machine->output, &identity_action), NULL};
 	return pg_eval_apply(machine, action, value, 2);
+}
+
+const struct pg_eval_work_operation *pg_identity_work_resolve(const char *name)
+{
+	static const struct pg_eval_work_operation *const entries[] = {
+		&pg_action_scope_operation, &pg_action_result_operation, &pg_scope_operation,
+		&pg_action_body_operation, &pg_higher_scope_operation,
+		&pg_force_family_result_operation, &pg_field_family_result_operation,
+		&pg_force_family_scope_operation, &pg_field_family_scope_operation
+	};
+	return pg_eval_work_find(name, sizeof(entries) / sizeof(*entries), entries);
 }
 
 const struct pg_eval_continuation *pg_identity_continuation_resolve(const char *name)

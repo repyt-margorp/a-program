@@ -15,6 +15,15 @@ const struct pg_eval_continuation *pg_eval_continuation_find(const char *name,
 	return NULL;
 }
 
+const struct pg_eval_work_operation *pg_eval_work_find(const char *name,
+	size_t count, const struct pg_eval_work_operation *const *entries)
+{
+	if (!name) return NULL;
+	for (size_t i = 0; i < count; ++i)
+		if (entries[i]->name && !strcmp(name, entries[i]->name)) return entries[i];
+	return NULL;
+}
+
 const struct pg_closure *pg_eval_next_argument(const struct pg_argument **cursor)
 {
 	const struct pg_argument *argument = *cursor;

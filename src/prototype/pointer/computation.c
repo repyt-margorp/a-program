@@ -302,7 +302,7 @@ static void fold_destroy(void *state)
 }
 
 const struct pg_eval_work_operation pg_fold_work_operation = {
-	fold_poll, fold_resume, fold_destroy
+	fold_poll, fold_resume, fold_destroy, "computation/fold_work/v1"
 };
 
 static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state);
@@ -332,6 +332,14 @@ static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, co
 	work->binders = pg_alloc(&machine->temporary, (count + 2) * sizeof(*work->binders));
 	if (!work->binders) return -1;
 	return pg_eval_defer(machine, &pg_fold_work_operation, work);
+}
+
+const struct pg_eval_work_operation *pg_computation_work_resolve(const char *name)
+{
+	static const struct pg_eval_work_operation *const entries[] = {&pg_fold_work_operation};
+	const struct pg_eval_work_operation *found = pg_eval_work_find(name, 1, entries);
+	if (!found) found = pg_identity_work_resolve(name);
+	return found ? found : pg_symmetry_work_resolve(name);
 }
 
 const struct pg_eval_continuation *pg_computation_continuation_resolve(const char *name)

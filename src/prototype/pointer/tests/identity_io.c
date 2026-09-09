@@ -27,6 +27,28 @@ static const struct pg_object *resolve(void *unused, const char *text)
 }
 static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
 
+static void work_names(void)
+{
+	const struct pg_eval_work_operation *entries[] = {
+		&pg_fold_work_operation, &pg_symmetry_composition_operation, &pg_symmetry_prefix_operation,
+		&pg_action_scope_operation, &pg_action_result_operation, &pg_scope_operation,
+		&pg_action_body_operation, &pg_higher_scope_operation,
+		&pg_force_family_scope_operation, &pg_field_family_scope_operation,
+		&pg_force_family_result_operation, &pg_field_family_result_operation
+	};
+	for (size_t i = 0; i < sizeof(entries) / sizeof(*entries); ++i) {
+		assert(entries[i]->name && pg_computation_work_resolve(entries[i]->name) == entries[i]);
+		assert(entries[i]->poll && entries[i]->resume && entries[i]->destroy);
+		for (size_t j = 0; j < i; ++j) assert(strcmp(entries[i]->name, entries[j]->name));
+	}
+	assert(!pg_computation_work_resolve(NULL));
+	assert(!pg_computation_work_resolve(""));
+	assert(!pg_computation_work_resolve("identity/action_scope/v2"));
+	assert(!pg_computation_work_resolve("computation/force_answer/v1"));
+	assert(!pg_identity_work_resolve(pg_fold_work_operation.name));
+	assert(!pg_symmetry_work_resolve(pg_action_scope_operation.name));
+}
+
 static void visit_forest(void)
 {
 	struct pg_graph graph, arena = {0};
@@ -416,6 +438,8 @@ static void family_resume(void)
 					struct pg_eval_configuration inputs[] = {{machine.current, machine.arguments}, {{expected, NULL}, NULL}};
 					FILE *file = tmpfile();
 					assert(file);
+					size_t length = strlen(active->name);
+					assert(!pg_wire_write_u64(file, length) && fwrite(active->name, 1, length, file) == length);
 					if (mode >= 2) assert(!pg_computation_frames_write_with(file, machine.frames, inputs, family_owner_write, &state));
 					else assert(!pg_eval_configurations_write_with(file, 2, inputs, family_write, &state));
 					uint64_t elapsed = machine.steps;
@@ -426,6 +450,13 @@ static void family_resume(void)
 					pg_graph_destroy(&graph);
 					assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
 					rewind(file);
+					uint64_t name_length;
+					char task_name[100];
+					assert(!pg_wire_read_u64(file, &name_length) && name_length < sizeof(task_name));
+					assert(fread(task_name, 1, (size_t)name_length, file) == name_length);
+					task_name[name_length] = 0;
+					const struct pg_eval_work_operation *restored_operation = pg_computation_work_resolve(task_name);
+					assert(restored_operation == active);
 					size_t count;
 					struct pg_eval_configuration current;
 					const struct pg_eval_configuration *restored = &current;
@@ -447,7 +478,7 @@ static void family_resume(void)
 					machine.frames = frames;
 					machine.steps = elapsed;
 					machine.head_ready = ready;
-					assert(!pg_eval_defer(&machine, active, state.result ? (void *)state.result : state.work));
+					assert(!pg_eval_defer(&machine, restored_operation, state.result ? (void *)state.result : state.work));
 				}
 			}
 			assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF && machine.steps == steps);
@@ -1884,6 +1915,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
+	work_names();
 	visit_forest();
 	shadow_forest();
 	scope_indexes();

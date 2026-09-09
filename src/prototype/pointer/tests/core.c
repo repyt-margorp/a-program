@@ -1469,7 +1469,7 @@ static void deferred_destroy(void *opaque)
 }
 
 static const struct pg_eval_work_operation deferred_operation = {
-	deferred_poll, deferred_resume, deferred_destroy
+	deferred_poll, deferred_resume, deferred_destroy, NULL
 };
 
 static void deferred_work_test(struct pg_graph *graph)
@@ -1507,9 +1507,9 @@ static void deferred_work_test(struct pg_graph *graph)
 	pg_eval_destroy(&machine);
 	assert(deferred_destroyed == 1);
 	const struct pg_eval_work_operation incomplete[] = {
-		{NULL, deferred_resume, deferred_destroy},
-		{deferred_poll, NULL, deferred_destroy},
-		{deferred_poll, deferred_resume, NULL}
+		{NULL, deferred_resume, deferred_destroy, NULL},
+		{deferred_poll, NULL, deferred_destroy, NULL},
+		{deferred_poll, deferred_resume, NULL, NULL}
 	};
 	pg_eval_init(&machine, input);
 	deferred_destroyed = deferred_resumed = 0;

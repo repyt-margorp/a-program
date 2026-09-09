@@ -86,7 +86,11 @@ struct pg_eval_work_operation {
 	int (*poll)(void *);
 	int (*resume)(struct pg_eval *, void *);
 	void (*destroy)(void *);
+	/* Optional for local work; portable owners resolve only known names. */
+	const char *name;
 };
+const struct pg_eval_work_operation *pg_eval_work_find(const char *name,
+	size_t count, const struct pg_eval_work_operation *const *entries);
 int pg_eval_defer(struct pg_eval *machine,
 	const struct pg_eval_work_operation *operation, void *state);
 

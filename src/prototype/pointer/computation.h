@@ -63,5 +63,6 @@ void pg_computation_eval_init(struct pg_eval *machine, struct pg_graph *output,
  * Identity and symmetry delegates. State restoration is a separate duty. */
 struct pg_eval_continuation;
 const struct pg_eval_continuation *pg_computation_continuation_resolve(const char *name);
+const struct pg_eval_work_operation *pg_computation_work_resolve(const char *name);
 
 #endif

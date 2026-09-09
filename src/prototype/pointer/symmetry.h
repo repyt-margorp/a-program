@@ -33,5 +33,6 @@ int pg_symmetry_dispatch(struct pg_eval *machine);
 /* Resolve only this owner's known, versioned evaluator continuations. */
 struct pg_eval_continuation;
 const struct pg_eval_continuation *pg_symmetry_continuation_resolve(const char *name);
+const struct pg_eval_work_operation *pg_symmetry_work_resolve(const char *name);
 
 #endif

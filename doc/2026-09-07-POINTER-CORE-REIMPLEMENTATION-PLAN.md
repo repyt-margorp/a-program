@@ -464,6 +464,19 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Give all twelve existing work descriptors owner-local versioned names
+  (Force/field variants share algorithms but have distinct resume descriptors).
+  Identity, Symmetry and Computation resolve only their existing descriptors;
+  evaluator polling still uses the same pointers/functions. Unnamed local test
+  work remains executable, not implicitly portable. No new Core tag or Replay.
+- [x] Check name uniqueness, unknown versions and cross-owner rejection. In
+  family task save/resume tests, retain the descriptor name and resolve it back
+  to the original operation after arena destruction before registering work.
+  This establishes descriptor identity only; policy/flags, payload dispatch and
+  imported-progress acceptance still need whole-machine integration.
+  Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
+  `check-identity-io check-eval-io` pass.
+
 - [x] Generalize named Demand-stack ownership through owner callbacks instead
   of hard-coding `action_result_work` into the frame serializer. The existing
   action-result API delegates to the same name resolution, frame payload and

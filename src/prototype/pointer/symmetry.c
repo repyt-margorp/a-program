@@ -187,7 +187,7 @@ static void composition_destroy(void *state)
 }
 
 const struct pg_eval_work_operation pg_symmetry_composition_operation = {
-	composition_poll, composition_resume, composition_destroy
+	composition_poll, composition_resume, composition_destroy, "symmetry/composition/v1"
 };
 
 static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, const void *state);
@@ -235,8 +235,16 @@ static int prefix_resume(struct pg_eval *machine, void *state)
 }
 
 const struct pg_eval_work_operation pg_symmetry_prefix_operation = {
-	prefix_poll, prefix_resume, composition_destroy
+	prefix_poll, prefix_resume, composition_destroy, "symmetry/prefix/v1"
 };
+
+const struct pg_eval_work_operation *pg_symmetry_work_resolve(const char *name)
+{
+	static const struct pg_eval_work_operation *const entries[] = {
+		&pg_symmetry_composition_operation, &pg_symmetry_prefix_operation
+	};
+	return pg_eval_work_find(name, sizeof(entries) / sizeof(*entries), entries);
+}
 
 const struct pg_eval_continuation *pg_symmetry_continuation_resolve(const char *name)
 {
