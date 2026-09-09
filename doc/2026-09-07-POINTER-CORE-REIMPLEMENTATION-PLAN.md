@@ -47,11 +47,38 @@ image root, not just the selected one; it does not preserve effect execution.
 `tests/repl.sh` verifies batch/interactive NF agreement, pending resume/save and
 recovery after invalid commands. Root switching tests select a rejected root,
 reject out-of-range indices without changing selection, and preserve all eight
-fixture roots when resaving. This is a command REPL only: incremental source
-declarations, multiline input and scope extension remain missing.
+fixture roots when resaving. Source submissions now append one parsed module
+per line. The selected source root determines the lexical scope for the next
+submission; `:root` therefore also selects the branch of declaration history.
+History is a growable array of ordinary root pointers, not copied solver states.
+Syntax errors do not append a root. Rejected and pending parsed modules remain
+in history and are preserved by save. Multiline input remains missing.
 The command REPL passed the full normal `check` before root switching; the
 expanded root-switching script and Program API tests pass with ASan/UBSan.
 The normalization API also rejects accepted evidence in an open context.
+
+Incremental-scope preparation: `pg_program_exports` now contains the source
+assignment publication previously local to the import driver. It builds NAME
+scopes whose producers are whole-module-checked selections; no classifier or
+accepted-state copy is made. The import driver uses this same helper. Program
+tests publish a pending `id`, parse a later `copy:=id;` in the resulting scope,
+and confirm shared accepted evidence after ordinary Solve. `program_test` and
+the import CLI suite pass. The REPL now uses this same helper. Tests append an
+alias, recover from a syntax error, save/reload and append another alias, retain
+three entirely unsolved roots and normalize the last one after loading, and
+confirm a rejected appended root is not discarded when selecting an older root.
+
+Post-check follow-up: module `::` resolution now uses ordinary lexical producer
+lookup after local indexing, rather than only the current block's definition
+table. This permits a later REPL submission to check a prior named producer.
+Local declarations still shadow outer names and hidden import configuration
+does not become visible. The expected type remains a separate SOURCE_EXPECT
+input; no expected classifier is passed to the original producer. REPL tests
+check a valid earlier `id`, reload that check from an image, reject `id::@`,
+then select the original root and normalize `id` unchanged. Binder-only outer
+references without a named producer are not newly supported by this change.
+Verification after the lexical post-check change: the complete normal `check`
+and `check-prepared-modules` pass, including 758 save-boundary snapshots.
 
 Recheck after `9639429`: the four family fixtures still report 175/209/280/323
 steps and only the closed control succeeds. Prepared-input persistence did not

@@ -16,7 +16,7 @@ test "$(grep -c '^pending steps=0$' "$directory/resume")" = 2
 test "$(grep -c '^done steps=' "$directory/resume")" = 2
 "$binary" --load "$directory/pending.a" > "$directory/status"
 grep -q '^done steps=' "$directory/status"
-printf ':nf missing\n:solve bad\nunknown\n:whnf id\n:quit\n' |
+printf ':nf missing\n:solve bad\n:unknown\n:whnf id\n:quit\n' |
 	"$binary" --load --repl "$directory/pending.a" > "$directory/status" 2> "$directory/errors"
 grep -q '^definition not found$' "$directory/errors"
 grep -q '^invalid step budget$' "$directory/errors"
@@ -29,4 +29,28 @@ test "$(grep -c '^rejected steps=' "$directory/status")" = 2
 test "$(grep -c '^done steps=' "$directory/status")" = 2
 test "$(grep -c '^root index must be in 1..8$' "$directory/errors")" = 2
 "$fixture" nominal-read "$directory/all.a"
+printf 'copy:=id;\nbroken:=\n:status\n:save %s\n:root 1\n:whnf id\n:quit\n' "$directory/history.a" |
+	"$binary" --repl "$directory/source.p" > "$directory/history" 2> "$directory/errors"
+grep -q '^<interactive>:' "$directory/errors"
+test "$(grep -c '^done steps=' "$directory/history")" = 5
+printf 'next:=copy;\n:nf next\n:quit\n' |
+	"$binary" --load --root 2 --repl "$directory/history.a" > "$directory/continued"
+test "$(grep -c '^done steps=' "$directory/continued")" = 3
+printf 'copy:=id;\nnext:=copy;\n:save %s\n:quit\n' "$directory/unfinished.a" |
+	"$binary" --steps 0 --repl "$directory/source.p" > "$directory/status"
+test "$(grep -c '^pending steps=0$' "$directory/status")" = 3
+"$binary" --load --root 3 --nf next "$directory/unfinished.a" > "$directory/status"
+grep -q '^done steps=' "$directory/status"
+printf 'bad:=missing;\n:root 1\n:save %s\n:quit\n' "$directory/rejected.a" |
+	"$binary" --repl "$directory/source.p" > "$directory/status"
+code=0
+"$binary" --load --root 2 "$directory/rejected.a" > "$directory/status" || code=$?
+test "$code" = 1
+grep -q '^rejected steps=' "$directory/status"
+printf 'id::(A:@)->A->A;\n:save %s\n:root 1\nid::@;\n:root 1\n:whnf id\n:quit\n' "$directory/expect.a" |
+	"$binary" --repl "$directory/source.p" > "$directory/status"
+test "$(grep -c '^rejected steps=' "$directory/status")" = 1
+test "$(grep -c '^done steps=' "$directory/status")" = 5
+"$binary" --load --root 2 "$directory/expect.a" > "$directory/status"
+grep -q '^done steps=' "$directory/status"
 echo 'repl: shared normalization, pending resume/save and command recovery passed'

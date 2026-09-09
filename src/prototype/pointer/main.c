@@ -79,24 +79,9 @@ static int import_provider(struct pg_program *program, const char *path)
 		return 1;
 	}
 	if (!module) return -1;
-	const struct pg_source_scope *ambient;
-	const struct pg_syntax *syntax;
-	if (pg_synthesis_source_input(&program->synthesis, module, &ambient, &syntax)) return -1;
-	if (syntax->kind != PG_SYNTAX_DEFINITIONS) return -1;
-	const struct pg_source_scope *bindings = pg_synthesis_root(&program->synthesis);
-	for (size_t i = 0; i < syntax->item_count; ++i) {
-		const struct pg_syntax_item *item = &syntax->items[i];
-		if (item->operation != PG_TOKEN_ASSIGN) continue;
-		struct pg_syntax *member = pg_alloc(&program->graph, sizeof(*member));
-		struct pg_syntax *selection = pg_alloc(&program->graph, sizeof(*selection));
-		if (!member || !selection) return -1;
-		*member = (struct pg_syntax){.kind = PG_SYNTAX_ATOM, .token = item->name};
-		*selection = (struct pg_syntax){.kind = PG_SYNTAX_QUALIFIED, .left = syntax, .right = member};
-		struct pg_synthesis_job *selected = pg_synthesis_request(&program->synthesis, ambient, selection);
-		if (!selected) return -1;
-		bindings = pg_synthesis_name_job(&program->synthesis, bindings, item->name, selected);
-		if (!bindings) return -1;
-	}
+	const struct pg_source_scope *bindings = pg_program_exports(program,
+		pg_synthesis_root(&program->synthesis), module);
+	if (!bindings) return -1;
 	program->scope = pg_synthesis_import_scope(&program->synthesis, program->scope, bindings);
 	return program->scope ? 0 : -1;
 }
@@ -132,10 +117,47 @@ static int repl(struct pg_program *program, uint64_t budget,
 {
 	char *line = NULL;
 	size_t capacity = 0;
+	if (!count || count > SIZE_MAX / sizeof(*roots)) return 2;
+	size_t root_capacity = count;
+	struct pg_synthesis_job **retained = malloc(count * sizeof(*retained));
+	if (!retained) return 2;
+	memcpy(retained, roots, count * sizeof(*retained));
+	roots = retained;
+	int result = 0;
 	for (;;) {
 		if (isatty(STDIN_FILENO)) { fputs("pointer> ", stdout); fflush(stdout); }
 		if (getline(&line, &capacity, stdin) < 0) break;
 		char *command = line + strspn(line, " \t\r\n");
+		if (!*command) continue;
+		if (*command != ':') {
+			const struct pg_source_scope *ambient;
+			const struct pg_syntax *syntax;
+			if (pg_synthesis_source_input(&program->synthesis, program->root, &ambient, &syntax)) {
+				fputs("selected root has no source scope\n", stderr);
+				continue;
+			}
+			const struct pg_source_scope *scope = pg_program_exports(program, ambient, program->root);
+			if (!scope) { fputs("selected root is not a source module\n", stderr); continue; }
+			struct pg_parser parser;
+			struct pg_synthesis_job *root = pg_program_source(program, scope, command, strlen(command), &parser);
+			if (!root) {
+				fprintf(stderr, "<interactive>:%zu:%zu: %s\n", parser.error_token.line,
+					parser.error_token.column, parser.error ? parser.error : "cannot prepare source");
+				continue;
+			}
+			if (count == root_capacity) {
+				if (root_capacity > SIZE_MAX / sizeof(*retained) / 2) { result = 2; break; }
+				size_t next = root_capacity * 2;
+				struct pg_synthesis_job **grown = realloc(retained, next * sizeof(*retained));
+				if (!grown) { result = 2; break; }
+				retained = grown; roots = retained; root_capacity = next;
+			}
+			retained[count++] = root;
+			program->root = root;
+			pg_synthesis_advance(&program->synthesis, budget);
+			report(program, root);
+			continue;
+		}
 		char *argument = command + strcspn(command, " \t\r\n");
 		if (*argument) *argument++ = 0;
 		argument += strspn(argument, " \t\r\n");
@@ -183,7 +205,8 @@ static int repl(struct pg_program *program, uint64_t budget,
 		fputs("expected :solve [N], :status, :root N, :whnf NAME, :nf NAME, :save FILE.a or :quit\n", stderr);
 	}
 	free(line);
-	return ferror(stdin) ? 2 : 0;
+	free(retained);
+	return ferror(stdin) ? 2 : result;
 }
 
 int main(int argc, char **argv)

@@ -2681,7 +2681,7 @@ static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synt
 				if (!producer->dependency) enqueue(synthesis, producer);
 			}
 		} else {
-			struct pg_synthesis_job *term = lookup_definition(state, item->name);
+			struct pg_synthesis_job *term = lookup_scope(state->scope, item->name).producer;
 			if (!term) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			struct pg_synthesis_job *type = pg_synthesis_request(synthesis, state->scope, item->expression);
 			if (!type) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }

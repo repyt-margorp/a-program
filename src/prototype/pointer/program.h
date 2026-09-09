@@ -41,6 +41,11 @@ struct pg_synthesis_job *pg_program_source(struct pg_program *program,
  * or execute host effects. Foreign/open/unaccepted evidence is rejected. */
 struct pg_synthesis_job *pg_program_normalize(struct pg_program *program,
 	const struct pg_evidence *proof, int full);
+/* Publish a source module's local assignments over parent, without Solve.
+ * Each name refers to a whole-module-checked selection, not copied evidence.
+ * Imports are not re-exported. The returned scope and syntax are graph-owned. */
+const struct pg_source_scope *pg_program_exports(struct pg_program *program,
+	const struct pg_source_scope *parent, struct pg_synthesis_job *module);
 void pg_program_destroy(struct pg_program *program);
 
 #endif

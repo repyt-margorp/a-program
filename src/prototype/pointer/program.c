@@ -52,6 +52,33 @@ fail:
 	return NULL;
 }
 
+const struct pg_source_scope *pg_program_exports(struct pg_program *program,
+	const struct pg_source_scope *parent, struct pg_synthesis_job *module)
+{
+	if (!program || !parent) return NULL;
+	struct pg_source_environment environment;
+	if (pg_synthesis_environment_input(&program->synthesis, parent, &environment)) return NULL;
+	const struct pg_source_scope *ambient;
+	const struct pg_syntax *syntax;
+	if (pg_synthesis_source_input(&program->synthesis, module, &ambient, &syntax)) return NULL;
+	if (syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
+	if (syntax->kind != PG_SYNTAX_DEFINITIONS) return NULL;
+	for (size_t i = 0; i < syntax->item_count; ++i) {
+		const struct pg_syntax_item *item = &syntax->items[i];
+		if (item->operation != PG_TOKEN_ASSIGN) continue;
+		struct pg_syntax *member = pg_alloc(&program->graph, sizeof(*member));
+		struct pg_syntax *selection = pg_alloc(&program->graph, sizeof(*selection));
+		if (!member || !selection) return NULL;
+		*member = (struct pg_syntax){.kind = PG_SYNTAX_ATOM, .token = item->name};
+		*selection = (struct pg_syntax){.kind = PG_SYNTAX_QUALIFIED, .left = syntax, .right = member};
+		struct pg_synthesis_job *selected = pg_synthesis_request(&program->synthesis, ambient, selection);
+		if (!selected) return NULL;
+		parent = pg_synthesis_name_job(&program->synthesis, parent, item->name, selected);
+		if (!parent) return NULL;
+	}
+	return parent;
+}
+
 struct pg_synthesis_job *pg_program_normalize(struct pg_program *program,
 	const struct pg_evidence *proof, int full)
 {
