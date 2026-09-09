@@ -2111,6 +2111,16 @@ static void source_imports(struct pg_typing *typing, struct pg_classifiers *clas
 	assert(answer && pg_synthesis_result(pg_synthesis_definition(client,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "main", .length = 4})) == answer);
 	assert(!pg_synthesis_definition(client, name));
+	const struct pg_syntax_item *item;
+	struct pg_synthesis_job *imported[2], *obligation;
+	for (size_t i = 0; i < 2; ++i) {
+		assert(pg_synthesis_definition_entry(client, i, &item, &imported[i]) == 1);
+		assert(item->operation == PG_SYNTAX_IMPORT && imported[i]);
+	}
+	assert(imported[0] == imported[1]);
+	assert(pg_synthesis_definition_entry(client, 2, &item, &obligation) == 1);
+	assert(item->operation == PG_TOKEN_EXPECT && obligation != imported[0]);
+	assert(pg_synthesis_status(obligation) == PG_SYNTHESIS_DONE);
 	size_t counts[2];
 	const char *repeated[] = {"import id;", "import id; import id; import id;"};
 	for (size_t i = 0; i < 2; ++i) {
@@ -2213,8 +2223,41 @@ static void definition_selections(struct pg_typing *typing, struct pg_classifier
 	struct pg_token right = {.kind = PG_TOKEN_IDENT, .text = "right", .length = 5};
 	struct pg_synthesis_job *selected = pg_synthesis_request(&synthesis, scope, select_definition(typing->graph, definitions, left));
 	struct pg_synthesis_job *module = pg_synthesis_request(&synthesis, scope, definitions);
+	const struct pg_syntax_item *item = NULL;
+	struct pg_synthesis_job *producer = NULL, *registered[4] = {0};
+	size_t initial_jobs = synthesis.jobs.count, initial_scopes = synthesis.scopes.count;
+	size_t initial_terms = typing->graph->terms.count, initial_proofs = typing->proofs.count;
+	uint64_t initial_steps = synthesis.steps;
+	for (size_t i = 0; i < 4; ++i) {
+		assert(pg_synthesis_definition_entry(module, i, &item, &producer) == 1);
+		assert(item == &definitions->items[i] && !producer);
+		assert(pg_synthesis_definition_entry(selected, i, &item, &producer) == 1);
+		assert(item == &definitions->items[i] && !producer);
+	}
+	assert(item->operation == PG_TOKEN_EXPECT);
+	assert(pg_synthesis_definition_entry(module, 4, &item, &producer) == 0);
+	assert(synthesis.jobs.count == initial_jobs && synthesis.scopes.count == initial_scopes);
+	assert(typing->graph->terms.count == initial_terms && typing->proofs.count == initial_proofs);
+	assert(synthesis.steps == initial_steps);
+	while (pg_synthesis_status(selected) == PG_SYNTHESIS_PENDING) {
+		assert(synthesis.steps < initial_steps + 10000);
+		pg_synthesis_advance(&synthesis, 1);
+		for (size_t i = 0; i < 4; ++i) {
+			assert(pg_synthesis_definition_entry(selected, i, &item, &producer) == 1);
+			if (registered[i]) assert(producer == registered[i]);
+			registered[i] = producer;
+		}
+	}
 	const struct pg_evidence *answer = complete(&synthesis, selected, PG_SYNTHESIS_DONE);
 	complete(&synthesis, module, PG_SYNTHESIS_DONE);
+	for (size_t i = 0; i < 4; ++i) {
+		assert(pg_synthesis_definition_entry(module, i, &item, &producer) == 1);
+		assert(producer && producer == registered[i]);
+		assert(pg_synthesis_status(producer) == PG_SYNTHESIS_DONE);
+		if (item->operation == PG_TOKEN_ASSIGN)
+			assert(pg_synthesis_definition(module, item->name) == producer);
+	}
+	assert(pg_synthesis_definition_entry(producer, 0, &item, &producer) == -1);
 	assert(pg_synthesis_definition(selected, left) == pg_synthesis_definition(module, left));
 	assert(pg_synthesis_definition(selected, right) == pg_synthesis_definition(module, right));
 	size_t jobs = synthesis.jobs.count, scopes = synthesis.scopes.count;
@@ -2236,6 +2279,10 @@ static void definition_selections(struct pg_typing *typing, struct pg_classifier
 		complete(&synthesis, selected, PG_SYNTHESIS_REJECTED);
 		complete(&synthesis, second, PG_SYNTHESIS_REJECTED);
 		complete(&synthesis, module, PG_SYNTHESIS_REJECTED);
+		for (size_t j = 0; j < definitions->item_count; ++j) {
+			assert(pg_synthesis_definition_entry(module, j, &item, &producer) == 1);
+			assert(item == &definitions->items[j]);
+		}
 		assert(pg_synthesis_definition(selected, left) == pg_synthesis_definition(second, left));
 	}
 	source = "left:=@; a:=b; b:=a;";
@@ -2250,6 +2297,8 @@ static void definition_selections(struct pg_typing *typing, struct pg_classifier
 	assert(pg_synthesis_status(selected) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(selected));
 	assert(pg_synthesis_status(pg_synthesis_definition(selected, left)) == PG_SYNTHESIS_DONE);
 	assert(!pg_synthesis_result(selected) && !synthesis.ready);
+	assert(pg_synthesis_definition_entry(selected, 1, &item, &producer) == 1);
+	assert(producer && pg_synthesis_status(producer) == PG_SYNTHESIS_PENDING);
 	uint64_t steps = synthesis.steps;
 	pg_synthesis_advance(&synthesis, 1000);
 	assert(synthesis.steps == steps);

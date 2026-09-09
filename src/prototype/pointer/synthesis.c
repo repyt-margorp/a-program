@@ -5561,3 +5561,20 @@ struct pg_synthesis_job *pg_synthesis_definition(const struct pg_synthesis_job *
 	struct block_name *entry = lookup_name(&root->definitions->names, name);
 	return entry ? entry->producer : NULL;
 }
+
+int pg_synthesis_definition_entry(const struct pg_synthesis_job *root, size_t index,
+	const struct pg_syntax_item **item, struct pg_synthesis_job **producer)
+{
+	if (!root || !item || !producer) return -1;
+	if (root->role != EXPRESSION_JOB && root->role != DEFINITION_SCOPE_JOB) return -1;
+	const struct pg_syntax *syntax = root->syntax;
+	if (syntax && syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
+	if (!syntax || syntax->kind != PG_SYNTAX_DEFINITIONS) return -1;
+	if (index >= syntax->item_count) return 0;
+	const struct pg_synthesis_job *registration = root->role == DEFINITION_SCOPE_JOB ? root : root->right;
+	const struct definition_state *state = registration && registration->role == DEFINITION_SCOPE_JOB
+		? registration->definitions : NULL;
+	*item = &syntax->items[index];
+	*producer = state ? state->entries[index] : NULL;
+	return 1;
+}

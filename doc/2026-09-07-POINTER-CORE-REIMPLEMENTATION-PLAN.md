@@ -52,6 +52,26 @@ the open-family result above remains a required correction before Main promotion
 
 ### September 9: Retained Proof Reuse Is Not Source Checkpointing
 
+Implementation after `d65b4fc`: `pg_synthesis_definition_entry` exposes each
+module entry by source position using the existing syntax and registration
+arrays. It includes assignments, imports and post-synthesis `::` obligations;
+the selected `.name` view cannot hide the other entries. An unprepared entry
+has a NULL producer, distinct from end-of-module. Queries allocate nothing,
+register no names and advance no work. The view remains available after
+rejection. No copied export registry or new accepted-state authority was added.
+
+- [x] Check zero-fuel queries leave jobs/scopes/terms/proofs/steps unchanged.
+- [x] Track producer pointer stability across single-step preparation.
+- [x] Preserve shared repeated imports and their separate `::` obligation.
+- [x] Keep failed and cyclic/pending unselected entries observable.
+- [ ] Use this view in prepared-module transport, retaining unfinished entries
+  and namespace exports as well as completed rule inputs. The view alone is
+  not CHECKPOINT serialization and does not skip source synthesis.
+
+Validation: rebuilt `synthesis_test` and full `make -s -f
+src/prototype/pointer/Makefile check` pass. The full reimplementation acceptance
+gate and Main promotion remain open.
+
 Audit after `55c52f5`: `derivation_input_step` translates retained headers and
 premise references into `pg_synthesis_rule`, the same rule factory used by source
 synthesis. There is no independent replay checker. A new regression exports a

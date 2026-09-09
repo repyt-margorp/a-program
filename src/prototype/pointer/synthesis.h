@@ -619,5 +619,13 @@ const struct pg_synthesis_job *pg_synthesis_cycle(const struct pg_synthesis_job 
  * for whole-definition checking after resolving its member name. */
 struct pg_synthesis_job *pg_synthesis_definition(const struct pg_synthesis_job *root,
 	struct pg_token name);
+/* Read one source-ordered module entry, including imports and :: obligations.
+ * Returns 1 for an entry, 0 past the end, -1 for a non-module/invalid argument.
+ * On 1, item borrows the immutable syntax; producer is NULL until registered
+ * or activated. A NULL producer is not an omitted or accepted obligation.
+ * Works before Solve and after rejection, including {{...}}.name selections.
+ * Does not allocate, register names, or advance Solve. */
+int pg_synthesis_definition_entry(const struct pg_synthesis_job *root, size_t index,
+	const struct pg_syntax_item **item, struct pg_synthesis_job **producer);
 
 #endif
