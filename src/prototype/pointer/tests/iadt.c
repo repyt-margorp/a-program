@@ -365,10 +365,43 @@ static void schema_positivity(void)
 	size_t induction_bindings;
 	assert(!pg_context_extension_size(pg_evidence_context(ih_context), NULL, &induction_bindings));
 	assert(induction_bindings == 2);
+	const struct pg_context *ih_allocation = pg_evidence_context(ih_context);
+	assert(pg_prove_induction_scope_at(&typing, &classifiers, nat,
+		pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive, ih_allocation) == induction_scope);
+	const struct pg_context *wrong_ih = pg_context_bind(&typing, ih_allocation->parent,
+		ih_allocation->binder, pg_universe(&classifiers, 0));
+	assert(wrong_ih != ih_allocation);
+	assert(pg_prove_induction_scope_at(&typing, &classifiers, nat,
+		pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive, wrong_ih) == induction_scope);
+	assert(!pg_prove_induction_scope_at(&typing, &classifiers, nat,
+		pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive, ih_allocation->parent));
 	assert(!pg_prove_projection(&typing, empty, ih_call));
 	const struct pg_evidence *base_scope = pg_prove_induction_scope(&typing,
 		&classifiers, nat, pg_data_constructor(nat_layout, 0), identity, z_context, nat_motive);
 	assert(base_scope && !pg_evidence_context(base_scope));
+	assert(pg_prove_induction_scope_at(&typing, &classifiers, nat,
+		pg_data_constructor(nat_layout, 0), identity, z_context, nat_motive, NULL) == base_scope);
+	{
+		const struct pg_evidence *two_fields = pg_prove_context_extension(&typing, fields,
+			pg_binder(&graph), pg_prove_projection(&typing, fields, type));
+		const struct pg_evidence *tree_results[] = {results[0], parameter_result(&typing, parameters, two_fields)};
+		const struct pg_data_schema *tree_schema = pg_data_schema(&typing, signature, 2, tree_results);
+		const struct pg_evidence *tree = pg_prove_inductive_type(&typing, &classifiers, tree_schema);
+		const struct pg_object *node = pg_data_constructor(pg_data_schema_layout(tree_schema), 1);
+		const struct pg_evidence *tree_context = pg_prove_context_extension(&typing, empty, pg_binder(&graph), tree);
+		const struct pg_evidence *tree_motive = pg_prove_return_type(&typing, &classifiers,
+			pg_prove_projection(&typing, tree_context, nat));
+		const struct pg_evidence *tree_scope = pg_prove_induction_scope(&typing, &classifiers,
+			tree, node, identity, tree_context, tree_motive);
+		assert(tree_scope);
+		const struct pg_context *allocated = pg_evidence_context(pg_evidence_premise(tree_scope, 1));
+		size_t bindings;
+		assert(!pg_context_extension_size(allocated, NULL, &bindings) && bindings == 4);
+		assert(pg_prove_induction_scope_at(&typing, &classifiers, tree, node, identity,
+			tree_context, tree_motive, allocated) == tree_scope);
+		assert(!pg_prove_induction_scope_at(&typing, &classifiers, tree, node, identity,
+			tree_context, tree_motive, allocated->parent));
+	}
 	assert(!pg_prove_induction_scope(&typing, &classifiers, other,
 		pg_data_constructor(pg_data_schema_layout(other_schema), 1), identity, z_context, nat_motive));
 	const struct pg_evidence *recursive_branch = pg_prove_abstract(&typing,

@@ -899,6 +899,16 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Wrong field counts are rejected. Normal full synthesis and normal/ASan/UBSan
   IADT tests pass. Wiring this allocation input through induction and its saved
   derivation is still outstanding; no image-format change is claimed here.
+  `pg_prove_induction_scope_at` now extends the same contract to field and IH
+  allocations. Recursive-field classification is computed once from the
+  declaration, then reused for suffix validation and IH formation. A retained
+  suffix must contain exactly the fields followed by their IHs; field types and
+  thunked motives are rebuilt with the ordinary constructors. Tests cover zero,
+  one and two IHs, wrong suffix length, exact reconstructed maps and deliberately
+  wrong retained IH annotations. The complete elimination rule still needs to
+  retain these per-clause allocation contexts and its fixed-point binder triple.
+  Verification: normal full `synthesis_test` and normal/ASan/UBSan `iadt_test`
+  pass. Source retained-Match transport remains an open gate, not a passed test.
   Verification: normal and ASan/UBSan `iadt_test`, normal full
   `synthesis_test` and `source_io_test normalization` pass. Expanded
   `source_io.sh` passes retained typed constructor cases, then still fails

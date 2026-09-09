@@ -167,6 +167,13 @@ const struct pg_evidence *pg_prove_induction_scope(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive);
+/* Same rule with retained field/IH binder identities. The exact suffix length
+ * is derived from the declaration; all field and IH types are recomputed. */
+const struct pg_evidence *pg_prove_induction_scope_at(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters,
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+	const struct pg_context *allocation);
 /* Direct zero-index induction. Branches abstract fields, then the IH values
  * from induction_scope. No unrestricted recursive function enters their
  * typing context. Pi-shaped recursive fields remain unsupported. */

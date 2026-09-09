@@ -691,39 +691,63 @@ static const struct pg_evidence *motive_at(struct pg_typing *typing,
 	return pg_prove_reindex(typing, map, motive);
 }
 
-const struct pg_evidence *pg_prove_induction_scope(struct pg_typing *typing,
+static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
-	const struct pg_evidence *motive_context, const struct pg_evidence *motive)
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+	const struct pg_context *allocation, int retained)
 {
 	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	if (!context_proof(typing, motive_context) || motive_context->rule != PG_CONTEXT_EXTEND) return NULL;
 	if (!pg_evidence_owned_by(motive, typing) || motive->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	if (motive->context != motive_context->context) return NULL;
-	const struct pg_evidence *map = pg_prove_constructor_scope(typing, formation, constructor, parameters);
-	if (!map) return NULL;
+	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
+	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (motive_context->context->parent != parameters->context) return NULL;
 	const struct pg_evidence *family = pg_prove_reindex(typing, parameters, formation);
 	if (!family || pg_alpha_equal(family->subject->core, motive_context->context->declared_type) != 1) return NULL;
-	const struct pg_evidence *context = map->premises[1], *fields = map->premises[0];
+	const struct pg_evidence *fields = pg_data_schema_fields(formation->certificate, constructor);
+	if (!fields) return NULL;
 	const struct pg_object *self = formation->premises[0]->context->binder;
 	size_t prefix = parameters->premise_count - 2;
-	size_t count = map->premise_count - prefix - 3;
+	size_t count;
+	if (pg_context_extension_size(fields->context, formation->premises[0]->context, &count)) return NULL;
 	if (count > SIZE_MAX / sizeof(const struct pg_term *)) return NULL;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence *result = NULL;
-	const struct pg_term **types = pg_alloc(&temporary, count * sizeof(*types));
-	if (count && !types) goto done;
-	for (size_t i = count; i; --i, fields = fields->premises[0])
-		types[i - 1] = fields->context->declared_type;
-	for (size_t i = 0; i < count; ++i) {
-		int recursive = pg_data_direct_recursion(types[i], self);
-		if (!recursive) continue;
+	unsigned char *recursive_fields = pg_alloc(&temporary, count);
+	if (count && !recursive_fields) goto done;
+	size_t recursive_count = 0;
+	for (size_t i = count; i; --i, fields = fields->premises[0]) {
+		int recursive = pg_data_direct_recursion(fields->context->declared_type, self);
 		if (recursive < 0) goto done;
+		recursive_fields[i - 1] = (unsigned char)recursive;
+		recursive_count += (size_t)recursive;
+	}
+	const struct pg_object **ih_binders = NULL;
+	if (retained) {
+		size_t supplied;
+		if (recursive_count > SIZE_MAX - count ||
+			pg_context_extension_size(allocation, parameters->premises[1]->context, &supplied) ||
+			supplied != count + recursive_count) goto done;
+		ih_binders = pg_alloc(&temporary, recursive_count * sizeof(*ih_binders));
+		if (recursive_count && !ih_binders) goto done;
+		for (size_t i = recursive_count; i; --i, allocation = allocation->parent)
+			ih_binders[i - 1] = allocation->binder;
+	}
+	const struct pg_evidence *map = retained
+		? pg_prove_constructor_scope_at(typing, formation, constructor, parameters, allocation)
+		: pg_prove_constructor_scope(typing, formation, constructor, parameters);
+	if (!map) goto done;
+	const struct pg_evidence *context = map->premises[1];
+	size_t next_ih = 0;
+	for (size_t i = 0; i < count; ++i) {
+		if (!recursive_fields[i]) continue;
 		const struct pg_evidence *field = pg_prove_projection(typing, context, map->premises[prefix + 3 + i]);
 		const struct pg_evidence *ih = motive_at(typing, motive_context, motive, context, field);
 		ih = pg_prove_thunk_type(typing, classifiers, ih);
-		context = pg_prove_context_extension(typing, context, pg_binder(typing->graph), ih);
+		const struct pg_object *binder = retained ? ih_binders[next_ih++] : pg_binder(typing->graph);
+		context = pg_prove_context_extension(typing, context, binder, ih);
 		if (!context) goto done;
 	}
 	const struct pg_evidence *projection = pg_prove_substitution_projection(typing, map->premises[1], context);
@@ -731,6 +755,25 @@ const struct pg_evidence *pg_prove_induction_scope(struct pg_typing *typing,
 done:
 	pg_graph_destroy(&temporary);
 	return result;
+}
+
+const struct pg_evidence *pg_prove_induction_scope(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters,
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive)
+{
+	return prove_induction_scope(typing, classifiers, formation, constructor, parameters,
+		motive_context, motive, NULL, 0);
+}
+
+const struct pg_evidence *pg_prove_induction_scope_at(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters,
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+	const struct pg_context *allocation)
+{
+	return prove_induction_scope(typing, classifiers, formation, constructor, parameters,
+		motive_context, motive, allocation, 1);
 }
 
 const struct pg_evidence *pg_prove_induction_case(struct pg_typing *typing,
