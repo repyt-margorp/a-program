@@ -298,7 +298,36 @@ struct family_codec {
 	struct pg_graph *arena;
 	struct pg_classifiers *classifiers;
 	struct family_result_work *result;
+	const struct pg_term *expected;
 };
+
+static int family_owner_write(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
+	size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	struct family_codec *state = opaque;
+	struct pg_graph temporary = {0};
+	const struct pg_term **all = pg_alloc(&temporary, (count + 1) * sizeof(*all));
+	assert(all);
+	for (size_t i = 0; i < count; ++i) all[i] = roots[i];
+	all[count] = state->expected;
+	int status = pg_family_result_write(file, state->result, scope_count, scopes,
+		count + 1, all, &pg_builtin_graph_codec, state->classifiers);
+	pg_graph_destroy(&temporary);
+	return status;
+}
+
+static int family_owner_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *scope_count, struct action_scope *const **scopes, size_t *count,
+	const struct pg_term *const **roots, void *opaque)
+{
+	struct family_codec *state = opaque;
+	int status = pg_family_result_read(file, state->arena, graph, limit, name_limit,
+		&pg_builtin_graph_codec, state->classifiers, &state->result, scope_count, scopes, count, roots);
+	if (status) return status;
+	assert(*count);
+	state->expected = (*roots)[--*count];
+	return 0;
+}
 
 static int family_write(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
 {
@@ -327,10 +356,11 @@ static int family_read(FILE *file, struct pg_graph *graph, size_t limit, size_t 
 static void family_resume(void)
 {
 	/* Erased work transport only: a free relation is not admitted type evidence. */
-	for (size_t mode = 0; mode < 2; ++mode) {
-		const struct pg_eval_work_operation *operation = mode
+	for (size_t mode = 0; mode < 4; ++mode) {
+		int function = mode & 1;
+		const struct pg_eval_work_operation *operation = function
 			? &pg_force_family_scope_operation : &pg_field_family_scope_operation;
-		const struct pg_eval_work_operation *result_operation = mode
+		const struct pg_eval_work_operation *result_operation = function
 			? &pg_force_family_result_operation : &pg_field_family_result_operation;
 		unsigned stages = 0;
 		for (uint64_t cut = 0; ; ++cut) {
@@ -340,7 +370,7 @@ static void family_resume(void)
 			const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
 			const struct pg_term *type = pg_universe(&classifiers, 0);
 			const struct pg_term *content = pg_return_type(&classifiers, pg_reference(&graph, x));
-			if (mode) content = pg_pi(&graph, pg_reference(&graph, x), y, content);
+			if (function) content = pg_pi(&graph, pg_reference(&graph, x), y, content);
 			const struct pg_term *source = pg_lambda(&graph, x, pg_thunk_type(&classifiers, content));
 			const struct pg_term *family = pg_identity_action(&graph, source);
 			family = pg_application(&graph, family, type);
@@ -348,12 +378,19 @@ static void family_resume(void)
 			family = pg_application(&graph, family, pg_reference(&graph, pg_binder(&graph)));
 			const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
 			const struct pg_term *body = pg_application(&graph, pg_reference(&graph, &pg_return_operation),
-				mode ? pg_reference(&graph, y) : value);
-			if (mode) body = pg_lambda(&graph, y, body);
+				function ? pg_reference(&graph, y) : value);
+			if (function) body = pg_lambda(&graph, y, body);
 			const struct pg_term *quote = pg_application(&graph, pg_reference(&graph, &pg_thunk_operation), body);
 			const struct pg_term *term = pg_identity_transport(&graph, family, quote, PG_IDENTITY_RIGHT);
-			if (mode) term = pg_application(&graph,
+			if (function) term = pg_application(&graph,
 				pg_application(&graph, pg_reference(&graph, &pg_force_operation), term), value);
+			if (mode >= 2) {
+				if (!function) term = pg_application(&graph, pg_reference(&graph, &pg_force_operation), term);
+				const struct pg_object *z = pg_binder(&graph);
+				const struct pg_term *k = pg_lambda(&graph, z,
+					pg_application(&graph, pg_reference(&graph, &pg_return_operation), value));
+				term = pg_application(&graph, pg_application(&graph, pg_reference(&graph, &pg_fold_operation), term), k);
+			}
 			struct pg_eval baseline;
 			pg_computation_eval_init(&baseline, &graph, term);
 			assert(pg_eval_advance(&baseline, 10000) == PG_EVAL_WHNF);
@@ -363,10 +400,11 @@ static void family_resume(void)
 			struct pg_eval machine;
 			pg_computation_eval_init(&machine, &graph, term);
 			int finished = pg_eval_advance(&machine, cut) == PG_EVAL_WHNF;
-			if (machine.task && (machine.task->operation == operation || machine.task->operation == result_operation)) {
-				assert(!machine.frames);
+			if (machine.task && (mode < 2 || machine.frames) && (machine.task->operation == result_operation ||
+				(mode < 2 && machine.task->operation == operation))) {
+				assert((machine.frames != NULL) == (mode >= 2));
 				const struct pg_eval_work_operation *active = machine.task->operation;
-				struct family_codec state = {.arena = &arena, .classifiers = &classifiers};
+				struct family_codec state = {.arena = &arena, .classifiers = &classifiers, .expected = expected};
 				if (active == result_operation) {
 					state.result = machine.task->state;
 					stages |= 1u << (2 + state.result->phase);
@@ -377,7 +415,9 @@ static void family_resume(void)
 				for (size_t save = 0; save < 2; ++save) {
 					struct pg_eval_configuration inputs[] = {{machine.current, machine.arguments}, {{expected, NULL}, NULL}};
 					FILE *file = tmpfile();
-					assert(file && !pg_eval_configurations_write_with(file, 2, inputs, family_write, &state));
+					assert(file);
+					if (mode >= 2) assert(!pg_computation_frames_write_with(file, machine.frames, inputs, family_owner_write, &state));
+					else assert(!pg_eval_configurations_write_with(file, 2, inputs, family_write, &state));
 					uint64_t elapsed = machine.steps;
 					int ready = machine.head_ready;
 					pg_eval_destroy(&machine);
@@ -387,14 +427,24 @@ static void family_resume(void)
 					assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
 					rewind(file);
 					size_t count;
-					const struct pg_eval_configuration *restored;
-					assert(!pg_eval_configurations_read_with(file, &graph, 10000, 100,
-						&count, &restored, family_read, &state));
-					assert(count == 2 && !fclose(file));
-					expected = restored[1].head.term;
+					struct pg_eval_configuration current;
+					const struct pg_eval_configuration *restored = &current;
+					struct pg_eval_frame *frames = NULL;
+					if (mode >= 2) {
+						assert(!pg_computation_frames_read_with(file, &arena, &graph, 10000, 100,
+							family_owner_read, &state, &frames, &current));
+						expected = state.expected;
+					} else {
+						assert(!pg_eval_configurations_read_with(file, &graph, 10000, 100,
+							&count, &restored, family_read, &state));
+						assert(count == 2);
+						expected = restored[1].head.term;
+					}
+					assert(!fclose(file));
 					pg_computation_eval_init(&machine, &graph, restored[0].head.term);
 					machine.current = restored[0].head;
 					machine.arguments = restored[0].arguments;
+					machine.frames = frames;
 					machine.steps = elapsed;
 					machine.head_ready = ready;
 					assert(!pg_eval_defer(&machine, active, state.result ? (void *)state.result : state.work));
@@ -408,7 +458,7 @@ static void family_resume(void)
 			pg_graph_destroy(&graph);
 			if (finished) break;
 		}
-		assert(stages == 31);
+		assert(stages == (mode >= 2 ? 28 : 31));
 	}
 }
 

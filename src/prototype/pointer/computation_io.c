@@ -250,21 +250,19 @@ int pg_fold_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *outpu
 }
 
 struct frame_codec {
-	struct pg_graph *arena;
-	const struct pg_graph_codec *codec;
 	void *owner;
 	size_t count;
 	const struct action_scope **inputs;
 	struct action_scope *const *scopes;
-	const struct action_result_work *write_result;
-	struct action_result_work *result;
+	int (*write_owner)(FILE *, size_t, const struct action_scope *const *, size_t, const struct pg_term *const *, void *);
+	int (*read_owner)(FILE *, struct pg_graph *, size_t, size_t, size_t *, struct action_scope *const **,
+		size_t *, const struct pg_term *const **, void *);
 };
 
 static int write_terms(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
 {
 	struct frame_codec *context = opaque;
-	return pg_action_ownership_write(file, context->count, context->inputs,
-		context->write_result, count, roots, context->codec, context->owner);
+	return context->write_owner(file, context->count, context->inputs, count, roots, context->owner);
 }
 
 static int read_terms(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
@@ -272,15 +270,16 @@ static int read_terms(FILE *file, struct pg_graph *graph, size_t limit, size_t n
 {
 	struct frame_codec *context = opaque;
 	size_t n;
-	if (pg_action_ownership_read(file, context->arena, graph, limit, name_limit,
-		context->codec, context->owner, &n, &context->scopes, &context->result, count, roots)) return -1;
+	if (context->read_owner(file, graph, limit, name_limit, &n, &context->scopes, count, roots, context->owner)) return -1;
 	return n == context->count ? 0 : -1;
 }
 
-int pg_computation_frames_write(FILE *file, const struct pg_eval_frame *frames, const struct action_result_work *result,
-	const struct pg_eval_configuration *current, const struct pg_graph_codec *codec, void *owner)
+int pg_computation_frames_write_with(FILE *file, const struct pg_eval_frame *frames,
+	const struct pg_eval_configuration *current,
+	int (*write_owner)(FILE *, size_t, const struct action_scope *const *, size_t,
+		const struct pg_term *const *, void *), void *owner)
 {
-	if (!file || !frames || !current) return -1;
+	if (!file || !frames || !current || !write_owner) return -1;
 	struct pg_dag collected = {0};
 	int status = -1;
 	if (pg_dag_init(&collected, NULL, NULL)) goto done;
@@ -288,7 +287,7 @@ int pg_computation_frames_write(FILE *file, const struct pg_eval_frame *frames, 
 		if (pg_dag_find(&collected, p) || pg_dag_add(&collected, p)) goto done;
 	}
 	if (collected.count > SIZE_MAX / sizeof(const struct action_scope *)) goto done;
-	struct frame_codec context = {.codec = codec, .owner = owner, .count = collected.count, .write_result = result};
+	struct frame_codec context = {.owner = owner, .count = collected.count, .write_owner = write_owner};
 	context.inputs = pg_alloc(&collected.storage, context.count * sizeof(*context.inputs));
 	if (!context.inputs) goto done;
 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, context.count)) goto done;
@@ -309,15 +308,16 @@ done:
 	return status;
 }
 
-int pg_computation_frames_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
-	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
-	struct pg_eval_frame **frames, struct action_result_work **result, struct pg_eval_configuration *current)
+int pg_computation_frames_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit,
+	int (*read_owner)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
+		struct action_scope *const **, size_t *, const struct pg_term *const **, void *), void *owner,
+	struct pg_eval_frame **frames, struct pg_eval_configuration *current)
 {
-	if (!frames || !result || !current) return -1;
+	if (!frames || !current) return -1;
 	*frames = NULL;
-	*result = NULL;
 	memset(current, 0, sizeof(*current));
-	if (!file || !arena || !output) return -1;
+	if (!file || !arena || !output || !read_owner) return -1;
 	char header[8];
 	uint64_t count;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)
@@ -334,7 +334,7 @@ int pg_computation_frames_read(FILE *file, struct pg_graph *arena, struct pg_gra
 		continuations[i] = pg_computation_continuation_resolve(name);
 		if (!continuations[i]) return -1;
 	}
-	struct frame_codec context = {.arena = arena, .codec = codec, .owner = owner, .count = (size_t)count};
+	struct frame_codec context = {.owner = owner, .count = (size_t)count, .read_owner = read_owner};
 	struct pg_eval_frame *candidate;
 	struct pg_eval_configuration configuration;
 	if (pg_eval_frames_payload_read_with(file, arena, output, limit, name_limit,
@@ -348,10 +348,54 @@ int pg_computation_frames_read(FILE *file, struct pg_graph *arena, struct pg_gra
 	}
 	if (i != count) goto failure;
 	*frames = candidate;
-	*result = context.result;
 	*current = configuration;
 	return 0;
 failure:
 	if (candidate) pg_materialize_destroy(&candidate->answer);
 	return -1;
+}
+
+struct action_frame_codec {
+	struct pg_graph *arena;
+	const struct pg_graph_codec *codec;
+	void *owner;
+	const struct action_result_work *input;
+	struct action_result_work *result;
+};
+
+static int write_action_owner(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
+	size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	struct action_frame_codec *context = opaque;
+	return pg_action_ownership_write(file, scope_count, scopes, context->input,
+		count, roots, context->codec, context->owner);
+}
+
+static int read_action_owner(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *scope_count, struct action_scope *const **scopes, size_t *count,
+	const struct pg_term *const **roots, void *opaque)
+{
+	struct action_frame_codec *context = opaque;
+	return pg_action_ownership_read(file, context->arena, graph, limit, name_limit,
+		context->codec, context->owner, scope_count, scopes, &context->result, count, roots);
+}
+
+int pg_computation_frames_write(FILE *file, const struct pg_eval_frame *frames, const struct action_result_work *result,
+	const struct pg_eval_configuration *current, const struct pg_graph_codec *codec, void *owner)
+{
+	struct action_frame_codec context = {.codec = codec, .owner = owner, .input = result};
+	return pg_computation_frames_write_with(file, frames, current, write_action_owner, &context);
+}
+
+int pg_computation_frames_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct pg_eval_frame **frames, struct action_result_work **result, struct pg_eval_configuration *current)
+{
+	if (!result) return -1;
+	*result = NULL;
+	struct action_frame_codec context = {.arena = arena, .codec = codec, .owner = owner};
+	if (pg_computation_frames_read_with(file, arena, output, limit, name_limit,
+		read_action_owner, &context, frames, current)) return -1;
+	*result = context.result;
+	return 0;
 }

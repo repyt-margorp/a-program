@@ -464,6 +464,20 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Generalize named Demand-stack ownership through owner callbacks instead
+  of hard-coding `action_result_work` into the frame serializer. The existing
+  action-result API delegates to the same name resolution, frame payload and
+  scope-order validation. Owners embed their versioned work and all frame
+  scopes in one Term table; no alternative evaluator or scope codec is added.
+- [x] Retain Force/field family-result tasks under actual parent Demand frames
+  using `APGFRW1` and the common stack owner interface. Test all three result
+  phases with two arena-destroying resaves; preserve final alpha equality and
+  exact charged steps. Use a non-right-unit Fold continuation so the parent
+  cannot disappear by eta contraction. Machine flags/policy and task descriptor
+  registration remain manually restored by the test, not a complete checkpoint.
+  Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
+  `check-identity-io check-eval-io` pass.
+
 - [x] Retain the actual `scope_work` (`APGSAW1`): all eight phases, used/order
   arrays, reference-shadow cursor, optional head/result, source-index mappings
   and explicit pending/seen roots. Compose `APGSVS2`/`APGSHD2`/`APGISC3` so
