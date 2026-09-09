@@ -769,6 +769,12 @@ static FILE *producer_snapshot(struct pg_synthesis *synthesis, size_t count,
 	uint64_t steps = synthesis->steps;
 	size_t proofs = synthesis->typing->proofs.count, requests = synthesis->jobs.count;
 	assert(!pg_synthesis_export_rules(synthesis, count, jobs, &storage, &effects, 0, &inputs));
+	struct pg_dag objects = {0};
+	assert(!pg_dag_init(&objects, NULL, NULL));
+	assert(!pg_derivation_inputs_collect_objects(&objects, count, inputs, &effects, &pg_builtin_graph_codec, classifiers));
+	for (size_t i = 0; i < count; ++i)
+		if (inputs[i]->effect_parameter) assert(pg_dag_find(&objects, inputs[i]->effect_parameter));
+	pg_dag_destroy(&objects);
 	assert(synthesis->steps == steps && synthesis->typing->proofs.count == proofs && synthesis->jobs.count == requests);
 	FILE *file = tmpfile();
 	assert(file && !pg_derivation_inputs_write_inference(file, count, inputs, &effects, &pg_builtin_graph_codec, classifiers));
@@ -981,6 +987,16 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		const struct pg_data_layout *layout = pg_data_declaration_layout(inputs[0]->parameters.declaration);
 		assert(inputs[1]->parameters.constructor == pg_data_constructor(layout, 0));
 		assert(inputs[2]->parameters.constructor == pg_data_constructor(layout, 1));
+		struct pg_dag objects = {0};
+		assert(!pg_dag_init(&objects, NULL, NULL));
+		assert(!pg_derivation_inputs_collect_objects(&objects, count, inputs, NULL, &pg_declaration_graph_codec, &io));
+		assert(!typing->proofs.count);
+		assert(pg_dag_find(&objects, pg_data_declaration_family(inputs[0]->parameters.declaration)));
+		assert(pg_dag_find(&objects, inputs[1]->parameters.constructor));
+		assert(pg_dag_find(&objects, inputs[2]->parameters.constructor));
+		const struct pg_context *parameters = pg_data_declaration_parameters(inputs[0]->parameters.declaration);
+		assert(parameters && pg_dag_find(&objects, parameters->binder));
+		pg_dag_destroy(&objects);
 		struct pg_whnf_work work;
 		struct pg_synthesis synthesis;
 		assert(!pg_whnf_work_init(&work, graph));

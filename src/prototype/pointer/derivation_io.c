@@ -58,6 +58,40 @@ int pg_derivation_input_terms(struct pg_graph *scratch,
 	return p->handler && !terms[5] ? -1 : 0;
 }
 
+int pg_derivation_inputs_collect_objects(struct pg_dag *objects, size_t count,
+	const struct pg_derivation_input *const *roots, const struct pg_effect_inference *work,
+	const struct pg_graph_codec *codec, void *owner)
+{
+	if (!objects || (count && !roots)) return -1;
+	struct pg_dag inputs = {0}, terms = {0};
+	struct pg_graph scratch = {0};
+	int status = -1;
+	if (pg_dag_init(&inputs, input_premise, NULL) || pg_dag_init(&terms, NULL, NULL)
+		|| pg_graph_init(&scratch)) goto done;
+	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&inputs, roots[i])) goto done;
+	for (const struct pg_dag_node *node = inputs.first; node; node = node->next) {
+		const struct pg_term *slots[PG_DERIVATION_TERM_SLOTS];
+		if (pg_derivation_input_terms(&scratch, node->key, slots)) goto done;
+		for (size_t i = 0; i < PG_DERIVATION_TERM_SLOTS; ++i)
+			if (slots[i] && pg_dag_add(&terms, slots[i])) goto done;
+	}
+	size_t equations, effect_count;
+	const struct pg_term *const *effect_roots;
+	if (work) {
+		if (pg_effect_inference_pack(work, &scratch, &equations, &effect_count, &effect_roots)) goto done;
+		for (size_t i = 0; i < effect_count; ++i) if (pg_dag_add(&terms, effect_roots[i])) goto done;
+	}
+	if (terms.count > SIZE_MAX / sizeof(void *)) goto done;
+	const struct pg_term **term_roots = pg_alloc(&scratch, terms.count * sizeof(*term_roots));
+	if (!term_roots) goto done;
+	for (const struct pg_dag_node *node = terms.first; node; node = node->next) term_roots[node->id - 1] = node->key;
+	status = pg_graph_collect_objects(objects, terms.count, term_roots, codec, owner);
+done:
+	pg_graph_destroy(&scratch);
+	pg_dag_destroy(&terms); pg_dag_destroy(&inputs);
+	return status;
+}
+
 int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner)
 {

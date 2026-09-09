@@ -7810,6 +7810,16 @@ Validation: rebuilt `check` passes, including the new object-collection checks.
 `check-image-origins` still fails at example 07 saving after its identity-sharing
 fixtures pass. No full-acceptance or Main-promotion claim is made.
 
+Next step after `82fae58`: `pg_derivation_inputs_collect_objects` batches a
+shared premise DAG and its effect definitions into the transport object walk.
+It uses `pg_derivation_input_terms` and `pg_effect_inference_pack`, so there is
+no second list of rule payload fields or effect dependency interpretation.
+Tests exercise exported pending effect parameters and relocated ADT formation,
+constructor and hidden Self-binder dependencies without accepting evidence.
+Source-origin selection is not yet connected; example 07 remains an open gate.
+Rebuilt `check` passes. The extended origin gate still fails at example 07
+export; the dependency collector alone is not the end-to-end correction.
+
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.

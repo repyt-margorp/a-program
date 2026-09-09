@@ -15,6 +15,13 @@ enum { PG_DERIVATION_TERM_SLOTS = 8 };
 int pg_derivation_input_terms(struct pg_graph *scratch,
 	const struct pg_derivation_input *input,
 	const struct pg_term *terms[PG_DERIVATION_TERM_SLOTS]);
+/* Collect the object dependency closure of an unaccepted premise DAG and its
+ * effect definitions. Uses the same parameter packing and descriptor traversal
+ * as writing. objects is an initialized leaf DAG; partial output on error must
+ * not be used. No Solve, proof acceptance or temporary file is involved. */
+int pg_derivation_inputs_collect_objects(struct pg_dag *objects, size_t count,
+	const struct pg_derivation_input *const *roots, const struct pg_effect_inference *work,
+	const struct pg_graph_codec *codec, void *owner);
 
 /* Nominal rules require the declaration graph codec (declaration_io.h).
  * Family/constructor parameters share the same Core relocation table as all
