@@ -26,6 +26,15 @@ static const struct symmetry_entry *owner(const struct pg_term *term)
 	return term->kind == PG_REFERENCE ? object_owner(term->as.reference) : NULL;
 }
 
+int pg_symmetry_object_view(const struct pg_object *object, size_t *dimension, const size_t **axes)
+{
+	const struct symmetry_entry *entry = object_owner(object);
+	if (!entry) return 0;
+	*dimension = entry->dimension;
+	*axes = entry->axes;
+	return 1;
+}
+
 static const char name_prefix[] = "kernel/symmetry/v1/";
 
 const char *pg_symmetry_name(const struct pg_object *object, char *buffer, size_t capacity)
@@ -85,6 +94,28 @@ static const struct pg_term *operator(struct pg_graph *graph, size_t dimension, 
 	return pg_reference(graph, &entry->base.object);
 }
 
+static const struct pg_term *validated_operator(struct pg_graph *graph, size_t dimension, const size_t *axes)
+{
+	if (!graph || dimension > SIZE_MAX / sizeof(size_t) || (dimension && !axes)) return NULL;
+	unsigned char *seen = calloc(dimension ? dimension : 1, 1);
+	if (!seen) return NULL;
+	const struct pg_term *result = NULL;
+	for (size_t i = 0; i < dimension; ++i) {
+		if (axes[i] >= dimension || seen[axes[i]]) goto done;
+		seen[axes[i]] = 1;
+	}
+	result = operator(graph, dimension, axes);
+done:
+	free(seen);
+	return result;
+}
+
+const struct pg_object *pg_symmetry_restore(struct pg_graph *graph, size_t dimension, const size_t *axes)
+{
+	const struct pg_term *term = validated_operator(graph, dimension, axes);
+	return term ? term->as.reference : NULL;
+}
+
 const struct pg_object *pg_symmetry_resolve(struct pg_graph *graph, const char *name)
 {
 	if (!graph || !name || strncmp(name, name_prefix, sizeof(name_prefix) - 1)) return NULL;
@@ -93,26 +124,22 @@ const struct pg_object *pg_symmetry_resolve(struct pg_graph *graph, const char *
 	for (const char *p = digits; *p; ++p) if (*p == ',') ++dimension;
 	if (dimension > SIZE_MAX / sizeof(size_t)) return NULL;
 	size_t *axes = malloc((dimension ? dimension : 1) * sizeof(*axes));
-	unsigned char *seen = calloc(dimension ? dimension : 1, 1);
 	const struct pg_object *result = NULL;
-	if (!axes || !seen) goto done;
+	if (!axes) goto done;
 	for (size_t i = 0; i < dimension; ++i) {
 		if (*digits < '0' || *digits > '9') goto done;
 		char *end;
 		errno = 0;
 		uintmax_t axis = strtoumax(digits, &end, 10);
-		if (errno == ERANGE || axis >= dimension) goto done;
+		if (errno == ERANGE || axis > SIZE_MAX) goto done;
 		if (*digits == '0' && end != digits + 1) goto done;
-		if (seen[axis] || *end != (i + 1 < dimension ? ',' : '\0')) goto done;
-		seen[axis] = 1;
+		if (*end != (i + 1 < dimension ? ',' : '\0')) goto done;
 		axes[i] = (size_t)axis;
 		digits = i + 1 < dimension ? end + 1 : end;
 	}
-	const struct pg_term *term = operator(graph, dimension, axes);
-	if (term) result = term->as.reference;
+	result = pg_symmetry_restore(graph, dimension, axes);
 done:
 	free(axes);
-	free(seen);
 	return result;
 }
 
@@ -123,19 +150,17 @@ const struct pg_term *pg_symmetry(struct pg_graph *graph,
 	size_t n = permutation->source;
 	if (n > SIZE_MAX / sizeof(size_t) || (n && !permutation->coordinates)) return NULL;
 	size_t *axes = malloc((n ? n : 1) * sizeof(*axes));
-	unsigned char *seen = calloc(n ? n : 1, 1);
-	if (!axes || !seen) { free(axes); free(seen); return NULL; }
+	if (!axes) return NULL;
 	const struct pg_term *result = NULL;
 	for (size_t i = 0; i < n; ++i) {
 		struct pg_coordinate c = permutation->coordinates[i];
-		if (c.kind != PG_AXIS || c.axis >= n || seen[c.axis]) goto done;
-		seen[c.axis] = 1;
+		if (c.kind != PG_AXIS) goto done;
 		axes[i] = c.axis;
 	}
-	result = pg_application(graph, operator(graph, n, axes), term);
+	const struct pg_term *head = validated_operator(graph, n, axes);
+	if (head) result = pg_application(graph, head, term);
 done:
 	free(axes);
-	free(seen);
 	return result;
 }
 

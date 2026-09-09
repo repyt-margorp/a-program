@@ -418,13 +418,22 @@ these owner payloads, deferred tasks and policy are connected together.
   keeps its existing fixed descriptor. Normal/ASan/UBSan `check-identity-io`
   pass, as does `check check-prepared-modules`; the strengthened generative-label
   fixture was rechecked in both component builds after that regression run began.
-- [ ] Complete common graph transport for symmetry owners before connecting
-  whole-machine checkpoints. The standalone symmetry name codec exists, but
-  the built-in descriptor codec does not delegate to it. Do not impose its
-  existing 64-byte classifier-name scratch buffer on arbitrarily large axis
-  lists: use bounded scalar payloads or correctly sized owner storage and
-  reuse the existing permutation validation/interner. Verify evaluation after
-  relocation, not only names or source-level RECOMPUTE images.
+- [x] Add common symmetry-owner transport (`symmetry/v1`) with scalar axis
+  payloads, independent of the classifier-name scratch-buffer size. Expose the
+  actual immutable owner axes; regular construction, textual-name resolution
+  and payload restoration share permutation validation and the existing exact
+  interner. Transport checks host-width conversion; the owner checks range and
+  uniqueness. Identity/fixed-prefix reduction remains evaluation, not import.
+- [x] Round-trip 128-axis reversal composition and the zero-axis identity in
+  the same table as raw Fold roots. Two arena-destroying saves and a separate
+  process preserve raw applications; subsequent pure evaluation yields the
+  expected shared values. Duplicate/out-of-range axes are rejected without
+  registering an owner. Normal/ASan/UBSan `check-identity-io` and the full
+  `check check-prepared-modules` run pass. The final host-width-check cleanup
+  was rechecked in both component builds after the full run began.
+- [ ] Connect retained continuation names, scopes and all deferred algorithm
+  states to whole-machine checkpoint ownership. Common graph support for these
+  caller references does not by itself retain the live execution that uses them.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 

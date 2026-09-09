@@ -5,6 +5,7 @@
 #include "classifier.h"
 #include "descriptor_io.h"
 #include "evidence.h"
+#include "symmetry.h"
 #include "wire.h"
 
 #include <assert.h>
@@ -25,7 +26,7 @@ static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
 
 static const struct pg_term *const *handler_fixture(struct pg_graph *graph)
 {
-	const struct pg_term **roots = pg_alloc(graph, 6 * sizeof(*roots));
+	const struct pg_term **roots = pg_alloc(graph, 8 * sizeof(*roots));
 	assert(roots);
 	const struct pg_object *a = pg_binder(graph), *k = pg_binder(graph);
 	const struct pg_term *v0 = pg_reference(graph, pg_binder(graph));
@@ -48,6 +49,11 @@ static const struct pg_term *const *handler_fixture(struct pg_graph *graph)
 	}
 	roots[4] = roots[0];
 	roots[5] = pg_computation_fold(graph, roots[2], pg_lambda(graph, a, roots[3]), 0, NULL);
+	size_t axes[128];
+	for (size_t i = 0; i < 128; ++i) axes[i] = 127 - i;
+	const struct pg_term *swap = pg_reference(graph, pg_symmetry_restore(graph, 128, axes));
+	roots[6] = pg_application(graph, swap, pg_application(graph, swap, v0));
+	roots[7] = pg_application(graph, pg_reference(graph, pg_symmetry_restore(graph, 0, NULL)), v1);
 	return roots;
 }
 
@@ -71,12 +77,21 @@ static void check_handlers(struct pg_graph *graph, const struct pg_term *const *
 	struct pg_clause_position reversed[] = {positions[1], positions[0]};
 	assert(pg_computation_handler_restore(graph, 2, reversed) == object);
 	assert(handler_head(roots[5]) == &pg_fold_operation);
-	for (size_t i = 0; i < 3; ++i) {
+	size_t dimension;
+	const size_t *axes;
+	assert(pg_symmetry_object_view(handler_head(roots[6]), &dimension, &axes) && dimension == 128);
+	for (size_t i = 0; i < dimension; ++i) assert(axes[i] == 127 - i);
+	assert(pg_symmetry_object_view(handler_head(roots[7]), &dimension, &axes) && dimension == 0);
+	assert(roots[7]->kind == PG_APPLICATION);
+	const size_t inputs[] = {0, 1, 5, 6, 7};
+	const struct pg_term *expected[] = {roots[2], roots[3], roots[3],
+		roots[2]->as.application.argument, roots[3]->as.application.argument};
+	for (size_t i = 0; i < 5; ++i) {
 		struct pg_eval machine;
-		pg_computation_eval_init(&machine, graph, roots[i < 2 ? i : 5]);
-		while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) assert(machine.steps < 1000);
+		pg_computation_eval_init(&machine, graph, roots[inputs[i]]);
+		while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) assert(machine.steps < 10000);
 		assert(machine.status == PG_EVAL_WHNF);
-		assert(pg_eval_readback(&machine, graph) == roots[i ? 3 : 2]);
+		assert(pg_eval_readback(&machine, graph) == expected[i]);
 		pg_eval_destroy(&machine);
 	}
 	struct pg_clause_position invalid[] = {positions[0], positions[1]};
@@ -91,6 +106,12 @@ static void check_handlers(struct pg_graph *graph, const struct pg_term *const *
 	assert(!pg_computation_handler_restore(graph, 0, NULL));
 	struct pg_operation_clause missing = {positions[0].label, NULL};
 	assert(!pg_computation_fold(graph, roots[2], roots[3], 1, &missing));
+	uint64_t bad_axes[] = {0, 0};
+	size_t owners = graph->objects.count;
+	assert(!pg_builtin_graph_codec.restore(NULL, graph, "symmetry/v1", 0, NULL, 2, bad_axes));
+	bad_axes[1] = 2;
+	assert(!pg_builtin_graph_codec.restore(NULL, graph, "symmetry/v1", 0, NULL, 2, bad_axes));
+	assert(graph->objects.count == owners);
 }
 
 static void handlers(void)
@@ -100,7 +121,7 @@ static void handlers(void)
 	const struct pg_term *const *roots = handler_fixture(&graph);
 	for (size_t round = 0; round < 2; ++round) {
 		FILE *file = tmpfile();
-		assert(file && !pg_graph_write_descriptors(file, 6, roots, &pg_builtin_graph_codec, NULL));
+		assert(file && !pg_graph_write_descriptors(file, 8, roots, &pg_builtin_graph_codec, NULL));
 		pg_graph_destroy(&graph);
 		assert(!pg_graph_init(&graph));
 		struct pg_classifiers classifiers;
@@ -108,7 +129,7 @@ static void handlers(void)
 		rewind(file);
 		size_t count;
 		assert(!pg_graph_read_descriptors(file, &graph, 1000, 100, &pg_builtin_graph_codec, &classifiers, &count, &roots));
-		assert(count == 6 && !fclose(file));
+		assert(count == 8 && !fclose(file));
 		check_handlers(&graph, roots);
 		pg_classifiers_destroy(&classifiers);
 	}
@@ -514,7 +535,7 @@ int main(int argc, char **argv)
 		if (!strcmp(argv[1], "write-handlers")) {
 			const struct pg_term *const *roots = handler_fixture(&graph);
 			FILE *file = fopen(argv[2], "wb");
-			assert(file && !pg_graph_write_descriptors(file, 6, roots, &pg_builtin_graph_codec, &classifiers));
+			assert(file && !pg_graph_write_descriptors(file, 8, roots, &pg_builtin_graph_codec, &classifiers));
 			assert(!fclose(file));
 		} else {
 			FILE *file = fopen(argv[2], "rb");
@@ -522,7 +543,7 @@ int main(int argc, char **argv)
 			const struct pg_term *const *roots;
 			assert(file && !pg_graph_read_descriptors(file, &graph, 1000, 100,
 				&pg_builtin_graph_codec, &classifiers, &count, &roots));
-			assert(count == 6 && !fclose(file));
+			assert(count == 8 && !fclose(file));
 			check_handlers(&graph, roots);
 		}
 		pg_classifiers_destroy(&classifiers);

@@ -3,6 +3,7 @@
 #include "computation.h"
 #include "identity.h"
 #include "iadt.h"
+#include "symmetry.h"
 #include <string.h>
 
 static const struct pg_effect_row *object_row(const struct pg_object *object)
@@ -23,6 +24,8 @@ static const char *descriptor_name(void *context, const struct pg_object *object
 	const struct pg_term *payload, *response;
 	const struct pg_data_layout *layout;
 	size_t position, arity;
+	const size_t *axes;
+	if (pg_symmetry_object_view(object, &arity, &axes)) return "symmetry/v1";
 	const struct pg_clause_position *clauses;
 	if (pg_computation_handler_view(object, &arity, &clauses)) return "computation-handler/v1";
 	if (pg_data_layout_view(object)) return "data-layout/v1";
@@ -50,6 +53,8 @@ static int descriptor_child(void *context, struct pg_graph *scratch,
 {
 	(void)context;
 	size_t clause_count;
+	const size_t *axes;
+	if (pg_symmetry_object_view(object, &clause_count, &axes)) return 0;
 	const struct pg_clause_position *clauses;
 	if (pg_computation_handler_view(object, &clause_count, &clauses)) {
 		if (index >= clause_count) return 0;
@@ -82,6 +87,12 @@ static int descriptor_scalar(void *context, const struct pg_object *object, size
 {
 	(void)context;
 	size_t clause_count;
+	const size_t *axes;
+	if (pg_symmetry_object_view(object, &clause_count, &axes)) {
+		if (index >= clause_count) return 0;
+		*value = axes[index];
+		return 1;
+	}
 	const struct pg_clause_position *clauses;
 	if (pg_computation_handler_view(object, &clause_count, &clauses)) {
 		if (index >= clause_count) return 0;
@@ -106,6 +117,21 @@ static const struct pg_object *descriptor_restore(void *context, struct pg_graph
 	size_t scalar_count, const uint64_t *scalars)
 {
 	(void)context;
+	if (!strcmp(name, "symmetry/v1")) {
+		if (count || scalar_count > SIZE_MAX / sizeof(size_t)) return NULL;
+		struct pg_graph temporary = {0};
+		size_t *axes = pg_alloc(&temporary, scalar_count * sizeof(*axes));
+		const struct pg_object *result = NULL;
+		if (!axes) goto symmetry_done;
+		for (size_t i = 0; i < scalar_count; ++i) {
+			if ((uint64_t)(size_t)scalars[i] != scalars[i]) goto symmetry_done;
+			axes[i] = (size_t)scalars[i];
+		}
+		result = pg_symmetry_restore(graph, scalar_count, axes);
+	symmetry_done:
+		pg_graph_destroy(&temporary);
+		return result;
+	}
 	if (!strcmp(name, "computation-handler/v1")) {
 		if (!count || count != scalar_count || count > SIZE_MAX / sizeof(struct pg_clause_position)) return NULL;
 		struct pg_graph temporary = {0};

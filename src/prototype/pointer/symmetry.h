@@ -20,6 +20,9 @@ const struct pg_term *pg_symmetry(struct pg_graph *graph,
  * The caller supplies name storage. Invalid names do not intern descriptors. */
 const char *pg_symmetry_name(const struct pg_object *object, char *buffer, size_t capacity);
 const struct pg_object *pg_symmetry_resolve(struct pg_graph *graph, const char *name);
+/* Raw owner payload; identity permutations are retained, not reduced. */
+int pg_symmetry_object_view(const struct pg_object *object, size_t *dimension, const size_t **axes);
+const struct pg_object *pg_symmetry_restore(struct pg_graph *graph, size_t dimension, const size_t *axes);
 /* Inspect exactly one raw symmetry application, without reduction, allocation
  * or typing. axes is graph-owned and includes fixed prefixes. Outputs remain
  * unchanged on failure. Additional APP arguments are not silently consumed. */
