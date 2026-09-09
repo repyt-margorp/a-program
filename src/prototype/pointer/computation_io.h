@@ -70,6 +70,14 @@ int pg_fold_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *outpu
 	struct fold_work **work, size_t *count, const struct pg_term *const **roots);
 
 struct composition_work;
+int pg_symmetry_work_write_with(FILE *file, const struct composition_work *work,
+	size_t count, const struct pg_term *const *roots,
+	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner);
+int pg_symmetry_work_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit,
+	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
+		const struct pg_term *const **, void *), void *owner,
+	struct composition_work **work, size_t *count, const struct pg_term *const **roots);
 /* Raw symmetry composition: original owners, argument and constructed axis
  * prefix. Same shared-root/provenance/lifetime contract as Fold work. */
 int pg_symmetry_work_write(FILE *file, const struct composition_work *work,

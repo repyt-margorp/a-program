@@ -771,6 +771,17 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   An allocation length precedes the prefix and is checked against the maximum
   restored owner dimension. The Term table remains last, preserving its existing
   complete-stream validation; no second array copy or second graph decoder.
+- [x] Let the symmetry-composition Term owner include shared scope metadata
+  before the final graph table. The standalone APGSYM1 codec delegates to the
+  same read/write implementation and descriptor adapters as Fold. Extend every
+  cut/resave test with scope references to the operator and argument; require
+  exact relocated pointer sharing and unchanged prefix, result and step count.
+  Reject missing owner roots with cleared task/configuration outputs. The test
+  scope owner is shared with Fold rather than duplicated by task kind.
+  This is raw relocation, not acceptance of a saved axis prefix; production
+  whole-machine task dispatch remains outstanding.
+  Verification: `check check-prepared-modules` and ASan/UBSan
+  `check-identity-io check-eval-io` pass after these changes.
 - [x] At every task cut of a 3D reversal composed with itself, destroy arenas
   and resave twice; preserve owner/caller/argument sharing and the exact prefix.
   Resumption uses the original evaluator and produces the identical value with

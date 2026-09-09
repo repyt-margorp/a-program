@@ -808,41 +808,45 @@ static const struct pg_term *const *handler_fixture(struct pg_graph *graph)
 	return roots;
 }
 
-struct fold_codec {
+struct task_scope_codec {
 	struct pg_graph *arena;
-	struct fold_work *work;
 	struct action_scope *scope;
 	int omit_roots;
 };
 
-static int fold_scope_write(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+static int task_scope_write(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
 {
-	struct fold_codec *context = opaque;
+	struct task_scope_codec *context = opaque;
 	return pg_action_scope_write(file, context->scope, count, roots, &pg_builtin_graph_codec, NULL);
 }
 
-static int fold_scope_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+static int task_scope_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	size_t *count, const struct pg_term *const **roots, void *opaque)
 {
-	struct fold_codec *context = opaque;
+	struct task_scope_codec *context = opaque;
 	int status = pg_action_scope_read(file, context->arena, graph, limit, name_limit,
 		&pg_builtin_graph_codec, NULL, &context->scope, count, roots);
 	if (!status && context->omit_roots) *count = 0;
 	return status;
 }
 
+struct fold_codec {
+	struct task_scope_codec scope;
+	struct fold_work *work;
+};
+
 static int write_fold(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
 {
 	struct fold_codec *context = opaque;
-	return pg_fold_work_write_with(file, context->work, count, roots, fold_scope_write, context);
+	return pg_fold_work_write_with(file, context->work, count, roots, task_scope_write, &context->scope);
 }
 
 static int read_fold(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	size_t *count, const struct pg_term *const **roots, void *opaque)
 {
 	struct fold_codec *context = opaque;
-	return pg_fold_work_read_with(file, context->arena, graph, limit, name_limit,
-		fold_scope_read, context, &context->work, count, roots);
+	return pg_fold_work_read_with(file, context->scope.arena, graph, limit, name_limit,
+		task_scope_read, &context->scope, &context->work, count, roots);
 }
 
 static void fold_progress(void)
@@ -873,7 +877,7 @@ static void fold_progress(void)
 			}
 			if (machine.task) {
 				assert(machine.task->operation == &pg_fold_work_operation && !machine.frames);
-				struct fold_codec context = {.arena = &arena, .work = machine.task->state};
+				struct fold_codec context = {.scope.arena = &arena, .work = machine.task->state};
 				struct action_scope scope = {.source = context.work->head, .body = context.work->payload};
 				struct action_binding binding = {0};
 				if (context.work->phase != FOLD_BINDERS || context.work->position) {
@@ -881,7 +885,7 @@ static void fold_progress(void)
 					scope.count = 1;
 					scope.bindings = &binding;
 				}
-				context.scope = &scope;
+				context.scope.scope = &scope;
 				phases |= 1u << context.work->phase;
 				if (!rejected_positions) {
 					const long offsets[] = {8, 24, 32};
@@ -905,7 +909,7 @@ static void fold_progress(void)
 					};
 					FILE *file = tmpfile();
 					assert(file && !pg_eval_configurations_write_with(file, 2, inputs, write_fold, &context));
-					struct fold_codec bad = {.arena = &arena, .omit_roots = 1};
+					struct fold_codec bad = {.scope = {.arena = &arena, .omit_roots = 1}};
 					size_t rejected_count;
 					const struct pg_eval_configuration *rejected_roots;
 					rewind(file);
@@ -924,9 +928,9 @@ static void fold_progress(void)
 					assert(!pg_eval_configurations_read_with(file, &graph, 10000, 100, &n, &restored, read_fold, &context));
 					assert(n == 2 && !fclose(file));
 					assert(context.work->head == restored[0].head.term);
-					assert(context.scope->source == context.work->head);
-					assert(context.scope->body == context.work->payload);
-					if (context.scope->count) assert(context.scope->bindings[0].source == context.work->binders[0]);
+					assert(context.scope.scope->source == context.work->head);
+					assert(context.scope.scope->body == context.work->payload);
+					if (context.scope.scope->count) assert(context.scope.scope->bindings[0].source == context.work->binders[0]);
 					expected = restored[1].head.term;
 					pg_computation_eval_init(&machine, &graph, restored[0].head.term);
 					machine.current = restored[0].head;
@@ -962,22 +966,22 @@ static void fold_progress(void)
 }
 
 struct symmetry_codec {
-	struct pg_graph *arena;
+	struct task_scope_codec scope;
 	struct composition_work *work;
 };
 
 static int write_symmetry(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
 {
 	struct symmetry_codec *context = opaque;
-	return pg_symmetry_work_write(file, context->work, count, roots, &pg_builtin_graph_codec, NULL);
+	return pg_symmetry_work_write_with(file, context->work, count, roots, task_scope_write, &context->scope);
 }
 
 static int read_symmetry(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	size_t *count, const struct pg_term *const **roots, void *opaque)
 {
 	struct symmetry_codec *context = opaque;
-	return pg_symmetry_work_read(file, context->arena, graph, limit, name_limit,
-		&pg_builtin_graph_codec, NULL, &context->work, count, roots);
+	return pg_symmetry_work_read_with(file, context->scope.arena, graph, limit, name_limit,
+		task_scope_read, &context->scope, &context->work, count, roots);
 }
 
 static void symmetry_progress(void)
@@ -1001,7 +1005,8 @@ static void symmetry_progress(void)
 		}
 		if (machine.task) {
 			assert(machine.task->operation == &pg_symmetry_composition_operation && !machine.frames);
-			struct symmetry_codec context = {&arena, machine.task->state};
+			struct action_scope scope = {.source = swap, .body = value};
+			struct symmetry_codec context = {.scope = {.arena = &arena, .scope = &scope}, .work = machine.task->state};
 			positions |= 1u << context.work->position;
 			if (context.work->position == 1) {
 				const long offsets[] = {8, 16, 24};
@@ -1023,6 +1028,13 @@ static void symmetry_progress(void)
 				struct pg_eval_configuration inputs[] = {{machine.current, machine.arguments}, {{value, NULL}, NULL}};
 				FILE *file = tmpfile();
 				assert(file && !pg_eval_configurations_write_with(file, 2, inputs, write_symmetry, &context));
+				struct symmetry_codec bad = {.scope = {.arena = &arena, .omit_roots = 1}};
+				size_t rejected_count;
+				const struct pg_eval_configuration *rejected_roots;
+				rewind(file);
+				assert(pg_eval_configurations_read_with(file, &graph, 10000, 100,
+					&rejected_count, &rejected_roots, read_symmetry, &bad));
+				assert(!bad.work && !rejected_count && !rejected_roots);
 				uint64_t steps = machine.steps;
 				int ready = machine.head_ready;
 				pg_eval_destroy(&machine);
@@ -1038,6 +1050,8 @@ static void symmetry_progress(void)
 				assert(&context.work->outer->base.object == restored[0].head.term->as.reference);
 				value = restored[1].head.term;
 				assert(context.work->argument == value);
+				assert(context.scope.scope->body == value);
+				assert(context.scope.scope->source->as.reference == &context.work->outer->base.object);
 				for (size_t i = 0; i < context.work->position; ++i) assert(context.work->axes[i] == i);
 				pg_computation_eval_init(&machine, &graph, restored[0].head.term);
 				machine.current = restored[0].head;

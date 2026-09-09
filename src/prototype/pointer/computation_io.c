@@ -219,10 +219,11 @@ int pg_symmetry_prefix_read(FILE *file, struct pg_graph *arena, struct pg_graph 
 		read_configurations, &context, work, count, roots);
 }
 
-int pg_symmetry_work_write(FILE *file, const struct composition_work *work,
-	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+int pg_symmetry_work_write_with(FILE *file, const struct composition_work *work,
+	size_t count, const struct pg_term *const *roots,
+	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner)
 {
-	if (!file || !work || !work->outer || !work->inner || (count && !roots)) return -1;
+	if (!file || !work || !write_terms || !work->outer || !work->inner || (count && !roots)) return -1;
 	size_t dimension = work->outer->dimension > work->inner->dimension ? work->outer->dimension : work->inner->dimension;
 	if (work->dimension != dimension || work->position > dimension || (work->position && !work->axes)) return -1;
 	if (count > SIZE_MAX / sizeof(const struct pg_term *) - 3) return -1;
@@ -236,28 +237,30 @@ int pg_symmetry_work_write(FILE *file, const struct composition_work *work,
 	all[2] = work->argument;
 	for (size_t i = 0; i < count; ++i) all[i + 3] = roots[i];
 	if (write_axes(file, symmetry_magic, dimension, work->position, work->axes)) goto done;
-	status = pg_graph_write_descriptors(file, count + 3, all, codec, owner);
+	status = write_terms(file, count + 3, all, owner);
 done:
 	pg_graph_destroy(&temporary);
 	return status;
 }
 
-int pg_symmetry_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
-	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+int pg_symmetry_work_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit,
+	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
+		const struct pg_term *const **, void *), void *owner,
 	struct composition_work **work, size_t *count, const struct pg_term *const **roots)
 {
 	if (!work || !count || !roots) return -1;
 	*work = NULL;
 	*count = 0;
 	*roots = NULL;
-	if (!file || !arena || !output) return -1;
+	if (!file || !arena || !output || !read_terms) return -1;
 	struct composition_work *candidate = pg_alloc(arena, sizeof(*candidate));
 	if (!candidate) return -1;
 	size_t capacity;
 	if (read_axes(file, arena, symmetry_magic, limit, &capacity, &candidate->position, &candidate->axes)) return -1;
 	size_t total;
 	const struct pg_term *const *all;
-	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &total, &all) || total < 3) return -1;
+	if (read_terms(file, output, limit, name_limit, &total, &all, owner) || total < 3) return -1;
 	if (all[0]->kind != PG_REFERENCE || all[1]->kind != PG_REFERENCE) return -1;
 	const struct symmetry_entry *outer = pg_symmetry_owner(all[0]->as.reference), *inner = pg_symmetry_owner(all[1]->as.reference);
 	if (!outer || !inner) return -1;
@@ -390,6 +393,22 @@ static int descriptor_terms_read(FILE *file, struct pg_graph *graph, size_t limi
 {
 	struct configuration_owner *context = opaque;
 	return pg_graph_read_descriptors(file, graph, limit, name_limit, context->codec, context->owner, count, roots);
+}
+
+int pg_symmetry_work_write(FILE *file, const struct composition_work *work,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	struct configuration_owner context = {codec, owner};
+	return pg_symmetry_work_write_with(file, work, count, roots, descriptor_terms_write, &context);
+}
+
+int pg_symmetry_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct composition_work **work, size_t *count, const struct pg_term *const **roots)
+{
+	struct configuration_owner context = {codec, owner};
+	return pg_symmetry_work_read_with(file, arena, output, limit, name_limit, descriptor_terms_read, &context,
+		work, count, roots);
 }
 
 int pg_fold_work_write(FILE *file, const struct fold_work *work,
