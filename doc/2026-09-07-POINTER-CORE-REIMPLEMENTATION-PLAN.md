@@ -801,8 +801,50 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   NF steps; ignoring the saved records performs NF and yields an alpha-equal
   result with the same classifier. Full normal `check check-prepared-modules`
   (758 boundaries) and ASan/UBSan `source_io_test normalization` pass.
+- [x] Exercise APGSRC12 with independent writer, two inert resavers and separate
+  checked-reuse/recompute readers in the permanent `source_io.sh` gate. Reuse
+  the in-process fixture/check helpers; do not maintain another test evaluator.
+  Cover polymorphic identity and an identity annotated by a source Nat alongside
+  a separately declared, same-shaped Other type. The checker advances with
+  budget one. Reading/resaving leaves Solve and result caches untouched; after
+  checking, ordinary typed normalization consumes the same exact Core input
+  without NF work. Recompute readers perform NF and check the same result and
+  classifier. The lambda/nominal cases pass normal and ASan/UBSan runs.
+- [x] Retain constructor-only declaration origins: index both the family and
+  its existing layout in the same source-origin index. The `nullary` fixture
+  declares same-shaped Nat/Other and selects a thunk returning Nat.zero, whose
+  Core contains no family reference. Independent writer, two resavers, checked
+  reuse and recompute readers preserve the exact input and classifier in normal
+  and ASan/UBSan builds. Normal
+  `normalization` and `prepared-module` (758 save boundaries) also pass.
+- [ ] Constructor/recursive-Match retained input identity regression (September
+  9): both fixtures now run in `source_io.sh` and fail the exact source-pointer
+  assertion after inert resaving. Originally the constructor case also failed
+  alpha comparison: the origin index covered declaration families but not the
+  computation layout referenced by constructors. Indexing the existing layout
+  alongside the family restores nominal identity without putting type metadata
+  in Core. Both cases now compare alpha-equal, but exact pointers still differ.
+  This occurs in the recompute reader too, before installing any saved result;
+  it is not caused by receipt checking. The expanded gate fails in both normal
+  and ASan/UBSan builds at the same assertion; sanitized `normalization` passes.
+  Preserve the exact-pointer assertion: do not turn alpha equality into an
+  interning/cache lookup policy. Extend retained allocation ownership for
+  generated binders (including application sequencing and constructor wrappers)
+  through existing producer/rule inputs, or retain their prepared producers,
+  rather than inventing a second evaluator or a post-hoc alpha remapping pass.
+  Check recursive Match-generated allocations as well. Source-facing retention
+  selection must not claim exact cache reuse until these regressions pass.
+  Concrete allocation owners: `constructor_scope_step` lifts each field using
+  a fresh binder; `application_bind` allocates the sequencing-result binder.
+  Neither is a source Lambda/Pi `BINDING_JOB`, so enumerating source bindings
+  cannot retain these allocations. Their accepted context-extension rule inputs
+  already carry the binders, but the source restart recreates the helper jobs
+  instead of reconnecting their retained producer inputs. Extend prepared
+  producer ownership/transport rather than deriving a binder correspondence from
+  the output Terms. Also audit `pg_prove_constructor_scope` and induction helpers
+  so direct and budgeted construction obey the same allocation contract.
 - [ ] Add source-facing retention selection and bounded checking/installation
-  lifecycle, independent-process and nominal/IADT tests for APGSRC12. The new
+  lifecycle and constructor/Match/IADT tests for APGSRC12. The new
   API is not yet a CLI CHECKPOINT mode. Pending evaluation/synthesis work and
   no-recomputation evidence remain separate incomplete requirements.
 - [ ] Connect pending NF jobs and shared WHNF/NF jobs to this record ownership,

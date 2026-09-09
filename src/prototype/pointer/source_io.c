@@ -1,4 +1,5 @@
 #include "source_io.h"
+#include "iadt.h"
 #include "syntax_io.h"
 #include "dag.h"
 #include "wire.h"
@@ -147,10 +148,9 @@ struct origin_candidate {
 	struct pg_synthesis_job *job;
 };
 
-static int index_origin(void *owner, struct pg_synthesis_job *job)
+static int index_origin_object(struct origin_collection *c, struct pg_synthesis_job *job,
+	const struct pg_object *object)
 {
-	struct origin_collection *c = owner;
-	const struct pg_object *object = pg_synthesis_allocation_object(job);
 	if (!object) return -1;
 	uint64_t hash = (uintptr_t)object;
 	for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, hash); entry; entry = entry->next) {
@@ -161,6 +161,17 @@ static int index_origin(void *owner, struct pg_synthesis_job *job)
 	if (!candidate) return -1;
 	candidate->object = object; candidate->job = job;
 	return pg_index_insert(&c->candidates, &candidate->index, hash);
+}
+
+static int index_origin(void *owner, struct pg_synthesis_job *job)
+{
+	struct origin_collection *c = owner;
+	const struct pg_object *object = pg_synthesis_allocation_object(job);
+	if (index_origin_object(c, job, object)) return -1;
+	/* Computation endpoints may retain only the layout, not the type family. */
+	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
+	return declaration ? index_origin_object(c, job,
+		pg_data_matcher(pg_data_declaration_layout(declaration))) : 0;
 }
 
 static int collect_origin(void *owner, struct pg_synthesis_job *job)

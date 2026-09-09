@@ -84,9 +84,8 @@ static void normalization_origin(void)
 	puts("source normalization origin: source and retained rule share exact Core after destroying resaves");
 }
 
-static void retained_normalization(void)
+static struct pg_program *retained_program(const char *text)
 {
-	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
 	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
 	assert(p && p->root);
 	pg_synthesis_advance(&p->synthesis, 10000);
@@ -94,10 +93,57 @@ static void retained_normalization(void)
 	assert(forced);
 	struct pg_nf_job *computed = pg_nf_request(&p->evaluation, &pg_pure_policy, pg_evidence_subject(forced)->core);
 	assert(pg_nf_advance(computed, 10000) == PG_NF_DONE);
-	const struct pg_reduction_certificate *receipt = pg_nf_certificate(computed);
 	/* Local snapshot assembly uses the existing private archive layout. */
-	struct pg_reduction_archive initial = {.count = 1, .roots = &receipt};
-	const struct pg_reduction_archive *reductions = &initial;
+	struct pg_reduction_archive *archive = pg_alloc(&p->graph, sizeof(*archive));
+	const struct pg_reduction_certificate **root = pg_alloc(&p->graph, sizeof(*root));
+	assert(archive && root);
+	*root = pg_nf_certificate(computed);
+	*archive = (struct pg_reduction_archive){.count = 1, .roots = root};
+	p->retained_reductions = archive;
+	return p;
+}
+
+static void check_retained_program(struct pg_program *p, struct pg_synthesis_job *root, int reuse)
+{
+	const struct pg_reduction_archive *reductions = p->retained_reductions;
+	assert(reductions && reductions->count == 1 && !p->evaluation.jobs.count && !p->evaluation.normal_forms.count);
+	const struct pg_reduction_certificate *receipt = reductions->roots[0];
+	if (reuse) {
+		struct pg_reduction_check check;
+		assert(!pg_reduction_check_init(&check, &p->evaluation, reductions));
+		assert(!pg_reduction_check_certificate(&check, 0));
+		while (pg_reduction_check_advance(&check, 1) == PG_COMPARISON_PENDING)
+			assert(pg_reduction_check_steps(&check) < 10000);
+		receipt = pg_reduction_check_certificate(&check, 0);
+		assert(receipt && !pg_nf_remember(&p->evaluation, receipt));
+		pg_reduction_check_destroy(&check);
+	}
+	assert(!p->synthesis.steps && !pg_synthesis_result(root));
+	pg_synthesis_advance(&p->synthesis, 10000);
+	const struct pg_evidence *proof = pg_synthesis_result(root);
+	assert(proof);
+	const struct pg_evidence *forced = pg_prove_force(&p->typing, proof);
+	if (forced && pg_evidence_subject(forced)->core != pg_reduction_source(receipt)) {
+		fprintf(stderr, "retained source mismatch: reuse=%d alpha_equal=%d\n", reuse,
+			pg_alpha_equal(pg_evidence_subject(forced)->core, pg_reduction_source(receipt)));
+	}
+	assert(forced && pg_evidence_subject(forced)->core == pg_reduction_source(receipt));
+	struct pg_nf_job *cached = pg_nf_request(&p->evaluation, &pg_pure_policy, pg_reduction_source(receipt));
+	assert(pg_nf_status(cached) == (reuse ? PG_NF_DONE : PG_NF_PENDING));
+	assert(!pg_nf_steps(cached));
+	struct pg_synthesis_job *nf = pg_program_normalize(p, proof, 1);
+	assert(nf);
+	pg_synthesis_advance(&p->synthesis, 10000);
+	const struct pg_evidence *result = pg_synthesis_result(nf);
+	assert(result && pg_alpha_equal(pg_evidence_subject(result)->core, pg_reduction_target(receipt)) == 1);
+	assert(pg_evidence_classifier(result) == pg_evidence_classifier(forced));
+	assert((pg_nf_steps(cached) == 0) == !!reuse);
+}
+
+static void retained_normalization(void)
+{
+	struct pg_program *p = retained_program("{{ id:=&(\\A:@ => \\x:A => x); }}.id");
+	const struct pg_reduction_archive *reductions = p->retained_reductions;
 	struct pg_synthesis_job *const *roots = &p->root;
 	size_t count = 1;
 	for (unsigned round = 0; round < 3; ++round) {
@@ -111,32 +157,7 @@ static void retained_normalization(void)
 		reductions = p->retained_reductions;
 		assert(reductions && reductions->count == 1 && !p->evaluation.jobs.count && !p->evaluation.normal_forms.count);
 		if (!round) continue;
-		receipt = reductions->roots[0];
-		if (round == 1) {
-			struct pg_reduction_check check;
-			assert(!pg_reduction_check_init(&check, &p->evaluation, reductions));
-			assert(!pg_reduction_check_certificate(&check, 0));
-			assert(pg_reduction_check_advance(&check, 10000) == PG_COMPARISON_EQUAL);
-			receipt = pg_reduction_check_certificate(&check, 0);
-			assert(receipt && !pg_nf_remember(&p->evaluation, receipt));
-			pg_reduction_check_destroy(&check);
-		}
-		assert(!p->synthesis.steps && !pg_synthesis_result(roots[0]));
-		pg_synthesis_advance(&p->synthesis, 10000);
-		const struct pg_evidence *proof = pg_synthesis_result(roots[0]);
-		assert(proof);
-		forced = pg_prove_force(&p->typing, proof);
-		assert(forced && pg_evidence_subject(forced)->core == pg_reduction_source(receipt));
-		struct pg_nf_job *cached = pg_nf_request(&p->evaluation, &pg_pure_policy, pg_reduction_source(receipt));
-		assert(pg_nf_status(cached) == (round == 1 ? PG_NF_DONE : PG_NF_PENDING));
-		assert(!pg_nf_steps(cached));
-		struct pg_synthesis_job *nf = pg_program_normalize(p, proof, 1);
-		assert(nf);
-		pg_synthesis_advance(&p->synthesis, 10000);
-		const struct pg_evidence *result = pg_synthesis_result(nf);
-		assert(result && pg_alpha_equal(pg_evidence_subject(result)->core, pg_reduction_target(receipt)) == 1);
-		assert(pg_evidence_classifier(result) == pg_evidence_classifier(forced));
-		assert((pg_nf_steps(cached) == 0) == (round == 1));
+		check_retained_program(p, roots[0], round == 1);
 	}
 	pg_program_destroy(p);
 	puts("source retained NF: inert read/resave, explicit checking, shared input origins and typed cache reuse passed");
@@ -952,8 +973,57 @@ static void module_save_boundaries(void)
 	}
 }
 
+static void retained_process(int argc, char **argv)
+{
+	assert(argc >= 3);
+	struct pg_program *p;
+	struct pg_synthesis_job *const *roots;
+	size_t count;
+	if (!strcmp(argv[1], "retained-write")) {
+		assert(argc == 4);
+		const char *text;
+		if (!strcmp(argv[3], "lambda")) text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
+		else if (!strcmp(argv[3], "nullary"))
+			text = "{{ Nat:=@{zero:*;succ:*->*;}; Other:=@{zero:*;succ:*->*;}; r:=&{Nat.zero;}; }}.r";
+		else if (!strcmp(argv[3], "constructor"))
+			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&{Nat.succ (Nat.succ Nat.zero);}; }}.r";
+		else if (!strcmp(argv[3], "match"))
+			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&{(\\n:Nat=>n @zero=>Nat.zero @succ k=>Nat.succ *k) (Nat.succ (Nat.succ Nat.zero));}; }}.r";
+		else {
+			assert(!strcmp(argv[3], "nominal"));
+			text = "{{ Nat:=@{zero:*;succ:*->*;}; Other:=@{zero:*;succ:*->*;}; id:=&(\\x:Nat=>x); }}.id";
+		}
+		p = retained_program(text);
+		FILE *file = fopen(argv[2], "w+b");
+		assert(file && !pg_sources_write_retained(file, &p->synthesis, 1, &p->root, p->retained_reductions));
+		assert(!fclose(file));
+	} else {
+		FILE *file = fopen(argv[2], "rb");
+		assert(file);
+		p = pg_sources_read(file, 100000, &count, &roots);
+		assert(p && count == 1 && p->retained_reductions && !p->synthesis.steps);
+		assert(!fclose(file) && !pg_synthesis_result(roots[0]));
+		if (!strcmp(argv[1], "retained-resave")) {
+			assert(argc == 4);
+			file = fopen(argv[3], "w+b");
+			assert(file && !pg_sources_write_retained(file, &p->synthesis, count, roots, p->retained_reductions));
+			assert(!fclose(file) && !p->synthesis.steps && !p->evaluation.jobs.count);
+		} else {
+			assert(argc == 3);
+			int reuse = !strcmp(argv[1], "retained-check");
+			assert(reuse || !strcmp(argv[1], "retained-recompute"));
+			check_retained_program(p, roots[0], reuse);
+		}
+	}
+	pg_program_destroy(p);
+}
+
 int main(int argc, char **argv)
 {
+	if (argc > 1 && !strncmp(argv[1], "retained-", 9)) {
+		retained_process(argc, argv);
+		return 0;
+	}
 	if (argc == 2 && !strcmp(argv[1], "normalization")) {
 		normalization_requests();
 		return 0;

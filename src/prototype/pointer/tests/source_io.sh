@@ -7,6 +7,14 @@ single=$("$1" read "$directory/modules.graph")
 bulk=$("$1" read-bulk "$directory/modules.graph")
 test "$single" = "$bulk"
 printf '%s\n' "$single"
+for fixture in lambda nominal nullary constructor match; do
+	"$1" retained-write "$directory/retained.a" "$fixture"
+	"$1" retained-resave "$directory/retained.a" "$directory/resaved.a"
+	"$1" retained-resave "$directory/resaved.a" "$directory/resaved-again.a"
+	"$1" retained-check "$directory/resaved-again.a"
+	"$1" retained-recompute "$directory/resaved-again.a"
+done
+printf '%s\n' 'source retained NF: independent writer/resavers/readers preserve source origins and checked reuse'
 "$1" annotation-write "$directory/annotations.graph"
 single=$("$1" annotation-read "$directory/annotations.graph")
 bulk=$("$1" annotation-read-bulk "$directory/annotations.graph")
