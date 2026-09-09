@@ -377,6 +377,7 @@ static int materialization_write(FILE *file, const char format[8], const struct 
 	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner)
 {
 	if (!work || !input || !input->head.term) return -1;
+	if (!write_terms || (count && !roots)) return -1;
 	uint64_t flags = (work->readback.output != NULL) | (work->done ? 2 : 0) | (work->partial ? 4 : 0);
 	if (count > SIZE_MAX / sizeof(struct pg_eval_configuration) - 3) return -1;
 	struct pg_graph scratch = {0};
@@ -397,9 +398,11 @@ static int materialization_read(FILE *file, const char format[8], struct pg_grap
 	struct materialization *work, struct pg_eval_configuration *input,
 	size_t count, const struct pg_eval_configuration **roots)
 {
-	if (!work || !input) return -1;
+	if (!work || !input || !roots) return -1;
+	*roots = NULL;
 	memset(work, 0, sizeof(*work));
 	memset(input, 0, sizeof(*input));
+	if (!read_terms) return -1;
 	struct materialization candidate = {0};
 	const struct pg_eval_configuration *extra;
 	uint64_t flags;
@@ -428,11 +431,29 @@ failure:
 	return -1;
 }
 
+int pg_materialization_write_with(FILE *file, const struct materialization *work,
+	const struct pg_eval_configuration *input, size_t extra_count,
+	const struct pg_eval_configuration *extra,
+	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner)
+{
+	return materialization_write(file, materialization_magic, work, input, extra_count, extra, write_terms, owner);
+}
+
+int pg_materialization_read_with(FILE *file, struct pg_graph *graph, size_t limit,
+	size_t name_limit,
+	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *, const struct pg_term *const **, void *), void *owner,
+	struct materialization *work, struct pg_eval_configuration *input,
+	size_t extra_count, const struct pg_eval_configuration **extra)
+{
+	return materialization_read(file, materialization_magic, graph, limit, name_limit,
+		read_terms, owner, work, input, extra_count, extra);
+}
+
 int pg_materialization_write(FILE *file, const struct materialization *work,
 	const struct pg_eval_configuration *input, const struct pg_graph_codec *codec, void *owner)
 {
 	struct configuration_graph_codec context = {codec, owner};
-	return materialization_write(file, materialization_magic, work, input, 0, NULL, write_configuration_terms, &context);
+	return pg_materialization_write_with(file, work, input, 0, NULL, write_configuration_terms, &context);
 }
 
 int pg_materialization_read(FILE *file, struct pg_graph *graph, size_t limit,
@@ -441,7 +462,7 @@ int pg_materialization_read(FILE *file, struct pg_graph *graph, size_t limit,
 {
 	const struct pg_eval_configuration *unused;
 	struct configuration_graph_codec context = {codec, owner};
-	return materialization_read(file, materialization_magic, graph, limit, name_limit, read_configuration_terms, &context, work, input, 0, &unused);
+	return pg_materialization_read_with(file, graph, limit, name_limit, read_configuration_terms, &context, work, input, 0, &unused);
 }
 
 static int frame_roots(const struct pg_eval_frame *frame, struct pg_eval_configuration roots[3])

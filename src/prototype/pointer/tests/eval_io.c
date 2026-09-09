@@ -511,6 +511,20 @@ static void read_materialization(FILE *file)
 	pg_graph_destroy(&graph);
 }
 
+static int materialization_terms_write(FILE *file, size_t count, const struct pg_term *const *roots, void *owner)
+{
+	(void)owner;
+	return pg_graph_write_descriptors(file, count, roots, NULL, NULL);
+}
+
+static int materialization_terms_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_term *const **roots, void *owner)
+{
+	int status = pg_graph_read_descriptors(file, graph, limit, name_limit, NULL, NULL, count, roots);
+	if (!status && owner) *count = 0;
+	return status;
+}
+
 static void materialization_resume(void)
 {
 	struct pg_graph graph;
@@ -524,18 +538,38 @@ static void materialization_resume(void)
 		for (size_t i = 0; i < cut; ++i)
 			assert(pg_materialize_step(&work, &graph, original.head, original.arguments) == (i + 1 == steps));
 		FILE *file = tmpfile();
-		assert(file && !pg_materialization_write(file, &work, &original, NULL, NULL));
+		struct pg_eval_configuration extra[] = {original, {original.head, original.arguments->next}, original};
+		assert(file && !pg_materialization_write_with(file, &work, &original, 3, extra, materialization_terms_write, NULL));
 		pg_materialize_destroy(&work);
 		struct pg_graph restored;
 		struct pg_eval_configuration input;
+		const struct pg_eval_configuration *restored_extra;
 		for (size_t round = 0; round < 2; ++round) {
 			assert(!pg_graph_init(&restored));
 			rewind(file);
-			assert(!pg_materialization_read(file, &restored, 10000, 100, NULL, NULL, &work, &input));
+			assert(!pg_materialization_read_with(file, &restored, 10000, 100,
+				materialization_terms_read, NULL, &work, &input, 3, &restored_extra));
+			assert(restored_extra[0].head.term == input.head.term);
+			assert(restored_extra[0].head.environment == input.head.environment);
+			assert(restored_extra[0].arguments == input.arguments);
+			assert(restored_extra[1].arguments == input.arguments->next);
+			assert(restored_extra[2].arguments == input.arguments);
+			struct materialization rejected;
+			struct pg_eval_configuration ignored;
+			const struct pg_eval_configuration *unused;
+			rewind(file);
+			assert(pg_materialization_read_with(file, &restored, 10000, 100,
+				materialization_terms_read, NULL, &rejected, &ignored, 2, &unused));
+			assert(!rejected.entry && !ignored.head.term && !unused);
+			rewind(file);
+			assert(pg_materialization_read_with(file, &restored, 10000, 100,
+				materialization_terms_read, &input, &rejected, &ignored, 3, &unused));
+			assert(!rejected.entry && !ignored.head.term && !unused);
 			assert(!fclose(file));
 			if (!round) {
 				file = tmpfile();
-				assert(file && !pg_materialization_write(file, &work, &input, NULL, NULL));
+				assert(file && !pg_materialization_write_with(file, &work, &input, 3, restored_extra,
+					materialization_terms_write, NULL));
 				pg_materialize_destroy(&work);
 				pg_graph_destroy(&restored);
 			}

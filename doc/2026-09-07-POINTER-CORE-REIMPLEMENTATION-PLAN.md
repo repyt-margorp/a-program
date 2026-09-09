@@ -180,6 +180,17 @@ remain required before a completed-checkpoint claim.
   prepared-module save boundaries. These are component tests, not full source
   acceptance. Materialization cache-root order is not byte-canonical across
   processes; graph sharing, results and remaining work are the invariants.
+- [x] Expose the existing materialization owner path for WHNF-job composition:
+  additional configurations share the input's environment/argument forest and
+  final Term-owner callback. Standalone APIs delegate with zero extra roots;
+  no second readback traversal, state representation or reduction rule. Extend
+  every readback cut with repeated owner roots and a shared argument tail,
+  resave twice, and verify exact aliases, remaining steps and cache counts.
+  Wrong configuration counts and missing owner Term roots clear all outputs and
+  release reconstructed readback indexes. This prepares job transport; it does
+  not publish imported work into the accepted WHNF/NF store.
+  Verification: normal `check check-prepared-modules` and ASan/UBSan
+  `check-identity-io check-eval-io` pass with these ownership/rejection tests.
 - [ ] Integrate raw materialization work with whole evaluator/Solve checkpoints,
   including Demand/deferred continuations and shared cross-component relocation.
   None of `APGSUB2`, `APGMAT1` or `APGCFG1` establishes the provenance of saved
