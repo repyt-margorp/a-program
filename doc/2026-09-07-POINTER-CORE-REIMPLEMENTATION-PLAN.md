@@ -864,8 +864,8 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   argument-only sequencing and callee-plus-argument sequencing, reconstructing
   exact Core from distinct source requests using the same allocation even when
   its stored annotations are deliberately wrong. Short/long vectors and wrong
-  prefixes fail. This is not yet connected to source-image allocation origins;
-  the source-only constructor/Match retention gate remains open.
+  prefixes fail. Source-image connection follows below; the source-only
+  constructor/Match retention gate remains open.
   Verification: normal and ASan/UBSan full `synthesis_test`, normal
   `source_io_test normalization` and `prepared-module` (758 boundaries) pass.
 - [x] Distinguish retained typed-root checking from source re-elaboration.
@@ -875,6 +875,34 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   supplies the typed input to normalization. Independent writer/two-resaver/
   reuse/recompute tests pass for field-bearing constructors as well as lambda,
   nominal and nullary fixtures. No alpha-keyed cache or binder remapper is used.
+- [x] September 9: retain completed source-application allocation origins using
+  the existing `(scope, syntax, rule)` origin records. The rule is the already
+  constructed final result-context extension, not a new certificate kind.
+  Restoring registers that ordinary unaccepted derivation; application
+  preparation waits for its validation and the lexical prefix before attaching
+  the same binder vector. Inert resaving preserves the original rule reference.
+  A still-partial application's current context is NOT a complete allocation
+  recipe: exporting it as one would reject later valid binds. Partial job
+  retention remains part of the outstanding CHECKPOINT work.
+  The `application` fixture uses explicit function quotation and
+  `f (f Nat.zero)` with a nullary ADT. Both source-only and typed-root modes are
+  included before the still-open constructor regression in `source_io.sh`.
+- [ ] Source-origin scope coverage: collecting application origins exposes
+  applications inside Match branches. `pg_synthesis_environment_input` rejects
+  scopes with `hypothesis_for` (also `effect_owner`) and contexts not constructed
+  by the retained lexical binding jobs. Consequently `retained-write-typed ...
+  match` now fails in origin collection, before the earlier source-only
+  constructor gate. Do not silently discard these origins or disable the Match
+  test. Retain the branch-scope producer and its ordinary induction-context
+  inputs, preserving its parent and IH binding, through the shared source
+  environment representation. This is source preparation state, not another
+  evaluator or a new accepted proof kind. Until connected, the new application
+  origin feature is partial and the full source image suite is not green.
+  The independent source-only `application` writer/two-resave/reuse/recompute
+  sequence passes; normal full synthesis, normalization and 758 prepared-module
+  boundaries pass. Both normal and sanitized source suites reproduce the Match
+  write failure. Main push remains blocked by incomplete implementation, not by
+  an external dependency.
 - [x] Retained recursive-elimination derivation allocation (resolved by
   APGDRV6 below). Original failure:
   `retained-write-typed <file> match` followed by inert resaves and

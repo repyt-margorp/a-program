@@ -83,6 +83,9 @@ struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *s
 struct pg_synthesis_job *pg_synthesis_restore_binding(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
+struct pg_synthesis_job *pg_synthesis_restore_application(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	struct pg_synthesis_job *origin);
 /* A definition is keyed by its registration producer and expression, not by
  * the registration worker's allocated scope. Borrow its reconstructible source
  * inputs without claiming whole-module acceptance. Available while dormant. */

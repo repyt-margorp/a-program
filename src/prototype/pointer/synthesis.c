@@ -333,6 +333,13 @@ int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 				if (visit(owner, job)) return -1;
 				continue;
 			}
+			if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_APPLICATION) {
+				if (job->allocation_origin || (job->status == PG_SYNTHESIS_DONE && job->application
+					&& job->application->context != job->scope->context_job
+					&& job->application->context->status == PG_SYNTHESIS_DONE))
+					if (visit(owner, job)) return -1;
+				continue;
+			}
 			if (job->role == EXPRESSION_JOB &&
 				(job->syntax->kind == PG_SYNTAX_LAMBDA || job->syntax->kind == PG_SYNTAX_PI)) {
 				if (job->left && job->left->role == BINDING_JOB && job->left->status == PG_SYNTHESIS_DONE)
@@ -653,13 +660,24 @@ struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthe
 
 struct pg_synthesis_job *pg_synthesis_allocation_origin(const struct pg_synthesis_job *job)
 {
-	return job->allocation_origin ? job->allocation_origin : (struct pg_synthesis_job *)job;
+	if (job->allocation_origin) return job->allocation_origin;
+	if (job->application) return job->application->context;
+	return (struct pg_synthesis_job *)job;
 }
 
 const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis_job *job)
 {
 	if (!job) return NULL;
 	if (job->role == BINDING_JOB) return job->binder;
+	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_APPLICATION) {
+		const struct pg_synthesis_job *origin = pg_synthesis_allocation_origin(job);
+		if (origin->role == DERIVATION_INPUT_JOB) {
+			const struct pg_derivation_input *input = origin->inputs[0];
+			return input->parameters.binder;
+		}
+		const struct pg_context *context = pg_evidence_context(pg_synthesis_result(origin));
+		return context ? context->binder : NULL;
+	}
 	const struct pg_data_declaration *declaration = job->nominal_input;
 	if (!declaration && job->schema) declaration = pg_data_schema_declaration(job->schema);
 	return declaration ? pg_data_declaration_family(declaration) : NULL;
@@ -687,6 +705,21 @@ struct pg_synthesis_job *pg_synthesis_restore_binding(struct pg_synthesis *synth
 	if (input->rule != PG_CONTEXT_EXTEND || !input->parameters.binder) return NULL;
 	struct pg_synthesis_job *job = pg_synthesis_binding_at(synthesis, scope, syntax, input->parameters.binder);
 	if (!job || (job->allocation_origin && job->allocation_origin != origin)) return NULL;
+	job->allocation_origin = origin;
+	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_restore_application(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	struct pg_synthesis_job *origin)
+{
+	if (!syntax || syntax->kind != PG_SYNTAX_APPLICATION) return NULL;
+	if (!origin || origin->owner != synthesis->owner_key || origin->role != DERIVATION_INPUT_JOB) return NULL;
+	const struct pg_derivation_input *input = origin->inputs[0];
+	if (input->rule != PG_CONTEXT_EXTEND || !input->parameters.binder) return NULL;
+	struct pg_synthesis_job *job = pg_synthesis_request(synthesis, scope, syntax);
+	if (!job || job->application) return NULL;
+	if (job->allocation_origin && job->allocation_origin != origin) return NULL;
 	job->allocation_origin = origin;
 	return job;
 }
@@ -5325,11 +5358,20 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 	if (job->stage == APPLICATION_RULE_READY) { forward_proof(synthesis, job, job->value_job); return 1; }
 	if (job->stage != 2) return 0;
 	if (!job->application) {
-		if (job->context_allocation) {
-			struct pg_synthesis_job *context = job->scope->context_job;
-			if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return 1; }
-			if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return 1; }
-			if (pg_evidence_context(pg_synthesis_result(context)) != job->context_allocation->prefix) {
+		if (job->allocation_origin || job->context_allocation) {
+			struct pg_synthesis_job *prefix = job->scope->context_job;
+			if (prefix->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, prefix); return 1; }
+			if (prefix->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, prefix->status); return 1; }
+			if (job->allocation_origin) {
+				struct pg_synthesis_job *origin = job->allocation_origin;
+				if (origin->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, origin); return 1; }
+				if (origin->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, origin->status); return 1; }
+				if (context_allocation_at(synthesis, job, pg_evidence_context(pg_synthesis_result(prefix)),
+					pg_evidence_context(pg_synthesis_result(origin)), 0)) {
+					finish(synthesis, job, PG_SYNTHESIS_REJECTED); return 1;
+				}
+			}
+			if (pg_evidence_context(pg_synthesis_result(prefix)) != job->context_allocation->prefix) {
 				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return 1;
 			}
 		}

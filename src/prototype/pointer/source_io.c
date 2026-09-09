@@ -534,8 +534,11 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	for (size_t i = 0; i < no; ++i) {
 		uint64_t scope = origin_ids[3 * i], syntax = origin_ids[3 * i + 1], rule = origin_ids[3 * i + 2];
 		if (!scope || scope > n || !syntax || syntax > nt || !rule || rule > nd) goto fail;
-		if (!pg_synthesis_restore_declaration(&program->synthesis, scopes[scope - 1], terms[syntax - 1],
-			rules[rule - 1])) goto fail;
+		const struct pg_syntax *site = terms[syntax - 1];
+		struct pg_synthesis_job *restored = site->kind == PG_SYNTAX_APPLICATION
+			? pg_synthesis_restore_application(&program->synthesis, scopes[scope - 1], site, rules[rule - 1])
+			: pg_synthesis_restore_declaration(&program->synthesis, scopes[scope - 1], site, rules[rule - 1]);
+		if (!restored) goto fail;
 	}
 	for (size_t i = 0; i < nr; ++i) jobs[i] = producers[selections[i] - 1];
 	program->root = nr ? jobs[0] : NULL;
