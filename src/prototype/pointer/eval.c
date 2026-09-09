@@ -502,6 +502,8 @@ struct pg_reduction_certificate {
 	const struct pg_term *target;
 	const struct pg_eval_policy *policy;
 	enum pg_reduction_kind kind;
+	const struct pg_reduction_phase *phases;
+	const struct pg_reduction_certificate *normality;
 };
 
 struct pg_whnf_job {
@@ -522,6 +524,7 @@ struct pg_nf_job {
 	const struct pg_eval_policy *policy;
 	const struct pg_term *input, *body;
 	const struct pg_reduction_certificate *certificate;
+	const struct pg_reduction_phase *phases;
 	struct pg_whnf_job *head;
 	struct pg_nf_job *children[2];
 	struct pg_nf_job **stack;
@@ -582,12 +585,13 @@ struct pg_whnf_job *pg_whnf_request(struct pg_whnf_work *work,
 	return job;
 }
 
-static const struct pg_reduction_certificate *reduction_certificate(struct pg_graph *graph,
+static struct pg_reduction_certificate *reduction_certificate(struct pg_graph *graph,
 	const struct pg_term *source, const struct pg_term *target, const struct pg_eval_policy *policy,
 	enum pg_reduction_kind kind)
 {
 	struct pg_reduction_certificate *certificate = pg_alloc(graph, sizeof(*certificate));
-	if (certificate) *certificate = (struct pg_reduction_certificate){source, target, policy, kind};
+	if (certificate) *certificate = (struct pg_reduction_certificate){.source = source,
+		.target = target, .policy = policy, .kind = kind};
 	return certificate;
 }
 
@@ -608,9 +612,10 @@ static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 	struct pg_whnf_job *canonical = pg_whnf_request(job->work, job->policy, certificate->target);
 	if (!canonical || canonical->status == PG_EVAL_ERROR) return PG_EVAL_ERROR;
 	if (canonical != job && canonical->status == PG_EVAL_PENDING) {
-		const struct pg_reduction_certificate *reflexive = reduction_certificate(job->work->graph,
+		struct pg_reduction_certificate *reflexive = reduction_certificate(job->work->graph,
 			certificate->target, certificate->target, job->policy, PG_REDUCTION_WHNF);
 		if (!reflexive) return PG_EVAL_ERROR;
+		reflexive->normality = certificate;
 		materialize_destroy(&canonical->output);
 		pg_eval_destroy(&canonical->machine);
 		canonical->certificate = reflexive;
@@ -654,6 +659,8 @@ const struct pg_term *pg_reduction_source(const struct pg_reduction_certificate 
 const struct pg_term *pg_reduction_target(const struct pg_reduction_certificate *certificate) { return certificate->target; }
 const struct pg_eval_policy *pg_reduction_policy(const struct pg_reduction_certificate *certificate) { return certificate->policy; }
 enum pg_reduction_kind pg_reduction_kind(const struct pg_reduction_certificate *certificate) { return certificate->kind; }
+const struct pg_reduction_phase *pg_reduction_phases(const struct pg_reduction_certificate *certificate) { return certificate->phases; }
+const struct pg_reduction_certificate *pg_reduction_normality(const struct pg_reduction_certificate *certificate) { return certificate->normality; }
 
 struct pg_nf_job *pg_nf_request(struct pg_whnf_work *work,
 	const struct pg_eval_policy *policy, const struct pg_term *input)
@@ -676,20 +683,39 @@ struct pg_nf_job *pg_nf_request(struct pg_whnf_work *work,
 
 static void nf_complete(struct pg_nf_job *job, const struct pg_term *result)
 {
+	struct pg_reduction_certificate *certificate = reduction_certificate(job->work->graph,
+		job->input, result, job->policy, PG_REDUCTION_NF);
+	if (!certificate) { job->status = PG_NF_ERROR; return; }
+	certificate->phases = job->phases;
 	/* A computed normal form is also its own answer, without another walk. */
 	struct pg_nf_job *canonical = pg_nf_request(job->work, job->policy, result);
 	if (!canonical || canonical->status == PG_NF_ERROR) {
 		job->status = PG_NF_ERROR;
 		return;
 	}
-	if (canonical->status == PG_NF_PENDING) {
-		canonical->certificate = reduction_certificate(job->work->graph, result, result, job->policy, PG_REDUCTION_NF);
-		canonical->status = canonical->certificate ? PG_NF_DONE : PG_NF_ERROR;
+	if (canonical != job && canonical->status == PG_NF_PENDING) {
+		struct pg_reduction_certificate *reflexive = reduction_certificate(job->work->graph,
+			result, result, job->policy, PG_REDUCTION_NF);
+		if (!reflexive) { job->status = PG_NF_ERROR; return; }
+		reflexive->normality = certificate;
+		canonical->certificate = reflexive;
+		canonical->status = PG_NF_DONE;
 	}
-	if (canonical->status == PG_NF_ERROR) { job->status = PG_NF_ERROR; return; }
-	if (canonical != job) job->certificate = reduction_certificate(job->work->graph,
-		job->input, pg_nf_result(canonical), job->policy, PG_REDUCTION_NF);
-	job->status = job->certificate ? PG_NF_DONE : PG_NF_ERROR;
+	job->certificate = certificate;
+	job->status = PG_NF_DONE;
+}
+
+static int nf_phase(struct pg_nf_job *job, const struct pg_term *rebuilt, int children)
+{
+	struct pg_reduction_phase *phase = pg_alloc(job->work->graph, sizeof(*phase));
+	if (!phase) return -1;
+	*phase = (struct pg_reduction_phase){.previous = job->phases,
+		.head = pg_whnf_certificate(job->head), .rebuilt = rebuilt};
+	if (children)
+		for (size_t i = 0; i < 2; ++i)
+			if (job->children[i]) phase->children[i] = pg_nf_certificate(job->children[i]);
+	job->phases = phase;
+	return 0;
 }
 
 static struct pg_nf_job *nf_step(struct pg_nf_job *job)
@@ -705,6 +731,7 @@ static struct pg_nf_job *nf_step(struct pg_nf_job *job)
 		job->body = job->body->kind == PG_LAMBDA
 			? pg_lambda(graph, job->body->as.lambda.binder, pg_nf_result(job->children[0]))
 			: pg_application(graph, pg_nf_result(job->children[0]), pg_nf_result(job->children[1]));
+		if (!job->body || nf_phase(job, job->body, 1)) goto failure;
 		job->head = pg_whnf_request(job->work, job->policy, job->body);
 		if (!job->head) goto failure;
 		job->stage = NF_RECHECK;
@@ -718,11 +745,13 @@ static struct pg_nf_job *nf_step(struct pg_nf_job *job)
 		const struct pg_term *body = pg_whnf_result(job->head);
 		if (!body) goto failure;
 		if (job->stage == NF_RECHECK && body == job->body) {
+			if (nf_phase(job, body, 0)) goto failure;
 			nf_complete(job, body);
 			return NULL;
 		}
 		job->body = body;
 		if (body->kind == PG_REFERENCE) {
+			if (nf_phase(job, body, 0)) goto failure;
 			nf_complete(job, body);
 			return NULL;
 		}

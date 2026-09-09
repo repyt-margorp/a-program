@@ -15,7 +15,7 @@ criteria for merging different Lambda or semantic-object references.
 
 ### September 9: Reduction Evidence and Work Reuse Audit
 
-`eval.c` currently issues a `pg_reduction_certificate` containing only source,
+At the start of this audit, `eval.c` issued a `pg_reduction_certificate` containing only source,
 target, policy and WHNF/NF kind. Its validity comes from construction by the
 local evaluator. `derivation_step` reconstructs a certificate by running that
 same evaluator and checking endpoints. This is not an independently retained
@@ -34,6 +34,15 @@ a completed-work CHECKPOINT implementation.
   operations, materialization and NF congruence before defining their codec.
   The existing transition/rule implementation must remain the authority;
   do not introduce a second evaluator or trust imported completion flags.
+- [x] Retain completed NF phases as immutable predecessor/head/child/rebuilt
+  references owned by the output graph. Child receipts are shared, not copied.
+  A cached reflexive normal-form receipt references the completed reduction
+  establishing its normality; it must not form a cycle with that reduction.
+- [x] Check NF phase linkage, congruent Lambda/APP rebuilding, child identity,
+  fixed policies and receipt lifetime after the evaluator store is destroyed.
+- [ ] Retain the WHNF execution basis and relocation/acceptance protocol. NF
+  phases still end in locally-issued WHNF receipts, not a complete portable
+  derivation. This change alone cannot authorize imported cache results.
 - [ ] Distinguish completed-result evidence from an unfinished machine state.
   Current demand/defer frames contain callbacks and borrowed state; dumping
   these addresses cannot reconstruct a machine in another process. Define
@@ -50,6 +59,12 @@ Verification: `check check-prepared-modules` passes; `core_test` also passes
 with ASan/UBSan. The focused case saves all work on a fresh target request
 (zero additional steps), and preserves one already-charged step when replacing
 a pending target machine. This is not a measured whole-compiler speedup.
+
+NF dependency verification: `check check-prepared-modules` passes after the
+receipt extension; the expanded Core test passes with ASan/UBSan, including
+access to retained phase/normality edges after destroying both work stores.
+WHNF/NF results and split-budget behavior remain covered. No new image format
+or externally supplied certificate admission is introduced here.
 
 ### September 9: Retaining Normalization Requests
 

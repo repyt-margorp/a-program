@@ -1733,6 +1733,49 @@ static void conversion_test(struct pg_graph *graph)
 	puts("conversion: explicit beta comparison, binder scope, shared DAG and pending divergence passed");
 }
 
+static void nf_dependencies(struct pg_graph *graph, const struct pg_reduction_certificate *certificate)
+{
+	assert(pg_reduction_kind(certificate) == PG_REDUCTION_NF);
+	const struct pg_reduction_certificate *normality = pg_reduction_normality(certificate);
+	if (normality) {
+		assert(!pg_reduction_phases(certificate));
+		assert(pg_reduction_source(certificate) == pg_reduction_target(certificate));
+		assert(pg_reduction_target(normality) == pg_reduction_source(certificate));
+		assert(pg_reduction_kind(normality) == PG_REDUCTION_NF);
+		assert(pg_reduction_policy(normality) == pg_reduction_policy(certificate));
+		return;
+	}
+	const struct pg_term *expected = pg_reduction_target(certificate);
+	size_t count = 0;
+	for (const struct pg_reduction_phase *phase = pg_reduction_phases(certificate); phase; phase = phase->previous) {
+		assert(++count < 1000 && phase->rebuilt == expected);
+		assert(pg_reduction_kind(phase->head) == PG_REDUCTION_WHNF);
+		assert(pg_reduction_policy(phase->head) == pg_reduction_policy(certificate));
+		const struct pg_term *body = pg_reduction_target(phase->head);
+		const struct pg_term *rebuilt = body;
+		if (phase->children[0]) {
+			const struct pg_reduction_certificate *left = phase->children[0];
+			assert(pg_reduction_kind(left) == PG_REDUCTION_NF);
+			assert(pg_reduction_policy(left) == pg_reduction_policy(certificate));
+			if (body->kind == PG_LAMBDA) {
+				assert(!phase->children[1] && pg_reduction_source(left) == body->as.lambda.body);
+				rebuilt = pg_lambda(graph, body->as.lambda.binder, pg_reduction_target(left));
+			} else {
+				const struct pg_reduction_certificate *right = phase->children[1];
+				assert(body->kind == PG_APPLICATION && right);
+				assert(pg_reduction_source(left) == body->as.application.function);
+				assert(pg_reduction_source(right) == body->as.application.argument);
+				assert(pg_reduction_kind(right) == PG_REDUCTION_NF);
+				assert(pg_reduction_policy(right) == pg_reduction_policy(certificate));
+				rebuilt = pg_application(graph, pg_reduction_target(left), pg_reduction_target(right));
+			}
+		} else assert(!phase->children[1]);
+		assert(rebuilt == phase->rebuilt);
+		expected = pg_reduction_source(phase->head);
+	}
+	assert(count && expected == pg_reduction_source(certificate));
+}
+
 static void normal_form_test(struct pg_graph *graph)
 {
 	struct pg_whnf_work split_work, whole_work;
@@ -1760,6 +1803,7 @@ static void normal_form_test(struct pg_graph *graph)
 	assert(pg_reduction_source(pg_nf_certificate(split)) == term);
 	assert(pg_reduction_target(pg_nf_certificate(split)) == vu);
 	assert(pg_reduction_policy(pg_nf_certificate(split)) == &pg_pure_policy);
+	nf_dependencies(graph, pg_nf_certificate(split));
 	struct pg_nf_job *whole = pg_nf_request(&whole_work, &pg_pure_policy, term);
 	assert(pg_nf_advance(whole, 10000) == PG_NF_DONE);
 	assert(pg_nf_result(whole) == vu && pg_nf_steps(whole) == pg_nf_steps(split));
@@ -1770,6 +1814,7 @@ static void normal_form_test(struct pg_graph *graph)
 	struct pg_nf_job *beta = pg_nf_request(&split_work, &pg_beta_policy, term);
 	assert(beta != split && pg_nf_advance(beta, 10000) == PG_NF_DONE);
 	assert(pg_nf_result(beta) != vu);
+	nf_dependencies(graph, pg_nf_certificate(beta));
 	/* NF strengthens comparison, not the runtime WHNF strategy. */
 	struct pg_whnf_job *weak = pg_whnf_request(&split_work, &pg_pure_policy, term);
 	assert(pg_whnf_advance(weak, 10000) == PG_EVAL_WHNF && pg_whnf_result(weak) == term);
@@ -1797,6 +1842,11 @@ static void normal_form_test(struct pg_graph *graph)
 	assert(pg_nf_status(answer) == PG_NF_DONE && pg_nf_steps(answer) == 0);
 	assert(pg_reduction_source(pg_nf_certificate(answer)) == pg_nf_result(parent));
 	assert(pg_reduction_target(pg_nf_certificate(answer)) == pg_nf_result(parent));
+	nf_dependencies(graph, pg_nf_certificate(parent));
+	nf_dependencies(graph, pg_nf_certificate(answer));
+	assert(pg_reduction_normality(pg_nf_certificate(answer)) == pg_nf_certificate(parent));
+	const struct pg_reduction_phase *parent_phase = pg_reduction_phases(pg_nf_certificate(parent));
+	assert(parent_phase->previous->children[0] == pg_nf_certificate(child));
 	/* Demand the head before descending: a discarded divergent argument does
 	 * not prevent normalization. Under a retained thunk it does remain pending. */
 	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
@@ -1824,8 +1874,12 @@ static void normal_form_test(struct pg_graph *graph)
 	struct pg_nf_job *shared = pg_nf_request(&split_work, &pg_beta_policy, dag);
 	assert(pg_nf_advance(shared, 100000) == PG_NF_DONE && pg_nf_result(shared) == dag);
 	assert(split_work.normal_forms.count - count <= 21);
+	const struct pg_reduction_certificate *retained = pg_nf_certificate(parent);
+	const struct pg_reduction_certificate *retained_normality = pg_nf_certificate(answer);
 	pg_whnf_work_destroy(&whole_work);
 	pg_whnf_work_destroy(&split_work);
+	nf_dependencies(graph, retained);
+	nf_dependencies(graph, retained_normality);
 	puts("normal forms: shared pure work, parent contraction, policies, split fuel and suspended divergence passed");
 }
 
@@ -1860,6 +1914,7 @@ static void beta_work_test(struct pg_graph *graph)
 	assert(pg_reduction_source(pg_whnf_certificate(job)) == input);
 	assert(pg_reduction_source(pg_whnf_certificate(normal)) == vy);
 	assert(pg_reduction_target(pg_whnf_certificate(normal)) == vy);
+	assert(pg_reduction_normality(pg_whnf_certificate(normal)) == pg_whnf_certificate(job));
 	const struct pg_eval_policy separate_policy = {NULL};
 	struct pg_whnf_job *separate = pg_whnf_request(&work, &separate_policy, vy);
 	assert(separate != normal && pg_whnf_status(separate) == PG_EVAL_PENDING);

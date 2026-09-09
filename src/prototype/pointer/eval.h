@@ -126,6 +126,19 @@ const struct pg_term *pg_reduction_source(const struct pg_reduction_certificate 
 const struct pg_term *pg_reduction_target(const struct pg_reduction_certificate *certificate);
 const struct pg_eval_policy *pg_reduction_policy(const struct pg_reduction_certificate *certificate);
 enum pg_reduction_kind pg_reduction_kind(const struct pg_reduction_certificate *certificate);
+/* Completed NF phases, newest first. Children certify congruent rebuilding;
+ * phases without children retain the final head reduction. These are local
+ * immutable dependencies, not permission to accept imported endpoint claims. */
+struct pg_reduction_phase {
+	const struct pg_reduction_phase *previous;
+	const struct pg_reduction_certificate *head;
+	const struct pg_reduction_certificate *children[2];
+	const struct pg_term *rebuilt;
+};
+const struct pg_reduction_phase *pg_reduction_phases(const struct pg_reduction_certificate *certificate);
+/* A reflexive cache entry can inherit normality from a completed reduction
+ * whose target is its source. This edge never points back to the cache entry. */
+const struct pg_reduction_certificate *pg_reduction_normality(const struct pg_reduction_certificate *certificate);
 
 enum pg_nf_status { PG_NF_PENDING, PG_NF_DONE, PG_NF_ERROR };
 struct pg_nf_job;
