@@ -50,6 +50,48 @@ struct pg_eval_task {
 	void *state;
 };
 
+/* The evaluator and its state codec share these actual job layouts. The
+ * intrusive request prefix indexes exact input/policy, never normal forms.
+ * Reduction receipts remain local evidence, not externally accepted records. */
+struct pg_reduction_certificate {
+	const struct pg_term *source;
+	const struct pg_term *target;
+	const struct pg_eval_policy *policy;
+	enum pg_reduction_kind kind;
+	const struct pg_reduction_phase *phases;
+	const struct pg_reduction_certificate *normality;
+};
+
+struct pg_reduction_request {
+	struct pg_index_entry index;
+	struct pg_whnf_work *work;
+	const struct pg_term *input;
+	const struct pg_eval_policy *policy;
+};
+
+struct pg_whnf_job {
+	struct pg_reduction_request request;
+	struct pg_eval machine;
+	const struct pg_reduction_certificate *certificate;
+	struct materialization output;
+	enum pg_eval_status status;
+	uint64_t steps;
+};
+
+struct pg_nf_job {
+	struct pg_reduction_request request;
+	const struct pg_term *body;
+	const struct pg_reduction_certificate *certificate;
+	const struct pg_reduction_phase *phases;
+	struct pg_whnf_job *head;
+	struct pg_nf_job *children[2];
+	struct pg_nf_job **stack;
+	size_t depth, capacity;
+	uint64_t steps;
+	enum pg_nf_status status;
+	enum { NF_HEAD, NF_CHILDREN, NF_RECHECK } stage;
+};
+
 /* Index maintenance only. Does not establish the validity of saved results. */
 int pg_readback_index(struct readback_context *context, struct readback_entry *entry);
 void pg_readback_destroy(struct readback_context *context);

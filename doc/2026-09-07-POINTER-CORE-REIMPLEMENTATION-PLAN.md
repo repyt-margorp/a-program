@@ -616,6 +616,21 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   `eval.c:whnf_step`, `nf_complete` and `pg_nf_advance`; none calls for a new
   language-level computation variant. Portable WHNF evidence remains an open
   prerequisite to publishing imported completions into accepted work stores.
+- [x] Put the actual WHNF/NF/receipt layouts in the existing evaluator-private
+  header, shared by the evaluator and future state codec. Factor their identical
+  exact input/policy request prefix and hash lookup/allocation into one local
+  registration path. WHNF and NF keep separate indexes, work and result rules;
+  registering an existing job does not reset its machine, readback or steps.
+  No public imported-receipt acceptance API is introduced by this preparation.
+  Verification: `check check-prepared-modules` and normal/ASan/UBSan `core_test`
+  pass. The new regression grows both request indexes while WHNF/NF work shares
+  a divergent input, then confirms job identity and unchanged charged progress.
+- [ ] Complete the separately required symbolic type-family formation contract.
+  Rechecking after `2074e1b` still gives closed/open/applied/sequenced statuses
+  DONE/UNSUPPORTED/UNSUPPORTED/UNSUPPORTED at 175/209/280/323 steps. The current
+  `type_input` deliberately requires RETURN inversion; an abstract family
+  application does not supply that premise. Preserve that negative rule while
+  implementing the explicit suspended/stable type-code contract described below.
 - [x] Let scope-analysis work retain additional scope roots through its existing
   visit/shadow/scope ownership table. Its own embedded scope is the first root;
   references to it are rebound to the restored work's embedded address, not an

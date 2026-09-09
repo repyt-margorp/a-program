@@ -493,42 +493,6 @@ void pg_eval_destroy(struct pg_eval *machine)
 
 const struct pg_eval_policy pg_beta_policy = {NULL};
 
-struct pg_reduction_certificate {
-	const struct pg_term *source;
-	const struct pg_term *target;
-	const struct pg_eval_policy *policy;
-	enum pg_reduction_kind kind;
-	const struct pg_reduction_phase *phases;
-	const struct pg_reduction_certificate *normality;
-};
-
-struct pg_whnf_job {
-	struct pg_index_entry index;
-	struct pg_whnf_work *work;
-	const struct pg_term *input;
-	const struct pg_eval_policy *policy;
-	struct pg_eval machine;
-	const struct pg_reduction_certificate *certificate;
-	struct materialization output;
-	enum pg_eval_status status;
-	uint64_t steps;
-};
-
-struct pg_nf_job {
-	struct pg_index_entry index;
-	struct pg_whnf_work *work;
-	const struct pg_eval_policy *policy;
-	const struct pg_term *input, *body;
-	const struct pg_reduction_certificate *certificate;
-	const struct pg_reduction_phase *phases;
-	struct pg_whnf_job *head;
-	struct pg_nf_job *children[2];
-	struct pg_nf_job **stack;
-	size_t depth, capacity;
-	uint64_t steps;
-	enum pg_nf_status status;
-	enum { NF_HEAD, NF_CHILDREN, NF_RECHECK } stage;
-};
 
 int pg_whnf_work_init(struct pg_whnf_work *work, struct pg_graph *graph)
 {
@@ -558,26 +522,37 @@ void pg_whnf_work_destroy(struct pg_whnf_work *work)
 	memset(work, 0, sizeof(*work));
 }
 
+static void *reduction_request(struct pg_whnf_work *work, struct pg_index *index,
+	const struct pg_eval_policy *policy, const struct pg_term *input, size_t size, int *created)
+{
+	*created = 0;
+	if (!input || !policy) return NULL;
+	uint64_t hash = ((uintptr_t)input ^ (uintptr_t)policy) * UINT64_C(1099511628211);
+	for (struct pg_index_entry *entry = pg_index_candidates(index, hash); entry; entry = entry->next) {
+		if (entry->hash != hash) continue;
+		struct pg_reduction_request *request = (struct pg_reduction_request *)entry;
+		if (request->input == input && request->policy == policy) return request;
+	}
+	struct pg_reduction_request *request = pg_alloc(&work->storage, size);
+	if (!request) return NULL;
+	request->work = work;
+	request->input = input;
+	request->policy = policy;
+	if (pg_index_insert(index, &request->index, hash)) return NULL;
+	*created = 1;
+	return request;
+}
+
 struct pg_whnf_job *pg_whnf_request(struct pg_whnf_work *work,
 	const struct pg_eval_policy *policy, const struct pg_term *input)
 {
-	if (!input || !policy) return NULL;
-	uint64_t hash = ((uintptr_t)input ^ (uintptr_t)policy) * UINT64_C(1099511628211);
-	for (struct pg_index_entry *entry = pg_index_candidates(&work->jobs, hash); entry; entry = entry->next) {
-		if (entry->hash != hash) continue;
-		struct pg_whnf_job *job = (struct pg_whnf_job *)entry;
-		if (job->input == input && job->policy == policy) return job;
+	int created;
+	struct pg_whnf_job *job = reduction_request(work, &work->jobs, policy, input, sizeof(*job), &created);
+	if (created) {
+		pg_eval_init(&job->machine, input);
+		job->machine.output = work->graph;
+		job->machine.dispatch = policy->dispatch;
 	}
-	struct pg_whnf_job *job = pg_alloc(&work->storage, sizeof(*job));
-	if (!job) return NULL;
-	memset(job, 0, sizeof(*job));
-	job->work = work;
-	job->input = input;
-	job->policy = policy;
-	pg_eval_init(&job->machine, input);
-	job->machine.output = work->graph;
-	job->machine.dispatch = policy->dispatch;
-	if (pg_index_insert(&work->jobs, &job->index, hash) != 0) return NULL;
 	return job;
 }
 
@@ -597,19 +572,19 @@ static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 		if (pg_eval_advance(&job->machine, 1) == PG_EVAL_ERROR) return PG_EVAL_ERROR;
 		return PG_EVAL_PENDING;
 	}
-	int status = pg_materialize_step(&job->output, job->work->graph, job->machine.current, job->machine.arguments);
+	int status = pg_materialize_step(&job->output, job->request.work->graph, job->machine.current, job->machine.arguments);
 	if (status < 0) return PG_EVAL_ERROR;
 	if (!status) return PG_EVAL_PENDING;
-	const struct pg_reduction_certificate *certificate = reduction_certificate(job->work->graph,
-		job->input, job->output.partial, job->policy, PG_REDUCTION_WHNF);
+	const struct pg_reduction_certificate *certificate = reduction_certificate(job->request.work->graph,
+		job->request.input, job->output.partial, job->request.policy, PG_REDUCTION_WHNF);
 	if (!certificate) return PG_EVAL_ERROR;
 	/* Materialized WHNF is its own answer under this same immutable policy.
 	 * Retain a separate reflexive receipt, never merge source and target terms. */
-	struct pg_whnf_job *canonical = pg_whnf_request(job->work, job->policy, certificate->target);
+	struct pg_whnf_job *canonical = pg_whnf_request(job->request.work, job->request.policy, certificate->target);
 	if (!canonical || canonical->status == PG_EVAL_ERROR) return PG_EVAL_ERROR;
 	if (canonical != job && canonical->status == PG_EVAL_PENDING) {
-		struct pg_reduction_certificate *reflexive = reduction_certificate(job->work->graph,
-			certificate->target, certificate->target, job->policy, PG_REDUCTION_WHNF);
+		struct pg_reduction_certificate *reflexive = reduction_certificate(job->request.work->graph,
+			certificate->target, certificate->target, job->request.policy, PG_REDUCTION_WHNF);
 		if (!reflexive) return PG_EVAL_ERROR;
 		reflexive->normality = certificate;
 		pg_materialize_destroy(&canonical->output);
@@ -661,37 +636,25 @@ const struct pg_reduction_certificate *pg_reduction_normality(const struct pg_re
 struct pg_nf_job *pg_nf_request(struct pg_whnf_work *work,
 	const struct pg_eval_policy *policy, const struct pg_term *input)
 {
-	if (!input || !policy) return NULL;
-	uint64_t hash = ((uintptr_t)input ^ (uintptr_t)policy) * UINT64_C(1099511628211);
-	for (struct pg_index_entry *entry = pg_index_candidates(&work->normal_forms, hash); entry; entry = entry->next) {
-		if (entry->hash != hash) continue;
-		struct pg_nf_job *job = (struct pg_nf_job *)entry;
-		if (job->input == input && job->policy == policy) return job;
-	}
-	struct pg_nf_job *job = pg_alloc(&work->storage, sizeof(*job));
-	if (!job) return NULL;
-	job->work = work;
-	job->policy = policy;
-	job->input = input;
-	if (pg_index_insert(&work->normal_forms, &job->index, hash) != 0) return NULL;
-	return job;
+	int created;
+	return reduction_request(work, &work->normal_forms, policy, input, sizeof(struct pg_nf_job), &created);
 }
 
 static void nf_complete(struct pg_nf_job *job, const struct pg_term *result)
 {
-	struct pg_reduction_certificate *certificate = reduction_certificate(job->work->graph,
-		job->input, result, job->policy, PG_REDUCTION_NF);
+	struct pg_reduction_certificate *certificate = reduction_certificate(job->request.work->graph,
+		job->request.input, result, job->request.policy, PG_REDUCTION_NF);
 	if (!certificate) { job->status = PG_NF_ERROR; return; }
 	certificate->phases = job->phases;
 	/* A computed normal form is also its own answer, without another walk. */
-	struct pg_nf_job *canonical = pg_nf_request(job->work, job->policy, result);
+	struct pg_nf_job *canonical = pg_nf_request(job->request.work, job->request.policy, result);
 	if (!canonical || canonical->status == PG_NF_ERROR) {
 		job->status = PG_NF_ERROR;
 		return;
 	}
 	if (canonical != job && canonical->status == PG_NF_PENDING) {
-		struct pg_reduction_certificate *reflexive = reduction_certificate(job->work->graph,
-			result, result, job->policy, PG_REDUCTION_NF);
+		struct pg_reduction_certificate *reflexive = reduction_certificate(job->request.work->graph,
+			result, result, job->request.policy, PG_REDUCTION_NF);
 		if (!reflexive) { job->status = PG_NF_ERROR; return; }
 		reflexive->normality = certificate;
 		canonical->certificate = reflexive;
@@ -703,7 +666,7 @@ static void nf_complete(struct pg_nf_job *job, const struct pg_term *result)
 
 static int nf_phase(struct pg_nf_job *job, const struct pg_term *rebuilt, int children)
 {
-	struct pg_reduction_phase *phase = pg_alloc(job->work->graph, sizeof(*phase));
+	struct pg_reduction_phase *phase = pg_alloc(job->request.work->graph, sizeof(*phase));
 	if (!phase) return -1;
 	*phase = (struct pg_reduction_phase){.previous = job->phases,
 		.head = pg_whnf_certificate(job->head), .rebuilt = rebuilt};
@@ -723,16 +686,16 @@ static struct pg_nf_job *nf_step(struct pg_nf_job *job)
 			if (child->status == PG_NF_ERROR) goto failure;
 			if (child->status == PG_NF_PENDING) return child;
 		}
-		struct pg_graph *graph = job->work->graph;
+		struct pg_graph *graph = job->request.work->graph;
 		job->body = job->body->kind == PG_LAMBDA
 			? pg_lambda(graph, job->body->as.lambda.binder, pg_nf_result(job->children[0]))
 			: pg_application(graph, pg_nf_result(job->children[0]), pg_nf_result(job->children[1]));
 		if (!job->body || nf_phase(job, job->body, 1)) goto failure;
-		job->head = pg_whnf_request(job->work, job->policy, job->body);
+		job->head = pg_whnf_request(job->request.work, job->request.policy, job->body);
 		if (!job->head) goto failure;
 		job->stage = NF_RECHECK;
 	} else {
-		if (!job->head) job->head = pg_whnf_request(job->work, job->policy, job->input);
+		if (!job->head) job->head = pg_whnf_request(job->request.work, job->request.policy, job->request.input);
 		if (!job->head) goto failure;
 		if (pg_whnf_status(job->head) == PG_EVAL_PENDING) {
 			pg_whnf_advance(job->head, 1);
@@ -751,10 +714,10 @@ static struct pg_nf_job *nf_step(struct pg_nf_job *job)
 			nf_complete(job, body);
 			return NULL;
 		}
-		job->children[0] = pg_nf_request(job->work, job->policy,
+		job->children[0] = pg_nf_request(job->request.work, job->request.policy,
 			body->kind == PG_LAMBDA ? body->as.lambda.body : body->as.application.function);
 		job->children[1] = body->kind == PG_APPLICATION
-			? pg_nf_request(job->work, job->policy, body->as.application.argument) : NULL;
+			? pg_nf_request(job->request.work, job->request.policy, body->as.application.argument) : NULL;
 		if (!job->children[0]) goto failure;
 		if (body->kind == PG_APPLICATION && !job->children[1]) goto failure;
 		job->stage = NF_CHILDREN;

@@ -2130,12 +2130,21 @@ static void beta_work_test(struct pg_graph *graph)
 	const struct pg_term *neutral_expected = pg_application(graph,
 		pg_application(graph, vy, vy), identity);
 	assert(pg_alpha_equal(pg_whnf_result(neutral_job), neutral_expected) == 1);
+	/* Both indexes share registration, not normalization modes or progress. */
+	struct pg_nf_job *nf_loop = pg_nf_request(&work, &pg_beta_policy, pg_application(graph, self, self));
+	assert(nf_loop && pg_nf_advance(nf_loop, 5) == PG_NF_PENDING);
+	uint64_t weak_steps = pg_whnf_steps(loop), strong_steps = pg_nf_steps(nf_loop);
 	for (size_t i = 0; i < 1000; ++i) {
-		assert(pg_whnf_request(&work, &pg_beta_policy, pg_reference(graph, pg_binder(graph))));
+		const struct pg_term *input = pg_reference(graph, pg_binder(graph));
+		assert(pg_whnf_request(&work, &pg_beta_policy, input));
+		assert(pg_nf_request(&work, &pg_beta_policy, input));
 	}
+	assert(pg_nf_request(&work, &pg_beta_policy, pg_application(graph, self, self)) == nf_loop);
+	assert(pg_nf_steps(nf_loop) == strong_steps && pg_whnf_steps(loop) == weak_steps);
 	assert(job == pg_whnf_request(&work, &pg_beta_policy, input));
 	assert(pg_whnf_result(job) == vy);
 	assert(!pg_whnf_request(&work, &pg_beta_policy, NULL));
+	assert(!pg_nf_request(&work, NULL, input) && !pg_whnf_request(&work, NULL, input));
 	pg_whnf_work_destroy(&work);
 	assert(stable->as.lambda.body == vx);
 	puts("beta work: shared pending jobs, stable answers, split fuel and environment isolation passed");
