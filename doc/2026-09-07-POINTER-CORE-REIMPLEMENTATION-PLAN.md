@@ -202,7 +202,7 @@ The callback refactor is not the remaining implementation plan by itself.
 Inspection of the actual work records found the following transitive payloads.
 These are existing execution structures to relocate, not new Core node kinds.
 
-- [x] Add raw structural comparison/independence transport (`APGCMP1`). Share
+- [x] Add raw structural comparison/independence transport (`APGCMP2`). Share
   `alpha_entry`, `binder_pair` and comparison-state layouts in
   `graph_internal.h`; rebuild the seen index with the comparison owner's
   lookup/hash functions. Retain completed entries, pending links, scope/cursor,
@@ -218,8 +218,18 @@ These are existing execution structures to relocate, not new Core node kinds.
   ASan/UBSan `check-eval-io` pass. Remaining transition counts and seen-entry
   counts match uninterrupted execution. `check check-prepared-modules` also
   passes after this change; broader source acceptance remains incomplete.
+- [x] Include owning-operation Term roots in the comparison's relocation table.
+  `APGCMP2` replaces the standalone `APGCMP1` header with an explicit extra-root
+  count. This retains owner inputs even for a zero-entry completed comparison.
+  Tests retain an additional enclosing lambda/application, destroy the old
+  graph at each resave, and require exact restored binder and Term sharing with
+  the comparison entries at every tested cut. Separate processes also retain
+  owner inputs. Old headers, out-of-limit root counts and failed imports clear
+  outputs; no owner root is interpreted or compared during import.
+  Verification: normal/ASan/UBSan `check-eval-io` and
+  `check check-prepared-modules` pass with shared owner roots enabled.
 - [ ] Integrate comparisons with the owning deferred operation and image-wide
-  relocation. `APGCMP1` is raw work, not an equality certificate. Normalizing
+  relocation. `APGCMP2` is raw work, not an equality certificate. Normalizing
   comparisons are explicitly unsupported by this component until their owning
   evaluator/policy state is retained; silently restoring them as structural
   comparisons would change semantics. These additions do not complete N5 or

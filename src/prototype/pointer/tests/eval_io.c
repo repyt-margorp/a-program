@@ -1,5 +1,6 @@
 #include "eval_io.h"
 #include "eval_internal.h"
+#include "graph_internal.h"
 #include "wire.h"
 
 #include <assert.h>
@@ -314,8 +315,9 @@ static void write_comparison(FILE *file)
 	struct pg_comparison work;
 	assert(!pg_graph_init(&graph));
 	comparison_fixture(&graph, &work, 0);
+	const struct pg_term *roots[] = {work.state->pending->left, work.state->pending->right};
 	assert(pg_comparison_advance(&work, 13) == PG_COMPARISON_PENDING);
-	assert(!pg_comparison_write(file, &work, NULL, NULL));
+	assert(!pg_comparison_write(file, &work, 2, roots, NULL, NULL));
 	pg_comparison_destroy(&work);
 	pg_graph_destroy(&graph);
 }
@@ -324,10 +326,13 @@ static void read_comparison(FILE *file)
 {
 	struct pg_graph graph;
 	struct pg_comparison work, baseline;
+	size_t count;
+	const struct pg_term *const *roots;
 	assert(!pg_graph_init(&graph));
 	comparison_fixture(&graph, &baseline, 0);
 	assert(pg_comparison_advance(&baseline, 10000) == PG_COMPARISON_EQUAL);
-	assert(!pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &work));
+	assert(!pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &work, &count, &roots));
+	assert(count == 2 && pg_alpha_equal(roots[0], roots[1]) == 1);
 	uint64_t steps = pg_comparison_steps(&baseline);
 	assert(pg_comparison_steps(&work) == 13);
 	assert(pg_comparison_advance(&work, steps - 14) == PG_COMPARISON_PENDING);
@@ -351,17 +356,20 @@ static void comparison_boundaries(void)
 {
 	struct pg_graph graph;
 	struct pg_comparison work, restored;
+	size_t count;
+	const struct pg_term *const *roots;
 	assert(!pg_graph_init(&graph));
 	const struct pg_term *x = pg_reference(&graph, pg_binder(&graph));
 	FILE *file = tmpfile();
 	assert(file && !pg_comparison_init(&work, x, x, NULL, unexpected_normalization));
-	assert(pg_comparison_write(file, &work, NULL, NULL));
+	assert(pg_comparison_write(file, &work, 0, NULL, NULL, NULL));
 	assert(ftell(file) == 0);
 	pg_comparison_destroy(&work);
 	assert(!pg_comparison_init(&work, x, x, NULL, NULL));
-	assert(!pg_comparison_write(file, &work, NULL, NULL));
+	assert(!pg_comparison_write(file, &work, 1, &x, NULL, NULL));
 	rewind(file);
-	assert(!pg_comparison_read(file, &graph, 100, 100, NULL, NULL, &restored));
+	assert(!pg_comparison_read(file, &graph, 100, 100, NULL, NULL, &restored, &count, &roots));
+	assert(count == 1 && roots[0]->kind == PG_REFERENCE);
 	assert(pg_comparison_status(&restored) == PG_COMPARISON_EQUAL);
 	assert(!pg_comparison_task_count(&restored) && !pg_comparison_steps(&restored));
 	pg_comparison_destroy(&work);
@@ -370,17 +378,22 @@ static void comparison_boundaries(void)
 	file = tmpfile();
 	assert(file);
 	comparison_fixture(&graph, &work, 0);
-	assert(!pg_comparison_write(file, &work, NULL, NULL));
+	assert(!pg_comparison_write(file, &work, 0, NULL, NULL, NULL));
+	assert(!fseek(file, 6, SEEK_SET) && fputc(1, file) != EOF);
+	rewind(file);
+	assert(pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &restored, &count, &roots));
+	assert(!restored.state && !count && !roots);
+	assert(!fseek(file, 6, SEEK_SET) && fputc(2, file) != EOF);
 	/* Status without a pending task, out-of-range link, and impossible stage. */
-	const long offsets[] = {24, 24, 72};
-	const uint64_t invalid[] = {0, 2, 3};
-	for (size_t i = 0; i < 3; ++i) {
+	const long offsets[] = {24, 24, 80, 48};
+	const uint64_t invalid[] = {0, 2, 3, 10001};
+	for (size_t i = 0; i < 4; ++i) {
 		uint64_t prior;
 		assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_read_u64(file, &prior));
 		assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, invalid[i]));
 		rewind(file);
-		assert(pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &restored));
-		assert(!restored.state);
+		assert(pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &restored, &count, &roots));
+		assert(!restored.state && !count && !roots);
 		assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, prior));
 	}
 	assert(!fclose(file));
@@ -405,15 +418,31 @@ static void comparison_resume(void)
 			struct pg_comparison work;
 			assert(!pg_graph_init(&graph));
 			comparison_fixture(&graph, &work, mode);
+			const struct pg_term *initial[] = {work.state->pending->left, work.state->pending->right, NULL};
+			initial[2] = pg_lambda(&graph, initial[0]->as.lambda.binder,
+				pg_application(&graph, initial[0], initial[1]));
+			const struct pg_term *const *owners = initial;
 			pg_comparison_advance(&work, cut);
 			for (unsigned round = 0; round < 2; ++round) {
 				FILE *file = tmpfile();
-				assert(file && !pg_comparison_write(file, &work, NULL, NULL));
+				assert(file && !pg_comparison_write(file, &work, 3, owners, NULL, NULL));
 				pg_comparison_destroy(&work);
 				pg_graph_destroy(&graph);
 				assert(!pg_graph_init(&graph));
 				rewind(file);
-				assert(!pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &work));
+				size_t count;
+				assert(!pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &work, &count, &owners));
+				assert(count == 3);
+				assert(owners[2]->as.lambda.binder == owners[0]->as.lambda.binder);
+				assert(owners[2]->as.lambda.body->as.application.function == owners[0]);
+				assert(owners[2]->as.lambda.body->as.application.argument == owners[1]);
+				size_t found = 0;
+				for (size_t bucket = 0; bucket < work.state->seen.capacity; ++bucket)
+					for (const struct pg_index_entry *node = work.state->seen.buckets[bucket]; node; node = node->next) {
+						const struct alpha_entry *entry = (const struct alpha_entry *)node;
+						if (entry->left == owners[0] && entry->right == owners[1]) ++found;
+					}
+				assert(found == 1);
 				assert(!fclose(file));
 			}
 			assert(pg_comparison_steps(&work) == cut);

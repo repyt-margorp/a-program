@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char magic[8] = "APGCMP\1";
+static const char magic[8] = "APGCMP\2";
 
 static int scope_child(void *unused, const void *key, size_t index, const void **child)
 {
@@ -32,9 +32,10 @@ static int reference(FILE *file, const struct pg_dag *dag, const void *key)
 }
 
 int pg_comparison_write(FILE *file, const struct pg_comparison *work,
-	const struct pg_graph_codec *codec, void *owner)
+	size_t extra_count, const struct pg_term *const *extra, const struct pg_graph_codec *codec, void *owner)
 {
 	if (!file || !work || !work->state) return -1;
+	if (extra_count && !extra) return -1;
 	const struct pg_comparison_state *state = work->state;
 	if (state->normalize || state->status == PG_COMPARISON_ERROR) return -1;
 	struct pg_dag entries = {0}, scopes = {0};
@@ -49,14 +50,17 @@ int pg_comparison_write(FILE *file, const struct pg_comparison *work,
 		if (entry->scope && pg_dag_add(&scopes, entry->scope)) goto done;
 		if (entry->cursor && pg_dag_add(&scopes, entry->cursor)) goto done;
 	}
-	size_t maximum = SIZE_MAX / sizeof(const struct pg_term *) / 2;
+	size_t maximum = SIZE_MAX / sizeof(const struct pg_term *);
+	if (extra_count > maximum) goto done;
+	maximum = (maximum - extra_count) / 2;
 	if (entries.count > maximum || scopes.count > maximum - entries.count) goto done;
-	size_t count = 2 * (entries.count + scopes.count);
+	size_t count = 2 * (entries.count + scopes.count) + extra_count;
 	const struct pg_term **roots = pg_alloc(&scopes.storage, count * sizeof(*roots));
 	if (!roots) goto done;
 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, entries.count)
 		|| pg_wire_write_u64(file, scopes.count) || reference(file, &entries, state->pending)
-		|| pg_wire_write_u64(file, state->status) || pg_wire_write_u64(file, state->steps)) goto done;
+		|| pg_wire_write_u64(file, state->status) || pg_wire_write_u64(file, state->steps)
+		|| pg_wire_write_u64(file, extra_count)) goto done;
 	for (const struct pg_dag_node *node = scopes.first; node; node = node->next) {
 		const struct binder_pair *scope = node->key;
 		size_t offset = 2 * (entries.count + node->id - 1);
@@ -72,6 +76,7 @@ int pg_comparison_write(FILE *file, const struct pg_comparison *work,
 		if (reference(file, &scopes, entry->scope) || reference(file, &scopes, entry->cursor)
 			|| reference(file, &entries, entry->next) || pg_wire_write_u64(file, entry->stage)) goto done;
 	}
+	for (size_t i = 0; i < extra_count; ++i) roots[count - extra_count + i] = extra[i];
 	status = pg_graph_write_descriptors(file, count, roots, codec, owner);
 done:
 	pg_dag_destroy(&entries);
@@ -80,18 +85,23 @@ done:
 }
 
 int pg_comparison_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
-	const struct pg_graph_codec *codec, void *owner, struct pg_comparison *work)
+	const struct pg_graph_codec *codec, void *owner, struct pg_comparison *work,
+	size_t *extra_count, const struct pg_term *const **extra)
 {
-	if (!work) return -1;
+	if (!work || !extra_count || !extra) return -1;
 	work->state = NULL;
+	*extra_count = 0;
+	*extra = NULL;
 	if (!file || !graph) return -1;
 	char header[8];
-	uint64_t n, s, pending, status, steps;
+	uint64_t n, s, pending, status, steps, extra_size;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return -1;
 	if (pg_wire_read_u64(file, &n) || pg_wire_read_u64(file, &s)
 		|| pg_wire_read_u64(file, &pending) || pg_wire_read_u64(file, &status)
-		|| pg_wire_read_u64(file, &steps)) return -1;
-	if (n > limit / 2 || s > limit / 2 - n || pending > n || status >= PG_COMPARISON_ERROR) return -1;
+		|| pg_wire_read_u64(file, &steps) || pg_wire_read_u64(file, &extra_size)) return -1;
+	if (extra_size > limit) return -1;
+	size_t maximum = (limit - extra_size) / 2;
+	if (n > maximum || s > maximum - n || pending > n || status >= PG_COMPARISON_ERROR) return -1;
 	if ((status == PG_COMPARISON_EQUAL) != (pending == 0)) return -1;
 	if (n > SIZE_MAX / sizeof(struct alpha_entry) || s > SIZE_MAX / sizeof(struct binder_pair)) return -1;
 	if (n > SIZE_MAX / sizeof(uint64_t) / 4 || s > SIZE_MAX / sizeof(uint64_t) / 2) return -1;
@@ -116,7 +126,7 @@ int pg_comparison_read(FILE *file, struct pg_graph *graph, size_t limit, size_t 
 	size_t count;
 	const struct pg_term *const *roots;
 	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, owner, &count, &roots)
-		|| count != 2 * (n + s)) goto done;
+		|| count != 2 * (n + s) + extra_size) goto done;
 	struct binder_pair *scopes = pg_alloc(&candidate.state->arena, (size_t)s * sizeof(*scopes));
 	struct alpha_entry *entries = pg_alloc(&candidate.state->arena, (size_t)n * sizeof(*entries));
 	unsigned char *queued = pg_alloc(&scratch, (size_t)n);
@@ -151,6 +161,8 @@ int pg_comparison_read(FILE *file, struct pg_graph *graph, size_t limit, size_t 
 	candidate.state->status = (enum pg_comparison_status)status;
 	candidate.state->steps = steps;
 	*work = candidate;
+	*extra_count = (size_t)extra_size;
+	*extra = roots + 2 * (n + s);
 	candidate.state = NULL;
 	result = 0;
 done:
