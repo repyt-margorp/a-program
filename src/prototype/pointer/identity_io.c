@@ -11,8 +11,8 @@ static const char higher_magic[8] = "APGHSC\1";
 static const char discovery_magic[8] = "APGASW\1";
 static const char family_magic[8] = "APGFSW\1";
 static const char family_result_magic[8] = "APGFRW\1";
-static const char shadow_magic[8] = "APGSHD\1";
-static const char visit_magic[8] = "APGSVS\1";
+static const char shadow_magic[8] = "APGSHD\2";
+static const char visit_magic[8] = "APGSVS\2";
 
 static int visit_child(void *unused, const void *key, size_t index, const void **child)
 {
@@ -25,6 +25,7 @@ static int visit_child(void *unused, const void *key, size_t index, const void *
 
 int pg_scope_visits_write(FILE *file, size_t visit_count, struct scope_visit *const *visits,
 	size_t shadow_count, const struct scope_shadow *const *shadows,
+	size_t scope_count, const struct action_scope *const *scopes,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
 {
 	if (!file || (visit_count && !visits) || (shadow_count && !shadows) || (count && !roots)) return -1;
@@ -57,7 +58,7 @@ int pg_scope_visits_write(FILE *file, size_t visit_count, struct scope_visit *co
 	for (size_t i = 0; i < count; ++i) terms[dag.count + i] = roots[i];
 	for (size_t i = 0; i < shadow_count; ++i) all[dag.count + i] = shadows[i];
 	status = pg_scope_shadows_write(file, dag.count + shadow_count, all,
-		dag.count + count, terms, codec, owner);
+		scope_count, scopes, dag.count + count, terms, codec, owner);
 done:
 	pg_dag_destroy(&dag);
 	return status;
@@ -67,10 +68,13 @@ int pg_scope_visits_read(FILE *file, struct pg_graph *arena, struct pg_graph *ou
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	size_t *visit_count, struct scope_visit *const **visits,
 	size_t *shadow_count, const struct scope_shadow *const **shadows,
+	size_t *scope_count, struct action_scope *const **scopes,
 	size_t *count, const struct pg_term *const **roots)
 {
-	if (!visit_count || !visits || !shadow_count || !shadows || !count || !roots) return -1;
+	if (!visit_count || !visits || !shadow_count || !shadows || !scope_count || !scopes || !count || !roots) return -1;
 	*visit_count = *shadow_count = *count = 0;
+	*scope_count = 0;
+	*scopes = NULL;
 	*visits = NULL;
 	*shadows = NULL;
 	*roots = NULL;
@@ -96,11 +100,12 @@ int pg_scope_visits_read(FILE *file, struct pg_graph *arena, struct pg_graph *ou
 		if (id) used[id - 1] = 1;
 	}
 	for (size_t i = 0; i < amount; ++i) if (!used[i]) return -1;
-	size_t n, total;
+	size_t n, total, kept;
+	struct action_scope *const *retained;
 	const struct scope_shadow *const *all;
 	const struct pg_term *const *terms;
 	if (pg_scope_shadows_read(file, arena, output, limit, name_limit, codec, owner,
-		&n, &all, &total, &terms) || n < amount || total < amount) return -1;
+		&n, &all, &kept, &retained, &total, &terms) || n < amount || total < amount) return -1;
 	for (size_t i = 0; i < amount; ++i) {
 		nodes[i].term = terms[i];
 		nodes[i].shadow = all[i];
@@ -109,6 +114,8 @@ int pg_scope_visits_read(FILE *file, struct pg_graph *arena, struct pg_graph *ou
 	*visits = selected;
 	*shadow_count = n - (size_t)amount;
 	*shadows = all + (size_t)amount;
+	*scope_count = kept;
+	*scopes = retained;
 	*count = total - (size_t)amount;
 	*roots = terms + (size_t)amount;
 	return 0;
@@ -124,6 +131,7 @@ static int shadow_child(void *unused, const void *key, size_t index, const void 
 }
 
 int pg_scope_shadows_write(FILE *file, size_t shadow_count, const struct scope_shadow *const *shadows,
+	size_t scope_count, const struct action_scope *const *scopes,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
 {
 	if (!file || (shadow_count && !shadows) || (count && !roots)) return -1;
@@ -150,7 +158,7 @@ int pg_scope_shadows_write(FILE *file, size_t shadow_count, const struct scope_s
 		all[node->id - 1] = pg_reference(&dag.storage, shadow->binder);
 	}
 	for (size_t i = 0; i < count; ++i) all[dag.count + i] = roots[i];
-	status = pg_graph_write_descriptors(file, dag.count + count, all, codec, owner);
+	status = pg_action_scopes_write(file, scope_count, scopes, dag.count + count, all, codec, owner);
 done:
 	pg_dag_destroy(&dag);
 	return status;
@@ -159,11 +167,14 @@ done:
 int pg_scope_shadows_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	size_t *shadow_count, const struct scope_shadow *const **shadows,
+	size_t *scope_count, struct action_scope *const **scopes,
 	size_t *count, const struct pg_term *const **roots)
 {
-	if (!shadow_count || !shadows || !count || !roots) return -1;
+	if (!shadow_count || !shadows || !scope_count || !scopes || !count || !roots) return -1;
 	*shadow_count = 0;
 	*shadows = NULL;
+	*scope_count = 0;
+	*scopes = NULL;
 	*count = 0;
 	*roots = NULL;
 	if (!file || !arena || !output) return -1;
@@ -188,15 +199,19 @@ int pg_scope_shadows_read(FILE *file, struct pg_graph *arena, struct pg_graph *o
 		if (id) used[id - 1] = 1;
 	}
 	for (size_t i = 0; i < amount; ++i) if (!used[i]) return -1;
-	size_t total;
+	size_t total, kept;
+	struct action_scope *const *retained;
 	const struct pg_term *const *all;
-	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &total, &all) || total < amount) return -1;
+	if (pg_action_scopes_read(file, arena, output, limit, name_limit, codec, owner,
+		&kept, &retained, &total, &all) || total < amount) return -1;
 	for (size_t i = 0; i < amount; ++i) {
 		if (all[i]->kind != PG_REFERENCE || all[i]->as.reference->kind != PG_BINDER) return -1;
 		nodes[i].binder = all[i]->as.reference;
 	}
 	*shadow_count = (size_t)root_count;
 	*shadows = selected;
+	*scope_count = kept;
+	*scopes = retained;
 	*count = total - (size_t)amount;
 	*roots = all + (size_t)amount;
 	return 0;

@@ -464,6 +464,19 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Compose visit/shadow transport with the existing scope ownership table
+  (`APGSVS2` / `APGSHD2` embedding `APGISC3`). Do not serialize scope binders
+  in a second Term table. Restore optional scope roots only after the outer
+  visit/shadow payload also validates. This supersedes the experimental v1
+  envelopes; no stable artifact contract is changed.
+- [x] Resave visits, shadows and multiple scope roots together twice after
+  arena destruction. Distinct scopes retain a shared binding array; repeated
+  scopes share their actual scope object; binding sources/triples and shadow
+  binders refer to the same relocated objects. Existing empty-scope and invalid
+  graph cases pass. This is shared ownership, not yet the full scope-work cursor.
+  Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
+  `check-identity-io check-eval-io` pass.
+
 - [x] Retain raw scope visits (`APGSVS1`) with next-list identity and shared
   shadows through `APGSHD1`, using one Term table. Repeated root pointers share;
   distinct pending records with equal `(term, shadow)` remain distinct records.
