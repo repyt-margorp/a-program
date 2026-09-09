@@ -37,4 +37,13 @@ int pg_action_body_read(FILE *file, struct pg_graph *arena, struct pg_graph *out
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	struct action_body_work **work, size_t *count, const struct pg_term *const **roots);
 
+struct pg_eval_configuration;
+/* The same payload nested in a configuration forest, with one Term table.
+ * This retains caller closures/arguments, not machine flags or Demand frames. */
+int pg_action_body_configurations_write(FILE *file, const struct action_body_work *work,
+	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner);
+int pg_action_body_configurations_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct action_body_work **work, size_t *count, const struct pg_eval_configuration **roots);
+
 #endif

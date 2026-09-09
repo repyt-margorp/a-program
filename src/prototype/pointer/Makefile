@@ -35,9 +35,9 @@ check-identity-io: $(BUILD)/identity_io_test
 
 check: check-eval-io check-identity-io
 
-$(BUILD)/identity_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)tests/identity_io.c
+$(BUILD)/identity_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(ROOT)tests/identity_io.c
 	@mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)tests/identity_io.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(ROOT)tests/identity_io.c -o $@
 
 check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test $(BUILD)/occurrence_io_test $(BUILD)/derivation_io_test $(BUILD)/syntax_io_test $(BUILD)/source_io_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test $(BUILD)/program_test $(BUILD)/seed_test $(BUILD)/pointer-check
 	$(BUILD)/core_test

@@ -40,10 +40,11 @@ static int read_pair(FILE *file, uint64_t *pair, uint64_t left_limit, uint64_t r
 	return pair[0] <= left_limit && pair[1] <= right_limit ? 0 : -1;
 }
 
-int pg_eval_configurations_write(FILE *file, size_t count,
-	const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner)
+int pg_eval_configurations_write_with(FILE *file, size_t count,
+	const struct pg_eval_configuration *roots,
+	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *state)
 {
-	if (!file || (count && !roots)) return -1;
+	if (!file || !write_terms || (count && !roots)) return -1;
 	struct pg_graph scratch = {0};
 	struct pg_dag environments = {0}, arguments = {0};
 	int status = -1;
@@ -88,7 +89,7 @@ int pg_eval_configurations_write(FILE *file, size_t count,
 		if (reference(file, &environments, roots[i].head.environment)
 			|| reference(file, &arguments, roots[i].arguments)) goto done;
 	}
-	status = pg_graph_write_descriptors(file, n, terms, codec, owner);
+	status = write_terms(file, n, terms, state);
 done:
 	pg_dag_destroy(&arguments);
 	pg_dag_destroy(&environments);
@@ -96,14 +97,14 @@ done:
 	return status;
 }
 
-int pg_eval_configurations_read(FILE *file, struct pg_graph *graph, size_t limit,
-	size_t name_limit, const struct pg_graph_codec *codec, void *owner,
-	size_t *count, const struct pg_eval_configuration **roots)
+int pg_eval_configurations_read_with(FILE *file, struct pg_graph *graph, size_t limit,
+	size_t name_limit, size_t *count, const struct pg_eval_configuration **roots,
+	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *, const struct pg_term *const **, void *), void *state)
 {
 	if (!count || !roots) return -1;
 	*count = 0;
 	*roots = NULL;
-	if (!file || !graph) return -1;
+	if (!file || !graph || !read_terms) return -1;
 	char header[8];
 	uint64_t ne, na, nr;
 	if (fread(header, 1, sizeof(header), file) != sizeof(header) || memcmp(header, magic, sizeof(header))) return -1;
@@ -126,7 +127,7 @@ int pg_eval_configurations_read(FILE *file, struct pg_graph *graph, size_t limit
 		if (read_pair(file, &links[2 * (ne + na + i)], ne, na)) goto done;
 	const struct pg_term *const *terms;
 	size_t term_count;
-	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, owner, &term_count, &terms)
+	if (read_terms(file, graph, limit, name_limit, &term_count, &terms, state)
 		|| term_count != n) goto done;
 	struct pg_environment *environments = pg_alloc(graph, (size_t)ne * sizeof(*environments));
 	struct pg_argument *arguments = pg_alloc(graph, (size_t)na * sizeof(*arguments));
@@ -159,6 +160,39 @@ int pg_eval_configurations_read(FILE *file, struct pg_graph *graph, size_t limit
 done:
 	pg_graph_destroy(&scratch);
 	return status;
+}
+
+struct configuration_graph_codec {
+	const struct pg_graph_codec *codec;
+	void *owner;
+};
+
+static int write_configuration_terms(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	const struct configuration_graph_codec *context = opaque;
+	return pg_graph_write_descriptors(file, count, roots, context->codec, context->owner);
+}
+
+static int read_configuration_terms(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_term *const **roots, void *opaque)
+{
+	const struct configuration_graph_codec *context = opaque;
+	return pg_graph_read_descriptors(file, graph, limit, name_limit, context->codec, context->owner, count, roots);
+}
+
+int pg_eval_configurations_write(FILE *file, size_t count,
+	const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	struct configuration_graph_codec context = {codec, owner};
+	return pg_eval_configurations_write_with(file, count, roots, write_configuration_terms, &context);
+}
+
+int pg_eval_configurations_read(FILE *file, struct pg_graph *graph, size_t limit,
+	size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	size_t *count, const struct pg_eval_configuration **roots)
+{
+	struct configuration_graph_codec context = {codec, owner};
+	return pg_eval_configurations_read_with(file, graph, limit, name_limit, count, roots, read_configuration_terms, &context);
 }
 
 static int readback_child(void *unused, const void *key, size_t index, const void **child)

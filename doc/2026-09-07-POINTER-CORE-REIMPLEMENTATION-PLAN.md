@@ -254,6 +254,22 @@ These are existing execution structures to relocate, not new Core node kinds.
   payloads in one shared image graph. The action-body tests construct component
   inputs and a caller; they do not yet demonstrate a source-level `.a`
   checkpoint. Saved comparison results remain raw work, not accepted evidence.
+- [x] Compose the existing configuration-forest codec with the action-body
+  payload. Configuration Term roots are handed to the owning payload codec,
+  which combines them with its comparison and body roots before a single Term
+  table is written. The plain configuration API uses the same implementation
+  and keeps its format; no environment decoder or evaluator is duplicated.
+  The execution owner selects the component reader explicitly; no C callback
+  address is serialized or accepted from the stream.
+- [x] At all tested body-work cuts, retain captured caller environments and
+  shared argument tails together with body/comparison state. Two inert resaves
+  destroy old graphs and still preserve exact source/binder sharing across all
+  owners. Separate processes resume through the existing deferred operation.
+  An invalid environment binder detected after successful body decoding clears
+  outputs and releases the already-restored comparison. Normal/ASan/UBSan
+  `check-eval-io check-identity-io` pass. Machine flags, policy, Demand frames,
+  other auxiliary algorithms and source-level checkpoint wiring remain open.
+  `check check-prepared-modules` also passes after this composition change.
 
 | Existing owner | State that must survive a retained-work save |
 | --- | --- |

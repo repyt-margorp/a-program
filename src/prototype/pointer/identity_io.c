@@ -1,4 +1,5 @@
 #include "identity_internal.h"
+#include "eval_io.h"
 #include "wire.h"
 
 #include <string.h>
@@ -98,4 +99,48 @@ int pg_action_body_read(FILE *file, struct pg_graph *arena, struct pg_graph *out
 failure:
 	pg_action_body_operation.destroy(candidate);
 	return -1;
+}
+
+struct body_configuration_codec {
+	const struct action_body_work *source;
+	struct action_body_work *restored;
+	struct pg_graph *arena;
+	const struct pg_graph_codec *codec;
+	void *owner;
+};
+
+static int write_body_terms(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	struct body_configuration_codec *context = opaque;
+	return pg_action_body_write(file, context->source, count, roots, context->codec, context->owner);
+}
+
+static int read_body_terms(FILE *file, struct pg_graph *output, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_term *const **roots, void *opaque)
+{
+	struct body_configuration_codec *context = opaque;
+	return pg_action_body_read(file, context->arena, output, limit, name_limit,
+		context->codec, context->owner, &context->restored, count, roots);
+}
+
+int pg_action_body_configurations_write(FILE *file, const struct action_body_work *work,
+	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	struct body_configuration_codec context = {.source = work, .codec = codec, .owner = owner};
+	return pg_eval_configurations_write_with(file, count, roots, write_body_terms, &context);
+}
+
+int pg_action_body_configurations_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct action_body_work **work, size_t *count, const struct pg_eval_configuration **roots)
+{
+	if (!work) return -1;
+	*work = NULL;
+	struct body_configuration_codec context = {.arena = arena, .codec = codec, .owner = owner};
+	if (pg_eval_configurations_read_with(file, output, limit, name_limit, count, roots, read_body_terms, &context)) {
+		if (context.restored) pg_action_body_operation.destroy(context.restored);
+		return -1;
+	}
+	*work = context.restored;
+	return 0;
 }

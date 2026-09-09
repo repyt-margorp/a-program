@@ -22,6 +22,18 @@ int pg_eval_configurations_read(FILE *file, struct pg_graph *graph, size_t limit
 	size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_eval_configuration **roots);
 
+/* Compose an owning work payload around the configuration's Term roots. The
+ * callback must return the same ordered roots through one shared relocation
+ * table, not serialize each configuration separately. It owns the embedded
+ * stream format. On outer read failure the caller must release any callback
+ * state already restored; configuration outputs themselves remain empty. */
+int pg_eval_configurations_write_with(FILE *file, size_t count,
+	const struct pg_eval_configuration *roots,
+	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *state);
+int pg_eval_configurations_read_with(FILE *file, struct pg_graph *graph, size_t limit,
+	size_t name_limit, size_t *count, const struct pg_eval_configuration **roots,
+	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *, const struct pg_term *const **, void *), void *state);
+
 /* Raw substitution/readback work, including partial results and traversal.
  * Restored progress is NOT accepted evidence that these results follow from
  * the original input. Use only as an inert work representation until that

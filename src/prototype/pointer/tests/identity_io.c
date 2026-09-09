@@ -1,4 +1,5 @@
 #include "identity_internal.h"
+#include "eval_io.h"
 #include "wire.h"
 
 #include <assert.h>
@@ -125,6 +126,108 @@ static void all_cuts(void)
 	}
 }
 
+static void check_configuration_resume(struct action_body_work *work, struct pg_eval_configuration caller,
+	const struct pg_term *expected)
+{
+	struct pg_eval machine;
+	pg_eval_init(&machine, caller.head.term);
+	machine.current = caller.head;
+	machine.arguments = caller.arguments;
+	machine.output = work->output;
+	assert(!pg_eval_defer(&machine, &pg_action_body_operation, work));
+	assert(pg_eval_advance(&machine, 10) == PG_EVAL_WHNF);
+	assert(pg_alpha_equal(pg_eval_readback(&machine, work->output), expected) == 1);
+	pg_eval_destroy(&machine);
+}
+
+static void configurations(void)
+{
+	for (int different = 0; different < 2; ++different) {
+		struct pg_graph graph, arena = {0};
+		assert(!pg_graph_init(&graph));
+		const struct pg_term *request, *expected;
+		struct action_body_work *baseline = fixture(&graph, &arena, different, &request, &expected);
+		size_t total = finish(baseline);
+		pg_action_body_operation.destroy(baseline);
+		pg_graph_destroy(&arena);
+		pg_graph_destroy(&graph);
+		for (size_t cut = 0; cut <= total; ++cut) {
+			assert(!pg_graph_init(&graph));
+			struct action_body_work *work = fixture(&graph, &arena, different, &request, &expected);
+			struct pg_environment environment = {work->scope.source->as.lambda.binder,
+				{pg_reference(&graph, pg_binder(&graph)), NULL}, NULL};
+			struct pg_argument argument = {{work->scope.source, &environment}, NULL};
+			struct pg_eval_configuration initial[] = {
+				{{request->as.application.function, &environment}, &argument},
+				{{expected, NULL}, NULL},
+				{{work->scope.source, &environment}, &argument}
+			};
+			const struct pg_eval_configuration *roots = initial;
+			for (size_t i = 0; i < cut; ++i) assert(pg_action_body_operation.poll(work) == (i + 1 == total));
+			for (unsigned round = 0; round < 2; ++round) {
+				FILE *file = tmpfile();
+				assert(file && !pg_action_body_configurations_write(file, work, 3, roots, &codec, NULL));
+				pg_action_body_operation.destroy(work);
+				pg_graph_destroy(&arena);
+				pg_graph_destroy(&graph);
+				assert(!pg_graph_init(&graph));
+				rewind(file);
+				size_t count;
+				assert(!pg_action_body_configurations_read(file, &arena, &graph, 10000, 100,
+					&codec, NULL, &work, &count, &roots));
+				assert(!fclose(file) && count == 3);
+				assert(roots[0].arguments == roots[2].arguments);
+				assert(roots[0].head.environment == roots[0].arguments->value.environment);
+				assert(roots[0].head.environment == roots[2].head.environment);
+				assert(roots[0].arguments->value.term == work->scope.source);
+				assert(roots[0].head.environment->binder == work->scope.source->as.lambda.binder);
+			}
+			for (size_t i = cut; i < total; ++i) assert(pg_action_body_operation.poll(work) == (i + 1 == total));
+			check_configuration_resume(work, roots[0], roots[1].head.term);
+			pg_graph_destroy(&arena);
+			pg_graph_destroy(&graph);
+		}
+	}
+}
+
+static int invalid_environment_terms(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	const struct action_body_work *work = opaque;
+	struct pg_graph scratch = {0};
+	const struct pg_term **changed = pg_alloc(&scratch, count * sizeof(*changed));
+	assert(changed && count);
+	memcpy(changed, roots, count * sizeof(*changed));
+	/* An APP is a valid Term but not an environment's binder reference. */
+	changed[0] = work->scope.body;
+	int status = pg_action_body_write(file, work, count, changed, &codec, NULL);
+	pg_graph_destroy(&scratch);
+	return status;
+}
+
+static void configuration_failure(void)
+{
+	struct pg_graph graph, arena = {0};
+	assert(!pg_graph_init(&graph));
+	const struct pg_term *request, *expected;
+	struct action_body_work *work = fixture(&graph, &arena, 1, &request, &expected);
+	struct pg_environment environment = {work->scope.source->as.lambda.binder, {expected, NULL}, NULL};
+	struct pg_eval_configuration root = {{request, &environment}, NULL};
+	FILE *file = tmpfile();
+	assert(file && !pg_eval_configurations_write_with(file, 1, &root, invalid_environment_terms, work));
+	pg_action_body_operation.destroy(work);
+	pg_graph_destroy(&arena);
+	pg_graph_destroy(&graph);
+	assert(!pg_graph_init(&graph));
+	rewind(file);
+	size_t count;
+	const struct pg_eval_configuration *roots;
+	assert(pg_action_body_configurations_read(file, &arena, &graph, 10000, 100, &codec, NULL, &work, &count, &roots));
+	assert(!work && !count && !roots);
+	assert(!fclose(file));
+	pg_graph_destroy(&arena);
+	pg_graph_destroy(&graph);
+}
+
 int main(int argc, char **argv)
 {
 	if (argc == 3) {
@@ -134,8 +237,14 @@ int main(int argc, char **argv)
 			const struct pg_term *roots[2];
 			struct action_body_work *work = fixture(&graph, &arena, 1, &roots[0], &roots[1]);
 			for (size_t i = 0; i < 5; ++i) assert(!pg_action_body_operation.poll(work));
+			struct pg_environment environment = {work->scope.source->as.lambda.binder,
+				{pg_reference(&graph, pg_binder(&graph)), NULL}, NULL};
+			struct pg_argument argument = {{work->scope.source, &environment}, NULL};
+			struct pg_eval_configuration configurations[] = {
+				{{roots[0]->as.application.function, &environment}, &argument}, {{roots[1], NULL}, NULL}
+			};
 			FILE *file = fopen(argv[2], "wb");
-			assert(file && !pg_action_body_write(file, work, 2, roots, &codec, NULL));
+			assert(file && !pg_action_body_configurations_write(file, work, 2, configurations, &codec, NULL));
 			assert(!fclose(file));
 			pg_action_body_operation.destroy(work);
 		} else {
@@ -143,11 +252,13 @@ int main(int argc, char **argv)
 			FILE *file = fopen(argv[2], "rb");
 			struct action_body_work *work;
 			size_t count;
-			const struct pg_term *const *roots;
-			assert(file && !pg_action_body_read(file, &arena, &graph, 10000, 100, &codec, NULL, &work, &count, &roots));
+			const struct pg_eval_configuration *roots;
+			assert(file && !pg_action_body_configurations_read(file, &arena, &graph, 10000, 100, &codec, NULL, &work, &count, &roots));
 			assert(!fclose(file) && count == 2);
+			assert(roots[0].head.environment == roots[0].arguments->value.environment);
+			assert(roots[0].arguments->value.term == work->scope.source);
 			finish(work);
-			check_resume(work, roots[0], roots[1]);
+			check_configuration_resume(work, roots[0], roots[1].head.term);
 		}
 		pg_graph_destroy(&arena);
 		pg_graph_destroy(&graph);
@@ -155,6 +266,8 @@ int main(int argc, char **argv)
 	}
 	assert(argc == 1);
 	all_cuts();
+	configurations();
+	configuration_failure();
 	puts("Identity body: compare/collect/wrap/ready preserve owner sharing and resume through the original operation");
 	return 0;
 }
