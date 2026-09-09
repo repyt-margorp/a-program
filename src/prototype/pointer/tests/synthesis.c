@@ -2267,6 +2267,22 @@ static void definition_selections(struct pg_typing *typing, struct pg_classifier
 	assert(pg_synthesis_definition(second, left) == pg_synthesis_definition(module, left));
 	assert(synthesis.jobs.count == jobs + 1 && synthesis.scopes.count == scopes);
 	assert(typing->graph->terms.count == terms && typing->proofs.count == proofs && work.jobs.count == reductions);
+	/* Shared immutable annotation inputs produce one obligation, not a fresh
+	 * synthetic name/EXPECT tree per module entry. */
+	struct pg_syntax *repeated = pg_alloc(typing->graph, sizeof(*repeated));
+	struct pg_syntax_item *items = pg_alloc(typing->graph, 5 * sizeof(*items));
+	assert(repeated && items);
+	*repeated = *definitions;
+	memcpy(items, definitions->items, 4 * sizeof(*items));
+	items[4] = items[3];
+	repeated->items = items;
+	repeated->item_count = 5;
+	struct pg_synthesis_job *repeated_module = pg_synthesis_request(&synthesis, scope, repeated);
+	complete(&synthesis, repeated_module, PG_SYNTHESIS_DONE);
+	struct pg_synthesis_job *first_check, *second_check;
+	assert(pg_synthesis_definition_entry(repeated_module, 3, &item, &first_check) == 1);
+	assert(pg_synthesis_definition_entry(repeated_module, 4, &item, &second_check) == 1);
+	assert(first_check && first_check == second_check);
 	const char *invalid[] = {"left:=@; right:=missing;", "left:=@; right:=@; right::@;",
 		"left:=@; right:=@; left:=@;"};
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
@@ -2302,6 +2318,17 @@ static void definition_selections(struct pg_typing *typing, struct pg_classifier
 	uint64_t steps = synthesis.steps;
 	pg_synthesis_advance(&synthesis, 1000);
 	assert(synthesis.steps == steps);
+	pg_synthesis_destroy(&synthesis);
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_IMPLICIT_THUNK));
+	module = program(&synthesis, pg_synthesis_root(&synthesis),
+		"id:=\\A:@ => \\x:A => x; id::(A:@)->A->A;");
+	complete(&synthesis, module, PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_definition_entry(module, 0, &item, &producer) == 1);
+	const struct pg_evidence *stored = pg_synthesis_result(producer);
+	assert(pg_evidence_judgement(stored) == PG_JUDGEMENT_VALUE);
+	assert(pg_synthesis_definition_entry(module, 1, &item, &producer) == 1);
+	assert(pg_evidence_subject(pg_synthesis_result(producer))->core ==
+		pg_evidence_subject(pg_prove_force(typing, stored))->core);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	puts("definition selections: shared producers, whole-module checking and pending/missing boundaries passed");

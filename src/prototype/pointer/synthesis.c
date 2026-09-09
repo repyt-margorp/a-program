@@ -142,7 +142,7 @@ struct effect_substitution_state {
 	const struct pg_term *result;
 };
 enum job_role { DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
 enum { APPLICATION_RULE_READY = 6 };
 struct telescope_allocation {
 	const struct pg_context *prefix, *end;
@@ -2117,17 +2117,24 @@ static enum pg_synthesis_status resolve_reference(struct pg_synthesis *synthesis
 	return status;
 }
 
+static const struct pg_evidence *source_reference_proof(struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *producer)
+{
+	const struct pg_evidence *proof = producer->result;
+	/* Storage quotation does not change the meaning of a source definition. */
+	if (producer->role == DEFINITION_JOB && producer->left &&
+		pg_evidence_judgement(producer->left->result) == PG_JUDGEMENT_COMPUTATION)
+		return pg_prove_force(synthesis->typing, proof);
+	return proof;
+}
+
 static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->left) {
 		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 		const struct pg_evidence *proof = job->left->result;
 		if (!proof || !pg_evidence_subject(proof)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		/* Definition storage quotes a raw computation; a source reference keeps
-		 * that computation's meaning. Explicit source quotation remains a value. */
-		if (job->left->role == DEFINITION_JOB &&
-			pg_evidence_judgement(job->left->left->result) == PG_JUDGEMENT_COMPUTATION)
-			proof = pg_prove_force(synthesis->typing, proof);
+		proof = source_reference_proof(synthesis, job->left);
 		if (!proof) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		if (job->syntax->kind == PG_SYNTAX_IMPORT && pg_evidence_context(proof)) {
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
@@ -2537,6 +2544,40 @@ static void definition_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 	finish(synthesis, job, result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
+static void source_expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *parts[] = {job->left, job->right};
+	for (size_t i = 0; i < 2; ++i) {
+		if (!parts[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (parts[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, parts[i]); return; }
+		if (parts[i]->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, parts[i]->status); return; }
+	}
+	if (!job->checking_term) {
+		const struct pg_evidence *left = pg_prove_projection(synthesis->typing,
+			source_context(job->scope), source_reference_proof(synthesis, job->left));
+		const struct pg_evidence *right = type_input(synthesis, job, source_context(job->scope), job->right->result);
+		if (!right) return;
+		if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE_TYPE) left = value(synthesis, left);
+		if (!left) goto rejected;
+		if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) right = value_type(synthesis, right);
+		else if (pg_evidence_judgement(right) != PG_JUDGEMENT_COMPUTATION_TYPE)
+			right = pg_prove_return_type(synthesis->typing, synthesis->classifiers, value_type(synthesis, right));
+		if (!right) goto rejected;
+		job->checking_term = left;
+		job->checking_type = right;
+	}
+	if (!job->value_job) {
+		job->value_job = pg_synthesis_expect(synthesis,
+			pg_synthesis_evidence(synthesis, job->checking_term),
+			pg_synthesis_evidence(synthesis, job->checking_type));
+	}
+	job->exports = job->left->exports;
+	forward_proof(synthesis, job, job->value_job);
+	return;
+rejected:
+	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
+}
+
 static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct definition_state *state = job->definitions;
@@ -2581,14 +2622,17 @@ static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synt
 			}
 		} else {
 			const struct pg_syntax_item *item = &state->syntax->items[i];
-			if (!lookup_definition(state, item->name)) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-			struct pg_syntax *name = pg_alloc(synthesis->typing->graph, sizeof(*name));
-			struct pg_syntax *check = pg_alloc(synthesis->typing->graph, sizeof(*check));
-			if (!name || !check) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			*name = (struct pg_syntax){.kind = PG_SYNTAX_ATOM, .token = item->name};
-			*check = (struct pg_syntax){.kind = PG_SYNTAX_EXPECT, .left = name, .right = item->expression};
-			state->entries[i] = pg_synthesis_request(synthesis, state->scope, check);
-			if (!state->entries[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			struct pg_synthesis_job *term = lookup_definition(state, item->name);
+			if (!term) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+			struct pg_synthesis_job *type = pg_synthesis_request(synthesis, state->scope, item->expression);
+			if (!type) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			const void *inputs[] = {state->scope, term, type};
+			struct pg_synthesis_job *check = request_inputs(synthesis, SOURCE_EXPECT_JOB, 3, inputs);
+			if (!check) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			check->scope = state->scope;
+			check->left = term;
+			check->right = type;
+			state->entries[i] = check;
 		}
 		enqueue(synthesis, job);
 		return;
@@ -5327,6 +5371,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	if (job->role == DERIVATION_JOB) { derivation_step(synthesis, job); return; }
 	if (job->role == DERIVATION_INPUT_JOB) { derivation_input_step(synthesis, job); return; }
+	if (job->role == SOURCE_EXPECT_JOB) { source_expect_step(synthesis, job); return; }
 	if (job->role == TYPE_STRUCTURE_JOB) { type_structure_step(synthesis, job); return; }
 	if (job->role == BODY_JOB || job->role == CLASSIFIER_FORMATION_JOB) {
 		for (size_t i = 0; i < 2; ++i) {
@@ -5467,8 +5512,10 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	switch (syntax->kind) {
 	case PG_SYNTAX_LAMBDA: case PG_SYNTAX_PI: case PG_SYNTAX_APPLICATION:
-	case PG_SYNTAX_QUOTE: case PG_SYNTAX_EXPECT:
+	case PG_SYNTAX_QUOTE:
 		break;
+	case PG_SYNTAX_EXPECT:
+		source_expect_step(synthesis, job); return;
 	default:
 		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 	}
@@ -5476,7 +5523,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 	if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
 	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
-	const struct pg_evidence *left = job->left->result, *right = job->right->result;
+	const struct pg_evidence *right = job->right->result;
 	switch (syntax->kind) {
 	case PG_SYNTAX_PI: {
 		job->domain = job->left->domain;
@@ -5490,31 +5537,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	case PG_SYNTAX_APPLICATION:
 		prepare_application(synthesis, job);
 		return;
-	case PG_SYNTAX_EXPECT: {
-		if (!job->checking_term) {
-			right = type_input(synthesis, job, source_context(job->scope), right);
-			if (!right) return;
-			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE_TYPE) left = value(synthesis, left);
-			if (!left) break;
-			if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) right = value_type(synthesis, right);
-			else if (pg_evidence_judgement(right) != PG_JUDGEMENT_COMPUTATION_TYPE)
-				right = pg_prove_return_type(synthesis->typing, synthesis->classifiers, value_type(synthesis, right));
-			if (!right) break;
-			job->checking_term = left;
-			job->checking_type = right;
-		}
-		if (!job->value_job) {
-			job->value_job = pg_synthesis_expect(synthesis,
-				pg_synthesis_evidence(synthesis, job->checking_term),
-				pg_synthesis_evidence(synthesis, job->checking_type));
-			depend(synthesis, job, job->value_job);
-			return;
-		}
-		if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return; }
-		job->result = job->value_job->result;
-		job->exports = job->left->exports;
-		break;
-	}
 	default: break;
 	}
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);

@@ -52,6 +52,29 @@ the open-family result above remains a required correction before Main promotion
 
 ### September 9: Retained Proof Reuse Is Not Source Checkpointing
 
+Follow-up after `ae30471`: module `name :: Type` entries now reference the
+existing definition/import producer and independently synthesized type producer.
+Registration no longer fabricates an ATOM and EXPECT syntax tree per obligation.
+The source-annotation job is interned by scope and these two producers; ordinary
+expression annotations and module annotations share `source_expect_step`.
+It performs the existing source polarity adaptations and delegates acceptance
+to `pg_synthesis_expect`. The internal job role replaces synthetic-source work;
+it adds no Core constructor, kernel rule or competing accepted-state store.
+Context projection is retained explicitly for names supplied by an outer scope.
+`source_reference_proof` shares the existing implicit-storage-thunk adjustment
+with normal name lookup. The first direct-producer version missed this and
+rejected example 09; the correction and a focused implicit-thunk annotation
+regression retain the original meaning without fabricating syntax nodes.
+
+- [x] Preserve producer-first synthesis and post-check-only `::` behavior.
+- [x] Reuse one obligation job for repeated entries sharing exact source inputs.
+- [ ] Transport these preparation inputs along with the rest of a module's
+  producer graph. Do not mistake this simplification for completed CHECKPOINT.
+
+Validation: `check`, `check-examples` (8 source inputs), and
+`check-example-results` (6 execution fixtures at two budgets) pass after the
+correction. Open-family admission and full N0--N7 acceptance remain incomplete.
+
 Implementation after `d65b4fc`: `pg_synthesis_definition_entry` exposes each
 module entry by source position using the existing syntax and registration
 arrays. It includes assignments, imports and post-synthesis `::` obligations;
