@@ -52,6 +52,22 @@ the open-family result above remains a required correction before Main promotion
 
 ### September 9: Retained Proof Reuse Is Not Source Checkpointing
 
+Follow-up after `d539c07`: `pg_synthesis_source_expect` is now the common
+scope/term-producer/type-producer factory for expression annotations, module
+obligations and annotated computation-block entries. The remaining block-local
+synthetic EXPECT allocation is removed. Existing source-reference adaptations
+remain in the single worker, above Core and before ordinary post-checking.
+Direct requests and expression lowering share the same interned job; malformed
+NULL inputs reject without constructing another annotation. Existing annotated
+block evaluation fixtures remain part of verification. This prepares one
+annotation dependency shape for image transport; it does not yet serialize the
+prepared producer graph or complete CHECKPOINT.
+
+Validation: `check`, eight source examples and six execution fixtures (two
+budgets each) pass. Example 09 now takes 3473 solver transitions versus 3463
+in the preceding revision: the explicit expression adapter adds scheduling
+work. This change unifies producer representation; it is not a speedup claim.
+
 Follow-up after `ae30471`: module `name :: Type` entries now reference the
 existing definition/import producer and independently synthesized type producer.
 Registration no longer fabricates an ATOM and EXPECT syntax tree per obligation.

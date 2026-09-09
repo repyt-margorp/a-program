@@ -5722,6 +5722,25 @@ int main(void)
 	const struct pg_evidence *checked = complete(&synthesis,
 		request(&synthesis, scope, "main := (\\y : A => y) :: A -> A;"), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_rule(checked) == PG_TYPE_CONVERSION);
+	struct pg_parser annotation_parser;
+	struct pg_definition annotation_definition;
+	const char annotation_source[] = "main := x :: A;";
+	pg_parser_init(&annotation_parser, &graph, annotation_source, strlen(annotation_source));
+	assert(pg_parser_next(&annotation_parser, &annotation_definition) == 1);
+	const struct pg_syntax *annotation = annotation_definition.expression;
+	struct pg_synthesis_job *annotation_term = pg_synthesis_request(&synthesis, scope, annotation->left);
+	struct pg_synthesis_job *annotation_type = pg_synthesis_request(&synthesis, scope, annotation->right);
+	struct pg_synthesis_job *direct_annotation = pg_synthesis_source_expect(&synthesis, scope, annotation_term, annotation_type);
+	assert(direct_annotation && !pg_synthesis_result(direct_annotation));
+	assert(!pg_synthesis_source_expect(&synthesis, NULL, annotation_term, annotation_type));
+	assert(!pg_synthesis_source_expect(&synthesis, scope, NULL, annotation_type));
+	assert(!pg_synthesis_source_expect(&synthesis, scope, annotation_term, NULL));
+	const struct pg_evidence *annotation_result = complete(&synthesis,
+		pg_synthesis_request(&synthesis, scope, annotation), PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(direct_annotation) == annotation_result);
+	size_t annotation_jobs = synthesis.jobs.count;
+	assert(pg_synthesis_source_expect(&synthesis, scope, annotation_term, annotation_type) == direct_annotation);
+	assert(synthesis.jobs.count == annotation_jobs);
 	complete(&synthesis, request(&synthesis, scope, "main := (\\y : A => missing) :: A -> A;"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope, "main := x :: @;"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope, "main := &(\\y : A => y);"), PG_SYNTHESIS_DONE);

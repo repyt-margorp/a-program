@@ -1050,6 +1050,19 @@ struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
 	return request_inputs(synthesis, EXPECT_JOB, 2, inputs);
 }
 
+struct pg_synthesis_job *pg_synthesis_source_expect(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_synthesis_job *term,
+	struct pg_synthesis_job *type)
+{
+	if (!scope || scope->owner != synthesis->owner_key) return NULL;
+	if (!term || term->owner != synthesis->owner_key) return NULL;
+	if (!type || type->owner != synthesis->owner_key) return NULL;
+	const void *inputs[] = {scope, term, type};
+	struct pg_synthesis_job *job = request_inputs(synthesis, SOURCE_EXPECT_JOB, 3, inputs);
+	if (job) { job->scope = scope; job->left = term; job->right = type; }
+	return job;
+}
+
 struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *function,
 	struct pg_synthesis_job *argument)
@@ -2487,14 +2500,12 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	const struct pg_syntax_item *item = &block->syntax->items[block->next++];
 	int name_status = register_name(synthesis, &block->names, item->name);
 	if (name_status) { finish(synthesis, job, name_status > 0 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR); return; }
-	const struct pg_syntax *expression = item->expression;
+	struct pg_synthesis_job *input = pg_synthesis_request(synthesis, block->scope, item->expression);
+	if (!input) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	if (item->annotation) {
-		struct pg_syntax *check = pg_alloc(synthesis->typing->graph, sizeof(*check));
-		if (!check) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		*check = (struct pg_syntax){.kind = PG_SYNTAX_EXPECT, .token = item->name, .left = expression, .right = item->annotation};
-		expression = check;
+		input = pg_synthesis_source_expect(synthesis, block->scope, input,
+			pg_synthesis_request(synthesis, block->scope, item->annotation));
 	}
-	struct pg_synthesis_job *input = pg_synthesis_request(synthesis, block->scope, expression);
 	if (!input) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	struct pg_synthesis_job *normalized = NULL;
 	if (block->next == block->end || item->name.length) {
@@ -2626,13 +2637,8 @@ static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synt
 			if (!term) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			struct pg_synthesis_job *type = pg_synthesis_request(synthesis, state->scope, item->expression);
 			if (!type) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			const void *inputs[] = {state->scope, term, type};
-			struct pg_synthesis_job *check = request_inputs(synthesis, SOURCE_EXPECT_JOB, 3, inputs);
-			if (!check) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			check->scope = state->scope;
-			check->left = term;
-			check->right = type;
-			state->entries[i] = check;
+			state->entries[i] = pg_synthesis_source_expect(synthesis, state->scope, term, type);
+			if (!state->entries[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
 		enqueue(synthesis, job);
 		return;
@@ -5515,7 +5521,9 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	case PG_SYNTAX_QUOTE:
 		break;
 	case PG_SYNTAX_EXPECT:
-		source_expect_step(synthesis, job); return;
+		if (!job->value_job) job->value_job = pg_synthesis_source_expect(synthesis, job->scope, job->left, job->right);
+		if (job->value_job) job->exports = job->value_job->exports;
+		forward_proof(synthesis, job, job->value_job); return;
 	default:
 		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 	}
