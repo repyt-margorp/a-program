@@ -10,6 +10,7 @@ static const char magic[8] = "APGCFG\1";
 static const char substitution_magic[8] = "APGSUB\2";
 static const char materialization_magic[8] = "APGMAT\1";
 static const char frame_magic[8] = "APGFRM\1";
+static const char frames_magic[8] = "APGFST\1";
 
 static int environment_child(void *unused, const void *key, size_t index, const void **child)
 {
@@ -435,8 +436,7 @@ int pg_materialization_read(FILE *file, struct pg_graph *graph, size_t limit,
 	return materialization_read(file, materialization_magic, graph, limit, name_limit, codec, owner, work, input, 0, &unused);
 }
 
-int pg_eval_frame_payload_write(FILE *file, const struct pg_eval_frame *frame,
-	const struct pg_eval_configuration *current, const struct pg_graph_codec *codec, void *owner)
+static int frame_roots(const struct pg_eval_frame *frame, struct pg_eval_configuration roots[3])
 {
 	if (!frame) return -1;
 	if (!frame->target && frame->cursor != frame->arguments) return -1;
@@ -449,12 +449,40 @@ int pg_eval_frame_payload_write(FILE *file, const struct pg_eval_frame *frame,
 		original = original->next;
 	}
 	if (last != frame->last || (last ? copy != frame->cursor : frame->first != NULL)) return -1;
-	struct pg_eval_configuration roots[] = {
-		{frame->caller, frame->arguments},
-		{{frame->caller.term, NULL}, frame->target},
-		{{frame->caller.term, NULL}, frame->cursor}
-	};
+	roots[0] = (struct pg_eval_configuration){frame->caller, frame->arguments};
+	roots[1] = (struct pg_eval_configuration){{frame->caller.term, NULL}, frame->target};
+	roots[2] = (struct pg_eval_configuration){{frame->caller.term, NULL}, frame->cursor};
+	return 0;
+}
+
+int pg_eval_frame_payload_write(FILE *file, const struct pg_eval_frame *frame,
+	const struct pg_eval_configuration *current, const struct pg_graph_codec *codec, void *owner)
+{
+	struct pg_eval_configuration roots[3];
+	if (frame_roots(frame, roots)) return -1;
 	return materialization_write(file, frame_magic, &frame->answer, current, 3, roots, codec, owner);
+}
+
+static int frame_from_roots(struct pg_eval_frame *candidate, struct pg_graph *arena,
+	const struct pg_eval_configuration roots[3])
+{
+	candidate->caller = roots[0].head;
+	candidate->arguments = roots[0].arguments;
+	candidate->target = roots[1].arguments;
+	candidate->cursor = roots[0].arguments;
+	if (roots[1].head.term != roots[0].head.term || roots[2].head.term != roots[0].head.term
+		|| roots[1].head.environment || roots[2].head.environment) return -1;
+	if (!candidate->target && roots[2].arguments != candidate->arguments) return -1;
+	while (candidate->cursor != roots[2].arguments) {
+		if (!candidate->answer.done || candidate->cursor == candidate->target) return -1;
+		if (!pg_eval_frame_copy_argument(candidate, arena)) return -1;
+	}
+	if (candidate->target) {
+		const struct pg_argument *cursor = candidate->cursor;
+		while (cursor && cursor != candidate->target) cursor = cursor->next;
+		if (!cursor) return -1;
+	}
+	return 0;
 }
 
 int pg_eval_frame_payload_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
@@ -471,26 +499,73 @@ int pg_eval_frame_payload_read(FILE *file, struct pg_graph *arena, struct pg_gra
 	const struct pg_eval_configuration *roots;
 	if (materialization_read(file, frame_magic, output, limit, name_limit, codec, owner,
 		&candidate->answer, &input, 3, &roots)) return -1;
-	candidate->caller = roots[0].head;
-	candidate->arguments = roots[0].arguments;
-	candidate->target = roots[1].arguments;
-	candidate->cursor = roots[0].arguments;
-	if (roots[1].head.term != roots[0].head.term || roots[2].head.term != roots[0].head.term
-		|| roots[1].head.environment || roots[2].head.environment) goto failure;
-	if (!candidate->target && roots[2].arguments != candidate->arguments) goto failure;
-	while (candidate->cursor != roots[2].arguments) {
-		if (!candidate->answer.done || candidate->cursor == candidate->target) goto failure;
-		if (!pg_eval_frame_copy_argument(candidate, arena)) goto failure;
-	}
-	if (candidate->target) {
-		const struct pg_argument *cursor = candidate->cursor;
-		while (cursor && cursor != candidate->target) cursor = cursor->next;
-		if (!cursor) goto failure;
-	}
+	if (frame_from_roots(candidate, arena, roots)) goto failure;
 	*frame = candidate;
 	*current = input;
 	return 0;
 failure:
 	pg_materialize_destroy(&candidate->answer);
 	return -1;
+}
+
+static int frame_parent(void *unused, const void *key, size_t index, const void **child)
+{
+	(void)unused;
+	if (index) return 0;
+	*child = ((const struct pg_eval_frame *)key)->parent;
+	return *child ? 1 : 2;
+}
+
+int pg_eval_frames_payload_write(FILE *file, const struct pg_eval_frame *frames,
+	const struct pg_eval_configuration *current, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || !frames) return -1;
+	struct pg_dag stack = {0};
+	int status = -1;
+	if (pg_dag_init(&stack, frame_parent, NULL) || pg_dag_add(&stack, frames)) goto done;
+	if (stack.count > SIZE_MAX / sizeof(struct pg_eval_configuration) / 3) goto done;
+	struct pg_eval_configuration *roots = pg_alloc(&stack.storage, 3 * stack.count * sizeof(*roots));
+	if (!roots) goto done;
+	size_t i = 0;
+	for (const struct pg_eval_frame *frame = frames; frame; frame = frame->parent, ++i) {
+		/* A child runs before its parent's answer readback can start. */
+		if (frame != frames && frame->answer.readback.output) goto done;
+		if (frame_roots(frame, &roots[3 * i])) goto done;
+	}
+	if (fwrite(frames_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, stack.count)) goto done;
+	status = materialization_write(file, frame_magic, &frames->answer, current, 3 * stack.count, roots, codec, owner);
+done:
+	pg_dag_destroy(&stack);
+	return status;
+}
+
+int pg_eval_frames_payload_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct pg_eval_frame **frames, struct pg_eval_configuration *current)
+{
+	if (!frames || !current) return -1;
+	*frames = NULL;
+	memset(current, 0, sizeof(*current));
+	if (!file || !arena || !output) return -1;
+	char header[8];
+	uint64_t count;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, frames_magic, 8)
+		|| pg_wire_read_u64(file, &count)) return -1;
+	if (!count || count > limit / 3 || count > SIZE_MAX / sizeof(struct pg_eval_frame)) return -1;
+	struct pg_eval_frame *candidate = pg_alloc(arena, (size_t)count * sizeof(*candidate));
+	if (!candidate) return -1;
+	struct pg_eval_configuration input;
+	const struct pg_eval_configuration *roots;
+	if (materialization_read(file, frame_magic, output, limit, name_limit, codec, owner,
+		&candidate->answer, &input, 3 * (size_t)count, &roots)) return -1;
+	for (size_t i = 0; i < count; ++i) {
+		if (frame_from_roots(&candidate[i], arena, &roots[3 * i])) {
+			pg_materialize_destroy(&candidate->answer);
+			return -1;
+		}
+		candidate[i].parent = i + 1 < count ? &candidate[i + 1] : NULL;
+	}
+	*frames = candidate;
+	*current = input;
+	return 0;
 }

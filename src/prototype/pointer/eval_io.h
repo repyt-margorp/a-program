@@ -66,4 +66,13 @@ int pg_eval_frame_payload_read(FILE *file, struct pg_graph *arena, struct pg_gra
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	struct pg_eval_frame **frame, struct pg_eval_configuration *current);
 
+/* Parent-stack data: only the active frame may have started answer readback.
+ * Parent order and all caller links share the active answer's relocation table.
+ * As above, continuations/state and machine flags must be restored by owners. */
+int pg_eval_frames_payload_write(FILE *file, const struct pg_eval_frame *frames,
+	const struct pg_eval_configuration *current, const struct pg_graph_codec *codec, void *owner);
+int pg_eval_frames_payload_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct pg_eval_frame **frames, struct pg_eval_configuration *current);
+
 #endif

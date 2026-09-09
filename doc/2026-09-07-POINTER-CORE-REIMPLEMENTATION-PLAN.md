@@ -310,11 +310,37 @@ These are existing execution structures to relocate, not new Core node kinds.
   is rejected after readback decoding with outputs cleared and resources freed.
   Normal/ASan/UBSan `check-eval-io` pass.
   `check check-prepared-modules` passes after the frame-data codec change.
-- [ ] Connect frame data to parent-stack, continuation-owner, policy and machine
+- [x] Retain parent-stack data (`APGFST1`) with the active answer and one shared
+  configuration/Term table. Under ordinary scheduler transitions a child runs
+  before its parent's answer readback begins; parent answer contexts are empty.
+  The writer checks this instead of silently dropping parent progress. Parent
+  order is collected iteratively with cycle rejection. Single-frame and stack
+  codecs reuse frame geometry restoration and the same prefix builder.
+- [x] Check every active cut of three nested positional and auxiliary demands,
+  parent emptiness, shared captured environments across levels, double inert
+  resave, exact remaining steps and remaining continuation-call counts. A
+  separate process resumes a three-frame stack during capture-avoiding readback.
+  Cyclic parents, started parent answers and inconsistent auxiliary prefixes
+  are rejected. Normal/ASan/UBSan `check-eval-io` pass.
+  `check check-prepared-modules` also passes after the parent-stack change,
+  including all 758 prepared-module save boundaries. This is component and
+  regression evidence, not completion of the source-level checkpoint gate.
+- [ ] Connect frame data to continuation-owner, policy and machine
   state retention. `pg_eval_frame_payload_read` intentionally leaves parent,
   resume and state unset; it is data relocation, not a complete runnable image.
-  The tests supply the surrounding machine flags and continuation externally.
-  General nested-frame/source-level `.a` checkpoints remain incomplete.
+  The stack variant restores parent links, but still leaves resume/state unset.
+  Tests supply surrounding machine flags and known continuations externally;
+  arbitrary continuation owners and source-level `.a` checkpoints remain open.
+
+Continuation retention must include its actual owner data, not just a callback
+label: current Demand sites retain Identity `action_scope`, a Fold handler, or
+a symmetry owner; others have no state. Restore these through the same shared
+graph as caller closures. Do not recover them by rerunning dispatch or serialize
+C addresses. Reading remains inert; resumption invokes the existing evaluator.
+There is no separate Replay evaluator: imported progress needs established
+provenance before it can support accepted evidence, but reproducing the original
+search history is not required. Whole-machine retention remains incomplete until
+these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
