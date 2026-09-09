@@ -3,19 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-struct pg_eval_frame {
-	struct pg_closure caller;
-	const struct pg_argument *arguments;
-	size_t index;
-	int (*resume)(struct pg_eval *, const struct pg_term *, const void *);
-	const void *state;
-	struct pg_eval_frame *parent;
-	struct materialization answer;
-	const struct pg_argument *cursor;
-	struct pg_argument *first, *last;
-	size_t copied;
-};
-
 static const struct pg_term *readback(struct pg_closure closure,
 	const struct pg_argument *arguments, struct pg_graph *graph);
 
@@ -27,11 +14,17 @@ const struct pg_closure *pg_eval_next_argument(const struct pg_argument **cursor
 	return &argument->value;
 }
 
-const struct pg_closure *pg_eval_argument(const struct pg_eval *machine, size_t index)
+static const struct pg_argument *argument_at(const struct pg_eval *machine, size_t index)
 {
 	const struct pg_argument *cursor = machine->arguments;
 	while (index--) if (!pg_eval_next_argument(&cursor)) return NULL;
-	return pg_eval_next_argument(&cursor);
+	return cursor;
+}
+
+const struct pg_closure *pg_eval_argument(const struct pg_eval *machine, size_t index)
+{
+	const struct pg_argument *argument = argument_at(machine, index);
+	return argument ? &argument->value : NULL;
 }
 
 int pg_eval_enter(struct pg_eval *machine, struct pg_closure value, size_t consume)
@@ -60,14 +53,14 @@ int pg_eval_apply(struct pg_eval *machine, struct pg_closure function,
 	return 0;
 }
 
-static int demand(struct pg_eval *machine, struct pg_closure value, size_t index,
+static int demand(struct pg_eval *machine, struct pg_closure value, const struct pg_argument *target,
 	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state)
 {
 	if (!machine->output || !resume || !value.term) return -1;
 	struct pg_eval_frame *frame = pg_alloc(&machine->temporary, sizeof(*frame));
 	if (!frame) return -1;
 	*frame = (struct pg_eval_frame){.caller = machine->current, .arguments = machine->arguments,
-		.index = index, .resume = resume, .state = state, .parent = machine->frames, .cursor = machine->arguments};
+		.target = target, .resume = resume, .state = state, .parent = machine->frames, .cursor = machine->arguments};
 	machine->frames = frame;
 	machine->current = value;
 	machine->arguments = NULL;
@@ -77,14 +70,14 @@ static int demand(struct pg_eval *machine, struct pg_closure value, size_t index
 int pg_eval_demand(struct pg_eval *machine, size_t index,
 	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state)
 {
-	const struct pg_closure *value = pg_eval_argument(machine, index);
-	return value ? demand(machine, *value, index, resume, state) : -1;
+	const struct pg_argument *argument = argument_at(machine, index);
+	return argument ? demand(machine, argument->value, argument, resume, state) : -1;
 }
 
 int pg_eval_demand_closure(struct pg_eval *machine, struct pg_closure value,
 	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state)
 {
-	return demand(machine, value, SIZE_MAX, resume, state);
+	return demand(machine, value, NULL, resume, state);
 }
 
 static int resume_frame(struct pg_eval *machine)
@@ -96,16 +89,18 @@ static int resume_frame(struct pg_eval *machine)
 	}
 	const struct pg_term *answer = frame->answer.partial;
 	const struct pg_argument *arguments = frame->arguments;
-	if (frame->index != SIZE_MAX) {
-		/* Rebuild one prefix link per step; the untouched tail remains shared. */
+	if (frame->target) {
+		/* A suspended prefix is an unchanged copy from arguments to cursor.
+		 * Only the final, frame-removing step replaces the demanded argument. */
+		const struct pg_argument *source = frame->cursor;
 		struct pg_argument *copy = pg_alloc(&machine->temporary, sizeof(*copy));
-		if (!copy || !frame->cursor) return -1;
-		*copy = *frame->cursor;
+		if (!copy || !source) return -1;
+		*copy = *source;
 		if (frame->last) frame->last->next = copy;
 		else frame->first = copy;
 		frame->last = copy;
-		frame->cursor = frame->cursor->next;
-		if (frame->copied++ != frame->index) return 0;
+		frame->cursor = source->next;
+		if (source != frame->target) return 0;
 		copy->value = (struct pg_closure){answer, NULL};
 		arguments = frame->first;
 	}
@@ -377,9 +372,8 @@ const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph 
 	for (const struct pg_eval_frame *frame = machine->frames; frame; frame = frame->parent) {
 		if (!result) return NULL;
 		const struct pg_term *caller = readback(frame->caller, NULL, graph);
-		size_t index = 0;
-		for (const struct pg_argument *argument = frame->arguments; argument; argument = argument->next, ++index) {
-			const struct pg_term *value = index == frame->index ? result : readback(argument->value, NULL, graph);
+		for (const struct pg_argument *argument = frame->arguments; argument; argument = argument->next) {
+			const struct pg_term *value = argument == frame->target ? result : readback(argument->value, NULL, graph);
 			caller = pg_application(graph, caller, value);
 			if (!caller) return NULL;
 		}

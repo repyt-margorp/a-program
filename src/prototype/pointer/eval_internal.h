@@ -33,6 +33,18 @@ struct materialization {
 	int done;
 };
 
+struct pg_eval_frame {
+	struct pg_closure caller;
+	const struct pg_argument *arguments;
+	const struct pg_argument *target;
+	int (*resume)(struct pg_eval *, const struct pg_term *, const void *);
+	const void *state;
+	struct pg_eval_frame *parent;
+	struct materialization answer;
+	const struct pg_argument *cursor;
+	struct pg_argument *first, *last;
+};
+
 /* Index maintenance only. Does not establish the validity of saved results. */
 int pg_readback_index(struct readback_context *context, struct readback_entry *entry);
 void pg_readback_destroy(struct readback_context *context);

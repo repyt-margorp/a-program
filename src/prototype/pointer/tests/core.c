@@ -2,6 +2,7 @@
 #include "dag.h"
 #include "dimension.h"
 #include "eval.h"
+#include "eval_internal.h"
 #include "typing.h"
 #include "conversion.h"
 #include "classifier.h"
@@ -1365,6 +1366,29 @@ static int auxiliary_dispatch(struct pg_eval *machine)
 	return pg_eval_demand_closure(machine, *pg_eval_argument(machine, 0), auxiliary_answer, auxiliary_source);
 }
 
+static size_t check_demand_prefix(const struct pg_eval_frame *frame)
+{
+	const struct pg_argument *original = frame->arguments, *copy = frame->first, *last = NULL;
+	size_t copied = 0;
+	while (copy && copy != frame->cursor) {
+		assert(++copied < 64);
+		assert(original && copy && original != copy);
+		assert(original != frame->target);
+		assert(original->value.term == copy->value.term);
+		assert(original->value.environment == copy->value.environment);
+		last = copy;
+		original = original->next;
+		copy = copy->next;
+	}
+	assert(original == frame->cursor && last == frame->last);
+	if (copied) {
+		assert(frame->answer.done);
+		assert(copy == frame->cursor);
+	} else assert(!frame->first && !frame->last);
+	if (!frame->target) assert(!copied);
+	return copied;
+}
+
 static void auxiliary_demand_test(struct pg_graph *graph)
 {
 	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
@@ -1387,7 +1411,10 @@ static void auxiliary_demand_test(struct pg_graph *graph)
 		split.output = graph; split.dispatch = auxiliary_dispatch;
 		demand_resumes = 0;
 		assert(pg_eval_advance(&split, cut) == PG_EVAL_PENDING);
-		if (split.frames) assert(pg_eval_readback(&split, graph) == input);
+		if (split.frames) {
+			assert(pg_eval_readback(&split, graph) == input);
+			check_demand_prefix(split.frames);
+		}
 		assert(pg_eval_advance(&split, 1000) == PG_EVAL_WHNF && demand_resumes == 1);
 		assert(split.steps == steps && pg_eval_readback(&split, graph) == expected);
 		pg_eval_destroy(&split);
@@ -1572,6 +1599,21 @@ static void demand_budget_test(struct pg_graph *graph)
 	split.output = graph; split.dispatch = demand_dispatch;
 	while (!split.head_ready) assert(pg_eval_advance(&split, 1) == PG_EVAL_PENDING);
 	assert(pg_eval_advance(&split, 32) == PG_EVAL_PENDING && demand_resumes == 1);
+	pg_eval_destroy(&split);
+	/* All prefix lengths are derived storage, not another source of values. */
+	unsigned char seen_prefix[64] = {0};
+	pg_eval_init(&split, input);
+	split.output = graph; split.dispatch = demand_dispatch;
+	while (split.status == PG_EVAL_PENDING) {
+		assert(split.steps <= steps);
+		if (split.frames) {
+			seen_prefix[check_demand_prefix(split.frames)] = 1;
+		}
+		pg_eval_advance(&split, 1);
+	}
+	assert(split.status == PG_EVAL_WHNF && split.steps == steps);
+	for (size_t i = 0; i < 64; ++i) assert(seen_prefix[i]);
+	assert(pg_eval_readback(&split, graph) == expected);
 	pg_eval_destroy(&split);
 	puts("demand budget: shared materialization, capture, split fuel, prefix suspension and callback delivery passed");
 }

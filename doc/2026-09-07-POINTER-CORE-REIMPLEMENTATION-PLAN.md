@@ -275,11 +275,31 @@ These are existing execution structures to relocate, not new Core node kinds.
 | --- | --- |
 | `eval.c:pg_environment` | Binder, value closure and parent; preserve shared parent and captured-environment references. |
 | `eval.c:pg_argument` | Closure and next link, including tails shared with suspended callers. |
-| `eval.c:pg_eval_frame` | Caller, original arguments, demanded index or auxiliary mode, continuation and its state, parent, answer materialization, prefix cursor and partially copied prefix. |
+| `eval_internal.h:pg_eval_frame` | Caller, original arguments, target argument pointer (NULL for auxiliary demand), continuation and its state, parent, answer materialization and prefix cursor. The private copied prefix is derivable from original arguments up to cursor. |
 | `eval.c:readback_context` | Entries keyed by term/environment, their result or pending stage, child edges, fresh binder, environment cursor and pending order. Recreating only the root redoes completed substitution work. |
 | `eval.c:materialization` | Readback entries, selected entry, remaining arguments, partial spine and completion state. Both final WHNF output and demanded answers own one. |
 | `eval.c:pg_whnf_job` | Original input/policy, machine or completed receipt, output materialization and charged steps. |
 | `eval.c:pg_nf_job` | Original input/policy, current body/head/children, phase dependencies and explicit traversal stack, including suspended recheck work. |
+
+- [x] Replace the Demand frame's target index and copied-count arithmetic with
+  the already selected argument node pointer. The public positional request
+  resolves once; execution and diagnostic readback compare argument pointers.
+  NULL is an auxiliary demand, not an integer sentinel. Move the actual frame
+  layout to `eval_internal.h` for shared execution/transport ownership.
+- [x] Establish the suspended-prefix invariant: each private prefix link copies
+  exactly the original closure, and its final next link is the original cursor.
+  The selected argument is replaced only in the frame-removing transition.
+  Core tests visit all 64 prefix lengths in the long-argument example and the
+  auxiliary-demand cuts, checking pointers, values, environments and unchanged
+  tail sharing. Normal Core tests and ASan/UBSan Core tests pass.
+  `check check-prepared-modules` also passes after the pointer-target change.
+- [ ] Encode frame arguments, target and cursor in the common configuration
+  forest. During relocation rebuild private mutable prefix links from arguments
+  up to cursor, rather than save another copy of their closures or cast imported
+  read-only argument pointers to mutable ones. This rebuild is storage relocation,
+  not beta/iota evaluation; it must not change charged computation steps. Retain
+  the answer's actual readback work and the owning continuation state separately.
+  No complete frame codec is claimed by the pointer-target change.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
