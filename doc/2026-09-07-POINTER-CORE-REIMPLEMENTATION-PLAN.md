@@ -126,7 +126,43 @@ by registration/activation, whereas restored source roots have not performed
 those transitions. An orphan producer table does not preserve the module-to-input
 relationship, even though explicit selection of those producers still works.
 
-Next implementation requirements:
+Implementation progress (September 9, shared input preparation):
+
+- [x] Add `pg_synthesis_retain_definition_input` using the existing registration
+  state and canonical producer jobs. Retention does not advance Solve, import
+  acceptance, or restore registration/activation cursors.
+- [x] Use the same entry attachment helper during ordinary registration.
+  Registration reconstructs each definition/import producer and each post-check
+  producer and rejects a conflicting retained edge. In particular, a non-null
+  retained `::` entry must not bypass expectation construction.
+- [x] Test retained correct inputs, idempotent attachment, conflicting entries,
+  invalid indices/roots, and mismatched definition/expectation producers. The
+  complete `synthesis_test` passes, including the new retained-input cases.
+- [x] Connect module-to-entry relationships to the image producer graph and
+  restore them without running Solve. APGSRC9 adds a bounded table of triples
+  `(module producer, source item index, entry producer)`. Entry producers precede
+  the module in dependency order. The reader attaches these inputs through the
+  same retention API, without restoring acceptance or registration cursors.
+- [x] `check-prepared-modules` passes both fresh load and unsolved resave rounds,
+  followed by ordinary Solve using the exact same annotation producer. This
+  establishes prepared module input retention, not complete CHECKPOINT support.
+
+Verification: `make -s -f src/prototype/pointer/Makefile check
+check-prepared-modules` passes with APGSRC9. The full suite exposed an empty-entry
+DAG traversal bug (fixed by the existing skipped-slot protocol), and an obsolete
+CLI assertion that solving must leave the image byte-identical. The CLI now
+checks byte identity only for an unsolved resave; ordinary Solve may retain newly
+prepared inputs. Existing root-result, rejected-sibling and normalization checks
+remain in place. Open-family admission and normalization CHECKPOINT remain open.
+
+Boundary verification: the module-only fixture now changes saved module owner,
+source-item index, cyclic producer reference and a well-formed but incorrect
+annotation producer. The first three fail reconstruction; the fourth loads with
+zero Solve steps and no accepted root, then rejects through ordinary registration.
+Both checkpoint rounds run these cases. `check-prepared-modules` and the complete
+source-image test script pass with ASan/UBSan as well as the normal build.
+
+Remaining implementation requirements:
 
 - Represent a module's prepared input relationships independently of its
   mutable registration/activation cursors. Use the existing canonical jobs,

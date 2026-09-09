@@ -1610,6 +1610,42 @@ fail:
 	return NULL;
 }
 
+static struct pg_synthesis_job *prepare_module(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *root)
+{
+	if (root->right) return root->right;
+	const struct pg_syntax *syntax = root->syntax;
+	if (syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
+	struct pg_synthesis_job *registration = definition_registration(synthesis, root->scope, syntax);
+	if (!registration) return NULL;
+	root->right = registration;
+	root->left = registration;
+	depend(synthesis, root, registration);
+	return registration;
+}
+
+static int definition_input(struct definition_state *state, size_t index,
+	struct pg_synthesis_job *producer)
+{
+	if (!producer || index >= state->count) return -1;
+	if (state->entries[index]) return state->entries[index] == producer ? 0 : -1;
+	state->entries[index] = producer;
+	return 0;
+}
+
+int pg_synthesis_retain_definition_input(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *root, size_t index, struct pg_synthesis_job *producer)
+{
+	if (!root || root->owner != synthesis->owner_key || root->role != EXPRESSION_JOB) return -1;
+	if (!producer || producer->owner != synthesis->owner_key) return -1;
+	const struct pg_syntax *syntax = root->syntax;
+	if (syntax && syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
+	if (!syntax || syntax->kind != PG_SYNTAX_DEFINITIONS || index >= syntax->item_count) return -1;
+	struct pg_synthesis_job *registration = prepare_module(synthesis, root);
+	if (!registration) return -1;
+	return definition_input(registration->definitions, index, producer);
+}
+
 const struct pg_source_scope *pg_synthesis_definition_scope(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *definitions)
 {
@@ -2618,7 +2654,8 @@ static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synt
 			if (!name) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			if (item->operation == PG_SYNTAX_IMPORT) {
 				if (!name->imported) name->imported = pg_synthesis_request(synthesis, job->scope, item->expression);
-				state->entries[i] = name->imported;
+				if (!name->imported) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+				if (definition_input(state, i, name->imported)) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			} else {
 				if (name->producer) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 				name->producer = request_job(synthesis, DEFINITION_JOB, job, item->expression);
@@ -2626,29 +2663,31 @@ static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synt
 					name->producer->scope = state->scope;
 					name->producer->syntax = item->expression;
 				}
-				state->entries[i] = name->producer;
+				if (!name->producer) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+				if (definition_input(state, i, name->producer)) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			}
-			if (!state->entries[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
 		enqueue(synthesis, job);
 		return;
 	}
 	if (state->activated < state->count) {
 		size_t i = state->activated++;
-		if (state->entries[i]) {
+		const struct pg_syntax_item *item = &state->syntax->items[i];
+		if (item->operation != PG_TOKEN_EXPECT) {
 			struct pg_synthesis_job *producer = state->entries[i];
+			if (!producer) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			if (producer->role == DEFINITION_JOB && !producer->stage) {
 				producer->stage = 1;
 				if (!producer->dependency) enqueue(synthesis, producer);
 			}
 		} else {
-			const struct pg_syntax_item *item = &state->syntax->items[i];
 			struct pg_synthesis_job *term = lookup_definition(state, item->name);
 			if (!term) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			struct pg_synthesis_job *type = pg_synthesis_request(synthesis, state->scope, item->expression);
 			if (!type) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			state->entries[i] = pg_synthesis_source_expect(synthesis, state->scope, term, type);
-			if (!state->entries[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			struct pg_synthesis_job *check = pg_synthesis_source_expect(synthesis, state->scope, term, type);
+			if (!check) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			if (definition_input(state, i, check)) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 		}
 		enqueue(synthesis, job);
 		return;
@@ -2662,9 +2701,7 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	int selected = syntax->kind == PG_SYNTAX_QUALIFIED;
 	if (selected) syntax = syntax->left;
 	if (!job->right) {
-		job->right = definition_registration(synthesis, job->scope, syntax);
-		job->left = job->right;
-		depend(synthesis, job, job->left);
+		if (!prepare_module(synthesis, job)) finish(synthesis, job, PG_SYNTHESIS_ERROR);
 		return;
 	}
 	if (job->left->status != PG_SYNTHESIS_DONE) {

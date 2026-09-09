@@ -631,11 +631,17 @@ struct pg_synthesis_job *pg_synthesis_definition(const struct pg_synthesis_job *
 	struct pg_token name);
 /* Read one source-ordered module entry, including imports and :: obligations.
  * Returns 1 for an entry, 0 past the end, -1 for a non-module/invalid argument.
- * On 1, item borrows the immutable syntax; producer is NULL until registered
- * or activated. A NULL producer is not an omitted or accepted obligation.
+ * On 1, item borrows the immutable syntax; producer is NULL until prepared
+ * or retained. A retained producer is not evidence of acceptance, and a NULL
+ * producer is not an omitted or accepted obligation.
  * Works before Solve and after rejection, including {{...}}.name selections.
  * Does not allocate, register names, or advance Solve. */
 int pg_synthesis_definition_entry(const struct pg_synthesis_job *root, size_t index,
 	const struct pg_syntax_item **item, struct pg_synthesis_job **producer);
+/* Retain an unaccepted module-input relationship without advancing Solve.
+ * Ordinary registration must reconstruct the identical producer before use.
+ * Existing entries cannot be overwritten. Does not retain acceptance/cursors. */
+int pg_synthesis_retain_definition_input(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *root, size_t index, struct pg_synthesis_job *producer);
 
 #endif

@@ -5,8 +5,12 @@ trap 'rm -rf "$directory"' EXIT
 fixture=$1
 binary=$2
 "$fixture" nominal-write "$directory/multiple.a"
+code=0
+"$binary" --load --steps 0 --save "$directory/unsolved.a" "$directory/multiple.a" > "$directory/status" || code=$?
+test "$code" = 3
+cmp "$directory/multiple.a" "$directory/unsolved.a"
+# Solve can discover additional module inputs; only an unsolved resave is byte-identical.
 "$binary" --load --root 4 --save "$directory/saved.a" "$directory/multiple.a" > "$directory/status"
-cmp "$directory/multiple.a" "$directory/saved.a"
 # The selected root does not erase the separately rejected root or its inputs.
 code=0
 "$binary" --load --root 2 "$directory/saved.a" > "$directory/status" || code=$?

@@ -2334,6 +2334,47 @@ static void definition_selections(struct pg_typing *typing, struct pg_classifier
 	puts("definition selections: shared producers, whole-module checking and pending/missing boundaries passed");
 }
 
+static void retained_module_inputs(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	for (size_t wrong = 0; wrong < 3; ++wrong) {
+		struct pg_synthesis synthesis;
+		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
+		const char *source = "id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A;";
+		struct pg_parser parser;
+		pg_parser_init(&parser, typing->graph, source, strlen(source));
+		const struct pg_syntax *syntax = pg_parser_program(&parser);
+		assert(syntax);
+		struct pg_synthesis_job *module = pg_synthesis_request(&synthesis, scope, syntax);
+		const struct pg_source_scope *local = pg_synthesis_definition_scope(&synthesis, scope, syntax);
+		struct pg_synthesis_job *definition = pg_synthesis_definition_request(&synthesis, scope, syntax, syntax->items[0].expression);
+		struct pg_synthesis_job *type = pg_synthesis_request(&synthesis, local, syntax->items[1].expression);
+		struct pg_synthesis_job *check = pg_synthesis_source_expect(&synthesis, local, definition, type);
+		assert(module && definition && type && check);
+		uint64_t steps = synthesis.steps;
+		size_t proofs = typing->proofs.count;
+		assert(!pg_synthesis_retain_definition_input(&synthesis, module, 0, wrong == 1 ? type : definition));
+		assert(!pg_synthesis_retain_definition_input(&synthesis, module, 1, wrong == 2 ? definition : check));
+		assert(!pg_synthesis_retain_definition_input(&synthesis, module, 1, wrong == 2 ? definition : check));
+		assert(pg_synthesis_retain_definition_input(&synthesis, module, 1, type) == -1);
+		assert(pg_synthesis_retain_definition_input(&synthesis, module, 2, check) == -1);
+		assert(pg_synthesis_retain_definition_input(&synthesis, definition, 0, check) == -1);
+		assert(synthesis.steps == steps && typing->proofs.count == proofs);
+		assert(!pg_synthesis_result(module));
+		const struct pg_syntax_item *item;
+		struct pg_synthesis_job *retained;
+		assert(pg_synthesis_definition_entry(module, 1, &item, &retained) == 1);
+		assert(item == &syntax->items[1] && retained == (wrong == 2 ? definition : check));
+		complete(&synthesis, module, wrong ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
+		if (!wrong) assert(pg_synthesis_status(check) == PG_SYNTHESIS_DONE);
+		pg_synthesis_destroy(&synthesis);
+	}
+	pg_whnf_work_destroy(&work);
+	puts("retained module inputs: unaccepted edges, canonical registration and mismatched producers checked");
+}
+
 static void namespaces(struct pg_synthesis *synthesis, const struct pg_source_scope *exports,
 	const struct pg_identity_library *library)
 {
@@ -5304,6 +5345,7 @@ int main(void)
 	source_schemas(&typing, &classifiers);
 	source_declarations(&typing, &classifiers);
 	definition_selections(&typing, &classifiers);
+	retained_module_inputs(&typing, &classifiers);
 	fair_work(&typing, &classifiers);
 	endpoint_jobs(&typing, &classifiers);
 	substitution_jobs(&typing, &classifiers);

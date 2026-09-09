@@ -10,6 +10,9 @@
  * Named/module environments reference that producer DAG, including prepared
  * annotations. A shared scope/producer dependency order rejects cross-table
  * cycles before invoking the ordinary construction factories.
+ * Module entries retain source-item indices and producer references, including
+ * unaccepted annotations, across an unsolved read/write cycle. Ordinary
+ * registration verifies each retained producer before using it.
  * Reuses immutable syntax, lexical parents, namespaces and import bindings.
  * Rule evidence is stored as unaccepted derivation inputs through the existing
  * codec, with one Core table for all rule roots. Effect contributions must be

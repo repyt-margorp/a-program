@@ -348,8 +348,8 @@ static void function_origins(FILE *file, int writing)
 static void invalid_annotation_edges(FILE *file)
 {
 	assert(!fflush(file) && !fseek(file, 8, SEEK_SET));
-	uint64_t header[5];
-	for (size_t i = 0; i < 5; ++i) assert(!pg_wire_read_u64(file, &header[i]));
+	uint64_t header[6];
+	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
 	for (size_t i = 0; i < header[1]; ++i) {
 		uint64_t scope[8];
 		for (size_t j = 0; j < 8; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
@@ -384,9 +384,9 @@ static void invalid_annotation_edges(FILE *file)
 static void invalid_named_cycle(FILE *file)
 {
 	assert(!fseek(file, 8, SEEK_SET));
-	uint64_t header[5], original = 0;
+	uint64_t header[6], original = 0;
 	long link = -1;
-	for (size_t i = 0; i < 5; ++i) assert(!pg_wire_read_u64(file, &header[i]));
+	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
 	for (size_t i = 0; i < header[1]; ++i) {
 		long position = ftell(file);
 		uint64_t scope[8];
@@ -621,6 +621,49 @@ static void module_annotation_sources(FILE *file, int writing, uint64_t chunk, i
 	pg_program_destroy(p);
 }
 
+static void invalid_module_entries(FILE *file)
+{
+	assert(!fflush(file) && !fseek(file, 8, SEEK_SET));
+	uint64_t header[6];
+	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
+	assert(header[5] == 2);
+	for (size_t i = 0; i < header[1]; ++i) {
+		uint64_t scope[8];
+		for (size_t j = 0; j < 8; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+		assert(!fseek(file, (long)scope[6], SEEK_CUR));
+	}
+	assert(!fseek(file, (long)(header[2] + 6 * header[4]) * 8, SEEK_CUR));
+	uint64_t entries[6];
+	long start = ftell(file);
+	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &entries[i]));
+	assert(entries[1] == 0 && entries[4] == 1);
+	/* Invalid owner, source index and cyclic edge fail during reconstruction.
+	 * A well-formed edge to the wrong producer remains unaccepted until Solve. */
+	const size_t slots[] = {3, 4, 5, 5};
+	const uint64_t values[] = {0, 2, entries[3], entries[2]};
+	for (size_t i = 0; i < 4; ++i) {
+		long offset = start + (long)slots[i] * 8;
+		assert(!fseek(file, offset, SEEK_SET) && !pg_wire_write_u64(file, values[i]));
+		assert(!fflush(file));
+		rewind(file);
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		struct pg_program *p = pg_sources_read(file, 10000, &count, &roots);
+		if (i < 3) assert(!p);
+		else {
+			assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(p->root));
+			while (p->synthesis.ready) {
+				assert(p->synthesis.steps < 10000);
+				pg_synthesis_advance(&p->synthesis, 1);
+			}
+			assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_REJECTED);
+			pg_program_destroy(p);
+		}
+		assert(!fseek(file, offset, SEEK_SET) && !pg_wire_write_u64(file, entries[slots[i]]));
+		assert(!fflush(file));
+	}
+}
+
 static void prepared_module_checkpoint(void)
 {
 	const char source[] = "id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A;";
@@ -638,6 +681,7 @@ static void prepared_module_checkpoint(void)
 		uint64_t steps = p->synthesis.steps;
 		assert(file && !pg_sources_write(file, &p->synthesis, 1, &p->root));
 		assert(p->synthesis.steps == steps);
+		invalid_module_entries(file);
 		pg_program_destroy(p);
 		rewind(file);
 		size_t count;
