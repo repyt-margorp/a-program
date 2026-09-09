@@ -763,6 +763,17 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   across destroying resaves and independent processes, including force intent
   and distinct nominal declarations. The program regression above establishes
   consumption of matching Core evidence, not this source-image correspondence.
+  Follow-up evidence: `tests/source_io.c:normalization_origin` retains the
+  polymorphic source identity, its rule input and its forced rule input in one
+  APGSRC11 image. Three destroying resaves, including one before any Solve,
+  reconstruct exactly shared Core/classifier pointers; forcing the re-solved
+  source also yields the retained forced Core pointer. Normal and ASan/UBSan
+  `source_io_test normalization`, plus normal `check check-prepared-modules`
+  (758 boundaries), pass. Thus existing origin collection and
+  allocation factories already provide this correspondence for the tested
+  Lambda case. Do not introduce a second binder-remapping mechanism. Extend
+  the existing common derivation/Core table to retained reduction evidence;
+  nominal/IADT coverage and independent-process evidence still remain open.
 - [ ] Connect pending NF jobs and shared WHNF/NF jobs to this record ownership,
   then to source CHECKPOINT. The recomputation-mode checker does not preserve
   unfinished execution provenance or supply a no-recomputation WHNF basis.

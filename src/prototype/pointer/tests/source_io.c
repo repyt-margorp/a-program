@@ -42,8 +42,48 @@ static void invalid_normalization_mode(FILE *file)
 	assert(0);
 }
 
+static void normalization_origin(void)
+{
+	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
+	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p && p->root);
+	pg_synthesis_advance(&p->synthesis, 10000);
+	const struct pg_evidence *proof = pg_synthesis_result(p->root);
+	assert(proof);
+	const struct pg_evidence *forced = pg_prove_force(&p->typing, proof);
+	assert(forced);
+	struct pg_synthesis_job *initial[] = {p->root, pg_synthesis_evidence(&p->synthesis, proof),
+		pg_synthesis_evidence(&p->synthesis, forced)};
+	struct pg_synthesis_job *const *roots = initial;
+	size_t count = 3;
+	for (unsigned round = 0; round < 3; ++round) {
+		FILE *file = tmpfile();
+		assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
+		pg_program_destroy(p);
+		rewind(file);
+		p = pg_sources_read(file, 100000, &count, &roots);
+		assert(p && count == 3 && !p->synthesis.steps);
+		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
+		assert(!fclose(file));
+		if (!round) continue; /* Resave before any Solve or proof admission. */
+		pg_synthesis_advance(&p->synthesis, 10000);
+		const struct pg_evidence *source = pg_synthesis_result(roots[0]);
+		const struct pg_evidence *rule = pg_synthesis_result(roots[1]);
+		assert(source && rule);
+		assert(pg_evidence_subject(source)->core == pg_evidence_subject(rule)->core);
+		assert(pg_evidence_classifier(source) == pg_evidence_classifier(rule));
+		const struct pg_evidence *actual = pg_prove_force(&p->typing, source);
+		const struct pg_evidence *retained = pg_synthesis_result(roots[2]);
+		assert(actual && retained);
+		assert(pg_evidence_subject(actual)->core == pg_evidence_subject(retained)->core);
+	}
+	pg_program_destroy(p);
+	puts("source normalization origin: source and retained rule share exact Core after destroying resaves");
+}
+
 static void normalization_requests(void)
 {
+	normalization_origin();
 	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
 	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
 	assert(p && p->root);
