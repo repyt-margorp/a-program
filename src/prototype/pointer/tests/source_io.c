@@ -95,6 +95,8 @@ static void rule_environments(void)
 	pg_program_destroy(p);
 }
 
+static void read_sources(FILE *file, uint64_t chunk);
+
 static void write_sources(FILE *file)
 {
 	const char text[] = "id:=&(\\A:@ => \\x:A => x);";
@@ -147,10 +149,10 @@ static void write_sources(FILE *file)
 	assert(ambient == provider_scope && definitions == provider && expression == provider->items[0].expression);
 	FILE *accepted = tmpfile();
 	assert(accepted && !pg_sources_write(accepted, &p->synthesis, 7, roots));
-	rewind(file); rewind(accepted);
-	int a, b;
-	do { a = fgetc(file); b = fgetc(accepted); assert(a == b); } while (a != EOF);
-	assert(!ferror(file) && !ferror(accepted) && !fclose(accepted));
+	/* Source inputs stay the same, but allocated binders are now retained too. */
+	rewind(accepted);
+	read_sources(accepted, 1);
+	assert(!ferror(accepted) && !fclose(accepted));
 	FILE *retained = tmpfile();
 	assert(retained);
 	struct pg_synthesis_job *evidence = pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(client));
@@ -259,6 +261,7 @@ static void nominal_sources(FILE *file, int writing, uint64_t chunk, int origins
 
 static int find_declaration(void *owner, struct pg_synthesis_job *job)
 {
+	if (pg_synthesis_binding_binder(job)) return 0;
 	struct pg_synthesis_job **found = owner;
 	assert(!*found);
 	*found = job;
@@ -273,7 +276,7 @@ static void parameter_origins(void)
 	while (p->synthesis.ready) { assert(p->synthesis.steps < 20000); pg_synthesis_advance(&p->synthesis, 1); }
 	assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
 	struct pg_synthesis_job *declaration = NULL;
-	assert(!pg_synthesis_visit_declarations(&p->synthesis, find_declaration, &declaration));
+	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, find_declaration, &declaration));
 	assert(declaration && pg_synthesis_result(declaration));
 	struct pg_synthesis_job *selected[] = {p->root,
 		pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(declaration))};
@@ -293,22 +296,66 @@ static void parameter_origins(void)
 	assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
 	declaration = NULL;
-	assert(!pg_synthesis_visit_declarations(&p->synthesis, find_declaration, &declaration));
+	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, find_declaration, &declaration));
 	assert(declaration && pg_synthesis_result(declaration) == pg_synthesis_result(roots[1]));
 	pg_program_destroy(p);
 	puts("source image: dependent parameter scopes retain declaration identity through unsolved resave");
+}
+
+static void function_origins(FILE *file, int writing)
+{
+	struct pg_program *p;
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "f", .length = 1};
+	if (writing) {
+		const char *text = "f:=&(\\A:@=>\\x:A=>x);";
+		p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+		assert(p && p->root);
+		while (p->synthesis.ready) { assert(p->synthesis.steps < 10000); pg_synthesis_advance(&p->synthesis, 1); }
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *function = pg_synthesis_result(pg_synthesis_definition(p->root, name));
+		assert(function);
+		struct pg_synthesis_job *roots[] = {p->root, pg_synthesis_evidence(&p->synthesis, function)};
+		assert(roots[1] && !pg_sources_write(file, &p->synthesis, 2, roots));
+	} else {
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		p = pg_sources_read(file, 10000, &count, &roots);
+		assert(p && count == 2 && !p->synthesis.steps);
+		FILE *pending = tmpfile();
+		assert(pending && !pg_sources_write(pending, &p->synthesis, count, roots));
+		assert(!p->synthesis.steps);
+		pg_program_destroy(p);
+		rewind(pending);
+		p = pg_sources_read(pending, 10000, &count, &roots);
+		assert(p && count == 2 && !p->synthesis.steps);
+		assert(!pg_synthesis_result(roots[0]) && !pg_synthesis_result(roots[1]));
+		assert(!fclose(pending));
+		while (p->synthesis.ready) { assert(p->synthesis.steps < 10000); pg_synthesis_advance(&p->synthesis, 1); }
+		assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE && pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *function = pg_synthesis_result(pg_synthesis_definition(roots[0], name));
+		assert(function);
+		if (pg_evidence_subject(function)->core != pg_evidence_subject(pg_synthesis_result(roots[1]))->core) {
+			fputs("source image: source and retained function evidence split binder identity\n", stderr);
+			pg_program_destroy(p);
+			exit(1);
+		}
+		puts("source image: standalone function binder identity retained");
+	}
+	pg_program_destroy(p);
 }
 
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
 	int origins = !strncmp(argv[1], "origin-", 7);
+	int functions = !strncmp(argv[1], "function-", 9);
 	int nominal = origins || !strncmp(argv[1], "nominal-", 8);
-	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "nominal-write") || !strcmp(argv[1], "origin-write");
+	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "nominal-write") || !strcmp(argv[1], "origin-write") || !strcmp(argv[1], "function-write");
 	if (writing) { definition_boundaries(); rule_environments(); parameter_origins(); }
 	FILE *file = fopen(argv[2], writing ? "w+b" : "rb");
 	assert(file);
-	if (nominal) nominal_sources(file, writing, !strcmp(argv[1], "nominal-read-bulk") ? 64 : 1, origins);
+	if (functions) function_origins(file, writing);
+	else if (nominal) nominal_sources(file, writing, !strcmp(argv[1], "nominal-read-bulk") ? 64 : 1, origins);
 	else if (writing) write_sources(file);
 	else read_sources(file, !strcmp(argv[1], "read-bulk") ? 64 : 1);
 	assert(!fclose(file));

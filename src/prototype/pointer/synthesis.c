@@ -322,13 +322,23 @@ int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
 	return 0;
 }
 
-int pg_synthesis_visit_declarations(const struct pg_synthesis *synthesis,
+int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, struct pg_synthesis_job *), void *owner)
 {
 	if (!synthesis || !visit) return -1;
 	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
 		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_synthesis_job *job = (void *)entry;
+			if (job->role == BINDING_JOB && job->allocation_origin) {
+				if (visit(owner, job)) return -1;
+				continue;
+			}
+			if (job->role == EXPRESSION_JOB &&
+				(job->syntax->kind == PG_SYNTAX_LAMBDA || job->syntax->kind == PG_SYNTAX_PI)) {
+				if (job->left && job->left->role == BINDING_JOB && job->left->status == PG_SYNTHESIS_DONE)
+					if (visit(owner, job->left)) return -1;
+				continue;
+			}
 			if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_DECLARATION) continue;
 			if (!job->allocation_origin && (job->status != PG_SYNTHESIS_DONE || !job->schema)) continue;
 			if (visit(owner, job)) return -1;

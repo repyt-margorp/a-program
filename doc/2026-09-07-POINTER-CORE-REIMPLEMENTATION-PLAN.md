@@ -7727,6 +7727,33 @@ collects newly discovered scopes once, rather than rescanning all scopes.
 - [ ] Finish the remaining N0--N7 requirements before Main promotion. Passing
   a parameterized List round trip is not general IADT/Acc/IF8 completion.
 
+Next step after `5ec2a25`: a standalone function exposed another origin gap.
+`f := &(\\A:@ => \\x:A => x)` and separately retained evidence for f both
+rechecked, but pointed to different Core lambdas because declaration-only
+origin discovery omitted their binders. The mixed-image gate now includes this
+case in separate processes and an additional save/load before Solve.
+
+Origin discovery now visits source allocation producers: declarations plus
+the binding jobs actually requested by source Lambda/Pi expressions, and
+retained binding-origin inputs. It does not indiscriminately export every
+internal telescope reservation. Existing scope records and the same
+context-extension input codec restore ordinary function binders; no new wire
+record, kernel rule, alpha merge or Replay path is introduced.
+
+- [x] Reproduce and fix standalone function Core identity splitting.
+- [x] Preserve it through an unsolved resave and verify that no evidence is
+  accepted on loading alone.
+- [x] Run `check`, `check-examples`, `check-example-results`, and the extended
+  `check-image-origins` successfully.
+
+Test correction: source snapshots before and after Solve need not have identical
+bytes once newly allocated binders are retained as graph inputs. The former byte
+comparisons in CLI/module tests now check the same NF, shared definition results,
+and rejected roots after ordinary Solve. Source input immutability and read-only
+export checks remain. This does not claim serialization-order canonicality or
+complete pending-allocation coverage; both retention policy and remaining scope
+origins still belong to unfinished N5 work.
+
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.

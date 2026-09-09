@@ -82,7 +82,11 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 	struct origin_collection *c = owner;
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
-	if (pg_synthesis_source_input(c->synthesis, job, &scope, &syntax)) return -1;
+	const struct pg_object *binder = NULL;
+	if (pg_synthesis_source_input(c->synthesis, job, &scope, &syntax)) {
+		if (pg_synthesis_binding_input(c->synthesis, job, &scope, &syntax, &binder)) return -1;
+		scope = pg_synthesis_binding_scope(job);
+	}
 	if (!id(c->syntax, syntax)) return 0;
 	/* Only lexical descendants of selected source roots belong to the image. */
 	const struct pg_source_scope *parent = scope;
@@ -99,7 +103,7 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 		if (!parent) return 0;
 	}
 	if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->rules, pg_synthesis_allocation_origin(job))
-		|| pg_dag_add(c->origins, job)) return -1;
+		|| (!binder && pg_dag_add(c->origins, job))) return -1;
 	return 0;
 }
 
@@ -135,7 +139,7 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	}
 	struct origin_collection collection = {synthesis, &scopes, &syntax, &rules, &origins};
 	const struct pg_dag_node *previous_scope = scopes.last;
-	if (pg_synthesis_visit_declarations(synthesis, collect_origin, &collection)) goto done;
+	if (pg_synthesis_visit_source_allocations(synthesis, collect_origin, &collection)) goto done;
 	/* Origin discovery may add lexical binder scopes and their input rules. */
 	for (const struct pg_dag_node *node = previous_scope ? previous_scope->next : scopes.first; node; node = node->next) {
 		struct environment input;
