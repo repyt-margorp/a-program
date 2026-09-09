@@ -655,6 +655,27 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   to the whole work-store owner and source image. The local fixture tests below
   establish their origin by construction; they do not justify arbitrary imported
   progress. The completed WHNF basis and full source CHECKPOINT gates stay open.
+- [x] Add `APGRCP1` raw reduction-record transport in `reduction_io.c`.
+  Traverse receipts and phase records through the existing iterative DAG utility;
+  phases are visited directly rather than repeatedly scanning predecessor lists.
+  Preserve shared child receipts, phase predecessors, normality links, exact
+  source/target Terms and versioned policy identities in one graph table.
+  Transient wire record kinds are not new Core Terms or evaluator states.
+  Reading reconstructs the existing private layouts inside an opaque archive;
+  the public interface permits inert resave but exposes no accepted certificate.
+  Backward typed references enforce acyclic record structure, not semantic proof
+  validity. The missing WHNF execution basis is not supplied by these records.
+  Verification: two destroying round trips preserve duplicate roots, shared NF
+  children, canonical normality links and distinct beta/pure policies. Writer
+  cycles and reader self-references fail. Normal `check check-prepared-modules`
+  and ASan/UBSan `check-identity-io` pass. A test initially assumed that duplicated
+  source operands imply identical immediate NF child receipts; WHNF can reduce
+  the function side first, so sharing is now checked with explicit equal neutral
+  operands. No normalization rule was changed to satisfy that assertion.
+- [ ] Validate retained derivations before any archive root can be published
+  as accepted reduction evidence. Connect pending NF phase roots and shared
+  WHNF/NF jobs to this record ownership, then to source CHECKPOINT. None of
+  these gates is closed by raw archive round trips.
 - [ ] Complete the separately required symbolic type-family formation contract.
   Rechecking after `2074e1b` still gives closed/open/applied/sequenced statuses
   DONE/UNSUPPORTED/UNSUPPORTED/UNSUPPORTED at 175/209/280/323 steps. The current

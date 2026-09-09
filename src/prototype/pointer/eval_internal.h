@@ -62,6 +62,13 @@ struct pg_reduction_certificate {
 	const struct pg_reduction_certificate *normality;
 };
 
+/* Raw relocated records. No public accessor exposes these roots as accepted
+ * certificates; an owner must validate their derivations before admission. */
+struct pg_reduction_archive {
+	size_t count;
+	const struct pg_reduction_certificate *const *roots;
+};
+
 struct pg_reduction_request {
 	struct pg_index_entry index;
 	struct pg_whnf_work *work;

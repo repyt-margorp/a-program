@@ -2191,6 +2191,73 @@ static void whnf_progress(void)
 	puts("WHNF pending transport: evaluation, deferred work and capture-avoiding readback retain exact progress");
 }
 
+static void reduction_records(void)
+{
+	struct pg_graph graph;
+	struct pg_whnf_work work;
+	assert(!pg_graph_init(&graph) && !pg_whnf_work_init(&work, &graph));
+	const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
+	const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
+	const struct pg_term *vx = pg_reference(&graph, x);
+	const struct pg_term *argument = pg_application(&graph, pg_lambda(&graph, y, pg_reference(&graph, y)), value);
+	const struct pg_term *shared = argument;
+	for (size_t i = 0; i < 20; ++i) shared = pg_application(&graph, shared, shared);
+	const struct pg_term *term = pg_application(&graph, pg_lambda(&graph, x, pg_application(&graph, vx, vx)), shared);
+	struct pg_nf_job *pure = pg_nf_request(&work, &pg_pure_policy, term);
+	struct pg_nf_job *beta = pg_nf_request(&work, &pg_beta_policy, term);
+	assert(pg_nf_advance(pure, 100000) == PG_NF_DONE && pg_nf_advance(beta, 100000) == PG_NF_DONE);
+	struct pg_nf_job *normal = pg_nf_request(&work, &pg_pure_policy, pg_nf_result(pure));
+	const struct pg_term *neutral = pg_reference(&graph, pg_binder(&graph));
+	struct pg_nf_job *duplicated = pg_nf_request(&work, &pg_pure_policy, pg_application(&graph, neutral, neutral));
+	assert(pg_nf_advance(duplicated, 10000) == PG_NF_DONE);
+	const struct pg_reduction_certificate *initial[] = {
+		pg_nf_certificate(pure), pg_nf_certificate(normal), pg_nf_certificate(pure), pg_nf_certificate(beta),
+		pg_nf_certificate(duplicated)
+	};
+	const struct pg_reduction_archive *archive = NULL;
+	for (unsigned round = 0; round < 2; ++round) {
+		FILE *file = tmpfile();
+		assert(file);
+		assert(!(round ? pg_reduction_archive_write(file, archive, &pg_builtin_graph_codec, NULL)
+			: pg_reduction_records_write(file, 5, initial, &pg_builtin_graph_codec, NULL)));
+		if (!round) pg_whnf_work_destroy(&work);
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		rewind(file);
+		assert(!pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &archive));
+		/* Inspect private raw layout only; never pass it to evidence constructors. */
+		assert(archive->count == 5 && archive->roots[0] == archive->roots[2]);
+		assert(archive->roots[1]->normality == archive->roots[0]);
+		assert(archive->roots[1]->source == archive->roots[0]->target);
+		assert(archive->roots[0]->source == archive->roots[3]->source);
+		assert(archive->roots[0]->policy == &pg_pure_policy && archive->roots[3]->policy == &pg_beta_policy);
+		unsigned shared_children = 0;
+		for (const struct pg_reduction_phase *phase = archive->roots[4]->phases; phase; phase = phase->previous) {
+			assert(phase->head && phase->head->kind == PG_REDUCTION_WHNF);
+			if (phase->children[0] && phase->children[0] == phase->children[1]) ++shared_children;
+		}
+		assert(shared_children);
+		/* The first topological node is a leaf receipt. A self edge is invalid. */
+		assert(!fseek(file, 24, SEEK_SET) && fgetc(file) == 0);
+		assert(fgetc(file) == PG_REDUCTION_WHNF);
+		uint64_t length;
+		assert(!pg_wire_read_u64(file, &length) && length < 100);
+		assert(!fseek(file, (long)length, SEEK_CUR) && !pg_wire_write_u64(file, 1));
+		rewind(file);
+		const struct pg_reduction_archive *rejected = archive;
+		assert(pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &rejected) && !rejected);
+		assert(!fclose(file));
+	}
+	struct pg_reduction_certificate cycle = *archive->roots[0];
+	cycle.normality = &cycle;
+	const struct pg_reduction_certificate *root = &cycle;
+	FILE *file = tmpfile();
+	assert(file && pg_reduction_records_write(file, 1, &root, &pg_builtin_graph_codec, NULL));
+	assert(!fclose(file));
+	pg_graph_destroy(&graph);
+	puts("Reduction archive: receipt/phase sharing, policy identity and acyclic relocation passed (not evidence admission)");
+}
+
 static void discovery_progress(int framed)
 {
 	uint64_t total = 0;
@@ -2804,6 +2871,7 @@ int main(int argc, char **argv)
 	result_frames();
 	machine_forest();
 	whnf_progress();
+	reduction_records();
 	discovery_progress(0);
 	discovery_progress(1);
 	continuation_frames();

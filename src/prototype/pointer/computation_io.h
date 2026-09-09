@@ -53,6 +53,18 @@ int pg_whnf_pending_write(FILE *file, const struct pg_whnf_job *job,
 int pg_whnf_pending_read(FILE *file, struct pg_whnf_job *job, struct pg_graph *output,
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner);
 
+/* Immutable reduction record DAG, not imported proof acceptance. Read returns
+ * an opaque archive, never a publicly usable reduction certificate. Records
+ * and the archive belong to output. Resaving is inert; WHNF endpoint claims
+ * still need their execution basis before an accepted owner can use them. */
+struct pg_reduction_archive;
+int pg_reduction_records_write(FILE *file, size_t count,
+	const struct pg_reduction_certificate *const *roots, const struct pg_graph_codec *codec, void *owner);
+int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner, const struct pg_reduction_archive **archive);
+int pg_reduction_archive_write(FILE *file, const struct pg_reduction_archive *archive,
+	const struct pg_graph_codec *codec, void *owner);
+
 /* Raw production Demand stack, including named continuations and shared scope
  * ownership. No evaluation or evidence admission. Imported progress requires
  * provenance before execution can support accepted results. The caller retains
