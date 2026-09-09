@@ -47,7 +47,7 @@ Two connected rule boundaries must be solved, not patched independently:
 - `synthesis.c:type_input` requests canonical result evidence before admitting a
   domain. `evidence.c:pg_prove_return_value` is constructor inversion, not a
   general operation for observing a neutral computation's result.
-- `evidence.c:pg_prove_fold` requires `constant_codomain`. If the block body
+- `evidence.c:pg_prove_fold` requires `pg_pi_constant_codomain`. If the block body
   has classifier `Pi(T, F T)` depending on the preceding bound result `T`, ordinary
   nondependent fold cannot give the entire block that classifier in the outer
   context. A fresh result binder must not escape without a typing rule.
@@ -70,6 +70,20 @@ application/closed-substitution equations and Act obligations together. Neither
 route may introduce equality reflection, a second value-side Lambda/APP Core,
 or an unstated totality promise on all existing pure arrows. These requirements
 refine the checklist below; no such new rule is claimed implemented here.
+
+Implementation follow-up to `9745e29`: the independent-codomain structural test
+is now shared as `classifier.c:pg_pi_constant_codomain`. Kernel Pi projection,
+request/fold/handler checks and provisional continuation-effect synthesis use
+the same operation. It neither normalizes nor supplies formation evidence.
+Tests cover constant and dependent codomains, invalid inputs, and a structurally
+dependent beta-redex whose eventual result would be constant. The existing
+checked-RETURN-to-APP source route remains unchanged; no dependent Fold rule
+or universal extraction from a neutral computation was added.
+
+`check`, `check-examples`, `check-example-results`, `check-image-origins` and
+rebuilt ASan/UBSan Core tests pass. The four family acceptance outcomes above
+are unchanged. Implementation delta: +22/-20 lines; Core tests: +8/-0;
+documentation excluded. This is shared rule plumbing, not open-family completion.
 
 - [x] Identify the first failing producer rather than inferring failure from
   aggregate status. Existing neutral-force tests deliberately reject extracting

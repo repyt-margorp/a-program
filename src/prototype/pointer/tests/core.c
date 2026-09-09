@@ -583,6 +583,14 @@ static void dependent_application_test(struct pg_graph *graph)
 	assert(pg_evidence_classifier(app) == pg_return_type(&classifiers, pg_universe(&classifiers, 0)));
 	assert(pg_evidence_premise(app, 1) == argument);
 	assert(!pg_prove_pi_constant_codomain(&typing, pi));
+	assert(!pg_pi_constant_codomain(pg_evidence_subject(pi)->core));
+	assert(!pg_pi_constant_codomain(NULL));
+	assert(!pg_pi_constant_codomain(pg_universe(&classifiers, 0)));
+	const struct pg_term *constant = pg_return_type(&classifiers, pg_universe(&classifiers, 0));
+	assert(pg_pi_constant_codomain(pg_pi(graph, pg_universe(&classifiers, 1), a, constant)) == constant);
+	/* A beta-redex that discards its argument is still structurally dependent. */
+	const struct pg_term *redex = pg_application(graph, pg_lambda(graph, pg_binder(graph), constant), pg_reference(graph, a));
+	assert(!pg_pi_constant_codomain(pg_pi(graph, pg_universe(&classifiers, 1), a, redex)));
 	assert(!pg_prove_fold(&typing, &classifiers, pg_prove_return(&typing, &classifiers, argument), function));
 	const struct pg_evidence *app_formation = pg_prove_classifier(&typing, &classifiers, f_context, app);
 	assert(app_formation && pg_evidence_subject(app_formation)->core == pg_evidence_classifier(app));

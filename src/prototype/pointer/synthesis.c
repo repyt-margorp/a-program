@@ -4423,10 +4423,9 @@ static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthes
 static const struct pg_term *continuation_effect_structure(struct pg_synthesis *synthesis,
 	const struct pg_term *type, const struct pg_term *row)
 {
-	const struct pg_term *domain, *codomain, *following, *result;
-	const struct pg_object *binder;
-	if (!pg_pi_view(type, &domain, &binder, &codomain)) return NULL;
-	if (pg_term_independent(codomain, binder) != 1) return NULL;
+	const struct pg_term *following, *result;
+	const struct pg_term *codomain = pg_pi_constant_codomain(type);
+	if (!codomain) return NULL;
 	if (!pg_effect_type_spine_view(codomain, &following, &result)) return NULL;
 	return pg_effect_type_spine(synthesis->classifiers,
 		pg_effect_join_term(synthesis->typing->graph, row, following), result);

@@ -1882,15 +1882,6 @@ const struct pg_evidence *pg_prove_return_content(struct pg_typing *typing,
 		return_type->context, subject, return_type->classifier, 1, &return_type);
 }
 
-static const struct pg_term *constant_codomain(const struct pg_term *pi)
-{
-	const struct pg_term *domain, *codomain;
-	const struct pg_object *binder;
-	if (!pg_pi_view(pi, &domain, &binder, &codomain)) return NULL;
-	if (pg_term_independent(codomain, binder) != 1) return NULL;
-	return codomain;
-}
-
 const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing,
 	const struct pg_evidence *pi)
 {
@@ -1900,7 +1891,7 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 	const struct pg_evidence *existing = find_record(typing, PG_PI_CONSTANT_CODOMAIN,
 		PG_JUDGEMENT_COMPUTATION_TYPE, pi->context, NULL, NULL, 1, &pi, NULL, &hash);
 	if (existing) return existing;
-	const struct pg_term *codomain = constant_codomain(pi->subject->core);
+	const struct pg_term *codomain = pg_pi_constant_codomain(pi->subject->core);
 	if (!codomain) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, pi->context, codomain, NULL, 1, &pi->subject);
 	if (!subject) return NULL;
@@ -2011,7 +2002,7 @@ const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_c
 	const struct pg_object *binder;
 	if (!pg_pi_view(continuation->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, declaration->response_type->subject->core) != 1) return NULL;
-	codomain = constant_codomain(continuation->classifier);
+	codomain = pg_pi_constant_codomain(continuation->classifier);
 	const struct pg_effect_row *effects;
 	if (!pg_effect_type_view(codomain, &effects, &result_type)) return NULL;
 	const struct pg_object *label = pg_operation_label(declaration);
@@ -2092,13 +2083,13 @@ static int handler_clause_type(const struct pg_term *type,
 	const struct pg_object *binder;
 	if (!pg_pi_view(type, &domain, &binder, &codomain)) return 0;
 	if (pg_alpha_equal(domain, operation->payload_type->subject->core) != 1) return 0;
-	type = constant_codomain(type);
+	type = pg_pi_constant_codomain(type);
 	if (!pg_pi_view(type, &domain, &binder, &codomain)) return 0;
-	if (!returning_within(constant_codomain(type), carrier)) return 0;
+	if (!returning_within(pg_pi_constant_codomain(type), carrier)) return 0;
 	if (!pg_thunk_type_view(domain, &resume)) return 0;
 	if (!pg_pi_view(resume, &domain, &binder, &codomain)) return 0;
 	if (pg_alpha_equal(domain, operation->response_type->subject->core) != 1) return 0;
-	return pg_alpha_equal(constant_codomain(resume), carrier) == 1;
+	return pg_alpha_equal(pg_pi_constant_codomain(resume), carrier) == 1;
 }
 
 const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_classifiers *classifiers,
@@ -2127,7 +2118,7 @@ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_c
 	if (!pg_effect_type_view(carrier->subject->core, &output_effects, &result_type)) return NULL;
 	if (!pg_pi_view(returned->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, input_type) != 1) return NULL;
-	if (!returning_within(constant_codomain(returned->classifier), carrier->subject->core)) return NULL;
+	if (!returning_within(pg_pi_constant_codomain(returned->classifier), carrier->subject->core)) return NULL;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence **premises = pg_alloc(&temporary, n * sizeof(*premises));
 	const struct pg_object **labels = pg_alloc(&temporary, count * sizeof(*labels));
@@ -2212,7 +2203,7 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_clas
 	if (!pg_effect_type_view(computation->classifier, &effects, &value_type)) return NULL;
 	if (!pg_pi_view(continuation->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, value_type) != 1) return NULL;
-	codomain = constant_codomain(continuation->classifier);
+	codomain = pg_pi_constant_codomain(continuation->classifier);
 	if (!codomain) return NULL;
 	const struct pg_term *result_type;
 	if (pg_effect_type_view(codomain, &following, &result_type)) {

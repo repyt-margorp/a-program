@@ -274,6 +274,15 @@ int pg_pi_view(const struct pg_term *term, const struct pg_term **domain,
 	return 1;
 }
 
+const struct pg_term *pg_pi_constant_codomain(const struct pg_term *pi)
+{
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	if (!pg_pi_view(pi, &domain, &binder, &codomain)) return NULL;
+	if (pg_term_independent(codomain, binder) != 1) return NULL;
+	return codomain;
+}
+
 static const struct pg_term *unary_type(struct pg_classifiers *classifiers,
 	const struct pg_object *former, const struct pg_term *argument)
 {

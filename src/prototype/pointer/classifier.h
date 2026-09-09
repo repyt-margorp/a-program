@@ -22,6 +22,9 @@ const struct pg_term *pg_pi(struct pg_graph *graph,
 	const struct pg_term *domain, const struct pg_object *binder, const struct pg_term *codomain);
 int pg_pi_view(const struct pg_term *term, const struct pg_term **domain,
 	const struct pg_object **binder, const struct pg_term **codomain);
+/* Structural independence only, without normalization or formation evidence.
+ * NULL means not a Pi, dependent codomain, or failed independence analysis. */
+const struct pg_term *pg_pi_constant_codomain(const struct pg_term *pi);
 struct pg_effect_row;
 /* Closed sets of exact operation-label pointers. NULL is invalid/unknown,
  * never the empty set. Rows and referenced labels must outlive their uses.
