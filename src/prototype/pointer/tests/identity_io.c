@@ -2042,9 +2042,11 @@ static void invalid_headers(FILE *file, struct pg_graph *arena, struct pg_graph 
 		rewind(file);
 		struct action_body_work *rejected;
 		size_t count = 1;
+		size_t scope_count;
+		struct action_scope *const *scopes;
 		const struct pg_term *const *roots;
-		assert(pg_action_body_read(file, arena, output, 10000, 100, &codec, NULL, &rejected, &count, &roots));
-		assert(!rejected && !count && !roots);
+		assert(pg_action_body_read(file, arena, output, 10000, 100, &codec, NULL, &rejected, &scope_count, &scopes, &count, &roots));
+		assert(!rejected && !scope_count && !scopes && !count && !roots);
 		assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, prior));
 	}
 }
@@ -2078,13 +2080,24 @@ static void all_cuts(void)
 		for (size_t cut = 0; cut <= total; ++cut) {
 			assert(!pg_graph_init(&graph));
 			struct action_body_work *work = fixture(&graph, &arena, different, &request, &expected);
+			work->scope.bindings = pg_alloc(&arena, work->scope.count * sizeof(*work->scope.bindings));
+			assert(work->scope.bindings);
+			const struct pg_term *source_cursor = work->scope.source;
+			for (size_t i = 0; i < work->scope.count; ++i) {
+				const struct pg_object *binder = source_cursor->as.lambda.binder;
+				work->scope.bindings[i] = (struct action_binding){binder, {binder, binder, binder}};
+				source_cursor = source_cursor->as.lambda.body;
+			}
 			for (size_t i = 0; i < cut; ++i) assert(pg_action_body_operation.poll(work) == (i + 1 == total));
 			phases |= 1u << work->phase;
 			const struct pg_term *initial[] = {request, expected};
 			const struct pg_term *const *roots = initial;
+			struct action_scope distinct = work->scope;
+			const struct action_scope *owned[] = {&work->scope, &distinct, &work->scope, NULL};
+			int prepared = work->scope.bindings[0].arguments[0] != NULL;
 			for (unsigned round = 0; round < 2; ++round) {
 				FILE *file = tmpfile();
-				assert(file && !pg_action_body_write(file, work, 2, roots, &codec, NULL));
+				assert(file && !pg_action_body_write(file, work, 4, owned, 2, roots, &codec, NULL));
 				invalid_headers(file, &arena, &graph);
 				pg_action_body_operation.destroy(work);
 				pg_graph_destroy(&arena);
@@ -2092,8 +2105,22 @@ static void all_cuts(void)
 				assert(!pg_graph_init(&graph));
 				rewind(file);
 				size_t count;
-				assert(!pg_action_body_read(file, &arena, &graph, 10000, 100, &codec, NULL, &work, &count, &roots));
+				size_t scope_count;
+				struct action_scope *const *scopes;
+				assert(!pg_action_body_read(file, &arena, &graph, 10000, 100, &codec, NULL,
+					&work, &scope_count, &scopes, &count, &roots));
 				assert(count == 2);
+				assert(scope_count == 4 && scopes[0] == &work->scope && scopes[2] == scopes[0]);
+				assert(scopes[1] != scopes[0] && !scopes[3]);
+				assert(scopes[1]->bindings == work->scope.bindings);
+				for (size_t i = 0; i < work->scope.count; ++i) {
+					const struct action_binding *binding = &work->scope.bindings[i];
+					int initialized = prepared || work->phase != BODY_COLLECT || i < work->position;
+					assert((binding->source != NULL) == initialized);
+					for (size_t j = 0; j < 3; ++j)
+						assert(binding->arguments[j] == (prepared ? binding->source : NULL));
+				}
+				for (size_t i = 0; i < 4; ++i) owned[i] = scopes[i];
 				assert(roots[0]->as.application.argument == work->scope.source);
 				assert(!fclose(file));
 			}
@@ -2180,7 +2207,7 @@ static int invalid_environment_terms(FILE *file, size_t count, const struct pg_t
 	memcpy(changed, roots, count * sizeof(*changed));
 	/* An APP is a valid Term but not an environment's binder reference. */
 	changed[0] = work->scope.body;
-	int status = pg_action_body_write(file, work, count, changed, &codec, NULL);
+	int status = pg_action_body_write(file, work, 0, NULL, count, changed, &codec, NULL);
 	pg_graph_destroy(&scratch);
 	return status;
 }

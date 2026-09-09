@@ -210,13 +210,17 @@ int pg_action_scope_read(FILE *file, struct pg_graph *arena, struct pg_graph *ou
 
 /* Raw owner payload, not a full evaluator or accepted Identity evidence.
  * Extra roots share the comparison's relocation table. Restored work and its
- * binding array belong to arena, terms to output. Destroy via the operation
+ * binding array belong to arena, terms to output. Additional scopes retain
+ * aliases to the embedded scope and its full (possibly partial) binding array.
+ * Destroy via the operation
  * descriptor before either graph. The caller restores the surrounding machine. */
 int pg_action_body_write(FILE *file, const struct action_body_work *work,
+	size_t scope_count, const struct action_scope *const *scopes,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
 int pg_action_body_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
-	struct action_body_work **work, size_t *count, const struct pg_term *const **roots);
+	struct action_body_work **work, size_t *scope_count, struct action_scope *const **scopes,
+	size_t *count, const struct pg_term *const **roots);
 
 struct pg_eval_configuration;
 /* The same payload nested in a configuration forest, with one Term table.

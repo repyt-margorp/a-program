@@ -576,10 +576,23 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   status and exact resumed steps. An owner returning fewer roots is rejected
   without publishing a comparison. Normal `check check-prepared-modules`
   (758 save boundaries) and ASan/UBSan `check-identity-io check-eval-io` pass.
-- [ ] Use that ownership callback in action-body work and connect its embedded
-  scope/binding-array identity with parent scopes. Its current standalone format
-  still retains a private source-binder prefix. Configuration and comparison
-  callbacks are prerequisites, not completion of full task dispatch or `.a`.
+- [x] Use the comparison ownership callback in action-body work (`APGIBD2`).
+  Remove the private source-binder-prefix encoding and its reconstruction loop;
+  retain the actual scope and binding array through the ordinary shared-scope
+  table, including prepared argument triples and already wrapped entries. Extra
+  scopes retain aliases to the embedded scope's final address and shared arrays.
+  Configuration-only wrappers delegate with no extra scopes and reject extras
+  they cannot expose. This replaces experimental `APGIBD1`, not a stable image.
+- [x] Test every body-work phase with prepared binding arrays, repeated embedded
+  scope roots, a distinct scope sharing the same array and a NULL root. Two
+  destroying resaves preserve aliases, initialized prefixes and final resumption.
+  Existing malformed-header and configuration-failure cases still reject with
+  empty outputs. Normal `check check-prepared-modules` (758 save boundaries)
+  passes. After adding explicit prepared-triple and already-wrapped-entry checks,
+  regular and ASan/UBSan `check-identity-io check-eval-io` were rerun and pass.
+- [ ] Select action-body work through the complete frame/task payload owner.
+  Shared scope/comparison support is now present, but whole-machine dispatch,
+  source-image wiring and accepted-progress provenance are still outstanding.
 
 - [x] Generalize named Demand-stack ownership through owner callbacks instead
   of hard-coding `action_result_work` into the frame serializer. The existing
