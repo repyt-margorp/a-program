@@ -1,6 +1,7 @@
 #include "identity_internal.h"
 #include "eval_io.h"
 #include "eval_internal.h"
+#include "retained_io.h"
 #include "computation.h"
 #include "computation_io.h"
 #include "computation_internal.h"
@@ -2247,6 +2248,59 @@ static void reduction_leaf_checks(void)
 	puts("Reduction checking: shared WHNF recomputation, alpha relocation, non-normal claim rejection and pending divergence passed");
 }
 
+static void retained_records(const struct pg_reduction_archive *input)
+{
+	const struct pg_reduction_certificate *certificate = input->roots[0];
+	struct pg_derivation_input request = {.rule = PG_PURE_NORMALIZATION,
+		.source = certificate->source, .target = certificate->target, .reduction_kind = PG_REDUCTION_NF};
+	struct pg_derivation_input binding = {.rule = PG_CONTEXT_EXTEND};
+	binding.parameters.binder = certificate->source->as.application.function->as.lambda.binder;
+	/* Deliberately incomplete rule premises: transport is not type checking. */
+	const struct pg_derivation_input *initial[] = {&request, &binding, &request};
+	const struct pg_derivation_input *const *roots = initial;
+	size_t count = 3;
+	const struct pg_reduction_archive *reductions = input;
+	struct pg_graph graph = {0};
+	for (unsigned round = 0; round < 2; ++round) {
+		FILE *file = tmpfile();
+		assert(file && !pg_retained_write(file, count, roots, NULL, reductions, &pg_builtin_graph_codec, NULL));
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		rewind(file);
+		assert(!pg_retained_read(file, &graph, 10000, 100, NULL, &pg_builtin_graph_codec, NULL, &count, &roots, &reductions));
+		assert(count == 3 && roots[0] == roots[2] && !roots[0]->count);
+		assert(roots[0]->source == reductions->roots[0]->source);
+		assert(roots[0]->target == reductions->roots[0]->target);
+		assert(roots[1]->parameters.binder == roots[0]->source->as.application.function->as.lambda.binder);
+		assert(!roots[0]->parameters.reduction);
+		struct pg_whnf_work work;
+		struct pg_reduction_check check;
+		assert(!pg_whnf_work_init(&work, &graph) && !pg_reduction_check_init(&check, &work, reductions));
+		assert(pg_reduction_check_advance(&check, 100000) == PG_COMPARISON_EQUAL);
+		const struct pg_reduction_certificate *accepted = pg_reduction_check_certificate(&check, 0);
+		assert(pg_reduction_source(accepted) == roots[0]->source);
+		assert(!pg_nf_remember(&work, accepted));
+		struct pg_nf_job *job = pg_nf_request(&work, &pg_pure_policy, roots[0]->source);
+		assert(pg_nf_status(job) == PG_NF_DONE && !pg_nf_steps(job));
+		pg_reduction_check_destroy(&check);
+		pg_whnf_work_destroy(&work);
+		/* An enclosing table failure must not publish either output group. */
+		assert(!fseek(file, 8, SEEK_SET));
+		uint64_t offset;
+		assert(!pg_wire_read_u64(file, &offset));
+		assert(!fseek(file, 8, SEEK_SET) && !pg_wire_write_u64(file, offset + 1));
+		rewind(file);
+		size_t untouched = 77;
+		const struct pg_derivation_input *const *unchanged = roots;
+		const struct pg_reduction_archive *same = reductions;
+		assert(pg_retained_read(file, &graph, 10000, 100, NULL, &pg_builtin_graph_codec, NULL, &untouched, &unchanged, &same));
+		assert(untouched == 77 && unchanged == roots && same == reductions);
+		assert(!fclose(file));
+	}
+	pg_graph_destroy(&graph);
+	puts("retained rules/reductions: one Core table preserves endpoint/binder identity without accepting rule premises");
+}
+
 static void reduction_records(void)
 {
 	struct pg_graph graph;
@@ -2345,6 +2399,7 @@ static void reduction_records(void)
 		assert(pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &rejected) && !rejected);
 		assert(!fclose(file));
 	}
+	retained_records(archive);
 	struct pg_reduction_certificate cycle = *archive->roots[0];
 	cycle.normality = &cycle;
 	const struct pg_reduction_certificate *root = &cycle;

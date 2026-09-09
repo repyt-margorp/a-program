@@ -774,6 +774,19 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Lambda case. Do not introduce a second binder-remapping mechanism. Extend
   the existing common derivation/Core table to retained reduction evidence;
   nominal/IADT coverage and independent-process evidence still remain open.
+- [x] Add `retained_io.c` as the transport owner composing existing derivation
+  and reduction codecs through `pg_graph_image_write/read` (`APGRET1`). It adds
+  no rule, evaluator or acceptance flag. One terminal Core/object table serves
+  both payloads; descriptor callbacks retain their original owner. Outputs are
+  published only after the enclosing image boundary passes. Existing effect
+  inference failure/cleanup contracts also apply to outer-boundary failures.
+  Normal and ASan/UBSan `check-identity-io` pass: two destroying resaves retain
+  shared rule roots, exact reduction endpoints and binder pointers; checked
+  reduction results populate the ordinary NF key used by the rule input, while
+  deliberately incomplete rule premises remain unaccepted. Invalid outer-table
+  offsets leave all output groups unchanged. This is the shared payload owner,
+  not yet its integration into source selection/origin records or CHECKPOINT.
+  Full normal `check check-prepared-modules` (758 boundaries) also passes.
 - [ ] Connect pending NF jobs and shared WHNF/NF jobs to this record ownership,
   then to source CHECKPOINT. The recomputation-mode checker does not preserve
   unfinished execution provenance or supply a no-recomputation WHNF basis.
