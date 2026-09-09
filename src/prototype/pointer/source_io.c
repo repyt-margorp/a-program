@@ -221,11 +221,13 @@ static int retain_dependencies(void *owner, const struct pg_derivation_input *in
 {
 	struct origin_collection *c = owner;
 	const struct pg_dag_node *previous = c->objects.last;
-	const struct pg_term *slots[PG_DERIVATION_TERM_SLOTS];
-	const struct pg_term *const *terms = slots;
-	size_t count = PG_DERIVATION_TERM_SLOTS, equations;
+	const struct pg_term *const *terms;
+	size_t count, equations;
 	if (input) {
-		if (pg_derivation_input_terms(&c->terms.storage, input, slots)) return -1;
+		struct pg_derivation_payload payload;
+		if (pg_derivation_input_terms(&c->terms.storage, input, &payload)) return -1;
+		terms = payload.terms;
+		count = payload.count;
 	} else if (pg_effect_inference_pack(work, &c->terms.storage, &equations, &count, &terms)) return -1;
 	for (size_t i = 0; i < count; ++i)
 		if (terms[i] && pg_dag_add(&c->terms, terms[i])) return -1;
@@ -430,9 +432,9 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	size_t nd;
 	const struct pg_derivation_input *const *derivations;
 	int input_status = retained
-		? pg_retained_read(file, graph, limit, limit, &program->imported_effects, &pg_declaration_graph_codec, &codec,
+		? pg_retained_read(file, &program->typing, limit, limit, &program->imported_effects, &pg_declaration_graph_codec, &codec,
 			&nd, &derivations, &program->retained_reductions)
-		: pg_derivations_read_inference(file, graph, limit, limit, &program->imported_effects,
+		: pg_derivations_read_inference(file, &program->typing, limit, limit, &program->imported_effects,
 			&pg_declaration_graph_codec, &codec, &nd, &derivations);
 	if (input_status) goto fail;
 	if (fgetc(file) != EOF || ferror(file)) goto fail;

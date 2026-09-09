@@ -2266,8 +2266,10 @@ static void retained_records(const struct pg_reduction_archive *input)
 		assert(file && !pg_retained_write(file, count, roots, NULL, reductions, &pg_builtin_graph_codec, NULL));
 		pg_graph_destroy(&graph);
 		assert(!pg_graph_init(&graph));
+		struct pg_typing typing;
+		assert(!pg_typing_init(&typing, &graph));
 		rewind(file);
-		assert(!pg_retained_read(file, &graph, 10000, 100, NULL, &pg_builtin_graph_codec, NULL, &count, &roots, &reductions));
+		assert(!pg_retained_read(file, &typing, 10000, 100, NULL, &pg_builtin_graph_codec, NULL, &count, &roots, &reductions));
 		assert(count == 3 && roots[0] == roots[2] && !roots[0]->count);
 		assert(roots[0]->source == reductions->roots[0]->source);
 		assert(roots[0]->target == reductions->roots[0]->target);
@@ -2293,8 +2295,9 @@ static void retained_records(const struct pg_reduction_archive *input)
 		size_t untouched = 77;
 		const struct pg_derivation_input *const *unchanged = roots;
 		const struct pg_reduction_archive *same = reductions;
-		assert(pg_retained_read(file, &graph, 10000, 100, NULL, &pg_builtin_graph_codec, NULL, &untouched, &unchanged, &same));
+		assert(pg_retained_read(file, &typing, 10000, 100, NULL, &pg_builtin_graph_codec, NULL, &untouched, &unchanged, &same));
 		assert(untouched == 77 && unchanged == roots && same == reductions);
+		pg_typing_destroy(&typing);
 		assert(!fclose(file));
 	}
 	pg_graph_destroy(&graph);

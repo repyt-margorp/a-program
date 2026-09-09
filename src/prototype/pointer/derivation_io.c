@@ -4,10 +4,11 @@
 #include "wire.h"
 #include "effect_inference.h"
 #include "iadt.h"
+#include "context_payload.h"
 
 #include <string.h>
 
-static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 5};
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 6};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {
@@ -37,13 +38,25 @@ static int term_reference(FILE *file, const struct pg_term *term,
 
 int pg_derivation_input_terms(struct pg_graph *scratch,
 	const struct pg_derivation_input *input,
-	const struct pg_term *terms[PG_DERIVATION_TERM_SLOTS])
+	struct pg_derivation_payload *payload)
 {
-	if (!scratch || !input || !terms) return -1;
+	if (!scratch || !input || !payload) return -1;
 	const struct pg_derivation_parameters *p = &input->parameters;
-	/* APGDRV5 cannot retain induction allocation inputs. Never silently
-	 * serialize a different construction request by dropping them. */
-	if (p->induction) return -1;
+	struct pg_derivation_payload result = {.count = PG_DERIVATION_TERM_SLOTS};
+	const struct pg_term *const *extra = NULL;
+	size_t extra_count = 0;
+	if (p->induction) {
+		if (input->rule != PG_INDUCTION_ELIM) return -1;
+		const struct pg_induction_allocation *a = p->induction;
+		const struct pg_term *binders[] = {pg_reference(scratch, a->recursion),
+			pg_reference(scratch, a->argument), pg_reference(scratch, a->self)};
+		if (pg_contexts_pack(scratch, a->count, a->clauses, 3, binders,
+			&result.metadata_count, &result.metadata, &extra_count, &extra)) return -1;
+	}
+	if (extra_count > SIZE_MAX / sizeof(void *) - result.count) return -1;
+	result.count += extra_count;
+	const struct pg_term **terms = pg_alloc(scratch, result.count * sizeof(*terms));
+	if (!terms) return -1;
 	const struct pg_object *objects[PG_DERIVATION_TERM_SLOTS] = {
 		p->binder, input->effect_parameter, NULL, NULL, p->operation_label, NULL,
 		p->declaration ? pg_data_declaration_family(p->declaration) : NULL, p->constructor
@@ -58,7 +71,11 @@ int pg_derivation_input_terms(struct pg_graph *scratch,
 	}
 	terms[2] = input->source; terms[3] = input->target;
 	terms[5] = pg_handler_signature_reference(scratch, p->handler);
-	return p->handler && !terms[5] ? -1 : 0;
+	if (p->handler && !terms[5]) return -1;
+	for (size_t i = 0; i < extra_count; ++i) terms[PG_DERIVATION_TERM_SLOTS + i] = extra[i];
+	result.terms = terms;
+	*payload = result;
+	return 0;
 }
 
 int pg_derivation_inputs_collect_objects(struct pg_dag *objects, size_t count,
@@ -73,10 +90,10 @@ int pg_derivation_inputs_collect_objects(struct pg_dag *objects, size_t count,
 		|| pg_graph_init(&scratch)) goto done;
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&inputs, roots[i])) goto done;
 	for (const struct pg_dag_node *node = inputs.first; node; node = node->next) {
-		const struct pg_term *slots[PG_DERIVATION_TERM_SLOTS];
-		if (pg_derivation_input_terms(&scratch, node->key, slots)) goto done;
-		for (size_t i = 0; i < PG_DERIVATION_TERM_SLOTS; ++i)
-			if (slots[i] && pg_dag_add(&terms, slots[i])) goto done;
+		struct pg_derivation_payload payload;
+		if (pg_derivation_input_terms(&scratch, node->key, &payload)) goto done;
+		for (size_t i = 0; i < payload.count; ++i)
+			if (payload.terms[i] && pg_dag_add(&terms, payload.terms[i])) goto done;
 	}
 	size_t equations, effect_count;
 	const struct pg_term *const *effect_roots;
@@ -130,10 +147,16 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 		if (pg_wire_write_u64(file, input.rule)
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;
 		if (pg_wire_write_u64(file, input.reduction_kind)) goto done;
-		const struct pg_term *terms[PG_DERIVATION_TERM_SLOTS];
-		if (pg_derivation_input_terms(&arena, &input, terms)) goto done;
+		struct pg_derivation_payload payload;
+		if (pg_derivation_input_terms(&arena, &input, &payload)) goto done;
 		for (size_t i = 0; i < PG_DERIVATION_TERM_SLOTS; ++i)
-			if (term_reference(file, terms[i], &term_roots)) goto done;
+			if (term_reference(file, payload.terms[i], &term_roots)) goto done;
+		if (pg_wire_write_u64(file, payload.metadata_count)
+			|| pg_wire_write_u64(file, payload.count - PG_DERIVATION_TERM_SLOTS)) goto done;
+		for (size_t i = 0; i < payload.metadata_count; ++i)
+			if (pg_wire_write_u64(file, payload.metadata[i])) goto done;
+		for (size_t i = PG_DERIVATION_TERM_SLOTS; i < payload.count; ++i)
+			if (term_reference(file, payload.terms[i], &term_roots)) goto done;
 		size_t arity = input.count;
 		if (pg_wire_write_u64(file, arity)) goto done;
 		for (size_t i = 0; i < arity; ++i) {
@@ -188,20 +211,24 @@ int pg_derivation_inputs_write_inference(FILE *file, size_t count,
 struct input_record {
 	struct pg_derivation_input *input;
 	uint64_t binder, effects, source, target, operation, handler, declaration, constructor;
+	size_t metadata_count, allocation_count;
+	uint64_t *metadata, *allocation;
 };
 
-int pg_derivations_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+int pg_derivations_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
 	const struct pg_object *(*resolve)(void *, const char *), void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots)
 {
 	const struct pg_graph_codec codec = {.resolve = resolve};
-	return pg_derivations_read_descriptors(file, graph, limit, name_limit, &codec, owner, count, roots);
+	return pg_derivations_read_descriptors(file, typing, limit, name_limit, &codec, owner, count, roots);
 }
 
-static int read_dag(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
 	struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots)
 {
+	if (!typing || !typing->contexts.capacity) return -1;
+	struct pg_graph *graph = typing->graph;
 	if (!file || !graph || !graph->terms.capacity || !count || !roots) return -1;
 	if (work && (work->rows != graph || work->sealed || work->failed || work->row_sources.count)) return -1;
 	char header[8];
@@ -223,8 +250,20 @@ static int read_dag(FILE *file, struct pg_graph *graph, size_t limit, size_t nam
 			|| pg_wire_read_u64(file, &records[i].source)
 			|| pg_wire_read_u64(file, &records[i].target) || pg_wire_read_u64(file, &records[i].operation)
 			|| pg_wire_read_u64(file, &records[i].handler)
-			|| pg_wire_read_u64(file, &records[i].declaration) || pg_wire_read_u64(file, &records[i].constructor)
-			|| pg_wire_read_u64(file, &arity)) return -1;
+			|| pg_wire_read_u64(file, &records[i].declaration) || pg_wire_read_u64(file, &records[i].constructor)) return -1;
+		uint64_t nm, na;
+		if (pg_wire_read_u64(file, &nm) || pg_wire_read_u64(file, &na)) return -1;
+		if (nm > available || na > available - nm) return -1;
+		if ((nm || na) && rule != PG_INDUCTION_ELIM) return -1;
+		available -= (size_t)(nm + na);
+		records[i].metadata_count = (size_t)nm;
+		records[i].allocation_count = (size_t)na;
+		records[i].metadata = pg_alloc(graph, (size_t)nm * sizeof(uint64_t));
+		records[i].allocation = pg_alloc(graph, (size_t)na * sizeof(uint64_t));
+		if (!records[i].metadata || !records[i].allocation) return -1;
+		for (size_t j = 0; j < nm; ++j) if (pg_wire_read_u64(file, &records[i].metadata[j])) return -1;
+		for (size_t j = 0; j < na; ++j) if (pg_wire_read_u64(file, &records[i].allocation[j])) return -1;
+		if (pg_wire_read_u64(file, &arity)) return -1;
 		if (arity > available || arity > (SIZE_MAX - sizeof(struct pg_derivation_input)) / sizeof(void *)) return -1;
 		available -= (size_t)arity;
 		struct pg_derivation_input *input = pg_alloc(graph, sizeof(*input) + (size_t)arity * sizeof(*input->premises));
@@ -265,6 +304,27 @@ static int read_dag(FILE *file, struct pg_graph *graph, size_t limit, size_t nam
 	if (work && pg_effect_inference_unpack(work, (size_t)equations, (size_t)effect_count, effect_roots)) return -1;
 	for (size_t i = 0; i < n; ++i) {
 		const struct input_record *r = &records[i];
+		if (r->metadata_count || r->allocation_count) {
+			const struct pg_term **allocation = pg_alloc(graph, r->allocation_count * sizeof(*allocation));
+			struct pg_induction_allocation *a = pg_alloc(graph, sizeof(*a));
+			if (!allocation || !a) return -1;
+			for (size_t j = 0; j < r->allocation_count; ++j) {
+				uint64_t id = r->allocation[j];
+				if (!id || id > term_count) return -1;
+				allocation[j] = terms[id - 1];
+			}
+			size_t nb;
+			const struct pg_term *const *binders;
+			if (pg_contexts_unpack(typing, r->metadata_count, r->metadata,
+				r->allocation_count, allocation, &a->count, &a->clauses, &nb, &binders)) return -1;
+			if (nb != 3) return -1;
+			for (size_t j = 0; j < nb; ++j)
+				if (binders[j]->kind != PG_REFERENCE || binders[j]->as.reference->kind != PG_BINDER) return -1;
+			a->recursion = binders[0]->as.reference;
+			a->argument = binders[1]->as.reference;
+			a->self = binders[2]->as.reference;
+			r->input->parameters.induction = a;
+		}
 		if (r->binder > term_count || r->effects > term_count || r->source > term_count || r->target > term_count) return -1;
 		if (r->operation > term_count || r->handler > term_count) return -1;
 		if (r->declaration > term_count || r->constructor > term_count) return -1;
@@ -321,18 +381,18 @@ static int read_dag(FILE *file, struct pg_graph *graph, size_t limit, size_t nam
 	return 0;
 }
 
-int pg_derivations_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+int pg_derivations_read_descriptors(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
 	const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots)
 {
-	return pg_derivations_read_inference(file, graph, limit, name_limit, NULL, codec, owner, count, roots);
+	return pg_derivations_read_inference(file, typing, limit, name_limit, NULL, codec, owner, count, roots);
 }
 
-int pg_derivations_read_inference(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+int pg_derivations_read_inference(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
 	struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots)
 {
-	int status = read_dag(file, graph, limit, name_limit, work, codec, owner, count, roots);
+	int status = read_dag(file, typing, limit, name_limit, work, codec, owner, count, roots);
 	if (status && work) work->failed = 1;
 	return status;
 }

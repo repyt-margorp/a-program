@@ -863,7 +863,8 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   supplies the typed input to normalization. Independent writer/two-resaver/
   reuse/recompute tests pass for field-bearing constructors as well as lambda,
   nominal and nullary fixtures. No alpha-keyed cache or binder remapper is used.
-- [ ] Retained recursive-elimination derivation allocation is incomplete.
+- [x] Retained recursive-elimination derivation allocation (resolved by
+  APGDRV6 below). Original failure:
   `retained-write-typed <file> match` followed by inert resaves and
   `retained-check <file>` still fails exact input identity (alpha-equal).
   Unlike the source-only regression, this survives selecting the retained
@@ -938,20 +939,28 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   job. This is ordinary rule checking, not a separate Replay interpreter.
   Verification: normal and ASan/UBSan `iadt_test` and normal full
   `synthesis_test` pass. The new negative request is tested with budgets 1/64.
-- [ ] Extend the derivation wire grammar to retain that input. APGDRV5 cannot
-  encode it and now rejects it rather than silently dropping the allocation.
-  This is a temporary explicit limitation: the existing induction round-trip
-  test in `tests/derivation_io.c` and typed Match source-image writing cannot
-  pass until the codec is extended. Do not weaken those acceptance tests.
-  Reuse the existing `context_payload` relocation machinery (already used by
-  declaration transport), preserving binder sharing with the ordinary Term
-  table; do not create an accepted-proof flag or another Core tag. Context
-  annotations remain unaccepted input and the ordinary induction constructor
-  recomputes them. Verify the receiving context owner/prefix identity, not just
-  the serialized pointer slots, before publishing the reconstructed request.
-  Reproduced: `derivation_io_test nominal-write <file>` fails at the existing
-  six-root write assertion (line 1032). This is not an acceptance pass; no Main
-  push is authorized by the component results above.
+- [x] September 9: APGDRV6 retains induction allocation inputs. Each rule's
+  eight existing term slots are followed by allocation metadata/root counts,
+  context metadata and term references, then the ordinary premise IDs.
+  Allocation uses `context_payload` plus the three fixed-point binder roots;
+  all references share the existing Core relocation table. No Core tag or
+  acceptance flag is added. APGDRV5 is rejected, not silently reinterpreted.
+  Derivation/retained-image readers now require the destination `pg_typing`
+  owner so raw contexts share its interning table with declaration contexts
+  and later proof construction. Reading creates no proofs or evaluation work.
+  Dependency collection uses the same packed input, including allocation
+  contexts and binders, to preserve source declaration origins.
+  Normal and ASan/UBSan `derivation_io.sh` pass, including split-budget ordinary
+  checking, unchanged allocation identities and rejection of aliased binders.
+  The typed-root `match` fixture now passes independent writer, two inert
+  resavers, checked-NF reuse (zero new NF steps) and recomputation in both builds;
+  it is included in the permanent `source_io.sh` typed-root loop.
+  Normal `source_io_test normalization`, `prepared-module` (758 boundaries)
+  and `identity_io_test` pass. Tests that read file prefixes now use actual file
+  size instead of an 8192-byte ceiling, without reducing prefix coverage.
+  Full `source_io.sh` still fails the distinct source-only constructor exact
+  input assertion after the typed-root loop passes. Pending source allocation
+  retention and no-recomputation WHNF evidence remain open. No Main push.
 - [ ] Connect pending NF jobs and shared WHNF/NF jobs to this record ownership,
   then to source CHECKPOINT. The recomputation-mode checker does not preserve
   unfinished execution provenance or supply a no-recomputation WHNF basis.

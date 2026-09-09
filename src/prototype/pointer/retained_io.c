@@ -27,6 +27,7 @@ int pg_retained_write(FILE *file, size_t count, const struct pg_derivation_input
 }
 
 struct read_state {
+	struct pg_typing *typing;
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	struct pg_effect_inference *effects;
@@ -38,19 +39,20 @@ static int read_payload(FILE *file, struct pg_graph *graph, size_t limit, size_t
 	const struct pg_graph_codec *codec, void *context)
 {
 	struct read_state *state = context;
-	if (pg_derivations_read_inference(file, graph, limit, name_limit, state->effects,
+	if (graph != state->typing->graph) return -1;
+	if (pg_derivations_read_inference(file, state->typing, limit, name_limit, state->effects,
 		codec, state->owner, &state->count, &state->roots)) return -1;
 	return pg_reduction_records_read(file, graph, limit, name_limit, codec, state->owner, &state->reductions);
 }
 
-int pg_retained_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+int pg_retained_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
 	struct pg_effect_inference *effects, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots,
 	const struct pg_reduction_archive **reductions)
 {
-	if (!count || !roots || !reductions) return -1;
-	struct read_state state = {.effects = effects, .owner = owner};
-	if (pg_graph_image_read(file, magic, graph, limit, name_limit, codec, owner, read_payload, &state)) return -1;
+	if (!typing || !count || !roots || !reductions) return -1;
+	struct read_state state = {.typing = typing, .effects = effects, .owner = owner};
+	if (pg_graph_image_read(file, magic, typing->graph, limit, name_limit, codec, owner, read_payload, &state)) return -1;
 	*count = state.count;
 	*roots = state.roots;
 	*reductions = state.reductions;

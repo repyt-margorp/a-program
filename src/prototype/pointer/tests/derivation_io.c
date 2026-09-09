@@ -11,6 +11,19 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
+
+static unsigned char *file_bytes(FILE *file, size_t *length)
+{
+	assert(!fseek(file, 0, SEEK_END));
+	long end = ftell(file);
+	assert(end > 0 && (uintmax_t)end <= SIZE_MAX);
+	*length = (size_t)end;
+	unsigned char *bytes = malloc(*length);
+	rewind(file);
+	assert(bytes && fread(bytes, 1, *length, file) == *length && !ferror(file));
+	return bytes;
+}
 
 static const char *name(void *owner, const struct pg_object *object)
 {
@@ -90,7 +103,7 @@ static void effect_transport(void)
 	rewind(file);
 	size_t count;
 	const struct pg_derivation_input *const *roots;
-	assert(!pg_derivations_read(file, &graphs[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
+	assert(!pg_derivations_read(file, &typings[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
 	assert(count == 3 && roots[0]->parameters.effects == rows[1] && !typings[1].proofs.count);
 	struct pg_whnf_work work;
 	struct pg_synthesis synthesis;
@@ -129,17 +142,20 @@ static void effect_transport(void)
 		assert(offset >= 0 && !pg_wire_read_u64(file, &ignored));
 		if (rule == PG_RETURN_TYPE_FORM) { row_offset = offset; row_id = ignored; }
 		for (unsigned j = 0; j < 6; ++j) assert(!pg_wire_read_u64(file, &ignored));
+		uint64_t metadata, allocation;
+		assert(!pg_wire_read_u64(file, &metadata) && !pg_wire_read_u64(file, &allocation));
+		for (uint64_t j = 0; j < metadata + allocation; ++j) assert(!pg_wire_read_u64(file, &ignored));
 		assert(!pg_wire_read_u64(file, &arity));
 		for (uint64_t j = 0; j < arity; ++j) assert(!pg_wire_read_u64(file, &ignored));
 	}
 	assert(root_count == 3 && row_offset >= 0 && row_id);
 	assert(!fseek(file, row_offset, SEEK_SET) && !pg_wire_write_u64(file, 0));
 	rewind(file);
-	assert(pg_derivations_read(file, &graphs[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
+	assert(pg_derivations_read(file, &typings[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
 	assert(!fseek(file, row_offset, SEEK_SET) && !pg_wire_write_u64(file, row_id));
 	assert(!fseek(file, 7, SEEK_SET) && fputc(1, file) != EOF);
 	rewind(file);
-	assert(pg_derivations_read(file, &graphs[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
+	assert(pg_derivations_read(file, &typings[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
 	assert(!fclose(file));
 	for (size_t i = 0; i < 2; ++i) {
 		pg_classifiers_destroy(&classifiers[i]);
@@ -202,25 +218,28 @@ static void classifier_transport(struct pg_classifiers *source)
 
 static void rejected_prefixes(FILE *file)
 {
-	unsigned char bytes[8192];
-	rewind(file);
-	size_t length = fread(bytes, 1, sizeof(bytes), file);
-	assert(feof(file) && !ferror(file) && length > 24);
+	size_t length;
+	unsigned char *bytes = file_bytes(file, &length);
+	assert(length > 24);
 	for (size_t cut = 0; cut <= length; ++cut) {
 		struct pg_graph graph;
 		struct pg_classifiers classifiers;
+		struct pg_typing typing;
 		assert(pg_graph_init(&graph) == 0 && pg_classifiers_init(&classifiers, &graph) == 0);
+		assert(!pg_typing_init(&typing, &graph));
 		FILE *fragment = tmpfile();
 		if (cut == length) bytes[24] = 255;
 		assert(fragment && fwrite(bytes, 1, cut, fragment) == cut);
 		rewind(fragment);
 		size_t count = 71;
 		const struct pg_derivation_input *const *roots = NULL;
-		assert(pg_derivations_read(fragment, &graph, 1000, 100, resolve, &classifiers, &count, &roots) == -1);
+		assert(pg_derivations_read(fragment, &typing, 1000, 100, resolve, &classifiers, &count, &roots) == -1);
 		assert(count == 71 && !roots && fclose(fragment) == 0);
+		pg_typing_destroy(&typing);
 		pg_classifiers_destroy(&classifiers);
 		pg_graph_destroy(&graph);
 	}
+	free(bytes);
 }
 
 static void unique_term_roots(FILE *file, struct pg_graph *graph,
@@ -239,6 +258,9 @@ static void unique_term_roots(FILE *file, struct pg_graph *graph,
 			if (j >= 4 && word) ++references;
 		}
 		uint64_t premises;
+		uint64_t metadata, allocation;
+		assert(!pg_wire_read_u64(file, &metadata) && !pg_wire_read_u64(file, &allocation));
+		for (uint64_t j = 0; j < metadata + allocation; ++j) assert(!pg_wire_read_u64(file, &word));
 		assert(!pg_wire_read_u64(file, &premises));
 		for (uint64_t j = 0; j < premises; ++j) assert(!pg_wire_read_u64(file, &word));
 	}
@@ -373,7 +395,7 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	unique_term_roots(file, typing->graph, classifiers);
 	size_t count;
 	const struct pg_derivation_input *const *roots;
-	assert(pg_derivations_read(file, typing->graph, 1000, 100, resolve, classifiers, &count, &roots) == 0);
+	assert(pg_derivations_read(file, typing, 1000, 100, resolve, classifiers, &count, &roots) == 0);
 	assert(count == 12 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
@@ -513,7 +535,7 @@ static void operation_proofs(FILE *file, struct pg_typing *typing, struct pg_cla
 	}
 	size_t count = 0;
 	const struct pg_derivation_input *const *roots = NULL;
-	assert(!pg_derivations_read_descriptors(file, graph, 10000, 100, &pg_builtin_graph_codec, classifiers, &count, &roots));
+	assert(!pg_derivations_read_descriptors(file, typing, 10000, 100, &pg_builtin_graph_codec, classifiers, &count, &roots));
 	assert(count == 4 && roots[1] == roots[2] && !typing->proofs.count);
 	const struct pg_object *label = roots[0]->parameters.operation_label;
 	assert(label && pg_handler_signature_count(roots[1]->parameters.handler) == 2);
@@ -604,7 +626,7 @@ static void unaccepted_proofs(FILE *file, struct pg_typing *typing, struct pg_cl
 	}
 	size_t count;
 	const struct pg_derivation_input *const *roots;
-	assert(!pg_derivations_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, classifiers, &count, &roots));
+	assert(!pg_derivations_read_descriptors(file, typing, 1000, 100, &pg_builtin_graph_codec, classifiers, &count, &roots));
 	assert(count == 4 && roots[0] == roots[1] && !typing->proofs.count);
 	assert(roots[3]->reduction_kind == PG_REDUCTION_NF && !roots[3]->parameters.reduction);
 	struct pg_whnf_work work;
@@ -634,15 +656,15 @@ static void unaccepted_proofs(FILE *file, struct pg_typing *typing, struct pg_cl
 
 static void rejected_effect_images(FILE *file)
 {
-	unsigned char bytes[8192];
-	rewind(file);
-	size_t length = fread(bytes, 1, sizeof(bytes), file);
-	assert(feof(file) && !ferror(file) && length);
+	size_t length;
+	unsigned char *bytes = file_bytes(file, &length);
 	for (size_t cut = 0; cut <= length; ++cut) {
 		struct pg_graph graph;
 		struct pg_classifiers classifiers;
 		struct pg_effect_inference effects;
 		assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+		struct pg_typing typing;
+		assert(!pg_typing_init(&typing, &graph));
 		assert(!pg_effect_inference_init(&effects, &graph));
 		FILE *fragment = tmpfile();
 		assert(fragment && fwrite(bytes, 1, cut, fragment) == cut);
@@ -655,9 +677,10 @@ static void rejected_effect_images(FILE *file)
 		rewind(fragment);
 		size_t count = 71;
 		const struct pg_derivation_input *const *roots = NULL;
-		assert(pg_derivations_read_inference(fragment, &graph, 1000, 100, &effects,
+		assert(pg_derivations_read_inference(fragment, &typing, 1000, 100, &effects,
 			&pg_builtin_graph_codec, &classifiers, &count, &roots));
 		assert(count == 71 && !roots && effects.failed);
+		pg_typing_destroy(&typing);
 		if (cut == length) assert(effects.row_sources.count == 2);
 		pg_effect_inference_seal(&effects);
 		assert(pg_effect_inference_advance(&effects, 1000) == -1);
@@ -666,6 +689,7 @@ static void rejected_effect_images(FILE *file)
 		pg_classifiers_destroy(&classifiers);
 		pg_graph_destroy(&graph);
 	}
+	free(bytes);
 }
 
 static void pending_effect_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers,
@@ -708,7 +732,7 @@ static void pending_effect_proofs(FILE *file, struct pg_typing *typing, struct p
 	} else {
 		size_t count;
 		const struct pg_derivation_input *const *roots;
-		assert(!pg_derivations_read_inference(file, graph, 1000, 100, &effects, &pg_builtin_graph_codec, classifiers, &count, &roots));
+		assert(!pg_derivations_read_inference(file, typing, 1000, 100, &effects, &pg_builtin_graph_codec, classifiers, &count, &roots));
 		assert(count == 5 && roots[2] == roots[3] && !typing->proofs.count && !effects.sealed);
 		const struct pg_object *parameter = roots[0]->effect_parameter;
 		assert(parameter && parameter == roots[1]->effect_parameter && parameter == roots[4]->effect_parameter);
@@ -752,7 +776,7 @@ static void pending_effect_proofs(FILE *file, struct pg_typing *typing, struct p
 		pg_synthesis_destroy(&synthesis);
 		pg_whnf_work_destroy(&normalization);
 		rewind(file);
-		assert(pg_derivations_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, classifiers, &count, &roots));
+		assert(pg_derivations_read_descriptors(file, typing, 1000, 100, &pg_builtin_graph_codec, classifiers, &count, &roots));
 		rejected_effect_images(file);
 		puts("pending effect derivations: relocated open Pi, no early evidence, masked cyclic Solve and rejection passed");
 	}
@@ -934,7 +958,7 @@ static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_clas
 		assert(!pg_effect_inference_init(&image, graph));
 		size_t count;
 		const struct pg_derivation_input *const *inputs;
-		assert(!pg_derivations_read_inference(file, graph, 1000, 100, &image, &pg_builtin_graph_codec, classifiers, &count, &inputs));
+		assert(!pg_derivations_read_inference(file, typing, 1000, 100, &image, &pg_builtin_graph_codec, classifiers, &count, &inputs));
 		assert(count == 4 && inputs[0] == inputs[3] && !typing->proofs.count);
 		struct pg_synthesis_job *jobs[4];
 		for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_derivation_inference(&synthesis, inputs[i], &image);
@@ -1033,12 +1057,14 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 	} else {
 		size_t count;
 		const struct pg_derivation_input *const *inputs;
-		assert(!pg_derivations_read_descriptors(file, graph, 2000, 100,
+		assert(!pg_derivations_read_descriptors(file, typing, 2000, 100,
 			&pg_declaration_graph_codec, &io, &count, &inputs));
 		assert(count == 6 && inputs[0] == inputs[3] && !typing->proofs.count);
 		const struct pg_data_layout *layout = pg_data_declaration_layout(inputs[0]->parameters.declaration);
 		assert(inputs[1]->parameters.constructor == pg_data_constructor(layout, 0));
 		assert(inputs[2]->parameters.constructor == pg_data_constructor(layout, 1));
+		const struct pg_induction_allocation *allocation = inputs[5]->parameters.induction;
+		assert(allocation && allocation->count == 2 && !inputs[4]->parameters.induction);
 		struct pg_dag objects = {0};
 		assert(!pg_dag_init(&objects, NULL, NULL));
 		assert(!pg_derivation_inputs_collect_objects(&objects, count, inputs, NULL, &pg_declaration_graph_codec, &io));
@@ -1046,6 +1072,9 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		assert(pg_dag_find(&objects, pg_data_declaration_family(inputs[0]->parameters.declaration)));
 		assert(pg_dag_find(&objects, inputs[1]->parameters.constructor));
 		assert(pg_dag_find(&objects, inputs[2]->parameters.constructor));
+		assert(pg_dag_find(&objects, allocation->recursion));
+		assert(pg_dag_find(&objects, allocation->argument));
+		assert(pg_dag_find(&objects, allocation->self));
 		const struct pg_context *parameters = pg_data_declaration_parameters(inputs[0]->parameters.declaration);
 		assert(parameters && pg_dag_find(&objects, parameters->binder));
 		pg_dag_destroy(&objects);
@@ -1058,6 +1087,10 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		assert(!typing->proofs.count && jobs[0] == jobs[3]);
 		while (synthesis.ready) { assert(synthesis.steps < 2000); pg_synthesis_advance(&synthesis, chunk); }
 		for (size_t i = 0; i < count; ++i) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
+		const struct pg_induction_allocation *checked = pg_evidence_induction_allocation(pg_synthesis_result(jobs[5]));
+		assert(checked && checked->recursion == allocation->recursion);
+		assert(checked->argument == allocation->argument && checked->self == allocation->self);
+		for (size_t i = 0; i < allocation->count; ++i) assert(checked->clauses[i] == allocation->clauses[i]);
 		const struct pg_evidence *formation = pg_synthesis_result(jobs[0]);
 		const struct pg_term *family = pg_evidence_subject(formation)->core;
 		assert(family->as.reference == pg_data_declaration_family(inputs[0]->parameters.declaration));
@@ -1076,6 +1109,17 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 			assert(pg_evidence_classifier(value) == family);
 		}
 		/* Pointer validity does not establish arity or the recursive branch contract. */
+		struct pg_induction_allocation invalid_allocation = *allocation;
+		invalid_allocation.argument = invalid_allocation.recursion;
+		struct pg_derivation_input *invalid = pg_alloc(graph, sizeof(*invalid) + inputs[5]->count * sizeof(void *));
+		assert(invalid);
+		*invalid = *inputs[5];
+		memcpy(invalid->premises, inputs[5]->premises, invalid->count * sizeof(void *));
+		invalid->parameters.induction = &invalid_allocation;
+		struct pg_synthesis_job *invalid_job = pg_synthesis_derivation(&synthesis, invalid);
+		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
+		assert(pg_synthesis_status(invalid_job) == PG_SYNTHESIS_REJECTED);
+		assert(pg_synthesis_status(jobs[5]) == PG_SYNTHESIS_DONE);
 		const size_t invalid_roots[] = {2, 4, 5};
 		for (size_t i = 0; i < 3; ++i) {
 			const struct pg_derivation_input *original = inputs[invalid_roots[i]];

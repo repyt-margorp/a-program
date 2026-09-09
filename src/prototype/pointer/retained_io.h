@@ -11,7 +11,7 @@
 int pg_retained_write(FILE *file, size_t count, const struct pg_derivation_input *const *roots,
 	const struct pg_effect_inference *effects, const struct pg_reduction_archive *reductions,
 	const struct pg_graph_codec *codec, void *owner);
-int pg_retained_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+int pg_retained_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
 	struct pg_effect_inference *effects, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_derivation_input *const **roots,
 	const struct pg_reduction_archive **reductions);
