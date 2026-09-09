@@ -128,6 +128,67 @@ capture-avoiding readback. Neither the runtime cursor nor a saved endpoint pair
 is that evidence by itself. General dispatcher coverage and proof transport
 remain required before a completed-checkpoint claim.
 
+#### Checkpoint Payload Audit After `f838488`
+
+The callback refactor is not the remaining implementation plan by itself.
+Inspection of the actual work records found the following transitive payloads.
+These are existing execution structures to relocate, not new Core node kinds.
+
+| Existing owner | State that must survive a retained-work save |
+| --- | --- |
+| `eval.c:pg_environment` | Binder, value closure and parent; preserve shared parent and captured-environment references. |
+| `eval.c:pg_argument` | Closure and next link, including tails shared with suspended callers. |
+| `eval.c:pg_eval_frame` | Caller, original arguments, demanded index or auxiliary mode, continuation and its state, parent, answer materialization, prefix cursor and partially copied prefix. |
+| `eval.c:readback_context` | Entries keyed by term/environment, their result or pending stage, child edges, fresh binder, environment cursor and pending order. Recreating only the root redoes completed substitution work. |
+| `eval.c:materialization` | Readback entries, selected entry, remaining arguments, partial spine and completion state. Both final WHNF output and demanded answers own one. |
+| `eval.c:pg_whnf_job` | Original input/policy, machine or completed receipt, output materialization and charged steps. |
+| `eval.c:pg_nf_job` | Original input/policy, current body/head/children, phase dependencies and explicit traversal stack, including suspended recheck work. |
+
+The ten auxiliary polling algorithms also have distinct payload obligations:
+
+| Algorithm (`*.c`) | References and progress beyond its descriptor |
+| --- | --- |
+| Fold (`computation`) | Head, label, payload, resumption, binder array, generated partial term and construction phase. |
+| Symmetry composition (`symmetry`) | Outer/inner semantic owners, argument, partially filled axes and position. |
+| Symmetry prefix (`symmetry`) | Owner, captured argument closure, partially filled axes and position. |
+| Action scope (`identity`) | Source/body scope, argument cursor, source cursor, count and selected boundary. |
+| Action result (`identity`) | Binding array, partially wrapped result, remaining bindings and discarded arguments. |
+| Scope analysis (`identity`) | `scope_visit`/`scope_shadow` DAG, pending order, source-binding index, used/order arrays, reference cursor and construction phase. |
+| Action body (`identity`) | A live `pg_comparison`, in addition to scope, answer, cursor and wrap phase. Its comparison is structural (`normalize == NULL`), not another evaluator. |
+| Higher scope (`identity`) | Source/cursor/body, fresh binders, arity, collection/wrapping position and phase. |
+| Family scope (`identity`) | Source/body scope, family cursor, discovered content, value and supplied count; force/field continuation belongs to the descriptor. |
+| Family result (`identity`) | Embedded action-result state, family cursor, collected arguments and collect/wrap/apply phase; force/field continuation belongs to the descriptor. |
+
+Implementation order for the remaining checkpoint work:
+
+1. Add graph-reference relocation for environment/argument links and shared
+   readback/comparison work. In `graph.c`, comparison includes `alpha_entry`
+   stages, normalized endpoints, binder-pair scope/cursor and pending order.
+   Retain logical entries; rebuild hash buckets from relocated pointer keys.
+   Bucket placement and arena addresses are not semantic state or evidence.
+2. Let the existing owning modules encode/restore their work payloads against
+   that relocation context. Reuse existing Term/semantic-owner codecs; do not
+   duplicate their payload formats in an evaluator-specific Term codec.
+   Graph allocator pointers are rebound to the destination owners, never
+   written as addresses. Keep shared binder identity across all payloads.
+3. Connect the resulting graph to source-image producer roots and the existing
+   scheduler. A source image saved before Solve, during materialization and
+   during each auxiliary algorithm must remain resumable through the same
+   transition functions. Omitting any of the above work is RECOMPUTE for that
+   component, not a completed CHECKPOINT implementation.
+4. Keep untrusted imported progress separate from accepted computation facts:
+   pointer relocation, index reconstruction and cursor bounds do not establish
+   reachability from the original input. Complete the retained reduction basis
+   and validate its prerequisites through ordinary computation/rule operations
+   before a restored result can issue accepted normalization evidence. Do not
+   expose a cache-seeding API that trusts restored `status` or `target` fields.
+
+Verification must compare fresh-process results and charged work, not just
+readback equivalence. Include shared environment tails, suspended fresh-binder
+readback, partial argument-prefix reconstruction, structural comparison inside
+Identity and an unsolved save immediately after restore. This audit changes
+the next implementation boundary; it does not mark any checkpoint gate done.
+
 ### September 9: Retaining Normalization Requests
 
 Code inspection found that REPL normalization requests are not selected roots
