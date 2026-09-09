@@ -26,6 +26,51 @@ The closed application `(\B : @ => B) A` succeeds at 175 steps.
 This is not an image relocation or replay defect. The required open-family
 fixture remains a failing acceptance gate, not an optional unsupported feature.
 
+Follow-up to `75013f2`: `check-open-families` now checks four required source
+cases, without an expected-failure exemption:
+
+| Source fixture | Observed outcome | Required distinction |
+| --- | --- | --- |
+| `closed-family.p` | DONE, 175 steps | Closed type computation already exposes RETURN |
+| `open-family.p` | UNSUPPORTED, 209 steps | An abstract family needs symbolic type use |
+| `applied-open-family.p` | UNSUPPORTED, 280 steps | Supplying a closed family does not bypass checking the open function body |
+| `sequenced-open-family.p` | UNSUPPORTED, 323 steps | Naming the future result in a block does not make dependent sequencing available |
+
+The last case has `T := F A; \x:T => x` in the block. The corresponding
+internal example already exists in `tests/synthesis.c`. Its UNSUPPORTED assertion
+records the current limitation, not a permanent language prohibition. The new
+acceptance fixture deliberately requires success so this gap cannot disappear
+behind a green component test.
+
+Two connected rule boundaries must be solved, not patched independently:
+
+- `synthesis.c:type_input` requests canonical result evidence before admitting a
+  domain. `evidence.c:pg_prove_return_value` is constructor inversion, not a
+  general operation for observing a neutral computation's result.
+- `evidence.c:pg_prove_fold` requires `constant_codomain`. If the block body
+  has classifier `Pi(T, F T)` depending on the preceding bound result `T`, ordinary
+  nondependent fold cannot give the entire block that classifier in the outer
+  context. A fresh result binder must not escape without a typing rule.
+
+Theory check: P. M. Pedrot and N. Tabareau, *The Fire Triangle: How to Mix
+Substitution, Dependent Elimination, and Effects*, POPL 2020, sections 3.5 and 7,
+[author PDF](https://www.xn--pdrot-bsa.fr/articles/dcbpv.pdf), accessed 2026-09-09.
+Their thunkability is a semantic compatibility property, not the act of wrapping
+a term in `thunk`. Figure 8 uses an additional judgement and type constructions;
+section 7 explicitly discusses extensional target theories and coherence
+difficulties for an intensional treatment. It therefore does not license an
+empty-row check followed by unconditional result extraction in this kernel.
+
+A Program-specific conclusion: a stronger stable-family contract is one route
+to value-type use, but is not the only possible language design. Suspending a
+dependent computation type is another route and needs its own formation and
+substitution rules; it cannot be implemented by placing a free result variable
+in the existing fold conclusion. Before selecting either route, write the
+application/closed-substitution equations and Act obligations together. Neither
+route may introduce equality reflection, a second value-side Lambda/APP Core,
+or an unstated totality promise on all existing pure arrows. These requirements
+refine the checklist below; no such new rule is claimed implemented here.
+
 - [x] Identify the first failing producer rather than inferring failure from
   aggregate status. Existing neutral-force tests deliberately reject extracting
   an arbitrary returned value from a neutral computation.

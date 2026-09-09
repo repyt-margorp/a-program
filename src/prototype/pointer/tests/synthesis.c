@@ -5859,6 +5859,8 @@ int main(void)
 		assert(pg_eval_readback(&machine, &graph) == expected);
 		pg_eval_destroy(&machine);
 	}
+	/* Current limitation, not a rejection rule: check-open-families requires
+	 * the standalone sequenced-open-family fixture to become accepted. */
 	complete(&synthesis, request(&synthesis, scope,
 		"main := \\f : A -> @ => { B := f x; \\y : B => y; };"), PG_SYNTHESIS_UNSUPPORTED);
 	const char *modules[] = {

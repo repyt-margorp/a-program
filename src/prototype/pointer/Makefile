@@ -9,7 +9,7 @@ check-examples: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 
 check-open-families: $(BUILD)/pointer-check
-	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(ROOT)tests/acceptance/open-family.p
+	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(ROOT)tests/acceptance/closed-family.p $(ROOT)tests/acceptance/open-family.p $(ROOT)tests/acceptance/applied-open-family.p $(ROOT)tests/acceptance/sequenced-open-family.p
 
 check-example-results: $(BUILD)/program_test
 	$(BUILD)/program_test $(ROOT)../../../examples/03_main.p Bool true true 0
