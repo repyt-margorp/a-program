@@ -5045,6 +5045,34 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	assert(pg_prove_constructor_scope_at(typing, admitted, successor, parameter_map,
 		pg_evidence_context(wrong_field)) == saved_map);
 	assert(!pg_prove_constructor_scope_at(typing, admitted, successor, parameter_map, NULL));
+	{
+		struct pg_synthesis pending;
+		assert(!pg_synthesis_init(&pending, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_derivation_input input;
+		assert(!pg_derivation_input_header(admitted, &input));
+		struct pg_synthesis_job **premises = pg_alloc(typing->graph, input.count * sizeof(*premises));
+		assert(!input.count || premises);
+		for (size_t i = 0; i < input.count; ++i)
+			premises[i] = pg_synthesis_evidence(&pending, pg_evidence_premise(admitted, i));
+		struct pg_synthesis_job *f = pg_synthesis_rule(&pending, &input, premises, NULL, NULL);
+		struct pg_synthesis_job *p = pg_synthesis_substitution(&pending, empty_context, empty_context, 0, NULL);
+		struct pg_synthesis_job *member = pg_synthesis_constructor_value_jobs(&pending, f, successor, p);
+		assert(member && !pg_synthesis_result(f) && !pg_synthesis_result(p));
+		assert(!pg_synthesis_result(member) && !pending.steps);
+		assert(pg_synthesis_constructor_value_jobs(&pending, f, successor, p) == member);
+		assert(!pg_synthesis_constructor_value_jobs(&synthesis, f, successor, p));
+		assert(pg_synthesis_constructor_scope_at(&pending, f, successor, p, NULL, saved_fields));
+		const struct pg_evidence *value = complete(&pending, member, PG_SYNTHESIS_DONE);
+		const struct pg_term *field = pg_reference(typing->graph, saved_fields->binder);
+		const struct pg_term *body = pg_application(typing->graph,
+			pg_reference(typing->graph, successor), field);
+		body = pg_application(typing->graph, pg_reference(typing->graph, &pg_return_operation), body);
+		assert(pg_evidence_subject(value)->core == pg_lambda(typing->graph, saved_fields->binder, body));
+		struct pg_synthesis_job *bad = pg_synthesis_constructor_value_jobs(&pending,
+			pg_synthesis_evidence(&pending, zero_value), successor, p);
+		complete(&pending, bad, PG_SYNTHESIS_REJECTED);
+		pg_synthesis_destroy(&pending);
+	}
 	for (unsigned mode = 0; mode < 4; ++mode) {
 		struct pg_synthesis restored;
 		assert(!pg_synthesis_init(&restored, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));

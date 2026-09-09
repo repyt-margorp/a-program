@@ -611,6 +611,11 @@ struct pg_synthesis_job *pg_synthesis_constructor_scope_at(struct pg_synthesis *
 struct pg_synthesis_job *pg_synthesis_constructor_value(struct pg_synthesis *synthesis,
 	const struct pg_evidence *formation, const struct pg_object *constructor,
 	const struct pg_evidence *parameters);
+/* Pending inputs use the same member worker. No formation or substitution is
+ * accepted by creating this request. Input jobs belong to this store. */
+struct pg_synthesis_job *pg_synthesis_constructor_value_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *formation, const struct pg_object *constructor,
+	struct pg_synthesis_job *parameters);
 struct pg_synthesis_job *pg_synthesis_constructor_value_at(struct pg_synthesis *synthesis,
 	const struct pg_evidence *formation, const struct pg_object *constructor,
 	const struct pg_evidence *parameters, const struct pg_context *prefix, const struct pg_context *end);

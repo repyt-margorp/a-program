@@ -878,6 +878,18 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Source-image transport does not yet encode these owner inputs. The normal
   source-image gate still reports the same four constructor/Match failures;
   this API integration does not close that remaining requirement.
+- [x] Replace the member worker's accepted-proof-only inputs with formation
+  and parameter-substitution producers. `pg_synthesis_constructor_value_jobs`
+  uses the existing member job and field-scope dependency; the accepted-input
+  API wraps its proofs as ordinary evidence producers. The member reads their
+  results only after scope validation succeeds. Tests keep both inputs pending,
+  attach saved fields before Solve, check the exact generated Core, reject an
+  invalid formation and reject foreign-store input jobs. This adds no job role,
+  Core tag or parallel acceptance state. Producer serialization and allocation
+  reconnection to source-created owners remain open; no wire version changes.
+  Normal and ASan/UBSan full synthesis pass; sanitized normalization and 758
+  prepared-module snapshots pass. The normal source-image gate retains the
+  same four exact-input failures, with the other cases passing.
 - [x] Add `pg_synthesis_constructor_scope_at` as allocation input to the same
   constructor-scope job, not another synthesis rule. Share the existing
   telescope binder-list storage/attachment helper (`context_allocation`). The

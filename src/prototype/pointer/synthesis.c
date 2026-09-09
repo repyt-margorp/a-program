@@ -1456,14 +1456,22 @@ struct pg_synthesis_job *pg_synthesis_constructor_scope_at(struct pg_synthesis *
 	return job;
 }
 
+struct pg_synthesis_job *pg_synthesis_constructor_value_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *formation, const struct pg_object *constructor,
+	struct pg_synthesis_job *parameters)
+{
+	if (!formation || formation->owner != synthesis->owner_key) return NULL;
+	if (!parameters || parameters->owner != synthesis->owner_key || !constructor) return NULL;
+	const void *inputs[] = {formation, constructor, parameters};
+	return request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs);
+}
+
 struct pg_synthesis_job *pg_synthesis_constructor_value(struct pg_synthesis *synthesis,
 	const struct pg_evidence *formation, const struct pg_object *constructor,
 	const struct pg_evidence *parameters)
 {
-	if (!pg_evidence_owned_by(formation, synthesis->typing)) return NULL;
-	if (!pg_evidence_owned_by(parameters, synthesis->typing) || !constructor) return NULL;
-	const void *inputs[] = {formation, constructor, parameters};
-	return request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs);
+	return pg_synthesis_constructor_value_jobs(synthesis, pg_synthesis_evidence(synthesis, formation),
+		constructor, pg_synthesis_evidence(synthesis, parameters));
 }
 
 struct pg_synthesis_job *pg_synthesis_constructor_value_at(struct pg_synthesis *synthesis,
@@ -3046,13 +3054,13 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 
 static void constructor_value_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	const struct pg_evidence *formation = job->inputs[0], *parameters = job->inputs[2];
+	struct pg_synthesis_job *formation_job = (void *)job->inputs[0], *parameter_job = (void *)job->inputs[2];
 	const struct pg_object *constructor = job->inputs[1];
-	if (!job->left) job->left = pg_synthesis_constructor_scope(synthesis,
-		pg_synthesis_evidence(synthesis, formation), constructor, pg_synthesis_evidence(synthesis, parameters));
+	if (!job->left) job->left = pg_synthesis_constructor_scope(synthesis, formation_job, constructor, parameter_job);
 	if (!job->left) goto error;
 	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	const struct pg_evidence *formation = formation_job->result, *parameters = parameter_job->result;
 	const struct pg_evidence *map = job->left->result, *context = pg_evidence_premise(map, 1);
 	size_t prefix = pg_evidence_premise_count(parameters) - 2;
 	if (!job->right) {
