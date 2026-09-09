@@ -1050,6 +1050,136 @@ static int work_frames_read(FILE *file, struct pg_graph *graph, size_t limit, si
 	return 0;
 }
 
+struct machine_image_test {
+	struct work_frames stack;
+	const struct pg_term *expected;
+	int framed;
+};
+
+static int machine_config_write(FILE *file, size_t count, const struct pg_eval_configuration *roots, void *opaque)
+{
+	struct machine_image_test *context = opaque;
+	if (context->framed) return work_frames_write(file, count, roots, &context->stack);
+	return pg_eval_configurations_write(file, count, roots, &pg_builtin_graph_codec, NULL);
+}
+
+static int machine_config_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_eval_configuration **roots, void *opaque)
+{
+	struct machine_image_test *context = opaque;
+	if (context->framed) return work_frames_read(file, graph, limit, name_limit, count, roots, &context->stack);
+	return pg_eval_configurations_read(file, graph, limit, name_limit, &pg_builtin_graph_codec, NULL, count, roots);
+}
+
+static int machine_payload_write(FILE *file, const struct pg_eval *machine, void *opaque)
+{
+	struct machine_image_test *context = opaque;
+	context->framed = machine->frames != NULL;
+	context->stack.frames = machine->frames;
+	context->stack.current = (struct pg_eval_configuration){machine->current, machine->arguments};
+	struct pg_eval_configuration roots[] = {context->stack.current, {{context->expected, NULL}, NULL}};
+	if (!machine->task) return machine_config_write(file, 2, roots, context);
+	assert(machine->task->operation == &pg_action_scope_operation);
+	return pg_action_scope_work_write_with(file, machine->task->state, 2, roots, machine_config_write, context);
+}
+
+static int machine_payload_read(FILE *file, struct pg_eval *machine,
+	const struct pg_eval_work_operation *operation, int frames, void *opaque)
+{
+	struct machine_image_test *context = opaque;
+	context->framed = frames;
+	context->stack = (struct work_frames){.arena = &machine->temporary};
+	size_t count;
+	const struct pg_eval_configuration *roots;
+	struct action_scope_work *work = NULL;
+	int status;
+	if (operation) {
+		assert(operation == &pg_action_scope_operation);
+		status = pg_action_scope_work_read_with(file, &machine->temporary, machine->output, 10000, 100,
+			machine_config_read, context, &work, &count, &roots);
+	} else status = machine_config_read(file, machine->output, 10000, 100, &count, &roots, context);
+	/* Attach first, so the envelope owns cleanup even if an inner task fails. */
+	machine->frames = context->stack.frames;
+	if (status || count != 2) return -1;
+	machine->current = roots[0].head;
+	machine->arguments = roots[0].arguments;
+	context->expected = roots[1].head.term;
+	return operation ? pg_eval_defer(machine, operation, work) : 0;
+}
+
+static void machine_envelope(void)
+{
+	const struct pg_eval_policy *policies[] = {&pg_beta_policy, &pg_pure_policy};
+	unsigned seen = 0;
+	for (size_t p = 0; p < 2; ++p) {
+		uint64_t total = 0;
+		for (uint64_t cut = 0; ; ++cut) {
+			struct pg_graph graph;
+			assert(!pg_graph_init(&graph));
+			const struct pg_object *x = pg_binder(&graph);
+			const struct pg_term *expected = pg_reference(&graph, pg_binder(&graph));
+			const struct pg_term *value = pg_application(&graph, pg_reference(&graph, &pg_thunk_operation), expected);
+			const struct pg_term *term = pg_identity_action(&graph, pg_lambda(&graph, x, pg_reference(&graph, x)));
+			for (size_t i = 0; i < 3; ++i) term = pg_application(&graph, term, value);
+			term = pg_application(&graph, pg_reference(&graph, &pg_force_operation), term);
+			if (!p) expected = term;
+			struct pg_eval machine;
+			pg_eval_init(&machine, term);
+			machine.output = &graph; machine.dispatch = policies[p]->dispatch;
+			int finished = pg_eval_advance(&machine, cut) == PG_EVAL_WHNF;
+			if (machine.task && machine.task->operation != &pg_action_scope_operation) {
+				pg_eval_destroy(&machine); pg_graph_destroy(&graph); continue;
+			}
+			seen |= finished ? 1u : 0;
+			seen |= machine.head_ready ? 2u : 0;
+			seen |= machine.frames ? 4u : 0;
+			seen |= machine.task ? 8u : 0;
+			struct machine_image_test context = {.expected = expected};
+			for (size_t round = 0; round < 2; ++round) {
+				FILE *file = tmpfile();
+				uint64_t steps = machine.steps;
+				enum pg_eval_status status = machine.status;
+				int ready = machine.head_ready;
+				assert(file && !pg_computation_machine_write_with(file, &machine, policies[p], machine_payload_write, &context));
+				pg_eval_destroy(&machine); pg_graph_destroy(&graph);
+				assert(!pg_graph_init(&graph));
+				rewind(file);
+				const struct pg_eval_policy *policy;
+				assert(!pg_computation_machine_read_with(file, &machine, &graph, 100, machine_payload_read, &context, &policy));
+				assert(policy == policies[p] && machine.steps == steps && machine.status == status && machine.head_ready == ready);
+				if (!cut) {
+					assert(!fseek(file, 16, SEEK_SET) && !pg_wire_write_u64(file, 3));
+					rewind(file);
+					struct pg_eval rejected;
+					assert(pg_computation_machine_read_with(file, &rejected, &graph, 100, machine_payload_read, &context, &policy));
+					assert(!policy && rejected.status == PG_EVAL_ERROR && !rejected.current.term && !rejected.task && !rejected.frames);
+					pg_eval_destroy(&rejected);
+				}
+				if (machine.frames) {
+					assert(!fseek(file, 16, SEEK_SET) && !pg_wire_write_u64(file, PG_EVAL_WHNF));
+					rewind(file);
+					struct pg_eval rejected;
+					struct machine_image_test bad = {0};
+					assert(pg_computation_machine_read_with(file, &rejected, &graph, 100,
+						machine_payload_read, &bad, &policy));
+					/* The payload was restored, but a live frame is not WHNF. */
+					assert(bad.expected && !policy && !rejected.task && !rejected.frames);
+					assert(rejected.status == PG_EVAL_ERROR && !rejected.current.term);
+					pg_eval_destroy(&rejected);
+				}
+				assert(!fclose(file));
+			}
+			assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF);
+			assert(pg_eval_readback(&machine, &graph) == context.expected);
+			if (!cut) total = machine.steps;
+			assert(machine.steps == total && cut < 10000);
+			pg_eval_destroy(&machine); pg_graph_destroy(&graph);
+			if (finished) break;
+		}
+	}
+	assert(seen == 15);
+}
+
 static void prefix_progress(int framed)
 {
 	uint64_t total = 0;
@@ -2074,6 +2204,7 @@ int main(int argc, char **argv)
 	}
 	assert(argc == 1);
 	policy_names();
+	machine_envelope();
 	work_names();
 	visit_forest();
 	shadow_forest();

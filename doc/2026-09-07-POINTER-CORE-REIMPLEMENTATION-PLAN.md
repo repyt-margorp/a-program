@@ -514,11 +514,29 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   work. Invalid center progress is rejected even after frame restoration, with
   explicit cleanup and no published work. Normal `check check-prepared-modules`
   (758 save boundaries) and ASan/UBSan `check-identity-io check-eval-io` pass.
-- [ ] Complete whole-machine task dispatch and header retention. The two
-  configuration-owning tasks can now include frame roots, but their individual
-  tests still register the original task and restore flags/steps themselves.
-  Source-image integration and accepted-progress provenance remain required;
-  these component codecs are not a complete CHECKPOINT implementation.
+- [x] Retain raw evaluator headers (`APGEVL1`): exact fixed-policy name, charged
+  steps, status, head-ready flag, frame presence and existing task name. An
+  owning callback embeds the configuration/frame/task payload in the same graph.
+  Reading initializes the final-address evaluator rather than copying a local
+  machine whose task may retain pointers to its temporary arena. It registers
+  ordinary work but does not poll or issue accepted normalization evidence.
+  Reject unknown identities, mismatched task/frame presence and invalid state
+  shapes; release attached work on failure. Unattached resources remain the
+  payload owner's cleanup responsibility.
+- [x] Verify the envelope under both fixed policies, empty and active task
+  states, actual Force frames, head readback and final WHNF. Two destroying
+  resaves preserve status/flags/steps without manually reinstating those fields;
+  the same evaluator finishes in exactly the unsuspended step count. Reject an
+  invalid status with empty outputs. Also reject WHNF with a live frame after
+  payload restoration, exercising destruction of attached resources. Normal
+  `check check-prepared-modules` (758 save boundaries) passes; after extending
+  that rejection case, regular and ASan/UBSan `check-identity-io check-eval-io`
+  were rerun successfully. State-shape checks are not reachability proofs.
+- [ ] Complete production payload dispatch for all twelve named tasks. The
+  envelope test owner currently covers no task and action-scope discovery; other
+  owner codecs are tested individually, not yet selected by one full reader.
+  Source-image integration, WHNF/NF job ownership and accepted-progress
+  provenance remain required. This is not full `.a` CHECKPOINT completion.
 
 - [x] Give all twelve existing work descriptors owner-local versioned names
   (Force/field variants share algorithms but have distinct resume descriptors).

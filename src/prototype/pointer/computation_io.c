@@ -13,6 +13,96 @@ static const char magic[8] = "APGCON\2";
 static const char fold_magic[8] = "APGFLD\1";
 static const char symmetry_magic[8] = "APGSYM\1";
 static const char prefix_magic[8] = "APGPRF\1";
+static const char machine_magic[8] = "APGEVL\1";
+
+static int machine_shape(const struct pg_eval *machine)
+{
+	if (!machine->current.term) return 0;
+	if (machine->status < PG_EVAL_PENDING || machine->status > PG_EVAL_ERROR) return 0;
+	if (machine->head_ready != 0 && machine->head_ready != 1) return 0;
+	if (machine->head_ready && !machine->frames) return 0;
+	if (machine->status == PG_EVAL_WHNF && (machine->frames || machine->task)) return 0;
+	return 1;
+}
+
+static int write_name(FILE *file, const char *name)
+{
+	size_t length = name ? strlen(name) : 0;
+	if (pg_wire_write_u64(file, length)) return -1;
+	return length && fwrite(name, 1, length, file) != length ? -1 : 0;
+}
+
+static int read_name(FILE *file, struct pg_graph *arena, size_t limit, const char **name)
+{
+	uint64_t length;
+	if (pg_wire_read_u64(file, &length) || length > limit || length >= SIZE_MAX) return -1;
+	char *text = pg_alloc(arena, (size_t)length + 1);
+	if (!text || fread(text, 1, (size_t)length, file) != length || memchr(text, 0, (size_t)length)) return -1;
+	text[length] = 0;
+	*name = text;
+	return 0;
+}
+
+int pg_computation_machine_write_with(FILE *file, const struct pg_eval *machine,
+	const struct pg_eval_policy *policy,
+	int (*write_payload)(FILE *, const struct pg_eval *, void *), void *owner)
+{
+	if (!file || !machine || !write_payload || !machine_shape(machine)) return -1;
+	const char *policy_name = pg_computation_policy_name(policy);
+	if (!policy_name || machine->dispatch != policy->dispatch) return -1;
+	const char *task_name = NULL;
+	if (machine->task) {
+		const struct pg_eval_work_operation *operation = machine->task->operation;
+		if (!operation || !operation->name || !machine->task->state) return -1;
+		if (pg_computation_work_resolve(operation->name) != operation) return -1;
+		task_name = operation->name;
+	}
+	if (fwrite(machine_magic, 1, 8, file) != 8
+		|| pg_wire_write_u64(file, machine->steps) || pg_wire_write_u64(file, machine->status)
+		|| pg_wire_write_u64(file, machine->head_ready) || pg_wire_write_u64(file, machine->frames != NULL)
+		|| write_name(file, policy_name) || write_name(file, task_name)) return -1;
+	return write_payload(file, machine, owner);
+}
+
+int pg_computation_machine_read_with(FILE *file, struct pg_eval *machine, struct pg_graph *output,
+	size_t name_limit,
+	int (*read_payload)(FILE *, struct pg_eval *, const struct pg_eval_work_operation *, int, void *), void *owner,
+	const struct pg_eval_policy **policy)
+{
+	if (!machine || !policy) return -1;
+	*policy = NULL;
+	pg_eval_init(machine, NULL);
+	if (!file || !output || !read_payload) return -1;
+	char header[8];
+	uint64_t steps, status, ready, frames;
+	const char *policy_name, *task_name;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, machine_magic, 8)
+		|| pg_wire_read_u64(file, &steps) || pg_wire_read_u64(file, &status)
+		|| pg_wire_read_u64(file, &ready) || pg_wire_read_u64(file, &frames)) goto failure;
+	if (status > PG_EVAL_ERROR || ready > 1 || frames > 1) goto failure;
+	if (read_name(file, &machine->temporary, name_limit, &policy_name)
+		|| read_name(file, &machine->temporary, name_limit, &task_name)) goto failure;
+	const struct pg_eval_policy *selected = pg_computation_policy_resolve(policy_name);
+	const struct pg_eval_work_operation *operation = *task_name ? pg_computation_work_resolve(task_name) : NULL;
+	if (!selected || (*task_name && !operation)) goto failure;
+	machine->output = output;
+	machine->dispatch = selected->dispatch;
+	machine->status = PG_EVAL_PENDING;
+	if (read_payload(file, machine, operation, (int)frames, owner)) goto failure;
+	if (machine->steps || machine->status != PG_EVAL_PENDING || machine->dispatch != selected->dispatch) goto failure;
+	if ((machine->frames != NULL) != (frames != 0)) goto failure;
+	if ((machine->task ? machine->task->operation : NULL) != operation) goto failure;
+	machine->steps = steps;
+	machine->status = (enum pg_eval_status)status;
+	machine->head_ready = (int)ready;
+	if (!machine_shape(machine)) goto failure;
+	*policy = selected;
+	return 0;
+failure:
+	pg_eval_destroy(machine);
+	pg_eval_init(machine, NULL);
+	return -1;
+}
 
 static int write_axes(FILE *file, const char *magic, size_t capacity, size_t position, const size_t *axes)
 {

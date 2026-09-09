@@ -3,6 +3,22 @@
 
 #include "eval_io.h"
 
+/* Raw evaluator envelope, not acceptance of saved progress. The fixed policy
+ * must match the machine dispatcher. Payload owners preserve the configuration,
+ * frames and optional task in one graph using the existing codecs. Reading
+ * initializes an unused machine at its final address: work may point into its
+ * temporary arena. The callback installs roots/frames and registers the named
+ * task without executing anything. On failure attached resources are destroyed;
+ * the owner must also release any restored resources not yet attached. Output
+ * graph allocations may remain. No WHNF receipt is issued from imported flags. */
+int pg_computation_machine_write_with(FILE *file, const struct pg_eval *machine,
+	const struct pg_eval_policy *policy,
+	int (*write_payload)(FILE *, const struct pg_eval *, void *), void *owner);
+int pg_computation_machine_read_with(FILE *file, struct pg_eval *machine, struct pg_graph *output,
+	size_t name_limit,
+	int (*read_payload)(FILE *, struct pg_eval *, const struct pg_eval_work_operation *, int, void *), void *owner,
+	const struct pg_eval_policy **policy);
+
 /* Raw production Demand stack, including named continuations and shared scope
  * ownership. No evaluation or evidence admission. Imported progress requires
  * provenance before execution can support accepted results. The caller retains
