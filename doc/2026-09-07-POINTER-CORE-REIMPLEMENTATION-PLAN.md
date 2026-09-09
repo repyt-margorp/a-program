@@ -7652,6 +7652,33 @@ After adding the arity rejection cases, `check` passed again. The dedicated
 `check-image-origins` gate was rerun and still fails with the nominal split
 diagnostic; these APIs alone do not satisfy N5 or whole-image acceptance.
 
+Next step after `df0fc24`: definition-scope allocation now precedes registration.
+`pg_synthesis_definition_scope` reconstructs the canonical scope from its parent
+and definition syntax without spending Solve steps or accepting any definition.
+All three registration callers use one factory. The scope inherits the nearest
+registration producer as a derived dependency, so source jobs wait for name
+registration without repeatedly walking their parent scopes. Nested registration
+itself waits for its parent's registration; no scope-local acceptance flag is
+introduced. Ordinary definition activation and whole-module checking remain
+separate from allocating the scope.
+
+`APGSRC4` adds a definition-scope environment record. Loading restores the parent
+and definition syntax and calls the same factory; it does not replay name lookup
+or import a mutable name index. Source roots in that scope can therefore be saved
+before registration, including roots alongside invalid or cyclic definitions.
+
+- [x] Preserve the distinction between a directly selected valid definition and
+  whole-module rejection/pending status across source-image restoration.
+- [x] Allocate shared definition scopes at zero Solve steps and reconstruct
+  source roots that refer to their local names; reject duplicate definitions.
+- [ ] Connect nominal declaration origin records to these reconstructed scopes
+  and the shared declaration codec. `check-image-origins` is still required.
+
+Validation: rebuilt `check`, `check-examples`, and `check-example-results` pass.
+The mixed nominal-origin gate still reports the same declaration split; the new
+environment record supplies its lexical prerequisite, not its completed fix.
+
+
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.
 The common `APGSRC` path above now supersedes that intermediate framing.

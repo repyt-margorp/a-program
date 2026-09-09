@@ -22,16 +22,23 @@ static void definition_boundaries(void)
 		const struct pg_source_scope *scope;
 		const struct pg_syntax *syntax;
 		assert(!pg_synthesis_source_input(&original->synthesis, original->root, &scope, &syntax));
+		const struct pg_source_scope *local = pg_synthesis_definition_scope(&original->synthesis, scope, syntax);
+		assert(local && !original->synthesis.steps);
+		assert(local == pg_synthesis_definition_scope(&original->synthesis, scope, syntax));
+		struct pg_source_environment environment;
+		assert(!pg_synthesis_environment_input(&original->synthesis, local, &environment));
+		assert(environment.parent == scope && environment.definitions == syntax);
 		struct pg_synthesis_job *roots[] = {original->root,
-			pg_synthesis_definition_request(&original->synthesis, scope, syntax, syntax->items[0].expression)};
+			pg_synthesis_definition_request(&original->synthesis, scope, syntax, syntax->items[0].expression),
+			parse(original, local, "{{ main:=good; }}.main")};
 		assert(roots[1]);
 		FILE *file = tmpfile();
-		assert(file && !pg_sources_write(file, &original->synthesis, 2, roots));
+		assert(file && !pg_sources_write(file, &original->synthesis, 3, roots));
 		rewind(file);
 		size_t count;
 		struct pg_synthesis_job *const *restored;
 		struct pg_program *loaded = pg_sources_read(file, 10000, &count, &restored);
-		assert(loaded && count == 2 && !loaded->synthesis.steps);
+		assert(loaded && count == 3 && !loaded->synthesis.steps);
 		struct pg_program *programs[] = {original, loaded};
 		for (size_t j = 0; j < 2; ++j) {
 			struct pg_synthesis *s = &programs[j]->synthesis;
@@ -39,6 +46,7 @@ static void definition_boundaries(void)
 			while (s->ready) { assert(s->steps < 10000); pg_synthesis_advance(s, 1); }
 			assert(pg_synthesis_status(selected[0]) == (i == 1 ? PG_SYNTHESIS_PENDING : PG_SYNTHESIS_REJECTED));
 			assert(pg_synthesis_status(selected[1]) == (i == 2 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+			assert(pg_synthesis_status(selected[2]) == (i == 2 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
 		}
 		assert(!fclose(file));
 		pg_program_destroy(loaded);

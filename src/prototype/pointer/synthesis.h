@@ -75,14 +75,19 @@ int pg_synthesis_definition_input(const struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_definition_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *definitions,
 	const struct pg_syntax *expression);
+/* Allocate the canonical lexical scope without registering or solving names.
+ * Consumers wait for the same registration worker; this is not acceptance. */
+const struct pg_source_scope *pg_synthesis_definition_scope(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *definitions);
 /* Closed lexical environment input, not a copied scope or another authority.
  * A parentless empty view denotes the ordinary root. At most one of producer,
- * module, exports and imports is present. Binder/definition-registration/
- * handler-local scopes require their own source reconstruction, not this view. */
+ * module, exports, imports and definitions is present. Binder and handler-local
+ * scopes require their own source reconstruction, not this view. */
 struct pg_source_environment {
 	const struct pg_source_scope *parent, *exports, *imports;
 	struct pg_token name;
 	struct pg_synthesis_job *producer, *module;
+	const struct pg_syntax *definitions;
 };
 int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_source_environment *input);

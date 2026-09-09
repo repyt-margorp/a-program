@@ -6,8 +6,8 @@
 #include "declaration_io.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\3";
-enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS };
+static const char magic[8] = "APGSRC\4";
+enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS };
 
 struct environment {
 	enum environment_kind kind;
@@ -32,6 +32,10 @@ static int environment(const struct pg_synthesis *synthesis, const struct pg_sou
 	struct pg_source_environment input;
 	if (pg_synthesis_environment_input(synthesis, scope, &input)) return -1;
 	*output = (struct environment){.parent = input.parent, .name = input.name};
+	if (input.definitions) {
+		output->kind = DEFINITIONS; output->definitions = input.definitions;
+		return 0;
+	}
 	struct pg_synthesis_job *job = input.producer ? input.producer : input.module;
 	if (job) {
 		output->kind = input.producer ? NAME : MODULE;
@@ -156,7 +160,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t w[8];
 		for (size_t j = 0; j < 8; ++j) if (pg_wire_read_u64(file, &w[j])) goto fail;
-		if (w[0] > IMPORTS || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
+		if (w[0] > DEFINITIONS || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
 		char *name = pg_alloc(graph, (size_t)w[6]);
 		if (!name || fread(name, 1, (size_t)w[6], file) != w[6]) goto fail;
 		remaining -= (size_t)w[6];
@@ -195,6 +199,12 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		if (r->kind == ROOT) {
 			if (parent || target || r->syntax || r->definitions || r->name.kind || r->name.length) goto fail;
 			scopes[i] = program->scope;
+			continue;
+		}
+		if (r->kind == DEFINITIONS) {
+			if (!parent || target || r->syntax || !r->definitions || r->name.kind || r->name.length) goto fail;
+			scopes[i] = pg_synthesis_definition_scope(s, parent, terms[r->definitions - 1]);
+			if (!scopes[i]) goto fail;
 			continue;
 		}
 		if (!parent || !target) goto fail;
