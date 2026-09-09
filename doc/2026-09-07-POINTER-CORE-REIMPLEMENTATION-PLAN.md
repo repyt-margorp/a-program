@@ -562,6 +562,24 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   job ownership. Retain/check completed-work evidence and pending-state provenance
   before allowing imported progress to justify accepted results. Raw machine
   dispatch alone is not full `.a` CHECKPOINT completion.
+- [x] Verify the common machine API across three independent processes: writer,
+  inert resaver and reader. Save a pending action-result task under a real Fold
+  frame, with shared caller/argument/expected-value roots. The resaver writes
+  before advancing anything; both readers then finish with budget-one calls to
+  the ordinary evaluator, checking exact total steps and the expected pointer.
+  This extends the previous component-only fresh-process tests to the full
+  raw machine envelope, descriptor dispatch, scope and configuration ownership.
+  Verification: `check check-prepared-modules` and normal/ASan/UBSan
+  `check-identity-io` pass. The same fixture is shared with all-cut frame tests.
+- [ ] Use one image-wide Term/object relocation ownership when saving multiple
+  WHNF/NF jobs. Current `pg_computation_machine_write` ends in an independent
+  `pg_graph_write_descriptors` table; the corresponding reader creates fresh
+  plain binders per table. Concatenating these machine images would duplicate
+  shared binder/nominal identities across jobs. Do not repair that by alpha
+  comparison, normalized equality or name-based interning. The store/image owner
+  must coordinate the relocation table and original job dependency edges.
+  Also preserve serializer-created temporary reference Terms until consumed:
+  collecting borrowed roots after a nested codec returns is not sufficient.
 - [x] Let scope-analysis work retain additional scope roots through its existing
   visit/shadow/scope ownership table. Its own embedded scope is the first root;
   references to it are rebound to the restored work's embedded address, not an

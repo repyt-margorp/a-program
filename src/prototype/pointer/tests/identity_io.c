@@ -1931,6 +1931,17 @@ static void result_ownership(void)
 	pg_graph_destroy(&graph);
 }
 
+static const struct pg_term *result_frame_fixture(struct pg_graph *graph, const struct pg_term **value)
+{
+	*value = pg_reference(graph, pg_binder(graph));
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x);
+	const struct pg_term *ret = pg_reference(graph, &pg_return_operation);
+	const struct pg_term *source = pg_identity_action(graph, pg_lambda(graph, x, pg_application(graph, ret, vx)));
+	for (size_t i = 0; i < 3; ++i) source = pg_application(graph, source, *value);
+	return pg_computation_fold(graph, source, pg_lambda(graph, x, vx), 0, NULL);
+}
+
 static void result_frames(void)
 {
 	uint64_t total = 0;
@@ -1938,13 +1949,8 @@ static void result_frames(void)
 	for (uint64_t cut = 0; ; ++cut) {
 		struct pg_graph graph, arena = {0};
 		assert(!pg_graph_init(&graph));
-		const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
-		const struct pg_object *x = pg_binder(&graph);
-		const struct pg_term *vx = pg_reference(&graph, x);
-		const struct pg_term *ret = pg_reference(&graph, &pg_return_operation);
-		const struct pg_term *source = pg_identity_action(&graph, pg_lambda(&graph, x, pg_application(&graph, ret, vx)));
-		for (size_t i = 0; i < 3; ++i) source = pg_application(&graph, source, value);
-		const struct pg_term *term = pg_computation_fold(&graph, source, pg_lambda(&graph, x, vx), 0, NULL);
+		const struct pg_term *value;
+		const struct pg_term *term = result_frame_fixture(&graph, &value);
 		struct pg_eval machine;
 		pg_computation_eval_init(&machine, &graph, term);
 		if (pg_eval_advance(&machine, cut) == PG_EVAL_WHNF) {
@@ -2383,8 +2389,82 @@ static void configuration_failure(void)
 	pg_graph_destroy(&graph);
 }
 
+static void write_machine_file(const char *path)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	const struct pg_term *value;
+	const struct pg_term *term = result_frame_fixture(&graph, &value);
+	struct pg_eval baseline, machine;
+	pg_computation_eval_init(&baseline, &graph, term);
+	assert(pg_eval_advance(&baseline, 10000) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&baseline, &graph) == value);
+	uint64_t total = baseline.steps;
+	pg_eval_destroy(&baseline);
+	pg_computation_eval_init(&machine, &graph, term);
+	while (!machine.task || machine.task->operation != &pg_action_result_operation) {
+		assert(pg_eval_advance(&machine, 1) == PG_EVAL_PENDING);
+		assert(machine.steps < total);
+	}
+	assert(machine.frames);
+	struct pg_eval_configuration roots[] = {{{value, NULL}, NULL}, {machine.current, machine.arguments}};
+	FILE *file = fopen(path, "wb");
+	assert(file && !pg_wire_write_u64(file, total));
+	assert(!pg_computation_machine_write(file, &machine, &pg_pure_policy, 2, roots, &pg_builtin_graph_codec, NULL));
+	assert(!fclose(file));
+	pg_eval_destroy(&machine);
+	pg_graph_destroy(&graph);
+}
+
+static void read_machine_file(const char *path, const char *resave)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	FILE *file = fopen(path, "rb");
+	uint64_t total;
+	assert(file && !pg_wire_read_u64(file, &total));
+	struct pg_eval machine;
+	const struct pg_eval_policy *policy;
+	size_t count;
+	const struct pg_eval_configuration *roots;
+	assert(!pg_computation_machine_read(file, &machine, &graph, 10000, 100,
+		&pg_builtin_graph_codec, NULL, &policy, &count, &roots));
+	assert(!fclose(file) && count == 2 && policy == &pg_pure_policy);
+	assert(machine.task && machine.task->operation == &pg_action_result_operation && machine.frames);
+	assert(machine.status == PG_EVAL_PENDING && machine.steps < total);
+	assert(machine.current.term == roots[1].head.term);
+	assert(machine.current.environment == roots[1].head.environment && machine.arguments == roots[1].arguments);
+	assert(machine.arguments->next->value.term == roots[0].head.term);
+	if (resave) {
+		file = fopen(resave, "wb");
+		assert(file && !pg_wire_write_u64(file, total));
+		assert(!pg_computation_machine_write(file, &machine, policy, count, roots, &pg_builtin_graph_codec, NULL));
+		assert(!fclose(file));
+	}
+	while (machine.status == PG_EVAL_PENDING) {
+		assert(machine.steps < total);
+		pg_eval_advance(&machine, 1);
+	}
+	assert(machine.status == PG_EVAL_WHNF && machine.steps == total);
+	assert(pg_eval_readback(&machine, &graph) == roots[0].head.term);
+	pg_eval_destroy(&machine);
+	pg_graph_destroy(&graph);
+}
+
 int main(int argc, char **argv)
 {
+	if (argc == 3 && !strcmp(argv[1], "write-machine")) {
+		write_machine_file(argv[2]);
+		return 0;
+	}
+	if (argc == 3 && !strcmp(argv[1], "read-machine")) {
+		read_machine_file(argv[2], NULL);
+		return 0;
+	}
+	if (argc == 4 && !strcmp(argv[1], "resave-machine")) {
+		read_machine_file(argv[2], argv[3]);
+		return 0;
+	}
 	if (argc == 3 && (!strcmp(argv[1], "write-handlers") || !strcmp(argv[1], "read-handlers"))) {
 		struct pg_graph graph;
 		struct pg_classifiers classifiers;
