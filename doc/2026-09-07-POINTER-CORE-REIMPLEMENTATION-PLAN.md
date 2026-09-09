@@ -812,6 +812,19 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   and operation selection are still supplied by the test, not a whole-machine
   checkpoint API. Normal/ASan/UBSan `check-identity-io check-eval-io` and
   `check check-prepared-modules` pass after the forwarding and rejection cases.
+- [x] Route Fold's final ordered Term roots through an owner callback, so frame
+  scopes can share their relocation table. The standalone APGFLD1 functions
+  delegate to the same implementation; no second task representation or changed
+  reduction rule. Extend every active-task cut above with a scope referencing
+  the work head, payload and initialized binder. Destroy/resave twice and check
+  exact pointer sharing, unchanged answers and step totals. Reject an owner
+  which returns too few roots without exposing a restored work object.
+  Verification: `check check-prepared-modules` and ASan/UBSan
+  `check-identity-io check-eval-io` pass, including the owner rejection case.
+- [ ] Wire this Fold/scopes composition into the production whole-machine task
+  dispatcher, together with the other eleven work descriptors. The component
+  tests above still supply machine flags and do not establish saved-progress
+  provenance or complete CHECKPOINT acceptance.
 
 | Algorithm (`*.c`) | References and progress beyond its descriptor |
 | --- | --- |

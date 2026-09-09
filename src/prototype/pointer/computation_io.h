@@ -50,6 +50,16 @@ int pg_computation_frames_read(FILE *file, struct pg_graph *arena, struct pg_gra
 	struct pg_eval_frame **frames, struct action_result_work **result, struct pg_eval_configuration *current);
 
 struct fold_work;
+/* The Term owner can retain frame scopes in the same relocation table.
+ * It owns cleanup of additional resources if outer validation fails. */
+int pg_fold_work_write_with(FILE *file, const struct fold_work *work,
+	size_t count, const struct pg_term *const *roots,
+	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner);
+int pg_fold_work_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit,
+	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
+		const struct pg_term *const **, void *), void *owner,
+	struct fold_work **work, size_t *count, const struct pg_term *const **roots);
 /* Raw Fold construction progress and extra owner roots in one Term table.
  * Original polling/resumption use the restored structure; no binder creation
  * or reduction occurs during reading. Same provenance restriction as above. */

@@ -284,10 +284,11 @@ static int fold_position(unsigned phase, size_t count, size_t position)
 	}
 }
 
-int pg_fold_work_write(FILE *file, const struct fold_work *work,
-	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+int pg_fold_work_write_with(FILE *file, const struct fold_work *work,
+	size_t count, const struct pg_term *const *roots,
+	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner)
 {
-	if (!file || !work || (count && !roots)) return -1;
+	if (!file || !work || !write_terms || (count && !roots)) return -1;
 	if (!fold_position(work->phase, work->count, work->position) || work->index > work->count) return -1;
 	size_t kept = work->phase == FOLD_BINDERS ? work->position : work->count + 2;
 	size_t base = work->phase == FOLD_BINDERS ? 4 : 6;
@@ -317,21 +318,23 @@ int pg_fold_work_write(FILE *file, const struct fold_work *work,
 	if (fwrite(fold_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, work->phase)
 		|| pg_wire_write_u64(file, work->count) || pg_wire_write_u64(file, work->index)
 		|| pg_wire_write_u64(file, work->position)) goto done;
-	status = pg_graph_write_descriptors(file, base + kept + count, all, codec, owner);
+	status = write_terms(file, base + kept + count, all, owner);
 done:
 	pg_graph_destroy(&temporary);
 	return status;
 }
 
-int pg_fold_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
-	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+int pg_fold_work_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit,
+	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
+		const struct pg_term *const **, void *), void *owner,
 	struct fold_work **work, size_t *count, const struct pg_term *const **roots)
 {
 	if (!work || !count || !roots) return -1;
 	*work = NULL;
 	*count = 0;
 	*roots = NULL;
-	if (!file || !arena || !output) return -1;
+	if (!file || !arena || !output || !read_terms) return -1;
 	char header[8];
 	uint64_t phase, arity, index, position;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, fold_magic, 8)
@@ -344,7 +347,7 @@ int pg_fold_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *outpu
 	size_t base = phase == FOLD_BINDERS ? 4 : 6;
 	size_t total;
 	const struct pg_term *const *all;
-	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &total, &all)) return -1;
+	if (read_terms(file, output, limit, name_limit, &total, &all, owner)) return -1;
 	if (total < base || kept > total - base) return -1;
 	if (all[3]->kind != PG_REFERENCE || all[3]->as.reference->kind != PG_SEMANTIC_OBJECT) return -1;
 	struct fold_work *candidate = pg_alloc(arena, sizeof(*candidate));
@@ -374,6 +377,35 @@ int pg_fold_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *outpu
 	*count = total - base - kept;
 	*roots = all + base + kept;
 	return 0;
+}
+
+static int descriptor_terms_write(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	struct configuration_owner *context = opaque;
+	return pg_graph_write_descriptors(file, count, roots, context->codec, context->owner);
+}
+
+static int descriptor_terms_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_term *const **roots, void *opaque)
+{
+	struct configuration_owner *context = opaque;
+	return pg_graph_read_descriptors(file, graph, limit, name_limit, context->codec, context->owner, count, roots);
+}
+
+int pg_fold_work_write(FILE *file, const struct fold_work *work,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	struct configuration_owner context = {codec, owner};
+	return pg_fold_work_write_with(file, work, count, roots, descriptor_terms_write, &context);
+}
+
+int pg_fold_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct fold_work **work, size_t *count, const struct pg_term *const **roots)
+{
+	struct configuration_owner context = {codec, owner};
+	return pg_fold_work_read_with(file, arena, output, limit, name_limit, descriptor_terms_read, &context,
+		work, count, roots);
 }
 
 struct frame_codec {
