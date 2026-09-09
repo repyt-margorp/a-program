@@ -136,11 +136,6 @@ void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)
 	machine->status = term ? PG_EVAL_PENDING : PG_EVAL_ERROR;
 }
 
-struct pg_eval_task {
-	const struct pg_eval_work_operation *operation;
-	void *state;
-};
-
 int pg_eval_defer(struct pg_eval *machine,
 	const struct pg_eval_work_operation *operation, void *state)
 {

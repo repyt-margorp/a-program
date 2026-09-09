@@ -45,6 +45,11 @@ struct pg_eval_frame {
 	struct pg_argument *first, *last;
 };
 
+struct pg_eval_task {
+	const struct pg_eval_work_operation *operation;
+	void *state;
+};
+
 /* Index maintenance only. Does not establish the validity of saved results. */
 int pg_readback_index(struct readback_context *context, struct readback_entry *entry);
 void pg_readback_destroy(struct readback_context *context);

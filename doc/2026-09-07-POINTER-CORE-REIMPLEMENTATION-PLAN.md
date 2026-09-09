@@ -464,6 +464,25 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Share the existing `fold_work` layout between computation and transport
+  through `computation_internal.h`; expose its original work-operation descriptor.
+  Move the existing evaluator task layout to `eval_internal.h` without changing
+  dispatch, polling, resumption or destruction. No new execution representation.
+- [x] Retain raw Fold construction progress (`APGFLD1`): phase, clause count and
+  selection, position, head/resumption/payload/label, initialized binder prefix,
+  and the partial result and response binder once created. Extra owner roots
+  use one descriptor table. Reading relocates these pointers without generating
+  missing binders or replaying construction. Invalid phase/index/position and
+  non-binder entries are rejected; successful raw transport is not evidence.
+- [x] Compose real suspended Fold work with caller configurations through the
+  existing owner callbacks. At every active-task cut, destroy both arenas and
+  resave twice. Both clause selections preserve exact returned pointers and
+  total steps; zero-clause forwarding preserves label/payload and resumption
+  behavior. All four construction phases are covered. Surrounding machine flags
+  and operation selection are still supplied by the test, not a whole-machine
+  checkpoint API. Normal/ASan/UBSan `check-identity-io check-eval-io` and
+  `check check-prepared-modules` pass after the forwarding and rejection cases.
+
 | Algorithm (`*.c`) | References and progress beyond its descriptor |
 | --- | --- |
 | Fold (`computation`) | Head, label, payload, resumption, binder array, generated partial term and construction phase. |

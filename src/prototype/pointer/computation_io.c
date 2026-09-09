@@ -1,5 +1,6 @@
 #include "computation_io.h"
 #include "computation.h"
+#include "computation_internal.h"
 #include "identity_internal.h"
 #include "eval_internal.h"
 #include "dag.h"
@@ -8,6 +9,110 @@
 #include <string.h>
 
 static const char magic[8] = "APGCON\1";
+static const char fold_magic[8] = "APGFLD\1";
+
+static int fold_position(unsigned phase, size_t count, size_t position)
+{
+	if (count > SIZE_MAX - 2 || position > count + 2) return 0;
+	switch (phase) {
+	case FOLD_BINDERS: case FOLD_ABSTRACT: return 1;
+	case FOLD_ARGUMENTS: return position >= 1;
+	case FOLD_CLAUSE: return position == count + 2;
+	default: return 0;
+	}
+}
+
+int pg_fold_work_write(FILE *file, const struct fold_work *work,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || !work || (count && !roots)) return -1;
+	if (!fold_position(work->phase, work->count, work->position) || work->index > work->count) return -1;
+	size_t kept = work->phase == FOLD_BINDERS ? work->position : work->count + 2;
+	size_t base = work->phase == FOLD_BINDERS ? 4 : 6;
+	size_t maximum = SIZE_MAX / sizeof(const struct pg_term *);
+	if (kept > maximum - base || count > maximum - base - kept) return -1;
+	if (!work->binders || !work->label || work->label->kind != PG_SEMANTIC_OBJECT) return -1;
+	if (base == 4 && (work->x || work->next)) return -1;
+	if (base == 6 && (!work->x || work->x->kind != PG_BINDER || !work->next)) return -1;
+	struct pg_graph temporary;
+	if (pg_graph_init(&temporary)) return -1;
+	int status = -1;
+	const struct pg_term **all = pg_alloc(&temporary, (base + kept + count) * sizeof(*all));
+	if (!all) goto done;
+	all[0] = work->head;
+	all[1] = work->resume;
+	all[2] = work->payload;
+	all[3] = pg_reference(&temporary, work->label);
+	if (base == 6) {
+		all[4] = work->next;
+		all[5] = pg_reference(&temporary, work->x);
+	}
+	for (size_t i = 0; i < kept; ++i) {
+		if (!work->binders[i] || work->binders[i]->kind != PG_BINDER) goto done;
+		all[base + i] = pg_reference(&temporary, work->binders[i]);
+	}
+	for (size_t i = 0; i < count; ++i) all[base + kept + i] = roots[i];
+	if (fwrite(fold_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, work->phase)
+		|| pg_wire_write_u64(file, work->count) || pg_wire_write_u64(file, work->index)
+		|| pg_wire_write_u64(file, work->position)) goto done;
+	status = pg_graph_write_descriptors(file, base + kept + count, all, codec, owner);
+done:
+	pg_graph_destroy(&temporary);
+	return status;
+}
+
+int pg_fold_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct fold_work **work, size_t *count, const struct pg_term *const **roots)
+{
+	if (!work || !count || !roots) return -1;
+	*work = NULL;
+	*count = 0;
+	*roots = NULL;
+	if (!file || !arena || !output) return -1;
+	char header[8];
+	uint64_t phase, arity, index, position;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, fold_magic, 8)
+		|| pg_wire_read_u64(file, &phase) || pg_wire_read_u64(file, &arity)
+		|| pg_wire_read_u64(file, &index) || pg_wire_read_u64(file, &position)) return -1;
+	if (phase > FOLD_ABSTRACT || arity > limit || arity > SIZE_MAX / sizeof(const struct pg_object *) - 2
+		|| index > arity || position > SIZE_MAX) return -1;
+	if (!fold_position((unsigned)phase, (size_t)arity, (size_t)position)) return -1;
+	size_t kept = phase == FOLD_BINDERS ? (size_t)position : (size_t)arity + 2;
+	size_t base = phase == FOLD_BINDERS ? 4 : 6;
+	size_t total;
+	const struct pg_term *const *all;
+	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &total, &all)) return -1;
+	if (total < base || kept > total - base) return -1;
+	if (all[3]->kind != PG_REFERENCE || all[3]->as.reference->kind != PG_SEMANTIC_OBJECT) return -1;
+	struct fold_work *candidate = pg_alloc(arena, sizeof(*candidate));
+	if (!candidate) return -1;
+	candidate->graph = output;
+	candidate->head = all[0];
+	candidate->resume = all[1];
+	candidate->payload = all[2];
+	candidate->label = all[3]->as.reference;
+	candidate->phase = phase;
+	candidate->count = (size_t)arity;
+	candidate->index = (size_t)index;
+	candidate->position = (size_t)position;
+	if (base == 6) {
+		if (all[5]->kind != PG_REFERENCE || all[5]->as.reference->kind != PG_BINDER) return -1;
+		candidate->next = all[4];
+		candidate->x = all[5]->as.reference;
+	}
+	candidate->binders = pg_alloc(arena, ((size_t)arity + 2) * sizeof(*candidate->binders));
+	if (!candidate->binders) return -1;
+	for (size_t i = 0; i < kept; ++i) {
+		const struct pg_term *term = all[base + i];
+		if (term->kind != PG_REFERENCE || term->as.reference->kind != PG_BINDER) return -1;
+		candidate->binders[i] = term->as.reference;
+	}
+	*work = candidate;
+	*count = total - base - kept;
+	*roots = all + base + kept;
+	return 0;
+}
 
 struct frame_codec {
 	struct pg_graph *arena;

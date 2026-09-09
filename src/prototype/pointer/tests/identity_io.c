@@ -3,6 +3,7 @@
 #include "eval_internal.h"
 #include "computation.h"
 #include "computation_io.h"
+#include "computation_internal.h"
 #include "classifier.h"
 #include "descriptor_io.h"
 #include "evidence.h"
@@ -181,6 +182,123 @@ static const struct pg_term *const *handler_fixture(struct pg_graph *graph)
 	roots[6] = pg_application(graph, swap, pg_application(graph, swap, v0));
 	roots[7] = pg_application(graph, pg_reference(graph, pg_symmetry_restore(graph, 0, NULL)), v1);
 	return roots;
+}
+
+struct fold_codec {
+	struct pg_graph *arena;
+	struct fold_work *work;
+};
+
+static int write_fold(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	struct fold_codec *context = opaque;
+	return pg_fold_work_write(file, context->work, count, roots, &pg_builtin_graph_codec, NULL);
+}
+
+static int read_fold(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_term *const **roots, void *opaque)
+{
+	struct fold_codec *context = opaque;
+	return pg_fold_work_read(file, context->arena, graph, limit, name_limit,
+		&pg_builtin_graph_codec, NULL, &context->work, count, roots);
+}
+
+static void fold_progress(void)
+{
+	unsigned phases = 0;
+	int rejected_positions = 0;
+	for (size_t selected = 0; selected < 3; ++selected) {
+		uint64_t total = 0;
+		for (uint64_t cut = 0; ; ++cut) {
+			struct pg_graph graph, arena = {0};
+			assert(!pg_graph_init(&graph));
+			const struct pg_term *const *roots = handler_fixture(&graph);
+			const struct pg_term *expected = roots[2 + selected], *input = roots[selected];
+			if (selected == 2) {
+				const struct pg_term *ret = pg_reference(&graph, &pg_return_operation);
+				const struct pg_term *payload = roots[2]->as.application.argument;
+				const struct pg_object *label = pg_operation_label_create(&graph, payload, payload);
+				expected = pg_computation_request(&graph, label, payload, ret);
+				input = pg_computation_fold(&graph, expected, ret, 0, NULL);
+			}
+			struct pg_eval machine;
+			pg_computation_eval_init(&machine, &graph, input);
+			if (pg_eval_advance(&machine, cut) == PG_EVAL_WHNF) {
+				assert(machine.steps == total);
+				pg_eval_destroy(&machine);
+				pg_graph_destroy(&graph);
+				break;
+			}
+			if (machine.task) {
+				assert(machine.task->operation == &pg_fold_work_operation && !machine.frames);
+				struct fold_codec context = {&arena, machine.task->state};
+				phases |= 1u << context.work->phase;
+				if (!rejected_positions) {
+					const long offsets[] = {8, 24, 32};
+					for (size_t i = 0; i < 3; ++i) {
+						FILE *bad = tmpfile();
+						assert(bad && !pg_fold_work_write(bad, context.work, 0, NULL, &pg_builtin_graph_codec, NULL));
+						assert(!fseek(bad, offsets[i], SEEK_SET) && !pg_wire_write_u64(bad, UINT64_MAX));
+						rewind(bad);
+						struct fold_work *rejected;
+						size_t count;
+						const struct pg_term *const *unused;
+						assert(pg_fold_work_read(bad, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL,
+							&rejected, &count, &unused));
+						assert(!rejected && !count && !unused && !fclose(bad));
+					}
+					rejected_positions = 1;
+				}
+				for (unsigned round = 0; round < 2; ++round) {
+					struct pg_eval_configuration inputs[] = {
+						{machine.current, machine.arguments}, {{expected, NULL}, NULL}
+					};
+					FILE *file = tmpfile();
+					assert(file && !pg_eval_configurations_write_with(file, 2, inputs, write_fold, &context));
+					uint64_t steps = machine.steps;
+					int ready = machine.head_ready;
+					pg_eval_destroy(&machine);
+					pg_graph_destroy(&arena);
+					pg_graph_destroy(&graph);
+					assert(!pg_graph_init(&graph));
+					rewind(file);
+					size_t n;
+					const struct pg_eval_configuration *restored;
+					assert(!pg_eval_configurations_read_with(file, &graph, 10000, 100, &n, &restored, read_fold, &context));
+					assert(n == 2 && !fclose(file));
+					assert(context.work->head == restored[0].head.term);
+					expected = restored[1].head.term;
+					pg_computation_eval_init(&machine, &graph, restored[0].head.term);
+					machine.current = restored[0].head;
+					machine.arguments = restored[0].arguments;
+					machine.steps = steps;
+					machine.head_ready = ready;
+					assert(!pg_eval_defer(&machine, &pg_fold_work_operation, context.work));
+				}
+			}
+			assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF);
+			const struct pg_term *result = pg_eval_readback(&machine, &graph);
+			if (selected < 2) assert(result == expected);
+			else {
+				const struct pg_object *label, *expected_label;
+				const struct pg_term *payload, *resume, *expected_payload, *expected_resume;
+				assert(pg_computation_request_view(result, &label, &payload, &resume));
+				assert(pg_computation_request_view(expected, &expected_label, &expected_payload, &expected_resume));
+				assert(label == expected_label && payload == expected_payload);
+				struct pg_eval continuation;
+				pg_computation_eval_init(&continuation, &graph, pg_application(&graph, resume, payload));
+				assert(pg_eval_advance(&continuation, 1000) == PG_EVAL_WHNF);
+				assert(pg_eval_readback(&continuation, &graph) == pg_application(&graph, expected_resume, payload));
+				pg_eval_destroy(&continuation);
+			}
+			if (!cut) total = machine.steps;
+			assert(machine.steps == total);
+			pg_eval_destroy(&machine);
+			pg_graph_destroy(&arena);
+			pg_graph_destroy(&graph);
+		}
+	}
+	assert(phases == 15);
 }
 
 static const struct pg_object *handler_head(const struct pg_term *term)
@@ -765,6 +883,7 @@ int main(int argc, char **argv)
 	scope_sharing();
 	continuation_frames();
 	force_frames();
+	fold_progress();
 	scope_frames();
 	all_cuts();
 	configurations();

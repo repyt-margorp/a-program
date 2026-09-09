@@ -1,4 +1,4 @@
-#include "computation.h"
+#include "computation_internal.h"
 #include "identity.h"
 #include "iadt.h"
 #include "symmetry.h"
@@ -244,15 +244,6 @@ static int force_answer(struct pg_eval *machine, const struct pg_term *answer, c
 	return body ? pg_eval_enter(machine, (struct pg_closure){body, NULL}, 1) : pg_identity_force(machine, answer);
 }
 
-struct fold_work {
-	struct pg_graph *graph;
-	const struct pg_term *head, *resume, *payload, *next;
-	const struct pg_object *label, *x;
-	const struct pg_object **binders;
-	size_t count, index, position;
-	enum { FOLD_BINDERS, FOLD_ARGUMENTS, FOLD_CLAUSE, FOLD_ABSTRACT } phase;
-};
-
 static int fold_poll(void *state)
 {
 	struct fold_work *work = state;
@@ -310,7 +301,7 @@ static void fold_destroy(void *state)
 	(void)state; /* The evaluator's temporary arena owns the work and binder array. */
 }
 
-static const struct pg_eval_work_operation fold_operation = {
+const struct pg_eval_work_operation pg_fold_work_operation = {
 	fold_poll, fold_resume, fold_destroy
 };
 
@@ -340,7 +331,7 @@ static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, co
 		.count = count, .index = clause_index(handler, label), .phase = FOLD_BINDERS};
 	work->binders = pg_alloc(&machine->temporary, (count + 2) * sizeof(*work->binders));
 	if (!work->binders) return -1;
-	return pg_eval_defer(machine, &fold_operation, work);
+	return pg_eval_defer(machine, &pg_fold_work_operation, work);
 }
 
 const struct pg_eval_continuation *pg_computation_continuation_resolve(const char *name)
