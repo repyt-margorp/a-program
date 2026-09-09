@@ -153,6 +153,30 @@ int main(int argc, char **argv)
 	uint64_t steps = split->synthesis.steps;
 	pg_synthesis_advance(&split->synthesis, 10000);
 	assert(split->synthesis.steps == steps);
+	const struct pg_evidence *proof = pg_synthesis_result(split->root);
+	assert(!pg_program_normalize(NULL, proof, 0));
+	assert(!pg_program_normalize(split, NULL, 0));
+	assert(!pg_program_normalize(whole, proof, 0));
+	const struct pg_evidence *empty = pg_prove_empty_context(&split->typing);
+	const struct pg_evidence *universe = pg_prove_universe(&split->typing, &split->classifiers, empty, 0);
+	const struct pg_object *binder = pg_binder(&split->graph);
+	const struct pg_evidence *open = pg_prove_context_extension(&split->typing, empty, binder, universe);
+	const struct pg_evidence *variable = pg_prove_variable(&split->typing, open, binder);
+	assert(variable && !pg_program_normalize(split, variable, 0));
+	struct pg_synthesis_job *whnf = pg_program_normalize(split, proof, 0);
+	struct pg_synthesis_job *nf = pg_program_normalize(split, proof, 1);
+	assert(whnf && nf && split->synthesis.steps == steps);
+	assert(whnf == pg_program_normalize(split, proof, 0));
+	assert(nf == pg_program_normalize(split, proof, 1));
+	for (size_t i = 0; pg_synthesis_status(nf) == PG_SYNTHESIS_PENDING; ++i) {
+		assert(i < 10000);
+		pg_synthesis_advance(&split->synthesis, 1);
+	}
+	assert(pg_synthesis_status(whnf) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_status(nf) == PG_SYNTHESIS_DONE);
+	assert(pg_evidence_judgement(pg_synthesis_result(nf)) == PG_JUDGEMENT_COMPUTATION);
+	assert(pg_evidence_subject(pg_synthesis_result(whnf))->core->kind == PG_LAMBDA);
+	assert(pg_program_normalize(split, proof, 1) == nf);
 	pg_program_destroy(split);
 	pg_program_destroy(whole);
 	const char *invalid = "main := ";

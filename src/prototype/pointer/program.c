@@ -52,6 +52,21 @@ fail:
 	return NULL;
 }
 
+struct pg_synthesis_job *pg_program_normalize(struct pg_program *program,
+	const struct pg_evidence *proof, int full)
+{
+	if (!program || !pg_evidence_owned_by(proof, &program->typing)) return NULL;
+	const struct pg_evidence *context = pg_prove_empty_context(&program->typing);
+	if (!context) return NULL;
+	if (pg_evidence_context(proof) != pg_evidence_context(context)) return NULL;
+	const struct pg_term *content;
+	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_VALUE &&
+		pg_thunk_type_view(pg_evidence_classifier(proof), &content))
+		proof = pg_prove_force(&program->typing, proof);
+	return full ? pg_synthesis_nf(&program->synthesis, context, proof)
+		: pg_synthesis_normalize(&program->synthesis, context, proof);
+}
+
 void pg_program_destroy(struct pg_program *program)
 {
 	if (!program) return;

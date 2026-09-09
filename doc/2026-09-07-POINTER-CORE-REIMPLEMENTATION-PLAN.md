@@ -33,6 +33,26 @@ prints agree. The expanded import CLI test passes normally and with ASan/UBSan.
 The full `check` passed before this diagnostic/test extension; the ordinary CLI
 suite also passes after it. No Main promotion or full-import completion is claimed.
 
+REPL preparation: CLI WHNF/NF now uses `pg_program_normalize`, which requests
+the existing pure normalization jobs from closed accepted evidence and forces a
+stored thunk once. It does not advance Solve or add another evaluation state.
+Program tests cover pending request creation, repeated request sharing, foreign
+and null evidence rejection, and the forced Lambda result. `program_test`,
+`tests/cli.sh` and `tests/import_cli.sh` pass.
+
+The first `--repl INPUT` loop now supports `:solve [N]`, `:status`, `:root N`, `:whnf NAME`,
+`:nf NAME`, `:save FILE.a`, and `:quit` against the same loaded Program. Commands
+use common normalization and image-writing paths. Save retains every initial
+image root, not just the selected one; it does not preserve effect execution.
+`tests/repl.sh` verifies batch/interactive NF agreement, pending resume/save and
+recovery after invalid commands. Root switching tests select a rejected root,
+reject out-of-range indices without changing selection, and preserve all eight
+fixture roots when resaving. This is a command REPL only: incremental source
+declarations, multiline input and scope extension remain missing.
+The command REPL passed the full normal `check` before root switching; the
+expanded root-switching script and Program API tests pass with ASan/UBSan.
+The normalization API also rejects accepted evidence in an open context.
+
 Recheck after `9639429`: the four family fixtures still report 175/209/280/323
 steps and only the closed control succeeds. Prepared-input persistence did not
 change admission. The following is a proposed typed-layer contract, not an

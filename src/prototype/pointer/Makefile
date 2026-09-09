@@ -42,6 +42,7 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	bash $(ROOT)tests/seed.sh $(BUILD)/seed_test
 	bash $(ROOT)tests/cli.sh $(BUILD)/pointer-check
 	bash $(ROOT)tests/import_cli.sh $(BUILD)/pointer-check
+	bash $(ROOT)tests/repl.sh $(BUILD)/pointer-check $(BUILD)/source_io_test
 	bash $(ROOT)tests/image_cli.sh $(BUILD)/source_io_test $(BUILD)/pointer-check
 	$(BUILD)/identity_test
 	$(BUILD)/iadt_test

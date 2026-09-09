@@ -112,6 +112,80 @@ static int steps_argument(const char *text, uint64_t *steps)
 	return 0;
 }
 
+static int report(struct pg_program *program, struct pg_synthesis_job *job)
+{
+	const char *status;
+	int result;
+	switch (pg_synthesis_status(job)) {
+	case PG_SYNTHESIS_DONE: status = "done"; result = 0; break;
+	case PG_SYNTHESIS_REJECTED: status = "rejected"; result = 1; break;
+	case PG_SYNTHESIS_PENDING: status = "pending"; result = 3; break;
+	case PG_SYNTHESIS_UNSUPPORTED: status = "unsupported"; result = 4; break;
+	default: status = "error"; result = 2; break;
+	}
+	printf("%s steps=%" PRIu64 "\n", status, program->synthesis.steps);
+	return result;
+}
+
+static int repl(struct pg_program *program, uint64_t budget,
+	size_t count, struct pg_synthesis_job *const *roots)
+{
+	char *line = NULL;
+	size_t capacity = 0;
+	for (;;) {
+		if (isatty(STDIN_FILENO)) { fputs("pointer> ", stdout); fflush(stdout); }
+		if (getline(&line, &capacity, stdin) < 0) break;
+		char *command = line + strspn(line, " \t\r\n");
+		char *argument = command + strcspn(command, " \t\r\n");
+		if (*argument) *argument++ = 0;
+		argument += strspn(argument, " \t\r\n");
+		size_t length = strlen(argument);
+		while (length && strchr(" \t\r\n", argument[length - 1])) argument[--length] = 0;
+		if (!*command) continue;
+		if (!strcmp(command, ":quit") && !*argument) break;
+		if (!strcmp(command, ":status") && !*argument) { report(program, program->root); continue; }
+		if (!strcmp(command, ":root")) {
+			uint64_t index;
+			if (steps_argument(argument, &index) || !index || index > count) {
+				fprintf(stderr, "root index must be in 1..%zu\n", count);
+				continue;
+			}
+			program->root = roots[index - 1];
+			report(program, program->root);
+			continue;
+		}
+		if (!strcmp(command, ":solve")) {
+			uint64_t steps = budget;
+			if (*argument && steps_argument(argument, &steps)) { fputs("invalid step budget\n", stderr); continue; }
+			pg_synthesis_advance(&program->synthesis, steps);
+			report(program, program->root);
+			continue;
+		}
+		if (!strcmp(command, ":save") && *argument) {
+			if (save_image(argument, &program->synthesis, count, roots)) fputs("cannot save input image\n", stderr);
+			else puts("saved");
+			continue;
+		}
+		if ((!strcmp(command, ":nf") || !strcmp(command, ":whnf")) && *argument) {
+			if (argument[length - 1] == ';') argument[--length] = 0;
+			struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = argument, .length = length};
+			if (pg_synthesis_status(program->root) != PG_SYNTHESIS_DONE) { report(program, program->root); continue; }
+			struct pg_synthesis_job *definition = pg_synthesis_definition(program->root, name);
+			if (!definition) { fputs("definition not found\n", stderr); continue; }
+			struct pg_synthesis_job *job = pg_program_normalize(program,
+				pg_synthesis_result(definition), !strcmp(command, ":nf"));
+			if (!job) { fputs("unsupported selected definition\n", stderr); continue; }
+			pg_synthesis_advance(&program->synthesis, budget);
+			if (!report(program, job) && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core))
+				fputs("cannot print result\n", stderr);
+			continue;
+		}
+		fputs("expected :solve [N], :status, :root N, :whnf NAME, :nf NAME, :save FILE.a or :quit\n", stderr);
+	}
+	free(line);
+	return ferror(stdin) ? 2 : 0;
+}
+
 int main(int argc, char **argv)
 {
 	uint64_t budget = 100000;
@@ -121,7 +195,7 @@ int main(int argc, char **argv)
 	const char *selected = NULL;
 	const char *save = NULL;
 	const char *imports = NULL;
-	int nf = 0, load = 0;
+	int nf = 0, load = 0, interactive = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "--steps")) {
 			if (++i == argc || steps_argument(argv[i], &budget) != 0) goto usage;
@@ -136,6 +210,7 @@ int main(int argc, char **argv)
 			if (imports || ++i == argc || !*argv[i] || !strcmp(argv[i], "-")) goto usage;
 			imports = argv[i];
 		} else if (!strcmp(argv[i], "--load")) load = 1;
+		else if (!strcmp(argv[i], "--repl")) interactive = 1;
 		else if (!strcmp(argv[i], "--save")) {
 			if (save || ++i == argc || !*argv[i] || !strcmp(argv[i], "-")) goto usage;
 			save = argv[i];
@@ -144,6 +219,7 @@ int main(int argc, char **argv)
 			puts("usage: pointer-check [--steps N] [--strict-thunks] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n"
 				"Checks with the pointer-core solver; does not execute host effects.\n"
 				"--imports FILE.p supplies exported symbols to explicit source imports.\n"
+				"--repl keeps the loaded Program for :solve, :whnf, :nf, :status, :root, :save, :quit.\n"
 				"--load reads an image (limit 1000000); its stored thunk policy applies.\n"
 				"--root N selects a loaded root (1-based, default 1); save retains every root.\n"
 				"--save stores RECOMPUTE inputs, including pending/rejected inputs, not progress.\n"
@@ -157,6 +233,7 @@ int main(int argc, char **argv)
 		}
 	}
 	if (!path || (load && (policy == PG_DEFINITION_EXPLICIT_THUNK || imports)) || (root_index && !load)) goto usage;
+	if (interactive && !strcmp(path, "-")) goto usage;
 	if (!root_index) root_index = 1;
 	FILE *file = !strcmp(path, "-") ? stdin : fopen(path, "rb");
 	if (!file) { fprintf(stderr, "%s: cannot open input\n", path); return 2; }
@@ -209,13 +286,7 @@ int main(int argc, char **argv)
 				return 1;
 			}
 			const struct pg_evidence *proof = pg_synthesis_result(definition);
-			const struct pg_term *content;
-			if (pg_evidence_judgement(proof) == PG_JUDGEMENT_VALUE &&
-				pg_thunk_type_view(pg_evidence_classifier(proof), &content))
-				proof = pg_prove_force(&program->typing, proof);
-			const struct pg_evidence *context = pg_prove_empty_context(&program->typing);
-			job = nf ? pg_synthesis_nf(&program->synthesis, context, proof)
-				: pg_synthesis_normalize(&program->synthesis, context, proof);
+			job = pg_program_normalize(program, proof, nf);
 			if (!job) {
 				fputs("unsupported selected definition\n", stderr);
 				pg_program_destroy(program);
@@ -224,21 +295,14 @@ int main(int argc, char **argv)
 			uint64_t remaining = program->synthesis.steps < budget ? budget - program->synthesis.steps : 0;
 			pg_synthesis_advance(&program->synthesis, remaining);
 		}
-		const char *status;
-		switch (pg_synthesis_status(job)) {
-		case PG_SYNTHESIS_DONE: status = "done"; result = 0; break;
-		case PG_SYNTHESIS_REJECTED: status = "rejected"; result = 1; break;
-		case PG_SYNTHESIS_PENDING: status = "pending"; result = 3; break;
-		case PG_SYNTHESIS_UNSUPPORTED: status = "unsupported"; result = 4; break;
-		default: status = "error"; result = 2; break;
-		}
-		printf("%s steps=%" PRIu64 "\n", status, program->synthesis.steps);
+		result = report(program, job);
 		if (selected && !result && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core)) result = 2;
 		if (save) {
 			if (save_image(save, &program->synthesis, count, roots)) {
 				fprintf(stderr, "%s: cannot save input image\n", save); result = 2;
 			}
 		}
+		if (interactive) result = repl(program, budget, count, roots);
 	}
 	pg_program_destroy(program);
 	return result;

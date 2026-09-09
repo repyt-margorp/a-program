@@ -36,6 +36,11 @@ struct pg_program *pg_program_create(const char *source, size_t length,
 struct pg_synthesis_job *pg_program_source(struct pg_program *program,
 	const struct pg_source_scope *scope, const char *source, size_t length,
 	struct pg_parser *diagnostic);
+/* Request pure WHNF (full == 0) or NF of closed accepted evidence. A stored
+ * thunk is forced once. Reuses ordinary synthesis jobs; does not advance Solve
+ * or execute host effects. Foreign/open/unaccepted evidence is rejected. */
+struct pg_synthesis_job *pg_program_normalize(struct pg_program *program,
+	const struct pg_evidence *proof, int full);
 void pg_program_destroy(struct pg_program *program);
 
 #endif
