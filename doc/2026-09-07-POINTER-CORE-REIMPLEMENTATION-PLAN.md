@@ -342,6 +342,23 @@ provenance before it can support accepted evidence, but reproducing the original
 search history is not required. Whole-machine retention remains incomplete until
 these owner payloads, deferred tasks and policy are connected together.
 
+- [x] Add raw `action_scope` ownership transport (`APGISC1`): source/body,
+  arity, allocation state and each initialized source/endpoint/relation binder.
+  Optional extra Term roots share one existing descriptor table. Missing binder
+  fields remain missing; importing does not run `prepare_bindings`, scope
+  analysis, or Act. This retains the actual existing structure, not another
+  typed scope representation. It does not establish accepted Identity evidence.
+- [x] Test unallocated bindings, all 16 field-presence masks, zero/nonzero arity,
+  repeated binder pointers across entries and source/extra-root sharing after
+  destroying and restoring both arenas twice. Unknown field masks fail with
+  cleared outputs. Normal and ASan/UBSan `check-identity-io` pass. The full
+  `check check-prepared-modules` regression run also passes; final allocation
+  simplification and zero-arity cases were rechecked by both component builds.
+- [ ] Compose these scope roots with Demand-frame/configuration roots and bind
+  each continuation to its existing implementation. Standalone scope transport
+  is not a runnable continuation checkpoint. Retain other owner payloads and
+  policy before claiming whole-machine or source-level CHECKPOINT support.
+
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
 | Algorithm (`*.c`) | References and progress beyond its descriptor |

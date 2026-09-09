@@ -18,6 +18,65 @@ static const struct pg_object *resolve(void *unused, const char *text)
 }
 static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
 
+static void scopes(void)
+{
+	/* Every nullable binding field is retained, not synthesized on import. */
+	for (int variant = 0; variant < 34; ++variant) {
+		int mask = variant % 17 - 1;
+		size_t arity = variant < 17 ? 2 : 0;
+		struct pg_graph graph, arena = {0};
+		assert(!pg_graph_init(&graph));
+		const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
+		const struct pg_term *body = pg_reference(&graph, x);
+		const struct pg_term *source = arity ? pg_lambda(&graph, x, pg_lambda(&graph, y, body)) : body;
+		struct action_binding bindings[2] = {0};
+		if (mask & 1) bindings[0].source = bindings[1].source = x;
+		for (size_t j = 0; j < 3; ++j)
+			if (mask & (2 << j)) bindings[0].arguments[j] = bindings[1].arguments[j] = y;
+		struct action_scope initial = {source, body, arity, mask < 0 ? NULL : bindings};
+		struct action_scope *scope = &initial;
+		const struct pg_term *extra[] = {source, body, pg_reference(&graph, y)};
+		const struct pg_term *const *roots = extra;
+		for (unsigned round = 0; round < 2; ++round) {
+			FILE *file = tmpfile();
+			assert(file && !pg_action_scope_write(file, scope, 3, roots, &codec, NULL));
+			pg_graph_destroy(&arena);
+			pg_graph_destroy(&graph);
+			assert(!pg_graph_init(&graph));
+			rewind(file);
+			size_t count;
+			assert(!pg_action_scope_read(file, &arena, &graph, 10000, 100, &codec, NULL, &scope, &count, &roots));
+			assert(count == 3 && scope->count == arity);
+			assert(scope->source == roots[0] && scope->body == roots[1]);
+			x = roots[1]->as.reference;
+			y = roots[2]->as.reference;
+			if (arity) {
+				assert(roots[0]->as.lambda.binder == x);
+				assert(roots[0]->as.lambda.body->as.lambda.binder == y);
+			} else assert(scope->source == scope->body);
+			assert((scope->bindings != NULL) == (mask >= 0));
+			for (size_t i = 0; scope->bindings && i < arity; ++i) {
+				assert(scope->bindings[i].source == ((mask & 1) ? x : NULL));
+				for (size_t j = 0; j < 3; ++j)
+					assert(scope->bindings[i].arguments[j] == ((mask & (2 << j)) ? y : NULL));
+			}
+			/* The stream cannot request a field outside action_binding. */
+			if (mask >= 0 && arity) {
+				assert(!fseek(file, 24, SEEK_SET) && !pg_wire_write_u64(file, 16));
+				rewind(file);
+				struct action_scope *rejected;
+				const struct pg_term *const *unused;
+				assert(pg_action_scope_read(file, &arena, &graph, 10000, 100, &codec, NULL,
+					&rejected, &count, &unused));
+				assert(!rejected && !count && !unused);
+			}
+			assert(!fclose(file));
+		}
+		pg_graph_destroy(&arena);
+		pg_graph_destroy(&graph);
+	}
+}
+
 static struct action_body_work *fixture(struct pg_graph *graph, struct pg_graph *arena, int different,
 	const struct pg_term **request, const struct pg_term **expected)
 {
@@ -265,6 +324,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
+	scopes();
 	all_cuts();
 	configurations();
 	configuration_failure();

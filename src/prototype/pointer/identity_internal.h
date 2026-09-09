@@ -27,6 +27,15 @@ struct action_body_work {
 
 extern const struct pg_eval_work_operation pg_action_body_operation;
 
+/* Raw scope ownership, including unallocated/partially prepared bindings.
+ * Extra Term roots use the same relocation table. No action or binder
+ * synthesis is performed while reading. Storage belongs to arena/output. */
+int pg_action_scope_write(FILE *file, const struct action_scope *scope,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
+int pg_action_scope_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct action_scope **scope, size_t *count, const struct pg_term *const **roots);
+
 /* Raw owner payload, not a full evaluator or accepted Identity evidence.
  * Extra roots share the comparison's relocation table. Restored work and its
  * binding array belong to arena, terms to output. Destroy via the operation

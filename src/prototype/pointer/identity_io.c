@@ -5,6 +5,96 @@
 #include <string.h>
 
 static const char magic[8] = "APGIBD\1";
+static const char scope_magic[8] = "APGISC\1";
+
+int pg_action_scope_write(FILE *file, const struct action_scope *scope,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || !scope || !scope->source || !scope->body || (count && !roots)) return -1;
+	size_t maximum = SIZE_MAX / sizeof(const struct pg_term *);
+	size_t retained = scope->bindings ? scope->count : 0;
+	if (retained > (maximum - 2) / 4 || count > maximum - 2 - 4 * retained) return -1;
+	struct pg_graph scratch;
+	if (pg_graph_init(&scratch)) return -1;
+	int status = -1;
+	const struct pg_term **all = pg_alloc(&scratch, (2 + 4 * retained + count) * sizeof(*all));
+	if (!all) goto done;
+	all[0] = scope->source;
+	all[1] = scope->body;
+	size_t total = 2;
+	if (fwrite(scope_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, scope->count)
+		|| pg_wire_write_u64(file, scope->bindings != NULL)) goto done;
+	for (size_t i = 0; scope->bindings && i < scope->count; ++i) {
+		const struct action_binding *binding = &scope->bindings[i];
+		const struct pg_object *fields[] = {binding->source,
+			binding->arguments[0], binding->arguments[1], binding->arguments[2]};
+		unsigned mask = 0;
+		for (size_t j = 0; j < 4; ++j) {
+			if (!fields[j]) continue;
+			if (fields[j]->kind != PG_BINDER) goto done;
+			mask |= 1u << j;
+			all[total] = pg_reference(&scratch, fields[j]);
+			if (!all[total++]) goto done;
+		}
+		if (pg_wire_write_u64(file, mask)) goto done;
+	}
+	for (size_t i = 0; i < count; ++i) all[total++] = roots[i];
+	status = pg_graph_write_descriptors(file, total, all, codec, owner);
+done:
+	pg_graph_destroy(&scratch);
+	return status;
+}
+
+int pg_action_scope_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct action_scope **scope, size_t *count, const struct pg_term *const **roots)
+{
+	if (!scope || !count || !roots) return -1;
+	*scope = NULL;
+	*count = 0;
+	*roots = NULL;
+	if (!file || !arena || !output) return -1;
+	char header[8];
+	uint64_t arity, allocated;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, scope_magic, 8)
+		|| pg_wire_read_u64(file, &arity) || pg_wire_read_u64(file, &allocated)) return -1;
+	if (arity > limit || arity > SIZE_MAX / sizeof(struct action_binding) || allocated > 1) return -1;
+	struct action_scope *candidate = pg_alloc(arena, sizeof(*candidate));
+	unsigned char *masks = pg_alloc(arena, (size_t)arity + 1);
+	if (!candidate || !masks) return -1;
+	candidate->count = (size_t)arity;
+	if (allocated) {
+		candidate->bindings = pg_alloc(arena, (size_t)arity * sizeof(*candidate->bindings));
+		if (!candidate->bindings) return -1;
+		for (size_t i = 0; i < arity; ++i) {
+			uint64_t mask;
+			if (pg_wire_read_u64(file, &mask) || mask > 15) return -1;
+			masks[i] = (unsigned char)mask;
+		}
+	}
+	size_t total;
+	const struct pg_term *const *all;
+	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &total, &all) || total < 2) return -1;
+	candidate->source = all[0];
+	candidate->body = all[1];
+	size_t position = 2;
+	for (size_t i = 0; allocated && i < arity; ++i) {
+		struct action_binding *binding = &candidate->bindings[i];
+		const struct pg_object **fields[] = {&binding->source,
+			&binding->arguments[0], &binding->arguments[1], &binding->arguments[2]};
+		for (size_t j = 0; j < 4; ++j) {
+			if (!(masks[i] & (1u << j))) continue;
+			if (position == total) return -1;
+			const struct pg_term *term = all[position++];
+			if (term->kind != PG_REFERENCE || term->as.reference->kind != PG_BINDER) return -1;
+			*fields[j] = term->as.reference;
+		}
+	}
+	*scope = candidate;
+	*count = total - position;
+	*roots = all + position;
+	return 0;
+}
 
 static size_t retained_bindings(const struct action_body_work *work)
 {
