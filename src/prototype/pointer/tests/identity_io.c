@@ -1,6 +1,10 @@
 #include "identity_internal.h"
 #include "eval_io.h"
 #include "eval_internal.h"
+#include "computation.h"
+#include "classifier.h"
+#include "descriptor_io.h"
+#include "evidence.h"
 #include "wire.h"
 
 #include <assert.h>
@@ -18,6 +22,98 @@ static const struct pg_object *resolve(void *unused, const char *text)
 	return pg_identity_resolve(text);
 }
 static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
+
+static const struct pg_term *const *handler_fixture(struct pg_graph *graph)
+{
+	const struct pg_term **roots = pg_alloc(graph, 6 * sizeof(*roots));
+	assert(roots);
+	const struct pg_object *a = pg_binder(graph), *k = pg_binder(graph);
+	const struct pg_term *v0 = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *v1 = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *ret = pg_reference(graph, &pg_return_operation);
+	roots[2] = pg_application(graph, ret, v0);
+	roots[3] = pg_application(graph, ret, v1);
+	/* Equal payload records must not merge generative operation identities. */
+	const struct pg_object *first = pg_operation_label_create(graph, v0, v0);
+	const struct pg_object *second = pg_operation_label_create(graph, v0, v0);
+	assert(first && second && first != second);
+	struct pg_operation_clause clauses[] = {
+		{second, pg_lambda(graph, a, pg_lambda(graph, k, roots[2]))},
+		{first, pg_lambda(graph, a, pg_lambda(graph, k, roots[3]))}
+	};
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_term *request = pg_computation_request(graph, clauses[i].label, v0, ret);
+		roots[i] = pg_computation_fold(graph, request, ret, 2, clauses);
+		assert(roots[i]);
+	}
+	roots[4] = roots[0];
+	roots[5] = pg_computation_fold(graph, roots[2], pg_lambda(graph, a, roots[3]), 0, NULL);
+	return roots;
+}
+
+static const struct pg_object *handler_head(const struct pg_term *term)
+{
+	while (term->kind == PG_APPLICATION) term = term->as.application.function;
+	assert(term->kind == PG_REFERENCE);
+	return term->as.reference;
+}
+
+static void check_handlers(struct pg_graph *graph, const struct pg_term *const *roots)
+{
+	assert(roots[0] == roots[4]);
+	const struct pg_object *object = handler_head(roots[0]);
+	assert(object == handler_head(roots[1]));
+	size_t count;
+	const struct pg_clause_position *positions;
+	assert(pg_computation_handler_view(object, &count, &positions) && count == 2);
+	assert(positions[0].label != positions[1].label);
+	assert(pg_computation_handler_restore(graph, count, positions) == object);
+	struct pg_clause_position reversed[] = {positions[1], positions[0]};
+	assert(pg_computation_handler_restore(graph, 2, reversed) == object);
+	assert(handler_head(roots[5]) == &pg_fold_operation);
+	for (size_t i = 0; i < 3; ++i) {
+		struct pg_eval machine;
+		pg_computation_eval_init(&machine, graph, roots[i < 2 ? i : 5]);
+		while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) assert(machine.steps < 1000);
+		assert(machine.status == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&machine, graph) == roots[i ? 3 : 2]);
+		pg_eval_destroy(&machine);
+	}
+	struct pg_clause_position invalid[] = {positions[0], positions[1]};
+	invalid[1].position = invalid[0].position;
+	assert(!pg_computation_handler_restore(graph, 2, invalid));
+	invalid[1] = positions[1];
+	invalid[1].label = invalid[0].label;
+	assert(!pg_computation_handler_restore(graph, 2, invalid));
+	invalid[1] = positions[1];
+	invalid[1].position = 2;
+	assert(!pg_computation_handler_restore(graph, 2, invalid));
+	assert(!pg_computation_handler_restore(graph, 0, NULL));
+	struct pg_operation_clause missing = {positions[0].label, NULL};
+	assert(!pg_computation_fold(graph, roots[2], roots[3], 1, &missing));
+}
+
+static void handlers(void)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	const struct pg_term *const *roots = handler_fixture(&graph);
+	for (size_t round = 0; round < 2; ++round) {
+		FILE *file = tmpfile();
+		assert(file && !pg_graph_write_descriptors(file, 6, roots, &pg_builtin_graph_codec, NULL));
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		struct pg_classifiers classifiers;
+		assert(!pg_classifiers_init(&classifiers, &graph));
+		rewind(file);
+		size_t count;
+		assert(!pg_graph_read_descriptors(file, &graph, 1000, 100, &pg_builtin_graph_codec, &classifiers, &count, &roots));
+		assert(count == 6 && !fclose(file));
+		check_handlers(&graph, roots);
+		pg_classifiers_destroy(&classifiers);
+	}
+	pg_graph_destroy(&graph);
+}
 
 struct scope_frame_codec {
 	struct pg_graph *arena;
@@ -411,6 +507,28 @@ static void configuration_failure(void)
 
 int main(int argc, char **argv)
 {
+	if (argc == 3 && (!strcmp(argv[1], "write-handlers") || !strcmp(argv[1], "read-handlers"))) {
+		struct pg_graph graph;
+		struct pg_classifiers classifiers;
+		assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+		if (!strcmp(argv[1], "write-handlers")) {
+			const struct pg_term *const *roots = handler_fixture(&graph);
+			FILE *file = fopen(argv[2], "wb");
+			assert(file && !pg_graph_write_descriptors(file, 6, roots, &pg_builtin_graph_codec, &classifiers));
+			assert(!fclose(file));
+		} else {
+			FILE *file = fopen(argv[2], "rb");
+			size_t count;
+			const struct pg_term *const *roots;
+			assert(file && !pg_graph_read_descriptors(file, &graph, 1000, 100,
+				&pg_builtin_graph_codec, &classifiers, &count, &roots));
+			assert(count == 6 && !fclose(file));
+			check_handlers(&graph, roots);
+		}
+		pg_classifiers_destroy(&classifiers);
+		pg_graph_destroy(&graph);
+		return 0;
+	}
 	if (argc == 3) {
 		struct pg_graph graph, arena = {0};
 		assert(!pg_graph_init(&graph));
@@ -446,6 +564,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
+	handlers();
 	scopes();
 	scope_frames();
 	all_cuts();

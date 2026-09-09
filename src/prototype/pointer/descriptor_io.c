@@ -23,6 +23,8 @@ static const char *descriptor_name(void *context, const struct pg_object *object
 	const struct pg_term *payload, *response;
 	const struct pg_data_layout *layout;
 	size_t position, arity;
+	const struct pg_clause_position *clauses;
+	if (pg_computation_handler_view(object, &arity, &clauses)) return "computation-handler/v1";
 	if (pg_data_layout_view(object)) return "data-layout/v1";
 	if (pg_data_constructor_view(object, &layout, &position, &arity)) return "data-constructor/v1";
 	if (pg_operation_label_types(object, &payload, &response)) return "operation-label/v1";
@@ -47,6 +49,13 @@ static int descriptor_child(void *context, struct pg_graph *scratch,
 	const struct pg_object *object, size_t index, const struct pg_term **child)
 {
 	(void)context;
+	size_t clause_count;
+	const struct pg_clause_position *clauses;
+	if (pg_computation_handler_view(object, &clause_count, &clauses)) {
+		if (index >= clause_count) return 0;
+		*child = pg_reference(scratch, clauses[index].label);
+		return *child ? 1 : -1;
+	}
 	if (pg_data_layout_view(object)) return 0;
 	const struct pg_data_layout *layout;
 	size_t position, arity;
@@ -72,6 +81,13 @@ static int descriptor_child(void *context, struct pg_graph *scratch,
 static int descriptor_scalar(void *context, const struct pg_object *object, size_t index, uint64_t *value)
 {
 	(void)context;
+	size_t clause_count;
+	const struct pg_clause_position *clauses;
+	if (pg_computation_handler_view(object, &clause_count, &clauses)) {
+		if (index >= clause_count) return 0;
+		*value = clauses[index].position;
+		return 1;
+	}
 	const struct pg_data_layout *layout = pg_data_layout_view(object);
 	size_t position, arity;
 	if (layout) {
@@ -90,6 +106,21 @@ static const struct pg_object *descriptor_restore(void *context, struct pg_graph
 	size_t scalar_count, const uint64_t *scalars)
 {
 	(void)context;
+	if (!strcmp(name, "computation-handler/v1")) {
+		if (!count || count != scalar_count || count > SIZE_MAX / sizeof(struct pg_clause_position)) return NULL;
+		struct pg_graph temporary = {0};
+		struct pg_clause_position *clauses = pg_alloc(&temporary, count * sizeof(*clauses));
+		const struct pg_object *result = NULL;
+		if (!clauses) goto clauses_done;
+		for (size_t i = 0; i < count; ++i) {
+			if (terms[i]->kind != PG_REFERENCE || scalars[i] >= count) goto clauses_done;
+			clauses[i] = (struct pg_clause_position){terms[i]->as.reference, (size_t)scalars[i]};
+		}
+		result = pg_computation_handler_restore(graph, count, clauses);
+	clauses_done:
+		pg_graph_destroy(&temporary);
+		return result;
+	}
 	if (!strcmp(name, "data-layout/v1")) {
 		if (count || scalar_count > SIZE_MAX / sizeof(size_t)) return NULL;
 		struct pg_graph temporary = {0};

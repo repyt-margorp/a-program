@@ -25,6 +25,17 @@ struct pg_operation_clause {
 	const struct pg_object *label;
 	const struct pg_term *body;
 };
+/* Raw Fold layout, distinct from a typed handler signature. The immutable
+ * array is pointer-sorted for lookup; position identifies the original clause.
+ * Transport preserves labels/positions and rebuilds the destination index. */
+struct pg_clause_position {
+	const struct pg_object *label;
+	size_t position;
+};
+int pg_computation_handler_view(const struct pg_object *object,
+	size_t *count, const struct pg_clause_position **positions);
+const struct pg_object *pg_computation_handler_restore(struct pg_graph *graph,
+	size_t count, const struct pg_clause_position *positions);
 /* Raw deep fold. Each clause is a computation over payload and a THUNK of
  * the recursively handled continuation. Clause code remains outside its own
  * handler. Zero clauses use pg_fold_operation. Duplicate labels are invalid.

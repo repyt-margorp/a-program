@@ -6,3 +6,5 @@ trap 'rm -rf "$directory"' EXIT HUP INT TERM
 "$binary"
 "$binary" write "$directory/work"
 "$binary" read "$directory/work"
+"$binary" write-handlers "$directory/handlers"
+"$binary" read-handlers "$directory/handlers"

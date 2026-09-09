@@ -403,17 +403,28 @@ these owner payloads, deferred tasks and policy are connected together.
   observe both kinds of suspended frame with NULL state, then verify the
   existing nested/captured and split-step results. Normal and sanitized Core
   execution pass. `check check-prepared-modules` also passes after this change.
-- [ ] Before connecting complete continuation images, complete ordinary graph
-  transport for the caller's semantic owners. `pg_builtin_graph_codec` has
-  typed handler signatures but not `computation.c:handler_entry` (the raw
-  multi-clause Fold layout); these are not interchangeable. Its name resolver
-  also does not yet delegate to the existing symmetry descriptor codec.
-  Serialize Fold labels with their original clause positions, rebuild the
-  pointer-sorted lookup through the existing handler interner after relocation,
-  and use one shared Term table for clause bodies and all other roots. Do not
-  add a frame-specific duplicate of this layout. Test raw multi-clause Fold
-  and symmetry round trips with execution after restoration, not just names or
-  source-level RECOMPUTE images. This precedes whole-machine checkpoint wiring.
+- [x] Add raw multi-clause Fold layout transport to `pg_builtin_graph_codec`
+  (`computation-handler/v1`), distinct from a typed handler signature. The
+  actual immutable label/position array is exposed read-only, not copied into
+  another owner structure. Relocation passes original clause positions to the
+  existing handler interner, which rebuilds destination pointer ordering. Clause
+  bodies and other roots share the ordinary Term table. Body validation remains
+  at `pg_computation_fold`; layout-only restoration creates no placeholder body.
+- [x] Test both clause selections after two arena-destroying round trips and in
+  a separate process. Generative labels with identical payload records remain
+  distinct. Repeated roots and handler owners stay shared; reversed transport
+  entry order recovers the same layout. Duplicate positions/labels, out-of-range
+  positions and missing source clause bodies are rejected. Zero-clause Fold
+  keeps its existing fixed descriptor. Normal/ASan/UBSan `check-identity-io`
+  pass, as does `check check-prepared-modules`; the strengthened generative-label
+  fixture was rechecked in both component builds after that regression run began.
+- [ ] Complete common graph transport for symmetry owners before connecting
+  whole-machine checkpoints. The standalone symmetry name codec exists, but
+  the built-in descriptor codec does not delegate to it. Do not impose its
+  existing 64-byte classifier-name scratch buffer on arbitrarily large axis
+  lists: use bounded scalar payloads or correctly sized owner storage and
+  reuse the existing permutation validation/interner. Verify evaluation after
+  relocation, not only names or source-level RECOMPUTE images.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 

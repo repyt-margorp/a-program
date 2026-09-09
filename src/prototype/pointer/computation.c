@@ -17,26 +17,22 @@ const struct pg_object pg_force_operation = {PG_SEMANTIC_OBJECT, &force_class};
 const struct pg_object pg_fold_operation = {PG_SEMANTIC_OBJECT, &fold_class};
 const struct pg_object pg_request_operation = {PG_SEMANTIC_OBJECT, &request_class};
 
-struct clause_position {
-	const struct pg_object *label;
-	size_t position;
-};
 struct handler_entry {
 	struct pg_object_entry base;
 	size_t count;
-	struct clause_position *positions;
+	struct pg_clause_position *positions;
 };
 
 static const struct handler_entry *handler_owner(const struct pg_object *object)
 {
-	if (object->owner != &handler_class) return NULL;
+	if (!object || object->owner != &handler_class) return NULL;
 	return (const struct handler_entry *)((const char *)object - offsetof(struct pg_object_entry, object));
 }
 
 static int compare_labels(const void *left, const void *right)
 {
-	uintptr_t a = (uintptr_t)((const struct clause_position *)left)->label;
-	uintptr_t b = (uintptr_t)((const struct clause_position *)right)->label;
+	uintptr_t a = (uintptr_t)((const struct pg_clause_position *)left)->label;
+	uintptr_t b = (uintptr_t)((const struct pg_clause_position *)right)->label;
 	return a < b ? -1 : a != b;
 }
 
@@ -44,10 +40,11 @@ static const struct pg_object *handler(struct pg_graph *graph,
 	size_t count, const struct pg_operation_clause *clauses)
 {
 	if (!count) return &pg_fold_operation;
+	if (count > SIZE_MAX / sizeof(struct pg_clause_position)) return NULL;
 	if (!graph->objects.capacity && pg_index_init(&graph->objects)) return NULL;
 	uint64_t hash = UINT64_C(1469598103934665603) ^ count;
 	for (size_t i = 0; i < count; ++i) {
-		if (!clauses[i].label || clauses[i].label->kind != PG_SEMANTIC_OBJECT || !clauses[i].body) return NULL;
+		if (!clauses[i].label || clauses[i].label->kind != PG_SEMANTIC_OBJECT) return NULL;
 		hash = (hash ^ (uintptr_t)clauses[i].label) * UINT64_C(1099511628211);
 	}
 	for (struct pg_index_entry *p = pg_index_candidates(&graph->objects, hash); p; p = p->next) {
@@ -59,10 +56,10 @@ static const struct pg_object *handler(struct pg_graph *graph,
 		if (i == count) return &base->object;
 	}
 	struct pg_graph temporary = {0};
-	struct clause_position *positions = pg_alloc(&temporary, count * sizeof(*positions));
+	struct pg_clause_position *positions = pg_alloc(&temporary, count * sizeof(*positions));
 	const struct pg_object *result = NULL;
 	if (!positions) goto done;
-	for (size_t i = 0; i < count; ++i) positions[i] = (struct clause_position){clauses[i].label, i};
+	for (size_t i = 0; i < count; ++i) positions[i] = (struct pg_clause_position){clauses[i].label, i};
 	qsort(positions, count, sizeof(*positions), compare_labels);
 	for (size_t i = 1; i < count; ++i) if (positions[i - 1].label == positions[i].label) goto done;
 	struct handler_entry *entry = pg_alloc(graph, sizeof(*entry));
@@ -78,12 +75,42 @@ done:
 	return result;
 }
 
+int pg_computation_handler_view(const struct pg_object *object,
+	size_t *count, const struct pg_clause_position **positions)
+{
+	const struct handler_entry *entry = handler_owner(object);
+	if (!entry) return 0;
+	*count = entry->count;
+	*positions = entry->positions;
+	return 1;
+}
+
+const struct pg_object *pg_computation_handler_restore(struct pg_graph *graph,
+	size_t count, const struct pg_clause_position *positions)
+{
+	if (!graph || !count || !positions || count > SIZE_MAX / sizeof(struct pg_operation_clause)) return NULL;
+	struct pg_graph temporary = {0};
+	struct pg_operation_clause *clauses = pg_alloc(&temporary, count * sizeof(*clauses));
+	const struct pg_object *result = NULL;
+	if (!clauses) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		size_t position = positions[i].position;
+		if (position >= count || !positions[i].label || clauses[position].label) goto done;
+		clauses[position].label = positions[i].label;
+	}
+	result = handler(graph, count, clauses);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_term *pg_computation_fold(struct pg_graph *graph,
 	const struct pg_term *source, const struct pg_term *returned,
 	size_t count, const struct pg_operation_clause *clauses)
 {
 	if (!graph || !source || !returned || (count && !clauses)) return NULL;
-	if (count > SIZE_MAX / sizeof(struct clause_position) - 2) return NULL;
+	if (count > SIZE_MAX / sizeof(struct pg_clause_position) - 2) return NULL;
+	for (size_t i = 0; i < count; ++i) if (!clauses[i].body) return NULL;
 	const struct pg_object *object = handler(graph, count, clauses);
 	if (!object) return NULL;
 	const struct pg_term *term = pg_application(graph, pg_reference(graph, object), source);
@@ -98,7 +125,7 @@ static size_t clause_index(const struct handler_entry *handler, const struct pg_
 	size_t low = 0, high = handler->count;
 	while (low < high) {
 		size_t middle = low + (high - low) / 2;
-		const struct clause_position *entry = &handler->positions[middle];
+		const struct pg_clause_position *entry = &handler->positions[middle];
 		if (entry->label == label) return entry->position;
 		if ((uintptr_t)entry->label < (uintptr_t)label) low = middle + 1;
 		else high = middle;
