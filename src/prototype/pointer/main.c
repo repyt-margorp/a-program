@@ -198,12 +198,8 @@ static int repl(struct pg_program *program, uint64_t budget,
 		if ((!strcmp(command, ":nf") || !strcmp(command, ":whnf")) && *argument) {
 			if (argument[length - 1] == ';') argument[--length] = 0;
 			struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = argument, .length = length};
-			if (pg_synthesis_status(program->root) != PG_SYNTHESIS_DONE) { report(program, program->root); continue; }
-			struct pg_synthesis_job *definition = pg_synthesis_definition(program->root, name);
-			if (!definition) { fputs("definition not found\n", stderr); continue; }
-			struct pg_synthesis_job *job = pg_program_normalize(program,
-				pg_synthesis_result(definition), !strcmp(command, ":nf"));
-			if (!job) { fputs("unsupported selected definition\n", stderr); continue; }
+			struct pg_synthesis_job *job = pg_program_evaluate_name(program, program->root, name, !strcmp(command, ":nf"));
+			if (!job) { fputs("definition not found\n", stderr); continue; }
 			if (retain_root(roots, job)) { result = 2; break; }
 			pg_synthesis_advance(&program->synthesis, budget);
 			if (!report(program, job) && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core))
@@ -309,25 +305,17 @@ int main(int argc, char **argv)
 	} else {
 		for (size_t i = 0; i < count; ++i)
 			if (retain_root(&retained, roots[i])) { result = 2; goto done; }
-		pg_synthesis_advance(&program->synthesis, budget);
 		struct pg_synthesis_job *job = program->root;
-		if (selected && pg_synthesis_status(job) == PG_SYNTHESIS_DONE) {
+		if (selected) {
 			struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = selected, .length = strlen(selected)};
-			struct pg_synthesis_job *definition = pg_synthesis_definition(job, name);
-			if (!definition) {
+			job = pg_program_evaluate_name(program, job, name, nf);
+			if (!job) {
 				fprintf(stderr, "%s: definition not found: %s\n", path, selected);
 				result = 1; goto done;
 			}
-			const struct pg_evidence *proof = pg_synthesis_result(definition);
-			job = pg_program_normalize(program, proof, nf);
-			if (!job) {
-				fputs("unsupported selected definition\n", stderr);
-				result = 4; goto done;
-			}
 			if (retain_root(&retained, job)) { result = 2; goto done; }
-			uint64_t remaining = program->synthesis.steps < budget ? budget - program->synthesis.steps : 0;
-			pg_synthesis_advance(&program->synthesis, remaining);
 		}
+		pg_synthesis_advance(&program->synthesis, budget);
 		result = report(program, job);
 		if (selected && !result && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core)) result = 2;
 		if (save) {

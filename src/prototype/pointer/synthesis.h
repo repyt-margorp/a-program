@@ -344,6 +344,10 @@ const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 const struct pg_source_scope *pg_synthesis_name_job(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	struct pg_synthesis_job *producer);
+/* Look up an already-published producer without Solve or evidence extraction.
+ * NULL is not a negative judgement; unprepared definitions may be absent. */
+struct pg_synthesis_job *pg_synthesis_named_input(const struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_token name);
 /* Supply the driver-selected symbol bindings for source import statements.
  * This closed scope is not made lexically visible: only explicit imports
  * introduce names. Its producers may be pending. No provider search, ambiguity
@@ -604,10 +608,15 @@ struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_normalize_jobs(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *proof,
 	enum pg_reduction_kind kind);
+/* Closed CLI-style demand: once typing is known, force a stored thunk once,
+ * otherwise normalize the subject unchanged. Still uses pure evaluation. */
+struct pg_synthesis_job *pg_synthesis_evaluate_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *proof,
+	enum pg_reduction_kind kind);
 /* Immutable request operands, for retention without serializing acceptance. */
 int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, struct pg_synthesis_job **context,
-	struct pg_synthesis_job **proof, enum pg_reduction_kind *kind);
+	struct pg_synthesis_job **proof, enum pg_reduction_kind *kind, int *force);
 /* Retain the term, normalize its derived classifier and explicitly convert
  * its typing evidence. No target type is supplied to synthesis or guessed
  * from Core. An unchanged classifier preserves the original proof. */

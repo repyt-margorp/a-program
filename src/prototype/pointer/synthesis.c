@@ -1523,19 +1523,32 @@ struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
 		pg_synthesis_evidence(synthesis, proof), PG_REDUCTION_NF);
 }
 
-struct pg_synthesis_job *pg_synthesis_normalize_jobs(struct pg_synthesis *synthesis,
+static struct pg_synthesis_job *normalization_request(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *proof,
-	enum pg_reduction_kind kind)
+	enum pg_reduction_kind kind, int force)
 {
 	if (!synthesis || !context || !proof) return NULL;
 	if (context->owner != synthesis->owner_key || proof->owner != synthesis->owner_key) return NULL;
 	if (kind != PG_REDUCTION_WHNF && kind != PG_REDUCTION_NF) return NULL;
-	return request_job(synthesis, kind == PG_REDUCTION_NF ? NF_JOB : NORMALIZATION_JOB, context, proof);
+	const void *inputs[] = {context, proof, force ? &pg_force_operation : NULL};
+	return request_inputs(synthesis, kind == PG_REDUCTION_NF ? NF_JOB : NORMALIZATION_JOB, 3, inputs);
+}
+
+struct pg_synthesis_job *pg_synthesis_normalize_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *proof, enum pg_reduction_kind kind)
+{
+	return normalization_request(synthesis, context, proof, kind, 0);
+}
+
+struct pg_synthesis_job *pg_synthesis_evaluate_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *proof, enum pg_reduction_kind kind)
+{
+	return normalization_request(synthesis, context, proof, kind, 1);
 }
 
 int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, struct pg_synthesis_job **context,
-	struct pg_synthesis_job **proof, enum pg_reduction_kind *kind)
+	struct pg_synthesis_job **proof, enum pg_reduction_kind *kind, int *force)
 {
 	if (!synthesis || !job || !context || !proof || !kind) return -1;
 	if (job->owner != synthesis->owner_key) return -1;
@@ -1543,6 +1556,7 @@ int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,
 	*context = (void *)job->inputs[0];
 	*proof = (void *)job->inputs[1];
 	*kind = job->role == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF;
+	if (force) *force = job->inputs[2] != NULL;
 	return 0;
 }
 
@@ -1922,6 +1936,14 @@ static struct source_reference lookup_scope(const struct pg_source_scope *scope,
 		return (struct source_reference){scope->binder, scope->producer, scope->exports, scope->module};
 	}
 	return (struct source_reference){0};
+}
+
+struct pg_synthesis_job *pg_synthesis_named_input(const struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_token name)
+{
+	if (!synthesis || !scope || scope->owner != synthesis->owner_key) return NULL;
+	if (name.kind != PG_TOKEN_IDENT || !name.text) return NULL;
+	return lookup_scope(scope, name).producer;
 }
 
 static struct pg_synthesis_job *operation_origin(const struct pg_synthesis_job *producer)
@@ -5575,13 +5597,22 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 			if (!typed_input(synthesis, context->result, proof->result)) {
 				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 			}
+			job->checking_term = proof->result;
+			if (job->inputs[2]) {
+				if (pg_evidence_context(context->result)) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+				const struct pg_term *content;
+				if (pg_evidence_judgement(proof->result) == PG_JUDGEMENT_VALUE &&
+					pg_thunk_type_view(pg_evidence_classifier(proof->result), &content))
+					job->checking_term = pg_prove_force(synthesis->typing, proof->result);
+				if (!job->checking_term) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+			}
 			job->stage = 1;
 		}
-		const struct pg_term *input = pg_evidence_subject(proof->result)->core;
+		const struct pg_term *input = pg_evidence_subject(job->checking_term)->core;
 		const struct pg_reduction_certificate *certificate = normalization_receipt(synthesis, job, input,
 			job->role == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
 		if (!certificate) return;
-		job->result = pg_prove_normalization(synthesis->typing, proof->result, certificate);
+		job->result = pg_prove_normalization(synthesis->typing, job->checking_term, certificate);
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;
 	}

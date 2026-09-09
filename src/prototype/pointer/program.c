@@ -107,15 +107,26 @@ struct pg_synthesis_job *pg_program_normalize(struct pg_program *program,
 	const struct pg_evidence *proof, int full)
 {
 	if (!program || !pg_evidence_owned_by(proof, &program->typing)) return NULL;
+	if (!pg_evidence_subject(proof)) return NULL;
 	const struct pg_evidence *context = pg_prove_empty_context(&program->typing);
 	if (!context) return NULL;
 	if (pg_evidence_context(proof) != pg_evidence_context(context)) return NULL;
-	const struct pg_term *content;
-	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_VALUE &&
-		pg_thunk_type_view(pg_evidence_classifier(proof), &content))
-		proof = pg_prove_force(&program->typing, proof);
-	return full ? pg_synthesis_nf(&program->synthesis, context, proof)
-		: pg_synthesis_normalize(&program->synthesis, context, proof);
+	return pg_synthesis_evaluate_jobs(&program->synthesis,
+		pg_synthesis_evidence(&program->synthesis, context), pg_synthesis_evidence(&program->synthesis, proof),
+		full ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
+}
+
+struct pg_synthesis_job *pg_program_evaluate_name(struct pg_program *program,
+	struct pg_synthesis_job *module, struct pg_token name, int full)
+{
+	if (!program) return NULL;
+	const struct pg_source_scope *exports = pg_program_exports(program,
+		pg_synthesis_root(&program->synthesis), module);
+	struct pg_synthesis_job *subject = pg_synthesis_named_input(&program->synthesis, exports, name);
+	if (!subject) return NULL;
+	return pg_synthesis_evaluate_jobs(&program->synthesis,
+		pg_synthesis_evidence(&program->synthesis, pg_prove_empty_context(&program->typing)),
+		subject, full ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
 }
 
 void pg_program_destroy(struct pg_program *program)

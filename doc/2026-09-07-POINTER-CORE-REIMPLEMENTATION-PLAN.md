@@ -35,9 +35,10 @@ or weaken endpoint validation to serialize the latter as the former.
 - [x] Retain created CLI/REPL normalization requests alongside source roots, preserving
   selected-module behavior. Test save before/through/after normalization and
   unsolved resave, including invalid premises and split budgets.
-- [ ] Permit a named CLI/REPL request before the source producer is accepted.
-  Currently selection/one-time forcing still requires its accepted classifier;
-  a zero-budget source invocation does not yet retain the requested `--nf NAME`.
+- [x] Permit a named CLI/REPL request before the source producer is accepted.
+  Select a whole-module-checked named producer without Solve, then decide
+  one-time forcing after its classifier is accepted. Zero-budget invocations
+  retain `--nf NAME`/`--whnf NAME`, rather than saving only the source root.
 - [ ] Retain reusable evaluator progress/results for full CHECKPOINT support.
   Merely retaining request recipes is still RECOMPUTE, not work retention.
 
@@ -74,6 +75,21 @@ resume root 2, return to source root 1, and append/load another source root.
 This retains inputs, not evaluator progress, and does not close N5.
 The full normal `check` and the expanded REPL test under ASan/UBSan pass after
 this driver change. Main promotion remains gated by the original N0-N7 scope.
+
+Pre-synthesis request connection: normalization retains an optional closed
+one-time thunk demand using the same WHNF/NF roles and evaluator. Context and
+subject premises are checked before this demand; already-raw computations and
+non-thunk values remain unchanged. `pg_program_normalize` and named requests
+share that path. No speculative classifier, new Core tag or expected type is
+introduced. APGSRC11 adds modes 3/4 for demanded WHNF/NF to the existing record;
+modes 1/2 retain raw normalization. Earlier formats are rejected explicitly.
+The expanded image fixture checks all four modes at each save boundary, and
+the CLI fixture covers source budget zero, separate-process root-2 resume,
+REPL budget zero, and rejection of a good selection with a bad module sibling.
+Verification: `check check-prepared-modules` passes after this connection;
+the four-mode image boundary test and expanded REPL test pass with ASan/UBSan.
+The producer-based demand does not retain evaluator transitions or establish
+open-family admission, general Acc/IF8, or completion of the higher theory.
 
 ### September 9: Reusing Prepared Public Scopes
 

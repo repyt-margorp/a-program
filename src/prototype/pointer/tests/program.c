@@ -28,9 +28,9 @@ static void pending_normalization(void)
 	assert(nf == pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF));
 	struct pg_synthesis_job *c, *proof;
 	enum pg_reduction_kind kind;
-	assert(!pg_synthesis_normalization_input(&p->synthesis, nf, &c, &proof, &kind));
+	assert(!pg_synthesis_normalization_input(&p->synthesis, nf, &c, &proof, &kind, NULL));
 	assert(c == context && proof == p->root && kind == PG_REDUCTION_NF);
-	assert(pg_synthesis_normalization_input(&p->synthesis, p->root, &c, &proof, &kind));
+	assert(pg_synthesis_normalization_input(&p->synthesis, p->root, &c, &proof, &kind, NULL));
 	struct pg_synthesis_job *invalid = pg_synthesis_normalize_jobs(&p->synthesis, p->root, p->root, PG_REDUCTION_NF);
 	assert(invalid && !pg_synthesis_result(nf));
 	while (p->synthesis.ready) {

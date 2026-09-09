@@ -43,6 +43,10 @@ struct pg_synthesis_job *pg_program_source(struct pg_program *program,
  * or execute host effects. Foreign/open/unaccepted evidence is rejected. */
 struct pg_synthesis_job *pg_program_normalize(struct pg_program *program,
 	const struct pg_evidence *proof, int full);
+/* Closed named demand, prepared before Solve. Uses whole-module-checked
+ * exported producers, then forces a stored thunk once after typing. */
+struct pg_synthesis_job *pg_program_evaluate_name(struct pg_program *program,
+	struct pg_synthesis_job *module, struct pg_token name, int full);
 /* Publish a source module's local assignments over parent, without Solve.
  * Each name refers to a whole-module-checked selection, not copied evidence.
  * Imports are not re-exported. The returned scope and syntax are graph-owned. */

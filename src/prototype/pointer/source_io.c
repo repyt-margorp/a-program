@@ -6,7 +6,7 @@
 #include "declaration_io.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\12";
+static const char magic[8] = "APGSRC\13";
 enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING };
 
 struct environment {
@@ -71,7 +71,7 @@ static int producer_child(void *owner, const void *key, size_t index, const void
 	const struct pg_source_scope *scope;
 	struct pg_synthesis_job *term, *type;
 	enum pg_reduction_kind kind;
-	if (!pg_synthesis_normalization_input(*synthesis, key, &term, &type, &kind)) {
+	if (!pg_synthesis_normalization_input(*synthesis, key, &term, &type, &kind, NULL)) {
 		if (index >= 2) return 0;
 		*result = index ? type : term;
 		return 1;
@@ -115,7 +115,7 @@ static int collect_inputs(struct origin_collection *c)
 			const struct pg_syntax *term, *definitions;
 			struct pg_synthesis_job *left, *right;
 			enum pg_reduction_kind kind;
-			if (!pg_synthesis_normalization_input(c->synthesis, producer->key, &left, &right, &kind))
+			if (!pg_synthesis_normalization_input(c->synthesis, producer->key, &left, &right, &kind, NULL))
 				continue;
 			if (!pg_synthesis_source_expect_input(c->synthesis, producer->key, &scope, &left, &right)) {
 				if (pg_dag_add(c->scopes, scope)) return -1;
@@ -265,9 +265,11 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 		struct pg_synthesis_job *left, *right;
 		uint64_t words[6] = {0};
 		enum pg_reduction_kind kind;
-		if (!pg_synthesis_normalization_input(synthesis, node->key, &left, &right, &kind)) {
+		int force;
+		if (!pg_synthesis_normalization_input(synthesis, node->key, &left, &right, &kind, &force)) {
 			/* No scope: syntax slot carries the request mode, not an AST ID. */
 			words[1] = kind == PG_REDUCTION_NF ? 2 : 1;
+			if (force) words[1] += 2;
 			words[4] = id(&producers, left); words[5] = id(&producers, right);
 		} else if (!pg_synthesis_source_expect_input(synthesis, node->key, &scope, &left, &right)) {
 			words[0] = id(&scopes, scope);
@@ -423,9 +425,11 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 			if (left || right) {
 				if (!left || left > i || !right || right > i || definitions || rule) goto fail;
 				if (!scope) {
-					if (syntax != 1 && syntax != 2) goto fail;
-					producers[i] = pg_synthesis_normalize_jobs(&program->synthesis,
-						producers[left - 1], producers[right - 1], syntax == 2 ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
+					if (syntax < 1 || syntax > 4) goto fail;
+					enum pg_reduction_kind kind = syntax % 2 ? PG_REDUCTION_WHNF : PG_REDUCTION_NF;
+					producers[i] = syntax > 2 ? pg_synthesis_evaluate_jobs(&program->synthesis,
+						producers[left - 1], producers[right - 1], kind)
+						: pg_synthesis_normalize_jobs(&program->synthesis, producers[left - 1], producers[right - 1], kind);
 				} else {
 					if (scope > n || syntax) goto fail;
 					producers[i] = pg_synthesis_source_expect(&program->synthesis, scopes[scope - 1],

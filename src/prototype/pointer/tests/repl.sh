@@ -71,4 +71,22 @@ grep -q '^done steps=' "$directory/status"
 "$binary" --nf id --save "$directory/batch-nf.a" "$directory/source.p" > "$directory/status"
 "$binary" --load --root 2 "$directory/batch-nf.a" > "$directory/status"
 grep -q '^done steps=' "$directory/status"
-echo 'repl: shared normalization, pending resume/save, retained request roots and command recovery passed'
+for mode in nf whnf; do
+	code=0
+	"$binary" --steps 0 --"$mode" id --save "$directory/early.a" "$directory/source.p" > "$directory/status" || code=$?
+	test "$code" = 3
+	grep -q '^pending steps=0$' "$directory/status"
+	"$binary" --load --root 2 "$directory/early.a" > "$directory/status"
+	grep -q '^done steps=' "$directory/status"
+	printf ':%s id\n:save %s\n:quit\n' "$mode" "$directory/early-repl.a" |
+		"$binary" --steps 0 --repl "$directory/source.p" > "$directory/status"
+	test "$(grep -c '^pending steps=0$' "$directory/status")" = 2
+	"$binary" --load --root 2 "$directory/early-repl.a" > "$directory/status"
+	grep -q '^done steps=' "$directory/status"
+done
+printf '%s\n' 'id:=&(\A:@ => \x:A => x); bad:=missing;' > "$directory/bad-sibling.p"
+code=0
+"$binary" --nf id "$directory/bad-sibling.p" > "$directory/status" || code=$?
+test "$code" = 1
+grep -q '^rejected steps=' "$directory/status"
+echo 'repl: shared normalization, pre-synthesis requests, pending resume/save and command recovery passed'

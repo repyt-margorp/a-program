@@ -52,13 +52,16 @@ static void normalization_requests(void)
 	struct pg_synthesis_job *nf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF);
 	struct pg_synthesis_job *whnf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_WHNF);
 	struct pg_synthesis_job *bad = pg_synthesis_normalize_jobs(&p->synthesis, p->root, p->root, PG_REDUCTION_NF);
-	struct pg_synthesis_job *roots[] = {p->root, nf, whnf, nf, bad};
+	struct pg_synthesis_job *roots[] = {p->root, nf, whnf, nf, bad,
+		pg_synthesis_evaluate_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF),
+		pg_synthesis_evaluate_jobs(&p->synthesis, context, p->root, PG_REDUCTION_WHNF)};
+	assert(roots[5] && roots[6]);
 	assert(context && nf && whnf && bad);
 	for (size_t snapshot = 0;; ++snapshot) {
 		assert(snapshot < 1000);
 		FILE *file = tmpfile();
 		uint64_t steps = p->synthesis.steps;
-		assert(file && !pg_sources_write(file, &p->synthesis, 5, roots));
+		assert(file && !pg_sources_write(file, &p->synthesis, 7, roots));
 		assert(p->synthesis.steps == steps);
 		if (!snapshot) invalid_normalization_mode(file);
 		for (size_t round = 0; round < 2; ++round) {
@@ -66,13 +69,18 @@ static void normalization_requests(void)
 			size_t count;
 			struct pg_synthesis_job *const *loaded;
 			struct pg_program *q = pg_sources_read(file, 100000, &count, &loaded);
-			assert(q && count == 5 && !q->synthesis.steps && loaded[1] == loaded[3]);
+			assert(q && count == 7 && !q->synthesis.steps && loaded[1] == loaded[3]);
 			struct pg_synthesis_job *c, *term;
 			enum pg_reduction_kind kind;
-			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[1], &c, &term, &kind));
+			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[1], &c, &term, &kind, NULL));
 			assert(term == loaded[0] && kind == PG_REDUCTION_NF);
-			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[2], &c, &term, &kind));
+			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[2], &c, &term, &kind, NULL));
 			assert(term == loaded[0] && kind == PG_REDUCTION_WHNF);
+			int force;
+			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[5], &c, &term, &kind, &force));
+			assert(term == loaded[0] && kind == PG_REDUCTION_NF && force);
+			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[6], &c, &term, &kind, &force));
+			assert(term == loaded[0] && kind == PG_REDUCTION_WHNF && force);
 			for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(loaded[i]));
 			FILE *again = tmpfile();
 			assert(again && !pg_sources_write(again, &q->synthesis, count, loaded));
@@ -86,6 +94,9 @@ static void normalization_requests(void)
 			if (pg_synthesis_status(nf) == PG_SYNTHESIS_DONE)
 				assert(pg_alpha_equal(pg_evidence_subject(pg_synthesis_result(nf))->core,
 					pg_evidence_subject(pg_synthesis_result(loaded[1]))->core) == 1);
+			assert(pg_evidence_judgement(pg_synthesis_result(loaded[1])) == PG_JUDGEMENT_VALUE);
+			assert(pg_evidence_judgement(pg_synthesis_result(loaded[5])) == PG_JUDGEMENT_COMPUTATION);
+			assert(pg_evidence_judgement(pg_synthesis_result(loaded[6])) == PG_JUDGEMENT_COMPUTATION);
 			pg_program_destroy(q);
 			assert(!fclose(file));
 			file = again;
