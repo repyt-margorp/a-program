@@ -798,7 +798,7 @@ static void scope_sharing(void)
 		scopes[0]->bindings[0].arguments[0] = extra[0]->as.reference;
 		assert(scopes[1]->bindings[0].arguments[0] == extra[0]->as.reference);
 		assert(!scopes[4]->bindings[0].arguments[0]);
-		assert(!fseek(file, 32, SEEK_SET) && !pg_wire_write_u64(file, 1001));
+		assert(!fseek(file, 40, SEEK_SET) && !pg_wire_write_u64(file, 1001));
 		rewind(file);
 		struct action_scope *const *rejected;
 		const struct pg_term *const *unused;
@@ -812,6 +812,82 @@ static void scope_sharing(void)
 	size_t n, count;
 	assert(!pg_action_scopes_read(file, &arena, &graph, 1000, 100, &codec, NULL, &n, &scopes, &count, &extra));
 	assert(!n && count == 1 && !fclose(file));
+	pg_graph_destroy(&arena);
+	pg_graph_destroy(&graph);
+}
+
+static void result_ownership(void)
+{
+	struct pg_graph graph, arena = {0};
+	assert(!pg_graph_init(&graph));
+	const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
+	struct action_binding bindings[2] = {0};
+	for (size_t i = 0; i < 2; ++i) {
+		bindings[i].source = pg_binder(&graph);
+		for (size_t j = 0; j < 3; ++j) bindings[i].arguments[j] = pg_binder(&graph);
+	}
+	struct action_scope initial = {value, value, 2, bindings};
+	struct action_scope *scope = &initial;
+	struct action_result_work original = {&graph, bindings, pg_reference(&graph, bindings[0].arguments[2]), 1, 1};
+	struct action_result_work *work = &original;
+	unsigned polls = 0;
+	for (;;) {
+		for (unsigned round = 0; round < 2; ++round) {
+			FILE *file = tmpfile();
+			const struct action_scope *input = scope;
+			assert(file && !pg_action_ownership_write(file, 1, &input, work, 1, &value, &codec, NULL));
+			pg_graph_destroy(&arena);
+			pg_graph_destroy(&graph);
+			assert(!pg_graph_init(&graph));
+			rewind(file);
+			size_t n, count;
+			struct action_scope *const *scopes;
+			const struct pg_term *const *roots;
+			assert(!pg_action_ownership_read(file, &arena, &graph, 1000, 100, &codec, NULL, &n, &scopes, &work, &count, &roots));
+			assert(n == 1 && count == 1 && work);
+			scope = scopes[0];
+			value = roots[0];
+			assert(scope->bindings == work->bindings && scope->count == 2);
+			assert(scope->source == value && work->graph == &graph);
+			/* The scope retains the tail after the result cursor has passed it. */
+			assert(work->bindings[1].arguments[2] == scope->bindings[1].arguments[2]);
+			rewind(file);
+			struct action_scope *const *rejected;
+			const struct pg_term *const *unused;
+			assert(pg_action_scopes_read(file, &arena, &graph, 1000, 100, &codec, NULL, &n, &rejected, &count, &unused));
+			assert(!n && !rejected && !count && !unused && !fclose(file));
+		}
+		int status = pg_action_result_operation.poll(work);
+		++polls;
+		assert(status >= 0 && polls <= 3);
+		if (status) break;
+	}
+	assert(polls == 3);
+	FILE *file = tmpfile();
+	assert(file && !pg_action_ownership_write(file, 0, NULL, work, 1, &value, &codec, NULL));
+	pg_graph_destroy(&arena);
+	pg_graph_destroy(&graph);
+	assert(!pg_graph_init(&graph));
+	rewind(file);
+	size_t n, count;
+	struct action_scope *const *scopes;
+	const struct pg_term *const *roots;
+	assert(!pg_action_ownership_read(file, &arena, &graph, 1000, 100, &codec, NULL, &n, &scopes, &work, &count, &roots));
+	assert(!n && count == 1 && work->bindings && !work->remaining);
+	value = roots[0];
+	assert(!fseek(file, 56, SEEK_SET) && !pg_wire_write_u64(file, 2));
+	rewind(file);
+	struct action_result_work *rejected;
+	assert(pg_action_ownership_read(file, &arena, &graph, 1000, 100, &codec, NULL, &n, &scopes, &rejected, &count, &roots));
+	assert(!n && !scopes && !rejected && !count && !roots && !fclose(file));
+	const struct pg_term *term = work->result;
+	const struct pg_term *other = pg_reference(&graph, pg_binder(&graph));
+	for (size_t i = 0; i < 4; ++i) term = pg_application(&graph, term, i == 2 ? value : other);
+	struct pg_eval machine;
+	pg_eval_init(&machine, term);
+	assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, &graph) == value);
+	pg_eval_destroy(&machine);
 	pg_graph_destroy(&arena);
 	pg_graph_destroy(&graph);
 }
@@ -860,7 +936,7 @@ static void scopes(void)
 			}
 			/* The stream cannot request a field outside action_binding. */
 			if (mask >= 0 && arity) {
-				assert(!fseek(file, 64, SEEK_SET) && !pg_wire_write_u64(file, 16));
+				assert(!fseek(file, 72, SEEK_SET) && !pg_wire_write_u64(file, 16));
 				rewind(file);
 				struct action_scope *rejected;
 				const struct pg_term *const *unused;
@@ -1147,6 +1223,7 @@ int main(int argc, char **argv)
 	handlers();
 	scopes();
 	scope_sharing();
+	result_ownership();
 	continuation_frames();
 	force_frames();
 	fold_progress();

@@ -15,6 +15,22 @@ struct action_scope {
 	size_t count;
 	struct action_binding *bindings;
 };
+struct action_result_work {
+	struct pg_graph *graph;
+	const struct action_binding *bindings;
+	const struct pg_term *result;
+	size_t remaining;
+	size_t discard;
+};
+extern const struct pg_eval_work_operation pg_action_result_operation;
+/* One live result task can share binding storage with any retained scopes. */
+int pg_action_ownership_write(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
+	const struct action_result_work *result, size_t count, const struct pg_term *const *roots,
+	const struct pg_graph_codec *codec, void *owner);
+int pg_action_ownership_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	size_t *scope_count, struct action_scope *const **scopes, struct action_result_work **result,
+	size_t *count, const struct pg_term *const **roots);
 struct action_body_work {
 	struct pg_comparison comparison;
 	struct action_scope scope;

@@ -222,14 +222,6 @@ static const struct pg_term *body_endpoint(struct pg_graph *graph,
 	return result;
 }
 
-struct action_result_work {
-	struct pg_graph *graph;
-	const struct action_binding *bindings;
-	const struct pg_term *result;
-	size_t remaining;
-	size_t discard;
-};
-
 static int action_result_poll(void *opaque)
 {
 	struct action_result_work *work = opaque;
@@ -250,7 +242,7 @@ static int action_result_resume(struct pg_eval *machine, void *opaque)
 	return pg_eval_enter(machine, (struct pg_closure){work->result, NULL}, 1);
 }
 
-static const struct pg_eval_work_operation action_result_operation = {
+const struct pg_eval_work_operation pg_action_result_operation = {
 	action_result_poll, action_result_resume, arena_work_destroy
 };
 
@@ -263,7 +255,7 @@ static int enter_action(struct pg_eval *machine, const struct action_scope *scop
 	struct action_result_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work) return -1;
 	*work = (struct action_result_work){machine->output, scope->bindings, result, scope->count, discard};
-	return pg_eval_defer(machine, &action_result_operation, work);
+	return pg_eval_defer(machine, &pg_action_result_operation, work);
 }
 
 static int action_source_body(struct pg_eval *machine, const struct action_scope *scope, const struct pg_term *head);

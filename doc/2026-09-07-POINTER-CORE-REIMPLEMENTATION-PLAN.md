@@ -344,7 +344,7 @@ provenance before it can support accepted evidence, but reproducing the original
 search history is not required. Whole-machine retention remains incomplete until
 these owner payloads, deferred tasks and policy are connected together.
 
-- [x] Add raw `action_scope` ownership transport (now `APGISC2`): source/body,
+- [x] Add raw `action_scope` ownership transport (now `APGISC3`): source/body,
   arity, allocation state and each initialized source/endpoint/relation binder.
   Optional extra Term roots share one existing descriptor table. Missing binder
   fields remain missing; importing does not run `prepare_bindings`, scope
@@ -445,7 +445,7 @@ these owner payloads, deferred tasks and policy are connected together.
   registering an owner. Normal/ASan/UBSan `check-identity-io` and the full
   `check check-prepared-modules` run pass. The final host-width-check cleanup
   was rechecked in both component builds after the full run began.
-- [x] Retain multiple scope roots in one `APGISC2` payload. Exact-pointer
+- [x] Retain multiple scope roots in one `APGISC3` payload. Exact-pointer
   collectors separately track scope objects and mutable binding-array bases;
   distinct scopes can share one array, including shorter prefix views. Equal
   contents do not merge distinct scopes or arrays. NULL roots represent absent
@@ -475,11 +475,22 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   position and flags clear output handles. This is raw task transport, not
   proof of its partial computation or whole-machine admission. Normal/ASan/UBSan
   component tests and `check check-prepared-modules` pass.
-- [ ] Preserve aliasing when connecting action-result work: its `bindings`
-  pointer can refer to the same array as retained scopes. A standalone copy of
-  its remaining prefix would break that identity. Integrate that edge with
-  the shared binding-array ownership table; do not introduce a fictitious scope
-  merely to reuse the scope codec.
+- [x] Extend the same ownership table with the evaluator's optional live
+  `action_result_work` (`APGISC3`), not a second binding codec or fictitious
+  scope. Retain partial result, remaining/discard counts and the exact array
+  edge. Scope/result references jointly determine retained array length; a
+  consumed result prefix still aliases a longer scope array. Scope-only APIs
+  delegate to this implementation and reject payloads containing an unrequested
+  result task instead of silently dropping it.
+- [x] Resave shared scope/result ownership twice between original result polls,
+  including discard, wrapping and completion. Check shared arrays even when
+  the remaining count is zero, and evaluate the completed Lambda with distinct
+  arguments. Also retain a result without scopes and reject a dangling result
+  array reference. This is a raw owner/polling test; connecting the task to a
+  complete machine image with all other owners remains required. Normal and
+  ASan/UBSan component tests pass, as does `check check-prepared-modules`;
+  the final result-only and dangling-reference cases were rechecked in both
+  component builds after that full run. `APGISC3` supersedes experimental v2.
 
 - [x] Retain raw symmetry composition (`APGSYM1`) using the original
   `composition_work` and its polling/resumption descriptor. Original outer and

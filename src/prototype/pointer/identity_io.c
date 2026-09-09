@@ -6,7 +6,7 @@
 #include <string.h>
 
 static const char magic[8] = "APGIBD\1";
-static const char scope_magic[8] = "APGISC\2";
+static const char scope_magic[8] = "APGISC\3";
 static const char higher_magic[8] = "APGHSC\1";
 
 static int higher_state(size_t arity, size_t position, size_t lambdas, unsigned flags)
@@ -97,8 +97,9 @@ int pg_higher_scope_read(FILE *file, struct pg_graph *arena, struct pg_graph *ou
 	return 0;
 }
 
-int pg_action_scopes_write(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
-	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+int pg_action_ownership_write(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
+	const struct action_result_work *result, size_t count, const struct pg_term *const *roots,
+	const struct pg_graph_codec *codec, void *owner)
 {
 	if (!file || (scope_count && !scopes) || (count && !roots)) return -1;
 	size_t maximum = SIZE_MAX / sizeof(const struct pg_term *);
@@ -112,6 +113,11 @@ int pg_action_scopes_write(FILE *file, size_t scope_count, const struct action_s
 		if (scopes[i] && pg_dag_add(&owners, scopes[i])) goto done;
 	size_t capacity = count;
 	if (capacity > maximum) goto done;
+	if (result) {
+		if (!result->result || capacity == maximum || (result->remaining && !result->bindings)) goto done;
+		++capacity;
+		if (result->bindings && pg_dag_add(&arrays, result->bindings)) goto done;
+	}
 	for (const struct pg_dag_node *node = owners.first; node; node = node->next) {
 		const struct action_scope *scope = node->key;
 		if (!scope->source || !scope->body || maximum - capacity < 2) goto done;
@@ -121,6 +127,7 @@ int pg_action_scopes_write(FILE *file, size_t scope_count, const struct action_s
 	if (arrays.count > SIZE_MAX / sizeof(size_t)) goto done;
 	size_t *lengths = pg_alloc(&owners.storage, arrays.count * sizeof(*lengths));
 	if (!lengths) goto done;
+	if (result && result->bindings) lengths[pg_dag_find(&arrays, result->bindings)->id - 1] = result->remaining;
 	for (const struct pg_dag_node *node = owners.first; node; node = node->next) {
 		const struct action_scope *scope = node->key;
 		if (!scope->bindings) continue;
@@ -135,7 +142,8 @@ int pg_action_scopes_write(FILE *file, size_t scope_count, const struct action_s
 	if (!all) goto done;
 	size_t total = 0;
 	if (fwrite(scope_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, owners.count)
-		|| pg_wire_write_u64(file, scope_count) || pg_wire_write_u64(file, arrays.count)) goto done;
+		|| pg_wire_write_u64(file, scope_count) || pg_wire_write_u64(file, arrays.count)
+		|| pg_wire_write_u64(file, result != NULL)) goto done;
 	for (size_t i = 0; i < scope_count; ++i) {
 		const struct pg_dag_node *node = scopes[i] ? pg_dag_find(&owners, scopes[i]) : NULL;
 		if (pg_wire_write_u64(file, node ? node->id : 0)) goto done;
@@ -146,6 +154,12 @@ int pg_action_scopes_write(FILE *file, size_t scope_count, const struct action_s
 		all[total++] = scope->body;
 		const struct pg_dag_node *array = scope->bindings ? pg_dag_find(&arrays, scope->bindings) : NULL;
 		if (pg_wire_write_u64(file, scope->count) || pg_wire_write_u64(file, array ? array->id : 0)) goto done;
+	}
+	if (result) {
+		const struct pg_dag_node *array = result->bindings ? pg_dag_find(&arrays, result->bindings) : NULL;
+		if (pg_wire_write_u64(file, result->remaining) || pg_wire_write_u64(file, result->discard)
+			|| pg_wire_write_u64(file, array ? array->id : 0)) goto done;
+		all[total++] = result->result;
 	}
 	for (const struct pg_dag_node *node = arrays.first; node; node = node->next) {
 		const struct action_binding *bindings = node->key;
@@ -174,23 +188,25 @@ done:
 	return status;
 }
 
-int pg_action_scopes_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+int pg_action_ownership_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
-	size_t *scope_count, struct action_scope *const **scopes, size_t *count, const struct pg_term *const **roots)
+	size_t *scope_count, struct action_scope *const **scopes, struct action_result_work **result,
+	size_t *count, const struct pg_term *const **roots)
 {
-	if (!scope_count || !scopes || !count || !roots) return -1;
+	if (!scope_count || !scopes || !result || !count || !roots) return -1;
+	*result = NULL;
 	*scope_count = 0;
 	*scopes = NULL;
 	*count = 0;
 	*roots = NULL;
 	if (!file || !arena || !output) return -1;
 	char header[8];
-	uint64_t n, references, array_count;
+	uint64_t n, references, array_count, has_result;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, scope_magic, 8)
 		|| pg_wire_read_u64(file, &n) || pg_wire_read_u64(file, &references)
-		|| pg_wire_read_u64(file, &array_count)) return -1;
+		|| pg_wire_read_u64(file, &array_count) || pg_wire_read_u64(file, &has_result) || has_result > 1) return -1;
 	if (n > references || references > limit || n > SIZE_MAX / sizeof(struct action_scope)
-		|| references > SIZE_MAX / sizeof(struct action_scope *) || array_count > n) return -1;
+		|| references > SIZE_MAX / sizeof(struct action_scope *) || array_count > n + has_result) return -1;
 	struct action_scope *entries = pg_alloc(arena, (size_t)n * sizeof(*entries));
 	struct action_scope **links = pg_alloc(arena, (size_t)references * sizeof(*links));
 	unsigned char **masks = pg_alloc(arena, (size_t)array_count * sizeof(*masks));
@@ -215,6 +231,23 @@ int pg_action_scopes_read(FILE *file, struct pg_graph *arena, struct pg_graph *o
 		array_used[id] = 1;
 		if (id && lengths[id - 1] < arity) lengths[id - 1] = (size_t)arity;
 	}
+	struct action_result_work *pending = NULL;
+	size_t result_array = 0;
+	if (has_result) {
+		uint64_t remaining, discard, id;
+		if (pg_wire_read_u64(file, &remaining) || pg_wire_read_u64(file, &discard)
+			|| pg_wire_read_u64(file, &id)) return -1;
+		if (remaining > limit || remaining > SIZE_MAX / sizeof(struct action_binding)
+			|| discard > SIZE_MAX || id > array_count || (remaining && !id)) return -1;
+		pending = pg_alloc(arena, sizeof(*pending));
+		if (!pending) return -1;
+		pending->graph = output;
+		pending->remaining = (size_t)remaining;
+		pending->discard = (size_t)discard;
+		result_array = (size_t)id;
+		array_used[id] = 1;
+		if (id && lengths[id - 1] < remaining) lengths[id - 1] = (size_t)remaining;
+	}
 	size_t remaining = limit;
 	for (size_t index = 0; index < array_count; ++index) {
 		uint64_t length;
@@ -232,6 +265,7 @@ int pg_action_scopes_read(FILE *file, struct pg_graph *arena, struct pg_graph *o
 	}
 	for (size_t i = 0; i < n; ++i)
 		entries[i].bindings = array_ids[i] ? arrays[array_ids[i] - 1] : NULL;
+	if (pending) pending->bindings = result_array ? arrays[result_array - 1] : NULL;
 	size_t total;
 	const struct pg_term *const *all;
 	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &total, &all)) return -1;
@@ -241,6 +275,10 @@ int pg_action_scopes_read(FILE *file, struct pg_graph *arena, struct pg_graph *o
 		if (total - position < 2) return -1;
 		candidate->source = all[position++];
 		candidate->body = all[position++];
+	}
+	if (pending) {
+		if (position == total) return -1;
+		pending->result = all[position++];
 	}
 	for (size_t index = 0; index < array_count; ++index) {
 		for (size_t i = 0; i < lengths[index]; ++i) {
@@ -258,8 +296,37 @@ int pg_action_scopes_read(FILE *file, struct pg_graph *arena, struct pg_graph *o
 	}
 	*scope_count = (size_t)references;
 	*scopes = links;
+	*result = pending;
 	*count = total - position;
 	*roots = all + position;
+	return 0;
+}
+
+int pg_action_scopes_write(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	return pg_action_ownership_write(file, scope_count, scopes, NULL, count, roots, codec, owner);
+}
+
+int pg_action_scopes_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	size_t *scope_count, struct action_scope *const **scopes, size_t *count, const struct pg_term *const **roots)
+{
+	if (!scope_count || !scopes || !count || !roots) return -1;
+	*scope_count = 0;
+	*scopes = NULL;
+	*count = 0;
+	*roots = NULL;
+	size_t n, total;
+	struct action_scope *const *items;
+	struct action_result_work *result;
+	const struct pg_term *const *all;
+	if (pg_action_ownership_read(file, arena, output, limit, name_limit, codec, owner,
+		&n, &items, &result, &total, &all) || result) return -1;
+	*scope_count = n;
+	*scopes = items;
+	*count = total;
+	*roots = all;
 	return 0;
 }
 
