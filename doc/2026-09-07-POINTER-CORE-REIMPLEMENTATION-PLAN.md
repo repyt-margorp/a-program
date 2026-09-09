@@ -370,10 +370,24 @@ these owner payloads, deferred tasks and policy are connected together.
   empty. Normal and ASan/UBSan component tests pass, as does the full
   `check check-prepared-modules` run. The added outer-failure assertion was
   rechecked in both component builds after that run began.
-- [ ] Bind each retained continuation to its existing implementation and owner
-  payload. The composition test supplies its known callback and machine flags
-  explicitly; it does not serialize/resolve a C callback address. Retain other
-  owners and policy before claiming whole-machine or source-level CHECKPOINT.
+- [x] Bind production Demand continuations and owner scopes in the raw
+  `APGCON1` stack envelope (`computation_io`). Resolve exact versioned names
+  through the existing module-owned resolver. Identity owns the predicate for
+  its four scope-bearing continuations; the other seven require NULL state.
+  Shared scopes, frame data and answer readback retain one Term table. Unknown
+  names and mismatched payload presence are rejected. This is structural
+  relocation, not validation of arbitrary imported computation history.
+- [x] Round-trip all eleven named continuation bindings and shared Identity
+  scopes twice after arena destruction. Reject unknown names and non-NULL
+  state on a stateless continuation. For a real suspended Force, retain every
+  active-frame cut twice and resume through the original evaluator; assert the
+  exact result pointer (relocated through a captured argument) and total steps.
+  Normal and ASan/UBSan component tests pass, as does
+  `check check-prepared-modules`. The synthetic name/scope fixture tests data
+  linkage only; it does not claim semantic validity for fabricated frames.
+- [ ] Retain machine flags, policy and deferred work before claiming
+  whole-machine or source-level CHECKPOINT. The test still restores flags and
+  selects the existing pure evaluator externally, not from a host address.
 
 - [x] Replace per-frame bare resume callbacks with immutable owner-controlled
   `pg_eval_continuation` pointers. Each of the eleven production algorithms has
@@ -391,10 +405,10 @@ these owner payloads, deferred tasks and policy are connected together.
   outside a module's ownership. `check check-prepared-modules` passes after
   migration. ASan/UBSan Core execution and `check-identity-io check-eval-io`
   also pass, including existing split-fuel, capture and continuation-count tests.
-- [ ] Wire these descriptors to retained owner payloads. In particular a valid
-  Identity continuation name alone does not validate an arbitrary scope record,
-  nor does a Fold name restore its handler. Keep this admission/connection duty
-  with the owner and preserve sharing with the original caller configuration.
+- [x] Connect the descriptors to scope payloads in `computation_io`; Fold and
+  symmetry owners remain in the caller Term table. A valid Identity name and
+  well-formed scope record do not prove the pending computation valid. Keep
+  evidence admission separate from raw transport.
 
 - [x] Remove redundant Fold-handler and symmetry-owner pointers from Demand
   state. The existing answer continuation reads the owner from the caller

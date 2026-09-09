@@ -26,6 +26,7 @@ struct action_body_work {
 };
 
 extern const struct pg_eval_work_operation pg_action_body_operation;
+int pg_identity_continuation_uses_scope(const struct pg_eval_continuation *continuation);
 
 /* Raw scope ownership, including unallocated/partially prepared bindings.
  * Extra Term roots use the same relocation table. No action or binder

@@ -1104,6 +1104,14 @@ const struct pg_eval_continuation *pg_identity_continuation_resolve(const char *
 	return pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
 }
 
+int pg_identity_continuation_uses_scope(const struct pg_eval_continuation *continuation)
+{
+	return continuation == &right_endpoint_continuation
+		|| continuation == &left_endpoint_continuation
+		|| continuation == &action_body_continuation
+		|| continuation == &thunk_return_field_continuation;
+}
+
 int pg_identity_dispatch(struct pg_eval *machine)
 {
 	if (field_index(machine->current.term->as.reference) >= 0) {
