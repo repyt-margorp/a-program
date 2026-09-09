@@ -483,7 +483,18 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
 - [ ] Connect Thunk-family work to whole-machine caller/frame ownership.
   Tests above restore machine flags and select the original descriptor manually;
   they do not serialize arbitrary pre-existing parent frames or validate progress.
-  Family-result construction and its shared closure bindings still need transport.
+- [x] Retain family-result construction (`APGFRW1`) using the actual
+  `family_result_work` and nested `action_result_work`. Reuse `APGISC3` for
+  optional scopes and shared binding-array ownership, not a duplicate binding
+  format. Retain collected argument suffixes during collection and the complete
+  array during wrapping/application, plus the remaining family spine and phase.
+- [x] At every actual Force/field result-task suspension, save twice, destroy
+  arenas, and resume through the original descriptor. All three phases occur;
+  final alpha equality and exact total steps match uninterrupted evaluation.
+  Empty terminal work round-trips; invalid arity, position and phase clear
+  output handles. Normal and ASan/UBSan component tests pass. These remain raw
+  progress tests, not source-level checkpoint acceptance or a provenance proof.
+  `check check-prepared-modules` also passes (758 module-save boundaries).
 
 - [x] Retain raw action-scope discovery (`APGASW1`) through the original
   `action_scope_work` and work descriptor. Source/body/cursor and the actual

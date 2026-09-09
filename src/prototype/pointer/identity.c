@@ -870,15 +870,6 @@ static int with_thunk_family(struct pg_eval *machine, const struct pg_term *fami
 	return pg_eval_defer(machine, operation, work);
 }
 
-struct family_result_work {
-	struct action_result_work closure;
-	const struct pg_term *family;
-	const struct pg_term **arguments;
-	size_t count;
-	size_t position;
-	enum { FAMILY_COLLECT, FAMILY_WRAP, FAMILY_APPLY } phase;
-};
-
 static int family_result_poll(void *opaque)
 {
 	struct family_result_work *work = opaque;
@@ -928,7 +919,7 @@ static int force_family_result(struct pg_eval *machine, void *opaque)
 	return pg_eval_apply(machine, (struct pg_closure){work->closure.result, NULL}, *pg_eval_argument(machine, 1), 2);
 }
 
-static const struct pg_eval_work_operation force_family_result_operation = {
+const struct pg_eval_work_operation pg_force_family_result_operation = {
 	family_result_poll, force_family_result, arena_work_destroy
 };
 
@@ -938,7 +929,7 @@ static int field_family_result(struct pg_eval *machine, void *opaque)
 	return pg_eval_enter(machine, (struct pg_closure){work->closure.result, NULL}, 2);
 }
 
-static const struct pg_eval_work_operation field_family_result_operation = {
+const struct pg_eval_work_operation pg_field_family_result_operation = {
 	family_result_poll, field_family_result, arena_work_destroy
 };
 
@@ -975,7 +966,7 @@ static int force_family_scoped(struct pg_eval *machine, void *opaque)
 	const struct pg_term *result = pg_application(graph, pg_reference(graph, &pg_thunk_operation), call);
 	result = pg_application(graph, pg_reference(graph, &pg_force_operation),
 		pg_identity_transport(graph, result_path, result, direction));
-	return close_family(machine, &scope, family, pg_lambda(graph, y, result), &force_family_result_operation);
+	return close_family(machine, &scope, family, pg_lambda(graph, y, result), &pg_force_family_result_operation);
 }
 
 const struct pg_eval_work_operation pg_force_family_scope_operation = {
@@ -1018,7 +1009,7 @@ static int thunk_return_scoped(struct pg_eval *machine, const struct action_scop
 			pg_application(graph, pg_reference(graph, &pg_fold_operation), source), pg_lambda(graph, binder, result));
 	}
 	result = pg_application(graph, pg_reference(graph, &pg_thunk_operation), result);
-	return close_family(machine, &scope, family, result, &field_family_result_operation);
+	return close_family(machine, &scope, family, result, &pg_field_family_result_operation);
 }
 
 static int thunk_return_field(struct pg_eval *machine, const struct pg_term *value, const void *state);

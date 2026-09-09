@@ -10,6 +10,90 @@ static const char scope_magic[8] = "APGISC\3";
 static const char higher_magic[8] = "APGHSC\1";
 static const char discovery_magic[8] = "APGASW\1";
 static const char family_magic[8] = "APGFSW\1";
+static const char family_result_magic[8] = "APGFRW\1";
+
+static int family_result_cursor(const struct family_result_work *work)
+{
+	if (!work->family || work->count % 3 || work->position > work->count) return 0;
+	if (work->closure.discard || work->closure.remaining > work->count / 3) return 0;
+	switch (work->phase) {
+	case FAMILY_COLLECT:
+		if (work->closure.remaining != work->count / 3) return 0;
+		return !work->position || work->family->kind == PG_APPLICATION;
+	case FAMILY_WRAP:
+		return !work->position;
+	case FAMILY_APPLY:
+		return !work->closure.remaining;
+	}
+	return 0;
+}
+
+int pg_family_result_write(FILE *file, const struct family_result_work *work,
+	size_t scope_count, const struct action_scope *const *scopes,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || !work || (count && !roots) || !family_result_cursor(work)) return -1;
+	size_t start = work->phase == FAMILY_COLLECT ? work->position : 0;
+	size_t kept = work->count - start, maximum = SIZE_MAX / sizeof(const struct pg_term *);
+	if (kept >= maximum || count > maximum - kept - 1 || (kept && !work->arguments)) return -1;
+	struct pg_graph temporary = {0};
+	int status = -1;
+	const struct pg_term **all = pg_alloc(&temporary, (1 + kept + count) * sizeof(*all));
+	if (!all) goto done;
+	all[0] = work->family;
+	for (size_t i = 0; i < kept; ++i) all[1 + i] = work->arguments[start + i];
+	for (size_t i = 0; i < count; ++i) all[1 + kept + i] = roots[i];
+	if (fwrite(family_result_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, work->count)
+		|| pg_wire_write_u64(file, work->position) || pg_wire_write_u64(file, work->phase)) goto done;
+	status = pg_action_ownership_write(file, scope_count, scopes, &work->closure,
+		1 + kept + count, all, codec, owner);
+done:
+	pg_graph_destroy(&temporary);
+	return status;
+}
+
+int pg_family_result_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct family_result_work **work, size_t *scope_count, struct action_scope *const **scopes,
+	size_t *count, const struct pg_term *const **roots)
+{
+	if (!work || !scope_count || !scopes || !count || !roots) return -1;
+	*work = NULL;
+	*scope_count = 0;
+	*scopes = NULL;
+	*count = 0;
+	*roots = NULL;
+	if (!file || !arena || !output) return -1;
+	char header[8];
+	uint64_t arity, position, phase;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, family_result_magic, 8)
+		|| pg_wire_read_u64(file, &arity) || pg_wire_read_u64(file, &position)
+		|| pg_wire_read_u64(file, &phase)) return -1;
+	if (arity > limit || arity > SIZE_MAX / sizeof(const struct pg_term *)
+		|| position > arity || phase > FAMILY_APPLY) return -1;
+	size_t total, n;
+	const struct pg_term *const *all;
+	struct action_scope *const *saved;
+	struct action_result_work *closure;
+	if (pg_action_ownership_read(file, arena, output, limit, name_limit, codec, owner,
+		&n, &saved, &closure, &total, &all) || !closure) return -1;
+	size_t start = phase == FAMILY_COLLECT ? (size_t)position : 0, kept = (size_t)arity - start;
+	if (!total || kept > total - 1) return -1;
+	struct family_result_work *candidate = pg_alloc(arena, sizeof(*candidate));
+	if (!candidate) return -1;
+	*candidate = (struct family_result_work){.closure = *closure, .family = all[0],
+		.count = (size_t)arity, .position = (size_t)position, .phase = (int)phase};
+	if (!family_result_cursor(candidate)) return -1;
+	candidate->arguments = pg_alloc(arena, (size_t)arity * sizeof(*candidate->arguments));
+	if (!candidate->arguments) return -1;
+	for (size_t i = 0; i < kept; ++i) candidate->arguments[start + i] = all[1 + i];
+	*work = candidate;
+	*scope_count = n;
+	*scopes = saved;
+	*count = total - 1 - kept;
+	*roots = all + 1 + kept;
+	return 0;
+}
 
 static int family_cursor(const struct family_scope_work *work)
 {

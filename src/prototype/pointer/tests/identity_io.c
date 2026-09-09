@@ -31,11 +31,14 @@ struct family_codec {
 	struct family_scope_work *work;
 	struct pg_graph *arena;
 	struct pg_classifiers *classifiers;
+	struct family_result_work *result;
 };
 
 static int family_write(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
 {
 	struct family_codec *state = opaque;
+	if (state->result) return pg_family_result_write(file, state->result, 0, NULL,
+		count, roots, &pg_builtin_graph_codec, state->classifiers);
 	return pg_family_scope_write(file, state->work, count, roots, &pg_builtin_graph_codec, state->classifiers);
 }
 
@@ -43,6 +46,14 @@ static int family_read(FILE *file, struct pg_graph *graph, size_t limit, size_t 
 	size_t *count, const struct pg_term *const **roots, void *opaque)
 {
 	struct family_codec *state = opaque;
+	if (state->result) {
+		size_t n;
+		struct action_scope *const *scopes;
+		int status = pg_family_result_read(file, state->arena, graph, limit, name_limit,
+			&pg_builtin_graph_codec, state->classifiers, &state->result, &n, &scopes, count, roots);
+		assert(status || !n);
+		return status;
+	}
 	return pg_family_scope_read(file, state->arena, graph, limit, name_limit,
 		&pg_builtin_graph_codec, state->classifiers, &state->work, count, roots);
 }
@@ -53,6 +64,8 @@ static void family_resume(void)
 	for (size_t mode = 0; mode < 2; ++mode) {
 		const struct pg_eval_work_operation *operation = mode
 			? &pg_force_family_scope_operation : &pg_field_family_scope_operation;
+		const struct pg_eval_work_operation *result_operation = mode
+			? &pg_force_family_result_operation : &pg_field_family_result_operation;
 		unsigned stages = 0;
 		for (uint64_t cut = 0; ; ++cut) {
 			struct pg_graph graph, arena = {0};
@@ -84,10 +97,17 @@ static void family_resume(void)
 			struct pg_eval machine;
 			pg_computation_eval_init(&machine, &graph, term);
 			int finished = pg_eval_advance(&machine, cut) == PG_EVAL_WHNF;
-			if (machine.task && machine.task->operation == operation) {
+			if (machine.task && (machine.task->operation == operation || machine.task->operation == result_operation)) {
 				assert(!machine.frames);
-				struct family_codec state = {machine.task->state, &arena, &classifiers};
-				stages |= state.work->scope.source ? 2u : 1u;
+				const struct pg_eval_work_operation *active = machine.task->operation;
+				struct family_codec state = {.arena = &arena, .classifiers = &classifiers};
+				if (active == result_operation) {
+					state.result = machine.task->state;
+					stages |= 1u << (2 + state.result->phase);
+				} else {
+					state.work = machine.task->state;
+					stages |= state.work->scope.source ? 2u : 1u;
+				}
 				for (size_t save = 0; save < 2; ++save) {
 					struct pg_eval_configuration inputs[] = {{machine.current, machine.arguments}, {{expected, NULL}, NULL}};
 					FILE *file = tmpfile();
@@ -111,7 +131,7 @@ static void family_resume(void)
 					machine.arguments = restored[0].arguments;
 					machine.steps = elapsed;
 					machine.head_ready = ready;
-					assert(!pg_eval_defer(&machine, operation, state.work));
+					assert(!pg_eval_defer(&machine, active, state.result ? (void *)state.result : state.work));
 				}
 			}
 			assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF && machine.steps == steps);
@@ -122,7 +142,7 @@ static void family_resume(void)
 			pg_graph_destroy(&graph);
 			if (finished) break;
 		}
-		assert(stages == 3);
+		assert(stages == 31);
 	}
 }
 
@@ -181,6 +201,41 @@ static void family_discovery(void)
 		pg_graph_destroy(&arena);
 		pg_graph_destroy(&graph);
 	}
+}
+
+static void family_result_failure(void)
+{
+	struct pg_graph graph, arena = {0};
+	assert(!pg_graph_init(&graph));
+	const struct pg_term *term = pg_reference(&graph, pg_binder(&graph));
+	struct family_result_work input = {.closure = {.graph = &graph, .result = term},
+		.family = term, .phase = FAMILY_APPLY};
+	/* Empty retained arrays and terminal work still have a representable state. */
+	for (size_t variant = 0; variant < 4; ++variant) {
+		FILE *file = tmpfile();
+		assert(file && !pg_family_result_write(file, &input, 0, NULL, 1, &term, &codec, NULL));
+		if (variant) {
+			assert(!fseek(file, (long)(8 * variant), SEEK_SET));
+			assert(!pg_wire_write_u64(file, variant == 3 ? 3 : 1));
+		}
+		rewind(file);
+		struct family_result_work *work;
+		struct action_scope *const *scopes;
+		const struct pg_term *const *roots;
+		size_t count, scope_count;
+		int status = pg_family_result_read(file, &arena, &graph, 1000, 100, &codec, NULL,
+			&work, &scope_count, &scopes, &count, &roots);
+		if (variant) {
+			assert(status == -1 && !work && !scope_count && !scopes && !count && !roots);
+		} else {
+			assert(!status && !scope_count && count == 1);
+			assert(work->family == roots[0] && work->closure.result == roots[0]);
+			assert(pg_field_family_result_operation.poll(work) == 1);
+		}
+		assert(!fclose(file));
+	}
+	pg_graph_destroy(&arena);
+	pg_graph_destroy(&graph);
 }
 
 static void continuation_frames(void)
@@ -1515,6 +1570,7 @@ int main(int argc, char **argv)
 	assert(argc == 1);
 	family_discovery();
 	family_resume();
+	family_result_failure();
 	handlers();
 	scopes();
 	scope_sharing();

@@ -54,6 +54,24 @@ struct action_result_work {
 	size_t discard;
 };
 extern const struct pg_eval_work_operation pg_action_result_operation;
+struct family_result_work {
+	struct action_result_work closure;
+	const struct pg_term *family;
+	const struct pg_term **arguments;
+	size_t count;
+	size_t position;
+	enum { FAMILY_COLLECT, FAMILY_WRAP, FAMILY_APPLY } phase;
+};
+extern const struct pg_eval_work_operation pg_force_family_result_operation;
+extern const struct pg_eval_work_operation pg_field_family_result_operation;
+/* Embed the existing scope/result ownership table, preserving binding aliases. */
+int pg_family_result_write(FILE *file, const struct family_result_work *work,
+	size_t scope_count, const struct action_scope *const *scopes,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
+int pg_family_result_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct family_result_work **work, size_t *scope_count, struct action_scope *const **scopes,
+	size_t *count, const struct pg_term *const **roots);
 /* One live result task can share binding storage with any retained scopes. */
 int pg_action_ownership_write(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
 	const struct action_result_work *result, size_t count, const struct pg_term *const *roots,
