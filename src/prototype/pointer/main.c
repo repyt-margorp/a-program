@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include "program.h"
 #include "graph_io.h"
 #include "source_io.h"
@@ -7,6 +8,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+/* Publish only a completely written image; the temporary file shares its
+ * destination directory so rename does not cross filesystems. */
+static int save_image(const char *path, const struct pg_synthesis *synthesis,
+	size_t count, struct pg_synthesis_job *const *roots)
+{
+	static const char suffix[] = ".tmp.XXXXXX";
+	size_t length = strlen(path);
+	if (length > SIZE_MAX - sizeof(suffix)) return -1;
+	char *temporary = malloc(length + sizeof(suffix));
+	if (!temporary) return -1;
+	memcpy(temporary, path, length);
+	memcpy(temporary + length, suffix, sizeof(suffix));
+	int status = -1;
+	int descriptor = mkstemp(temporary);
+	if (descriptor < 0) { free(temporary); return -1; }
+	FILE *file = fdopen(descriptor, "wb");
+	if (file) {
+		status = pg_sources_write(file, synthesis, count, roots);
+		if (fclose(file)) status = -1;
+	} else close(descriptor);
+	if (!status) status = rename(temporary, path);
+	if (status) unlink(temporary);
+	free(temporary);
+	return status;
+}
 
 static int read_source(FILE *file, char **source, size_t *length)
 {
@@ -151,13 +179,9 @@ int main(int argc, char **argv)
 		printf("%s steps=%" PRIu64 "\n", status, program->synthesis.steps);
 		if (selected && !result && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core)) result = 2;
 		if (save) {
-			FILE *image = fopen(save, "wb");
-			int failed = !image;
-			if (image) {
-				failed = pg_sources_write(image, &program->synthesis, count, roots);
-				if (fclose(image)) failed = 1;
+			if (save_image(save, &program->synthesis, count, roots)) {
+				fprintf(stderr, "%s: cannot save input image\n", save); result = 2;
 			}
-			if (failed) { fprintf(stderr, "%s: cannot save input image\n", save); result = 2; }
 		}
 	}
 	pg_program_destroy(program);

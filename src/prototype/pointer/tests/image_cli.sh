@@ -24,6 +24,31 @@ example="$(dirname "${BASH_SOURCE[0]}")/../../../../examples/09_list_induction.p
 sed '1d' "$directory/source-nf" > "$directory/source-value"
 sed '1d' "$directory/image-nf" > "$directory/image-value"
 cmp "$directory/source-value" "$directory/image-value"
+
+# A failed write must not truncate a previously usable image, even in place.
+cp "$directory/list.a" "$directory/list-before.a"
+code=0
+(
+	trap '' XFSZ
+	ulimit -f 1
+	"$binary" --load --save "$directory/list.a" "$directory/list.a"
+) > "$directory/status" 2>&1 || code=$?
+test "$code" = 2
+grep -q 'cannot save input image' "$directory/status"
+cmp "$directory/list-before.a" "$directory/list.a"
+if compgen -G "$directory/list.a.tmp.*" > /dev/null; then exit 1; fi
+"$binary" --load --save "$directory/list.a" "$directory/list.a" > "$directory/status"
+"$binary" --load --nf main "$directory/list.a" > "$directory/image-nf"
+sed '1d' "$directory/image-nf" > "$directory/image-value"
+cmp "$directory/source-value" "$directory/image-value"
+# Failure to publish (a directory target) also removes the temporary file.
+mkdir "$directory/target"
+code=0
+"$binary" --load --save "$directory/target" "$directory/list.a" > "$directory/status" 2>&1 || code=$?
+test "$code" = 2
+test -d "$directory/target"
+if compgen -G "$directory/target.tmp.*" > /dev/null; then exit 1; fi
+printf '%s\n' 'image cli: failed writes preserve existing images; in-place publication and cleanup passed'
 printf '%s\n' 'image cli: multi-root selection, retained obligations and range rejection passed'
 printf '%s\n' 'image cli: parameterized List source/image NF agreement passed'
 

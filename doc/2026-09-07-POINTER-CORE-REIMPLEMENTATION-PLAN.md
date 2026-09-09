@@ -50,6 +50,30 @@ Verification: `make -s -f src/prototype/pointer/Makefile check` and the standalo
 `tests/image_cli.sh` invocation pass. The full acceptance gate is still incomplete;
 the open-family result above remains a required correction before Main promotion.
 
+### September 9: Publish Only Completed Images
+
+N5 file-publication correction after `3f2a552`: the CLI previously opened the
+destination with `wb` before exporting, destroying an existing image on export
+or I/O failure. `save_image` now writes to a unique sibling temporary file,
+closes it successfully, then publishes with `rename`. Failure removes the
+temporary file without modifying the existing destination. This is a POSIX CLI
+filesystem adapter, not another image codec or acceptance path.
+
+- [x] Inject a file-size-limit failure while loading and saving the same path;
+  preserve the existing bytes and remove temporary output.
+- [x] Verify successful in-place save through fresh load and List NF agreement.
+- [x] Verify failed publication to a directory preserves it and cleans up.
+
+The new regression fails with the pre-change debug binary: the saved image is
+truncated at 1024 bytes. It passes with the new binary. Replacement uses a new
+file (mode 0600); hard-link aliases keep the old file and a destination symlink
+is replaced, not followed. This guarantees completed-file publication during
+normal operation, not power-loss durability: no directory/file fsync guarantee
+is claimed. Retained-result CHECKPOINT and open-family admission remain open.
+
+Validation: rebuilt CLI, extended `image_cli.sh`, and the full `check` target
+pass. Full N0--N7 acceptance is not claimed.
+
 ### September 9: Nominal Derivation Parameters in the Shared Image
 
 Continuation after `a995988`. `APGDRV` version 5 adds declaration and constructor
