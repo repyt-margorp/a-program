@@ -7,6 +7,9 @@
  * A shared producer DAG also retains prepared source annotations and their
  * source/rule operands. Selected roots retain order and aliases independently
  * of dependency order. Loading recreates annotations with the usual factory.
+ * Named/module environments reference that producer DAG, including prepared
+ * annotations. A shared scope/producer dependency order rejects cross-table
+ * cycles before invoking the ordinary construction factories.
  * Reuses immutable syntax, lexical parents, namespaces and import bindings.
  * Rule evidence is stored as unaccepted derivation inputs through the existing
  * codec, with one Core table for all rule roots. Effect contributions must be

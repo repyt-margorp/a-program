@@ -6,7 +6,7 @@
 #include "declaration_io.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\7";
+static const char magic[8] = "APGSRC\10";
 enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING };
 
 struct environment {
@@ -15,6 +15,7 @@ struct environment {
 	const struct pg_source_scope *parent, *target;
 	const struct pg_syntax *syntax, *definitions;
 	struct pg_synthesis_job *rule;
+	struct pg_synthesis_job *producer;
 };
 
 static int source_input(const struct pg_synthesis *synthesis, const struct pg_synthesis_job *job,
@@ -45,9 +46,7 @@ static int environment(const struct pg_synthesis *synthesis, const struct pg_sou
 	struct pg_synthesis_job *job = input.producer ? input.producer : input.module;
 	if (job) {
 		output->kind = input.producer ? NAME : MODULE;
-		if (!source_input(synthesis, job, &output->target, &output->syntax, &output->definitions)) return 0;
-		if (input.module) return -1;
-		output->rule = job;
+		output->producer = job;
 		return 0;
 	}
 	if (input.exports) { output->kind = NAMESPACE; output->target = input.exports; }
@@ -84,12 +83,46 @@ static uint64_t id(const struct pg_dag *dag, const void *key)
 
 struct origin_collection {
 	const struct pg_synthesis *synthesis;
-	struct pg_dag *scopes, *syntax, *rules, *origins;
+	struct pg_dag *scopes, *syntax, *rules, *origins, *producers;
 	struct pg_dag objects, terms;
 	struct pg_index candidates;
 	struct pg_declaration_io *codec;
-	const struct pg_dag_node *last_scope;
+	const struct pg_dag_node *last_scope, *last_producer;
 };
+
+/* Drain newly discovered immutable inputs once, including edges from lexical
+ * names to prepared producers and back to their defining scopes. */
+static int collect_inputs(struct origin_collection *c)
+{
+	for (;;) {
+		const struct pg_dag_node *producer = c->last_producer ? c->last_producer->next : c->producers->first;
+		const struct pg_dag_node *scope_node = c->last_scope ? c->last_scope->next : c->scopes->first;
+		if (!producer && !scope_node) return 0;
+		for (; producer; c->last_producer = producer, producer = producer->next) {
+			const struct pg_source_scope *scope;
+			const struct pg_syntax *term, *definitions;
+			struct pg_synthesis_job *left, *right;
+			if (!pg_synthesis_source_expect_input(c->synthesis, producer->key, &scope, &left, &right)) {
+				if (pg_dag_add(c->scopes, scope)) return -1;
+			} else if (source_input(c->synthesis, producer->key, &scope, &term, &definitions)) {
+				if (pg_dag_add(c->rules, producer->key)) return -1;
+			} else {
+				if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->syntax, term)) return -1;
+				if (definitions && pg_dag_add(c->syntax, definitions)) return -1;
+			}
+		}
+		/* Producer traversal can have appended the first scope. */
+		scope_node = c->last_scope ? c->last_scope->next : c->scopes->first;
+		for (; scope_node; c->last_scope = scope_node, scope_node = scope_node->next) {
+			struct environment input;
+			if (environment(c->synthesis, scope_node->key, &input)) return -1;
+			if (input.syntax && pg_dag_add(c->syntax, input.syntax)) return -1;
+			if (input.definitions && pg_dag_add(c->syntax, input.definitions)) return -1;
+			if (input.rule && pg_dag_add(c->rules, input.rule)) return -1;
+			if (input.producer && pg_dag_add(c->producers, input.producer)) return -1;
+		}
+	}
+}
 
 struct origin_candidate {
 	struct pg_index_entry index;
@@ -163,15 +196,7 @@ static int retain_dependencies(void *owner, const struct pg_derivation_input *in
 			if (candidate->object == node->key && collect_origin(c, candidate->job)) return -1;
 		}
 	}
-	for (const struct pg_dag_node *node = c->last_scope ? c->last_scope->next : c->scopes->first;
-		node; c->last_scope = node, node = node->next) {
-		struct environment input;
-		if (environment(c->synthesis, node->key, &input)) return -1;
-		if (input.syntax && pg_dag_add(c->syntax, input.syntax)) return -1;
-		if (input.definitions && pg_dag_add(c->syntax, input.definitions)) return -1;
-		if (input.rule && pg_dag_add(c->rules, input.rule)) return -1;
-	}
-	return 0;
+	return collect_inputs(c);
 }
 
 int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
@@ -182,7 +207,7 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	struct pg_effect_inference effects = {0};
 	struct pg_declaration_io codec = {0};
 	struct origin_collection collection = {.synthesis = synthesis, .scopes = &scopes,
-		.syntax = &syntax, .rules = &rules, .origins = &origins, .codec = &codec};
+		.syntax = &syntax, .rules = &rules, .origins = &origins, .producers = &producers, .codec = &codec};
 	int status = -1;
 	/* Callbacks only inspect synthesis; no solver entry is invoked. */
 	if (pg_dag_init(&scopes, child, &synthesis) || pg_dag_init(&syntax, pg_syntax_child, NULL)
@@ -193,29 +218,7 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 		|| pg_declaration_io_init(&codec, synthesis->typing, synthesis->classifiers)) goto done;
 	if (pg_graph_dependencies_init(&collection.terms, &collection.objects, &pg_declaration_graph_codec, &codec)) goto done;
 	for (size_t i = 0; i < count; ++i) if (!roots[i] || pg_dag_add(&producers, roots[i])) goto done;
-	for (const struct pg_dag_node *node = producers.first; node; node = node->next) {
-		const struct pg_source_scope *scope;
-		const struct pg_syntax *term, *definitions;
-		struct pg_synthesis_job *left, *right;
-		if (!pg_synthesis_source_expect_input(synthesis, node->key, &scope, &left, &right)) {
-			if (pg_dag_add(&scopes, scope)) goto done;
-			continue;
-		}
-		if (source_input(synthesis, node->key, &scope, &term, &definitions)) {
-			if (pg_dag_add(&rules, node->key)) goto done;
-			continue;
-		}
-		if (pg_dag_add(&scopes, scope) || pg_dag_add(&syntax, term)) goto done;
-		if (definitions && pg_dag_add(&syntax, definitions)) goto done;
-	}
-	for (const struct pg_dag_node *node = scopes.first; node; node = node->next) {
-		struct environment input;
-		if (environment(synthesis, node->key, &input)) goto done;
-		if (input.syntax && pg_dag_add(&syntax, input.syntax)) goto done;
-		if (input.definitions && pg_dag_add(&syntax, input.definitions)) goto done;
-		if (input.rule && pg_dag_add(&rules, input.rule)) goto done;
-	}
-	collection.last_scope = scopes.last;
+	if (collect_inputs(&collection)) goto done;
 	if (pg_synthesis_visit_source_allocations(synthesis, index_origin, &collection)) goto done;
 	const struct pg_derivation_input *const *derivations;
 	if (pg_synthesis_export_rule_closure(synthesis, &rules, &rules.storage, &effects, 1,
@@ -227,7 +230,8 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 		struct environment input;
 		if (environment(synthesis, node->key, &input)) goto done;
 		uint64_t words[] = {input.kind, id(&scopes, input.parent), id(&scopes, input.target),
-			id(&syntax, input.syntax), id(&syntax, input.definitions), input.name.kind, input.name.length, id(&rules, input.rule)};
+			id(&syntax, input.syntax), id(&syntax, input.definitions), input.name.kind, input.name.length,
+			input.producer ? id(&producers, input.producer) : id(&rules, input.rule)};
 		for (size_t i = 0; i < 8; ++i) if (pg_wire_write_u64(file, words[i])) goto done;
 		if (input.name.length && fwrite(input.name.text, 1, input.name.length, file) != input.name.length) goto done;
 	}
@@ -273,6 +277,37 @@ struct record {
 	struct pg_token name;
 };
 
+struct restore_node { size_t index; int scope; };
+struct restore_order {
+	const struct record *records;
+	const uint64_t *ids;
+	struct restore_node *nodes;
+	size_t scopes, producers;
+};
+
+static int restore_child(void *owner, const void *key, size_t index, const void **result)
+{
+	if (index == 3) return 0;
+	const struct restore_order *order = owner;
+	const struct restore_node *node = key;
+	uint64_t dependency;
+	int scope;
+	if (node->scope) {
+		const struct record *r = &order->records[node->index];
+		scope = index < 2;
+		dependency = index == 0 ? r->parent : index == 1 ? r->target
+			: (r->kind == NAME || r->kind == MODULE) ? r->rule : 0;
+	} else {
+		const uint64_t *r = &order->ids[6 * node->index];
+		scope = index == 0;
+		dependency = r[index ? index + 3 : 0];
+	}
+	if (!dependency) return 2;
+	if (dependency > (scope ? order->scopes : order->producers)) return -1;
+	*result = &order->nodes[(scope ? 0 : order->scopes) + (size_t)dependency - 1];
+	return 1;
+}
+
 struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	size_t *count, struct pg_synthesis_job *const **roots)
 {
@@ -289,6 +324,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	struct pg_program *program = pg_program_allocate((enum pg_definition_policy)policy);
 	if (!program) return NULL;
 	struct pg_declaration_io codec = {0};
+	struct pg_dag order = {0};
 	if (pg_declaration_io_init(&codec, &program->typing, &program->classifiers)) goto fail;
 	struct pg_graph *graph = &program->graph;
 	struct record *records = pg_alloc(graph, (size_t)n * sizeof(*records));
@@ -330,25 +366,57 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		rules[i] = pg_synthesis_derivation_inference(&program->synthesis, derivations[i], &program->imported_effects);
 		if (!rules[i]) goto fail;
 	}
-	for (size_t i = 0; i < n; ++i) {
+	struct restore_order dependencies = {records, ids, NULL, (size_t)n, (size_t)np};
+	if (pg_dag_init(&order, restore_child, &dependencies)) goto fail;
+	struct restore_node *nodes = pg_alloc(&order.storage, ((size_t)n + (size_t)np) * sizeof(*nodes));
+	if (!nodes) goto fail;
+	dependencies.nodes = nodes;
+	for (size_t i = 0; i < n + np; ++i)
+		nodes[i] = (struct restore_node){i < n ? i : i - (size_t)n, i < n};
+	for (size_t i = 0; i < n + np; ++i) if (pg_dag_add(&order, &nodes[i])) goto fail;
+	for (const struct pg_dag_node *entry = order.first; entry; entry = entry->next) {
+		const struct restore_node *node = entry->key;
+		size_t i = node->index;
+		if (!node->scope) {
+			uint64_t scope = ids[6 * i], syntax = ids[6 * i + 1], definitions = ids[6 * i + 2], rule = ids[6 * i + 3];
+			uint64_t left = ids[6 * i + 4], right = ids[6 * i + 5];
+			if (left || right) {
+				if (!left || left > i || !right || right > i || !scope || scope > n || syntax || definitions || rule) goto fail;
+				producers[i] = pg_synthesis_source_expect(&program->synthesis, scopes[scope - 1],
+					producers[left - 1], producers[right - 1]);
+			} else if (rule) {
+				if (rule > nd || scope || syntax || definitions) goto fail;
+				producers[i] = rules[rule - 1];
+			} else {
+				if (!scope || scope > n || !syntax || syntax > nt || definitions > nt) goto fail;
+				producers[i] = definitions ? pg_synthesis_definition_request(&program->synthesis,
+					scopes[scope - 1], terms[definitions - 1], terms[syntax - 1])
+					: pg_synthesis_request(&program->synthesis, scopes[scope - 1], terms[syntax - 1]);
+			}
+			if (!producers[i]) goto fail;
+			continue;
+		}
 		const struct record *r = &records[i];
-		if (r->syntax > nt || r->definitions > nt || r->rule > nd) goto fail;
+		if (r->syntax > nt || r->definitions > nt) goto fail;
 		const struct pg_source_scope *parent = r->parent ? scopes[r->parent - 1] : NULL;
 		const struct pg_source_scope *target = r->target ? scopes[r->target - 1] : NULL;
 		struct pg_synthesis *s = &program->synthesis;
 		if (r->kind == BINDING) {
-			if (!parent || target || !r->syntax || !r->rule || r->definitions || r->name.kind || r->name.length) goto fail;
+			if (!parent || target || !r->syntax || !r->rule || r->rule > nd || r->definitions || r->name.kind || r->name.length) goto fail;
 			scopes[i] = pg_synthesis_binding_scope(pg_synthesis_restore_binding(s, parent,
 				terms[r->syntax - 1], rules[r->rule - 1]));
 			if (!scopes[i]) goto fail;
 			continue;
 		}
-		if (r->rule) {
-			if (r->kind != NAME || !parent || target || r->syntax || r->definitions) goto fail;
-			scopes[i] = pg_synthesis_name_job(s, parent, r->name, rules[r->rule - 1]);
+		if (r->kind == NAME || r->kind == MODULE) {
+			if (!r->rule || r->rule > np || !parent || target || r->syntax || r->definitions) goto fail;
+			struct pg_synthesis_job *producer = producers[r->rule - 1];
+			scopes[i] = r->kind == NAME ? pg_synthesis_name_job(s, parent, r->name, producer)
+				: pg_synthesis_module_namespace(s, parent, r->name, producer);
 			if (!scopes[i]) goto fail;
 			continue;
 		}
+		if (r->rule) goto fail;
 		if (r->kind == ROOT) {
 			if (parent || target || r->syntax || r->definitions || r->name.kind || r->name.length) goto fail;
 			scopes[i] = program->scope;
@@ -361,20 +429,11 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 			continue;
 		}
 		if (!parent || !target) goto fail;
-		if (r->kind == NAME || r->kind == MODULE) {
-			if (!r->syntax) goto fail;
-			struct pg_synthesis_job *job = r->definitions
-				? pg_synthesis_definition_request(s, target, terms[r->definitions - 1], terms[r->syntax - 1])
-				: pg_synthesis_request(s, target, terms[r->syntax - 1]);
-			scopes[i] = r->kind == NAME ? pg_synthesis_name_job(s, parent, r->name, job)
-				: pg_synthesis_module_namespace(s, parent, r->name, job);
-		} else {
-			if (r->syntax || r->definitions) goto fail;
-			if (r->kind == IMPORTS) {
-				if (r->name.kind || r->name.length) goto fail;
-				scopes[i] = pg_synthesis_import_scope(s, parent, target);
-			} else scopes[i] = pg_synthesis_namespace(s, parent, r->name, target);
-		}
+		if (r->syntax || r->definitions) goto fail;
+		if (r->kind == IMPORTS) {
+			if (r->name.kind || r->name.length) goto fail;
+			scopes[i] = pg_synthesis_import_scope(s, parent, target);
+		} else scopes[i] = pg_synthesis_namespace(s, parent, r->name, target);
 		if (!scopes[i]) goto fail;
 	}
 	for (size_t i = 0; i < no; ++i) {
@@ -383,33 +442,14 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		if (!pg_synthesis_restore_declaration(&program->synthesis, scopes[scope - 1], terms[syntax - 1],
 			rules[rule - 1])) goto fail;
 	}
-	for (size_t i = 0; i < np; ++i) {
-		uint64_t scope = ids[6 * i], syntax = ids[6 * i + 1], definitions = ids[6 * i + 2], rule = ids[6 * i + 3];
-		uint64_t left = ids[6 * i + 4], right = ids[6 * i + 5];
-		if (left || right) {
-			if (!left || left > i || !right || right > i || !scope || scope > n || syntax || definitions || rule) goto fail;
-			producers[i] = pg_synthesis_source_expect(&program->synthesis, scopes[scope - 1],
-				producers[left - 1], producers[right - 1]);
-			if (!producers[i]) goto fail;
-			continue;
-		}
-		if (rule) {
-			if (rule > nd || scope || syntax || definitions) goto fail;
-			producers[i] = rules[rule - 1];
-			continue;
-		}
-		if (!scope || scope > n || !syntax || syntax > nt || definitions > nt) goto fail;
-		producers[i] = definitions ? pg_synthesis_definition_request(&program->synthesis,
-			scopes[scope - 1], terms[definitions - 1], terms[syntax - 1])
-			: pg_synthesis_request(&program->synthesis, scopes[scope - 1], terms[syntax - 1]);
-		if (!producers[i]) goto fail;
-	}
 	for (size_t i = 0; i < nr; ++i) jobs[i] = producers[selections[i] - 1];
 	program->root = nr ? jobs[0] : NULL;
 	*count = (size_t)nr; *roots = jobs;
 	pg_declaration_io_destroy(&codec);
+	pg_dag_destroy(&order);
 	return program;
 fail:
+	pg_dag_destroy(&order);
 	pg_declaration_io_destroy(&codec);
 	pg_program_destroy(program);
 	return NULL;

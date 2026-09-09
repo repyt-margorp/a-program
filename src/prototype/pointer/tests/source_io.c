@@ -381,6 +381,32 @@ static void invalid_annotation_edges(FILE *file)
 	assert(!"missing annotation record");
 }
 
+static void invalid_named_cycle(FILE *file)
+{
+	assert(!fseek(file, 8, SEEK_SET));
+	uint64_t header[5], original = 0;
+	long link = -1;
+	for (size_t i = 0; i < 5; ++i) assert(!pg_wire_read_u64(file, &header[i]));
+	for (size_t i = 0; i < header[1]; ++i) {
+		long position = ftell(file);
+		uint64_t scope[8];
+		for (size_t j = 0; j < 8; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+		if (scope[0] == 1 && link < 0) { link = position + 7 * 8; original = scope[7]; }
+		assert(!fseek(file, (long)scope[6], SEEK_CUR));
+	}
+	assert(link >= 0 && header[2] == 8);
+	uint64_t consumer;
+	for (size_t i = 0; i <= 6; ++i) assert(!pg_wire_read_u64(file, &consumer));
+	/* The lexical name now points to its own consumer: scope -> job -> scope. */
+	assert(!fseek(file, link, SEEK_SET) && !pg_wire_write_u64(file, consumer) && !fflush(file));
+	rewind(file);
+	size_t count;
+	struct pg_synthesis_job *const *roots;
+	assert(!pg_sources_read(file, 10000, &count, &roots));
+	assert(!fseek(file, link, SEEK_SET) && !pg_wire_write_u64(file, original) && !fflush(file));
+	assert(!fseek(file, 0, SEEK_END));
+}
+
 static void annotation_sources(FILE *file, int writing, uint64_t chunk)
 {
 	struct pg_program *p;
@@ -398,14 +424,35 @@ static void annotation_sources(FILE *file, int writing, uint64_t chunk)
 		struct pg_synthesis_job *valid = pg_synthesis_source_expect(&p->synthesis, p->scope, term, type);
 		struct pg_synthesis_job *invalid = pg_synthesis_source_expect(&p->synthesis, p->scope, term, wrong);
 		struct pg_synthesis_job *nested = pg_synthesis_source_expect(&p->synthesis, p->scope, valid, type);
-		struct pg_synthesis_job *selected[] = {nested, invalid, valid, term, valid, type};
+		struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "T", .length = 1};
+		const struct pg_source_scope *good_scope = pg_synthesis_name_job(&p->synthesis, p->scope, name, valid);
+		const struct pg_source_scope *bad_scope = pg_synthesis_name_job(&p->synthesis, p->scope, name, invalid);
+		assert(good_scope && bad_scope);
+		struct pg_synthesis_job *selected[] = {nested, invalid, valid, term, valid, type,
+			parse(p, good_scope, "{{main:=T;}}.main"), parse(p, bad_scope, "{{main:=T;}}.main")};
 		assert(valid && invalid && nested && !p->synthesis.steps);
-		assert(!pg_sources_write(file, &p->synthesis, 6, selected));
+		assert(!pg_sources_write(file, &p->synthesis, 8, selected));
 		assert(!p->synthesis.steps && !pg_synthesis_result(valid));
 		invalid_annotation_edges(file);
+		invalid_named_cycle(file);
+		/* Only consumers are roots; lexical edges must discover both checks. */
+		FILE *names = tmpfile();
+		assert(names && !pg_sources_write(names, &p->synthesis, 2, selected + 6));
+		rewind(names);
+		struct pg_program *restored = pg_sources_read(names, 10000, &count, &roots);
+		assert(restored && count == 2 && !restored->synthesis.steps);
+		assert(!fclose(names));
+		while (restored->synthesis.ready) {
+			assert(restored->synthesis.steps < 10000);
+			pg_synthesis_advance(&restored->synthesis, 1);
+		}
+		assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_REJECTED);
+		pg_program_destroy(restored);
+		assert(!p->synthesis.steps && !pg_synthesis_result(valid));
 	} else {
 		p = pg_sources_read(file, 10000, &count, &roots);
-		assert(p && count == 6 && roots[2] == roots[4] && !p->synthesis.steps);
+		assert(p && count == 8 && roots[2] == roots[4] && !p->synthesis.steps);
 		/* Program initialization proves only the ordinary empty context. */
 		assert(p->typing.proofs.count == 1);
 		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
@@ -415,19 +462,27 @@ static void annotation_sources(FILE *file, int writing, uint64_t chunk)
 		assert(term == roots[2] && type == roots[5]);
 		assert(!pg_synthesis_source_expect_input(&p->synthesis, roots[2], &scope, &term, &type));
 		assert(term == roots[3] && type == roots[5]);
+		const struct pg_syntax *syntax;
+		struct pg_source_environment environment;
+		assert(!pg_synthesis_source_input(&p->synthesis, roots[6], &scope, &syntax));
+		assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
+		assert(environment.producer == roots[2]);
+		assert(!pg_synthesis_source_input(&p->synthesis, roots[7], &scope, &syntax));
+		assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
+		assert(environment.producer == roots[1]);
 		FILE *pending = tmpfile();
 		assert(pending && !pg_sources_write(pending, &p->synthesis, count, roots));
 		pg_program_destroy(p);
 		rewind(pending);
 		p = pg_sources_read(pending, 10000, &count, &roots);
-		assert(p && count == 6 && !p->synthesis.steps && p->typing.proofs.count == 1);
+		assert(p && count == 8 && !p->synthesis.steps && p->typing.proofs.count == 1);
 		assert(!fclose(pending));
 		while (p->synthesis.ready) { assert(p->synthesis.steps < 10000); pg_synthesis_advance(&p->synthesis, chunk); }
 		for (size_t i = 0; i < count; ++i)
-			assert(pg_synthesis_status(roots[i]) == (i == 1 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+			assert(pg_synthesis_status(roots[i]) == (i == 1 || i == 7 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
 		assert(roots[2] == roots[4]);
 		assert(pg_evidence_subject(pg_synthesis_result(roots[0]))->core == pg_universe(&p->classifiers, 0));
-		puts("source image: prepared annotations retain shared operands and reject wrong targets through ordinary Solve");
+		puts("source image: named prepared annotations retain sharing, reject dependency cycles and check targets through ordinary Solve");
 	}
 	pg_program_destroy(p);
 }

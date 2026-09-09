@@ -111,6 +111,36 @@ the open-family result above remains a required correction before Main promotion
 
 ### September 9: Retained Proof Reuse Is Not Source Checkpointing
 
+Follow-up to `c400fb7`: `APGSRC8` makes NAME and MODULE scope records reference
+the shared producer table. Their last u64 is now a producer ID; for BINDING it
+remains a raw-rule ID. Other scope fields and all table layouts remain unchanged.
+Source and raw-rule names use the same path as prepared annotation names. Old
+version-7 files reject; this does not change the separate derivation wire format.
+
+Export drains newly discovered scopes/producers with retained cursors, including
+lexical-only dependencies. Import constructs a temporary combined dependency
+DAG over the two tables, rejects cross-table cycles, then calls the existing
+scope/producer factories in dependency order. The temporary ordering graph is
+freed on success and failure. Nominal origins are attached before any Solve
+step, including when their source producer was already reconstructed.
+
+Regression cases include a lexical name pointing at a pending annotation,
+exact alias/producer sharing after fresh load, unsolved resave, consumer-only
+roots, propagation of wrong-target rejection, and a corrupted name pointing
+back to its consumer. Source-level recursive definitions remain legal pending
+inputs; they are not cyclic immutable construction recipes.
+
+Validation after the temporary-order storage adjustment: `check`,
+`check-examples`, `check-example-results`, `check-image-origins`, and rebuilt
+ASan/UBSan source-image/origin suites pass. The sanitizer origin script initially
+lacked its `pointer-check` binary; building that target and rerunning the script
+passed. `check-open-families` remains 1/4, with the three unsupported outcomes
+listed above. Implementation/header delta: +124/-81 lines; tests: +64/-7;
+documentation excluded. Full source preparation, normalization retention and
+the original N0--N7 acceptance requirements remain incomplete.
+
+Previous version-7 layout and the tests it introduced:
+
 Follow-up after `5890e3e`: `APGSRC7` separates selected root IDs from a shared
 producer table. Leaves retain the previous source-expression, definition and
 raw-rule inputs. Prepared source annotations retain their scope and two
@@ -141,8 +171,10 @@ producer fields. Old version-6 headers reject explicitly.
   work, resave without Solve in a fresh process, then advance in chunks 1/64.
   Loading supplies no root evidence; accepted/rejected/pending outcomes are
   recovered through ordinary Solve, not serialized acceptance flags.
-- [ ] Generalize lexical named-producer environments and remaining preparation
-  kinds; unsupported export cases must still fail explicitly.
+- [x] Generalize lexical named/module-producer environments to the shared
+  producer DAG, including prepared annotations and lexical-only dependencies.
+- [ ] Generalize remaining preparation kinds; unsupported export cases must
+  still fail explicitly.
 - [ ] Preserve complete module preparation and retained normalization work.
   This is the first prepared-annotation transport, not complete CHECKPOINT.
 
