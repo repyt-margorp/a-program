@@ -41,6 +41,9 @@ int pg_derivation_input_terms(struct pg_graph *scratch,
 {
 	if (!scratch || !input || !terms) return -1;
 	const struct pg_derivation_parameters *p = &input->parameters;
+	/* APGDRV5 cannot retain induction allocation inputs. Never silently
+	 * serialize a different construction request by dropping them. */
+	if (p->induction) return -1;
 	const struct pg_object *objects[PG_DERIVATION_TERM_SLOTS] = {
 		p->binder, input->effect_parameter, NULL, NULL, p->operation_label, NULL,
 		p->declaration ? pg_data_declaration_family(p->declaration) : NULL, p->constructor

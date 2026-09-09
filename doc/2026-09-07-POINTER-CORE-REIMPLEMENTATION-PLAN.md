@@ -930,6 +930,28 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   lifecycle and constructor/Match/IADT tests for APGSRC12. The new
   API is not yet a CLI CHECKPOINT mode. Pending evaluation/synthesis work and
   no-recomputation evidence remain separate incomplete requirements.
+- [x] September 9: expose the accepted induction allocation in ordinary
+  `pg_derivation_parameters`, dispatch through `pg_prove_induction_at`, and
+  include the allocation input in synthesis job identity. Header extraction
+  retains the actual allocation. Split-budget tests reject a conflicting
+  allocation as a distinct failed request without disturbing the successful
+  job. This is ordinary rule checking, not a separate Replay interpreter.
+  Verification: normal and ASan/UBSan `iadt_test` and normal full
+  `synthesis_test` pass. The new negative request is tested with budgets 1/64.
+- [ ] Extend the derivation wire grammar to retain that input. APGDRV5 cannot
+  encode it and now rejects it rather than silently dropping the allocation.
+  This is a temporary explicit limitation: the existing induction round-trip
+  test in `tests/derivation_io.c` and typed Match source-image writing cannot
+  pass until the codec is extended. Do not weaken those acceptance tests.
+  Reuse the existing `context_payload` relocation machinery (already used by
+  declaration transport), preserving binder sharing with the ordinary Term
+  table; do not create an accepted-proof flag or another Core tag. Context
+  annotations remain unaccepted input and the ordinary induction constructor
+  recomputes them. Verify the receiving context owner/prefix identity, not just
+  the serialized pointer slots, before publishing the reconstructed request.
+  Reproduced: `derivation_io_test nominal-write <file>` fails at the existing
+  six-root write assertion (line 1032). This is not an acceptance pass; no Main
+  push is authorized by the component results above.
 - [ ] Connect pending NF jobs and shared WHNF/NF jobs to this record ownership,
   then to source CHECKPOINT. The recomputation-mode checker does not preserve
   unfinished execution provenance or supply a no-recomputation WHNF basis.

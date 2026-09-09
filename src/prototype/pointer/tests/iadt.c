@@ -35,6 +35,20 @@ static void common_rule(struct pg_typing *typing, struct pg_classifiers *classif
 			pg_synthesis_advance(&synthesis, chunk);
 		}
 		assert(pg_synthesis_result(job) == proof && typing->proofs.count == proofs);
+		if (input.parameters.induction) {
+			struct pg_induction_allocation conflict = *input.parameters.induction;
+			conflict.argument = conflict.recursion;
+			struct pg_derivation_input invalid = input;
+			invalid.parameters.induction = &conflict;
+			struct pg_synthesis_job *rejected = pg_synthesis_rule(&synthesis, &invalid, jobs, NULL, NULL);
+			assert(rejected && rejected != job);
+			while (pg_synthesis_status(rejected) == PG_SYNTHESIS_PENDING) {
+				assert(synthesis.steps < 10000);
+				pg_synthesis_advance(&synthesis, chunk);
+			}
+			assert(!pg_synthesis_result(rejected));
+			assert(pg_synthesis_result(job) == proof);
+		}
 		pg_synthesis_destroy(&synthesis);
 		pg_whnf_work_destroy(&work);
 	}
@@ -449,6 +463,10 @@ static void schema_positivity(void)
 		z_context, nat_motive, 2, recursive_branches) == countdown);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
 	assert(!pg_derivation_parameters(countdown, &wire_parameters));
+	assert(wire_parameters.induction == countdown_allocation);
+	struct pg_derivation_input retained_induction;
+	assert(!pg_derivation_input_header(countdown, &retained_induction));
+	assert(retained_induction.parameters.induction == countdown_allocation);
 	common_rule(&typing, &classifiers, countdown);
 	assert(!pg_prove_match(&typing, &classifiers, nat, identity, twice,
 		z_context, nat_motive, 2, recursive_branches));

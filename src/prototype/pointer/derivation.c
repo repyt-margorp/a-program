@@ -50,6 +50,8 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 	}
 	case PG_CONSTRUCTOR_INTRO:
 		result.constructor = pg_evidence_constructor(evidence); break;
+	case PG_INDUCTION_ELIM:
+		result.induction = pg_evidence_induction_allocation(evidence); break;
 	case PG_INDUCTIVE_FORM:
 		result.declaration = pg_evidence_inductive_declaration(evidence); break;
 	case PG_HANDLER_ELIM:
@@ -99,6 +101,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	if (count && !p) return NULL;
 	if (parameters->declaration && rule != PG_INDUCTIVE_FORM) return NULL;
 	if (parameters->constructor && rule != PG_CONSTRUCTOR_INTRO) return NULL;
+	if (parameters->induction && rule != PG_INDUCTION_ELIM) return NULL;
 	for (size_t i = 0; i < count; ++i) if (!pg_evidence_owned_by(p[i], typing)) return NULL;
 	const struct pg_evidence *result = NULL;
 	struct pg_identity_boundary boundary;
@@ -122,7 +125,8 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 		if (count < 6) return NULL;
 		result = rule == PG_MATCH_ELIM
 			? pg_prove_match(typing, classifiers, p[1], p[2], p[3], p[4], p[0], count - 6, p + 5)
-			: pg_prove_induction(typing, classifiers, p[1], p[2], p[3], p[4], p[0], count - 6, p + 5);
+			: pg_prove_induction_at(typing, classifiers, p[1], p[2], p[3], p[4], p[0],
+				count - 6, p + 5, parameters->induction);
 		break;
 	case PG_INDUCTIVE_FORM: {
 		if (!count || !parameters->declaration) return NULL;
