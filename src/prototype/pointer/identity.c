@@ -360,43 +360,35 @@ static int pi_action(struct pg_eval *machine, struct action_scope *scope, const 
 	return enter_action(machine, scope, result, 0);
 }
 
-struct scope_shadow {
-	const struct pg_object *binder;
-	const struct scope_shadow *parent;
-};
+static uint64_t scope_visit_hash(const struct pg_term *term, const struct scope_shadow *shadow)
+{
+	return (uint64_t)(uintptr_t)term ^ ((uint64_t)(uintptr_t)shadow * UINT64_C(1099511628211));
+}
 
-struct scope_visit {
-	struct pg_index_entry index;
-	const struct pg_term *term;
-	const struct scope_shadow *shadow;
-	struct scope_visit *next;
-};
+static const struct scope_visit *scope_visit_find(const struct pg_index *index,
+	const struct pg_term *term, const struct scope_shadow *shadow)
+{
+	uint64_t hash = scope_visit_hash(term, shadow);
+	for (struct pg_index_entry *entry = pg_index_candidates(index, hash); entry; entry = entry->next) {
+		const struct scope_visit *visit = (const struct scope_visit *)entry;
+		if (visit->term == term && visit->shadow == shadow) return visit;
+	}
+	return NULL;
+}
 
 static int scope_push(struct pg_graph *arena, struct pg_index *seen, struct scope_visit **pending,
 	const struct pg_term *term, const struct scope_shadow *shadow)
 {
-	uint64_t hash = (uint64_t)(uintptr_t)term ^ ((uint64_t)(uintptr_t)shadow * UINT64_C(1099511628211));
-	for (struct pg_index_entry *entry = pg_index_candidates(seen, hash); entry; entry = entry->next) {
-		const struct scope_visit *visit = (const struct scope_visit *)entry;
-		if (entry->hash != hash) continue;
-		if (visit->term == term && visit->shadow == shadow) return 0;
-	}
+	if (scope_visit_find(seen, term, shadow)) return 0;
 	struct scope_visit *visit = pg_alloc(arena, sizeof(*visit));
 	if (!visit) return -1;
 	*visit = (struct scope_visit){.term = term, .shadow = shadow, .next = *pending};
-	visit->index.hash = hash;
 	*pending = visit;
 	return 0;
 }
 
 /* Residual action carries a binder-to-triple assignment. Exchange only this
  * administrative environment, never accepted dependent contexts or cube axes. */
-struct scope_binding_index {
-	struct pg_index_entry index;
-	const struct pg_object *binder;
-	size_t position;
-};
-
 static uint64_t scope_binding_hash(const struct pg_object *binder)
 {
 	uint64_t pointer = (uintptr_t)binder;
@@ -412,25 +404,29 @@ static struct scope_binding_index *scope_binding_find(const struct pg_index *ind
 	return NULL;
 }
 
-struct scope_work {
-	struct pg_graph *arena;
-	const struct pg_term *head;
-	struct pg_graph *output;
-	struct action_scope scope;
-	struct pg_index seen;
-	struct pg_index sources;
-	struct scope_visit *pending;
-	const struct pg_term *reference;
-	const struct scope_shadow *shadow;
-	size_t reference_position;
-	size_t *order;
-	unsigned char *used;
-	size_t count;
-	enum { SCOPE_SOURCES, SCOPE_HEAD, SCOPE_VISIT, SCOPE_FILTER, SCOPE_ABSTRACT, SCOPE_APPLY, SCOPE_WRAP, SCOPE_READY } phase;
-	const struct pg_term *cursor, *result;
-	size_t position, selected;
-	int changed, canonical;
-};
+int pg_scope_indexes_restore(struct scope_work *work, size_t visit_count, struct scope_visit *const *visits,
+	size_t source_count, struct scope_binding_index *const *sources)
+{
+	if (!work || work->seen.buckets || work->sources.buckets) return -1;
+	if ((visit_count && !visits) || (source_count && !sources)) return -1;
+	if (pg_index_init(&work->seen) || pg_index_init(&work->sources)) goto failure;
+	for (size_t i = 0; i < visit_count; ++i) {
+		struct scope_visit *visit = visits[i];
+		if (!visit || !visit->term || scope_visit_find(&work->seen, visit->term, visit->shadow)) goto failure;
+		if (pg_index_insert(&work->seen, &visit->index, scope_visit_hash(visit->term, visit->shadow))) goto failure;
+	}
+	for (size_t i = 0; i < source_count; ++i) {
+		struct scope_binding_index *source = sources[i];
+		if (!source || !source->binder || source->binder->kind != PG_BINDER) goto failure;
+		if (source->position >= work->scope.count || scope_binding_find(&work->sources, source->binder)) goto failure;
+		if (pg_index_insert(&work->sources, &source->index, scope_binding_hash(source->binder))) goto failure;
+	}
+	return 0;
+failure:
+	pg_index_destroy(&work->seen);
+	pg_index_destroy(&work->sources);
+	return -1;
+}
 
 static int action_body(struct pg_eval *machine, const struct pg_term *answer, const void *unused);
 
@@ -455,13 +451,8 @@ static int scope_visit_poll(struct scope_work *work)
 	work->pending = visit->next;
 	/* Mark on visitation, not scheduling: an argument also reached through
 	 * the function must receive its first position on the function path. */
-	struct pg_index_entry *entry = pg_index_candidates(&work->seen, visit->index.hash);
-	for (; entry; entry = entry->next) {
-		const struct scope_visit *previous = (const struct scope_visit *)entry;
-		if (previous->term == visit->term && previous->shadow == visit->shadow) break;
-	}
-	if (entry) return 0;
-	if (pg_index_insert(&work->seen, &visit->index, visit->index.hash) != 0) return -1;
+	if (scope_visit_find(&work->seen, visit->term, visit->shadow)) return 0;
+	if (pg_index_insert(&work->seen, &visit->index, scope_visit_hash(visit->term, visit->shadow)) != 0) return -1;
 	const struct pg_term *term = visit->term;
 	int status = 0;
 	switch (term->kind) {
@@ -597,7 +588,7 @@ static int scope_resume(struct pg_eval *machine, void *opaque)
 	return pg_eval_enter(machine, (struct pg_closure){work->result, NULL}, 1);
 }
 
-static const struct pg_eval_work_operation scope_operation = {
+const struct pg_eval_work_operation pg_scope_operation = {
 	scope_poll, scope_resume, scope_destroy
 };
 
@@ -616,7 +607,7 @@ static int analyze_scope(struct pg_eval *machine, const struct action_scope *sco
 	if (!work->scope.bindings || !work->order || !work->used || pg_index_init(&work->seen) != 0) return -1;
 	if (pg_index_init(&work->sources) != 0) { scope_destroy(work); return -1; }
 	int status = scope_push(work->arena, &work->seen, &work->pending, scope->body, NULL);
-	if (!status) status = pg_eval_defer(machine, &scope_operation, work);
+	if (!status) status = pg_eval_defer(machine, &pg_scope_operation, work);
 	if (status) scope_destroy(work);
 	return status;
 }

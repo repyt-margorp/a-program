@@ -464,6 +464,20 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Expose the actual scope-analysis work and its original descriptor to
+  transport. Share `(term, shadow)` lookup between scheduling and visitation;
+  retain their different insertion timing. Restore source/visited indexes from
+  retained entries without traversing source Terms. Pending entries recompute
+  their hash on visitation, so no source-address hash needs serialization.
+- [x] At each scope-analysis suspension of a shared, shadowed expression,
+  rebuild both indexes twice after discarding buckets and cached hashes.
+  Original resumption preserves final alpha equality and charged steps.
+  Distinct shadows remain distinct keys; duplicate logical keys fail with empty
+  indexes. This tests index reconstruction, not pointer relocation or checkpoint
+  admission. The scope/shadow/visit graph and work arrays still need transport.
+  Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
+  `check-identity-io check-eval-io` pass.
+
 - [x] Retain raw Thunk-family discovery (`APGFSW1`) in the actual
   `family_scope_work`, shared by Force and field resumptions. Source/body,
   optional content/value, cursor and supplied/discovered counts use one Term

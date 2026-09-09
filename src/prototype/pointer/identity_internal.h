@@ -15,6 +15,48 @@ struct action_scope {
 	size_t count;
 	struct action_binding *bindings;
 };
+struct scope_shadow {
+	const struct pg_object *binder;
+	const struct scope_shadow *parent;
+};
+struct scope_visit {
+	struct pg_index_entry index;
+	const struct pg_term *term;
+	const struct scope_shadow *shadow;
+	struct scope_visit *next;
+};
+struct scope_binding_index {
+	struct pg_index_entry index;
+	const struct pg_object *binder;
+	size_t position;
+};
+struct scope_work {
+	struct pg_graph *arena;
+	const struct pg_term *head;
+	struct pg_graph *output;
+	struct action_scope scope;
+	struct pg_index seen;
+	struct pg_index sources;
+	struct scope_visit *pending;
+	const struct pg_term *reference;
+	const struct scope_shadow *shadow;
+	size_t reference_position;
+	size_t *order;
+	unsigned char *used;
+	size_t count;
+	enum { SCOPE_SOURCES, SCOPE_HEAD, SCOPE_VISIT, SCOPE_FILTER, SCOPE_ABSTRACT, SCOPE_APPLY, SCOPE_WRAP, SCOPE_READY } phase;
+	const struct pg_term *cursor, *result;
+	size_t position, selected;
+	int changed, canonical;
+};
+extern const struct pg_eval_work_operation pg_scope_operation;
+/* Rebuild only address-keyed buckets from retained entries, not source scope
+ * discovery. The arrays must contain unique entries and unique logical keys.
+ * Inputs must be detached from other indexes. Destination indexes must be
+ * unused; this precondition is checked without modifying existing indexes.
+ * A failed reconstruction destroys the new buckets and leaves them empty. */
+int pg_scope_indexes_restore(struct scope_work *work, size_t visit_count, struct scope_visit *const *visits,
+	size_t source_count, struct scope_binding_index *const *sources);
 struct action_scope_work {
 	struct action_scope scope;
 	const struct pg_argument *arguments;

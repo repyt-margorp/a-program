@@ -27,6 +27,82 @@ static const struct pg_object *resolve(void *unused, const char *text)
 }
 static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
 
+static void scope_indexes(void)
+{
+	unsigned phases = 0;
+	for (uint64_t cut = 0; ; ++cut) {
+		struct pg_graph graph, storage = {0};
+		assert(!pg_graph_init(&graph));
+		const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
+		const struct pg_term *a = pg_reference(&graph, pg_binder(&graph));
+		const struct pg_term *shared = pg_application(&graph, pg_reference(&graph, y), pg_reference(&graph, x));
+		const struct pg_term *body = pg_identity_instance(&graph, pg_identity_action(&graph, a),
+			pg_lambda(&graph, x, shared), pg_application(&graph, shared, shared));
+		const struct pg_term *term = pg_identity_action(&graph,
+			pg_lambda(&graph, x, pg_lambda(&graph, y, body)));
+		for (size_t i = 0; i < 6; ++i) term = pg_application(&graph, term, pg_reference(&graph, pg_binder(&graph)));
+		struct pg_eval baseline, machine;
+		pg_computation_eval_init(&baseline, &graph, term);
+		assert(pg_eval_advance(&baseline, 10000) == PG_EVAL_WHNF);
+		const struct pg_term *expected = pg_eval_readback(&baseline, &graph);
+		uint64_t steps = baseline.steps;
+		pg_eval_destroy(&baseline);
+		pg_computation_eval_init(&machine, &graph, term);
+		int done = pg_eval_advance(&machine, cut) == PG_EVAL_WHNF;
+		if (machine.task && machine.task->operation == &pg_scope_operation) {
+			struct scope_work *work = machine.task->state;
+			phases |= 1u << work->phase;
+			for (size_t round = 0; round < 2; ++round) {
+				size_t n = 0, m = 0;
+				struct scope_visit **visits = pg_alloc(&storage, work->seen.count * sizeof(*visits));
+				struct scope_binding_index **sources = pg_alloc(&storage, work->sources.count * sizeof(*sources));
+				assert(visits && sources);
+				for (size_t i = 0; i < work->seen.capacity; ++i)
+					for (struct pg_index_entry *entry = work->seen.buckets[i]; entry; entry = entry->next)
+						visits[n++] = (struct scope_visit *)entry;
+				for (size_t i = 0; i < work->sources.capacity; ++i)
+					for (struct pg_index_entry *entry = work->sources.buckets[i]; entry; entry = entry->next)
+						sources[m++] = (struct scope_binding_index *)entry;
+				assert(n == work->seen.count && m == work->sources.count);
+				pg_index_destroy(&work->seen);
+				pg_index_destroy(&work->sources);
+				for (size_t i = 0; i < n; ++i) visits[i]->index.hash = 0;
+				for (size_t i = 0; i < m; ++i) sources[i]->index.hash = 0;
+				for (struct scope_visit *visit = work->pending; visit; visit = visit->next) visit->index.hash = 0;
+				assert(!pg_scope_indexes_restore(work, n, visits, m, sources));
+			}
+		}
+		assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF && machine.steps == steps);
+		assert(pg_alpha_equal(pg_eval_readback(&machine, &graph), expected) == 1);
+		pg_eval_destroy(&machine);
+		pg_graph_destroy(&storage);
+		pg_graph_destroy(&graph);
+		if (done) break;
+	}
+	assert(phases & (1u << SCOPE_SOURCES));
+	assert(phases & (1u << SCOPE_VISIT));
+	assert(phases & (1u << SCOPE_READY));
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	const struct pg_object *binder = pg_binder(&graph);
+	const struct pg_term *term = pg_reference(&graph, binder);
+	struct scope_shadow shadow = {binder, NULL};
+	struct scope_visit first = {.term = term}, second = {.term = term, .shadow = &shadow};
+	struct scope_visit *visits[] = {&first, &second};
+	struct scope_binding_index source = {.binder = binder};
+	struct scope_binding_index *sources[] = {&source, &source};
+	struct scope_work work = {.scope = {.count = 1}};
+	assert(!pg_scope_indexes_restore(&work, 2, visits, 1, sources));
+	assert(work.seen.count == 2 && work.sources.count == 1);
+	pg_scope_operation.destroy(&work);
+	second.shadow = NULL;
+	assert(pg_scope_indexes_restore(&work, 2, visits, 1, sources) == -1);
+	assert(!work.seen.buckets && !work.sources.buckets);
+	assert(pg_scope_indexes_restore(&work, 1, visits, 2, sources) == -1);
+	assert(!work.seen.buckets && !work.sources.buckets);
+	pg_graph_destroy(&graph);
+}
+
 struct family_codec {
 	struct family_scope_work *work;
 	struct pg_graph *arena;
@@ -1568,6 +1644,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
+	scope_indexes();
 	family_discovery();
 	family_resume();
 	family_result_failure();
