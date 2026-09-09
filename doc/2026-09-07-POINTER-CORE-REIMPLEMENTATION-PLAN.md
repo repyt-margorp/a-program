@@ -464,6 +464,21 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Retain the actual `scope_work` (`APGSAW1`): all eight phases, used/order
+  arrays, reference-shadow cursor, optional head/result, source-index mappings
+  and explicit pending/seen roots. Compose `APGSVS2`/`APGSHD2`/`APGISC3` so
+  source bindings, visited Terms and caller roots share one relocation table.
+  Restore address-keyed indexes from retained entries, never rescan the source.
+- [x] At every actual scope-task suspension of a shared, shadowed expression
+  with an unused source binder, resave twice after arena destruction and resume
+  the original descriptor. All eight phases occur; final alpha equality and
+  exact total steps match uninterrupted execution. Reject zero arity, invalid
+  phase and out-of-range order entries with empty output handles. Reader bounds
+  do not prove the saved state was reached from the source. Caller flags and
+  descriptor selection still come from the test; full machine acceptance is open.
+  Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
+  `check-identity-io check-eval-io` pass.
+
 - [x] Compose visit/shadow transport with the existing scope ownership table
   (`APGSVS2` / `APGSHD2` embedding `APGISC3`). Do not serialize scope binders
   in a second Term table. Restore optional scope roots only after the outer
@@ -473,7 +488,7 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   arena destruction. Distinct scopes retain a shared binding array; repeated
   scopes share their actual scope object; binding sources/triples and shadow
   binders refer to the same relocated objects. Existing empty-scope and invalid
-  graph cases pass. This is shared ownership, not yet the full scope-work cursor.
+  graph cases pass. This ownership layer is used by `APGSAW1` above.
   Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
   `check-identity-io check-eval-io` pass.
 
@@ -487,7 +502,7 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   seen indexes accept distinct shadow keys and reject duplicate logical keys.
   Out-of-range roots and cyclic next IDs clear all published outputs.
   Full scope-work phases, source-index records, order/used arrays and explicit
-  seen/pending selection remain to be connected; this is not a full checkpoint.
+  seen/pending selection are connected by `APGSAW1`; this is not a full checkpoint.
   Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
   `check-identity-io check-eval-io` pass.
 
@@ -500,8 +515,8 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Verify sharing, distinct identities and binder sharing with an extra Lambda
   root; reject out-of-range roots, cyclic parent IDs and a cyclic input graph.
   This is a scope-analysis ownership component, not complete scope-work or
-  evaluator checkpoint transport. Visit entries, pending order and work arrays
-  remain to be connected to the same table.
+  evaluator checkpoint transport. `APGSAW1` now connects visit entries, pending
+  order and work arrays to the same table.
   Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
   `check-identity-io check-eval-io` pass.
 
@@ -515,7 +530,7 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Original resumption preserves final alpha equality and charged steps.
   Distinct shadows remain distinct keys; duplicate logical keys fail with empty
   indexes. This tests index reconstruction, not pointer relocation or checkpoint
-  admission. The scope/shadow/visit graph and work arrays still need transport.
+  admission. `APGSAW1` above now transports the scope/shadow/visit graph and arrays.
   Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
   `check-identity-io check-eval-io` pass.
 

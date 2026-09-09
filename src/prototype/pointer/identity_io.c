@@ -13,6 +13,152 @@ static const char family_magic[8] = "APGFSW\1";
 static const char family_result_magic[8] = "APGFRW\1";
 static const char shadow_magic[8] = "APGSHD\2";
 static const char visit_magic[8] = "APGSVS\2";
+static const char analysis_magic[8] = "APGSAW\1";
+
+static int scope_work_cursor(const struct scope_work *work)
+{
+	size_t n = work->scope.count;
+	if (!n || !work->scope.source || !work->scope.body || !work->scope.bindings) return 0;
+	if (!work->cursor || !work->order || !work->used || work->phase > SCOPE_READY) return 0;
+	if (work->count > n || work->position > n || work->selected > work->count) return 0;
+	if (work->phase == SCOPE_FILTER && work->selected > work->position) return 0;
+	if (work->phase == SCOPE_APPLY && work->position > work->count) return 0;
+	if (work->reference && (work->reference->kind != PG_REFERENCE || work->reference_position >= n)) return 0;
+	if (work->phase == SCOPE_SOURCES && work->position < n && work->cursor->kind != PG_LAMBDA) return 0;
+	if (work->phase >= SCOPE_FILTER && !work->result) return 0;
+	for (size_t i = 0; i < n; ++i) if (work->order[i] >= n || work->used[i] > 1) return 0;
+	return 1;
+}
+
+int pg_scope_work_write(FILE *file, const struct scope_work *work,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || !work || (count && !roots) || !scope_work_cursor(work)) return -1;
+	size_t seen = work->seen.count, sources = work->sources.count;
+	size_t maximum = SIZE_MAX / sizeof(const struct pg_term *);
+	if (sources > maximum - 4 || count > maximum - 4 - sources
+		|| seen >= SIZE_MAX / sizeof(struct scope_visit *)) return -1;
+	struct pg_graph temporary = {0};
+	int status = -1;
+	if (pg_graph_init(&temporary)) return -1;
+	struct scope_visit **visits = pg_alloc(&temporary, (seen + 1) * sizeof(*visits));
+	const struct pg_term **terms = pg_alloc(&temporary, (4 + sources + count) * sizeof(*terms));
+	if (!visits || !terms) goto done;
+	const struct pg_term *optional[] = {work->head, work->reference, work->cursor, work->result};
+	unsigned mask = 0;
+	for (size_t i = 0; i < 4; ++i) {
+		if (optional[i]) mask |= 1u << i;
+		terms[i] = optional[i] ? optional[i] : work->scope.source;
+	}
+	uint64_t fields[] = {work->scope.count, work->phase, work->count, work->position,
+		work->selected, work->reference_position, (work->changed != 0) | (work->canonical != 0) << 1,
+		mask, seen, sources};
+	if (fwrite(analysis_magic, 1, 8, file) != 8) goto done;
+	for (size_t i = 0; i < 10; ++i) if (pg_wire_write_u64(file, fields[i])) goto done;
+	for (size_t i = 0; i < work->scope.count; ++i)
+		if (pg_wire_write_u64(file, work->order[i]) || pg_wire_write_u64(file, work->used[i])) goto done;
+	size_t n = 0;
+	for (size_t i = 0; i < work->sources.capacity; ++i) {
+		for (struct pg_index_entry *entry = work->sources.buckets[i]; entry; entry = entry->next) {
+			const struct scope_binding_index *source = (const struct scope_binding_index *)entry;
+			if (n == sources || source->position >= work->scope.count) goto done;
+			if (pg_wire_write_u64(file, source->position)) goto done;
+			terms[4 + n++] = pg_reference(&temporary, source->binder);
+		}
+	}
+	if (n != sources) goto done;
+	visits[0] = work->pending;
+	n = 0;
+	for (size_t i = 0; i < work->seen.capacity; ++i)
+		for (struct pg_index_entry *entry = work->seen.buckets[i]; entry; entry = entry->next) {
+			if (n == seen) goto done;
+			visits[1 + n++] = (struct scope_visit *)entry;
+		}
+	if (n != seen) goto done;
+	for (size_t i = 0; i < count; ++i) terms[4 + sources + i] = roots[i];
+	const struct action_scope *scope = &work->scope;
+	status = pg_scope_visits_write(file, seen + 1, visits, 1, &work->shadow,
+		1, &scope, 4 + sources + count, terms, codec, owner);
+done:
+	pg_graph_destroy(&temporary);
+	return status;
+}
+
+int pg_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct scope_work **work, size_t *count, const struct pg_term *const **roots)
+{
+	if (!work || !count || !roots) return -1;
+	*work = NULL;
+	*count = 0;
+	*roots = NULL;
+	if (!file || !arena || !output) return -1;
+	char header[8];
+	uint64_t f[10], value;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, analysis_magic, 8)) return -1;
+	for (size_t i = 0; i < 10; ++i) if (pg_wire_read_u64(file, &f[i])) return -1;
+	if (!f[0] || f[0] > limit || f[0] > SIZE_MAX / sizeof(size_t) || f[1] > SCOPE_READY
+		|| f[2] > f[0] || f[3] > f[0] || f[4] > f[2] || f[5] > SIZE_MAX
+		|| f[6] > 3 || f[7] > 15 || f[8] >= limit || f[9] > f[0]
+		|| f[9] > SIZE_MAX / sizeof(struct scope_binding_index *)) return -1;
+	struct scope_work *candidate = pg_alloc(arena, sizeof(*candidate));
+	if (!candidate) return -1;
+	candidate->arena = arena;
+	candidate->output = output;
+	candidate->phase = (int)f[1];
+	candidate->count = (size_t)f[2];
+	candidate->position = (size_t)f[3];
+	candidate->selected = (size_t)f[4];
+	candidate->reference_position = (size_t)f[5];
+	candidate->changed = f[6] & 1;
+	candidate->canonical = (f[6] >> 1) & 1;
+	candidate->order = pg_alloc(arena, (size_t)f[0] * sizeof(*candidate->order));
+	candidate->used = pg_alloc(arena, (size_t)f[0]);
+	struct scope_binding_index **sources = pg_alloc(arena, (size_t)f[9] * sizeof(*sources));
+	if (!candidate->order || !candidate->used || !sources) return -1;
+	for (size_t i = 0; i < f[0]; ++i) {
+		if (pg_wire_read_u64(file, &value) || value >= f[0]) return -1;
+		candidate->order[i] = (size_t)value;
+		if (pg_wire_read_u64(file, &value) || value > 1) return -1;
+		candidate->used[i] = (unsigned char)value;
+	}
+	for (size_t i = 0; i < f[9]; ++i) {
+		if (pg_wire_read_u64(file, &value) || value >= f[0]) return -1;
+		sources[i] = pg_alloc(arena, sizeof(*sources[i]));
+		if (!sources[i]) return -1;
+		sources[i]->position = (size_t)value;
+	}
+	size_t nv, ns, no, nt;
+	struct scope_visit *const *visits;
+	const struct scope_shadow *const *shadows;
+	struct action_scope *const *scopes;
+	const struct pg_term *const *terms;
+	if (pg_scope_visits_read(file, arena, output, limit, name_limit, codec, owner,
+		&nv, &visits, &ns, &shadows, &no, &scopes, &nt, &terms)) return -1;
+	if (nv != f[8] + 1 || ns != 1 || no != 1 || !scopes[0] || scopes[0]->count != f[0]
+		|| nt < 4 || f[9] > nt - 4) return -1;
+	candidate->scope = *scopes[0];
+	candidate->pending = visits[0];
+	candidate->shadow = shadows[0];
+	for (size_t i = 0; i < 4; ++i)
+		if (!(f[7] & (1u << i)) && terms[i] != candidate->scope.source) return -1;
+	candidate->head = f[7] & 1 ? terms[0] : NULL;
+	candidate->reference = f[7] & 2 ? terms[1] : NULL;
+	candidate->cursor = f[7] & 4 ? terms[2] : NULL;
+	candidate->result = f[7] & 8 ? terms[3] : NULL;
+	if (!scope_work_cursor(candidate)) return -1;
+	for (size_t i = 0; i < f[9]; ++i) {
+		const struct pg_term *term = terms[4 + i];
+		if (term->kind != PG_REFERENCE || term->as.reference->kind != PG_BINDER) return -1;
+		sources[i]->binder = term->as.reference;
+		if (candidate->scope.bindings[sources[i]->position].source != sources[i]->binder) return -1;
+	}
+	if (pg_scope_indexes_restore(candidate, (size_t)f[8], visits + 1, (size_t)f[9], sources)) return -1;
+	*work = candidate;
+	*count = nt - 4 - (size_t)f[9];
+	*roots = terms + 4 + (size_t)f[9];
+	return 0;
+}
 
 static int visit_child(void *unused, const void *key, size_t index, const void **child)
 {

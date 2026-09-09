@@ -158,11 +158,29 @@ static void shadow_forest(void)
 	pg_graph_destroy(&graph);
 }
 
+struct analysis_codec {
+	struct scope_work *work;
+	struct pg_graph *arena;
+};
+
+static int analysis_write(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	struct analysis_codec *state = opaque;
+	return pg_scope_work_write(file, state->work, count, roots, &codec, NULL);
+}
+
+static int analysis_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_term *const **roots, void *opaque)
+{
+	struct analysis_codec *state = opaque;
+	return pg_scope_work_read(file, state->arena, graph, limit, name_limit, &codec, NULL, &state->work, count, roots);
+}
+
 static void scope_indexes(void)
 {
 	unsigned phases = 0;
 	for (uint64_t cut = 0; ; ++cut) {
-		struct pg_graph graph, storage = {0};
+		struct pg_graph graph, storage = {0}, arena = {0};
 		assert(!pg_graph_init(&graph));
 		const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
 		const struct pg_term *a = pg_reference(&graph, pg_binder(&graph));
@@ -170,8 +188,8 @@ static void scope_indexes(void)
 		const struct pg_term *body = pg_identity_instance(&graph, pg_identity_action(&graph, a),
 			pg_lambda(&graph, x, shared), pg_application(&graph, shared, shared));
 		const struct pg_term *term = pg_identity_action(&graph,
-			pg_lambda(&graph, x, pg_lambda(&graph, y, body)));
-		for (size_t i = 0; i < 6; ++i) term = pg_application(&graph, term, pg_reference(&graph, pg_binder(&graph)));
+			pg_lambda(&graph, x, pg_lambda(&graph, y, pg_lambda(&graph, pg_binder(&graph), body))));
+		for (size_t i = 0; i < 9; ++i) term = pg_application(&graph, term, pg_reference(&graph, pg_binder(&graph)));
 		struct pg_eval baseline, machine;
 		pg_computation_eval_init(&baseline, &graph, term);
 		assert(pg_eval_advance(&baseline, 10000) == PG_EVAL_WHNF);
@@ -183,6 +201,22 @@ static void scope_indexes(void)
 		if (machine.task && machine.task->operation == &pg_scope_operation) {
 			struct scope_work *work = machine.task->state;
 			phases |= 1u << work->phase;
+			if (work->phase == SCOPE_SOURCES && !work->position) {
+				for (size_t variant = 0; variant < 3; ++variant) {
+					FILE *file = tmpfile();
+					assert(file && !pg_scope_work_write(file, work, 0, NULL, &codec, NULL));
+					const long offsets[] = {8, 16, 88};
+					const uint64_t values[] = {0, SCOPE_READY + 1, work->scope.count};
+					assert(!fseek(file, offsets[variant], SEEK_SET) && !pg_wire_write_u64(file, values[variant]));
+					rewind(file);
+					struct scope_work *rejected;
+					size_t n;
+					const struct pg_term *const *roots;
+					assert(pg_scope_work_read(file, &arena, &graph, 10000, 100, &codec, NULL,
+						&rejected, &n, &roots) == -1);
+					assert(!rejected && !n && !roots && !fclose(file));
+				}
+			}
 			for (size_t round = 0; round < 2; ++round) {
 				size_t n = 0, m = 0;
 				struct scope_visit **visits = pg_alloc(&storage, work->seen.count * sizeof(*visits));
@@ -202,17 +236,42 @@ static void scope_indexes(void)
 				for (struct scope_visit *visit = work->pending; visit; visit = visit->next) visit->index.hash = 0;
 				assert(!pg_scope_indexes_restore(work, n, visits, m, sources));
 			}
+			assert(!machine.frames);
+			struct analysis_codec state = {work, &arena};
+			for (size_t round = 0; round < 2; ++round) {
+				struct pg_eval_configuration inputs[] = {{machine.current, machine.arguments}, {{expected, NULL}, NULL}};
+				FILE *file = tmpfile();
+				assert(file && !pg_eval_configurations_write_with(file, 2, inputs, analysis_write, &state));
+				uint64_t elapsed = machine.steps;
+				int ready = machine.head_ready;
+				pg_eval_destroy(&machine);
+				pg_graph_destroy(&arena);
+				pg_graph_destroy(&graph);
+				assert(!pg_graph_init(&graph));
+				rewind(file);
+				size_t n;
+				const struct pg_eval_configuration *restored;
+				assert(!pg_eval_configurations_read_with(file, &graph, 10000, 100,
+					&n, &restored, analysis_read, &state));
+				assert(n == 2 && !fclose(file));
+				expected = restored[1].head.term;
+				pg_computation_eval_init(&machine, &graph, restored[0].head.term);
+				machine.current = restored[0].head;
+				machine.arguments = restored[0].arguments;
+				machine.steps = elapsed;
+				machine.head_ready = ready;
+				assert(!pg_eval_defer(&machine, &pg_scope_operation, state.work));
+			}
 		}
 		assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF && machine.steps == steps);
 		assert(pg_alpha_equal(pg_eval_readback(&machine, &graph), expected) == 1);
 		pg_eval_destroy(&machine);
+		pg_graph_destroy(&arena);
 		pg_graph_destroy(&storage);
 		pg_graph_destroy(&graph);
 		if (done) break;
 	}
-	assert(phases & (1u << SCOPE_SOURCES));
-	assert(phases & (1u << SCOPE_VISIT));
-	assert(phases & (1u << SCOPE_READY));
+	assert(phases == 255);
 	struct pg_graph graph;
 	assert(!pg_graph_init(&graph));
 	const struct pg_object *binder = pg_binder(&graph);
