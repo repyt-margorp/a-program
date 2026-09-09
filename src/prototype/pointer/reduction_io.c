@@ -272,6 +272,31 @@ struct pg_reduction_check_state {
 	uint64_t steps;
 };
 
+int pg_reduction_archive_collect(struct pg_dag *terms, const struct pg_reduction_archive *archive)
+{
+	if (!terms || !archive) return -1;
+	struct collection collection = {0};
+	struct pg_dag dag = {0};
+	int status = -1;
+	if (collect(&collection, &dag, archive->count, archive->roots, archive->phase_count, archive->phases)) goto done;
+	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
+		const struct record *r = node->key;
+		if (r->phase) {
+			const struct pg_reduction_phase *p = r->value;
+			if (pg_dag_add(terms, p->rebuilt)) goto done;
+		} else {
+			const struct pg_reduction_certificate *c = r->value;
+			if (pg_dag_add(terms, c->source) || pg_dag_add(terms, c->target)) goto done;
+		}
+	}
+	status = 0;
+done:
+	pg_dag_destroy(&dag);
+	pg_index_destroy(&collection.records);
+	pg_graph_destroy(&collection.storage);
+	return status;
+}
+
 int pg_reduction_check_init(struct pg_reduction_check *check, struct pg_whnf_work *work,
 	const struct pg_reduction_archive *archive)
 {

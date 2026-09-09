@@ -16,6 +16,8 @@ struct pg_program {
 	struct pg_synthesis synthesis;
 	/* Own imported immutable effect equations; ordinary Solve computes them. */
 	struct pg_effect_inference imported_effects;
+	/* Graph-owned raw image records, not accepted cache entries or typing. */
+	const struct pg_reduction_archive *retained_reductions;
 	struct pg_parser parser;
 	/* Derived public scopes only; no copied solver results or acceptance. */
 	struct pg_index exports;

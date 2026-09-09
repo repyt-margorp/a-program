@@ -4,9 +4,11 @@
 #include "wire.h"
 #include "derivation_io.h"
 #include "declaration_io.h"
+#include "retained_io.h"
 #include <string.h>
 
 static const char magic[8] = "APGSRC\13";
+static const char retained_magic[8] = "APGSRC\14";
 enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING };
 
 struct environment {
@@ -191,6 +193,18 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 	return 0;
 }
 
+static int retain_objects(struct origin_collection *c, const struct pg_dag_node *previous)
+{
+	for (const struct pg_dag_node *node = previous ? previous->next : c->objects.first; node; node = node->next) {
+		uint64_t hash = (uintptr_t)node->key;
+		for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, hash); entry; entry = entry->next) {
+			const struct origin_candidate *candidate = (const void *)entry;
+			if (candidate->object == node->key && collect_origin(c, candidate->job)) return -1;
+		}
+	}
+	return collect_inputs(c);
+}
+
 static int retain_dependencies(void *owner, const struct pg_derivation_input *input,
 	const struct pg_effect_inference *work)
 {
@@ -204,18 +218,11 @@ static int retain_dependencies(void *owner, const struct pg_derivation_input *in
 	} else if (pg_effect_inference_pack(work, &c->terms.storage, &equations, &count, &terms)) return -1;
 	for (size_t i = 0; i < count; ++i)
 		if (terms[i] && pg_dag_add(&c->terms, terms[i])) return -1;
-	for (const struct pg_dag_node *node = previous ? previous->next : c->objects.first; node; node = node->next) {
-		uint64_t hash = (uintptr_t)node->key;
-		for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, hash); entry; entry = entry->next) {
-			const struct origin_candidate *candidate = (const void *)entry;
-			if (candidate->object == node->key && collect_origin(c, candidate->job)) return -1;
-		}
-	}
-	return collect_inputs(c);
+	return retain_objects(c, previous);
 }
 
-int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
-	size_t count, struct pg_synthesis_job *const *roots)
+int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
+	size_t count, struct pg_synthesis_job *const *roots, const struct pg_reduction_archive *reductions)
 {
 	if (!file || !synthesis || (count && !roots)) return -1;
 	struct pg_dag scopes = {0}, syntax = {0}, rules = {0}, origins = {0}, producers = {0};
@@ -235,6 +242,10 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	for (size_t i = 0; i < count; ++i) if (!roots[i] || pg_dag_add(&producers, roots[i])) goto done;
 	if (collect_inputs(&collection)) goto done;
 	if (pg_synthesis_visit_source_allocations(synthesis, index_origin, &collection)) goto done;
+	if (reductions) {
+		const struct pg_dag_node *previous = collection.objects.last;
+		if (pg_reduction_archive_collect(&collection.terms, reductions) || retain_objects(&collection, previous)) goto done;
+	}
 	const struct pg_derivation_input *const *derivations;
 	if (pg_synthesis_export_rule_closure(synthesis, &rules, &rules.storage, &effects, 1,
 		retain_dependencies, &collection, &derivations)) goto done;
@@ -245,7 +256,7 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 		for (size_t i = 0; pg_synthesis_definition_entry(node->key, i, &item, &producer) == 1; ++i)
 			if (producer) ++entry_count;
 	}
-	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, synthesis->definition_policy)
+	if (fwrite(reductions ? retained_magic : magic, 1, 8, file) != 8 || pg_wire_write_u64(file, synthesis->definition_policy)
 		|| pg_wire_write_u64(file, scopes.count) || pg_wire_write_u64(file, count)
 		|| pg_wire_write_u64(file, origins.count) || pg_wire_write_u64(file, producers.count)
 		|| pg_wire_write_u64(file, entry_count)) goto done;
@@ -302,13 +313,21 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	if (!terms) goto done;
 	for (const struct pg_dag_node *node = syntax.first; node; node = node->next) terms[node->id - 1] = node->key;
 	if (pg_syntax_write(file, syntax.count, terms)) goto done;
-	status = pg_derivation_inputs_write_inference(file, rules.count, derivations, &effects, &pg_declaration_graph_codec, &codec);
+	status = reductions
+		? pg_retained_write(file, rules.count, derivations, &effects, reductions, &pg_declaration_graph_codec, &codec)
+		: pg_derivation_inputs_write_inference(file, rules.count, derivations, &effects, &pg_declaration_graph_codec, &codec);
 done:
 	pg_index_destroy(&collection.candidates); pg_dag_destroy(&collection.terms); pg_dag_destroy(&collection.objects);
 	pg_declaration_io_destroy(&codec);
 	pg_effect_inference_destroy(&effects); pg_dag_destroy(&rules); pg_dag_destroy(&origins);
 	pg_dag_destroy(&syntax); pg_dag_destroy(&scopes); pg_dag_destroy(&producers);
 	return status;
+}
+
+int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
+	size_t count, struct pg_synthesis_job *const *roots)
+{
+	return pg_sources_write_retained(file, synthesis, count, roots, NULL);
 }
 
 struct record {
@@ -353,7 +372,9 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	if (!file || !count || !roots) return NULL;
 	char header[8];
 	uint64_t policy, n, nr, no, np, ne;
-	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return NULL;
+	if (fread(header, 1, 8, file) != 8) return NULL;
+	int retained = !memcmp(header, retained_magic, 8);
+	if (!retained && memcmp(header, magic, 8)) return NULL;
 	if (pg_wire_read_u64(file, &policy) || policy > PG_DEFINITION_EXPLICIT_THUNK) return NULL;
 	if (pg_wire_read_u64(file, &n) || pg_wire_read_u64(file, &nr) || pg_wire_read_u64(file, &no)
 		|| pg_wire_read_u64(file, &np) || pg_wire_read_u64(file, &ne)) return NULL;
@@ -397,8 +418,12 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	if (pg_syntax_read(file, graph, limit, &nt, &terms) || pg_syntax_validate(nt, terms)) goto fail;
 	size_t nd;
 	const struct pg_derivation_input *const *derivations;
-	if (pg_derivations_read_inference(file, graph, limit, limit, &program->imported_effects,
-		&pg_declaration_graph_codec, &codec, &nd, &derivations)) goto fail;
+	int input_status = retained
+		? pg_retained_read(file, graph, limit, limit, &program->imported_effects, &pg_declaration_graph_codec, &codec,
+			&nd, &derivations, &program->retained_reductions)
+		: pg_derivations_read_inference(file, graph, limit, limit, &program->imported_effects,
+			&pg_declaration_graph_codec, &codec, &nd, &derivations);
+	if (input_status) goto fail;
 	if (fgetc(file) != EOF || ferror(file)) goto fail;
 	if (nd > SIZE_MAX / sizeof(void *)) goto fail;
 	struct pg_synthesis_job **rules = pg_alloc(graph, nd * sizeof(*rules));

@@ -28,6 +28,12 @@
  * Streams are borrowed. */
 int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots);
+/* APGSRC12 optionally retains raw reduction records in the same Core table.
+ * Reading leaves them in program->retained_reductions, without checking or
+ * installing results. NULL reductions selects ordinary APGSRC11 RECOMPUTE.
+ * Origin selection includes retained endpoints and intermediate phase Terms. */
+int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
+	size_t count, struct pg_synthesis_job *const *roots, const struct pg_reduction_archive *reductions);
 /* Owns the reconstructed stores in the returned program. root is the first
  * selected job, or NULL for no selections. Additional roots are graph-owned.
  * limit bounds scope/root/name data and syntax data separately. Loading never

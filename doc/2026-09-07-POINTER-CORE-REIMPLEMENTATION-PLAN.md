@@ -787,6 +787,24 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   offsets leave all output groups unchanged. This is the shared payload owner,
   not yet its integration into source selection/origin records or CHECKPOINT.
   Full normal `check check-prepared-modules` (758 boundaries) also passes.
+- [x] Connect the retained payload owner to source images through
+  `pg_sources_write_retained` (APGSRC12). APGSRC11 remains the explicit
+  no-retained-results path. Both use the same source/scope/origin record logic;
+  APGSRC12 uses the shared derivation/reduction Core table for its final payload.
+  Retained endpoint/intermediate Terms feed existing source-allocation origin
+  collection, not a new binder map. Reading retains raw graph-owned records in
+  `program->retained_reductions` and does not check them or seed the work store.
+  The owner may explicitly check/remember NF evidence or use ordinary Solve
+  without it. Tests retain a polymorphic source function and its forced NF,
+  destroy/reload three times including a save before Solve, and verify that
+  type synthesis reconstructs the exact saved NF input. Checked reuse adds zero
+  NF steps; ignoring the saved records performs NF and yields an alpha-equal
+  result with the same classifier. Full normal `check check-prepared-modules`
+  (758 boundaries) and ASan/UBSan `source_io_test normalization` pass.
+- [ ] Add source-facing retention selection and bounded checking/installation
+  lifecycle, independent-process and nominal/IADT tests for APGSRC12. The new
+  API is not yet a CLI CHECKPOINT mode. Pending evaluation/synthesis work and
+  no-recomputation evidence remain separate incomplete requirements.
 - [ ] Connect pending NF jobs and shared WHNF/NF jobs to this record ownership,
   then to source CHECKPOINT. The recomputation-mode checker does not preserve
   unfinished execution provenance or supply a no-recomputation WHNF basis.

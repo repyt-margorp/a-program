@@ -66,6 +66,9 @@ int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit,
 	const struct pg_graph_codec *codec, void *owner, const struct pg_reduction_archive **archive);
 int pg_reduction_archive_write(FILE *file, const struct pg_reduction_archive *archive,
 	const struct pg_graph_codec *codec, void *owner);
+/* Add all retained endpoint/rebuilt Terms to an existing dependency collector.
+ * Shared receipt/phase nodes are visited once; no evaluation or admission. */
+int pg_reduction_archive_collect(struct pg_dag *terms, const struct pg_reduction_archive *archive);
 
 /* Check a decoded archive by recomputing WHNF leaves through the ordinary
  * shared work store, then structural alpha comparison (never conversion of
