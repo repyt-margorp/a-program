@@ -9,6 +9,75 @@ static const char magic[8] = "APGIBD\1";
 static const char scope_magic[8] = "APGISC\3";
 static const char higher_magic[8] = "APGHSC\1";
 static const char discovery_magic[8] = "APGASW\1";
+static const char family_magic[8] = "APGFSW\1";
+
+static int family_cursor(const struct family_scope_work *work)
+{
+	if (!work->cursor || work->scope.bindings) return 0;
+	if (!work->scope.source) return !work->scope.body && !work->scope.count && !work->content;
+	if (!work->scope.body || !work->supplied || work->supplied % 3) return 0;
+	return work->scope.count <= work->supplied / 3;
+}
+
+int pg_family_scope_write(FILE *file, const struct family_scope_work *work,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || !work || (count && !roots) || !family_cursor(work)) return -1;
+	if (count > SIZE_MAX / sizeof(const struct pg_term *) - 5) return -1;
+	struct pg_graph temporary = {0};
+	int status = -1;
+	const struct pg_term **all = pg_alloc(&temporary, (count + 5) * sizeof(*all));
+	if (!all) goto done;
+	const struct pg_term *optional[] = {work->scope.source, work->scope.body, work->content, work->value};
+	unsigned mask = 0;
+	all[0] = work->cursor;
+	for (size_t i = 0; i < 4; ++i) {
+		if (optional[i]) mask |= 1u << i;
+		all[i + 1] = optional[i] ? optional[i] : work->cursor;
+	}
+	for (size_t i = 0; i < count; ++i) all[i + 5] = roots[i];
+	if (fwrite(family_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, work->supplied)
+		|| pg_wire_write_u64(file, work->scope.count) || pg_wire_write_u64(file, mask)) goto done;
+	status = pg_graph_write_descriptors(file, count + 5, all, codec, owner);
+done:
+	pg_graph_destroy(&temporary);
+	return status;
+}
+
+int pg_family_scope_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct family_scope_work **work, size_t *count, const struct pg_term *const **roots)
+{
+	if (!work || !count || !roots) return -1;
+	*work = NULL;
+	*count = 0;
+	*roots = NULL;
+	if (!file || !arena || !output) return -1;
+	char header[8];
+	uint64_t supplied, arity, mask;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, family_magic, 8)
+		|| pg_wire_read_u64(file, &supplied) || pg_wire_read_u64(file, &arity)
+		|| pg_wire_read_u64(file, &mask)) return -1;
+	if (supplied > SIZE_MAX || arity > limit || arity > SIZE_MAX || mask > 15) return -1;
+	size_t total;
+	const struct pg_term *const *all;
+	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &total, &all) || total < 5) return -1;
+	for (size_t i = 0; i < 4; ++i) if (!(mask & (1u << i)) && all[i + 1] != all[0]) return -1;
+	struct family_scope_work *candidate = pg_alloc(arena, sizeof(*candidate));
+	if (!candidate) return -1;
+	candidate->cursor = all[0];
+	candidate->scope.source = mask & 1 ? all[1] : NULL;
+	candidate->scope.body = mask & 2 ? all[2] : NULL;
+	candidate->content = mask & 4 ? all[3] : NULL;
+	candidate->value = mask & 8 ? all[4] : NULL;
+	candidate->supplied = (size_t)supplied;
+	candidate->scope.count = (size_t)arity;
+	if (!family_cursor(candidate)) return -1;
+	*work = candidate;
+	*count = total - 5;
+	*roots = all + 5;
+	return 0;
+}
 
 static int scope_cursor(const struct action_scope_work *work)
 {

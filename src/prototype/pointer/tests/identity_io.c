@@ -27,6 +27,63 @@ static const struct pg_object *resolve(void *unused, const char *text)
 }
 static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
 
+static void family_discovery(void)
+{
+	const struct pg_eval_work_operation *operations[] = {
+		&pg_field_family_scope_operation, &pg_force_family_scope_operation
+	};
+	for (size_t mode = 0; mode < 2; ++mode) {
+		struct pg_graph graph, arena = {0};
+		struct pg_classifiers classifiers;
+		assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+		const struct pg_term *content = pg_return_type(&classifiers, pg_universe(&classifiers, 0));
+		const struct pg_term *body = pg_thunk_type(&classifiers, content);
+		const struct pg_term *source = pg_lambda(&graph, pg_binder(&graph),
+			pg_lambda(&graph, pg_binder(&graph), body));
+		const struct pg_term *family = pg_identity_action(&graph, source);
+		for (size_t i = 0; i < 6; ++i) family = pg_application(&graph, family, content);
+		const struct pg_term *extra[] = {family, source, body, content};
+		const struct pg_term *const *roots = extra;
+		struct family_scope_work initial = {.cursor = family, .value = mode ? content : NULL};
+		struct family_scope_work *work = &initial;
+		size_t polls = 0;
+		int done = 0;
+		while (!done) {
+			for (size_t save = 0; save < 2; ++save) {
+				FILE *file = tmpfile();
+				assert(file && !pg_family_scope_write(file, work, 4, roots, &pg_builtin_graph_codec, &classifiers));
+				pg_classifiers_destroy(&classifiers);
+				pg_graph_destroy(&arena);
+				pg_graph_destroy(&graph);
+				assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+				rewind(file);
+				size_t count;
+				assert(!pg_family_scope_read(file, &arena, &graph, 1000, 100,
+					&pg_builtin_graph_codec, &classifiers, &work, &count, &roots));
+				assert(!fclose(file) && count == 4 && !work->scope.bindings);
+				assert(work->value == (mode ? roots[3] : NULL));
+				if (work->scope.source) assert(work->scope.source == roots[1]);
+			}
+			done = operations[mode]->poll(work);
+			assert(done >= 0 && ++polls <= 10);
+		}
+		assert(polls == 10 && work->supplied == 6 && work->scope.count == 2);
+		assert(work->scope.body == roots[2] && work->content == roots[3]);
+		/* Invalid count must not publish a partially restored work handle. */
+		FILE *file = tmpfile();
+		assert(file && !pg_family_scope_write(file, work, 4, roots, &pg_builtin_graph_codec, &classifiers));
+		assert(!fseek(file, 16, SEEK_SET) && !pg_wire_write_u64(file, 3));
+		rewind(file);
+		size_t count = 1;
+		assert(pg_family_scope_read(file, &arena, &graph, 1000, 100,
+			&pg_builtin_graph_codec, &classifiers, &work, &count, &roots) == -1);
+		assert(!work && !count && !roots && !fclose(file));
+		pg_classifiers_destroy(&classifiers);
+		pg_graph_destroy(&arena);
+		pg_graph_destroy(&graph);
+	}
+}
+
 static void continuation_frames(void)
 {
 	const char *names[] = {
@@ -1357,6 +1414,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
+	family_discovery();
 	handlers();
 	scopes();
 	scope_sharing();

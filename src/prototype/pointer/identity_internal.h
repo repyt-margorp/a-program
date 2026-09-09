@@ -23,6 +23,21 @@ struct action_scope_work {
 	size_t center;
 };
 extern const struct pg_eval_work_operation pg_action_scope_operation;
+struct family_scope_work {
+	struct action_scope scope;
+	const struct pg_term *cursor;
+	const struct pg_term *content;
+	const struct pg_term *value;
+	size_t supplied;
+};
+extern const struct pg_eval_work_operation pg_force_family_scope_operation;
+extern const struct pg_eval_work_operation pg_field_family_scope_operation;
+/* Raw discovery shared by Force and field resumptions, before binding preparation. */
+int pg_family_scope_write(FILE *file, const struct family_scope_work *work,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
+int pg_family_scope_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct family_scope_work **work, size_t *count, const struct pg_term *const **roots);
 struct pg_eval_configuration;
 /* Raw scope discovery, before binding preparation. Cursor and caller argument
  * tails use the same configuration forest; reading does not scan the source. */

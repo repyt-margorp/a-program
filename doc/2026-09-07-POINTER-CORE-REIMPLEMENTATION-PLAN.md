@@ -464,6 +464,19 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Retain raw Thunk-family discovery (`APGFSW1`) in the actual
+  `family_scope_work`, shared by Force and field resumptions. Source/body,
+  optional content/value, cursor and supplied/discovered counts use one Term
+  table with caller roots. No binding preparation or source rescan on import.
+  Both original polling descriptors pass every discovery boundary with two
+  arena-destroying resaves; reject inconsistent counts without publishing work.
+  This is a polling-state test, not a full machine-resumption test.
+  Normal and ASan/UBSan `check-identity-io check-eval-io` pass; so does
+  `check check-prepared-modules` (758 module-save boundaries).
+- [ ] Connect Thunk-family work to whole-machine caller/frame ownership and
+  test both original resume callbacks at every actual evaluator suspension.
+  Family-result construction and its shared closure bindings still need transport.
+
 - [x] Retain raw action-scope discovery (`APGASW1`) through the original
   `action_scope_work` and work descriptor. Source/body/cursor and the actual
   remaining argument-tail pointer share the caller's configuration forest;
