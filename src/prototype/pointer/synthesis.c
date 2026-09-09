@@ -144,7 +144,7 @@ struct effect_substitution_state {
 enum job_role { DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
 enum { APPLICATION_RULE_READY = 6 };
-struct telescope_allocation {
+struct context_allocation {
 	const struct pg_context *prefix, *end;
 	size_t count, next;
 	const struct pg_object *binders[];
@@ -191,7 +191,7 @@ struct pg_synthesis_job {
 	const struct pg_data_schema *schema;
 	const struct pg_data_declaration *nominal_input;
 	struct pg_synthesis_job *allocation_origin;
-	struct telescope_allocation *telescope_allocation;
+	struct context_allocation *context_allocation;
 	const struct pg_source_scope *exports;
 	struct match_state *match;
 	struct handler_state *handler;
@@ -702,27 +702,34 @@ struct pg_synthesis_job *pg_synthesis_telescope_structure(struct pg_synthesis *s
 	return request_role(synthesis, scope, syntax, TELESCOPE_STRUCTURE_JOB);
 }
 
+static int context_allocation_at(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, const struct pg_context *prefix,
+	const struct pg_context *end, int started)
+{
+	size_t count;
+	if (pg_context_extension_size(end, prefix, &count)
+		|| count > (SIZE_MAX - sizeof(struct context_allocation)) / sizeof(void *)) return -1;
+	struct context_allocation *allocation = job->context_allocation;
+	if (allocation) {
+		return allocation->prefix == prefix && allocation->end == end ? 0 : -1;
+	} else {
+		if (started) return -1;
+		allocation = pg_alloc(synthesis->typing->graph, sizeof(*allocation) + count * sizeof(*allocation->binders));
+		if (!allocation) return -1;
+		allocation->prefix = prefix; allocation->end = end; allocation->count = count;
+		const struct pg_context *context = end;
+		for (size_t i = count; i; --i, context = context->parent) allocation->binders[i - 1] = context->binder;
+		job->context_allocation = allocation;
+	}
+	return 0;
+}
+
 struct pg_synthesis_job *pg_synthesis_telescope_at(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	const struct pg_context *prefix, const struct pg_context *end)
 {
-	size_t count;
-	if (pg_context_extension_size(end, prefix, &count)
-		|| count > (SIZE_MAX - sizeof(struct telescope_allocation)) / sizeof(void *)) return NULL;
 	struct pg_synthesis_job *structure = pg_synthesis_telescope_structure(synthesis, scope, syntax);
-	if (!structure) return NULL;
-	struct telescope_allocation *allocation = structure->telescope_allocation;
-	if (allocation) {
-		if (allocation->prefix != prefix || allocation->end != end) return NULL;
-	} else {
-		if (structure->inner) return NULL;
-		allocation = pg_alloc(synthesis->typing->graph, sizeof(*allocation) + count * sizeof(*allocation->binders));
-		if (!allocation) return NULL;
-		allocation->prefix = prefix; allocation->end = end; allocation->count = count;
-		const struct pg_context *context = end;
-		for (size_t i = count; i; --i, context = context->parent) allocation->binders[i - 1] = context->binder;
-		structure->telescope_allocation = allocation;
-	}
+	if (!structure || context_allocation_at(synthesis, structure, prefix, end, structure->inner != NULL)) return NULL;
 	return pg_synthesis_telescope(synthesis, scope, syntax);
 }
 
@@ -1368,6 +1375,15 @@ struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *syn
 	return request_inputs(synthesis, CONSTRUCTOR_SCOPE_JOB, 3, inputs);
 }
 
+struct pg_synthesis_job *pg_synthesis_constructor_scope_at(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *formation, const struct pg_object *constructor,
+	struct pg_synthesis_job *parameters, const struct pg_context *prefix, const struct pg_context *end)
+{
+	struct pg_synthesis_job *job = pg_synthesis_constructor_scope(synthesis, formation, constructor, parameters);
+	if (!job || context_allocation_at(synthesis, job, prefix, end, job->substitution != NULL)) return NULL;
+	return job;
+}
+
 struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation, const struct pg_object *constructor,
 	struct pg_synthesis_job *parameters, struct pg_synthesis_job *motive_context,
@@ -1781,13 +1797,13 @@ static void telescope_structure_step(struct pg_synthesis *synthesis, struct pg_s
 	if (!job->inner) { job->inner = job->scope; job->tail = job->syntax; }
 	if (job->tail->kind != job->syntax->kind ||
 		(job->tail->kind != PG_SYNTAX_LAMBDA && job->tail->kind != PG_SYNTAX_PI)) {
-		finish(synthesis, job, job->telescope_allocation && job->telescope_allocation->next != job->telescope_allocation->count
+		finish(synthesis, job, job->context_allocation && job->context_allocation->next != job->context_allocation->count
 			? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
 		return;
 	}
 	const struct pg_object *binder = NULL;
-	if (job->telescope_allocation) {
-		struct telescope_allocation *allocation = job->telescope_allocation;
+	if (job->context_allocation) {
+		struct context_allocation *allocation = job->context_allocation;
 		if (allocation->next == allocation->count) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 		binder = allocation->binders[allocation->next++];
 	}
@@ -3767,6 +3783,10 @@ static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_syn
 		const struct pg_evidence *self = pg_evidence_premise(formation, 0);
 		size_t count;
 		if (!fields || pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(self), &count)) goto rejected;
+		if (job->context_allocation) {
+			const struct context_allocation *allocation = job->context_allocation;
+			if (allocation->count != count || allocation->prefix != pg_evidence_context(pg_evidence_premise(parameters, 1))) goto rejected;
+		}
 		if (count > (SIZE_MAX - sizeof(struct substitution_state)) / sizeof(struct substitution_entry)) goto error;
 		struct substitution_state *state = pg_alloc(synthesis->typing->graph, sizeof(*state) + count * sizeof(*state->entries));
 		if (!state) goto error;
@@ -3796,8 +3816,10 @@ static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_syn
 		finish(synthesis, job, PG_SYNTHESIS_DONE);
 		return;
 	}
+	const struct pg_object *binder = job->context_allocation
+		? job->context_allocation->binders[state->next] : pg_binder(synthesis->typing->graph);
 	job->right = pg_synthesis_substitution_lift(synthesis, state->map,
-		state->entries[state->next++].extension, pg_binder(synthesis->typing->graph));
+		state->entries[state->next++].extension, binder);
 	if (!job->right) goto error;
 	depend(synthesis, job, job->right);
 	return;

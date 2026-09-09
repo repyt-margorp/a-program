@@ -843,6 +843,19 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   producer ownership/transport rather than deriving a binder correspondence from
   the output Terms. Also audit `pg_prove_constructor_scope` and induction helpers
   so direct and budgeted construction obey the same allocation contract.
+- [x] Add `pg_synthesis_constructor_scope_at` as allocation input to the same
+  constructor-scope job, not another synthesis rule. Share the existing
+  telescope binder-list storage/attachment helper (`context_allocation`). The
+  retained context supplies binder identities only: ordinary substitution lift
+  recomputes field types; target prefix and field count must match. Conflicting
+  or late attachments fail without replacing an existing allocation. Tests
+  compare exact reconstructed contexts and substitution image Terms, not proof
+  record identity (direct and scheduled derivations may differ). Deliberately
+  wrong retained field types are not trusted; wrong count/prefix are rejected.
+  Normal and ASan/UBSan full `synthesis_test` pass, including existing telescope
+  tests. Normal `normalization` and `prepared-module` (758 boundaries) pass.
+  This API is not yet connected to source-image producer transport; the
+  constructor/Match retained-input regression above remains open.
 - [ ] Add source-facing retention selection and bounded checking/installation
   lifecycle and constructor/Match/IADT tests for APGSRC12. The new
   API is not yet a CLI CHECKPOINT mode. Pending evaluation/synthesis work and

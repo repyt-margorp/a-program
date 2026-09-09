@@ -4992,6 +4992,45 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	const struct pg_evidence *succ_function = pg_prove_constructor_function(typing, classifiers,
 		admitted, successor, parameter_map);
 	assert(succ_function);
+	/* Retaining field allocation does not accept retained field classifiers. */
+	const struct pg_evidence *saved_map = pg_prove_constructor_scope(typing, admitted, successor, parameter_map);
+	assert(saved_map);
+	const struct pg_context *saved_fields = pg_evidence_context(pg_evidence_premise(saved_map, 1));
+	const struct pg_evidence *wrong_field = pg_prove_context_extension(typing, empty_context,
+		saved_fields->binder, pg_prove_universe(typing, classifiers, empty_context, 0));
+	assert(wrong_field && pg_evidence_context(wrong_field) != saved_fields);
+	for (unsigned mode = 0; mode < 4; ++mode) {
+		struct pg_synthesis restored;
+		assert(!pg_synthesis_init(&restored, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_synthesis_job *f = pg_synthesis_evidence(&restored, admitted);
+		struct pg_synthesis_job *p = pg_synthesis_evidence(&restored, parameter_map);
+		const struct pg_context *end = mode == 1 ? pg_evidence_context(wrong_field) : saved_fields;
+		const struct pg_context *prefix = mode == 3 ? saved_fields : NULL;
+		if (mode == 2) end = NULL;
+		struct pg_synthesis_job *restored_scope = pg_synthesis_constructor_scope_at(&restored,
+			f, successor, p, prefix, end);
+		assert(restored_scope && !pg_synthesis_result(restored_scope));
+		assert(pg_synthesis_constructor_scope(&restored, f, successor, p) == restored_scope);
+		assert(pg_synthesis_constructor_scope_at(&restored, f, successor, p, prefix, end) == restored_scope);
+		assert(!pg_synthesis_constructor_scope_at(&restored, f, successor, p, NULL,
+			end ? NULL : saved_fields));
+		const struct pg_evidence *result = complete(&restored, restored_scope,
+			mode < 2 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+		if (mode < 2) {
+			assert(pg_evidence_context(pg_evidence_premise(result, 1)) == saved_fields);
+			assert(pg_evidence_premise_count(result) == pg_evidence_premise_count(saved_map));
+			for (size_t i = 2; i < pg_evidence_premise_count(result); ++i)
+				assert(pg_evidence_subject(pg_evidence_premise(result, i))->core ==
+					pg_evidence_subject(pg_evidence_premise(saved_map, i))->core);
+		} else assert(!result);
+		pg_synthesis_destroy(&restored);
+	}
+	struct pg_synthesis_job *ordinary_scope = pg_synthesis_constructor_scope(&synthesis,
+		pg_synthesis_evidence(&synthesis, admitted), successor, pg_synthesis_evidence(&synthesis, parameter_map));
+	const struct pg_evidence *ordinary_map = complete(&synthesis, ordinary_scope, PG_SYNTHESIS_DONE);
+	assert(ordinary_map && !pg_synthesis_constructor_scope_at(&synthesis,
+		pg_synthesis_evidence(&synthesis, admitted), successor, pg_synthesis_evidence(&synthesis, parameter_map),
+		NULL, pg_evidence_context(pg_evidence_premise(ordinary_map, 1))));
 	nat_scope = pg_synthesis_name(&synthesis, nat_scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "succ", .length = 4}, succ_function);
 	assert(nat_scope);

@@ -581,6 +581,14 @@ struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *syn
 struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation, const struct pg_object *constructor,
 	struct pg_synthesis_job *parameters);
+/* Restore only field binder identities before construction begins. Prefix and
+ * field count must match the ordinary parameter/constructor inputs; declared
+ * types in end are not accepted evidence. Ordinary lifting checks all types.
+ * Repeated identical attachments reuse the same job; conflicts/late changes
+ * fail. Borrowed contexts must outlive synthesis. */
+struct pg_synthesis_job *pg_synthesis_constructor_scope_at(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *formation, const struct pg_object *constructor,
+	struct pg_synthesis_job *parameters, const struct pg_context *prefix, const struct pg_context *end);
 /* Extend the shared field scope with thunked motives for direct recursive
  * fields. Input producers must ultimately justify the same nominal family. */
 struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
