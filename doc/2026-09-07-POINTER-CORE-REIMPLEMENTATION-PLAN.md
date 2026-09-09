@@ -741,6 +741,28 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   leave other-policy jobs pending, and retain an existing canonical receipt
   when another accepted proof for that key is supplied. Full normal
   `check check-prepared-modules` (758 boundaries) also passes.
+- [x] Verify the existing source-to-cache connection rather than add another
+  normalization path. `program.c:pg_program_normalize` delegates to
+  `synthesis.c:normalization_receipt`, which already uses `program->evaluation`.
+  A program regression computes an accepted NF in another work store, destroys
+  that store, remembers its receipt and runs the ordinary typed normalization
+  job without further NF steps. Classifier and typing-store ownership remain
+  unchanged. Independently elaborated alpha-equal functions still use different
+  exact Core keys; remembering one never supplies the other's typing evidence.
+  Normal and ASan/UBSan `program_test`, plus normal
+  `check check-prepared-modules` (758 boundaries), pass.
+- [ ] Preserve the shared origin of a source normalization input and its saved
+  receipt before adding completed normalization to APGSRC11. Currently
+  `source_io.c:producer_child` and the normalization producer record retain
+  context/subject producers, mode and force intent, not a completed Core input.
+  The receipt codec restores its own Core roots. A shared relocation table is
+  necessary, but must also connect those roots to the actual producer output
+  (including binder/declaration origins); an unrelated reconstruction may be
+  only alpha-equal. Do not fix a missed pointer-key lookup by alpha-interning or
+  treating a cached Core result as source typing evidence. Test this connection
+  across destroying resaves and independent processes, including force intent
+  and distinct nominal declarations. The program regression above establishes
+  consumption of matching Core evidence, not this source-image correspondence.
 - [ ] Connect pending NF jobs and shared WHNF/NF jobs to this record ownership,
   then to source CHECKPOINT. The recomputation-mode checker does not preserve
   unfinished execution provenance or supply a no-recomputation WHNF basis.

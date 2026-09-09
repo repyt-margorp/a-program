@@ -1,5 +1,6 @@
 #include "program.h"
 #include "derivation.h"
+#include "computation.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -48,6 +49,55 @@ static void pending_normalization(void)
 	assert(pg_synthesis_result(accepted) == pg_synthesis_result(nf));
 	assert(!pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, (enum pg_reduction_kind)99));
 	pg_program_destroy(p);
+}
+
+static void remembered_normalization(void)
+{
+	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
+	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+	struct pg_program *q = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p && q && p->root && q->root);
+	solve(p, 1);
+	solve(q, 1);
+	const struct pg_evidence *proof = pg_synthesis_result(p->root);
+	const struct pg_evidence *other_proof = pg_synthesis_result(q->root);
+	assert(proof && other_proof);
+	const struct pg_evidence *forced = pg_prove_force(&p->typing, proof);
+	const struct pg_evidence *other_forced = pg_prove_force(&q->typing, other_proof);
+	assert(forced && other_forced);
+	const struct pg_term *input = pg_evidence_subject(forced)->core;
+	const struct pg_term *other_input = pg_evidence_subject(other_forced)->core;
+	assert(input != other_input && pg_alpha_equal(input, other_input) == 1);
+	struct pg_whnf_work producer;
+	assert(!pg_whnf_work_init(&producer, &p->graph));
+	struct pg_nf_job *computed = pg_nf_request(&producer, &pg_pure_policy, input);
+	assert(pg_nf_advance(computed, 10000) == PG_NF_DONE);
+	const struct pg_reduction_certificate *receipt = pg_nf_certificate(computed);
+	pg_whnf_work_destroy(&producer);
+	struct pg_synthesis_job *nf = pg_program_normalize(p, proof, 1);
+	assert(nf && !pg_synthesis_result(nf));
+	struct pg_nf_job *cached = pg_nf_request(&p->evaluation, &pg_pure_policy, input);
+	assert(pg_nf_status(cached) == PG_NF_PENDING);
+	assert(!pg_nf_remember(&p->evaluation, receipt));
+	uint64_t steps = pg_nf_steps(cached);
+	for (size_t i = 0; pg_synthesis_status(nf) == PG_SYNTHESIS_PENDING; ++i) {
+		assert(i < 10000);
+		pg_synthesis_advance(&p->synthesis, 1);
+	}
+	const struct pg_evidence *result = pg_synthesis_result(nf);
+	assert(result && pg_evidence_judgement(result) == PG_JUDGEMENT_COMPUTATION);
+	assert(pg_evidence_classifier(result) == pg_evidence_classifier(forced));
+	assert(pg_evidence_subject(result)->core == pg_reduction_target(receipt));
+	assert(pg_nf_steps(cached) == steps && pg_nf_certificate(cached) == receipt);
+	/* A different source elaboration is not the same exact-pointer cache key.
+	 * Sharing an erased result also never transfers typing evidence ownership. */
+	assert(!pg_nf_remember(&q->evaluation, receipt));
+	struct pg_nf_job *other = pg_nf_request(&q->evaluation, &pg_pure_policy, other_input);
+	assert(pg_nf_status(other) == PG_NF_PENDING && !pg_nf_certificate(other));
+	assert(!pg_program_normalize(q, proof, 1));
+	pg_program_destroy(q);
+	pg_program_destroy(p);
+	puts("program normalization: accepted NF reuse preserves classifier, exact Core keys and typing ownership");
 }
 
 static void modules(void)
@@ -205,6 +255,7 @@ int main(int argc, char **argv)
 	}
 	modules();
 	pending_normalization();
+	remembered_normalization();
 	char source[] = "{{ id := &(\\A:@ => \\x:A => x); id :: (A:@)->A->A; }}.id";
 	struct pg_program *split = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
 	struct pg_program *whole = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
