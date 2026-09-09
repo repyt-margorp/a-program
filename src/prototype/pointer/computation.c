@@ -389,6 +389,29 @@ static int dispatch(struct pg_eval *machine)
 
 const struct pg_eval_policy pg_pure_policy = {dispatch};
 
+static const struct {
+	const struct pg_eval_policy *policy;
+	const char *name;
+} portable_policies[] = {
+	{&pg_beta_policy, "evaluation/beta/v1"},
+	{&pg_pure_policy, "evaluation/pure/v1"}
+};
+
+const char *pg_computation_policy_name(const struct pg_eval_policy *policy)
+{
+	for (size_t i = 0; i < sizeof(portable_policies) / sizeof(*portable_policies); ++i)
+		if (portable_policies[i].policy == policy) return portable_policies[i].name;
+	return NULL;
+}
+
+const struct pg_eval_policy *pg_computation_policy_resolve(const char *name)
+{
+	if (!name) return NULL;
+	for (size_t i = 0; i < sizeof(portable_policies) / sizeof(*portable_policies); ++i)
+		if (!strcmp(portable_policies[i].name, name)) return portable_policies[i].policy;
+	return NULL;
+}
+
 void pg_computation_eval_init(struct pg_eval *machine, struct pg_graph *output,
 	const struct pg_term *term)
 {

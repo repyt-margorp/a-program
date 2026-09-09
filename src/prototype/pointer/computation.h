@@ -53,6 +53,11 @@ const struct pg_term *pg_computation_eta(struct pg_graph *graph, const struct pg
 /* Fixed kernel-pure semantics, shared with conversion. No host callbacks or
  * user handler overrides. Unknown references remain neutral. */
 extern const struct pg_eval_policy pg_pure_policy;
+/* Portable identities of the two fixed policies. Exact descriptor identity,
+ * not dispatch-function equality, determines portability. Unknown/local
+ * policies have no name. Resolution neither evaluates nor admits evidence. */
+const char *pg_computation_policy_name(const struct pg_eval_policy *policy);
+const struct pg_eval_policy *pg_computation_policy_resolve(const char *name);
 /* Pure CBPV semantic WHNF, sharing beta steps with pg_eval. The output graph
  * owns materialized demanded arguments. Requests stay inert; zero-clause fold
  * forwards them with its return continuation. No host operation is executed. */

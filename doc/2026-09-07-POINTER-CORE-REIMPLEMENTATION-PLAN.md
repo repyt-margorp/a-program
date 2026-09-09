@@ -464,6 +464,28 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Resolve portable evaluation policies by exact existing descriptor identity:
+  `evaluation/beta/v1` and `evaluation/pure/v1`. One owner table supplies both
+  naming and resolution; a local policy with the same dispatch pointer is not
+  silently treated as either portable policy. These names describe fixed
+  reduction rules, not caller-provided handlers or imported evidence.
+- [x] Test policy-name byte transport, exact memo-key reuse, receipt policy and
+  different WHNFs for `Force(Thunk(v))` under the two restored policies. Reject
+  unknown versions, work names and unnamed local policy descriptors. This is
+  policy identity support, not a complete checkpoint header: machine flags,
+  work-payload dispatch, shared configuration ownership and admission remain
+  required. Normal `check check-prepared-modules` (758 save boundaries) and
+  ASan/UBSan `check-identity-io check-eval-io` pass.
+- [ ] Extend the shared configuration roots before composing frame and task
+  payloads. `eval_io.c:pg_eval_frames_payload_write_with` currently gathers
+  exactly three configurations per frame plus the current configuration through
+  materialization. Its owner callback receives Terms only. Symmetry prefix and
+  action-scope discovery retain closures/argument tails, so serializing them
+  independently inside that callback would split shared environment identity.
+  Admit these task-owned configuration roots to the same forest, then restore
+  original task and frame pointers from that forest. Verify shared captured
+  tails across both owners after destruction/resave and exact remaining steps.
+
 - [x] Give all twelve existing work descriptors owner-local versioned names
   (Force/field variants share algorithms but have distinct resume descriptors).
   Identity, Symmetry and Computation resolve only their existing descriptors;

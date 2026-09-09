@@ -27,6 +27,44 @@ static const struct pg_object *resolve(void *unused, const char *text)
 }
 static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
 
+static void policy_names(void)
+{
+	const struct pg_eval_policy *policies[] = {&pg_beta_policy, &pg_pure_policy};
+	struct pg_graph graph;
+	struct pg_whnf_work work;
+	assert(!pg_graph_init(&graph) && !pg_whnf_work_init(&work, &graph));
+	const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
+	const struct pg_term *thunk = pg_application(&graph, pg_reference(&graph, &pg_thunk_operation), value);
+	const struct pg_term *input = pg_application(&graph, pg_reference(&graph, &pg_force_operation), thunk);
+	assert(input);
+	for (size_t i = 0; i < 2; ++i) {
+		const char *name = pg_computation_policy_name(policies[i]);
+		assert(name && strlen(name) < 100);
+		FILE *file = tmpfile();
+		assert(file && fwrite(name, 1, strlen(name), file) == strlen(name));
+		rewind(file);
+		char restored[100] = {0};
+		assert(fread(restored, 1, strlen(name), file) == strlen(name) && !fclose(file));
+		const struct pg_eval_policy *policy = pg_computation_policy_resolve(restored);
+		assert(policy == policies[i]);
+		struct pg_eval_policy local = *policy;
+		assert(!pg_computation_policy_name(&local));
+		struct pg_whnf_job *job = pg_whnf_request(&work, policy, input);
+		assert(job && job == pg_whnf_request(&work, policies[i], input));
+		assert(pg_whnf_advance(job, 1000) == PG_EVAL_WHNF);
+		assert(pg_whnf_result(job) == (i ? value : input));
+		assert(pg_reduction_policy(pg_whnf_certificate(job)) == policy);
+	}
+	assert(strcmp(pg_computation_policy_name(policies[0]), pg_computation_policy_name(policies[1])));
+	assert(!pg_computation_policy_name(NULL));
+	assert(!pg_computation_policy_resolve(NULL));
+	assert(!pg_computation_policy_resolve(""));
+	assert(!pg_computation_policy_resolve("evaluation/pure/v2"));
+	assert(!pg_computation_policy_resolve("computation/fold_work/v1"));
+	pg_whnf_work_destroy(&work);
+	pg_graph_destroy(&graph);
+}
+
 static void work_names(void)
 {
 	const struct pg_eval_work_operation *entries[] = {
@@ -1915,6 +1953,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
+	policy_names();
 	work_names();
 	visit_forest();
 	shadow_forest();
