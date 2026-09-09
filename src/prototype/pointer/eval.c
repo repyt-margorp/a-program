@@ -1,25 +1,7 @@
-#include "eval.h"
+#include "eval_internal.h"
 
 #include <string.h>
 #include <stdlib.h>
-
-struct readback_entry {
-	struct pg_index_entry index;
-	struct pg_closure input;
-	const struct pg_term *result;
-	struct readback_entry *next, *left, *right;
-	const struct pg_object *binder;
-	unsigned stage;
-	const struct pg_environment *cursor;
-};
-
-struct readback_context {
-	struct pg_graph *output;
-	struct pg_graph temporary;
-	struct pg_index results;
-	struct readback_entry *pending;
-	uint64_t steps;
-};
 
 struct materialization {
 	struct readback_context readback;
@@ -237,25 +219,42 @@ enum pg_eval_status pg_eval_advance(struct pg_eval *machine, uint64_t budget)
 
 /* Readback is substitution, not evaluation. Fresh binder references prevent
  * capture when closures from different lexical environments are combined. */
+static uint64_t reify_hash(struct pg_closure closure)
+{
+	return ((uintptr_t)closure.term * UINT64_C(1099511628211)) ^ (uintptr_t)closure.environment;
+}
+
+static struct readback_entry *reify_find(struct readback_context *context, struct pg_closure closure)
+{
+	uint64_t hash = reify_hash(closure);
+	for (struct pg_index_entry *candidate = pg_index_candidates(&context->results, hash); candidate; candidate = candidate->next) {
+		struct readback_entry *other = (struct readback_entry *)candidate;
+		if (candidate->hash == hash && other->input.term == closure.term
+			&& other->input.environment == closure.environment) return other;
+	}
+	return NULL;
+}
+
+int pg_readback_index(struct readback_context *context, struct readback_entry *entry)
+{
+	if (reify_find(context, entry->input)) return -1;
+	return pg_index_insert(&context->results, &entry->index, reify_hash(entry->input));
+}
+
 static struct readback_entry *reify_request(struct readback_context *context, struct pg_closure closure)
 {
 	if (!closure.term) return NULL;
 	/* Environments contain binder substitutions, never semantic references. */
 	if (closure.term->kind == PG_REFERENCE && closure.term->as.reference->kind == PG_SEMANTIC_OBJECT)
 		closure.environment = NULL;
-	uint64_t hash = ((uintptr_t)closure.term * UINT64_C(1099511628211)) ^ (uintptr_t)closure.environment;
-	for (struct pg_index_entry *candidate = pg_index_candidates(&context->results, hash); candidate; candidate = candidate->next) {
-		if (candidate->hash != hash) continue;
-		struct readback_entry *entry = (struct readback_entry *)candidate;
-		if (entry->input.term != closure.term) continue;
-		if (entry->input.environment == closure.environment) return entry;
-	}
+	struct readback_entry *existing = reify_find(context, closure);
+	if (existing) return existing;
 	struct readback_entry *entry = pg_alloc(&context->temporary, sizeof(*entry));
 	if (!entry) return NULL;
 	memset(entry, 0, sizeof(*entry));
 	entry->input = closure;
 	entry->cursor = closure.environment;
-	if (pg_index_insert(&context->results, &entry->index, hash) != 0) return NULL;
+	if (pg_index_insert(&context->results, &entry->index, reify_hash(closure)) != 0) return NULL;
 	if (!closure.environment) entry->result = closure.term;
 	else {
 		entry->next = context->pending;
@@ -394,12 +393,6 @@ const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph 
 	return result;
 }
 
-struct pg_substitution_state {
-	struct readback_context context;
-	struct readback_entry *root;
-	enum pg_substitution_status status;
-};
-
 int pg_substitution_init(struct pg_substitution *work, struct pg_graph *graph,
 	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
 {
@@ -462,6 +455,11 @@ uint64_t pg_substitution_steps(const struct pg_substitution *work)
 const struct pg_term *pg_substitution_result(const struct pg_substitution *work)
 {
 	return pg_substitution_status(work) == PG_SUBSTITUTION_DONE ? work->state->root->result : NULL;
+}
+
+const struct pg_closure *pg_substitution_input(const struct pg_substitution *work)
+{
+	return work && work->state && work->state->root ? &work->state->root->input : NULL;
 }
 
 const struct pg_term *pg_term_substitute(struct pg_graph *graph,

@@ -22,4 +22,16 @@ int pg_eval_configurations_read(FILE *file, struct pg_graph *graph, size_t limit
 	size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	size_t *count, const struct pg_eval_configuration **roots);
 
+/* Raw substitution/readback work, including partial results and traversal.
+ * Restored progress is NOT accepted evidence that these results follow from
+ * the original input. Use only as an inert work representation until that
+ * provenance is established. The existing substitution executor resumes it;
+ * no alternate evaluator or certificate admission is provided here.
+ * Read into an unused work handle; destroy it before destroying graph. */
+int pg_substitution_write(FILE *file, const struct pg_substitution *work,
+	const struct pg_graph_codec *codec, void *owner);
+int pg_substitution_read(FILE *file, struct pg_graph *graph, size_t limit,
+	size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct pg_substitution *work);
+
 #endif

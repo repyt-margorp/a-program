@@ -6,3 +6,5 @@ trap 'rm -rf "$directory"' EXIT HUP INT TERM
 "$binary"
 "$binary" write "$directory/configuration"
 "$binary" read "$directory/configuration"
+"$binary" write-substitution "$directory/substitution"
+"$binary" read-substitution "$directory/substitution"

@@ -163,17 +163,134 @@ static void beta_resume(void)
 	pg_graph_destroy(&graph);
 }
 
+static const struct pg_term *substitution_fixture(struct pg_graph *graph, struct pg_binding_value *binding)
+{
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
+	const struct pg_term *body = pg_reference(graph, x);
+	for (size_t i = 0; i < 12; ++i) body = pg_application(graph, body, body);
+	*binding = (struct pg_binding_value){x, pg_reference(graph, y)};
+	return pg_lambda(graph, y, body);
+}
+
+static void write_substitution(FILE *file)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	struct pg_binding_value binding;
+	const struct pg_term *input = substitution_fixture(&graph, &binding);
+	struct pg_substitution work;
+	assert(!pg_substitution_init(&work, &graph, input, 1, &binding));
+	assert(pg_substitution_advance(&work, 1) == PG_SUBSTITUTION_PENDING);
+	assert(!pg_substitution_write(file, &work, NULL, NULL));
+	pg_substitution_destroy(&work);
+	pg_graph_destroy(&graph);
+}
+
+static void read_substitution(FILE *file)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	struct pg_substitution work, baseline;
+	assert(!pg_substitution_read(file, &graph, 10000, 100, NULL, NULL, &work));
+	assert(pg_substitution_steps(&work) == 1 && pg_substitution_status(&work) == PG_SUBSTITUTION_PENDING);
+	const struct pg_closure *source = pg_substitution_input(&work);
+	assert(source && source->environment && !source->environment->parent);
+	struct pg_binding_value binding = {source->environment->binder, source->environment->value.term};
+	assert(!pg_substitution_init(&baseline, &graph, source->term, 1, &binding));
+	assert(pg_substitution_advance(&baseline, 10000) == PG_SUBSTITUTION_DONE);
+	uint64_t steps = pg_substitution_steps(&baseline);
+	assert(pg_substitution_advance(&work, steps - 1) == PG_SUBSTITUTION_DONE);
+	assert(pg_substitution_steps(&work) == steps);
+	assert(pg_alpha_equal(pg_substitution_result(&work), pg_substitution_result(&baseline)) == 1);
+	pg_substitution_destroy(&work);
+	pg_substitution_destroy(&baseline);
+	pg_graph_destroy(&graph);
+}
+
+static void substitution_resume(void)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	struct pg_binding_value binding;
+	const struct pg_term *input = substitution_fixture(&graph, &binding);
+	const struct pg_object *y = binding.value->as.reference;
+	struct pg_substitution whole;
+	assert(!pg_substitution_init(&whole, &graph, input, 1, &binding));
+	assert(pg_substitution_advance(&whole, 10000) == PG_SUBSTITUTION_DONE);
+	uint64_t steps = pg_substitution_steps(&whole);
+	const struct pg_term *expected = pg_substitution_result(&whole);
+	pg_substitution_destroy(&whole);
+	for (uint64_t cut = 0; cut <= steps; ++cut) {
+		struct pg_substitution work;
+		assert(!pg_substitution_init(&work, &graph, input, 1, &binding));
+		pg_substitution_advance(&work, cut);
+		assert(pg_substitution_steps(&work) == cut);
+		FILE *file = tmpfile();
+		assert(file && !pg_substitution_write(file, &work, NULL, NULL));
+		pg_substitution_destroy(&work);
+		struct pg_graph restored;
+		assert(!pg_graph_init(&restored));
+		rewind(file);
+		assert(!pg_substitution_read(file, &restored, 10000, 100, NULL, NULL, &work));
+		assert(pg_substitution_steps(&work) == cut);
+		const struct pg_closure *source = pg_substitution_input(&work);
+		assert(source && source->term->kind == PG_LAMBDA && source->environment);
+		const struct pg_term *relocated_y = source->environment->value.term;
+		assert(relocated_y->as.reference == source->term->as.lambda.binder);
+		struct pg_binding_value correspondence = {y, relocated_y};
+		const struct pg_term *relocated_expected = pg_term_substitute(&restored, expected, 1, &correspondence);
+		FILE *again = tmpfile();
+		assert(again && !pg_substitution_write(again, &work, NULL, NULL));
+		rewind(file);
+		rewind(again);
+		int byte;
+		do { byte = fgetc(file); assert(byte == fgetc(again)); } while (byte != EOF);
+		assert(!ferror(file) && !ferror(again));
+		assert(!fclose(again));
+		assert(pg_substitution_advance(&work, steps - cut) == PG_SUBSTITUTION_DONE);
+		assert(pg_substitution_steps(&work) == steps);
+		assert(pg_alpha_equal(pg_substitution_result(&work), relocated_expected) == 1);
+		pg_substitution_destroy(&work);
+		if (!cut) {
+			const long offsets[] = {24, 40, 64, 80};
+			const uint64_t invalid[] = {2, 3, 1, 1};
+			for (size_t i = 0; i < 4; ++i) {
+				uint64_t prior;
+				assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_read_u64(file, &prior));
+				assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, invalid[i]));
+				rewind(file);
+				assert(pg_substitution_read(file, &restored, 10000, 100, NULL, NULL, &work));
+				assert(!work.state);
+				assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, prior));
+			}
+		}
+		pg_graph_destroy(&restored);
+		assert(!fclose(file));
+	}
+	pg_graph_destroy(&graph);
+}
+
 int main(int argc, char **argv)
 {
 	if (argc == 3) {
-		int writing = !strcmp(argv[1], "write");
-		assert(writing || !strcmp(argv[1], "read"));
-		FILE *file = fopen(argv[2], writing ? "wb" : "rb");
-		assert(file);
-		if (writing) write_fixture(file);
-		else read_fixture(file);
-		assert(!fclose(file));
-		return 0;
+		const struct {
+			const char *name, *mode;
+			void (*run)(FILE *);
+		} commands[] = {
+			{"write", "wb", write_fixture}, {"read", "rb", read_fixture},
+			{"write-substitution", "wb", write_substitution},
+			{"read-substitution", "rb", read_substitution}
+		};
+		for (size_t i = 0; i < sizeof(commands) / sizeof(*commands); ++i) {
+			if (strcmp(argv[1], commands[i].name)) continue;
+			FILE *file = fopen(argv[2], commands[i].mode);
+			assert(file);
+			commands[i].run(file);
+			assert(!fclose(file));
+			return 0;
+		}
+		assert(!"unknown command");
+		return 1;
 	}
 	assert(argc == 1);
 	FILE *file = tmpfile();
@@ -218,6 +335,7 @@ int main(int argc, char **argv)
 	pg_graph_destroy(&graph);
 	deep_shared();
 	beta_resume();
+	substitution_resume();
 	puts("evaluation configuration: captured environments, shared tails, inert resave and lexical relocation passed");
 	return 0;
 }

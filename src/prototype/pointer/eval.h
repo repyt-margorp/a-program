@@ -97,6 +97,8 @@ int pg_substitution_init(struct pg_substitution *work, struct pg_graph *graph,
 enum pg_substitution_status pg_substitution_advance(struct pg_substitution *work, uint64_t budget);
 enum pg_substitution_status pg_substitution_status(const struct pg_substitution *work);
 uint64_t pg_substitution_steps(const struct pg_substitution *work);
+/* Original lexical input, borrowed until work destruction. No reduction. */
+const struct pg_closure *pg_substitution_input(const struct pg_substitution *work);
 const struct pg_term *pg_substitution_result(const struct pg_substitution *work);
 void pg_substitution_destroy(struct pg_substitution *work);
 /* Capture-avoiding simultaneous substitution, without reduction. Later entries

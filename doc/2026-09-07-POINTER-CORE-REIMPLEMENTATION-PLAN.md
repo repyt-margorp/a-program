@@ -149,6 +149,25 @@ remain required before a completed-checkpoint claim.
   sufficient. `APGCFG1` is a component format, not a new user file extension or
   full `.a` CHECKPOINT. No scheduler, completion flag or policy is restored by
   this component, and it cannot seed a WHNF/NF acceptance cache.
+- [x] Retain standalone substitution work (`APGSUB1`) with the same
+  `readback_entry`/`readback_context` structures used by the evaluator.
+  `eval_internal.h` shares their layout with the codec, rather than defining a
+  second readback machine. Save child dependencies, pending order, cursor,
+  fresh binder, completed results and charged steps. Rebuild the pointer-keyed
+  index with the evaluator's lookup/hash logic; resume through the existing
+  `pg_substitution_advance`. Failed work is not exported by this component.
+- [x] Check every cut of a shared-DAG capture-avoiding substitution, including
+  the completed cut: exact remaining work, byte-identical unsolved resave,
+  fresh-process resume after binder allocation, and rejection of invalid
+  stages/child links/pending cycles. Compare free variables under the explicit
+  input relocation; alpha comparison alone does not identify free binders in
+  different graphs. `check check-prepared-modules` and normal/ASan/UBSan
+  `check-eval-io` pass. A missing scratch Term-index initialization found by
+  these tests was corrected before acceptance of this change.
+- [ ] Generalize this retained readback graph to materialization's multiple
+  roots and partially rebuilt application spine. `APGSUB1` currently restores
+  raw work only, not evidence of its saved results' provenance; neither it nor
+  `APGCFG1` is wired into accepted normalization or full source checkpoints.
 
 The callback refactor is not the remaining implementation plan by itself.
 Inspection of the actual work records found the following transitive payloads.
