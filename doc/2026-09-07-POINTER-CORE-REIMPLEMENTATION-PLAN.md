@@ -344,7 +344,7 @@ provenance before it can support accepted evidence, but reproducing the original
 search history is not required. Whole-machine retention remains incomplete until
 these owner payloads, deferred tasks and policy are connected together.
 
-- [x] Add raw `action_scope` ownership transport (`APGISC1`): source/body,
+- [x] Add raw `action_scope` ownership transport (now `APGISC2`): source/body,
   arity, allocation state and each initialized source/endpoint/relation binder.
   Optional extra Term roots share one existing descriptor table. Missing binder
   fields remain missing; importing does not run `prepare_bindings`, scope
@@ -431,6 +431,19 @@ these owner payloads, deferred tasks and policy are connected together.
   registering an owner. Normal/ASan/UBSan `check-identity-io` and the full
   `check check-prepared-modules` run pass. The final host-width-check cleanup
   was rechecked in both component builds after the full run began.
+- [x] Retain multiple scope roots in one `APGISC2` payload. Exact-pointer
+  collectors separately track scope objects and mutable binding-array bases;
+  distinct scopes can share one array, including shorter prefix views. Equal
+  contents do not merge distinct scopes or arrays. NULL roots represent absent
+  state. All source/body/binder/extra roots use one ordinary descriptor table.
+  Single-scope APIs delegate to this codec, not a second implementation.
+- [x] Verify repeated scope roots, distinct equal-content scopes/arrays, shared
+  array mutations, prefix views, NULL roots and an empty forest through two
+  arena-destroying resaves. Invalid root references clear outputs. Normal and
+  ASan/UBSan `check-identity-io check-eval-io` pass, as does the full
+  `check check-prepared-modules` run (758 module-save boundaries). This supersedes the experimental
+  `APGISC1` layout; it does not change a stable artifact contract or admit raw
+  progress as evidence. Whole-machine integration remains below.
 - [ ] Connect retained continuation names, scopes and all deferred algorithm
   states to whole-machine checkpoint ownership. Common graph support for these
   caller references does not by itself retain the live execution that uses them.

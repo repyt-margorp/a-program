@@ -30,6 +30,11 @@ extern const struct pg_eval_work_operation pg_action_body_operation;
 /* Raw scope ownership, including unallocated/partially prepared bindings.
  * Extra Term roots use the same relocation table. No action or binder
  * synthesis is performed while reading. Storage belongs to arena/output. */
+int pg_action_scopes_write(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
+int pg_action_scopes_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	size_t *scope_count, struct action_scope *const **scopes, size_t *count, const struct pg_term *const **roots);
 int pg_action_scope_write(FILE *file, const struct action_scope *scope,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
 int pg_action_scope_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
