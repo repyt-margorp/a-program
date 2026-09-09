@@ -45,10 +45,11 @@ static int read_axes(FILE *file, struct pg_graph *arena, const char *magic, size
 	return 0;
 }
 
-int pg_symmetry_prefix_write(FILE *file, const struct prefix_work *work,
-	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner)
+int pg_symmetry_prefix_write_with(FILE *file, const struct prefix_work *work,
+	size_t count, const struct pg_eval_configuration *roots,
+	int (*write_configurations)(FILE *, size_t, const struct pg_eval_configuration *, void *), void *owner)
 {
-	if (!file || !work || !work->outer || (count && !roots)) return -1;
+	if (!file || !work || !work->outer || !write_configurations || (count && !roots)) return -1;
 	size_t dimension = work->outer->dimension - work->outer->fixed_prefix;
 	if (count > SIZE_MAX / sizeof(struct pg_eval_configuration) - 2) return -1;
 	struct pg_graph temporary;
@@ -60,28 +61,30 @@ int pg_symmetry_prefix_write(FILE *file, const struct prefix_work *work,
 	all[1].head = work->argument;
 	for (size_t i = 0; i < count; ++i) all[i + 2] = roots[i];
 	if (write_axes(file, prefix_magic, dimension, work->position, work->axes)) goto done;
-	status = pg_eval_configurations_write(file, count + 2, all, codec, owner);
+	status = write_configurations(file, count + 2, all, owner);
 done:
 	pg_graph_destroy(&temporary);
 	return status;
 }
 
-int pg_symmetry_prefix_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
-	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+int pg_symmetry_prefix_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit,
+	int (*read_configurations)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
+		const struct pg_eval_configuration **, void *), void *owner,
 	struct prefix_work **work, size_t *count, const struct pg_eval_configuration **roots)
 {
 	if (!work || !count || !roots) return -1;
 	*work = NULL;
 	*count = 0;
 	*roots = NULL;
-	if (!file || !arena || !output) return -1;
+	if (!file || !arena || !output || !read_configurations) return -1;
 	struct prefix_work *candidate = pg_alloc(arena, sizeof(*candidate));
 	if (!candidate) return -1;
 	size_t capacity;
 	if (read_axes(file, arena, prefix_magic, limit, &capacity, &candidate->position, &candidate->axes)) return -1;
 	size_t total;
 	const struct pg_eval_configuration *all;
-	if (pg_eval_configurations_read(file, output, limit, name_limit, codec, owner, &total, &all) || total < 2) return -1;
+	if (read_configurations(file, output, limit, name_limit, &total, &all, owner) || total < 2) return -1;
 	if (all[0].head.environment || all[0].arguments || all[1].arguments || all[0].head.term->kind != PG_REFERENCE) return -1;
 	candidate->outer = pg_symmetry_owner(all[0].head.term->as.reference);
 	if (!candidate->outer || capacity != candidate->outer->dimension - candidate->outer->fixed_prefix) return -1;
@@ -90,6 +93,40 @@ int pg_symmetry_prefix_read(FILE *file, struct pg_graph *arena, struct pg_graph 
 	*count = total - 2;
 	*roots = all + 2;
 	return 0;
+}
+
+struct configuration_owner {
+	const struct pg_graph_codec *codec;
+	void *owner;
+};
+
+static int write_configurations(FILE *file, size_t count, const struct pg_eval_configuration *roots, void *opaque)
+{
+	struct configuration_owner *context = opaque;
+	return pg_eval_configurations_write(file, count, roots, context->codec, context->owner);
+}
+
+static int read_configurations(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_eval_configuration **roots, void *opaque)
+{
+	struct configuration_owner *context = opaque;
+	return pg_eval_configurations_read(file, graph, limit, name_limit, context->codec, context->owner, count, roots);
+}
+
+int pg_symmetry_prefix_write(FILE *file, const struct prefix_work *work,
+	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	struct configuration_owner context = {codec, owner};
+	return pg_symmetry_prefix_write_with(file, work, count, roots, write_configurations, &context);
+}
+
+int pg_symmetry_prefix_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct prefix_work **work, size_t *count, const struct pg_eval_configuration **roots)
+{
+	struct configuration_owner context = {codec, owner};
+	return pg_symmetry_prefix_read_with(file, arena, output, limit, name_limit,
+		read_configurations, &context, work, count, roots);
 }
 
 int pg_symmetry_work_write(FILE *file, const struct composition_work *work,

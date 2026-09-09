@@ -55,6 +55,17 @@ int pg_symmetry_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *o
 struct prefix_work;
 /* Prefix removal retains a captured argument, so its extra roots are full
  * configurations. Caller and argument environments share one relocation table. */
+/* The configuration owner can include a Demand stack in that same forest.
+ * On failure it must clean up any restored active frame materialization.
+ * No callback runs the task or establishes its provenance. */
+int pg_symmetry_prefix_write_with(FILE *file, const struct prefix_work *work,
+	size_t count, const struct pg_eval_configuration *roots,
+	int (*write_configurations)(FILE *, size_t, const struct pg_eval_configuration *, void *), void *owner);
+int pg_symmetry_prefix_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit,
+	int (*read_configurations)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
+		const struct pg_eval_configuration **, void *), void *owner,
+	struct prefix_work **work, size_t *count, const struct pg_eval_configuration **roots);
 int pg_symmetry_prefix_write(FILE *file, const struct prefix_work *work,
 	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner);
 int pg_symmetry_prefix_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,

@@ -490,12 +490,23 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Reject omitted owner Terms and mismatched extra-root counts with empty outputs.
   Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
   `check-identity-io check-eval-io` pass.
-- [ ] Connect Symmetry prefix and action-scope discovery to these shared roots.
-  Their existing standalone codecs retain closures/argument tails, so nesting
-  them independently after configurations have been lowered to Term roots would
-  still split environment identity. Their task records must instead use the
-  newly shared roots. This transport plumbing alone is not complete checkpoint
-  dispatch, source-image integration or accepted-progress provenance.
+- [x] Connect Symmetry prefix work to an owning configuration callback. The
+  standalone API delegates to the same axis/prefix validation and restoration;
+  a frame owner embeds those configuration roots in the common forest instead
+  of serializing a separate environment graph. No alternate polling algorithm.
+- [x] Verify every prefix position under a real Force Demand frame, with two
+  arena-destroying resaves, identical results and exact charged steps. Assert
+  captured-environment sharing with the parent's argument closure before and
+  after relocation. Semantic reference heads intentionally drop their lexical
+  environment (`eval.c`), so comparing to `frame.caller.environment` was an
+  incorrect initial test assumption, corrected rather than changing evaluation.
+  Test rejection after frame restoration and owner cleanup. Normal
+  `check check-prepared-modules` (758 save boundaries), a final regular
+  `check-identity-io check-eval-io` rerun and the ASan/UBSan component gate pass.
+- [ ] Connect action-scope discovery to these shared roots. Its standalone
+  codec still owns a configuration forest; do not nest a second forest below
+  the frame's Term callback. Full task dispatch, machine-header retention,
+  source-image integration and accepted-progress provenance remain required.
 
 - [x] Give all twelve existing work descriptors owner-local versioned names
   (Force/field variants share algorithms but have distinct resume descriptors).
