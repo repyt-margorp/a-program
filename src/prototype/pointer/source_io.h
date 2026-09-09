@@ -3,12 +3,12 @@
 #include "program.h"
 #include <stdio.h>
 
-/* Closed source environments and source/definition/rule roots, including pending modules.
+/* Reconstructible source environments and source/definition/rule roots, including pending modules.
  * Reuses immutable syntax, lexical parents, namespaces and import bindings.
  * Rule evidence is stored as unaccepted derivation inputs through the existing
  * codec, with one Core table for all rule roots. Effect contributions must be
  * complete (workers sealed); solutions are recomputed by ordinary Solve.
- * Selected closed source declaration origins use that same table. Retained
+ * Selected source declaration origins use that same table. Retained
  * origin inputs survive save-before-Solve and do not certify the source.
  * No search state or acceptance flag is retained. Unsupported producer/scope
  * kinds fail explicitly instead of being omitted. This is RECOMPUTE, not a

@@ -6,8 +6,8 @@
 #include "declaration_io.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\5";
-enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS };
+static const char magic[8] = "APGSRC\6";
+enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING };
 
 struct environment {
 	enum environment_kind kind;
@@ -32,6 +32,12 @@ static int environment(const struct pg_synthesis *synthesis, const struct pg_sou
 	struct pg_source_environment input;
 	if (pg_synthesis_environment_input(synthesis, scope, &input)) return -1;
 	*output = (struct environment){.parent = input.parent, .name = input.name};
+	if (input.binding) {
+		const struct pg_object *binder;
+		if (pg_synthesis_binding_input(synthesis, input.binding, &output->parent, &output->syntax, &binder)) return -1;
+		output->kind = BINDING; output->rule = pg_synthesis_allocation_origin(input.binding);
+		return 0;
+	}
 	if (input.definitions) {
 		output->kind = DEFINITIONS; output->definitions = input.definitions;
 		return 0;
@@ -83,11 +89,16 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 	while (!id(c->scopes, parent)) {
 		struct pg_source_environment input;
 		if (pg_synthesis_environment_input(c->synthesis, parent, &input)) return -1;
-		if (!input.definitions || !id(c->syntax, input.definitions)) return 0;
+		const struct pg_syntax *site = input.definitions;
+		if (input.binding) {
+			const struct pg_object *binder;
+			if (pg_synthesis_binding_input(c->synthesis, input.binding, &input.parent, &site, &binder)) return -1;
+		}
+		if (!site || !id(c->syntax, site)) return 0;
 		parent = input.parent;
 		if (!parent) return 0;
 	}
-	if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->rules, pg_synthesis_declaration_origin(job))
+	if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->rules, pg_synthesis_allocation_origin(job))
 		|| pg_dag_add(c->origins, job)) return -1;
 	return 0;
 }
@@ -123,7 +134,16 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 		if (input.rule && pg_dag_add(&rules, input.rule)) goto done;
 	}
 	struct origin_collection collection = {synthesis, &scopes, &syntax, &rules, &origins};
+	const struct pg_dag_node *previous_scope = scopes.last;
 	if (pg_synthesis_visit_declarations(synthesis, collect_origin, &collection)) goto done;
+	/* Origin discovery may add lexical binder scopes and their input rules. */
+	for (const struct pg_dag_node *node = previous_scope ? previous_scope->next : scopes.first; node; node = node->next) {
+		struct environment input;
+		if (environment(synthesis, node->key, &input)) goto done;
+		if (input.syntax && pg_dag_add(&syntax, input.syntax)) goto done;
+		if (input.definitions && pg_dag_add(&syntax, input.definitions)) goto done;
+		if (input.rule && pg_dag_add(&rules, input.rule)) goto done;
+	}
 	if (rules.count > SIZE_MAX / sizeof(void *)) goto done;
 	struct pg_synthesis_job **producers = pg_alloc(&rules.storage, rules.count * sizeof(*producers));
 	if (!producers) goto done;
@@ -153,7 +173,7 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 		const struct pg_syntax *term;
 		if (pg_synthesis_source_input(synthesis, node->key, &scope, &term)) goto done;
 		if (pg_wire_write_u64(file, id(&scopes, scope)) || pg_wire_write_u64(file, id(&syntax, term))
-			|| pg_wire_write_u64(file, id(&rules, pg_synthesis_declaration_origin(node->key)))) goto done;
+			|| pg_wire_write_u64(file, id(&rules, pg_synthesis_allocation_origin(node->key)))) goto done;
 	}
 	if (syntax.count > SIZE_MAX / sizeof(void *)) goto done;
 	const struct pg_syntax **terms = pg_alloc(&syntax.storage, syntax.count * sizeof(*terms));
@@ -199,7 +219,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t w[8];
 		for (size_t j = 0; j < 8; ++j) if (pg_wire_read_u64(file, &w[j])) goto fail;
-		if (w[0] > DEFINITIONS || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
+		if (w[0] > BINDING || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
 		char *name = pg_alloc(graph, (size_t)w[6]);
 		if (!name || fread(name, 1, (size_t)w[6], file) != w[6]) goto fail;
 		remaining -= (size_t)w[6];
@@ -230,6 +250,13 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		const struct pg_source_scope *parent = r->parent ? scopes[r->parent - 1] : NULL;
 		const struct pg_source_scope *target = r->target ? scopes[r->target - 1] : NULL;
 		struct pg_synthesis *s = &program->synthesis;
+		if (r->kind == BINDING) {
+			if (!parent || target || !r->syntax || !r->rule || r->definitions || r->name.kind || r->name.length) goto fail;
+			scopes[i] = pg_synthesis_binding_scope(pg_synthesis_restore_binding(s, parent,
+				terms[r->syntax - 1], rules[r->rule - 1]));
+			if (!scopes[i]) goto fail;
+			continue;
+		}
 		if (r->rule) {
 			if (r->kind != NAME || !parent || target || r->syntax || r->definitions) goto fail;
 			scopes[i] = pg_synthesis_name_job(s, parent, r->name, rules[r->rule - 1]);

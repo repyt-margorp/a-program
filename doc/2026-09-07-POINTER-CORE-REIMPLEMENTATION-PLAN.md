@@ -7706,6 +7706,27 @@ save/load without dropping the shared declaration. No second Replay exists.
   other N0--N7 acceptance requirements. This closed-origin result is not full
   CHECKPOINT, full source compatibility or permission to promote to Main.
 
+Next step after `89e5662`: `APGSRC6` reconstructs ordinary Lambda/Pi binder
+scopes from their parent, source syntax and retained context-extension input.
+The shared allocation-origin reference now covers both declarations and
+binders. `pg_synthesis_binding_at` installs the relocated binder while the
+ordinary source domain producer supplies its type; no stored context proof is
+used as the source result. Origin discovery includes binder ancestors and
+collects newly discovered scopes once, rather than rescanning all scopes.
+
+- [x] Restore a datatype beneath two type-parameter binders, with the same
+  declaration and context as separately retained formation evidence.
+- [x] Save the loaded parameterized source again before Solve, reload it,
+  and obtain the same checked formation through ordinary source synthesis.
+- [x] `check`, `check-examples`, `check-example-results` and the mixed-origin
+  gate pass. The extended `image_cli.sh` also passes: example 09's direct NF
+  graph equals its saved/loaded NF graph (Solve step counts may differ).
+- [ ] Persist arbitrary pending binder allocations without a retained complete
+  context-extension input. Handler-local, IH and other derived scope origins
+  remain outside this source-environment encoding; reject unsupported exports.
+- [ ] Finish the remaining N0--N7 requirements before Main promotion. Passing
+  a parameterized List round trip is not general IADT/Acc/IF8 completion.
+
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.

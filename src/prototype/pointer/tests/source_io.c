@@ -257,13 +257,55 @@ static void nominal_sources(FILE *file, int writing, uint64_t chunk, int origins
 	}
 }
 
+static int find_declaration(void *owner, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job **found = owner;
+	assert(!*found);
+	*found = job;
+	return 0;
+}
+
+static void parameter_origins(void)
+{
+	const char *text = "Box:=&(\\A:@=>\\B:@=>@{mk:A->B->*;});";
+	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p && p->root);
+	while (p->synthesis.ready) { assert(p->synthesis.steps < 20000); pg_synthesis_advance(&p->synthesis, 1); }
+	assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+	struct pg_synthesis_job *declaration = NULL;
+	assert(!pg_synthesis_visit_declarations(&p->synthesis, find_declaration, &declaration));
+	assert(declaration && pg_synthesis_result(declaration));
+	struct pg_synthesis_job *selected[] = {p->root,
+		pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(declaration))};
+	struct pg_synthesis_job *const *roots = selected;
+	size_t count = 2;
+	for (size_t round = 0; round < 2; ++round) {
+		FILE *file = tmpfile();
+		assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
+		pg_program_destroy(p);
+		rewind(file);
+		p = pg_sources_read(file, 50000, &count, &roots);
+		assert(p && count == 2 && !p->synthesis.steps);
+		assert(!pg_synthesis_result(roots[0]) && !pg_synthesis_result(roots[1]));
+		assert(!fclose(file));
+	}
+	while (p->synthesis.ready) { assert(p->synthesis.steps < 30000); pg_synthesis_advance(&p->synthesis, 1); }
+	assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
+	declaration = NULL;
+	assert(!pg_synthesis_visit_declarations(&p->synthesis, find_declaration, &declaration));
+	assert(declaration && pg_synthesis_result(declaration) == pg_synthesis_result(roots[1]));
+	pg_program_destroy(p);
+	puts("source image: dependent parameter scopes retain declaration identity through unsolved resave");
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
 	int origins = !strncmp(argv[1], "origin-", 7);
 	int nominal = origins || !strncmp(argv[1], "nominal-", 8);
 	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "nominal-write") || !strcmp(argv[1], "origin-write");
-	if (writing) { definition_boundaries(); rule_environments(); }
+	if (writing) { definition_boundaries(); rule_environments(); parameter_origins(); }
 	FILE *file = fopen(argv[2], writing ? "w+b" : "rb");
 	assert(file);
 	if (nominal) nominal_sources(file, writing, !strcmp(argv[1], "nominal-read-bulk") ? 64 : 1, origins);

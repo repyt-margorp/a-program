@@ -62,14 +62,18 @@ struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthe
 int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
 	const struct pg_syntax **syntax);
-/* Read-only enumeration of completed source declaration producers. The visitor
- * selects its source closure; unrelated jobs are not implicitly image roots. */
+/* Read-only enumeration of source declarations with completed allocations or
+ * retained origin inputs. The visitor selects its source closure; unrelated
+ * jobs are not implicitly image roots. */
 int pg_synthesis_visit_declarations(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, struct pg_synthesis_job *), void *owner);
 /* Retain the unaccepted formation input as allocation provenance, including
  * across save-before-Solve. Source inference never uses its acceptance status. */
-struct pg_synthesis_job *pg_synthesis_declaration_origin(const struct pg_synthesis_job *job);
+struct pg_synthesis_job *pg_synthesis_allocation_origin(const struct pg_synthesis_job *job);
 struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	struct pg_synthesis_job *origin);
+struct pg_synthesis_job *pg_synthesis_restore_binding(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
 /* A definition is keyed by its registration producer and expression, not by
@@ -89,15 +93,16 @@ struct pg_synthesis_job *pg_synthesis_definition_request(struct pg_synthesis *sy
  * Consumers wait for the same registration worker; this is not acceptance. */
 const struct pg_source_scope *pg_synthesis_definition_scope(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *definitions);
-/* Closed lexical environment input, not a copied scope or another authority.
+/* Reconstructible lexical input, not a copied scope or another authority.
  * A parentless empty view denotes the ordinary root. At most one of producer,
- * module, exports, imports and definitions is present. Binder and handler-local
+ * module, exports, imports, definitions and binding is present. Handler-local
  * scopes require their own source reconstruction, not this view. */
 struct pg_source_environment {
 	const struct pg_source_scope *parent, *exports, *imports;
 	struct pg_token name;
 	struct pg_synthesis_job *producer, *module;
 	const struct pg_syntax *definitions;
+	struct pg_synthesis_job *binding;
 };
 int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_source_environment *input);
