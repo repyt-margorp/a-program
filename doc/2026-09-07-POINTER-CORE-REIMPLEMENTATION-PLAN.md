@@ -371,7 +371,7 @@ these owner payloads, deferred tasks and policy are connected together.
   `check check-prepared-modules` run. The added outer-failure assertion was
   rechecked in both component builds after that run began.
 - [x] Bind production Demand continuations and owner scopes in the raw
-  `APGCON1` stack envelope (`computation_io`). Resolve exact versioned names
+  `APGCON2` stack envelope (`computation_io`). Resolve exact versioned names
   through the existing module-owned resolver. Identity owns the predicate for
   its four scope-bearing continuations; the other seven require NULL state.
   Shared scopes, frame data and answer readback retain one Term table. Unknown
@@ -491,6 +491,18 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   ASan/UBSan component tests pass, as does `check check-prepared-modules`;
   the final result-only and dangling-reference cases were rechecked in both
   component builds after that full run. `APGISC3` supersedes experimental v2.
+- [x] Connect the optional action-result task to the same named-continuation
+  stack API (`APGCON2`). Continuation scopes and the result task now enter the
+  same ownership table, with frame/readback roots in its single Term table.
+  Update existing callers directly; no compatibility wrapper or parallel stack
+  encoder. Failure clears both frame and task output handles.
+- [x] Retain a real action-result task under a waiting Fold at every task cut,
+  resave twice after arena destruction and resume with the existing evaluator.
+  Final value and total steps agree. The synthetic eleven-continuation fixture
+  also checks task/continuation-scope array aliasing through the combined codec.
+  Machine flags, policy and task registration are still restored by the test;
+  other task kinds and complete source-level checkpoints remain incomplete.
+  Normal/ASan/UBSan component tests and `check check-prepared-modules` pass.
 
 - [x] Retain raw symmetry composition (`APGSYM1`) using the original
   `composition_work` and its polling/resumption descriptor. Original outer and

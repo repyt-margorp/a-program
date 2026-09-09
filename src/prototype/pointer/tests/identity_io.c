@@ -40,6 +40,8 @@ static void continuation_frames(void)
 	const struct pg_term *term = pg_reference(&graph, pg_binder(&graph));
 	struct action_binding binding = {.source = term->as.reference};
 	struct action_scope scope = {term, term, 1, &binding};
+	struct action_result_work initial_result = {&graph, &binding, term, 0, 0};
+	struct action_result_work *result = &initial_result;
 	struct pg_eval_frame initial[11] = {0};
 	for (size_t i = 0; i < 11; ++i) {
 		initial[i].caller.term = term;
@@ -52,13 +54,13 @@ static void continuation_frames(void)
 	struct pg_eval_configuration current = {{term, NULL}, NULL};
 	for (unsigned round = 0; round < 2; ++round) {
 		FILE *file = tmpfile();
-		assert(file && !pg_computation_frames_write(file, frames, &current, &codec, NULL));
+		assert(file && !pg_computation_frames_write(file, frames, result, &current, &codec, NULL));
 		pg_materialize_destroy(&frames->answer);
 		pg_graph_destroy(&arena);
 		pg_graph_destroy(&graph);
 		assert(!pg_graph_init(&graph));
 		rewind(file);
-		assert(!pg_computation_frames_read(file, &arena, &graph, 1000, 100, &codec, NULL, &frames, &current));
+		assert(!pg_computation_frames_read(file, &arena, &graph, 1000, 100, &codec, NULL, &frames, &result, &current));
 		size_t i = 0;
 		const struct action_scope *shared = NULL;
 		for (struct pg_eval_frame *p = frames; p; p = p->parent, ++i) {
@@ -71,19 +73,21 @@ static void continuation_frames(void)
 			}
 		}
 		assert(i == 11 && shared);
+		assert(result && result->bindings == shared->bindings && result->result == current.head.term);
 		/* Unknown names cannot select arbitrary host callbacks. */
 		assert(!fseek(file, 24, SEEK_SET) && fputc('?', file) != EOF);
 		rewind(file);
 		struct pg_eval_frame *rejected;
+		struct action_result_work *rejected_result;
 		struct pg_eval_configuration empty;
-		assert(pg_computation_frames_read(file, &arena, &graph, 1000, 100, &codec, NULL, &rejected, &empty));
-		assert(!rejected && !empty.head.term && !empty.arguments);
+		assert(pg_computation_frames_read(file, &arena, &graph, 1000, 100, &codec, NULL, &rejected, &rejected_result, &empty));
+		assert(!rejected && !rejected_result && !empty.head.term && !empty.arguments);
 		assert(!fclose(file));
 	}
 	FILE *bad = tmpfile();
 	assert(bad);
 	frames->state = frames->parent->parent->parent->parent->parent->state;
-	assert(pg_computation_frames_write(bad, frames, &current, &codec, NULL));
+	assert(pg_computation_frames_write(bad, frames, result, &current, &codec, NULL));
 	assert(!fclose(bad));
 	pg_materialize_destroy(&frames->answer);
 	pg_graph_destroy(&arena);
@@ -119,7 +123,7 @@ static void force_frames(void)
 			for (unsigned round = 0; round < 2; ++round) {
 				FILE *file = tmpfile();
 				struct pg_eval_configuration current = {machine.current, machine.arguments};
-				assert(file && !pg_computation_frames_write(file, machine.frames, &current, &pg_builtin_graph_codec, NULL));
+				assert(file && !pg_computation_frames_write(file, machine.frames, NULL, &current, &pg_builtin_graph_codec, NULL));
 				uint64_t steps = machine.steps;
 				int ready = machine.head_ready;
 				assert(!machine.task);
@@ -129,7 +133,9 @@ static void force_frames(void)
 				assert(!pg_graph_init(&graph));
 				rewind(file);
 				struct pg_eval_frame *frames;
-				assert(!pg_computation_frames_read(file, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &frames, &current));
+				struct action_result_work *result_work;
+				assert(!pg_computation_frames_read(file, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &frames, &result_work, &current));
+				assert(!result_work);
 				value = frames->arguments->value.environment->value.term;
 				assert(!fclose(file));
 				pg_computation_eval_init(&machine, &graph, current.head.term);
@@ -892,6 +898,67 @@ static void result_ownership(void)
 	pg_graph_destroy(&graph);
 }
 
+static void result_frames(void)
+{
+	uint64_t total = 0;
+	unsigned retained = 0;
+	for (uint64_t cut = 0; ; ++cut) {
+		struct pg_graph graph, arena = {0};
+		assert(!pg_graph_init(&graph));
+		const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
+		const struct pg_object *x = pg_binder(&graph);
+		const struct pg_term *vx = pg_reference(&graph, x);
+		const struct pg_term *ret = pg_reference(&graph, &pg_return_operation);
+		const struct pg_term *source = pg_identity_action(&graph, pg_lambda(&graph, x, pg_application(&graph, ret, vx)));
+		for (size_t i = 0; i < 3; ++i) source = pg_application(&graph, source, value);
+		const struct pg_term *term = pg_computation_fold(&graph, source, pg_lambda(&graph, x, vx), 0, NULL);
+		struct pg_eval machine;
+		pg_computation_eval_init(&machine, &graph, term);
+		if (pg_eval_advance(&machine, cut) == PG_EVAL_WHNF) {
+			assert(machine.steps == total);
+			pg_eval_destroy(&machine);
+			pg_graph_destroy(&graph);
+			break;
+		}
+		if (machine.task && machine.task->operation == &pg_action_result_operation) {
+			assert(machine.frames);
+			++retained;
+			for (unsigned round = 0; round < 2; ++round) {
+				struct pg_eval_configuration current = {machine.current, machine.arguments};
+				FILE *file = tmpfile();
+				assert(file && !pg_computation_frames_write(file, machine.frames, machine.task->state, &current, &pg_builtin_graph_codec, NULL));
+				uint64_t steps = machine.steps;
+				int ready = machine.head_ready;
+				pg_eval_destroy(&machine);
+				pg_graph_destroy(&arena);
+				pg_graph_destroy(&graph);
+				assert(!pg_graph_init(&graph));
+				rewind(file);
+				struct pg_eval_frame *frames;
+				struct action_result_work *work;
+				assert(!pg_computation_frames_read(file, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &frames, &work, &current));
+				assert(work && !fclose(file));
+				value = current.arguments->next->value.term;
+				pg_computation_eval_init(&machine, &graph, current.head.term);
+				machine.current = current.head;
+				machine.arguments = current.arguments;
+				machine.frames = frames;
+				machine.steps = steps;
+				machine.head_ready = ready;
+				assert(!pg_eval_defer(&machine, &pg_action_result_operation, work));
+			}
+		}
+		assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&machine, &graph) == value);
+		if (!cut) total = machine.steps;
+		assert(machine.steps == total);
+		pg_eval_destroy(&machine);
+		pg_graph_destroy(&arena);
+		pg_graph_destroy(&graph);
+	}
+	assert(retained);
+}
+
 static void scopes(void)
 {
 	/* Every nullable binding field is retained, not synthesized on import. */
@@ -1224,6 +1291,7 @@ int main(int argc, char **argv)
 	scopes();
 	scope_sharing();
 	result_ownership();
+	result_frames();
 	continuation_frames();
 	force_frames();
 	fold_progress();
