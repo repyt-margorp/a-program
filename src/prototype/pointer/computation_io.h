@@ -55,11 +55,13 @@ int pg_whnf_pending_read(FILE *file, struct pg_whnf_job *job, struct pg_graph *o
 
 /* Immutable reduction record DAG, not imported proof acceptance. Read returns
  * an opaque archive, never a publicly usable reduction certificate. Records
- * and the archive belong to output. Resaving is inert; WHNF endpoint claims
+ * and the archive belong to output. Phase roots retain unfinished NF history
+ * without inventing a completed receipt. Resaving is inert; WHNF endpoint claims
  * still need their execution basis before an accepted owner can use them. */
 struct pg_reduction_archive;
 int pg_reduction_records_write(FILE *file, size_t count,
-	const struct pg_reduction_certificate *const *roots, const struct pg_graph_codec *codec, void *owner);
+	const struct pg_reduction_certificate *const *roots, size_t phase_count,
+	const struct pg_reduction_phase *const *phases, const struct pg_graph_codec *codec, void *owner);
 int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit, size_t name_limit,
 	const struct pg_graph_codec *codec, void *owner, const struct pg_reduction_archive **archive);
 int pg_reduction_archive_write(FILE *file, const struct pg_reduction_archive *archive,

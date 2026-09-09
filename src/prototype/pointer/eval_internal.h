@@ -67,6 +67,8 @@ struct pg_reduction_certificate {
 struct pg_reduction_archive {
 	size_t count;
 	const struct pg_reduction_certificate *const *roots;
+	size_t phase_count;
+	const struct pg_reduction_phase *const *phases;
 };
 
 struct pg_reduction_request {

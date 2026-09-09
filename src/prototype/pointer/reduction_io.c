@@ -6,7 +6,7 @@
 
 #include <string.h>
 
-static const char magic[8] = "APGRCP\1";
+static const char magic[8] = "APGRCP\2";
 
 struct record {
 	struct pg_index_entry index;
@@ -69,9 +69,10 @@ static int write_links(FILE *file, struct collection *collection, const struct p
 }
 
 int pg_reduction_records_write(FILE *file, size_t count,
-	const struct pg_reduction_certificate *const *roots, const struct pg_graph_codec *codec, void *owner)
+	const struct pg_reduction_certificate *const *roots, size_t phase_count,
+	const struct pg_reduction_phase *const *phases, const struct pg_graph_codec *codec, void *owner)
 {
-	if (!file || (count && !roots)) return -1;
+	if (!file || (count && !roots) || (phase_count && !phases)) return -1;
 	struct collection collection = {0};
 	struct pg_dag dag = {0};
 	int status = -1;
@@ -80,10 +81,14 @@ int pg_reduction_records_write(FILE *file, size_t count,
 		struct record *root = record(&collection, roots[i], 0);
 		if (!root || pg_dag_add(&dag, root)) goto done;
 	}
+	for (size_t i = 0; i < phase_count; ++i) {
+		struct record *root = record(&collection, phases[i], 1);
+		if (!root || pg_dag_add(&dag, root)) goto done;
+	}
 	if (dag.count > SIZE_MAX / (2 * sizeof(const struct pg_term *))) goto done;
 	const struct pg_term **terms = pg_alloc(&collection.storage, 2 * dag.count * sizeof(*terms));
 	if (!terms || fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, dag.count)
-		|| pg_wire_write_u64(file, count)) goto done;
+		|| pg_wire_write_u64(file, count) || pg_wire_write_u64(file, phase_count)) goto done;
 	size_t n = 0;
 	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
 		const struct record *r = node->key;
@@ -105,6 +110,8 @@ int pg_reduction_records_write(FILE *file, size_t count,
 	}
 	for (size_t i = 0; i < count; ++i)
 		if (pg_wire_write_u64(file, pg_dag_find(&dag, record(&collection, roots[i], 0))->id)) goto done;
+	for (size_t i = 0; i < phase_count; ++i)
+		if (pg_wire_write_u64(file, pg_dag_find(&dag, record(&collection, phases[i], 1))->id)) goto done;
 	status = pg_graph_write_descriptors(file, n, terms, codec, owner);
 done:
 	pg_dag_destroy(&dag);
@@ -129,17 +136,20 @@ int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit,
 	*archive = NULL;
 	if (!file || !output) return -1;
 	char header[8];
-	uint64_t count, root_count;
+	uint64_t count, root_count, phase_count;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)
-		|| pg_wire_read_u64(file, &count) || pg_wire_read_u64(file, &root_count)) return -1;
+		|| pg_wire_read_u64(file, &count) || pg_wire_read_u64(file, &root_count)
+		|| pg_wire_read_u64(file, &phase_count)) return -1;
 	if (count > limit || root_count > limit || count > SIZE_MAX / sizeof(void *)
 		|| root_count > SIZE_MAX / sizeof(const struct pg_reduction_certificate *)) return -1;
+	if (phase_count > limit || phase_count > SIZE_MAX / sizeof(const struct pg_reduction_phase *)) return -1;
 	struct pg_graph scratch = {0};
 	int status = -1;
 	void **records = pg_alloc(&scratch, (size_t)count * sizeof(*records));
 	unsigned char *kinds = pg_alloc(&scratch, (size_t)count);
 	const struct pg_reduction_certificate **roots = pg_alloc(output, (size_t)root_count * sizeof(*roots));
-	if (!records || !kinds || !roots) goto done;
+	const struct pg_reduction_phase **phases = pg_alloc(output, (size_t)phase_count * sizeof(*phases));
+	if (!records || !kinds || !roots || !phases) goto done;
 	size_t term_count = 0;
 	for (size_t i = 0; i < count; ++i) {
 		int kind = fgetc(file);
@@ -181,6 +191,11 @@ int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit,
 		if (read_link(file, (size_t)count, records, kinds, 0, &root) || !root) goto done;
 		roots[i] = root;
 	}
+	for (size_t i = 0; i < phase_count; ++i) {
+		void *root;
+		if (read_link(file, (size_t)count, records, kinds, 1, &root) || !root) goto done;
+		phases[i] = root;
+	}
 	size_t n;
 	const struct pg_term *const *terms;
 	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &n, &terms) || n != term_count) goto done;
@@ -194,7 +209,7 @@ int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit,
 	}
 	struct pg_reduction_archive *result = pg_alloc(output, sizeof(*result));
 	if (!result) goto done;
-	*result = (struct pg_reduction_archive){(size_t)root_count, roots};
+	*result = (struct pg_reduction_archive){(size_t)root_count, roots, (size_t)phase_count, phases};
 	*archive = result;
 	status = 0;
 done:
@@ -205,5 +220,6 @@ done:
 int pg_reduction_archive_write(FILE *file, const struct pg_reduction_archive *archive,
 	const struct pg_graph_codec *codec, void *owner)
 {
-	return archive ? pg_reduction_records_write(file, archive->count, archive->roots, codec, owner) : -1;
+	return archive ? pg_reduction_records_write(file, archive->count, archive->roots,
+		archive->phase_count, archive->phases, codec, owner) : -1;
 }

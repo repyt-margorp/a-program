@@ -655,7 +655,8 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   to the whole work-store owner and source image. The local fixture tests below
   establish their origin by construction; they do not justify arbitrary imported
   progress. The completed WHNF basis and full source CHECKPOINT gates stay open.
-- [x] Add `APGRCP1` raw reduction-record transport in `reduction_io.c`.
+- [x] Add raw reduction-record transport in `reduction_io.c` (`APGRCP2`,
+  replacing the initial `APGRCP1` layout to add independent phase roots).
   Traverse receipts and phase records through the existing iterative DAG utility;
   phases are visited directly rather than repeatedly scanning predecessor lists.
   Preserve shared child receipts, phase predecessors, normality links, exact
@@ -672,8 +673,18 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   source operands imply identical immediate NF child receipts; WHNF can reduce
   the function side first, so sharing is now checked with explicit equal neutral
   operands. No normalization rule was changed to satisfy that assertion.
+- [x] Retain unfinished NF phase chains as direct archive roots. Use the same
+  receipt/phase dependency table, so pending phases and completed child receipts
+  retain shared identity. Do not manufacture a completed NF certificate merely
+  to give a partial history an archive root. Phase-only archives are supported;
+  their presence does not assert completion or grant evidence acceptance.
+  Verification: a real NF job stopped at `NF_RECHECK` retains its partial phase
+  and aliases with a completed child across two destroying resaves. Phase-only
+  roots pass; cyclic predecessors and certificate/phase root reinterpretation
+  fail. Normal `check check-prepared-modules` and ASan/UBSan `check-identity-io`
+  pass. Whole-job continuation/stack ownership remains unfinished.
 - [ ] Validate retained derivations before any archive root can be published
-  as accepted reduction evidence. Connect pending NF phase roots and shared
+  as accepted reduction evidence. Connect pending NF jobs and shared
   WHNF/NF jobs to this record ownership, then to source CHECKPOINT. None of
   these gates is closed by raw archive round trips.
 - [ ] Complete the separately required symbolic type-family formation contract.

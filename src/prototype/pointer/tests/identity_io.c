@@ -2214,12 +2214,19 @@ static void reduction_records(void)
 		pg_nf_certificate(pure), pg_nf_certificate(normal), pg_nf_certificate(pure), pg_nf_certificate(beta),
 		pg_nf_certificate(duplicated)
 	};
+	struct pg_nf_job *pending = pg_nf_request(&work, &pg_pure_policy,
+		pg_lambda(&graph, pg_binder(&graph), pg_application(&graph, neutral, neutral)));
+	while (!pending->phases) {
+		assert(pg_nf_advance(pending, 1) == PG_NF_PENDING && pg_nf_steps(pending) < 10000);
+	}
+	assert(!pending->certificate && pending->stage == NF_RECHECK);
+	const struct pg_reduction_phase *initial_phases[] = {pending->phases, pending->phases, initial[4]->phases};
 	const struct pg_reduction_archive *archive = NULL;
 	for (unsigned round = 0; round < 2; ++round) {
 		FILE *file = tmpfile();
 		assert(file);
 		assert(!(round ? pg_reduction_archive_write(file, archive, &pg_builtin_graph_codec, NULL)
-			: pg_reduction_records_write(file, 5, initial, &pg_builtin_graph_codec, NULL)));
+			: pg_reduction_records_write(file, 5, initial, 3, initial_phases, &pg_builtin_graph_codec, NULL)));
 		if (!round) pg_whnf_work_destroy(&work);
 		pg_graph_destroy(&graph);
 		assert(!pg_graph_init(&graph));
@@ -2227,6 +2234,9 @@ static void reduction_records(void)
 		assert(!pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &archive));
 		/* Inspect private raw layout only; never pass it to evidence constructors. */
 		assert(archive->count == 5 && archive->roots[0] == archive->roots[2]);
+		assert(archive->phase_count == 3 && archive->phases[0] == archive->phases[1]);
+		assert(archive->phases[0]->children[0] == archive->roots[4]);
+		assert(archive->phases[2] == archive->roots[4]->phases);
 		assert(archive->roots[1]->normality == archive->roots[0]);
 		assert(archive->roots[1]->source == archive->roots[0]->target);
 		assert(archive->roots[0]->source == archive->roots[3]->source);
@@ -2238,7 +2248,7 @@ static void reduction_records(void)
 		}
 		assert(shared_children);
 		/* The first topological node is a leaf receipt. A self edge is invalid. */
-		assert(!fseek(file, 24, SEEK_SET) && fgetc(file) == 0);
+		assert(!fseek(file, 32, SEEK_SET) && fgetc(file) == 0);
 		assert(fgetc(file) == PG_REDUCTION_WHNF);
 		uint64_t length;
 		assert(!pg_wire_read_u64(file, &length) && length < 100);
@@ -2252,7 +2262,28 @@ static void reduction_records(void)
 	cycle.normality = &cycle;
 	const struct pg_reduction_certificate *root = &cycle;
 	FILE *file = tmpfile();
-	assert(file && pg_reduction_records_write(file, 1, &root, &pg_builtin_graph_codec, NULL));
+	assert(file && pg_reduction_records_write(file, 1, &root, 0, NULL, &pg_builtin_graph_codec, NULL));
+	assert(!fclose(file));
+	struct pg_reduction_phase phase_cycle = *archive->phases[0];
+	phase_cycle.previous = &phase_cycle;
+	const struct pg_reduction_phase *phase_root = &phase_cycle;
+	file = tmpfile();
+	assert(file && pg_reduction_records_write(file, 0, NULL, 1, &phase_root, &pg_builtin_graph_codec, NULL));
+	assert(!fclose(file));
+	/* A partial NF history needs no synthetic completed root receipt. */
+	file = tmpfile();
+	assert(file && !pg_reduction_records_write(file, 0, NULL, 1, archive->phases, &pg_builtin_graph_codec, NULL));
+	rewind(file);
+	const struct pg_reduction_archive *phase_only;
+	assert(!pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &phase_only));
+	assert(!phase_only->count && phase_only->phase_count == 1 && phase_only->phases[0]->children[0]);
+	assert(!fclose(file));
+	/* Root counts cannot reinterpret a certificate root as a phase root. */
+	file = tmpfile();
+	assert(file && !pg_reduction_archive_write(file, archive, &pg_builtin_graph_codec, NULL));
+	assert(!fseek(file, 16, SEEK_SET) && !pg_wire_write_u64(file, 0) && !pg_wire_write_u64(file, 8));
+	rewind(file);
+	assert(pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &phase_only) && !phase_only);
 	assert(!fclose(file));
 	pg_graph_destroy(&graph);
 	puts("Reduction archive: receipt/phase sharing, policy identity and acyclic relocation passed (not evidence admission)");
