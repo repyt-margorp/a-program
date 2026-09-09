@@ -476,15 +476,26 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   work-payload dispatch, shared configuration ownership and admission remain
   required. Normal `check check-prepared-modules` (758 save boundaries) and
   ASan/UBSan `check-identity-io check-eval-io` pass.
-- [ ] Extend the shared configuration roots before composing frame and task
-  payloads. `eval_io.c:pg_eval_frames_payload_write_with` currently gathers
-  exactly three configurations per frame plus the current configuration through
-  materialization. Its owner callback receives Terms only. Symmetry prefix and
-  action-scope discovery retain closures/argument tails, so serializing them
-  independently inside that callback would split shared environment identity.
-  Admit these task-owned configuration roots to the same forest, then restore
-  original task and frame pointers from that forest. Verify shared captured
-  tails across both owners after destruction/resave and exact remaining steps.
+- [x] Extend the existing frame payload and named-continuation APIs with extra
+  configuration roots. Frame callers, active readback, current configuration and
+  task-owned lexical links now use the same configuration forest and final Term
+  table. The owner determines the extra-root count; the inner reader validates
+  the total. Existing frame-only APIs delegate with zero roots and reject an
+  image containing extras rather than silently dropping them. No second
+  environment codec, evaluator or Core representation is introduced.
+- [x] Test two destroying resaves at every scope-frame suspension: preserve
+  shared environments across owner roots and caller, shared argument tails and
+  distinct equal-content environments. Test extra roots through the real named
+  Force/field family-result frame path, and retain exact resumed step counts.
+  Reject omitted owner Terms and mismatched extra-root counts with empty outputs.
+  Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
+  `check-identity-io check-eval-io` pass.
+- [ ] Connect Symmetry prefix and action-scope discovery to these shared roots.
+  Their existing standalone codecs retain closures/argument tails, so nesting
+  them independently after configurations have been lowered to Term roots would
+  still split environment identity. Their task records must instead use the
+  newly shared roots. This transport plumbing alone is not complete checkpoint
+  dispatch, source-image integration or accepted-progress provenance.
 
 - [x] Give all twelve existing work descriptors owner-local versioned names
   (Force/field variants share algorithms but have distinct resume descriptors).

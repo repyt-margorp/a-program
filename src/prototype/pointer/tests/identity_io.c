@@ -478,7 +478,10 @@ static void family_resume(void)
 					assert(file);
 					size_t length = strlen(active->name);
 					assert(!pg_wire_write_u64(file, length) && fwrite(active->name, 1, length, file) == length);
-					if (mode >= 2) assert(!pg_computation_frames_write_with(file, machine.frames, inputs, family_owner_write, &state));
+					if (mode >= 2) {
+						struct pg_eval_configuration captured = {machine.frames->caller, machine.frames->arguments};
+						assert(!pg_computation_frames_write_with(file, machine.frames, inputs, 1, &captured, family_owner_write, &state));
+					}
 					else assert(!pg_eval_configurations_write_with(file, 2, inputs, family_write, &state));
 					uint64_t elapsed = machine.steps;
 					int ready = machine.head_ready;
@@ -500,8 +503,12 @@ static void family_resume(void)
 					const struct pg_eval_configuration *restored = &current;
 					struct pg_eval_frame *frames = NULL;
 					if (mode >= 2) {
+						const struct pg_eval_configuration *captured;
 						assert(!pg_computation_frames_read_with(file, &arena, &graph, 10000, 100,
-							family_owner_read, &state, &frames, &current));
+							family_owner_read, &state, &frames, &current, 1, &captured));
+						assert(captured->head.term == frames->caller.term);
+						assert(captured->head.environment == frames->caller.environment);
+						assert(captured->arguments == frames->arguments);
 						expected = state.expected;
 					} else {
 						assert(!pg_eval_configurations_read_with(file, &graph, 10000, 100,
@@ -1313,10 +1320,18 @@ static void scope_frames(void)
 		}
 		assert(!scope_answers);
 		struct scope_frame_codec context = {.arena = &arena, .scope = &initial};
+		struct pg_environment distinct = environment;
+		struct pg_argument tail = {{body, &environment}, NULL};
+		struct pg_argument first = {{source, &environment}, &tail};
+		struct pg_eval_configuration owned[] = {
+			{{body, &environment}, &first}, {{source, &environment}, &tail},
+			{{body, &distinct}, &first}
+		};
+		const struct pg_eval_configuration *extra = owned;
 		for (unsigned round = 0; round < 2; ++round) {
 			FILE *file = tmpfile();
 			struct pg_eval_configuration current = {machine.current, machine.arguments};
-			assert(file && !pg_eval_frames_payload_write_with(file, machine.frames, &current, write_scope_terms, &context));
+			assert(file && !pg_eval_frames_payload_write_with(file, machine.frames, &current, 3, extra, write_scope_terms, &context));
 			uint64_t steps = machine.steps;
 			int ready = machine.head_ready;
 			pg_eval_destroy(&machine);
@@ -1326,16 +1341,31 @@ static void scope_frames(void)
 			rewind(file);
 			struct pg_eval_frame *frames;
 			assert(!pg_eval_frames_payload_read_with(file, &arena, &graph, 10000, 100,
-				read_scope_terms, &context, &frames, &current));
+				read_scope_terms, &context, &frames, &current, 3, &extra));
+			assert(extra[0].head.environment == frames->caller.environment);
+			assert(extra[1].head.environment == frames->caller.environment);
+			assert(extra[2].head.environment != frames->caller.environment);
+			assert(extra[2].head.environment->binder == frames->caller.environment->binder);
+			assert(extra[0].arguments == extra[2].arguments);
+			assert(extra[0].arguments->next == extra[1].arguments);
+			assert(extra[1].arguments->value.environment == frames->caller.environment);
+			assert(extra[0].head.term == context.scope->body);
 			/* Failure outside a successfully restored owner must not publish
 			 * a partially connected frame. Scope storage is arena-owned. */
 			rewind(file);
 			struct scope_frame_codec bad = {.arena = &arena, .omit_root = 1};
 			struct pg_eval_frame *rejected;
 			struct pg_eval_configuration unused;
+			const struct pg_eval_configuration *unused_extra;
 			assert(pg_eval_frames_payload_read_with(file, &arena, &graph, 10000, 100,
-				read_scope_terms, &bad, &rejected, &unused));
-			assert(bad.scope && !rejected && !unused.head.term && !unused.arguments);
+				read_scope_terms, &bad, &rejected, &unused, 3, &unused_extra));
+			assert(bad.scope && !rejected && !unused.head.term && !unused.arguments && !unused_extra);
+			/* The frame-only reader must not silently discard task roots. */
+			rewind(file);
+			bad.omit_root = 0;
+			assert(pg_eval_frames_payload_read_with(file, &arena, &graph, 10000, 100,
+				read_scope_terms, &bad, &rejected, &unused, 0, &unused_extra));
+			assert(!rejected && !unused.head.term && !unused_extra);
 			assert(!fclose(file));
 			assert(frames->caller.term == context.scope->source);
 			assert(frames->caller.environment->binder == context.scope->bindings[0].source);

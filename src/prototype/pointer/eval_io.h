@@ -77,13 +77,19 @@ int pg_eval_frames_payload_read(FILE *file, struct pg_graph *arena, struct pg_gr
 
 /* Owning payload composition, using the same callback contract as configuration
  * forests above. Callback state needs cleanup even after an outer read failure.
- * All frame, readback and owner Term roots must share one relocation table. */
+ * All frame, readback and owner Term roots must share one relocation table.
+ * Extra configuration roots retain task-owned closures in the same forest as
+ * callers, including shared environment and argument tails. The owning format
+ * determines extra_count on both sides; a mismatched root count is rejected.
+ * Read outputs, including extra, are cleared on failure. */
 int pg_eval_frames_payload_write_with(FILE *file, const struct pg_eval_frame *frames,
-	const struct pg_eval_configuration *current,
+	const struct pg_eval_configuration *current, size_t extra_count,
+	const struct pg_eval_configuration *extra,
 	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner);
 int pg_eval_frames_payload_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
 	size_t limit, size_t name_limit,
 	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *, const struct pg_term *const **, void *), void *owner,
-	struct pg_eval_frame **frames, struct pg_eval_configuration *current);
+	struct pg_eval_frame **frames, struct pg_eval_configuration *current,
+	size_t extra_count, const struct pg_eval_configuration **extra);
 
 #endif

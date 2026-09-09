@@ -527,15 +527,18 @@ static int frame_parent(void *unused, const void *key, size_t index, const void 
 }
 
 int pg_eval_frames_payload_write_with(FILE *file, const struct pg_eval_frame *frames,
-	const struct pg_eval_configuration *current,
+	const struct pg_eval_configuration *current, size_t extra_count,
+	const struct pg_eval_configuration *extra,
 	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner)
 {
-	if (!file || !frames || !write_terms) return -1;
+	if (!file || !frames || !write_terms || (extra_count && !extra)) return -1;
 	struct pg_dag stack = {0};
 	int status = -1;
 	if (pg_dag_init(&stack, frame_parent, NULL) || pg_dag_add(&stack, frames)) goto done;
-	if (stack.count > SIZE_MAX / sizeof(struct pg_eval_configuration) / 3) goto done;
-	struct pg_eval_configuration *roots = pg_alloc(&stack.storage, 3 * stack.count * sizeof(*roots));
+	if (extra_count > SIZE_MAX / sizeof(struct pg_eval_configuration)) goto done;
+	if (stack.count > (SIZE_MAX / sizeof(struct pg_eval_configuration) - extra_count) / 3) goto done;
+	size_t total = 3 * stack.count + extra_count;
+	struct pg_eval_configuration *roots = pg_alloc(&stack.storage, total * sizeof(*roots));
 	if (!roots) goto done;
 	size_t i = 0;
 	for (const struct pg_eval_frame *frame = frames; frame; frame = frame->parent, ++i) {
@@ -543,8 +546,9 @@ int pg_eval_frames_payload_write_with(FILE *file, const struct pg_eval_frame *fr
 		if (frame != frames && frame->answer.readback.output) goto done;
 		if (frame_roots(frame, &roots[3 * i])) goto done;
 	}
+	for (size_t j = 0; j < extra_count; ++j) roots[3 * stack.count + j] = extra[j];
 	if (fwrite(frames_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, stack.count)) goto done;
-	status = materialization_write(file, frame_magic, &frames->answer, current, 3 * stack.count, roots, write_terms, owner);
+	status = materialization_write(file, frame_magic, &frames->answer, current, total, roots, write_terms, owner);
 done:
 	pg_dag_destroy(&stack);
 	return status;
@@ -553,23 +557,26 @@ done:
 int pg_eval_frames_payload_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
 	size_t limit, size_t name_limit,
 	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *, const struct pg_term *const **, void *), void *owner,
-	struct pg_eval_frame **frames, struct pg_eval_configuration *current)
+	struct pg_eval_frame **frames, struct pg_eval_configuration *current,
+	size_t extra_count, const struct pg_eval_configuration **extra)
 {
-	if (!frames || !current) return -1;
+	if (!frames || !current || !extra) return -1;
 	*frames = NULL;
+	*extra = NULL;
 	memset(current, 0, sizeof(*current));
 	if (!file || !arena || !output || !read_terms) return -1;
 	char header[8];
 	uint64_t count;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, frames_magic, 8)
 		|| pg_wire_read_u64(file, &count)) return -1;
-	if (!count || count > limit / 3 || count > SIZE_MAX / sizeof(struct pg_eval_frame)) return -1;
+	if (extra_count > limit) return -1;
+	if (!count || count > (limit - extra_count) / 3 || count > SIZE_MAX / sizeof(struct pg_eval_frame)) return -1;
 	struct pg_eval_frame *candidate = pg_alloc(arena, (size_t)count * sizeof(*candidate));
 	if (!candidate) return -1;
 	struct pg_eval_configuration input;
 	const struct pg_eval_configuration *roots;
 	if (materialization_read(file, frame_magic, output, limit, name_limit, read_terms, owner,
-		&candidate->answer, &input, 3 * (size_t)count, &roots)) return -1;
+		&candidate->answer, &input, 3 * (size_t)count + extra_count, &roots)) return -1;
 	for (size_t i = 0; i < count; ++i) {
 		if (frame_from_roots(&candidate[i], arena, &roots[3 * i])) {
 			pg_materialize_destroy(&candidate->answer);
@@ -579,6 +586,7 @@ int pg_eval_frames_payload_read_with(FILE *file, struct pg_graph *arena, struct 
 	}
 	*frames = candidate;
 	*current = input;
+	*extra = roots + 3 * (size_t)count;
 	return 0;
 }
 
@@ -586,7 +594,7 @@ int pg_eval_frames_payload_write(FILE *file, const struct pg_eval_frame *frames,
 	const struct pg_eval_configuration *current, const struct pg_graph_codec *codec, void *owner)
 {
 	struct configuration_graph_codec context = {codec, owner};
-	return pg_eval_frames_payload_write_with(file, frames, current, write_configuration_terms, &context);
+	return pg_eval_frames_payload_write_with(file, frames, current, 0, NULL, write_configuration_terms, &context);
 }
 
 int pg_eval_frames_payload_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
@@ -594,6 +602,7 @@ int pg_eval_frames_payload_read(FILE *file, struct pg_graph *arena, struct pg_gr
 	struct pg_eval_frame **frames, struct pg_eval_configuration *current)
 {
 	struct configuration_graph_codec context = {codec, owner};
+	const struct pg_eval_configuration *extra;
 	return pg_eval_frames_payload_read_with(file, arena, output, limit, name_limit,
-		read_configuration_terms, &context, frames, current);
+		read_configuration_terms, &context, frames, current, 0, &extra);
 }

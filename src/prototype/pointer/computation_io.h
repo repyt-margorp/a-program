@@ -13,16 +13,20 @@ struct action_scope;
 /* Owner callbacks embed all supplied scopes and Terms in one relocation table.
  * They retain/restore any live task sharing that storage. Returned scope roots
  * must preserve order. The owner selects its versioned payload and cleans up
- * restored task resources if the outer read fails; no task is run here. */
+ * restored task resources if the outer read fails; no task is run here.
+ * Extra configuration roots use the same contract as eval_io: the owning
+ * format fixes their count, and their lexical links share the frame forest. */
 int pg_computation_frames_write_with(FILE *file, const struct pg_eval_frame *frames,
-	const struct pg_eval_configuration *current,
+	const struct pg_eval_configuration *current, size_t extra_count,
+	const struct pg_eval_configuration *extra,
 	int (*write_owner)(FILE *, size_t, const struct action_scope *const *, size_t,
 		const struct pg_term *const *, void *), void *owner);
 int pg_computation_frames_read_with(FILE *file, struct pg_graph *arena, struct pg_graph *output,
 	size_t limit, size_t name_limit,
 	int (*read_owner)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
 		struct action_scope *const **, size_t *, const struct pg_term *const **, void *), void *owner,
-	struct pg_eval_frame **frames, struct pg_eval_configuration *current);
+	struct pg_eval_frame **frames, struct pg_eval_configuration *current,
+	size_t extra_count, const struct pg_eval_configuration **extra);
 int pg_computation_frames_write(FILE *file, const struct pg_eval_frame *frames, const struct action_result_work *result,
 	const struct pg_eval_configuration *current, const struct pg_graph_codec *codec, void *owner);
 int pg_computation_frames_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,

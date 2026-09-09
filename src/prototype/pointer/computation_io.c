@@ -275,11 +275,12 @@ static int read_terms(FILE *file, struct pg_graph *graph, size_t limit, size_t n
 }
 
 int pg_computation_frames_write_with(FILE *file, const struct pg_eval_frame *frames,
-	const struct pg_eval_configuration *current,
+	const struct pg_eval_configuration *current, size_t extra_count,
+	const struct pg_eval_configuration *extra,
 	int (*write_owner)(FILE *, size_t, const struct action_scope *const *, size_t,
 		const struct pg_term *const *, void *), void *owner)
 {
-	if (!file || !frames || !current || !write_owner) return -1;
+	if (!file || !frames || !current || !write_owner || (extra_count && !extra)) return -1;
 	struct pg_dag collected = {0};
 	int status = -1;
 	if (pg_dag_init(&collected, NULL, NULL)) goto done;
@@ -302,7 +303,7 @@ int pg_computation_frames_write_with(FILE *file, const struct pg_eval_frame *fra
 		size_t length = strlen(continuation->name);
 		if (pg_wire_write_u64(file, length) || fwrite(continuation->name, 1, length, file) != length) goto done;
 	}
-	status = pg_eval_frames_payload_write_with(file, frames, current, write_terms, &context);
+	status = pg_eval_frames_payload_write_with(file, frames, current, extra_count, extra, write_terms, &context);
 done:
 	pg_dag_destroy(&collected);
 	return status;
@@ -312,10 +313,12 @@ int pg_computation_frames_read_with(FILE *file, struct pg_graph *arena, struct p
 	size_t limit, size_t name_limit,
 	int (*read_owner)(FILE *, struct pg_graph *, size_t, size_t, size_t *,
 		struct action_scope *const **, size_t *, const struct pg_term *const **, void *), void *owner,
-	struct pg_eval_frame **frames, struct pg_eval_configuration *current)
+	struct pg_eval_frame **frames, struct pg_eval_configuration *current,
+	size_t extra_count, const struct pg_eval_configuration **extra)
 {
-	if (!frames || !current) return -1;
+	if (!frames || !current || !extra) return -1;
 	*frames = NULL;
+	*extra = NULL;
 	memset(current, 0, sizeof(*current));
 	if (!file || !arena || !output || !read_owner) return -1;
 	char header[8];
@@ -337,8 +340,9 @@ int pg_computation_frames_read_with(FILE *file, struct pg_graph *arena, struct p
 	struct frame_codec context = {.owner = owner, .count = (size_t)count, .read_owner = read_owner};
 	struct pg_eval_frame *candidate;
 	struct pg_eval_configuration configuration;
+	const struct pg_eval_configuration *configurations;
 	if (pg_eval_frames_payload_read_with(file, arena, output, limit, name_limit,
-		read_terms, &context, &candidate, &configuration)) return -1;
+		read_terms, &context, &candidate, &configuration, extra_count, &configurations)) return -1;
 	size_t i = 0;
 	for (struct pg_eval_frame *p = candidate; p; p = p->parent, ++i) {
 		if (i == count) goto failure;
@@ -349,6 +353,7 @@ int pg_computation_frames_read_with(FILE *file, struct pg_graph *arena, struct p
 	if (i != count) goto failure;
 	*frames = candidate;
 	*current = configuration;
+	*extra = configurations;
 	return 0;
 failure:
 	if (candidate) pg_materialize_destroy(&candidate->answer);
@@ -384,7 +389,7 @@ int pg_computation_frames_write(FILE *file, const struct pg_eval_frame *frames, 
 	const struct pg_eval_configuration *current, const struct pg_graph_codec *codec, void *owner)
 {
 	struct action_frame_codec context = {.codec = codec, .owner = owner, .input = result};
-	return pg_computation_frames_write_with(file, frames, current, write_action_owner, &context);
+	return pg_computation_frames_write_with(file, frames, current, 0, NULL, write_action_owner, &context);
 }
 
 int pg_computation_frames_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
@@ -394,8 +399,9 @@ int pg_computation_frames_read(FILE *file, struct pg_graph *arena, struct pg_gra
 	if (!result) return -1;
 	*result = NULL;
 	struct action_frame_codec context = {.arena = arena, .codec = codec, .owner = owner};
+	const struct pg_eval_configuration *extra;
 	if (pg_computation_frames_read_with(file, arena, output, limit, name_limit,
-		read_action_owner, &context, frames, current)) return -1;
+		read_action_owner, &context, frames, current, 0, &extra)) return -1;
 	*result = context.result;
 	return 0;
 }
