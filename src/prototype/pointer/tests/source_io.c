@@ -217,6 +217,16 @@ static void nominal_sources(FILE *file, int writing, uint64_t chunk, int origins
 		struct pg_synthesis_job *const *roots;
 		struct pg_program *p = pg_sources_read(file, 10000, &count, &roots);
 		assert(p && count == (origins ? 9u : 8u) && !p->synthesis.steps);
+		if (origins) {
+			FILE *pending = tmpfile();
+			assert(pending && !pg_sources_write(pending, &p->synthesis, count, roots));
+			assert(!p->synthesis.steps);
+			pg_program_destroy(p);
+			rewind(pending);
+			p = pg_sources_read(pending, 10000, &count, &roots);
+			assert(p && count == 9 && !p->synthesis.steps);
+			assert(!fclose(pending));
+		}
 		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
 		while (p->synthesis.ready) { assert(p->synthesis.steps < 10000); pg_synthesis_advance(&p->synthesis, chunk); }
 		for (size_t i = 0; i < count; ++i)

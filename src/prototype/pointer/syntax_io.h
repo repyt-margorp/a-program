@@ -3,6 +3,9 @@
 #include "syntax.h"
 #include <stdio.h>
 
+/* Structural DAG visitor shared by source-image reachability and syntax IO. */
+int pg_syntax_child(void *unused, const void *key, size_t index, const void **result);
+
 /* Unresolved syntax DAG transport, not a typing certificate or a complete
  * program checkpoint. Preserves exact sharing and token bytes/locations.
  * Read owns all reconstructed storage in graph; it never parses or runs Solve.

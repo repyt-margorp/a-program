@@ -7678,6 +7678,34 @@ Validation: rebuilt `check`, `check-examples`, and `check-example-results` pass.
 The mixed nominal-origin gate still reports the same declaration split; the new
 environment record supplies its lexical prerequisite, not its completed fix.
 
+Next step after `7597159`: `APGSRC5` links closed source declaration sites
+`(scope, syntax)` to their ordinary formation inputs. Origin formation roots
+share the existing derivation/Core codec with externally retained evidence.
+Restoration attaches their inert declaration allocation before source Solve;
+the source still infers its Universe, field domains and result maps normally.
+The retained formation input is provenance, not a replacement source result.
+
+The writer visits source declaration producers read-only and selects those in
+the saved syntax and reconstructible lexical closure. Syntax reachability uses
+the same child traversal as syntax transport. It does not export unrelated jobs
+merely because they exist in the synthesis store. Restored origin producers
+retain the unaccepted formation input even before Solve, allowing a second
+save/load without dropping the shared declaration. No second Replay exists.
+
+- [x] Close the original `check-image-origins` failure: original source and
+  external evidence now refer to the same restored declaration, while D and E
+  remain distinct despite identical constructor shape.
+- [x] Save and reload the mixed image a second time before any Solve step;
+  recheck source roots, external constructors and the operation signature.
+- [x] Run `check`, `check-examples`, `check-example-results`, and
+  `check-image-origins` successfully with the revised codec.
+- [ ] Generalize lexical restoration to binder-bearing source scopes. A
+  declaration origin requiring such a scope is still rejected by the writer,
+  rather than silently losing identity. This remains a CHECKPOINT prerequisite.
+- [ ] Complete pending allocation coverage, artifact retention policy and the
+  other N0--N7 acceptance requirements. This closed-origin result is not full
+  CHECKPOINT, full source compatibility or permission to promote to Main.
+
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.

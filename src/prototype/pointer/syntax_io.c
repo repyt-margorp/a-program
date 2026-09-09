@@ -5,7 +5,7 @@
 
 static const char magic[8] = "APGSYN\1";
 
-static int child(void *unused, const void *key, size_t index, const void **result)
+int pg_syntax_child(void *unused, const void *key, size_t index, const void **result)
 {
 	(void)unused;
 	const struct pg_syntax *syntax = key;
@@ -125,7 +125,7 @@ int pg_syntax_validate(size_t count, const struct pg_syntax *const *roots)
 	if (count && !roots) return -1;
 	struct pg_dag dag = {0};
 	int status = -1;
-	if (pg_dag_init(&dag, child, NULL)) goto done;
+	if (pg_dag_init(&dag, pg_syntax_child, NULL)) goto done;
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&dag, roots[i])) goto done;
 	for (const struct pg_dag_node *node = dag.first; node; node = node->next)
 		if (!shape(node->key)) goto done;
@@ -156,7 +156,7 @@ int pg_syntax_write(FILE *file, size_t count, const struct pg_syntax *const *roo
 	if (!file || (count && !roots)) return -1;
 	struct pg_dag dag = {0};
 	int status = -1;
-	if (pg_dag_init(&dag, child, NULL)) goto done;
+	if (pg_dag_init(&dag, pg_syntax_child, NULL)) goto done;
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&dag, roots[i])) goto done;
 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, dag.count) || pg_wire_write_u64(file, count)) goto done;
 	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {

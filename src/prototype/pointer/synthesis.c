@@ -190,6 +190,7 @@ struct pg_synthesis_job {
 	struct declaration_state *declaration;
 	const struct pg_data_schema *schema;
 	const struct pg_data_declaration *nominal_input;
+	struct pg_synthesis_job *nominal_origin;
 	struct telescope_allocation *telescope_allocation;
 	const struct pg_source_scope *exports;
 	struct match_state *match;
@@ -318,6 +319,20 @@ int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
 	if (!synthesis || !job || !scope || !syntax) return -1;
 	if (job->owner != synthesis->owner_key || job->role != EXPRESSION_JOB) return -1;
 	*scope = job->scope; *syntax = job->syntax;
+	return 0;
+}
+
+int pg_synthesis_visit_declarations(const struct pg_synthesis *synthesis,
+	int (*visit)(void *, struct pg_synthesis_job *), void *owner)
+{
+	if (!synthesis || !visit) return -1;
+	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
+		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
+			struct pg_synthesis_job *job = (void *)entry;
+			if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_DECLARATION) continue;
+			if (!job->nominal_origin && (job->status != PG_SYNTHESIS_DONE || !job->schema)) continue;
+			if (visit(owner, job)) return -1;
+		}
 	return 0;
 }
 
@@ -615,6 +630,24 @@ struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthe
 {
 	if (!syntax || syntax->kind != PG_SYNTAX_DECLARATION) return NULL;
 	return attach_nominal(pg_synthesis_request(synthesis, scope, syntax), allocation);
+}
+
+struct pg_synthesis_job *pg_synthesis_declaration_origin(const struct pg_synthesis_job *job)
+{
+	return job->nominal_origin ? job->nominal_origin : (struct pg_synthesis_job *)job;
+}
+
+struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	struct pg_synthesis_job *origin)
+{
+	if (!origin || origin->owner != synthesis->owner_key || origin->role != DERIVATION_INPUT_JOB) return NULL;
+	const struct pg_derivation_input *input = origin->inputs[0];
+	if (input->rule != PG_INDUCTIVE_FORM || !input->parameters.declaration) return NULL;
+	struct pg_synthesis_job *job = pg_synthesis_declaration_at(synthesis, scope, syntax, input->parameters.declaration);
+	if (!job || (job->nominal_origin && job->nominal_origin != origin)) return NULL;
+	job->nominal_origin = origin;
+	return job;
 }
 
 struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,

@@ -62,6 +62,16 @@ struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthe
 int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
 	const struct pg_syntax **syntax);
+/* Read-only enumeration of completed source declaration producers. The visitor
+ * selects its source closure; unrelated jobs are not implicitly image roots. */
+int pg_synthesis_visit_declarations(const struct pg_synthesis *synthesis,
+	int (*visit)(void *, struct pg_synthesis_job *), void *owner);
+/* Retain the unaccepted formation input as allocation provenance, including
+ * across save-before-Solve. Source inference never uses its acceptance status. */
+struct pg_synthesis_job *pg_synthesis_declaration_origin(const struct pg_synthesis_job *job);
+struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	struct pg_synthesis_job *origin);
 /* A definition is keyed by its registration producer and expression, not by
  * the registration worker's allocated scope. Borrow its reconstructible source
  * inputs without claiming whole-module acceptance. Available while dormant. */
