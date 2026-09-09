@@ -473,8 +473,16 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   This is a polling-state test, not a full machine-resumption test.
   Normal and ASan/UBSan `check-identity-io check-eval-io` pass; so does
   `check check-prepared-modules` (758 module-save boundaries).
-- [ ] Connect Thunk-family work to whole-machine caller/frame ownership and
-  test both original resume callbacks at every actual evaluator suspension.
+- [x] Compose Thunk-family state with the existing configuration forest and
+  exercise both original resume callbacks at every actual discovery suspension.
+  Dependent (not constant-folded) families reach both discovery stages. Two
+  arena-destroying resaves preserve final alpha equality and exact total steps;
+  the field continuation borrows the restored embedded scope successfully.
+  These are erased transport fixtures, not admission of a free type relation.
+  Normal and ASan/UBSan `check-identity-io check-eval-io` pass.
+- [ ] Connect Thunk-family work to whole-machine caller/frame ownership.
+  Tests above restore machine flags and select the original descriptor manually;
+  they do not serialize arbitrary pre-existing parent frames or validate progress.
   Family-result construction and its shared closure bindings still need transport.
 
 - [x] Retain raw action-scope discovery (`APGASW1`) through the original
