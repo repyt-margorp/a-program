@@ -104,7 +104,9 @@ struct pg_whnf_work {
 };
 int pg_whnf_work_init(struct pg_whnf_work *work, struct pg_graph *graph);
 void pg_whnf_work_destroy(struct pg_whnf_work *work);
-/* Requesting a job neither evaluates nor compares normal forms. */
+/* Requesting a job neither evaluates nor compares normal forms. A materialized
+ * result is also cached as its own WHNF under the same policy; source/result
+ * jobs and receipts remain distinct unless their exact input pointers agree. */
 struct pg_whnf_job *pg_whnf_request(struct pg_whnf_work *work,
 	const struct pg_eval_policy *policy, const struct pg_term *input);
 /* Includes materialization: WHNF and result are published only after readback.

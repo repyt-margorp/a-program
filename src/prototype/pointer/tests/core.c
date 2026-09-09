@@ -1853,7 +1853,25 @@ static void beta_work_test(struct pg_graph *graph)
 	assert(pg_whnf_advance(job, 100) == PG_EVAL_WHNF);
 	assert(pg_whnf_steps(job) == steps);
 	assert(input != vy && pg_application(graph, identity, vy) == input);
-	assert(pg_whnf_request(&work, &pg_beta_policy, vy) != job);
+	struct pg_whnf_job *normal = pg_whnf_request(&work, &pg_beta_policy, vy);
+	assert(normal != job && pg_whnf_status(normal) == PG_EVAL_WHNF);
+	assert(pg_whnf_steps(normal) == 0 && pg_whnf_advance(normal, 100) == PG_EVAL_WHNF);
+	assert(pg_whnf_steps(normal) == 0);
+	assert(pg_reduction_source(pg_whnf_certificate(job)) == input);
+	assert(pg_reduction_source(pg_whnf_certificate(normal)) == vy);
+	assert(pg_reduction_target(pg_whnf_certificate(normal)) == vy);
+	const struct pg_eval_policy separate_policy = {NULL};
+	struct pg_whnf_job *separate = pg_whnf_request(&work, &separate_policy, vy);
+	assert(separate != normal && pg_whnf_status(separate) == PG_EVAL_PENDING);
+	const struct pg_term *vz = pg_reference(graph, pg_binder(graph));
+	struct pg_whnf_job *waiting = pg_whnf_request(&work, &pg_beta_policy, vz);
+	assert(pg_whnf_advance(waiting, 1) == PG_EVAL_PENDING);
+	struct pg_whnf_job *reaches = pg_whnf_request(&work, &pg_beta_policy,
+		pg_application(graph, identity, vz));
+	assert(pg_whnf_advance(reaches, 100) == PG_EVAL_WHNF);
+	assert(pg_whnf_status(waiting) == PG_EVAL_WHNF && pg_whnf_result(waiting) == vz);
+	assert(pg_whnf_steps(waiting) == 1 && pg_whnf_advance(waiting, 100) == PG_EVAL_WHNF);
+	assert(pg_whnf_steps(waiting) == 1);
 	/* Both requests enter the same lambda body but capture different values. */
 	const struct pg_term *constant = pg_lambda(graph, x, pg_lambda(graph, y, vx));
 	struct pg_whnf_job *left = pg_whnf_request(&work, &pg_beta_policy, pg_application(graph, constant, vx));

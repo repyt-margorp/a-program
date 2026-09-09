@@ -506,7 +506,7 @@ struct pg_reduction_certificate {
 
 struct pg_whnf_job {
 	struct pg_index_entry index;
-	struct pg_graph *graph;
+	struct pg_whnf_work *work;
 	const struct pg_term *input;
 	const struct pg_eval_policy *policy;
 	struct pg_eval machine;
@@ -572,7 +572,7 @@ struct pg_whnf_job *pg_whnf_request(struct pg_whnf_work *work,
 	struct pg_whnf_job *job = pg_alloc(&work->storage, sizeof(*job));
 	if (!job) return NULL;
 	memset(job, 0, sizeof(*job));
-	job->graph = work->graph;
+	job->work = work;
 	job->input = input;
 	job->policy = policy;
 	pg_eval_init(&job->machine, input);
@@ -597,12 +597,25 @@ static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 		if (pg_eval_advance(&job->machine, 1) == PG_EVAL_ERROR) return PG_EVAL_ERROR;
 		return PG_EVAL_PENDING;
 	}
-	int status = materialize_step(&job->output, job->graph, job->machine.current, job->machine.arguments);
+	int status = materialize_step(&job->output, job->work->graph, job->machine.current, job->machine.arguments);
 	if (status < 0) return PG_EVAL_ERROR;
 	if (!status) return PG_EVAL_PENDING;
-	const struct pg_reduction_certificate *certificate = reduction_certificate(job->graph,
+	const struct pg_reduction_certificate *certificate = reduction_certificate(job->work->graph,
 		job->input, job->output.partial, job->policy, PG_REDUCTION_WHNF);
 	if (!certificate) return PG_EVAL_ERROR;
+	/* Materialized WHNF is its own answer under this same immutable policy.
+	 * Retain a separate reflexive receipt, never merge source and target terms. */
+	struct pg_whnf_job *canonical = pg_whnf_request(job->work, job->policy, certificate->target);
+	if (!canonical || canonical->status == PG_EVAL_ERROR) return PG_EVAL_ERROR;
+	if (canonical != job && canonical->status == PG_EVAL_PENDING) {
+		const struct pg_reduction_certificate *reflexive = reduction_certificate(job->work->graph,
+			certificate->target, certificate->target, job->policy, PG_REDUCTION_WHNF);
+		if (!reflexive) return PG_EVAL_ERROR;
+		materialize_destroy(&canonical->output);
+		pg_eval_destroy(&canonical->machine);
+		canonical->certificate = reflexive;
+		canonical->status = PG_EVAL_WHNF;
+	}
 	job->certificate = certificate;
 	materialize_destroy(&job->output);
 	pg_graph_destroy(&job->machine.temporary);

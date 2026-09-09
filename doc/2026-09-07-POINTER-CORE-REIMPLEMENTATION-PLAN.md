@@ -13,6 +13,44 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Reduction Evidence and Work Reuse Audit
+
+`eval.c` currently issues a `pg_reduction_certificate` containing only source,
+target, policy and WHNF/NF kind. Its validity comes from construction by the
+local evaluator. `derivation_step` reconstructs a certificate by running that
+same evaluator and checking endpoints. This is not an independently retained
+reduction derivation. Serializing these four fields cannot safely seed an
+accepted result cache. In particular, the APGSRC11 request codec is still not
+a completed-work CHECKPOINT implementation.
+
+- [x] Avoid rediscovering materialized WHNF locally: register its exact target
+  pointer as its own answer under the same immutable policy, in the existing
+  WHNF index. Keep distinct input/result receipts and preserve steps already
+  consumed by a pending target job. Release its superseded temporary machine.
+- [x] Test zero-step target reuse, policy isolation, input/result distinction,
+  and an already-pending target completed by another request.
+- [ ] For persisted reuse, retain checkable reduction dependencies, not only
+  endpoint claims. Specify beta/environment substitution, semantic dispatcher
+  operations, materialization and NF congruence before defining their codec.
+  The existing transition/rule implementation must remain the authority;
+  do not introduce a second evaluator or trust imported completion flags.
+- [ ] Distinguish completed-result evidence from an unfinished machine state.
+  Current demand/defer frames contain callbacks and borrowed state; dumping
+  these addresses cannot reconstruct a machine in another process. Define
+  relocatable operation descriptors and prerequisite edges for supported work,
+  preserving nominal/binder identity and fixed pure policy semantics.
+- [ ] Measure storage and reconstruction costs against recomputation; test
+  changed inputs/policies and interrupted materialization before closing the
+  original checkpoint gate. A request recipe alone does not meet this gate.
+
+The local WHNF reuse change creates no public cache-admission API. Only a result
+actually materialized by this work store can populate its reflexive entry.
+No normal forms or alpha-equivalent terms are merged by Core interning.
+Verification: `check check-prepared-modules` passes; `core_test` also passes
+with ASan/UBSan. The focused case saves all work on a fresh target request
+(zero additional steps), and preserves one already-charged step when replacing
+a pending target machine. This is not a measured whole-compiler speedup.
+
 ### September 9: Retaining Normalization Requests
 
 Code inspection found that REPL normalization requests are not selected roots
