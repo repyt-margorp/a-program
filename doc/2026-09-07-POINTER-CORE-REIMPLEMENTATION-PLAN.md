@@ -52,6 +52,41 @@ the open-family result above remains a required correction before Main promotion
 
 ### September 9: Retained Proof Reuse Is Not Source Checkpointing
 
+Follow-up after `5890e3e`: `APGSRC7` separates selected root IDs from a shared
+producer table. Leaves retain the previous source-expression, definition and
+raw-rule inputs. Prepared source annotations retain their scope and two
+preceding producer IDs; nested annotations reuse operands rather than copying
+their subgraphs. Reading calls `pg_synthesis_source_expect`, without advancing
+Solve or importing an acceptance flag. Source environments and nominal origins
+continue using the existing syntax/Core/derivation tables.
+
+Wire layout: magic; policy, scope_count, selection_count, origin_count,
+producer_count (u64); existing scope records; selection IDs; producer records
+of six u64s `(scope, syntax, definitions, rule, left, right)`; existing origin,
+syntax and derivation sections. Leaf records use the first four fields as
+before; annotation records require scope, left and right only. Both operands
+must precede their parent. Mixed records, missing operands, forward/self edges
+and out-of-range selections reject. The aggregate record quota includes the
+producer fields. Old version-6 headers reject explicitly.
+
+- [x] Save pending source/rule/annotation graphs without running Solve.
+- [x] Preserve selected order, duplicate roots and shared nested operands.
+- [x] Fresh-process read and unsolved resave at budgets 1/64; wrong target
+  rejects through ordinary Solve while valid siblings remain accepted.
+- [x] Reject cyclic, incomplete and mixed annotation records before Solve.
+- [ ] Generalize lexical named-producer environments and remaining preparation
+  kinds; unsupported export cases must still fail explicitly.
+- [ ] Preserve complete module preparation and retained normalization work.
+  This is the first prepared-annotation transport, not complete CHECKPOINT.
+
+The no-acceptance test permits only the ordinary empty-context proof created by
+program initialization; none of the restored roots has evidence before Solve.
+
+Validation: `check`, `check-examples`, `check-example-results`, and
+`check-image-origins` pass. Rebuilt ASan/UBSan `source_io_test` passes the
+fresh-process source-image suite, including malformed annotation edges. The
+open-family/full-language gate is still incomplete; no Main promotion follows.
+
 Follow-up after `d539c07`: `pg_synthesis_source_expect` is now the common
 scope/term-producer/type-producer factory for expression annotations, module
 obligations and annotated computation-block entries. The remaining block-local

@@ -1063,6 +1063,16 @@ struct pg_synthesis_job *pg_synthesis_source_expect(struct pg_synthesis *synthes
 	return job;
 }
 
+int pg_synthesis_source_expect_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
+	struct pg_synthesis_job **term, struct pg_synthesis_job **type)
+{
+	if (!synthesis || !job || !scope || !term || !type) return -1;
+	if (job->owner != synthesis->owner_key || job->role != SOURCE_EXPECT_JOB) return -1;
+	*scope = job->inputs[0]; *term = (void *)job->inputs[1]; *type = (void *)job->inputs[2];
+	return 0;
+}
+
 struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *function,
 	struct pg_synthesis_job *argument)
