@@ -29,7 +29,7 @@ or weaken endpoint validation to serialize the latter as the former.
   step. Expose immutable operands for the source-image producer codec.
 - [x] Add tests for pending source/rule premises, request reuse, WHNF/NF
   distinction, invalid context rejection, and agreement with accepted inputs.
-- [ ] Extend source-image producer records to represent these requests with
+- [x] Extend source-image producer records to represent these requests with
   context/term producer edges and a reduction mode. Restore through the same
   factory without Solve; retain unknown endpoints as unknown.
 - [ ] Retain CLI/REPL normalization requests alongside source roots, preserving
@@ -42,6 +42,24 @@ Verification: the full normal `check` passes after the producer-based request
 change, including source/image, CLI/REPL, Identity and IADT regressions. The
 focused `program_test` passes with ASan/UBSan. No image format change or full
 checkpoint completion is claimed by this preparation step.
+
+Subsequent codec work uses APGSRC10. In a normalization producer's existing
+six-word record, scope is zero, the syntax slot is mode 1 (WHNF) or 2 (NF),
+definition/rule slots are zero, and left/right are the context/term producer
+IDs. Both are prior dependencies. This encoding does not allocate an AST or
+fabricate a derivation endpoint. Other modes and mixed record fields reject.
+APGSRC9 is not silently interpreted under the new format.
+
+`source_io_test normalization`, registered in `check`, saves at every Solve
+step through completion, reloads and resaves before Solve, then uses budgets
+1/64. It checks root aliases, modes, valid results, invalid context rejection,
+and rejects an invalid serialized mode. This is request retention only; the
+CLI does not yet include requested normalization jobs in its saved root set.
+Verification after the codec change: `check check-prepared-modules` passes;
+the focused normalization-image test also passes with ASan/UBSan. An initial
+test incorrectly assumed unchanged normalization always allocates a dedicated
+normalization proof. The existing rule correctly reuses the original evidence;
+the corrected test checks mode on the retained request, not a nonexistent receipt.
 
 ### September 9: Reusing Prepared Public Scopes
 

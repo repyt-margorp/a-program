@@ -35,6 +35,7 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	bash $(ROOT)tests/derivation_io.sh $(BUILD)/derivation_io_test
 	$(BUILD)/syntax_io_test $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 	bash $(ROOT)tests/source_io.sh $(BUILD)/source_io_test
+	$(BUILD)/source_io_test normalization
 	$(BUILD)/reader_test
 	$(BUILD)/synthesis_test
 	$(BUILD)/program_test

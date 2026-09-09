@@ -4,6 +4,8 @@
 #include <stdio.h>
 
 /* Reconstructible source environments and source/definition/rule roots, including pending modules.
+ * APGSRC10 also retains normalization requests as context/term producer edges
+ * with WHNF/NF mode, without a claimed endpoint or evaluator progress.
  * A shared producer DAG also retains prepared source annotations and their
  * source/rule operands. Selected roots retain order and aliases independently
  * of dependency order. Loading recreates annotations with the usual factory.

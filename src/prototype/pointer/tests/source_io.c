@@ -14,6 +14,90 @@ static struct pg_synthesis_job *parse(struct pg_program *program,
 	return job;
 }
 
+static void invalid_normalization_mode(FILE *file)
+{
+	assert(!fflush(file) && !fseek(file, 8, SEEK_SET));
+	uint64_t header[6];
+	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
+	for (size_t i = 0; i < header[1]; ++i) {
+		uint64_t scope[8];
+		for (size_t j = 0; j < 8; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+		assert(!fseek(file, (long)scope[6], SEEK_CUR));
+	}
+	assert(!fseek(file, (long)(8 * header[2]), SEEK_CUR));
+	for (size_t i = 0; i < header[4]; ++i) {
+		long position = ftell(file);
+		uint64_t record[6];
+		for (size_t j = 0; j < 6; ++j) assert(!pg_wire_read_u64(file, &record[j]));
+		if (record[0] || !record[4] || !record[5]) continue;
+		assert(record[1] == 1 || record[1] == 2);
+		assert(!fseek(file, position + 8, SEEK_SET) && !pg_wire_write_u64(file, 99));
+		rewind(file);
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		assert(!pg_sources_read(file, 100000, &count, &roots));
+		assert(!fseek(file, position + 8, SEEK_SET) && !pg_wire_write_u64(file, record[1]));
+		return;
+	}
+	assert(0);
+}
+
+static void normalization_requests(void)
+{
+	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
+	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p && p->root);
+	struct pg_derivation_input empty = {.rule = PG_CONTEXT_EMPTY};
+	struct pg_synthesis_job *context = pg_synthesis_derivation(&p->synthesis, &empty);
+	struct pg_synthesis_job *nf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF);
+	struct pg_synthesis_job *whnf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_WHNF);
+	struct pg_synthesis_job *bad = pg_synthesis_normalize_jobs(&p->synthesis, p->root, p->root, PG_REDUCTION_NF);
+	struct pg_synthesis_job *roots[] = {p->root, nf, whnf, nf, bad};
+	assert(context && nf && whnf && bad);
+	for (size_t snapshot = 0;; ++snapshot) {
+		assert(snapshot < 1000);
+		FILE *file = tmpfile();
+		uint64_t steps = p->synthesis.steps;
+		assert(file && !pg_sources_write(file, &p->synthesis, 5, roots));
+		assert(p->synthesis.steps == steps);
+		if (!snapshot) invalid_normalization_mode(file);
+		for (size_t round = 0; round < 2; ++round) {
+			rewind(file);
+			size_t count;
+			struct pg_synthesis_job *const *loaded;
+			struct pg_program *q = pg_sources_read(file, 100000, &count, &loaded);
+			assert(q && count == 5 && !q->synthesis.steps && loaded[1] == loaded[3]);
+			struct pg_synthesis_job *c, *term;
+			enum pg_reduction_kind kind;
+			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[1], &c, &term, &kind));
+			assert(term == loaded[0] && kind == PG_REDUCTION_NF);
+			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[2], &c, &term, &kind));
+			assert(term == loaded[0] && kind == PG_REDUCTION_WHNF);
+			for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(loaded[i]));
+			FILE *again = tmpfile();
+			assert(again && !pg_sources_write(again, &q->synthesis, count, loaded));
+			assert(!q->synthesis.steps);
+			while (q->synthesis.ready) {
+				assert(q->synthesis.steps < 10000);
+				pg_synthesis_advance(&q->synthesis, round ? 64 : 1);
+			}
+			for (size_t i = 0; i < count; ++i)
+				assert(pg_synthesis_status(loaded[i]) == (i == 4 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+			if (pg_synthesis_status(nf) == PG_SYNTHESIS_DONE)
+				assert(pg_alpha_equal(pg_evidence_subject(pg_synthesis_result(nf))->core,
+					pg_evidence_subject(pg_synthesis_result(loaded[1]))->core) == 1);
+			pg_program_destroy(q);
+			assert(!fclose(file));
+			file = again;
+		}
+		assert(!fclose(file));
+		if (!p->synthesis.ready) break;
+		pg_synthesis_advance(&p->synthesis, 1);
+	}
+	pg_program_destroy(p);
+	puts("normalization requests: pending/settled inputs, modes, aliases, invalid context and unsolved resave passed");
+}
+
 static void definition_boundaries(void)
 {
 	const char *texts[] = {"good:=@; bad:=missing;", "good:=@; a:=b; b:=a;", "good:=@; good:=@;"};
@@ -757,6 +841,10 @@ static void module_save_boundaries(void)
 
 int main(int argc, char **argv)
 {
+	if (argc == 2 && !strcmp(argv[1], "normalization")) {
+		normalization_requests();
+		return 0;
+	}
 	if (argc == 2 && !strcmp(argv[1], "prepared-module")) {
 		prepared_module_checkpoint();
 		module_save_boundaries();
