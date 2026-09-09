@@ -27,6 +27,57 @@ static const struct pg_object *resolve(void *unused, const char *text)
 }
 static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
 
+static unsigned machine_tasks;
+
+static void machine_resave(struct pg_eval *machine, struct pg_graph *graph,
+	struct pg_classifiers *classifiers, const struct pg_term **expected)
+{
+	const struct pg_eval_work_operation *entries[] = {
+		&pg_fold_work_operation, &pg_symmetry_composition_operation, &pg_symmetry_prefix_operation,
+		&pg_action_scope_operation, &pg_action_result_operation, &pg_scope_operation,
+		&pg_action_body_operation, &pg_higher_scope_operation,
+		&pg_force_family_scope_operation, &pg_field_family_scope_operation,
+		&pg_force_family_result_operation, &pg_field_family_result_operation
+	};
+	const struct pg_eval_work_operation *operation = machine->task ? machine->task->operation : NULL;
+	for (size_t i = 0; i < 12; ++i) if (operation == entries[i]) machine_tasks |= 1u << i;
+	uint64_t steps = machine->steps;
+	enum pg_eval_status status = machine->status;
+	int ready = machine->head_ready, framed = machine->frames != NULL;
+	for (size_t round = 0; round < 2; ++round) {
+		struct pg_eval_configuration extra[] = {{{*expected, NULL}, NULL}};
+		FILE *file = tmpfile();
+		assert(file && !pg_computation_machine_write(file, machine, &pg_pure_policy, 1, extra,
+			&pg_builtin_graph_codec, classifiers));
+		pg_eval_destroy(machine);
+		if (classifiers) pg_classifiers_destroy(classifiers);
+		pg_graph_destroy(graph);
+		assert(!pg_graph_init(graph));
+		if (classifiers) assert(!pg_classifiers_init(classifiers, graph));
+		rewind(file);
+		const struct pg_eval_policy *policy;
+		size_t count;
+		const struct pg_eval_configuration *roots;
+		assert(!pg_computation_machine_read(file, machine, graph, 10000, 100, &pg_builtin_graph_codec,
+			classifiers, &policy, &count, &roots));
+		assert(policy == &pg_pure_policy && count == 1);
+		assert(machine->steps == steps && machine->status == status && machine->head_ready == ready);
+		assert((machine->frames != NULL) == framed);
+		assert((machine->task ? machine->task->operation : NULL) == operation);
+		*expected = roots[0].head.term;
+		if (operation || framed) {
+			assert(!fseek(file, 16, SEEK_SET) && !pg_wire_write_u64(file, PG_EVAL_WHNF));
+			rewind(file);
+			struct pg_eval rejected;
+			assert(pg_computation_machine_read(file, &rejected, graph, 10000, 100,
+				&pg_builtin_graph_codec, classifiers, &policy, &count, &roots));
+			assert(!policy && !count && !roots && !rejected.task && !rejected.frames);
+			pg_eval_destroy(&rejected);
+		}
+		assert(!fclose(file));
+	}
+}
+
 static void policy_names(void)
 {
 	const struct pg_eval_policy *policies[] = {&pg_beta_policy, &pg_pure_policy};
@@ -544,6 +595,7 @@ static void family_resume(void)
 					assert(!pg_eval_defer(&machine, restored_operation, state.result ? (void *)state.result : state.work));
 				}
 			}
+			machine_resave(&machine, &graph, &classifiers, &expected);
 			assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF && machine.steps == steps);
 			assert(pg_alpha_equal(pg_eval_readback(&machine, &graph), expected) == 1);
 			pg_eval_destroy(&machine);
@@ -953,6 +1005,7 @@ static void fold_progress(void)
 					assert(!pg_eval_defer(&machine, &pg_fold_work_operation, context.work));
 				}
 			}
+			machine_resave(&machine, &graph, NULL, &expected);
 			assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF);
 			const struct pg_term *result = pg_eval_readback(&machine, &graph);
 			if (selected < 2) assert(result == expected);
@@ -1074,6 +1127,7 @@ static void symmetry_progress(void)
 				assert(!pg_eval_defer(&machine, &pg_symmetry_composition_operation, context.work));
 			}
 		}
+		machine_resave(&machine, &graph, NULL, &value);
 		assert(pg_eval_advance(&machine, 1000) == PG_EVAL_WHNF);
 		assert(pg_eval_readback(&machine, &graph) == value);
 		if (!cut) total = machine.steps;
@@ -1343,6 +1397,7 @@ static void prefix_progress(int framed)
 				assert(!pg_eval_defer(&machine, &pg_symmetry_prefix_operation, work));
 			}
 		}
+		machine_resave(&machine, &graph, NULL, &value);
 		assert(pg_eval_advance(&machine, 1000) == PG_EVAL_WHNF);
 		assert(pg_eval_readback(&machine, &graph) == (framed ? value->as.application.argument : value));
 		if (!cut) total = machine.steps;
@@ -1465,6 +1520,7 @@ static void higher_progress(void)
 				assert(!pg_eval_defer(&machine, &pg_higher_scope_operation, context.work));
 			}
 		}
+		machine_resave(&machine, &graph, NULL, &value);
 		assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF);
 		assert(pg_eval_readback(&machine, &graph) == value);
 		if (!cut) total = machine.steps;
@@ -1925,6 +1981,7 @@ static void result_frames(void)
 				assert(!pg_eval_defer(&machine, &pg_action_result_operation, work));
 			}
 		}
+		machine_resave(&machine, &graph, NULL, &value);
 		assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF);
 		assert(pg_eval_readback(&machine, &graph) == value);
 		if (!cut) total = machine.steps;
@@ -2413,6 +2470,8 @@ int main(int argc, char **argv)
 	all_cuts();
 	configurations();
 	configuration_failure();
+	assert(machine_tasks == 0xfff);
+	puts("Machine payload: all twelve deferred work kinds resume without manual machine restoration");
 	puts("Identity ownership: scope/frame sharing and body work resume through the original evaluator");
 	return 0;
 }

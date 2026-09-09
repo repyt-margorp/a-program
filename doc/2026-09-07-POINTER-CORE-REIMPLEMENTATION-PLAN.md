@@ -532,11 +532,25 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   `check check-prepared-modules` (758 save boundaries) passes; after extending
   that rejection case, regular and ASan/UBSan `check-identity-io check-eval-io`
   were rerun successfully. State-shape checks are not reachability proofs.
-- [ ] Complete production payload dispatch for all twelve named tasks. The
-  envelope test owner currently covers no task and action-scope discovery; other
-  owner codecs are tested individually, not yet selected by one full reader.
-  Source-image integration, WHNF/NF job ownership and accepted-progress
-  provenance remain required. This is not full `.a` CHECKPOINT completion.
+- [x] Complete raw machine payload dispatch for all twelve named tasks in
+  `machine_io.c`. Reuse APGEVL1 for policy/status/steps and descriptor selection;
+  route captured tasks through the shared configuration forest and other tasks
+  through frame/scope ownership. Keep a single terminal Term table. Restore at
+  the final evaluator address, register its original task, and release unattached
+  task resources if outer validation fails. No separate evaluator or Core tag.
+- [x] Exercise all twelve task kinds through this common reader: every cut of
+  the selected Fold, Symmetry, higher action, Force/field family and action-result
+  fixtures is resaved twice after destroying the old machine/output. Check exact
+  status, step count, descriptor and frame presence without manual restoration,
+  then finish with the ordinary evaluator. A coverage mask requires all twelve.
+  Reject forged WHNF headers with live frames/tasks after payload reconstruction
+  and verify cleared outputs and cleanup. This tests raw state, not provenance.
+  Verification: normal `check check-prepared-modules` and ASan/UBSan
+  `check-identity-io check-eval-io` pass with all twelve task coverage required.
+- [ ] Integrate the machine payload into source-image CHECKPOINT and WHNF/NF
+  job ownership. Retain/check completed-work evidence and pending-state provenance
+  before allowing imported progress to justify accepted results. Raw machine
+  dispatch alone is not full `.a` CHECKPOINT completion.
 - [x] Let scope-analysis work retain additional scope roots through its existing
   visit/shadow/scope ownership table. Its own embedded scope is the first root;
   references to it are rebound to the restored work's embedded address, not an
@@ -547,8 +561,8 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   references, a distinct equal-content scope sharing its binding array, and a
   NULL scope. Retain those same roots across two destroying resaves and preserve
   the original evaluation result/charged steps. Malformed work clears additional
-  outputs as well. This prepares scope-analysis/frame composition; it does not
-  yet select this task through the whole-machine payload dispatcher.
+  outputs as well. Scope-analysis/frame composition is now selected by the
+  common machine payload dispatcher above.
   Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
   `check-identity-io check-eval-io` pass.
 
@@ -590,9 +604,8 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   empty outputs. Normal `check check-prepared-modules` (758 save boundaries)
   passes. After adding explicit prepared-triple and already-wrapped-entry checks,
   regular and ASan/UBSan `check-identity-io check-eval-io` were rerun and pass.
-- [ ] Select action-body work through the complete frame/task payload owner.
-  Shared scope/comparison support is now present, but whole-machine dispatch,
-  source-image wiring and accepted-progress provenance are still outstanding.
+- [x] Select action-body work through the common frame/task payload owner.
+  Source-image wiring and accepted-progress provenance remain outstanding.
 
 - [x] Generalize named Demand-stack ownership through owner callbacks instead
   of hard-coding `action_result_work` into the frame serializer. The existing
@@ -704,9 +717,9 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   the field continuation borrows the restored embedded scope successfully.
   These are erased transport fixtures, not admission of a free type relation.
   Normal and ASan/UBSan `check-identity-io check-eval-io` pass.
-- [ ] Connect Thunk-family work to whole-machine caller/frame ownership.
-  Tests above restore machine flags and select the original descriptor manually;
-  they do not serialize arbitrary pre-existing parent frames or validate progress.
+- [x] Connect Thunk-family work to common machine caller/frame ownership.
+  Additional common-reader tests restore all flags and select the descriptor
+  from the envelope, including real parent frames. They do not validate provenance.
 - [x] Retain family-result construction (`APGFRW1`) using the actual
   `family_result_work` and nested `action_result_work`. Reuse `APGISC3` for
   optional scopes and shared binding-array ownership, not a duplicate binding
@@ -754,9 +767,9 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   This experimental format revision does not assert stable artifact compatibility.
   Verification: `check check-prepared-modules` and ASan/UBSan
   `check-identity-io check-eval-io` pass with the shared-scope cases.
-- [ ] Integrate higher-scope ownership into production whole-machine dispatch.
-  These tests still supply the surrounding machine flags and work descriptor;
-  they do not establish CHECKPOINT acceptance or retained-progress provenance.
+- [x] Integrate higher-scope ownership into the common machine dispatcher.
+  Common-reader tests no longer supply machine flags or the work descriptor;
+  CHECKPOINT acceptance and retained-progress provenance remain outstanding.
 - [x] Extend the same ownership table with the evaluator's optional live
   `action_result_work` (`APGISC3`), not a second binding codec or fictitious
   scope. Retain partial result, remaining/discard counts and the exact array
@@ -801,7 +814,7 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Reject missing owner roots with cleared task/configuration outputs. The test
   scope owner is shared with Fold rather than duplicated by task kind.
   This is raw relocation, not acceptance of a saved axis prefix; production
-  whole-machine task dispatch remains outstanding.
+  whole-machine task dispatch is provided by `machine_io.c` above.
   Verification: `check check-prepared-modules` and ASan/UBSan
   `check-identity-io check-eval-io` pass after these changes.
 - [x] At every task cut of a 3D reversal composed with itself, destroy arenas
@@ -854,10 +867,10 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   which returns too few roots without exposing a restored work object.
   Verification: `check check-prepared-modules` and ASan/UBSan
   `check-identity-io check-eval-io` pass, including the owner rejection case.
-- [ ] Wire this Fold/scopes composition into the production whole-machine task
-  dispatcher, together with the other eleven work descriptors. The component
-  tests above still supply machine flags and do not establish saved-progress
-  provenance or complete CHECKPOINT acceptance.
+- [x] Wire this Fold/scopes composition into the common machine task dispatcher,
+  together with the other eleven work descriptors. Its tests restore machine
+  flags through the reader; saved-progress provenance and complete CHECKPOINT
+  acceptance remain outstanding.
 
 | Algorithm (`*.c`) | References and progress beyond its descriptor |
 | --- | --- |

@@ -19,6 +19,16 @@ int pg_computation_machine_read_with(FILE *file, struct pg_eval *machine, struct
 	int (*read_payload)(FILE *, struct pg_eval *, const struct pg_eval_work_operation *, int, void *), void *owner,
 	const struct pg_eval_policy **policy);
 
+/* Built-in raw machine payload, covering all named deferred work. Extra
+ * configurations share lexical storage with the machine and its frames.
+ * Reading restores state only; imported progress still requires provenance. */
+int pg_computation_machine_write(FILE *file, const struct pg_eval *machine,
+	const struct pg_eval_policy *policy, size_t count, const struct pg_eval_configuration *roots,
+	const struct pg_graph_codec *codec, void *owner);
+int pg_computation_machine_read(FILE *file, struct pg_eval *machine, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	const struct pg_eval_policy **policy, size_t *count, const struct pg_eval_configuration **roots);
+
 /* Raw production Demand stack, including named continuations and shared scope
  * ownership. No evaluation or evidence admission. Imported progress requires
  * provenance before execution can support accepted results. The caller retains
