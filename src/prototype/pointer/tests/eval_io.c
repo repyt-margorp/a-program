@@ -569,6 +569,127 @@ static void materialization_resume(void)
 	pg_graph_destroy(&graph);
 }
 
+static const struct pg_object_class frame_class = {"frame-test"};
+static const struct pg_object frame_operation = {PG_SEMANTIC_OBJECT, &frame_class};
+static int frame_auxiliary;
+static size_t frame_resumes;
+
+static const char *frame_name(void *unused, const struct pg_object *object)
+{
+	(void)unused;
+	return object == &frame_operation ? "test/frame/v1" : NULL;
+}
+static const struct pg_object *frame_resolve(void *unused, const char *name)
+{
+	(void)unused;
+	return !strcmp(name, "test/frame/v1") ? &frame_operation : NULL;
+}
+static const struct pg_graph_codec frame_codec = {.name = frame_name, .resolve = frame_resolve};
+
+static int frame_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
+{
+	assert(state == &frame_operation);
+	++frame_resumes;
+	if (frame_auxiliary) return pg_eval_enter(machine, (struct pg_closure){answer, NULL}, 5);
+	const struct pg_closure *argument = pg_eval_argument(machine, 3);
+	assert(argument->term == answer && !argument->environment);
+	return 1;
+}
+static int frame_dispatch(struct pg_eval *machine)
+{
+	if (machine->current.term->as.reference != &frame_operation) return 1;
+	if (frame_auxiliary) return pg_eval_demand_closure(machine, *pg_eval_argument(machine, 3), frame_answer, &frame_operation);
+	return pg_eval_demand(machine, 3, frame_answer, &frame_operation);
+}
+
+static void invalid_frame_target(FILE *file)
+{
+	uint64_t entries, environments, arguments, target;
+	assert(!fseek(file, 8, SEEK_SET) && !pg_wire_read_u64(file, &entries));
+	long configurations = 48 + 48 * (long)entries;
+	assert(!fseek(file, configurations + 8, SEEK_SET));
+	assert(!pg_wire_read_u64(file, &environments) && !pg_wire_read_u64(file, &arguments));
+	long target_link = configurations + 32 + 16 * (long)(environments + arguments + 4 * entries + 4) + 8;
+	assert(!fseek(file, target_link, SEEK_SET) && !pg_wire_read_u64(file, &target));
+	assert(target && !fseek(file, target_link, SEEK_SET) && !pg_wire_write_u64(file, 0));
+	struct pg_graph graph, arena = {0};
+	assert(!pg_graph_init(&graph));
+	struct pg_eval_frame *rejected;
+	struct pg_eval_configuration current;
+	rewind(file);
+	/* Auxiliary demand cannot have a partly copied argument prefix. */
+	assert(pg_eval_frame_payload_read(file, &arena, &graph, 10000, 100, &frame_codec, NULL, &rejected, &current));
+	assert(!rejected && !current.head.term);
+	pg_graph_destroy(&arena);
+	pg_graph_destroy(&graph);
+	assert(!fseek(file, target_link, SEEK_SET) && !pg_wire_write_u64(file, target));
+}
+
+static void frame_resume(void)
+{
+	for (frame_auxiliary = 0; frame_auxiliary < 2; ++frame_auxiliary) {
+		struct pg_graph graph;
+		assert(!pg_graph_init(&graph));
+		const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
+		const struct pg_term *vx = pg_reference(&graph, x), *vy = pg_reference(&graph, y);
+		const struct pg_term *body = pg_reference(&graph, &frame_operation);
+		for (size_t i = 0; i < 5; ++i) body = pg_application(&graph, body, i == 3 ? pg_lambda(&graph, y, vx) : vx);
+		const struct pg_term *input = pg_application(&graph, pg_lambda(&graph, x, body), vy);
+		struct pg_eval baseline;
+		pg_eval_init(&baseline, input);
+		baseline.output = &graph; baseline.dispatch = frame_dispatch;
+		assert(pg_eval_advance(&baseline, 1000) == PG_EVAL_WHNF);
+		const struct pg_term *expected = pg_eval_readback(&baseline, &graph);
+		uint64_t total = baseline.steps;
+		pg_eval_destroy(&baseline);
+		unsigned prefix_lengths = 0;
+		for (uint64_t cut = 0; cut < total; ++cut) {
+			struct pg_eval machine;
+			pg_eval_init(&machine, input);
+			machine.output = &graph; machine.dispatch = frame_dispatch;
+			pg_eval_advance(&machine, cut);
+			if (!machine.frames) { pg_eval_destroy(&machine); continue; }
+			assert(!machine.frames->parent && !machine.task);
+			size_t copied = 0;
+			for (const struct pg_argument *p = machine.frames->arguments; p != machine.frames->cursor; p = p->next) ++copied;
+			assert(copied < 4);
+			prefix_lengths |= 1u << copied;
+			int ready = machine.head_ready;
+			struct pg_graph restored = {0};
+			frame_resumes = 0;
+			for (unsigned round = 0; round < 2; ++round) {
+				FILE *file = tmpfile();
+				struct pg_eval_configuration current = {machine.current, machine.arguments};
+				assert(file && !pg_eval_frame_payload_write(file, machine.frames, &current, &frame_codec, NULL));
+				if (copied) invalid_frame_target(file);
+				pg_eval_destroy(&machine);
+				pg_graph_destroy(&restored);
+				assert(!pg_graph_init(&restored));
+				pg_eval_init(&machine, input);
+				rewind(file);
+				assert(!pg_eval_frame_payload_read(file, &machine.temporary, &restored, 10000, 100,
+					&frame_codec, NULL, &machine.frames, &current));
+				assert(!fclose(file));
+				assert(!machine.frames->resume && !machine.frames->state && !machine.frames->parent);
+				machine.current = current.head; machine.arguments = current.arguments;
+				machine.output = &restored; machine.dispatch = frame_dispatch;
+				machine.head_ready = ready; machine.steps = cut;
+				machine.frames->resume = frame_answer; machine.frames->state = &frame_operation;
+				assert(machine.frames->arguments->value.environment == machine.current.environment);
+			}
+			assert(!frame_resumes);
+			struct pg_binding_value correspondence = {y, machine.frames->arguments->value.environment->value.term};
+			const struct pg_term *relocated = pg_term_substitute(&restored, expected, 1, &correspondence);
+			assert(pg_eval_advance(&machine, 1000) == PG_EVAL_WHNF && machine.steps == total && frame_resumes == 1);
+			assert(pg_alpha_equal(pg_eval_readback(&machine, &restored), relocated) == 1);
+			pg_eval_destroy(&machine);
+			pg_graph_destroy(&restored);
+		}
+		assert(prefix_lengths == (frame_auxiliary ? 1u : 15u));
+		pg_graph_destroy(&graph);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	if (argc == 3) {
@@ -639,6 +760,7 @@ int main(int argc, char **argv)
 	beta_resume();
 	substitution_resume();
 	materialization_resume();
+	frame_resume();
 	comparison_resume();
 	comparison_boundaries();
 	puts("evaluation configuration: captured environments, shared tails, inert resave and lexical relocation passed");

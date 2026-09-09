@@ -293,13 +293,28 @@ These are existing execution structures to relocate, not new Core node kinds.
   auxiliary-demand cuts, checking pointers, values, environments and unchanged
   tail sharing. Normal Core tests and ASan/UBSan Core tests pass.
   `check check-prepared-modules` also passes after the pointer-target change.
-- [ ] Encode frame arguments, target and cursor in the common configuration
+- [x] Encode frame arguments, target and cursor in the common configuration
   forest. During relocation rebuild private mutable prefix links from arguments
   up to cursor, rather than save another copy of their closures or cast imported
   read-only argument pointers to mutable ones. This rebuild is storage relocation,
   not beta/iota evaluation; it must not change charged computation steps. Retain
-  the answer's actual readback work and the owning continuation state separately.
-  No complete frame codec is claimed by the pointer-target change.
+  the answer's actual readback work in the same component (`APGFRM1`). A common
+  materialization codec handles its fixed owner configurations, and execution
+  and restoration use the same one-link prefix builder. Existing `APGMAT1`
+  and `APGSUB2` layouts remain unchanged.
+- [x] Test each active single-frame cut from demand creation through capture-
+  avoiding answer readback and prefix copying, for positional and auxiliary
+  demands. Double inert resave preserves shared environments, remaining steps
+  and exactly one final continuation call. Restore the known test continuation
+  explicitly; no callback address is decoded. Invalid auxiliary/prefix state
+  is rejected after readback decoding with outputs cleared and resources freed.
+  Normal/ASan/UBSan `check-eval-io` pass.
+  `check check-prepared-modules` passes after the frame-data codec change.
+- [ ] Connect frame data to parent-stack, continuation-owner, policy and machine
+  state retention. `pg_eval_frame_payload_read` intentionally leaves parent,
+  resume and state unset; it is data relocation, not a complete runnable image.
+  The tests supply the surrounding machine flags and continuation externally.
+  General nested-frame/source-level `.a` checkpoints remain incomplete.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 

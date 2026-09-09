@@ -80,6 +80,19 @@ int pg_eval_demand_closure(struct pg_eval *machine, struct pg_closure value,
 	return demand(machine, value, NULL, resume, state);
 }
 
+struct pg_argument *pg_eval_frame_copy_argument(struct pg_eval_frame *frame, struct pg_graph *arena)
+{
+	if (!frame->cursor) return NULL;
+	struct pg_argument *copy = pg_alloc(arena, sizeof(*copy));
+	if (!copy) return NULL;
+	*copy = *frame->cursor;
+	if (frame->last) frame->last->next = copy;
+	else frame->first = copy;
+	frame->last = copy;
+	frame->cursor = frame->cursor->next;
+	return copy;
+}
+
 static int resume_frame(struct pg_eval *machine)
 {
 	struct pg_eval_frame *frame = machine->frames;
@@ -93,13 +106,8 @@ static int resume_frame(struct pg_eval *machine)
 		/* A suspended prefix is an unchanged copy from arguments to cursor.
 		 * Only the final, frame-removing step replaces the demanded argument. */
 		const struct pg_argument *source = frame->cursor;
-		struct pg_argument *copy = pg_alloc(&machine->temporary, sizeof(*copy));
-		if (!copy || !source) return -1;
-		*copy = *source;
-		if (frame->last) frame->last->next = copy;
-		else frame->first = copy;
-		frame->last = copy;
-		frame->cursor = source->next;
+		struct pg_argument *copy = pg_eval_frame_copy_argument(frame, &machine->temporary);
+		if (!copy) return -1;
 		if (source != frame->target) return 0;
 		copy->value = (struct pg_closure){answer, NULL};
 		arguments = frame->first;

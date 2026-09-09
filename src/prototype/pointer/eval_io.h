@@ -55,4 +55,15 @@ int pg_materialization_read(FILE *file, struct pg_graph *graph, size_t limit,
 	size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	struct materialization *work, struct pg_eval_configuration *input);
 
+/* Frame DATA only: caller, target, cursor and answer readback share one graph.
+ * Parent, continuation/state, machine flags and policy are owned by the outer
+ * checkpoint and are not encoded. Restored frame has no continuation installed.
+ * Its private prefix is recreated in arena; answer state must be destroyed via
+ * pg_materialize_destroy before arena/output. No computation is advanced. */
+int pg_eval_frame_payload_write(FILE *file, const struct pg_eval_frame *frame,
+	const struct pg_eval_configuration *current, const struct pg_graph_codec *codec, void *owner);
+int pg_eval_frame_payload_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct pg_eval_frame **frame, struct pg_eval_configuration *current);
+
 #endif

@@ -51,5 +51,6 @@ void pg_readback_destroy(struct readback_context *context);
 int pg_materialize_step(struct materialization *work, struct pg_graph *graph,
 	struct pg_closure closure, const struct pg_argument *arguments);
 void pg_materialize_destroy(struct materialization *work);
+struct pg_argument *pg_eval_frame_copy_argument(struct pg_eval_frame *frame, struct pg_graph *arena);
 
 #endif
