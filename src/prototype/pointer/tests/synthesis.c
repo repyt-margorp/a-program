@@ -5514,6 +5514,27 @@ int main(void)
 	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, a_scope, x_name, x, x_context);
 	application_allocations(&synthesis, scope, pg_prove_projection(&typing, x_context, typed_reduct), return_x);
+	const struct pg_object *ih = pg_binder(&graph);
+	const struct pg_evidence *ih_type = pg_prove_thunk_type(&typing, &classifiers,
+		pg_prove_classifier(&typing, &classifiers, x_context, return_x));
+	const struct pg_evidence *ih_context = pg_prove_context_extension(&typing, x_context, ih, ih_type);
+	const struct pg_source_scope *pending_field = pg_synthesis_bind_context(&synthesis,
+		a_scope, x_name, x, pg_synthesis_evidence(&synthesis, x_context));
+	assert(pending_field && ih_context);
+	const struct pg_source_scope *ih_scope = pg_synthesis_bind_hypothesis(&synthesis,
+		pending_field, x, ih, pg_synthesis_evidence(&synthesis, ih_context));
+	assert(ih_scope && ih_scope == pg_synthesis_bind_hypothesis(&synthesis,
+		pending_field, x, ih, pg_synthesis_evidence(&synthesis, ih_context)));
+	const struct pg_source_scope *bad_ih_scope = pg_synthesis_bind_hypothesis(&synthesis,
+		pending_field, pg_binder(&graph), ih, pg_synthesis_evidence(&synthesis, ih_context));
+	assert(bad_ih_scope && bad_ih_scope != ih_scope);
+	struct pg_synthesis_job *ih_job = request(&synthesis, ih_scope, "r:=*x;");
+	const struct pg_evidence *ih_result = complete(&synthesis, ih_job, PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(ih_result)->core == pg_evidence_subject(
+		pg_prove_force(&typing, pg_prove_variable(&typing, ih_context, ih)))->core);
+	complete(&synthesis, request(&synthesis, bad_ih_scope, "r:=*x;"), PG_SYNTHESIS_REJECTED);
+	assert(!pg_synthesis_bind_hypothesis(&synthesis, pending_field, NULL, ih,
+		pg_synthesis_evidence(&synthesis, ih_context)));
 	identity_contents(&typing, &classifiers, &beta, x_context, second_application, x_value, sigma);
 	normalization_jobs(&typing, &classifiers, x_context, second_application, x_value);
 	const struct pg_evidence *deep_body = return_x;

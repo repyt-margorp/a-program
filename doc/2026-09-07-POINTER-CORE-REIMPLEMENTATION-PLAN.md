@@ -903,6 +903,18 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   boundaries pass. Both normal and sanitized source suites reproduce the Match
   write failure. Main push remains blocked by incomplete implementation, not by
   an external dependency.
+- [x] September 9: construct Match field/IH scopes through the same pending
+  context-binding path (`SCOPE_CONTEXT_JOB`). `pg_synthesis_bind_hypothesis`
+  records only the field-to-IH binder association; it introduces no proof or
+  Core rule. The shared job waits for its parent context before validating the
+  extension, and checks that an associated field belongs to that parent.
+  Branch construction no longer interns IH scopes by bypassing this check.
+  Tests create an IH over a still-pending field scope, use it through `*x`,
+  compare the exact ordinary FORCE/variable Core, and reject an unknown field
+  without changing the valid scope. This prepares the shared environment
+  representation; source scope export/import is still outstanding above.
+  Verification: normal and ASan/UBSan full `synthesis_test`, normal
+  `source_io_test normalization` and `prepared-module` (758 boundaries) pass.
 - [x] Retained recursive-elimination derivation allocation (resolved by
   APGDRV6 below). Original failure:
   `retained-write-typed <file> match` followed by inert resaves and

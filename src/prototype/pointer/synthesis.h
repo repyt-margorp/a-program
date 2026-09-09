@@ -48,6 +48,10 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 const struct pg_source_scope *pg_synthesis_bind_context(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
 	const struct pg_object *binder, struct pg_synthesis_job *context);
+/* IH lookup is a binding association, not an additional proof rule. */
+const struct pg_source_scope *pg_synthesis_bind_hypothesis(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_object *field,
+	const struct pg_object *binder, struct pg_synthesis_job *context);
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
 /* Retain only sequencing binder identities for a source application.

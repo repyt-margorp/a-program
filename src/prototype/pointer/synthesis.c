@@ -901,19 +901,35 @@ struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *
 	return request_inputs(synthesis, DERIVATION_INPUT_JOB, 2, inputs);
 }
 
-const struct pg_source_scope *pg_synthesis_bind_context(struct pg_synthesis *synthesis,
+static const struct pg_source_scope *bind_context(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, struct pg_token name,
-	const struct pg_object *binder, struct pg_synthesis_job *context)
+	const struct pg_object *binder, struct pg_synthesis_job *context, const struct pg_object *field)
 {
 	if (!parent || parent->owner != synthesis->owner_key) return NULL;
 	if (!binder || binder->kind != PG_BINDER) return NULL;
 	if (!context || context->owner != synthesis->owner_key) return NULL;
-	const void *inputs[] = {parent, binder, context};
-	struct pg_synthesis_job *checked = request_inputs(synthesis, SCOPE_CONTEXT_JOB, 3, inputs);
+	if (field && field->kind != PG_BINDER) return NULL;
+	const void *inputs[] = {parent, binder, context, field};
+	struct pg_synthesis_job *checked = request_inputs(synthesis, SCOPE_CONTEXT_JOB, 4, inputs);
 	if (!checked) return NULL;
 	checked->scope = parent;
 	return intern_scope(synthesis, (struct pg_source_scope){.parent = parent, .name = name,
-		.binder = binder, .context_job = checked});
+		.binder = binder, .context_job = checked, .hypothesis_for = field});
+}
+
+const struct pg_source_scope *pg_synthesis_bind_context(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, struct pg_token name,
+	const struct pg_object *binder, struct pg_synthesis_job *context)
+{
+	return bind_context(synthesis, parent, name, binder, context, NULL);
+}
+
+const struct pg_source_scope *pg_synthesis_bind_hypothesis(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_object *field,
+	const struct pg_object *binder, struct pg_synthesis_job *context)
+{
+	if (!field) return NULL;
+	return bind_context(synthesis, parent, (struct pg_token){0}, binder, context, field);
 }
 
 struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
@@ -3131,8 +3147,8 @@ static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synt
 		const struct pg_source_scope *scope = job->scope;
 		for (size_t i = 0; scope && i < fields; ++i) {
 			if (job->syntax->items[i].operation) { pg_graph_destroy(&temporary); finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-			scope = pg_synthesis_bind(synthesis, scope, job->syntax->items[i].name,
-				pg_evidence_context(extensions[i])->binder, extensions[i]);
+			scope = pg_synthesis_bind_context(synthesis, scope, job->syntax->items[i].name,
+				pg_evidence_context(extensions[i])->binder, pg_synthesis_evidence(synthesis, extensions[i]));
 		}
 		/* Match IHs to original field binders, not their surface spelling. */
 		const struct pg_object *self = pg_evidence_context(pg_evidence_premise(formation, 0))->binder;
@@ -3143,10 +3159,8 @@ static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synt
 		for (size_t i = 0; scope && i < fields; ++i) {
 			if (!recursive[i]) continue;
 			if (next == total) { scope = NULL; break; }
-			scope = intern_scope(synthesis, (struct pg_source_scope){.parent = scope,
-				.context_job = pg_synthesis_evidence(synthesis, extensions[next]),
-				.binder = pg_evidence_context(extensions[next])->binder,
-				.hypothesis_for = pg_evidence_context(extensions[i])->binder});
+			scope = pg_synthesis_bind_hypothesis(synthesis, scope, pg_evidence_context(extensions[i])->binder,
+				pg_evidence_context(extensions[next])->binder, pg_synthesis_evidence(synthesis, extensions[next]));
 			++next;
 		}
 		if (next != total) scope = NULL;
@@ -5498,10 +5512,16 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	const struct pg_syntax *syntax = job->syntax;
 	if (job->role == SCOPE_CONTEXT_JOB) {
+		struct pg_synthesis_job *parent = job->scope->context_job;
+		if (parent->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, parent); return; }
+		if (parent->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, parent->status); return; }
 		struct pg_synthesis_job *context = (void *)job->inputs[2];
 		if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
 		if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return; }
 		if (!binding_context(synthesis, job->scope, job->inputs[1], context->result)) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+		if (job->inputs[3] && !pg_context_lookup(pg_evidence_context(parent->result), job->inputs[3])) {
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
 		job->result = context->result;
