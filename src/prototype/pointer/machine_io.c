@@ -6,6 +6,8 @@
 #include "eval_internal.h"
 #include "wire.h"
 
+#include <string.h>
+
 struct machine_owner {
 	const struct pg_graph_codec *codec;
 	void *owner;
@@ -239,6 +241,95 @@ int pg_computation_machine_read(FILE *file, struct pg_eval *machine, struct pg_g
 }
 
 static const char forest_magic[8] = "APGMFS\1";
+
+static const char whnf_magic[8] = "APGWHW\1";
+
+struct whnf_owner {
+	struct machine_owner machine;
+	const struct pg_whnf_job *input;
+	struct pg_whnf_job *output;
+	int materializing;
+};
+
+static int whnf_terms_write(FILE *file, size_t count, const struct pg_term *const *roots, void *state)
+{
+	struct machine_owner *o = state;
+	return pg_graph_write_descriptors(file, count, roots, o->codec, o->owner);
+}
+
+static int whnf_terms_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_term *const **roots, void *state)
+{
+	struct machine_owner *o = state;
+	return pg_graph_read_descriptors(file, graph, limit, name_limit, o->codec, o->owner, count, roots);
+}
+
+static int whnf_payload_write(FILE *file, const struct pg_eval *machine, void *state)
+{
+	struct whnf_owner *o = state;
+	struct pg_eval_configuration key = {{o->input->request.input, NULL}, NULL};
+	o->machine.count = 1;
+	o->machine.roots = &key;
+	if (!o->materializing) return payload_write(file, machine, &o->machine);
+	struct pg_eval_configuration input = {machine->current, machine->arguments};
+	return pg_materialization_write_with(file, &o->input->output, &input, 1, &key,
+		whnf_terms_write, &o->machine);
+}
+
+static int whnf_payload_read(FILE *file, struct pg_eval *machine,
+	const struct pg_eval_work_operation *operation, int framed, void *state)
+{
+	struct whnf_owner *o = state;
+	if (!o->materializing) return payload_read(file, machine, operation, framed, &o->machine);
+	if (operation || framed) return -1;
+	struct pg_eval_configuration input;
+	if (pg_materialization_read_with(file, machine->output, o->machine.limit, o->machine.name_limit,
+		whnf_terms_read, &o->machine, &o->output->output, &input, 1, &o->machine.roots)) return -1;
+	machine->current = input.head;
+	machine->arguments = input.arguments;
+	o->machine.count = 1;
+	return 0;
+}
+
+int pg_whnf_pending_write(FILE *file, const struct pg_whnf_job *job,
+	const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || !job || job->status != PG_EVAL_PENDING || job->certificate || !job->request.input) return -1;
+	if (job->machine.status != PG_EVAL_PENDING && job->machine.status != PG_EVAL_WHNF) return -1;
+	int materializing = job->machine.status == PG_EVAL_WHNF;
+	if (job->output.done || (!materializing && job->output.readback.output)) return -1;
+	if (job->steps < job->machine.steps || job->steps - job->machine.steps < job->output.readback.steps) return -1;
+	if (fwrite(whnf_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, job->steps)
+		|| pg_wire_write_u64(file, (uint64_t)materializing)) return -1;
+	struct whnf_owner o = {.machine = {.codec = codec, .owner = owner}, .input = job, .materializing = materializing};
+	return pg_computation_machine_write_with(file, &job->machine, job->request.policy, whnf_payload_write, &o);
+}
+
+int pg_whnf_pending_read(FILE *file, struct pg_whnf_job *job, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!job) return -1;
+	memset(job, 0, sizeof(*job));
+	if (!file || !output) return -1;
+	char header[8];
+	uint64_t materializing;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, whnf_magic, 8)
+		|| pg_wire_read_u64(file, &job->steps) || pg_wire_read_u64(file, &materializing) || materializing > 1) goto failure;
+	struct whnf_owner o = {.machine = {.codec = codec, .owner = owner, .limit = limit, .name_limit = name_limit},
+		.output = job, .materializing = (int)materializing};
+	if (pg_computation_machine_read_with(file, &job->machine, output, name_limit, whnf_payload_read,
+		&o, &job->request.policy)) goto failure;
+	if (job->machine.status != (materializing ? PG_EVAL_WHNF : PG_EVAL_PENDING) || job->output.done) goto failure;
+	if (job->steps < job->machine.steps || job->steps - job->machine.steps < job->output.readback.steps) goto failure;
+	if (o.machine.count != 1 || o.machine.roots[0].head.environment || o.machine.roots[0].arguments) goto failure;
+	job->request.input = o.machine.roots[0].head.term;
+	return 0;
+failure:
+	pg_materialize_destroy(&job->output);
+	pg_eval_destroy(&job->machine);
+	memset(job, 0, sizeof(*job));
+	return -1;
+}
 
 struct forest_write {
 	size_t machine_count, root_count;

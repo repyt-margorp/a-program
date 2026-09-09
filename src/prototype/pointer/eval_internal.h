@@ -92,6 +92,11 @@ struct pg_nf_job {
 	enum { NF_HEAD, NF_CHILDREN, NF_RECHECK } stage;
 };
 
+/* Attach an owner-validated, unregistered pending job at its final address.
+ * This maintains the exact-key index only, not imported-progress provenance.
+ * The job storage must outlive work; work destroys its machine/readback. */
+int pg_whnf_job_attach(struct pg_whnf_work *work, struct pg_whnf_job *job);
+
 /* Index maintenance only. Does not establish the validity of saved results. */
 int pg_readback_index(struct readback_context *context, struct readback_entry *entry);
 void pg_readback_destroy(struct readback_context *context);

@@ -625,6 +625,28 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Verification: `check check-prepared-modules` and normal/ASan/UBSan `core_test`
   pass. The new regression grows both request indexes while WHNF/NF work shares
   a divergent input, then confirms job identity and unchanged charged progress.
+- [x] Retain pending WHNF evaluation and materialization in `APGWHW1` through
+  `pg_whnf_pending_write/read`. Both use the existing machine envelope/policy;
+  evaluation delegates to the complete built-in payload, while readback owns
+  its input configuration and request root through the existing materialization
+  codec. An enclosing graph image supplies one shared Term/object table.
+  No receipt is serialized and completed/error jobs are rejected by this codec.
+  Reading leaves the actual job unregistered, without a work owner; advancing
+  it is refused. Only an owner that established progress provenance may use the
+  evaluator-private attach operation. Attachment uses the same exact-key lookup
+  and refuses duplicate keys instead of replacing existing jobs. It is index
+  maintenance, not evidence verification or an imported cache-admission rule.
+  Verification: at every pending cut, two destroying resaves preserve total
+  steps for a framed Act computation and a captured Lambda with shared readback
+  dependencies. Tests cover unstarted/active materialization, refusal to advance
+  before attachment, duplicate-key rejection, completed-job rejection and
+  cleanup after decoding inconsistent step counts. Normal
+  `check check-prepared-modules` (758 module boundaries) and ASan/UBSan
+  `check-identity-io` pass. No new evaluator or Core tag was introduced.
+- [ ] Connect these pending jobs, completed receipts and NF dependency edges
+  to the whole work-store owner and source image. The local fixture tests below
+  establish their origin by construction; they do not justify arbitrary imported
+  progress. The completed WHNF basis and full source CHECKPOINT gates stay open.
 - [ ] Complete the separately required symbolic type-family formation contract.
   Rechecking after `2074e1b` still gives closed/open/applied/sequenced statuses
   DONE/UNSUPPORTED/UNSUPPORTED/UNSUPPORTED at 175/209/280/323 steps. The current

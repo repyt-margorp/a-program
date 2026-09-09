@@ -41,6 +41,18 @@ int pg_computation_machines_read(FILE *file, struct pg_graph *output, size_t lim
 	struct pg_eval *const **machines, const struct pg_eval_policy *const **policies,
 	size_t *count, const struct pg_term *const **roots);
 
+/* Raw pending WHNF job, including either active evaluation or final readback.
+ * Not a completed receipt or a source checkpoint. Read into an unused job at
+ * its final address. It is not registered and cannot advance until its owner
+ * establishes provenance and attaches it to a work store. The owner releases
+ * machine/readback resources before output; failure clears the whole job.
+ * Complete/error jobs require their separate evidence/lifecycle representation
+ * and are rejected here. The codec does not certify saved progress. */
+int pg_whnf_pending_write(FILE *file, const struct pg_whnf_job *job,
+	const struct pg_graph_codec *codec, void *owner);
+int pg_whnf_pending_read(FILE *file, struct pg_whnf_job *job, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner);
+
 /* Raw production Demand stack, including named continuations and shared scope
  * ownership. No evaluation or evidence admission. Imported progress requires
  * provenance before execution can support accepted results. The caller retains

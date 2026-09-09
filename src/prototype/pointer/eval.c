@@ -522,17 +522,26 @@ void pg_whnf_work_destroy(struct pg_whnf_work *work)
 	memset(work, 0, sizeof(*work));
 }
 
+static struct pg_reduction_request *reduction_find(struct pg_index *index,
+	const struct pg_eval_policy *policy, const struct pg_term *input, uint64_t *hash)
+{
+	*hash = ((uintptr_t)input ^ (uintptr_t)policy) * UINT64_C(1099511628211);
+	for (struct pg_index_entry *entry = pg_index_candidates(index, *hash); entry; entry = entry->next) {
+		if (entry->hash != *hash) continue;
+		struct pg_reduction_request *request = (struct pg_reduction_request *)entry;
+		if (request->input == input && request->policy == policy) return request;
+	}
+	return NULL;
+}
+
 static void *reduction_request(struct pg_whnf_work *work, struct pg_index *index,
 	const struct pg_eval_policy *policy, const struct pg_term *input, size_t size, int *created)
 {
 	*created = 0;
 	if (!input || !policy) return NULL;
-	uint64_t hash = ((uintptr_t)input ^ (uintptr_t)policy) * UINT64_C(1099511628211);
-	for (struct pg_index_entry *entry = pg_index_candidates(index, hash); entry; entry = entry->next) {
-		if (entry->hash != hash) continue;
-		struct pg_reduction_request *request = (struct pg_reduction_request *)entry;
-		if (request->input == input && request->policy == policy) return request;
-	}
+	uint64_t hash;
+	struct pg_reduction_request *found = reduction_find(index, policy, input, &hash);
+	if (found) return found;
 	struct pg_reduction_request *request = pg_alloc(&work->storage, size);
 	if (!request) return NULL;
 	request->work = work;
@@ -541,6 +550,17 @@ static void *reduction_request(struct pg_whnf_work *work, struct pg_index *index
 	if (pg_index_insert(index, &request->index, hash)) return NULL;
 	*created = 1;
 	return request;
+}
+
+int pg_whnf_job_attach(struct pg_whnf_work *work, struct pg_whnf_job *job)
+{
+	if (!work || !job || job->request.work || !job->request.input || !job->request.policy) return -1;
+	if (job->status != PG_EVAL_PENDING || job->certificate || job->machine.output != work->graph) return -1;
+	uint64_t hash;
+	if (reduction_find(&work->jobs, job->request.policy, job->request.input, &hash)) return -1;
+	if (pg_index_insert(&work->jobs, &job->request.index, hash)) return -1;
+	job->request.work = work;
+	return 0;
 }
 
 struct pg_whnf_job *pg_whnf_request(struct pg_whnf_work *work,
@@ -602,6 +622,7 @@ static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 
 enum pg_eval_status pg_whnf_advance(struct pg_whnf_job *job, uint64_t budget)
 {
+	if (!job->request.work) return PG_EVAL_ERROR;
 	while (job->status == PG_EVAL_PENDING && budget) {
 		--budget;
 		++job->steps;
