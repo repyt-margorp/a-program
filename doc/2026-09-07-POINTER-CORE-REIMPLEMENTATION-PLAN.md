@@ -111,6 +111,36 @@ the open-family result above remains a required correction before Main promotion
 
 ### September 9: Retained Proof Reuse Is Not Source Checkpointing
 
+Module-only checkpoint audit after `4f55c89`: the new required
+`check-prepared-modules` gate prepares a real module annotation, saves only the
+module root, destroys the program, and restores it. Re-requesting the known
+definition/type/annotation inputs currently creates four missing jobs in round 0.
+It then requires the same property after an unsolved resave, and eventual Solve
+must use the same annotation producer. This gate belongs to `check-acceptance`;
+it is not an expected failure in the passing component suite.
+
+A temporary experiment enumerated `pg_synthesis_definition_entry` from the
+exporter's producer dependency callback. It passed round 0 but lost the same
+four jobs in round 1. The experiment was removed. `state->entries` is populated
+by registration/activation, whereas restored source roots have not performed
+those transitions. An orphan producer table does not preserve the module-to-input
+relationship, even though explicit selection of those producers still works.
+
+Next implementation requirements:
+
+- Represent a module's prepared input relationships independently of its
+  mutable registration/activation cursors. Use the existing canonical jobs,
+  not copies of their status, evidence, or a second accepted module table.
+- Make ordinary preparation and restoration construct that same input graph.
+  Validate source-item/scope/input correspondence; a stored edge is not evidence
+  that a definition or `::` was accepted. Keep whole-module checking intact.
+- Export from those relationships, not only from `state->entries` visible after
+  Solve. Preserve the relationships during an unsolved read/write cycle.
+- Pass `check-prepared-modules`, including round 1, before claiming prepared
+  module retention. Do not move name indexing into an unbudgeted eager loop
+  merely to populate entries at load time. Normalization retention remains a
+  separate unfinished part of CHECKPOINT.
+
 Follow-up to `c400fb7`: `APGSRC8` makes NAME and MODULE scope records reference
 the shared producer table. Their last u64 is now a producer ID; for BINDING it
 remains a raw-rule ID. Other scope fields and all table layouts remain unchanged.

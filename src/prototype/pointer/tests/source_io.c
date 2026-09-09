@@ -621,8 +621,61 @@ static void module_annotation_sources(FILE *file, int writing, uint64_t chunk, i
 	pg_program_destroy(p);
 }
 
+static void prepared_module_checkpoint(void)
+{
+	const char source[] = "id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A;";
+	struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p && p->root);
+	const struct pg_syntax_item *item;
+	struct pg_synthesis_job *check = NULL;
+	while (!check) {
+		assert(p->synthesis.ready && p->synthesis.steps < 10000);
+		pg_synthesis_advance(&p->synthesis, 1);
+		assert(pg_synthesis_definition_entry(p->root, 1, &item, &check) == 1);
+	}
+	for (size_t round = 0; round < 2; ++round) {
+		FILE *file = tmpfile();
+		uint64_t steps = p->synthesis.steps;
+		assert(file && !pg_sources_write(file, &p->synthesis, 1, &p->root));
+		assert(p->synthesis.steps == steps);
+		pg_program_destroy(p);
+		rewind(file);
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		p = pg_sources_read(file, 10000, &count, &roots);
+		assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(p->root));
+		assert(!fclose(file));
+		const struct pg_source_scope *scope;
+		const struct pg_syntax *syntax;
+		assert(!pg_synthesis_source_input(&p->synthesis, p->root, &scope, &syntax));
+		size_t jobs = p->synthesis.jobs.count;
+		const struct pg_source_scope *local = pg_synthesis_definition_scope(&p->synthesis, scope, syntax);
+		struct pg_synthesis_job *definition = pg_synthesis_definition_request(&p->synthesis,
+			scope, syntax, syntax->items[0].expression);
+		struct pg_synthesis_job *type = pg_synthesis_request(&p->synthesis, local, syntax->items[1].expression);
+		check = pg_synthesis_source_expect(&p->synthesis, local, definition, type);
+		assert(check);
+		if (p->synthesis.jobs.count != jobs) {
+			fprintf(stderr, "prepared module round %zu: reconstructed %zu missing producer inputs\n",
+				round, p->synthesis.jobs.count - jobs);
+			pg_program_destroy(p);
+			exit(1);
+		}
+	}
+	while (p->synthesis.ready) {
+		assert(p->synthesis.steps < 10000);
+		pg_synthesis_advance(&p->synthesis, 1);
+	}
+	assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+	struct pg_synthesis_job *registered;
+	assert(pg_synthesis_definition_entry(p->root, 1, &item, &registered) == 1 && registered == check);
+	pg_program_destroy(p);
+	puts("prepared module: module-only roots retain shared obligations across unsolved resave");
+}
+
 int main(int argc, char **argv)
 {
+	if (argc == 2 && !strcmp(argv[1], "prepared-module")) { prepared_module_checkpoint(); return 0; }
 	assert(argc == 3);
 	int origins = !strncmp(argv[1], "origin-", 7);
 	int annotations = !strncmp(argv[1], "annotation-", 11);
