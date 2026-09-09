@@ -7,6 +7,95 @@
 
 static const char magic[8] = "APGIBD\1";
 static const char scope_magic[8] = "APGISC\2";
+static const char higher_magic[8] = "APGHSC\1";
+
+static int higher_state(size_t arity, size_t position, size_t lambdas, unsigned flags)
+{
+	if (!arity || position > arity || flags > 7) return 0;
+	if (lambdas && !(flags & 4)) return 0;
+	if (!(flags & 1)) return !position && !(flags & 2);
+	return (flags & 4) && lambdas;
+}
+
+int pg_higher_scope_write(FILE *file, const struct higher_scope_work *work,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || !work || (count && !roots)) return -1;
+	unsigned flags = (work->body != NULL) | (work->wrapping != 0) << 1 | (work->collecting != 0) << 2;
+	if (!higher_state(work->arity, work->position, work->lambda_count, flags)) return -1;
+	size_t kept = work->wrapping ? work->arity : work->position;
+	size_t base = work->body ? 3 : 2, maximum = SIZE_MAX / sizeof(const struct pg_term *);
+	if (kept > maximum - base || count > maximum - base - kept || (kept && !work->binders)) return -1;
+	struct pg_graph temporary;
+	if (pg_graph_init(&temporary)) return -1;
+	int status = -1;
+	const struct pg_term **all = pg_alloc(&temporary, (base + kept + count) * sizeof(*all));
+	if (!all) goto done;
+	all[0] = work->source;
+	all[1] = work->cursor;
+	if (work->body) all[2] = work->body;
+	for (size_t i = 0; i < kept; ++i) {
+		if (!work->binders[i] || work->binders[i]->kind != PG_BINDER) goto done;
+		all[base + i] = pg_reference(&temporary, work->binders[i]);
+	}
+	for (size_t i = 0; i < count; ++i) all[base + kept + i] = roots[i];
+	if (fwrite(higher_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, work->arity)
+		|| pg_wire_write_u64(file, work->position) || pg_wire_write_u64(file, work->lambda_count)
+		|| pg_wire_write_u64(file, flags)) goto done;
+	status = pg_graph_write_descriptors(file, base + kept + count, all, codec, owner);
+done:
+	pg_graph_destroy(&temporary);
+	return status;
+}
+
+int pg_higher_scope_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct higher_scope_work **work, size_t *count, const struct pg_term *const **roots)
+{
+	if (!work || !count || !roots) return -1;
+	*work = NULL;
+	*count = 0;
+	*roots = NULL;
+	if (!file || !arena || !output) return -1;
+	char header[8];
+	uint64_t arity, position, lambdas, flags;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, higher_magic, 8)
+		|| pg_wire_read_u64(file, &arity) || pg_wire_read_u64(file, &position)
+		|| pg_wire_read_u64(file, &lambdas) || pg_wire_read_u64(file, &flags)) return -1;
+	if (arity > limit || arity > SIZE_MAX / sizeof(const struct pg_object *) || position > arity
+		|| lambdas > limit || lambdas > SIZE_MAX || flags > 7) return -1;
+	if (!higher_state((size_t)arity, (size_t)position, (size_t)lambdas, (unsigned)flags)) return -1;
+	size_t base = flags & 1 ? 3 : 2, kept = flags & 2 ? (size_t)arity : (size_t)position;
+	size_t total;
+	const struct pg_term *const *all;
+	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &total, &all)) return -1;
+	if (total < base || kept > total - base) return -1;
+	struct higher_scope_work *candidate = pg_alloc(arena, sizeof(*candidate));
+	if (!candidate) return -1;
+	candidate->graph = output;
+	candidate->arena = arena;
+	candidate->source = all[0];
+	candidate->cursor = all[1];
+	candidate->arity = (size_t)arity;
+	candidate->position = (size_t)position;
+	candidate->lambda_count = (size_t)lambdas;
+	candidate->wrapping = (flags & 2) != 0;
+	candidate->collecting = (flags & 4) != 0;
+	if (flags & 1) {
+		candidate->body = all[2];
+		candidate->binders = pg_alloc(arena, (size_t)arity * sizeof(*candidate->binders));
+		if (!candidate->binders) return -1;
+	}
+	for (size_t i = 0; i < kept; ++i) {
+		const struct pg_term *term = all[base + i];
+		if (term->kind != PG_REFERENCE || term->as.reference->kind != PG_BINDER) return -1;
+		candidate->binders[i] = term->as.reference;
+	}
+	*work = candidate;
+	*count = total - base - kept;
+	*roots = all + base + kept;
+	return 0;
+}
 
 int pg_action_scopes_write(FILE *file, size_t scope_count, const struct action_scope *const *scopes,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)

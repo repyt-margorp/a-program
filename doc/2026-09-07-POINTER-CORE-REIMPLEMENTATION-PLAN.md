@@ -464,6 +464,23 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Retain raw higher-scope construction (`APGHSC1`) using the existing
+  `higher_scope_work` and original work descriptor. Preserve source/cursor,
+  optional partial body, arity, Lambda count, position, collection/wrapping
+  flags and all generated binders (including those already wrapped). Extra
+  caller roots share one Term table. Restore no absent binder by recomputation.
+- [x] Save every active higher-scope cut of a doubly acted identity application,
+  destroy arenas and resave twice. All four stages occur; caller/source sharing,
+  exact final value and total steps are preserved. Invalid arity, cursor
+  position and flags clear output handles. This is raw task transport, not
+  proof of its partial computation or whole-machine admission. Normal/ASan/UBSan
+  component tests and `check check-prepared-modules` pass.
+- [ ] Preserve aliasing when connecting action-result work: its `bindings`
+  pointer can refer to the same array as retained scopes. A standalone copy of
+  its remaining prefix would break that identity. Integrate that edge with
+  the shared binding-array ownership table; do not introduce a fictitious scope
+  merely to reuse the scope codec.
+
 - [x] Retain raw symmetry composition (`APGSYM1`) using the original
   `composition_work` and its polling/resumption descriptor. Original outer and
   inner owners, argument and caller roots share one Term table; retain the

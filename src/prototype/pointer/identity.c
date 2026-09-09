@@ -735,14 +735,6 @@ static int action_source_scoped(struct pg_eval *machine, const struct action_sco
 	return analyze_scope(machine, prepared);
 }
 
-struct higher_scope_work {
-	struct pg_graph *graph, *arena;
-	const struct pg_term *source, *cursor, *body;
-	const struct pg_object **binders;
-	size_t arity, position, lambda_count;
-	int wrapping, collecting;
-};
-
 static int higher_scope_poll(void *opaque)
 {
 	struct higher_scope_work *work = opaque;
@@ -789,7 +781,7 @@ static int higher_scope_resume(struct pg_eval *machine, void *opaque)
 	return with_action_scope(machine, work->body ? work->body : work->source);
 }
 
-static const struct pg_eval_work_operation higher_scope_operation = {
+const struct pg_eval_work_operation pg_higher_scope_operation = {
 	higher_scope_poll, higher_scope_resume, arena_work_destroy
 };
 
@@ -809,7 +801,7 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source, 
 		if (!work) return -1;
 		*work = (struct higher_scope_work){.graph = machine->output, .arena = &machine->temporary,
 			.source = source, .cursor = source, .arity = 1};
-		return pg_eval_defer(machine, &higher_scope_operation, work);
+		return pg_eval_defer(machine, &pg_higher_scope_operation, work);
 	}
 	return with_action_scope(machine, source);
 }
