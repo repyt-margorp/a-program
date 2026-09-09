@@ -13,6 +13,43 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Open-Family Admission Before Further Checkpoint Expansion
+
+Audit at `ce1c35f`: `check-open-families` still fails with `unsupported
+steps=209`. Debugging locates the first failure in `contents_step`, requested
+by `domain_step` through `type_input`. The application `F A` has computation
+typing, but its open head cannot reduce to `RETURN(value)`.
+`pg_prove_return_value` correctly requires that introduction shape; weakening
+this rule would silently identify computations with their returned values.
+The closed application `(\B : @ => B) A` succeeds at 175 steps.
+
+This is not an image relocation or replay defect. The required open-family
+fixture remains a failing acceptance gate, not an optional unsupported feature.
+
+- [x] Identify the first failing producer rather than inferring failure from
+  aggregate status. Existing neutral-force tests deliberately reject extracting
+  an arbitrary returned value from a neutral computation.
+- [ ] Specify symbolic pure-result formation in the typed layer: its context,
+  universe, substitution and reduction equations, and admissibility conditions.
+  An empty effect row alone must not be assumed to prove termination. Do not add
+  a separate value-side Lambda/APP or coerce an arbitrary computation to a type.
+- [ ] Implement those rules through ordinary synthesis/kernel acceptance and
+  retained derivation inputs, then make `check-open-families` pass. Keep Core
+  interning structural, and preserve `::` as a post-synthesis check.
+- [ ] Cover substitution of a closed family into the open family, effectful
+  rejection, and dimensional action on the resulting dependent classifier.
+
+Independent of this missing admission rule, image transport must preserve the
+unresolved source problem. The CLI regression compares direct Solve with fresh
+load/Solve after saving at budgets 0/100 and resaving at budget 0, for both the
+closed control and open fixture. This is a transport check, not evidence that
+open-family typing or retained-result CHECKPOINT is complete. No separate replay
+engine or stored acceptance flag is introduced.
+
+Verification: `make -s -f src/prototype/pointer/Makefile check` and the standalone
+`tests/image_cli.sh` invocation pass. The full acceptance gate is still incomplete;
+the open-family result above remains a required correction before Main promotion.
+
 ### September 9: Nominal Derivation Parameters in the Shared Image
 
 Continuation after `a995988`. `APGDRV` version 5 adds declaration and constructor

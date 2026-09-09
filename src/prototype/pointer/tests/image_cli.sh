@@ -26,3 +26,30 @@ sed '1d' "$directory/image-nf" > "$directory/image-value"
 cmp "$directory/source-value" "$directory/image-value"
 printf '%s\n' 'image cli: multi-root selection, retained obligations and range rejection passed'
 printf '%s\n' 'image cli: parameterized List source/image NF agreement passed'
+
+# Retaining syntax does not require its type-level computations to have finished.
+# Compare admission with direct Solve without treating unsupported as accepted.
+for family in closed-family open-family; do
+	input="$(dirname "${BASH_SOURCE[0]}")/acceptance/$family.p"
+	direct=0
+	"$binary" "$input" > "$directory/direct" || direct=$?
+	case "$direct" in 0|4) ;; *) exit 1 ;; esac
+	for steps in 0 100; do
+		code=0
+		"$binary" --steps "$steps" --save "$directory/family.a" "$input" > "$directory/status" || code=$?
+		test "$code" = 3
+		grep -q '^pending steps=' "$directory/status"
+		code=0
+		"$binary" --load --steps 0 --save "$directory/family-resaved.a" "$directory/family.a" > "$directory/status" || code=$?
+		test "$code" = 3
+		grep -q '^pending steps=0$' "$directory/status"
+		code=0
+		"$binary" --load "$directory/family-resaved.a" > "$directory/restored" || code=$?
+		test "$code" = "$direct"
+		cut -d ' ' -f 1 "$directory/direct" > "$directory/direct-status"
+		cut -d ' ' -f 1 "$directory/restored" > "$directory/restored-status"
+		cmp "$directory/direct-status" "$directory/restored-status"
+	done
+	if test "$family" = closed-family; then test "$direct" = 0; fi
+done
+printf '%s\n' 'image cli: unfinished family inputs preserve direct Solve admission after unsolved resave'
