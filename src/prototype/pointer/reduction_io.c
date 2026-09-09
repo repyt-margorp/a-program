@@ -5,6 +5,7 @@
 #include "wire.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 static const char magic[8] = "APGRCP\2";
 
@@ -68,6 +69,22 @@ static int write_links(FILE *file, struct collection *collection, const struct p
 	}
 }
 
+static int collect(struct collection *collection, struct pg_dag *dag, size_t count,
+	const struct pg_reduction_certificate *const *roots, size_t phase_count,
+	const struct pg_reduction_phase *const *phases)
+{
+	if (pg_index_init(&collection->records) || pg_dag_init(dag, child, collection)) return -1;
+	for (size_t i = 0; i < count; ++i) {
+		struct record *root = record(collection, roots[i], 0);
+		if (!root || pg_dag_add(dag, root)) return -1;
+	}
+	for (size_t i = 0; i < phase_count; ++i) {
+		struct record *root = record(collection, phases[i], 1);
+		if (!root || pg_dag_add(dag, root)) return -1;
+	}
+	return 0;
+}
+
 int pg_reduction_records_write(FILE *file, size_t count,
 	const struct pg_reduction_certificate *const *roots, size_t phase_count,
 	const struct pg_reduction_phase *const *phases, const struct pg_graph_codec *codec, void *owner)
@@ -76,15 +93,7 @@ int pg_reduction_records_write(FILE *file, size_t count,
 	struct collection collection = {0};
 	struct pg_dag dag = {0};
 	int status = -1;
-	if (pg_index_init(&collection.records) || pg_dag_init(&dag, child, &collection)) goto done;
-	for (size_t i = 0; i < count; ++i) {
-		struct record *root = record(&collection, roots[i], 0);
-		if (!root || pg_dag_add(&dag, root)) goto done;
-	}
-	for (size_t i = 0; i < phase_count; ++i) {
-		struct record *root = record(&collection, phases[i], 1);
-		if (!root || pg_dag_add(&dag, root)) goto done;
-	}
+	if (collect(&collection, &dag, count, roots, phase_count, phases)) goto done;
 	if (dag.count > SIZE_MAX / (2 * sizeof(const struct pg_term *))) goto done;
 	const struct pg_term **terms = pg_alloc(&collection.storage, 2 * dag.count * sizeof(*terms));
 	if (!terms || fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, dag.count)
@@ -249,4 +258,93 @@ int pg_reduction_archive_write(FILE *file, const struct pg_reduction_archive *ar
 {
 	return archive ? pg_reduction_records_write(file, archive->count, archive->roots,
 		archive->phase_count, archive->phases, codec, owner) : -1;
+}
+
+struct pg_reduction_check_state {
+	struct collection collection;
+	struct pg_dag dag;
+	const struct pg_dag_node *cursor;
+	const struct pg_reduction_archive *archive;
+	struct pg_whnf_work *work;
+	struct pg_whnf_job *job;
+	struct pg_comparison comparison;
+	enum pg_comparison_status status;
+	uint64_t steps;
+};
+
+int pg_reduction_check_init(struct pg_reduction_check *check, struct pg_whnf_work *work,
+	const struct pg_reduction_archive *archive)
+{
+	check->state = NULL;
+	if (!work || !archive) return -1;
+	struct pg_reduction_check_state *state = calloc(1, sizeof(*state));
+	if (!state) return -1;
+	check->state = state;
+	state->archive = archive;
+	state->work = work;
+	if (collect(&state->collection, &state->dag, archive->count, archive->roots, archive->phase_count, archive->phases)) {
+		pg_reduction_check_destroy(check);
+		return -1;
+	}
+	state->cursor = state->dag.first;
+	state->status = state->cursor ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
+	return 0;
+}
+
+static enum pg_comparison_status check_step(struct pg_reduction_check_state *state)
+{
+	const struct record *r = state->cursor->key;
+	const struct pg_reduction_certificate *c = r->phase ? NULL : r->value;
+	if (c && c->kind == PG_REDUCTION_WHNF && !c->normality) {
+		if (!state->job) state->job = pg_whnf_request(state->work, c->policy, c->source);
+		if (!state->job) return PG_COMPARISON_ERROR;
+		if (pg_whnf_status(state->job) == PG_EVAL_PENDING)
+			return pg_whnf_advance(state->job, 1) == PG_EVAL_ERROR ? PG_COMPARISON_ERROR : PG_COMPARISON_PENDING;
+		const struct pg_term *result = pg_whnf_result(state->job);
+		if (!result) return PG_COMPARISON_ERROR;
+		if (!state->comparison.state && pg_comparison_init(&state->comparison, result, c->target, NULL, NULL))
+			return PG_COMPARISON_ERROR;
+		enum pg_comparison_status status = pg_comparison_advance(&state->comparison, 1);
+		if (status != PG_COMPARISON_EQUAL) return status;
+		pg_comparison_destroy(&state->comparison);
+		state->job = NULL;
+	}
+	state->cursor = state->cursor->next;
+	return state->cursor ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
+}
+
+enum pg_comparison_status pg_reduction_check_advance(struct pg_reduction_check *check, uint64_t budget)
+{
+	struct pg_reduction_check_state *state = check->state;
+	if (!state) return PG_COMPARISON_ERROR;
+	while (state->status == PG_COMPARISON_PENDING && budget) {
+		--budget;
+		++state->steps;
+		state->status = check_step(state);
+	}
+	return state->status;
+}
+
+uint64_t pg_reduction_check_steps(const struct pg_reduction_check *check)
+{
+	return check->state ? check->state->steps : 0;
+}
+
+const struct pg_reduction_certificate *pg_reduction_check_certificate(const struct pg_reduction_check *check, size_t root)
+{
+	const struct pg_reduction_check_state *state = check->state;
+	if (!state || state->status != PG_COMPARISON_EQUAL || root >= state->archive->count) return NULL;
+	return state->archive->roots[root];
+}
+
+void pg_reduction_check_destroy(struct pg_reduction_check *check)
+{
+	struct pg_reduction_check_state *state = check->state;
+	if (!state) return;
+	pg_comparison_destroy(&state->comparison);
+	pg_dag_destroy(&state->dag);
+	pg_index_destroy(&state->collection.records);
+	pg_graph_destroy(&state->collection.storage);
+	free(state);
+	check->state = NULL;
 }

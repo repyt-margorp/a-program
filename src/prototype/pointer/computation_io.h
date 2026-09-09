@@ -67,6 +67,21 @@ int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit,
 int pg_reduction_archive_write(FILE *file, const struct pg_reduction_archive *archive,
 	const struct pg_graph_codec *codec, void *owner);
 
+/* Check a decoded archive by recomputing WHNF leaves through the ordinary
+ * shared work store, then structural alpha comparison (never conversion of
+ * the claimed output). NF dependencies were checked during decoding.
+ * This is recomputation mode, not no-recomputation CHECKPOINT. work and the
+ * immutable archive must outlive the check; returned receipts belong to the
+ * archive graph. A pending/error/different check exposes no certificates. */
+struct pg_reduction_check_state;
+struct pg_reduction_check { struct pg_reduction_check_state *state; };
+int pg_reduction_check_init(struct pg_reduction_check *check, struct pg_whnf_work *work,
+	const struct pg_reduction_archive *archive);
+enum pg_comparison_status pg_reduction_check_advance(struct pg_reduction_check *check, uint64_t budget);
+uint64_t pg_reduction_check_steps(const struct pg_reduction_check *check);
+const struct pg_reduction_certificate *pg_reduction_check_certificate(const struct pg_reduction_check *check, size_t root);
+void pg_reduction_check_destroy(struct pg_reduction_check *check);
+
 /* Raw production Demand stack, including named continuations and shared scope
  * ownership. No evaluation or evidence admission. Imported progress requires
  * provenance before execution can support accepted results. The caller retains

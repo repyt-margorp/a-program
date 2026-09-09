@@ -2191,6 +2191,62 @@ static void whnf_progress(void)
 	puts("WHNF pending transport: evaluation, deferred work and capture-avoiding readback retain exact progress");
 }
 
+static void reduction_leaf_checks(void)
+{
+	for (unsigned kind = 0; kind < 4; ++kind) {
+		struct pg_graph graph;
+		assert(!pg_graph_init(&graph));
+		const struct pg_object *x = pg_binder(&graph), *z = pg_binder(&graph);
+		const struct pg_term *vx = pg_reference(&graph, x);
+		const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
+		const struct pg_term *source = pg_application(&graph, pg_lambda(&graph, x, vx), value);
+		const struct pg_term *target = value;
+		if (kind == 1) target = source; /* Convertible, but not WHNF. */
+		if (kind == 2) {
+			source = pg_application(&graph, pg_lambda(&graph, x, pg_lambda(&graph, z, vx)), value);
+			target = pg_lambda(&graph, pg_binder(&graph), value);
+		}
+		if (kind == 3) {
+			const struct pg_term *loop = pg_lambda(&graph, x, pg_application(&graph, vx, vx));
+			source = pg_application(&graph, loop, loop);
+		}
+		struct pg_reduction_certificate claim = {.source = source, .target = target,
+			.policy = &pg_beta_policy, .kind = PG_REDUCTION_WHNF};
+		const struct pg_reduction_certificate *root = &claim;
+		FILE *file = tmpfile();
+		assert(file && !pg_reduction_records_write(file, 1, &root, 0, NULL, &pg_builtin_graph_codec, NULL));
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		rewind(file);
+		const struct pg_reduction_archive *archive;
+		assert(!pg_reduction_records_read(file, &graph, 1000, 100, &pg_builtin_graph_codec, NULL, &archive));
+		assert(!fclose(file));
+		struct pg_whnf_work work;
+		struct pg_reduction_check check;
+		assert(!pg_whnf_work_init(&work, &graph) && !pg_reduction_check_init(&check, &work, archive));
+		assert(pg_reduction_check_advance(&check, 0) == PG_COMPARISON_PENDING && !pg_reduction_check_steps(&check));
+		assert(!pg_reduction_check_certificate(&check, 0));
+		enum pg_comparison_status status = PG_COMPARISON_PENDING;
+		for (unsigned i = 0; i < 1000 && status == PG_COMPARISON_PENDING; ++i)
+			status = pg_reduction_check_advance(&check, 1);
+		assert(status == (kind == 1 ? PG_COMPARISON_DIFFERENT : kind == 3 ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL));
+		assert(!!pg_reduction_check_certificate(&check, 0) == (status == PG_COMPARISON_EQUAL));
+		assert(!pg_reduction_check_certificate(&check, 1));
+		struct pg_whnf_job *job = pg_whnf_request(&work, &pg_beta_policy, archive->roots[0]->source);
+		uint64_t steps = pg_whnf_steps(job);
+		pg_reduction_check_destroy(&check);
+		if (status == PG_COMPARISON_EQUAL) {
+			assert(!pg_reduction_check_init(&check, &work, archive));
+			assert(pg_reduction_check_advance(&check, 1000) == PG_COMPARISON_EQUAL);
+			assert(pg_whnf_steps(job) == steps);
+			pg_reduction_check_destroy(&check);
+		}
+		pg_whnf_work_destroy(&work);
+		pg_graph_destroy(&graph);
+	}
+	puts("Reduction checking: shared WHNF recomputation, alpha relocation, non-normal claim rejection and pending divergence passed");
+}
+
 static void reduction_records(void)
 {
 	struct pg_graph graph;
@@ -2247,6 +2303,16 @@ static void reduction_records(void)
 			if (phase->children[0] && phase->children[0] == phase->children[1]) ++shared_children;
 		}
 		assert(shared_children);
+		struct pg_whnf_work verification_work;
+		struct pg_reduction_check check;
+		assert(!pg_whnf_work_init(&verification_work, &graph));
+		assert(!pg_reduction_check_init(&check, &verification_work, archive));
+		assert(!pg_reduction_check_certificate(&check, 0));
+		assert(pg_reduction_check_advance(&check, 100000) == PG_COMPARISON_EQUAL);
+		assert(pg_reduction_check_certificate(&check, 0) == pg_reduction_check_certificate(&check, 2));
+		assert(pg_reduction_check_certificate(&check, 4) == archive->roots[4]);
+		pg_reduction_check_destroy(&check);
+		pg_whnf_work_destroy(&verification_work);
 		/* The first topological node is a leaf receipt. A self edge is invalid. */
 		assert(!fseek(file, 32, SEEK_SET) && fgetc(file) == 0);
 		assert(fgetc(file) == PG_REDUCTION_WHNF);
@@ -2950,6 +3016,7 @@ int main(int argc, char **argv)
 	machine_forest();
 	whnf_progress();
 	reduction_records();
+	reduction_leaf_checks();
 	discovery_progress(0);
 	discovery_progress(1);
 	continuation_frames();

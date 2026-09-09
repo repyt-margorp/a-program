@@ -714,10 +714,25 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Normal `check check-prepared-modules` (758 boundaries) and ASan/UBSan
   `check-identity-io` pass. These checks still assume justified WHNF leaves;
   imported receipts remain opaque and cannot enter accepted evidence.
-- [ ] Validate retained derivations before any archive root can be published
-  as accepted reduction evidence. Connect pending NF jobs and shared
-  WHNF/NF jobs to this record ownership, then to source CHECKPOINT. None of
-  these gates is closed by raw archive round trips.
+- [x] Add the recomputation-mode admission path for decoded reduction records.
+  `pg_reduction_check` walks the shared record DAG, recomputes WHNF leaf inputs
+  through the ordinary policy-keyed work store, and checks saved targets with
+  structural alpha comparison only. Conversion would incorrectly accept a
+  reducible saved target, so it is not used here. Decoding has already checked
+  NF congruence, chain endpoints, completion and canonical receipt links.
+  Only a completely successful check exposes certificate roots; pending,
+  different and failed checks expose none. Phase-only roots remain partial
+  histories, not completed certificates. The writer/checker share one collector.
+  Verification: normal `check check-prepared-modules` (758 boundaries) and
+  ASan/UBSan `check-identity-io` pass, including two destroying resaves of
+  shared NF records, relocated Lambda binders, a convertible but non-WHNF saved
+  target, budget-one checking and divergence. Rechecking with the same work
+  store does not advance completed WHNF jobs. This reuses the existing evaluator
+  and comparison, not an independent Replay implementation.
+- [ ] Connect pending NF jobs and shared WHNF/NF jobs to this record ownership,
+  then to source CHECKPOINT. The recomputation-mode checker does not preserve
+  unfinished execution provenance or supply a no-recomputation WHNF basis.
+  Raw archive round trips alone never authorize certificate publication.
 - [ ] Complete the separately required symbolic type-family formation contract.
   Rechecking after `2074e1b` still gives closed/open/applied/sequenced statuses
   DONE/UNSUPPORTED/UNSUPPORTED/UNSUPPORTED at 175/209/280/323 steps. The current

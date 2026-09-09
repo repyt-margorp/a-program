@@ -52,7 +52,7 @@ struct pg_eval_task {
 
 /* The evaluator and its state codec share these actual job layouts. The
  * intrusive request prefix indexes exact input/policy, never normal forms.
- * Reduction receipts remain local evidence, not externally accepted records. */
+ * Raw relocated receipts require checking before they become evidence. */
 struct pg_reduction_certificate {
 	const struct pg_term *source;
 	const struct pg_term *target;
