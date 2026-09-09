@@ -716,6 +716,15 @@ const struct pg_term *pg_reduction_phase_rebuild(struct pg_graph *graph,
 	}
 }
 
+int pg_reduction_nf_terminal(const struct pg_reduction_phase *previous,
+	const struct pg_reduction_certificate *head)
+{
+	if (!head || head->kind != PG_REDUCTION_WHNF || !head->target) return 0;
+	if (head->target->kind == PG_REFERENCE) return 1;
+	if (!previous || !previous->children[0]) return 0;
+	return previous->rebuilt == head->source && head->source == head->target;
+}
+
 static int nf_phase(struct pg_nf_job *job, int children)
 {
 	struct pg_reduction_phase result = {.previous = job->phases, .head = pg_whnf_certificate(job->head)};
@@ -755,17 +764,12 @@ static struct pg_nf_job *nf_step(struct pg_nf_job *job)
 		}
 		const struct pg_term *body = pg_whnf_result(job->head);
 		if (!body) goto failure;
-		if (job->stage == NF_RECHECK && body == job->body) {
+		if (pg_reduction_nf_terminal(job->phases, pg_whnf_certificate(job->head))) {
 			if (nf_phase(job, 0)) goto failure;
 			nf_complete(job, body);
 			return NULL;
 		}
 		job->body = body;
-		if (body->kind == PG_REFERENCE) {
-			if (nf_phase(job, 0)) goto failure;
-			nf_complete(job, body);
-			return NULL;
-		}
 		job->children[0] = pg_nf_request(job->request.work, job->request.policy,
 			body->kind == PG_LAMBDA ? body->as.lambda.body : body->as.application.function);
 		job->children[1] = body->kind == PG_APPLICATION

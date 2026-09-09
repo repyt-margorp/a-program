@@ -2297,6 +2297,34 @@ static void reduction_records(void)
 		assert(pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &phase_only) && !phase_only);
 		assert(!fclose(file));
 	}
+	/* A consistent partial history is not completed NF. Origin, result and
+	 * canonical normality links must also describe the same reduction. */
+	for (unsigned kind = 0; kind < 9; ++kind) {
+		struct pg_reduction_certificate invalid = *archive->roots[4];
+		struct pg_reduction_phase final = *invalid.phases;
+		const struct pg_term *other = pg_reference(&graph, pg_binder(&graph));
+		switch (kind) {
+		case 0: invalid.source = other; break;
+		case 1: invalid.target = other; break;
+		case 2:
+			invalid.phases = archive->phases[0];
+			invalid.source = invalid.phases->head->source;
+			invalid.target = invalid.phases->rebuilt;
+			break;
+		case 3: final.previous = NULL; invalid.phases = &final; break;
+		case 4: invalid = *archive->roots[1]; invalid.policy = &pg_beta_policy; break;
+		case 5: invalid = *archive->roots[1]; invalid.kind = PG_REDUCTION_WHNF; break;
+		case 6: invalid = *archive->roots[1]; invalid.source = other; break;
+		case 7: invalid = *archive->roots[1]; invalid.phases = &final; break;
+		case 8: invalid.kind = PG_REDUCTION_WHNF; break;
+		}
+		const struct pg_reduction_certificate *root = &invalid;
+		file = tmpfile();
+		assert(file && !pg_reduction_records_write(file, 1, &root, 0, NULL, &pg_builtin_graph_codec, NULL));
+		rewind(file);
+		assert(pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &phase_only) && !phase_only);
+		assert(!fclose(file));
+	}
 	/* Root counts cannot reinterpret a certificate root as a phase root. */
 	file = tmpfile();
 	assert(file && !pg_reduction_archive_write(file, archive, &pg_builtin_graph_codec, NULL));

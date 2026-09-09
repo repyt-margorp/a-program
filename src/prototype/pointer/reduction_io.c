@@ -120,13 +120,29 @@ done:
 	return status;
 }
 
-static int read_link(FILE *file, size_t available, void *const *records, const unsigned char *kinds, int kind, void **result)
+static int read_link(FILE *file, size_t available, void *const *records, const unsigned char *kinds,
+	int kind, void **result, size_t *ordinal)
 {
 	uint64_t id;
 	if (pg_wire_read_u64(file, &id) || id > available) return -1;
 	if (id && kinds[id - 1] != kind) return -1;
 	*result = id ? records[id - 1] : NULL;
+	if (ordinal) *ordinal = (size_t)id;
 	return 0;
+}
+
+static int receipt_shape(const struct pg_reduction_certificate *c, const struct pg_reduction_certificate *first)
+{
+	if (c->normality) {
+		const struct pg_reduction_certificate *basis = c->normality;
+		return !c->phases && c->source == c->target && basis->target == c->source
+			&& basis->kind == c->kind && basis->policy == c->policy;
+	}
+	if (c->kind == PG_REDUCTION_WHNF) return !c->phases;
+	const struct pg_reduction_phase *p = c->phases;
+	if (!p || !first || p->children[0] || p->children[1]) return 0;
+	return first->source == c->source && p->rebuilt == c->target
+		&& p->head->policy == c->policy && pg_reduction_nf_terminal(p->previous, p->head);
 }
 
 int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit, size_t name_limit,
@@ -146,25 +162,29 @@ int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit,
 	struct pg_graph scratch = {0};
 	int status = -1;
 	void **records = pg_alloc(&scratch, (size_t)count * sizeof(*records));
+	/* Transient chain origins avoid rescanning a shared predecessor chain. */
+	const struct pg_reduction_certificate **first = pg_alloc(&scratch, (size_t)count * sizeof(*first));
 	unsigned char *kinds = pg_alloc(&scratch, (size_t)count);
 	const struct pg_reduction_certificate **roots = pg_alloc(output, (size_t)root_count * sizeof(*roots));
 	const struct pg_reduction_phase **phases = pg_alloc(output, (size_t)phase_count * sizeof(*phases));
-	if (!records || !kinds || !roots || !phases) goto done;
+	if (!records || !first || !kinds || !roots || !phases) goto done;
 	size_t term_count = 0;
 	for (size_t i = 0; i < count; ++i) {
 		int kind = fgetc(file);
 		if (kind < 0 || kind > 1) goto done;
 		kinds[i] = (unsigned char)kind;
 		void *links[4];
+		size_t origin = 0;
 		if (kind) {
 			struct pg_reduction_phase *p = pg_alloc(output, sizeof(*p));
 			if (!p) goto done;
 			records[i] = p;
 			for (size_t j = 0; j < 4; ++j)
-				if (read_link(file, i, records, kinds, j == 0, &links[j])) goto done;
+				if (read_link(file, i, records, kinds, j == 0, &links[j], j == 0 ? &origin : NULL)) goto done;
 			p->previous = links[0]; p->head = links[1];
 			p->children[0] = links[2]; p->children[1] = links[3];
 			if (!p->head || term_count == SIZE_MAX) goto done;
+			first[i] = origin ? first[origin - 1] : p->head;
 			++term_count;
 		} else {
 			struct pg_reduction_certificate *c = pg_alloc(output, sizeof(*c));
@@ -179,21 +199,22 @@ int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit,
 			name[length] = 0;
 			c->policy = pg_computation_policy_resolve(name);
 			c->kind = (enum pg_reduction_kind)reduction;
-			if (!c->policy || read_link(file, i, records, kinds, 0, &links[0])
-				|| read_link(file, i, records, kinds, 1, &links[1])) goto done;
+			if (!c->policy || read_link(file, i, records, kinds, 0, &links[0], NULL)
+				|| read_link(file, i, records, kinds, 1, &links[1], &origin)) goto done;
 			c->normality = links[0]; c->phases = links[1];
+			first[i] = origin ? first[origin - 1] : NULL;
 			if (term_count > SIZE_MAX - 2) goto done;
 			term_count += 2;
 		}
 	}
 	for (size_t i = 0; i < root_count; ++i) {
 		void *root;
-		if (read_link(file, (size_t)count, records, kinds, 0, &root) || !root) goto done;
+		if (read_link(file, (size_t)count, records, kinds, 0, &root, NULL) || !root) goto done;
 		roots[i] = root;
 	}
 	for (size_t i = 0; i < phase_count; ++i) {
 		void *root;
-		if (read_link(file, (size_t)count, records, kinds, 1, &root) || !root) goto done;
+		if (read_link(file, (size_t)count, records, kinds, 1, &root, NULL) || !root) goto done;
 		phases[i] = root;
 	}
 	size_t n;
@@ -210,6 +231,7 @@ int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit,
 		} else {
 			struct pg_reduction_certificate *c = records[i];
 			c->source = terms[n++]; c->target = terms[n++];
+			if (!receipt_shape(c, first[i])) goto done;
 		}
 	}
 	struct pg_reduction_archive *result = pg_alloc(output, sizeof(*result));

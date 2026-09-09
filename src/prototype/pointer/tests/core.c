@@ -1945,6 +1945,16 @@ static void reduction_congruence_test(struct pg_graph *graph)
 	assert(!pg_reduction_phase_rebuild(graph, &previous, &head, NULL, NULL));
 	previous.head = NULL;
 	assert(!pg_reduction_phase_rebuild(graph, &previous, &head, NULL, NULL));
+	assert(pg_reduction_nf_terminal(NULL, &head));
+	head.source = head.target = lambda;
+	assert(!pg_reduction_nf_terminal(NULL, &head));
+	previous = (struct pg_reduction_phase){.head = &head, .rebuilt = lambda, .children = {&child, NULL}};
+	assert(pg_reduction_nf_terminal(&previous, &head));
+	head.target = pg_lambda(graph, binder, y);
+	assert(!pg_reduction_nf_terminal(&previous, &head));
+	head.target = lambda;
+	previous.children[0] = NULL;
+	assert(!pg_reduction_nf_terminal(&previous, &head));
 	puts("NF congruence: shared reconstruction rejects mismatched premise endpoints, kinds and policies");
 }
 

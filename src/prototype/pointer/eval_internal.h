@@ -114,6 +114,10 @@ const struct pg_term *pg_reduction_phase_rebuild(struct pg_graph *graph,
 	const struct pg_reduction_phase *previous,
 	const struct pg_reduction_certificate *head,
 	const struct pg_reduction_certificate *left, const struct pg_reduction_certificate *right);
+/* Given justified WHNF and a checked predecessor, does a head-only phase
+ * finish NF? References are terminal; rebuilt parents require unchanged WHNF. */
+int pg_reduction_nf_terminal(const struct pg_reduction_phase *previous,
+	const struct pg_reduction_certificate *head);
 
 /* Index maintenance only. Does not establish the validity of saved results. */
 int pg_readback_index(struct readback_context *context, struct readback_entry *entry);

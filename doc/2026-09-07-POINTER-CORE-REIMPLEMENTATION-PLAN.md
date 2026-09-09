@@ -702,6 +702,18 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   ASan/UBSan `check-identity-io` pass. No wire layout or Core tag changed.
   Local phase consistency is not WHNF leaf validation, a proof of final NF,
   or authority to publish imported receipts into the accepted work store.
+- [x] Share the NF terminal rule between the actual executor and record
+  checking. A head-only Reference result finishes; a rebuilt Lambda/Application
+  needs an unchanged WHNF recheck after its child reductions. Remove the
+  executor's duplicated completion branch. Record checking also verifies chain
+  origins/results and canonical normality links (same kind/policy, reflexive
+  endpoint, no second phase basis). A temporary origin table follows the
+  existing dependency order; no persistent record field or chain rescan is
+  added. Nine negative archive fixtures cover partial histories presented as
+  completed NF, unnormalized parents and inconsistent endpoints/cache links.
+  Normal `check check-prepared-modules` (758 boundaries) and ASan/UBSan
+  `check-identity-io` pass. These checks still assume justified WHNF leaves;
+  imported receipts remain opaque and cannot enter accepted evidence.
 - [ ] Validate retained derivations before any archive root can be published
   as accepted reduction evidence. Connect pending NF jobs and shared
   WHNF/NF jobs to this record ownership, then to source CHECKPOINT. None of
