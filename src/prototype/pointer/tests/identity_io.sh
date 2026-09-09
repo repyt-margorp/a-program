@@ -12,3 +12,9 @@ trap 'rm -rf "$directory"' EXIT HUP INT TERM
 "$binary" resave-machine "$directory/machine" "$directory/machine-resaved"
 "$binary" read-machine "$directory/machine-resaved"
 printf '%s\n' 'Machine transport: separate writer, resaver and reader preserve pending work and exact total steps'
+for stage in eval readback; do
+	"$binary" "write-whnf-$stage" "$directory/whnf-$stage"
+	"$binary" resave-whnf "$directory/whnf-$stage" "$directory/whnf-$stage-resaved"
+	"$binary" read-whnf "$directory/whnf-$stage-resaved"
+done
+printf '%s\n' 'WHNF transport: separate processes preserve deferred evaluation and final readback without recomputation'

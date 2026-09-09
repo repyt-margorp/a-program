@@ -643,6 +643,14 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   cleanup after decoding inconsistent step counts. Normal
   `check check-prepared-modules` (758 module boundaries) and ASan/UBSan
   `check-identity-io` pass. No new evaluator or Core tag was introduced.
+- [x] Extend pending WHNF tests across independent writer, inert resaver and
+  reader processes. Cover a deferred Act result under a Fold frame and active
+  capture-avoiding final readback, using the same fixtures as the all-cut test.
+  The resaver writes before attaching or advancing the raw job. Readers then
+  use the original WHNF executor with budget-one calls; total charged work and
+  explicit alpha comparison against the relocated expected result agree.
+  No source/checkpoint evidence is accepted by this test-only fixture protocol.
+  Normal and ASan/UBSan `check-identity-io` pass with both process sequences.
 - [ ] Connect these pending jobs, completed receipts and NF dependency edges
   to the whole work-store owner and source image. The local fixture tests below
   establish their origin by construction; they do not justify arbitrary imported

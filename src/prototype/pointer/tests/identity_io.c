@@ -2107,6 +2107,21 @@ static int whnf_image_read(FILE *file, struct pg_graph *graph, size_t limit, siz
 	return pg_whnf_pending_read(file, image->job, graph, limit, name_limit, codec, NULL);
 }
 
+static const struct pg_term *whnf_fixture(struct pg_graph *graph, int materializing,
+	const struct pg_term **expected)
+{
+	if (!materializing) return result_frame_fixture(graph, expected);
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph), *z = pg_binder(graph);
+	const struct pg_term *vy = pg_reference(graph, y), *body = pg_reference(graph, x);
+	const struct pg_term *result = vy;
+	for (size_t i = 0; i < 8; ++i) {
+		body = pg_application(graph, body, body);
+		result = pg_application(graph, result, result);
+	}
+	*expected = pg_lambda(graph, z, result);
+	return pg_application(graph, pg_lambda(graph, x, pg_lambda(graph, y, body)), vy);
+}
+
 static void whnf_progress(void)
 {
 	unsigned positions = 0;
@@ -2117,18 +2132,7 @@ static void whnf_progress(void)
 			struct pg_graph graph;
 			struct pg_whnf_work work;
 			assert(!pg_graph_init(&graph) && !pg_whnf_work_init(&work, &graph));
-			const struct pg_term *expected, *term = result_frame_fixture(&graph, &expected);
-			if (variant) {
-				const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph), *z = pg_binder(&graph);
-				const struct pg_term *vy = pg_reference(&graph, y), *body = pg_reference(&graph, x);
-				const struct pg_term *result = vy;
-				for (size_t i = 0; i < 8; ++i) {
-					body = pg_application(&graph, body, body);
-					result = pg_application(&graph, result, result);
-				}
-				term = pg_application(&graph, pg_lambda(&graph, x, pg_lambda(&graph, y, body)), vy);
-				expected = pg_lambda(&graph, z, result);
-			}
+			const struct pg_term *expected, *term = whnf_fixture(&graph, (int)variant, &expected);
 			struct pg_whnf_job *job = pg_whnf_request(&work, &pg_pure_policy, term);
 			if (pg_whnf_advance(job, cut) == PG_EVAL_WHNF) {
 				assert(pg_whnf_steps(job) == total);
@@ -2577,6 +2581,67 @@ static void configuration_failure(void)
 	pg_graph_destroy(&graph);
 }
 
+static void write_whnf_file(const char *path, int materializing)
+{
+	struct pg_graph graph;
+	struct pg_whnf_work baseline, work;
+	assert(!pg_graph_init(&graph) && !pg_whnf_work_init(&baseline, &graph) && !pg_whnf_work_init(&work, &graph));
+	const struct pg_term *expected, *term = whnf_fixture(&graph, materializing, &expected);
+	struct pg_whnf_job *whole = pg_whnf_request(&baseline, &pg_pure_policy, term);
+	assert(pg_whnf_advance(whole, 10000) == PG_EVAL_WHNF && pg_alpha_equal(pg_whnf_result(whole), expected) == 1);
+	uint64_t total = pg_whnf_steps(whole);
+	pg_whnf_work_destroy(&baseline);
+	struct pg_whnf_job *job = pg_whnf_request(&work, &pg_pure_policy, term);
+	for (;;) {
+		if (materializing) {
+			if (job->output.readback.steps >= 3) break;
+		} else if (job->machine.task && job->machine.task->operation == &pg_action_result_operation) break;
+		assert(pg_whnf_advance(job, 1) == PG_EVAL_PENDING && pg_whnf_steps(job) < total);
+	}
+	struct whnf_image image = {job, expected};
+	FILE *file = fopen(path, "wb");
+	assert(file && !pg_wire_write_u64(file, total) && !pg_wire_write_u64(file, (uint64_t)materializing));
+	assert(!pg_graph_image_write(file, "APGWTST", &pg_builtin_graph_codec, NULL, whnf_image_write, &image));
+	assert(!fclose(file));
+	pg_whnf_work_destroy(&work);
+	pg_graph_destroy(&graph);
+}
+
+static void read_whnf_file(const char *path, const char *resave)
+{
+	struct pg_graph graph;
+	struct pg_whnf_work work;
+	struct pg_whnf_job job;
+	assert(!pg_graph_init(&graph) && !pg_whnf_work_init(&work, &graph));
+	struct whnf_image image = {&job, NULL};
+	FILE *file = fopen(path, "rb");
+	uint64_t total, materializing;
+	assert(file && !pg_wire_read_u64(file, &total) && !pg_wire_read_u64(file, &materializing) && materializing <= 1);
+	assert(!pg_graph_image_read(file, "APGWTST", &graph, 10000, 100,
+		&pg_builtin_graph_codec, NULL, whnf_image_read, &image));
+	assert(!fclose(file) && job.request.policy == &pg_pure_policy && !job.request.work && !job.certificate);
+	assert(job.steps < total && job.status == PG_EVAL_PENDING);
+	if (materializing) assert(job.machine.status == PG_EVAL_WHNF && job.output.readback.steps >= 3);
+	else assert(job.machine.task && job.machine.task->operation == &pg_action_result_operation && job.machine.frames);
+	/* Resave before attachment or any execution, including unfinished readback. */
+	if (resave) {
+		file = fopen(resave, "wb");
+		assert(file && !pg_wire_write_u64(file, total) && !pg_wire_write_u64(file, materializing));
+		assert(!pg_graph_image_write(file, "APGWTST", &pg_builtin_graph_codec, NULL, whnf_image_write, &image));
+		assert(!fclose(file));
+	}
+	/* The script supplies a known local fixture; this is not evidence admission. */
+	assert(!pg_whnf_job_attach(&work, &job));
+	while (pg_whnf_status(&job) == PG_EVAL_PENDING) {
+		assert(pg_whnf_steps(&job) < total);
+		pg_whnf_advance(&job, 1);
+	}
+	assert(pg_whnf_status(&job) == PG_EVAL_WHNF && pg_whnf_steps(&job) == total);
+	assert(pg_alpha_equal(pg_whnf_result(&job), image.expected) == 1);
+	pg_whnf_work_destroy(&work);
+	pg_graph_destroy(&graph);
+}
+
 static void write_machine_file(const char *path)
 {
 	struct pg_graph graph;
@@ -2641,6 +2706,18 @@ static void read_machine_file(const char *path, const char *resave)
 
 int main(int argc, char **argv)
 {
+	if (argc == 3 && (!strcmp(argv[1], "write-whnf-eval") || !strcmp(argv[1], "write-whnf-readback"))) {
+		write_whnf_file(argv[2], !strcmp(argv[1], "write-whnf-readback"));
+		return 0;
+	}
+	if (argc == 3 && !strcmp(argv[1], "read-whnf")) {
+		read_whnf_file(argv[2], NULL);
+		return 0;
+	}
+	if (argc == 4 && !strcmp(argv[1], "resave-whnf")) {
+		read_whnf_file(argv[2], argv[3]);
+		return 0;
+	}
 	if (argc == 3 && !strcmp(argv[1], "write-machine")) {
 		write_machine_file(argv[2]);
 		return 0;
