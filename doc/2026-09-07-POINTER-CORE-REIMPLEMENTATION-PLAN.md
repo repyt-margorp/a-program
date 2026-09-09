@@ -7628,6 +7628,30 @@ The stored classifier cannot force synthesis to choose a higher universe.
 Validation: normal `check`, eight source checks, six execution fixtures and the
 rebuilt synthesis test including higher-stored-universe rejection pass.
 
+Next step after `135a1bc`: `pg_synthesis_telescope_at` reserves an ordered
+binder suffix from an inert context. It flattens that suffix once and the
+existing iterative telescope job consumes one binder per source binder;
+repeated prefix walks and a second type-checking traversal are not introduced.
+Domains still synthesize from source. Missing/extra binders reject, and source
+schema checking still compares the resulting contexts and index maps exactly.
+Retained schema inputs now install these reservations for both the index
+telescope and every constructor field telescope.
+
+- [x] Restore source declarations with recursive and dependent fields, including
+  declarations whose independent Universe inference raises its candidate.
+- [x] Restore indexed schema telescopes and constructor binders using the same
+  allocation input, not an alpha-equivalence merge of nominal declarations.
+- [x] Reject missing/extra index and field binders and changed dependent field
+  domains. Tests no longer manually seed constructor binders before restoration.
+- [ ] Persist and relocate the source/allocation origin association itself.
+  `check-image-origins` remains open until this is connected to the file codec.
+
+Validation for this step: `check`, `check-examples` (eight source fixtures),
+and `check-example-results` (six execution fixtures at both budgets) passed.
+After adding the arity rejection cases, `check` passed again. The dedicated
+`check-image-origins` gate was rerun and still fails with the nominal split
+diagnostic; these APIs alone do not satisfy N5 or whole-image acceptance.
+
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.
 The common `APGSRC` path above now supersedes that intermediate framing.

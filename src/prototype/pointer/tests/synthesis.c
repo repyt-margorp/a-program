@@ -4305,7 +4305,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
 		struct pg_derivation_input input;
 		assert(!pg_derivation_input_header(type, &input) && input.parameters.declaration);
-		if (i == 0) {
+		{
 			const struct pg_syntax *restored = expression_syntax(typing->graph, sources[i]);
 			struct pg_synthesis_job *rechecked = pg_synthesis_declaration_at(&synthesis, root, restored, input.parameters.declaration);
 			assert(rechecked && !pg_synthesis_result(rechecked));
@@ -4752,6 +4752,23 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	complete(&synthesis, other, PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_schema_result(other) != schema);
 	assert(pg_data_constructor(pg_data_schema_layout(pg_synthesis_schema_result(other)), 0) != pg_data_constructor(layout, 0));
+	struct pg_synthesis_job *restored_indices = pg_synthesis_data_schema_at(&synthesis, scope,
+		expression_syntax(typing->graph, "Restored:=@\\i:A=>{one:(x:A)->* x; two:(x:A)->(y:A)->* y;};"),
+		pg_data_schema_declaration(schema));
+	complete(&synthesis, restored_indices, PG_SYNTHESIS_DONE);
+	assert(pg_data_schema_declaration(pg_synthesis_schema_result(restored_indices)) == pg_data_schema_declaration(schema));
+	const char *changed_telescopes[] = {
+		"D:=@{one:(x:A)->*; two:(x:A)->(y:A)->*;};",
+		"D:=@\\i:A=>\\j:A=>{one:(x:A)->* x x; two:(x:A)->(y:A)->* y y;};",
+		"D:=@\\i:A=>{one:(x:A)->(z:A)->* x; two:(x:A)->(y:A)->* y;};",
+		"D:=@\\i:A=>{one:(x:A)->* x; two:(x:A)->* x;};"
+	};
+	for (size_t i = 0; i < sizeof(changed_telescopes) / sizeof(*changed_telescopes); ++i) {
+		struct pg_synthesis_job *changed = pg_synthesis_data_schema_at(&synthesis, scope,
+			expression_syntax(typing->graph, changed_telescopes[i]), pg_data_schema_declaration(schema));
+		complete(&synthesis, changed, PG_SYNTHESIS_REJECTED);
+		assert(!pg_synthesis_schema_result(changed));
+	}
 	assert(pg_synthesis_data_schema_at(&synthesis, scope, declaration, pg_data_schema_declaration(schema)) == job);
 	assert(!pg_synthesis_data_schema_at(&synthesis, scope, declaration,
 		pg_data_schema_declaration(pg_synthesis_schema_result(other))));
@@ -4762,15 +4779,9 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 		complete(&synthesis, original, PG_SYNTHESIS_DONE);
 		const struct pg_data_schema *original_schema = pg_synthesis_schema_result(original);
 		const struct pg_data_declaration *allocation = pg_data_schema_declaration(original_schema);
-		const struct pg_context *fields = pg_evidence_context(pg_data_schema_fields(original_schema,
-			pg_data_constructor(pg_data_schema_layout(original_schema), 0)));
-		assert(fields && fields->parent && !fields->parent->parent);
 		const char *variants[] = {text, "D:=@{mk:(A:@)->@->*;};"};
 		for (size_t i = 0; i < 2; ++i) {
 			const struct pg_syntax *restored = expression_syntax(typing->graph, variants[i]);
-			const struct pg_syntax *field = restored->left->items[0].expression;
-			struct pg_synthesis_job *first = pg_synthesis_binding_at(&synthesis, root, field, fields->parent->binder);
-			assert(first && pg_synthesis_binding_at(&synthesis, pg_synthesis_binding_scope(first), field->right, fields->binder));
 			struct pg_synthesis_job *checked = pg_synthesis_data_schema_at(&synthesis, root, restored, allocation);
 			complete(&synthesis, checked, i ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
 			if (!i) assert(pg_data_schema_declaration(pg_synthesis_schema_result(checked)) == allocation);

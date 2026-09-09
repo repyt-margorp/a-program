@@ -113,6 +113,12 @@ const struct pg_source_scope *pg_synthesis_binding_scope(const struct pg_synthes
  * context evidence, not a datatype admission or Pi formation certificate. */
 struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Reserve ordered binder identities from an inert context suffix before
+ * telescope traversal begins. Only binders are reused; domains synthesize
+ * normally. Source arity must match. The suffix is not accepted evidence. */
+struct pg_synthesis_job *pg_synthesis_telescope_at(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	const struct pg_context *prefix, const struct pg_context *end);
 /* Structural producer shared with the checked telescope above. Completion
  * exposes lexical scope/body even if domain checking is pending or failed;
  * its proof result is always NULL. One binding is opened per transition. */

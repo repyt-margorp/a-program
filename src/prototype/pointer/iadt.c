@@ -334,6 +334,16 @@ const struct pg_context *pg_data_declaration_parameters(const struct pg_data_dec
 	return declaration ? declaration->parameters : NULL;
 }
 
+const struct pg_context *pg_data_declaration_indices(const struct pg_data_declaration *declaration)
+{
+	return declaration ? declaration->indices : NULL;
+}
+
+const struct pg_context *pg_data_declaration_fields(const struct pg_data_declaration *declaration, size_t index)
+{
+	return declaration && index < declaration->layout->count ? declaration->constructors[index].fields : NULL;
+}
+
 const struct pg_data_declaration *pg_data_schema_declaration(const struct pg_data_schema *schema)
 {
 	return schema ? schema->declaration : NULL;

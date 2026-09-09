@@ -70,6 +70,8 @@ const struct pg_data_declaration *pg_data_declaration_at_layout(struct pg_graph 
 const struct pg_data_layout *pg_data_declaration_layout(const struct pg_data_declaration *declaration);
 const struct pg_object *pg_data_declaration_family(const struct pg_data_declaration *declaration);
 const struct pg_context *pg_data_declaration_parameters(const struct pg_data_declaration *declaration);
+const struct pg_context *pg_data_declaration_indices(const struct pg_data_declaration *declaration);
+const struct pg_context *pg_data_declaration_fields(const struct pg_data_declaration *declaration, size_t index);
 const struct pg_data_declaration *pg_data_declaration_view(const struct pg_object *object);
 const struct pg_data_declaration *pg_data_schema_declaration(const struct pg_data_schema *schema);
 /* Declaration payload root slices: contexts = parameters, indices, fields...;
