@@ -1,4 +1,5 @@
 #include "program.h"
+#include "derivation.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -11,6 +12,42 @@ static void solve(struct pg_program *program, uint64_t budget)
 		assert(turns < 10000);
 		pg_synthesis_advance(&program->synthesis, budget);
 	}
+}
+
+static void pending_normalization(void)
+{
+	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
+	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p && p->root);
+	struct pg_derivation_input empty = {.rule = PG_CONTEXT_EMPTY};
+	struct pg_synthesis_job *context = pg_synthesis_derivation(&p->synthesis, &empty);
+	assert(context);
+	struct pg_synthesis_job *nf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF);
+	struct pg_synthesis_job *whnf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_WHNF);
+	assert(nf && whnf && nf != whnf && !p->synthesis.steps);
+	assert(nf == pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF));
+	struct pg_synthesis_job *c, *proof;
+	enum pg_reduction_kind kind;
+	assert(!pg_synthesis_normalization_input(&p->synthesis, nf, &c, &proof, &kind));
+	assert(c == context && proof == p->root && kind == PG_REDUCTION_NF);
+	assert(pg_synthesis_normalization_input(&p->synthesis, p->root, &c, &proof, &kind));
+	struct pg_synthesis_job *invalid = pg_synthesis_normalize_jobs(&p->synthesis, p->root, p->root, PG_REDUCTION_NF);
+	assert(invalid && !pg_synthesis_result(nf));
+	while (p->synthesis.ready) {
+		assert(p->synthesis.steps < 10000);
+		pg_synthesis_advance(&p->synthesis, 1);
+	}
+	assert(pg_synthesis_status(nf) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_status(whnf) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_status(invalid) == PG_SYNTHESIS_REJECTED);
+	const struct pg_evidence *ctx = pg_synthesis_result(context), *input = pg_synthesis_result(p->root);
+	struct pg_synthesis_job *accepted = pg_synthesis_nf(&p->synthesis, ctx, input);
+	assert(accepted == pg_synthesis_normalize_jobs(&p->synthesis,
+		pg_synthesis_evidence(&p->synthesis, ctx), pg_synthesis_evidence(&p->synthesis, input), PG_REDUCTION_NF));
+	pg_synthesis_advance(&p->synthesis, 10000);
+	assert(pg_synthesis_result(accepted) == pg_synthesis_result(nf));
+	assert(!pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, (enum pg_reduction_kind)99));
+	pg_program_destroy(p);
 }
 
 static void modules(void)
@@ -167,6 +204,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	modules();
+	pending_normalization();
 	char source[] = "{{ id := &(\\A:@ => \\x:A => x); id :: (A:@)->A->A; }}.id";
 	struct pg_program *split = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
 	struct pg_program *whole = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);

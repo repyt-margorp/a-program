@@ -599,6 +599,15 @@ struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  * This may normalize under THUNK; it is not a runtime execution request. */
 struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *proof);
+/* Same requests with pending premises. Solve checks their context and typing
+ * before reducing; construction does not imply acceptance or advance work. */
+struct pg_synthesis_job *pg_synthesis_normalize_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *proof,
+	enum pg_reduction_kind kind);
+/* Immutable request operands, for retention without serializing acceptance. */
+int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, struct pg_synthesis_job **context,
+	struct pg_synthesis_job **proof, enum pg_reduction_kind *kind);
 /* Retain the term, normalize its derived classifier and explicitly convert
  * its typing evidence. No target type is supplied to synthesis or guessed
  * from Core. An unchanged classifier preserves the original proof. */

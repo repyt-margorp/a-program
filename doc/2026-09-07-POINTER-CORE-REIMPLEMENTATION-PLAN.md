@@ -13,6 +13,36 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Retaining Normalization Requests
+
+Code inspection found that REPL normalization requests are not selected roots
+when saving, and pending WHNF/NF jobs cannot currently be exported by the rule
+codec. A completed normalization proof describes a claimed endpoint; an
+unfinished normalization request has no endpoint yet. Do not invent a target
+or weaken endpoint validation to serialize the latter as the former.
+
+- [x] Use the existing WHNF/NF job roles with immutable context/term producer
+  operands. Accepted-evidence convenience APIs use the same factories through
+  evidence producers. No new reduction engine, role or acceptance table.
+- [x] Wait for both premises, propagate their failure, and verify their context
+  before starting reduction. Validate this input once, not on every reduction
+  step. Expose immutable operands for the source-image producer codec.
+- [x] Add tests for pending source/rule premises, request reuse, WHNF/NF
+  distinction, invalid context rejection, and agreement with accepted inputs.
+- [ ] Extend source-image producer records to represent these requests with
+  context/term producer edges and a reduction mode. Restore through the same
+  factory without Solve; retain unknown endpoints as unknown.
+- [ ] Retain CLI/REPL normalization requests alongside source roots, preserving
+  selected-module behavior. Test save before/through/after normalization and
+  unsolved resave, including invalid premises and split budgets.
+- [ ] Retain reusable evaluator progress/results for full CHECKPOINT support.
+  Merely retaining request recipes is still RECOMPUTE, not work retention.
+
+Verification: the full normal `check` passes after the producer-based request
+change, including source/image, CLI/REPL, Identity and IADT regressions. The
+focused `program_test` passes with ASan/UBSan. No image format change or full
+checkpoint completion is claimed by this preparation step.
+
 ### September 9: Reusing Prepared Public Scopes
 
 - [x] Intern the driver's derived public scope by exact
