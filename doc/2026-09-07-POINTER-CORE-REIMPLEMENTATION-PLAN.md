@@ -909,6 +909,19 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   retain these per-clause allocation contexts and its fixed-point binder triple.
   Verification: normal full `synthesis_test` and normal/ASan/UBSan `iadt_test`
   pass. Source retained-Match transport remains an open gate, not a passed test.
+  The accepted induction derivation now retains a graph-owned
+  `pg_induction_allocation` (three fixed-point binders and clause context
+  references). `pg_prove_induction_at` passes these through the same elimination
+  checker and scope reconstruction, copying the allocation list into the proof
+  owner. An existing derivation keeps its first allocation; explicit conflicts
+  are rejected rather than overwriting its Core. Fixed-point binders must be
+  distinct and absent from destination/clause contexts to prevent capture.
+  Tests rebuild a previously unseen scrutinee with the retained allocation and
+  check exact sharing of the fixed-point function, rather than only exercising
+  the proof cache. Conflicting/aliased binders and missing IH scope are rejected.
+  Normal full synthesis and normal/ASan/UBSan IADT tests pass. The ordinary
+  derivation input/codec does not yet carry this allocation, so the saved Match
+  gate remains open until that connection and independent-process tests pass.
   Verification: normal and ASan/UBSan `iadt_test`, normal full
   `synthesis_test` and `source_io_test normalization` pass. Expanded
   `source_io.sh` passes retained typed constructor cases, then still fails

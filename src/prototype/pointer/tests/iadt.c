@@ -412,6 +412,35 @@ static void schema_positivity(void)
 	const struct pg_evidence *countdown = pg_prove_induction(&typing, &classifiers,
 		nat, identity, twice, z_context, nat_motive, 2, recursive_branches);
 	assert(countdown && pg_evidence_rule(countdown) == PG_INDUCTION_ELIM);
+	const struct pg_induction_allocation *countdown_allocation = pg_evidence_induction_allocation(countdown);
+	assert(countdown_allocation && countdown_allocation->count == 2);
+	assert(!pg_evidence_induction_allocation(zero));
+	assert(pg_prove_induction_at(&typing, &classifiers, nat, identity, twice, z_context,
+		nat_motive, 2, recursive_branches, countdown_allocation) == countdown);
+	const struct pg_evidence *retained_base = pg_prove_induction_at(&typing, &classifiers,
+		nat, identity, zero, z_context, nat_motive, 2, recursive_branches, countdown_allocation);
+	assert(retained_base);
+	const struct pg_term *countdown_core = pg_evidence_subject(countdown)->core;
+	assert(countdown_core->kind == PG_APPLICATION);
+	assert(pg_evidence_subject(retained_base)->core == pg_application(&graph,
+		countdown_core->as.application.function, pg_evidence_subject(zero)->core));
+	struct pg_induction_allocation invalid_allocation = *countdown_allocation;
+	invalid_allocation.argument = invalid_allocation.recursion;
+	assert(!pg_prove_induction_at(&typing, &classifiers, nat, identity, twice, z_context,
+		nat_motive, 2, recursive_branches, &invalid_allocation));
+	invalid_allocation = *countdown_allocation;
+	invalid_allocation.recursion = pg_binder(&graph);
+	assert(!pg_prove_induction_at(&typing, &classifiers, nat, identity, twice, z_context,
+		nat_motive, 2, recursive_branches, &invalid_allocation));
+	const struct pg_context *short_clauses[] = {countdown_allocation->clauses[0], countdown_allocation->clauses[1]->parent};
+	invalid_allocation = *countdown_allocation;
+	invalid_allocation.clauses = short_clauses;
+	assert(!pg_prove_induction_at(&typing, &classifiers, nat, identity, succ, z_context,
+		nat_motive, 2, recursive_branches, &invalid_allocation));
+	invalid_allocation = *countdown_allocation;
+	invalid_allocation.recursion = countdown_allocation->clauses[1]->parent->binder;
+	assert(!pg_prove_induction_at(&typing, &classifiers, nat, identity, succ, z_context,
+		nat_motive, 2, recursive_branches, &invalid_allocation));
 	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, empty, countdown))->core
 		== pg_return_type(&classifiers, pg_evidence_subject(nat)->core));
 	check(&constructor_work, pg_evidence_subject(countdown)->core, pg_evidence_subject(zero_function)->core);

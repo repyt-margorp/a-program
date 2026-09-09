@@ -177,11 +177,28 @@ const struct pg_evidence *pg_prove_induction_scope_at(struct pg_typing *typing,
 /* Direct zero-index induction. Branches abstract fields, then the IH values
  * from induction_scope. No unrestricted recursive function enters their
  * typing context. Pi-shaped recursive fields remain unsupported. */
+/* Immutable construction inputs, not evidence. Context annotations are not
+ * trusted: only their binder identities are used by ordinary scope checking.
+ * All borrowed objects/contexts must outlive construction and the proof. */
+struct pg_induction_allocation {
+	const struct pg_object *recursion, *argument, *self;
+	size_t count;
+	const struct pg_context *const *clauses;
+};
+const struct pg_induction_allocation *pg_evidence_induction_allocation(const struct pg_evidence *evidence);
 const struct pg_evidence *pg_prove_induction(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches);
+/* Reconstruct with explicit allocation. A conflicting allocation for an
+ * already-built derivation is rejected, never substituted into its proof. */
+const struct pg_evidence *pg_prove_induction_at(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+	size_t count, const struct pg_evidence *const *branches,
+	const struct pg_induction_allocation *allocation);
 /* Weaken an independently synthesized fields-only case function with unused
  * IH arguments. Derived projection/application/abstraction, not resynthesis. */
 const struct pg_evidence *pg_prove_induction_case(struct pg_typing *typing,
