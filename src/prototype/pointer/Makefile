@@ -19,7 +19,7 @@ check-example-results: $(BUILD)/program_test
 	$(BUILD)/program_test $(ROOT)../../../examples/07_add.p Nat zero succ 5
 	$(BUILD)/program_test $(ROOT)../../../examples/09_list_induction.p Nat zero succ 3
 
-check-image-origins: $(BUILD)/source_io_test
+check-image-origins: $(BUILD)/source_io_test $(BUILD)/pointer-check
 	bash $(ROOT)tests/image_origins.sh $(BUILD)/source_io_test
 
 check-acceptance: check check-examples check-example-results check-open-families check-image-origins

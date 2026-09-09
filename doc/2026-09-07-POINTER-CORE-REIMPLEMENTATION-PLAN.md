@@ -7754,6 +7754,41 @@ export checks remain. This does not claim serialization-order canonicality or
 complete pending-allocation coverage; both retention policy and remaining scope
 origins still belong to unfinished N5 work.
 
+Audit after `6d23f1c`: origin collection is too broad. The new standalone
+function case passes, but saving `examples/07_add.p` fails after ordinary
+checking succeeds (1497 steps). A Lambda in a Match branch has a generated
+field/IH scope. `collect_origin` visits that allocation solely because its
+syntax belongs to the selected source tree, then attempts to serialize an
+unsupported intermediate scope. Source syntax reachability is necessary but
+not sufficient to decide which completed allocations belong to a RECOMPUTE
+image. Retaining every discovered binder is not the intended policy.
+
+The extended `check-image-origins` now reproduces this failure, after the
+nominal, parameterized and standalone-function origin checks succeed. The gate
+depends explicitly on both fixture and CLI binaries. Ordinary source acceptance
+of example 07 must not be confused with its failing image export.
+
+Next correction:
+
+- [ ] Collect object dependencies of the selected retained rule inputs through
+  the existing derivation parameter packing and Core descriptor-child traversal.
+  Share these traversal algorithms with transport; do not invent a second rule
+  table or serialize to a temporary file merely to rediscover dependencies.
+- [ ] Select source allocation origins by that object dependency closure as
+  well as source/lexical membership. A source-only recomputable branch may be
+  re-elaborated; it need not force its transient scope into the image.
+- [ ] Add necessary lexical ancestor allocations for a retained origin through
+  the same collector. Newly added input dependencies must also be covered;
+  avoid repeated whole-store rescans and unconditional duplicate rule export.
+- [ ] Keep explicit failure when an actually retained object requires an
+  unsupported origin. Merely skipping all unsupported scopes would lose shared
+  identity for source-plus-evidence images and is not an acceptable fix.
+- [ ] Make the example 07 source/image NF comparison pass without weakening
+  the existing nominal and standalone-function pointer-sharing assertions.
+
+No runtime or kernel semantics changed in this audit. The original full goal
+remains open; the newly exposed acceptance failure is not marked complete.
+
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.
