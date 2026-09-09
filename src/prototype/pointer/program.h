@@ -17,6 +17,8 @@ struct pg_program {
 	/* Own imported immutable effect equations; ordinary Solve computes them. */
 	struct pg_effect_inference imported_effects;
 	struct pg_parser parser;
+	/* Derived public scopes only; no copied solver results or acceptance. */
+	struct pg_index exports;
 	const struct pg_source_scope *scope;
 	struct pg_synthesis_job *root;
 };

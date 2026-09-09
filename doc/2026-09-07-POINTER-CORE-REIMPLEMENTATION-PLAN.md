@@ -13,6 +13,29 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+### September 9: Reusing Prepared Public Scopes
+
+- [x] Intern the driver's derived public scope by exact
+  `(parent_scope*, source_scope*, definitions_syntax*)`, using the existing
+  hash index. Repeated REPL root selection must not recreate selection ASTs
+  and pending jobs. Entries contain no classifier, acceptance or solver state.
+- [x] Add regression coverage for repeated requests before/after Solve,
+  distinct parents/modules, and foreign Program rejection.
+- [x] Verify the complete normal suite and prepared-module image regressions
+  after this change.
+
+`make -s -f src/prototype/pointer/Makefile check check-prepared-modules`
+passed, including CLI import/REPL and all 758 prepared-module save boundaries.
+The focused `program_test` also passed with ASan/UBSan after rebuilding.
+This is regression evidence for current coverage, not completion of N0-N7.
+
+This index is derived preparation, not another artifact authority. Its selected
+producers remain ordinary whole-module-checked synthesis jobs. Source images
+retain those ordinary dependencies; the driver index itself is not serialized.
+Loading and source compilation continue through the same Solve/rule checks,
+not a separate Replay verifier. Reusing solved inputs does not mean trusting
+serialized acceptance flags. Full checkpoint work retention remains unfinished.
+
 ### September 9: Open-Family Admission Before Further Checkpoint Expansion
 
 Independent N5 driver progress: `pointer-check --imports FILE.p INPUT.p` now

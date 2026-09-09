@@ -3,6 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+struct export_scope {
+	struct pg_index_entry index;
+	const struct pg_source_scope *parent;
+	const struct pg_source_scope *ambient;
+	const struct pg_syntax *syntax;
+	const struct pg_source_scope *result;
+};
+
 struct pg_synthesis_job *pg_program_source(struct pg_program *program,
 	const struct pg_source_scope *scope, const char *source, size_t length,
 	struct pg_parser *diagnostic)
@@ -23,6 +31,7 @@ struct pg_program *pg_program_allocate(enum pg_definition_policy policy)
 	struct pg_program *program = calloc(1, sizeof(*program));
 	if (!program) return NULL;
 	if (pg_graph_init(&program->graph) != 0) goto fail;
+	if (pg_index_init(&program->exports) != 0) goto fail;
 	if (pg_typing_init(&program->typing, &program->graph) != 0) goto fail;
 	if (pg_classifiers_init(&program->classifiers, &program->graph) != 0) goto fail;
 	if (pg_whnf_work_init(&program->evaluation, &program->graph) != 0) goto fail;
@@ -63,6 +72,20 @@ const struct pg_source_scope *pg_program_exports(struct pg_program *program,
 	if (pg_synthesis_source_input(&program->synthesis, module, &ambient, &syntax)) return NULL;
 	if (syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
 	if (syntax->kind != PG_SYNTAX_DEFINITIONS) return NULL;
+	uint64_t hash = (uint64_t)(uintptr_t)parent;
+	hash = hash * UINT64_C(1099511628211) ^ (uint64_t)(uintptr_t)ambient;
+	hash = hash * UINT64_C(1099511628211) ^ (uint64_t)(uintptr_t)syntax;
+	for (struct pg_index_entry *p = pg_index_candidates(&program->exports, hash); p; p = p->next) {
+		if (p->hash != hash) continue;
+		struct export_scope *entry = (struct export_scope *)p;
+		if (entry->parent == parent && entry->ambient == ambient && entry->syntax == syntax)
+			return entry->result;
+	}
+	struct export_scope *entry = pg_alloc(&program->graph, sizeof(*entry));
+	if (!entry) return NULL;
+	entry->parent = parent;
+	entry->ambient = ambient;
+	entry->syntax = syntax;
 	for (size_t i = 0; i < syntax->item_count; ++i) {
 		const struct pg_syntax_item *item = &syntax->items[i];
 		if (item->operation != PG_TOKEN_ASSIGN) continue;
@@ -76,7 +99,8 @@ const struct pg_source_scope *pg_program_exports(struct pg_program *program,
 		parent = pg_synthesis_name_job(&program->synthesis, parent, item->name, selected);
 		if (!parent) return NULL;
 	}
-	return parent;
+	entry->result = parent;
+	return pg_index_insert(&program->exports, &entry->index, hash) ? NULL : parent;
 }
 
 struct pg_synthesis_job *pg_program_normalize(struct pg_program *program,
@@ -97,6 +121,7 @@ struct pg_synthesis_job *pg_program_normalize(struct pg_program *program,
 void pg_program_destroy(struct pg_program *program)
 {
 	if (!program) return;
+	pg_index_destroy(&program->exports);
 	pg_synthesis_destroy(&program->synthesis);
 	pg_effect_inference_destroy(&program->imported_effects);
 	pg_whnf_work_destroy(&program->evaluation);

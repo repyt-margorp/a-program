@@ -20,6 +20,12 @@ static void modules(void)
 	assert(program && program->root);
 	const struct pg_source_scope *visible = pg_program_exports(program, program->scope, program->root);
 	assert(visible && !program->synthesis.steps);
+	size_t jobs = program->synthesis.jobs.count;
+	size_t scopes = program->synthesis.scopes.count;
+	for (size_t i = 0; i < 100; ++i)
+		assert(pg_program_exports(program, program->scope, program->root) == visible);
+	assert(program->synthesis.jobs.count == jobs);
+	assert(program->synthesis.scopes.count == scopes && !program->synthesis.steps);
 	struct pg_parser extension_parser;
 	const char *extension = "copy:=id;";
 	struct pg_synthesis_job *extended = pg_program_source(program, visible,
@@ -32,6 +38,17 @@ static void modules(void)
 	char client[] = "{{ main:=lib.id; }}.main";
 	struct pg_synthesis_job *root = pg_program_source(program, scope, client, strlen(client), &parser);
 	assert(root && !parser.error && !program->synthesis.steps);
+	const struct pg_source_scope *qualified = pg_program_exports(program, program->scope, root);
+	assert(qualified && qualified != visible);
+	assert(pg_program_exports(program, program->scope, root) == qualified);
+	const struct pg_source_scope *nested = pg_program_exports(program, visible, program->root);
+	assert(nested && nested != visible);
+	assert(pg_program_exports(program, visible, program->root) == nested);
+	struct pg_program *foreign = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+	assert(foreign);
+	assert(!pg_program_exports(program, foreign->scope, program->root));
+	assert(!pg_program_exports(foreign, foreign->scope, program->root));
+	pg_program_destroy(foreign);
 	memset(client, '?', sizeof(client));
 	for (size_t i = 0; pg_synthesis_status(root) == PG_SYNTHESIS_PENDING; ++i) {
 		assert(i < 10000);
@@ -39,6 +56,7 @@ static void modules(void)
 	}
 	assert(pg_synthesis_status(root) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_status(program->root) == PG_SYNTHESIS_DONE);
+	assert(pg_program_exports(program, program->scope, program->root) == visible);
 	struct pg_token id = {.kind = PG_TOKEN_IDENT, .text = "id", .length = 2};
 	struct pg_synthesis_job *exported = pg_synthesis_definition(program->root, id);
 	assert(exported && pg_synthesis_result(exported) == pg_synthesis_result(root));
