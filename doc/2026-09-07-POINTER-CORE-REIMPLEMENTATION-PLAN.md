@@ -464,6 +464,20 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Retain raw scope visits (`APGSVS1`) with next-list identity and shared
+  shadows through `APGSHD1`, using one Term table. Repeated root pointers share;
+  distinct pending records with equal `(term, shadow)` remain distinct records.
+  Do not infer seen membership from the serialized visit graph or deduplicate
+  pending work. Hash buckets are absent; the owning scope restores seen keys.
+- [x] Resave visits twice after destroying source arenas, preserving shared
+  next tails, shared/distinct shadows and extra binder Term roots. Reconstructed
+  seen indexes accept distinct shadow keys and reject duplicate logical keys.
+  Out-of-range roots and cyclic next IDs clear all published outputs.
+  Full scope-work phases, source-index records, order/used arrays and explicit
+  seen/pending selection remain to be connected; this is not a full checkpoint.
+  Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
+  `check-identity-io check-eval-io` pass.
+
 - [x] Retain scope shadow forests (`APGSHD1`) through the existing pointer-keyed
   DAG collector and Term relocation table. Preserve NULL roots, repeated roots,
   shared parent tails and distinct nodes with identical binder/parent contents.

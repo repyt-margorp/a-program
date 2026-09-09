@@ -27,6 +27,67 @@ static const struct pg_object *resolve(void *unused, const char *text)
 }
 static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
 
+static void visit_forest(void)
+{
+	struct pg_graph graph, arena = {0};
+	assert(!pg_graph_init(&graph));
+	const struct pg_object *binder = pg_binder(&graph);
+	const struct pg_term *term = pg_reference(&graph, binder);
+	struct scope_shadow left = {binder, NULL}, right = {binder, NULL};
+	const struct scope_shadow *initial_shadows[] = {&left, &right};
+	const struct scope_shadow *const *shadows = initial_shadows;
+	struct scope_visit tail = {.term = term};
+	struct scope_visit first = {.term = term, .shadow = &left, .next = &tail};
+	struct scope_visit second = first;
+	struct scope_visit third = {.term = term, .shadow = &right, .next = &tail};
+	struct scope_visit *initial[] = {&first, &second, &tail, NULL, &third, &first};
+	struct scope_visit *const *visits = initial;
+	for (size_t round = 0; round < 2; ++round) {
+		FILE *file = tmpfile();
+		assert(file && !pg_scope_visits_write(file, 6, visits, 2, shadows, 1, &term, &codec, NULL));
+		pg_graph_destroy(&arena);
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		rewind(file);
+		size_t n, m, count;
+		const struct pg_term *const *roots;
+		assert(!pg_scope_visits_read(file, &arena, &graph, 1000, 100, &codec, NULL,
+			&n, &visits, &m, &shadows, &count, &roots));
+		assert(n == 6 && m == 2 && count == 1 && !fclose(file));
+		term = roots[0];
+		assert(visits[0] == visits[5] && visits[0] != visits[1] && !visits[3]);
+		assert(visits[0]->next == visits[2] && visits[1]->next == visits[2] && visits[4]->next == visits[2]);
+		assert(visits[0]->shadow == shadows[0] && visits[1]->shadow == shadows[0]);
+		assert(visits[4]->shadow == shadows[1] && shadows[0] != shadows[1]);
+		assert(shadows[0]->binder == term->as.reference && shadows[1]->binder == term->as.reference);
+		for (size_t i = 0; i < n; ++i) if (visits[i]) assert(visits[i]->term == term);
+		/* Transport preserves duplicates; only seen membership requires unique keys. */
+		struct scope_work work = {0};
+		struct scope_visit *seen[] = {visits[0], visits[2], visits[4]};
+		assert(!pg_scope_indexes_restore(&work, 3, seen, 0, NULL));
+		assert(work.seen.count == 3);
+		pg_scope_operation.destroy(&work);
+		assert(pg_scope_indexes_restore(&work, 2, visits, 0, NULL) == -1);
+		assert(!work.seen.buckets && !work.sources.buckets);
+	}
+	for (size_t variant = 0; variant < 2; ++variant) {
+		FILE *file = tmpfile();
+		assert(file && !pg_scope_visits_write(file, 6, visits, 2, shadows, 1, &term, &codec, NULL));
+		assert(!fseek(file, variant ? 72 : 24, SEEK_SET));
+		assert(!pg_wire_write_u64(file, variant ? 1 : 5));
+		rewind(file);
+		size_t n, m, count;
+		struct scope_visit *const *rejected;
+		const struct scope_shadow *const *unused;
+		const struct pg_term *const *roots;
+		assert(pg_scope_visits_read(file, &arena, &graph, 1000, 100, &codec, NULL,
+			&n, &rejected, &m, &unused, &count, &roots) == -1);
+		assert(!n && !rejected && !m && !unused && !count && !roots && !fclose(file));
+	}
+	pg_graph_destroy(&arena);
+	pg_graph_destroy(&graph);
+}
+
 static void shadow_forest(void)
 {
 	struct pg_graph graph, arena = {0};
@@ -1702,6 +1763,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
+	visit_forest();
 	shadow_forest();
 	scope_indexes();
 	family_discovery();

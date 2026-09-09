@@ -12,6 +12,107 @@ static const char discovery_magic[8] = "APGASW\1";
 static const char family_magic[8] = "APGFSW\1";
 static const char family_result_magic[8] = "APGFRW\1";
 static const char shadow_magic[8] = "APGSHD\1";
+static const char visit_magic[8] = "APGSVS\1";
+
+static int visit_child(void *unused, const void *key, size_t index, const void **child)
+{
+	(void)unused;
+	const struct scope_visit *visit = key;
+	if (index || !visit->next) return 0;
+	*child = visit->next;
+	return 1;
+}
+
+int pg_scope_visits_write(FILE *file, size_t visit_count, struct scope_visit *const *visits,
+	size_t shadow_count, const struct scope_shadow *const *shadows,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || (visit_count && !visits) || (shadow_count && !shadows) || (count && !roots)) return -1;
+	struct pg_dag dag = {0};
+	int status = -1;
+	if (pg_dag_init(&dag, visit_child, NULL)) goto done;
+	for (size_t i = 0; i < visit_count; ++i)
+		if (visits[i] && pg_dag_add(&dag, visits[i])) goto done;
+	size_t maximum = SIZE_MAX / sizeof(const struct pg_term *);
+	if (dag.count > maximum || count > maximum - dag.count) goto done;
+	maximum = SIZE_MAX / sizeof(const struct scope_shadow *);
+	if (dag.count > maximum || shadow_count > maximum - dag.count) goto done;
+	const struct pg_term **terms = pg_alloc(&dag.storage, (dag.count + count) * sizeof(*terms));
+	const struct scope_shadow **all = pg_alloc(&dag.storage, (dag.count + shadow_count) * sizeof(*all));
+	if (!terms || !all) goto done;
+	if (fwrite(visit_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, dag.count)
+		|| pg_wire_write_u64(file, visit_count)) goto done;
+	for (size_t i = 0; i < visit_count; ++i) {
+		const struct pg_dag_node *node = pg_dag_find(&dag, visits[i]);
+		if (pg_wire_write_u64(file, node ? node->id : 0)) goto done;
+	}
+	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
+		const struct scope_visit *visit = node->key;
+		if (!visit->term) goto done;
+		const struct pg_dag_node *next = pg_dag_find(&dag, visit->next);
+		if (pg_wire_write_u64(file, next ? next->id : 0)) goto done;
+		terms[node->id - 1] = visit->term;
+		all[node->id - 1] = visit->shadow;
+	}
+	for (size_t i = 0; i < count; ++i) terms[dag.count + i] = roots[i];
+	for (size_t i = 0; i < shadow_count; ++i) all[dag.count + i] = shadows[i];
+	status = pg_scope_shadows_write(file, dag.count + shadow_count, all,
+		dag.count + count, terms, codec, owner);
+done:
+	pg_dag_destroy(&dag);
+	return status;
+}
+
+int pg_scope_visits_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	size_t *visit_count, struct scope_visit *const **visits,
+	size_t *shadow_count, const struct scope_shadow *const **shadows,
+	size_t *count, const struct pg_term *const **roots)
+{
+	if (!visit_count || !visits || !shadow_count || !shadows || !count || !roots) return -1;
+	*visit_count = *shadow_count = *count = 0;
+	*visits = NULL;
+	*shadows = NULL;
+	*roots = NULL;
+	if (!file || !arena || !output) return -1;
+	char header[8];
+	uint64_t amount, root_count, id;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, visit_magic, 8)
+		|| pg_wire_read_u64(file, &amount) || pg_wire_read_u64(file, &root_count)) return -1;
+	if (amount > limit || root_count > limit || amount > SIZE_MAX / sizeof(struct scope_visit)
+		|| root_count > SIZE_MAX / sizeof(struct scope_visit *)) return -1;
+	struct scope_visit *nodes = pg_alloc(arena, (size_t)amount * sizeof(*nodes));
+	struct scope_visit **selected = pg_alloc(arena, (size_t)root_count * sizeof(*selected));
+	unsigned char *used = pg_alloc(arena, (size_t)amount);
+	if (!nodes || !selected || !used) return -1;
+	for (size_t i = 0; i < root_count; ++i) {
+		if (pg_wire_read_u64(file, &id) || id > amount) return -1;
+		selected[i] = id ? &nodes[id - 1] : NULL;
+		if (id) used[id - 1] = 1;
+	}
+	for (size_t i = 0; i < amount; ++i) {
+		if (pg_wire_read_u64(file, &id) || id > i) return -1;
+		nodes[i].next = id ? &nodes[id - 1] : NULL;
+		if (id) used[id - 1] = 1;
+	}
+	for (size_t i = 0; i < amount; ++i) if (!used[i]) return -1;
+	size_t n, total;
+	const struct scope_shadow *const *all;
+	const struct pg_term *const *terms;
+	if (pg_scope_shadows_read(file, arena, output, limit, name_limit, codec, owner,
+		&n, &all, &total, &terms) || n < amount || total < amount) return -1;
+	for (size_t i = 0; i < amount; ++i) {
+		nodes[i].term = terms[i];
+		nodes[i].shadow = all[i];
+	}
+	*visit_count = (size_t)root_count;
+	*visits = selected;
+	*shadow_count = n - (size_t)amount;
+	*shadows = all + (size_t)amount;
+	*count = total - (size_t)amount;
+	*roots = terms + (size_t)amount;
+	return 0;
+}
 
 static int shadow_child(void *unused, const void *key, size_t index, const void **child)
 {
