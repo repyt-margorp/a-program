@@ -15,6 +15,24 @@ criteria for merging different Lambda or semantic-object references.
 
 ### September 9: Open-Family Admission Before Further Checkpoint Expansion
 
+Independent N5 driver progress: `pointer-check --imports FILE.p INPUT.p` now
+parses an explicit source provider in the same Program without advancing Solve.
+Its local assignments become pending selected-module producers in the existing
+hidden import scope. Source `import name;` uses ordinary lookup and whole-module
+checking; provider symbols are not implicitly lexically visible. Saving the
+client retains those scope/producer dependencies using APGSRC9. There is no
+second verifier or copied classifier table. `tests/import_cli.sh` covers repeated
+imports, hidden names, missing exports/files, zero-budget save/load, invalid
+provider siblings and conflicting options. Filesystem search, recursive provider
+configuration, multiple-provider ambiguity, imported image merging, and REPL
+are still missing; this explicit single-provider route does not complete N5.
+Provider syntax errors report their own file/line/column and exit 1; I/O or
+preparation failures exit 2. A nominal Bool export is normalized, saved, then
+loaded and normalized after deleting its provider source; the resulting Core
+prints agree. The expanded import CLI test passes normally and with ASan/UBSan.
+The full `check` passed before this diagnostic/test extension; the ordinary CLI
+suite also passes after it. No Main promotion or full-import completion is claimed.
+
 Recheck after `9639429`: the four family fixtures still report 175/209/280/323
 steps and only the closed control succeeds. Prepared-input persistence did not
 change admission. The following is a proposed typed-layer contract, not an

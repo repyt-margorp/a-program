@@ -61,6 +61,46 @@ static int read_source(FILE *file, char **source, size_t *length)
 	return -1;
 }
 
+static int import_provider(struct pg_program *program, const char *path)
+{
+	FILE *file = fopen(path, "rb");
+	if (!file) return -1;
+	char *text = NULL;
+	size_t length;
+	int status = read_source(file, &text, &length);
+	if (fclose(file)) status = -1;
+	struct pg_parser parser = {0};
+	struct pg_synthesis_job *module = status ? NULL : pg_program_source(program,
+		program->scope, text, length, &parser);
+	free(text);
+	if (parser.error) {
+		fprintf(stderr, "%s:%zu:%zu: %s\n", path, parser.error_token.line,
+			parser.error_token.column, parser.error);
+		return 1;
+	}
+	if (!module) return -1;
+	const struct pg_source_scope *ambient;
+	const struct pg_syntax *syntax;
+	if (pg_synthesis_source_input(&program->synthesis, module, &ambient, &syntax)) return -1;
+	if (syntax->kind != PG_SYNTAX_DEFINITIONS) return -1;
+	const struct pg_source_scope *bindings = pg_synthesis_root(&program->synthesis);
+	for (size_t i = 0; i < syntax->item_count; ++i) {
+		const struct pg_syntax_item *item = &syntax->items[i];
+		if (item->operation != PG_TOKEN_ASSIGN) continue;
+		struct pg_syntax *member = pg_alloc(&program->graph, sizeof(*member));
+		struct pg_syntax *selection = pg_alloc(&program->graph, sizeof(*selection));
+		if (!member || !selection) return -1;
+		*member = (struct pg_syntax){.kind = PG_SYNTAX_ATOM, .token = item->name};
+		*selection = (struct pg_syntax){.kind = PG_SYNTAX_QUALIFIED, .left = syntax, .right = member};
+		struct pg_synthesis_job *selected = pg_synthesis_request(&program->synthesis, ambient, selection);
+		if (!selected) return -1;
+		bindings = pg_synthesis_name_job(&program->synthesis, bindings, item->name, selected);
+		if (!bindings) return -1;
+	}
+	program->scope = pg_synthesis_import_scope(&program->synthesis, program->scope, bindings);
+	return program->scope ? 0 : -1;
+}
+
 static int steps_argument(const char *text, uint64_t *steps)
 {
 	if (*text < '0' || *text > '9') return -1;
@@ -80,6 +120,7 @@ int main(int argc, char **argv)
 	const char *path = NULL;
 	const char *selected = NULL;
 	const char *save = NULL;
+	const char *imports = NULL;
 	int nf = 0, load = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "--steps")) {
@@ -91,14 +132,18 @@ int main(int argc, char **argv)
 			nf = !strcmp(argv[i], "--nf");
 			if (++i == argc || !*argv[i]) goto usage;
 			selected = argv[i];
+		} else if (!strcmp(argv[i], "--imports")) {
+			if (imports || ++i == argc || !*argv[i] || !strcmp(argv[i], "-")) goto usage;
+			imports = argv[i];
 		} else if (!strcmp(argv[i], "--load")) load = 1;
 		else if (!strcmp(argv[i], "--save")) {
 			if (save || ++i == argc || !*argv[i] || !strcmp(argv[i], "-")) goto usage;
 			save = argv[i];
 		} else if (!strcmp(argv[i], "--strict-thunks")) policy = PG_DEFINITION_EXPLICIT_THUNK;
 		else if (!strcmp(argv[i], "--help")) {
-			puts("usage: pointer-check [--steps N] [--strict-thunks] [--load [--root N]] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n"
+			puts("usage: pointer-check [--steps N] [--strict-thunks] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n"
 				"Checks with the pointer-core solver; does not execute host effects.\n"
+				"--imports FILE.p supplies exported symbols to explicit source imports.\n"
 				"--load reads an image (limit 1000000); its stored thunk policy applies.\n"
 				"--root N selects a loaded root (1-based, default 1); save retains every root.\n"
 				"--save stores RECOMPUTE inputs, including pending/rejected inputs, not progress.\n"
@@ -111,7 +156,7 @@ int main(int argc, char **argv)
 			path = argv[i];
 		}
 	}
-	if (!path || (load && policy == PG_DEFINITION_EXPLICIT_THUNK) || (root_index && !load)) goto usage;
+	if (!path || (load && (policy == PG_DEFINITION_EXPLICIT_THUNK || imports)) || (root_index && !load)) goto usage;
 	if (!root_index) root_index = 1;
 	FILE *file = !strcmp(path, "-") ? stdin : fopen(path, "rb");
 	if (!file) { fprintf(stderr, "%s: cannot open input\n", path); return 2; }
@@ -130,7 +175,18 @@ int main(int argc, char **argv)
 	} else {
 		char *source = NULL;
 		size_t length = 0;
-		program = read_source(file, &source, &length) ? NULL : pg_program_create(source, length, policy);
+		program = read_source(file, &source, &length) ? NULL : pg_program_allocate(policy);
+		if (program && imports) {
+			int status = import_provider(program, imports);
+			if (status) {
+				if (status < 0) fprintf(stderr, "%s: cannot prepare import provider\n", imports);
+				pg_program_destroy(program);
+				free(source);
+				if (file != stdin) fclose(file);
+				return status < 0 ? 2 : 1;
+			}
+		}
+		if (program) program->root = pg_program_source(program, program->scope, source, length, &program->parser);
 		free(source);
 	}
 	if (file != stdin) fclose(file);
@@ -187,6 +243,6 @@ int main(int argc, char **argv)
 	pg_program_destroy(program);
 	return result;
 usage:
-	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--load [--root N]] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n", stderr);
+	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n", stderr);
 	return 2;
 }
