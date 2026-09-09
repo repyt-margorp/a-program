@@ -14,6 +14,15 @@ struct pg_graph_codec;
  * Reading performs no comparison and grants no trust to saved results.
  * Additional owner roots share the work's Term/binder relocation table.
  * Reader outputs are cleared on failure and owned by graph on success. */
+/* Owning metadata (for example scope arrays) can wrap the final Term table.
+ * Callbacks preserve root order/sharing and release any separately restored
+ * resources on an outer read failure. The comparison walker is unchanged. */
+int pg_comparison_write_with(FILE *file, const struct pg_comparison *work,
+	size_t count, const struct pg_term *const *roots,
+	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner);
+int pg_comparison_read_with(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *, const struct pg_term *const **, void *),
+	void *owner, struct pg_comparison *work, size_t *count, const struct pg_term *const **roots);
 int pg_comparison_write(FILE *file, const struct pg_comparison *work,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
 int pg_comparison_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,

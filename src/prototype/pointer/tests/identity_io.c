@@ -1489,6 +1489,57 @@ static int read_scope_terms(FILE *file, struct pg_graph *graph, size_t limit, si
 	return status;
 }
 
+static void comparison_scope_owner(void)
+{
+	for (int different = 0; different < 2; ++different) {
+		uint64_t total = 0;
+		for (uint64_t cut = 0; ; ++cut) {
+			struct pg_graph graph, arena = {0};
+			assert(!pg_graph_init(&graph));
+			const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
+			const struct pg_term *left = pg_lambda(&graph, x, pg_reference(&graph, x));
+			const struct pg_term *right = pg_lambda(&graph, y,
+				pg_reference(&graph, different ? pg_binder(&graph) : y));
+			struct action_binding binding = {.source = x, .arguments = {y, x, y}};
+			struct action_scope scope = {left, right, 1, &binding};
+			struct scope_frame_codec context = {.arena = &arena, .scope = &scope};
+			struct pg_comparison work;
+			assert(!pg_comparison_init(&work, left, right, NULL, NULL));
+			int finished = pg_comparison_advance(&work, cut) != PG_COMPARISON_PENDING;
+			for (size_t round = 0; round < 2; ++round) {
+				FILE *file = tmpfile();
+				const struct pg_term *roots[] = {context.scope->source, context.scope->body};
+				uint64_t steps = pg_comparison_steps(&work);
+				enum pg_comparison_status status = pg_comparison_status(&work);
+				assert(file && !pg_comparison_write_with(file, &work, 2, roots, write_scope_terms, &context));
+				pg_comparison_destroy(&work); pg_graph_destroy(&arena); pg_graph_destroy(&graph);
+				assert(!pg_graph_init(&graph));
+				rewind(file);
+				size_t count;
+				const struct pg_term *const *restored;
+				assert(!pg_comparison_read_with(file, &graph, 1000, 100, read_scope_terms, &context, &work, &count, &restored));
+				assert(count == 2 && restored[0] == context.scope->source && restored[1] == context.scope->body);
+				assert(restored[0]->as.lambda.binder == context.scope->bindings[0].source);
+				assert(restored[1]->as.lambda.binder == context.scope->bindings[0].arguments[0]);
+				assert(context.scope->bindings[0].arguments[0] == context.scope->bindings[0].arguments[2]);
+				assert(pg_comparison_status(&work) == status && pg_comparison_steps(&work) == steps);
+				rewind(file);
+				struct scope_frame_codec bad = {.arena = &arena, .omit_root = 1};
+				struct pg_comparison rejected;
+				assert(pg_comparison_read_with(file, &graph, 1000, 100, read_scope_terms, &bad, &rejected, &count, &restored));
+				assert(bad.scope && !rejected.state && !count && !restored);
+				pg_comparison_destroy(&rejected);
+				assert(!fclose(file));
+			}
+			assert(pg_comparison_advance(&work, 1000) == (different ? PG_COMPARISON_DIFFERENT : PG_COMPARISON_EQUAL));
+			if (!cut) total = pg_comparison_steps(&work);
+			assert(pg_comparison_steps(&work) == total && cut < 1000);
+			pg_comparison_destroy(&work); pg_graph_destroy(&arena); pg_graph_destroy(&graph);
+			if (finished) break;
+		}
+	}
+}
+
 static int scope_answer(struct pg_eval *machine, const struct pg_term *answer, const void *opaque);
 static const struct pg_eval_continuation scope_answer_continuation = {
 	"tests/identity_io/scope_answer/v1", scope_answer
@@ -2218,6 +2269,7 @@ int main(int argc, char **argv)
 	}
 	assert(argc == 1);
 	policy_names();
+	comparison_scope_owner();
 	machine_envelope();
 	work_names();
 	visit_forest();

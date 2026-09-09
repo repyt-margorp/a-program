@@ -31,10 +31,11 @@ static int reference(FILE *file, const struct pg_dag *dag, const void *key)
 	return node ? pg_wire_write_u64(file, node->id) : -1;
 }
 
-int pg_comparison_write(FILE *file, const struct pg_comparison *work,
-	size_t extra_count, const struct pg_term *const *extra, const struct pg_graph_codec *codec, void *owner)
+int pg_comparison_write_with(FILE *file, const struct pg_comparison *work,
+	size_t extra_count, const struct pg_term *const *extra,
+	int (*write_terms)(FILE *, size_t, const struct pg_term *const *, void *), void *owner)
 {
-	if (!file || !work || !work->state) return -1;
+	if (!file || !work || !work->state || !write_terms) return -1;
 	if (extra_count && !extra) return -1;
 	const struct pg_comparison_state *state = work->state;
 	if (state->normalize || state->status == PG_COMPARISON_ERROR) return -1;
@@ -77,22 +78,23 @@ int pg_comparison_write(FILE *file, const struct pg_comparison *work,
 			|| reference(file, &entries, entry->next) || pg_wire_write_u64(file, entry->stage)) goto done;
 	}
 	for (size_t i = 0; i < extra_count; ++i) roots[count - extra_count + i] = extra[i];
-	status = pg_graph_write_descriptors(file, count, roots, codec, owner);
+	status = write_terms(file, count, roots, owner);
 done:
 	pg_dag_destroy(&entries);
 	pg_dag_destroy(&scopes);
 	return status;
 }
 
-int pg_comparison_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
-	const struct pg_graph_codec *codec, void *owner, struct pg_comparison *work,
+int pg_comparison_read_with(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	int (*read_terms)(FILE *, struct pg_graph *, size_t, size_t, size_t *, const struct pg_term *const **, void *),
+	void *owner, struct pg_comparison *work,
 	size_t *extra_count, const struct pg_term *const **extra)
 {
 	if (!work || !extra_count || !extra) return -1;
 	work->state = NULL;
 	*extra_count = 0;
 	*extra = NULL;
-	if (!file || !graph) return -1;
+	if (!file || !graph || !read_terms) return -1;
 	char header[8];
 	uint64_t n, s, pending, status, steps, extra_size;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return -1;
@@ -125,7 +127,7 @@ int pg_comparison_read(FILE *file, struct pg_graph *graph, size_t limit, size_t 
 	}
 	size_t count;
 	const struct pg_term *const *roots;
-	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, owner, &count, &roots)
+	if (read_terms(file, graph, limit, name_limit, &count, &roots, owner)
 		|| count != 2 * (n + s) + extra_size) goto done;
 	struct binder_pair *scopes = pg_alloc(&candidate.state->arena, (size_t)s * sizeof(*scopes));
 	struct alpha_entry *entries = pg_alloc(&candidate.state->arena, (size_t)n * sizeof(*entries));
@@ -169,4 +171,37 @@ done:
 	pg_comparison_destroy(&candidate);
 	pg_graph_destroy(&scratch);
 	return result;
+}
+
+struct comparison_codec {
+	const struct pg_graph_codec *codec;
+	void *owner;
+};
+
+static int write_terms(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	struct comparison_codec *context = opaque;
+	return pg_graph_write_descriptors(file, count, roots, context->codec, context->owner);
+}
+
+static int read_terms(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_term *const **roots, void *opaque)
+{
+	struct comparison_codec *context = opaque;
+	return pg_graph_read_descriptors(file, graph, limit, name_limit, context->codec, context->owner, count, roots);
+}
+
+int pg_comparison_write(FILE *file, const struct pg_comparison *work,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	struct comparison_codec context = {codec, owner};
+	return pg_comparison_write_with(file, work, count, roots, write_terms, &context);
+}
+
+int pg_comparison_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner, struct pg_comparison *work,
+	size_t *count, const struct pg_term *const **roots)
+{
+	struct comparison_codec context = {codec, owner};
+	return pg_comparison_read_with(file, graph, limit, name_limit, read_terms, &context, work, count, roots);
 }

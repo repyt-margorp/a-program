@@ -565,6 +565,22 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
   `check-identity-io check-eval-io` pass.
 
+- [x] Allow structural-comparison payloads to delegate their final ordered Term
+  roots to an owning callback. Standalone `pg_comparison_write/read` delegate to
+  the same progress, binder-pair, pending-stack and validation implementation.
+  This permits shared scope/binding ownership below comparison metadata without
+  duplicating the comparison walker or its Term relocation table.
+- [x] Test an owning scope around pending/equal/different comparisons at every
+  step with two destroying resaves. Endpoint Lambda binders and scope-array
+  binders remain identical; repeated references share. Preserve comparison
+  status and exact resumed steps. An owner returning fewer roots is rejected
+  without publishing a comparison. Normal `check check-prepared-modules`
+  (758 save boundaries) and ASan/UBSan `check-identity-io check-eval-io` pass.
+- [ ] Use that ownership callback in action-body work and connect its embedded
+  scope/binding-array identity with parent scopes. Its current standalone format
+  still retains a private source-binder prefix. Configuration and comparison
+  callbacks are prerequisites, not completion of full task dispatch or `.a`.
+
 - [x] Generalize named Demand-stack ownership through owner callbacks instead
   of hard-coding `action_result_work` into the frame serializer. The existing
   action-result API delegates to the same name resolution, frame payload and
