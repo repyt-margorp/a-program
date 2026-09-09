@@ -202,6 +202,29 @@ The callback refactor is not the remaining implementation plan by itself.
 Inspection of the actual work records found the following transitive payloads.
 These are existing execution structures to relocate, not new Core node kinds.
 
+- [x] Add raw structural comparison/independence transport (`APGCMP1`). Share
+  `alpha_entry`, `binder_pair` and comparison-state layouts in
+  `graph_internal.h`; rebuild the seen index with the comparison owner's
+  lookup/hash functions. Retain completed entries, pending links, scope/cursor,
+  stage, status and charged steps. Resume through `pg_comparison_advance`.
+  The structural walk's normalized endpoints follow from its stage and inputs;
+  they are reconstructed, not stored as independent results. No alpha interning
+  or comparison runs during import.
+- [x] Exercise every transition boundary for equal/unequal shared lambda DAGs
+  and bound/free independence checks, including completed states and cursor
+  traversal through multiple binders. Test two inert resaves with old graphs
+  destroyed, separate writer/reader processes, empty completed work, invalid
+  pending links/stages and rejection of normalization callbacks. Normal and
+  ASan/UBSan `check-eval-io` pass. Remaining transition counts and seen-entry
+  counts match uninterrupted execution. `check check-prepared-modules` also
+  passes after this change; broader source acceptance remains incomplete.
+- [ ] Integrate comparisons with the owning deferred operation and image-wide
+  relocation. `APGCMP1` is raw work, not an equality certificate. Normalizing
+  comparisons are explicitly unsupported by this component until their owning
+  evaluator/policy state is retained; silently restoring them as structural
+  comparisons would change semantics. These additions do not complete N5 or
+  authorize a Main push.
+
 | Existing owner | State that must survive a retained-work save |
 | --- | --- |
 | `eval.c:pg_environment` | Binder, value closure and parent; preserve shared parent and captured-environment references. |

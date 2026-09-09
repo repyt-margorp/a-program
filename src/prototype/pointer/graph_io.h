@@ -5,6 +5,17 @@
 #include <stdio.h>
 
 struct pg_dag;
+struct pg_graph_codec;
+
+/* Raw structural comparison/independence progress, not accepted equality.
+ * Normalizing comparisons require their owning evaluator state and are rejected
+ * by this component. Read into an unused handle; destroy it before graph.
+ * Stored work resumes through pg_comparison_advance with no alternate walker.
+ * Reading performs no comparison and grants no trust to saved results. */
+int pg_comparison_write(FILE *file, const struct pg_comparison *work,
+	const struct pg_graph_codec *codec, void *owner);
+int pg_comparison_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner, struct pg_comparison *work);
 
 /* Diagnostic shared-DAG listing. IDs are local display labels, not semantic
  * identities or addresses. No reduction, descriptor execution or graph edits. */

@@ -290,6 +290,143 @@ static void substitution_resume(void)
 	pg_graph_destroy(&graph);
 }
 
+static void comparison_fixture(struct pg_graph *graph, struct pg_comparison *work, unsigned mode)
+{
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
+	const struct pg_term *left = pg_reference(graph, x), *right = pg_reference(graph, mode == 1 ? x : y);
+	for (size_t i = 0; i < 8; ++i) {
+		left = pg_application(graph, left, left);
+		right = pg_application(graph, right, right);
+	}
+	/* Unused binders force reference lookup through multiple scope links. */
+	for (size_t i = 0; i < 4; ++i) {
+		left = pg_lambda(graph, pg_binder(graph), left);
+		right = pg_lambda(graph, pg_binder(graph), right);
+	}
+	if (mode == 3) assert(!pg_independence_init(work, left, x));
+	else if (mode == 2) assert(!pg_independence_init(work, pg_lambda(graph, x, left), x));
+	else assert(!pg_comparison_init(work, pg_lambda(graph, x, left), pg_lambda(graph, y, right), NULL, NULL));
+}
+
+static void write_comparison(FILE *file)
+{
+	struct pg_graph graph;
+	struct pg_comparison work;
+	assert(!pg_graph_init(&graph));
+	comparison_fixture(&graph, &work, 0);
+	assert(pg_comparison_advance(&work, 13) == PG_COMPARISON_PENDING);
+	assert(!pg_comparison_write(file, &work, NULL, NULL));
+	pg_comparison_destroy(&work);
+	pg_graph_destroy(&graph);
+}
+
+static void read_comparison(FILE *file)
+{
+	struct pg_graph graph;
+	struct pg_comparison work, baseline;
+	assert(!pg_graph_init(&graph));
+	comparison_fixture(&graph, &baseline, 0);
+	assert(pg_comparison_advance(&baseline, 10000) == PG_COMPARISON_EQUAL);
+	assert(!pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &work));
+	uint64_t steps = pg_comparison_steps(&baseline);
+	assert(pg_comparison_steps(&work) == 13);
+	assert(pg_comparison_advance(&work, steps - 14) == PG_COMPARISON_PENDING);
+	assert(pg_comparison_advance(&work, 1) == PG_COMPARISON_EQUAL);
+	assert(pg_comparison_steps(&work) == steps);
+	pg_comparison_destroy(&work);
+	pg_comparison_destroy(&baseline);
+	pg_graph_destroy(&graph);
+}
+
+static int unexpected_normalization(void *owner, const struct pg_term *input, const struct pg_term **output)
+{
+	(void)owner;
+	(void)input;
+	(void)output;
+	assert(0);
+	return -1;
+}
+
+static void comparison_boundaries(void)
+{
+	struct pg_graph graph;
+	struct pg_comparison work, restored;
+	assert(!pg_graph_init(&graph));
+	const struct pg_term *x = pg_reference(&graph, pg_binder(&graph));
+	FILE *file = tmpfile();
+	assert(file && !pg_comparison_init(&work, x, x, NULL, unexpected_normalization));
+	assert(pg_comparison_write(file, &work, NULL, NULL));
+	assert(ftell(file) == 0);
+	pg_comparison_destroy(&work);
+	assert(!pg_comparison_init(&work, x, x, NULL, NULL));
+	assert(!pg_comparison_write(file, &work, NULL, NULL));
+	rewind(file);
+	assert(!pg_comparison_read(file, &graph, 100, 100, NULL, NULL, &restored));
+	assert(pg_comparison_status(&restored) == PG_COMPARISON_EQUAL);
+	assert(!pg_comparison_task_count(&restored) && !pg_comparison_steps(&restored));
+	pg_comparison_destroy(&work);
+	pg_comparison_destroy(&restored);
+	assert(!fclose(file));
+	file = tmpfile();
+	assert(file);
+	comparison_fixture(&graph, &work, 0);
+	assert(!pg_comparison_write(file, &work, NULL, NULL));
+	/* Status without a pending task, out-of-range link, and impossible stage. */
+	const long offsets[] = {24, 24, 72};
+	const uint64_t invalid[] = {0, 2, 3};
+	for (size_t i = 0; i < 3; ++i) {
+		uint64_t prior;
+		assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_read_u64(file, &prior));
+		assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, invalid[i]));
+		rewind(file);
+		assert(pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &restored));
+		assert(!restored.state);
+		assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, prior));
+	}
+	assert(!fclose(file));
+	pg_comparison_destroy(&work);
+	pg_graph_destroy(&graph);
+}
+
+static void comparison_resume(void)
+{
+	for (unsigned mode = 0; mode < 4; ++mode) {
+		struct pg_graph graph;
+		struct pg_comparison baseline;
+		assert(!pg_graph_init(&graph));
+		comparison_fixture(&graph, &baseline, mode);
+		enum pg_comparison_status expected = pg_comparison_advance(&baseline, 10000);
+		assert(expected == (mode % 2 ? PG_COMPARISON_DIFFERENT : PG_COMPARISON_EQUAL));
+		uint64_t total = pg_comparison_steps(&baseline);
+		size_t tasks = pg_comparison_task_count(&baseline);
+		pg_comparison_destroy(&baseline);
+		pg_graph_destroy(&graph);
+		for (uint64_t cut = 0; cut <= total; ++cut) {
+			struct pg_comparison work;
+			assert(!pg_graph_init(&graph));
+			comparison_fixture(&graph, &work, mode);
+			pg_comparison_advance(&work, cut);
+			for (unsigned round = 0; round < 2; ++round) {
+				FILE *file = tmpfile();
+				assert(file && !pg_comparison_write(file, &work, NULL, NULL));
+				pg_comparison_destroy(&work);
+				pg_graph_destroy(&graph);
+				assert(!pg_graph_init(&graph));
+				rewind(file);
+				assert(!pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &work));
+				assert(!fclose(file));
+			}
+			assert(pg_comparison_steps(&work) == cut);
+			for (uint64_t i = cut; i < total; ++i)
+				assert(pg_comparison_advance(&work, 1) == (i + 1 == total ? expected : PG_COMPARISON_PENDING));
+			assert(pg_comparison_status(&work) == expected);
+			assert(pg_comparison_task_count(&work) == tasks);
+			pg_comparison_destroy(&work);
+			pg_graph_destroy(&graph);
+		}
+	}
+}
+
 static struct pg_eval_configuration materialization_fixture(struct pg_graph *graph)
 {
 	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
@@ -414,7 +551,8 @@ int main(int argc, char **argv)
 			{"write-substitution", "wb", write_substitution},
 			{"read-substitution", "rb", read_substitution},
 			{"write-materialization", "wb", write_materialization},
-			{"read-materialization", "rb", read_materialization}
+			{"read-materialization", "rb", read_materialization},
+			{"write-comparison", "wb", write_comparison}, {"read-comparison", "rb", read_comparison}
 		};
 		for (size_t i = 0; i < sizeof(commands) / sizeof(*commands); ++i) {
 			if (strcmp(argv[1], commands[i].name)) continue;
@@ -472,6 +610,8 @@ int main(int argc, char **argv)
 	beta_resume();
 	substitution_resume();
 	materialization_resume();
+	comparison_resume();
+	comparison_boundaries();
 	puts("evaluation configuration: captured environments, shared tails, inert resave and lexical relocation passed");
 	return 0;
 }

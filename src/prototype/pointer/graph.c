@@ -1,4 +1,4 @@
-#include "graph.h"
+#include "graph_internal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -13,12 +13,6 @@ struct pg_block {
 struct pg_entry {
 	struct pg_index_entry index;
 	struct pg_term term;
-};
-
-struct binder_pair {
-	const struct pg_object *left;
-	const struct pg_object *right;
-	const struct binder_pair *parent;
 };
 
 void *pg_alloc(struct pg_graph *graph, size_t bytes)
@@ -65,40 +59,38 @@ static uint64_t mix(uint64_t left, uint64_t right)
 	return (left ^ (right + UINT64_C(0x9e3779b97f4a7c15))) * UINT64_C(1099511628211);
 }
 
-struct alpha_entry {
-	struct pg_index_entry index;
-	const struct pg_term *left;
-	const struct pg_term *right;
-	const struct binder_pair *scope;
-	const struct binder_pair *cursor;
-	const struct pg_term *normalized[2];
-	struct alpha_entry *next;
-	unsigned stage;
-};
+static uint64_t comparison_hash(const struct pg_term *left, const struct pg_term *right, const struct binder_pair *scope)
+{
+	return mix(mix((uintptr_t)left, (uintptr_t)right), (uintptr_t)scope);
+}
 
-struct pg_comparison_state {
-	struct pg_graph arena;
-	struct pg_index seen;
-	struct alpha_entry *pending;
-	void *policy;
-	int (*normalize)(void *, const struct pg_term *, const struct pg_term **);
-	enum pg_comparison_status status;
-	uint64_t steps;
-};
+static struct alpha_entry *comparison_find(struct pg_comparison_state *context, const struct pg_term *left, const struct pg_term *right,
+	const struct binder_pair *scope)
+{
+	uint64_t hash = comparison_hash(left, right, scope);
+	for (struct pg_index_entry *candidate = pg_index_candidates(&context->seen, hash); candidate; candidate = candidate->next) {
+		if (candidate->hash != hash) continue;
+		struct alpha_entry *entry = (struct alpha_entry *)candidate;
+		if (entry->left != left) continue;
+		if (entry->right != right) continue;
+		if (entry->scope == scope) return entry;
+	}
+	return NULL;
+}
+
+int pg_comparison_index(struct pg_comparison_state *context, struct alpha_entry *entry)
+{
+	if (comparison_find(context, entry->left, entry->right, entry->scope)) return -1;
+	uint64_t hash = comparison_hash(entry->left, entry->right, entry->scope);
+	return pg_index_insert(&context->seen, &entry->index, hash);
+}
 
 static int comparison_push(struct pg_comparison_state *context, const struct pg_term *left, const struct pg_term *right,
 	const struct binder_pair *scope)
 {
 	if (!left || !right) return -1;
 	if (left == right && !scope) return 0;
-	uint64_t hash = mix(mix((uintptr_t)left, (uintptr_t)right), (uintptr_t)scope);
-	for (struct pg_index_entry *candidate = pg_index_candidates(&context->seen, hash); candidate; candidate = candidate->next) {
-		if (candidate->hash != hash) continue;
-		const struct alpha_entry *entry = (const struct alpha_entry *)candidate;
-		if (entry->left != left) continue;
-		if (entry->right != right) continue;
-		if (entry->scope == scope) return 0;
-	}
+	if (comparison_find(context, left, right, scope)) return 0;
 	struct alpha_entry *entry = pg_alloc(&context->arena, sizeof(*entry));
 	if (!entry) return -1;
 	entry->left = left;
@@ -106,6 +98,7 @@ static int comparison_push(struct pg_comparison_state *context, const struct pg_
 	entry->scope = scope;
 	entry->cursor = scope;
 	entry->next = context->pending;
+	uint64_t hash = comparison_hash(left, right, scope);
 	if (pg_index_insert(&context->seen, &entry->index, hash) != 0) return -1;
 	context->pending = entry;
 	return 0;

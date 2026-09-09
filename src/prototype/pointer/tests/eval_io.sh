@@ -10,3 +10,5 @@ trap 'rm -rf "$directory"' EXIT HUP INT TERM
 "$binary" read-substitution "$directory/substitution"
 "$binary" write-materialization "$directory/materialization"
 "$binary" read-materialization "$directory/materialization"
+"$binary" write-comparison "$directory/comparison"
+"$binary" read-comparison "$directory/comparison"
