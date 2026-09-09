@@ -50,6 +50,12 @@ const struct pg_source_scope *pg_synthesis_bind_context(struct pg_synthesis *syn
 	const struct pg_object *binder, struct pg_synthesis_job *context);
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Retain only sequencing binder identities for a source application.
+ * Ordinary result-context rules reconstruct annotations. Attach before
+ * application preparation; conflicting or late allocation is rejected. */
+struct pg_synthesis_job *pg_synthesis_application_at(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	const struct pg_context *prefix, const struct pg_context *end);
 /* Nominal allocation input for a source declaration, before preparation.
  * Candidate universe inference still runs. Only the matching candidate uses
  * the stored Self binder/schema; no stored formation evidence is trusted.

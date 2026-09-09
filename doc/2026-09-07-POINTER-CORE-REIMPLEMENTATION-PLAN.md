@@ -856,6 +856,18 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   tests. Normal `normalization` and `prepared-module` (758 boundaries) pass.
   This API is not yet connected to source-image producer transport; the
   constructor/Match retained-input regression above remains open.
+- [x] September 9: `pg_synthesis_application_at` attaches the existing
+  `context_allocation` representation to the ordinary source-application job.
+  Sequencing consumes its binder vector in evaluation order; result-context
+  rules recompute types. The context prefix and exact number of consumed
+  binders must match. Conflicting/late attachments are rejected. Tests cover
+  argument-only sequencing and callee-plus-argument sequencing, reconstructing
+  exact Core from distinct source requests using the same allocation even when
+  its stored annotations are deliberately wrong. Short/long vectors and wrong
+  prefixes fail. This is not yet connected to source-image allocation origins;
+  the source-only constructor/Match retention gate remains open.
+  Verification: normal and ASan/UBSan full `synthesis_test`, normal
+  `source_io_test normalization` and `prepared-module` (758 boundaries) pass.
 - [x] Distinguish retained typed-root checking from source re-elaboration.
   `retained-write-typed` writes both the original source root and its existing
   typed derivation root using APGSRC12. Both remain unaccepted after reading;

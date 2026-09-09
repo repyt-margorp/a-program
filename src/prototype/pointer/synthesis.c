@@ -734,6 +734,16 @@ struct pg_synthesis_job *pg_synthesis_telescope_at(struct pg_synthesis *synthesi
 	return pg_synthesis_telescope(synthesis, scope, syntax);
 }
 
+struct pg_synthesis_job *pg_synthesis_application_at(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	const struct pg_context *prefix, const struct pg_context *end)
+{
+	if (!syntax || syntax->kind != PG_SYNTAX_APPLICATION) return NULL;
+	struct pg_synthesis_job *job = pg_synthesis_request(synthesis, scope, syntax);
+	if (!job || context_allocation_at(synthesis, job, prefix, end, job->application != NULL)) return NULL;
+	return job;
+}
+
 struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
 {
@@ -5285,23 +5295,27 @@ error:
 	return 0;
 }
 
-static int application_bind(struct pg_synthesis *synthesis, struct application_state *state,
+static enum pg_synthesis_status application_bind(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	struct pg_synthesis_job *input, int callee)
 {
-	const struct pg_object *binder = pg_binder(synthesis->typing->graph);
+	struct application_state *state = job->application;
+	struct context_allocation *allocation = job->context_allocation;
+	if (allocation && allocation->next == allocation->count) return PG_SYNTHESIS_REJECTED;
+	const struct pg_object *binder = allocation
+		? allocation->binders[allocation->next++] : pg_binder(synthesis->typing->graph);
 	struct pg_synthesis_job *context = pg_synthesis_result_context(synthesis, state->context, input, binder);
-	if (!context) return -1;
+	if (!context) return PG_SYNTHESIS_ERROR;
 	struct pg_synthesis_job *variable = plain_rule(synthesis, PG_VARIABLE, binder, 1, &context);
 	struct pg_synthesis_job *other = callee ? state->argument : state->callee;
 	other = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, (struct pg_synthesis_job *[]){context, other});
 	struct block_frame *frame = pg_alloc(synthesis->typing->graph, sizeof(*frame));
-	if (!variable || !other || !frame) return -1;
+	if (!variable || !other || !frame) return PG_SYNTHESIS_ERROR;
 	*frame = (struct block_frame){.input = input, .context = context, .parent = state->frames, .binds = 1};
 	state->frames = frame;
 	state->context = context;
 	state->callee = callee ? variable : other;
 	state->argument = callee ? other : variable;
-	return 0;
+	return PG_SYNTHESIS_DONE;
 }
 
 /* Expose the callee first, then sequence its argument, using ordinary rules. */
@@ -5311,6 +5325,14 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 	if (job->stage == APPLICATION_RULE_READY) { forward_proof(synthesis, job, job->value_job); return 1; }
 	if (job->stage != 2) return 0;
 	if (!job->application) {
+		if (job->context_allocation) {
+			struct pg_synthesis_job *context = job->scope->context_job;
+			if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return 1; }
+			if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return 1; }
+			if (pg_evidence_context(pg_synthesis_result(context)) != job->context_allocation->prefix) {
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return 1;
+			}
+		}
 		job->application = pg_alloc(synthesis->typing->graph, sizeof(*job->application));
 		if (!job->application) goto error;
 		*job->application = (struct application_state){.context = job->scope->context_job,
@@ -5329,6 +5351,9 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 			return 1;
 		}
 		job->value_job = state->tail;
+		if (job->context_allocation && job->context_allocation->next != job->context_allocation->count) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return 1;
+		}
 		job->stage = APPLICATION_RULE_READY;
 		forward_proof(synthesis, job, job->value_job);
 		return 1;
@@ -5348,7 +5373,8 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		return 1;
 	}
 	if (pg_effect_type_spine_view(type, &domain, &codomain)) {
-		if (application_bind(synthesis, state, callee, 1)) goto error;
+		enum pg_synthesis_status status = application_bind(synthesis, job, callee, 1);
+		if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return 1; }
 		enqueue(synthesis, job);
 		return 1;
 	}
@@ -5372,7 +5398,8 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		if (!pg_effect_type_spine_view(pg_synthesis_type_structure_result(shape), &row, &result)) {
 			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return 1;
 		}
-		if (application_bind(synthesis, state, argument, 0)) goto error;
+		enum pg_synthesis_status status = application_bind(synthesis, job, argument, 0);
+		if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return 1; }
 		enqueue(synthesis, job);
 		return 1;
 	}

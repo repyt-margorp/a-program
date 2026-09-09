@@ -4149,6 +4149,48 @@ static const struct pg_syntax *expression_syntax(struct pg_graph *graph, const c
 	return syntax;
 }
 
+static void application_allocations(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_evidence *function,
+	const struct pg_evidence *computation)
+{
+	struct pg_graph *graph = synthesis->typing->graph;
+	const struct pg_context *prefix = pg_evidence_context(computation);
+	scope = pg_synthesis_name(synthesis, scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "m", .length = 1}, computation);
+	for (unsigned count = 1; count <= 2; ++count) {
+		const struct pg_evidence *callee = count == 1 ? function : pg_prove_return(synthesis->typing,
+			synthesis->classifiers, pg_prove_thunk(synthesis->typing, synthesis->classifiers, function));
+		const struct pg_source_scope *named = pg_synthesis_name(synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "f", .length = 1}, callee);
+		assert(named);
+		const struct pg_context *end = prefix;
+		for (unsigned i = 0; i < count; ++i)
+			end = pg_context_bind(synthesis->typing, end, pg_binder(graph), pg_universe(synthesis->classifiers, 0));
+		assert(end);
+		const struct pg_term *core = NULL;
+		for (unsigned mode = 0; mode < 5; ++mode) {
+			const struct pg_syntax *syntax = expression_syntax(graph, "r:=f m;");
+			const struct pg_context *allocation = mode == 2 ? end->parent : end;
+			if (mode == 3) allocation = pg_context_bind(synthesis->typing, end, pg_binder(graph), end->declared_type);
+			const struct pg_context *base = mode == 4 ? end : prefix;
+			struct pg_synthesis_job *job = pg_synthesis_application_at(synthesis, named, syntax, base, allocation);
+			assert(job && job == pg_synthesis_request(synthesis, named, syntax));
+			assert(job == pg_synthesis_application_at(synthesis, named, syntax, base, allocation));
+			assert(!pg_synthesis_application_at(synthesis, named, syntax, base,
+				allocation == base ? NULL : base));
+			const struct pg_evidence *result = complete(synthesis, job, mode < 2 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+			if (mode < 2) {
+				if (core) assert(core == pg_evidence_subject(result)->core);
+				core = pg_evidence_subject(result)->core;
+			}
+		}
+		const struct pg_syntax *syntax = expression_syntax(graph, "r:=f m;");
+		complete(synthesis, pg_synthesis_request(synthesis, named, syntax), PG_SYNTHESIS_DONE);
+		assert(!pg_synthesis_application_at(synthesis, named, syntax, prefix, end));
+	}
+	puts("application allocations: exact sequencing binders, recomputed types, count/prefix and late-conflict checks passed");
+}
+
 static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	struct pg_whnf_work work;
@@ -5471,6 +5513,7 @@ int main(void)
 	}
 	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, a_scope, x_name, x, x_context);
+	application_allocations(&synthesis, scope, pg_prove_projection(&typing, x_context, typed_reduct), return_x);
 	identity_contents(&typing, &classifiers, &beta, x_context, second_application, x_value, sigma);
 	normalization_jobs(&typing, &classifiers, x_context, second_application, x_value);
 	const struct pg_evidence *deep_body = return_x;
