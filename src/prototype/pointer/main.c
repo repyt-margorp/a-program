@@ -10,6 +10,26 @@
 #include <string.h>
 #include <unistd.h>
 
+struct root_list {
+	/* Ordered user selections; aliases are allowed, jobs remain interned. */
+	struct pg_synthesis_job **items;
+	size_t count, capacity;
+};
+
+static int retain_root(struct root_list *roots, struct pg_synthesis_job *job)
+{
+	if (!job) return -1;
+	if (roots->count == roots->capacity) {
+		if (roots->capacity > SIZE_MAX / sizeof(*roots->items) / 2) return -1;
+		size_t capacity = roots->capacity ? roots->capacity * 2 : 8;
+		struct pg_synthesis_job **items = realloc(roots->items, capacity * sizeof(*items));
+		if (!items) return -1;
+		roots->items = items; roots->capacity = capacity;
+	}
+	roots->items[roots->count++] = job;
+	return 0;
+}
+
 /* Publish only a completely written image; the temporary file shares its
  * destination directory so rename does not cross filesystems. */
 static int save_image(const char *path, const struct pg_synthesis *synthesis,
@@ -113,16 +133,10 @@ static int report(struct pg_program *program, struct pg_synthesis_job *job)
 }
 
 static int repl(struct pg_program *program, uint64_t budget,
-	size_t count, struct pg_synthesis_job *const *roots)
+	struct root_list *roots)
 {
 	char *line = NULL;
 	size_t capacity = 0;
-	if (!count || count > SIZE_MAX / sizeof(*roots)) return 2;
-	size_t root_capacity = count;
-	struct pg_synthesis_job **retained = malloc(count * sizeof(*retained));
-	if (!retained) return 2;
-	memcpy(retained, roots, count * sizeof(*retained));
-	roots = retained;
 	int result = 0;
 	for (;;) {
 		if (isatty(STDIN_FILENO)) { fputs("pointer> ", stdout); fflush(stdout); }
@@ -145,14 +159,7 @@ static int repl(struct pg_program *program, uint64_t budget,
 					parser.error_token.column, parser.error ? parser.error : "cannot prepare source");
 				continue;
 			}
-			if (count == root_capacity) {
-				if (root_capacity > SIZE_MAX / sizeof(*retained) / 2) { result = 2; break; }
-				size_t next = root_capacity * 2;
-				struct pg_synthesis_job **grown = realloc(retained, next * sizeof(*retained));
-				if (!grown) { result = 2; break; }
-				retained = grown; roots = retained; root_capacity = next;
-			}
-			retained[count++] = root;
+			if (retain_root(roots, root)) { result = 2; break; }
 			program->root = root;
 			pg_synthesis_advance(&program->synthesis, budget);
 			report(program, root);
@@ -168,11 +175,11 @@ static int repl(struct pg_program *program, uint64_t budget,
 		if (!strcmp(command, ":status") && !*argument) { report(program, program->root); continue; }
 		if (!strcmp(command, ":root")) {
 			uint64_t index;
-			if (steps_argument(argument, &index) || !index || index > count) {
-				fprintf(stderr, "root index must be in 1..%zu\n", count);
+			if (steps_argument(argument, &index) || !index || index > roots->count) {
+				fprintf(stderr, "root index must be in 1..%zu\n", roots->count);
 				continue;
 			}
-			program->root = roots[index - 1];
+			program->root = roots->items[index - 1];
 			report(program, program->root);
 			continue;
 		}
@@ -184,7 +191,7 @@ static int repl(struct pg_program *program, uint64_t budget,
 			continue;
 		}
 		if (!strcmp(command, ":save") && *argument) {
-			if (save_image(argument, &program->synthesis, count, roots)) fputs("cannot save input image\n", stderr);
+			if (save_image(argument, &program->synthesis, roots->count, roots->items)) fputs("cannot save input image\n", stderr);
 			else puts("saved");
 			continue;
 		}
@@ -197,6 +204,7 @@ static int repl(struct pg_program *program, uint64_t budget,
 			struct pg_synthesis_job *job = pg_program_normalize(program,
 				pg_synthesis_result(definition), !strcmp(command, ":nf"));
 			if (!job) { fputs("unsupported selected definition\n", stderr); continue; }
+			if (retain_root(roots, job)) { result = 2; break; }
 			pg_synthesis_advance(&program->synthesis, budget);
 			if (!report(program, job) && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core))
 				fputs("cannot print result\n", stderr);
@@ -205,7 +213,6 @@ static int repl(struct pg_program *program, uint64_t budget,
 		fputs("expected :solve [N], :status, :root N, :whnf NAME, :nf NAME, :save FILE.a or :quit\n", stderr);
 	}
 	free(line);
-	free(retained);
 	return ferror(stdin) ? 2 : result;
 }
 
@@ -245,6 +252,7 @@ int main(int argc, char **argv)
 				"--repl keeps the loaded Program for :solve, :whnf, :nf, :status, :root, :save, :quit.\n"
 				"--load reads an image (limit 1000000); its stored thunk policy applies.\n"
 				"--root N selects a loaded root (1-based, default 1); save retains every root.\n"
+				"Created WHNF/NF requests append roots without replacing the selected source module.\n"
 				"--save stores RECOMPUTE inputs, including pending/rejected inputs, not progress.\n"
 				"WHNF/NF select a definition, force a stored thunk once, and print its pure Core DAG.\n"
 				"Exit: 0 done, 1 rejected/syntax, 2 input/internal error, 3 pending, 4 unsupported.\n"
@@ -292,12 +300,15 @@ int main(int argc, char **argv)
 	if (file != stdin) fclose(file);
 	if (!program) { fprintf(stderr, "%s: cannot read or initialize input\n", path); return 2; }
 	if (!roots) roots = &program->root;
+	struct root_list retained = {0};
 	int result;
 	if (!program->root) {
 		fprintf(stderr, "%s:%zu:%zu: %s\n", path, program->parser.error_token.line,
 			program->parser.error_token.column, program->parser.error ? program->parser.error : "parse failed");
 		result = 1;
 	} else {
+		for (size_t i = 0; i < count; ++i)
+			if (retain_root(&retained, roots[i])) { result = 2; goto done; }
 		pg_synthesis_advance(&program->synthesis, budget);
 		struct pg_synthesis_job *job = program->root;
 		if (selected && pg_synthesis_status(job) == PG_SYNTHESIS_DONE) {
@@ -305,28 +316,29 @@ int main(int argc, char **argv)
 			struct pg_synthesis_job *definition = pg_synthesis_definition(job, name);
 			if (!definition) {
 				fprintf(stderr, "%s: definition not found: %s\n", path, selected);
-				pg_program_destroy(program);
-				return 1;
+				result = 1; goto done;
 			}
 			const struct pg_evidence *proof = pg_synthesis_result(definition);
 			job = pg_program_normalize(program, proof, nf);
 			if (!job) {
 				fputs("unsupported selected definition\n", stderr);
-				pg_program_destroy(program);
-				return 4;
+				result = 4; goto done;
 			}
+			if (retain_root(&retained, job)) { result = 2; goto done; }
 			uint64_t remaining = program->synthesis.steps < budget ? budget - program->synthesis.steps : 0;
 			pg_synthesis_advance(&program->synthesis, remaining);
 		}
 		result = report(program, job);
 		if (selected && !result && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core)) result = 2;
 		if (save) {
-			if (save_image(save, &program->synthesis, count, roots)) {
+			if (save_image(save, &program->synthesis, retained.count, retained.items)) {
 				fprintf(stderr, "%s: cannot save input image\n", save); result = 2;
 			}
 		}
-		if (interactive) result = repl(program, budget, count, roots);
+		if (interactive) result = repl(program, budget, &retained);
 	}
+done:
+	free(retained.items);
 	pg_program_destroy(program);
 	return result;
 usage:

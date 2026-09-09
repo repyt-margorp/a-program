@@ -53,4 +53,22 @@ test "$(grep -c '^rejected steps=' "$directory/status")" = 1
 test "$(grep -c '^done steps=' "$directory/status")" = 5
 "$binary" --load --root 2 "$directory/expect.a" > "$directory/status"
 grep -q '^done steps=' "$directory/status"
-echo 'repl: shared normalization, pending resume/save and command recovery passed'
+printf ':solve 10000\n:nf id\n:save %s\n:root 2\n:status\n:solve 10000\n:save %s\n:root 1\ncopy:=id;\n:save %s\n:quit\n' \
+	"$directory/nf-pending.a" "$directory/nf-done.a" "$directory/nf-history.a" |
+	"$binary" --steps 0 --repl "$directory/source.p" > "$directory/status" 2> "$directory/errors"
+test ! -s "$directory/errors"
+test "$(grep -c '^saved$' "$directory/status")" = 3
+for image in nf-pending nf-done; do
+	code=0
+	"$binary" --load --root 2 --steps 0 --save "$directory/resaved.a" "$directory/$image.a" > "$directory/status" || code=$?
+	test "$code" = 3
+	grep -q '^pending steps=0$' "$directory/status"
+	"$binary" --load --root 2 "$directory/resaved.a" > "$directory/status"
+	grep -q '^done steps=' "$directory/status"
+done
+"$binary" --load --root 3 --nf copy "$directory/nf-history.a" > "$directory/status"
+grep -q '^done steps=' "$directory/status"
+"$binary" --nf id --save "$directory/batch-nf.a" "$directory/source.p" > "$directory/status"
+"$binary" --load --root 2 "$directory/batch-nf.a" > "$directory/status"
+grep -q '^done steps=' "$directory/status"
+echo 'repl: shared normalization, pending resume/save, retained request roots and command recovery passed'

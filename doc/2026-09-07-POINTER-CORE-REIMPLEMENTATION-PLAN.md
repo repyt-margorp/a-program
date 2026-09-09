@@ -32,9 +32,12 @@ or weaken endpoint validation to serialize the latter as the former.
 - [x] Extend source-image producer records to represent these requests with
   context/term producer edges and a reduction mode. Restore through the same
   factory without Solve; retain unknown endpoints as unknown.
-- [ ] Retain CLI/REPL normalization requests alongside source roots, preserving
+- [x] Retain created CLI/REPL normalization requests alongside source roots, preserving
   selected-module behavior. Test save before/through/after normalization and
   unsolved resave, including invalid premises and split budgets.
+- [ ] Permit a named CLI/REPL request before the source producer is accepted.
+  Currently selection/one-time forcing still requires its accepted classifier;
+  a zero-budget source invocation does not yet retain the requested `--nf NAME`.
 - [ ] Retain reusable evaluator progress/results for full CHECKPOINT support.
   Merely retaining request recipes is still RECOMPUTE, not work retention.
 
@@ -54,12 +57,23 @@ APGSRC9 is not silently interpreted under the new format.
 step through completion, reloads and resaves before Solve, then uses budgets
 1/64. It checks root aliases, modes, valid results, invalid context rejection,
 and rejects an invalid serialized mode. This is request retention only; the
-CLI does not yet include requested normalization jobs in its saved root set.
+CLI connection below now includes created normalization jobs in its saved root set.
 Verification after the codec change: `check check-prepared-modules` passes;
 the focused normalization-image test also passes with ASan/UBSan. An initial
 test incorrectly assumed unchanged normalization always allocates a dedicated
 normalization proof. The existing rule correctly reuses the original evidence;
 the corrected test checks mode on the retained request, not a nonexistent receipt.
+
+CLI connection: one ordered root list now holds loaded roots, incremental source
+roots and created normalization requests. Batch `--save` and REPL `:save` use
+that same list. A request does not change the selected source module; `:root`
+can select its status/resume target explicitly. Duplicate selections may alias
+the same interned job, without allocating a second solver state. Tests save
+pending and completed NF requests, resave without Solve in a separate process,
+resume root 2, return to source root 1, and append/load another source root.
+This retains inputs, not evaluator progress, and does not close N5.
+The full normal `check` and the expanded REPL test under ASan/UBSan pass after
+this driver change. Main promotion remains gated by the original N0-N7 scope.
 
 ### September 9: Reusing Prepared Public Scopes
 
