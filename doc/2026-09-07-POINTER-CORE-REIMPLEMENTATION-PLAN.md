@@ -891,6 +891,14 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   from the Core builder but does NOT yet preserve the elimination recipe across
   an image. Retaining all allocation inputs in the common derivation remains
   required, including generated field scopes.
+  The direct `pg_prove_constructor_scope_at` now shares the ordinary scope
+  construction function and retains only field binder identities from a supplied
+  context. Prefix/arity are checked; field types are reconstructed by ordinary
+  substitution lifting. Nat and dependent `(A : Type), (x : A)` tests preserve
+  exact contexts/maps, including when supplied field-type annotations are wrong.
+  Wrong field counts are rejected. Normal full synthesis and normal/ASan/UBSan
+  IADT tests pass. Wiring this allocation input through induction and its saved
+  derivation is still outstanding; no image-format change is claimed here.
   Verification: normal and ASan/UBSan `iadt_test`, normal full
   `synthesis_test` and `source_io_test normalization` pass. Expanded
   `source_io.sh` passes retained typed constructor cases, then still fails

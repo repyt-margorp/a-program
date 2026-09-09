@@ -4999,6 +4999,10 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	const struct pg_evidence *wrong_field = pg_prove_context_extension(typing, empty_context,
 		saved_fields->binder, pg_prove_universe(typing, classifiers, empty_context, 0));
 	assert(wrong_field && pg_evidence_context(wrong_field) != saved_fields);
+	assert(pg_prove_constructor_scope_at(typing, admitted, successor, parameter_map, saved_fields) == saved_map);
+	assert(pg_prove_constructor_scope_at(typing, admitted, successor, parameter_map,
+		pg_evidence_context(wrong_field)) == saved_map);
+	assert(!pg_prove_constructor_scope_at(typing, admitted, successor, parameter_map, NULL));
 	for (unsigned mode = 0; mode < 4; ++mode) {
 		struct pg_synthesis restored;
 		assert(!pg_synthesis_init(&restored, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));

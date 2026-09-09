@@ -142,6 +142,11 @@ const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing
 const struct pg_evidence *pg_prove_constructor_scope(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_object *constructor,
 	const struct pg_evidence *parameters);
+/* Retain field binder identities only. The context suffix must have the field
+ * arity over the parameter target; ordinary lifting recomputes field types. */
+const struct pg_evidence *pg_prove_constructor_scope_at(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters, const struct pg_context *allocation);
 /* Zero-index dependent case elimination (no recursive IH). Motive is a
  * computation-type formation in destination,z:Family. Branches are already
  * synthesized computations in destination, ordered by the schema, curried

@@ -496,6 +496,15 @@ static void schema_positivity(void)
 	const struct pg_evidence *packed_function = pg_prove_constructor_function(&typing,
 		&classifiers, packed, packed_constructor, identity);
 	assert(packed_function && pg_evidence_rule(packed_function) == PG_LAMBDA_INTRO);
+	const struct pg_evidence *packed_map = pg_prove_constructor_scope(&typing, packed, packed_constructor, identity);
+	assert(packed_map);
+	const struct pg_context *packed_allocation = pg_evidence_context(pg_evidence_premise(packed_map, 1));
+	assert(pg_prove_constructor_scope_at(&typing, packed, packed_constructor, identity, packed_allocation) == packed_map);
+	const struct pg_context *wrong_packed = pg_context_bind(&typing, packed_allocation->parent,
+		packed_allocation->binder, pg_universe(&classifiers, 0));
+	assert(wrong_packed && wrong_packed != packed_allocation);
+	assert(pg_prove_constructor_scope_at(&typing, packed, packed_constructor, identity, wrong_packed) == packed_map);
+	assert(!pg_prove_constructor_scope_at(&typing, packed, packed_constructor, identity, packed_allocation->parent));
 	const struct pg_evidence *packed_first = pg_prove_application(&typing, packed_function,
 		pg_prove_type_value(&typing, nat));
 	const struct pg_evidence *packed_second = pg_prove_application(&typing, packed_first, zero);

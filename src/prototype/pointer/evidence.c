@@ -595,9 +595,10 @@ done:
 	return result;
 }
 
-const struct pg_evidence *pg_prove_constructor_scope(struct pg_typing *typing,
+static const struct pg_evidence *prove_constructor_scope(struct pg_typing *typing,
 	const struct pg_evidence *formation,
-	const struct pg_object *constructor, const struct pg_evidence *parameters)
+	const struct pg_object *constructor, const struct pg_evidence *parameters,
+	const struct pg_context *allocation, int retained)
 {
 	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
 	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
@@ -608,6 +609,10 @@ const struct pg_evidence *pg_prove_constructor_scope(struct pg_typing *typing,
 	const struct pg_evidence *self_context = formation->premises[0];
 	size_t count;
 	if (pg_context_extension_size(fields->context, self_context->context, &count)) return NULL;
+	if (retained) {
+		size_t supplied;
+		if (pg_context_extension_size(allocation, parameters->premises[1]->context, &supplied) || supplied != count) return NULL;
+	}
 	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	const struct pg_evidence *family = pg_prove_reindex(typing, parameters, formation);
 	const struct pg_evidence *self = pg_prove_type_value(typing, family);
@@ -617,16 +622,36 @@ const struct pg_evidence *pg_prove_constructor_scope(struct pg_typing *typing,
 	struct pg_graph temporary = {0};
 	const struct pg_evidence *result = NULL;
 	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
-	if (count && !extensions) goto done;
-	for (size_t i = count; i; --i, fields = fields->premises[0]) extensions[i - 1] = fields;
+	const struct pg_object **binders = retained ? pg_alloc(&temporary, count * sizeof(*binders)) : NULL;
+	if (count && (!extensions || (retained && !binders))) goto done;
+	for (size_t i = count; i; --i, fields = fields->premises[0]) {
+		extensions[i - 1] = fields;
+		if (retained) { binders[i - 1] = allocation->binder; allocation = allocation->parent; }
+	}
 	for (size_t i = 0; i < count; ++i) {
-		map = pg_prove_substitution_lift(typing, map, extensions[i], pg_binder(typing->graph));
+		map = pg_prove_substitution_lift(typing, map, extensions[i],
+			retained ? binders[i] : pg_binder(typing->graph));
 		if (!map) goto done;
 	}
 	result = map;
 done:
 	pg_graph_destroy(&temporary);
 	return result;
+}
+
+const struct pg_evidence *pg_prove_constructor_scope(struct pg_typing *typing,
+	const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters)
+{
+	return prove_constructor_scope(typing, formation, constructor, parameters, NULL, 0);
+}
+
+const struct pg_evidence *pg_prove_constructor_scope_at(struct pg_typing *typing,
+	const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters,
+	const struct pg_context *allocation)
+{
+	return prove_constructor_scope(typing, formation, constructor, parameters, allocation, 1);
 }
 
 static const struct pg_evidence *constructor_in_scope(struct pg_typing *typing,
