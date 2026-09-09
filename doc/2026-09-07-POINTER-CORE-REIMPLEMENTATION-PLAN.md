@@ -130,6 +130,16 @@ roots, propagation of wrong-target rejection, and a corrupted name pointing
 back to its consumer. Source-level recursive definitions remain legal pending
 inputs; they are not cyclic immutable construction recipes.
 
+Follow-up depth regression after `6a392eb`: 512 alternating lexical-name and
+prepared-annotation dependencies save as exactly 513 scopes and 1026 producers,
+with two identical selected roots. After destroying the original program,
+loading preserves a single shared reference syntax and type producer throughout
+the chain. Chunk sizes 1 and 64 produce the same value and transition count.
+The normal and rebuilt ASan/UBSan source-image suites pass. The initial fixture
+omitted identifier `text_length` and was correctly rejected; correcting the
+fixture required no implementation change. This test does not establish
+retention of solved work or complete CHECKPOINT support.
+
 Validation after the temporary-order storage adjustment: `check`,
 `check-examples`, `check-example-results`, `check-image-origins`, and rebuilt
 ASan/UBSan source-image/origin suites pass. The sanitizer origin script initially

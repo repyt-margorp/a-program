@@ -407,12 +407,80 @@ static void invalid_named_cycle(FILE *file)
 	assert(!fseek(file, 0, SEEK_END));
 }
 
+static void prepared_scope_chain(void)
+{
+	const size_t depth = 512;
+	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p);
+	struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+	struct pg_derivation_input universe = {.rule = PG_UNIVERSE_FORM, .count = 1, .parameters.level = 1};
+	struct pg_synthesis_job *type = pg_synthesis_rule(&p->synthesis, &universe, &context, NULL, NULL);
+	struct pg_synthesis_job *term = parse(p, p->scope, "{{main:=@;}}.main");
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "T", .length = 1};
+	struct pg_syntax reference = {.kind = PG_SYNTAX_ATOM, .token = name};
+	reference.token.text_length = name.length;
+	const struct pg_source_scope *scope = p->scope;
+	for (size_t i = 0; i < depth; ++i) {
+		struct pg_synthesis_job *check = pg_synthesis_source_expect(&p->synthesis, scope, term, type);
+		scope = pg_synthesis_name_job(&p->synthesis, scope, name, check);
+		term = pg_synthesis_request(&p->synthesis, scope, &reference);
+		assert(check && scope && term);
+	}
+	FILE *file = tmpfile();
+	struct pg_synthesis_job *selected[] = {term, term};
+	assert(file && !pg_sources_write(file, &p->synthesis, 2, selected));
+	assert(!p->synthesis.steps && !pg_synthesis_result(term));
+	assert(!fseek(file, 16, SEEK_SET));
+	uint64_t scope_count, root_count, origin_count, producer_count;
+	assert(!pg_wire_read_u64(file, &scope_count) && scope_count == depth + 1);
+	assert(!pg_wire_read_u64(file, &root_count) && root_count == 2);
+	assert(!pg_wire_read_u64(file, &origin_count) && origin_count == 0);
+	assert(!pg_wire_read_u64(file, &producer_count) && producer_count == 2 * depth + 2);
+	pg_program_destroy(p);
+	uint64_t steps = 0;
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		rewind(file);
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		p = pg_sources_read(file, 20000, &count, &roots);
+		assert(p && count == 2 && roots[0] == roots[1] && !p->synthesis.steps);
+		term = roots[0];
+		struct pg_synthesis_job *shared_type = NULL;
+		const struct pg_syntax *shared_reference = NULL;
+		for (size_t i = 0; i < depth; ++i) {
+			const struct pg_syntax *syntax;
+			assert(!pg_synthesis_source_input(&p->synthesis, term, &scope, &syntax));
+			if (!shared_reference) shared_reference = syntax;
+			assert(syntax == shared_reference);
+			struct pg_source_environment environment;
+			assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
+			assert(environment.producer && environment.parent);
+			assert(!pg_synthesis_source_expect_input(&p->synthesis, environment.producer, &scope, &term, &type));
+			assert(scope == environment.parent);
+			if (!shared_type) shared_type = type;
+			assert(type == shared_type);
+		}
+		while (p->synthesis.ready) {
+			assert(p->synthesis.steps < 100000);
+			pg_synthesis_advance(&p->synthesis, chunk);
+		}
+		assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(pg_synthesis_result(roots[0]))->core == pg_universe(&p->classifiers, 0));
+		if (chunk == 1) steps = p->synthesis.steps;
+		assert(p->synthesis.steps == steps);
+		pg_program_destroy(p);
+	}
+	assert(!fclose(file));
+	puts("source image: 512 alternating lexical/annotation dependencies retain shared syntax and split-budget results");
+}
+
 static void annotation_sources(FILE *file, int writing, uint64_t chunk)
 {
 	struct pg_program *p;
 	size_t count;
 	struct pg_synthesis_job *const *roots;
 	if (writing) {
+		prepared_scope_chain();
 		p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
 		assert(p);
 		struct pg_synthesis_job *term = parse(p, p->scope, "{{main:=@;}}.main");
