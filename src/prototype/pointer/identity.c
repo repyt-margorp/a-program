@@ -1,4 +1,4 @@
-#include "identity.h"
+#include "identity_internal.h"
 #include "classifier.h"
 #include "computation.h"
 #include "iadt.h"
@@ -113,17 +113,6 @@ static const struct pg_term *unary_argument(const struct pg_term *term, const st
 	if (head->kind != PG_REFERENCE || head->as.reference != operation) return NULL;
 	return term->as.application.argument;
 }
-
-struct action_binding {
-	const struct pg_object *source;
-	const struct pg_object *arguments[3];
-};
-struct action_scope {
-	const struct pg_term *source;
-	const struct pg_term *body;
-	size_t count;
-	struct action_binding *bindings;
-};
 
 struct action_scope_work {
 	struct action_scope scope;
@@ -638,16 +627,6 @@ static int analyze_scope(struct pg_eval *machine, const struct action_scope *sco
 	return status;
 }
 
-struct action_body_work {
-	struct pg_comparison comparison;
-	struct action_scope scope;
-	const struct pg_term *answer;
-	const struct pg_term *cursor;
-	struct pg_graph *arena, *output;
-	size_t position;
-	enum { BODY_COMPARE, BODY_COLLECT, BODY_WRAP, BODY_READY } phase;
-};
-
 static int action_body_poll(void *opaque)
 {
 	struct action_body_work *work = opaque;
@@ -694,7 +673,7 @@ static int action_body_resume(struct pg_eval *machine, void *opaque)
 	return pg_eval_enter(machine, (struct pg_closure){work->answer, NULL}, 1);
 }
 
-static const struct pg_eval_work_operation action_body_operation = {
+const struct pg_eval_work_operation pg_action_body_operation = {
 	action_body_poll, action_body_resume, action_body_destroy
 };
 
@@ -707,7 +686,7 @@ static int action_body_scoped(struct pg_eval *machine, const struct action_scope
 	work->output = machine->output;
 	work->scope = *prepared;
 	if (pg_comparison_init(&work->comparison, work->scope.body, answer, NULL, NULL) != 0) return -1;
-	int status = pg_eval_defer(machine, &action_body_operation, work);
+	int status = pg_eval_defer(machine, &pg_action_body_operation, work);
 	if (status) action_body_destroy(work);
 	return status;
 }

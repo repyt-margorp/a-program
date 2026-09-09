@@ -234,6 +234,26 @@ These are existing execution structures to relocate, not new Core node kinds.
   evaluator/policy state is retained; silently restoring them as structural
   comparisons would change semantics. These additions do not complete N5 or
   authorize a Main push.
+- [x] Retain the existing Identity action-body payload (`APGIBD1`) through
+  `identity_io.c`. `identity_internal.h` shares its actual scope/binding/work
+  layout with the execution owner. Save phase, arity, position, cursor and
+  owner roots through `APGCMP2`, preserving one Term/binder relocation table.
+  Retain only initialized bindings still needed by collect/wrap; already
+  wrapped binders live in the partial answer, and completed unused arrays need
+  not be duplicated. Rebind arena/output ownership on import.
+- [x] Test all cuts in compare/collect/wrap/ready for unchanged and changed
+  bodies, double inert resave, destruction of prior arenas/graphs, exact
+  remaining polls, shared caller source, separate processes and invalid phase,
+  arity, position and cursor flags. Restore the payload into the existing
+  `pg_eval_defer` mechanism and verify the original operation's resume result.
+  Normal/ASan/UBSan `check-identity-io` pass; this gate is included in `check`.
+  The unchanged case uses distinct alpha-equivalent inner lambdas, not merely
+  the same Term pointer. `check check-prepared-modules` passes; the strengthened
+  alpha case also passes both normal and sanitized component runs.
+- [ ] Preserve complete machine configurations and all other deferred/Demand
+  payloads in one shared image graph. The action-body tests construct component
+  inputs and a caller; they do not yet demonstrate a source-level `.a`
+  checkpoint. Saved comparison results remain raw work, not accepted evidence.
 
 | Existing owner | State that must survive a retained-work save |
 | --- | --- |

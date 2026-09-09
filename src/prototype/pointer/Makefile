@@ -4,7 +4,7 @@ ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)effect_inference.c $(ROOT)evidence.c $(ROOT)derivation.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c $(ROOT)descriptor_io.c $(ROOT)context_payload.c $(ROOT)declaration_io.c
 
-.PHONY: check check-examples check-example-results check-open-families check-image-origins check-prepared-modules check-acceptance check-eval-io
+.PHONY: check check-examples check-example-results check-open-families check-image-origins check-prepared-modules check-acceptance check-eval-io check-identity-io
 check-examples: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 
@@ -30,7 +30,14 @@ check-acceptance: check check-examples check-example-results check-open-families
 check-eval-io: $(BUILD)/eval_io_test
 	bash $(ROOT)tests/eval_io.sh $(BUILD)/eval_io_test
 
-check: check-eval-io
+check-identity-io: $(BUILD)/identity_io_test
+	bash $(ROOT)tests/identity_io.sh $(BUILD)/identity_io_test
+
+check: check-eval-io check-identity-io
+
+$(BUILD)/identity_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)tests/identity_io.c
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)tests/identity_io.c -o $@
 
 check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test $(BUILD)/occurrence_io_test $(BUILD)/derivation_io_test $(BUILD)/syntax_io_test $(BUILD)/source_io_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test $(BUILD)/program_test $(BUILD)/seed_test $(BUILD)/pointer-check
 	$(BUILD)/core_test
