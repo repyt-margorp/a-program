@@ -678,7 +678,7 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Normal `check check-prepared-modules` (758 save boundaries) and ASan/UBSan
   `check-identity-io check-eval-io` pass.
 
-- [x] Retain raw Thunk-family discovery (`APGFSW1`) in the actual
+- [x] Retain raw Thunk-family discovery (`APGFSW2`, originally `APGFSW1`) in the actual
   `family_scope_work`, shared by Force and field resumptions. Source/body,
   optional content/value, cursor and supplied/discovered counts use one Term
   table with caller roots. No binding preparation or source rescan on import.
@@ -687,6 +687,16 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   This is a polling-state test, not a full machine-resumption test.
   Normal and ASan/UBSan `check-identity-io check-eval-io` pass; so does
   `check check-prepared-modules` (758 module-save boundaries).
+- [x] Put the embedded family scope and extra scope roots into the existing
+  APGISC3 ownership table. Remove the private source/body/count encoding;
+  retain a presence mask for discovery's initially absent endpoints using
+  checked cursor placeholders. Rebind external aliases to the restored embedded
+  scope, preserving repeated roots, distinct scopes and null roots. Both Force
+  and field polling tests cover every boundary with two destroying resaves;
+  existing actual-evaluator resumptions retain exact total steps. APGFSW2 is
+  an experimental format revision, not an accepted stable checkpoint schema.
+  Verification: `check check-prepared-modules` and ASan/UBSan
+  `check-identity-io check-eval-io` pass, including invalid supplied-arity rejection.
 - [x] Compose Thunk-family state with the existing configuration forest and
   exercise both original resume callbacks at every actual discovery suspension.
   Dependent (not constant-folded) families reach both discovery stages. Two

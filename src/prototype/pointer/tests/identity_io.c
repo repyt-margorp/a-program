@@ -408,7 +408,7 @@ static int family_write(FILE *file, size_t count, const struct pg_term *const *r
 	struct family_codec *state = opaque;
 	if (state->result) return pg_family_result_write(file, state->result, 0, NULL,
 		count, roots, &pg_builtin_graph_codec, state->classifiers);
-	return pg_family_scope_write(file, state->work, count, roots, &pg_builtin_graph_codec, state->classifiers);
+	return pg_family_scope_write(file, state->work, 0, NULL, count, roots, &pg_builtin_graph_codec, state->classifiers);
 }
 
 static int family_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
@@ -423,8 +423,12 @@ static int family_read(FILE *file, struct pg_graph *graph, size_t limit, size_t 
 		assert(status || !n);
 		return status;
 	}
-	return pg_family_scope_read(file, state->arena, graph, limit, name_limit,
-		&pg_builtin_graph_codec, state->classifiers, &state->work, count, roots);
+	size_t n;
+	struct action_scope *const *scopes;
+	int status = pg_family_scope_read(file, state->arena, graph, limit, name_limit,
+		&pg_builtin_graph_codec, state->classifiers, &state->work, &n, &scopes, count, roots);
+	assert(status || !n);
+	return status;
 }
 
 static void family_resume(void)
@@ -576,16 +580,23 @@ static void family_discovery(void)
 		while (!done) {
 			for (size_t save = 0; save < 2; ++save) {
 				FILE *file = tmpfile();
-				assert(file && !pg_family_scope_write(file, work, 4, roots, &pg_builtin_graph_codec, &classifiers));
+				struct action_scope distinct = {.source = roots[1], .body = roots[2]};
+				const struct action_scope *inputs[] = {&work->scope, &distinct, &work->scope, NULL};
+				assert(file && !pg_family_scope_write(file, work, 4, inputs, 4, roots, &pg_builtin_graph_codec, &classifiers));
 				pg_classifiers_destroy(&classifiers);
 				pg_graph_destroy(&arena);
 				pg_graph_destroy(&graph);
 				assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
 				rewind(file);
 				size_t count;
+				size_t scope_count;
+				struct action_scope *const *scopes;
 				assert(!pg_family_scope_read(file, &arena, &graph, 1000, 100,
-					&pg_builtin_graph_codec, &classifiers, &work, &count, &roots));
+					&pg_builtin_graph_codec, &classifiers, &work, &scope_count, &scopes, &count, &roots));
 				assert(!fclose(file) && count == 4 && !work->scope.bindings);
+				assert(scope_count == 4 && scopes[0] == &work->scope && scopes[2] == scopes[0]);
+				assert(scopes[1] != scopes[0] && !scopes[3]);
+				assert(scopes[1]->source == roots[1] && scopes[1]->body == roots[2]);
 				assert(work->value == (mode ? roots[3] : NULL));
 				if (work->scope.source) assert(work->scope.source == roots[1]);
 			}
@@ -594,15 +605,17 @@ static void family_discovery(void)
 		}
 		assert(polls == 10 && work->supplied == 6 && work->scope.count == 2);
 		assert(work->scope.body == roots[2] && work->content == roots[3]);
-		/* Invalid count must not publish a partially restored work handle. */
+		/* Invalid supplied arity must not publish a partially restored work handle. */
 		FILE *file = tmpfile();
-		assert(file && !pg_family_scope_write(file, work, 4, roots, &pg_builtin_graph_codec, &classifiers));
-		assert(!fseek(file, 16, SEEK_SET) && !pg_wire_write_u64(file, 3));
+		assert(file && !pg_family_scope_write(file, work, 0, NULL, 4, roots, &pg_builtin_graph_codec, &classifiers));
+		assert(!fseek(file, 8, SEEK_SET) && !pg_wire_write_u64(file, 5));
 		rewind(file);
 		size_t count = 1;
+		size_t scope_count;
+		struct action_scope *const *scopes;
 		assert(pg_family_scope_read(file, &arena, &graph, 1000, 100,
-			&pg_builtin_graph_codec, &classifiers, &work, &count, &roots) == -1);
-		assert(!work && !count && !roots && !fclose(file));
+			&pg_builtin_graph_codec, &classifiers, &work, &scope_count, &scopes, &count, &roots) == -1);
+		assert(!work && !count && !roots && !scope_count && !scopes && !fclose(file));
 		pg_classifiers_destroy(&classifiers);
 		pg_graph_destroy(&arena);
 		pg_graph_destroy(&graph);
