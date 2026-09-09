@@ -7,6 +7,14 @@ single=$("$1" read "$directory/modules.graph")
 bulk=$("$1" read-bulk "$directory/modules.graph")
 test "$single" = "$bulk"
 printf '%s\n' "$single"
+for fixture in lambda nominal nullary constructor; do
+	"$1" retained-write-typed "$directory/typed.a" "$fixture"
+	"$1" retained-resave "$directory/typed.a" "$directory/typed-again.a"
+	"$1" retained-resave "$directory/typed-again.a" "$directory/typed-final.a"
+	"$1" retained-check "$directory/typed-final.a"
+	"$1" retained-recompute "$directory/typed-final.a"
+done
+printf '%s\n' 'retained typed roots: ordinary proof checking preserves constructor NF inputs'
 for fixture in lambda nominal nullary constructor match; do
 	"$1" retained-write "$directory/retained.a" "$fixture"
 	"$1" retained-resave "$directory/retained.a" "$directory/resaved.a"

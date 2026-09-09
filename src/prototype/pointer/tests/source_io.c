@@ -979,7 +979,7 @@ static void retained_process(int argc, char **argv)
 	struct pg_program *p;
 	struct pg_synthesis_job *const *roots;
 	size_t count;
-	if (!strcmp(argv[1], "retained-write")) {
+	if (!strcmp(argv[1], "retained-write") || !strcmp(argv[1], "retained-write-typed")) {
 		assert(argc == 4);
 		const char *text;
 		if (!strcmp(argv[3], "lambda")) text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
@@ -995,13 +995,16 @@ static void retained_process(int argc, char **argv)
 		}
 		p = retained_program(text);
 		FILE *file = fopen(argv[2], "w+b");
-		assert(file && !pg_sources_write_retained(file, &p->synthesis, 1, &p->root, p->retained_reductions));
+		struct pg_synthesis_job *selected[] = {p->root,
+			pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(p->root))};
+		count = !strcmp(argv[1], "retained-write-typed") ? 2 : 1;
+		assert(selected[1] && file && !pg_sources_write_retained(file, &p->synthesis, count, selected, p->retained_reductions));
 		assert(!fclose(file));
 	} else {
 		FILE *file = fopen(argv[2], "rb");
 		assert(file);
 		p = pg_sources_read(file, 100000, &count, &roots);
-		assert(p && count == 1 && p->retained_reductions && !p->synthesis.steps);
+		assert(p && (count == 1 || count == 2) && p->retained_reductions && !p->synthesis.steps);
 		assert(!fclose(file) && !pg_synthesis_result(roots[0]));
 		if (!strcmp(argv[1], "retained-resave")) {
 			assert(argc == 4);
@@ -1012,7 +1015,8 @@ static void retained_process(int argc, char **argv)
 			assert(argc == 3);
 			int reuse = !strcmp(argv[1], "retained-check");
 			assert(reuse || !strcmp(argv[1], "retained-recompute"));
-			check_retained_program(p, roots[0], reuse);
+			check_retained_program(p, roots[count - 1], reuse);
+			assert(pg_synthesis_result(roots[0]));
 		}
 	}
 	pg_program_destroy(p);

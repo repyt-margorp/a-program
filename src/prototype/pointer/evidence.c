@@ -834,7 +834,8 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 		operands[i + 1] = branches[i]->subject;
 	}
 	const struct pg_term *core = recursion
-		? pg_data_recursive_match(typing->graph, layout, recursion, scrutinee->subject->core, count, clauses)
+		? pg_data_recursive_match(typing->graph, layout, recursion,
+			pg_binder(typing->graph), pg_binder(typing->graph), scrutinee->subject->core, count, clauses)
 		: pg_data_match(typing->graph, layout, scrutinee->subject->core, count, clauses);
 	if (!core) goto done;
 	const struct pg_occurrence *subject = pg_occurrence(typing, destination->context, core, NULL, count + 1, operands);

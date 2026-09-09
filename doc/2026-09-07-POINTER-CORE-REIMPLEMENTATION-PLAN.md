@@ -856,6 +856,45 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   tests. Normal `normalization` and `prepared-module` (758 boundaries) pass.
   This API is not yet connected to source-image producer transport; the
   constructor/Match retained-input regression above remains open.
+- [x] Distinguish retained typed-root checking from source re-elaboration.
+  `retained-write-typed` writes both the original source root and its existing
+  typed derivation root using APGSRC12. Both remain unaccepted after reading;
+  source whole-module synthesis still runs. Ordinary derivation checking then
+  supplies the typed input to normalization. Independent writer/two-resaver/
+  reuse/recompute tests pass for field-bearing constructors as well as lambda,
+  nominal and nullary fixtures. No alpha-keyed cache or binder remapper is used.
+- [ ] Retained recursive-elimination derivation allocation is incomplete.
+  `retained-write-typed <file> match` followed by inert resaves and
+  `retained-check <file>` still fails exact input identity (alpha-equal).
+  Unlike the source-only regression, this survives selecting the retained
+  typed root. `prove_data_elimination` allocates recursion via `pg_binder`,
+  invokes fresh constructor/induction scope generation, and builds the recursive
+  Core; `pg_prove_derivation` invokes that same function again. These internal
+  allocations are not explicit saved rule inputs/premises. Thus a replay-only
+  alternative is not the solution: the ordinary rule's construction inputs are
+  incomplete for exact retained graph reconstruction. Expose its allocation
+  recipe/field-context premises through the common rule representation and
+  retain them with the graph; validate them with the same rule. Include the
+  fixed-point lowering binders in `pg_data_recursive_match` in this audit.
+  Do not infer correspondence by alpha-comparing the completed Terms. Also do
+  not require fresh source re-elaboration to reproduce arbitrary fresh binders:
+  completed checkpoints should continue the retained typed producer graph,
+  while pending source preparation needs its own retained allocations. These
+  remain distinct missing parts of N5, not an excuse to drop either gate.
+- [x] Make fixed-point graph construction allocation-explicit:
+  `pg_data_recursive_match` now takes recursion, argument and self-application
+  binders from its caller. No second constructor API/tag is added. Repeating
+  the same pointer inputs returns the exact same Core without growing the Term
+  table. Invalid/non-distinct binders are rejected; lexical-capture, lazy-branch
+  and recursive execution tests still pass. The ordinary elimination rule
+  currently allocates argument/self itself, so this removes hidden allocation
+  from the Core builder but does NOT yet preserve the elimination recipe across
+  an image. Retaining all allocation inputs in the common derivation remains
+  required, including generated field scopes.
+  Verification: normal and ASan/UBSan `iadt_test`, normal full
+  `synthesis_test` and `source_io_test normalization` pass. Expanded
+  `source_io.sh` passes retained typed constructor cases, then still fails
+  source-only constructor input identity as documented above.
 - [ ] Add source-facing retention selection and bounded checking/installation
   lifecycle and constructor/Match/IADT tests for APGSRC12. The new
   API is not yet a CLI CHECKPOINT mode. Pending evaluation/synthesis work and

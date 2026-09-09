@@ -116,10 +116,12 @@ done:
 
 const struct pg_term *pg_data_recursive_match(struct pg_graph *graph,
 	const struct pg_data_layout *layout, const struct pg_object *recursion,
+	const struct pg_object *argument, const struct pg_object *self,
 	const struct pg_term *scrutinee, size_t count, const struct pg_match_clause *clauses)
 {
 	if (!graph || !recursion || recursion->kind != PG_BINDER || !scrutinee) return NULL;
-	const struct pg_object *argument = pg_binder(graph), *self = pg_binder(graph);
+	if (!argument || argument->kind != PG_BINDER || !self || self->kind != PG_BINDER) return NULL;
+	if (recursion == argument || recursion == self || argument == self) return NULL;
 	const struct pg_term *body = pg_data_match(graph, layout,
 		pg_reference(graph, argument), count, clauses);
 	if (!body) return NULL;

@@ -34,9 +34,12 @@ const struct pg_term *pg_data_match(struct pg_graph *graph, const struct pg_data
  * denote the whole case function. This is Lambda/Application fixed-point
  * encoding, NOT a typing or termination rule. A typed caller must separately
  * establish that its recursive uses are permitted by the declaration.
- * Branches and their captured variables remain ordinary visible Core edges. */
+ * Branches and their captured variables remain ordinary visible Core edges.
+ * The caller owns all three distinct binders; argument/self must not capture
+ * branch variables. No implicit binder allocation occurs in this builder. */
 const struct pg_term *pg_data_recursive_match(struct pg_graph *graph,
 	const struct pg_data_layout *layout, const struct pg_object *recursion,
+	const struct pg_object *argument, const struct pg_object *self,
 	const struct pg_term *scrutinee, size_t count, const struct pg_match_clause *clauses);
 int pg_data_dispatch(struct pg_eval *machine);
 /* Fixed one-direction action on an erased matcher and any supplied prefix.
