@@ -106,10 +106,12 @@ struct pg_nf_job {
  * The job storage must outlive work; work destroys its machine/readback. */
 int pg_whnf_job_attach(struct pg_whnf_work *work, struct pg_whnf_job *job);
 
-/* Rebuild one NF phase from already justified head/child reductions. This
- * checks congruence endpoints and policy, not the validity of imported leaves.
+/* Rebuild one NF phase from already justified head/child reductions and an
+ * already checked predecessor. Checks congruence, sequence and policy, not
+ * the validity of imported leaves.
  * No children means a head-only phase; that alone does not establish NF. */
 const struct pg_term *pg_reduction_phase_rebuild(struct pg_graph *graph,
+	const struct pg_reduction_phase *previous,
 	const struct pg_reduction_certificate *head,
 	const struct pg_reduction_certificate *left, const struct pg_reduction_certificate *right);
 

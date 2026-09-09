@@ -691,10 +691,15 @@ static int nf_premise(const struct pg_reduction_certificate *child, const struct
 }
 
 const struct pg_term *pg_reduction_phase_rebuild(struct pg_graph *graph,
+	const struct pg_reduction_phase *previous,
 	const struct pg_reduction_certificate *head,
 	const struct pg_reduction_certificate *left, const struct pg_reduction_certificate *right)
 {
 	if (!head || head->kind != PG_REDUCTION_WHNF || !head->policy || !head->source || !head->target) return NULL;
+	if (previous) {
+		if (!previous->head || previous->rebuilt != head->source) return NULL;
+		if (previous->head->policy != head->policy) return NULL;
+	}
 	const struct pg_term *body = head->target;
 	if (!left) return right ? NULL : body;
 	if (!nf_premise(left, head->policy)) return NULL;
@@ -717,7 +722,8 @@ static int nf_phase(struct pg_nf_job *job, int children)
 	if (children)
 		for (size_t i = 0; i < 2; ++i)
 			if (job->children[i]) result.children[i] = pg_nf_certificate(job->children[i]);
-	result.rebuilt = pg_reduction_phase_rebuild(job->request.work->graph, result.head, result.children[0], result.children[1]);
+	result.rebuilt = pg_reduction_phase_rebuild(job->request.work->graph, result.previous,
+		result.head, result.children[0], result.children[1]);
 	if (!result.rebuilt) return -1;
 	struct pg_reduction_phase *phase = pg_alloc(job->request.work->graph, sizeof(*phase));
 	if (!phase) return -1;

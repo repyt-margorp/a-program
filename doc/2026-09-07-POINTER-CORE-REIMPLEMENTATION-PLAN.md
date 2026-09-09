@@ -692,6 +692,16 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   wrong endpoint, policy, kind and child arity; the existing independent NF
   dependency assertions remain. Normal and ASan/UBSan `core_test`, plus
   `check check-prepared-modules` (758 module boundaries), pass.
+- [x] Connect NF predecessor checking to that same reconstruction rule:
+  the previous rebuilt Term must be the next WHNF input, with unchanged policy.
+  The actual executor and APGRCP2 reader both use it. The reader checks phases
+  during its existing dependency-ordered endpoint restoration, without a second
+  traversal or repeated predecessor scans. Wrong rebuilt Terms, disconnected
+  predecessors, changed policies and right-only children are rejected by new
+  archive tests. Normal `check check-prepared-modules` (758 boundaries) and
+  ASan/UBSan `check-identity-io` pass. No wire layout or Core tag changed.
+  Local phase consistency is not WHNF leaf validation, a proof of final NF,
+  or authority to publish imported receipts into the accepted work store.
 - [ ] Validate retained derivations before any archive root can be published
   as accepted reduction evidence. Connect pending NF jobs and shared
   WHNF/NF jobs to this record ownership, then to source CHECKPOINT. None of

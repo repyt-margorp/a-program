@@ -2278,6 +2278,25 @@ static void reduction_records(void)
 	assert(!pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &phase_only));
 	assert(!phase_only->count && phase_only->phase_count == 1 && phase_only->phases[0]->children[0]);
 	assert(!fclose(file));
+	/* Raw writing does not certify local phase equations; reading checks the
+	 * same reconstruction rule as the executor before exposing an archive. */
+	for (unsigned kind = 0; kind < 4; ++kind) {
+		struct pg_reduction_phase invalid = *archive->phases[0];
+		struct pg_reduction_certificate head = *invalid.head;
+		invalid.head = &head;
+		switch (kind) {
+		case 0: invalid.rebuilt = archive->roots[4]->target; break;
+		case 1: invalid.previous = archive->phases[2]; break;
+		case 2: head.policy = &pg_beta_policy; break;
+		case 3: invalid.children[1] = invalid.children[0]; invalid.children[0] = NULL; break;
+		}
+		const struct pg_reduction_phase *root = &invalid;
+		file = tmpfile();
+		assert(file && !pg_reduction_records_write(file, 0, NULL, 1, &root, &pg_builtin_graph_codec, NULL));
+		rewind(file);
+		assert(pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &phase_only) && !phase_only);
+		assert(!fclose(file));
+	}
 	/* Root counts cannot reinterpret a certificate root as a phase root. */
 	file = tmpfile();
 	assert(file && !pg_reduction_archive_write(file, archive, &pg_builtin_graph_codec, NULL));

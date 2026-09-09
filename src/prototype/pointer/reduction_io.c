@@ -200,9 +200,14 @@ int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit,
 	const struct pg_term *const *terms;
 	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &n, &terms) || n != term_count) goto done;
 	n = 0;
+	/* Dependency order supplies each phase's endpoints before reconstruction.
+	 * This checks local congruence, not the truth of the WHNF leaf claims. */
 	for (size_t i = 0; i < count; ++i) {
-		if (kinds[i]) ((struct pg_reduction_phase *)records[i])->rebuilt = terms[n++];
-		else {
+		if (kinds[i]) {
+			struct pg_reduction_phase *p = records[i];
+			p->rebuilt = terms[n++];
+			if (pg_reduction_phase_rebuild(output, p->previous, p->head, p->children[0], p->children[1]) != p->rebuilt) goto done;
+		} else {
 			struct pg_reduction_certificate *c = records[i];
 			c->source = terms[n++]; c->target = terms[n++];
 		}
