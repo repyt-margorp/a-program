@@ -432,18 +432,88 @@ static void annotation_sources(FILE *file, int writing, uint64_t chunk)
 	pg_program_destroy(p);
 }
 
+static void module_annotation_sources(FILE *file, int writing, uint64_t chunk, int settled)
+{
+	const char *sources[] = {
+		"id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A;",
+		"id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A; bad:=missing;",
+		"id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A; a:=b; b:=a;",
+		"id:=&(\\A:@ => \\x:A => x); id::@;"
+	};
+	struct pg_program *p;
+	struct pg_synthesis_job *selected[12];
+	struct pg_synthesis_job *const *roots = selected;
+	size_t count = 12;
+	if (writing) {
+		p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+		assert(p);
+		for (size_t i = 0; i < 4; ++i) {
+			selected[3 * i] = parse(p, p->scope, sources[i]);
+			const struct pg_syntax_item *item;
+			struct pg_synthesis_job *check = NULL;
+			while (!check) {
+				assert(p->synthesis.ready && p->synthesis.steps < 10000);
+				pg_synthesis_advance(&p->synthesis, 1);
+				assert(pg_synthesis_definition_entry(selected[3 * i], 1, &item, &check) == 1);
+			}
+			assert(item->operation == PG_TOKEN_EXPECT);
+			selected[3 * i + 1] = check;
+			assert(pg_synthesis_definition_entry(selected[3 * i], 0, &item, &selected[3 * i + 2]) == 1);
+			assert(selected[3 * i + 2]);
+		}
+		if (settled) {
+			while (p->synthesis.ready) {
+				assert(p->synthesis.steps < 20000);
+				pg_synthesis_advance(&p->synthesis, chunk);
+			}
+		}
+		uint64_t steps = p->synthesis.steps;
+		assert(!pg_sources_write(file, &p->synthesis, count, roots));
+		assert(p->synthesis.steps == steps);
+	} else {
+		p = pg_sources_read(file, 20000, &count, &roots);
+		assert(p && count == 12 && !p->synthesis.steps);
+		FILE *pending = tmpfile();
+		assert(pending && !pg_sources_write(pending, &p->synthesis, count, roots));
+		pg_program_destroy(p);
+		rewind(pending);
+		p = pg_sources_read(pending, 20000, &count, &roots);
+		assert(p && count == 12 && !p->synthesis.steps);
+		assert(!fclose(pending));
+		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
+		while (p->synthesis.ready) { assert(p->synthesis.steps < 20000); pg_synthesis_advance(&p->synthesis, chunk); }
+		const enum pg_synthesis_status status[] = {PG_SYNTHESIS_DONE, PG_SYNTHESIS_REJECTED, PG_SYNTHESIS_PENDING, PG_SYNTHESIS_REJECTED};
+		for (size_t i = 0; i < 4; ++i) {
+			assert(pg_synthesis_status(roots[3 * i]) == status[i]);
+			assert(pg_synthesis_status(roots[3 * i + 1]) == (i == 3 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+			assert(pg_synthesis_status(roots[3 * i + 2]) == PG_SYNTHESIS_DONE);
+			const struct pg_syntax_item *item;
+			struct pg_synthesis_job *check, *definition;
+			assert(pg_synthesis_definition_entry(roots[3 * i], 1, &item, &check) == 1);
+			assert(pg_synthesis_definition_entry(roots[3 * i], 0, &item, &definition) == 1);
+			assert(check == roots[3 * i + 1] && definition == roots[3 * i + 2]);
+		}
+		puts("source image: restored module obligations reuse prepared producers without hiding rejected or cyclic siblings");
+	}
+	pg_program_destroy(p);
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
 	int origins = !strncmp(argv[1], "origin-", 7);
 	int annotations = !strncmp(argv[1], "annotation-", 11);
+	int module_annotations = !strncmp(argv[1], "module-annotation-", 18);
+	int settled = !strcmp(argv[1], "module-annotation-write-settled");
 	int functions = !strncmp(argv[1], "function-", 9);
 	int nominal = origins || !strncmp(argv[1], "nominal-", 8);
-	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "nominal-write") || !strcmp(argv[1], "origin-write") || !strcmp(argv[1], "function-write") || !strcmp(argv[1], "annotation-write");
+	int writing = !strcmp(argv[1], "write") || !strcmp(argv[1], "nominal-write") || !strcmp(argv[1], "origin-write") || !strcmp(argv[1], "function-write") || !strcmp(argv[1], "annotation-write") || !strcmp(argv[1], "module-annotation-write");
+	if (settled) writing = 1;
 	if (writing) { definition_boundaries(); rule_environments(); parameter_origins(); }
 	FILE *file = fopen(argv[2], writing ? "w+b" : "rb");
 	assert(file);
-	if (annotations) annotation_sources(file, writing, !strcmp(argv[1], "annotation-read-bulk") ? 64 : 1);
+	if (module_annotations) module_annotation_sources(file, writing, !strcmp(argv[1], "module-annotation-read-bulk") ? 64 : 1, settled);
+	else if (annotations) annotation_sources(file, writing, !strcmp(argv[1], "annotation-read-bulk") ? 64 : 1);
 	else if (functions) function_origins(file, writing);
 	else if (nominal) nominal_sources(file, writing, !strcmp(argv[1], "nominal-read-bulk") ? 64 : 1, origins);
 	else if (writing) write_sources(file);

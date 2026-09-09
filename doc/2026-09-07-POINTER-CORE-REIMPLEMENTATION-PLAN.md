@@ -74,6 +74,14 @@ producer fields. Old version-6 headers reject explicitly.
 - [x] Fresh-process read and unsolved resave at budgets 1/64; wrong target
   rejects through ordinary Solve while valid siblings remain accepted.
 - [x] Reject cyclic, incomplete and mixed annotation records before Solve.
+- [x] Round-trip actual module-generated annotation producers, not only manually
+  assembled expectations. Restore the module, its definition and its annotation
+  as selected roots; registration must recover the exact same producer pointers.
+  Cover valid modules, rejected unrelated definitions, cyclic siblings and an
+  incorrect annotation. Save both after registration and after draining ready
+  work, resave without Solve in a fresh process, then advance in chunks 1/64.
+  Loading supplies no root evidence; accepted/rejected/pending outcomes are
+  recovered through ordinary Solve, not serialized acceptance flags.
 - [ ] Generalize lexical named-producer environments and remaining preparation
   kinds; unsupported export cases must still fail explicitly.
 - [ ] Preserve complete module preparation and retained normalization work.
@@ -86,6 +94,14 @@ Validation: `check`, `check-examples`, `check-example-results`, and
 `check-image-origins` pass. Rebuilt ASan/UBSan `source_io_test` passes the
 fresh-process source-image suite, including malformed annotation edges. The
 open-family/full-language gate is still incomplete; no Main promotion follows.
+
+Follow-up to `dd29ede`: the module cases above pass in the normal and rebuilt
+ASan/UBSan source-image suites. `check`, `check-examples` (8 source checks),
+`check-example-results` (6 execution fixtures at two budgets), and
+`check-image-origins` pass. `check-open-families` was rerun and still reports
+`unsupported steps=209`. This change adds regression tests, not a Replay engine
+or retention of solved source results. No claim of complete CHECKPOINT follows
+from reconstituting the same immutable input producers.
 
 Follow-up after `d539c07`: `pg_synthesis_source_expect` is now the common
 scope/term-producer/type-producer factory for expression annotations, module
