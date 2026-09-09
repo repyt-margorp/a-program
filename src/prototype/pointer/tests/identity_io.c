@@ -1344,20 +1344,27 @@ static void prefix_progress(int framed)
 struct higher_codec {
 	struct pg_graph *arena;
 	struct higher_scope_work *work;
+	struct action_scope *scopes[4];
 };
 
 static int write_higher(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
 {
 	struct higher_codec *context = opaque;
-	return pg_higher_scope_write(file, context->work, count, roots, &pg_builtin_graph_codec, NULL);
+	return pg_higher_scope_write(file, context->work, 4, (const struct action_scope *const *)context->scopes,
+		count, roots, &pg_builtin_graph_codec, NULL);
 }
 
 static int read_higher(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
 	size_t *count, const struct pg_term *const **roots, void *opaque)
 {
 	struct higher_codec *context = opaque;
-	return pg_higher_scope_read(file, context->arena, graph, limit, name_limit,
-		&pg_builtin_graph_codec, NULL, &context->work, count, roots);
+	size_t scope_count;
+	struct action_scope *const *scopes;
+	if (pg_higher_scope_read(file, context->arena, graph, limit, name_limit,
+		&pg_builtin_graph_codec, NULL, &context->work, &scope_count, &scopes, count, roots)) return -1;
+	if (scope_count != 4) return -1;
+	for (size_t i = 0; i < 4; ++i) context->scopes[i] = scopes[i];
+	return 0;
 }
 
 static void higher_progress(void)
@@ -1382,7 +1389,18 @@ static void higher_progress(void)
 		}
 		if (machine.task && machine.task->operation == &pg_higher_scope_operation) {
 			assert(!machine.frames);
-			struct higher_codec context = {&arena, machine.task->state};
+			struct higher_codec context = {.arena = &arena, .work = machine.task->state};
+			struct action_scope scope = {.source = context.work->source, .body = context.work->cursor};
+			struct action_binding binding = {0};
+			size_t kept = context.work->wrapping ? context.work->arity : context.work->position;
+			if (kept) {
+				binding.source = context.work->binders[0];
+				scope.count = 1;
+				scope.bindings = &binding;
+			}
+			struct action_scope distinct = scope;
+			context.scopes[0] = context.scopes[2] = &scope;
+			context.scopes[1] = &distinct;
 			unsigned phase = !context.work->body ? (unsigned)context.work->collecting : 2u + (unsigned)context.work->wrapping;
 			phases |= 1u << phase;
 			if (!phase && context.work->arity == 1) {
@@ -1390,14 +1408,17 @@ static void higher_progress(void)
 				const uint64_t invalid[] = {0, UINT64_MAX, 8};
 				for (size_t i = 0; i < 3; ++i) {
 					FILE *bad = tmpfile();
-					assert(bad && !pg_higher_scope_write(bad, context.work, 0, NULL, &pg_builtin_graph_codec, NULL));
+					assert(bad && !pg_higher_scope_write(bad, context.work, 0, NULL, 0, NULL, &pg_builtin_graph_codec, NULL));
 					assert(!fseek(bad, offsets[i], SEEK_SET) && !pg_wire_write_u64(bad, invalid[i]));
 					rewind(bad);
 					struct higher_scope_work *rejected;
 					size_t n;
+					size_t scope_count;
+					struct action_scope *const *scopes;
 					const struct pg_term *const *unused;
-					assert(pg_higher_scope_read(bad, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &rejected, &n, &unused));
-					assert(!rejected && !n && !unused && !fclose(bad));
+					assert(pg_higher_scope_read(bad, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL,
+						&rejected, &scope_count, &scopes, &n, &unused));
+					assert(!rejected && !scope_count && !scopes && !n && !unused && !fclose(bad));
 				}
 			}
 			for (unsigned round = 0; round < 2; ++round) {
@@ -1416,6 +1437,12 @@ static void higher_progress(void)
 				assert(!pg_eval_configurations_read_with(file, &graph, 10000, 100, &n, &restored, read_higher, &context));
 				assert(n == 2 && !fclose(file));
 				assert(context.work->source == restored[0].arguments->value.term);
+				assert(context.scopes[0] == context.scopes[2] && !context.scopes[3]);
+				assert(context.scopes[0] != context.scopes[1]);
+				assert(context.scopes[0]->source == context.work->source);
+				assert(context.scopes[0]->body == context.work->cursor);
+				assert(context.scopes[0]->bindings == context.scopes[1]->bindings);
+				if (kept) assert(context.scopes[0]->bindings[0].source == context.work->binders[0]);
 				value = restored[1].head.term;
 				pg_computation_eval_init(&machine, &graph, restored[0].head.term);
 				machine.current = restored[0].head;

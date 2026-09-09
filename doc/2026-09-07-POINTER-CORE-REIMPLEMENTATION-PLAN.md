@@ -724,7 +724,7 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   checkpoint loader. Normal/ASan/UBSan component tests and
   `check check-prepared-modules` pass.
 
-- [x] Retain raw higher-scope construction (`APGHSC1`) using the existing
+- [x] Retain raw higher-scope construction (`APGHSC2`, originally `APGHSC1`) using the existing
   `higher_scope_work` and original work descriptor. Preserve source/cursor,
   optional partial body, arity, Lambda count, position, collection/wrapping
   flags and all generated binders (including those already wrapped). Extra
@@ -735,6 +735,18 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   position and flags clear output handles. This is raw task transport, not
   proof of its partial computation or whole-machine admission. Normal/ASan/UBSan
   component tests and `check check-prepared-modules` pass.
+- [x] Include additional frame-scope roots through the existing APGISC3 owner
+  inside APGHSC2, replacing the standalone terminal Term table. Migrate the
+  internal callers rather than keeping a second format implementation. Extend
+  all higher-scope task cuts with repeated/distinct/null scope roots, shared
+  binding storage and references to generated binders. After two destroying
+  resaves, check exact aliases, source/cursor sharing and unchanged evaluation.
+  This experimental format revision does not assert stable artifact compatibility.
+  Verification: `check check-prepared-modules` and ASan/UBSan
+  `check-identity-io check-eval-io` pass with the shared-scope cases.
+- [ ] Integrate higher-scope ownership into production whole-machine dispatch.
+  These tests still supply the surrounding machine flags and work descriptor;
+  they do not establish CHECKPOINT acceptance or retained-progress provenance.
 - [x] Extend the same ownership table with the evaluator's optional live
   `action_result_work` (`APGISC3`), not a second binding codec or fictitious
   scope. Retain partial result, remaining/discard counts and the exact array

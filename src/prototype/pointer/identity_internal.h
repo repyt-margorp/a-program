@@ -184,14 +184,17 @@ struct higher_scope_work {
 	int wrapping, collecting;
 };
 extern const struct pg_eval_work_operation pg_higher_scope_operation;
-/* Raw higher-scope progress, not an admitted Identity derivation. Extra roots
- * share one Term table. Restore actual work into arena/output, then use the
+/* Raw higher-scope progress, not an admitted Identity derivation. Extra scopes
+ * and Term roots share the existing scope/Term ownership tables. Restore
+ * actual work into arena/output, then use the
  * original descriptor; reading neither analyzes scope nor creates binders. */
 int pg_higher_scope_write(FILE *file, const struct higher_scope_work *work,
+	size_t scope_count, const struct action_scope *const *scopes,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
 int pg_higher_scope_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
-	struct higher_scope_work **work, size_t *count, const struct pg_term *const **roots);
+	struct higher_scope_work **work, size_t *scope_count, struct action_scope *const **scopes,
+	size_t *count, const struct pg_term *const **roots);
 int pg_identity_continuation_uses_scope(const struct pg_eval_continuation *continuation);
 
 /* Raw scope ownership, including unallocated/partially prepared bindings.
