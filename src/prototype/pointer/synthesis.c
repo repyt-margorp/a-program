@@ -1456,6 +1456,27 @@ struct pg_synthesis_job *pg_synthesis_constructor_scope_at(struct pg_synthesis *
 	return job;
 }
 
+struct pg_synthesis_job *pg_synthesis_constructor_value(struct pg_synthesis *synthesis,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters)
+{
+	if (!pg_evidence_owned_by(formation, synthesis->typing)) return NULL;
+	if (!pg_evidence_owned_by(parameters, synthesis->typing) || !constructor) return NULL;
+	const void *inputs[] = {formation, constructor, parameters};
+	return request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs);
+}
+
+struct pg_synthesis_job *pg_synthesis_constructor_value_at(struct pg_synthesis *synthesis,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters, const struct pg_context *prefix, const struct pg_context *end)
+{
+	struct pg_synthesis_job *scope = pg_synthesis_constructor_scope_at(synthesis,
+		pg_synthesis_evidence(synthesis, formation), constructor,
+		pg_synthesis_evidence(synthesis, parameters), prefix, end);
+	if (!scope) return NULL;
+	return pg_synthesis_constructor_value(synthesis, formation, constructor, parameters);
+}
+
 struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation, const struct pg_object *constructor,
 	struct pg_synthesis_job *parameters, struct pg_synthesis_job *motive_context,
@@ -2275,8 +2296,8 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 		struct source_reference member = lookup_scope(origin->exports, token);
 		if (!member.producer) return PG_SYNTHESIS_REJECTED;
 		if (member.producer->role != CONSTRUCTOR_VALUE_JOB) return PG_SYNTHESIS_UNSUPPORTED;
-		const void *inputs[] = {instance.formation, member.producer->inputs[1], instance.parameters};
-		*reference = (struct source_reference){.producer = request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs)};
+		*reference = (struct source_reference){.producer = pg_synthesis_constructor_value(synthesis,
+			instance.formation, member.producer->inputs[1], instance.parameters)};
 		return reference->producer ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR;
 	}
 	/* Nominal members require a typed declaration, never an older namespace. */
@@ -3125,8 +3146,8 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	for (size_t i = 0; job->exports && i < constructors->item_count; ++i) {
 		const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing,
 			source_context(job->scope), source_context(job->scope));
-		const void *inputs[] = {job->result, pg_data_constructor(pg_data_schema_layout(schema), i), parameters};
-		struct pg_synthesis_job *member = request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs);
+		struct pg_synthesis_job *member = pg_synthesis_constructor_value(synthesis,
+			job->result, pg_data_constructor(pg_data_schema_layout(schema), i), parameters);
 		job->exports = pg_synthesis_name_job(synthesis, job->exports, constructors->items[i].name, member);
 	}
 	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, job->result);

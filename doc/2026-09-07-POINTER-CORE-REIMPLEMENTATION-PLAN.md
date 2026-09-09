@@ -866,6 +866,18 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   share that context. Verify both direct and instantiated member paths, inert
   resaving and scheduler-budget independence. The separate source Match/IH
   allocation connection remains required even after constructor restoration.
+- [x] Route declaration exports and instantiated members through
+  `pg_synthesis_constructor_value`. Its `_at` entry attaches the existing
+  field-scope allocation before that scope executes; both entries return the
+  original `CONSTRUCTOR_VALUE_JOB`, with no new Core form or proof rule.
+  Tests register allocation before/after requesting the pending member, check
+  exact Lambda/RETURN/constructor Core and classifier binders, recompute bogus
+  retained field types, reject count/prefix/conflicting/late allocations, and
+  keep nullary members as values. Full synthesis tests pass normally and under
+  ASan/UBSan; normalization and all 758 prepared-module snapshots also pass.
+  Source-image transport does not yet encode these owner inputs. The normal
+  source-image gate still reports the same four constructor/Match failures;
+  this API integration does not close that remaining requirement.
 - [x] Add `pg_synthesis_constructor_scope_at` as allocation input to the same
   constructor-scope job, not another synthesis rule. Share the existing
   telescope binder-list storage/attachment helper (`context_allocation`). The

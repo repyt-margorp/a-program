@@ -5053,6 +5053,13 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 		const struct pg_context *end = mode == 1 ? pg_evidence_context(wrong_field) : saved_fields;
 		const struct pg_context *prefix = mode == 3 ? saved_fields : NULL;
 		if (mode == 2) end = NULL;
+		struct pg_synthesis_job *member = mode == 1
+			? pg_synthesis_constructor_value_at(&restored, admitted, successor, parameter_map, prefix, end)
+			: pg_synthesis_constructor_value(&restored, admitted, successor, parameter_map);
+		assert(member && !pg_synthesis_result(member));
+		assert(pg_synthesis_constructor_value(&restored, admitted, successor, parameter_map) == member);
+		assert(pg_synthesis_constructor_value_at(&restored, admitted, successor,
+			parameter_map, prefix, end) == member);
 		struct pg_synthesis_job *restored_scope = pg_synthesis_constructor_scope_at(&restored,
 			f, successor, p, prefix, end);
 		assert(restored_scope && !pg_synthesis_result(restored_scope));
@@ -5060,6 +5067,8 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 		assert(pg_synthesis_constructor_scope_at(&restored, f, successor, p, prefix, end) == restored_scope);
 		assert(!pg_synthesis_constructor_scope_at(&restored, f, successor, p, NULL,
 			end ? NULL : saved_fields));
+		assert(!pg_synthesis_constructor_value_at(&restored, admitted, successor, parameter_map,
+			NULL, end ? NULL : saved_fields));
 		const struct pg_evidence *result = complete(&restored, restored_scope,
 			mode < 2 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
 		if (mode < 2) {
@@ -5069,6 +5078,22 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 				assert(pg_evidence_subject(pg_evidence_premise(result, i))->core ==
 					pg_evidence_subject(pg_evidence_premise(saved_map, i))->core);
 		} else assert(!result);
+		const struct pg_evidence *value = complete(&restored, member,
+			mode < 2 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+		if (mode < 2) {
+			const struct pg_term *field = pg_reference(typing->graph, saved_fields->binder);
+			const struct pg_term *constructed = pg_application(typing->graph,
+				pg_reference(typing->graph, successor), field);
+			const struct pg_term *returned = pg_application(typing->graph,
+				pg_reference(typing->graph, &pg_return_operation), constructed);
+			assert(pg_evidence_subject(value)->core == pg_lambda(typing->graph, saved_fields->binder, returned));
+			const struct pg_term *domain, *codomain;
+			const struct pg_object *binder;
+			assert(pg_pi_view(pg_evidence_classifier(value), &domain, &binder, &codomain));
+			assert(binder == saved_fields->binder && domain == pg_evidence_subject(admitted)->core);
+			assert(codomain == pg_return_type(classifiers, domain));
+			assert(pg_synthesis_constructor_value(&restored, admitted, successor, parameter_map) == member);
+		} else assert(!value);
 		pg_synthesis_destroy(&restored);
 	}
 	struct pg_synthesis_job *ordinary_scope = pg_synthesis_constructor_scope(&synthesis,
@@ -5077,6 +5102,14 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	assert(ordinary_map && !pg_synthesis_constructor_scope_at(&synthesis,
 		pg_synthesis_evidence(&synthesis, admitted), successor, pg_synthesis_evidence(&synthesis, parameter_map),
 		NULL, pg_evidence_context(pg_evidence_premise(ordinary_map, 1))));
+	assert(!pg_synthesis_constructor_value_at(&synthesis, admitted, successor, parameter_map,
+		NULL, saved_fields));
+	const struct pg_evidence *nullary = complete(&synthesis,
+		pg_synthesis_constructor_value_at(&synthesis, admitted,
+			pg_data_constructor(pg_data_schema_layout(conditional_schema), 0), parameter_map, NULL, NULL),
+		PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(nullary)->core == pg_evidence_subject(zero_value)->core);
+	assert(pg_evidence_judgement(nullary) == PG_JUDGEMENT_VALUE);
 	nat_scope = pg_synthesis_name(&synthesis, nat_scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "succ", .length = 4}, succ_function);
 	assert(nat_scope);

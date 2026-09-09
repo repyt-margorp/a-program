@@ -605,6 +605,15 @@ struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *syn
 struct pg_synthesis_job *pg_synthesis_constructor_scope_at(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation, const struct pg_object *constructor,
 	struct pg_synthesis_job *parameters, const struct pg_context *prefix, const struct pg_context *end);
+/* Constructor namespace members share this owner: formation, constructor and
+ * parameter substitution. Nullary members are values, others raw functions.
+ * The allocation variant seeds the same field-scope job before it runs. */
+struct pg_synthesis_job *pg_synthesis_constructor_value(struct pg_synthesis *synthesis,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters);
+struct pg_synthesis_job *pg_synthesis_constructor_value_at(struct pg_synthesis *synthesis,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters, const struct pg_context *prefix, const struct pg_context *end);
 /* Extend the shared field scope with thunked motives for direct recursive
  * fields. Input producers must ultimately justify the same nominal family. */
 struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
