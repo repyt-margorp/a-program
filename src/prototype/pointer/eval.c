@@ -3,14 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-struct materialization {
-	struct readback_context readback;
-	struct readback_entry *entry;
-	const struct pg_argument *remaining;
-	const struct pg_term *partial;
-	int done;
-};
-
 struct pg_eval_frame {
 	struct pg_closure caller;
 	const struct pg_argument *arguments;
@@ -26,9 +18,6 @@ struct pg_eval_frame {
 
 static const struct pg_term *readback(struct pg_closure closure,
 	const struct pg_argument *arguments, struct pg_graph *graph);
-static int materialize_step(struct materialization *work, struct pg_graph *graph,
-	struct pg_closure closure, const struct pg_argument *arguments);
-static void materialize_destroy(struct materialization *work);
 
 const struct pg_closure *pg_eval_next_argument(const struct pg_argument **cursor)
 {
@@ -102,7 +91,7 @@ static int resume_frame(struct pg_eval *machine)
 {
 	struct pg_eval_frame *frame = machine->frames;
 	if (!frame->answer.done) {
-		int status = materialize_step(&frame->answer, machine->output, machine->current, machine->arguments);
+		int status = pg_materialize_step(&frame->answer, machine->output, machine->current, machine->arguments);
 		return status < 0 ? -1 : 0;
 	}
 	const struct pg_term *answer = frame->answer.partial;
@@ -124,7 +113,7 @@ static int resume_frame(struct pg_eval *machine)
 	machine->arguments = arguments;
 	machine->frames = frame->parent;
 	machine->head_ready = 0;
-	materialize_destroy(&frame->answer);
+	pg_materialize_destroy(&frame->answer);
 	return frame->resume(machine, answer, frame->state);
 }
 
@@ -329,7 +318,7 @@ static int reify_advance(struct readback_context *context, uint64_t budget)
 	return context->pending ? 0 : 1;
 }
 
-static int materialize_step(struct materialization *work, struct pg_graph *graph,
+int pg_materialize_step(struct materialization *work, struct pg_graph *graph,
 	struct pg_closure closure, const struct pg_argument *arguments)
 {
 	if (work->done) return 1;
@@ -357,10 +346,16 @@ static int materialize_step(struct materialization *work, struct pg_graph *graph
 	return 1;
 }
 
-static void materialize_destroy(struct materialization *work)
+void pg_readback_destroy(struct readback_context *context)
 {
-	pg_index_destroy(&work->readback.results);
-	pg_graph_destroy(&work->readback.temporary);
+	pg_index_destroy(&context->results);
+	pg_graph_destroy(&context->temporary);
+	memset(context, 0, sizeof(*context));
+}
+
+void pg_materialize_destroy(struct materialization *work)
+{
+	pg_readback_destroy(&work->readback);
 	memset(work, 0, sizeof(*work));
 }
 
@@ -369,9 +364,9 @@ static const struct pg_term *readback(struct pg_closure closure,
 {
 	struct materialization work = {0};
 	int status;
-	do { status = materialize_step(&work, graph, closure, arguments); } while (!status);
+	do { status = pg_materialize_step(&work, graph, closure, arguments); } while (!status);
 	const struct pg_term *result = status > 0 ? work.partial : NULL;
-	materialize_destroy(&work);
+	pg_materialize_destroy(&work);
 	return result;
 }
 
@@ -427,8 +422,7 @@ failure:
 void pg_substitution_destroy(struct pg_substitution *work)
 {
 	if (!work->state) return;
-	pg_index_destroy(&work->state->context.results);
-	pg_graph_destroy(&work->state->context.temporary);
+	pg_readback_destroy(&work->state->context);
 	free(work->state);
 	work->state = NULL;
 }
@@ -477,7 +471,7 @@ void pg_eval_destroy(struct pg_eval *machine)
 {
 	if (machine->task) machine->task->operation->destroy(machine->task->state);
 	for (struct pg_eval_frame *frame = machine->frames; frame; frame = frame->parent)
-		materialize_destroy(&frame->answer);
+		pg_materialize_destroy(&frame->answer);
 	pg_graph_destroy(&machine->temporary);
 	memset(machine, 0, sizeof(*machine));
 }
@@ -536,7 +530,7 @@ void pg_whnf_work_destroy(struct pg_whnf_work *work)
 	for (size_t i = 0; i < work->jobs.capacity; ++i) {
 		for (struct pg_index_entry *entry = work->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_whnf_job *job = (struct pg_whnf_job *)entry;
-			materialize_destroy(&job->output);
+			pg_materialize_destroy(&job->output);
 			pg_eval_destroy(&job->machine);
 		}
 	}
@@ -588,7 +582,7 @@ static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 		if (pg_eval_advance(&job->machine, 1) == PG_EVAL_ERROR) return PG_EVAL_ERROR;
 		return PG_EVAL_PENDING;
 	}
-	int status = materialize_step(&job->output, job->work->graph, job->machine.current, job->machine.arguments);
+	int status = pg_materialize_step(&job->output, job->work->graph, job->machine.current, job->machine.arguments);
 	if (status < 0) return PG_EVAL_ERROR;
 	if (!status) return PG_EVAL_PENDING;
 	const struct pg_reduction_certificate *certificate = reduction_certificate(job->work->graph,
@@ -603,13 +597,13 @@ static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 			certificate->target, certificate->target, job->policy, PG_REDUCTION_WHNF);
 		if (!reflexive) return PG_EVAL_ERROR;
 		reflexive->normality = certificate;
-		materialize_destroy(&canonical->output);
+		pg_materialize_destroy(&canonical->output);
 		pg_eval_destroy(&canonical->machine);
 		canonical->certificate = reflexive;
 		canonical->status = PG_EVAL_WHNF;
 	}
 	job->certificate = certificate;
-	materialize_destroy(&job->output);
+	pg_materialize_destroy(&job->output);
 	pg_graph_destroy(&job->machine.temporary);
 	job->machine.current = (struct pg_closure){certificate->target, NULL};
 	job->machine.arguments = NULL;

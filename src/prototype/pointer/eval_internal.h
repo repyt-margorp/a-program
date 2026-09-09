@@ -25,8 +25,19 @@ struct pg_substitution_state {
 	struct readback_entry *root;
 	enum pg_substitution_status status;
 };
+struct materialization {
+	struct readback_context readback;
+	struct readback_entry *entry;
+	const struct pg_argument *remaining;
+	const struct pg_term *partial;
+	int done;
+};
 
 /* Index maintenance only. Does not establish the validity of saved results. */
 int pg_readback_index(struct readback_context *context, struct readback_entry *entry);
+void pg_readback_destroy(struct readback_context *context);
+int pg_materialize_step(struct materialization *work, struct pg_graph *graph,
+	struct pg_closure closure, const struct pg_argument *arguments);
+void pg_materialize_destroy(struct materialization *work);
 
 #endif

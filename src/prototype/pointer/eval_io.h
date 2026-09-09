@@ -34,4 +34,13 @@ int pg_substitution_read(FILE *file, struct pg_graph *graph, size_t limit,
 	size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	struct pg_substitution *work);
 
+struct materialization;
+/* Internal materialization state and its initial configuration use one shared
+ * relocation table. The same raw-work/provenance restriction applies. */
+int pg_materialization_write(FILE *file, const struct materialization *work,
+	const struct pg_eval_configuration *input, const struct pg_graph_codec *codec, void *owner);
+int pg_materialization_read(FILE *file, struct pg_graph *graph, size_t limit,
+	size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct materialization *work, struct pg_eval_configuration *input);
+
 #endif

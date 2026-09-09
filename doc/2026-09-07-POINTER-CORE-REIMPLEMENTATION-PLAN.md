@@ -149,7 +149,7 @@ remain required before a completed-checkpoint claim.
   sufficient. `APGCFG1` is a component format, not a new user file extension or
   full `.a` CHECKPOINT. No scheduler, completion flag or policy is restored by
   this component, and it cannot seed a WHNF/NF acceptance cache.
-- [x] Retain standalone substitution work (`APGSUB1`) with the same
+- [x] Retain standalone substitution work (`APGSUB2`, superseding `APGSUB1`) with the same
   `readback_entry`/`readback_context` structures used by the evaluator.
   `eval_internal.h` shares their layout with the codec, rather than defining a
   second readback machine. Save child dependencies, pending order, cursor,
@@ -164,19 +164,39 @@ remain required before a completed-checkpoint claim.
   different graphs. `check check-prepared-modules` and normal/ASan/UBSan
   `check-eval-io` pass. A missing scratch Term-index initialization found by
   these tests was corrected before acceptance of this change.
-- [ ] Generalize this retained readback graph to materialization's multiple
-  roots and partially rebuilt application spine. `APGSUB1` currently restores
-  raw work only, not evidence of its saved results' provenance; neither it nor
-  `APGCFG1` is wired into accepted normalization or full source checkpoints.
+- [x] Generalize retained readback to materialization (`APGMAT1`): preserve
+  the current entry, remaining arguments, partial application spine, charged
+  readback steps and completed cache entries from earlier arguments. Use the
+  same readback codec and evaluator structures as substitution, with one Term
+  relocation table for the work and input. Resume with `pg_materialize_step`,
+  not a second evaluator. Shared readback cleanup also replaces duplicated
+  destruction code. The common header now has state flags; old `APGSUB1` is
+  rejected rather than interpreted as `APGSUB2`.
+- [x] Test every transition boundary of multi-argument materialization, two
+  consecutive saves without execution, a separate writer/reader process,
+  capture avoidance, shared repeated closure results, exact remaining steps,
+  retained cache counts and invalid completion flags. Normal and ASan/UBSan
+  `check-eval-io` pass; `check check-prepared-modules` passes, including 758
+  prepared-module save boundaries. These are component tests, not full source
+  acceptance. Materialization cache-root order is not byte-canonical across
+  processes; graph sharing, results and remaining work are the invariants.
+- [ ] Integrate raw materialization work with whole evaluator/Solve checkpoints,
+  including Demand/deferred continuations and shared cross-component relocation.
+  None of `APGSUB2`, `APGMAT1` or `APGCFG1` establishes the provenance of saved
+  completed results or seeds accepted normalization caches. Import must use the
+  ordinary computation/kernel rules, not introduce a separate Replay verifier.
 - [x] Enforce the complete pending-work partition on substitution import.
   A reproduced missing-parent queue previously reached `DONE` with no root
-  result. The reader now requires every record to be reachable from the root,
+  result. The substitution reader requires every record to be reachable from the root,
   and precisely the unfinished records to occur in dependency order in the
   pending chain. Reverse reachability and chain scans are linear in retained
   records; neither re-evaluates substitution. Regression tests remove a parent,
   remove a child, and select an incomplete reachable subgraph. Valid all-cut
   resumption and ASan/UBSan `check-eval-io` pass. This checks work-graph shape,
   not the semantic provenance of stored completed results.
+  Materialization additionally retains completed entries outside its current
+  root for earlier argument reuse; unfinished entries must still be reachable
+  and occur exactly once in the pending chain.
 
 The callback refactor is not the remaining implementation plan by itself.
 Inspection of the actual work records found the following transitive payloads.

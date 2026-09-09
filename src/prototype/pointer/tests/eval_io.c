@@ -1,4 +1,5 @@
 #include "eval_io.h"
+#include "eval_internal.h"
 #include "wire.h"
 
 #include <assert.h>
@@ -253,7 +254,7 @@ static void substitution_resume(void)
 		pg_substitution_destroy(&work);
 		if (cut == 1) {
 			/* Missing parent, missing child and an unreachable retained node. */
-			const long offsets[] = {80, 24, 16};
+			const long offsets[] = {88, 24, 16};
 			const uint64_t invalid[] = {0, 2, 1};
 			for (size_t i = 0; i < 3; ++i) {
 				uint64_t prior;
@@ -266,7 +267,12 @@ static void substitution_resume(void)
 			}
 		}
 		if (!cut) {
-			const long offsets[] = {24, 40, 64, 80};
+			assert(!fseek(file, 6, SEEK_SET) && fputc(1, file) != EOF);
+			rewind(file);
+			assert(pg_substitution_read(file, &restored, 10000, 100, NULL, NULL, &work));
+			assert(!work.state);
+			assert(!fseek(file, 6, SEEK_SET) && fputc(2, file) != EOF);
+			const long offsets[] = {24, 48, 72, 88};
 			const uint64_t invalid[] = {2, 3, 1, 1};
 			for (size_t i = 0; i < 4; ++i) {
 				uint64_t prior;
@@ -284,6 +290,119 @@ static void substitution_resume(void)
 	pg_graph_destroy(&graph);
 }
 
+static struct pg_eval_configuration materialization_fixture(struct pg_graph *graph)
+{
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x), *vy = pg_reference(graph, y);
+	struct pg_environment *environment = pg_alloc(graph, sizeof(*environment));
+	struct pg_argument *arguments = pg_alloc(graph, 2 * sizeof(*arguments));
+	assert(environment && arguments);
+	*environment = (struct pg_environment){x, {vy, NULL}, NULL};
+	struct pg_closure head = {pg_lambda(graph, y, vx), environment};
+	arguments[0] = (struct pg_argument){head, &arguments[1]};
+	arguments[1] = (struct pg_argument){{pg_application(graph, vx, vx), environment}, NULL};
+	return (struct pg_eval_configuration){head, arguments};
+}
+
+static size_t finish_materialization(struct materialization *work, struct pg_graph *graph,
+	struct pg_eval_configuration input)
+{
+	size_t steps = 0;
+	int status;
+	do {
+		status = pg_materialize_step(work, graph, input.head, input.arguments);
+		assert(status >= 0 && ++steps < 10000);
+	} while (!status);
+	return steps;
+}
+
+static void write_materialization(FILE *file)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	struct pg_eval_configuration input = materialization_fixture(&graph);
+	struct materialization work = {0};
+	for (size_t i = 0; i < 3; ++i)
+		assert(!pg_materialize_step(&work, &graph, input.head, input.arguments));
+	assert(!pg_materialization_write(file, &work, &input, NULL, NULL));
+	pg_materialize_destroy(&work);
+	pg_graph_destroy(&graph);
+}
+
+static void read_materialization(FILE *file)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	struct pg_eval_configuration input;
+	struct materialization work, baseline = {0};
+	assert(!pg_materialization_read(file, &graph, 10000, 100, NULL, NULL, &work, &input));
+	size_t total = finish_materialization(&baseline, &graph, input);
+	assert(finish_materialization(&work, &graph, input) == total - 3);
+	assert(pg_alpha_equal(work.partial, baseline.partial) == 1);
+	assert(work.readback.results.count == baseline.readback.results.count);
+	pg_materialize_destroy(&work);
+	pg_materialize_destroy(&baseline);
+	pg_graph_destroy(&graph);
+}
+
+static void materialization_resume(void)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	struct pg_eval_configuration original = materialization_fixture(&graph);
+	const struct pg_object *y = original.head.term->as.lambda.binder;
+	struct materialization baseline = {0};
+	size_t steps = finish_materialization(&baseline, &graph, original);
+	for (size_t cut = 0; cut <= steps; ++cut) {
+		struct materialization work = {0};
+		for (size_t i = 0; i < cut; ++i)
+			assert(pg_materialize_step(&work, &graph, original.head, original.arguments) == (i + 1 == steps));
+		FILE *file = tmpfile();
+		assert(file && !pg_materialization_write(file, &work, &original, NULL, NULL));
+		pg_materialize_destroy(&work);
+		struct pg_graph restored;
+		struct pg_eval_configuration input;
+		for (size_t round = 0; round < 2; ++round) {
+			assert(!pg_graph_init(&restored));
+			rewind(file);
+			assert(!pg_materialization_read(file, &restored, 10000, 100, NULL, NULL, &work, &input));
+			assert(!fclose(file));
+			if (!round) {
+				file = tmpfile();
+				assert(file && !pg_materialization_write(file, &work, &input, NULL, NULL));
+				pg_materialize_destroy(&work);
+				pg_graph_destroy(&restored);
+			}
+		}
+		assert(input.head.environment == input.arguments->value.environment);
+		if (cut < 2) {
+			FILE *invalid = tmpfile();
+			assert(invalid && !pg_materialization_write(invalid, &work, &input, NULL, NULL));
+			assert(!fseek(invalid, 40, SEEK_SET) && !pg_wire_write_u64(invalid, cut ? 7 : 2));
+			rewind(invalid);
+			struct materialization rejected;
+			struct pg_eval_configuration ignored;
+			assert(pg_materialization_read(invalid, &restored, 10000, 100, NULL, NULL, &rejected, &ignored));
+			assert(!rejected.entry && !ignored.head.term);
+			assert(!fclose(invalid));
+		}
+		for (size_t i = cut; i < steps; ++i)
+			assert(pg_materialize_step(&work, &restored, input.head, input.arguments) == (i + 1 == steps));
+		assert(work.done && work.partial);
+		const struct pg_term *shared = work.partial->as.application.function;
+		assert(shared->kind == PG_APPLICATION && shared->as.application.function == shared->as.application.argument);
+		assert(work.readback.steps == baseline.readback.steps);
+		assert(work.readback.results.count == baseline.readback.results.count);
+		struct pg_binding_value correspondence = {y, input.head.environment->value.term};
+		const struct pg_term *expected = pg_term_substitute(&restored, baseline.partial, 1, &correspondence);
+		assert(pg_alpha_equal(work.partial, expected) == 1);
+		pg_materialize_destroy(&work);
+		pg_graph_destroy(&restored);
+	}
+	pg_materialize_destroy(&baseline);
+	pg_graph_destroy(&graph);
+}
+
 int main(int argc, char **argv)
 {
 	if (argc == 3) {
@@ -293,7 +412,9 @@ int main(int argc, char **argv)
 		} commands[] = {
 			{"write", "wb", write_fixture}, {"read", "rb", read_fixture},
 			{"write-substitution", "wb", write_substitution},
-			{"read-substitution", "rb", read_substitution}
+			{"read-substitution", "rb", read_substitution},
+			{"write-materialization", "wb", write_materialization},
+			{"read-materialization", "rb", read_materialization}
 		};
 		for (size_t i = 0; i < sizeof(commands) / sizeof(*commands); ++i) {
 			if (strcmp(argv[1], commands[i].name)) continue;
@@ -350,6 +471,7 @@ int main(int argc, char **argv)
 	deep_shared();
 	beta_resume();
 	substitution_resume();
+	materialization_resume();
 	puts("evaluation configuration: captured environments, shared tails, inert resave and lexical relocation passed");
 	return 0;
 }
