@@ -57,13 +57,22 @@ int pg_eval_apply(struct pg_eval *machine, struct pg_closure function,
 	struct pg_closure argument, size_t consume);
 /* State is borrowed until resume or machine destruction; arena storage is
  * suitable. It is not serialized by pending readback. */
+/* One immutable continuation per algorithm. Names are versioned owner-local
+ * identities, not host addresses or permission to accept imported results.
+ * Owners resolve names and restore state; the evaluator only invokes resume. */
+struct pg_eval_continuation {
+	const char *name;
+	int (*resume)(struct pg_eval *, const struct pg_term *, const void *);
+};
+const struct pg_eval_continuation *pg_eval_continuation_find(const char *name,
+	size_t count, const struct pg_eval_continuation *const *entries);
 int pg_eval_demand(struct pg_eval *machine, size_t index,
-	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state);
+	const struct pg_eval_continuation *continuation, const void *state);
 /* Evaluate auxiliary work on this machine, preserving the caller's arguments.
  * Resume must incorporate the answer. Pending readback retains the caller;
  * use for pure work, not an effect whose result could be discarded. */
 int pg_eval_demand_closure(struct pg_eval *machine, struct pg_closure value,
-	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state);
+	const struct pg_eval_continuation *continuation, const void *state);
 /* Pure auxiliary traversal. Each poll consumes one machine transition:
  * 0 pending, 1 ready, -1 error. Poll must preserve the caller configuration.
  * Resume uses the dispatcher protocol and runs after detaching the task.

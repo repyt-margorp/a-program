@@ -140,6 +140,11 @@ static int apply_fields(struct pg_eval *machine, struct pg_closure branch,
 	return pg_eval_apply(machine, (struct pg_closure){pg_lambda(machine->output, k, body), NULL}, branch, consume);
 }
 
+static int match_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused);
+static const struct pg_eval_continuation match_answer_continuation = {
+	"iadt/match_answer/v1", match_answer
+};
+
 static int match_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
 {
 	(void)unused;
@@ -165,6 +170,11 @@ static const struct pg_data_layout *matcher(const struct pg_term *term)
 	if (term->kind != PG_REFERENCE) return NULL;
 	return pg_data_layout_view(term->as.reference);
 }
+
+static int action_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused);
+static const struct pg_eval_continuation action_answer_continuation = {
+	"iadt/action_answer/v1", action_answer
+};
 
 static int action_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
 {
@@ -220,6 +230,14 @@ int pg_data_action(struct pg_eval *machine, const struct pg_term *source)
 	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1);
 }
 
+const struct pg_eval_continuation *pg_data_continuation_resolve(const char *name)
+{
+	static const struct pg_eval_continuation *const entries[] = {
+		&match_answer_continuation, &action_answer_continuation
+	};
+	return pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
+}
+
 int pg_data_dispatch(struct pg_eval *machine)
 {
 	const struct pg_object *object = machine->current.term->as.reference;
@@ -229,12 +247,12 @@ int pg_data_dispatch(struct pg_eval *machine)
 		if (!layout) return 1;
 		if (layout->count > (SIZE_MAX - 4) / 3) return -1;
 		if (!pg_eval_argument(machine, 3 * (layout->count + 1))) return 1;
-		return pg_eval_demand(machine, 3, action_answer, NULL);
+		return pg_eval_demand(machine, 3, &action_answer_continuation, NULL);
 	}
 	if (object->kind != PG_SEMANTIC_OBJECT || object->owner != &match_class) return 1;
 	const struct pg_data_layout *layout = (const struct pg_data_layout *)object;
 	if (!pg_eval_argument(machine, layout->count)) return 1;
-	return pg_eval_demand(machine, 0, match_answer, NULL);
+	return pg_eval_demand(machine, 0, &match_answer_continuation, NULL);
 }
 
 struct pg_data_signature {

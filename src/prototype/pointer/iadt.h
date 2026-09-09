@@ -180,4 +180,8 @@ const struct pg_evidence *pg_data_case(struct pg_typing *typing,
 	const struct pg_object *constructor, const struct pg_evidence *motive,
 	const struct pg_evidence *body, const struct pg_conversion_certificate *conversion);
 
+/* Resolve only this owner's known, versioned evaluator continuations. */
+struct pg_eval_continuation;
+const struct pg_eval_continuation *pg_data_continuation_resolve(const char *name);
+
 #endif

@@ -1331,6 +1331,11 @@ static size_t demand_resumes;
 static const struct pg_object_class demand_class = {"test-demand"};
 static const struct pg_object demand_operation = {PG_SEMANTIC_OBJECT, &demand_class};
 
+static int demand_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state);
+static const struct pg_eval_continuation demand_answer_continuation = {
+	"tests/core/demand_answer/v1", demand_answer
+};
+
 static int demand_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
 	assert(state == &demand_operation);
@@ -1343,11 +1348,16 @@ static int demand_answer(struct pg_eval *machine, const struct pg_term *answer, 
 static int demand_dispatch(struct pg_eval *machine)
 {
 	if (machine->current.term->as.reference != &demand_operation) return 1;
-	return pg_eval_demand(machine, 63, demand_answer, &demand_operation);
+	return pg_eval_demand(machine, 63, &demand_answer_continuation, &demand_operation);
 }
 
 static const struct pg_argument *auxiliary_arguments;
 static const struct pg_term *auxiliary_source;
+
+static int auxiliary_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state);
+static const struct pg_eval_continuation auxiliary_answer_continuation = {
+	"tests/core/auxiliary_answer/v1", auxiliary_answer
+};
 
 static int auxiliary_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
@@ -1363,7 +1373,7 @@ static int auxiliary_dispatch(struct pg_eval *machine)
 	if (machine->current.term->as.reference != &demand_operation) return 1;
 	auxiliary_arguments = machine->arguments;
 	auxiliary_source = pg_eval_argument(machine, 0)->term;
-	return pg_eval_demand_closure(machine, *pg_eval_argument(machine, 0), auxiliary_answer, auxiliary_source);
+	return pg_eval_demand_closure(machine, *pg_eval_argument(machine, 0), &auxiliary_answer_continuation, auxiliary_source);
 }
 
 static size_t check_demand_prefix(const struct pg_eval_frame *frame)
@@ -3207,8 +3217,33 @@ static void request_typing_test(struct pg_graph *graph)
 	puts("typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed");
 }
 
+static void continuation_names(void)
+{
+	const char *names[] = {
+		"computation/force_answer/v1", "computation/fold_answer/v1",
+		"iadt/match_answer/v1", "iadt/action_answer/v1",
+		"symmetry/symmetry_answer/v1", "identity/right_endpoint/v1",
+		"identity/left_endpoint/v1", "identity/action_body/v1",
+		"identity/action_source/v1", "identity/thunk_return_field/v1",
+		"identity/field_answer/v1"
+	};
+	for (size_t i = 0; i < sizeof(names) / sizeof(*names); ++i) {
+		const struct pg_eval_continuation *entry = pg_computation_continuation_resolve(names[i]);
+		assert(entry && entry->resume && !strcmp(entry->name, names[i]));
+		assert(pg_computation_continuation_resolve(entry->name) == entry);
+		for (size_t j = 0; j < i; ++j)
+			assert(pg_computation_continuation_resolve(names[j]) != entry);
+	}
+	assert(!pg_computation_continuation_resolve(NULL));
+	assert(!pg_computation_continuation_resolve("identity/action_body/v2"));
+	assert(!pg_computation_continuation_resolve("tests/core/demand_answer/v1"));
+	assert(!pg_identity_continuation_resolve("computation/fold_answer/v1"));
+	puts("continuation owners: versioned identities resolve only existing algorithms");
+}
+
 int main(void)
 {
+	continuation_names();
 	deep_classifier_test();
 	dag_test();
 	index_distribution_test();

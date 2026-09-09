@@ -53,4 +53,8 @@ int pg_identity_dispatch(struct pg_eval *machine);
  * application argument is present. Bare transported functions stay neutral. */
 int pg_identity_force(struct pg_eval *machine, const struct pg_term *value);
 
+/* Resolve only this owner's known, versioned evaluator continuations. */
+struct pg_eval_continuation;
+const struct pg_eval_continuation *pg_identity_continuation_resolve(const char *name);
+
 #endif

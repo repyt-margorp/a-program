@@ -27,4 +27,8 @@ int pg_symmetry_view(const struct pg_term *term, size_t *dimension,
 	const size_t **axes, const struct pg_term **argument);
 int pg_symmetry_dispatch(struct pg_eval *machine);
 
+/* Resolve only this owner's known, versioned evaluator continuations. */
+struct pg_eval_continuation;
+const struct pg_eval_continuation *pg_symmetry_continuation_resolve(const char *name);
+
 #endif

@@ -586,6 +586,11 @@ static const struct pg_object *frame_resolve(void *unused, const char *name)
 }
 static const struct pg_graph_codec frame_codec = {.name = frame_name, .resolve = frame_resolve};
 
+static int frame_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state);
+static const struct pg_eval_continuation frame_answer_continuation = {
+	"tests/eval_io/frame_answer/v1", frame_answer
+};
+
 static int frame_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
 	assert(state == &frame_operation);
@@ -598,8 +603,8 @@ static int frame_answer(struct pg_eval *machine, const struct pg_term *answer, c
 static int frame_dispatch(struct pg_eval *machine)
 {
 	if (machine->current.term->as.reference != &frame_operation) return 1;
-	if (frame_auxiliary) return pg_eval_demand_closure(machine, *pg_eval_argument(machine, 3), frame_answer, &frame_operation);
-	return pg_eval_demand(machine, 3, frame_answer, &frame_operation);
+	if (frame_auxiliary) return pg_eval_demand_closure(machine, *pg_eval_argument(machine, 3), &frame_answer_continuation, &frame_operation);
+	return pg_eval_demand(machine, 3, &frame_answer_continuation, &frame_operation);
 }
 
 static void invalid_frame_target(FILE *file, long prefix)
@@ -674,7 +679,7 @@ static void read_frames(FILE *file)
 	size_t count = 0;
 	for (struct pg_eval_frame *frame = machine.frames; frame; frame = frame->parent) {
 		++count;
-		frame->resume = frame_answer; frame->state = &frame_operation;
+		frame->continuation = &frame_answer_continuation; frame->state = &frame_operation;
 	}
 	assert(count == 3);
 	const struct pg_term *value = machine.frames->arguments->value.environment->value.term;
@@ -757,8 +762,8 @@ static void frame_resume(size_t depth)
 				size_t restored_frames = 0;
 				for (struct pg_eval_frame *frame = machine.frames; frame; frame = frame->parent) {
 					++restored_frames;
-					assert(!frame->resume && !frame->state);
-					frame->resume = frame_answer; frame->state = &frame_operation;
+					assert(!frame->continuation && !frame->state);
+					frame->continuation = &frame_answer_continuation; frame->state = &frame_operation;
 					assert(frame->arguments->value.environment == machine.frames->arguments->value.environment);
 				}
 				assert(restored_frames == frames);

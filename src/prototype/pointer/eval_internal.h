@@ -37,7 +37,7 @@ struct pg_eval_frame {
 	struct pg_closure caller;
 	const struct pg_argument *arguments;
 	const struct pg_argument *target;
-	int (*resume)(struct pg_eval *, const struct pg_term *, const void *);
+	const struct pg_eval_continuation *continuation;
 	const void *state;
 	struct pg_eval_frame *parent;
 	struct materialization answer;

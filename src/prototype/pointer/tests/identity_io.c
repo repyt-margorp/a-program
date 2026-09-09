@@ -43,6 +43,11 @@ static int read_scope_terms(FILE *file, struct pg_graph *graph, size_t limit, si
 	return status;
 }
 
+static int scope_answer(struct pg_eval *machine, const struct pg_term *answer, const void *opaque);
+static const struct pg_eval_continuation scope_answer_continuation = {
+	"tests/identity_io/scope_answer/v1", scope_answer
+};
+
 static int scope_answer(struct pg_eval *machine, const struct pg_term *answer, const void *opaque)
 {
 	++scope_answers;
@@ -70,7 +75,7 @@ static void scope_frames(void)
 		pg_eval_init(&machine, source);
 		machine.current.environment = &environment;
 		machine.output = &graph;
-		assert(!pg_eval_demand_closure(&machine, (struct pg_closure){body, &environment}, scope_answer, &initial));
+		assert(!pg_eval_demand_closure(&machine, (struct pg_closure){body, &environment}, &scope_answer_continuation, &initial));
 		pg_eval_advance(&machine, cut);
 		if (!machine.frames) {
 			pg_eval_destroy(&machine);
@@ -117,7 +122,7 @@ static void scope_frames(void)
 			machine.head_ready = ready;
 			/* Test supplies the known continuation; callback selection is not
 			 * part of the data codec and no host address came from the file. */
-			frames->resume = scope_answer;
+			frames->continuation = &scope_answer_continuation;
 			frames->state = context.scope;
 		}
 		assert(pg_eval_advance(&machine, 1000) == PG_EVAL_WHNF);

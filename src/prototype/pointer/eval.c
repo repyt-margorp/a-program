@@ -6,6 +6,15 @@
 static const struct pg_term *readback(struct pg_closure closure,
 	const struct pg_argument *arguments, struct pg_graph *graph);
 
+const struct pg_eval_continuation *pg_eval_continuation_find(const char *name,
+	size_t count, const struct pg_eval_continuation *const *entries)
+{
+	if (!name) return NULL;
+	for (size_t i = 0; i < count; ++i)
+		if (!strcmp(name, entries[i]->name)) return entries[i];
+	return NULL;
+}
+
 const struct pg_closure *pg_eval_next_argument(const struct pg_argument **cursor)
 {
 	const struct pg_argument *argument = *cursor;
@@ -54,13 +63,13 @@ int pg_eval_apply(struct pg_eval *machine, struct pg_closure function,
 }
 
 static int demand(struct pg_eval *machine, struct pg_closure value, const struct pg_argument *target,
-	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state)
+	const struct pg_eval_continuation *continuation, const void *state)
 {
-	if (!machine->output || !resume || !value.term) return -1;
+	if (!machine->output || !continuation || !continuation->resume || !value.term) return -1;
 	struct pg_eval_frame *frame = pg_alloc(&machine->temporary, sizeof(*frame));
 	if (!frame) return -1;
 	*frame = (struct pg_eval_frame){.caller = machine->current, .arguments = machine->arguments,
-		.target = target, .resume = resume, .state = state, .parent = machine->frames, .cursor = machine->arguments};
+		.target = target, .continuation = continuation, .state = state, .parent = machine->frames, .cursor = machine->arguments};
 	machine->frames = frame;
 	machine->current = value;
 	machine->arguments = NULL;
@@ -68,16 +77,16 @@ static int demand(struct pg_eval *machine, struct pg_closure value, const struct
 }
 
 int pg_eval_demand(struct pg_eval *machine, size_t index,
-	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state)
+	const struct pg_eval_continuation *continuation, const void *state)
 {
 	const struct pg_argument *argument = argument_at(machine, index);
-	return argument ? demand(machine, argument->value, argument, resume, state) : -1;
+	return argument ? demand(machine, argument->value, argument, continuation, state) : -1;
 }
 
 int pg_eval_demand_closure(struct pg_eval *machine, struct pg_closure value,
-	int (*resume)(struct pg_eval *, const struct pg_term *, const void *), const void *state)
+	const struct pg_eval_continuation *continuation, const void *state)
 {
-	return demand(machine, value, NULL, resume, state);
+	return demand(machine, value, NULL, continuation, state);
 }
 
 struct pg_argument *pg_eval_frame_copy_argument(struct pg_eval_frame *frame, struct pg_graph *arena)
@@ -117,7 +126,7 @@ static int resume_frame(struct pg_eval *machine)
 	machine->frames = frame->parent;
 	machine->head_ready = 0;
 	pg_materialize_destroy(&frame->answer);
-	return frame->resume(machine, answer, frame->state);
+	return frame->continuation->resume(machine, answer, frame->state);
 }
 
 void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)

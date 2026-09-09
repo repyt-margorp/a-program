@@ -307,6 +307,11 @@ static int right_endpoint_scoped(struct pg_eval *machine, const struct action_sc
 	return enter_action(machine, &scope, result, 2);
 }
 
+static int right_endpoint(struct pg_eval *machine, const struct pg_term *right, const void *state);
+static const struct pg_eval_continuation right_endpoint_continuation = {
+	"identity/right_endpoint/v1", right_endpoint
+};
+
 static int right_endpoint(struct pg_eval *machine, const struct pg_term *right, const void *state)
 {
 	return right_endpoint_scoped(machine, state, right);
@@ -318,8 +323,13 @@ static int left_endpoint_scoped(struct pg_eval *machine, const struct action_sco
 	const struct pg_term *content;
 	if (!pg_return_type_view(scope.body, &content)) return -1;
 	if (!unary_argument(left, &pg_return_operation)) return 1;
-	return pg_eval_demand(machine, 2 + 3 * scope.count, right_endpoint, prepared);
+	return pg_eval_demand(machine, 2 + 3 * scope.count, &right_endpoint_continuation, prepared);
 }
+
+static int left_endpoint(struct pg_eval *machine, const struct pg_term *left, const void *state);
+static const struct pg_eval_continuation left_endpoint_continuation = {
+	"identity/left_endpoint/v1", left_endpoint
+};
 
 static int left_endpoint(struct pg_eval *machine, const struct pg_term *left, const void *state)
 {
@@ -691,6 +701,11 @@ static int action_body_scoped(struct pg_eval *machine, const struct action_scope
 	return status;
 }
 
+static int action_body(struct pg_eval *machine, const struct pg_term *answer, const void *state);
+static const struct pg_eval_continuation action_body_continuation = {
+	"identity/action_body/v1", action_body
+};
+
 static int action_body(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
 	return action_body_scoped(machine, state, answer);
@@ -778,6 +793,11 @@ static const struct pg_eval_work_operation higher_scope_operation = {
 	higher_scope_poll, higher_scope_resume, arena_work_destroy
 };
 
+static int action_source(struct pg_eval *machine, const struct pg_term *source, const void *unused);
+static const struct pg_eval_continuation action_source_continuation = {
+	"identity/action_source/v1", action_source
+};
+
 static int action_source(struct pg_eval *machine, const struct pg_term *source, const void *unused)
 {
 	(void)unused;
@@ -814,14 +834,14 @@ static int action_source_body(struct pg_eval *machine, const struct action_scope
 	if (pg_thunk_type_view(body, &content)) return thunk_type_action(machine, &scope, content);
 	if (pg_return_type_view(body, &content)) {
 		if (!pg_eval_argument(machine, 2 + 3 * scope.count)) return 1;
-		return pg_eval_demand(machine, 1 + 3 * scope.count, left_endpoint, prepared);
+		return pg_eval_demand(machine, 1 + 3 * scope.count, &left_endpoint_continuation, prepared);
 	}
 	/* With no varying binder, congruence would rebuild ap f (refl a) and
 	 * loop with diagonal_argument. Keep refl of a neutral APP as its form. */
 	if (!scope.count) return 1;
 	if (head->kind == PG_REFERENCE) {
 		if (head->as.reference == &identity_action) {
-			return pg_eval_demand_closure(machine, (struct pg_closure){body, NULL}, action_body, prepared);
+			return pg_eval_demand_closure(machine, (struct pg_closure){body, NULL}, &action_body_continuation, prepared);
 		}
 		/* Uniform higher fields need their own boundary rules, not ordinary
 		 * Pi congruence applied to an untyped field reference. */
@@ -1033,6 +1053,11 @@ static int thunk_return_scoped(struct pg_eval *machine, const struct action_scop
 	return close_family(machine, &scope, family, result, &field_family_result_operation);
 }
 
+static int thunk_return_field(struct pg_eval *machine, const struct pg_term *value, const void *state);
+static const struct pg_eval_continuation thunk_return_field_continuation = {
+	"identity/thunk_return_field/v1", thunk_return_field
+};
+
 static int thunk_return_field(struct pg_eval *machine, const struct pg_term *value, const void *state)
 {
 	const struct action_scope *scope = state;
@@ -1046,11 +1071,16 @@ static int field_family_scoped(struct pg_eval *machine, void *opaque)
 	struct family_scope_work *work = opaque;
 	const struct pg_term *content;
 	if (!work->content || !pg_return_type_view(work->content, &content)) return 1;
-	return pg_eval_demand(machine, 1, thunk_return_field, &work->scope);
+	return pg_eval_demand(machine, 1, &thunk_return_field_continuation, &work->scope);
 }
 
 static const struct pg_eval_work_operation field_family_scope_operation = {
 	family_scope_poll, field_family_scoped, arena_work_destroy
+};
+
+static int field_answer(struct pg_eval *machine, const struct pg_term *family, const void *unused);
+static const struct pg_eval_continuation field_answer_continuation = {
+	"identity/field_answer/v1", field_answer
 };
 
 static int field_answer(struct pg_eval *machine, const struct pg_term *family, const void *unused)
@@ -1066,15 +1096,23 @@ static int field_answer(struct pg_eval *machine, const struct pg_term *family, c
 	return pg_eval_apply(machine, action, value, 2);
 }
 
+const struct pg_eval_continuation *pg_identity_continuation_resolve(const char *name)
+{
+	static const struct pg_eval_continuation *const entries[] = {
+		&right_endpoint_continuation, &left_endpoint_continuation, &action_body_continuation, &action_source_continuation, &thunk_return_field_continuation, &field_answer_continuation
+	};
+	return pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
+}
+
 int pg_identity_dispatch(struct pg_eval *machine)
 {
 	if (field_index(machine->current.term->as.reference) >= 0) {
 		if (!pg_eval_argument(machine, 1)) return 1;
-		return pg_eval_demand(machine, 0, field_answer, NULL);
+		return pg_eval_demand(machine, 0, &field_answer_continuation, NULL);
 	}
 	if (machine->current.term->as.reference != &identity_action) return 1;
 	if (!pg_eval_argument(machine, 0)) return 1;
 	int diagonal = diagonal_argument(machine);
 	if (diagonal != 1) return diagonal;
-	return pg_eval_demand(machine, 0, action_source, NULL);
+	return pg_eval_demand(machine, 0, &action_source_continuation, NULL);
 }

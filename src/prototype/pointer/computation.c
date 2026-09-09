@@ -197,6 +197,11 @@ const struct pg_term *pg_computation_eta(struct pg_graph *graph, const struct pg
 	return source ? pg_application(graph, term->as.application.function, source) : NULL;
 }
 
+static int force_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused);
+static const struct pg_eval_continuation force_answer_continuation = {
+	"computation/force_answer/v1", force_answer
+};
+
 static int force_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
 {
 	(void)unused;
@@ -282,6 +287,11 @@ static const struct pg_eval_work_operation fold_operation = {
 	fold_poll, fold_resume, fold_destroy
 };
 
+static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state);
+static const struct pg_eval_continuation fold_answer_continuation = {
+	"computation/fold_answer/v1", fold_answer
+};
+
 static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
 	const struct handler_entry *handler = state;
@@ -304,6 +314,17 @@ static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, co
 	return pg_eval_defer(machine, &fold_operation, work);
 }
 
+const struct pg_eval_continuation *pg_computation_continuation_resolve(const char *name)
+{
+	static const struct pg_eval_continuation *const entries[] = {
+		&force_answer_continuation, &fold_answer_continuation
+	};
+	const struct pg_eval_continuation *found = pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
+	if (!found) found = pg_data_continuation_resolve(name);
+	if (!found) found = pg_identity_continuation_resolve(name);
+	return found ? found : pg_symmetry_continuation_resolve(name);
+}
+
 static int dispatch(struct pg_eval *machine)
 {
 	const struct pg_object *operation = machine->current.term->as.reference;
@@ -320,7 +341,7 @@ static int dispatch(struct pg_eval *machine)
 	}
 	if (operation == &pg_force_operation) {
 		if (!pg_eval_argument(machine, 0)) return 1;
-		return pg_eval_demand(machine, 0, force_answer, NULL);
+		return pg_eval_demand(machine, 0, &force_answer_continuation, NULL);
 	}
 	const struct handler_entry *handler = handler_owner(operation);
 	if (operation == &pg_fold_operation || handler) {
@@ -330,7 +351,7 @@ static int dispatch(struct pg_eval *machine)
 		/* Recognize the right unit without evaluating a continuation that M
 		 * might never invoke. The returned reference must be this lambda's binder. */
 		if (!handler && return_continuation(continuation->term)) return pg_eval_enter(machine, *pg_eval_argument(machine, 0), 2);
-		return pg_eval_demand(machine, 0, fold_answer, handler);
+		return pg_eval_demand(machine, 0, &fold_answer_continuation, handler);
 	}
 	int data = pg_data_dispatch(machine);
 	if (data != 1) return data;

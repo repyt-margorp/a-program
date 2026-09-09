@@ -327,8 +327,8 @@ These are existing execution structures to relocate, not new Core node kinds.
   regression evidence, not completion of the source-level checkpoint gate.
 - [ ] Connect frame data to continuation-owner, policy and machine
   state retention. `pg_eval_frame_payload_read` intentionally leaves parent,
-  resume and state unset; it is data relocation, not a complete runnable image.
-  The stack variant restores parent links, but still leaves resume/state unset.
+  continuation and state unset; it is data relocation, not a complete runnable image.
+  The stack variant restores parent links, but still leaves continuation/state unset.
   Tests supply surrounding machine flags and known continuations externally;
   arbitrary continuation owners and source-level `.a` checkpoints remain open.
 
@@ -372,6 +372,27 @@ these owner payloads, deferred tasks and policy are connected together.
   payload. The composition test supplies its known callback and machine flags
   explicitly; it does not serialize/resolve a C callback address. Retain other
   owners and policy before claiming whole-machine or source-level CHECKPOINT.
+
+- [x] Replace per-frame bare resume callbacks with immutable owner-controlled
+  `pg_eval_continuation` pointers. Each of the eleven production algorithms has
+  a versioned name and its existing resume implementation. Demand creation and
+  return still follow the same transition functions and borrow the same state;
+  there is no second continuation executor or new Core Term tag. Plain test
+  continuations use the same API.
+- [x] Provide module-owned exact-name resolution and a pure-dispatcher resolver
+  over the existing data/Identity/symmetry delegates. No mutable global registry
+  or dynamic code loading is introduced. These names select algorithms, not
+  invocation state, admitted policies, or accepted evidence. Data-only readers
+  still leave continuation pointers unset.
+- [x] Check all eleven production names for exact round trips and distinct
+  descriptor identities; reject unknown versions, test-only names and names
+  outside a module's ownership. `check check-prepared-modules` passes after
+  migration. ASan/UBSan Core execution and `check-identity-io check-eval-io`
+  also pass, including existing split-fuel, capture and continuation-count tests.
+- [ ] Wire these descriptors to retained owner payloads. In particular a valid
+  Identity continuation name alone does not validate an arbitrary scope record,
+  nor does a Fold name restore its handler. Keep this admission/connection duty
+  with the owner and preserve sharing with the original caller configuration.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 

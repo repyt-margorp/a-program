@@ -48,4 +48,9 @@ extern const struct pg_eval_policy pg_pure_policy;
 void pg_computation_eval_init(struct pg_eval *machine, struct pg_graph *output,
 	const struct pg_term *term);
 
+/* Resolve the pure dispatcher's known continuations, including its data,
+ * Identity and symmetry delegates. State restoration is a separate duty. */
+struct pg_eval_continuation;
+const struct pg_eval_continuation *pg_computation_continuation_resolve(const char *name);
+
 #endif

@@ -180,6 +180,11 @@ static const struct pg_eval_work_operation composition_operation = {
 	composition_poll, composition_resume, composition_destroy
 };
 
+static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, const void *state);
+static const struct pg_eval_continuation symmetry_answer_continuation = {
+	"symmetry/symmetry_answer/v1", symmetry_answer
+};
+
 static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, const void *state)
 {
 	const struct symmetry_entry *outer = state;
@@ -229,6 +234,14 @@ static const struct pg_eval_work_operation prefix_operation = {
 	prefix_poll, prefix_resume, composition_destroy
 };
 
+const struct pg_eval_continuation *pg_symmetry_continuation_resolve(const char *name)
+{
+	static const struct pg_eval_continuation *const entries[] = {
+		&symmetry_answer_continuation
+	};
+	return pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
+}
+
 int pg_symmetry_dispatch(struct pg_eval *machine)
 {
 	const struct symmetry_entry *outer = owner(machine->current.term);
@@ -247,5 +260,5 @@ int pg_symmetry_dispatch(struct pg_eval *machine)
 		if (!work->axes) return -1;
 		return pg_eval_defer(machine, &prefix_operation, work);
 	}
-	return pg_eval_demand(machine, 0, symmetry_answer, outer);
+	return pg_eval_demand(machine, 0, &symmetry_answer_continuation, outer);
 }
