@@ -75,7 +75,33 @@ static uint64_t id(const struct pg_dag *dag, const void *key)
 struct origin_collection {
 	const struct pg_synthesis *synthesis;
 	struct pg_dag *scopes, *syntax, *rules, *origins;
+	struct pg_dag objects, terms;
+	struct pg_index candidates;
+	struct pg_declaration_io *codec;
+	const struct pg_dag_node *last_scope;
 };
+
+struct origin_candidate {
+	struct pg_index_entry index;
+	const struct pg_object *object;
+	struct pg_synthesis_job *job;
+};
+
+static int index_origin(void *owner, struct pg_synthesis_job *job)
+{
+	struct origin_collection *c = owner;
+	const struct pg_object *object = pg_synthesis_allocation_object(job);
+	if (!object) return -1;
+	uint64_t hash = (uintptr_t)object;
+	for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, hash); entry; entry = entry->next) {
+		const struct origin_candidate *candidate = (const void *)entry;
+		if (candidate->object == object && candidate->job == job) return 0;
+	}
+	struct origin_candidate *candidate = pg_alloc(&c->objects.storage, sizeof(*candidate));
+	if (!candidate) return -1;
+	candidate->object = object; candidate->job = job;
+	return pg_index_insert(&c->candidates, &candidate->index, hash);
+}
 
 static int collect_origin(void *owner, struct pg_synthesis_job *job)
 {
@@ -107,6 +133,37 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 	return 0;
 }
 
+static int retain_dependencies(void *owner, const struct pg_derivation_input *input,
+	const struct pg_effect_inference *work)
+{
+	struct origin_collection *c = owner;
+	const struct pg_dag_node *previous = c->objects.last;
+	const struct pg_term *slots[PG_DERIVATION_TERM_SLOTS];
+	const struct pg_term *const *terms = slots;
+	size_t count = PG_DERIVATION_TERM_SLOTS, equations;
+	if (input) {
+		if (pg_derivation_input_terms(&c->terms.storage, input, slots)) return -1;
+	} else if (pg_effect_inference_pack(work, &c->terms.storage, &equations, &count, &terms)) return -1;
+	for (size_t i = 0; i < count; ++i)
+		if (terms[i] && pg_dag_add(&c->terms, terms[i])) return -1;
+	for (const struct pg_dag_node *node = previous ? previous->next : c->objects.first; node; node = node->next) {
+		uint64_t hash = (uintptr_t)node->key;
+		for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, hash); entry; entry = entry->next) {
+			const struct origin_candidate *candidate = (const void *)entry;
+			if (candidate->object == node->key && collect_origin(c, candidate->job)) return -1;
+		}
+	}
+	for (const struct pg_dag_node *node = c->last_scope ? c->last_scope->next : c->scopes->first;
+		node; c->last_scope = node, node = node->next) {
+		struct environment input;
+		if (environment(c->synthesis, node->key, &input)) return -1;
+		if (input.syntax && pg_dag_add(c->syntax, input.syntax)) return -1;
+		if (input.definitions && pg_dag_add(c->syntax, input.definitions)) return -1;
+		if (input.rule && pg_dag_add(c->rules, input.rule)) return -1;
+	}
+	return 0;
+}
+
 int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots)
 {
@@ -114,12 +171,16 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	struct pg_dag scopes = {0}, syntax = {0}, rules = {0}, origins = {0};
 	struct pg_effect_inference effects = {0};
 	struct pg_declaration_io codec = {0};
+	struct origin_collection collection = {.synthesis = synthesis, .scopes = &scopes,
+		.syntax = &syntax, .rules = &rules, .origins = &origins, .codec = &codec};
 	int status = -1;
 	/* Callbacks only inspect synthesis; no solver entry is invoked. */
 	if (pg_dag_init(&scopes, child, &synthesis) || pg_dag_init(&syntax, pg_syntax_child, NULL)
 		|| pg_dag_init(&rules, NULL, NULL) || pg_dag_init(&origins, NULL, NULL)
+		|| pg_dag_init(&collection.objects, NULL, NULL) || pg_index_init(&collection.candidates)
 		|| pg_effect_inference_init(&effects, &rules.storage)
 		|| pg_declaration_io_init(&codec, synthesis->typing, synthesis->classifiers)) goto done;
+	if (pg_graph_dependencies_init(&collection.terms, &collection.objects, &pg_declaration_graph_codec, &codec)) goto done;
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_source_scope *scope;
 		const struct pg_syntax *term, *definitions;
@@ -137,23 +198,11 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 		if (input.definitions && pg_dag_add(&syntax, input.definitions)) goto done;
 		if (input.rule && pg_dag_add(&rules, input.rule)) goto done;
 	}
-	struct origin_collection collection = {synthesis, &scopes, &syntax, &rules, &origins};
-	const struct pg_dag_node *previous_scope = scopes.last;
-	if (pg_synthesis_visit_source_allocations(synthesis, collect_origin, &collection)) goto done;
-	/* Origin discovery may add lexical binder scopes and their input rules. */
-	for (const struct pg_dag_node *node = previous_scope ? previous_scope->next : scopes.first; node; node = node->next) {
-		struct environment input;
-		if (environment(synthesis, node->key, &input)) goto done;
-		if (input.syntax && pg_dag_add(&syntax, input.syntax)) goto done;
-		if (input.definitions && pg_dag_add(&syntax, input.definitions)) goto done;
-		if (input.rule && pg_dag_add(&rules, input.rule)) goto done;
-	}
-	if (rules.count > SIZE_MAX / sizeof(void *)) goto done;
-	struct pg_synthesis_job **producers = pg_alloc(&rules.storage, rules.count * sizeof(*producers));
-	if (!producers) goto done;
-	for (const struct pg_dag_node *node = rules.first; node; node = node->next) producers[node->id - 1] = (void *)node->key;
+	collection.last_scope = scopes.last;
+	if (pg_synthesis_visit_source_allocations(synthesis, index_origin, &collection)) goto done;
 	const struct pg_derivation_input *const *derivations;
-	if (pg_synthesis_export_rules(synthesis, rules.count, producers, &rules.storage, &effects, 1, &derivations)) goto done;
+	if (pg_synthesis_export_rule_closure(synthesis, &rules, &rules.storage, &effects, 1,
+		retain_dependencies, &collection, &derivations)) goto done;
 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, synthesis->definition_policy)
 		|| pg_wire_write_u64(file, scopes.count) || pg_wire_write_u64(file, count)
 		|| pg_wire_write_u64(file, origins.count)) goto done;
@@ -186,6 +235,7 @@ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	if (pg_syntax_write(file, syntax.count, terms)) goto done;
 	status = pg_derivation_inputs_write_inference(file, rules.count, derivations, &effects, &pg_declaration_graph_codec, &codec);
 done:
+	pg_index_destroy(&collection.candidates); pg_dag_destroy(&collection.terms); pg_dag_destroy(&collection.objects);
 	pg_declaration_io_destroy(&codec);
 	pg_effect_inference_destroy(&effects); pg_dag_destroy(&rules); pg_dag_destroy(&origins);
 	pg_dag_destroy(&syntax); pg_dag_destroy(&scopes);

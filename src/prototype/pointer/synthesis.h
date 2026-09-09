@@ -70,6 +70,7 @@ int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 /* Retain the unaccepted formation input as allocation provenance, including
  * across save-before-Solve. Source inference never uses its acceptance status. */
 struct pg_synthesis_job *pg_synthesis_allocation_origin(const struct pg_synthesis_job *job);
+const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis_job *job);
 struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
@@ -315,6 +316,16 @@ int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count
 	struct pg_synthesis_job *const *jobs, struct pg_graph *storage,
 	struct pg_effect_inference *effects, int require_closed,
 	const struct pg_derivation_input *const **roots);
+/* Append-only root closure for transport. observe may append to the leaf DAG
+ * roots, but may not run or mutate synthesis. Exactly one of header/worker is
+ * non-NULL. Headers are borrowed during the callback; premises are visited
+ * separately. Outputs follow final root IDs; failure poisons effects. */
+struct pg_dag;
+int pg_synthesis_export_rule_closure(const struct pg_synthesis *synthesis,
+	struct pg_dag *roots, struct pg_graph *storage, struct pg_effect_inference *effects,
+	int require_closed,
+	int (*observe)(void *, const struct pg_derivation_input *, const struct pg_effect_inference *),
+	void *owner, const struct pg_derivation_input *const **result);
 /* Publish a checked term or formation under an ordinary lexical name. This
  * does not extend the typing context or insert THUNK/RETURN/FORCE. The proof
  * must be available in the parent context (prefix projection is permitted).

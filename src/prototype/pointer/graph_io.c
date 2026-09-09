@@ -10,7 +10,7 @@ struct transport {
 	struct pg_dag *objects;
 	const struct pg_graph_codec *codec;
 	void *context;
-	struct pg_graph scratch;
+	struct pg_graph *scratch;
 };
 
 static int dependency(void *owner, const void *key, size_t index, const void **child)
@@ -39,17 +39,29 @@ static int transport_dependency(void *owner, const void *key, size_t index, cons
 	const struct pg_term *term = key;
 	if (term->kind == PG_LAMBDA && term->as.lambda.binder->owner && transport->codec && transport->codec->child) {
 		if (index == 2) return 0;
-		*child = index ? term->as.lambda.body : pg_reference(&transport->scratch, term->as.lambda.binder);
+		*child = index ? term->as.lambda.body : pg_reference(transport->scratch, term->as.lambda.binder);
 		return *child ? 1 : -1;
 	}
 	if (term->kind != PG_REFERENCE || !transport->codec || !transport->codec->child)
 		return dependency(transport->objects, key, index, child);
 	if (pg_dag_add(transport->objects, term->as.reference)) return -1;
 	const struct pg_term *payload = NULL;
-	int status = transport->codec->child(transport->context, &transport->scratch, term->as.reference, index, &payload);
+	int status = transport->codec->child(transport->context, transport->scratch, term->as.reference, index, &payload);
 	if (status == -2 && !index) return 0;
 	if (status == 1) *child = payload;
 	return status;
+}
+
+int pg_graph_dependencies_init(struct pg_dag *terms, struct pg_dag *objects,
+	const struct pg_graph_codec *codec, void *context)
+{
+	if (!terms || !objects || objects->child) return -1;
+	if (pg_dag_init(terms, transport_dependency, NULL) || pg_graph_init(&terms->storage)) return -1;
+	struct transport *transport = pg_alloc(&terms->storage, sizeof(*transport));
+	if (!transport) return -1;
+	*transport = (struct transport){objects, codec, context, &terms->storage};
+	terms->context = transport;
+	return 0;
 }
 
 int pg_graph_collect_objects(struct pg_dag *objects, size_t count,
@@ -57,15 +69,13 @@ int pg_graph_collect_objects(struct pg_dag *objects, size_t count,
 {
 	if (!objects || objects->child || (count && !roots)) return -1;
 	struct pg_dag terms = {0};
-	struct transport transport = {.objects = objects, .codec = codec, .context = context};
 	int status = -1;
-	if (pg_graph_init(&transport.scratch) || pg_dag_init(&terms, transport_dependency, &transport)) goto done;
+	if (pg_graph_dependencies_init(&terms, objects, codec, context)) goto done;
 	for (size_t i = 0; i < count; ++i)
 		if (roots[i] && pg_dag_add(&terms, roots[i])) goto done;
 	status = 0;
 done:
 	pg_dag_destroy(&terms);
-	pg_graph_destroy(&transport.scratch);
 	return status;
 }
 
@@ -121,9 +131,7 @@ int pg_graph_write_descriptors(FILE *file, size_t count, const struct pg_term *c
 	if (!file || (count && !roots)) return -1;
 	struct pg_dag terms = {0}, objects = {0};
 	int status = -1;
-	struct transport transport = {.objects = &objects, .codec = codec, .context = context};
-	if (pg_graph_init(&transport.scratch)) goto done;
-	if (pg_dag_init(&objects, NULL, NULL) || pg_dag_init(&terms, transport_dependency, &transport)) goto done;
+	if (pg_dag_init(&objects, NULL, NULL) || pg_graph_dependencies_init(&terms, &objects, codec, context)) goto done;
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&terms, roots[i])) goto done;
 	if (fwrite(magic, 1, 8, file) != 8) goto done;
 	if (pg_wire_write_u64(file, objects.count) || pg_wire_write_u64(file, terms.count) || pg_wire_write_u64(file, count)) goto done;
@@ -137,7 +145,7 @@ int pg_graph_write_descriptors(FILE *file, size_t count, const struct pg_term *c
 			if (!label || !*label) goto done;
 			size_t length = strlen(label);
 			const struct pg_term *payload = NULL;
-			int status = codec->child ? codec->child(context, &transport.scratch, object, 0, &payload) : -2;
+			int status = codec->child ? codec->child(context, &terms.storage, object, 0, &payload) : -2;
 			if (status != -2 && status != 0 && status != 1) goto done;
 			int tag = object->kind == PG_BINDER ? 1 : 2;
 			if (status != -2) tag += 2;
@@ -148,7 +156,7 @@ int pg_graph_write_descriptors(FILE *file, size_t count, const struct pg_term *c
 				for (size_t i = 0; status == 1; ++i) {
 					const struct pg_dag_node *node = pg_dag_find(&terms, payload);
 					if (!node || pg_wire_write_u64(file, node->id) || i == SIZE_MAX) goto done;
-					status = codec->child(context, &transport.scratch, object, i + 1, &payload);
+					status = codec->child(context, &terms.storage, object, i + 1, &payload);
 				}
 				if (status || pg_wire_write_u64(file, 0)) goto done;
 				for (size_t i = 0;; ++i) {
@@ -183,7 +191,6 @@ int pg_graph_write_descriptors(FILE *file, size_t count, const struct pg_term *c
 	}
 	status = ferror(file) ? -1 : 0;
 done:
-	pg_graph_destroy(&transport.scratch);
 	pg_dag_destroy(&terms);
 	pg_dag_destroy(&objects);
 	return status;

@@ -12,13 +12,20 @@ static const struct pg_object oracle = {PG_SEMANTIC_OBJECT, &owner};
 static const struct pg_object second_oracle = {PG_SEMANTIC_OBJECT, &owner};
 static const struct pg_object owned_binder = {PG_BINDER, &owner};
 
+struct payload_dependency {
+	const struct pg_term *term;
+	size_t calls;
+};
+
 static int payload_child(void *context, struct pg_graph *scratch,
 	const struct pg_object *object, size_t index, const struct pg_term **child)
 {
 	(void)scratch;
 	if (object != &oracle) return -2;
+	struct payload_dependency *payload = context;
+	++payload->calls;
 	if (index) return 0;
-	*child = context;
+	*child = payload->term;
 	return 1;
 }
 
@@ -235,9 +242,17 @@ int main(void)
 	assert(reachable.count == 1 && source.terms.count == allocated);
 	const struct pg_term *opaque = pg_reference(&source, &oracle);
 	const struct pg_graph_codec codec = {.child = payload_child};
-	assert(!pg_graph_collect_objects(&reachable, 1, &opaque, &codec, (void *)deep));
+	struct payload_dependency payload = {.term = deep};
+	assert(!pg_graph_collect_objects(&reachable, 1, &opaque, &codec, &payload));
 	assert(reachable.count == 2 && pg_dag_find(&reachable, &oracle));
 	assert(!pg_dag_find(&reachable, &second_oracle));
+	struct pg_dag dependencies = {0};
+	assert(!pg_graph_dependencies_init(&dependencies, &reachable, &codec, &payload));
+	assert(!pg_dag_add(&dependencies, deep) && !pg_dag_add(&dependencies, opaque));
+	size_t visited = dependencies.count, calls = payload.calls;
+	assert(!pg_dag_add(&dependencies, opaque) && !pg_dag_add(&dependencies, deep));
+	assert(dependencies.count == visited && payload.calls == calls);
+	pg_dag_destroy(&dependencies);
 	assert(pg_graph_collect_objects(&reachable, 1, &cyclic, NULL, NULL) == -1);
 	pg_dag_destroy(&reachable);
 	file = tmpfile();

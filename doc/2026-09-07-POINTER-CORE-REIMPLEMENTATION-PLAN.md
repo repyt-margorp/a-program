@@ -7820,6 +7820,32 @@ Source-origin selection is not yet connected; example 07 remains an open gate.
 Rebuilt `check` passes. The extended origin gate still fails at example 07
 export; the dependency collector alone is not the end-to-end correction.
 
+Correction after `ebe371d`: source-origin selection now starts from retained
+rule/object dependencies, not all allocations seen while elaborating source.
+Candidate allocation sites are indexed once by object pointer. The exporter
+observes each newly reached rule header and effect worker; transport dependency
+collection selects needed candidates and appends their provenance inputs and
+lexical ancestors to the same root DAG. New roots extend the existing walk;
+proofs, raw inputs and workers are not exported repeatedly. The fixed-root
+export API delegates to this implementation and preserves duplicate root order.
+
+Core dependency collection also retains its term DAG across additions. Both
+serialization and dependency selection use the same descriptor-child walker.
+A repeated root is an indexed lookup, not another traversal of its children.
+Tests instrument a descriptor callback and verify that repeated additions do
+not revisit it or grow the dependency graph.
+
+- [x] Fix example 07 source-only saving without retaining its transient Match
+  branch scopes; direct and restored NF graphs agree.
+- [x] Keep nominal D/E distinction, source/evidence binder sharing, parameter
+  scopes and unsolved resave checks passing in `check-image-origins`.
+- [x] Run `check`, `check-examples`, and `check-example-results`; rebuilt
+  `graph_io_test` additionally passes the persistent-walk assertion.
+- [x] Keep explicit export failure for a genuinely required unsupported scope,
+  rather than dropping required provenance on a scope reconstruction error.
+- [ ] Complete remaining retained-result policy, pending allocation and derived
+  scope coverage. This fixes the over-retention gate, not all N5/N0--N7 work.
+
 
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.

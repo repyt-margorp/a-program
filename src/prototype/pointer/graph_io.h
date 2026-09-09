@@ -34,6 +34,11 @@ struct pg_graph_codec {
  * graph mutations. Keys borrow objects from roots and codec-owned storage. */
 int pg_graph_collect_objects(struct pg_dag *objects, size_t count,
 	const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *context);
+/* Initialize a persistent transport dependency DAG. Add roots with pg_dag_add;
+ * shared terms are visited once across additions. objects must already be an
+ * initialized leaf DAG. Destroy terms before objects and codec storage. */
+int pg_graph_dependencies_init(struct pg_dag *terms, struct pg_dag *objects,
+	const struct pg_graph_codec *codec, void *context);
 int pg_graph_write_descriptors(FILE *file, size_t count, const struct pg_term *const *roots,
 	const struct pg_graph_codec *codec, void *context);
 int pg_graph_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
