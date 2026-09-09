@@ -4,7 +4,7 @@ ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)effect_inference.c $(ROOT)evidence.c $(ROOT)derivation.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c $(ROOT)descriptor_io.c $(ROOT)context_payload.c $(ROOT)declaration_io.c
 
-.PHONY: check check-examples check-example-results check-open-families check-image-origins check-prepared-modules check-acceptance
+.PHONY: check check-examples check-example-results check-open-families check-image-origins check-prepared-modules check-acceptance check-eval-io
 check-examples: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 
@@ -26,6 +26,11 @@ check-prepared-modules: $(BUILD)/source_io_test
 	$(BUILD)/source_io_test prepared-module
 
 check-acceptance: check check-examples check-example-results check-open-families check-image-origins check-prepared-modules
+
+check-eval-io: $(BUILD)/eval_io_test
+	bash $(ROOT)tests/eval_io.sh $(BUILD)/eval_io_test
+
+check: check-eval-io
 
 check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test $(BUILD)/occurrence_io_test $(BUILD)/derivation_io_test $(BUILD)/syntax_io_test $(BUILD)/source_io_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test $(BUILD)/program_test $(BUILD)/seed_test $(BUILD)/pointer-check
 	$(BUILD)/core_test
@@ -53,6 +58,10 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 $(BUILD)/core_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)tests/core.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)tests/core.c -o $@
+
+$(BUILD)/eval_io_test: $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)symmetry.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(ROOT)tests/eval_io.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)symmetry.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(ROOT)tests/eval_io.c -o $@
 
 $(BUILD)/identity_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)tests/identity.c
 	mkdir -p $(BUILD)

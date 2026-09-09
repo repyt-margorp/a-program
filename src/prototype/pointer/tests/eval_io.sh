@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+binary=$1
+directory=$(mktemp -d)
+trap 'rm -rf "$directory"' EXIT HUP INT TERM
+"$binary"
+"$binary" write "$directory/configuration"
+"$binary" read "$directory/configuration"

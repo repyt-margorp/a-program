@@ -11,6 +11,17 @@ struct pg_closure {
 	const struct pg_term *term;
 	const struct pg_environment *environment;
 };
+/* Shared lexical links. Once referenced by a closure/configuration, callers
+ * must preserve their contents and lifetime. They carry no typing evidence. */
+struct pg_environment {
+	const struct pg_object *binder;
+	struct pg_closure value;
+	const struct pg_environment *parent;
+};
+struct pg_argument {
+	struct pg_closure value;
+	const struct pg_argument *next;
+};
 enum pg_eval_status { PG_EVAL_PENDING, PG_EVAL_WHNF, PG_EVAL_ERROR };
 struct pg_eval {
 	struct pg_graph temporary;

@@ -3,16 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-struct pg_environment {
-	const struct pg_object *binder;
-	struct pg_closure value;
-	const struct pg_environment *parent;
-};
-struct pg_argument {
-	struct pg_closure value;
-	const struct pg_argument *next;
-};
-
 struct readback_entry {
 	struct pg_index_entry index;
 	struct pg_closure input;

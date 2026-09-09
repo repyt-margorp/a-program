@@ -130,6 +130,26 @@ remain required before a completed-checkpoint claim.
 
 #### Checkpoint Payload Audit After `f838488`
 
+- [x] Add `eval_io.c` configuration-fragment transport (`APGCFG1`): a set of
+  head closures and argument roots shares environment and argument DAGs and one
+  existing Term/descriptor relocation table. `pg_environment`/`pg_argument`
+  definitions are shared in `eval.h`, not duplicated in the codec. The codec
+  never reduces, alpha-interns, writes C addresses or accepts evidence.
+- [x] Test separate writer/reader processes, byte-identical unsolved resave,
+  lexical capture avoidance, shared captured/parent links and argument tails,
+  source destruction, 10,000 shared environment links, cycles, invalid table
+  references and empty roots. A suspended beta evaluator resumes from each
+  tested cut with exactly the remaining transitions, not from its source term.
+  `check-eval-io` is part of `check`; ASan/UBSan also runs the process round trip.
+  Verification: `check check-prepared-modules` passes; the expanded invalid-link
+  cases pass in normal and ASan/UBSan `check-eval-io` runs.
+- [ ] Integrate these references with materialization, comparison, Demand and
+  deferred-work payloads in the same image relocation context. Concatenating
+  independently relocated fragments would duplicate shared binders and is not
+  sufficient. `APGCFG1` is a component format, not a new user file extension or
+  full `.a` CHECKPOINT. No scheduler, completion flag or policy is restored by
+  this component, and it cannot seed a WHNF/NF acceptance cache.
+
 The callback refactor is not the remaining implementation plan by itself.
 Inspection of the actual work records found the following transitive payloads.
 These are existing execution structures to relocate, not new Core node kinds.
