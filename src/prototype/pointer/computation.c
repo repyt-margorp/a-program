@@ -294,7 +294,9 @@ static const struct pg_eval_continuation fold_answer_continuation = {
 
 static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
-	const struct handler_entry *handler = state;
+	(void)state;
+	/* Demand restores this exact caller before delivering the answer. */
+	const struct handler_entry *handler = handler_owner(machine->current.term->as.reference);
 	size_t count = handler ? handler->count : 0;
 	const struct pg_term *value = unary_argument(answer, &pg_return_operation);
 	struct pg_closure continuation = *pg_eval_argument(machine, 1);
@@ -351,7 +353,7 @@ static int dispatch(struct pg_eval *machine)
 		/* Recognize the right unit without evaluating a continuation that M
 		 * might never invoke. The returned reference must be this lambda's binder. */
 		if (!handler && return_continuation(continuation->term)) return pg_eval_enter(machine, *pg_eval_argument(machine, 0), 2);
-		return pg_eval_demand(machine, 0, &fold_answer_continuation, handler);
+		return pg_eval_demand(machine, 0, &fold_answer_continuation, NULL);
 	}
 	int data = pg_data_dispatch(machine);
 	if (data != 1) return data;

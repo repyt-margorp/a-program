@@ -333,9 +333,11 @@ These are existing execution structures to relocate, not new Core node kinds.
   arbitrary continuation owners and source-level `.a` checkpoints remain open.
 
 Continuation retention must include its actual owner data, not just a callback
-label: current Demand sites retain Identity `action_scope`, a Fold handler, or
-a symmetry owner; others have no state. Restore these through the same shared
-graph as caller closures. Do not recover them by rerunning dispatch or serialize
+label: current Demand sites retain Identity `action_scope`; other production
+Demand continuations have no independent state. Fold and symmetry owners are
+available directly from the restored caller reference, without evaluation.
+Restore actual scope data through the same shared graph as caller closures.
+Do not recover it by rerunning dispatch or serialize
 C addresses. Reading remains inert; resumption invokes the existing evaluator.
 There is no separate Replay evaluator: imported progress needs established
 provenance before it can support accepted evidence, but reproducing the original
@@ -393,6 +395,25 @@ these owner payloads, deferred tasks and policy are connected together.
   Identity continuation name alone does not validate an arbitrary scope record,
   nor does a Fold name restore its handler. Keep this admission/connection duty
   with the owner and preserve sharing with the original caller configuration.
+
+- [x] Remove redundant Fold-handler and symmetry-owner pointers from Demand
+  state. The existing answer continuation reads the owner from the caller
+  reference that `resume_frame` already restores. No owner search, Term
+  evaluation, clause scan, or new semantic rule is needed. Core regressions
+  observe both kinds of suspended frame with NULL state, then verify the
+  existing nested/captured and split-step results. Normal and sanitized Core
+  execution pass. `check check-prepared-modules` also passes after this change.
+- [ ] Before connecting complete continuation images, complete ordinary graph
+  transport for the caller's semantic owners. `pg_builtin_graph_codec` has
+  typed handler signatures but not `computation.c:handler_entry` (the raw
+  multi-clause Fold layout); these are not interchangeable. Its name resolver
+  also does not yet delegate to the existing symmetry descriptor codec.
+  Serialize Fold labels with their original clause positions, rebuild the
+  pointer-sorted lookup through the existing handler interner after relocation,
+  and use one shared Term table for clause bodies and all other roots. Do not
+  add a frame-specific duplicate of this layout. Test raw multi-clause Fold
+  and symmetry round trips with execution after restoration, not just names or
+  source-level RECOMPUTE images. This precedes whole-machine checkpoint wiring.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 

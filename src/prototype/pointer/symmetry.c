@@ -187,7 +187,8 @@ static const struct pg_eval_continuation symmetry_answer_continuation = {
 
 static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, const void *state)
 {
-	const struct symmetry_entry *outer = state;
+	(void)state;
+	const struct symmetry_entry *outer = owner(machine->current.term);
 	if (term->kind != PG_APPLICATION) return 1;
 	const struct symmetry_entry *inner = owner(term->as.application.function);
 	if (!inner) return 1;
@@ -260,5 +261,5 @@ int pg_symmetry_dispatch(struct pg_eval *machine)
 		if (!work->axes) return -1;
 		return pg_eval_defer(machine, &prefix_operation, work);
 	}
-	return pg_eval_demand(machine, 0, &symmetry_answer_continuation, outer);
+	return pg_eval_demand(machine, 0, &symmetry_answer_continuation, NULL);
 }

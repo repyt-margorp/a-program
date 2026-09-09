@@ -1094,12 +1094,20 @@ static void request_forwarding_test(struct pg_graph *graph)
 	assert(pg_computation_fold(graph, request, return_r, 0, NULL) == body);
 	assert(request_whnf(graph, handled, 1) == pg_application(graph, ret, vy));
 	assert(request_whnf(graph, handled, 10000) == pg_application(graph, ret, vy));
+	size_t fold_demands = 0;
+	const struct pg_eval_continuation *fold_continuation = pg_computation_continuation_resolve("computation/fold_answer/v1");
 	pg_computation_eval_init(&machine, graph, handled);
 	while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) {
+		for (const struct pg_eval_frame *frame = machine.frames; frame; frame = frame->parent) {
+			if (frame->continuation != fold_continuation) continue;
+			assert(!frame->state && frame->caller.term->kind == PG_REFERENCE);
+			++fold_demands;
+		}
 		assert(machine.steps < 10000);
 		assert(request_whnf(graph, pg_eval_readback(&machine, graph), 10000) == pg_application(graph, ret, vy));
 	}
 	assert(machine.status == PG_EVAL_WHNF);
+	assert(fold_demands);
 	pg_eval_destroy(&machine);
 	size_t owners = graph->objects.count;
 	struct pg_operation_clause duplicate[] = {{&first, first_clause}, {&first, second_clause}};
@@ -2690,6 +2698,8 @@ static void dimension_test(struct pg_graph *graph)
 	const struct pg_term *symmetry_cases[] = {closed_symmetry, hidden_symmetry, wide_symmetry,
 		prefix_capture, prefix_outer, prefix_applied};
 	size_t case_count = sizeof(symmetry_cases) / sizeof(*symmetry_cases);
+	size_t symmetry_demands = 0;
+	const struct pg_eval_continuation *symmetry_continuation = pg_symmetry_continuation_resolve("symmetry/symmetry_answer/v1");
 	for (size_t test = 0; test < case_count; ++test) {
 		struct pg_eval whole;
 		pg_eval_init(&whole, symmetry_cases[test]);
@@ -2706,12 +2716,18 @@ static void dimension_test(struct pg_graph *graph)
 			split.output = graph;
 			split.dispatch = pg_pure_policy.dispatch;
 			pg_eval_advance(&split, cut);
+			for (const struct pg_eval_frame *frame = split.frames; frame; frame = frame->parent) {
+				if (frame->continuation != symmetry_continuation) continue;
+				assert(!frame->state && frame->caller.term->kind == PG_REFERENCE);
+				++symmetry_demands;
+			}
 			assert(pg_eval_advance(&split, steps - cut) == PG_EVAL_WHNF);
 			assert(split.steps == steps);
 			assert(pg_eval_readback(&split, graph) == line_term);
 			pg_eval_destroy(&split);
 		}
 	}
+	assert(symmetry_demands);
 	for (size_t test = 0; test < case_count; ++test) for (uint64_t cut = 0; cut < 160; ++cut) {
 		struct pg_eval machine;
 		pg_eval_init(&machine, symmetry_cases[test]);
