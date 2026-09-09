@@ -409,10 +409,6 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 		*input = *(const struct pg_derivation_input *)inputs[0];
 		job->inputs[0] = input;
 	}
-	if (role == BINDING_JOB) {
-		job->binder = pg_binder(synthesis->typing->graph);
-		if (!job->binder) return NULL;
-	}
 	if (pg_index_insert(&synthesis->jobs, &job->index, hash) != 0) return NULL;
 	if (role == EVIDENCE_JOB) {
 		job->result = inputs[0];
@@ -604,9 +600,20 @@ struct pg_synthesis_job *pg_synthesis_telescope_structure(struct pg_synthesis *s
 struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
 {
+	return pg_synthesis_binding_at(synthesis, scope, syntax, NULL);
+}
+
+struct pg_synthesis_job *pg_synthesis_binding_at(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	const struct pg_object *binder)
+{
 	if (!syntax || (syntax->kind != PG_SYNTAX_LAMBDA && syntax->kind != PG_SYNTAX_PI)) return NULL;
+	if (binder && binder->kind != PG_BINDER) return NULL;
 	struct pg_synthesis_job *job = request_role(synthesis, scope, syntax, BINDING_JOB);
 	if (!job) return NULL;
+	if (job->binder && binder && job->binder != binder) return NULL;
+	if (!job->binder) job->binder = binder ? binder : pg_binder(synthesis->typing->graph);
+	if (!job->binder) return NULL;
 	if (!job->left) {
 		const struct pg_syntax *domain = syntax->left;
 		if (syntax->kind == PG_SYNTAX_PI && domain->kind == PG_SYNTAX_BINDER) domain = domain->left;
@@ -627,6 +634,16 @@ struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
 			.name = name, .binder = job->binder, .context_job = job});
 	}
 	return job->inner ? job : NULL;
+}
+
+int pg_synthesis_binding_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
+	const struct pg_syntax **syntax, const struct pg_object **binder)
+{
+	if (!synthesis || !job || !scope || !syntax || !binder) return -1;
+	if (job->owner != synthesis->owner_key || job->role != BINDING_JOB || !job->binder) return -1;
+	*scope = job->scope; *syntax = job->syntax; *binder = job->binder;
+	return 0;
 }
 
 const struct pg_object *pg_synthesis_binding_binder(const struct pg_synthesis_job *job)

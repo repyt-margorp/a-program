@@ -84,6 +84,16 @@ int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
  * Completion yields context-extension evidence; reservation alone never does. */
 struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Same source allocation site, with an optional relocated binder supplied
+ * before its first reservation. NULL allocates normally. A different binder
+ * cannot replace an existing one, even before Solve. This carries identity,
+ * not domain/context evidence, and introduces no new job or Core kind. */
+struct pg_synthesis_job *pg_synthesis_binding_at(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	const struct pg_object *binder);
+int pg_synthesis_binding_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
+	const struct pg_syntax **syntax, const struct pg_object **binder);
 /* Stable even while pending or rejected; not proof that the binder is typed. */
 const struct pg_object *pg_synthesis_binding_binder(const struct pg_synthesis_job *job);
 /* Lexical scope is available before proof completion. Expressions requested

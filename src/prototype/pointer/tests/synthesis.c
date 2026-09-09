@@ -4052,9 +4052,17 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 				complete(&synthesis, expression, PG_SYNTHESIS_DONE);
 			}
 			struct pg_synthesis_job *job = pg_synthesis_telescope(&synthesis, root, syntax);
+			const struct pg_object *seed = expression_first ? NULL : pg_binder(typing->graph);
+			if (seed) assert(pg_synthesis_binding_at(&synthesis, root, syntax, seed));
 			struct pg_synthesis_job *binding = pg_synthesis_binding(&synthesis, root, syntax);
 			const struct pg_object *reserved = pg_synthesis_binding_binder(binding);
 			assert(reserved && pg_synthesis_binding(&synthesis, root, syntax) == binding);
+			assert(!seed || seed == reserved);
+			assert(pg_synthesis_binding_at(&synthesis, root, syntax, reserved) == binding);
+			const struct pg_object *different = pg_binder(typing->graph);
+			size_t requests = synthesis.jobs.count;
+			assert(!pg_synthesis_binding_at(&synthesis, root, syntax, different));
+			assert(synthesis.jobs.count == requests && pg_synthesis_binding_binder(binding) == reserved);
 			struct pg_synthesis_job *inner_expression = pg_synthesis_request(&synthesis,
 				pg_synthesis_binding_scope(binding), syntax->right);
 			assert(job && pg_synthesis_telescope(&synthesis, root, syntax) == job);
@@ -4083,6 +4091,12 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 			assert(pg_pi_view(pi, &domain, &binders[1], &pi));
 			assert(binders[0] == last->parent->binder && binders[1] == last->binder);
 			assert(!pg_synthesis_telescope_scope(expression));
+			const struct pg_source_scope *origin_scope;
+			const struct pg_syntax *origin_syntax;
+			const struct pg_object *origin_binder;
+			assert(!pg_synthesis_binding_input(&synthesis, binding, &origin_scope, &origin_syntax, &origin_binder));
+			assert(origin_scope == root && origin_syntax == syntax && origin_binder == reserved);
+			assert(!pg_synthesis_binding_at(&synthesis, root, syntax, different));
 		}
 	}
 	/* Unsolved domains must not prevent allocation of lexical identity, nor
@@ -4093,9 +4107,10 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 	const struct pg_syntax *pending_source = expression_syntax(typing->graph, "f:=\\x:T=>\\y:T=>x;");
 	size_t before_contexts = typing->contexts.count, before_proofs = typing->proofs.count;
 	uint64_t before_steps = synthesis.steps;
-	struct pg_synthesis_job *pending_binding = pg_synthesis_binding(&synthesis, pending_scope, pending_source);
+	const struct pg_object *pending_seed = pg_binder(typing->graph);
+	struct pg_synthesis_job *pending_binding = pg_synthesis_binding_at(&synthesis, pending_scope, pending_source, pending_seed);
 	const struct pg_object *pending_binder = pg_synthesis_binding_binder(pending_binding);
-	assert(pending_binder && !pg_synthesis_result(pending_binding));
+	assert(pending_binder == pending_seed && !pg_synthesis_result(pending_binding));
 	assert(typing->contexts.count == before_contexts && typing->proofs.count == before_proofs);
 	assert(synthesis.steps == before_steps && !pg_prove_variable(typing, empty, pending_binder));
 	const struct pg_source_scope *pending_inner = pg_synthesis_binding_scope(pending_binding);

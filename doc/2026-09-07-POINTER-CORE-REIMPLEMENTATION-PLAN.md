@@ -7571,6 +7571,27 @@ This is now a prerequisite for CHECKPOINT and general mixed-image import:
 - [ ] Pass `check-image-origins`, then integrate the allocation mechanism into
   retained partial source preparation before adding further image features.
 
+First implementation step after `d36eba3`: lexical Lambda/Pi reservation now
+accepts an optional binder allocation input through `pg_synthesis_binding_at`.
+The existing `(scope, syntax)` producer remains canonical; an initial restored
+binder can be supplied, but a conflicting later input is rejected without
+replacing the binder or allocating another job. The ordinary entry delegates
+to this same function. Binder creation no longer hides in generic job allocation.
+A read-only binding-input view exposes the origin tuple independently of proof
+completion. This adds no Core/job tag and grants no domain/context evidence.
+
+- [x] Seed Lambda/Pi binders before telescope/expression synthesis; check both
+  share the seed. Preserve default allocation when no seed is provided.
+- [x] Reject replacement before and after completion; keep rejected attempts
+  from changing the job count or original binder.
+- [x] A seeded binder with an unresolved domain remains pending without proof.
+- [ ] Connect binding inputs to source-scope transport, then cover declaration
+  Self/universe candidates and schema allocation. The nominal-origin acceptance
+  gate is still failing; this reservation API alone is not the image fix.
+Validation: normal `check`, eight source checks, six runtime fixtures and the
+rebuilt synthesis test (including pending seeded domains) pass. The separate
+`check-image-origins` gate remains an outstanding requirement, not a pass.
+
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.
 The common `APGSRC` path above now supersedes that intermediate framing.
