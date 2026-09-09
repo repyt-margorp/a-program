@@ -717,9 +717,51 @@ static void prepared_module_checkpoint(void)
 	puts("prepared module: module-only roots retain shared obligations across unsolved resave");
 }
 
+static void module_save_boundaries(void)
+{
+	const char *sources[] = {
+		"id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A;",
+		"id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A; bad:=missing;",
+		"id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A; a:=b; b:=a;"
+	};
+	const enum pg_synthesis_status expected[] = {PG_SYNTHESIS_DONE, PG_SYNTHESIS_REJECTED, PG_SYNTHESIS_PENDING};
+	for (size_t case_index = 0; case_index < 3; ++case_index) {
+		struct pg_program *source = pg_program_create(sources[case_index], strlen(sources[case_index]), PG_DEFINITION_EXPLICIT_THUNK);
+		assert(source);
+		size_t snapshots = 0;
+		for (;;) {
+			FILE *file = tmpfile();
+			assert(file && !pg_sources_write(file, &source->synthesis, 1, &source->root));
+			rewind(file);
+			size_t count;
+			struct pg_synthesis_job *const *roots;
+			struct pg_program *restored = pg_sources_read(file, 10000, &count, &roots);
+			assert(restored && count == 1 && !restored->synthesis.steps);
+			assert(!pg_synthesis_result(restored->root) && !fclose(file));
+			while (restored->synthesis.ready) {
+				assert(restored->synthesis.steps < 10000);
+				pg_synthesis_advance(&restored->synthesis, snapshots % 2 ? 1 : 64);
+			}
+			assert(pg_synthesis_status(restored->root) == expected[case_index]);
+			pg_program_destroy(restored);
+			++snapshots;
+			if (!source->synthesis.ready) break;
+			assert(source->synthesis.steps < 10000);
+			pg_synthesis_advance(&source->synthesis, 1);
+		}
+		assert(pg_synthesis_status(source->root) == expected[case_index]);
+		printf("module save boundaries: case %zu, %zu snapshots preserve status\n", case_index, snapshots);
+		pg_program_destroy(source);
+	}
+}
+
 int main(int argc, char **argv)
 {
-	if (argc == 2 && !strcmp(argv[1], "prepared-module")) { prepared_module_checkpoint(); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "prepared-module")) {
+		prepared_module_checkpoint();
+		module_save_boundaries();
+		return 0;
+	}
 	assert(argc == 3);
 	int origins = !strncmp(argv[1], "origin-", 7);
 	int annotations = !strncmp(argv[1], "annotation-", 11);

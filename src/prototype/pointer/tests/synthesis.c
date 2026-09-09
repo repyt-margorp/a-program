@@ -5464,6 +5464,21 @@ int main(void)
 	const struct pg_evidence *neutral_force = pg_prove_force(&typing, m_value);
 	assert(!pg_prove_return_value(&typing, neutral_force));
 	complete(&synthesis, pg_synthesis_return(&synthesis, m_context, neutral_force), PG_SYNTHESIS_UNSUPPORTED);
+	/* A Universe result does not make a computation itself a type/value. */
+	const struct pg_evidence *universe_type = pg_prove_universe(&typing, &classifiers, x_context, 0);
+	const struct pg_evidence *universe_computation_type = pg_prove_return_type(&typing, &classifiers, universe_type);
+	const struct pg_evidence *universe_thunk_type = pg_prove_thunk_type(&typing, &classifiers, universe_computation_type);
+	const struct pg_object *family_result = pg_binder(&graph);
+	const struct pg_evidence *family_context = pg_prove_context_extension(&typing, x_context, family_result, universe_thunk_type);
+	const struct pg_evidence *open_type_computation = pg_prove_force(&typing, pg_prove_variable(&typing, family_context, family_result));
+	assert(open_type_computation);
+	assert(!pg_prove_value_type(&typing, open_type_computation));
+	assert(!pg_prove_type_value(&typing, open_type_computation));
+	assert(!pg_prove_return_value(&typing, open_type_computation));
+	const struct pg_evidence *type_code = pg_prove_variable(&typing, x_context, a);
+	const struct pg_evidence *returned_type = pg_prove_return(&typing, &classifiers, type_code);
+	assert(returned_type && !pg_prove_value_type(&typing, returned_type));
+	assert(pg_prove_value_type(&typing, pg_prove_return_value(&typing, returned_type)));
 	const struct pg_evidence *delayed_x = pg_prove_thunk(&typing, &classifiers, return_x);
 	const struct pg_evidence *m_images[] = {pg_prove_variable(&typing, x_context, a), x_value, delayed_x};
 	const struct pg_evidence *m_substitution = pg_prove_substitution(&typing, m_context, x_context, 3, m_images);

@@ -15,6 +15,84 @@ criteria for merging different Lambda or semantic-object references.
 
 ### September 9: Open-Family Admission Before Further Checkpoint Expansion
 
+Recheck after `9639429`: the four family fixtures still report 175/209/280/323
+steps and only the closed control succeeds. Prepared-input persistence did not
+change admission. The following is a proposed typed-layer contract, not an
+implemented rule or a soundness claim:
+
+1. A symbolic type result must have an explicit universe and a computation
+   premise in its original context. Denote its proposed interpretation by
+   `Decode(M)`, for `M : F({}, Universe_i)`. This notation is not a request for
+   a new Core tag, nor permission to extract arbitrary values from computations.
+2. Required closed equation: `Decode(RETURN(A)) = A`. Required substitution
+   equation: `Decode(M)[sigma] = Decode(M[sigma])`. Neither equation identifies
+   `M` itself with a value. Whether the second equation is definitional or has
+   explicit object evidence must be fixed before adding a kernel rule.
+3. A pure-row premise alone does not establish a total universe-valued result.
+   The design must specify whether decoding requires stable/total evidence or
+   denotes a suspended type with restricted elimination. In the latter case,
+   formation must not silently provide inhabitants or an inverse of RETURN.
+4. For `T := M; N`, checking `N` under `T : Universe_i` is only local checking.
+   If its classifier is `C(T)`, the block cannot publish `C(T)` in the outer
+   context. A proposed suspended classifier `SequenceType(M, T.C(T))` needs
+   formation, substitution and `SequenceType(RETURN(A), T.C(T)) = C(A)` rules.
+   It is not justified by changing the independence test in `pg_prove_fold`.
+5. Act must act on the computation premise and family together, with boundaries
+   agreeing after substitution. Applying ordinary value action to the Core of
+   `M` is not such a derivation. Retained inputs must reconstruct the same rule.
+
+Implementation order: settle (3), prove the closed/substitution equations in
+the chosen interpretation, then add evidence constructors and their derivation
+input cases. Only then connect `type_input`/block synthesis. Tests must include
+closed family substitution, dependent block escape, nonempty/unknown effects,
+and dimensional boundary agreement. Keep both the positive source acceptance
+gate and existing neutral RETURN-inversion rejection tests; passing one by
+weakening the other is not completion.
+
+Regression added to `tests/synthesis.c`: an open forced thunk of a pure
+Universe-returning computation is rejected by both value/type conversion APIs
+and RETURN inversion. A closed RETURN of a type code is likewise not itself a
+type, but its extracted value is. The complete synthesis test passes. These
+checks constrain existing APIs; they do not forbid a separately justified
+suspended type representation or claim open-family admission is implemented.
+
+Code-level constraint found during that review: `pg_prove_value_type` accepts a
+Universe-classified VALUE, while `pg_prove_type_value` turns any VALUE_TYPE back
+into a VALUE with the *same subject Core*. Consequently a new formation rule
+that simply labels the computation Core `M` as VALUE_TYPE also makes that same
+computation a Universe value through the existing inverse view. Restricting the
+new entry point to type positions would not prevent this escape. Do not implement
+symbolic type admission by relabelling the computation occurrence.
+
+If suspended decoding is chosen, its Core must represent the suspended *type
+code*, distinct from executing `M`, using the existing reference/application
+representation. Its closed reduction must be explicit, never an interning rule.
+This does not require a second Lambda/Pi graph or a new Core node kind. It does
+require handling the code in conversion, typed substitution, dimensional action
+and descriptor transport before exposing it to source synthesis.
+
+In particular, do not add `RETURN(code(Decode(M))) = M` as an unrestricted
+computation equation. In an interpretation permitting pure divergence, the left
+can return a suspended code while the right diverges. Existing erased-Core
+tests in `tests/core.c` demonstrate the suspension/execution distinction with
+`quoted_omega` and its FORCE; they do not prove that omega has a type here.
+The desired equation `Decode(RETURN(A)) = A` is a one-way decoding computation
+law, not justification for this stronger inverse law. Universe observability
+and Act coherence of the suspended code remain proof obligations; an empty-row
+test supplies neither. No such formation rule has been added yet.
+
+Additional literature checked on September 9:
+
+- Matthijs Vakar, *An Effectful Treatment of Dependent Types* (2016),
+  [abstract and paper](https://arxiv.org/abs/1603.04298). The abstract explicitly
+  distinguishes dCBPV- from dependent Kleisli extension and notes extra subtyping
+  conditions for some effects. It is not a theorem about this kernel.
+- *ANF preserves dependent types up to extensional equality*, JFP 32 (2022),
+  [published paper](https://www.cambridge.org/core/journals/journal-of-functional-programming/article/anf-preserves-dependent-types-up-to-extensional-equality/73FC888A23E5E87BAE16B158ABE349C8).
+  This is relevant to naming computation results during lowering, but its
+  extensional equality target must not be silently imported as equality
+  reflection in A Program. The contract above remains our design obligation.
+
 Audit at `ce1c35f`: `check-open-families` still fails with `unsupported
 steps=209`. Debugging locates the first failure in `contents_step`, requested
 by `domain_step` through `type_input`. The application `F A` has computation
@@ -161,6 +239,23 @@ annotation producer. The first three fail reconstruction; the fourth loads with
 zero Solve steps and no accepted root, then rejects through ordinary registration.
 Both checkpoint rounds run these cases. `check-prepared-modules` and the complete
 source-image test script pass with ASan/UBSan as well as the normal build.
+
+Step-boundary coverage: `check-prepared-modules` additionally saves before the
+first Solve step and after every individual step until the queue is quiescent.
+The valid, missing-name and cyclic-sibling modules produce 247, 254 and 257
+snapshots respectively. Each is loaded with zero Solve steps/no accepted root,
+then solved using alternating budgets 1/64; all 758 preserve DONE, REJECTED or
+PENDING respectively. This tests partial registration/activation boundaries,
+not complete reuse of all normalization or typing work.
+
+Current verification after adding these cases: `check-examples` passes all eight
+files currently selected by `examples/0[1-9]_*.p`; `check-example-results` passes
+six result fixtures with budgets 1 and 10000; `check-image-origins` passes. This
+does not cover IF8, abstract family admission, filesystem import resolution or
+REPL parity. In particular, `main.c` still accepts one source/image input and
+does not resolve source import providers from files. `pg_program_source` and
+the module/import APIs are in-memory mechanisms, not evidence of a complete
+module-loading driver. N5 remains incomplete despite the image regressions.
 
 Remaining implementation requirements:
 
