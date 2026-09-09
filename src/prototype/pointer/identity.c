@@ -865,7 +865,6 @@ struct family_scope_work {
 	const struct pg_term *content;
 	const struct pg_term *value;
 	size_t supplied;
-	int (*resume)(struct pg_eval *, const struct action_scope *, const struct pg_term *, const struct pg_term *);
 };
 
 static int family_scope_poll(void *opaque)
@@ -895,24 +894,13 @@ static int family_scope_poll(void *opaque)
 	return 1;
 }
 
-static int family_scope_resume(struct pg_eval *machine, void *opaque)
-{
-	struct family_scope_work *work = opaque;
-	return work->resume(machine, &work->scope, work->content, work->value);
-}
-
-static const struct pg_eval_work_operation family_scope_operation = {
-	family_scope_poll, family_scope_resume, arena_work_destroy
-};
-
 static int with_thunk_family(struct pg_eval *machine, const struct pg_term *family,
-	const struct pg_term *value,
-	int (*resume)(struct pg_eval *, const struct action_scope *, const struct pg_term *, const struct pg_term *))
+	const struct pg_term *value, const struct pg_eval_work_operation *operation)
 {
 	struct family_scope_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work) return -1;
-	*work = (struct family_scope_work){.cursor = family, .value = value, .resume = resume};
-	return pg_eval_defer(machine, &family_scope_operation, work);
+	*work = (struct family_scope_work){.cursor = family, .value = value};
+	return pg_eval_defer(machine, operation, work);
 }
 
 struct family_result_work {
@@ -922,7 +910,6 @@ struct family_result_work {
 	size_t count;
 	size_t position;
 	enum { FAMILY_COLLECT, FAMILY_WRAP, FAMILY_APPLY } phase;
-	int (*resume)(struct pg_eval *, const struct pg_term *);
 };
 
 static int family_result_poll(void *opaque)
@@ -952,19 +939,9 @@ static int family_result_poll(void *opaque)
 	return -1;
 }
 
-static int family_result_resume(struct pg_eval *machine, void *opaque)
-{
-	struct family_result_work *work = opaque;
-	return work->resume(machine, work->closure.result);
-}
-
-static const struct pg_eval_work_operation family_result_operation = {
-	family_result_poll, family_result_resume, arena_work_destroy
-};
-
 static int close_family(struct pg_eval *machine, const struct action_scope *scope,
 	const struct pg_term *family, const struct pg_term *result,
-	int (*resume)(struct pg_eval *, const struct pg_term *))
+	const struct pg_eval_work_operation *operation)
 {
 	struct family_result_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work || scope->count > SIZE_MAX / 3 / sizeof(*work->arguments)) return -1;
@@ -975,23 +952,33 @@ static int close_family(struct pg_eval *machine, const struct action_scope *scop
 	work->family = family;
 	work->position = work->count;
 	work->phase = FAMILY_COLLECT;
-	work->resume = resume;
-	return pg_eval_defer(machine, &family_result_operation, work);
+	return pg_eval_defer(machine, operation, work);
 }
 
-static int force_family_result(struct pg_eval *machine, const struct pg_term *result)
+static int force_family_result(struct pg_eval *machine, void *opaque)
 {
-	return pg_eval_apply(machine, (struct pg_closure){result, NULL}, *pg_eval_argument(machine, 1), 2);
+	struct family_result_work *work = opaque;
+	return pg_eval_apply(machine, (struct pg_closure){work->closure.result, NULL}, *pg_eval_argument(machine, 1), 2);
 }
 
-static int field_family_result(struct pg_eval *machine, const struct pg_term *result)
+static const struct pg_eval_work_operation force_family_result_operation = {
+	family_result_poll, force_family_result, arena_work_destroy
+};
+
+static int field_family_result(struct pg_eval *machine, void *opaque)
 {
-	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 2);
+	struct family_result_work *work = opaque;
+	return pg_eval_enter(machine, (struct pg_closure){work->closure.result, NULL}, 2);
 }
 
-static int force_family_scoped(struct pg_eval *machine, const struct action_scope *prepared,
-	const struct pg_term *computation, const struct pg_term *value)
+static const struct pg_eval_work_operation field_family_result_operation = {
+	family_result_poll, field_family_result, arena_work_destroy
+};
+
+static int force_family_scoped(struct pg_eval *machine, void *opaque)
 {
+	struct family_scope_work *work = opaque;
+	const struct pg_term *computation = work->content, *value = work->value;
 	if (!computation) return 1;
 	const struct pg_term *prefix = value->as.application.function;
 	const struct pg_term *head = prefix->as.application.function;
@@ -999,7 +986,7 @@ static int force_family_scoped(struct pg_eval *machine, const struct action_scop
 	const struct pg_term *family = prefix->as.application.argument;
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
-	struct action_scope scope = *prepared;
+	struct action_scope scope = work->scope;
 	if (!pg_pi_view(computation, &domain, &binder, &codomain)) return 1;
 	if (prepare_bindings(machine, &scope) != 0) return -1;
 	struct pg_graph *graph = machine->output;
@@ -1021,8 +1008,12 @@ static int force_family_scoped(struct pg_eval *machine, const struct action_scop
 	const struct pg_term *result = pg_application(graph, pg_reference(graph, &pg_thunk_operation), call);
 	result = pg_application(graph, pg_reference(graph, &pg_force_operation),
 		pg_identity_transport(graph, result_path, result, direction));
-	return close_family(machine, &scope, family, pg_lambda(graph, y, result), force_family_result);
+	return close_family(machine, &scope, family, pg_lambda(graph, y, result), &force_family_result_operation);
 }
+
+static const struct pg_eval_work_operation force_family_scope_operation = {
+	family_scope_poll, force_family_scoped, arena_work_destroy
+};
 
 int pg_identity_force(struct pg_eval *machine, const struct pg_term *value)
 {
@@ -1033,7 +1024,7 @@ int pg_identity_force(struct pg_eval *machine, const struct pg_term *value)
 	if (head->kind != PG_REFERENCE) return 1;
 	int field = field_index(head->as.reference);
 	if (field < 0 || field > 1) return 1;
-	return with_thunk_family(machine, prefix->as.application.argument, value, force_family_scoped);
+	return with_thunk_family(machine, prefix->as.application.argument, value, &force_family_scope_operation);
 }
 
 static int thunk_return_scoped(struct pg_eval *machine, const struct action_scope *prepared,
@@ -1060,7 +1051,7 @@ static int thunk_return_scoped(struct pg_eval *machine, const struct action_scop
 			pg_application(graph, pg_reference(graph, &pg_fold_operation), source), pg_lambda(graph, binder, result));
 	}
 	result = pg_application(graph, pg_reference(graph, &pg_thunk_operation), result);
-	return close_family(machine, &scope, family, result, field_family_result);
+	return close_family(machine, &scope, family, result, &field_family_result_operation);
 }
 
 static int thunk_return_field(struct pg_eval *machine, const struct pg_term *value, const void *state)
@@ -1071,21 +1062,24 @@ static int thunk_return_field(struct pg_eval *machine, const struct pg_term *val
 	return thunk_return_scoped(machine, scope, computation, value);
 }
 
-static int field_family_scoped(struct pg_eval *machine, const struct action_scope *scope,
-	const struct pg_term *computation, const struct pg_term *unused)
+static int field_family_scoped(struct pg_eval *machine, void *opaque)
 {
-	(void)unused;
+	struct family_scope_work *work = opaque;
 	const struct pg_term *content;
-	if (!computation || !pg_return_type_view(computation, &content)) return 1;
-	return pg_eval_demand(machine, 1, thunk_return_field, scope);
+	if (!work->content || !pg_return_type_view(work->content, &content)) return 1;
+	return pg_eval_demand(machine, 1, thunk_return_field, &work->scope);
 }
+
+static const struct pg_eval_work_operation field_family_scope_operation = {
+	family_scope_poll, field_family_scoped, arena_work_destroy
+};
 
 static int field_answer(struct pg_eval *machine, const struct pg_term *family, const void *unused)
 {
 	(void)unused;
 	const struct pg_term *type;
 	if (!pg_identity_action_view(family, &type))
-		return with_thunk_family(machine, family, NULL, field_family_scoped);
+		return with_thunk_family(machine, family, NULL, &field_family_scope_operation);
 	struct pg_closure value = *pg_eval_argument(machine, 1);
 	if (field_index(machine->current.term->as.reference) < 2)
 		return pg_eval_enter(machine, value, 2);

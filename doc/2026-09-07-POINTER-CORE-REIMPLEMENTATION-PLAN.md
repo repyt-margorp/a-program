@@ -60,10 +60,15 @@ a completed-work CHECKPOINT implementation.
   Polling, fuel, resume and cleanup still use the same evaluator; no Core tag,
   secondary evaluator or portable callback address has been introduced.
 - [ ] Describe and relocate each work algorithm's semantic inputs and cursors.
-  Descriptor factoring alone is not serialization. In particular,
-  `family_scope_work` and `family_result_work` still carry nested continuations
-  for force/field actions, and Demand frames retain resume callbacks. Their
-  semantic continuations must be represented before those states can be saved.
+  Descriptor factoring alone is not serialization. Demand frames still retain
+  resume callbacks; the remaining semantic continuations and graph references
+  must be represented before those states can be saved.
+- [x] Remove nested resume pointers from `family_scope_work` and
+  `family_result_work`. Force/field scope and result descriptors identify the
+  continuation directly, while sharing the two existing polling algorithms.
+  There are now 12 built-in deferred descriptors for 10 polling algorithms.
+  No new state variants, reduction rules or Core forms are needed. The two
+  callback-forwarding wrappers and the two per-invocation pointers are gone.
 - [ ] Measure storage and reconstruction costs against recomputation; test
   changed inputs/policies and interrupted materialization before closing the
   original checkpoint gate. A request recipe alone does not meet this gate.
@@ -92,6 +97,16 @@ descriptor without sharing their progress or results. Existing split-budget,
 cancellation, failed-poll and reentrant-resume cases remain enabled. ASan/UBSan
 `core_test` and `identity_test` pass. This change does not retain more work in
 APGSRC11 yet.
+
+Nested-continuation verification: the force-family tests now cancel and read
+back a separate evaluator at each auxiliary-task entry, then check its saved
+term against the explicit transport recipe. The uninterrupted evaluator
+continues independently. Both transport directions and dependent/nondependent
+codomains are covered, alongside the existing field-family all-cut tests.
+`check` and the 758 prepared-module boundaries pass after the implementation
+change; the expanded test passes in `check` and ASan/UBSan `identity_test`.
+This is term readback coverage,
+not a claim that auxiliary cursors survive an image round trip.
 
 WHNF preparation audit: `eval.c:step` uses persistent environment/argument
 links for beta work, but `resume_frame` also reconstructs demanded argument

@@ -53,6 +53,37 @@ static void converts(struct pg_whnf_work *work, const struct pg_term *left, cons
 	converts_budget(work, left, right, 100000);
 }
 
+static void auxiliary_boundaries(struct pg_graph *graph, struct pg_whnf_work *work,
+	const struct pg_term *input, const struct pg_term *expected)
+{
+	struct pg_eval machine;
+	pg_eval_init(&machine, input);
+	machine.output = graph;
+	machine.dispatch = pg_pure_policy.dispatch;
+	const struct pg_eval_task *previous = NULL;
+	size_t boundaries = 0;
+	while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) {
+		assert(machine.steps < 100000);
+		if (machine.task && machine.task != previous) {
+			struct pg_eval cancelled;
+			pg_eval_init(&cancelled, input);
+			cancelled.output = graph;
+			cancelled.dispatch = pg_pure_policy.dispatch;
+			assert(pg_eval_advance(&cancelled, machine.steps) == PG_EVAL_PENDING);
+			assert(cancelled.task);
+			const struct pg_term *snapshot = pg_eval_readback(&cancelled, graph);
+			assert(snapshot);
+			pg_eval_destroy(&cancelled);
+			converts(work, snapshot, expected);
+			++boundaries;
+		}
+		previous = machine.task;
+	}
+	assert(machine.status == PG_EVAL_WHNF && boundaries);
+	converts(work, pg_eval_readback(&machine, graph), expected);
+	pg_eval_destroy(&machine);
+}
+
 static const struct pg_evidence *action_result(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *context,
 	struct pg_whnf_work *work, const struct pg_evidence *action,
@@ -454,6 +485,7 @@ static void pi_transport_candidate(struct pg_typing *typing, struct pg_classifie
 				assert(pg_whnf_steps(split) == pg_whnf_steps(bulk));
 				assert(pg_alpha_equal(pg_whnf_result(split), pg_whnf_result(bulk)) == 1);
 				assert(pg_prove_normalization(typing, actual_call, pg_whnf_certificate(split)));
+				auxiliary_boundaries(graph, &work, call_term, pg_evidence_subject(recipe_call)->core);
 				const struct pg_term *callee = call_term->as.application.function;
 				struct pg_whnf_job *preforce = pg_whnf_request(&work, &pg_pure_policy, callee);
 				assert(pg_whnf_advance(preforce, 100000) == PG_EVAL_WHNF);
