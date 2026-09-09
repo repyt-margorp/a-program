@@ -152,8 +152,8 @@ uint64_t pg_whnf_steps(const struct pg_whnf_job *job);
 const struct pg_term *pg_whnf_result(const struct pg_whnf_job *job);
 /* Immutable directed reduction receipt, shared by WHNF and NF. It certifies
  * the computation from source to target, not a serialized "normal" flag.
- * Issued only after evaluation/materialization or congruent NF work completes.
- * Owned by work->graph, so it survives job-store destruction. Core records the
+ * Issued after evaluation/materialization, congruent NF work or checked import.
+ * Owned by its producing graph, so it survives job-store destruction. Core records the
  * policy; the typing layer decides whether that policy preserves typing. */
 const struct pg_reduction_certificate *pg_whnf_certificate(const struct pg_whnf_job *job);
 const struct pg_term *pg_reduction_source(const struct pg_reduction_certificate *certificate);
@@ -184,6 +184,10 @@ struct pg_nf_job;
  * a term without a normal form can remain pending. No recursive C traversal. */
 struct pg_nf_job *pg_nf_request(struct pg_whnf_work *work,
 	const struct pg_eval_policy *policy, const struct pg_term *input);
+/* Reuse accepted NF evidence through the ordinary job index. This does not
+ * verify raw records. The receipt and all referenced graphs outlive work.
+ * Existing completed answers and charged steps are retained. */
+int pg_nf_remember(struct pg_whnf_work *work, const struct pg_reduction_certificate *certificate);
 enum pg_nf_status pg_nf_advance(struct pg_nf_job *job, uint64_t budget);
 enum pg_nf_status pg_nf_status(const struct pg_nf_job *job);
 const struct pg_term *pg_nf_result(const struct pg_nf_job *job);

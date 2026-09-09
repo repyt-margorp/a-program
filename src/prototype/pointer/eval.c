@@ -661,28 +661,47 @@ struct pg_nf_job *pg_nf_request(struct pg_whnf_work *work,
 	return reduction_request(work, &work->normal_forms, policy, input, sizeof(struct pg_nf_job), &created);
 }
 
+static void nf_finish(struct pg_nf_job *job, const struct pg_reduction_certificate *certificate)
+{
+	free(job->stack);
+	job->stack = NULL;
+	job->depth = job->capacity = 0;
+	job->certificate = certificate;
+	job->status = PG_NF_DONE;
+}
+
+static int nf_publish(struct pg_nf_job *job, const struct pg_reduction_certificate *certificate)
+{
+	if (job->status == PG_NF_ERROR) return -1;
+	if (job->status == PG_NF_DONE) return 0;
+	const struct pg_term *result = certificate->target;
+	/* A computed normal form is also its own answer, without another walk. */
+	struct pg_nf_job *canonical = pg_nf_request(job->request.work, job->request.policy, result);
+	if (!canonical || canonical->status == PG_NF_ERROR) return -1;
+	if (canonical != job && canonical->status == PG_NF_PENDING) {
+		struct pg_reduction_certificate *reflexive = reduction_certificate(job->request.work->graph,
+			result, result, job->request.policy, PG_REDUCTION_NF);
+		if (!reflexive) return -1;
+		reflexive->normality = certificate;
+		nf_finish(canonical, reflexive);
+	}
+	nf_finish(job, certificate);
+	return 0;
+}
+
+int pg_nf_remember(struct pg_whnf_work *work, const struct pg_reduction_certificate *certificate)
+{
+	if (!work || !certificate || certificate->kind != PG_REDUCTION_NF || !certificate->target) return -1;
+	struct pg_nf_job *job = pg_nf_request(work, certificate->policy, certificate->source);
+	return job ? nf_publish(job, certificate) : -1;
+}
+
 static void nf_complete(struct pg_nf_job *job, const struct pg_term *result)
 {
 	struct pg_reduction_certificate *certificate = reduction_certificate(job->request.work->graph,
 		job->request.input, result, job->request.policy, PG_REDUCTION_NF);
-	if (!certificate) { job->status = PG_NF_ERROR; return; }
-	certificate->phases = job->phases;
-	/* A computed normal form is also its own answer, without another walk. */
-	struct pg_nf_job *canonical = pg_nf_request(job->request.work, job->request.policy, result);
-	if (!canonical || canonical->status == PG_NF_ERROR) {
-		job->status = PG_NF_ERROR;
-		return;
-	}
-	if (canonical != job && canonical->status == PG_NF_PENDING) {
-		struct pg_reduction_certificate *reflexive = reduction_certificate(job->request.work->graph,
-			result, result, job->request.policy, PG_REDUCTION_NF);
-		if (!reflexive) { job->status = PG_NF_ERROR; return; }
-		reflexive->normality = certificate;
-		canonical->certificate = reflexive;
-		canonical->status = PG_NF_DONE;
-	}
-	job->certificate = certificate;
-	job->status = PG_NF_DONE;
+	if (certificate) certificate->phases = job->phases;
+	if (!certificate || nf_publish(job, certificate)) job->status = PG_NF_ERROR;
 }
 
 static int nf_premise(const struct pg_reduction_certificate *child, const struct pg_eval_policy *policy)

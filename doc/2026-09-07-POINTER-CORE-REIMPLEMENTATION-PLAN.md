@@ -729,6 +729,18 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   target, budget-one checking and divergence. Rechecking with the same work
   store does not advance completed WHNF jobs. This reuses the existing evaluator
   and comparison, not an independent Replay implementation.
+- [x] Reuse accepted NF receipts via `pg_nf_remember` in the ordinary exact
+  input/policy job store. Local NF completion and remembered results share
+  `nf_publish`/`nf_finish`, including canonical-target receipt construction.
+  Existing completed answers are not replaced. Pending source/target jobs keep
+  their identities and charged steps; superseded traversal stacks are released.
+  This API consumes accepted evidence, not raw endpoint claims, and borrowed
+  receipt graphs must outlive the work store. No second restore-only cache is
+  introduced. Normal and ASan/UBSan `check-identity-io` pass: checked archives
+  settle already-active NF source and target jobs without further NF steps,
+  leave other-policy jobs pending, and retain an existing canonical receipt
+  when another accepted proof for that key is supplied. Full normal
+  `check check-prepared-modules` (758 boundaries) also passes.
 - [ ] Connect pending NF jobs and shared WHNF/NF jobs to this record ownership,
   then to source CHECKPOINT. The recomputation-mode checker does not preserve
   unfinished execution provenance or supply a no-recomputation WHNF basis.

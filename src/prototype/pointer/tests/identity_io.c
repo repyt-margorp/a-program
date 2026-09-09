@@ -2311,6 +2311,27 @@ static void reduction_records(void)
 		assert(pg_reduction_check_advance(&check, 100000) == PG_COMPARISON_EQUAL);
 		assert(pg_reduction_check_certificate(&check, 0) == pg_reduction_check_certificate(&check, 2));
 		assert(pg_reduction_check_certificate(&check, 4) == archive->roots[4]);
+		const struct pg_reduction_certificate *accepted = pg_reduction_check_certificate(&check, 0);
+		struct pg_nf_job *resuming = pg_nf_request(&verification_work, accepted->policy, accepted->source);
+		struct pg_nf_job *canonical = pg_nf_request(&verification_work, accepted->policy, accepted->target);
+		struct pg_nf_job *other_policy = pg_nf_request(&verification_work, &pg_beta_policy, accepted->source);
+		assert(resuming != canonical && other_policy != resuming);
+		assert(pg_nf_advance(resuming, 2) == PG_NF_PENDING && resuming->depth);
+		assert(pg_nf_advance(canonical, 2) == PG_NF_PENDING && canonical->depth);
+		uint64_t steps = pg_nf_steps(resuming), canonical_steps = pg_nf_steps(canonical);
+		assert(!pg_nf_remember(&verification_work, accepted));
+		assert(pg_nf_request(&verification_work, accepted->policy, accepted->source) == resuming);
+		assert(pg_nf_advance(resuming, 1000) == PG_NF_DONE && pg_nf_steps(resuming) == steps);
+		assert(pg_nf_advance(canonical, 1000) == PG_NF_DONE && pg_nf_steps(canonical) == canonical_steps);
+		assert(!resuming->stack && !resuming->depth && !canonical->stack && !canonical->depth);
+		assert(pg_nf_certificate(resuming) == accepted && pg_nf_result(canonical) == accepted->target);
+		const struct pg_reduction_certificate *canonical_receipt = pg_nf_certificate(canonical);
+		assert(pg_reduction_normality(canonical_receipt) == accepted);
+		assert(!pg_nf_remember(&verification_work, pg_reduction_check_certificate(&check, 1)));
+		assert(pg_nf_certificate(canonical) == canonical_receipt);
+		assert(pg_nf_status(other_policy) == PG_NF_PENDING);
+		assert(pg_nf_remember(&verification_work, NULL));
+		assert(pg_nf_remember(&verification_work, accepted->phases->head));
 		pg_reduction_check_destroy(&check);
 		pg_whnf_work_destroy(&verification_work);
 		/* The first topological node is a leaf receipt. A self edge is invalid. */
