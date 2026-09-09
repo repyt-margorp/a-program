@@ -1999,6 +1999,91 @@ static void result_frames(void)
 	assert(retained);
 }
 
+static void machine_forest(void)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	/* An enclosing image may put metadata before an empty machine forest. */
+	FILE *empty = tmpfile();
+	assert(empty && !pg_wire_write_u64(empty, 123));
+	assert(!pg_computation_machines_write(empty, 0, NULL, NULL, 0, NULL, &pg_builtin_graph_codec, NULL));
+	assert(!fseek(empty, 8, SEEK_SET));
+	size_t empty_count, empty_roots;
+	struct pg_eval *const *empty_machines;
+	const struct pg_eval_policy *const *empty_policies;
+	const struct pg_term *const *empty_terms;
+	assert(!pg_computation_machines_read(empty, &graph, 10000, 100, &pg_builtin_graph_codec, NULL,
+		&empty_count, &empty_machines, &empty_policies, &empty_roots, &empty_terms));
+	assert(!empty_count && !empty_roots && !fclose(empty));
+	const struct pg_term *value, *other;
+	const struct pg_term *term = result_frame_fixture(&graph, &value);
+	const struct pg_term *different = result_frame_fixture(&graph, &other);
+	struct pg_eval original[4];
+	const struct pg_eval *inputs[4];
+	const struct pg_eval_policy *policies[] = {&pg_pure_policy, &pg_pure_policy, &pg_beta_policy, &pg_pure_policy};
+	const struct pg_term *initial_roots[] = {term, value, different, other};
+	const struct pg_term *const *roots = initial_roots;
+	uint64_t total[4], elapsed[4];
+	for (size_t i = 0; i < 4; ++i) {
+		const struct pg_term *input = i == 3 ? different : term;
+		struct pg_eval baseline;
+		pg_eval_init(&baseline, input);
+		baseline.output = &graph;
+		baseline.dispatch = policies[i]->dispatch;
+		assert(pg_eval_advance(&baseline, 10000) == PG_EVAL_WHNF);
+		total[i] = baseline.steps;
+		pg_eval_destroy(&baseline);
+		pg_eval_init(&original[i], input);
+		original[i].output = &graph;
+		original[i].dispatch = policies[i]->dispatch;
+		if (i == 2) assert(pg_eval_advance(&original[i], 10000) == PG_EVAL_WHNF);
+		else {
+			while (!original[i].task || original[i].task->operation != &pg_action_result_operation) {
+				assert(pg_eval_advance(&original[i], 1) == PG_EVAL_PENDING);
+				assert(original[i].steps < total[i]);
+			}
+		}
+		elapsed[i] = original[i].steps;
+		inputs[i] = &original[i];
+	}
+	struct pg_eval *const *machines = NULL;
+	for (size_t round = 0; round < 2; ++round) {
+		FILE *file = tmpfile();
+		assert(file && !pg_computation_machines_write(file, 4, inputs, policies, 4, roots, &pg_builtin_graph_codec, NULL));
+		for (size_t i = 0; i < 4; ++i) pg_eval_destroy(round ? machines[i] : &original[i]);
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		rewind(file);
+		size_t n, count;
+		const struct pg_eval_policy *const *restored_policies;
+		assert(!pg_computation_machines_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL,
+			&n, &machines, &restored_policies, &count, &roots));
+		assert(n == 4 && count == 4 && roots[1] != roots[3]);
+		for (size_t i = 0; i < 4; ++i) {
+			assert(restored_policies[i] == policies[i] && machines[i]->steps == elapsed[i]);
+			inputs[i] = machines[i];
+		}
+		assert(machines[0]->arguments->next->value.term == roots[1]);
+		assert(machines[1]->arguments->next->value.term == roots[1]);
+		assert(machines[3]->arguments->next->value.term == roots[3]);
+		assert(machines[0]->current.term == machines[1]->current.term);
+		/* Fail after restoring earlier machines; their task arenas must be released. */
+		assert(!fseek(file, 16, SEEK_SET) && !pg_wire_write_u64(file, 3));
+		rewind(file);
+		struct pg_eval *const *rejected;
+		const struct pg_term *const *unused;
+		assert(pg_computation_machines_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL,
+			&n, &rejected, &restored_policies, &count, &unused));
+		assert(!n && !rejected && !restored_policies && !count && !unused && !fclose(file));
+	}
+	for (size_t i = 0; i < 4; ++i) {
+		assert(pg_eval_advance(machines[i], 10000) == PG_EVAL_WHNF && machines[i]->steps == total[i]);
+		assert(pg_eval_readback(machines[i], &graph) == (i == 2 ? roots[0] : i == 3 ? roots[3] : roots[1]));
+		pg_eval_destroy(machines[i]);
+	}
+	pg_graph_destroy(&graph);
+}
+
 static void discovery_progress(int framed)
 {
 	uint64_t total = 0;
@@ -2537,6 +2622,7 @@ int main(int argc, char **argv)
 	scope_sharing();
 	result_ownership();
 	result_frames();
+	machine_forest();
 	discovery_progress(0);
 	discovery_progress(1);
 	continuation_frames();

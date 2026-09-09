@@ -44,6 +44,15 @@ int pg_graph_print(FILE *file, const struct pg_term *root);
  * not its temporary input arrays. scalar enumerates unsigned metadata with
  * 1 item, 0 end, -1 error; NULL means none. Scalars are not Term dependencies
  * or type evidence. Limits include descriptor edges and metadata items. */
+/* Optional enclosing-image ownership of ordered Term roots. Descriptor
+ * callbacks still receive their original object context. The enclosing format
+ * owns stream boundaries and the lifetime of borrowed root graphs. */
+struct pg_graph_root_codec {
+	int (*write)(FILE *, size_t, const struct pg_term *const *, void *);
+	int (*read)(FILE *, struct pg_graph *, size_t, size_t, size_t *, const struct pg_term *const **, void *);
+	void *context;
+};
+
 struct pg_graph_codec {
 	const char *(*name)(void *, const struct pg_object *);
 	const struct pg_object *(*resolve)(void *, const char *);
@@ -51,6 +60,7 @@ struct pg_graph_codec {
 	int (*scalar)(void *, const struct pg_object *, size_t, uint64_t *);
 	const struct pg_object *(*restore)(void *, struct pg_graph *, const char *, size_t,
 		const struct pg_term *const *, size_t, const uint64_t *);
+	const struct pg_graph_root_codec *roots;
 };
 /* Add reachable objects to an initialized leaf DAG using the exact transport
  * dependency traversal, including descriptor payloads. No bytes, evaluation or

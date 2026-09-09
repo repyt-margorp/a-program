@@ -571,15 +571,28 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   raw machine envelope, descriptor dispatch, scope and configuration ownership.
   Verification: `check check-prepared-modules` and normal/ASan/UBSan
   `check-identity-io` pass. The same fixture is shared with all-cut frame tests.
-- [ ] Use one image-wide Term/object relocation ownership when saving multiple
-  WHNF/NF jobs. Current `pg_computation_machine_write` ends in an independent
-  `pg_graph_write_descriptors` table; the corresponding reader creates fresh
-  plain binders per table. Concatenating these machine images would duplicate
-  shared binder/nominal identities across jobs. Do not repair that by alpha
-  comparison, normalized equality or name-based interning. The store/image owner
-  must coordinate the relocation table and original job dependency edges.
-  Also preserve serializer-created temporary reference Terms until consumed:
-  collecting borrowed roots after a nested codec returns is not sufficient.
+- [x] Provide image-wide Term/object relocation for raw machine forests.
+  `pg_computation_machines_write/read` use one terminal graph table, with nested
+  codecs writing ordered root references into it. The enclosing image owns this
+  table through the existing graph codec; object descriptor ownership is unchanged.
+  Serializer-created temporary Reference wrappers are retained in the writer
+  arena; source Lambda/Application nodes are borrowed, not cloned. Neither alpha
+  comparison nor reduction participates in relocation. The seekable format is
+  `APGMFS1`; loading reconstructs data without advancing any machine.
+  Tests restore four machines across two destroying resaves: shared inputs retain
+  identical pointers, distinct nominal binders remain distinct, beta/pure policies
+  remain separate, and pending tasks resume with exact baseline total steps.
+  A malformed machine count exercises cleanup after earlier tasks were restored.
+  An empty forest after an enclosing-file prefix checks zero roots/machines and
+  nonzero stream offsets. Normal and ASan/UBSan
+  `check-identity-io check-eval-io`, plus `check check-prepared-modules` (758
+  module save boundaries), passed. These remain component gates, not full N0-N7
+  acceptance or source CHECKPOINT completion.
+- [ ] Connect this common table to WHNF/NF job ownership and source CHECKPOINT.
+  Preserve job dependency edges and completed receipts, not just raw machines.
+  A restored status flag is not evidence that a typing or reduction conclusion
+  was derived. Resume and any required recomputation must use the same existing
+  rules, not an independent Replay evaluator or parallel typing implementation.
 - [x] Let scope-analysis work retain additional scope roots through its existing
   visit/shadow/scope ownership table. Its own embedded scope is the first root;
   references to it are rebound to the restored work's embedded address, not an

@@ -29,6 +29,18 @@ int pg_computation_machine_read(FILE *file, struct pg_eval *machine, struct pg_g
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	const struct pg_eval_policy **policy, size_t *count, const struct pg_eval_configuration **roots);
 
+/* Seekable raw machine forest with one terminal Term/object table. All source
+ * machine/output graphs outlive writing. Reader-owned machine arrays live in
+ * output; destroy every machine before output, including after further work.
+ * No imported state is accepted as computation evidence by this API. */
+int pg_computation_machines_write(FILE *file, size_t machine_count,
+	const struct pg_eval *const *machines, const struct pg_eval_policy *const *policies,
+	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner);
+int pg_computation_machines_read(FILE *file, struct pg_graph *output, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *owner, size_t *machine_count,
+	struct pg_eval *const **machines, const struct pg_eval_policy *const **policies,
+	size_t *count, const struct pg_term *const **roots);
+
 /* Raw production Demand stack, including named continuations and shared scope
  * ownership. No evaluation or evidence admission. Imported progress requires
  * provenance before execution can support accepted results. The caller retains

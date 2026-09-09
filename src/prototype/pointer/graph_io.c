@@ -129,6 +129,10 @@ int pg_graph_write_descriptors(FILE *file, size_t count, const struct pg_term *c
 	const struct pg_graph_codec *codec, void *context)
 {
 	if (!file || (count && !roots)) return -1;
+	if (codec && codec->roots) {
+		if (!codec->roots->write) return -1;
+		return codec->roots->write(file, count, roots, codec->roots->context);
+	}
 	struct pg_dag terms = {0}, objects = {0};
 	int status = -1;
 	if (pg_dag_init(&objects, NULL, NULL) || pg_graph_dependencies_init(&terms, &objects, codec, context)) goto done;
@@ -301,6 +305,10 @@ int pg_graph_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, 
 {
 	if (!file || !graph || !count || !roots) return -1;
 	if (!graph->terms.capacity) return -1;
+	if (codec && codec->roots) {
+		if (!codec->roots->read) return -1;
+		return codec->roots->read(file, graph, limit, name_limit, count, roots, codec->roots->context);
+	}
 	unsigned char header[8];
 	uint64_t no, nt, nr;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return -1;
