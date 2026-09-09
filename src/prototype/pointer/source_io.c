@@ -9,7 +9,7 @@
 #include <string.h>
 
 static const char magic[8] = "APGSRC\15";
-static const char retained_magic[8] = "APGSRC\16";
+static const char retained_magic[8] = "APGSRC\17";
 enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING };
 
 struct environment {
@@ -333,7 +333,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	for (const struct pg_dag_node *node = syntax.first; node; node = node->next) terms[node->id - 1] = node->key;
 	if (pg_syntax_write(file, syntax.count, terms)) goto done;
 	status = reductions
-		? pg_retained_write(file, rules.count, derivations, &effects, reductions, &pg_declaration_graph_codec, &codec)
+		? pg_retained_write(file, rules.count, derivations, &effects, reductions, 0, NULL, &pg_declaration_graph_codec, &codec)
 		: pg_derivation_inputs_write_inference(file, rules.count, derivations, &effects, &pg_declaration_graph_codec, &codec);
 done:
 	pg_index_destroy(&collection.candidates); pg_dag_destroy(&collection.terms); pg_dag_destroy(&collection.objects);
@@ -436,13 +436,16 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	const struct pg_syntax *const *terms;
 	if (pg_syntax_read(file, graph, limit, &nt, &terms) || pg_syntax_validate(nt, terms)) goto fail;
 	size_t nd;
+	size_t input_count = 0;
+	const struct pg_term *const *input_terms;
 	const struct pg_derivation_input *const *derivations;
 	int input_status = retained
 		? pg_retained_read(file, &program->typing, limit, limit, &program->imported_effects, &pg_declaration_graph_codec, &codec,
-			&nd, &derivations, &program->retained_reductions)
+			&nd, &derivations, &program->retained_reductions, &input_count, &input_terms)
 		: pg_derivations_read_inference(file, &program->typing, limit, limit, &program->imported_effects,
 			&pg_declaration_graph_codec, &codec, &nd, &derivations);
 	if (input_status) goto fail;
+	if (input_count || (retained && !program->retained_reductions)) goto fail;
 	if (fgetc(file) != EOF || ferror(file)) goto fail;
 	if (nd > SIZE_MAX / sizeof(void *)) goto fail;
 	struct pg_synthesis_job **rules = pg_alloc(graph, nd * sizeof(*rules));

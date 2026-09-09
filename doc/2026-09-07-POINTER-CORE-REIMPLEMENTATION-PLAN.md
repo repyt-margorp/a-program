@@ -890,6 +890,23 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Normal and ASan/UBSan full synthesis pass; sanitized normalization and 758
   prepared-module snapshots pass. The normal source-image gate retains the
   same four exact-input failures, with the other cases passing.
+- [x] Extend the existing shared graph-image envelope to transport raw input
+  Terms alongside unaccepted rules and optional reduction records. APGRET2
+  uses the same Core/object relocation table for all three groups; it does not
+  encode raw constructor/binder references as fabricated proof rules. Readers
+  publish all outputs only after the whole envelope succeeds. Tests destroy
+  the source arena between four saves, preserve cross-group pointer sharing
+  and a raw-only fresh binder, omit reduction records, and save a raw-only
+  image with no rules. Invalid presence flags and enclosing table corruption
+  fail without publishing outputs. Identity I/O and seed tests pass normally
+  and with ASan/UBSan; sanitized normalization and 758 module snapshots pass.
+  Retained source images now use APGSRC15; ordinary source remains APGSRC13,
+  and derivations remain APGDRV6. Correct the seed test's obsolete APGSRC11
+  assertion, preserving its truncation/policy/malformed-input coverage.
+  Source currently supplies no extra Terms and rejects unexpected ones on
+  load: pending constructor producer records and allocation contexts still
+  need to be connected to this payload. The normal source gate still reports
+  the four known constructor/Match exact-input failures, not new failures.
 - [x] Add `pg_synthesis_constructor_scope_at` as allocation input to the same
   constructor-scope job, not another synthesis rule. Share the existing
   telescope binder-list storage/attachment helper (`context_allocation`). The

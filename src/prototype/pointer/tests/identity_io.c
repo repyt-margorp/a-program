@@ -2261,32 +2261,48 @@ static void retained_records(const struct pg_reduction_archive *input)
 	size_t count = 3;
 	const struct pg_reduction_archive *reductions = input;
 	struct pg_graph graph = {0};
-	for (unsigned round = 0; round < 2; ++round) {
+	assert(!pg_graph_init(&graph));
+	const struct pg_term *initial_terms[] = {certificate->source, certificate->target, certificate->source,
+		pg_reference(&graph, pg_binder(&graph))};
+	size_t term_count = 4;
+	const struct pg_term *const *terms = initial_terms;
+	for (unsigned round = 0; round < 4; ++round) {
+		if (round == 2) reductions = NULL;
 		FILE *file = tmpfile();
-		assert(file && !pg_retained_write(file, count, roots, NULL, reductions, &pg_builtin_graph_codec, NULL));
+		assert(file && !pg_retained_write(file, count, roots, NULL, reductions,
+			term_count, terms, &pg_builtin_graph_codec, NULL));
 		pg_graph_destroy(&graph);
 		assert(!pg_graph_init(&graph));
 		struct pg_typing typing;
 		assert(!pg_typing_init(&typing, &graph));
 		rewind(file);
-		assert(!pg_retained_read(file, &typing, 10000, 100, NULL, &pg_builtin_graph_codec, NULL, &count, &roots, &reductions));
+		assert(!pg_retained_read(file, &typing, 10000, 100, NULL, &pg_builtin_graph_codec, NULL,
+			&count, &roots, &reductions, &term_count, &terms));
+		assert(term_count == 4 && terms[0] == roots[0]->source && terms[1] == roots[0]->target);
+		assert(terms[0] == terms[2]);
+		assert(terms[3]->kind == PG_REFERENCE && terms[3]->as.reference->kind == PG_BINDER);
+		assert(terms[3]->as.reference != roots[1]->parameters.binder);
+		assert(!typing.proofs.count);
 		assert(count == 3 && roots[0] == roots[2] && !roots[0]->count);
-		assert(roots[0]->source == reductions->roots[0]->source);
-		assert(roots[0]->target == reductions->roots[0]->target);
+		assert((reductions != NULL) == (round < 2));
 		assert(roots[1]->parameters.binder == roots[0]->source->as.application.function->as.lambda.binder);
 		assert(!roots[0]->parameters.reduction);
-		struct pg_whnf_work work;
-		struct pg_reduction_check check;
-		assert(!pg_whnf_work_init(&work, &graph) && !pg_reduction_check_init(&check, &work, reductions));
-		assert(pg_reduction_check_advance(&check, 100000) == PG_COMPARISON_EQUAL);
-		const struct pg_reduction_certificate *accepted = pg_reduction_check_certificate(&check, 0);
-		assert(pg_reduction_source(accepted) == roots[0]->source);
-		assert(!pg_nf_remember(&work, accepted));
-		struct pg_nf_job *job = pg_nf_request(&work, &pg_pure_policy, roots[0]->source);
-		assert(pg_nf_status(job) == PG_NF_DONE && !pg_nf_steps(job));
-		pg_reduction_check_destroy(&check);
-		pg_whnf_work_destroy(&work);
-		/* An enclosing table failure must not publish either output group. */
+		if (reductions) {
+			assert(roots[0]->source == reductions->roots[0]->source);
+			assert(roots[0]->target == reductions->roots[0]->target);
+			struct pg_whnf_work work;
+			struct pg_reduction_check check;
+			assert(!pg_whnf_work_init(&work, &graph) && !pg_reduction_check_init(&check, &work, reductions));
+			assert(pg_reduction_check_advance(&check, 100000) == PG_COMPARISON_EQUAL);
+			const struct pg_reduction_certificate *accepted = pg_reduction_check_certificate(&check, 0);
+			assert(pg_reduction_source(accepted) == roots[0]->source);
+			assert(!pg_nf_remember(&work, accepted));
+			struct pg_nf_job *job = pg_nf_request(&work, &pg_pure_policy, roots[0]->source);
+			assert(pg_nf_status(job) == PG_NF_DONE && !pg_nf_steps(job));
+			pg_reduction_check_destroy(&check);
+			pg_whnf_work_destroy(&work);
+		}
+		/* An enclosing table failure must not publish any output group. */
 		assert(!fseek(file, 8, SEEK_SET));
 		uint64_t offset;
 		assert(!pg_wire_read_u64(file, &offset));
@@ -2295,13 +2311,36 @@ static void retained_records(const struct pg_reduction_archive *input)
 		size_t untouched = 77;
 		const struct pg_derivation_input *const *unchanged = roots;
 		const struct pg_reduction_archive *same = reductions;
-		assert(pg_retained_read(file, &typing, 10000, 100, NULL, &pg_builtin_graph_codec, NULL, &untouched, &unchanged, &same));
+		size_t untouched_terms = 99;
+		const struct pg_term *const *same_terms = terms;
+		assert(pg_retained_read(file, &typing, 10000, 100, NULL, &pg_builtin_graph_codec, NULL,
+			&untouched, &unchanged, &same, &untouched_terms, &same_terms));
 		assert(untouched == 77 && unchanged == roots && same == reductions);
+		assert(untouched_terms == 99 && same_terms == terms);
 		pg_typing_destroy(&typing);
 		assert(!fclose(file));
 	}
+	FILE *raw = tmpfile();
+	assert(raw && !pg_retained_write(raw, 0, NULL, NULL, NULL,
+		term_count, terms, &pg_builtin_graph_codec, NULL));
 	pg_graph_destroy(&graph);
-	puts("retained rules/reductions: one Core table preserves endpoint/binder identity without accepting rule premises");
+	assert(!pg_graph_init(&graph));
+	struct pg_typing typing;
+	assert(!pg_typing_init(&typing, &graph));
+	rewind(raw);
+	assert(!pg_retained_read(raw, &typing, 10000, 100, NULL, &pg_builtin_graph_codec, NULL,
+		&count, &roots, &reductions, &term_count, &terms));
+	assert(!count && !reductions && term_count == 4 && terms[0] == terms[2]);
+	assert(!typing.proofs.count);
+	assert(!fseek(raw, 16, SEEK_SET) && !pg_wire_write_u64(raw, 2));
+	rewind(raw);
+	assert(pg_retained_read(raw, &typing, 10000, 100, NULL, &pg_builtin_graph_codec, NULL,
+		&count, &roots, &reductions, &term_count, &terms));
+	assert(!count && !reductions && term_count == 4);
+	assert(!fclose(raw));
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+	puts("retained rules/raw terms/optional reductions: shared Core survives inert resaves without accepting premises");
 }
 
 static void reduction_records(void)
