@@ -7592,6 +7592,23 @@ Validation: normal `check`, eight source checks, six runtime fixtures and the
 rebuilt synthesis test (including pending seeded domains) pass. The separate
 `check-image-origins` gate remains an outstanding requirement, not a pass.
 
+Next step after `02a4466`: `pg_synthesis_data_schema_at` accepts a retained
+nominal declaration before source schema preparation starts. The ordinary
+schema entry delegates to it without an allocation. The prepared constructor
+maps go through `pg_data_schema_check` when an allocation is supplied, retaining
+the kernel's exact context, binder, field and result-map validation. No prior
+formation proof is reused. Late/conflicting attachments do not replace work.
+
+- [x] Recompute nullary schema inputs against a retained allocation and preserve
+  its family identity; reject changed constructor counts.
+- [x] Combine restored Lambda/Pi binders with a dependent constructor field
+  telescope; preserve the declaration and reject a changed dependent field type.
+- [ ] Restore source declaration Self/universe inputs and connect these APIs
+  to program-image allocation dependencies. `check-image-origins` remains open.
+Validation: normal `check`, eight source checks and six execution fixtures pass.
+Re-running `check-image-origins` still reports the nominal split, as expected
+until the new source allocation inputs are actually retained and relocated.
+
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.
 The common `APGSRC` path above now supersedes that intermediate framing.

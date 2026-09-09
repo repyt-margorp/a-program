@@ -357,6 +357,14 @@ struct pg_data_schema;
  * Recursive Self fields and nominal fibrancy still require admission rules. */
 struct pg_synthesis_job *pg_synthesis_data_schema(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parameters, const struct pg_syntax *declaration);
+/* Restore the nominal allocation before schema work begins. All fields and
+ * result maps still synthesize normally and must validate against allocation.
+ * No layout-based equality or cached formation proof is substituted. A
+ * conflicting allocation or late attachment is rejected without replacing work.
+ * NULL uses ordinary fresh declaration allocation. */
+struct pg_synthesis_job *pg_synthesis_data_schema_at(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parameters, const struct pg_syntax *declaration,
+	const struct pg_data_declaration *allocation);
 const struct pg_data_schema *pg_synthesis_schema_result(const struct pg_synthesis_job *job);
 /* In an already synthesized constructor field scope, check the syntactic
  * result '* i ...' against the declared index context. Both field and index

@@ -182,6 +182,7 @@ struct pg_synthesis_job {
 	struct substitution_state *substitution;
 	struct declaration_state *declaration;
 	const struct pg_data_schema *schema;
+	const struct pg_data_declaration *nominal_input;
 	const struct pg_source_scope *exports;
 	struct match_state *match;
 	struct handler_state *handler;
@@ -1025,8 +1026,20 @@ struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *syn
 struct pg_synthesis_job *pg_synthesis_data_schema(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parameters, const struct pg_syntax *declaration)
 {
+	return pg_synthesis_data_schema_at(synthesis, parameters, declaration, NULL);
+}
+
+struct pg_synthesis_job *pg_synthesis_data_schema_at(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parameters, const struct pg_syntax *declaration,
+	const struct pg_data_declaration *allocation)
+{
 	if (!declaration || declaration->kind != PG_SYNTAX_DECLARATION) return NULL;
-	return request_role(synthesis, parameters, declaration, DATA_SCHEMA_JOB);
+	struct pg_synthesis_job *job = request_role(synthesis, parameters, declaration, DATA_SCHEMA_JOB);
+	if (!job || !allocation) return job;
+	if (job->nominal_input) return job->nominal_input == allocation ? job : NULL;
+	if (job->left) return job->schema && pg_data_schema_declaration(job->schema) == allocation ? job : NULL;
+	job->nominal_input = allocation;
+	return job;
 }
 
 const struct pg_data_schema *pg_synthesis_schema_result(const struct pg_synthesis_job *job)
@@ -2596,10 +2609,12 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			results = pg_alloc(&temporary, state->checked * sizeof(*results));
 		if (state->checked && !results) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		for (size_t i = 0; i < state->checked; ++i) results[i] = state->producers[i]->result;
-		job->schema = pg_data_schema(synthesis->typing, signature,
-			state->checked, results);
+		job->schema = job->nominal_input
+			? pg_data_schema_check(synthesis->typing, job->nominal_input, signature, state->checked, results)
+			: pg_data_schema(synthesis->typing, signature, state->checked, results);
 		pg_graph_destroy(&temporary);
-		finish(synthesis, job, job->schema ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+		finish(synthesis, job, job->schema ? PG_SYNTHESIS_DONE
+			: job->nominal_input ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR);
 		return;
 	}
 	struct pg_synthesis_job *producer = state->producers[state->checked];

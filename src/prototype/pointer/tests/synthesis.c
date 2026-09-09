@@ -4731,6 +4731,31 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	complete(&synthesis, other, PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_schema_result(other) != schema);
 	assert(pg_data_constructor(pg_data_schema_layout(pg_synthesis_schema_result(other)), 0) != pg_data_constructor(layout, 0));
+	assert(pg_synthesis_data_schema_at(&synthesis, scope, declaration, pg_data_schema_declaration(schema)) == job);
+	assert(!pg_synthesis_data_schema_at(&synthesis, scope, declaration,
+		pg_data_schema_declaration(pg_synthesis_schema_result(other))));
+	/* Reuse allocation identity, but synthesize dependent fields afresh. */
+	{
+		const char *text = "D:=@{mk:(A:@)->A->*;};";
+		struct pg_synthesis_job *original = pg_synthesis_data_schema(&synthesis, root, expression_syntax(typing->graph, text));
+		complete(&synthesis, original, PG_SYNTHESIS_DONE);
+		const struct pg_data_schema *original_schema = pg_synthesis_schema_result(original);
+		const struct pg_data_declaration *allocation = pg_data_schema_declaration(original_schema);
+		const struct pg_context *fields = pg_evidence_context(pg_data_schema_fields(original_schema,
+			pg_data_constructor(pg_data_schema_layout(original_schema), 0)));
+		assert(fields && fields->parent && !fields->parent->parent);
+		const char *variants[] = {text, "D:=@{mk:(A:@)->@->*;};"};
+		for (size_t i = 0; i < 2; ++i) {
+			const struct pg_syntax *restored = expression_syntax(typing->graph, variants[i]);
+			const struct pg_syntax *field = restored->left->items[0].expression;
+			struct pg_synthesis_job *first = pg_synthesis_binding_at(&synthesis, root, field, fields->parent->binder);
+			assert(first && pg_synthesis_binding_at(&synthesis, pg_synthesis_binding_scope(first), field->right, fields->binder));
+			struct pg_synthesis_job *checked = pg_synthesis_data_schema_at(&synthesis, root, restored, allocation);
+			complete(&synthesis, checked, i ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
+			if (!i) assert(pg_data_schema_declaration(pg_synthesis_schema_result(checked)) == allocation);
+			else assert(!pg_synthesis_schema_result(checked));
+		}
+	}
 	const char *empty[] = {"Empty:=@{};", "Flag:=@{off:*; on:*;};"};
 	for (size_t i = 0; i < 2; ++i) {
 		struct pg_synthesis_job *simple = pg_synthesis_data_schema(&synthesis, root, expression_syntax(typing->graph, empty[i]));
@@ -4738,6 +4763,17 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 		const struct pg_data_schema *result = pg_synthesis_schema_result(simple);
 		assert(result && !pg_evidence_context(pg_data_schema_indices(result)));
 		assert(!pg_data_constructor(pg_data_schema_layout(result), i * 2));
+		const struct pg_data_declaration *allocation = pg_data_schema_declaration(result);
+		const struct pg_syntax *restored = expression_syntax(typing->graph, empty[i]);
+		struct pg_synthesis_job *checked = pg_synthesis_data_schema_at(&synthesis, root, restored, allocation);
+		assert(checked && !pg_synthesis_schema_result(checked));
+		assert(pg_synthesis_data_schema(&synthesis, root, restored) == checked);
+		complete(&synthesis, checked, PG_SYNTHESIS_DONE);
+		assert(pg_data_schema_declaration(pg_synthesis_schema_result(checked)) == allocation);
+		struct pg_synthesis_job *changed = pg_synthesis_data_schema_at(&synthesis, root,
+			expression_syntax(typing->graph, empty[1 - i]), allocation);
+		complete(&synthesis, changed, PG_SYNTHESIS_REJECTED);
+		assert(!pg_synthesis_schema_result(changed));
 	}
 	/* Admission must use synthesized field formations, including pure type
 	 * computations, rather than guessing a universe from source syntax. */
