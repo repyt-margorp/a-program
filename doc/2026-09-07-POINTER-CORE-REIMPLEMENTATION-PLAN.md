@@ -843,6 +843,29 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   producer ownership/transport rather than deriving a binder correspondence from
   the output Terms. Also audit `pg_prove_constructor_scope` and induction helpers
   so direct and budgeted construction obey the same allocation contract.
+- [x] September 9 follow-up at `7341ab7`: run every retained-image fixture
+  independently, including both checked reuse and recomputation. A failed
+  constructor assertion must not hide recursive Match or later source tests.
+  `source_io.sh` now shares one runner for typed/source roots and returns failure
+  after collecting retention failures. Normal and ASan/UBSan runs both find four
+  exact-input failures: source-only constructor/Match, each in reuse/recompute.
+  All six typed-root fixtures and four other source-only fixtures pass. Later
+  annotation, prepared module-obligation and nominal/operation tests also pass.
+  This is expanded failure evidence, not completion of source retention.
+- [ ] Reconnect constructor allocations before the owning helper can execute.
+  `declaration_step` registers `CONSTRUCTOR_VALUE_JOB` while publishing members;
+  `request_inputs` enqueues it immediately. `constructor_value_step` requests
+  its field scope before building the saturated constructor and abstraction.
+  Therefore attaching a saved scope only when a qualified source name is read
+  is not a sufficient ordering contract. Preserve the owner input (formation,
+  explicit constructor pointer and parameter substitution), reconnect its scope
+  allocation before execution, and reuse the existing constructor-scope job.
+  `resolve_member` also creates parameter-instantiated owners: do not key this
+  state solely by declaration, constructor ordinal or source syntax. Do not
+  infer constructor identity from its field context; nullary constructors can
+  share that context. Verify both direct and instantiated member paths, inert
+  resaving and scheduler-budget independence. The separate source Match/IH
+  allocation connection remains required even after constructor restoration.
 - [x] Add `pg_synthesis_constructor_scope_at` as allocation input to the same
   constructor-scope job, not another synthesis rule. Share the existing
   telescope binder-list storage/attachment helper (`context_allocation`). The
