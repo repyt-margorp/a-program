@@ -7609,6 +7609,25 @@ Validation: normal `check`, eight source checks and six execution fixtures pass.
 Re-running `check-image-origins` still reports the nominal split, as expected
 until the new source allocation inputs are actually retained and relocated.
 
+Next step after `107c313`: source declaration requests can receive an inert
+nominal allocation through `pg_synthesis_declaration_at`. The existing source
+job remains canonical. A shared attachment helper prevents schema/declaration
+requests from replacing an allocation once work has started. Source inference
+still starts with its ordinary Universe candidate; the retained Self binder is
+used only when that candidate matches the stored Self classifier. A completed
+source candidate must actually use the retained declaration to be accepted.
+The stored classifier cannot force synthesis to choose a higher universe.
+
+- [x] Recheck a zero-field source declaration using its original Self and
+  nominal allocation, obtaining the same accepted formation.
+- [x] Reject changed constructor input and an allocation whose Self universe
+  is higher than the independently inferred source candidate.
+- [ ] Restore constructor allocation dependencies across universe candidates
+  and serialize the source/allocation associations. The mixed-image gate is
+  not fixed merely by exposing these restoration APIs.
+Validation: normal `check`, eight source checks, six execution fixtures and the
+rebuilt synthesis test including higher-stored-universe rejection pass.
+
 Historical follow-up after `ac7afa0`: `APGSEED` version 1 embedded one syntax DAG
 and the definition policy, replacing source-byte persistence in `seed.c`.
 The common `APGSRC` path above now supersedes that intermediate framing.

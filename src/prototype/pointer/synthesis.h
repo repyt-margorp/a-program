@@ -50,6 +50,13 @@ const struct pg_source_scope *pg_synthesis_bind_context(struct pg_synthesis *syn
 	const struct pg_object *binder, struct pg_synthesis_job *context);
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+/* Nominal allocation input for a source declaration, before preparation.
+ * Candidate universe inference still runs. Only the matching candidate uses
+ * the stored Self binder/schema; no stored formation evidence is trusted.
+ * Constructor telescope allocations must be restored separately. */
+struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	const struct pg_data_declaration *allocation);
 /* Borrow immutable source inputs even after Solve. No progress/evidence fields
  * are exported. Only ordinary source-expression producers have this view. */
 int pg_synthesis_source_input(const struct pg_synthesis *synthesis,

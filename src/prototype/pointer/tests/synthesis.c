@@ -4305,6 +4305,27 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
 		struct pg_derivation_input input;
 		assert(!pg_derivation_input_header(type, &input) && input.parameters.declaration);
+		if (i == 0) {
+			const struct pg_syntax *restored = expression_syntax(typing->graph, sources[i]);
+			struct pg_synthesis_job *rechecked = pg_synthesis_declaration_at(&synthesis, root, restored, input.parameters.declaration);
+			assert(rechecked && !pg_synthesis_result(rechecked));
+			assert(pg_synthesis_request(&synthesis, root, restored) == rechecked);
+			assert(complete(&synthesis, rechecked, PG_SYNTHESIS_DONE) == type);
+			struct pg_synthesis_job *changed = pg_synthesis_declaration_at(&synthesis, root,
+				expression_syntax(typing->graph, "D:=@{z:*;};"), input.parameters.declaration);
+			complete(&synthesis, changed, PG_SYNTHESIS_REJECTED);
+			assert(!pg_synthesis_result(changed));
+			const struct pg_evidence *higher_self = pg_prove_context_extension(typing, pg_prove_empty_context(typing),
+				pg_binder(typing->graph), pg_prove_universe(typing, classifiers, pg_prove_empty_context(typing), 1));
+			const struct pg_context *higher_context = pg_evidence_context(higher_self);
+			const struct pg_data_declaration *higher = pg_data_declaration(typing->graph, higher_context, higher_context, 0, NULL);
+			assert(higher);
+			struct pg_synthesis_job *wrong_level = pg_synthesis_declaration_at(&synthesis, root,
+				expression_syntax(typing->graph, sources[i]), higher);
+			complete(&synthesis, wrong_level, PG_SYNTHESIS_REJECTED);
+			assert(!pg_synthesis_result(wrong_level));
+		}
+		proofs = typing->proofs.count;
 		struct pg_synthesis rule_synthesis;
 		assert(!pg_synthesis_init(&rule_synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
 		struct pg_synthesis_job **premises = pg_alloc(typing->graph, input.count * sizeof(*premises));

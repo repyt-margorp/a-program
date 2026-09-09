@@ -586,6 +586,25 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	return request_role(synthesis, scope, syntax, EXPRESSION_JOB);
 }
 
+static struct pg_synthesis_job *attach_nominal(struct pg_synthesis_job *job,
+	const struct pg_data_declaration *allocation)
+{
+	if (!job || !allocation) return job;
+	if (job->nominal_input) return job->nominal_input == allocation ? job : NULL;
+	if (job->left || job->domain)
+		return job->schema && pg_data_schema_declaration(job->schema) == allocation ? job : NULL;
+	job->nominal_input = allocation;
+	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	const struct pg_data_declaration *allocation)
+{
+	if (!syntax || syntax->kind != PG_SYNTAX_DECLARATION) return NULL;
+	return attach_nominal(pg_synthesis_request(synthesis, scope, syntax), allocation);
+}
+
 struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
 {
@@ -1034,12 +1053,7 @@ struct pg_synthesis_job *pg_synthesis_data_schema_at(struct pg_synthesis *synthe
 	const struct pg_data_declaration *allocation)
 {
 	if (!declaration || declaration->kind != PG_SYNTAX_DECLARATION) return NULL;
-	struct pg_synthesis_job *job = request_role(synthesis, parameters, declaration, DATA_SCHEMA_JOB);
-	if (!job || !allocation) return job;
-	if (job->nominal_input) return job->nominal_input == allocation ? job : NULL;
-	if (job->left) return job->schema && pg_data_schema_declaration(job->schema) == allocation ? job : NULL;
-	job->nominal_input = allocation;
-	return job;
+	return attach_nominal(request_role(synthesis, parameters, declaration, DATA_SCHEMA_JOB), allocation);
 }
 
 const struct pg_data_schema *pg_synthesis_schema_result(const struct pg_synthesis_job *job)
@@ -2677,17 +2691,28 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	if (!job->domain)
 		job->domain = pg_prove_universe(synthesis->typing, synthesis->classifiers, source_context(job->scope), 0);
 	if (!job->left) {
-		job->binder = pg_binder(synthesis->typing->graph);
+		const struct pg_data_declaration *allocation = NULL;
+		if (job->nominal_input) {
+			const struct pg_context *parameters = pg_data_declaration_parameters(job->nominal_input);
+			uint64_t candidate, stored;
+			if (!parameters || parameters->parent != pg_evidence_context(source_context(job->scope))
+				|| !pg_universe_level(parameters->declared_type, &stored)
+				|| !job->domain || !pg_universe_level(pg_evidence_subject(job->domain)->core, &candidate)) {
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+			}
+			if (candidate == stored) allocation = job->nominal_input;
+			job->binder = allocation ? parameters->binder : pg_binder(synthesis->typing->graph);
+		} else job->binder = pg_binder(synthesis->typing->graph);
 		const struct pg_evidence *self = pg_prove_context_extension(synthesis->typing,
 			source_context(job->scope), job->binder, job->domain);
 		job->inner = pg_synthesis_bind(synthesis, job->scope, (struct pg_token){.kind = '*'}, job->binder, self);
-		job->left = pg_synthesis_data_schema(synthesis, job->inner, job->syntax);
+		job->left = pg_synthesis_data_schema_at(synthesis, job->inner, job->syntax, allocation);
 		depend(synthesis, job, job->left);
 		return;
 	}
 	if (job->left->status != PG_SYNTHESIS_DONE) {
 		enum pg_synthesis_status status = job->left->status;
-		if (status == PG_SYNTHESIS_REJECTED) status = PG_SYNTHESIS_UNSUPPORTED;
+		if (status == PG_SYNTHESIS_REJECTED && !job->nominal_input) status = PG_SYNTHESIS_UNSUPPORTED;
 		finish(synthesis, job, status); return;
 	}
 	const struct pg_data_schema *schema = pg_synthesis_schema_result(job->left);
@@ -2702,6 +2727,9 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		job->left = NULL;
 		enqueue(synthesis, job);
 		return;
+	}
+	if (job->nominal_input && pg_data_schema_declaration(schema) != job->nominal_input) {
+		finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 	}
 	job->result = pg_prove_inductive_type(synthesis->typing, synthesis->classifiers, schema);
 	if (!job->result) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
