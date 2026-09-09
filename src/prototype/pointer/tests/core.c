@@ -1733,6 +1733,22 @@ static void conversion_test(struct pg_graph *graph)
 	puts("conversion: explicit beta comparison, binder scope, shared DAG and pending divergence passed");
 }
 
+static int reduction_child(void *owner, const void *key, size_t index, const void **child)
+{
+	(void)owner;
+	const struct pg_reduction_certificate *certificate = key;
+	if (!index) {
+		*child = pg_reduction_normality(certificate);
+		return *child ? 1 : 2;
+	}
+	--index;
+	const struct pg_reduction_phase *phase = pg_reduction_phases(certificate);
+	for (size_t i = 0; phase && i < index / 3; ++i) phase = phase->previous;
+	if (!phase) return 0;
+	*child = index % 3 ? phase->children[index % 3 - 1] : phase->head;
+	return *child ? 1 : 2;
+}
+
 static void nf_dependencies(struct pg_graph *graph, const struct pg_reduction_certificate *certificate)
 {
 	assert(pg_reduction_kind(certificate) == PG_REDUCTION_NF);
@@ -1874,12 +1890,45 @@ static void normal_form_test(struct pg_graph *graph)
 	struct pg_nf_job *shared = pg_nf_request(&split_work, &pg_beta_policy, dag);
 	assert(pg_nf_advance(shared, 100000) == PG_NF_DONE && pg_nf_result(shared) == dag);
 	assert(split_work.normal_forms.count - count <= 21);
+	struct pg_dag dependencies;
+	assert(!pg_dag_init(&dependencies, reduction_child, NULL));
+	assert(!pg_dag_add(&dependencies, pg_nf_certificate(shared)));
+	/* A duplicated child edge must not expand a binary tree of receipts. */
+	assert(dependencies.count <= 100);
+	assert(!pg_dag_add(&dependencies, pg_nf_certificate(split)));
+	assert(!pg_dag_add(&dependencies, pg_nf_certificate(beta)));
+	assert(!pg_dag_add(&dependencies, pg_nf_certificate(answer)));
+	assert(!pg_dag_add(&dependencies, pg_nf_certificate(nested)));
+	assert(dependencies.count < 40000);
+	for (const struct pg_dag_node *node = dependencies.first; node; node = node->next) {
+		const struct pg_reduction_certificate *receipt = node->key;
+		for (size_t i = 0; ; ++i) {
+			const void *child = NULL;
+			int edge = reduction_child(NULL, receipt, i, &child);
+			if (!edge) break;
+			if (edge == 2) continue;
+			const struct pg_dag_node *premise = pg_dag_find(&dependencies, child);
+			assert(premise && premise->id < node->id);
+		}
+		const struct pg_reduction_certificate *normality = pg_reduction_normality(receipt);
+		if (normality) {
+			assert(pg_dag_find(&dependencies, normality)->id < node->id);
+			assert(pg_reduction_target(normality) == pg_reduction_source(receipt));
+			assert(pg_reduction_kind(normality) == pg_reduction_kind(receipt));
+			assert(pg_reduction_policy(normality) == pg_reduction_policy(receipt));
+		}
+		if (pg_reduction_kind(receipt) == PG_REDUCTION_NF) nf_dependencies(graph, receipt);
+	}
 	const struct pg_reduction_certificate *retained = pg_nf_certificate(parent);
 	const struct pg_reduction_certificate *retained_normality = pg_nf_certificate(answer);
 	pg_whnf_work_destroy(&whole_work);
 	pg_whnf_work_destroy(&split_work);
 	nf_dependencies(graph, retained);
 	nf_dependencies(graph, retained_normality);
+	/* Certificates and every reachable dependency outlive mutable job stores. */
+	for (const struct pg_dag_node *node = dependencies.first; node; node = node->next)
+		assert(pg_reduction_source(node->key) && pg_reduction_target(node->key));
+	pg_dag_destroy(&dependencies);
 	puts("normal forms: shared pure work, parent contraction, policies, split fuel and suspended divergence passed");
 }
 

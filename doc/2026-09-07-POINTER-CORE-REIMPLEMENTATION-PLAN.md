@@ -40,6 +40,12 @@ a completed-work CHECKPOINT implementation.
   establishing its normality; it must not form a cycle with that reduction.
 - [x] Check NF phase linkage, congruent Lambda/APP rebuilding, child identity,
   fixed policies and receipt lifetime after the evaluator store is destroyed.
+- [x] Traverse the complete receipt dependency DAG with the existing DAG
+  utility, including reflexive normality links. Check acyclicity, topological
+  premise order, policy/kind agreement and shared-child growth. A 20-level
+  duplicated-child example stays within 100 receipts; a 10,000-Lambda example
+  plus the other selected proofs stays within 40,000. These are regression
+  bounds, not language limits or a general complexity proof.
 - [ ] Retain the WHNF execution basis and relocation/acceptance protocol. NF
   phases still end in locally-issued WHNF receipts, not a complete portable
   derivation. This change alone cannot authorize imported cache results.
@@ -65,6 +71,29 @@ receipt extension; the expanded Core test passes with ASan/UBSan, including
 access to retained phase/normality edges after destroying both work stores.
 WHNF/NF results and split-budget behavior remain covered. No new image format
 or externally supplied certificate admission is introduced here.
+The complete-DAG test extension was separately verified with `check` and
+ASan/UBSan `core_test`; every enumerated dependency precedes its dependent
+receipt, including head and child edges, not only normality links.
+
+WHNF preparation audit: `eval.c:step` uses persistent environment/argument
+links for beta work, but `resume_frame` also reconstructs demanded argument
+prefixes and `task_step` runs borrowed poll/resume/destroy callbacks. The current
+built-in semantic dispatchers contain 21 demand/defer registration sites:
+`computation.c` 3, `iadt.c` 2, `symmetry.c` 3, `identity.c` 13. Thus beta-only
+machine serialization would leave most of the required pure semantics outside
+CHECKPOINT. `pg_eval_readback` is a term reconstruction, not a serialization
+of pending auxiliary work; its documented caller-preserving behavior may lose
+that work without changing the reconstructed term.
+
+Next implementation boundary: model the existing semantic work operations and
+their immutable inputs explicitly, retaining partial reconstruction cursors
+only as resumable work. Reuse the current dispatch computations and operation
+objects; do not persist raw C callback/state addresses or introduce alternative
+Core Lambda/APP tags. Evidence for a completed WHNF must relate its initial
+closure/arguments to its materialized result, including demanded work and
+capture-avoiding readback. Neither the runtime cursor nor a saved endpoint pair
+is that evidence by itself. General dispatcher coverage and proof transport
+remain required before a completed-checkpoint claim.
 
 ### September 9: Retaining Normalization Requests
 
