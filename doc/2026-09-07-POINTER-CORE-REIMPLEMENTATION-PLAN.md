@@ -476,10 +476,23 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Resumption uses the original evaluator and produces the identical value with
   the same total steps. Reject mismatched allocation length, invalid position
   and out-of-range prefix coordinates with cleared output handles. This retains
-  raw progress, not proof of a correct prefix. Prefix-removal work and whole
-  machine integration remain open. Normal/ASan/UBSan component tests and
+  raw progress, not proof of a correct prefix. Whole-machine integration remains
+  open; prefix-removal transport is covered below. Normal/ASan/UBSan component tests and
   `check check-prepared-modules` pass. The separately rerun open-family gate
   still fails three of four fixtures at 209/280/323 steps; no acceptance waiver.
+- [x] Retain fixed-prefix removal (`APGPRF1`) through the existing `prefix_work`
+  and polling/resumption descriptor. Its captured argument and caller use one
+  configuration forest, preserving environment identity rather than reducing
+  or flattening the closure. The scalar axis-prefix codec is shared with
+  composition. Read directly into final arena-owned storage and check capacity
+  against the restored owner's non-fixed dimension.
+- [x] Exercise every prefix-task cut of a captured-argument example, resaving
+  twice after arena destruction. Check caller/argument environment sharing,
+  partial coordinates, exact final value and unchanged total steps. Reject an
+  allocation length inconsistent with its owner. Normal/ASan/UBSan component
+  tests and `check check-prepared-modules` pass.
+  Surrounding machine flags and descriptor selection still come from the test;
+  this is not whole-machine checkpoint admission.
 
 - [x] Share the existing `fold_work` layout between computation and transport
   through `computation_internal.h`; expose its original work-operation descriptor.

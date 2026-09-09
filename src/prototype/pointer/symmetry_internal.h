@@ -18,7 +18,15 @@ struct composition_work {
 	size_t dimension;
 };
 
+struct prefix_work {
+	const struct symmetry_entry *outer;
+	struct pg_closure argument;
+	size_t *axes;
+	size_t position;
+};
+
 const struct symmetry_entry *pg_symmetry_owner(const struct pg_object *object);
 extern const struct pg_eval_work_operation pg_symmetry_composition_operation;
+extern const struct pg_eval_work_operation pg_symmetry_prefix_operation;
 
 #endif

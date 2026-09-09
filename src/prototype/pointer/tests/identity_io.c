@@ -399,6 +399,79 @@ static void symmetry_progress(void)
 	assert(positions == 15);
 }
 
+static void prefix_progress(void)
+{
+	uint64_t total = 0;
+	unsigned positions = 0;
+	for (uint64_t cut = 0; ; ++cut) {
+		struct pg_graph graph, arena = {0};
+		assert(!pg_graph_init(&graph));
+		const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
+		const struct pg_object *x = pg_binder(&graph);
+		size_t outer_axes[] = {0, 2, 1}, inner_axes[] = {1, 0};
+		const struct pg_term *outer = pg_reference(&graph, pg_symmetry_restore(&graph, 3, outer_axes));
+		const struct pg_term *inner = pg_reference(&graph, pg_symmetry_restore(&graph, 2, inner_axes));
+		const struct pg_term *body = pg_application(&graph, outer,
+			pg_application(&graph, inner, pg_reference(&graph, x)));
+		struct pg_eval machine;
+		pg_computation_eval_init(&machine, &graph, pg_application(&graph, pg_lambda(&graph, x, body), value));
+		if (pg_eval_advance(&machine, cut) == PG_EVAL_WHNF) {
+			assert(machine.steps == total);
+			pg_eval_destroy(&machine);
+			pg_graph_destroy(&graph);
+			break;
+		}
+		if (machine.task && machine.task->operation == &pg_symmetry_prefix_operation) {
+			assert(!machine.frames);
+			struct prefix_work *work = machine.task->state;
+			positions |= 1u << work->position;
+			for (unsigned round = 0; round < 2; ++round) {
+				struct pg_eval_configuration inputs[] = {{machine.current, machine.arguments}, {{value, NULL}, NULL}};
+				FILE *file = tmpfile();
+				assert(file && !pg_symmetry_prefix_write(file, work, 2, inputs, &pg_builtin_graph_codec, NULL));
+				uint64_t steps = machine.steps;
+				int ready = machine.head_ready;
+				pg_eval_destroy(&machine);
+				pg_graph_destroy(&arena);
+				pg_graph_destroy(&graph);
+				assert(!pg_graph_init(&graph));
+				rewind(file);
+				size_t n;
+				const struct pg_eval_configuration *restored;
+				assert(!pg_symmetry_prefix_read(file, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &work, &n, &restored));
+				assert(n == 2);
+				assert(work->argument.environment == restored[0].arguments->value.environment);
+				value = restored[1].head.term;
+				assert(work->argument.environment->value.term == value);
+				assert(work->argument.term == restored[0].arguments->value.term);
+				assert(&work->outer->base.object == restored[0].head.term->as.reference);
+				for (size_t i = 0; i < work->position; ++i) assert(work->axes[i] == 1 - i);
+				/* A plausible allocation bound must still match its owner. */
+				assert(!fseek(file, 8, SEEK_SET) && !pg_wire_write_u64(file, 3));
+				rewind(file);
+				struct prefix_work *rejected;
+				const struct pg_eval_configuration *unused;
+				assert(pg_symmetry_prefix_read(file, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &rejected, &n, &unused));
+				assert(!rejected && !n && !unused && !fclose(file));
+				pg_computation_eval_init(&machine, &graph, restored[0].head.term);
+				machine.current = restored[0].head;
+				machine.arguments = restored[0].arguments;
+				machine.steps = steps;
+				machine.head_ready = ready;
+				assert(!pg_eval_defer(&machine, &pg_symmetry_prefix_operation, work));
+			}
+		}
+		assert(pg_eval_advance(&machine, 1000) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&machine, &graph) == value);
+		if (!cut) total = machine.steps;
+		assert(machine.steps == total);
+		pg_eval_destroy(&machine);
+		pg_graph_destroy(&arena);
+		pg_graph_destroy(&graph);
+	}
+	assert(positions == 7);
+}
+
 static const struct pg_object *handler_head(const struct pg_term *term)
 {
 	while (term->kind == PG_APPLICATION) term = term->as.application.function;
@@ -983,6 +1056,7 @@ int main(int argc, char **argv)
 	force_frames();
 	fold_progress();
 	symmetry_progress();
+	prefix_progress();
 	scope_frames();
 	all_cuts();
 	configurations();

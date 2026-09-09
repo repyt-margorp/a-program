@@ -12,6 +12,85 @@
 static const char magic[8] = "APGCON\1";
 static const char fold_magic[8] = "APGFLD\1";
 static const char symmetry_magic[8] = "APGSYM\1";
+static const char prefix_magic[8] = "APGPRF\1";
+
+static int write_axes(FILE *file, const char *magic, size_t capacity, size_t position, const size_t *axes)
+{
+	if (position > capacity || (position && !axes)) return -1;
+	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, capacity)
+		|| pg_wire_write_u64(file, position)) return -1;
+	for (size_t i = 0; i < position; ++i)
+		if (axes[i] >= capacity || pg_wire_write_u64(file, axes[i])) return -1;
+	return 0;
+}
+
+static int read_axes(FILE *file, struct pg_graph *arena, const char *magic, size_t limit,
+	size_t *capacity, size_t *position, size_t **axes)
+{
+	char header[8];
+	uint64_t size, used;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)
+		|| pg_wire_read_u64(file, &size) || pg_wire_read_u64(file, &used)) return -1;
+	if (size > limit || size > SIZE_MAX / sizeof(size_t) || used > size) return -1;
+	size_t *data = pg_alloc(arena, (size_t)size * sizeof(*data));
+	if (!data) return -1;
+	for (size_t i = 0; i < used; ++i) {
+		uint64_t axis;
+		if (pg_wire_read_u64(file, &axis) || axis >= size) return -1;
+		data[i] = (size_t)axis;
+	}
+	*capacity = (size_t)size;
+	*position = (size_t)used;
+	*axes = data;
+	return 0;
+}
+
+int pg_symmetry_prefix_write(FILE *file, const struct prefix_work *work,
+	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || !work || !work->outer || (count && !roots)) return -1;
+	size_t dimension = work->outer->dimension - work->outer->fixed_prefix;
+	if (count > SIZE_MAX / sizeof(struct pg_eval_configuration) - 2) return -1;
+	struct pg_graph temporary;
+	if (pg_graph_init(&temporary)) return -1;
+	int status = -1;
+	struct pg_eval_configuration *all = pg_alloc(&temporary, (count + 2) * sizeof(*all));
+	if (!all) goto done;
+	all[0].head.term = pg_reference(&temporary, &work->outer->base.object);
+	all[1].head = work->argument;
+	for (size_t i = 0; i < count; ++i) all[i + 2] = roots[i];
+	if (write_axes(file, prefix_magic, dimension, work->position, work->axes)) goto done;
+	status = pg_eval_configurations_write(file, count + 2, all, codec, owner);
+done:
+	pg_graph_destroy(&temporary);
+	return status;
+}
+
+int pg_symmetry_prefix_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct prefix_work **work, size_t *count, const struct pg_eval_configuration **roots)
+{
+	if (!work || !count || !roots) return -1;
+	*work = NULL;
+	*count = 0;
+	*roots = NULL;
+	if (!file || !arena || !output) return -1;
+	struct prefix_work *candidate = pg_alloc(arena, sizeof(*candidate));
+	if (!candidate) return -1;
+	size_t capacity;
+	if (read_axes(file, arena, prefix_magic, limit, &capacity, &candidate->position, &candidate->axes)) return -1;
+	size_t total;
+	const struct pg_eval_configuration *all;
+	if (pg_eval_configurations_read(file, output, limit, name_limit, codec, owner, &total, &all) || total < 2) return -1;
+	if (all[0].head.environment || all[0].arguments || all[1].arguments || all[0].head.term->kind != PG_REFERENCE) return -1;
+	candidate->outer = pg_symmetry_owner(all[0].head.term->as.reference);
+	if (!candidate->outer || capacity != candidate->outer->dimension - candidate->outer->fixed_prefix) return -1;
+	candidate->argument = all[1].head;
+	*work = candidate;
+	*count = total - 2;
+	*roots = all + 2;
+	return 0;
+}
 
 int pg_symmetry_work_write(FILE *file, const struct composition_work *work,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
@@ -29,10 +108,7 @@ int pg_symmetry_work_write(FILE *file, const struct composition_work *work,
 	all[1] = pg_reference(&temporary, &work->inner->base.object);
 	all[2] = work->argument;
 	for (size_t i = 0; i < count; ++i) all[i + 3] = roots[i];
-	if (fwrite(symmetry_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, dimension)
-		|| pg_wire_write_u64(file, work->position)) goto done;
-	for (size_t i = 0; i < work->position; ++i)
-		if (work->axes[i] >= dimension || pg_wire_write_u64(file, work->axes[i])) goto done;
+	if (write_axes(file, symmetry_magic, dimension, work->position, work->axes)) goto done;
 	status = pg_graph_write_descriptors(file, count + 3, all, codec, owner);
 done:
 	pg_graph_destroy(&temporary);
@@ -48,20 +124,10 @@ int pg_symmetry_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *o
 	*count = 0;
 	*roots = NULL;
 	if (!file || !arena || !output) return -1;
-	char header[8];
-	uint64_t position, capacity;
-	if (fread(header, 1, 8, file) != 8 || memcmp(header, symmetry_magic, 8)
-		|| pg_wire_read_u64(file, &capacity) || pg_wire_read_u64(file, &position)) return -1;
-	if (capacity > limit || capacity > SIZE_MAX / sizeof(size_t) || position > capacity) return -1;
 	struct composition_work *candidate = pg_alloc(arena, sizeof(*candidate));
 	if (!candidate) return -1;
-	candidate->axes = pg_alloc(arena, (size_t)capacity * sizeof(*candidate->axes));
-	if (!candidate->axes) return -1;
-	for (size_t i = 0; i < position; ++i) {
-		uint64_t axis;
-		if (pg_wire_read_u64(file, &axis) || axis >= capacity) return -1;
-		candidate->axes[i] = (size_t)axis;
-	}
+	size_t capacity;
+	if (read_axes(file, arena, symmetry_magic, limit, &capacity, &candidate->position, &candidate->axes)) return -1;
 	size_t total;
 	const struct pg_term *const *all;
 	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &total, &all) || total < 3) return -1;
@@ -74,7 +140,6 @@ int pg_symmetry_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *o
 	candidate->inner = inner;
 	candidate->argument = all[2];
 	candidate->dimension = dimension;
-	candidate->position = (size_t)position;
 	*work = candidate;
 	*count = total - 3;
 	*roots = all + 3;

@@ -33,4 +33,13 @@ int pg_symmetry_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *o
 	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
 	struct composition_work **work, size_t *count, const struct pg_term *const **roots);
 
+struct prefix_work;
+/* Prefix removal retains a captured argument, so its extra roots are full
+ * configurations. Caller and argument environments share one relocation table. */
+int pg_symmetry_prefix_write(FILE *file, const struct prefix_work *work,
+	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner);
+int pg_symmetry_prefix_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct prefix_work **work, size_t *count, const struct pg_eval_configuration **roots);
+
 #endif

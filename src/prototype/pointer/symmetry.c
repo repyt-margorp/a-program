@@ -215,13 +215,6 @@ static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, 
 	return pg_eval_defer(machine, &pg_symmetry_composition_operation, work);
 }
 
-struct prefix_work {
-	const struct symmetry_entry *outer;
-	struct pg_closure argument;
-	size_t *axes;
-	size_t position;
-};
-
 static int prefix_poll(void *state)
 {
 	struct prefix_work *work = state;
@@ -241,7 +234,7 @@ static int prefix_resume(struct pg_eval *machine, void *state)
 	return pg_eval_apply(machine, (struct pg_closure){reduced, NULL}, work->argument, 1);
 }
 
-static const struct pg_eval_work_operation prefix_operation = {
+const struct pg_eval_work_operation pg_symmetry_prefix_operation = {
 	prefix_poll, prefix_resume, composition_destroy
 };
 
@@ -269,7 +262,7 @@ int pg_symmetry_dispatch(struct pg_eval *machine)
 		work->axes = pg_alloc(&machine->temporary,
 			(outer->dimension - outer->fixed_prefix) * sizeof(*work->axes));
 		if (!work->axes) return -1;
-		return pg_eval_defer(machine, &prefix_operation, work);
+		return pg_eval_defer(machine, &pg_symmetry_prefix_operation, work);
 	}
 	return pg_eval_demand(machine, 0, &symmetry_answer_continuation, NULL);
 }
