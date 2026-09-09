@@ -369,20 +369,32 @@ int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_source_environment *input)
 {
 	if (!synthesis || !scope || !input || scope->owner != synthesis->owner_key) return -1;
-	if (scope->hypothesis_for || scope->effect_owner) return -1;
+	if (scope->effect_owner) return -1;
 	if (scope->binder) {
 		struct pg_synthesis_job *binding = scope->context_job;
-		if (binding->role != BINDING_JOB || binding->inner != scope) return -1;
-		*input = (struct pg_source_environment){.parent = scope->parent, .binding = binding};
+		if (binding->role == BINDING_JOB) {
+			if (binding->inner != scope || scope->hypothesis_for) return -1;
+			*input = (struct pg_source_environment){.parent = scope->parent, .binding = binding, .binder = scope->binder};
+			return 0;
+		}
+		const struct pg_source_scope *field = NULL;
+		if (scope->hypothesis_for) {
+			field = scope->parent;
+			while (field && field->binder != scope->hypothesis_for) field = field->parent;
+			if (!field) return -1;
+		}
+		*input = (struct pg_source_environment){.parent = scope->parent, .name = scope->name,
+			.context = binding->role == SCOPE_CONTEXT_JOB ? (void *)binding->inputs[2] : binding,
+			.binder = scope->binder, .hypothesis = field};
 		return 0;
 	}
 	const struct pg_evidence *context = source_context(scope);
 	if (scope->parent) {
 		if (scope->context_job != scope->parent->context_job) return -1;
 	} else if (!context || pg_evidence_context(context)) return -1;
-	*input = (struct pg_source_environment){scope->parent, scope->exports, scope->imports,
-		scope->name, scope->producer, scope->module,
-		scope->definitions ? scope->definitions->syntax : NULL, NULL};
+	*input = (struct pg_source_environment){.parent = scope->parent, .exports = scope->exports,
+		.imports = scope->imports, .name = scope->name, .producer = scope->producer, .module = scope->module,
+		.definitions = scope->definitions ? scope->definitions->syntax : NULL};
 	return 0;
 }
 

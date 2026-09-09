@@ -17,6 +17,60 @@ static struct pg_synthesis_job *parse(struct pg_program *program,
 	return job;
 }
 
+static void context_scopes(void)
+{
+	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p);
+	struct pg_typing *t = &p->typing;
+	const struct pg_evidence *empty = pg_prove_empty_context(t);
+	const struct pg_object *a = pg_binder(&p->graph), *x = pg_binder(&p->graph), *ih = pg_binder(&p->graph);
+	const struct pg_evidence *ac = pg_prove_context_extension(t, empty, a,
+		pg_prove_universe(t, &p->classifiers, empty, 0));
+	const struct pg_evidence *at = pg_prove_value_type(t, pg_prove_variable(t, ac, a));
+	const struct pg_evidence *xc = pg_prove_context_extension(t, ac, x, at);
+	const struct pg_evidence *it = pg_prove_thunk_type(t, &p->classifiers,
+		pg_prove_return_type(t, &p->classifiers, pg_prove_projection(t, xc, at)));
+	const struct pg_evidence *ic = pg_prove_context_extension(t, xc, ih, it);
+	const struct pg_source_scope *scope = pg_synthesis_root(&p->synthesis);
+	scope = pg_synthesis_bind_context(&p->synthesis, scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "A", .length = 1}, a, pg_synthesis_evidence(&p->synthesis, ac));
+	scope = pg_synthesis_bind_context(&p->synthesis, scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "x", .length = 1}, x, pg_synthesis_evidence(&p->synthesis, xc));
+	scope = pg_synthesis_bind_hypothesis(&p->synthesis, scope, x, ih, pg_synthesis_evidence(&p->synthesis, ic));
+	assert(scope);
+	struct pg_parser parser;
+	struct pg_definition definition;
+	const char *source = "r:=*x;";
+	pg_parser_init(&parser, &p->graph, source, strlen(source));
+	assert(pg_parser_next(&parser, &definition) == 1);
+	struct pg_synthesis_job *initial[] = {pg_synthesis_request(&p->synthesis, scope, definition.expression)};
+	struct pg_synthesis_job *const *roots = initial;
+	size_t count = 1;
+	for (unsigned round = 0; round < 3; ++round) {
+		FILE *file = tmpfile();
+		assert(file && !p->synthesis.steps && !pg_sources_write(file, &p->synthesis, count, roots));
+		pg_program_destroy(p);
+		rewind(file);
+		p = pg_sources_read(file, 10000, &count, &roots);
+		assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(roots[0]));
+		assert(!fclose(file));
+	}
+	const struct pg_syntax *syntax;
+	assert(!pg_synthesis_source_input(&p->synthesis, roots[0], &scope, &syntax));
+	struct pg_source_environment environment, field;
+	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
+	assert(environment.context && environment.hypothesis);
+	assert(!pg_synthesis_environment_input(&p->synthesis, environment.hypothesis, &field));
+	assert(field.binder && field.context);
+	pg_synthesis_advance(&p->synthesis, 10000);
+	const struct pg_evidence *result = pg_synthesis_result(roots[0]);
+	assert(result && pg_evidence_subject(result)->core == pg_application(&p->graph,
+		pg_reference(&p->graph, &pg_force_operation), pg_reference(&p->graph, environment.binder)));
+	assert(pg_context_lookup(pg_evidence_context(result), field.binder));
+	pg_program_destroy(p);
+	puts("source contexts: pending field and IH scopes survive inert resaves and ordinary lookup");
+}
+
 static void invalid_normalization_mode(FILE *file)
 {
 	assert(!fflush(file) && !fseek(file, 8, SEEK_SET));
@@ -1026,6 +1080,7 @@ static void retained_process(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); return 0; }
 	if (argc > 1 && !strncmp(argv[1], "retained-", 9)) {
 		retained_process(argc, argv);
 		return 0;

@@ -887,7 +887,9 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   The `application` fixture uses explicit function quotation and
   `f (f Nat.zero)` with a nullary ADT. Both source-only and typed-root modes are
   included before the still-open constructor regression in `source_io.sh`.
-- [ ] Source-origin scope coverage: collecting application origins exposes
+- [ ] Complete source-origin scope coverage. Historical failure (field/IH
+  scopes are resolved by APGSRC13/14 below; effect-owner state remains open):
+  collecting application origins exposes
   applications inside Match branches. `pg_synthesis_environment_input` rejects
   scopes with `hypothesis_for` (also `effect_owner`) and contexts not constructed
   by the retained lexical binding jobs. Consequently `retained-write-typed ...
@@ -915,6 +917,26 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   representation; source scope export/import is still outstanding above.
   Verification: normal and ASan/UBSan full `synthesis_test`, normal
   `source_io_test normalization` and `prepared-module` (758 boundaries) pass.
+- [x] September 9: APGSRC13 (ordinary) / APGSRC14 (retained reductions) add
+  context-backed source bindings. The existing eight-word environment record
+  carries the ordinary context-extension rule and, for IH lookup, a reference
+  to the field's source scope. Binder identity comes from that rule input, not
+  another object table. The environment view exposes the same context producer
+  used by `SCOPE_CONTEXT_JOB`; imports rebuild bindings through the shared
+  context/Hypothesis APIs without Solve or accepted flags. Lexical ancestor
+  collection follows these generated context scopes instead of requiring each
+  to have a Lambda/Pi syntax allocation site. Existing derivation format remains
+  APGDRV6; old source versions are rejected rather than reinterpreted.
+  A permanent `source_io_test context-scopes` creates pending field/IH scopes,
+  destroys and resaves three times without Solve, then checks `*x` produces the
+  exact FORCE of the relocated IH binder in the retained field context.
+  Typed-root Match saving/resaving succeeds again. The separate source-only
+  constructor exact-input gate remains open; handler `effect_owner` transport
+  and restoring source Match's own generated field allocation remain unfinished.
+  Verification: normal and ASan/UBSan `context-scopes` pass; both source suites
+  pass the typed-root Match loop and still fail the source-only constructor
+  assertion. Normal full synthesis, normalization and prepared-module (758
+  boundaries) pass. No complete-source/CHECKPOINT or Main-push claim is made.
 - [x] Retained recursive-elimination derivation allocation (resolved by
   APGDRV6 below). Original failure:
   `retained-write-typed <file> match` followed by inert resaves and

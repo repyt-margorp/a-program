@@ -8,9 +8,9 @@
 #include "retained_io.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\13";
-static const char retained_magic[8] = "APGSRC\14";
-enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING };
+static const char magic[8] = "APGSRC\15";
+static const char retained_magic[8] = "APGSRC\16";
+enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING };
 
 struct environment {
 	enum environment_kind kind;
@@ -36,6 +36,12 @@ static int environment(const struct pg_synthesis *synthesis, const struct pg_sou
 	struct pg_source_environment input;
 	if (pg_synthesis_environment_input(synthesis, scope, &input)) return -1;
 	*output = (struct environment){.parent = input.parent, .name = input.name};
+	if (input.context) {
+		output->kind = CONTEXT_BINDING;
+		output->rule = input.context;
+		output->target = input.hypothesis;
+		return 0;
+	}
 	if (input.binding) {
 		const struct pg_object *binder;
 		if (pg_synthesis_binding_input(synthesis, input.binding, &output->parent, &output->syntax, &binder)) return -1;
@@ -195,7 +201,7 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 			const struct pg_object *binder;
 			if (pg_synthesis_binding_input(c->synthesis, input.binding, &input.parent, &site, &binder)) return -1;
 		}
-		if (!site || !id(c->syntax, site)) return 0;
+		if (!input.context && (!site || !id(c->syntax, site))) return 0;
 		parent = input.parent;
 		if (!parent) return 0;
 	}
@@ -414,7 +420,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t w[8];
 		for (size_t j = 0; j < 8; ++j) if (pg_wire_read_u64(file, &w[j])) goto fail;
-		if (w[0] > BINDING || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
+		if (w[0] > CONTEXT_BINDING || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
 		char *name = pg_alloc(graph, (size_t)w[6]);
 		if (!name || fread(name, 1, (size_t)w[6], file) != w[6]) goto fail;
 		remaining -= (size_t)w[6];
@@ -490,6 +496,20 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		const struct pg_source_scope *parent = r->parent ? scopes[r->parent - 1] : NULL;
 		const struct pg_source_scope *target = r->target ? scopes[r->target - 1] : NULL;
 		struct pg_synthesis *s = &program->synthesis;
+		if (r->kind == CONTEXT_BINDING) {
+			if (!parent || !r->rule || r->rule > nd || r->syntax || r->definitions) goto fail;
+			const struct pg_derivation_input *input = derivations[r->rule - 1];
+			if (input->rule != PG_CONTEXT_EXTEND || !input->parameters.binder) goto fail;
+			if (target) {
+				struct pg_source_environment field;
+				if (r->name.kind || r->name.length || pg_synthesis_environment_input(s, target, &field)) goto fail;
+				scopes[i] = pg_synthesis_bind_hypothesis(s, parent, field.binder,
+					input->parameters.binder, rules[r->rule - 1]);
+			} else scopes[i] = pg_synthesis_bind_context(s, parent, r->name,
+				input->parameters.binder, rules[r->rule - 1]);
+			if (!scopes[i]) goto fail;
+			continue;
+		}
 		if (r->kind == BINDING) {
 			if (!parent || target || !r->syntax || !r->rule || r->rule > nd || r->definitions || r->name.kind || r->name.length) goto fail;
 			scopes[i] = pg_synthesis_binding_scope(pg_synthesis_restore_binding(s, parent,

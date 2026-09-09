@@ -117,6 +117,9 @@ struct pg_source_environment {
 	struct pg_synthesis_job *producer, *module;
 	const struct pg_syntax *definitions;
 	struct pg_synthesis_job *binding;
+	struct pg_synthesis_job *context;
+	const struct pg_object *binder;
+	const struct pg_source_scope *hypothesis;
 };
 int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_source_environment *input);
