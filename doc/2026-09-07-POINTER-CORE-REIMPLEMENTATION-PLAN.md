@@ -50,6 +50,42 @@ Verification: `make -s -f src/prototype/pointer/Makefile check` and the standalo
 `tests/image_cli.sh` invocation pass. The full acceptance gate is still incomplete;
 the open-family result above remains a required correction before Main promotion.
 
+### September 9: Retained Proof Reuse Is Not Source Checkpointing
+
+Audit after `55c52f5`: `derivation_input_step` translates retained headers and
+premise references into `pg_synthesis_rule`, the same rule factory used by source
+synthesis. There is no independent replay checker. A new regression exports a
+source-synthesized identity derivation, checks it through a fresh synthesis store
+sharing the typing store, and requires the exact original accepted evidence
+without growth of the proof table. Repeating the retained input requires no
+additional solver transitions. Changing the retained header to APP rejects
+without invalidating either previously accepted root. Fresh-process admission
+remains covered separately by the existing producer image test.
+
+This establishes reuse of accepted evidence, not avoidance of rule traversal or
+normalization. The current source image reconstructs source jobs; retained
+allocation origins are not a cache of the complete source derivation. Do not
+add a source-to-proof attachment that simply trusts the saved correspondence.
+The next CHECKPOINT change must preserve the prepared producer graph, including
+module exports and outstanding obligations, not only selected final proofs.
+Nominal namespace/constructor exports must survive without re-discovering them
+from erased Core. Keep unfinished source producers and prepared rule producers
+in the same scheduler; implement source/rule transport as adapters, not a second
+acceptance engine. This requirement is still open.
+
+Validation: standalone producer export and the full `check` target pass,
+including fresh-process producer admission at budgets 1/64. No runtime code or
+wire format was changed in this audit; CHECKPOINT remains incomplete.
+
+Theory references checked during the open-family investigation:
+[Vakar, A Framework for Dependent Types and Effects](https://arxiv.org/abs/1512.08009)
+distinguishes dCBPV- from the dependent sequencing extension dCBPV+;
+[Narya typechecking details](https://narya.readthedocs.io/en/latest/typechecking.html)
+describes dependent function syntax and let-bound definitions. Neither source
+establishes A Program's proposed extraction of a neutral pure computation into
+a universe value. That extension needs its own substitution and computation
+rules; it cannot be justified merely by citing CBPV or Narya.
+
 ### September 9: Publish Only Completed Images
 
 N5 file-publication correction after `3f2a552`: the CLI previously opened the

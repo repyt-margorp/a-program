@@ -792,6 +792,57 @@ static void same_snapshot(FILE *before, FILE *after)
 	assert(!ferror(before) && !ferror(after) && !fclose(after));
 }
 
+static void retained_source_proof(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *source, uint64_t chunk)
+{
+	struct pg_graph storage;
+	struct pg_effect_inference image;
+	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
+	const struct pg_derivation_input *const *inputs;
+	assert(!pg_synthesis_export_rules(synthesis, 1, &source, &storage, &image, 1, &inputs));
+	const struct pg_evidence *accepted = pg_synthesis_result(source);
+	struct pg_synthesis resumed;
+	assert(!pg_synthesis_init(&resumed, synthesis->typing, synthesis->classifiers,
+		synthesis->normalization, synthesis->definition_policy));
+	synthesis = &resumed;
+	size_t proofs = synthesis->typing->proofs.count;
+	struct pg_synthesis_job *restored = pg_synthesis_derivation_inference(synthesis, inputs[0], &image);
+	assert(restored && !pg_synthesis_result(restored));
+	assert(synthesis->typing->proofs.count == proofs);
+	uint64_t limit = synthesis->steps + 1000;
+	while (pg_synthesis_status(restored) == PG_SYNTHESIS_PENDING) {
+		assert(synthesis->steps < limit);
+		pg_synthesis_advance(synthesis, chunk);
+	}
+	assert(pg_synthesis_status(restored) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(restored) == accepted);
+	assert(synthesis->typing->proofs.count == proofs);
+	uint64_t steps = synthesis->steps;
+	assert(pg_synthesis_derivation_inference(synthesis, inputs[0], &image) == restored);
+	pg_synthesis_advance(synthesis, chunk);
+	assert(synthesis->steps == steps);
+	/* A retained conclusion does not authorize a different rule header. */
+	const struct pg_derivation_input *original = inputs[0];
+	struct pg_derivation_input *wrong = pg_alloc(&storage,
+		sizeof(*wrong) + original->count * sizeof(*wrong->premises));
+	assert(wrong);
+	*wrong = *original;
+	for (size_t i = 0; i < original->count; ++i) wrong->premises[i] = original->premises[i];
+	wrong->rule = PG_APP_ELIM;
+	struct pg_synthesis_job *rejected = pg_synthesis_derivation_inference(synthesis, wrong, &image);
+	assert(rejected);
+	limit = synthesis->steps + 1000;
+	while (pg_synthesis_status(rejected) == PG_SYNTHESIS_PENDING) {
+		assert(synthesis->steps < limit);
+		pg_synthesis_advance(synthesis, chunk);
+	}
+	assert(pg_synthesis_status(rejected) == PG_SYNTHESIS_REJECTED);
+	assert(pg_synthesis_result(source) == accepted && pg_synthesis_result(restored) == accepted);
+	pg_synthesis_destroy(&resumed);
+	pg_effect_inference_destroy(&image);
+	pg_graph_destroy(&storage);
+}
+
 static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers,
 	int writing, uint64_t chunk)
 {
@@ -822,6 +873,7 @@ static void producer_proofs(FILE *file, struct pg_typing *typing, struct pg_clas
 			pg_synthesis_advance(&synthesis, chunk);
 		}
 		assert(pg_synthesis_status(identity) == PG_SYNTHESIS_DONE);
+		retained_source_proof(&synthesis, identity, chunk);
 		const struct pg_evidence *u = pg_prove_universe(typing, classifiers, pg_prove_empty_context(typing), 0);
 		struct pg_synthesis_job *universe = pg_synthesis_evidence(&synthesis, u);
 		const struct pg_term *type = pg_evidence_subject(u)->core;
