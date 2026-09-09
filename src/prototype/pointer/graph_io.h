@@ -62,6 +62,20 @@ struct pg_graph_codec {
 		const struct pg_term *const *, size_t, const uint64_t *);
 	const struct pg_graph_root_codec *roots;
 };
+
+/* Seekable enclosing image: version[8], terminal table offset, owner payload,
+ * then one shared Term/object table. Payload codecs use the supplied codec
+ * instead of emitting independent tables. Source graphs outlive writing;
+ * temporary Reference wrappers are retained, other source nodes are borrowed.
+ * A successful payload read may still fail the enclosing boundary check: the
+ * owner must withhold publication and clean up its resources on any failure.
+ * No evaluation, proof acceptance or saved-status trust is performed here. */
+int pg_graph_image_write(FILE *file, const char version[8],
+	const struct pg_graph_codec *codec, void *object_owner,
+	int (*payload)(FILE *, const struct pg_graph_codec *, void *), void *state);
+int pg_graph_image_read(FILE *file, const char version[8], struct pg_graph *graph,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *object_owner,
+	int (*payload)(FILE *, struct pg_graph *, size_t, size_t, const struct pg_graph_codec *, void *), void *state);
 /* Add reachable objects to an initialized leaf DAG using the exact transport
  * dependency traversal, including descriptor payloads. No bytes, evaluation or
  * graph mutations. Keys borrow objects from roots and codec-owned storage. */

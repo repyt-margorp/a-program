@@ -5,10 +5,6 @@
 #include "symmetry_internal.h"
 #include "eval_internal.h"
 #include "wire.h"
-#include "dag.h"
-
-#include <limits.h>
-#include <string.h>
 
 struct machine_owner {
 	const struct pg_graph_codec *codec;
@@ -244,45 +240,22 @@ int pg_computation_machine_read(FILE *file, struct pg_eval *machine, struct pg_g
 
 static const char forest_magic[8] = "APGMFS\1";
 
-static int forest_roots_write(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
-{
-	struct pg_dag *table = opaque;
-	if (pg_wire_write_u64(file, count)) return -1;
-	for (size_t i = 0; i < count; ++i) {
-		const struct pg_term *term = roots[i];
-		if (!term) return -1;
-		/* Nested codecs create temporary reference wrappers. Keep a wrapper
-		 * here; source Lambda/Application nodes remain borrowed until writing ends. */
-		if (term->kind == PG_REFERENCE) term = pg_reference(&table->storage, term->as.reference);
-		if (!term || pg_dag_add(table, term)) return -1;
-		if (pg_wire_write_u64(file, pg_dag_find(table, term)->id)) return -1;
-	}
-	return 0;
-}
-
-struct forest_roots {
-	size_t count;
-	const struct pg_term *const *terms;
+struct forest_write {
+	size_t machine_count, root_count;
+	const struct pg_eval *const *machines;
+	const struct pg_eval_policy *const *policies;
+	const struct pg_term *const *roots;
+	void *owner;
 };
 
-static int forest_roots_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
-	size_t *count, const struct pg_term *const **roots, void *opaque)
+static int forest_write(FILE *file, const struct pg_graph_codec *codec, void *state)
 {
-	(void)name_limit;
-	const struct forest_roots *table = opaque;
-	*count = 0;
-	*roots = NULL;
-	uint64_t n;
-	if (pg_wire_read_u64(file, &n) || n > limit || n > SIZE_MAX / sizeof(const struct pg_term *)) return -1;
-	const struct pg_term **result = pg_alloc(graph, (size_t)n * sizeof(*result));
-	if (!result) return -1;
-	for (size_t i = 0; i < n; ++i) {
-		uint64_t id;
-		if (pg_wire_read_u64(file, &id) || !id || id > table->count) return -1;
-		result[i] = table->terms[id - 1];
-	}
-	*count = (size_t)n;
-	*roots = result;
+	const struct forest_write *forest = state;
+	if (pg_wire_write_u64(file, forest->machine_count)
+		|| pg_graph_write_descriptors(file, forest->root_count, forest->roots, codec, forest->owner)) return -1;
+	for (size_t i = 0; i < forest->machine_count; ++i)
+		if (pg_computation_machine_write(file, forest->machines[i], forest->policies[i],
+			0, NULL, codec, forest->owner)) return -1;
 	return 0;
 }
 
@@ -290,33 +263,41 @@ int pg_computation_machines_write(FILE *file, size_t machine_count,
 	const struct pg_eval *const *machines, const struct pg_eval_policy *const *policies,
 	size_t count, const struct pg_term *const *roots, const struct pg_graph_codec *codec, void *owner)
 {
-	if (!file || (machine_count && (!machines || !policies)) || (count && !roots)) return -1;
-	if (codec && codec->roots) return -1;
-	long start = ftell(file);
-	if (start < 0 || start > LONG_MAX - 8) return -1;
-	struct pg_dag table = {0};
-	int status = -1;
-	if (pg_dag_init(&table, NULL, NULL) || pg_graph_init(&table.storage)) goto done;
-	struct pg_graph_root_codec root_codec = {.write = forest_roots_write, .context = &table};
-	struct pg_graph_codec nested = codec ? *codec : (struct pg_graph_codec){0};
-	nested.roots = &root_codec;
-	if (fwrite(forest_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, 0)
-		|| pg_wire_write_u64(file, machine_count) || forest_roots_write(file, count, roots, &table)) goto done;
-	for (size_t i = 0; i < machine_count; ++i)
-		if (pg_computation_machine_write(file, machines[i], policies[i], 0, NULL, &nested, owner)) goto done;
-	long position = ftell(file);
-	if (position < 0 || table.count > SIZE_MAX / sizeof(const struct pg_term *)) goto done;
-	const struct pg_term **all = pg_alloc(&table.storage, table.count * sizeof(*all));
-	if (!all) goto done;
-	for (const struct pg_dag_node *node = table.first; node; node = node->next) all[node->id - 1] = node->key;
-	if (pg_graph_write_descriptors(file, table.count, all, codec, owner)) goto done;
-	long end = ftell(file);
-	if (end < 0 || fseek(file, start + 8, SEEK_SET) || pg_wire_write_u64(file, (uint64_t)position)
-		|| fseek(file, end, SEEK_SET)) goto done;
-	status = 0;
-done:
-	pg_dag_destroy(&table);
-	return status;
+	if ((machine_count && (!machines || !policies)) || (count && !roots)) return -1;
+	struct forest_write forest = {machine_count, count, machines, policies, roots, owner};
+	return pg_graph_image_write(file, forest_magic, codec, owner, forest_write, &forest);
+}
+
+struct forest_read {
+	size_t machine_count, root_count, initialized;
+	struct pg_eval **machines;
+	const struct pg_eval_policy **policies;
+	const struct pg_term *const *roots;
+	void *owner;
+};
+
+static int forest_read(FILE *file, struct pg_graph *output, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *state)
+{
+	struct forest_read *forest = state;
+	uint64_t n;
+	if (pg_wire_read_u64(file, &n) || n > limit || n > SIZE_MAX / sizeof(struct pg_eval *)) return -1;
+	forest->machine_count = (size_t)n;
+	forest->machines = pg_alloc(output, (size_t)n * sizeof(*forest->machines));
+	forest->policies = pg_alloc(output, (size_t)n * sizeof(*forest->policies));
+	if (!forest->machines || !forest->policies) return -1;
+	if (pg_graph_read_descriptors(file, output, limit, name_limit, codec, forest->owner,
+		&forest->root_count, &forest->roots)) return -1;
+	for (size_t i = 0; i < n; ++i) {
+		forest->machines[i] = pg_alloc(output, sizeof(*forest->machines[i]));
+		if (!forest->machines[i]) return -1;
+		++forest->initialized;
+		size_t extra_count;
+		const struct pg_eval_configuration *extra;
+		if (pg_computation_machine_read(file, forest->machines[i], output, limit, name_limit,
+			codec, forest->owner, &forest->policies[i], &extra_count, &extra) || extra_count) return -1;
+	}
+	return 0;
 }
 
 int pg_computation_machines_read(FILE *file, struct pg_graph *output, size_t limit, size_t name_limit,
@@ -329,45 +310,15 @@ int pg_computation_machines_read(FILE *file, struct pg_graph *output, size_t lim
 	*machines = NULL;
 	*policies = NULL;
 	*roots = NULL;
-	if (!file || !output || (codec && codec->roots)) return -1;
-	char magic[8];
-	uint64_t position, n;
-	if (fread(magic, 1, 8, file) != 8 || memcmp(magic, forest_magic, 8)
-		|| pg_wire_read_u64(file, &position) || pg_wire_read_u64(file, &n)) return -1;
-	long metadata = ftell(file);
-	if (metadata < 0 || position <= (uint64_t)metadata || position > LONG_MAX
-		|| n > limit || n > SIZE_MAX / sizeof(struct pg_eval *)) return -1;
-	struct forest_roots table;
-	if (fseek(file, (long)position, SEEK_SET)
-		|| pg_graph_read_descriptors(file, output, limit, name_limit, codec, owner, &table.count, &table.terms)) return -1;
-	long end = ftell(file);
-	if (end < 0 || fseek(file, metadata, SEEK_SET)) return -1;
-	struct pg_eval **result = pg_alloc(output, (size_t)n * sizeof(*result));
-	const struct pg_eval_policy **selected = pg_alloc(output, (size_t)n * sizeof(*selected));
-	if (!result || !selected) return -1;
-	struct pg_graph_root_codec root_codec = {.read = forest_roots_read, .context = &table};
-	struct pg_graph_codec nested = codec ? *codec : (struct pg_graph_codec){0};
-	nested.roots = &root_codec;
-	size_t root_count, initialized = 0;
-	const struct pg_term *const *root_terms;
-	if (forest_roots_read(file, output, limit, name_limit, &root_count, &root_terms, &table)) return -1;
-	for (size_t i = 0; i < n; ++i) {
-		result[i] = pg_alloc(output, sizeof(*result[i]));
-		if (!result[i]) goto failure;
-		++initialized;
-		size_t extra_count;
-		const struct pg_eval_configuration *extra;
-		if (pg_computation_machine_read(file, result[i], output, limit, name_limit, &nested, owner,
-			&selected[i], &extra_count, &extra) || extra_count) goto failure;
+	struct forest_read forest = {.owner = owner};
+	if (pg_graph_image_read(file, forest_magic, output, limit, name_limit, codec, owner, forest_read, &forest)) {
+		for (size_t i = 0; i < forest.initialized; ++i) pg_eval_destroy(forest.machines[i]);
+		return -1;
 	}
-	if (ftell(file) != (long)position || fseek(file, end, SEEK_SET)) goto failure;
-	*machine_count = (size_t)n;
-	*machines = result;
-	*policies = selected;
-	*count = root_count;
-	*roots = root_terms;
+	*machine_count = forest.machine_count;
+	*machines = forest.machines;
+	*policies = forest.policies;
+	*count = forest.root_count;
+	*roots = forest.roots;
 	return 0;
-failure:
-	for (size_t i = 0; i < initialized; ++i) pg_eval_destroy(result[i]);
-	return -1;
 }

@@ -115,8 +115,64 @@ static const struct pg_object *wrong_kind(void *context, const char *label)
 	return &oracle;
 }
 
+struct image_payload {
+	const struct pg_term *term;
+	const struct pg_term *first, *second;
+	int stop;
+};
+
+static int image_write(FILE *file, const struct pg_graph_codec *codec, void *state)
+{
+	struct image_payload *payload = state;
+	if (pg_graph_write_descriptors(file, 1, &payload->term, codec, NULL)) return -1;
+	if (pg_wire_write_u64(file, 42)) return -1;
+	struct pg_graph scratch;
+	if (pg_graph_init(&scratch)) return -1;
+	const struct pg_term *copy = pg_reference(&scratch, payload->term->as.reference);
+	int status = !copy ? -1 : pg_graph_write_descriptors(file, 1, &copy, codec, NULL);
+	pg_graph_destroy(&scratch);
+	return status;
+}
+
+static int image_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	const struct pg_graph_codec *codec, void *state)
+{
+	struct image_payload *payload = state;
+	size_t count;
+	const struct pg_term *const *roots;
+	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, NULL, &count, &roots) || count != 1) return -1;
+	payload->first = roots[0];
+	if (payload->stop) return 0;
+	uint64_t marker;
+	if (pg_wire_read_u64(file, &marker) || marker != 42) return -1;
+	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, NULL, &count, &roots) || count != 1) return -1;
+	payload->second = roots[0];
+	return 0;
+}
+
+static void shared_image(void)
+{
+	struct pg_graph source, destination;
+	assert(!pg_graph_init(&source) && !pg_graph_init(&destination));
+	struct image_payload payload = {.term = pg_reference(&source, pg_binder(&source))};
+	FILE *file = tmpfile();
+	const char version[8] = "APGTST\1";
+	assert(file && !pg_graph_image_write(file, version, NULL, NULL, image_write, &payload));
+	pg_graph_destroy(&source);
+	rewind(file);
+	assert(!pg_graph_image_read(file, version, &destination, 100, 100, NULL, NULL, image_read, &payload));
+	assert(payload.first == payload.second);
+	/* The owner's success does not bypass the complete-payload boundary. */
+	payload.stop = 1;
+	rewind(file);
+	assert(pg_graph_image_read(file, version, &destination, 100, 100, NULL, NULL, image_read, &payload));
+	assert(!fclose(file));
+	pg_graph_destroy(&destination);
+}
+
 int main(void)
 {
+	shared_image();
 	struct pg_graph source, destination;
 	assert(pg_graph_init(&source) == 0 && pg_graph_init(&destination) == 0);
 	symmetry_transport(&source, &destination);

@@ -3,8 +3,107 @@
 #include "dag.h"
 
 #include <string.h>
+#include <limits.h>
 
 static const unsigned char magic[8] = {'A', 'P', 'G', 'C', 'O', 'R', 'E', 1};
+
+static int image_roots_write(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+{
+	struct pg_dag *table = opaque;
+	if (pg_wire_write_u64(file, count)) return -1;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_term *term = roots[i];
+		if (!term) return -1;
+		/* Nested codecs create temporary reference wrappers. Keep a wrapper
+		 * here; source Lambda/Application nodes remain borrowed until writing ends. */
+		if (term->kind == PG_REFERENCE) term = pg_reference(&table->storage, term->as.reference);
+		if (!term || pg_dag_add(table, term)) return -1;
+		if (pg_wire_write_u64(file, pg_dag_find(table, term)->id)) return -1;
+	}
+	return 0;
+}
+
+struct image_roots {
+	size_t count;
+	const struct pg_term *const *terms;
+};
+
+static int image_roots_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+	size_t *count, const struct pg_term *const **roots, void *opaque)
+{
+	(void)name_limit;
+	const struct image_roots *table = opaque;
+	*count = 0;
+	*roots = NULL;
+	uint64_t n;
+	if (pg_wire_read_u64(file, &n) || n > limit || n > SIZE_MAX / sizeof(const struct pg_term *)) return -1;
+	const struct pg_term **result = pg_alloc(graph, (size_t)n * sizeof(*result));
+	if (!result) return -1;
+	for (size_t i = 0; i < n; ++i) {
+		uint64_t id;
+		if (pg_wire_read_u64(file, &id) || !id || id > table->count) return -1;
+		result[i] = table->terms[id - 1];
+	}
+	*count = (size_t)n;
+	*roots = result;
+	return 0;
+}
+
+
+int pg_graph_image_write(FILE *file, const char version[8],
+	const struct pg_graph_codec *codec, void *object_owner,
+	int (*payload)(FILE *, const struct pg_graph_codec *, void *), void *state)
+{
+	if (!file || !version || !payload || (codec && codec->roots)) return -1;
+	long start = ftell(file);
+	if (start < 0 || start > LONG_MAX - 8) return -1;
+	struct pg_dag table = {0};
+	int status = -1;
+	if (pg_dag_init(&table, NULL, NULL) || pg_graph_init(&table.storage)) goto done;
+	struct pg_graph_root_codec root_codec = {.write = image_roots_write, .context = &table};
+	struct pg_graph_codec nested = codec ? *codec : (struct pg_graph_codec){0};
+	nested.roots = &root_codec;
+	if (fwrite(version, 1, 8, file) != 8 || pg_wire_write_u64(file, 0)
+		|| payload(file, &nested, state)) goto done;
+	long position = ftell(file);
+	if (position < 0 || table.count > SIZE_MAX / sizeof(const struct pg_term *)) goto done;
+	const struct pg_term **all = pg_alloc(&table.storage, table.count * sizeof(*all));
+	if (!all) goto done;
+	for (const struct pg_dag_node *node = table.first; node; node = node->next) all[node->id - 1] = node->key;
+	if (pg_graph_write_descriptors(file, table.count, all, codec, object_owner)) goto done;
+	long end = ftell(file);
+	if (end < 0 || fseek(file, start + 8, SEEK_SET) || pg_wire_write_u64(file, (uint64_t)position)
+		|| fseek(file, end, SEEK_SET)) goto done;
+	status = 0;
+done:
+	pg_dag_destroy(&table);
+	return status;
+}
+
+int pg_graph_image_read(FILE *file, const char version[8], struct pg_graph *graph,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *object_owner,
+	int (*payload)(FILE *, struct pg_graph *, size_t, size_t, const struct pg_graph_codec *, void *), void *state)
+{
+	if (!file || !version || !graph || !payload || (codec && codec->roots)) return -1;
+	char found[8];
+	uint64_t position;
+	if (fread(found, 1, 8, file) != 8 || memcmp(found, version, 8)
+		|| pg_wire_read_u64(file, &position)) return -1;
+	long metadata = ftell(file);
+	if (metadata < 0 || position < (uint64_t)metadata || position > LONG_MAX) return -1;
+	struct image_roots table;
+	if (fseek(file, (long)position, SEEK_SET)
+		|| pg_graph_read_descriptors(file, graph, limit, name_limit, codec, object_owner, &table.count, &table.terms)) return -1;
+	long end = ftell(file);
+	if (end < 0 || fseek(file, metadata, SEEK_SET)) return -1;
+	struct pg_graph_root_codec root_codec = {.read = image_roots_read, .context = &table};
+	struct pg_graph_codec nested = codec ? *codec : (struct pg_graph_codec){0};
+	nested.roots = &root_codec;
+	if (payload(file, graph, limit, name_limit, &nested, state)
+		|| ftell(file) != (long)position || fseek(file, end, SEEK_SET)) return -1;
+	return 0;
+}
+
 
 struct transport {
 	struct pg_dag *objects;

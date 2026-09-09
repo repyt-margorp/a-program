@@ -593,6 +593,29 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   A restored status flag is not evidence that a typing or reduction conclusion
   was derived. Resume and any required recomputation must use the same existing
   rules, not an independent Replay evaluator or parallel typing implementation.
+- [x] Move shared image-table ownership into `pg_graph_image_write/read`.
+  The machine forest supplies only its payload and resource cleanup; graph IO
+  owns temporary Reference retention, terminal relocation and exact payload/end
+  boundaries. This keeps APGMFS1 bytes unchanged and allows readback/job owners
+  to use the same table instead of copying machine-specific table machinery.
+  A payload callback's success is provisional until the outer boundary passes.
+  The owner releases restored resources on either failure path.
+  Verification: a temporary Reference wrapper and an independent root group
+  restore to one pointer; a prematurely successful payload reader is rejected.
+  `check check-prepared-modules`, ASan/UBSan `graph_io_test`, and normal plus
+  ASan/UBSan `check-identity-io check-eval-io` pass.
+- [ ] Serialize the actual WHNF/NF store phases, not a second job model:
+  while a WHNF machine is pending, retain its existing full machine payload;
+  after the machine reaches WHNF but before publication, retain materialization
+  with its input closure/argument forest and charged step counts. Do not encode
+  that closure independently again. Completed jobs retain receipt dependencies;
+  canonical target-cache jobs may have already destroyed their machines and
+  therefore must not be serialized as live evaluators. NF additionally retains
+  its head/children, predecessor phases and active dependency stack, preserving
+  shared jobs keyed by exact input and policy. These states are observed in
+  `eval.c:whnf_step`, `nf_complete` and `pg_nf_advance`; none calls for a new
+  language-level computation variant. Portable WHNF evidence remains an open
+  prerequisite to publishing imported completions into accepted work stores.
 - [x] Let scope-analysis work retain additional scope roots through its existing
   visit/shadow/scope ownership table. Its own embedded scope is the first root;
   references to it are rebound to the restored work's embedded address, not an
