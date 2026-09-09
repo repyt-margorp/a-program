@@ -167,6 +167,10 @@ static void arena_work_destroy(void *opaque)
 	(void)opaque; /* This work owns no storage outside the evaluator arena. */
 }
 
+static const struct pg_eval_work_operation action_scope_operation = {
+	action_scope_poll, action_scope_resume, arena_work_destroy
+};
+
 static int with_action_scope(struct pg_eval *machine, const struct pg_term *source)
 {
 	struct action_scope_work *work = pg_alloc(&machine->temporary, sizeof(*work));
@@ -177,7 +181,7 @@ static int with_action_scope(struct pg_eval *machine, const struct pg_term *sour
 	work->cursor = source;
 	work->position = 0;
 	work->center = 0;
-	return pg_eval_defer(machine, work, action_scope_poll, action_scope_resume, arena_work_destroy);
+	return pg_eval_defer(machine, &action_scope_operation, work);
 }
 
 static int prepare_bindings(struct pg_eval *machine, struct action_scope *scope)
@@ -257,6 +261,10 @@ static int action_result_resume(struct pg_eval *machine, void *opaque)
 	return pg_eval_enter(machine, (struct pg_closure){work->result, NULL}, 1);
 }
 
+static const struct pg_eval_work_operation action_result_operation = {
+	action_result_poll, action_result_resume, arena_work_destroy
+};
+
 static int enter_action(struct pg_eval *machine, const struct action_scope *scope,
 	const struct pg_term *result, size_t discard)
 {
@@ -266,7 +274,7 @@ static int enter_action(struct pg_eval *machine, const struct action_scope *scop
 	struct action_result_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work) return -1;
 	*work = (struct action_result_work){machine->output, scope->bindings, result, scope->count, discard};
-	return pg_eval_defer(machine, work, action_result_poll, action_result_resume, arena_work_destroy);
+	return pg_eval_defer(machine, &action_result_operation, work);
 }
 
 static int action_source_body(struct pg_eval *machine, const struct action_scope *scope, const struct pg_term *head);
@@ -606,6 +614,10 @@ static int scope_resume(struct pg_eval *machine, void *opaque)
 	return pg_eval_enter(machine, (struct pg_closure){work->result, NULL}, 1);
 }
 
+static const struct pg_eval_work_operation scope_operation = {
+	scope_poll, scope_resume, scope_destroy
+};
+
 static int analyze_scope(struct pg_eval *machine, const struct action_scope *scope)
 {
 	if (!scope->count) return action_source_body(machine, scope, NULL);
@@ -621,7 +633,7 @@ static int analyze_scope(struct pg_eval *machine, const struct action_scope *sco
 	if (!work->scope.bindings || !work->order || !work->used || pg_index_init(&work->seen) != 0) return -1;
 	if (pg_index_init(&work->sources) != 0) { scope_destroy(work); return -1; }
 	int status = scope_push(work->arena, &work->seen, &work->pending, scope->body, NULL);
-	if (!status) status = pg_eval_defer(machine, work, scope_poll, scope_resume, scope_destroy);
+	if (!status) status = pg_eval_defer(machine, &scope_operation, work);
 	if (status) scope_destroy(work);
 	return status;
 }
@@ -682,6 +694,10 @@ static int action_body_resume(struct pg_eval *machine, void *opaque)
 	return pg_eval_enter(machine, (struct pg_closure){work->answer, NULL}, 1);
 }
 
+static const struct pg_eval_work_operation action_body_operation = {
+	action_body_poll, action_body_resume, action_body_destroy
+};
+
 static int action_body_scoped(struct pg_eval *machine, const struct action_scope *prepared, const struct pg_term *answer)
 {
 	struct action_body_work *work = pg_alloc(&machine->temporary, sizeof(*work));
@@ -691,7 +707,7 @@ static int action_body_scoped(struct pg_eval *machine, const struct action_scope
 	work->output = machine->output;
 	work->scope = *prepared;
 	if (pg_comparison_init(&work->comparison, work->scope.body, answer, NULL, NULL) != 0) return -1;
-	int status = pg_eval_defer(machine, work, action_body_poll, action_body_resume, action_body_destroy);
+	int status = pg_eval_defer(machine, &action_body_operation, work);
 	if (status) action_body_destroy(work);
 	return status;
 }
@@ -779,6 +795,10 @@ static int higher_scope_resume(struct pg_eval *machine, void *opaque)
 	return with_action_scope(machine, work->body ? work->body : work->source);
 }
 
+static const struct pg_eval_work_operation higher_scope_operation = {
+	higher_scope_poll, higher_scope_resume, arena_work_destroy
+};
+
 static int action_source(struct pg_eval *machine, const struct pg_term *source, const void *unused)
 {
 	(void)unused;
@@ -790,7 +810,7 @@ static int action_source(struct pg_eval *machine, const struct pg_term *source, 
 		if (!work) return -1;
 		*work = (struct higher_scope_work){.graph = machine->output, .arena = &machine->temporary,
 			.source = source, .cursor = source, .arity = 1};
-		return pg_eval_defer(machine, work, higher_scope_poll, higher_scope_resume, arena_work_destroy);
+		return pg_eval_defer(machine, &higher_scope_operation, work);
 	}
 	return with_action_scope(machine, source);
 }
@@ -881,6 +901,10 @@ static int family_scope_resume(struct pg_eval *machine, void *opaque)
 	return work->resume(machine, &work->scope, work->content, work->value);
 }
 
+static const struct pg_eval_work_operation family_scope_operation = {
+	family_scope_poll, family_scope_resume, arena_work_destroy
+};
+
 static int with_thunk_family(struct pg_eval *machine, const struct pg_term *family,
 	const struct pg_term *value,
 	int (*resume)(struct pg_eval *, const struct action_scope *, const struct pg_term *, const struct pg_term *))
@@ -888,7 +912,7 @@ static int with_thunk_family(struct pg_eval *machine, const struct pg_term *fami
 	struct family_scope_work *work = pg_alloc(&machine->temporary, sizeof(*work));
 	if (!work) return -1;
 	*work = (struct family_scope_work){.cursor = family, .value = value, .resume = resume};
-	return pg_eval_defer(machine, work, family_scope_poll, family_scope_resume, arena_work_destroy);
+	return pg_eval_defer(machine, &family_scope_operation, work);
 }
 
 struct family_result_work {
@@ -934,6 +958,10 @@ static int family_result_resume(struct pg_eval *machine, void *opaque)
 	return work->resume(machine, work->closure.result);
 }
 
+static const struct pg_eval_work_operation family_result_operation = {
+	family_result_poll, family_result_resume, arena_work_destroy
+};
+
 static int close_family(struct pg_eval *machine, const struct action_scope *scope,
 	const struct pg_term *family, const struct pg_term *result,
 	int (*resume)(struct pg_eval *, const struct pg_term *))
@@ -948,7 +976,7 @@ static int close_family(struct pg_eval *machine, const struct action_scope *scop
 	work->position = work->count;
 	work->phase = FAMILY_COLLECT;
 	work->resume = resume;
-	return pg_eval_defer(machine, work, family_result_poll, family_result_resume, arena_work_destroy);
+	return pg_eval_defer(machine, &family_result_operation, work);
 }
 
 static int force_family_result(struct pg_eval *machine, const struct pg_term *result)

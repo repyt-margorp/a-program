@@ -59,8 +59,16 @@ int pg_eval_demand_closure(struct pg_eval *machine, struct pg_closure value,
  * After successful registration, destroy runs once, including on error or
  * destruction while pending. Failure to register leaves ownership with caller.
  * Pending readback retains the caller; state must outlive the task. */
-int pg_eval_defer(struct pg_eval *machine, void *state, int (*poll)(void *),
-	int (*resume)(struct pg_eval *, void *), void (*destroy)(void *));
+/* One immutable descriptor per auxiliary algorithm, not per invocation.
+ * It must outlive every registered task. Neither this pointer nor arbitrary
+ * state addresses are portable image identities. */
+struct pg_eval_work_operation {
+	int (*poll)(void *);
+	int (*resume)(struct pg_eval *, void *);
+	void (*destroy)(void *);
+};
+int pg_eval_defer(struct pg_eval *machine,
+	const struct pg_eval_work_operation *operation, void *state);
 
 struct pg_binding_value {
 	const struct pg_object *binder;

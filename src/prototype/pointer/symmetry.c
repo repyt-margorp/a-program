@@ -176,6 +176,10 @@ static void composition_destroy(void *state)
 	(void)state; /* Work is owned by the evaluator's temporary arena. */
 }
 
+static const struct pg_eval_work_operation composition_operation = {
+	composition_poll, composition_resume, composition_destroy
+};
+
 static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, const void *state)
 {
 	const struct symmetry_entry *outer = state;
@@ -192,7 +196,7 @@ static int symmetry_answer(struct pg_eval *machine, const struct pg_term *term, 
 	work->dimension = n;
 	work->axes = pg_alloc(&machine->temporary, n * sizeof(*work->axes));
 	if (!work->axes) return -1;
-	return pg_eval_defer(machine, work, composition_poll, composition_resume, composition_destroy);
+	return pg_eval_defer(machine, &composition_operation, work);
 }
 
 struct prefix_work {
@@ -221,6 +225,10 @@ static int prefix_resume(struct pg_eval *machine, void *state)
 	return pg_eval_apply(machine, (struct pg_closure){reduced, NULL}, work->argument, 1);
 }
 
+static const struct pg_eval_work_operation prefix_operation = {
+	prefix_poll, prefix_resume, composition_destroy
+};
+
 int pg_symmetry_dispatch(struct pg_eval *machine)
 {
 	const struct symmetry_entry *outer = owner(machine->current.term);
@@ -237,7 +245,7 @@ int pg_symmetry_dispatch(struct pg_eval *machine)
 		work->axes = pg_alloc(&machine->temporary,
 			(outer->dimension - outer->fixed_prefix) * sizeof(*work->axes));
 		if (!work->axes) return -1;
-		return pg_eval_defer(machine, work, prefix_poll, prefix_resume, composition_destroy);
+		return pg_eval_defer(machine, &prefix_operation, work);
 	}
 	return pg_eval_demand(machine, 0, symmetry_answer, outer);
 }

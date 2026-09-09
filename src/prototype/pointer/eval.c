@@ -164,20 +164,19 @@ void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)
 }
 
 struct pg_eval_task {
+	const struct pg_eval_work_operation *operation;
 	void *state;
-	int (*poll)(void *);
-	int (*resume)(struct pg_eval *, void *);
-	void (*destroy)(void *);
 };
 
-int pg_eval_defer(struct pg_eval *machine, void *state, int (*poll)(void *),
-	int (*resume)(struct pg_eval *, void *), void (*destroy)(void *))
+int pg_eval_defer(struct pg_eval *machine,
+	const struct pg_eval_work_operation *operation, void *state)
 {
 	if (machine->status != PG_EVAL_PENDING) return -1;
-	if (machine->task || !state || !poll || !resume || !destroy) return -1;
+	if (machine->task || !state || !operation) return -1;
+	if (!operation->poll || !operation->resume || !operation->destroy) return -1;
 	struct pg_eval_task *task = pg_alloc(&machine->temporary, sizeof(*task));
 	if (!task) return -1;
-	*task = (struct pg_eval_task){state, poll, resume, destroy};
+	*task = (struct pg_eval_task){operation, state};
 	machine->task = task;
 	return 0;
 }
@@ -185,11 +184,11 @@ int pg_eval_defer(struct pg_eval *machine, void *state, int (*poll)(void *),
 static int task_step(struct pg_eval *machine)
 {
 	struct pg_eval_task *task = machine->task;
-	int status = task->poll(task->state);
+	int status = task->operation->poll(task->state);
 	if (!status) return 0;
 	machine->task = NULL;
-	int result = status < 0 ? -1 : task->resume(machine, task->state);
-	task->destroy(task->state);
+	int result = status < 0 ? -1 : task->operation->resume(machine, task->state);
+	task->operation->destroy(task->state);
 	return result;
 }
 
@@ -488,7 +487,7 @@ const struct pg_term *pg_term_substitute(struct pg_graph *graph,
 
 void pg_eval_destroy(struct pg_eval *machine)
 {
-	if (machine->task) machine->task->destroy(machine->task->state);
+	if (machine->task) machine->task->operation->destroy(machine->task->state);
 	for (struct pg_eval_frame *frame = machine->frames; frame; frame = frame->parent)
 		materialize_destroy(&frame->answer);
 	pg_graph_destroy(&machine->temporary);

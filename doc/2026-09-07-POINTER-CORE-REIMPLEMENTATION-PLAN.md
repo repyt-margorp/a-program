@@ -54,6 +54,16 @@ a completed-work CHECKPOINT implementation.
   these addresses cannot reconstruct a machine in another process. Define
   relocatable operation descriptors and prerequisite edges for supported work,
   preserving nominal/binder identity and fixed pure policy semantics.
+- [x] Give each existing deferred auxiliary algorithm one immutable work
+  descriptor. Fold (1), symmetry (2) and Identity (7) now register descriptor
+  and invocation state, instead of copying three callbacks into every task.
+  Polling, fuel, resume and cleanup still use the same evaluator; no Core tag,
+  secondary evaluator or portable callback address has been introduced.
+- [ ] Describe and relocate each work algorithm's semantic inputs and cursors.
+  Descriptor factoring alone is not serialization. In particular,
+  `family_scope_work` and `family_result_work` still carry nested continuations
+  for force/field actions, and Demand frames retain resume callbacks. Their
+  semantic continuations must be represented before those states can be saved.
 - [ ] Measure storage and reconstruction costs against recomputation; test
   changed inputs/policies and interrupted materialization before closing the
   original checkpoint gate. A request recipe alone does not meet this gate.
@@ -74,6 +84,14 @@ or externally supplied certificate admission is introduced here.
 The complete-DAG test extension was separately verified with `check` and
 ASan/UBSan `core_test`; every enumerated dependency precedes its dependent
 receipt, including head and child edges, not only normality links.
+
+Deferred-operation verification: `check check-prepared-modules` passes,
+including 758 module save boundaries. Core tests reject incomplete descriptors
+without transferring ownership and interleave two invocations sharing one
+descriptor without sharing their progress or results. Existing split-budget,
+cancellation, failed-poll and reentrant-resume cases remain enabled. ASan/UBSan
+`core_test` and `identity_test` pass. This change does not retain more work in
+APGSRC11 yet.
 
 WHNF preparation audit: `eval.c:step` uses persistent environment/argument
 links for beta work, but `resume_frame` also reconstructs demanded argument

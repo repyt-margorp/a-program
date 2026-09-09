@@ -278,6 +278,10 @@ static void fold_destroy(void *state)
 	(void)state; /* The evaluator's temporary arena owns the work and binder array. */
 }
 
+static const struct pg_eval_work_operation fold_operation = {
+	fold_poll, fold_resume, fold_destroy
+};
+
 static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
 	const struct handler_entry *handler = state;
@@ -297,7 +301,7 @@ static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, co
 		.count = count, .index = clause_index(handler, label), .phase = FOLD_BINDERS};
 	work->binders = pg_alloc(&machine->temporary, (count + 2) * sizeof(*work->binders));
 	if (!work->binders) return -1;
-	return pg_eval_defer(machine, work, fold_poll, fold_resume, fold_destroy);
+	return pg_eval_defer(machine, &fold_operation, work);
 }
 
 static int dispatch(struct pg_eval *machine)

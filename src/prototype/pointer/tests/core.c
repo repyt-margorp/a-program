@@ -1423,6 +1423,10 @@ static void deferred_destroy(void *opaque)
 	++deferred_destroyed;
 }
 
+static const struct pg_eval_work_operation deferred_operation = {
+	deferred_poll, deferred_resume, deferred_destroy
+};
+
 static void deferred_work_test(struct pg_graph *graph)
 {
 	const struct pg_term *input = pg_reference(graph, pg_binder(graph));
@@ -1433,8 +1437,8 @@ static void deferred_work_test(struct pg_graph *graph)
 			pg_eval_init(&machine, input);
 			struct deferred_test_work work = {5, 0, answer};
 			deferred_destroyed = deferred_resumed = 0;
-			assert(pg_eval_defer(&machine, &work, deferred_poll, deferred_resume, deferred_destroy) == 0);
-			assert(pg_eval_defer(&machine, &work, deferred_poll, deferred_resume, deferred_destroy) == -1);
+			assert(pg_eval_defer(&machine, &deferred_operation, &work) == 0);
+			assert(pg_eval_defer(&machine, &deferred_operation, &work) == -1);
 			assert(pg_eval_advance(&machine, cut) == PG_EVAL_PENDING);
 			assert(work.remaining == 5 - cut && machine.steps == cut);
 			assert(pg_eval_readback(&machine, graph) == input);
@@ -1452,11 +1456,42 @@ static void deferred_work_test(struct pg_graph *graph)
 	pg_eval_init(&machine, input);
 	struct deferred_test_work failure = {1, 1, answer};
 	deferred_destroyed = deferred_resumed = 0;
-	assert(pg_eval_defer(&machine, &failure, deferred_poll, deferred_resume, deferred_destroy) == 0);
+	assert(pg_eval_defer(&machine, &deferred_operation, &failure) == 0);
 	assert(pg_eval_advance(&machine, 1) == PG_EVAL_ERROR);
 	assert(deferred_destroyed == 1 && !deferred_resumed);
 	pg_eval_destroy(&machine);
 	assert(deferred_destroyed == 1);
+	const struct pg_eval_work_operation incomplete[] = {
+		{NULL, deferred_resume, deferred_destroy},
+		{deferred_poll, NULL, deferred_destroy},
+		{deferred_poll, deferred_resume, NULL}
+	};
+	pg_eval_init(&machine, input);
+	deferred_destroyed = deferred_resumed = 0;
+	for (size_t i = 0; i < sizeof(incomplete) / sizeof(*incomplete); ++i)
+		assert(pg_eval_defer(&machine, &incomplete[i], &failure) == -1);
+	assert(pg_eval_defer(&machine, NULL, &failure) == -1);
+	assert(pg_eval_defer(&machine, &deferred_operation, NULL) == -1);
+	assert(!machine.task && !machine.steps && failure.remaining == 0);
+	pg_eval_destroy(&machine);
+	assert(!deferred_destroyed && !deferred_resumed);
+	/* Sharing the algorithm must not share invocation progress or answers. */
+	struct pg_eval other;
+	pg_eval_init(&machine, input);
+	pg_eval_init(&other, input);
+	struct deferred_test_work first = {1, 0, answer}, second = {3, 0, input};
+	assert(pg_eval_defer(&machine, &deferred_operation, &first) == 0);
+	assert(pg_eval_defer(&other, &deferred_operation, &second) == 0);
+	assert(pg_eval_advance(&other, 1) == PG_EVAL_PENDING);
+	assert(second.remaining == 2 && first.remaining == 1);
+	assert(pg_eval_advance(&machine, 2) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, graph) == answer && second.remaining == 2);
+	pg_eval_destroy(&machine);
+	assert(deferred_destroyed == 1 && deferred_resumed == 1);
+	assert(pg_eval_advance(&other, 3) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&other, graph) == input && other.steps == 4);
+	pg_eval_destroy(&other);
+	assert(deferred_destroyed == 2 && deferred_resumed == 2);
 	puts("deferred pure work: exact fuel, split resume, pending readback, cancellation and failure cleanup passed");
 }
 
