@@ -959,6 +959,76 @@ static void result_frames(void)
 	assert(retained);
 }
 
+static void discovery_progress(void)
+{
+	uint64_t total = 0;
+	unsigned positions = 0;
+	for (uint64_t cut = 0; ; ++cut) {
+		struct pg_graph graph, arena = {0};
+		assert(!pg_graph_init(&graph));
+		const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
+		const struct pg_term *other = pg_reference(&graph, pg_binder(&graph));
+		const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
+		const struct pg_term *source = pg_lambda(&graph, x, pg_lambda(&graph, y, pg_reference(&graph, x)));
+		const struct pg_term *term = pg_identity_action(&graph, source);
+		for (size_t i = 0; i < 6; ++i) term = pg_application(&graph, term, i < 3 ? value : other);
+		struct pg_eval machine;
+		pg_computation_eval_init(&machine, &graph, term);
+		if (pg_eval_advance(&machine, cut) == PG_EVAL_WHNF) {
+			assert(machine.steps == total);
+			pg_eval_destroy(&machine);
+			pg_graph_destroy(&graph);
+			break;
+		}
+		if (machine.task && machine.task->operation == &pg_action_scope_operation) {
+			assert(!machine.frames);
+			struct action_scope_work *work = machine.task->state;
+			positions |= 1u << work->position;
+			for (unsigned round = 0; round < 2; ++round) {
+				struct pg_eval_configuration inputs[] = {{machine.current, machine.arguments}, {{value, NULL}, NULL}};
+				FILE *file = tmpfile();
+				assert(file && !pg_action_scope_work_write(file, work, 2, inputs, &pg_builtin_graph_codec, NULL));
+				uint64_t steps = machine.steps;
+				int ready = machine.head_ready;
+				pg_eval_destroy(&machine);
+				pg_graph_destroy(&arena);
+				pg_graph_destroy(&graph);
+				assert(!pg_graph_init(&graph));
+				rewind(file);
+				size_t n;
+				const struct pg_eval_configuration *restored;
+				assert(!pg_action_scope_work_read(file, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &work, &n, &restored));
+				assert(n == 2 && !work->scope.bindings);
+				assert(work->scope.source == restored[0].arguments->value.term);
+				const struct pg_argument *tail = restored[0].arguments->next;
+				for (size_t i = 0; i < 3 * work->scope.count; ++i) tail = tail->next;
+				assert(work->arguments == tail);
+				assert(!fseek(file, 24, SEEK_SET) && !pg_wire_write_u64(file, 1));
+				rewind(file);
+				struct action_scope_work *rejected;
+				const struct pg_eval_configuration *unused;
+				assert(pg_action_scope_work_read(file, &arena, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &rejected, &n, &unused));
+				assert(!rejected && !n && !unused && !fclose(file));
+				value = restored[1].head.term;
+				pg_computation_eval_init(&machine, &graph, restored[0].head.term);
+				machine.current = restored[0].head;
+				machine.arguments = restored[0].arguments;
+				machine.steps = steps;
+				machine.head_ready = ready;
+				assert(!pg_eval_defer(&machine, &pg_action_scope_operation, work));
+			}
+		}
+		assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF);
+		assert(pg_eval_readback(&machine, &graph) == value);
+		if (!cut) total = machine.steps;
+		assert(machine.steps == total);
+		pg_eval_destroy(&machine);
+		pg_graph_destroy(&arena);
+		pg_graph_destroy(&graph);
+	}
+	assert(positions == 7);
+}
+
 static void scopes(void)
 {
 	/* Every nullable binding field is retained, not synthesized on import. */
@@ -1292,6 +1362,7 @@ int main(int argc, char **argv)
 	scope_sharing();
 	result_ownership();
 	result_frames();
+	discovery_progress();
 	continuation_frames();
 	force_frames();
 	fold_progress();

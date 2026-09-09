@@ -114,14 +114,6 @@ static const struct pg_term *unary_argument(const struct pg_term *term, const st
 	return term->as.application.argument;
 }
 
-struct action_scope_work {
-	struct action_scope scope;
-	const struct pg_argument *arguments;
-	const struct pg_term *cursor;
-	size_t position;
-	size_t center;
-};
-
 static int action_source_scoped(struct pg_eval *, const struct action_scope *, size_t);
 
 static int action_scope_poll(void *opaque)
@@ -156,7 +148,7 @@ static void arena_work_destroy(void *opaque)
 	(void)opaque; /* This work owns no storage outside the evaluator arena. */
 }
 
-static const struct pg_eval_work_operation action_scope_operation = {
+const struct pg_eval_work_operation pg_action_scope_operation = {
 	action_scope_poll, action_scope_resume, arena_work_destroy
 };
 
@@ -170,7 +162,7 @@ static int with_action_scope(struct pg_eval *machine, const struct pg_term *sour
 	work->cursor = source;
 	work->position = 0;
 	work->center = 0;
-	return pg_eval_defer(machine, &action_scope_operation, work);
+	return pg_eval_defer(machine, &pg_action_scope_operation, work);
 }
 
 static int prepare_bindings(struct pg_eval *machine, struct action_scope *scope)

@@ -464,6 +464,20 @@ these owner payloads, deferred tasks and policy are connected together.
 
 The ten auxiliary polling algorithms also have distinct payload obligations:
 
+- [x] Retain raw action-scope discovery (`APGASW1`) through the original
+  `action_scope_work` and work descriptor. Source/body/cursor and the actual
+  remaining argument-tail pointer share the caller's configuration forest;
+  preserve discovered count, position and selected boundary. This phase has no
+  prepared binding array; enforce that invariant rather than making another
+  scope representation or inferring a cursor by rescanning on import.
+- [x] At every scope-discovery cut of a two-argument action, destroy arenas and
+  resave twice. Verify shared caller/source and exact argument-tail pointers,
+  final value and total steps; reject a boundary offset outside triple alignment.
+  Structural shape checks do not prove the imported cursor's history. Machine
+  flags and descriptor registration still come from the test, not a complete
+  checkpoint loader. Normal/ASan/UBSan component tests and
+  `check check-prepared-modules` pass.
+
 - [x] Retain raw higher-scope construction (`APGHSC1`) using the existing
   `higher_scope_work` and original work descriptor. Preserve source/cursor,
   optional partial body, arity, Lambda count, position, collection/wrapping

@@ -15,6 +15,22 @@ struct action_scope {
 	size_t count;
 	struct action_binding *bindings;
 };
+struct action_scope_work {
+	struct action_scope scope;
+	const struct pg_argument *arguments;
+	const struct pg_term *cursor;
+	size_t position;
+	size_t center;
+};
+extern const struct pg_eval_work_operation pg_action_scope_operation;
+struct pg_eval_configuration;
+/* Raw scope discovery, before binding preparation. Cursor and caller argument
+ * tails use the same configuration forest; reading does not scan the source. */
+int pg_action_scope_work_write(FILE *file, const struct action_scope_work *work,
+	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner);
+int pg_action_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct action_scope_work **work, size_t *count, const struct pg_eval_configuration **roots);
 struct action_result_work {
 	struct pg_graph *graph;
 	const struct action_binding *bindings;

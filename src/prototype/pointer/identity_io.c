@@ -8,6 +8,71 @@
 static const char magic[8] = "APGIBD\1";
 static const char scope_magic[8] = "APGISC\3";
 static const char higher_magic[8] = "APGHSC\1";
+static const char discovery_magic[8] = "APGASW\1";
+
+static int scope_cursor(const struct action_scope_work *work)
+{
+	if (!work->scope.source || !work->scope.body || !work->cursor || work->scope.bindings) return 0;
+	if (work->scope.count > SIZE_MAX / 3 || work->position > work->scope.count) return 0;
+	if (work->center % 3 || work->center / 3 > work->position) return 0;
+	if (work->scope.body->kind != PG_REFERENCE) return !work->position && !work->center;
+	return work->position == work->scope.count || work->cursor->kind == PG_LAMBDA;
+}
+
+int pg_action_scope_work_write(FILE *file, const struct action_scope_work *work,
+	size_t count, const struct pg_eval_configuration *roots, const struct pg_graph_codec *codec, void *owner)
+{
+	if (!file || !work || (count && !roots) || !scope_cursor(work)) return -1;
+	if (count > SIZE_MAX / sizeof(struct pg_eval_configuration) - 3) return -1;
+	struct pg_graph temporary = {0};
+	int status = -1;
+	struct pg_eval_configuration *all = pg_alloc(&temporary, (count + 3) * sizeof(*all));
+	if (!all) goto done;
+	all[0] = (struct pg_eval_configuration){{work->cursor, NULL}, work->arguments};
+	all[1].head.term = work->scope.source;
+	all[2].head.term = work->scope.body;
+	for (size_t i = 0; i < count; ++i) all[i + 3] = roots[i];
+	if (fwrite(discovery_magic, 1, 8, file) != 8 || pg_wire_write_u64(file, work->scope.count)
+		|| pg_wire_write_u64(file, work->position) || pg_wire_write_u64(file, work->center)) goto done;
+	status = pg_eval_configurations_write(file, count + 3, all, codec, owner);
+done:
+	pg_graph_destroy(&temporary);
+	return status;
+}
+
+int pg_action_scope_work_read(FILE *file, struct pg_graph *arena, struct pg_graph *output,
+	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *owner,
+	struct action_scope_work **work, size_t *count, const struct pg_eval_configuration **roots)
+{
+	if (!work || !count || !roots) return -1;
+	*work = NULL;
+	*count = 0;
+	*roots = NULL;
+	if (!file || !arena || !output) return -1;
+	char header[8];
+	uint64_t arity, position, center;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, discovery_magic, 8)
+		|| pg_wire_read_u64(file, &arity) || pg_wire_read_u64(file, &position)
+		|| pg_wire_read_u64(file, &center)) return -1;
+	if (arity > limit || arity > SIZE_MAX / 3 || position > arity || center > SIZE_MAX) return -1;
+	size_t total;
+	const struct pg_eval_configuration *all;
+	if (pg_eval_configurations_read(file, output, limit, name_limit, codec, owner, &total, &all) || total < 3) return -1;
+	for (size_t i = 0; i < 3; ++i) if (all[i].head.environment) return -1;
+	if (all[1].arguments || all[2].arguments) return -1;
+	struct action_scope_work *candidate = pg_alloc(arena, sizeof(*candidate));
+	if (!candidate) return -1;
+	candidate->scope = (struct action_scope){all[1].head.term, all[2].head.term, (size_t)arity, NULL};
+	candidate->cursor = all[0].head.term;
+	candidate->arguments = all[0].arguments;
+	candidate->position = (size_t)position;
+	candidate->center = (size_t)center;
+	if (!scope_cursor(candidate)) return -1;
+	*work = candidate;
+	*count = total - 3;
+	*roots = all + 3;
+	return 0;
+}
 
 static int higher_state(size_t arity, size_t position, size_t lambdas, unsigned flags)
 {
