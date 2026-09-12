@@ -109,11 +109,31 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   Retained Pi-body recovery now follows checked Thunk formation/inversion too.
   Normal checks/examples/results pass; IADT, indexed source resaves and the
   function-field runtime cases pass ASan/UBSan. Legacy compatibility stays 1/18.
+- [x] Pass declared indexed families as ordinary CBPV function arguments.
+  Checked index scopes, family application, RETURN and Lambda build the
+  callable wrapper; no new Core tag or kernel admission rule is needed.
+  Parameter abstraction/application and explicit `&D` use the same adapter.
+  Pending ordinary quotations keep their existing structural inference path:
+  eagerly wrapping every quotation hid pending effect structure and regressed
+  synthesis; that approach was removed. Tests cover result equality, wrong
+  domains, ordinary pending effects and three unsolved/solved image resaves.
+  `check check-examples check-example-results` passes; compatibility stays 1/18.
+  Synthesis, indexed source resaves and a parameterized runtime comparison
+  also pass ASan/UBSan.
+  This does not turn unknown CBPV functions into logical family assumptions,
+  support arbitrary partially indexed families, or complete Acc.
 - [ ] Infer genuinely dependent source motives, rather than only checking a
   supplied dependent motive in the kernel; restore open family parameters,
   general dependent IH results and function graph/witness generation.
   Function-field IH support is not completion of Acc or the property milestone:
   the unchanged Acc source still stops at the neutral type-family parameter R.
+
+Do not resolve that blocker by assuming an empty effect row proves totality.
+[Effect Handlers, Evidently, extended appendix A](https://xnning.github.io/papers/icfp20evidently-appendix.pdf)
+shows divergence through negative effect signatures. This is a warning about
+that inference, not a counterexample established for A Program's declaration
+discipline. The family adapter above instead builds a checked function from
+an existing declaration; general neutral type computation remains unresolved.
 
 The compatibility gate is 1/18; remaining cases are UNSUPPORTED, not expected failures.
 The generated length fixture still stops at `*length` resolution. These

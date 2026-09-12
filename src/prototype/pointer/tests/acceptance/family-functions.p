@@ -1,0 +1,18 @@
+Nat := @{ zero : *; succ : * -> *; };
+D := @\n : Nat => { at : (k : Nat) -> * k; };
+P := \A : @ => @\n : Nat => { at : (k : Nat) -> A -> * k; };
+choose := \F : Nat -> @ => F Nat.zero;
+identityD := \x : choose D => x;
+main := identityD (D.at Nat.zero);
+expected := D.at Nat.zero;
+quoted := &(D);
+identityQuoted := \x : quoted Nat.zero => x;
+explicit := identityQuoted expected;
+identityInline := \x : choose &D => x;
+inline := identityInline expected;
+chooseP := \F : @ -> Nat -> @ => F Nat Nat.zero;
+identityP := \x : chooseP P => x;
+parameterized := identityP ((P Nat).at Nat.zero Nat.zero);
+parameterExpected := (P Nat).at Nat.zero Nat.zero;
+identityApplied := \x : choose (P Nat) => x;
+applied := identityApplied parameterExpected;

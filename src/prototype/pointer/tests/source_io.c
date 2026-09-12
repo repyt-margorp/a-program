@@ -148,6 +148,20 @@ static void indexed_family_sources(void)
 		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:((k:Nat)->* k)->* Nat.zero;};"
 		"steps:=\\i:Nat=>\\v:D i=>v @mk k=>Nat.zero @next down=>Nat.succ (*down Nat.zero);"
 		"main:=steps Nat.zero (D.next &(\\k:Nat=>D.mk k)); expected:=Nat.succ Nat.zero; Fiber:=D Nat.zero;");
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;};"
+		"choose:=\\F:Nat->@=>F Nat.zero; id:=\\x:choose D=>x;"
+		"main:=id (D.mk Nat.zero); expected:=D.mk Nat.zero; Fiber:=D Nat.zero;");
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;}; quoted:=&D;"
+		"id:=\\x:quoted Nat.zero=>x; main:=id (D.mk Nat.zero);"
+		"expected:=D.mk Nat.zero; Fiber:=D Nat.zero;");
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=\\A:@=>@\\i:Nat=>{mk:(k:Nat)->A->* k;};"
+		"choose:=\\F:@->Nat->@=>F Nat Nat.zero; id:=\\x:choose D=>x;"
+		"chooseOne:=\\F:Nat->@=>F Nat.zero; idOne:=\\x:chooseOne (D Nat)=>x;"
+		"main:=idOne (id ((D Nat).mk Nat.zero Nat.zero));"
+		"expected:=(D Nat).mk Nat.zero Nat.zero; Fiber:=D Nat Nat.zero;");
 	const char *invalid[] = {
 		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
 			"bad:=D.next Nat.zero (D.mk (Nat.succ Nat.zero));",
@@ -155,7 +169,12 @@ static void indexed_family_sources(void)
 		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;}; bad:=D Nat.zero Nat.zero;",
 		"Nat:=@{zero:*;succ:*->*;}; Bool:=@{false:*;true:*;};"
 			"D:=\\A:@=>@\\i:Nat=>{mk:(k:Nat)->A->* k;};"
-			"bad:=(D Nat).mk Nat.zero Nat.zero; bad::D Bool Nat.zero;"
+			"bad:=(D Nat).mk Nat.zero Nat.zero; bad::D Bool Nat.zero;",
+		"Nat:=@{zero:*;succ:*->*;}; Bool:=@{false:*;true:*;};"
+			"D:=@\\i:Bool=>{mk:(k:Bool)->* k;};"
+			"choose:=\\F:Nat->@=>F Nat.zero; bad:=choose D;",
+		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;};"
+			"id:=\\n:Nat=>n; bad:=id D;"
 	};
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
 		struct pg_program *p = pg_program_create(invalid[i], strlen(invalid[i]), PG_DEFINITION_IMPLICIT_THUNK);

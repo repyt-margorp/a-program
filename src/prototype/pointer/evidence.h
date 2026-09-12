@@ -175,6 +175,13 @@ const struct pg_evidence *pg_prove_inductive_motive_context(struct pg_typing *ty
 int pg_inductive_motive_context_valid(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context);
+/* Eta-expand a declared, parameter-instantiated indexed family into an
+ * ordinary raw Pi computation returning its type as a Universe value.
+ * Uses checked index scopes, family application, RETURN and Lambda; not a
+ * new admission rule or a coercion of an arbitrary computation to a family. */
+const struct pg_evidence *pg_prove_inductive_family_function(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters);
 /* Checked motive substitution shared by Match, IH construction and Solve.
  * The value's fiber evidence supplies its indices; no expected type input. */
 const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
