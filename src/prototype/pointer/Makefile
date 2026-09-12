@@ -4,7 +4,7 @@ ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)effect_inference.c $(ROOT)evidence.c $(ROOT)derivation.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c $(ROOT)descriptor_io.c $(ROOT)context_payload.c $(ROOT)declaration_io.c
 
-.PHONY: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-prepared-modules check-acceptance check-eval-io check-identity-io
+.PHONY: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-prepared-modules check-acceptance check-eval-io check-identity-io
 check-examples: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 
@@ -28,7 +28,10 @@ check-prepared-modules: $(BUILD)/source_io_test
 check-operation-origins: $(BUILD)/source_io_test
 	$(BUILD)/source_io_test operation-origins
 
-check-acceptance: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-prepared-modules
+check-handler-origins: $(BUILD)/source_io_test
+	$(BUILD)/source_io_test handler-origins
+
+check-acceptance: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-prepared-modules
 
 check-eval-io: $(BUILD)/eval_io_test
 	bash $(ROOT)tests/eval_io.sh $(BUILD)/eval_io_test

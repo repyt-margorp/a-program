@@ -73,7 +73,7 @@ static void context_scopes(void)
 	puts("source contexts: pending field and IH scopes survive inert resaves and ordinary lookup");
 }
 
-static void handler_scopes(int mode)
+static int handler_scopes(int mode)
 {
 	const char *text = "D:=@{z:*;}; d:=D.z;";
 	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
@@ -96,9 +96,18 @@ static void handler_scopes(int mode)
 			pg_synthesis_operation(&p->synthesis, operation));
 		assert(scope);
 	}
+	if (mode >= 5) {
+		const struct pg_operation_declaration *operation = pg_operation_declaration(&p->typing, type, type);
+		assert(operation);
+		scope = pg_synthesis_name_job(&p->synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "other", .length = 5},
+			pg_synthesis_operation(&p->synthesis, operation));
+		assert(scope);
+	}
 	struct pg_parser parser;
 	struct pg_definition definition;
 	text = mode >= 2 ? "h:=(ask d) @ask req k=>k req @#.return x=>x;" : "h:=d @#.return x=>x;";
+	if (mode >= 5) text = "h:=(other (ask d)) @ask req k=>k req @other req k=>k req @#.return x=>x;";
 	pg_parser_init(&parser, &p->graph, text, strlen(text));
 	assert(pg_parser_next(&parser, &definition) == 1);
 	const struct pg_source_scope *inner = pg_synthesis_handler_scope(&p->synthesis, scope, definition.expression);
@@ -107,13 +116,18 @@ static void handler_scopes(int mode)
 	assert(!pg_synthesis_environment_input(&p->synthesis, inner, &environment));
 	assert(environment.parent == scope && environment.handler == definition.expression);
 	struct pg_synthesis_job *initial[] = {
-		parse(p, scope, "{{x:=d;}}.x"), parse(p, inner, "{{f:=&(\\x:D=>x);x:=d;}}.x")};
-	size_t count = 2;
+		parse(p, scope, "{{x:=d;}}.x"), parse(p, inner, "{{f:=&(\\x:D=>x);x:=d;}}.x"), NULL, NULL};
+	if (mode >= 4) initial[2] = pg_synthesis_request(&p->synthesis, scope, definition.expression);
+	size_t count = mode >= 4 ? 4 : 2;
 	struct pg_synthesis_job *const *roots = initial;
-	if (mode == 1 || mode == 2) {
+	if (mode == 1 || mode == 2 || mode >= 4) {
 		pg_synthesis_advance(&p->synthesis, 10000);
 		assert(pg_synthesis_result(roots[0]) && pg_synthesis_result(roots[1]));
 		assert(pg_synthesis_result(pg_synthesis_handler(&p->synthesis, scope, NULL, definition.expression)));
+		if (mode >= 4) {
+			assert(pg_synthesis_result(initial[2]));
+			initial[3] = pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(initial[2]));
+		}
 	}
 	for (unsigned round = 0; round < 3; ++round) {
 		FILE *file = tmpfile();
@@ -123,7 +137,7 @@ static void handler_scopes(int mode)
 		pg_program_destroy(p);
 		rewind(file);
 		p = pg_sources_read(file, 100000, &count, &roots);
-		assert(p && count == 2 && !p->synthesis.steps);
+		assert(p && count == (mode >= 4 ? 4u : 2u) && !p->synthesis.steps);
 		assert(!pg_synthesis_result(roots[0]) && !pg_synthesis_result(roots[1]));
 		assert(!fclose(file));
 		const struct pg_syntax *syntax;
@@ -142,6 +156,21 @@ static void handler_scopes(int mode)
 		pg_synthesis_status(handler), pg_synthesis_status(roots[0]), pg_synthesis_status(roots[1]),
 		(unsigned long long)p->synthesis.steps);
 	assert(handled && value);
+	int mismatch = 0;
+	if (mode >= 4) {
+		assert(pg_synthesis_result(roots[2]) && pg_synthesis_result(roots[3]));
+		const struct pg_evidence *fresh = pg_synthesis_result(roots[2]), *saved = pg_synthesis_result(roots[3]);
+		assert(pg_evidence_rule(fresh) == PG_HANDLER_ELIM && pg_evidence_rule(saved) == PG_HANDLER_ELIM);
+		assert(pg_evidence_premise_count(fresh) == pg_evidence_premise_count(saved));
+		mismatch = pg_evidence_subject(fresh)->core != pg_evidence_subject(saved)->core;
+		fprintf(stderr, "handler origins: operations=%d exact_core=%d\n", mode - 3, !mismatch);
+		for (size_t i = 1; i < pg_evidence_premise_count(saved); i = i == 1 ? 5 : i + 3) {
+			const struct pg_evidence *a = pg_evidence_premise(fresh, i), *b = pg_evidence_premise(saved, i);
+			fprintf(stderr, "  clause premise %zu: exact_core=%d exact_classifier=%d\n", i,
+				pg_evidence_subject(a)->core == pg_evidence_subject(b)->core,
+				pg_evidence_classifier(a) == pg_evidence_classifier(b));
+		}
+	}
 	const struct pg_effect_row *effects;
 	const struct pg_term *result_type;
 	assert(pg_effect_type_view(pg_evidence_classifier(handled), &effects, &result_type));
@@ -152,6 +181,7 @@ static void handler_scopes(int mode)
 		pg_reference(&p->graph, &pg_return_operation), pg_evidence_subject(value)->core));
 	pg_program_destroy(p);
 	puts("handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed");
+	return mismatch;
 }
 
 static void declaration_members(void)
@@ -1599,6 +1629,11 @@ int main(int argc, char **argv)
 	if (argc == 2 && !strcmp(argv[1], "fold-origins")) { fold_origins(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "handler-scopes")) { handler_scopes(0); handler_scopes(1); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "operation-origins")) { handler_scopes(2); handler_scopes(3); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "handler-origins")) {
+		int failed = handler_scopes(4);
+		failed |= handler_scopes(5);
+		return failed;
+	}
 	if (argc > 1 && !strncmp(argv[1], "retained-", 9)) {
 		retained_process(argc, argv);
 		return 0;

@@ -1171,6 +1171,27 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   verifies recomputed behavior and declaration identity, not exact whole-handler
   Core identity against a retained normalization receipt. Add that stronger
   gate and preserve the actual scope producers before claiming full retention.
+  September 12: `check-handler-origins` is now a required acceptance gate.
+  It compares independently re-synthesized source with the retained derivation
+  after three destructive, inert resaves and one-step ordinary Solve. Both
+  one-operation and two-operation handlers accept and normalize to the expected
+  value, but exact Core and classifier identity fail for the return clause and
+  every operation clause. This is an allocation-retention failure, not evidence
+  that executing the handler gives a different result. The gate remains failing;
+  it must not be weakened to alpha equality or removed from full acceptance.
+  Static trace: `pg_synthesis_visit_source_allocations` only exports return-only
+  Fold and recursive Match eliminations. `handler_return_step` allocates one
+  binder; `handler_clause_step` allocates payload/resumption binders, and
+  `clause_context` allocates a response-domain binder. `pg_prove_projection`
+  preserves Core/classifier pointers and is not the source of this freshening.
+  Next: retain the handler's actual clause-context producer edges, attach them
+  before restored handler-scope jobs can run, and reuse allocation identities
+  while independently synthesizing source bodies. Do not use the saved concrete
+  carrier as an expected type: current handler inference collects clause effects
+  through a symbolic carrier. Preserving binders alone is insufficient if scope
+  interning loses the original context producer and nested application origins.
+  No separate replay checker, new Core form, wire-version change or replacement
+  of source synthesis with saved evidence is justified by this failure.
 - [x] September 9: construct Match field/IH scopes through the same pending
   context-binding path (`SCOPE_CONTEXT_JOB`). `pg_synthesis_bind_hypothesis`
   records only the field-to-IH binder association; it introduces no proof or
