@@ -155,11 +155,33 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   also pass ASan/UBSan (the image fixture writer uses its normal checked build).
   The unchanged source compatibility gate remains 1/18, not a completed gate.
 - [ ] Complete graph generation's source contract before claiming legacy
-  compatibility: replace the current field-wise recursive-result layout with
-  call-site-aware derivation translation (including order, repeated/unused
-  calls, nested computations and higher-order recursive fields). Retain the
+  compatibility: finish call-site-aware derivation translation, including
+  source clause layout, nested cases and higher-order recursive fields. Retain the
   accepted source derivation as the correspondence justification, not a match
   on an erased Core or an assumed equivalence of unrelated declarations.
+- [x] Replace field-wise graph/witness construction with a shared call plan for
+  straight-line retained Return/Fold/APP/Force derivations. Each direct IH call
+  creates a fresh result variable; repeated calls receive separate graph
+  premises and unused IHs receive none. Ordinary substitutions, beta-body
+  evidence and pure normalization build the schema and companion witness.
+  No equality between a call and a fresh variable is admitted to conversion.
+  The total source context map uses the already-typed original function for
+  unused/delayed IHs, not invented inhabitants or additional kernel rules.
+  Tests cover repeated calls, unused fields, explicit reverse sequencing,
+  closed helper reduction, wrong-result rejection and a post-hoc dependent
+  tree property with two IHs. Source and generated results are both checked.
+  Normal checks/examples/results pass. ASan/UBSan program/property/rejection
+  tests and source-image resaves pass with the normal fixture writer and
+  sanitized checker/comparator. Unchanged compatibility remains 8/19.
+- [ ] Resolve the remaining legacy mirror clause-layout discrepancy. The raw-Pi
+  lowering of `Tree.fork *right *left` currently sequences the outer argument
+  before demanding the computation producing the callee; explicit blocks
+  preserve the written order. The call plan follows actual retained sequencing,
+  so it must not silently swap graph fields based on names to satisfy the old
+  fixture. Inspect source application lowering and source call-site provenance
+  together before choosing a compatible positional Graph interface. The
+  unchanged legacy fixture still fails; the explicit-block test does not replace
+  it. Acc/open families, conditional calls and function-field calls remain open.
 - [x] Build the ordinary dependent result packet and `*f` witness for the
   current direct-recursion fragment, using the same relation and checked
   induction rule. Packet is an ordinary parameterized ADT with output and

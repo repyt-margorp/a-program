@@ -129,7 +129,9 @@ while read -r fixture names; do
 		"$binary" --load --steps 0 --save "$directory/generated-resaved.a" "$directory/generated.a" > "$directory/status" || code=$?
 		test "$code" = 3
 		for name in $names; do
-			"$compare" --equal-image "$directory/generated-resaved.a" "$name" expected
+			expected=expected
+			if [[ "$name" == *:* ]]; then expected=${name#*:}; name=${name%%:*}; fi
+			"$compare" --equal-image "$directory/generated-resaved.a" "$name" "$expected"
 		done
 		if test "$fixture" = acceptance/generated-function-graph-direct.p; then
 			if "$compare" --equal-image "$directory/generated-resaved.a" certified other; then exit 1; fi
@@ -139,6 +141,7 @@ done <<'GRAPHS'
 acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain
 acceptance/generated-function-graph-direct.p main certified
 acceptance/dependent-graph-motive.p main reorderedMain certifiedMain
+acceptance/function-graph-call-sites.p main unusedMain:unusedExpected orderedMain:orderedExpected propertyMain:propertyExpected
 acceptance/motive-computed-callee.p main
 ../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified
 GRAPHS

@@ -101,6 +101,14 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-type-case.p selectedNat expectedNat
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-type-case.p selectedBool expectedBool
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-type-case-rejected.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p unusedMain unusedExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p orderedMain orderedExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p originalMain originalExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p originalOrdered orderedExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p originalRight leaf
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p propertyMain propertyExpected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-call-sites-rejected.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-motive-conflict.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-motive-expect-rejected.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/motive-computed-callee.p main expected

@@ -8,7 +8,10 @@
  * No Returns predicate or new kernel rule. Relation formation and witness
  * production advance separately; neither proves an arbitrary user property.
  * Initially supports a constant pure result type, non-indexed scrutinees and
- * direct recursive fields. Unknown callees/results remain unsupported.
+ * direct recursive fields. Retained Return/Fold/APP/Force evidence supplies
+ * ordered call sites; repeated calls have separate result/graph fields and
+ * unused hypotheses contribute no fields. Schema and witness share this plan.
+ * Conditional/nested cases and unknown callees/results remain unsupported.
  * One work object owns one generative declaration; a source producer must
  * memoize this request rather than generating a new family for each use. */
 enum pg_function_graph_status {
