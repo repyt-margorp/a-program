@@ -53,8 +53,8 @@ static void common_rule(struct pg_typing *typing, struct pg_classifiers *classif
 		pg_whnf_work_destroy(&work);
 	}
 	assert(!pg_prove_derivation(typing, classifiers, input.rule, &input.parameters, input.count - 1, premises));
-	assert(premises[input.count - 1] != premises[0]);
-	premises[input.count - 1] = premises[0];
+	if (input.count > 1) assert(premises[input.count - 1] != premises[0]);
+	premises[input.count - 1] = input.count > 1 ? premises[0] : NULL;
 	assert(!pg_prove_derivation(typing, classifiers, input.rule, &input.parameters, input.count, premises));
 }
 
@@ -463,6 +463,29 @@ static void accessibility_elimination(void)
 	const struct pg_evidence *motive = pg_prove_return_type(&typing, &classifiers,
 		pg_prove_family_application(&typing, pg_prove_variable(&typing, mc, p), motive_index));
 	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), 0);
+	/* Infer the candidate from step x's result before an IH exists. The
+	 * constructor maps the generic scrutinee to acc x down, not a variable. */
+	const struct pg_evidence *field_map = pg_prove_constructor_scope(&typing, acc, constructor, parameters);
+	const struct pg_evidence *field_context = pg_evidence_premise(field_map, 1);
+	const struct pg_evidence *field_values[] = {
+		pg_substitution_image(&typing, field_map, x), pg_substitution_image(&typing, field_map, down)};
+	const struct pg_evidence *constructor_value = pg_prove_constructor(&typing, acc, constructor,
+		pg_prove_substitution_projection(&typing, rc, field_context), 2, field_values);
+	const struct pg_evidence *constructor_pattern = pg_prove_inductive_motive_substitution(&typing,
+		&classifiers, acc, parameters, mc, field_context, constructor_value);
+	const struct pg_evidence *step_at_field = pg_prove_application(&typing,
+		pg_prove_force(&typing, pg_prove_variable(&typing, field_context, step)), field_values[0]);
+	const struct pg_evidence *branch_result = pg_prove_pi_constant_codomain(&typing,
+		pg_prove_classifier(&typing, &classifiers, field_context, step_at_field));
+	const struct pg_evidence *inferred = pg_prove_pattern_type(&typing, &classifiers,
+		context, constructor_pattern, branch_result);
+	assert(inferred && pg_alpha_equal(pg_evidence_subject(inferred)->core, pg_evidence_subject(motive)->core) == 1);
+	common_rule(&typing, &classifiers, inferred);
+	const struct pg_evidence *down_identity = pg_prove_identity_type(&typing,
+		pg_prove_classifier(&typing, &classifiers, field_context, field_values[1]), field_values[1], field_values[1]);
+	assert(down_identity && !pg_prove_pattern_type(&typing, &classifiers, context, constructor_pattern,
+		pg_prove_return_type(&typing, &classifiers, down_identity)));
+	motive = inferred;
 	const struct pg_evidence *scope = pg_prove_induction_scope(&typing, &classifiers, acc, constructor, parameters, mc, motive);
 	assert(scope);
 	const struct pg_evidence *branch_context = pg_evidence_premise(scope, 1);

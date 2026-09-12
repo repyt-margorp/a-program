@@ -470,7 +470,9 @@ const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
 	const struct pg_object *binder);
 /* Solve T[pattern] = body for a computation-type formation T. The checked
- * substitution must map its suffix to distinct variables and fix prefix.
+ * substitution must fix prefix; variable images in its suffix are distinct.
+ * Nonvariable images supply no inverse binding. A candidate may ignore them,
+ * but must instantiate back to the original body under the full substitution.
  * Unused destination fields are discharged by ordinary Pi formation and
  * constant-codomain inversion. NULL includes nonpatterns and escaping fields;
  * this is a proof-producing partial solver, not a new kernel rule. */

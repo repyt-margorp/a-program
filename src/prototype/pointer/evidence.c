@@ -2587,7 +2587,7 @@ const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
 	for (size_t i = source_count; i; --i, extension = extension->premises[0]) {
 		if (extension->rule != PG_CONTEXT_EXTEND) goto done;
 		const struct pg_term *image = pattern->premises[common + i + 1]->subject->core;
-		if (image->kind != PG_REFERENCE || image->as.reference->kind != PG_BINDER) goto done;
+		if (image->kind != PG_REFERENCE || image->as.reference->kind != PG_BINDER) continue;
 		if (pattern_variable(&variables, image->as.reference)) goto done;
 		entries[i - 1].image = image->as.reference;
 		entries[i - 1].binder = extension->context->binder;

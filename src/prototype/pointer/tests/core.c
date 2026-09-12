@@ -765,8 +765,13 @@ static void typed_substitution_test(struct pg_graph *graph)
 		pg_prove_universe(&typing, &classifiers, empty, 0));
 	const struct pg_evidence *nonvariable = pg_prove_substitution_pair(&typing,
 		pg_prove_substitution_projection(&typing, empty, empty), a_scope, universe_value);
-	assert(nonvariable && !pg_prove_pattern_type(&typing, &classifiers, empty, nonvariable,
-		pg_prove_return_type(&typing, &classifiers, universe_value)));
+	/* A closed result can ignore a nonvariable image; it is not inverted. */
+	pattern_type = pg_prove_pattern_type(&typing, &classifiers, empty, nonvariable,
+		pg_prove_return_type(&typing, &classifiers, universe_value));
+	assert(nonvariable && pattern_type);
+	assert(pg_evidence_subject(pattern_type)->core == pg_return_type(&classifiers,
+		pg_evidence_subject(universe_value)->core));
+	reconstruct_derivation(&typing, &classifiers, pattern_type);
 	const struct pg_object *extra = pg_binder(graph), *index = pg_binder(graph);
 	const struct pg_evidence *prefix_universe = pg_prove_projection(&typing, a_scope, universe);
 	const struct pg_evidence *extra_scope = pg_prove_context_extension(&typing, a_scope, extra, prefix_universe);

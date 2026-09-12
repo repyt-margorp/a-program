@@ -117,6 +117,17 @@ unchanged; computations over logical hypotheses use the extension below.
   over A/R/P and reapplied, but this does not complete source `accElim`.
   The unchanged Acc/QuickSort cases remain unsupported (compatibility 9/19
   at the latest run). General Act on higher logical signatures remains open.
+  Prerequisite verified: infer `F(P index)` from the independently checked
+  codomain of `step x`, before constructing an IH. The partial pattern solver
+  now permits unused nonvariable images such as `scrutinee := acc x down`;
+  it does not invert them. Typed substitution, discharge of unused fields and
+  complete forward reconstruction still check the candidate. The Acc kernel
+  test uses this inferred motive for actual induction and rejects a result
+  depending on the extra `down` field. Normal checks/examples/open families
+  and ASan/UBSan Core/IADT tests pass. No new rule, Core tag or image version.
+  Next: derive candidates from known call-result classifiers in the existing
+  block scopes, including prefix effects, then check the complete IH branch.
+  Do not expand block bindings as source aliases or infer from `::`.
 
 Validation of the source-family contract: `check check-examples
 check-example-results check-open-families` passes, including all four open-family
