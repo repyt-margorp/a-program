@@ -1245,6 +1245,21 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   prepared-module boundaries passed during this change; final ASan/UBSan full
   synthesis/source-image suites and handler-origin checks pass. Nested handler
   Core reuse remains the explicit failing acceptance gate.
+  Shared builder prerequisite: `pg_synthesis_handler_context` exposes the exact
+  ordinary context/Pi/Thunk dependency construction previously private to clause
+  synthesis. It accepts pending outer context, carrier and signature producers
+  plus three explicit binders, allocates no fresh binder, and creates no proof
+  or effect solution at registration. The source clause worker uses this same
+  builder. Tests inspect the resumption's symbolic classifier before row closure,
+  then verify exact context ancestry, binder identity and job reuse after Solve;
+  invalid ownership/registration inputs and a non-computation carrier are
+  rejected. No new Core, proof or scheduler job tag is added. Source-image
+  clause-site records and inert reconstruction through this builder are still
+  the next step; the public builder alone does not repair nested retention.
+  September 13 verification: normal synthesis and handler/operation-origin
+  checks pass. Final ASan/UBSan synthesis, source-image and handler-origin
+  suites pass, including wrong-carrier rejection. The nested gate still fails
+  only exact Core sharing; this prerequisite does not complete full acceptance.
 - [x] September 9: construct Match field/IH scopes through the same pending
   context-binding path (`SCOPE_CONTEXT_JOB`). `pg_synthesis_bind_hypothesis`
   records only the field-to-IH binder association; it introduces no proof or

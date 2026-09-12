@@ -3630,12 +3630,19 @@ static void operation_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	forward_proof(synthesis, job, job->left);
 }
 
-static struct pg_synthesis_job *clause_context(struct pg_synthesis *synthesis,
+struct pg_synthesis_job *pg_synthesis_handler_context(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *carrier,
-	const struct pg_operation_input *signature, const struct pg_object *payload,
+	struct pg_synthesis_job *payload_type, struct pg_synthesis_job *response_type, const struct pg_object *payload,
 	const struct pg_object *resume, const struct pg_object *response)
 {
-	struct pg_synthesis_job *a = signature->payload, *b = signature->response;
+	if (!synthesis) return NULL;
+	struct pg_synthesis_job *inputs[] = {context, carrier, payload_type, response_type};
+	for (size_t i = 0; i < 4; ++i)
+		if (!inputs[i] || inputs[i]->owner != synthesis->owner_key) return NULL;
+	const struct pg_object *binders[] = {payload, resume, response};
+	for (size_t i = 0; i < 3; ++i)
+		if (!binders[i] || binders[i]->kind != PG_BINDER) return NULL;
+	struct pg_synthesis_job *a = payload_type, *b = response_type;
 	b = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, (struct pg_synthesis_job *[]){context, b});
 	struct pg_synthesis_job *response_context = plain_rule(synthesis, PG_CONTEXT_EXTEND,
 		response, 2, (struct pg_synthesis_job *[]){context, b});
@@ -3691,8 +3698,8 @@ static void handler_clause_step(struct pg_synthesis *synthesis, struct pg_synthe
 			response = pg_binder(synthesis->typing->graph);
 		}
 		if (!payload || !resume || !response) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		struct pg_synthesis_job *context = clause_context(synthesis, job->scope->context_job,
-			carrier, &signature, payload, resume, response);
+		struct pg_synthesis_job *context = pg_synthesis_handler_context(synthesis, job->scope->context_job,
+			carrier, signature.payload, signature.response, payload, resume, response);
 		if (!context) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		struct pg_synthesis_job *payload_context = rule_premise(synthesis, context, 0);
 		const struct pg_source_scope *scope = pg_synthesis_bind_context(synthesis, job->scope,

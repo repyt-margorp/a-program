@@ -227,8 +227,18 @@ struct pg_synthesis_job *pg_synthesis_operation_at(struct pg_synthesis *synthesi
 struct pg_synthesis_job *pg_synthesis_handler_return(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_synthesis_job *input,
 	const struct pg_syntax *clause);
-/* Await the inferred carrier and resolve the operation label through ordinary
- * source aliases, then synthesize the clause in its checked payload/resumption
+/* Build the pending context Gamma, payload:A, resume:U(Pi(response:B, carrier))
+ * using ordinary context/Pi/Thunk rules. All type inputs may still be pending;
+ * explicit binder identities determine sharing, never type acceptance. This
+ * neither allocates fresh binders nor resolves an operation name. Consumers
+ * retain their own operation-reference validation dependency. */
+struct pg_synthesis_job *pg_synthesis_handler_context(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *carrier,
+	struct pg_synthesis_job *payload_type, struct pg_synthesis_job *response_type,
+	const struct pg_object *payload, const struct pg_object *resume, const struct pg_object *response);
+/* Resolve operation inputs through ordinary source aliases, prepare a pending
+ * payload/resumption context and synthesize the clause without waiting for a
+ * concrete carrier row. Ordinary rules eventually validate the whole
  * context. The body receives no expected result type. Completion returns its
  * nested Lambda proof; final pg_prove_handler still checks carrier/effect
  * compatibility. This API does not guess or infer a missing carrier. */

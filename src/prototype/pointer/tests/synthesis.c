@@ -762,6 +762,33 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_type_structure_result(open_carrier_structure) == symbolic_f);
 		assert(!pg_synthesis_result(context) && !pg_synthesis_result(open_carrier));
 		const struct pg_evidence *signature = complete(&synthesis, universe, PG_SYNTHESIS_DONE);
+		const struct pg_object *context_payload = pg_binder(typing->graph);
+		const struct pg_object *context_resume = pg_binder(typing->graph);
+		const struct pg_object *context_response = pg_binder(typing->graph);
+		uint64_t context_steps = synthesis.steps;
+		struct pg_synthesis_job *handler_context = pg_synthesis_handler_context(&synthesis,
+			context, open_carrier, universe, universe, context_payload, context_resume, context_response);
+		assert(handler_context && handler_context == pg_synthesis_handler_context(&synthesis,
+			context, open_carrier, universe, universe, context_payload, context_resume, context_response));
+		assert(context_steps == synthesis.steps && !pg_synthesis_result(handler_context));
+		assert(!pg_synthesis_handler_context(&synthesis, context, open_carrier, universe, universe,
+			context_payload, NULL, context_response));
+		assert(!pg_synthesis_handler_context(&synthesis, NULL, open_carrier, universe, universe,
+			context_payload, context_resume, context_response));
+		struct pg_synthesis foreign;
+		assert(!pg_synthesis_init(&foreign, typing, classifiers, synthesis.normalization, PG_DEFINITION_EXPLICIT_THUNK));
+		assert(!pg_synthesis_handler_context(&synthesis, context, open_carrier,
+			pg_synthesis_evidence(&foreign, signature), universe, context_payload, context_resume, context_response));
+		pg_synthesis_destroy(&foreign);
+		struct pg_synthesis_job *invalid_handler_context = pg_synthesis_handler_context(&synthesis,
+			context, universe, universe, universe, context_payload, context_resume, context_response);
+		assert(invalid_handler_context && !pg_synthesis_result(invalid_handler_context));
+		struct pg_synthesis_job *resume_value = rule_job(&synthesis, PG_VARIABLE, context_resume, 1, &handler_context);
+		struct pg_synthesis_job *resume_structure = pg_synthesis_classifier_structure(&synthesis, resume_value);
+		assert(!complete(&synthesis, resume_structure, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(resume_structure) == pg_thunk_type(classifiers,
+			pg_pi(typing->graph, pg_evidence_subject(signature)->core, context_response, symbolic_f)));
+		assert(!pg_synthesis_result(handler_context) && !pg_synthesis_result(resume_value));
 		const struct pg_operation_declaration *pending_op = pg_operation_declaration(typing, signature, signature);
 		struct pg_token op_name = {.kind = PG_TOKEN_IDENT, .text = "Op", .length = 2};
 		const struct pg_source_scope *op_scope = pg_synthesis_name_job(&synthesis, root, op_name,
@@ -1017,6 +1044,17 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_evidence *expected_context = pg_prove_context_extension(typing,
 			pg_synthesis_result(empty), k, pg_synthesis_result(thunk));
 		assert(pg_synthesis_result(context) == expected_context);
+		const struct pg_evidence *handler_context_proof = complete(&synthesis, handler_context, PG_SYNTHESIS_DONE);
+		const struct pg_context *handler_scope = pg_evidence_context(handler_context_proof);
+		assert(handler_scope->binder == context_resume && handler_scope->parent->binder == context_payload);
+		assert(handler_scope->parent->parent == pg_evidence_context(expected_context));
+		assert(handler_scope->parent->declared_type == pg_evidence_subject(signature)->core);
+		assert(handler_scope->declared_type == pg_thunk_type(classifiers,
+			pg_pi(typing->graph, pg_evidence_subject(signature)->core, context_response,
+				pg_evidence_subject(pg_synthesis_result(open_carrier))->core)));
+		assert(handler_context == pg_synthesis_handler_context(&synthesis, context, open_carrier,
+			universe, universe, context_payload, context_resume, context_response));
+		complete(&synthesis, invalid_handler_context, PG_SYNTHESIS_REJECTED);
 		const struct pg_evidence *open_handler_proof = complete(&synthesis, open_handler, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *explicit_proof = complete(&synthesis, explicit_handler, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(explicit_proof)->core == pg_synthesis_type_structure_result(explicit_term));
