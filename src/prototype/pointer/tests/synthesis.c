@@ -1289,15 +1289,36 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		assert(!pg_synthesis_init(&restored, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
 		struct pg_synthesis_job *payload = pg_synthesis_evidence(&restored, mode == 2 ? u0 : pg_operation_payload_type(operation));
 		struct pg_synthesis_job *response = pg_synthesis_evidence(&restored, pg_operation_response_type(operation));
+		struct pg_synthesis_job *root_context = pg_synthesis_evidence(&restored, context);
+		struct pg_derivation_input projection = {.rule = PG_CONTEXT_PROJECTION, .count = 2};
+		payload = pg_synthesis_rule(&restored, &projection,
+			(struct pg_synthesis_job *[]){root_context, payload}, NULL, NULL);
+		response = pg_synthesis_rule(&restored, &projection,
+			(struct pg_synthesis_job *[]){root_context, response}, NULL, NULL);
+		assert(payload && response && !pg_synthesis_result(payload) && !pg_synthesis_result(response));
 		const struct pg_context *end = allocation.allocation;
 		if (mode == 1) end = pg_context_bind(typing, end->parent, end->binder, pg_universe(classifiers, 0));
 		assert(!pg_synthesis_operation_at(&restored, allocation.label, payload, response, end->parent));
 		struct pg_synthesis_job *rebuilt = pg_synthesis_operation_at(&restored, allocation.label, payload, response, end);
 		assert(rebuilt && rebuilt == pg_synthesis_operation_jobs(&restored, allocation.label, payload, response));
 		assert(rebuilt == pg_synthesis_operation_at(&restored, allocation.label, payload, response, end));
+		struct pg_synthesis_job *reference = pg_synthesis_operation_reference(&restored, rebuilt);
+		struct pg_operation_input signature;
+		assert(!pg_synthesis_operation_reference_input(&restored, reference, &signature));
+		assert(signature.label == allocation.label && signature.payload == payload && signature.response == response);
+		assert(!restored.steps && !pg_synthesis_operation_declaration(reference));
+		assert(!pg_synthesis_result(signature.payload) && !pg_synthesis_result(signature.response));
+		assert(pg_synthesis_operation_reference_input(&synthesis, reference, &signature));
 		const struct pg_evidence *result = complete(&restored, rebuilt,
 			mode == 2 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
 		if (result) assert(pg_evidence_subject(result)->core == pg_evidence_subject(operation_function)->core);
+		complete(&restored, reference, mode == 2 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
+		if (mode == 2) assert(pg_synthesis_operation_reference_input(&restored, reference, &signature));
+		else {
+			assert(!pg_synthesis_operation_reference_input(&restored, reference, &signature));
+			assert(signature.payload == payload && signature.response == response);
+			assert(pg_synthesis_result(payload) == pg_operation_payload_type(pg_synthesis_operation_declaration(reference)));
+		}
 		const struct pg_context *different = pg_context_bind(typing, end->parent, pg_binder(typing->graph), end->declared_type);
 		assert(!pg_synthesis_operation_at(&restored, allocation.label, payload, response, different));
 		assert(!pg_synthesis_operation_jobs(&restored, pg_binder(typing->graph), payload, response));
@@ -1328,6 +1349,8 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 			request(&synthesis, scope, not_labels[i]));
 		complete(&synthesis, reference, PG_SYNTHESIS_REJECTED);
 		assert(!pg_synthesis_operation_declaration(reference));
+		struct pg_operation_input signature;
+		assert(pg_synthesis_operation_reference_input(&synthesis, reference, &signature));
 	}
 	complete(&synthesis, pg_synthesis_operation_reference(&synthesis,
 		pg_synthesis_evidence(&synthesis, operation_function)), PG_SYNTHESIS_REJECTED);

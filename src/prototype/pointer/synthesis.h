@@ -313,6 +313,11 @@ struct pg_synthesis_job *pg_synthesis_operation_reference(struct pg_synthesis *s
  * evaluation. Consumers must still await reference completion before accepting
  * a clause; knowing the signature does not validate an alias or expectation. */
 const struct pg_operation_declaration *pg_synthesis_operation_declaration(const struct pg_synthesis_job *job);
+/* Borrow the actual signature producers through the same nominal provenance
+ * path, even while their proofs are pending. This is input, not signature or
+ * alias acceptance. Consumers must still validate the reference and types. */
+int pg_synthesis_operation_reference_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *reference, struct pg_operation_input *input);
 struct pg_derivation_input;
 /* Structural subject of an unaccepted formation producer. Universe/F/U/Pi
  * inputs can be inspected before row closure. Unknown rule forms await their

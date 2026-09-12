@@ -1228,6 +1228,23 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   pending clause builder used by source synthesis, with shared symbolic carrier
   inference. Do not ignore `context_job` in scope interning, alias unrelated
   typed scopes, or seed the new effect equation with the saved solved carrier.
+  Preparation step: `pg_synthesis_operation_reference_input` now borrows the
+  original payload/response producers through the same cycle-checked nominal
+  origin traversal as declaration lookup. It does not create evidence or require
+  a completed wrapper. Clause-context construction and the final handler rule
+  connect these producers directly, instead of wrapping accepted signature
+  results as new inputs. Alias/reference validation remains an independent
+  required dependency of every accepted clause. Tests retain pending projection
+  producers, verify exact input identity before/after Solve, reject foreign
+  owners and failed signatures, and keep arbitrary functions from acquiring an
+  operation signature. This is preparation for shared source clause-context
+  reconstruction, not completion of `check-handler-nesting`.
+  Handler label collection also reads these nominal inputs without waiting for
+  signature acceptance; the clause's reference check and original signature
+  premises still gate final evidence. Verification: the normal suite and 758
+  prepared-module boundaries passed during this change; final ASan/UBSan full
+  synthesis/source-image suites and handler-origin checks pass. Nested handler
+  Core reuse remains the explicit failing acceptance gate.
 - [x] September 9: construct Match field/IH scopes through the same pending
   context-binding path (`SCOPE_CONTEXT_JOB`). `pg_synthesis_bind_hypothesis`
   records only the field-to-IH binder association; it introduces no proof or
