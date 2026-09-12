@@ -1282,6 +1282,27 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(typing->graph->terms.count == term_count && typing->proofs.count == proof_count);
 	assert(!complete(&synthesis, operation_reference, PG_SYNTHESIS_DONE));
 	assert(pg_synthesis_operation_declaration(operation_reference) == operation);
+	struct pg_operation_input allocation;
+	assert(!pg_synthesis_operation_input(&synthesis, operation_job, &allocation) && allocation.allocation);
+	for (unsigned mode = 0; mode < 3; ++mode) {
+		struct pg_synthesis restored;
+		assert(!pg_synthesis_init(&restored, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_synthesis_job *payload = pg_synthesis_evidence(&restored, mode == 2 ? u0 : pg_operation_payload_type(operation));
+		struct pg_synthesis_job *response = pg_synthesis_evidence(&restored, pg_operation_response_type(operation));
+		const struct pg_context *end = allocation.allocation;
+		if (mode == 1) end = pg_context_bind(typing, end->parent, end->binder, pg_universe(classifiers, 0));
+		assert(!pg_synthesis_operation_at(&restored, allocation.label, payload, response, end->parent));
+		struct pg_synthesis_job *rebuilt = pg_synthesis_operation_at(&restored, allocation.label, payload, response, end);
+		assert(rebuilt && rebuilt == pg_synthesis_operation_jobs(&restored, allocation.label, payload, response));
+		assert(rebuilt == pg_synthesis_operation_at(&restored, allocation.label, payload, response, end));
+		const struct pg_evidence *result = complete(&restored, rebuilt,
+			mode == 2 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
+		if (result) assert(pg_evidence_subject(result)->core == pg_evidence_subject(operation_function)->core);
+		const struct pg_context *different = pg_context_bind(typing, end->parent, pg_binder(typing->graph), end->declared_type);
+		assert(!pg_synthesis_operation_at(&restored, allocation.label, payload, response, different));
+		assert(!pg_synthesis_operation_jobs(&restored, pg_binder(typing->graph), payload, response));
+		pg_synthesis_destroy(&restored);
+	}
 	scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Signature", .length=9},
 		pg_prove_classifier(typing, classifiers, context, operation_function));
@@ -1618,7 +1639,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *foreign_type = pg_prove_universe(&foreign, classifiers, foreign_context, 1);
 	const struct pg_operation_declaration *foreign_operation = pg_operation_declaration(&foreign, foreign_type, foreign_type);
 	assert(foreign_operation);
-	complete(&synthesis, pg_synthesis_operation(&synthesis, foreign_operation), PG_SYNTHESIS_REJECTED);
+	assert(!pg_synthesis_operation(&synthesis, foreign_operation));
 	pg_synthesis_destroy(&synthesis);
 	pg_effect_inference_destroy(&inference);
 	pg_typing_destroy(&foreign);

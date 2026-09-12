@@ -1135,7 +1135,7 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   synthesis suites pass. The fourteen typed/source retention combinations
   include Fold. The operation-origin gate remains REJECTED after restoration;
   this change does not claim full handler transport or full acceptance.
-- [ ] Retain operation producer identity, not only its function derivation.
+- [x] Retain operation producer identity, not only its function derivation.
   `source_io_test operation-origins` first checks a real `pg_synthesis_operation`
   producer and a handler using its alias. After three inert resaves, the
   handler fails although the ordinary value roots succeed. Operation lookup
@@ -1145,8 +1145,32 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Do not infer operation status from the Core of an arbitrary Lambda. A first
   attempted fixture incorrectly published a function proof as an operation;
   that already failed before saving and was not evidence of an image bug.
-  The corrected `check-operation-origins` gate is part of `check-acceptance`;
-  current result is handler REJECTED with both ordinary roots DONE (371 steps).
+  Resolved after `00166c5`: `OPERATION_JOB` is keyed by the label and two
+  signature producers. The accepted-declaration API supplies ordinary evidence
+  producers; imported signatures remain pending. The same worker validates
+  them with `pg_operation_declaration_at` before constructing the wrapper.
+  `pg_synthesis_operation_at` retains its two binder allocations, not trusted
+  field types. APGSRC26/27 encode operation producers separately from function
+  proofs while sharing the constructor wrapper's physical context/reference
+  table. Core forms and kernel rules remain separate and unchanged.
+  The corrected `check-operation-origins` gate is part of `check-acceptance`.
+  It now checks pending and settled producers through three inert resaves,
+  ordinary handler inference and the actual normalized return value. Direct
+  wrapper tests check exact Core reuse, rechecking of stored field annotations,
+  wrong signature rejection, invalid labels, short allocations and conflicting
+  late attachments. Foreign signature evidence is rejected at registration,
+  rather than first constructing a job that later rejects it.
+  Verification: normal `check`, image/operation-origin gates and all 758
+  prepared-module save boundaries pass. ASan/UBSan source and full synthesis
+  suites pass. The eight available 01-09 examples and selected runtime results
+  pass; the open-family gate remains unchanged at 175/209/280/323 steps with
+  only its closed control accepted. Full acceptance and Main push remain open.
+- [ ] Complete retained allocation coverage for multi-clause source handlers.
+  Operation producer transport does not retain the handler's own return,
+  payload/resumption or continuation-type binders. The current operation gate
+  verifies recomputed behavior and declaration identity, not exact whole-handler
+  Core identity against a retained normalization receipt. Add that stronger
+  gate and preserve the actual scope producers before claiming full retention.
 - [x] September 9: construct Match field/IH scopes through the same pending
   context-binding path (`SCOPE_CONTEXT_JOB`). `pg_synthesis_bind_hypothesis`
   records only the field-to-IH binder association; it introduces no proof or

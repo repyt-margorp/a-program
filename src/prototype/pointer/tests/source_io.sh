@@ -7,6 +7,7 @@ trap 'rm -rf "$directory"' EXIT
 "$1" match-origins
 "$1" fold-origins
 "$1" handler-scopes
+"$1" operation-origins
 "$1" write "$directory/modules.graph"
 single=$("$1" read "$directory/modules.graph")
 bulk=$("$1" read-bulk "$directory/modules.graph")

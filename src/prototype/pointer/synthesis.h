@@ -199,13 +199,26 @@ const struct pg_syntax *pg_synthesis_telescope_body(const struct pg_synthesis_jo
  * this store's typing arena is accepted; this is not a serialized-proof loader. */
 struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
 	const struct pg_evidence *proof);
-/* One pending callable producer per exact operation declaration. Ordinary
+/* One pending callable producer per exact label/signature-producer tuple. Ordinary
  * Solve constructs its Lambda/request/RETURN evidence once; names and aliases
  * can refer to this producer before completion. Signature ownership is checked
  * by the same operation function builder, not inferred from the erased Core.
- * The declaration and its signature evidence outlive this synthesis store. */
+ * The accepted-declaration entry wraps its signature evidence as producers. */
 struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
 	const struct pg_operation_declaration *declaration);
+struct pg_synthesis_job *pg_synthesis_operation_jobs(struct pg_synthesis *synthesis,
+	const struct pg_object *label, struct pg_synthesis_job *payload, struct pg_synthesis_job *response);
+/* Raw wrapper allocation contains two binders, never signature authority. */
+struct pg_operation_input {
+	const struct pg_object *label;
+	struct pg_synthesis_job *payload, *response;
+	const struct pg_context *allocation;
+};
+int pg_synthesis_operation_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, struct pg_operation_input *input);
+struct pg_synthesis_job *pg_synthesis_operation_at(struct pg_synthesis *synthesis,
+	const struct pg_object *label, struct pg_synthesis_job *payload, struct pg_synthesis_job *response,
+	const struct pg_context *allocation);
 /* Independently synthesize a #.return clause as a raw continuation Lambda.
  * The input supplies its result-domain type, not an expected clause codomain.
  * Shared by exact scope/input/clause; input computations are not executed.

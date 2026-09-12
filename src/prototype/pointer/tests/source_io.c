@@ -88,7 +88,7 @@ static void handler_scopes(int mode)
 		if (!i) type = pg_synthesis_result(value);
 		scope = pg_synthesis_name_job(&p->synthesis, scope, name, value);
 	}
-	if (mode == 2) {
+	if (mode >= 2) {
 		const struct pg_operation_declaration *operation = pg_operation_declaration(&p->typing, type, type);
 		assert(operation);
 		scope = pg_synthesis_name_job(&p->synthesis, scope,
@@ -98,7 +98,7 @@ static void handler_scopes(int mode)
 	}
 	struct pg_parser parser;
 	struct pg_definition definition;
-	text = mode == 2 ? "h:=(ask d) @ask req k=>k req @#.return x=>x;" : "h:=d @#.return x=>x;";
+	text = mode >= 2 ? "h:=(ask d) @ask req k=>k req @#.return x=>x;" : "h:=d @#.return x=>x;";
 	pg_parser_init(&parser, &p->graph, text, strlen(text));
 	assert(pg_parser_next(&parser, &definition) == 1);
 	const struct pg_source_scope *inner = pg_synthesis_handler_scope(&p->synthesis, scope, definition.expression);
@@ -110,7 +110,7 @@ static void handler_scopes(int mode)
 		parse(p, scope, "{{x:=d;}}.x"), parse(p, inner, "{{f:=&(\\x:D=>x);x:=d;}}.x")};
 	size_t count = 2;
 	struct pg_synthesis_job *const *roots = initial;
-	if (mode) {
+	if (mode == 1 || mode == 2) {
 		pg_synthesis_advance(&p->synthesis, 10000);
 		assert(pg_synthesis_result(roots[0]) && pg_synthesis_result(roots[1]));
 		assert(pg_synthesis_result(pg_synthesis_handler(&p->synthesis, scope, NULL, definition.expression)));
@@ -146,6 +146,10 @@ static void handler_scopes(int mode)
 	const struct pg_term *result_type;
 	assert(pg_effect_type_view(pg_evidence_classifier(handled), &effects, &result_type));
 	assert(!pg_effect_count(effects) && result_type == pg_evidence_classifier(value));
+	struct pg_nf_job *normal = pg_nf_request(&p->evaluation, &pg_pure_policy, pg_evidence_subject(handled)->core);
+	assert(normal && pg_nf_advance(normal, 10000) == PG_NF_DONE);
+	assert(pg_nf_result(normal) == pg_application(&p->graph,
+		pg_reference(&p->graph, &pg_return_operation), pg_evidence_subject(value)->core));
 	pg_program_destroy(p);
 	puts("handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed");
 }
@@ -1594,7 +1598,7 @@ int main(int argc, char **argv)
 	if (argc == 2 && !strcmp(argv[1], "match-origins")) { match_origins(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "fold-origins")) { fold_origins(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "handler-scopes")) { handler_scopes(0); handler_scopes(1); return 0; }
-	if (argc == 2 && !strcmp(argv[1], "operation-origins")) { handler_scopes(2); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "operation-origins")) { handler_scopes(2); handler_scopes(3); return 0; }
 	if (argc > 1 && !strncmp(argv[1], "retained-", 9)) {
 		retained_process(argc, argv);
 		return 0;
