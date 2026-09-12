@@ -5018,6 +5018,26 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	assert(pg_effect_type_view(pg_evidence_classifier(effect_match), &match_effects, &match_result));
 	assert(match_result == pg_evidence_subject(nat)->core);
 	assert(pg_effect_count(match_effects) == 1 && pg_effect_contains(match_effects, pg_operation_label(choose)) == 1);
+	const struct pg_evidence *effect_function = complete(&synthesis, request(&synthesis, effect_scope,
+		"r:={f:={Choose Nat.zero; &(\\n:Nat=>n);}; f Nat.zero;};"), PG_SYNTHESIS_DONE);
+	assert(pg_effect_type_view(pg_evidence_classifier(effect_function), &match_effects, &match_result));
+	assert(match_result == pg_evidence_subject(nat)->core);
+	assert(pg_effect_count(match_effects) == 1 && pg_effect_contains(match_effects, pg_operation_label(choose)) == 1);
+	struct pg_synthesis_job *acc = request(&synthesis, effect_scope,
+		"Acc:=\\A:@=>\\R:A->A->@=>@\\subject:A=>{acc:(x:A)->((y:A)->R y x->* y)->* x;};");
+	complete(&synthesis, acc, PG_SYNTHESIS_DONE);
+	const struct pg_source_scope *acc_scope = pg_synthesis_name_job(&synthesis, effect_scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Acc", .length = 3}, acc);
+	complete(&synthesis, request(&synthesis, acc_scope,
+		"r:=\\A:@=>\\R:A->A->@=>\\P:A->@=>"
+		"\\step:(x:A)->((y:A)->R y x->P y)->P x=>"
+		"\\subject:A=>\\proof:Acc A R subject=>proof @acc x down=>"
+		"{stepAtX:=&(step x); stepAtX &(*down);};"), PG_SYNTHESIS_DONE);
+	complete(&synthesis, request(&synthesis, acc_scope,
+		"r:=\\A:@=>\\R:A->A->@=>\\P:A->@=>"
+		"\\step:(x:A)->((y:A)->R y x->P y)->P x=>"
+		"\\subject:A=>\\proof:Acc A R subject=>proof @acc x down=>"
+		"{Choose Nat.zero; stepAtX:=&(step x); stepAtX &(*down);};"), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *handled_match = complete(&synthesis, request(&synthesis, effect_scope,
 		"r:=((Choose Nat.zero) @zero=>Nat.zero @succ k=>k) @Choose req resume=>resume req @#.return x=>x;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *handled_result = complete(&synthesis,
@@ -6242,6 +6262,9 @@ int main(void)
 		"main := { result : A := (\\y : A => y) x; result; };",
 		"main := { outer := { inner := x; inner; }; outer; };",
 		"main := { f := &(\\y : A => y); f x; };",
+		"main := { f := \\y : A => y; f x; };",
+		"main := { f := (\\y : A => \\z : A => y) x; f x; };",
+		"main := (\\f : A -> A => f x) (\\y : A => y);",
 		"main := { &(\\y : A => y); } x;",
 		"main := (&{ &(\\y : A => y); }) x;",
 		"main := { &(\\y : A => y); } { x; };",
@@ -6403,6 +6426,8 @@ int main(void)
 	complete(&strict, program(&strict, strict_scope, "{{main:={x;};}}.main"), PG_SYNTHESIS_REJECTED);
 	complete(&strict, program(&strict, strict_scope, "{{main:=&{x;};}}.main"), PG_SYNTHESIS_DONE);
 	complete(&strict, program(&strict, strict_scope, "{{main:=x;}}.main"), PG_SYNTHESIS_DONE);
+	complete(&strict, request(&strict, strict_scope, "main:={f:=\\y:A=>y; f x;};"), PG_SYNTHESIS_REJECTED);
+	complete(&strict, request(&strict, strict_scope, "main:=(\\f:A->A=>f x) (\\y:A=>y);"), PG_SYNTHESIS_UNSUPPORTED);
 	pg_synthesis_destroy(&strict);
 	uint64_t steps = synthesis.steps;
 	pg_synthesis_advance(&synthesis, 100);

@@ -77,6 +77,7 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/iadt_test
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-formation.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/acc-family-parameter.p main expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-motive-wrong-field.p
 	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/family-parameter-recursive-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p recursive expected

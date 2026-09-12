@@ -139,6 +139,10 @@ static void indexed_family_sources(void)
 		"LT:=@\\x:Nat=>@\\y:Nat=>{step:(n:Nat)->* n (Nat.succ n);};"
 		"D:=\\A:@=>\\R:A->A->@=>@\\subject:A=>"
 		"{acc:(x:A)->((y:A)->R y x->* y)->* x;};"
+		"elim:=\\A:@=>\\R:A->A->@=>\\P:A->@=>"
+		"\\step:(x:A)->((y:A)->R y x->P y)->P x=>"
+		"\\subject:A=>\\proof:D A R subject=>proof @acc x down=>"
+		"{stepAtX:=step x; stepAtX *down;};"
 		"Fiber:=D Nat LT Nat.zero; main:=Nat.zero; expected:=Nat.zero;");
 	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
 		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"

@@ -66,7 +66,7 @@ not the stale worktree `read_file.out` (which fails the length fixture).
 an initial 18 source/result cases using unchanged legacy fixtures: Vec, Acc,
 order proofs, six function-graph examples, named cases, six QuickSort inputs,
 and two expected rejections. Main passed that initial baseline. The current
-19-case gate passes 9: seven legacy positive cases, one justified admission of
+19-case gate passes 10: eight legacy positive cases, one justified admission of
 a historical negative request, and one new actual wrong-result rejection
 (details below). Remaining cases are UNSUPPORTED or incorrectly REJECTED.
 This gate is included in
@@ -112,22 +112,29 @@ unchanged; computations over logical hypotheses use the extension below.
   otherwise a family application is incorrectly sequenced as a Fold.
   APGDRV8 and APGSRC32/33 encode the revised Pi premises. There is no new Core
   tag, acceptance rule or Replay engine. Validation is recorded below.
-- [ ] Restore source Acc's dependent motive inference when an IH is passed as
-  a higher-order argument. The generic kernel Acc eliminator can now be closed
-  over A/R/P and reapplied, but this does not complete source `accElim`.
-  The unchanged Acc/QuickSort cases remain unsupported (compatibility 9/19
-  at the latest run). General Act on higher logical signatures remains open.
-  Prerequisite verified: infer `F(P index)` from the independently checked
-  codomain of `step x`, before constructing an IH. The partial pattern solver
-  now permits unused nonvariable images such as `scrutinee := acc x down`;
-  it does not invert them. Typed substitution, discharge of unused fields and
-  complete forward reconstruction still check the candidate. The Acc kernel
-  test uses this inferred motive for actual induction and rejects a result
-  depending on the extra `down` field. Normal checks/examples/open families
-  and ASan/UBSan Core/IADT tests pass. No new rule, Core tag or image version.
-  Next: derive candidates from known call-result classifiers in the existing
-  block scopes, including prefix effects, then check the complete IH branch.
-  Do not expand block bindings as source aliases or infer from `::`.
+- [x] Restore the unchanged source Acc eliminator (DONE, 1727 Solve steps).
+  Infer a motive candidate from a known callee's argument-independent result
+  classifier, tracking actual block-result scopes and prefix effects. The
+  partial pattern solver ignores unused nonvariable images, then checks typed
+  substitution and full forward reconstruction. The complete induction branch
+  is subsequently checked; no candidate is itself accepted evidence. Neither
+  `::` nor alias expansion of block bindings supplies the motive.
+  Default implicit-thunk compatibility also quotes inferred raw computational
+  functions at argument/named block-binding boundaries. Returning computations
+  still sequence, logical families are not runtime functions, and explicit
+  mode remains restrictive. No new Core tag, kernel rule or image version.
+  Tests reject the original recursive field in place of the mapped IH and an
+  effectful IH passed to a pure step; returned function computations retain
+  their effects. Unsolved/solved/resaved source images check the Acc eliminator
+  through the same Solve path. This is not general dependent motive inference.
+- [ ] Remaining compatibility blockers: order proofs, named Graph cases,
+  QuickSort and the incompatible-property negative case. QuickSort currently
+  rejects at 27061 steps: `#.terminates` is not connected in the new source
+  environment, and its `quickSortAcc` elimination also reaches UNSUPPORTED.
+  These are distinct missing semantics, not checkpoint performance tasks;
+  connecting the intrinsic alone does not establish QuickSort compatibility.
+  General Act on higher logical signatures and post-hoc property proofs remain
+  open. Do not replace the unchanged fixture with a reduced success case.
 
 Validation of the source-family contract: `check check-examples
 check-example-results check-open-families` passes, including all four open-family
@@ -135,7 +142,14 @@ fixtures. Tests cover alias annotations, a family-dependent computational Pi,
 generic Acc abstraction/reapplication, wrong signature/data-result rejection,
 and unfinished/completed source resaves. IADT, synthesis and indexed source-image
 tests pass ASan/UBSan. The unchanged legacy compatibility gate remains 9/19;
-this is not completion or a basis for Main promotion.
+this historical run is not completion or a basis for Main promotion.
+
+Latest validation after source Acc restoration: `check check-examples
+check-example-results check-open-families` passes. Synthesis and indexed source
+image tests also pass ASan/UBSan. The unchanged compatibility/result gate is
+10/19, including length results and Graph/witness consumers at chunks 1/64;
+it still fails overall. This does not yet prove a post-hoc length/QuickSort
+property or authorize Main promotion.
 
 - [x] Generalize substitution lifting to checked family declarations, including
   dependent indices and higher family parameters. Transport the signature's

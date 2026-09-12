@@ -8,6 +8,9 @@ enum pg_synthesis_status { PG_SYNTHESIS_PENDING, PG_SYNTHESIS_DONE,
 	PG_SYNTHESIS_REJECTED, PG_SYNTHESIS_UNSUPPORTED, PG_SYNTHESIS_ERROR };
 struct pg_source_scope;
 struct pg_synthesis_job;
+/* Implicit mode also quotes inferred computational functions at argument and
+ * named block-binding boundaries. Returning computations still sequence;
+ * logical family signatures are not quoted as runtime functions. */
 enum pg_definition_policy { PG_DEFINITION_IMPLICIT_THUNK, PG_DEFINITION_EXPLICIT_THUNK };
 struct pg_synthesis {
 	struct pg_typing *typing;
