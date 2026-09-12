@@ -2372,6 +2372,37 @@ static void reduction_records(void)
 		assert(pg_nf_advance(pending, 1) == PG_NF_PENDING && pg_nf_steps(pending) < 10000);
 	}
 	assert(!pending->certificate && pending->stage == NF_RECHECK);
+	uint64_t saved_steps = pg_nf_steps(pending);
+	size_t saved_terms = graph.terms.count;
+	const struct pg_reduction_archive *snapshot = pg_reduction_archive_snapshot(&graph, &work, NULL);
+	assert(snapshot && snapshot->count && snapshot->phase_count);
+	assert(pg_nf_steps(pending) == saved_steps && !pg_nf_certificate(pending) && graph.terms.count == saved_terms);
+	unsigned found = 0;
+	for (size_t i = 0; i < snapshot->count; ++i) {
+		if (snapshot->roots[i] == initial[0]) found |= 1;
+		if (snapshot->roots[i] == initial[3]) found |= 2;
+	}
+	for (size_t i = 0; i < snapshot->phase_count; ++i)
+		if (snapshot->phases[i] == pending->phases) found |= 4;
+	assert(found == 7);
+	const struct pg_reduction_archive *merged = pg_reduction_archive_snapshot(&graph, &work, snapshot);
+	assert(merged && merged->count == snapshot->count && merged->phase_count == snapshot->phase_count);
+	for (size_t i = 0; i < merged->count; ++i) assert(merged->roots[i] == snapshot->roots[i]);
+	for (size_t i = 0; i < merged->phase_count; ++i) assert(merged->phases[i] == snapshot->phases[i]);
+	assert(!pg_reduction_archive_snapshot(NULL, &work, snapshot));
+	assert(!pg_reduction_archive_snapshot(&graph, NULL, snapshot));
+	struct pg_reduction_certificate old = *initial[0];
+	old.target = neutral;
+	const struct pg_reduction_certificate *old_root = &old;
+	struct pg_reduction_archive old_archive = {.count = 1, .roots = &old_root};
+	merged = pg_reduction_archive_snapshot(&graph, &work, &old_archive);
+	assert(merged && merged->count == snapshot->count);
+	assert(merged->roots[0] == initial[0]);
+	assert(pg_reduction_find(&work, &pg_pure_policy, term, PG_REDUCTION_NF) == initial[0]);
+	assert(pg_reduction_find(&work, &pg_beta_policy, term, PG_REDUCTION_NF) == initial[3]);
+	assert(!pg_reduction_find(&work, &pg_pure_policy, pending->request.input, PG_REDUCTION_NF));
+	assert(!pg_reduction_find(&work, &pg_pure_policy, term, (enum pg_reduction_kind)99));
+	assert(pg_nf_steps(pending) == saved_steps && graph.terms.count == saved_terms);
 	const struct pg_reduction_phase *initial_phases[] = {pending->phases, pending->phases, initial[4]->phases};
 	const struct pg_reduction_archive *archive = NULL;
 	for (unsigned round = 0; round < 2; ++round) {

@@ -59,6 +59,15 @@ int pg_whnf_pending_read(FILE *file, struct pg_whnf_job *job, struct pg_graph *o
  * without inventing a completed receipt. Resaving is inert; WHNF endpoint claims
  * still need their execution basis before an accepted owner can use them. */
 struct pg_reduction_archive;
+/* Snapshot immutable completed WHNF/NF receipts and unfinished NF phase roots
+ * from the ordinary work store, together with a previous raw image archive.
+ * Completed local work replaces old raw roots at the same input/policy/mode
+ * key; this neither checks nor accepts those old claims. Pointer-identical
+ * roots are retained once. The snapshot belongs to output;
+ * referenced receipt/phase graphs must outlive it. No evaluation, admission,
+ * pending-machine retention or mutation of the previous archive occurs. */
+const struct pg_reduction_archive *pg_reduction_archive_snapshot(struct pg_graph *output,
+	const struct pg_whnf_work *work, const struct pg_reduction_archive *previous);
 int pg_reduction_records_write(FILE *file, size_t count,
 	const struct pg_reduction_certificate *const *roots, size_t phase_count,
 	const struct pg_reduction_phase *const *phases, const struct pg_graph_codec *codec, void *owner);

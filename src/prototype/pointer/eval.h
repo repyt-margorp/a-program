@@ -160,6 +160,10 @@ const struct pg_term *pg_reduction_source(const struct pg_reduction_certificate 
 const struct pg_term *pg_reduction_target(const struct pg_reduction_certificate *certificate);
 const struct pg_eval_policy *pg_reduction_policy(const struct pg_reduction_certificate *certificate);
 enum pg_reduction_kind pg_reduction_kind(const struct pg_reduction_certificate *certificate);
+/* Read-only exact-key lookup of a completed local result; never allocates,
+ * evaluates, compares endpoints or accepts an imported record. */
+const struct pg_reduction_certificate *pg_reduction_find(const struct pg_whnf_work *work,
+	const struct pg_eval_policy *policy, const struct pg_term *input, enum pg_reduction_kind kind);
 /* Completed NF phases, newest first. Children certify congruent rebuilding;
  * phases without children retain the final head reduction. These are local
  * immutable dependencies, not permission to accept imported endpoint claims. */

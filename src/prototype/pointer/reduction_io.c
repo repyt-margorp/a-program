@@ -9,6 +9,52 @@
 
 static const char magic[8] = "APGRCP\2";
 
+const struct pg_reduction_archive *pg_reduction_archive_snapshot(struct pg_graph *output,
+	const struct pg_whnf_work *work, const struct pg_reduction_archive *previous)
+{
+	if (!output || !work) return NULL;
+	struct pg_dag receipts = {0}, phases = {0};
+	struct pg_reduction_archive *archive = NULL;
+	if (pg_dag_init(&receipts, NULL, NULL) || pg_dag_init(&phases, NULL, NULL)) goto done;
+	if (previous) {
+		for (size_t i = 0; i < previous->count; ++i) {
+			const struct pg_reduction_certificate *raw = previous->roots[i];
+			const struct pg_reduction_certificate *local = pg_reduction_find(work, raw->policy, raw->source, raw->kind);
+			if (pg_dag_add(&receipts, local ? local : raw)) goto done;
+		}
+		for (size_t i = 0; i < previous->phase_count; ++i)
+			if (pg_dag_add(&phases, previous->phases[i])) goto done;
+	}
+	for (size_t i = 0; i < work->jobs.capacity; ++i) {
+		for (const struct pg_index_entry *entry = work->jobs.buckets[i]; entry; entry = entry->next) {
+			const struct pg_whnf_job *job = (const void *)entry;
+			const struct pg_reduction_certificate *receipt = pg_whnf_certificate(job);
+			if (receipt && pg_dag_add(&receipts, receipt)) goto done;
+		}
+	}
+	for (size_t i = 0; i < work->normal_forms.capacity; ++i) {
+		for (const struct pg_index_entry *entry = work->normal_forms.buckets[i]; entry; entry = entry->next) {
+			const struct pg_nf_job *job = (const void *)entry;
+			const struct pg_reduction_certificate *receipt = pg_nf_certificate(job);
+			if (receipt) {
+				if (pg_dag_add(&receipts, receipt)) goto done;
+			} else if (job->phases && pg_dag_add(&phases, job->phases)) goto done;
+		}
+	}
+	if (receipts.count > SIZE_MAX / sizeof(void *) || phases.count > SIZE_MAX / sizeof(void *)) goto done;
+	const struct pg_reduction_certificate **roots = pg_alloc(output, receipts.count * sizeof(*roots));
+	const struct pg_reduction_phase **pending = pg_alloc(output, phases.count * sizeof(*pending));
+	if (!roots || !pending) goto done;
+	for (const struct pg_dag_node *node = receipts.first; node; node = node->next) roots[node->id - 1] = node->key;
+	for (const struct pg_dag_node *node = phases.first; node; node = node->next) pending[node->id - 1] = node->key;
+	archive = pg_alloc(output, sizeof(*archive));
+	if (archive) *archive = (struct pg_reduction_archive){receipts.count, roots, phases.count, pending};
+done:
+	pg_dag_destroy(&receipts);
+	pg_dag_destroy(&phases);
+	return archive;
+}
+
 struct record {
 	struct pg_index_entry index;
 	const void *value;

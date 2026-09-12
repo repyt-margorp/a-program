@@ -29,6 +29,39 @@ sed '1d' "$directory/source-nf" > "$directory/source-value"
 sed '1d' "$directory/image-nf" > "$directory/image-value"
 cmp "$directory/source-value" "$directory/image-value"
 
+# Retention selects raw reduction data, never accepted flags or host effects.
+"$binary" --nf main --retain-reductions --save "$directory/retained.a" "$example" > "$directory/retained-nf"
+sed '1d' "$directory/retained-nf" > "$directory/retained-value"
+cmp "$directory/source-value" "$directory/retained-value"
+"$fixture" retention-check "$directory/retained.a" > "$directory/retained-summary"
+grep -Eq '^retained=1 reductions=[1-9][0-9]* phases=[0-9]+ steps=0$' "$directory/retained-summary"
+code=0
+"$binary" --load --steps 0 --retain-reductions --save "$directory/retained-resaved.a" "$directory/retained.a" > "$directory/status" || code=$?
+test "$code" = 3
+"$fixture" retention-summary "$directory/retained-resaved.a" > "$directory/resaved-summary"
+cmp "$directory/retained-summary" "$directory/resaved-summary"
+"$binary" --load --nf main "$directory/retained-resaved.a" > "$directory/retained-loaded-nf"
+sed '1d' "$directory/retained-loaded-nf" > "$directory/retained-loaded-value"
+cmp "$directory/source-value" "$directory/retained-loaded-value"
+code=0
+"$binary" --load --steps 0 --save "$directory/discarded.a" "$directory/retained.a" > "$directory/status" || code=$?
+test "$code" = 3
+"$fixture" retention-summary "$directory/discarded.a" > "$directory/discarded-summary"
+grep -q '^retained=0 reductions=0 phases=0 steps=0$' "$directory/discarded-summary"
+code=0
+"$binary" --steps 0 --retain-reductions --save "$directory/empty-retained.a" "$example" > "$directory/status" || code=$?
+test "$code" = 3
+"$fixture" retention-summary "$directory/empty-retained.a" > "$directory/empty-summary"
+grep -q '^retained=1 reductions=0 phases=0 steps=0$' "$directory/empty-summary"
+printf ':save %s\n:quit\n' "$directory/repl-retained.a" |
+	"$binary" --load --steps 0 --retain-reductions --repl "$directory/retained.a" > "$directory/status"
+"$fixture" retention-summary "$directory/repl-retained.a" > "$directory/resaved-summary"
+cmp "$directory/retained-summary" "$directory/resaved-summary"
+code=0
+"$binary" --retain-reductions "$example" > "$directory/status" 2>&1 || code=$?
+test "$code" = 2
+printf '%s\n' 'image cli: explicit reduction retention, inert resave, REPL policy and default discard passed'
+
 # A failed write must not truncate a previously usable image, even in place.
 cp "$directory/list.a" "$directory/list-before.a"
 code=0

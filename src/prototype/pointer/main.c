@@ -2,6 +2,7 @@
 #include "program.h"
 #include "graph_io.h"
 #include "source_io.h"
+#include "computation_io.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -32,8 +33,8 @@ static int retain_root(struct root_list *roots, struct pg_synthesis_job *job)
 
 /* Publish only a completely written image; the temporary file shares its
  * destination directory so rename does not cross filesystems. */
-static int save_image(const char *path, const struct pg_synthesis *synthesis,
-	size_t count, struct pg_synthesis_job *const *roots)
+static int save_image(const char *path, const struct pg_program *program,
+	size_t count, struct pg_synthesis_job *const *roots, int retain_reductions)
 {
 	static const char suffix[] = ".tmp.XXXXXX";
 	size_t length = strlen(path);
@@ -47,7 +48,12 @@ static int save_image(const char *path, const struct pg_synthesis *synthesis,
 	if (descriptor < 0) { free(temporary); return -1; }
 	FILE *file = fdopen(descriptor, "wb");
 	if (file) {
-		status = pg_sources_write(file, synthesis, count, roots);
+		struct pg_graph temporary_graph = {0};
+		const struct pg_reduction_archive *reductions = retain_reductions
+			? pg_reduction_archive_snapshot(&temporary_graph, &program->evaluation, program->retained_reductions) : NULL;
+		if (!retain_reductions || reductions)
+			status = pg_sources_write_retained(file, &program->synthesis, count, roots, reductions);
+		pg_graph_destroy(&temporary_graph);
 		if (fclose(file)) status = -1;
 	} else close(descriptor);
 	if (!status) status = rename(temporary, path);
@@ -133,7 +139,7 @@ static int report(struct pg_program *program, struct pg_synthesis_job *job)
 }
 
 static int repl(struct pg_program *program, uint64_t budget,
-	struct root_list *roots)
+	struct root_list *roots, int retain_reductions)
 {
 	char *line = NULL;
 	size_t capacity = 0;
@@ -191,7 +197,7 @@ static int repl(struct pg_program *program, uint64_t budget,
 			continue;
 		}
 		if (!strcmp(command, ":save") && *argument) {
-			if (save_image(argument, &program->synthesis, roots->count, roots->items)) fputs("cannot save input image\n", stderr);
+			if (save_image(argument, program, roots->count, roots->items, retain_reductions)) fputs("cannot save input image\n", stderr);
 			else puts("saved");
 			continue;
 		}
@@ -221,7 +227,7 @@ int main(int argc, char **argv)
 	const char *selected = NULL;
 	const char *save = NULL;
 	const char *imports = NULL;
-	int nf = 0, load = 0, interactive = 0;
+	int nf = 0, load = 0, interactive = 0, retain_reductions = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "--steps")) {
 			if (++i == argc || steps_argument(argv[i], &budget) != 0) goto usage;
@@ -237,19 +243,22 @@ int main(int argc, char **argv)
 			imports = argv[i];
 		} else if (!strcmp(argv[i], "--load")) load = 1;
 		else if (!strcmp(argv[i], "--repl")) interactive = 1;
+		else if (!strcmp(argv[i], "--retain-reductions")) retain_reductions = 1;
 		else if (!strcmp(argv[i], "--save")) {
 			if (save || ++i == argc || !*argv[i] || !strcmp(argv[i], "-")) goto usage;
 			save = argv[i];
 		} else if (!strcmp(argv[i], "--strict-thunks")) policy = PG_DEFINITION_EXPLICIT_THUNK;
 		else if (!strcmp(argv[i], "--help")) {
-			puts("usage: pointer-check [--steps N] [--strict-thunks] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n"
+			puts("usage: pointer-check [--steps N] [--strict-thunks] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME] INPUT|-\n"
 				"Checks with the pointer-core solver; does not execute host effects.\n"
 				"--imports FILE.p supplies exported symbols to explicit source imports.\n"
 				"--repl keeps the loaded Program for :solve, :whnf, :nf, :status, :root, :save, :quit.\n"
 				"--load reads an image (limit 1000000); its stored thunk policy applies.\n"
 				"--root N selects a loaded root (1-based, default 1); save retains every root.\n"
 				"Created WHNF/NF requests append roots without replacing the selected source module.\n"
-				"--save stores RECOMPUTE inputs, including pending/rejected inputs, not progress.\n"
+				"--save defaults to RECOMPUTE inputs, including pending/rejected inputs.\n"
+				"--retain-reductions also saves completed reductions and partial NF records, including imported ones.\n"
+				"Retained records are not trusted on load; ordinary source Solve still recomputes. This is not full CHECKPOINT.\n"
 				"WHNF/NF select a definition, force a stored thunk once, and print its pure Core DAG.\n"
 				"Exit: 0 done, 1 rejected/syntax, 2 input/internal error, 3 pending, 4 unsupported.\n"
 				"Steps bound solver transitions, not parsing time or individual rule cost.");
@@ -261,6 +270,7 @@ int main(int argc, char **argv)
 	}
 	if (!path || (load && (policy == PG_DEFINITION_EXPLICIT_THUNK || imports)) || (root_index && !load)) goto usage;
 	if (interactive && !strcmp(path, "-")) goto usage;
+	if (retain_reductions && !save && !interactive) goto usage;
 	if (!root_index) root_index = 1;
 	FILE *file = !strcmp(path, "-") ? stdin : fopen(path, "rb");
 	if (!file) { fprintf(stderr, "%s: cannot open input\n", path); return 2; }
@@ -319,17 +329,17 @@ int main(int argc, char **argv)
 		result = report(program, job);
 		if (selected && !result && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core)) result = 2;
 		if (save) {
-			if (save_image(save, &program->synthesis, retained.count, retained.items)) {
+			if (save_image(save, program, retained.count, retained.items, retain_reductions)) {
 				fprintf(stderr, "%s: cannot save input image\n", save); result = 2;
 			}
 		}
-		if (interactive) result = repl(program, budget, &retained);
+		if (interactive) result = repl(program, budget, &retained, retain_reductions);
 	}
 done:
 	free(retained.items);
 	pg_program_destroy(program);
 	return result;
 usage:
-	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--whnf NAME|--nf NAME] INPUT|-\n", stderr);
+	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME] INPUT|-\n", stderr);
 	return 2;
 }

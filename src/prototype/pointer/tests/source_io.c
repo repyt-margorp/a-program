@@ -1805,6 +1805,30 @@ static void retained_process(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+	if (argc == 3 && (!strcmp(argv[1], "retention-summary") || !strcmp(argv[1], "retention-check"))) {
+		FILE *file = fopen(argv[2], "rb");
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		assert(file);
+		struct pg_program *p = pg_sources_read(file, 1000000, &count, &roots);
+		assert(p && !fclose(file) && !p->synthesis.steps);
+		const struct pg_reduction_archive *archive = p->retained_reductions;
+		printf("retained=%d reductions=%zu phases=%zu steps=0\n", archive != NULL,
+			archive ? archive->count : 0, archive ? archive->phase_count : 0);
+		if (!strcmp(argv[1], "retention-check")) {
+			assert(archive && archive->count);
+			struct pg_reduction_check check;
+			assert(!pg_reduction_check_init(&check, &p->evaluation, archive));
+			while (pg_reduction_check_advance(&check, 1) == PG_COMPARISON_PENDING)
+				assert(pg_reduction_check_steps(&check) < 1000000);
+			for (size_t i = 0; i < archive->count; ++i) assert(pg_reduction_check_certificate(&check, i));
+			pg_reduction_check_destroy(&check);
+		}
+		assert(!p->synthesis.steps);
+		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
+		pg_program_destroy(p);
+		return 0;
+	}
 	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "constructor-inputs")) { constructor_inputs(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "match-origins")) { match_origins(); return 0; }

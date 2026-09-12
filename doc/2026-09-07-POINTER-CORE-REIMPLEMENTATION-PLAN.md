@@ -10381,6 +10381,54 @@ the core evaluator. Exact old wire compatibility is not promised by this plan.
 
 ### September 8 decision: no independent Replay engine
 
+September 13 continuation after `32881bb`: CLI `--retain-reductions` now selects
+raw reduction retention for batch `--save` and REPL `:save`. Without it, saving
+still chooses RECOMPUTE and discards reduction records. Both modes preserve
+source inputs and obligations through the same source-image writer. Loading
+does not accept or install the retained results, and ordinary source Solve
+still recomputes: this option is not full CHECKPOINT or a speedup claim.
+
+- [x] `pg_reduction_archive_snapshot` collects completed WHNF/NF receipts and
+  unfinished NF phase roots from the existing work indexes, plus imported raw
+  records. It creates no evaluator, proof, effect execution or progress flag.
+  Temporary root storage is released after publishing or failing to save.
+- [x] The read-only `pg_reduction_find` shares the evaluator's exact lookup by
+  input/policy/mode. A completed local result replaces an older raw root at
+  that key in the new snapshot; no old claim is accepted by this operation.
+  Pointer-identical roots are emitted once. Invalid or different old endpoints
+  are not used to change the current result. A pending job is not a receipt.
+- [x] Test inert imported-record resaves, default discard, zero-step images,
+  batch/REPL agreement, standalone record checking and List NF agreement.
+  Snapshot tests preserve pending steps and phases, distinguish beta/pure
+  policies, and check repeated exact-key snapshots without new computation.
+- [ ] Full resynthesis can still allocate new auxiliary classifier binders.
+  `03_main.p --nf main` followed by repeated load/Solve/retain-save produces
+  19/24/29 receipt roots. A debugger inspection finds five unmatched WHNF
+  inputs containing binder-bearing classifier spines or Lambda bodies.
+  Exact-key replacement removes duplicate answers for the same input; it must
+  not merge these distinct graphs by alpha/WHNF equality. Preserve/reuse their
+  producing allocations or checked work before claiming bounded repeated
+  CHECKPOINT resumption. Inert zero-Solve resaves preserve root counts.
+
+Verification: normal `check`, handler nesting and 4,067 boundary snapshots,
+758 module snapshots, image origins, all eight 01-09 source examples and six
+runtime-result fixtures pass. Rebuilt ASan/UBSan image-CLI and Identity/image
+suites pass. Delta from `32881bb`: implementation +99/-12 (net +87), tests
++88/-0; documentation separate. Source/root acceptance rules are unchanged.
+
+The concurrent open-family audit does not add a kernel rule. The existing
+computation judgment and empty row supply no stable-result premise. In
+particular, labelling an arbitrary computation as a type would escape through
+`pg_prove_type_value`; treating divergence as an empty suspended type also
+needs substitution and higher-action semantics, not a default implementation.
+References rechecked on September 13: [Harper, Dependent Type Theory for
+Programming and Proving, July 2026](https://www.cs.cmu.edu/~rwh/courses/atpl/pdfs/dependency.pdf)
+for functionality/substitution obligations, and [Pedrot and Tabareau, The Fire
+Triangle](https://www.xn--pdrot-bsa.fr/articles/dcbpv.pdf) for the additional
+structure needed to combine dependency and effects. Neither directly proves
+the proposed A Program suspended-decoding rule. The positive open-family gate
+remains required and failing; preservation work does not replace it.
+
 Continuation audit after `2f59743`, following the renewed Replay question:
 
 - `pg_derivations_read` restores unaccepted rule inputs only. It neither

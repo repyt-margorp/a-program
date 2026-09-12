@@ -522,7 +522,7 @@ void pg_whnf_work_destroy(struct pg_whnf_work *work)
 	memset(work, 0, sizeof(*work));
 }
 
-static struct pg_reduction_request *reduction_find(struct pg_index *index,
+static struct pg_reduction_request *reduction_find(const struct pg_index *index,
 	const struct pg_eval_policy *policy, const struct pg_term *input, uint64_t *hash)
 {
 	*hash = ((uintptr_t)input ^ (uintptr_t)policy) * UINT64_C(1099511628211);
@@ -530,6 +530,24 @@ static struct pg_reduction_request *reduction_find(struct pg_index *index,
 		if (entry->hash != *hash) continue;
 		struct pg_reduction_request *request = (struct pg_reduction_request *)entry;
 		if (request->input == input && request->policy == policy) return request;
+	}
+	return NULL;
+}
+
+const struct pg_reduction_certificate *pg_reduction_find(const struct pg_whnf_work *work,
+	const struct pg_eval_policy *policy, const struct pg_term *input, enum pg_reduction_kind kind)
+{
+	if (!work || !policy || !input) return NULL;
+	uint64_t hash;
+	switch (kind) {
+	case PG_REDUCTION_WHNF: {
+		const struct pg_whnf_job *job = (const void *)reduction_find(&work->jobs, policy, input, &hash);
+		return job ? pg_whnf_certificate(job) : NULL;
+	}
+	case PG_REDUCTION_NF: {
+		const struct pg_nf_job *job = (const void *)reduction_find(&work->normal_forms, policy, input, &hash);
+		return job ? pg_nf_certificate(job) : NULL;
+	}
 	}
 	return NULL;
 }
