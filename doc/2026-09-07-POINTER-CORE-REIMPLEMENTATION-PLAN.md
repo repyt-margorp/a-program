@@ -81,6 +81,45 @@ assumed pure result. TYPE_FAMILY evidence cannot be RETURNed, FORCEd, or used
 as an ordinary value substitution image. Only supplying all checked indices
 produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
 
+- [x] Extend the existing logical-family abstraction/application rules to family
+  parameters, using the same Lambda/APP/Pi representation and typed substitution.
+  For `Gamma,R:K |- D:L`, abstraction has signature `Pi(R:K,L)`; application
+  requires an accepted argument of K and substitutes it into L. Signatures may
+  quantify over checked value or family hypotheses. They are not value-side Pi
+  types, and a family signature is not thereby an inhabitant of Universe.
+  Ordinary CBPV APP/RETURN/FORCE rules are unchanged; no empty-effect computation
+  is promoted to a family. Tests reject wrong arity, value/thunk substitution and
+  using the original recursive function where its mapped IH is required.
+- [x] Verify actual Acc formation and its dependent eliminator under logical
+  assumptions `A:Universe`, `R:(A,A)->Universe`, `P:A->Universe`. The ordinary
+  IADT rule maps `down:(y:A)->R y x->F(Acc y)` to an IH returning `F(P y)`;
+  applying the assumed step yields `F(P subject)`. No Acc primitive is used.
+  Acc can be abstracted over A/R and recovered after checked beta substitution.
+  Shared-Solve tests run at chunks 1/64. Serialized higher-family derivations and
+  their source consumers use the same rules, not a Replay engine.
+- [ ] Connect the existing source family-parameter annotations to an explicit
+  logical/stable-result contract. The tests above establish the kernel route,
+  not the acceptance of arbitrary `R:A->A->@` CBPV functions. The unchanged
+  Acc/QuickSort fixtures still fail; the compatibility count remains 9/19.
+  General Act on higher logical signatures also remains an obligation.
+
+This is a local rule extension, not an imported metatheorem. Background
+rechecked: [Harper, *An Equational Logical Framework for Type Theories*, section 2](https://www.cs.cmu.edu/~rwh/courses/chtt/pdfs/slf.pdf)
+separates classifying signatures and substitution; its equality reflection is
+not adopted here. [Vakar, *A Framework for Dependent Types and Effects*](https://arxiv.org/abs/1512.08009)
+distinguishes dependent Kleisli extension from ordinary CBPV. Neither reference
+licenses extracting a type from any empty-effect computation. The extension
+above only abstracts and substitutes already-checked logical families.
+
+The new saved beta-result test exposed duplicate reference roots: a binder's
+payload wrapper and the original reduction target came from different arenas.
+`pg_derivation_input_terms` now interns reference wrappers in its scratch arena,
+as the existing image-root collector does. It changes no evidence, reduction,
+Core interning criterion or file schema; source graphs remain untouched.
+Validation: `check check-examples check-example-results` passes; the IADT and
+fresh-process derivation tests pass ASan/UBSan. The 9/19 compatibility gate
+still fails overall. No Main promotion is justified by these kernel tests.
+
 - [x] Admit source indexed declarations by discharging the checked Self-family
   assumption after positivity/universe checks; form recursive constructors at
   the indices computed by their retained result substitutions.

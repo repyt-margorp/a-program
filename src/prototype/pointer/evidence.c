@@ -349,7 +349,9 @@ const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 {
 	if (!pg_evidence_owned_by(function, typing)) return NULL;
 	if (function->judgement != PG_JUDGEMENT_COMPUTATION && function->judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
-	if (!pg_evidence_owned_by(argument, typing) || argument->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (!pg_evidence_owned_by(argument, typing)) return NULL;
+	if (argument->judgement != PG_JUDGEMENT_VALUE &&
+		!(function->judgement == PG_JUDGEMENT_TYPE_FAMILY && argument->judgement == PG_JUDGEMENT_TYPE_FAMILY)) return NULL;
 	if (function->context != argument->context) return NULL;
 	struct pg_graph temporary = {0};
 	struct evidence_frame *frames = NULL;
@@ -1439,15 +1441,15 @@ static enum pg_evidence_judgement binding_judgement(const struct pg_evidence *ex
 		? PG_JUDGEMENT_TYPE_FAMILY : PG_JUDGEMENT_VALUE;
 }
 
-/* The telescope is syntax for a dependent signature, not a value-side Pi.
- * Its domains have ordinary value formation evidence in the retained context. */
+/* Logical signatures share Pi syntax, including higher family parameters.
+ * Each domain's value/family sort comes from its checked context extension. */
 static const struct pg_term *family_signature(struct pg_typing *typing,
 	const struct pg_evidence *parent, const struct pg_evidence *indices,
 	const struct pg_term *universe)
 {
 	const struct pg_term *signature = universe;
 	while (indices->context != parent->context) {
-		if (indices->rule != PG_CONTEXT_EXTEND) return NULL;
+		if (indices->rule != PG_CONTEXT_EXTEND && indices->rule != PG_CONTEXT_FAMILY_EXTEND) return NULL;
 		signature = pg_pi(typing->graph, indices->context->declared_type,
 			indices->context->binder, signature);
 		if (!signature) return NULL;
@@ -1496,7 +1498,8 @@ const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
 	const struct pg_evidence *family, const struct pg_evidence *index)
 {
 	if (!pg_evidence_owned_by(family, typing) || !pg_evidence_owned_by(index, typing)) return NULL;
-	if (family->judgement != PG_JUDGEMENT_TYPE_FAMILY || index->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (family->judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
+	if (index->judgement != PG_JUDGEMENT_VALUE && index->judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (family->context != index->context) return NULL;
 	const struct pg_term *domain, *body;
 	const struct pg_object *binder;
@@ -1520,7 +1523,8 @@ const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *body)
 {
-	if (!context_proof(typing, context) || context->rule != PG_CONTEXT_EXTEND) return NULL;
+	if (!context_proof(typing, context)) return NULL;
+	if (context->rule != PG_CONTEXT_EXTEND && context->rule != PG_CONTEXT_FAMILY_EXTEND) return NULL;
 	if (!pg_evidence_owned_by(body, typing) || body->context != context->context) return NULL;
 	if (body->judgement != PG_JUDGEMENT_VALUE_TYPE && body->judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	const struct pg_context *parent = context->context->parent;

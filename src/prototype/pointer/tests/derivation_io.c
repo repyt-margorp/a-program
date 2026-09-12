@@ -317,7 +317,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, classifiers, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[12];
+	const struct pg_evidence *roots[15];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -367,8 +367,18 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	job = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(fold)->core);
 	assert(job && pg_whnf_advance(job, 10000) == PG_EVAL_WHNF);
 	roots[11] = pg_prove_normalization(typing, fold, pg_whnf_certificate(job));
-	for (size_t i = 0; i < 12; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 12, roots, name, classifiers) == 0);
+	const struct pg_object *f = pg_binder(graph);
+	const struct pg_evidence *fc = pg_prove_family_context_extension(typing, empty, f, ca,
+		pg_prove_projection(typing, ca, u));
+	const struct pg_evidence *fv = pg_prove_variable(typing, fc, f);
+	roots[12] = pg_prove_family_abstraction(typing, fc, fv);
+	roots[13] = pg_prove_family_application(typing, pg_prove_projection(typing, fc, roots[12]), fv);
+	assert(roots[13]);
+	job = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(roots[13])->core);
+	assert(job && pg_whnf_advance(job, 10000) == PG_EVAL_WHNF);
+	roots[14] = pg_prove_normalization(typing, roots[13], pg_whnf_certificate(job));
+	for (size_t i = 0; i < 15; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 15, roots, name, classifiers) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -396,13 +406,13 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing, 1000, 100, resolve, classifiers, &count, &roots) == 0);
-	assert(count == 12 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 15 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[12];
+	struct pg_synthesis_job *jobs[15];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -410,6 +420,9 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	assert(jobs[0] == jobs[2] && typing->proofs.count == 0);
 	struct pg_synthesis_job *consumer = source_use(&synthesis, jobs[6], "copy := loaded;");
 	struct pg_synthesis_job *expect = source_use(&synthesis, jobs[6], "copy := loaded :: @;");
+	struct pg_synthesis_job *family_use = source_use(&synthesis, jobs[12], "copy := loaded (@\\A : @ => {});");
+	struct pg_synthesis_job *family_thunk = source_use(&synthesis, jobs[12], "copy := loaded &(\\A : @ => A);");
+	struct pg_synthesis_job *family_expect = source_use(&synthesis, jobs[12], "copy := loaded (@\\A : @ => {}) :: @;");
 	/* Source scope construction establishes the empty context, not imports. */
 	size_t before_fuel = typing->proofs.count;
 	pg_synthesis_advance(&synthesis, 0);
@@ -421,6 +434,14 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	assert(pg_synthesis_status(consumer) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_result(consumer) == pg_synthesis_result(jobs[6]));
 	assert(pg_synthesis_status(expect) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(expect));
+	assert(pg_synthesis_status(family_use) == PG_SYNTHESIS_DONE);
+	assert(pg_evidence_judgement(pg_synthesis_result(family_use)) == PG_JUDGEMENT_TYPE_FAMILY);
+	assert(pg_synthesis_status(family_thunk) == PG_SYNTHESIS_REJECTED);
+	assert(pg_synthesis_status(family_expect) == PG_SYNTHESIS_REJECTED);
+	const struct pg_evidence *family_application = pg_synthesis_result(jobs[13]);
+	assert(pg_evidence_rule(family_application) == PG_TYPE_FAMILY_APP);
+	assert(pg_evidence_subject(pg_synthesis_result(jobs[14]))->core ==
+		pg_evidence_subject(pg_evidence_premise(family_application, 1))->core);
 	const struct pg_evidence *left = pg_synthesis_result(jobs[0]);
 	const struct pg_evidence *right = pg_synthesis_result(jobs[1]);
 	assert(pg_evidence_subject(left)->core == pg_evidence_subject(right)->core);

@@ -22,7 +22,7 @@ enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION, PG_JUDGEMENT_TYPE_FAMILY };
 struct pg_evidence;
-/* A scoped family hypothesis over a nonempty value telescope. The signature
+/* A scoped family hypothesis over a nonempty value/family telescope. The signature
  * is an ordinary Pi-shaped Core term ending in Universe, not a CBPV value
  * function type. Family evidence cannot be RETURNed, FORCEd or coerced to a
  * Universe inhabitant until all indices have been supplied. */
@@ -31,7 +31,7 @@ const struct pg_evidence *pg_prove_family_context_extension(struct pg_typing *ty
 	const struct pg_evidence *indices, const struct pg_evidence *universe);
 const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
 	const struct pg_evidence *family, const struct pg_evidence *index);
-/* Abstract a checked type/family over one ordinary value binder, retaining
+/* Abstract a checked type/family over one checked value or family binder, retaining
  * its dependent signature. No computation-to-type extraction is performed. */
 const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *body);

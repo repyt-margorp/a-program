@@ -6606,7 +6606,7 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		enqueue(synthesis, job);
 		return 1;
 	}
-	/* A declared family consumes value indices without running a computation.
+	/* A logical family consumes checked value/family arguments without execution.
 	 * Do not infer this authority from a Pi-shaped classifier or an empty row. */
 	if (state->callee->status == PG_SYNTHESIS_DONE && state->callee->result &&
 		pg_evidence_judgement(state->callee->result) == PG_JUDGEMENT_TYPE_FAMILY) {

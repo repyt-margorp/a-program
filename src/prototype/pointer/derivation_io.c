@@ -73,6 +73,13 @@ int pg_derivation_input_terms(struct pg_graph *scratch,
 	terms[5] = pg_handler_signature_reference(scratch, p->handler);
 	if (p->handler && !terms[5]) return -1;
 	for (size_t i = 0; i < extra_count; ++i) terms[PG_DERIVATION_TERM_SLOTS + i] = extra[i];
+	/* A reduction target may reference the same binder as a parameter wrapper.
+	 * Canonicalize those wrappers in the payload arena, as image_roots_write does. */
+	for (size_t i = 0; i < result.count; ++i) {
+		if (!terms[i] || terms[i]->kind != PG_REFERENCE) continue;
+		terms[i] = pg_reference(scratch, terms[i]->as.reference);
+		if (!terms[i]) return -1;
+	}
 	result.terms = terms;
 	*payload = result;
 	return 0;
