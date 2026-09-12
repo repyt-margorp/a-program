@@ -144,7 +144,7 @@ struct effect_substitution_state {
 	struct pg_substitution *work;
 	const struct pg_term *result;
 };
-enum job_role { PI_SCOPE_JOB, DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
+enum job_role { FUNCTION_WITNESS_JOB, PI_SCOPE_JOB, DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB, FAMILY_FUNCTION_JOB, FUNCTION_GRAPH_JOB };
 enum { APPLICATION_RULE_READY = 6 };
 struct context_allocation {
@@ -2575,12 +2575,40 @@ static void function_graph_step(struct pg_synthesis *synthesis, struct pg_synthe
 		status == PG_FUNCTION_GRAPH_UNSUPPORTED ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_ERROR);
 }
 
-static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+static void function_witness_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *graph = (struct pg_synthesis_job *)job->inputs[0];
+	if (graph->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, graph); return; }
+	if (graph->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, graph->status); return; }
+	enum pg_function_graph_status status = pg_function_graph_witness_advance(&graph->function_graph, 1);
+	if (status == PG_FUNCTION_GRAPH_PENDING) { enqueue(synthesis, job); return; }
+	if (status != PG_FUNCTION_GRAPH_DONE) {
+		finish(synthesis, job, status == PG_FUNCTION_GRAPH_UNSUPPORTED ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_ERROR);
+		return;
+	}
+	const struct pg_evidence *packet = pg_function_graph_packet(&graph->function_graph);
+	const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(packet, 0), 0);
+	const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing, context, context);
+	const struct pg_object *constructor = pg_data_constructor(pg_data_declaration_layout(pg_evidence_inductive_declaration(packet)), 0);
+	const struct pg_source_scope *exports = intern_scope(synthesis,
+		(struct pg_source_scope){.context_job = pg_synthesis_evidence(synthesis, context)});
+	exports = pg_synthesis_name_job(synthesis, exports,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "returned", .length = 8},
+		pg_synthesis_constructor_value(synthesis, packet, constructor, parameters));
+	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, packet);
+	if (!accepted || !exports) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	accepted->exports = exports;
+	job->result = pg_function_graph_witness(&graph->function_graph);
+	finish(synthesis, job, PG_SYNTHESIS_DONE);
+}
+
+static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, int witness)
 {
 	if (!job->value_job) {
 		struct source_reference reference;
 		struct pg_synthesis_job *dependency = NULL;
-		enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, job->syntax->left, &reference, &dependency);
+		const struct pg_syntax *name = witness ? job->syntax->right : job->syntax->left;
+		enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, name, &reference, &dependency);
 		if (status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, dependency); return; }
 		if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return; }
 		if (!reference.producer) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
@@ -2589,6 +2617,7 @@ static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synth
 		const struct pg_evidence *function = pg_function_graph_source(reference.producer->result);
 		if (!function) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		struct pg_synthesis_job *graph = request_job(synthesis, FUNCTION_GRAPH_JOB, function, NULL);
+		if (witness) graph = request_job(synthesis, FUNCTION_WITNESS_JOB, graph, NULL);
 		struct pg_synthesis_job *premises[] = {job->scope->context_job, graph};
 		job->value_job = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
 	}
@@ -6530,6 +6559,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == CONSTRUCTOR_SCOPE_JOB) { constructor_scope_step(synthesis, job); return; }
 	if (job->role == FAMILY_FUNCTION_JOB) { family_function_step(synthesis, job); return; }
 	if (job->role == FUNCTION_GRAPH_JOB) { function_graph_step(synthesis, job); return; }
+	if (job->role == FUNCTION_WITNESS_JOB) { function_witness_step(synthesis, job); return; }
 	if (job->role == INDUCTIVE_INSTANCE_JOB) { inductive_instance_step(synthesis, job); return; }
 	if (job->role == INDUCTION_SCOPE_JOB) { induction_scope_step(synthesis, job); return; }
 	if (job->role == DATA_RESULT_JOB || job->role == SUBSTITUTION_JOB) { substitution_step(synthesis, job); return; }
@@ -6538,9 +6568,12 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == DEFINITION_JOB) { definition_step(synthesis, job); return; }
 	if (job->role == DEFINITION_SCOPE_JOB) { definition_scope_step(synthesis, job); return; }
 	if (hypothesis_reference(synthesis, job)) return;
+	if (hypothesis_syntax(syntax) && !lookup_scope(job->scope, (struct pg_token){.kind = '*'}).binder) {
+		graph_reference_step(synthesis, job, 1); return;
+	}
 	if (!prepare_expression(synthesis, job)) return;
 	if (syntax->kind == PG_SYNTAX_DECLARATION) { declaration_step(synthesis, job); return; }
-	if (syntax->kind == PG_SYNTAX_GRAPH_REFERENCE) { graph_reference_step(synthesis, job); return; }
+	if (syntax->kind == PG_SYNTAX_GRAPH_REFERENCE) { graph_reference_step(synthesis, job, 0); return; }
 	if (syntax->kind == PG_SYNTAX_ELIMINATION) { match_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }

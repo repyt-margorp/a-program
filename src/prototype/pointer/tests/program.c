@@ -375,6 +375,25 @@ static void function_graphs(void)
 				fields[5] = base;
 				assert(!pg_prove_constructor(&p->typing, formation, fork, parameters, 6, fields));
 			}
+			assert(pg_function_graph_witness_advance(&work, 0) == PG_FUNCTION_GRAPH_PENDING);
+			for (size_t turns = 0; pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+				assert(turns < 100000);
+			assert(pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_DONE);
+			assert(pg_function_graph_witness(&work));
+			assert(pg_function_graph_packet(&work));
+			const struct pg_evidence *input = i == 2 ? export_value(p, "leftTree") : i ? one : successor;
+			const struct pg_evidence *expected = i == 2 ? export_value(p, "rightTree") : successor;
+			const struct pg_evidence *call = pg_prove_application(&p->typing, pg_function_graph_witness(&work), input);
+			assert(call);
+			struct pg_nf_job *nf = pg_nf_request(&p->evaluation, &pg_pure_policy, pg_evidence_subject(call)->core);
+			for (size_t turns = 0; pg_nf_advance(nf, chunk) == PG_NF_PENDING; ++turns) assert(turns < 100000);
+			assert(pg_nf_status(nf) == PG_NF_DONE);
+			const struct pg_evidence *packet = pg_prove_return_value(&p->typing,
+				pg_prove_normalization(&p->typing, call, pg_nf_certificate(nf)));
+			assert(packet);
+			const struct pg_term *core = pg_evidence_subject(packet)->core;
+			assert(core->kind == PG_APPLICATION && core->as.application.function->kind == PG_APPLICATION);
+			assert(pg_alpha_equal(core->as.application.function->as.application.argument, pg_evidence_subject(expected)->core) == 1);
 			pg_function_graph_destroy(&work);
 			assert(pg_evidence_owned_by(formation, &p->typing));
 			struct pg_inductive_instance retained;
@@ -383,7 +402,7 @@ static void function_graphs(void)
 		}
 		pg_program_destroy(p);
 	}
-	puts("function graphs: retained pure branches generate ordinary indexed schemas with recursive-result premises");
+	puts("function graphs: ordinary indexed schemas and result witnesses preserve identity/length/mirror results");
 }
 
 int main(int argc, char **argv)

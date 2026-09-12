@@ -50,7 +50,8 @@ not the stale worktree `read_file.out` (which fails the length fixture).
 18 required source/result cases using unchanged legacy fixtures: Vec, Acc,
 order proofs, six function-graph examples, named cases, six QuickSort inputs,
 and two incompatible-proof rejections. Main passes these checks; pointer Core
-currently passes 1/18 (Vec); the other cases stop at UNSUPPORTED. This gate is included in
+currently passes 3/18 (Vec, generated length, graph block binding); the other
+cases stop at UNSUPPORTED. This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
 checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
 
@@ -141,10 +142,25 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   calls, nested computations and higher-order recursive fields). Retain the
   accepted source derivation as the correspondence justification, not a match
   on an erased Core or an assumed equivalence of unrelated declarations.
-- [ ] Build the ordinary dependent result packet and `*f` witness using that
-  relation and the original checked induction rule, then connect graph-case
-  names/binders and property proofs. The length fixture still fails at `*length`;
-  graph formation alone is not a proof about every execution of `length`.
+- [x] Build the ordinary dependent result packet and `*f` witness for the
+  current direct-recursion fragment, using the same relation and checked
+  induction rule. Packet is an ordinary parameterized ADT with output and
+  graph fields, not a primitive Sigma or Returns predicate. Register `returned`
+  through the ordinary constructor namespace; aliases share the producer.
+  The unchanged length fixture now compiles, and both `main` and the
+  proof-consuming `certifiedMain` agree with `expected` at Solve chunks 1/64.
+  Identity/length/mirror witness construction and normalization pass; altered
+  output indices are rejected. Unfinished/completed `.a` resaves use the same
+  Solve and preserve these source results, without a Replay path.
+  A test caught an IH lookup error: induction-scope substitution images contain
+  source fields, while IH variables are in its destination context extension.
+  Witness construction now uses those binders, without changing the kernel.
+  Normal checks/examples/results pass. Program/witness tests, the unchanged
+  length result comparison, wrong-index rejection and the image CLI pass
+  ASan/UBSan; the image fixture writer uses its normal checked build.
+- [ ] Complete graph-case names/binders, general call-site translation and
+  post-hoc property proofs. Packet production and successful consumption do
+  not yet establish length preservation or sortedness for QuickSort.
 - [ ] Infer genuinely dependent source motives, rather than only checking a
   supplied dependent motive in the kernel; restore open family parameters,
   general dependent IH results and function graph/witness generation.

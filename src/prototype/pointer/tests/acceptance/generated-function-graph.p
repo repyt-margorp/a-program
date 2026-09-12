@@ -12,5 +12,14 @@ alias := length;
 aliasOutput := \input : NatList => \output : Nat =>
 	\graph : @alias input output => graphOutput input output graph;
 
-main := length (NatList.cons Nat.zero NatList.nil);
+one := NatList.cons Nat.zero NatList.nil;
+main := length one;
+certifiedMain := {
+	packet := *length one;
+	packet @returned output graph => graphOutput one output graph;
+};
+aliasMain := {
+	packet := *alias one;
+	packet @returned output graph => aliasOutput one output graph;
+};
 expected := Nat.succ Nat.zero;

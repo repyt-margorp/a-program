@@ -5,8 +5,8 @@
 #include "iadt.h"
 
 /* Generate ordinary indexed declarations from retained Lambda/case evidence.
- * No Returns predicate or new kernel rule. This stage constructs the relation,
- * not its totality witness or a theorem about the original function.
+ * No Returns predicate or new kernel rule. Relation formation and witness
+ * production advance separately; neither proves an arbitrary user property.
  * Initially supports a constant pure result type, non-indexed scrutinees and
  * direct recursive fields. Unknown callees/results remain unsupported.
  * One work object owns one generative declaration; a source producer must
@@ -25,6 +25,13 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	struct pg_whnf_work *evaluation, const struct pg_evidence *function);
 enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph_work *work, uint64_t budget);
 const struct pg_evidence *pg_function_graph_formation(const struct pg_function_graph_work *work);
+/* Construct a dependent result packet and its producer by ordinary induction
+ * over the same source argument. Shares the generated relation above.
+ * Returned packet formation is parameterized by the source input context;
+ * its sole constructor stores output and graph evidence. */
+enum pg_function_graph_status pg_function_graph_witness_advance(struct pg_function_graph_work *work, uint64_t budget);
+const struct pg_evidence *pg_function_graph_witness(const struct pg_function_graph_work *work);
+const struct pg_evidence *pg_function_graph_packet(const struct pg_function_graph_work *work);
 void pg_function_graph_destroy(struct pg_function_graph_work *work);
 
 #endif
