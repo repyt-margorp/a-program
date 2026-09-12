@@ -127,12 +127,31 @@ unchanged; computations over logical hypotheses use the extension below.
   effectful IH passed to a pure step; returned function computations retain
   their effects. Unsolved/solved/resaved source images check the Acc eliminator
   through the same Solve path. This is not general dependent motive inference.
+- [x] Extend candidate synthesis through raw Lambda telescopes and nested
+  Match. An independently completed branch can provide a constant result
+  classifier even while another branch needs the outer IH. Abstract checked
+  Lambda contexts back into Pi, discharge unused block-result assumptions,
+  and use the existing constructor-pattern substitution. Never publish the
+  incomplete nested Match as evidence; the entire outer branch is rechecked
+  with the inferred IH. No new Core tag, proof rule or image version.
+  `acc-function-motive.p` now synthesizes a motive whose Lambda domain is
+  `P subject` (previously UNSUPPORTED); replacing a mapped IH result by the
+  original recursive field is rejected. Normal checks/examples/results and
+  open families pass. Synthesis, the positive/negative pair and indexed source
+  resaves pass ASan/UBSan. The legacy compatibility gate remains 10/19.
 - [ ] Remaining compatibility blockers: order proofs, named Graph cases,
   QuickSort and the incompatible-property negative case. QuickSort currently
-  rejects at 27061 steps: `#.terminates` is not connected in the new source
-  environment, and its `quickSortAcc` elimination also reaches UNSUPPORTED.
+  rejects at 27912 steps: `#.terminates` is not connected in the new source
+  environment. `quickSortAcc` now obtains a motive candidate but its branch
+  body remains UNSUPPORTED; neither its term nor its property proof is accepted.
   These are distinct missing semantics, not checkpoint performance tasks;
   connecting the intrinsic alone does not establish QuickSort compatibility.
+  The order fixture also requires a checked contradiction for `LT y zero`.
+  Legacy Main `63b00eb` supplies an all-impossible Match's result constraint
+  from the constructor domain (finalization_and_entrypoints.inc:681), rather
+  than choosing it from unreachable `Nat.zero` bodies. Restore the index
+  contradiction/constraint rules through Solve; do not allow `::` to choose
+  a motive or accept arbitrary mismatched branch classifiers.
   General Act on higher logical signatures and post-hoc property proofs remain
   open. Do not replace the unchanged fixture with a reduced success case.
 

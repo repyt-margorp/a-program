@@ -86,12 +86,20 @@ struct motive_demand {
 	struct pg_synthesis_job *callee, *normalized, *domain;
 	const struct pg_evidence *solution;
 };
+struct motive_lambda {
+	const struct pg_evidence *outer, *inner;
+	const struct pg_effect_row *effects;
+	struct motive_lambda *parent;
+};
 struct motive_result {
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
 	size_t next;
 	struct pg_synthesis_job *input, *callee;
 	const struct pg_effect_row *effects;
+	struct pg_synthesis_job *telescope, *nested;
+	struct motive_lambda *lambdas;
+	size_t nested_checked;
 };
 struct match_branch {
 	const struct pg_source_scope *scope;
@@ -4718,9 +4726,9 @@ static const struct pg_evidence *match_motive_context(struct pg_synthesis *synth
 	return state->motive_context_job ? state->motive_context_job->result : NULL;
 }
 
-/* A known call can synthesize its result without knowing an argument when
- * its codomain does not depend on that argument. This proposes a motive;
- * ordinary induction checking must subsequently check the complete branch. */
+/* Propose a motive from an independent call result or nested Match branch,
+ * abstracting enclosing Lambda binders. No proof of the incomplete source is
+ * published: ordinary induction must subsequently check the complete branch. */
 static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct match_state *state = job->match;
@@ -4743,8 +4751,25 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 	const struct pg_effect_row *effects;
 	const struct pg_term *content;
 	const struct pg_syntax *syntax = result->syntax;
+	const struct pg_evidence *type = NULL;
 	if (syntax->kind == PG_SYNTAX_EXPECT) {
 		result->syntax = syntax->left;
+		enqueue(synthesis, job); return;
+	}
+	if (syntax->kind == PG_SYNTAX_LAMBDA) {
+		if (!result->telescope) result->telescope = pg_synthesis_telescope(synthesis, result->scope, syntax);
+		if (!result->telescope) goto error;
+		if (result->telescope->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, result->telescope); return; }
+		if (result->telescope->status != PG_SYNTHESIS_DONE) goto skip;
+		struct motive_lambda *frame = pg_alloc(typing->graph, sizeof(*frame));
+		if (!frame) goto error;
+		*frame = (struct motive_lambda){context, result->telescope->result, result->effects, result->lambdas};
+		result->lambdas = frame;
+		result->scope = result->telescope->inner;
+		result->syntax = result->telescope->tail;
+		result->effects = pg_effect_row(typing->graph, 0, NULL);
+		result->telescope = NULL;
+		if (!result->effects) goto error;
 		enqueue(synthesis, job); return;
 	}
 	if (block_syntax(syntax)) {
@@ -4782,6 +4807,30 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 		++result->next;
 		enqueue(synthesis, job); return;
 	}
+	if (syntax->kind == PG_SYNTAX_ELIMINATION && !handler_syntax(syntax)) {
+		if (!result->nested) result->nested = pg_synthesis_request(synthesis, result->scope, syntax);
+		if (!result->nested) goto error;
+		if (result->nested->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, result->nested); return; }
+		if (result->nested->status == PG_SYNTHESIS_ERROR) goto error;
+		struct match_state *nested = result->nested->match;
+		if (!nested || nested->next != nested->count || result->nested->match_frame) goto skip;
+		if (result->nested_checked == nested->count) goto skip;
+		struct match_branch *part = &nested->branches[result->nested_checked];
+		if (!part->body || part->body->status != PG_SYNTHESIS_DONE) {
+			++result->nested_checked;
+			enqueue(synthesis, job); return;
+		}
+		struct pg_synthesis_job *constant = pg_synthesis_constant_motive(synthesis, context,
+			source_context(part->scope), part->body);
+		if (!constant) goto error;
+		if (constant->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, constant); return; }
+		if (constant->status != PG_SYNTHESIS_DONE) {
+			++result->nested_checked;
+			enqueue(synthesis, job); return;
+		}
+		type = constant->result;
+		goto result_type;
+	}
 	if (syntax->kind != PG_SYNTAX_APPLICATION || hypothesis_syntax(syntax)) goto skip;
 	if (!result->callee) {
 		int recursive = branch_needs_ih(result->scope, pg_evidence_context(prefix), syntax->left);
@@ -4793,7 +4842,7 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 	}
 	if (result->callee->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, result->callee); return; }
 	if (result->callee->status != PG_SYNTHESIS_DONE) goto skip;
-	const struct pg_evidence *type = pg_prove_classifier(typing, synthesis->classifiers, context, result->callee->result);
+	type = pg_prove_classifier(typing, synthesis->classifiers, context, result->callee->result);
 	while (type) {
 		const struct pg_term *term = pg_evidence_subject(type)->core;
 		if (pg_thunk_type_view(term, &content)) type = pg_prove_thunk_content(typing, type);
@@ -4805,12 +4854,24 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 	}
 	type = pg_prove_pi_constant_codomain(typing, type);
 	if (!type) goto skip;
+result_type:
 	if (pg_effect_type_view(pg_evidence_subject(type)->core, &effects, &content)) {
 		result->effects = pg_effect_union(typing->graph, result->effects, effects);
 		if (!result->effects) goto error;
 		type = pg_prove_effect_type(typing, synthesis->classifiers, result->effects, pg_prove_return_content(typing, type));
 	} else if (pg_effect_count(result->effects)) goto skip;
 	if (!type) goto skip;
+	for (struct motive_lambda *frame = result->lambdas; frame; frame = frame->parent) {
+		while (context && pg_evidence_context(context) != pg_evidence_context(frame->inner)) {
+			type = pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, synthesis->classifiers, context, type));
+			context = pg_evidence_premise(context, 0);
+		}
+		while (context && pg_evidence_context(context) != pg_evidence_context(frame->outer)) {
+			type = pg_prove_pi(typing, synthesis->classifiers, context, type);
+			context = pg_evidence_premise(context, 0);
+		}
+		if (!type || !context || pg_effect_count(frame->effects)) goto skip;
+	}
 	const struct pg_evidence *motive_context = match_motive_context(synthesis, job);
 	if (!motive_context) goto skip;
 	const struct pg_evidence *parameters = pg_prove_substitution_compose(typing, state->instance.parameters,
