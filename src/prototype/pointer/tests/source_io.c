@@ -264,9 +264,8 @@ static void family_context_scopes(void)
 	puts("source families: logical R/Acc scopes, unsolved and solved resaves, wrong argument rejection passed");
 }
 
-static void context_scopes(void)
+static void associated_context_scope(int graph)
 {
-	family_context_scopes();
 	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
 	assert(p);
 	struct pg_typing *t = &p->typing;
@@ -284,11 +283,12 @@ static void context_scopes(void)
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "A", .length = 1}, a, pg_synthesis_evidence(&p->synthesis, ac));
 	scope = pg_synthesis_bind_context(&p->synthesis, scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "x", .length = 1}, x, pg_synthesis_evidence(&p->synthesis, xc));
-	scope = pg_synthesis_bind_hypothesis(&p->synthesis, scope, x, ih, pg_synthesis_evidence(&p->synthesis, ic));
+	scope = graph ? pg_synthesis_bind_graph(&p->synthesis, scope, x, ih, pg_synthesis_evidence(&p->synthesis, ic))
+		: pg_synthesis_bind_hypothesis(&p->synthesis, scope, x, ih, pg_synthesis_evidence(&p->synthesis, ic));
 	assert(scope);
 	struct pg_parser parser;
 	struct pg_definition definition;
-	const char *source = "r:=*x;";
+	const char *source = graph ? "r:=@x;" : "r:=*x;";
 	pg_parser_init(&parser, &p->graph, source, strlen(source));
 	assert(pg_parser_next(&parser, &definition) == 1);
 	struct pg_synthesis_job *initial[] = {pg_synthesis_request(&p->synthesis, scope, definition.expression)};
@@ -307,16 +307,25 @@ static void context_scopes(void)
 	assert(!pg_synthesis_source_input(&p->synthesis, roots[0], &scope, &syntax));
 	struct pg_source_environment environment, field;
 	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
-	assert(environment.context && environment.hypothesis);
-	assert(!pg_synthesis_environment_input(&p->synthesis, environment.hypothesis, &field));
+	assert(environment.context && environment.associated);
+	assert(environment.association == (graph ? PG_SOURCE_GRAPH : PG_SOURCE_HYPOTHESIS));
+	assert(!pg_synthesis_environment_input(&p->synthesis, environment.associated, &field));
 	assert(field.binder && field.context);
 	pg_synthesis_advance(&p->synthesis, 10000);
 	const struct pg_evidence *result = pg_synthesis_result(roots[0]);
-	assert(result && pg_evidence_subject(result)->core == pg_application(&p->graph,
-		pg_reference(&p->graph, &pg_force_operation), pg_reference(&p->graph, environment.binder)));
+	const struct pg_term *expected = pg_reference(&p->graph, environment.binder);
+	if (!graph) expected = pg_application(&p->graph, pg_reference(&p->graph, &pg_force_operation), expected);
+	assert(result && pg_evidence_subject(result)->core == expected);
 	assert(pg_context_lookup(pg_evidence_context(result), field.binder));
 	pg_program_destroy(p);
-	puts("source contexts: pending field and IH scopes survive inert resaves and ordinary lookup");
+}
+
+static void context_scopes(void)
+{
+	family_context_scopes();
+	associated_context_scope(0);
+	associated_context_scope(1);
+	puts("source contexts: pending field, IH and graph associations survive inert resaves and ordinary lookup");
 }
 
 static struct pg_synthesis_job *handler_change(struct pg_program *p,

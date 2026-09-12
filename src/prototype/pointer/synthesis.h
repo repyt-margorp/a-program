@@ -52,6 +52,11 @@ const struct pg_source_scope *pg_synthesis_bind_context(struct pg_synthesis *syn
 const struct pg_source_scope *pg_synthesis_bind_hypothesis(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, const struct pg_object *field,
 	const struct pg_object *binder, struct pg_synthesis_job *context);
+/* Associate a checked graph field with its result binder for @result lookup. */
+const struct pg_source_scope *pg_synthesis_bind_graph(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_object *value,
+	const struct pg_object *binder, struct pg_synthesis_job *context);
+enum pg_source_association { PG_SOURCE_UNASSOCIATED, PG_SOURCE_HYPOTHESIS, PG_SOURCE_GRAPH };
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
 /* Retain only sequencing binder identities for a source application.
@@ -143,7 +148,8 @@ struct pg_source_environment {
 	struct pg_synthesis_job *binding;
 	struct pg_synthesis_job *context;
 	const struct pg_object *binder;
-	const struct pg_source_scope *hypothesis;
+	const struct pg_source_scope *associated;
+	enum pg_source_association association;
 };
 int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_source_environment *input);

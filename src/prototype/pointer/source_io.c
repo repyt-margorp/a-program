@@ -9,9 +9,9 @@
 #include "context_payload.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\34";
-static const char retained_magic[8] = "APGSRC\35";
-enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING, HANDLER_SCOPE, HANDLER_BINDING };
+static const char magic[8] = "APGSRC\36";
+static const char retained_magic[8] = "APGSRC\37";
+enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING, HANDLER_SCOPE, HANDLER_BINDING, GRAPH_BINDING };
 
 struct environment {
 	enum environment_kind kind;
@@ -82,9 +82,9 @@ static int environment(const struct pg_synthesis *synthesis, const struct pg_sou
 		return 0;
 	}
 	if (input.context) {
-		output->kind = CONTEXT_BINDING;
+		output->kind = input.association == PG_SOURCE_GRAPH ? GRAPH_BINDING : CONTEXT_BINDING;
 		output->rule = input.context;
-		output->target = input.hypothesis;
+		output->target = input.associated;
 		return 0;
 	}
 	if (input.binding) {
@@ -578,7 +578,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t w[10];
 		for (size_t j = 0; j < 10; ++j) if (pg_wire_read_u64(file, &w[j])) goto fail;
-		if (w[0] > HANDLER_BINDING || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
+		if (w[0] > GRAPH_BINDING || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
 		if (w[0] != HANDLER_BINDING && (w[8] || w[9])) goto fail;
 		if (w[0] == HANDLER_BINDING && (!w[8] || w[8] > np || w[9] > 1)) goto fail;
 		char *name = pg_alloc(graph, (size_t)w[6]);
@@ -718,17 +718,19 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 			if (!scopes[i]) goto fail;
 			continue;
 		}
-		if (r->kind == CONTEXT_BINDING) {
+		if (r->kind == CONTEXT_BINDING || r->kind == GRAPH_BINDING) {
 			if (!parent || !r->rule || r->rule > nd || r->syntax || r->definitions) goto fail;
 			const struct pg_derivation_input *input = derivations[r->rule - 1];
 			if (!input->parameters.binder) goto fail;
 			if (input->rule != PG_CONTEXT_EXTEND && input->rule != PG_CONTEXT_FAMILY_EXTEND) goto fail;
+			if (r->kind == GRAPH_BINDING && !target) goto fail;
 			if (target) {
 				if (input->rule != PG_CONTEXT_EXTEND) goto fail;
 				struct pg_source_environment field;
 				if (r->name.kind || r->name.length || pg_synthesis_environment_input(s, target, &field)) goto fail;
-				scopes[i] = pg_synthesis_bind_hypothesis(s, parent, field.binder,
-					input->parameters.binder, rules[r->rule - 1]);
+				scopes[i] = r->kind == GRAPH_BINDING
+					? pg_synthesis_bind_graph(s, parent, field.binder, input->parameters.binder, rules[r->rule - 1])
+					: pg_synthesis_bind_hypothesis(s, parent, field.binder, input->parameters.binder, rules[r->rule - 1]);
 			} else scopes[i] = pg_synthesis_bind_context(s, parent, r->name,
 				input->parameters.binder, rules[r->rule - 1]);
 			if (!scopes[i]) goto fail;

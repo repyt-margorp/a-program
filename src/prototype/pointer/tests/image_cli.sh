@@ -138,7 +138,7 @@ while read -r fixture names; do
 		fi
 	done
 done <<'GRAPHS'
-acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain
+acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain directMain directProof shadowMain:baseExpected nestedProof:baseExpected
 acceptance/generated-function-graph-direct.p main certified
 acceptance/dependent-graph-motive.p main reorderedMain certifiedMain
 acceptance/function-graph-call-sites.p main unusedMain:unusedExpected orderedMain:orderedExpected propertyMain:propertyExpected cutMain:cutExpected

@@ -92,6 +92,13 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p aliasMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p proofMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p baseMain baseExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p directMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p directProof expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p shadowMain baseExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p nestedProof baseExpected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-packet-wrong-output.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-packet-shadow.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-packet-imitation.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-function-graph-mismatch.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-graph-motive.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-graph-motive.p reorderedMain expected

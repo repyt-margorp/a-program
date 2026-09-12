@@ -278,6 +278,18 @@ still fails overall. No Main promotion is justified by these kernel tests.
 - [ ] Complete graph-case names/binders, general call-site translation and
   post-hoc property proofs. Packet production and successful consumption do
   not yet establish length preservation or sortedness for QuickSort.
+- [x] Restore `*f argument @ output => body` by eliminating the generated
+  ordinary result packet. `output` names its value field; `@output` names the
+  associated graph field by binder identity, sharing the IH association machinery.
+  Only generator-identified packets admit this shorthand; an unrelated two-field
+  ADT does not. No new Core node, equality rule or Replay path is introduced.
+  Tests cover result/proof consumption, nested same-name binders, shadowing,
+  wrong-output rejection and imitation packets. APGSRC30/31 retain lexical graph
+  associations; source and restored inputs run ordinary Solve. This does not
+  complete the legacy named/sparse-case fixture or QuickSort property proofs.
+  Normal checks/examples/results pass, including unsolved/completed image
+  resaves. ASan/UBSan pass for association scopes, direct/nested proof consumers,
+  all three negative cases and the image CLI. Compatibility remains 9/19.
 - [x] Publish positional Graph cases through ordinary constructor namespaces.
   Names refer to generated constructors, not the original ADT constructors;
   reversed clause order and recursive Graph elimination work, while using the

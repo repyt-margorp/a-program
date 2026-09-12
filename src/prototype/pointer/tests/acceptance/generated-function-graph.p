@@ -36,3 +36,8 @@ proofMain := {
 	packet @returned output graph => graphDepth one output graph;
 };
 expected := Nat.succ Nat.zero;
+directMain := *length one @ output => output;
+directProof := *length one @ output => graphDepth one output @output;
+shadowMain := *length one @ output => (\output : Nat => output) Nat.zero;
+nestedProof := *length one @ output =>
+	(*length NatList.nil @ output => graphDepth NatList.nil output @output);
