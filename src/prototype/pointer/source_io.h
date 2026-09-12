@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 /* Reconstructible source environments and source/definition/rule roots, including pending modules.
- * APGSRC16 retains normalization requests as context/term producer edges with
+ * APGSRC18 retains normalization requests as context/term producer edges with
  * WHNF/NF mode and optional one-time closed thunk demand, without a claimed
  * endpoint or evaluator progress.
  * A shared producer DAG also retains prepared source annotations and their
@@ -13,6 +13,8 @@
  * Prepared constructor members retain formation/parameter producer edges and
  * optional complete field allocations. Ordinary Solve rechecks field types;
  * stored contexts supply binder identities, not accepted typing evidence.
+ * Source declaration members use the same context payload and reconnect their
+ * allocations before publication, including after an unsolved resave.
  * Named/module environments reference that producer DAG, including prepared
  * annotations. A shared scope/producer dependency order rejects cross-table
  * cycles before invoking the ordinary construction factories.
@@ -31,9 +33,9 @@
  * Streams are borrowed. */
 int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots);
-/* APGSRC17 optionally retains raw reduction records in the same Core table.
+/* APGSRC19 optionally retains raw reduction records in the same Core table.
  * Reading leaves them in program->retained_reductions, without checking or
- * installing results. NULL reductions selects ordinary APGSRC16 RECOMPUTE.
+ * installing results. NULL reductions selects ordinary APGSRC18 RECOMPUTE.
  * Origin selection includes retained endpoints and intermediate phase Terms. */
 int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots, const struct pg_reduction_archive *reductions);

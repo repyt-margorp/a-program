@@ -894,7 +894,7 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   conflicting and late attachments. Normal full synthesis, constructor-input
   tests and all 758 prepared-module snapshots pass; sanitized full synthesis
   and constructor-input tests pass. Source-image connection remains open below.
-- [ ] Connect these declaration member inputs to source-image collection and
+- [x] Connect these declaration member inputs to source-image collection and
   restoration. Include complete member allocations when their source declaration
   is retained, use the existing shared context/raw-reference payload, and attach
   them before any Solve step. Inert resaving must preserve them even without
@@ -902,6 +902,20 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Re-run all source-only retention fixtures, including recursive Match; retain
   exact-Core assertions. Parameter-instantiated members outside declaration
   publication and partial scopes still need their own actual owner inputs.
+  September 12 result: APGSRC18/19 append declaration-member producer/clause
+  references and store their constructor/field identities in the existing
+  APGRET2 context payload. Selected allocation origins also retain their source
+  producer, so the reader attaches the raw member inputs before Solve. Both
+  codecs preserve these inputs without requiring published exports on resave.
+  Declaration-only tests destroy the graph between three unsolved resaves;
+  nullary and field-bearing members retain their identities. Invalid member
+  count, owner and clause index reject without publishing reader outputs.
+  Normal and ASan/UBSan source-image gates now pass source-only constructor
+  reuse AND recomputation: the remaining failures are the two recursive Match
+  exact-input checks. All six typed-root fixtures pass. Normal prepared-module
+  coverage passes all 758 snapshots; normal and sanitized seed tests pass.
+  APGDRV6 and APGRET2 are unchanged. Recursive Match allocation-owner recovery,
+  instantiated members and partial-scope checkpoints are not claimed complete.
 - [x] Route declaration exports and instantiated members through
   `pg_synthesis_constructor_value`. Its `_at` entry attaches the existing
   field-scope allocation before that scope executes; both entries return the

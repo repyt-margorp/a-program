@@ -5,6 +5,7 @@
 #include "computation_io.h"
 #include "eval_internal.h"
 #include "iadt.h"
+#include "syntax_io.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -134,6 +135,91 @@ static void declaration_members(void)
 	puts("source member allocations: pre-publication restore, evidence sharing, type recheck and invalid inputs passed");
 }
 
+static void invalid_declaration_members(FILE *file)
+{
+	assert(!fflush(file) && !fseek(file, 8, SEEK_SET));
+	uint64_t header[6];
+	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
+	for (size_t i = 0; i < header[1]; ++i) {
+		uint64_t scope[8];
+		for (size_t j = 0; j < 8; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+		assert(!fseek(file, (long)scope[6], SEEK_CUR));
+	}
+	assert(!fseek(file, (long)(header[2] + 6 * header[4] + 3 * header[5] + 3 * header[3]) * 8, SEEK_CUR));
+	struct pg_graph graph = {0};
+	assert(!pg_graph_init(&graph));
+	size_t count;
+	const struct pg_syntax *const *syntax;
+	assert(!pg_syntax_read(file, &graph, 10000, &count, &syntax));
+	pg_graph_destroy(&graph);
+	uint64_t metadata, members;
+	assert(!pg_wire_read_u64(file, &metadata) && !fseek(file, (long)metadata * 8, SEEK_CUR));
+	long count_offset = ftell(file);
+	assert(count_offset >= 0 && !pg_wire_read_u64(file, &members) && members == 2);
+	uint64_t record[2];
+	assert(!pg_wire_read_u64(file, &record[0]) && !pg_wire_read_u64(file, &record[1]));
+	const long offsets[] = {count_offset, count_offset + 8, count_offset + 16};
+	const uint64_t originals[] = {members, record[0], record[1]};
+	const uint64_t invalid[] = {UINT64_MAX, 0, 2};
+	for (size_t i = 0; i < 3; ++i) {
+		assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, invalid[i]));
+		rewind(file);
+		struct pg_synthesis_job *const *roots = NULL;
+		count = 42;
+		assert(!pg_sources_read(file, 10000, &count, &roots));
+		assert(count == 42 && !roots);
+		assert(!fseek(file, offsets[i], SEEK_SET) && !pg_wire_write_u64(file, originals[i]));
+	}
+}
+
+static void declaration_member_images(void)
+{
+	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p);
+	struct pg_parser parser;
+	struct pg_definition definition;
+	const char *text = "Nat:=@{zero:*;succ:*->*;};";
+	pg_parser_init(&parser, &p->graph, text, strlen(text));
+	assert(pg_parser_next(&parser, &definition) == 1);
+	struct pg_synthesis_job *initial[] = {pg_synthesis_request(&p->synthesis, p->scope, definition.expression)};
+	struct pg_synthesis_job *const *roots = initial;
+	size_t count = 1;
+	pg_synthesis_advance(&p->synthesis, 10000);
+	assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+	for (unsigned round = 0; round < 3; ++round) {
+		FILE *file = tmpfile();
+		uint64_t steps = p->synthesis.steps;
+		assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
+		assert(p->synthesis.steps == steps);
+		if (!round) invalid_declaration_members(file);
+		pg_program_destroy(p);
+		rewind(file);
+		p = pg_sources_read(file, 10000, &count, &roots);
+		assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(roots[0]));
+		assert(!fclose(file));
+		for (size_t i = 0; i < 2; ++i) {
+			struct pg_constructor_allocation input;
+			assert(pg_synthesis_declaration_member_input(&p->synthesis, roots[0], i, &input) == 1);
+			assert(!input.prefix && (input.fields != NULL) == (i == 1));
+		}
+	}
+	struct pg_constructor_allocation input;
+	assert(pg_synthesis_declaration_member_input(&p->synthesis, roots[0], 1, &input) == 1);
+	while (p->synthesis.ready) {
+		assert(p->synthesis.steps < 10000);
+		pg_synthesis_advance(&p->synthesis, 1);
+	}
+	const struct pg_evidence *formation = pg_synthesis_result(roots[0]);
+	const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
+	struct pg_synthesis_job *member = pg_synthesis_constructor_value(&p->synthesis, formation, input.constructor,
+		pg_prove_substitution_projection(&p->typing, empty, empty));
+	assert(member && pg_synthesis_status(member) == PG_SYNTHESIS_DONE);
+	const struct pg_term *core = pg_evidence_subject(pg_synthesis_result(member))->core;
+	assert(core->kind == PG_LAMBDA && core->as.lambda.binder == input.fields->binder);
+	pg_program_destroy(p);
+	puts("source member images: declaration-only roots retain nullary/field allocations through three inert resaves");
+}
+
 static void constructor_inputs(void)
 {
 	for (unsigned mode = 0; mode < 5; ++mode) {
@@ -210,6 +296,7 @@ static void constructor_inputs(void)
 	}
 	puts("source constructor inputs: pending/completed owners, field allocation and invalid labels survive inert resaves");
 	declaration_members();
+	declaration_member_images();
 }
 
 static void invalid_normalization_mode(FILE *file)

@@ -9,8 +9,8 @@
 #include "context_payload.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\20";
-static const char retained_magic[8] = "APGSRC\21";
+static const char magic[8] = "APGSRC\22";
+static const char retained_magic[8] = "APGSRC\23";
 enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING };
 
 struct environment {
@@ -109,6 +109,13 @@ static uint64_t id(const struct pg_dag *dag, const void *key)
 	return node ? node->id : 0;
 }
 
+struct source_member {
+	struct source_member *next;
+	const struct pg_synthesis_job *declaration;
+	size_t index;
+	struct pg_constructor_allocation allocation;
+};
+
 struct origin_collection {
 	const struct pg_synthesis *synthesis;
 	struct pg_dag *scopes, *syntax, *rules, *origins, *producers, *constructors;
@@ -116,7 +123,22 @@ struct origin_collection {
 	struct pg_index candidates;
 	struct pg_declaration_io *codec;
 	const struct pg_dag_node *last_scope, *last_producer;
+	struct source_member *members;
+	size_t member_count;
 };
+
+static int collect_allocation(struct origin_collection *c, const struct pg_context *prefix,
+	const struct pg_context *fields, const struct pg_object *constructor)
+{
+	const struct pg_context *contexts[] = {prefix, fields};
+	const struct pg_term *term = pg_reference(&c->rules->storage, constructor);
+	struct pg_derivation_payload payload;
+	if (pg_contexts_pack(&c->rules->storage, 2, contexts, 1, &term,
+		&payload.metadata_count, &payload.metadata, &payload.count, &payload.terms)) return -1;
+	for (size_t i = 0; i < payload.count; ++i)
+		if (pg_dag_add(&c->terms, payload.terms[i])) return -1;
+	return 0;
+}
 
 /* Drain newly discovered immutable inputs once, including edges from lexical
  * names to prepared producers and back to their defining scopes. */
@@ -134,13 +156,7 @@ static int collect_inputs(struct origin_collection *c)
 			enum pg_reduction_kind kind;
 			if (!pg_synthesis_constructor_input(c->synthesis, producer->key, &constructor)) {
 				if (pg_dag_add(c->constructors, producer->key)) return -1;
-				const struct pg_context *contexts[] = {constructor.prefix, constructor.fields};
-				const struct pg_term *term = pg_reference(&c->rules->storage, constructor.constructor);
-				struct pg_derivation_payload payload;
-				if (pg_contexts_pack(&c->rules->storage, 2, contexts, 1, &term,
-					&payload.metadata_count, &payload.metadata, &payload.count, &payload.terms)) return -1;
-				for (size_t i = 0; i < payload.count; ++i)
-					if (pg_dag_add(&c->terms, payload.terms[i])) return -1;
+				if (collect_allocation(c, constructor.prefix, constructor.fields, constructor.constructor)) return -1;
 				continue;
 			}
 			if (!pg_synthesis_normalization_input(c->synthesis, producer->key, &left, &right, &kind, NULL))
@@ -152,6 +168,20 @@ static int collect_inputs(struct origin_collection *c)
 			} else {
 				if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->syntax, term)) return -1;
 				if (definitions && pg_dag_add(c->syntax, definitions)) return -1;
+				if (!pg_synthesis_source_input(c->synthesis, producer->key, &scope, &term)
+					&& term->kind == PG_SYNTAX_DECLARATION && term->left->kind == PG_SYNTAX_CONSTRUCTORS) {
+					for (size_t i = 0; i < term->left->item_count; ++i) {
+						struct pg_constructor_allocation allocation;
+						int available = pg_synthesis_declaration_member_input(c->synthesis, producer->key, i, &allocation);
+						if (available < 0) return -1;
+						if (!available) continue;
+						struct source_member *member = pg_alloc(&c->rules->storage, sizeof(*member));
+						if (!member || c->member_count == SIZE_MAX) return -1;
+						*member = (struct source_member){c->members, producer->key, i, allocation};
+						c->members = member; ++c->member_count;
+						if (collect_allocation(c, allocation.prefix, allocation.fields, allocation.constructor)) return -1;
+					}
+				}
 			}
 		}
 		/* Producer traversal can have appended the first scope. */
@@ -225,7 +255,7 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 		if (!parent) return 0;
 	}
 	if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->rules, pg_synthesis_allocation_origin(job))
-		|| (!binder && pg_dag_add(c->origins, job))) return -1;
+		|| (!binder && (pg_dag_add(c->origins, job) || pg_dag_add(c->producers, job)))) return -1;
 	return 0;
 }
 
@@ -294,9 +324,11 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *const *derivations;
 	if (pg_synthesis_export_rule_closure(synthesis, &rules, &rules.storage, &effects, 1,
 		retain_dependencies, &collection, &derivations)) goto done;
-	if (constructors.count > SIZE_MAX / (2 * sizeof(void *))) goto done;
-	const struct pg_context **contexts = pg_alloc(&rules.storage, 2 * constructors.count * sizeof(*contexts));
-	const struct pg_term **references = pg_alloc(&rules.storage, constructors.count * sizeof(*references));
+	if (collection.member_count > SIZE_MAX - constructors.count) goto done;
+	size_t allocation_count = constructors.count + collection.member_count;
+	if (allocation_count > SIZE_MAX / (2 * sizeof(void *))) goto done;
+	const struct pg_context **contexts = pg_alloc(&rules.storage, 2 * allocation_count * sizeof(*contexts));
+	const struct pg_term **references = pg_alloc(&rules.storage, allocation_count * sizeof(*references));
 	if (!contexts || !references) goto done;
 	for (const struct pg_dag_node *node = constructors.first; node; node = node->next) {
 		struct pg_constructor_input input;
@@ -305,8 +337,14 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		contexts[2 * (node->id - 1) + 1] = input.fields;
 		references[node->id - 1] = pg_reference(&rules.storage, input.constructor);
 	}
+	size_t slot = constructors.count;
+	for (const struct source_member *member = collection.members; member; member = member->next, ++slot) {
+		contexts[2 * slot] = member->allocation.prefix;
+		contexts[2 * slot + 1] = member->allocation.fields;
+		references[slot] = pg_reference(&rules.storage, member->allocation.constructor);
+	}
 	struct pg_derivation_payload payload;
-	if (pg_contexts_pack(&rules.storage, 2 * constructors.count, contexts, constructors.count, references,
+	if (pg_contexts_pack(&rules.storage, 2 * allocation_count, contexts, allocation_count, references,
 		&payload.metadata_count, &payload.metadata, &payload.count, &payload.terms)) goto done;
 	size_t entry_count = 0;
 	for (const struct pg_dag_node *node = producers.first; node; node = node->next) {
@@ -382,6 +420,9 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	if (pg_wire_write_u64(file, payload.metadata_count)) goto done;
 	for (size_t i = 0; i < payload.metadata_count; ++i)
 		if (pg_wire_write_u64(file, payload.metadata[i])) goto done;
+	if (pg_wire_write_u64(file, collection.member_count)) goto done;
+	for (const struct source_member *member = collection.members; member; member = member->next)
+		if (pg_wire_write_u64(file, id(&producers, member->declaration)) || pg_wire_write_u64(file, member->index)) goto done;
 	status = pg_retained_write(file, rules.count, derivations, &effects, reductions,
 		payload.count, payload.terms, &pg_declaration_graph_codec, &codec);
 done:
@@ -490,6 +531,11 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	uint64_t *metadata = pg_alloc(graph, (size_t)metadata_count * sizeof(*metadata));
 	if (!metadata) goto fail;
 	for (size_t i = 0; i < metadata_count; ++i) if (pg_wire_read_u64(file, &metadata[i])) goto fail;
+	uint64_t member_count;
+	if (pg_wire_read_u64(file, &member_count) || member_count > limit || member_count > SIZE_MAX / (2 * sizeof(uint64_t))) goto fail;
+	uint64_t *members = pg_alloc(graph, 2 * (size_t)member_count * sizeof(*members));
+	if (!members) goto fail;
+	for (size_t i = 0; i < 2 * member_count; ++i) if (pg_wire_read_u64(file, &members[i])) goto fail;
 	size_t nd;
 	size_t input_count = 0;
 	const struct pg_term *const *input_terms;
@@ -503,7 +549,8 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	const struct pg_term *const *constructors;
 	if (pg_contexts_unpack(&program->typing, (size_t)metadata_count, metadata, input_count, input_terms,
 		&context_count, &contexts, &constructor_count, &constructors)) goto fail;
-	if (constructor_count > np || constructor_count > SIZE_MAX / 2 || context_count != 2 * constructor_count) goto fail;
+	if (member_count > constructor_count || constructor_count - member_count > np
+		|| constructor_count > SIZE_MAX / 2 || context_count != 2 * constructor_count) goto fail;
 	if (fgetc(file) != EOF || ferror(file)) goto fail;
 	if (nd > SIZE_MAX / sizeof(void *)) goto fail;
 	struct pg_synthesis_job **rules = pg_alloc(graph, nd * sizeof(*rules));
@@ -528,7 +575,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 			uint64_t scope = ids[6 * i], syntax = ids[6 * i + 1], definitions = ids[6 * i + 2], rule = ids[6 * i + 3];
 			uint64_t left = ids[6 * i + 4], right = ids[6 * i + 5];
 			if (!scope && syntax == 5) {
-				if (!left || left > i || !right || right > i || !definitions || definitions > constructor_count || rule > 1) goto fail;
+				if (!left || left > i || !right || right > i || !definitions || definitions > constructor_count - member_count || rule > 1) goto fail;
 				const struct pg_term *reference = constructors[definitions - 1];
 				if (reference->kind != PG_REFERENCE) goto fail;
 				const struct pg_context *prefix = contexts[2 * (definitions - 1)], *fields = contexts[2 * (definitions - 1) + 1];
@@ -630,6 +677,15 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 			? pg_synthesis_restore_application(&program->synthesis, scopes[scope - 1], site, rules[rule - 1])
 			: pg_synthesis_restore_declaration(&program->synthesis, scopes[scope - 1], site, rules[rule - 1]);
 		if (!restored) goto fail;
+	}
+	for (size_t i = 0; i < member_count; ++i) {
+		uint64_t producer = members[2 * i], index = members[2 * i + 1];
+		if (!producer || producer > np || index > SIZE_MAX) goto fail;
+		size_t slot = constructor_count - (size_t)member_count + i;
+		if (constructors[slot]->kind != PG_REFERENCE) goto fail;
+		struct pg_constructor_allocation allocation = {
+			constructors[slot]->as.reference, contexts[2 * slot], contexts[2 * slot + 1]};
+		if (pg_synthesis_declaration_member_at(&program->synthesis, producers[producer - 1], (size_t)index, &allocation)) goto fail;
 	}
 	for (size_t i = 0; i < nr; ++i) jobs[i] = producers[selections[i] - 1];
 	program->root = nr ? jobs[0] : NULL;
