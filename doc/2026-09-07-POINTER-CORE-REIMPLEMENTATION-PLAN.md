@@ -119,6 +119,16 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   and function-field recursion. This isolates the outer R annotation contract
   from the already-working declaration-body lowering. Targeted IADT and
   fresh-process derivation tests additionally pass ASan/UBSan.
+- [x] Restore logical family bindings through ordinary source-image contexts.
+  The reader had accepted only value extensions. Acc source under logical A/R
+  now survives unsolved resaves and a solved save followed by ordinary Solve.
+  Recomputed constructor types may have fresh internal Pi binders; transport
+  their result maps to the already-checked saved field context using ordinary
+  variable substitution and composition. Do not weaken exact declaration
+  checking, merge scopes by completed producer state, or add a Replay rule.
+  Reversing `R y x` to `R x y` while retaining the original declaration is
+  rejected. Normal checks/examples/results and ASan/UBSan source-image tests
+  pass; compatibility remains 9/19.
 
 This is a local rule extension, not an imported metatheorem. Background
 rechecked: [Harper, *An Equational Logical Framework for Type Theories*, section 2](https://www.cs.cmu.edu/~rwh/courses/chtt/pdfs/slf.pdf)

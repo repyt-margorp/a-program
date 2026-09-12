@@ -721,8 +721,10 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		if (r->kind == CONTEXT_BINDING) {
 			if (!parent || !r->rule || r->rule > nd || r->syntax || r->definitions) goto fail;
 			const struct pg_derivation_input *input = derivations[r->rule - 1];
-			if (input->rule != PG_CONTEXT_EXTEND || !input->parameters.binder) goto fail;
+			if (!input->parameters.binder) goto fail;
+			if (input->rule != PG_CONTEXT_EXTEND && input->rule != PG_CONTEXT_FAMILY_EXTEND) goto fail;
 			if (target) {
+				if (input->rule != PG_CONTEXT_EXTEND) goto fail;
 				struct pg_source_environment field;
 				if (r->name.kind || r->name.length || pg_synthesis_environment_input(s, target, &field)) goto fail;
 				scopes[i] = pg_synthesis_bind_hypothesis(s, parent, field.binder,

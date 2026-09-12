@@ -189,8 +189,84 @@ static void indexed_family_sources(void)
 	puts("indexed source: scoped family formation, recursive constructors and inert resaves use ordinary Solve");
 }
 
+static void family_context_scopes(void)
+{
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+		assert(p);
+		struct pg_typing *t = &p->typing;
+		const struct pg_evidence *empty = pg_prove_empty_context(t);
+		const struct pg_evidence *u = pg_prove_universe(t, &p->classifiers, empty, 0);
+		const struct pg_object *a = pg_binder(&p->graph), *r = pg_binder(&p->graph);
+		const struct pg_evidence *ac = pg_prove_context_extension(t, empty, a, u);
+		const struct pg_evidence *xc = pg_prove_context_extension(t, ac, pg_binder(&p->graph), pg_prove_variable(t, ac, a));
+		const struct pg_evidence *yc = pg_prove_context_extension(t, xc, pg_binder(&p->graph), pg_prove_variable(t, xc, a));
+		const struct pg_evidence *rc = pg_prove_family_context_extension(t, ac, r, yc, pg_prove_projection(t, yc, u));
+		assert(rc);
+		const struct pg_source_scope *scope = pg_synthesis_bind_context(&p->synthesis, pg_synthesis_root(&p->synthesis),
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "A", .length = 1}, a, pg_synthesis_evidence(&p->synthesis, ac));
+		scope = pg_synthesis_bind_context(&p->synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "R", .length = 1}, r, pg_synthesis_evidence(&p->synthesis, rc));
+		assert(scope);
+		const char *source[] = {"relation := R;",
+			"Acc := @\\subject : A => { acc : (x:A) -> ((y:A) -> R y x -> * y) -> * x; };",
+			"bad := R A A;"};
+		struct pg_synthesis_job *initial[3];
+		for (size_t i = 0; i < 3; ++i) {
+			struct pg_parser parser;
+			struct pg_definition definition;
+			pg_parser_init(&parser, &p->graph, source[i], strlen(source[i]));
+			assert(pg_parser_next(&parser, &definition) == 1);
+			initial[i] = pg_synthesis_request(&p->synthesis, scope, definition.expression);
+			assert(initial[i]);
+		}
+		struct pg_synthesis_job *const *roots = initial;
+		size_t count = 3;
+		for (unsigned round = 0; round < 4; ++round) {
+			if (round == 3) {
+				while (p->synthesis.ready && p->synthesis.steps < 10000) pg_synthesis_advance(&p->synthesis, chunk);
+				assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
+			}
+			FILE *file = tmpfile();
+			assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
+			pg_program_destroy(p);
+			rewind(file);
+			p = pg_sources_read(file, 10000, &count, &roots);
+			assert(p && count == 3 && !p->synthesis.steps);
+			for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
+			assert(!fclose(file));
+		}
+		while (p->synthesis.ready && p->synthesis.steps < 10000) pg_synthesis_advance(&p->synthesis, chunk);
+		assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+		assert(pg_evidence_judgement(pg_synthesis_result(roots[0])) == PG_JUDGEMENT_TYPE_FAMILY);
+		assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
+		struct pg_inductive_instance instance;
+		assert(pg_inductive_instance(&p->typing, pg_synthesis_result(roots[1]), &instance));
+		assert(pg_data_constructor_count(instance.schema) == 1);
+		assert(pg_synthesis_status(roots[2]) == PG_SYNTHESIS_REJECTED);
+		/* Saved evidence must not authorize a source declaration with a
+		 * different recursive-field relation, even with the same allocation. */
+		const struct pg_syntax *syntax;
+		assert(!pg_synthesis_source_input(&p->synthesis, roots[1], &scope, &syntax));
+		const char changed[] = "Acc := @\\subject : A => { acc : (x:A) -> ((y:A) -> R x y -> * y) -> * x; };";
+		struct pg_parser parser;
+		struct pg_definition definition;
+		pg_parser_init(&parser, &p->graph, changed, sizeof(changed) - 1);
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *invalid = pg_synthesis_restore_declaration(&p->synthesis, scope,
+			definition.expression, pg_synthesis_allocation_origin(roots[1]));
+		assert(invalid);
+		while (p->synthesis.ready && p->synthesis.steps < 20000) pg_synthesis_advance(&p->synthesis, chunk);
+		assert(pg_synthesis_status(invalid) == PG_SYNTHESIS_REJECTED);
+		assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
+		pg_program_destroy(p);
+	}
+	puts("source families: logical R/Acc scopes, unsolved and solved resaves, wrong argument rejection passed");
+}
+
 static void context_scopes(void)
 {
+	family_context_scopes();
 	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
 	assert(p);
 	struct pg_typing *t = &p->typing;

@@ -3438,6 +3438,32 @@ static void constructor_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	finish(synthesis, job, job->right->status);
 }
 
+/* Recomputed field annotations can have fresh binders inside their types.
+ * Keep the saved declaration immutable, and transport the independently
+ * synthesized result through a checked variable substitution instead. */
+static const struct pg_evidence *schema_result_context(struct pg_typing *typing,
+	const struct pg_evidence *result, const struct pg_evidence *target)
+{
+	const struct pg_evidence *source = pg_evidence_premise(result, 1);
+	const struct pg_context *left = pg_evidence_context(source), *right = pg_evidence_context(target);
+	if (left == right) return result;
+	size_t count;
+	if (pg_context_extension_size(left, NULL, &count) || count > SIZE_MAX / sizeof(void *)) return NULL;
+	const struct pg_evidence **images = malloc(count * sizeof(*images));
+	if (count && !images) return NULL;
+	const struct pg_evidence *adapted = NULL;
+	for (size_t i = count; i; --i, left = left->parent, right = right->parent) {
+		if (!right || left->binder != right->binder) goto done;
+		images[i - 1] = pg_prove_variable(typing, target, right->binder);
+	}
+	if (right) goto done;
+	const struct pg_evidence *map = pg_prove_substitution(typing, source, target, count, images);
+	adapted = pg_prove_substitution_compose(typing, result, map);
+done:
+	free(images);
+	return adapted;
+}
+
 static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (!job->left) {
@@ -3500,7 +3526,26 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		if (state->checked <= SIZE_MAX / sizeof(*results))
 			results = pg_alloc(&temporary, state->checked * sizeof(*results));
 		if (state->checked && !results) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		for (size_t i = 0; i < state->checked; ++i) results[i] = state->producers[i]->result;
+		const struct pg_evidence *origin = NULL;
+		if (job->allocation_origin) {
+			if (job->allocation_origin->status == PG_SYNTHESIS_PENDING) {
+				pg_graph_destroy(&temporary);
+				depend(synthesis, job, job->allocation_origin); return;
+			}
+			origin = job->allocation_origin->result;
+			if (!origin || pg_evidence_inductive_declaration(origin) != job->nominal_input) {
+				pg_graph_destroy(&temporary);
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+			}
+		}
+		for (size_t i = 0; i < state->checked; ++i) {
+			results[i] = state->producers[i]->result;
+			if (origin) {
+				size_t prefix = pg_evidence_judgement(origin) == PG_JUDGEMENT_TYPE_FAMILY ? 2 : 1;
+				const struct pg_evidence *saved = pg_evidence_premise(origin, i + prefix);
+				results[i] = schema_result_context(synthesis->typing, results[i], pg_evidence_premise(saved, 1));
+			}
+		}
 		job->schema = job->nominal_input
 			? pg_data_schema_check(synthesis->typing, job->nominal_input, signature, state->checked, results)
 			: pg_data_schema(synthesis->typing, signature, state->checked, results);
@@ -3649,6 +3694,12 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			: pg_prove_context_extension(synthesis->typing, source_context(job->scope), job->binder, job->domain);
 		job->inner = pg_synthesis_bind(synthesis, job->scope, (struct pg_token){.kind = '*'}, job->binder, self);
 		job->left = pg_synthesis_data_schema_at(synthesis, job->inner, job->syntax, allocation);
+		if (job->left && allocation) {
+			if (job->left->allocation_origin && job->left->allocation_origin != job->allocation_origin) {
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+			}
+			job->left->allocation_origin = job->allocation_origin;
+		}
 		depend(synthesis, job, job->left);
 		return;
 	}
