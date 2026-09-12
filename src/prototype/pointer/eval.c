@@ -403,17 +403,19 @@ const struct pg_term *pg_eval_readback(struct pg_eval *machine, struct pg_graph 
 	return result;
 }
 
-int pg_substitution_init(struct pg_substitution *work, struct pg_graph *graph,
-	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
+static int substitution_inputs(const struct pg_term *term, size_t *length,
+	const struct pg_binding_value **images)
 {
-	work->state = NULL;
-	if (!graph || !term) return -1;
+	size_t count = *length;
+	const struct pg_binding_value *bindings = *images;
+	if (!term) return -1;
 	if (count && !bindings) return -1;
 	if (count > SIZE_MAX / sizeof(struct pg_environment)) return -1;
 	for (size_t i = 0; i < count; ++i) {
 		if (!bindings[i].binder || !bindings[i].value) return -1;
 		if (bindings[i].binder->kind != PG_BINDER) return -1;
 	}
+	if (term->kind == PG_REFERENCE && term->as.reference->kind == PG_SEMANTIC_OBJECT) count = 0;
 	/* An identity prefix is the empty substitution. Keep later identities:
 	 * they can shadow a preceding nonidentity image of the same binder. */
 	while (count && bindings->value->kind == PG_REFERENCE &&
@@ -421,12 +423,22 @@ int pg_substitution_init(struct pg_substitution *work, struct pg_graph *graph,
 		++bindings;
 		--count;
 	}
+	*length = count;
+	*images = bindings;
+	return 0;
+}
+
+static int substitution_init(struct pg_substitution *work, struct pg_graph *graph,
+	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings,
+	struct pg_graph *input_storage)
+{
 	struct pg_substitution_state *state = calloc(1, sizeof(*state));
 	if (!state) return -1;
 	work->state = state;
 	state->context.output = graph;
 	if (pg_index_init(&state->context.results) != 0) goto failure;
-	struct pg_environment *environment = pg_alloc(&state->context.temporary, count * sizeof(*environment));
+	struct pg_environment *environment = pg_alloc(input_storage ? input_storage : &state->context.temporary,
+		count * sizeof(*environment));
 	if (count && !environment) goto failure;
 	for (size_t i = 0; i < count; ++i) {
 		environment[i] = (struct pg_environment){bindings[i].binder,
@@ -439,6 +451,14 @@ int pg_substitution_init(struct pg_substitution *work, struct pg_graph *graph,
 failure:
 	pg_substitution_destroy(work);
 	return -1;
+}
+
+int pg_substitution_init(struct pg_substitution *work, struct pg_graph *graph,
+	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
+{
+	work->state = NULL;
+	if (!graph || substitution_inputs(term, &count, &bindings)) return -1;
+	return substitution_init(work, graph, term, count, bindings, NULL);
 }
 
 void pg_substitution_destroy(struct pg_substitution *work)
@@ -454,12 +474,27 @@ enum pg_substitution_status pg_substitution_status(const struct pg_substitution 
 	return work->state ? work->state->status : PG_SUBSTITUTION_ERROR;
 }
 
+static void substitution_finish(struct pg_substitution_state *state)
+{
+	if (!state->retained_root) return;
+	state->retained_root->result = state->root->result;
+	struct pg_graph *graph = state->context.output;
+	uint64_t steps = state->context.steps;
+	pg_readback_destroy(&state->context);
+	state->context.output = graph;
+	state->context.steps = steps;
+	state->root = state->retained_root;
+}
+
 enum pg_substitution_status pg_substitution_advance(struct pg_substitution *work, uint64_t budget)
 {
 	if (pg_substitution_status(work) != PG_SUBSTITUTION_PENDING) return pg_substitution_status(work);
 	int status = reify_advance(&work->state->context, budget);
 	if (status < 0) work->state->status = PG_SUBSTITUTION_ERROR;
-	if (status > 0) work->state->status = PG_SUBSTITUTION_DONE;
+	if (status > 0) {
+		work->state->status = PG_SUBSTITUTION_DONE;
+		substitution_finish(work->state);
+	}
 	return work->state->status;
 }
 
@@ -487,6 +522,78 @@ const struct pg_term *pg_term_substitute(struct pg_graph *graph,
 	const struct pg_term *result = pg_substitution_result(&work);
 	pg_substitution_destroy(&work);
 	return result;
+}
+
+struct substitution_request {
+	struct pg_index_entry index;
+	struct pg_substitution work;
+	struct readback_entry retained;
+	size_t count;
+};
+
+int pg_substitution_work_init(struct pg_substitution_work *work, struct pg_graph *graph)
+{
+	memset(work, 0, sizeof(*work));
+	work->graph = graph;
+	if (!graph) return -1;
+	if (!pg_index_init(&work->jobs)) return 0;
+	pg_index_destroy(&work->jobs);
+	work->graph = NULL;
+	return -1;
+}
+
+void pg_substitution_work_destroy(struct pg_substitution_work *work)
+{
+	for (size_t i = 0; i < work->jobs.capacity; ++i)
+		for (struct pg_index_entry *entry = work->jobs.buckets[i]; entry; entry = entry->next)
+			pg_substitution_destroy(&((struct substitution_request *)entry)->work);
+	pg_index_destroy(&work->jobs);
+	pg_graph_destroy(&work->storage);
+	memset(work, 0, sizeof(*work));
+}
+
+struct pg_substitution *pg_substitution_request(struct pg_substitution_work *work,
+	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
+{
+	if (!work || !work->graph || substitution_inputs(term, &count, &bindings)) return NULL;
+	uint64_t hash = ((uintptr_t)term ^ count) * UINT64_C(1099511628211);
+	for (size_t i = 0; i < count; ++i) {
+		hash = (hash ^ (uintptr_t)bindings[i].binder) * UINT64_C(1099511628211);
+		hash = (hash ^ (uintptr_t)bindings[i].value) * UINT64_C(1099511628211);
+	}
+	for (struct pg_index_entry *entry = pg_index_candidates(&work->jobs, hash); entry; entry = entry->next) {
+		struct substitution_request *request = (struct substitution_request *)entry;
+		if (entry->hash != hash || request->retained.input.term != term || request->count != count) continue;
+		const struct pg_environment *image = request->retained.input.environment;
+		size_t i = count;
+		while (i && image->binder == bindings[i - 1].binder && image->value.term == bindings[i - 1].value) {
+			--i;
+			image = image->parent;
+		}
+		if (!i) return &request->work;
+	}
+	struct substitution_request *request = pg_alloc(&work->storage, sizeof(*request));
+	if (!request) return NULL;
+	request->work.state = NULL;
+	request->count = count;
+	if (substitution_init(&request->work, work->graph, term, count, bindings, &work->storage)) return NULL;
+	request->retained = (struct readback_entry){.input = request->work.state->root->input};
+	request->work.state->retained_root = &request->retained;
+	if (pg_substitution_status(&request->work) == PG_SUBSTITUTION_DONE) substitution_finish(request->work.state);
+	if (pg_index_insert(&work->jobs, &request->index, hash)) {
+		pg_substitution_destroy(&request->work);
+		return NULL;
+	}
+	return &request->work;
+}
+
+const struct pg_term *pg_substitution_compute(struct pg_substitution_work *work,
+	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
+{
+	struct pg_substitution *request = pg_substitution_request(work, term, count, bindings);
+	if (!request) return NULL;
+	while (pg_substitution_advance(request, UINT64_MAX) == PG_SUBSTITUTION_PENDING) {}
+	return pg_substitution_result(request);
 }
 
 void pg_eval_destroy(struct pg_eval *machine)

@@ -406,6 +406,43 @@ static struct pg_synthesis_job *rule_job(struct pg_synthesis *synthesis,
 	return pg_synthesis_rule(synthesis, input, premises, NULL, NULL);
 }
 
+static void application_substitution_sharing(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	for (unsigned prime = 0; prime < 2; ++prime) {
+		struct pg_whnf_work normalization;
+		struct pg_synthesis synthesis;
+		assert(!pg_whnf_work_init(&normalization, typing->graph));
+		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+		const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
+		const struct pg_evidence *function = complete(&synthesis,
+			request(&synthesis, root, "f := \\A:@ => \\x:A => x;"), PG_SYNTHESIS_DONE);
+		const struct pg_evidence *type = complete(&synthesis,
+			request(&synthesis, root, "D := @{ c:*; };"), PG_SYNTHESIS_DONE);
+		const struct pg_evidence *argument = pg_prove_type_value(typing, type);
+		assert(argument);
+		const struct pg_term *domain, *codomain;
+		const struct pg_object *binder;
+		assert(pg_pi_view(pg_evidence_classifier(function), &domain, &binder, &codomain));
+		struct pg_binding_value image = {binder, pg_evidence_subject(argument)->core};
+		struct pg_substitution *substitution = pg_substitution_request(&typing->substitutions, codomain, 1, &image);
+		assert(substitution && pg_substitution_status(substitution) == PG_SUBSTITUTION_PENDING);
+		if (prime) assert(pg_substitution_advance(substitution, 1) == PG_SUBSTITUTION_PENDING);
+		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(&synthesis, function), pg_synthesis_evidence(&synthesis, argument)};
+		struct pg_synthesis_job *application = rule_job(&synthesis, PG_APP_ELIM, NULL, 2, premises);
+		struct pg_synthesis_job *shape = pg_synthesis_classifier_structure(&synthesis, application);
+		const struct pg_evidence *proof = complete(&synthesis, application, PG_SYNTHESIS_DONE);
+		assert(!complete(&synthesis, shape, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(shape) == pg_evidence_classifier(proof));
+		assert(pg_substitution_result(substitution) == pg_evidence_classifier(proof));
+		uint64_t steps = pg_substitution_steps(substitution);
+		assert(pg_substitution_compute(&typing->substitutions, codomain, 1, &image) == pg_evidence_classifier(proof));
+		assert(pg_substitution_steps(substitution) == steps);
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&normalization);
+	}
+	puts("application substitution: provisional shape and checked classifier share exact pending work and binders");
+}
+
 static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	static const struct pg_object_class label_class = {"pending-context-effect"};
@@ -1910,7 +1947,8 @@ static void identity_instance_jobs(struct pg_typing *typing, struct pg_classifie
 
 static void cube_application_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers, size_t arity)
 {
-	unsigned budget = arity == 1 ? 10000000 : 50000000;
+	/* A regression bound for this fixture, not a language evaluation limit. */
+	unsigned budget = 1000000;
 	struct pg_dimensions dimensions;
 	assert(pg_dimensions_init(&dimensions, typing->graph) == 0);
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
@@ -1968,6 +2006,7 @@ static void cube_application_jobs(struct pg_typing *typing, struct pg_classifier
 				pg_synthesis_evidence(&synthesis, pg_prove_classifier(typing, classifiers, context, arguments[count - 1]))),
 				PG_SYNTHESIS_DONE, budget);
 			same_judgement(value, arguments[count - 1]);
+			assert(synthesis.steps < budget);
 			printf("cube lambda application: arity %zu, dimension %zu, chunk %zu, %llu steps\n", arity, d, chunk,
 				(unsigned long long)synthesis.steps);
 			pg_synthesis_destroy(&synthesis);
@@ -5612,6 +5651,7 @@ int main(void)
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
 	effect_equations(&typing, &classifiers);
 	pending_effect_contexts(&typing, &classifiers);
+	application_substitution_sharing(&typing, &classifiers);
 	effect_expectations(&typing, &classifiers);
 	synthesis_lifetime(&typing, &classifiers);
 	accepted_inputs(&typing, &classifiers);

@@ -121,6 +121,22 @@ void pg_substitution_destroy(struct pg_substitution *work);
 const struct pg_term *pg_term_substitute(struct pg_graph *graph,
 	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
 
+/* Exact-input shared substitution work, independent of typing. The store owns
+ * requested jobs; callers may advance/read/save them, but must not destroy them.
+ * Keys include ordered binder/image pointers, not alpha or conversion equality.
+ * Inputs and output graph outlive the store; results survive store destruction. */
+struct pg_substitution_work {
+	struct pg_graph *graph;
+	struct pg_graph storage;
+	struct pg_index jobs;
+};
+int pg_substitution_work_init(struct pg_substitution_work *work, struct pg_graph *graph);
+void pg_substitution_work_destroy(struct pg_substitution_work *work);
+struct pg_substitution *pg_substitution_request(struct pg_substitution_work *work,
+	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
+const struct pg_term *pg_substitution_compute(struct pg_substitution_work *work,
+	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
+
 /* Immutable pure policies outlive their jobs. Core does not decide which
  * policies are admissible as conversion evidence; that is the checker's job.
  * Runtime invocations with effects must not be put in this memo store. */

@@ -10467,6 +10467,61 @@ no Main promotion or push. Implementation delta: +9/-1, tests +60/-0;
 documentation counted separately. ASan/UBSan Core, evaluation-image and full
 synthesis suites pass, including the dimension-3 action cases.
 
+September 13 continuation after `ba8f3f3`: share nonidentity substitution work.
+
+- [x] Add exact-input request indexing around the existing substitution machine
+  in `eval.c`. The key is the input Term and ordered binder/image pointers after
+  the existing identity-prefix/semantic-reference simplifications. Pending work
+  and its capture-avoiding binder allocation are shared, not just final answers.
+  No alpha/WHNF interning, new reduction rule or typing decision is involved.
+- [x] The typing owner holds this pure-work store separately from evidence.
+  APP construction, Pi instantiation, context-map checking/reindex/lifting and
+  provisional classifier/effect substitution use it. Source structure is still
+  not accepted evidence: the normal rule checks all typed premises afterwards.
+  Contexts and typed occurrences retain their separate identities over Core.
+- [x] Completed cached jobs retain the original input environment and result,
+  releasing traversal indexes and temporary arenas. The existing readback codec
+  saves both pending jobs and compact completed roots without a wire change.
+  This is component transport, not importing trusted substitution conclusions.
+- [x] Regressions cover exact provisional/accepted APP classifier agreement,
+  partially shared work, different images/orders/owners, alpha-equivalent but
+  distinct inputs, shadowing, capture, cancellation and result lifetime. Every
+  cut of a shared substitution survives source/store destruction and resumes
+  with exactly the remaining transitions. Shared reindex consumers need not
+  charge the same steps twice; independent split-fuel tests remain unchanged.
+- [ ] Source `.a` does not yet retain this store's allocation provenance. The
+  repeated `03_main.p` probe improves from 19/24/29 to 10/11/12 reduction roots,
+  but still adds one per reload. A debugger identifies an unmatched Pi-shaped
+  classifier WHNF input containing a generated binder. Preserve/check the
+  construction behind that input; do not merge it with an alpha-equal result
+  or overwrite a result already used by accepted premises. General CHECKPOINT
+  retention and the open-family gate remain required, not deferred out of scope.
+
+Measured against a detached `ba8f3f3` build, both using the same default `-O2`
+flags. Three fresh `synthesis_test` processes per revision, exit status checked;
+wall time from `time.monotonic`, peak RSS per child from `wait4`:
+
+| Fixture | Before | Shared substitution |
+| --- | ---: | ---: |
+| Full synthesis suite, seconds (3 samples) | 4.7658 / 4.6865 / 4.7224 | 0.1234 / 0.1342 / 0.1222 |
+| Peak RSS KiB (3 samples) | 848464 / 848652 / 847984 | 68728 / 68456 / 68292 |
+| 3D one-argument action, Solve transitions | 5336585 | 173559 |
+| 3D two-argument action, Solve transitions | 23825756 | 378530 |
+| `03_main.p`, source plus NF / reload transitions | 428 / 521 | 346 / 439 |
+
+The action fixtures retain dimensions 1--3, both arities, chunk sizes 1/64 and
+their result/type checks. Their regression budget is now one million transitions
+per fixture, not a language limit. This measurement is not a whole-compiler,
+IF8 or legacy/new implementation speedup claim.
+
+Verification: normal `check`, 4067 handler and 758 module boundary snapshots,
+image origins, eight 01--09 source examples and six runtime fixtures pass.
+ASan/UBSan Core, evaluation-image, full synthesis, source-image and image-CLI
+suites pass. Open-family remains 1/4 (176, unsupported 210/281/324 steps).
+Delta from `ba8f3f3`: implementation +160/-35 (net +125), tests +162/-2
+(net +160), prototype build +2/-2; documentation separate.
+No Main promotion or push; N0--N7 completion remains unproven.
+
 Continuation audit after `2f59743`, following the renewed Replay question:
 
 - `pg_derivations_read` restores unaccepted rule inputs only. It neither

@@ -617,7 +617,17 @@ static void dependent_application_test(struct pg_graph *graph)
 		pg_prove_thunk_type(&typing, &classifiers, outer_pi));
 	const struct pg_evidence *g_term = pg_prove_force(&typing, pg_prove_variable(&typing, g_context, g));
 	const struct pg_evidence *g_argument = pg_prove_type_value(&typing, pg_prove_universe(&typing, &classifiers, g_context, 0));
+	struct pg_binding_value image = {a, pg_evidence_subject(g_argument)->core};
+	struct pg_substitution *prepared = pg_substitution_request(&typing.substitutions,
+		pg_evidence_subject(inner_pi)->core, 1, &image);
+	assert(prepared && pg_substitution_advance(prepared, 1) == PG_SUBSTITUTION_PENDING);
 	const struct pg_evidence *g_app = pg_prove_application(&typing, g_term, g_argument);
+	assert(pg_substitution_status(prepared) == PG_SUBSTITUTION_DONE);
+	assert(pg_evidence_classifier(g_app) == pg_substitution_result(prepared));
+	uint64_t substituted_steps = pg_substitution_steps(prepared);
+	assert(pg_substitution_request(&typing.substitutions, pg_evidence_subject(inner_pi)->core, 1, &image) == prepared);
+	assert(pg_substitution_advance(prepared, 100) == PG_SUBSTITUTION_DONE);
+	assert(pg_substitution_steps(prepared) == substituted_steps);
 	const struct pg_evidence *g_formation = pg_prove_classifier(&typing, &classifiers, g_context, g_app);
 	assert(g_app && g_formation);
 	size_t terms = graph->terms.count, proofs = typing.proofs.count;
@@ -667,8 +677,11 @@ static void typed_substitution_test(struct pg_graph *graph)
 		pg_reindex_advance(&split, 1);
 		assert(pg_reindex_steps(&split) == steps + 1);
 	}
+	size_t substitutions = typing.substitutions.jobs.count, substituted_terms = graph->terms.count;
 	assert(pg_reindex_advance(&whole, UINT64_MAX) == PG_REINDEX_DONE);
-	assert(pg_reindex_steps(&whole) == pg_reindex_steps(&split));
+	/* These consumers share a work store, unlike independent split-fuel runs. */
+	assert(pg_reindex_steps(&whole) <= pg_reindex_steps(&split));
+	assert(typing.substitutions.jobs.count == substitutions && graph->terms.count == substituted_terms);
 	assert(pg_reindex_result(&whole) == pg_reindex_result(&split));
 	assert(typing.proofs.count == pending_proofs + 1);
 	const struct pg_evidence *split_result = pg_reindex_result(&split);
@@ -2362,6 +2375,61 @@ static void substitution_test(struct pg_graph *graph)
 	puts("substitution: simultaneous images, capture avoidance, sharing and no reduction passed");
 }
 
+static void shared_substitution_test(struct pg_graph *graph)
+{
+	struct pg_substitution_work work, independent;
+	assert(!pg_substitution_work_init(&work, graph));
+	assert(!pg_substitution_work_init(&independent, graph));
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph), *z = pg_binder(graph);
+	const struct pg_term *vx = pg_reference(graph, x), *vy = pg_reference(graph, y), *vz = pg_reference(graph, z);
+	const struct pg_term *body = pg_application(graph, vx, vx);
+	const struct pg_term *term = pg_lambda(graph, y, body);
+	struct pg_binding_value image = {x, vy}, copy = image;
+	struct pg_substitution *first = pg_substitution_request(&work, term, 1, &image);
+	assert(first && pg_substitution_steps(first) == 0 && !pg_substitution_result(first));
+	assert(pg_substitution_advance(first, 1) == PG_SUBSTITUTION_PENDING);
+	size_t terms = graph->terms.count;
+	struct pg_substitution *second = pg_substitution_request(&work, term, 1, &copy);
+	assert(second == first && pg_substitution_steps(second) == 1 && graph->terms.count == terms);
+	copy.value = vz;
+	struct pg_substitution *different = pg_substitution_request(&work, term, 1, &copy);
+	struct pg_substitution *other_store = pg_substitution_request(&independent, term, 1, &image);
+	assert(different && different != first && !pg_substitution_steps(different));
+	assert(other_store && other_store != first && !pg_substitution_steps(other_store));
+	const struct pg_term *answer = pg_substitution_compute(&work, term, 1, &image);
+	assert(answer && answer == pg_substitution_result(first));
+	assert(answer->as.lambda.binder != y);
+	assert(answer->as.lambda.body == pg_application(graph, vy, vy));
+	assert(!first->state->context.temporary.blocks && !first->state->context.results.capacity);
+	uint64_t steps = pg_substitution_steps(first);
+	assert(pg_substitution_compute(&work, term, 1, &image) == answer);
+	assert(pg_substitution_steps(first) == steps);
+	assert(pg_substitution_status(different) == PG_SUBSTITUTION_PENDING);
+	assert(pg_substitution_status(other_store) == PG_SUBSTITUTION_PENDING);
+	const struct pg_term *alpha = pg_lambda(graph, z, body);
+	assert(pg_alpha_equal(term, alpha) == 1);
+	assert(pg_substitution_request(&work, alpha, 1, &image) != first);
+	struct pg_binding_value ordered[] = {{x, vy}, {y, vx}}, reversed[] = {{y, vx}, {x, vy}};
+	assert(pg_substitution_request(&work, body, 2, ordered) != pg_substitution_request(&work, body, 2, reversed));
+	struct pg_binding_value identity[] = {{x, vx}, {y, vy}};
+	assert(pg_substitution_request(&work, term, 2, identity) == pg_substitution_request(&work, term, 0, NULL));
+	const struct pg_term *semantic = pg_reference(graph, &pg_return_operation);
+	assert(pg_substitution_request(&work, semantic, 1, &image) == pg_substitution_request(&work, semantic, 0, NULL));
+	size_t requests = work.jobs.count;
+	struct pg_binding_value invalid = {&pg_return_operation, vx};
+	assert(!pg_substitution_request(&work, semantic, 1, &invalid));
+	assert(!pg_substitution_request(&work, term, 1, NULL));
+	assert(!pg_substitution_request(&work, term, SIZE_MAX, &image));
+	assert(!pg_substitution_request(&work, NULL, 0, NULL));
+	assert(work.jobs.count == requests);
+	/* Cancellation releases pending traversals without invalidating outputs. */
+	pg_substitution_work_destroy(&independent);
+	pg_substitution_work_destroy(&work);
+	assert(!pg_substitution_request(&work, term, 1, &image));
+	assert(answer->as.lambda.body == pg_application(graph, vy, vy));
+	puts("shared substitution: exact inputs, capture, pending reuse, compact results and independent owners passed");
+}
+
 static void evaluation_test(struct pg_graph *graph)
 {
 	const struct pg_object *x = pg_binder(graph);
@@ -3391,6 +3459,7 @@ int main(void)
 	normal_form_test(&graph);
 	beta_work_test(&graph);
 	substitution_test(&graph);
+	shared_substitution_test(&graph);
 	evaluation_test(&graph);
 	dimension_test(&graph);
 	printf("graph: %zu terms; pointer-key interning and separate alpha comparison passed\n", graph.terms.count);

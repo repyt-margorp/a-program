@@ -140,7 +140,7 @@ struct fold_structure_state {
 struct effect_substitution_state {
 	size_t next;
 	struct pg_binding_value *bindings;
-	struct pg_substitution work;
+	struct pg_substitution *work;
 	const struct pg_term *result;
 };
 enum job_role { DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
@@ -174,7 +174,7 @@ struct pg_synthesis_job {
 	const struct pg_evidence *checking_type;
 	struct pg_synthesis_job *value_job;
 	const struct pg_term *type_structure;
-	struct pg_substitution structural_substitution;
+	struct pg_substitution *structural_substitution;
 	const struct pg_evidence *function;
 	struct pg_conversion comparison;
 	const struct pg_conversion_certificate *certificate;
@@ -253,12 +253,10 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			pg_reindex_destroy(&job->reindex);
 			if (job->classifier_recovery) pg_classifier_recovery_destroy(job->classifier_recovery);
 			if (job->inductive_recovery) pg_inductive_recovery_destroy(job->inductive_recovery);
-			pg_substitution_destroy(&job->structural_substitution);
 			pg_identity_face_destroy(job->face);
 			pg_identity_formation_destroy(job->formation);
 			if (job->derivation) pg_comparison_destroy(&job->derivation->endpoint);
 			if (job->effect_substitution) {
-				pg_substitution_destroy(&job->effect_substitution->work);
 				free(job->effect_substitution->bindings);
 			}
 			if (job->block) pg_index_destroy(&job->block->names);
@@ -5317,15 +5315,15 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 				const struct pg_object *binder;
 				if (!pg_pi_view(type, &domain, &binder, &codomain)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 				struct pg_binding_value image = {binder, pg_synthesis_type_structure_result(job->right)};
-				if (pg_substitution_init(&job->structural_substitution, synthesis->typing->graph, codomain, 1, &image)) {
+				job->structural_substitution = pg_substitution_request(&synthesis->typing->substitutions, codomain, 1, &image);
+				if (!job->structural_substitution) {
 					finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 				}
 				job->stage = 1;
 			}
-			enum pg_substitution_status status = pg_substitution_advance(&job->structural_substitution, 1);
+			enum pg_substitution_status status = pg_substitution_advance(job->structural_substitution, 1);
 			if (status == PG_SUBSTITUTION_PENDING) { enqueue(synthesis, job); return; }
-			job->type_structure = pg_substitution_result(&job->structural_substitution);
-			pg_substitution_destroy(&job->structural_substitution);
+			job->type_structure = pg_substitution_result(job->structural_substitution);
 			finish(synthesis, job, status == PG_SUBSTITUTION_DONE ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 			return;
 		}
@@ -5840,16 +5838,15 @@ static void effect_substitution_step(struct pg_synthesis *synthesis, struct pg_s
 		enqueue(synthesis, job);
 		return;
 	}
-	if (!state->work.state) {
-		int status = pg_substitution_init(&state->work, synthesis->typing->graph, job->inputs[0], count, state->bindings);
+	if (!state->work) {
+		state->work = pg_substitution_request(&synthesis->typing->substitutions, job->inputs[0], count, state->bindings);
 		free(state->bindings); state->bindings = NULL;
-		if (status) goto error;
+		if (!state->work) goto error;
 	}
-	enum pg_substitution_status status = pg_substitution_advance(&state->work, 1);
+	enum pg_substitution_status status = pg_substitution_advance(state->work, 1);
 	if (status == PG_SUBSTITUTION_PENDING) { enqueue(synthesis, job); return; }
 	if (status != PG_SUBSTITUTION_DONE) goto error;
-	state->result = pg_substitution_result(&state->work);
-	pg_substitution_destroy(&state->work);
+	state->result = pg_substitution_result(state->work);
 	finish(synthesis, job, PG_SYNTHESIS_DONE);
 	return;
 error:

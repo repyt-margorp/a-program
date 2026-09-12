@@ -1,7 +1,7 @@
 #ifndef A_PROGRAM_POINTER_TYPING_H
 #define A_PROGRAM_POINTER_TYPING_H
 
-#include "graph.h"
+#include "eval.h"
 
 /* Immutable declared telescope. Its existence is not a typing certificate. */
 struct pg_context {
@@ -28,6 +28,8 @@ struct pg_typing {
 	struct pg_index contexts;
 	struct pg_index occurrences;
 	struct pg_index proofs;
+	/* Computation work, not an additional source of typing evidence. */
+	struct pg_substitution_work substitutions;
 };
 
 int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph);

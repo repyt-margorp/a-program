@@ -322,6 +322,56 @@ static void identity_substitution_image(void)
 	pg_graph_destroy(&graph);
 }
 
+static void shared_substitution_images(void)
+{
+	struct pg_graph graph;
+	struct pg_substitution_work shared;
+	struct pg_binding_value image;
+	assert(!pg_graph_init(&graph));
+	assert(!pg_substitution_work_init(&shared, &graph));
+	const struct pg_term *input = substitution_fixture(&graph, &image);
+	struct pg_substitution *request = pg_substitution_request(&shared, input, 1, &image);
+	assert(request && pg_substitution_advance(request, 10000) == PG_SUBSTITUTION_DONE);
+	uint64_t steps = pg_substitution_steps(request);
+	pg_substitution_work_destroy(&shared);
+	pg_graph_destroy(&graph);
+	for (uint64_t cut = 0; cut <= steps; ++cut) {
+		assert(!pg_graph_init(&graph));
+		assert(!pg_substitution_work_init(&shared, &graph));
+		input = substitution_fixture(&graph, &image);
+		request = pg_substitution_request(&shared, input, 1, &image);
+		assert(request);
+		pg_substitution_advance(request, cut);
+		assert(pg_substitution_steps(request) == cut);
+		assert(pg_substitution_request(&shared, input, 1, &image) == request);
+		if (cut == steps) {
+			assert(!request->state->context.temporary.blocks);
+			assert(!request->state->context.results.count);
+		}
+		FILE *file = tmpfile();
+		assert(file && !pg_substitution_write(file, request, NULL, NULL));
+		pg_substitution_work_destroy(&shared);
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		rewind(file);
+		struct pg_substitution restored, baseline;
+		assert(!pg_substitution_read(file, &graph, 10000, 100, NULL, NULL, &restored));
+		assert(!fclose(file));
+		const struct pg_closure *source = pg_substitution_input(&restored);
+		assert(source->environment && !source->environment->parent);
+		image = (struct pg_binding_value){source->environment->binder, source->environment->value.term};
+		assert(!pg_substitution_init(&baseline, &graph, source->term, 1, &image));
+		assert(pg_substitution_advance(&baseline, 10000) == PG_SUBSTITUTION_DONE);
+		assert(pg_substitution_steps(&restored) == cut);
+		assert(pg_substitution_advance(&restored, steps - cut) == PG_SUBSTITUTION_DONE);
+		assert(pg_substitution_steps(&restored) == steps);
+		assert(pg_alpha_equal(pg_substitution_result(&restored), pg_substitution_result(&baseline)) == 1);
+		pg_substitution_destroy(&restored);
+		pg_substitution_destroy(&baseline);
+		pg_graph_destroy(&graph);
+	}
+}
+
 static void comparison_fixture(struct pg_graph *graph, struct pg_comparison *work, unsigned mode)
 {
 	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
@@ -919,6 +969,7 @@ int main(int argc, char **argv)
 	beta_resume();
 	substitution_resume();
 	identity_substitution_image();
+	shared_substitution_images();
 	materialization_resume();
 	frame_resume(1);
 	frame_resume(3);

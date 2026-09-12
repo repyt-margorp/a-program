@@ -1434,7 +1434,7 @@ const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	if (!pg_pi_view(function->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, argument->classifier) != 1) return NULL;
 	struct pg_binding_value substitution = {binder, argument->subject->core};
-	const struct pg_term *classifier = pg_term_substitute(typing->graph, codomain, 1, &substitution);
+	const struct pg_term *classifier = pg_substitution_compute(&typing->substitutions, codomain, 1, &substitution);
 	const struct pg_term *term = pg_application(typing->graph, function->subject->core, argument->subject->core);
 	if (!classifier || !term) return NULL;
 	const struct pg_occurrence *operands[] = {function->subject, argument->subject};
@@ -1570,7 +1570,7 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	if (result) goto done;
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_evidence *image = images[i];
-		const struct pg_term *expected = pg_term_substitute(typing->graph, declarations[i]->declared_type, retained + i, bindings);
+		const struct pg_term *expected = pg_substitution_compute(&typing->substitutions, declarations[i]->declared_type, retained + i, bindings);
 		if (!expected) goto done;
 		if (pg_alpha_equal(expected, image->classifier) != 1) goto done;
 		bindings[retained + i] = (struct pg_binding_value){declarations[i]->binder, image->subject->core};
@@ -1623,7 +1623,7 @@ struct pg_reindex_state {
 	struct pg_typing *typing;
 	const struct pg_evidence *premises[2];
 	const struct pg_term *inputs[3], *outputs[3];
-	struct pg_substitution substitution;
+	struct pg_substitution *substitution;
 	size_t next;
 	uint64_t steps;
 	enum pg_reindex_status status;
@@ -1668,19 +1668,20 @@ static enum pg_reindex_status reindex_step(struct pg_reindex_state *state)
 	const struct pg_evidence *substitution = state->premises[0], *proof = state->premises[1];
 	if (state->next < 3) {
 		if (!state->inputs[state->next]) { ++state->next; return PG_REINDEX_PENDING; }
-		if (!state->substitution.state) {
+		if (!state->substitution) {
 			size_t count = substitution->premise_count - 2;
 			const struct pg_binding_value *bindings = (const struct pg_binding_value *)(substitution->premises + substitution->premise_count);
-			if (pg_substitution_init(&state->substitution, typing->graph,
-				state->inputs[state->next], count, bindings) != 0) return PG_REINDEX_ERROR;
+			state->substitution = pg_substitution_request(&typing->substitutions,
+				state->inputs[state->next], count, bindings);
+			if (!state->substitution) return PG_REINDEX_ERROR;
 			return PG_REINDEX_PENDING;
 		}
-		switch (pg_substitution_advance(&state->substitution, 1)) {
+		switch (pg_substitution_advance(state->substitution, 1)) {
 		case PG_SUBSTITUTION_PENDING: return PG_REINDEX_PENDING;
 		case PG_SUBSTITUTION_ERROR: return PG_REINDEX_ERROR;
 		case PG_SUBSTITUTION_DONE:
-			state->outputs[state->next++] = pg_substitution_result(&state->substitution);
-			pg_substitution_destroy(&state->substitution);
+			state->outputs[state->next++] = pg_substitution_result(state->substitution);
+			state->substitution = NULL;
 			return PG_REINDEX_PENDING;
 		}
 	}
@@ -1721,7 +1722,6 @@ uint64_t pg_reindex_steps(const struct pg_reindex *work)
 void pg_reindex_destroy(struct pg_reindex *work)
 {
 	if (!work->state) return;
-	pg_substitution_destroy(&work->state->substitution);
 	free(work->state);
 	work->state = NULL;
 }
@@ -1734,7 +1734,6 @@ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	if (reindex_prepare(&state, typing, substitution, proof) != 0) return NULL;
 	while (pg_reindex_advance(&work, UINT64_MAX) == PG_REINDEX_PENDING) {}
 	const struct pg_evidence *result = pg_reindex_result(&work);
-	pg_substitution_destroy(&state.substitution);
 	return result;
 }
 
@@ -1758,7 +1757,7 @@ static const struct pg_term *family_action_core(struct pg_typing *typing,
 		abstraction = pg_lambda(typing->graph, context->binder, abstraction);
 	const struct pg_binding_value *bindings = (const struct pg_binding_value *)(
 		left->premises + left->premise_count);
-	abstraction = pg_term_substitute(typing->graph, abstraction, common, bindings);
+	abstraction = pg_substitution_compute(&typing->substitutions, abstraction, common, bindings);
 	if (!abstraction) return NULL;
 	const struct pg_term *result = pg_identity_action(typing->graph, abstraction);
 	for (size_t i = 0; i < count; ++i) {
@@ -2384,7 +2383,7 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	if (!pg_pi_view(pi->subject->core, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, argument->classifier) != 1) return NULL;
 	struct pg_binding_value binding = {binder, argument->subject->core};
-	const struct pg_term *type = pg_term_substitute(typing->graph, codomain, 1, &binding);
+	const struct pg_term *type = pg_substitution_compute(&typing->substitutions, codomain, 1, &binding);
 	if (!type) return NULL;
 	const struct pg_occurrence *operands[] = {pi->subject, argument->subject};
 	const struct pg_occurrence *subject = pg_occurrence(typing, pi->context, type, NULL, 2, operands);
