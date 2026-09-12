@@ -1180,7 +1180,7 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   not evidence that executing the handler gives a different result. The simple
   gate now passes; it must not be weakened to alpha equality or removed from
   full acceptance.
-  Static trace: `pg_synthesis_visit_source_allocations` only exports return-only
+  Initial trace: `pg_synthesis_visit_source_allocations` only exported return-only
   Fold and recursive Match eliminations. `handler_return_step` allocates one
   binder; `handler_clause_step` allocates payload/resumption binders, and
   `clause_context` allocates a response-domain binder. `pg_prove_projection`
@@ -1215,6 +1215,19 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   ASan/UBSan full source-image and synthesis suites pass. The nested gate fails
   only exact Core reuse in the first operation clause; both ordinary evaluation
   results and all compared clause classifiers agree. Main push remains open.
+  Additional source-authority check: the same saved allocation input is attached
+  to a changed valid clause (`req` instead of `k req`) and an invalid clause
+  (`k k`). Ordinary Solve produces different Core for the valid change, rejects
+  the invalid change, and rejects allocation attachment after source completion.
+  Registration remains inert and repeatable. This prevents fixing retention by
+  returning the stored handler proof instead of synthesizing the source body.
+  Next representation change must preserve the source clause-context producer,
+  not merely its accepted `CONTEXT_EXTEND` result. The existing environment
+  record loses the owning handler/clause relation when it exports both handler
+  binders as generic `CONTEXT_BINDING`. Reconstruct those contexts from the same
+  pending clause builder used by source synthesis, with shared symbolic carrier
+  inference. Do not ignore `context_job` in scope interning, alias unrelated
+  typed scopes, or seed the new effect equation with the saved solved carrier.
 - [x] September 9: construct Match field/IH scopes through the same pending
   context-binding path (`SCOPE_CONTEXT_JOB`). `pg_synthesis_bind_hypothesis`
   records only the field-to-IH binder association; it introduces no proof or

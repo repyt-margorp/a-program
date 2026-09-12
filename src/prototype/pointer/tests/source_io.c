@@ -73,6 +73,25 @@ static void context_scopes(void)
 	puts("source contexts: pending field and IH scopes survive inert resaves and ordinary lookup");
 }
 
+static struct pg_synthesis_job *handler_change(struct pg_program *p,
+	struct pg_synthesis_job *original, const char *text)
+{
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+	assert(!pg_synthesis_source_input(&p->synthesis, original, &scope, &syntax));
+	struct pg_synthesis_job *origin = pg_synthesis_allocation_origin(original);
+	assert(origin && origin != original);
+	struct pg_parser parser;
+	struct pg_definition definition;
+	pg_parser_init(&parser, &p->graph, text, strlen(text));
+	assert(pg_parser_next(&parser, &definition) == 1);
+	struct pg_synthesis_job *changed = pg_synthesis_restore_elimination(&p->synthesis,
+		scope, definition.expression, origin);
+	assert(changed && !pg_synthesis_result(changed));
+	assert(pg_synthesis_restore_elimination(&p->synthesis, scope, definition.expression, origin) == changed);
+	return changed;
+}
+
 static int handler_scopes(int mode)
 {
 	const char *text = "D:=@{z:*;}; d:=D.z;";
@@ -155,6 +174,12 @@ static int handler_scopes(int mode)
 		assert(environment.handler && inner == pg_synthesis_handler_scope(&p->synthesis,
 			environment.parent, environment.handler));
 	}
+	struct pg_synthesis_job *changed = NULL, *invalid = NULL;
+	if (mode == 4) {
+		changed = handler_change(p, roots[2], "h:=(ask d) @ask req k=>req @#.return x=>x;");
+		invalid = handler_change(p, roots[2], "h:=(ask d) @ask req k=>k k @#.return x=>x;");
+		assert(!p->synthesis.steps);
+	}
 	while (p->synthesis.ready) {
 		assert(p->synthesis.steps < 10000);
 		pg_synthesis_advance(&p->synthesis, 1);
@@ -165,6 +190,18 @@ static int handler_scopes(int mode)
 		pg_synthesis_status(handler), pg_synthesis_status(roots[0]), pg_synthesis_status(roots[1]),
 		(unsigned long long)p->synthesis.steps);
 	assert(handled && value);
+	if (changed) {
+		assert(pg_synthesis_status(changed) == PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_status(invalid) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(invalid));
+		const struct pg_evidence *new_proof = pg_synthesis_result(changed), *old_proof = pg_synthesis_result(roots[3]);
+		assert(pg_evidence_subject(new_proof)->core != pg_evidence_subject(old_proof)->core);
+		assert(pg_evidence_classifier(new_proof) == pg_evidence_classifier(old_proof));
+		const struct pg_source_scope *scope;
+		const struct pg_syntax *syntax;
+		assert(!pg_synthesis_source_input(&p->synthesis, changed, &scope, &syntax));
+		assert(!pg_synthesis_restore_elimination(&p->synthesis, scope, syntax,
+			pg_synthesis_allocation_origin(changed)));
+	}
 	int mismatch = 0;
 	if (mode >= 4) {
 		assert(pg_synthesis_result(roots[2]) && pg_synthesis_result(roots[3]));

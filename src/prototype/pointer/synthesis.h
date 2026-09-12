@@ -72,22 +72,22 @@ struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthe
 int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
 	const struct pg_syntax **syntax);
-/* Read-only enumeration of source declaration and Lambda/Pi allocations with
+/* Read-only enumeration of source declaration, Lambda/Pi and elimination allocations with
  * completed or retained inputs. The visitor selects its source closure and
  * deduplicates shared jobs; unrelated jobs are not implicitly image roots. */
 int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, struct pg_synthesis_job *), void *owner);
-/* Retain the unaccepted formation input as allocation provenance, including
- * across save-before-Solve. Source inference never uses its acceptance status. */
+/* Retain unaccepted rule input as allocation provenance across save-before-Solve.
+ * Registration grants no acceptance; ordinary Solve validates imported inputs. */
 struct pg_synthesis_job *pg_synthesis_allocation_origin(const struct pg_synthesis_job *job);
 const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis_job *job);
 struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
-/* Retain a recursive Match allocation or a return-only Fold context. Source
- * branches/motives are still synthesized and the ordinary rules validate
- * their allocation/domain. Registration accepts no proof; restoring lexical
- * contexts waits for ordinary validation of the origin input. */
+/* Retain recursive Match, return-only Fold or multi-clause handler allocations.
+ * Source branches/motives are still synthesized; no saved carrier is supplied
+ * as an expected type. Ordinary Solve validates the origin before its contexts
+ * are used. Nested handler lexical producer retention is not yet complete. */
 struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
