@@ -5,6 +5,7 @@
 #include "derivation.h"
 #include "dag.h"
 #include "effect_inference.h"
+#include "function_graph.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -144,7 +145,7 @@ struct effect_substitution_state {
 	const struct pg_term *result;
 };
 enum job_role { PI_SCOPE_JOB, DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB, FAMILY_FUNCTION_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB, FAMILY_FUNCTION_JOB, FUNCTION_GRAPH_JOB };
 enum { APPLICATION_RULE_READY = 6 };
 struct context_allocation {
 	const struct pg_context *prefix, *end;
@@ -181,6 +182,7 @@ struct pg_synthesis_job {
 	struct pg_reindex reindex;
 	struct pg_classifier_recovery *classifier_recovery;
 	struct pg_inductive_recovery *inductive_recovery;
+	struct pg_function_graph_work function_graph;
 	const struct pg_inductive_instance *inductive_instance;
 	struct pg_identity_face_work *face;
 	struct pg_identity_formation_work *formation;
@@ -254,6 +256,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			pg_reindex_destroy(&job->reindex);
 			if (job->classifier_recovery) pg_classifier_recovery_destroy(job->classifier_recovery);
 			if (job->inductive_recovery) pg_inductive_recovery_destroy(job->inductive_recovery);
+			pg_function_graph_destroy(&job->function_graph);
 			pg_identity_face_destroy(job->face);
 			pg_identity_formation_destroy(job->formation);
 			if (job->derivation) pg_comparison_destroy(&job->derivation->endpoint);
@@ -2556,6 +2559,40 @@ static enum pg_synthesis_status resolve_reference(struct pg_synthesis *synthesis
 	}
 	free(path);
 	return status;
+}
+
+static void function_graph_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	const struct pg_evidence *function = job->inputs[0];
+	if (!job->function_graph.state && pg_function_graph_init(&job->function_graph,
+		synthesis->typing, synthesis->classifiers, synthesis->normalization, function)) {
+		finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+	}
+	enum pg_function_graph_status status = pg_function_graph_advance(&job->function_graph, 1);
+	if (status == PG_FUNCTION_GRAPH_PENDING) { enqueue(synthesis, job); return; }
+	job->result = pg_function_graph_formation(&job->function_graph);
+	finish(synthesis, job, status == PG_FUNCTION_GRAPH_DONE ? PG_SYNTHESIS_DONE :
+		status == PG_FUNCTION_GRAPH_UNSUPPORTED ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_ERROR);
+}
+
+static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (!job->value_job) {
+		struct source_reference reference;
+		struct pg_synthesis_job *dependency = NULL;
+		enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, job->syntax->left, &reference, &dependency);
+		if (status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, dependency); return; }
+		if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return; }
+		if (!reference.producer) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		if (reference.producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, reference.producer); return; }
+		if (reference.producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, reference.producer->status); return; }
+		const struct pg_evidence *function = pg_function_graph_source(reference.producer->result);
+		if (!function) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		struct pg_synthesis_job *graph = request_job(synthesis, FUNCTION_GRAPH_JOB, function, NULL);
+		struct pg_synthesis_job *premises[] = {job->scope->context_job, graph};
+		job->value_job = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
+	}
+	forward_proof(synthesis, job, job->value_job);
 }
 
 static struct pg_synthesis_job *source_reference_producer(struct pg_synthesis *synthesis,
@@ -6492,6 +6529,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == TELESCOPE_STRUCTURE_JOB) { telescope_structure_step(synthesis, job); return; }
 	if (job->role == CONSTRUCTOR_SCOPE_JOB) { constructor_scope_step(synthesis, job); return; }
 	if (job->role == FAMILY_FUNCTION_JOB) { family_function_step(synthesis, job); return; }
+	if (job->role == FUNCTION_GRAPH_JOB) { function_graph_step(synthesis, job); return; }
 	if (job->role == INDUCTIVE_INSTANCE_JOB) { inductive_instance_step(synthesis, job); return; }
 	if (job->role == INDUCTION_SCOPE_JOB) { induction_scope_step(synthesis, job); return; }
 	if (job->role == DATA_RESULT_JOB || job->role == SUBSTITUTION_JOB) { substitution_step(synthesis, job); return; }
@@ -6502,6 +6540,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (hypothesis_reference(synthesis, job)) return;
 	if (!prepare_expression(synthesis, job)) return;
 	if (syntax->kind == PG_SYNTAX_DECLARATION) { declaration_step(synthesis, job); return; }
+	if (syntax->kind == PG_SYNTAX_GRAPH_REFERENCE) { graph_reference_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_ELIMINATION) { match_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) { definitions_step(synthesis, job); return; }

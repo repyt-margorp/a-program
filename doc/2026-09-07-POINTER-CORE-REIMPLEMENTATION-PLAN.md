@@ -122,6 +122,29 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   also pass ASan/UBSan.
   This does not turn unknown CBPV functions into logical family assumptions,
   support arbitrary partially indexed families, or complete Acc.
+- [x] Start graph generation from retained Lambda/case derivations, not a new
+  Returns predicate. `function_graph.c` generates an ordinary indexed relation
+  for constant pure results and direct structural recursive fields. A graph
+  constructor contains the original fields plus recursive output/relation
+  premises; its result indices come from checked substitution and normalization
+  of the original branch. This establishes schema formation, not totality.
+  `@f` shares a producer keyed by its retained Lambda evidence; storage aliases
+  share the generated family, while independent definitions stay generative.
+  Tests cover identity/length/mirror schemas, incorrect recursive-result rejection,
+  source aliases and unfinished/completed source-image resaves through Solve.
+  Normal checks/examples/results pass; generated graph cases and the image CLI
+  also pass ASan/UBSan (the image fixture writer uses its normal checked build).
+  The unchanged source compatibility gate remains 1/18, not a completed gate.
+- [ ] Complete graph generation's source contract before claiming legacy
+  compatibility: replace the current field-wise recursive-result layout with
+  call-site-aware derivation translation (including order, repeated/unused
+  calls, nested computations and higher-order recursive fields). Retain the
+  accepted source derivation as the correspondence justification, not a match
+  on an erased Core or an assumed equivalence of unrelated declarations.
+- [ ] Build the ordinary dependent result packet and `*f` witness using that
+  relation and the original checked induction rule, then connect graph-case
+  names/binders and property proofs. The length fixture still fails at `*length`;
+  graph formation alone is not a proof about every execution of `length`.
 - [ ] Infer genuinely dependent source motives, rather than only checking a
   supplied dependent motive in the kernel; restore open family parameters,
   general dependent IH results and function graph/witness generation.

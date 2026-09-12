@@ -1,6 +1,7 @@
 #include "program.h"
 #include "derivation.h"
 #include "computation.h"
+#include "function_graph.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -292,6 +293,99 @@ static void execute_example(const char *path, const char *type_name,
 	pg_program_destroy(program);
 }
 
+static const struct pg_evidence *export_value(struct pg_program *p, const char *name)
+{
+	struct pg_synthesis_job *job = pg_program_evaluate_name(p, p->root,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = name, .length = strlen(name)}, 1);
+	assert(job);
+	while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+		assert(p->synthesis.steps < 100000);
+		pg_synthesis_advance(&p->synthesis, 1);
+	}
+	const struct pg_evidence *value = pg_synthesis_result(job);
+	if (value && pg_evidence_judgement(value) == PG_JUDGEMENT_COMPUTATION)
+		value = pg_prove_return_value(&p->typing, value);
+	assert(value);
+	return value;
+}
+
+static void function_graphs(void)
+{
+	const char *source = "Nat:=@{zero:*;succ:*->*;}; NatList:=@{nil:*;cons:Nat->*->*;};"
+		"length:=\\xs:NatList=>xs @nil=>Nat.zero @cons head tail=>Nat.succ *tail;"
+		"identity:=\\n:Nat=>n; zero:=Nat.zero; nil:=NatList.nil;"
+		"one:=NatList.cons Nat.zero NatList.nil; successor:=Nat.succ Nat.zero;"
+		"Tree:=@{leaf:*;fork:*->*->*;};"
+		"mirror:=\\t:Tree=>t @leaf=>Tree.leaf @fork l r=>Tree.fork *r *l;"
+		"leaf:=Tree.leaf; pair:=Tree.fork Tree.leaf Tree.leaf;"
+		"leftTree:=Tree.fork Tree.leaf pair; rightTree:=Tree.fork pair Tree.leaf;";
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		solve(p, chunk);
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *zero = export_value(p, "zero"), *nil = export_value(p, "nil");
+		const struct pg_evidence *one = export_value(p, "one"), *successor = export_value(p, "successor");
+		const struct pg_evidence *leaf = export_value(p, "leaf"), *pair = export_value(p, "pair");
+		const char *names[] = {"identity", "length", "mirror"};
+		for (size_t i = 0; i < 3; ++i) {
+			const struct pg_evidence *function = pg_synthesis_result(pg_synthesis_definition(p->root,
+				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[i], .length = strlen(names[i])}));
+			struct pg_function_graph_work work;
+			assert(!pg_function_graph_init(&work, &p->typing, &p->classifiers, &p->evaluation, function));
+			assert(pg_function_graph_advance(&work, 0) == PG_FUNCTION_GRAPH_PENDING);
+			for (size_t turns = 0; pg_function_graph_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+				assert(turns < 100000);
+			assert(pg_function_graph_advance(&work, chunk) == PG_FUNCTION_GRAPH_DONE);
+			const struct pg_evidence *formation = pg_function_graph_formation(&work);
+			assert(formation && pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY);
+			struct pg_inductive_instance graph;
+			assert(pg_inductive_instance(&p->typing, formation, &graph));
+			assert(pg_data_constructor_count(graph.schema) == (i ? 2u : 1u));
+			const struct pg_data_layout *layout = pg_data_schema_layout(graph.schema);
+			const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
+			const struct pg_evidence *parameters = pg_prove_substitution_projection(&p->typing, empty, empty);
+			const struct pg_evidence *base = pg_prove_constructor(&p->typing, formation,
+				pg_data_constructor(layout, 0), parameters, i ? 0 : 1, i ? NULL : &zero);
+			assert(base);
+			const struct pg_evidence *type = pg_prove_family_application(&p->typing, formation, i == 2 ? leaf : i ? nil : zero);
+			type = pg_prove_family_application(&p->typing, type, i == 2 ? leaf : zero);
+			assert(type && pg_alpha_equal(pg_evidence_subject(type)->core, pg_evidence_classifier(base)) == 1);
+			if (i == 1) {
+				const struct pg_evidence *fields[] = {zero, nil, zero, base};
+				const struct pg_evidence *step = pg_prove_constructor(&p->typing, formation,
+					pg_data_constructor(layout, 1), parameters, 4, fields);
+				assert(step);
+				type = pg_prove_family_application(&p->typing, formation, one);
+				type = pg_prove_family_application(&p->typing, type, successor);
+				assert(type && pg_alpha_equal(pg_evidence_subject(type)->core, pg_evidence_classifier(step)) == 1);
+				fields[2] = successor;
+				assert(!pg_prove_constructor(&p->typing, formation, pg_data_constructor(layout, 1), parameters, 4, fields));
+			} else if (i == 2) {
+				const struct pg_object *fork = pg_data_constructor(layout, 1);
+				const struct pg_evidence *fields[] = {leaf, leaf, leaf, base, leaf, base};
+				const struct pg_evidence *paired = pg_prove_constructor(&p->typing, formation, fork, parameters, 6, fields);
+				assert(paired);
+				fields[1] = pair; fields[4] = pair; fields[5] = paired;
+				const struct pg_evidence *step = pg_prove_constructor(&p->typing, formation, fork, parameters, 6, fields);
+				assert(step);
+				type = pg_prove_family_application(&p->typing, formation, export_value(p, "leftTree"));
+				type = pg_prove_family_application(&p->typing, type, export_value(p, "rightTree"));
+				assert(type && pg_alpha_equal(pg_evidence_subject(type)->core, pg_evidence_classifier(step)) == 1);
+				fields[5] = base;
+				assert(!pg_prove_constructor(&p->typing, formation, fork, parameters, 6, fields));
+			}
+			pg_function_graph_destroy(&work);
+			assert(pg_evidence_owned_by(formation, &p->typing));
+			struct pg_inductive_instance retained;
+			assert(pg_inductive_instance(&p->typing, formation, &retained) && retained.schema == graph.schema);
+			assert(pg_evidence_owned_by(pg_data_schema_result(retained.schema, pg_data_constructor(layout, 0)), &p->typing));
+		}
+		pg_program_destroy(p);
+	}
+	puts("function graphs: retained pure branches generate ordinary indexed schemas with recursive-result premises");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc == 3 && !strcmp(argv[1], "--reject")) {
@@ -320,6 +414,7 @@ int main(int argc, char **argv)
 	result_comparison_checks();
 	pending_normalization();
 	remembered_normalization();
+	function_graphs();
 	char source[] = "{{ id := &(\\A:@ => \\x:A => x); id :: (A:@)->A->A; }}.id";
 	struct pg_program *split = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
 	struct pg_program *whole = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);

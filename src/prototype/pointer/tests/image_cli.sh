@@ -115,3 +115,21 @@ for family in closed-family open-family; do
 	if test "$family" = closed-family; then test "$direct" = 0; fi
 done
 printf '%s\n' 'image cli: unfinished family inputs preserve direct Solve admission after unsolved resave'
+
+# Generated graph families are rebuilt by the same Solve, including aliases
+# appearing in independently synthesized annotations. No graph proof flag loads.
+input="$(dirname "${BASH_SOURCE[0]}")/acceptance/generated-function-graph.p"
+for steps in 0 100 100000; do
+	code=0
+	"$binary" --steps "$steps" --save "$directory/generated.a" "$input" > "$directory/status" || code=$?
+	if test "$steps" = 100000; then test "$code" = 0; else test "$code" = 3; fi
+	code=0
+	"$binary" --load --steps 0 --save "$directory/generated-resaved.a" "$directory/generated.a" > "$directory/status" || code=$?
+	test "$code" = 3
+	"$binary" --load --nf main "$directory/generated-resaved.a" > "$directory/generated-main"
+	"$binary" --load --nf expected "$directory/generated-resaved.a" > "$directory/generated-expected"
+	sed '1d' "$directory/generated-main" > "$directory/generated-main-value"
+	sed '1d' "$directory/generated-expected" > "$directory/generated-expected-value"
+	cmp "$directory/generated-main-value" "$directory/generated-expected-value"
+done
+printf '%s\n' 'image cli: generated graph source aliases and normal forms survive unfinished/completed resaves'
