@@ -192,6 +192,7 @@ struct pg_synthesis_job {
 	const struct pg_data_declaration *nominal_input;
 	struct pg_synthesis_job *allocation_origin;
 	struct context_allocation *context_allocation;
+	struct pg_constructor_allocation *member_allocations;
 	const struct pg_source_scope *exports;
 	struct match_state *match;
 	struct handler_state *handler;
@@ -3114,6 +3115,51 @@ error:
 	finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
+static int declaration_member_valid(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, size_t index)
+{
+	return synthesis && job && job->owner == synthesis->owner_key
+		&& job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_DECLARATION
+		&& job->syntax->left->kind == PG_SYNTAX_CONSTRUCTORS && index < job->syntax->left->item_count;
+}
+
+int pg_synthesis_declaration_member_at(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, size_t index, const struct pg_constructor_allocation *input)
+{
+	if (!declaration_member_valid(synthesis, job, index) || !input || !input->constructor) return -1;
+	size_t fields;
+	if (pg_context_extension_size(input->fields, input->prefix, &fields)) return -1;
+	if (job->member_allocations && job->member_allocations[index].constructor) {
+		const struct pg_constructor_allocation *previous = &job->member_allocations[index];
+		return previous->constructor == input->constructor && previous->prefix == input->prefix
+			&& previous->fields == input->fields ? 0 : -1;
+	}
+	if (job->exports || job->status != PG_SYNTHESIS_PENDING) return -1;
+	if (!job->member_allocations) {
+		size_t count = job->syntax->left->item_count;
+		if (count > SIZE_MAX / sizeof(*job->member_allocations)) return -1;
+		job->member_allocations = pg_alloc(synthesis->typing->graph, count * sizeof(*job->member_allocations));
+		if (!job->member_allocations) return -1;
+	}
+	job->member_allocations[index] = *input;
+	return 0;
+}
+
+int pg_synthesis_declaration_member_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, size_t index, struct pg_constructor_allocation *input)
+{
+	if (!declaration_member_valid(synthesis, job, index) || !input) return -1;
+	if (job->member_allocations && job->member_allocations[index].constructor) {
+		*input = job->member_allocations[index];
+		return 1;
+	}
+	struct source_reference member = lookup_scope(job->exports, job->syntax->left->items[index].name);
+	struct pg_constructor_input constructor;
+	if (pg_synthesis_constructor_input(synthesis, member.producer, &constructor) || !constructor.allocated) return 0;
+	*input = (struct pg_constructor_allocation){constructor.constructor, constructor.prefix, constructor.fields};
+	return 1;
+}
+
 /* Each universe candidate owns a distinct conditional Self context. Raising
  * the bound never mutates an accepted assumption or publishes a provisional
  * family. Failure to construct a candidate is not universe inconsistency. */
@@ -3174,8 +3220,18 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	for (size_t i = 0; job->exports && i < constructors->item_count; ++i) {
 		const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing,
 			source_context(job->scope), source_context(job->scope));
+		const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), i);
+		const struct pg_constructor_allocation *allocation = job->member_allocations ? &job->member_allocations[i] : NULL;
+		if (allocation && allocation->constructor) {
+			if (allocation->constructor != constructor ||
+				!pg_synthesis_constructor_scope_at(synthesis, pg_synthesis_evidence(synthesis, job->result),
+					constructor, pg_synthesis_evidence(synthesis, parameters), allocation->prefix, allocation->fields)) {
+				job->exports = NULL;
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+			}
+		}
 		struct pg_synthesis_job *member = pg_synthesis_constructor_value(synthesis,
-			job->result, pg_data_constructor(pg_data_schema_layout(schema), i), parameters);
+			job->result, constructor, parameters);
 		job->exports = pg_synthesis_name_job(synthesis, job->exports, constructors->items[i].name, member);
 	}
 	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, job->result);

@@ -72,6 +72,68 @@ static void context_scopes(void)
 	puts("source contexts: pending field and IH scopes survive inert resaves and ordinary lookup");
 }
 
+static void declaration_members(void)
+{
+	for (unsigned mode = 0; mode < 4; ++mode) {
+		struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+		assert(p);
+		struct pg_parser parser;
+		struct pg_definition definition;
+		const char *text = "Nat:=@{zero:*;succ:*->*;};";
+		pg_parser_init(&parser, &p->graph, text, strlen(text));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *family = pg_synthesis_request(&p->synthesis, p->scope, definition.expression);
+		pg_synthesis_advance(&p->synthesis, 10000);
+		struct pg_inductive_instance instance;
+		assert(pg_inductive_instance(&p->typing, pg_synthesis_result(family), &instance));
+		struct pg_constructor_allocation allocation;
+		assert(pg_synthesis_declaration_member_input(&p->synthesis, family, 1, &allocation) == 1);
+		assert(allocation.fields && !allocation.prefix);
+		const struct pg_object *binder = allocation.fields->binder;
+		if (mode == 1) allocation.fields = pg_context_bind(&p->typing, NULL, binder, pg_universe(&p->classifiers, 0));
+		if (mode == 2) allocation.constructor = pg_data_constructor(pg_data_schema_layout(instance.schema), 0);
+		if (mode == 3) allocation.fields = NULL;
+		pg_synthesis_destroy(&p->synthesis);
+		assert(!pg_synthesis_init(&p->synthesis, &p->typing, &p->classifiers, &p->evaluation, PG_DEFINITION_EXPLICIT_THUNK));
+		p->scope = pg_synthesis_root(&p->synthesis);
+		family = pg_synthesis_declaration_at(&p->synthesis, p->scope, definition.expression,
+			pg_data_schema_declaration(instance.schema));
+		assert(family && !pg_synthesis_declaration_member_at(&p->synthesis, family, 1, &allocation));
+		assert(!pg_synthesis_declaration_member_at(&p->synthesis, family, 1, &allocation));
+		assert(pg_synthesis_declaration_member_at(&p->synthesis, family, 2, &allocation));
+		struct pg_constructor_allocation conflicting = allocation;
+		conflicting.constructor = pg_binder(&p->graph);
+		assert(pg_synthesis_declaration_member_at(&p->synthesis, family, 1, &conflicting));
+		struct pg_constructor_allocation retained;
+		assert(pg_synthesis_declaration_member_input(&p->synthesis, family, 1, &retained) == 1);
+		assert(retained.fields == allocation.fields && !p->synthesis.steps);
+		p->scope = pg_synthesis_name_job(&p->synthesis, p->scope, definition.name, family);
+		const char *selection = "r:=Nat.succ;";
+		pg_parser_init(&parser, &p->graph, selection, strlen(selection));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *use = pg_synthesis_request(&p->synthesis, p->scope, definition.expression);
+		while (p->synthesis.ready) {
+			assert(p->synthesis.steps < 10000);
+			pg_synthesis_advance(&p->synthesis, mode & 1 ? 64 : 1);
+		}
+		assert(pg_synthesis_status(use) == (mode < 2 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED));
+		if (mode < 2) {
+			const struct pg_evidence *formation = pg_synthesis_result(family);
+			const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
+			struct pg_synthesis_job *member = pg_synthesis_constructor_value(&p->synthesis, formation, allocation.constructor,
+				pg_prove_substitution_projection(&p->typing, empty, empty));
+			assert(pg_synthesis_status(member) == PG_SYNTHESIS_DONE);
+			const struct pg_term *core = pg_evidence_subject(pg_synthesis_result(member))->core;
+			assert(core->kind == PG_LAMBDA && core->as.lambda.binder == binder);
+			assert(pg_evidence_subject(pg_synthesis_result(use))->core == core);
+		}
+		struct pg_constructor_allocation zero = {pg_data_constructor(pg_data_schema_layout(instance.schema), 0), NULL, NULL};
+		assert(pg_synthesis_declaration_member_at(&p->synthesis, family, 0, &zero));
+		pg_program_destroy(p);
+	}
+	puts("source member allocations: pre-publication restore, evidence sharing, type recheck and invalid inputs passed");
+}
+
 static void constructor_inputs(void)
 {
 	for (unsigned mode = 0; mode < 5; ++mode) {
@@ -147,6 +209,7 @@ static void constructor_inputs(void)
 		pg_program_destroy(p);
 	}
 	puts("source constructor inputs: pending/completed owners, field allocation and invalid labels survive inert resaves");
+	declaration_members();
 }
 
 static void invalid_normalization_mode(FILE *file)

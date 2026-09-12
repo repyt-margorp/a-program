@@ -866,6 +866,42 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   share that context. Verify both direct and instantiated member paths, inert
   resaving and scheduler-budget independence. The separate source Match/IH
   allocation connection remains required even after constructor restoration.
+- [ ] September 12 counterexample: changing only `declaration_step` to pass
+  its source job into `pg_synthesis_constructor_value_jobs` preserves source
+  provenance but breaks existing sharing with accepted-evidence callers.
+  The experiment failed `source_declarations` at the exact constructor-binder
+  comparison against `pg_synthesis_constructor_scope(evidence(formation),
+  constructor, evidence(parameters))`; it was reverted, not accommodated by
+  weakening the test. Source and evidence producer pointers are different
+  request keys even when their results coincide. Restoration must preserve
+  source dependencies AND the allocation owner used by direct/instantiated
+  constructor calls. Merely changing that caller, or comparing resulting
+  Lambdas up to alpha-equivalence, does not fix this. Before adopting a shared
+  owner design, test both registration orders, pending/restored inputs and
+  source/evidence access with exact binder equality. Do not merge arbitrary
+  producers or their proofs because their computed Core happens to coincide.
+- [x] Add declaration-owned member allocation inputs before publication.
+  `pg_synthesis_declaration_member_at` retains raw constructor/prefix/field
+  references on the source declaration job. After ordinary schema formation,
+  publication checks the constructor pointer against the selected source clause
+  and attaches the allocation to the existing accepted-input constructor-scope
+  job before it executes. No producer/result equivalence or new Core tag is
+  introduced. The borrowed getter exposes restored inputs before Solve and
+  complete allocations of published members. Tests restore a nominal source
+  declaration in a fresh synthesis store, exercise one-step and 64-step budgets,
+  preserve exact source/evidence constructor binders, recompute deliberately
+  incorrect field types, and reject wrong constructor, field count, index,
+  conflicting and late attachments. Normal full synthesis, constructor-input
+  tests and all 758 prepared-module snapshots pass; sanitized full synthesis
+  and constructor-input tests pass. Source-image connection remains open below.
+- [ ] Connect these declaration member inputs to source-image collection and
+  restoration. Include complete member allocations when their source declaration
+  is retained, use the existing shared context/raw-reference payload, and attach
+  them before any Solve step. Inert resaving must preserve them even without
+  published exports. Do not serialize them as accepted constructor proofs.
+  Re-run all source-only retention fixtures, including recursive Match; retain
+  exact-Core assertions. Parameter-instantiated members outside declaration
+  publication and partial scopes still need their own actual owner inputs.
 - [x] Route declaration exports and instantiated members through
   `pg_synthesis_constructor_value`. Its `_at` entry attaches the existing
   field-scope allocation before that scope executes; both entries return the

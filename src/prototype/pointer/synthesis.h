@@ -84,6 +84,22 @@ const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis
 struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
+/* Source member allocations are connected before namespace publication.
+ * Index selects the source clause; constructor identity is checked against
+ * the synthesized declaration, never inferred from that index. Field types
+ * are rechecked by the ordinary constructor-scope worker. */
+struct pg_constructor_allocation {
+	const struct pg_object *constructor;
+	const struct pg_context *prefix, *fields;
+};
+int pg_synthesis_declaration_member_at(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *declaration, size_t index,
+	const struct pg_constructor_allocation *allocation);
+/* 1: borrowed allocation, 0: no complete allocation yet, -1: invalid request.
+ * Includes restored inputs before Solve and completed published members. */
+int pg_synthesis_declaration_member_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *declaration, size_t index,
+	struct pg_constructor_allocation *allocation);
 struct pg_synthesis_job *pg_synthesis_restore_binding(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
