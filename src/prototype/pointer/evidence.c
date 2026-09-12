@@ -472,6 +472,12 @@ done:
 	return result;
 }
 
+struct inductive_argument {
+	const struct pg_evidence *value;
+	const struct evidence_frame *frames;
+	struct inductive_argument *next;
+};
+
 int pg_inductive_recovery_init(struct pg_inductive_recovery *work,
 	struct pg_typing *typing, const struct pg_evidence *type)
 {
@@ -508,7 +514,18 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		case PG_RETURN_INTRO:
 			if (!work->return_values) goto failed;
 			--work->return_values; formation = formation->premises[0]; break;
-		case PG_APP_ELIM: case PG_TYPE_FAMILY_APP:
+		case PG_TYPE_FAMILY_APP: {
+			const struct pg_evidence *body = pg_prove_application_body(typing,
+				formation->premises[0], formation->premises[1]);
+			if (body) { formation = body; break; }
+			struct inductive_argument *argument = pg_alloc(&work->temporary, sizeof(*argument));
+			if (!argument) goto failed;
+			*argument = (struct inductive_argument){formation->premises[1], work->frames, work->arguments};
+			work->arguments = argument;
+			formation = formation->premises[0];
+			break;
+		}
+		case PG_APP_ELIM:
 			formation = pg_prove_application_body(typing, formation->premises[0], formation->premises[1]);
 			if (!formation) goto failed;
 			break;
@@ -570,8 +587,42 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 	}
 	if (work->map->context != work->type->context) goto failed;
 	const struct pg_evidence *instance = pg_prove_reindex(typing, work->map, formation);
+	const struct pg_evidence *indices = NULL;
+	if (work->arguments) {
+		if (!instance || instance->judgement != PG_JUDGEMENT_TYPE_FAMILY) goto failed;
+		const struct pg_data_schema *schema = formation->certificate;
+		const struct pg_evidence *self = formation->premises[0];
+		const struct pg_evidence *prefix = pg_prove_substitution_pair(typing, work->map, self, instance);
+		if (!prefix) goto failed;
+		size_t count = 0;
+		for (struct inductive_argument *a = work->arguments; a; a = a->next) ++count;
+		if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto failed;
+		const struct pg_evidence **values = pg_alloc(&work->temporary, count * sizeof(*values));
+		if (!values) goto failed;
+		size_t i = 0;
+		/* Index arguments cross precisely the wrappers outside their own
+		 * application, not the parameter substitutions inside its callee. */
+		for (struct inductive_argument *a = work->arguments; a; a = a->next) {
+			const struct pg_evidence *value = a->value;
+			for (const struct evidence_frame *f = a->frames; value && f; f = f->next) {
+				const struct pg_evidence *step = f->proof;
+				if (step->rule == PG_PI_CONSTANT_CODOMAIN)
+					value = rebase_image(typing, step->premises[0]->premises[1]->premises[0], value);
+				else if (step->rule == PG_CONTEXT_PROJECTION)
+					value = pg_prove_projection(typing, step->premises[0], value);
+				else value = pg_prove_reindex(typing, step->premises[0], value);
+			}
+			if (!value) goto failed;
+			values[i++] = value;
+			instance = pg_prove_family_application(typing, instance, value);
+			if (!instance) goto failed;
+		}
+		const struct pg_data_signature *signature = pg_data_signature(typing, self, pg_data_schema_indices(schema));
+		indices = pg_data_signature_instance(typing, signature, prefix, count, values);
+		if (!indices || instance->judgement != PG_JUDGEMENT_VALUE_TYPE) goto failed;
+	}
 	if (!instance || pg_alpha_equal(instance->subject->core, work->type->subject->core) != 1) goto failed;
-	work->result = (struct pg_inductive_instance){formation->certificate, formation, work->map};
+	work->result = (struct pg_inductive_instance){formation->certificate, formation, work->map, indices};
 	work->status = 1;
 	return;
 failed:

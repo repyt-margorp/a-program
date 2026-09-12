@@ -57,6 +57,20 @@ static void indexed_family_roundtrip(const char *source)
 		assert(!pg_prove_type_value(&p->typing, family));
 		while (pg_evidence_rule(family) == PG_TYPE_FAMILY_ABSTRACT) family = pg_evidence_premise(family, 1);
 		assert(pg_evidence_rule(family) == PG_INDUCTIVE_FORM);
+		struct pg_synthesis_job *fiber = pg_synthesis_definition(roots[0],
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Fiber", .length = 5});
+		assert(fiber && pg_synthesis_result(fiber));
+		struct pg_synthesis_job *normalized = pg_synthesis_normalize(&p->synthesis,
+			pg_prove_empty_context(&p->typing), pg_synthesis_result(fiber));
+		struct pg_synthesis_job *recovery = pg_synthesis_inductive_instance(&p->synthesis, normalized);
+		assert(recovery);
+		while (pg_synthesis_status(recovery) == PG_SYNTHESIS_PENDING) {
+			assert(p->synthesis.steps < 100000);
+			pg_synthesis_advance(&p->synthesis, chunk);
+		}
+		struct pg_inductive_instance instance;
+		assert(pg_synthesis_inductive_instance_result(recovery, &instance) && instance.indices);
+		assert(instance.formation == family);
 		pg_program_destroy(p);
 	}
 }
@@ -65,13 +79,13 @@ static void indexed_family_sources(void)
 {
 	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
 		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
-		"main:=D.next Nat.zero (D.mk Nat.zero); main::D (Nat.succ Nat.zero);");
+		"main:=D.next Nat.zero (D.mk Nat.zero); main::D (Nat.succ Nat.zero); Fiber:=D (Nat.succ Nat.zero);");
 	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
 		"D:=\\A:@=>@\\i:Nat=>{mk:(k:Nat)->A->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
-		"main:=(D Nat).next Nat.zero ((D Nat).mk Nat.zero Nat.zero); main::D Nat (Nat.succ Nat.zero);");
+		"main:=(D Nat).next Nat.zero ((D Nat).mk Nat.zero Nat.zero); main::D Nat (Nat.succ Nat.zero); Fiber:=D Nat (Nat.succ Nat.zero);");
 	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
 		"D:=\\A:@=>\\B:@=>@\\i:Nat=>{mk:(k:Nat)->A->B->* k;};"
-		"main:=(D Nat Nat).mk Nat.zero Nat.zero Nat.zero; main::D Nat Nat Nat.zero;");
+		"main:=(D Nat Nat).mk Nat.zero Nat.zero Nat.zero; main::D Nat Nat Nat.zero; Fiber:=D Nat Nat Nat.zero;");
 	const char *invalid[] = {
 		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
 			"bad:=D.next Nat.zero (D.mk (Nat.succ Nat.zero));",

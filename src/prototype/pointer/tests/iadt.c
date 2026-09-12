@@ -152,6 +152,55 @@ static void scoped_type_families(void)
 	assert(!pg_prove_substitution_pair(&typing, zero, base, family));
 	const struct pg_evidence *projection = pg_prove_substitution_projection(&typing, vc, vc);
 	assert(projection && pg_prove_reindex(&typing, projection, family));
+	/* Admit an empty indexed family with the dependent signature (A, x:A).
+	 * Recovery must retain both typed images, in order, across wrappers. */
+	const struct pg_evidence *ia = pg_prove_context_extension(&typing, fc, a, pg_prove_projection(&typing, fc, u));
+	const struct pg_evidence *ix = pg_prove_context_extension(&typing, ia, x, pg_prove_variable(&typing, ia, a));
+	const struct pg_data_schema *schema = pg_data_schema(&typing, pg_data_signature(&typing, fc, ix), 0, NULL);
+	const struct pg_evidence *nominal = pg_prove_inductive_type(&typing, &classifiers, schema);
+	assert(nominal);
+	struct pg_inductive_instance recovered;
+	assert(!pg_inductive_instance(&typing, fiber, &recovered));
+	const struct pg_evidence *nf = pg_prove_projection(&typing, vc, nominal);
+	const struct pg_evidence *np = pg_prove_family_application(&typing, nf, type);
+	const struct pg_evidence *nt = pg_prove_family_application(&typing, np, value);
+	assert(nt && !pg_inductive_instance(&typing, np, &recovered));
+	assert(pg_inductive_instance(&typing, nf, &recovered) && !recovered.indices);
+	const struct pg_evidence *outer = pg_prove_context_extension(&typing, vc, pg_binder(&graph), nt);
+	const struct pg_evidence *wrapped[] = {nt, pg_prove_projection(&typing, outer, nt),
+		pg_prove_reindex(&typing, pg_prove_substitution_projection(&typing, vc, outer), nt)};
+	for (size_t i = 0; i < 3; ++i) {
+		assert(wrapped[i] && pg_inductive_instance(&typing, wrapped[i], &recovered));
+		assert(recovered.schema == schema && recovered.formation == nominal && recovered.indices);
+		assert(pg_evidence_context(recovered.indices) == pg_evidence_context(wrapped[i]));
+		assert(pg_evidence_context(pg_evidence_premise(recovered.indices, 0)) == pg_evidence_context(ix));
+		assert(pg_evidence_subject(pg_substitution_image(&typing, recovered.indices, a))->core == pg_evidence_subject(type)->core);
+		assert(pg_evidence_subject(pg_substitution_image(&typing, recovered.indices, x))->core == pg_evidence_subject(value)->core);
+		for (size_t chunk = 1; chunk <= 64; chunk *= 64) {
+			struct pg_inductive_recovery work;
+			assert(!pg_inductive_recovery_init(&work, &typing, wrapped[i]));
+			while (!pg_inductive_recovery_advance(&work, chunk)) {}
+			assert(work.status == 1 && work.result.indices == recovered.indices);
+			pg_inductive_recovery_destroy(&work);
+		}
+	}
+	const struct pg_object *w = pg_binder(&graph);
+	const struct pg_evidence *wc = pg_prove_context_extension(&typing, vc, w, type);
+	const struct pg_evidence *wv = pg_prove_variable(&typing, wc, w);
+	const struct pg_evidence *images[] = {pg_prove_projection(&typing, wc, type),
+		pg_prove_projection(&typing, wc, family), wv};
+	const struct pg_evidence *changed = pg_prove_substitution(&typing, vc, wc, 3, images);
+	assert(changed);
+	const struct pg_evidence *changed_fiber = pg_prove_reindex(&typing, changed, nt);
+	assert(changed_fiber && pg_inductive_instance(&typing, changed_fiber, &recovered));
+	assert(pg_evidence_subject(pg_substitution_image(&typing, recovered.indices, x))->core == pg_evidence_subject(wv)->core);
+	/* A wrapper between the first and second application must transport the
+	 * first argument without applying that substitution to the second. */
+	const struct pg_evidence *mixed = pg_prove_family_application(&typing,
+		pg_prove_reindex(&typing, changed, np), wv);
+	assert(mixed && pg_inductive_instance(&typing, mixed, &recovered));
+	assert(pg_evidence_subject(pg_substitution_image(&typing, recovered.indices, x))->core == pg_evidence_subject(wv)->core);
+	assert(pg_evidence_subject(pg_substitution_image(&typing, recovered.indices, a))->core == pg_evidence_subject(type)->core);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);

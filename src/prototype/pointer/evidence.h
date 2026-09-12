@@ -117,6 +117,9 @@ struct pg_inductive_instance {
 	const struct pg_data_schema *schema;
 	const struct pg_evidence *formation;
 	const struct pg_evidence *parameters;
+	/* Saturated index substitution, including the parameter/Self prefix.
+	 * NULL for an unapplied family or a non-indexed declaration. */
+	const struct pg_evidence *indices;
 };
 /* Traversal fuel counts retained wrappers and map frames. Individual kernel
  * operations (including application/Pi body recovery) retain their own cost. */
@@ -124,6 +127,7 @@ struct pg_inductive_recovery {
 	struct pg_typing *typing;
 	struct pg_graph temporary;
 	struct evidence_frame *frames;
+	struct inductive_argument *arguments;
 	const struct pg_evidence *type, *formation, *map;
 	size_t return_contents, return_values;
 	struct pg_inductive_instance result;

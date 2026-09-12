@@ -72,10 +72,20 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   application/abstraction evidence and the shared pure normalizer. The unchanged
   legacy Vec test now compiles, including `(Vec Nat).nil`, cons and index checks.
   One-/two-parameter source-image resaves and parameter mismatch rejection pass.
-- [ ] Retain saturated index substitutions when recovering indexed instances
-  for elimination; parameter-only member recovery is not indexed Match typing.
+- [x] Retain saturated index substitutions when recovering indexed instances.
+  Typed arguments cross their own retained projection/reindex wrappers; the
+  ordinary signature substitution rule checks dependent index order and sorts.
+  Recovery still checks the reconstructed fiber against its input and never
+  guesses a nominal declaration from Core. Solve retains the same result.
+  Tests cover changed index images, wrappers between applications, dependent
+  indices, partial/unknown-family rejection, and parameterized source resaves.
 - [ ] Generalize Match/motive/IH rules to those checked indexed instances;
   restore open family parameters and function graph/witness generation.
+  Current source Match still builds its motive binder over the unapplied
+  family. Replace this with the generic index telescope and scrutinee fiber;
+  instantiate branch motives with constructor result maps and recursive IHs
+  at their own indices. Do not erase indices or specialize the motive to the
+  original scrutinee's fixed fiber.
 
 The compatibility gate is 1/18; remaining cases are UNSUPPORTED, not expected failures.
 The generated length fixture still stops at `*length` resolution. These
@@ -83,6 +93,7 @@ formation changes are prerequisite work, not completion of Vec/Acc/QuickSort
 or the post-hoc property-proof milestone. No independent Replay was added.
 Validation: `check check-examples check-example-results` passes. The scoped
 family kernel tests and indexed source/resave tests also pass ASan/UBSan.
+The index-recovery change passes the same checks; compatibility remains 1/18.
 One disputed legacy fixture, `negative/function_graph_computation_index.p`,
 is accepted by Main despite its integration script expecting rejection. It is
 not counted as a verified negative case; audit its computed index semantics

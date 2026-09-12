@@ -181,6 +181,7 @@ struct pg_synthesis_job {
 	struct pg_reindex reindex;
 	struct pg_classifier_recovery *classifier_recovery;
 	struct pg_inductive_recovery *inductive_recovery;
+	const struct pg_inductive_instance *inductive_instance;
 	struct pg_identity_face_work *face;
 	struct pg_identity_formation_work *formation;
 	union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
@@ -1561,7 +1562,7 @@ int pg_synthesis_inductive_instance_result(const struct pg_synthesis_job *job,
 	struct pg_inductive_instance *output)
 {
 	if (!output || !job || job->role != INDUCTIVE_INSTANCE_JOB || job->status != PG_SYNTHESIS_DONE) return 0;
-	*output = (struct pg_inductive_instance){job->schema, job->function, job->result};
+	*output = *job->inductive_instance;
 	return 1;
 }
 
@@ -4406,8 +4407,7 @@ static void inductive_instance_step(struct pg_synthesis *synthesis, struct pg_sy
 		struct pg_synthesis_job *canonical = pg_synthesis_inductive_instance(synthesis, accepted);
 		if (!canonical) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		if (canonical->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, canonical); return; }
-		job->schema = canonical->schema;
-		job->function = canonical->function;
+		job->inductive_instance = canonical->inductive_instance;
 		job->result = canonical->result;
 		finish(synthesis, job, canonical->status);
 		return;
@@ -4422,8 +4422,10 @@ static void inductive_instance_step(struct pg_synthesis *synthesis, struct pg_sy
 	struct pg_inductive_instance instance = job->inductive_recovery->result;
 	pg_inductive_recovery_destroy(job->inductive_recovery);
 	if (status < 0) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-	job->schema = instance.schema;
-	job->function = instance.formation;
+	struct pg_inductive_instance *result = pg_alloc(synthesis->typing->graph, sizeof(*result));
+	if (!result) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	*result = instance;
+	job->inductive_instance = result;
 	job->result = instance.parameters;
 	finish(synthesis, job, PG_SYNTHESIS_DONE);
 }
