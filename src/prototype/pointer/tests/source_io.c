@@ -4,6 +4,7 @@
 #include "computation.h"
 #include "computation_io.h"
 #include "eval_internal.h"
+#include "iadt.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,6 +70,83 @@ static void context_scopes(void)
 	assert(pg_context_lookup(pg_evidence_context(result), field.binder));
 	pg_program_destroy(p);
 	puts("source contexts: pending field and IH scopes survive inert resaves and ordinary lookup");
+}
+
+static void constructor_inputs(void)
+{
+	for (unsigned mode = 0; mode < 5; ++mode) {
+		struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+		assert(p);
+		struct pg_parser parser;
+		struct pg_definition definition;
+		const char *text = "Nat:=@{zero:*;succ:*->*;};";
+		pg_parser_init(&parser, &p->graph, text, strlen(text));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *family = pg_synthesis_request(&p->synthesis,
+			pg_synthesis_root(&p->synthesis), definition.expression);
+		pg_synthesis_advance(&p->synthesis, 10000);
+		const struct pg_evidence *formation = pg_synthesis_result(family);
+		struct pg_inductive_instance instance;
+		assert(formation && pg_inductive_instance(&p->typing, formation, &instance));
+		const struct pg_object *constructor = mode == 3 ? pg_binder(&p->graph)
+			: pg_data_constructor(pg_data_schema_layout(instance.schema), mode == 4 ? 0 : 1);
+		/* A distinct pending parameter producer also avoids reusing the member
+		 * eagerly created by source declaration publication. */
+		const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
+		struct pg_synthesis_job *parameters = pg_synthesis_substitution(&p->synthesis, empty, empty, 0, NULL);
+		struct pg_synthesis_job *initial[] = {pg_synthesis_constructor_value_jobs(&p->synthesis, family, constructor, parameters)};
+		if (mode == 1) {
+			const struct pg_evidence *map = pg_prove_constructor_scope(&p->typing, formation, constructor, instance.parameters);
+			assert(map);
+			const struct pg_context *fields = pg_context_bind(&p->typing, NULL,
+				pg_evidence_context(map)->binder, pg_universe(&p->classifiers, 0));
+			assert(map && pg_synthesis_constructor_scope_at(&p->synthesis, family, constructor, parameters,
+				NULL, fields));
+		}
+		if (mode == 2) pg_synthesis_advance(&p->synthesis, 10000);
+		struct pg_synthesis_job *const *roots = initial;
+		size_t count = 1;
+		for (unsigned round = 0; round < 3; ++round) {
+			uint64_t steps = p->synthesis.steps;
+			FILE *file = tmpfile();
+			assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
+			assert(p->synthesis.steps == steps);
+			pg_program_destroy(p);
+			rewind(file);
+			p = pg_sources_read(file, 10000, &count, &roots);
+			assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(roots[0]));
+			assert(!fclose(file));
+		}
+		struct pg_constructor_input input;
+		assert(!pg_synthesis_constructor_input(&p->synthesis, roots[0], &input));
+		assert(input.allocated == (mode == 1 || mode == 2));
+		pg_synthesis_advance(&p->synthesis, 10000);
+		if (mode == 3) {
+			assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_REJECTED);
+		} else if (mode == 4) {
+			const struct pg_evidence *result = pg_synthesis_result(roots[0]);
+			assert(result && pg_evidence_judgement(result) == PG_JUDGEMENT_VALUE);
+			assert(pg_evidence_subject(result)->core == pg_reference(&p->graph, input.constructor));
+		} else {
+			const struct pg_evidence *result = pg_synthesis_result(roots[0]);
+			assert(result);
+			const struct pg_term *core = pg_evidence_subject(result)->core;
+			assert(core->kind == PG_LAMBDA);
+			if (input.allocated) assert(core->as.lambda.binder == input.fields->binder);
+			const struct pg_term *field = pg_reference(&p->graph, core->as.lambda.binder);
+			const struct pg_term *body = pg_application(&p->graph, pg_reference(&p->graph, input.constructor), field);
+			body = pg_application(&p->graph, pg_reference(&p->graph, &pg_return_operation), body);
+			assert(core == pg_lambda(&p->graph, core->as.lambda.binder, body));
+			const struct pg_term *domain, *codomain;
+			const struct pg_object *binder;
+			assert(pg_pi_view(pg_evidence_classifier(result), &domain, &binder, &codomain));
+			assert(binder == core->as.lambda.binder);
+			assert(domain == pg_evidence_subject(pg_synthesis_result(input.formation))->core);
+			assert(codomain == pg_return_type(&p->classifiers, domain));
+		}
+		pg_program_destroy(p);
+	}
+	puts("source constructor inputs: pending/completed owners, field allocation and invalid labels survive inert resaves");
 }
 
 static void invalid_normalization_mode(FILE *file)
@@ -1081,6 +1159,7 @@ static void retained_process(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "constructor-inputs")) { constructor_inputs(); return 0; }
 	if (argc > 1 && !strncmp(argv[1], "retained-", 9)) {
 		retained_process(argc, argv);
 		return 0;

@@ -1463,7 +1463,29 @@ struct pg_synthesis_job *pg_synthesis_constructor_value_jobs(struct pg_synthesis
 	if (!formation || formation->owner != synthesis->owner_key) return NULL;
 	if (!parameters || parameters->owner != synthesis->owner_key || !constructor) return NULL;
 	const void *inputs[] = {formation, constructor, parameters};
-	return request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs);
+	struct pg_synthesis_job *job = request_inputs(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs);
+	if (!job) return NULL;
+	if (!job->left) job->left = pg_synthesis_constructor_scope(synthesis, formation, constructor, parameters);
+	return job->left ? job : NULL;
+}
+
+int pg_synthesis_constructor_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, struct pg_constructor_input *input)
+{
+	if (!job || !input || job->owner != synthesis->owner_key || job->role != CONSTRUCTOR_VALUE_JOB) return -1;
+	*input = (struct pg_constructor_input){.formation = (void *)job->inputs[0],
+		.parameters = (void *)job->inputs[2], .constructor = job->inputs[1]};
+	const struct pg_synthesis_job *scope = job->left;
+	if (scope->context_allocation) {
+		input->allocated = 1;
+		input->prefix = scope->context_allocation->prefix;
+		input->fields = scope->context_allocation->end;
+	} else if (scope->status == PG_SYNTHESIS_DONE) {
+		input->allocated = 1;
+		input->prefix = pg_evidence_context(pg_evidence_premise(input->parameters->result, 1));
+		input->fields = pg_evidence_context(pg_evidence_premise(scope->result, 1));
+	}
+	return 0;
 }
 
 struct pg_synthesis_job *pg_synthesis_constructor_value(struct pg_synthesis *synthesis,
@@ -3056,8 +3078,6 @@ static void constructor_value_step(struct pg_synthesis *synthesis, struct pg_syn
 {
 	struct pg_synthesis_job *formation_job = (void *)job->inputs[0], *parameter_job = (void *)job->inputs[2];
 	const struct pg_object *constructor = job->inputs[1];
-	if (!job->left) job->left = pg_synthesis_constructor_scope(synthesis, formation_job, constructor, parameter_job);
-	if (!job->left) goto error;
 	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 	const struct pg_evidence *formation = formation_job->result, *parameters = parameter_job->result;

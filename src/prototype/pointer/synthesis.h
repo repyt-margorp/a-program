@@ -616,6 +616,15 @@ struct pg_synthesis_job *pg_synthesis_constructor_value(struct pg_synthesis *syn
 struct pg_synthesis_job *pg_synthesis_constructor_value_jobs(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation, const struct pg_object *constructor,
 	struct pg_synthesis_job *parameters);
+/* Borrowed creation inputs, not a claim that the member is well typed. */
+struct pg_constructor_input {
+	struct pg_synthesis_job *formation, *parameters;
+	const struct pg_object *constructor;
+	int allocated;
+	const struct pg_context *prefix, *fields;
+};
+int pg_synthesis_constructor_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, struct pg_constructor_input *input);
 struct pg_synthesis_job *pg_synthesis_constructor_value_at(struct pg_synthesis *synthesis,
 	const struct pg_evidence *formation, const struct pg_object *constructor,
 	const struct pg_evidence *parameters, const struct pg_context *prefix, const struct pg_context *end);

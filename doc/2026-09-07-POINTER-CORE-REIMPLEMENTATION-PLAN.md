@@ -907,6 +907,22 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   load: pending constructor producer records and allocation contexts still
   need to be connected to this payload. The normal source gate still reports
   the four known constructor/Match exact-input failures, not new failures.
+- [x] September 12: transport explicitly selected prepared constructor members
+  through the ordinary source producer DAG. APGSRC16/17 use APGRET2 for shared
+  raw constructor references, complete field allocations and unaccepted rules;
+  APGDRV6 is unchanged. Formation and parameter inputs remain producer edges.
+  Register the existing field-scope dependency when registering the member so
+  allocations can be attached before execution. Loading and repeated resaving
+  do not run Solve or accept stored field annotations. Tests cover pending and
+  completed inputs, deliberately incorrect stored field types, invalid labels,
+  nullary values and three destructive resaves. Also fix source producers that
+  are rule origins: their producer record selects the source variant only;
+  separate origin records retain rule provenance. Sanitized full synthesis,
+  constructor-input and normalization tests pass. The full normal source-image
+  gate still reports exactly four source-only constructor/Match input-identity
+  failures; its other cases pass. The source-only constructor/Match allocation
+  reconnection and partial field-generation checkpoints remain outstanding;
+  this explicit-input transport does not close either requirement.
 - [x] Add `pg_synthesis_constructor_scope_at` as allocation input to the same
   constructor-scope job, not another synthesis rule. Share the existing
   telescope binder-list storage/attachment helper (`context_allocation`). The
