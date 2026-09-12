@@ -39,6 +39,15 @@ static void indexed_ih_fiber(struct pg_program *p, const struct pg_evidence *for
 	const struct pg_context *with_ih = pg_evidence_context(pg_evidence_premise(scope, 1));
 	const struct pg_term *expected = pg_thunk_type(&p->classifiers,
 		pg_return_type(&p->classifiers, pg_evidence_classifier(field)));
+	const struct pg_term *function;
+	if (pg_thunk_type_view(pg_evidence_classifier(field), &function)) {
+		expected = pg_evidence_classifier(field);
+		const struct pg_evidence *z = pg_prove_variable(&p->typing, mc, pg_evidence_context(mc)->binder);
+		const struct pg_evidence *dependent = pg_prove_return_type(&p->typing, &p->classifiers,
+			pg_prove_identity_type(&p->typing, pg_prove_classifier(&p->typing, &p->classifiers, mc, z), z, z));
+		assert(dependent);
+		assert(!pg_prove_induction_scope(&p->typing, &p->classifiers, formation, next, parameters, mc, dependent));
+	}
 	assert(pg_alpha_equal(with_ih->declared_type, expected) == 1);
 }
 
@@ -95,6 +104,23 @@ static void indexed_family_roundtrip(const char *source)
 		assert(pg_synthesis_inductive_instance_result(recovery, &instance) && instance.indices);
 		assert(instance.formation == family);
 		if (pg_data_constructor_count(instance.schema) == 2) indexed_ih_fiber(p, family);
+		if (pg_synthesis_definition(roots[0], (struct pg_token){.kind = PG_TOKEN_IDENT, .text = "expected", .length = 8})) {
+			const char *names[] = {"main", "expected"};
+			const struct pg_evidence *results[2];
+			for (size_t i = 0; i < 2; ++i) {
+				struct pg_synthesis_job *nf = pg_program_evaluate_name(p, roots[0],
+					(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[i], .length = strlen(names[i])}, 1);
+				assert(nf);
+				while (pg_synthesis_status(nf) == PG_SYNTHESIS_PENDING) {
+					assert(p->synthesis.steps < 100000);
+					pg_synthesis_advance(&p->synthesis, chunk);
+				}
+				results[i] = pg_prove_return_value(&p->typing, pg_synthesis_result(nf));
+				assert(results[i]);
+			}
+			assert(pg_alpha_equal(pg_evidence_classifier(results[0]), pg_evidence_classifier(results[1])) == 1);
+			assert(pg_alpha_equal(pg_evidence_subject(results[0])->core, pg_evidence_subject(results[1])->core) == 1);
+		}
 		pg_program_destroy(p);
 	}
 }
@@ -118,6 +144,10 @@ static void indexed_family_sources(void)
 		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
 		"steps:=\\i:Nat=>\\v:D i=>v @mk k=>Nat.zero @next k rest=>Nat.succ *rest;"
 		"main:=steps (Nat.succ Nat.zero) (D.next Nat.zero (D.mk Nat.zero)); Fiber:=D (Nat.succ Nat.zero);");
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:((k:Nat)->* k)->* Nat.zero;};"
+		"steps:=\\i:Nat=>\\v:D i=>v @mk k=>Nat.zero @next down=>Nat.succ (*down Nat.zero);"
+		"main:=steps Nat.zero (D.next &(\\k:Nat=>D.mk k)); expected:=Nat.succ Nat.zero; Fiber:=D Nat.zero;");
 	const char *invalid[] = {
 		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
 			"bad:=D.next Nat.zero (D.mk (Nat.succ Nat.zero));",

@@ -182,6 +182,16 @@ const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
 	const struct pg_evidence *parameters,
 	const struct pg_evidence *source, const struct pg_evidence *motive,
 	const struct pg_evidence *destination, const struct pg_evidence *value);
+/* IH classifier from the field's checked type. Function fields open their Pi
+ * telescope and sequence its pure returned recursive value into the motive.
+ * The motive may depend on indices/arguments, but not on that returned value.
+ * Direct fields retain fully dependent motive substitution. No value is
+ * extracted from a neutral computation; this builds type formation only. */
+const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters, const struct pg_evidence *motive_context,
+	const struct pg_evidence *motive, const struct pg_evidence *context,
+	const struct pg_evidence *field);
 /* Dependent case elimination (no recursive IH). Motive is a computation-type
  * formation in destination,indices,z:Family indices. Branches are already
  * synthesized computations in destination, ordered by the schema, curried
@@ -194,11 +204,12 @@ const struct pg_evidence *pg_prove_match(struct pg_typing *typing,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches);
-/* Conditional induction branch context for direct Self or Self indices fields.
+/* Conditional induction branch context for supported recursive field shapes.
  * Returns the constructor field substitution projected into a destination
- * extended by one IH : U(motive[field/z]) per recursive field, in field order.
+ * extended by one IH value per recursive field, in field order. Direct fields
+ * use U(motive[field/z]); function fields use the checked mapped Pi telescope.
  * IHs are assumptions, not proven inhabitants or a completed induction rule.
- * Non-direct recursive field shapes currently return NULL, never omit an IH. */
+ * Unsupported recursive shapes return NULL, never omit an IH. */
 const struct pg_evidence *pg_prove_induction_scope(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
@@ -210,9 +221,9 @@ const struct pg_evidence *pg_prove_induction_scope_at(struct pg_typing *typing,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_context *allocation);
-/* Direct indexed induction. Branches abstract fields, then the IH values
+/* Indexed induction. Branches abstract fields, then the IH values
  * from induction_scope. No unrestricted recursive function enters their
- * typing context. Pi-shaped recursive fields remain unsupported. */
+ * typing context. Function fields sequence their pure result into recursion. */
 /* Immutable construction inputs, not evidence. Context annotations are not
  * trusted: only their binder identities are used by ordinary scope checking.
  * All borrowed objects/contexts must outlive construction and the proof. */

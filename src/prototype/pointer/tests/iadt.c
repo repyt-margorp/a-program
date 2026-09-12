@@ -77,9 +77,22 @@ static void positive_fields(void)
 	const struct pg_term *positive = pg_thunk_type(&classifiers,
 		pg_pi(&graph, a, x, pg_return_type(&classifiers, fiber)));
 	assert(pg_data_field_positive(positive, self, 1) == 1);
+	assert(pg_data_recursive_field(recursive, self) == 1);
+	assert(pg_data_recursive_field(positive, self) == 1);
+	assert(pg_data_recursive_field(pg_thunk_type(&classifiers, pg_return_type(&classifiers, fiber)), self) == 1);
+	assert(pg_data_recursive_field(a, self) == 0);
+	static const struct pg_object_class label_class = {"test-effect"};
+	static const struct pg_object label = {PG_SEMANTIC_OBJECT, &label_class};
+	const struct pg_object *op = &label;
+	const struct pg_effect_row *effects = pg_effect_row(&graph, 1, &op);
+	assert(effects);
+	assert(pg_data_recursive_field(pg_thunk_type(&classifiers,
+		pg_pi(&graph, a, x, pg_effect_type(&classifiers, effects, fiber))), self) == -1);
 	const struct pg_term *negative = pg_thunk_type(&classifiers,
 		pg_pi(&graph, recursive, x, pg_return_type(&classifiers, a)));
 	assert(pg_data_field_positive(negative, self, 0) == 0);
+	assert(pg_data_recursive_field(negative, self) == -1);
+	assert(pg_data_recursive_field(pg_application(&graph, recursive, recursive), self) == -1);
 	/* Double negation is not strict positivity. */
 	assert(pg_data_field_positive(pg_thunk_type(&classifiers,
 		pg_pi(&graph, negative, x, pg_return_type(&classifiers, a))), self, 0) == 0);

@@ -77,6 +77,9 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p recursive expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p twoSteps twoExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p mixed expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p indexed indexedExpected
 	$(BUILD)/parse_files $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 	bash $(ROOT)tests/syntax_inventory.sh $(BUILD)/parse_files
 

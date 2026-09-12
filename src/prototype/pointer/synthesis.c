@@ -3502,7 +3502,7 @@ static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synt
 		const struct pg_context *source_fields = pg_evidence_context(pg_evidence_premise(map, 0));
 		size_t next = fields;
 		for (size_t i = fields; i; --i, source_fields = source_fields->parent)
-			recursive[i - 1] = pg_data_direct_recursion(source_fields->declared_type, self) == 1;
+			recursive[i - 1] = pg_data_recursive_field(source_fields->declared_type, self) == 1;
 		for (size_t i = 0; scope && i < fields; ++i) {
 			if (!recursive[i]) continue;
 			if (next == total) { scope = NULL; break; }
@@ -4321,7 +4321,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			size_t count = branch->clause->item_count, total = count;
 			const struct pg_context *field = pg_evidence_context(fields);
 			for (size_t i = 0; i < count; ++i, field = field->parent) {
-				int recursive = pg_data_direct_recursion(field->declared_type, self);
+				int recursive = pg_data_recursive_field(field->declared_type, self);
 				if (recursive < 0) goto unsupported;
 				if (recursive && total == SIZE_MAX) goto error;
 				total += recursive != 0;
@@ -4569,17 +4569,16 @@ static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synth
 	const struct pg_object *self = pg_evidence_context(pg_evidence_premise(formation, 0))->binder;
 	while (state->next < fields->count) {
 		size_t i = state->next++;
-		int recursive = pg_data_direct_recursion(pg_evidence_context(fields->entries[i].extension)->declared_type, self);
+		int recursive = pg_data_recursive_field(pg_evidence_context(fields->entries[i].extension)->declared_type, self);
 		if (!recursive) continue;
 		if (recursive < 0) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		const struct pg_evidence *field = pg_prove_projection(synthesis->typing, context,
 			pg_evidence_premise(map, pg_evidence_premise_count(parameters) + 1 + i));
-		const struct pg_evidence *ih = pg_prove_inductive_motive_at(synthesis->typing, synthesis->classifiers,
+		const struct pg_evidence *ih = pg_prove_inductive_hypothesis_type(synthesis->typing, synthesis->classifiers,
 			formation, parameters, motive_context, motive, context, field);
 		if (!ih) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		struct pg_synthesis_job *at_field = pg_synthesis_evidence(synthesis, ih);
-		struct pg_derivation_input thunk = {.rule = PG_THUNK_TYPE_FORM, .count = 1};
-		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, context), pg_synthesis_rule(synthesis, &thunk, &at_field, NULL, NULL)};
+		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, context), at_field};
 		struct pg_derivation_input extend = {.rule = PG_CONTEXT_EXTEND, .count = 2};
 		if (job->context_allocation) {
 			struct context_allocation *allocation = job->context_allocation;

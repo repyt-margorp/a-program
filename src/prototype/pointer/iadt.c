@@ -8,7 +8,7 @@ static const struct pg_object_class family_class = {"data-family"};
 static const struct pg_object_class match_action_class = {"match-action"};
 static const struct pg_object match_action = {PG_SEMANTIC_OBJECT, &match_action_class};
 
-int pg_data_direct_recursion(const struct pg_term *type, const struct pg_object *self)
+static int direct_recursion(const struct pg_term *type, const struct pg_object *self)
 {
 	if (!type || !self || self->kind != PG_BINDER) return -1;
 	const struct pg_term *head = type;
@@ -18,6 +18,22 @@ int pg_data_direct_recursion(const struct pg_term *type, const struct pg_object 
 	}
 	if (head->kind == PG_REFERENCE && head->as.reference == self) return 1;
 	return pg_term_independent(type, self) == 1 ? 0 : -1;
+}
+
+int pg_data_recursive_field(const struct pg_term *type, const struct pg_object *self)
+{
+	int direct = direct_recursion(type, self);
+	if (direct >= 0) return direct;
+	if (!type || !self || self->kind != PG_BINDER) return -1;
+	if (!pg_thunk_type_view(type, &type)) return -1;
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	while (pg_pi_view(type, &domain, &binder, &codomain)) {
+		if (binder == self || pg_term_independent(domain, self) != 1) return -1;
+		type = codomain;
+	}
+	if (!pg_return_type_view(type, &type)) return -1;
+	return direct_recursion(type, self) == 1 ? 1 : -1;
 }
 
 struct pg_constructor {

@@ -425,12 +425,14 @@ static const struct pg_evidence *pi_body(struct pg_typing *typing,
 	struct pending {
 		const struct pg_evidence *argument;
 		struct evidence_frame *frames;
+		size_t thunks;
 		struct pending *next;
 	};
 	struct pg_graph temporary = {0};
 	struct pending *pending = NULL;
 	struct evidence_frame *frames = NULL;
 	const struct pg_evidence *result = NULL;
+	size_t thunks = 0;
 	while (pi) {
 		switch (pi->rule) {
 		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
@@ -443,17 +445,24 @@ static const struct pg_evidence *pi_body(struct pg_typing *typing,
 		}
 		case PG_TYPE_CONVERSION:
 			pi = pi->premises[0]; break;
+		case PG_THUNK_CONTENT:
+			++thunks; pi = pi->premises[0]; break;
+		case PG_THUNK_TYPE_FORM:
+			if (!thunks) goto done;
+			--thunks; pi = pi->premises[0]; break;
 		case PG_PI_CODOMAIN: {
 			struct pending *next = pg_alloc(&temporary, sizeof(*next));
 			if (!next) goto done;
-			*next = (struct pending){argument, frames, pending};
+			*next = (struct pending){argument, frames, thunks, pending};
 			pending = next;
 			frames = NULL;
+			thunks = 0;
 			argument = pi->premises[1];
 			pi = pi->premises[0];
 			break;
 		}
 		case PG_PI_FORM: {
+			if (thunks) goto done;
 			const struct pg_evidence *extended = pi->premises[1];
 			const struct pg_evidence *map = evidence_map(typing, extended->premises[0], frames);
 			map = pg_prove_substitution_pair(typing, map, extended, argument);
@@ -461,6 +470,7 @@ static const struct pg_evidence *pi_body(struct pg_typing *typing,
 			if (!pending) { result = pi; goto done; }
 			argument = pending->argument;
 			frames = pending->frames;
+			thunks = pending->thunks;
 			pending = pending->next;
 			break;
 		}
@@ -873,6 +883,51 @@ const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
 	return pg_prove_reindex(typing, map, motive);
 }
 
+const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters, const struct pg_evidence *motive_context,
+	const struct pg_evidence *motive, const struct pg_evidence *context,
+	const struct pg_evidence *field)
+{
+	if (!pg_evidence_owned_by(field, typing) || field->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (!context_proof(typing, context) || field->context != context->context) return NULL;
+	const struct pg_term *type;
+	if (!pg_thunk_type_view(field->classifier, &type)) {
+		const struct pg_evidence *at = pg_prove_inductive_motive_at(typing, classifiers,
+			formation, parameters, motive_context, motive, context, field);
+		return pg_prove_thunk_type(typing, classifiers, at);
+	}
+	const struct pg_evidence *scope = context;
+	const struct pg_evidence *call = pg_prove_force(typing, field);
+	const struct pg_evidence *classifier = pg_prove_classifier(typing, classifiers, scope, call);
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	while (classifier && pg_pi_view(classifier->subject->core, &domain, &binder, &codomain)) {
+		binder = pg_binder(typing->graph);
+		const struct pg_evidence *argument_type = pg_prove_pi_domain(typing, classifier);
+		scope = pg_prove_context_extension(typing, scope, binder, argument_type);
+		if (!scope) return NULL;
+		call = pg_prove_application(typing, pg_prove_projection(typing, scope, call),
+			pg_prove_variable(typing, scope, binder));
+		classifier = pg_prove_classifier(typing, classifiers, scope, call);
+	}
+	if (!classifier || !pg_return_type_view(classifier->subject->core, &type)) return NULL;
+	const struct pg_evidence *returned_type = pg_prove_return_content(typing, classifier);
+	binder = pg_binder(typing->graph);
+	const struct pg_evidence *returned = pg_prove_context_extension(typing, scope, binder, returned_type);
+	const struct pg_evidence *at = pg_prove_inductive_motive_at(typing, classifiers,
+		formation, parameters, motive_context, motive, returned, pg_prove_variable(typing, returned, binder));
+	/* Fold the returned recursive value once. Its result classifier must not
+	 * escape with that value's binder; indices may depend on the Pi arguments. */
+	at = pg_prove_pi_constant_codomain(typing,
+		pg_prove_pi(typing, classifiers, returned_type, returned, at));
+	while (at && scope->context != context->context) {
+		at = pg_prove_pi(typing, classifiers, scope->premises[1], scope, at);
+		scope = scope->premises[0];
+	}
+	return pg_prove_thunk_type(typing, classifiers, at);
+}
+
 static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
@@ -899,7 +954,7 @@ static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 	if (count && !recursive_fields) goto done;
 	size_t recursive_count = 0;
 	for (size_t i = count; i; --i, fields = fields->premises[0]) {
-		int recursive = pg_data_direct_recursion(fields->context->declared_type, self);
+		int recursive = pg_data_recursive_field(fields->context->declared_type, self);
 		if (recursive < 0) goto done;
 		recursive_fields[i - 1] = (unsigned char)recursive;
 		recursive_count += (size_t)recursive;
@@ -924,9 +979,8 @@ static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 	for (size_t i = 0; i < count; ++i) {
 		if (!recursive_fields[i]) continue;
 		const struct pg_evidence *field = pg_prove_projection(typing, context, map->premises[prefix + 3 + i]);
-		const struct pg_evidence *ih = pg_prove_inductive_motive_at(typing, classifiers, formation, parameters,
+		const struct pg_evidence *ih = pg_prove_inductive_hypothesis_type(typing, classifiers, formation, parameters,
 			motive_context, motive, context, field);
-		ih = pg_prove_thunk_type(typing, classifiers, ih);
 		const struct pg_object *binder = retained ? ih_binders[next_ih++] : pg_binder(typing->graph);
 		context = pg_prove_context_extension(typing, context, binder, ih);
 		if (!context) goto done;
@@ -973,6 +1027,39 @@ const struct pg_evidence *pg_prove_induction_case(struct pg_typing *typing,
 	return pg_prove_abstract(typing, classifiers, parameters->premises[1], context, body);
 }
 
+static const struct pg_term *induction_field_core(struct pg_graph *graph,
+	const struct pg_term *type, const struct pg_term *ih_type,
+	const struct pg_term *field, const struct pg_object *recursion)
+{
+	const struct pg_term *call = pg_reference(graph, recursion);
+	if (!pg_thunk_type_view(type, &type))
+		return pg_application(graph, pg_reference(graph, &pg_thunk_operation),
+			pg_application(graph, call, field));
+	if (!pg_thunk_type_view(ih_type, &ih_type)) return NULL;
+	struct argument { const struct pg_object *binder; struct argument *previous; };
+	struct pg_graph temporary = {0};
+	struct argument *arguments = NULL;
+	const struct pg_term *body = pg_application(graph, pg_reference(graph, &pg_force_operation), field);
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	while (pg_pi_view(type, &domain, &binder, &codomain)) {
+		type = codomain;
+		if (!pg_pi_view(ih_type, &domain, &binder, &ih_type)) { body = NULL; goto done; }
+		struct argument *argument = pg_alloc(&temporary, sizeof(*argument));
+		if (!argument) { body = NULL; goto done; }
+		*argument = (struct argument){binder, arguments};
+		arguments = argument;
+		body = pg_application(graph, body, pg_reference(graph, binder));
+	}
+	body = pg_computation_fold(graph, body, call, 0, NULL);
+	for (; body && arguments; arguments = arguments->previous)
+		body = pg_lambda(graph, arguments->binder, body);
+	body = pg_application(graph, pg_reference(graph, &pg_thunk_operation), body);
+done:
+	pg_graph_destroy(&temporary);
+	return body;
+}
+
 static const struct pg_term *induction_branch_core(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_evidence *parameters,
 	const struct pg_evidence *map, const struct pg_evidence *branch,
@@ -982,23 +1069,31 @@ static const struct pg_term *induction_branch_core(struct pg_typing *typing,
 	size_t count = map->premise_count - offset;
 	struct pg_graph temporary = {0};
 	const struct pg_term **types = pg_alloc(&temporary, count * sizeof(*types));
+	const struct pg_term **ih_types = pg_alloc(&temporary, count * sizeof(*ih_types));
 	const struct pg_term *result = NULL;
-	if (count && !types) goto done;
+	if (count && (!types || !ih_types)) goto done;
 	const struct pg_evidence *fields = map->premises[0];
 	for (size_t i = count; i; --i, fields = fields->premises[0])
 		types[i - 1] = fields->context->declared_type;
 	const struct pg_object *self = formation->premises[0]->context->binder;
+	const struct pg_context *ih_context = map->premises[1]->context;
+	for (size_t i = count; i; --i) {
+		int recursive = pg_data_recursive_field(types[i - 1], self);
+		if (recursive < 0) goto done;
+		if (!recursive) continue;
+		if (!ih_context->parent) goto done;
+		ih_types[i - 1] = ih_context->declared_type;
+		ih_context = ih_context->parent;
+	}
 	const struct pg_term *body = branch->subject->core;
 	for (size_t i = 0; i < count; ++i)
 		body = pg_application(typing->graph, body, map->premises[offset + i]->subject->core);
 	for (size_t i = 0; i < count; ++i) {
-		int recursive = pg_data_direct_recursion(types[i], self);
-		if (!recursive) continue;
-		if (recursive < 0) goto done;
-		const struct pg_term *call = pg_application(typing->graph, pg_reference(typing->graph, recursion),
-			map->premises[offset + i]->subject->core);
-		body = pg_application(typing->graph, body,
-			pg_application(typing->graph, pg_reference(typing->graph, &pg_thunk_operation), call));
+		if (!ih_types[i]) continue;
+		const struct pg_term *call = induction_field_core(typing->graph, types[i], ih_types[i],
+			map->premises[offset + i]->subject->core, recursion);
+		if (!call) goto done;
+		body = pg_application(typing->graph, body, call);
 	}
 	for (size_t i = count; i; --i) {
 		const struct pg_term *field = map->premises[offset + i - 1]->subject->core;

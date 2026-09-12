@@ -112,10 +112,11 @@ const struct pg_evidence *pg_data_signature_instance(struct pg_typing *typing,
  * inputs to declaration admission merely because this helper returns 1. */
 int pg_data_field_positive(const struct pg_term *type,
 	const struct pg_object *self, size_t index_count);
-/* Direct-IH shape: 1 Self with independent index arguments, 0 Self-independent,
- * -1 other or invalid. Arity/positivity are checked by schema admission.
+/* IH shape: direct Self or U(Pi ... F {} Self), with Self-independent domains
+ * and indices. 1 recursive, 0 Self-independent, -1 other or invalid.
+ * Arity/positivity are checked by schema admission.
  * Shared by IH typing, source binding and erasure; not formation evidence. */
-int pg_data_direct_recursion(const struct pg_term *type, const struct pg_object *self);
+int pg_data_recursive_field(const struct pg_term *type, const struct pg_object *self);
 /* indices extends parameters. Each result is a checked substitution from
  * its field context into indices, leaving the parameter prefix unchanged.
  * Fields and arities are derived from those substitutions, not copied into

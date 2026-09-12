@@ -97,10 +97,23 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   reject escaping result dependencies, partial discharge and excess arity.
   Normal checks/examples/results and the synthesis suite under ASan/UBSan pass;
   unchanged compatibility remains 1/18. This is not dependent motive inference.
+- [x] Extend IH typing and erasure from direct fields to `U(Pi ... F {} Self)`.
+  The shared field-shape check rejects negative domains and effectful results.
+  Ordinary Pi/application evidence opens dependent arguments; motive
+  substitution uses the returned value's own indices. Constant-codomain
+  checking prevents that temporary result binder from escaping. Erasure uses
+  existing Force, Lambda/APP, Fold and Thunk, without an Acc primitive or Replay.
+  Tests cover dependent argument telescopes, mixed direct/function fields,
+  indexed function fields, index-dependent IH classifiers, value-dependent
+  result rejection, and source-image resaves followed by result normalization.
+  Retained Pi-body recovery now follows checked Thunk formation/inversion too.
+  Normal checks/examples/results pass; IADT, indexed source resaves and the
+  function-field runtime cases pass ASan/UBSan. Legacy compatibility stays 1/18.
 - [ ] Infer genuinely dependent source motives, rather than only checking a
   supplied dependent motive in the kernel; restore open family parameters,
-  Pi-shaped recursive fields (Acc), and function graph/witness generation.
-  Direct indexed IH support is not completion of Acc or the property milestone.
+  general dependent IH results and function graph/witness generation.
+  Function-field IH support is not completion of Acc or the property milestone:
+  the unchanged Acc source still stops at the neutral type-family parameter R.
 
 The compatibility gate is 1/18; remaining cases are UNSUPPORTED, not expected failures.
 The generated length fixture still stops at `*length` resolution. These
