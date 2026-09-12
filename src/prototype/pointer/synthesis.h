@@ -86,7 +86,8 @@ struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *s
 	struct pg_synthesis_job *origin);
 /* Retain the raw induction allocation of a recursive source Match. Its
  * source branches/motive are still synthesized; the ordinary induction rule
- * validates the supplied allocation. This does not accept the origin proof. */
+ * validates the supplied allocation. Registration accepts no proof; restoring
+ * branch contexts waits for ordinary validation of the origin input. */
 struct pg_synthesis_job *pg_synthesis_restore_match(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
@@ -656,6 +657,12 @@ struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synth
 	struct pg_synthesis_job *formation, const struct pg_object *constructor,
 	struct pg_synthesis_job *parameters, struct pg_synthesis_job *motive_context,
 	struct pg_synthesis_job *motive);
+/* Restore the IH suffix over the existing constructor field context. Only
+ * binder identities are reused; motive substitution checks each IH type. */
+struct pg_synthesis_job *pg_synthesis_induction_scope_at(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *formation, const struct pg_object *constructor,
+	struct pg_synthesis_job *parameters, struct pg_synthesis_job *motive_context,
+	struct pg_synthesis_job *motive, const struct pg_context *fields, const struct pg_context *end);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
  * Requests do not reduce; unsupported neutral heads are not negative proofs.

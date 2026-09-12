@@ -941,6 +941,29 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   substitute the final clause contexts for source branch contexts merely
   because they are alpha-equivalent. Cover neutral recursive Match and the
   separate computation-scrutinee sequencing allocation before closing retention.
+- [x] Recover source branch field/IH identities from checked origin Lambdas.
+  The Match job waits for its existing origin derivation through ordinary Solve,
+  then reads each abstracted context from the Lambda/Pi premises. Constructor
+  scope restoration validates the field prefix/count; the source motive binder
+  is retained while its type is recomputed. `pg_synthesis_induction_scope_at`
+  reuses the existing scope worker and context-allocation vector for the IH
+  suffix. Motive substitution recomputes IH types; short/long suffixes, wrong
+  prefixes, conflicting/late attachments fail. This adds no wire format, proof
+  rule or alternative acceptance path. The saved branch conclusion is not used
+  as the source branch result. Tests compare all leading branch Lambda binders
+  after three inert resaves and check valid/wrong-type/short/long/wrong-prefix
+  suffixes with one-step and 64-step budgets. Normal and sanitized full synthesis
+  and expanded Match-origin tests pass; sanitized module tests pass 758 snapshots.
+  Both source-image gates retain only the two known source-only Match failures.
+  The two source-only Match failures remain: first difference is now
+  `aaabfbffbfbbabffbba`, inside the branch body rather than its field/IH binders.
+- [ ] Trace the remaining branch-body application allocation owner. In
+  particular, compare the restored lexical context producer with the producer
+  selected by newly synthesized `bind_context`: imported derivation jobs and
+  evidence jobs can validate the same context without being the same source
+  scope key. This is a hypothesis to verify, not permission to merge scopes or
+  arbitrary proofs by Core equality. Preserve source obligations and exact
+  binder identity; do not replace branch synthesis with its saved conclusion.
 - [x] Route declaration exports and instantiated members through
   `pg_synthesis_constructor_value`. Its `_at` entry attaches the existing
   field-scope allocation before that scope executes; both entries return the

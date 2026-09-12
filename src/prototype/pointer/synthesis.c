@@ -1554,6 +1554,16 @@ struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synth
 	return request_inputs(synthesis, INDUCTION_SCOPE_JOB, 5, inputs);
 }
 
+struct pg_synthesis_job *pg_synthesis_induction_scope_at(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *formation, const struct pg_object *constructor,
+	struct pg_synthesis_job *parameters, struct pg_synthesis_job *motive_context,
+	struct pg_synthesis_job *motive, const struct pg_context *fields, const struct pg_context *end)
+{
+	struct pg_synthesis_job *job = pg_synthesis_induction_scope(synthesis, formation, constructor, parameters, motive_context, motive);
+	if (!job || context_allocation_at(synthesis, job, fields, end, job->substitution != NULL)) return NULL;
+	return job;
+}
+
 static int typed_input(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *proof)
 {
@@ -3704,9 +3714,36 @@ static struct pg_synthesis_job *projected_image(struct pg_synthesis *synthesis,
 	return pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
 }
 
+/* The stored derivation is checked by ordinary Solve. Its Lambda contexts
+ * supply allocation identity only; source bodies are still synthesized. */
+static const struct pg_evidence *source_match_branch_context(const struct pg_synthesis_job *job,
+	size_t ordinal, size_t count)
+{
+	const struct pg_evidence *origin = pg_synthesis_result(job->allocation_origin);
+	if (!origin || pg_evidence_rule(origin) != PG_INDUCTION_ELIM) return NULL;
+	if (pg_evidence_premise_count(origin) < 6 || ordinal >= pg_evidence_premise_count(origin) - 6) return NULL;
+	const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(origin, 2), 1);
+	const struct pg_evidence *branch = pg_evidence_premise(origin, ordinal + 5);
+	for (size_t i = 0; i < count; ++i) {
+		if (pg_evidence_rule(branch) != PG_LAMBDA_INTRO) return NULL;
+		const struct pg_evidence *pi = pg_evidence_premise(branch, 0);
+		const struct pg_evidence *extension = pg_evidence_premise(pi, 1);
+		if (pg_evidence_rule(extension) != PG_CONTEXT_EXTEND ||
+			pg_evidence_context(extension)->parent != pg_evidence_context(context)) return NULL;
+		context = extension;
+		branch = pg_evidence_premise(branch, 1);
+	}
+	return context;
+}
+
 static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->result) goto complete;
+	if (job->allocation_origin) {
+		struct pg_synthesis_job *origin = job->allocation_origin;
+		if (origin->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, origin); return; }
+		if (origin->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, origin->status); return; }
+	}
 	if (!job->left) {
 		job->left = pg_synthesis_request(synthesis, job->scope, job->syntax->left);
 		depend(synthesis, job, job->left);
@@ -3779,6 +3816,12 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		size_t ordinal;
 		if (!pg_data_constructor_position(layout, constructor, &ordinal)) goto rejected;
 		if (state->branches[ordinal].clause) goto rejected;
+		if (job->allocation_origin) {
+			const struct pg_evidence *saved = source_match_branch_context(job, ordinal, clause->item_count);
+			if (!saved || !pg_synthesis_constructor_scope_at(synthesis,
+				pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
+				pg_synthesis_evidence(synthesis, state->instance.parameters), pg_evidence_context(context), pg_evidence_context(saved))) goto rejected;
+		}
 		struct pg_synthesis_job *scope_job = pg_synthesis_constructor_scope(synthesis,
 			pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
 			pg_synthesis_evidence(synthesis, state->instance.parameters));
@@ -3843,8 +3886,13 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (!state->motive_job) {
 			struct pg_synthesis_job *family = pg_synthesis_reindex(synthesis, state->instance.parameters, state->instance.formation);
 			struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, context), family};
-			struct pg_derivation_input extend = {.rule = PG_CONTEXT_EXTEND, .count = 2,
-				.parameters.binder = pg_binder(synthesis->typing->graph)};
+			struct pg_derivation_input extend = {.rule = PG_CONTEXT_EXTEND, .count = 2};
+			if (job->allocation_origin) {
+				const struct pg_evidence *saved = pg_evidence_premise(job->allocation_origin->result, 4);
+				if (pg_evidence_rule(saved) != PG_CONTEXT_EXTEND ||
+					pg_evidence_context(saved)->parent != pg_evidence_context(context)) goto rejected;
+				extend.parameters.binder = pg_evidence_context(saved)->binder;
+			} else extend.parameters.binder = pg_binder(synthesis->typing->graph);
 			state->motive_context_job = pg_synthesis_rule(synthesis, &extend, premises, NULL, NULL);
 			premises[0] = state->motive_context_job;
 			premises[1] = pg_synthesis_evidence(synthesis, state->motive);
@@ -3860,6 +3908,24 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	if (state->induction && state->prepared < state->count) {
 		struct match_branch *branch = &state->branches[state->prepared];
 		const struct pg_object *constructor = pg_data_constructor(layout, state->prepared);
+		if (job->allocation_origin) {
+			const struct pg_evidence *fields = pg_data_schema_fields(state->instance.schema, constructor);
+			const struct pg_object *self = pg_evidence_context(pg_evidence_premise(state->instance.formation, 0))->binder;
+			size_t count = branch->clause->item_count, total = count;
+			const struct pg_context *field = pg_evidence_context(fields);
+			for (size_t i = 0; i < count; ++i, field = field->parent) {
+				int recursive = pg_data_direct_recursion(field->declared_type, self);
+				if (recursive < 0) goto unsupported;
+				if (recursive && total == SIZE_MAX) goto error;
+				total += recursive != 0;
+			}
+			const struct pg_evidence *prefix = source_match_branch_context(job, state->prepared, count);
+			const struct pg_evidence *end = source_match_branch_context(job, state->prepared, total);
+			if (!prefix || !end || !pg_synthesis_induction_scope_at(synthesis,
+				pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
+				pg_synthesis_evidence(synthesis, state->instance.parameters), pg_synthesis_evidence(synthesis, state->motive_context),
+				pg_synthesis_evidence(synthesis, state->motive), pg_evidence_context(prefix), pg_evidence_context(end))) goto rejected;
+		}
 		if (branch->needs_ih) {
 			if (!branch->body) branch->body = pg_synthesis_induction_branch(synthesis, job->inner,
 				state->instance.formation, constructor, state->instance.parameters,
@@ -4071,6 +4137,7 @@ static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
 		if (!job->substitution) {
 			if (pg_alpha_equal(pg_evidence_subject(job->right->result)->core, pg_evidence_context(motive_context)->declared_type) != 1) goto rejected;
+			if (job->context_allocation && job->context_allocation->prefix != pg_evidence_context(pg_evidence_premise(map, 1))) goto rejected;
 			job->substitution = pg_alloc(synthesis->typing->graph, sizeof(*job->substitution));
 			if (!job->substitution) goto error;
 			job->substitution->map = pg_evidence_premise(map, 1);
@@ -4103,12 +4170,18 @@ static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synth
 		struct pg_synthesis_job *at_field = pg_synthesis_reindex_jobs(synthesis, substitution, (void *)job->inputs[3]);
 		struct pg_derivation_input thunk = {.rule = PG_THUNK_TYPE_FORM, .count = 1};
 		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, context), pg_synthesis_rule(synthesis, &thunk, &at_field, NULL, NULL)};
-		struct pg_derivation_input extend = {.rule = PG_CONTEXT_EXTEND, .count = 2, .parameters.binder = pg_binder(synthesis->typing->graph)};
+		struct pg_derivation_input extend = {.rule = PG_CONTEXT_EXTEND, .count = 2};
+		if (job->context_allocation) {
+			struct context_allocation *allocation = job->context_allocation;
+			if (allocation->next == allocation->count) goto rejected;
+			extend.parameters.binder = allocation->binders[allocation->next++];
+		} else extend.parameters.binder = pg_binder(synthesis->typing->graph);
 		job->right = pg_synthesis_rule(synthesis, &extend, premises, NULL, NULL);
 		if (!job->right) goto error;
 		depend(synthesis, job, job->right);
 		return;
 	}
+	if (job->context_allocation && job->context_allocation->next != job->context_allocation->count) goto rejected;
 	size_t count = pg_evidence_premise_count(map) - 2;
 	if (count > SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
 	struct pg_synthesis_job **images = malloc(count * sizeof(*images));

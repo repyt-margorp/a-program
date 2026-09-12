@@ -387,6 +387,47 @@ static struct pg_program *retained_program(const char *text)
 
 struct match_origin_check { struct pg_program *program; size_t count; int solved; };
 
+static void induction_scope_inputs(struct pg_program *p, const struct pg_evidence *proof)
+{
+	const struct pg_evidence *formation = pg_evidence_premise(proof, 1), *parameters = pg_evidence_premise(proof, 2);
+	const struct pg_evidence *motive_context = pg_evidence_premise(proof, 4), *motive = pg_evidence_premise(proof, 0);
+	const struct pg_evidence *branch = pg_evidence_premise(proof, 6);
+	assert(pg_evidence_rule(branch) == PG_LAMBDA_INTRO);
+	const struct pg_context *fields = pg_evidence_context(pg_evidence_premise(pg_evidence_premise(branch, 0), 1));
+	branch = pg_evidence_premise(branch, 1);
+	assert(pg_evidence_rule(branch) == PG_LAMBDA_INTRO);
+	const struct pg_context *end = pg_evidence_context(pg_evidence_premise(pg_evidence_premise(branch, 0), 1));
+	assert(end->parent == fields);
+	struct pg_inductive_instance instance;
+	assert(pg_inductive_instance(&p->typing, formation, &instance));
+	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(instance.schema), 1);
+	for (unsigned mode = 0; mode < 5; ++mode) {
+		struct pg_synthesis restored;
+		assert(!pg_synthesis_init(&restored, &p->typing, &p->classifiers, &p->evaluation, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_synthesis_job *f = pg_synthesis_evidence(&restored, formation), *ps = pg_synthesis_evidence(&restored, parameters);
+		struct pg_synthesis_job *mc = pg_synthesis_evidence(&restored, motive_context), *m = pg_synthesis_evidence(&restored, motive);
+		const struct pg_context *prefix = fields, *allocation = end;
+		if (mode == 1) allocation = pg_context_bind(&p->typing, fields, end->binder, pg_universe(&p->classifiers, 0));
+		if (mode == 2) allocation = fields;
+		if (mode == 3) allocation = pg_context_bind(&p->typing, end, pg_binder(&p->graph), end->declared_type);
+		if (mode == 4) prefix = fields->parent;
+		assert(pg_synthesis_constructor_scope_at(&restored, f, constructor, ps, fields->parent, fields));
+		struct pg_synthesis_job *job = pg_synthesis_induction_scope_at(&restored, f, constructor, ps, mc, m, prefix, allocation);
+		assert(job && !restored.steps && !pg_synthesis_result(job));
+		assert(pg_synthesis_induction_scope(&restored, f, constructor, ps, mc, m) == job);
+		assert(pg_synthesis_induction_scope_at(&restored, f, constructor, ps, mc, m, prefix, allocation) == job);
+		while (restored.ready) {
+			assert(restored.steps < 10000);
+			pg_synthesis_advance(&restored, mode & 1 ? 64 : 1);
+		}
+		assert(pg_synthesis_status(job) == (mode < 2 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED));
+		if (mode < 2) assert(pg_evidence_context(pg_evidence_premise(pg_synthesis_result(job), 1)) == end);
+		const struct pg_context *other = pg_context_bind(&p->typing, fields, pg_binder(&p->graph), end->declared_type);
+		assert(!pg_synthesis_induction_scope_at(&restored, f, constructor, ps, mc, m, fields, other));
+		pg_synthesis_destroy(&restored);
+	}
+}
+
 static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 {
 	struct match_origin_check *check = owner;
@@ -413,6 +454,16 @@ static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 	assert(expected && actual && actual->count == expected->count);
 	assert(actual->self == expected->self && actual->argument == expected->argument && actual->recursion == expected->recursion);
 	for (size_t i = 0; i < actual->count; ++i) assert(actual->clauses[i] == expected->clauses[i]);
+	const struct pg_evidence *saved = pg_synthesis_result(origin), *fresh = pg_synthesis_result(job);
+	for (size_t i = 0; i < actual->count; ++i) {
+		const struct pg_evidence *a = pg_evidence_premise(saved, i + 5), *b = pg_evidence_premise(fresh, i + 5);
+		while (pg_evidence_rule(a) == PG_LAMBDA_INTRO) {
+			assert(pg_evidence_rule(b) == PG_LAMBDA_INTRO);
+			assert(pg_evidence_subject(a)->core->as.lambda.binder == pg_evidence_subject(b)->core->as.lambda.binder);
+			a = pg_evidence_premise(a, 1); b = pg_evidence_premise(b, 1);
+		}
+	}
+	induction_scope_inputs(p, fresh);
 	pg_effect_inference_destroy(&effects);
 	pg_graph_destroy(&storage);
 	return 0;
