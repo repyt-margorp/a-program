@@ -1175,10 +1175,11 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   It compares independently re-synthesized source with the retained derivation
   after three destructive, inert resaves and one-step ordinary Solve. Both
   one-operation and two-operation handlers accept and normalize to the expected
-  value, but exact Core and classifier identity fail for the return clause and
-  every operation clause. This is an allocation-retention failure, not evidence
-  that executing the handler gives a different result. The gate remains failing;
-  it must not be weakened to alpha equality or removed from full acceptance.
+  value. Initially exact Core and classifier identity failed for the return
+  clause and every operation clause. This was an allocation-retention failure,
+  not evidence that executing the handler gives a different result. The simple
+  gate now passes; it must not be weakened to alpha equality or removed from
+  full acceptance.
   Static trace: `pg_synthesis_visit_source_allocations` only exports return-only
   Fold and recursive Match eliminations. `handler_return_step` allocates one
   binder; `handler_clause_step` allocates payload/resumption binders, and
@@ -1192,6 +1193,28 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   interning loses the original context producer and nested application origins.
   No separate replay checker, new Core form, wire-version change or replacement
   of source synthesis with saved evidence is justified by this failure.
+  Implemented: multi-clause handler origins share the existing rule transport;
+  the return binder identifies the allocation site. Restore attaches the origin
+  to the owning handler before any source job runs. Ordinary Solve validates
+  the origin; return clauses reuse the checked context producer, and operation
+  clauses reuse payload, resumption and response-domain binders while building
+  their own contexts from the newly inferred symbolic carrier. The simple
+  one/two-operation gate checks exact clause Core and classifier identity.
+  Still open: `check-handler-nesting`, also required by full acceptance, uses
+  `(\v:D=>k v) req` and `k ((\v:D=>v) req)` in an operation clause. These first
+  exposed an independent source deadlock: completed definition producers were
+  excluded from early named-term projection, so a known domain waited for the
+  whole handler context, which waited for effect collection from that domain.
+  The ready predicate now admits completed term evidence, but not unresolved
+  definitions or namespace-only results. Both nested sources now synthesize and
+  normalize correctly. Their operation-clause classifiers match after resave,
+  but the nested Core still differs: re-created symbolic context producers do
+  not recover the saved lexical allocation sites. Do not mark handler retention
+  complete until this stronger gate passes without importing carrier answers.
+  Verification: normal `check`, handler-origin and operation-origin gates pass;
+  ASan/UBSan full source-image and synthesis suites pass. The nested gate fails
+  only exact Core reuse in the first operation clause; both ordinary evaluation
+  results and all compared clause classifiers agree. Main push remains open.
 - [x] September 9: construct Match field/IH scopes through the same pending
   context-binding path (`SCOPE_CONTEXT_JOB`). `pg_synthesis_bind_hypothesis`
   records only the field-to-IH binder association; it introduces no proof or
