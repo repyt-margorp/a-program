@@ -184,6 +184,10 @@ const struct pg_evidence *pg_prove_inductive_family_function(struct pg_typing *t
 	const struct pg_evidence *parameters);
 /* Checked motive substitution shared by Match, IH construction and Solve.
  * The value's fiber evidence supplies its indices; no expected type input. */
+const struct pg_evidence *pg_prove_inductive_motive_substitution(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters, const struct pg_evidence *source,
+	const struct pg_evidence *destination, const struct pg_evidence *value);
 const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters,
@@ -445,6 +449,14 @@ const struct pg_evidence *pg_prove_substitution_pair(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
 	const struct pg_object *binder);
+/* Solve T[pattern] = body for a computation-type formation T. The checked
+ * substitution must map its suffix to distinct variables and fix prefix.
+ * Unused destination fields are discharged by ordinary Pi formation and
+ * constant-codomain inversion. NULL includes nonpatterns and escaping fields;
+ * this is a proof-producing partial solver, not a new kernel rule. */
+const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
+	const struct pg_evidence *pattern, const struct pg_evidence *body);
 /* Formation inversion retains the parent's universe upper bound. It does not
  * equate universe levels or claim to recover a minimal bound. */
 const struct pg_evidence *pg_prove_thunk_content(struct pg_typing *typing,

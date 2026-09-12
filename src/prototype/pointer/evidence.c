@@ -881,15 +881,12 @@ done:
 /* Pull back along (Gamma projection, actual indices, value). Constructor
  * membership retains its result map; variables retain their fiber formation.
  * This is checked substitution, not a search for an expected result type. */
-const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
+const struct pg_evidence *pg_prove_inductive_motive_substitution(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
-	const struct pg_evidence *parameters,
-	const struct pg_evidence *source, const struct pg_evidence *motive,
+	const struct pg_evidence *parameters, const struct pg_evidence *source,
 	const struct pg_evidence *destination, const struct pg_evidence *value)
 {
 	if (!pg_inductive_motive_context_valid(typing, formation, parameters, source)) return NULL;
-	if (!pg_evidence_owned_by(motive, typing) || motive->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
-	if (motive->context != source->context) return NULL;
 	const struct pg_evidence *prefix = pg_prove_substitution_projection(typing, parameters->premises[1], destination);
 	if (formation->judgement == PG_JUDGEMENT_TYPE_FAMILY) {
 		const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, destination, value);
@@ -901,7 +898,20 @@ const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
 		prefix = pg_prove_substitution_extend(typing, prefix, source->premises[0],
 			count, instance.indices->premises + offset);
 	}
-	const struct pg_evidence *map = pg_prove_substitution_pair(typing, prefix, source, value);
+	return pg_prove_substitution_pair(typing, prefix, source, value);
+}
+
+const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters,
+	const struct pg_evidence *source, const struct pg_evidence *motive,
+	const struct pg_evidence *destination, const struct pg_evidence *value)
+{
+	if (!context_proof(typing, source)) return NULL;
+	if (!pg_evidence_owned_by(motive, typing) || motive->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	if (motive->context != source->context) return NULL;
+	const struct pg_evidence *map = pg_prove_inductive_motive_substitution(typing,
+		classifiers, formation, parameters, source, destination, value);
 	return pg_prove_reindex(typing, map, motive);
 }
 
@@ -2362,6 +2372,89 @@ const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	if (!destination) return NULL;
 	const struct pg_evidence *image = pg_prove_variable(typing, destination, binder);
 	return substitution_pair(typing, substitution, source_extension, destination, image);
+}
+
+struct pattern_variable {
+	struct pg_index_entry index;
+	const struct pg_object *image, *binder;
+};
+
+static const struct pattern_variable *pattern_variable(const struct pg_index *index,
+	const struct pg_object *image)
+{
+	for (struct pg_index_entry *p = pg_index_candidates(index, (uintptr_t)image); p; p = p->next) {
+		const struct pattern_variable *entry = (const void *)p;
+		if (entry->image == image) return entry;
+	}
+	return NULL;
+}
+
+const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
+	const struct pg_evidence *pattern, const struct pg_evidence *body)
+{
+	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!context_proof(typing, prefix) || !substitution_proof(typing, pattern)) return NULL;
+	if (!pg_evidence_owned_by(body, typing)) return NULL;
+	if (body->judgement != PG_JUDGEMENT_COMPUTATION_TYPE || body->context != pattern->context) return NULL;
+	const struct pg_evidence *source = pattern->premises[0], *destination = pattern->premises[1];
+	size_t source_count, destination_count, common;
+	if (pg_context_extension_size(source->context, prefix->context, &source_count)) return NULL;
+	if (pg_context_extension_size(destination->context, prefix->context, &destination_count)) return NULL;
+	if (pg_context_extension_size(prefix->context, NULL, &common)) return NULL;
+	if (source_count > SIZE_MAX / sizeof(struct pattern_variable)) return NULL;
+	if (destination_count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	struct pg_graph temporary = {0};
+	struct pg_index variables = {0};
+	const struct pg_evidence *result = NULL;
+	struct pattern_variable *entries = pg_alloc(&temporary, source_count * sizeof(*entries));
+	const struct pg_evidence **fields = pg_alloc(&temporary, destination_count * sizeof(*fields));
+	if ((source_count && !entries) || (destination_count && !fields)) goto done;
+	if (pg_index_init(&variables)) goto done;
+	const struct pg_evidence *extension = source;
+	for (size_t i = source_count; i; --i, extension = extension->premises[0]) {
+		if (extension->rule != PG_CONTEXT_EXTEND) goto done;
+		const struct pg_term *image = pattern->premises[common + i + 1]->subject->core;
+		if (image->kind != PG_REFERENCE || image->as.reference->kind != PG_BINDER) goto done;
+		if (pattern_variable(&variables, image->as.reference)) goto done;
+		entries[i - 1].image = image->as.reference;
+		entries[i - 1].binder = extension->context->binder;
+		if (pg_index_insert(&variables, &entries[i - 1].index, (uintptr_t)image->as.reference)) goto done;
+	}
+	for (size_t i = common; i; --i, extension = extension->premises[0]) {
+		const struct pg_object *binder = extension->context->binder;
+		if (pattern->premises[i + 1]->subject->core != pg_reference(typing->graph, binder)) goto done;
+		if (pattern_variable(&variables, binder)) goto done;
+	}
+	extension = destination;
+	for (size_t i = destination_count; i; --i, extension = extension->premises[0]) {
+		if (extension->rule != PG_CONTEXT_EXTEND) goto done;
+		fields[i - 1] = extension;
+	}
+	const struct pg_evidence *inverse = pg_prove_substitution_projection(typing, prefix, source);
+	for (size_t i = 0; inverse && i < destination_count; ++i) {
+		const struct pattern_variable *entry = pattern_variable(&variables, fields[i]->context->binder);
+		if (entry) {
+			const struct pg_evidence *image = pg_prove_variable(typing, inverse->premises[1], entry->binder);
+			inverse = pg_prove_substitution_pair(typing, inverse, fields[i], image);
+		} else inverse = pg_prove_substitution_lift(typing, inverse, fields[i], pg_binder(typing->graph));
+	}
+	if (!inverse) goto done;
+	result = pg_prove_reindex(typing, inverse, body);
+	/* Keep every intermediate substitution total and typed. Only then remove
+	 * fresh nuisance fields, checking that the result does not depend on them. */
+	for (extension = inverse->premises[1]; result && extension->context != source->context;
+		extension = extension->premises[0])
+		result = pg_prove_pi_constant_codomain(typing,
+			pg_prove_pi(typing, classifiers, extension->premises[1], extension, result));
+	if (result) {
+		const struct pg_evidence *instance = pg_prove_reindex(typing, pattern, result);
+		if (!instance || pg_alpha_equal(instance->subject->core, body->subject->core) != 1) result = NULL;
+	}
+done:
+	pg_index_destroy(&variables);
+	pg_graph_destroy(&temporary);
+	return result;
 }
 
 const struct pg_evidence *pg_prove_thunk_content(struct pg_typing *typing,

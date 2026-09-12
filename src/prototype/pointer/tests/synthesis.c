@@ -5027,6 +5027,19 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *handled_result = complete(&synthesis,
 		pg_synthesis_return(&synthesis, empty, handled_match), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(handled_result)->core == pg_evidence_subject(zero)->core);
+	const struct pg_evidence *effect_induction = complete(&synthesis, request(&synthesis, effect_scope,
+		"r:=(\\n:Nat=>n @zero=>Choose Nat.zero @succ k=>Nat.succ *k) (Nat.succ Nat.zero);"), PG_SYNTHESIS_DONE);
+	assert(pg_effect_type_view(pg_evidence_classifier(effect_induction), &match_effects, &match_result));
+	assert(match_result == pg_evidence_subject(nat)->core);
+	assert(pg_effect_count(match_effects) == 1 && pg_effect_contains(match_effects, pg_operation_label(choose)) == 1);
+	const struct pg_evidence *handled_induction = complete(&synthesis, request(&synthesis, effect_scope,
+		"r:=((\\n:Nat=>n @zero=>Choose Nat.zero @succ k=>Nat.succ *k) (Nat.succ Nat.zero)) @Choose req resume=>resume req @#.return x=>x;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *induction_result = complete(&synthesis,
+		pg_synthesis_nf(&synthesis, empty, handled_induction), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *one_result = complete(&synthesis, request(&synthesis, named,
+		"r:=Nat.succ Nat.zero;"), PG_SYNTHESIS_DONE);
+	one_result = complete(&synthesis, pg_synthesis_nf(&synthesis, empty, one_result), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(induction_result)->core == pg_evidence_subject(one_result)->core);
 	struct pg_synthesis_job *list = request(&synthesis, named, "List:=&(\\A:@=>@{nil:*; cons:A->*->*;});");
 	complete(&synthesis, list, PG_SYNTHESIS_DONE);
 	named = pg_synthesis_name_job(&synthesis, named,

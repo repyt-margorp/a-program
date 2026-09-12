@@ -200,10 +200,43 @@ an explicit reviewed change to the gate, not a removed negative test.
   general dependent IH results and function graph/witness generation.
   Function-field IH support is not completion of Acc or the property milestone:
   the unchanged Acc source still stops at the neutral type-family parameter R.
-  In the length-to-Unary property example, synthesis currently freezes the base
-  case's classifier as `Unary Nat.zero`, so the recursive IH cannot satisfy
-  `Unary tailLength`. Generate and solve motive constraints across the branches;
-  do not supply the answer from `::` or guess a family from a single base case.
+- [x] Infer the length-to-Unary property's motive from an ordinary APP demand:
+  `M(tail,tailLength,tailGraph) = F E (Unary tailLength)`. The shared APP-domain
+  producer supplies the value-type constraint; independently synthesized
+  branches seed the candidate effect row. An APP domain does not prove purity.
+  For a checked substitution mapping the generic motive variables to distinct
+  branch variables, `pg_prove_pattern_type` constructs an inverse with ordinary
+  substitution pairing/lifting, reindexes the demanded type, and discharges
+  unused fields by Pi constant-codomain inversion. Reinstantiation checks the
+  equation; multiple candidates use shared conversion. All branches must still
+  pass ordinary induction checking. There is no new Core tag or kernel rule,
+  expected-directed `::`, presumed IH evidence, or independent Replay path.
+  The property function now synthesizes unchanged; a direct two-step generated
+  Graph test checks its resulting Unary witness, including reordered clauses.
+  This partial solver collects direct IH arguments in the current lexical scope.
+  Nested scopes, nonvariable/repeated argument patterns and complete recursive
+  effect-row inference remain open, not silently claimed as solved. Computed
+  callees that return functions keep ordinary sequencing, not direct Pi demands.
+  Tests cover typed permutations, fixed prefixes, omitted/escaping fields,
+  nonpatterns, conflicting demands, post-synthesis expectation rejection,
+  effectful induction and handled execution, and source/image result agreement.
+  `check check-examples check-example-results` passes. Core/synthesis and the
+  new rejection tests pass ASan/UBSan; image CLI checks pass with sanitized
+  checker/comparison binaries and the normal fixture writer. Compatibility
+  remains 7/19, so no Main promotion or full-plan completion is claimed.
+
+The unchanged dependent-output fixture still stops later, at
+`packet @returned output graph => lengthOutputUnary one output graph`:
+the branch result `Unary output` depends on a field extracted from the packet.
+Its nonrecursive dependent motive and the surrounding sequencing must be
+derived without letting `output` escape its binder. Do not replace the legacy
+fixture with the direct-constructor test or mark the compatibility gate done.
+
+Reference: [Pientka and Pfenning, Optimizing Higher-Order Pattern Unification,
+2003](https://www.cs.cmu.edu/~fp/papers/cade03.pdf), especially typed substitutions
+and pattern inversion. Our checked partial construction uses pointer binders
+and existing A Program rules; the paper's LF results are not a completeness
+theorem for CBPV, effects, IADT motives or higher Identity in this implementation.
 
 Do not resolve that blocker by assuming an empty effect row proves totality.
 [Effect Handlers, Evidently, extended appendix A](https://xnning.github.io/papers/icfp20evidently-appendix.pdf)
@@ -212,12 +245,10 @@ that inference, not a counterexample established for A Program's declaration
 discipline. The family adapter above instead builds a checked function from
 an existing declaration; general neutral type computation remains unresolved.
 
-The compatibility gate is 1/18; remaining cases are UNSUPPORTED, not expected failures.
-The generated length fixture still stops at `*length` resolution. These
-formation changes are prerequisite work, not completion of Acc/QuickSort
-or the post-hoc property-proof milestone. No independent Replay was added.
-Validation: `check check-examples check-example-results` passes. The scoped
-family kernel tests and indexed source/resave tests also pass ASan/UBSan.
+The latest compatibility gate remains 7/19. Remaining source failures are real
+acceptance blockers, not expected failures. Acc/QuickSort and general post-hoc
+property consumption are not complete. Keep checkpoint/performance work
+subordinate to these source-compatibility requirements.
 Index recovery and indexed Match/direct-IH changes pass the same checks;
 compatibility remains 1/18. Added fixtures are not substituted for legacy gates.
 One disputed legacy fixture, `negative/function_graph_computation_index.p`,

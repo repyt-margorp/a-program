@@ -739,6 +739,49 @@ static void typed_substitution_test(struct pg_graph *graph)
 		pg_prove_return(&typing, &classifiers, destination_y)));
 	assert(!pg_prove_substitution_pair(&typing, type_pair, source, NULL));
 	assert(!pg_prove_substitution_pair(&typing, source, source, destination_y));
+	const struct pg_evidence *fb = pg_prove_return_type(&typing, &classifiers, destination_b);
+	const struct pg_evidence *pattern_type = pg_prove_pattern_type(&typing, &classifiers, empty, sigma, fb);
+	assert(pattern_type && pg_evidence_context(pattern_type) == pg_evidence_context(source));
+	assert(pg_evidence_subject(pattern_type)->core == pg_return_type(&classifiers, pg_reference(graph, a)));
+	reconstruct_derivation(&typing, &classifiers, pattern_type);
+	assert(!pg_prove_pattern_type(&typing, &classifiers, empty, sigma, destination_y));
+	assert(!pg_prove_pattern_type(&typing, &classifiers, source, sigma, fb));
+	assert(!pg_prove_pattern_type(&typing, &classifiers, empty, NULL, fb));
+	assert(!pg_prove_pattern_type(&typing, NULL, empty, sigma, fb));
+	assert(!pg_prove_pattern_type(NULL, &classifiers, empty, sigma, fb));
+	const struct pg_evidence *one_variable_pattern = pg_prove_substitution_pair(&typing, closed, a_scope, destination_b);
+	pattern_type = pg_prove_pattern_type(&typing, &classifiers, empty, one_variable_pattern, fb);
+	assert(pattern_type && pg_evidence_context(pattern_type) == pg_evidence_context(a_scope));
+	assert(pg_evidence_subject(pattern_type)->core == pg_return_type(&classifiers, pg_reference(graph, a)));
+	/* Omitting the type variable cannot justify a result that still uses it. */
+	assert(!pg_prove_pattern_type(&typing, &classifiers, empty, closed, fb));
+	const struct pg_evidence *duplicate_scope = pg_prove_context_extension(&typing, a_scope,
+		pg_binder(graph), pg_prove_projection(&typing, a_scope, universe));
+	const struct pg_evidence *duplicate = pg_prove_substitution_pair(&typing,
+		one_variable_pattern, duplicate_scope, destination_b);
+	assert(duplicate && !pg_prove_pattern_type(&typing, &classifiers, empty, duplicate, fb));
+	const struct pg_evidence *universe_value = pg_prove_type_value(&typing,
+		pg_prove_universe(&typing, &classifiers, empty, 0));
+	const struct pg_evidence *nonvariable = pg_prove_substitution_pair(&typing,
+		pg_prove_substitution_projection(&typing, empty, empty), a_scope, universe_value);
+	assert(nonvariable && !pg_prove_pattern_type(&typing, &classifiers, empty, nonvariable,
+		pg_prove_return_type(&typing, &classifiers, universe_value)));
+	const struct pg_object *extra = pg_binder(graph), *index = pg_binder(graph);
+	const struct pg_evidence *prefix_universe = pg_prove_projection(&typing, a_scope, universe);
+	const struct pg_evidence *extra_scope = pg_prove_context_extension(&typing, a_scope, extra, prefix_universe);
+	const struct pg_evidence *index_scope = pg_prove_context_extension(&typing, a_scope, index, prefix_universe);
+	const struct pg_evidence *extra_value = pg_prove_variable(&typing, extra_scope, extra);
+	const struct pg_evidence *fixed_prefix = pg_prove_substitution_pair(&typing,
+		pg_prove_substitution_projection(&typing, a_scope, extra_scope), index_scope, extra_value);
+	const struct pg_evidence *fextra = pg_prove_return_type(&typing, &classifiers, extra_value);
+	pattern_type = pg_prove_pattern_type(&typing, &classifiers, a_scope, fixed_prefix, fextra);
+	assert(pattern_type && pg_evidence_subject(pattern_type)->core == pg_return_type(&classifiers, pg_reference(graph, index)));
+	const struct pg_evidence *swapped_images[] = {extra_value, pg_prove_variable(&typing, extra_scope, a)};
+	const struct pg_evidence *swapped = pg_prove_substitution(&typing, index_scope, extra_scope, 2, swapped_images);
+	assert(swapped);
+	assert(!pg_prove_pattern_type(&typing, &classifiers, a_scope, swapped, fextra));
+	pattern_type = pg_prove_pattern_type(&typing, &classifiers, empty, swapped, fextra);
+	assert(pattern_type && pg_evidence_subject(pattern_type)->core == pg_return_type(&classifiers, pg_reference(graph, a)));
 	const struct pg_object *c = pg_binder(graph), *z = pg_binder(graph);
 	const struct pg_evidence *c_scope = pg_prove_context_extension(&typing, empty, c, universe);
 	const struct pg_evidence *c_type = pg_prove_variable(&typing, c_scope, c);

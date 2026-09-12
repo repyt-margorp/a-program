@@ -79,12 +79,19 @@ struct declaration_state {
 	struct pg_synthesis_job **producers;
 	size_t indexed, checked;
 };
+struct motive_demand {
+	struct motive_demand *next;
+	const struct pg_object *field;
+	struct pg_synthesis_job *callee, *normalized, *domain;
+	const struct pg_evidence *solution;
+};
 struct match_branch {
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *clause;
 	struct pg_synthesis_job *body;
 	struct pg_synthesis_job *adapted;
 	const struct pg_evidence *function;
+	struct motive_demand *demands;
 	int needs_ih;
 };
 struct match_state {
@@ -93,8 +100,9 @@ struct match_state {
 	const struct pg_evidence *motive;
 	const struct pg_evidence *motive_context;
 	struct pg_synthesis_job *motive_context_job, *motive_job;
-	size_t count, next, checked, prepared;
-	int induction;
+	const struct pg_effect_row *motive_effects;
+	size_t count, next, effect_checked, demanded, checked, prepared;
+	int induction, has_demands;
 	struct match_branch branches[];
 };
 struct family_state {
@@ -1318,6 +1326,15 @@ struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis
 	return pg_synthesis_application_jobs(synthesis, pg_synthesis_evidence(synthesis, context), function, argument);
 }
 
+static struct pg_synthesis_job *application_domain(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *callee)
+{
+	struct pg_synthesis_job *formation = request_job(synthesis, CLASSIFIER_FORMATION_JOB, context, callee);
+	if (!formation) return NULL;
+	struct pg_derivation_input input = {.rule = PG_PI_DOMAIN, .count = 1};
+	return pg_synthesis_rule(synthesis, &input, &formation, NULL, NULL);
+}
+
 struct pg_synthesis_job *pg_synthesis_application_jobs(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *function, struct pg_synthesis_job *argument)
 {
@@ -1326,10 +1343,7 @@ struct pg_synthesis_job *pg_synthesis_application_jobs(struct pg_synthesis *synt
 	if (!argument || argument->owner != synthesis->owner_key) return NULL;
 	struct pg_synthesis_job *callee = pg_synthesis_normalize_classifier_jobs(synthesis, context, function);
 	if (!callee) return NULL;
-	struct pg_synthesis_job *formation = request_job(synthesis, CLASSIFIER_FORMATION_JOB, context, callee);
-	if (!formation) return NULL;
-	struct pg_derivation_input domain_input = {.rule = PG_PI_DOMAIN, .count = 1};
-	struct pg_synthesis_job *domain = pg_synthesis_rule(synthesis, &domain_input, &formation, NULL, NULL);
+	struct pg_synthesis_job *domain = application_domain(synthesis, context, callee);
 	struct pg_synthesis_job *checked = pg_synthesis_expect(synthesis, argument, domain);
 	if (!checked) return NULL;
 	struct pg_derivation_input input = {.rule = PG_APP_ELIM, .count = 2};
@@ -2446,6 +2460,47 @@ static int hypothesis_syntax(const struct pg_syntax *syntax)
 {
 	if (syntax->kind != PG_SYNTAX_APPLICATION || syntax->left->kind != PG_SYNTAX_ATOM) return 0;
 	return syntax->left->token.kind == '*' && syntax->right->kind == PG_SYNTAX_ATOM;
+}
+
+/* Collect ordinary APP domain constraints before assigning an IH classifier.
+ * This fragment stays in the current lexical scope; nested binders require
+ * their own scoped constraint generation. An annotation is never a demand. */
+static int motive_demands(struct pg_synthesis *synthesis, struct match_branch *branch,
+	const struct pg_context *prefix)
+{
+	struct pg_graph temporary = {0};
+	struct marker_task *tasks = NULL;
+	int result = -1;
+	if (marker_push(&temporary, &tasks, branch->clause->right, NULL)) goto done;
+	while (tasks) {
+		const struct pg_syntax *syntax = tasks->syntax;
+		tasks = tasks->next;
+		if (syntax->kind == PG_SYNTAX_EXPECT) {
+			if (marker_push(&temporary, &tasks, syntax->left, NULL)) goto done;
+			continue;
+		}
+		if (syntax->kind != PG_SYNTAX_APPLICATION) continue;
+		if (hypothesis_syntax(syntax->right)) {
+			int depends = branch_needs_ih(branch->scope, prefix, syntax->left);
+			int recursive = branch_needs_ih(branch->scope, prefix, syntax->right);
+			if (depends < 0 || recursive < 0) goto done;
+			if (!depends && recursive) {
+				struct motive_demand *demand = pg_alloc(synthesis->typing->graph, sizeof(*demand));
+				if (!demand) goto done;
+				demand->field = lookup_scope(branch->scope, syntax->right->right->token).binder;
+				demand->callee = pg_synthesis_request(synthesis, branch->scope, syntax->left);
+				if (!demand->callee) goto done;
+				demand->next = branch->demands;
+				branch->demands = demand;
+			}
+		}
+		if (marker_push(&temporary, &tasks, syntax->left, NULL)) goto done;
+		if (marker_push(&temporary, &tasks, syntax->right, NULL)) goto done;
+	}
+	result = 0;
+done:
+	pg_graph_destroy(&temporary);
+	return result;
 }
 
 static int hypothesis_reference(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -4247,6 +4302,109 @@ static const struct pg_evidence *source_match_branch_context(const struct pg_syn
 	return context;
 }
 
+static const struct pg_evidence *match_motive_context(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	if (!state->motive_context_job) {
+		const struct pg_evidence *context = job->allocation_origin
+			? pg_evidence_premise(job->allocation_origin->result, 4)
+			: pg_prove_inductive_motive_context(synthesis->typing, state->instance.formation,
+				state->instance.parameters, pg_binder(synthesis->typing->graph));
+		if (!context) return NULL;
+		if (!pg_inductive_motive_context_valid(synthesis->typing,
+			state->instance.formation, state->instance.parameters, context)) return NULL;
+		state->motive_context_job = pg_synthesis_evidence(synthesis, context);
+	}
+	return state->motive_context_job ? state->motive_context_job->result : NULL;
+}
+
+static void match_demand_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	struct match_branch *branch = &state->branches[state->demanded];
+	struct motive_demand *demand = branch->demands;
+	if (!demand) { ++state->demanded; enqueue(synthesis, job); return; }
+	const struct pg_evidence *context = source_context(branch->scope);
+	if (!demand->normalized) {
+		if (demand->callee->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, demand->callee); return; }
+		if (demand->callee->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, demand->callee->status); return; }
+		const struct pg_evidence *callee = demand->callee->result;
+		if (pg_evidence_judgement(callee) == PG_JUDGEMENT_VALUE) callee = pg_prove_force(synthesis->typing, callee);
+		if (!callee) goto skip;
+		demand->normalized = pg_synthesis_normalize_classifier(synthesis, context, callee);
+		if (!demand->normalized) goto error;
+	}
+	if (demand->normalized->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, demand->normalized); return; }
+	if (demand->normalized->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, demand->normalized->status); return; }
+	const struct pg_term *argument_type, *result_type;
+	const struct pg_object *binder;
+	if (!pg_pi_view(pg_evidence_classifier(demand->normalized->result), &argument_type, &binder, &result_type)) goto skip;
+	if (!demand->domain) demand->domain = application_domain(synthesis,
+		pg_synthesis_evidence(synthesis, context), demand->normalized);
+	if (!demand->domain) goto error;
+	if (demand->domain->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, demand->domain); return; }
+	if (demand->domain->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, demand->domain->status); return; }
+	if (!demand->solution) {
+		const struct pg_evidence *domain = demand->domain->result;
+		const struct pg_evidence *motive_context = match_motive_context(synthesis, job);
+		if (!motive_context) goto skip;
+		const struct pg_evidence *field = pg_prove_variable(synthesis->typing, context, demand->field);
+		const struct pg_evidence *pattern = pg_prove_inductive_motive_substitution(synthesis->typing,
+			synthesis->classifiers, state->instance.formation, state->instance.parameters,
+			motive_context, context, field);
+		const struct pg_evidence *type = pg_prove_effect_type(synthesis->typing,
+			synthesis->classifiers, state->motive_effects, domain);
+		demand->solution = pg_prove_pattern_type(synthesis->typing, synthesis->classifiers,
+			source_context(job->inner), pattern, type);
+		if (!demand->solution) goto skip;
+		if (!state->motive) {
+			state->motive = demand->solution;
+			state->motive_context = motive_context;
+		}
+	}
+	struct pg_synthesis_job *comparison = request_job(synthesis, CONVERSION_JOB,
+		pg_evidence_subject(state->motive)->core, pg_evidence_subject(demand->solution)->core);
+	if (!comparison) goto error;
+	if (comparison->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, comparison); return; }
+	if (comparison->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, comparison->status); return; }
+skip:
+	branch->demands = demand->next;
+	enqueue(synthesis, job);
+	return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+}
+
+/* An APP domain constrains the IH's value result, not its effects. Seed the
+ * candidate row from independently synthesized branches. Full branch checking
+ * still has to establish that the candidate covers every recursive branch. */
+static void match_effects_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	struct match_branch *branch = &state->branches[state->effect_checked];
+	if (!state->motive_effects) state->motive_effects = pg_effect_row(synthesis->typing->graph, 0, NULL);
+	if (!state->motive_effects) goto error;
+	if (!branch->needs_ih) {
+		const struct pg_evidence *context = source_context(branch->scope);
+		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, context, context, branch->body);
+		if (!body) goto error;
+		if (body->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, body); return; }
+		if (body->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, body->status); return; }
+		const struct pg_effect_row *effects;
+		const struct pg_term *result;
+		if (pg_effect_type_view(pg_evidence_classifier(body->result), &effects, &result)) {
+			state->motive_effects = pg_effect_union(synthesis->typing->graph, state->motive_effects, effects);
+			if (!state->motive_effects) goto error;
+		}
+	}
+	++state->effect_checked;
+	enqueue(synthesis, job);
+	return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+}
+
 static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->result) goto complete;
@@ -4367,7 +4525,11 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		branch->clause = clause;
 		branch->needs_ih = branch_needs_ih(scope, pg_evidence_context(context), clause->right);
 		if (branch->needs_ih < 0) goto error;
-		if (branch->needs_ih) state->induction = 1;
+		if (branch->needs_ih) {
+			state->induction = 1;
+			if (motive_demands(synthesis, branch, pg_evidence_context(context))) goto error;
+			if (branch->demands) state->has_demands = 1;
+		}
 		else {
 			branch->body = pg_synthesis_request(synthesis, scope, clause->right);
 			if (!branch->body) goto error;
@@ -4376,6 +4538,8 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		enqueue(synthesis, job);
 		return;
 	}
+	if (state->has_demands && state->effect_checked < state->count) { match_effects_step(synthesis, job); return; }
+	if (state->demanded < state->count) { match_demand_step(synthesis, job); return; }
 	if (state->checked < state->count) {
 		struct match_branch *branch = &state->branches[state->checked];
 		if (branch->needs_ih) {
@@ -4383,16 +4547,19 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			enqueue(synthesis, job);
 			return;
 		}
-		struct pg_synthesis_job *candidate = pg_synthesis_constant_motive(synthesis, context,
-			source_context(branch->scope), branch->body);
+		struct pg_synthesis_job *candidate = state->motive_context
+			? pg_synthesis_abstract(synthesis, context, source_context(branch->scope), branch->body)
+			: pg_synthesis_constant_motive(synthesis, context, source_context(branch->scope), branch->body);
 		if (!candidate) goto error;
 		if (candidate->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, candidate); return; }
 		if (candidate->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, candidate->status); return; }
-		branch->function = candidate->function;
-		const struct pg_evidence *type = candidate->result;
-		if (!state->motive) state->motive = type;
-		else if (pg_alpha_equal(pg_evidence_subject(state->motive)->core, pg_evidence_subject(type)->core) != 1)
-			goto unsupported;
+		branch->function = state->motive_context ? candidate->result : candidate->function;
+		if (!state->motive_context) {
+			const struct pg_evidence *type = candidate->result;
+			if (!state->motive) state->motive = type;
+			else if (pg_alpha_equal(pg_evidence_subject(state->motive)->core, pg_evidence_subject(type)->core) != 1)
+				goto unsupported;
+		}
 		++state->checked;
 		enqueue(synthesis, job);
 		return;
@@ -4400,14 +4567,8 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	if (!state->motive) goto unsupported;
 	if (!state->motive_context) {
 		if (!state->motive_job) {
-			const struct pg_evidence *motive_context;
-			if (job->allocation_origin) {
-				motive_context = pg_evidence_premise(job->allocation_origin->result, 4);
-				if (pg_evidence_rule(motive_context) != PG_CONTEXT_EXTEND) goto rejected;
-			} else motive_context = pg_prove_inductive_motive_context(synthesis->typing,
-				state->instance.formation, state->instance.parameters, pg_binder(synthesis->typing->graph));
+			const struct pg_evidence *motive_context = match_motive_context(synthesis, job);
 			if (!motive_context) goto unsupported;
-			state->motive_context_job = pg_synthesis_evidence(synthesis, motive_context);
 			struct pg_synthesis_job *premises[] = {state->motive_context_job,
 				pg_synthesis_evidence(synthesis, state->motive)};
 			struct pg_derivation_input project = {.rule = PG_CONTEXT_PROJECTION, .count = 2};
