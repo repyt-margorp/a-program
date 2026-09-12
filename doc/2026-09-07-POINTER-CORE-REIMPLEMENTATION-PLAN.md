@@ -1114,12 +1114,27 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   a Lambda inside the inherited scope, both source suites pass again. The
   separate full-acceptance gates below intentionally retain the exposed failures;
   no full acceptance or Main push is claimed.
-- [ ] Preserve return-only Fold continuation allocation. The new `fold`
-  retained fixture writes and resaves, but source resynthesis allocates a fresh
-  return-clause binder (`aaabinder`, alpha-equal but not exact). The stricter
-  `check-image-origins` gate now exposes this failure. Retain the actual return
-  context producer and check its domain against the synthesized input before
-  reusing its binder; do not replace the source body with a saved conclusion.
+- [x] Preserve return-only Fold continuation allocation. Continuation after
+  `caa27e7`: the `fold` fixture exposed a fresh return-clause binder
+  (`aaabinder`, alpha-equal but not exact). APGSRC24/25 retain its context
+  producer in the existing elimination-origin record; no new payload table or
+  Core form is added. The source return worker waits for ordinary validation,
+  synthesizes the input's result context with the retained binder, checks exact
+  context agreement and then reuses the original producer for lexical scope.
+  The clause body is still synthesized. `rule_premise` now exposes both ordinary
+  and imported rule dependencies through the same helper, without inspecting
+  imported jobs as if they had the ordinary job's inline premise layout.
+  `pg_synthesis_restore_elimination` names the shared Match/Fold entry point.
+  Tests cover exact source/Core retention, a valid but wrong-domain context,
+  conflicting and late inputs, one-step Solve and inert resaving. The `fold`
+  fixture is now in both typed-root and source-only `source_io.sh` loops as well
+  as the full image-origin gate. Operation clauses and general checkpointing
+  remain separate open requirements.
+  Verification: normal `check check-image-origins check-prepared-modules`
+  passes (including 758 module save boundaries); ASan/UBSan source and full
+  synthesis suites pass. The fourteen typed/source retention combinations
+  include Fold. The operation-origin gate remains REJECTED after restoration;
+  this change does not claim full handler transport or full acceptance.
 - [ ] Retain operation producer identity, not only its function derivation.
   `source_io_test operation-origins` first checks a real `pg_synthesis_operation`
   producer and a handler using its alias. After three inert resaves, the

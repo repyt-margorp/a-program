@@ -462,6 +462,77 @@ static struct pg_program *retained_program(const char *text)
 	return p;
 }
 
+struct elimination_site {
+	struct pg_program *program;
+	struct pg_synthesis_job *job;
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+};
+
+static int find_elimination(void *owner, struct pg_synthesis_job *job)
+{
+	struct elimination_site *site = owner;
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+	if (pg_synthesis_source_input(&site->program->synthesis, job, &scope, &syntax)
+		|| syntax->kind != PG_SYNTAX_ELIMINATION) return 0;
+	assert(!site->job);
+	site->job = job; site->scope = scope; site->syntax = syntax;
+	return 0;
+}
+
+static void fold_origins(void)
+{
+	struct pg_program *p = retained_program("{{ Nat:=@{zero:*;succ:*->*;}; r:=&((Nat.succ Nat.zero) @#.return x=>Nat.succ x); }}.r");
+	FILE *file = tmpfile();
+	assert(file && !pg_sources_write_retained(file, &p->synthesis, 1, &p->root, p->retained_reductions));
+	pg_program_destroy(p);
+	rewind(file);
+	size_t count;
+	struct pg_synthesis_job *const *roots;
+	p = pg_sources_read(file, 100000, &count, &roots);
+	assert(p && count == 1 && !fclose(file));
+	struct elimination_site site = {.program = p};
+	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, find_elimination, &site) && site.job);
+	struct pg_synthesis_job *origin = pg_synthesis_allocation_origin(site.job);
+	assert(pg_synthesis_restore_elimination(&p->synthesis, site.scope, site.syntax, origin) == site.job);
+	assert(!pg_synthesis_restore_elimination(&p->synthesis, site.scope, site.syntax, site.job));
+	struct pg_effect_inference effects;
+	assert(!pg_effect_inference_init(&effects, &p->graph));
+	const struct pg_derivation_input *const *inputs;
+	assert(!pg_synthesis_export_rules(&p->synthesis, 1, &origin, &p->graph, &effects, 1, &inputs));
+	assert(inputs[0]->rule == PG_CONTEXT_EXTEND && inputs[0]->count == 2);
+	struct pg_derivation_input *universe = pg_alloc(&p->graph, sizeof(*universe) + sizeof(void *));
+	struct pg_derivation_input *wrong = pg_alloc(&p->graph, sizeof(*wrong) + 2 * sizeof(void *));
+	struct pg_syntax *syntax = pg_alloc(&p->graph, sizeof(*syntax));
+	struct pg_syntax *clause = pg_alloc(&p->graph, sizeof(*clause));
+	struct pg_syntax_item *item = pg_alloc(&p->graph, sizeof(*item));
+	assert(universe && wrong && syntax && clause && item);
+	*universe = (struct pg_derivation_input){.rule = PG_UNIVERSE_FORM, .count = 1};
+	universe->premises[0] = inputs[0]->premises[0];
+	*wrong = *inputs[0];
+	wrong->premises[0] = inputs[0]->premises[0]; wrong->premises[1] = universe;
+	*syntax = *site.syntax;
+	*item = syntax->items[0]; *clause = *item->expression;
+	item->expression = clause; syntax->items = item;
+	struct pg_synthesis_job *bad_context = pg_synthesis_derivation_inference(&p->synthesis, wrong, &effects);
+	assert(bad_context && !pg_synthesis_restore_elimination(&p->synthesis, site.scope, site.syntax, bad_context));
+	struct pg_synthesis_job *bad = pg_synthesis_restore_elimination(&p->synthesis, site.scope, syntax, bad_context);
+	assert(bad);
+	while (p->synthesis.ready) {
+		assert(p->synthesis.steps < 10000);
+		pg_synthesis_advance(&p->synthesis, 1);
+	}
+	assert(pg_synthesis_result(bad_context));
+	assert(pg_synthesis_status(bad) == PG_SYNTHESIS_REJECTED && pg_synthesis_result(roots[0]));
+	assert(!pg_synthesis_restore_elimination(&p->synthesis, site.scope, site.syntax, origin));
+	const struct pg_evidence *forced = pg_prove_force(&p->typing, pg_synthesis_result(roots[0]));
+	assert(forced && pg_evidence_subject(forced)->core == pg_reduction_source(p->retained_reductions->roots[0]));
+	pg_effect_inference_destroy(&effects);
+	pg_program_destroy(p);
+	puts("Fold origins: exact continuation allocation, domain recheck and conflicting/late input rejection passed");
+}
+
 struct match_origin_check { struct pg_program *program; size_t count; int solved; };
 
 static void induction_scope_inputs(struct pg_program *p, const struct pg_evidence *proof)
@@ -517,8 +588,8 @@ static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 	assert(origin != job);
 	if (!check->solved) {
 		assert(!pg_synthesis_result(job));
-		assert(pg_synthesis_restore_match(&p->synthesis, scope, syntax, origin) == job);
-		assert(!pg_synthesis_restore_match(&p->synthesis, scope, syntax, job));
+		assert(pg_synthesis_restore_elimination(&p->synthesis, scope, syntax, origin) == job);
+		assert(!pg_synthesis_restore_elimination(&p->synthesis, scope, syntax, job));
 		return 0;
 	}
 	struct pg_graph storage = {0};
@@ -1521,6 +1592,7 @@ int main(int argc, char **argv)
 	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "constructor-inputs")) { constructor_inputs(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "match-origins")) { match_origins(); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "fold-origins")) { fold_origins(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "handler-scopes")) { handler_scopes(0); handler_scopes(1); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "operation-origins")) { handler_scopes(2); return 0; }
 	if (argc > 1 && !strncmp(argv[1], "retained-", 9)) {

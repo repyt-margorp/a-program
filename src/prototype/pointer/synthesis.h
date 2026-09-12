@@ -84,11 +84,11 @@ const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis
 struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
-/* Retain the raw induction allocation of a recursive source Match. Its
- * source branches/motive are still synthesized; the ordinary induction rule
- * validates the supplied allocation. Registration accepts no proof; restoring
- * branch contexts waits for ordinary validation of the origin input. */
-struct pg_synthesis_job *pg_synthesis_restore_match(struct pg_synthesis *synthesis,
+/* Retain a recursive Match allocation or a return-only Fold context. Source
+ * branches/motives are still synthesized and the ordinary rules validate
+ * their allocation/domain. Registration accepts no proof; restoring lexical
+ * contexts waits for ordinary validation of the origin input. */
+struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
 /* Source member allocations are connected before namespace publication.

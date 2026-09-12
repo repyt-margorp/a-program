@@ -9,8 +9,8 @@
 #include "context_payload.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\26";
-static const char retained_magic[8] = "APGSRC\27";
+static const char magic[8] = "APGSRC\30";
+static const char retained_magic[8] = "APGSRC\31";
 enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING, HANDLER_SCOPE };
 
 struct environment {
@@ -686,7 +686,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		struct pg_synthesis_job *restored = site->kind == PG_SYNTAX_APPLICATION
 			? pg_synthesis_restore_application(&program->synthesis, scopes[scope - 1], site, rules[rule - 1])
 			: site->kind == PG_SYNTAX_ELIMINATION
-			? pg_synthesis_restore_match(&program->synthesis, scopes[scope - 1], site, rules[rule - 1])
+			? pg_synthesis_restore_elimination(&program->synthesis, scopes[scope - 1], site, rules[rule - 1])
 			: pg_synthesis_restore_declaration(&program->synthesis, scopes[scope - 1], site, rules[rule - 1]);
 		if (!restored) goto fail;
 	}

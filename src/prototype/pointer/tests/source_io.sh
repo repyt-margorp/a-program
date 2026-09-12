@@ -5,6 +5,7 @@ trap 'rm -rf "$directory"' EXIT
 "$1" context-scopes
 "$1" constructor-inputs
 "$1" match-origins
+"$1" fold-origins
 "$1" handler-scopes
 "$1" write "$directory/modules.graph"
 single=$("$1" read "$directory/modules.graph")
@@ -28,7 +29,7 @@ retained_case() {
 }
 failed=0
 for writer in retained-write-typed retained-write; do
-	for fixture in lambda nominal nullary application constructor match; do
+	for fixture in lambda nominal nullary application constructor match fold; do
 		if ! retained_case "$1" "$writer" "$fixture"; then
 			printf 'FAIL: retention case %s %s\n' "$writer" "$fixture" >&2
 			failed=1
