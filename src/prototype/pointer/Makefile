@@ -74,6 +74,9 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/identity_test
 	$(BUILD)/iadt_test
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-formation.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p recursive expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p twoSteps twoExpected
 	$(BUILD)/parse_files $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 	bash $(ROOT)tests/syntax_inventory.sh $(BUILD)/parse_files
 

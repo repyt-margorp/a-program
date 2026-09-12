@@ -3507,7 +3507,20 @@ static void constant_motive_step(struct pg_synthesis *synthesis, struct pg_synth
 		size_t count;
 		if (pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(destination), &count)) goto unsupported;
 		job->left = pg_synthesis_abstract(synthesis, destination, fields, (void *)job->inputs[2]);
-		job->right = pg_synthesis_constant_result(synthesis, pg_synthesis_evidence(synthesis, destination), job->left, count);
+		struct pg_synthesis_job *context = pg_synthesis_evidence(synthesis, fields);
+		struct pg_synthesis_job *body = request_job(synthesis, BODY_JOB, job->inputs[2], context);
+		job->right = request_job(synthesis, CLASSIFIER_FORMATION_JOB, context, body);
+		/* Discharge innermost first. Later field domains may depend on earlier
+		 * fields even when the final result type is independent of them all. */
+		struct pg_derivation_input pi = {.rule = PG_PI_FORM, .count = 3};
+		struct pg_derivation_input codomain = {.rule = PG_PI_CONSTANT_CODOMAIN, .count = 1};
+		for (size_t i = 0; job->right && i < count; ++i, fields = pg_evidence_premise(fields, 0)) {
+			struct pg_synthesis_job *premises[] = {
+				pg_synthesis_evidence(synthesis, pg_evidence_premise(fields, 1)),
+				pg_synthesis_evidence(synthesis, fields), job->right};
+			job->right = pg_synthesis_rule(synthesis, &pi, premises, NULL, NULL);
+			job->right = pg_synthesis_rule(synthesis, &codomain, &job->right, NULL, NULL);
+		}
 		if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
 	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
@@ -4264,18 +4277,16 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	if (!state->motive) goto unsupported;
 	if (!state->motive_context) {
 		if (!state->motive_job) {
-			struct pg_synthesis_job *family = pg_synthesis_reindex(synthesis, state->instance.parameters, state->instance.formation);
-			struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, context), family};
-			struct pg_derivation_input extend = {.rule = PG_CONTEXT_EXTEND, .count = 2};
+			const struct pg_evidence *motive_context;
 			if (job->allocation_origin) {
-				const struct pg_evidence *saved = pg_evidence_premise(job->allocation_origin->result, 4);
-				if (pg_evidence_rule(saved) != PG_CONTEXT_EXTEND ||
-					pg_evidence_context(saved)->parent != pg_evidence_context(context)) goto rejected;
-				extend.parameters.binder = pg_evidence_context(saved)->binder;
-			} else extend.parameters.binder = pg_binder(synthesis->typing->graph);
-			state->motive_context_job = pg_synthesis_rule(synthesis, &extend, premises, NULL, NULL);
-			premises[0] = state->motive_context_job;
-			premises[1] = pg_synthesis_evidence(synthesis, state->motive);
+				motive_context = pg_evidence_premise(job->allocation_origin->result, 4);
+				if (pg_evidence_rule(motive_context) != PG_CONTEXT_EXTEND) goto rejected;
+			} else motive_context = pg_prove_inductive_motive_context(synthesis->typing,
+				state->instance.formation, state->instance.parameters, pg_binder(synthesis->typing->graph));
+			if (!motive_context) goto unsupported;
+			state->motive_context_job = pg_synthesis_evidence(synthesis, motive_context);
+			struct pg_synthesis_job *premises[] = {state->motive_context_job,
+				pg_synthesis_evidence(synthesis, state->motive)};
 			struct pg_derivation_input project = {.rule = PG_CONTEXT_PROJECTION, .count = 2};
 			state->motive_job = pg_synthesis_rule(synthesis, &project, premises, NULL, NULL);
 			if (!state->motive_job) goto error;
@@ -4516,25 +4527,24 @@ static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (pg_evidence_rule(motive_context) != PG_CONTEXT_EXTEND) goto rejected;
 		if (pg_evidence_judgement(motive) != PG_JUDGEMENT_COMPUTATION_TYPE) goto rejected;
 		if (pg_evidence_context(motive) != pg_evidence_context(motive_context)) goto rejected;
-		if (pg_evidence_context(motive_context)->parent != pg_evidence_context(parameters)) goto rejected;
+		if (!pg_inductive_motive_context_valid(synthesis->typing, formation, parameters, motive_context)) goto rejected;
 		job->left = pg_synthesis_constructor_scope(synthesis, (void *)job->inputs[0], job->inputs[4], (void *)job->inputs[1]);
-		job->right = pg_synthesis_reindex_jobs(synthesis, (void *)job->inputs[1], (void *)job->inputs[0]);
-		if (!job->left || !job->right) goto error;
+		if (!job->left) goto error;
 	}
 	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 	const struct pg_evidence *map = job->left->result;
 	if (job->value_job) { forward_proof(synthesis, job, job->value_job); return; }
+	if (!job->substitution) {
+		if (job->context_allocation && job->context_allocation->prefix != pg_evidence_context(pg_evidence_premise(map, 1))) goto rejected;
+		job->substitution = pg_alloc(synthesis->typing->graph, sizeof(*job->substitution));
+		if (!job->substitution) goto error;
+		job->substitution->map = pg_evidence_premise(map, 1);
+	}
 	if (job->right) {
 		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
 		if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
-		if (!job->substitution) {
-			if (pg_alpha_equal(pg_evidence_subject(job->right->result)->core, pg_evidence_context(motive_context)->declared_type) != 1) goto rejected;
-			if (job->context_allocation && job->context_allocation->prefix != pg_evidence_context(pg_evidence_premise(map, 1))) goto rejected;
-			job->substitution = pg_alloc(synthesis->typing->graph, sizeof(*job->substitution));
-			if (!job->substitution) goto error;
-			job->substitution->map = pg_evidence_premise(map, 1);
-		} else job->substitution->map = job->right->result;
+		job->substitution->map = job->right->result;
 		job->right = NULL;
 	}
 	struct substitution_state *state = job->substitution;
@@ -4546,21 +4556,12 @@ static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synth
 		int recursive = pg_data_direct_recursion(pg_evidence_context(fields->entries[i].extension)->declared_type, self);
 		if (!recursive) continue;
 		if (recursive < 0) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		const struct pg_evidence *prefix = pg_evidence_premise(motive_context, 0), *extension = prefix;
-		size_t count;
-		if (pg_context_extension_size(pg_evidence_context(prefix), NULL, &count)) goto rejected;
-		if (count >= SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
-		struct pg_synthesis_job **images = malloc((count + 1) * sizeof(*images));
-		if (!images) goto error;
-		for (size_t j = count; j; --j, extension = pg_evidence_premise(extension, 0)) {
-			const struct pg_evidence *variable = pg_prove_variable(synthesis->typing, prefix, pg_evidence_context(extension)->binder);
-			images[j - 1] = projected_image(synthesis, context, variable);
-		}
-		images[count] = projected_image(synthesis, context, pg_evidence_premise(map, pg_evidence_premise_count(parameters) + 1 + i));
-		struct pg_synthesis_job *substitution = pg_synthesis_substitution_jobs(synthesis, (void *)job->inputs[2],
-			pg_synthesis_evidence(synthesis, context), count + 1, images);
-		free(images);
-		struct pg_synthesis_job *at_field = pg_synthesis_reindex_jobs(synthesis, substitution, (void *)job->inputs[3]);
+		const struct pg_evidence *field = pg_prove_projection(synthesis->typing, context,
+			pg_evidence_premise(map, pg_evidence_premise_count(parameters) + 1 + i));
+		const struct pg_evidence *ih = pg_prove_inductive_motive_at(synthesis->typing, synthesis->classifiers,
+			formation, parameters, motive_context, motive, context, field);
+		if (!ih) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		struct pg_synthesis_job *at_field = pg_synthesis_evidence(synthesis, ih);
 		struct pg_derivation_input thunk = {.rule = PG_THUNK_TYPE_FORM, .count = 1};
 		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, context), pg_synthesis_rule(synthesis, &thunk, &at_field, NULL, NULL)};
 		struct pg_derivation_input extend = {.rule = PG_CONTEXT_EXTEND, .count = 2};

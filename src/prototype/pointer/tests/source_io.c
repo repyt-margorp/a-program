@@ -19,6 +19,29 @@ static struct pg_synthesis_job *parse(struct pg_program *program,
 	return job;
 }
 
+static void indexed_ih_fiber(struct pg_program *p, const struct pg_evidence *formation)
+{
+	const struct pg_evidence *self = pg_evidence_premise(formation, 0);
+	const struct pg_evidence *context = pg_evidence_premise(self, 0);
+	const struct pg_evidence *parameters = pg_prove_substitution_projection(&p->typing, context, context);
+	const struct pg_evidence *mc = pg_prove_inductive_motive_context(&p->typing,
+		formation, parameters, pg_binder(&p->graph));
+	assert(mc);
+	const struct pg_evidence *motive = pg_prove_return_type(&p->typing, &p->classifiers,
+		pg_prove_projection(&p->typing, mc, pg_evidence_premise(mc, 1)));
+	struct pg_inductive_instance instance;
+	assert(motive && pg_inductive_instance(&p->typing, formation, &instance));
+	const struct pg_object *next = pg_data_constructor(pg_data_schema_layout(instance.schema), 1);
+	const struct pg_evidence *scope = pg_prove_induction_scope(&p->typing, &p->classifiers,
+		formation, next, parameters, mc, motive);
+	assert(scope);
+	const struct pg_evidence *field = pg_evidence_premise(scope, pg_evidence_premise_count(scope) - 1);
+	const struct pg_context *with_ih = pg_evidence_context(pg_evidence_premise(scope, 1));
+	const struct pg_term *expected = pg_thunk_type(&p->classifiers,
+		pg_return_type(&p->classifiers, pg_evidence_classifier(field)));
+	assert(pg_alpha_equal(with_ih->declared_type, expected) == 1);
+}
+
 static void indexed_family_roundtrip(const char *source)
 {
 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
@@ -71,6 +94,7 @@ static void indexed_family_roundtrip(const char *source)
 		struct pg_inductive_instance instance;
 		assert(pg_synthesis_inductive_instance_result(recovery, &instance) && instance.indices);
 		assert(instance.formation == family);
+		if (pg_data_constructor_count(instance.schema) == 2) indexed_ih_fiber(p, family);
 		pg_program_destroy(p);
 	}
 }
@@ -86,6 +110,14 @@ static void indexed_family_sources(void)
 	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
 		"D:=\\A:@=>\\B:@=>@\\i:Nat=>{mk:(k:Nat)->A->B->* k;};"
 		"main:=(D Nat Nat).mk Nat.zero Nat.zero Nat.zero; main::D Nat Nat Nat.zero; Fiber:=D Nat Nat Nat.zero;");
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
+		"get:=\\i:Nat=>\\v:D i=>v @mk k=>k @next k rest=>Nat.succ k;"
+		"main:=get (Nat.succ Nat.zero) (D.next Nat.zero (D.mk Nat.zero)); Fiber:=D (Nat.succ Nat.zero);");
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
+		"steps:=\\i:Nat=>\\v:D i=>v @mk k=>Nat.zero @next k rest=>Nat.succ *rest;"
+		"main:=steps (Nat.succ Nat.zero) (D.next Nat.zero (D.mk Nat.zero)); Fiber:=D (Nat.succ Nat.zero);");
 	const char *invalid[] = {
 		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
 			"bad:=D.next Nat.zero (D.mk (Nat.succ Nat.zero));",

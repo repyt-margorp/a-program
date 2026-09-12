@@ -167,18 +167,34 @@ const struct pg_evidence *pg_prove_constructor_scope(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_constructor_scope_at(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_object *constructor,
 	const struct pg_evidence *parameters, const struct pg_context *allocation);
-/* Zero-index dependent case elimination (no recursive IH). Motive is a
- * computation-type formation in destination,z:Family. Branches are already
+/* Derived ordinary context: destination, generic indices, z:Family indices.
+ * Shares telescope lifting with constructor scopes; creates no new rule. */
+const struct pg_evidence *pg_prove_inductive_motive_context(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_evidence *parameters,
+	const struct pg_object *binder);
+int pg_inductive_motive_context_valid(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_evidence *parameters,
+	const struct pg_evidence *motive_context);
+/* Checked motive substitution shared by Match, IH construction and Solve.
+ * The value's fiber evidence supplies its indices; no expected type input. */
+const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters,
+	const struct pg_evidence *source, const struct pg_evidence *motive,
+	const struct pg_evidence *destination, const struct pg_evidence *value);
+/* Dependent case elimination (no recursive IH). Motive is a computation-type
+ * formation in destination,indices,z:Family indices. Branches are already
  * synthesized computations in destination, ordered by the schema, curried
  * over each constructor's fields. Check their classifiers against the motive
  * instantiated at that constructor; no branch synthesis or conversion search.
- * The result has motive[scrutinee/z], including a raw Pi when appropriate. */
+ * The result substitutes the scrutinee's indices and value into the motive,
+ * including a raw Pi when appropriate. Zero indices uses the same rule. */
 const struct pg_evidence *pg_prove_match(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches);
-/* Conditional induction branch context for direct zero-index Self fields.
+/* Conditional induction branch context for direct Self or Self indices fields.
  * Returns the constructor field substitution projected into a destination
  * extended by one IH : U(motive[field/z]) per recursive field, in field order.
  * IHs are assumptions, not proven inhabitants or a completed induction rule.
@@ -194,7 +210,7 @@ const struct pg_evidence *pg_prove_induction_scope_at(struct pg_typing *typing,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_context *allocation);
-/* Direct zero-index induction. Branches abstract fields, then the IH values
+/* Direct indexed induction. Branches abstract fields, then the IH values
  * from induction_scope. No unrestricted recursive function enters their
  * typing context. Pi-shaped recursive fields remain unsupported. */
 /* Immutable construction inputs, not evidence. Context annotations are not

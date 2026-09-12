@@ -11,7 +11,12 @@ static const struct pg_object match_action = {PG_SEMANTIC_OBJECT, &match_action_
 int pg_data_direct_recursion(const struct pg_term *type, const struct pg_object *self)
 {
 	if (!type || !self || self->kind != PG_BINDER) return -1;
-	if (type->kind == PG_REFERENCE && type->as.reference == self) return 1;
+	const struct pg_term *head = type;
+	while (head->kind == PG_APPLICATION) {
+		if (pg_term_independent(head->as.application.argument, self) != 1) return -1;
+		head = head->as.application.function;
+	}
+	if (head->kind == PG_REFERENCE && head->as.reference == self) return 1;
 	return pg_term_independent(type, self) == 1 ? 0 : -1;
 }
 

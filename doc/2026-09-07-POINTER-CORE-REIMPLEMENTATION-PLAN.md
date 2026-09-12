@@ -79,13 +79,20 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   guesses a nominal declaration from Core. Solve retains the same result.
   Tests cover changed index images, wrappers between applications, dependent
   indices, partial/unknown-family rejection, and parameterized source resaves.
-- [ ] Generalize Match/motive/IH rules to those checked indexed instances;
-  restore open family parameters and function graph/witness generation.
-  Current source Match still builds its motive binder over the unapplied
-  family. Replace this with the generic index telescope and scrutinee fiber;
-  instantiate branch motives with constructor result maps and recursive IHs
-  at their own indices. Do not erase indices or specialize the motive to the
-  original scrutinee's fixed fiber.
+- [x] Generalize the existing Match rule to a motive in the generic index
+  telescope followed by its scrutinee fiber. Constructor scopes and motive
+  scopes share telescope lifting. Match and direct indexed IHs share checked
+  motive substitution; no Core tag, new elimination rule or Replay was added.
+  Kernel tests cover an index-dependent result type and reject fixed-fiber
+  motives and incorrect branches. Source tests cover nonrecursive Match,
+  one-/two-step indexed recursion and source-image resaves through Solve.
+- [x] Infer constant branch results across dependent field telescopes by
+  discharging innermost binders first with existing Pi/codomain rules. Peeling
+  outer Pi binders first incorrectly rejected `(k:Nat)->D k->Nat`.
+- [ ] Infer genuinely dependent source motives, rather than only checking a
+  supplied dependent motive in the kernel; restore open family parameters,
+  Pi-shaped recursive fields (Acc), and function graph/witness generation.
+  Direct indexed IH support is not completion of Acc or the property milestone.
 
 The compatibility gate is 1/18; remaining cases are UNSUPPORTED, not expected failures.
 The generated length fixture still stops at `*length` resolution. These
@@ -93,7 +100,8 @@ formation changes are prerequisite work, not completion of Vec/Acc/QuickSort
 or the post-hoc property-proof milestone. No independent Replay was added.
 Validation: `check check-examples check-example-results` passes. The scoped
 family kernel tests and indexed source/resave tests also pass ASan/UBSan.
-The index-recovery change passes the same checks; compatibility remains 1/18.
+Index recovery and indexed Match/direct-IH changes pass the same checks;
+compatibility remains 1/18. Added fixtures are not substituted for legacy gates.
 One disputed legacy fixture, `negative/function_graph_computation_index.p`,
 is accepted by Main despite its integration script expecting rejection. It is
 not counted as a verified negative case; audit its computed index semantics

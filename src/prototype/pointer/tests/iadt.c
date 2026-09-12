@@ -260,6 +260,68 @@ static void check(struct pg_whnf_work *work, const struct pg_term *term, const s
 	assert(pg_whnf_advance(job, 100) == PG_EVAL_WHNF && pg_whnf_steps(job) == steps);
 }
 
+static void indexed_match(void)
+{
+	struct pg_graph graph;
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+	assert(!pg_classifiers_init(&classifiers, &graph));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *u1 = pg_prove_universe(&typing, &classifiers, empty, 1);
+	const struct pg_object *a = pg_binder(&graph), *x = pg_binder(&graph), *f = pg_binder(&graph);
+	const struct pg_evidence *ac = pg_prove_context_extension(&typing, empty, a, u);
+	const struct pg_evidence *xc = pg_prove_context_extension(&typing, ac, x, pg_prove_variable(&typing, ac, a));
+	const struct pg_evidence *fc = pg_prove_family_context_extension(&typing, empty, f, xc,
+		pg_prove_projection(&typing, xc, u1));
+	const struct pg_evidence *ia = pg_prove_context_extension(&typing, fc, a, pg_prove_projection(&typing, fc, u));
+	const struct pg_evidence *ix = pg_prove_context_extension(&typing, ia, x, pg_prove_variable(&typing, ia, a));
+	const struct pg_evidence *result_map = pg_prove_substitution_projection(&typing, ix, ix);
+	const struct pg_data_schema *schema = pg_data_schema(&typing, pg_data_signature(&typing, fc, ix), 1, &result_map);
+	const struct pg_evidence *formation = pg_prove_inductive_type(&typing, &classifiers, schema);
+	assert(formation);
+	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), 0);
+	const struct pg_evidence *parameters = pg_prove_substitution_projection(&typing, empty, xc);
+	const struct pg_evidence *av = pg_prove_variable(&typing, xc, a), *xv = pg_prove_variable(&typing, xc, x);
+	const struct pg_evidence *values[] = {av, xv};
+	const struct pg_evidence *value = pg_prove_constructor(&typing, formation, constructor, parameters, 2, values);
+	assert(value);
+	const struct pg_evidence *mc = pg_prove_inductive_motive_context(&typing, formation, parameters, pg_binder(&graph));
+	assert(mc);
+	const struct pg_context *mi = pg_evidence_context(mc)->parent;
+	const struct pg_evidence *motive = pg_prove_return_type(&typing, &classifiers,
+		pg_prove_variable(&typing, mc, mi->parent->binder));
+	/* The result type is the first index A, not a constant carrier. */
+	assert(motive);
+	const struct pg_evidence *fields = pg_prove_constructor_scope(&typing, formation, constructor, parameters);
+	const struct pg_evidence *field_context = pg_evidence_premise(fields, 1);
+	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers,
+		pg_substitution_image(&typing, fields, x));
+	const struct pg_evidence *branch = pg_prove_abstract(&typing, &classifiers, xc, field_context, body);
+	const struct pg_evidence *match = pg_prove_match(&typing, &classifiers, formation, parameters,
+		value, mc, motive, 1, &branch);
+	assert(match && pg_evidence_classifier(match) == pg_return_type(&classifiers, pg_evidence_subject(av)->core));
+	common_rule(&typing, &classifiers, match);
+	struct pg_whnf_work work;
+	assert(!pg_whnf_work_init(&work, &graph));
+	check(&work, pg_evidence_subject(match)->core, pg_evidence_subject(pg_prove_return(&typing, &classifiers, xv))->core);
+	/* A fixed-fiber motive cannot replace the generic index telescope. */
+	const struct pg_evidence *fixed = pg_prove_context_extension(&typing, xc, pg_binder(&graph),
+		pg_evidence_premise(value, 0));
+	const struct pg_evidence *fixed_motive = pg_prove_return_type(&typing, &classifiers,
+		pg_prove_projection(&typing, fixed, av));
+	assert(fixed && fixed_motive);
+	assert(!pg_prove_match(&typing, &classifiers, formation, parameters, value, fixed, fixed_motive, 1, &branch));
+	const struct pg_evidence *wrong = pg_prove_abstract(&typing, &classifiers, xc, field_context,
+		pg_prove_return(&typing, &classifiers, pg_prove_projection(&typing, field_context, xv)));
+	assert(wrong && !pg_prove_match(&typing, &classifiers, formation, parameters, value, mc, motive, 1, &wrong));
+	pg_whnf_work_destroy(&work);
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+}
+
 static const struct pg_evidence *parameter_result(struct pg_typing *typing,
 	const struct pg_evidence *parameters, const struct pg_evidence *fields)
 {
@@ -1288,6 +1350,7 @@ int main(void)
 {
 	positive_fields();
 	scoped_type_families();
+	indexed_match();
 	schema_positivity();
 	retained_substitution_prefix();
 	struct pg_graph graph;
