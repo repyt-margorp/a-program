@@ -323,6 +323,15 @@ int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
 	return 0;
 }
 
+static const struct pg_induction_allocation *source_induction_allocation(const struct pg_synthesis_job *job)
+{
+	if (job->allocation_origin) {
+		const struct pg_derivation_input *input = job->allocation_origin->inputs[0];
+		return input->parameters.induction;
+	}
+	return pg_evidence_induction_allocation(pg_synthesis_result(job));
+}
+
 int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, struct pg_synthesis_job *), void *owner)
 {
@@ -330,6 +339,10 @@ int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
 		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_synthesis_job *job = (void *)entry;
+			if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_ELIMINATION) {
+				if (source_induction_allocation(job) && visit(owner, job)) return -1;
+				continue;
+			}
 			if (job->role == BINDING_JOB && job->allocation_origin) {
 				if (visit(owner, job)) return -1;
 				continue;
@@ -682,6 +695,10 @@ const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis
 {
 	if (!job) return NULL;
 	if (job->role == BINDING_JOB) return job->binder;
+	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_ELIMINATION) {
+		const struct pg_induction_allocation *allocation = source_induction_allocation(job);
+		return allocation ? allocation->self : NULL;
+	}
 	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_APPLICATION) {
 		const struct pg_synthesis_job *origin = pg_synthesis_allocation_origin(job);
 		if (origin->role == DERIVATION_INPUT_JOB) {
@@ -705,6 +722,22 @@ struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *s
 	if (input->rule != PG_INDUCTIVE_FORM || !input->parameters.declaration) return NULL;
 	struct pg_synthesis_job *job = pg_synthesis_declaration_at(synthesis, scope, syntax, input->parameters.declaration);
 	if (!job || (job->allocation_origin && job->allocation_origin != origin)) return NULL;
+	job->allocation_origin = origin;
+	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_restore_match(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	struct pg_synthesis_job *origin)
+{
+	if (!syntax || syntax->kind != PG_SYNTAX_ELIMINATION) return NULL;
+	if (!origin || origin->owner != synthesis->owner_key || origin->role != DERIVATION_INPUT_JOB) return NULL;
+	const struct pg_derivation_input *input = origin->inputs[0];
+	if (input->rule != PG_INDUCTION_ELIM || !input->parameters.induction
+		|| input->parameters.induction->count != syntax->item_count) return NULL;
+	struct pg_synthesis_job *job = pg_synthesis_request(synthesis, scope, syntax);
+	if (!job || (job->allocation_origin && job->allocation_origin != origin)) return NULL;
+	if (job->result) return NULL;
 	job->allocation_origin = origin;
 	return job;
 }
@@ -3864,7 +3897,12 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	const struct pg_evidence **branches = malloc(state->count * sizeof(*branches));
 	if (!branches) goto error;
 	for (size_t i = 0; i < state->count; ++i) branches[i] = state->branches[i].function;
-	job->result = state->induction
+	const struct pg_induction_allocation *allocation = source_induction_allocation(job);
+	if (allocation && !state->induction) { free(branches); goto rejected; }
+	job->result = allocation
+		? pg_prove_induction_at(synthesis->typing, synthesis->classifiers, state->instance.formation,
+			state->instance.parameters, scrutinee, state->motive_context, state->motive, state->count, branches, allocation)
+		: state->induction
 		? pg_prove_induction(synthesis->typing, synthesis->classifiers, state->instance.formation,
 			state->instance.parameters, scrutinee, state->motive_context, state->motive, state->count, branches)
 		: pg_prove_match(synthesis->typing, synthesis->classifiers, state->instance.formation,

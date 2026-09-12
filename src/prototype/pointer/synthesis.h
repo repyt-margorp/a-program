@@ -84,6 +84,12 @@ const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis
 struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
+/* Retain the raw induction allocation of a recursive source Match. Its
+ * source branches/motive are still synthesized; the ordinary induction rule
+ * validates the supplied allocation. This does not accept the origin proof. */
+struct pg_synthesis_job *pg_synthesis_restore_match(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	struct pg_synthesis_job *origin);
 /* Source member allocations are connected before namespace publication.
  * Index selects the source clause; constructor identity is checked against
  * the synthesized declaration, never inferred from that index. Field types

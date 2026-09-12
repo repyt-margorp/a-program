@@ -916,6 +916,31 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   coverage passes all 758 snapshots; normal and sanitized seed tests pass.
   APGDRV6 and APGRET2 are unchanged. Recursive Match allocation-owner recovery,
   instantiated members and partial-scope checkpoints are not claimed complete.
+- [x] Retain recursive source Match induction allocations via the existing
+  origin records and APGDRV6 payload. APGSRC20/21 recognize the elimination
+  syntax at those records; no separate replay rule or Core object is added.
+  `pg_synthesis_restore_match` registers the unaccepted input and ordinary source
+  synthesis passes its allocation to `pg_prove_induction_at`, checking newly
+  synthesized branches/motive. A source-only test destroys the program between
+  three unsolved resaves, checks idempotent restoration and rejects a source
+  job passed as an alleged derivation input. After Solve, recursion, argument,
+  self and all induction clause-context identities match the retained input.
+  Normal and sanitized full synthesis, seed and Match-origin tests pass;
+  all 758 normal module snapshots pass. Both full source-image gates report
+  only the same two source-only Match failures, with the other cases passing.
+  The original two source-only Match assertions still fail: the first exact
+  difference moved from `aaabfbff` to `aaabfbffbfbbabff` (f=function,
+  a=argument, b=Lambda body). Keep that bounded diagnostic and exact assertion;
+  preserving the induction expansion does not restore source branch binders.
+- [ ] Restore source Match branch-scope allocations before their workers run.
+  `match_step` requests constructor fields over the scrutinee's context, which
+  is not necessarily the declaration-publication context. It then creates a
+  motive binder and `induction_scope_step` introduces IH binders. These source
+  branch contexts are distinct from the final induction expansion's clause
+  contexts already retained above. Preserve each actual owner/input and do not
+  substitute the final clause contexts for source branch contexts merely
+  because they are alpha-equivalent. Cover neutral recursive Match and the
+  separate computation-scrutinee sequencing allocation before closing retention.
 - [x] Route declaration exports and instantiated members through
   `pg_synthesis_constructor_value`. Its `_at` entry attaches the existing
   field-scope allocation before that scope executes; both entries return the

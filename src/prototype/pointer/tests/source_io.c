@@ -385,6 +385,66 @@ static struct pg_program *retained_program(const char *text)
 	return p;
 }
 
+struct match_origin_check { struct pg_program *program; size_t count; int solved; };
+
+static int check_match_origin(void *owner, struct pg_synthesis_job *job)
+{
+	struct match_origin_check *check = owner;
+	struct pg_program *p = check->program;
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+	if (pg_synthesis_source_input(&p->synthesis, job, &scope, &syntax) || syntax->kind != PG_SYNTAX_ELIMINATION) return 0;
+	++check->count;
+	struct pg_synthesis_job *origin = pg_synthesis_allocation_origin(job);
+	assert(origin != job);
+	if (!check->solved) {
+		assert(!pg_synthesis_result(job));
+		assert(pg_synthesis_restore_match(&p->synthesis, scope, syntax, origin) == job);
+		assert(!pg_synthesis_restore_match(&p->synthesis, scope, syntax, job));
+		return 0;
+	}
+	struct pg_graph storage = {0};
+	struct pg_effect_inference effects;
+	assert(!pg_effect_inference_init(&effects, &storage));
+	const struct pg_derivation_input *const *inputs;
+	assert(!pg_synthesis_export_rules(&p->synthesis, 1, &origin, &storage, &effects, 1, &inputs));
+	const struct pg_induction_allocation *expected = inputs[0]->parameters.induction;
+	const struct pg_induction_allocation *actual = pg_evidence_induction_allocation(pg_synthesis_result(job));
+	assert(expected && actual && actual->count == expected->count);
+	assert(actual->self == expected->self && actual->argument == expected->argument && actual->recursion == expected->recursion);
+	for (size_t i = 0; i < actual->count; ++i) assert(actual->clauses[i] == expected->clauses[i]);
+	pg_effect_inference_destroy(&effects);
+	pg_graph_destroy(&storage);
+	return 0;
+}
+
+static void match_origins(void)
+{
+	const char *text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&{(\\n:Nat=>n @zero=>Nat.zero @succ k=>Nat.succ *k) (Nat.succ Nat.zero);}; }}.r";
+	struct pg_program *p = retained_program(text);
+	for (unsigned round = 0; round < 3; ++round) {
+		FILE *file = tmpfile();
+		uint64_t steps = p->synthesis.steps;
+		assert(file && !pg_sources_write_retained(file, &p->synthesis, 1, &p->root, p->retained_reductions));
+		assert(p->synthesis.steps == steps);
+		pg_program_destroy(p);
+		rewind(file);
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		p = pg_sources_read(file, 100000, &count, &roots);
+		assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(p->root));
+		assert(!fclose(file));
+		struct match_origin_check check = {p, 0, 0};
+		assert(!pg_synthesis_visit_source_allocations(&p->synthesis, check_match_origin, &check) && check.count == 1);
+	}
+	pg_synthesis_advance(&p->synthesis, 10000);
+	assert(pg_synthesis_result(p->root));
+	struct match_origin_check check = {p, 0, 1};
+	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, check_match_origin, &check) && check.count == 1);
+	pg_program_destroy(p);
+	puts("source Match origin: unsolved resaves preserve induction binders and clause allocations; ordinary source checking passed");
+}
+
 static void check_retained_program(struct pg_program *p, struct pg_synthesis_job *root, int reuse)
 {
 	const struct pg_reduction_archive *reductions = p->retained_reductions;
@@ -408,6 +468,21 @@ static void check_retained_program(struct pg_program *p, struct pg_synthesis_job
 	if (forced && pg_evidence_subject(forced)->core != pg_reduction_source(receipt)) {
 		fprintf(stderr, "retained source mismatch: reuse=%d alpha_equal=%d\n", reuse,
 			pg_alpha_equal(pg_evidence_subject(forced)->core, pg_reduction_source(receipt)));
+		const struct pg_term *left = pg_evidence_subject(forced)->core, *right = pg_reduction_source(receipt);
+		fputs("first exact difference (f=function, a=argument, b=body): ", stderr);
+		for (size_t depth = 0; depth < 128 && left != right; ++depth) {
+			if (left->kind != right->kind) { fputs("node kind", stderr); break; }
+			if (left->kind == PG_REFERENCE) { fputs("reference", stderr); break; }
+			if (left->kind == PG_LAMBDA) {
+				if (left->as.lambda.binder != right->as.lambda.binder) { fputs("binder", stderr); break; }
+				fputc('b', stderr); left = left->as.lambda.body; right = right->as.lambda.body;
+			} else if (left->as.application.function != right->as.application.function) {
+				fputc('f', stderr); left = left->as.application.function; right = right->as.application.function;
+			} else {
+				fputc('a', stderr); left = left->as.application.argument; right = right->as.application.argument;
+			}
+		}
+		fputc('\n', stderr);
 	}
 	assert(forced && pg_evidence_subject(forced)->core == pg_reduction_source(receipt));
 	struct pg_nf_job *cached = pg_nf_request(&p->evaluation, &pg_pure_policy, pg_reduction_source(receipt));
@@ -1310,6 +1385,7 @@ int main(int argc, char **argv)
 {
 	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "constructor-inputs")) { constructor_inputs(); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "match-origins")) { match_origins(); return 0; }
 	if (argc > 1 && !strncmp(argv[1], "retained-", 9)) {
 		retained_process(argc, argv);
 		return 0;

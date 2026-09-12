@@ -4,6 +4,7 @@ directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 "$1" context-scopes
 "$1" constructor-inputs
+"$1" match-origins
 "$1" write "$directory/modules.graph"
 single=$("$1" read "$directory/modules.graph")
 bulk=$("$1" read-bulk "$directory/modules.graph")
