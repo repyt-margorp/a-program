@@ -36,6 +36,11 @@ while read -r expectation name left right; do
 			failed=$((failed + 1))
 		fi
 	fi
+	if [ "$name" = typing/function_graph_two_recursive_calls_check ]; then
+		if ! "$runtime" --equal "$fixtures/$name.p" certified expected; then
+			failed=$((failed + 1))
+		fi
+	fi
 done <<'CASES'
 0 typing/explicit_index_family_vec_check
 0 typing/explicit_index_family_acc_eliminator_check

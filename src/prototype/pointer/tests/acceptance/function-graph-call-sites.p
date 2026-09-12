@@ -10,6 +10,12 @@ countCalls := \input:Nat => \output:Nat => \graph:@twice input output => graph
 	@zero => Nat.zero
 	@succ k first firstGraph second secondGraph => Nat.succ (Nat.succ *secondGraph);
 
+cutoff := \n:Nat => n @zero => Nat.zero
+	@succ k => { selected:=*k; ignored:=*k; }.selected;
+cutDepth := \input:Nat => \output:Nat => \graph:@cutoff input output => graph
+	@zero => Nat.zero
+	@succ k result resultGraph => Nat.succ *resultGraph;
+
 rightOnly := \tree:Tree => tree
 	@leaf => Tree.leaf
 	@fork left right => *right;
@@ -50,3 +56,5 @@ leaf := Tree.leaf;
 propertyMain := { packet:=*orderedMirror sample; packet @returned output graph => certify sample output graph; };
 propertyExpected := OutputTree.fork (Tree.fork leaf leaf) leaf
 	(OutputTree.fork leaf leaf OutputTree.leaf OutputTree.leaf) OutputTree.leaf;
+cutMain := { packet:=*cutoff two; packet @returned output graph => cutDepth two output graph; };
+cutExpected := two;

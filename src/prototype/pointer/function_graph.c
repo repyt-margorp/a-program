@@ -4,9 +4,11 @@
 #include <stdlib.h>
 
 struct graph_call {
-	size_t field, hypothesis;
+	size_t field, hypothesis, slot;
 	const struct pg_evidence *result_context;
+	const struct pg_evidence *layout_output;
 	struct graph_call *next;
+	struct graph_call *field_next;
 };
 
 struct graph_case {
@@ -16,6 +18,8 @@ struct graph_case {
 	const struct pg_evidence *context, *computation, *output;
 	struct pg_whnf_job *normalization;
 	struct graph_call *calls, **tail;
+	struct graph_call **ordered;
+	const struct pg_function_graph_order *source_order;
 	struct graph_continuation *continuations;
 };
 
@@ -242,7 +246,8 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		if (!call || plan->call_count == SIZE_MAX) return -1;
 		plan->context = pg_prove_context_extension(t, plan->context, pg_binder(t->graph), projection(s, plan->context, s->range));
 		if (!plan->context) return -1;
-		*call = (struct graph_call){plan->hypothesis_fields[i], i, plan->context, NULL};
+		*call = (struct graph_call){.field = plan->hypothesis_fields[i], .hypothesis = i,
+			.result_context = plan->context};
 		*plan->tail = call; plan->tail = &call->next;
 		++plan->call_count;
 		value = pg_prove_variable(t, plan->context, pg_evidence_context(plan->context)->binder);
@@ -259,12 +264,47 @@ normalize:
 	return plan->normalization ? 0 : -1;
 }
 
-/* One positive graph premise per exposed recursive call, in sequencing order.
+/* Match public source slots to executed calls without changing sequencing.
  * Unused IHs are not calls; repeated calls receive distinct result binders. */
+static int order_calls(struct pg_function_graph_state *s, struct graph_case *plan)
+{
+	if (plan->call_count > SIZE_MAX / sizeof(*plan->ordered)) return -1;
+	plan->ordered = pg_alloc(&s->temporary, plan->call_count * sizeof(*plan->ordered));
+	if (plan->call_count && !plan->ordered) return -1;
+	if (!plan->source_order) {
+		size_t slot = 0;
+		for (struct graph_call *call = plan->calls; call; call = call->next) {
+			call->slot = slot;
+			plan->ordered[slot++] = call;
+		}
+		return 0;
+	}
+	if (plan->source_order->count != plan->call_count) return -1;
+	struct graph_call **heads = pg_alloc(&s->temporary, plan->field_count * sizeof(*heads));
+	struct graph_call **tails = pg_alloc(&s->temporary, plan->field_count * sizeof(*tails));
+	if (plan->field_count && (!heads || !tails)) return -1;
+	for (struct graph_call *call = plan->calls; call; call = call->next) {
+		if (call->field >= plan->field_count) return -1;
+		if (tails[call->field]) tails[call->field]->field_next = call;
+		else heads[call->field] = call;
+		tails[call->field] = call;
+	}
+	for (size_t slot = 0; slot < plan->call_count; ++slot) {
+		size_t field = plan->source_order->fields[slot];
+		if (field >= plan->field_count || !heads[field]) return -1;
+		struct graph_call *call = heads[field];
+		heads[field] = call->field_next;
+		call->slot = slot;
+		plan->ordered[slot] = call;
+	}
+	return 0;
+}
+
 static int case_branch(struct pg_function_graph_state *s)
 {
 	struct pg_typing *t = s->typing;
-	const struct graph_case *plan = &s->plans[s->next];
+	struct graph_case *plan = &s->plans[s->next];
+	if (order_calls(s, plan)) return -1;
 	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(s->input.schema), s->next);
 	const struct pg_evidence *parameters = parameters_at(s, s->self);
 	const struct pg_evidence *fields = pg_prove_constructor_scope(t, s->input.formation, constructor, parameters);
@@ -289,7 +329,8 @@ static int case_branch(struct pg_function_graph_state *s)
 		map = pg_prove_substitution_pair(t, map, plan->scopes[count + i], pg_prove_thunk(t, s->classifiers, call));
 	}
 	if (!map) return -1;
-	for (const struct graph_call *call = plan->calls; call; call = call->next) {
+	for (size_t slot = 0; slot < plan->call_count; ++slot) {
+		struct graph_call *call = plan->ordered[slot];
 		context = pg_prove_context_extension(t, context, pg_binder(t->graph), projection(s, context, s->range));
 		if (!context) return -1;
 		const struct pg_evidence *output = pg_prove_variable(t, context, pg_evidence_context(context)->binder);
@@ -298,9 +339,12 @@ static int case_branch(struct pg_function_graph_state *s)
 		relation = pg_prove_family_application(t, relation, output);
 		context = pg_prove_context_extension(t, context, pg_binder(t->graph), relation);
 		if (!context) return -1;
-		const struct pg_evidence *lift = pg_prove_substitution_projection(t, pg_evidence_premise(map, 1), context);
-		map = pg_prove_substitution_compose(t, map, lift);
-		map = pg_prove_substitution_pair(t, map, call->result_context, projection(s, context, output));
+		call->layout_output = output;
+	}
+	const struct pg_evidence *lift = pg_prove_substitution_projection(t, pg_evidence_premise(map, 1), context);
+	map = pg_prove_substitution_compose(t, map, lift);
+	for (const struct graph_call *call = plan->calls; call; call = call->next) {
+		map = pg_prove_substitution_pair(t, map, call->result_context, projection(s, context, call->layout_output));
 		if (!map) return -1;
 	}
 	s->branch_argument = projection(s, context, s->branch_argument);
@@ -392,6 +436,29 @@ unsupported:
 	return 0;
 error:
 	s->status = PG_FUNCTION_GRAPH_ERROR;
+	return 0;
+}
+
+int pg_function_graph_source_order(struct pg_function_graph_work *work,
+	size_t count, const struct pg_function_graph_order *orders)
+{
+	if (!work || !work->state) return -1;
+	struct pg_function_graph_state *s = work->state;
+	if (s->status != PG_FUNCTION_GRAPH_PENDING || s->next || s->branch) return -1;
+	if (!s->cases || count != s->count || (count && !orders)) return -1;
+	for (size_t i = 0; i < count; ++i) {
+		if (s->plans[i].computation || s->plans[i].source_order) return -1;
+		if (orders[i].count > SIZE_MAX / sizeof(size_t) || (orders[i].count && !orders[i].fields)) return -1;
+	}
+	struct pg_function_graph_order *copy = pg_alloc(&s->temporary, count * sizeof(*copy));
+	if (count && !copy) return -1;
+	for (size_t i = 0; i < count; ++i) {
+		size_t *fields = pg_alloc(&s->temporary, orders[i].count * sizeof(*fields));
+		if (orders[i].count && !fields) return -1;
+		for (size_t j = 0; j < orders[i].count; ++j) fields[j] = orders[i].fields[j];
+		copy[i] = (struct pg_function_graph_order){orders[i].count, fields};
+	}
+	for (size_t i = 0; i < count; ++i) s->plans[i].source_order = &copy[i];
 	return 0;
 }
 
@@ -571,8 +638,8 @@ static const struct pg_evidence *witness_case(struct pg_function_graph_state *s,
 		if (!f->fields) return NULL;
 		context = pg_evidence_premise(f->fields, 1);
 		size_t start = pg_evidence_premise_count(f->parameters) + 1;
-		values[count + 2 * next] = pg_evidence_premise(f->fields, start);
-		values[count + 2 * next + 1] = pg_evidence_premise(f->fields, start + 1);
+		values[count + 2 * call->slot] = pg_evidence_premise(f->fields, start);
+		values[count + 2 * call->slot + 1] = pg_evidence_premise(f->fields, start + 1);
 		++next;
 	}
 	if (next != calls) return NULL;

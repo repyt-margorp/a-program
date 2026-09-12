@@ -26,6 +26,13 @@ const struct pg_evidence *pg_function_graph_source(const struct pg_evidence *fun
 int pg_function_graph_init(struct pg_function_graph_work *work,
 	struct pg_typing *typing, struct pg_classifiers *classifiers,
 	struct pg_whnf_work *evaluation, const struct pg_evidence *function);
+/* Optional public telescope layout, supplied before advance. Each entry names
+ * a source recursive field ordinal; duplicate entries represent distinct calls.
+ * Counts and field associations must match the typed call plan exactly. This
+ * changes neither execution order nor typing rules. The work copies the arrays. */
+struct pg_function_graph_order { size_t count; const size_t *fields; };
+int pg_function_graph_source_order(struct pg_function_graph_work *work,
+	size_t count, const struct pg_function_graph_order *orders);
 enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph_work *work, uint64_t budget);
 /* Leading raw Lambda parameters become ordinary family abstractions. */
 const struct pg_evidence *pg_function_graph_formation(const struct pg_function_graph_work *work);

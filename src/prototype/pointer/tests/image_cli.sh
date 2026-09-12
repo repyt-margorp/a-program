@@ -141,8 +141,9 @@ done <<'GRAPHS'
 acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain
 acceptance/generated-function-graph-direct.p main certified
 acceptance/dependent-graph-motive.p main reorderedMain certifiedMain
-acceptance/function-graph-call-sites.p main unusedMain:unusedExpected orderedMain:orderedExpected propertyMain:propertyExpected
+acceptance/function-graph-call-sites.p main unusedMain:unusedExpected orderedMain:orderedExpected propertyMain:propertyExpected cutMain:cutExpected
 acceptance/motive-computed-callee.p main
 ../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified
+../../tests/fixtures/typing/function_graph_two_recursive_calls_check.p main certified
 GRAPHS
 printf '%s\n' 'image cli: generated graph source aliases and normal forms survive unfinished/completed resaves'

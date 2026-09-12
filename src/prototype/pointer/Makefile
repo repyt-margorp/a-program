@@ -108,6 +108,7 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p originalOrdered orderedExpected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p originalRight leaf
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p propertyMain propertyExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p cutMain cutExpected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-call-sites-rejected.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-motive-conflict.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-motive-expect-rejected.p

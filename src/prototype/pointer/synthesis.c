@@ -207,6 +207,7 @@ struct pg_synthesis_job {
 	const struct pg_operation_declaration *operation;
 	const struct pg_data_declaration *nominal_input;
 	struct pg_synthesis_job *allocation_origin;
+	struct pg_synthesis_job *source_origin;
 	struct context_allocation *context_allocation;
 	struct pg_constructor_allocation *member_allocations;
 	const struct pg_source_scope *exports;
@@ -1929,6 +1930,11 @@ static void wake(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, i
 static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	enum pg_synthesis_status status)
 {
+	if (status == PG_SYNTHESIS_DONE && job->role == EXPRESSION_JOB && job->match && job->result) {
+		struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, job->result);
+		if (!accepted) status = PG_SYNTHESIS_ERROR;
+		else if (!accepted->source_origin) accepted->source_origin = job;
+	}
 	if (status > PG_SYNTHESIS_DONE && job->handler && job->handler->effect_owner) {
 		struct handler_state *owner = job->handler->effect_owner;
 		if (!owner->effects.sealed && !owner->failure) {
@@ -2651,12 +2657,109 @@ static int function_graph_exports(struct pg_synthesis *synthesis, struct pg_synt
 	return 0;
 }
 
+/* Source call slots are an interface layout, not an execution schedule.
+ * Lexical shadowing and block cutoffs use the same marker walker as IH scope
+ * analysis. The backend validates every slot against its typed call plan. */
+static int function_graph_order(struct pg_synthesis_job *job, struct pg_synthesis_job *origin)
+{
+	if (!origin || !origin->match) return 0;
+	struct pg_graph temporary = {0};
+	size_t count = origin->match->count;
+	if (count > SIZE_MAX / sizeof(struct pg_function_graph_order)) return -1;
+	struct pg_function_graph_order *orders = pg_alloc(&temporary, count * sizeof(*orders));
+	int result = -1;
+	if (count && !orders) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_syntax *clause = origin->match->branches[i].clause;
+		const struct pg_syntax *top = block_syntax(clause->right);
+		size_t groups = top ? block_end(clause->right) : 1;
+		if (clause->item_count > SIZE_MAX / sizeof(size_t)) goto done;
+		size_t *last_group = pg_alloc(&temporary, clause->item_count * sizeof(*last_group));
+		if (clause->item_count && !last_group) goto done;
+		for (size_t field = 0; field < clause->item_count; ++field) last_group[field] = SIZE_MAX;
+		struct marker_task *tasks = NULL;
+		struct slot { size_t field; struct slot *next; };
+		struct slot *slots = NULL, **tail = &slots;
+		const struct marker_shadow *top_shadow = NULL;
+		for (size_t group = 0; group < groups; ++group) {
+			const struct pg_syntax *expression = top ? top->items[group].expression : clause->right;
+			if (marker_push(&temporary, &tasks, expression, top_shadow)) goto done;
+			while (tasks) {
+				const struct pg_syntax *syntax = tasks->syntax;
+				const struct marker_shadow *shadow = tasks->shadow;
+				tasks = tasks->next;
+				if (hypothesis_syntax(syntax)) {
+					struct pg_token name = syntax->right->token;
+					const struct marker_shadow *bound = shadow;
+					while (bound && !same_name(bound->name, name)) bound = bound->parent;
+					if (bound) continue;
+					size_t field = 0;
+					while (field < clause->item_count && !same_name(clause->items[field].name, name)) ++field;
+					if (field == clause->item_count) continue;
+					/* Field identity alone cannot distinguish reordered occurrences
+					 * of the same call inside one application. Require an explicit
+					 * sequencing boundary until occurrence provenance is retained. */
+					if (last_group[field] != SIZE_MAX && (!top || last_group[field] == group)) goto done;
+					last_group[field] = group;
+					struct slot *slot = pg_alloc(&temporary, sizeof(*slot));
+					if (!slot || orders[i].count == SIZE_MAX) goto done;
+					slot->field = field;
+					*tail = slot; tail = &slot->next;
+					++orders[i].count;
+					continue;
+				}
+				const struct pg_syntax *block = block_syntax(syntax);
+				if (block) {
+					struct marker_task *items = NULL;
+					for (size_t item = 0; item < block_end(syntax); ++item) {
+						if (marker_push(&temporary, &items, block->items[item].expression, shadow)) goto done;
+						if (block->items[item].name.kind == PG_TOKEN_IDENT) {
+							shadow = marker_bind(&temporary, shadow, block->items[item].name);
+							if (!shadow) goto done;
+						}
+					}
+					while (items) {
+						struct marker_task *item = items;
+						items = item->next;
+						item->next = tasks; tasks = item;
+					}
+					continue;
+				}
+				if (syntax->kind == PG_SYNTAX_APPLICATION) {
+					if (marker_push(&temporary, &tasks, syntax->right, shadow)) goto done;
+					if (marker_push(&temporary, &tasks, syntax->left, shadow)) goto done;
+				} else if (syntax->kind == PG_SYNTAX_EXPECT) {
+					if (marker_push(&temporary, &tasks, syntax->left, shadow)) goto done;
+				}
+			}
+			if (top && top->items[group].name.kind == PG_TOKEN_IDENT) {
+				top_shadow = marker_bind(&temporary, top_shadow, top->items[group].name);
+				if (!top_shadow) goto done;
+			}
+		}
+		if (orders[i].count > SIZE_MAX / sizeof(size_t)) goto done;
+		size_t *fields = pg_alloc(&temporary, orders[i].count * sizeof(*fields));
+		if (orders[i].count && !fields) goto done;
+		for (size_t slot = 0; slots; ++slot, slots = slots->next) fields[slot] = slots->field;
+		orders[i].fields = fields;
+	}
+	result = pg_function_graph_source_order(&job->function_graph, count, orders);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 static void function_graph_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_evidence *function = job->inputs[0];
-	if (!job->function_graph.state && pg_function_graph_init(&job->function_graph,
-		synthesis->typing, synthesis->classifiers, synthesis->normalization, function)) {
-		finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+	if (!job->function_graph.state) {
+		if (pg_function_graph_init(&job->function_graph,
+			synthesis->typing, synthesis->classifiers, synthesis->normalization, function)) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+		}
+		if (function_graph_order(job, (void *)job->inputs[1])) {
+			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+		}
 	}
 	enum pg_function_graph_status status = pg_function_graph_advance(&job->function_graph, 1);
 	if (status == PG_FUNCTION_GRAPH_PENDING) { enqueue(synthesis, job); return; }
@@ -2709,7 +2812,11 @@ static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (reference.producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, reference.producer->status); return; }
 		const struct pg_evidence *function = pg_function_graph_source(reference.producer->result);
 		if (!function) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		struct pg_synthesis_job *graph = request_job(synthesis, FUNCTION_GRAPH_JOB, function, NULL);
+		const struct pg_evidence *body = function;
+		while (pg_evidence_rule(body) == PG_LAMBDA_INTRO) body = pg_evidence_premise(body, 1);
+		struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, body);
+		if (!accepted) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		struct pg_synthesis_job *graph = request_job(synthesis, FUNCTION_GRAPH_JOB, function, accepted->source_origin);
 		if (witness) graph = request_job(synthesis, FUNCTION_WITNESS_JOB, graph, NULL);
 		struct pg_synthesis_job *premises[] = {job->scope->context_job, graph};
 		job->value_job = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);

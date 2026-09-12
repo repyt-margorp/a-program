@@ -66,7 +66,7 @@ not the stale worktree `read_file.out` (which fails the length fixture).
 an initial 18 source/result cases using unchanged legacy fixtures: Vec, Acc,
 order proofs, six function-graph examples, named cases, six QuickSort inputs,
 and two expected rejections. Main passed that initial baseline. The current
-19-case gate passes 8: six legacy positive cases, one justified admission of
+19-case gate passes 9: seven legacy positive cases, one justified admission of
 a historical negative request, and one new actual wrong-result rejection
 (details below). Remaining cases are UNSUPPORTED or incorrectly REJECTED.
 This gate is included in
@@ -173,15 +173,26 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   Normal checks/examples/results pass. ASan/UBSan program/property/rejection
   tests and source-image resaves pass with the normal fixture writer and
   sanitized checker/comparator. Unchanged compatibility remains 8/19.
-- [ ] Resolve the remaining legacy mirror clause-layout discrepancy. The raw-Pi
-  lowering of `Tree.fork *right *left` currently sequences the outer argument
-  before demanding the computation producing the callee; explicit blocks
-  preserve the written order. The call plan follows actual retained sequencing,
-  so it must not silently swap graph fields based on names to satisfy the old
-  fixture. Inspect source application lowering and source call-site provenance
-  together before choosing a compatible positional Graph interface. The
-  unchanged legacy fixture still fails; the explicit-block test does not replace
-  it. Acc/open families, conditional calls and function-field calls remain open.
+- [x] Restore the legacy mirror clause layout without changing evaluation.
+  Legacy `src/prototype/src/frontend/function_graph.c` collects call slots
+  callee-first in `function_graph_collect_ih`; the public telescope is source
+  order, not necessarily raw-Pi execution order. Retain the source match origin
+  with the synthesis job and validate its field-slot sequence against the typed
+  call plan. Checked substitutions and witness arguments apply the permutation;
+  recursive results are never guessed from names or declared equal.
+  The unchanged two-recursive-call fixture now compiles, including its dependent
+  property; both `main` and `certified` equal `expected` at chunks 1/64.
+  Normal checks/examples/results and ASan/UBSan program tests and source-image
+  resaves pass. The compatibility gate is now 9/19, still incomplete.
+  Boundary tests cover invalid slot counts, repeated/late order installation,
+  wrong recursive evidence and block result cutoffs.
+- [ ] Retain exact occurrence provenance for repeated calls within one expression.
+  Field identity cannot distinguish their source and runtime permutations.
+  Such Graph requests currently remain unsupported; repeated calls in distinct
+  sequential block statements work. Do not infer equality of their results or
+  proofs to bypass this restriction. Acc/open families, conditional calls and
+  function-field calls also remain open; these are compatibility work, not
+  checkpoint or performance requirements.
 - [x] Build the ordinary dependent result packet and `*f` witness for the
   current direct-recursion fragment, using the same relation and checked
   induction rule. Packet is an ordinary parameterized ADT with output and
@@ -300,7 +311,7 @@ that inference, not a counterexample established for A Program's declaration
 discipline. The family adapter above instead builds a checked function from
 an existing declaration; general neutral type computation remains unresolved.
 
-The latest compatibility gate is 8/19. Remaining source failures are real
+The latest compatibility gate is 9/19. Remaining source failures are real
 acceptance blockers, not expected failures. Acc/QuickSort and general post-hoc
 property consumption are not complete. Keep checkpoint/performance work
 subordinate to these source-compatibility requirements.

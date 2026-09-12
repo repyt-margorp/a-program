@@ -392,6 +392,40 @@ static void function_graphs(void)
 				assert(type && pg_alpha_equal(pg_evidence_subject(type)->core, pg_evidence_classifier(step)) == 1);
 				fields[5] = base;
 				assert(!pg_prove_constructor(&p->typing, formation, fork, parameters, 6, fields));
+				for (size_t mode = 0; mode < 3; ++mode) {
+					struct pg_function_graph_work ordered;
+					assert(!pg_function_graph_init(&ordered, &p->typing, &p->classifiers, &p->evaluation, function));
+					size_t slots[] = {1, mode == 2 ? 1 : 0};
+					struct pg_function_graph_order order[] = {{0, NULL}, {mode ? 2 : 1, slots}};
+					assert(pg_function_graph_source_order(&ordered, 1, order));
+					assert(!pg_function_graph_source_order(&ordered, 2, order));
+					assert(pg_function_graph_source_order(&ordered, 2, order));
+					for (size_t turns = 0; pg_function_graph_advance(&ordered, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+						assert(turns < 100000);
+					assert(pg_function_graph_source_order(&ordered, 2, order));
+					if (mode == 1) {
+						assert(pg_function_graph_advance(&ordered, 0) == PG_FUNCTION_GRAPH_DONE);
+						const struct pg_evidence *ordered_type = pg_function_graph_formation(&ordered);
+						struct pg_inductive_instance instance;
+						assert(pg_inductive_instance(&p->typing, ordered_type, &instance));
+						const struct pg_data_layout *ordered_layout = pg_data_schema_layout(instance.schema);
+						const struct pg_object *ordered_fork = pg_data_constructor(ordered_layout, 1);
+						const struct pg_evidence *ordered_base = pg_prove_constructor(&p->typing, ordered_type,
+							pg_data_constructor(ordered_layout, 0), parameters, 0, NULL);
+						const struct pg_evidence *ordered_fields[] = {leaf, leaf, leaf, ordered_base, leaf, ordered_base};
+						const struct pg_evidence *ordered_pair = pg_prove_constructor(&p->typing, ordered_type,
+							ordered_fork, parameters, 6, ordered_fields);
+						assert(ordered_pair);
+						ordered_fields[1] = pair; ordered_fields[2] = pair; ordered_fields[3] = ordered_pair;
+						assert(pg_prove_constructor(&p->typing, ordered_type, ordered_fork, parameters, 6, ordered_fields));
+						ordered_fields[3] = ordered_base;
+						assert(!pg_prove_constructor(&p->typing, ordered_type, ordered_fork, parameters, 6, ordered_fields));
+					} else {
+						assert(pg_function_graph_advance(&ordered, 0) == PG_FUNCTION_GRAPH_UNSUPPORTED);
+						assert(!pg_function_graph_formation(&ordered));
+					}
+					pg_function_graph_destroy(&ordered);
+				}
 			}
 			assert(pg_function_graph_witness_advance(&work, 0) == PG_FUNCTION_GRAPH_PENDING);
 			for (size_t turns = 0; pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
@@ -421,6 +455,23 @@ static void function_graphs(void)
 		pg_program_destroy(p);
 	}
 	puts("function graphs: ordinary indexed schemas and result witnesses preserve identity/length/mirror results");
+}
+
+static void ambiguous_source_calls(void)
+{
+	const char *source = "Nat:=@{zero:*;succ:*->*;}; keep:=\\a:Nat=>\\b:Nat=>a;"
+		"twice:=\\n:Nat=>n @zero=>Nat.zero @succ k=>keep *k *k; main:=@twice;";
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		solve(p, chunk);
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_UNSUPPORTED);
+		struct pg_synthesis_job *function = pg_synthesis_definition(p->root,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "twice", .length = 5});
+		assert(function && pg_synthesis_status(function) == PG_SYNTHESIS_DONE);
+		pg_program_destroy(p);
+	}
+	puts("function graph source layout: ambiguous repeated argument sites stay unsupported, not interchangeable");
 }
 
 int main(int argc, char **argv)
@@ -453,6 +504,7 @@ int main(int argc, char **argv)
 	pending_normalization();
 	remembered_normalization();
 	function_graphs();
+	ambiguous_source_calls();
 	char source[] = "{{ id := &(\\A:@ => \\x:A => x); id :: (A:@)->A->A; }}.id";
 	struct pg_program *split = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
 	struct pg_program *whole = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
