@@ -293,8 +293,23 @@ still fails overall. No Main promotion is justified by these kernel tests.
 - [x] Publish positional Graph cases through ordinary constructor namespaces.
   Names refer to generated constructors, not the original ADT constructors;
   reversed clause order and recursive Graph elimination work, while using the
-  original ADT's qualified constructors is rejected. Named sparse selectors
-  still require call-site provenance and are not covered by this completion.
+  original ADT's qualified constructors is rejected.
+- [x] Resolve named Graph fields and aliases from the checked source call-slot
+  layout. Ordinary and inductive branches use the same binding resolver;
+  `name`, `@name`, `*name` select the result, Graph field and its IH respectively.
+  Unselected fields remain anonymous, not absent from the checked telescope.
+  Tests exercise direct block-call results, reordered cases, aliases and proof
+  consumption. A derived binding such as `n := Nat.succ *tail` is not silently
+  mapped to the nested call's result: its expression projection remains
+  unsupported. Duplicate aliases and wrong-result evidence are rejected.
+  Normal checks/examples/results, source image resaves and targeted ASan/UBSan
+  comparisons/rejections pass. Compatibility remains 9/19 because the unchanged
+  named-case fixture also requires the separate omitted-case decision below.
+- [ ] Settle omitted-case semantics independently of omitted field names.
+  The legacy named-case fixture's `selectGraph` omits `nil` for arbitrary input;
+  it is not established unreachable. Do not invent a branch or equate its result
+  with another case to pass the fixture. Admission needs coverage/refinement
+  evidence or an explicitly agreed partial-computation rule; it is not a naming fix.
 - [x] Preserve leading raw Lambda parameters using existing family abstraction
   for `@f` and Lambda abstraction for `*f`. The unchanged dependent-spine
   `headOr` fixture and its proof-consuming `certified` result now pass. The

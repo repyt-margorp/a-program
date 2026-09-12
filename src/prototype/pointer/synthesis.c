@@ -95,7 +95,16 @@ struct match_branch {
 	const struct pg_evidence *function;
 	const struct pg_evidence *type_family;
 	struct motive_demand *demands;
+	size_t field_count;
 	int needs_ih;
+};
+struct source_case_field {
+	struct pg_token name;
+	size_t graph_value;
+};
+struct source_case_layout {
+	size_t count;
+	struct source_case_field *fields;
 };
 struct match_state {
 	struct pg_inductive_instance instance;
@@ -210,6 +219,8 @@ struct pg_synthesis_job {
 	struct pg_synthesis_job *allocation_origin;
 	struct pg_synthesis_job *source_origin;
 	struct pg_synthesis_job *packet_origin;
+	struct pg_synthesis_job *graph_origin;
+	struct source_case_layout *case_layouts;
 	struct context_allocation *context_allocation;
 	struct pg_constructor_allocation *member_allocations;
 	const struct pg_source_scope *exports;
@@ -2378,6 +2389,23 @@ static const struct marker_shadow *marker_bind(struct pg_graph *arena,
 	return shadow;
 }
 
+static const struct pg_object *associated_binder(const struct pg_source_scope *scope,
+	const struct pg_object *value, enum pg_source_association association)
+{
+	for (; scope; scope = scope->parent)
+		if (scope->association == association && scope->associated_binder == value) return scope->binder;
+	return NULL;
+}
+
+static const struct pg_object *hypothesis_field(const struct pg_source_scope *scope,
+	struct pg_token name)
+{
+	const struct pg_object *value = lookup_scope(scope, name).binder;
+	if (!value) return NULL;
+	const struct pg_object *graph = associated_binder(scope, value, PG_SOURCE_GRAPH);
+	return graph ? graph : value;
+}
+
 /* Lexical dependency discovery only. The normal binder resolver and kernel
  * still check every use. Nested pattern/Lambda/block binders shadow names;
  * declarations introduce their own Self marker. No classifier is guessed. */
@@ -2405,10 +2433,10 @@ static int branch_needs_ih(const struct pg_source_scope *scope,
 			const struct marker_shadow *bound = shadow;
 			while (bound && !same_name(bound->name, name)) bound = bound->parent;
 			if (!bound) {
-				struct source_reference field = lookup_scope(scope, name);
+				const struct pg_object *field = hypothesis_field(scope, name);
 				for (const struct pg_context *context = pg_evidence_context(source_context(scope));
 					context && context != prefix; context = context->parent) {
-					if (context->binder == field.binder) { result = 1; goto done; }
+					if (context->binder == field) { result = 1; goto done; }
 				}
 			}
 		}
@@ -2430,7 +2458,9 @@ static int branch_needs_ih(const struct pg_source_scope *scope,
 				const struct pg_syntax *clause = syntax->items[i].expression;
 				const struct marker_shadow *inner = shadow;
 				for (size_t j = 0; j < clause->item_count; ++j) {
-					inner = marker_bind(&arena, inner, clause->items[j].name);
+					struct pg_token name = clause->items[j].operation == PG_TOKEN_ASSIGN
+						? clause->items[j].expression->token : clause->items[j].name;
+					inner = marker_bind(&arena, inner, name);
 					if (!inner) goto done;
 				}
 				if (marker_push(&arena, &tasks, clause->left, shadow)) goto done;
@@ -2492,7 +2522,7 @@ static int motive_demands(struct pg_synthesis *synthesis, struct match_branch *b
 			if (!depends && recursive) {
 				struct motive_demand *demand = pg_alloc(synthesis->typing->graph, sizeof(*demand));
 				if (!demand) goto done;
-				demand->field = lookup_scope(branch->scope, syntax->right->right->token).binder;
+				demand->field = hypothesis_field(branch->scope, syntax->right->right->token);
 				demand->callee = pg_synthesis_request(synthesis, branch->scope, syntax->left);
 				if (!demand->callee) goto done;
 				demand->next = branch->demands;
@@ -2508,22 +2538,14 @@ done:
 	return result;
 }
 
-static const struct pg_object *associated_binder(const struct pg_source_scope *scope,
-	const struct pg_object *value, enum pg_source_association association)
-{
-	for (; scope; scope = scope->parent)
-		if (scope->association == association && scope->associated_binder == value) return scope->binder;
-	return NULL;
-}
-
 static int hypothesis_reference(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_syntax *syntax = job->syntax;
 	if (!hypothesis_syntax(syntax)) return 0;
 	if (lookup_scope(job->scope, (struct pg_token){.kind = '*'}).binder) return 0;
-	struct source_reference field = lookup_scope(job->scope, syntax->right->token);
-	if (!field.binder) return 0;
-	const struct pg_object *binder = associated_binder(job->scope, field.binder, PG_SOURCE_HYPOTHESIS);
+	const struct pg_object *field = hypothesis_field(job->scope, syntax->right->token);
+	if (!field) return 0;
+	const struct pg_object *binder = associated_binder(job->scope, field, PG_SOURCE_HYPOTHESIS);
 	if (!binder) return 0;
 	const struct pg_evidence *value = pg_prove_variable(synthesis->typing, source_context(job->scope), binder);
 	job->result = pg_prove_force(synthesis->typing, value);
@@ -2657,13 +2679,15 @@ static int function_graph_exports(struct pg_synthesis *synthesis, struct pg_synt
 	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, declaration);
 	if (!accepted) return -1;
 	accepted->exports = exports;
+	accepted->graph_origin = job;
 	return 0;
 }
 
 /* Source call slots are an interface layout, not an execution schedule.
  * Lexical shadowing and block cutoffs use the same marker walker as IH scope
  * analysis. The backend validates every slot against its typed call plan. */
-static int function_graph_order(struct pg_synthesis_job *job, struct pg_synthesis_job *origin)
+static int function_graph_order(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	struct pg_synthesis_job *origin)
 {
 	if (!origin || !origin->match) return 0;
 	struct pg_graph temporary = {0};
@@ -2672,8 +2696,12 @@ static int function_graph_order(struct pg_synthesis_job *job, struct pg_synthesi
 	struct pg_function_graph_order *orders = pg_alloc(&temporary, count * sizeof(*orders));
 	int result = -1;
 	if (count && !orders) goto done;
+	job->case_layouts = pg_alloc(synthesis->typing->graph, count * sizeof(*job->case_layouts));
+	if (count && !job->case_layouts) goto done;
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_syntax *clause = origin->match->branches[i].clause;
+		/* Named source patterns require their resolved field layout here too. */
+		if (clause->item_count && clause->items[0].operation) goto done;
 		const struct pg_syntax *top = block_syntax(clause->right);
 		size_t groups = top ? block_end(clause->right) : 1;
 		if (clause->item_count > SIZE_MAX / sizeof(size_t)) goto done;
@@ -2681,11 +2709,15 @@ static int function_graph_order(struct pg_synthesis_job *job, struct pg_synthesi
 		if (clause->item_count && !last_group) goto done;
 		for (size_t field = 0; field < clause->item_count; ++field) last_group[field] = SIZE_MAX;
 		struct marker_task *tasks = NULL;
-		struct slot { size_t field; struct slot *next; };
+		struct slot { size_t field; struct pg_token name; struct slot *next; };
 		struct slot *slots = NULL, **tail = &slots;
 		const struct marker_shadow *top_shadow = NULL;
 		for (size_t group = 0; group < groups; ++group) {
 			const struct pg_syntax *expression = top ? top->items[group].expression : clause->right;
+			const struct pg_syntax *result_call = expression;
+			while (result_call->kind == PG_SYNTAX_EXPECT) result_call = result_call->left;
+			while (result_call->kind == PG_SYNTAX_APPLICATION && !hypothesis_syntax(result_call))
+				result_call = result_call->left;
 			if (marker_push(&temporary, &tasks, expression, top_shadow)) goto done;
 			while (tasks) {
 				const struct pg_syntax *syntax = tasks->syntax;
@@ -2707,6 +2739,7 @@ static int function_graph_order(struct pg_synthesis_job *job, struct pg_synthesi
 					struct slot *slot = pg_alloc(&temporary, sizeof(*slot));
 					if (!slot || orders[i].count == SIZE_MAX) goto done;
 					slot->field = field;
+					if (top && syntax == result_call) slot->name = top->items[group].name;
 					*tail = slot; tail = &slot->next;
 					++orders[i].count;
 					continue;
@@ -2743,7 +2776,19 @@ static int function_graph_order(struct pg_synthesis_job *job, struct pg_synthesi
 		if (orders[i].count > SIZE_MAX / sizeof(size_t)) goto done;
 		size_t *fields = pg_alloc(&temporary, orders[i].count * sizeof(*fields));
 		if (orders[i].count && !fields) goto done;
-		for (size_t slot = 0; slots; ++slot, slots = slots->next) fields[slot] = slots->field;
+		struct source_case_layout *layout = &job->case_layouts[i];
+		if (orders[i].count > (SIZE_MAX - clause->item_count) / 2) goto done;
+		layout->count = clause->item_count + 2 * orders[i].count;
+		if (layout->count > SIZE_MAX / sizeof(*layout->fields)) goto done;
+		layout->fields = pg_alloc(synthesis->typing->graph, layout->count * sizeof(*layout->fields));
+		if (layout->count && !layout->fields) goto done;
+		for (size_t field = 0; field < clause->item_count; ++field) layout->fields[field].name = clause->items[field].name;
+		for (size_t slot = 0; slots; ++slot, slots = slots->next) {
+			fields[slot] = slots->field;
+			size_t value = clause->item_count + 2 * slot;
+			layout->fields[value].name = slots->name;
+			layout->fields[value + 1].graph_value = value + 1;
+		}
 		orders[i].fields = fields;
 	}
 	result = pg_function_graph_source_order(&job->function_graph, count, orders);
@@ -2760,7 +2805,7 @@ static void function_graph_step(struct pg_synthesis *synthesis, struct pg_synthe
 			synthesis->typing, synthesis->classifiers, synthesis->normalization, function)) {
 			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 		}
-		if (function_graph_order(job, (void *)job->inputs[1])) {
+		if (function_graph_order(synthesis, job, (void *)job->inputs[1])) {
 			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 		}
 	}
@@ -3780,6 +3825,88 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	finish(synthesis, job, job->exports ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
+/* Resolve source selectors against the generated telescope, then use the
+ * same lexical field bindings in ordinary and inductive branch synthesis. */
+static enum pg_synthesis_status case_field_scope(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_syntax *clause, size_t count,
+	const struct pg_evidence *const *extensions, struct pg_synthesis_job *const *contexts,
+	const struct pg_source_scope **result)
+{
+	int named = clause->item_count && clause->items[0].operation;
+	if (!named && count != clause->item_count) return PG_SYNTHESIS_REJECTED;
+	if (count > SIZE_MAX / sizeof(struct source_case_field)) return PG_SYNTHESIS_ERROR;
+	struct source_case_field *bindings = calloc(count, sizeof(*bindings));
+	if (count && !bindings) return PG_SYNTHESIS_ERROR;
+	enum pg_synthesis_status status = PG_SYNTHESIS_REJECTED;
+	if (named) {
+		struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, formation);
+		struct pg_synthesis_job *graph = accepted ? accepted->graph_origin : NULL;
+		if (!graph || !graph->case_layouts) { status = PG_SYNTHESIS_UNSUPPORTED; goto done; }
+		size_t ordinal;
+		const struct pg_data_layout *layout = pg_data_declaration_layout(pg_evidence_inductive_declaration(formation));
+		if (!pg_data_constructor_position(layout, constructor, &ordinal)) goto done;
+		const struct source_case_layout *source = &graph->case_layouts[ordinal];
+		if (source->count != count) goto done;
+		for (size_t i = 0; i < count; ++i) bindings[i].graph_value = source->fields[i].graph_value;
+		for (size_t i = 0; i < clause->item_count; ++i) {
+			const struct pg_syntax_item *item = &clause->items[i];
+			if (item->operation != PG_TOKEN_ASSIGN || !item->expression || item->expression->kind != PG_SYNTAX_ATOM) goto done;
+			struct pg_token alias = item->expression->token;
+			if (alias.kind != PG_TOKEN_IDENT) goto done;
+			for (size_t j = 0; j < i; ++j)
+				if (same_name(alias, clause->items[j].expression->token)) goto done;
+			size_t selected = count;
+			for (size_t field = 0; field < count; ++field) {
+				if (source->fields[field].name.kind != PG_TOKEN_IDENT || !same_name(source->fields[field].name, item->name)) continue;
+				if (selected != count) goto done;
+				selected = field;
+			}
+			if (selected == count) {
+				struct pg_synthesis_job *origin = (void *)graph->inputs[1];
+				const struct pg_syntax *body = origin->match->branches[ordinal].clause->right;
+				const struct pg_syntax *block = block_syntax(body);
+				/* A derived block result is not the result of a nested call.
+				 * Its naming requires a checked expression projection, not an alias. */
+				if (block) for (size_t j = 0; j < block_end(body); ++j)
+					if (block->items[j].name.kind == PG_TOKEN_IDENT && same_name(block->items[j].name, item->name))
+						status = PG_SYNTHESIS_UNSUPPORTED;
+				goto done;
+			}
+			if (bindings[selected].name.kind) goto done;
+			bindings[selected].name = alias;
+		}
+	} else for (size_t i = 0; i < count; ++i) {
+		if (clause->items[i].operation) goto done;
+		bindings[i].name = clause->items[i].name;
+	}
+	const struct pg_source_scope *scope = parent;
+	for (size_t i = 0; scope && i < count; ++i) {
+		const struct pg_object *binder = pg_evidence_context(extensions[i])->binder;
+		const struct pg_object *value = NULL;
+		if (bindings[i].graph_value) {
+			if (bindings[i].graph_value > i) goto done;
+			value = pg_evidence_context(extensions[bindings[i].graph_value - 1])->binder;
+		}
+		if (contexts) scope = bind_context(synthesis, scope, bindings[i].name, binder, contexts[i], value, NULL,
+			value ? PG_SOURCE_GRAPH : PG_SOURCE_UNASSOCIATED);
+		else {
+			scope = pg_synthesis_bind(synthesis, scope, bindings[i].name, binder, extensions[i]);
+			if (scope && value) {
+				struct pg_source_scope associated = *scope;
+				associated.association = PG_SOURCE_GRAPH;
+				associated.associated_binder = value;
+				scope = intern_scope(synthesis, associated);
+			}
+		}
+	}
+	*result = scope;
+	status = scope ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR;
+done:
+	free(bindings);
+	return status;
+}
+
 static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (!job->left) {
@@ -3792,7 +3919,6 @@ static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synt
 		if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
 		const struct pg_evidence *map = job->right->result;
 		size_t fields = pg_evidence_premise_count(map) - pg_evidence_premise_count(parameters) - 1, total;
-		if (fields != job->syntax->item_count) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 		const struct pg_evidence *context = pg_evidence_premise(map, 1);
 		if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(parameters), &total)) goto error;
 		if (total > SIZE_MAX / sizeof(const struct pg_evidence *)) goto error;
@@ -3820,11 +3946,9 @@ static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synt
 			input = input->premises[1];
 		}
 		const struct pg_source_scope *scope = job->scope;
-		for (size_t i = 0; scope && i < fields; ++i) {
-			if (job->syntax->items[i].operation) { pg_graph_destroy(&temporary); finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-			scope = pg_synthesis_bind_context(synthesis, scope, job->syntax->items[i].name,
-				pg_evidence_context(extensions[i])->binder, contexts[i]);
-		}
+		enum pg_synthesis_status status = case_field_scope(synthesis, scope, formation, job->inputs[2],
+			job->syntax, fields, extensions, contexts, &scope);
+		if (status != PG_SYNTHESIS_DONE) { pg_graph_destroy(&temporary); finish(synthesis, job, status); return; }
 		/* Match IHs to original field binders, not their surface spelling. */
 		const struct pg_object *self = pg_evidence_context(pg_evidence_premise(formation, 0))->binder;
 		const struct pg_context *source_fields = pg_evidence_context(pg_evidence_premise(map, 0));
@@ -4753,8 +4877,12 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		size_t ordinal;
 		if (!pg_data_constructor_position(layout, constructor, &ordinal)) goto rejected;
 		if (state->branches[ordinal].clause) goto rejected;
+		const struct pg_evidence *schema_fields = pg_data_schema_fields(state->instance.schema, constructor);
+		size_t field_count;
+		if (pg_context_extension_size(pg_evidence_context(schema_fields),
+			pg_evidence_context(pg_evidence_premise(state->instance.formation, 0)), &field_count)) goto error;
 		if (job->allocation_origin) {
-			const struct pg_evidence *saved = source_match_branch_context(job, ordinal, packet ? 2 : clause->item_count);
+			const struct pg_evidence *saved = source_match_branch_context(job, ordinal, field_count);
 			if (!saved || !pg_synthesis_constructor_scope_at(synthesis,
 				pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
 				pg_synthesis_evidence(synthesis, state->instance.parameters), pg_evidence_context(context), pg_evidence_context(saved))) goto rejected;
@@ -4769,22 +4897,23 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		const struct pg_evidence *fields = pg_evidence_premise(map, 1);
 		size_t count;
 		if (pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(context), &count)) goto error;
-		if (count != (packet ? 2 : clause->item_count)) goto rejected;
+		if (packet && count != 2) goto rejected;
 		if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto error;
 		const struct pg_evidence **extensions = malloc(count * sizeof(*extensions));
 		if (count && !extensions) goto error;
 		for (size_t i = count; i; --i, fields = pg_evidence_premise(fields, 0)) extensions[i - 1] = fields;
 		const struct pg_source_scope *scope = job->inner;
-		for (size_t i = 0; i < count; ++i) {
+		if (!packet) {
+			enum pg_synthesis_status status = case_field_scope(synthesis, scope, state->instance.formation,
+				constructor, clause, count, extensions, NULL, &scope);
+			if (status != PG_SYNTHESIS_DONE) { free(extensions); finish(synthesis, job, status); return; }
+		}
+		else for (size_t i = 0; i < count; ++i) {
 			const struct pg_object *binder = pg_evidence_context(extensions[i])->binder;
-			if (packet && i == 1)
+			if (i == 1)
 				scope = pg_synthesis_bind_graph(synthesis, scope, scope->binder, binder,
 					pg_synthesis_evidence(synthesis, extensions[i]));
-			else {
-				if (!packet && clause->items[i].operation) { free(extensions); goto unsupported; }
-				scope = pg_synthesis_bind(synthesis, scope, packet ? clause->left->token : clause->items[i].name,
-					binder, extensions[i]);
-			}
+			else scope = pg_synthesis_bind(synthesis, scope, clause->left->token, binder, extensions[i]);
 			if (!scope) break;
 		}
 		free(extensions);
@@ -4794,6 +4923,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		struct match_branch *branch = &state->branches[ordinal];
 		branch->scope = scope;
 		branch->clause = clause;
+		branch->field_count = count;
 		branch->needs_ih = branch_needs_ih(scope, pg_evidence_context(context), clause->right);
 		if (branch->needs_ih < 0) goto error;
 		if (branch->needs_ih) {
@@ -4866,7 +4996,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (job->allocation_origin) {
 			const struct pg_evidence *fields = pg_data_schema_fields(state->instance.schema, constructor);
 			const struct pg_object *self = pg_evidence_context(pg_evidence_premise(state->instance.formation, 0))->binder;
-			size_t count = branch->clause->item_count, total = count;
+			size_t count = branch->field_count, total = count;
 			const struct pg_context *field = pg_evidence_context(fields);
 			for (size_t i = 0; i < count; ++i, field = field->parent) {
 				int recursive = pg_data_recursive_field(field->declared_type, self);

@@ -476,12 +476,13 @@ static void ambiguous_source_calls(void)
 
 int main(int argc, char **argv)
 {
-	if (argc == 3 && !strcmp(argv[1], "--reject")) {
+	if (argc == 3 && (!strcmp(argv[1], "--reject") || !strcmp(argv[1], "--unsupported"))) {
 		struct pg_program *p = load_program(argv[2]);
 		while (p->synthesis.ready && p->synthesis.steps < 1000000)
 			pg_synthesis_advance(&p->synthesis, 64);
-		int rejected = pg_synthesis_status(p->root) == PG_SYNTHESIS_REJECTED;
-		printf("parsed source rejection: %s rejected=%d\n", argv[2], rejected);
+		enum pg_synthesis_status expected = !strcmp(argv[1], "--reject") ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_UNSUPPORTED;
+		int rejected = pg_synthesis_status(p->root) == expected;
+		printf("parsed source status: %s %s matched=%d\n", argv[2], argv[1], rejected);
 		pg_program_destroy(p);
 		return !rejected;
 	}

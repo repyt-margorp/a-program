@@ -99,6 +99,13 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-packet-wrong-output.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-packet-shadow.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-packet-imitation.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-named-fields.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-named-fields.p aliasMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-named-fields.p graphMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-named-fields.p valueMain expected
+	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/function-graph-named-not-call.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-named-duplicate.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-named-wrong-proof.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-function-graph-mismatch.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-graph-motive.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-graph-motive.p reorderedMain expected
