@@ -132,13 +132,14 @@ const struct pg_source_scope *pg_synthesis_definition_scope(struct pg_synthesis 
 	const struct pg_source_scope *scope, const struct pg_syntax *definitions);
 /* Reconstructible lexical input, not a copied scope or another authority.
  * A parentless empty view denotes the ordinary root. At most one of producer,
- * module, exports, imports, definitions and binding is present. Handler-local
- * scopes require their own source reconstruction, not this view. */
+ * module, exports, imports, definitions, binding and handler is present.
+ * A handler boundary retains its allocation site, not solved effect state. */
 struct pg_source_environment {
 	const struct pg_source_scope *parent, *exports, *imports;
 	struct pg_token name;
 	struct pg_synthesis_job *producer, *module;
 	const struct pg_syntax *definitions;
+	const struct pg_syntax *handler;
 	struct pg_synthesis_job *binding;
 	struct pg_synthesis_job *context;
 	const struct pg_object *binder;
@@ -146,6 +147,10 @@ struct pg_source_environment {
 };
 int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_source_environment *input);
+/* Restore an independent handler inference boundary before Solve. Neither
+ * equations nor accepted results are imported; the ordinary handler runs it. */
+const struct pg_source_scope *pg_synthesis_handler_scope(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_syntax *syntax);
 /* Reserve the lexical binder before solving its Lambda/Pi domain. Requests
  * share by exact source scope and syntax, and create no context/evidence.
  * Completion yields context-extension evidence; reservation alone never does. */

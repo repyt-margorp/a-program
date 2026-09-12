@@ -65,7 +65,7 @@ int main(int argc, char **argv)
 		rewind(file);
 		size_t length = fread(bytes, 1, sizeof(bytes), file);
 		assert(feof(file) && !ferror(file) && fclose(file) == 0);
-		assert(length > 56 && !memcmp(bytes, "APGSRC\24", 8));
+		assert(length > 56 && !memcmp(bytes, "APGSRC\26", 8));
 		assert(bytes[8] == policy);
 		compare(read_bytes(bytes, length, 4096), source, policy);
 		assert(!read_bytes(bytes, length, 0));

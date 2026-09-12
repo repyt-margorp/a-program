@@ -73,6 +73,83 @@ static void context_scopes(void)
 	puts("source contexts: pending field and IH scopes survive inert resaves and ordinary lookup");
 }
 
+static void handler_scopes(int mode)
+{
+	const char *text = "D:=@{z:*;}; d:=D.z;";
+	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p);
+	pg_synthesis_advance(&p->synthesis, 10000);
+	const struct pg_source_scope *scope = p->scope;
+	const struct pg_evidence *type = NULL;
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = i ? "d" : "D", .length = 1};
+		struct pg_synthesis_job *value = pg_synthesis_definition(p->root, name);
+		assert(pg_synthesis_result(value));
+		if (!i) type = pg_synthesis_result(value);
+		scope = pg_synthesis_name_job(&p->synthesis, scope, name, value);
+	}
+	if (mode == 2) {
+		const struct pg_operation_declaration *operation = pg_operation_declaration(&p->typing, type, type);
+		assert(operation);
+		scope = pg_synthesis_name_job(&p->synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "ask", .length = 3},
+			pg_synthesis_operation(&p->synthesis, operation));
+		assert(scope);
+	}
+	struct pg_parser parser;
+	struct pg_definition definition;
+	text = mode == 2 ? "h:=(ask d) @ask req k=>k req @#.return x=>x;" : "h:=d @#.return x=>x;";
+	pg_parser_init(&parser, &p->graph, text, strlen(text));
+	assert(pg_parser_next(&parser, &definition) == 1);
+	const struct pg_source_scope *inner = pg_synthesis_handler_scope(&p->synthesis, scope, definition.expression);
+	assert(inner && inner == pg_synthesis_handler_scope(&p->synthesis, scope, definition.expression));
+	struct pg_source_environment environment;
+	assert(!pg_synthesis_environment_input(&p->synthesis, inner, &environment));
+	assert(environment.parent == scope && environment.handler == definition.expression);
+	struct pg_synthesis_job *initial[] = {
+		parse(p, scope, "{{x:=d;}}.x"), parse(p, inner, "{{f:=&(\\x:D=>x);x:=d;}}.x")};
+	size_t count = 2;
+	struct pg_synthesis_job *const *roots = initial;
+	if (mode) {
+		pg_synthesis_advance(&p->synthesis, 10000);
+		assert(pg_synthesis_result(roots[0]) && pg_synthesis_result(roots[1]));
+		assert(pg_synthesis_result(pg_synthesis_handler(&p->synthesis, scope, NULL, definition.expression)));
+	}
+	for (unsigned round = 0; round < 3; ++round) {
+		FILE *file = tmpfile();
+		uint64_t steps = p->synthesis.steps;
+		assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
+		assert(p->synthesis.steps == steps);
+		pg_program_destroy(p);
+		rewind(file);
+		p = pg_sources_read(file, 100000, &count, &roots);
+		assert(p && count == 2 && !p->synthesis.steps);
+		assert(!pg_synthesis_result(roots[0]) && !pg_synthesis_result(roots[1]));
+		assert(!fclose(file));
+		const struct pg_syntax *syntax;
+		assert(!pg_synthesis_source_input(&p->synthesis, roots[1], &inner, &syntax));
+		assert(!pg_synthesis_environment_input(&p->synthesis, inner, &environment));
+		assert(environment.handler && inner == pg_synthesis_handler_scope(&p->synthesis,
+			environment.parent, environment.handler));
+	}
+	while (p->synthesis.ready) {
+		assert(p->synthesis.steps < 10000);
+		pg_synthesis_advance(&p->synthesis, 1);
+	}
+	struct pg_synthesis_job *handler = pg_synthesis_handler(&p->synthesis, environment.parent, NULL, environment.handler);
+	const struct pg_evidence *handled = pg_synthesis_result(handler), *value = pg_synthesis_result(roots[1]);
+	if (!handled || !value) fprintf(stderr, "handler scopes: handler %d, roots %d %d, steps %llu\n",
+		pg_synthesis_status(handler), pg_synthesis_status(roots[0]), pg_synthesis_status(roots[1]),
+		(unsigned long long)p->synthesis.steps);
+	assert(handled && value);
+	const struct pg_effect_row *effects;
+	const struct pg_term *result_type;
+	assert(pg_effect_type_view(pg_evidence_classifier(handled), &effects, &result_type));
+	assert(!pg_effect_count(effects) && result_type == pg_evidence_classifier(value));
+	pg_program_destroy(p);
+	puts("handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed");
+}
+
 static void declaration_members(void)
 {
 	for (unsigned mode = 0; mode < 4; ++mode) {
@@ -1404,6 +1481,8 @@ static void retained_process(int argc, char **argv)
 			text = "{{ Nat:=@{zero:*;}; f:=&(\\x:Nat=>x); r:=&{f (f Nat.zero);}; }}.r";
 		else if (!strcmp(argv[3], "match"))
 			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&{(\\n:Nat=>n @zero=>Nat.zero @succ k=>Nat.succ *k) (Nat.succ (Nat.succ Nat.zero));}; }}.r";
+		else if (!strcmp(argv[3], "fold"))
+			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&((Nat.succ Nat.zero) @#.return x=>Nat.succ x); }}.r";
 		else {
 			assert(!strcmp(argv[3], "nominal"));
 			text = "{{ Nat:=@{zero:*;succ:*->*;}; Other:=@{zero:*;succ:*->*;}; id:=&(\\x:Nat=>x); }}.id";
@@ -1442,6 +1521,8 @@ int main(int argc, char **argv)
 	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "constructor-inputs")) { constructor_inputs(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "match-origins")) { match_origins(); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "handler-scopes")) { handler_scopes(0); handler_scopes(1); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "operation-origins")) { handler_scopes(2); return 0; }
 	if (argc > 1 && !strncmp(argv[1], "retained-", 9)) {
 		retained_process(argc, argv);
 		return 0;

@@ -106,6 +106,7 @@ struct source_handler_clause {
 	struct pg_synthesis_job *body;
 };
 struct handler_state {
+	struct pg_synthesis_job *source;
 	size_t scanned, next, count;
 	struct pg_effect_inference effects;
 	struct pg_effect_equation *equation;
@@ -383,7 +384,11 @@ int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_source_environment *input)
 {
 	if (!synthesis || !scope || !input || scope->owner != synthesis->owner_key) return -1;
-	if (scope->effect_owner) return -1;
+	if (scope->effect_owner && scope->effect_owner->scope == scope) {
+		*input = (struct pg_source_environment){.parent = scope->parent,
+			.handler = scope->effect_owner->source->syntax};
+		return 0;
+	}
 	if (scope->binder) {
 		struct pg_synthesis_job *binding = scope->context_job;
 		if (binding->role == BINDING_JOB) {
@@ -3590,36 +3595,52 @@ rejected:
 	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
 }
 
+static int prepare_handler(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, int independent)
+{
+	struct pg_synthesis_job *carrier = (void *)job->inputs[1];
+	size_t count = job->syntax->item_count;
+	if (job->handler) return !independent || job->handler->effect_owner == job->handler ? 0 : -1;
+	if (count > (SIZE_MAX - sizeof(*job->handler)) / sizeof(struct source_handler_clause)) return -1;
+	struct handler_state *state = pg_alloc(synthesis->typing->graph, sizeof(*state) + count * sizeof(struct source_handler_clause));
+	if (!state) return -1;
+	state->source = job;
+	state->scope = job->scope;
+	if (!carrier) {
+		state->labels = pg_alloc(synthesis->typing->graph, count * sizeof(*state->labels));
+		if (!state->labels) return -1;
+		struct handler_state *owner = job->scope->effect_owner;
+		if (independent || !owner || owner->effects.sealed) {
+			owner = state;
+			if (pg_effect_inference_init(&owner->effects, synthesis->typing->graph)) return -1;
+		}
+		state->effect_owner = owner;
+		if (job->scope->effect_owner != owner)
+			state->scope = intern_scope(synthesis, (struct pg_source_scope){
+				.parent = job->scope, .context_job = job->scope->context_job, .effect_owner = owner});
+		if (!state->scope) {
+			if (owner == state) pg_effect_inference_destroy(&state->effects);
+			return -1;
+		}
+		++owner->registering;
+	}
+	job->handler = state;
+	return 0;
+}
+
+const struct pg_source_scope *pg_synthesis_handler_scope(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_syntax *syntax)
+{
+	struct pg_synthesis_job *job = pg_synthesis_handler(synthesis, parent, NULL, syntax);
+	if (!job || prepare_handler(synthesis, job, 1)) return NULL;
+	return job->handler->scope;
+}
+
 static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *carrier = (void *)job->inputs[1];
 	size_t count = job->syntax->item_count;
-	if (!job->handler) {
-		if (count > (SIZE_MAX - sizeof(*job->handler)) / sizeof(struct source_handler_clause)) {
-			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-		}
-		job->handler = pg_alloc(synthesis->typing->graph, sizeof(*job->handler) + count * sizeof(struct source_handler_clause));
-		if (!job->handler) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		job->handler->scope = job->scope;
-		if (!carrier) {
-			job->handler->labels = pg_alloc(synthesis->typing->graph, count * sizeof(*job->handler->labels));
-			if (!job->handler->labels) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			struct handler_state *owner = job->scope->effect_owner;
-			if (!owner || owner->effects.sealed) {
-				owner = job->handler;
-				if (pg_effect_inference_init(&owner->effects, synthesis->typing->graph)) {
-					finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-				}
-			}
-			job->handler->effect_owner = owner;
-			++owner->registering;
-			if (job->scope->effect_owner != owner)
-				job->handler->scope = intern_scope(synthesis, (struct pg_source_scope){
-					.parent = job->scope, .context_job = job->scope->context_job, .effect_owner = owner});
-			if (!job->handler->scope) {
-				finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-			}
-		}
+	if (prepare_handler(synthesis, job, 0)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	if (!job->left) {
 		job->left = pg_synthesis_request(synthesis, job->handler->scope, job->syntax->left);
 		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}

@@ -9,9 +9,9 @@
 #include "context_payload.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\24";
-static const char retained_magic[8] = "APGSRC\25";
-enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING };
+static const char magic[8] = "APGSRC\26";
+static const char retained_magic[8] = "APGSRC\27";
+enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING, HANDLER_SCOPE };
 
 struct environment {
 	enum environment_kind kind;
@@ -37,6 +37,10 @@ static int environment(const struct pg_synthesis *synthesis, const struct pg_sou
 	struct pg_source_environment input;
 	if (pg_synthesis_environment_input(synthesis, scope, &input)) return -1;
 	*output = (struct environment){.parent = input.parent, .name = input.name};
+	if (input.handler) {
+		output->kind = HANDLER_SCOPE; output->syntax = input.handler;
+		return 0;
+	}
 	if (input.context) {
 		output->kind = CONTEXT_BINDING;
 		output->rule = input.context;
@@ -245,7 +249,7 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 	while (!id(c->scopes, parent)) {
 		struct pg_source_environment input;
 		if (pg_synthesis_environment_input(c->synthesis, parent, &input)) return -1;
-		const struct pg_syntax *site = input.definitions;
+		const struct pg_syntax *site = input.handler ? input.handler : input.definitions;
 		if (input.binding) {
 			const struct pg_object *binder;
 			if (pg_synthesis_binding_input(c->synthesis, input.binding, &input.parent, &site, &binder)) return -1;
@@ -510,7 +514,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t w[8];
 		for (size_t j = 0; j < 8; ++j) if (pg_wire_read_u64(file, &w[j])) goto fail;
-		if (w[0] > CONTEXT_BINDING || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
+		if (w[0] > HANDLER_SCOPE || w[1] > i || w[2] > i || w[5] > PG_TOKEN_ERROR || w[6] > remaining) goto fail;
 		char *name = pg_alloc(graph, (size_t)w[6]);
 		if (!name || fread(name, 1, (size_t)w[6], file) != w[6]) goto fail;
 		remaining -= (size_t)w[6];
@@ -614,6 +618,12 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		const struct pg_source_scope *parent = r->parent ? scopes[r->parent - 1] : NULL;
 		const struct pg_source_scope *target = r->target ? scopes[r->target - 1] : NULL;
 		struct pg_synthesis *s = &program->synthesis;
+		if (r->kind == HANDLER_SCOPE) {
+			if (!parent || target || !r->syntax || r->rule || r->definitions || r->name.kind || r->name.length) goto fail;
+			scopes[i] = pg_synthesis_handler_scope(s, parent, terms[r->syntax - 1]);
+			if (!scopes[i]) goto fail;
+			continue;
+		}
 		if (r->kind == CONTEXT_BINDING) {
 			if (!parent || !r->rule || r->rule > nd || r->syntax || r->definitions) goto fail;
 			const struct pg_derivation_input *input = derivations[r->rule - 1];

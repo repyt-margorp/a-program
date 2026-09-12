@@ -1098,6 +1098,40 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   boundaries pass. Both normal and sanitized source suites reproduce the Match
   write failure. Main push remains blocked by incomplete implementation, not by
   an external dependency.
+- [x] September 12: retain the handler inference boundary's source allocation
+  site and parent scope in APGSRC22/23. The same `prepare_handler` initializes
+  ordinary execution and inert restoration; no equations, solutions, counters
+  or accepted flags are imported. Inherited scopes keep their existing parent
+  owner, while an explicit saved boundary reconstructs its independent owner.
+  Initialization publishes the state only after allocation succeeds. The
+  environment view no longer rejects every descendant with an effect owner;
+  source-origin collection follows the boundary's original syntax. The
+  `handler-scopes` regression checks pending and settled return-only inference
+  boundaries through three destroying inert resaves, idempotent registration,
+  and one-step ordinary Solve yielding the empty effect row. This is boundary
+  transport, not full handler retention or pending equation checkpointing.
+  Normal `make check` and ASan/UBSan source/synthesis suites pass. After adding
+  a Lambda inside the inherited scope, both source suites pass again. The
+  separate full-acceptance gates below intentionally retain the exposed failures;
+  no full acceptance or Main push is claimed.
+- [ ] Preserve return-only Fold continuation allocation. The new `fold`
+  retained fixture writes and resaves, but source resynthesis allocates a fresh
+  return-clause binder (`aaabinder`, alpha-equal but not exact). The stricter
+  `check-image-origins` gate now exposes this failure. Retain the actual return
+  context producer and check its domain against the synthesized input before
+  reusing its binder; do not replace the source body with a saved conclusion.
+- [ ] Retain operation producer identity, not only its function derivation.
+  `source_io_test operation-origins` first checks a real `pg_synthesis_operation`
+  producer and a handler using its alias. After three inert resaves, the
+  handler fails although the ordinary value roots succeed. Operation lookup
+  follows producer provenance to `OPERATION_JOB`; a function-evidence producer
+  is not an operation declaration. Preserve the operation's label, checked
+  signature inputs and producer kind through the same source dependency graph.
+  Do not infer operation status from the Core of an arbitrary Lambda. A first
+  attempted fixture incorrectly published a function proof as an operation;
+  that already failed before saving and was not evidence of an image bug.
+  The corrected `check-operation-origins` gate is part of `check-acceptance`;
+  current result is handler REJECTED with both ordinary roots DONE (371 steps).
 - [x] September 9: construct Match field/IH scopes through the same pending
   context-binding path (`SCOPE_CONTEXT_JOB`). `pg_synthesis_bind_hypothesis`
   records only the field-to-IH binder association; it introduces no proof or

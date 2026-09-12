@@ -14,3 +14,10 @@ example="$(dirname "${BASH_SOURCE[0]}")/../../../../examples/07_add.p"
 sed '1d' "$directory/source" > "$directory/source-value"
 sed '1d' "$directory/restored" > "$directory/restored-value"
 cmp "$directory/source-value" "$directory/restored-value"
+# Return-only Fold must retain its own continuation binder, not merely an
+# alpha-equivalent re-elaboration. Keep this full-acceptance gate explicit.
+"$1" retained-write "$directory/fold.a" fold
+"$1" retained-resave "$directory/fold.a" "$directory/fold-again.a"
+"$1" retained-resave "$directory/fold-again.a" "$directory/fold-final.a"
+"$1" retained-check "$directory/fold-final.a"
+"$1" retained-recompute "$directory/fold-final.a"
