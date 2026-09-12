@@ -106,6 +106,11 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/function-graph-named-not-call.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-named-duplicate.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-named-wrong-proof.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/order-reflexivity.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/order-reflexivity.p certified expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/order-reflexivity.p observed two
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/order-reflexivity.p zeroCertified zeroExpected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-range-wrong-index.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-function-graph-mismatch.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-graph-motive.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-graph-motive.p reorderedMain expected

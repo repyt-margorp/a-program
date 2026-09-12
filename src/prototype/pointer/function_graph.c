@@ -57,6 +57,20 @@ static const struct pg_evidence *projection(struct pg_function_graph_state *s,
 	return pg_prove_projection(s->typing, context, proof);
 }
 
+static const struct pg_evidence *argument_substitution(struct pg_function_graph_state *s,
+	const struct pg_evidence *context, const struct pg_evidence *argument)
+{
+	return pg_prove_substitution_pair(s->typing,
+		pg_prove_substitution_projection(s->typing, s->context, context), s->argument_context,
+		projection(s, context, argument));
+}
+
+static const struct pg_evidence *range_at(struct pg_function_graph_state *s,
+	const struct pg_evidence *context, const struct pg_evidence *argument)
+{
+	return pg_prove_reindex(s->typing, argument_substitution(s, context, argument), s->range);
+}
+
 static const struct pg_evidence *parameters_at(struct pg_function_graph_state *s,
 	const struct pg_evidence *context)
 {
@@ -70,8 +84,8 @@ static int signature(struct pg_function_graph_state *s)
 	uint64_t a, b;
 	if (!pg_universe_level(pg_evidence_classifier(s->domain), &a) ||
 		!pg_universe_level(pg_evidence_classifier(s->range), &b)) return -1;
-	const struct pg_evidence *x = pg_prove_context_extension(t, s->context, pg_binder(t->graph), s->domain);
-	const struct pg_evidence *y = pg_prove_context_extension(t, x, pg_binder(t->graph), projection(s, x, s->range));
+	const struct pg_evidence *x = s->argument_context;
+	const struct pg_evidence *y = pg_prove_context_extension(t, x, pg_binder(t->graph), s->range);
 	const struct pg_evidence *universe = pg_prove_universe(t, s->classifiers, y, a > b ? a : b);
 	s->self = pg_prove_family_context_extension(t, s->context, pg_binder(t->graph), y, universe);
 	if (!s->self) return -1;
@@ -244,7 +258,9 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		}
 		struct graph_call *call = pg_alloc(&s->temporary, sizeof(*call));
 		if (!call || plan->call_count == SIZE_MAX) return -1;
-		plan->context = pg_prove_context_extension(t, plan->context, pg_binder(t->graph), projection(s, plan->context, s->range));
+		const struct pg_evidence *result_type = pg_prove_classifier(t, s->classifiers, plan->context, plan->computation);
+		result_type = pg_prove_return_content(t, result_type);
+		plan->context = pg_prove_context_extension(t, plan->context, pg_binder(t->graph), result_type);
 		if (!plan->context) return -1;
 		*call = (struct graph_call){.field = plan->hypothesis_fields[i], .hypothesis = i,
 			.result_context = plan->context};
@@ -331,7 +347,7 @@ static int case_branch(struct pg_function_graph_state *s)
 	if (!map) return -1;
 	for (size_t slot = 0; slot < plan->call_count; ++slot) {
 		struct graph_call *call = plan->ordered[slot];
-		context = pg_prove_context_extension(t, context, pg_binder(t->graph), projection(s, context, s->range));
+		context = pg_prove_context_extension(t, context, pg_binder(t->graph), range_at(s, context, values[call->field]));
 		if (!context) return -1;
 		const struct pg_evidence *output = pg_prove_variable(t, context, pg_evidence_context(context)->binder);
 		const struct pg_evidence *relation = pg_prove_variable(t, context, pg_evidence_context(s->self)->binder);
@@ -407,7 +423,7 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	s->argument_context = pg_evidence_premise(pi, 1);
 	s->context = pg_evidence_premise(s->argument_context, 0);
 	s->domain = pg_evidence_premise(pi, 0);
-	const struct pg_evidence *result = pg_prove_pi_constant_codomain(typing, pi);
+	const struct pg_evidence *result = pg_evidence_premise(pi, 2);
 	const struct pg_term *range;
 	if (!result || !pg_return_type_view(pg_evidence_subject(result)->core, &range)) goto unsupported;
 	s->range = pg_prove_return_content(typing, result);
@@ -527,17 +543,10 @@ const struct pg_evidence *pg_function_graph_case_input(const struct pg_function_
 	return work && work->state && work->state->status == PG_FUNCTION_GRAPH_DONE ? work->state->input.formation : NULL;
 }
 
-static const struct pg_evidence *packet_parameters(struct pg_function_graph_state *s,
-	const struct pg_evidence *context, const struct pg_evidence *argument)
-{
-	return pg_prove_substitution_pair(s->typing,
-		pg_prove_substitution_projection(s->typing, s->context, context), s->argument_context, argument);
-}
-
 static const struct pg_evidence *packet_type(struct pg_function_graph_state *s,
 	const struct pg_evidence *context, const struct pg_evidence *argument)
 {
-	return pg_prove_reindex(s->typing, packet_parameters(s, context, argument), s->packet);
+	return pg_prove_reindex(s->typing, argument_substitution(s, context, argument), s->packet);
 }
 
 static const struct pg_object *packet_constructor(struct pg_function_graph_state *s)
@@ -580,7 +589,7 @@ static const struct pg_evidence *return_packet(struct pg_function_graph_state *s
 	const struct pg_evidence *input = pg_evidence_premise(result, n - 2), *output = pg_evidence_premise(result, n - 1);
 	const struct pg_evidence *values[] = {output, graph};
 	const struct pg_evidence *packet = pg_prove_constructor(t, s->packet, packet_constructor(s),
-		packet_parameters(s, context, input), 2, values);
+		argument_substitution(s, context, input), 2, values);
 	return pg_prove_return(t, s->classifiers, packet);
 }
 
@@ -633,7 +642,7 @@ static const struct pg_evidence *witness_case(struct pg_function_graph_state *s,
 		f->bound = pg_prove_context_extension(t, context, pg_binder(t->graph), packet_type(s, context, field));
 		if (!f->bound || !f->input || !f->target) return NULL;
 		f->value = pg_prove_variable(t, f->bound, pg_evidence_context(f->bound)->binder);
-		f->parameters = packet_parameters(s, f->bound, projection(s, f->bound, field));
+		f->parameters = argument_substitution(s, f->bound, field);
 		f->fields = pg_prove_constructor_scope(t, s->packet, packet_constructor(s), f->parameters);
 		if (!f->fields) return NULL;
 		context = pg_evidence_premise(f->fields, 1);

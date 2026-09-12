@@ -141,6 +141,7 @@ done <<'GRAPHS'
 acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain directMain directProof shadowMain:baseExpected nestedProof:baseExpected
 acceptance/generated-function-graph-direct.p main certified
 acceptance/function-graph-named-fields.p main aliasMain graphMain valueMain
+acceptance/order-reflexivity.p main certified observed:two zeroCertified:zeroExpected
 acceptance/dependent-graph-motive.p main reorderedMain certifiedMain
 acceptance/function-graph-call-sites.p main unusedMain:unusedExpected orderedMain:orderedExpected propertyMain:propertyExpected cutMain:cutExpected
 acceptance/motive-computed-callee.p main

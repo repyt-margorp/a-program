@@ -275,6 +275,20 @@ still fails overall. No Main promotion is justified by these kernel tests.
   Normal checks/examples/results pass. Program/witness tests, the unchanged
   length result comparison, wrong-index rejection and the image CLI pass
   ASan/UBSan; the image fixture writer uses its normal checked build.
+- [x] Generalize Graph/result-packet generation to pure dependent ranges
+  `f : Pi(x:A, F(B(x)))`. Keep the checked codomain in its argument context;
+  instantiate `B` at each recursive input with ordinary typed substitution.
+  Symbolic call outputs use the actual IH computation's return classifier,
+  not one constant type copied to every call. No Core/kernel rule is added.
+  Isolated `leRefl : (n:Nat)->LE n n` already synthesized correctly; its generated
+  `@leRefl`/`*leRefl`, Graph induction and a nonrecursive dependent `zeroBound`
+  now work too. Wrong-index graph evidence is rejected. This is independent
+  of Acc's still-open source family-parameter contract, and does not complete
+  indexed-scrutinee Graph generation or QuickSort properties.
+  Normal checks/examples/results pass. Targeted positive and wrong-index tests
+  pass ASan/UBSan; the sanitized image CLI completes unfinished/completed
+  resaves without sanitizer diagnostics. Legacy compatibility remains 9/19;
+  these new tests do not replace the unchanged-source acceptance gate.
 - [ ] Complete graph-case names/binders, general call-site translation and
   post-hoc property proofs. Packet production and successful consumption do
   not yet establish length preservation or sortedness for QuickSort.

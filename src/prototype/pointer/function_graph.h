@@ -7,9 +7,10 @@
 /* Generate ordinary indexed declarations from retained Lambda/case evidence.
  * No Returns predicate or new kernel rule. Relation formation and witness
  * production advance separately; neither proves an arbitrary user property.
- * Initially supports a constant pure result type, non-indexed scrutinees and
+ * Supports pure dependent result types, non-indexed scrutinees and
  * direct recursive fields. Retained Return/Fold/APP/Force evidence supplies
- * ordered call sites; repeated calls have separate result/graph fields and
+ * ordered call sites; each result type is instantiated at its own input by
+ * checked substitution. Repeated calls have separate result/graph fields and
  * unused hypotheses contribute no fields. Schema and witness share this plan.
  * Conditional/nested cases and unknown callees/results remain unsupported.
  * One work object owns one generative declaration; a source producer must
