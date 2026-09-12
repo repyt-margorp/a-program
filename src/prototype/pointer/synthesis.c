@@ -271,6 +271,8 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 static uint64_t name_hash(struct pg_token name);
 static int same_name(struct pg_token left, struct pg_token right);
 static int handler_syntax(const struct pg_syntax *syntax);
+static int handler_clause_origin(struct pg_synthesis *synthesis, struct pg_synthesis_job *handler,
+	struct pg_synthesis_job *clause, size_t index);
 
 static const struct pg_source_scope *intern_scope(struct pg_synthesis *synthesis, struct pg_source_scope input)
 {
@@ -799,8 +801,16 @@ struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *s
 	if (job->result || job->value_job) return NULL;
 	if (handler_syntax(syntax) && syntax->item_count > 1) {
 		struct pg_synthesis_job *handler = pg_synthesis_handler(synthesis, scope, NULL, syntax);
-		if (!handler || handler->left || (handler->allocation_origin && handler->allocation_origin != origin)) return NULL;
+		if (!handler || handler->status != PG_SYNTHESIS_PENDING ||
+			(handler->handler && handler->handler->scanned) ||
+			(handler->right && handler->right->inner) ||
+			(handler->allocation_origin && handler->allocation_origin != origin)) return NULL;
 		handler->allocation_origin = origin;
+		if (handler->right) {
+			for (size_t i = 0; i < syntax->item_count; ++i)
+				if (syntax->items[i].expression == handler->right->syntax &&
+					handler_clause_origin(synthesis, handler, handler->right, i)) return NULL;
+		}
 	}
 	job->allocation_origin = origin;
 	return job;
@@ -3787,6 +3797,46 @@ static int handler_clause_origin(struct pg_synthesis *synthesis, struct pg_synth
 	return 0;
 }
 
+/* Reserve dependencies, not answers. The return body and effect equation are
+ * the same producers subsequently advanced by the ordinary handler worker. */
+static int prepare_handler_carrier(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct handler_state *state = job->handler;
+	if (!job->right) {
+		size_t selected = SIZE_MAX;
+		for (size_t i = 0; i < job->syntax->item_count; ++i) {
+			if (!return_clause(job->syntax->items[i].expression)) continue;
+			if (selected != SIZE_MAX) return PG_SYNTHESIS_REJECTED;
+			selected = i;
+		}
+		if (selected == SIZE_MAX) return PG_SYNTHESIS_REJECTED;
+		job->left = pg_synthesis_request(synthesis, state->scope, job->syntax->left);
+		if (!job->left) return PG_SYNTHESIS_ERROR;
+		job->right = pg_synthesis_handler_return(synthesis, state->scope, job->left,
+			job->syntax->items[selected].expression);
+		if (!job->right) return PG_SYNTHESIS_ERROR;
+		if (handler_clause_origin(synthesis, job, job->right, selected)) return PG_SYNTHESIS_REJECTED;
+	}
+	if (!job->inputs[1] && !state->carrier) {
+		struct handler_state *owner = state->effect_owner;
+		const struct pg_effect_row *empty = pg_effect_row(synthesis->typing->graph, 0, NULL);
+		if (!state->equation) state->equation = pg_effect_equation(&owner->effects, empty);
+		if (!state->equation) return PG_SYNTHESIS_ERROR;
+		state->carrier = pg_synthesis_handler_carrier(synthesis, state->scope->context_job, job->right,
+			&owner->effects, state->equation);
+		if (!state->carrier) return PG_SYNTHESIS_ERROR;
+	}
+	return 0;
+}
+
+struct pg_synthesis_job *pg_synthesis_source_handler_carrier(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_syntax *syntax)
+{
+	struct pg_synthesis_job *job = pg_synthesis_handler(synthesis, parent, NULL, syntax);
+	if (!job || prepare_handler(synthesis, job, 0) || prepare_handler_carrier(synthesis, job)) return NULL;
+	return job->handler->carrier;
+}
+
 static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *carrier = (void *)job->inputs[1];
@@ -3796,22 +3846,15 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 		if (job->allocation_origin->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->allocation_origin->status); return; }
 	}
 	if (prepare_handler(synthesis, job, 0)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-	if (!job->left) {
-		job->left = pg_synthesis_request(synthesis, job->handler->scope, job->syntax->left);
-		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-	}
+	int preparation = prepare_handler_carrier(synthesis, job);
+	if (preparation) { finish(synthesis, job, preparation); return; }
 	struct handler_state *state = job->handler;
 	const struct pg_source_scope *scope = state->scope;
 	struct handler_state *owner = state->effect_owner;
 	if (owner && owner->failure) { finish(synthesis, job, owner->failure); return; }
 	if (state->scanned < count) {
 		const struct pg_syntax *clause = job->syntax->items[state->scanned].expression;
-		if (return_clause(clause)) {
-			if (job->right) goto rejected;
-			job->right = pg_synthesis_handler_return(synthesis, scope, job->left, clause);
-			if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			if (handler_clause_origin(synthesis, job, job->right, state->scanned)) goto rejected;
-		} else if (!carrier) {
+		if (!return_clause(clause) && !carrier) {
 			struct pg_synthesis_job *operation = pg_synthesis_operation_reference(synthesis,
 				pg_synthesis_request(synthesis, scope, clause->left));
 			if (!operation) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -3830,15 +3873,11 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 	if (!job->right) goto rejected;
 	if (!carrier) {
 		const struct pg_effect_row *empty = pg_effect_row(synthesis->typing->graph, 0, NULL);
-		if (!state->carrier) {
+		if (!state->handled) {
 			state->handled = pg_effect_row(synthesis->typing->graph, state->count, state->labels);
 			if (!state->handled) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			if (pg_effect_count(state->handled) != state->count) goto rejected;
 			state->count = 0;
-			state->equation = pg_effect_equation(&owner->effects, empty);
-			state->carrier = pg_synthesis_handler_carrier(synthesis, scope->context_job, job->right,
-				&owner->effects, state->equation);
-			if (!state->carrier) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
 		carrier = state->carrier;
 		if (state->collected < count + 2) {

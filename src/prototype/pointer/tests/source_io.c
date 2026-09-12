@@ -85,11 +85,24 @@ static struct pg_synthesis_job *handler_change(struct pg_program *p,
 	struct pg_definition definition;
 	pg_parser_init(&parser, &p->graph, text, strlen(text));
 	assert(pg_parser_next(&parser, &definition) == 1);
+	struct pg_synthesis_job *carrier = pg_synthesis_source_handler_carrier(&p->synthesis, scope, definition.expression);
+	assert(carrier && !pg_synthesis_result(carrier));
 	struct pg_synthesis_job *changed = pg_synthesis_restore_elimination(&p->synthesis,
 		scope, definition.expression, origin);
 	assert(changed && !pg_synthesis_result(changed));
 	assert(pg_synthesis_restore_elimination(&p->synthesis, scope, definition.expression, origin) == changed);
+	assert(carrier == pg_synthesis_source_handler_carrier(&p->synthesis, scope, definition.expression));
 	return changed;
+}
+
+static void reserve_handler_carrier(struct pg_program *p,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
+{
+	uint64_t steps = p->synthesis.steps;
+	struct pg_synthesis_job *carrier = pg_synthesis_source_handler_carrier(&p->synthesis, scope, syntax);
+	assert(carrier && !pg_synthesis_result(carrier));
+	assert(carrier == pg_synthesis_source_handler_carrier(&p->synthesis, scope, syntax));
+	assert(p->synthesis.steps == steps);
 }
 
 static int handler_scopes(int mode)
@@ -136,6 +149,7 @@ static int handler_scopes(int mode)
 	struct pg_source_environment environment;
 	assert(!pg_synthesis_environment_input(&p->synthesis, inner, &environment));
 	assert(environment.parent == scope && environment.handler == definition.expression);
+	if (mode >= 4) reserve_handler_carrier(p, scope, definition.expression);
 	struct pg_synthesis_job *initial[] = {
 		parse(p, scope, "{{x:=d;}}.x"), parse(p, inner, "{{f:=&(\\x:D=>x);x:=d;}}.x"), NULL, NULL};
 	if (mode >= 4) initial[2] = pg_synthesis_request(&p->synthesis, scope, definition.expression);
@@ -173,6 +187,7 @@ static int handler_scopes(int mode)
 		assert(!pg_synthesis_environment_input(&p->synthesis, inner, &environment));
 		assert(environment.handler && inner == pg_synthesis_handler_scope(&p->synthesis,
 			environment.parent, environment.handler));
+		if (mode >= 4) reserve_handler_carrier(p, environment.parent, environment.handler);
 	}
 	struct pg_synthesis_job *changed = NULL, *invalid = NULL;
 	if (mode == 4) {

@@ -1260,6 +1260,19 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   checks pass. Final ASan/UBSan synthesis, source-image and handler-origin
   suites pass, including wrong-carrier rejection. The nested gate still fails
   only exact Core sharing; this prerequisite does not complete full acceptance.
+  Inert carrier reservation: `pg_synthesis_source_handler_carrier` now reserves
+  the ordinary return-body and effect-equation producers before Solve. The
+  handler worker uses the same construction, so loading need not invent a
+  carrier checker or import a solved effect row. Return allocation origins can
+  attach after reservation but before the return scope is built. Tests reserve
+  before initial Solve and after three inert resaves; changed/invalid source
+  also reserves before origin attachment. Missing/duplicate return clauses are
+  rejected, while allocation failures retain the distinct error status.
+  Verification: normal `check`, all 758 prepared-module save boundaries and
+  handler/operation-origin gates pass. ASan/UBSan full synthesis, source-image
+  and handler-origin suites pass.
+  Nested handler retention still fails only exact Core reuse; connecting saved
+  clause-site provenance to the shared pending context builder remains open.
 - [x] September 9: construct Match field/IH scopes through the same pending
   context-binding path (`SCOPE_CONTEXT_JOB`). `pg_synthesis_bind_hypothesis`
   records only the field-to-IH binder association; it introduces no proof or

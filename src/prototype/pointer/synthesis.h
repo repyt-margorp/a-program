@@ -151,6 +151,11 @@ int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
  * equations nor accepted results are imported; the ordinary handler runs it. */
 const struct pg_source_scope *pg_synthesis_handler_scope(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *parent, const struct pg_syntax *syntax);
+/* Reserve the source handler's ordinary return-type/effect producers without
+ * Solve or signature acceptance. Repeated calls share the same open carrier;
+ * no saved concrete effect row is an input. Restore allocations before advance. */
+struct pg_synthesis_job *pg_synthesis_source_handler_carrier(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_syntax *syntax);
 /* Reserve the lexical binder before solving its Lambda/Pi domain. Requests
  * share by exact source scope and syntax, and create no context/evidence.
  * Completion yields context-extension evidence; reservation alone never does. */

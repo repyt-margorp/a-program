@@ -1547,6 +1547,16 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		const struct pg_evidence *proof = complete(&synthesis, assembled,
 			i < 3 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
 		struct pg_synthesis_job *inferred_handler = pg_synthesis_handler(&synthesis, handler_scope, NULL, handler_definition.expression);
+		uint64_t reserved_steps = synthesis.steps;
+		struct pg_synthesis_job *reserved = pg_synthesis_source_handler_carrier(&synthesis,
+			handler_scope, handler_definition.expression);
+		assert(synthesis.steps == reserved_steps && !pg_synthesis_result(inferred_handler));
+		assert((reserved == NULL) == (i == 4 || i == 5));
+		if (reserved) {
+			assert(!pg_synthesis_result(reserved));
+			assert(reserved == pg_synthesis_source_handler_carrier(&synthesis,
+				handler_scope, handler_definition.expression));
+		}
 		if (i < 3) {
 			struct pg_synthesis_job *handler_type = pg_synthesis_classifier_structure(&synthesis, inferred_handler);
 			struct pg_synthesis_job *source_handler = pg_synthesis_request(&synthesis, handler_scope, handler_definition.expression);
