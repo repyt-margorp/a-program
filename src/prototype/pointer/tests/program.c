@@ -163,8 +163,7 @@ static void modules(void)
 	pg_program_destroy(program);
 }
 
-static void execute_example(const char *path, const char *type_name,
-	const char *base_name, const char *step_name, size_t count, uint64_t budget)
+static struct pg_program *load_program(const char *path)
 {
 	FILE *file = fopen(path, "rb");
 	assert(file && !fseek(file, 0, SEEK_END));
@@ -176,6 +175,57 @@ static void execute_example(const char *path, const char *type_name,
 	struct pg_program *program = pg_program_create(source, (size_t)size, PG_DEFINITION_IMPLICIT_THUNK);
 	free(source);
 	assert(program && program->root);
+	return program;
+}
+
+static int equal_results(struct pg_program *p, const char *label,
+	const char *left, const char *right, uint64_t chunk)
+{
+	struct pg_token a = {.kind = PG_TOKEN_IDENT, .text = left, .length = strlen(left)};
+	struct pg_token b = {.kind = PG_TOKEN_IDENT, .text = right, .length = strlen(right)};
+	struct pg_synthesis_job *l = pg_program_evaluate_name(p, p->root, a, 1);
+	struct pg_synthesis_job *r = pg_program_evaluate_name(p, p->root, b, 1);
+	if (!l || !r) {
+		fprintf(stderr, "export results: %s missing export %s or %s\n", label, left, right);
+		pg_program_destroy(p);
+		return 1;
+	}
+	while (p->synthesis.ready && p->synthesis.steps < 1000000)
+		pg_synthesis_advance(&p->synthesis, chunk);
+	const struct pg_evidence *x = pg_synthesis_result(l), *y = pg_synthesis_result(r);
+	if (x && pg_evidence_judgement(x) == PG_JUDGEMENT_COMPUTATION) x = pg_prove_return_value(&p->typing, x);
+	if (y && pg_evidence_judgement(y) == PG_JUDGEMENT_COMPUTATION) y = pg_prove_return_value(&p->typing, y);
+	int equal = pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE && x && y;
+	if (equal) equal = pg_alpha_equal(pg_evidence_classifier(x), pg_evidence_classifier(y)) == 1
+		&& pg_alpha_equal(pg_evidence_subject(x)->core, pg_evidence_subject(y)->core) == 1;
+	printf("export results: %s %s %s equal=%d chunk=%llu steps=%llu\n", label, left, right,
+		equal, (unsigned long long)chunk, (unsigned long long)p->synthesis.steps);
+	pg_program_destroy(p);
+	return !equal;
+}
+
+static int equal_exports(const char *path, const char *left, const char *right, uint64_t chunk)
+{
+	return equal_results(load_program(path), path, left, right, chunk);
+}
+
+static void result_comparison_checks(void)
+{
+	const char *source = "Nat:=@{zero:*;succ:*->*;}; Other:=@{zero:*;succ:*->*;};"
+		"main:={Nat.succ Nat.zero;}; same:=Nat.succ Nat.zero;"
+		"different:=Nat.zero; wrongType:=Other.succ Other.zero;";
+	const char *names[] = {"same", "different", "wrongType", "missing"};
+	for (size_t i = 0; i < 4; ++i) {
+		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		assert(equal_results(p, "comparison-check", "main", names[i], 1) == (i != 0));
+	}
+}
+
+static void execute_example(const char *path, const char *type_name,
+	const char *base_name, const char *step_name, size_t count, uint64_t budget)
+{
+	struct pg_program *program = load_program(path);
 	solve(program, budget);
 	assert(pg_synthesis_status(program->root) == PG_SYNTHESIS_DONE);
 	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "main", .length = 4};
@@ -244,6 +294,19 @@ static void execute_example(const char *path, const char *type_name,
 
 int main(int argc, char **argv)
 {
+	if (argc == 3 && !strcmp(argv[1], "--reject")) {
+		struct pg_program *p = load_program(argv[2]);
+		while (p->synthesis.ready && p->synthesis.steps < 1000000)
+			pg_synthesis_advance(&p->synthesis, 64);
+		int rejected = pg_synthesis_status(p->root) == PG_SYNTHESIS_REJECTED;
+		printf("parsed source rejection: %s rejected=%d\n", argv[2], rejected);
+		pg_program_destroy(p);
+		return !rejected;
+	}
+	if (argc == 5 && !strcmp(argv[1], "--equal")) {
+		int failed = equal_exports(argv[2], argv[3], argv[4], 1);
+		return equal_exports(argv[2], argv[3], argv[4], 64) | failed;
+	}
 	if (argc != 1) {
 		assert(argc == 6);
 		char *end;
@@ -254,6 +317,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	modules();
+	result_comparison_checks();
 	pending_normalization();
 	remembered_normalization();
 	char source[] = "{{ id := &(\\A:@ => \\x:A => x); id :: (A:@)->A->A; }}.id";

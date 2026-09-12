@@ -5,8 +5,12 @@ BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)effect_inference.c $(ROOT)evidence.c $(ROOT)derivation.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c $(ROOT)descriptor_io.c $(ROOT)context_payload.c $(ROOT)declaration_io.c
 
 .PHONY: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-acceptance check-eval-io check-identity-io
+.PHONY: check-source-compatibility
 check-examples: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
+
+check-source-compatibility: $(BUILD)/pointer-check $(BUILD)/program_test
+	bash $(ROOT)tests/compatibility.sh $(BUILD)/pointer-check $(BUILD)/program_test $(ROOT)../tests/fixtures
 
 check-open-families: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(ROOT)tests/acceptance/closed-family.p $(ROOT)tests/acceptance/open-family.p $(ROOT)tests/acceptance/applied-open-family.p $(ROOT)tests/acceptance/sequenced-open-family.p
@@ -35,7 +39,7 @@ check-handler-nesting: $(BUILD)/source_io_test
 	$(BUILD)/source_io_test handler-nesting
 	$(BUILD)/source_io_test handler-boundaries
 
-check-acceptance: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules
+check-acceptance: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-source-compatibility
 
 check-eval-io: $(BUILD)/eval_io_test
 	bash $(ROOT)tests/eval_io.sh $(BUILD)/eval_io_test

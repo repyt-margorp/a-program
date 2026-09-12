@@ -13,6 +13,58 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+## September 13 Priority Correction: Source Compatibility First
+
+This user-directed ordering supersedes earlier checkpoint-first next steps.
+The next milestone is recompiling previously accepted source programs and
+proving properties of already-defined `length` and `quickSort`. It is not
+eliminating recomputation during image loading. The full rewrite remains open.
+
+- [ ] Establish the compatibility inventory from legacy integration tests and
+  fixtures, with a verified working legacy revision as reference. Do not assume
+  every fixture passed merely because it exists; preserve negative cases too.
+- [ ] Restore general source synthesis and indexed elimination, including open
+  families, dependent motives, recursive fields and Acc-based recursion. Keep
+  `::` post-synthesis; do not add length/QuickSort-specific kernel rules.
+- [ ] Compile the existing function-graph length fixtures and fuel-free
+  QuickSort fixture, and check their runtime results. Then support an explicit
+  property proof using the graph/witness of an already-defined function, not
+  a separately rewritten certified implementation. Witness production alone
+  does not establish a property such as preservation of length or sortedness.
+- [ ] Verify property derivations and rejection of incompatible claims through
+  ordinary Solve. Use the legacy function-graph and IF8 tests as starting points,
+  not as substitutes for checking the actual property proof.
+
+Source and restored inputs must continue to use the same Solve and kernel
+rules; no independent Replay engine is permitted. Recomputing through that
+same path is acceptable for this milestone. Defer retained-result reuse,
+allocation-provenance optimization and zero-recomputation checkpoint gates
+unless they block correctness or practical execution of compatibility tests.
+Keep existing passing image tests. Do not trust imported completion flags.
+Record progress against these items instead of expanding the checkpoint audit
+for each local optimization. Main promotion still requires full acceptance.
+
+Compatibility baseline established against a fresh build of Main `63b00eb`,
+not the stale worktree `read_file.out` (which fails the length fixture).
+`make -f src/prototype/pointer/Makefile check-source-compatibility` now records
+18 required source/result cases using unchanged legacy fixtures: Vec, Acc,
+order proofs, six function-graph examples, named cases, six QuickSort inputs,
+and two incompatible-proof rejections. Main passes these checks; pointer Core
+currently passes 0/18, all stopping at UNSUPPORTED. This gate is included in
+`check-acceptance`; it is not an expected-failure test. The export comparison
+checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
+
+Next implementation dependency: `declaration_step` rejects index telescopes;
+`pg_prove_inductive_type` separately requires indices equal to parameters.
+Generalize formation and its checked instance maps before connecting indexed
+source declarations; removing only the surface guard is insufficient. The
+generated length fixture additionally stops at `*length` resolution. Keep
+general open type-family synthesis and graph companion generation in scope.
+One disputed legacy fixture, `negative/function_graph_computation_index.p`,
+is accepted by Main despite its integration script expecting rejection. It is
+not counted as a verified negative case; audit its computed index semantics
+instead of deriving the expectation from its directory name.
+
 ### September 9: Reduction Evidence and Work Reuse Audit
 
 At the start of this audit, `eval.c` issued a `pg_reduction_certificate` containing only source,
