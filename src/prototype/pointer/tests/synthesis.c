@@ -1410,8 +1410,42 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	struct pg_synthesis_job *clause_job = pg_synthesis_handler_clause(&synthesis, scope, carrier_job, operation_clause);
 	assert(clause_job && !pg_synthesis_result(clause_job));
 	assert(pg_synthesis_handler_clause(&synthesis, scope, carrier_job, operation_clause) == clause_job);
+	struct pg_handler_clause_input clause_input = {operation_job, req, resume, pg_binder(typing->graph)};
+	uint64_t clause_steps = synthesis.steps;
+	proof_count = typing->proofs.count;
+	assert(pg_synthesis_handler_clause_at(&synthesis, scope, carrier_job, operation_clause, &clause_input) == clause_job);
+	const struct pg_source_scope *clause_scope = pg_synthesis_handler_clause_scope(clause_job);
+	assert(clause_scope && !pg_synthesis_result(clause_job));
+	assert(pg_synthesis_handler_clause_at(&synthesis, scope, carrier_job, operation_clause, &clause_input) == clause_job);
+	assert(pg_synthesis_handler_clause_scope(clause_job) == clause_scope);
+	assert(synthesis.steps == clause_steps && typing->proofs.count == proof_count);
+	struct pg_handler_clause_input changed_input = clause_input;
+	changed_input.response = pg_binder(typing->graph);
+	assert(!pg_synthesis_handler_clause_at(&synthesis, scope, carrier_job, operation_clause, &changed_input));
+	assert(!pg_synthesis_handler_clause_at(&synthesis, scope, carrier_job, operation_clause, NULL));
+	struct pg_handler_clause_input read_input;
+	assert(!pg_synthesis_handler_clause_input(&synthesis, clause_job, &read_input));
+	assert(read_input.operation == operation_job && read_input.payload == req &&
+		read_input.resume == resume && read_input.response == clause_input.response);
 	const struct pg_evidence *clause_function = complete(&synthesis, clause_job, PG_SYNTHESIS_DONE);
 	assert(clause_function);
+	assert(pg_synthesis_handler_clause_at(&synthesis, scope, carrier_job, operation_clause, &clause_input) == clause_job);
+	assert(pg_evidence_subject(clause_function)->core->as.lambda.binder == req);
+	assert(pg_evidence_subject(pg_evidence_premise(clause_function, 1))->core->as.lambda.binder == resume);
+	/* Matching signature types do not let an imported allocation choose a
+	 * different nominal operation from the one named by source. */
+	const struct pg_operation_declaration *other_operation = pg_operation_declaration(typing,
+		pg_operation_payload_type(operation), pg_operation_response_type(operation));
+	assert(other_operation && other_operation != operation);
+	const char *wrong_origin_source = "h := M @Alias a k => k a;";
+	pg_parser_init(&clause_parser, typing->graph, wrong_origin_source, strlen(wrong_origin_source));
+	assert(pg_parser_next(&clause_parser, &clause_definition) == 1);
+	changed_input = clause_input;
+	changed_input.operation = pg_synthesis_operation(&synthesis, other_operation);
+	struct pg_synthesis_job *wrong_origin = pg_synthesis_handler_clause_at(&synthesis, scope,
+		carrier_job, clause_definition.expression->items[0].expression, &changed_input);
+	assert(wrong_origin && !pg_synthesis_result(wrong_origin));
+	complete(&synthesis, wrong_origin, PG_SYNTHESIS_REJECTED);
 	same_judgement(complete(&synthesis, pg_synthesis_handler_clause(&synthesis, scope,
 		pg_synthesis_evidence(&synthesis, pg_synthesis_result(carrier_job)), operation_clause),
 		PG_SYNTHESIS_DONE), clause_function);

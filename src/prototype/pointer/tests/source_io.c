@@ -105,7 +105,35 @@ static void reserve_handler_carrier(struct pg_program *p,
 	assert(p->synthesis.steps == steps);
 }
 
-static int handler_scopes(int mode)
+static void invalid_handler_binding(FILE *file)
+{
+	assert(!fflush(file) && !fseek(file, 8, SEEK_SET));
+	uint64_t header[6];
+	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
+	for (size_t i = 0; i < header[1]; ++i) {
+		long position = ftell(file);
+		uint64_t record[10];
+		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &record[j]));
+		assert(!fseek(file, (long)record[6], SEEK_CUR));
+		if (!record[8]) continue;
+		const size_t fields[] = {9, 3, 8};
+		const uint64_t invalid[] = {2, record[4], 0};
+		for (size_t j = 0; j < 3; ++j) {
+			assert(!fseek(file, position + (long)(8 * fields[j]), SEEK_SET));
+			assert(!pg_wire_write_u64(file, invalid[j]));
+			rewind(file);
+			size_t count;
+			struct pg_synthesis_job *const *roots;
+			assert(!pg_sources_read(file, 100000, &count, &roots));
+			assert(!fseek(file, position + (long)(8 * fields[j]), SEEK_SET));
+			assert(!pg_wire_write_u64(file, record[fields[j]]));
+		}
+		return;
+	}
+	assert(0);
+}
+
+static struct pg_program *handler_base(unsigned operations, const struct pg_source_scope **output)
 {
 	const char *text = "D:=@{z:*;}; d:=D.z;";
 	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
@@ -120,7 +148,7 @@ static int handler_scopes(int mode)
 		if (!i) type = pg_synthesis_result(value);
 		scope = pg_synthesis_name_job(&p->synthesis, scope, name, value);
 	}
-	if (mode >= 2) {
+	if (operations) {
 		const struct pg_operation_declaration *operation = pg_operation_declaration(&p->typing, type, type);
 		assert(operation);
 		scope = pg_synthesis_name_job(&p->synthesis, scope,
@@ -128,7 +156,7 @@ static int handler_scopes(int mode)
 			pg_synthesis_operation(&p->synthesis, operation));
 		assert(scope);
 	}
-	if (mode >= 5) {
+	if (operations > 1) {
 		const struct pg_operation_declaration *operation = pg_operation_declaration(&p->typing, type, type);
 		assert(operation);
 		scope = pg_synthesis_name_job(&p->synthesis, scope,
@@ -136,9 +164,17 @@ static int handler_scopes(int mode)
 			pg_synthesis_operation(&p->synthesis, operation));
 		assert(scope);
 	}
+	*output = scope;
+	return p;
+}
+
+static int handler_scopes(int mode)
+{
+	const struct pg_source_scope *scope;
+	struct pg_program *p = handler_base(mode >= 5 ? 2 : mode >= 2 ? 1 : 0, &scope);
 	struct pg_parser parser;
 	struct pg_definition definition;
-	text = mode >= 2 ? "h:=(ask d) @ask req k=>k req @#.return x=>x;" : "h:=d @#.return x=>x;";
+	const char *text = mode >= 2 ? "h:=(ask d) @ask req k=>k req @#.return x=>x;" : "h:=d @#.return x=>x;";
 	if (mode >= 5) text = "h:=(other (ask d)) @ask req k=>k req @other req k=>k req @#.return x=>x;";
 	if (mode >= 6) text = "h:=(other (ask d)) @ask req k=>(\\v:D=>k v) req @other req k=>k req @#.return x=>x;";
 	if (mode >= 7) text = "h:=(other (ask d)) @ask req k=>k ((\\v:D=>v) req) @other req k=>k req @#.return x=>x;";
@@ -176,6 +212,7 @@ static int handler_scopes(int mode)
 		uint64_t steps = p->synthesis.steps;
 		assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
 		assert(p->synthesis.steps == steps);
+		if (mode >= 6) invalid_handler_binding(file);
 		pg_program_destroy(p);
 		rewind(file);
 		p = pg_sources_read(file, 100000, &count, &roots);
@@ -246,6 +283,89 @@ static int handler_scopes(int mode)
 	return mismatch;
 }
 
+static void handler_save_boundaries(void)
+{
+	const char *sources[] = {
+		"h:=(other (ask d)) @ask req k=>(\\v:D=>k v) req @other req k=>k req @#.return x=>x;",
+		"h:=(other (ask d)) @ask req k=>k ((\\v:D=>v) req) @other req k=>k req @#.return x=>x;",
+		"h:=(ask d) @ask req k=>k k @#.return x=>x;",
+		"h:=(other (ask d)) @ask req k=>k req @#.return x=>x;"
+	};
+	for (size_t test = 0; test < sizeof(sources) / sizeof(*sources); ++test) {
+		const struct pg_source_scope *scope;
+		struct pg_program *original = handler_base(2, &scope);
+		struct pg_parser parser;
+		struct pg_definition definition;
+		pg_parser_init(&parser, &original->graph, sources[test], strlen(sources[test]));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *selected[] = {
+			pg_synthesis_request(&original->synthesis, scope, definition.expression),
+			pg_synthesis_definition(original->root, (struct pg_token){.kind = PG_TOKEN_IDENT, .text = "d", .length = 1})};
+		assert(selected[0] && selected[1]);
+		size_t boundary = 0;
+		for (;;) {
+			FILE *file = tmpfile();
+			int saved = file ? pg_sources_write(file, &original->synthesis, 2, selected) : -1;
+			if (saved) fprintf(stderr, "handler boundary: write case=%zu step=%zu status=%d\n",
+				test, boundary, pg_synthesis_status(selected[0]));
+			assert(file && !saved);
+			struct pg_program *loaded = NULL;
+			struct pg_synthesis_job *const *roots;
+			size_t count;
+			for (unsigned round = 0; round < 2; ++round) {
+				rewind(file);
+				loaded = pg_sources_read(file, 100000, &count, &roots);
+				if (!loaded) fprintf(stderr, "handler boundary: read case=%zu step=%zu round=%u\n", test, boundary, round);
+				assert(loaded && count == 2 && !loaded->synthesis.steps);
+				assert(!pg_synthesis_result(roots[0]) && !pg_synthesis_result(roots[1]));
+				assert(!fclose(file));
+				if (round) break;
+				file = tmpfile();
+				assert(file && !pg_sources_write(file, &loaded->synthesis, count, roots));
+				pg_program_destroy(loaded);
+			}
+			while (loaded->synthesis.ready) {
+				assert(loaded->synthesis.steps < 10000);
+				pg_synthesis_advance(&loaded->synthesis, 1);
+			}
+			enum pg_synthesis_status expected = test == 2 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE;
+			if (pg_synthesis_status(roots[0]) != expected)
+				fprintf(stderr, "handler boundary: solve case=%zu step=%zu status=%d expected=%d\n",
+					test, boundary, pg_synthesis_status(roots[0]), expected);
+			assert(pg_synthesis_status(roots[0]) == expected);
+			assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
+			if (expected == PG_SYNTHESIS_DONE) {
+				const struct pg_evidence *proof = pg_synthesis_result(roots[0]), *value = pg_synthesis_result(roots[1]);
+				const struct pg_effect_row *effects;
+				const struct pg_term *result;
+				assert(pg_effect_type_view(pg_evidence_classifier(proof), &effects, &result));
+				assert(pg_effect_count(effects) == (test == 3 ? 1u : 0u));
+				assert(result == pg_evidence_classifier(value));
+				struct pg_nf_job *normal = pg_nf_request(&loaded->evaluation, &pg_pure_policy, pg_evidence_subject(proof)->core);
+				assert(normal && pg_nf_advance(normal, 10000) == PG_NF_DONE);
+				if (test == 3) {
+					const struct pg_object *label;
+					const struct pg_term *payload, *continuation;
+					assert(pg_computation_request_view(pg_nf_result(normal), &label, &payload, &continuation));
+					assert(label == pg_effect_label(effects, 0) && payload == pg_evidence_subject(value)->core);
+					normal = pg_nf_request(&loaded->evaluation, &pg_pure_policy,
+						pg_application(&loaded->graph, continuation, payload));
+					assert(normal && pg_nf_advance(normal, 10000) == PG_NF_DONE);
+				}
+				assert(pg_nf_result(normal) == pg_application(&loaded->graph,
+					pg_reference(&loaded->graph, &pg_return_operation), pg_evidence_subject(value)->core));
+			}
+			pg_program_destroy(loaded);
+			if (!original->synthesis.ready) break;
+			assert(boundary++ < 10000);
+			pg_synthesis_advance(&original->synthesis, 1);
+		}
+		assert(pg_synthesis_status(selected[0]) == (test == 2 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+		printf("handler save boundaries: case %zu, %zu snapshots preserve status and effects\n", test, boundary + 1);
+		pg_program_destroy(original);
+	}
+}
+
 static void declaration_members(void)
 {
 	for (unsigned mode = 0; mode < 4; ++mode) {
@@ -314,8 +434,8 @@ static void invalid_declaration_members(FILE *file)
 	uint64_t header[6];
 	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
 	for (size_t i = 0; i < header[1]; ++i) {
-		uint64_t scope[8];
-		for (size_t j = 0; j < 8; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+		uint64_t scope[10];
+		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
 		assert(!fseek(file, (long)scope[6], SEEK_CUR));
 	}
 	assert(!fseek(file, (long)(header[2] + 6 * header[4] + 3 * header[5] + 3 * header[3]) * 8, SEEK_CUR));
@@ -478,8 +598,8 @@ static void invalid_normalization_mode(FILE *file)
 	uint64_t header[6];
 	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
 	for (size_t i = 0; i < header[1]; ++i) {
-		uint64_t scope[8];
-		for (size_t j = 0; j < 8; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+		uint64_t scope[10];
+		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
 		assert(!fseek(file, (long)scope[6], SEEK_CUR));
 	}
 	assert(!fseek(file, (long)(8 * header[2]), SEEK_CUR));
@@ -1226,8 +1346,8 @@ static void invalid_annotation_edges(FILE *file)
 	uint64_t header[6];
 	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
 	for (size_t i = 0; i < header[1]; ++i) {
-		uint64_t scope[8];
-		for (size_t j = 0; j < 8; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+		uint64_t scope[10];
+		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
 		assert(!fseek(file, (long)scope[6], SEEK_CUR));
 	}
 	assert(!fseek(file, (long)header[2] * 8, SEEK_CUR));
@@ -1264,8 +1384,8 @@ static void invalid_named_cycle(FILE *file)
 	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
 	for (size_t i = 0; i < header[1]; ++i) {
 		long position = ftell(file);
-		uint64_t scope[8];
-		for (size_t j = 0; j < 8; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+		uint64_t scope[10];
+		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
 		if (scope[0] == 1 && link < 0) { link = position + 7 * 8; original = scope[7]; }
 		assert(!fseek(file, (long)scope[6], SEEK_CUR));
 	}
@@ -1503,8 +1623,8 @@ static void invalid_module_entries(FILE *file)
 	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
 	assert(header[5] == 2);
 	for (size_t i = 0; i < header[1]; ++i) {
-		uint64_t scope[8];
-		for (size_t j = 0; j < 8; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+		uint64_t scope[10];
+		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
 		assert(!fseek(file, (long)scope[6], SEEK_CUR));
 	}
 	assert(!fseek(file, (long)(header[2] + 6 * header[4]) * 8, SEEK_CUR));
@@ -1705,6 +1825,10 @@ int main(int argc, char **argv)
 	if (argc == 2 && !strcmp(argv[1], "handler-nesting")) {
 		int failed = handler_scopes(6);
 		return failed | handler_scopes(7);
+	}
+	if (argc == 2 && !strcmp(argv[1], "handler-boundaries")) {
+		handler_save_boundaries();
+		return 0;
 	}
 	if (argc > 1 && !strncmp(argv[1], "retained-", 9)) {
 		retained_process(argc, argv);

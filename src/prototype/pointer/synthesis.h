@@ -250,6 +250,30 @@ struct pg_synthesis_job *pg_synthesis_handler_context(struct pg_synthesis *synth
 struct pg_synthesis_job *pg_synthesis_handler_clause(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
 	const struct pg_syntax *clause);
+/* Immutable allocation input, not a saved classifier or accepted signature.
+ * Ordinary clause synthesis checks that source lookup selects this producer. */
+struct pg_handler_clause_input {
+	struct pg_synthesis_job *operation;
+	const struct pg_object *payload, *resume, *response;
+};
+struct pg_synthesis_job *pg_synthesis_handler_clause_at(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
+	const struct pg_syntax *clause, const struct pg_handler_clause_input *input);
+const struct pg_source_scope *pg_synthesis_handler_clause_scope(const struct pg_synthesis_job *job);
+int pg_synthesis_handler_clause_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, struct pg_handler_clause_input *input);
+struct pg_handler_binding_input {
+	const struct pg_source_scope *parent;
+	const struct pg_syntax *handler, *clause;
+	struct pg_handler_clause_input allocation;
+	struct pg_synthesis_job *origin;
+	unsigned slot;
+};
+/* 1: source handler binding, 0: another lexical binding, -1: invalid input. */
+int pg_synthesis_handler_binding_input(const struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, struct pg_handler_binding_input *input);
+const struct pg_source_scope *pg_synthesis_restore_handler_binding(struct pg_synthesis *synthesis,
+	const struct pg_handler_binding_input *input);
 /* Assemble all clauses through the shared producers and final kernel rule.
  * Exactly one #.return clause is required, in any position. A NULL carrier
  * requests independent return-type and least positive effect inference. The

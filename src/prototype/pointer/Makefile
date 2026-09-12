@@ -33,6 +33,7 @@ check-handler-origins: $(BUILD)/source_io_test
 
 check-handler-nesting: $(BUILD)/source_io_test
 	$(BUILD)/source_io_test handler-nesting
+	$(BUILD)/source_io_test handler-boundaries
 
 check-acceptance: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules
 

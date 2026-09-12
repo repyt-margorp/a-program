@@ -1273,6 +1273,46 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   and handler-origin suites pass.
   Nested handler retention still fails only exact Core reuse; connecting saved
   clause-site provenance to the shared pending context builder remains open.
+- [x] September 13: repair the two `check-handler-nesting` fixtures without
+  weakening exact Core comparison. APGSRC28/29 retain a handler-binding recipe:
+  source owner/clause, nominal operation producer, three binders, prefix slot
+  and optional raw allocation origin. This is a lexical construction input,
+  not a saved carrier or a new Core/proof rule. The ten-word environment record
+  references the ordinary producer DAG; binder references share the existing
+  graph payload. Old source formats are rejected rather than reinterpreted.
+  Both ordinary synthesis and inert reconstruction use the same clause-context
+  builder. Source operation lookup must select the retained nominal producer;
+  identical signature types do not authorize substituting another operation.
+  This exposed two scheduling assumptions. A pending named definition must
+  wake its consumers when ready, instead of leaving them waiting on their
+  entire effect-dependent context. Stored implicit quotation is removed through
+  one shared rule producer for atomic/qualified references and `::` checking.
+  Also, application allocation selects its saved prefix by binder identity
+  before row closure, but validates exact typed-prefix identity before accepting
+  the source application. Inferring clause effects no longer waits on itself.
+  Tests retain exact clause Core/classifiers through three destructive inert
+  resaves and one-step Solve, check actual NF, reject invalid slot/clause/producer
+  records, conflicting allocation inputs and changed operation identity.
+  This completes these nested-Lambda allocation cases, not general checkpoint
+  retention at every partially evaluated handler boundary or full N5 acceptance.
+  Follow-up boundary coverage: `check-handler-nesting` also runs
+  `handler-boundaries`. Two nested applications, an invalid resumption argument
+  and an unhandled operation are saved at every ordinary Solve transition,
+  read, inertly resaved, destroyed, reread and solved one step at a time.
+  All 4,067 snapshots (1,214/1,317/692/844) preserve eventual acceptance or
+  rejection, result classifiers and inferred effects. Pure cases return the
+  expected constructor; forwarding preserves the remaining request and its
+  continuation returns that constructor after an explicit response. This is
+  RECOMPUTE equivalence, not a claim that interrupted Solve work is retained.
+  The seed test now checks APGSRC28 and rejects the predecessor explicitly;
+  its size-limit mutation restores the current header before testing counts.
+  Verification: normal `check`, image/operation/handler-origin gates and 758
+  module save boundaries pass. ASan/UBSan source-image, normalization, nested
+  handler, 4,067 handler-boundary and seed tests pass. The eight available
+  01-09 examples and six runtime-result fixtures pass. Required open-family
+  acceptance is still 1/4 (closed 176; unsupported 210/281/324 transitions).
+  Delta from `2ee9e13`: implementation +293/-76 (net +217), tests +176/-16
+  (net +160), prototype build +1; documentation counted separately.
 - [x] September 9: construct Match field/IH scopes through the same pending
   context-binding path (`SCOPE_CONTEXT_JOB`). `pg_synthesis_bind_hypothesis`
   records only the field-to-IH binder association; it introduces no proof or
