@@ -17,7 +17,7 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION,
 	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT, PG_INDUCTIVE_FORM, PG_CONSTRUCTOR_INTRO,
 	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION, PG_REQUEST_INTRO, PG_HANDLER_ELIM,
-	PG_CONTEXT_FAMILY_EXTEND, PG_TYPE_FAMILY_APP, PG_TYPE_FAMILY_ABSTRACT };
+	PG_CONTEXT_FAMILY_EXTEND, PG_TYPE_FAMILY_APP, PG_TYPE_FAMILY_ABSTRACT, PG_TYPE_CASE };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION, PG_JUDGEMENT_TYPE_FAMILY };
@@ -35,6 +35,21 @@ const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
  * its dependent signature. No computation-to-type extraction is performed. */
 const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *body);
+/* Nonrecursive elimination into value-type universes. Each branch is a
+ * checked type family over exactly its constructor fields (a value type for
+ * nullary constructors). Uses ordinary Match Core/iota, not Comp-to-value
+ * inversion. The result universe bounds all branch universes. */
+const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
+	size_t count, const struct pg_evidence *const *branches);
+/* Expected branch classifier, formed by the same constructor/motive
+ * substitution as Match/induction. Does not synthesize or check a body. */
+const struct pg_evidence *pg_prove_match_branch_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters,
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+	const struct pg_evidence *fields);
 struct pg_data_schema;
 struct pg_data_declaration;
 struct pg_operation_declaration;

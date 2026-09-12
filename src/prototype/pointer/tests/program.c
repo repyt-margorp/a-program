@@ -198,8 +198,18 @@ static int equal_results(struct pg_program *p, const char *label,
 	if (x && pg_evidence_judgement(x) == PG_JUDGEMENT_COMPUTATION) x = pg_prove_return_value(&p->typing, x);
 	if (y && pg_evidence_judgement(y) == PG_JUDGEMENT_COMPUTATION) y = pg_prove_return_value(&p->typing, y);
 	int equal = pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE && x && y;
-	if (equal) equal = pg_alpha_equal(pg_evidence_classifier(x), pg_evidence_classifier(y)) == 1
-		&& pg_alpha_equal(pg_evidence_subject(x)->core, pg_evidence_subject(y)->core) == 1;
+	if (equal) {
+		/* Term normalization preserves its original classifier. A computed
+		 * type therefore needs conversion, not structural comparison. */
+		struct pg_conversion conversion = {0};
+		equal = !pg_conversion_init(&conversion, &p->evaluation,
+			pg_evidence_classifier(x), pg_evidence_classifier(y));
+		for (uint64_t budget = 0; equal && pg_conversion_status(&conversion) == PG_CONVERSION_PENDING && budget < 1000000;
+			budget += chunk) pg_conversion_advance(&conversion, chunk);
+		equal = equal && pg_conversion_status(&conversion) == PG_CONVERSION_EQUAL;
+		pg_conversion_destroy(&conversion);
+		if (equal) equal = pg_alpha_equal(pg_evidence_subject(x)->core, pg_evidence_subject(y)->core) == 1;
+	}
 	printf("export results: %s %s %s equal=%d chunk=%llu steps=%llu\n", label, left, right,
 		equal, (unsigned long long)chunk, (unsigned long long)p->synthesis.steps);
 	pg_program_destroy(p);

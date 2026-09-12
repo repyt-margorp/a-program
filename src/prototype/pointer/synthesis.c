@@ -90,7 +90,9 @@ struct match_branch {
 	const struct pg_syntax *clause;
 	struct pg_synthesis_job *body;
 	struct pg_synthesis_job *adapted;
+	struct pg_synthesis_job *type_job, *converted;
 	const struct pg_evidence *function;
+	const struct pg_evidence *type_family;
 	struct motive_demand *demands;
 	int needs_ih;
 };
@@ -101,8 +103,8 @@ struct match_state {
 	const struct pg_evidence *motive_context;
 	struct pg_synthesis_job *motive_context_job, *motive_job;
 	const struct pg_effect_row *motive_effects;
-	size_t count, next, effect_checked, demanded, checked, prepared;
-	int induction, has_demands;
+	size_t count, next, effect_checked, demanded, checked, prepared, typed;
+	int induction, has_demands, type_cases;
 	struct match_branch branches[];
 };
 struct family_state {
@@ -4405,6 +4407,89 @@ error:
 	finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
+static void match_type_case_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	const struct pg_evidence *context = source_context(job->inner);
+	if (state->typed < state->count) {
+		struct match_branch *branch = &state->branches[state->typed];
+		const struct pg_evidence *fields = source_context(branch->scope);
+		if (!branch->type_job) {
+			struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, branch->body);
+			struct pg_synthesis_job *type = request_job(synthesis, CLASSIFIER_FORMATION_JOB,
+				pg_synthesis_evidence(synthesis, fields), body);
+			branch->type_job = plain_rule(synthesis, PG_RETURN_CONTENT, NULL, 1, &type);
+			if (!branch->type_job) goto error;
+		}
+		if (branch->type_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->type_job); return; }
+		if (branch->type_job->status != PG_SYNTHESIS_DONE) goto unsupported;
+		const struct pg_evidence *type = branch->type_job->result;
+		for (const struct pg_evidence *scope = fields;
+			type && pg_evidence_context(scope) != pg_evidence_context(context); scope = pg_evidence_premise(scope, 0))
+			type = pg_prove_family_abstraction(synthesis->typing, scope, type);
+		if (!type) goto unsupported;
+		branch->type_family = type;
+		const struct pg_effect_row *effects;
+		const struct pg_term *value_type;
+		const struct pg_evidence *formation = pg_evidence_premise(branch->type_job->result, 0);
+		if (!pg_effect_type_view(pg_evidence_subject(formation)->core, &effects, &value_type)) goto unsupported;
+		state->motive_effects = state->motive_effects
+			? pg_effect_union(synthesis->typing->graph, state->motive_effects, effects) : effects;
+		if (!state->motive_effects) goto error;
+		++state->typed;
+		enqueue(synthesis, job);
+		return;
+	}
+	const struct pg_evidence *mc = match_motive_context(synthesis, job);
+	if (!mc) goto unsupported;
+	const struct pg_evidence *projection = pg_prove_substitution_projection(synthesis->typing, context, mc);
+	const struct pg_evidence *parameters = pg_prove_substitution_compose(synthesis->typing, state->instance.parameters, projection);
+	const struct pg_evidence **families = malloc(state->count * sizeof(*families));
+	if (!families) goto error;
+	for (size_t i = 0; i < state->count; ++i)
+		families[i] = pg_prove_projection(synthesis->typing, mc, state->branches[i].type_family);
+	const struct pg_evidence *scrutinee = pg_prove_variable(synthesis->typing, mc, pg_evidence_context(mc)->binder);
+	const struct pg_evidence *type = pg_prove_type_case(synthesis->typing, synthesis->classifiers,
+		state->instance.formation, parameters, scrutinee, state->count, families);
+	free(families);
+	state->motive = pg_prove_effect_type(synthesis->typing, synthesis->classifiers, state->motive_effects, type);
+	if (!state->motive) goto unsupported;
+	state->motive_context = mc;
+	enqueue(synthesis, job);
+	return;
+unsupported:
+	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+}
+
+static void match_type_case_branch(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	struct match_branch *branch = &state->branches[state->prepared];
+	if (!branch->converted) {
+		const struct pg_evidence *context = source_context(job->inner), *fields = source_context(branch->scope);
+		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, branch->body);
+		const struct pg_evidence *result_type = pg_prove_effect_type(synthesis->typing,
+			synthesis->classifiers, state->motive_effects, branch->type_job->result);
+		body = pg_synthesis_expect(synthesis, body, pg_synthesis_evidence(synthesis, result_type));
+		struct pg_synthesis_job *function = pg_synthesis_abstract(synthesis, context, fields, body);
+		const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(state->instance.schema), state->prepared);
+		const struct pg_evidence *map = pg_prove_constructor_scope(synthesis->typing,
+			state->instance.formation, constructor, state->instance.parameters);
+		const struct pg_evidence *expected = pg_prove_match_branch_type(synthesis->typing,
+			synthesis->classifiers, state->instance.formation, constructor, state->instance.parameters,
+			state->motive_context, state->motive, map);
+		branch->converted = pg_synthesis_expect(synthesis, function, pg_synthesis_evidence(synthesis, expected));
+		if (!branch->converted) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	}
+	if (branch->converted->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->converted); return; }
+	if (branch->converted->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, branch->converted->status); return; }
+	branch->function = branch->converted->result;
+	++state->prepared;
+	enqueue(synthesis, job);
+}
+
 static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->result) goto complete;
@@ -4547,23 +4632,31 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			enqueue(synthesis, job);
 			return;
 		}
-		struct pg_synthesis_job *candidate = state->motive_context
+		struct pg_synthesis_job *candidate = state->motive_context || state->type_cases
 			? pg_synthesis_abstract(synthesis, context, source_context(branch->scope), branch->body)
 			: pg_synthesis_constant_motive(synthesis, context, source_context(branch->scope), branch->body);
 		if (!candidate) goto error;
 		if (candidate->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, candidate); return; }
+		if (candidate->status == PG_SYNTHESIS_UNSUPPORTED && !state->induction && !state->type_cases) {
+			state->type_cases = 1;
+			enqueue(synthesis, job);
+			return;
+		}
 		if (candidate->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, candidate->status); return; }
-		branch->function = state->motive_context ? candidate->result : candidate->function;
-		if (!state->motive_context) {
+		branch->function = state->motive_context || state->type_cases ? candidate->result : candidate->function;
+		if (!state->motive_context && !state->type_cases) {
 			const struct pg_evidence *type = candidate->result;
 			if (!state->motive) state->motive = type;
-			else if (pg_alpha_equal(pg_evidence_subject(state->motive)->core, pg_evidence_subject(type)->core) != 1)
-				goto unsupported;
+			else if (pg_alpha_equal(pg_evidence_subject(state->motive)->core, pg_evidence_subject(type)->core) != 1) {
+				if (state->induction) goto unsupported;
+				state->type_cases = 1;
+			}
 		}
 		++state->checked;
 		enqueue(synthesis, job);
 		return;
 	}
+	if (state->type_cases && !state->motive_context) { match_type_case_step(synthesis, job); return; }
 	if (!state->motive) goto unsupported;
 	if (!state->motive_context) {
 		if (!state->motive_job) {
@@ -4580,6 +4673,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		state->motive_context = state->motive_context_job->result;
 		state->motive = state->motive_job->result;
 	}
+	if (state->type_cases && state->prepared < state->count) { match_type_case_branch(synthesis, job); return; }
 	if (state->induction && state->prepared < state->count) {
 		struct match_branch *branch = &state->branches[state->prepared];
 		const struct pg_object *constructor = pg_data_constructor(layout, state->prepared);

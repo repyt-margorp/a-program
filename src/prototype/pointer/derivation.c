@@ -128,6 +128,10 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 			: pg_prove_induction_at(typing, classifiers, p[1], p[2], p[3], p[4], p[0],
 				count - 6, p + 5, parameters->induction);
 		break;
+	case PG_TYPE_CASE:
+		if (count < 4) return NULL;
+		result = pg_prove_type_case(typing, classifiers, p[0], p[1], p[2], count - 3, p + 3);
+		break;
 	case PG_INDUCTIVE_FORM: {
 		if (!count || !parameters->declaration) return NULL;
 		size_t prefix = pg_evidence_rule(p[0]) == PG_CONTEXT_FAMILY_EXTEND ? 2 : 1;
@@ -217,7 +221,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	case PG_IDENTITY_TRANSPORT: case PG_REFLEXIVITY:
 	case PG_IDENTITY_LIFT: case PG_FAMILY_ACTION:
 	case PG_REQUEST_INTRO: case PG_HANDLER_ELIM:
-	case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
+	case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
 		return retained_premises(result, rule, count, p);
 	default: return result;
 	}

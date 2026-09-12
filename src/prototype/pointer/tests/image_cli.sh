@@ -138,7 +138,7 @@ while read -r fixture names; do
 done <<'GRAPHS'
 acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain
 acceptance/generated-function-graph-direct.p main certified
-acceptance/dependent-graph-motive.p main reorderedMain
+acceptance/dependent-graph-motive.p main reorderedMain certifiedMain
 acceptance/motive-computed-callee.p main
 ../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified
 GRAPHS

@@ -1052,14 +1052,25 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		const struct pg_evidence *induction = pg_prove_induction(typing, classifiers, formation,
 			identity, twice, z_context, motive, 2, branches);
 		assert(match && induction);
-		const struct pg_evidence *roots[] = {formation, zero, succ, formation, match, induction};
-		assert(!pg_derivations_write_descriptors(file, 6, roots, &pg_declaration_graph_codec, &io));
+		const struct pg_evidence *upper = pg_prove_universe(typing, classifiers, p_context, 1);
+		const struct pg_evidence *type_branches[] = {
+			formation, pg_prove_family_abstraction(typing, p_context, upper)};
+		const struct pg_evidence *type_zero = pg_prove_type_case(typing, classifiers,
+			formation, identity, zero, 2, type_branches);
+		const struct pg_evidence *type_succ = pg_prove_type_case(typing, classifiers,
+			formation, identity, succ, 2, type_branches);
+		assert(type_zero && type_succ);
+		assert(pg_evidence_classifier(type_zero) == pg_universe(classifiers, 2));
+		assert(pg_evidence_classifier(type_succ) == pg_universe(classifiers, 2));
+		const struct pg_evidence *roots[] = {
+			formation, zero, succ, formation, match, induction, type_zero, type_succ};
+		assert(!pg_derivations_write_descriptors(file, 8, roots, &pg_declaration_graph_codec, &io));
 	} else {
 		size_t count;
 		const struct pg_derivation_input *const *inputs;
 		assert(!pg_derivations_read_descriptors(file, typing, 2000, 100,
 			&pg_declaration_graph_codec, &io, &count, &inputs));
-		assert(count == 6 && inputs[0] == inputs[3] && !typing->proofs.count);
+		assert(count == 8 && inputs[0] == inputs[3] && !typing->proofs.count);
 		const struct pg_data_layout *layout = pg_data_declaration_layout(inputs[0]->parameters.declaration);
 		assert(inputs[1]->parameters.constructor == pg_data_constructor(layout, 0));
 		assert(inputs[2]->parameters.constructor == pg_data_constructor(layout, 1));
@@ -1082,7 +1093,7 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		struct pg_synthesis synthesis;
 		assert(!pg_whnf_work_init(&work, graph));
 		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
-		struct pg_synthesis_job *jobs[6];
+		struct pg_synthesis_job *jobs[8];
 		for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_derivation(&synthesis, inputs[i]);
 		assert(!typing->proofs.count && jobs[0] == jobs[3]);
 		while (synthesis.ready) { assert(synthesis.steps < 2000); pg_synthesis_advance(&synthesis, chunk); }
@@ -1098,7 +1109,7 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		const struct pg_term *succ = pg_evidence_subject(pg_synthesis_result(jobs[2]))->core;
 		assert(succ == pg_application(graph, pg_reference(graph, pg_data_constructor(layout, 1)),
 			pg_evidence_subject(pg_synthesis_result(jobs[1]))->core));
-		for (size_t i = 4; i < count; ++i) {
+		for (size_t i = 4; i < 6; ++i) {
 			const struct pg_evidence *proof = pg_synthesis_result(jobs[i]);
 			assert(pg_evidence_rule(proof) == (i == 4 ? PG_MATCH_ELIM : PG_INDUCTION_ELIM));
 			struct pg_synthesis_job *nf = pg_synthesis_nf(&synthesis, pg_prove_empty_context(typing), proof);
@@ -1107,6 +1118,17 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 			const struct pg_evidence *value = pg_prove_return_value(typing, pg_synthesis_result(nf));
 			assert(value && pg_evidence_subject(value)->core == pg_evidence_subject(pg_synthesis_result(jobs[1]))->core);
 			assert(pg_evidence_classifier(value) == family);
+		}
+		for (size_t i = 6; i < count; ++i) {
+			const struct pg_evidence *type = pg_synthesis_result(jobs[i]);
+			assert(pg_evidence_rule(type) == PG_TYPE_CASE);
+			assert(pg_evidence_judgement(type) == PG_JUDGEMENT_VALUE_TYPE);
+			assert(pg_evidence_classifier(type) == pg_universe(classifiers, 2));
+			struct pg_synthesis_job *nf = pg_synthesis_nf(&synthesis, pg_prove_empty_context(typing), type);
+			while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
+			assert(pg_synthesis_status(nf) == PG_SYNTHESIS_DONE);
+			const struct pg_term *expected = i == 6 ? family : pg_universe(classifiers, 1);
+			assert(pg_evidence_subject(pg_synthesis_result(nf))->core == expected);
 		}
 		/* Pointer validity does not establish arity or the recursive branch contract. */
 		struct pg_induction_allocation invalid_allocation = *allocation;
@@ -1136,7 +1158,7 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		}
 		pg_synthesis_destroy(&synthesis);
 		pg_whnf_work_destroy(&work);
-		puts("nominal derivations: shared family, constructor/Match/IH Solve, iota results and branch-contract rejection passed");
+		puts("nominal derivations: constructor/Match/IH/type-case Solve, universe bounds, iota results and rejection passed");
 	}
 	pg_declaration_io_destroy(&io);
 }

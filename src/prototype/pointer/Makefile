@@ -95,6 +95,12 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-function-graph-mismatch.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-graph-motive.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-graph-motive.p reorderedMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-graph-motive.p certifiedMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-type-case.p nat expectedNat
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-type-case.p bool expectedBool
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-type-case.p selectedNat expectedNat
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-type-case.p selectedBool expectedBool
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-type-case-rejected.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-motive-conflict.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-motive-expect-rejected.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/motive-computed-callee.p main expected

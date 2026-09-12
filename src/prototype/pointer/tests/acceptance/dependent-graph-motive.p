@@ -30,3 +30,8 @@ main := lengthOutputUnary two twoLength twoGraph;
 expected := Unary.succ oneLength (Unary.succ Nat.zero Unary.zero);
 main :: Unary twoLength;
 reorderedMain := reordered two twoLength twoGraph;
+certifiedMain := {
+	packet := *length two;
+	packet @returned output graph => lengthOutputUnary two output graph;
+};
+certifiedMain :: Unary twoLength;

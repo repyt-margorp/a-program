@@ -319,6 +319,40 @@ static void indexed_match(void)
 	struct pg_whnf_work work;
 	assert(!pg_whnf_work_init(&work, &graph));
 	check(&work, pg_evidence_subject(match)->core, pg_evidence_subject(pg_prove_return(&typing, &classifiers, xv))->core);
+	const struct pg_evidence *branch_type = pg_prove_value_type(&typing,
+		pg_substitution_image(&typing, fields, a));
+	const struct pg_evidence *scope = field_context;
+	while (pg_evidence_context(scope) != pg_evidence_context(xc)) {
+		branch_type = pg_prove_family_abstraction(&typing, scope, branch_type);
+		scope = pg_evidence_premise(scope, 0);
+	}
+	const struct pg_evidence *selected_type = pg_prove_type_case(&typing, &classifiers,
+		formation, parameters, value, 1, &branch_type);
+	assert(selected_type && pg_evidence_judgement(selected_type) == PG_JUDGEMENT_VALUE_TYPE);
+	check(&work, pg_evidence_subject(selected_type)->core, pg_evidence_subject(av)->core);
+	size_t proof_count = typing.proofs.count, term_count = graph.terms.count;
+	assert(pg_prove_type_case(&typing, &classifiers, formation, parameters, value, 1, &branch_type) == selected_type);
+	assert(typing.proofs.count == proof_count && graph.terms.count == term_count);
+	struct pg_derivation_parameters no_parameters = {0};
+	const struct pg_evidence *type_premises[] = {formation, parameters, value, branch_type};
+	assert(pg_prove_derivation(&typing, &classifiers, PG_TYPE_CASE, &no_parameters, 4, type_premises) == selected_type);
+	assert(!pg_prove_type_case(&typing, &classifiers, formation, parameters, value, 0, NULL));
+	assert(!pg_prove_type_case(&typing, &classifiers, formation, parameters, value, 1, &branch));
+	assert(!pg_prove_type_case(&typing, &classifiers, formation, parameters, xv, 1, &branch_type));
+	assert(!pg_prove_type_case(&typing, &classifiers, formation, parameters, value, 1, &u));
+	const struct pg_object *packet = pg_binder(&graph);
+	const struct pg_evidence *packet_context = pg_prove_context_extension(&typing, xc,
+		packet, pg_evidence_premise(value, 0));
+	const struct pg_evidence *open_parameters = pg_prove_substitution_projection(&typing, empty, packet_context);
+	const struct pg_evidence *open_branch = pg_prove_projection(&typing, packet_context, branch_type);
+	const struct pg_evidence *neutral = pg_prove_type_case(&typing, &classifiers,
+		formation, open_parameters, pg_prove_variable(&typing, packet_context, packet), 1, &open_branch);
+	assert(neutral);
+	const struct pg_evidence *replace = pg_prove_substitution_pair(&typing,
+		pg_prove_substitution_projection(&typing, xc, xc), packet_context, value);
+	const struct pg_evidence *instantiated = pg_prove_reindex(&typing, replace, neutral);
+	assert(instantiated && pg_evidence_judgement(instantiated) == PG_JUDGEMENT_VALUE_TYPE);
+	check(&work, pg_evidence_subject(instantiated)->core, pg_evidence_subject(av)->core);
 	/* A fixed-fiber motive cannot replace the generic index telescope. */
 	const struct pg_evidence *fixed = pg_prove_context_extension(&typing, xc, pg_binder(&graph),
 		pg_evidence_premise(value, 0));

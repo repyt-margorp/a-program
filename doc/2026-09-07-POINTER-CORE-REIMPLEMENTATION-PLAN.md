@@ -44,13 +44,29 @@ Keep existing passing image tests. Do not trust imported completion flags.
 Record progress against these items instead of expanding the checkpoint audit
 for each local optimization. Main promotion still requires full acceptance.
 
+Delivery order for this milestone (not additional architecture phases):
+
+1. Restore unchanged legacy compilation and result checks, prioritizing the
+   open-family/Acc blocker and general recursive call-site translation needed
+   by QuickSort. Preserve the existing computation/type-layer separation.
+2. Check an actual post-hoc property of the existing length/QuickSort definitions
+   through their generated graph and witness, including rejection of a false
+   claim. Distinguish compilation, witness generation and property proof.
+3. Only then pursue checkpoint reuse and recomputation performance. Do not
+   introduce another authority, execution engine or audit phase to avoid a
+   recomputation that is acceptable through the shared Solve path.
+
+Report progress using passing legacy cases and remaining semantic blockers,
+not the number of plan sections completed. Broader higher-Identity coverage
+remains a project requirement but is not claimed by this compatibility gate.
+
 Compatibility baseline established against a fresh build of Main `63b00eb`,
 not the stale worktree `read_file.out` (which fails the length fixture).
 `make -f src/prototype/pointer/Makefile check-source-compatibility` initially recorded
 an initial 18 source/result cases using unchanged legacy fixtures: Vec, Acc,
 order proofs, six function-graph examples, named cases, six QuickSort inputs,
 and two expected rejections. Main passed that initial baseline. The current
-19-case gate passes 7: five legacy positive cases, one justified admission of
+19-case gate passes 8: six legacy positive cases, one justified admission of
 a historical negative request, and one new actual wrong-result rejection
 (details below). Remaining cases are UNSUPPORTED or incorrectly REJECTED.
 This gate is included in
@@ -225,12 +241,29 @@ an explicit reviewed change to the gate, not a removed negative test.
   checker/comparison binaries and the normal fixture writer. Compatibility
   remains 7/19, so no Main promotion or full-plan completion is claimed.
 
-The unchanged dependent-output fixture still stops later, at
-`packet @returned output graph => lengthOutputUnary one output graph`:
-the branch result `Unary output` depends on a field extracted from the packet.
-Its nonrecursive dependent motive and the surrounding sequencing must be
-derived without letting `output` escape its binder. Do not replace the legacy
-fixture with the direct-constructor test or mark the compatibility gate done.
+September 13 worktree update: the unchanged dependent-output fixture now
+compiles, including
+`packet @returned output graph => lengthOutputUnary one output graph`.
+Its result agrees with `expected` at Solve chunks 1/64. Nonrecursive type-case
+formation uses the existing Core Match/iota over a typed value and checked
+branch type families, with the maximum branch universe bound. This is a new
+typing rule, not a new executable Core tag or permission to execute arbitrary
+effectful computations as types. Branch adaptation uses ordinary conversion.
+The closed pure packet can reduce through the shared Solve path; general
+unknown/effectful dependent sequencing is not thereby implemented.
+
+- [x] Test neutral scrutinee substitution followed by iota, exact producer reuse,
+  universe maxima, incorrect branch arity/sort, and incompatible expected types.
+  Retained type-case derivations load as ordinary Solve requests at chunks 1/64;
+  APGDRV is now version 7, with the additional rule explicitly versioned.
+- [x] Run normal checks/examples/results and ASan/UBSan IADT, synthesis,
+  derivation I/O, typed source result/rejection and source-image resave checks.
+  Image checks use the normal fixture writer and sanitized checker/comparator.
+  The test comparator now converts independently accepted classifiers rather
+  than requiring their unnormalized syntax to agree. Values are still compared
+  after normalization; distinct nominal types and wrong values remain rejected.
+- [ ] Supply the higher-Identity action for type-case formation; this rule's
+  source compatibility and first-order typing tests do not establish that action.
 
 Reference: [Pientka and Pfenning, Optimizing Higher-Order Pattern Unification,
 2003](https://www.cs.cmu.edu/~fp/papers/cade03.pdf), especially typed substitutions
@@ -245,12 +278,12 @@ that inference, not a counterexample established for A Program's declaration
 discipline. The family adapter above instead builds a checked function from
 an existing declaration; general neutral type computation remains unresolved.
 
-The latest compatibility gate remains 7/19. Remaining source failures are real
+The latest compatibility gate is 8/19. Remaining source failures are real
 acceptance blockers, not expected failures. Acc/QuickSort and general post-hoc
 property consumption are not complete. Keep checkpoint/performance work
 subordinate to these source-compatibility requirements.
-Index recovery and indexed Match/direct-IH changes pass the same checks;
-compatibility remains 1/18. Added fixtures are not substituted for legacy gates.
+Earlier 1/18 and 7/19 counts above record historical implementation steps,
+not the latest result. Added fixtures are not substituted for legacy gates.
 One disputed legacy fixture, `negative/function_graph_computation_index.p`,
 is accepted by Main despite its integration script expecting rejection. It is
 not counted as a verified negative case; audit its computed index semantics

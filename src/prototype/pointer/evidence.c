@@ -97,7 +97,7 @@ static int derived_output(enum pg_evidence_rule rule)
 	case PG_REINDEX: case PG_APP_ELIM: case PG_PI_CODOMAIN:
 	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN: case PG_EFFECT_SUBSUMPTION: case PG_REQUEST_INTRO:
 	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION:
-	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
+	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
 		return 1;
 	default: return 0;
 	}
@@ -1138,6 +1138,27 @@ done:
 	return result;
 }
 
+const struct pg_evidence *pg_prove_match_branch_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_object *constructor, const struct pg_evidence *parameters,
+	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+	const struct pg_evidence *fields)
+{
+	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (!pg_evidence_owned_by(fields, typing) || fields->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (fields->premise_count <= parameters->premise_count) return NULL;
+	const struct pg_evidence *context = fields->premises[1];
+	size_t count;
+	if (pg_context_extension_size(context->context, parameters->context, &count)) return NULL;
+	const struct pg_evidence *value = constructor_in_scope(typing, formation, constructor, parameters, fields);
+	const struct pg_evidence *expected = pg_prove_inductive_motive_at(typing, classifiers,
+		formation, parameters, motive_context, motive, context, value);
+	for (size_t i = 0; expected && i < count; ++i, context = context->premises[0])
+		expected = pg_prove_pi(typing, classifiers, context->premises[1], context, expected);
+	return expected;
+}
+
 static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
@@ -1237,13 +1258,8 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 		if (!map) goto done;
 		const struct pg_evidence *context = map->premises[1];
 		if (contexts) contexts[i] = allocation ? allocation->clauses[i] : context->context;
-		const struct pg_evidence *value = constructor_in_scope(typing, formation, constructor, parameters, map);
-		const struct pg_evidence *expected = pg_prove_inductive_motive_at(typing, classifiers, formation, parameters,
-			motive_context, motive, context, value);
-		while (expected && context->context != destination->context) {
-			expected = pg_prove_pi(typing, classifiers, context->premises[1], context, expected);
-			context = context->premises[0];
-		}
+		const struct pg_evidence *expected = pg_prove_match_branch_type(typing, classifiers,
+			formation, constructor, parameters, motive_context, motive, map);
 		if (!expected || pg_alpha_equal(expected->subject->core, branches[i]->classifier) != 1) goto done;
 		clauses[i] = (struct pg_match_clause){constructor, branches[i]->subject->core};
 		if (recursion) clauses[i].branch = induction_branch_core(typing, formation, parameters, map, branches[i], recursion);
@@ -1259,6 +1275,72 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 	if (!subject) goto done;
 	result = accept_record(typing, rule, PG_JUDGEMENT_COMPUTATION,
 		destination->context, subject, output->subject->core, count + 6, premises, saved, 0, NULL);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
+const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
+	size_t count, const struct pg_evidence *const *branches)
+{
+	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
+	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (parameters->premises[0]->context != formation->context) return NULL;
+	if (!pg_evidence_owned_by(scrutinee, typing) || scrutinee->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (scrutinee->context != parameters->context) return NULL;
+	const struct pg_data_schema *schema = formation->certificate;
+	if (!count || count != pg_data_constructor_count(schema) || !branches) return NULL;
+	if (count > SIZE_MAX / sizeof(void *) - 3 || count > SIZE_MAX / sizeof(struct pg_match_clause)) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence *result = NULL;
+	const struct pg_evidence **premises = pg_alloc(&temporary, (count + 3) * sizeof(*premises));
+	if (!premises) goto done;
+	premises[0] = formation; premises[1] = parameters; premises[2] = scrutinee;
+	for (size_t i = 0; i < count; ++i) {
+		if (!pg_evidence_owned_by(branches[i], typing)) goto done;
+		if (branches[i]->context != parameters->context) goto done;
+		premises[i + 3] = branches[i];
+	}
+	uint64_t hash;
+	result = find_record(typing, PG_TYPE_CASE, PG_JUDGEMENT_VALUE_TYPE,
+		parameters->context, NULL, NULL, count + 3, premises, NULL, &hash);
+	if (result) goto done;
+	const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, parameters->premises[1], scrutinee);
+	struct pg_inductive_instance instance;
+	if (!pg_inductive_instance(typing, type, &instance) || instance.formation != formation) goto done;
+	if (instance.parameters->premise_count != parameters->premise_count) goto done;
+	for (size_t i = 2; i < parameters->premise_count; ++i)
+		if (pg_alpha_equal(instance.parameters->premises[i]->subject->core, parameters->premises[i]->subject->core) != 1) goto done;
+	const struct pg_data_layout *layout = pg_data_schema_layout(schema);
+	struct pg_match_clause *clauses = pg_alloc(&temporary, count * sizeof(*clauses));
+	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 1) * sizeof(*operands));
+	if (!clauses || !operands) goto done;
+	operands[0] = scrutinee->subject;
+	uint64_t level = 0;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_object *constructor = pg_data_constructor(layout, i);
+		const struct pg_evidence *map = pg_prove_constructor_scope(typing, formation, constructor, parameters);
+		if (!map) goto done;
+		const struct pg_evidence *branch = pg_prove_projection(typing, map->premises[1], branches[i]);
+		for (size_t j = parameters->premise_count + 1; branch && j < map->premise_count; ++j)
+			branch = pg_prove_family_application(typing, branch, map->premises[j]);
+		if (!branch || branch->judgement != PG_JUDGEMENT_VALUE_TYPE) goto done;
+		uint64_t bound;
+		if (!pg_universe_level(branch->classifier, &bound)) goto done;
+		if (bound > level) level = bound;
+		clauses[i] = (struct pg_match_clause){constructor, branches[i]->subject->core};
+		operands[i + 1] = branches[i]->subject;
+	}
+	const struct pg_term *core = pg_data_match(typing->graph, layout, scrutinee->subject->core, count, clauses);
+	const struct pg_term *universe = pg_universe(classifiers, level);
+	if (!core || !universe) goto done;
+	const struct pg_occurrence *subject = pg_occurrence(typing, parameters->context, core, NULL, count + 1, operands);
+	if (!subject) goto done;
+	result = accept(typing, PG_TYPE_CASE, PG_JUDGEMENT_VALUE_TYPE,
+		parameters->context, subject, universe, count + 3, premises);
 done:
 	pg_graph_destroy(&temporary);
 	return result;
