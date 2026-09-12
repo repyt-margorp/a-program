@@ -414,6 +414,13 @@ int pg_substitution_init(struct pg_substitution *work, struct pg_graph *graph,
 		if (!bindings[i].binder || !bindings[i].value) return -1;
 		if (bindings[i].binder->kind != PG_BINDER) return -1;
 	}
+	/* An identity prefix is the empty substitution. Keep later identities:
+	 * they can shadow a preceding nonidentity image of the same binder. */
+	while (count && bindings->value->kind == PG_REFERENCE &&
+		bindings->value->as.reference == bindings->binder) {
+		++bindings;
+		--count;
+	}
 	struct pg_substitution_state *state = calloc(1, sizeof(*state));
 	if (!state) return -1;
 	work->state = state;

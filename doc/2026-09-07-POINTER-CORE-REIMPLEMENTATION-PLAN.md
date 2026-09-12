@@ -10429,6 +10429,44 @@ structure needed to combine dependency and effects. Neither directly proves
 the proposed A Program suspended-decoding rule. The positive open-family gate
 remains required and failing; preservation work does not replace it.
 
+September 13 continuation after `46e246f`: identity substitution and binder audit.
+
+- [x] Drop the identity prefix of a simultaneous substitution during ordinary
+  initialization. An entirely identity map now returns the exact input with
+  zero traversal, rather than copying Lambda binders. Keep identities after a
+  nonidentity entry: in `[x := y, x := x]`, the last entry must shadow the first.
+  No alpha comparison, normalization, new cache or Core tag is introduced.
+- [x] Check exact Core/classifier/annotation reuse through typed reindex while
+  retaining its `PG_REINDEX` evidence and both premises. Test capture avoidance,
+  later-entry shadowing and two image round trips with the original graph
+  destroyed. The existing readback format handles the empty environment.
+- [x] Diagnose the resulting `data_cases` test failure before modifying it.
+  A debugger found 45 remaining transitions in an earlier declaration's
+  constructor wrapper, through CONSTRUCTOR_SCOPE/SUBSTITUTION/PAIR/REINDEX,
+  not the two completed FAMILY_ACTION roots. Drain and assert quiescence of
+  this setup before measuring action reuse; retain the no-additional-steps
+  assertion after the actions. Faster root completion is not whole-queue
+  completion.
+- [ ] Nonidentity substitution remains the next allocation/reuse boundary.
+  A debugger stops at `eval.c:reify_advance` from `pg_prove_application`, via
+  `pg_prove_derivation` and ordinary `derivation_step`: accepted APP construction
+  performs fresh capture-avoiding codomain substitution. Separately,
+  `classifier_structure_step` performs that operation for provisional APP
+  structure. The fresh input key cannot reuse an older WHNF receipt merely
+  because the printed Lambda shapes agree. Unify/reuse justified construction
+  work and preserve its allocation origins, rather than adding alpha interning
+  or unconditionally reusing a binder that an image can capture.
+
+The repeated `03_main.p` retain-save probe still reports 19/24/29 roots;
+initial NF/source Solve takes 428 transitions and each reload takes 521.
+This change makes identity reindex exact, not nonidentity checkpoint reuse.
+Normal `check`, handler/module boundary suites, image origins, eight source
+examples and six runtime fixtures pass. The required open-family gate remains
+1/4 (closed 176; unsupported 210/281/324 transitions). N0--N7 stay incomplete;
+no Main promotion or push. Implementation delta: +9/-1, tests +60/-0;
+documentation counted separately. ASan/UBSan Core, evaluation-image and full
+synthesis suites pass, including the dimension-3 action cases.
+
 Continuation audit after `2f59743`, following the renewed Replay question:
 
 - `pg_derivations_read` restores unaccepted rule inputs only. It neither

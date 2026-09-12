@@ -5454,6 +5454,10 @@ static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifi
 	complete(&split, pg_synthesis_data_case(&split, type_body, schema, ctor, motive), PG_SYNTHESIS_REJECTED);
 	struct pg_synthesis_job *unsupported = request(&split, scope, "type := @\\i:A => { nil : * i; };");
 	complete(&split, pg_synthesis_data_case(&split, unsupported, schema, ctor, motive), PG_SYNTHESIS_UNSUPPORTED);
+	/* Declaration exports schedule constructor wrappers independently of the
+	 * rejected case above. Settle setup work before testing action quiescence. */
+	pg_synthesis_advance(&split, 1000);
+	assert(!split.ready);
 	/* Assemble the acted result map through scheduled, explicit post-checks. */
 	struct pg_dimensions dimensions;
 	assert(pg_dimensions_init(&dimensions, graph) == 0);

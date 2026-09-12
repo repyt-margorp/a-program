@@ -771,6 +771,17 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *source_lambda = pg_prove_lambda(&typing, source_pi,
 		pg_prove_return(&typing, &classifiers, source_p));
 	assert(source_lambda);
+	const struct pg_evidence *same_images[] = {a_in_source, source_x};
+	const struct pg_evidence *same_scope = pg_prove_substitution(&typing, source, source, 2, same_images);
+	assert(same_scope);
+	size_t unchanged_terms = graph->terms.count;
+	const struct pg_evidence *unchanged_lambda = pg_prove_reindex(&typing, same_scope, source_lambda);
+	assert(unchanged_lambda && pg_evidence_rule(unchanged_lambda) == PG_REINDEX);
+	assert(pg_evidence_subject(unchanged_lambda) == pg_evidence_subject(source_lambda));
+	assert(pg_evidence_classifier(unchanged_lambda) == pg_evidence_classifier(source_lambda));
+	assert(pg_evidence_premise(unchanged_lambda, 0) == same_scope);
+	assert(pg_evidence_premise(unchanged_lambda, 1) == source_lambda);
+	assert(graph->terms.count == unchanged_terms);
 	pending_proofs = typing.proofs.count;
 	assert(pg_reindex_init(&split, &typing, sigma, source_lambda) == 0);
 	assert(pg_reindex_advance(&split, 1) == PG_REINDEX_PENDING);
@@ -2258,6 +2269,19 @@ static void substitution_test(struct pg_graph *graph)
 	assert(result->as.lambda.binder != y);
 	assert(result->as.lambda.body == vy);
 	const struct pg_term *identity = pg_lambda(graph, x, vx);
+	struct pg_binding_value unchanged[] = {{x, vx}, {y, vy}};
+	assert(!pg_substitution_init(&closed, graph, identity, 2, unchanged));
+	assert(pg_substitution_status(&closed) == PG_SUBSTITUTION_DONE);
+	assert(pg_substitution_result(&closed) == identity);
+	assert(pg_substitution_steps(&closed) == 0);
+	pg_substitution_destroy(&closed);
+	/* Identity entries after a nonidentity image still have to shadow it. */
+	struct pg_binding_value masked[] = {{x, vy}, {x, vx}};
+	assert(pg_term_substitute(graph, vx, 2, masked) == vx);
+	struct pg_binding_value identity_prefix[] = {{y, vy}, {x, vy}};
+	result = pg_term_substitute(graph, lambda, 2, identity_prefix);
+	assert(result && result->kind == PG_LAMBDA);
+	assert(result->as.lambda.binder != y && result->as.lambda.body == vy);
 	result = pg_term_substitute(graph, identity, 2, bindings);
 	assert(result && pg_alpha_equal(result, identity) == 1);
 	const struct pg_term *redex = pg_application(graph, identity, vx);

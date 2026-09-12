@@ -291,6 +291,37 @@ static void substitution_resume(void)
 	pg_graph_destroy(&graph);
 }
 
+static void identity_substitution_image(void)
+{
+	struct pg_graph graph;
+	struct pg_substitution work;
+	assert(!pg_graph_init(&graph));
+	const struct pg_object *x = pg_binder(&graph);
+	const struct pg_term *variable = pg_reference(&graph, x);
+	const struct pg_term *input = pg_lambda(&graph, x, variable);
+	struct pg_binding_value binding = {x, variable};
+	assert(!pg_substitution_init(&work, &graph, input, 1, &binding));
+	for (unsigned round = 0; round < 2; ++round) {
+		assert(pg_substitution_status(&work) == PG_SUBSTITUTION_DONE);
+		assert(!pg_substitution_steps(&work));
+		assert(pg_substitution_result(&work) == pg_substitution_input(&work)->term);
+		assert(!pg_substitution_input(&work)->environment);
+		FILE *file = tmpfile();
+		assert(file && !pg_substitution_write(file, &work, NULL, NULL));
+		pg_substitution_destroy(&work);
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		rewind(file);
+		assert(!pg_substitution_read(file, &graph, 100, 100, NULL, NULL, &work));
+		assert(!fclose(file));
+	}
+	assert(pg_substitution_result(&work) == pg_substitution_input(&work)->term);
+	assert(pg_substitution_advance(&work, 100) == PG_SUBSTITUTION_DONE);
+	assert(!pg_substitution_steps(&work));
+	pg_substitution_destroy(&work);
+	pg_graph_destroy(&graph);
+}
+
 static void comparison_fixture(struct pg_graph *graph, struct pg_comparison *work, unsigned mode)
 {
 	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
@@ -887,6 +918,7 @@ int main(int argc, char **argv)
 	deep_shared();
 	beta_resume();
 	substitution_resume();
+	identity_substitution_image();
 	materialization_resume();
 	frame_resume(1);
 	frame_resume(3);

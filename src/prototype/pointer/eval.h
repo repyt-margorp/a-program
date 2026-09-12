@@ -101,7 +101,8 @@ struct pg_binding_value {
 struct pg_substitution_state;
 struct pg_substitution { struct pg_substitution_state *state; };
 enum pg_substitution_status { PG_SUBSTITUTION_PENDING, PG_SUBSTITUTION_DONE, PG_SUBSTITUTION_ERROR };
-/* Initialization copies binding entries but does not traverse the term.
+/* Initialization snapshots bindings, omitting an identity prefix, without
+ * traversing the term. An entirely identity map preserves the exact input.
  * Fuel counts traversal transitions, including environment lookup links.
  * Allocator/hash-table work is not a wall-clock bound. Inputs and output graph
  * must outlive the job; completed output survives destroy. */
