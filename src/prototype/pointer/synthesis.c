@@ -1369,6 +1369,10 @@ struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *syn
 	if (!pg_evidence_owned_by(extension, synthesis->typing)) return NULL;
 	if (!pg_evidence_owned_by(image, synthesis->typing)) return NULL;
 	if (pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (pg_evidence_rule(extension) == PG_CONTEXT_FAMILY_EXTEND) {
+		const struct pg_evidence *result = pg_prove_substitution_pair(synthesis->typing, substitution, extension, image);
+		return pg_synthesis_evidence(synthesis, result);
+	}
 	if (pg_evidence_rule(extension) != PG_CONTEXT_EXTEND) return NULL;
 	if (pg_evidence_judgement(image) != PG_JUDGEMENT_VALUE) return NULL;
 	if (pg_evidence_context(substitution) != pg_evidence_context(image)) return NULL;
@@ -2549,8 +2553,9 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		 * This is not recursive declaration admission or an IH lookup. */
 		struct source_reference reference = lookup_scope(job->scope, token);
 		if (!reference.binder) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		job->result = pg_prove_value_type(synthesis->typing,
-			pg_prove_variable(synthesis->typing, source_context(job->scope), reference.binder));
+		job->result = pg_prove_variable(synthesis->typing, source_context(job->scope), reference.binder);
+		if (job->result && pg_evidence_judgement(job->result) != PG_JUDGEMENT_TYPE_FAMILY)
+			job->result = pg_prove_value_type(synthesis->typing, job->result);
 		if (!job->result) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 	} else {
 		struct source_reference reference;
@@ -3269,7 +3274,7 @@ static int declaration_member_valid(const struct pg_synthesis *synthesis,
 {
 	return synthesis && job && job->owner == synthesis->owner_key
 		&& job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_DECLARATION
-		&& job->syntax->left->kind == PG_SYNTAX_CONSTRUCTORS && index < job->syntax->left->item_count;
+		&& pg_syntax_constructors(job->syntax) && index < pg_syntax_constructors(job->syntax)->item_count;
 }
 
 int pg_synthesis_declaration_member_at(struct pg_synthesis *synthesis,
@@ -3285,7 +3290,7 @@ int pg_synthesis_declaration_member_at(struct pg_synthesis *synthesis,
 	}
 	if (job->exports || job->status != PG_SYNTHESIS_PENDING) return -1;
 	if (!job->member_allocations) {
-		size_t count = job->syntax->left->item_count;
+		size_t count = pg_syntax_constructors(job->syntax)->item_count;
 		if (count > SIZE_MAX / sizeof(*job->member_allocations)) return -1;
 		job->member_allocations = pg_alloc(synthesis->typing->graph, count * sizeof(*job->member_allocations));
 		if (!job->member_allocations) return -1;
@@ -3302,7 +3307,7 @@ int pg_synthesis_declaration_member_input(const struct pg_synthesis *synthesis,
 		*input = job->member_allocations[index];
 		return 1;
 	}
-	struct source_reference member = lookup_scope(job->exports, job->syntax->left->items[index].name);
+	struct source_reference member = lookup_scope(job->exports, pg_syntax_constructors(job->syntax)->items[index].name);
 	struct pg_constructor_input constructor;
 	if (pg_synthesis_constructor_input(synthesis, member.producer, &constructor) || !constructor.allocated) return 0;
 	*input = (struct pg_constructor_allocation){constructor.constructor, constructor.prefix, constructor.fields};
@@ -3314,8 +3319,24 @@ int pg_synthesis_declaration_member_input(const struct pg_synthesis *synthesis,
  * family. Failure to construct a candidate is not universe inconsistency. */
 static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (job->syntax->left->kind != PG_SYNTAX_CONSTRUCTORS) {
-		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+	int indexed = job->syntax->left->kind != PG_SYNTAX_CONSTRUCTORS;
+	if (indexed) {
+		if (!job->right && job->nominal_input) {
+			const struct pg_context *self = pg_data_declaration_parameters(job->nominal_input);
+			const struct pg_context *prefix = pg_evidence_context(source_context(job->scope)), *end = prefix;
+			if (!self || self->parent != prefix) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+			const struct pg_term *tail = self->declared_type, *domain, *body;
+			const struct pg_object *binder;
+			while (pg_pi_view(tail, &domain, &binder, &body)) {
+				end = pg_context_bind(synthesis->typing, end, binder, domain);
+				if (!end) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+				tail = body;
+			}
+			job->right = pg_synthesis_telescope_at(synthesis, job->scope, job->syntax->left, prefix, end);
+		} else if (!job->right) job->right = pg_synthesis_telescope(synthesis, job->scope, job->syntax->left);
+		if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
+		if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
 	}
 	if (!job->domain)
 		job->domain = pg_prove_universe(synthesis->typing, synthesis->classifiers, source_context(job->scope), 0);
@@ -3324,16 +3345,21 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		if (job->nominal_input) {
 			const struct pg_context *parameters = pg_data_declaration_parameters(job->nominal_input);
 			uint64_t candidate, stored;
+			const struct pg_term *tail = parameters ? parameters->declared_type : NULL, *domain, *body;
+			const struct pg_object *binder;
+			if (indexed) while (pg_pi_view(tail, &domain, &binder, &body)) tail = body;
 			if (!parameters || parameters->parent != pg_evidence_context(source_context(job->scope))
-				|| !pg_universe_level(parameters->declared_type, &stored)
+				|| !pg_universe_level(tail, &stored)
 				|| !job->domain || !pg_universe_level(pg_evidence_subject(job->domain)->core, &candidate)) {
 				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 			}
 			if (candidate == stored) allocation = job->nominal_input;
 			job->binder = allocation ? parameters->binder : pg_binder(synthesis->typing->graph);
 		} else job->binder = pg_binder(synthesis->typing->graph);
-		const struct pg_evidence *self = pg_prove_context_extension(synthesis->typing,
-			source_context(job->scope), job->binder, job->domain);
+		const struct pg_evidence *self = indexed
+			? pg_prove_family_context_extension(synthesis->typing, source_context(job->scope), job->binder,
+				job->right->result, pg_prove_projection(synthesis->typing, job->right->result, job->domain))
+			: pg_prove_context_extension(synthesis->typing, source_context(job->scope), job->binder, job->domain);
 		job->inner = pg_synthesis_bind(synthesis, job->scope, (struct pg_token){.kind = '*'}, job->binder, self);
 		job->left = pg_synthesis_data_schema_at(synthesis, job->inner, job->syntax, allocation);
 		depend(synthesis, job, job->left);
@@ -3365,7 +3391,7 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	job->schema = schema;
 	/* Export only declared members, never fall back to enclosing lexical names. */
 	job->exports = intern_scope(synthesis, (struct pg_source_scope){.context_job = job->scope->context_job});
-	const struct pg_syntax *constructors = job->syntax->left;
+	const struct pg_syntax *constructors = indexed ? pg_synthesis_telescope_body(job->right) : job->syntax->left;
 	for (size_t i = 0; job->exports && i < constructors->item_count; ++i) {
 		const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing,
 			source_context(job->scope), source_context(job->scope));
@@ -4431,7 +4457,8 @@ static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_syn
 		job->substitution = state;
 		struct pg_synthesis_job *family = pg_synthesis_reindex_jobs(synthesis, (void *)job->inputs[1], (void *)job->inputs[0]);
 		struct pg_derivation_input as_value = {.rule = PG_VALUE_FROM_TYPE, .count = 1};
-		struct pg_synthesis_job *value = pg_synthesis_rule(synthesis, &as_value, &family, NULL, NULL);
+		struct pg_synthesis_job *value = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
+			? family : pg_synthesis_rule(synthesis, &as_value, &family, NULL, NULL);
 		size_t prefix = pg_evidence_premise_count(parameters) - 2;
 		if (prefix >= SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
 		struct pg_synthesis_job **images = malloc((prefix + 1) * sizeof(*images));
@@ -4640,7 +4667,7 @@ static void substitution_step(struct pg_synthesis *synthesis, struct pg_synthesi
 	if (!image || !pg_evidence_subject(image)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 	image = type_input(synthesis, job, pg_evidence_premise(state->map, 1), image);
 	if (!image) return;
-	image = value(synthesis, image);
+	if (pg_evidence_rule(entry->extension) != PG_CONTEXT_FAMILY_EXTEND) image = value(synthesis, image);
 	if (!image) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 	job->right = pg_synthesis_substitution_pair(synthesis, state->map, entry->extension, image);
 	depend(synthesis, job, job->right);
@@ -6019,6 +6046,24 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		enqueue(synthesis, job);
 		return 1;
 	}
+	/* A declared family consumes value indices without running a computation.
+	 * Do not infer this authority from a Pi-shaped classifier or an empty row. */
+	if (state->callee->status == PG_SYNTHESIS_DONE && state->callee->result &&
+		pg_evidence_judgement(state->callee->result) == PG_JUDGEMENT_TYPE_FAMILY) {
+		struct pg_synthesis_job *argument = state->argument;
+		if (argument->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, argument); return 1; }
+		if (argument->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, argument->status); return 1; }
+		if (pg_evidence_judgement(argument->result) == PG_JUDGEMENT_COMPUTATION)
+			argument = pg_synthesis_return(synthesis, source_context(job->scope), argument->result);
+		if (!argument) goto error;
+		if (argument->result && pg_evidence_judgement(argument->result) == PG_JUDGEMENT_VALUE_TYPE)
+			argument = plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &argument);
+		struct pg_synthesis_job *premises[] = {state->callee, argument};
+		state->tail = plain_rule(synthesis, PG_TYPE_FAMILY_APP, NULL, 2, premises);
+		if (!state->tail) goto error;
+		enqueue(synthesis, job);
+		return 1;
+	}
 	struct pg_synthesis_job *callee = pg_synthesis_normalize_classifier_jobs(synthesis, state->context, state->callee);
 	struct pg_synthesis_job *shape = pg_synthesis_classifier_structure(synthesis, callee);
 	if (!shape) goto error;
@@ -6094,6 +6139,11 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		return;
 	}
 	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_LAMBDA) {
+		if (job->right->status == PG_SYNTHESIS_DONE && job->right->result &&
+			pg_evidence_judgement(job->right->result) == PG_JUDGEMENT_TYPE_FAMILY) {
+			struct pg_synthesis_job *premises[] = {job->left, job->right};
+			job->value_job = plain_rule(synthesis, PG_TYPE_FAMILY_ABSTRACT, NULL, 2, premises);
+		}
 		forward_proof(synthesis, job, job->value_job);
 		return;
 	}

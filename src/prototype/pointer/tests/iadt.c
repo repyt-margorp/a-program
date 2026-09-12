@@ -100,6 +100,63 @@ static void positive_fields(void)
 	pg_graph_destroy(&graph);
 }
 
+static void scoped_type_families(void)
+{
+	struct pg_graph graph;
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+	assert(!pg_classifiers_init(&classifiers, &graph));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_object *t = pg_binder(&graph), *a = pg_binder(&graph), *x = pg_binder(&graph);
+	const struct pg_object *f = pg_binder(&graph), *v = pg_binder(&graph);
+	const struct pg_evidence *base = pg_prove_context_extension(&typing, empty, t, u);
+	const struct pg_evidence *ac = pg_prove_context_extension(&typing, base, a, pg_prove_projection(&typing, base, u));
+	const struct pg_evidence *xc = pg_prove_context_extension(&typing, ac, x, pg_prove_variable(&typing, ac, a));
+	const struct pg_evidence *universe = pg_prove_projection(&typing, xc, u);
+	const struct pg_evidence *fc = pg_prove_family_context_extension(&typing, base, f, xc, universe);
+	assert(fc && pg_evidence_rule(fc) == PG_CONTEXT_FAMILY_EXTEND);
+	common_rule(&typing, &classifiers, fc);
+	assert(!pg_prove_family_context_extension(&typing, base, f, base, pg_prove_projection(&typing, base, u)));
+	assert(!pg_prove_family_context_extension(&typing, base, f, xc, u));
+	const struct pg_evidence *vc = pg_prove_context_extension(&typing, fc, v, pg_prove_variable(&typing, fc, t));
+	const struct pg_evidence *family = pg_prove_variable(&typing, vc, f);
+	const struct pg_evidence *type = pg_prove_variable(&typing, vc, t);
+	const struct pg_evidence *value = pg_prove_variable(&typing, vc, v);
+	assert(family && pg_evidence_judgement(family) == PG_JUDGEMENT_TYPE_FAMILY);
+	assert(!pg_prove_value_type(&typing, family) && !pg_prove_type_value(&typing, family));
+	assert(!pg_prove_return(&typing, &classifiers, family) && !pg_prove_force(&typing, family));
+	assert(!pg_prove_application(&typing, family, type));
+	assert(!pg_prove_family_application(&typing, family, value));
+	const struct pg_evidence *partial = pg_prove_family_application(&typing, family, type);
+	assert(partial && pg_evidence_judgement(partial) == PG_JUDGEMENT_TYPE_FAMILY);
+	const struct pg_evidence *fiber = pg_prove_family_application(&typing, partial, value);
+	assert(fiber && pg_evidence_judgement(fiber) == PG_JUDGEMENT_VALUE_TYPE);
+	assert(pg_evidence_classifier(fiber) == pg_evidence_subject(u)->core);
+	assert(!pg_prove_family_application(&typing, fiber, value));
+	assert(pg_prove_type_value(&typing, fiber));
+	common_rule(&typing, &classifiers, partial);
+	common_rule(&typing, &classifiers, fiber);
+	const struct pg_evidence *abstracted = pg_prove_family_abstraction(&typing, vc, fiber);
+	assert(abstracted && pg_evidence_subject(abstracted)->core->kind == PG_LAMBDA);
+	common_rule(&typing, &classifiers, abstracted);
+	/* Substitution preserves the binding sort, even though both images are
+	 * ordinary Core terms. Neither a type value nor a raw thunk is a family. */
+	const struct pg_evidence *prefix = pg_prove_substitution_projection(&typing, base, vc);
+	const struct pg_evidence *map = pg_prove_substitution_pair(&typing, prefix, fc, family);
+	assert(map && pg_prove_substitution_extend(&typing, prefix, fc, 1, &family) == map);
+	assert(!pg_prove_substitution_pair(&typing, prefix, fc, type));
+	assert(!pg_prove_substitution_extend(&typing, prefix, fc, 1, &type));
+	const struct pg_evidence *zero = pg_prove_substitution_projection(&typing, empty, vc);
+	assert(!pg_prove_substitution_pair(&typing, zero, base, family));
+	const struct pg_evidence *projection = pg_prove_substitution_projection(&typing, vc, vc);
+	assert(projection && pg_prove_reindex(&typing, projection, family));
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+}
+
 static void retained_substitution_prefix(void)
 {
 	struct pg_graph graph;
@@ -1181,6 +1238,7 @@ static void schemas(struct pg_graph *graph)
 int main(void)
 {
 	positive_fields();
+	scoped_type_families();
 	schema_positivity();
 	retained_substitution_prefix();
 	struct pg_graph graph;

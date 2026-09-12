@@ -4504,8 +4504,13 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 		same_judgement(pg_evidence_premise(source_map, i), pg_evidence_premise(map, i));
 	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, parameter_context, index_context), 1, &source_map);
 	assert(schema && pg_data_schema_fields(schema, pg_data_constructor(pg_data_schema_layout(schema), 0)) == field_context);
-	/* Checked telescopes do not turn this source into an admitted nominal type. */
-	complete(&synthesis, pg_synthesis_request(&synthesis, root, source), PG_SYNTHESIS_UNSUPPORTED);
+	/* Source admission discharges a separately checked Self-family hypothesis;
+	 * the conditional telescope/schema above is not itself that admission. */
+	const struct pg_evidence *admitted = complete(&synthesis,
+		pg_synthesis_request(&synthesis, root, source), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_judgement(admitted) == PG_JUDGEMENT_TYPE_FAMILY);
+	assert(pg_evidence_rule(admitted) == PG_TYPE_FAMILY_ABSTRACT);
+	assert(pg_evidence_rule(pg_evidence_premise(admitted, 1)) == PG_INDUCTIVE_FORM);
 	const char *invalid[] = {"f:=\\x:missing => x;", "f:=\\A:@ => \\x:A => \\y:x => y;"};
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
 		struct pg_synthesis_job *job = pg_synthesis_telescope(&synthesis, root,

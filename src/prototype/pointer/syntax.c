@@ -1,7 +1,14 @@
 #include "syntax.h"
-
 #include <stdlib.h>
 #include <string.h>
+
+const struct pg_syntax *pg_syntax_constructors(const struct pg_syntax *declaration)
+{
+	if (!declaration || declaration->kind != PG_SYNTAX_DECLARATION) return NULL;
+	const struct pg_syntax *body = declaration->left;
+	while (body && body->kind == PG_SYNTAX_LAMBDA) body = body->right;
+	return body && body->kind == PG_SYNTAX_CONSTRUCTORS ? body : NULL;
+}
 
 static void error(struct pg_parser *parser, const char *message)
 {

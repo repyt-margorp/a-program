@@ -16,11 +16,25 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_IDENTITY_LEFT_TYPE, PG_IDENTITY_RIGHT_TYPE, PG_FAMILY_IDENTITY_FORM, PG_PURE_NORMALIZATION,
 	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION,
 	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT, PG_INDUCTIVE_FORM, PG_CONSTRUCTOR_INTRO,
-	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION, PG_REQUEST_INTRO, PG_HANDLER_ELIM };
+	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION, PG_REQUEST_INTRO, PG_HANDLER_ELIM,
+	PG_CONTEXT_FAMILY_EXTEND, PG_TYPE_FAMILY_APP, PG_TYPE_FAMILY_ABSTRACT };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
-	PG_JUDGEMENT_SUBSTITUTION };
+	PG_JUDGEMENT_SUBSTITUTION, PG_JUDGEMENT_TYPE_FAMILY };
 struct pg_evidence;
+/* A scoped family hypothesis over a nonempty value telescope. The signature
+ * is an ordinary Pi-shaped Core term ending in Universe, not a CBPV value
+ * function type. Family evidence cannot be RETURNed, FORCEd or coerced to a
+ * Universe inhabitant until all indices have been supplied. */
+const struct pg_evidence *pg_prove_family_context_extension(struct pg_typing *typing,
+	const struct pg_evidence *parent, const struct pg_object *binder,
+	const struct pg_evidence *indices, const struct pg_evidence *universe);
+const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
+	const struct pg_evidence *family, const struct pg_evidence *index);
+/* Abstract a checked type/family over one ordinary value binder, retaining
+ * its dependent signature. No computation-to-type extraction is performed. */
+const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *body);
 struct pg_data_schema;
 struct pg_data_declaration;
 struct pg_operation_declaration;
@@ -89,10 +103,12 @@ const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *target_type);
 
-/* Zero-index strictly-positive inductive formation. The schema parameter
- * context must end in the distinguished Self : Universe_l assumption.
+/* Strictly-positive inductive formation. The schema parameter context ends
+ * in Self : Universe_l or a scoped Self-family signature over value indices.
  * Discharges precisely Self; other parameters remain explicit in the Core.
- * Indexed formation and datatype higher computation are not implemented here. */
+ * Indexed declarations yield TYPE_FAMILY evidence, not a CBPV value or
+ * computation; a saturated family application proves a fiber is a type.
+ * Datatype higher computation is not implemented here. */
 const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_data_schema *schema);
 const struct pg_data_declaration *pg_evidence_inductive_declaration(const struct pg_evidence *evidence);

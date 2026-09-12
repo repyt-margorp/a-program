@@ -19,6 +19,66 @@ static struct pg_synthesis_job *parse(struct pg_program *program,
 	return job;
 }
 
+static void indexed_family_sources(void)
+{
+	const char *source = "Nat:=@{zero:*;succ:*->*;};"
+		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
+		"main:=D.next Nat.zero (D.mk Nat.zero); main::D (Nat.succ Nat.zero);";
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		struct pg_synthesis_job *initial[] = {p->root};
+		struct pg_synthesis_job *const *roots = initial;
+		size_t count = 1;
+		/* Save both unelaborated syntax and accepted declaration/constructor
+		 * origins. Restoring either schedules the same ordinary Solve rules. */
+		for (size_t round = 0; round < 3; ++round) {
+			if (round) {
+				while (pg_synthesis_status(roots[0]) == PG_SYNTHESIS_PENDING) {
+					assert(p->synthesis.steps < 100000);
+					pg_synthesis_advance(&p->synthesis, chunk);
+				}
+				assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+			}
+			FILE *file = tmpfile();
+			assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
+			pg_program_destroy(p);
+			rewind(file);
+			p = pg_sources_read(file, 100000, &count, &roots);
+			assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(roots[0]));
+			assert(!fclose(file));
+		}
+		while (pg_synthesis_status(roots[0]) == PG_SYNTHESIS_PENDING) {
+			assert(p->synthesis.steps < 100000);
+			pg_synthesis_advance(&p->synthesis, chunk);
+		}
+		assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *family = pg_synthesis_result(pg_synthesis_definition(roots[0],
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "D", .length = 1}));
+		assert(family && pg_evidence_rule(family) == PG_INDUCTIVE_FORM);
+		assert(pg_evidence_judgement(family) == PG_JUDGEMENT_TYPE_FAMILY);
+		assert(!pg_prove_type_value(&p->typing, family));
+		pg_program_destroy(p);
+	}
+	const char *invalid[] = {
+		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
+			"bad:=D.next Nat.zero (D.mk (Nat.succ Nat.zero));",
+		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;}; bad:=\\x:D=>x;",
+		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;}; bad:=D Nat.zero Nat.zero;"
+	};
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+		struct pg_program *p = pg_program_create(invalid[i], strlen(invalid[i]), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		while (pg_synthesis_status(p->root) == PG_SYNTHESIS_PENDING) {
+			assert(p->synthesis.steps < 100000);
+			pg_synthesis_advance(&p->synthesis, 1);
+		}
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_REJECTED);
+		pg_program_destroy(p);
+	}
+	puts("indexed source: scoped family formation, recursive constructors and inert resaves use ordinary Solve");
+}
+
 static void context_scopes(void)
 {
 	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
@@ -1830,6 +1890,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "indexed-families")) { indexed_family_sources(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "constructor-inputs")) { constructor_inputs(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "match-origins")) { match_origins(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "fold-origins")) { fold_origins(); return 0; }

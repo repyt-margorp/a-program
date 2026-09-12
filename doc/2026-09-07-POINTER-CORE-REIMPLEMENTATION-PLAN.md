@@ -54,12 +54,32 @@ currently passes 0/18, all stopping at UNSUPPORTED. This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
 checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
 
-Next implementation dependency: `declaration_step` rejects index telescopes;
-`pg_prove_inductive_type` separately requires indices equal to parameters.
-Generalize formation and its checked instance maps before connecting indexed
-source declarations; removing only the surface guard is insufficient. The
-generated length fixture additionally stops at `*length` resolution. Keep
-general open type-family synthesis and graph companion generation in scope.
+September 13 implementation: scoped family assumptions, saturated family
+application and parameter abstraction now use ordinary pointer-Core terms
+with retained typing rules. A family signature is a Pi-shaped type-layer
+signature ending in Universe, not a value-side Pi or a computation with an
+assumed pure result. TYPE_FAMILY evidence cannot be RETURNed, FORCEd, or used
+as an ordinary value substitution image. Only supplying all checked indices
+produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
+
+- [x] Admit source indexed declarations by discharging the checked Self-family
+  assumption after positivity/universe checks; form recursive constructors at
+  the indices computed by their retained result substitutions.
+- [x] Check dependent family signatures, partial/saturated application and
+  substitution-sort rejection. Source tests cover recursive indexed fields,
+  pure computed indices, and unsolved/solved source-image resaves through Solve.
+- [ ] Recover parameter-instantiated family declarations and indexed instances
+  through retained family application/abstraction evidence. The legacy Vec test
+  now reaches `(Vec Nat).nil`, where member resolution remains unsupported.
+- [ ] Generalize Match/motive/IH rules to those checked indexed instances;
+  restore open family parameters and function graph/witness generation.
+
+The compatibility gate remains 0/18 (UNSUPPORTED, not expected failures).
+The generated length fixture still stops at `*length` resolution. These
+formation changes are prerequisite work, not completion of Vec/Acc/QuickSort
+or the post-hoc property-proof milestone. No independent Replay was added.
+Validation: `check check-examples check-example-results` passes. The scoped
+family kernel tests and indexed source/resave tests also pass ASan/UBSan.
 One disputed legacy fixture, `negative/function_graph_computation_index.p`,
 is accepted by Main despite its integration script expecting rejection. It is
 not counted as a verified negative case; audit its computed index semantics

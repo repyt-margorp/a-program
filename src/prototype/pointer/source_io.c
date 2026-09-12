@@ -213,8 +213,8 @@ static int collect_inputs(struct origin_collection *c)
 				if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->syntax, term)) return -1;
 				if (definitions && pg_dag_add(c->syntax, definitions)) return -1;
 				if (!pg_synthesis_source_input(c->synthesis, producer->key, &scope, &term)
-					&& term->kind == PG_SYNTAX_DECLARATION && term->left->kind == PG_SYNTAX_CONSTRUCTORS) {
-					for (size_t i = 0; i < term->left->item_count; ++i) {
+					&& pg_syntax_constructors(term)) {
+					for (size_t i = 0; i < pg_syntax_constructors(term)->item_count; ++i) {
 						struct pg_constructor_allocation allocation;
 						int available = pg_synthesis_declaration_member_input(c->synthesis, producer->key, i, &allocation);
 						if (available < 0) return -1;

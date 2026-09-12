@@ -58,7 +58,7 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 		result.handler = pg_evidence_handler_signature(evidence); break;
 	case PG_REQUEST_INTRO:
 		result.operation_label = pg_operation_label(pg_evidence_request_declaration(evidence)); break;
-	case PG_CONTEXT_EXTEND:
+	case PG_CONTEXT_EXTEND: case PG_CONTEXT_FAMILY_EXTEND:
 		result.binder = pg_evidence_context(evidence)->binder; break;
 	case PG_VARIABLE:
 		result.binder = subject->core->as.reference; break;
@@ -130,14 +130,19 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 		break;
 	case PG_INDUCTIVE_FORM: {
 		if (!count || !parameters->declaration) return NULL;
-		const struct pg_data_signature *signature = pg_data_signature(typing, p[0], p[0]);
+		size_t prefix = pg_evidence_rule(p[0]) == PG_CONTEXT_FAMILY_EXTEND ? 2 : 1;
+		if (count < prefix) return NULL;
+		const struct pg_data_signature *signature = pg_data_signature(typing, p[0], prefix == 2 ? p[1] : p[0]);
 		const struct pg_data_schema *schema = pg_data_schema_check(typing, parameters->declaration,
-			signature, count - 1, p + 1);
+			signature, count - prefix, p + prefix);
 		result = pg_prove_inductive_type(typing, classifiers, schema);
 		break;
 	}
 	RULE(PG_CONTEXT_EMPTY, 0, pg_prove_empty_context(typing));
 	RULE(PG_CONTEXT_EXTEND, 2, pg_prove_context_extension(typing, p[0], parameters->binder, p[1]));
+	RULE(PG_CONTEXT_FAMILY_EXTEND, 3, pg_prove_family_context_extension(typing, p[0], parameters->binder, p[1], p[2]));
+	RULE(PG_TYPE_FAMILY_APP, 2, pg_prove_family_application(typing, p[0], p[1]));
+	RULE(PG_TYPE_FAMILY_ABSTRACT, 2, pg_prove_family_abstraction(typing, p[0], p[1]));
 	RULE(PG_UNIVERSE_FORM, 1, pg_prove_universe(typing, classifiers, p[0], parameters->level));
 	RULE(PG_VARIABLE, 1, pg_prove_variable(typing, p[0], parameters->binder));
 	RULE(PG_TYPE_FROM_VALUE, 1, pg_prove_value_type(typing, p[0]));

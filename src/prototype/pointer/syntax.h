@@ -66,5 +66,7 @@ int pg_parser_next(struct pg_parser *parser, struct pg_definition *definition);
  * {{...}}.name roots retain their selection; flat sources have no selection.
  * This stores all entries, including checks/imports, without resolving them. */
 const struct pg_syntax *pg_parser_program(struct pg_parser *parser);
+/* Constructor array beneath a declaration's optional index telescope. */
+const struct pg_syntax *pg_syntax_constructors(const struct pg_syntax *declaration);
 
 #endif

@@ -243,7 +243,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t rule, level, direction, arity, reduction_kind;
 		if (pg_wire_read_u64(file, &rule)) return -1;
-		if (rule > PG_HANDLER_ELIM) return -1;
+		if (rule > PG_TYPE_FAMILY_ABSTRACT) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
 		if (pg_wire_read_u64(file, &reduction_kind) || reduction_kind > PG_REDUCTION_NF) return -1;
 		if (pg_wire_read_u64(file, &records[i].binder) || pg_wire_read_u64(file, &records[i].effects)

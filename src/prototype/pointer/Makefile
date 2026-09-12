@@ -73,6 +73,7 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	bash $(ROOT)tests/image_cli.sh $(BUILD)/source_io_test $(BUILD)/pointer-check
 	$(BUILD)/identity_test
 	$(BUILD)/iadt_test
+	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-formation.p
 	$(BUILD)/parse_files $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 	bash $(ROOT)tests/syntax_inventory.sh $(BUILD)/parse_files
 
