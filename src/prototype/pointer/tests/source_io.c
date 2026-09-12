@@ -115,10 +115,18 @@ static void indexed_family_roundtrip(const char *source)
 					assert(p->synthesis.steps < 100000);
 					pg_synthesis_advance(&p->synthesis, chunk);
 				}
-				results[i] = pg_prove_return_value(&p->typing, pg_synthesis_result(nf));
+				results[i] = pg_synthesis_result(nf);
+				if (pg_evidence_judgement(results[i]) != PG_JUDGEMENT_VALUE)
+					results[i] = pg_prove_return_value(&p->typing, results[i]);
 				assert(results[i]);
 			}
-			assert(pg_alpha_equal(pg_evidence_classifier(results[0]), pg_evidence_classifier(results[1])) == 1);
+			/* Typed normalization preserves the original classifier. Family
+			 * instantiation can retain a beta-redex there without changing it. */
+			struct pg_conversion comparison;
+			assert(!pg_conversion_init(&comparison, &p->evaluation,
+				pg_evidence_classifier(results[0]), pg_evidence_classifier(results[1])));
+			assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
+			pg_conversion_destroy(&comparison);
 			assert(pg_alpha_equal(pg_evidence_subject(results[0])->core, pg_evidence_subject(results[1])->core) == 1);
 		}
 		pg_program_destroy(p);
@@ -127,6 +135,11 @@ static void indexed_family_roundtrip(const char *source)
 
 static void indexed_family_sources(void)
 {
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"LT:=@\\x:Nat=>@\\y:Nat=>{step:(n:Nat)->* n (Nat.succ n);};"
+		"D:=\\A:@=>\\R:A->A->@=>@\\subject:A=>"
+		"{acc:(x:A)->((y:A)->R y x->* y)->* x;};"
+		"Fiber:=D Nat LT Nat.zero; main:=Nat.zero; expected:=Nat.zero;");
 	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
 		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
 		"main:=D.next Nat.zero (D.mk Nat.zero); main::D (Nat.succ Nat.zero); Fiber:=D (Nat.succ Nat.zero);");
@@ -153,6 +166,11 @@ static void indexed_family_sources(void)
 		"choose:=\\F:Nat->@=>F Nat.zero; id:=\\x:choose D=>x;"
 		"main:=id (D.mk Nat.zero); expected:=D.mk Nat.zero; Fiber:=D Nat.zero;");
 	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;};"
+		"choose:=\\F:Nat->@=>F Nat.zero; delayed:=&(\\n:Nat=>D n);"
+		"id:=\\x:choose delayed=>x; main:=id (D.mk Nat.zero);"
+		"expected:=D.mk Nat.zero; Fiber:=D Nat.zero;");
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
 		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;}; quoted:=&D;"
 		"id:=\\x:quoted Nat.zero=>x; main:=id (D.mk Nat.zero);"
 		"expected:=D.mk Nat.zero; Fiber:=D Nat.zero;");
@@ -163,6 +181,10 @@ static void indexed_family_sources(void)
 		"main:=idOne (id ((D Nat).mk Nat.zero Nat.zero));"
 		"expected:=(D Nat).mk Nat.zero Nat.zero; Fiber:=D Nat Nat.zero;");
 	const char *invalid[] = {
+		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;};"
+			"choose:=\\F:Nat->Nat->@=>F Nat.zero Nat.zero; bad:=choose D;",
+		"Nat:=@{zero:*;succ:*->*;}; choose:=\\F:Nat->@=>F Nat.zero;"
+			"delayed:=&(\\n:Nat=>Nat.zero); bad:=choose delayed;",
 		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
 			"bad:=D.next Nat.zero (D.mk (Nat.succ Nat.zero));",
 		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;}; bad:=\\x:D=>x;",
@@ -1012,10 +1034,10 @@ static void induction_scope_inputs(struct pg_program *p, const struct pg_evidenc
 	const struct pg_evidence *motive_context = pg_evidence_premise(proof, 4), *motive = pg_evidence_premise(proof, 0);
 	const struct pg_evidence *branch = pg_evidence_premise(proof, 6);
 	assert(pg_evidence_rule(branch) == PG_LAMBDA_INTRO);
-	const struct pg_context *fields = pg_evidence_context(pg_evidence_premise(pg_evidence_premise(branch, 0), 1));
+	const struct pg_context *fields = pg_evidence_context(pg_evidence_premise(pg_evidence_premise(branch, 0), 0));
 	branch = pg_evidence_premise(branch, 1);
 	assert(pg_evidence_rule(branch) == PG_LAMBDA_INTRO);
-	const struct pg_context *end = pg_evidence_context(pg_evidence_premise(pg_evidence_premise(branch, 0), 1));
+	const struct pg_context *end = pg_evidence_context(pg_evidence_premise(pg_evidence_premise(branch, 0), 0));
 	assert(end->parent == fields);
 	struct pg_inductive_instance instance;
 	assert(pg_inductive_instance(&p->typing, formation, &instance));

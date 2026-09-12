@@ -134,7 +134,7 @@ static void heterogeneous_pi(struct pg_typing *typing, struct pg_classifiers *cl
 		if (dependent) value = pg_prove_reflexivity(typing,
 			pg_prove_projection(typing, body_context, domain), variable);
 		const struct pg_evidence *body = pg_prove_return(typing, classifiers, value);
-		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domain, body_context,
+		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, body_context,
 			pg_prove_classifier(typing, classifiers, body_context, body));
 		const struct pg_evidence *function = pg_prove_lambda(typing, pi, body);
 		const struct pg_evidence *left = pg_prove_reindex(typing, ls, function);
@@ -151,8 +151,9 @@ static void heterogeneous_pi(struct pg_typing *typing, struct pg_classifiers *cl
 		pg_conversion_destroy(&conversion);
 		const struct pg_evidence *boundary = NULL, *tail = expanded;
 		for (size_t i = 0; i < 3; ++i) {
-			boundary = pg_evidence_premise(tail, 1);
-			tail = pg_evidence_premise(tail, 2);
+			assert(pg_evidence_rule(tail) == PG_PI_FORM);
+			boundary = pg_evidence_premise(tail, 0);
+			tail = pg_evidence_premise(tail, 1);
 		}
 		call = pg_prove_projection(typing, boundary, call);
 		for (size_t i = 0; i < 3; ++i)
@@ -201,7 +202,7 @@ static const struct pg_evidence *thunk_map(struct pg_typing *typing, struct pg_c
 	const struct pg_evidence *field = pg_prove_identity_transport(typing, classifiers,
 		pg_prove_projection(typing, extended, path), pg_prove_variable(typing, extended, binder), direction);
 	const struct pg_evidence *body = pg_prove_return(typing, classifiers, field);
-	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domain, extended,
+	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, extended,
 		pg_prove_classifier(typing, classifiers, extended, body));
 	const struct pg_evidence *continuation = pg_prove_lambda(typing, pi, body);
 	return pg_prove_thunk(typing, classifiers,
@@ -417,7 +418,7 @@ static void pi_transport_candidate(struct pg_typing *typing, struct pg_classifie
 		if (dependent) b = pg_prove_identity_type(typing, b,
 			pg_prove_variable(typing, source, x), pg_prove_variable(typing, source, x));
 		const struct pg_evidence *family = pg_prove_type_value(typing, pg_prove_thunk_type(typing, classifiers,
-			pg_prove_pi(typing, classifiers, domain, source, pg_prove_return_type(typing, classifiers, b))));
+			pg_prove_pi(typing, classifiers, source, pg_prove_return_type(typing, classifiers, b))));
 		const struct pg_evidence *action = pg_prove_family_action(typing,
 			pg_prove_classifier(typing, classifiers, parameters, family), family, maps[0], maps[1], 1, &path);
 		const struct pg_evidence *endpoints[2] = {pg_prove_reindex(typing, maps[0], family), pg_prove_reindex(typing, maps[1], family)};
@@ -459,7 +460,7 @@ static void pi_transport_candidate(struct pg_typing *typing, struct pg_classifie
 				pg_prove_reindex(typing, substitutions[0], b_value), pg_prove_reindex(typing, substitutions[1], b_value)));
 			const struct pg_evidence *body = pg_prove_force(typing, thunk_map(typing, classifiers, body_context,
 				b_path, pg_prove_thunk(typing, classifiers, call), direction));
-			const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, target_domain, body_context,
+			const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, body_context,
 				pg_prove_classifier(typing, classifiers, body_context, body));
 			const struct pg_evidence *expected = pg_prove_thunk(typing, classifiers, pg_prove_lambda(typing, pi, body));
 			assert(actual && expected);
@@ -577,9 +578,9 @@ static void curried_transport(struct pg_typing *typing, struct pg_classifiers *c
 	const struct pg_evidence *first = pg_prove_context_extension(typing, parameters, x, domain);
 	const struct pg_evidence *second = pg_prove_context_extension(typing, first, z,
 		pg_prove_projection(typing, first, domain));
-	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, pg_prove_projection(typing, first, domain), second,
+	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, second,
 		pg_prove_return_type(typing, classifiers, pg_prove_projection(typing, second, codomain)));
-	pi = pg_prove_pi(typing, classifiers, domain, first, pi);
+	pi = pg_prove_pi(typing, classifiers, first, pi);
 	const struct pg_evidence *family = pg_prove_type_value(typing, pg_prove_thunk_type(typing, classifiers, pi));
 	const struct pg_evidence *types[2], *maps[2], *endpoints[2], *prefix_maps[2], *result_types[2];
 	for (size_t i = 0; i < 2; ++i) {
@@ -1335,7 +1336,7 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 		const struct pg_evidence *value = dependent ? pg_prove_reflexivity(typing,
 			pg_prove_projection(typing, body_context, domain), body_variable) : body_variable;
 		const struct pg_evidence *body = pg_prove_return(typing, classifiers, value);
-		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domain, body_context,
+		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, body_context,
 			pg_prove_classifier(typing, classifiers, body_context, body));
 		functions[dependent] = pg_prove_lambda(typing, pi, body);
 		assert(functions[dependent]);
@@ -2169,8 +2170,7 @@ static void boundary_context(struct pg_typing *typing, struct pg_classifiers *cl
 	const struct pg_evidence *body = pg_prove_return(typing, classifiers, variable);
 	for (size_t i = 3; i; --i) {
 		const struct pg_evidence *codomain = pg_prove_classifier(typing, classifiers, extensions[i - 1], body);
-		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers,
-			pg_evidence_premise(extensions[i - 1], 1), extensions[i - 1], codomain);
+		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, extensions[i - 1], codomain);
 		body = pg_prove_lambda(typing, pi, body);
 		assert(body && pg_evidence_judgement(body) == PG_JUDGEMENT_COMPUTATION);
 	}
@@ -2396,14 +2396,14 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 			pg_prove_variable(typing, many_source, source_binder), many_ls, many_rs, i + 1, many_paths);
 		action_result(typing, classifiers, many_destination, &work, many_action, many_paths[i]);
 	}
-	const struct pg_evidence *pi_family = pg_prove_pi(typing, classifiers, family, element_scope,
+	const struct pg_evidence *pi_family = pg_prove_pi(typing, classifiers, element_scope,
 		pg_prove_return_type(typing, classifiers, pg_prove_projection(typing, element_scope, family)));
 	const struct pg_evidence *types[] = {a, b}, *functions[2];
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_value_type(typing, types[i]);
 		const struct pg_evidence *local = pg_prove_context_extension(typing, scope, e, domain);
 		const struct pg_evidence *body = pg_prove_return(typing, classifiers, pg_prove_variable(typing, local, e));
-		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domain, local,
+		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, local,
 			pg_prove_classifier(typing, classifiers, local, body));
 		functions[i] = pg_prove_lambda(typing, pi, body);
 		assert(functions[i]);
@@ -2417,7 +2417,7 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 	const struct pg_evidence *output = pg_prove_return_type(typing, classifiers,
 		pg_prove_classifier(typing, classifiers, boundary, pg_prove_variable(typing, boundary, center)));
 	for (size_t i = 0; i < 3; ++i) {
-		output = pg_prove_pi(typing, classifiers, pg_evidence_premise(boundary, 1), boundary, output);
+		output = pg_prove_pi(typing, classifiers, boundary, output);
 		boundary = pg_evidence_premise(boundary, 0);
 	}
 	assert(output);
@@ -2521,7 +2521,7 @@ static void dependent_pi_action(struct pg_typing *typing, struct pg_classifiers 
 		pg_prove_projection(typing, source, universe), value);
 	const struct pg_evidence *body = pg_prove_return(typing, classifiers, refl);
 	const struct pg_evidence *codomain = pg_prove_classifier(typing, classifiers, source, body);
-	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, universe, source, codomain);
+	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, source, codomain);
 	const struct pg_evidence *function = pg_prove_lambda(typing, pi, body);
 	assert(function);
 	const struct pg_evidence *witness = pg_prove_reflexivity(typing, pi, function);
@@ -2534,7 +2534,7 @@ static void dependent_pi_action(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *inner = expanded;
 	for (size_t i = 0; i < 3; ++i) {
 		assert(pg_evidence_rule(inner) == PG_PI_FORM);
-		inner = pg_evidence_premise(inner, 2);
+		inner = pg_evidence_premise(inner, 1);
 	}
 	assert(pg_evidence_rule(inner) == PG_FAMILY_IDENTITY_FORM);
 	assert(pg_evidence_subject(pg_evidence_premise(inner, 3))->core == pg_reference(typing->graph, p));
@@ -2593,7 +2593,7 @@ static void typed_lambda_action(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *variable = pg_prove_variable(typing, source, z);
 	const struct pg_evidence *body = pg_prove_return(typing, classifiers, variable);
 	const struct pg_evidence *codomain = pg_prove_classifier(typing, classifiers, source, body);
-	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domain, source, codomain);
+	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, source, codomain);
 	const struct pg_evidence *id = pg_prove_lambda(typing, pi, body);
 	const struct pg_evidence *composition = pg_prove_lambda(typing, pi,
 		pg_prove_application(typing, pg_prove_projection(typing, source, id), variable));
@@ -2749,7 +2749,7 @@ int main(void)
 		pg_prove_variable(&typing, body_scope, argument));
 	const struct pg_evidence *body_type = pg_prove_return_type(&typing, &classifiers,
 		pg_prove_projection(&typing, body_scope, a_type));
-	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, a_type, body_scope, body_type);
+	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, body_scope, body_type);
 	const struct pg_evidence *function = pg_prove_lambda(&typing, pi, body);
 	assert(function);
 	assert(!pg_prove_identity_instance(&typing, &classifiers, function, xx, xx));
@@ -2759,7 +2759,7 @@ int main(void)
 	const struct pg_evidence *other_scope = pg_prove_context_extension(&typing, scope, argument, b_type);
 	const struct pg_evidence *other_body = pg_prove_return(&typing, &classifiers,
 		pg_prove_variable(&typing, other_scope, argument));
-	const struct pg_evidence *other_pi = pg_prove_pi(&typing, &classifiers, b_type, other_scope,
+	const struct pg_evidence *other_pi = pg_prove_pi(&typing, &classifiers, other_scope,
 		pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, other_scope, b_type)));
 	const struct pg_evidence *other_function = pg_prove_lambda(&typing, other_pi, other_body);
 	assert(other_function && pg_evidence_subject(function)->core == pg_evidence_subject(other_function)->core);

@@ -556,7 +556,7 @@ const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, left), l),
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, right), r));
 	for (size_t i = 0; body && i < 3; ++i) {
-		body = pg_prove_pi(typing, classifiers, pg_evidence_premise(boundary, 1), boundary, body);
+		body = pg_prove_pi(typing, classifiers, boundary, body);
 		boundary = pg_evidence_premise(boundary, 0);
 	}
 done:

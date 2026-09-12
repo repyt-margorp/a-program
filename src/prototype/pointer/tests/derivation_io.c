@@ -88,7 +88,7 @@ static void effect_transport(void)
 	const struct pg_evidence *source = pg_prove_force(&typings[0], pg_prove_variable(&typings[0], context, m));
 	const struct pg_evidence *domain = pg_prove_projection(&typings[0], context, universe);
 	const struct pg_evidence *extended = pg_prove_context_extension(&typings[0], context, x, domain);
-	const struct pg_evidence *pi = pg_prove_pi(&typings[0], &classifiers[0], domain, extended,
+	const struct pg_evidence *pi = pg_prove_pi(&typings[0], &classifiers[0], extended,
 		pg_prove_projection(&typings[0], extended, formation));
 	const struct pg_evidence *continuation = pg_prove_lambda(&typings[0], pi,
 		pg_prove_projection(&typings[0], extended, source));
@@ -324,7 +324,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 		const struct pg_evidence *extended = pg_prove_context_extension(typing, context, x, domain);
 		const struct pg_evidence *body = pg_prove_return(typing, classifiers, pg_prove_variable(typing, extended, x));
 		const struct pg_evidence *codomain = pg_prove_return_type(typing, classifiers, pg_prove_variable(typing, extended, types[i]));
-		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domain, extended, codomain);
+		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, extended, codomain);
 		roots[i] = pg_prove_lambda(typing, pi, body);
 		if (!i) under_lambda = pg_prove_lambda(typing, pi,
 			pg_prove_force(typing, pg_prove_thunk(typing, classifiers, body)));
@@ -360,7 +360,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	const struct pg_evidence *codomain = pg_prove_return_type(typing, classifiers,
 		pg_prove_universe(typing, classifiers, extended, 1));
 	const struct pg_evidence *continuation = pg_prove_lambda(typing,
-		pg_prove_pi(typing, classifiers, u1, extended, codomain),
+		pg_prove_pi(typing, classifiers, extended, codomain),
 		pg_prove_return(typing, classifiers, pg_prove_variable(typing, extended, z)));
 	const struct pg_evidence *fold = pg_prove_fold(typing, classifiers, forced, continuation);
 	assert(fold);
@@ -482,7 +482,7 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	assert(projection);
 	assert(roots[0]->rule == PG_LAMBDA_INTRO);
 	assert(roots[0]->premises[0]->rule == PG_PI_FORM);
-	const struct pg_derivation_input *extended = roots[0]->premises[0]->premises[1];
+	const struct pg_derivation_input *extended = roots[0]->premises[0]->premises[0];
 	assert(extended->rule == PG_CONTEXT_EXTEND);
 	*projection = (struct pg_derivation_input){.rule = PG_CONTEXT_PROJECTION, .count = 2};
 	projection->premises[0] = extended->premises[0];
@@ -751,8 +751,8 @@ static void pending_effect_proofs(FILE *file, struct pg_typing *typing, struct p
 		const struct pg_derivation_input *inner_u = input_rule(graph, PG_UNIVERSE_FORM, 1, &context_input);
 		struct pg_derivation_input *inner_f = input_rule(graph, PG_RETURN_TYPE_FORM, 1, &inner_u);
 		inner_f->effect_parameter = f->effect_parameter;
-		const struct pg_derivation_input *pi = input_rule(graph, PG_PI_FORM, 3,
-			(const struct pg_derivation_input *[]){thunk, context, inner_f});
+		const struct pg_derivation_input *pi = input_rule(graph, PG_PI_FORM, 2,
+			(const struct pg_derivation_input *[]){context, inner_f});
 		struct pg_derivation_input *invalid = input_rule(graph, PG_RETURN_TYPE_FORM, 1, &empty);
 		invalid->effect_parameter = f->effect_parameter;
 		const struct pg_derivation_input *roots[] = {f, inner_f, pi, pi, invalid};
@@ -781,7 +781,7 @@ static void pending_effect_proofs(FILE *file, struct pg_typing *typing, struct p
 		while (synthesis.ready) { assert(synthesis.steps < 2000); pg_synthesis_advance(&synthesis, chunk); }
 		assert(!pg_synthesis_result(jobs[0]) && !pg_synthesis_result(jobs[2]));
 		const struct pg_term *pending = pg_effect_type_spine(classifiers, pg_reference(graph, parameter), pg_universe(classifiers, 0));
-		const struct pg_object *binder = roots[2]->premises[1]->parameters.binder;
+		const struct pg_object *binder = roots[2]->premises[0]->parameters.binder;
 		assert(pg_synthesis_type_structure_result(structure) == pg_pi(graph, pg_thunk_type(classifiers, pending), binder, pending));
 		pg_effect_inference_seal(&effects);
 		assert(pg_synthesis_effect_inference(&synthesis, &effects));

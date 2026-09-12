@@ -316,8 +316,10 @@ const struct pg_evidence *pg_prove_return_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *value_type);
 const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *computation_type);
+/* The checked final context binding determines the parameter contract, including
+ * logical families. The result is a computation type, never a value-side Pi. */
 const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classifiers *classifiers,
-	const struct pg_evidence *domain, const struct pg_evidence *extended_context,
+	const struct pg_evidence *extended_context,
 	const struct pg_evidence *codomain);
 /* Homogeneous Identity formation has the base formation's polarity. It does
  * not prove the endpoints equal or execute computational endpoints. */

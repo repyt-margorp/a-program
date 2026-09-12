@@ -79,7 +79,8 @@ with retained typing rules. A family signature is a Pi-shaped type-layer
 signature ending in Universe, not a value-side Pi or a computation with an
 assumed pure result. TYPE_FAMILY evidence cannot be RETURNed, FORCEd, or used
 as an ordinary value substitution image. Only supplying all checked indices
-produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
+produces a fiber's VALUE_TYPE evidence. Value-argument CBPV application is
+unchanged; computations over logical hypotheses use the extension below.
 
 - [x] Extend the existing logical-family abstraction/application rules to family
   parameters, using the same Lambda/APP/Pi representation and typed substitution.
@@ -97,11 +98,33 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   Acc can be abstracted over A/R and recovered after checked beta substitution.
   Shared-Solve tests run at chunks 1/64. Serialized higher-family derivations and
   their source consumers use the same rules, not a Replay engine.
-- [ ] Connect the existing source family-parameter annotations to an explicit
-  logical/stable-result contract. The tests above establish the kernel route,
-  not the acceptance of arbitrary `R:A->A->@` CBPV functions. The unchanged
-  Acc/QuickSort fixtures still fail; the compatibility count remains 9/19.
-  General Act on higher logical signatures also remains an obligation.
+- [x] Connect source `R:A->A->@` binder annotations, including aliases, to a
+  checked logical-family contract. Pi formation now takes the extended context
+  and codomain as its two premises: the context owns the parameter declaration.
+  Computations can abstract over family hypotheses without a value-side Pi.
+  The universe bound includes the family signature's telescope and terminal
+  Universe. Ordinary APP checks family arguments by their signatures; a thunk
+  is not a family argument at the kernel boundary.
+  Source adaptation of `&D` or a defined type-returning function checks its
+  generic applications through ordinary Solve, then uses existing family
+  abstraction. Empty effects alone never establish a stable result or halt.
+  Pending application preparation must precede block polarity selection;
+  otherwise a family application is incorrectly sequenced as a Fold.
+  APGDRV8 and APGSRC32/33 encode the revised Pi premises. There is no new Core
+  tag, acceptance rule or Replay engine. Validation is recorded below.
+- [ ] Restore source Acc's dependent motive inference when an IH is passed as
+  a higher-order argument. The generic kernel Acc eliminator can now be closed
+  over A/R/P and reapplied, but this does not complete source `accElim`.
+  The unchanged Acc/QuickSort cases remain unsupported (compatibility 9/19
+  at the latest run). General Act on higher logical signatures remains open.
+
+Validation of the source-family contract: `check check-examples
+check-example-results check-open-families` passes, including all four open-family
+fixtures. Tests cover alias annotations, a family-dependent computational Pi,
+generic Acc abstraction/reapplication, wrong signature/data-result rejection,
+and unfinished/completed source resaves. IADT, synthesis and indexed source-image
+tests pass ASan/UBSan. The unchanged legacy compatibility gate remains 9/19;
+this is not completion or a basis for Main promotion.
 
 - [x] Generalize substitution lifting to checked family declarations, including
   dependent indices and higher family parameters. Transport the signature's

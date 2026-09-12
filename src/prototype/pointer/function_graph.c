@@ -415,15 +415,16 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	s->typing = typing; s->classifiers = classifiers; s->evaluation = evaluation;
 	function = pg_function_graph_source(function);
 	if (!function) goto unsupported;
-	s->outer_context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(function, 0), 1), 0);
+	s->outer_context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(function, 0), 0), 0);
 	while (pg_evidence_rule(pg_evidence_premise(function, 1)) == PG_LAMBDA_INTRO)
 		function = pg_evidence_premise(function, 1);
 	s->function = function;
 	const struct pg_evidence *pi = pg_evidence_premise(function, 0);
-	s->argument_context = pg_evidence_premise(pi, 1);
+	s->argument_context = pg_evidence_premise(pi, 0);
 	s->context = pg_evidence_premise(s->argument_context, 0);
-	s->domain = pg_evidence_premise(pi, 0);
-	const struct pg_evidence *result = pg_evidence_premise(pi, 2);
+	if (pg_evidence_rule(s->argument_context) != PG_CONTEXT_EXTEND) goto unsupported;
+	s->domain = pg_evidence_premise(s->argument_context, 1);
+	const struct pg_evidence *result = pg_evidence_premise(pi, 1);
 	const struct pg_term *range;
 	if (!result || !pg_return_type_view(pg_evidence_subject(result)->core, &range)) goto unsupported;
 	s->range = pg_prove_return_content(typing, result);

@@ -368,9 +368,9 @@ static void accessibility_elimination(void)
 	const struct pg_evidence *ec = pg_prove_context_extension(&typing, yc, e, edge);
 	const struct pg_evidence *recursive = pg_prove_family_application(&typing,
 		pg_prove_variable(&typing, ec, self), pg_prove_variable(&typing, ec, y));
-	const struct pg_evidence *down_type = pg_prove_pi(&typing, &classifiers, edge, ec,
+	const struct pg_evidence *down_type = pg_prove_pi(&typing, &classifiers, ec,
 		pg_prove_return_type(&typing, &classifiers, recursive));
-	down_type = pg_prove_pi(&typing, &classifiers, pg_prove_variable(&typing, xc, a), yc, down_type);
+	down_type = pg_prove_pi(&typing, &classifiers, yc, down_type);
 	const struct pg_evidence *fields = pg_prove_context_extension(&typing, xc, down,
 		pg_prove_thunk_type(&typing, &classifiers, down_type));
 	const struct pg_evidence *result = pg_prove_substitution_pair(&typing,
@@ -441,16 +441,15 @@ static void accessibility_elimination(void)
 	ec = pg_prove_context_extension(&typing, yc, e, edge);
 	const struct pg_evidence *py = pg_prove_family_application(&typing,
 		pg_prove_variable(&typing, ec, p), pg_prove_variable(&typing, ec, y));
-	const struct pg_evidence *ih_type = pg_prove_pi(&typing, &classifiers, edge, ec,
+	const struct pg_evidence *ih_type = pg_prove_pi(&typing, &classifiers, ec,
 		pg_prove_return_type(&typing, &classifiers, py));
-	ih_type = pg_prove_pi(&typing, &classifiers, pg_prove_variable(&typing, xc, a), yc, ih_type);
+	ih_type = pg_prove_pi(&typing, &classifiers, yc, ih_type);
 	const struct pg_evidence *hc = pg_prove_context_extension(&typing, xc, pg_binder(&graph),
 		pg_prove_thunk_type(&typing, &classifiers, ih_type));
 	const struct pg_evidence *px = pg_prove_family_application(&typing,
 		pg_prove_variable(&typing, hc, p), pg_prove_variable(&typing, hc, x));
-	const struct pg_evidence *step_type = pg_prove_pi(&typing, &classifiers,
-		pg_evidence_premise(hc, 1), hc, pg_prove_return_type(&typing, &classifiers, px));
-	step_type = pg_prove_pi(&typing, &classifiers, pg_prove_variable(&typing, pc, a), xc, step_type);
+	const struct pg_evidence *step_type = pg_prove_pi(&typing, &classifiers, hc, pg_prove_return_type(&typing, &classifiers, px));
+	step_type = pg_prove_pi(&typing, &classifiers, xc, step_type);
 	const struct pg_object *step = pg_binder(&graph), *subject = pg_binder(&graph), *proof = pg_binder(&graph);
 	const struct pg_evidence *context = pg_prove_context_extension(&typing, pc, step,
 		pg_prove_thunk_type(&typing, &classifiers, step_type));
@@ -480,6 +479,29 @@ static void accessibility_elimination(void)
 	const struct pg_evidence *expected = pg_prove_return_type(&typing, &classifiers,
 		pg_prove_family_application(&typing, pg_prove_variable(&typing, context, p), pg_prove_variable(&typing, context, subject)));
 	assert(pg_alpha_equal(pg_evidence_classifier(elimination), pg_evidence_subject(expected)->core) == 1);
+	/* Close the same eliminator over A, R and P, then instantiate it using
+	 * ordinary APP and typed substitution. Logical families are not values. */
+	const struct pg_evidence *closed = pg_prove_abstract(&typing, &classifiers, empty, context, elimination);
+	assert(closed && !pg_evidence_context(closed));
+	common_rule(&typing, &classifiers, closed);
+	const struct pg_evidence *opened = pg_prove_projection(&typing, context, closed);
+	const struct pg_object *parameter_binders[] = {a, r, p, step, subject, proof};
+	for (size_t i = 0; i < sizeof(parameter_binders) / sizeof(parameter_binders[0]); ++i) {
+		const struct pg_evidence *argument = pg_prove_variable(&typing, context, parameter_binders[i]);
+		const struct pg_evidence *pi = pg_prove_classifier(&typing, &classifiers, context, opened);
+		assert(pi);
+		if (i == 1 || i == 2) {
+			assert(!pg_prove_pi_domain(&typing, pi));
+			assert(!pg_prove_application(&typing, opened, pg_prove_projection(&typing, context, delayed)));
+		}
+		if (i == 1) assert(!pg_prove_application(&typing, opened, pg_prove_projection(&typing, context, unary)));
+		const struct pg_evidence *codomain = pg_prove_pi_codomain(&typing, pi, argument);
+		opened = pg_prove_application(&typing, opened, argument);
+		assert(opened && codomain);
+		assert(pg_alpha_equal(pg_evidence_classifier(opened), pg_evidence_subject(codomain)->core) == 1);
+		common_rule(&typing, &classifiers, opened);
+	}
+	assert(pg_alpha_equal(pg_evidence_classifier(opened), pg_evidence_subject(expected)->core) == 1);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
@@ -504,7 +526,7 @@ static void retained_substitution_prefix(void)
 		const struct pg_evidence *domain = pg_prove_variable(&typing, base, a);
 		const struct pg_evidence *body = pg_prove_context_extension(&typing, base, x, domain);
 		function_types[i] = pg_prove_thunk_type(&typing, &classifiers,
-			pg_prove_pi(&typing, &classifiers, domain, body,
+			pg_prove_pi(&typing, &classifiers, body,
 				pg_prove_return_type(&typing, &classifiers, pg_prove_variable(&typing, body, a))));
 		contexts[i] = pg_prove_context_extension(&typing, base, function_binders[i], function_types[i]);
 		assert(contexts[i]);
@@ -664,7 +686,7 @@ static void schema_positivity(void)
 	const struct pg_evidence *type = pg_prove_value_type(&typing, pg_prove_variable(&typing, parameters, self));
 	const struct pg_evidence *fields = pg_prove_context_extension(&typing, parameters, x, type);
 	const struct pg_evidence *negative = pg_prove_thunk_type(&typing, &classifiers,
-		pg_prove_pi(&typing, &classifiers, type, fields,
+		pg_prove_pi(&typing, &classifiers, fields,
 			pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, fields, u))));
 	const struct pg_evidence *bad_fields = pg_prove_context_extension(&typing, parameters, pg_binder(&graph), negative);
 	const struct pg_data_signature *signature = pg_data_signature(&typing, parameters, parameters);
@@ -822,9 +844,9 @@ static void schema_positivity(void)
 	{
 		const struct pg_evidence *result_type = pg_prove_return_type(&typing, &classifiers,
 			pg_prove_projection(&typing, z_context, nat));
-		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, nat, z_context, result_type);
+		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, z_context, result_type);
 		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
-		const struct pg_evidence *curried = pg_prove_pi(&typing, &classifiers, nat, z_context,
+		const struct pg_evidence *curried = pg_prove_pi(&typing, &classifiers, z_context,
 			pg_prove_projection(&typing, z_context, pi));
 		const struct pg_evidence *derived[] = {
 			pg_prove_projection(&typing, n_context, pi),
@@ -841,7 +863,7 @@ static void schema_positivity(void)
 			assert(pg_evidence_context(instance.parameters) == pg_evidence_context(n_context));
 		}
 		const struct pg_evidence *z_value = pg_prove_variable(&typing, z_context, z);
-		const struct pg_evidence *dependent = pg_prove_pi(&typing, &classifiers, nat, z_context,
+		const struct pg_evidence *dependent = pg_prove_pi(&typing, &classifiers, z_context,
 			pg_prove_return_type(&typing, &classifiers, pg_prove_identity_type(&typing,
 				pg_prove_projection(&typing, z_context, nat), z_value, z_value)));
 		assert(dependent && !pg_prove_pi_constant_codomain(&typing, dependent));
@@ -1473,14 +1495,14 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *field_a = pg_prove_value_type(&typing, index_images[0]);
 	const struct pg_evidence *under_z = pg_prove_context_extension(&typing, fields, z, field_a);
 	const struct pg_evidence *return_p = pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, under_z, p));
-	const struct pg_evidence *function_type = pg_prove_pi(&typing, &classifiers, field_a, under_z,
+	const struct pg_evidence *function_type = pg_prove_pi(&typing, &classifiers, under_z,
 		pg_prove_classifier(&typing, &classifiers, under_z, return_p));
 	const struct pg_evidence *function_body = pg_prove_lambda(&typing, function_type, return_p);
 	const struct pg_evidence *function_branch = pg_data_branch(&typing, &classifiers, indexed, indexed_ctor, function_body);
 	const struct pg_object *index_z = pg_binder(graph);
 	const struct pg_evidence *index_a = pg_prove_value_type(&typing, pg_prove_variable(&typing, indices, a));
 	const struct pg_evidence *index_under_z = pg_prove_context_extension(&typing, indices, index_z, index_a);
-	const struct pg_evidence *function_motive = pg_prove_pi(&typing, &classifiers, index_a, index_under_z,
+	const struct pg_evidence *function_motive = pg_prove_pi(&typing, &classifiers, index_under_z,
 		pg_prove_projection(&typing, index_under_z, motive));
 	assert(function_motive);
 	const struct pg_evidence *function_case = checked_case(&typing, &classifiers, &work, indexed, indexed_ctor,

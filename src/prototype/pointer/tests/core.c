@@ -307,18 +307,19 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_prove_context_extension(&typing, a_context, pg_binder(graph), ufa));
 	const struct pg_evidence *a_in_x = pg_prove_variable(&typing, x_context, a);
 	const struct pg_evidence *fa_in_x = pg_prove_return_type(&typing, &classifiers, a_in_x);
-	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, a_type, x_context, fa_in_x);
+	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, x_context, fa_in_x);
 	assert(pi && pg_evidence_judgement(pi) == PG_JUDGEMENT_COMPUTATION_TYPE);
 	assert(pg_evidence_classifier(pi) == pg_universe(&classifiers, 0));
-	assert(pg_prove_pi(&typing, &classifiers, a_type, x_context, fa_in_x) == pi);
-	assert(pg_evidence_premise(pi, 2) == fa_in_x);
-	assert(!pg_prove_pi(&typing, &classifiers, a_type, x_context, a_in_x));
-	assert(!pg_prove_pi(&typing, &classifiers, a_type, x_context, fa));
-	assert(!pg_prove_pi(&typing, &classifiers, u0, x_context, fa_in_x));
+	assert(pg_prove_pi(&typing, &classifiers, x_context, fa_in_x) == pi);
+	assert(pg_evidence_premise(pi, 0) == x_context);
+	assert(pg_evidence_premise(pi, 1) == fa_in_x);
+	assert(!pg_prove_pi(&typing, &classifiers, x_context, a_in_x));
+	assert(!pg_prove_pi(&typing, &classifiers, x_context, fa));
+	assert(!pg_prove_pi(&typing, &classifiers, empty, fa_in_x));
 	assert(!pg_prove_context_extension(&typing, a_context, pg_binder(graph), pi));
 	const struct pg_evidence *high = pg_prove_universe(&typing, &classifiers, x_context, 2);
 	const struct pg_evidence *fhigh = pg_prove_return_type(&typing, &classifiers, high);
-	const struct pg_evidence *high_pi = pg_prove_pi(&typing, &classifiers, a_type, x_context, fhigh);
+	const struct pg_evidence *high_pi = pg_prove_pi(&typing, &classifiers, x_context, fhigh);
 	assert(high_pi && pg_evidence_classifier(high_pi) == pg_universe(&classifiers, 3));
 	const struct pg_term *inner;
 	assert(pg_thunk_type_view(pg_evidence_subject(ufa)->core, &inner));
@@ -353,7 +354,7 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *y_term = pg_prove_variable(&typing, y_context, y);
 	const struct pg_evidence *a_in_y = pg_prove_variable(&typing, y_context, a);
 	const struct pg_evidence *fa_in_y = pg_prove_return_type(&typing, &classifiers, a_in_y);
-	const struct pg_evidence *pi_y = pg_prove_pi(&typing, &classifiers, a_in_x, y_context, fa_in_y);
+	const struct pg_evidence *pi_y = pg_prove_pi(&typing, &classifiers, y_context, fa_in_y);
 	const struct pg_evidence *return_y = pg_prove_return(&typing, &classifiers, y_term);
 	const struct pg_evidence *identity_y = pg_prove_lambda(&typing, pi_y, return_y);
 	const struct pg_evidence *app = pg_prove_application(&typing, identity_y, x_term);
@@ -383,7 +384,7 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *z_context = pg_prove_context_extension(&typing, x_context, z, a_in_x);
 	const struct pg_evidence *a_in_z = pg_prove_variable(&typing, z_context, a);
 	const struct pg_evidence *fa_in_z = pg_prove_return_type(&typing, &classifiers, a_in_z);
-	const struct pg_evidence *pi_z = pg_prove_pi(&typing, &classifiers, a_in_x, z_context, fa_in_z);
+	const struct pg_evidence *pi_z = pg_prove_pi(&typing, &classifiers, z_context, fa_in_z);
 	const struct pg_evidence *upi_z = pg_prove_thunk_type(&typing, &classifiers, pi_z);
 	const struct pg_term *old_classifier = pg_evidence_classifier(quoted_function);
 	const struct pg_term *new_classifier = pg_evidence_subject(upi_z)->core;
@@ -391,7 +392,7 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_object *f = pg_binder(graph);
 	const struct pg_evidence *f_context = pg_prove_context_extension(&typing, x_context, f, upi_z);
 	const struct pg_evidence *f_body = pg_prove_projection(&typing, f_context, returned);
-	const struct pg_evidence *f_pi = pg_prove_pi(&typing, &classifiers, upi_z, f_context,
+	const struct pg_evidence *f_pi = pg_prove_pi(&typing, &classifiers, f_context,
 		pg_prove_projection(&typing, f_context, fa_in_x));
 	const struct pg_evidence *ignore_function = pg_prove_lambda(&typing, f_pi, f_body);
 	assert(pg_prove_application(&typing, ignore_function, quoted_function));
@@ -503,7 +504,7 @@ static void evidence_test(struct pg_graph *graph)
 	assert(x_formation && pg_evidence_subject(x_formation)->core == pg_evidence_classifier(x_term));
 	const struct pg_evidence *body_formation = pg_prove_classifier(&typing, &classifiers, x_context, returned);
 	assert(body_formation && pg_evidence_subject(body_formation)->core == pg_evidence_classifier(returned));
-	const struct pg_evidence *synth_pi = pg_prove_pi(&typing, &classifiers, a_type, x_context, body_formation);
+	const struct pg_evidence *synth_pi = pg_prove_pi(&typing, &classifiers, x_context, body_formation);
 	assert(synth_pi && pg_prove_lambda(&typing, synth_pi, returned));
 	const struct pg_evidence *delayed_formation = pg_prove_classifier(&typing, &classifiers, x_context, delayed);
 	assert(delayed_formation && pg_evidence_subject(delayed_formation)->core == pg_evidence_classifier(delayed));
@@ -566,7 +567,7 @@ static void dependent_application_test(struct pg_graph *graph)
 	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, a);
 	const struct pg_evidence *fa = pg_prove_return_type(&typing, &classifiers, a_type);
 	/* A : U1 |- F A computation type. No runtime result is guessed. */
-	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, u1, a_context, fa);
+	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, a_context, fa);
 	assert(pi);
 	assert(!pg_prove_type_value(&typing, pi));
 	assert(!pg_prove_type_value(&typing, fa));
@@ -611,8 +612,8 @@ static void dependent_application_test(struct pg_graph *graph)
 	const struct pg_object *x = pg_binder(graph), *g = pg_binder(graph);
 	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
 	const struct pg_evidence *inner_fa = pg_prove_return_type(&typing, &classifiers, pg_prove_variable(&typing, x_context, a));
-	const struct pg_evidence *inner_pi = pg_prove_pi(&typing, &classifiers, a_type, x_context, inner_fa);
-	const struct pg_evidence *outer_pi = pg_prove_pi(&typing, &classifiers, u1, a_context, inner_pi);
+	const struct pg_evidence *inner_pi = pg_prove_pi(&typing, &classifiers, x_context, inner_fa);
+	const struct pg_evidence *outer_pi = pg_prove_pi(&typing, &classifiers, a_context, inner_pi);
 	const struct pg_evidence *g_context = pg_prove_context_extension(&typing, empty, g,
 		pg_prove_thunk_type(&typing, &classifiers, outer_pi));
 	const struct pg_evidence *g_term = pg_prove_force(&typing, pg_prove_variable(&typing, g_context, g));
@@ -823,7 +824,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *ufa_instance = pg_prove_reindex(&typing, paired, ufa_extended);
 	assert(ufa_instance && pg_evidence_judgement(ufa_instance) == PG_JUDGEMENT_VALUE_TYPE);
 	assert(pg_evidence_subject(ufa_instance)->core == pg_thunk_type(&classifiers, pg_evidence_subject(fa_instance)->core));
-	const struct pg_evidence *source_pi = pg_prove_pi(&typing, &classifiers, a_in_source, source_extension, fa_extended);
+	const struct pg_evidence *source_pi = pg_prove_pi(&typing, &classifiers, source_extension, fa_extended);
 	const struct pg_evidence *source_lambda = pg_prove_lambda(&typing, source_pi,
 		pg_prove_return(&typing, &classifiers, source_p));
 	assert(source_lambda);
@@ -1032,7 +1033,7 @@ static void typed_restriction_test(struct pg_graph *graph)
 	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers,
 		pg_prove_variable(&typing, body_context, y));
 	const struct pg_evidence *codomain = pg_prove_classifier(&typing, &classifiers, body_context, body);
-	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, domain, body_context, codomain);
+	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, body_context, codomain);
 	const struct pg_evidence *function = pg_prove_lambda(&typing, pi, body);
 	const struct pg_evidence *application = pg_prove_application(&typing, function, source_x);
 	assert(function && application);
@@ -3138,7 +3139,7 @@ static void effect_classifier_test(struct pg_graph *graph)
 	const struct pg_evidence *body_scope = pg_prove_context_extension(&typing, scope, x, domain);
 	const struct pg_evidence *following_type = pg_prove_effect_type(&typing, &classifiers, only_c,
 		pg_prove_projection(&typing, body_scope, universe));
-	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, domain, body_scope, following_type);
+	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, body_scope, following_type);
 	const struct pg_evidence *both = pg_prove_context_extension(&typing, scope, k,
 		pg_prove_thunk_type(&typing, &classifiers, pi));
 	const struct pg_evidence *source = pg_prove_projection(&typing, both, force);
@@ -3157,8 +3158,7 @@ static void effect_classifier_test(struct pg_graph *graph)
 	const struct pg_object *ignored = pg_binder(graph);
 	const struct pg_evidence *raw_scope = pg_prove_context_extension(&typing, both, ignored,
 		pg_prove_projection(&typing, both, universe));
-	const struct pg_evidence *raw_pi = pg_prove_pi(&typing, &classifiers,
-		pg_prove_projection(&typing, both, universe), raw_scope, pg_prove_projection(&typing, raw_scope, pi));
+	const struct pg_evidence *raw_pi = pg_prove_pi(&typing, &classifiers, raw_scope, pg_prove_projection(&typing, raw_scope, pi));
 	const struct pg_evidence *raw_continuation = pg_prove_lambda(&typing, raw_pi,
 		pg_prove_projection(&typing, raw_scope, continuation));
 	assert(raw_continuation && !pg_prove_fold(&typing, &classifiers, source, raw_continuation));
@@ -3292,7 +3292,7 @@ static void request_typing_test(struct pg_graph *graph)
 	const struct pg_object *x = pg_binder(graph);
 	const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, x, u1);
 	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, scope, x));
-	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, u1, scope,
+	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, scope,
 		pg_prove_classifier(&typing, &classifiers, scope, body));
 	const struct pg_evidence *k = pg_prove_lambda(&typing, pi, body);
 	const struct pg_evidence *payload = pg_prove_type_value(&typing, u0);
@@ -3335,7 +3335,7 @@ static void request_typing_test(struct pg_graph *graph)
 	const struct pg_object *other_label = pg_operation_label(other);
 	const struct pg_evidence *effect_type = pg_prove_effect_type(&typing, &classifiers,
 		pg_effect_row(graph, 1, &other_label), pg_prove_projection(&typing, scope, u1));
-	const struct pg_evidence *effect_pi = pg_prove_pi(&typing, &classifiers, u1, scope, effect_type);
+	const struct pg_evidence *effect_pi = pg_prove_pi(&typing, &classifiers, scope, effect_type);
 	const struct pg_object *f = pg_binder(graph);
 	const struct pg_evidence *function_scope = pg_prove_context_extension(&typing, empty, f,
 		pg_prove_thunk_type(&typing, &classifiers, effect_pi));
@@ -3373,7 +3373,7 @@ static void request_typing_test(struct pg_graph *graph)
 	const struct pg_evidence *second_request = pg_prove_request(&typing, &classifiers, other,
 		pg_prove_variable(&typing, scope, x), pg_prove_projection(&typing, scope, k));
 	const struct pg_evidence *second_continuation = pg_prove_lambda(&typing,
-		pg_prove_pi(&typing, &classifiers, u1, scope, pg_prove_classifier(&typing, &classifiers, scope, second_request)), second_request);
+		pg_prove_pi(&typing, &classifiers, scope, pg_prove_classifier(&typing, &classifiers, scope, second_request)), second_request);
 	const struct pg_evidence *two = pg_prove_request(&typing, &classifiers, op, payload, second_continuation);
 	struct pg_handler_clause clauses[] = {{op, clause}, {other, clause}};
 	const struct pg_evidence *handled = pg_prove_handler(&typing, &classifiers, two, k, carrier, 2, clauses);

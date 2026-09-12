@@ -27,7 +27,7 @@ static const struct pg_evidence *congruence_function(struct pg_typing *typing,
 	const struct pg_evidence *inner = pg_prove_context_extension(typing, context, x, domain);
 	const struct pg_evidence *codomain = pg_prove_return_type(typing, classifiers,
 		pg_prove_value_type(typing, pg_prove_variable(typing, inner, b)));
-	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domain, inner, codomain);
+	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, inner, codomain);
 	context = pg_prove_context_extension(typing, context, f, pg_prove_thunk_type(typing, classifiers, pi));
 	const struct pg_evidence *function = pg_prove_force(typing, pg_prove_variable(typing, context, f));
 	pi = pg_prove_projection(typing, context, pi);

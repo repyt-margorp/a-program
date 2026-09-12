@@ -166,7 +166,7 @@ static void stored_effect_derivation(struct pg_typing *typing, struct pg_classif
 	struct pg_derivation_input *inner_u = stored_rule(graph, PG_UNIVERSE_FORM, 1, (const struct pg_derivation_input *[]){extended});
 	struct pg_derivation_input *inner_f = stored_rule(graph, PG_RETURN_TYPE_FORM, 1, (const struct pg_derivation_input *[]){inner_u});
 	inner_f->effect_parameter = parameter;
-	struct pg_derivation_input *pi = stored_rule(graph, PG_PI_FORM, 3, (const struct pg_derivation_input *[]){thunk, extended, inner_f});
+	struct pg_derivation_input *pi = stored_rule(graph, PG_PI_FORM, 2, (const struct pg_derivation_input *[]){extended, inner_f});
 	struct pg_derivation_input *variable = stored_rule(graph, PG_VARIABLE, 1, (const struct pg_derivation_input *[]){extended});
 	variable->parameters.binder = binder;
 	struct pg_whnf_work normalization;
@@ -479,8 +479,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *body = rule_job(&synthesis, PG_FORCE_ELIM, NULL, 1, &variable);
 		struct pg_synthesis_job *codomain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){context, carrier});
-		struct pg_synthesis_job *pi = rule_job(&synthesis, PG_PI_FORM, NULL, 3,
-			(struct pg_synthesis_job *[]){thunk, context, codomain});
+		struct pg_synthesis_job *pi = rule_job(&synthesis, PG_PI_FORM, NULL, 2,
+			(struct pg_synthesis_job *[]){context, codomain});
 		struct pg_synthesis_job *lambda = rule_job(&synthesis, PG_LAMBDA_INTRO, NULL, 2,
 			(struct pg_synthesis_job *[]){pi, body});
 		struct pg_synthesis_job *structure = pg_synthesis_type_structure(&synthesis, pi);
@@ -629,8 +629,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(body_type == pg_synthesis_classifier_structure(&synthesis, body));
 		assert(!complete(&synthesis, body_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(body_type) == symbolic_f);
-		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(&synthesis, thunk, context, body);
-		assert(continuation == pg_synthesis_lambda_body(&synthesis, thunk, context, body));
+		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(&synthesis, context, body);
+		assert(continuation == pg_synthesis_lambda_body(&synthesis, context, body));
 		struct pg_synthesis_job *continuation_type = pg_synthesis_classifier_structure(&synthesis, continuation);
 		assert(!complete(&synthesis, continuation_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(continuation_type) == symbolic_pi);
@@ -645,8 +645,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			(struct pg_synthesis_job *[]){context, request_domain});
 		struct pg_synthesis_job *request_body = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){request_context, body});
-		struct pg_synthesis_job *request_continuation = pg_synthesis_lambda_body(&synthesis,
-			request_domain, request_context, request_body);
+		struct pg_synthesis_job *request_continuation = pg_synthesis_lambda_body(&synthesis, request_context, request_body);
 		struct pg_synthesis_job *payload_value = rule_job(&synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &universe);
 		struct pg_synthesis_job *request_payload = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){context, payload_value});
@@ -672,7 +671,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_computation_request_view(request_core, &core_label, &core_payload, &core_continuation));
 		assert(core_label == request_label && core_payload == pg_universe(classifiers, 0));
 		assert(!pg_synthesis_result(request_job));
-		struct pg_synthesis_job *request_lambda = pg_synthesis_lambda_body(&synthesis, thunk, context, request_job);
+		struct pg_synthesis_job *request_lambda = pg_synthesis_lambda_body(&synthesis, context, request_job);
 		struct pg_synthesis_job *request_lambda_term = pg_synthesis_term_structure(&synthesis, request_lambda);
 		struct pg_synthesis_job *request_lambda_type = pg_synthesis_classifier_structure(&synthesis, request_lambda);
 		assert(!complete(&synthesis, request_lambda_term, PG_SYNTHESIS_DONE));
@@ -725,10 +724,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_status(computed_function_core) == PG_SYNTHESIS_PENDING);
 		assert(!pg_synthesis_type_structure_result(computed_function_core));
 		assert(!pg_synthesis_result(computed_function));
-		struct pg_synthesis_job *result_domain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
-			(struct pg_synthesis_job *[]){context, universe});
-		struct pg_synthesis_job *result_function = pg_synthesis_lambda_body(&synthesis,
-			result_domain, result_context, result_variable);
+		struct pg_synthesis_job *result_function = pg_synthesis_lambda_body(&synthesis, result_context, result_variable);
 		struct pg_synthesis_job *sequence = rule_job(&synthesis, PG_FOLD_ELIM, NULL, 2,
 			(struct pg_synthesis_job *[]){body, result_function});
 		struct pg_synthesis_job *source_sequence = pg_synthesis_sequence(&synthesis, context, body, result_function);
@@ -873,7 +869,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *return_scope = rule_job(&synthesis, PG_CONTEXT_EXTEND, returned_binder, 2,
 			(struct pg_synthesis_job *[]){context, raw_return_domain});
 		struct pg_synthesis_job *returned_variable = rule_job(&synthesis, PG_VARIABLE, returned_binder, 1, &return_scope);
-		struct pg_synthesis_job *raw_return = pg_synthesis_lambda_body(&synthesis, raw_return_domain, return_scope, returned_variable);
+		struct pg_synthesis_job *raw_return = pg_synthesis_lambda_body(&synthesis, return_scope, returned_variable);
 		struct pg_derivation_input raw_handler_input = {.rule = PG_HANDLER_ELIM, .count = 6,
 			.parameters.handler = pg_handler_signature(typing->graph, 1,
 				(const struct pg_object *[]){pg_operation_label(pending_op)})};
@@ -915,7 +911,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *carrier_bodies[] = {raw_handler, raw_widening};
 		struct pg_synthesis_job *carrier_lambdas[2];
 		for (size_t i = 0; i < 2; ++i) {
-			carrier_lambdas[i] = pg_synthesis_lambda_body(&synthesis, thunk, context, carrier_bodies[i]);
+			carrier_lambdas[i] = pg_synthesis_lambda_body(&synthesis, context, carrier_bodies[i]);
 			struct pg_synthesis_job *shape = pg_synthesis_classifier_structure(&synthesis, carrier_lambdas[i]);
 			assert(!complete(&synthesis, shape, PG_SYNTHESIS_DONE));
 			assert(pg_synthesis_type_structure_result(shape) == symbolic_pi);
@@ -1011,8 +1007,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *a_value = rule_job(&synthesis, PG_VARIABLE, a, 1, &a_context);
 		struct pg_synthesis_job *a_type = rule_job(&synthesis, PG_TYPE_FROM_VALUE, NULL, 1, &a_value);
 		struct pg_synthesis_job *dependent_f = pg_synthesis_rule(&synthesis, &formation, &a_type, &effects, equation);
-		struct pg_synthesis_job *dependent_pi = rule_job(&synthesis, PG_PI_FORM, NULL, 3,
-			(struct pg_synthesis_job *[]){universe, a_context, dependent_f});
+		struct pg_synthesis_job *dependent_pi = rule_job(&synthesis, PG_PI_FORM, NULL, 2,
+			(struct pg_synthesis_job *[]){a_context, dependent_f});
 		struct pg_synthesis_job *function_type = rule_job(&synthesis, PG_THUNK_TYPE_FORM, NULL, 1, &dependent_pi);
 		struct pg_synthesis_job *f_context = rule_job(&synthesis, PG_CONTEXT_EXTEND, f, 2,
 			(struct pg_synthesis_job *[]){empty, function_type});
@@ -1830,9 +1826,9 @@ static void dependent_application_jobs(struct pg_typing *typing, struct pg_class
 	const struct pg_evidence *x_context = pg_prove_context_extension(typing, a_context, x, a_type);
 	const struct pg_evidence *body = pg_prove_return(typing, classifiers, pg_prove_variable(typing, x_context, x));
 	const struct pg_evidence *inner = pg_prove_lambda(typing,
-		pg_prove_pi(typing, classifiers, a_type, x_context, pg_prove_classifier(typing, classifiers, x_context, body)), body);
+		pg_prove_pi(typing, classifiers, x_context, pg_prove_classifier(typing, classifiers, x_context, body)), body);
 	const struct pg_evidence *function = pg_prove_lambda(typing,
-		pg_prove_pi(typing, classifiers, domain, a_context, pg_prove_classifier(typing, classifiers, a_context, inner)), inner);
+		pg_prove_pi(typing, classifiers, a_context, pg_prove_classifier(typing, classifiers, a_context, inner)), inner);
 	const struct pg_evidence *type_argument = pg_prove_type_value(typing, pg_prove_universe(typing, classifiers, empty, 1));
 	const struct pg_evidence *value_argument = pg_prove_type_value(typing, pg_prove_universe(typing, classifiers, empty, 0));
 	assert(function && type_argument && value_argument);
@@ -2005,11 +2001,11 @@ static void cube_application_jobs(struct pg_typing *typing, struct pg_classifier
 		const struct pg_evidence *inner_domain = pg_prove_projection(typing, body_context, domain);
 		const struct pg_evidence *inner_context = pg_prove_context_extension(typing, body_context, z, inner_domain);
 		const struct pg_evidence *inner_body = pg_prove_projection(typing, inner_context, body);
-		body = pg_prove_lambda(typing, pg_prove_pi(typing, classifiers, inner_domain, inner_context,
+		body = pg_prove_lambda(typing, pg_prove_pi(typing, classifiers, inner_context,
 			pg_prove_classifier(typing, classifiers, inner_context, inner_body)), inner_body);
 	}
 	const struct pg_evidence *function = pg_prove_lambda(typing,
-		pg_prove_pi(typing, classifiers, domain, body_context,
+		pg_prove_pi(typing, classifiers, body_context,
 			pg_prove_classifier(typing, classifiers, body_context, body)), body);
 	assert(function);
 	for (size_t d = 1, count = 3; d <= 3; ++d, count *= 3) {
@@ -2079,7 +2075,7 @@ static void accepted_inputs(struct pg_typing *typing, struct pg_classifiers *cla
 		const struct pg_evidence *context = pg_prove_context_extension(typing, empty, x, domain);
 		const struct pg_evidence *codomain = pg_prove_return_type(typing, classifiers,
 			pg_prove_projection(typing, context, domain));
-		proofs[n] = pg_prove_lambda(typing, pg_prove_pi(typing, classifiers, domain, context, codomain),
+		proofs[n] = pg_prove_lambda(typing, pg_prove_pi(typing, classifiers, context, codomain),
 			pg_prove_return(typing, classifiers, pg_prove_variable(typing, context, x)));
 		assert(proofs[n]);
 	}
@@ -4160,7 +4156,7 @@ static void normalization_jobs(struct pg_typing *typing, struct pg_classifiers *
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *local = pg_prove_context_extension(typing, context, z, domains[i]);
 		const struct pg_evidence *body = pg_prove_return(typing, classifiers, pg_prove_variable(typing, local, z));
-		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domains[i], local,
+		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, local,
 			pg_prove_classifier(typing, classifiers, local, body));
 		typed_sources[i] = pg_prove_force(typing,
 			pg_prove_thunk(typing, classifiers, pg_prove_lambda(typing, pi, body)));
@@ -4214,7 +4210,7 @@ static void normalization_jobs(struct pg_typing *typing, struct pg_classifiers *
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *local = pg_prove_context_extension(typing, context, z, domains[i]);
 		const struct pg_evidence *body = pg_prove_return(typing, classifiers, pg_prove_variable(typing, local, z));
-		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, domains[i], local,
+		const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, local,
 			pg_prove_classifier(typing, classifiers, local, body));
 		body = pg_prove_force(typing, pg_prove_thunk(typing, classifiers, body));
 		typed_sources[i] = pg_prove_lambda(typing, pi, body);
@@ -5832,7 +5828,7 @@ int main(void)
 	const struct pg_evidence *deep_body = return_x;
 	for (size_t i = 0; i < 120; ++i)
 		deep_body = pg_prove_return(&typing, &classifiers, pg_prove_thunk(&typing, &classifiers, deep_body));
-	const struct pg_evidence *deep_pi = pg_prove_pi(&typing, &classifiers, a_type, x_context,
+	const struct pg_evidence *deep_pi = pg_prove_pi(&typing, &classifiers, x_context,
 		pg_prove_classifier(&typing, &classifiers, x_context, deep_body));
 	const struct pg_evidence *deep_function = pg_prove_projection(&typing, x_context,
 		pg_prove_lambda(&typing, deep_pi, deep_body));
@@ -6146,7 +6142,7 @@ int main(void)
 	complete(&synthesis, request(&synthesis, scope,
 		"main := missing :: ((\\T : @ => T) A);"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope,
-		"main := \\f : @ -> @ => \\y : f A => y;"), PG_SYNTHESIS_UNSUPPORTED);
+		"main := \\f : @ -> @ => \\y : f A => y;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *application = complete(&synthesis,
 		request(&synthesis, scope, "main := (\\y : A => y) x;"), PG_SYNTHESIS_DONE);
 	struct pg_eval machine;
@@ -6315,10 +6311,9 @@ int main(void)
 		assert(pg_eval_readback(&machine, &graph) == expected);
 		pg_eval_destroy(&machine);
 	}
-	/* Current limitation, not a rejection rule: check-open-families requires
-	 * the standalone sequenced-open-family fixture to become accepted. */
+	/* A checked family application produces a type, not a Fold input. */
 	complete(&synthesis, request(&synthesis, scope,
-		"main := \\f : A -> @ => { B := f x; \\y : B => y; };"), PG_SYNTHESIS_UNSUPPORTED);
+		"main := \\f : A -> @ => { B := f x; \\y : B => y; };"), PG_SYNTHESIS_DONE);
 	const char *modules[] = {
 		"{{ main := id x; id := \\y:A=>y; }}.main",
 		"{{ main :: A -> A; main := id; id := \\y:A=>y; }}.main",
