@@ -457,6 +457,7 @@ static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 	const struct pg_evidence *saved = pg_synthesis_result(origin), *fresh = pg_synthesis_result(job);
 	for (size_t i = 0; i < actual->count; ++i) {
 		const struct pg_evidence *a = pg_evidence_premise(saved, i + 5), *b = pg_evidence_premise(fresh, i + 5);
+		assert(pg_evidence_subject(a)->core == pg_evidence_subject(b)->core);
 		while (pg_evidence_rule(a) == PG_LAMBDA_INTRO) {
 			assert(pg_evidence_rule(b) == PG_LAMBDA_INTRO);
 			assert(pg_evidence_subject(a)->core->as.lambda.binder == pg_evidence_subject(b)->core->as.lambda.binder);
@@ -488,8 +489,12 @@ static void match_origins(void)
 		struct match_origin_check check = {p, 0, 0};
 		assert(!pg_synthesis_visit_source_allocations(&p->synthesis, check_match_origin, &check) && check.count == 1);
 	}
-	pg_synthesis_advance(&p->synthesis, 10000);
-	assert(pg_synthesis_result(p->root));
+	while (p->synthesis.ready) {
+		assert(p->synthesis.steps < 10000);
+		pg_synthesis_advance(&p->synthesis, 1);
+	}
+	const struct pg_evidence *forced = pg_prove_force(&p->typing, pg_synthesis_result(p->root));
+	assert(forced && pg_evidence_subject(forced)->core == pg_reduction_source(p->retained_reductions->roots[0]));
 	struct match_origin_check check = {p, 0, 1};
 	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, check_match_origin, &check) && check.count == 1);
 	pg_program_destroy(p);

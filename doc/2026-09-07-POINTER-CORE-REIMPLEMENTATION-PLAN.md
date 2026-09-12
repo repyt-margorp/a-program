@@ -957,13 +957,28 @@ The ten auxiliary polling algorithms also have distinct payload obligations:
   Both source-image gates retain only the two known source-only Match failures.
   The two source-only Match failures remain: first difference is now
   `aaabfbffbfbbabffbba`, inside the branch body rather than its field/IH binders.
-- [ ] Trace the remaining branch-body application allocation owner. In
-  particular, compare the restored lexical context producer with the producer
-  selected by newly synthesized `bind_context`: imported derivation jobs and
-  evidence jobs can validate the same context without being the same source
-  scope key. This is a hypothesis to verify, not permission to merge scopes or
-  arbitrary proofs by Core equality. Preserve source obligations and exact
-  binder identity; do not replace branch synthesis with its saved conclusion.
+- [x] Preserve the remaining branch-body application allocation owner.
+  September 12 continuation after `ce2f24d`: the suspected producer mismatch
+  was confirmed. The imported scope used a derivation-input context producer;
+  source IH branch synthesis replaced it with an evidence producer for the
+  same context. Since lexical scope keys include that producer, this created
+  a second application job and lost its saved sequencing binder. Carry the
+  checked branch origin into the existing induction-branch worker and reuse
+  its context producer edges, checking each resulting context against the
+  independently reconstructed field/IH extension. Do not merge arbitrary
+  scopes or substitute the saved branch conclusion for source synthesis.
+  Tests now require exact whole-branch and final reduction-source Core
+  identity after three inert resaves, followed by one-step Solve. The full
+  source-image script passes normally and under ASan/UBSan, including all
+  twelve typed/source-only retention fixtures; normal `make check` passes.
+  This closes the four historical constructor/Match exact-input regressions
+  for those fixtures, not general checkpoint transport or all Match scopes.
+  ASan/UBSan full synthesis also passes. `check-acceptance` passes component
+  checks, all eight available 01-09 source examples and their selected runtime
+  results, then stops at the unchanged open-family gate (175/209/280/323 steps,
+  DONE/UNSUPPORTED/UNSUPPORTED/UNSUPPORTED). Running its later image-origin
+  and prepared-module gates separately passes, including 758 save boundaries.
+  Full acceptance and Main push remain pending.
 - [x] Route declaration exports and instantiated members through
   `pg_synthesis_constructor_value`. Its `_at` entry attaches the existing
   field-scope allocation before that scope executes; both entries return the

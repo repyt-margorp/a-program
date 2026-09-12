@@ -3301,14 +3301,32 @@ static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synt
 		if (total > SIZE_MAX / sizeof(const struct pg_evidence *)) goto error;
 		struct pg_graph temporary = {0};
 		const struct pg_evidence **extensions = pg_alloc(&temporary, total * sizeof(*extensions));
+		struct pg_synthesis_job **contexts = pg_alloc(&temporary, total * sizeof(*contexts));
 		unsigned char *recursive = pg_alloc(&temporary, fields);
-		if ((total && !extensions) || (fields && !recursive)) { pg_graph_destroy(&temporary); goto error; }
+		if ((total && (!extensions || !contexts)) || (fields && !recursive)) { pg_graph_destroy(&temporary); goto error; }
 		for (size_t i = total; i; --i, context = pg_evidence_premise(context, 0)) extensions[i - 1] = context;
+		const struct pg_derivation_input *input = job->allocation_origin ? job->allocation_origin->inputs[0] : NULL;
+		for (size_t i = 0; i < total; ++i) {
+			if (!job->allocation_origin) {
+				contexts[i] = pg_synthesis_evidence(synthesis, extensions[i]);
+				continue;
+			}
+			if (input->rule != PG_LAMBDA_INTRO || input->count != 2 ||
+				input->premises[0]->rule != PG_PI_FORM || input->premises[0]->count != 3) {
+				pg_graph_destroy(&temporary); goto error;
+			}
+			contexts[i] = pg_synthesis_derivation_inference(synthesis, input->premises[0]->premises[1],
+				(void *)job->allocation_origin->inputs[1]);
+			if (!contexts[i] || pg_evidence_context(pg_synthesis_result(contexts[i])) != pg_evidence_context(extensions[i])) {
+				pg_graph_destroy(&temporary); goto error;
+			}
+			input = input->premises[1];
+		}
 		const struct pg_source_scope *scope = job->scope;
 		for (size_t i = 0; scope && i < fields; ++i) {
 			if (job->syntax->items[i].operation) { pg_graph_destroy(&temporary); finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 			scope = pg_synthesis_bind_context(synthesis, scope, job->syntax->items[i].name,
-				pg_evidence_context(extensions[i])->binder, pg_synthesis_evidence(synthesis, extensions[i]));
+				pg_evidence_context(extensions[i])->binder, contexts[i]);
 		}
 		/* Match IHs to original field binders, not their surface spelling. */
 		const struct pg_object *self = pg_evidence_context(pg_evidence_premise(formation, 0))->binder;
@@ -3320,7 +3338,7 @@ static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synt
 			if (!recursive[i]) continue;
 			if (next == total) { scope = NULL; break; }
 			scope = pg_synthesis_bind_hypothesis(synthesis, scope, pg_evidence_context(extensions[i])->binder,
-				pg_evidence_context(extensions[next])->binder, pg_synthesis_evidence(synthesis, extensions[next]));
+				pg_evidence_context(extensions[next])->binder, contexts[next]);
 			++next;
 		}
 		if (next != total) scope = NULL;
@@ -3931,6 +3949,17 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 				state->instance.formation, constructor, state->instance.parameters,
 				state->motive_context, state->motive, branch->clause);
 			if (!branch->body) goto error;
+			if (job->allocation_origin) {
+				const struct pg_derivation_input *input = job->allocation_origin->inputs[0];
+				if (input->count < 6 || state->prepared >= input->count - 6) goto rejected;
+				struct pg_synthesis_job *origin = pg_synthesis_derivation_inference(synthesis,
+					input->premises[state->prepared + 5], (void *)job->allocation_origin->inputs[1]);
+				if (!origin) goto error;
+				if (branch->body->allocation_origin != origin) {
+					if (branch->body->allocation_origin || branch->body->left) goto rejected;
+					branch->body->allocation_origin = origin;
+				}
+			}
 			if (branch->body->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->body); return; }
 			if (branch->body->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, branch->body->status); return; }
 			branch->function = branch->body->result;
