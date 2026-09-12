@@ -19,11 +19,8 @@ static struct pg_synthesis_job *parse(struct pg_program *program,
 	return job;
 }
 
-static void indexed_family_sources(void)
+static void indexed_family_roundtrip(const char *source)
 {
-	const char *source = "Nat:=@{zero:*;succ:*->*;};"
-		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
-		"main:=D.next Nat.zero (D.mk Nat.zero); main::D (Nat.succ Nat.zero);";
 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
 		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
 		assert(p && p->root);
@@ -55,16 +52,34 @@ static void indexed_family_sources(void)
 		assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
 		const struct pg_evidence *family = pg_synthesis_result(pg_synthesis_definition(roots[0],
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "D", .length = 1}));
-		assert(family && pg_evidence_rule(family) == PG_INDUCTIVE_FORM);
+		assert(family);
 		assert(pg_evidence_judgement(family) == PG_JUDGEMENT_TYPE_FAMILY);
 		assert(!pg_prove_type_value(&p->typing, family));
+		while (pg_evidence_rule(family) == PG_TYPE_FAMILY_ABSTRACT) family = pg_evidence_premise(family, 1);
+		assert(pg_evidence_rule(family) == PG_INDUCTIVE_FORM);
 		pg_program_destroy(p);
 	}
+}
+
+static void indexed_family_sources(void)
+{
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
+		"main:=D.next Nat.zero (D.mk Nat.zero); main::D (Nat.succ Nat.zero);");
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=\\A:@=>@\\i:Nat=>{mk:(k:Nat)->A->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
+		"main:=(D Nat).next Nat.zero ((D Nat).mk Nat.zero Nat.zero); main::D Nat (Nat.succ Nat.zero);");
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=\\A:@=>\\B:@=>@\\i:Nat=>{mk:(k:Nat)->A->B->* k;};"
+		"main:=(D Nat Nat).mk Nat.zero Nat.zero Nat.zero; main::D Nat Nat Nat.zero;");
 	const char *invalid[] = {
 		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:(k:Nat)->* k->*(Nat.succ k);};"
 			"bad:=D.next Nat.zero (D.mk (Nat.succ Nat.zero));",
 		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;}; bad:=\\x:D=>x;",
-		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;}; bad:=D Nat.zero Nat.zero;"
+		"Nat:=@{zero:*;succ:*->*;}; D:=@\\i:Nat=>{mk:(k:Nat)->* k;}; bad:=D Nat.zero Nat.zero;",
+		"Nat:=@{zero:*;succ:*->*;}; Bool:=@{false:*;true:*;};"
+			"D:=\\A:@=>@\\i:Nat=>{mk:(k:Nat)->A->* k;};"
+			"bad:=(D Nat).mk Nat.zero Nat.zero; bad::D Bool Nat.zero;"
 	};
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
 		struct pg_program *p = pg_program_create(invalid[i], strlen(invalid[i]), PG_DEFINITION_IMPLICIT_THUNK);

@@ -50,7 +50,7 @@ not the stale worktree `read_file.out` (which fails the length fixture).
 18 required source/result cases using unchanged legacy fixtures: Vec, Acc,
 order proofs, six function-graph examples, named cases, six QuickSort inputs,
 and two incompatible-proof rejections. Main passes these checks; pointer Core
-currently passes 0/18, all stopping at UNSUPPORTED. This gate is included in
+currently passes 1/18 (Vec); the other cases stop at UNSUPPORTED. This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
 checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
 
@@ -68,13 +68,16 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
 - [x] Check dependent family signatures, partial/saturated application and
   substitution-sort rejection. Source tests cover recursive indexed fields,
   pure computed indices, and unsolved/solved source-image resaves through Solve.
-- [ ] Recover parameter-instantiated family declarations and indexed instances
-  through retained family application/abstraction evidence. The legacy Vec test
-  now reaches `(Vec Nat).nil`, where member resolution remains unsupported.
+- [x] Recover parameter-instantiated family declarations through retained
+  application/abstraction evidence and the shared pure normalizer. The unchanged
+  legacy Vec test now compiles, including `(Vec Nat).nil`, cons and index checks.
+  One-/two-parameter source-image resaves and parameter mismatch rejection pass.
+- [ ] Retain saturated index substitutions when recovering indexed instances
+  for elimination; parameter-only member recovery is not indexed Match typing.
 - [ ] Generalize Match/motive/IH rules to those checked indexed instances;
   restore open family parameters and function graph/witness generation.
 
-The compatibility gate remains 0/18 (UNSUPPORTED, not expected failures).
+The compatibility gate is 1/18; remaining cases are UNSUPPORTED, not expected failures.
 The generated length fixture still stops at `*length` resolution. These
 formation changes are prerequisite work, not completion of Vec/Acc/QuickSort
 or the post-hoc property-proof milestone. No independent Replay was added.

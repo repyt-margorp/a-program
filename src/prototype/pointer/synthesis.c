@@ -2465,8 +2465,15 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 			if (producer->status != PG_SYNTHESIS_DONE) return producer->status;
 			proof = producer->result;
 		}
+		if (pg_evidence_judgement(proof) == PG_JUDGEMENT_TYPE_FAMILY) {
+			producer = pg_synthesis_normalize(synthesis, context, proof);
+			if (!producer) return PG_SYNTHESIS_ERROR;
+			*dependency = producer;
+			if (producer->status != PG_SYNTHESIS_DONE) return producer->status;
+			proof = producer->result;
+		} else proof = value_type(synthesis, proof);
 		struct pg_synthesis_job *instance_job = pg_synthesis_inductive_instance(synthesis,
-			pg_synthesis_evidence(synthesis, value_type(synthesis, proof)));
+			pg_synthesis_evidence(synthesis, proof));
 		if (!instance_job) return PG_SYNTHESIS_UNSUPPORTED;
 		*dependency = instance_job;
 		if (instance_job->status != PG_SYNTHESIS_DONE) return instance_job->status;

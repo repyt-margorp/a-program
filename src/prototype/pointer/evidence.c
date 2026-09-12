@@ -347,15 +347,49 @@ static const struct pg_evidence *variable_frame(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument)
 {
-	if (!pg_evidence_owned_by(function, typing) || function->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (!pg_evidence_owned_by(function, typing)) return NULL;
+	if (function->judgement != PG_JUDGEMENT_COMPUTATION && function->judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (!pg_evidence_owned_by(argument, typing) || argument->judgement != PG_JUDGEMENT_VALUE) return NULL;
 	if (function->context != argument->context) return NULL;
 	struct pg_graph temporary = {0};
 	struct evidence_frame *frames = NULL;
 	const struct pg_evidence *result = NULL;
+	struct pending_application {
+		const struct pg_evidence *argument;
+		struct evidence_frame *frames;
+		size_t forces;
+		struct pending_application *next;
+	};
+	struct pending_application *pending = NULL;
 	size_t forces = 0;
-	while (function->rule != PG_LAMBDA_INTRO) {
+	for (;;) {
 		switch (function->rule) {
+		case PG_LAMBDA_INTRO: case PG_TYPE_FAMILY_ABSTRACT: {
+			if (forces) goto done;
+			const struct pg_evidence *extended = function->rule == PG_LAMBDA_INTRO
+				? function->premises[0]->premises[1] : function->premises[0];
+			const struct pg_evidence *map = evidence_map(typing, extended->premises[0], frames);
+			map = pg_prove_substitution_pair(typing, map, extended, argument);
+			function = pg_prove_reindex(typing, map, function->premises[1]);
+			if (!function) goto done;
+			if (!pending) { result = function; goto done; }
+			argument = pending->argument;
+			frames = pending->frames;
+			forces = pending->forces;
+			pending = pending->next;
+			break;
+		}
+		case PG_APP_ELIM: case PG_TYPE_FAMILY_APP: {
+			struct pending_application *next = pg_alloc(&temporary, sizeof(*next));
+			if (!next) goto done;
+			*next = (struct pending_application){argument, frames, forces, pending};
+			pending = next;
+			argument = function->premises[1];
+			function = function->premises[0];
+			frames = NULL;
+			forces = 0;
+			break;
+		}
 		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
 			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
 			if (!frame) goto done;
@@ -378,11 +412,6 @@ const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 		default: goto done;
 		}
 	}
-	if (forces) goto done;
-	const struct pg_evidence *extended = function->premises[0]->premises[1];
-	const struct pg_evidence *map = evidence_map(typing, extended->premises[0], frames);
-	map = pg_prove_substitution_pair(typing, map, extended, argument);
-	result = pg_prove_reindex(typing, map, function->premises[1]);
 done:
 	pg_graph_destroy(&temporary);
 	return result;
@@ -479,7 +508,7 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		case PG_RETURN_INTRO:
 			if (!work->return_values) goto failed;
 			--work->return_values; formation = formation->premises[0]; break;
-		case PG_APP_ELIM:
+		case PG_APP_ELIM: case PG_TYPE_FAMILY_APP:
 			formation = pg_prove_application_body(typing, formation->premises[0], formation->premises[1]);
 			if (!formation) goto failed;
 			break;
@@ -1601,7 +1630,8 @@ const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
 	if (!source->subject) return NULL;
 	switch (source->judgement) {
 	case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION:
-	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
+	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE:
+	case PG_JUDGEMENT_TYPE_FAMILY: break;
 	default: return NULL;
 	}
 	if (pg_reduction_policy(certificate) != &pg_pure_policy) return NULL;
