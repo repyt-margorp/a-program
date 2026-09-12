@@ -103,6 +103,23 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
   Acc/QuickSort fixtures still fail; the compatibility count remains 9/19.
   General Act on higher logical signatures also remains an obligation.
 
+- [x] Generalize substitution lifting to checked family declarations, including
+  dependent indices and higher family parameters. Transport the signature's
+  context through the existing extension, reindex and pairing rules; fresh
+  local binders prevent capture in the destination. The interned Solve request
+  owns this construction instead of maintaining a second value-only assembly.
+  No new Core node, evidence rule or image version is introduced. The finite
+  structural construction currently uses one scheduling quantum; finer-grained
+  interruption is not a compatibility prerequisite. Kernel and fresh-process
+  derivation tests cover capture, dependent/higher signatures and shared Solve.
+  `check check-examples check-example-results` pass; the unchanged source gate
+  remains 9/19. This does not close the source-contract item immediately above.
+  The unchanged Acc declaration body also synthesizes from source under checked
+  logical A/R assumptions, at chunks 1/64, retaining its two constructor fields
+  and function-field recursion. This isolates the outer R annotation contract
+  from the already-working declaration-body lowering. Targeted IADT and
+  fresh-process derivation tests additionally pass ASan/UBSan.
+
 This is a local rule extension, not an imported metatheorem. Background
 rechecked: [Harper, *An Equational Logical Framework for Type Theories*, section 2](https://www.cs.cmu.edu/~rwh/courses/chtt/pdfs/slf.pdf)
 separates classifying signatures and substitution; its equality reflection is

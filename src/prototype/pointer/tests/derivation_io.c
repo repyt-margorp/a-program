@@ -317,7 +317,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, classifiers, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[15];
+	const struct pg_evidence *roots[17];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -377,8 +377,13 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	job = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(roots[13])->core);
 	assert(job && pg_whnf_advance(job, 10000) == PG_EVAL_WHNF);
 	roots[14] = pg_prove_normalization(typing, roots[13], pg_whnf_certificate(job));
-	for (size_t i = 0; i < 15; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 15, roots, name, classifiers) == 0);
+	const struct pg_object *h = pg_binder(graph);
+	const struct pg_evidence *hc = pg_prove_family_context_extension(typing, empty, h, fc,
+		pg_prove_projection(typing, fc, u));
+	roots[15] = pg_prove_substitution_lift(typing, pg_prove_substitution_projection(typing, empty, ca), hc, h);
+	roots[16] = pg_prove_reindex(typing, roots[15], pg_prove_variable(typing, hc, h));
+	for (size_t i = 0; i < 17; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 17, roots, name, classifiers) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -406,13 +411,13 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing, 1000, 100, resolve, classifiers, &count, &roots) == 0);
-	assert(count == 15 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 17 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[15];
+	struct pg_synthesis_job *jobs[17];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -442,6 +447,12 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	assert(pg_evidence_rule(family_application) == PG_TYPE_FAMILY_APP);
 	assert(pg_evidence_subject(pg_synthesis_result(jobs[14]))->core ==
 		pg_evidence_subject(pg_evidence_premise(family_application, 1))->core);
+	const struct pg_evidence *lifted = pg_synthesis_result(jobs[15]);
+	assert(pg_evidence_rule(lifted) == PG_CONTEXT_SUBSTITUTION);
+	assert(pg_evidence_judgement(pg_synthesis_result(jobs[16])) == PG_JUDGEMENT_TYPE_FAMILY);
+	const struct pg_object *source_binder = pg_evidence_context(pg_evidence_premise(lifted, 0))->binder;
+	assert(pg_evidence_subject(pg_synthesis_result(jobs[16]))->core ==
+		pg_evidence_subject(pg_substitution_image(typing, lifted, source_binder))->core);
 	const struct pg_evidence *left = pg_synthesis_result(jobs[0]);
 	const struct pg_evidence *right = pg_synthesis_result(jobs[1]);
 	assert(pg_evidence_subject(left)->core == pg_evidence_subject(right)->core);

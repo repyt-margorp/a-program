@@ -672,9 +672,10 @@ struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesi
 struct pg_synthesis_job *pg_synthesis_substitution_jobs(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *source, struct pg_synthesis_job *destination,
 	size_t count, struct pg_synthesis_job *const *images);
-/* Lift a checked substitution over one source extension using ordinary
- * reindex, context-extension, variable, projection and substitution producers.
- * The caller supplies the stable destination binder. */
+/* Lift a checked substitution over a value or family extension through the
+ * shared kernel construction. The caller supplies the destination binder;
+ * the interned job retains signature-local allocations. This finite structural
+ * proof construction currently consumes one scheduling quantum. */
 struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *synthesis,
 	const struct pg_evidence *substitution, const struct pg_evidence *extension,
 	const struct pg_object *binder);

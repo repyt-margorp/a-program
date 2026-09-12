@@ -460,7 +460,10 @@ const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing
 const struct pg_evidence *pg_prove_substitution_pair(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
 	const struct pg_evidence *image);
-/* Lift Delta -> Gamma to Delta,y:A[sigma] -> Gamma,x:A, with a fresh y. */
+/* Lift Delta -> Gamma to Delta,y:A[sigma] -> Gamma,x:A, with a fresh y.
+ * Family declarations transport their dependent signature using the same
+ * checked substitution rules. Signature-local binders are freshly allocated;
+ * schedule once per producer when stable allocation is required. */
 const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
 	const struct pg_object *binder);

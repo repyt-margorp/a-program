@@ -2445,19 +2445,68 @@ const struct pg_evidence *pg_prove_substitution_pair(struct pg_typing *typing,
 		substitution->premises[1], image);
 }
 
+struct lift_frame {
+	struct lift_frame *parent;
+	const struct pg_evidence *substitution, *extension, *map;
+	const struct pg_object *binder;
+	const struct pg_evidence **indices;
+	size_t count, next;
+};
+
 const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *source_extension,
 	const struct pg_object *binder)
 {
 	if (!substitution_proof(typing, substitution)) return NULL;
 	if (!context_proof(typing, source_extension)) return NULL;
-	if (source_extension->rule != PG_CONTEXT_EXTEND) return NULL;
+	if (source_extension->rule != PG_CONTEXT_EXTEND && source_extension->rule != PG_CONTEXT_FAMILY_EXTEND) return NULL;
 	if (source_extension->context->parent != substitution->premises[0]->context) return NULL;
-	const struct pg_evidence *domain = pg_prove_reindex(typing, substitution, source_extension->premises[1]);
-	const struct pg_evidence *destination = pg_prove_context_extension(typing, substitution->premises[1], binder, domain);
-	if (!destination) return NULL;
-	const struct pg_evidence *image = pg_prove_variable(typing, destination, binder);
-	return substitution_pair(typing, substitution, source_extension, destination, image);
+	if (!binder || binder->kind != PG_BINDER || pg_context_lookup(substitution->context, binder)) return NULL;
+	struct pg_graph temporary = {0};
+	struct lift_frame root = {.substitution = substitution, .extension = source_extension, .binder = binder};
+	struct lift_frame *frame = &root;
+	const struct pg_evidence *result = NULL;
+	while (frame) {
+		const struct pg_evidence *extension = frame->extension;
+		const struct pg_evidence *destination;
+		if (extension->rule == PG_CONTEXT_EXTEND) {
+			const struct pg_evidence *domain = pg_prove_reindex(typing, frame->substitution, extension->premises[1]);
+			destination = pg_prove_context_extension(typing, frame->substitution->premises[1], frame->binder, domain);
+		} else {
+			if (!frame->map) {
+				const struct pg_evidence *indices = extension->premises[1];
+				if (pg_context_extension_size(indices->context, extension->context->parent, &frame->count)) goto done;
+				if (frame->count > SIZE_MAX / sizeof(*frame->indices)) goto done;
+				frame->indices = pg_alloc(&temporary, frame->count * sizeof(*frame->indices));
+				if (!frame->indices) goto done;
+				for (size_t i = frame->count; i; --i, indices = indices->premises[0]) frame->indices[i - 1] = indices;
+				frame->map = frame->substitution;
+			}
+			if (frame->next < frame->count) {
+				struct lift_frame *child = pg_alloc(&temporary, sizeof(*child));
+				if (!child) goto done;
+				/* Signature-local binders are not declarations in the ambient
+				 * destination. Allocate them once per lifted family producer. */
+				*child = (struct lift_frame){.parent = frame, .substitution = frame->map,
+					.extension = frame->indices[frame->next++], .binder = pg_binder(typing->graph)};
+				frame = child;
+				continue;
+			}
+			const struct pg_evidence *universe = pg_prove_reindex(typing, frame->map, extension->premises[2]);
+			destination = pg_prove_family_context_extension(typing, frame->substitution->premises[1],
+				frame->binder, frame->map->premises[1], universe);
+		}
+		if (!destination) goto done;
+		const struct pg_evidence *image = pg_prove_variable(typing, destination, frame->binder);
+		const struct pg_evidence *lifted = substitution_pair(typing, frame->substitution, extension, destination, image);
+		if (!lifted) goto done;
+		frame = frame->parent;
+		if (frame) frame->map = lifted;
+		else result = lifted;
+	}
+done:
+	pg_graph_destroy(&temporary);
+	return result;
 }
 
 struct pattern_variable {

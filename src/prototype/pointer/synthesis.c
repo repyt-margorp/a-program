@@ -154,7 +154,7 @@ struct effect_substitution_state {
 	struct pg_substitution *work;
 	const struct pg_term *result;
 };
-enum job_role { FUNCTION_WITNESS_JOB, PI_SCOPE_JOB, DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
+enum job_role { LIFT_JOB, FUNCTION_WITNESS_JOB, PI_SCOPE_JOB, DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB, FAMILY_FUNCTION_JOB, FUNCTION_GRAPH_JOB };
 enum { APPLICATION_RULE_READY = 6 };
 struct context_allocation {
@@ -1575,28 +1575,12 @@ struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *syn
 	const struct pg_object *binder)
 {
 	if (!pg_evidence_owned_by(substitution, synthesis->typing) || pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (!pg_evidence_owned_by(extension, synthesis->typing) || pg_evidence_rule(extension) != PG_CONTEXT_EXTEND) return NULL;
+	if (!pg_evidence_owned_by(extension, synthesis->typing)) return NULL;
+	enum pg_evidence_rule rule = pg_evidence_rule(extension);
+	if (rule != PG_CONTEXT_EXTEND && rule != PG_CONTEXT_FAMILY_EXTEND) return NULL;
 	if (!binder || pg_evidence_context(extension)->parent != pg_evidence_context(pg_evidence_premise(substitution, 0))) return NULL;
-	struct pg_synthesis_job *domain = pg_synthesis_reindex(synthesis, substitution, pg_evidence_premise(extension, 1));
-	struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, pg_evidence_premise(substitution, 1)), domain};
-	struct pg_derivation_input extend = {.rule = PG_CONTEXT_EXTEND, .parameters.binder = binder, .count = 2};
-	struct pg_synthesis_job *context = pg_synthesis_rule(synthesis, &extend, premises, NULL, NULL);
-	if (!context) return NULL;
-	size_t count = pg_evidence_premise_count(substitution) - 2;
-	if (count >= SIZE_MAX / sizeof(struct pg_synthesis_job *)) return NULL;
-	struct pg_synthesis_job **images = malloc((count + 1) * sizeof(*images));
-	if (!images) return NULL;
-	struct pg_derivation_input project = {.rule = PG_CONTEXT_PROJECTION, .count = 2};
-	for (size_t i = 0; i < count; ++i) {
-		struct pg_synthesis_job *inputs[] = {context, pg_synthesis_evidence(synthesis, pg_evidence_premise(substitution, i + 2))};
-		images[i] = pg_synthesis_rule(synthesis, &project, inputs, NULL, NULL);
-	}
-	struct pg_derivation_input variable = {.rule = PG_VARIABLE, .parameters.binder = binder, .count = 1};
-	images[count] = pg_synthesis_rule(synthesis, &variable, &context, NULL, NULL);
-	struct pg_synthesis_job *result = pg_synthesis_substitution_jobs(synthesis,
-		pg_synthesis_evidence(synthesis, extension), context, count + 1, images);
-	free(images);
-	return result;
+	const void *inputs[] = {substitution, extension, binder};
+	return request_inputs(synthesis, LIFT_JOB, 3, inputs);
 }
 
 struct pg_synthesis_job *pg_synthesis_inductive_instance(struct pg_synthesis *synthesis,
@@ -6968,6 +6952,11 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		return;
 	}
 	if (job->role == RETURN_JOB || job->role == THUNK_JOB) { contents_step(synthesis, job); return; }
+	if (job->role == LIFT_JOB) {
+		job->result = pg_prove_substitution_lift(synthesis->typing, job->inputs[0], job->inputs[1], job->inputs[2]);
+		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+		return;
+	}
 	if (job->role == BINDING_JOB) { binding_step(synthesis, job); return; }
 	if (job->role == DOMAIN_JOB) { domain_step(synthesis, job); return; }
 	if (job->role == TELESCOPE_JOB) { telescope_step(synthesis, job); return; }
