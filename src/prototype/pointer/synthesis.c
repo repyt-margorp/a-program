@@ -143,7 +143,7 @@ struct effect_substitution_state {
 	struct pg_substitution *work;
 	const struct pg_term *result;
 };
-enum job_role { DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
+enum job_role { PI_SCOPE_JOB, DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB };
 enum { APPLICATION_RULE_READY = 6 };
 struct context_allocation {
@@ -663,9 +663,38 @@ struct pg_synthesis_job *pg_synthesis_constant_result(struct pg_synthesis *synth
 	if (!context || context->owner != synthesis->owner_key) return NULL;
 	if (!callable || callable->owner != synthesis->owner_key) return NULL;
 	struct pg_synthesis_job *result = request_job(synthesis, CLASSIFIER_FORMATION_JOB, context, callable);
+	if (parameters > SIZE_MAX / sizeof(struct pg_synthesis_job *)) return NULL;
+	struct pg_graph temporary = {0};
+	struct pg_synthesis_job **scopes = pg_alloc(&temporary, parameters * sizeof(*scopes));
+	if (parameters && !scopes) { pg_graph_destroy(&temporary); return NULL; }
+	struct pg_derivation_input domain = {.rule = PG_PI_DOMAIN, .count = 1};
+	struct pg_derivation_input project = {.rule = PG_CONTEXT_PROJECTION, .count = 2};
+	struct pg_derivation_input apply = {.rule = PG_PI_CODOMAIN, .count = 2};
+	struct pg_derivation_input pi = {.rule = PG_PI_FORM, .count = 3};
 	struct pg_derivation_input codomain = {.rule = PG_PI_CONSTANT_CODOMAIN, .count = 1};
-	for (size_t i = 0; result && i < parameters; ++i)
+	/* Open the whole dependent telescope before discharging it in reverse.
+	 * A scope request owns its binder even while its domain is still pending. */
+	for (size_t i = 0; result && i < parameters; ++i) {
+		struct pg_synthesis_job *scope = request_job(synthesis, PI_SCOPE_JOB, context, result);
+		if (!scope) { result = NULL; break; }
+		if (!scope->binder) scope->binder = pg_binder(synthesis->typing->graph);
+		if (!scope->binder) { result = NULL; break; }
+		scopes[i] = scope;
+		struct pg_derivation_input variable = {.rule = PG_VARIABLE, .parameters.binder = scope->binder, .count = 1};
+		struct pg_synthesis_job *premises[] = {scope, result};
+		premises[0] = pg_synthesis_rule(synthesis, &project, premises, NULL, NULL);
+		premises[1] = pg_synthesis_rule(synthesis, &variable, &scope, NULL, NULL);
+		result = pg_synthesis_rule(synthesis, &apply, premises, NULL, NULL);
+		context = scope;
+	}
+	for (size_t i = parameters; result && i; --i) {
+		struct pg_synthesis_job *scope = scopes[i - 1], *type = (void *)scope->inputs[1];
+		struct pg_synthesis_job *premises[] = {
+			pg_synthesis_rule(synthesis, &domain, &type, NULL, NULL), scope, result};
+		result = pg_synthesis_rule(synthesis, &pi, premises, NULL, NULL);
 		result = pg_synthesis_rule(synthesis, &codomain, &result, NULL, NULL);
+	}
+	pg_graph_destroy(&temporary);
 	return result;
 }
 
@@ -3507,20 +3536,7 @@ static void constant_motive_step(struct pg_synthesis *synthesis, struct pg_synth
 		size_t count;
 		if (pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(destination), &count)) goto unsupported;
 		job->left = pg_synthesis_abstract(synthesis, destination, fields, (void *)job->inputs[2]);
-		struct pg_synthesis_job *context = pg_synthesis_evidence(synthesis, fields);
-		struct pg_synthesis_job *body = request_job(synthesis, BODY_JOB, job->inputs[2], context);
-		job->right = request_job(synthesis, CLASSIFIER_FORMATION_JOB, context, body);
-		/* Discharge innermost first. Later field domains may depend on earlier
-		 * fields even when the final result type is independent of them all. */
-		struct pg_derivation_input pi = {.rule = PG_PI_FORM, .count = 3};
-		struct pg_derivation_input codomain = {.rule = PG_PI_CONSTANT_CODOMAIN, .count = 1};
-		for (size_t i = 0; job->right && i < count; ++i, fields = pg_evidence_premise(fields, 0)) {
-			struct pg_synthesis_job *premises[] = {
-				pg_synthesis_evidence(synthesis, pg_evidence_premise(fields, 1)),
-				pg_synthesis_evidence(synthesis, fields), job->right};
-			job->right = pg_synthesis_rule(synthesis, &pi, premises, NULL, NULL);
-			job->right = pg_synthesis_rule(synthesis, &codomain, &job->right, NULL, NULL);
-		}
+		job->right = pg_synthesis_constant_result(synthesis, pg_synthesis_evidence(synthesis, destination), job->left, count);
 		if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}
 	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
@@ -5230,6 +5246,27 @@ static const struct pg_term *continuation_effect_structure(struct pg_synthesis *
 		pg_effect_join_term(synthesis->typing->graph, row, following), result);
 }
 
+static void pi_application_structure_step(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, const struct pg_term *type, struct pg_synthesis_job *argument)
+{
+	if (!job->right) job->right = pg_synthesis_term_structure(synthesis, argument);
+	if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+	if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
+	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
+	if (!job->structural_substitution) {
+		const struct pg_term *domain, *codomain;
+		const struct pg_object *binder;
+		if (!pg_pi_view(type, &domain, &binder, &codomain)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		struct pg_binding_value image = {binder, pg_synthesis_type_structure_result(job->right)};
+		job->structural_substitution = pg_substitution_request(&synthesis->typing->substitutions, codomain, 1, &image);
+		if (!job->structural_substitution) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	}
+	enum pg_substitution_status status = pg_substitution_advance(job->structural_substitution, 1);
+	if (status == PG_SUBSTITUTION_PENDING) { enqueue(synthesis, job); return; }
+	job->type_structure = pg_substitution_result(job->structural_substitution);
+	finish(synthesis, job, status == PG_SUBSTITUTION_DONE ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+}
+
 static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
@@ -5343,25 +5380,7 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 			return;
 		}
 		if (input->rule == PG_APP_ELIM) {
-			if (!job->right) job->right = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, 1));
-			if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-			if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
-			if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
-			if (!job->stage) {
-				const struct pg_term *domain, *codomain;
-				const struct pg_object *binder;
-				if (!pg_pi_view(type, &domain, &binder, &codomain)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-				struct pg_binding_value image = {binder, pg_synthesis_type_structure_result(job->right)};
-				job->structural_substitution = pg_substitution_request(&synthesis->typing->substitutions, codomain, 1, &image);
-				if (!job->structural_substitution) {
-					finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-				}
-				job->stage = 1;
-			}
-			enum pg_substitution_status status = pg_substitution_advance(job->structural_substitution, 1);
-			if (status == PG_SUBSTITUTION_PENDING) { enqueue(synthesis, job); return; }
-			job->type_structure = pg_substitution_result(job->structural_substitution);
-			finish(synthesis, job, status == PG_SUBSTITUTION_DONE ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+			pi_application_structure_step(synthesis, job, type, rule_premise(synthesis, producer, 1));
 			return;
 		}
 		if (input->rule == PG_FORCE_ELIM) {
@@ -5417,7 +5436,7 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		case PG_UNIVERSE_FORM:
 			job->type_structure = pg_universe(synthesis->classifiers, input->parameters.level);
 			goto done;
-		case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM: case PG_PI_FORM: case PG_PI_DOMAIN: case PG_RETURN_CONTENT:
+		case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM: case PG_PI_FORM: case PG_PI_DOMAIN: case PG_PI_CODOMAIN: case PG_RETURN_CONTENT:
 		case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE: case PG_PI_CONSTANT_CODOMAIN:
 			break;
 		default: input = NULL; break;
@@ -5477,11 +5496,14 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		if (pg_term_independent(job->type_structure, binder) != 1) goto unsupported;
 		break;
 	}
+	case PG_PI_CODOMAIN:
+		pi_application_structure_step(synthesis, job, left, rule_premise(synthesis, producer, 1));
+		return;
 	case PG_PI_FORM: {
 		struct pg_synthesis_job *context = rule_premise(synthesis, producer, 1);
 		if (!context) goto unsupported;
 		const struct pg_object *binder = NULL;
-		if (context->role == BINDING_JOB) binder = context->binder;
+		if (context->role == BINDING_JOB || context->role == PI_SCOPE_JOB) binder = context->binder;
 		if (context->role == DERIVATION_JOB) {
 			const struct pg_derivation_input *extension = context->inputs[0];
 			if (extension->rule == PG_CONTEXT_EXTEND) binder = extension->parameters.binder;
@@ -6139,6 +6161,18 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		return;
 	}
 	if (atomic_rule_step(synthesis, job)) return;
+	if (job->role == PI_SCOPE_JOB) {
+		if (!job->left) {
+			struct pg_synthesis_job *type = (void *)job->inputs[1];
+			struct pg_derivation_input domain = {.rule = PG_PI_DOMAIN, .count = 1};
+			struct pg_derivation_input extend = {.rule = PG_CONTEXT_EXTEND, .parameters.binder = job->binder, .count = 2};
+			struct pg_synthesis_job *premises[] = {(void *)job->inputs[0],
+				pg_synthesis_rule(synthesis, &domain, &type, NULL, NULL)};
+			job->left = pg_synthesis_rule(synthesis, &extend, premises, NULL, NULL);
+		}
+		forward_proof(synthesis, job, job->left);
+		return;
+	}
 	if (job->role == HANDLER_RETURN_JOB) { handler_return_step(synthesis, job); return; }
 	/* Self application and IH notation share syntax until scope resolution. */
 	if (job->role == EXPRESSION_JOB && !hypothesis_syntax(job->syntax))

@@ -292,8 +292,9 @@ struct pg_effect_equation;
 struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *input,
 	struct pg_synthesis_job *continuation);
-/* Recover a callable's classifier and remove the given Pi prefix with the
- * ordinary constant-codomain rules. Dependent results are not generalized.
+/* Recover a callable's classifier, open its Pi telescope and discharge binders
+ * innermost first with ordinary constant-codomain rules. Parameter domains may
+ * depend on earlier parameters; the remaining result must not depend on them.
  * Structural consumers may inspect the result before evidence acceptance;
  * use one parameter for return clauses, two for operation clauses. */
 struct pg_synthesis_job *pg_synthesis_constant_result(struct pg_synthesis *synthesis,

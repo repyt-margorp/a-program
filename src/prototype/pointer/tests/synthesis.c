@@ -1861,6 +1861,46 @@ static void dependent_application_jobs(struct pg_typing *typing, struct pg_class
 	}
 }
 
+static void constant_telescope_results(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
+	struct pg_synthesis_job *context = pg_synthesis_evidence(&synthesis, pg_prove_empty_context(typing));
+	for (size_t accepted = 0; accepted < 2; ++accepted) {
+		struct pg_synthesis_job *function = request(&synthesis, root, "f := \\A:@ => \\x:A => @;");
+		if (accepted) complete(&synthesis, function, PG_SYNTHESIS_DONE);
+		struct pg_synthesis_job *result = pg_synthesis_constant_result(&synthesis, context, function, 2);
+		size_t jobs = synthesis.jobs.count;
+		assert(result == pg_synthesis_constant_result(&synthesis, context, function, 2));
+		assert(synthesis.jobs.count == jobs);
+		const struct pg_evidence *proof = complete(&synthesis, result, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_judgement(proof) == PG_JUDGEMENT_COMPUTATION_TYPE);
+		const struct pg_term *type = pg_evidence_subject(proof)->core;
+		const struct pg_term *domain, *codomain;
+		const struct pg_object *binder;
+		const struct pg_evidence *callable = pg_synthesis_result(function);
+		assert(pg_pi_view(pg_evidence_classifier(callable), &domain, &binder, &codomain));
+		assert(pg_pi_view(codomain, &domain, &binder, &codomain));
+		assert(pg_alpha_equal(type, codomain) == 1);
+		jobs = synthesis.jobs.count;
+		assert(result == pg_synthesis_constant_result(&synthesis, context, function, 2));
+		assert(synthesis.jobs.count == jobs);
+		const struct pg_evidence *whole = complete(&synthesis,
+			pg_synthesis_constant_result(&synthesis, context, function, 0), PG_SYNTHESIS_DONE);
+		assert(pg_alpha_equal(pg_evidence_subject(whole)->core, pg_evidence_classifier(callable)) == 1);
+		/* Removing only A would leave x's domain referring outside its scope. */
+		complete(&synthesis, pg_synthesis_constant_result(&synthesis, context, function, 1), PG_SYNTHESIS_REJECTED);
+		complete(&synthesis, pg_synthesis_constant_result(&synthesis, context, function, 3), PG_SYNTHESIS_REJECTED);
+	}
+	struct pg_synthesis_job *dependent = request(&synthesis, root, "f := \\A:@ => \\x:A => x;");
+	complete(&synthesis, pg_synthesis_constant_result(&synthesis, context, dependent, 2), PG_SYNTHESIS_REJECTED);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+}
+
 static void identity_instance_jobs(struct pg_typing *typing, struct pg_classifiers *classifiers)
 {
 	const struct pg_evidence *context = pg_prove_empty_context(typing);
@@ -5673,6 +5713,7 @@ int main(void)
 	square_template_jobs(&typing, &classifiers);
 	dependent_cube_substitution(&typing, &classifiers);
 	dependent_application_jobs(&typing, &classifiers);
+	constant_telescope_results(&typing, &classifiers);
 	recursive_field_aliases(&typing, &classifiers);
 	identity_instance_jobs(&typing, &classifiers);
 	cube_application_jobs(&typing, &classifiers, 1);

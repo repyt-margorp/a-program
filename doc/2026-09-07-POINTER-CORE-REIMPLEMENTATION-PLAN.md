@@ -89,6 +89,14 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
 - [x] Infer constant branch results across dependent field telescopes by
   discharging innermost binders first with existing Pi/codomain rules. Peeling
   outer Pi binders first incorrectly rejected `(k:Nat)->D k->Nat`.
+  Match, functions and handlers now share `pg_synthesis_constant_result`:
+  open the complete telescope, then discharge it in reverse. Scope requests
+  retain their binder; repeated requests reuse jobs. Structural Pi application
+  shares substitution with APP, including pending handler effect inference.
+  Tests accept dependent parameter domains with a constant final result and
+  reject escaping result dependencies, partial discharge and excess arity.
+  Normal checks/examples/results and the synthesis suite under ASan/UBSan pass;
+  unchanged compatibility remains 1/18. This is not dependent motive inference.
 - [ ] Infer genuinely dependent source motives, rather than only checking a
   supplied dependent motive in the kernel; restore open family parameters,
   Pi-shaped recursive fields (Acc), and function graph/witness generation.
@@ -96,7 +104,7 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
 
 The compatibility gate is 1/18; remaining cases are UNSUPPORTED, not expected failures.
 The generated length fixture still stops at `*length` resolution. These
-formation changes are prerequisite work, not completion of Vec/Acc/QuickSort
+formation changes are prerequisite work, not completion of Acc/QuickSort
 or the post-hoc property-proof milestone. No independent Replay was added.
 Validation: `check check-examples check-example-results` passes. The scoped
 family kernel tests and indexed source/resave tests also pass ASan/UBSan.
