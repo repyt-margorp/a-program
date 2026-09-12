@@ -31,6 +31,11 @@ while read -r expectation name left right; do
 			failed=$((failed + 1))
 		fi
 	fi
+	if [ "$name" = typing/function_graph_dependent_spine_check ]; then
+		if ! "$runtime" --equal "$fixtures/$name.p" certified expected; then
+			failed=$((failed + 1))
+		fi
+	fi
 done <<'CASES'
 0 typing/explicit_index_family_vec_check
 0 typing/explicit_index_family_acc_eliminator_check
@@ -49,7 +54,11 @@ done <<'CASES'
 0 typing/if8_fuel_free_quicksort_check descendingMain descendingExpected
 0 typing/if8_fuel_free_quicksort_check duplicateMain duplicateExpected
 1 negative/function_graph_incompatible_recursive_property
-1 negative/function_graph_coarse_forgery
+0 negative/function_graph_coarse_forgery
+1 ../../pointer/tests/acceptance/generated-function-graph-direct-forgery
 CASES
+# The historical coarse-fallback fixture only requests *first; it makes no
+# false claim. Exact direct-body graph generation admits it. The final case
+# instead demands the wrong result index from that graph and must reject.
 printf 'source compatibility and selected results: %s/%s passed\n' "$((total - failed))" "$total"
 test "$failed" -eq 0

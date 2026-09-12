@@ -1,4 +1,5 @@
 #include "program.h"
+#include "source_io.h"
 #include "derivation.h"
 #include "computation.h"
 #include "function_graph.h"
@@ -205,9 +206,16 @@ static int equal_results(struct pg_program *p, const char *label,
 	return !equal;
 }
 
-static int equal_exports(const char *path, const char *left, const char *right, uint64_t chunk)
+static int equal_exports(const char *path, const char *left, const char *right, uint64_t chunk, int image)
 {
-	return equal_results(load_program(path), path, left, right, chunk);
+	if (!image) return equal_results(load_program(path), path, left, right, chunk);
+	FILE *file = fopen(path, "rb");
+	assert(file);
+	size_t count;
+	struct pg_synthesis_job *const *roots;
+	struct pg_program *p = pg_sources_read(file, 1000000, &count, &roots);
+	assert(p && count == 1 && !p->synthesis.steps && !fclose(file));
+	return equal_results(p, path, left, right, chunk);
 }
 
 static void result_comparison_checks(void)
@@ -416,9 +424,10 @@ int main(int argc, char **argv)
 		pg_program_destroy(p);
 		return !rejected;
 	}
-	if (argc == 5 && !strcmp(argv[1], "--equal")) {
-		int failed = equal_exports(argv[2], argv[3], argv[4], 1);
-		return equal_exports(argv[2], argv[3], argv[4], 64) | failed;
+	if (argc == 5 && (!strcmp(argv[1], "--equal") || !strcmp(argv[1], "--equal-image"))) {
+		int image = !strcmp(argv[1], "--equal-image");
+		int failed = equal_exports(argv[2], argv[3], argv[4], 1, image);
+		return equal_exports(argv[2], argv[3], argv[4], 64, image) | failed;
 	}
 	if (argc != 1) {
 		assert(argc == 6);

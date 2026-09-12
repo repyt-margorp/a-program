@@ -46,12 +46,14 @@ for each local optimization. Main promotion still requires full acceptance.
 
 Compatibility baseline established against a fresh build of Main `63b00eb`,
 not the stale worktree `read_file.out` (which fails the length fixture).
-`make -f src/prototype/pointer/Makefile check-source-compatibility` now records
-18 required source/result cases using unchanged legacy fixtures: Vec, Acc,
+`make -f src/prototype/pointer/Makefile check-source-compatibility` initially recorded
+an initial 18 source/result cases using unchanged legacy fixtures: Vec, Acc,
 order proofs, six function-graph examples, named cases, six QuickSort inputs,
-and two incompatible-proof rejections. Main passes these checks; pointer Core
-currently passes 3/18 (Vec, generated length, graph block binding); the other
-cases stop at UNSUPPORTED. This gate is included in
+and two expected rejections. Main passed that initial baseline. The current
+19-case gate passes 7: five legacy positive cases, one justified admission of
+a historical negative request, and one new actual wrong-result rejection
+(details below). Remaining cases are UNSUPPORTED or incorrectly REJECTED.
+This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
 checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
 
@@ -161,11 +163,47 @@ produces a fiber's VALUE_TYPE evidence. Ordinary CBPV application is unchanged.
 - [ ] Complete graph-case names/binders, general call-site translation and
   post-hoc property proofs. Packet production and successful consumption do
   not yet establish length preservation or sortedness for QuickSort.
+- [x] Publish positional Graph cases through ordinary constructor namespaces.
+  Names refer to generated constructors, not the original ADT constructors;
+  reversed clause order and recursive Graph elimination work, while using the
+  original ADT's qualified constructors is rejected. Named sparse selectors
+  still require call-site provenance and are not covered by this completion.
+- [x] Preserve leading raw Lambda parameters using existing family abstraction
+  for `@f` and Lambda abstraction for `*f`. The unchanged dependent-spine
+  `headOr` fixture and its proof-consuming `certified` result now pass. The
+  nominal-index constant-motive fixture passes too. No value-side Pi, new
+  kernel rule or Replay path was introduced. Pending family classification
+  preserves TYPE_FAMILY authority; nominal recovery and Match now use shared
+  pure normalization/conversion before applying their existing rules.
+  The initial Match edit misused the final-expression job slot for a scrutinee
+  prerequisite; the full synthesis suite caught the regression and it was fixed.
+  Source/image comparison now checks classifiers and normalized values inside
+  one restored Program instead of comparing anonymous printed graphs. Tests
+  cover 0/partial/completed saves, unsolved resaves, aliases, direct bodies,
+  Graph induction, parameter mismatch and differing constructors/results.
+  Normal checks/examples/results pass. Synthesis, program, dependent-spine
+  results and wrong-result/parameter/case rejection pass ASan/UBSan. The image
+  CLI passes with sanitized checker and typed comparison binaries, using the
+  normal fixture writer. The full compatibility gate remains incomplete.
+
+Compatibility-test correction: `negative/function_graph_coarse_forgery.p`
+only requests `*first x y`; it asserts no false output or property. Its old
+rejection guarded an unsupported coarse fallback. The new generator derives
+the precise relation from `first`'s body: output is its first parameter, not
+an arbitrary inhabitant of the result type. Accordingly that request is now
+accepted. A new two-constructor Nat test both checks distinct input values and
+rejects passing its witness at the second argument's output index. This is
+an explicit reviewed change to the gate, not a removed negative test.
+
 - [ ] Infer genuinely dependent source motives, rather than only checking a
   supplied dependent motive in the kernel; restore open family parameters,
   general dependent IH results and function graph/witness generation.
   Function-field IH support is not completion of Acc or the property milestone:
   the unchanged Acc source still stops at the neutral type-family parameter R.
+  In the length-to-Unary property example, synthesis currently freezes the base
+  case's classifier as `Unary Nat.zero`, so the recursive IH cannot satisfy
+  `Unary tailLength`. Generate and solve motive constraints across the branches;
+  do not supply the answer from `::` or guess a family from a single base case.
 
 Do not resolve that blocker by assuming an empty effect row proves totality.
 [Effect Handlers, Evidently, extended appendix A](https://xnning.github.io/papers/icfp20evidently-appendix.pdf)

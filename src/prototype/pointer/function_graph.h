@@ -24,7 +24,13 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	struct pg_typing *typing, struct pg_classifiers *classifiers,
 	struct pg_whnf_work *evaluation, const struct pg_evidence *function);
 enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph_work *work, uint64_t budget);
+/* Leading raw Lambda parameters become ordinary family abstractions. */
 const struct pg_evidence *pg_function_graph_formation(const struct pg_function_graph_work *work);
+/* Declaration before abstracting the original leading parameters. Case input
+ * is its retained source ADT formation, or NULL for a direct-return graph.
+ * Used to transfer source constructor names, never to infer membership. */
+const struct pg_evidence *pg_function_graph_declaration(const struct pg_function_graph_work *work);
+const struct pg_evidence *pg_function_graph_case_input(const struct pg_function_graph_work *work);
 /* Construct a dependent result packet and its producer by ordinary induction
  * over the same source argument. Shares the generated relation above.
  * Returned packet formation is parameterized by the source input context;

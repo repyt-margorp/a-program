@@ -4756,6 +4756,8 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	assert(pg_evidence_judgement(zero) == PG_JUDGEMENT_VALUE);
 	struct pg_synthesis_job *not_a_type = pg_synthesis_inductive_instance(&synthesis, pg_synthesis_evidence(&synthesis, zero));
 	complete(&synthesis, not_a_type, PG_SYNTHESIS_UNSUPPORTED);
+	complete(&synthesis, pg_synthesis_inductive_instance(&synthesis,
+		pg_synthesis_evidence(&synthesis, pg_prove_empty_context(typing))), PG_SYNTHESIS_UNSUPPORTED);
 	assert(!pg_synthesis_inductive_instance_result(not_a_type, &recovered));
 	assert(recovered.formation == nat);
 	assert(pg_evidence_judgement(succ) == PG_JUDGEMENT_COMPUTATION);

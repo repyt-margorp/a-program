@@ -1875,6 +1875,11 @@ struct pg_synthesis_job *pg_synthesis_normalize_classifier(struct pg_synthesis *
 {
 	if (!proof) return NULL;
 	switch (pg_evidence_judgement(proof)) {
+	case PG_JUDGEMENT_TYPE_FAMILY:
+		/* A pending callee may resolve to a family, not a CBPV computation. */
+		if (!context || pg_evidence_context(context) != pg_evidence_context(proof)) return NULL;
+		if (pg_prove_projection(synthesis->typing, context, proof) != proof) return NULL;
+		return pg_synthesis_evidence(synthesis, proof);
 	case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION:
 		if (!pg_evidence_subject(proof)) return NULL;
 		if (!context || pg_evidence_context(context) != pg_evidence_context(proof)) return NULL;
@@ -2561,6 +2566,34 @@ static enum pg_synthesis_status resolve_reference(struct pg_synthesis *synthesis
 	return status;
 }
 
+static int function_graph_exports(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	const struct pg_evidence *input = pg_function_graph_case_input(&job->function_graph);
+	if (!input) return 0;
+	const struct pg_evidence *declaration = pg_function_graph_declaration(&job->function_graph);
+	struct pg_synthesis_job *origin = pg_synthesis_evidence(synthesis, input);
+	if (!origin || !origin->exports) return -1;
+	const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(declaration, 0), 0);
+	const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing, context, context);
+	const struct pg_data_layout *source = pg_data_declaration_layout(pg_evidence_inductive_declaration(input));
+	const struct pg_data_layout *target = pg_data_declaration_layout(pg_evidence_inductive_declaration(declaration));
+	const struct pg_source_scope *exports = intern_scope(synthesis,
+		(struct pg_source_scope){.context_job = pg_synthesis_evidence(synthesis, context)});
+	for (const struct pg_source_scope *name = origin->exports; name; name = name->parent) {
+		if (!name->producer || name->producer->role != CONSTRUCTOR_VALUE_JOB) continue;
+		size_t index;
+		if (!pg_data_constructor_position(source, name->producer->inputs[1], &index)) return -1;
+		const struct pg_object *constructor = pg_data_constructor(target, index);
+		exports = pg_synthesis_name_job(synthesis, exports, name->name,
+			pg_synthesis_constructor_value(synthesis, declaration, constructor, parameters));
+		if (!exports) return -1;
+	}
+	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, declaration);
+	if (!accepted) return -1;
+	accepted->exports = exports;
+	return 0;
+}
+
 static void function_graph_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_evidence *function = job->inputs[0];
@@ -2571,6 +2604,9 @@ static void function_graph_step(struct pg_synthesis *synthesis, struct pg_synthe
 	enum pg_function_graph_status status = pg_function_graph_advance(&job->function_graph, 1);
 	if (status == PG_FUNCTION_GRAPH_PENDING) { enqueue(synthesis, job); return; }
 	job->result = pg_function_graph_formation(&job->function_graph);
+	if (status == PG_FUNCTION_GRAPH_DONE && function_graph_exports(synthesis, job)) {
+		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+	}
 	finish(synthesis, job, status == PG_FUNCTION_GRAPH_DONE ? PG_SYNTHESIS_DONE :
 		status == PG_FUNCTION_GRAPH_UNSUPPORTED ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_ERROR);
 }
@@ -4248,13 +4284,18 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	}
 	const struct pg_evidence *context = source_context(job->inner), *scrutinee = job->checking_term;
 	if (!scrutinee || pg_evidence_judgement(scrutinee) != PG_JUDGEMENT_VALUE) goto unsupported;
+	if (!job->right) job->right = pg_synthesis_normalize_classifier(synthesis, context, scrutinee);
+	if (!job->right) goto error;
+	if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
+	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
+	scrutinee = job->right->result;
 	if (!job->match) {
-		if (!job->right) job->right = request_job(synthesis, CLASSIFIER_FORMATION_JOB,
+		struct pg_synthesis_job *classifier = request_job(synthesis, CLASSIFIER_FORMATION_JOB,
 			pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, scrutinee));
-		if (!job->right) goto error;
-		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
-		if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
-		struct pg_synthesis_job *instance_job = pg_synthesis_inductive_instance(synthesis, job->right);
+		if (!classifier) goto error;
+		if (classifier->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, classifier); return; }
+		if (classifier->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, classifier->status); return; }
+		struct pg_synthesis_job *instance_job = pg_synthesis_inductive_instance(synthesis, classifier);
 		if (!instance_job) goto error;
 		if (instance_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, instance_job); return; }
 		if (instance_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, instance_job->status); return; }
@@ -4489,6 +4530,9 @@ static struct substitution_state *substitution_start(struct pg_synthesis *synthe
 	return state->map ? state : NULL;
 }
 
+static const struct pg_reduction_certificate *normalization_receipt(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, const struct pg_term *input, enum pg_reduction_kind kind);
+
 static void inductive_instance_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *type = (void *)job->inputs[0];
@@ -4506,9 +4550,19 @@ static void inductive_instance_step(struct pg_synthesis *synthesis, struct pg_sy
 		return;
 	}
 	if (!job->inductive_recovery) {
+		enum pg_evidence_judgement kind = pg_evidence_judgement(type->result);
+		if (kind != PG_JUDGEMENT_VALUE_TYPE && kind != PG_JUDGEMENT_TYPE_FAMILY) {
+			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+		}
+		/* Retain beta evidence before recovering the nominal declaration. */
+		const struct pg_reduction_certificate *receipt = normalization_receipt(synthesis, job,
+			pg_evidence_subject(type->result)->core, PG_REDUCTION_WHNF);
+		if (!receipt) return;
+		const struct pg_evidence *normalized = pg_prove_normalization(synthesis->typing, type->result, receipt);
+		if (!normalized) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		job->inductive_recovery = pg_alloc(synthesis->typing->graph, sizeof(*job->inductive_recovery));
 		if (!job->inductive_recovery) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		pg_inductive_recovery_init(job->inductive_recovery, synthesis->typing, type->result);
+		pg_inductive_recovery_init(job->inductive_recovery, synthesis->typing, normalized);
 	}
 	int status = pg_inductive_recovery_advance(job->inductive_recovery, 1);
 	if (!status) { enqueue(synthesis, job); return; }

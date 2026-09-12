@@ -8,11 +8,11 @@ struct pg_function_graph_state {
 	struct pg_typing *typing;
 	struct pg_classifiers *classifiers;
 	struct pg_whnf_work *evaluation;
-	const struct pg_evidence *body, *context, *argument_context;
+	const struct pg_evidence *body, *outer_context, *context, *argument_context;
 	const struct pg_evidence *domain, *range, *self, *indices;
 	struct pg_inductive_instance input;
 	const struct pg_evidence **results;
-	const struct pg_evidence *branch, *branch_context, *branch_argument, *formation;
+	const struct pg_evidence *branch, *branch_context, *branch_argument, *formation, *declaration;
 	const struct pg_data_schema *schema;
 	const struct pg_evidence *packet, *witness, *motive_context, *motive;
 	const struct pg_evidence **witness_branches;
@@ -153,6 +153,9 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	s->typing = typing; s->classifiers = classifiers; s->evaluation = evaluation;
 	function = pg_function_graph_source(function);
 	if (!function) goto unsupported;
+	s->outer_context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(function, 0), 1), 0);
+	while (pg_evidence_rule(pg_evidence_premise(function, 1)) == PG_LAMBDA_INTRO)
+		function = pg_evidence_premise(function, 1);
 	const struct pg_evidence *pi = pg_evidence_premise(function, 0);
 	s->argument_context = pg_evidence_premise(pi, 1);
 	s->context = pg_evidence_premise(s->argument_context, 0);
@@ -195,7 +198,12 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 		if (s->next == s->count) {
 			s->schema = pg_data_schema(s->typing,
 				pg_data_signature(s->typing, s->self, s->indices), s->count, s->results);
-			s->formation = pg_prove_inductive_type(s->typing, s->classifiers, s->schema);
+			s->declaration = pg_prove_inductive_type(s->typing, s->classifiers, s->schema);
+			s->formation = s->declaration;
+			for (const struct pg_evidence *context = s->context;
+				s->formation && pg_evidence_context(context) != pg_evidence_context(s->outer_context);
+				context = pg_evidence_premise(context, 0))
+				s->formation = pg_prove_family_abstraction(s->typing, context, s->formation);
 			s->status = s->formation ? PG_FUNCTION_GRAPH_DONE : PG_FUNCTION_GRAPH_UNSUPPORTED;
 			break;
 		}
@@ -226,6 +234,16 @@ const struct pg_evidence *pg_function_graph_formation(const struct pg_function_g
 	return work && work->state && work->state->status == PG_FUNCTION_GRAPH_DONE ? work->state->formation : NULL;
 }
 
+const struct pg_evidence *pg_function_graph_declaration(const struct pg_function_graph_work *work)
+{
+	return work && work->state && work->state->status == PG_FUNCTION_GRAPH_DONE ? work->state->declaration : NULL;
+}
+
+const struct pg_evidence *pg_function_graph_case_input(const struct pg_function_graph_work *work)
+{
+	return work && work->state && work->state->status == PG_FUNCTION_GRAPH_DONE ? work->state->input.formation : NULL;
+}
+
 static const struct pg_evidence *packet_parameters(struct pg_function_graph_state *s,
 	const struct pg_evidence *context, const struct pg_evidence *argument)
 {
@@ -254,7 +272,7 @@ static int packet_formation(struct pg_function_graph_state *s)
 	const struct pg_evidence *self = pg_prove_context_extension(t, s->argument_context, pg_binder(t->graph), u);
 	const struct pg_evidence *output = pg_prove_context_extension(t, self, pg_binder(t->graph), projection(s, self, s->range));
 	if (!output) return -1;
-	const struct pg_evidence *relation = projection(s, output, s->formation);
+	const struct pg_evidence *relation = projection(s, output, s->declaration);
 	relation = pg_prove_family_application(t, relation,
 		pg_prove_variable(t, output, pg_evidence_context(s->argument_context)->binder));
 	relation = pg_prove_family_application(t, relation, pg_prove_variable(t, output, pg_evidence_context(output)->binder));
@@ -270,7 +288,7 @@ static const struct pg_evidence *return_packet(struct pg_function_graph_state *s
 {
 	struct pg_typing *t = s->typing;
 	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(s->schema), index);
-	const struct pg_evidence *graph = pg_prove_constructor(t, s->formation, constructor,
+	const struct pg_evidence *graph = pg_prove_constructor(t, s->declaration, constructor,
 		pg_prove_substitution_projection(t, s->context, context), count, fields);
 	if (!graph) return NULL;
 	const struct pg_evidence *result = pg_data_result(t, s->schema, constructor, pg_evidence_premise(graph, 3));
@@ -395,7 +413,7 @@ enum pg_function_graph_status pg_function_graph_witness_advance(struct pg_functi
 			parameters_at(s, s->argument_context), argument, s->motive_context, s->motive, s->count, s->witness_branches);
 		else body = pg_prove_match(s->typing, s->classifiers, s->input.formation,
 			parameters_at(s, s->argument_context), argument, s->motive_context, s->motive, s->count, s->witness_branches);
-		s->witness = pg_prove_abstract(s->typing, s->classifiers, s->context, s->argument_context, body);
+		s->witness = pg_prove_abstract(s->typing, s->classifiers, s->outer_context, s->argument_context, body);
 		if (!s->witness) goto unsupported;
 		s->witness_status = PG_FUNCTION_GRAPH_DONE;
 	}

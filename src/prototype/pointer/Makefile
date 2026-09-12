@@ -72,7 +72,7 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	bash $(ROOT)tests/cli.sh $(BUILD)/pointer-check
 	bash $(ROOT)tests/import_cli.sh $(BUILD)/pointer-check
 	bash $(ROOT)tests/repl.sh $(BUILD)/pointer-check $(BUILD)/source_io_test
-	bash $(ROOT)tests/image_cli.sh $(BUILD)/source_io_test $(BUILD)/pointer-check
+	bash $(ROOT)tests/image_cli.sh $(BUILD)/source_io_test $(BUILD)/pointer-check $(BUILD)/program_test
 	$(BUILD)/identity_test
 	$(BUILD)/iadt_test
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-formation.p
@@ -90,8 +90,14 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p certifiedMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p aliasMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p proofMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph.p baseMain baseExpected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-function-graph-mismatch.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-function-witness-mismatch.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-function-graph-parameter-mismatch.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-function-graph-case-mismatch.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/generated-function-graph-direct.p certified expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/generated-function-graph-direct-forgery.p
 	$(BUILD)/parse_files $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 	bash $(ROOT)tests/syntax_inventory.sh $(BUILD)/parse_files
 
@@ -115,9 +121,9 @@ $(BUILD)/synthesis_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROO
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)tests/synthesis.c -o $@
 
-$(BUILD)/program_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)tests/program.c
+$(BUILD)/program_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/program.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)tests/program.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/program.c -o $@
 
 $(BUILD)/seed_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)seed.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/seed.c
 	mkdir -p $(BUILD)

@@ -4,6 +4,7 @@ directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 fixture=$1
 binary=$2
+compare=$3
 "$fixture" nominal-write "$directory/multiple.a"
 code=0
 "$binary" --load --steps 0 --save "$directory/unsolved.a" "$directory/multiple.a" > "$directory/status" || code=$?
@@ -118,20 +119,25 @@ printf '%s\n' 'image cli: unfinished family inputs preserve direct Solve admissi
 
 # Generated graph families are rebuilt by the same Solve, including aliases
 # appearing in independently synthesized annotations. No graph proof flag loads.
-input="$(dirname "${BASH_SOURCE[0]}")/acceptance/generated-function-graph.p"
-for steps in 0 100 100000; do
-	code=0
-	"$binary" --steps "$steps" --save "$directory/generated.a" "$input" > "$directory/status" || code=$?
-	if test "$steps" = 100000; then test "$code" = 0; else test "$code" = 3; fi
-	code=0
-	"$binary" --load --steps 0 --save "$directory/generated-resaved.a" "$directory/generated.a" > "$directory/status" || code=$?
-	test "$code" = 3
-	"$binary" --load --nf expected "$directory/generated-resaved.a" > "$directory/generated-expected"
-	sed '1d' "$directory/generated-expected" > "$directory/generated-expected-value"
-	for name in main certifiedMain aliasMain; do
-		"$binary" --load --nf "$name" "$directory/generated-resaved.a" > "$directory/generated-main"
-		sed '1d' "$directory/generated-main" > "$directory/generated-main-value"
-		cmp "$directory/generated-main-value" "$directory/generated-expected-value"
+while read -r fixture names; do
+	input="$(dirname "${BASH_SOURCE[0]}")/$fixture"
+	for steps in 0 100 100000; do
+		code=0
+		"$binary" --steps "$steps" --save "$directory/generated.a" "$input" > "$directory/status" || code=$?
+		if test "$steps" = 100000; then test "$code" = 0; else test "$code" = 3; fi
+		code=0
+		"$binary" --load --steps 0 --save "$directory/generated-resaved.a" "$directory/generated.a" > "$directory/status" || code=$?
+		test "$code" = 3
+		for name in $names; do
+			"$compare" --equal-image "$directory/generated-resaved.a" "$name" expected
+		done
+		if test "$fixture" = acceptance/generated-function-graph-direct.p; then
+			if "$compare" --equal-image "$directory/generated-resaved.a" certified other; then exit 1; fi
+		fi
 	done
-done
+done <<'GRAPHS'
+acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain
+acceptance/generated-function-graph-direct.p main certified
+../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified
+GRAPHS
 printf '%s\n' 'image cli: generated graph source aliases and normal forms survive unfinished/completed resaves'
