@@ -129,18 +129,35 @@ Remaining limits are not acceptance successes:
   its three-leaf graph, but `function_graph_exports` rejects repeated source
   constructor names (`zero` from different split paths). An earlier debugger
   stop at unresolved `*k` was a speculative branch, not this final cause.
-- A recursive caller of `structuralMerge` still encounters a separate graph
-  branch-planning limitation. Its local reproduction is `repeatMerge le fuel`,
-  with zero branch `\xs : List Nat => xs` and successor branch
-  `\xs : List Nat => { previous := *k xs; structuralMerge Nat le left previous; }`.
-  The failure occurs before schema construction, after recording the first IH
-  call. The planner reaches a neutral nested induction after losing the helper
-  call boundary through partial application/sequencing. The shared normalizer
-  cannot turn that open induction into RETURN. Next inspect typed application
-  continuation handling before beta exposure; do not replace it with a second
-  evaluator or attribute this failure to the export collision.
-- These cases and full MergeSort remain follow-up work. The captured list-copy
-  test is not a substitute for restoring the merge-caller graph.
+- These cases and full MergeSort remain follow-up work.
+
+### Partial-call Follow-up
+
+At `e9a131d`, a recursive caller `repeatMerge le fuel` remained unsupported:
+its zero branch returns `\xs : List Nat => xs`, and its successor branch is
+`\xs : List Nat => { previous := *k xs; structuralMerge Nat le left previous; }`.
+Graph planning failed before schema construction, after recording the first IH
+call. Partial application/sequencing exposed a callable with arguments on the
+continuation stack. Eager beta-body extraction then lost the helper boundary,
+leaving a neutral nested induction which cannot normalize to RETURN.
+
+Before this beta exposure, the planner now reconstructs the pending typed
+application spine and asks the existing helper-graph owner to handle it. It
+consumes the argument frames only when that request is accepted. Otherwise the
+ordinary symbolic evaluation path is unchanged. No new evaluation protocol,
+proof rule, effect dispatch or equality reflection is introduced.
+
+- [x] Reproduce the failure independently of graph export-name collisions.
+- [x] Generate the recursive merge caller's graph and witness.
+- [x] Add zero-, one- and two-iteration output comparisons to the permanent
+  captured-request fixture and image tests, including provider reordering.
+- [x] Full debug and ASan/UBSan `check-acceptance` for this follow-up,
+  including compatibility 28/28, QuickSort and the new repeated merge checks.
+
+The root README now describes the pointer rewrite rather than the legacy
+TermDB/alpha-interning/replay architecture. Its predecessor is preserved in
+`2026-09-14-LEGACY-TOP-LEVEL-README.md`. The documented build, NF, REPL and
+pending-image commands were checked with the current pointer binary.
 
 Keep Issue #28 open while reporting this distinction, rather than describing
 all graph-composition concerns as fixed.

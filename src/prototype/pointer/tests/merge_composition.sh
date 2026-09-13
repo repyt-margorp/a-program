@@ -54,5 +54,8 @@ for input in "$source" "$directory/alone.p" "$directory/reordered.p"; do
 	"$runtime" --equal-image "$directory/captured.a" chosen one
 	"$runtime" --equal-image "$directory/captured.a" laterMain one
 	"$runtime" --equal-image "$directory/captured.a" dependentMain dependentExpected
+	"$runtime" --equal-image "$directory/captured.a" mergedMain graphExpected
+	"$runtime" --equal-image "$directory/captured.a" mergedZero emptyExpected
+	"$runtime" --equal-image "$directory/captured.a" mergedTwice mergedTwiceExpected
 done
 printf '%s\n' 'merge composition: capture, currying, declaration order, result and image checks passed'

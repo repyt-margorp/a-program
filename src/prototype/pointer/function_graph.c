@@ -377,14 +377,15 @@ static const struct pg_evidence *parameter_source(struct pg_function_graph_state
 /* Preserve a helper's complete typed call before beta exposure
  * erases its function boundary. Its graph is requested from the same owner
  * that services public @f and *f requests, not generated afresh at each call. */
-static int helper_call(struct pg_function_graph_state *s, struct graph_case *plan)
+static int helper_call(struct pg_function_graph_state *s, struct graph_case *plan,
+	const struct pg_evidence *computation)
 {
 	const struct pg_term *content;
 	enum pg_totality totality;
-	if (!pg_pure_computation_type_view(pg_evidence_classifier(plan->computation), &totality, &content)) return 0;
+	if (!pg_pure_computation_type_view(pg_evidence_classifier(computation), &totality, &content)) return 0;
 	struct pg_graph temporary = {0};
 	struct graph_continuation *arguments = NULL;
-	const struct pg_evidence *function = plan->computation, *environment = NULL;
+	const struct pg_evidence *function = computation, *environment = NULL;
 	size_t count = 0, forces = 0;
 	int result = 0;
 	for (;;) {
@@ -473,6 +474,21 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		return plan_result(s, plan, pg_prove_return_value(t, normalized));
 	}
 	if (plan->continuations && plan->continuations->argument) {
+		/* Sequencing can expose a callable with its arguments still on the
+		 * continuation stack. Preserve that typed call before beta exposure. */
+		const struct pg_evidence *call = plan->computation;
+		struct graph_continuation *rest = plan->continuations;
+		while (call && rest && rest->argument) {
+			call = pg_prove_application(t, call, projection(s, plan->context, rest->argument));
+			rest = rest->next;
+		}
+		int helper = helper_call(s, plan, call);
+		if (helper) {
+			if (helper < 0) return -1;
+			plan->computation = call;
+			plan->continuations = rest;
+			return 0;
+		}
 		const struct pg_evidence *body = pg_prove_application_body(t, plan->computation,
 			projection(s, plan->context, plan->continuations->argument));
 		if (body) {
@@ -494,7 +510,7 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		return 0;
 	}
 	case PG_APP_ELIM: {
-		int helper = helper_call(s, plan);
+		int helper = helper_call(s, plan, plan->computation);
 		if (helper) return helper < 0 ? -1 : 0;
 		const struct pg_evidence *body = pg_prove_application_body(t, left, right);
 		if (body) { plan->computation = body; return 0; }

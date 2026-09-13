@@ -56,3 +56,17 @@ pickWitness := *pick;
 Family := \n : Nat => n @zero => Nat @succ k => Bool;
 dependentMain := *pick &Family one Bool.true @output => output;
 dependentExpected := Bool.true;
+
+// Preserve helper calls exposed through partial application and sequencing.
+repeatMerge := \le : Nat -> Nat -> Bool => \fuel : Nat => fuel
+	@zero => (\xs : List Nat => xs)
+	@succ k => (\xs : List Nat => {
+		previous := *k xs;
+		structuralMerge Nat le left previous;
+	});
+mergeGraph := @repeatMerge;
+mergeWitness := *repeatMerge;
+mergedMain := *repeatMerge &lessEqual one right @output => output;
+mergedZero := *repeatMerge &lessEqual Nat.zero right @output => output;
+mergedTwice := *repeatMerge &lessEqual (Nat.succ one) right @output => output;
+mergedTwiceExpected := structuralMerge Nat &lessEqual left expected;
