@@ -2,11 +2,8 @@
 set -eu
 binary=$1
 check() {
-	expected=$1
-	status=$2
-	source=$3
+	local expected=$1 status=$2 source=$3 code=0
 	shift 3
-	code=0
 	output=$(printf '%s' "$source" | "$binary" "$@" - 2>&1) || code=$?
 	if [ "$code" != "$expected" ]; then
 		printf 'expected exit %s, got %s: %s\n' "$expected" "$code" "$output" >&2
@@ -58,6 +55,23 @@ check 3 "pending steps=$((steps - 1))" "$source" --nf main --steps "$((steps - 1
 check 0 "done steps=$steps" "$source" --nf main --steps "$steps"
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
+# Literal syntax is retained even before host typing is implemented. Saving
+# either pending or unsupported work must not turn it into accepted evidence.
+for literal in '#42' '#-9223372036854775808' '#"hello"' '#""'; do
+	input="hello:=@{unit:*;}; main:=$literal;"
+	check 4 'unsupported steps=' "$input"
+	for budget in 0 100000; do
+		if [ "$budget" = 0 ]; then
+			check 3 'pending steps=0' "$input" --steps "$budget" --save "$directory/literal.a"
+		else
+			check 4 'unsupported steps=' "$input" --steps "$budget" --save "$directory/literal.a"
+		fi
+		code=0
+		output=$("$binary" --load "$directory/literal.a") || code=$?
+		test "$code" = 4
+		case "$output" in 'unsupported steps='*) ;; *) exit 1 ;; esac
+	done
+done
 # Preserve the all-refuted indexed-Match limitation, including ordinary image
 # reload. The post-check must not be used to guess the missing motive.
 fixture=$(dirname "$0")/../../tests/fixtures/typing/impossible_index_branch_check.p

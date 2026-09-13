@@ -29,6 +29,68 @@ Commit and push verified development increments on the rewrite branch. A
 published increment is not completion of the full rewrite; retain the open
 compatibility, property-proof and Higher Identity requirements below.
 
+## September 14 Host Compatibility Follow-Up
+
+After `af30e89`, the top-level README separates verified fragments from missing
+host support instead of presenting every implementation increment inline. The
+legacy README remains byte-identical to `e9a131d:README.md`; the remote default
+branch is the rewrite and Main still points to `63b00eb`.
+
+Current code findings:
+
+- `reader.c`/`syntax.c` already parse integer and text literals. `synthesis.c`
+  has no literal introduction path: `resolve_reference` returns unsupported
+  for these tokens, rather than treating their contents as names.
+- `program.c:pg_program_allocate` installs `pg_synthesis_root`, not a host
+  prelude. `prelude.c` builds checked Identity library terms for callers; it is
+  not an automatically installed host namespace. Thus `#.Int` currently rejects
+  as an unavailable name, while a standalone `#42` is unsupported.
+- The previous `src/prototype/src/kernel/intrinsic.c` explicitly maps `Int`
+  and `Int32` to the same fixed-width type, with `Int64` distinct. Its default
+  integer type is Int32, despite the reader accepting Int64-range tokens.
+  Do not infer a literal's classifier from the reader's storage width or `::`.
+  That implementation also distinguishes pure arithmetic from print operations;
+  the namespace alone does not determine purity or handler behavior.
+
+Next implementation order, without a new Core node family or Replay path:
+
+- [ ] Specify the retained machine-value contract first: width/range, arithmetic
+  overflow behavior, text bytes/encoding and identity of each host type. Compare
+  existing intrinsic and integration tests before adopting or changing them.
+  Hardware-dependent or interceptable operations must not become unconditional
+  pure conversion rules. The model/implementation correspondence must be explicit.
+- [ ] Introduce typed host descriptors/literal evidence through `evidence.c`
+  and ordinary derivation inputs, with inert `PG_REFERENCE` Core representations.
+  No generic user-supplied signature may certify an arbitrary literal or oracle.
+  Share exact descriptor/value keys; keep classifiers above erased Core.
+- [ ] Connect these checked producers to root namespace setup and literal
+  synthesis. Preserve aliases, scoped lookup, ordinary application and post-check
+  `::`; do not add an expected-type-based literal coercion for old fixtures.
+- [ ] Extend shared descriptor/derivation/source image transport so unfinished
+  and completed source inputs use the same producer and acceptance rules after
+  loading. Restore versioned semantic descriptors, never process-local addresses.
+- [ ] Restore unchanged `host_text_recursive_motive_check.p` and
+  `host_expression_evaluator_check.p`, with actual result comparisons, wrong-width
+  rejection, boundary arithmetic, repeated imports and split-fuel/image checks.
+  Add runtime print dispatch separately from pure normalization and type checking.
+- [x] Preserve the current unsupported-literal status through unfinished and
+  attempted-Solve image round trips in `tests/cli.sh`, including empty text,
+  Int64 minimum and text matching an existing identifier. Replace these temporary
+  status expectations with positive typing/results when host support lands;
+  they are not a permanent language restriction or a positive compatibility gate.
+
+Focused optimized and ASan/UBSan CLI tests pass. The unchanged compiler also
+passes `check-source-compatibility` (57/57 and all subsequent image/property
+result checks) and the README's example 05 NF command. The added tests initially
+exposed a test-helper issue: `check` overwrote the caller's source variable.
+Its inputs/status are now local; the intentionally exposed output remains shared.
+No compiler C code, kernel rule or image format changes in this documentation
+and test increment. Host compatibility is still unimplemented, not completed by
+testing its current unsupported status.
+Change size: README +34/-57; test script +18/-4; plan additions counted
+separately. The previous complete compiler acceptance remains recorded below;
+only the affected tests and compatibility target were rerun for this increment.
+
 ## September 13 Priority Correction: Source Compatibility First
 
 September 14 follow-up: see

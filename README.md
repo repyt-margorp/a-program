@@ -142,63 +142,40 @@ successful verification nor evidence that the program is invalid.
 
 September 14 verification includes examples 01-07 and 09, a 57-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
-QuickSort output cases. Acc is source-defined using indexed induction, not a
-special kernel primitive. Quoted type-producing functions use the same checked
-family contract in both ordinary and logical-family applications. The original
-concrete Acc example and its imported elimination results are covered through
-unfinished/completed images. Non-recursive Match can refine captured dependent
-arguments, and reachable indexed branches retain constructor-index information
-when synthesizing their motive. A concrete two-element accessibility relation
-exercises recursive Acc elimination and direct child extraction, including
-transport from a constructor index to a branch variable. This is not arbitrary
-motive inference.
-Constructor-field refinement also recovers typed endpoints from retained
-introductions: a branch identity `succ zero = succ k` can supply the field
-identity used to transport an `At zero` argument to `At k`. Fields are selected
-by schema binders, not inferred from untyped application positions.
-A post-hoc specification of an existing `length`
-is tested in [length-output-proof.p](src/prototype/pointer/tests/acceptance/length-output-proof.p).
-The unchanged legacy `lengthCertified` also synthesizes an input-indexed result
-packet. Independent branch types propose a dependent motive; all induction
-branches must verify it before adoption. This does not infer motives from `::`
-or provide a complete dependent unification procedure.
-Importing clients prove content preservation for the unchanged QuickSort
-provider's [measure](src/prototype/pointer/tests/acceptance/legacy-measure-property.p)
-and [partition](src/prototype/pointer/tests/acceptance/legacy-partition-property.p).
-The partition specification places each input head into exactly one output
-subsequence while preserving order within each subsequence.
-[quickSortCorrect](src/prototype/pointer/tests/acceptance/legacy-quicksort-property.p)
-composes these lemmas with append and recursive graph induction into a
-`ContentsOf` certificate for the existing QuickSort. Its source-defined IADTs
-certify content-preserving partition and reassembly, independently of the
-comparator; they do not certify sortedness.
-The outer `@quickSort` graph now retains the results and graph evidence of
-`measure`, `natAccessible` and `quickSortAcc`, allowing an importing client to
-inspect these intermediate steps rather than only extract the final value.
-Selected captured indexed functions also generate checked graphs and witnesses,
-including Vec copy. The unchanged legacy dependent Vec append now compiles,
-and six result comparisons cover empty inputs, order and repeated recursion
-through unfinished/completed images.
-Typed one-step elimination supports direct and sequenced function fields, and
-recovers constructor origins through return-producing sequences. Checked total,
-effect-free result projection now has an explicit semantic reference, allowing
-computed constructor indices to agree with source post-checks. It also commutes
-with a checked total, effect-free Match, connecting synthesized type cases to
-written dependent Pi families. Ordinary Fold and Identity transport retain
-their strict behavior. See the
-[result projection contract](doc/2026-09-14-TOTAL-PURE-RESULT-PROJECTION.md).
+QuickSort output cases. These are supported fragments, not complete legacy
+compatibility or complete Higher Observational Type Theory.
 
-This is not complete legacy compatibility or complete Higher Observational
-Type Theory. General higher/dependent/Universe Identity coherence, some indexed
-graph and Vec cases, comparator-dependent sortedness proofs, and full host/backend
-coverage remain open. Nested definition-block expressions are not surface syntax;
-ordinary sequential aliases and return-only handlers have dependent-capture tests,
-not a general dependent-handler guarantee. Execution witnesses alone do not prove
-sorting correctness. In particular, a standalone indexed Match whose every branch is
-refuted can remain pending without a result-classifier constraint from an
-application. Its trailing `::` deliberately does not supply that constraint.
-See the [active plan](doc/2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md)
-and [merge audit](doc/2026-09-14-MERGE-COMPOSITION-AND-IDENTITY-NORMALIZATION-AUDIT.md).
+| Area | Verified scope |
+| --- | --- |
+| Indexed induction | Source-defined Acc, recursive/function fields, dependent Vec append and selected captured indexed functions |
+| Dependent synthesis | Constructor-index refinement and branch-proposed motives checked against every induction branch; unchanged `lengthCertified` |
+| Function properties | [Length specification](src/prototype/pointer/tests/acceptance/length-output-proof.p) and [QuickSort content preservation](src/prototype/pointer/tests/acceptance/legacy-quicksort-property.p), not sortedness |
+| Higher Identity | Selected typed action, transport and higher-dimensional examples; general coherence remains unfinished |
+| Effects | Checked requests, multi-clause handlers, forwarding and resumptions; no terminal/host execution backend |
+| Images | Unfinished/completed source inputs, imports and selected retained reductions through ordinary Solve |
+
+Important limitations:
+
+- `#.Int`, `#.Int32`, `#.Int64`, `#.Text`, arithmetic and printing are not
+  restored in the built-in source namespace. Integer and text literals are
+  parsed but cannot yet synthesize typing evidence. Parsing an old program
+  does not imply it can be compiled or run.
+- General dependent motive inference, indexed graph coverage and
+  higher/dependent/Universe Identity coherence remain open.
+- A standalone indexed Match whose every branch is refuted can remain pending
+  without an application result constraint. Its trailing `::` does not supply
+  that constraint.
+- Nested definition-block expressions and general dependent handlers are not
+  supported. Tested dependent captures cover ordinary sequential aliases and
+  return-only handlers.
+- Execution witnesses do not establish sorting correctness; the current
+  QuickSort property certifies content preservation, not comparator-dependent
+  sortedness.
+
+Detailed contracts and implementation history are in the
+[active plan](doc/2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md),
+[result projection contract](doc/2026-09-14-TOTAL-PURE-RESULT-PROJECTION.md), and
+[merge audit](doc/2026-09-14-MERGE-COMPOSITION-AND-IDENTITY-NORMALIZATION-AUDIT.md).
 
 Run the current acceptance suite (Bash is required):
 
