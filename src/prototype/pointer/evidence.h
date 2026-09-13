@@ -212,6 +212,12 @@ const struct pg_evidence *pg_prove_inductive_motive_context(struct pg_typing *ty
 int pg_inductive_motive_context_valid(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context);
+/* Expose a substituted Match/induction using the same elimination rule.
+ * Lift its generic motive telescope, not the scrutinee's fixed fiber.
+ * Returns ordinary evidence, with no new conversion or reduction rule. */
+const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
+	const struct pg_evidence *elimination);
 /* Eta-expand a declared, parameter-instantiated indexed family into an
  * ordinary raw Pi computation returning its type as a Universe value.
  * Uses checked index scopes, family application, RETURN and Lambda; not a

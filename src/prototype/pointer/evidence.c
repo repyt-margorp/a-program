@@ -930,29 +930,19 @@ done:
 	return result;
 }
 
-static const struct pg_evidence *prove_data_scope(struct pg_typing *typing,
-	const struct pg_evidence *formation,
-	const struct pg_evidence *fields, const struct pg_evidence *parameters,
+static const struct pg_evidence *lift_scope(struct pg_typing *typing,
+	const struct pg_evidence *map, const struct pg_evidence *fields,
 	const struct pg_context *allocation, int retained)
 {
-	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
-	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (parameters->premises[0]->context != formation->context) return NULL;
-	if (!fields) return NULL;
-	const struct pg_evidence *self_context = formation->premises[0];
+	if (!pg_evidence_owned_by(map, typing) || map->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (!context_proof(typing, fields)) return NULL;
 	size_t count;
-	if (pg_context_extension_size(fields->context, self_context->context, &count)) return NULL;
+	if (pg_context_extension_size(fields->context, map->premises[0]->context, &count)) return NULL;
 	if (retained) {
 		size_t supplied;
-		if (pg_context_extension_size(allocation, parameters->premises[1]->context, &supplied) || supplied != count) return NULL;
+		if (pg_context_extension_size(allocation, map->premises[1]->context, &supplied) || supplied != count) return NULL;
 	}
 	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-	const struct pg_evidence *family = pg_prove_reindex(typing, parameters, formation);
-	const struct pg_evidence *self = formation->judgement == PG_JUDGEMENT_TYPE_FAMILY
-		? family : pg_prove_type_value(typing, family);
-	if (!self) return NULL;
-	const struct pg_evidence *map = pg_prove_substitution_extend(typing, parameters, self_context, 1, &self);
-	if (!map) return NULL;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence *result = NULL;
 	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
@@ -971,6 +961,22 @@ static const struct pg_evidence *prove_data_scope(struct pg_typing *typing,
 done:
 	pg_graph_destroy(&temporary);
 	return result;
+}
+
+static const struct pg_evidence *prove_data_scope(struct pg_typing *typing,
+	const struct pg_evidence *formation,
+	const struct pg_evidence *fields, const struct pg_evidence *parameters,
+	const struct pg_context *allocation, int retained)
+{
+	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
+	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (parameters->premises[0]->context != formation->context) return NULL;
+	const struct pg_evidence *family = pg_prove_reindex(typing, parameters, formation);
+	const struct pg_evidence *self = formation->judgement == PG_JUDGEMENT_TYPE_FAMILY
+		? family : pg_prove_type_value(typing, family);
+	if (!self) return NULL;
+	const struct pg_evidence *map = pg_prove_substitution_extend(typing, parameters, formation->premises[0], 1, &self);
+	return lift_scope(typing, map, fields, allocation, retained);
 }
 
 const struct pg_evidence *pg_prove_constructor_scope(struct pg_typing *typing,
@@ -1518,6 +1524,34 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 	if (!subject) goto done;
 	result = accept_record(typing, rule, PG_JUDGEMENT_COMPUTATION,
 		destination->context, subject, output->subject->core, count + 6, premises, saved, 0, NULL);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
+const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
+	const struct pg_evidence *elimination)
+{
+	if (!pg_evidence_owned_by(elimination, typing)) return NULL;
+	if (elimination->rule != PG_MATCH_ELIM && elimination->rule != PG_INDUCTION_ELIM) return NULL;
+	if (!pg_evidence_owned_by(substitution, typing) || substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (substitution->premises[0]->context != elimination->context) return NULL;
+	const struct pg_evidence *map = lift_scope(typing, substitution, elimination->premises[4], NULL, 0);
+	if (!map) return NULL;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence *result = NULL;
+	size_t count = elimination->premise_count - 6;
+	const struct pg_evidence **branches = pg_alloc(&temporary, count * sizeof(*branches));
+	if (count && !branches) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		branches[i] = pg_prove_reindex(typing, substitution, elimination->premises[i + 5]);
+		if (!branches[i]) goto done;
+	}
+	result = prove_data_elimination(typing, classifiers, elimination->premises[1],
+		pg_prove_substitution_compose(typing, elimination->premises[2], substitution),
+		pg_prove_reindex(typing, substitution, elimination->premises[3]), map->premises[1],
+		pg_prove_reindex(typing, map, elimination->premises[0]), count, branches, elimination->rule, NULL);
 done:
 	pg_graph_destroy(&temporary);
 	return result;

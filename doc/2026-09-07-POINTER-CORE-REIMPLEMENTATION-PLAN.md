@@ -293,6 +293,33 @@ September 13 function-field translation follow-up:
   remains open too. This does not block recompilation/execution of QuickSort;
   it blocks the separate post-hoc QuickSort property milestone.
 
+September 13 typed Match exposure:
+
+- [x] Reconstruct substituted Match/induction through the existing elimination
+  rule, with parameter composition, generic motive telescope lifting and typed
+  branch substitution. Constructor scopes and motive scopes share `lift_scope`;
+  no new kernel/wire rule, evaluator or Replay path is introduced.
+- [x] Expose Lambda application, quotation and returned-value sequencing before
+  choosing the graph's case structure. Head exposure is budgeted by ordinary
+  graph work. `function-graph-exposed-match.p` checks result witnesses, a
+  separate `Size xs n` proof for the already-defined wrapped length function,
+  and generic indexed Vec elimination. Wrong output-index evidence rejects.
+- [x] Check dependent-index reindexing against ordinary substitution and its
+  composition law; the resulting proof is checked through ordinary Solve.
+  Debug `check-acceptance`, including 20/20 compatibility, passes. ASan/UBSan
+  passes Core, IADT, Program, the new source result/rejection checks, image CLI
+  and 20/20 compatibility.
+  Implementation +119/-21 (net +98); tests +74/-1 (net +73); prototype build
+  rules +6/-0. Documentation is counted separately.
+- [ ] Replace the flat per-case call list with shared branch-aware translation
+  for schema and witness. The concrete `@quickSortAcc` blocker is still at
+  59,322 steps: its inner Match has a raw Pi result and pending application
+  frames for generalized dependent arguments. Preserve these frames, index
+  refinements and outer IH associations through each branch. A fixed-fiber
+  argument cannot simply be projected into every generic branch. Keep the
+  original Acc induction driver distinct from the nested SizedList discriminator;
+  neither needs a new primitive. Unknown-callee graph translation remains open.
+
 Reference: [Vakar, An Effectful Treatment of Dependent Types](https://arxiv.org/abs/1603.04298)
 separates ordinary dCBPV from dependent Kleisli extension. It motivates stating
 the additional rule explicitly, not admitting all empty-row computations.

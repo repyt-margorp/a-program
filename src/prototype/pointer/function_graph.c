@@ -40,6 +40,7 @@ struct pg_function_graph_state {
 	struct pg_whnf_work *evaluation;
 	const struct pg_evidence *body, *outer_context, *context, *argument_context;
 	const struct pg_evidence *recursive_function;
+	const struct pg_evidence *source_function;
 	const struct pg_evidence *domain, *range, *self, *indices;
 	const struct pg_evidence *result_context;
 	const struct pg_evidence **arguments;
@@ -58,7 +59,7 @@ struct pg_function_graph_state {
 	enum pg_function_graph_status witness_status;
 	struct pg_whnf_job *normalization;
 	size_t count, next;
-	int cases, induction;
+	int cases, induction, ready;
 	enum pg_totality totality;
 	enum pg_function_graph_status status;
 };
@@ -194,6 +195,10 @@ static int computation_view(struct pg_function_graph_state *s,
 	}
 	size_t count;
 	switch (*rule) {
+	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
+		*left = map ? pg_prove_elimination_reindex(s->typing, s->classifiers, map, proof) : proof;
+		*right = NULL;
+		return *left ? 0 : -1;
 	case PG_APP_ELIM: case PG_FOLD_ELIM: count = 2; break;
 	case PG_FORCE_ELIM: case PG_THUNK_INTRO: case PG_RETURN_INTRO: count = 1; break;
 	default: return -1;
@@ -372,6 +377,7 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		break;
 	}
 	case PG_RETURN_INTRO: value = left; break;
+	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: goto normalize;
 	default: return -1;
 	}
 	return plan_result(s, plan, value);
@@ -575,6 +581,8 @@ const struct pg_evidence *pg_function_graph_source(const struct pg_evidence *fun
 	return NULL;
 }
 
+static int prepare_graph(struct pg_function_graph_state *s);
+
 int pg_function_graph_init(struct pg_function_graph_work *work,
 	struct pg_typing *typing, struct pg_classifiers *classifiers,
 	struct pg_whnf_work *evaluation, const struct pg_evidence *function)
@@ -590,7 +598,7 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	s->typing = typing; s->classifiers = classifiers; s->evaluation = evaluation;
 	function = pg_function_graph_source(function);
 	if (!function) goto unsupported;
-	const struct pg_evidence *source_function = function;
+	s->source_function = function;
 	s->outer_context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(function, 0), 0), 0);
 	while (pg_evidence_rule(pg_evidence_premise(function, 1)) == PG_LAMBDA_INTRO)
 		function = pg_evidence_premise(function, 1);
@@ -625,6 +633,21 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	s->range = pg_prove_return_content(typing, result);
 	if (!s->range) goto unsupported;
 	s->body = pg_evidence_premise(function, 1);
+	if (pg_evidence_rule(s->body) == PG_MATCH_ELIM || pg_evidence_rule(s->body) == PG_INDUCTION_ELIM)
+		return prepare_graph(s);
+	return 0;
+unsupported:
+	s->status = PG_FUNCTION_GRAPH_UNSUPPORTED;
+	return 0;
+error:
+	s->status = PG_FUNCTION_GRAPH_ERROR;
+	return 0;
+}
+
+static int prepare_graph(struct pg_function_graph_state *s)
+{
+	struct pg_typing *typing = s->typing;
+	const struct pg_evidence *source_function = s->source_function;
 	enum pg_evidence_rule rule = pg_evidence_rule(s->body);
 	s->cases = rule == PG_MATCH_ELIM || rule == PG_INDUCTION_ELIM;
 	s->induction = rule == PG_INDUCTION_ELIM;
@@ -666,6 +689,7 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	if (s->count > SIZE_MAX / sizeof(*s->plans)) goto error;
 	s->plans = pg_alloc(&s->temporary, s->count * sizeof(*s->plans));
 	if ((s->count && (!s->results || !s->plans)) || signature(s)) goto error;
+	s->ready = 1;
 	return 0;
 unsupported:
 	s->status = PG_FUNCTION_GRAPH_UNSUPPORTED;
@@ -673,6 +697,33 @@ unsupported:
 error:
 	s->status = PG_FUNCTION_GRAPH_ERROR;
 	return 0;
+}
+
+/* Expose typed beta/quotation/sequencing wrappers one scheduled step at a
+ * time. A neutral Match keeps its motive and branches; it is not a RETURN. */
+static int prepare_head(struct pg_function_graph_state *s)
+{
+	const struct pg_evidence *left, *right, *body = NULL;
+	enum pg_evidence_rule rule;
+	if (computation_view(s, s->body, &rule, &left, &right)) return 0;
+	switch (rule) {
+	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
+		s->body = left;
+		return 0;
+	case PG_APP_ELIM:
+		body = pg_prove_application_body(s->typing, left, right);
+		break;
+	case PG_FOLD_ELIM:
+		body = pg_prove_application_body(s->typing, right, pg_prove_return_value(s->typing, left));
+		break;
+	case PG_FORCE_ELIM:
+		if (!computation_view(s, left, &rule, &left, &right) && rule == PG_THUNK_INTRO) body = left;
+		break;
+	default: break;
+	}
+	if (!body) return 0;
+	s->body = body;
+	return 1;
 }
 
 size_t pg_function_graph_trailing_arity(const struct pg_function_graph_work *work)
@@ -708,6 +759,10 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 	if (!work || !work->state) return PG_FUNCTION_GRAPH_ERROR;
 	struct pg_function_graph_state *s = work->state;
 	while (s->status == PG_FUNCTION_GRAPH_PENDING && budget--) {
+		if (!s->ready) {
+			if (!prepare_head(s)) prepare_graph(s);
+			continue;
+		}
 		if (s->next == s->count) {
 			s->schema = pg_data_schema(s->typing,
 				pg_data_signature(s->typing, s->self, s->indices), s->count, s->results);

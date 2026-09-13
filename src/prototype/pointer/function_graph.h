@@ -7,10 +7,11 @@
 /* Generate ordinary indexed declarations from retained Lambda/case evidence.
  * No Returns predicate or new kernel rule. Relation formation and witness
  * production advance separately; neither proves an arbitrary user property.
- * Supports pure dependent result types and direct recursive fields. Generic
+ * Supports pure dependent result types and recursive fields. Generic
  * indices bound immediately before the scrutinee become graph indices, with
  * actual recursive fibers recovered from membership evidence. Fixed indices,
- * intervening dependent environment binders and function fields are unsupported.
+ * and intervening dependent environment binders are unsupported. Total pure
+ * function fields supply a checked symbolic child at their actual arguments.
  * Remaining raw Pi arguments become additional graph
  * indices, not thunked result functions. Their dependent domains, recursive
  * call arguments and prior call outputs are checked by ordinary substitutions.
@@ -18,7 +19,9 @@
  * ordered call sites; each result type is instantiated at its own input by
  * checked substitution. Repeated calls have separate result/graph fields and
  * unused hypotheses contribute no fields. Schema and witness share this plan.
- * Conditional/nested cases and unknown callees/results remain unsupported.
+ * Typed beta/quotation/sequencing wrappers can expose the selected Match;
+ * its motive and branches move through the same checked substitution.
+ * Conditional/nested case trees and unknown callees/results remain unsupported.
  * One work object owns one generative declaration; a source producer must
  * memoize this request rather than generating a new family for each use. */
 enum pg_function_graph_status {

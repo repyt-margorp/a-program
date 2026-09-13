@@ -768,6 +768,31 @@ static void indexed_match(void)
 		value, mc, motive, 1, &branch);
 	assert(match && pg_evidence_classifier(match) == pg_return_type(&classifiers, pg_evidence_subject(av)->core));
 	common_rule(&typing, &classifiers, match);
+	/* Reconstruct the elimination after substituting both dependent indices.
+	 * Its generic motive remains generic, rather than fixing the source fiber. */
+	const struct pg_object *renamed_a = pg_binder(&graph), *renamed_x = pg_binder(&graph);
+	const struct pg_evidence *renamed_ac = pg_prove_context_extension(&typing, empty, renamed_a, u);
+	const struct pg_evidence *renamed_xc = pg_prove_context_extension(&typing, renamed_ac, renamed_x,
+		pg_prove_variable(&typing, renamed_ac, renamed_a));
+	const struct pg_evidence *renamed_values[] = {
+		pg_prove_variable(&typing, renamed_xc, renamed_a), pg_prove_variable(&typing, renamed_xc, renamed_x)};
+	const struct pg_evidence *renaming = pg_prove_substitution(&typing, xc, renamed_xc, 2, renamed_values);
+	const struct pg_evidence *renamed_match = pg_prove_elimination_reindex(&typing, &classifiers, renaming, match);
+	const struct pg_evidence *mapped_match = pg_prove_reindex(&typing, renaming, match);
+	assert(renamed_match && mapped_match && pg_evidence_rule(renamed_match) == PG_MATCH_ELIM);
+	assert(pg_alpha_equal(pg_evidence_subject(renamed_match)->core, pg_evidence_subject(mapped_match)->core) == 1);
+	assert(pg_alpha_equal(pg_evidence_classifier(renamed_match), pg_evidence_classifier(mapped_match)) == 1);
+	common_rule(&typing, &classifiers, renamed_match);
+	const struct pg_evidence *inverse = pg_prove_substitution(&typing, renamed_xc, xc, 2, values);
+	const struct pg_evidence *twice = pg_prove_elimination_reindex(&typing, &classifiers, inverse, renamed_match);
+	const struct pg_evidence *once = pg_prove_elimination_reindex(&typing, &classifiers,
+		pg_prove_substitution_compose(&typing, renaming, inverse), match);
+	assert(twice && once);
+	assert(pg_alpha_equal(pg_evidence_subject(twice)->core, pg_evidence_subject(once)->core) == 1);
+	assert(pg_alpha_equal(pg_evidence_classifier(twice), pg_evidence_classifier(once)) == 1);
+	common_rule(&typing, &classifiers, twice);
+	assert(!pg_prove_elimination_reindex(&typing, &classifiers, parameters, match));
+	assert(!pg_prove_elimination_reindex(&typing, &classifiers, renaming, value));
 	struct pg_whnf_work work;
 	assert(!pg_whnf_work_init(&work, &graph));
 	check(&work, pg_evidence_subject(match)->core, pg_evidence_subject(pg_prove_return(&typing, &classifiers, xv))->core);
