@@ -843,6 +843,18 @@ static void indexed_match(void)
 	const struct pg_evidence *refinement = pg_prove_constructor_refinement(&typing, &classifiers,
 		consumer_context, consumer_packet, constructor);
 	assert(refinement);
+	const struct pg_evidence *other_refinement = pg_prove_constructor_refinement(&typing, &classifiers,
+		consumer_context, consumer_packet, constructor);
+	const struct pg_evidence *factor = pg_prove_refinement_factor(&typing, refinement, other_refinement, packet);
+	assert(factor);
+	common_rule(&typing, &classifiers, factor);
+	const struct pg_evidence *composite = pg_prove_substitution_compose(&typing, refinement, factor);
+	assert(composite);
+	for (size_t i = 2; i < pg_evidence_premise_count(composite); ++i)
+		assert(pg_alpha_equal(pg_evidence_subject(pg_evidence_premise(composite, i))->core,
+			pg_evidence_subject(pg_evidence_premise(other_refinement, i))->core) == 1);
+	assert(!pg_prove_refinement_factor(&typing, refinement, parameters, packet));
+	assert(!pg_prove_refinement_factor(&typing, refinement, other_refinement, consumer));
 	const struct pg_evidence *refined_a = pg_substitution_image(&typing, refinement, a);
 	const struct pg_evidence *refined_packet = pg_substitution_image(&typing, refinement, packet);
 	const struct pg_evidence *refined_consumer = pg_substitution_image(&typing, refinement, consumer);

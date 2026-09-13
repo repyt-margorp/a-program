@@ -223,6 +223,12 @@ const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
  * branch or invent fields for a neutral scrutinee. Returns NULL if not exposed. */
 const struct pg_evidence *pg_prove_match_body(struct pg_typing *typing,
 	const struct pg_evidence *elimination);
+/* Factor instance through a constructor refinement. Recover images of the
+ * refinement's variables from the retained constructor and source images,
+ * then check the entire composite. No inversion of reduction or unification. */
+const struct pg_evidence *pg_prove_refinement_factor(struct pg_typing *typing,
+	const struct pg_evidence *refinement, const struct pg_evidence *instance,
+	const struct pg_object *scrutinee);
 /* Reassemble constructor-refined branches in the original context. Each map
  * must be the corresponding constructor refinement, up to typed binder
  * renaming below its shared prefix. Dependent suffix declarations are abstracted

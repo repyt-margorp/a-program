@@ -117,6 +117,19 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-known-match.p unpackMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-known-match.p skipMain zero
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-known-match-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p proofMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p emptyMain zero
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p prefixMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p prefixProofMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p afterMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p nestedMain three
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p directMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p walkMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p indexedMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p refinedMain one
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-branch-tree-wrong.p
+	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/function-graph-branch-name-collision.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/acc-function-motive.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-function-motive-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-order-reflexivity.p main expected

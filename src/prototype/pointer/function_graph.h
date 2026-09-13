@@ -22,8 +22,10 @@
  * Typed beta/quotation/sequencing wrappers can expose the selected Match;
  * its motive and branches move through the same checked substitution.
  * Known constructor Matches expose their typed branch before recursive call
- * analysis, including raw Pi results and substituted fields. Neutral case
- * trees and unknown callees/results remain unsupported.
+ * analysis, including raw Pi results and substituted fields. Neutral Matches
+ * on distinct variable indices form a shared constructor-refined branch tree;
+ * schema and witness use the same leaves and call prefixes. Unknown callees
+ * and computed discriminants without retained constructor origins remain unsupported.
  * One work object owns one generative declaration; a source producer must
  * memoize this request rather than generating a new family for each use. */
 enum pg_function_graph_status {
@@ -55,6 +57,15 @@ const struct pg_evidence *pg_function_graph_formation(const struct pg_function_g
  * Used to transfer source constructor names, never to infer membership. */
 const struct pg_evidence *pg_function_graph_declaration(const struct pg_function_graph_work *work);
 const struct pg_evidence *pg_function_graph_case_input(const struct pg_function_graph_work *work);
+/* A generated leaf inherits its most recent nonsingleton source split's name.
+ * Refined leaves do not retain the original flat source telescope layout. */
+struct pg_function_graph_case_source {
+	const struct pg_evidence *formation;
+	const struct pg_object *constructor;
+	int refined;
+};
+int pg_function_graph_case_source(const struct pg_function_graph_work *work,
+	size_t index, struct pg_function_graph_case_source *source);
 /* Construct a dependent result packet and its producer by ordinary induction
  * over the same source argument. Shares the generated relation above.
  * Returned packet formation is parameterized by the source input context;

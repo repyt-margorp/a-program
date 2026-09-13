@@ -2933,22 +2933,31 @@ static int function_graph_exports(struct pg_synthesis *synthesis, struct pg_synt
 	const struct pg_evidence *input = pg_function_graph_case_input(&job->function_graph);
 	if (!input) return 0;
 	const struct pg_evidence *declaration = pg_function_graph_declaration(&job->function_graph);
-	struct pg_synthesis_job *origin = pg_synthesis_evidence(synthesis, input);
-	if (!origin || !origin->exports) return -1;
 	const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(declaration, 0), 0);
 	const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing, context, context);
-	const struct pg_data_layout *source = pg_data_declaration_layout(pg_evidence_inductive_declaration(input));
 	const struct pg_data_layout *target = pg_data_declaration_layout(pg_evidence_inductive_declaration(declaration));
 	const struct pg_source_scope *exports = intern_scope(synthesis,
 		(struct pg_source_scope){.context_job = pg_synthesis_evidence(synthesis, context)});
-	for (const struct pg_source_scope *name = origin->exports; name; name = name->parent) {
-		if (!name->producer || name->producer->role != CONSTRUCTOR_VALUE_JOB) continue;
-		size_t index;
-		if (!pg_data_constructor_position(source, name->producer->inputs[1], &index)) return -1;
+	for (size_t index = 0; index < pg_data_layout_count(target); ++index) {
+		struct pg_function_graph_case_source source;
+		if (!pg_function_graph_case_source(&job->function_graph, index, &source)) return -1;
+		if (source.refined) job->case_layouts = NULL;
+		struct pg_synthesis_job *origin = pg_synthesis_evidence(synthesis, source.formation);
+		if (!origin || !origin->exports) return -1;
 		const struct pg_object *constructor = pg_data_constructor(target, index);
-		exports = pg_synthesis_name_job(synthesis, exports, name->name,
-			pg_synthesis_constructor_value(synthesis, declaration, constructor, parameters));
-		if (!exports) return -1;
+		int found = 0;
+		for (const struct pg_source_scope *name = origin->exports; name; name = name->parent) {
+			if (!name->producer || name->producer->role != CONSTRUCTOR_VALUE_JOB ||
+				name->producer->inputs[1] != source.constructor) continue;
+			/* Keep source aliases, but never overwrite another leaf's name. */
+			for (const struct pg_source_scope *prior = exports; prior; prior = prior->parent)
+				if (prior->producer && same_name(prior->name, name->name)) return -1;
+			exports = pg_synthesis_name_job(synthesis, exports, name->name,
+				pg_synthesis_constructor_value(synthesis, declaration, constructor, parameters));
+			if (!exports) return -1;
+			found = 1;
+		}
+		if (!found) return -1;
 	}
 	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, declaration);
 	if (!accepted) return -1;

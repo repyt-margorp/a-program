@@ -358,16 +358,32 @@ September 13 typed Match exposure:
   Debug `check-acceptance` passes, as does the final expanded IADT test.
   ASan/UBSan passes IADT, Program, image CLI and 20/20 compatibility.
   Implementation +133/-0; tests +60/-0; documentation counted separately.
-- [ ] Replace the flat per-case call list with shared branch-aware translation
-  for schema and witness. The concrete `@quickSortAcc` blocker is still at
-  59,322 steps: its inner Match has a raw Pi result and pending application
-  frames for generalized dependent arguments. Preserve these frames, index
-  refinements and outer IH associations through each branch. A fixed-fiber
-  argument cannot simply be projected into every generic branch. Keep the
-  original Acc induction driver distinct from the nested SizedList discriminator;
-  neither needs a new primitive. Unknown-callee graph translation remains open.
-  The refinement helper is not yet wired into branch-tree graph/witness
-  generation; its tests do not establish completion of that translation.
+- [x] Connect variable-scrutinee branch trees to schema and witness generation.
+  Calls before a split form an immutable shared prefix; children append local
+  calls. One tree drives both phases through ordinary checked substitutions.
+  `pg_prove_refinement_factor` supplies the commuting maps between source,
+  schema and witness contexts; it does not assert equality in the parent.
+  `function-graph-branch-tree.p` checks direct/wrapped nested Matches, calls
+  before and after a split, a Match on a recursive result, function-field IHs,
+  indexed recursion and Vec refinement with a dependent trailing function.
+  Two separate `Size xs n` proofs concern the already-defined functions, not
+  replacement certified implementations. Wrong output evidence rejects.
+  Leaf names follow the last nonsingleton split; collisions are unsupported
+  rather than silently aliased. Refined leaves do not reuse flat named-field
+  metadata. General branch-aware named field layouts remain open.
+  Debug `check-acceptance` passes, including the 20/20 compatibility gate.
+  ASan/UBSan passes IADT, Program, image CLI (all new source results through
+  unfinished/completed resaves), unsupported name collisions and 20/20 compatibility.
+  No Core tag, kernel rule, wire format or Replay path was added.
+  Implementation +454/-122; tests +122/-1; build rules +13/-0; docs separate.
+- [ ] Complete unknown-callee/result graph translation for QuickSort.
+  `@quickSortAcc` now reaches its cons branch, then stops at 60,433 steps while
+  exposing the `partition` result: retained `PG_INDUCTION_ELIM` over a symbolic
+  tail cannot be normalized to RETURN. One nil leaf is already constructed.
+  The earlier 59,322-step inner-Match blocker
+  is superseded, not the whole QuickSort property milestone. Keep the original
+  Acc induction distinct from the nested SizedList discriminator. Do not guess
+  a helper result, rewrite the source to bypass it, or add a Returns primitive.
 
 Reference: [Vakar, An Effectful Treatment of Dependent Types](https://arxiv.org/abs/1603.04298)
 separates ordinary dCBPV from dependent Kleisli extension. It motivates stating
