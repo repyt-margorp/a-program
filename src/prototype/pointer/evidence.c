@@ -1758,19 +1758,53 @@ done:
 	return result;
 }
 
-const struct pg_evidence *pg_prove_match_body(struct pg_typing *typing,
+const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
+	struct pg_classifiers *classifiers,
 	const struct pg_evidence *elimination)
 {
-	if (!pg_evidence_owned_by(elimination, typing) || elimination->rule != PG_MATCH_ELIM) return NULL;
+	if (!pg_evidence_owned_by(elimination, typing)) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	if (elimination->rule != PG_MATCH_ELIM && elimination->rule != PG_INDUCTION_ELIM) return NULL;
 	const struct pg_evidence *value = constructor_origin(typing, elimination->premises[3]);
 	if (!value || value->premises[1] != elimination->premises[1]) return NULL;
 	const struct pg_data_schema *schema = elimination->premises[1]->certificate;
 	size_t position;
 	if (!pg_data_constructor_position(pg_data_schema_layout(schema), value->certificate, &position)) return NULL;
 	const struct pg_evidence *result = elimination->premises[position + 5], *fields = value->premises[3];
-	for (size_t i = value->premises[2]->premise_count + 1; result && i < fields->premise_count; ++i)
+	size_t first = value->premises[2]->premise_count + 1;
+	for (size_t i = first; result && i < fields->premise_count; ++i)
 		result = pg_prove_application_body(typing, result, fields->premises[i]);
+	if (!result || elimination->rule == PG_MATCH_ELIM) return result;
+	struct pg_graph temporary = {0};
+	size_t count = fields->premise_count - first;
+	unsigned char *recursive = pg_alloc(&temporary, count);
+	if (count && !recursive) goto failed;
+	const struct pg_context *declaration = pg_evidence_context(pg_data_schema_fields(schema, value->certificate));
+	const struct pg_object *self = elimination->premises[1]->premises[0]->context->binder;
+	for (size_t i = count; i; --i, declaration = declaration->parent) {
+		int kind = pg_data_recursive_field(declaration->declared_type, self);
+		if (kind < 0) goto failed;
+		recursive[i - 1] = kind != 0;
+	}
+	for (size_t i = 0; i < count; ++i) {
+		if (!recursive[i]) continue;
+		const struct pg_evidence *field = fields->premises[first + i];
+		const struct pg_term *function;
+		if (pg_thunk_type_view(field->classifier, &function)) goto failed;
+		/* Reuse the admitted motive and branches, but do not expand this call.
+		 * The recursive field's index determines its own result classifier. */
+		const struct pg_evidence *call = pg_prove_induction(typing, classifiers,
+			elimination->premises[1], elimination->premises[2], field,
+			elimination->premises[4], elimination->premises[0],
+			elimination->premise_count - 6, elimination->premises + 5);
+		result = pg_prove_application_body(typing, result, pg_prove_thunk(typing, classifiers, call));
+		if (!result) goto failed;
+	}
+	pg_graph_destroy(&temporary);
 	return result;
+failed:
+	pg_graph_destroy(&temporary);
+	return NULL;
 }
 
 static int factor_binding(struct pg_graph *temporary, struct pg_index *index,

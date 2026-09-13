@@ -318,7 +318,8 @@ static int split_case(struct pg_function_graph_state *s, struct graph_case *plan
 			pg_prove_substitution_projection(t, pg_evidence_premise(plan->origin_map, 1), plan->context))
 			: pg_prove_substitution_projection(t, plan->context, plan->context);
 		child->origin_map = pg_prove_substitution_compose(t, child->origin_map, map);
-		child->computation = pg_prove_match_body(t, pg_prove_elimination_reindex(t, s->classifiers, map, elimination));
+		child->computation = pg_prove_elimination_body(t, s->classifiers,
+			pg_prove_elimination_reindex(t, s->classifiers, map, elimination));
 		if (!child->origin_map || !child->computation) return -1;
 		struct graph_continuation **tail = &child->continuations;
 		for (const struct graph_continuation *old = plan->continuations; old; old = old->next) {
@@ -586,13 +587,15 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		return record_call(s, plan, call);
 	}
 	case PG_RETURN_INTRO: value = left; break;
-	case PG_MATCH_ELIM: {
-		const struct pg_evidence *body = pg_prove_match_body(t, left);
-		if (!body) return split_case(s, plan, left);
+	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: {
+		const struct pg_evidence *body = pg_prove_elimination_body(t, s->classifiers, left);
+		if (!body) {
+			if (pg_evidence_rule(left) == PG_INDUCTION_ELIM) goto normalize;
+			return split_case(s, plan, left);
+		}
 		plan->computation = body;
 		return 0;
 	}
-	case PG_INDUCTION_ELIM: goto normalize;
 	default: return -1;
 	}
 	return plan_result(s, plan, value);

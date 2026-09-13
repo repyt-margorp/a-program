@@ -65,6 +65,14 @@ checked too. These extend regression coverage, not the set of kernel rules.
 The Vec append conversion still exhausts 100,000 steps even with its entire
 `append :: ...;` statement removed. Fixing only post-checking cannot resolve it.
 
+The subsequent reduction isolates the same boundary without append/IH:
+explicit arithmetic index types compare, while substituting a computed index
+into a constructor's result signature still stalls. The linked audit records
+both fixtures and literature scope. Typed one-step elimination now handles
+retained constructors with direct recursive fields through ordinary induction
+and substitution evidence. Function-valued fields and the total-pure
+result/substitution equations remain open; no untyped equality was added.
+
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the

@@ -218,10 +218,12 @@ int pg_inductive_motive_context_valid(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
 	const struct pg_evidence *elimination);
-/* Expose a nonrecursive Match at a retained constructor introduction. Apply
- * its actual fields through ordinary typed substitution; do not normalize the
- * branch or invent fields for a neutral scrutinee. Returns NULL if not exposed. */
-const struct pg_evidence *pg_prove_match_body(struct pg_typing *typing,
+/* Expose Match/induction at a retained constructor introduction. Apply fields
+ * and suspended recursive eliminations through ordinary typed substitution.
+ * This is one step, not recursive normalization. Neutral scrutinees and
+ * function-valued recursive fields currently return NULL. No new proof rule. */
+const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
+	struct pg_classifiers *classifiers,
 	const struct pg_evidence *elimination);
 /* Factor instance through a constructor refinement. Recover images of the
  * refinement's variables from the retained constructor and source images,

@@ -312,3 +312,65 @@ including LE evidence, through unfinished/completed `.a` files and Solve chunks
 
 This increment changes tests and documentation only; runtime, synthesis,
 conversion, and artifact semantics are unchanged.
+
+## Typed Elimination Follow-up
+
+The Vec problem is reproducible without an append or IH. The positive control
+`tests/acceptance/computed-index-arithmetic.p` checks the explicit index types
+`Vec Nat (add (succ m) n)` and `Vec Nat (succ (add m n))`, then executes a
+concrete use. That comparison succeeds. In contrast,
+`tests/known-limitations/computed-constructor-index.p` constructs a cons with
+index argument `add m n` and post-checks it at the former type; this remains
+pending after 100,000 steps. Run it with the positive control as `--imports`.
+It is deliberately outside the passing acceptance suite.
+
+Constructor signature substitution builds `succ(q(add m n))`, whereas an
+explicit source application may retain a sequence under `q`, where
+`q(M) = Fold(M, lambda x.x)`. Thus this is not simply failure to reduce add or
+infer recursive motives. It concerns the interaction of symbolic pure-result
+extraction with value substitution. A globally valid raw-Core equation must
+not be inferred from a typed, total input; the existing ignored-operation and
+ignored-divergence counterexamples still apply.
+
+The proof-preserving groundwork now unifies the former `pg_prove_match_body`
+API as `pg_prove_elimination_body`. At a retained constructor introduction it
+applies actual fields and, for direct recursive fields, suspended instances of
+the original admitted induction. It uses the same formation, parameters,
+generic motive, branches, ordinary substitution and Thunk introduction. It
+does not evaluate the recursive calls or invent evidence for neutral inputs.
+The function-graph planner uses this before its existing normalization fallback.
+No Core tag, derivation rule, conversion equation or artifact codec is added.
+
+- [x] Nonrecursive Match and renamed/substituted origins remain covered.
+- [x] Direct recursion: base, two successors, and an open `succ n` unfold once.
+- [x] Two recursive fields preserve IH order (asymmetric Tree result).
+- [x] Neutral scrutinees, foreign evidence and missing classifiers decline.
+- [x] Repeated requests reuse their result; ordinary derivation checking works.
+- [x] Full debug acceptance, plus final expanded IADT/arithmetic checks.
+- [x] Full ASan/UBSan acceptance and final expanded IADT check, including
+  pure conversion of the open one-step body against its original elimination.
+- [ ] Function-valued recursive fields need typed sequencing of their result;
+  they still use the pre-existing normalization fallback, not a guessed IH.
+- [ ] Specify and implement the total-pure result/substitution equations with
+  typed premises, including reindexing and Higher Identity action compatibility.
+- [ ] Restore unchanged Vec append and its result/image regressions.
+
+### Literature and Scope
+
+[Chan, Gudin, Levy and Weirich, *Commuting Conversions and Join Points for
+Call-by-Push-Value*](https://ionathan.ch/assets/pdfs/ccnf.pdf), section 4, expresses
+commuting conversions as moving evaluation contexts into continuation positions.
+Its typing and preservation account is useful background, not a justification
+for moving a constructor out of this implementation's total-value extraction.
+Its language does not establish our dependent index or Higher Identity laws.
+
+[Harper, *Effects in Call-by-Push-Value*](https://www.cs.cmu.edu/~rwh/courses/atpl/pdfs/effects.pdf)
+separates values/computations and develops typed semantic equations for effects
+and partiality. This reinforces the need to state the typing assumptions of an
+equation. It does not supply a proof of A Program's `q` naturality or prescribe
+its representation. These references were reviewed on September 14; the
+implementation above derives only ordinary one-step elimination, not either
+paper's full equational theory.
+
+Relative to `e1e97cb`, implementation C/headers add 51 and remove 12 lines
+(net +39). Tests, their Makefile entry and documentation are counted separately.
