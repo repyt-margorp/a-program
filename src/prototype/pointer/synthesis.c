@@ -82,9 +82,12 @@ struct declaration_state {
 };
 struct motive_demand {
 	struct motive_demand *next;
+	const struct pg_source_scope *scope;
 	const struct pg_object *field;
 	struct pg_synthesis_job *callee, *normalized, *domain;
 	const struct pg_evidence *solution;
+	size_t count;
+	struct pg_synthesis_job *arguments[];
 };
 struct motive_lambda {
 	const struct pg_evidence *outer, *inner;
@@ -2618,40 +2621,64 @@ static int hypothesis_syntax(const struct pg_syntax *syntax)
 	return syntax->left->token.kind == '*' && syntax->right->kind == PG_SYNTAX_ATOM;
 }
 
-/* Collect ordinary APP domain constraints before assigning an IH classifier.
- * This fragment stays in the current lexical scope; nested binders require
- * their own scoped constraint generation. An annotation is never a demand. */
+/* Collect APP domain constraints on IH applications in their lexical scopes.
+ * Lambda domains use the ordinary pending binding producer. An annotation
+ * never supplies a demand, and no incomplete branch is accepted as evidence. */
 static int motive_demands(struct pg_synthesis *synthesis, struct match_branch *branch,
 	const struct pg_context *prefix)
 {
+	struct scan { const struct pg_syntax *syntax; const struct pg_source_scope *scope; struct scan *next; };
 	struct pg_graph temporary = {0};
-	struct marker_task *tasks = NULL;
+	struct scan initial = {branch->clause->right, branch->scope, NULL}, *tasks = &initial;
 	int result = -1;
-	if (marker_push(&temporary, &tasks, branch->clause->right, NULL)) goto done;
 	while (tasks) {
 		const struct pg_syntax *syntax = tasks->syntax;
+		const struct pg_source_scope *scope = tasks->scope;
 		tasks = tasks->next;
-		if (syntax->kind == PG_SYNTAX_EXPECT) {
-			if (marker_push(&temporary, &tasks, syntax->left, NULL)) goto done;
-			continue;
+		while (syntax->kind == PG_SYNTAX_EXPECT || syntax->kind == PG_SYNTAX_LAMBDA) {
+			if (syntax->kind == PG_SYNTAX_EXPECT) syntax = syntax->left;
+			else {
+				struct pg_synthesis_job *binding = pg_synthesis_binding(synthesis, scope, syntax);
+				if (!binding) goto done;
+				scope = binding->inner;
+				syntax = syntax->right;
+			}
 		}
 		if (syntax->kind != PG_SYNTAX_APPLICATION) continue;
-		if (hypothesis_syntax(syntax->right)) {
-			int depends = branch_needs_ih(branch->scope, prefix, syntax->left);
-			int recursive = branch_needs_ih(branch->scope, prefix, syntax->right);
-			if (depends < 0 || recursive < 0) goto done;
-			if (!depends && recursive) {
-				struct motive_demand *demand = pg_alloc(synthesis->typing->graph, sizeof(*demand));
+		const struct pg_syntax *head = syntax->right;
+		size_t count = 0;
+		while (head->kind == PG_SYNTAX_APPLICATION && !hypothesis_syntax(head)) {
+			++count;
+			head = head->left;
+		}
+		if (hypothesis_syntax(head)) {
+			const struct pg_object *field = hypothesis_field(scope, head->right->token);
+			const struct pg_context *fields = pg_evidence_context(source_context(branch->scope));
+			while (fields && fields != prefix && fields->binder != field) fields = fields->parent;
+			if (fields && fields != prefix) {
+				if (count > (SIZE_MAX - sizeof(struct motive_demand)) / sizeof(struct pg_synthesis_job *)) goto done;
+				struct motive_demand *demand = pg_alloc(synthesis->typing->graph,
+					sizeof(*demand) + count * sizeof(*demand->arguments));
 				if (!demand) goto done;
-				demand->field = hypothesis_field(branch->scope, syntax->right->right->token);
-				demand->callee = pg_synthesis_request(synthesis, branch->scope, syntax->left);
+				demand->scope = scope;
+				demand->field = field;
+				demand->count = count;
+				demand->callee = pg_synthesis_request(synthesis, scope, syntax->left);
 				if (!demand->callee) goto done;
+				const struct pg_syntax *application = syntax->right;
+				for (size_t i = count; i; --i, application = application->left) {
+					demand->arguments[i - 1] = pg_synthesis_request(synthesis, scope, application->right);
+					if (!demand->arguments[i - 1]) goto done;
+				}
 				demand->next = branch->demands;
 				branch->demands = demand;
 			}
 		}
-		if (marker_push(&temporary, &tasks, syntax->left, NULL)) goto done;
-		if (marker_push(&temporary, &tasks, syntax->right, NULL)) goto done;
+		struct scan *children = pg_alloc(&temporary, 2 * sizeof(*children));
+		if (!children) goto done;
+		children[0] = (struct scan){syntax->left, scope, tasks};
+		children[1] = (struct scan){syntax->right, scope, &children[0]};
+		tasks = &children[1];
 	}
 	result = 0;
 done:
@@ -4941,8 +4968,14 @@ static void match_demand_step(struct pg_synthesis *synthesis, struct pg_synthesi
 	struct match_branch *branch = &state->branches[state->demanded];
 	struct motive_demand *demand = branch->demands;
 	if (!demand) { ++state->demanded; enqueue(synthesis, job); return; }
-	const struct pg_evidence *context = source_context(branch->scope);
+	struct pg_synthesis_job *scope = demand->scope->context_job;
+	if (scope->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, scope); return; }
+	if (scope->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, scope->status); return; }
+	const struct pg_evidence *context = scope->result;
 	if (!demand->normalized) {
+		int recursive = branch_needs_ih(demand->scope, pg_evidence_context(source_context(job->inner)), demand->callee->syntax);
+		if (recursive < 0) goto error;
+		if (recursive) goto skip;
 		if (demand->callee->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, demand->callee); return; }
 		if (demand->callee->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, demand->callee->status); return; }
 		const struct pg_evidence *callee = demand->callee->result;
@@ -4962,6 +4995,15 @@ static void match_demand_step(struct pg_synthesis *synthesis, struct pg_synthesi
 	if (demand->domain->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, demand->domain); return; }
 	if (demand->domain->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, demand->domain->status); return; }
 	if (!demand->solution) {
+		for (size_t i = 0; i < demand->count; ++i) {
+			struct pg_synthesis_job *argument = demand->arguments[i];
+			int recursive = branch_needs_ih(demand->scope, pg_evidence_context(source_context(job->inner)), argument->syntax);
+			if (recursive < 0) goto error;
+			if (recursive) goto skip;
+			if (argument->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, argument); return; }
+			if (argument->status != PG_SYNTHESIS_DONE) goto skip;
+			if (pg_evidence_judgement(argument->result) != PG_JUDGEMENT_VALUE) goto skip;
+		}
 		const struct pg_evidence *domain = demand->domain->result;
 		const struct pg_evidence *motive_context = match_motive_context(synthesis, job);
 		if (!motive_context) goto skip;
@@ -4969,10 +5011,25 @@ static void match_demand_step(struct pg_synthesis *synthesis, struct pg_synthesi
 		const struct pg_evidence *pattern = pg_prove_inductive_motive_substitution(synthesis->typing,
 			synthesis->classifiers, state->instance.formation, state->instance.parameters,
 			motive_context, context, field);
+		if (!pattern) goto skip;
+		const struct pg_evidence *prefix = source_context(job->inner);
+		for (size_t i = 0; i < demand->count; ++i) {
+			const struct pg_evidence *argument = demand->arguments[i]->result;
+			const struct pg_evidence *argument_type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, argument);
+			const struct pg_evidence *pulled = pg_prove_pattern_type(synthesis->typing, synthesis->classifiers,
+				prefix, pattern, pg_prove_return_type(synthesis->typing, synthesis->classifiers, argument_type));
+			const struct pg_evidence *extension = pg_prove_context_extension(synthesis->typing,
+				pg_evidence_premise(pattern, 0), pg_binder(synthesis->typing->graph), pg_prove_return_content(synthesis->typing, pulled));
+			pattern = pg_prove_substitution_pair(synthesis->typing, pattern, extension, argument);
+			if (!pattern) goto skip;
+		}
 		const struct pg_evidence *type = pg_prove_effect_type(synthesis->typing,
 			synthesis->classifiers, state->motive_effects, domain);
 		demand->solution = pg_prove_pattern_type(synthesis->typing, synthesis->classifiers,
-			source_context(job->inner), pattern, type);
+			prefix, pattern, type);
+		const struct pg_evidence *extension = pg_evidence_premise(pattern, 0);
+		for (size_t i = demand->count; demand->solution && i; --i, extension = pg_evidence_premise(extension, 0))
+			demand->solution = pg_prove_pi(synthesis->typing, synthesis->classifiers, extension, demand->solution);
 		if (!demand->solution) goto skip;
 		if (!state->motive) {
 			state->motive = demand->solution;

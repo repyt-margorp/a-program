@@ -151,9 +151,22 @@ unchanged; computations over logical hypotheses use the extension below.
   Wrong parameters are rejected; a raw thunk type is not an ADT. Normal checks,
   examples/results, open families, fresh-process images and targeted ASan/UBSan
   tests pass. Compatibility remains 10/19; these tests do not replace QuickSort.
+- [x] Collect constructor-domain constraints on applied IHs inside Lambda
+  scopes, rather than only direct `*k` arguments. Pending bindings use the same
+  source producers. Extend the checked pattern substitution with each supplied
+  value argument and pull back its dependent domain; abstract the solved result
+  into ordinary Pis. This restores `LE.succLe k k (*k b)` under `\b:Bool`, and
+  the two-argument variant `*k m p` with `p:LE m m`. Full branch checking is still
+  required; `::` only checks the synthesized result. No kernel rule, graph tag,
+  Replay path or wire change is introduced. Mismatched base branches and
+  nonpattern arguments can still stop as UNSUPPORTED, not proven contradictions.
+  These focused fixtures supplement, not replace, unchanged legacy tests.
+  Validation: normal checks, examples/results, open families and source-image
+  resaves pass; the added fixtures pass ASan/UBSan at chunks 1/64 for result
+  comparison. Unchanged legacy compatibility remains 10/19, not complete.
 - [ ] Remaining compatibility blockers: order proofs, named Graph cases,
   QuickSort and the incompatible-property negative case. QuickSort currently
-  rejects at 34060 steps: `#.terminates` is not connected in the new source
+  rejects at 34344 steps: `#.terminates` is not connected in the new source
   environment. A traced failure in `accessibleSucc` is `*down m prior` in the
   `LT.lift` branch, which needs checked index refinement. `quickSortAcc` obtains
   a motive candidate but neither the whole program nor its property is accepted.
@@ -494,8 +507,9 @@ an explicit reviewed change to the gate, not a removed negative test.
   expected-directed `::`, presumed IH evidence, or independent Replay path.
   The property function now synthesizes unchanged; a direct two-step generated
   Graph test checks its resulting Unary witness, including reordered clauses.
-  This partial solver collects direct IH arguments in the current lexical scope.
-  Nested scopes, nonvariable/repeated argument patterns and complete recursive
+  This initial partial solver collected direct IH arguments in the current
+  lexical scope; the September 13 scoped-application extension above supersedes
+  that limit for Lambda bodies. Nonvariable/repeated argument patterns and complete recursive
   effect-row inference remain open, not silently claimed as solved. Computed
   callees that return functions keep ordinary sequencing, not direct Pi demands.
   Tests cover typed permutations, fixed prefixes, omitted/escaping fields,

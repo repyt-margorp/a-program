@@ -146,6 +146,8 @@ acceptance/dependent-graph-motive.p main reorderedMain certifiedMain
 acceptance/function-graph-call-sites.p main unusedMain:unusedExpected orderedMain:orderedExpected propertyMain:propertyExpected cutMain:cutExpected
 acceptance/motive-computed-callee.p main
 acceptance/recursive-dependent-package.p main
+acceptance/dependent-order-reflexivity.p main
+acceptance/dependent-function-motive.p main dependentMain
 acceptance/computed-family-member.p main nested:nestedExpected
 ../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified
 ../../tests/fixtures/typing/function_graph_two_recursive_calls_check.p main certified
