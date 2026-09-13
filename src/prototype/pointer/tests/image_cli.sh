@@ -91,7 +91,7 @@ printf '%s\n' 'image cli: multi-root selection, retained obligations and range r
 printf '%s\n' 'image cli: parameterized List source/image NF agreement passed'
 
 # An unfinished image cannot bypass induction or coverage checks.
-for fixture in indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong indexed-tail-wrong indexed-computed-type-wrong nested-index-motive-wrong length-output-proof-wrong termination-wrong-target termination-wrong-value function-graph-curried-wrong function-graph-indexed-wrong function-graph-function-field-wrong function-graph-exposed-match-wrong function-graph-known-match-wrong function-graph-branch-tree-wrong function-graph-helper-call-wrong; do
+for fixture in indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong indexed-tail-wrong indexed-computed-type-wrong nested-index-motive-wrong length-output-proof-wrong termination-wrong-target termination-wrong-value function-graph-curried-wrong function-graph-indexed-wrong function-graph-function-field-wrong function-graph-exposed-match-wrong function-graph-known-match-wrong function-graph-branch-tree-wrong function-graph-helper-call-wrong function-graph-callable-parameter-wrong; do
 	input="$(dirname "${BASH_SOURCE[0]}")/acceptance/$fixture.p"
 	for steps in 0 100; do
 		code=0
@@ -163,6 +163,7 @@ acceptance/function-graph-exposed-match.p main proofMain quotedMain sequencedMai
 acceptance/function-graph-known-match.p main proofMain unpackMain skipMain:zero
 acceptance/function-graph-branch-tree.p main proofMain emptyMain:zero prefixMain prefixProofMain afterMain nestedMain:three directMain walkMain indexedMain refinedMain:one
 acceptance/function-graph-helper-call.p main:one proofMain:one twiceMain:two twiceProofMain:two appendMain:appendExpected genericMain:one
+acceptance/function-graph-callable-parameter.p main applyMain:two propertyMain:two filterMain:filterExpected allMain:sample noneMain:noneExpected
 acceptance/function-graph-function-field.p main fromMain walkMain:three proofMain visitMain
 acceptance/function-graph-family-parameters.p main relatedMain
 acceptance/function-graph-indexed.p main emptyMain:emptyExpected specMain emptySpecMain:emptyExpected copyMain:sample countMain pointMain:one

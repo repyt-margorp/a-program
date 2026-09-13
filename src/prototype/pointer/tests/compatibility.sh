@@ -101,3 +101,15 @@ for steps in 0 100000; do
 		"$runtime" --equal-image "$directory/comparison.a" "$name" "${name}Expected"
 	done
 done
+
+# The original Acc-based function must also produce its own result witness;
+# the output checks are not a proof of general sortedness or preservation.
+client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-quicksort-witness.p"
+for steps in 0 1000000; do
+	code=0
+	"$checker" --steps "$steps" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
+		--save "$directory/quicksort.a" "$client" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"$runtime" --equal-image "$directory/quicksort.a" main expected
+	"$runtime" --equal-image "$directory/quicksort.a" emptyMain emptyExpected
+done

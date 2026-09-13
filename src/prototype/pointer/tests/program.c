@@ -361,6 +361,26 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 		assert(core->kind == PG_APPLICATION && core->as.application.function->kind == PG_APPLICATION);
 		assert(core->as.application.function->as.application.argument == pg_evidence_subject(argument)->core);
 		pg_function_graph_destroy(&work);
+		/* A neutral result needs a total contract, not just an empty row. */
+		const struct pg_evidence *neutral_scope = pg_prove_context_extension(&p->typing,
+			scope, pg_binder(&p->graph), pg_prove_thunk_type(&p->typing, &p->classifiers, type));
+		assert(neutral_scope);
+		const struct pg_object *neutral_binder = pg_evidence_context(neutral_scope)->binder;
+		const struct pg_evidence *domain = pg_prove_classifier(&p->typing, &p->classifiers, scope, value);
+		const struct pg_evidence *inner = pg_prove_context_extension(&p->typing, neutral_scope,
+			pg_binder(&p->graph), pg_prove_projection(&p->typing, neutral_scope, domain));
+		const struct pg_evidence *neutral = pg_prove_force(&p->typing,
+			pg_prove_variable(&p->typing, inner, neutral_binder));
+		const struct pg_evidence *neutral_type = pg_prove_classifier(&p->typing, &p->classifiers, inner, neutral);
+		const struct pg_evidence *neutral_lambda = pg_prove_lambda(&p->typing,
+			pg_prove_pi(&p->typing, &p->classifiers, inner, neutral_type), neutral);
+		assert(neutral_lambda);
+		assert(!pg_function_graph_init(&work, &p->typing, &p->classifiers, &p->evaluation, neutral_lambda));
+		for (size_t turns = 0; pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+			assert(turns < 100000);
+		assert(pg_function_graph_witness_advance(&work, 0) == (grade == PG_TOTALITY_TOTAL
+			? PG_FUNCTION_GRAPH_DONE : PG_FUNCTION_GRAPH_UNSUPPORTED));
+		pg_function_graph_destroy(&work);
 		/* TOTAL is not permission to run effectful code during graph formation. */
 		const struct pg_evidence *u0 = pg_prove_universe(&p->typing, &p->classifiers,
 			pg_prove_empty_context(&p->typing), 0);

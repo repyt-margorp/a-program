@@ -140,14 +140,36 @@ September 13 compatibility follow-up:
   witnesses. These pass at chunk sizes 1/64 from unfinished/completed images.
   Full debug and ASan/UBSan `check-acceptance` pass (28/28 legacy gate).
   Vec append and QuickSort's post-hoc property remain unfinished.
+- [x] Preserve typed calls to function parameters in generated graphs. Ordinary
+  eta abstraction reuses the parameter Pi binders; the existing graph dependency
+  owner supplies its graph/witness. The shared IH binding lookup excludes
+  recursive evidence from this path; treating it as an ordinary parameter
+  regressed function-field witness results and was corrected before acceptance.
+  Direct neutral results use the existing
+  TOTAL, empty-effect value rule, not a guessed result or new kernel rule.
+  `function-graph-callable-parameter.p` checks map's independent SameLength
+  property and filter results; its wrong-output counterpart rejects. Kernel
+  tests distinguish a total neutral result from an unknown-totality one.
+  The unchanged legacy `partition`/`quickSortAcc` now support graph generation
+  and `*quickSortAcc`. An importing client checks its empty/two-element result
+  witnesses through unfinished/completed images and ordinary Solve. General
+  QuickSort properties are still open. Full debug and ASan/UBSan
+  `check-acceptance` pass, including the unchanged 28/28 compatibility gate,
+  function-field IH regressions, and new source/image positive/negative cases.
 - [ ] Restore the all-refuted Match case in unchanged
   `impossible_index_branch_check.p`. Main `63b00eb` accepts its `absurd`
   definition and post-check; the pointer compiler remains pending after 515
   steps. All constructors contradict `OnlyZero (succ index)`. Current source
   synthesis skips refuted bodies, so no branch supplies a result motive.
-  Define a synthesis-only way to obtain that motive from the written source;
-  do not feed the enclosing `::` back into inference or treat more fuel as a
-  fix. Preserve existing omission/refutation and unreachable-body checks.
+  This conflicts with an existing inference policy, not just scheduling:
+  `natAccessible` writes `Nat.zero` in impossible branches but APP constraints
+  require an Acc carrier. `application_result_constraints` deliberately tests
+  the same behavior at Bool/Nat/Pi carriers. Always selecting the dead body's
+  type would regress unchanged QuickSort; selecting a fallback based on which
+  job finishes first would make inference schedule-dependent. Resolve that
+  policy explicitly before changing the producer. `::` must remain a post-check;
+  more fuel and an unconditional wakeup are not fixes. Preserve the checked
+  contradiction elimination rather than trusting a dead source body as proof.
   The same legacy integration script's `indexed_branch_rebuild_check.p`,
   `residual_index_equation_negative.p`, and level2 `02_tree.p` compile in the
   current debug build, but are not yet counted in the permanent 28-case gate.

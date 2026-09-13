@@ -337,7 +337,43 @@ static int plan_result(struct pg_function_graph_state *s, struct graph_case *pla
 	return plan->computation ? 0 : -1;
 }
 
-/* Preserve a recursive helper's complete typed call before beta exposure
+static size_t hypothesis_position(struct pg_function_graph_state *s,
+	const struct graph_case *plan, const struct pg_term *core)
+{
+	for (size_t i = 0; i < plan->hypothesis_count; ++i) {
+		const struct pg_evidence *scope = plan->scopes[plan->field_count + i];
+		const struct pg_evidence *hypothesis = pg_prove_variable(s->typing, scope, pg_evidence_context(scope)->binder);
+		if (plan->origin_map) hypothesis = map_value(s, plan->origin_map, hypothesis);
+		if (hypothesis && core == pg_evidence_subject(hypothesis)->core) return i;
+	}
+	return plan->hypothesis_count;
+}
+
+/* A callable parameter has no Lambda body to expose. Eta expansion gives
+ * the ordinary graph builder a typed source without evaluating the parameter.
+ * Use the Pi's binders so repeated requests retain the same source proof. */
+static const struct pg_evidence *parameter_source(struct pg_function_graph_state *s,
+	const struct pg_evidence *parameter)
+{
+	if (pg_evidence_rule(parameter) != PG_VARIABLE) return NULL;
+	struct pg_typing *t = s->typing;
+	const struct pg_evidence *outer = pg_evidence_premise(parameter, 0), *context = outer;
+	const struct pg_evidence *body = pg_prove_force(t, parameter);
+	const struct pg_evidence *type = pg_prove_classifier(t, s->classifiers, context, body);
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	while (type && pg_pi_view(pg_evidence_subject(type)->core, &domain, &binder, &codomain)) {
+		context = pg_prove_context_extension(t, context, binder, pg_prove_pi_domain(t, type));
+		if (!context) return NULL;
+		const struct pg_evidence *argument = pg_prove_variable(t, context, binder);
+		body = pg_prove_application(t, projection(s, context, body), argument);
+		type = pg_prove_pi_codomain(t, projection(s, context, type), argument);
+	}
+	if (context == outer || !body || !type) return NULL;
+	return pg_prove_abstract(t, s->classifiers, outer, context, body);
+}
+
+/* Preserve a helper's complete typed call before beta exposure
  * erases its function boundary. Its graph is requested from the same owner
  * that services public @f and *f requests, not generated afresh at each call. */
 static int helper_call(struct pg_function_graph_state *s, struct graph_case *plan)
@@ -370,10 +406,19 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 		function = pg_evidence_premise(function, 0);
 		if (environment) function = map_value(s, environment, function);
 	}
-	if (forces || !count || pg_evidence_rule(function) != PG_LAMBDA_INTRO) goto done;
-	const struct pg_evidence *body = function;
-	while (pg_evidence_rule(body) == PG_LAMBDA_INTRO) body = pg_evidence_premise(body, 1);
-	if (pg_evidence_rule(body) != PG_INDUCTION_ELIM) goto done;
+	if (!count) goto done;
+	if (forces == 1 && pg_evidence_rule(function) == PG_VARIABLE) {
+		const struct pg_evidence *current = environment ? map_value(s, environment, function) : function;
+		if (!current) goto done;
+		if (hypothesis_position(s, plan, pg_evidence_subject(current)->core) != plan->hypothesis_count) goto done;
+		function = parameter_source(s, function);
+		if (!function) goto done;
+	} else {
+		if (forces || pg_evidence_rule(function) != PG_LAMBDA_INTRO) goto done;
+		const struct pg_evidence *body = function;
+		while (pg_evidence_rule(body) == PG_LAMBDA_INTRO) body = pg_evidence_premise(body, 1);
+		if (pg_evidence_rule(body) != PG_INDUCTION_ELIM) goto done;
+	}
 	if (function == s->source_function) { result = -1; goto done; }
 	struct graph_call *call = pg_alloc(&s->temporary, sizeof(*call));
 	if (!call) { result = -1; goto done; }
@@ -461,13 +506,7 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 	}
 	case PG_FORCE_ELIM: {
 		const struct pg_term *core = pg_evidence_subject(left)->core;
-		size_t i = 0;
-		for (; i < plan->hypothesis_count; ++i) {
-			const struct pg_evidence *scope = plan->scopes[plan->field_count + i];
-			const struct pg_evidence *hypothesis = pg_prove_variable(t, scope, pg_evidence_context(scope)->binder);
-			if (plan->origin_map) hypothesis = map_value(s, plan->origin_map, hypothesis);
-			if (hypothesis && core == pg_evidence_subject(hypothesis)->core) break;
-		}
+		size_t i = hypothesis_position(s, plan, core);
 		if (i == plan->hypothesis_count) {
 			if (computation_view(s, left, &rule, &left, &right) || rule != PG_THUNK_INTRO) goto normalize;
 			plan->computation = left;
@@ -1054,6 +1093,7 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 		if (status != PG_EVAL_WHNF) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; break; }
 		const struct pg_evidence *normalized = pg_prove_normalization(s->typing, s->branch, pg_whnf_certificate(s->normalization));
 		const struct pg_evidence *output = pg_prove_return_value(s->typing, normalized);
+		if (!output) output = pg_prove_total_pure_value(s->typing, normalized, pg_binder(s->typing->graph));
 		if (!output) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; break; }
 		const struct pg_evidence *map = pg_prove_substitution_projection(s->typing, s->self, s->branch_context);
 		size_t arity = s->index_count + s->arity + 2;

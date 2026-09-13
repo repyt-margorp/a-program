@@ -137,6 +137,13 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p appendMain appendExpected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p genericMain one
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-helper-call-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-callable-parameter.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-callable-parameter.p applyMain two
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-callable-parameter.p propertyMain two
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-callable-parameter.p filterMain filterExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-callable-parameter.p allMain sample
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-callable-parameter.p noneMain noneExpected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-callable-parameter-wrong.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/acc-function-motive.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-function-motive-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-order-reflexivity.p main expected
