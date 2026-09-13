@@ -24,8 +24,10 @@
  * Known constructor Matches expose their typed branch before recursive call
  * analysis, including raw Pi results and substituted fields. Neutral Matches
  * on distinct variable indices form a shared constructor-refined branch tree;
- * schema and witness use the same leaves and call prefixes. Unknown callees
- * and computed discriminants without retained constructor origins remain unsupported.
+ * schema and witness use the same leaves and call prefixes. Saturated calls
+ * to retained recursive Lambda definitions request their canonical graph and
+ * witness from the owner. Their actual parameters instantiate the result and
+ * relation; generic opaque callees remain unsupported.
  * One work object owns one generative declaration; a source producer must
  * memoize this request rather than generating a new family for each use. */
 enum pg_function_graph_status {
@@ -50,6 +52,11 @@ int pg_function_graph_source_order(struct pg_function_graph_work *work,
 /* Number of raw Pi arguments after the selected source scrutinee, before F. */
 size_t pg_function_graph_trailing_arity(const struct pg_function_graph_work *work);
 enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph_work *work, uint64_t budget);
+/* A helper call waits for the same canonical graph/witness requested by @f and *f.
+ * The supplied work is borrowed and must outlive this work. Pending inputs do
+ * not grant evidence; only an owned, completed matching dependency is usable. */
+const struct pg_evidence *pg_function_graph_dependency(const struct pg_function_graph_work *work);
+int pg_function_graph_supply(struct pg_function_graph_work *work, const struct pg_function_graph_work *dependency);
 /* Leading raw Lambda parameters become ordinary family abstractions. */
 const struct pg_evidence *pg_function_graph_formation(const struct pg_function_graph_work *work);
 /* Declaration before abstracting the original leading parameters. Case input

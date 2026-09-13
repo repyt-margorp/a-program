@@ -130,6 +130,13 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p refinedMain one
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-branch-tree-wrong.p
 	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/function-graph-branch-name-collision.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p main one
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p proofMain one
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p twiceMain two
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p twiceProofMain two
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p appendMain appendExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p genericMain one
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-helper-call-wrong.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/acc-function-motive.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-function-motive-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-order-reflexivity.p main expected

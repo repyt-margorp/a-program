@@ -22,6 +22,13 @@ already-defined `length` and `quickSort` are the following milestone, not a
 reason to delay compilation compatibility. Neither milestone requires
 eliminating recomputation during image loading. The full rewrite remains open.
 
+Current milestone summary (September 13): selected unchanged legacy sources
+and all six QuickSort results pass the 20-case compatibility gate. The existing
+length has a checked post-hoc property proof; QuickSort does not yet. Completing
+the wider legacy inventory remains necessary before claiming full compatibility.
+No checkpoint optimization or broader Higher Identity work is a prerequisite
+for that first delivery; preserve existing checks without expanding this gate.
+
 - [ ] Establish the compatibility inventory from legacy integration tests and
   fixtures, with a verified working legacy revision as reference. Do not assume
   every fixture passed merely because it exists; preserve negative cases too.
@@ -376,12 +383,30 @@ September 13 typed Match exposure:
   unfinished/completed resaves), unsupported name collisions and 20/20 compatibility.
   No Core tag, kernel rule, wire format or Replay path was added.
   Implementation +454/-122; tests +122/-1; build rules +13/-0; docs separate.
+- [x] Compose saturated calls to retained recursive helper definitions using
+  the same canonical graph/witness requests as public `@f` and `*f`. The existing
+  scheduler supplies completed dependencies; schema and witness share actual
+  arguments and checked context maps. Result types instantiate the helper's
+  original range, including type parameters. No guessed output, new kernel
+  rule, wire format or Replay path is introduced.
+  `function-graph-helper-call.p` checks post-hoc length properties, two calls,
+  curried append and generic helpers. Public helper graph evidence inhabits the
+  caller's fields; evidence for a different helper rejects. API tests reject
+  incomplete, wrong-source, self and duplicate supplies. IH-only field ordering
+  remains supported; helper-call layouts currently use execution order instead
+  of the old flat IH-only named-field map. General named-field layouts stay open.
+  Debug `check-acceptance` passes, including 20/20 compatibility. ASan/UBSan
+  passes IADT, Program, image CLI and 20/20 compatibility. Image checks cover
+  unfinished/completed resaves and source results at chunk sizes 1/64.
 - [ ] Complete unknown-callee/result graph translation for QuickSort.
-  `@quickSortAcc` now reaches its cons branch, then stops at 60,433 steps while
-  exposing the `partition` result: retained `PG_INDUCTION_ELIM` over a symbolic
-  tail cannot be normalized to RETURN. One nil leaf is already constructed.
-  The earlier 59,322-step inner-Match blocker
-  is superseded, not the whole QuickSort property milestone. Keep the original
+  `@quickSortAcc` now requests the canonical `partition` graph, which remains
+  unsupported; the current full probe stops at 59,346 steps. A debugger probe
+  finds `PG_FORCE_ELIM` on `PG_VARIABLE` under reindexing: pure normalization
+  reaches WHNF, but does not produce RETURN. The former
+  60,433-step normalization blocker is superseded. Opaque higher-order callees
+  still need a checked graph/witness interface, not a fabricated return value.
+  This is a property-generation blocker, not a failure to compile or execute
+  the original QuickSort source. Keep the original
   Acc induction distinct from the nested SizedList discriminator. Do not guess
   a helper result, rewrite the source to bypass it, or add a Returns primitive.
 

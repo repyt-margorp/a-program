@@ -3091,6 +3091,15 @@ done:
 	return result;
 }
 
+static struct pg_synthesis_job *function_graph_request(struct pg_synthesis *synthesis,
+	const struct pg_evidence *function)
+{
+	const struct pg_evidence *body = function;
+	while (pg_evidence_rule(body) == PG_LAMBDA_INTRO) body = pg_evidence_premise(body, 1);
+	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, body);
+	return accepted ? request_job(synthesis, FUNCTION_GRAPH_JOB, function, accepted->source_origin) : NULL;
+}
+
 static void function_graph_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	const struct pg_evidence *function = job->inputs[0];
@@ -3104,6 +3113,20 @@ static void function_graph_step(struct pg_synthesis *synthesis, struct pg_synthe
 		}
 	}
 	enum pg_function_graph_status status = pg_function_graph_advance(&job->function_graph, 1);
+	const struct pg_evidence *required = pg_function_graph_dependency(&job->function_graph);
+	if (required) {
+		struct pg_synthesis_job *graph = function_graph_request(synthesis, required);
+		if (!graph || graph == job) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		struct pg_synthesis_job *witness = request_job(synthesis, FUNCTION_WITNESS_JOB, graph, NULL);
+		if (!witness) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (witness->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, witness); return; }
+		if (witness->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, witness->status); return; }
+		if (pg_function_graph_supply(&job->function_graph, &graph->function_graph)) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+		}
+		enqueue(synthesis, job);
+		return;
+	}
 	if (status == PG_FUNCTION_GRAPH_PENDING) { enqueue(synthesis, job); return; }
 	job->result = pg_function_graph_formation(&job->function_graph);
 	if (status == PG_FUNCTION_GRAPH_DONE && function_graph_exports(synthesis, job)) {
@@ -3162,11 +3185,8 @@ static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (reference.producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, reference.producer->status); return; }
 		const struct pg_evidence *function = pg_function_graph_source(reference.producer->result);
 		if (!function) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		const struct pg_evidence *body = function;
-		while (pg_evidence_rule(body) == PG_LAMBDA_INTRO) body = pg_evidence_premise(body, 1);
-		struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, body);
-		if (!accepted) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		struct pg_synthesis_job *graph = request_job(synthesis, FUNCTION_GRAPH_JOB, function, accepted->source_origin);
+		struct pg_synthesis_job *graph = function_graph_request(synthesis, function);
+		if (!graph) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		if (witness) graph = request_job(synthesis, FUNCTION_WITNESS_JOB, graph, NULL);
 		struct pg_synthesis_job *premises[] = {job->scope->context_job, graph};
 		job->value_job = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);

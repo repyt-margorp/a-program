@@ -402,6 +402,7 @@ static void function_graphs(void)
 {
 	const char *source = "Nat:=@{zero:*;succ:*->*;}; NatList:=@{nil:*;cons:Nat->*->*;};"
 		"length:=\\xs:NatList=>xs @nil=>Nat.zero @cons head tail=>Nat.succ *tail;"
+		"tailLength:=\\xs:NatList=>xs @nil=>Nat.zero @cons head tail=>length tail;"
 		"identity:=\\n:Nat=>n; zero:=Nat.zero; nil:=NatList.nil;"
 		"one:=NatList.cons Nat.zero NatList.nil; successor:=Nat.succ Nat.zero;"
 		"Tree:=@{leaf:*;fork:*->*->*;};"
@@ -515,6 +516,29 @@ static void function_graphs(void)
 			assert(pg_inductive_instance(&p->typing, formation, &retained) && retained.schema == graph.schema);
 			assert(pg_evidence_owned_by(pg_data_schema_result(retained.schema, pg_data_constructor(layout, 0)), &p->typing));
 		}
+		const char *dependencies[] = {"tailLength", "length", "identity"};
+		struct pg_function_graph_work works[3];
+		const struct pg_evidence *functions[3];
+		for (size_t i = 0; i < 3; ++i) {
+			functions[i] = pg_synthesis_result(pg_synthesis_definition(p->root,
+				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = dependencies[i], .length = strlen(dependencies[i])}));
+			assert(!pg_function_graph_init(&works[i], &p->typing, &p->classifiers, &p->evaluation, functions[i]));
+		}
+		for (size_t turns = 0; !pg_function_graph_dependency(&works[0]); ++turns) {
+			assert(turns < 100000);
+			assert(pg_function_graph_advance(&works[0], chunk) == PG_FUNCTION_GRAPH_PENDING);
+		}
+		assert(pg_function_graph_dependency(&works[0]) == pg_function_graph_source(functions[1]));
+		assert(pg_function_graph_advance(&works[0], 0) == PG_FUNCTION_GRAPH_PENDING);
+		assert(pg_function_graph_supply(&works[0], &works[0]));
+		assert(pg_function_graph_supply(&works[0], &works[1]));
+		graph_witness_result(p, &works[2], successor, successor, chunk);
+		assert(pg_function_graph_supply(&works[0], &works[2]));
+		graph_witness_result(p, &works[1], one, successor, chunk);
+		assert(!pg_function_graph_supply(&works[0], &works[1]));
+		assert(pg_function_graph_supply(&works[0], &works[1]));
+		graph_witness_result(p, &works[0], one, zero, chunk);
+		for (size_t i = 0; i < 3; ++i) pg_function_graph_destroy(&works[i]);
 		pg_program_destroy(p);
 	}
 	puts("function graphs: ordinary indexed schemas and result witnesses preserve identity/length/mirror results");
