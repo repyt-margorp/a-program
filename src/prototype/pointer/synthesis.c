@@ -63,6 +63,7 @@ struct block_state {
 };
 struct application_state {
 	struct pg_synthesis_job *context, *callee, *argument, *tail;
+	struct pg_synthesis_job *constraint;
 	const struct block_frame *frames;
 };
 struct index_transport_state {
@@ -213,6 +214,7 @@ struct effect_substitution_state {
 	const struct pg_term *result;
 };
 enum job_role { LIFT_JOB, FUNCTION_WITNESS_JOB, PI_SCOPE_JOB, DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
+	RESULT_TYPE_JOB, CLASSIFIER_CONSTRAINT_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB, FAMILY_FUNCTION_JOB, FAMILY_CONTRACT_JOB, FUNCTION_GRAPH_JOB, CONSTRUCTOR_TRANSPORT_JOB, INDEX_TRANSPORT_JOB };
 enum { APPLICATION_RULE_READY = 6 };
 struct context_allocation {
@@ -5907,7 +5909,16 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		return;
 	}
 	if (state->type_cases && !state->motive_context) { match_dependent_motive_step(synthesis, job); return; }
-	if (!state->motive && state->path_context) goto unsupported;
+	if (!state->motive && state->path_context) {
+		for (size_t i = 0; i < state->count; ++i)
+			if (!state->branches[i].contradiction) goto unsupported;
+		struct pg_synthesis_job *constraint = request_job(synthesis, RESULT_TYPE_JOB, job, NULL);
+		if (!constraint) goto error;
+		if (constraint->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, constraint); return; }
+		if (constraint->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, constraint->status); return; }
+		state->motive = pg_prove_projection(synthesis->typing, context, constraint->result);
+		if (!state->motive || pg_evidence_judgement(state->motive) != PG_JUDGEMENT_COMPUTATION_TYPE) goto rejected;
+	}
 	if (!state->motive && state->result_checked < state->count) { match_result_step(synthesis, job); return; }
 	if (!state->motive) goto unsupported;
 	if (!state->motive_context) {
@@ -8083,6 +8094,55 @@ static enum pg_synthesis_status application_bind(struct pg_synthesis *synthesis,
 	return PG_SYNTHESIS_DONE;
 }
 
+/* Application equations may determine a still-open result classifier. These
+ * jobs only propagate type evidence; they never certify the source term. */
+static void classifier_constraint_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *source = (void *)job->inputs[0];
+	struct pg_synthesis_job *type = (void *)job->inputs[1];
+	if (job->left) { forward_proof(synthesis, job, job->left); return; }
+	if (source->status == PG_SYNTHESIS_DONE || source->role != EXPRESSION_JOB) goto done;
+	const struct pg_syntax *syntax = source->syntax;
+	if (syntax->kind != PG_SYNTAX_QUOTE && syntax->kind != PG_SYNTAX_LAMBDA &&
+		syntax->kind != PG_SYNTAX_ELIMINATION) goto done;
+	if (handler_syntax(syntax)) goto done;
+	if (await_source_preparation(synthesis, job, source)) return;
+	if (syntax->kind == PG_SYNTAX_QUOTE) {
+		type = plain_rule(synthesis, PG_THUNK_CONTENT, NULL, 1, &type);
+		job->left = type ? request_job(synthesis, CLASSIFIER_CONSTRAINT_JOB, source->left, type) : NULL;
+	} else if (syntax->kind == PG_SYNTAX_LAMBDA) {
+		struct pg_synthesis_job *context = source->inner->context_job;
+		struct pg_synthesis_job *variable = plain_rule(synthesis, PG_VARIABLE, source->inner->binder, 1, &context);
+		type = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){context, type});
+		struct pg_synthesis_job *domain = plain_rule(synthesis, PG_PI_DOMAIN, NULL, 1, &type);
+		variable = pg_synthesis_expect(synthesis, variable, domain);
+		type = plain_rule(synthesis, PG_PI_CODOMAIN, NULL, 2,
+			(struct pg_synthesis_job *[]){type, variable});
+		job->left = type ? request_job(synthesis, CLASSIFIER_CONSTRAINT_JOB, source->right, type) : NULL;
+	} else {
+		if (type->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, type); return; }
+		if (type->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, type->status); return; }
+		if (!type->result || pg_evidence_judgement(type->result) != PG_JUDGEMENT_COMPUTATION_TYPE) goto done;
+		struct pg_synthesis_job *slot = request_job(synthesis, RESULT_TYPE_JOB, source, NULL);
+		if (!slot) goto error;
+		if (!slot->left) {
+			slot->left = type;
+			if (slot->stage) enqueue(synthesis, slot);
+		}
+		/* Additional equations must agree; never overwrite an inferred type. */
+		job->left = request_job(synthesis, CONVERSION_JOB,
+			pg_evidence_subject(slot->left->result)->core, pg_evidence_subject(type->result)->core);
+	}
+	if (!job->left) goto error;
+	forward_proof(synthesis, job, job->left);
+	return;
+done:
+	finish(synthesis, job, PG_SYNTHESIS_DONE); return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+}
+
 static int source_has_identity(struct pg_synthesis *synthesis, const struct pg_source_scope *scope)
 {
 	for (; scope; scope = scope->parent) {
@@ -8098,6 +8158,11 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 {
 	if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_APPLICATION) return 0;
 	if (job->stage == APPLICATION_RULE_READY) {
+		if (job->application && job->application->constraint) {
+			struct pg_synthesis_job *constraint = job->application->constraint;
+			if (constraint->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, constraint); return 1; }
+			if (constraint->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, constraint->status); return 1; }
+		}
 		if (job->context_allocation) {
 			struct pg_synthesis_job *prefix = job->scope->context_job;
 			if (prefix->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, prefix); return 1; }
@@ -8237,6 +8302,11 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		enqueue(synthesis, job);
 		return 1;
 	}
+	if (!state->constraint) {
+		struct pg_synthesis_job *type = application_domain(synthesis, state->context, callee);
+		state->constraint = type ? request_job(synthesis, CLASSIFIER_CONSTRAINT_JOB, state->argument, type) : NULL;
+		if (!state->constraint) goto error;
+	}
 	if (source_has_identity(synthesis, job->scope)) {
 		struct pg_synthesis_job *expected = application_domain(synthesis, state->context, callee);
 		if (!expected) goto error;
@@ -8255,6 +8325,12 @@ error:
 
 static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
+	if (job->role == RESULT_TYPE_JOB) {
+		job->stage = 1;
+		if (job->left) forward_proof(synthesis, job, job->left);
+		return;
+	}
+	if (job->role == CLASSIFIER_CONSTRAINT_JOB) { classifier_constraint_step(synthesis, job); return; }
 	/* Restored source scopes exist before name registration. Do not resolve
 	 * a missing local name against an outer scope while registration is pending. */
 	struct pg_synthesis_job *registration = job->scope ? job->scope->registration : NULL;

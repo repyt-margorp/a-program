@@ -71,10 +71,12 @@ and two expected rejections. Main passed that initial baseline. The current
 one justified admission of a historical negative request, and two genuine
 negative checks (details below). The eight failing entries cover order proofs,
 named graph cases and six QuickSort result cases; they are not eight independent
-compiler defects. QuickSort remains UNSUPPORTED. Indexed induction now preserves
-the checked ambient generalization; the unchanged `accessibleSucc` and its `::`
-check succeed. The immediate blocker is all-impossible branches whose result
-constraints come from an application domain. This is missing source compatibility, not
+compiler defects. QuickSort still fails. Indexed induction now preserves
+the checked ambient generalization; unchanged `accessibleSucc`, `natAccessible`
+and their `::` checks succeed. Application-domain constraints now close the
+all-impossible zero case. The next traced failure is `partition`'s recursive
+block: its IH domain demand is not collected, leaving the base result as a
+constant motive. This is missing source compatibility, not
 checkpoint performance work.
 This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
@@ -384,14 +386,31 @@ unchanged; computations over logical hypotheses use the extension below.
   11/19: QuickSort is UNSUPPORTED at 41,343 steps. Synthesis and source-image
   suites, plus both indexed-IH rejection cases, pass ASan/UBSan. No claim of
   full QuickSort compilation or its post-hoc property proof is made.
+- [x] After `2cb2cb5`: keep all-refuted indexed Match results pending until an
+  application supplies a classifier equation. Interned Solve jobs propagate
+  that equation through explicit Thunk and annotated Lambda using ordinary
+  type projections and Pi codomain instantiation. They supply type evidence,
+  not acceptance of a term; the existing Match/Identity and APP rules still
+  check the resulting proof. Additional equations cannot overwrite a solution.
+  No new Core tag, kernel rule, image format or Replay path is introduced.
+  `::` alone leaves the underdetermined result pending. This is not general
+  higher-order unification or constraint propagation through arbitrary aliases.
+  The legacy `natAccessible` and its post-check succeed; computing accessibility
+  for two and reading its index returns two at chunks 1/64 and after image
+  resaves. Tests also cover Bool/Nat/raw-Pi carriers, wrong reachable results
+  and wrong Lambda domains. Full acceptance passes preceding gates and remains
+  11/19; QuickSort now rejects at 46,957 steps in `partition`, rather than
+  stopping at `natAccessible`. Program, synthesis and the complete source-image
+  suite pass ASan/UBSan.
 - [ ] Complete indexed induction and general dependent index transport.
   All-impossible cases need result constraints from
   existing application domains, never `::` or unreachable branch bodies.
   Same-constructor equations need injectivity and transport of dependent
   fields, retaining earlier selected paths; they are not disjointness.
-  Ambient refinement now handles `accessibleSucc`. The all-impossible Match
-  in `natAccessible` still needs an application-domain result constraint in
-  the shared Solve graph, rather than premature UNSUPPORTED finalization.
+  Ambient refinement and all-impossible result constraints now handle
+  `accessibleSucc` and `natAccessible`. Extend lexical IH-domain collection
+  through computation blocks: `partition` currently picks `Partition A zero`
+  from its base branch without collecting the recursive call's indexed domain.
   Preserve the recursive IH's motive: adding `n = recursive_index` as an IH
   argument would make it unusable at a smaller, different recursive index.
   Do not replace missing evidence with a trusted empty-case marker.

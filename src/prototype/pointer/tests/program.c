@@ -474,6 +474,44 @@ static void ambiguous_source_calls(void)
 	puts("function graph source layout: ambiguous repeated argument sites stay unsupported, not interchangeable");
 }
 
+static void application_result_constraints(void)
+{
+	const char *prefix = "Bool:=@{true:*;false:*;}; Nat:=@{zero:*;succ:*->*;};"
+		"Only:=@\\b:Bool=>{only:* Bool.true;};";
+	const char *cases[] = {
+		"use:=\\f:Only Bool.false->Bool=>Bool.true;"
+		"main:=use &(\\p:Only Bool.false=>p @only=>Nat.zero);",
+		"use:=\\f:Only Bool.false->Nat=>Nat.zero;"
+		"main:=use &(\\p:Only Bool.false=>p @only=>Bool.true);",
+		"use:=\\f:Only Bool.false->(Nat->Nat)=>Nat.zero;"
+		"main:=use &(\\p:Only Bool.false=>p @only=>Bool.true);",
+		"use:=\\f:Only Bool.true->Bool=>Bool.true;"
+		"main:=use &(\\p:Only Bool.true=>p @only=>Nat.zero);",
+		"main:=\\p:Only Bool.false=>p @only=>Nat.zero;"
+		"main::Only Bool.false->Bool;",
+		"use:=\\f:Only Bool.false->Bool=>Bool.true;"
+		"main:=use &(\\p:Only Bool.true=>p @only=>Bool.true);",
+	};
+	const enum pg_synthesis_status expected[] = {PG_SYNTHESIS_DONE, PG_SYNTHESIS_DONE,
+		PG_SYNTHESIS_DONE, PG_SYNTHESIS_REJECTED, PG_SYNTHESIS_PENDING, PG_SYNTHESIS_REJECTED};
+	for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+		char *source = malloc(strlen(prefix) + strlen(cases[i]) + 1);
+		assert(source);
+		strcpy(source, prefix); strcat(source, cases[i]);
+		for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+			struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+			assert(p && p->root && !p->parser.error);
+			while (p->synthesis.ready && p->synthesis.steps < 100000)
+				pg_synthesis_advance(&p->synthesis, chunk);
+			assert(!p->synthesis.ready && pg_synthesis_status(p->root) == expected[i]);
+			if (expected[i] != PG_SYNTHESIS_DONE) assert(!pg_synthesis_result(p->root));
+			pg_program_destroy(p);
+		}
+		free(source);
+	}
+	puts("application constraints: empty elimination receives typed domains; reachable branches and post-checks remain independent");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc == 3 && (!strcmp(argv[1], "--reject") || !strcmp(argv[1], "--unsupported"))) {
@@ -506,6 +544,7 @@ int main(int argc, char **argv)
 	remembered_normalization();
 	function_graphs();
 	ambiguous_source_calls();
+	application_result_constraints();
 	char source[] = "{{ id := &(\\A:@ => \\x:A => x); id :: (A:@)->A->A; }}.id";
 	struct pg_program *split = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
 	struct pg_program *whole = pg_program_create(source, strlen(source), PG_DEFINITION_EXPLICIT_THUNK);
