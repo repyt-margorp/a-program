@@ -925,6 +925,43 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 						pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, reverse_context, expected)));
 					solve_index_proof(&synthesis, reverse, chunk, PG_SYNTHESIS_DONE);
 				}
+				if (injection) {
+					struct pg_inductive_instance instance;
+					assert(pg_inductive_instance(typing, nat, &instance));
+					const struct pg_object *field = pg_evidence_context(pg_data_schema_fields(instance.schema, succ))->binder;
+					struct pg_synthesis_job *cj = pg_synthesis_evidence(&synthesis, context);
+					struct pg_synthesis_job *lj = pg_synthesis_evidence(&synthesis, left);
+					struct pg_synthesis_job *rj = pg_synthesis_evidence(&synthesis, right);
+					struct pg_synthesis_job *nj = pg_synthesis_evidence(&synthesis, nv);
+					struct pg_synthesis_job *mj = pg_synthesis_evidence(&synthesis, mv);
+					struct pg_synthesis_job *derived = pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj, field, nj, mj);
+					const struct pg_evidence *proof = solve_index_proof(&synthesis, derived, chunk, PG_SYNTHESIS_DONE);
+					assert(pg_evidence_classifier(proof) == pg_evidence_subject(expected)->core);
+					assert(!pg_term_independent(pg_evidence_subject(proof)->core, i ? q : p));
+					assert(pg_term_independent(pg_evidence_subject(proof)->core, i ? p : q) == 1);
+					const struct pg_evidence *transported = pg_evidence_premise(proof, 0);
+					assert(pg_evidence_rule(transported) == PG_IDENTITY_TRANSPORT);
+					common_rule(typing, classifiers, transported);
+					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
+					assert(derived == pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj, field, nj, mj));
+					assert(before == typing->proofs.count && terms == typing->graph->terms.count);
+					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj,
+						field, mj, nj), chunk, PG_SYNTHESIS_REJECTED);
+					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj,
+						pg_binder(typing->graph), nj, mj), chunk, PG_SYNTHESIS_REJECTED);
+					assert(!pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj, NULL, nj, mj));
+					assert(!pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, NULL, field, nj, mj));
+					const struct pg_evidence *refl = pg_prove_reflexivity(typing,
+						pg_prove_projection(typing, context, nat), left);
+					struct pg_synthesis_job *rfl = pg_synthesis_evidence(&synthesis, refl);
+					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, rfl,
+						field, nj, mj), chunk, PG_SYNTHESIS_REJECTED);
+					struct pg_synthesis_job *diagonal = pg_synthesis_constructor_field_identity(&synthesis,
+						cj, lj, lj, rfl, field, nj, nj);
+					const struct pg_evidence *normal = solve_index_proof(&synthesis,
+						pg_synthesis_normalize_jobs(&synthesis, cj, diagonal, PG_REDUCTION_NF), chunk, PG_SYNTHESIS_DONE);
+					assert(pg_alpha_equal(pg_evidence_subject(normal)->core, pg_evidence_subject(input)->core) == 1);
+				}
 				if (chunk == 1) results[i] = checked;
 				else assert(pg_alpha_equal(pg_evidence_subject(checked)->core, pg_evidence_subject(results[i])->core) == 1);
 				size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
@@ -966,6 +1003,58 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 		}
 	}
 	puts("index paths: constructor disjointness/injectivity via type-case action and checked transport passed");
+}
+
+static void constructor_field_paths(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_evidence *nat)
+{
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *self = pg_prove_context_extension(typing, empty, pg_binder(typing->graph),
+		pg_prove_universe(typing, classifiers, empty, 0));
+	const struct pg_object *fields[] = {pg_binder(typing->graph), pg_binder(typing->graph)};
+	const struct pg_evidence *fc = self;
+	for (size_t i = 0; i < 2; ++i)
+		fc = pg_prove_context_extension(typing, fc, fields[i], pg_prove_projection(typing, fc, nat));
+	const struct pg_evidence *cases[] = {parameter_result(typing, self, self), parameter_result(typing, self, fc)};
+	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, self, self), 2, cases);
+	const struct pg_evidence *pair = pg_prove_inductive_type(typing, classifiers, schema);
+	assert(pair);
+	const struct pg_object *ctor = pg_data_constructor(pg_data_schema_layout(schema), 1);
+	const struct pg_object *n = pg_binder(typing->graph), *m = pg_binder(typing->graph), *p = pg_binder(typing->graph);
+	const struct pg_evidence *context = pg_prove_context_extension(typing, empty, n, nat);
+	context = pg_prove_context_extension(typing, context, m, pg_prove_projection(typing, context, nat));
+	const struct pg_evidence *values[] = {pg_prove_variable(typing, context, n), pg_prove_variable(typing, context, m)};
+	const struct pg_evidence *reverse[] = {values[1], values[0]};
+	const struct pg_evidence *params = pg_prove_substitution_projection(typing, empty, context);
+	const struct pg_evidence *left = pg_prove_constructor(typing, pair, ctor, params, 2, values);
+	const struct pg_evidence *right = pg_prove_constructor(typing, pair, ctor, params, 2, reverse);
+	context = pg_prove_context_extension(typing, context, p,
+		pg_prove_identity_type(typing, pg_prove_projection(typing, context, pair), left, right));
+	assert(context);
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_whnf_work work;
+		struct pg_synthesis synthesis;
+		assert(!pg_whnf_work_init(&work, typing->graph));
+		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_synthesis_job *jobs[2];
+		for (size_t i = 0; i < 2; ++i) {
+			const struct pg_evidence *lv = pg_prove_projection(typing, context, values[i]);
+			const struct pg_evidence *rv = pg_prove_projection(typing, context, reverse[i]);
+			jobs[i] = pg_synthesis_constructor_field_identity(&synthesis, pg_synthesis_evidence(&synthesis, context),
+				pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, context, left)),
+				pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, context, right)),
+				pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, p)), fields[i],
+				pg_synthesis_evidence(&synthesis, lv), pg_synthesis_evidence(&synthesis, rv));
+			const struct pg_evidence *proof = solve_index_proof(&synthesis, jobs[i], chunk, PG_SYNTHESIS_DONE);
+			const struct pg_evidence *expected = pg_prove_identity_type(typing, pg_prove_projection(typing, context, nat), lv, rv);
+			assert(pg_evidence_classifier(proof) == pg_evidence_subject(expected)->core);
+			assert(pg_prove_abstract(typing, classifiers, empty, context, pg_prove_return(typing, classifiers, proof)));
+		}
+		assert(jobs[0] != jobs[1]);
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&work);
+	}
+	puts("constructor fields: exact telescope binders select distinct injectivity proofs through Solve");
 }
 
 static void schema_positivity(void)
@@ -1011,6 +1100,7 @@ static void schema_positivity(void)
 	const struct pg_data_schema *nat_schema = pg_data_schema(&typing, signature, 2, results);
 	const struct pg_evidence *nat = pg_prove_inductive_type(&typing, &classifiers, nat_schema);
 	assert(nat && pg_evidence_rule(nat) == PG_INDUCTIVE_FORM);
+	constructor_field_paths(&typing, &classifiers, nat);
 	struct pg_inductive_instance recovered;
 	assert(pg_inductive_instance(&typing, nat, &recovered));
 	assert(recovered.schema == nat_schema && recovered.formation == nat);

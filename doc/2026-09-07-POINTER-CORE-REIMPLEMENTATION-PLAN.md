@@ -240,7 +240,7 @@ unchanged; computations over logical hypotheses use the extension below.
   and Match allocation-origin tests pass. No new Core/rule/wire tag or Replay
   path is introduced; Main promotion remains open.
 - [ ] Remaining compatibility blockers: order proofs, named Graph cases and
-  QuickSort. QuickSort currently rejects at 37194 steps: `#.terminates` is not connected in the new source
+  QuickSort. `#.terminates` is not connected in the new source
   environment. A traced failure in `accessibleSucc` is `*down m prior` in the
   `LT.lift` branch, which needs checked index refinement. `quickSortAcc` obtains
   a motive candidate but neither the whole program nor its property is accepted.
@@ -307,13 +307,53 @@ unchanged; computations over logical hypotheses use the extension below.
   blocks to real source synthesis, but does not complete indexed elimination.
   Targeted result/rejection tests and the source-image CLI suite pass
   ASan/UBSan (ordinary fixture writer, sanitized checker and comparator).
+- [x] September 13, after `d5d58cf`: construct same-constructor field Identity
+  through the same constructor-transport worker as disjointness. The selected
+  field is its semantic telescope binder, not an integer offset or a new
+  primitive. A type case returns `Id FieldType leftField field` in that
+  constructor branch. Transport of reflexivity along the supplied constructor
+  path gives the field Identity; ordinary conversion checks both field images.
+  This homogeneous fragment requires the field type to agree independently
+  of preceding constructor fields. Dependent field transport remains open.
+  Tests cover separate selected paths, diagonal computation, wrong images,
+  missing/wrong paths, wrong schema binders and both fields of a two-field ADT.
+- [x] Use those paths at source application arguments after ordinary conversion
+  fails. Pattern inversion factors the independently synthesized argument
+  classifier through a field variable. The resulting checked family and
+  derived field Identity produce explicit transport to the callee domain.
+  No raw classifier substitution, equality reflection, new kernel rule or
+  Replay path is introduced. Source `::` retains conversion-only post-checking.
+  Applications without checked local Identity hypotheses retain the original
+  conversion-only producer, including its pre-acceptance subject structure.
+  A potential transport cannot expose that same subject speculatively: its
+  resulting Core may differ. The pending-effect source-structure tests exposed
+  this distinction and remain unchanged.
+  `indexed-field-transport.p` exercises `succ n = succ k` and two-field
+  constructor paths, including an irrelevant field candidate before the
+  useful one. Unrelated index conversions and `::`-only casts reject.
+  This is currently a variable-image pattern solver, not general unification
+  or automatic reasoning about arbitrary equalities.
+  Connecting argument evidence exposed a handler inference cycle: nondependent
+  application classifier synthesis unnecessarily waited for argument Core.
+  It now returns a constant codomain independently, while dependent codomains
+  still wait for the actual transported term. The requested target classifier
+  is available structurally; the transported subject is never reported as the
+  original untransported argument. Existing handler-origin tests cover this.
+  Validation: full `check-acceptance` passes preceding gates and reports 11/19
+  unchanged-source compatibility. QuickSort is still UNSUPPORTED (37,100
+  steps), not accepted; traced failures include the all-impossible zero case
+  and the dependent-result Match in `accessibleSucc`. IADT tests, source
+  argument result/rejection cases, handler origins and the complete source
+  image CLI suite pass ASan/UBSan. No test budget or expected result was relaxed.
 - [ ] Complete rigid indexed source Match beyond that constant-result,
   nonrecursive fragment. All-impossible cases need result constraints from
   existing application domains, never `::` or unreachable branch bodies.
   Same-constructor equations need injectivity and transport of dependent
   fields, retaining earlier selected paths; they are not disjointness.
   Integrate these paths with local recursive IH scopes and general dependent
-  motives. Do not replace missing evidence with a trusted empty-case marker.
+  motives and branch-result transport. Argument transport alone does not solve
+  `accessibleSucc`: its branch results still require a dependent motive.
+  Do not replace missing evidence with a trusted empty-case marker.
 - [x] Form path hypotheses between chosen parallel index substitutions with
   `pg_identity_substitution_context`. Ordinary Context/Substitution/Identity
   evidence retains each earlier path in later dependent equations; identical
