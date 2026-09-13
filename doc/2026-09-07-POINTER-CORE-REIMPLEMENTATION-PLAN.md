@@ -449,10 +449,24 @@ unchanged; computations over logical hypotheses use the extension below.
   still agree. No Replay path or new kernel rule was added.
   Remaining limits: `if8_order_check.p` now derives the outer `Acc n` motive,
   but its inner LT Match returns `Acc k` where `Acc y` is required. Nominal
-  recovery for a constructor whose schema itself computes `succ k` still loses
+  recovery for a constructor whose schema itself computes `succ k` at this point loses
   image evidence through constant-codomain strengthening; the new source test
   uses an explicit result-index argument, not that unsupported case. Neither
   limitation is a performance task or a reason to weaken checking.
+- [x] September 13, after `42cc646`: fix that constructed-index recovery.
+  Recover returned values from retained application/substitution origins and
+  rebuild constructor parameters/fields in the smaller context with ordinary
+  kernel rules. An explicit work stack handles nested constructor images;
+  erased Core support alone never licenses dropping a Context declaration.
+  `indexed-schema-result.p` now checks the direct `*(Nat.succ k)` schema,
+  synthesis, post-check and execution; its wrong-index variant rejects.
+  IADT tests cover 64 nested constructor images, exact repeated recovery and
+  refusal to remove a genuinely used index binder. Normal acceptance passes
+  preceding gates and remains 11/19 (order 6,986 steps, QuickSort 58,902).
+  ASan/UBSan IADT, focused Program and full source-image resave tests pass.
+  A separate source probe replacing Nat by `Counter Unit`, where
+  `Counter := \A : @ => @{zero:*; succ:*->*;};`, remains unsupported at 671
+  steps. That computed nominal alias is not covered by the restored test.
 - [ ] Complete indexed induction and general dependent index transport.
   All-impossible cases need result constraints from
   existing application domains, never `::` or unreachable branch bodies.

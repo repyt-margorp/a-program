@@ -836,6 +836,36 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 	const struct pg_evidence *duplicate[] = {successor, successor};
 	assert(!pg_prove_pattern_type(typing, classifiers, empty,
 		pg_prove_substitution(typing, mc, fields, 2, duplicate), body));
+	/* Removing an unused domain must retain constructed index images, even
+	 * when their value proofs were built inside that larger context. */
+	const struct pg_evidence *unused = pg_prove_context_extension(typing, fields,
+		pg_binder(typing->graph), pg_prove_projection(typing, fields, empty_type));
+	const struct pg_evidence *large_parameters = pg_prove_substitution_projection(typing, empty, unused);
+	const struct pg_evidence *large_value = pg_prove_projection(typing, unused, field), *small_value = field;
+	for (size_t i = 0; i < 64; ++i) {
+		large_value = pg_prove_constructor(typing, nat, succ, large_parameters, 1, &large_value);
+		small_value = pg_prove_constructor(typing, nat, succ, parameters, 1, &small_value);
+		assert(large_value && small_value);
+	}
+	const struct pg_evidence *large_type = pg_prove_return_type(typing, classifiers,
+		pg_prove_family_application(typing, pg_prove_projection(typing, unused, family), large_value));
+	const struct pg_evidence *smaller = pg_prove_return_content(typing,
+		pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, classifiers, unused, large_type)));
+	struct pg_inductive_instance recovered, again;
+	assert(smaller && pg_inductive_instance(typing, smaller, &recovered));
+	assert(recovered.schema == schema);
+	const struct pg_evidence *last = pg_evidence_premise(recovered.indices,
+		pg_evidence_premise_count(recovered.indices) - 1);
+	assert(pg_evidence_context(last) == pg_evidence_context(fields));
+	assert(pg_evidence_subject(last)->core == pg_evidence_subject(small_value)->core);
+	assert(pg_inductive_instance(typing, smaller, &again) && recovered.indices == again.indices);
+	common_rule(typing, classifiers, last);
+	const struct pg_evidence *dependent = pg_prove_context_extension(typing, fields, pg_binder(typing->graph),
+		pg_prove_projection(typing, fields, nat));
+	const struct pg_evidence *local = pg_prove_variable(typing, dependent, pg_evidence_context(dependent)->binder);
+	const struct pg_evidence *local_type = pg_prove_return_type(typing, classifiers,
+		pg_prove_family_application(typing, pg_prove_projection(typing, dependent, family), local));
+	assert(!pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, classifiers, dependent, local_type)));
 	for (size_t injection = 0; injection < 2; ++injection) {
 		const struct pg_evidence *nv = pg_prove_variable(typing, mc, n), *mv = pg_prove_variable(typing, mc, m);
 		const struct pg_evidence *parameters = pg_prove_substitution_projection(typing, empty, mc);
