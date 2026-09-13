@@ -332,6 +332,20 @@ static const struct pg_evidence *evidence_map(struct pg_typing *typing,
 	return map;
 }
 
+static const struct pg_evidence *evidence_image(struct pg_typing *typing,
+	const struct pg_evidence *value, const struct evidence_frame *frames)
+{
+	for (; value && frames; frames = frames->next) {
+		const struct pg_evidence *step = frames->proof;
+		if (step->rule == PG_PI_CONSTANT_CODOMAIN)
+			value = rebase_image(typing, step->premises[0]->premises[0]->premises[0], value);
+		else if (step->rule == PG_CONTEXT_PROJECTION)
+			value = pg_prove_projection(typing, step->premises[0], value);
+		else value = pg_prove_reindex(typing, step->premises[0], value);
+	}
+	return value;
+}
+
 static const struct pg_evidence *variable_frame(struct pg_typing *typing,
 	const struct pg_evidence *variable, struct evidence_frame **frames)
 {
@@ -418,7 +432,8 @@ done:
 	return result;
 }
 
-/* Expand retained Pi eliminations using their formation premises. Frames
+/* Expand retained Pi eliminations using their formation premises. A NULL
+ * argument requests an independently checked constant codomain. Frames
  * preserve substitution order without recursing on a curried proof spine. */
 static const struct pg_evidence *pi_body(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *argument)
@@ -444,7 +459,7 @@ static const struct pg_evidence *pi_body(struct pg_typing *typing,
 			pi = pi->premises[1];
 			break;
 		}
-		case PG_TYPE_CONVERSION:
+		case PG_TYPE_CONVERSION: case PG_PURE_NORMALIZATION:
 			pi = pi->premises[0]; break;
 		case PG_THUNK_CONTENT:
 			++thunks; pi = pi->premises[0]; break;
@@ -466,8 +481,10 @@ static const struct pg_evidence *pi_body(struct pg_typing *typing,
 			if (thunks) goto done;
 			const struct pg_evidence *extended = pi->premises[0];
 			const struct pg_evidence *map = evidence_map(typing, extended->premises[0], frames);
-			map = pg_prove_substitution_pair(typing, map, extended, argument);
-			pi = pg_prove_reindex(typing, map, pi->premises[1]);
+			if (argument) {
+				map = pg_prove_substitution_pair(typing, map, extended, argument);
+				pi = pg_prove_reindex(typing, map, pi->premises[1]);
+			} else pi = pg_prove_reindex(typing, map, pg_prove_pi_constant_codomain(typing, pi));
 			if (!pending) { result = pi; goto done; }
 			argument = pending->argument;
 			frames = pending->frames;
@@ -487,6 +504,14 @@ struct inductive_argument {
 	const struct pg_evidence *value;
 	const struct evidence_frame *frames;
 	struct inductive_argument *next;
+};
+
+struct inductive_fold {
+	const struct pg_evidence *continuation;
+	struct evidence_frame *frames;
+	struct inductive_argument *arguments;
+	size_t return_contents, return_values, thunk_contents;
+	struct inductive_fold *parent;
 };
 
 int pg_inductive_recovery_init(struct pg_inductive_recovery *work,
@@ -524,7 +549,33 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 			++work->return_values; formation = formation->premises[0]; break;
 		case PG_RETURN_INTRO:
 			if (!work->return_values) goto failed;
+			if (work->return_values == 1 && work->folds) {
+				struct inductive_fold *fold = work->folds;
+				const struct pg_evidence *value = evidence_image(typing, formation->premises[0], work->frames);
+				formation = pg_prove_application_body(typing, fold->continuation, value);
+				if (!formation) goto failed;
+				work->frames = fold->frames;
+				work->arguments = fold->arguments;
+				work->return_contents = fold->return_contents;
+				work->return_values = fold->return_values;
+				work->thunk_contents = fold->thunk_contents;
+				work->folds = fold->parent;
+				break;
+			}
 			--work->return_values; formation = formation->premises[0]; break;
+		case PG_FOLD_ELIM: {
+			struct inductive_fold *fold = pg_alloc(&work->temporary, sizeof(*fold));
+			if (!fold) goto failed;
+			*fold = (struct inductive_fold){formation->premises[1], work->frames, work->arguments,
+				work->return_contents, work->return_values, work->thunk_contents, work->folds};
+			work->folds = fold;
+			work->frames = NULL;
+			work->arguments = NULL;
+			work->return_contents = work->thunk_contents = 0;
+			work->return_values = 1;
+			formation = formation->premises[0];
+			break;
+		}
 		case PG_TYPE_FAMILY_APP: {
 			const struct pg_evidence *body = pg_prove_application_body(typing,
 				formation->premises[0], formation->premises[1]);
@@ -549,6 +600,15 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 			--work->return_contents;
 			formation = formation->premises[0];
 			break;
+		case PG_THUNK_CONTENT:
+			++work->thunk_contents;
+			formation = formation->premises[0];
+			break;
+		case PG_THUNK_TYPE_FORM:
+			if (!work->thunk_contents) goto failed;
+			--work->thunk_contents;
+			formation = formation->premises[0];
+			break;
 		case PG_PI_CODOMAIN: {
 			formation = pi_body(typing, formation->premises[0], formation->premises[1]);
 			if (!formation) goto failed;
@@ -556,21 +616,11 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		}
 		case PG_PI_CONSTANT_CODOMAIN: {
 			const struct pg_evidence *pi = formation->premises[0];
-			if (pi->rule == PG_CONTEXT_PROJECTION || pi->rule == PG_REINDEX) {
-				const struct pg_evidence *content = pg_prove_pi_constant_codomain(typing, pi->premises[1]);
-				formation = pi->rule == PG_CONTEXT_PROJECTION
-					? pg_prove_projection(typing, pi->premises[0], content)
-					: pg_prove_reindex(typing, pi->premises[0], content);
+			if (pi->rule != PG_PI_FORM) {
+				formation = pi_body(typing, pi, NULL);
 				if (!formation) goto failed;
 				break;
 			}
-			if (pi->rule == PG_PI_CODOMAIN) {
-				const struct pg_evidence *body = pi_body(typing, pi->premises[0], pi->premises[1]);
-				formation = pg_prove_pi_constant_codomain(typing, body);
-				if (!formation) goto failed;
-				break;
-			}
-			if (pi->rule != PG_PI_FORM) goto failed;
 			struct evidence_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
 			if (!frame) goto failed;
 			*frame = (struct evidence_frame){formation, work->frames};
@@ -583,7 +633,7 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		work->formation = formation;
 		return;
 	}
-	if (work->return_contents || work->return_values) goto failed;
+	if (work->return_contents || work->return_values || work->thunk_contents || work->folds) goto failed;
 	if (!work->map) {
 		const struct pg_evidence *context = formation->premises[0]->premises[0];
 		work->map = pg_prove_substitution_projection(typing, context, context);
@@ -614,15 +664,7 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		/* Index arguments cross precisely the wrappers outside their own
 		 * application, not the parameter substitutions inside its callee. */
 		for (struct inductive_argument *a = work->arguments; a; a = a->next) {
-			const struct pg_evidence *value = a->value;
-			for (const struct evidence_frame *f = a->frames; value && f; f = f->next) {
-				const struct pg_evidence *step = f->proof;
-				if (step->rule == PG_PI_CONSTANT_CODOMAIN)
-					value = rebase_image(typing, step->premises[0]->premises[0]->premises[0], value);
-				else if (step->rule == PG_CONTEXT_PROJECTION)
-					value = pg_prove_projection(typing, step->premises[0], value);
-				else value = pg_prove_reindex(typing, step->premises[0], value);
-			}
+			const struct pg_evidence *value = evidence_image(typing, a->value, a->frames);
 			if (!value) goto failed;
 			values[i++] = value;
 			instance = pg_prove_family_application(typing, instance, value);

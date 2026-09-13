@@ -207,9 +207,15 @@ static void scoped_type_families(void)
 	assert(nt && !pg_inductive_instance(&typing, np, &recovered));
 	assert(pg_inductive_instance(&typing, nf, &recovered) && !recovered.indices);
 	const struct pg_evidence *outer = pg_prove_context_extension(&typing, vc, pg_binder(&graph), nt);
+	const struct pg_evidence *suspended = pg_prove_thunk_type(&typing, &classifiers,
+		pg_prove_return_type(&typing, &classifiers, nt));
+	assert(suspended && !pg_inductive_instance(&typing, suspended, &recovered));
+	const struct pg_evidence *resumed = pg_prove_return_content(&typing,
+		pg_prove_thunk_content(&typing, pg_prove_reindex(&typing,
+			pg_prove_substitution_projection(&typing, vc, outer), suspended)));
 	const struct pg_evidence *wrapped[] = {nt, pg_prove_projection(&typing, outer, nt),
-		pg_prove_reindex(&typing, pg_prove_substitution_projection(&typing, vc, outer), nt)};
-	for (size_t i = 0; i < 3; ++i) {
+		pg_prove_reindex(&typing, pg_prove_substitution_projection(&typing, vc, outer), nt), resumed};
+	for (size_t i = 0; i < sizeof(wrapped) / sizeof(*wrapped); ++i) {
 		assert(wrapped[i] && pg_inductive_instance(&typing, wrapped[i], &recovered));
 		assert(recovered.schema == schema && recovered.formation == nominal && recovered.indices);
 		assert(pg_evidence_context(recovered.indices) == pg_evidence_context(wrapped[i]));
@@ -869,12 +875,16 @@ static void schema_positivity(void)
 			pg_prove_projection(&typing, z_context, nat));
 		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, z_context, result_type);
 		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
+		const struct pg_evidence *wrapped = pg_prove_thunk_type(&typing, &classifiers, pi);
+		assert(wrapped && !pg_inductive_instance(&typing, wrapped, &recovered));
 		const struct pg_evidence *curried = pg_prove_pi(&typing, &classifiers, z_context,
 			pg_prove_projection(&typing, z_context, pi));
 		const struct pg_evidence *derived[] = {
 			pg_prove_projection(&typing, n_context, pi),
 			pg_prove_reindex(&typing, map, pi),
-			pg_prove_projection(&typing, n_context, pg_prove_pi_codomain(&typing, curried, zero))
+			pg_prove_projection(&typing, n_context, pg_prove_pi_codomain(&typing, curried, zero)),
+			pg_prove_thunk_content(&typing, pg_prove_projection(&typing, n_context, wrapped)),
+			pg_prove_thunk_content(&typing, pg_prove_reindex(&typing, map, wrapped))
 		};
 		for (size_t i = 0; i < sizeof(derived) / sizeof(*derived); ++i) {
 			const struct pg_evidence *content = pg_prove_return_content(&typing,
@@ -885,6 +895,14 @@ static void schema_positivity(void)
 			assert(instance.formation == nat && instance.schema == nat_schema);
 			assert(pg_evidence_context(instance.parameters) == pg_evidence_context(n_context));
 		}
+		const struct pg_evidence *returned = pg_prove_return_type(&typing, &classifiers, nat);
+		wrapped = pg_prove_thunk_type(&typing, &classifiers, returned);
+		assert(wrapped && !pg_inductive_instance(&typing, wrapped, &recovered));
+		const struct pg_evidence *content = pg_prove_return_content(&typing,
+			pg_prove_thunk_content(&typing, pg_prove_reindex(&typing, map, wrapped)));
+		assert(content && pg_inductive_instance(&typing, content, &recovered));
+		assert(recovered.formation == nat && recovered.schema == nat_schema);
+		assert(pg_evidence_context(recovered.parameters) == pg_evidence_context(n_context));
 		const struct pg_evidence *z_value = pg_prove_variable(&typing, z_context, z);
 		const struct pg_evidence *dependent = pg_prove_pi(&typing, &classifiers, z_context,
 			pg_prove_return_type(&typing, &classifiers, pg_prove_identity_type(&typing,

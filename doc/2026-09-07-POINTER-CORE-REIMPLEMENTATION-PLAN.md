@@ -139,11 +139,24 @@ unchanged; computations over logical hypotheses use the extension below.
   original recursive field is rejected. Normal checks/examples/results and
   open families pass. Synthesis, the positive/negative pair and indexed source
   resaves pass ASan/UBSan. The legacy compatibility gate remains 10/19.
+- [x] Recover nominal declarations through retained THUNK content proofs and
+  zero-clause Fold sequencing. The existing evidence traversal specializes a
+  Fold continuation only after deriving its input's returned value; unhandled
+  requests remain unsupported. Parameter/index images keep their ordered typed
+  substitutions. Pi constant-codomain recovery shares the Pi spine traversal,
+  and argument-image transport is shared with Fold return transport. This is
+  Solve's existing proof inversion, not another Replay/evaluation engine.
+  QuickSort's recursive `measure` pattern and constructor selection after a
+  computed family parameter now compile and produce checked expected values.
+  Wrong parameters are rejected; a raw thunk type is not an ADT. Normal checks,
+  examples/results, open families, fresh-process images and targeted ASan/UBSan
+  tests pass. Compatibility remains 10/19; these tests do not replace QuickSort.
 - [ ] Remaining compatibility blockers: order proofs, named Graph cases,
   QuickSort and the incompatible-property negative case. QuickSort currently
-  rejects at 27912 steps: `#.terminates` is not connected in the new source
-  environment. `quickSortAcc` now obtains a motive candidate but its branch
-  body remains UNSUPPORTED; neither its term nor its property proof is accepted.
+  rejects at 34060 steps: `#.terminates` is not connected in the new source
+  environment. A traced failure in `accessibleSucc` is `*down m prior` in the
+  `LT.lift` branch, which needs checked index refinement. `quickSortAcc` obtains
+  a motive candidate but neither the whole program nor its property is accepted.
   These are distinct missing semantics, not checkpoint performance tasks;
   connecting the intrinsic alone does not establish QuickSort compatibility.
   The order fixture also requires a checked contradiction for `LT y zero`.

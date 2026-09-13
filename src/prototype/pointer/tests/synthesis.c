@@ -5011,6 +5011,15 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_operation_declaration *choose = pg_operation_declaration(typing, nat, nat);
 	const struct pg_source_scope *effect_scope = pg_synthesis_name_job(&synthesis, named,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Choose", .length = 6}, pg_synthesis_operation(&synthesis, choose));
+	struct pg_synthesis_job *box = request(&synthesis, effect_scope,
+		"Box:=\\bound:Nat=>@{mk:Nat->*;};");
+	complete(&synthesis, box, PG_SYNTHESIS_DONE);
+	const struct pg_source_scope *box_scope = pg_synthesis_name_job(&synthesis, effect_scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Box", .length = 3}, box);
+	complete(&synthesis, request(&synthesis, box_scope,
+		"r:=(Box (Nat.succ Nat.zero)).mk Nat.zero;"), PG_SYNTHESIS_DONE);
+	complete(&synthesis, request(&synthesis, box_scope,
+		"r:=(Box (Choose Nat.zero)).mk Nat.zero;"), PG_SYNTHESIS_UNSUPPORTED);
 	const struct pg_evidence *effect_match = complete(&synthesis, request(&synthesis, effect_scope,
 		"r:=(Choose Nat.zero) @zero=>Nat.zero @succ k=>k;"), PG_SYNTHESIS_DONE);
 	const struct pg_effect_row *match_effects;

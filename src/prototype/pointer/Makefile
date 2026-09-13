@@ -80,6 +80,10 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-motive-wrong-field.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/acc-function-motive.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-function-motive-wrong-field.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/recursive-dependent-package.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/computed-family-member.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/computed-family-member.p nested nestedExpected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/computed-family-wrong-parameter.p
 	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/family-parameter-recursive-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p recursive expected
