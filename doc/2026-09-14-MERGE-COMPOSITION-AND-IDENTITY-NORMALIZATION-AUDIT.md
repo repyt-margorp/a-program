@@ -119,7 +119,7 @@ source or solver authority.
   The final dependent-capture fixture was added afterward and the complete
   merge-composition script was rerun separately on debug and sanitizer builds.
 
-Remaining limits are not acceptance successes:
+Limits recorded before the indexed-capture follow-up below:
 
 - Captured indexed inputs still require generalizing the index telescope along
   with the new local input. The existing generic-index check remains in force;
@@ -173,8 +173,8 @@ This differs from the non-indexed captured merge above. It is existing surface
 behavior, not a proposed new implicit-application rule. Whether independent
 captures should be generalized needs a separate compatibility decision.
 
-Even the non-recursive `select`, returning `start` in both Vec branches, cannot
-yet publish `@select`. GDB shows that `function_graph_order` is called with
+At `9185428`, even the non-recursive `select`, returning `start` in both Vec
+branches, could not publish `@select`. GDB showed `function_graph_order` called with
 `ready = 0`, `cases = 0`, body rule `PG_APP_ELIM`, and source Match
 `generalized_count = 1`. It rejects before `prepare_graph` runs. The application
 specializes the generalized Match; it is not an invalid source argument.
@@ -184,23 +184,52 @@ observed cause. Do not claim that modifying `capture_eliminator` alone fixes it.
 - [x] Retain ordinary count/select comparisons in
   `tests/acceptance/indexed-captured-induction.p`, including empty/nonempty
   inputs and unfinished/completed `.a` loads at Solve chunks 1/64.
-- [ ] Preserve the typed specialization spine while exposing the eliminator;
+- [x] Preserve the typed specialization spine while exposing the eliminator;
   do not discard its arguments or normalize a neutral Match into RETURN.
-- [ ] Derive graph/source clause layouts after the selected eliminator and its
+- [x] Derive graph/source clause layouts after the selected eliminator and its
   internal generalized arguments are known. Internal Pi arguments are not
   necessarily explicit source branch Lambdas.
-- [ ] Generalize the captured index telescope together with its input using
+- [x] Generalize the captured index telescope together with its input using
   existing checked context maps; specialize the public graph and witness with
   the same map. Keep dependent captures in their original order.
-- [ ] Verify count/select graphs and witnesses, dependent outputs, helper calls,
+- [x] Verify count/select graphs and witnesses, dependent outputs, helper calls,
   wrong-index rejection, source/image agreement and unchanged QuickSort.
 
-No unsupported graph request is added as an expected rejection test. The
-positive ordinary tests do not claim generated-graph support or settle the
-surface IH policy. No kernel or evaluator rule changes in this follow-up.
-The expanded merge-composition script passes on both debug and ASan/UBSan
-builds. The prior full acceptance results remain those recorded above; this
-test/document-only increment reran the affected script, not the entire suite.
+The implementation keeps a typed application stack during preparation, then
+constructs the local eliminator over generic indices and input in the unchanged
+captured environment. One checked specialization maps that telescope and its
+already supplied Pi arguments to the source call. Publication of the graph,
+witness and helper result classifier uses that same map. Remaining branch-local
+Pi arguments stay callable. Source clause layout is registered only after
+preparation, distinguishing generalized arguments from explicit branch Lambdas.
+
+The recursive `repeatCount` caller exposed an additional Universe bug. Its
+generated constructor contains a helper graph of level 1, while the caller's
+Nat input/output had prematurely fixed Self to level 0. Positivity passed;
+the existing field-level check correctly rejected the declaration. The planner
+now finishes the call/split plan before building Self and constructor schemas,
+joining the interface, helper-graph and split-type bounds. The result packet
+uses the same final level. Each plan is built once in parent-before-child order;
+no failed schema is repeatedly rebuilt with guessed levels, and no bound check
+or conversion rule is weakened.
+
+New permanent fixtures cover count/select graphs, empty and nonempty Vecs,
+dependent Vec copy results, recursive helper composition, dependent indices
+`(A : Type, x : A)`, and a captured Match returning a raw Pi. Wrong input indices
+still reject from source and unfinished images. Comparison runs use chunks
+1/64 and unfinished/completed images. The pre-existing kernel test rejecting a
+positive schema whose field exceeds its universe remains unchanged.
+
+- [x] Full debug `check-acceptance`, including compatibility 28/28 and QuickSort.
+- [x] Expanded focused debug checks after adding the two-index/raw-Pi cases.
+- [x] Full ASan/UBSan acceptance and the final expanded focused checks.
+
+No Core tag, kernel rule, evaluator policy, artifact format or separate Replay
+engine changes. The surface IH generalization policy is unchanged. These
+examples do not establish arbitrary indexed graph generation, resolve graph
+export-name collisions, or prove general QuickSort/MergeSort properties.
+Relative to `9185428`, implementation C/headers add 122 and remove 37 lines
+(net +85); regression fixtures/script add 89 lines. Documentation is separate.
 
 The first implementation searched every Pi origin and increased a 20-run debug
 QuickSort compile sample from 0.611 s to 1.030 s. Level 0 is already the minimum

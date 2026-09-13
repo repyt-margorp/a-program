@@ -41,19 +41,21 @@ of the retained domain formation now restores this graph and its witness;
 captured `structuralMerge` now uses a local eliminator graph in the unchanged
 argument environment, specialized at publication. Restoring typed calls from
 pending application frames also restores the recursive merge caller. Captured
-indexed inputs, nested graph export-name collisions, full MergeSort
+indexed input coverage, nested graph export-name collisions, full MergeSort
 and post-hoc properties remain open. An independent Identity WHNF early-stop bug is fixed by
 using the existing checked diagonal fallback. The broad pure-sequence Vec
 trial was withdrawn because it regressed higher-order indexed fields; Vec
 append and the wider compatibility milestone are not marked complete.
 
-Indexed-capture follow-up at `7fb27a3`: ordinary count/select computations
-are now covered separately. Indexed ambient generalization introduces a typed
-application around Match; graph source-layout registration rejects before the
-eliminator is prepared. Preserve that specialization and derive clause layouts
-from the prepared eliminator before addressing the generic-index capture map.
-The linked audit records the reproduction and remaining checks; neither
-generated indexed graphs nor a change to the surface IH policy is claimed.
+Indexed-capture follow-up after `9185428`: retain the typed specialization
+around generalized Match, prepare its eliminator before source clause layout,
+and use a checked generic index/input map for graph/witness publication and
+helper classifiers. Count/select, dependent Vec copy, two dependent indices,
+raw-Pi branch results and recursive helper composition now have focused checks.
+Helper composition also requires collecting all field-universe bounds before
+building the graph schema; Self and the result packet share that final bound.
+The linked audit records verification and remaining limitations. This does not
+change surface IH generalization or complete arbitrary indexed graph support.
 
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source

@@ -71,4 +71,30 @@ for steps in 0 100000; do
 	"$runtime" --equal-image "$directory/indexed.a" emptyMain one
 	"$runtime" --equal-image "$directory/indexed.a" selected one
 done
+for steps in 0 100000; do
+	code=0
+	"$checker" --steps "$steps" --imports "$indexed" --save "$directory/indexed-graph.a" \
+		"$fixtures/indexed-captured-graph-request.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"$runtime" --equal-image "$directory/indexed-graph.a" main expected
+	"$runtime" --equal-image "$directory/indexed-graph.a" emptyMain emptyExpected
+	"$runtime" --equal-image "$directory/indexed-graph.a" selected emptyExpected
+	"$runtime" --equal-image "$directory/indexed-graph.a" copyMain copyExpected
+	"$runtime" --equal-image "$directory/indexed-graph.a" copyEmpty empty
+	"$runtime" --equal-image "$directory/indexed-graph.a" repeated five
+	"$runtime" --equal-image "$directory/indexed-graph.a" pointMain emptyExpected
+	"$runtime" --equal-image "$directory/indexed-graph.a" laterMain laterExpected
+	"$runtime" --equal-image "$directory/indexed-graph.a" laterEmpty emptyExpected
+done
+code=0
+"$checker" --steps 100000 --imports "$indexed" \
+	"$fixtures/indexed-captured-graph-wrong-index.p" > "$directory/status" || code=$?
+test "$code" -eq 1
+code=0
+"$checker" --steps 0 --imports "$indexed" --save "$directory/wrong-index.a" \
+	"$fixtures/indexed-captured-graph-wrong-index.p" > "$directory/status" || code=$?
+test "$code" -eq 3
+code=0
+"$checker" --load "$directory/wrong-index.a" --steps 100000 > "$directory/status" || code=$?
+test "$code" -eq 1
 printf '%s\n' 'merge composition: capture, currying, declaration order, result and image checks passed'

@@ -9,9 +9,10 @@
  * production advance separately; neither proves an arbitrary user property.
  * Supports pure dependent result types and recursive fields. Generic
  * indices bound immediately before the scrutinee become graph indices, with
- * actual recursive fibers recovered from membership evidence. Fixed indices,
- * and intervening dependent environment binders are unsupported. Total pure
- * function fields supply a checked symbolic child at their actual arguments.
+ * actual recursive fibers recovered from membership evidence. Captured inputs
+ * use a local generic index/input telescope, specialized by checked maps.
+ * Total pure function fields supply a checked symbolic child at their actual
+ * arguments. No constructor-index equation is assumed by specialization.
  * Remaining raw Pi arguments become additional graph
  * indices, not thunked result functions. Their dependent domains, recursive
  * call arguments and prior call outputs are checked by ordinary substitutions.
@@ -42,15 +43,20 @@ const struct pg_evidence *pg_function_graph_source(const struct pg_evidence *fun
 int pg_function_graph_init(struct pg_function_graph_work *work,
 	struct pg_typing *typing, struct pg_classifiers *classifiers,
 	struct pg_whnf_work *evaluation, const struct pg_evidence *function);
-/* Optional public telescope layout, supplied before advance. Each entry names
+/* Optional public telescope layout, supplied after preparation and before
+ * case planning. Each entry names
  * a source recursive field ordinal; duplicate entries represent distinct calls.
  * Counts and field associations must match the typed call plan exactly. This
  * changes neither execution order nor typing rules. The work copies the arrays. */
 struct pg_function_graph_order { size_t count; const size_t *fields; };
 int pg_function_graph_source_order(struct pg_function_graph_work *work,
 	size_t count, const struct pg_function_graph_order *orders);
-/* Number of raw Pi arguments after the selected source scrutinee, before F. */
+/* Internal raw Pi arguments after the selected input, including generalized
+ * source arguments. The count is final only after preparation. */
 size_t pg_function_graph_trailing_arity(const struct pg_function_graph_work *work);
+/* Advance with budget 1 until prepared or terminal before supplying a layout.
+ * Preparation exposes wrappers without planning any constructor case. */
+int pg_function_graph_prepared(const struct pg_function_graph_work *work);
 enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph_work *work, uint64_t budget);
 /* A helper call waits for the same canonical graph/witness requested by @f and *f.
  * The supplied work is borrowed and must outlive this work. Pending inputs do

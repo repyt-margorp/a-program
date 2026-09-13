@@ -3002,6 +3002,8 @@ static int function_graph_order(struct pg_synthesis *synthesis, struct pg_synthe
 	struct pg_graph temporary = {0};
 	size_t count = origin->match->count;
 	size_t trailing = pg_function_graph_trailing_arity(&job->function_graph);
+	size_t generalized = origin->match->generalized_count;
+	if (generalized > trailing) return -1;
 	if (count > SIZE_MAX / sizeof(struct pg_function_graph_order)) return -1;
 	struct pg_function_graph_order *orders = pg_alloc(&temporary, count * sizeof(*orders));
 	int result = -1;
@@ -3015,7 +3017,7 @@ static int function_graph_order(struct pg_synthesis *synthesis, struct pg_synthe
 		if (clause->item_count && clause->items[0].operation) goto done;
 		const struct pg_syntax *body = clause->right;
 		const struct marker_shadow *argument_shadow = NULL;
-		for (size_t argument = 0; argument < trailing; ++argument) {
+		for (size_t argument = generalized; argument < trailing; ++argument) {
 			if (body->kind != PG_SYNTAX_LAMBDA) goto done;
 			argument_shadow = marker_bind(&temporary, argument_shadow, body->token);
 			if (!argument_shadow) goto done;
@@ -3134,9 +3136,10 @@ static void function_graph_step(struct pg_synthesis *synthesis, struct pg_synthe
 			synthesis->typing, synthesis->classifiers, synthesis->normalization, function)) {
 			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 		}
-		if (function_graph_order(synthesis, job, (void *)job->inputs[1])) {
-			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
-		}
+	}
+	if (!job->case_layouts && pg_function_graph_prepared(&job->function_graph) &&
+		function_graph_order(synthesis, job, (void *)job->inputs[1])) {
+		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 	}
 	enum pg_function_graph_status status = pg_function_graph_advance(&job->function_graph, 1);
 	const struct pg_evidence *required = pg_function_graph_dependency(&job->function_graph);
