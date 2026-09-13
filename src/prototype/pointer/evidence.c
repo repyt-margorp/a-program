@@ -641,7 +641,7 @@ struct inductive_fold {
 	const struct pg_evidence *continuation;
 	struct evidence_frame *frames;
 	struct inductive_argument *arguments;
-	size_t return_contents, return_values, thunk_contents;
+	size_t return_contents, return_values, thunk_contents, thunk_values;
 	struct inductive_fold *parent;
 };
 
@@ -678,6 +678,11 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 			break;
 		case PG_RETURN_VALUE:
 			++work->return_values; formation = formation->premises[0]; break;
+		case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION:
+			++work->thunk_values; formation = formation->premises[0]; break;
+		case PG_THUNK_INTRO:
+			if (!work->thunk_values) goto failed;
+			--work->thunk_values; formation = formation->premises[0]; break;
 		case PG_RETURN_INTRO:
 			if (!work->return_values) goto failed;
 			if (work->return_values == 1 && work->folds) {
@@ -690,6 +695,7 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 				work->return_contents = fold->return_contents;
 				work->return_values = fold->return_values;
 				work->thunk_contents = fold->thunk_contents;
+				work->thunk_values = fold->thunk_values;
 				work->folds = fold->parent;
 				break;
 			}
@@ -698,11 +704,11 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 			struct inductive_fold *fold = pg_alloc(&work->temporary, sizeof(*fold));
 			if (!fold) goto failed;
 			*fold = (struct inductive_fold){formation->premises[1], work->frames, work->arguments,
-				work->return_contents, work->return_values, work->thunk_contents, work->folds};
+				work->return_contents, work->return_values, work->thunk_contents, work->thunk_values, work->folds};
 			work->folds = fold;
 			work->frames = NULL;
 			work->arguments = NULL;
-			work->return_contents = work->thunk_contents = 0;
+			work->return_contents = work->thunk_contents = work->thunk_values = 0;
 			work->return_values = 1;
 			formation = formation->premises[0];
 			break;
@@ -765,7 +771,7 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		work->formation = formation;
 		return;
 	}
-	if (work->return_contents || work->return_values || work->thunk_contents || work->folds) goto failed;
+	if (work->return_contents || work->return_values || work->thunk_contents || work->thunk_values || work->folds) goto failed;
 	if (!work->map) {
 		const struct pg_evidence *context = formation->premises[0]->premises[0];
 		work->map = pg_prove_substitution_projection(typing, context, context);

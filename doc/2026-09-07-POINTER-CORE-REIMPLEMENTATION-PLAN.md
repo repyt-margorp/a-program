@@ -89,6 +89,26 @@ This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
 checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
 
+September 13 compatibility follow-up:
+
+- [x] Restore constructor lookup through computed type aliases such as
+  `Nat := Counter Unit`. Member lookup now uses ordinary source-reference
+  coercion, and nominal evidence recovery follows matching FORCE/THUNK
+  derivations. Direct, chained, sequenced and indexed aliases have result
+  tests; a different nominal instantiation is rejected. An explicitly quoted
+  computation is not silently accepted as a type. No new Core or Replay rule.
+  Validation: `check-acceptance` passes all preceding targets, including the
+  new source/image result checks, then fails at the known compatibility gate
+  (13/20). This follow-up does not increase that legacy compatibility count.
+- [ ] Restore the legacy termination contract, not merely the intrinsic name.
+  `context_and_type_lowering.inc` in the legacy frontend constructs TOTAL
+  computation codomains for ordinary source arrows; `totality_evidence.inc`
+  checks that contract when introducing termination evidence. The new F
+  classifier's effect row alone does not retain it. Record the chosen source
+  contract and check its introductions and eliminations before accepting
+  `quickSortTerminates` with an abstract comparator. This is a compatibility
+  and soundness issue, not a recomputation optimization.
+
 September 13 implementation: scoped family assumptions, saturated family
 application and parameter abstraction now use ordinary pointer-Core terms
 with retained typing rules. A family signature is a Pi-shaped type-layer

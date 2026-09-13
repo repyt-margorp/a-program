@@ -2801,6 +2801,16 @@ static int hypothesis_reference(struct pg_synthesis *synthesis, struct pg_synthe
 	return 1;
 }
 
+static struct pg_synthesis_job *source_reference_producer(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *producer)
+{
+	/* Storage quotation does not change the meaning of a source definition. */
+	if (producer->role == DEFINITION_JOB && producer->left &&
+		pg_evidence_judgement(producer->left->result) == PG_JUDGEMENT_COMPUTATION)
+		return plain_rule(synthesis, PG_FORCE_ELIM, NULL, 1, &producer);
+	return producer;
+}
+
 static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct source_reference *reference,
 	struct pg_token token, struct pg_synthesis_job **dependency)
@@ -2830,6 +2840,10 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 			*reference = lookup_scope(producer->exports, token);
 			return PG_SYNTHESIS_DONE;
 		}
+		producer = source_reference_producer(synthesis, producer);
+		if (!producer) return PG_SYNTHESIS_ERROR;
+		*dependency = producer;
+		if (producer->status != PG_SYNTHESIS_DONE) return producer->status;
 		const struct pg_evidence *proof = pg_prove_projection(synthesis->typing, context, producer->result);
 		if (!proof) return PG_SYNTHESIS_UNSUPPORTED;
 		if (pg_evidence_judgement(proof) == PG_JUDGEMENT_COMPUTATION) {
@@ -3126,16 +3140,6 @@ static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synth
 		job->value_job = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
 	}
 	forward_proof(synthesis, job, job->value_job);
-}
-
-static struct pg_synthesis_job *source_reference_producer(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *producer)
-{
-	/* Storage quotation does not change the meaning of a source definition. */
-	if (producer->role == DEFINITION_JOB && producer->left &&
-		pg_evidence_judgement(producer->left->result) == PG_JUDGEMENT_COMPUTATION)
-		return plain_rule(synthesis, PG_FORCE_ELIM, NULL, 1, &producer);
-	return producer;
 }
 
 static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)

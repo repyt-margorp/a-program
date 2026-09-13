@@ -178,6 +178,7 @@ acceptance/acc-accessible-successor.p main lowerMain:zeroExpected
 acceptance/indexed-block-demands.p main nestedMain selectedMain readMain:two
 acceptance/indexed-recursive-result.p main:two emptyMain:emptyExpected
 acceptance/indexed-schema-result.p main:two
+acceptance/applied-family-alias.p main aliasMain blockMain indexedMain:indexedExpected
 acceptance/indexed-ih-environment.p
 acceptance/computed-family-member.p main nested:nestedExpected
 ../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified
