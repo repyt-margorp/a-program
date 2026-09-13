@@ -527,7 +527,8 @@ Recursive motive proposals after `aa60ad0` (September 14):
   Implementation C +141/-41; tests/fixtures +106/-0; documentation counted
   separately. The unchanged original source is the compatibility requirement;
   the helper control does not replace it.
-- [ ] Publish the verified recursive-motive increment on the pointer branch.
+- [x] Publish the verified recursive-motive increment as `a3d31bc` on
+  `rewrite/pointer-core-hott`; frozen `main` is unchanged.
 
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the
