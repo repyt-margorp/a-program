@@ -159,6 +159,7 @@ while read -r fixture names; do
 		fi
 	done
 done <<'GRAPHS'
+acceptance/nonrecursive-computed-index.p main:one other:two
 acceptance/function-graph-exposed-match.p main proofMain quotedMain sequencedMain indexedMain
 acceptance/function-graph-known-match.p main proofMain unpackMain skipMain:zero
 acceptance/function-graph-branch-tree.p main proofMain emptyMain:zero prefixMain prefixProofMain afterMain nestedMain:three directMain walkMain indexedMain refinedMain:one

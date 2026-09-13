@@ -118,6 +118,50 @@ Before connecting either route to source synthesis:
 This gate is not a new goal or a replacement for full compatibility and HOTT.
 It prevents repeatedly installing a local rewrite with no coherent typing law.
 
+## Finite Control After Withdrawal
+
+On unchanged compiler implementation `aa21f98`,
+[`nonrecursive-computed-index.p`](../src/prototype/pointer/tests/known-limitations/nonrecursive-computed-index.p)
+replaces recursive addition with `choose : Bool -> Nat`, implemented by two
+constant branches. The following post-check rejects after 2,539 Solve steps:
+
+```text
+prepend := \b:Bool => \xs:Vec Nat (choose b) =>
+  ((Vec Nat).cons (choose b) Nat.zero xs
+    :: Vec Nat (Nat.succ (choose b)));
+```
+
+Debugger inspection confirms that the failing conversion completes strong NF.
+After removing common type wrappers and beta-redexes, the index shapes are:
+
+```text
+succ(Fold(choose b, lambda x.x))
+Fold(choose b, lambda x.succ x)
+```
+
+Here `choose b` remains a neutral Match. There is no recursive unfolding or
+infinite normalization in this reproduction. This confirms a missing source
+conversion correspondence, not merely a fuel/performance problem. It does not
+by itself establish kernel inconsistency, nor justify equating these terms
+under the untyped Core policy.
+
+The [passing control](../src/prototype/pointer/tests/acceptance/nonrecursive-computed-index.p)
+keeps the same inferred open `prepend` without that post-check, then applies it
+to both concrete Bool constructors. Both post-checks succeed, and the resulting
+vectors equal independently constructed one- and two-element vectors. Source
+result comparison passes with chunks 1 and 64 (4,172 and 4,412 Solve steps for
+the respective comparisons). The acceptance gate also checks images saved
+before, during, and after Solve and then resaved without Solve.
+After registration, the full debug `check-acceptance` passed, including the
+31/31 compatibility gate and six QuickSort outputs. The two new direct result
+checks also passed under ASan/UBSan with chunks 1 and 64. Compiler C/header
+implementation is unchanged by this control; the open rejection was rerun.
+
+Do not register the open reproduction as an expected rejection: accepting that
+program remains the compatibility objective. The next conversion design must
+pass this finite case before the recursive arithmetic/Vec gate, while keeping
+the existing unknown-totality, effect and Identity transport checks unchanged.
+
 ## Research Scope
 
 [Koronkevich, Rakow, Ahmed and Bowman, *ANF preserves dependent types up to

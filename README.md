@@ -12,7 +12,10 @@ acceptance policy, not a promise to discard this implementation.
 
 The previous implementation remains on `main` and at the tag
 [`old-version/2026-09-14-main`](https://github.com/repyt-margorp/a-program/tree/old-version/2026-09-14-main).
-Its [previous README](doc/2026-09-14-LEGACY-TOP-LEVEL-README.md) is archived.
+The [previous top-level README](doc/2026-09-14-LEGACY-TOP-LEVEL-README.md) is
+archived unchanged from `e9a131d`, a later legacy snapshot than the frozen
+`main`. For that frozen version, use its
+[own README](https://github.com/repyt-margorp/a-program/blob/old-version/2026-09-14-main/README.md).
 Legacy build commands and artifact formats do not describe the pointer rewrite.
 
 ## Build and Try
@@ -142,9 +145,14 @@ is tested in [length-output-proof.p](src/prototype/pointer/tests/acceptance/leng
 Selected captured indexed functions also generate checked graphs and witnesses,
 including Vec copy. This does not yet cover the legacy dependent Vec append.
 Typed one-step elimination supports direct and sequenced function fields, and
-recovers constructor origins through return-producing sequences. Computed indices have a
-[small pending reproduction](src/prototype/pointer/tests/known-limitations/computed-constructor-index.p);
-successful arithmetic normalization alone does not resolve that boundary.
+recovers constructor origins through return-producing sequences. Computed-index
+conversion remains incomplete: a
+[recursive reproduction](src/prototype/pointer/tests/known-limitations/computed-constructor-index.p)
+stays pending, while a
+[finite Bool reproduction](src/prototype/pointer/tests/known-limitations/nonrecursive-computed-index.p)
+is rejected after normalization. Concrete Bool calls pass, including their
+post-checks. More fuel alone cannot resolve this boundary; see the
+[conversion investigation](doc/2026-09-14-PURE-RESULT-CONVERSION-EXPERIMENT.md).
 
 This is not complete legacy compatibility or complete Higher Observational
 Type Theory. General higher/dependent/Universe Identity coherence, some indexed

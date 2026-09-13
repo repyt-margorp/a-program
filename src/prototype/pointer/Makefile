@@ -227,6 +227,8 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-tail-wrong.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-computed-type.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/computed-index-arithmetic.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/nonrecursive-computed-index.p main one
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/nonrecursive-computed-index.p other two
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-computed-type-wrong.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/nested-index-motive.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/nested-index-motive.p recursiveMain recursiveExpected

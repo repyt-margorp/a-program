@@ -288,6 +288,10 @@ September 13 compatibility follow-up:
   this difference; copying the old compiler's separate unverified projection
   is not a solution.
   Do not report this as a restored legacy case or fix it by increasing fuel.
+  The finite `nonrecursive-computed-index.p` reproduction now isolates rejection
+  without recursion: inferred `prepend` and both concrete Bool post-checks pass,
+  but the open post-check rejects. Its passing controls are permanent source/image
+  tests; the open case remains a known limitation, not an expected-invalid test.
   Check the precise pure-result/sequence equations before changing conversion;
   a typed total-pure rule must not become an unconditional effectful equation.
   A trial lowering of typed pure Fold to APP(k, extracted(m)) compiled this
