@@ -145,29 +145,46 @@ for steps in 0 1000000; do
 	"$runtime" --equal-image "$directory/quicksort.a" emptyMain emptyExpected
 done
 
-# Clients consume the unchanged provider's graph. Measurement and partition have
-# independent preservation proofs; the outer QuickSort client checks graph fields.
-while read -r name pairs; do
-	client="$(dirname "${BASH_SOURCE[0]}")/acceptance/$name.p"
+# Clients consume the unchanged provider's graph and prove separate specifications.
+check_property() {
+	local client=$1 steps code pair
+	shift
 	for steps in 0 1000000; do
 		code=0
 		"$checker" --steps "$steps" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
 			--save "$directory/property.a" "$client" > "$directory/status" || code=$?
 		if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
-		for pair in $pairs; do
+		for pair in "$@"; do
 			"$runtime" --equal-image "$directory/property.a" "${pair%:*}" "${pair#*:}"
 		done
 	done
-	client="$(dirname "${BASH_SOURCE[0]}")/acceptance/$name-wrong.p"
+}
+
+check_wrong_property() {
+	local client=$1 code
 	code=0
-	"$checker" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
+	"$checker" --steps 1000000 --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
 		--save "$directory/wrong-property.a" "$client" > "$directory/status" || code=$?
 	test "$code" -eq 1
 	code=0
-	"$checker" --load "$directory/wrong-property.a" > "$directory/status" || code=$?
+	"$checker" --steps 1000000 --load "$directory/wrong-property.a" > "$directory/status" || code=$?
 	test "$code" -eq 1
+}
+
+while read -r name pairs; do
+	check_property "$acceptance/$name.p" $pairs
+	check_wrong_property "$acceptance/$name-wrong.p"
 done <<'CLIENTS'
 legacy-measure-property main:input emptyMain:empty
 legacy-partition-property main:expected lowerMain:expected upperMain:upperExpected duplicatesMain:duplicatesExpected emptyMain:empty
 legacy-quicksort-graph main:expected emptyMain:empty graphMain:expected
 CLIENTS
+
+client="$acceptance/legacy-quicksort-property.p"
+check_property "$client" main:ascending emptyMain:empty singletonMain:singleton \
+	ascendingMain:ascending descendingMain:ascending duplicatesMain:duplicatesExpected unorderedMain:mixed
+# Reuse the full specification, but substitute the right recursive proof where
+# the left is required. No second, drifting copy of the specification is needed.
+sed 's/left right result \*leftGraph \*rightGraph/left right result *rightGraph *rightGraph/' \
+	"$client" > "$directory/wrong-quicksort-property.p"
+check_wrong_property "$directory/wrong-quicksort-property.p"

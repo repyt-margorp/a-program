@@ -149,8 +149,12 @@ Importing clients prove content preservation for the unchanged QuickSort
 provider's [measure](src/prototype/pointer/tests/acceptance/legacy-measure-property.p)
 and [partition](src/prototype/pointer/tests/acceptance/legacy-partition-property.p).
 The partition specification places each input head into exactly one output
-subsequence while preserving order within each subsequence. These are lemmas
-toward QuickSort preservation, not a proof of QuickSort itself.
+subsequence while preserving order within each subsequence.
+[quickSortCorrect](src/prototype/pointer/tests/acceptance/legacy-quicksort-property.p)
+composes these lemmas with append and recursive graph induction into a
+`ContentsOf` certificate for the existing QuickSort. Its source-defined IADTs
+certify content-preserving partition and reassembly, independently of the
+comparator; they do not certify sortedness.
 The outer `@quickSort` graph now retains the results and graph evidence of
 `measure`, `natAccessible` and `quickSortAcc`, allowing an importing client to
 inspect these intermediate steps rather than only extract the final value.
@@ -167,7 +171,7 @@ Identity transport retain their strict behavior. See the
 
 This is not complete legacy compatibility or complete Higher Observational
 Type Theory. General higher/dependent/Universe Identity coherence, some indexed
-graph and Vec cases, QuickSort post-hoc properties, and full host/backend
+graph and Vec cases, comparator-dependent sortedness proofs, and full host/backend
 coverage remain open. Execution witnesses alone do not prove sorting
 correctness. In particular, a standalone indexed Match whose every branch is
 refuted can remain pending without a result-classifier constraint from an

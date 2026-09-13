@@ -158,8 +158,8 @@ schema construction. Flat cases retain their existing slot validation.
   this lemma and regression coverage, not completion of the full rewrite.
 - [x] Prove the corresponding partition preservation property (see the
   dependent-pattern follow-up below).
-- [ ] Compose these properties with append and Acc induction for the existing
-  QuickSort. The lemmas do not establish QuickSort preservation by themselves.
+- [x] Compose these properties with append and recursive graph induction for
+  the existing QuickSort (the `ContentsOf` certificate below).
 - [x] Restore the outer `@quickSort` graph. Historical diagnosis: a minimal importing client remained
   unsupported at 54,512 transitions in this build. The stop is in source
   `function_graph_order` preparation while the kernel graph work is still
@@ -192,9 +192,8 @@ to a different source definition and no Core tag or proof rule is added.
   wrong-evidence rejection and the 32/32 legacy gate with QuickSort results.
   Compiler C changes are 75 added / 96 removed (net -21); the header,
   documentation and additional tests are counted separately.
-- [ ] Compose preservation lemmas for partition and Acc recursion. Access to
-  the outer function's graph evidence is not yet a proof of sorting or
-  permutation preservation.
+- [x] Compose preservation lemmas for partition and Acc recursion (below).
+  Merely extracting the outer graph fields did not establish preservation.
 
 Dependent-pattern follow-up after `c97bfc2` (September 14): the independent
 `PartitionOf A size input output` IADT relates an input SizedList to the two
@@ -230,14 +229,62 @@ The old build rejects the complete new client at 85,738 transitions.
   result checks. The default optimized checker also accepts the new client.
   Compiler C changes are 10 added / 2 removed (net +8); tests and documentation
   are separate. No Core node kind, proof rule or Replay path is added.
-- [ ] Compose with append and Acc induction to prove a property of QuickSort
-  itself. Sortedness additionally needs a specification of the comparator.
+- [x] Compose with append and recursive graph induction to prove a property
+  of QuickSort itself. Sortedness still needs a comparator specification.
 
 An earlier attempted specification used a Match to project lower/upper lists
 from the packet before forming the relation. It failed during motive synthesis.
 The packet-indexed specification avoids that extra inference problem without
 weakening element preservation. General inference through computed projections
 is not claimed by this change and needs its own coverage.
+
+QuickSort certificate follow-up after `64e0dcf` (September 14):
+`tests/acceptance/legacy-quicksort-property.p` imports the unchanged provider.
+No compiler code or original function is modified in this step.
+
+- [x] Prove the imported append satisfies the independent `AppendOf` relation.
+- [x] Inspect the generated `quickSortAcc` telescope: its cons case retains
+  `tailSize, pivot, tail, down`, partition fields/proof, two result/recursive
+  graph pairs, and the append result/proof. Check the evidence at the actual
+  arguments before composing it; source-name guesses are not type authority.
+- [x] Define `Rearranged A n input output` without referring to QuickSort,
+  Acc, function graphs or a comparator. Nil relates the two empty lists.
+  Split requires `PartitionOf` for the tail, recursive `Rearranged` proofs
+  for both parts, and `AppendOf` for lower result followed by pivot and upper
+  result. Bounds are inherited from the independently checked Partition packet.
+- [x] Derive `sortCorrect : @quickSortAcc ... -> Rearranged ...` by graph
+  induction, using `*leftGraph`, `*rightGraph` and the two helper lemmas.
+- [x] Define `ContentsOf A xs output` by a `MeasurementOf` certificate followed
+  by `Rearranged`, and derive
+  `quickSortCorrect : @quickSort A &le xs output -> ContentsOf A xs output`.
+  Every `::` remains a final post-check, not an input to motive synthesis.
+- [x] Complete debug and ASan/UBSan compatibility runs: evaluate the certificate
+  recursively on empty, singleton, mixed, ascending, descending and duplicate
+  inputs, and with an always-false comparator; use unfinished/completed `.a`
+  images and chunks 1/64. Swap the left recursive proof for the right and
+  require rejection both before and after loading its image.
+  The full debug `check-acceptance` and ASan/UBSan `check-source-compatibility`
+  targets pass, including the 32/32 legacy inventory and all seven new result
+  pairs at both image stages and chunk sizes. No compiler C source changed.
+
+Meaning of the specification: each certificate constructor preserves occurrences,
+not just element types. Measurement preserves the original sequence. Partition
+assigns each head to exactly one part. Recursive reassembly composes the two
+occurrence correspondences, inserts the original pivot once and concatenates
+the results. Induction on this certificate therefore gives a payload-preserving
+bijection between input and output occurrences, including duplicate elements.
+This is the semantic soundness argument for these source-defined predicates;
+a separate theorem into a standard Permutation or counting library has not
+been implemented. The predicate is not merely membership in `@quickSort`.
+It deliberately admits unsorted outputs from arbitrary comparators and is not
+a proof of sortedness or completion of the broader rewrite/Higher Identity work.
+
+The full positive client synthesizes at 147,969 transitions; substituting the
+wrong recursive proof rejects at 135,672 with sufficient fuel. The first test
+run exposed a harness limit: negative clients used the default 100,000 budget
+while positives used 1,000,000. Use the same explicit budget for both, never
+count pending as rejection. This is a test-budget correction, not a compiler
+acceptance-rule change.
 
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
@@ -262,10 +309,12 @@ prerequisite to this milestone.
   `::` post-synthesis; do not add length/QuickSort-specific kernel rules.
 - [x] Compile the selected existing function-graph length fixtures and fuel-free
   QuickSort fixture unchanged, and check their runtime results (28/28 gate).
-- [ ] Support an explicit property proof using the graph/witness of an already-defined function, not
+- [x] Support an explicit property proof using the graph/witness of an already-defined function, not
   a separately rewritten certified implementation. Witness production alone
   does not establish a property such as preservation of length or sortedness.
-- [ ] Verify property derivations and rejection of incompatible claims through
+  The selected length property and QuickSort `ContentsOf` certificate now
+  exercise this milestone; general sortedness is not claimed.
+- [x] Verify property derivations and rejection of incompatible claims through
   ordinary Solve. Use the legacy function-graph and IF8 tests as starting points,
   not as substitutes for checking the actual property proof.
 
