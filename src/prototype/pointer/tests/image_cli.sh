@@ -128,6 +128,10 @@ while read -r fixture names; do
 		code=0
 		"$binary" --load --steps 0 --save "$directory/generated-resaved.a" "$directory/generated.a" > "$directory/status" || code=$?
 		test "$code" = 3
+		# A bare fixture checks source admission, not NF of an unapplied function.
+		if test -z "$names"; then
+			"$binary" --load "$directory/generated-resaved.a" > "$directory/restored"
+		fi
 		for name in $names; do
 			expected=expected
 			if [[ "$name" == *:* ]]; then expected=${name#*:}; name=${name%%:*}; fi
@@ -149,6 +153,8 @@ acceptance/recursive-dependent-package.p main
 acceptance/dependent-order-reflexivity.p main
 acceptance/dependent-function-motive.p main dependentMain
 acceptance/indexed-payload.p main otherMain dependentMain mixedMain mixedOther:boolExpected functionMain
+acceptance/indexed-dependent-environment.p main originalMain dependentMain zeroMain:zeroExpected pointMain:zeroExpected
+acceptance/indexed-ih-environment.p
 acceptance/computed-family-member.p main nested:nestedExpected
 ../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified
 ../../tests/fixtures/typing/function_graph_two_recursive_calls_check.p main certified

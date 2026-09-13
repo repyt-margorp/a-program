@@ -101,6 +101,14 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-payload.p mixedOther boolExpected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-payload.p functionMain expected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-payload-wrong-branch.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-dependent-environment.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-dependent-environment.p originalMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-dependent-environment.p dependentMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-dependent-environment.p zeroMain zeroExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-dependent-environment.p pointMain zeroExpected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-dependent-environment-wrong.p
+	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-ih-environment.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-ih-environment-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p mixed expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p indexed indexedExpected

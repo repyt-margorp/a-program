@@ -180,14 +180,41 @@ unchanged; computations over logical hypotheses use the extension below.
   Normal checks, examples/results, open families and fresh-process `.a` result
   checks pass. The new source cases pass ASan/UBSan with Solve chunks 1/64.
   Legacy compatibility is still 10/19; QuickSort still rejects at 34344 steps.
+- [x] Generalize an ordinary indexed Match's ambient inputs after distinct
+  variable indices. A checked substitution replaces those indices and the
+  scrutinee by the motive variables, lifts the remaining telescope, and builds
+  the specialization back to the original inputs. Constructor branches use
+  these typed images; the completed Match applies the original inputs once.
+  Source names and outer IH associations follow the same substitution. Ordinary
+  Solve pairing/conversion handles parameterized type aliases; no second
+  normalizer, equality reflection, Core tag or proof rule is introduced.
+  Source tests cover dependent callbacks, multiple dependent inputs, original
+  index names, dependent indices `(A,x:A)`, and an Acc IH used beneath a Match
+  on `Sized A current`. The parameterized Acc/Sized function is accepted; using
+  the original recursive field instead of its IH is rejected. Source-image
+  tests check this unapplied function's admission, not its erased full NF.
+  This currently handles outer IHs, not a Match's own induction hypotheses.
+  Compound/repeated scrutinee indices, local definition/handler captures and
+  general result motives still require further work. Those cases keep their
+  existing checking path; no unsupported equation becomes an equality proof.
+  Validation: `check check-examples check-example-results check-open-families`
+  and added source/result/rejection ASan/UBSan checks pass. Source `.a` checks
+  include unfinished/completed resaves; legacy compatibility remains 10/19.
+  Full `check-acceptance` also exposes the pre-existing `handler-origins`
+  failure at `tests/source_io.c:530`: handler status 3 after resaves (1263 steps).
+  A fresh isolated build of parent `3546e61` fails identically. Keep this gate
+  open and investigate it before Main promotion; it is not a passing audit.
 - [ ] Remaining compatibility blockers: order proofs, named Graph cases,
   QuickSort and the incompatible-property negative case. QuickSort currently
-  rejects at 34344 steps: `#.terminates` is not connected in the new source
+  rejects at 35598 steps: `#.terminates` is not connected in the new source
   environment. A traced failure in `accessibleSucc` is `*down m prior` in the
   `LT.lift` branch, which needs checked index refinement. `quickSortAcc` obtains
   a motive candidate but neither the whole program nor its property is accepted.
   These are distinct missing semantics, not checkpoint performance tasks;
   connecting the intrinsic alone does not establish QuickSort compatibility.
+  The old `totality_evidence.inc` rule requires TOTAL in the computation type;
+  the new system has no equivalent retained contract. Neither an empty effect
+  row nor graph-family formation can substitute for that premise.
   The order fixture also requires a checked contradiction for `LT y zero`.
   Legacy Main `63b00eb` supplies an all-impossible Match's result constraint
   from the constructor domain (finalization_and_entrypoints.inc:681), rather
