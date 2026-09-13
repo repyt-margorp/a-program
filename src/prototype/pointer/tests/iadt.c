@@ -541,6 +541,33 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	assert(elimination);
 	assert(!pg_prove_elimination_body(&typing, &classifiers, elimination));
 	common_rule(&typing, &classifiers, elimination);
+	const struct pg_evidence *constructor_parameters = pg_prove_substitution_projection(&typing, rc, field_context);
+	const struct pg_evidence *projected = pg_prove_elimination_reindex(&typing, &classifiers,
+		pg_prove_substitution_projection(&typing, context, field_context), elimination);
+	const struct pg_evidence *projected_branch = pg_evidence_premise(projected, 5);
+	const struct pg_evidence *at_constructor = pg_prove_induction(&typing, &classifiers, acc,
+		constructor_parameters, constructor_value, pg_evidence_premise(projected, 4),
+		pg_evidence_premise(projected, 0), 1, &projected_branch);
+	assert(at_constructor);
+	const struct pg_evidence *unfolded = pg_prove_elimination_body(&typing, &classifiers, at_constructor);
+	assert(unfolded);
+	assert(pg_alpha_equal(pg_evidence_classifier(at_constructor), pg_evidence_classifier(unfolded)) == 1);
+	const struct pg_evidence *unfolded_again = pg_prove_elimination_body(&typing, &classifiers, at_constructor);
+	assert(unfolded_again && pg_alpha_equal(pg_evidence_subject(unfolded)->core,
+		pg_evidence_subject(unfolded_again)->core) == 1);
+	common_rule(&typing, &classifiers, unfolded);
+	struct pg_whnf_work unfolding_work;
+	assert(!pg_whnf_work_init(&unfolding_work, &graph));
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_conversion unfolding;
+		assert(!pg_conversion_init(&unfolding, &unfolding_work,
+			pg_evidence_subject(at_constructor)->core, pg_evidence_subject(unfolded)->core));
+		while (pg_conversion_advance(&unfolding, chunk) == PG_CONVERSION_PENDING)
+			assert(pg_conversion_steps(&unfolding) < 100000);
+		assert(pg_conversion_status(&unfolding) == PG_CONVERSION_EQUAL);
+		pg_conversion_destroy(&unfolding);
+	}
+	pg_whnf_work_destroy(&unfolding_work);
 	const struct pg_evidence *expected = pg_prove_return_type(&typing, &classifiers,
 		pg_prove_family_application(&typing, pg_prove_variable(&typing, context, p), pg_prove_variable(&typing, context, subject)));
 	assert(pg_alpha_equal(pg_evidence_classifier(elimination), pg_evidence_subject(expected)->core) == 1);

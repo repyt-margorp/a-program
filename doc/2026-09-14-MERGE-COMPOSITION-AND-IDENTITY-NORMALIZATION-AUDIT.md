@@ -414,3 +414,56 @@ Vec milestone complete. The old README archive was compared byte-for-byte with
 
 Relative to `7af65dd`, implementation C adds 25 and removes 1 line (net +24),
 and IADT regression tests add 46 lines. Documentation is counted separately.
+
+## Sequenced Function-field Induction
+
+Date: September 14, 2026. Follow-up to `65b5a31`.
+
+The remaining pure-result conversion cannot be justified by an untyped Fold
+rewrite. The related typed IH construction does have an ordinary-rule path
+when its result does not depend on the returned child value:
+
+```text
+field : U(Pi(args, Comp(E, D(index(args)))))
+IH    = thunk(lambda args.
+          Fold(force(field) args, lambda child. Induction(child)))
+```
+
+The admitted field schema already restricts E to empty. The existing Fold
+rule retains the field's totality contract; the helper does not strengthen it.
+The output motive can depend on `args` and `index(args)`. If it depends on
+`child` itself, the ordinary Fold rule rejects this construction. That case
+remains unsupported by the typed-body helper, even when the field is total;
+its caller retains the pre-existing normalization fallback.
+
+`induction_field_body` constructs the arguments and child binder using ordinary
+context extension, application, induction, abstraction and Fold evidence. It
+never recursively unfolds the child. A shared internal `elimination_instance`
+maps the generic motive and branches for both public elimination reindexing
+and child specialization, avoiding an unused intermediate induction proof.
+No Core, conversion, transport, effect, proof-rule or image-format change is
+made. The separate total-pure result/substitution problem stays open.
+
+- [x] Reproduce failure of typed one-step elimination on an Acc constructor
+  carrying a two-argument recursive function field.
+- [x] Construct the body under both unspecified and total field contracts.
+- [x] Check the dependent index result classifier and repeated construction
+  up to explicit alpha comparison, without alpha interning.
+- [x] Check original/body raw-Core conversion and ordinary derivations.
+- [x] Run the final expanded IADT checks with budgets 1 and 64, including the
+  final missing-child guard, in Debug and ASan/UBSan builds.
+- [x] Run full Debug and ASan/UBSan acceptance, including existing recursive
+  field, Identity transport, unknown-totality and QuickSort regressions.
+- [ ] Support motives depending on the returned child through justified typed
+  pure-result laws; do not bypass strict Fold to make this case pass.
+
+Full-suite logs: `/tmp/a-program-function-ih-debug.log` and
+`/tmp/a-program-function-ih-sanitize.log`; both completed successfully, including
+31/31 compatibility cases and six QuickSort output checks. Final focused IADT
+runs followed the last failure-path guard. The optimized checker also accepts
+`indexed-recursive-result.p` (3,584 steps); the minimal computed-constructor-index
+case still reports pending at 100,000 steps. No claim of Vec compatibility is
+made from these results.
+
+Relative to `65b5a31`, implementation C/headers add 51 and remove 13 lines
+(net +38); focused regression tests add 27 lines. Documentation is separate.

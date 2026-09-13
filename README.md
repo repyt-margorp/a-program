@@ -141,8 +141,8 @@ special kernel primitive. A post-hoc specification of an existing `length`
 is tested in [length-output-proof.p](src/prototype/pointer/tests/acceptance/length-output-proof.p).
 Selected captured indexed functions also generate checked graphs and witnesses,
 including Vec copy. This does not yet cover the legacy dependent Vec append.
-Typed one-step elimination supports direct recursive fields and recovers
-constructor origins through return-producing sequences. Computed indices have a
+Typed one-step elimination supports direct and sequenced function fields, and
+recovers constructor origins through return-producing sequences. Computed indices have a
 [small pending reproduction](src/prototype/pointer/tests/known-limitations/computed-constructor-index.p);
 successful arithmetic normalization alone does not resolve that boundary.
 

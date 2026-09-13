@@ -79,6 +79,16 @@ applies the retained continuation through ordinary beta/substitution evidence.
 Pending continuations retain their context maps. This repairs origin recovery,
 not the unresolved total-pure result/substitution equation above.
 
+Function-field follow-up: typed one-step induction now constructs the field's
+Pi arguments, sequences the returned child through ordinary Fold, and applies
+the same admitted induction at that child. Motives may depend on the field's
+indices/arguments, but a Fold result depending on the returned child itself
+still declines. Ordinary reindexing and child specialization share one internal
+elimination builder; there is no intermediate duplicate induction. Acc checks
+cover both unspecified and total field contracts and raw-Core conversion of
+the original elimination to the expanded body. This does not resolve Vec's
+symbolic pure-result equation or complete general dependent field support.
+
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the

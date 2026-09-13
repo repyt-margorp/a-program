@@ -220,8 +220,9 @@ const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
 	const struct pg_evidence *elimination);
 /* Expose Match/induction at a retained constructor introduction. Apply fields
  * and suspended recursive eliminations through ordinary typed substitution.
- * This is one step, not recursive normalization. Neutral scrutinees and
- * function-valued recursive fields currently return NULL. No new proof rule. */
+ * Function fields sequence their returned child before induction. This is one
+ * step, not recursive normalization. Neutral scrutinees and unsupported
+ * dependent Fold results return NULL. No new proof rule. */
 const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
 	struct pg_classifiers *classifiers,
 	const struct pg_evidence *elimination);

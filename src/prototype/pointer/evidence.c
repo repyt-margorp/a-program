@@ -1706,9 +1706,9 @@ done:
 	return result;
 }
 
-const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
+static const struct pg_evidence *elimination_instance(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
-	const struct pg_evidence *elimination)
+	const struct pg_evidence *elimination, const struct pg_evidence *scrutinee)
 {
 	if (!pg_evidence_owned_by(elimination, typing)) return NULL;
 	if (elimination->rule != PG_MATCH_ELIM && elimination->rule != PG_INDUCTION_ELIM) return NULL;
@@ -1727,11 +1727,18 @@ const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
 	}
 	result = prove_data_elimination(typing, classifiers, elimination->premises[1],
 		pg_prove_substitution_compose(typing, elimination->premises[2], substitution),
-		pg_prove_reindex(typing, substitution, elimination->premises[3]), map->premises[1],
+		scrutinee ? scrutinee : pg_prove_reindex(typing, substitution, elimination->premises[3]), map->premises[1],
 		pg_prove_reindex(typing, map, elimination->premises[0]), count, branches, elimination->rule, NULL);
 done:
 	pg_graph_destroy(&temporary);
 	return result;
+}
+
+const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
+	const struct pg_evidence *elimination)
+{
+	return elimination_instance(typing, classifiers, substitution, elimination, NULL);
 }
 
 static const struct pg_evidence *constructor_origin(struct pg_typing *typing,
@@ -1782,6 +1789,43 @@ done:
 	return result;
 }
 
+static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *elimination,
+	const struct pg_evidence *field)
+{
+	const struct pg_term *type;
+	if (!pg_thunk_type_view(field->classifier, &type))
+		return pg_prove_induction(typing, classifiers, elimination->premises[1],
+			elimination->premises[2], field, elimination->premises[4], elimination->premises[0],
+			elimination->premise_count - 6, elimination->premises + 5);
+	const struct pg_evidence *context = elimination->premises[2]->premises[1], *scope = context;
+	const struct pg_evidence *call = pg_prove_force(typing, field);
+	const struct pg_evidence *classifier = pg_prove_classifier(typing, classifiers, scope, call);
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	while (classifier && pg_pi_view(classifier->subject->core, &domain, &binder, &codomain)) {
+		binder = pg_binder(typing->graph);
+		scope = pg_prove_context_extension(typing, scope, binder, pg_prove_pi_domain(typing, classifier));
+		if (!scope) return NULL;
+		call = pg_prove_application(typing, pg_prove_projection(typing, scope, call),
+			pg_prove_variable(typing, scope, binder));
+		classifier = pg_prove_classifier(typing, classifiers, scope, call);
+	}
+	const struct pg_evidence *returned = pg_prove_context_extension(typing, scope,
+		pg_binder(typing->graph), pg_prove_return_content(typing, classifier));
+	if (!returned) return NULL;
+	const struct pg_evidence *map = pg_prove_substitution_projection(typing, context, returned);
+	const struct pg_evidence *value = pg_prove_variable(typing, returned, returned->context->binder);
+	if (!value) return NULL;
+	const struct pg_evidence *child = elimination_instance(typing, classifiers, map, elimination,
+		value);
+	/* Demand the field result before recursion, exactly as induction_field_core.
+	 * Fold rejects a result classifier escaping with the returned-value binder. */
+	const struct pg_evidence *continuation = pg_prove_abstract(typing, classifiers, scope, returned, child);
+	const struct pg_evidence *body = pg_prove_fold(typing, classifiers, call, continuation);
+	return pg_prove_abstract(typing, classifiers, context, scope, body);
+}
+
 const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
 	struct pg_classifiers *classifiers,
 	const struct pg_evidence *elimination)
@@ -1813,14 +1857,7 @@ const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
 	for (size_t i = 0; i < count; ++i) {
 		if (!recursive[i]) continue;
 		const struct pg_evidence *field = fields->premises[first + i];
-		const struct pg_term *function;
-		if (pg_thunk_type_view(field->classifier, &function)) goto failed;
-		/* Reuse the admitted motive and branches, but do not expand this call.
-		 * The recursive field's index determines its own result classifier. */
-		const struct pg_evidence *call = pg_prove_induction(typing, classifiers,
-			elimination->premises[1], elimination->premises[2], field,
-			elimination->premises[4], elimination->premises[0],
-			elimination->premise_count - 6, elimination->premises + 5);
+		const struct pg_evidence *call = induction_field_body(typing, classifiers, elimination, field);
 		result = pg_prove_application_body(typing, result, pg_prove_thunk(typing, classifiers, call));
 		if (!result) goto failed;
 	}
