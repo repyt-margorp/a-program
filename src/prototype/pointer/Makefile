@@ -94,6 +94,13 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p recursive expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-match.p twoSteps twoExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-payload.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-payload.p otherMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-payload.p dependentMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-payload.p mixedMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-payload.p mixedOther boolExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-payload.p functionMain expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-payload-wrong-branch.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p mixed expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p indexed indexedExpected

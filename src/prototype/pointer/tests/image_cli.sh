@@ -148,6 +148,7 @@ acceptance/motive-computed-callee.p main
 acceptance/recursive-dependent-package.p main
 acceptance/dependent-order-reflexivity.p main
 acceptance/dependent-function-motive.p main dependentMain
+acceptance/indexed-payload.p main otherMain dependentMain mixedMain mixedOther:boolExpected functionMain
 acceptance/computed-family-member.p main nested:nestedExpected
 ../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified
 ../../tests/fixtures/typing/function_graph_two_recursive_calls_check.p main certified

@@ -164,6 +164,22 @@ unchanged; computations over logical hypotheses use the extension below.
   Validation: normal checks, examples/results, open families and source-image
   resaves pass; the added fixtures pass ASan/UBSan at chunks 1/64 for result
   comparison. Unchanged legacy compatibility remains 10/19, not complete.
+- [x] Before constructing a branch-dependent type case, solve the synthesized
+  branch result equations through the existing typed pattern substitution.
+  Check the candidate at every constructor, retaining the union of branch
+  effects; otherwise keep the existing type-case result. Constructor-pattern
+  construction is shared with recursive-result inference, and fallback family
+  abstractions are no longer built when unused. This synthesizes `Box A -> A`
+  for a type-indexed payload and handles dependent indices `(A,x:A)` without
+  consulting `::`. Mixed-result branches retain their own types; a false
+  uniform-result expectation is rejected. Equations retain the computation
+  classifier, including raw Pi results: extracting `A -> F(A)` from `Box A`
+  uses the same solver, without introducing a value Pi or thunk coercion.
+  This is variable-index motive
+  inference, not equality reflection or automatic constructor-index transport.
+  Normal checks, examples/results, open families and fresh-process `.a` result
+  checks pass. The new source cases pass ASan/UBSan with Solve chunks 1/64.
+  Legacy compatibility is still 10/19; QuickSort still rejects at 34344 steps.
 - [ ] Remaining compatibility blockers: order proofs, named Graph cases,
   QuickSort and the incompatible-property negative case. QuickSort currently
   rejects at 34344 steps: `#.terminates` is not connected in the new source
