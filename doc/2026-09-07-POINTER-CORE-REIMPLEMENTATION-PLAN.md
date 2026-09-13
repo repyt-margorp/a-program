@@ -310,7 +310,8 @@ Concrete Acc compatibility follow-up after `4515008` (September 14):
   concrete client (6,686 transitions) and the README's example 05 command.
   Implementation C: +6/-0; tests/fixtures/scripts: +53/-1. No kernel rule changed.
 
-Newly exposed limitations, not solved by the application repair:
+Dependent Match follow-up after `e5fb46d` (September 14). The application
+repair exposed, but did not itself solve, the following valid source:
 
 ```ap
 heightStep := \b : Bool => \ih : (y : Bool) -> Precedes y b -> Nat => b
@@ -318,22 +319,53 @@ heightStep := \b : Bool => \ih : (y : Bool) -> Precedes y b -> Nat => b
   @true => Nat.succ (ih Bool.false Precedes.falseBeforeTrue);
 ```
 
-The true branch still sees the captured `ih` at `Precedes y b`. The existing
-checked ambient-telescope generalization is gated to indexed or certain
-inductive matches. Simply broadening that gate did not complete the concrete
-client and was withdrawn; no untyped branch-local classifier substitution was
-introduced. Separately, constructing `Acc ... Bool.true` using
-`\y : Bool => \edge : Precedes y Bool.true => edge @falseBeforeTrue => accFalse`
-rejects the quoted field's application. The necessary result-index refinement
-must be traced independently before changing kernel rules. The new positive
-client deliberately tests only the original `accFalse` and a constant step;
-it is not evidence that these two extensions work.
+- [x] Enable the existing checked ambient-telescope generalization for
+  non-recursive Match when a later argument's declared type mentions the
+  scrutinee. Abstract the dependent inputs into the motive, specialize their
+  domains through the constructor map, then apply the elimination to the
+  original inputs. No local equality axiom or Core substitution shortcut.
+- [x] Preserve an IH that deliberately keeps its ambient inputs fixed.
+  Generalizing every dependent capture broke the existing `pick` graph test:
+  its IH had result `P n`, not a new argument of type `P k`. The previous
+  recursive-generalization criterion is retained, not silently reinterpreted.
+- [x] Compare independently synthesized constant branch types through the shared
+  conversion job. Alpha difference alone does not imply distinct types:
+  `Carrier false` may compute to `Nat`. Every body still receives ordinary
+  branch validation; this comparison supplies no expected-type synthesis.
+- [x] Prefer the existing index-pattern motive inference for reachable rigid-index
+  branches. Otherwise the valid Acc successor field
+  `\y : Bool => \edge : Precedes y Bool.true => edge @falseBeforeTrue => accFalse`
+  fixes its result to `Acc ... false` too early instead of recovering `Acc ... y`.
+  The inferred family is checked after specialization to every reachable branch.
+  All-refuted Match remains on the existing constraint-waiting path; making
+  every indexed Match request branch-type inference regressed the original
+  `accFalse` and was corrected. Neither change relaxes a kernel rule.
+- [x] Add source/image tests for the example, computed carrier types, two captured
+  inputs and base/recursive Acc elimination. A wrong-branch edge and a
+  Bool-valued Acc field must reject.
+- [x] Complete debug `check-acceptance`, including Merge graph, QuickSort
+  property, 39/39 legacy cases and all-refuted pending regressions.
+- [x] Complete ASan/UBSan `check-acceptance` on the same cases, including
+  all new positive result pairs and source/image rejection checks.
 
-Next: retain these examples as dependent-motive acceptance targets, derive the
-ambient telescope and branch result specialization with existing typed maps,
-and test both valid and mismatched indices. Do not use trailing `::` to choose
-the motive or weaken totality/effect checks. README describes the current
-rewrite; its archived legacy README remains byte-identical to `e9a131d`.
+Optimized before/after check on the unchanged QuickSort property client with
+the original provider, `--steps 1000000`: 147,997 -> 147,758 Solve transitions.
+Three interleaved runs took 0.587/0.604/0.572 seconds before and
+0.584/0.596/0.556 seconds after (shell `time`, same `-O2` build flags).
+This small sample indicates comparable time, not a general speedup claim.
+Implementation C: +26/-4; tests/fixtures/scripts: +103/-0; documentation separate.
+
+Remaining scope restrictions are explicit: generalization across local
+definitions/handlers and arbitrary dependent IH domains are not enabled by
+this repair. A direct specialized extraction
+`accTrue @acc subject down => down Bool.false Precedes.falseBeforeTrue`
+still rejects its edge argument: the branch field expects
+`Precedes false subject`, not `Precedes false true`. Existing path transport
+does not yet close that application; accepting the constructor and recursive
+generic eliminator is not evidence that arbitrary specialized field use works.
+Continue wider valid-source compatibility without allowing `::`
+to select a motive or weaken totality/effect checks. README describes the
+current rewrite; its legacy archive remains byte-identical to `e9a131d`.
 
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the

@@ -98,3 +98,22 @@ code=0
 "$checker" --load "$directory/wrong-index.a" --steps 100000 > "$directory/status" || code=$?
 test "$code" -eq 1
 printf '%s\n' 'merge composition: capture, currying, declaration order, result and image checks passed'
+
+# A non-recursive scrutinee refines later dependent inputs using typed maps.
+for steps in 0 100000; do
+	code=0
+	"$checker" --steps "$steps" --save "$directory/dependent.a" \
+		"$fixtures/captured-dependent-match.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	for pair in main:one second:two base:zero dependentMain:two dependentBase:zero multipleMain:two multipleBase:one; do
+		"$runtime" --equal-image "$directory/dependent.a" "${pair%:*}" "${pair#*:}"
+	done
+done
+"$runtime" --reject "$fixtures/captured-dependent-match-wrong.p"
+code=0
+"$checker" --steps 0 --save "$directory/wrong-dependent.a" \
+	"$fixtures/captured-dependent-match-wrong.p" > "$directory/status" || code=$?
+test "$code" -eq 3
+code=0
+"$checker" --load "$directory/wrong-dependent.a" > "$directory/status" || code=$?
+test "$code" -eq 1

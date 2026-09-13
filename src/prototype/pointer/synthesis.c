@@ -5572,7 +5572,19 @@ static int match_generalize(struct pg_synthesis *synthesis, struct pg_synthesis_
 	/* The index substitution also contains the declaration's Self image. */
 	size_t first = pg_evidence_premise_count(state->instance.parameters) + 1;
 	size_t end = state->instance.indices ? pg_evidence_premise_count(state->instance.indices) : first;
-	if (first == end && !(state->induction && state->uses_scrutinee)) return 0;
+	if (first == end && !(state->induction && state->uses_scrutinee)) {
+		/* An existing IH may deliberately keep the ambient arguments fixed.
+		 * Do not change its function domain just because a capture is dependent. */
+		if (state->induction) return 0;
+		const struct pg_context *captured = pg_evidence_context(context);
+		while (captured && captured->binder != subject->as.reference) {
+			int independent = pg_term_independent(captured->declared_type, subject->as.reference);
+			if (independent < 0) goto error;
+			if (!independent) break;
+			captured = captured->parent;
+		}
+		if (!captured || captured->binder == subject->as.reference) return 0;
+	}
 	for (size_t i = first; i < end; ++i) {
 		const struct pg_term *index = pg_evidence_subject(pg_evidence_premise(state->instance.indices, i))->core;
 		if (index->kind != PG_REFERENCE || index->as.reference->kind != PG_BINDER) return 0;
@@ -6080,6 +6092,9 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			enqueue(synthesis, job);
 			return;
 		}
+		/* Retain constructor-index information before choosing a constant
+		 * result. Refuted branches above cannot propose a motive. */
+		if (state->path_context) state->type_cases = 1;
 		struct pg_synthesis_job *candidate = state->motive_context || state->type_cases
 			? pg_synthesis_abstract(synthesis, context, source_context(branch->scope), branch->body)
 			: pg_synthesis_constant_motive(synthesis, context, source_context(branch->scope), branch->body);
@@ -6095,9 +6110,16 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (!state->motive_context && !state->type_cases) {
 			const struct pg_evidence *type = candidate->result;
 			if (!state->motive) state->motive = type;
-			else if (pg_alpha_equal(pg_evidence_subject(state->motive)->core, pg_evidence_subject(type)->core) != 1) {
-				if (state->induction) goto unsupported;
-				state->type_cases = 1;
+			else {
+				struct pg_synthesis_job *comparison = request_job(synthesis, CONVERSION_JOB,
+					pg_evidence_subject(state->motive)->core, pg_evidence_subject(type)->core);
+				if (!comparison) goto error;
+				if (comparison->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, comparison); return; }
+				if (comparison->status == PG_SYNTHESIS_ERROR) goto error;
+				if (comparison->status != PG_SYNTHESIS_DONE) {
+					if (state->induction) goto unsupported;
+					state->type_cases = 1;
+				}
 			}
 		}
 		++state->checked;

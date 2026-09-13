@@ -114,6 +114,23 @@ for steps in 0 100000; do
 	"$runtime" --equal-image "$directory/acc.a" falseMain falseExpected
 	"$runtime" --equal-image "$directory/acc.a" main expected
 done
+client="$(dirname "${BASH_SOURCE[0]}")/acceptance/acc-concrete-successor.p"
+for steps in 0 100000; do
+	code=0
+	"$checker" --steps "$steps" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
+		--save "$directory/successor.a" "$client" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	for pair in main:expected base:zero; do
+		"$runtime" --equal-image "$directory/successor.a" "${pair%:*}" "${pair#*:}"
+	done
+done
+code=0
+"$checker" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
+	--save "$directory/wrong-successor.a" "${client%.p}-wrong.p" > "$directory/status" || code=$?
+test "$code" -eq 1
+code=0
+"$checker" --load "$directory/wrong-successor.a" > "$directory/status" || code=$?
+test "$code" -eq 1
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-vec-append-results.p"
 for steps in 0 100000; do
 	code=0
