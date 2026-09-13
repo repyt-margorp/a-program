@@ -18,9 +18,12 @@ criteria for merging different Lambda or semantic-object references.
 The user superseded the final Main-merge delivery policy: publish incremental
 work on `rewrite/pointer-core-hott` while keeping Main as the frozen old version.
 Main remains at `63b00eba3a3cf87b8aa20434b7c8e513a71be92b`, also identified by
-the annotated tag `old-version/2026-09-14-main`. Do not merge or force-push the
-rewrite into Main, or change the default branch, without a new user decision.
-Later references to Main promotion are historical and do not authorize it.
+the annotated tag `old-version/2026-09-14-main`. The user's subsequent decision
+on September 14 makes the pointer rewrite the latest development version:
+GitHub's default branch is `rewrite/pointer-core-hott`. This changes the
+repository's default view, not Main's history. Do not merge or force-push the
+rewrite into Main without a new user decision. Later references to Main
+promotion are historical and do not authorize it.
 
 Commit and push verified development increments on the rewrite branch. A
 published increment is not completion of the full rewrite; retain the open
