@@ -554,6 +554,9 @@ const struct pg_evidence *pg_prove_thunk_content(struct pg_typing *typing,
 	const struct pg_evidence *thunk_type);
 const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *argument);
+/* Prefer the retained domain formation, transported through the same proof
+ * maps as nominal recovery. Without an introduction origin, retain the Pi's
+ * bound; no universe lowering axiom is introduced. */
 const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 	const struct pg_evidence *pi);
 /* F E A formation implies A formation, even for nonempty E. This does not

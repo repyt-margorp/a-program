@@ -1565,6 +1565,34 @@ static void schema_positivity(void)
 	assert(!pg_inductive_instance(&typing, zero, &recovered));
 	assert(!pg_prove_substitution_projection(&typing, n_context, empty));
 	{
+		/* A high codomain must not inflate the retained Nat domain. */
+		const struct pg_evidence *large_result = pg_prove_return_type(&typing, &classifiers,
+			pg_prove_universe(&typing, &classifiers, z_context, 2));
+		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, z_context, large_result);
+		assert(pg_evidence_classifier(pi) == pg_universe(&classifiers, 3));
+		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
+		const struct pg_evidence *derived[] = {pi,
+			pg_prove_projection(&typing, n_context, pi),
+			pg_prove_reindex(&typing, map, pi),
+			pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, &classifiers, pi))};
+		for (size_t i = 0; i < sizeof(derived) / sizeof(*derived); ++i) {
+			const struct pg_evidence *domain = pg_prove_pi_domain(&typing, derived[i]);
+			assert(domain && pg_evidence_classifier(domain) == pg_universe(&classifiers, 0));
+			assert(pg_evidence_context(domain) == pg_evidence_context(derived[i]));
+			assert(pg_evidence_subject(domain)->core == pg_evidence_subject(nat)->core);
+			common_rule(&typing, &classifiers, domain);
+			size_t before = typing.proofs.count;
+			assert(pg_prove_pi_domain(&typing, derived[i]) == domain);
+			assert(typing.proofs.count == before);
+		}
+		/* Recover an actual large domain without lowering its universe. */
+		const struct pg_evidence *large = pg_prove_universe(&typing, &classifiers, empty, 2);
+		const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, pg_binder(&graph), large);
+		pi = pg_prove_pi(&typing, &classifiers, scope,
+			pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, scope, nat)));
+		assert(pg_prove_pi_domain(&typing, pi) == large);
+	}
+	{
 		const struct pg_evidence *result_type = pg_prove_return_type(&typing, &classifiers,
 			pg_prove_projection(&typing, z_context, nat));
 		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, z_context, result_type);

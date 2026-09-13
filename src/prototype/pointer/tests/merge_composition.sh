@@ -42,4 +42,7 @@ for steps in 0 100000; do
 		"$runtime" --equal-image "$directory/merge.a" "$name" expected
 	done
 done
+"$checker" --steps 100000 --imports "$source" --save "$directory/graph.a" \
+	"$fixtures/merge-function-graph-request.p"
+"$runtime" --equal-image "$directory/graph.a" main graphExpected
 printf '%s\n' 'merge composition: capture, currying, declaration order, result and image checks passed'

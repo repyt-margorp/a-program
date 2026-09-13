@@ -4,7 +4,7 @@ Date: 2026-09-14
 Branch: `rewrite/pointer-core-hott`
 Starting revision: `eb007ed`
 Issue: <https://github.com/repyt-margorp/a-program/issues/28>
-Status: ordinary merge regression coverage added; graph formation unresolved.
+Status: ordinary merge covered; curried merge graph and witness restored.
 
 ## What Reproduces
 
@@ -47,10 +47,10 @@ Two valid forms are tested:
 This is insertion-based merging, not a claim of linear-time merge or a complete
 MergeSort implementation. The full user MergeSort source has been requested.
 
-## Separate Function Graph Limitation
+## Separate Function Graph Failure and Fix
 
 After correcting the recursive call, ordinary merge execution succeeds.
-Requesting `@curriedMerge` still yields `unsupported`. The checked reproduction
+At revision `3c5ab2a`, requesting `@curriedMerge` yields `unsupported`. The checked reproduction
 is `merge-function-graph-request.p`, importing `merge-function-graph-composition.p`
 from `src/prototype/pointer/tests/acceptance/`.
 
@@ -68,18 +68,39 @@ it does not recover a minimal component bound. The kernel therefore correctly
 refuses to place this evidence in the generated level-0 declaration.
 
 - [x] Identify the failed formation premise: field bound 1 exceeds declaration 0.
-- [ ] Reconcile graph universe synthesis with the actual field formations.
-  Either recover tighter bounds from retained formation proofs or synthesize
-  a sufficient universe for the entire generated telescope and its packet.
-  Do not equate universe levels, strip evidence, or bypass the admission check.
-  Test polymorphic helper calls as well as direct recursion and higher-level
-  source types; an unconditional level bump is not a general solution.
-- [ ] Restore graph formation and witness generation, then test an actual
-  post-hoc property separately from simply obtaining an output witness.
+- [x] Recover the retained Pi domain formation through the existing component
+  traversal and typed context maps. Require the resulting context, judgement
+  and domain to agree before using that proof; otherwise keep the conservative
+  inversion rule. No equality reflection or universe lowering axiom is added.
+- [x] Reuse the same component traversal for inductive recovery, with its
+  temporary arena and context frames passed explicitly. No Merge-specific
+  schema rule, new proof tag, or parallel type authority is introduced.
+- [x] Check a small domain of a large Pi, projection/reindex/Thunk wrappers,
+  repeated requests, and a genuinely large domain that must stay large.
+- [x] Restore graph formation and witness generation, and compare the witness's
+  output with the expected merge through a saved imported source image.
+- [ ] Prove an actual post-hoc property separately from obtaining that witness.
 - [ ] Inspect the full MergeSort source when its location is available.
+
+The captured-argument form still has a separate public graph limitation:
+`import structuralMerge; graph := @structuralMerge;` is unsupported, although
+ordinary execution passes. Graph input selection currently chooses the last
+outer Lambda, whereas that function matches an earlier argument. The curried
+fixture is therefore not evidence that every equivalent Lambda placement has
+graph support. Preserve the valid ordinary form and fix graph input selection
+without redefining its IH as a function. This remains a follow-up requirement.
 
 Keep Issue #28 open while reporting this distinction, rather than describing
 all graph-composition concerns as fixed.
+
+The first implementation searched every Pi origin and increased a 20-run debug
+QuickSort compile sample from 0.611 s to 1.030 s. Level 0 is already the minimum
+bound, so its inversion needs no origin search. Limit bound recovery accordingly;
+this is an optimization of proof selection, not a type-specific admission rule.
+
+The minimum-bound shortcut brought the same 20-run sample to 0.738 s (about
+37 ms per compilation versus 31 ms baseline). This is a small debug timing
+sample, not a throughput guarantee; residual proof traversal cost remains.
 
 ## Independent Identity Fix
 
@@ -113,9 +134,10 @@ made the legacy Vec append check terminate, but regressed
 codomains did not fix that regression and lost the Vec improvement. Neither
 trial is retained. No failing test was removed to claim compatibility.
 
-- [x] Debug `check-acceptance`, including the new merge suite: passed.
+- [x] Final debug `check-acceptance`, including Pi recovery: passed.
 - [x] Existing source compatibility gate: 28/28; all six QuickSort outputs passed.
-- [x] ASan/UBSan `check-acceptance`: passed, including the merge suite.
+- [x] Final ASan/UBSan `check-acceptance` with the minimum-bound shortcut:
+  passed, including the new graph/witness image and universe-bound tests.
 - [ ] Legacy Vec append remains open, as do general QuickSort post-hoc properties.
 
 The overall rewrite goal remains active. These local tests do not establish

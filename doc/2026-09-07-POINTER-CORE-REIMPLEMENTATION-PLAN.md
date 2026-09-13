@@ -19,8 +19,10 @@ September 14 follow-up: see
 [`2026-09-14-MERGE-COMPOSITION-AND-IDENTITY-NORMALIZATION-AUDIT.md`](2026-09-14-MERGE-COMPOSITION-AND-IDENTITY-NORMALIZATION-AUDIT.md).
 Issue #28's posted `*tail right` is an overapplication in its captured-argument
 form; corrected merge forms pass execution and declaration-order tests. A
-separate explicit `@curriedMerge` request still fails generated schema formation
-and remains open. An independent Identity WHNF early-stop bug is fixed by
+separate explicit `@curriedMerge` request failed generated schema formation
+because Pi inversion retained an unnecessarily large universe bound. Recovery
+of the retained domain formation now restores this graph and its witness;
+full MergeSort and post-hoc properties remain open. An independent Identity WHNF early-stop bug is fixed by
 using the existing checked diagonal fallback. The broad pure-sequence Vec
 trial was withdrawn because it regressed higher-order indexed fields; Vec
 append and the wider compatibility milestone are not marked complete.
