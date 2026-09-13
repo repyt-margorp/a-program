@@ -18,7 +18,7 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT, PG_INDUCTIVE_FORM, PG_CONSTRUCTOR_INTRO,
 	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION, PG_REQUEST_INTRO, PG_HANDLER_ELIM,
 	PG_CONTEXT_FAMILY_EXTEND, PG_TYPE_FAMILY_APP, PG_TYPE_FAMILY_ABSTRACT, PG_TYPE_CASE,
-	PG_TERMINATION_FORM, PG_TERMINATION_INTRO };
+	PG_TERMINATION_FORM, PG_TERMINATION_INTRO, PG_TOTAL_PURE_VALUE };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION, PG_JUDGEMENT_TYPE_FAMILY };
@@ -478,6 +478,11 @@ void pg_reindex_destroy(struct pg_reindex *work);
  * Symbolic heads must first be normalized with evidence and converted. */
 const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 	const struct pg_evidence *computation);
+/* A symbolic result, not eager evaluation. The checked computation must have
+ * both TOTAL and an empty operation row. The Core identity binder is retained
+ * explicitly so derivation transport does not allocate a different encoding. */
+const struct pg_evidence *pg_prove_total_pure_value(struct pg_typing *typing,
+	const struct pg_evidence *computation, const struct pg_object *binder);
 const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 	const struct pg_evidence *value);
 /* first : Delta -> Gamma, second : Theta -> Delta; result : Theta -> Gamma. */

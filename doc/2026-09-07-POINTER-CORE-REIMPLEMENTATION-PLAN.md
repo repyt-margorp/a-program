@@ -208,6 +208,69 @@ September 13 compatibility follow-up:
   recursive function-field limit. Its graph and post-hoc property remain open;
   the function-field, nested-Match and unknown-callee obligations above remain.
 
+September 13 next semantic step: total pure result expressions.
+
+The function-field limit is not a caching problem: `M(z)` cannot leave the
+scope of the result `z` obtained from `down args`. Introduce a restricted value
+elimination, not an unrestricted dependent effectful Fold:
+
+```text
+Gamma |- m : F(TOTAL, {}, A)
+--------------------------------
+Gamma |- pure_value(m) : A
+
+Core(pure_value(m)) = Fold(Core(m), lambda z. z)
+pure_value(RETURN v) --> v
+pure_value(m)[sigma] =alpha pure_value(m[sigma])
+```
+
+The identity continuation is an erased Core encoding, not a CBPV computation
+Lambda typing premise. This named typed rule owns its admission. No evaluator,
+Core tag or equality-reflection rule is added. Neutral results stay symbolic;
+normalization uses the existing budgeted pure machine. Both TOTAL and the empty
+closed operation row are required; raw Pi, unknown-totality and effectful
+computations reject. Pure execution is assumed deterministic under the fixed
+kernel interpretation. Changing that interpretation invalidates this contract.
+For total recursive function fields the IH motive may consequently substitute
+`pure_value(down args)` for its recursive value. Unknown-totality fields retain
+the independent-codomain restriction. This is A Program's proposed extension,
+not a claimed theorem imported from dCBPV+.
+
+- [x] Implement the checked value rule and ordinary derivation/serialization.
+- [x] Verify closed reduction, neutral substitution, classifier recovery,
+  repeated use, rejection boundaries and dimensional substitution compatibility.
+- [ ] Use it for dependent function-field IHs, checking actual induction results.
+  IH formation and induction-scope construction now pass for the motive
+  `F(Id child child)` under a TOTAL field; the same motive rejects under an
+  unknown-totality field. Existing indexed source/image tests that universally
+  rejected this motive now require acceptance for their TOTAL arrows. Execution
+  of a recursive proof consuming this genuinely child-dependent IH remains to
+  be checked; existing index-only Acc eliminations still execute correctly.
+- [ ] Extend graph/witness translation with the same field call and its result;
+  a free existential child must not replace the specific `down args` result.
+  `graph_call` must retain field-call arguments separately from the recursive
+  function's trailing arguments. Schema and witness substitutions must build
+  the same `pure_value(down args)` child, and apply the witness IH to those same
+  field-call arguments before unpacking its result. The old function-field
+  guard remains until this translation and its result checks are implemented.
+- [ ] Complete higher Identity action for this rule before claiming full HOTT.
+
+Implementation: `PG_TOTAL_PURE_VALUE` has one checked computation premise and
+one retained Core identity binder. Derivation format 11 reconstructs it through
+ordinary Solve; an imported type formation in place of that computation is
+rejected. Older derivation format 10 is not silently reinterpreted. No source
+keyword, Core operation, value-side Pi, evaluator or Replay path was added.
+Full debug `check-acceptance` passes, including 20/20 compatibility. This is a
+new restricted typed rule, not a claimed metatheoretic normalization proof or
+completion of QuickSort graph generation.
+ASan/UBSan passes Core, IADT, derivation IO, indexed source-family transport,
+image CLI and 20/20 compatibility. Implementation +47/-13 (net +34); tests
++88/-4 (net +84); documentation is counted separately.
+
+Reference: [Vakar, An Effectful Treatment of Dependent Types](https://arxiv.org/abs/1603.04298)
+separates ordinary dCBPV from dependent Kleisli extension. It motivates stating
+the additional rule explicitly, not admitting all empty-row computations.
+
 Theory references for this step: Leijen's [Koka report, Sections 2.1-2.2](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/koka-effects-2013.pdf)
 distinguishes potential divergence from ordinary side effects; Torczon et al.'s
 [Effects and Coeffects in CBPV](https://arxiv.org/abs/2311.11795) studies graded

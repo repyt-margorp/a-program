@@ -489,6 +489,21 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	enum pg_totality ih_totality;
 	assert(pg_computation_type_view(tail, &ih_totality, &row, &content));
 	assert(ih_totality == field_totality && !pg_effect_count(row));
+	/* Depend on the returned child itself, not only on its index. This is
+	 * admissible only when the recursive field carries a total pure contract. */
+	const struct pg_evidence *z = pg_prove_variable(&typing, mc, pg_evidence_context(mc)->binder);
+	const struct pg_evidence *child_identity = pg_prove_identity_type(&typing,
+		pg_prove_classifier(&typing, &classifiers, mc, z), z, z);
+	const struct pg_evidence *child_motive = pg_prove_return_type(&typing, &classifiers, child_identity);
+	assert(child_motive);
+	const struct pg_evidence *dependent_ih = pg_prove_inductive_hypothesis_type(&typing, &classifiers,
+		acc, parameters, mc, child_motive, field_context, field_values[1]);
+	assert(!!dependent_ih == (field_totality == PG_TOTALITY_TOTAL));
+	if (dependent_ih) {
+		common_rule(&typing, &classifiers, dependent_ih);
+		assert(pg_prove_induction_scope(&typing, &classifiers, acc, constructor,
+			parameters, mc, child_motive));
+	}
 	const struct pg_evidence *constructor_value = pg_prove_constructor(&typing, acc, constructor,
 		pg_prove_substitution_projection(&typing, rc, field_context), 2, field_values);
 	const struct pg_evidence *constructor_pattern = pg_prove_inductive_motive_substitution(&typing,

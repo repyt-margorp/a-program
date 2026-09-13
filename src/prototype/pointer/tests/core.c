@@ -1110,6 +1110,22 @@ static void typed_restriction_test(struct pg_graph *graph)
 	assert(pg_eval_readback(&machine, graph) == pg_evidence_subject(restricted_result)->core);
 	assert(pg_evidence_classifier(restricted_result) == pg_evidence_classifier(restricted_application));
 	pg_eval_destroy(&machine);
+	const struct pg_evidence *total = pg_prove_return_contract(&typing, &classifiers, PG_TOTALITY_TOTAL, source_x);
+	const struct pg_object *result_binder = pg_binder(graph);
+	const struct pg_evidence *pure_value = pg_prove_total_pure_value(&typing, total, result_binder);
+	const struct pg_evidence *direct_value = pg_prove_reindex(&typing, direct, pure_value);
+	const struct pg_evidence *twice_value = pg_prove_reindex(&typing, vertex_substitution,
+		pg_prove_reindex(&typing, edge_substitution, pure_value));
+	const struct pg_evidence *rebuilt_value = pg_prove_total_pure_value(&typing,
+		pg_prove_reindex(&typing, direct, total), result_binder);
+	assert(direct_value && twice_value && rebuilt_value);
+	assert(pg_alpha_equal(pg_evidence_subject(direct_value)->core, pg_evidence_subject(twice_value)->core) == 1);
+	assert(pg_alpha_equal(pg_evidence_subject(direct_value)->core, pg_evidence_subject(rebuilt_value)->core) == 1);
+	assert(pg_evidence_classifier(direct_value) == pg_evidence_classifier(rebuilt_value));
+	pg_computation_eval_init(&machine, graph, pg_evidence_subject(direct_value)->core);
+	assert(pg_eval_advance(&machine, 100) == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, graph) == pg_evidence_subject(once)->core);
+	pg_eval_destroy(&machine);
 	assert(identity_substitution && pg_evidence_context(identity_substitution) == pg_evidence_context(source));
 	assert(!pg_context_restrict(&typing, &dimensions, source, edge, 1, bindings));
 	assert(!pg_context_restrict(&typing, &dimensions, source, edge, 2, edge_bindings));
@@ -3279,6 +3295,22 @@ static void totality_classifier_test(struct pg_graph *graph)
 	assert(!pg_prove_effect_subsumption(&typing, returned[0], types[1]));
 	const struct pg_evidence *weakened = pg_prove_effect_subsumption(&typing, returned[1], types[0]);
 	assert(weakened && pg_evidence_subject(weakened) == pg_evidence_subject(returned[1]));
+	const struct pg_object *result_binder = pg_binder(graph);
+	const struct pg_evidence *pure_value = pg_prove_total_pure_value(&typing, returned[1], result_binder);
+	assert(pure_value && pg_evidence_judgement(pure_value) == PG_JUDGEMENT_VALUE);
+	assert(pg_prove_total_pure_value(&typing, returned[1], result_binder) == pure_value);
+	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, context, pure_value))->core == pg_evidence_subject(a)->core);
+	assert(request_whnf(graph, pg_evidence_subject(pure_value)->core, 1) == pg_evidence_subject(v)->core);
+	assert(!pg_prove_total_pure_value(&typing, weakened, result_binder));
+	assert(!pg_prove_total_pure_value(&typing, functions[1], result_binder));
+	assert(!pg_prove_total_pure_value(&typing, v, result_binder));
+	assert(!pg_prove_total_pure_value(&typing, returned[1], NULL));
+	assert(!pg_prove_total_pure_value(&typing, returned[1], &pg_return_operation));
+	const struct pg_effect_row *nonempty = pg_effect_row(graph, 1, (const struct pg_object *[]){&pg_return_operation});
+	const struct pg_evidence *effectful = pg_prove_effect_subsumption(&typing, returned[1],
+		pg_prove_computation_type(&typing, &classifiers, PG_TOTALITY_TOTAL, nonempty, a));
+	assert(effectful && !pg_prove_total_pure_value(&typing, effectful, result_binder));
+	reconstruct_derivation(&typing, &classifiers, pure_value);
 	/* Formation is not a termination proof for an arbitrary suspended input.
 	 * FOLD preserves exactly the contracts assumed in its typed premises. */
 	for (unsigned i = 0; i < 2; ++i) {
@@ -3287,6 +3319,21 @@ static void totality_classifier_test(struct pg_graph *graph)
 			pg_prove_thunk_type(&typing, &classifiers, types[i]));
 		const struct pg_evidence *input = pg_prove_force(&typing, pg_prove_variable(&typing, outer, m));
 		assert(input && !pg_prove_return_value(&typing, input));
+		const struct pg_evidence *symbolic = pg_prove_total_pure_value(&typing, input, result_binder);
+		assert(!!symbolic == i);
+		if (symbolic) {
+			assert(pg_evidence_classifier(symbolic) == pg_evidence_subject(a)->core);
+			const struct pg_evidence *substitution = pg_prove_substitution_pair(&typing,
+				pg_prove_substitution_projection(&typing, context, context), outer,
+				pg_prove_thunk(&typing, &classifiers, returned[i]));
+			const struct pg_evidence *specialized = pg_prove_reindex(&typing, substitution, symbolic);
+			const struct pg_evidence *mapped = pg_prove_total_pure_value(&typing,
+				pg_prove_reindex(&typing, substitution, input), result_binder);
+			assert(specialized && mapped);
+			assert(pg_alpha_equal(pg_evidence_subject(specialized)->core, pg_evidence_subject(mapped)->core) == 1);
+			assert(request_whnf(graph, pg_evidence_subject(specialized)->core, 1) == pg_evidence_subject(v)->core);
+			reconstruct_derivation(&typing, &classifiers, symbolic);
+		}
 		const struct pg_evidence *suspended = pg_prove_variable(&typing, outer, m);
 		const struct pg_evidence *suspended_type = pg_prove_classifier(&typing, &classifiers, outer, suspended);
 		const struct pg_evidence *termination = pg_prove_termination_type(&typing, &classifiers, suspended_type, suspended);

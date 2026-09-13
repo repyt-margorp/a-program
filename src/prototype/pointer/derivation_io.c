@@ -8,7 +8,7 @@
 
 #include <string.h>
 
-static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 10};
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 11};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {
@@ -251,7 +251,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t rule, level, direction, totality, arity, reduction_kind;
 		if (pg_wire_read_u64(file, &rule)) return -1;
-		if (rule > PG_TERMINATION_INTRO) return -1;
+		if (rule > PG_TOTAL_PURE_VALUE) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
 		if (pg_wire_read_u64(file, &totality) || totality > PG_TOTALITY_TOTAL) return -1;
 		if (totality && rule != PG_RETURN_TYPE_FORM && rule != PG_RETURN_INTRO) return -1;

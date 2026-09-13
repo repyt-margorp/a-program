@@ -1171,25 +1171,31 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
 	const struct pg_effect_row *effects;
 	if (!classifier || !pg_computation_type_view(classifier->subject->core, &field_totality, &effects, &type)) return NULL;
 	if (pg_effect_count(effects)) return NULL;
+	const struct pg_evidence *at;
+	if (field_totality == PG_TOTALITY_TOTAL) {
+		const struct pg_evidence *result = pg_prove_total_pure_value(typing, call, pg_binder(typing->graph));
+		at = pg_prove_inductive_motive_at(typing, classifiers,
+			formation, parameters, motive_context, motive, scope, result);
+		goto abstract;
+	}
 	const struct pg_evidence *returned_type = pg_prove_return_content(typing, classifier);
 	binder = pg_binder(typing->graph);
 	const struct pg_evidence *returned = pg_prove_context_extension(typing, scope, binder, returned_type);
-	const struct pg_evidence *at = pg_prove_inductive_motive_at(typing, classifiers,
+	at = pg_prove_inductive_motive_at(typing, classifiers,
 		formation, parameters, motive_context, motive, returned, pg_prove_variable(typing, returned, binder));
 	if (!at) return NULL;
 	/* Calling a recursive function field precedes recursion on its result.
 	 * The IH cannot promise termination that this field does not provide. */
-	if (field_totality == PG_TOTALITY_UNSPECIFIED) {
-		enum pg_totality motive_totality;
-		if (pg_computation_type_view(at->subject->core, &motive_totality, &effects, &type)) {
-			at = pg_prove_computation_type(typing, classifiers, field_totality, effects,
-				pg_prove_return_content(typing, at));
-		} else if (!unspecified_computation_result(at->subject->core)) return NULL;
-	}
+	enum pg_totality motive_totality;
+	if (pg_computation_type_view(at->subject->core, &motive_totality, &effects, &type)) {
+		at = pg_prove_computation_type(typing, classifiers, field_totality, effects,
+			pg_prove_return_content(typing, at));
+	} else if (!unspecified_computation_result(at->subject->core)) return NULL;
 	/* Fold the returned recursive value once. Its result classifier must not
 	 * escape with that value's binder; indices may depend on the Pi arguments. */
 	at = pg_prove_pi_constant_codomain(typing,
 		pg_prove_pi(typing, classifiers, returned, at));
+abstract:
 	while (at && scope->context != context->context) {
 		at = pg_prove_pi(typing, classifiers, scope, at);
 		scope = scope->premises[0];
@@ -2223,6 +2229,26 @@ const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 	if (!pg_thunk_type_view(value->classifier, &classifier)) return NULL;
 	return term_content(typing, value, &pg_thunk_operation, classifier,
 		PG_THUNK_COMPUTATION, PG_JUDGEMENT_COMPUTATION);
+}
+
+const struct pg_evidence *pg_prove_total_pure_value(struct pg_typing *typing,
+	const struct pg_evidence *computation, const struct pg_object *binder)
+{
+	if (!pg_evidence_owned_by(computation, typing)) return NULL;
+	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
+	if (!binder || binder->kind != PG_BINDER) return NULL;
+	const struct pg_term *type;
+	const struct pg_effect_row *effects;
+	enum pg_totality totality;
+	if (!pg_computation_type_view(computation->classifier, &totality, &effects, &type)) return NULL;
+	if (totality != PG_TOTALITY_TOTAL || pg_effect_count(effects)) return NULL;
+	const struct pg_term *identity = pg_lambda(typing->graph, binder, pg_reference(typing->graph, binder));
+	const struct pg_term *core = pg_computation_fold(typing->graph, computation->subject->core, identity, 0, NULL);
+	if (!core) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, computation->context, core, NULL, 1, &computation->subject);
+	if (!subject) return NULL;
+	return accept(typing, PG_TOTAL_PURE_VALUE, PG_JUDGEMENT_VALUE,
+		computation->context, subject, type, 1, &computation);
 }
 
 
@@ -3487,7 +3513,7 @@ static void classifier_recovery_step(struct pg_classifier_recovery *work)
 		const struct pg_evidence *input, *input_context = context;
 		switch (term->rule) {
 		case PG_RETURN_INTRO: case PG_THUNK_INTRO:
-		case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION: case PG_RETURN_VALUE:
+		case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION: case PG_RETURN_VALUE: case PG_TOTAL_PURE_VALUE:
 		case PG_APP_ELIM:
 			input = term->premises[0];
 			break;
@@ -3533,7 +3559,7 @@ static void classifier_recovery_step(struct pg_classifier_recovery *work)
 		case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION:
 			formation = pg_prove_thunk_content(typing, formation);
 			break;
-		case PG_RETURN_VALUE:
+		case PG_RETURN_VALUE: case PG_TOTAL_PURE_VALUE:
 			formation = pg_prove_return_content(typing, formation);
 			break;
 		case PG_APP_ELIM:

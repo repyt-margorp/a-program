@@ -47,7 +47,9 @@ static void indexed_ih_fiber(struct pg_program *p, const struct pg_evidence *for
 		const struct pg_evidence *dependent = pg_prove_return_type(&p->typing, &p->classifiers,
 			pg_prove_identity_type(&p->typing, pg_prove_classifier(&p->typing, &p->classifiers, mc, z), z, z));
 		assert(dependent);
-		assert(!pg_prove_induction_scope(&p->typing, &p->classifiers, formation, next, parameters, mc, dependent));
+		/* Source arrows promise TOTAL; the child can now remain a symbolic
+		 * pure result in the motive instead of escaping as a free binder. */
+		assert(pg_prove_induction_scope(&p->typing, &p->classifiers, formation, next, parameters, mc, dependent));
 	}
 	assert(pg_alpha_equal(with_ih->declared_type, expected) == 1);
 }

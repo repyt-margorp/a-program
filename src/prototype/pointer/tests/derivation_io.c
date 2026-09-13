@@ -1240,14 +1240,16 @@ static void termination_proofs(FILE *file, struct pg_typing *typing,
 		const struct pg_evidence *formation = pg_prove_termination_type(typing, classifiers,
 			pg_prove_classifier(typing, classifiers, context, suspended), suspended);
 		const struct pg_evidence *witness = pg_prove_termination(typing, classifiers, formation, suspended);
-		assert(formation && witness && !pg_derivations_write(file, 2,
-			(const struct pg_evidence *[]){formation, witness}, name, classifiers));
+		const struct pg_evidence *result = pg_prove_total_pure_value(typing,
+			pg_prove_force(typing, suspended), pg_binder(typing->graph));
+		assert(formation && witness && result && !pg_derivations_write(file, 3,
+			(const struct pg_evidence *[]){formation, witness, result}, name, classifiers));
 		return;
 	}
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(!pg_derivations_read(file, typing, 1000, 100, resolve, classifiers, &count, &roots));
-	assert(count == 2 && !typing->proofs.count);
+	assert(count == 3 && !typing->proofs.count);
 	struct pg_whnf_work work;
 	struct pg_synthesis synthesis;
 	assert(!pg_whnf_work_init(&work, typing->graph));
@@ -1261,6 +1263,14 @@ static void termination_proofs(FILE *file, struct pg_typing *typing,
 	assert(pg_synthesis_status(formation) == PG_SYNTHESIS_DONE && pg_synthesis_status(witness) == PG_SYNTHESIS_DONE);
 	assert(pg_evidence_classifier(pg_synthesis_result(witness)) == pg_evidence_subject(pg_synthesis_result(formation))->core);
 	assert(pg_evidence_rule(pg_synthesis_result(witness)) == PG_TERMINATION_INTRO);
+	struct pg_synthesis_job *result = pg_synthesis_derivation(&synthesis, roots[2]);
+	while (pg_synthesis_status(result) == PG_SYNTHESIS_PENDING) {
+		assert(synthesis.steps < 2000);
+		pg_synthesis_advance(&synthesis, chunk);
+	}
+	assert(pg_synthesis_status(result) == PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(pg_synthesis_result(result)) == PG_TOTAL_PURE_VALUE);
+	assert(pg_evidence_judgement(pg_synthesis_result(result)) == PG_JUDGEMENT_VALUE);
 	struct pg_derivation_input *wrong = pg_alloc(typing->graph, sizeof(*wrong) + 2 * sizeof(*wrong->premises));
 	assert(wrong);
 	*wrong = *roots[1];
@@ -1269,6 +1279,16 @@ static void termination_proofs(FILE *file, struct pg_typing *typing,
 	struct pg_synthesis_job *rejected = pg_synthesis_derivation(&synthesis, wrong);
 	while (pg_synthesis_status(rejected) == PG_SYNTHESIS_PENDING) {
 		assert(synthesis.steps < 2000);
+		pg_synthesis_advance(&synthesis, chunk);
+	}
+	assert(pg_synthesis_status(rejected) == PG_SYNTHESIS_REJECTED);
+	struct pg_derivation_input *bad_result = pg_alloc(typing->graph, sizeof(*bad_result) + sizeof(*bad_result->premises));
+	assert(bad_result);
+	*bad_result = *roots[2];
+	bad_result->premises[0] = roots[0];
+	rejected = pg_synthesis_derivation(&synthesis, bad_result);
+	while (pg_synthesis_status(rejected) == PG_SYNTHESIS_PENDING) {
+		assert(synthesis.steps < 3000);
 		pg_synthesis_advance(&synthesis, chunk);
 	}
 	assert(pg_synthesis_status(rejected) == PG_SYNTHESIS_REJECTED);
