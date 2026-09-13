@@ -40,3 +40,14 @@ readIndex := \n : Nat => \proof : Acc Nat LT n =>
 	proof @acc current down => current;
 expected := Nat.succ (Nat.succ Nat.zero);
 main := readIndex expected (natAccessible expected);
+
+// Use the smaller accessibility proof through Acc's field, not an LT IH
+// that silently keeps the outer right index fixed.
+descend := \n : Nat => \proof : Acc Nat LT n => \m : Nat => \edge : LT m n =>
+	proof @acc current down => down m edge;
+one := Nat.succ Nat.zero;
+lower := LT.weakenRight Nat.zero one (LT.step Nat.zero);
+smaller := descend expected (natAccessible expected) Nat.zero lower;
+smaller :: Acc Nat LT Nat.zero;
+lowerMain := readIndex Nat.zero smaller;
+zeroExpected := Nat.zero;

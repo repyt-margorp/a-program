@@ -5234,6 +5234,14 @@ static void match_candidate_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (!branch->contradiction) {
 			const struct pg_evidence *type = match_branch_result(synthesis, state, branch);
 			const struct pg_evidence *fields = source_context(branch->scope);
+			/* Copied ambient inputs are arguments of the motive, not free
+			 * constructor fields that pattern inversion may discard. */
+			if (state->generalization) {
+				while (type && pg_evidence_context(fields) != pg_evidence_context(branch->fields)) {
+					type = pg_prove_pi(typing, synthesis->classifiers, fields, type);
+					fields = pg_evidence_premise(fields, 0);
+				}
+			}
 			if (state->path_context) {
 				/* Strip hidden paths only when the result family is independent. */
 				while (type && pg_evidence_context(fields) != pg_evidence_context(branch->fields)) {
@@ -5267,11 +5275,12 @@ static void match_candidate_step(struct pg_synthesis *synthesis, struct pg_synth
 		enqueue(synthesis, job); return;
 	}
 	if (!branch->converted) {
-		const struct pg_evidence *fields = source_context(branch->scope);
+		const struct pg_evidence *body_context = source_context(branch->scope);
+		const struct pg_evidence *fields = state->generalization ? branch->fields : body_context;
 		const struct pg_evidence *pattern = match_constructor_pattern(synthesis, job, state->candidate_checked, fields);
 		const struct pg_evidence *target = pg_prove_reindex(typing, pattern, state->candidate);
 		if (!target) goto next_candidate;
-		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, branch->body);
+		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, body_context, branch->body);
 		if (state->path_context) {
 			/* Transport U(C), then force, without running C during synthesis. */
 			target = pg_prove_thunk_type(typing, synthesis->classifiers, target);

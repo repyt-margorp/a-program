@@ -140,6 +140,8 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-recursive-result-wrong.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-schema-result.p main two
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-schema-result-wrong.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-rigid-induction-invalid.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/acc-accessible-successor.p lowerMain zeroExpected
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-ih-environment.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-ih-environment-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p main expected

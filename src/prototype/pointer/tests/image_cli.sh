@@ -90,6 +90,21 @@ printf '%s\n' 'image cli: failed writes preserve existing images; in-place publi
 printf '%s\n' 'image cli: multi-root selection, retained obligations and range rejection passed'
 printf '%s\n' 'image cli: parameterized List source/image NF agreement passed'
 
+# An unfinished image must not make an invalid fixed-index induction admissible.
+input="$(dirname "${BASH_SOURCE[0]}")/acceptance/indexed-rigid-induction-invalid.p"
+for steps in 0 100; do
+	code=0
+	"$binary" --steps "$steps" --save "$directory/invalid.a" "$input" > "$directory/status" || code=$?
+	test "$code" = 3
+	code=0
+	"$binary" --load --steps 0 --save "$directory/invalid-resaved.a" "$directory/invalid.a" > "$directory/status" || code=$?
+	test "$code" = 3
+	code=0
+	"$binary" --load "$directory/invalid-resaved.a" > "$directory/status" || code=$?
+	test "$code" = 1
+	grep -q '^rejected steps=' "$directory/status"
+done
+
 # Retaining syntax does not require its type-level computations to have finished.
 # Compare admission with direct Solve without treating unsupported as accepted.
 for family in closed-family open-family; do
@@ -159,7 +174,7 @@ acceptance/indexed-rigid-refutation.p main boolMain:boolExpected emptyMain:empty
 acceptance/indexed-field-transport.p main pairMain
 acceptance/indexed-result-transport.p main otherMain bothMain functionMain functionOtherMain
 acceptance/induction-index-environment.p main readMain:two
-acceptance/acc-accessible-successor.p main
+acceptance/acc-accessible-successor.p main lowerMain:zeroExpected
 acceptance/indexed-block-demands.p main nestedMain selectedMain readMain:two
 acceptance/indexed-recursive-result.p main:two emptyMain:emptyExpected
 acceptance/indexed-schema-result.p main:two

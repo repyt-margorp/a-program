@@ -65,13 +65,15 @@ not the stale worktree `read_file.out` (which fails the length fixture).
 `make -f src/prototype/pointer/Makefile check-source-compatibility` initially recorded
 an initial 18 source/result cases using unchanged legacy fixtures: Vec, Acc,
 order proofs, six function-graph examples, named cases, six QuickSort inputs,
-and two expected rejections. Main passed that initial baseline. The current
-19-case gate, rechecked after `de8ca1c` with dependent-result transport, passes
-11: eight legacy positive cases,
-one justified admission of a historical negative request, and two genuine
-negative checks (details below). The eight failing entries cover order proofs,
-named graph cases and six QuickSort result cases; they are not eight independent
-compiler defects. QuickSort still fails. Indexed induction now preserves
+and two expected rejections. Main passed that initial baseline. After the
+September 13 fixed-index induction audit, the 20-case gate passes 13: eight
+legacy positive cases, one justified admission of a historical negative request,
+and four rejection checks. Compared with 11/19, this adds a counterexample and
+corrects the old order fixture's expected outcome; it is not two restored legacy
+programs. That fixture violates its result index under evaluation on Main
+`63b00eb` (counterexample below). The seven failing entries are named graph
+cases and six QuickSort results, not seven independent compiler defects.
+QuickSort still fails. Indexed induction now preserves
 the checked ambient generalization; unchanged `accessibleSucc`, `natAccessible`
 and their `::` checks succeed. Application-domain constraints close the
 all-impossible zero case; block-scoped IH demands now also restore `partition`,
@@ -253,22 +255,18 @@ unchanged; computations over logical hypotheses use the extension below.
   property, not a newly accepted QuickSort. Targeted ASan/UBSan result/rejection
   and Match allocation-origin tests pass. No new Core/rule/wire tag or Replay
   path is introduced; Main promotion remains open.
-- [ ] Remaining compatibility blockers: order proofs, named Graph cases and
-  QuickSort. `#.terminates` is not connected in the new source
-  environment. A traced failure in `accessibleSucc` is `*down m prior` in the
-  `LT.lift` branch, which needs checked index refinement. `quickSortAcc` obtains
-  a motive candidate but neither the whole program nor its property is accepted.
-  These are distinct missing semantics, not checkpoint performance tasks;
-  connecting the intrinsic alone does not establish QuickSort compatibility.
+- [ ] Remaining compatibility blockers: named Graph cases and QuickSort.
+  `accessibleSucc`, `partition` and `quickSortAcc` now compile, but
+  `#.terminates` is not connected in the new source environment. These are
+  missing semantics, not checkpoint performance tasks; connecting the name
+  alone does not establish QuickSort compatibility.
   The old `totality_evidence.inc` rule requires TOTAL in the computation type;
   the new system has no equivalent retained contract. Neither an empty effect
   row nor graph-family formation can substitute for that premise.
-  The order fixture also requires a checked contradiction for `LT y zero`.
-  Legacy Main `63b00eb` supplies an all-impossible Match's result constraint
-  from the constructor domain (finalization_and_entrypoints.inc:681), rather
-  than choosing it from unreachable `Nat.zero` bodies. Restore the index
-  contradiction/constraint rules through Solve; do not allow `::` to choose
-  a motive or accept arbitrary mismatched branch classifiers.
+  Contradiction/result constraints for `LT y zero` are restored. The old order
+  fixture's successor branch, however, is invalid: do not weaken recursive
+  index checking to reproduce its historical acceptance. `::` remains a
+  post-check, never a source for choosing the Match motive.
   General Act on higher logical signatures and post-hoc property proofs remain
   open. Do not replace the unchanged fixture with a reduced success case.
 - [x] Establish the checked index-path building blocks through ordinary Solve.
@@ -467,6 +465,25 @@ unchanged; computations over logical hypotheses use the extension below.
   A separate source probe replacing Nat by `Counter Unit`, where
   `Counter := \A : @ => @{zero:*; succ:*->*;};`, remains unsupported at 671
   steps. That computed nominal alias is not covered by the restored test.
+- [x] September 13, after `0106275`: audit the failing original order fixture
+  before extending rigid-index induction. Its inner LT IH keeps the outer
+  `Acc k` result when recursion changes the LT right index. On Main `63b00eb`,
+  `indexed-rigid-induction-invalid.p` compiles, including `access :: Acc Nat LT
+  Nat.zero`, but projecting that Acc's constructor index computes to one.
+  With that baseline binary, `--check-source-exports-normalization-equal observed
+  wrong` reports yes, whereas `observed expected` reports no; both expected
+  exports are computations, so this is not a RETURN/value comparison mismatch.
+  The original fixture remains unchanged and is now required to reject, as is
+  the new counterexample, including unfinished `.a` resaves.
+  The correct alternative uses Acc's `down m prior`, not an LT IH at a fixed
+  right index. Its new `lowerMain` boundary exposed missing abstraction of
+  copied ambient inputs in nonrecursive Match candidates. Abstract these inputs
+  into Pi before pattern inversion, and abstract the actual branch body over
+  precisely those inputs when checking the candidate. This uses the existing
+  substitution and kernel rules. The correct descendant is checked as Acc zero
+  and exposes index zero at Solve chunks 1/64; the invalid program still rejects.
+  Full normal acceptance passes preceding gates and reports 13/20 compatibility;
+  focused Program and full source-image tests pass ASan/UBSan.
 - [ ] Complete indexed induction and general dependent index transport.
   All-impossible cases need result constraints from
   existing application domains, never `::` or unreachable branch bodies.
