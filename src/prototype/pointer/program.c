@@ -86,6 +86,13 @@ const struct pg_source_scope *pg_program_exports(struct pg_program *program,
 	entry->parent = parent;
 	entry->ambient = ambient;
 	entry->syntax = syntax;
+	/* Namespace lookup preserves source polarity and whole-module checking. */
+	struct pg_token module_name = {.kind = PG_TOKEN_IDENT, .text = "module", .length = 6, .text_length = 6};
+	const struct pg_source_scope *scope = pg_synthesis_module_namespace(&program->synthesis,
+		pg_synthesis_root(&program->synthesis), module_name, module);
+	struct pg_syntax *module_reference = pg_alloc(&program->graph, sizeof(*module_reference));
+	if (!scope || !module_reference) return NULL;
+	*module_reference = (struct pg_syntax){.kind = PG_SYNTAX_ATOM, .token = module_name};
 	for (size_t i = 0; i < syntax->item_count; ++i) {
 		const struct pg_syntax_item *item = &syntax->items[i];
 		if (item->operation != PG_TOKEN_ASSIGN) continue;
@@ -93,8 +100,8 @@ const struct pg_source_scope *pg_program_exports(struct pg_program *program,
 		struct pg_syntax *selection = pg_alloc(&program->graph, sizeof(*selection));
 		if (!member || !selection) return NULL;
 		*member = (struct pg_syntax){.kind = PG_SYNTAX_ATOM, .token = item->name};
-		*selection = (struct pg_syntax){.kind = PG_SYNTAX_QUALIFIED, .left = syntax, .right = member};
-		struct pg_synthesis_job *selected = pg_synthesis_request(&program->synthesis, ambient, selection);
+		*selection = (struct pg_syntax){.kind = PG_SYNTAX_QUALIFIED, .left = module_reference, .right = member};
+		struct pg_synthesis_job *selected = pg_synthesis_request(&program->synthesis, scope, selection);
 		if (!selected) return NULL;
 		parent = pg_synthesis_name_job(&program->synthesis, parent, item->name, selected);
 		if (!parent) return NULL;

@@ -205,6 +205,25 @@ September 13 compatibility follow-up:
   Do not report this as a restored legacy case or fix it by increasing fuel.
   Check the precise pure-result/sequence equations before changing conversion;
   a typed total-pure rule must not become an unconditional effectful equation.
+  A trial lowering of typed pure Fold to APP(k, extracted(m)) compiled this
+  source in 16,356 steps, but failed full Identity transport validation.
+  Making transport follow it changed existing raw TOTAL-family probes:
+  forcing a transported divergent thunk returned before demanding its input.
+  The trial and its associated graph/normalization changes were withdrawn;
+  Vec append remains open. Preserve the existing Fold/transport contract,
+  rather than weaken tests or extend raw conversion to claim compatibility.
+  Related background reviewed: [Effects and Coeffects in CBPV](https://arxiv.org/abs/2311.11795v2)
+  and [Dependent Types and Effects](https://arxiv.org/abs/1512.08009v2).
+  Their abstracts motivate the purity distinction, not this Core rewrite.
+- [x] Verify the isolated import correction: module-namespace references retain
+  a definition's source computation polarity and whole-provider checking.
+  Direct definition sharing alone bypassed invalid unselected entries; the
+  earlier definition-block selection exposed storage quotations instead.
+  Tests distinguish computed imports from explicit quotes through source and
+  unfinished/completed images. No Core, evaluator, kernel or wire rule changes.
+  Full debug and ASan/UBSan acceptance passed; the selected legacy gate remains
+  28/28. Additional invalid-provider/explicit-quote pending-image rejection
+  checks passed separately in debug and in full sanitizer acceptance.
 - [x] Add zero-clause Fold associativity through the existing evaluator:
   `Fold(Fold(m,k),h) -> Fold(m,lambda x.Fold(k x,h))`. Both folds must have
   zero operation clauses; handlers with clauses are not fused by this rule.
