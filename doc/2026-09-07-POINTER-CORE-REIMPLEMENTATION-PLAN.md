@@ -202,8 +202,21 @@ unchanged; computations over logical hypotheses use the extension below.
   include unfinished/completed resaves; legacy compatibility remains 10/19.
   Full `check-acceptance` also exposes the pre-existing `handler-origins`
   failure at `tests/source_io.c:530`: handler status 3 after resaves (1263 steps).
-  A fresh isolated build of parent `3546e61` fails identically. Keep this gate
-  open and investigate it before Main promotion; it is not a passing audit.
+  A fresh isolated build of parent `3546e61` fails identically.
+- [x] Repair retained handler return-binder provenance (September 13, after
+  `3ce5d85`). `handler_clause_origin` selected the Pi codomain proof instead
+  of its context premise. `SCOPE_CONTEXT_JOB` correctly rejected that type
+  proof as a context; downstream structure requests then became unsupported.
+  Select `Lambda.premise[0].premise[0]`, the checked extended context. Pi
+  evidence still has two premises; the four C arguments to `pg_prove_pi`
+  are not four proof premises. No rule, format or acceptance test is relaxed.
+  Existing `check-handler-origins` and `check-handler-nesting` pass, including
+  exact Core/classifier identity, changed valid/invalid source clauses, and
+  4,947 pending/completed save boundaries. Single/multiple-clause and nested
+  handler origins and all 4,947 boundaries also pass ASan/UBSan. The full
+  `check-acceptance` run now passes every preceding gate and stops at source
+  compatibility (10/19), including QuickSort rejection at 35,598 steps.
+  Main promotion is still open.
 - [ ] Remaining compatibility blockers: order proofs, named Graph cases,
   QuickSort and the incompatible-property negative case. QuickSort currently
   rejects at 35598 steps: `#.terminates` is not connected in the new source

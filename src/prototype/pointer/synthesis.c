@@ -4552,7 +4552,7 @@ static int handler_clause_origin(struct pg_synthesis *synthesis, struct pg_synth
 			if (!return_clause(handler->syntax->items[i].expression)) premise += 3;
 	}
 	struct pg_synthesis_job *origin = rule_premise(synthesis, handler->allocation_origin, premise);
-	if (premise == 1) origin = rule_premise(synthesis, rule_premise(synthesis, origin, 0), 1);
+	if (premise == 1) origin = rule_premise(synthesis, rule_premise(synthesis, origin, 0), 0);
 	if (!origin || (clause->allocation_origin && clause->allocation_origin != origin)) return -1;
 	/* A prepared operation clause still checks all three binders against this
 	 * origin in its ordinary worker; a return clause has no such input tuple. */
