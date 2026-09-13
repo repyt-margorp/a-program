@@ -174,7 +174,7 @@ struct match_state {
 	const struct pg_evidence **path_extensions;
 	size_t path_count, path_scoped;
 	size_t count, selected, next, collected, effect_checked, demanded, checked, prepared, typed, result_checked, validated;
-	int induction, uses_scrutinee, has_demands, type_cases, packet;
+	int induction, uses_scrutinee, has_demands, type_cases, packet, recursive_motive_done;
 	struct match_branch branches[];
 };
 struct family_state {
@@ -5351,6 +5351,136 @@ static const struct pg_evidence *match_candidate_type(struct pg_synthesis *synth
 	return pg_prove_pattern_type(typing, synthesis->classifiers, source_context(job->inner), pattern, type);
 }
 
+static struct pg_synthesis_job *match_induction_scope(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, size_t ordinal, const struct pg_evidence *motive_context,
+	const struct pg_evidence *motive)
+{
+	struct match_state *state = job->match;
+	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(state->instance.schema), ordinal);
+	struct pg_synthesis_job *formation = pg_synthesis_evidence(synthesis, state->instance.formation);
+	struct pg_synthesis_job *parameters = pg_synthesis_evidence(synthesis, state->instance.parameters);
+	struct pg_synthesis_job *context = pg_synthesis_evidence(synthesis, motive_context);
+	struct pg_synthesis_job *type = pg_synthesis_evidence(synthesis, motive);
+	if (!job->allocation_origin)
+		return pg_synthesis_induction_scope(synthesis, formation, constructor, parameters, context, type);
+	const struct pg_evidence *fields = pg_data_schema_fields(state->instance.schema, constructor);
+	const struct pg_object *self = pg_evidence_context(pg_evidence_premise(state->instance.formation, 0))->binder;
+	size_t count = state->branches[ordinal].field_count, total = count;
+	const struct pg_context *field = pg_evidence_context(fields);
+	for (size_t i = 0; i < count; ++i, field = field->parent) {
+		int recursive = pg_data_recursive_field(field->declared_type, self);
+		if (recursive < 0 || (recursive && total == SIZE_MAX)) return NULL;
+		total += recursive != 0;
+	}
+	const struct pg_evidence *prefix = source_match_branch_context(job, ordinal, count);
+	const struct pg_evidence *end = source_match_branch_context(job, ordinal, total);
+	if (!prefix || !end) return NULL;
+	return pg_synthesis_induction_scope_at(synthesis, formation, constructor, parameters, context, type,
+		pg_evidence_context(prefix), pg_evidence_context(end));
+}
+
+static struct pg_synthesis_job *match_induction_source(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, size_t ordinal, const struct pg_evidence *motive_context,
+	const struct pg_evidence *motive)
+{
+	struct match_state *state = job->match;
+	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(state->instance.schema), ordinal);
+	struct pg_synthesis_job *body = pg_synthesis_induction_branch(synthesis, job->inner,
+		state->instance.formation, constructor, state->instance.parameters,
+		motive_context, motive, state->generalization, state->branches[ordinal].clause);
+	if (!body || !job->allocation_origin) return body;
+	const struct pg_derivation_input *input = job->allocation_origin->inputs[0];
+	if (input->count < 6 || ordinal >= input->count - 6) return NULL;
+	struct pg_synthesis_job *origin = pg_synthesis_derivation_inference(synthesis,
+		input->premises[ordinal + 5], (void *)job->allocation_origin->inputs[1]);
+	if (!origin) return NULL;
+	if (body->allocation_origin != origin) {
+		if (body->allocation_origin || body->left) return NULL;
+		body->allocation_origin = origin;
+	}
+	return body;
+}
+
+/* A base equation can suggest M(xs), not merely the constant M(nil).
+ * Every suggested family is checked against complete induction branches;
+ * unsuccessful proposals never replace the ordinary constant-motive path. */
+static void match_recursive_motive_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	struct pg_typing *typing = synthesis->typing;
+	const struct pg_evidence *mc = match_motive_context(synthesis, job);
+	if (!mc) goto done;
+	if (!state->candidate) {
+		if (state->candidate_next == state->count) goto done;
+		struct match_branch *branch = &state->branches[state->candidate_next];
+		if (branch->needs_ih || branch->contradiction) goto next;
+		const struct pg_evidence *fields = source_context(branch->scope);
+		if (!branch->type_job) {
+			struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, branch->body);
+			branch->type_job = request_job(synthesis, CLASSIFIER_FORMATION_JOB,
+				pg_synthesis_evidence(synthesis, fields), body);
+		}
+		if (!branch->type_job) goto error;
+		if (branch->type_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->type_job); return; }
+		if (branch->type_job->status == PG_SYNTHESIS_ERROR) goto error;
+		if (branch->type_job->status != PG_SYNTHESIS_DONE) goto next;
+		const struct pg_evidence *candidate = match_candidate_type(synthesis, job,
+			state->candidate_next, branch->type_job->result);
+		if (!candidate) goto next;
+		int independent = pg_term_independent(pg_evidence_subject(candidate)->core, pg_evidence_context(mc)->binder);
+		if (independent < 0) goto error;
+		if (independent) goto next;
+		state->candidate = candidate;
+		state->candidate_checked = 0;
+		enqueue(synthesis, job); return;
+	}
+	if (state->candidate_checked == state->count) {
+		state->motive = state->candidate;
+		state->motive_context = mc;
+		state->checked = state->prepared = state->validated = state->count;
+		for (size_t i = 0; i < state->count; ++i) {
+			struct match_branch *branch = &state->branches[i];
+			branch->function = branch->converted->result;
+			if (branch->needs_ih) branch->body = branch->adapted;
+			branch->adapted = branch->converted = NULL;
+		}
+		goto done;
+	}
+	size_t ordinal = state->candidate_checked;
+	struct match_branch *branch = &state->branches[ordinal];
+	struct pg_synthesis_job *scope = match_induction_scope(synthesis, job, ordinal, mc, state->candidate);
+	if (!scope) goto next;
+	if (scope->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, scope); return; }
+	if (scope->status == PG_SYNTHESIS_ERROR) goto error;
+	if (scope->status != PG_SYNTHESIS_DONE) goto next;
+	if (!branch->adapted) branch->adapted = match_induction_source(synthesis, job, ordinal, mc, state->candidate);
+	if (!branch->adapted) goto next;
+	if (!branch->converted) {
+		const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(state->instance.schema), ordinal);
+		const struct pg_evidence *expected = pg_prove_match_branch_type(typing, synthesis->classifiers,
+			state->instance.formation, constructor, state->instance.parameters, mc, state->candidate, scope->result);
+		if (!expected) goto next;
+		branch->converted = pg_synthesis_expect(synthesis, branch->adapted, pg_synthesis_evidence(synthesis, expected));
+	}
+	if (!branch->converted) goto error;
+	if (branch->converted->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->converted); return; }
+	if (branch->converted->status == PG_SYNTHESIS_ERROR) goto error;
+	if (branch->converted->status != PG_SYNTHESIS_DONE) goto next;
+	++state->candidate_checked;
+	enqueue(synthesis, job); return;
+next:
+	state->candidate = NULL;
+	for (size_t i = 0; i < state->count; ++i) state->branches[i].adapted = state->branches[i].converted = NULL;
+	++state->candidate_next;
+	enqueue(synthesis, job); return;
+done:
+	state->recursive_motive_done = 1;
+	state->candidate = NULL; state->candidate_next = state->candidate_checked = 0;
+	enqueue(synthesis, job); return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+}
+
 /* A branch proposes a family; it does not establish the other branch
  * equations. Check every reachable body before committing to that motive. */
 static void match_candidate_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -6084,6 +6214,9 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	 * First use independent result contracts from recursive branches; the
 	 * ordinary branch checks must still validate every resulting equation. */
 	if (!state->motive && state->result_checked < state->count) { match_result_step(synthesis, job); return; }
+	if (state->induction && !state->motive && !state->recursive_motive_done) {
+		match_recursive_motive_step(synthesis, job); return;
+	}
 	if (state->checked < state->count) {
 		struct match_branch *branch = &state->branches[state->checked];
 		if (branch->needs_ih || branch->contradiction) {
@@ -6166,53 +6299,20 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	if (state->type_cases && state->prepared < state->count) { match_dependent_branch(synthesis, job); return; }
 	if (state->induction && state->prepared < state->count) {
 		struct match_branch *branch = &state->branches[state->prepared];
-		const struct pg_object *constructor = pg_data_constructor(layout, state->prepared);
-		if (job->allocation_origin) {
-			const struct pg_evidence *fields = pg_data_schema_fields(state->instance.schema, constructor);
-			const struct pg_object *self = pg_evidence_context(pg_evidence_premise(state->instance.formation, 0))->binder;
-			size_t count = branch->field_count, total = count;
-			const struct pg_context *field = pg_evidence_context(fields);
-			for (size_t i = 0; i < count; ++i, field = field->parent) {
-				int recursive = pg_data_recursive_field(field->declared_type, self);
-				if (recursive < 0) goto unsupported;
-				if (recursive && total == SIZE_MAX) goto error;
-				total += recursive != 0;
-			}
-			const struct pg_evidence *prefix = source_match_branch_context(job, state->prepared, count);
-			const struct pg_evidence *end = source_match_branch_context(job, state->prepared, total);
-			if (!prefix || !end || !pg_synthesis_induction_scope_at(synthesis,
-				pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
-				pg_synthesis_evidence(synthesis, state->instance.parameters), pg_synthesis_evidence(synthesis, state->motive_context),
-				pg_synthesis_evidence(synthesis, state->motive), pg_evidence_context(prefix), pg_evidence_context(end))) goto rejected;
-		}
+		struct pg_synthesis_job *scope = match_induction_scope(synthesis, job,
+			state->prepared, state->motive_context, state->motive);
+		if (!scope) goto error;
+		if (scope->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, scope); return; }
+		if (scope->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, scope->status); return; }
 		if (branch->needs_ih) {
-			if (!branch->body) branch->body = pg_synthesis_induction_branch(synthesis, job->inner,
-				state->instance.formation, constructor, state->instance.parameters,
-				state->motive_context, state->motive, state->generalization, branch->clause);
+			if (!branch->body) branch->body = match_induction_source(synthesis, job,
+				state->prepared, state->motive_context, state->motive);
 			if (!branch->body) goto error;
-			if (job->allocation_origin) {
-				const struct pg_derivation_input *input = job->allocation_origin->inputs[0];
-				if (input->count < 6 || state->prepared >= input->count - 6) goto rejected;
-				struct pg_synthesis_job *origin = pg_synthesis_derivation_inference(synthesis,
-					input->premises[state->prepared + 5], (void *)job->allocation_origin->inputs[1]);
-				if (!origin) goto error;
-				if (branch->body->allocation_origin != origin) {
-					if (branch->body->allocation_origin || branch->body->left) goto rejected;
-					branch->body->allocation_origin = origin;
-				}
-			}
 			if (branch->body->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->body); return; }
 			if (branch->body->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, branch->body->status); return; }
 			branch->function = branch->body->result;
 		} else {
 			if (!branch->adapted) {
-				struct pg_synthesis_job *scope = pg_synthesis_induction_scope(synthesis,
-					pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
-					pg_synthesis_evidence(synthesis, state->instance.parameters),
-					pg_synthesis_evidence(synthesis, state->motive_context), pg_synthesis_evidence(synthesis, state->motive));
-				if (!scope) goto error;
-				if (scope->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, scope); return; }
-				if (scope->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, scope->status); return; }
 				const struct pg_evidence *map = scope->result, *destination = pg_evidence_premise(map, 1);
 				struct pg_synthesis_job *body = projected_image(synthesis, destination, branch->function);
 				for (size_t i = pg_evidence_premise_count(state->instance.parameters) + 1; i < pg_evidence_premise_count(map); ++i)

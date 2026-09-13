@@ -140,7 +140,7 @@ successful verification nor evidence that the program is invalid.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 56-case legacy
+September 14 verification includes examples 01-07 and 09, a 57-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. Acc is source-defined using indexed induction, not a
 special kernel primitive. Quoted type-producing functions use the same checked
@@ -158,6 +158,10 @@ identity used to transport an `At zero` argument to `At k`. Fields are selected
 by schema binders, not inferred from untyped application positions.
 A post-hoc specification of an existing `length`
 is tested in [length-output-proof.p](src/prototype/pointer/tests/acceptance/length-output-proof.p).
+The unchanged legacy `lengthCertified` also synthesizes an input-indexed result
+packet. Independent branch types propose a dependent motive; all induction
+branches must verify it before adoption. This does not infer motives from `::`
+or provide a complete dependent unification procedure.
 Importing clients prove content preservation for the unchanged QuickSort
 provider's [measure](src/prototype/pointer/tests/acceptance/legacy-measure-property.p)
 and [partition](src/prototype/pointer/tests/acceptance/legacy-partition-property.p).

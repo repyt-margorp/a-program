@@ -483,6 +483,52 @@ Source audit and case naturality after `89dce1e` (September 14):
 - [x] Publish this verified case-naturality change on `rewrite/pointer-core-hott`
   as `2e64879`. Frozen `main` and the old-version tag are unchanged.
 
+Recursive motive proposals after `aa60ad0` (September 14):
+
+- [x] Diagnose unchanged `function_graph_certified_length_model.p`: the old
+  synthesis path selects constant `LengthResult nil` from the base case,
+  giving the recursive child that type rather than `LengthResult tail`.
+  The later `graph :: LengthGraph tail tailLength` rejection is a consequence,
+  not evidence that Fold or post-checking should admit arbitrary dependence.
+- [x] Retain an explicit-helper control in `certified-length-candidate.p`:
+  the existing argument-domain constraint infers the needed motive. This
+  isolates candidate selection from kernel induction and transport rules.
+- [x] Propose a dependent family from an independently synthesized branch
+  classifier using the existing typed constructor-pattern inversion. For
+  `theta_i : fields_i -> Gamma,x:T`, the proposal must satisfy the checked
+  specialization `P[theta_i] = classifier_i`. This equation is not uniqueness
+  or acceptance: check every complete induction branch, with IH at `P(child)`,
+  before selecting P. Keep successful branch evidence rather than resynthesize
+  or overwrite it. Failed proposals leave the existing constant-motive path
+  available; pending is not failure. Constructor order, not worker completion
+  order, determines proposal order. This is finite synthesis, not a complete
+  dependent unification algorithm or a claim of principal motives.
+- [x] Share induction-scope restoration and source-branch preparation between
+  candidate checking and ordinary induction. No kernel rule, Core tag, pure
+  reduction policy, or image payload layout changes. Retained evidence still
+  passes ordinary Solve, not an alternative Replay path.
+- [x] Original source now compiles; removing its post-checks also compiles.
+  Add it to the 57-case legacy gate, imported empty/singleton/three-element
+  results, constant-motive fallback, mixed used/unused IH fields, and a wrong
+  dependent classifier. Exercise unfinished/completed images and split fuel.
+- [x] Full debug acceptance exits 0, including the 57-case legacy gate.
+  Optimized checks: original certified length 4,277 transitions; with both
+  post-checks removed 4,175; QuickSort content proof 148,374 versus 148,372.
+  The repeated 158-input inventory has only the two expected status changes
+  since `89dce1e`: dependent Pi (previous increment) and certified length now
+  complete. Counts are 89 done, 45 rejected, 22 unsupported, 2 pending; these
+  remain observations, not a compatibility score for the mixed inventory.
+- [x] Full ASan/UBSan acceptance exits 0, including the same 57-case gate and
+  all subsequent image/property checks. An earlier full run was intentionally
+  stopped after finding a possible overwrite of candidate-checked branches;
+  it is not counted as a pass. The pre-change compiler also saved the explicit
+  helper/constant-fallback control successfully (6,969 transitions), and the
+  current compiler loads it through ordinary Solve (7,988 transitions).
+  Implementation C +141/-41; tests/fixtures +106/-0; documentation counted
+  separately. The unchanged original source is the compatibility requirement;
+  the helper control does not replace it.
+- [ ] Publish the verified recursive-motive increment on the pointer branch.
+
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the
 already-defined `length` and `quickSort` are the following milestone, not a

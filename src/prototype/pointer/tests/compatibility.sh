@@ -82,6 +82,7 @@ done <<'CASES'
 0 typing/eager_insertion_check traceRecursive traceRecursiveExpected
 1 typing/if8_order_check
 0 typing/function_graph_generated_length_check main expected
+0 typing/function_graph_certified_length_model
 0 typing/function_graph_dependent_output_ih_check main expected
 0 typing/function_graph_two_recursive_calls_check main expected
 0 typing/function_graph_dependent_spine_check main expected
@@ -122,6 +123,40 @@ test "$failed" -eq 0
 # witnesses, using the original module through ordinary imports and Solve.
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
+acceptance="$(dirname "${BASH_SOURCE[0]}")/acceptance"
+for steps in 0 100000; do
+	code=0
+	"$checker" --steps "$steps" --imports "$fixtures/typing/function_graph_certified_length_model.p" \
+		--save "$directory/length.a" "$acceptance/legacy-certified-length-results.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"$runtime" --equal-image "$directory/length.a" original one
+	"$runtime" --equal-image "$directory/length.a" empty zero
+	"$runtime" --equal-image "$directory/length.a" many three
+	code=0
+	"$checker" --steps "$steps" --save "$directory/candidate.a" \
+		"$acceptance/certified-length-candidate.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"$runtime" --equal-image "$directory/candidate.a" main two
+	"$runtime" --equal-image "$directory/candidate.a" base zero
+	"$runtime" --equal-image "$directory/candidate.a" singleton one
+	"$runtime" --equal-image "$directory/candidate.a" erased emptyResult
+	"$runtime" --equal-image "$directory/candidate.a" tagged expectedTag
+	"$runtime" --equal-image "$directory/candidate.a" skipped expectedSkip
+done
+# Removing post-checks must not remove the ability to synthesize this motive.
+sed -e 's/(graph :: LengthGraph tail tailLength)/graph/' -e '/length :: /d' \
+	"$fixtures/typing/function_graph_certified_length_model.p" > "$directory/length-no-expect.p"
+"$checker" --steps 100000 "$directory/length-no-expect.p"
+# A constant nil certificate cannot acquire a dependent input classifier.
+sed 's/eraseCertified :: NatList->LengthResult NatList.nil;/eraseCertified :: (xs:NatList)->LengthResult xs;/' \
+	"$acceptance/certified-length-candidate.p" > "$directory/wrong-candidate.p"
+"$runtime" --reject "$directory/wrong-candidate.p"
+code=0
+"$checker" --steps 0 --save "$directory/wrong-candidate.a" "$directory/wrong-candidate.p" > "$directory/status" || code=$?
+test "$code" -eq 3
+code=0
+"$checker" --load "$directory/wrong-candidate.a" > "$directory/status" || code=$?
+test "$code" -eq 1
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-acc-concrete-results.p"
 for steps in 0 100000; do
 	code=0
