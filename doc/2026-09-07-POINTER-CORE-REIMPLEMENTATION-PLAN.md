@@ -134,6 +134,26 @@ September 13 compatibility follow-up:
   Do not report this as a restored legacy case or fix it by increasing fuel.
   Check the precise pure-result/sequence equations before changing conversion;
   a typed total-pure rule must not become an unconditional effectful equation.
+- [x] Add zero-clause Fold associativity through the existing evaluator:
+  `Fold(Fold(m,k),h) -> Fold(m,lambda x.Fold(k x,h))`. Both folds must have
+  zero operation clauses; handlers with clauses are not fused by this rule.
+  Demand only the source, preserve the outer continuation's captured environment
+  and trailing arguments, and forward requests in the original order. The
+  bounded rewrite uses Lambda/APP and the existing Fold pointer, not a new
+  graph tag, typing rule or evaluator. Tests cover neutral inputs, two distinct
+  operations, split budgets and machine save/resume at every execution cut.
+  Portable pure-policy and fold-answer continuation names advance to v2;
+  retained v1 evaluation references reject rather than silently changing their
+  interpretation. Unchanged `.p` inputs remain the compatibility priority.
+  This does not finish Vec append: with `q(m)=Fold(m,identity)`, the tempting
+  equation `q(Fold(m,k)) = q(k(q(m)))` can discard an operation when k ignores
+  its argument. A permanent counterexample rejects that equation in raw Core.
+  Any total-pure-only use requires typed justification; do not put it into the
+  untyped evaluator to make the append fixture pass.
+  Verification: full debug and ASan/UBSan `check-acceptance` pass, including
+  the unchanged 27/27 compatibility gate. The final trailing-argument and
+  ignored-divergence regression also passes in both core-test builds. This
+  completes the association change, not the outstanding compatibility items.
 
 - [x] Recompile unchanged `explicit_index_family_tail_check.p` and
   `explicit_index_family_tail_infer.p`, both also accepted by Main `63b00eb`.

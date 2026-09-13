@@ -111,7 +111,8 @@ static void policy_names(void)
 	assert(!pg_computation_policy_name(NULL));
 	assert(!pg_computation_policy_resolve(NULL));
 	assert(!pg_computation_policy_resolve(""));
-	assert(!pg_computation_policy_resolve("evaluation/pure/v2"));
+	assert(!pg_computation_policy_resolve("evaluation/pure/v1"));
+	assert(pg_computation_policy_resolve("evaluation/pure/v2") == &pg_pure_policy);
 	assert(!pg_computation_policy_resolve("computation/fold_work/v1"));
 	pg_whnf_work_destroy(&work);
 	pg_graph_destroy(&graph);
@@ -713,7 +714,7 @@ static void family_result_failure(void)
 static void continuation_frames(void)
 {
 	const char *names[] = {
-		"computation/force_answer/v1", "computation/fold_answer/v1",
+		"computation/force_answer/v1", "computation/fold_answer/v2",
 		"iadt/match_answer/v1", "iadt/action_answer/v1", "symmetry/symmetry_answer/v1",
 		"identity/right_endpoint/v1", "identity/left_endpoint/v1", "identity/action_body/v1",
 		"identity/action_source/v1", "identity/thunk_return_field/v1", "identity/field_answer/v1",
@@ -1243,7 +1244,7 @@ static int machine_payload_read(FILE *file, struct pg_eval *machine,
 
 static void machine_envelope(void)
 {
-	const struct pg_eval_policy *policies[] = {&pg_beta_policy, &pg_pure_policy, &pg_pure_policy};
+	const struct pg_eval_policy *policies[] = {&pg_beta_policy, &pg_pure_policy, &pg_pure_policy, &pg_pure_policy};
 	unsigned seen = 0;
 	for (size_t p = 0; p < sizeof(policies) / sizeof(*policies); ++p) {
 		uint64_t total = 0;
@@ -1262,6 +1263,18 @@ static void machine_envelope(void)
 				term = pg_identity_apply(&graph, function, pg_application(&graph, id, expected), expected,
 					pg_application(&graph, id, pg_identity_action(&graph, expected)));
 				expected = pg_identity_action(&graph, pg_application(&graph, function, expected));
+			}
+			if (p == 3) {
+				const struct pg_term *vx = pg_reference(&graph, x);
+				const struct pg_term *k = pg_lambda(&graph, x, pg_application(&graph,
+					pg_reference(&graph, &pg_return_operation), pg_application(&graph,
+						pg_reference(&graph, &pg_thunk_operation), vx)));
+				const struct pg_object *h = pg_binder(&graph);
+				term = pg_computation_fold(&graph, pg_computation_fold(&graph, expected, k, 0, NULL),
+					pg_reference(&graph, h), 0, NULL);
+				term = pg_application(&graph, pg_lambda(&graph, h, term), k);
+				expected = pg_computation_fold(&graph, expected, pg_lambda(&graph, x,
+					pg_computation_fold(&graph, pg_application(&graph, k, vx), k, 0, NULL)), 0, NULL);
 			}
 			if (!p) expected = term;
 			struct pg_eval machine;
@@ -1311,7 +1324,9 @@ static void machine_envelope(void)
 				assert(!fclose(file));
 			}
 			assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF);
-			assert(pg_eval_readback(&machine, &graph) == context.expected);
+			const struct pg_term *result = pg_eval_readback(&machine, &graph);
+			if (p == 3) assert(pg_alpha_equal(result, context.expected) == 1);
+			else assert(result == context.expected);
 			if (!cut) total = machine.steps;
 			assert(machine.steps == total && cut < 10000);
 			pg_eval_destroy(&machine); pg_graph_destroy(&graph);

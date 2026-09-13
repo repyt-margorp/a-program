@@ -307,8 +307,25 @@ const struct pg_eval_work_operation pg_fold_work_operation = {
 
 static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state);
 static const struct pg_eval_continuation fold_answer_continuation = {
-	"computation/fold_answer/v1", fold_answer
+	"computation/fold_answer/v2", fold_answer
 };
+
+static int associate_fold(struct pg_eval *machine, const struct pg_term *inner)
+{
+	if (inner->kind != PG_APPLICATION) return 1;
+	const struct pg_term *source = unary_argument(inner->as.application.function, &pg_fold_operation);
+	if (!source) return 1;
+	struct pg_graph *graph = machine->output;
+	const struct pg_object *ignored = pg_binder(graph), *outer = pg_binder(graph), *x = pg_binder(graph);
+	if (!ignored || !outer || !x) return -1;
+	const struct pg_term *next = pg_application(graph, inner->as.application.argument, pg_reference(graph, x));
+	next = pg_computation_fold(graph, next, pg_reference(graph, outer), 0, NULL);
+	next = pg_computation_fold(graph, source, pg_lambda(graph, x, next), 0, NULL);
+	/* Reuse the caller's two argument closures. The already-demanded source
+	 * is discarded, while the outer continuation keeps its original environment. */
+	next = pg_lambda(graph, ignored, pg_lambda(graph, outer, next));
+	return next ? pg_eval_enter(machine, (struct pg_closure){next, NULL}, 0) : -1;
+}
 
 static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
@@ -321,7 +338,8 @@ static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, co
 	if (value) return pg_eval_apply(machine, continuation, (struct pg_closure){value, NULL}, count + 2);
 	const struct pg_object *label;
 	const struct pg_term *payload, *resume;
-	if (!pg_computation_request_view(answer, &label, &payload, &resume)) return 1;
+	if (!pg_computation_request_view(answer, &label, &payload, &resume))
+		return handler ? 1 : associate_fold(machine, answer);
 	/* Bind the existing argument closures without demanding them. Only k is
 	 * recursively handled; a selected clause runs outside this handler. */
 	struct fold_work *work = pg_alloc(&machine->temporary, sizeof(*work));
@@ -394,7 +412,7 @@ static const struct {
 	const char *name;
 } portable_policies[] = {
 	{&pg_beta_policy, "evaluation/beta/v1"},
-	{&pg_pure_policy, "evaluation/pure/v1"}
+	{&pg_pure_policy, "evaluation/pure/v2"}
 };
 
 const char *pg_computation_policy_name(const struct pg_eval_policy *policy)

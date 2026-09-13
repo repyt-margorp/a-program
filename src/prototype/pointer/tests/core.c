@@ -1155,6 +1155,80 @@ static const struct pg_term *request_whnf(struct pg_graph *graph,
 	return result;
 }
 
+static void fold_association_test(struct pg_graph *graph)
+{
+	static const struct pg_object_class operation_class = {"association-operation"};
+	static const struct pg_object first = {PG_SEMANTIC_OBJECT, &operation_class};
+	static const struct pg_object second = {PG_SEMANTIC_OBJECT, &operation_class};
+	const struct pg_object *m = pg_binder(graph), *x = pg_binder(graph), *h = pg_binder(graph);
+	const struct pg_term *vm = pg_reference(graph, m), *vx = pg_reference(graph, x);
+	const struct pg_term *ret = pg_reference(graph, &pg_return_operation);
+	const struct pg_term *answer = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *unit = pg_lambda(graph, x, pg_application(graph, ret, vx));
+	const struct pg_term *k = pg_lambda(graph, x, pg_computation_request(graph, &second, vx, unit));
+	const struct pg_term *last = pg_lambda(graph, x, pg_application(graph, ret, answer));
+	const struct pg_term *left = pg_computation_fold(graph, pg_computation_fold(graph, vm, k, 0, NULL),
+		pg_reference(graph, h), 0, NULL);
+	const struct pg_term *composed = pg_lambda(graph, x,
+		pg_computation_fold(graph, pg_application(graph, k, vx), last, 0, NULL));
+	const struct pg_term *right = pg_computation_fold(graph, vm, composed, 0, NULL);
+	left = pg_application(graph, pg_lambda(graph, h, left), last);
+	struct pg_whnf_work work;
+	struct pg_conversion comparison;
+	assert(!pg_whnf_work_init(&work, graph));
+	assert(!pg_conversion_init(&comparison, &work, left, right));
+	assert(pg_conversion_advance(&comparison, 10000) == PG_CONVERSION_EQUAL);
+	pg_conversion_destroy(&comparison);
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 8) {
+		const struct pg_term *normal = request_whnf(graph, left, chunk);
+		assert(pg_alpha_equal(normal, request_whnf(graph, right, chunk)) == 1);
+		const struct pg_term *request = pg_computation_request(graph, &first, answer, unit);
+		const struct pg_term *applied = pg_application(graph, pg_lambda(graph, m, left), request);
+		const struct pg_term *payload, *resume;
+		const struct pg_object *label;
+		const struct pg_term *result = request_whnf(graph, applied, chunk);
+		assert(pg_computation_request_view(result, &label, &payload, &resume));
+		assert(label == &first && payload == answer);
+		result = request_whnf(graph, pg_application(graph, resume, answer), chunk);
+		assert(pg_computation_request_view(result, &label, &payload, &resume));
+		assert(label == &second && payload == answer);
+		result = request_whnf(graph, pg_application(graph, resume, answer), chunk);
+		assert(result == pg_application(graph, ret, answer));
+	}
+	const struct pg_object *z = pg_binder(graph);
+	const struct pg_term *quoted_x = pg_application(graph, pg_reference(graph, &pg_thunk_operation), vx);
+	const struct pg_term *pure_k = pg_lambda(graph, x, pg_application(graph, ret, quoted_x));
+	const struct pg_term *function_last = pg_lambda(graph, x,
+		pg_lambda(graph, z, pg_application(graph, ret, vx)));
+	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
+	const struct pg_term *omega = pg_application(graph, self, self);
+	const struct pg_term *applied_left = pg_application(graph, pg_computation_fold(graph,
+		pg_computation_fold(graph, vm, pure_k, 0, NULL), function_last, 0, NULL), omega);
+	const struct pg_term *applied_right = pg_application(graph, pg_computation_fold(graph, vm,
+		pg_lambda(graph, x, pg_computation_fold(graph,
+			pg_application(graph, pure_k, vx), function_last, 0, NULL)), 0, NULL), omega);
+	assert(!pg_conversion_init(&comparison, &work, applied_left, applied_right));
+	assert(pg_conversion_advance(&comparison, 10000) == PG_CONVERSION_EQUAL);
+	pg_conversion_destroy(&comparison);
+	const struct pg_term *closed = pg_application(graph, pg_lambda(graph, m, applied_left),
+		pg_application(graph, ret, answer));
+	assert(request_whnf(graph, closed, 1) == pg_application(graph, ret,
+		pg_application(graph, pg_reference(graph, &pg_thunk_operation), answer)));
+	/* Result extraction is not a license to discard an effectful input:
+	 * q(bind(request, const(return a))) differs from q(const(return a)(q request)). */
+	const struct pg_term *request = pg_computation_request(graph, &first, answer, unit);
+	const struct pg_term *identity = pg_lambda(graph, x, vx);
+	const struct pg_term *observed = pg_computation_fold(graph,
+		pg_computation_fold(graph, request, last, 0, NULL), identity, 0, NULL);
+	const struct pg_term *discarded = pg_computation_fold(graph,
+		pg_application(graph, last, pg_computation_fold(graph, request, identity, 0, NULL)), identity, 0, NULL);
+	assert(!pg_conversion_init(&comparison, &work, observed, discarded));
+	assert(pg_conversion_advance(&comparison, 10000) == PG_CONVERSION_DIFFERENT);
+	pg_conversion_destroy(&comparison);
+	pg_whnf_work_destroy(&work);
+	puts("fold association: neutral inputs, captured continuations, operation order and extraction boundary passed");
+}
+
 static void request_forwarding_test(struct pg_graph *graph)
 {
 	static const struct pg_object_class operation_class = {"test-operation"};
@@ -1225,7 +1299,7 @@ static void request_forwarding_test(struct pg_graph *graph)
 	assert(request_whnf(graph, handled, 1) == pg_application(graph, ret, vy));
 	assert(request_whnf(graph, handled, 10000) == pg_application(graph, ret, vy));
 	size_t fold_demands = 0;
-	const struct pg_eval_continuation *fold_continuation = pg_computation_continuation_resolve("computation/fold_answer/v1");
+	const struct pg_eval_continuation *fold_continuation = pg_computation_continuation_resolve("computation/fold_answer/v2");
 	pg_computation_eval_init(&machine, graph, handled);
 	while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) {
 		for (const struct pg_eval_frame *frame = machine.frames; frame; frame = frame->parent) {
@@ -3725,7 +3799,7 @@ static void request_typing_test(struct pg_graph *graph)
 static void continuation_names(void)
 {
 	const char *names[] = {
-		"computation/force_answer/v1", "computation/fold_answer/v1",
+		"computation/force_answer/v1", "computation/fold_answer/v2",
 		"iadt/match_answer/v1", "iadt/action_answer/v1",
 		"symmetry/symmetry_answer/v1", "identity/right_endpoint/v1",
 		"identity/left_endpoint/v1", "identity/action_body/v1",
@@ -3742,7 +3816,8 @@ static void continuation_names(void)
 	assert(!pg_computation_continuation_resolve(NULL));
 	assert(!pg_computation_continuation_resolve("identity/action_body/v2"));
 	assert(!pg_computation_continuation_resolve("tests/core/demand_answer/v1"));
-	assert(!pg_identity_continuation_resolve("computation/fold_answer/v1"));
+	assert(!pg_computation_continuation_resolve("computation/fold_answer/v1"));
+	assert(!pg_identity_continuation_resolve("computation/fold_answer/v2"));
 	puts("continuation owners: versioned identities resolve only existing algorithms");
 }
 
@@ -3764,6 +3839,7 @@ int main(void)
 	typed_restriction_test(&graph);
 	computation_execution_test(&graph);
 	request_forwarding_test(&graph);
+	fold_association_test(&graph);
 	demand_budget_test(&graph);
 	auxiliary_demand_test(&graph);
 	deferred_work_test(&graph);
