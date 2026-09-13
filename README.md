@@ -134,6 +134,9 @@ are not the legacy `.apo`/v90 formats.
 Exit codes: `0` done, `1` rejected/syntax error, `2` input/internal error,
 `3` pending, `4` unsupported. `--steps` bounds solver transitions, not
 wall-clock time or the cost of an individual rule.
+When a pending Program has no runnable synthesis work, a diagnostic is printed
+on stderr. Increasing fuel alone cannot resolve that state; it is neither
+successful verification nor evidence that the program is invalid.
 
 ## Status and Tests
 
@@ -157,7 +160,10 @@ This is not complete legacy compatibility or complete Higher Observational
 Type Theory. General higher/dependent/Universe Identity coherence, some indexed
 graph and Vec cases, QuickSort post-hoc properties, and full host/backend
 coverage remain open. Execution witnesses alone do not prove sorting
-correctness. See the [active plan](doc/2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md)
+correctness. In particular, a standalone indexed Match whose every branch is
+refuted can remain pending without a result-classifier constraint from an
+application. Its trailing `::` deliberately does not supply that constraint.
+See the [active plan](doc/2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md)
 and [merge audit](doc/2026-09-14-MERGE-COMPOSITION-AND-IDENTITY-NORMALIZATION-AUDIT.md).
 
 Run the current acceptance suite (Bash is required):

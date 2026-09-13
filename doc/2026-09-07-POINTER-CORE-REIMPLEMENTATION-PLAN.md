@@ -109,6 +109,29 @@ The compatibility inventory grows to 32 cases, with six append result checks
 through unfinished/completed images. This supersedes the pending Vec diagnosis
 above, not the remaining compatibility and Higher Identity obligations.
 
+All-refuted Match follow-up (September 14, after `5e7aba1`): the unchanged
+`impossible_index_branch_check.p` remains pending at 515 transitions with an
+empty ready queue, not exhausted fuel. `match_step` excludes refuted bodies
+from motive synthesis and awaits `RESULT_TYPE_JOB`; application equations can
+fill that slot, whereas `::` remains a post-check. QuickSort relies on choosing
+the application carrier rather than the type of its dead branch bodies.
+
+- [x] Report pending-without-runnable-work separately on CLI stderr; preserve
+  status code 3 and the existing stdout format.
+- [x] Retain the original fixture as a known-limitation check at two budgets
+  and through ordinary `.a` loading. This is not a positive compatibility gate.
+- [ ] Specify and implement deterministic motive completion without `::`
+  feedback. A dead-body type could be a default proposal, but must not race a
+  pending application equation. An empty queue alone does not prove that all
+  future equations have been registered; no quiescence-based default is admitted.
+- [ ] Check standalone, inline and named callbacks, conflicting carriers,
+  declaration order, chunked Solve and images; retain all QuickSort results.
+
+Verification: the full debug `check-acceptance` target passes, including the
+32/32 compatibility inventory and QuickSort result checks. The updated CLI
+suite also passes optimized and ASan/UBSan builds. The legacy README archive
+is byte-identical to `e9a131d:README.md`; the frozen `main` is unchanged.
+
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the

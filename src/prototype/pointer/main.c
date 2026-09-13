@@ -135,6 +135,10 @@ static int report(struct pg_program *program, struct pg_synthesis_job *job)
 	default: status = "error"; result = 2; break;
 	}
 	printf("%s steps=%" PRIu64 "\n", status, program->synthesis.steps);
+	if (result == 3 && !program->synthesis.ready) {
+		fflush(stdout);
+		fputs("pending: no runnable synthesis work; increasing the step budget alone will not advance this Program\n", stderr);
+	}
 	return result;
 }
 

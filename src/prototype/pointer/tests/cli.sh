@@ -23,6 +23,10 @@ check 1 'rejected steps=' 'bad:=&@;' --strict-thunks
 check 1 'rejected steps=' 'Nat:=@{zero:*;}; bad:=&Nat.zero;' --strict-thunks
 check 3 'pending steps=0' 'id:=&(\A:@ => \x:A => x);' --steps 0
 check 3 'pending steps=' 'x:=x;' --steps 100
+# An exhausted queue is not fuel exhaustion or a completed proof.
+case "$output" in *'pending: no runnable synthesis work;'*) ;; *) exit 1 ;; esac
+check 3 'pending steps=0' 'x:=x;' --steps 0
+test "$output" = 'pending steps=0'
 check 1 'rejected steps=' 'x:=missing;'
 check 1 '-:1:' 'x:='
 check 2 'usage:' '' --steps -1
@@ -54,6 +58,22 @@ check 3 "pending steps=$((steps - 1))" "$source" --nf main --steps "$((steps - 1
 check 0 "done steps=$steps" "$source" --nf main --steps "$steps"
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
+# Preserve the all-refuted indexed-Match limitation, including ordinary image
+# reload. The post-check must not be used to guess the missing motive.
+fixture=$(dirname "$0")/../../tests/fixtures/typing/impossible_index_branch_check.p
+code=0
+"$binary" --steps 100000 --save "$directory/refuted.a" "$fixture" > "$directory/refuted.out" 2> "$directory/refuted.err" || code=$?
+test "$code" = 3
+grep -q '^pending: no runnable synthesis work;' "$directory/refuted.err"
+code=0
+"$binary" --steps 1000000 "$fixture" > "$directory/more.out" 2> "$directory/more.err" || code=$?
+test "$code" = 3
+cmp "$directory/refuted.out" "$directory/more.out"
+cmp "$directory/refuted.err" "$directory/more.err"
+code=0
+"$binary" --load "$directory/refuted.a" > "$directory/reloaded.out" 2> "$directory/reloaded.err" || code=$?
+test "$code" = 3
+grep -q '^pending: no runnable synthesis work;' "$directory/reloaded.err"
 check 3 'pending steps=0' "$source" --steps 0 --save "$directory/pending.a"
 restored=$("$binary" --load --nf main "$directory/pending.a")
 test "$restored" = "$nf"
