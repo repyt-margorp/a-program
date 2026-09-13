@@ -112,7 +112,8 @@ static void policy_names(void)
 	assert(!pg_computation_policy_resolve(NULL));
 	assert(!pg_computation_policy_resolve(""));
 	assert(!pg_computation_policy_resolve("evaluation/pure/v1"));
-	assert(pg_computation_policy_resolve("evaluation/pure/v2") == &pg_pure_policy);
+	assert(!pg_computation_policy_resolve("evaluation/pure/v2"));
+	assert(pg_computation_policy_resolve("evaluation/pure/v3") == &pg_pure_policy);
 	assert(!pg_computation_policy_resolve("computation/fold_work/v1"));
 	pg_whnf_work_destroy(&work);
 	pg_graph_destroy(&graph);

@@ -67,6 +67,7 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/reader_test
 	$(BUILD)/synthesis_test
 	$(BUILD)/program_test
+	bash $(ROOT)tests/merge_composition.sh $(BUILD)/pointer-check $(BUILD)/program_test
 	$(BUILD)/seed_test
 	bash $(ROOT)tests/seed.sh $(BUILD)/seed_test
 	bash $(ROOT)tests/cli.sh $(BUILD)/pointer-check

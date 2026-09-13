@@ -714,12 +714,14 @@ static void action_body_destroy(void *opaque)
 static int action_body_resume(struct pg_eval *machine, void *opaque)
 {
 	struct action_body_work *work = opaque;
-	if (pg_comparison_status(&work->comparison) == PG_COMPARISON_EQUAL) return 1;
+	/* An unchanged open body does not make its applied boundary neutral:
+	 * the supplied path can still compute to reflexivity. */
+	if (pg_comparison_status(&work->comparison) == PG_COMPARISON_EQUAL) return diagonal_fallback(machine);
 	return pg_eval_enter(machine, (struct pg_closure){work->answer, NULL}, 1);
 }
 
 const struct pg_eval_work_operation pg_action_body_operation = {
-	action_body_poll, action_body_resume, action_body_destroy, "identity/action_body/v1"
+	action_body_poll, action_body_resume, action_body_destroy, "identity/action_body/v2"
 };
 
 static int action_body_scoped(struct pg_eval *machine, const struct action_scope *prepared, const struct pg_term *answer)

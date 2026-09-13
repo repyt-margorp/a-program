@@ -2033,6 +2033,19 @@ static void lambda_actions(struct pg_classifiers *classifiers)
 	const struct pg_term *computed_refl = pg_application(graph, id, refl_a);
 	const struct pg_term *computed_diagonal = pg_identity_apply(graph, q, beta_a, a, computed_refl);
 	normalizes(&work, computed_diagonal, neutral_refl);
+	/* The body Act(q x) is neutral in x, but a computed reflexive boundary
+	 * still contracts the enclosing action. One WHNF pass must suffice. */
+	const struct pg_term *nested_family = pg_lambda(graph, x,
+		pg_identity_action(graph, pg_application(graph, q, vx)));
+	const struct pg_term *nested_diagonal = pg_identity_apply(graph, nested_family, beta_a, a, computed_refl);
+	const struct pg_term *nested_reflexivity = pg_identity_action(graph, neutral_refl);
+	normalizes(&work, nested_diagonal, nested_reflexivity);
+	auxiliary_boundaries(graph, &work, nested_diagonal, nested_reflexivity);
+	const struct pg_term *nested_loop = pg_identity_apply(graph, nested_family, a, a, p);
+	converts(&work, nested_loop, nested_loop);
+	struct pg_whnf_job *loop_job = pg_whnf_request(&work, &pg_pure_policy, nested_loop);
+	assert(pg_whnf_advance(loop_job, 10000) == PG_EVAL_WHNF);
+	assert(pg_alpha_equal(pg_whnf_result(loop_job), nested_reflexivity) == 0);
 	const struct pg_term *renamed_id = pg_lambda(graph, y, vy);
 	const struct pg_term *function_diagonal = pg_identity_apply(graph, q, id, renamed_id,
 		pg_application(graph, id, pg_identity_action(graph, id)));
