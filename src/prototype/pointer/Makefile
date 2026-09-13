@@ -137,6 +137,8 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p twiceProofMain two
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p appendMain appendExpected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p genericMain one
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p againMain two
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p againEmpty zero
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-helper-call-wrong.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-callable-parameter.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-callable-parameter.p applyMain two

@@ -58,3 +58,17 @@ genericSample := (GenericList Nat).cons one ((GenericList Nat).cons Nat.zero (Ge
 genericMain := *genericTail Nat genericSample @output => output;
 useGeneric := \A:@ => \head:A => \tail:GenericList A => \n:Nat => \p:@genericLength A tail n =>
 	(@genericTail A).cons head tail n p;
+
+lengthAgain := \xs:List => {
+	count := length xs;
+	count @zero => Nat.zero @succ k => Nat.succ k;
+};
+againCorrect := \xs:List => \n:Nat => \g:@lengthAgain xs n => g
+	@zero original trace => lengthCorrect original Nat.zero trace
+	@succ original k trace => lengthCorrect original (Nat.succ k) trace;
+againCorrect :: (xs:List) -> (n:Nat) -> @lengthAgain xs n -> Size xs n;
+againMain := *lengthAgain sample @output =>
+	readSize sample output (againCorrect sample output @output);
+againEmpty := *lengthAgain List.nil @output =>
+	readSize List.nil output (againCorrect List.nil output @output);
+zero := Nat.zero;

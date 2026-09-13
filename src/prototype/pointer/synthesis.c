@@ -2955,8 +2955,6 @@ static enum pg_synthesis_status resolve_reference(struct pg_synthesis *synthesis
 
 static int function_graph_exports(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	const struct pg_evidence *input = pg_function_graph_case_input(&job->function_graph);
-	if (!input) return 0;
 	const struct pg_evidence *declaration = pg_function_graph_declaration(&job->function_graph);
 	const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(declaration, 0), 0);
 	const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing, context, context);
@@ -2966,6 +2964,7 @@ static int function_graph_exports(struct pg_synthesis *synthesis, struct pg_synt
 	for (size_t index = 0; index < pg_data_layout_count(target); ++index) {
 		struct pg_function_graph_case_source source;
 		if (!pg_function_graph_case_source(&job->function_graph, index, &source)) return -1;
+		if (!source.formation) return 0;
 		if (source.refined) job->case_layouts = NULL;
 		struct pg_synthesis_job *origin = pg_synthesis_evidence(synthesis, source.formation);
 		if (!origin || !origin->exports) return -1;
@@ -2998,6 +2997,7 @@ static int function_graph_order(struct pg_synthesis *synthesis, struct pg_synthe
 	struct pg_synthesis_job *origin)
 {
 	if (!origin || !origin->match) return 0;
+	if (!pg_function_graph_case_input(&job->function_graph)) return 0;
 	struct pg_graph temporary = {0};
 	size_t count = origin->match->count;
 	size_t trailing = pg_function_graph_trailing_arity(&job->function_graph);

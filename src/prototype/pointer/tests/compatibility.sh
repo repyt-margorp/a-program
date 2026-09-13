@@ -145,22 +145,28 @@ for steps in 0 1000000; do
 	"$runtime" --equal-image "$directory/quicksort.a" emptyMain emptyExpected
 done
 
-# A separate client proves element-preserving measurement for every input,
-# using the unchanged QuickSort provider's graph, not a copied implementation.
-client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-measure-property.p"
-for steps in 0 1000000; do
+# Clients consume the unchanged provider's graph. Measurement has an independent
+# preservation proof; the outer QuickSort client checks intermediate graph fields.
+while read -r name pairs; do
+	client="$(dirname "${BASH_SOURCE[0]}")/acceptance/$name.p"
+	for steps in 0 1000000; do
+		code=0
+		"$checker" --steps "$steps" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
+			--save "$directory/property.a" "$client" > "$directory/status" || code=$?
+		if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+		for pair in $pairs; do
+			"$runtime" --equal-image "$directory/property.a" "${pair%:*}" "${pair#*:}"
+		done
+	done
+	client="$(dirname "${BASH_SOURCE[0]}")/acceptance/$name-wrong.p"
 	code=0
-	"$checker" --steps "$steps" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
-		--save "$directory/measure.a" "$client" > "$directory/status" || code=$?
-	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
-	"$runtime" --equal-image "$directory/measure.a" main input
-	"$runtime" --equal-image "$directory/measure.a" emptyMain empty
-done
-client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-measure-property-wrong.p"
-code=0
-"$checker" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
-	--save "$directory/wrong-measure.a" "$client" > "$directory/status" || code=$?
-test "$code" -eq 1
-code=0
-"$checker" --load "$directory/wrong-measure.a" > "$directory/status" || code=$?
-test "$code" -eq 1
+	"$checker" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
+		--save "$directory/wrong-property.a" "$client" > "$directory/status" || code=$?
+	test "$code" -eq 1
+	code=0
+	"$checker" --load "$directory/wrong-property.a" > "$directory/status" || code=$?
+	test "$code" -eq 1
+done <<'CLIENTS'
+legacy-measure-property main:input emptyMain:empty
+legacy-quicksort-graph main:expected emptyMain:empty graphMain:expected
+CLIENTS

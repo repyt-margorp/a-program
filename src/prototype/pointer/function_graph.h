@@ -25,10 +25,15 @@
  * Known constructor Matches expose their typed branch before recursive call
  * analysis, including raw Pi results and substituted fields. Neutral Matches
  * on distinct variable indices form a shared constructor-refined branch tree;
- * schema and witness use the same leaves and call prefixes. Saturated calls
- * to retained recursive Lambda definitions request their canonical graph and
+ * schema and witness use the same leaves and call prefixes. Functions
+ * also use this branch tree when they have no initial Match: their
+ * original arguments form the root scope and helpers supply result/graph
+ * fields before later constructor refinements. There is no separate direct
+ * result-only graph builder. Saturated calls to retained recursive Lambda
+ * definitions request their canonical graph and
  * witness from the owner. Their actual parameters instantiate the result and
- * relation; generic opaque callees remain unsupported.
+ * relation. Total, pure callable parameters use typed eta graphs; other
+ * opaque calls still require evidence sufficient to expose their results.
  * One work object owns one generative declaration; a source producer must
  * memoize this request rather than generating a new family for each use. */
 enum pg_function_graph_status {
@@ -68,11 +73,14 @@ int pg_function_graph_supply(struct pg_function_graph_work *work, const struct p
 /* Leading raw Lambda parameters become ordinary family abstractions. */
 const struct pg_evidence *pg_function_graph_formation(const struct pg_function_graph_work *work);
 /* Declaration before abstracting the original leading parameters. Case input
- * is its retained source ADT formation, or NULL for a direct-return graph.
+ * is its initial source ADT formation (available once prepared), or NULL when
+ * there is no initial Match. Later splits still expose case_source entries.
  * Used to transfer source constructor names, never to infer membership. */
 const struct pg_evidence *pg_function_graph_declaration(const struct pg_function_graph_work *work);
 const struct pg_evidence *pg_function_graph_case_input(const struct pg_function_graph_work *work);
 /* A generated leaf inherits its most recent nonsingleton source split's name.
+ * Without an initial Match, a singleton root split also supplies its name.
+ * A direct leaf without any split has NULL formation/constructor.
  * Refined leaves do not retain the original flat source telescope layout. */
 struct pg_function_graph_case_source {
 	const struct pg_evidence *formation;

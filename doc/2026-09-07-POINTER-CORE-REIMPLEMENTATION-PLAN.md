@@ -159,7 +159,7 @@ schema construction. Flat cases retain their existing slot validation.
 - [ ] Prove the corresponding partition preservation property and compose it
   with append and Acc induction for the existing QuickSort. The measure lemma
   is a prerequisite, not a claim that QuickSort preservation is complete.
-- [ ] Restore the outer `@quickSort` graph: a minimal importing client remains
+- [x] Restore the outer `@quickSort` graph. Historical diagnosis: a minimal importing client remained
   unsupported at 54,512 transitions in this build. The stop is in source
   `function_graph_order` preparation while the kernel graph work is still
   pending, not a failed property theorem. `@partition` separately completes
@@ -168,6 +168,32 @@ schema construction. Flat cases retain their existing slot validation.
   rejects it. Audit helper-result sequencing and head exposure together with
   the public layout. Simply skipping that check could produce a direct graph
   without the helper evidence needed by the intended preservation proof.
+
+Shared branch-tree follow-up after `6a01cfb`: functions without an initial Match
+now enter the same planner with their original argument telescope and no IHs.
+The separate direct-result schema/normalization builder is removed. Root setup
+differs, but helper calls, refined children, schema substitution and witness
+construction share the existing tree. The original function is not rewritten
+to a different source definition and no Core tag or proof rule is added.
+
+- [x] Retain `measure`, `natAccessible` and `quickSortAcc` result/graph fields
+  in the outer QuickSort graph; post-check each field against its actual
+  arguments. The importing `legacy-quicksort-graph.p` client compiles at
+  65,622 transitions and executes both its packet and graph eliminator.
+- [x] Reject the same graph's sorting evidence at an invented empty output.
+- [x] Use an opaque function parameter's eta graph as a leaf, rather than
+  recursively requesting itself. Saturate pending applications before ordinary
+  normalization; symbolic results still require TOTAL and a closed empty row.
+- [x] Check a helper call followed by a nonsingleton Match with an independent
+  length specification in `function-graph-helper-call.p`.
+- [x] Full debug and ASan/UBSan `check-acceptance` pass, including
+  unfinished/completed images, chunk sizes 1/64, existing parameter graphs,
+  wrong-evidence rejection and the 32/32 legacy gate with QuickSort results.
+  Compiler C changes are 75 added / 96 removed (net -21); the header,
+  documentation and additional tests are counted separately.
+- [ ] Compose preservation lemmas for partition and Acc recursion. Access to
+  the outer function's graph evidence is not yet a proof of sorting or
+  permutation preservation.
 
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source

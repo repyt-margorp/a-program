@@ -149,6 +149,9 @@ An importing client also proves content preservation for the unchanged
 QuickSort provider's `measure` in
 [legacy-measure-property.p](src/prototype/pointer/tests/acceptance/legacy-measure-property.p).
 This is a lemma toward QuickSort preservation, not a proof of QuickSort itself.
+The outer `@quickSort` graph now retains the results and graph evidence of
+`measure`, `natAccessible` and `quickSortAcc`, allowing an importing client to
+inspect these intermediate steps rather than only extract the final value.
 Selected captured indexed functions also generate checked graphs and witnesses,
 including Vec copy. The unchanged legacy dependent Vec append now compiles,
 and six result comparisons cover empty inputs, order and repeated recursion
