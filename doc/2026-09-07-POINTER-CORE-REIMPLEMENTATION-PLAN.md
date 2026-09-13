@@ -480,7 +480,8 @@ Source audit and case naturality after `89dce1e` (September 14):
   Change size: implementation C +41/-2; tests +57/-1 (including both new
   15-line fixtures); documentation counted separately. No new Core tag,
   inference rule or payload layout; pure policy v5 identifies the new law.
-- [ ] Publish this verified case-naturality change on `rewrite/pointer-core-hott`.
+- [x] Publish this verified case-naturality change on `rewrite/pointer-core-hott`
+  as `2e64879`. Frozen `main` and the old-version tag are unchanged.
 
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the
