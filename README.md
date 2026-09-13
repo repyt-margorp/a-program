@@ -134,11 +134,13 @@ wall-clock time or the cost of an individual rule.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 28-case legacy
+September 14 verification includes examples 01-07 and 09, a 31-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. Acc is source-defined using indexed induction, not a
 special kernel primitive. A post-hoc specification of an existing `length`
 is tested in [length-output-proof.p](src/prototype/pointer/tests/acceptance/length-output-proof.p).
+Selected captured indexed functions also generate checked graphs and witnesses,
+including Vec copy. This does not yet cover the legacy dependent Vec append.
 
 This is not complete legacy compatibility or complete Higher Observational
 Type Theory. General higher/dependent/Universe Identity coherence, some indexed

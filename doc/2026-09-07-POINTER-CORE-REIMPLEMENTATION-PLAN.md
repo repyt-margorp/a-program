@@ -57,6 +57,14 @@ building the graph schema; Self and the result packet share that final bound.
 The linked audit records verification and remaining limitations. This does not
 change surface IH generalization or complete arbitrary indexed graph support.
 
+Compatibility follow-up: the permanent inventory now contains 31 cases,
+adding unchanged indexed branch rebuilding, a constant motive with a residual
+index equation, and the level2 Tree example. Rebuilding is checked at empty and
+recursive inputs through unfinished/completed images; Tree's size result is
+checked too. These extend regression coverage, not the set of kernel rules.
+The Vec append conversion still exhausts 100,000 steps even with its entire
+`append :: ...;` statement removed. Fixing only post-checking cannot resolve it.
+
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the
@@ -69,7 +77,8 @@ and all six QuickSort results pass the 28-case compatibility gate. The existing
 length has a checked post-hoc property proof; QuickSort does not yet. Completing
 the wider legacy inventory remains necessary before claiming full compatibility.
 No checkpoint optimization or broader Higher Identity work is a prerequisite
-for that first delivery; preserve existing checks without expanding this gate.
+for that first delivery; preserve existing checks without adding either as a
+prerequisite to this milestone.
 
 - [ ] Establish the compatibility inventory from legacy integration tests and
   fixtures, with a verified working legacy revision as reference. Do not assume

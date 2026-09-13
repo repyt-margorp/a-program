@@ -281,3 +281,34 @@ trial is retained. No failing test was removed to claim compatibility.
 The overall rewrite goal remains active. These local tests do not establish
 complete Higher Observational TT, general termination soundness or MergeSort
 correctness for all inputs. No Main promotion is justified by this audit alone.
+
+## Compatibility Follow-up
+
+At `b0ee0a3`, the unchanged legacy Vec append still exhausts 100,000 Solve
+steps. Removing the complete multiline `append :: ...;` statement does not
+change that outcome. This is an internal result-classifier comparison, not
+only the final post-check. The weak comparison's first mismatching normalized
+pair is a semantic-object reference versus an application containing neutral
+Fold and recursive Lambda encoding. Strong normalization then starts again
+from the comparison endpoints. No new equality rule is justified by this
+debugger observation; in particular it does not justify discarding a Fold's
+demanded computation. The total-pure result/conversion design remains open.
+
+Three previously verified sources are now permanent compatibility cases:
+
+- `indexed_branch_rebuild_check.p`: rebuild a refined indexed constructor.
+- `residual_index_equation_negative.p`: despite the historical filename, its
+  constant Nat motive asserts no false index equality and should compile.
+- `examples/type-infer-and-check/level2/02_tree.p`: two recursive fields and
+  nested arithmetic; the size of the existing tree must evaluate to three.
+
+An importing client additionally checks empty and two-constructor rebuilds,
+including LE evidence, through unfinished/completed `.a` files and Solve chunks
+1/64. The original sources are unchanged. The compatibility inventory is now
+31 cases; the pending Vec append is not counted as a passing case.
+
+- [x] Expanded debug compatibility suite: 31/31, image/results checks passed.
+- [x] Expanded ASan/UBSan compatibility suite: 31/31 and image/results passed.
+
+This increment changes tests and documentation only; runtime, synthesis,
+conversion, and artifact semantics are unchanged.
