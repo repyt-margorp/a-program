@@ -2630,6 +2630,54 @@ static const struct pattern_variable *pattern_variable(const struct pg_index *in
 	return NULL;
 }
 
+/* Invert whole constructor-pattern indices, not their individual fields.
+ * Rebuild the nominal family's checked index substitution; dependent later
+ * indices must still type-check after replacement. No equality is asserted. */
+static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
+	const struct pg_evidence *pattern, const struct pg_evidence *inverse,
+	const struct pg_evidence *body)
+{
+	if (!body) return NULL;
+	const struct pg_effect_row *effects;
+	const struct pg_term *content;
+	if (!pg_effect_type_view(body->subject->core, &effects, &content)) return body;
+	struct pg_inductive_instance instance;
+	if (!pg_inductive_instance(typing, pg_prove_return_content(typing, body), &instance) || !instance.indices) return body;
+	size_t count = instance.indices->premise_count - 2;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence *result = body;
+	const struct pg_evidence **images = pg_alloc(&temporary, count * sizeof(*images));
+	if (!images) goto done;
+	for (size_t i = 0; i < count; ++i) images[i] = instance.indices->premises[i + 2];
+	size_t first = instance.parameters->premise_count - 1;
+	int changed = 0;
+	for (size_t i = first; i < count; ++i) {
+		const struct pg_evidence *selected = NULL;
+		const struct pg_evidence *extension = pattern->premises[0];
+		for (size_t j = pattern->premise_count - 2; extension->context != prefix->context;
+			--j, extension = extension->premises[0]) {
+			const struct pg_evidence *image = pattern->premises[j + 1];
+			if (image->subject->core->kind == PG_REFERENCE && image->subject->core->as.reference->kind == PG_BINDER) continue;
+			image = pg_prove_reindex(typing, inverse, image);
+			if (!image || pg_alpha_equal(image->subject->core, images[i]->subject->core) != 1) continue;
+			if (selected) goto done;
+			selected = pg_prove_variable(typing, inverse->premises[1], extension->context->binder);
+			if (!selected) goto done;
+		}
+		if (selected) { images[i] = selected; changed = 1; }
+	}
+	if (changed) {
+		const struct pg_evidence *map = pg_prove_substitution(typing,
+			instance.indices->premises[0], inverse->premises[1], count, images);
+		const struct pg_evidence *type = family_in_scope(typing, instance.formation, instance.parameters, map);
+		if (type) result = pg_prove_effect_type(typing, classifiers, effects, type);
+	}
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
 	const struct pg_evidence *pattern, const struct pg_evidence *body)
@@ -2682,6 +2730,7 @@ const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
 	}
 	if (!inverse) goto done;
 	result = pg_prove_reindex(typing, inverse, body);
+	result = pattern_index_type(typing, classifiers, prefix, pattern, inverse, result);
 	/* Keep every intermediate substitution total and typed. Only then remove
 	 * fresh nuisance fields, checking that the result does not depend on them. */
 	for (extension = inverse->premises[1]; result && extension->context != source->context;

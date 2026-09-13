@@ -807,6 +807,35 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 	const struct pg_object *n = pg_binder(typing->graph), *m = pg_binder(typing->graph);
 	const struct pg_evidence *nc = pg_prove_context_extension(typing, empty, n, nat);
 	const struct pg_evidence *mc = pg_prove_context_extension(typing, nc, m, pg_prove_projection(typing, nc, nat));
+	/* F (Family (succ k)) generalizes the whole pattern, without inventing
+	 * an inverse k for an arbitrary n. Repeated pattern images are ambiguous. */
+	const struct pg_object *self = pg_binder(typing->graph), *index = pg_binder(typing->graph);
+	const struct pg_evidence *sc = pg_prove_family_context_extension(typing, empty, self, nc,
+		pg_prove_universe(typing, classifiers, nc, 0));
+	const struct pg_evidence *indices = pg_prove_context_extension(typing, sc, index,
+		pg_prove_projection(typing, sc, nat));
+	const struct pg_data_schema *schema = pg_data_schema(typing,
+		pg_data_signature(typing, sc, indices), 0, NULL);
+	const struct pg_evidence *family = pg_prove_inductive_type(typing, classifiers, schema);
+	assert(family);
+	const struct pg_evidence *fields = pg_prove_context_extension(typing, empty, m, nat);
+	const struct pg_evidence *field = pg_prove_variable(typing, fields, m);
+	const struct pg_evidence *parameters = pg_prove_substitution_projection(typing, empty, fields);
+	const struct pg_evidence *successor = pg_prove_constructor(typing, nat, succ, parameters, 1, &field);
+	const struct pg_evidence *pattern = pg_prove_substitution(typing, nc, fields, 1, &successor);
+	const struct pg_evidence *body = pg_prove_return_type(typing, classifiers,
+		pg_prove_family_application(typing, pg_prove_projection(typing, fields, family), successor));
+	const struct pg_evidence *generalized = pg_prove_pattern_type(typing, classifiers, empty, pattern, body);
+	const struct pg_evidence *expected = pg_prove_return_type(typing, classifiers,
+		pg_prove_family_application(typing, pg_prove_projection(typing, nc, family), pg_prove_variable(typing, nc, n)));
+	assert(generalized && expected);
+	assert(pg_alpha_equal(pg_evidence_subject(generalized)->core, pg_evidence_subject(expected)->core) == 1);
+	common_rule(typing, classifiers, generalized);
+	const struct pg_evidence *back = pg_prove_reindex(typing, pattern, generalized);
+	assert(back && pg_alpha_equal(pg_evidence_subject(back)->core, pg_evidence_subject(body)->core) == 1);
+	const struct pg_evidence *duplicate[] = {successor, successor};
+	assert(!pg_prove_pattern_type(typing, classifiers, empty,
+		pg_prove_substitution(typing, mc, fields, 2, duplicate), body));
 	for (size_t injection = 0; injection < 2; ++injection) {
 		const struct pg_evidence *nv = pg_prove_variable(typing, mc, n), *mv = pg_prove_variable(typing, mc, m);
 		const struct pg_evidence *parameters = pg_prove_substitution_projection(typing, empty, mc);

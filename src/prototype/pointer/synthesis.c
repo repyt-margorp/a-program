@@ -5078,6 +5078,12 @@ result_type:
 	if (!motive_context) goto skip;
 	const struct pg_evidence *pattern = match_constructor_pattern(synthesis, job, state->result_checked, context);
 	const struct pg_evidence *candidate = pg_prove_pattern_type(typing, synthesis->classifiers, prefix, pattern, type);
+	if (candidate && state->generalization) {
+		const struct pg_evidence *extension = pg_evidence_premise(state->generalization, 1);
+		candidate = pg_prove_projection(typing, extension, candidate);
+		for (size_t i = state->generalized_count; candidate && i; --i, extension = pg_evidence_premise(extension, 0))
+			candidate = pg_prove_pi(typing, synthesis->classifiers, extension, candidate);
+	}
 	if (candidate) {
 		state->motive = candidate;
 		state->motive_context = motive_context;
@@ -5901,6 +5907,10 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	}
 	if (state->has_demands && state->effect_checked < state->count) { match_effects_step(synthesis, job); return; }
 	if (state->demanded < state->count) { match_demand_step(synthesis, job); return; }
+	/* A base case alone does not establish a constant recursive motive.
+	 * First use independent result contracts from recursive branches; the
+	 * ordinary branch checks must still validate every resulting equation. */
+	if (!state->motive && state->result_checked < state->count) { match_result_step(synthesis, job); return; }
 	if (state->checked < state->count) {
 		struct match_branch *branch = &state->branches[state->checked];
 		if (branch->needs_ih || branch->contradiction) {
@@ -5943,7 +5953,6 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		state->motive = pg_prove_projection(synthesis->typing, context, constraint->result);
 		if (!state->motive || pg_evidence_judgement(state->motive) != PG_JUDGEMENT_COMPUTATION_TYPE) goto rejected;
 	}
-	if (!state->motive && state->result_checked < state->count) { match_result_step(synthesis, job); return; }
 	if (!state->motive) goto unsupported;
 	if (!state->motive_context) {
 		if (!state->motive_job) {

@@ -135,6 +135,9 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-block-demands.p selectedMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-block-demands.p readMain two
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-block-demands-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-recursive-result.p main two
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-recursive-result.p emptyMain emptyExpected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-recursive-result-wrong.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-ih-environment.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-ih-environment-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p main expected

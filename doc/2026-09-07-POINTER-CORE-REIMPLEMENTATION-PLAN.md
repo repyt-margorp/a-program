@@ -435,6 +435,24 @@ unchanged; computations over logical hypotheses use the extension below.
   stream excluding only `quickSortTerminates` verifies all six QuickSort outputs
   against expected values in the same Program; legacy fixtures are unchanged.
   No completion claim for termination evidence or post-hoc properties is made.
+- [x] September 13, after `7517506`: inspect recursive branch result contracts
+  before proposing a constant motive from a base case. Abstract a whole
+  constructor-pattern index in an F-wrapped nominal family, rebuild its checked
+  index substitution and verify that instantiation recovers the original type.
+  This does not invert constructor fields or assert new equalities. Preserve
+  generalized ambient arguments on this candidate path; the existing indexed
+  environment test detected their initial omission. New tests cover a delayed
+  recursive field, dependent result post-check, wrong recursive index, and
+  ambiguous pattern images. Source/image checks at chunks 1/64 and ASan/UBSan
+  IADT, focused Program and full image CLI checks pass. Full normal acceptance
+  passes preceding gates but remains 11/19; six diagnostic QuickSort results
+  still agree. No Replay path or new kernel rule was added.
+  Remaining limits: `if8_order_check.p` now derives the outer `Acc n` motive,
+  but its inner LT Match returns `Acc k` where `Acc y` is required. Nominal
+  recovery for a constructor whose schema itself computes `succ k` still loses
+  image evidence through constant-codomain strengthening; the new source test
+  uses an explicit result-index argument, not that unsupported case. Neither
+  limitation is a performance task or a reason to weaken checking.
 - [ ] Complete indexed induction and general dependent index transport.
   All-impossible cases need result constraints from
   existing application domains, never `::` or unreachable branch bodies.
