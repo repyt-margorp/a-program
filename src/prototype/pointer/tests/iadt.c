@@ -820,6 +820,92 @@ static void indexed_match(void)
 	const struct pg_object *packet = pg_binder(&graph);
 	const struct pg_evidence *packet_context = pg_prove_context_extension(&typing, xc,
 		packet, pg_evidence_premise(value, 0));
+	/* Refining the packet replaces A and x too, and retypes a dependent
+	 * function bound after it. Keeping that function at the old A is invalid. */
+	const struct pg_evidence *function_domain = pg_prove_context_extension(&typing, packet_context,
+		pg_binder(&graph), pg_prove_projection(&typing, packet_context, pg_evidence_premise(value, 0)));
+	const struct pg_evidence *function_type = pg_prove_pi(&typing, &classifiers, function_domain,
+		pg_prove_return_type(&typing, &classifiers, pg_prove_variable(&typing, function_domain, a)));
+	const struct pg_object *consumer = pg_binder(&graph);
+	const struct pg_evidence *consumer_context = pg_prove_context_extension(&typing, packet_context, consumer,
+		pg_prove_thunk_type(&typing, &classifiers, function_type));
+	const struct pg_evidence *consumer_packet = pg_prove_variable(&typing, consumer_context, packet);
+	const struct pg_evidence *refinement = pg_prove_constructor_refinement(&typing, &classifiers,
+		consumer_context, consumer_packet, constructor);
+	assert(refinement);
+	const struct pg_evidence *refined_a = pg_substitution_image(&typing, refinement, a);
+	const struct pg_evidence *refined_packet = pg_substitution_image(&typing, refinement, packet);
+	const struct pg_evidence *refined_consumer = pg_substitution_image(&typing, refinement, consumer);
+	assert(refined_a && refined_packet && refined_consumer);
+	assert(pg_evidence_subject(refined_a)->core != pg_evidence_subject(av)->core);
+	assert(!pg_prove_projection(&typing, pg_evidence_premise(refinement, 1),
+		pg_prove_variable(&typing, consumer_context, consumer)));
+	const struct pg_evidence *applied = pg_prove_application(&typing,
+		pg_prove_force(&typing, refined_consumer), refined_packet);
+	assert(applied && pg_alpha_equal(pg_evidence_classifier(applied),
+		pg_return_type(&classifiers, pg_evidence_subject(refined_a)->core)) == 1);
+	assert(!pg_prove_constructor_refinement(&typing, &classifiers, xc, value, constructor));
+	assert(!pg_prove_constructor_refinement(&typing, &classifiers, consumer_context, consumer_packet, pg_binder(&graph)));
+	const struct pg_evidence *consumer_parameters = pg_prove_substitution_projection(&typing, empty, consumer_context);
+	const struct pg_evidence *consumer_mc = pg_prove_inductive_motive_context(&typing, formation,
+		consumer_parameters, pg_binder(&graph));
+	const struct pg_context *consumer_indices = pg_evidence_context(consumer_mc)->parent;
+	const struct pg_evidence *consumer_motive = pg_prove_return_type(&typing, &classifiers,
+		pg_prove_variable(&typing, consumer_mc, consumer_indices->parent->binder));
+	const struct pg_evidence *consumer_branch = pg_prove_projection(&typing, consumer_context, branch);
+	const struct pg_evidence *consumer_match = pg_prove_match(&typing, &classifiers, formation,
+		consumer_parameters, consumer_packet, consumer_mc, consumer_motive, 1, &consumer_branch);
+	const struct pg_evidence *refined_match = pg_prove_elimination_reindex(&typing, &classifiers, refinement, consumer_match);
+	assert(refined_match);
+	check(&work, pg_evidence_subject(refined_match)->core, pg_evidence_subject(pg_prove_return(&typing,
+		&classifiers, pg_substitution_image(&typing, refinement, x)))->core);
+	common_rule(&typing, &classifiers, refinement);
+	common_rule(&typing, &classifiers, refined_match);
+	/* Match may return a function whose argument depends on the generic
+	 * indices. Specialize the pending argument along with the scrutinee. */
+	const struct pg_evidence *generic_packet = pg_evidence_premise(consumer_mc, 1);
+	const struct pg_evidence *generic_argument = pg_prove_context_extension(&typing, consumer_mc,
+		pg_binder(&graph), pg_prove_projection(&typing, consumer_mc, generic_packet));
+	const struct pg_evidence *generic_function = pg_prove_pi(&typing, &classifiers, generic_argument,
+		pg_prove_return_type(&typing, &classifiers,
+			pg_prove_variable(&typing, generic_argument, consumer_indices->parent->binder)));
+	const struct pg_evidence *generic_consumer = pg_prove_context_extension(&typing, consumer_mc,
+		pg_binder(&graph), pg_prove_thunk_type(&typing, &classifiers, generic_function));
+	const struct pg_evidence *function_motive = pg_prove_pi(&typing, &classifiers, generic_consumer,
+		pg_prove_projection(&typing, generic_consumer, consumer_motive));
+	const struct pg_evidence *consumer_fields = pg_prove_constructor_scope(&typing, formation, constructor, consumer_parameters);
+	const struct pg_evidence *consumer_field_context = pg_evidence_premise(consumer_fields, 1);
+	const struct pg_evidence *field_values[] = {pg_substitution_image(&typing, consumer_fields, a),
+		pg_substitution_image(&typing, consumer_fields, x)};
+	const struct pg_evidence *field_packet = pg_prove_constructor(&typing, formation, constructor,
+		pg_prove_substitution_projection(&typing, empty, consumer_field_context), 2, field_values);
+	const struct pg_evidence *field_function_type = pg_prove_inductive_motive_at(&typing, &classifiers, formation,
+		consumer_parameters, consumer_mc, function_motive, consumer_field_context, field_packet);
+	const struct pg_object *field_consumer = pg_binder(&graph);
+	const struct pg_evidence *field_consumer_context = pg_prove_context_extension(&typing, consumer_field_context,
+		field_consumer, pg_prove_pi_domain(&typing, field_function_type));
+	const struct pg_evidence *function_branch = pg_prove_application(&typing,
+		pg_prove_force(&typing, pg_prove_variable(&typing, field_consumer_context, field_consumer)),
+		pg_prove_projection(&typing, field_consumer_context, field_packet));
+	function_branch = pg_prove_abstract(&typing, &classifiers, consumer_context, field_consumer_context, function_branch);
+	const struct pg_evidence *function_match = pg_prove_match(&typing, &classifiers, formation, consumer_parameters,
+		consumer_packet, consumer_mc, function_motive, 1, &function_branch);
+	assert(function_match);
+	const struct pg_evidence *specialized_function = pg_prove_elimination_reindex(&typing, &classifiers, refinement, function_match);
+	const struct pg_evidence *specialized_application = pg_prove_application(&typing, specialized_function, refined_consumer);
+	assert(specialized_application);
+	check(&work, pg_evidence_subject(specialized_application)->core, pg_evidence_subject(applied)->core);
+	const struct pg_object *predicate = pg_binder(&graph);
+	const struct pg_evidence *predicate_domain = pg_prove_context_extension(&typing, consumer_context,
+		pg_binder(&graph), pg_prove_variable(&typing, consumer_context, a));
+	const struct pg_evidence *predicate_context = pg_prove_family_context_extension(&typing,
+		consumer_context, predicate, predicate_domain, pg_prove_projection(&typing, predicate_domain, u));
+	const struct pg_evidence *family_refinement = pg_prove_constructor_refinement(&typing, &classifiers,
+		predicate_context, pg_prove_variable(&typing, predicate_context, packet), constructor);
+	assert(family_refinement);
+	const struct pg_evidence *family_image = pg_substitution_image(&typing, family_refinement, predicate);
+	assert(family_image && pg_evidence_judgement(family_image) == PG_JUDGEMENT_TYPE_FAMILY);
+	assert(pg_prove_family_application(&typing, family_image, pg_substitution_image(&typing, family_refinement, x)));
 	const struct pg_evidence *open_parameters = pg_prove_substitution_projection(&typing, empty, packet_context);
 	const struct pg_evidence *open_branch = pg_prove_projection(&typing, packet_context, branch_type);
 	const struct pg_evidence *neutral = pg_prove_type_case(&typing, &classifiers,

@@ -1121,6 +1121,85 @@ const struct pg_evidence *pg_prove_inductive_motive_substitution(struct pg_typin
 	return pg_prove_substitution_pair(typing, prefix, source, value);
 }
 
+struct refinement_binding {
+	struct pg_index_entry index;
+	const struct pg_object *binder;
+	const struct pg_evidence *image;
+	int seen;
+};
+
+static struct refinement_binding *refinement_find(const struct pg_index *index,
+	const struct pg_object *binder)
+{
+	for (struct pg_index_entry *entry = pg_index_candidates(index, (uintptr_t)binder); entry; entry = entry->next) {
+		struct refinement_binding *binding = (struct refinement_binding *)entry;
+		if (binding->binder == binder) return binding;
+	}
+	return NULL;
+}
+
+const struct pg_evidence *pg_prove_constructor_refinement(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *scrutinee, const struct pg_object *constructor)
+{
+	if (!context_proof(typing, context) || !pg_evidence_owned_by(scrutinee, typing)) return NULL;
+	if (scrutinee->judgement != PG_JUDGEMENT_VALUE || scrutinee->context != context->context) return NULL;
+	struct pg_inductive_instance instance;
+	if (!pg_inductive_instance(typing, pg_prove_classifier(typing, classifiers, context, scrutinee), &instance)) return NULL;
+	size_t first = instance.parameters->premise_count + 1;
+	size_t indices = instance.indices ? instance.indices->premise_count - first : 0;
+	if (indices >= SIZE_MAX / sizeof(struct refinement_binding)) return NULL;
+	struct pg_graph temporary = {0};
+	struct pg_index replacements;
+	if (pg_index_init(&replacements)) return NULL;
+	const struct pg_evidence *result = NULL;
+	struct refinement_binding *bindings = pg_alloc(&temporary, (indices + 1) * sizeof(*bindings));
+	if (!bindings) goto done;
+	for (size_t i = 0; i <= indices; ++i) {
+		const struct pg_term *term = i == indices ? scrutinee->subject->core : instance.indices->premises[first + i]->subject->core;
+		if (term->kind != PG_REFERENCE || term->as.reference->kind != PG_BINDER) goto done;
+		const struct pg_object *binder = term->as.reference;
+		if (refinement_find(&replacements, binder)) goto done;
+		bindings[i].binder = binder;
+		if (pg_index_insert(&replacements, &bindings[i].index, (uintptr_t)binder)) goto done;
+	}
+	const struct pg_evidence *prefix = context;
+	size_t remaining = indices + 1, count = 0;
+	while (remaining) {
+		if (!prefix->context || count == SIZE_MAX) goto done;
+		struct refinement_binding *binding = refinement_find(&replacements, prefix->context->binder);
+		if (binding && !binding->seen) { binding->seen = 1; --remaining; }
+		++count;
+		prefix = prefix->premises[0];
+	}
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;
+	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
+	if (!extensions) goto done;
+	const struct pg_evidence *extension = context;
+	for (size_t i = count; i; --i, extension = extension->premises[0]) extensions[i - 1] = extension;
+	const struct pg_evidence *parameters = pg_prove_substitution_rebase(typing, prefix, instance.parameters);
+	const struct pg_evidence *fields = pg_prove_constructor_scope(typing, instance.formation, constructor, parameters);
+	if (!fields) goto done;
+	const struct pg_evidence *value = constructor_in_scope(typing, instance.formation, constructor, parameters, fields);
+	const struct pg_evidence *fiber = pg_data_result(typing, instance.schema, constructor, fields);
+	if (!value || !fiber || fiber->premise_count != first + indices) goto done;
+	for (size_t i = 0; i < indices; ++i) bindings[i].image = fiber->premises[first + i];
+	bindings[indices].image = value;
+	const struct pg_evidence *map = pg_prove_substitution_projection(typing, prefix, fields->premises[1]);
+	for (size_t i = 0; map && i < count; ++i) {
+		extension = extensions[i];
+		struct refinement_binding *binding = refinement_find(&replacements, extension->context->binder);
+		if (binding) map = pg_prove_substitution_pair(typing, map, extension,
+			pg_prove_projection(typing, map->premises[1], binding->image));
+		else map = pg_prove_substitution_lift(typing, map, extension, pg_binder(typing->graph));
+	}
+	result = map;
+done:
+	pg_index_destroy(&replacements);
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters,

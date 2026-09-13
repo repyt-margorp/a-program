@@ -231,6 +231,13 @@ const struct pg_evidence *pg_prove_inductive_motive_substitution(struct pg_typin
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *source,
 	const struct pg_evidence *destination, const struct pg_evidence *value);
+/* Specialize a context at a constructor of a variable scrutinee. Its indices
+ * must be distinct variables. Replace those bindings together, and lift the
+ * remaining dependent suffix over the constructor fields. The returned map
+ * targets context; it is not equality evidence for an arbitrary scrutinee. */
+const struct pg_evidence *pg_prove_constructor_refinement(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *scrutinee, const struct pg_object *constructor);
 const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters,

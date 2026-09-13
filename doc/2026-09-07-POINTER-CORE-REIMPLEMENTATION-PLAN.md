@@ -311,6 +311,21 @@ September 13 typed Match exposure:
   and 20/20 compatibility.
   Implementation +119/-21 (net +98); tests +74/-1 (net +73); prototype build
   rules +6/-0. Documentation is counted separately.
+- [x] Construct a checked constructor-refinement map for a variable scrutinee
+  with distinct variable indices. `pg_prove_constructor_refinement` substitutes
+  all those bindings together and lifts the dependent suffix, including stored
+  functions and logical-family assumptions. Binding lookup uses the shared hash
+  index keyed by pointers. The result is a context morphism into the original
+  context, not equality evidence in that original context. Fixed/nonvariable or
+  repeated source indices remain unsupported, not guessed or refuted.
+  Tests check dependent index replacement, rejected reuse of the old function,
+  lifted family application, iota after refinement, and a Match returning a Pi
+  followed by application to its refined argument. Ordinary Solve checks the
+  resulting derivations. Debugger probes on the actual QuickSort inner Match
+  validate both nil/cons refinements and both pending argument applications.
+  Debug `check-acceptance` passes (20/20 compatibility), as does the final
+  expanded IADT test. ASan/UBSan passes Core, IADT, Program, image CLI and
+  20/20 compatibility. Implementation +86/-0; tests +86/-0; docs separate.
 - [ ] Replace the flat per-case call list with shared branch-aware translation
   for schema and witness. The concrete `@quickSortAcc` blocker is still at
   59,322 steps: its inner Match has a raw Pi result and pending application
@@ -319,6 +334,8 @@ September 13 typed Match exposure:
   argument cannot simply be projected into every generic branch. Keep the
   original Acc induction driver distinct from the nested SizedList discriminator;
   neither needs a new primitive. Unknown-callee graph translation remains open.
+  The refinement helper is not yet wired into branch-tree graph/witness
+  generation; its tests do not establish completion of that translation.
 
 Reference: [Vakar, An Effectful Treatment of Dependent Types](https://arxiv.org/abs/1603.04298)
 separates ordinary dCBPV from dependent Kleisli extension. It motivates stating
