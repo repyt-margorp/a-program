@@ -88,6 +88,16 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p chooseMain two
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p twiceMain four
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-curried-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-indexed.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-indexed.p emptyMain emptyExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-indexed.p specMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-indexed.p emptySpecMain emptyExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-indexed.p copyMain sample
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-indexed.p countMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-indexed.p pointMain one
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-indexed-canonical.p main expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-indexed-wrong.p
+	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/function-graph-fixed-index.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/acc-function-motive.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-function-motive-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-order-reflexivity.p main expected

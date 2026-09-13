@@ -35,11 +35,14 @@ struct pg_function_graph_state {
 	struct pg_typing *typing;
 	struct pg_classifiers *classifiers;
 	struct pg_whnf_work *evaluation;
-	const struct pg_evidence *function, *body, *outer_context, *context, *argument_context;
+	const struct pg_evidence *body, *outer_context, *context, *argument_context;
+	const struct pg_evidence *recursive_function;
 	const struct pg_evidence *domain, *range, *self, *indices;
 	const struct pg_evidence *result_context;
 	const struct pg_evidence **arguments;
 	size_t arity;
+	const struct pg_evidence **index_arguments;
+	size_t index_count;
 	struct pg_inductive_instance input;
 	const struct pg_evidence **results;
 	struct graph_case *plans;
@@ -66,6 +69,10 @@ static const struct pg_evidence *projection(struct pg_function_graph_state *s,
 static const struct pg_evidence *argument_substitution(struct pg_function_graph_state *s,
 	const struct pg_evidence *context, const struct pg_evidence *argument)
 {
+	if (s->index_count)
+		return pg_prove_inductive_motive_substitution(s->typing, s->classifiers,
+			s->input.formation, s->input.parameters, s->argument_context,
+			context, projection(s, context, argument));
 	return pg_prove_substitution_pair(s->typing,
 		pg_prove_substitution_projection(s->typing, s->context, context), s->argument_context,
 		projection(s, context, argument));
@@ -100,8 +107,9 @@ static const struct pg_evidence *apply_relation(struct pg_function_graph_state *
 {
 	if (!map) return NULL;
 	size_t count = pg_evidence_premise_count(map);
-	if (count < s->arity + 3) return NULL;
-	for (size_t i = count - s->arity - 1; relation && i < count; ++i)
+	size_t inputs = s->index_count + s->arity + 1;
+	if (count < inputs + 2) return NULL;
+	for (size_t i = count - inputs; relation && i < count; ++i)
 		relation = pg_prove_family_application(s->typing, relation, pg_evidence_premise(map, i));
 	return pg_prove_family_application(s->typing, relation, output);
 }
@@ -119,6 +127,10 @@ static int graph_universe(struct pg_function_graph_state *s, uint64_t *level)
 	if (!pg_universe_level(pg_evidence_classifier(s->domain), &a) ||
 		!pg_universe_level(pg_evidence_classifier(s->range), &b)) return -1;
 	*level = a > b ? a : b;
+	for (size_t i = 0; i < s->index_count; ++i) {
+		if (!pg_universe_level(pg_evidence_classifier(pg_evidence_premise(s->index_arguments[i], 1)), &a)) return -1;
+		if (a > *level) *level = a;
+	}
 	for (size_t i = 0; i < s->arity; ++i) {
 		if (!pg_universe_level(pg_evidence_classifier(pg_evidence_premise(s->arguments[i], 1)), &a)) return -1;
 		if (a > *level) *level = a;
@@ -137,6 +149,8 @@ static int signature(struct pg_function_graph_state *s)
 	s->self = pg_prove_family_context_extension(t, s->context, pg_binder(t->graph), y, universe);
 	if (!s->self) return -1;
 	const struct pg_evidence *map = pg_prove_substitution_projection(t, s->context, s->self);
+	for (size_t i = 0; map && i < s->index_count; ++i)
+		map = pg_prove_substitution_lift(t, map, s->index_arguments[i], pg_binder(t->graph));
 	map = pg_prove_substitution_lift(t, map, x, pg_binder(t->graph));
 	for (size_t i = 0; map && i < s->arity; ++i)
 		map = pg_prove_substitution_lift(t, map, s->arguments[i], pg_binder(t->graph));
@@ -390,7 +404,13 @@ static const struct pg_evidence *case_source_map(struct pg_function_graph_state 
 	for (size_t i = 0; map && i < count; ++i)
 		map = pg_prove_substitution_pair(t, map, plan->scopes[i], fields[i]);
 	for (size_t i = 0; map && i < plan->hypothesis_count; ++i) {
-		const struct pg_evidence *call = pg_prove_application(t, projection(s, context, s->function), fields[plan->hypothesis_fields[i]]);
+		const struct pg_evidence *field = fields[plan->hypothesis_fields[i]];
+		const struct pg_evidence *input = argument_substitution(s, context, field);
+		const struct pg_evidence *call = projection(s, context, s->recursive_function);
+		for (size_t j = 0; call && j < s->index_count; ++j)
+			call = pg_prove_application(t, call, pg_substitution_image(t, input,
+				pg_evidence_context(s->index_arguments[j])->binder));
+		call = pg_prove_application(t, call, field);
 		map = pg_prove_substitution_pair(t, map, plan->scopes[count + i], pg_prove_thunk(t, s->classifiers, call));
 	}
 	for (size_t i = 0; map && i < s->arity; ++i) {
@@ -516,10 +536,11 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	s->typing = typing; s->classifiers = classifiers; s->evaluation = evaluation;
 	function = pg_function_graph_source(function);
 	if (!function) goto unsupported;
+	const struct pg_evidence *source_function = function;
 	s->outer_context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(function, 0), 0), 0);
 	while (pg_evidence_rule(pg_evidence_premise(function, 1)) == PG_LAMBDA_INTRO)
 		function = pg_evidence_premise(function, 1);
-	s->function = function;
+	s->recursive_function = function;
 	const struct pg_evidence *pi = pg_evidence_premise(function, 0);
 	s->argument_context = pg_evidence_premise(pi, 0);
 	s->context = pg_evidence_premise(s->argument_context, 0);
@@ -558,8 +579,32 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 		const struct pg_evidence *scrutinee = pg_evidence_premise(s->body, 3);
 		const struct pg_term *variable = pg_reference(typing->graph, pg_evidence_context(s->argument_context)->binder);
 		if (pg_evidence_subject(scrutinee)->core != variable) goto unsupported;
-		if (!pg_inductive_instance(typing, s->domain, &s->input) || s->input.indices) goto unsupported;
+		if (!pg_inductive_instance(typing, s->domain, &s->input)) goto unsupported;
 		if (s->input.formation != pg_evidence_premise(s->body, 1)) goto unsupported;
+		if (s->input.indices) {
+			size_t offset = pg_evidence_premise_count(s->input.parameters) + 1;
+			s->index_count = pg_evidence_premise_count(s->input.indices) - offset;
+			if (s->index_count > SIZE_MAX / sizeof(*s->index_arguments)) goto error;
+			s->index_arguments = pg_alloc(&s->temporary, s->index_count * sizeof(*s->index_arguments));
+			if (s->index_count && !s->index_arguments) goto error;
+			/* The source binds generic indices immediately before the selected
+			 * input. Check this telescope; never solve a fixed index backwards. */
+			for (size_t i = s->index_count; i; --i) {
+				if (pg_evidence_rule(s->context) != PG_CONTEXT_EXTEND) goto unsupported;
+				const struct pg_term *image = pg_evidence_subject(pg_evidence_premise(s->input.indices, offset + i - 1))->core;
+				if (image != pg_reference(typing->graph, pg_evidence_context(s->context)->binder)) goto unsupported;
+				s->index_arguments[i - 1] = s->context;
+				s->context = pg_evidence_premise(s->context, 0);
+			}
+			s->input.parameters = pg_prove_substitution_rebase(typing, s->context, s->input.parameters);
+			if (!s->input.parameters || !pg_inductive_motive_context_valid(typing,
+				s->input.formation, s->input.parameters, s->argument_context)) goto unsupported;
+			while (source_function && pg_evidence_context(source_function) != pg_evidence_context(s->context))
+				source_function = pg_evidence_rule(pg_evidence_premise(source_function, 1)) == PG_LAMBDA_INTRO
+					? pg_evidence_premise(source_function, 1) : NULL;
+			if (!source_function) goto unsupported;
+			s->recursive_function = source_function;
+		}
 		s->count = pg_data_constructor_count(s->input.schema);
 	}
 	if (s->count > SIZE_MAX / sizeof(*s->results)) goto error;
@@ -645,13 +690,14 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 		const struct pg_evidence *output = pg_prove_return_value(s->typing, normalized);
 		if (!output) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; break; }
 		const struct pg_evidence *map = pg_prove_substitution_projection(s->typing, s->self, s->branch_context);
-		const struct pg_evidence **values = pg_alloc(&s->temporary, (s->arity + 2) * sizeof(*values));
+		size_t arity = s->index_count + s->arity + 2;
+		const struct pg_evidence **values = pg_alloc(&s->temporary, arity * sizeof(*values));
 		if (!values || !s->branch_input) { s->status = PG_FUNCTION_GRAPH_ERROR; break; }
 		size_t inputs = pg_evidence_premise_count(s->branch_input);
-		for (size_t i = 0; i <= s->arity; ++i)
-			values[i] = pg_evidence_premise(s->branch_input, inputs - s->arity - 1 + i);
-		values[s->arity + 1] = output;
-		s->results[s->next] = pg_prove_substitution_extend(s->typing, map, s->indices, s->arity + 2, values);
+		for (size_t i = 0; i < arity - 1; ++i)
+			values[i] = pg_evidence_premise(s->branch_input, inputs - arity + 1 + i);
+		values[arity - 1] = output;
+		s->results[s->next] = pg_prove_substitution_extend(s->typing, map, s->indices, arity, values);
 		if (!s->results[s->next]) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; break; }
 		++s->next;
 		s->branch = NULL; s->normalization = NULL;

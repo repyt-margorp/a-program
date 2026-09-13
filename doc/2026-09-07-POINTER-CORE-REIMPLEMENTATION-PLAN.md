@@ -165,11 +165,35 @@ September 13 compatibility follow-up:
   Full debug `check-acceptance` passes, including unchanged 20/20 compatibility
   and source/image checks for the new cases. Program tests, all new result and
   rejection checks, image CLI and 20/20 compatibility also pass ASan/UBSan.
-  This restores `@append` on the
-  unchanged QuickSort helper but does not complete `@quickSort`: nested Match
-  on computed results, indexed scrutinees and recursive function fields still
-  need general graph translation. Those are correctness/expressiveness work;
+  This restores `@append` on the unchanged QuickSort helper. At this checkpoint,
+  nested Match on computed results, indexed scrutinees and recursive function
+  fields still need general graph translation. These are correctness/expressiveness work;
   retaining more Solve results is not a prerequisite for them.
+- [x] Generalize graph indices over a source-bound IADT index telescope directly
+  preceding the scrutinee. Recursive premises use the child's actual fiber,
+  not the parent's index. Parameter maps reuse checked evidence reconstruction;
+  no erased free-variable test admits strengthening. Binder annotations now
+  share ordinary, budgeted WHNF after synthesis, so `Vec A n` aliases and
+  elimination use the same fiber. Core interning remains exact-pointer-only.
+  `function-graph-indexed.p` proves `SameNat n out` from `@length A n xs out`
+  for a previously defined Vec length, and tests dependent outputs, trailing
+  arguments and a two-index telescope with a type-dependent second index.
+  Wrong recursive fibers reject; fixed-index graph requests remain unsupported.
+  Full debug `check-acceptance` passes (including 20/20 legacy compatibility).
+  Core, synthesis, Program, the new source checks, image CLI and the compatibility
+  suite also pass ASan/UBSan. Image checks include unsolved/partial/completed
+  resaves and rejection of the incorrect recursive fiber.
+  A QuickSort image saved by the preceding `7c59e63` implementation still loads
+  and produces the same result at chunks 1/64. No wire or Replay rule changed.
+  QuickSort source compilation now takes 59,293 Solve steps versus 60,013;
+  these are transition counts, not a wall-clock performance claim.
+  Remaining: `@quickSortAcc` first fails while reconstructing its logical-family
+  parameter map in the smaller context. Beyond that, function-field IH typing
+  currently requires independence from the returned recursive value, whereas
+  graph packets depend on it. Removing that check would be unsound; resolving
+  it is separate from indexed direct-field support. Computed/nested Match and
+  unknown callee graph translation also remain open. Do not mark QuickSort's
+  post-hoc property complete or introduce a separate certified source program.
 
 Theory references for this step: Leijen's [Koka report, Sections 2.1-2.2](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/koka-effects-2013.pdf)
 distinguishes potential divergence from ordinary side effects; Torczon et al.'s

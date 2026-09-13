@@ -7,8 +7,11 @@
 /* Generate ordinary indexed declarations from retained Lambda/case evidence.
  * No Returns predicate or new kernel rule. Relation formation and witness
  * production advance separately; neither proves an arbitrary user property.
- * Supports pure dependent result types, non-indexed scrutinees and
- * direct recursive fields. Remaining raw Pi arguments become additional graph
+ * Supports pure dependent result types and direct recursive fields. Generic
+ * indices bound immediately before the scrutinee become graph indices, with
+ * actual recursive fibers recovered from membership evidence. Fixed indices,
+ * intervening dependent environment binders and function fields are unsupported.
+ * Remaining raw Pi arguments become additional graph
  * indices, not thunked result functions. Their dependent domains, recursive
  * call arguments and prior call outputs are checked by ordinary substitutions.
  * Retained Return/Fold/APP/Force evidence supplies

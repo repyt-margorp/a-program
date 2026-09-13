@@ -391,9 +391,11 @@ done:
 	return result;
 }
 
-static const struct pg_evidence *rebase_map(struct pg_typing *typing,
+const struct pg_evidence *pg_prove_substitution_rebase(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *map)
 {
+	if (!context_proof(typing, context) || !pg_evidence_owned_by(map, typing)) return NULL;
+	if (map->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	size_t count = map->premise_count - 2;
 	const struct pg_evidence **images = malloc(count * sizeof(*images));
 	if (count && !images) return NULL;
@@ -407,7 +409,7 @@ static const struct pg_evidence *evidence_map_step(struct pg_typing *typing,
 	const struct pg_evidence *map, const struct pg_evidence *step)
 {
 	if (step->rule == PG_PI_CONSTANT_CODOMAIN)
-		return rebase_map(typing, step->premises[0]->premises[0]->premises[0], map);
+		return pg_prove_substitution_rebase(typing, step->premises[0]->premises[0]->premises[0], map);
 	const struct pg_evidence *substitution = step->premises[0];
 	if (step->rule == PG_CONTEXT_PROJECTION)
 		substitution = pg_prove_substitution_projection(typing, map->premises[1], substitution);

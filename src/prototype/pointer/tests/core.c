@@ -721,6 +721,20 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(!pg_prove_substitution(&typing, source, destination, 2, bad));
 	const struct pg_evidence *closed = pg_prove_substitution(&typing, empty, destination, 0, NULL);
 	assert(closed && pg_prove_reindex(&typing, closed, universe));
+	assert(pg_prove_substitution_rebase(&typing, destination, sigma) == sigma);
+	assert(pg_prove_substitution_rebase(&typing, empty, closed));
+	assert(!pg_prove_substitution_rebase(&typing, empty, sigma));
+	assert(!pg_prove_substitution_rebase(&typing, source, sigma));
+	assert(!pg_prove_substitution_rebase(&typing, NULL, sigma));
+	assert(!pg_prove_substitution_rebase(&typing, empty, NULL));
+	assert(!pg_prove_substitution_rebase(&typing, empty, source));
+	const struct pg_evidence *extended_destination = pg_prove_context_extension(&typing,
+		destination, pg_binder(graph), pg_prove_classifier(&typing, &classifiers, destination, destination_y));
+	assert(extended_destination);
+	const struct pg_evidence *extended_map = pg_prove_substitution_compose(&typing, sigma,
+		pg_prove_substitution_projection(&typing, destination, extended_destination));
+	assert(extended_map);
+	assert(pg_prove_substitution_rebase(&typing, destination, extended_map) == sigma);
 	size_t image_proofs = typing.proofs.count, image_terms = graph->terms.count;
 	assert(pg_substitution_image(&typing, sigma, a) == destination_b);
 	assert(pg_substitution_image(&typing, sigma, x) == destination_y);

@@ -446,6 +446,11 @@ const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
  * Uses ordinary variable and substitution evidence, without another rule. */
 const struct pg_evidence *pg_prove_substitution_projection(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *destination);
+/* Recover the same images in another context through their retained typing
+ * origins. Fails if any image or its classifier cannot be reconstructed there.
+ * Uses ordinary substitution evidence, never erased free-variable admission. */
+const struct pg_evidence *pg_prove_substitution_rebase(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *substitution);
 /* Extend a substitution into a prefix to the supplied full source context.
  * Exactly the remaining declarations receive values, checked by the ordinary
  * simultaneous substitution rule; the accepted prefix is not rechecked.

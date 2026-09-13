@@ -2235,12 +2235,18 @@ static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct 
 
 static void domain_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
-	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-	const struct pg_evidence *input = type_input(synthesis, job, source_context(job->scope), job->left->result);
-	if (!input) return;
-	job->result = value_type(synthesis, input);
-	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+	if (!job->right) {
+		if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+		const struct pg_evidence *input = type_input(synthesis, job, source_context(job->scope), job->left->result);
+		if (!input) return;
+		input = value_type(synthesis, input);
+		if (!input) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+		/* Share the annotation's checked WHNF with all context consumers,
+		 * rather than exposing a family alias's nominal head only at Match. */
+		job->right = pg_synthesis_normalize(synthesis, source_context(job->scope), input);
+	}
+	forward_proof(synthesis, job, job->right);
 }
 
 /* In binder annotations, an arrow telescope ending in @ declares a logical
