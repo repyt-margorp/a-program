@@ -1681,6 +1681,129 @@ done:
 	return result;
 }
 
+/* A positional correspondence is only a candidate. The ordinary substitution
+ * constructor checks every image against the preceding dependent telescope. */
+static const struct pg_evidence *telescope_correspondence(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_evidence *destination)
+{
+	size_t count, other;
+	if (pg_context_extension_size(source->context, NULL, &count) ||
+		pg_context_extension_size(destination->context, NULL, &other) || count != other) return NULL;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	const struct pg_evidence **images = malloc(count * sizeof(*images));
+	if (count && !images) return NULL;
+	const struct pg_context *scope = destination->context;
+	for (size_t i = count; i; --i, scope = scope->parent)
+		images[i - 1] = pg_prove_variable(typing, destination, scope->binder);
+	const struct pg_evidence *map = pg_prove_substitution(typing, source, destination, count, images);
+	free(images);
+	return map;
+}
+
+const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *scrutinee, const struct pg_evidence *motive,
+	size_t count, const struct pg_evidence *const *refinements,
+	const struct pg_evidence *const *branches)
+{
+	if (!context_proof(typing, context) || !pg_evidence_owned_by(motive, typing)) return NULL;
+	if (motive->judgement != PG_JUDGEMENT_COMPUTATION_TYPE || motive->context != context->context) return NULL;
+	if (!pg_evidence_owned_by(scrutinee, typing) || scrutinee->context != context->context) return NULL;
+	if (count && (!refinements || !branches)) return NULL;
+	struct pg_inductive_instance instance;
+	if (!pg_inductive_instance(typing, pg_prove_classifier(typing, classifiers, context, scrutinee), &instance)) return NULL;
+	if (count != pg_data_constructor_count(instance.schema)) return NULL;
+	const struct pg_evidence *mc = pg_prove_inductive_motive_context(typing,
+		instance.formation, instance.parameters, pg_binder(typing->graph));
+	if (!mc) return NULL;
+	if (!count) return pg_prove_match(typing, classifiers, instance.formation, instance.parameters,
+		scrutinee, mc, pg_prove_projection(typing, mc, motive), 0, NULL);
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	struct pg_graph temporary = {0};
+	struct pg_index replacements;
+	if (pg_index_init(&replacements)) return NULL;
+	const struct pg_evidence *result = NULL, *prefix = NULL;
+	const struct pg_evidence **functions = pg_alloc(&temporary, count * sizeof(*functions));
+	if (!functions) goto done;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_evidence *map = refinements[i], *body = branches[i];
+		if (!pg_evidence_owned_by(map, typing) || map->rule != PG_CONTEXT_SUBSTITUTION) goto done;
+		if (map->premises[0]->context != context->context) goto done;
+		if (!pg_evidence_owned_by(body, typing) || body->context != map->context) goto done;
+		const struct pg_evidence *expected = pg_prove_constructor_refinement(typing, classifiers, context,
+			scrutinee, pg_data_constructor(pg_data_schema_layout(instance.schema), i));
+		if (!expected) goto done;
+		if (!i) {
+			size_t left, right;
+			prefix = context;
+			const struct pg_evidence *target = expected->premises[1];
+			if (pg_context_extension_size(prefix->context, NULL, &left) ||
+				pg_context_extension_size(target->context, NULL, &right)) goto done;
+			while (left > right) { prefix = prefix->premises[0]; --left; }
+			while (right > left) { target = target->premises[0]; --right; }
+			while (prefix->context != target->context) {
+				prefix = prefix->premises[0]; target = target->premises[0];
+			}
+		}
+		const struct pg_evidence *rename = telescope_correspondence(typing, expected->premises[1], map->premises[1]);
+		expected = pg_prove_substitution_compose(typing, expected, rename);
+		if (!expected || expected->premise_count != map->premise_count) goto done;
+		for (size_t j = 2; j < map->premise_count; ++j)
+			if (pg_alpha_equal(expected->premises[j]->subject->core, map->premises[j]->subject->core) != 1) goto done;
+		const struct pg_evidence *lift = lift_scope(typing,
+			pg_prove_substitution_projection(typing, prefix, context), map->premises[1], NULL, 0);
+		if (!lift) goto done;
+		functions[i] = pg_prove_abstract(typing, classifiers, context, lift->premises[1],
+			pg_prove_reindex(typing, lift, body));
+		if (!functions[i]) goto done;
+	}
+	struct pg_inductive_instance generic;
+	if (!pg_inductive_instance(typing, mc->premises[1], &generic)) goto done;
+	size_t first = instance.parameters->premise_count + 1;
+	size_t indices = instance.indices ? instance.indices->premise_count - first : 0;
+	if (indices >= SIZE_MAX / sizeof(struct refinement_binding)) goto done;
+	struct refinement_binding *bindings = pg_alloc(&temporary, (indices + 1) * sizeof(*bindings));
+	if (!bindings) goto done;
+	for (size_t i = 0; i <= indices; ++i) {
+		const struct pg_term *term = i == indices ? scrutinee->subject->core : instance.indices->premises[first + i]->subject->core;
+		if (term->kind != PG_REFERENCE || term->as.reference->kind != PG_BINDER) goto done;
+		bindings[i].binder = term->as.reference;
+		bindings[i].image = i == indices ? pg_prove_variable(typing, mc, mc->context->binder)
+			: pg_prove_projection(typing, mc, generic.indices->premises[first + i]);
+		if (!bindings[i].image || refinement_find(&replacements, bindings[i].binder)) goto done;
+		if (pg_index_insert(&replacements, &bindings[i].index, (uintptr_t)bindings[i].binder)) goto done;
+	}
+	size_t suffix;
+	if (pg_context_extension_size(context->context, prefix->context, &suffix)) goto done;
+	if (suffix > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;
+	const struct pg_evidence **extensions = pg_alloc(&temporary, suffix * sizeof(*extensions));
+	if (suffix && !extensions) goto done;
+	const struct pg_evidence *scope = context;
+	for (size_t i = suffix; i; --i, scope = scope->premises[0]) extensions[i - 1] = scope;
+	const struct pg_evidence *map = pg_prove_substitution_projection(typing, prefix, mc);
+	for (size_t i = 0; map && i < suffix; ++i) {
+		struct refinement_binding *binding = refinement_find(&replacements, extensions[i]->context->binder);
+		if (binding) map = pg_prove_substitution_pair(typing, map, extensions[i],
+			pg_prove_projection(typing, map->premises[1], binding->image));
+		else map = pg_prove_substitution_lift(typing, map, extensions[i], pg_binder(typing->graph));
+	}
+	if (!map) goto done;
+	const struct pg_evidence *generalized = pg_prove_reindex(typing, map, motive);
+	for (scope = map->premises[1]; generalized && scope->context != mc->context; scope = scope->premises[0])
+		generalized = pg_prove_pi(typing, classifiers, scope, generalized);
+	result = pg_prove_match(typing, classifiers, instance.formation, instance.parameters,
+		scrutinee, mc, generalized, count, functions);
+	for (size_t i = 0; result && i < suffix; ++i) {
+		const struct pg_object *binder = extensions[i]->context->binder;
+		if (!refinement_find(&replacements, binder))
+			result = pg_prove_application(typing, result, pg_prove_variable(typing, context, binder));
+	}
+done:
+	pg_index_destroy(&replacements);
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,

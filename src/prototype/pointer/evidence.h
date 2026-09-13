@@ -223,6 +223,16 @@ const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
  * branch or invent fields for a neutral scrutinee. Returns NULL if not exposed. */
 const struct pg_evidence *pg_prove_match_body(struct pg_typing *typing,
 	const struct pg_evidence *elimination);
+/* Reassemble constructor-refined branches in the original context. Each map
+ * must be the corresponding constructor refinement, up to typed binder
+ * renaming below its shared prefix. Dependent suffix declarations are abstracted
+ * in the Match motive and supplied after elimination. This is derived
+ * Match/Pi/APP, not a rule. */
+const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *scrutinee, const struct pg_evidence *motive,
+	size_t count, const struct pg_evidence *const *refinements,
+	const struct pg_evidence *const *branches);
 /* Eta-expand a declared, parameter-instantiated indexed family into an
  * ordinary raw Pi computation returning its type as a Universe value.
  * Uses checked index scopes, family application, RETURN and Lambda; not a

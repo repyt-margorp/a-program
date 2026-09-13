@@ -347,6 +347,17 @@ September 13 typed Match exposure:
   Debug `check-acceptance` passes (20/20 compatibility). ASan/UBSan passes IADT,
   Program, all new results/rejection, image CLI and 20/20 compatibility.
   There is no new Core, kernel rule, wire version or Replay path.
+- [x] Reassemble constructor-refined branches using `pg_prove_refined_match`:
+  validate the refinement maps, abstract the dependent suffix in a generic
+  motive, then supply the original values after ordinary Match. This builds
+  existing Pi/APP/substitution evidence, not a new elimination rule. Tests
+  cover Nat branches, dependent indices/functions/families, iota after
+  specialization, and a wrong constructor map with the same result carrier.
+  Debugger probes reassemble the actual QuickSort nil/cons branches with both
+  pending dependent arguments; graph-tree generation is still not connected.
+  Debug `check-acceptance` passes, as does the final expanded IADT test.
+  ASan/UBSan passes IADT, Program, image CLI and 20/20 compatibility.
+  Implementation +133/-0; tests +60/-0; documentation counted separately.
 - [ ] Replace the flat per-case call list with shared branch-aware translation
   for schema and witness. The concrete `@quickSortAcc` blocker is still at
   59,322 steps: its inner Match has a raw Pi result and pending application

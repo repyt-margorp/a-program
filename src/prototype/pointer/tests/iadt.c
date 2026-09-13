@@ -916,6 +916,21 @@ static void indexed_match(void)
 	assert(body_application);
 	check(&work, pg_evidence_subject(body_application)->core, pg_evidence_subject(applied)->core);
 	common_rule(&typing, &classifiers, body_application);
+	const struct pg_evidence *result_type = pg_prove_classifier(&typing, &classifiers, consumer_context, consumer_match);
+	const struct pg_evidence *assembled = pg_prove_refined_match(&typing, &classifiers, consumer_context,
+		consumer_packet, result_type, 1, &refinement, &body_application);
+	assert(assembled && pg_alpha_equal(pg_evidence_classifier(assembled), pg_evidence_subject(result_type)->core) == 1);
+	common_rule(&typing, &classifiers, assembled);
+	const struct pg_evidence *assembled_branch = pg_prove_reindex(&typing, refinement, assembled);
+	assert(assembled_branch);
+	check(&work, pg_evidence_subject(assembled_branch)->core, pg_evidence_subject(applied)->core);
+	assert(!pg_prove_refined_match(&typing, &classifiers, consumer_context,
+		consumer_packet, result_type, 0, NULL, NULL));
+	assert(!pg_prove_refined_match(&typing, &classifiers, consumer_context,
+		consumer_packet, result_type, 1, &refinement, &consumer_match));
+	const struct pg_evidence *wrong_refinement = pg_prove_substitution_projection(&typing, consumer_context, consumer_context);
+	assert(!pg_prove_refined_match(&typing, &classifiers, consumer_context,
+		consumer_packet, result_type, 1, &wrong_refinement, &consumer_match));
 	const struct pg_object *predicate = pg_binder(&graph);
 	const struct pg_evidence *predicate_domain = pg_prove_context_extension(&typing, consumer_context,
 		pg_binder(&graph), pg_prove_variable(&typing, consumer_context, a));
@@ -927,6 +942,23 @@ static void indexed_match(void)
 	const struct pg_evidence *family_image = pg_substitution_image(&typing, family_refinement, predicate);
 	assert(family_image && pg_evidence_judgement(family_image) == PG_JUDGEMENT_TYPE_FAMILY);
 	assert(pg_prove_family_application(&typing, family_image, pg_substitution_image(&typing, family_refinement, x)));
+	const struct pg_evidence *property = pg_prove_family_application(&typing,
+		pg_prove_variable(&typing, predicate_context, predicate), pg_prove_variable(&typing, predicate_context, x));
+	const struct pg_object *property_binder = pg_binder(&graph);
+	const struct pg_evidence *property_context = pg_prove_context_extension(&typing, predicate_context, property_binder, property);
+	const struct pg_evidence *property_packet = pg_prove_variable(&typing, property_context, packet);
+	const struct pg_evidence *property_refinement = pg_prove_constructor_refinement(&typing, &classifiers,
+		property_context, property_packet, constructor);
+	const struct pg_evidence *property_body = pg_prove_return(&typing, &classifiers,
+		pg_substitution_image(&typing, property_refinement, property_binder));
+	const struct pg_evidence *property_motive = pg_prove_return_type(&typing, &classifiers,
+		pg_prove_projection(&typing, property_context, property));
+	const struct pg_evidence *property_match = pg_prove_refined_match(&typing, &classifiers, property_context,
+		property_packet, property_motive, 1, &property_refinement, &property_body);
+	assert(property_match);
+	common_rule(&typing, &classifiers, property_match);
+	check(&work, pg_evidence_subject(pg_prove_reindex(&typing, property_refinement, property_match))->core,
+		pg_evidence_subject(property_body)->core);
 	const struct pg_evidence *open_parameters = pg_prove_substitution_projection(&typing, empty, packet_context);
 	const struct pg_evidence *open_branch = pg_prove_projection(&typing, packet_context, branch_type);
 	const struct pg_evidence *neutral = pg_prove_type_case(&typing, &classifiers,
@@ -1663,6 +1695,34 @@ static void schema_positivity(void)
 		n_parameters, n_value, open_z_context, open_motive, 2, open_branches);
 	assert(neutral_match && pg_evidence_context(neutral_match) == pg_evidence_context(n_context));
 	check(&constructor_work, pg_evidence_subject(neutral_match)->core, pg_evidence_subject(neutral_match)->core);
+	const struct pg_evidence *refinements[2], *refined_bodies[2];
+	for (size_t i = 0; i < 2; ++i) {
+		refinements[i] = pg_prove_constructor_refinement(&typing, &classifiers, n_context, n_value,
+			pg_data_constructor(nat_layout, i));
+		assert(refinements[i]);
+		refined_bodies[i] = pg_prove_match_body(&typing,
+			pg_prove_elimination_reindex(&typing, &classifiers, refinements[i], neutral_match));
+		assert(refined_bodies[i]);
+	}
+	const struct pg_evidence *refined_motive = pg_prove_classifier(&typing, &classifiers, n_context, neutral_match);
+	const struct pg_evidence *refined_pred = pg_prove_refined_match(&typing, &classifiers, n_context,
+		n_value, refined_motive, 2, refinements, refined_bodies);
+	assert(refined_pred);
+	common_rule(&typing, &classifiers, refined_pred);
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_evidence *selected = pg_prove_reindex(&typing, refinements[i], refined_pred);
+		assert(selected);
+		check(&constructor_work, pg_evidence_subject(selected)->core, pg_evidence_subject(refined_bodies[i])->core);
+	}
+	/* Same typed destination and constant carrier, but the wrong source
+	 * constructor: checking only the branch result type would miss this. */
+	const struct pg_evidence *wrong_refined_context = pg_evidence_premise(refinements[1], 1);
+	const struct pg_evidence *wrong_refinement = pg_prove_substitution_pair(&typing,
+		pg_prove_substitution_projection(&typing, empty, wrong_refined_context), n_context,
+		pg_prove_projection(&typing, wrong_refined_context, zero));
+	const struct pg_evidence *wrong_refinements[] = {refinements[0], wrong_refinement};
+	assert(wrong_refinement && !pg_prove_refined_match(&typing, &classifiers, n_context,
+		n_value, refined_motive, 2, wrong_refinements, refined_bodies));
 	const struct pg_evidence *succ_n = pg_prove_constructor(&typing, nat,
 		pg_data_constructor(nat_layout, 1), n_parameters, 1, &n_value);
 	const struct pg_evidence *path_branches[] = {
