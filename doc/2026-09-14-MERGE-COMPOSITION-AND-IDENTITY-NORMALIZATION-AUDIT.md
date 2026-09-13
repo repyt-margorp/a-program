@@ -162,6 +162,46 @@ pending-image commands were checked with the current pointer binary.
 Keep Issue #28 open while reporting this distinction, rather than describing
 all graph-composition concerns as fixed.
 
+### Indexed Capture Follow-up at `7fb27a3`
+
+The next probe separates source synthesis from graph extraction. For
+`count := \A : @ => \n : Nat => \xs : Vec A n => \start : Nat => xs ...`,
+the existing indexed Match elaborator generalizes the ambient telescope after
+the index. Its IH therefore accepts `start`: the cons branch
+`Nat.succ (*tail start)` checks and computes; `Nat.succ *tail` rejects.
+This differs from the non-indexed captured merge above. It is existing surface
+behavior, not a proposed new implicit-application rule. Whether independent
+captures should be generalized needs a separate compatibility decision.
+
+Even the non-recursive `select`, returning `start` in both Vec branches, cannot
+yet publish `@select`. GDB shows that `function_graph_order` is called with
+`ready = 0`, `cases = 0`, body rule `PG_APP_ELIM`, and source Match
+`generalized_count = 1`. It rejects before `prepare_graph` runs. The application
+specializes the generalized Match; it is not an invalid source argument.
+Thus the earlier generic-index restriction is a later boundary, not the first
+observed cause. Do not claim that modifying `capture_eliminator` alone fixes it.
+
+- [x] Retain ordinary count/select comparisons in
+  `tests/acceptance/indexed-captured-induction.p`, including empty/nonempty
+  inputs and unfinished/completed `.a` loads at Solve chunks 1/64.
+- [ ] Preserve the typed specialization spine while exposing the eliminator;
+  do not discard its arguments or normalize a neutral Match into RETURN.
+- [ ] Derive graph/source clause layouts after the selected eliminator and its
+  internal generalized arguments are known. Internal Pi arguments are not
+  necessarily explicit source branch Lambdas.
+- [ ] Generalize the captured index telescope together with its input using
+  existing checked context maps; specialize the public graph and witness with
+  the same map. Keep dependent captures in their original order.
+- [ ] Verify count/select graphs and witnesses, dependent outputs, helper calls,
+  wrong-index rejection, source/image agreement and unchanged QuickSort.
+
+No unsupported graph request is added as an expected rejection test. The
+positive ordinary tests do not claim generated-graph support or settle the
+surface IH policy. No kernel or evaluator rule changes in this follow-up.
+The expanded merge-composition script passes on both debug and ASan/UBSan
+builds. The prior full acceptance results remain those recorded above; this
+test/document-only increment reran the affected script, not the entire suite.
+
 The first implementation searched every Pi origin and increased a 20-run debug
 QuickSort compile sample from 0.611 s to 1.030 s. Level 0 is already the minimum
 bound, so its inversion needs no origin search. Limit bound recovery accordingly;

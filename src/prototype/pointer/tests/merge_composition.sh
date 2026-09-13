@@ -58,4 +58,17 @@ for input in "$source" "$directory/alone.p" "$directory/reordered.p"; do
 	"$runtime" --equal-image "$directory/captured.a" mergedZero emptyExpected
 	"$runtime" --equal-image "$directory/captured.a" mergedTwice mergedTwiceExpected
 done
+# Indexed ambient generalization is checked independently of graph extraction.
+indexed="$fixtures/indexed-captured-induction.p"
+"$runtime" --equal "$indexed" main three
+"$runtime" --equal "$indexed" emptyMain one
+"$runtime" --equal "$indexed" selected one
+for steps in 0 100000; do
+	code=0
+	"$checker" --steps "$steps" --save "$directory/indexed.a" "$indexed" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"$runtime" --equal-image "$directory/indexed.a" main three
+	"$runtime" --equal-image "$directory/indexed.a" emptyMain one
+	"$runtime" --equal-image "$directory/indexed.a" selected one
+done
 printf '%s\n' 'merge composition: capture, currying, declaration order, result and image checks passed'

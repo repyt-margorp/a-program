@@ -47,6 +47,14 @@ using the existing checked diagonal fallback. The broad pure-sequence Vec
 trial was withdrawn because it regressed higher-order indexed fields; Vec
 append and the wider compatibility milestone are not marked complete.
 
+Indexed-capture follow-up at `7fb27a3`: ordinary count/select computations
+are now covered separately. Indexed ambient generalization introduces a typed
+application around Match; graph source-layout registration rejects before the
+eliminator is prepared. Preserve that specialization and derive clause layouts
+from the prepared eliminator before addressing the generic-index capture map.
+The linked audit records the reproduction and remaining checks; neither
+generated indexed graphs nor a change to the surface IH policy is claimed.
+
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the
