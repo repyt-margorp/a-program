@@ -102,6 +102,39 @@ checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
 
 September 13 compatibility follow-up:
 
+- [x] Connect source result synthesis to the existing `PG_TOTAL_PURE_VALUE`
+  rule after checked RETURN inversion fails. The normalized classifier must
+  prove TOTAL and an empty closed effect row; no new admission rule is added.
+  `indexed-computed-type.p` synthesizes `Vec Nat (add n n)` while `n` is open,
+  then checks and executes a concrete call. The wrong concrete index rejects.
+  Tests cover unknown-totality/effectful neutral inputs, substitution, shared
+  result requests, and positive/negative source/image cases.
+- [x] Compare finite binding structure before reducing each conversion
+  subproblem. The same budgeted comparison algorithm is used with the actual
+  enclosing binder correspondence and no normalization callback. A successful
+  structural probe needs no recursive unfolding; a failed probe uses the
+  existing pure comparison. Core pointer interning and equality rules do not
+  change. Tests include alpha-distinct divergent terms, a beta step beside such
+  terms under a Lambda, and bound/free capture rejection. Structural probes
+  count toward work/task totals; this is not an independent Solve/Replay path.
+  Full `check-acceptance` passes in debug and ASan/UBSan builds, including
+  source/image checks for the new computed-index cases and the unchanged
+  **27/27** legacy compatibility gate with all six QuickSort results.
+- [ ] Finish Vec append's remaining neutral result conversion. Source result
+  formation now succeeds, but compilation still exhausts 1,000,000 steps in
+  conversion. The failing comparison relates the indexed IH result at a succ
+  input to the branch result containing succ of the recursive add result.
+  Weak comparison reaches a constructor versus a neutral Fold; strong NF
+  expands the recursive Lambda encoding beneath the neutral expression.
+  Main `63b00eb` accepts the unchanged fixture: its printed classifier uses
+  a value-level Match/add projection without the runtime Fold/RETURN wrappers.
+  The pointer rewrite's single Fold-based result encoding must account for
+  this difference; copying the old compiler's separate unverified projection
+  is not a solution.
+  Do not report this as a restored legacy case or fix it by increasing fuel.
+  Check the precise pure-result/sequence equations before changing conversion;
+  a typed total-pure rule must not become an unconditional effectful equation.
+
 - [x] Recompile unchanged `explicit_index_family_tail_check.p` and
   `explicit_index_family_tail_infer.p`, both also accepted by Main `63b00eb`.
   A cons branch provides `succ n = succ k`, but its synthesized `Vec A k`
@@ -119,12 +152,11 @@ September 13 compatibility follow-up:
   all six QuickSort results. ASan/UBSan passes IADT, Program, image CLI and
   the 27-case compatibility suite. Tests cover empty/nonempty tails, a raw Pi branch
   result, source/image chunk sizes 1/64, and rejection of the wrong output
-  index before and after unfinished image resaves. Vec append remains
-  unsupported: its type-level `add k n` reaches RETURN value extraction;
-  the kernel's existing `pg_prove_total_pure_value` accepts that checked
-  total, empty-effect computation, but source synthesis does not yet use it.
-  Investigate that shared rule before adding another result representation;
-  unspecified totality and nonempty effects must still be rejected.
+  index before and after unfinished image resaves. Vec append initially
+  stopped at RETURN value extraction of its type-level `add k n`; the
+  follow-up above connects the existing total-pure rule and records the
+  next conversion limitation. Unspecified totality and nonempty effects
+  still reject symbolic value extraction.
   This is separate from tail's result-motive inference. General compatibility
   and QuickSort's post-hoc property remain open.
 - [x] Restore unchanged `insertion_sort_check.p` and `eager_insertion_check.p`.

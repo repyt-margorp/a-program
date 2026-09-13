@@ -5764,6 +5764,29 @@ static void graded_application(struct pg_typing *typing, struct pg_classifiers *
 	const struct pg_evidence *context = pg_prove_context_extension(typing, empty, x, u1);
 	const struct pg_effect_row *row = pg_effect_row(typing->graph, 0, NULL);
 	for (enum pg_totality grade = PG_TOTALITY_UNSPECIFIED; grade <= PG_TOTALITY_TOTAL; ++grade) {
+		for (size_t effectful = 0; effectful < 2; ++effectful) {
+			const struct pg_effect_row *effects = effectful ? pg_effect_row(typing->graph, 1,
+				(const struct pg_object *[]){&pg_return_operation}) : row;
+			const struct pg_evidence *type = pg_prove_computation_type(typing, classifiers, grade, effects, u1);
+			const struct pg_object *m = pg_binder(typing->graph);
+			const struct pg_evidence *scope = pg_prove_context_extension(typing, empty, m,
+				pg_prove_thunk_type(typing, classifiers, type));
+			const struct pg_evidence *neutral = pg_prove_force(typing, pg_prove_variable(typing, scope, m));
+			assert(neutral && !pg_prove_return_value(typing, neutral));
+			struct pg_synthesis_job *result_job = pg_synthesis_return(&synthesis, scope, neutral);
+			const struct pg_evidence *result = complete(&synthesis, result_job,
+				grade == PG_TOTALITY_TOTAL && !effectful ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+			assert(pg_synthesis_return(&synthesis, scope, neutral) == result_job);
+			if (!result) continue;
+			assert(pg_evidence_rule(result) == PG_TOTAL_PURE_VALUE);
+			assert(pg_evidence_classifier(result) == pg_evidence_subject(u1)->core);
+			const struct pg_evidence *substitution = pg_prove_substitution_pair(typing,
+				pg_prove_substitution_projection(typing, empty, empty), scope,
+				pg_prove_thunk(typing, classifiers, pg_prove_return_contract(typing, classifiers, grade, argument)));
+			const struct pg_evidence *specialized = pg_prove_reindex(typing, substitution, result);
+			assert(specialized);
+			same_judgement(normalize(&synthesis, empty, specialized), argument);
+		}
 		const struct pg_evidence *body = pg_prove_return_contract(typing, classifiers, grade, pg_prove_variable(typing, context, x));
 		const struct pg_evidence *f = pg_prove_lambda(typing,
 			pg_prove_pi(typing, classifiers, context, pg_prove_classifier(typing, classifiers, context, body)), body);

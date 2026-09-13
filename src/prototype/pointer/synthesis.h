@@ -768,7 +768,9 @@ struct pg_synthesis_job *pg_synthesis_induction_scope_at(struct pg_synthesis *sy
 	struct pg_synthesis_job *motive, const struct pg_context *fields, const struct pg_context *end);
 /* Pure checked computation -> returned value, using the same job table and
  * scheduler. The immutable context/evidence pair is the key, never bare Core.
- * Requests do not reduce; unsupported neutral heads are not negative proofs.
+ * A neutral total, empty-effect input has a checked symbolic result; an
+ * unspecified contract does not. Requests do not reduce; unsupported heads
+ * are not negative proofs.
  * Evidence outlives this store. Primitive rule traversal is not yet budgeted. */
 struct pg_synthesis_job *pg_synthesis_return(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *computation);

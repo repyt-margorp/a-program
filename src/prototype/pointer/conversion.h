@@ -13,7 +13,9 @@ enum pg_conversion_status {
 struct pg_conversion_state;
 struct pg_conversion_certificate;
 /* Fixed kernel-pure conversion: beta, structural CBPV and the implemented
- * Identity/structural CBPV eta equations. A failed WHNF comparison falls back
+ * Identity/structural CBPV eta equations. Compare finite binding structure
+ * before reducing: alpha-equal recursive code needs no unfolding. This does
+ * not change pointer interning. A failed WHNF comparison falls back
  * to strong normalization using the same pure evaluator and shared jobs.
  * No runtime handler override or equality reflection. work outlives comparisons.
  * Fuel counts transitions, not allocator work; lack of a normal form may keep

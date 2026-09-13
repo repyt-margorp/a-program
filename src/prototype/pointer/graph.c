@@ -104,9 +104,30 @@ static int comparison_push(struct pg_comparison_state *context, const struct pg_
 	return 0;
 }
 
+static int comparison_init(struct pg_comparison *work, const struct pg_term *left,
+	const struct pg_term *right, void *policy,
+	int (*normalize)(void *, const struct pg_term *, const struct pg_term **),
+	const struct pg_object *absent, const struct binder_pair *seed);
+
 static enum pg_comparison_status comparison_step(struct pg_comparison_state *context)
 {
 	struct alpha_entry *entry = context->pending;
+	/* Compare finite binding structure before unfolding each subproblem.
+	 * The probe borrows the same scope, so bound/free references stay distinct. */
+	if (context->normalize && !entry->structural_checked) {
+		if (!context->structural.state && comparison_init(&context->structural,
+			entry->left, entry->right, NULL, NULL, NULL, entry->scope)) return PG_COMPARISON_ERROR;
+		enum pg_comparison_status status = pg_comparison_advance(&context->structural, 1);
+		if (status == PG_COMPARISON_PENDING || status == PG_COMPARISON_ERROR) return status;
+		context->structural_tasks += pg_comparison_task_count(&context->structural);
+		pg_comparison_destroy(&context->structural);
+		entry->structural_checked = 1;
+		if (status == PG_COMPARISON_EQUAL) {
+			context->pending = entry->next;
+			return context->pending ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
+		}
+		return PG_COMPARISON_PENDING;
+	}
 	if (entry->stage < 2) {
 		unsigned side = entry->stage;
 		const struct pg_term *input = side ? entry->right : entry->left;
@@ -165,19 +186,20 @@ static enum pg_comparison_status comparison_step(struct pg_comparison_state *con
 static int comparison_init(struct pg_comparison *work, const struct pg_term *left,
 	const struct pg_term *right, void *policy,
 	int (*normalize)(void *, const struct pg_term *, const struct pg_term **),
-	const struct pg_object *absent)
+	const struct pg_object *absent, const struct binder_pair *seed)
 {
 	work->state = calloc(1, sizeof(*work->state));
 	if (!work->state) return -1;
 	work->state->policy = policy;
 	work->state->normalize = normalize;
 	if (pg_index_init(&work->state->seen) != 0) goto fail;
-	struct binder_pair *scope = NULL;
+	const struct binder_pair *scope = seed;
 	if (absent) {
-		scope = pg_alloc(&work->state->arena, sizeof(*scope));
-		if (!scope) goto fail;
+		struct binder_pair *binding = pg_alloc(&work->state->arena, sizeof(*binding));
+		if (!binding) goto fail;
 		/* No reference can match NULL. Inner lambdas shadow this seed. */
-		*scope = (struct binder_pair){absent, NULL, NULL};
+		*binding = (struct binder_pair){absent, NULL, NULL};
+		scope = binding;
 	}
 	if (comparison_push(work->state, left, right, scope) != 0) goto fail;
 	work->state->status = work->state->pending ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
@@ -191,7 +213,7 @@ int pg_comparison_init(struct pg_comparison *work, const struct pg_term *left,
 	const struct pg_term *right, void *policy,
 	int (*normalize)(void *, const struct pg_term *, const struct pg_term **))
 {
-	return comparison_init(work, left, right, policy, normalize, NULL);
+	return comparison_init(work, left, right, policy, normalize, NULL, NULL);
 }
 
 int pg_independence_init(struct pg_comparison *work, const struct pg_term *term,
@@ -199,12 +221,13 @@ int pg_independence_init(struct pg_comparison *work, const struct pg_term *term,
 {
 	work->state = NULL;
 	if (!binder || binder->kind != PG_BINDER) return -1;
-	return comparison_init(work, term, term, NULL, NULL, binder);
+	return comparison_init(work, term, term, NULL, NULL, binder, NULL);
 }
 
 void pg_comparison_destroy(struct pg_comparison *work)
 {
 	if (!work->state) return;
+	pg_comparison_destroy(&work->state->structural);
 	pg_index_destroy(&work->state->seen);
 	pg_graph_destroy(&work->state->arena);
 	free(work->state);
@@ -233,7 +256,8 @@ uint64_t pg_comparison_steps(const struct pg_comparison *work)
 
 size_t pg_comparison_task_count(const struct pg_comparison *work)
 {
-	return work->state ? work->state->seen.count : 0;
+	return work->state ? work->state->seen.count + work->state->structural_tasks
+		+ pg_comparison_task_count(&work->state->structural) : 0;
 }
 
 static int comparison_finish(struct pg_comparison *work)

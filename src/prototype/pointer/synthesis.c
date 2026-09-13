@@ -2213,8 +2213,8 @@ static const struct pg_evidence *value_type(struct pg_synthesis *synthesis, cons
 	return pg_prove_value_type(synthesis->typing, proof);
 }
 
-/* Type positions may advance pure computations, but only checked RETURN
- * evidence exposes a value. Expected types never supply missing synthesis. */
+/* Type positions may advance pure computations or use their checked total
+ * result. Expected types never supply missing synthesis. */
 static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_evidence *context,
 	const struct pg_evidence *proof)
@@ -2428,6 +2428,10 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 		return;
 	}
 	job->result = contents(synthesis, job, job->left->result);
+	if (!job->result && job->role == RETURN_JOB) {
+		if (!job->binder) job->binder = pg_binder(synthesis->typing->graph);
+		job->result = pg_prove_total_pure_value(synthesis->typing, job->left->result, job->binder);
+	}
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 }
 

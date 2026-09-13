@@ -81,7 +81,9 @@ struct pg_comparison { struct pg_comparison_state *state; };
 enum pg_comparison_status { PG_COMPARISON_PENDING, PG_COMPARISON_EQUAL,
 	PG_COMPARISON_DIFFERENT, PG_COMPARISON_ERROR };
 /* Optional immutable normalization policy: -1 error, 0 progressed/pending,
- * 1 ready with output. NULL selects structural alpha comparison. This walker
+ * 1 ready with output. Alpha-equal subproblems are accepted before invoking
+ * the policy; normalization must respect alpha equality. NULL selects purely
+ * structural alpha comparison. This walker
  * issues no typing/conversion certificate and never merges graph nodes. */
 int pg_comparison_init(struct pg_comparison *work, const struct pg_term *left,
 	const struct pg_term *right, void *policy,

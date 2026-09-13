@@ -18,12 +18,15 @@ struct alpha_entry {
 	const struct pg_term *normalized[2];
 	struct alpha_entry *next;
 	unsigned stage;
+	int structural_checked;
 };
 
 struct pg_comparison_state {
 	struct pg_graph arena;
 	struct pg_index seen;
 	struct alpha_entry *pending;
+	struct pg_comparison structural;
+	size_t structural_tasks;
 	void *policy;
 	int (*normalize)(void *, const struct pg_term *, const struct pg_term **);
 	enum pg_comparison_status status;

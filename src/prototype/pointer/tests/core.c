@@ -1927,6 +1927,31 @@ static void conversion_test(struct pg_graph *graph)
 	assert(pg_conversion_init(&conversion, &work, identity, other_identity) == 0);
 	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_EQUAL);
 	pg_conversion_destroy(&conversion);
+	/* Alpha equality must not demand normalization of divergent subterms. */
+	const struct pg_term *self_x = pg_lambda(graph, x, pg_application(graph, vx, vx));
+	const struct pg_term *self_y = pg_lambda(graph, y, pg_application(graph, vy, vy));
+	const struct pg_term *omega_x = pg_application(graph, self_x, self_x);
+	const struct pg_term *omega_y = pg_application(graph, self_y, self_y);
+	assert(omega_x != omega_y);
+	assert(pg_conversion_init(&conversion, &work, omega_x, omega_y) == 0);
+	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_EQUAL);
+	assert(pg_whnf_steps(pg_whnf_request(&work, &pg_pure_policy, omega_x)) == 0);
+	pg_conversion_destroy(&conversion);
+	/* Reduction elsewhere must still compare recursive subterms structurally,
+	 * under the enclosing alpha map rather than an empty binding scope. */
+	const struct pg_object *z = pg_binder(graph);
+	const struct pg_term *pair = pg_reference(graph, pg_binder(graph));
+	const struct pg_term *wrapped_y = pg_application(graph,
+		pg_lambda(graph, z, pg_reference(graph, z)), vy);
+	const struct pg_term *mixed_left = pg_lambda(graph, x,
+		pg_application(graph, pg_application(graph, pair, vx), omega_x));
+	const struct pg_term *mixed_right = pg_lambda(graph, y,
+		pg_application(graph, pg_application(graph, pair, wrapped_y), omega_y));
+	assert(!pg_alpha_equal(mixed_left, mixed_right));
+	assert(pg_conversion_init(&conversion, &work, mixed_left, mixed_right) == 0);
+	assert(pg_conversion_advance(&conversion, 1000) == PG_CONVERSION_EQUAL);
+	assert(pg_whnf_steps(pg_whnf_request(&work, &pg_pure_policy, omega_x)) == 0);
+	pg_conversion_destroy(&conversion);
 	const struct pg_term *dag_x = vx;
 	const struct pg_term *dag_y = vy;
 	for (size_t i = 0; i < 40; ++i) {
@@ -1937,13 +1962,13 @@ static void conversion_test(struct pg_graph *graph)
 	assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
 	assert(pg_conversion_task_count(&conversion) < 100);
 	pg_conversion_destroy(&conversion);
-	/* Distinct inputs that expose the exact same DAG need one comparison
-	 * task; reduction remains explicit and is not interned as equality. */
+	/* Distinct inputs that expose the exact same DAG need a bounded structural
+	 * probe and one reduction task, not an expansion of the shared DAG. */
 	const struct pg_term *beta_dag = pg_application(graph, identity, dag_x);
 	assert(beta_dag != dag_x);
 	assert(pg_conversion_init(&conversion, &work, beta_dag, dag_x) == 0);
 	assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
-	assert(pg_conversion_task_count(&conversion) == 1);
+	assert(pg_conversion_task_count(&conversion) == 4);
 	pg_conversion_destroy(&conversion);
 	const struct pg_term *self = pg_lambda(graph, x, pg_application(graph, vx, vx));
 	const struct pg_term *omega = pg_application(graph, self, self);
