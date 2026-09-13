@@ -151,6 +151,25 @@ September 13 compatibility follow-up:
   premises, incorrect targets and ordinary non-thunk values.
   This closes the 14/20 checkpoint at `083b469`; it does not establish the
   next milestone's QuickSort output property or Higher Identity on Terminates.
+- [x] Generate a graph and witness when induction returns further raw Pi
+  arguments, as in the existing curried append. These arguments become graph
+  indices, not thunked function results. Each recursive premise records the
+  actual arguments supplied at that call, including dependent arguments and
+  earlier recursive results. Schema and witness construction share one checked
+  source-context substitution; no new Core node or acceptance rule is needed.
+  `function-graph-curried.p` proves the independent `AppendOf xs ys zs`
+  specification by induction on `@append xs ys zs`, then consumes it using
+  `*append`. A forged recursive output is rejected. Additional result checks
+  cover changed recursive arguments, a trailing type/value telescope and
+  successive calls where the second consumes the first result.
+  Full debug `check-acceptance` passes, including unchanged 20/20 compatibility
+  and source/image checks for the new cases. Program tests, all new result and
+  rejection checks, image CLI and 20/20 compatibility also pass ASan/UBSan.
+  This restores `@append` on the
+  unchanged QuickSort helper but does not complete `@quickSort`: nested Match
+  on computed results, indexed scrutinees and recursive function fields still
+  need general graph translation. Those are correctness/expressiveness work;
+  retaining more Solve results is not a prerequisite for them.
 
 Theory references for this step: Leijen's [Koka report, Sections 2.1-2.2](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/koka-effects-2013.pdf)
 distinguishes potential divergence from ordinary side effects; Torczon et al.'s

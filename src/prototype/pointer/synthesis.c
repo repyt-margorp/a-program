@@ -2960,6 +2960,7 @@ static int function_graph_order(struct pg_synthesis *synthesis, struct pg_synthe
 	if (!origin || !origin->match) return 0;
 	struct pg_graph temporary = {0};
 	size_t count = origin->match->count;
+	size_t trailing = pg_function_graph_trailing_arity(&job->function_graph);
 	if (count > SIZE_MAX / sizeof(struct pg_function_graph_order)) return -1;
 	struct pg_function_graph_order *orders = pg_alloc(&temporary, count * sizeof(*orders));
 	int result = -1;
@@ -2971,8 +2972,16 @@ static int function_graph_order(struct pg_synthesis *synthesis, struct pg_synthe
 		if (!clause) goto done;
 		/* Named source patterns require their resolved field layout here too. */
 		if (clause->item_count && clause->items[0].operation) goto done;
-		const struct pg_syntax *top = block_syntax(clause->right);
-		size_t groups = top ? block_end(clause->right) : 1;
+		const struct pg_syntax *body = clause->right;
+		const struct marker_shadow *argument_shadow = NULL;
+		for (size_t argument = 0; argument < trailing; ++argument) {
+			if (body->kind != PG_SYNTAX_LAMBDA) goto done;
+			argument_shadow = marker_bind(&temporary, argument_shadow, body->token);
+			if (!argument_shadow) goto done;
+			body = body->right;
+		}
+		const struct pg_syntax *top = block_syntax(body);
+		size_t groups = top ? block_end(body) : 1;
 		if (clause->item_count > SIZE_MAX / sizeof(size_t)) goto done;
 		size_t *last_group = pg_alloc(&temporary, clause->item_count * sizeof(*last_group));
 		if (clause->item_count && !last_group) goto done;
@@ -2980,9 +2989,9 @@ static int function_graph_order(struct pg_synthesis *synthesis, struct pg_synthe
 		struct marker_task *tasks = NULL;
 		struct slot { size_t field; struct pg_token name; struct slot *next; };
 		struct slot *slots = NULL, **tail = &slots;
-		const struct marker_shadow *top_shadow = NULL;
+		const struct marker_shadow *top_shadow = argument_shadow;
 		for (size_t group = 0; group < groups; ++group) {
-			const struct pg_syntax *expression = top ? top->items[group].expression : clause->right;
+			const struct pg_syntax *expression = top ? top->items[group].expression : body;
 			const struct pg_syntax *result_call = expression;
 			while (result_call->kind == PG_SYNTAX_EXPECT) result_call = result_call->left;
 			while (result_call->kind == PG_SYNTAX_APPLICATION && !hypothesis_syntax(result_call))
@@ -3046,15 +3055,16 @@ static int function_graph_order(struct pg_synthesis *synthesis, struct pg_synthe
 		size_t *fields = pg_alloc(&temporary, orders[i].count * sizeof(*fields));
 		if (orders[i].count && !fields) goto done;
 		struct source_case_layout *layout = &job->case_layouts[i];
-		if (orders[i].count > (SIZE_MAX - clause->item_count) / 2) goto done;
-		layout->count = clause->item_count + 2 * orders[i].count;
+		if (trailing > SIZE_MAX - clause->item_count) goto done;
+		if (orders[i].count > (SIZE_MAX - clause->item_count - trailing) / 2) goto done;
+		layout->count = clause->item_count + trailing + 2 * orders[i].count;
 		if (layout->count > SIZE_MAX / sizeof(*layout->fields)) goto done;
 		layout->fields = pg_alloc(synthesis->typing->graph, layout->count * sizeof(*layout->fields));
 		if (layout->count && !layout->fields) goto done;
 		for (size_t field = 0; field < clause->item_count; ++field) layout->fields[field].name = clause->items[field].name;
 		for (size_t slot = 0; slots; ++slot, slots = slots->next) {
 			fields[slot] = slots->field;
-			size_t value = clause->item_count + 2 * slot;
+			size_t value = clause->item_count + trailing + 2 * slot;
 			layout->fields[value].name = slots->name;
 			layout->fields[value + 1].graph_value = value + 1;
 		}

@@ -81,6 +81,13 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/termination.p main expected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/termination-wrong-target.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/termination-wrong-value.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p specMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p emptySpecMain right
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p growMain two
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p chooseMain two
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p twiceMain four
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-curried-wrong.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/acc-function-motive.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-function-motive-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-order-reflexivity.p main expected

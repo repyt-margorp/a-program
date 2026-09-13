@@ -8,7 +8,10 @@
  * No Returns predicate or new kernel rule. Relation formation and witness
  * production advance separately; neither proves an arbitrary user property.
  * Supports pure dependent result types, non-indexed scrutinees and
- * direct recursive fields. Retained Return/Fold/APP/Force evidence supplies
+ * direct recursive fields. Remaining raw Pi arguments become additional graph
+ * indices, not thunked result functions. Their dependent domains, recursive
+ * call arguments and prior call outputs are checked by ordinary substitutions.
+ * Retained Return/Fold/APP/Force evidence supplies
  * ordered call sites; each result type is instantiated at its own input by
  * checked substitution. Repeated calls have separate result/graph fields and
  * unused hypotheses contribute no fields. Schema and witness share this plan.
@@ -34,6 +37,8 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 struct pg_function_graph_order { size_t count; const size_t *fields; };
 int pg_function_graph_source_order(struct pg_function_graph_work *work,
 	size_t count, const struct pg_function_graph_order *orders);
+/* Number of raw Pi arguments after the selected source scrutinee, before F. */
+size_t pg_function_graph_trailing_arity(const struct pg_function_graph_work *work);
 enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph_work *work, uint64_t budget);
 /* Leading raw Lambda parameters become ordinary family abstractions. */
 const struct pg_evidence *pg_function_graph_formation(const struct pg_function_graph_work *work);

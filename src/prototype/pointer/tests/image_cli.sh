@@ -91,7 +91,7 @@ printf '%s\n' 'image cli: multi-root selection, retained obligations and range r
 printf '%s\n' 'image cli: parameterized List source/image NF agreement passed'
 
 # An unfinished image cannot bypass induction or coverage checks.
-for fixture in indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong length-output-proof-wrong termination-wrong-target termination-wrong-value; do
+for fixture in indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong length-output-proof-wrong termination-wrong-target termination-wrong-value function-graph-curried-wrong; do
 	input="$(dirname "${BASH_SOURCE[0]}")/acceptance/$fixture.p"
 	for steps in 0 100; do
 		code=0
@@ -159,6 +159,7 @@ while read -r fixture names; do
 		fi
 	done
 done <<'GRAPHS'
+acceptance/function-graph-curried.p main specMain emptySpecMain:right growMain:two chooseMain:two twiceMain:four
 acceptance/termination.p main
 ../../tests/fixtures/typing/if8_fuel_free_quicksort_check.p main emptyMain:emptyExpected singletonMain:singletonExpected ascendingMain:ascendingExpected descendingMain:descendingExpected duplicateMain:duplicateExpected
 acceptance/length-output-proof.p main emptyMain:emptyExpected specMain emptySpecMain:emptyExpected
