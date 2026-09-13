@@ -1,0 +1,307 @@
+diff --git a/src/prototype/pointer/evidence.c b/src/prototype/pointer/evidence.c
+index 346e4a8..39d10c6 100644
+--- a/src/prototype/pointer/evidence.c
++++ b/src/prototype/pointer/evidence.c
+@@ -568,6 +568,14 @@ done:
+ 	return result;
+ }
+ 
++const struct pg_evidence *pg_prove_return_origin(struct pg_typing *typing,
++	const struct pg_evidence *computation)
++{
++	if (!pg_evidence_owned_by(computation, typing)) return NULL;
++	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
++	return return_value_origin(typing, computation);
++}
++
+ const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
+ 	const struct pg_evidence *function, const struct pg_evidence *argument)
+ {
+@@ -1741,6 +1749,70 @@ const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
+ 	return elimination_instance(typing, classifiers, substitution, elimination, NULL);
+ }
+ 
++/* Expose executable premises, not formation premises. Substitution is the
++ * ordinary typed context map; this view grants no new conversion rule. */
++const struct pg_evidence *pg_prove_computation_origin(struct pg_typing *typing,
++	const struct pg_evidence *proof, const struct pg_evidence **environment)
++{
++	if (!environment || !pg_evidence_owned_by(proof, typing)) return NULL;
++	*environment = NULL;
++	const struct pg_evidence *map = NULL;
++	for (;;) {
++		enum pg_evidence_rule rule = pg_evidence_rule(proof);
++		if (rule == PG_CONTEXT_PROJECTION || rule == PG_REINDEX) {
++			const struct pg_evidence *inner = pg_evidence_premise(proof, 1);
++			const struct pg_evidence *step = pg_evidence_premise(proof, 0);
++			/* Projection may cross more than one extension. */
++			if (rule == PG_CONTEXT_PROJECTION) {
++				const struct pg_evidence *source = pg_evidence_premise(proof, 0);
++				while (source && pg_evidence_context(source) != pg_evidence_context(inner))
++					source = pg_evidence_premise(source, 0);
++				step = pg_prove_substitution_projection(typing, source, pg_evidence_premise(proof, 0));
++			}
++			map = map ? pg_prove_substitution_compose(typing, step, map) : step;
++			if (!map) return NULL;
++			proof = inner;
++			continue;
++		}
++		if (rule == PG_TYPE_CONVERSION || rule == PG_PURE_NORMALIZATION || rule == PG_EFFECT_SUBSUMPTION) {
++			proof = pg_evidence_premise(proof, 0);
++			continue;
++		}
++		break;
++	}
++	*environment = map;
++	return proof;
++}
++
++int pg_prove_computation_view(struct pg_typing *typing, struct pg_classifiers *classifiers,
++	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
++	const struct pg_evidence **left, const struct pg_evidence **right)
++{
++	if (!rule || !left || !right || !classifiers || !typing) return -1;
++	if (classifiers->graph != typing->graph) return -1;
++	const struct pg_evidence *map = NULL;
++	proof = pg_prove_computation_origin(typing, proof, &map);
++	if (!proof) return -1;
++	*rule = pg_evidence_rule(proof);
++	size_t count;
++	switch (*rule) {
++	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
++		*left = map ? pg_prove_elimination_reindex(typing, classifiers, map, proof) : proof;
++		*right = NULL;
++		return *left ? 0 : -1;
++	case PG_APP_ELIM: case PG_FOLD_ELIM: count = 2; break;
++	case PG_FORCE_ELIM: case PG_THUNK_INTRO: case PG_RETURN_INTRO: count = 1; break;
++	default: return -1;
++	}
++	*left = pg_evidence_premise(proof, 0);
++	*right = count == 2 ? pg_evidence_premise(proof, 1) : NULL;
++	if (map) {
++		*left = pg_prove_reindex(typing, map, *left);
++		if (*right) *right = pg_prove_reindex(typing, map, *right);
++	}
++	return *left && (count == 1 || *right) ? 0 : -1;
++}
++
+ static const struct pg_evidence *constructor_origin(struct pg_typing *typing,
+ 	const struct pg_evidence *value)
+ {
+diff --git a/src/prototype/pointer/evidence.h b/src/prototype/pointer/evidence.h
+index 9e619e8..47f6b6a 100644
+--- a/src/prototype/pointer/evidence.h
++++ b/src/prototype/pointer/evidence.h
+@@ -226,6 +226,15 @@ const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
+ const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
+ 	struct pg_classifiers *classifiers,
+ 	const struct pg_evidence *elimination);
++/* Recover executable premises through retained context maps. These views build
++ * ordinary substitution evidence, not normalization or conversion certificates. */
++const struct pg_evidence *pg_prove_computation_origin(struct pg_typing *typing,
++	const struct pg_evidence *proof, const struct pg_evidence **environment);
++int pg_prove_computation_view(struct pg_typing *typing, struct pg_classifiers *classifiers,
++	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
++	const struct pg_evidence **left, const struct pg_evidence **right);
++const struct pg_evidence *pg_prove_return_origin(struct pg_typing *typing,
++	const struct pg_evidence *computation);
+ /* Factor instance through a constructor refinement. Recover images of the
+  * refinement's variables from the retained constructor and source images,
+  * then check the entire composite. No inversion of reduction or unification. */
+diff --git a/src/prototype/pointer/function_graph.c b/src/prototype/pointer/function_graph.c
+index 0d00404..d4401cf 100644
+--- a/src/prototype/pointer/function_graph.c
++++ b/src/prototype/pointer/function_graph.c
+@@ -180,65 +180,6 @@ static int signature(struct pg_function_graph_state *s)
+ 	return s->indices ? 0 : -1;
+ }
+ 
+-/* Expose executable premises, not formation premises. Substitution is the
+- * ordinary typed context map; this view grants no new conversion rule. */
+-static const struct pg_evidence *computation_origin(struct pg_function_graph_state *s,
+-	const struct pg_evidence *proof, const struct pg_evidence **environment)
+-{
+-	const struct pg_evidence *map = NULL;
+-	for (;;) {
+-		enum pg_evidence_rule rule = pg_evidence_rule(proof);
+-		if (rule == PG_CONTEXT_PROJECTION || rule == PG_REINDEX) {
+-			const struct pg_evidence *inner = pg_evidence_premise(proof, 1);
+-			const struct pg_evidence *step = pg_evidence_premise(proof, 0);
+-			/* Projection may cross more than one extension. */
+-			if (rule == PG_CONTEXT_PROJECTION) {
+-				const struct pg_evidence *source = pg_evidence_premise(proof, 0);
+-				while (source && pg_evidence_context(source) != pg_evidence_context(inner))
+-					source = pg_evidence_premise(source, 0);
+-				step = pg_prove_substitution_projection(s->typing, source, pg_evidence_premise(proof, 0));
+-			}
+-			map = map ? pg_prove_substitution_compose(s->typing, step, map) : step;
+-			if (!map) return NULL;
+-			proof = inner;
+-			continue;
+-		}
+-		if (rule == PG_TYPE_CONVERSION || rule == PG_PURE_NORMALIZATION || rule == PG_EFFECT_SUBSUMPTION) {
+-			proof = pg_evidence_premise(proof, 0);
+-			continue;
+-		}
+-		break;
+-	}
+-	*environment = map;
+-	return proof;
+-}
+-
+-static int computation_view(struct pg_function_graph_state *s,
+-	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
+-	const struct pg_evidence **left, const struct pg_evidence **right)
+-{
+-	const struct pg_evidence *map = NULL;
+-	proof = computation_origin(s, proof, &map);
+-	if (!proof) return -1;
+-	*rule = pg_evidence_rule(proof);
+-	size_t count;
+-	switch (*rule) {
+-	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
+-		*left = map ? pg_prove_elimination_reindex(s->typing, s->classifiers, map, proof) : proof;
+-		*right = NULL;
+-		return *left ? 0 : -1;
+-	case PG_APP_ELIM: case PG_FOLD_ELIM: count = 2; break;
+-	case PG_FORCE_ELIM: case PG_THUNK_INTRO: case PG_RETURN_INTRO: count = 1; break;
+-	default: return -1;
+-	}
+-	*left = pg_evidence_premise(proof, 0);
+-	*right = count == 2 ? pg_evidence_premise(proof, 1) : NULL;
+-	if (map) {
+-		*left = pg_prove_reindex(s->typing, map, *left);
+-		if (*right) *right = pg_prove_reindex(s->typing, map, *right);
+-	}
+-	return *left && (count == 1 || *right) ? 0 : -1;
+-}
+ 
+ static int plan_case(struct pg_function_graph_state *s, struct graph_case *plan)
+ {
+@@ -397,7 +338,7 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
+ 	size_t count = 0, forces = 0;
+ 	int result = 0;
+ 	for (;;) {
+-		function = computation_origin(s, function, &environment);
++		function = pg_prove_computation_origin(s->typing, function, &environment);
+ 		if (!function) goto done;
+ 		enum pg_evidence_rule rule = pg_evidence_rule(function);
+ 		if (rule == PG_APP_ELIM) {
+@@ -428,7 +369,7 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
+ 		const struct pg_evidence *body = function;
+ 		for (;;) {
+ 			const struct pg_evidence *body_environment;
+-			body = computation_origin(s, body, &body_environment);
++			body = pg_prove_computation_origin(s->typing, body, &body_environment);
+ 			if (pg_evidence_rule(body) == PG_LAMBDA_INTRO) body = pg_evidence_premise(body, 1);
+ 			else if (pg_evidence_rule(body) == PG_APP_ELIM) body = pg_evidence_premise(body, 0);
+ 			else if (pg_evidence_rule(body) == PG_FORCE_ELIM || pg_evidence_rule(body) == PG_THUNK_COMPUTATION ||
+@@ -515,7 +456,7 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
+ 	}
+ 	const struct pg_evidence *left, *right, *value = NULL;
+ 	enum pg_evidence_rule rule;
+-	if (computation_view(s, plan->computation, &rule, &left, &right)) goto normalize;
++	if (pg_prove_computation_view(t, s->classifiers, plan->computation, &rule, &left, &right)) goto normalize;
+ 	switch (rule) {
+ 	case PG_FOLD_ELIM: {
+ 		struct graph_continuation *frame = pg_alloc(&s->temporary, sizeof(*frame));
+@@ -541,7 +482,7 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
+ 		const struct pg_term *core = pg_evidence_subject(left)->core;
+ 		size_t i = hypothesis_position(s, plan, core);
+ 		if (i == plan->hypothesis_count) {
+-			if (computation_view(s, left, &rule, &left, &right) || rule != PG_THUNK_INTRO) goto normalize;
++			if (pg_prove_computation_view(t, s->classifiers, left, &rule, &left, &right) || rule != PG_THUNK_INTRO) goto normalize;
+ 			plan->computation = left;
+ 			return 0;
+ 		}
+@@ -1098,7 +1039,7 @@ static int prepare_head(struct pg_function_graph_state *s)
+ 			return 1;
+ 		}
+ 	}
+-	if (computation_view(s, s->body, &rule, &left, &right)) return 0;
++	if (pg_prove_computation_view(s->typing, s->classifiers, s->body, &rule, &left, &right)) return 0;
+ 	switch (rule) {
+ 	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
+ 		s->body = left;
+@@ -1117,7 +1058,7 @@ static int prepare_head(struct pg_function_graph_state *s)
+ 		body = pg_prove_application_body(s->typing, right, pg_prove_return_value(s->typing, left));
+ 		break;
+ 	case PG_FORCE_ELIM:
+-		if (!computation_view(s, left, &rule, &left, &right) && rule == PG_THUNK_INTRO) body = left;
++		if (!pg_prove_computation_view(s->typing, s->classifiers, left, &rule, &left, &right) && rule == PG_THUNK_INTRO) body = left;
+ 		break;
+ 	default: break;
+ 	}
+diff --git a/src/prototype/pointer/synthesis.c b/src/prototype/pointer/synthesis.c
+index fbb22bb..f38a981 100644
+--- a/src/prototype/pointer/synthesis.c
++++ b/src/prototype/pointer/synthesis.c
+@@ -2412,6 +2412,14 @@ static const struct pg_evidence *contents(struct pg_synthesis *synthesis,
+ 
+ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
++	if (job->stage == 3) { forward_proof(synthesis, job, job->right); return; }
++	if (job->stage == 2) {
++		if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return; }
++		if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return; }
++		if (!job->right) job->right = pg_synthesis_return(synthesis, job->inputs[0], job->value_job->result);
++		forward_proof(synthesis, job, job->right);
++		return;
++	}
+ 	if (!job->left) {
+ 		job->left = pg_synthesis_normalize(synthesis, job->inputs[0], job->inputs[1]);
+ 		depend(synthesis, job, job->left);
+@@ -2429,6 +2437,53 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
+ 	}
+ 	job->result = contents(synthesis, job, job->left->result);
+ 	if (!job->result && job->role == RETURN_JOB) {
++		const struct pg_evidence *origin = job->left->result, *left, *right, *body = NULL;
++		const struct pg_effect_row *effects;
++		const struct pg_term *type;
++		enum pg_totality totality;
++		enum pg_evidence_rule rule;
++		if (pg_computation_type_view(pg_evidence_classifier(origin), &totality, &effects, &type) &&
++			totality == PG_TOTALITY_TOTAL && !pg_effect_count(effects) &&
++			!pg_prove_computation_view(synthesis->typing, synthesis->classifiers, origin, &rule, &left, &right)) {
++			switch (rule) {
++			case PG_FOLD_ELIM: {
++				struct pg_synthesis_job *argument = pg_synthesis_return(synthesis, job->inputs[0], left);
++				job->value_job = pg_synthesis_application(synthesis, job->inputs[0], pg_synthesis_evidence(synthesis, right), argument);
++				if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
++				job->stage = 2;
++				depend(synthesis, job, job->value_job);
++				return;
++			}
++			case PG_APP_ELIM: {
++				body = pg_prove_application_body(synthesis->typing, left, right);
++				const struct pg_evidence *function, *unused;
++				enum pg_evidence_rule function_rule;
++				if (!body && !pg_prove_computation_view(synthesis->typing, synthesis->classifiers,
++					left, &function_rule, &function, &unused)) {
++					switch (function_rule) {
++					case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
++						function = pg_prove_elimination_body(synthesis->typing, synthesis->classifiers, function); break;
++					case PG_FOLD_ELIM:
++						function = pg_prove_application_body(synthesis->typing, unused,
++							pg_prove_return_origin(synthesis->typing, function)); break;
++					default: function = NULL; break;
++					}
++					if (function) body = pg_prove_application(synthesis->typing, function, right);
++				}
++				break;
++			}
++			case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
++				body = pg_prove_elimination_body(synthesis->typing, synthesis->classifiers, left); break;
++			case PG_FORCE_ELIM: body = pg_prove_thunk_computation(synthesis->typing, left); break;
++			default: break;
++			}
++			if (body) {
++				job->right = pg_synthesis_return(synthesis, job->inputs[0], body);
++				job->stage = 3;
++				forward_proof(synthesis, job, job->right);
++				return;
++			}
++		}
+ 		if (!job->binder) job->binder = pg_binder(synthesis->typing->graph);
+ 		job->result = pg_prove_total_pure_value(synthesis->typing, job->left->result, job->binder);
+ 	}

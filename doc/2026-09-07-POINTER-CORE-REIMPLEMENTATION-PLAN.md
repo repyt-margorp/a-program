@@ -89,6 +89,16 @@ cover both unspecified and total field contracts and raw-Core conversion of
 the original elimination to the expanded body. This does not resolve Vec's
 symbolic pure-result equation or complete general dependent field support.
 
+Pure-result experiment after `aa21f98`: see
+[`2026-09-14-PURE-RESULT-CONVERSION-EXPERIMENT.md`](2026-09-14-PURE-RESULT-CONVERSION-EXPERIMENT.md).
+Changing only typed result extraction, even with returned-callee and one-step
+elimination recovery, regressed the previously passing arithmetic-index control.
+The trial and its unused helper APIs are withdrawn; an unapplied patch records
+the experiment. Next, specify a correspondence covering both term occurrences
+and classifiers before another extraction rewrite. Scoped typed conversion and
+uniform typed elaboration remain candidates, not admitted rules. Raw conversion,
+strict Fold and the requirement to restore unchanged Vec append remain intact.
+
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the
