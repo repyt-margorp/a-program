@@ -1636,6 +1636,51 @@ done:
 	return result;
 }
 
+const struct pg_evidence *pg_prove_match_body(struct pg_typing *typing,
+	const struct pg_evidence *elimination)
+{
+	if (!pg_evidence_owned_by(elimination, typing) || elimination->rule != PG_MATCH_ELIM) return NULL;
+	struct pg_graph temporary = {0};
+	struct evidence_frame *frames = NULL;
+	const struct pg_evidence *value = elimination->premises[3], *result = NULL;
+	while (value) {
+		switch (value->rule) {
+		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
+			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
+			if (!frame) goto done;
+			*frame = (struct evidence_frame){value, frames};
+			frames = frame;
+			value = value->premises[1];
+			break;
+		}
+		case PG_VARIABLE:
+			value = variable_frame(typing, value, &frames);
+			break;
+		case PG_RETURN_VALUE:
+			value = return_value_origin(typing, value->premises[0]);
+			break;
+		case PG_TYPE_CONVERSION: case PG_PURE_NORMALIZATION:
+			value = value->premises[0];
+			break;
+		case PG_CONSTRUCTOR_INTRO: {
+			if (value->premises[1] != elimination->premises[1]) goto done;
+			const struct pg_data_schema *schema = elimination->premises[1]->certificate;
+			size_t position;
+			if (!pg_data_constructor_position(pg_data_schema_layout(schema), value->certificate, &position)) goto done;
+			result = elimination->premises[position + 5];
+			const struct pg_evidence *fields = value->premises[3];
+			for (size_t i = value->premises[2]->premise_count + 1; result && i < fields->premise_count; ++i)
+				result = pg_prove_application_body(typing, result, evidence_image(typing, fields->premises[i], frames));
+			goto done;
+		}
+		default: goto done;
+		}
+	}
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,

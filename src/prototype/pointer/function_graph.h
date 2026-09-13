@@ -21,7 +21,9 @@
  * unused hypotheses contribute no fields. Schema and witness share this plan.
  * Typed beta/quotation/sequencing wrappers can expose the selected Match;
  * its motive and branches move through the same checked substitution.
- * Conditional/nested case trees and unknown callees/results remain unsupported.
+ * Known constructor Matches expose their typed branch before recursive call
+ * analysis, including raw Pi results and substituted fields. Neutral case
+ * trees and unknown callees/results remain unsupported.
  * One work object owns one generative declaration; a source producer must
  * memoize this request rather than generating a new family for each use. */
 enum pg_function_graph_status {

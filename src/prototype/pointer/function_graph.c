@@ -384,7 +384,13 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		break;
 	}
 	case PG_RETURN_INTRO: value = left; break;
-	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: goto normalize;
+	case PG_MATCH_ELIM: {
+		const struct pg_evidence *body = pg_prove_match_body(t, left);
+		if (!body) goto normalize;
+		plan->computation = body;
+		return 0;
+	}
+	case PG_INDUCTION_ELIM: goto normalize;
 	default: return -1;
 	}
 	return plan_result(s, plan, value);

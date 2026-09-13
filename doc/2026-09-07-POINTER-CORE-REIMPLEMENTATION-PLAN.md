@@ -335,6 +335,18 @@ September 13 typed Match exposure:
   dependent successive calls and false-evidence rejection pass ASan/UBSan.
   Implementation +54/-36; tests +30/-17; documentation counted separately.
   This does not yet add branching or close the following unchecked item.
+- [x] Expose known-constructor Match bodies through ordinary typed application
+  and substitution, retaining recursive-call origins instead of reducing the
+  whole branch to WHNF. `pg_prove_match_body` follows retained constructor
+  fields through context maps; neutral inputs do not acquire guessed fields.
+  Tests include dependent indices, a raw Pi branch result, field unpacking,
+  an ignored recursive branch and a post-hoc `Size xs n` proof. The new wrapped
+  source fixture fails as unsupported on `2b9fd6b` and passes now. Its false
+  output-index claim rejects. Direct-source nested case layout still needs
+  branch-aware source metadata; the wrapper test does not close that gap.
+  Debug `check-acceptance` passes (20/20 compatibility). ASan/UBSan passes IADT,
+  Program, all new results/rejection, image CLI and 20/20 compatibility.
+  There is no new Core, kernel rule, wire version or Replay path.
 - [ ] Replace the flat per-case call list with shared branch-aware translation
   for schema and witness. The concrete `@quickSortAcc` blocker is still at
   59,322 steps: its inner Match has a raw Pi result and pending application

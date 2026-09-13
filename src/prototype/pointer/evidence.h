@@ -218,6 +218,11 @@ int pg_inductive_motive_context_valid(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
 	const struct pg_evidence *elimination);
+/* Expose a nonrecursive Match at a retained constructor introduction. Apply
+ * its actual fields through ordinary typed substitution; do not normalize the
+ * branch or invent fields for a neutral scrutinee. Returns NULL if not exposed. */
+const struct pg_evidence *pg_prove_match_body(struct pg_typing *typing,
+	const struct pg_evidence *elimination);
 /* Eta-expand a declared, parameter-instantiated indexed family into an
  * ordinary raw Pi computation returning its type as a Universe value.
  * Uses checked index scopes, family application, RETURN and Lambda; not a

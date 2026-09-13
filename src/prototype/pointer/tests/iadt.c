@@ -796,6 +796,16 @@ static void indexed_match(void)
 	struct pg_whnf_work work;
 	assert(!pg_whnf_work_init(&work, &graph));
 	check(&work, pg_evidence_subject(match)->core, pg_evidence_subject(pg_prove_return(&typing, &classifiers, xv))->core);
+	const struct pg_evidence *selected_body = pg_prove_match_body(&typing, match);
+	const struct pg_evidence *renamed_body = pg_prove_match_body(&typing, renamed_match);
+	assert(selected_body && renamed_body);
+	assert(pg_alpha_equal(pg_evidence_classifier(selected_body), pg_evidence_classifier(match)) == 1);
+	check(&work, pg_evidence_subject(match)->core, pg_evidence_subject(selected_body)->core);
+	check(&work, pg_evidence_subject(renamed_match)->core, pg_evidence_subject(renamed_body)->core);
+	common_rule(&typing, &classifiers, selected_body);
+	common_rule(&typing, &classifiers, renamed_body);
+	assert(!pg_prove_match_body(&typing, value));
+	assert(!pg_prove_match_body(&typing, NULL));
 	const struct pg_evidence *branch_type = pg_prove_value_type(&typing,
 		pg_substitution_image(&typing, fields, a));
 	const struct pg_evidence *scope = field_context;
@@ -857,6 +867,11 @@ static void indexed_match(void)
 		consumer_parameters, consumer_packet, consumer_mc, consumer_motive, 1, &consumer_branch);
 	const struct pg_evidence *refined_match = pg_prove_elimination_reindex(&typing, &classifiers, refinement, consumer_match);
 	assert(refined_match);
+	assert(!pg_prove_match_body(&typing, consumer_match));
+	const struct pg_evidence *refined_body = pg_prove_match_body(&typing, refined_match);
+	assert(refined_body);
+	check(&work, pg_evidence_subject(refined_match)->core, pg_evidence_subject(refined_body)->core);
+	common_rule(&typing, &classifiers, refined_body);
 	check(&work, pg_evidence_subject(refined_match)->core, pg_evidence_subject(pg_prove_return(&typing,
 		&classifiers, pg_substitution_image(&typing, refinement, x)))->core);
 	common_rule(&typing, &classifiers, refinement);
@@ -895,6 +910,12 @@ static void indexed_match(void)
 	const struct pg_evidence *specialized_application = pg_prove_application(&typing, specialized_function, refined_consumer);
 	assert(specialized_application);
 	check(&work, pg_evidence_subject(specialized_application)->core, pg_evidence_subject(applied)->core);
+	const struct pg_evidence *function_body = pg_prove_match_body(&typing, specialized_function);
+	assert(function_body);
+	const struct pg_evidence *body_application = pg_prove_application_body(&typing, function_body, refined_consumer);
+	assert(body_application);
+	check(&work, pg_evidence_subject(body_application)->core, pg_evidence_subject(applied)->core);
+	common_rule(&typing, &classifiers, body_application);
 	const struct pg_object *predicate = pg_binder(&graph);
 	const struct pg_evidence *predicate_domain = pg_prove_context_extension(&typing, consumer_context,
 		pg_binder(&graph), pg_prove_variable(&typing, consumer_context, a));

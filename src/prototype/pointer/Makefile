@@ -112,6 +112,11 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-exposed-match.p sequencedMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-exposed-match.p indexedMain expected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-exposed-match-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-known-match.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-known-match.p proofMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-known-match.p unpackMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-known-match.p skipMain zero
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-known-match-wrong.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/acc-function-motive.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-function-motive-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-order-reflexivity.p main expected
