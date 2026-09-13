@@ -1,2 +1,2 @@
 Nat := @{zero:*; succ:*->*;};
-proof := #.terminates Nat.zero;
+proof := #terminates Nat.zero;

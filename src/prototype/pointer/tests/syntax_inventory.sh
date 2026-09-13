@@ -9,7 +9,7 @@ cd "$root"
 mapfile -t programs < <(awk -F '\t' '$1 == "program" {print $3}' "$tests/compatibility.tsv")
 test "${#programs[@]}" -gt 0
 status=0
-"$runner" "${programs[@]}" > "$report" || status=$?
+"$runner" --legacy-intrinsic-dot "${programs[@]}" > "$report" || status=$?
 if (( status > 1 )); then
 	cat "$report"
 	exit "$status"

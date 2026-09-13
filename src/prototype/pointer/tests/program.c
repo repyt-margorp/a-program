@@ -165,6 +165,8 @@ static void modules(void)
 	pg_program_destroy(program);
 }
 
+static int allow_legacy_intrinsic_dot;
+
 static struct pg_program *load_program(const char *path)
 {
 	FILE *file = fopen(path, "rb");
@@ -174,7 +176,10 @@ static struct pg_program *load_program(const char *path)
 	char *source = malloc((size_t)size + 1);
 	assert(source && fread(source, 1, (size_t)size, file) == (size_t)size);
 	assert(!fclose(file));
-	struct pg_program *program = pg_program_create(source, (size_t)size, PG_DEFINITION_IMPLICIT_THUNK);
+	struct pg_program *program = pg_program_allocate(PG_DEFINITION_IMPLICIT_THUNK);
+	assert(program);
+	program->allow_legacy_intrinsic_dot = allow_legacy_intrinsic_dot;
+	program->root = pg_program_source(program, program->scope, source, (size_t)size, &program->parser);
 	free(source);
 	assert(program && program->root);
 	return program;
@@ -621,6 +626,10 @@ static void application_result_constraints(void)
 
 int main(int argc, char **argv)
 {
+	if (argc > 1 && !strcmp(argv[1], "--legacy-intrinsic-dot")) {
+		allow_legacy_intrinsic_dot = 1;
+		++argv; --argc;
+	}
 	if (argc == 3 && (!strcmp(argv[1], "--reject") || !strcmp(argv[1], "--unsupported"))) {
 		struct pg_program *p = load_program(argv[2]);
 		while (p->synthesis.ready && p->synthesis.steps < 1000000)

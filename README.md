@@ -69,7 +69,10 @@ supplies an expected type to guide synthesis.
 - Quotation: `&M`. The default policy inserts supported CBPV boundaries;
   `--strict-thunks` requires explicit quotation at definition boundaries.
 - Lambda exit: `!value`, with lexical restrictions across quotation.
-- Effect handlers: `@#.return` and operation clauses, without a `perform`
+- Intrinsic names: `#Int`, `#Text`, `#return`. Dotted `#.Name` is rejected
+  unless `--legacy-intrinsic-dot` is supplied, including in imports and REPL
+  input. Ordinary `Namespace.name` selection is unchanged.
+- Effect handlers: `@#return` and operation clauses, without a `perform`
   keyword. Requests, forwarding and resumptions have checked rules.
 - Imports: `import name;`, supplied by `--imports provider.p`.
 - Generated function graphs and witnesses: `@function` and `*function`
@@ -109,6 +112,7 @@ not new Core tags for every feature.
 | Typing evidence and conversion | `typing.c`, `evidence.c`, `conversion.c` |
 | Source synthesis and scheduling | `syntax.c`, `synthesis.c`, `program.c` |
 | Inductive families and function graphs | `iadt.c`, `function_graph.c` |
+| Machine types and literal descriptors | `host.c` |
 | Higher Identity and dimensional action | `dimension.c`, `action.c`, `identity.c` |
 | Program images and CLI | `source_io.c`, `graph_io.c`, `main.c` |
 
@@ -140,10 +144,12 @@ successful verification nor evidence that the program is invalid.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 57-case legacy
+September 14 verification includes examples 01-07 and 09, a 58-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. These are supported fragments, not complete legacy
 compatibility or complete Higher Observational Type Theory.
+The frozen compatibility inputs opt into `--legacy-intrinsic-dot`; current
+source fixtures and default CLI tests use `#Name`.
 
 | Area | Verified scope |
 | --- | --- |
@@ -152,14 +158,15 @@ compatibility or complete Higher Observational Type Theory.
 | Function properties | [Length specification](src/prototype/pointer/tests/acceptance/length-output-proof.p) and [QuickSort content preservation](src/prototype/pointer/tests/acceptance/legacy-quicksort-property.p), not sortedness |
 | Higher Identity | Selected typed action, transport and higher-dimensional examples; general coherence remains unfinished |
 | Effects | Checked requests, multi-clause handlers, forwarding and resumptions; no terminal/host execution backend |
+| Host values | `#Int` aliases `#Int32`; distinct `#Int64`; `#Text` stores exact bytes. Literal typing and image round trips, including recursive Text fields |
 | Images | Unfinished/completed source inputs, imports and selected retained reductions through ordinary Solve |
 
 Important limitations:
 
-- `#.Int`, `#.Int32`, `#.Int64`, `#.Text`, arithmetic and printing are not
-  restored in the built-in source namespace. Integer and text literals are
-  parsed but cannot yet synthesize typing evidence. Parsing an old program
-  does not imply it can be compiled or run.
+- Host arithmetic and printing are not restored. Integer literals synthesize
+  `#Int32` and reject out-of-range values; `:: #Int64` does not change that
+  choice. Text literals do not impose Unicode normalization or decode an
+  encoding. Host types do not yet have general Higher Identity rules.
 - General dependent motive inference, indexed graph coverage and
   higher/dependent/Universe Identity coherence remain open.
 - A standalone indexed Match whose every branch is refuted can remain pending

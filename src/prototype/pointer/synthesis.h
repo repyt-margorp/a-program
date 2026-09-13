@@ -233,7 +233,7 @@ int pg_synthesis_operation_input(const struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_operation_at(struct pg_synthesis *synthesis,
 	const struct pg_object *label, struct pg_synthesis_job *payload, struct pg_synthesis_job *response,
 	const struct pg_context *allocation);
-/* Independently synthesize a #.return clause as a raw continuation Lambda.
+/* Independently synthesize a #return clause as a raw continuation Lambda.
  * The input supplies its result-domain type, not an expected clause codomain.
  * Shared by exact scope/input/clause; input computations are not executed.
  * Recover the resulting Pi classifier to obtain the return clause's carrier.
@@ -284,7 +284,7 @@ int pg_synthesis_handler_binding_input(const struct pg_synthesis *synthesis,
 const struct pg_source_scope *pg_synthesis_restore_handler_binding(struct pg_synthesis *synthesis,
 	const struct pg_handler_binding_input *input);
 /* Assemble all clauses through the shared producers and final kernel rule.
- * Exactly one #.return clause is required, in any position. A NULL carrier
+ * Exactly one #return clause is required, in any position. A NULL carrier
  * requests independent return-type and least positive effect inference. The
  * handler owns that equation work until synthesis destruction; all structural
  * contributions precede sealing and final kernel acceptance. Explicit carriers

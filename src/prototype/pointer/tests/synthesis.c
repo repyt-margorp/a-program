@@ -784,7 +784,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *invalid_sequence_term = pg_synthesis_term_structure(&synthesis, invalid_sequence);
 		assert(!complete(&synthesis, invalid_sequence_term, PG_SYNTHESIS_DONE));
 		assert(!pg_synthesis_result(invalid_sequence));
-		const char *return_source = "h := M @#.return r => r;";
+		const char *return_source = "h := M @#return r => r;";
 		struct pg_parser return_parser;
 		struct pg_definition return_definition;
 		pg_parser_init(&return_parser, typing->graph, return_source, strlen(return_source));
@@ -801,7 +801,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(return_codomain == total_return_type(classifiers, return_domain));
 		assert(!pg_synthesis_result(return_clause_job));
 		struct pg_synthesis_job *source_return_handler = request(&synthesis, scope,
-			"h := k @#.return r => r;");
+			"h := k @#return r => r;");
 		struct pg_synthesis_job *source_return_type = pg_synthesis_classifier_structure(&synthesis, source_return_handler);
 		assert(!complete(&synthesis, source_return_type, PG_SYNTHESIS_DONE));
 		const struct pg_term *return_row, *return_value;
@@ -875,7 +875,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!pg_synthesis_result(open_clause) && !pg_synthesis_result(context));
 		const struct pg_source_scope *explicit_scope = pg_synthesis_name_job(&synthesis, pending_op_scope,
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "M", .length = 1}, body);
-		const char *explicit_source = "h := M @Op req resume => resume req @#.return x => x;";
+		const char *explicit_source = "h := M @Op req resume => resume req @#return x => x;";
 		struct pg_parser explicit_parser;
 		struct pg_definition explicit_definition;
 		pg_parser_init(&explicit_parser, typing->graph, explicit_source, strlen(explicit_source));
@@ -940,7 +940,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			assert(!pg_synthesis_result(carrier_lambdas[i]));
 		}
 		struct pg_synthesis_job *open_handler = request(&synthesis, pending_op_scope,
-			"h := (@) @Op req resume => resume req @#.return x => x;");
+			"h := (@) @Op req resume => resume req @#return x => x;");
 		struct pg_synthesis_job *open_handler_type = pg_synthesis_classifier_structure(&synthesis, open_handler);
 		assert(!complete(&synthesis, open_handler_type, PG_SYNTHESIS_DONE));
 		struct pg_synthesis_job *open_handler_term = pg_synthesis_term_structure(&synthesis, open_handler);
@@ -950,7 +950,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Op2", .length = 3},
 			pg_synthesis_operation(&synthesis, second_pending_op));
 		struct pg_synthesis_job *multiple_source = request(&synthesis, multiple_scope,
-			"h := (@) @Op req resume => resume req @Op2 req resume => resume req @#.return x => x;");
+			"h := (@) @Op req resume => resume req @Op2 req resume => resume req @#return x => x;");
 		struct pg_synthesis_job *multiple_source_term = pg_synthesis_term_structure(&synthesis, multiple_source);
 		assert(!complete(&synthesis, multiple_source_term, PG_SYNTHESIS_DONE));
 		assert(!pg_synthesis_result(multiple_source));
@@ -1228,7 +1228,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_source_scope *bad_handler_scope = pg_synthesis_name_job(&synthesis, bad_scope, op_name,
 			pg_synthesis_operation(&synthesis, pending_op));
 		complete(&synthesis, request(&synthesis, bad_handler_scope,
-			"h := (@) @Op req resume => resume req @#.return x => x;"), PG_SYNTHESIS_REJECTED);
+			"h := (@) @Op req resume => resume req @#return x => x;"), PG_SYNTHESIS_REJECTED);
 		bad_scope = pg_synthesis_bind_context(&synthesis, scope, name, k, context);
 		complete(&synthesis, request(&synthesis, bad_scope, "v := k;"), PG_SYNTHESIS_REJECTED);
 		assert(pg_evidence_subject(pg_synthesis_result(variable))->core == pg_reference(typing->graph, k));
@@ -1349,7 +1349,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Arg", .length=3}, pg_prove_type_value(typing, u0));
 	assert(scope);
 	const char *calls[] = {"called := Op Arg;", "called := Alias Arg;", "called := {x := Op Arg; x;};",
-		"called := (Op Arg) @#.return x => x;"};
+		"called := (Op Arg) @#return x => x;"};
 	for (size_t i = 0; i < sizeof(calls) / sizeof(*calls); ++i) {
 		const struct pg_evidence *call = complete(&synthesis, request(&synthesis, scope, calls[i]), PG_SYNTHESIS_DONE);
 		const struct pg_effect_row *effects;
@@ -1448,11 +1448,11 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	complete(&synthesis, pg_synthesis_operation_reference(&synthesis,
 		pg_synthesis_evidence(&synthesis, operation_function)), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *mapped = complete(&synthesis,
-		request(&synthesis, scope, "mapped := M @#.return x => x;"), PG_SYNTHESIS_DONE);
+		request(&synthesis, scope, "mapped := M @#return x => x;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *mapped_value = pg_prove_return_value(typing, normalize(&synthesis, context, mapped));
 	assert(mapped_value && pg_evidence_subject(mapped_value)->core == pg_evidence_subject(u0)->core);
-	complete(&synthesis, request(&synthesis, scope, "bad := M @#.return => Arg;"), PG_SYNTHESIS_REJECTED);
-	complete(&synthesis, request(&synthesis, scope, "bad := M @#.return x y => x;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope, "bad := M @#return => Arg;"), PG_SYNTHESIS_REJECTED);
+	complete(&synthesis, request(&synthesis, scope, "bad := M @#return x y => x;"), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *carrier = pg_prove_return_type(typing, classifiers, u1);
 	const struct pg_object *req = pg_binder(typing->graph), *resume = pg_binder(typing->graph);
 	struct pg_parser clause_parser;
@@ -1518,7 +1518,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Result", .length=6}, u1);
 	struct pg_parser handler_parser;
 	struct pg_definition handler_definition;
-	const char *handler_source = "handler := (Op Arg) @#.return x => Result;";
+	const char *handler_source = "handler := (Op Arg) @#return x => Result;";
 	pg_parser_init(&handler_parser, typing->graph, handler_source, strlen(handler_source));
 	assert(pg_parser_next(&handler_parser, &handler_definition) == 1);
 	const struct pg_syntax *handler_syntax = handler_definition.expression;
@@ -1536,11 +1536,11 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		pg_prove_universe(typing, classifiers, context, 2)));
 	assert(complete(&synthesis, handler_return, PG_SYNTHESIS_DONE) == return_function);
 	complete(&synthesis, request(&synthesis, scope,
-		"dependent := M @#.return T => \\x:T => x;"), PG_SYNTHESIS_DONE);
+		"dependent := M @#return T => \\x:T => x;"), PG_SYNTHESIS_DONE);
 	complete(&synthesis, request(&synthesis, scope,
-		"dependent := (Op Arg) @#.return T => \\x:T => x;"), PG_SYNTHESIS_UNSUPPORTED);
+		"dependent := (Op Arg) @#return T => \\x:T => x;"), PG_SYNTHESIS_UNSUPPORTED);
 	const struct pg_evidence *changed = complete(&synthesis,
-		request(&synthesis, scope, "changed := M @#.return x => Result;"), PG_SYNTHESIS_DONE);
+		request(&synthesis, scope, "changed := M @#return x => Result;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *changed_value = pg_prove_return_value(typing, normalize(&synthesis, context, changed));
 	assert(changed_value && pg_evidence_subject(changed_value)->core == pg_evidence_subject(u1)->core);
 	const struct pg_evidence *returned_clause = complete(&synthesis,
@@ -1617,14 +1617,14 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="WrongOp", .length=7},
 		request(&synthesis, scope, "bad := Op :: Result;"));
 	const char *handlers[] = {
-		"h := (Fetch Arg) (Op Arg) @Alias req k => k req @#.return x => x @Fetch req k => k Given;",
-		"h := (Fetch Arg) (Op Arg) @#.return x => x @Fetch req k => k Given @Op req k => k req;",
-		"h := (Fetch Arg) (Op Arg) @Fetch req k => k Given @Alias req k => k req @#.return x => x;",
-		"h := (Op Arg) @Op req k => k req @Alias req k => k req @#.return x => x;",
+		"h := (Fetch Arg) (Op Arg) @Alias req k => k req @#return x => x @Fetch req k => k Given;",
+		"h := (Fetch Arg) (Op Arg) @#return x => x @Fetch req k => k Given @Op req k => k req;",
+		"h := (Fetch Arg) (Op Arg) @Fetch req k => k Given @Alias req k => k req @#return x => x;",
+		"h := (Op Arg) @Op req k => k req @Alias req k => k req @#return x => x;",
 		"h := (Op Arg) @Op req k => k req;",
-		"h := (Op Arg) @#.return x => x @Op req k => k req @#.return y => y;",
-		"h := (Op Arg) @Op req k => Result @#.return x => x;",
-		"h := (Op Arg) @WrongOp req k => k req @#.return x => x;"
+		"h := (Op Arg) @#return x => x @Op req k => k req @#return y => y;",
+		"h := (Op Arg) @Op req k => Result @#return x => x;",
+		"h := (Op Arg) @WrongOp req k => k req @#return x => x;"
 	};
 	for (size_t i = 0; i < sizeof(handlers) / sizeof(*handlers); ++i) {
 		pg_parser_init(&handler_parser, typing->graph, handlers[i], strlen(handlers[i]));
@@ -1678,23 +1678,23 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		enum pg_synthesis_status status;
 		int emits, requests;
 	} nested_handlers[] = {
-		{"h := (Op Arg) @Op req k => (&{ &(\\x : Result => x); }) (k req) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
-		{"h := (Op Arg) @Op req k => (k req) req @#.return x => x;", PG_SYNTHESIS_REJECTED, 0, 0},
-		{"h := (Op Arg) @Op req k => (((Fetch req) (k req)) @Fetch q resume => resume Given @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
-		{"h := ((\\x : Result => Op x) (Op Arg)) @Op req k => k req @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
-		{"h := (Op Arg) @Op req k => (\\x : Result => x) (k req) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
-		{"h := (Op Arg) @Op req k => (&(\\x : Result => x)) (k req) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
-		{"h := (Op Arg) @Op req k => (\\x : Result => Op x) (k req) @#.return x => x;", PG_SYNTHESIS_DONE, 1, 1},
-		{"h := (Op Arg) @Op req k => (\\x : @ => x) (k req) @#.return x => x;", PG_SYNTHESIS_REJECTED, 0, 0},
-		{"h := (Op Arg) @Op req k => ((k req) @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
-		{"h := (Op Arg) @Op req k => ((k req) @#.return x => Op x) @#.return x => x;", PG_SYNTHESIS_DONE, 1, 1},
-		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => resume req @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
-		{"h := (Op Arg) @#.return x => x @Op req k => ((k req) @#.return x => x @Alias req resume => resume req);", PG_SYNTHESIS_DONE, 0, 0},
-		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => {x := Op req; resume x;} @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 1, 0},
-		{"h := (Op Arg) @Op req k => (({x := Op req; k x;}) @Op req resume => {x := Op req; resume x;} @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 1, 1},
-		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => ((resume req) @Op req r => r req @#.return x => x) @#.return x => x) @#.return x => x;", PG_SYNTHESIS_DONE, 0, 0},
-		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => resume req @Alias req resume => resume req @#.return x => x) @#.return x => x;", PG_SYNTHESIS_REJECTED, 0, 0},
-		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => Result @#.return x => x) @#.return x => x;", PG_SYNTHESIS_REJECTED, 0, 0}
+		{"h := (Op Arg) @Op req k => (&{ &(\\x : Result => x); }) (k req) @#return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => (k req) req @#return x => x;", PG_SYNTHESIS_REJECTED, 0, 0},
+		{"h := (Op Arg) @Op req k => (((Fetch req) (k req)) @Fetch q resume => resume Given @#return x => x) @#return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := ((\\x : Result => Op x) (Op Arg)) @Op req k => k req @#return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => (\\x : Result => x) (k req) @#return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => (&(\\x : Result => x)) (k req) @#return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => (\\x : Result => Op x) (k req) @#return x => x;", PG_SYNTHESIS_DONE, 1, 1},
+		{"h := (Op Arg) @Op req k => (\\x : @ => x) (k req) @#return x => x;", PG_SYNTHESIS_REJECTED, 0, 0},
+		{"h := (Op Arg) @Op req k => ((k req) @#return x => x) @#return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => ((k req) @#return x => Op x) @#return x => x;", PG_SYNTHESIS_DONE, 1, 1},
+		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => resume req @#return x => x) @#return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @#return x => x @Op req k => ((k req) @#return x => x @Alias req resume => resume req);", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => {x := Op req; resume x;} @#return x => x) @#return x => x;", PG_SYNTHESIS_DONE, 1, 0},
+		{"h := (Op Arg) @Op req k => (({x := Op req; k x;}) @Op req resume => {x := Op req; resume x;} @#return x => x) @#return x => x;", PG_SYNTHESIS_DONE, 1, 1},
+		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => ((resume req) @Op req r => r req @#return x => x) @#return x => x) @#return x => x;", PG_SYNTHESIS_DONE, 0, 0},
+		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => resume req @Alias req resume => resume req @#return x => x) @#return x => x;", PG_SYNTHESIS_REJECTED, 0, 0},
+		{"h := (Op Arg) @Op req k => ((k req) @Op req resume => Result @#return x => x) @#return x => x;", PG_SYNTHESIS_REJECTED, 0, 0}
 	};
 	for (size_t chunk = 1; chunk <= 64; chunk *= 64)
 	for (size_t i = 0; i < sizeof(nested_handlers) / sizeof(*nested_handlers); ++i) {
@@ -1749,7 +1749,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(!pg_effect_handler_dependencies(&inference, output_effect, input_effect,
 		input_row, return_effect, 1, &clause_effect));
 	pg_effect_inference_seal(&inference);
-	const char *emitting_source = "handler := (Op Arg) @Op req k => {x := Op req; k x;} @#.return x => x;";
+	const char *emitting_source = "handler := (Op Arg) @Op req k => {x := Op req; k x;} @#return x => x;";
 	pg_parser_init(&clause_parser, typing->graph, emitting_source, strlen(emitting_source));
 	assert(pg_parser_next(&clause_parser, &clause_definition) == 1);
 	struct pg_synthesis_job *emitting_input = pg_synthesis_request(&synthesis, scope, clause_definition.expression->left);
@@ -2615,20 +2615,20 @@ static void namespaces(struct pg_synthesis *synthesis, const struct pg_source_sc
 	assert(scope);
 	assert(synthesis->typing->graph->terms.count == terms && synthesis->jobs.count == jobs);
 	assert(synthesis->typing->proofs.count == proofs && synthesis->normalization->jobs.count == evaluations);
-	const char *aliases[] = {"main := #.refl;", "main := N.refl;", "main := Outer.N.refl;"};
+	const char *aliases[] = {"main := #refl;", "main := N.refl;", "main := Outer.N.refl;"};
 	for (size_t i = 0; i < sizeof(aliases) / sizeof(*aliases); ++i)
 		assert(complete(synthesis, request(synthesis, scope, aliases[i]), PG_SYNTHESIS_DONE) == library->reflexivity);
 	assert(synthesis->typing->graph->terms.count == terms && synthesis->normalization->jobs.count == evaluations);
 	const char *good[] = {
-		"main := \\A:@ => \\x:A => #.refl A x :: N.Eq A x x;",
-		"{{ alias:=&#.refl; main:=&(\\A:@ => \\x:A => alias A x :: #.Eq A x x); }}.main;",
-		"main := \\refl:@ => #.refl;",
+		"main := \\A:@ => \\x:A => #refl A x :: N.Eq A x x;",
+		"{{ alias:=&#refl; main:=&(\\A:@ => \\x:A => alias A x :: #Eq A x x); }}.main;",
+		"main := \\refl:@ => #refl;",
 		"main := \\A:@ => { f:=&Outer.N.refl; f; }.f;"
 	};
 	for (size_t i = 0; i < sizeof(good) / sizeof(*good); ++i)
 		complete(synthesis, request(synthesis, scope, good[i]), PG_SYNTHESIS_DONE);
-	const char *missing[] = {"main := #.missing;", "main := Missing.refl;", "main := Outer.refl;",
-		"main := N;", "main := refl;", "main := #.Outer.N.refl;"};
+	const char *missing[] = {"main := #missing;", "main := Missing.refl;", "main := Outer.refl;",
+		"main := N;", "main := refl;", "main := #Outer.N.refl;"};
 	for (size_t i = 0; i < sizeof(missing) / sizeof(*missing); ++i)
 		complete(synthesis, request(synthesis, scope, missing[i]), PG_SYNTHESIS_REJECTED);
 	const char *shadowed[] = {"main := \\N:@ => N.refl;", "{{ N:=@; main:=N.refl; }}.main;"};
@@ -5073,7 +5073,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		"\\subject:A=>\\proof:Acc A R subject=>proof @acc x down=>"
 		"{Choose Nat.zero; stepAtX:=&(step x); stepAtX &(*down);};"), PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *handled_match = complete(&synthesis, request(&synthesis, effect_scope,
-		"r:=((Choose Nat.zero) @zero=>Nat.zero @succ k=>k) @Choose req resume=>resume req @#.return x=>x;"), PG_SYNTHESIS_DONE);
+		"r:=((Choose Nat.zero) @zero=>Nat.zero @succ k=>k) @Choose req resume=>resume req @#return x=>x;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *handled_result = complete(&synthesis,
 		pg_synthesis_return(&synthesis, empty, handled_match), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(handled_result)->core == pg_evidence_subject(zero)->core);
@@ -5083,7 +5083,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	assert(match_result == pg_evidence_subject(nat)->core);
 	assert(pg_effect_count(match_effects) == 1 && pg_effect_contains(match_effects, pg_operation_label(choose)) == 1);
 	const struct pg_evidence *handled_induction = complete(&synthesis, request(&synthesis, effect_scope,
-		"r:=((\\n:Nat=>n @zero=>Choose Nat.zero @succ k=>Nat.succ *k) (Nat.succ Nat.zero)) @Choose req resume=>resume req @#.return x=>x;"), PG_SYNTHESIS_DONE);
+		"r:=((\\n:Nat=>n @zero=>Choose Nat.zero @succ k=>Nat.succ *k) (Nat.succ Nat.zero)) @Choose req resume=>resume req @#return x=>x;"), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *induction_result = complete(&synthesis,
 		pg_synthesis_nf(&synthesis, empty, handled_induction), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *one_result = complete(&synthesis, request(&synthesis, named,

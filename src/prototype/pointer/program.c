@@ -1,4 +1,6 @@
 #include "program.h"
+#include "host.h"
+#include "derivation.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +24,7 @@ struct pg_synthesis_job *pg_program_source(struct pg_program *program,
 	if (!copy) return NULL;
 	if (length) memcpy(copy, source, length);
 	pg_parser_init(diagnostic, &program->graph, copy, length);
+	diagnostic->allow_legacy_intrinsic_dot = program->allow_legacy_intrinsic_dot;
 	const struct pg_syntax *syntax = pg_parser_program(diagnostic);
 	return syntax ? pg_synthesis_request(&program->synthesis, scope, syntax) : NULL;
 }
@@ -39,6 +42,22 @@ struct pg_program *pg_program_allocate(enum pg_definition_policy policy)
 	if (pg_synthesis_init(&program->synthesis, &program->typing, &program->classifiers,
 		&program->evaluation, policy) != 0) goto fail;
 	program->scope = pg_synthesis_root(&program->synthesis);
+	if (!program->scope) goto fail;
+	const struct pg_source_scope *hosts = program->scope;
+	const char *names[] = {"Int", "Int32", "Int64", "Text"};
+	const struct pg_evidence *empty = pg_prove_empty_context(&program->typing);
+	struct pg_synthesis_job *context = pg_synthesis_evidence(&program->synthesis, empty);
+	for (size_t i = 0; i < sizeof(names) / sizeof(*names); ++i) {
+		struct pg_derivation_input input = {.rule = PG_HOST_TYPE_FORM, .count = 1,
+			.parameters.constant = pg_host_type(names[i])};
+		struct pg_synthesis_job *type = pg_synthesis_rule(&program->synthesis, &input, &context, NULL, NULL);
+		struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = names[i],
+			.length = strlen(names[i]), .text_length = strlen(names[i])};
+		hosts = pg_synthesis_name_job(&program->synthesis, hosts, name, type);
+		if (!hosts) goto fail;
+	}
+	program->scope = pg_synthesis_namespace(&program->synthesis, program->scope,
+		(struct pg_token){.kind = '#'}, hosts);
 	if (!program->scope) goto fail;
 	return program;
 fail:

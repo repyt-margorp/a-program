@@ -29,7 +29,76 @@ Commit and push verified development increments on the rewrite branch. A
 published increment is not completion of the full rewrite; retain the open
 compatibility, property-proof and Higher Identity requirements below.
 
-## September 14 Host Compatibility Follow-Up
+## September 14 Host Literals and Intrinsic Spelling
+
+This revision supersedes the missing-literal status in the historical follow-up
+below. It does not complete arithmetic, host effects or the full rewrite.
+
+- [x] Standard source spelling is `#Name`, including `#Int`, `#Text` and
+  `@#return`. Parse it as ordinary namespace selection; no new Core node.
+  Reject `#.Name` by default. `--legacy-intrinsic-dot` opts in for source,
+  imports and subsequent REPL input. Ordinary `Namespace.name` is unchanged.
+- [x] Keep archived sources unchanged; compatibility/inventory runners explicitly
+  opt in. New fixtures exercise the standard spelling and default rejection.
+  Already parsed `.a` graphs do not require this parser option on load.
+- [x] Implement closed, versioned descriptors for Int32, Int64 and byte Text.
+  Int aliases Int32. Literal interning uses exact descriptor and bytes, with
+  canonical big-endian two's-complement integer payloads, not host addresses.
+  Source integers synthesize Int32, independently of `::`; text preserves NUL
+  and arbitrary bytes without an implicit encoding conversion.
+- [x] Introduce host type/value evidence through ordinary derivation producers.
+  Root namespace setup, literal synthesis and loaded evidence use the same
+  checked rules. References remain inert; no arithmetic/print dispatch is added
+  to pure normalization and no generic signature grants oracle authority.
+- [x] Extend the shared descriptor codec and derivation input transport.
+  Derivation payload v12 has a constant-reference slot; the reader also handles
+  v11's eight-slot payload. Host rules validate descriptor/type agreement during
+  ordinary Solve. The surrounding source-image format remains unchanged.
+- [x] Restore unchanged `host_text_recursive_motive_check.p` in the legacy gate
+  (58 cases), plus source/image literal and constructor-field result checks.
+- [x] Full debug acceptance passes, including the 58-case gate and subsequent
+  QuickSort property/image result checks. The 158-input parser inventory also
+  matches its reviewed expectations (not 158 semantically accepted programs).
+- [x] Read previous-compiler v11 images: an unsolved `examples/07_add.p` image
+  normalizes `main`; the earlier certified-length image finishes ordinary Solve.
+- [x] Full ASan/UBSan acceptance exits 0 with the same 58-case compatibility
+  gate and all subsequent property/image checks. Debug and sanitizer logs are
+  `/tmp/a-program-host-acceptance-final.log` and
+  `/tmp/a-program-host-sanitize-final.log` (local execution records).
+- [ ] Restore `host_expression_evaluator_check.p`: arithmetic still needs its
+  width/overflow contract and explicit pure-versus-interceptable classification.
+- [ ] Add runtime host effect dispatch separately; `#print` is the intended
+  spelling, not a claim that terminal printing is implemented already.
+- [ ] Define and check the missing host Higher Identity behavior.
+
+Source setup and image restoration need not take identical numbers of Solve
+transitions: serialized namespace derivations are checked by ordinary Solve.
+Tests compare source/image terms and classifiers, and require equal step counts
+for split versus uninterrupted execution of the same image. This is not a
+permission to trust saved completion flags or add a separate Replay path.
+
+The existing unsolved byte-for-byte resave test caught a root restoration bug
+introduced by namespace setup: a serialized empty scope was restored to the
+prelude-extended `program->scope`. It now restores `pg_synthesis_root`, so each
+load does not insert another namespace layer. The byte-stability assertion is
+retained. The focused bare-scope-chain test likewise starts at the bare root.
+
+Observed source checks: unchanged Text recursive motive finishes in 1,442
+steps; its result comparison passes with chunk sizes 1 and 64. The unchanged
+QuickSort content-property client/provider takes 148,380 transitions versus
+148,374 in the preceding compiler. This is a transition-count comparison, not
+a controlled wall-clock benchmark; general performance work remains open.
+
+Verification commands use `make -f src/prototype/pointer/Makefile
+check-acceptance` with `BUILD=/tmp/a-program-host-work` and C11 `-O0 -g
+-Wall -Wextra -Werror`; the sanitizer build additionally uses
+`-fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie` and
+`BUILD=/tmp/a-program-host-sanitize`. The ordinary `pointer-check` target is
+also rebuilt at `-O2`. Source/header change size is +316/-20 (net +296);
+tests/fixtures +376/-141 (net +235), excluding docs and Makefile. Most test
+replacements migrate current spelling or explicitly opt frozen fixtures in.
+
+## September 14 Host Compatibility Follow-Up (Historical)
 
 After `af30e89`, the top-level README separates verified fragments from missing
 host support instead of presenting every implementation increment inline. The

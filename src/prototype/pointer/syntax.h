@@ -55,6 +55,8 @@ struct pg_parser {
 	const char *error;
 	struct pg_token error_token;
 	size_t entries;
+	/* Source spelling compatibility only; does not alter name resolution. */
+	int allow_legacy_intrinsic_dot;
 };
 void pg_parser_init(struct pg_parser *parser, struct pg_graph *arena,
 	const char *input, size_t length);

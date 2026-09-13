@@ -463,10 +463,10 @@ static int handler_scopes(int mode)
 	struct pg_program *p = handler_base(mode >= 5 ? 2 : mode >= 2 ? 1 : 0, &scope);
 	struct pg_parser parser;
 	struct pg_definition definition;
-	const char *text = mode >= 2 ? "h:=(ask d) @ask req k=>k req @#.return x=>x;" : "h:=d @#.return x=>x;";
-	if (mode >= 5) text = "h:=(other (ask d)) @ask req k=>k req @other req k=>k req @#.return x=>x;";
-	if (mode >= 6) text = "h:=(other (ask d)) @ask req k=>(\\v:D=>k v) req @other req k=>k req @#.return x=>x;";
-	if (mode >= 7) text = "h:=(other (ask d)) @ask req k=>k ((\\v:D=>v) req) @other req k=>k req @#.return x=>x;";
+	const char *text = mode >= 2 ? "h:=(ask d) @ask req k=>k req @#return x=>x;" : "h:=d @#return x=>x;";
+	if (mode >= 5) text = "h:=(other (ask d)) @ask req k=>k req @other req k=>k req @#return x=>x;";
+	if (mode >= 6) text = "h:=(other (ask d)) @ask req k=>(\\v:D=>k v) req @other req k=>k req @#return x=>x;";
+	if (mode >= 7) text = "h:=(other (ask d)) @ask req k=>k ((\\v:D=>v) req) @other req k=>k req @#return x=>x;";
 	pg_parser_init(&parser, &p->graph, text, strlen(text));
 	assert(pg_parser_next(&parser, &definition) == 1);
 	const struct pg_source_scope *inner = pg_synthesis_handler_scope(&p->synthesis, scope, definition.expression);
@@ -517,8 +517,8 @@ static int handler_scopes(int mode)
 	}
 	struct pg_synthesis_job *changed = NULL, *invalid = NULL;
 	if (mode == 4) {
-		changed = handler_change(p, roots[2], "h:=(ask d) @ask req k=>req @#.return x=>x;");
-		invalid = handler_change(p, roots[2], "h:=(ask d) @ask req k=>k k @#.return x=>x;");
+		changed = handler_change(p, roots[2], "h:=(ask d) @ask req k=>req @#return x=>x;");
+		invalid = handler_change(p, roots[2], "h:=(ask d) @ask req k=>k k @#return x=>x;");
 		assert(!p->synthesis.steps);
 	}
 	while (p->synthesis.ready) {
@@ -575,10 +575,10 @@ static int handler_scopes(int mode)
 static void handler_save_boundaries(void)
 {
 	const char *sources[] = {
-		"h:=(other (ask d)) @ask req k=>(\\v:D=>k v) req @other req k=>k req @#.return x=>x;",
-		"h:=(other (ask d)) @ask req k=>k ((\\v:D=>v) req) @other req k=>k req @#.return x=>x;",
-		"h:=(ask d) @ask req k=>k k @#.return x=>x;",
-		"h:=(other (ask d)) @ask req k=>k req @#.return x=>x;"
+		"h:=(other (ask d)) @ask req k=>(\\v:D=>k v) req @other req k=>k req @#return x=>x;",
+		"h:=(other (ask d)) @ask req k=>k ((\\v:D=>v) req) @other req k=>k req @#return x=>x;",
+		"h:=(ask d) @ask req k=>k k @#return x=>x;",
+		"h:=(other (ask d)) @ask req k=>k req @#return x=>x;"
 	};
 	for (size_t test = 0; test < sizeof(sources) / sizeof(*sources); ++test) {
 		const struct pg_source_scope *scope;
@@ -988,7 +988,7 @@ static int find_elimination(void *owner, struct pg_synthesis_job *job)
 
 static void fold_origins(void)
 {
-	struct pg_program *p = retained_program("{{ Nat:=@{zero:*;succ:*->*;}; r:=&((Nat.succ Nat.zero) @#.return x=>Nat.succ x); }}.r");
+	struct pg_program *p = retained_program("{{ Nat:=@{zero:*;succ:*->*;}; r:=&((Nat.succ Nat.zero) @#return x=>Nat.succ x); }}.r");
 	FILE *file = tmpfile();
 	assert(file && !pg_sources_write_retained(file, &p->synthesis, 1, &p->root, p->retained_reductions));
 	pg_program_destroy(p);
@@ -1710,11 +1710,12 @@ static void prepared_scope_chain(void)
 	struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
 	struct pg_derivation_input universe = {.rule = PG_UNIVERSE_FORM, .count = 1, .parameters.level = 1};
 	struct pg_synthesis_job *type = pg_synthesis_rule(&p->synthesis, &universe, &context, NULL, NULL);
-	struct pg_synthesis_job *term = parse(p, p->scope, "{{main:=@;}}.main");
+	const struct pg_source_scope *base = pg_synthesis_root(&p->synthesis);
+	struct pg_synthesis_job *term = parse(p, base, "{{main:=@;}}.main");
 	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "T", .length = 1};
 	struct pg_syntax reference = {.kind = PG_SYNTAX_ATOM, .token = name};
 	reference.token.text_length = name.length;
-	const struct pg_source_scope *scope = p->scope;
+	const struct pg_source_scope *scope = base;
 	for (size_t i = 0; i < depth; ++i) {
 		struct pg_synthesis_job *check = pg_synthesis_source_expect(&p->synthesis, scope, term, type);
 		scope = pg_synthesis_name_job(&p->synthesis, scope, name, check);
@@ -2069,7 +2070,7 @@ static void retained_process(int argc, char **argv)
 		else if (!strcmp(argv[3], "match"))
 			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&{(\\n:Nat=>n @zero=>Nat.zero @succ k=>Nat.succ *k) (Nat.succ (Nat.succ Nat.zero));}; }}.r";
 		else if (!strcmp(argv[3], "fold"))
-			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&((Nat.succ Nat.zero) @#.return x=>Nat.succ x); }}.r";
+			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&((Nat.succ Nat.zero) @#return x=>Nat.succ x); }}.r";
 		else {
 			assert(!strcmp(argv[3], "nominal"));
 			text = "{{ Nat:=@{zero:*;succ:*->*;}; Other:=@{zero:*;succ:*->*;}; id:=&(\\x:Nat=>x); }}.id";

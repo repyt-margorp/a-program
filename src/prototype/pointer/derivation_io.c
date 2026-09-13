@@ -5,10 +5,11 @@
 #include "effect_inference.h"
 #include "iadt.h"
 #include "context_payload.h"
+#include "host.h"
 
 #include <string.h>
 
-static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 11};
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 12};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {
@@ -59,7 +60,7 @@ int pg_derivation_input_terms(struct pg_graph *scratch,
 	if (!terms) return -1;
 	const struct pg_object *objects[PG_DERIVATION_TERM_SLOTS] = {
 		p->binder, input->effect_parameter, NULL, NULL, p->operation_label, NULL,
-		p->declaration ? pg_data_declaration_family(p->declaration) : NULL, p->constructor
+		p->declaration ? pg_data_declaration_family(p->declaration) : NULL, p->constructor, p->constant
 	};
 	for (size_t i = 0; i < PG_DERIVATION_TERM_SLOTS; ++i) {
 		terms[i] = objects[i] ? pg_reference(scratch, objects[i]) : NULL;
@@ -218,7 +219,7 @@ int pg_derivation_inputs_write_inference(FILE *file, size_t count,
 
 struct input_record {
 	struct pg_derivation_input *input;
-	uint64_t binder, effects, source, target, operation, handler, declaration, constructor;
+	uint64_t binder, effects, source, target, operation, handler, declaration, constructor, constant;
 	size_t metadata_count, allocation_count;
 	uint64_t *metadata, *allocation;
 };
@@ -241,7 +242,8 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	if (work && (work->rows != graph || work->sealed || work->failed || work->row_sources.count)) return -1;
 	char header[8];
 	uint64_t n, nr;
-	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return -1;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 7)) return -1;
+	if (header[7] != 11 && header[7] != 12) return -1;
 	if (pg_wire_read_u64(file, &n) || pg_wire_read_u64(file, &nr)) return -1;
 	if (n > limit || nr > limit - n || limit > SIZE_MAX / sizeof(struct input_record)) return -1;
 	struct input_record *records = pg_alloc(graph, (size_t)n * sizeof(*records));
@@ -251,7 +253,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t rule, level, direction, totality, arity, reduction_kind;
 		if (pg_wire_read_u64(file, &rule)) return -1;
-		if (rule > PG_TOTAL_PURE_VALUE) return -1;
+		if (rule > (header[7] == 11 ? PG_TOTAL_PURE_VALUE : PG_HOST_VALUE_INTRO)) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
 		if (pg_wire_read_u64(file, &totality) || totality > PG_TOTALITY_TOTAL) return -1;
 		if (totality && rule != PG_RETURN_TYPE_FORM && rule != PG_RETURN_INTRO) return -1;
@@ -261,6 +263,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 			|| pg_wire_read_u64(file, &records[i].target) || pg_wire_read_u64(file, &records[i].operation)
 			|| pg_wire_read_u64(file, &records[i].handler)
 			|| pg_wire_read_u64(file, &records[i].declaration) || pg_wire_read_u64(file, &records[i].constructor)) return -1;
+		if (header[7] == 12 && pg_wire_read_u64(file, &records[i].constant)) return -1;
 		uint64_t nm, na;
 		if (pg_wire_read_u64(file, &nm) || pg_wire_read_u64(file, &na)) return -1;
 		if (nm > available || na > available - nm) return -1;
@@ -339,6 +342,11 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 		if (r->binder > term_count || r->effects > term_count || r->source > term_count || r->target > term_count) return -1;
 		if (r->operation > term_count || r->handler > term_count) return -1;
 		if (r->declaration > term_count || r->constructor > term_count) return -1;
+		if (r->constant > term_count) return -1;
+		if (r->input->rule == PG_HOST_TYPE_FORM || r->input->rule == PG_HOST_VALUE_INTRO) {
+			if (!r->constant || terms[r->constant - 1]->kind != PG_REFERENCE) return -1;
+			r->input->parameters.constant = terms[r->constant - 1]->as.reference;
+		} else if (r->constant) return -1;
 		if (r->input->rule == PG_INDUCTIVE_FORM) {
 			if (!r->declaration || terms[r->declaration - 1]->kind != PG_REFERENCE) return -1;
 			r->input->parameters.declaration = pg_data_declaration_view(terms[r->declaration - 1]->as.reference);

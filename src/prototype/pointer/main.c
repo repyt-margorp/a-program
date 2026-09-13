@@ -231,7 +231,7 @@ int main(int argc, char **argv)
 	const char *selected = NULL;
 	const char *save = NULL;
 	const char *imports = NULL;
-	int nf = 0, load = 0, interactive = 0, retain_reductions = 0;
+	int nf = 0, load = 0, interactive = 0, retain_reductions = 0, legacy_intrinsic_dot = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "--steps")) {
 			if (++i == argc || steps_argument(argv[i], &budget) != 0) goto usage;
@@ -252,9 +252,11 @@ int main(int argc, char **argv)
 			if (save || ++i == argc || !*argv[i] || !strcmp(argv[i], "-")) goto usage;
 			save = argv[i];
 		} else if (!strcmp(argv[i], "--strict-thunks")) policy = PG_DEFINITION_EXPLICIT_THUNK;
+		else if (!strcmp(argv[i], "--legacy-intrinsic-dot")) legacy_intrinsic_dot = 1;
 		else if (!strcmp(argv[i], "--help")) {
-			puts("usage: pointer-check [--steps N] [--strict-thunks] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME] INPUT|-\n"
+			puts("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME] INPUT|-\n"
 				"Checks with the pointer-core solver; does not execute host effects.\n"
+				"#Name is standard; --legacy-intrinsic-dot also accepts #.Name in source/imports/REPL.\n"
 				"--imports FILE.p supplies exported symbols to explicit source imports.\n"
 				"--repl keeps the loaded Program for :solve, :whnf, :nf, :status, :root, :save, :quit.\n"
 				"--load reads an image (limit 1000000); its stored thunk policy applies.\n"
@@ -294,6 +296,7 @@ int main(int argc, char **argv)
 		char *source = NULL;
 		size_t length = 0;
 		program = read_source(file, &source, &length) ? NULL : pg_program_allocate(policy);
+		if (program) program->allow_legacy_intrinsic_dot = legacy_intrinsic_dot;
 		if (program && imports) {
 			int status = import_provider(program, imports);
 			if (status) {
@@ -309,6 +312,7 @@ int main(int argc, char **argv)
 	}
 	if (file != stdin) fclose(file);
 	if (!program) { fprintf(stderr, "%s: cannot read or initialize input\n", path); return 2; }
+	program->allow_legacy_intrinsic_dot = legacy_intrinsic_dot;
 	if (!roots) roots = &program->root;
 	struct root_list retained = {0};
 	int result;
@@ -344,6 +348,6 @@ done:
 	pg_program_destroy(program);
 	return result;
 usage:
-	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME] INPUT|-\n", stderr);
+	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME] INPUT|-\n", stderr);
 	return 2;
 }

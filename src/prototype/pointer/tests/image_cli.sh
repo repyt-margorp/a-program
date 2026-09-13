@@ -138,9 +138,12 @@ printf '%s\n' 'image cli: unfinished family inputs preserve direct Solve admissi
 # appearing in independently synthesized annotations. No graph proof flag loads.
 while read -r fixture names; do
 	input="$(dirname "${BASH_SOURCE[0]}")/$fixture"
+	# Frozen legacy fixtures keep their spelling; new fixtures use the default.
+	options=()
+	case "$fixture" in ../../tests/fixtures/*) options=(--legacy-intrinsic-dot);; esac
 	for steps in 0 100 100000; do
 		code=0
-		"$binary" --steps "$steps" --save "$directory/generated.a" "$input" > "$directory/status" || code=$?
+		"$binary" "${options[@]}" --steps "$steps" --save "$directory/generated.a" "$input" > "$directory/status" || code=$?
 		if test "$steps" = 100000; then test "$code" = 0; else test "$code" = 3; fi
 		code=0
 		"$binary" --load --steps 0 --save "$directory/generated-resaved.a" "$directory/generated.a" > "$directory/status" || code=$?

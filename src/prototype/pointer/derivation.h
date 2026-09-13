@@ -14,6 +14,7 @@ struct pg_derivation_parameters {
 	const struct pg_handler_signature *handler;
 	const struct pg_data_declaration *declaration;
 	const struct pg_object *constructor;
+	const struct pg_object *constant;
 	const struct pg_induction_allocation *induction;
 	uint64_t level;
 	enum pg_totality totality;

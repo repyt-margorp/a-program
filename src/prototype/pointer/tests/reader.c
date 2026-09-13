@@ -7,7 +7,7 @@
 
 static void tokens(void)
 {
-	const char input[] = "// comment\nVec := \\A : @ => @\\n:Nat => { nil:* Nat.zero; cons:(k:Nat)->A->* k; }; main :: T; &{x:=#.get; !x;}.x @#.return v => v;";
+	const char input[] = "// comment\nVec := \\A : @ => @\\n:Nat => { nil:* Nat.zero; cons:(k:Nat)->A->* k; }; main :: T; &{x:=#get; !x;}.x @#return v => v;";
 	const int expected[] = {
 		PG_TOKEN_IDENT, PG_TOKEN_ASSIGN, '\\', PG_TOKEN_IDENT, ':', '@', PG_TOKEN_LAMBDA_ARROW,
 		'@', '\\', PG_TOKEN_IDENT, ':', PG_TOKEN_IDENT, PG_TOKEN_LAMBDA_ARROW, '{',
@@ -15,8 +15,8 @@ static void tokens(void)
 		PG_TOKEN_IDENT, ':', '(', PG_TOKEN_IDENT, ':', PG_TOKEN_IDENT, ')', PG_TOKEN_ARROW,
 		PG_TOKEN_IDENT, PG_TOKEN_ARROW, '*', PG_TOKEN_IDENT, ';', '}', ';',
 		PG_TOKEN_IDENT, PG_TOKEN_EXPECT, PG_TOKEN_IDENT, ';', '&', '{', PG_TOKEN_IDENT,
-		PG_TOKEN_ASSIGN, '#', '.', PG_TOKEN_IDENT, ';', '!', PG_TOKEN_IDENT, ';', '}', '.',
-		PG_TOKEN_IDENT, '@', '#', '.', PG_TOKEN_IDENT, PG_TOKEN_IDENT, PG_TOKEN_LAMBDA_ARROW,
+		PG_TOKEN_ASSIGN, '#', PG_TOKEN_IDENT, ';', '!', PG_TOKEN_IDENT, ';', '}', '.',
+		PG_TOKEN_IDENT, '@', '#', PG_TOKEN_IDENT, PG_TOKEN_IDENT, PG_TOKEN_LAMBDA_ARROW,
 		PG_TOKEN_IDENT, ';', PG_TOKEN_EOF
 	};
 	struct pg_reader reader;
@@ -102,7 +102,7 @@ static void prefixes(void)
 
 static void syntax(void)
 {
-	const char source[] = "id := \\x : A => x; main := id #1; main :: A; f := \\g : (x:A) -> B x => g; checked := (f a) :: B; call := f a b; delayed := &id; text := #\"hello\"; t := #.Int; type := @;";
+	const char source[] = "id := \\x : A => x; main := id #1; main :: A; f := \\g : (x:A) -> B x => g; checked := (f a) :: B; call := f a b; delayed := &id; text := #\"hello\"; t := #Int; type := @;";
 	struct pg_graph arena = {0};
 	struct pg_parser parser;
 	struct pg_definition definition;
@@ -156,7 +156,7 @@ static void eliminations(void)
 {
 	const char source[] =
 		"add := \\n:Nat => n @zero => \\m:Nat => m @succ k => \\m:Nat => Nat.succ (*k m);"
-		"handled := M @#.get req k => k default @print_alias req k => k unit @#.return result => result;"
+		"handled := M @#get req k => k default @print_alias req k => k unit @#return result => result;"
 		"nested := b @true => (b @true => x @false => y) @false => z;"
 		"selected := g @step {arg:=x; proof;} => x;";
 	struct pg_graph arena = {0};
@@ -237,7 +237,7 @@ static void companions(void)
 
 static void blocks(void)
 {
-	const char source[] = "f := \\x:A => {a:A:=x; #.print #\"hello\"; b:={x;}; !a; later:=x;}.a; delayed:=&{#.get;};";
+	const char source[] = "f := \\x:A => {a:A:=x; #print #\"hello\"; b:={x;}; !a; later:=x;}.a; delayed:=&{#get;};";
 	struct pg_graph arena = {0};
 	struct pg_parser parser;
 	struct pg_definition definition;
@@ -267,7 +267,7 @@ static void blocks(void)
 	assert(body->items[2].operation == PG_TOKEN_EXPECT);
 	assert(pg_parser_next(&parser, &definition) == 0);
 	const char *invalid[] = {"f:={};", "{{x:=#1;}}", "{x:=#1;}", "{{x:=#1;}}.x extra;",
-		"f:={x:=#1};", "{{!x;}}.x", "{{#.get;}}.x", "f:={x;", "x:=#1; {{y:=#2;}}.y"};
+		"f:={x:=#1};", "{{!x;}}.x", "{{#get;}}.x", "f:={x;", "x:=#1; {{y:=#2;}}.y"};
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
 		pg_parser_init(&parser, &arena, invalid[i], strlen(invalid[i]));
 		int status;
@@ -408,8 +408,40 @@ static void marked_applications(void)
 	pg_graph_destroy(&arena);
 }
 
+static void intrinsic_names(void)
+{
+	const char *spellings[] = {"#Int", "#.Int", "#Int.member", "#.Int.member"};
+	for (size_t i = 0; i < sizeof(spellings) / sizeof(*spellings); ++i) {
+		char input[80];
+		snprintf(input, sizeof(input), "name:=%s;", spellings[i]);
+		struct pg_graph arena = {0};
+		struct pg_parser parser;
+		struct pg_definition definition;
+		pg_parser_init(&parser, &arena, input, strlen(input));
+		if (i % 2) {
+			assert(pg_parser_next(&parser, &definition) == -1);
+			assert(strstr(parser.error, "--legacy-intrinsic-dot"));
+			pg_parser_init(&parser, &arena, input, strlen(input));
+			parser.allow_legacy_intrinsic_dot = 1;
+		}
+		assert(pg_parser_next(&parser, &definition) == 1);
+		const struct pg_syntax *qualified = definition.expression;
+		assert(qualified->kind == PG_SYNTAX_QUALIFIED);
+		if (i >= 2) {
+			assert(qualified->right->token.text_length == 6);
+			qualified = qualified->left;
+		}
+		assert(qualified->kind == PG_SYNTAX_QUALIFIED);
+		assert(qualified->left->kind == PG_SYNTAX_ATOM && qualified->left->token.kind == '#');
+		assert(qualified->right->token.text_length == 3 && !memcmp(qualified->right->token.text, "Int", 3));
+		pg_graph_destroy(&arena);
+	}
+	puts("intrinsic names: #Name and #.Name use ordinary qualified lookup");
+}
+
 int main(void)
 {
+	intrinsic_names();
 	tokens();
 	literals();
 	failures();

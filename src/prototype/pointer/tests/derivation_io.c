@@ -155,7 +155,7 @@ static void effect_transport(enum pg_totality totality)
 		long offset = ftell(file);
 		assert(offset >= 0 && !pg_wire_read_u64(file, &ignored));
 		if (rule == PG_RETURN_TYPE_FORM) { row_offset = offset; row_id = ignored; }
-		for (unsigned j = 0; j < 6; ++j) assert(!pg_wire_read_u64(file, &ignored));
+		for (unsigned j = 2; j < PG_DERIVATION_TERM_SLOTS; ++j) assert(!pg_wire_read_u64(file, &ignored));
 		uint64_t metadata, allocation;
 		assert(!pg_wire_read_u64(file, &metadata) && !pg_wire_read_u64(file, &allocation));
 		for (uint64_t j = 0; j < metadata + allocation; ++j) assert(!pg_wire_read_u64(file, &ignored));
@@ -275,8 +275,8 @@ static void unique_term_roots(FILE *file, struct pg_graph *graph,
 	assert(!pg_wire_read_u64(file, &records) && !pg_wire_read_u64(file, &roots));
 	size_t references = 0;
 	for (uint64_t i = 0; i < records; ++i) {
-		/* Rule, level, direction, totality, reduction, then eight Core references. */
-		for (unsigned j = 0; j < 13; ++j) {
+		/* Rule, level, direction, totality, reduction, then Core references. */
+		for (unsigned j = 0; j < 5 + PG_DERIVATION_TERM_SLOTS; ++j) {
 			assert(!pg_wire_read_u64(file, &word));
 			if (j >= 5 && word) ++references;
 		}

@@ -1,4 +1,5 @@
 #include "synthesis.h"
+#include "host.h"
 #include "computation.h"
 #include "iadt.h"
 #include "action.h"
@@ -542,7 +543,7 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 		.binder = binder, .context_job = pg_synthesis_evidence(synthesis, extended_context)});
 }
 
-enum { RULE_KEY_FIELDS = 17 };
+enum { RULE_KEY_FIELDS = 18 };
 
 static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 {
@@ -556,7 +557,7 @@ static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 		(uintptr_t)input->parameters.constructor,
 		(uintptr_t)input->parameters.induction,
 		(uintptr_t)input->source, (uintptr_t)input->target, input->reduction_kind, input->count,
-		input->parameters.totality};
+		input->parameters.totality, (uintptr_t)input->parameters.constant};
 	memcpy(key, fields, sizeof(fields));
 }
 
@@ -8324,6 +8325,24 @@ error:
 static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_ATOM) return 0;
+	struct pg_token token = job->syntax->token;
+	if (token.kind == PG_TOKEN_INT || token.kind == PG_TOKEN_TEXT) {
+		if (!job->value_job) {
+			if (token.kind == PG_TOKEN_INT && (token.integer < INT32_MIN || token.integer > INT32_MAX)) {
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return 1;
+			}
+			const struct pg_object *type = pg_host_type(token.kind == PG_TOKEN_INT ? "Int32" : "Text");
+			const struct pg_object *literal = token.kind == PG_TOKEN_INT
+				? pg_host_integer(synthesis->typing->graph, type, token.integer)
+				: pg_host_literal(synthesis->typing->graph, type, token.text_length, (const unsigned char *)token.text);
+			if (!literal) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
+			struct pg_derivation_input formation = {.rule = PG_HOST_TYPE_FORM, .count = 1, .parameters.constant = type};
+			job->left = pg_synthesis_rule(synthesis, &formation, &job->scope->context_job, NULL, NULL);
+			struct pg_derivation_input intro = {.rule = PG_HOST_VALUE_INTRO, .count = 1, .parameters.constant = literal};
+			job->value_job = pg_synthesis_rule(synthesis, &intro, &job->left, NULL, NULL);
+		}
+		forward_proof(synthesis, job, job->value_job); return 1;
+	}
 	if (job->syntax->token.kind == '@') {
 		if (!job->left) {
 			struct pg_derivation_input input = {.rule = PG_UNIVERSE_FORM, .count = 1};

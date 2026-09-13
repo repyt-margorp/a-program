@@ -3,6 +3,7 @@
 #include "eval.h"
 #include "identity.h"
 #include "iadt.h"
+#include "host.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -2213,6 +2214,36 @@ const struct pg_evidence *pg_prove_universe(struct pg_typing *typing,
 	return accept(typing, PG_UNIVERSE_FORM, PG_JUDGEMENT_VALUE_TYPE, context->context, subject, sort, 1, &context);
 }
 
+const struct pg_evidence *pg_prove_host_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_object *type)
+{
+	if (!context_proof(typing, context) || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!pg_host_type_name(type)) return NULL;
+	const struct pg_term *core = pg_reference(typing->graph, type);
+	const struct pg_term *universe = pg_universe(classifiers, 0);
+	if (!core || !universe) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, context->context, core, NULL, 0, NULL);
+	if (!subject) return NULL;
+	return accept(typing, PG_HOST_TYPE_FORM, PG_JUDGEMENT_VALUE_TYPE, context->context, subject, universe, 1, &context);
+}
+
+const struct pg_evidence *pg_prove_host_value(struct pg_typing *typing,
+	const struct pg_evidence *type, const struct pg_object *value)
+{
+	if (!pg_evidence_owned_by(type, typing) || type->judgement != PG_JUDGEMENT_VALUE_TYPE) return NULL;
+	const struct pg_object *descriptor;
+	size_t count;
+	const unsigned char *bytes;
+	if (!pg_host_literal_view(value, &descriptor, &count, &bytes)) return NULL;
+	if (type->subject->core->kind != PG_REFERENCE || type->subject->core->as.reference != descriptor) return NULL;
+	const struct pg_term *core = pg_reference(typing->graph, value);
+	if (!core) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, type->context, core, NULL, 0, NULL);
+	if (!subject) return NULL;
+	return accept(typing, PG_HOST_VALUE_INTRO, PG_JUDGEMENT_VALUE, type->context, subject, type->subject->core, 1, &type);
+}
+
 static enum pg_evidence_judgement binding_judgement(const struct pg_evidence *extension)
 {
 	return extension->rule == PG_CONTEXT_FAMILY_EXTEND
@@ -4073,6 +4104,7 @@ static const struct pg_evidence *classifier_leaf(struct pg_typing *typing,
 	switch (term->rule) {
 	case PG_REFLEXIVITY: case PG_FAMILY_ACTION:
 	case PG_TERMINATION_INTRO:
+	case PG_HOST_VALUE_INTRO:
 	case PG_CONSTRUCTOR_INTRO:
 	case PG_IDENTITY_TRANSPORT: case PG_IDENTITY_LIFT:
 		formation = term->premises[0];

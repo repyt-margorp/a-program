@@ -19,6 +19,9 @@ struct pg_program {
 	/* Graph-owned raw image records, not accepted cache entries or typing. */
 	const struct pg_reduction_archive *retained_reductions;
 	struct pg_parser parser;
+	/* Applies to subsequently parsed source, including imports and REPL input.
+	 * Images already hold parsed syntax; this is not a kernel acceptance flag. */
+	int allow_legacy_intrinsic_dot;
 	/* Derived public scopes only; no copied solver results or acceptance. */
 	struct pg_index exports;
 	const struct pg_source_scope *scope;

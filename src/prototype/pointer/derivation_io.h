@@ -7,14 +7,14 @@
 
 struct pg_effect_inference;
 
-enum { PG_DERIVATION_TERM_SLOTS = 8 };
+enum { PG_DERIVATION_TERM_SLOTS = 9 };
 struct pg_derivation_payload {
 	size_t count, metadata_count;
 	const struct pg_term *const *terms;
 	const uint64_t *metadata;
 };
 /* Wire-order Core inputs: binder, effects, source, target, operation, handler,
- * declaration, constructor, followed by induction context/binder roots.
+ * declaration, constructor, constant, followed by induction context/binder roots.
  * Optional fixed slots are NULL. Context metadata uses context_payload.h.
  * Arrays/reference wrappers belong to scratch; input objects are borrowed.
  * This does not check an inference rule

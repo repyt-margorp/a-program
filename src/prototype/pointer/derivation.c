@@ -43,6 +43,8 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 	struct pg_derivation_parameters result = {0};
 	const struct pg_occurrence *subject = pg_evidence_subject(evidence);
 	switch (pg_evidence_rule(evidence)) {
+	case PG_HOST_TYPE_FORM: case PG_HOST_VALUE_INTRO:
+		result.constant = subject->core->as.reference; break;
 	case PG_RETURN_TYPE_FORM: {
 		const struct pg_term *value;
 		if (!pg_computation_type_view(subject->core, &result.totality, &result.effects, &value)) return -1;
@@ -107,6 +109,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	if (count && !p) return NULL;
 	if (parameters->declaration && rule != PG_INDUCTIVE_FORM) return NULL;
 	if (parameters->constructor && rule != PG_CONSTRUCTOR_INTRO) return NULL;
+	if (parameters->constant && rule != PG_HOST_TYPE_FORM && rule != PG_HOST_VALUE_INTRO) return NULL;
 	if (parameters->induction && rule != PG_INDUCTION_ELIM) return NULL;
 	if ((unsigned)parameters->totality > PG_TOTALITY_TOTAL) return NULL;
 	if (parameters->totality != PG_TOTALITY_UNSPECIFIED && rule != PG_RETURN_TYPE_FORM && rule != PG_RETURN_INTRO) return NULL;
@@ -114,6 +117,8 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	const struct pg_evidence *result = NULL;
 	struct pg_identity_boundary boundary;
 	switch (rule) {
+	RULE(PG_HOST_TYPE_FORM, 1, pg_prove_host_type(typing, classifiers, p[0], parameters->constant));
+	RULE(PG_HOST_VALUE_INTRO, 1, pg_prove_host_value(typing, p[0], parameters->constant));
 	case PG_CONSTRUCTOR_INTRO: {
 		const struct pg_data_layout *layout;
 		size_t position, arity;

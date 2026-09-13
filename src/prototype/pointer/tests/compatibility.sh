@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -eu
-checker=$1
-runtime=$2
+# Frozen source fixtures keep their old spelling. Compatibility is explicit;
+# current source/default rejection is checked independently by cli.sh.
+checker=("$1" --legacy-intrinsic-dot)
+runtime=("$2" --legacy-intrinsic-dot)
 fixtures=$3
 failed=0
 total=0
@@ -10,34 +12,34 @@ while read -r expectation name left right; do
 	[ -n "$expectation" ] || continue
 	total=$((total + 1))
 	code=0
-	output=$("$checker" --steps 1000000 "$fixtures/$name.p" 2>&1) || code=$?
+	output=$("${checker[@]}" --steps 1000000 "$fixtures/$name.p" 2>&1) || code=$?
 	printf '%s\texit=%s\t%s\n' "$name" "$code" "$output"
 	if [ "$code" -ne "$expectation" ]; then
 		failed=$((failed + 1))
 		continue
 	fi
 	if [ "$expectation" -eq 1 ]; then
-		if ! "$runtime" --reject "$fixtures/$name.p"; then
+		if ! "${runtime[@]}" --reject "$fixtures/$name.p"; then
 			failed=$((failed + 1))
 		fi
 	fi
 	if [ -n "$left" ]; then
-		if ! "$runtime" --equal "$fixtures/$name.p" "$left" "$right"; then
+		if ! "${runtime[@]}" --equal "$fixtures/$name.p" "$left" "$right"; then
 			failed=$((failed + 1))
 		fi
 	fi
 	if [ "$name" = typing/function_graph_generated_length_check ]; then
-		if ! "$runtime" --equal "$fixtures/$name.p" certifiedMain expected; then
+		if ! "${runtime[@]}" --equal "$fixtures/$name.p" certifiedMain expected; then
 			failed=$((failed + 1))
 		fi
 	fi
 	if [ "$name" = typing/function_graph_dependent_spine_check ]; then
-		if ! "$runtime" --equal "$fixtures/$name.p" certified expected; then
+		if ! "${runtime[@]}" --equal "$fixtures/$name.p" certified expected; then
 			failed=$((failed + 1))
 		fi
 	fi
 	if [ "$name" = typing/function_graph_two_recursive_calls_check ]; then
-		if ! "$runtime" --equal "$fixtures/$name.p" certified expected; then
+		if ! "${runtime[@]}" --equal "$fixtures/$name.p" certified expected; then
 			failed=$((failed + 1))
 		fi
 	fi
@@ -83,6 +85,7 @@ done <<'CASES'
 1 typing/if8_order_check
 0 typing/function_graph_generated_length_check main expected
 0 typing/function_graph_certified_length_model
+0 typing/host_text_recursive_motive_check main expected
 0 typing/function_graph_dependent_output_ih_check main expected
 0 typing/function_graph_two_recursive_calls_check main expected
 0 typing/function_graph_dependent_spine_check main expected
@@ -126,104 +129,120 @@ trap 'rm -rf "$directory"' EXIT
 acceptance="$(dirname "${BASH_SOURCE[0]}")/acceptance"
 for steps in 0 100000; do
 	code=0
-	"$checker" --steps "$steps" --imports "$fixtures/typing/function_graph_certified_length_model.p" \
+	"${checker[@]}" --steps "$steps" --save "$directory/host.a" "$acceptance/host-literals.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"${runtime[@]}" --equal-image "$directory/host.a" main expected
+	"${runtime[@]}" --equal-image "$directory/host.a" minimum minimumExpected
+	"${runtime[@]}" --equal-image "$directory/host.a" maximum maximumExpected
+	"${runtime[@]}" --equal-image "$directory/host.a" textMain textExpected
+	"${runtime[@]}" --equal-image "$directory/host.a" emptyMain emptyExpected
+	"${runtime[@]}" --equal-image "$directory/host.a" same expected
+	code=0
+	"${checker[@]}" --steps "$steps" --save "$directory/host-recursion.a" \
+		"$fixtures/typing/host_text_recursive_motive_check.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"${runtime[@]}" --equal-image "$directory/host-recursion.a" main expected
+done
+for steps in 0 100000; do
+	code=0
+	"${checker[@]}" --steps "$steps" --imports "$fixtures/typing/function_graph_certified_length_model.p" \
 		--save "$directory/length.a" "$acceptance/legacy-certified-length-results.p" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
-	"$runtime" --equal-image "$directory/length.a" original one
-	"$runtime" --equal-image "$directory/length.a" empty zero
-	"$runtime" --equal-image "$directory/length.a" many three
+	"${runtime[@]}" --equal-image "$directory/length.a" original one
+	"${runtime[@]}" --equal-image "$directory/length.a" empty zero
+	"${runtime[@]}" --equal-image "$directory/length.a" many three
 	code=0
-	"$checker" --steps "$steps" --save "$directory/candidate.a" \
+	"${checker[@]}" --steps "$steps" --save "$directory/candidate.a" \
 		"$acceptance/certified-length-candidate.p" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
-	"$runtime" --equal-image "$directory/candidate.a" main two
-	"$runtime" --equal-image "$directory/candidate.a" base zero
-	"$runtime" --equal-image "$directory/candidate.a" singleton one
-	"$runtime" --equal-image "$directory/candidate.a" erased emptyResult
-	"$runtime" --equal-image "$directory/candidate.a" tagged expectedTag
-	"$runtime" --equal-image "$directory/candidate.a" skipped expectedSkip
+	"${runtime[@]}" --equal-image "$directory/candidate.a" main two
+	"${runtime[@]}" --equal-image "$directory/candidate.a" base zero
+	"${runtime[@]}" --equal-image "$directory/candidate.a" singleton one
+	"${runtime[@]}" --equal-image "$directory/candidate.a" erased emptyResult
+	"${runtime[@]}" --equal-image "$directory/candidate.a" tagged expectedTag
+	"${runtime[@]}" --equal-image "$directory/candidate.a" skipped expectedSkip
 done
 # Removing post-checks must not remove the ability to synthesize this motive.
 sed -e 's/(graph :: LengthGraph tail tailLength)/graph/' -e '/length :: /d' \
 	"$fixtures/typing/function_graph_certified_length_model.p" > "$directory/length-no-expect.p"
-"$checker" --steps 100000 "$directory/length-no-expect.p"
+"${checker[@]}" --steps 100000 "$directory/length-no-expect.p"
 # A constant nil certificate cannot acquire a dependent input classifier.
 sed 's/eraseCertified :: NatList->LengthResult NatList.nil;/eraseCertified :: (xs:NatList)->LengthResult xs;/' \
 	"$acceptance/certified-length-candidate.p" > "$directory/wrong-candidate.p"
-"$runtime" --reject "$directory/wrong-candidate.p"
+"${runtime[@]}" --reject "$directory/wrong-candidate.p"
 code=0
-"$checker" --steps 0 --save "$directory/wrong-candidate.a" "$directory/wrong-candidate.p" > "$directory/status" || code=$?
+"${checker[@]}" --steps 0 --save "$directory/wrong-candidate.a" "$directory/wrong-candidate.p" > "$directory/status" || code=$?
 test "$code" -eq 3
 code=0
-"$checker" --load "$directory/wrong-candidate.a" > "$directory/status" || code=$?
+"${checker[@]}" --load "$directory/wrong-candidate.a" > "$directory/status" || code=$?
 test "$code" -eq 1
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-acc-concrete-results.p"
 for steps in 0 100000; do
 	code=0
-	"$checker" --steps "$steps" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
+	"${checker[@]}" --steps "$steps" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
 		--save "$directory/acc.a" "$client" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
-	"$runtime" --equal-image "$directory/acc.a" falseMain falseExpected
-	"$runtime" --equal-image "$directory/acc.a" main expected
+	"${runtime[@]}" --equal-image "$directory/acc.a" falseMain falseExpected
+	"${runtime[@]}" --equal-image "$directory/acc.a" main expected
 done
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/acc-concrete-successor.p"
 for steps in 0 100000; do
 	code=0
-	"$checker" --steps "$steps" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
+	"${checker[@]}" --steps "$steps" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
 		--save "$directory/successor.a" "$client" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
 	for pair in main:expected base:zero childIndex:falseValue; do
-		"$runtime" --equal-image "$directory/successor.a" "${pair%:*}" "${pair#*:}"
+		"${runtime[@]}" --equal-image "$directory/successor.a" "${pair%:*}" "${pair#*:}"
 	done
 done
 code=0
-"$checker" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
+"${checker[@]}" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
 	--save "$directory/wrong-successor.a" "${client%.p}-wrong.p" > "$directory/status" || code=$?
 test "$code" -eq 1
 code=0
-"$checker" --load "$directory/wrong-successor.a" > "$directory/status" || code=$?
+"${checker[@]}" --load "$directory/wrong-successor.a" > "$directory/status" || code=$?
 test "$code" -eq 1
 sed 's/down Bool.false Precedes.falseBeforeTrue/down Bool.true Precedes.falseBeforeTrue/' \
 	"$client" > "$directory/wrong-child.p"
 code=0
-"$checker" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
+"${checker[@]}" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
 	--save "$directory/wrong-child.a" "$directory/wrong-child.p" > "$directory/status" || code=$?
 test "$code" -eq 1
 code=0
-"$checker" --load "$directory/wrong-child.a" > "$directory/status" || code=$?
+"${checker[@]}" --load "$directory/wrong-child.a" > "$directory/status" || code=$?
 test "$code" -eq 1
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-vec-append-results.p"
 for steps in 0 100000; do
 	code=0
-	"$checker" --steps "$steps" --imports "$fixtures/typing/explicit_index_family_append_check.p" \
+	"${checker[@]}" --steps "$steps" --imports "$fixtures/typing/explicit_index_family_append_check.p" \
 		--save "$directory/append.a" "$client" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
 	for pair in original:expected empty:nil leftEmpty:right rightEmpty:right ordered:pair recursive:triple; do
-		"$runtime" --equal-image "$directory/append.a" "${pair%:*}" "${pair#*:}"
+		"${runtime[@]}" --equal-image "$directory/append.a" "${pair%:*}" "${pair#*:}"
 	done
 done
 acceptance="$(dirname "${BASH_SOURCE[0]}")/acceptance"
-"$checker" --steps 100000 --imports "$acceptance/computed-index-arithmetic.p" \
+"${checker[@]}" --steps 100000 --imports "$acceptance/computed-index-arithmetic.p" \
 	"$acceptance/computed-constructor-index.p"
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-rebuild-results.p"
 for steps in 0 100000; do
 	code=0
-	"$checker" --steps "$steps" --imports "$fixtures/typing/indexed_branch_rebuild_check.p" \
+	"${checker[@]}" --steps "$steps" --imports "$fixtures/typing/indexed_branch_rebuild_check.p" \
 		--save "$directory/rebuild.a" "$client" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
 	for name in emptyMain recursiveMain; do
-		"$runtime" --equal-image "$directory/rebuild.a" "$name" "${name}Expected"
+		"${runtime[@]}" --equal-image "$directory/rebuild.a" "$name" "${name}Expected"
 	done
 done
-"$runtime" "$fixtures/../../../../examples/type-infer-and-check/level2/02_tree.p" Nat zero succ 3
+"${runtime[@]}" "$fixtures/../../../../examples/type-infer-and-check/level2/02_tree.p" Nat zero succ 3
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-comparison-results.p"
 for steps in 0 100000; do
 	code=0
-	"$checker" --steps "$steps" --imports "$fixtures/typing/dependent_recursive_comparison_check.p" \
+	"${checker[@]}" --steps "$steps" --imports "$fixtures/typing/dependent_recursive_comparison_check.p" \
 		--save "$directory/comparison.a" "$client" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
 	for name in baseLeft baseRight less greater same; do
-		"$runtime" --equal-image "$directory/comparison.a" "$name" "${name}Expected"
+		"${runtime[@]}" --equal-image "$directory/comparison.a" "$name" "${name}Expected"
 	done
 done
 
@@ -232,11 +251,11 @@ done
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-quicksort-witness.p"
 for steps in 0 1000000; do
 	code=0
-	"$checker" --steps "$steps" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
+	"${checker[@]}" --steps "$steps" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
 		--save "$directory/quicksort.a" "$client" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
-	"$runtime" --equal-image "$directory/quicksort.a" main expected
-	"$runtime" --equal-image "$directory/quicksort.a" emptyMain emptyExpected
+	"${runtime[@]}" --equal-image "$directory/quicksort.a" main expected
+	"${runtime[@]}" --equal-image "$directory/quicksort.a" emptyMain emptyExpected
 done
 
 # Clients consume the unchanged provider's graph and prove separate specifications.
@@ -245,11 +264,11 @@ check_property() {
 	shift
 	for steps in 0 1000000; do
 		code=0
-		"$checker" --steps "$steps" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
+		"${checker[@]}" --steps "$steps" --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
 			--save "$directory/property.a" "$client" > "$directory/status" || code=$?
 		if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
 		for pair in "$@"; do
-			"$runtime" --equal-image "$directory/property.a" "${pair%:*}" "${pair#*:}"
+			"${runtime[@]}" --equal-image "$directory/property.a" "${pair%:*}" "${pair#*:}"
 		done
 	done
 }
@@ -257,11 +276,11 @@ check_property() {
 check_wrong_property() {
 	local client=$1 code
 	code=0
-	"$checker" --steps 1000000 --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
+	"${checker[@]}" --steps 1000000 --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
 		--save "$directory/wrong-property.a" "$client" > "$directory/status" || code=$?
 	test "$code" -eq 1
 	code=0
-	"$checker" --steps 1000000 --load "$directory/wrong-property.a" > "$directory/status" || code=$?
+	"${checker[@]}" --steps 1000000 --load "$directory/wrong-property.a" > "$directory/status" || code=$?
 	test "$code" -eq 1
 }
 

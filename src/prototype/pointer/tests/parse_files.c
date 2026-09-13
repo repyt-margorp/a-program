@@ -2,8 +2,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-static int parse_file(const char *path)
+static int parse_file(const char *path, int legacy_intrinsic_dot)
 {
 	FILE *file = fopen(path, "rb");
 	if (!file) return -1;
@@ -22,6 +23,7 @@ static int parse_file(const char *path)
 	struct pg_parser parser;
 	struct pg_definition definition;
 	pg_parser_init(&parser, &arena, input, length);
+	parser.allow_legacy_intrinsic_dot = legacy_intrinsic_dot;
 	int status;
 	do status = pg_parser_next(&parser, &definition); while (status == 1);
 	if (status == 0) printf("parsed\t%s\t%zu\t\n", path, parser.entries);
@@ -37,13 +39,15 @@ done:
 
 int main(int argc, char **argv)
 {
+	int legacy_intrinsic_dot = argc > 1 && !strcmp(argv[1], "--legacy-intrinsic-dot");
+	if (legacy_intrinsic_dot) { ++argv; --argc; }
 	if (argc < 2) {
-		fprintf(stderr, "usage: parse_files source.p ...\n");
+		fprintf(stderr, "usage: parse_files [--legacy-intrinsic-dot] source.p ...\n");
 		return 2;
 	}
 	int failed = 0;
 	for (int i = 1; i < argc; ++i) {
-		int result = parse_file(argv[i]);
+		int result = parse_file(argv[i], legacy_intrinsic_dot);
 		if (result < 0) printf("io_error\t%s\t\tunable to read source\n", argv[i]);
 		if (result != 0) failed = 1;
 	}

@@ -261,11 +261,23 @@ static const struct pg_syntax *atom(struct pg_parser *parser)
 				return node(parser, PG_SYNTAX_GRAPH_REFERENCE, token, target, NULL);
 			}
 		}
-		if (token.kind == '#' && parser->reader.token.kind != '.') {
-			error(parser, "expected '.' after intrinsic namespace");
-			return NULL;
-		}
 		result = node(parser, PG_SYNTAX_ATOM, token, NULL, NULL);
+		if (token.kind == '#') {
+			if (parser->reader.token.kind == PG_TOKEN_IDENT) {
+				struct pg_token name = parser->reader.token;
+				advance(parser);
+				result = node(parser, PG_SYNTAX_QUALIFIED, token, result,
+					node(parser, PG_SYNTAX_ATOM, name, NULL, NULL));
+			} else if (parser->reader.token.kind == '.') {
+				if (!parser->allow_legacy_intrinsic_dot) {
+					error(parser, "use #Name; #.Name requires --legacy-intrinsic-dot");
+					return NULL;
+				}
+			} else {
+				error(parser, "expected intrinsic name or '.' after '#'");
+				return NULL;
+			}
+		}
 	}
 	while (!parser->error && parser->reader.token.kind == '.') {
 		struct pg_token dot = parser->reader.token;

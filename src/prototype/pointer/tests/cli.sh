@@ -55,23 +55,53 @@ check 3 "pending steps=$((steps - 1))" "$source" --nf main --steps "$((steps - 1
 check 0 "done steps=$steps" "$source" --nf main --steps "$steps"
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
-# Literal syntax is retained even before host typing is implemented. Saving
-# either pending or unsupported work must not turn it into accepted evidence.
-for literal in '#42' '#-9223372036854775808' '#"hello"' '#""'; do
+# Source and image Solve use the same literal introduction. Text contents do
+# not resolve as names; integer width is synthesized, never supplied by ::.
+for literal in '#42' '#-2147483648' '#"hello"' '#""'; do
 	input="hello:=@{unit:*;}; main:=$literal;"
-	check 4 'unsupported steps=' "$input"
+	check 0 'done steps=' "$input"
 	for budget in 0 100000; do
 		if [ "$budget" = 0 ]; then
 			check 3 'pending steps=0' "$input" --steps "$budget" --save "$directory/literal.a"
 		else
-			check 4 'unsupported steps=' "$input" --steps "$budget" --save "$directory/literal.a"
+			check 0 'done steps=' "$input" --steps "$budget" --save "$directory/literal.a"
 		fi
 		code=0
 		output=$("$binary" --load "$directory/literal.a") || code=$?
-		test "$code" = 4
-		case "$output" in 'unsupported steps='*) ;; *) exit 1 ;; esac
+		test "$code" = 0
+		case "$output" in 'done steps='*) ;; *) exit 1 ;; esac
 	done
 done
+check 0 'done steps=' 'a:=#2147483647; a::#Int; a::#Int32;'
+check 1 'rejected steps=' 'a:=#42; a::#Int64;'
+check 1 'rejected steps=' 'a:=#2147483648; a::#Int64;'
+check 1 'rejected steps=' 'a:=#-2147483649;'
+check 1 'rejected steps=' 'a:=#-9223372036854775808;'
+check 1 'rejected steps=' 'a:=#"hello"; a::#Int;'
+check 1 'rejected steps=' 'a:=#42; a::#Text;'
+check 1 '-:1:' 'a:=#.Int;'
+case "$output" in *'--legacy-intrinsic-dot'*) ;; *) exit 1 ;; esac
+check 1 '-:1:' 'a:=#print; b:=#.print;'
+check 1 '-:1:' 'a:={#42;} @#.return x=>x;'
+check 0 'done steps=' 'a:=#42; a::#.Int; a::#Int32;' --legacy-intrinsic-dot
+check 0 'done steps=' 'a:={#42;} @#.return x=>x;' --legacy-intrinsic-dot
+check 0 'done steps=' 'a:={#42;} @#return x=>x;'
+check 0 'done steps=' 'T:=@{c:*;}; value:=T.c;'
+printf '%s' 'import T; value:=#42; value::T;' > "$directory/client.p"
+printf '%s' 'T:=#.Int;' > "$directory/provider.p"
+code=0
+"$binary" --imports "$directory/provider.p" "$directory/client.p" > "$directory/import.out" 2>&1 || code=$?
+test "$code" = 1
+grep -q -- '--legacy-intrinsic-dot' "$directory/import.out"
+"$binary" --legacy-intrinsic-dot --imports "$directory/provider.p" "$directory/client.p" > "$directory/import.out"
+check 3 'pending steps=0' 'value:=#42; value::#.Int;' --legacy-intrinsic-dot --steps 0 --save "$directory/spelling.a"
+# Loading an already parsed image does not parse dotted source again.
+"$binary" --load "$directory/spelling.a" > "$directory/spelling.out"
+grep -q '^done steps=' "$directory/spelling.out"
+printf 'a:=#.Int;\n:quit\n' | "$binary" --repl "$directory/client.p" > "$directory/repl.out" 2>&1
+grep -q -- '--legacy-intrinsic-dot' "$directory/repl.out"
+printf 'a:=#.Int;\n:quit\n' | "$binary" --legacy-intrinsic-dot --repl "$directory/provider.p" > "$directory/repl-legacy.out" 2>&1
+if grep -q -- 'requires --legacy-intrinsic-dot' "$directory/repl-legacy.out"; then exit 1; fi
 # Preserve the all-refuted indexed-Match limitation, including ordinary image
 # reload. The post-check must not be used to guess the missing motive.
 fixture=$(dirname "$0")/../../tests/fixtures/typing/impossible_index_branch_check.p
@@ -90,7 +120,9 @@ test "$code" = 3
 grep -q '^pending: no runnable synthesis work;' "$directory/reloaded.err"
 check 3 'pending steps=0' "$source" --steps 0 --save "$directory/pending.a"
 restored=$("$binary" --load --nf main "$directory/pending.a")
-test "$restored" = "$nf"
+# Restored namespace derivations are ordinary Solve inputs. Their checking
+# work need not equal source setup, but the evaluated result must agree.
+test "${restored#*$'\n'}" = "${nf#*$'\n'}"
 check 0 "done steps=$steps" "$source" --nf main --save "$directory/solved.a"
 # Solving may allocate source binders which become retained graph inputs.
 # Compare execution, not bytes or scheduling, against the unresolved image.

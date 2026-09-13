@@ -1,6 +1,7 @@
 #include "seed.h"
 #include "syntax_io.h"
 #include "source_io.h"
+#include "descriptor_io.h"
 
 #include <assert.h>
 #include <string.h>
@@ -10,6 +11,11 @@ static const char source[] = "{{ id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A; }}
 static void compare(struct pg_program *loaded, const char *text, enum pg_definition_policy policy)
 {
 	struct pg_program *fresh = pg_program_create(text, strlen(text), policy);
+	FILE *file = tmpfile();
+	assert(file && !pg_seed_write(file, text, strlen(text), policy));
+	rewind(file);
+	struct pg_program *batch = pg_seed_read(file, 4096);
+	assert(batch && !fclose(file));
 	assert(loaded && fresh && loaded->root && fresh->root);
 	assert(!loaded->parser.reader.input && fresh->parser.reader.input);
 	assert(loaded->synthesis.definition_policy == policy);
@@ -21,11 +27,30 @@ static void compare(struct pg_program *loaded, const char *text, enum pg_definit
 		pg_synthesis_advance(&loaded->synthesis, 1);
 	}
 	pg_synthesis_advance(&fresh->synthesis, 10000);
+	pg_synthesis_advance(&batch->synthesis, 10000);
 	assert(pg_synthesis_status(loaded->root) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_status(fresh->root) == PG_SYNTHESIS_DONE);
-	assert(loaded->synthesis.steps == fresh->synthesis.steps);
+	/* Image namespace derivations require ordinary Solve work beyond source setup. */
+	assert(pg_synthesis_status(batch->root) == PG_SYNTHESIS_DONE);
+	assert(loaded->synthesis.steps == batch->synthesis.steps);
+	assert(pg_alpha_equal(pg_evidence_subject(pg_synthesis_result(loaded->root))->core,
+		pg_evidence_subject(pg_synthesis_result(batch->root))->core) == 1);
 	assert(pg_alpha_equal(pg_evidence_subject(pg_synthesis_result(loaded->root))->core,
 		pg_evidence_subject(pg_synthesis_result(fresh->root))->core) == 1);
+	/* Universe/row descriptors belong to separate arenas. Compare their
+	 * transported structure, not the source pointers of those references. */
+	FILE *left = tmpfile(), *right = tmpfile();
+	const struct pg_term *a = pg_evidence_classifier(pg_synthesis_result(loaded->root));
+	const struct pg_term *b = pg_evidence_classifier(pg_synthesis_result(fresh->root));
+	assert(left && right);
+	assert(!pg_graph_write_descriptors(left, 1, &a, &pg_builtin_graph_codec, &loaded->classifiers));
+	assert(!pg_graph_write_descriptors(right, 1, &b, &pg_builtin_graph_codec, &fresh->classifiers));
+	rewind(left); rewind(right);
+	int byte;
+	do { byte = fgetc(left); assert(byte == fgetc(right)); } while (byte != EOF);
+	assert(!ferror(left) && !ferror(right));
+	assert(!fclose(left) && !fclose(right));
+	pg_program_destroy(batch);
 	pg_program_destroy(fresh);
 	pg_program_destroy(loaded);
 }

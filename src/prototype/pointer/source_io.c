@@ -754,7 +754,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		if (r->rule) goto fail;
 		if (r->kind == ROOT) {
 			if (parent || target || r->syntax || r->definitions || r->name.kind || r->name.length) goto fail;
-			scopes[i] = program->scope;
+			scopes[i] = pg_synthesis_root(s);
 			continue;
 		}
 		if (r->kind == DEFINITIONS) {

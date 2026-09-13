@@ -4,6 +4,7 @@
 #include "identity.h"
 #include "iadt.h"
 #include "symmetry.h"
+#include "host.h"
 #include <string.h>
 
 static const struct pg_effect_row *object_row(const struct pg_object *object)
@@ -21,6 +22,12 @@ static const struct pg_handler_signature *object_handler(const struct pg_object 
 static const char *descriptor_name(void *context, const struct pg_object *object)
 {
 	(void)context;
+	const struct pg_object *host_type;
+	const unsigned char *bytes;
+	size_t byte_count;
+	if (pg_host_literal_view(object, &host_type, &byte_count, &bytes)) return "host/literal/v1";
+	const char *host_name = pg_host_type_name(object);
+	if (host_name) return host_name;
 	const struct pg_term *payload, *response;
 	const struct pg_data_layout *layout;
 	size_t position, arity;
@@ -42,6 +49,8 @@ static const char *descriptor_name(void *context, const struct pg_object *object
 
 static const struct pg_object *descriptor_resolve(void *context, const char *name)
 {
+	const struct pg_object *host = pg_host_type_resolve(name);
+	if (host) return host;
 	const struct pg_object *object = pg_classifier_resolve(context, name);
 	if (object) return object;
 	object = pg_identity_resolve(name);
@@ -52,6 +61,14 @@ static int descriptor_child(void *context, struct pg_graph *scratch,
 	const struct pg_object *object, size_t index, const struct pg_term **child)
 {
 	(void)context;
+	const struct pg_object *host_type;
+	const unsigned char *bytes;
+	size_t byte_count;
+	if (pg_host_literal_view(object, &host_type, &byte_count, &bytes)) {
+		if (index) return 0;
+		*child = pg_reference(scratch, host_type);
+		return *child ? 1 : -1;
+	}
 	size_t clause_count;
 	const size_t *axes;
 	if (pg_symmetry_object_view(object, &clause_count, &axes)) return 0;
@@ -86,6 +103,20 @@ static int descriptor_child(void *context, struct pg_graph *scratch,
 static int descriptor_scalar(void *context, const struct pg_object *object, size_t index, uint64_t *value)
 {
 	(void)context;
+	const struct pg_object *host_type;
+	const unsigned char *bytes;
+	size_t byte_count;
+	if (pg_host_literal_view(object, &host_type, &byte_count, &bytes)) {
+		if (!index) { *value = byte_count; return 1; }
+		if (index - 1 >= byte_count / 8 + (byte_count % 8 != 0)) return 0;
+		size_t offset = (index - 1) * 8;
+		*value = 0;
+		for (size_t i = 0; i < 8; ++i) {
+			*value <<= 8;
+			if (i < byte_count - offset) *value |= bytes[offset + i];
+		}
+		return 1;
+	}
 	size_t clause_count;
 	const size_t *axes;
 	if (pg_symmetry_object_view(object, &clause_count, &axes)) {
@@ -117,6 +148,23 @@ static const struct pg_object *descriptor_restore(void *context, struct pg_graph
 	size_t scalar_count, const uint64_t *scalars)
 {
 	(void)context;
+	if (!strcmp(name, "host/literal/v1")) {
+		if (count != 1 || terms[0]->kind != PG_REFERENCE || !scalar_count) return NULL;
+		if (!pg_host_type_name(terms[0]->as.reference) || scalars[0] > SIZE_MAX) return NULL;
+		size_t length = (size_t)scalars[0];
+		if (scalar_count - 1 != length / 8 + (length % 8 != 0)) return NULL;
+		struct pg_graph temporary = {0};
+		unsigned char *bytes = pg_alloc(&temporary, length);
+		if (!bytes) return NULL;
+		const struct pg_object *result = NULL;
+		for (size_t i = 0; i < length; ++i)
+			bytes[i] = (unsigned char)(scalars[1 + i / 8] >> (56 - 8 * (i % 8)));
+		if (length % 8 && (scalars[scalar_count - 1] << (8 * (length % 8)))) goto literal_done;
+		result = pg_host_literal(graph, terms[0]->as.reference, length, bytes);
+	literal_done:
+		pg_graph_destroy(&temporary);
+		return result;
+	}
 	if (!strcmp(name, "symmetry/v1")) {
 		if (count || scalar_count > SIZE_MAX / sizeof(size_t)) return NULL;
 		struct pg_graph temporary = {0};
