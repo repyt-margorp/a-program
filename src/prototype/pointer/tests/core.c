@@ -3480,7 +3480,9 @@ static void request_typing_test(struct pg_graph *graph)
 	const struct pg_evidence *function = pg_prove_operation_function(&typing, &classifiers, op);
 	assert(function && pg_evidence_rule(function) == PG_LAMBDA_INTRO);
 	const struct pg_evidence *application = pg_prove_application(&typing, function, payload);
-	assert(application && pg_effect_type_view(pg_evidence_classifier(application), &row, &result_type));
+	enum pg_totality function_totality;
+	assert(application && pg_computation_type_view(pg_evidence_classifier(application), &function_totality, &row, &result_type));
+	assert(function_totality == PG_TOTALITY_TOTAL);
 	assert(pg_effect_count(row) == 1 && pg_effect_contains(row, pg_operation_label(op)) == 1);
 	normal = checked_normalize(&typing, &work, application);
 	assert(normal && pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &a, &continuation));

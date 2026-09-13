@@ -993,7 +993,7 @@ const struct pg_evidence *pg_prove_inductive_family_function(struct pg_typing *t
 	const struct pg_evidence *map = prove_data_scope(typing, formation,
 		pg_data_schema_indices(formation->certificate), parameters, NULL, 0);
 	if (!map) return NULL;
-	const struct pg_evidence *body = pg_prove_return(typing, classifiers,
+	const struct pg_evidence *body = pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL,
 		pg_prove_type_value(typing, family_in_scope(typing, formation, parameters, map)));
 	return pg_prove_abstract(typing, classifiers, parameters->premises[1], map->premises[1], body);
 }
@@ -1019,7 +1019,7 @@ const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing
 	const struct pg_evidence *map = pg_prove_constructor_scope(typing, formation, constructor, parameters);
 	if (!map) return NULL;
 	const struct pg_evidence *body = constructor_in_scope(typing, formation, constructor, parameters, map);
-	body = pg_prove_return(typing, classifiers, body);
+	body = pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, body);
 	if (!body) return NULL;
 	return pg_prove_abstract(typing, classifiers, parameters->premises[1], map->premises[1], body);
 }
@@ -3079,7 +3079,8 @@ const struct pg_evidence *pg_prove_operation_function(struct pg_typing *typing,
 	const struct pg_evidence *scope = pg_prove_context_extension(typing, empty, a, declaration->payload_type);
 	const struct pg_evidence *response_type = pg_prove_projection(typing, scope, declaration->response_type);
 	const struct pg_evidence *response_scope = pg_prove_context_extension(typing, scope, b, response_type);
-	const struct pg_evidence *returned = pg_prove_return(typing, classifiers, pg_prove_variable(typing, response_scope, b));
+	const struct pg_evidence *returned = pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL,
+		pg_prove_variable(typing, response_scope, b));
 	const struct pg_evidence *response_pi = pg_prove_pi(typing, classifiers, response_scope,
 		pg_prove_classifier(typing, classifiers, response_scope, returned));
 	const struct pg_evidence *continuation = pg_prove_lambda(typing, response_pi, returned);

@@ -11,6 +11,24 @@
 #include <stdio.h>
 #include <string.h>
 
+static int total_effect_type_view(const struct pg_term *term,
+	const struct pg_effect_row **effects, const struct pg_term **value)
+{
+	enum pg_totality totality;
+	return pg_computation_type_view(term, &totality, effects, value) && totality == PG_TOTALITY_TOTAL;
+}
+
+static int total_return_type_view(const struct pg_term *term, const struct pg_term **value)
+{
+	const struct pg_effect_row *effects;
+	return total_effect_type_view(term, &effects, value) && !pg_effect_count(effects);
+}
+
+static const struct pg_term *total_return_type(struct pg_classifiers *classifiers, const struct pg_term *value)
+{
+	return pg_computation_type(classifiers, PG_TOTALITY_TOTAL, pg_effect_row(classifiers->graph, 0, NULL), value);
+}
+
 /* Different proof paths may establish the same judgement without being interned
  * as one derivation. Check its semantic fields independently of that choice. */
 static void same_judgement(const struct pg_evidence *left, const struct pg_evidence *right)
@@ -541,7 +559,8 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_term *source_carrier = pg_effect_type_spine(classifiers,
 			pg_reference(typing->graph, pg_effect_equation_parameter(&effects, equation)), pg_universe(classifiers, 0));
 		const struct pg_term *expected_source_pi = pg_pi(typing->graph, pg_universe(classifiers, 0),
-			pg_synthesis_binding_binder(source_binding), pg_return_type(classifiers, pg_thunk_type(classifiers, source_carrier)));
+			pg_synthesis_binding_binder(source_binding), pg_computation_type(classifiers, PG_TOTALITY_TOTAL,
+				pg_effect_row(typing->graph, 0, NULL), pg_thunk_type(classifiers, source_carrier)));
 		assert(pg_synthesis_type_structure_result(source_lambda_type) == expected_source_pi);
 		struct pg_synthesis_job *source_quote_type = pg_synthesis_classifier_structure(&synthesis, source_quote);
 		assert(!complete(&synthesis, source_quote_type, PG_SYNTHESIS_DONE));
@@ -557,7 +576,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(outer_domain == pg_universe(classifiers, 0));
 		assert(pg_pi_view(inner_pi, &inner_domain, &value_binder, &inner_result));
 		assert(inner_domain == pg_reference(typing->graph, type_binder));
-		assert(inner_result == pg_return_type(classifiers, inner_domain));
+		assert(inner_result == total_return_type(classifiers, inner_domain));
 		struct pg_synthesis_job *nested_term = pg_synthesis_term_structure(&synthesis, nested_source);
 		assert(!complete(&synthesis, nested_term, PG_SYNTHESIS_DONE));
 		const struct pg_term *expected_nested = pg_lambda(typing->graph, type_binder,
@@ -583,7 +602,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(!complete(&synthesis, single_block_type, PG_SYNTHESIS_DONE));
 		assert(!complete(&synthesis, single_block_term, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(single_block_type)
-			== pg_return_type(classifiers, pg_thunk_type(classifiers, symbolic_f)));
+			== total_return_type(classifiers, pg_thunk_type(classifiers, symbolic_f)));
 		assert(!pg_synthesis_result(single_block));
 		struct pg_synthesis_job *pending_block = request(&synthesis, scope, "v := { a := k; b := a; b; };");
 		struct pg_synthesis_job *pending_block_type = pg_synthesis_classifier_structure(&synthesis, pending_block);
@@ -714,7 +733,9 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis_job *computed_argument_type = pg_synthesis_classifier_structure(&synthesis, computed_argument);
 		assert(!complete(&synthesis, computed_argument_type, PG_SYNTHESIS_DONE));
 		const struct pg_term *computed_row, *computed_value;
-		assert(pg_effect_type_spine_view(pg_synthesis_type_structure_result(computed_argument_type), &computed_row, &computed_value));
+		enum pg_totality computed_totality;
+		assert(pg_computation_type_spine_view(pg_synthesis_type_structure_result(computed_argument_type), &computed_totality, &computed_row, &computed_value));
+		assert(computed_totality == PG_TOTALITY_TOTAL);
 		assert(computed_value == pg_universe(classifiers, 0));
 		assert(!pg_synthesis_result(computed_argument) && !pg_synthesis_result(context));
 		struct pg_synthesis_job *computed_function = request(&synthesis, result_scope,
@@ -777,14 +798,15 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_pi_view(pg_synthesis_type_structure_result(return_clause_type),
 			&return_domain, &return_binder, &return_codomain));
 		assert(return_domain == pg_universe(classifiers, 0));
-		assert(return_codomain == pg_return_type(classifiers, return_domain));
+		assert(return_codomain == total_return_type(classifiers, return_domain));
 		assert(!pg_synthesis_result(return_clause_job));
 		struct pg_synthesis_job *source_return_handler = request(&synthesis, scope,
 			"h := k @#.return r => r;");
 		struct pg_synthesis_job *source_return_type = pg_synthesis_classifier_structure(&synthesis, source_return_handler);
 		assert(!complete(&synthesis, source_return_type, PG_SYNTHESIS_DONE));
 		const struct pg_term *return_row, *return_value;
-		assert(pg_effect_type_spine_view(pg_synthesis_type_structure_result(source_return_type), &return_row, &return_value));
+		assert(pg_computation_type_spine_view(pg_synthesis_type_structure_result(source_return_type), &computed_totality, &return_row, &return_value));
+		assert(computed_totality == PG_TOTALITY_TOTAL);
 		assert(return_value == pg_thunk_type(classifiers, symbolic_f));
 		assert(!pg_synthesis_result(context) && !pg_synthesis_result(source_return_handler));
 		struct pg_synthesis_job *open_carrier = pg_synthesis_handler_carrier(&synthesis,
@@ -1109,7 +1131,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_evidence_classifier(open_handler_proof) == pg_effect_type(classifiers, no_effects, handler_value));
 		const struct pg_evidence *return_proof = complete(&synthesis, return_clause_job, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *source_return_proof = complete(&synthesis, source_return_handler, PG_SYNTHESIS_DONE);
-		assert(pg_evidence_classifier(source_return_proof) == pg_effect_type(classifiers, no_effects,
+		assert(pg_evidence_classifier(source_return_proof) == pg_computation_type(classifiers, PG_TOTALITY_TOTAL, no_effects,
 			pg_evidence_subject(pg_synthesis_result(thunk))->core));
 		const struct pg_evidence *returned_thunk = pg_prove_return_value(typing,
 			normalize(&synthesis, expected_context, source_return_proof));
@@ -1168,7 +1190,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		const struct pg_evidence *function_proof = complete(&synthesis, computed_function, PG_SYNTHESIS_DONE);
 		assert(!complete(&synthesis, computed_function_core, PG_SYNTHESIS_DONE));
 		assert(pg_evidence_subject(function_proof)->core == pg_synthesis_type_structure_result(computed_function_core));
-		assert(pg_evidence_classifier(computed_proof) == pg_return_type(classifiers, computed_value));
+		assert(pg_evidence_classifier(computed_proof) == total_return_type(classifiers, computed_value));
 		const struct pg_evidence *computed_normal = normalize(&synthesis, pg_synthesis_result(result_context), computed_proof);
 		assert(pg_evidence_subject(computed_normal)->core == pg_evidence_subject(pg_prove_return(typing, classifiers, result_proof))->core);
 		assert(pg_evidence_subject(result_proof)->core == pg_reference(typing->graph, result_binder));
@@ -1332,7 +1354,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		const struct pg_evidence *call = complete(&synthesis, request(&synthesis, scope, calls[i]), PG_SYNTHESIS_DONE);
 		const struct pg_effect_row *effects;
 		const struct pg_term *response;
-		assert(pg_effect_type_view(pg_evidence_classifier(call), &effects, &response));
+		assert(total_effect_type_view(pg_evidence_classifier(call), &effects, &response));
 		assert(pg_effect_count(effects) == 1 && pg_effect_contains(effects, pg_operation_label(operation)) == 1);
 		const struct pg_evidence *normal = normalize(&synthesis, context, call);
 		const struct pg_object *operation_label;
@@ -1509,7 +1531,8 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *return_function = complete(&synthesis, handler_return, PG_SYNTHESIS_DONE);
 	const struct pg_evidence *return_pi = pg_prove_classifier(typing, classifiers, context, return_function);
 	const struct pg_evidence *return_carrier = pg_prove_pi_constant_codomain(typing, return_pi);
-	same_judgement(return_carrier, pg_prove_return_type(typing, classifiers,
+	same_judgement(return_carrier, pg_prove_computation_type(typing, classifiers, PG_TOTALITY_TOTAL,
+		pg_effect_row(typing->graph, 0, NULL),
 		pg_prove_universe(typing, classifiers, context, 2)));
 	assert(complete(&synthesis, handler_return, PG_SYNTHESIS_DONE) == return_function);
 	complete(&synthesis, request(&synthesis, scope,
@@ -1533,7 +1556,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 		request(&synthesis, scope, "fetched := (Fetch Arg) Arg;"), PG_SYNTHESIS_DONE);
 	const struct pg_effect_row *call_effects;
 	const struct pg_term *call_result;
-	assert(pg_effect_type_view(pg_evidence_classifier(fetched_call), &call_effects, &call_result));
+	assert(total_effect_type_view(pg_evidence_classifier(fetched_call), &call_effects, &call_result));
 	assert(pg_effect_count(call_effects) == 1);
 	assert(pg_effect_contains(call_effects, pg_operation_label(fetch)) == 1);
 	assert(call_result == pg_evidence_subject(u1)->core);
@@ -1557,7 +1580,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(fetched_value && pg_evidence_subject(fetched_value)->core == pg_evidence_subject(u0)->core);
 	const struct pg_evidence *both = complete(&synthesis,
 		request(&synthesis, scope, "both := (Fetch Arg) (Op Arg);"), PG_SYNTHESIS_DONE);
-	assert(pg_effect_type_view(pg_evidence_classifier(both), &call_effects, &call_result));
+	assert(total_effect_type_view(pg_evidence_classifier(both), &call_effects, &call_result));
 	assert(pg_effect_count(call_effects) == 2);
 	assert(pg_effect_contains(call_effects, pg_operation_label(fetch)) == 1);
 	assert(pg_effect_contains(call_effects, pg_operation_label(operation)) == 1);
@@ -1716,7 +1739,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 	assert(!pg_effect_inference_init(&inference, typing->graph));
 	const struct pg_effect_row *input_row;
 	const struct pg_term *input_value;
-	assert(pg_effect_type_view(pg_evidence_classifier(called), &input_row, &input_value));
+	assert(total_effect_type_view(pg_evidence_classifier(called), &input_row, &input_value));
 	const struct pg_effect_row *empty = pg_effect_row(typing->graph, 0, NULL);
 	struct pg_effect_equation *input_effect = pg_effect_equation(&inference, input_row);
 	struct pg_effect_equation *return_effect = pg_effect_equation(&inference, empty);
@@ -2841,7 +2864,7 @@ static void named_identity(struct pg_typing *typing, struct pg_classifiers *clas
 	const struct pg_term *left = pg_application(typing->graph, f, pg_reference(typing->graph, arguments[3]));
 	const struct pg_term *right = pg_application(typing->graph, f, pg_reference(typing->graph, arguments[4]));
 	const struct pg_term *expected_type = pg_identity_instance(typing->graph,
-		pg_identity_action(typing->graph, pg_return_type(classifiers, pg_reference(typing->graph, arguments[1]))), left, right);
+		pg_identity_action(typing->graph, total_return_type(classifiers, pg_reference(typing->graph, arguments[1]))), left, right);
 	struct pg_conversion comparison;
 	assert(pg_conversion_init(&comparison, &work, generic_type, expected_type) == 0);
 	assert(pg_conversion_advance(&comparison, 10000) == PG_CONVERSION_EQUAL);
@@ -2961,7 +2984,7 @@ static void named_transport(struct pg_typing *typing, struct pg_classifiers *cla
 		const struct pg_evidence *value = pg_prove_variable(typing, context, bindings[4]);
 		const struct pg_evidence *field = i < 2 ? pg_prove_identity_transport(typing, classifiers, family, value, direction)
 			: pg_prove_identity_lift(typing, classifiers, family, value, direction);
-		const struct pg_evidence *body = pg_prove_return(typing, classifiers, field);
+		const struct pg_evidence *body = pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, field);
 		assert(body && pg_prove_abstract(typing, classifiers, context, context, body) == body);
 		const struct pg_evidence *function = pg_prove_abstract(typing, classifiers, empty, context, body);
 		assert(function);
@@ -4128,7 +4151,7 @@ static void normalization_jobs(struct pg_typing *typing, struct pg_classifiers *
 	assert(pg_evidence_judgement(normalized_type) == PG_JUDGEMENT_COMPUTATION_TYPE);
 	assert(pg_evidence_classifier(normalized_type) == pg_evidence_classifier(formation));
 	const struct pg_term *content;
-	assert(pg_return_type_view(pg_evidence_subject(normalized_type)->core, &content));
+	assert(total_return_type_view(pg_evidence_subject(normalized_type)->core, &content));
 	static const struct pg_eval_policy foreign_policy = {arbitrary_policy};
 	struct pg_whnf_job *foreign = pg_whnf_request(&work, &foreign_policy, pg_evidence_subject(source)->core);
 	assert(pg_whnf_advance(foreign, 10000) == PG_EVAL_WHNF);
@@ -4272,7 +4295,8 @@ static void identity_contents(struct pg_typing *typing, struct pg_classifiers *c
 		answer = complete(&split, pg_synthesis_return(&split, context, acted), PG_SYNTHESIS_DONE);
 		assert(pg_evidence_subject(answer)->core == expected);
 		const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, answer);
-		const struct pg_evidence *return_type = pg_prove_return_type(typing, classifiers, type);
+		const struct pg_evidence *return_type = pg_prove_computation_type(typing, classifiers, PG_TOTALITY_TOTAL,
+			pg_effect_row(typing->graph, 0, NULL), type);
 		struct pg_conversion conversion;
 		assert(pg_conversion_init(&conversion, normalization, pg_evidence_classifier(acted),
 			pg_evidence_subject(return_type)->core) == 0);
@@ -4796,7 +4820,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	assert(!pg_synthesis_result(field_body));
 	assert(!pg_synthesis_abstract(&synthesis, field_context, empty, field_body));
 	const struct pg_evidence *abstract_proof = complete(&synthesis, abstracted, PG_SYNTHESIS_DONE);
-	const struct pg_evidence *body_return = pg_prove_return(typing, classifiers, pg_synthesis_result(field_body));
+	const struct pg_evidence *body_return = pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, pg_synthesis_result(field_body));
 	const struct pg_evidence *direct_abstract = pg_prove_abstract(typing, classifiers, empty, field_context, body_return);
 	same_judgement(abstract_proof, direct_abstract);
 	assert(pg_evidence_subject(abstract_proof)->core == pg_evidence_subject(direct_abstract)->core);
@@ -4804,7 +4828,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	struct pg_synthesis_job *constant = pg_synthesis_constant_motive(&synthesis, empty, field_context, field_body);
 	assert(constant && pg_synthesis_status(constant) == PG_SYNTHESIS_PENDING);
 	const struct pg_evidence *constant_type = complete(&synthesis, constant, PG_SYNTHESIS_DONE);
-	assert(pg_evidence_subject(constant_type)->core == pg_return_type(classifiers, pg_evidence_subject(nat)->core));
+	assert(pg_evidence_subject(constant_type)->core == total_return_type(classifiers, pg_evidence_subject(nat)->core));
 	assert(pg_synthesis_constant_motive(&synthesis, empty, field_context, field_body) == constant);
 	const struct pg_object *type_binder = pg_binder(typing->graph), *dependent_binder = pg_binder(typing->graph);
 	const struct pg_evidence *type_context = pg_prove_context_extension(typing, empty, type_binder,
@@ -4840,7 +4864,8 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	assert(pg_inductive_instance(typing, nat, &nat_instance));
 	const struct pg_data_layout *nat_layout = pg_data_schema_layout(nat_instance.schema);
 	const struct pg_evidence *motive_context = pg_prove_context_extension(typing, empty, pg_binder(typing->graph), nat);
-	const struct pg_evidence *motive = pg_prove_return_type(typing, classifiers,
+	const struct pg_evidence *motive = pg_prove_computation_type(typing, classifiers, PG_TOTALITY_TOTAL,
+		pg_effect_row(typing->graph, 0, NULL),
 		pg_prove_projection(typing, motive_context, nat));
 	const struct pg_syntax *induction = expression_syntax(typing->graph,
 		"r:=Nat.zero @zero=>Nat.zero @succ k=>*k;");
@@ -5024,12 +5049,12 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		"r:=(Choose Nat.zero) @zero=>Nat.zero @succ k=>k;"), PG_SYNTHESIS_DONE);
 	const struct pg_effect_row *match_effects;
 	const struct pg_term *match_result;
-	assert(pg_effect_type_view(pg_evidence_classifier(effect_match), &match_effects, &match_result));
+	assert(total_effect_type_view(pg_evidence_classifier(effect_match), &match_effects, &match_result));
 	assert(match_result == pg_evidence_subject(nat)->core);
 	assert(pg_effect_count(match_effects) == 1 && pg_effect_contains(match_effects, pg_operation_label(choose)) == 1);
 	const struct pg_evidence *effect_function = complete(&synthesis, request(&synthesis, effect_scope,
 		"r:={f:={Choose Nat.zero; &(\\n:Nat=>n);}; f Nat.zero;};"), PG_SYNTHESIS_DONE);
-	assert(pg_effect_type_view(pg_evidence_classifier(effect_function), &match_effects, &match_result));
+	assert(total_effect_type_view(pg_evidence_classifier(effect_function), &match_effects, &match_result));
 	assert(match_result == pg_evidence_subject(nat)->core);
 	assert(pg_effect_count(match_effects) == 1 && pg_effect_contains(match_effects, pg_operation_label(choose)) == 1);
 	struct pg_synthesis_job *acc = request(&synthesis, effect_scope,
@@ -5054,7 +5079,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	assert(pg_evidence_subject(handled_result)->core == pg_evidence_subject(zero)->core);
 	const struct pg_evidence *effect_induction = complete(&synthesis, request(&synthesis, effect_scope,
 		"r:=(\\n:Nat=>n @zero=>Choose Nat.zero @succ k=>Nat.succ *k) (Nat.succ Nat.zero);"), PG_SYNTHESIS_DONE);
-	assert(pg_effect_type_view(pg_evidence_classifier(effect_induction), &match_effects, &match_result));
+	assert(total_effect_type_view(pg_evidence_classifier(effect_induction), &match_effects, &match_result));
 	assert(match_result == pg_evidence_subject(nat)->core);
 	assert(pg_effect_count(match_effects) == 1 && pg_effect_contains(match_effects, pg_operation_label(choose)) == 1);
 	const struct pg_evidence *handled_induction = complete(&synthesis, request(&synthesis, effect_scope,
@@ -5280,7 +5305,7 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	assert(nat_scope);
 	const struct pg_evidence *application = complete(&synthesis,
 		request(&synthesis, nat_scope, "v:=(\\n:Nat=>n) zero;"), PG_SYNTHESIS_DONE);
-	assert(pg_evidence_classifier(application) == pg_return_type(classifiers, pg_evidence_subject(admitted)->core));
+	assert(pg_evidence_classifier(application) == total_return_type(classifiers, pg_evidence_subject(admitted)->core));
 	const struct pg_evidence *succ_function = pg_prove_constructor_function(typing, classifiers,
 		admitted, successor, parameter_map);
 	assert(succ_function);
@@ -5369,7 +5394,7 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 			const struct pg_object *binder;
 			assert(pg_pi_view(pg_evidence_classifier(value), &domain, &binder, &codomain));
 			assert(binder == saved_fields->binder && domain == pg_evidence_subject(admitted)->core);
-			assert(codomain == pg_return_type(classifiers, domain));
+			assert(codomain == total_return_type(classifiers, domain));
 			assert(pg_synthesis_constructor_value(&restored, admitted, successor, parameter_map) == member);
 		} else assert(!value);
 		pg_synthesis_destroy(&restored);
@@ -5393,7 +5418,7 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	assert(nat_scope);
 	const struct pg_evidence *successor_call = complete(&synthesis,
 		request(&synthesis, nat_scope, "v:=succ zero;"), PG_SYNTHESIS_DONE);
-	assert(pg_evidence_classifier(successor_call) == pg_return_type(classifiers, pg_evidence_subject(admitted)->core));
+	assert(pg_evidence_classifier(successor_call) == total_return_type(classifiers, pg_evidence_subject(admitted)->core));
 	/* A value of Self cannot shadow the type assumption as another type. */
 	const struct pg_object *element = pg_binder(typing->graph);
 	const struct pg_evidence *element_context = pg_prove_context_extension(typing, self_context, element,
@@ -5477,7 +5502,8 @@ static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifi
 	const struct pg_object *ctor = pg_data_constructor(pg_data_schema_layout(schema), 0);
 	const struct pg_evidence *iv = pg_prove_variable(typing, indices, i);
 	const struct pg_evidence *index_a = pg_prove_value_type(typing, pg_prove_variable(typing, indices, a));
-	const struct pg_evidence *motive = pg_prove_return_type(typing, classifiers,
+	const struct pg_evidence *motive = pg_prove_computation_type(typing, classifiers, PG_TOTALITY_TOTAL,
+		pg_effect_row(typing->graph, 0, NULL),
 		pg_prove_identity_type(typing, index_a, iv, iv));
 	struct pg_token names[] = {{.kind = PG_TOKEN_IDENT, .length = 1, .text = "A"},
 		{.kind = PG_TOKEN_IDENT, .length = 1, .text = "x"}, {.kind = PG_TOKEN_IDENT, .length = 1, .text = "p"}};
@@ -5771,10 +5797,27 @@ static void graded_application(struct pg_typing *typing, struct pg_classifiers *
 				if (checked) assert(pg_evidence_classifier(checked) == pg_evidence_subject(type)->core);
 			}
 		}
+		struct pg_synthesis_job *flag = request(&synthesis, scope, "Flag:=@{yes:*; no:*;};");
+		complete(&synthesis, flag, PG_SYNTHESIS_DONE);
+		scope = pg_synthesis_name_job(&synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Flag", .length = 4}, flag);
+		const char *branches[] = {
+			"main:=\\b:Flag=>b @yes=>f Arg @no=>Arg;",
+			"main:=\\b:Flag=>b @yes=>Arg @no=>f Arg;"
+		};
+		for (size_t i = 0; i < 2; ++i) {
+			const struct pg_evidence *match = complete(&synthesis, request(&synthesis, scope, branches[i]), PG_SYNTHESIS_DONE);
+			const struct pg_term *domain, *codomain, *result;
+			const struct pg_object *binder;
+			enum pg_totality actual;
+			assert(pg_pi_view(pg_evidence_classifier(match), &domain, &binder, &codomain));
+			assert(pg_pure_computation_type_view(codomain, &actual, &result));
+			assert(actual == grade && result == pg_evidence_subject(u1)->core);
+		}
 	}
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
-	puts("graded source application: argument/callee sequencing preserves totality; post-checks only weaken");
+	puts("graded source application: sequencing and Match preserve guarantees; post-checks only weaken");
 }
 
 int main(void)
@@ -5834,7 +5877,7 @@ int main(void)
 	assert(pg_pi_view(pg_evidence_classifier(identity), &domain, &binder, &codomain));
 	assert(domain == pg_universe(&classifiers, 0));
 	assert(pg_pi_view(codomain, &domain, &binder, &codomain));
-	assert(pg_return_type_view(codomain, &codomain) && codomain == domain);
+	assert(total_return_type_view(codomain, &codomain) && codomain == domain);
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
 	const struct pg_evidence *universe = pg_prove_universe(&typing, &classifiers, empty, 0);
 	const struct pg_object *a = pg_binder(&graph), *x = pg_binder(&graph);
@@ -5857,7 +5900,7 @@ int main(void)
 	const struct pg_evidence *second_application = pg_prove_application(&typing,
 		pg_prove_projection(&typing, x_context, typed_reduct), x_value);
 	const struct pg_evidence *second_reduct = normalize(&synthesis, x_context, second_application);
-	const struct pg_evidence *return_x = pg_prove_return(&typing, &classifiers, x_value);
+	const struct pg_evidence *return_x = pg_prove_return_contract(&typing, &classifiers, PG_TOTALITY_TOTAL, x_value);
 	assert(second_reduct && pg_evidence_subject(second_reduct)->core == pg_evidence_subject(return_x)->core);
 	assert(pg_evidence_classifier(second_reduct) == pg_evidence_classifier(return_x));
 	const struct pg_evidence *images[] = {pg_prove_variable(&typing, x_context, a), x_value};
@@ -5957,7 +6000,8 @@ int main(void)
 	const struct pg_evidence *returned_type = pg_prove_return(&typing, &classifiers, type_code);
 	assert(returned_type && !pg_prove_value_type(&typing, returned_type));
 	assert(pg_prove_value_type(&typing, pg_prove_return_value(&typing, returned_type)));
-	const struct pg_evidence *delayed_x = pg_prove_thunk(&typing, &classifiers, return_x);
+	const struct pg_evidence *delayed_x = pg_prove_thunk(&typing, &classifiers,
+		pg_prove_effect_subsumption(&typing, return_x, pg_prove_thunk_content(&typing, delayed_type)));
 	const struct pg_evidence *m_images[] = {pg_prove_variable(&typing, x_context, a), x_value, delayed_x};
 	const struct pg_evidence *m_substitution = pg_prove_substitution(&typing, m_context, x_context, 3, m_images);
 	const struct pg_evidence *substituted_m = pg_prove_reindex(&typing, m_substitution, m_value);
@@ -6124,7 +6168,7 @@ int main(void)
 	const struct pg_evidence *computed_codomain = complete(&synthesis, request(&synthesis, scope,
 		"main := A -> ((\\T : @ => T) A);"), PG_SYNTHESIS_DONE);
 	assert(pg_pi_view(pg_evidence_subject(computed_codomain)->core, &domain, &binder, &codomain));
-	assert(pg_return_type_view(codomain, &codomain) && codomain == pg_reference(&graph, a));
+	assert(total_return_type_view(codomain, &codomain) && codomain == pg_reference(&graph, a));
 	const char *checked_types[] = {
 		"main := \\y : (((\\T : @ => T) A) :: @) => y;",
 		"main := \\y : ((\\T : @ => (T :: @)) A) => y;",
@@ -6377,7 +6421,7 @@ int main(void)
 		"main := { B := A; \\y : B => y; };"), PG_SYNTHESIS_DONE);
 	assert(pg_pi_view(pg_evidence_classifier(dependent_block), &domain, &binder, &codomain));
 	assert(domain == pg_reference(&graph, a));
-	assert(pg_return_type_view(codomain, &codomain) && codomain == domain);
+	assert(total_return_type_view(codomain, &codomain) && codomain == domain);
 	const char *dependent_computations[] = {
 		"main := { B := (\\T : @ => T) A; \\y : B => y; };",
 		"main := { B := (\\T : @ => T) A; C := (\\T : @ => T) B; \\y : C => y; };",

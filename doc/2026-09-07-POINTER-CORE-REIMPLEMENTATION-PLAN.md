@@ -139,8 +139,11 @@ September 13 compatibility follow-up:
   post-synthesis guarantee weakening, and operation/handler rules. A request
   retains its continuation's guarantee under returning operation interpretations;
   a handler cannot upgrade an unknown input prefix just by removing its row.
-  Remaining: source arrow/body/Match guarantee inference and library contracts,
-  then the public termination request. Existing
+  Source RETURN/body and ordinary arrow contracts now use TOTAL; Match
+  combines independently obtained guarantees by their minimum and checks the
+  resulting branches through the existing kernel. Constructor/family wrappers
+  and the Identity library retain their finite RETURN guarantee. The public
+  termination request remains unconnected. Existing
   ungraded builders still mean UNSPECIFIED and cannot silently erase TOTAL.
   Do not accept `quickSortTerminates` with an abstract comparator until its
   source contract and introductions/eliminations are checked. No compatibility
@@ -160,6 +163,16 @@ September 13 compatibility follow-up:
   Full acceptance still reaches the same 14/20 compatibility failure, not a
   restored QuickSort acceptance. Core, Identity, synthesis, program and
   derivation-IO suites pass ASan/UBSan. No new replay or totality engine.
+  Source-contract follow-up: mixed TOTAL/UNSPECIFIED Match branches infer
+  UNSPECIFIED in either order; sequencing and post-checks do not strengthen it.
+  Tests that construct old weaker motives explicitly weaken TOTAL evidence
+  where needed, rather than identifying the two contracts. Source images now
+  use 36/37; versions 34/35 are not reinterpreted with new source defaults.
+  Full `check-acceptance` passes preceding gates and remains 14/20, with the
+  six unchanged QuickSort cases rejecting at 59,707 steps. This migration does
+  not yet discharge `quickSortTerminates` or complete the compatibility gate.
+  Source synthesis, IADT and source-image suites also pass ASan/UBSan; seed
+  tests explicitly reject the previous source-contract formats 34/35.
 
 Theory references for this step: Leijen's [Koka report, Sections 2.1-2.2](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/koka-effects-2013.pdf)
 distinguishes potential divergence from ordinary side effects; Torczon et al.'s
@@ -340,8 +353,9 @@ unchanged; computations over logical hypotheses use the extension below.
   missing semantics, not checkpoint performance tasks; connecting the name
   alone does not establish QuickSort compatibility.
   The old `totality_evidence.inc` rule requires TOTAL in the computation type;
-  the new kernel's retained F contract is not yet inferred by the source
-  pipeline. Neither an empty effect row nor graph-family formation can
+  source inference now retains that F contract, but the corresponding public
+  type/witness request still needs ordinary evidence introduction and source
+  wiring. Neither an empty effect row nor graph-family formation can
   substitute for that premise.
   Contradiction/result constraints for `LT y zero` are restored. The old order
   fixture's successor branch, however, is invalid: do not weaken recursive

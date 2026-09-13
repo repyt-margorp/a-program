@@ -25,7 +25,8 @@ static const struct pg_evidence *congruence_function(struct pg_typing *typing,
 	const struct pg_object *x = pg_binder(typing->graph), *f = pg_binder(typing->graph);
 	const struct pg_evidence *domain = pg_prove_value_type(typing, pg_prove_variable(typing, context, a));
 	const struct pg_evidence *inner = pg_prove_context_extension(typing, context, x, domain);
-	const struct pg_evidence *codomain = pg_prove_return_type(typing, classifiers,
+	const struct pg_evidence *codomain = pg_prove_computation_type(typing, classifiers, PG_TOTALITY_TOTAL,
+		pg_effect_row(typing->graph, 0, NULL),
 		pg_prove_value_type(typing, pg_prove_variable(typing, inner, b)));
 	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, inner, codomain);
 	context = pg_prove_context_extension(typing, context, f, pg_prove_thunk_type(typing, classifiers, pi));
@@ -77,7 +78,7 @@ static const struct pg_evidence *path_function(struct pg_typing *typing,
 	const struct pg_evidence *checked = convert(typing, work, action, target);
 	const struct pg_evidence *input = compose ? images[4] : pg_prove_reflexivity(typing, base, images[1]);
 	const struct pg_evidence *result = pg_prove_identity_transport(typing, classifiers, checked, input, PG_IDENTITY_RIGHT);
-	return pg_prove_abstract(typing, classifiers, empty, context, pg_prove_return(typing, classifiers, result));
+	return pg_prove_abstract(typing, classifiers, empty, context, pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, result));
 }
 
 const struct pg_identity_library *pg_identity_library(struct pg_typing *typing,
@@ -100,9 +101,9 @@ const struct pg_identity_library *pg_identity_library(struct pg_typing *typing,
 	const struct pg_evidence *type = pg_prove_value_type(typing, pg_prove_variable(typing, y_context, a));
 	const struct pg_evidence *identity = pg_prove_identity_type(typing, type,
 		pg_prove_variable(typing, y_context, x), pg_prove_variable(typing, y_context, y));
-	const struct pg_evidence *eq_body = pg_prove_return(typing, classifiers, pg_prove_type_value(typing, identity));
+	const struct pg_evidence *eq_body = pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, pg_prove_type_value(typing, identity));
 	type = pg_prove_value_type(typing, pg_prove_variable(typing, x_context, a));
-	const struct pg_evidence *refl_body = pg_prove_return(typing, classifiers,
+	const struct pg_evidence *refl_body = pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL,
 		pg_prove_reflexivity(typing, type, pg_prove_variable(typing, x_context, x)));
 	struct pg_identity_library *library = pg_alloc(typing->graph, sizeof(*library));
 	if (!library) return NULL;
@@ -124,7 +125,7 @@ const struct pg_identity_library *pg_identity_library(struct pg_typing *typing,
 		pg_prove_variable(typing, endpoints, r), pg_prove_variable(typing, endpoints, x),
 		pg_prove_variable(typing, endpoints, y));
 	library->instance = pg_prove_abstract(typing, classifiers, empty, endpoints,
-		pg_prove_return(typing, classifiers, pg_prove_type_value(typing, instance)));
+		pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, pg_prove_type_value(typing, instance)));
 	if (!library->instance) return NULL;
 	for (enum pg_identity_direction direction = PG_IDENTITY_RIGHT; direction <= PG_IDENTITY_LEFT; ++direction) {
 		const struct pg_object *endpoint = direction == PG_IDENTITY_RIGHT ? a : b;
@@ -135,9 +136,9 @@ const struct pg_identity_library *pg_identity_library(struct pg_typing *typing,
 		const struct pg_evidence *transport = pg_prove_identity_transport(typing, classifiers, family, value, direction);
 		const struct pg_evidence *lift = pg_prove_identity_lift(typing, classifiers, family, value, direction);
 		library->transport[direction] = pg_prove_abstract(typing, classifiers, empty, context,
-			pg_prove_return(typing, classifiers, transport));
+			pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, transport));
 		library->lifting[direction] = pg_prove_abstract(typing, classifiers, empty, context,
-			pg_prove_return(typing, classifiers, lift));
+			pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, lift));
 		if (!library->transport[direction] || !library->lifting[direction]) return NULL;
 	}
 	library->symmetry = path_function(typing, classifiers, normalization, empty, a_context, a, level, 0);

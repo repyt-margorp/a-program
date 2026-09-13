@@ -27,7 +27,8 @@ static void indexed_ih_fiber(struct pg_program *p, const struct pg_evidence *for
 	const struct pg_evidence *mc = pg_prove_inductive_motive_context(&p->typing,
 		formation, parameters, pg_binder(&p->graph));
 	assert(mc);
-	const struct pg_evidence *motive = pg_prove_return_type(&p->typing, &p->classifiers,
+	const struct pg_evidence *motive = pg_prove_computation_type(&p->typing, &p->classifiers, PG_TOTALITY_TOTAL,
+		pg_effect_row(&p->graph, 0, NULL),
 		pg_prove_projection(&p->typing, mc, pg_evidence_premise(mc, 1)));
 	struct pg_inductive_instance instance;
 	assert(motive && pg_inductive_instance(&p->typing, formation, &instance));
@@ -38,7 +39,7 @@ static void indexed_ih_fiber(struct pg_program *p, const struct pg_evidence *for
 	const struct pg_evidence *field = pg_evidence_premise(scope, pg_evidence_premise_count(scope) - 1);
 	const struct pg_context *with_ih = pg_evidence_context(pg_evidence_premise(scope, 1));
 	const struct pg_term *expected = pg_thunk_type(&p->classifiers,
-		pg_return_type(&p->classifiers, pg_evidence_classifier(field)));
+		pg_computation_type(&p->classifiers, PG_TOTALITY_TOTAL, pg_effect_row(&p->graph, 0, NULL), pg_evidence_classifier(field)));
 	const struct pg_term *function;
 	if (pg_thunk_type_view(pg_evidence_classifier(field), &function)) {
 		expected = pg_evidence_classifier(field);
@@ -869,7 +870,7 @@ static void constructor_inputs(void)
 			assert(pg_pi_view(pg_evidence_classifier(result), &domain, &binder, &codomain));
 			assert(binder == core->as.lambda.binder);
 			assert(domain == pg_evidence_subject(pg_synthesis_result(input.formation))->core);
-			assert(codomain == pg_return_type(&p->classifiers, domain));
+			assert(codomain == pg_computation_type(&p->classifiers, PG_TOTALITY_TOTAL, pg_effect_row(&p->graph, 0, NULL), domain));
 		}
 		pg_program_destroy(p);
 	}
@@ -1533,7 +1534,9 @@ static void nominal_sources(FILE *file, int writing, uint64_t chunk, int origins
 		const struct pg_term *computation, *value;
 		const struct pg_effect_row *effects;
 		assert(pg_thunk_type_view(pg_evidence_classifier(pg_synthesis_result(roots[2])), &computation));
-		assert(pg_effect_type_view(computation, &effects, &value));
+		enum pg_totality totality;
+		assert(pg_computation_type_view(computation, &totality, &effects, &value));
+		assert(totality == PG_TOTALITY_TOTAL);
 		assert(pg_effect_count(effects) == 1 && value == d);
 		if (origins) {
 			struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "D", .length = 1};

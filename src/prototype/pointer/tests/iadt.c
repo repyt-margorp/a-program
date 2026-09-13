@@ -1296,6 +1296,12 @@ static void schema_positivity(void)
 		&classifiers, nat, pg_data_constructor(nat_layout, 0), identity);
 	assert(zero_function && pg_evidence_rule(zero_function) == PG_RETURN_INTRO);
 	assert(pg_prove_return_value(&typing, zero_function) == zero);
+	assert(pg_evidence_classifier(zero_function) == pg_computation_type(&classifiers,
+		PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_evidence_subject(nat)->core));
+	/* The following hand-built motives deliberately use the weaker contract. */
+	zero_function = pg_prove_effect_subsumption(&typing, zero_function,
+		pg_prove_return_type(&typing, &classifiers, nat));
+	assert(zero_function);
 	/* Case elimination checks synthesized branches, not just the chosen branch. */
 	const struct pg_object *z = pg_binder(&graph), *n = pg_binder(&graph);
 	const struct pg_evidence *z_context = pg_prove_context_extension(&typing, empty, z, nat);
@@ -1578,7 +1584,7 @@ static void schema_positivity(void)
 		pg_prove_type_value(&typing, nat));
 	const struct pg_evidence *packed_second = pg_prove_application(&typing, packed_first, zero);
 	assert(packed_second && pg_evidence_classifier(packed_second) ==
-		pg_return_type(&classifiers, pg_evidence_subject(packed)->core));
+		pg_computation_type(&classifiers, PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_evidence_subject(packed)->core));
 	assert(!pg_prove_constructor_function(&typing, &classifiers, packed,
 		pg_data_constructor(nat_layout, 0), identity));
 	/* Parameters survive discharge and are actual operands of the family. */

@@ -4,7 +4,8 @@
 #include "evidence.h"
 
 /* Ordinary closed computation functions, specialized to a value-universe
- * level. These are derived terms, not new kernel rules or implicit syntax.
+ * level, using the source language's TOTAL RETURN contracts. These are
+ * derived terms, not new kernel rules or implicit syntax.
  * Callers choose names and quotation using the ordinary source-scope API.
  * Storage and evidence belong to typing->graph; retain this library to share
  * its binders and proofs. Separate builds have fresh lexical binders.

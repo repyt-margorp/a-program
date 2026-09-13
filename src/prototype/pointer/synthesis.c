@@ -107,6 +107,7 @@ struct motive_scan {
 struct motive_lambda {
 	const struct pg_evidence *outer, *inner;
 	const struct pg_effect_row *effects;
+	enum pg_totality totality;
 	struct motive_lambda *parent;
 };
 struct motive_result {
@@ -115,6 +116,7 @@ struct motive_result {
 	size_t next;
 	struct pg_synthesis_job *input, *callee;
 	const struct pg_effect_row *effects;
+	enum pg_totality totality;
 	struct pg_synthesis_job *telescope, *nested;
 	struct motive_lambda *lambdas;
 	size_t nested_checked;
@@ -162,6 +164,7 @@ struct match_state {
 	const struct pg_evidence *motive_context;
 	struct pg_synthesis_job *motive_context_job, *motive_job;
 	const struct pg_effect_row *motive_effects;
+	enum pg_totality motive_totality;
 	const struct pg_evidence *generalization, *specialization;
 	size_t generalized_count;
 	int scoped;
@@ -2434,7 +2437,7 @@ static const struct pg_evidence *computation(struct pg_synthesis *synthesis, con
 {
 	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_COMPUTATION) return proof;
 	proof = value(synthesis, proof);
-	return proof ? pg_prove_return(synthesis->typing, synthesis->classifiers, proof) : NULL;
+	return proof ? pg_prove_return_contract(synthesis->typing, synthesis->classifiers, PG_TOTALITY_TOTAL, proof) : NULL;
 }
 
 static uint64_t name_hash(struct pg_token name)
@@ -3595,7 +3598,8 @@ static void source_expect_step(struct pg_synthesis *synthesis, struct pg_synthes
 		if (!left) goto rejected;
 		if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) right = value_type(synthesis, right);
 		else if (pg_evidence_judgement(right) != PG_JUDGEMENT_COMPUTATION_TYPE)
-			right = pg_prove_return_type(synthesis->typing, synthesis->classifiers, value_type(synthesis, right));
+			right = pg_prove_computation_type(synthesis->typing, synthesis->classifiers, PG_TOTALITY_TOTAL,
+				pg_effect_row(synthesis->typing->graph, 0, NULL), value_type(synthesis, right));
 		if (!right) goto rejected;
 		job->checking_term = left;
 		job->checking_type = right;
@@ -4448,7 +4452,8 @@ static void operation_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		struct pg_synthesis_job *response_scope = plain_rule(synthesis, PG_CONTEXT_EXTEND, b, 2,
 			(struct pg_synthesis_job *[]){scope, domain});
 		struct pg_synthesis_job *value = plain_rule(synthesis, PG_VARIABLE, b, 1, &response_scope);
-		struct pg_synthesis_job *returned = plain_rule(synthesis, PG_RETURN_INTRO, NULL, 1, &value);
+		struct pg_derivation_input return_rule = {.rule = PG_RETURN_INTRO, .count = 1, .parameters.totality = PG_TOTALITY_TOTAL};
+		struct pg_synthesis_job *returned = pg_synthesis_rule(synthesis, &return_rule, &value, NULL, NULL);
 		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(synthesis, response_scope, returned);
 		struct pg_synthesis_job *argument = plain_rule(synthesis, PG_VARIABLE, a, 1, &scope);
 		struct pg_derivation_input input = {.rule = PG_REQUEST_INTRO, .count = 4, .parameters.operation_label = pg_operation_label(operation)};
@@ -4952,7 +4957,7 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 		branch->result = pg_alloc(typing->graph, sizeof(*branch->result));
 		if (!branch->result) goto error;
 		*branch->result = (struct motive_result){.scope = branch->scope, .syntax = branch->clause->right,
-			.effects = pg_effect_row(typing->graph, 0, NULL)};
+			.effects = pg_effect_row(typing->graph, 0, NULL), .totality = PG_TOTALITY_TOTAL};
 		if (!branch->result->effects) goto error;
 	}
 	struct motive_result *result = branch->result;
@@ -4961,6 +4966,7 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 	if (context_job->status != PG_SYNTHESIS_DONE) goto skip;
 	const struct pg_evidence *context = context_job->result;
 	const struct pg_effect_row *effects;
+	enum pg_totality totality;
 	const struct pg_term *content;
 	const struct pg_syntax *syntax = result->syntax;
 	const struct pg_evidence *type = NULL;
@@ -4975,11 +4981,12 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 		if (result->telescope->status != PG_SYNTHESIS_DONE) goto skip;
 		struct motive_lambda *frame = pg_alloc(typing->graph, sizeof(*frame));
 		if (!frame) goto error;
-		*frame = (struct motive_lambda){context, result->telescope->result, result->effects, result->lambdas};
+		*frame = (struct motive_lambda){context, result->telescope->result, result->effects, result->totality, result->lambdas};
 		result->lambdas = frame;
 		result->scope = result->telescope->inner;
 		result->syntax = result->telescope->tail;
 		result->effects = pg_effect_row(typing->graph, 0, NULL);
+		result->totality = PG_TOTALITY_TOTAL;
 		result->telescope = NULL;
 		if (!result->effects) goto error;
 		enqueue(synthesis, job); return;
@@ -5006,8 +5013,10 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 		}
 		if (result->input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, result->input); return; }
 		if (result->input->status != PG_SYNTHESIS_DONE) goto skip;
-		if (pg_effect_type_view(pg_evidence_classifier(result->input->result), &effects, &content))
+		if (pg_computation_type_view(pg_evidence_classifier(result->input->result), &totality, &effects, &content)) {
 			result->effects = pg_effect_union(typing->graph, result->effects, effects);
+			if (totality < result->totality) result->totality = totality;
+		}
 		if (!result->effects) goto error;
 		if (item->name.length) {
 			const struct pg_object *binder = pg_binder(typing->graph);
@@ -5058,8 +5067,9 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 	while (type) {
 		const struct pg_term *term = pg_evidence_subject(type)->core;
 		if (pg_thunk_type_view(term, &content)) type = pg_prove_thunk_content(typing, type);
-		else if (pg_effect_type_view(term, &effects, &content)) {
+		else if (pg_computation_type_view(term, &totality, &effects, &content)) {
 			result->effects = pg_effect_union(typing->graph, result->effects, effects);
+			if (totality < result->totality) result->totality = totality;
 			if (!result->effects) goto error;
 			type = pg_prove_return_content(typing, type);
 		} else break;
@@ -5067,11 +5077,13 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 	type = pg_prove_pi_constant_codomain(typing, type);
 	if (!type) goto skip;
 result_type:
-	if (pg_effect_type_view(pg_evidence_subject(type)->core, &effects, &content)) {
+	if (pg_computation_type_view(pg_evidence_subject(type)->core, &totality, &effects, &content)) {
 		result->effects = pg_effect_union(typing->graph, result->effects, effects);
+		if (totality < result->totality) result->totality = totality;
 		if (!result->effects) goto error;
-		type = pg_prove_effect_type(typing, synthesis->classifiers, result->effects, pg_prove_return_content(typing, type));
-	} else if (pg_effect_count(result->effects)) goto skip;
+		type = pg_prove_computation_type(typing, synthesis->classifiers, result->totality,
+			result->effects, pg_prove_return_content(typing, type));
+	} else if (pg_effect_count(result->effects) || result->totality != PG_TOTALITY_TOTAL) goto skip;
 	if (!type) goto skip;
 	for (struct motive_lambda *frame = result->lambdas; frame; frame = frame->parent) {
 		while (context && pg_evidence_context(context) != pg_evidence_context(frame->inner)) {
@@ -5082,7 +5094,7 @@ result_type:
 			type = pg_prove_pi(typing, synthesis->classifiers, context, type);
 			context = pg_evidence_premise(context, 0);
 		}
-		if (!type || !context || pg_effect_count(frame->effects)) goto skip;
+		if (!type || !context || pg_effect_count(frame->effects) || frame->totality != PG_TOTALITY_TOTAL) goto skip;
 	}
 	const struct pg_evidence *motive_context = match_motive_context(synthesis, job);
 	if (!motive_context) goto skip;
@@ -5166,8 +5178,8 @@ static void match_demand_step(struct pg_synthesis *synthesis, struct pg_synthesi
 			pattern = pg_prove_substitution_pair(synthesis->typing, pattern, extension, argument);
 			if (!pattern) goto skip;
 		}
-		const struct pg_evidence *type = pg_prove_effect_type(synthesis->typing,
-			synthesis->classifiers, state->motive_effects, domain);
+		const struct pg_evidence *type = pg_prove_computation_type(synthesis->typing,
+			synthesis->classifiers, state->motive_totality, state->motive_effects, domain);
 		demand->solution = pg_prove_pattern_type(synthesis->typing, synthesis->classifiers,
 			prefix, pattern, type);
 		const struct pg_evidence *extension = pg_evidence_premise(pattern, 0);
@@ -5209,8 +5221,10 @@ static void match_effects_step(struct pg_synthesis *synthesis, struct pg_synthes
 		if (body->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, body->status); return; }
 		const struct pg_effect_row *effects;
 		const struct pg_term *result;
-		if (pg_effect_type_view(pg_evidence_classifier(body->result), &effects, &result)) {
+		enum pg_totality totality;
+		if (pg_computation_type_view(pg_evidence_classifier(body->result), &totality, &effects, &result)) {
 			state->motive_effects = pg_effect_union(synthesis->typing->graph, state->motive_effects, effects);
+			if (totality < state->motive_totality) state->motive_totality = totality;
 			if (!state->motive_effects) goto error;
 		}
 	}
@@ -5227,9 +5241,10 @@ static const struct pg_evidence *match_branch_result(struct pg_synthesis *synthe
 	const struct pg_evidence *type = branch->type_job->result;
 	const struct pg_effect_row *effects;
 	const struct pg_term *content;
-	if (!pg_effect_type_view(pg_evidence_subject(type)->core, &effects, &content)) return type;
-	return pg_prove_effect_type(synthesis->typing, synthesis->classifiers,
-		state->motive_effects, pg_prove_return_content(synthesis->typing, type));
+	enum pg_totality totality;
+	if (!pg_computation_type_view(pg_evidence_subject(type)->core, &totality, &effects, &content)) return type;
+	return pg_prove_computation_type(synthesis->typing, synthesis->classifiers,
+		state->motive_totality, state->motive_effects, pg_prove_return_content(synthesis->typing, type));
 }
 
 /* A branch proposes a family; it does not establish the other branch
@@ -5336,7 +5351,9 @@ static void match_dependent_motive_step(struct pg_synthesis *synthesis, struct p
 		if (branch->type_job->status != PG_SYNTHESIS_DONE) goto unsupported;
 		const struct pg_effect_row *effects;
 		const struct pg_term *value_type;
-		if (pg_effect_type_view(pg_evidence_subject(branch->type_job->result)->core, &effects, &value_type)) {
+		enum pg_totality totality;
+		if (pg_computation_type_view(pg_evidence_subject(branch->type_job->result)->core, &totality, &effects, &value_type)) {
+			if (totality < state->motive_totality) state->motive_totality = totality;
 			state->motive_effects = state->motive_effects
 				? pg_effect_union(synthesis->typing->graph, state->motive_effects, effects) : effects;
 			if (!state->motive_effects) goto error;
@@ -5365,7 +5382,8 @@ static void match_dependent_motive_step(struct pg_synthesis *synthesis, struct p
 	const struct pg_evidence *type = pg_prove_type_case(synthesis->typing, synthesis->classifiers,
 		state->instance.formation, parameters, scrutinee, state->count, families);
 	free(families);
-	state->motive = pg_prove_effect_type(synthesis->typing, synthesis->classifiers, state->motive_effects, type);
+	state->motive = pg_prove_computation_type(synthesis->typing, synthesis->classifiers,
+		state->motive_totality, state->motive_effects, type);
 	if (!state->motive) goto unsupported;
 	state->motive_context = mc;
 	enqueue(synthesis, job);
@@ -5808,6 +5826,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		job->match = pg_alloc(synthesis->typing->graph, sizeof(struct match_state) + count * sizeof(struct match_branch));
 		if (!job->match) goto error;
 		job->match->instance = instance;
+		job->match->motive_totality = PG_TOTALITY_TOTAL;
 		job->match->count = count;
 		job->match->labels = origin->exports;
 		job->match->packet = origin->packet_origin != NULL;
@@ -7443,7 +7462,8 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 			if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 			if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 			const struct pg_term *type = pg_synthesis_type_structure_result(job->left);
-			job->type_structure = returns_value ? pg_return_type(synthesis->classifiers, type) : type;
+			job->type_structure = returns_value ? pg_computation_type(synthesis->classifiers,
+				PG_TOTALITY_TOTAL, pg_effect_row(synthesis->typing->graph, 0, NULL), type) : type;
 			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 			return;
 		}
@@ -8738,7 +8758,8 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		const struct pg_evidence *codomain = type_input(synthesis, job, source_context(job->inner), right);
 		if (!codomain) return;
 		if (pg_evidence_judgement(codomain) != PG_JUDGEMENT_COMPUTATION_TYPE)
-			codomain = pg_prove_return_type(synthesis->typing, synthesis->classifiers, value_type(synthesis, codomain));
+			codomain = pg_prove_computation_type(synthesis->typing, synthesis->classifiers, PG_TOTALITY_TOTAL,
+				pg_effect_row(synthesis->typing->graph, 0, NULL), value_type(synthesis, codomain));
 		job->result = pg_prove_pi(synthesis->typing, synthesis->classifiers, source_context(job->inner), codomain);
 		break;
 	}
