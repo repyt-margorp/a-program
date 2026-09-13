@@ -239,20 +239,20 @@ not a claimed theorem imported from dCBPV+.
 - [x] Implement the checked value rule and ordinary derivation/serialization.
 - [x] Verify closed reduction, neutral substitution, classifier recovery,
   repeated use, rejection boundaries and dimensional substitution compatibility.
-- [ ] Use it for dependent function-field IHs, checking actual induction results.
+- [x] Use it for dependent function-field IHs, checking actual induction results.
   IH formation and induction-scope construction now pass for the motive
   `F(Id child child)` under a TOTAL field; the same motive rejects under an
   unknown-totality field. Existing indexed source/image tests that universally
-  rejected this motive now require acceptance for their TOTAL arrows. Execution
-  of a recursive proof consuming this genuinely child-dependent IH remains to
-  be checked; existing index-only Acc eliminations still execute correctly.
-- [ ] Extend graph/witness translation with the same field call and its result;
+  rejected this motive now require acceptance for their TOTAL arrows. Generated
+  graph packets now execute with their graph premise indexed by the actual
+  symbolic child; indexed fields and multiple dependent field arguments pass.
+- [x] Extend graph/witness translation with the same field call and its result;
   a free existential child must not replace the specific `down args` result.
   `graph_call` must retain field-call arguments separately from the recursive
   function's trailing arguments. Schema and witness substitutions must build
   the same `pure_value(down args)` child, and apply the witness IH to those same
-  field-call arguments before unpacking its result. The old function-field
-  guard remains until this translation and its result checks are implemented.
+  field-call arguments before unpacking its result. The blanket function-field
+  guard is removed; unknown-totality/effectful field results remain unsupported.
 - [ ] Complete higher Identity action for this rule before claiming full HOTT.
 
 Implementation: `PG_TOTAL_PURE_VALUE` has one checked computation premise and
@@ -266,6 +266,32 @@ completion of QuickSort graph generation.
 ASan/UBSan passes Core, IADT, derivation IO, indexed source-family transport,
 image CLI and 20/20 compatibility. Implementation +47/-13 (net +34); tests
 +88/-4 (net +84); documentation is counted separately.
+
+September 13 function-field translation follow-up:
+
+- Schema and witness share reconstruction of the original IH at the same
+  `pure_value(down args)`. No free child existential, Core tag or new wire rule
+  is introduced. Classifier recovery now handles nested Pi-domain projections
+  using the existing iterative Pi-component traversal.
+- `function-graph-function-field.p` checks indexed fields, separate field and
+  trailing function arguments, repeated calls whose arguments depend on the
+  preceding result, and two dependent field arguments. Its post-hoc graph
+  induction proves output reflexivity (`SameNat n n`), not sortedness or a
+  stronger input/output specification. A false graph premise for a different
+  child is rejected in source and restored images.
+- Full debug `check-acceptance` passes, including 20/20 compatibility and the
+  six unchanged QuickSort results. A regression in reordered independent calls
+  was fixed by retaining direct fields in their declaration context rather than
+  capturing unrelated earlier call results; the existing order test passes.
+  ASan/UBSan passes Core, IADT, synthesis, Program, new result/rejection checks,
+  image CLI and 20/20 compatibility. Implementation +73/-17 (net +56), test
+  fixtures/scripts +53/-1 (net +52), prototype build rules +6/-0; docs separate.
+- `@quickSortAcc` remains unsupported (59,322 Solve steps): retained
+  `PG_MATCH_ELIM` on the trailing `SizedList` input remains neutral before any
+  recursive call is recorded. Next implement general nested/computed Match
+  graph translation and its corresponding witness. Unknown-callee translation
+  remains open too. This does not block recompilation/execution of QuickSort;
+  it blocks the separate post-hoc QuickSort property milestone.
 
 Reference: [Vakar, An Effectful Treatment of Dependent Types](https://arxiv.org/abs/1603.04298)
 separates ordinary dCBPV from dependent Kleisli extension. It motivates stating

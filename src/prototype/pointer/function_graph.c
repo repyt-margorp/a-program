@@ -5,6 +5,9 @@
 
 struct graph_call {
 	size_t field, hypothesis, slot;
+	size_t field_arity;
+	const struct pg_evidence **field_arguments;
+	const struct pg_evidence *child;
 	const struct pg_evidence **arguments;
 	const struct pg_evidence *result_context;
 	const struct pg_evidence *layout_output;
@@ -216,11 +219,10 @@ static int plan_case(struct pg_function_graph_state *s, struct graph_case *plan)
 	plan->hypothesis_fields = pg_alloc(&s->temporary, count * sizeof(*plan->hypothesis_fields));
 	if (count && !plan->hypothesis_fields) return -1;
 	for (size_t i = count; s->induction && i; --i, fields = pg_evidence_premise(fields, 0)) {
-		const struct pg_term *type = pg_evidence_context(fields)->declared_type, *content;
+		const struct pg_term *type = pg_evidence_context(fields)->declared_type;
 		int recursive = pg_data_recursive_field(type, parameters->binder);
 		if (recursive < 0) return -1;
 		if (!recursive) continue;
-		if (pg_thunk_type_view(type, &content)) return -1;
 		plan->hypothesis_fields[plan->hypothesis_count++] = i - 1;
 	}
 	for (size_t i = 0; i < plan->hypothesis_count / 2; ++i) {
@@ -323,6 +325,32 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		}
 		struct graph_call *call = pg_alloc(&s->temporary, sizeof(*call));
 		if (!call || plan->call_count == SIZE_MAX) return -1;
+		*call = (struct graph_call){.field = plan->hypothesis_fields[i], .hypothesis = i};
+		call->child = pg_prove_variable(t, plan->scopes[call->field], pg_evidence_context(plan->scopes[call->field])->binder);
+		if (!call->child) return -1;
+		const struct pg_term *type, *domain, *codomain;
+		const struct pg_object *binder;
+		if (pg_thunk_type_view(pg_evidence_classifier(call->child), &type)) {
+			while (pg_pi_view(type, &domain, &binder, &codomain)) {
+				if (call->field_arity == SIZE_MAX / sizeof(*call->field_arguments)) return -1;
+				++call->field_arity; type = codomain;
+			}
+			call->field_arguments = pg_alloc(&s->temporary, call->field_arity * sizeof(*call->field_arguments));
+			if (call->field_arity && !call->field_arguments) return -1;
+			const struct pg_evidence *child_call = pg_prove_force(t, projection(s, plan->context, call->child));
+			for (size_t j = 0; child_call && j < call->field_arity; ++j) {
+				struct graph_continuation *frame = plan->continuations;
+				if (!frame || !frame->argument) return -1;
+				call->field_arguments[j] = frame->argument;
+				const struct pg_evidence *argument = projection(s, plan->context, frame->argument);
+				child_call = pg_prove_application(t, child_call, argument);
+				plan->computation = pg_prove_application(t, plan->computation, argument);
+				if (!plan->computation) return -1;
+				plan->continuations = frame->next;
+			}
+			call->child = pg_prove_total_pure_value(t, child_call, pg_binder(t->graph));
+			if (!call->child) return -1;
+		}
 		call->arguments = pg_alloc(&s->temporary, s->arity * sizeof(*call->arguments));
 		if (s->arity && !call->arguments) return -1;
 		for (size_t j = 0; j < s->arity; ++j) {
@@ -337,8 +365,7 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		result_type = pg_prove_return_content(t, result_type);
 		plan->context = pg_prove_context_extension(t, plan->context, pg_binder(t->graph), result_type);
 		if (!plan->context) return -1;
-		*call = (struct graph_call){.field = plan->hypothesis_fields[i], .hypothesis = i,
-			.result_context = plan->context, .arguments = call->arguments};
+		call->result_context = plan->context;
 		*plan->tail = call; plan->tail = &call->next;
 		++plan->call_count;
 		value = pg_prove_variable(t, plan->context, pg_evidence_context(plan->context)->binder);
@@ -391,6 +418,38 @@ static int order_calls(struct pg_function_graph_state *s, struct graph_case *pla
 	return 0;
 }
 
+/* Reconstruct the original recursive function at the same child. A function
+ * field supplies that child through its checked total pure result expression. */
+static const struct pg_evidence *original_hypothesis(struct pg_function_graph_state *s,
+	const struct pg_evidence *context, const struct pg_evidence *field)
+{
+	struct pg_typing *t = s->typing;
+	const struct pg_evidence *scope = context, *child = field;
+	const struct pg_term *type, *domain, *codomain;
+	const struct pg_object *binder;
+	if (pg_thunk_type_view(pg_evidence_classifier(field), &type)) {
+		const struct pg_evidence *call = pg_prove_force(t, field);
+		const struct pg_evidence *classifier = pg_prove_classifier(t, s->classifiers, scope, call);
+		while (classifier && pg_pi_view(pg_evidence_subject(classifier)->core, &domain, &binder, &codomain)) {
+			binder = pg_binder(t->graph);
+			scope = pg_prove_context_extension(t, scope, binder, pg_prove_pi_domain(t, classifier));
+			if (!scope) return NULL;
+			call = pg_prove_application(t, projection(s, scope, call), pg_prove_variable(t, scope, binder));
+			classifier = pg_prove_classifier(t, s->classifiers, scope, call);
+		}
+		child = pg_prove_total_pure_value(t, call, pg_binder(t->graph));
+	}
+	if (!child) return NULL;
+	const struct pg_evidence *input = argument_substitution(s, scope, child);
+	const struct pg_evidence *call = projection(s, scope, s->recursive_function);
+	for (size_t j = 0; call && j < s->index_count; ++j)
+		call = pg_prove_application(t, call, pg_substitution_image(t, input,
+			pg_evidence_context(s->index_arguments[j])->binder));
+	call = pg_prove_application(t, call, child);
+	call = pg_prove_abstract(t, s->classifiers, context, scope, call);
+	return pg_prove_thunk(t, s->classifiers, call);
+}
+
 /* Schema and witness use the same source scope: fields, original IH functions,
  * then remaining Pi arguments. Only the destination's supplied fields differ. */
 static const struct pg_evidence *case_source_map(struct pg_function_graph_state *s,
@@ -405,13 +464,7 @@ static const struct pg_evidence *case_source_map(struct pg_function_graph_state 
 		map = pg_prove_substitution_pair(t, map, plan->scopes[i], fields[i]);
 	for (size_t i = 0; map && i < plan->hypothesis_count; ++i) {
 		const struct pg_evidence *field = fields[plan->hypothesis_fields[i]];
-		const struct pg_evidence *input = argument_substitution(s, context, field);
-		const struct pg_evidence *call = projection(s, context, s->recursive_function);
-		for (size_t j = 0; call && j < s->index_count; ++j)
-			call = pg_prove_application(t, call, pg_substitution_image(t, input,
-				pg_evidence_context(s->index_arguments[j])->binder));
-		call = pg_prove_application(t, call, field);
-		map = pg_prove_substitution_pair(t, map, plan->scopes[count + i], pg_prove_thunk(t, s->classifiers, call));
+		map = pg_prove_substitution_pair(t, map, plan->scopes[count + i], original_hypothesis(s, context, field));
 	}
 	for (size_t i = 0; map && i < s->arity; ++i) {
 		const struct pg_evidence *source = plan->scopes[count + plan->hypothesis_count + i];
@@ -452,12 +505,13 @@ static int case_branch(struct pg_function_graph_state *s)
 	for (size_t slot = 0; slot < plan->call_count; ++slot) {
 		struct graph_call *call = plan->ordered[slot];
 		for (size_t i = 0; i < s->arity; ++i) call_arguments[i] = map_value(s, map, call->arguments[i]);
-		const struct pg_evidence *input = input_substitution(s, context, values[call->field], call_arguments);
+		const struct pg_evidence *child = map_value(s, map, call->child);
+		const struct pg_evidence *input = input_substitution(s, context, child, call_arguments);
 		context = pg_prove_context_extension(t, context, pg_binder(t->graph), range_at(s, input));
 		if (!context) return -1;
 		const struct pg_evidence *output = pg_prove_variable(t, context, pg_evidence_context(context)->binder);
 		const struct pg_evidence *relation = pg_prove_variable(t, context, pg_evidence_context(s->self)->binder);
-		input = input_substitution(s, context, values[call->field], call_arguments);
+		input = input_substitution(s, context, child, call_arguments);
 		relation = apply_relation(s, relation, input, output);
 		context = pg_prove_context_extension(t, context, pg_binder(t->graph), relation);
 		if (!context) return -1;
@@ -824,7 +878,9 @@ static const struct pg_evidence *witness_case(struct pg_function_graph_state *s,
 		f->target = pg_prove_computation_type(t, s->classifiers, s->totality,
 			pg_effect_row(t->graph, 0, NULL), packet_type(s, input_substitution(s, context, argument, values + count)));
 		f->input = pg_prove_force(t, pg_prove_variable(t, context, ih_binders[call->hypothesis]));
-		const struct pg_evidence *field = projection(s, context, values[call->field]);
+		const struct pg_evidence *field = map_value(s, source_map, call->child);
+		for (size_t i = 0; f->input && i < call->field_arity; ++i)
+			f->input = pg_prove_application(t, f->input, map_value(s, source_map, call->field_arguments[i]));
 		for (size_t i = 0; i < s->arity; ++i) {
 			call_arguments[i] = map_value(s, source_map, call->arguments[i]);
 			f->input = pg_prove_application(t, f->input, call_arguments[i]);

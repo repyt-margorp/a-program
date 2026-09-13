@@ -626,15 +626,15 @@ static const struct pg_evidence *pi_component(struct pg_typing *typing,
 		case PG_THUNK_TYPE_FORM:
 			if (!thunks) goto done;
 			--thunks; pi = pi->premises[0]; break;
-		case PG_PI_CODOMAIN: {
+		case PG_PI_DOMAIN: case PG_PI_CODOMAIN: {
 			struct pending *next = pg_alloc(&temporary, sizeof(*next));
 			if (!next) goto done;
 			*next = (struct pending){argument, frames, thunks, component, pending};
 			pending = next;
 			frames = NULL;
 			thunks = 0;
-			argument = pi->premises[1];
-			component = PG_PI_CODOMAIN;
+			argument = pi->rule == PG_PI_CODOMAIN ? pi->premises[1] : NULL;
+			component = pi->rule;
 			pi = pi->premises[0];
 			break;
 		}
