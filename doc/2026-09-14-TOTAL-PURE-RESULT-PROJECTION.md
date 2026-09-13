@@ -117,6 +117,49 @@ results. Existing substitution tests and higher/transport regression tests remai
 mandatory, but are not a proof of that full law for all dimensions and type
 formers. No unsupported higher case is silently admitted by this change.
 
+## September 14 Follow-up: Case Naturality
+
+After `89dce1e`, unchanged `dependent_pi_surface_check.p` synthesized `choose`
+but rejected its post-check `(q:Bool) -> Result q`. The synthesized motive was
+a type-valued Match; the written family projected a Match returning types.
+The unit and Fold laws alone did not connect them.
+
+Extend the fixed pure policy to `evaluation/pure/v5` with:
+
+```text
+q(Match s { C_i fields => M_i })
+  --> Match s { C_i fields => q(M_i) }
+```
+
+The surrounding q still requires an admitted TOTAL, empty-row computation.
+The existing Match premises type each `M_i` at the substituted result
+classifier. Its total pure result has that classifier. Under a closing
+valuation, both sides select the same constructor and fields and return the
+same result. This is a conditional preservation argument for q, not equality
+reflection or an arbitrary handler commutation rule. Ordinary Fold/Match and
+the `::` post-check are unchanged.
+
+The reducer recognizes a saturated ordinary erased matcher, binds fresh fields
+using its retained arities, and places q around each branch application. It
+does not execute unselected branches or merge Core terms. Captures remain
+Lambda/Application edges; substitution and image relocation need no new
+representation. A known constructor takes the existing iota path first.
+
+Oversaturated matchers returning raw Pi are not directly matched by this rule.
+General higher Identity coherence and normalization-cost bounds remain separate
+obligations. The local law is not a proof of the full HOTT model.
+
+- [x] Original dependent-Pi post-check compiles (1,204 transitions).
+- [x] Separate `total-result-type-case.p` covers zero-, one- and two-field
+  branches with Nat/Bool result families; a wrong constant annotation rejects.
+- [x] Complete source/result/image regressions and full debug/sanitizer tests.
+  Both full `check-acceptance` runs exited 0, including the 56-case legacy
+  gate, negative annotations, and unfinished/completed images at split budgets.
+  Optimized CLI checks also pass; unchanged QuickSort content certification
+  remains at 148,372 Solve transitions.
+- [x] Reject old `evaluation/pure/v4` retained work. Graph/continuation payload
+  layouts have not changed; the policy identifies the changed reduction rules.
+
 ## Research Boundary
 
 [Vakar, *A Framework for Dependent Types and Effects*](https://arxiv.org/abs/1512.08009)

@@ -444,6 +444,44 @@ above. Implementation C: +21/-16; public declarations/comments: +6/-0;
 test C/fixtures/scripts: +75/-0; documentation counted separately. No Core tag,
 kernel inference rule or image format changed.
 
+Source audit and case naturality after `89dce1e` (September 14):
+
+- [x] Run all 158 `program` entries in the frozen inventory with 100,000 Solve
+  transitions each. Baseline statuses: 87 done, 47 rejected, 22 unsupported,
+  2 pending. These are observations, not expected outcomes: the inventory
+  includes negative/draft sources and clients lacking their import providers.
+  Host names/literals account for many positive-source failures. Full manual
+  classification and host support remain required; do not count 87/158 as a
+  correctness or compatibility score. Local snapshot:
+  `/tmp/a-program-legacy-inventory-current.tsv`.
+- [x] Correct the initially suspected local-definition gap: `{{...}}.name` is
+  program-wide surface syntax, not a Lambda-body expression. The nested example
+  fails in parsing; it is not a regression of Match generalization. Ordinary
+  sequential alias binding and a return-only handler do synthesize, and are now
+  retained in `captured-block-match.p`. No new nested-definition grammar is added.
+- [x] Isolate a real post-check failure in unchanged `dependent_pi_surface_check.p`.
+  Without `choose :: ...` it synthesizes; with it, the baseline rejects at 1,404
+  transitions. A computed type family's q(Match RETURN-types) did not convert
+  to the synthesized type-valued Match. Add the case naturality law described
+  in [the q contract](2026-09-14-TOTAL-PURE-RESULT-PROJECTION.md), keeping the
+  same typed domain and separating it from ordinary Fold and Identity.
+- [x] Register old-source formation (55 -> 56 cases), separate field-bearing
+  result cases, wrong-result rejection, and pending/completed image checks.
+  Keep the preexisting `dependent-type-case.p` unchanged: an initial filename
+  collision was caught by its existing export checks and corrected before
+  the final runs. No failed run is counted as passing verification.
+- [x] Complete full debug and ASan/UBSan acceptance under pure policy v5.
+  Both `check-acceptance` runs exit 0, including 56/56 legacy cases and
+  pending/completed-image results with one- and 64-transition budgets.
+  Optimized CLI checks pass: old dependent Pi 1,204 transitions; the new
+  field-bearing case 3,180; unchanged QuickSort content proof 148,372.
+- [x] Update the top-level README with the current case rule and explicit
+  limits. The archived README still hashes identically to `e9a131d:README.md`.
+  Change size: implementation C +41/-2; tests +57/-1 (including both new
+  15-line fixtures); documentation counted separately. No new Core tag,
+  inference rule or payload layout; pure policy v5 identifies the new law.
+- [ ] Publish this verified case-naturality change on `rewrite/pointer-core-hott`.
+
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the
 already-defined `length` and `quickSort` are the following milestone, not a

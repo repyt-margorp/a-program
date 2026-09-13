@@ -309,6 +309,45 @@ const struct pg_eval_work_operation pg_fold_work_operation = {
 };
 
 static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state);
+
+/* A total empty-row case returns through the selected branch. Distribute q
+ * under its field telescope; do not evaluate any unselected branch here. */
+static int total_result_match(struct pg_eval *machine, const struct pg_term *answer)
+{
+	const struct pg_term *head = answer;
+	size_t supplied = 0;
+	while (head->kind == PG_APPLICATION) { ++supplied; head = head->as.application.function; }
+	if (head->kind != PG_REFERENCE) return 1;
+	const struct pg_data_layout *layout = pg_data_layout_view(head->as.reference);
+	if (!layout) return 1;
+	size_t count = pg_data_layout_count(layout);
+	if (supplied != count + 1 || count > SIZE_MAX / sizeof(struct pg_match_clause)) return 1;
+	struct pg_match_clause *clauses = pg_alloc(&machine->temporary, count * sizeof(*clauses));
+	if (count && !clauses) return -1;
+	struct pg_graph *graph = machine->output;
+	const struct pg_term *projection = pg_reference(graph, &pg_total_result_operation);
+	for (size_t i = count; i; --i, answer = answer->as.application.function) {
+		const struct pg_object *constructor = pg_data_constructor(layout, i - 1);
+		const struct pg_data_layout *owner;
+		size_t position, arity;
+		if (!pg_data_constructor_view(constructor, &owner, &position, &arity)) return -1;
+		if (arity > SIZE_MAX / sizeof(const struct pg_object *)) return -1;
+		const struct pg_object **binders = pg_alloc(&machine->temporary, arity * sizeof(*binders));
+		if (arity && !binders) return -1;
+		const struct pg_term *body = answer->as.application.argument;
+		for (size_t j = 0; j < arity; ++j) {
+			binders[j] = pg_binder(graph);
+			body = pg_application(graph, body, pg_reference(graph, binders[j]));
+		}
+		body = pg_application(graph, projection, body);
+		for (size_t j = arity; j; --j) body = pg_lambda(graph, binders[j - 1], body);
+		if (!body) return -1;
+		clauses[i - 1] = (struct pg_match_clause){constructor, body};
+	}
+	const struct pg_term *result = pg_data_match(graph, layout, answer->as.application.argument, count, clauses);
+	return result ? pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1) : -1;
+}
+
 static int total_result_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
 {
 	(void)state;
@@ -316,7 +355,7 @@ static int total_result_answer(struct pg_eval *machine, const struct pg_term *an
 	if (value) return pg_eval_enter(machine, (struct pg_closure){value, NULL}, 1);
 	if (answer->kind != PG_APPLICATION) return 1;
 	const struct pg_term *source = unary_argument(answer->as.application.function, &pg_fold_operation);
-	if (!source) return 1;
+	if (!source) return total_result_match(machine, answer);
 	/* q(Fold(M,K)) = q(K(q(M))) belongs to the TOTAL/empty-row result
 	 * projection, not to ordinary Fold. Typing checks q's domain. */
 	struct pg_graph *graph = machine->output;
@@ -441,7 +480,7 @@ static const struct {
 	const char *name;
 } portable_policies[] = {
 	{&pg_beta_policy, "evaluation/beta/v1"},
-	{&pg_pure_policy, "evaluation/pure/v4"}
+	{&pg_pure_policy, "evaluation/pure/v5"}
 };
 
 const char *pg_computation_policy_name(const struct pg_eval_policy *policy)

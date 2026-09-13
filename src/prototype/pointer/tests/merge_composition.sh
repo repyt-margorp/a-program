@@ -99,6 +99,30 @@ code=0
 test "$code" -eq 1
 printf '%s\n' 'merge composition: capture, currying, declaration order, result and image checks passed'
 
+for entry in total-result-type-case captured-block-match; do
+	for steps in 0 100000; do
+		code=0
+		"$checker" --steps "$steps" --save "$directory/$entry.a" "$fixtures/$entry.p" > "$directory/status" || code=$?
+		if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+		"$runtime" --equal-image "$directory/$entry.a" main one
+		"$runtime" --equal-image "$directory/$entry.a" base zero
+		if [ "$entry" = total-result-type-case ]; then
+			"$runtime" --equal-image "$directory/$entry.a" second trueValue
+		else
+			"$runtime" --equal-image "$directory/$entry.a" handledMain one
+			"$runtime" --equal-image "$directory/$entry.a" handledBase zero
+		fi
+	done
+done
+sed 's/choose :: (c:Choice)->Result c;/choose :: Choice->Nat;/' "$fixtures/total-result-type-case.p" > "$directory/wrong-type-case.p"
+"$runtime" --reject "$directory/wrong-type-case.p"
+code=0
+"$checker" --steps 0 --save "$directory/wrong-type-case.a" "$directory/wrong-type-case.p" > "$directory/status" || code=$?
+test "$code" -eq 3
+code=0
+"$checker" --load "$directory/wrong-type-case.a" > "$directory/status" || code=$?
+test "$code" -eq 1
+
 # A non-recursive scrutinee refines later dependent inputs using typed maps.
 for steps in 0 100000; do
 	code=0

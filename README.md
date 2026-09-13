@@ -64,8 +64,8 @@ supplies an expected type to guide synthesis.
 - Constructor selection: `Nat.zero`, `(List Nat).cons`; Match uses `@case`.
 - Sequential blocks: `{ x := M; N; }`. A `.x` suffix selects execution
   through the binding of `x`; later statements are excluded.
-- Definition blocks: `{{ name := expression; ... }}.name` name a graph root
-  instead of executing sequential bindings.
+- Program-wide definition blocks: `{{ name := expression; ... }}.name` name
+  a graph root instead of executing sequential bindings.
 - Quotation: `&M`. The default policy inserts supported CBPV boundaries;
   `--strict-thunks` requires explicit quotation at definition boundaries.
 - Lambda exit: `!value`, with lexical restrictions across quotation.
@@ -140,7 +140,7 @@ successful verification nor evidence that the program is invalid.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 55-case legacy
+September 14 verification includes examples 01-07 and 09, a 56-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. Acc is source-defined using indexed induction, not a
 special kernel primitive. Quoted type-producing functions use the same checked
@@ -178,16 +178,19 @@ through unfinished/completed images.
 Typed one-step elimination supports direct and sequenced function fields, and
 recovers constructor origins through return-producing sequences. Checked total,
 effect-free result projection now has an explicit semantic reference, allowing
-computed constructor indices to agree with source post-checks. Ordinary Fold and
-Identity transport retain their strict behavior. See the
+computed constructor indices to agree with source post-checks. It also commutes
+with a checked total, effect-free Match, connecting synthesized type cases to
+written dependent Pi families. Ordinary Fold and Identity transport retain
+their strict behavior. See the
 [result projection contract](doc/2026-09-14-TOTAL-PURE-RESULT-PROJECTION.md).
 
 This is not complete legacy compatibility or complete Higher Observational
 Type Theory. General higher/dependent/Universe Identity coherence, some indexed
 graph and Vec cases, comparator-dependent sortedness proofs, and full host/backend
-coverage remain open. Generalizing dependent captures across local definition
-blocks or handlers remains restricted. Execution witnesses alone do not prove sorting
-correctness. In particular, a standalone indexed Match whose every branch is
+coverage remain open. Nested definition-block expressions are not surface syntax;
+ordinary sequential aliases and return-only handlers have dependent-capture tests,
+not a general dependent-handler guarantee. Execution witnesses alone do not prove
+sorting correctness. In particular, a standalone indexed Match whose every branch is
 refuted can remain pending without a result-classifier constraint from an
 application. Its trailing `::` deliberately does not supply that constraint.
 See the [active plan](doc/2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md)

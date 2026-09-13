@@ -70,6 +70,7 @@ done <<'CASES'
 0 typing/list_map_induction_check monomorphicMulti expectedMulti
 0 typing/list_map_induction_check polymorphicMain expectedMulti
 0 typing/list_map_induction_check sequencedMain expectedMulti
+0 typing/dependent_pi_surface_check
 0 typing/indexed_branch_rebuild_check
 0 typing/residual_index_equation_negative
 0 ../../../../examples/type-infer-and-check/level2/02_tree
