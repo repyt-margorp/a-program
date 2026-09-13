@@ -73,6 +73,12 @@ retained constructors with direct recursive fields through ordinary induction
 and substitution evidence. Function-valued fields and the total-pure
 result/substitution equations remain open; no untyped equality was added.
 
+Return-producing sequence follow-up: recovering a constructor now follows
+ordinary Fold premises until an actual Return introduction is reached, then
+applies the retained continuation through ordinary beta/substitution evidence.
+Pending continuations retain their context maps. This repairs origin recovery,
+not the unresolved total-pure result/substitution equation above.
+
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the

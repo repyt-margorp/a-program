@@ -374,3 +374,43 @@ paper's full equational theory.
 
 Relative to `e1e97cb`, implementation C/headers add 51 and remove 12 lines
 (net +39). Tests, their Makefile entry and documentation are counted separately.
+
+## Return-producing Sequence Origins
+
+Date: September 14, 2026. Follow-up to `7af65dd`.
+
+A separate missing path was reproduced in `tests/iadt.c`: normalize a sequence
+which returns a Nat constructor, then request its typed Match body. Evaluation
+succeeded, but `pg_prove_elimination_body` returned NULL because
+`return_value_origin` did not traverse `PG_FOLD_ELIM`. The new assertion failed
+against the previous implementation before the fix.
+
+Origin recovery now keeps pending Fold continuations and their context maps.
+It resumes a continuation only after recovering an actual Return introduction,
+using the existing application-body/substitution API. Nested sequences use an
+explicit work stack rather than recursive calls to the origin finder. Effect
+subsumption is transparent to this provenance lookup, not permission to execute
+an operation. Unknown or merely total prefixes do not become Return evidence.
+
+This does not introduce the equation `q(Fold(M,K)) = q(K(q(M)))`, change Core
+evaluation, or solve the symbolic constructor-index problem. No new proof rule,
+artifact format, or evaluation-policy version is required.
+
+- [x] Reproduce missing constructor origin after a returned sequence.
+- [x] Check one/two sequential constructor steps, with a weakened contract.
+- [x] Check surrounding context projection, body conversion and ordinary
+  derivation reconstruction, including split Solve budgets.
+- [x] Run full debug acceptance after the fix, plus the final expanded IADT
+  test with projection inside a pending continuation.
+- [x] Run ASan/UBSan acceptance after the fix, including the expanded IADT
+  test, 31/31 compatibility cases and all six QuickSort outputs.
+
+Verification logs: `/tmp/a-program-return-origin-debug.log` and
+`/tmp/a-program-return-origin-sanitize.log`. The optimized README build/check/NF
+commands also succeeded. The computed-constructor-index reproduction remains
+pending at 100,000 steps with its imported arithmetic control; do not mark the
+Vec milestone complete. The old README archive was compared byte-for-byte with
+`440f516^:README.md`; the old Main and its tag still identify `63b00eba`.
+
+Relative to `7af65dd`, implementation C adds 25 and removes 1 line (net +24),
+and IADT regression tests add 46 lines. Documentation is counted separately.

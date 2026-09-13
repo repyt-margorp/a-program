@@ -517,14 +517,38 @@ static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 	struct pg_graph temporary = {0};
 	struct evidence_frame *frames = NULL;
 	const struct pg_evidence *result = NULL;
+	struct pending_return {
+		const struct pg_evidence *continuation;
+		struct evidence_frame *frames;
+		struct pending_return *next;
+	};
+	struct pending_return *pending = NULL;
 	while (computation) {
 		switch (computation->rule) {
 		case PG_RETURN_INTRO:
 			result = evidence_image(typing, computation->premises[0], frames);
+			if (result && pending) {
+				computation = pg_prove_application_body(typing, pending->continuation, result);
+				frames = pending->frames;
+				pending = pending->next;
+				result = NULL;
+				break;
+			}
 			goto done;
-		case PG_PURE_NORMALIZATION: case PG_TYPE_CONVERSION:
+		case PG_PURE_NORMALIZATION: case PG_TYPE_CONVERSION: case PG_EFFECT_SUBSUMPTION:
 			computation = computation->premises[0];
 			break;
+		case PG_FOLD_ELIM: {
+			/* Resume only after recovering an actual Return introduction.
+			 * Totality alone supplies no value; operations are not executed. */
+			struct pending_return *next = pg_alloc(&temporary, sizeof(*next));
+			if (!next) goto done;
+			*next = (struct pending_return){computation->premises[1], frames, pending};
+			pending = next;
+			frames = NULL;
+			computation = computation->premises[0];
+			break;
+		}
 		case PG_APP_ELIM:
 			computation = pg_prove_application_body(typing, computation->premises[0], computation->premises[1]);
 			break;

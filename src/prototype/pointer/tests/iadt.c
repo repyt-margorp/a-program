@@ -1833,6 +1833,52 @@ static void schema_positivity(void)
 	const struct pg_evidence *pred_reduced = pg_prove_normalization(&typing, pred, pred_receipt);
 	assert(pred_reduced && pg_prove_return_value(&typing, pred_reduced));
 	assert(pg_evidence_classifier(pred_reduced) == pg_evidence_classifier(pred));
+	/* Recover constructor evidence across sequencing, not from erased Core. */
+	const struct pg_evidence *sequenced = zero_function;
+	for (size_t i = 0; i < 2; ++i) {
+		sequenced = pg_prove_fold(&typing, &classifiers, sequenced, successor_function);
+		assert(sequenced);
+		check(&constructor_work, pg_evidence_subject(sequenced)->core,
+			pg_evidence_subject(pg_prove_return(&typing, &classifiers, i ? twice : succ))->core);
+		const struct pg_reduction_certificate *receipt = pg_whnf_certificate(
+			pg_whnf_request(&constructor_work, &pg_pure_policy, pg_evidence_subject(sequenced)->core));
+		const struct pg_evidence *returned = pg_prove_return_value(&typing,
+			pg_prove_normalization(&typing, sequenced, receipt));
+		const struct pg_evidence *selected = pg_prove_match(&typing, &classifiers,
+			nat, identity, returned, z_context, nat_motive, 2, pred_branches);
+		assert(returned && selected);
+		const struct pg_evidence *body = pg_prove_elimination_body(&typing, &classifiers, selected);
+		assert(body);
+		check(&constructor_work, pg_evidence_subject(selected)->core, pg_evidence_subject(body)->core);
+		common_rule(&typing, &classifiers, body);
+		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
+		const struct pg_evidence *mapped = pg_prove_elimination_reindex(&typing, &classifiers, map, selected);
+		const struct pg_evidence *mapped_body = pg_prove_elimination_body(&typing, &classifiers, mapped);
+		assert(mapped_body);
+		check(&constructor_work, pg_evidence_subject(mapped)->core, pg_evidence_subject(mapped_body)->core);
+		common_rule(&typing, &classifiers, mapped_body);
+		/* A map inside a pending Fold must resume in the outer context. */
+		const struct pg_evidence *scoped = pg_prove_fold(&typing, &classifiers,
+			pg_prove_projection(&typing, n_context, sequenced),
+			pg_prove_projection(&typing, n_context, successor_function));
+		assert(scoped);
+		struct pg_whnf_job *state = pg_whnf_request(&constructor_work, &pg_pure_policy,
+			pg_evidence_subject(scoped)->core);
+		assert(state);
+		while (pg_whnf_advance(state, 64) == PG_EVAL_PENDING) assert(pg_whnf_steps(state) < 100000);
+		const struct pg_evidence *scoped_value = pg_prove_return_value(&typing,
+			pg_prove_normalization(&typing, scoped, pg_whnf_certificate(state)));
+		const struct pg_evidence *scoped_branches[] = {
+			pg_evidence_premise(mapped, 5), pg_evidence_premise(mapped, 6)};
+		const struct pg_evidence *scoped_match = pg_prove_match(&typing, &classifiers, nat, map,
+			scoped_value, pg_evidence_premise(mapped, 4), pg_evidence_premise(mapped, 0), 2, scoped_branches);
+		const struct pg_evidence *scoped_body = pg_prove_elimination_body(&typing, &classifiers, scoped_match);
+		assert(scoped_body);
+		check(&constructor_work, pg_evidence_subject(scoped_body)->core,
+			pg_evidence_subject(pg_prove_return(&typing, &classifiers,
+				pg_prove_projection(&typing, n_context, i ? twice : succ)))->core);
+		common_rule(&typing, &classifiers, scoped_body);
+	}
 	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, empty, pred))->core ==
 		pg_return_type(&classifiers, pg_evidence_subject(nat)->core));
 	proofs = typing.proofs.count; terms = graph.terms.count;
