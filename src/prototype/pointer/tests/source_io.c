@@ -1037,14 +1037,21 @@ static void fold_origins(void)
 
 struct match_origin_check { struct pg_program *program; size_t count; int solved; };
 
+static const struct pg_evidence *before_branch_conversion(const struct pg_evidence *proof)
+{
+	while (pg_evidence_rule(proof) == PG_TYPE_CONVERSION || pg_evidence_rule(proof) == PG_EFFECT_SUBSUMPTION)
+		proof = pg_evidence_premise(proof, 0);
+	return proof;
+}
+
 static void induction_scope_inputs(struct pg_program *p, const struct pg_evidence *proof)
 {
 	const struct pg_evidence *formation = pg_evidence_premise(proof, 1), *parameters = pg_evidence_premise(proof, 2);
 	const struct pg_evidence *motive_context = pg_evidence_premise(proof, 4), *motive = pg_evidence_premise(proof, 0);
-	const struct pg_evidence *branch = pg_evidence_premise(proof, 6);
+	const struct pg_evidence *branch = before_branch_conversion(pg_evidence_premise(proof, 6));
 	assert(pg_evidence_rule(branch) == PG_LAMBDA_INTRO);
 	const struct pg_context *fields = pg_evidence_context(pg_evidence_premise(pg_evidence_premise(branch, 0), 0));
-	branch = pg_evidence_premise(branch, 1);
+	branch = before_branch_conversion(pg_evidence_premise(branch, 1));
 	assert(pg_evidence_rule(branch) == PG_LAMBDA_INTRO);
 	const struct pg_context *end = pg_evidence_context(pg_evidence_premise(pg_evidence_premise(branch, 0), 0));
 	assert(end->parent == fields);
@@ -1108,10 +1115,12 @@ static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 	for (size_t i = 0; i < actual->count; ++i) {
 		const struct pg_evidence *a = pg_evidence_premise(saved, i + 5), *b = pg_evidence_premise(fresh, i + 5);
 		assert(pg_evidence_subject(a)->core == pg_evidence_subject(b)->core);
+		a = before_branch_conversion(a); b = before_branch_conversion(b);
 		while (pg_evidence_rule(a) == PG_LAMBDA_INTRO) {
 			assert(pg_evidence_rule(b) == PG_LAMBDA_INTRO);
 			assert(pg_evidence_subject(a)->core->as.lambda.binder == pg_evidence_subject(b)->core->as.lambda.binder);
-			a = pg_evidence_premise(a, 1); b = pg_evidence_premise(b, 1);
+			a = before_branch_conversion(pg_evidence_premise(a, 1));
+			b = before_branch_conversion(pg_evidence_premise(b, 1));
 		}
 	}
 	induction_scope_inputs(p, fresh);

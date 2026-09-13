@@ -142,6 +142,7 @@ while read -r fixture names; do
 		fi
 	done
 done <<'GRAPHS'
+acceptance/length-output-proof.p main emptyMain:emptyExpected
 acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain directMain directProof shadowMain:baseExpected nestedProof:baseExpected
 acceptance/generated-function-graph-direct.p main certified
 acceptance/function-graph-named-fields.p main aliasMain graphMain valueMain

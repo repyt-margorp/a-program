@@ -83,10 +83,13 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-order-reflexivity.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-function-motive.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-function-motive.p dependentMain expected
-	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/dependent-function-motive-wrong-base.p
-	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/dependent-function-motive-wrong-argument.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-function-motive-wrong-base.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-function-motive-wrong-argument.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-function-motive-wrong-expect.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/recursive-dependent-package.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/length-output-proof.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/length-output-proof.p emptyMain emptyExpected
+	$(BUILD)/program_test --reject $(ROOT)../tests/fixtures/negative/function_graph_incompatible_recursive_property.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/computed-family-member.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/computed-family-member.p nested nestedExpected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/computed-family-wrong-parameter.p

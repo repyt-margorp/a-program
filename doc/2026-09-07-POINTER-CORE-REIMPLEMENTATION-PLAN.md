@@ -217,9 +217,30 @@ unchanged; computations over logical hypotheses use the extension below.
   `check-acceptance` run now passes every preceding gate and stops at source
   compatibility (10/19), including QuickSort rejection at 35,598 steps.
   Main promotion is still open.
-- [ ] Remaining compatibility blockers: order proofs, named Graph cases,
-  QuickSort and the incompatible-property negative case. QuickSort currently
-  rejects at 35598 steps: `#.terminates` is not connected in the new source
+- [x] Check every synthesized Match/induction branch against its motive instance
+  through ordinary Solve conversion (September 13, after `fee330a`). Previously
+  this happened only on the type-case path; recursive branch mismatches reached
+  the final kernel rule as an undifferentiated null result (`unsupported`).
+  One shared post-check now handles all branches, after motive synthesis and
+  before the unchanged kernel elimination rule. Surface `::` is not an input
+  to motive synthesis. Conversion evidence is retained; allocation recovery
+  follows its source premise to the original Lambda/context instead of assuming
+  each branch derivation is directly `LAMBDA_INTRO`.
+  The incompatible recursive length-property fixture and the two wrong
+  function-motive fixtures now reject by conversion. The latter test expectations
+  change from unsupported to rejected, not from rejection to acceptance.
+  `length-output-proof.p` defines length first, eliminates `@length` to prove
+  its output inhabits the ordinary indexed `Unary` type, then computes with that
+  proof from `*length` on empty/two-element inputs. Both results agree at Solve
+  chunks 1/64 and through unfinished/completed source-image resaves. This is a
+  concrete post-hoc length property, not a claim of general QuickSort proofs.
+  Validation: full `check-acceptance` passes all preceding gates, then reports
+  compatibility 11/19. The extra success is correct rejection of the negative
+  property, not a newly accepted QuickSort. Targeted ASan/UBSan result/rejection
+  and Match allocation-origin tests pass. No new Core/rule/wire tag or Replay
+  path is introduced; Main promotion remains open.
+- [ ] Remaining compatibility blockers: order proofs, named Graph cases and
+  QuickSort. QuickSort currently rejects at 38036 steps: `#.terminates` is not connected in the new source
   environment. A traced failure in `accessibleSucc` is `*down m prior` in the
   `LT.lift` branch, which needs checked index refinement. `quickSortAcc` obtains
   a motive candidate but neither the whole program nor its property is accepted.
