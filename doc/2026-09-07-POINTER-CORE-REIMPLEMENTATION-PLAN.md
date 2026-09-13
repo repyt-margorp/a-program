@@ -187,13 +187,26 @@ September 13 compatibility follow-up:
   and produces the same result at chunks 1/64. No wire or Replay rule changed.
   QuickSort source compilation now takes 59,293 Solve steps versus 60,013;
   these are transition counts, not a wall-clock performance claim.
-  Remaining: `@quickSortAcc` first fails while reconstructing its logical-family
+  At this checkpoint, `@quickSortAcc` first failed while reconstructing its
   parameter map in the smaller context. Beyond that, function-field IH typing
   currently requires independence from the returned recursive value, whereas
   graph packets depend on it. Removing that check would be unsound; resolving
   it is separate from indexed direct-field support. Computed/nested Match and
   unknown callee graph translation also remain open. Do not mark QuickSort's
   post-hoc property complete or introduce a separate certified source program.
+- [x] Preserve judgement kinds and substituted inputs when reconstructing
+  parameter evidence in a smaller context. The concrete QuickSort failure was
+  the fixed `Nat` type-value image, not its `LT` logical-family image. The shared
+  iterative reconstruction now uses ordinary type/value, normalization and
+  substitution rules; it cannot discard a captured type argument. New tests
+  cover closed type parameters, logical-family parameters, captured functions
+  and rejection when a required binding is removed. No kernel or wire rule
+  was added. Full debug `check-acceptance` passes, including 20/20 compatibility.
+  ASan/UBSan also passes Core, synthesis, Program, both new results, image CLI
+  and 20/20 compatibility; source/image comparisons retain chunks 1/64.
+  `@quickSortAcc` now passes parameter reconstruction and reaches the explicit
+  recursive function-field limit. Its graph and post-hoc property remain open;
+  the function-field, nested-Match and unknown-callee obligations above remain.
 
 Theory references for this step: Leijen's [Koka report, Sections 2.1-2.2](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/koka-effects-2013.pdf)
 distinguishes potential divergence from ordinary side effects; Torczon et al.'s

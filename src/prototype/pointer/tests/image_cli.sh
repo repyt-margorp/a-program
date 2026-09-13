@@ -159,6 +159,7 @@ while read -r fixture names; do
 		fi
 	done
 done <<'GRAPHS'
+acceptance/function-graph-family-parameters.p main relatedMain
 acceptance/function-graph-indexed.p main emptyMain:emptyExpected specMain emptySpecMain:emptyExpected copyMain:sample countMain pointMain:one
 acceptance/function-graph-indexed-canonical.p main emptyMain:emptyExpected
 acceptance/function-graph-curried.p main specMain emptySpecMain:right growMain:two chooseMain:two twiceMain:four

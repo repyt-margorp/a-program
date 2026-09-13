@@ -746,6 +746,33 @@ static void typed_substitution_test(struct pg_graph *graph)
 	/* Telescope instantiation and the flat input API have one authority. */
 	const struct pg_evidence *type_pair = pg_prove_substitution_pair(&typing, closed, a_scope, destination_b);
 	assert(type_pair);
+	const struct pg_evidence *u0 = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *shifted_type = pg_prove_reindex(&typing, closed, u0);
+	const struct pg_evidence *type_value = pg_prove_type_value(&typing, shifted_type);
+	const struct pg_evidence *type_values = pg_prove_substitution_pair(&typing, closed, a_scope, type_value);
+	const struct pg_evidence *rebased_values = pg_prove_substitution_rebase(&typing, empty, type_values);
+	assert(rebased_values);
+	const struct pg_evidence *rebased_type = pg_substitution_image(&typing, rebased_values, a);
+	assert(pg_evidence_judgement(rebased_type) == PG_JUDGEMENT_VALUE);
+	assert(pg_evidence_subject(rebased_type)->core == pg_evidence_subject(u0)->core);
+	const struct pg_evidence *roundtrip = pg_prove_type_value(&typing, pg_prove_value_type(&typing, type_value));
+	const struct pg_evidence *roundtrip_values = pg_prove_substitution_pair(&typing, closed, a_scope, roundtrip);
+	assert(pg_prove_substitution_rebase(&typing, empty, roundtrip_values));
+	reconstruct_derivation(&typing, &classifiers, rebased_values);
+	/* A captured Lambda keeps its substituted type argument; a removed free
+	 * argument cannot be justified merely by the Lambda's erased shape. */
+	const struct pg_evidence *function = pg_prove_abstract(&typing, &classifiers, a_scope, source, returned);
+	const struct pg_evidence *suspended = pg_prove_thunk(&typing, &classifiers, function);
+	const struct pg_object *function_binder = pg_binder(graph);
+	const struct pg_evidence *function_scope = pg_prove_context_extension(&typing, a_scope, function_binder,
+		pg_prove_classifier(&typing, &classifiers, a_scope, suspended));
+	const struct pg_evidence *function_values = pg_prove_substitution_pair(&typing, type_pair,
+		function_scope, pg_prove_reindex(&typing, type_pair, suspended));
+	const struct pg_evidence *rebased_function = pg_prove_substitution_rebase(&typing, b_scope, function_values);
+	assert(rebased_function);
+	assert(pg_evidence_judgement(pg_substitution_image(&typing, rebased_function, function_binder)) == PG_JUDGEMENT_VALUE);
+	assert(!pg_prove_substitution_rebase(&typing, empty, function_values));
+	reconstruct_derivation(&typing, &classifiers, rebased_function);
 	assert(pg_prove_substitution_pair(&typing, type_pair, source, destination_y) == sigma);
 	assert(!pg_prove_substitution_pair(&typing, closed, source, destination_y));
 	assert(!pg_prove_substitution_pair(&typing, type_pair, source, destination_b));
