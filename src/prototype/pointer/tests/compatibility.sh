@@ -145,8 +145,8 @@ for steps in 0 1000000; do
 	"$runtime" --equal-image "$directory/quicksort.a" emptyMain emptyExpected
 done
 
-# Clients consume the unchanged provider's graph. Measurement has an independent
-# preservation proof; the outer QuickSort client checks intermediate graph fields.
+# Clients consume the unchanged provider's graph. Measurement and partition have
+# independent preservation proofs; the outer QuickSort client checks graph fields.
 while read -r name pairs; do
 	client="$(dirname "${BASH_SOURCE[0]}")/acceptance/$name.p"
 	for steps in 0 1000000; do
@@ -168,5 +168,6 @@ while read -r name pairs; do
 	test "$code" -eq 1
 done <<'CLIENTS'
 legacy-measure-property main:input emptyMain:empty
+legacy-partition-property main:expected lowerMain:expected upperMain:upperExpected duplicatesMain:duplicatesExpected emptyMain:empty
 legacy-quicksort-graph main:expected emptyMain:empty graphMain:expected
 CLIENTS

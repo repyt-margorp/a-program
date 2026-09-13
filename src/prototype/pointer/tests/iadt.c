@@ -1072,6 +1072,28 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 	common_rule(typing, classifiers, generalized);
 	const struct pg_evidence *back = pg_prove_reindex(typing, pattern, generalized);
 	assert(back && pg_alpha_equal(pg_evidence_subject(back)->core, pg_evidence_subject(body)->core) == 1);
+	/* A field at Family (succ m) cannot be replaced by one at Family n.
+	 * It may still be discarded when the proposed result is independent. */
+	const struct pg_object *p = pg_binder(typing->graph), *q = pg_binder(typing->graph);
+	const struct pg_evidence *source_field = pg_prove_context_extension(typing, nc, p,
+		pg_prove_return_content(typing, expected));
+	const struct pg_evidence *target_field = pg_prove_context_extension(typing, fields, q,
+		pg_prove_return_content(typing, body));
+	const struct pg_evidence *target_value = pg_prove_variable(typing, target_field, q);
+	const struct pg_evidence *extended_images[] = {
+		pg_prove_projection(typing, target_field, successor), target_value};
+	const struct pg_evidence *extended_pattern = pg_prove_substitution(typing,
+		source_field, target_field, 2, extended_images);
+	const struct pg_evidence *extended_body = pg_prove_projection(typing, target_field, body);
+	const struct pg_evidence *extended_result = pg_prove_pattern_type(typing, classifiers,
+		empty, extended_pattern, extended_body);
+	assert(extended_result && pg_alpha_equal(pg_evidence_subject(extended_result)->core,
+		pg_evidence_subject(expected)->core) == 1);
+	assert(pg_evidence_context(extended_result) == pg_evidence_context(source_field));
+	common_rule(typing, classifiers, extended_result);
+	const struct pg_evidence *dependent_body = pg_prove_return_type(typing, classifiers,
+		pg_prove_identity_type(typing, pg_prove_return_content(typing, extended_body), target_value, target_value));
+	assert(dependent_body && !pg_prove_pattern_type(typing, classifiers, empty, extended_pattern, dependent_body));
 	const struct pg_evidence *duplicate[] = {successor, successor};
 	assert(!pg_prove_pattern_type(typing, classifiers, empty,
 		pg_prove_substitution(typing, mc, fields, 2, duplicate), body));

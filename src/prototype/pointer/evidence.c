@@ -3575,8 +3575,16 @@ const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
 		const struct pattern_variable *entry = pattern_variable(&variables, fields[i]->context->binder);
 		if (entry) {
 			const struct pg_evidence *image = pg_prove_variable(typing, inverse->premises[1], entry->binder);
-			inverse = pg_prove_substitution_pair(typing, inverse, fields[i], image);
-		} else inverse = pg_prove_substitution_lift(typing, inverse, fields[i], pg_binder(typing->graph));
+			const struct pg_evidence *domain = pg_prove_reindex(typing, inverse, fields[i]->premises[1]);
+			if (!image || !domain) goto done;
+			if (pg_alpha_equal(image->classifier, domain->subject->core) == 1) {
+				inverse = pg_prove_substitution_pair(typing, inverse, fields[i], image);
+				continue;
+			}
+		}
+		/* A dependent field may still mention a constructed index. Retain
+		 * it until the inferred type is checked independent of that field. */
+		inverse = pg_prove_substitution_lift(typing, inverse, fields[i], pg_binder(typing->graph));
 	}
 	if (!inverse) goto done;
 	result = pg_prove_reindex(typing, inverse, body);

@@ -156,9 +156,10 @@ schema construction. Flat cases retain their existing slot validation.
   image loading. Source compilation of the positive client completes in 66,906
   transitions; the negative client rejects in 61,801. These are evidence for
   this lemma and regression coverage, not completion of the full rewrite.
-- [ ] Prove the corresponding partition preservation property and compose it
-  with append and Acc induction for the existing QuickSort. The measure lemma
-  is a prerequisite, not a claim that QuickSort preservation is complete.
+- [x] Prove the corresponding partition preservation property (see the
+  dependent-pattern follow-up below).
+- [ ] Compose these properties with append and Acc induction for the existing
+  QuickSort. The lemmas do not establish QuickSort preservation by themselves.
 - [x] Restore the outer `@quickSort` graph. Historical diagnosis: a minimal importing client remained
   unsupported at 54,512 transitions in this build. The stop is in source
   `function_graph_order` preparation while the kernel graph work is still
@@ -194,6 +195,49 @@ to a different source definition and no Core tag or proof rule is added.
 - [ ] Compose preservation lemmas for partition and Acc recursion. Access to
   the outer function's graph evidence is not yet a proof of sorting or
   permutation preservation.
+
+Dependent-pattern follow-up after `c97bfc2` (September 14): the independent
+`PartitionOf A size input output` IADT relates an input SizedList to the two
+subsequences inside a Partition packet. Its lower/upper constructors move the
+same input head into exactly one subsequence. Bound witnesses are arbitrary
+well-typed arguments, not hard-coded to the implementation's LT proofs.
+
+The original `partition` graph supplies the recursive evidence required by this
+proof, but motive synthesis failed to invert its dependent pattern. For example,
+inverting `n := succ m, p := q` with `p : B n` and `q : B (succ m)` cannot map
+`q` directly back to `p`: `B (succ fresh_m)` is not `B n`. Requiring that pair
+prevented inference even when the proposed result type did not use `q` at all.
+The old build rejects the complete new client at 85,738 transitions.
+
+- [x] Reuse an inverse variable only when its pulled-back classifier matches.
+  Otherwise extend the temporary context with a fresh, correctly typed field.
+  Remove that field only through the existing checked constant-codomain rule.
+  The final specialization must still reconstruct the original result type.
+  This is a partial type-pattern inference algorithm, not an inverse for every
+  dependent substitution, nor permission to discard used proof assumptions.
+- [x] Check this boundary directly in `tests/iadt.c`: an independent result
+  generalizes; an Identity type depending on the fresh field does not. Rebuild
+  the accepted derivation using the existing rules.
+- [x] Compile an importing `partitionCorrect` with the final post-check
+  `@partition A &le pivot n input output -> PartitionOf A n input output`.
+  Source with execution examples completes at 104,832 transitions. Reject a
+  proposed proof that returns only the tail's evidence (85,473 transitions).
+  Neither the provider nor the kernel's typing/conversion rules is changed.
+- [x] Verify the full debug and ASan/UBSan acceptance suites, including five
+  partition proof executions (empty, mixed, all lower, all upper, duplicates),
+  unfinished/completed images, chunk sizes 1/64 and negative image loading.
+  Both complete suites pass, retaining the 32/32 legacy inventory and QuickSort
+  result checks. The default optimized checker also accepts the new client.
+  Compiler C changes are 10 added / 2 removed (net +8); tests and documentation
+  are separate. No Core node kind, proof rule or Replay path is added.
+- [ ] Compose with append and Acc induction to prove a property of QuickSort
+  itself. Sortedness additionally needs a specification of the comparator.
+
+An earlier attempted specification used a Match to project lower/upper lists
+from the packet before forming the relation. It failed during motive synthesis.
+The packet-indexed specification avoids that extra inference problem without
+weakening element preservation. General inference through computed projections
+is not claimed by this change and needs its own coverage.
 
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
