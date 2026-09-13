@@ -3388,6 +3388,40 @@ static void request_typing_test(struct pg_graph *graph)
 		pg_prove_classifier(&typing, &classifiers, scope, body));
 	const struct pg_evidence *k = pg_prove_lambda(&typing, pi, body);
 	const struct pg_evidence *payload = pg_prove_type_value(&typing, u0);
+	for (enum pg_totality grade = PG_TOTALITY_UNSPECIFIED; grade <= PG_TOTALITY_TOTAL; ++grade) {
+		const struct pg_evidence *ret = pg_prove_return_contract(&typing, &classifiers, grade, pg_prove_variable(&typing, scope, x));
+		const struct pg_evidence *cont = pg_prove_lambda(&typing,
+			pg_prove_pi(&typing, &classifiers, scope, pg_prove_classifier(&typing, &classifiers, scope, ret)), ret);
+		const struct pg_evidence *req = pg_prove_request(&typing, &classifiers, op, payload, cont);
+		enum pg_totality actual;
+		const struct pg_effect_row *effects;
+		const struct pg_term *value;
+		assert(req && pg_computation_type_view(pg_evidence_classifier(req), &actual, &effects, &value));
+		assert(actual == grade && pg_effect_count(effects) == 1);
+		assert(pg_effect_contains(effects, pg_operation_label(op)) == 1);
+		const struct pg_evidence *strong_return = pg_prove_return_contract(&typing, &classifiers,
+			PG_TOTALITY_TOTAL, pg_prove_variable(&typing, scope, x));
+		const struct pg_evidence *strong_cont = pg_prove_lambda(&typing,
+			pg_prove_pi(&typing, &classifiers, scope,
+				pg_prove_classifier(&typing, &classifiers, scope, strong_return)), strong_return);
+		for (enum pg_totality target = PG_TOTALITY_UNSPECIFIED; target <= PG_TOTALITY_TOTAL; ++target) {
+			const struct pg_evidence *carrier = pg_prove_computation_type(&typing, &classifiers, target,
+				pg_effect_row(graph, 0, NULL), u1);
+			struct pg_handler_clause clause = {op, resume_clause(&typing, &classifiers, op, carrier, NULL)};
+			/* A stronger return clause does not establish termination of the input. */
+			assert((pg_prove_handler(&typing, &classifiers, req, strong_cont, carrier, 1, &clause) != NULL)
+				== (grade >= target));
+			const struct pg_evidence *handled = pg_prove_handler(&typing, &classifiers, req, cont, carrier, 1, &clause);
+			assert((handled != NULL) == (grade >= target));
+			if (!handled) continue;
+			assert(pg_prove_classifier(&typing, &classifiers, empty, handled) == carrier);
+			struct pg_derivation_parameters parameters;
+			assert(!pg_derivation_parameters(handled, &parameters));
+			const struct pg_evidence *premises[6];
+			for (size_t i = 0; i < 6; ++i) premises[i] = pg_evidence_premise(handled, i);
+			assert(pg_prove_derivation(&typing, &classifiers, PG_HANDLER_ELIM, &parameters, 6, premises) == handled);
+		}
+	}
 	const struct pg_evidence *request = pg_prove_request(&typing, &classifiers, op, payload, k);
 	assert(request && pg_evidence_rule(request) == PG_REQUEST_INTRO);
 	assert(pg_prove_request(&typing, &classifiers, op, payload, k) == request);

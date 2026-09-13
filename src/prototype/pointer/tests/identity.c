@@ -201,17 +201,22 @@ static const struct pg_evidence *thunk_map(struct pg_typing *typing, struct pg_c
 	const struct pg_evidence *extended = pg_prove_context_extension(typing, context, binder, domain);
 	const struct pg_evidence *field = pg_prove_identity_transport(typing, classifiers,
 		pg_prove_projection(typing, extended, path), pg_prove_variable(typing, extended, binder), direction);
-	const struct pg_evidence *body = pg_prove_return(typing, classifiers, field);
+	const struct pg_evidence *forced = pg_prove_force(typing, input);
+	enum pg_totality totality;
+	const struct pg_effect_row *effects;
+	const struct pg_term *content;
+	assert(forced && pg_computation_type_view(pg_evidence_classifier(forced), &totality, &effects, &content));
+	const struct pg_evidence *body = pg_prove_return_contract(typing, classifiers, totality, field);
 	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, extended,
 		pg_prove_classifier(typing, classifiers, extended, body));
 	const struct pg_evidence *continuation = pg_prove_lambda(typing, pi, body);
 	return pg_prove_thunk(typing, classifiers,
-		pg_prove_fold(typing, classifiers, pg_prove_force(typing, input), continuation));
+		pg_prove_fold(typing, classifiers, forced, continuation));
 }
 
 static void thunk_transport(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_evidence *context, const struct pg_evidence *path,
-	const struct pg_evidence *x, const struct pg_evidence *y)
+	const struct pg_evidence *x, const struct pg_evidence *y, enum pg_totality totality)
 {
 	struct pg_graph *graph = typing->graph;
 	struct pg_whnf_work work, whole;
@@ -222,7 +227,8 @@ static void thunk_transport(struct pg_typing *typing, struct pg_classifiers *cla
 	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, a,
 		pg_prove_universe(typing, classifiers, empty, 0));
 	const struct pg_evidence *ufa = pg_prove_thunk_type(typing, classifiers,
-		pg_prove_return_type(typing, classifiers, pg_prove_variable(typing, source, a)));
+		pg_prove_computation_type(typing, classifiers, totality, pg_effect_row(graph, 0, NULL),
+			pg_prove_variable(typing, source, a)));
 	const struct pg_evidence *family = pg_prove_type_value(typing, ufa);
 	const struct pg_evidence *types[2], *maps[2];
 	for (size_t i = 0; i < 2; ++i) {
@@ -245,7 +251,8 @@ static void thunk_transport(struct pg_typing *typing, struct pg_classifiers *cla
 	for (unsigned i = 0; i < 2; ++i) {
 		enum pg_identity_direction direction = (enum pg_identity_direction)i;
 		const struct pg_evidence *input = i ? y : x;
-		const struct pg_evidence *quoted = pg_prove_thunk(typing, classifiers, pg_prove_return(typing, classifiers, input));
+		const struct pg_evidence *quoted = pg_prove_thunk(typing, classifiers,
+			pg_prove_return_contract(typing, classifiers, totality, input));
 		const struct pg_object *u = pg_binder(graph);
 		const struct pg_evidence *extended = pg_prove_context_extension(typing, context, u,
 			pg_prove_classifier(typing, classifiers, context, quoted));
@@ -303,7 +310,8 @@ static void thunk_transport(struct pg_typing *typing, struct pg_classifiers *cla
 			const struct pg_evidence *inner = lifting
 				? pg_prove_identity_lift(typing, classifiers, path, input, direction)
 				: pg_prove_identity_transport(typing, classifiers, path, input, direction);
-			const struct pg_evidence *expected = pg_prove_thunk(typing, classifiers, pg_prove_return(typing, classifiers, inner));
+			const struct pg_evidence *expected = pg_prove_thunk(typing, classifiers,
+				pg_prove_return_contract(typing, classifiers, totality, inner));
 			assert(actual && expected);
 			action_result(typing, classifiers, context, &work, actual, expected);
 			const struct pg_term *term = pg_evidence_subject(actual)->core;
@@ -322,7 +330,8 @@ static void thunk_transport(struct pg_typing *typing, struct pg_classifiers *cla
 			assert(pg_whnf_advance(beta, 100000) == PG_EVAL_WHNF && pg_whnf_result(beta) == term);
 		}
 	}
-	/* Unknown quoted computations stay suspended; no evaluation under THUNK. */
+	/* Untyped probes stay suspended even under the TOTAL family. These raw
+	 * reductions do not establish typing or termination of the quoted loop. */
 	const struct pg_object *z = pg_binder(graph);
 	const struct pg_term *v = pg_reference(graph, z);
 	const struct pg_term *self = pg_lambda(graph, z, pg_application(graph, v, v));
@@ -648,8 +657,10 @@ static void transport_fields(struct pg_typing *typing, struct pg_classifiers *cl
 	const struct pg_evidence *x, const struct pg_evidence *y, const struct pg_evidence *substitution)
 {
 	struct pg_graph *graph = typing->graph;
-	thunk_transport(typing, classifiers, scope, r, x, y);
-	thunk_transport(typing, classifiers, scope, s, x, y);
+	for (enum pg_totality grade = PG_TOTALITY_UNSPECIFIED; grade <= PG_TOTALITY_TOTAL; ++grade) {
+		thunk_transport(typing, classifiers, scope, r, x, y, grade);
+		thunk_transport(typing, classifiers, scope, s, x, y, grade);
+	}
 	pi_transport_candidate(typing, classifiers, scope, r);
 	pi_transport_candidate(typing, classifiers, scope, s);
 	curried_transport(typing, classifiers, scope, r, r);
@@ -1678,11 +1689,12 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 	pg_dimensions_destroy(&dimensions);
 }
 
-static void neutral_thunks(struct pg_typing *typing, struct pg_classifiers *classifiers)
+static void neutral_thunks(struct pg_typing *typing, struct pg_classifiers *classifiers, enum pg_totality totality)
 {
 	const struct pg_evidence *scope = pg_prove_empty_context(typing);
 	const struct pg_evidence *a = pg_prove_universe(typing, classifiers, scope, 0);
-	const struct pg_evidence *c = pg_prove_return_type(typing, classifiers, a);
+	const struct pg_evidence *c = pg_prove_computation_type(typing, classifiers, totality,
+		pg_effect_row(typing->graph, 0, NULL), a);
 	const struct pg_evidence *u = pg_prove_thunk_type(typing, classifiers, c);
 	const struct pg_object *v0 = pg_binder(typing->graph), *v1 = pg_binder(typing->graph);
 	const struct pg_object *p = pg_binder(typing->graph);
@@ -2922,6 +2934,23 @@ int main(void)
 	const struct pg_evidence *expanded_uid = pg_identity_thunk_type(&typing, &classifiers, ufa, delayed, delayed);
 	normalizes(&normalization, pg_evidence_subject(uid)->core, pg_evidence_subject(expanded_uid)->core);
 	converts(&normalization, pg_evidence_subject(expanded_uid)->core, pg_evidence_subject(ucid)->core);
+	for (enum pg_totality grade = PG_TOTALITY_UNSPECIFIED; grade <= PG_TOTALITY_TOTAL; ++grade) {
+		const struct pg_effect_row *row = pg_effect_row(&graph, 0, NULL);
+		const struct pg_evidence *type = pg_prove_computation_type(&typing, &classifiers, grade, row, a_type);
+		const struct pg_evidence *term = pg_prove_return_contract(&typing, &classifiers, grade, xx);
+		const struct pg_evidence *identity = pg_prove_identity_type(&typing, type, term, term);
+		const struct pg_evidence *reflexivity = pg_prove_reflexivity(&typing, type, term);
+		const struct pg_evidence *target = pg_prove_computation_type(&typing, &classifiers, grade, row, diagonal);
+		const struct pg_evidence *proof = pg_prove_return_contract(&typing, &classifiers, grade, refl_x);
+		assert(identity && reflexivity && target && proof);
+		converts(&normalization, pg_evidence_subject(identity)->core, pg_evidence_subject(target)->core);
+		action_result(&typing, &classifiers, scope, &normalization, reflexivity, proof);
+		const struct pg_evidence *other_type = pg_prove_computation_type(&typing, &classifiers,
+			grade == PG_TOTALITY_TOTAL ? PG_TOTALITY_UNSPECIFIED : PG_TOTALITY_TOTAL, row, a_type);
+		assert(!pg_prove_identity_type(&typing, other_type, term, term));
+		/* Equality does not identify two different computation contracts. */
+		assert(pg_alpha_equal(pg_evidence_subject(type)->core, pg_evidence_subject(other_type)->core) == 0);
+	}
 	assert(pg_conversion_init(&comparison, &normalization, pg_evidence_classifier(urefl),
 		pg_evidence_classifier(quoted)) == 0);
 	assert(pg_conversion_advance(&comparison, 1000) == PG_CONVERSION_EQUAL);
@@ -3001,7 +3030,8 @@ int main(void)
 	assert(!pg_prove_reflexivity(&foreign, a_type, xx));
 	assert(!pg_prove_identity_instance(&foreign, &classifiers, pp, xx, yy));
 	pg_typing_destroy(&foreign);
-	neutral_thunks(&typing, &classifiers);
+	neutral_thunks(&typing, &classifiers, PG_TOTALITY_UNSPECIFIED);
+	neutral_thunks(&typing, &classifiers, PG_TOTALITY_TOTAL);
 	action_scope_exchange(&classifiers);
 	generated_contexts(&typing, &classifiers);
 	pg_classifiers_destroy(&classifiers);

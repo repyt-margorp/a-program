@@ -327,6 +327,55 @@ static const struct pg_evidence *export_value(struct pg_program *p, const char *
 	return value;
 }
 
+static void graded_function_graph(struct pg_program *p, const struct pg_evidence *function,
+	const struct pg_evidence *argument, uint64_t chunk)
+{
+	function = pg_function_graph_source(function);
+	assert(function && pg_evidence_rule(function) == PG_LAMBDA_INTRO);
+	const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_premise(function, 0), 0);
+	const struct pg_evidence *value = pg_prove_return_value(&p->typing, pg_evidence_premise(function, 1));
+	assert(value);
+	for (enum pg_totality grade = PG_TOTALITY_UNSPECIFIED; grade <= PG_TOTALITY_TOTAL; ++grade) {
+		const struct pg_evidence *body = pg_prove_return_contract(&p->typing, &p->classifiers, grade, value);
+		const struct pg_evidence *type = pg_prove_classifier(&p->typing, &p->classifiers, scope, body);
+		const struct pg_evidence *lambda = pg_prove_lambda(&p->typing,
+			pg_prove_pi(&p->typing, &p->classifiers, scope, type), body);
+		assert(lambda && pg_evidence_subject(lambda)->core == pg_evidence_subject(function)->core);
+		struct pg_function_graph_work work;
+		assert(!pg_function_graph_init(&work, &p->typing, &p->classifiers, &p->evaluation, lambda));
+		for (size_t turns = 0; pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+			assert(turns < 100000);
+		assert(pg_function_graph_witness_advance(&work, 0) == PG_FUNCTION_GRAPH_DONE);
+		const struct pg_evidence *call = pg_prove_application(&p->typing, pg_function_graph_witness(&work), argument);
+		enum pg_totality actual;
+		const struct pg_term *result;
+		assert(call && pg_pure_computation_type_view(pg_evidence_classifier(call), &actual, &result));
+		assert(actual == grade);
+		struct pg_nf_job *nf = pg_nf_request(&p->evaluation, &pg_pure_policy, pg_evidence_subject(call)->core);
+		for (size_t turns = 0; pg_nf_advance(nf, chunk) == PG_NF_PENDING; ++turns) assert(turns < 100000);
+		assert(pg_nf_status(nf) == PG_NF_DONE);
+		const struct pg_evidence *packet = pg_prove_return_value(&p->typing,
+			pg_prove_normalization(&p->typing, call, pg_nf_certificate(nf)));
+		assert(packet);
+		const struct pg_term *core = pg_evidence_subject(packet)->core;
+		assert(core->kind == PG_APPLICATION && core->as.application.function->kind == PG_APPLICATION);
+		assert(core->as.application.function->as.application.argument == pg_evidence_subject(argument)->core);
+		pg_function_graph_destroy(&work);
+		/* TOTAL is not permission to run effectful code during graph formation. */
+		const struct pg_evidence *u0 = pg_prove_universe(&p->typing, &p->classifiers,
+			pg_prove_empty_context(&p->typing), 0);
+		const struct pg_object *label = pg_operation_label(pg_operation_declaration(&p->typing, u0, u0));
+		type = pg_prove_computation_type(&p->typing, &p->classifiers, grade,
+			pg_effect_row(&p->graph, 1, &label), pg_prove_return_content(&p->typing, type));
+		body = pg_prove_effect_subsumption(&p->typing, body, type);
+		lambda = pg_prove_lambda(&p->typing, pg_prove_pi(&p->typing, &p->classifiers, scope, type), body);
+		assert(lambda);
+		assert(!pg_function_graph_init(&work, &p->typing, &p->classifiers, &p->evaluation, lambda));
+		assert(pg_function_graph_advance(&work, chunk) == PG_FUNCTION_GRAPH_UNSUPPORTED);
+		pg_function_graph_destroy(&work);
+	}
+}
+
 static void function_graphs(void)
 {
 	const char *source = "Nat:=@{zero:*;succ:*->*;}; NatList:=@{nil:*;cons:Nat->*->*;};"
@@ -349,6 +398,7 @@ static void function_graphs(void)
 		for (size_t i = 0; i < 3; ++i) {
 			const struct pg_evidence *function = pg_synthesis_result(pg_synthesis_definition(p->root,
 				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[i], .length = strlen(names[i])}));
+			if (!i) graded_function_graph(p, function, successor, chunk);
 			struct pg_function_graph_work work;
 			assert(!pg_function_graph_init(&work, &p->typing, &p->classifiers, &p->evaluation, function));
 			assert(pg_function_graph_advance(&work, 0) == PG_FUNCTION_GRAPH_PENDING);

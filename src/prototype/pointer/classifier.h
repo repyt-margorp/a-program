@@ -64,9 +64,12 @@ const struct pg_term *pg_computation_type(struct pg_classifiers *classifiers,
 	enum pg_totality totality, const struct pg_effect_row *effects, const struct pg_term *value_type);
 int pg_computation_type_view(const struct pg_term *term,
 	enum pg_totality *totality, const struct pg_effect_row **effects, const struct pg_term **value_type);
+/* Empty-row F of either grade. Purity does not discharge totality. */
+int pg_pure_computation_type_view(const struct pg_term *term,
+	enum pg_totality *totality, const struct pg_term **value_type);
 /* Structural F spine, including unresolved row terms in unaccepted inputs.
  * These functions neither interpret the row nor establish formation. Closed
- * kernel consumers must continue using pg_effect_type_view below. The legacy
+ * kernel consumers use a closed-row view. The legacy
  * constructors and views select UNSPECIFIED; they never erase TOTAL. */
 const struct pg_term *pg_effect_type_spine(struct pg_classifiers *classifiers,
 	const struct pg_term *effects, const struct pg_term *value_type);

@@ -559,7 +559,7 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 }
 
 static void operation_proofs(FILE *file, struct pg_typing *typing, struct pg_classifiers *classifiers,
-	int writing, uint64_t chunk)
+	int writing, uint64_t chunk, enum pg_totality totality)
 {
 	struct pg_graph *graph = typing->graph;
 	if (writing) {
@@ -572,9 +572,10 @@ static void operation_proofs(FILE *file, struct pg_typing *typing, struct pg_cla
 		const struct pg_object *x = pg_binder(graph);
 		const struct pg_evidence *extended = pg_prove_context_extension(typing, empty, x, u1);
 		const struct pg_evidence *returned = pg_prove_abstract(typing, classifiers, empty, extended,
-			pg_prove_return(typing, classifiers, pg_prove_variable(typing, extended, x)));
+			pg_prove_return_contract(typing, classifiers, totality, pg_prove_variable(typing, extended, x)));
 		const struct pg_evidence *request = pg_prove_request(typing, classifiers, operations[0], value, returned);
-		const struct pg_evidence *carrier = pg_prove_return_type(typing, classifiers, u1);
+		const struct pg_evidence *carrier = pg_prove_computation_type(typing, classifiers, totality,
+			pg_effect_row(graph, 0, NULL), u1);
 		struct pg_handler_clause clauses[2];
 		for (size_t i = 0; i < 2; ++i) {
 			const struct pg_object *a = pg_binder(graph), *k = pg_binder(graph);
@@ -601,6 +602,7 @@ static void operation_proofs(FILE *file, struct pg_typing *typing, struct pg_cla
 	assert(!pg_whnf_work_init(&work, graph));
 	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
 	struct pg_synthesis_job *request = pg_synthesis_derivation(&synthesis, roots[0]);
+	struct pg_synthesis_job *shape = pg_synthesis_classifier_structure(&synthesis, request);
 	struct pg_synthesis_job *handled = pg_synthesis_derivation(&synthesis, roots[1]);
 	assert(handled == pg_synthesis_derivation(&synthesis, roots[2]));
 	unsigned rounds = 0;
@@ -614,7 +616,13 @@ static void operation_proofs(FILE *file, struct pg_typing *typing, struct pg_cla
 	assert(pg_operation_label(pg_evidence_request_declaration(pg_synthesis_result(request))) == label);
 	const struct pg_effect_row *row;
 	const struct pg_term *type;
-	assert(pg_effect_type_view(pg_evidence_classifier(proof), &row, &type) && !pg_effect_count(row));
+	enum pg_totality grade;
+	assert(pg_computation_type_view(pg_evidence_classifier(proof), &grade, &row, &type) && !pg_effect_count(row));
+	assert(grade == totality);
+	assert(pg_synthesis_status(shape) == PG_SYNTHESIS_DONE);
+	const struct pg_term *row_term;
+	assert(pg_computation_type_spine_view(pg_synthesis_type_structure_result(shape), &grade, &row_term, &type));
+	assert(grade == totality);
 	struct pg_synthesis_job *nf = pg_synthesis_nf(&synthesis, pg_prove_empty_context(typing), proof);
 	while (pg_synthesis_status(nf) == PG_SYNTHESIS_PENDING) {
 		assert(++rounds < 10000);
@@ -1229,6 +1237,8 @@ int main(int argc, char **argv)
 	int producer = !strncmp(argv[1], "producer-", 9);
 	int nominal = !strncmp(argv[1], "nominal-", 8);
 	const char *mode = operation ? argv[1] + 10 : unaccepted ? argv[1] + 6 : effects ? argv[1] + 7 : producer ? argv[1] + 9 : nominal ? argv[1] + 8 : argv[1];
+	enum pg_totality totality = PG_TOTALITY_UNSPECIFIED;
+	if (operation && !strncmp(mode, "total-", 6)) { totality = PG_TOTALITY_TOTAL; mode += 6; }
 	int writing = !strcmp(mode, "write");
 	int bulk = !strcmp(mode, "read-bulk");
 	assert(writing || bulk || !strcmp(mode, "read"));
@@ -1242,7 +1252,7 @@ int main(int argc, char **argv)
 	else if (producer) producer_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (effects) pending_effect_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (unaccepted) unaccepted_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
-	else if (operation) operation_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
+	else if (operation) operation_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1, totality);
 	else if (writing) write_proofs(file, &typing, &classifiers);
 	else read_proofs(file, &typing, &classifiers, bulk ? 64 : 1);
 	assert(fclose(file) == 0);

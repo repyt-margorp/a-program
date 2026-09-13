@@ -337,7 +337,8 @@ static int right_endpoint_scoped(struct pg_eval *machine, const struct action_sc
 {
 	struct action_scope scope = *prepared;
 	const struct pg_term *content;
-	if (!pg_return_type_view(scope.body, &content)) return -1;
+	enum pg_totality totality;
+	if (!pg_pure_computation_type_view(scope.body, &totality, &content)) return -1;
 	const struct pg_term *r = unary_argument(right, &pg_return_operation);
 	if (!r) return 1;
 	const struct pg_term *l = unary_argument(pg_eval_argument(machine, 1 + 3 * scope.count)->term, &pg_return_operation);
@@ -363,7 +364,8 @@ static int left_endpoint_scoped(struct pg_eval *machine, const struct action_sco
 {
 	struct action_scope scope = *prepared;
 	const struct pg_term *content;
-	if (!pg_return_type_view(scope.body, &content)) return -1;
+	enum pg_totality totality;
+	if (!pg_pure_computation_type_view(scope.body, &totality, &content)) return -1;
 	if (!unary_argument(left, &pg_return_operation)) return 1;
 	return pg_eval_demand(machine, 2 + 3 * scope.count, &right_endpoint_continuation, prepared);
 }
@@ -857,7 +859,8 @@ static int action_source_body(struct pg_eval *machine, const struct action_scope
 	if (pg_pi_view(body, &domain, &binder, &codomain)) return pi_action(machine, &scope, domain, binder, codomain);
 	const struct pg_term *content;
 	if (pg_thunk_type_view(body, &content)) return thunk_type_action(machine, &scope, content);
-	if (pg_return_type_view(body, &content)) {
+	enum pg_totality totality;
+	if (pg_pure_computation_type_view(body, &totality, &content)) {
 		if (!pg_eval_argument(machine, 2 + 3 * scope.count)) return 1;
 		return pg_eval_demand(machine, 1 + 3 * scope.count, &left_endpoint_continuation, prepared);
 	}
@@ -1043,7 +1046,8 @@ static int thunk_return_scoped(struct pg_eval *machine, const struct action_scop
 	if (!payload && field >= 2) return 1;
 	struct action_scope scope = *prepared;
 	const struct pg_term *content, *family = pg_eval_argument(machine, 0)->term;
-	if (!computation || !pg_return_type_view(computation, &content)) return -1;
+	enum pg_totality totality;
+	if (!pg_pure_computation_type_view(computation, &totality, &content)) return -1;
 	if (prepare_bindings(machine, &scope) != 0) return -1;
 	struct pg_graph *graph = machine->output;
 	const struct pg_object *binder = payload ? NULL : pg_binder(graph);
@@ -1078,7 +1082,8 @@ static int field_family_scoped(struct pg_eval *machine, void *opaque)
 {
 	struct family_scope_work *work = opaque;
 	const struct pg_term *content;
-	if (!work->content || !pg_return_type_view(work->content, &content)) return 1;
+	enum pg_totality totality;
+	if (!pg_pure_computation_type_view(work->content, &totality, &content)) return 1;
 	return pg_eval_demand(machine, 1, &thunk_return_field_continuation, &work->scope);
 }
 

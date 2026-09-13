@@ -48,6 +48,7 @@ struct pg_function_graph_state {
 	struct pg_whnf_job *normalization;
 	size_t count, next;
 	int cases, induction;
+	enum pg_totality totality;
 	enum pg_function_graph_status status;
 };
 
@@ -426,7 +427,7 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	s->domain = pg_evidence_premise(s->argument_context, 1);
 	const struct pg_evidence *result = pg_evidence_premise(pi, 1);
 	const struct pg_term *range;
-	if (!result || !pg_return_type_view(pg_evidence_subject(result)->core, &range)) goto unsupported;
+	if (!result || !pg_pure_computation_type_view(pg_evidence_subject(result)->core, &s->totality, &range)) goto unsupported;
 	s->range = pg_prove_return_content(typing, result);
 	if (!s->range) goto unsupported;
 	s->body = pg_evidence_premise(function, 1);
@@ -591,7 +592,7 @@ static const struct pg_evidence *return_packet(struct pg_function_graph_state *s
 	const struct pg_evidence *values[] = {output, graph};
 	const struct pg_evidence *packet = pg_prove_constructor(t, s->packet, packet_constructor(s),
 		argument_substitution(s, context, input), 2, values);
-	return pg_prove_return(t, s->classifiers, packet);
+	return pg_prove_return_contract(t, s->classifiers, s->totality, packet);
 }
 
 struct packet_frame {
@@ -637,7 +638,8 @@ static const struct pg_evidence *witness_case(struct pg_function_graph_state *s,
 		if (next >= calls || call->hypothesis >= ih_count) return NULL;
 		struct packet_frame *f = &frames[next];
 		f->before = context;
-		f->target = pg_prove_return_type(t, s->classifiers, packet_type(s, context, projection(s, context, argument)));
+		f->target = pg_prove_computation_type(t, s->classifiers, s->totality,
+			pg_effect_row(t->graph, 0, NULL), packet_type(s, context, projection(s, context, argument)));
 		f->input = pg_prove_force(t, pg_prove_variable(t, context, ih_binders[call->hypothesis]));
 		const struct pg_evidence *field = projection(s, context, values[call->field]);
 		f->bound = pg_prove_context_extension(t, context, pg_binder(t->graph), packet_type(s, context, field));
@@ -686,7 +688,8 @@ enum pg_function_graph_status pg_function_graph_witness_advance(struct pg_functi
 				if (!s->motive_context) goto unsupported;
 				const struct pg_evidence *z = pg_prove_variable(s->typing, s->motive_context,
 					pg_evidence_context(s->motive_context)->binder);
-				s->motive = pg_prove_return_type(s->typing, s->classifiers, packet_type(s, s->motive_context, z));
+				s->motive = pg_prove_computation_type(s->typing, s->classifiers, s->totality,
+					pg_effect_row(s->typing->graph, 0, NULL), packet_type(s, s->motive_context, z));
 				if (!s->motive) goto unsupported;
 			}
 			continue;

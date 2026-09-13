@@ -45,7 +45,8 @@ const struct pg_evidence *pg_function_graph_case_input(const struct pg_function_
 /* Construct a dependent result packet and its producer by ordinary induction
  * over the same source argument. Shares the generated relation above.
  * Returned packet formation is parameterized by the source input context;
- * its sole constructor stores output and graph evidence. */
+ * its sole constructor stores output and graph evidence. The producer retains
+ * the source result's totality grade; graph formation alone is not totality. */
 enum pg_function_graph_status pg_function_graph_witness_advance(struct pg_function_graph_work *work, uint64_t budget);
 const struct pg_evidence *pg_function_graph_witness(const struct pg_function_graph_work *work);
 const struct pg_evidence *pg_function_graph_packet(const struct pg_function_graph_work *work);

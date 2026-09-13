@@ -421,11 +421,23 @@ const struct pg_term *pg_thunk_type(struct pg_classifiers *classifiers, const st
 {
 	return unary_type(classifiers, &thunk_type_former, computation_type);
 }
-int pg_return_type_view(const struct pg_term *term, const struct pg_term **value_type)
+int pg_pure_computation_type_view(const struct pg_term *term,
+	enum pg_totality *totality, const struct pg_term **value_type)
 {
+	enum pg_totality grade;
 	const struct pg_effect_row *effects;
 	const struct pg_term *value;
-	if (!value_type || !pg_effect_type_view(term, &effects, &value) || effects->count) return 0;
+	if (!totality || !value_type || !pg_computation_type_view(term, &grade, &effects, &value)) return 0;
+	if (effects->count) return 0;
+	*totality = grade; *value_type = value;
+	return 1;
+}
+int pg_return_type_view(const struct pg_term *term, const struct pg_term **value_type)
+{
+	enum pg_totality grade;
+	const struct pg_term *value;
+	if (!value_type || !pg_pure_computation_type_view(term, &grade, &value)) return 0;
+	if (grade != PG_TOTALITY_UNSPECIFIED) return 0;
 	*value_type = value;
 	return 1;
 }

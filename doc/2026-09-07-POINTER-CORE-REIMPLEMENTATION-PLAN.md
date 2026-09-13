@@ -134,8 +134,13 @@ September 13 compatibility follow-up:
   IH merely because the motive requests one. Typed IADT/index generalization
   retains the grade. Derivation v9 and source images 34/35 preserve it through
   ordinary Solve; earlier formats are not reinterpreted.
-  Remaining: source arrow/body inference, graded HOTT/function-graph and
-  operation/handler rules, then the public termination request. Existing
+  Graded consumers now include pure F/U Identity action and transport,
+  function-graph packet/witness construction, source application sequencing,
+  post-synthesis guarantee weakening, and operation/handler rules. A request
+  retains its continuation's guarantee under returning operation interpretations;
+  a handler cannot upgrade an unknown input prefix just by removing its row.
+  Remaining: source arrow/body/Match guarantee inference and library contracts,
+  then the public termination request. Existing
   ungraded builders still mean UNSPECIFIED and cannot silently erase TOTAL.
   Do not accept `quickSortTerminates` with an abstract comparator until its
   source contract and introductions/eliminations are checked. No compatibility
@@ -146,6 +151,15 @@ September 13 compatibility follow-up:
   New tests cover both totality grades, invalid serialized grades, the
   RETURN/thunk distinction and the recursive-field IH bound. The latter
   failed before its fix; no test was relaxed to accept an unjustified guarantee.
+  Consumer follow-up: the new TOTAL thunk-transport test failed before the
+  shared graded pure-F view was connected. Both grades now pass Identity
+  transport/lifting and suspended-computation tests. Function-graph witnesses
+  retain the input contract, while effectful graph inputs still reject.
+  Relocated request/handler derivations retain their grade through ordinary
+  Solve at chunks 1/64, including provisional request classifier structure.
+  Full acceptance still reaches the same 14/20 compatibility failure, not a
+  restored QuickSort acceptance. Core, Identity, synthesis, program and
+  derivation-IO suites pass ASan/UBSan. No new replay or totality engine.
 
 Theory references for this step: Leijen's [Koka report, Sections 2.1-2.2](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/koka-effects-2013.pdf)
 distinguishes potential divergence from ordinary side effects; Torczon et al.'s

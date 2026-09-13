@@ -2254,7 +2254,8 @@ static int family_parameter_annotation(const struct pg_term *type)
 		type = body;
 	}
 	uint64_t level;
-	return count && pg_return_type_view(type, &body) && pg_universe_level(body, &level);
+	enum pg_totality totality;
+	return count && pg_pure_computation_type_view(type, &totality, &body) && pg_universe_level(body, &level);
 }
 
 static int logical_family_signature(const struct pg_term *type)
@@ -2283,7 +2284,8 @@ static const struct pg_term *family_parameter_structure(struct pg_graph *graph, 
 		parameters = next;
 		type = body;
 	}
-	if (!pg_return_type_view(type, &result)) goto done;
+	enum pg_totality totality;
+	if (!pg_pure_computation_type_view(type, &totality, &result)) goto done;
 	while (parameters && result) {
 		result = pg_pi(graph, parameters->domain, parameters->binder, result);
 		parameters = parameters->next;
@@ -3226,14 +3228,16 @@ static const struct pg_evidence *post_check_type(struct pg_synthesis *synthesis,
 	if (pg_evidence_judgement(term) != PG_JUDGEMENT_COMPUTATION) return target;
 	const struct pg_effect_row *source_row, *target_row;
 	const struct pg_term *source_value, *target_value;
-	if (!pg_effect_type_view(pg_evidence_classifier(term), &source_row, &source_value)) return target;
-	if (!pg_effect_type_view(pg_evidence_subject(target)->core, &target_row, &target_value)) return target;
-	if (source_row == target_row) return target;
+	enum pg_totality source_grade, target_grade;
+	if (!pg_computation_type_view(pg_evidence_classifier(term), &source_grade, &source_row, &source_value)) return target;
+	if (!pg_computation_type_view(pg_evidence_subject(target)->core, &target_grade, &target_row, &target_value)) return target;
+	if (source_row == target_row && source_grade == target_grade) return target;
+	if (source_grade < target_grade) return target;
 	if (pg_effect_subset(source_row, target_row) != 1) return target;
-	/* Compare result types at the source row before widening. Conversion
+	/* Compare result types at the source contract before weakening. Conversion
 	 * remains symmetric and does not silently become effect subtyping. */
-	return pg_prove_effect_type(synthesis->typing, synthesis->classifiers,
-		source_row, pg_prove_return_content(synthesis->typing, target));
+	return pg_prove_computation_type(synthesis->typing, synthesis->classifiers,
+		source_grade, source_row, pg_prove_return_content(synthesis->typing, target));
 }
 
 static void expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -6249,7 +6253,8 @@ static void family_contract_step(struct pg_synthesis *synthesis, struct pg_synth
 		return;
 	}
 	uint64_t level;
-	if (!pg_return_type_view(pg_evidence_classifier(proof), &body) || !pg_universe_level(body, &level)) goto rejected;
+	enum pg_totality totality;
+	if (!pg_pure_computation_type_view(pg_evidence_classifier(proof), &totality, &body) || !pg_universe_level(body, &level)) goto rejected;
 	if (!job->value_job) job->value_job = pg_synthesis_return(synthesis, context->result, proof);
 	if (!job->value_job) goto error;
 	if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return; }
@@ -6958,11 +6963,12 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 			}
 			const struct pg_term *row, *value, *domain, *codomain, *following, *result;
 			const struct pg_object *binder;
-			if (!pg_effect_type_spine_view(shapes[0]->type_structure, &row, &value)) goto accepted_subject;
+			enum pg_totality totality;
+			if (!pg_computation_type_spine_view(shapes[0]->type_structure, &totality, &row, &value)) goto accepted_subject;
 			if (!pg_pi_view(shapes[1]->type_structure, &domain, &binder, &codomain)) goto accepted_subject;
 			if (pg_alpha_equal(domain, value) != 1) goto accepted_subject;
 			if (pg_term_independent(codomain, binder) != 1) goto accepted_subject;
-			if (!pg_effect_type_spine_view(codomain, &following, &result)) {
+			if (!pg_computation_type_spine_view(codomain, &totality, &following, &result)) {
 				const struct pg_effect_row *closed = pg_effect_row_view(row);
 				if (!closed || pg_effect_count(closed)) goto accepted_subject;
 			}
@@ -7487,7 +7493,7 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 			if (!label) goto accepted_classifier;
 			const struct pg_effect_row *row = pg_effect_row(synthesis->typing->graph, 1, &label);
 			job->type_structure = continuation_effect_structure(synthesis, type,
-				PG_TOTALITY_UNSPECIFIED, pg_effect_reference(synthesis->typing->graph, row));
+				PG_TOTALITY_TOTAL, pg_effect_reference(synthesis->typing->graph, row));
 			if (!job->type_structure) goto accepted_classifier;
 			finish(synthesis, job, PG_SYNTHESIS_DONE);
 			return;
@@ -8305,13 +8311,14 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 	const struct pg_term *type = pg_synthesis_type_structure_result(shape);
 	const struct pg_term *domain, *codomain, *forced;
 	const struct pg_object *binder;
+	enum pg_totality totality;
 	if (pg_thunk_type_view(type, &forced)) {
 		state->callee = plain_rule(synthesis, PG_FORCE_ELIM, NULL, 1, &callee);
 		if (!state->callee) goto error;
 		enqueue(synthesis, job);
 		return 1;
 	}
-	if (pg_effect_type_spine_view(type, &domain, &codomain)) {
+	if (pg_computation_type_spine_view(type, &totality, &domain, &codomain)) {
 		enum pg_synthesis_status status = application_bind(synthesis, job, callee, 1);
 		if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return 1; }
 		enqueue(synthesis, job);
@@ -8349,7 +8356,7 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		if (shape->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, shape); return 1; }
 		if (shape->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, shape->status); return 1; }
 		const struct pg_term *row, *result;
-		if (!pg_effect_type_spine_view(pg_synthesis_type_structure_result(shape), &row, &result)) {
+		if (!pg_computation_type_spine_view(pg_synthesis_type_structure_result(shape), &totality, &row, &result)) {
 			if (prepare_value_argument(synthesis, job, state->context, &argument)) return 1;
 			if (source_value_kind(argument) == 1) {
 				state->argument = argument;
@@ -8495,7 +8502,8 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		if (structure->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, structure); return; }
 		if (structure->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, structure->status); return; }
 		const struct pg_term *row, *value;
-		if (!pg_effect_type_spine_view(structure->type_structure, &row, &value)) {
+		enum pg_totality totality;
+		if (!pg_computation_type_spine_view(structure->type_structure, &totality, &row, &value)) {
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
 		if (!job->value_job) job->value_job = pg_synthesis_row_contribution(synthesis, work,

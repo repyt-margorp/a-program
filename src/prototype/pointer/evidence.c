@@ -3053,10 +3053,11 @@ const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_c
 	if (pg_alpha_equal(domain, declaration->response_type->subject->core) != 1) return NULL;
 	codomain = pg_pi_constant_codomain(continuation->classifier);
 	const struct pg_effect_row *effects;
-	if (!pg_effect_type_view(codomain, &effects, &result_type)) return NULL;
+	enum pg_totality totality;
+	if (!pg_computation_type_view(codomain, &totality, &effects, &result_type)) return NULL;
 	const struct pg_object *label = pg_operation_label(declaration);
 	const struct pg_effect_row *row = pg_effect_union(typing->graph, pg_effect_row(typing->graph, 1, &label), effects);
-	const struct pg_term *classifier = pg_effect_type(classifiers, row, result_type);
+	const struct pg_term *classifier = pg_computation_type(classifiers, totality, row, result_type);
 	const struct pg_term *core = pg_computation_request(typing->graph, label, payload->subject->core, continuation->subject->core);
 	if (!classifier || !core) return NULL;
 	const struct pg_occurrence *operands[] = {payload->subject, continuation->subject};
@@ -3102,7 +3103,8 @@ const struct pg_evidence *pg_prove_handler_context(struct pg_typing *typing, str
 	if (carrier->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	const struct pg_effect_row *effects;
 	const struct pg_term *result;
-	if (!pg_effect_type_view(carrier->subject->core, &effects, &result)) return NULL;
+	enum pg_totality totality;
+	if (!pg_computation_type_view(carrier->subject->core, &totality, &effects, &result)) return NULL;
 	const struct pg_evidence *response_type = pg_prove_projection(typing, context, operation->response_type);
 	const struct pg_evidence *response_scope = pg_prove_context_extension(typing, context,
 		pg_binder(typing->graph), response_type);
@@ -3119,8 +3121,10 @@ static int returning_within(const struct pg_term *actual, const struct pg_term *
 {
 	const struct pg_effect_row *effects, *allowed;
 	const struct pg_term *value, *result;
-	if (!pg_effect_type_view(actual, &effects, &value)) return 0;
-	if (!pg_effect_type_view(carrier, &allowed, &result)) return 0;
+	enum pg_totality actual_grade, carrier_grade;
+	if (!pg_computation_type_view(actual, &actual_grade, &effects, &value)) return 0;
+	if (!pg_computation_type_view(carrier, &carrier_grade, &allowed, &result)) return 0;
+	if (actual_grade < carrier_grade) return 0;
 	if (pg_effect_subset(effects, allowed) != 1) return 0;
 	return pg_alpha_equal(value, result) == 1;
 }
@@ -3163,8 +3167,12 @@ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_c
 	const struct pg_effect_row *input_effects, *output_effects;
 	const struct pg_term *input_type, *result_type, *domain, *codomain;
 	const struct pg_object *binder;
-	if (!pg_effect_type_view(computation->classifier, &input_effects, &input_type)) return NULL;
-	if (!pg_effect_type_view(carrier->subject->core, &output_effects, &result_type)) return NULL;
+	enum pg_totality input_grade, output_grade;
+	if (!pg_computation_type_view(computation->classifier, &input_grade, &input_effects, &input_type)) return NULL;
+	if (!pg_computation_type_view(carrier->subject->core, &output_grade, &output_effects, &result_type)) return NULL;
+	/* Handling cannot guarantee that an unknown prefix reaches RETURN or an
+	 * operation. As in sequencing, a typed literal RETURN is already finite. */
+	if (input_grade < output_grade && !pg_prove_return_value(typing, computation)) return NULL;
 	if (!pg_pi_view(returned->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, input_type) != 1) return NULL;
 	if (!returning_within(pg_pi_constant_codomain(returned->classifier), carrier->subject->core)) return NULL;

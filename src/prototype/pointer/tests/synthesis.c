@@ -5724,6 +5724,59 @@ static void synthesis_lifetime(struct pg_typing *typing, struct pg_classifiers *
 	puts("synthesis lifetime: stale scopes/jobs rejected; retained typing evidence reused");
 }
 
+static void graded_application(struct pg_typing *typing, struct pg_classifiers *classifiers)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_IMPLICIT_THUNK));
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *u0 = pg_prove_universe(typing, classifiers, empty, 0);
+	const struct pg_evidence *u1 = pg_prove_universe(typing, classifiers, empty, 1);
+	const struct pg_evidence *argument = pg_prove_type_value(typing, u0);
+	const struct pg_object *x = pg_binder(typing->graph);
+	const struct pg_evidence *context = pg_prove_context_extension(typing, empty, x, u1);
+	const struct pg_effect_row *row = pg_effect_row(typing->graph, 0, NULL);
+	for (enum pg_totality grade = PG_TOTALITY_UNSPECIFIED; grade <= PG_TOTALITY_TOTAL; ++grade) {
+		const struct pg_evidence *body = pg_prove_return_contract(typing, classifiers, grade, pg_prove_variable(typing, context, x));
+		const struct pg_evidence *f = pg_prove_lambda(typing,
+			pg_prove_pi(typing, classifiers, context, pg_prove_classifier(typing, classifiers, context, body)), body);
+		const struct pg_evidence *producer = pg_prove_return_contract(typing, classifiers, grade,
+			pg_prove_thunk(typing, classifiers, f));
+		assert(f && producer);
+		const char *names[] = {"f", "Arg", "Producer"};
+		const struct pg_evidence *proofs[] = {f, argument, producer};
+		const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
+		for (size_t i = 0; i < 3; ++i)
+			scope = pg_synthesis_name(&synthesis, scope,
+				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[i], .length = strlen(names[i])}, proofs[i]);
+		const char *sources[] = {
+			"main := f Arg;", "main := f (f Arg);",
+			"main := { x := f Arg; f x; };", "main := Producer Arg;"
+		};
+		for (size_t i = 0; i < sizeof(sources) / sizeof(*sources); ++i) {
+			const struct pg_evidence *call = complete(&synthesis, request(&synthesis, scope, sources[i]), PG_SYNTHESIS_DONE);
+			enum pg_totality actual;
+			const struct pg_term *result;
+			assert(call && pg_pure_computation_type_view(pg_evidence_classifier(call), &actual, &result));
+			assert(actual == grade && result == pg_evidence_subject(u1)->core);
+			const struct pg_evidence *returned = pg_prove_return_value(typing, normalize(&synthesis, empty, call));
+			assert(returned && pg_evidence_subject(returned)->core == pg_evidence_subject(argument)->core);
+			for (enum pg_totality target = PG_TOTALITY_UNSPECIFIED; target <= PG_TOTALITY_TOTAL; ++target) {
+				const struct pg_evidence *type = pg_prove_computation_type(typing, classifiers, target, row, u1);
+				struct pg_synthesis_job *check = pg_synthesis_expect(&synthesis,
+					pg_synthesis_evidence(&synthesis, call), pg_synthesis_evidence(&synthesis, type));
+				const struct pg_evidence *checked = complete(&synthesis, check,
+					grade >= target ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+				if (checked) assert(pg_evidence_classifier(checked) == pg_evidence_subject(type)->core);
+			}
+		}
+	}
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("graded source application: argument/callee sequencing preserves totality; post-checks only weaken");
+}
+
 int main(void)
 {
 	struct pg_graph graph;
@@ -5734,6 +5787,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
+	graded_application(&typing, &classifiers);
 	effect_equations(&typing, &classifiers);
 	pending_effect_contexts(&typing, &classifiers);
 	application_substitution_sharing(&typing, &classifiers);
