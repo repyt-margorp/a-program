@@ -879,6 +879,52 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 				const struct pg_evidence *theorem = pg_prove_abstract(typing, classifiers, empty, context,
 					pg_prove_return(typing, classifiers, checked));
 				assert(theorem && !pg_evidence_context(theorem));
+				if (!injection) {
+					struct pg_synthesis_job *cj = pg_synthesis_evidence(&synthesis, context);
+					struct pg_synthesis_job *lj = pg_synthesis_evidence(&synthesis, left);
+					struct pg_synthesis_job *rj = pg_synthesis_evidence(&synthesis, right);
+					struct pg_synthesis_job *tj = pg_synthesis_evidence(&synthesis, expected);
+					struct pg_synthesis_job *derived = pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, pj, vj, tj);
+					assert(derived && !pg_synthesis_result(derived));
+					const struct pg_evidence *eliminated = solve_index_proof(&synthesis, derived, chunk, PG_SYNTHESIS_DONE);
+					assert(pg_evidence_classifier(eliminated) == pg_evidence_subject(expected)->core);
+					assert(pg_term_independent(pg_evidence_subject(eliminated)->core, i ? q : p) == 0);
+					assert(pg_term_independent(pg_evidence_subject(eliminated)->core, i ? p : q) == 1);
+					assert(pg_evidence_rule(eliminated) == PG_TYPE_CONVERSION);
+					const struct pg_evidence *transported = pg_evidence_premise(eliminated, 0);
+					assert(pg_evidence_rule(transported) == PG_IDENTITY_TRANSPORT);
+					common_rule(typing, classifiers, transported);
+					const struct pg_evidence *closed = pg_prove_abstract(typing, classifiers, empty, context,
+						pg_prove_return(typing, classifiers, eliminated));
+					assert(closed && !pg_evidence_context(closed));
+					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
+					assert(derived == pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, pj, vj, tj));
+					assert(before == typing->proofs.count && terms == typing->graph->terms.count);
+					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, cj, rj, lj, pj, vj, tj),
+						chunk, PG_SYNTHESIS_REJECTED);
+					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, cj, lj, lj, pj, vj, tj),
+						chunk, PG_SYNTHESIS_UNSUPPORTED);
+					const struct pg_evidence *diagonal = pg_prove_reflexivity(typing,
+						pg_prove_projection(typing, context, nat), left);
+					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj,
+						pg_synthesis_evidence(&synthesis, diagonal), vj, tj), chunk, PG_SYNTHESIS_REJECTED);
+					assert(!pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, NULL, vj, tj));
+					struct pg_synthesis_job *computed = pg_synthesis_evidence(&synthesis,
+						pg_prove_return(typing, classifiers, input));
+					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, pj, computed, tj),
+						chunk, PG_SYNTHESIS_REJECTED);
+					const struct pg_object *rp = pg_binder(typing->graph);
+					const struct pg_evidence *reverse_context = pg_prove_context_extension(typing, context, rp,
+						pg_prove_identity_type(typing, pg_prove_projection(typing, context, nat), right, left));
+					struct pg_synthesis_job *reverse = pg_synthesis_disjoint_transport(&synthesis,
+						pg_synthesis_evidence(&synthesis, reverse_context),
+						pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, reverse_context, right)),
+						pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, reverse_context, left)),
+						pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, reverse_context, rp)),
+						pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, reverse_context, input)),
+						pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, reverse_context, expected)));
+					solve_index_proof(&synthesis, reverse, chunk, PG_SYNTHESIS_DONE);
+				}
 				if (chunk == 1) results[i] = checked;
 				else assert(pg_alpha_equal(pg_evidence_subject(checked)->core, pg_evidence_subject(results[i])->core) == 1);
 				size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;

@@ -518,6 +518,14 @@ struct pg_synthesis_job *pg_synthesis_family_transport_jobs(struct pg_synthesis 
 	const struct pg_evidence *right_substitution, size_t count,
 	struct pg_synthesis_job *const *paths, struct pg_synthesis_job *value,
 	enum pg_identity_direction direction);
+/* Derive elimination of a supplied Identity between distinct constructors.
+ * Builds an ordinary type case and transports value to target_type along path.
+ * Equal/neutral constructor heads are unsupported, not evidence of falsity.
+ * All six inputs are checked in context; target_type is a value formation. */
+struct pg_synthesis_job *pg_synthesis_disjoint_transport(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *left,
+	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
+	struct pg_synthesis_job *value, struct pg_synthesis_job *target_type);
 struct pg_data_schema;
 /* Assemble field telescopes and result maps for a parsed @{...} or @\i:T=>
  * declaration in its already opened parameter scope. Constructors are checked

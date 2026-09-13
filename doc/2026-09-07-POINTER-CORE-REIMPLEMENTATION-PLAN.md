@@ -266,6 +266,37 @@ unchanged; computations over logical hypotheses use the extension below.
   functions, not asserted as unconditional equality or inhabitants of Empty.
   Distinct selected paths stay distinct; diagonal transport computes; wrong
   paths and computation-for-value substitutions are rejected at chunks 1/64.
+- [x] Turn constructor disjointness into a reusable Solve request (September
+  13, after `e4ac439`). `pg_synthesis_disjoint_transport` consumes a checked
+  context, two value endpoints, a supplied Identity witness, an input value
+  and a target value-type formation. Shared pure WHNF identifies distinct
+  constructors of the checked nominal schema. An ordinary type case selects
+  the input type at the left constructor and the target type elsewhere;
+  existing Act/transport and post-conversion produce the result. The original
+  typed endpoints, not just their normalized heads, remain the path boundary.
+  This is a composite proof-search job, not a new Core node, kernel rule,
+  intrinsic, or equation asserting that distinct constructors are equal.
+  Equal/neutral heads remain unsupported; a missing, reversed or diagonal
+  path cannot establish the requested contradiction. Tests cover both head
+  orders, selected-path dependence, wrong path/result polarity, request reuse,
+  and split budgets. Assumed contradictions are discharged into closed
+  functions; the tests do not assert closed inhabitants of Empty. The generated
+  transport rechecks through ordinary derivations. Fresh conversion receipts
+  need not be pointer-identical, so the existing exact-evidence test is applied
+  to the transport rule rather than its final conversion wrapper.
+  Validation: IADT ASan/UBSan passes; full `check-acceptance` passes preceding
+  gates and still stops at compatibility 11/19. No QuickSort progress is claimed
+  from this component alone; it is not yet invoked by surface Match.
+- [ ] Connect rigid indexed source Match to the checked path telescope before
+  consuming this refutation request. Lift constructor substitutions through
+  `pg_identity_substitution_context`, retaining every chosen dependent center.
+  Infer the result from reachable branches or existing application-domain
+  constraints, never from `::`. Build unreachable branches by the supplied
+  contradictory path, not by ignoring a failed conversion. Same-constructor
+  equations need injectivity/transport of their dependent fields; they are not
+  disjointness. Apply the completed eliminator to reflexive original-index
+  paths. All-impossible cases and local recursive IH scopes still need this
+  source integration; do not replace them with a trusted empty-case marker.
   Validation: `check check-examples check-example-results check-open-families`
   passes; the indexed kernel tests also pass ASan/UBSan. The unchanged source
   compatibility gate remains 10/19 (QuickSort REJECTED at 34060 steps).
