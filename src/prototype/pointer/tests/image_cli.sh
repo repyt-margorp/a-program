@@ -160,6 +160,7 @@ acceptance/indexed-field-transport.p main pairMain
 acceptance/indexed-result-transport.p main otherMain bothMain functionMain functionOtherMain
 acceptance/induction-index-environment.p main readMain:two
 acceptance/acc-accessible-successor.p main
+acceptance/indexed-block-demands.p main nestedMain selectedMain readMain:two
 acceptance/indexed-ih-environment.p
 acceptance/computed-family-member.p main nested:nestedExpected
 ../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified

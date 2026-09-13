@@ -73,11 +73,14 @@ negative checks (details below). The eight failing entries cover order proofs,
 named graph cases and six QuickSort result cases; they are not eight independent
 compiler defects. QuickSort still fails. Indexed induction now preserves
 the checked ambient generalization; unchanged `accessibleSucc`, `natAccessible`
-and their `::` checks succeed. Application-domain constraints now close the
-all-impossible zero case. The next traced failure is `partition`'s recursive
-block: its IH domain demand is not collected, leaving the base result as a
-constant motive. This is missing source compatibility, not
-checkpoint performance work.
+and their `::` checks succeed. Application-domain constraints close the
+all-impossible zero case; block-scoped IH demands now also restore `partition`,
+`quickSortAcc`, `quickSort`, and their post-checks. The unchanged whole file
+still rejects at `quickSortTerminates`: `#.terminates` is not connected.
+Separately, a diagnostic stream omitting only that definition compiles, but
+QuickSort NF remains pending at ten million steps. This diagnostic is not an
+acceptance substitute or a termination proof. Runtime results and the unchanged
+file must both pass before claiming compatibility; this is not checkpoint work.
 This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
 checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
@@ -402,15 +405,31 @@ unchanged; computations over logical hypotheses use the extension below.
   11/19; QuickSort now rejects at 46,957 steps in `partition`, rather than
   stopping at `natAccessible`. Program, synthesis and the complete source-image
   suite pass ASan/UBSan.
+- [x] After `5477a1d`: collect IH application-domain demands through ordinary,
+  nested and result-selected blocks, retaining each statement's actual source
+  scope. The scanner suspends on existing producers instead of recreating
+  bindings; selected-out statements supply no demand. Recover nominal families
+  from Pi domains through retained formation and composed substitutions.
+  Rebased variable images use their current Binder pointer and checked type;
+  nested substitutions preserve their images across projection/conversion.
+  Match completion now builds one producer chain: instantiate index paths and
+  ambient arguments, then close the computed scrutinee. Previously both stages
+  reused `value_job`, skipping the latter and leaking its local Context.
+  New source tests check nested/selected blocks, a subsequent indexed Match's
+  computed result, and rejection of a wrong IH `::`; IADT tests cover Pi-domain
+  recovery and renamed parameters. Chunks 1/64 and source-image resaves pass.
+  Full acceptance passes all preceding gates and remains 11/19 at compatibility
+  (`#.terminates` rejects at 58,775 steps). Program, synthesis, IADT and the full
+  image CLI suite pass ASan/UBSan. No Core tag, kernel rule or Replay path added.
 - [ ] Complete indexed induction and general dependent index transport.
   All-impossible cases need result constraints from
   existing application domains, never `::` or unreachable branch bodies.
   Same-constructor equations need injectivity and transport of dependent
   fields, retaining earlier selected paths; they are not disjointness.
-  Ambient refinement and all-impossible result constraints now handle
-  `accessibleSucc` and `natAccessible`. Extend lexical IH-domain collection
-  through computation blocks: `partition` currently picks `Partition A zero`
-  from its base branch without collecting the recursive call's indexed domain.
+  Ambient refinement, all-impossible result constraints and block IH-domain
+  collection now handle `accessibleSucc`, `natAccessible` and `partition`.
+  Next trace the residual QuickSort runtime computation and connect the legacy
+  termination request to actual evidence, never to an empty effect row.
   Preserve the recursive IH's motive: adding `n = recursive_index` as an IH
   argument would make it unusable at a smaller, different recursive index.
   Do not replace missing evidence with a trusted empty-case marker.

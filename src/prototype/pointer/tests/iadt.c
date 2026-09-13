@@ -1247,6 +1247,11 @@ static void schema_positivity(void)
 			pg_prove_thunk_content(&typing, pg_prove_reindex(&typing, map, wrapped))
 		};
 		for (size_t i = 0; i < sizeof(derived) / sizeof(*derived); ++i) {
+			const struct pg_evidence *domain = pg_prove_pi_domain(&typing, derived[i]);
+			struct pg_inductive_instance domain_instance;
+			assert(domain && pg_inductive_instance(&typing, domain, &domain_instance));
+			assert(domain_instance.formation == nat && domain_instance.schema == nat_schema);
+			assert(pg_evidence_context(domain_instance.parameters) == pg_evidence_context(n_context));
 			const struct pg_evidence *content = pg_prove_return_content(&typing,
 				pg_prove_pi_constant_codomain(&typing, derived[i]));
 			assert(content);
@@ -1537,6 +1542,25 @@ static void schema_positivity(void)
 	const struct pg_evidence *recovered_map = recovered.parameters;
 	assert(pg_inductive_instance(&typing, coerced_box, &recovered) && recovered.parameters == recovered_map);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	/* A constant codomain can retain a renamed parameter through REINDEX;
+	 * recover the current binder, not the binder in the original proof. */
+	{
+		const struct pg_object *renamed = pg_binder(&graph);
+		const struct pg_evidence *renamed_context = pg_prove_context_extension(&typing, empty, renamed, u);
+		const struct pg_evidence *argument_context = pg_prove_context_extension(&typing, renamed_context,
+			pg_binder(&graph), pg_prove_projection(&typing, renamed_context, nat));
+		const struct pg_evidence *image = pg_prove_variable(&typing, argument_context, renamed);
+		const struct pg_evidence *map = pg_prove_substitution(&typing, a_context, argument_context, 1, &image);
+		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, argument_context,
+			pg_prove_return_type(&typing, &classifiers, pg_prove_reindex(&typing, map, box)));
+		const struct pg_evidence *content = pg_prove_return_content(&typing,
+			pg_prove_pi_constant_codomain(&typing, pi));
+		assert(content && pg_inductive_instance(&typing, content, &recovered));
+		assert(recovered.formation == box && recovered.schema == box_schema);
+		assert(pg_evidence_context(recovered.parameters) == pg_evidence_context(renamed_context));
+		assert(pg_evidence_subject(pg_evidence_premise(recovered.parameters, 2))->core == pg_reference(&graph, renamed));
+		assert(!pg_prove_variable(&typing, renamed_context, a));
+	}
 	const struct pg_evidence *box_motive_context = pg_prove_context_extension(&typing, empty, pg_binder(&graph), boxed_type);
 	const struct pg_evidence *box_motive = pg_prove_return_type(&typing, &classifiers,
 		pg_prove_projection(&typing, box_motive_context, nat));
