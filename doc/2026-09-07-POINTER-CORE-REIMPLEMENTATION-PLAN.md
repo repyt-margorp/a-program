@@ -132,6 +132,43 @@ Verification: the full debug `check-acceptance` target passes, including the
 suite also passes optimized and ASan/UBSan builds. The legacy README archive
 is byte-identical to `e9a131d:README.md`; the frozen `main` is unchanged.
 
+QuickSort property follow-up (September 14, after `fe92377`): the imported,
+unchanged `measure` exposed a graph-layout bug before any property proof could
+be attempted. `function_graph_order`'s flat source scan did not traverse the
+Match scrutinee `*tail`, supplying zero call slots. The typed call plan correctly
+contained one recursive call before splitting its result into `size, values`.
+`order_calls` rejected that mismatch. Refined cases already discard the flat
+export layout; they must also use the typed prefix/child call order during
+schema construction. Flat cases retain their existing slot validation.
+
+- [x] Use typed call order for refined prefixes, without changing call
+  execution, the graph's type rules, or the source `measure` implementation.
+- [x] Construct `measureCorrect` in a separate importing client:
+  `@measure A xs output -> MeasurementOf A xs output`. This independent IADT
+  relates every original head/tail to the corresponding SizedList head/tail;
+  it states content preservation, not merely output type membership.
+- [x] Reject the proposed proof that drops the cons case's head and returns
+  only the tail's induction proof.
+- [x] Verify proof execution for empty and multi-element input, unfinished and
+  completed images, and unchanged QuickSort results. Full debug and ASan/UBSan
+  `check-acceptance` pass, including the 32/32 legacy inventory. The new client
+  checks both outputs at chunks 1/64; the wrong proof rejects before and after
+  image loading. Source compilation of the positive client completes in 66,906
+  transitions; the negative client rejects in 61,801. These are evidence for
+  this lemma and regression coverage, not completion of the full rewrite.
+- [ ] Prove the corresponding partition preservation property and compose it
+  with append and Acc induction for the existing QuickSort. The measure lemma
+  is a prerequisite, not a claim that QuickSort preservation is complete.
+- [ ] Restore the outer `@quickSort` graph: a minimal importing client remains
+  unsupported at 54,512 transitions in this build. The stop is in source
+  `function_graph_order` preparation while the kernel graph work is still
+  pending, not a failed property theorem. `@partition` separately completes
+  at 55,361 transitions. The source origin has one Match clause, but the
+  prepared kernel work has `cases == 0`, so the flat case-layout API correctly
+  rejects it. Audit helper-result sequencing and head exposure together with
+  the public layout. Simply skipping that check could produce a direct graph
+  without the helper evidence needed by the intended preservation proof.
+
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the

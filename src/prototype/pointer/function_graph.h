@@ -47,7 +47,9 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
  * case planning. Each entry names
  * a source recursive field ordinal; duplicate entries represent distinct calls.
  * Counts and field associations must match the typed call plan exactly. This
- * changes neither execution order nor typing rules. The work copies the arrays. */
+ * applies to flat cases only: refined branch prefixes/children use the typed
+ * call order because they no longer have the source's flat telescope.
+ * This changes neither execution order nor typing rules. The work copies the arrays. */
 struct pg_function_graph_order { size_t count; const size_t *fields; };
 int pg_function_graph_source_order(struct pg_function_graph_work *work,
 	size_t count, const struct pg_function_graph_order *orders);

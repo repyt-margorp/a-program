@@ -623,6 +623,9 @@ static int order_calls(struct pg_function_graph_state *s, struct graph_case *pla
 		call = call->previous;
 	}
 	if (call != (plan->parent ? plan->parent->calls : NULL)) return -1;
+	/* A refined branch has no flat source telescope. Its prefix and child
+	 * calls use the typed execution order, just like its exported fields. */
+	if (plan->child_count) plan->source_order = NULL;
 	for (size_t i = 0; i < count; ++i)
 		if (plan->executed[i].call->helper) plan->source_order = NULL;
 	if (!plan->source_order) {

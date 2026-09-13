@@ -145,6 +145,10 @@ compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. Acc is source-defined using indexed induction, not a
 special kernel primitive. A post-hoc specification of an existing `length`
 is tested in [length-output-proof.p](src/prototype/pointer/tests/acceptance/length-output-proof.p).
+An importing client also proves content preservation for the unchanged
+QuickSort provider's `measure` in
+[legacy-measure-property.p](src/prototype/pointer/tests/acceptance/legacy-measure-property.p).
+This is a lemma toward QuickSort preservation, not a proof of QuickSort itself.
 Selected captured indexed functions also generate checked graphs and witnesses,
 including Vec copy. The unchanged legacy dependent Vec append now compiles,
 and six result comparisons cover empty inputs, order and repeated recursion
