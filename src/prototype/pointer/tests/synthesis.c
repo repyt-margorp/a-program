@@ -5309,6 +5309,45 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 	const struct pg_evidence *succ_function = pg_prove_constructor_function(typing, classifiers,
 		admitted, successor, parameter_map);
 	assert(succ_function);
+	/* Field recovery follows constructor evidence, not an untyped APP slot. */
+	{
+		const struct pg_object *field = pg_evidence_context(successor_fields)->binder;
+		const struct pg_evidence *one = pg_prove_constructor(typing, admitted, successor,
+			parameter_map, 1, &zero_value);
+		assert(one && pg_prove_constructor_field(typing, one, field) == zero_value);
+		assert(!pg_prove_constructor_field(typing, one, self));
+		assert(!pg_prove_constructor_field(typing, one, pg_binder(typing->graph)));
+		assert(!pg_prove_constructor_field(typing, zero_value, field));
+		assert(!pg_prove_constructor_field(typing, NULL, field));
+		const struct pg_evidence *returned = pg_prove_return_value(typing,
+			pg_prove_application_body(typing, succ_function, zero_value));
+		assert(returned && pg_prove_constructor_field(typing, returned, field));
+		same_judgement(pg_prove_constructor_field(typing, returned, field), zero_value);
+		const struct pg_object *variable = pg_binder(typing->graph);
+		const struct pg_evidence *scope = pg_prove_context_extension(typing, empty_context, variable, admitted);
+		const struct pg_evidence *neutral = pg_prove_variable(typing, scope, variable);
+		assert(neutral && !pg_prove_constructor_field(typing, neutral, field));
+		const struct pg_evidence *projected = pg_prove_projection(typing, scope, one);
+		same_judgement(pg_prove_constructor_field(typing, projected, field),
+			pg_prove_projection(typing, scope, zero_value));
+		const struct pg_evidence *parameters = pg_prove_substitution_projection(typing, empty_context, scope);
+		const struct pg_evidence *generic = pg_prove_constructor(typing, admitted, successor, parameters, 1, &neutral);
+		const struct pg_evidence *substitution = pg_prove_substitution_pair(typing, parameter_map, scope, zero_value);
+		const struct pg_evidence *specialized = pg_prove_reindex(typing, substitution, generic);
+		same_judgement(pg_prove_constructor_field(typing, specialized, field), zero_value);
+		const struct pg_evidence *box_type = complete(&synthesis,
+			request(&synthesis, root, "D:=@{mk:(A:@)->A->*;};"), PG_SYNTHESIS_DONE);
+		struct pg_inductive_instance box;
+		assert(pg_inductive_instance(typing, box_type, &box));
+		const struct pg_object *mk = pg_data_constructor(pg_data_schema_layout(box.schema), 0);
+		const struct pg_evidence *values[] = {pg_prove_type_value(typing, admitted), zero_value};
+		const struct pg_evidence *packed = pg_prove_constructor(typing, box.formation, mk, box.parameters, 2, values);
+		const struct pg_context *members = pg_evidence_context(pg_data_schema_fields(box.schema, mk));
+		assert(packed);
+		same_judgement(pg_prove_constructor_field(typing, packed, members->binder), zero_value);
+		same_judgement(pg_prove_constructor_field(typing, packed, members->parent->binder), values[0]);
+		assert(!pg_prove_constructor_field(typing, packed, field));
+	}
 	/* Retaining field allocation does not accept retained field classifiers. */
 	const struct pg_evidence *saved_map = pg_prove_constructor_scope(typing, admitted, successor, parameter_map);
 	assert(saved_map);

@@ -113,6 +113,12 @@ for steps in 0 100000; do
 		"$fixtures/constructed-index-transport.p" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
 	"$runtime" --equal-image "$directory/constructed.a" main expected
+	code=0
+	"$checker" --steps "$steps" --save "$directory/constructed-field.a" \
+		"$fixtures/constructed-field-transport.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"$runtime" --equal-image "$directory/constructed-field.a" main expected
+	"$runtime" --equal-image "$directory/constructed-field.a" second one
 done
 "$runtime" --reject "$fixtures/captured-dependent-match-wrong.p"
 code=0
@@ -121,6 +127,15 @@ code=0
 test "$code" -eq 3
 code=0
 "$checker" --load "$directory/wrong-dependent.a" > "$directory/status" || code=$?
+test "$code" -eq 1
+sed 's/f (At.at zero)/f (At.at one)/' "$fixtures/constructed-field-transport.p" > "$directory/wrong-field.p"
+"$runtime" --reject "$directory/wrong-field.p"
+code=0
+"$checker" --steps 0 --save "$directory/wrong-field.a" \
+	"$directory/wrong-field.p" > "$directory/status" || code=$?
+test "$code" -eq 3
+code=0
+"$checker" --load "$directory/wrong-field.a" > "$directory/status" || code=$?
 test "$code" -eq 1
 sed 's/f (At.at one)/f (At.at two)/' "$fixtures/constructed-index-transport.p" > "$directory/wrong-constructed.p"
 "$runtime" --reject "$directory/wrong-constructed.p"

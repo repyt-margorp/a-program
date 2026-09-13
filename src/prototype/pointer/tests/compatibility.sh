@@ -63,6 +63,13 @@ done <<'CASES'
 0 typing/recursive_ih_field_identity_check sizeResult sizeExpected
 0 typing/recursive_ih_field_identity_check choiceLeftResult leftExpected
 0 typing/recursive_ih_field_identity_check choiceRightResult rightExpected
+0 typing/list_map_induction_check directMain expectedMulti
+0 typing/list_map_induction_check helperMain expectedMulti
+0 typing/list_map_induction_check monomorphicEmpty expectedEmpty
+0 typing/list_map_induction_check monomorphicSingle expectedSingle
+0 typing/list_map_induction_check monomorphicMulti expectedMulti
+0 typing/list_map_induction_check polymorphicMain expectedMulti
+0 typing/list_map_induction_check sequencedMain expectedMulti
 0 typing/indexed_branch_rebuild_check
 0 typing/residual_index_equation_negative
 0 ../../../../examples/type-infer-and-check/level2/02_tree

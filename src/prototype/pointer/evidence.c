@@ -1789,6 +1789,19 @@ done:
 	return result;
 }
 
+const struct pg_evidence *pg_prove_constructor_field(struct pg_typing *typing,
+	const struct pg_evidence *value, const struct pg_object *field)
+{
+	const struct pg_evidence *origin = constructor_origin(typing, value);
+	if (!origin) return NULL;
+	const struct pg_evidence *fields = origin->premises[3];
+	const struct pg_context *scope = fields->premises[0]->context;
+	const struct pg_context *prefix = origin->premises[1]->premises[0]->context;
+	for (; scope != prefix; scope = scope->parent)
+		if (scope->binder == field) return pg_substitution_image(typing, fields, field);
+	return NULL;
+}
+
 static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *elimination,
 	const struct pg_evidence *field)

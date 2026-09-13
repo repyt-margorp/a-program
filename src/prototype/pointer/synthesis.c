@@ -69,7 +69,6 @@ struct application_state {
 };
 struct index_transport_state {
 	const struct pg_evidence *cursor, *path, *endpoints[2], *fields, *prefix;
-	const struct pg_term *spines[2];
 	struct pg_synthesis_job *normal[2], *candidates[2];
 	size_t candidate_next;
 	int direct_checked;
@@ -7332,16 +7331,13 @@ static struct pg_synthesis_job *index_transport_check(struct pg_synthesis *synth
  * checked substitutions; it never rewrites a classifier's raw Core in place. */
 static struct pg_synthesis_job *index_transport_candidate(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_object *field,
-	const struct pg_term *left, const struct pg_term *right, enum pg_identity_direction direction)
+	const struct pg_evidence *lv, const struct pg_evidence *rv, enum pg_identity_direction direction)
 {
-	if (field && (left->kind != PG_REFERENCE || right->kind != PG_REFERENCE)) return NULL;
-	if (field && (left->as.reference->kind != PG_BINDER || right->as.reference->kind != PG_BINDER)) return NULL;
+	if (!lv || !rv) return NULL;
 	struct pg_typing *typing = synthesis->typing;
 	struct index_transport_state *state = job->index_transport;
 	const struct pg_evidence *context = ((struct pg_synthesis_job *)job->inputs[0])->result;
-	const struct pg_term *from = direction == PG_IDENTITY_LEFT ? right : left;
-	const struct pg_evidence *lv = field ? pg_prove_variable(typing, context, left->as.reference) : state->endpoints[0];
-	const struct pg_evidence *rv = field ? pg_prove_variable(typing, context, right->as.reference) : state->endpoints[1];
+	const struct pg_term *from = pg_evidence_subject(direction == PG_IDENTITY_LEFT ? rv : lv)->core;
 	const struct pg_evidence *prefix = context;
 	const struct pg_evidence *domain;
 	if (from->kind == PG_REFERENCE && from->as.reference->kind == PG_BINDER) {
@@ -7417,11 +7413,8 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 	if (state->fields) {
 		if (pg_evidence_context(state->fields) != pg_evidence_context(state->prefix)) {
 			const struct pg_object *field = pg_evidence_context(state->fields)->binder;
-			if (state->spines[0]->kind != PG_APPLICATION || state->spines[1]->kind != PG_APPLICATION) goto next_context;
-			const struct pg_term *left = state->spines[0]->as.application.argument;
-			const struct pg_term *right = state->spines[1]->as.application.argument;
-			state->spines[0] = state->spines[0]->as.application.function;
-			state->spines[1] = state->spines[1]->as.application.function;
+			const struct pg_evidence *left = pg_prove_constructor_field(typing, state->normal[0]->result, field);
+			const struct pg_evidence *right = pg_prove_constructor_field(typing, state->normal[1]->result, field);
 			state->fields = pg_evidence_premise(state->fields, 0);
 			state->candidates[0] = index_transport_candidate(synthesis, job, field, left, right, PG_IDENTITY_LEFT);
 			state->candidates[1] = index_transport_candidate(synthesis, job, field, left, right, PG_IDENTITY_RIGHT);
@@ -7443,8 +7436,8 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (!state->endpoints[0] || !state->endpoints[1] || !state->path) goto next_context;
 	}
 	if (!state->direct_checked) {
-		const struct pg_term *left = pg_evidence_subject(state->endpoints[0])->core;
-		const struct pg_term *right = pg_evidence_subject(state->endpoints[1])->core;
+		const struct pg_evidence *left = state->endpoints[0];
+		const struct pg_evidence *right = state->endpoints[1];
 		state->candidates[0] = index_transport_candidate(synthesis, job, NULL, left, right, PG_IDENTITY_LEFT);
 		state->candidates[1] = index_transport_candidate(synthesis, job, NULL, left, right, PG_IDENTITY_RIGHT);
 		state->candidate_next = 0; state->direct_checked = 1;
@@ -7458,8 +7451,7 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (state->normal[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, state->normal[i]); return; }
 		if (state->normal[i]->status == PG_SYNTHESIS_ERROR) goto error;
 		if (state->normal[i]->status != PG_SYNTHESIS_DONE) goto next_context;
-		state->spines[i] = pg_evidence_subject(state->normal[i]->result)->core;
-		const struct pg_term *head = state->spines[i];
+		const struct pg_term *head = pg_evidence_subject(state->normal[i]->result)->core;
 		while (head->kind == PG_APPLICATION) head = head->as.application.function;
 		if (head->kind != PG_REFERENCE) goto next_context;
 		heads[i] = head->as.reference;

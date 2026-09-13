@@ -393,14 +393,56 @@ Constructed-index transport follow-up after `e59d30c` (September 14):
   `CFLAGS='-std=c11 -Wall -Wextra -Werror -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie'`.
   Rebuilt the optimized CLI and checked the README's example 05 NF command.
 
-The constructor-field subcase still requires binder field endpoints. Extending
-that subcase needs typed field recovery, not assuming any raw subterm has the
-field classifier. Wider source compatibility and higher Identity remain open.
+At this checkpoint the constructor-field subcase still required binder field
+endpoints. The typed recovery follow-up below replaces that restriction.
+Wider source compatibility and higher Identity remain open.
 
 Change size for this follow-up: implementation C +18/-13; fixtures and test
 scripts +45/-1; documentation counted separately. The unchanged QuickSort
 property takes 148,372 solver transitions versus 147,758 at `e59d30c` (about
 0.4% more); this is a transition count, not a general wall-time benchmark.
+
+Constructor-field transport follow-up after `2388bb4` (September 14):
+
+- [x] Reproduce a fixed successor-index consumer: its field accepts `At k`,
+  while the supplied value has type `At zero`. The branch contains an identity
+  `succ zero = succ k`, but the previous field search discarded non-variable
+  endpoints. The minimal source rejected after 1,554 transitions.
+- [x] Share retained constructor-origin recovery with typed elimination.
+  `pg_prove_constructor_field` selects the schema binder from the introduction's
+  checked field substitution, including earlier dependent fields. It does not
+  guess a classifier from a raw APP argument or add a new projection rule.
+- [x] Let index transport consume these typed endpoints through the existing
+  constructor-field Identity and family transport rules. Remove its raw APP
+  spine cursors. Direct whole-index transport uses the same candidate builder.
+  Dependent field identities still require the existing compatible-classifier
+  contract; this is not arbitrary heterogeneous injectivity or UIP.
+- [x] Add unit checks for direct/returned/projected/reindexed introductions,
+  dependent field types, neutral inputs and foreign field binders. The initial
+  unit test exposed Self being included in the field range: the correct boundary
+  is the conditional schema prefix (including Self), not the outer parameter
+  context. Correct that boundary and keep its negative assertion.
+- [x] Add zero/successor-field result checks and a wrong-index rejection through
+  pending/completed images and split Solve budgets.
+- [x] Inspect the unchanged legacy List.map fixture and its integration test;
+  add the same seven positive result comparisons (48 -> 55 compatibility cases).
+  No new compiler behavior is claimed for these already-supported map forms.
+- [x] Complete debug and ASan/UBSan acceptance, record final change size and
+  publish on the pointer branch. Keep higher Identity and generalized scoped
+  transport across local definitions/handlers open.
+
+Validation notes: the first full debug run passed the result comparisons but
+failed because this session edited `compatibility.sh` while Bash was reading
+it. Discard that run's overall status. With the script fixed, the complete
+`check-source-compatibility` target passes (55/55 cases and subsequent image
+checks); the preceding debug acceptance prerequisites also passed. Never edit a
+running test script. The final sanitizer run uses the fixed script throughout.
+The optimized unchanged QuickSort property remains at 148,372 transitions.
+Final ASan/UBSan `check-acceptance` completed successfully with all 55 cases and
+all subsequent image/property checks, using the same sanitizer flags recorded
+above. Implementation C: +21/-16; public declarations/comments: +6/-0;
+test C/fixtures/scripts: +75/-0; documentation counted separately. No Core tag,
+kernel inference rule or image format changed.
 
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the

@@ -140,7 +140,7 @@ successful verification nor evidence that the program is invalid.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 48-case legacy
+September 14 verification includes examples 01-07 and 09, a 55-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. Acc is source-defined using indexed induction, not a
 special kernel primitive. Quoted type-producing functions use the same checked
@@ -152,6 +152,10 @@ when synthesizing their motive. A concrete two-element accessibility relation
 exercises recursive Acc elimination and direct child extraction, including
 transport from a constructor index to a branch variable. This is not arbitrary
 motive inference.
+Constructor-field refinement also recovers typed endpoints from retained
+introductions: a branch identity `succ zero = succ k` can supply the field
+identity used to transport an `At zero` argument to `At k`. Fields are selected
+by schema binders, not inferred from untyped application positions.
 A post-hoc specification of an existing `length`
 is tested in [length-output-proof.p](src/prototype/pointer/tests/acceptance/length-output-proof.p).
 Importing clients prove content preservation for the unchanged QuickSort
