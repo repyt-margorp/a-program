@@ -16,6 +16,7 @@ struct pg_derivation_parameters {
 	const struct pg_object *constructor;
 	const struct pg_induction_allocation *induction;
 	uint64_t level;
+	enum pg_totality totality;
 	enum pg_identity_direction direction;
 	const struct pg_conversion_certificate *conversion;
 	const struct pg_reduction_certificate *reduction;

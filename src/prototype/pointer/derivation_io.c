@@ -8,7 +8,7 @@
 
 #include <string.h>
 
-static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 8};
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 9};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {
@@ -153,6 +153,7 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 		struct pg_derivation_parameters parameters = input.parameters;
 		if (pg_wire_write_u64(file, input.rule)
 			|| pg_wire_write_u64(file, parameters.level) || pg_wire_write_u64(file, parameters.direction)) goto done;
+		if (pg_wire_write_u64(file, parameters.totality)) goto done;
 		if (pg_wire_write_u64(file, input.reduction_kind)) goto done;
 		struct pg_derivation_payload payload;
 		if (pg_derivation_input_terms(&arena, &input, &payload)) goto done;
@@ -248,10 +249,12 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	if (!records || !result) return -1;
 	size_t available = limit - (size_t)n - (size_t)nr;
 	for (size_t i = 0; i < n; ++i) {
-		uint64_t rule, level, direction, arity, reduction_kind;
+		uint64_t rule, level, direction, totality, arity, reduction_kind;
 		if (pg_wire_read_u64(file, &rule)) return -1;
 		if (rule > PG_TYPE_CASE) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
+		if (pg_wire_read_u64(file, &totality) || totality > PG_TOTALITY_TOTAL) return -1;
+		if (totality && rule != PG_RETURN_TYPE_FORM && rule != PG_RETURN_INTRO) return -1;
 		if (pg_wire_read_u64(file, &reduction_kind) || reduction_kind > PG_REDUCTION_NF) return -1;
 		if (pg_wire_read_u64(file, &records[i].binder) || pg_wire_read_u64(file, &records[i].effects)
 			|| pg_wire_read_u64(file, &records[i].source)
@@ -278,6 +281,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 		records[i].input = input;
 		input->rule = (enum pg_evidence_rule)rule;
 		input->parameters.level = level;
+		input->parameters.totality = (enum pg_totality)totality;
 		input->parameters.direction = (enum pg_identity_direction)direction;
 		input->reduction_kind = (enum pg_reduction_kind)reduction_kind;
 		input->count = (size_t)arity;

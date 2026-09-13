@@ -113,7 +113,16 @@ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_c
 const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_effect_row *effects,
 	const struct pg_evidence *value_type);
-/* Directed closed-row widening, retaining the already synthesized computation.
+const struct pg_evidence *pg_prove_computation_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, enum pg_totality totality,
+	const struct pg_effect_row *effects, const struct pg_evidence *value_type);
+/* RETURN has a total derivation regardless of whether the returned value is
+ * itself a thunk. Selecting UNSPECIFIED explicitly forgets that guarantee. */
+const struct pg_evidence *pg_prove_return_contract(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, enum pg_totality totality,
+	const struct pg_evidence *value);
+/* Directed closed-row widening and TOTAL-to-UNSPECIFIED weakening, retaining
+ * the already synthesized computation. Never strengthens an unknown contract.
  * Target formation and result-type agreement are premises, not inference hints. */
 const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *target_type);

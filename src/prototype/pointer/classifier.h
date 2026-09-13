@@ -26,6 +26,10 @@ int pg_pi_view(const struct pg_term *term, const struct pg_term **domain,
  * NULL means not a Pi, dependent codomain, or failed independence analysis. */
 const struct pg_term *pg_pi_constant_codomain(const struct pg_term *pi);
 struct pg_effect_row;
+/* A result contract, independent of the operation row. TOTAL requires finite
+ * computation for admissible inputs and returning interpretations of effects;
+ * it does not certify a host handler. UNSPECIFIED is not proof of divergence. */
+enum pg_totality { PG_TOTALITY_UNSPECIFIED, PG_TOTALITY_TOTAL };
 /* Closed sets of exact operation-label pointers. NULL is invalid/unknown,
  * never the empty set. Rows and referenced labels must outlive their uses.
  * This representation does not implement row metavariables or signatures. */
@@ -50,9 +54,20 @@ const struct pg_term *pg_effect_join_term(struct pg_graph *graph,
 	const struct pg_term *left, const struct pg_term *right);
 int pg_effect_join_view(const struct pg_term *term,
 	const struct pg_term **left, const struct pg_term **right);
+/* One F former with an explicit totality argument. These structural operations
+ * do not establish either formation or termination evidence. */
+const struct pg_term *pg_computation_type_spine(struct pg_classifiers *classifiers,
+	enum pg_totality totality, const struct pg_term *effects, const struct pg_term *value_type);
+int pg_computation_type_spine_view(const struct pg_term *term,
+	enum pg_totality *totality, const struct pg_term **effects, const struct pg_term **value_type);
+const struct pg_term *pg_computation_type(struct pg_classifiers *classifiers,
+	enum pg_totality totality, const struct pg_effect_row *effects, const struct pg_term *value_type);
+int pg_computation_type_view(const struct pg_term *term,
+	enum pg_totality *totality, const struct pg_effect_row **effects, const struct pg_term **value_type);
 /* Structural F spine, including unresolved row terms in unaccepted inputs.
  * These functions neither interpret the row nor establish formation. Closed
- * kernel consumers must continue using pg_effect_type_view below. */
+ * kernel consumers must continue using pg_effect_type_view below. The legacy
+ * constructors and views select UNSPECIFIED; they never erase TOTAL. */
 const struct pg_term *pg_effect_type_spine(struct pg_classifiers *classifiers,
 	const struct pg_term *effects, const struct pg_term *value_type);
 int pg_effect_type_spine_view(const struct pg_term *term,

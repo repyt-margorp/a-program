@@ -45,7 +45,13 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 	switch (pg_evidence_rule(evidence)) {
 	case PG_RETURN_TYPE_FORM: {
 		const struct pg_term *value;
-		if (!pg_effect_type_view(subject->core, &result.effects, &value)) return -1;
+		if (!pg_computation_type_view(subject->core, &result.totality, &result.effects, &value)) return -1;
+		break;
+	}
+	case PG_RETURN_INTRO: {
+		const struct pg_effect_row *effects;
+		const struct pg_term *value;
+		if (!pg_computation_type_view(pg_evidence_classifier(evidence), &result.totality, &effects, &value)) return -1;
 		break;
 	}
 	case PG_CONSTRUCTOR_INTRO:
@@ -102,6 +108,8 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	if (parameters->declaration && rule != PG_INDUCTIVE_FORM) return NULL;
 	if (parameters->constructor && rule != PG_CONSTRUCTOR_INTRO) return NULL;
 	if (parameters->induction && rule != PG_INDUCTION_ELIM) return NULL;
+	if ((unsigned)parameters->totality > PG_TOTALITY_TOTAL) return NULL;
+	if (parameters->totality != PG_TOTALITY_UNSPECIFIED && rule != PG_RETURN_TYPE_FORM && rule != PG_RETURN_INTRO) return NULL;
 	for (size_t i = 0; i < count; ++i) if (!pg_evidence_owned_by(p[i], typing)) return NULL;
 	const struct pg_evidence *result = NULL;
 	struct pg_identity_boundary boundary;
@@ -151,10 +159,10 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_VARIABLE, 1, pg_prove_variable(typing, p[0], parameters->binder));
 	RULE(PG_TYPE_FROM_VALUE, 1, pg_prove_value_type(typing, p[0]));
 	RULE(PG_VALUE_FROM_TYPE, 1, pg_prove_type_value(typing, p[0]));
-	RULE(PG_RETURN_TYPE_FORM, 1, pg_prove_effect_type(typing, classifiers, parameters->effects, p[0]));
+	RULE(PG_RETURN_TYPE_FORM, 1, pg_prove_computation_type(typing, classifiers, parameters->totality, parameters->effects, p[0]));
 	RULE(PG_THUNK_TYPE_FORM, 1, pg_prove_thunk_type(typing, classifiers, p[0]));
 	RULE(PG_PI_FORM, 2, pg_prove_pi(typing, classifiers, p[0], p[1]));
-	RULE(PG_RETURN_INTRO, 1, pg_prove_return(typing, classifiers, p[0]));
+	RULE(PG_RETURN_INTRO, 1, pg_prove_return_contract(typing, classifiers, parameters->totality, p[0]));
 	RULE(PG_THUNK_INTRO, 1, pg_prove_thunk(typing, classifiers, p[0]));
 	RULE(PG_FORCE_ELIM, 1, pg_prove_force(typing, p[0]));
 	RULE(PG_LAMBDA_INTRO, 2, pg_prove_lambda(typing, p[0], p[1]));

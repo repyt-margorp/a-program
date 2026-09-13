@@ -16,8 +16,10 @@ criteria for merging different Lambda or semantic-object references.
 ## September 13 Priority Correction: Source Compatibility First
 
 This user-directed ordering supersedes earlier checkpoint-first next steps.
-The next milestone is recompiling previously accepted source programs and
-proving properties of already-defined `length` and `quickSort`. It is not
+The immediate deliverable is recompiling valid, previously accepted source
+programs unchanged and checking their results. Post-hoc properties of the
+already-defined `length` and `quickSort` are the following milestone, not a
+reason to delay compilation compatibility. Neither milestone requires
 eliminating recomputation during image loading. The full rewrite remains open.
 
 - [ ] Establish the compatibility inventory from legacy integration tests and
@@ -59,6 +61,13 @@ Delivery order for this milestone (not additional architecture phases):
 Report progress using passing legacy cases and remaining semantic blockers,
 not the number of plan sections completed. Broader higher-Identity coverage
 remains a project requirement but is not claimed by this compatibility gate.
+Add work only when a concrete compatibility case or soundness check requires
+it; otherwise defer it rather than introducing another prerequisite phase.
+
+The totality migration initially regressed `named_transport`'s no-callee-WHNF
+assertion (`tests/synthesis.c:3073`). Typed RETURN inversion now discharges a
+finite sequencing prefix without evaluating its value. The assertion remains
+and passes; this does not make an arbitrary empty-effect computation total.
 
 Compatibility baseline established against a fresh build of Main `63b00eb`,
 not the stale worktree `read_file.out` (which fails the length fixture).
@@ -116,11 +125,34 @@ September 13 compatibility follow-up:
 - [ ] Restore the legacy termination contract, not merely the intrinsic name.
   `context_and_type_lowering.inc` in the legacy frontend constructs TOTAL
   computation codomains for ordinary source arrows; `totality_evidence.inc`
-  checks that contract when introducing termination evidence. The new F
-  classifier's effect row alone does not retain it. Record the chosen source
-  contract and check its introductions and eliminations before accepting
-  `quickSortTerminates` with an abstract comparator. This is a compatibility
-  and soundness issue, not a recomputation optimization.
+  checks that contract when introducing termination evidence. The pointer
+  kernel now represents `F(totality, effects, A)` with the existing APP/Reference
+  graph: no new Core tag, totality DB, or Replay engine. RETURN introduction,
+  APP/FORCE, directed weakening and Fold preserve/check the contract; Fold
+  combines guarantees by their minimum. Recursive function-field IHs also
+  inherit the field's guarantee: an unspecified `down` cannot supply a total
+  IH merely because the motive requests one. Typed IADT/index generalization
+  retains the grade. Derivation v9 and source images 34/35 preserve it through
+  ordinary Solve; earlier formats are not reinterpreted.
+  Remaining: source arrow/body inference, graded HOTT/function-graph and
+  operation/handler rules, then the public termination request. Existing
+  ungraded builders still mean UNSPECIFIED and cannot silently erase TOTAL.
+  Do not accept `quickSortTerminates` with an abstract comparator until its
+  source contract and introductions/eliminations are checked. No compatibility
+  case is waived by this kernel foundation; this is not a performance task.
+  Validation: full `check-acceptance` passes preceding gates and still fails
+  at compatibility 14/20 (six QuickSort entries, 59,707 steps each). Core,
+  synthesis, IADT, derivation IO and source-image CLI tests pass ASan/UBSan.
+  New tests cover both totality grades, invalid serialized grades, the
+  RETURN/thunk distinction and the recursive-field IH bound. The latter
+  failed before its fix; no test was relaxed to accept an unjustified guarantee.
+
+Theory references for this step: Leijen's [Koka report, Sections 2.1-2.2](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/koka-effects-2013.pdf)
+distinguishes potential divergence from ordinary side effects; Torczon et al.'s
+[Effects and Coeffects in CBPV](https://arxiv.org/abs/2311.11795) studies graded
+CBPV systems. Neither establishes A Program's dependent/HOTT termination
+theorem. The separate F guarantee and the recursive-field bound above are
+our design obligations, not an imported soundness result or host-handler proof.
 
 September 13 implementation: scoped family assumptions, saturated family
 application and parameter abstraction now use ordinary pointer-Core terms
@@ -294,8 +326,9 @@ unchanged; computations over logical hypotheses use the extension below.
   missing semantics, not checkpoint performance tasks; connecting the name
   alone does not establish QuickSort compatibility.
   The old `totality_evidence.inc` rule requires TOTAL in the computation type;
-  the new system has no equivalent retained contract. Neither an empty effect
-  row nor graph-family formation can substitute for that premise.
+  the new kernel's retained F contract is not yet inferred by the source
+  pipeline. Neither an empty effect row nor graph-family formation can
+  substitute for that premise.
   Contradiction/result constraints for `LT y zero` are restored. The old order
   fixture's successor branch, however, is invalid: do not weaken recursive
   index checking to reproduce its historical acceptance. `::` remains a

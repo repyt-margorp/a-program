@@ -309,7 +309,7 @@ static void higher_family_lift(void)
 
 /* Acc under genuine logical-family assumptions. This does not assert that
  * an arbitrary empty-effect CBPV function is a terminating type family. */
-static void accessibility_elimination(void)
+static void accessibility_elimination(enum pg_totality field_totality)
 {
 	struct pg_graph graph;
 	struct pg_typing typing;
@@ -375,7 +375,8 @@ static void accessibility_elimination(void)
 	const struct pg_evidence *recursive = pg_prove_family_application(&typing,
 		pg_prove_variable(&typing, ec, self), pg_prove_variable(&typing, ec, y));
 	const struct pg_evidence *down_type = pg_prove_pi(&typing, &classifiers, ec,
-		pg_prove_return_type(&typing, &classifiers, recursive));
+		pg_prove_computation_type(&typing, &classifiers, field_totality,
+			pg_effect_row(&graph, 0, NULL), recursive));
 	down_type = pg_prove_pi(&typing, &classifiers, yc, down_type);
 	const struct pg_evidence *fields = pg_prove_context_extension(&typing, xc, down,
 		pg_prove_thunk_type(&typing, &classifiers, down_type));
@@ -475,6 +476,19 @@ static void accessibility_elimination(void)
 	const struct pg_evidence *field_context = pg_evidence_premise(field_map, 1);
 	const struct pg_evidence *field_values[] = {
 		pg_substitution_image(&typing, field_map, x), pg_substitution_image(&typing, field_map, down)};
+	const struct pg_evidence *total_motive = pg_prove_computation_type(&typing, &classifiers,
+		PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_prove_return_content(&typing, motive));
+	const struct pg_evidence *bounded_ih = pg_prove_inductive_hypothesis_type(&typing, &classifiers,
+		acc, parameters, mc, total_motive, field_context, field_values[1]);
+	assert(bounded_ih);
+	const struct pg_term *tail, *domain, *codomain, *content;
+	const struct pg_object *parameter;
+	assert(pg_thunk_type_view(pg_evidence_subject(bounded_ih)->core, &tail));
+	while (pg_pi_view(tail, &domain, &parameter, &codomain)) tail = codomain;
+	const struct pg_effect_row *row;
+	enum pg_totality ih_totality;
+	assert(pg_computation_type_view(tail, &ih_totality, &row, &content));
+	assert(ih_totality == field_totality && !pg_effect_count(row));
 	const struct pg_evidence *constructor_value = pg_prove_constructor(&typing, acc, constructor,
 		pg_prove_substitution_projection(&typing, rc, field_context), 2, field_values);
 	const struct pg_evidence *constructor_pattern = pg_prove_inductive_motive_substitution(&typing,
@@ -487,6 +501,12 @@ static void accessibility_elimination(void)
 		context, constructor_pattern, branch_result);
 	assert(inferred && pg_alpha_equal(pg_evidence_subject(inferred)->core, pg_evidence_subject(motive)->core) == 1);
 	common_rule(&typing, &classifiers, inferred);
+	const struct pg_evidence *total_branch_type = pg_prove_computation_type(&typing, &classifiers,
+		PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_prove_return_content(&typing, branch_result));
+	const struct pg_evidence *total_inferred = pg_prove_pattern_type(&typing, &classifiers,
+		context, constructor_pattern, total_branch_type);
+	assert(total_inferred && pg_alpha_equal(pg_evidence_subject(total_inferred)->core,
+		pg_evidence_subject(total_motive)->core) == 1);
 	const struct pg_evidence *down_identity = pg_prove_identity_type(&typing,
 		pg_prove_classifier(&typing, &classifiers, field_context, field_values[1]), field_values[1], field_values[1]);
 	assert(down_identity && !pg_prove_pattern_type(&typing, &classifiers, context, constructor_pattern,
@@ -2171,7 +2191,8 @@ int main(void)
 	positive_fields();
 	scoped_type_families();
 	higher_family_lift();
-	accessibility_elimination();
+	accessibility_elimination(PG_TOTALITY_UNSPECIFIED);
+	accessibility_elimination(PG_TOTALITY_TOTAL);
 	indexed_match();
 	schema_positivity();
 	retained_substitution_prefix();

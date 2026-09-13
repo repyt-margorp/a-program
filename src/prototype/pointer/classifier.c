@@ -13,6 +13,10 @@ static const struct pg_object_class return_type_class = {"return-type-former"};
 static const struct pg_object_class thunk_type_class = {"thunk-type-former"};
 static const struct pg_object return_type_former = {PG_SEMANTIC_OBJECT, &return_type_class};
 static const struct pg_object thunk_type_former = {PG_SEMANTIC_OBJECT, &thunk_type_class};
+static const struct pg_object_class totality_class = {"computation-totality"};
+static const struct pg_object totality_objects[] = {
+	{PG_SEMANTIC_OBJECT, &totality_class}, {PG_SEMANTIC_OBJECT, &totality_class}
+};
 static const struct pg_object_class effect_row_class = {"closed-effect-row"};
 static const struct pg_object_class effect_join_class = {"effect-row-union"};
 static const struct pg_object effect_join = {PG_SEMANTIC_OBJECT, &effect_join_class};
@@ -32,7 +36,9 @@ static const struct {
 } descriptors[] = {
 	{&pi_former, "kernel/pi/v1"},
 	{&effect_join, "solver/effect-union/v1"},
-	{&return_type_former, "kernel/return-type/v2"},
+	{&return_type_former, "kernel/return-type/v3"},
+	{&totality_objects[PG_TOTALITY_UNSPECIFIED], "kernel/totality/unspecified/v1"},
+	{&totality_objects[PG_TOTALITY_TOTAL], "kernel/totality/total/v1"},
 	{&empty_effects.base.object, "kernel/effect-row/empty/v1"},
 	{&thunk_type_former, "kernel/thunk-type/v1"}
 };
@@ -306,15 +312,30 @@ const struct pg_term *pg_return_type(struct pg_classifiers *classifiers, const s
 const struct pg_term *pg_effect_type(struct pg_classifiers *classifiers,
 	const struct pg_effect_row *effects, const struct pg_term *value_type)
 {
-	if (!classifiers) return NULL;
-	return pg_effect_type_spine(classifiers, pg_effect_reference(classifiers->graph, effects), value_type);
+	return pg_computation_type(classifiers, PG_TOTALITY_UNSPECIFIED, effects, value_type);
 }
 
 const struct pg_term *pg_effect_type_spine(struct pg_classifiers *classifiers,
 	const struct pg_term *effects, const struct pg_term *value_type)
 {
-	if (!classifiers || !effects || !value_type) return NULL;
-	const struct pg_term *head = unary_type(classifiers, &return_type_former, effects);
+	return pg_computation_type_spine(classifiers, PG_TOTALITY_UNSPECIFIED, effects, value_type);
+}
+
+const struct pg_term *pg_computation_type(struct pg_classifiers *classifiers,
+	enum pg_totality totality, const struct pg_effect_row *effects, const struct pg_term *value_type)
+{
+	if (!classifiers) return NULL;
+	return pg_computation_type_spine(classifiers, totality,
+		pg_effect_reference(classifiers->graph, effects), value_type);
+}
+
+const struct pg_term *pg_computation_type_spine(struct pg_classifiers *classifiers,
+	enum pg_totality totality, const struct pg_term *effects, const struct pg_term *value_type)
+{
+	if (!classifiers || !effects || !value_type || (unsigned)totality > PG_TOTALITY_TOTAL) return NULL;
+	const struct pg_term *grade = pg_reference(classifiers->graph, &totality_objects[totality]);
+	const struct pg_term *head = unary_type(classifiers, &return_type_former, grade);
+	head = pg_application(classifiers->graph, head, effects);
 	return pg_application(classifiers->graph, head, value_type);
 }
 
@@ -332,10 +353,25 @@ const struct pg_effect_row *pg_effect_row_view(const struct pg_term *term)
 int pg_effect_type_spine_view(const struct pg_term *term,
 	const struct pg_term **effects, const struct pg_term **value_type)
 {
-	if (!term || !effects || !value_type || term->kind != PG_APPLICATION) return 0;
-	const struct pg_term *row;
-	if (!unary_view(term->as.application.function, &return_type_former, &row)) return 0;
-	*effects = row;
+	enum pg_totality totality;
+	const struct pg_term *row, *value;
+	if (!effects || !value_type || !pg_computation_type_spine_view(term, &totality, &row, &value)) return 0;
+	if (totality != PG_TOTALITY_UNSPECIFIED) return 0;
+	*effects = row; *value_type = value;
+	return 1;
+}
+
+int pg_computation_type_spine_view(const struct pg_term *term,
+	enum pg_totality *totality, const struct pg_term **effects, const struct pg_term **value_type)
+{
+	if (!term || !totality || !effects || !value_type || term->kind != PG_APPLICATION) return 0;
+	const struct pg_term *row = term->as.application.function, *grade;
+	if (row->kind != PG_APPLICATION || !unary_view(row->as.application.function, &return_type_former, &grade)) return 0;
+	if (grade->kind != PG_REFERENCE) return 0;
+	if (grade->as.reference == &totality_objects[PG_TOTALITY_UNSPECIFIED]) *totality = PG_TOTALITY_UNSPECIFIED;
+	else if (grade->as.reference == &totality_objects[PG_TOTALITY_TOTAL]) *totality = PG_TOTALITY_TOTAL;
+	else return 0;
+	*effects = row->as.application.argument;
 	*value_type = term->as.application.argument;
 	return 1;
 }
@@ -359,10 +395,24 @@ int pg_effect_join_view(const struct pg_term *term,
 int pg_effect_type_view(const struct pg_term *term,
 	const struct pg_effect_row **effects, const struct pg_term **value_type)
 {
+	enum pg_totality totality;
+	const struct pg_effect_row *row;
+	const struct pg_term *value;
+	if (!effects || !value_type || !pg_computation_type_view(term, &totality, &row, &value)) return 0;
+	if (totality != PG_TOTALITY_UNSPECIFIED) return 0;
+	*effects = row; *value_type = value;
+	return 1;
+}
+
+int pg_computation_type_view(const struct pg_term *term,
+	enum pg_totality *totality, const struct pg_effect_row **effects, const struct pg_term **value_type)
+{
+	enum pg_totality grade;
 	const struct pg_term *row, *value;
-	if (!effects || !value_type || !pg_effect_type_spine_view(term, &row, &value)) return 0;
+	if (!totality || !effects || !value_type || !pg_computation_type_spine_view(term, &grade, &row, &value)) return 0;
 	const struct pg_effect_row *found = pg_effect_row_view(row);
 	if (!found) return 0;
+	*totality = grade;
 	*effects = found;
 	*value_type = value;
 	return 1;

@@ -32,7 +32,9 @@ int pg_data_recursive_field(const struct pg_term *type, const struct pg_object *
 		if (binder == self || pg_term_independent(domain, self) != 1) return -1;
 		type = codomain;
 	}
-	if (!pg_return_type_view(type, &type)) return -1;
+	enum pg_totality totality;
+	const struct pg_effect_row *effects;
+	if (!pg_computation_type_view(type, &totality, &effects, &type) || pg_effect_count(effects)) return -1;
 	return direct_recursion(type, self) == 1 ? 1 : -1;
 }
 
@@ -468,7 +470,10 @@ int pg_data_field_positive(const struct pg_term *type,
 			type = codomain;
 			continue;
 		}
-		if (pg_return_type_view(type, &codomain) || pg_thunk_type_view(type, &codomain)) {
+		enum pg_totality totality;
+		const struct pg_effect_row *effects;
+		if ((pg_computation_type_view(type, &totality, &effects, &codomain) && !pg_effect_count(effects))
+			|| pg_thunk_type_view(type, &codomain)) {
 			type = codomain;
 			continue;
 		}

@@ -540,7 +540,7 @@ const struct pg_source_scope *pg_synthesis_bind(struct pg_synthesis *synthesis,
 		.binder = binder, .context_job = pg_synthesis_evidence(synthesis, extended_context)});
 }
 
-enum { RULE_KEY_FIELDS = 16 };
+enum { RULE_KEY_FIELDS = 17 };
 
 static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 {
@@ -553,7 +553,8 @@ static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 		(uintptr_t)input->parameters.declaration,
 		(uintptr_t)input->parameters.constructor,
 		(uintptr_t)input->parameters.induction,
-		(uintptr_t)input->source, (uintptr_t)input->target, input->reduction_kind, input->count};
+		(uintptr_t)input->source, (uintptr_t)input->target, input->reduction_kind, input->count,
+		input->parameters.totality};
 	memcpy(key, fields, sizeof(fields));
 }
 
@@ -7350,13 +7351,15 @@ static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthes
 }
 
 static const struct pg_term *continuation_effect_structure(struct pg_synthesis *synthesis,
-	const struct pg_term *type, const struct pg_term *row)
+	const struct pg_term *type, enum pg_totality totality, const struct pg_term *row)
 {
 	const struct pg_term *following, *result;
+	enum pg_totality next_totality;
 	const struct pg_term *codomain = pg_pi_constant_codomain(type);
 	if (!codomain) return NULL;
-	if (!pg_effect_type_spine_view(codomain, &following, &result)) return NULL;
-	return pg_effect_type_spine(synthesis->classifiers,
+	if (!pg_computation_type_spine_view(codomain, &next_totality, &following, &result)) return NULL;
+	if (next_totality < totality) totality = next_totality;
+	return pg_computation_type_spine(synthesis->classifiers, totality,
 		pg_effect_join_term(synthesis->typing->graph, row, following), result);
 }
 
@@ -7484,7 +7487,7 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 			if (!label) goto accepted_classifier;
 			const struct pg_effect_row *row = pg_effect_row(synthesis->typing->graph, 1, &label);
 			job->type_structure = continuation_effect_structure(synthesis, type,
-				pg_effect_reference(synthesis->typing->graph, row));
+				PG_TOTALITY_UNSPECIFIED, pg_effect_reference(synthesis->typing->graph, row));
 			if (!job->type_structure) goto accepted_classifier;
 			finish(synthesis, job, PG_SYNTHESIS_DONE);
 			return;
@@ -7495,8 +7498,9 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 			if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
 			if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
 			const struct pg_term *row, *value;
-			if (!pg_effect_type_spine_view(type, &row, &value)) goto accepted_classifier;
-			job->type_structure = continuation_effect_structure(synthesis, job->right->type_structure, row);
+			enum pg_totality totality;
+			if (!pg_computation_type_spine_view(type, &totality, &row, &value)) goto accepted_classifier;
+			job->type_structure = continuation_effect_structure(synthesis, job->right->type_structure, totality, row);
 			if (!job->type_structure) goto accepted_classifier;
 			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 			return;
@@ -7508,7 +7512,8 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 		if (input->rule == PG_FORCE_ELIM) {
 			if (!pg_thunk_type_view(type, &type)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		} else if (input->rule == PG_THUNK_INTRO) type = pg_thunk_type(synthesis->classifiers, type);
-		else if (input->rule == PG_RETURN_INTRO) type = pg_return_type(synthesis->classifiers, type);
+		else if (input->rule == PG_RETURN_INTRO) type = pg_computation_type(synthesis->classifiers,
+			input->parameters.totality, pg_effect_row(synthesis->typing->graph, 0, NULL), type);
 		job->type_structure = type;
 		finish(synthesis, job, type ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;
@@ -7624,7 +7629,7 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 				pg_effect_equation_parameter(effects->inputs[0], producer->inputs[2]));
 		} else row = pg_effect_reference(synthesis->typing->graph, input->parameters.effects);
 		if (!row) goto unsupported;
-		job->type_structure = pg_effect_type_spine(synthesis->classifiers, row, left);
+		job->type_structure = pg_computation_type_spine(synthesis->classifiers, input->parameters.totality, row, left);
 		break;
 	}
 	case PG_THUNK_TYPE_FORM:
@@ -7633,7 +7638,8 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		job->type_structure = left; break;
 	case PG_RETURN_CONTENT: {
 		const struct pg_term *row;
-		if (!pg_effect_type_spine_view(left, &row, &job->type_structure)) goto unsupported;
+		enum pg_totality totality;
+		if (!pg_computation_type_spine_view(left, &totality, &row, &job->type_structure)) goto unsupported;
 		break;
 	}
 	case PG_PI_DOMAIN: {

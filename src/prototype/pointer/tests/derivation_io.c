@@ -63,7 +63,7 @@ static const struct pg_object *effect_resolve(void *owner, const char *label)
 	return !strcmp(label, "test/closed-effect-row/v1") ? context->row : resolve(context->classifiers, label);
 }
 
-static void effect_transport(void)
+static void effect_transport(enum pg_totality totality)
 {
 	static const struct pg_object_class label_class = {"test-row-label"};
 	static const struct pg_object label = {PG_SEMANTIC_OBJECT, &label_class};
@@ -81,7 +81,7 @@ static void effect_transport(void)
 	}
 	assert(rows[0] != rows[1]);
 	const struct pg_evidence *universe = pg_prove_universe(&typings[0], &classifiers[0], pg_prove_empty_context(&typings[0]), 0);
-	const struct pg_evidence *formation = pg_prove_effect_type(&typings[0], &classifiers[0], rows[0], universe);
+	const struct pg_evidence *formation = pg_prove_computation_type(&typings[0], &classifiers[0], totality, rows[0], universe);
 	const struct pg_object *m = pg_binder(&graphs[0]), *x = pg_binder(&graphs[0]);
 	const struct pg_evidence *context = pg_prove_context_extension(&typings[0],
 		pg_prove_empty_context(&typings[0]), m, pg_prove_thunk_type(&typings[0], &classifiers[0], formation));
@@ -93,7 +93,7 @@ static void effect_transport(void)
 	const struct pg_evidence *continuation = pg_prove_lambda(&typings[0], pi,
 		pg_prove_projection(&typings[0], extended, source));
 	const struct pg_evidence *fold = pg_prove_fold(&typings[0], &classifiers[0], source, continuation);
-	const struct pg_evidence *returned = pg_prove_return(&typings[0], &classifiers[0],
+	const struct pg_evidence *returned = pg_prove_return_contract(&typings[0], &classifiers[0], totality,
 		pg_prove_variable(&typings[0], extended, x));
 	const struct pg_evidence *widened = pg_prove_effect_subsumption(&typings[0], returned,
 		pg_prove_projection(&typings[0], extended, formation));
@@ -105,6 +105,7 @@ static void effect_transport(void)
 	const struct pg_derivation_input *const *roots;
 	assert(!pg_derivations_read(file, &typings[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
 	assert(count == 3 && roots[0]->parameters.effects == rows[1] && !typings[1].proofs.count);
+	assert(roots[0]->parameters.totality == totality && roots[2]->premises[0]->parameters.totality == totality);
 	struct pg_whnf_work work;
 	struct pg_synthesis synthesis;
 	assert(!pg_whnf_work_init(&work, &graphs[1]));
@@ -112,32 +113,45 @@ static void effect_transport(void)
 	struct pg_synthesis_job *job = pg_synthesis_derivation(&synthesis, roots[0]);
 	struct pg_synthesis_job *fold_job = pg_synthesis_derivation(&synthesis, roots[1]);
 	struct pg_synthesis_job *widening_job = pg_synthesis_derivation(&synthesis, roots[2]);
+	struct pg_synthesis_job *return_shape = pg_synthesis_classifier_structure(&synthesis,
+		pg_synthesis_derivation(&synthesis, roots[2]->premises[0]));
+	struct pg_synthesis_job *fold_shape = pg_synthesis_classifier_structure(&synthesis, fold_job);
 	assert(job && fold_job && widening_job);
 	pg_synthesis_advance(&synthesis, 1000);
 	assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE);
 	const struct pg_evidence *result = pg_synthesis_result(job);
 	const struct pg_effect_row *row;
 	const struct pg_term *value;
-	assert(pg_effect_type_view(pg_evidence_subject(result)->core, &row, &value) && row == rows[1]);
+	enum pg_totality grade;
+	assert(pg_computation_type_view(pg_evidence_subject(result)->core, &grade, &row, &value) && row == rows[1] && grade == totality);
 	assert(pg_evidence_subject(pg_prove_return_content(&typings[1], result))->core == value);
 	assert(pg_synthesis_status(fold_job) == PG_SYNTHESIS_DONE);
-	assert(pg_effect_type_view(pg_evidence_classifier(pg_synthesis_result(fold_job)), &row, &value) && row == rows[1]);
+	assert(pg_computation_type_view(pg_evidence_classifier(pg_synthesis_result(fold_job)), &grade, &row, &value) && row == rows[1] && grade == totality);
 	assert(pg_synthesis_status(widening_job) == PG_SYNTHESIS_DONE);
 	const struct pg_evidence *loaded = pg_synthesis_result(widening_job);
 	assert(pg_evidence_rule(loaded) == PG_EFFECT_SUBSUMPTION);
 	assert(pg_evidence_subject(loaded) == pg_evidence_subject(pg_evidence_premise(loaded, 0)));
-	assert(pg_effect_type_view(pg_evidence_classifier(loaded), &row, &value) && row == rows[1]);
+	assert(pg_computation_type_view(pg_evidence_classifier(loaded), &grade, &row, &value) && row == rows[1] && grade == totality);
+	assert(pg_synthesis_status(return_shape) == PG_SYNTHESIS_DONE && pg_synthesis_status(fold_shape) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_type_structure_result(return_shape) == pg_evidence_classifier(pg_evidence_premise(loaded, 0)));
+	const struct pg_term *row_term;
+	assert(pg_computation_type_spine_view(pg_synthesis_type_structure_result(fold_shape), &grade, &row_term, &value));
+	assert(grade == totality);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
 	/* Locate the explicit row field through the record grammar, not a proof ID. */
 	assert(!fseek(file, 8, SEEK_SET));
 	uint64_t records, root_count, row_id = 0;
 	assert(!pg_wire_read_u64(file, &records) && !pg_wire_read_u64(file, &root_count));
-	long row_offset = -1;
+	long row_offset = -1, grade_offset = -1, context_grade_offset = -1;
 	for (uint64_t i = 0; i < records; ++i) {
 		uint64_t rule, ignored, arity;
 		assert(!pg_wire_read_u64(file, &rule));
-		for (unsigned j = 0; j < 4; ++j) assert(!pg_wire_read_u64(file, &ignored));
+		for (unsigned j = 0; j < 5; ++j) {
+			if (j == 2 && rule == PG_RETURN_TYPE_FORM) grade_offset = ftell(file);
+			if (j == 2 && rule == PG_CONTEXT_EMPTY) context_grade_offset = ftell(file);
+			assert(!pg_wire_read_u64(file, &ignored));
+		}
 		long offset = ftell(file);
 		assert(offset >= 0 && !pg_wire_read_u64(file, &ignored));
 		if (rule == PG_RETURN_TYPE_FORM) { row_offset = offset; row_id = ignored; }
@@ -149,6 +163,15 @@ static void effect_transport(void)
 		for (uint64_t j = 0; j < arity; ++j) assert(!pg_wire_read_u64(file, &ignored));
 	}
 	assert(root_count == 3 && row_offset >= 0 && row_id);
+	assert(grade_offset >= 0 && context_grade_offset >= 0);
+	assert(!fseek(file, grade_offset, SEEK_SET) && !pg_wire_write_u64(file, 2));
+	rewind(file);
+	assert(pg_derivations_read(file, &typings[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
+	assert(!fseek(file, grade_offset, SEEK_SET) && !pg_wire_write_u64(file, totality));
+	assert(!fseek(file, context_grade_offset, SEEK_SET) && !pg_wire_write_u64(file, PG_TOTALITY_TOTAL));
+	rewind(file);
+	assert(pg_derivations_read(file, &typings[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
+	assert(!fseek(file, context_grade_offset, SEEK_SET) && !pg_wire_write_u64(file, 0));
 	assert(!fseek(file, row_offset, SEEK_SET) && !pg_wire_write_u64(file, 0));
 	rewind(file);
 	assert(pg_derivations_read(file, &typings[1], 1000, 100, effect_resolve, &owners[1], &count, &roots));
@@ -252,10 +275,10 @@ static void unique_term_roots(FILE *file, struct pg_graph *graph,
 	assert(!pg_wire_read_u64(file, &records) && !pg_wire_read_u64(file, &roots));
 	size_t references = 0;
 	for (uint64_t i = 0; i < records; ++i) {
-		/* Rule, level, direction, reduction mode, then eight Core references. */
-		for (unsigned j = 0; j < 12; ++j) {
+		/* Rule, level, direction, totality, reduction, then eight Core references. */
+		for (unsigned j = 0; j < 13; ++j) {
 			assert(!pg_wire_read_u64(file, &word));
-			if (j >= 4 && word) ++references;
+			if (j >= 5 && word) ++references;
 		}
 		uint64_t premises;
 		uint64_t metadata, allocation;
@@ -1197,7 +1220,8 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 
 int main(int argc, char **argv)
 {
-	effect_transport();
+	effect_transport(PG_TOTALITY_UNSPECIFIED);
+	effect_transport(PG_TOTALITY_TOTAL);
 	assert(argc == 3);
 	int operation = !strncmp(argv[1], "operation-", 10);
 	int unaccepted = !strncmp(argv[1], "input-", 6);

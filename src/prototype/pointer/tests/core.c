@@ -3109,7 +3109,8 @@ static void effect_classifier_test(struct pg_graph *graph)
 		pg_pi(graph, u, argument, effectful))) == 1);
 	assert(!pg_effect_type_view(pending, &row, &value));
 	assert(!pg_classifier_resolve(&classifiers, "kernel/return-type/v1"));
-	assert(pg_classifier_resolve(&classifiers, "kernel/return-type/v2"));
+	assert(!pg_classifier_resolve(&classifiers, "kernel/return-type/v2"));
+	assert(pg_classifier_resolve(&classifiers, "kernel/return-type/v3"));
 	assert(pg_classifier_resolve(&classifiers, "kernel/effect-row/empty/v1"));
 	struct pg_typing typing;
 	assert(!pg_typing_init(&typing, graph));
@@ -3188,6 +3189,92 @@ static void effect_classifier_test(struct pg_graph *graph)
 	pg_typing_destroy(&typing);
 	pg_classifiers_destroy(&classifiers);
 	puts("effects: explicit closed sets, union laws, unknown is not empty, and pure-only views passed");
+}
+
+static void totality_classifier_test(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	struct pg_classifiers classifiers;
+	assert(!pg_typing_init(&typing, graph) && !pg_classifiers_init(&classifiers, graph));
+	const struct pg_evidence *context = pg_prove_empty_context(&typing);
+	const struct pg_evidence *a = pg_prove_universe(&typing, &classifiers, context, 1);
+	const struct pg_evidence *v = pg_prove_type_value(&typing,
+		pg_prove_universe(&typing, &classifiers, context, 0));
+	const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL), *row;
+	const struct pg_evidence *types[2], *returned[2], *functions[2];
+	const struct pg_term *value;
+	enum pg_totality grade;
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_evidence *scope = pg_prove_context_extension(&typing, context, x, a);
+	for (unsigned i = 0; i < 2; ++i) {
+		types[i] = pg_prove_computation_type(&typing, &classifiers, i, empty, a);
+		returned[i] = pg_prove_return_contract(&typing, &classifiers, i, v);
+		assert(types[i] && returned[i]);
+		assert(pg_evidence_classifier(returned[i]) == pg_evidence_subject(types[i])->core);
+		assert(pg_prove_return_contract(&typing, &classifiers, i, v) == returned[i]);
+		assert(pg_prove_return_value(&typing, returned[i]) == v);
+		assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, context, returned[i]))->core == pg_evidence_subject(types[i])->core);
+		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, scope,
+			pg_prove_projection(&typing, scope, types[i]));
+		functions[i] = pg_prove_lambda(&typing, pi, pg_prove_return_contract(&typing, &classifiers, i,
+			pg_prove_variable(&typing, scope, x)));
+		assert(functions[i]);
+		const struct pg_evidence *applied = pg_prove_application(&typing, functions[i], v);
+		assert(applied && pg_evidence_classifier(applied) == pg_evidence_subject(types[i])->core);
+		const struct pg_evidence *force = pg_prove_force(&typing, pg_prove_thunk(&typing, &classifiers, applied));
+		assert(force && pg_evidence_classifier(force) == pg_evidence_classifier(applied));
+		struct pg_derivation_parameters parameters;
+		assert(!pg_derivation_parameters(returned[i], &parameters) && parameters.totality == i);
+		assert(pg_prove_derivation(&typing, &classifiers, PG_RETURN_INTRO, &parameters, 1, &v) == returned[i]);
+		parameters.totality = 2;
+		assert(!pg_prove_derivation(&typing, &classifiers, PG_RETURN_INTRO, &parameters, 1, &v));
+	}
+	assert(pg_evidence_subject(returned[0]) == pg_evidence_subject(returned[1]) && returned[0] != returned[1]);
+	assert(pg_alpha_equal(pg_evidence_classifier(returned[0]), pg_evidence_classifier(returned[1])) == 0);
+	assert(!pg_effect_type_view(pg_evidence_subject(types[1])->core, &row, &value));
+	assert(!pg_return_type_view(pg_evidence_subject(types[1])->core, &value));
+	assert(!pg_computation_type(&classifiers, 2, empty, pg_evidence_subject(a)->core));
+	assert(!pg_computation_type(&classifiers, (enum pg_totality)-1, empty, pg_evidence_subject(a)->core));
+	assert(!pg_prove_effect_subsumption(&typing, returned[0], types[1]));
+	const struct pg_evidence *weakened = pg_prove_effect_subsumption(&typing, returned[1], types[0]);
+	assert(weakened && pg_evidence_subject(weakened) == pg_evidence_subject(returned[1]));
+	/* Formation is not a termination proof for an arbitrary suspended input.
+	 * FOLD preserves exactly the contracts assumed in its typed premises. */
+	for (unsigned i = 0; i < 2; ++i) {
+		const struct pg_object *m = pg_binder(graph);
+		const struct pg_evidence *outer = pg_prove_context_extension(&typing, context, m,
+			pg_prove_thunk_type(&typing, &classifiers, types[i]));
+		const struct pg_evidence *input = pg_prove_force(&typing, pg_prove_variable(&typing, outer, m));
+		assert(input && !pg_prove_return_value(&typing, input));
+		const struct pg_evidence *suspended = pg_prove_variable(&typing, outer, m);
+		const struct pg_evidence *returned_thunk = pg_prove_return_contract(&typing, &classifiers, PG_TOTALITY_TOTAL, suspended);
+		assert(returned_thunk);
+		assert(pg_evidence_classifier(pg_prove_force(&typing, pg_prove_return_value(&typing, returned_thunk))) == pg_evidence_classifier(input));
+		for (unsigned j = 0; j < 2; ++j) {
+			const struct pg_evidence *continuation = pg_prove_projection(&typing, outer, functions[j]);
+			const struct pg_evidence *fold = pg_prove_fold(&typing, &classifiers, input, continuation);
+			assert(fold && pg_computation_type_view(pg_evidence_classifier(fold), &grade, &row, &value));
+			assert(grade == (i && j) && row == empty && value == pg_evidence_subject(a)->core);
+			assert(pg_prove_fold(&typing, &classifiers, input, continuation) == fold);
+			assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, outer, fold))->core == pg_evidence_classifier(fold));
+			const struct pg_object *ignored = pg_binder(graph);
+			const struct pg_evidence *inner = pg_prove_context_extension(&typing, outer, ignored,
+				pg_prove_projection(&typing, outer, a));
+			const struct pg_evidence *raw_body = pg_prove_projection(&typing, inner, functions[j]);
+			const struct pg_evidence *raw_type = pg_prove_pi(&typing, &classifiers, inner,
+				pg_prove_classifier(&typing, &classifiers, inner, raw_body));
+			const struct pg_evidence *raw = pg_prove_lambda(&typing, raw_type, raw_body);
+			assert(raw);
+			assert(!!pg_prove_fold(&typing, &classifiers, input, raw) == (i || !j));
+			/* A literal RETURN is finite even when its declared guarantee was
+			 * weakened. This uses typed inversion, not WHNF or an empty row. */
+			assert(pg_prove_fold(&typing, &classifiers,
+				pg_prove_projection(&typing, outer, weakened), raw));
+		}
+	}
+	pg_classifiers_destroy(&classifiers);
+	pg_typing_destroy(&typing);
+	puts("totality: distinct contracts, RETURN, directed weakening, APP/FORCE and Fold bounds passed");
 }
 
 static void deep_classifier_test(void)
@@ -3500,6 +3587,7 @@ int main(void)
 	deferred_work_test(&graph);
 	classifiers_test(&graph);
 	effect_classifier_test(&graph);
+	totality_classifier_test(&graph);
 	request_typing_test(&graph);
 	restriction_test(&graph);
 	conversion_test(&graph);

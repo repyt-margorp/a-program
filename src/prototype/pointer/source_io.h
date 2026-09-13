@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 /* Reconstructible source environments and source/definition/rule roots, including pending modules.
- * APGSRC32 uses context-authoritative Pi premises and retains lexical
+ * APGSRC34 retains explicit F totality contracts, context-authoritative Pi premises and lexical
  * result-to-graph binder associations in the ordinary
  * context-binding records. These are names, not imported graph certificates.
  * It retains normalization requests as context/term producer edges with
@@ -41,9 +41,9 @@
  * Streams are borrowed. */
 int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots);
-/* APGSRC33 optionally retains raw reduction records in the same Core table.
+/* APGSRC35 optionally retains raw reduction records in the same Core table.
  * Reading leaves them in program->retained_reductions, without checking or
- * installing results. NULL reductions selects ordinary APGSRC32 RECOMPUTE.
+ * installing results. NULL reductions selects ordinary APGSRC34 RECOMPUTE.
  * Origin selection includes retained endpoints and intermediate phase Terms. */
 int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots, const struct pg_reduction_archive *reductions);

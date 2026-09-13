@@ -1096,6 +1096,16 @@ const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
 	return pg_prove_reindex(typing, map, motive);
 }
 
+static int unspecified_computation_result(const struct pg_term *type)
+{
+	const struct pg_term *domain, *body;
+	const struct pg_object *binder;
+	while (pg_pi_view(type, &domain, &binder, &body)) type = body;
+	enum pg_totality totality;
+	const struct pg_effect_row *effects;
+	return pg_computation_type_view(type, &totality, &effects, &body) && totality == PG_TOTALITY_UNSPECIFIED;
+}
+
 const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *motive_context,
@@ -1124,12 +1134,25 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
 			pg_prove_variable(typing, scope, binder));
 		classifier = pg_prove_classifier(typing, classifiers, scope, call);
 	}
-	if (!classifier || !pg_return_type_view(classifier->subject->core, &type)) return NULL;
+	enum pg_totality field_totality;
+	const struct pg_effect_row *effects;
+	if (!classifier || !pg_computation_type_view(classifier->subject->core, &field_totality, &effects, &type)) return NULL;
+	if (pg_effect_count(effects)) return NULL;
 	const struct pg_evidence *returned_type = pg_prove_return_content(typing, classifier);
 	binder = pg_binder(typing->graph);
 	const struct pg_evidence *returned = pg_prove_context_extension(typing, scope, binder, returned_type);
 	const struct pg_evidence *at = pg_prove_inductive_motive_at(typing, classifiers,
 		formation, parameters, motive_context, motive, returned, pg_prove_variable(typing, returned, binder));
+	if (!at) return NULL;
+	/* Calling a recursive function field precedes recursion on its result.
+	 * The IH cannot promise termination that this field does not provide. */
+	if (field_totality == PG_TOTALITY_UNSPECIFIED) {
+		enum pg_totality motive_totality;
+		if (pg_computation_type_view(at->subject->core, &motive_totality, &effects, &type)) {
+			at = pg_prove_computation_type(typing, classifiers, field_totality, effects,
+				pg_prove_return_content(typing, at));
+		} else if (!unspecified_computation_result(at->subject->core)) return NULL;
+	}
 	/* Fold the returned recursive value once. Its result classifier must not
 	 * escape with that value's binder; indices may depend on the Pi arguments. */
 	at = pg_prove_pi_constant_codomain(typing,
@@ -1720,7 +1743,7 @@ const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
 
 static const struct pg_evidence *unary_formation(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *argument,
-	enum pg_evidence_rule rule, const struct pg_effect_row *effects)
+	enum pg_evidence_rule rule, enum pg_totality totality, const struct pg_effect_row *effects)
 {
 	if (!pg_evidence_owned_by(argument, typing)) return NULL;
 	if (!classifiers || classifiers->graph != typing->graph) return NULL;
@@ -1730,7 +1753,7 @@ static const struct pg_evidence *unary_formation(struct pg_typing *typing,
 		argument = pg_prove_value_type(typing, argument);
 		if (!argument) return NULL;
 		output = PG_JUDGEMENT_COMPUTATION_TYPE;
-		term = pg_effect_type(classifiers, effects, argument->subject->core);
+		term = pg_computation_type(classifiers, totality, effects, argument->subject->core);
 	} else {
 		if (argument->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 		output = PG_JUDGEMENT_VALUE_TYPE;
@@ -1755,8 +1778,15 @@ const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_effect_row *effects,
 	const struct pg_evidence *value_type)
 {
+	return pg_prove_computation_type(typing, classifiers, PG_TOTALITY_UNSPECIFIED, effects, value_type);
+}
+
+const struct pg_evidence *pg_prove_computation_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, enum pg_totality totality,
+	const struct pg_effect_row *effects, const struct pg_evidence *value_type)
+{
 	if (!effects) return NULL;
-	return unary_formation(typing, classifiers, value_type, PG_RETURN_TYPE_FORM, effects);
+	return unary_formation(typing, classifiers, value_type, PG_RETURN_TYPE_FORM, totality, effects);
 }
 
 static int endpoint(const struct pg_typing *typing, const struct pg_evidence *term,
@@ -1910,7 +1940,7 @@ const struct pg_evidence *pg_prove_identity_lift(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *computation_type)
 {
-	return unary_formation(typing, classifiers, computation_type, PG_THUNK_TYPE_FORM, NULL);
+	return unary_formation(typing, classifiers, computation_type, PG_THUNK_TYPE_FORM, PG_TOTALITY_UNSPECIFIED, NULL);
 }
 
 /* A logical signature has the bound of its telescope and terminal Universe.
@@ -1998,11 +2028,21 @@ static const struct pg_evidence *unary_term(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_return(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *value)
 {
+	return pg_prove_return_contract(typing, classifiers, PG_TOTALITY_UNSPECIFIED, value);
+}
+
+const struct pg_evidence *pg_prove_return_contract(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, enum pg_totality totality,
+	const struct pg_evidence *value)
+{
 	if (!pg_evidence_owned_by(value, typing)) return NULL;
 	if (value->judgement != PG_JUDGEMENT_VALUE) return NULL;
-	if (classifiers->graph != typing->graph) return NULL;
+	if (!classifiers || classifiers->graph != typing->graph) return NULL;
+	const struct pg_term *type = pg_computation_type(classifiers, totality,
+		pg_effect_row(typing->graph, 0, NULL), value->classifier);
+	if (!type) return NULL;
 	return unary_term(typing, value, &pg_return_operation,
-		pg_return_type(classifiers, value->classifier), PG_RETURN_INTRO, PG_JUDGEMENT_COMPUTATION);
+		type, PG_RETURN_INTRO, PG_JUDGEMENT_COMPUTATION);
 }
 
 const struct pg_evidence *pg_prove_thunk(struct pg_typing *typing,
@@ -2089,7 +2129,9 @@ const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (computation->rule == PG_RETURN_INTRO) return computation->premises[0];
 	const struct pg_term *classifier;
-	if (!pg_return_type_view(computation->classifier, &classifier)) return NULL;
+	const struct pg_effect_row *effects;
+	enum pg_totality totality;
+	if (!pg_computation_type_view(computation->classifier, &totality, &effects, &classifier) || pg_effect_count(effects)) return NULL;
 	return term_content(typing, computation, &pg_return_operation, classifier,
 		PG_RETURN_VALUE, PG_JUDGEMENT_VALUE);
 }
@@ -2752,7 +2794,8 @@ static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
 	if (!body) return NULL;
 	const struct pg_effect_row *effects;
 	const struct pg_term *content;
-	if (!pg_effect_type_view(body->subject->core, &effects, &content)) return body;
+	enum pg_totality totality;
+	if (!pg_computation_type_view(body->subject->core, &totality, &effects, &content)) return body;
 	struct pg_inductive_instance instance;
 	if (!pg_inductive_instance(typing, pg_prove_return_content(typing, body), &instance) || !instance.indices) return body;
 	size_t count = instance.indices->premise_count - 2;
@@ -2782,7 +2825,7 @@ static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
 		const struct pg_evidence *map = pg_prove_substitution(typing,
 			instance.indices->premises[0], inverse->premises[1], count, images);
 		const struct pg_evidence *type = family_in_scope(typing, instance.formation, instance.parameters, map);
-		if (type) result = pg_prove_effect_type(typing, classifiers, effects, type);
+		if (type) result = pg_prove_computation_type(typing, classifiers, totality, effects, type);
 	}
 done:
 	pg_graph_destroy(&temporary);
@@ -2879,7 +2922,8 @@ const struct pg_evidence *pg_prove_return_content(struct pg_typing *typing,
 	if (return_type->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	const struct pg_term *content;
 	const struct pg_effect_row *effects;
-	if (!pg_effect_type_view(return_type->subject->core, &effects, &content)) return NULL;
+	enum pg_totality totality;
+	if (!pg_computation_type_view(return_type->subject->core, &totality, &effects, &content)) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, return_type->context, content,
 		NULL, 1, &return_type->subject);
 	if (!subject) return NULL;
@@ -3180,8 +3224,10 @@ const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
 	if (existing) return existing;
 	const struct pg_effect_row *source_row, *target_row;
 	const struct pg_term *source_value, *target_value;
-	if (!pg_effect_type_view(computation->classifier, &source_row, &source_value)) return NULL;
-	if (!pg_effect_type_view(target_type->subject->core, &target_row, &target_value)) return NULL;
+	enum pg_totality source_totality, target_totality;
+	if (!pg_computation_type_view(computation->classifier, &source_totality, &source_row, &source_value)) return NULL;
+	if (!pg_computation_type_view(target_type->subject->core, &target_totality, &target_row, &target_value)) return NULL;
+	if (source_totality < target_totality) return NULL;
 	if (pg_effect_subset(source_row, target_row) != 1) return NULL;
 	if (pg_alpha_equal(source_value, target_value) != 1) return NULL;
 	return accept(typing, PG_EFFECT_SUBSUMPTION, PG_JUDGEMENT_COMPUTATION,
@@ -3205,16 +3251,27 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_clas
 	const struct pg_term *value_type, *domain, *codomain;
 	const struct pg_object *binder;
 	const struct pg_effect_row *effects, *following;
-	if (!pg_effect_type_view(computation->classifier, &effects, &value_type)) return NULL;
+	enum pg_totality first_totality, next_totality;
+	if (!pg_computation_type_view(computation->classifier, &first_totality, &effects, &value_type)) return NULL;
 	if (!pg_pi_view(continuation->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, value_type) != 1) return NULL;
 	codomain = pg_pi_constant_codomain(continuation->classifier);
 	if (!codomain) return NULL;
 	const struct pg_term *result_type;
-	if (pg_effect_type_view(codomain, &following, &result_type)) {
-		codomain = pg_effect_type(classifiers, pg_effect_union(typing->graph, effects, following), result_type);
+	if (pg_computation_type_view(codomain, &next_totality, &following, &result_type)) {
+		enum pg_totality totality = first_totality < next_totality ? first_totality : next_totality;
+		codomain = pg_computation_type(classifiers, totality, pg_effect_union(typing->graph, effects, following), result_type);
 		if (!codomain) return NULL;
-	} else if (pg_effect_count(effects)) return NULL;
+	} else {
+		if (pg_effect_count(effects)) return NULL;
+		/* A possibly divergent prefix cannot inherit a total latent result
+		 * merely because the continuation immediately produces a Lambda. */
+		/* Typed RETURN inversion also supplies a finite prefix without
+		 * evaluating its value (which may itself be a suspended computation). */
+		if (first_totality == PG_TOTALITY_UNSPECIFIED && !pg_prove_return_value(typing, computation)) {
+			if (!unspecified_computation_result(codomain)) return NULL;
+		}
+	}
 	const struct pg_term *core = pg_computation_fold(typing->graph,
 		computation->subject->core, continuation->subject->core, 0, NULL);
 	if (!core) return NULL;
@@ -3375,9 +3432,14 @@ static void classifier_recovery_step(struct pg_classifier_recovery *work)
 		context = work->frames->context;
 		work->frames = work->frames->next;
 		switch (term->rule) {
-		case PG_RETURN_INTRO:
-			formation = pg_prove_return_type(typing, classifiers, formation);
+		case PG_RETURN_INTRO: {
+			enum pg_totality totality;
+			const struct pg_effect_row *effects;
+			const struct pg_term *value;
+			formation = pg_computation_type_view(term->classifier, &totality, &effects, &value)
+				? pg_prove_computation_type(typing, classifiers, totality, effects, formation) : NULL;
 			break;
+		}
 		case PG_THUNK_INTRO:
 			formation = pg_prove_thunk_type(typing, classifiers, formation);
 			break;
@@ -3396,8 +3458,9 @@ static void classifier_recovery_step(struct pg_classifier_recovery *work)
 			if (formation && formation->subject->core != term->classifier) {
 				const struct pg_effect_row *effects;
 				const struct pg_term *result_type;
-				if (pg_effect_type_view(term->classifier, &effects, &result_type))
-					formation = pg_prove_effect_type(typing, classifiers, effects,
+				enum pg_totality totality;
+				if (pg_computation_type_view(term->classifier, &totality, &effects, &result_type))
+					formation = pg_prove_computation_type(typing, classifiers, totality, effects,
 						pg_prove_return_content(typing, formation));
 			}
 			break;
