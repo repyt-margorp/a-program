@@ -90,19 +90,21 @@ printf '%s\n' 'image cli: failed writes preserve existing images; in-place publi
 printf '%s\n' 'image cli: multi-root selection, retained obligations and range rejection passed'
 printf '%s\n' 'image cli: parameterized List source/image NF agreement passed'
 
-# An unfinished image must not make an invalid fixed-index induction admissible.
-input="$(dirname "${BASH_SOURCE[0]}")/acceptance/indexed-rigid-induction-invalid.p"
-for steps in 0 100; do
-	code=0
-	"$binary" --steps "$steps" --save "$directory/invalid.a" "$input" > "$directory/status" || code=$?
-	test "$code" = 3
-	code=0
-	"$binary" --load --steps 0 --save "$directory/invalid-resaved.a" "$directory/invalid.a" > "$directory/status" || code=$?
-	test "$code" = 3
-	code=0
-	"$binary" --load "$directory/invalid-resaved.a" > "$directory/status" || code=$?
-	test "$code" = 1
-	grep -q '^rejected steps=' "$directory/status"
+# An unfinished image cannot bypass induction or coverage checks.
+for fixture in indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong length-output-proof-wrong; do
+	input="$(dirname "${BASH_SOURCE[0]}")/acceptance/$fixture.p"
+	for steps in 0 100; do
+		code=0
+		"$binary" --steps "$steps" --save "$directory/invalid.a" "$input" > "$directory/status" || code=$?
+		test "$code" = 3
+		code=0
+		"$binary" --load --steps 0 --save "$directory/invalid-resaved.a" "$directory/invalid.a" > "$directory/status" || code=$?
+		test "$code" = 3
+		code=0
+		"$binary" --load "$directory/invalid-resaved.a" > "$directory/status" || code=$?
+		test "$code" = 1
+		grep -q '^rejected steps=' "$directory/status"
+	done
 done
 
 # Retaining syntax does not require its type-level computations to have finished.
@@ -157,7 +159,7 @@ while read -r fixture names; do
 		fi
 	done
 done <<'GRAPHS'
-acceptance/length-output-proof.p main emptyMain:emptyExpected
+acceptance/length-output-proof.p main emptyMain:emptyExpected specMain emptySpecMain:emptyExpected
 acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain directMain directProof shadowMain:baseExpected nestedProof:baseExpected
 acceptance/generated-function-graph-direct.p main certified
 acceptance/function-graph-named-fields.p main aliasMain graphMain valueMain
@@ -179,6 +181,8 @@ acceptance/indexed-block-demands.p main nestedMain selectedMain readMain:two
 acceptance/indexed-recursive-result.p main:two emptyMain:emptyExpected
 acceptance/indexed-schema-result.p main:two
 acceptance/applied-family-alias.p main aliasMain blockMain indexedMain:indexedExpected
+acceptance/function-graph-refined-case.p main
+acceptance/indexed-omitted-case.p main functionMain emptyMain:emptyExpected
 acceptance/indexed-ih-environment.p
 acceptance/computed-family-member.p main nested:nestedExpected
 ../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified

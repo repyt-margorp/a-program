@@ -171,7 +171,7 @@ struct match_state {
 	size_t candidate_next, candidate_checked;
 	const struct pg_evidence **path_extensions;
 	size_t path_count, path_scoped;
-	size_t count, next, collected, effect_checked, demanded, checked, prepared, typed, result_checked, validated;
+	size_t count, selected, next, collected, effect_checked, demanded, checked, prepared, typed, result_checked, validated;
 	int induction, has_demands, type_cases, packet;
 	struct match_branch branches[];
 };
@@ -2962,6 +2962,7 @@ static int function_graph_order(struct pg_synthesis *synthesis, struct pg_synthe
 	if (count && !job->case_layouts) goto done;
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_syntax *clause = origin->match->branches[i].clause;
+		if (!clause) goto done;
 		/* Named source patterns require their resolved field layout here too. */
 		if (clause->item_count && clause->items[0].operation) goto done;
 		const struct pg_syntax *top = block_syntax(clause->right);
@@ -4100,8 +4101,8 @@ static enum pg_synthesis_status case_field_scope(struct pg_synthesis *synthesis,
 	const struct pg_evidence *const *extensions, struct pg_synthesis_job *const *contexts,
 	const struct pg_source_scope **result)
 {
-	int named = clause->item_count && clause->items[0].operation;
-	if (!named && count != clause->item_count) return PG_SYNTHESIS_REJECTED;
+	int named = clause && clause->item_count && clause->items[0].operation;
+	if (clause && !named && count != clause->item_count) return PG_SYNTHESIS_REJECTED;
 	if (count > SIZE_MAX / sizeof(struct source_case_field)) return PG_SYNTHESIS_ERROR;
 	struct source_case_field *bindings = calloc(count, sizeof(*bindings));
 	if (count && !bindings) return PG_SYNTHESIS_ERROR;
@@ -4143,7 +4144,7 @@ static enum pg_synthesis_status case_field_scope(struct pg_synthesis *synthesis,
 			if (bindings[selected].name.kind) goto done;
 			bindings[selected].name = alias;
 		}
-	} else for (size_t i = 0; i < count; ++i) {
+	} else if (clause) for (size_t i = 0; i < count; ++i) {
 		if (clause->items[i].operation) goto done;
 		bindings[i].name = clause->items[i].name;
 	}
@@ -5794,7 +5795,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		struct pg_inductive_instance instance;
 		if (!pg_synthesis_inductive_instance_result(instance_job, &instance)) goto error;
 		size_t count = pg_data_constructor_count(instance.schema);
-		if (count != job->syntax->item_count) goto rejected;
+		if (count < job->syntax->item_count) goto rejected;
 		if (!count) goto unsupported;
 		if (count > (SIZE_MAX - sizeof(struct match_state)) / sizeof(struct match_branch)) goto error;
 		struct pg_synthesis_job *origin = pg_synthesis_evidence(synthesis, instance.formation);
@@ -5808,8 +5809,8 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	}
 	struct match_state *state = job->match;
 	const struct pg_data_layout *layout = pg_data_schema_layout(state->instance.schema);
-	if (state->next < state->count) {
-		const struct pg_syntax *clause = job->syntax->items[state->next].expression;
+	if (state->selected < job->syntax->item_count) {
+		const struct pg_syntax *clause = job->syntax->items[state->selected].expression;
 		int packet = state->packet && !clause->item_count && clause->left->kind == PG_SYNTAX_ATOM
 			&& clause->left->token.kind == PG_TOKEN_IDENT;
 		struct source_reference label = {0};
@@ -5833,6 +5834,20 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		size_t ordinal;
 		if (!pg_data_constructor_position(layout, constructor, &ordinal)) goto rejected;
 		if (state->branches[ordinal].clause) goto rejected;
+		state->branches[ordinal].clause = clause;
+		++state->selected;
+		enqueue(synthesis, job);
+		return;
+	}
+	/* Scope every constructor, including omitted clauses. Only a checked
+	 * contradiction can later replace an absent body with elimination. */
+	if (state->next < state->count) {
+		size_t ordinal = state->next;
+		struct match_branch *branch = &state->branches[ordinal];
+		const struct pg_syntax *clause = branch->clause;
+		int packet = state->packet && clause && !clause->item_count && clause->left->kind == PG_SYNTAX_ATOM
+			&& clause->left->token.kind == PG_TOKEN_IDENT;
+		const struct pg_object *constructor = pg_data_constructor(layout, ordinal);
 		const struct pg_evidence *schema_fields = pg_data_schema_fields(state->instance.schema, constructor);
 		size_t field_count;
 		if (pg_context_extension_size(pg_evidence_context(schema_fields),
@@ -5876,12 +5891,10 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (!scope) goto error;
 		if (scope->context_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, scope->context_job); return; }
 		if (scope->context_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, scope->context_job->status); return; }
-		struct match_branch *branch = &state->branches[ordinal];
 		branch->scope = scope;
 		branch->fields = source_context(scope);
-		branch->clause = clause;
 		branch->field_count = count;
-		branch->needs_ih = branch_needs_ih(scope, pg_evidence_context(context), clause->right);
+		branch->needs_ih = clause ? branch_needs_ih(scope, pg_evidence_context(context), clause->right) : 0;
 		if (branch->needs_ih < 0) goto error;
 		if (branch->needs_ih) {
 			state->induction = 1;
@@ -5897,6 +5910,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		for (size_t i = 0; i < state->count; ++i) {
 			struct match_branch *branch = &state->branches[i];
 			if (branch->contradiction) continue;
+			if (!branch->clause) goto rejected;
 			if (state->generalization) branch->scope = generalized_scope(synthesis, job->inner, branch->scope,
 				state->generalization, match_constructor_pattern(synthesis, job, i, source_context(branch->scope)));
 			if (!branch->scope) goto unsupported;

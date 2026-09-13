@@ -51,7 +51,7 @@ done <<'CASES'
 0 typing/function_graph_dependent_spine_check main expected
 0 typing/function_graph_nominal_index_constant_motive_check main expected
 0 typing/function_graph_block_binding_check main expected
-0 typing/function_graph_named_case_check
+1 typing/function_graph_named_case_check
 0 typing/if8_fuel_free_quicksort_check main expected
 0 typing/if8_fuel_free_quicksort_check emptyMain emptyExpected
 0 typing/if8_fuel_free_quicksort_check singletonMain singletonExpected
@@ -71,5 +71,10 @@ CASES
 # right index. The final counterexample demonstrates that the old compiler
 # accepted Acc zero whose constructor exposes index one. Rejecting both files
 # is intentional, not restoration of that historical acceptance bug.
+# The named-case fixture omits a reachable nil case from selectGraph. The
+# old integration test checks only that the term was printed; the dedicated
+# function-graph-missing-case fixture demonstrates a stuck closed Match on
+# nil in that compiler. Omission is accepted only with checked refutation;
+# function-graph-refined-case tests a valid nonempty input in the main suite.
 printf 'source compatibility and selected results: %s/%s passed\n' "$((total - failed))" "$total"
 test "$failed" -eq 0

@@ -66,13 +66,15 @@ not the stale worktree `read_file.out` (which fails the length fixture).
 an initial 18 source/result cases using unchanged legacy fixtures: Vec, Acc,
 order proofs, six function-graph examples, named cases, six QuickSort inputs,
 and two expected rejections. Main passed that initial baseline. After the
-September 13 fixed-index induction audit, the 20-case gate passes 13: eight
+September 13 fixed-index induction audit, the 20-case gate passed 13: eight
 legacy positive cases, one justified admission of a historical negative request,
 and four rejection checks. Compared with 11/19, this adds a counterexample and
 corrects the old order fixture's expected outcome; it is not two restored legacy
 programs. That fixture violates its result index under evaluation on Main
-`63b00eb` (counterexample below). The seven failing entries are named graph
-cases and six QuickSort results, not seven independent compiler defects.
+`63b00eb` (counterexample below). The subsequent coverage audit corrects the
+named-case fixture to rejection, yielding 14/20, not another restored positive
+program: its omitted nil case is reachable. The six remaining failing entries
+are QuickSort results blocked by the same whole-file termination request.
 QuickSort still fails. Indexed induction now preserves
 the checked ambient generalization; unchanged `accessibleSucc`, `natAccessible`
 and their `::` checks succeed. Application-domain constraints close the
@@ -100,6 +102,17 @@ September 13 compatibility follow-up:
   Validation: `check-acceptance` passes all preceding targets, including the
   new source/image result checks, then fails at the known compatibility gate
   (13/20). This follow-up does not increase that legacy compatibility count.
+- [x] Check a post-hoc input/output specification of the existing `length`.
+  `length-output-proof.p` now declares an independent `LengthOf xs n` IADT
+  after defining length, then synthesizes `lengthCorrect` by induction on
+  `@length xs n`. Its explicit `::` post-check requires `LengthOf xs n`;
+  claiming `LengthOf xs zero` instead is rejected. `*length` supplies the
+  graph witness to this proof; consumers return the expected lengths for
+  empty and nonempty inputs. This strengthens the earlier Unary output test
+  without adding a length rule or rewriting length as a certified function.
+  Source chunks 1/64 and unfinished/completed image resaves pass ASan/UBSan;
+  invalid coverage and property claims still reject after unfinished resaves.
+  QuickSort post-hoc properties remain unfinished.
 - [ ] Restore the legacy termination contract, not merely the intrinsic name.
   `context_and_type_lowering.inc` in the legacy frontend constructs TOTAL
   computation codomains for ordinary source arrows; `totality_evidence.inc`
@@ -275,7 +288,7 @@ unchanged; computations over logical hypotheses use the extension below.
   property, not a newly accepted QuickSort. Targeted ASan/UBSan result/rejection
   and Match allocation-origin tests pass. No new Core/rule/wire tag or Replay
   path is introduced; Main promotion remains open.
-- [ ] Remaining compatibility blockers: named Graph cases and QuickSort.
+- [ ] Remaining compatibility blocker: QuickSort's termination contract.
   `accessibleSucc`, `partition` and `quickSortAcc` now compile, but
   `#.terminates` is not connected in the new source environment. These are
   missing semantics, not checkpoint performance tasks; connecting the name
@@ -781,11 +794,25 @@ still fails overall. No Main promotion is justified by these kernel tests.
   Normal checks/examples/results, source image resaves and targeted ASan/UBSan
   comparisons/rejections pass. Compatibility remains 9/19 because the unchanged
   named-case fixture also requires the separate omitted-case decision below.
-- [ ] Settle omitted-case semantics independently of omitted field names.
-  The legacy named-case fixture's `selectGraph` omits `nil` for arbitrary input;
-  it is not established unreachable. Do not invent a branch or equate its result
-  with another case to pass the fixture. Admission needs coverage/refinement
-  evidence or an explicitly agreed partial-computation rule; it is not a naming fix.
+- [x] Settle omitted-case semantics independently of omitted field names.
+  Source clauses are resolved into constructor slots before building their
+  scopes. An omitted body is admitted only when existing index-path Identity
+  evidence proves that constructor unreachable; ordinary transport supplies
+  its branch for the unchanged kernel eliminator. Vec and generated length
+  graphs test omitted nil/cons cases, value and raw-function results. Unknown
+  indices cannot justify omission. No partial-computation rule was introduced.
+  `function-graph-missing-case.p` reproduces the old admission defect: Main
+  `63b00eb --trace-source-export-evaluation main` succeeds but returns a closed
+  `MATCH(nil, CASE(cons ...))`. The legacy named-case integration test only
+  greps the printed `selectGraph` term and never runs its missing case. The
+  unchanged legacy fixture is now an expected rejection, not claimed restored.
+  A source field name is not an exhaustiveness proof. Generating another
+  function graph from a sparse source Match still needs a source-slot layout
+  for the synthesized impossible branch; this change does not claim that case.
+  Validation: full `check-acceptance` passes all preceding gates, then reports
+  14/20 at compatibility (the remaining entries are unchanged QuickSort).
+  Targeted ASan/UBSan and the full sanitized image CLI pass, including partial
+  and completed resaves. Main promotion remains open.
 - [x] Preserve leading raw Lambda parameters using existing family abstraction
   for `@f` and Lambda abstraction for `*f`. The unchanged dependent-spine
   `headOr` fixture and its proof-consuming `certified` result now pass. The

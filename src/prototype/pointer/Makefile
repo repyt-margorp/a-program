@@ -89,6 +89,9 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/recursive-dependent-package.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/length-output-proof.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/length-output-proof.p emptyMain emptyExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/length-output-proof.p specMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/length-output-proof.p emptySpecMain emptyExpected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/length-output-proof-wrong.p
 	$(BUILD)/program_test --reject $(ROOT)../tests/fixtures/negative/function_graph_incompatible_recursive_property.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/computed-family-member.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/computed-family-member.p nested nestedExpected
@@ -146,6 +149,12 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/applied-family-alias.p indexedMain indexedExpected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/applied-family-alias-wrong.p
 	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/applied-family-alias-thunk.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-refined-case.p main expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-missing-case.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-omitted-case.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-omitted-case.p functionMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-omitted-case.p emptyMain emptyExpected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-omitted-case-wrong.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-rigid-induction-invalid.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/acc-accessible-successor.p lowerMain zeroExpected
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-ih-environment.p
