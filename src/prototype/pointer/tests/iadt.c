@@ -1100,6 +1100,41 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 	const struct pg_evidence *local_type = pg_prove_return_type(typing, classifiers,
 		pg_prove_family_application(typing, pg_prove_projection(typing, dependent, family), local));
 	assert(!pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, classifiers, dependent, local_type)));
+	/* A dependent Pi may survive removal of an unrelated ambient field.
+	 * Lift the context action under its binders before applying arguments. */
+	for (size_t arity = 1; arity <= 2; ++arity) {
+		const struct pg_object *x = pg_binder(typing->graph);
+		const struct pg_evidence *xc = pg_prove_context_extension(typing, unused, x,
+			pg_prove_projection(typing, unused, nat));
+		const struct pg_evidence *result_type = pg_prove_return_type(typing, classifiers,
+			pg_prove_family_application(typing, pg_prove_projection(typing, xc, family),
+				pg_prove_variable(typing, xc, x)));
+		if (arity == 2) {
+			const struct pg_evidence *yc = pg_prove_context_extension(typing, xc, pg_binder(typing->graph),
+				pg_prove_projection(typing, xc, nat));
+			result_type = pg_prove_pi(typing, classifiers, yc, pg_prove_projection(typing, yc, result_type));
+		}
+		const struct pg_evidence *pi = pg_prove_pi_constant_codomain(typing,
+			pg_prove_pi(typing, classifiers, unused, pg_prove_pi(typing, classifiers, xc, result_type)));
+		assert(pi && !pg_prove_pi_codomain(typing, pi,
+			pg_prove_type_value(typing, pg_prove_projection(typing, fields, nat))));
+		for (size_t mode = 0; mode < 3; ++mode) {
+			const struct pg_evidence *context = mode == 1 ? unused : mode == 2 ? empty : fields;
+			const struct pg_evidence *actual = mode == 2 ? zero : pg_prove_projection(typing, context, field);
+			const struct pg_evidence *applied = mode == 2
+				? pg_prove_reindex(typing, pg_prove_substitution(typing, fields, empty, 1, &zero), pi)
+				: pg_prove_projection(typing, context, pi);
+			applied = pg_prove_pi_codomain(typing, applied, actual);
+			if (arity == 2) applied = pg_prove_pi_codomain(typing, applied, pg_prove_projection(typing, context, zero));
+			applied = pg_prove_return_content(typing, applied);
+			assert(applied && pg_inductive_instance(typing, applied, &recovered));
+			assert(recovered.schema == schema && pg_evidence_context(recovered.parameters) == pg_evidence_context(context));
+			last = pg_evidence_premise(recovered.indices, pg_evidence_premise_count(recovered.indices) - 1);
+			assert(pg_alpha_equal(pg_evidence_subject(last)->core, pg_evidence_subject(actual)->core) == 1);
+			common_rule(typing, classifiers, applied);
+			common_rule(typing, classifiers, last);
+		}
+	}
 	for (size_t injection = 0; injection < 2; ++injection) {
 		const struct pg_evidence *nv = pg_prove_variable(typing, mc, n), *mv = pg_prove_variable(typing, mc, m);
 		const struct pg_evidence *parameters = pg_prove_substitution_projection(typing, empty, mc);

@@ -282,6 +282,18 @@ struct evidence_frame {
 static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 	const struct pg_evidence *computation);
 
+static const struct pg_evidence *project_image(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *image,
+	const struct pg_term *core, const struct pg_term *classifier,
+	enum pg_evidence_judgement judgement)
+{
+	const struct pg_evidence *result = pg_prove_projection(typing, context, image);
+	if (!result || result->judgement != judgement) return NULL;
+	if (pg_alpha_equal(result->subject->core, core) != 1) return NULL;
+	if (pg_alpha_equal(result->classifier, classifier) != 1) return NULL;
+	return result;
+}
+
 /* Recover an image from retained origins in a smaller context. Reconstruct
  * ordinary rules, including type/value views and substitution images. The
  * judgement kind is retained along with the subject and classifier. */
@@ -309,20 +321,21 @@ start:
 		}
 	}
 	while (image) {
-		result = pg_prove_projection(typing, context, image);
-		if (result && result->judgement == judgement && pg_alpha_equal(result->subject->core, core) == 1 &&
-			pg_alpha_equal(result->classifier, classifier) == 1) goto resolved;
-		result = NULL;
+		result = project_image(typing, context, image, core, classifier, judgement);
+		if (result) goto resolved;
 		if (image->rule == PG_CONTEXT_PROJECTION) image = image->premises[1];
 		else if (image->rule == PG_TYPE_CONVERSION) image = image->premises[0];
 		else if (image->rule == PG_RETURN_VALUE) image = return_value_origin(typing, image->premises[0]);
-		else if (image->rule == PG_CONSTRUCTOR_INTRO || image->rule == PG_VALUE_FROM_TYPE ||
+		else if (image->rule == PG_CONSTRUCTOR_INTRO || image->rule == PG_TYPE_FAMILY_APP || image->rule == PG_VALUE_FROM_TYPE ||
 			image->rule == PG_TYPE_FROM_VALUE || image->rule == PG_PURE_NORMALIZATION) {
 			source = image; map = NULL; goto rebuild;
 		}
 		else if (image->rule == PG_REINDEX) {
 			map = image->premises[0];
 			source = image->premises[1];
+			/* Substitution can leave a retained closed proof unchanged. */
+			result = project_image(typing, context, source, core, classifier, judgement);
+			if (result) goto resolved;
 			if (source->rule == PG_VARIABLE)
 				image = pg_substitution_image(typing, map, source->subject->core->as.reference);
 			else if (source->rule == PG_REINDEX)
@@ -342,7 +355,8 @@ start:
 				image = pg_prove_reindex(typing, map, source->premises[0]);
 			else if (source->rule == PG_RETURN_VALUE)
 				image = pg_prove_reindex(typing, map, return_value_origin(typing, source->premises[0]));
-			else if (source->rule == PG_CONSTRUCTOR_INTRO) goto rebuild;
+			else if (source->rule == PG_CONSTRUCTOR_INTRO || source->rule == PG_TYPE_FAMILY_APP ||
+				source->rule == PG_VALUE_FROM_TYPE || source->rule == PG_TYPE_FROM_VALUE) goto rebuild;
 			else { source = image; map = NULL; goto rebuild; }
 		}
 		else goto done;
@@ -396,6 +410,7 @@ children:
 		break;
 	case PG_VALUE_FROM_TYPE: result = pg_prove_type_value(typing, frame->outputs[0]); break;
 	case PG_TYPE_FROM_VALUE: result = pg_prove_value_type(typing, frame->outputs[0]); break;
+	case PG_TYPE_FAMILY_APP: result = pg_prove_family_application(typing, frame->outputs[0], frame->outputs[1]); break;
 	case PG_PURE_NORMALIZATION:
 		result = pg_prove_normalization(typing, frame->outputs[0], pg_evidence_normalization(frame->source));
 		break;
@@ -436,11 +451,22 @@ const struct pg_evidence *pg_prove_substitution_rebase(struct pg_typing *typing,
 	return result;
 }
 
+/* A lifted constant-codomain step is represented by its ordinary Pi
+ * inversion at a fresh variable. That variable retains the target scope. */
+static const struct pg_evidence *strengthened_context(const struct pg_evidence *step)
+{
+	if (step->rule == PG_PI_CONSTANT_CODOMAIN)
+		return step->premises[0]->premises[0]->premises[0];
+	if (step->rule == PG_PI_CODOMAIN && step->premises[1]->rule == PG_VARIABLE)
+		return step->premises[1]->premises[0];
+	return NULL;
+}
+
 static const struct pg_evidence *evidence_map_step(struct pg_typing *typing,
 	const struct pg_evidence *map, const struct pg_evidence *step)
 {
-	if (step->rule == PG_PI_CONSTANT_CODOMAIN)
-		return pg_prove_substitution_rebase(typing, step->premises[0]->premises[0]->premises[0], map);
+	const struct pg_evidence *context = strengthened_context(step);
+	if (context) return pg_prove_substitution_rebase(typing, context, map);
 	const struct pg_evidence *substitution = step->premises[0];
 	if (step->rule == PG_CONTEXT_PROJECTION)
 		substitution = pg_prove_substitution_projection(typing, map->premises[1], substitution);
@@ -460,8 +486,8 @@ static const struct pg_evidence *evidence_image(struct pg_typing *typing,
 {
 	for (; value && frames; frames = frames->next) {
 		const struct pg_evidence *step = frames->proof;
-		if (step->rule == PG_PI_CONSTANT_CODOMAIN)
-			value = rebase_image(typing, step->premises[0]->premises[0]->premises[0], value);
+		const struct pg_evidence *context = strengthened_context(step);
+		if (context) value = rebase_image(typing, context, value);
 		else if (step->rule == PG_CONTEXT_PROJECTION)
 			value = pg_prove_projection(typing, step->premises[0], value);
 		else value = pg_prove_reindex(typing, step->premises[0], value);
@@ -478,8 +504,8 @@ static const struct pg_evidence *variable_frame(struct pg_typing *typing,
 	const struct pg_object *binder = variable->subject->core->as.reference;
 	if (step->rule == PG_CONTEXT_PROJECTION)
 		return pg_prove_variable(typing, step->premises[0], binder);
-	if (step->rule == PG_PI_CONSTANT_CODOMAIN)
-		return pg_prove_variable(typing, step->premises[0]->premises[0]->premises[0], binder);
+	const struct pg_evidence *context = strengthened_context(step);
+	if (context) return pg_prove_variable(typing, context, binder);
 	return pg_substitution_image(typing, step->premises[0], binder);
 }
 
@@ -592,6 +618,50 @@ done:
 	return result;
 }
 
+static struct evidence_frame *pi_argument_frames(struct pg_inductive_recovery *work,
+	const struct pg_evidence *pi, const struct pg_evidence *argument,
+	const struct evidence_frame *frames)
+{
+	struct pg_typing *typing = work->typing;
+	const struct pg_evidence *extended = pi->premises[0];
+	struct evidence_frame *result = NULL, **tail = &result;
+	for (;;) {
+		const struct pg_evidence *variable = pg_prove_variable(typing, extended, extended->context->binder);
+		const struct pg_evidence *map, *proof;
+		if (!frames) {
+			map = pg_prove_substitution_projection(typing, extended->premises[0], extended->premises[0]);
+			map = pg_prove_substitution_pair(typing, map, extended, argument);
+			proof = pg_prove_reindex(typing, map, variable);
+		} else {
+			const struct pg_evidence *step = frames->proof;
+			const struct pg_evidence *context = strengthened_context(step);
+			if (context) {
+				extended = pg_prove_context_extension(typing, context, extended->context->binder,
+					pg_prove_pi_domain(typing, step));
+				if (!extended) return NULL;
+				proof = pg_prove_pi_codomain(typing, pg_prove_projection(typing, extended, step),
+					pg_prove_variable(typing, extended, extended->context->binder));
+			} else {
+				map = step->premises[0];
+				if (step->rule == PG_CONTEXT_PROJECTION)
+					map = pg_prove_substitution_projection(typing, extended->premises[0], map);
+				map = pg_prove_substitution_lift(typing, map, extended, pg_binder(typing->graph));
+				if (!map) return NULL;
+				proof = pg_prove_reindex(typing, map, variable);
+				extended = map->premises[1];
+			}
+		}
+		if (!proof) return NULL;
+		struct evidence_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
+		if (!frame) return NULL;
+		*frame = (struct evidence_frame){proof, NULL};
+		*tail = frame;
+		tail = &frame->next;
+		if (!frames) return result;
+		frames = frames->next;
+	}
+}
+
 /* Select the retained formation before transporting its required parameters.
  * Rebuilding the whole Pi context would demand images for unused binders
  * already removed by constant-codomain projection. */
@@ -646,11 +716,10 @@ static const struct pg_evidence *pi_component(struct pg_inductive_recovery *work
 			if (component == PG_PI_DOMAIN) {
 				pi = extended->premises[1];
 			} else {
-				const struct pg_evidence *map = argument ? evidence_map(typing, extended->premises[0], frames) : NULL;
-				if (map) {
-					map = pg_prove_substitution_pair(typing, map, extended, argument);
-					pi = pg_prove_reindex(typing, map, pi->premises[1]);
-					frames = NULL;
+				if (argument) {
+					frames = pi_argument_frames(work, pi, argument, frames);
+					if (!frames) goto done;
+					pi = pi->premises[1];
 				} else {
 					const struct pg_evidence *constant = pg_prove_pi_constant_codomain(typing, pi);
 					if (!constant) goto done;

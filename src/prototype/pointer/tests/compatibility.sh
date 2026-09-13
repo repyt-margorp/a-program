@@ -46,6 +46,7 @@ done <<'CASES'
 0 typing/explicit_index_family_tail_check
 0 typing/explicit_index_family_tail_infer
 0 typing/explicit_index_family_acc_eliminator_check
+0 typing/dependent_recursive_comparison_check
 0 typing/insertion_sort_check main expected
 0 typing/eager_insertion_check main expected
 0 typing/eager_insertion_check earlyMain earlyExpected
@@ -85,3 +86,18 @@ CASES
 # function-graph-refined-case tests a valid nonempty input in the main suite.
 printf 'source compatibility and selected results: %s/%s passed\n' "$((total - failed))" "$total"
 test "$failed" -eq 0
+
+# Check both base cases and recursive directions, including the returned LE
+# witnesses, using the original module through ordinary imports and Solve.
+directory=$(mktemp -d)
+trap 'rm -rf "$directory"' EXIT
+client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-comparison-results.p"
+for steps in 0 100000; do
+	code=0
+	"$checker" --steps "$steps" --imports "$fixtures/typing/dependent_recursive_comparison_check.p" \
+		--save "$directory/comparison.a" "$client" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	for name in baseLeft baseRight less greater same; do
+		"$runtime" --equal-image "$directory/comparison.a" "$name" "${name}Expected"
+	done
+done

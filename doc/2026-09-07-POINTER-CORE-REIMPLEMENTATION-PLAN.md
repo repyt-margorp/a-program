@@ -23,7 +23,7 @@ reason to delay compilation compatibility. Neither milestone requires
 eliminating recomputation during image loading. The full rewrite remains open.
 
 Current milestone summary (September 13): selected unchanged legacy sources
-and all six QuickSort results pass the 27-case compatibility gate. The existing
+and all six QuickSort results pass the 28-case compatibility gate. The existing
 length has a checked post-hoc property proof; QuickSort does not yet. Completing
 the wider legacy inventory remains necessary before claiming full compatibility.
 No checkpoint optimization or broader Higher Identity work is a prerequisite
@@ -36,7 +36,7 @@ for that first delivery; preserve existing checks without expanding this gate.
   families, dependent motives, recursive fields and Acc-based recursion. Keep
   `::` post-synthesis; do not add length/QuickSort-specific kernel rules.
 - [x] Compile the selected existing function-graph length fixtures and fuel-free
-  QuickSort fixture unchanged, and check their runtime results (27/27 gate).
+  QuickSort fixture unchanged, and check their runtime results (28/28 gate).
 - [ ] Support an explicit property proof using the graph/witness of an already-defined function, not
   a separately rewritten certified implementation. Witness production alone
   does not establish a property such as preservation of length or sortedness.
@@ -123,19 +123,34 @@ September 13 compatibility follow-up:
   Full debug and ASan/UBSan `check-acceptance` pass, including both new source
   result checks, the wrong-index rejection and the unchanged 27/27 legacy
   gate. The focused nested-index source was unsupported before this change.
-- [ ] Restore unchanged `dependent_recursive_comparison_check.p`. A fresh
-  Main `63b00eb` run accepts it. The pointer compiler previously rejected at
-  5,798 steps because its IH retained a zero index. After the changes above,
-  the candidate has the intended dependent shape, but synthesis is still
-  unsupported: nominal recovery for the IH's applied Pi result cannot carry
-  a dependent codomain through `PG_PI_CONSTANT_CODOMAIN` removal of an unused
-  context field. `pi_component` attempts a map for the whole original Pi
-  context, including that removed field, and its constant-result fallback
-  does not apply to a genuinely dependent Pi. Fix the retained formation/map
-  traversal, not a global lookup by Core or expected-type admission. This
-  remains outside the passing 27-case gate; do not count the new small fixture
-  as restoration of the full comparison program. Vec append and QuickSort's
-  post-hoc property remain separate unfinished compatibility requirements.
+- [x] Restore unchanged `dependent_recursive_comparison_check.p`, accepted
+  by Main `63b00eb`. It now compiles in 6,802 Solve steps and belongs to the
+  28-case gate. Nominal recovery lifts context transformations under the Pi
+  binder before substituting its argument, then transports only the selected
+  formation's parameters. It no longer demands an image for an unused ambient
+  field already removed by `PG_PI_CONSTANT_CODOMAIN`. All transformations use
+  existing context/Pi/substitution evidence, not another kernel rule or Core
+  lookup. Strengthening also reuses a retained proof when checked projection
+  preserves its subject, classifier and judgement; rebuilding that unchanged
+  closed proof had regressed `indexed-block-demands.p` to unsupported.
+  Kernel tests cover one/two dependent arguments, projection, substitution,
+  removed fields, and a wrong argument classifier. The runtime client imports
+  the original comparison without copying/editing it and checks both base
+  cases, both recursive directions and equality, including the returned LE
+  witnesses. These pass at chunk sizes 1/64 from unfinished/completed images.
+  Full debug and ASan/UBSan `check-acceptance` pass (28/28 legacy gate).
+  Vec append and QuickSort's post-hoc property remain unfinished.
+- [ ] Restore the all-refuted Match case in unchanged
+  `impossible_index_branch_check.p`. Main `63b00eb` accepts its `absurd`
+  definition and post-check; the pointer compiler remains pending after 515
+  steps. All constructors contradict `OnlyZero (succ index)`. Current source
+  synthesis skips refuted bodies, so no branch supplies a result motive.
+  Define a synthesis-only way to obtain that motive from the written source;
+  do not feed the enclosing `::` back into inference or treat more fuel as a
+  fix. Preserve existing omission/refutation and unreachable-body checks.
+  The same legacy integration script's `indexed_branch_rebuild_check.p`,
+  `residual_index_equation_negative.p`, and level2 `02_tree.p` compile in the
+  current debug build, but are not yet counted in the permanent 28-case gate.
 - [x] Connect source result synthesis to the existing `PG_TOTAL_PURE_VALUE`
   rule after checked RETURN inversion fails. The normalized classifier must
   prove TOTAL and an empty closed effect row; no new admission rule is added.
