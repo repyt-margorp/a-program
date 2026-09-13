@@ -1047,6 +1047,29 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 	const struct pg_evidence *duplicate[] = {successor, successor};
 	assert(!pg_prove_pattern_type(typing, classifiers, empty,
 		pg_prove_substitution(typing, mc, fields, 2, duplicate), body));
+	const struct pg_evidence *wrapped = body, *wrapped_expected = expected;
+	for (size_t i = 0; i < 32; ++i) {
+		wrapped = pg_prove_return_type(typing, classifiers, pg_prove_thunk_type(typing, classifiers, wrapped));
+		wrapped_expected = pg_prove_return_type(typing, classifiers,
+			pg_prove_thunk_type(typing, classifiers, wrapped_expected));
+	}
+	const struct pg_evidence *under_wrappers = pg_prove_pattern_type(typing, classifiers, empty, pattern, wrapped);
+	assert(under_wrappers && pg_alpha_equal(pg_evidence_subject(under_wrappers)->core,
+		pg_evidence_subject(wrapped_expected)->core) == 1);
+	common_rule(typing, classifiers, under_wrappers);
+	const struct pg_object *argument = pg_binder(typing->graph);
+	const struct pg_evidence *argument_scope = pg_prove_context_extension(typing, fields, argument,
+		pg_prove_projection(typing, fields, nat));
+	const struct pg_evidence *pi_body = pg_prove_pi(typing, classifiers, argument_scope,
+		pg_prove_projection(typing, argument_scope, wrapped));
+	const struct pg_evidence *pi_expected_scope = pg_prove_context_extension(typing, nc, argument,
+		pg_prove_projection(typing, nc, nat));
+	const struct pg_evidence *pi_expected = pg_prove_pi(typing, classifiers, pi_expected_scope,
+		pg_prove_projection(typing, pi_expected_scope, wrapped_expected));
+	const struct pg_evidence *under_pi = pg_prove_pattern_type(typing, classifiers, empty, pattern, pi_body);
+	assert(under_pi && pg_alpha_equal(pg_evidence_subject(under_pi)->core,
+		pg_evidence_subject(pi_expected)->core) == 1);
+	common_rule(typing, classifiers, under_pi);
 	/* Removing an unused domain must retain constructed index images, even
 	 * when their value proofs were built inside that larger context. */
 	const struct pg_evidence *unused = pg_prove_context_extension(typing, fields,

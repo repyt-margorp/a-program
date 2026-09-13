@@ -2646,6 +2646,11 @@ static int branch_dependencies(const struct pg_source_scope *scope,
 			syntax = syntax->left;
 		}
 		if (syntax->kind == PG_SYNTAX_DECLARATION) continue;
+		if (syntax->kind == PG_SYNTAX_QUALIFIED) {
+			/* The member is resolved in its owner, not the ambient scope. */
+			if (marker_push(&arena, &tasks, syntax->left, shadow)) goto done;
+			continue;
+		}
 		if (scrutinee && syntax->kind == PG_SYNTAX_ATOM && syntax->token.kind == PG_TOKEN_IDENT) {
 			const struct marker_shadow *bound = shadow;
 			while (bound && !same_name(bound->name, syntax->token)) bound = bound->parent;
@@ -2681,6 +2686,7 @@ static int branch_dependencies(const struct pg_source_scope *scope,
 		}
 		if (syntax->kind == PG_SYNTAX_ELIMINATION) {
 			if (marker_push(&arena, &tasks, syntax->left, shadow)) goto done;
+			int handler = handler_syntax(syntax);
 			for (size_t i = 0; i < syntax->item_count; ++i) {
 				const struct pg_syntax *clause = syntax->items[i].expression;
 				const struct marker_shadow *inner = shadow;
@@ -2690,7 +2696,8 @@ static int branch_dependencies(const struct pg_source_scope *scope,
 					inner = marker_bind(&arena, inner, name);
 					if (!inner) goto done;
 				}
-				if (marker_push(&arena, &tasks, clause->left, shadow)) goto done;
+				if (clause->left->kind != PG_SYNTAX_ATOM || handler)
+					if (marker_push(&arena, &tasks, clause->left, shadow)) goto done;
 				if (marker_push(&arena, &tasks, clause->right, inner)) goto done;
 			}
 			continue;
@@ -5105,15 +5112,28 @@ static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesi
 			++result->nested_checked;
 			enqueue(synthesis, job); return;
 		}
-		struct pg_synthesis_job *constant = pg_synthesis_constant_motive(synthesis, context,
-			source_context(part->scope), part->body);
-		if (!constant) goto error;
-		if (constant->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, constant); return; }
-		if (constant->status != PG_SYNTHESIS_DONE) {
+		const struct pg_evidence *fields = source_context(part->scope);
+		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, part->body);
+		struct pg_synthesis_job *formation = request_job(synthesis, CLASSIFIER_FORMATION_JOB,
+			pg_synthesis_evidence(synthesis, fields), body);
+		if (!formation) goto error;
+		if (formation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, formation); return; }
+		if (formation->status == PG_SYNTHESIS_ERROR) goto error;
+		if (formation->status == PG_SYNTHESIS_DONE) {
+			/* A nested case proposes a family at its scrutinee, not a result
+			 * pinned to this constructor. The complete branches still check it. */
+			const struct pg_evidence *pattern = match_constructor_pattern(synthesis,
+				result->nested, result->nested_checked, fields);
+			type = pg_prove_pattern_type(typing, synthesis->classifiers, context, pattern, formation->result);
+			const struct pg_evidence *actual = pg_prove_inductive_motive_substitution(typing,
+				synthesis->classifiers, nested->instance.formation, nested->instance.parameters,
+				match_motive_context(synthesis, result->nested), context, result->nested->checking_term);
+			type = pg_prove_reindex(typing, actual, type);
+		}
+		if (!type) {
 			++result->nested_checked;
 			enqueue(synthesis, job); return;
 		}
-		type = constant->result;
 		goto result_type;
 	}
 	if (syntax->kind != PG_SYNTAX_APPLICATION || hypothesis_syntax(syntax)) goto skip;

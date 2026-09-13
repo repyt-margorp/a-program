@@ -3247,53 +3247,123 @@ static const struct pattern_variable *pattern_variable(const struct pg_index *in
 	return NULL;
 }
 
-/* Invert whole constructor-pattern indices, not their individual fields.
- * Rebuild the nominal family's checked index substitution; dependent later
- * indices must still type-check after replacement. No equality is asserted. */
+enum pattern_type_phase { PATTERN_TYPE_ENTER, PATTERN_TYPE_RETURN, PATTERN_TYPE_THUNK,
+	PATTERN_TYPE_PI, PATTERN_TYPE_ARGUMENTS, PATTERN_TYPE_PARAMETER };
+
+struct pattern_type_frame {
+	struct pattern_type_frame *parent;
+	const struct pg_evidence *body, *context, *extension;
+	const struct pg_effect_row *effects;
+	enum pg_totality totality;
+	struct pg_inductive_instance instance;
+	const struct pg_evidence **images;
+	size_t count, parameters, next;
+	enum pattern_type_phase phase;
+};
+
+/* Invert whole constructor images through F/U, Pi results and nominal type
+ * arguments. Rebuild with ordinary formation rules, never raw replacement in
+ * a claimed type. The caller checks substitution back to the original body. */
 static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
 	const struct pg_evidence *pattern, const struct pg_evidence *inverse,
 	const struct pg_evidence *body)
 {
 	if (!body) return NULL;
-	const struct pg_effect_row *effects;
-	const struct pg_term *content;
-	enum pg_totality totality;
-	if (!pg_computation_type_view(body->subject->core, &totality, &effects, &content)) return body;
-	struct pg_inductive_instance instance;
-	if (!pg_inductive_instance(typing, pg_prove_return_content(typing, body), &instance) || !instance.indices) return body;
-	size_t count = instance.indices->premise_count - 2;
 	struct pg_graph temporary = {0};
-	const struct pg_evidence *result = body;
-	const struct pg_evidence **images = pg_alloc(&temporary, count * sizeof(*images));
-	if (!images) goto done;
-	for (size_t i = 0; i < count; ++i) images[i] = instance.indices->premises[i + 2];
-	size_t first = instance.parameters->premise_count - 1;
-	int changed = 0;
-	for (size_t i = first; i < count; ++i) {
-		const struct pg_evidence *selected = NULL;
-		const struct pg_evidence *extension = pattern->premises[0];
-		for (size_t j = pattern->premise_count - 2; extension->context != prefix->context;
-			--j, extension = extension->premises[0]) {
-			const struct pg_evidence *image = pattern->premises[j + 1];
-			if (image->subject->core->kind == PG_REFERENCE && image->subject->core->as.reference->kind == PG_BINDER) continue;
-			image = pg_prove_reindex(typing, inverse, image);
-			if (!image || pg_alpha_equal(image->subject->core, images[i]->subject->core) != 1) continue;
-			if (selected) goto done;
-			selected = pg_prove_variable(typing, inverse->premises[1], extension->context->binder);
-			if (!selected) goto done;
+	const struct pg_evidence *result = NULL;
+	struct pattern_type_frame root = {.body = body, .context = inverse->premises[1]};
+	struct pattern_type_frame *frame = &root;
+	while (frame) {
+		const struct pg_evidence *child = NULL, *child_context = frame->context;
+		if (frame->phase == PATTERN_TYPE_ENTER) {
+			const struct pg_term *core = frame->body->subject->core, *content, *domain;
+			const struct pg_object *binder;
+			if (pg_computation_type_view(core, &frame->totality, &frame->effects, &content)) {
+				frame->phase = PATTERN_TYPE_RETURN;
+				child = pg_prove_return_content(typing, frame->body);
+			} else if (pg_thunk_type_view(core, &content)) {
+				frame->phase = PATTERN_TYPE_THUNK;
+				child = pg_prove_thunk_content(typing, frame->body);
+			} else if (pg_pi_view(core, &domain, &binder, &content)) {
+				frame->phase = PATTERN_TYPE_PI;
+				frame->extension = pg_prove_context_extension(typing, frame->context, binder,
+					pg_prove_pi_domain(typing, frame->body));
+				child_context = frame->extension;
+				child = pg_prove_pi_codomain(typing,
+					pg_prove_projection(typing, child_context, frame->body),
+					pg_prove_variable(typing, child_context, binder));
+			} else if (pg_inductive_instance(typing, frame->body, &frame->instance)) {
+				frame->phase = PATTERN_TYPE_ARGUMENTS;
+				frame->parameters = frame->instance.parameters->premise_count - 2;
+				const struct pg_evidence *map = frame->instance.indices
+					? frame->instance.indices : frame->instance.parameters;
+				frame->count = map->premise_count - 2;
+				if (frame->count > SIZE_MAX / sizeof(*frame->images)) goto fail;
+				frame->images = pg_alloc(&temporary, frame->count * sizeof(*frame->images));
+				if (frame->count && !frame->images) goto fail;
+				for (size_t i = 0; i < frame->count; ++i) frame->images[i] = map->premises[i + 2];
+				continue;
+			} else {
+				result = frame->body;
+				frame = frame->parent;
+				continue;
+			}
+			if (!child) goto fail;
+		} else if (frame->phase <= PATTERN_TYPE_PI) {
+			if (frame->phase == PATTERN_TYPE_RETURN) result = pg_prove_computation_type(typing, classifiers,
+				frame->totality, frame->effects, result);
+			else if (frame->phase == PATTERN_TYPE_THUNK) result = pg_prove_thunk_type(typing, classifiers, result);
+			else result = pg_prove_pi(typing, classifiers, frame->extension, result);
+			if (!result) goto fail;
+			frame = frame->parent;
+			continue;
+		} else {
+			if (frame->phase == PATTERN_TYPE_PARAMETER) {
+				frame->images[frame->next - 1] = pg_prove_type_value(typing, result);
+				if (!frame->images[frame->next - 1]) goto fail;
+				frame->phase = PATTERN_TYPE_ARGUMENTS;
+			}
+			if (frame->next == frame->count) {
+				const struct pg_evidence *parameters = pg_prove_substitution(typing,
+					frame->instance.parameters->premises[0], frame->context,
+					frame->parameters, frame->images);
+				result = pg_prove_reindex(typing, parameters, frame->instance.formation);
+				for (size_t i = frame->parameters + 1; result && i < frame->count; ++i)
+					result = pg_prove_family_application(typing, result, frame->images[i]);
+				if (!result) goto fail;
+				frame = frame->parent;
+				continue;
+			}
+			size_t i = frame->next++;
+			if (i == frame->parameters) continue; /* Rebuild Self from the new parameters. */
+			const struct pg_evidence *selected = NULL;
+			const struct pg_evidence *extension = pattern->premises[0];
+			for (size_t j = pattern->premise_count - 2; extension->context != prefix->context;
+				--j, extension = extension->premises[0]) {
+				const struct pg_evidence *image = pattern->premises[j + 1];
+				if (image->subject->core->kind == PG_REFERENCE && image->subject->core->as.reference->kind == PG_BINDER) continue;
+				image = pg_prove_reindex(typing, inverse, image);
+				if (!image || pg_alpha_equal(image->subject->core, frame->images[i]->subject->core) != 1) continue;
+				if (selected) goto fail;
+				selected = pg_prove_variable(typing, frame->context, extension->context->binder);
+				if (!selected) goto fail;
+			}
+			if (selected) { frame->images[i] = selected; continue; }
+			child = pg_prove_value_type(typing, frame->images[i]);
+			if (!child) continue;
+			frame->phase = PATTERN_TYPE_PARAMETER;
 		}
-		if (selected) { images[i] = selected; changed = 1; }
+		struct pattern_type_frame *next = pg_alloc(&temporary, sizeof(*next));
+		if (!next) goto fail;
+		*next = (struct pattern_type_frame){.parent = frame, .body = child, .context = child_context};
+		frame = next;
 	}
-	if (changed) {
-		const struct pg_evidence *map = pg_prove_substitution(typing,
-			instance.indices->premises[0], inverse->premises[1], count, images);
-		const struct pg_evidence *type = family_in_scope(typing, instance.formation, instance.parameters, map);
-		if (type) result = pg_prove_computation_type(typing, classifiers, totality, effects, type);
-	}
-done:
 	pg_graph_destroy(&temporary);
 	return result;
+fail:
+	pg_graph_destroy(&temporary);
+	return NULL;
 }
 
 const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,

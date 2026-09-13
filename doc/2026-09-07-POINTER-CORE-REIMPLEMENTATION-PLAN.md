@@ -102,6 +102,40 @@ checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
 
 September 13 compatibility follow-up:
 
+- [x] Extend the existing checked pattern-result proposal through F/U, Pi
+  codomains and nominal type-valued parameters. Previously it visited only
+  the outer indexed family, so `Either (LE x y) (LE y x)` was opaque to it.
+  One explicit frame stack rebuilds ordinary formations and parameter/index
+  applications; no new proof rule, Core tag or conversion equation is added.
+  Whole constructor images are abstracted, not their unavailable predecessor
+  fields. The full pattern must still instantiate the candidate back to the
+  original branch type, and all reachable branches must check the proposal.
+  Nested Match result discovery now uses that same proposal at the nested
+  scrutinee instead of retaining a base constructor as a fixed result index.
+  Lexical IH/scrutinee discovery also distinguishes member names and bare ADT
+  clause labels from ambient variables; `.left`/`@left` must not count as uses
+  of an argument named `left`. Handler operation references remain references.
+  `nested-index-motive.p` covers index abstraction inside a parameter under
+  Pi, result evaluation, and a recursive binder/member/case-name collision.
+  Its wrong-index counterpart rejects despite the shared erased Box value.
+  Kernel tests cover nested F/U wrappers, Pi results, substitution back and
+  ambiguous images. Source/image tests include unfinished image resaves.
+  Full debug and ASan/UBSan `check-acceptance` pass, including both new source
+  result checks, the wrong-index rejection and the unchanged 27/27 legacy
+  gate. The focused nested-index source was unsupported before this change.
+- [ ] Restore unchanged `dependent_recursive_comparison_check.p`. A fresh
+  Main `63b00eb` run accepts it. The pointer compiler previously rejected at
+  5,798 steps because its IH retained a zero index. After the changes above,
+  the candidate has the intended dependent shape, but synthesis is still
+  unsupported: nominal recovery for the IH's applied Pi result cannot carry
+  a dependent codomain through `PG_PI_CONSTANT_CODOMAIN` removal of an unused
+  context field. `pi_component` attempts a map for the whole original Pi
+  context, including that removed field, and its constant-result fallback
+  does not apply to a genuinely dependent Pi. Fix the retained formation/map
+  traversal, not a global lookup by Core or expected-type admission. This
+  remains outside the passing 27-case gate; do not count the new small fixture
+  as restoration of the full comparison program. Vec append and QuickSort's
+  post-hoc property remain separate unfinished compatibility requirements.
 - [x] Connect source result synthesis to the existing `PG_TOTAL_PURE_VALUE`
   rule after checked RETURN inversion fails. The normalized classifier must
   prove TOTAL and an empty closed effect row; no new admission rule is added.

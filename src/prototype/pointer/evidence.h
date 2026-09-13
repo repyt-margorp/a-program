@@ -537,9 +537,10 @@ const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	const struct pg_object *binder);
 /* Solve T[pattern] = body for a computation-type formation T. The checked
  * substitution must fix prefix; variable images in its suffix are distinct.
- * Whole nonvariable images can also abstract an indexed family's argument in
- * an F result. Their fields supply no inverse binding. Reconstructed index
- * substitutions are checked, including dependencies between indices. A
+ * Whole nonvariable images can also abstract nominal type arguments, through
+ * F/U wrappers, Pi results and type-valued parameters. Their fields supply no
+ * inverse binding. Reconstructed applications and parameter substitutions
+ * are checked, including dependencies between arguments. A
  * candidate must instantiate back to the original body under the full map.
  * Unused destination fields are discharged by ordinary Pi formation and
  * constant-codomain inversion. NULL includes nonpatterns and escaping fields;
