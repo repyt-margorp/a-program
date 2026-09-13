@@ -4,7 +4,8 @@
 #include <stdio.h>
 
 /* Reconstructible source environments and source/definition/rule roots, including pending modules.
- * APGSRC36 uses TOTAL source RETURN/arrow contracts and retains explicit F
+ * APGSRC38 preserves already suspended values under surface &, admits checked
+ * termination requests, and uses TOTAL source RETURN/arrow contracts with F
  * totality contracts, context-authoritative Pi premises and lexical
  * result-to-graph binder associations in the ordinary
  * context-binding records. These are names, not imported graph certificates.
@@ -42,9 +43,9 @@
  * Streams are borrowed. */
 int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots);
-/* APGSRC37 optionally retains raw reduction records in the same Core table.
+/* APGSRC39 optionally retains raw reduction records in the same Core table.
  * Reading leaves them in program->retained_reductions, without checking or
- * installing results. NULL reductions selects ordinary APGSRC36 RECOMPUTE.
+ * installing results. NULL reductions selects ordinary APGSRC38 RECOMPUTE.
  * Origin selection includes retained endpoints and intermediate phase Terms. */
 int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots, const struct pg_reduction_archive *reductions);

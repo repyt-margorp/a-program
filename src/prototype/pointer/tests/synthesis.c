@@ -1005,11 +1005,11 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_synthesis_type_structure_result(source_type) == pg_thunk_type(classifiers, symbolic_f));
 		assert(pg_synthesis_type_structure_result(source_term) == pg_reference(typing->graph, k));
 		assert(!pg_synthesis_result(source_variable));
-		struct pg_synthesis_job *invalid_quote = request(&synthesis, scope, "v := &k;");
-		struct pg_synthesis_job *quote_type = pg_synthesis_classifier_structure(&synthesis, invalid_quote);
+		struct pg_synthesis_job *preserved_quote = request(&synthesis, scope, "v := &k;");
+		struct pg_synthesis_job *quote_type = pg_synthesis_classifier_structure(&synthesis, preserved_quote);
 		assert(!complete(&synthesis, quote_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(quote_type)
-			== pg_thunk_type(classifiers, pg_thunk_type(classifiers, symbolic_f)));
+			== pg_thunk_type(classifiers, symbolic_f));
 		struct pg_synthesis_job *quoted_lambda = rule_job(&synthesis, PG_THUNK_INTRO, NULL, 1, &lambda);
 		struct pg_synthesis_job *quoted_type = pg_synthesis_classifier_structure(&synthesis, quoted_lambda);
 		assert(!complete(&synthesis, quoted_type, PG_SYNTHESIS_DONE));
@@ -1200,7 +1200,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		complete(&synthesis, pg_synthesis_result_context(&synthesis, context, variable,
 			pg_binder(typing->graph)), PG_SYNTHESIS_REJECTED);
 		complete(&synthesis, outer_variable, PG_SYNTHESIS_DONE);
-		complete(&synthesis, invalid_quote, PG_SYNTHESIS_REJECTED);
+		same_judgement(complete(&synthesis, preserved_quote, PG_SYNTHESIS_DONE), map_image);
 		const struct pg_evidence *applied = complete(&synthesis, application, PG_SYNTHESIS_DONE);
 		/* The candidate classifier does not erase a context mismatch. */
 		complete(&synthesis, postcheck, PG_SYNTHESIS_REJECTED);
@@ -1221,7 +1221,7 @@ static void pending_effect_contexts(struct pg_typing *typing, struct pg_classifi
 		assert(pg_evidence_rule(quoted) == PG_THUNK_INTRO);
 		assert(pg_evidence_classifier(quoted) == pg_thunk_type(classifiers,
 			pg_evidence_classifier(pg_evidence_premise(quoted, 0))));
-		complete(&synthesis, request(&synthesis, scope, "v := &k;"), PG_SYNTHESIS_REJECTED);
+		same_judgement(complete(&synthesis, request(&synthesis, scope, "v := &k;"), PG_SYNTHESIS_DONE), map_image);
 		const struct pg_source_scope *bad_scope = pg_synthesis_bind_context(&synthesis, root, name,
 			pg_binder(typing->graph), context);
 		complete(&synthesis, request(&synthesis, bad_scope, "v := k;"), PG_SYNTHESIS_REJECTED);

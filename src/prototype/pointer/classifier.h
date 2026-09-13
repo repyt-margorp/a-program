@@ -30,6 +30,11 @@ struct pg_effect_row;
  * computation for admissible inputs and returning interpretations of effects;
  * it does not certify a host handler. UNSPECIFIED is not proof of divergence. */
 enum pg_totality { PG_TOTALITY_UNSPECIFIED, PG_TOTALITY_TOTAL };
+/* Inert APP/Reference syntax. Constructing it establishes no typing or
+ * termination claim and never evaluates the suspended computation. */
+const struct pg_term *pg_termination_type(struct pg_classifiers *classifiers, const struct pg_term *suspended);
+const struct pg_term *pg_termination_witness(struct pg_classifiers *classifiers, const struct pg_term *suspended);
+int pg_termination_type_view(const struct pg_term *term, const struct pg_term **suspended);
 /* Closed sets of exact operation-label pointers. NULL is invalid/unknown,
  * never the empty set. Rows and referenced labels must outlive their uses.
  * This representation does not implement row metavariables or signatures. */

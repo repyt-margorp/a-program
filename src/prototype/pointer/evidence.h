@@ -17,11 +17,23 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_RETURN_VALUE, PG_THUNK_COMPUTATION, PG_FAMILY_ACTION,
 	PG_IDENTITY_TRANSPORT, PG_IDENTITY_LIFT, PG_INDUCTIVE_FORM, PG_CONSTRUCTOR_INTRO,
 	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION, PG_REQUEST_INTRO, PG_HANDLER_ELIM,
-	PG_CONTEXT_FAMILY_EXTEND, PG_TYPE_FAMILY_APP, PG_TYPE_FAMILY_ABSTRACT, PG_TYPE_CASE };
+	PG_CONTEXT_FAMILY_EXTEND, PG_TYPE_FAMILY_APP, PG_TYPE_FAMILY_ABSTRACT, PG_TYPE_CASE,
+	PG_TERMINATION_FORM, PG_TERMINATION_INTRO };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION, PG_JUDGEMENT_TYPE_FAMILY };
 struct pg_evidence;
+/* Formation accepts a checked suspended computation, without requiring TOTAL.
+ * Introduction additionally requires a TOTAL result contract for that same
+ * suspended term in that context. Neither rule runs the computation or treats
+ * an empty operation row as a termination proof. TOTAL is conditional on
+ * returning operation interpretations, not a guarantee about a host handler. */
+const struct pg_evidence *pg_prove_termination_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *type,
+	const struct pg_evidence *suspended);
+const struct pg_evidence *pg_prove_termination(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *suspended);
 /* A scoped family hypothesis over a nonempty value/family telescope. The signature
  * is an ordinary Pi-shaped Core term ending in Universe, not a CBPV value
  * function type. Family evidence cannot be RETURNed, FORCEd or coerced to a

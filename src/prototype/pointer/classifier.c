@@ -13,6 +13,10 @@ static const struct pg_object_class return_type_class = {"return-type-former"};
 static const struct pg_object_class thunk_type_class = {"thunk-type-former"};
 static const struct pg_object return_type_former = {PG_SEMANTIC_OBJECT, &return_type_class};
 static const struct pg_object thunk_type_former = {PG_SEMANTIC_OBJECT, &thunk_type_class};
+static const struct pg_object_class termination_class = {"termination"};
+static const struct pg_object termination_formers[] = {
+	{PG_SEMANTIC_OBJECT, &termination_class}, {PG_SEMANTIC_OBJECT, &termination_class}
+};
 static const struct pg_object_class totality_class = {"computation-totality"};
 static const struct pg_object totality_objects[] = {
 	{PG_SEMANTIC_OBJECT, &totality_class}, {PG_SEMANTIC_OBJECT, &totality_class}
@@ -35,6 +39,8 @@ static const struct {
 	const char *name;
 } descriptors[] = {
 	{&pi_former, "kernel/pi/v1"},
+	{&termination_formers[0], "kernel/termination-type/v1"},
+	{&termination_formers[1], "kernel/termination-witness/v1"},
 	{&effect_join, "solver/effect-union/v1"},
 	{&return_type_former, "kernel/return-type/v3"},
 	{&totality_objects[PG_TOTALITY_UNSPECIFIED], "kernel/totality/unspecified/v1"},
@@ -307,6 +313,21 @@ static int unary_view(const struct pg_term *term, const struct pg_object *former
 const struct pg_term *pg_return_type(struct pg_classifiers *classifiers, const struct pg_term *value_type)
 {
 	return pg_effect_type(classifiers, &empty_effects, value_type);
+}
+
+const struct pg_term *pg_termination_type(struct pg_classifiers *classifiers, const struct pg_term *suspended)
+{
+	return classifiers && suspended ? unary_type(classifiers, &termination_formers[0], suspended) : NULL;
+}
+
+const struct pg_term *pg_termination_witness(struct pg_classifiers *classifiers, const struct pg_term *suspended)
+{
+	return classifiers && suspended ? unary_type(classifiers, &termination_formers[1], suspended) : NULL;
+}
+
+int pg_termination_type_view(const struct pg_term *term, const struct pg_term **suspended)
+{
+	return suspended && unary_view(term, &termination_formers[0], suspended);
 }
 
 const struct pg_term *pg_effect_type(struct pg_classifiers *classifiers,

@@ -1226,6 +1226,57 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 	pg_declaration_io_destroy(&io);
 }
 
+static void termination_proofs(FILE *file, struct pg_typing *typing,
+	struct pg_classifiers *classifiers, int writing, uint64_t chunk)
+{
+	if (writing) {
+		const struct pg_evidence *context = pg_prove_empty_context(typing);
+		const struct pg_evidence *type = pg_prove_universe(typing, classifiers, context, 0);
+		const struct pg_evidence *f = pg_prove_computation_type(typing, classifiers,
+			PG_TOTALITY_TOTAL, pg_effect_row(typing->graph, 0, NULL), type);
+		const struct pg_object *m = pg_binder(typing->graph);
+		context = pg_prove_context_extension(typing, context, m, pg_prove_thunk_type(typing, classifiers, f));
+		const struct pg_evidence *suspended = pg_prove_variable(typing, context, m);
+		const struct pg_evidence *formation = pg_prove_termination_type(typing, classifiers,
+			pg_prove_classifier(typing, classifiers, context, suspended), suspended);
+		const struct pg_evidence *witness = pg_prove_termination(typing, classifiers, formation, suspended);
+		assert(formation && witness && !pg_derivations_write(file, 2,
+			(const struct pg_evidence *[]){formation, witness}, name, classifiers));
+		return;
+	}
+	size_t count;
+	const struct pg_derivation_input *const *roots;
+	assert(!pg_derivations_read(file, typing, 1000, 100, resolve, classifiers, &count, &roots));
+	assert(count == 2 && !typing->proofs.count);
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	struct pg_synthesis_job *formation = pg_synthesis_derivation(&synthesis, roots[0]);
+	struct pg_synthesis_job *witness = pg_synthesis_derivation(&synthesis, roots[1]);
+	while (pg_synthesis_status(witness) == PG_SYNTHESIS_PENDING) {
+		assert(synthesis.steps < 1000);
+		pg_synthesis_advance(&synthesis, chunk);
+	}
+	assert(pg_synthesis_status(formation) == PG_SYNTHESIS_DONE && pg_synthesis_status(witness) == PG_SYNTHESIS_DONE);
+	assert(pg_evidence_classifier(pg_synthesis_result(witness)) == pg_evidence_subject(pg_synthesis_result(formation))->core);
+	assert(pg_evidence_rule(pg_synthesis_result(witness)) == PG_TERMINATION_INTRO);
+	struct pg_derivation_input *wrong = pg_alloc(typing->graph, sizeof(*wrong) + 2 * sizeof(*wrong->premises));
+	assert(wrong);
+	*wrong = *roots[1];
+	wrong->premises[0] = roots[0];
+	wrong->premises[1] = roots[0];
+	struct pg_synthesis_job *rejected = pg_synthesis_derivation(&synthesis, wrong);
+	while (pg_synthesis_status(rejected) == PG_SYNTHESIS_PENDING) {
+		assert(synthesis.steps < 2000);
+		pg_synthesis_advance(&synthesis, chunk);
+	}
+	assert(pg_synthesis_status(rejected) == PG_SYNTHESIS_REJECTED);
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("termination: inert derivation input, ordinary Solve and retained target passed");
+}
+
 int main(int argc, char **argv)
 {
 	effect_transport(PG_TOTALITY_UNSPECIFIED);
@@ -1236,7 +1287,8 @@ int main(int argc, char **argv)
 	int effects = !strncmp(argv[1], "effect-", 7);
 	int producer = !strncmp(argv[1], "producer-", 9);
 	int nominal = !strncmp(argv[1], "nominal-", 8);
-	const char *mode = operation ? argv[1] + 10 : unaccepted ? argv[1] + 6 : effects ? argv[1] + 7 : producer ? argv[1] + 9 : nominal ? argv[1] + 8 : argv[1];
+	int termination = !strncmp(argv[1], "termination-", 12);
+	const char *mode = termination ? argv[1] + 12 : operation ? argv[1] + 10 : unaccepted ? argv[1] + 6 : effects ? argv[1] + 7 : producer ? argv[1] + 9 : nominal ? argv[1] + 8 : argv[1];
 	enum pg_totality totality = PG_TOTALITY_UNSPECIFIED;
 	if (operation && !strncmp(mode, "total-", 6)) { totality = PG_TOTALITY_TOTAL; mode += 6; }
 	int writing = !strcmp(mode, "write");
@@ -1248,7 +1300,8 @@ int main(int argc, char **argv)
 	struct pg_classifiers classifiers;
 	assert(file && pg_graph_init(&graph) == 0 && pg_typing_init(&typing, &graph) == 0);
 	assert(pg_classifiers_init(&classifiers, &graph) == 0);
-	if (nominal) nominal_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
+	if (termination) termination_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
+	else if (nominal) nominal_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (producer) producer_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (effects) pending_effect_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);
 	else if (unaccepted) unaccepted_proofs(file, &typing, &classifiers, writing, bulk ? 64 : 1);

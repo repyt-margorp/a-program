@@ -1767,6 +1767,50 @@ static const struct pg_evidence *unary_formation(struct pg_typing *typing,
 		argument->classifier, 1, &argument);
 }
 
+const struct pg_evidence *pg_prove_termination_type(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *type,
+	const struct pg_evidence *suspended)
+{
+	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!pg_evidence_owned_by(type, typing) || !pg_evidence_owned_by(suspended, typing)) return NULL;
+	if (type->judgement != PG_JUDGEMENT_VALUE_TYPE || suspended->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (type->context != suspended->context) return NULL;
+	const struct pg_term *computation;
+	if (!pg_thunk_type_view(type->subject->core, &computation)) return NULL;
+	if (pg_alpha_equal(type->subject->core, suspended->classifier) != 1) return NULL;
+	const struct pg_term *core = pg_termination_type(classifiers, suspended->subject->core);
+	if (!core) return NULL;
+	const struct pg_occurrence *operands[] = {type->subject, suspended->subject};
+	const struct pg_occurrence *subject = pg_occurrence(typing, type->context, core, NULL, 2, operands);
+	const struct pg_evidence *premises[] = {type, suspended};
+	return subject ? accept(typing, PG_TERMINATION_FORM, PG_JUDGEMENT_VALUE_TYPE,
+		type->context, subject, type->classifier, 2, premises) : NULL;
+}
+
+const struct pg_evidence *pg_prove_termination(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *suspended)
+{
+	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!pg_evidence_owned_by(formation, typing) || !pg_evidence_owned_by(suspended, typing)) return NULL;
+	if (formation->judgement != PG_JUDGEMENT_VALUE_TYPE || suspended->judgement != PG_JUDGEMENT_VALUE) return NULL;
+	if (formation->context != suspended->context) return NULL;
+	const struct pg_term *expected, *computation, *value;
+	const struct pg_effect_row *effects;
+	enum pg_totality totality;
+	if (!pg_termination_type_view(formation->subject->core, &expected)) return NULL;
+	if (pg_alpha_equal(expected, suspended->subject->core) != 1) return NULL;
+	if (!pg_thunk_type_view(suspended->classifier, &computation)) return NULL;
+	if (!pg_computation_type_view(computation, &totality, &effects, &value)) return NULL;
+	if (totality != PG_TOTALITY_TOTAL) return NULL;
+	const struct pg_term *core = pg_termination_witness(classifiers, suspended->subject->core);
+	if (!core) return NULL;
+	const struct pg_occurrence *subject = pg_occurrence(typing, suspended->context, core, NULL, 1, &suspended->subject);
+	const struct pg_evidence *premises[] = {formation, suspended};
+	return subject ? accept(typing, PG_TERMINATION_INTRO, PG_JUDGEMENT_VALUE,
+		suspended->context, subject, formation->subject->core, 2, premises) : NULL;
+}
+
 const struct pg_evidence *pg_prove_return_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *value_type)
 {
@@ -3342,6 +3386,7 @@ static const struct pg_evidence *classifier_leaf(struct pg_typing *typing,
 	const struct pg_evidence *formation = NULL;
 	switch (term->rule) {
 	case PG_REFLEXIVITY: case PG_FAMILY_ACTION:
+	case PG_TERMINATION_INTRO:
 	case PG_CONSTRUCTOR_INTRO:
 	case PG_IDENTITY_TRANSPORT: case PG_IDENTITY_LIFT:
 		formation = term->premises[0];

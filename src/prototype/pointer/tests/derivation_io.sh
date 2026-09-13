@@ -2,6 +2,11 @@
 set -euo pipefail
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
+"$1" termination-write "$directory/termination.graph"
+single=$("$1" termination-read "$directory/termination.graph")
+bulk=$("$1" termination-read-bulk "$directory/termination.graph")
+test "$single" = "$bulk"
+printf '%s\n' "$single"
 "$1" write "$directory/derivations.graph"
 single=$("$1" read "$directory/derivations.graph")
 bulk=$("$1" read-bulk "$directory/derivations.graph")

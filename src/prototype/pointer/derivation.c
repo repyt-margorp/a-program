@@ -161,6 +161,8 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_VALUE_FROM_TYPE, 1, pg_prove_type_value(typing, p[0]));
 	RULE(PG_RETURN_TYPE_FORM, 1, pg_prove_computation_type(typing, classifiers, parameters->totality, parameters->effects, p[0]));
 	RULE(PG_THUNK_TYPE_FORM, 1, pg_prove_thunk_type(typing, classifiers, p[0]));
+	RULE(PG_TERMINATION_FORM, 2, pg_prove_termination_type(typing, classifiers, p[0], p[1]));
+	RULE(PG_TERMINATION_INTRO, 2, pg_prove_termination(typing, classifiers, p[0], p[1]));
 	RULE(PG_PI_FORM, 2, pg_prove_pi(typing, classifiers, p[0], p[1]));
 	RULE(PG_RETURN_INTRO, 1, pg_prove_return_contract(typing, classifiers, parameters->totality, p[0]));
 	RULE(PG_THUNK_INTRO, 1, pg_prove_thunk(typing, classifiers, p[0]));

@@ -65,14 +65,14 @@ int main(int argc, char **argv)
 		rewind(file);
 		size_t length = fread(bytes, 1, sizeof(bytes), file);
 		assert(feof(file) && !ferror(file) && fclose(file) == 0);
-		assert(length > 56 && !memcmp(bytes, "APGSRC\44", 8));
+		assert(length > 56 && !memcmp(bytes, "APGSRC\46", 8));
 		assert(bytes[8] == policy);
 		compare(read_bytes(bytes, length, 4096), source, policy);
-		for (unsigned version = 34; version <= 35; ++version) {
+		for (unsigned version = 34; version <= 37; ++version) {
 			bytes[6] = version;
 			assert(!read_bytes(bytes, length, 4096));
 		}
-		bytes[6] = 36;
+		bytes[6] = 38;
 		assert(!read_bytes(bytes, length, 0));
 		for (size_t cut = 0; cut < length; ++cut) assert(!read_bytes(bytes, cut, 4096));
 		bytes[length] = 0;

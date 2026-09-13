@@ -1,0 +1,10 @@
+Nat := @{zero:*; succ:*->*;};
+id := \x:Nat => x;
+delayed := &{id Nat.zero;};
+proof := #.terminates delayed;
+proof :: #.Terminates delayed;
+preserved := &&delayed;
+aliasProof := #.terminates preserved;
+aliasProof :: #.Terminates delayed;
+main := {proof; Nat.succ Nat.zero;};
+expected := {Nat.succ Nat.zero;};

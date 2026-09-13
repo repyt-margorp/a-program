@@ -78,6 +78,9 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-formation.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/acc-family-parameter.p main expected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-motive-wrong-field.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/termination.p main expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/termination-wrong-target.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/termination-wrong-value.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/acc-function-motive.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-function-motive-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/dependent-order-reflexivity.p main expected

@@ -6815,8 +6815,8 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 		case PG_SYNTAX_ATOM:
 			if (producer->syntax->token.kind == PG_TOKEN_IDENT && !producer->value_job && !producer->binder) {
 				struct source_reference reference = lookup_scope(producer->scope, producer->syntax->token);
-				preparing = reference.producer && (reference.producer->status == PG_SYNTHESIS_PENDING ||
-					named_term_ready(reference.producer));
+				preparing = reference.binder || (reference.producer &&
+					(reference.producer->status == PG_SYNTHESIS_PENDING || named_term_ready(reference.producer)));
 			}
 			break;
 		default: break;
@@ -8120,11 +8120,38 @@ static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 	return 1;
 }
 
+/* Legacy intrinsic requests are unary type/proof forms, not effect requests.
+ * The operand remains a suspended value; application coercions must not force it. */
+static int termination_request(const struct pg_syntax *syntax)
+{
+	if (syntax->kind != PG_SYNTAX_APPLICATION) return 0;
+	const struct pg_syntax *head = syntax->left;
+	if (head->kind != PG_SYNTAX_QUALIFIED || head->left->kind != PG_SYNTAX_ATOM) return 0;
+	if (head->left->token.kind != '#') return 0;
+	struct pg_token name = head->right->token;
+	if (name.length != 10) return 0;
+	if (!memcmp(name.text, "Terminates", 10)) return 1;
+	return !memcmp(name.text, "terminates", 10) ? 2 : 0;
+}
+
 static int prepare_expression(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->role != EXPRESSION_JOB || job->stage) return 1;
 	const struct pg_syntax *syntax = job->syntax;
 	const struct pg_source_scope *right_scope = job->scope;
+	int termination = termination_request(syntax);
+	if (termination) {
+		job->right = pg_synthesis_normalize_classifier_jobs(synthesis, job->scope->context_job,
+			pg_synthesis_request(synthesis, job->scope, syntax->right));
+		job->left = request_job(synthesis, CLASSIFIER_FORMATION_JOB, job->scope->context_job, job->right);
+		job->value_job = plain_rule(synthesis, PG_TERMINATION_FORM, NULL, 2,
+			(struct pg_synthesis_job *[]){job->left, job->right});
+		if (termination == 2) job->value_job = plain_rule(synthesis, PG_TERMINATION_INTRO, NULL, 2,
+			(struct pg_synthesis_job *[]){job->value_job, job->right});
+		if (!job->left || !job->right || !job->value_job) goto error;
+		job->stage = APPLICATION_RULE_READY;
+		return 1;
+	}
 	switch (syntax->kind) {
 	case PG_SYNTAX_LAMBDA: case PG_SYNTAX_PI:
 		job->left = pg_synthesis_binding(synthesis, job->scope, syntax);
@@ -8139,8 +8166,31 @@ static int prepare_expression(struct pg_synthesis *synthesis, struct pg_synthesi
 	}
 	if (!job->left) goto error;
 	if (syntax->kind == PG_SYNTAX_QUOTE) {
-		struct pg_derivation_input input = {.rule = PG_THUNK_INTRO, .count = 1};
-		job->right = pg_synthesis_rule(synthesis, &input, &job->left, NULL, NULL);
+		if (await_source_preparation(synthesis, job, job->left)) return 0;
+		int kind = source_value_kind(job->left);
+		if (kind < 0 && job->left->status == PG_SYNTHESIS_PENDING) {
+			depend(synthesis, job, job->left);
+			return 0;
+		}
+		struct pg_synthesis_job *operand = job->left;
+		if (kind == 1) {
+			operand = pg_synthesis_normalize_classifier_jobs(synthesis, job->scope->context_job, operand);
+			struct pg_synthesis_job *shape = pg_synthesis_classifier_structure(synthesis, operand);
+			if (!shape) goto error;
+			if (shape->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, shape); return 0; }
+			if (shape->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, shape->status); return 0; }
+			const struct pg_term *content;
+			if (!pg_thunk_type_view(pg_synthesis_type_structure_result(shape), &content)) {
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED);
+				return 0;
+			}
+			/* Surface & preserves an already suspended value; it never runs it. */
+			job->right = operand;
+		} else {
+			if (operand->result && pg_evidence_judgement(operand->result) == PG_JUDGEMENT_TYPE_FAMILY)
+				operand = family_function(synthesis, operand);
+			job->right = plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &operand);
+		}
 		if (!job->right) goto error;
 	} else {
 		job->right = pg_synthesis_request(synthesis, right_scope, syntax->right);
@@ -8194,7 +8244,8 @@ static void classifier_constraint_step(struct pg_synthesis *synthesis, struct pg
 	if (handler_syntax(syntax)) goto done;
 	if (await_source_preparation(synthesis, job, source)) return;
 	if (syntax->kind == PG_SYNTAX_QUOTE) {
-		type = plain_rule(synthesis, PG_THUNK_CONTENT, NULL, 1, &type);
+		if (source->right->role != CLASSIFIER_JOB)
+			type = plain_rule(synthesis, PG_THUNK_CONTENT, NULL, 1, &type);
 		job->left = type ? request_job(synthesis, CLASSIFIER_CONSTRAINT_JOB, source->left, type) : NULL;
 	} else if (syntax->kind == PG_SYNTAX_LAMBDA) {
 		struct pg_synthesis_job *context = source->inner->context_job;
@@ -8445,11 +8496,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		if (!prepare_expression(synthesis, job)) return;
 	if (prepare_application(synthesis, job)) return;
 	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_QUOTE) {
-		if (job->left->status == PG_SYNTHESIS_DONE && job->left->result &&
-			pg_evidence_judgement(job->left->result) == PG_JUDGEMENT_TYPE_FAMILY) {
-			struct pg_synthesis_job *callable = family_function(synthesis, job->left);
-			job->right = plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &callable);
-		}
 		forward_proof(synthesis, job, job->right);
 		return;
 	}

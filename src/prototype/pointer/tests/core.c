@@ -3247,8 +3247,41 @@ static void totality_classifier_test(struct pg_graph *graph)
 		const struct pg_evidence *input = pg_prove_force(&typing, pg_prove_variable(&typing, outer, m));
 		assert(input && !pg_prove_return_value(&typing, input));
 		const struct pg_evidence *suspended = pg_prove_variable(&typing, outer, m);
+		const struct pg_evidence *suspended_type = pg_prove_classifier(&typing, &classifiers, outer, suspended);
+		const struct pg_evidence *termination = pg_prove_termination_type(&typing, &classifiers, suspended_type, suspended);
+		assert(termination && pg_termination_type_view(pg_evidence_subject(termination)->core, &value));
+		assert(value == pg_evidence_subject(suspended)->core);
+		const struct pg_evidence *witness = pg_prove_termination(&typing, &classifiers, termination, suspended);
+		assert(!!witness == i);
+		struct pg_derivation_parameters parameters = {0};
+		assert(pg_prove_derivation(&typing, &classifiers, PG_TERMINATION_INTRO, &parameters, 2,
+			(const struct pg_evidence *[]){termination, suspended}) == witness);
+		if (witness) {
+			assert(pg_evidence_classifier(witness) == pg_evidence_subject(termination)->core);
+			assert(pg_prove_classifier(&typing, &classifiers, outer, witness) == termination);
+			struct pg_derivation_parameters parameters;
+			assert(!pg_derivation_parameters(witness, &parameters));
+			assert(pg_prove_derivation(&typing, &classifiers, PG_TERMINATION_INTRO, &parameters, 2,
+				(const struct pg_evidence *[]){termination, suspended}) == witness);
+		}
+		assert(!pg_prove_termination_type(&typing, &classifiers, a, v));
+		assert(!pg_prove_termination_type(&typing, &classifiers, suspended_type, v));
+		assert(!pg_prove_termination(&typing, &classifiers, termination, v));
+		const struct pg_evidence *other = pg_prove_thunk(&typing, &classifiers,
+			pg_prove_projection(&typing, outer, returned[1]));
+		assert(!pg_prove_termination(&typing, &classifiers, termination, other));
+		const struct pg_evidence *raw = pg_prove_thunk(&typing, &classifiers,
+			pg_prove_projection(&typing, outer, functions[1]));
+		const struct pg_evidence *raw_type = pg_prove_classifier(&typing, &classifiers, outer, raw);
+		const struct pg_evidence *raw_termination = pg_prove_termination_type(&typing, &classifiers, raw_type, raw);
+		assert(raw_termination && !pg_prove_termination(&typing, &classifiers, raw_termination, raw));
 		const struct pg_evidence *returned_thunk = pg_prove_return_contract(&typing, &classifiers, PG_TOTALITY_TOTAL, suspended);
 		assert(returned_thunk);
+		/* Termination of RETURN(thunk M) does not establish termination of M. */
+		const struct pg_evidence *outer_thunk = pg_prove_thunk(&typing, &classifiers, returned_thunk);
+		const struct pg_evidence *outer_type = pg_prove_classifier(&typing, &classifiers, outer, outer_thunk);
+		assert(pg_prove_termination(&typing, &classifiers,
+			pg_prove_termination_type(&typing, &classifiers, outer_type, outer_thunk), outer_thunk));
 		assert(pg_evidence_classifier(pg_prove_force(&typing, pg_prove_return_value(&typing, returned_thunk))) == pg_evidence_classifier(input));
 		for (unsigned j = 0; j < 2; ++j) {
 			const struct pg_evidence *continuation = pg_prove_projection(&typing, outer, functions[j]);

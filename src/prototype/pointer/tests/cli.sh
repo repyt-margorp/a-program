@@ -18,6 +18,9 @@ check() {
 	esac
 }
 check 0 'done steps=' 'id:=&(\A:@ => \x:A => x);' --strict-thunks
+check 0 'done steps=' 'm:=&(\A:@=>A); alias:=&&m;' --strict-thunks
+check 1 'rejected steps=' 'bad:=&@;' --strict-thunks
+check 1 'rejected steps=' 'Nat:=@{zero:*;}; bad:=&Nat.zero;' --strict-thunks
 check 3 'pending steps=0' 'id:=&(\A:@ => \x:A => x);' --steps 0
 check 3 'pending steps=' 'x:=x;' --steps 100
 check 1 'rejected steps=' 'x:=missing;'

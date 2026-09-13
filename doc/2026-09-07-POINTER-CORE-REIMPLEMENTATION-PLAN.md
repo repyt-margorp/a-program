@@ -28,9 +28,9 @@ eliminating recomputation during image loading. The full rewrite remains open.
 - [ ] Restore general source synthesis and indexed elimination, including open
   families, dependent motives, recursive fields and Acc-based recursion. Keep
   `::` post-synthesis; do not add length/QuickSort-specific kernel rules.
-- [ ] Compile the existing function-graph length fixtures and fuel-free
-  QuickSort fixture, and check their runtime results. Then support an explicit
-  property proof using the graph/witness of an already-defined function, not
+- [x] Compile the selected existing function-graph length fixtures and fuel-free
+  QuickSort fixture unchanged, and check their runtime results (20/20 gate).
+- [ ] Support an explicit property proof using the graph/witness of an already-defined function, not
   a separately rewritten certified implementation. Witness production alone
   does not establish a property such as preservation of length or sortedness.
 - [ ] Verify property derivations and rejection of incompatible claims through
@@ -82,20 +82,13 @@ corrects the old order fixture's expected outcome; it is not two restored legacy
 programs. That fixture violates its result index under evaluation on Main
 `63b00eb` (counterexample below). The subsequent coverage audit corrects the
 named-case fixture to rejection, yielding 14/20, not another restored positive
-program: its omitted nil case is reachable. The six remaining failing entries
-are QuickSort results blocked by the same whole-file termination request.
-QuickSort still fails. Indexed induction now preserves
-the checked ambient generalization; unchanged `accessibleSucc`, `natAccessible`
-and their `::` checks succeed. Application-domain constraints close the
-all-impossible zero case; block-scoped IH demands now also restore `partition`,
-`quickSortAcc`, `quickSort`, and their post-checks. The unchanged whole file
-still rejects at `quickSortTerminates`: `#.terminates` is not connected.
-Separately, a diagnostic stream omitting only that definition now compiles and
-all six QuickSort results normalize to their expected values. Computed
-reflexivity previously left dependent transport neutral; its reduction now
-unblocks execution. This diagnostic is not an acceptance substitute or a
-termination proof. The unchanged file must pass before claiming compatibility;
-connecting its termination request is correctness work, not checkpoint work.
+program: its omitted nil case is reachable. The final six failures were the
+QuickSort results, blocked by the public termination request and an independent
+quotation compatibility bug: `&le` wrongly re-thunked an existing U(Pi) value.
+Both are now fixed. The unchanged whole file, including `quickSortTerminates`,
+compiles in 60,013 Solve steps in the debug build; all six results agree at
+chunks 1/64. The gate is now **20/20**, not a claim that every legacy feature or
+higher-Identity rule is complete. No fixture was edited or definition omitted.
 This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
 checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
@@ -122,57 +115,42 @@ September 13 compatibility follow-up:
   Source chunks 1/64 and unfinished/completed image resaves pass ASan/UBSan;
   invalid coverage and property claims still reject after unfinished resaves.
   QuickSort post-hoc properties remain unfinished.
-- [ ] Restore the legacy termination contract, not merely the intrinsic name.
+- [x] Restore the legacy termination contract, not merely the intrinsic name.
   `context_and_type_lowering.inc` in the legacy frontend constructs TOTAL
   computation codomains for ordinary source arrows; `totality_evidence.inc`
   checks that contract when introducing termination evidence. The pointer
-  kernel now represents `F(totality, effects, A)` with the existing APP/Reference
-  graph: no new Core tag, totality DB, or Replay engine. RETURN introduction,
-  APP/FORCE, directed weakening and Fold preserve/check the contract; Fold
-  combines guarantees by their minimum. Recursive function-field IHs also
-  inherit the field's guarantee: an unspecified `down` cannot supply a total
-  IH merely because the motive requests one. Typed IADT/index generalization
-  retains the grade. Derivation v9 and source images 34/35 preserve it through
-  ordinary Solve; earlier formats are not reinterpreted.
-  Graded consumers now include pure F/U Identity action and transport,
-  function-graph packet/witness construction, source application sequencing,
-  post-synthesis guarantee weakening, and operation/handler rules. A request
-  retains its continuation's guarantee under returning operation interpretations;
-  a handler cannot upgrade an unknown input prefix just by removing its row.
-  Source RETURN/body and ordinary arrow contracts now use TOTAL; Match
-  combines independently obtained guarantees by their minimum and checks the
-  resulting branches through the existing kernel. Constructor/family wrappers
-  and the Identity library retain their finite RETURN guarantee. The public
-  termination request remains unconnected. Existing
-  ungraded builders still mean UNSPECIFIED and cannot silently erase TOTAL.
-  Do not accept `quickSortTerminates` with an abstract comparator until its
-  source contract and introductions/eliminations are checked. No compatibility
-  case is waived by this kernel foundation; this is not a performance task.
-  Validation: full `check-acceptance` passes preceding gates and still fails
-  at compatibility 14/20 (six QuickSort entries, 59,707 steps each). Core,
-  synthesis, IADT, derivation IO and source-image CLI tests pass ASan/UBSan.
-  New tests cover both totality grades, invalid serialized grades, the
-  RETURN/thunk distinction and the recursive-field IH bound. The latter
-  failed before its fix; no test was relaxed to accept an unjustified guarantee.
-  Consumer follow-up: the new TOTAL thunk-transport test failed before the
-  shared graded pure-F view was connected. Both grades now pass Identity
-  transport/lifting and suspended-computation tests. Function-graph witnesses
-  retain the input contract, while effectful graph inputs still reject.
-  Relocated request/handler derivations retain their grade through ordinary
-  Solve at chunks 1/64, including provisional request classifier structure.
-  Full acceptance still reaches the same 14/20 compatibility failure, not a
-  restored QuickSort acceptance. Core, Identity, synthesis, program and
-  derivation-IO suites pass ASan/UBSan. No new replay or totality engine.
-  Source-contract follow-up: mixed TOTAL/UNSPECIFIED Match branches infer
-  UNSPECIFIED in either order; sequencing and post-checks do not strengthen it.
-  Tests that construct old weaker motives explicitly weaken TOTAL evidence
-  where needed, rather than identifying the two contracts. Source images now
-  use 36/37; versions 34/35 are not reinterpreted with new source defaults.
-  Full `check-acceptance` passes preceding gates and remains 14/20, with the
-  six unchanged QuickSort cases rejecting at 59,707 steps. This migration does
-  not yet discharge `quickSortTerminates` or complete the compatibility gate.
-  Source synthesis, IADT and source-image suites also pass ASan/UBSan; seed
-  tests explicitly reject the previous source-contract formats 34/35.
+  kernel uses `F(totality, effects, A)` in the existing APP/Reference graph,
+  without a new Core tag, totality DB or Replay engine. Fold and Match take
+  the minimum guarantee; recursive function-field IHs inherit the field's
+  guarantee. APP/FORCE, Identity F/U transport, generated graph packets and
+  source wrappers retain it. `::` can weaken but never strengthen a guarantee.
+  Raw ungraded builders still mean UNSPECIFIED. Empty effects do not imply
+  TOTAL; the latter is conditional on returning operation interpretations.
+  Removing an effect row through a handler cannot upgrade an unknown prefix.
+  `#.Terminates m` forms a type from checked `m : U(C)` without running it.
+  `#.terminates m` additionally requires `C = F(TOTAL, E, A)` and the same
+  suspended target/context. Two ordinary rules enter the existing derivation
+  DAG and Solve dispatcher. There is no new termination search engine.
+  Formation alone, unknown pure computations, raw Pi results, mismatched
+  targets and malformed evidence are not termination proofs. Termination of
+  `RETURN(thunk M)` is not termination of M.
+  The independent `&le` failure was a frontend mismatch with legacy
+  `compile_ast_value_ref`: surface & preserves an existing U value, wraps a
+  computation and rejects ordinary values. Kernel THUNK still accepts only
+  computations. Pending quotation reads classifier structure without waiting
+  for effect-context acceptance; both strict and compatibility modes agree.
+  Tests formerly expecting `&k : U(F ...)` to fail were corrected against this
+  legacy rule, not relaxed to bypass typing. Ordinary value rejection remains.
+  Derivation format 10 and source formats 38/39 carry these inputs. Previous
+  source contracts 34-37 are rejected rather than silently reinterpreted.
+  Full debug `check-acceptance` passes, including 20/20 compatibility, six
+  unchanged QuickSort results and their unsolved/partial/completed image
+  resaves. Same-process and fresh-process Solve use the same kernel rules.
+  Core, synthesis, derivation IO, CLI, image CLI and the 20-case compatibility
+  suite also pass ASan/UBSan. Tests retain chunk sizes 1/64 and reject malformed
+  premises, incorrect targets and ordinary non-thunk values.
+  This closes the 14/20 checkpoint at `083b469`; it does not establish the
+  next milestone's QuickSort output property or Higher Identity on Terminates.
 
 Theory references for this step: Leijen's [Koka report, Sections 2.1-2.2](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/koka-effects-2013.pdf)
 distinguishes potential divergence from ordinary side effects; Torczon et al.'s
