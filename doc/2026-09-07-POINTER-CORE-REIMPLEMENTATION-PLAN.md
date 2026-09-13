@@ -240,7 +240,7 @@ unchanged; computations over logical hypotheses use the extension below.
   and Match allocation-origin tests pass. No new Core/rule/wire tag or Replay
   path is introduced; Main promotion remains open.
 - [ ] Remaining compatibility blockers: order proofs, named Graph cases and
-  QuickSort. QuickSort currently rejects at 38036 steps: `#.terminates` is not connected in the new source
+  QuickSort. QuickSort currently rejects at 37194 steps: `#.terminates` is not connected in the new source
   environment. A traced failure in `accessibleSucc` is `*down m prior` in the
   `LT.lift` branch, which needs checked index refinement. `quickSortAcc` obtains
   a motive candidate but neither the whole program nor its property is accepted.
@@ -287,19 +287,33 @@ unchanged; computations over logical hypotheses use the extension below.
   Validation: IADT ASan/UBSan passes; full `check-acceptance` passes preceding
   gates and still stops at compatibility 11/19. No QuickSort progress is claimed
   from this component alone; it is not yet invoked by surface Match.
-- [ ] Connect rigid indexed source Match to the checked path telescope before
-  consuming this refutation request. Lift constructor substitutions through
-  `pg_identity_substitution_context`, retaining every chosen dependent center.
-  Infer the result from reachable branches or existing application-domain
-  constraints, never from `::`. Build unreachable branches by the supplied
-  contradictory path, not by ignoring a failed conversion. Same-constructor
-  equations need injectivity/transport of their dependent fields; they are not
-  disjointness. Apply the completed eliminator to reflexive original-index
-  paths. All-impossible cases and local recursive IH scopes still need this
-  source integration; do not replace them with a trusted empty-case marker.
-  Validation: `check check-examples check-example-results check-open-families`
-  passes; the indexed kernel tests also pass ASan/UBSan. The unchanged source
-  compatibility gate remains 10/19 (QuickSort REJECTED at 34060 steps).
+- [x] September 13, after `244c3aa`: connect nonrecursive rigid-index source
+  Match to the checked path telescope. Lift each constructor substitution
+  through the selected Identity assumptions. Pure WHNF head comparison only
+  selects a possible contradiction; it is not accepted evidence. Infer the
+  common computation result from reachable branches, then use the existing
+  disjointness/Act/transport request to construct each impossible branch.
+  Transport targets `U(C)` and ordinary Force produces `C`, including raw Pi;
+  there is no value-only restriction on branch results or new kernel rule.
+  Apply the completed Match to reflexive actual-index paths. No index equality
+  enters DefEq, and `::` does not choose the result or motive.
+  `indexed-rigid-refutation.p` checks polymorphic Vec head at Nat and Bool,
+  the reverse constructor contradiction at empty Vec, a lambda-returning
+  branch and a contradiction in the second of two indices. Reachable ill-typed
+  branches still reject. Result checks pass at chunks 1/64 and through source
+  images saved before, during and after Solve, including an unsolved resave.
+  Full `check-acceptance` passes preceding gates and stops at compatibility
+  11/19; QuickSort still rejects. This connects the previous proof-building
+  blocks to real source synthesis, but does not complete indexed elimination.
+  Targeted result/rejection tests and the source-image CLI suite pass
+  ASan/UBSan (ordinary fixture writer, sanitized checker and comparator).
+- [ ] Complete rigid indexed source Match beyond that constant-result,
+  nonrecursive fragment. All-impossible cases need result constraints from
+  existing application domains, never `::` or unreachable branch bodies.
+  Same-constructor equations need injectivity and transport of dependent
+  fields, retaining earlier selected paths; they are not disjointness.
+  Integrate these paths with local recursive IH scopes and general dependent
+  motives. Do not replace missing evidence with a trusted empty-case marker.
 - [x] Form path hypotheses between chosen parallel index substitutions with
   `pg_identity_substitution_context`. Ordinary Context/Substitution/Identity
   evidence retains each earlier path in later dependent equations; identical

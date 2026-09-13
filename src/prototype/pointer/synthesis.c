@@ -104,6 +104,10 @@ struct motive_result {
 	struct motive_lambda *lambdas;
 	size_t nested_checked;
 };
+struct match_index_path {
+	const struct pg_evidence *left, *right, *path;
+	struct pg_synthesis_job *normal[2];
+};
 struct match_branch {
 	const struct pg_source_scope *scope;
 	const struct pg_evidence *fields;
@@ -114,6 +118,8 @@ struct match_branch {
 	const struct pg_evidence *function;
 	struct motive_demand *demands;
 	struct motive_result *result;
+	struct match_index_path *paths, *contradiction;
+	size_t path_checked;
 	size_t field_count;
 	int needs_ih;
 };
@@ -143,6 +149,9 @@ struct match_state {
 	size_t generalized_count;
 	int scoped;
 	struct match_generalization *generalizing;
+	const struct pg_evidence *path_context, *path_result;
+	const struct pg_evidence **path_extensions;
+	size_t path_count, path_scoped;
 	size_t count, next, effect_checked, demanded, checked, prepared, typed, result_checked, validated;
 	int induction, has_demands, type_cases, packet;
 	struct match_branch branches[];
@@ -5414,6 +5423,154 @@ static const struct pg_source_scope *match_generalized_scope(struct pg_synthesis
 	return scope;
 }
 
+/* A rigid index is not a unification assignment. Keep the equality between
+ * the actual index and the constructor index as an explicit motive argument. */
+static int match_index_context(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	if (state->path_context || state->induction || state->generalization || !state->instance.indices) return 0;
+	size_t first = pg_evidence_premise_count(state->instance.parameters) + 1;
+	size_t end = pg_evidence_premise_count(state->instance.indices);
+	int rigid = 0;
+	for (size_t i = first; i < end; ++i) {
+		const struct pg_term *index = pg_evidence_subject(pg_evidence_premise(state->instance.indices, i))->core;
+		if (index->kind != PG_REFERENCE || index->as.reference->kind != PG_BINDER) rigid = 1;
+	}
+	if (!rigid) return 0;
+	struct pg_typing *typing = synthesis->typing;
+	const struct pg_evidence *context = source_context(job->inner);
+	const struct pg_evidence *mc = match_motive_context(synthesis, job);
+	struct pg_inductive_instance generic;
+	if (!mc || !pg_inductive_instance(typing, pg_evidence_premise(mc, 1), &generic)) return -1;
+	const struct pg_evidence *left = pg_prove_substitution_compose(typing, state->instance.indices,
+		pg_prove_substitution_projection(typing, context, mc));
+	const struct pg_evidence *right = pg_prove_substitution_compose(typing, generic.indices,
+		pg_prove_substitution_projection(typing, pg_evidence_premise(generic.indices, 1), mc));
+	size_t count = end - first;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
+	const struct pg_object **binders = malloc(count * sizeof(*binders));
+	const struct pg_evidence **paths = malloc(count * sizeof(*paths));
+	if (!binders || !paths) { free(binders); free(paths); return -1; }
+	for (size_t i = 0; i < count; ++i) binders[i] = pg_binder(typing->graph);
+	const struct pg_evidence *pc = pg_identity_substitution_context(typing, left, right, count, binders, paths);
+	free(binders); free(paths);
+	if (!pc) return -1;
+	state->path_extensions = pg_alloc(typing->graph, count * sizeof(*state->path_extensions));
+	if (!state->path_extensions) return -1;
+	state->path_context = pc; state->path_count = count;
+	for (size_t i = count; i; --i, pc = pg_evidence_premise(pc, 0)) state->path_extensions[i - 1] = pc;
+	return 0;
+}
+
+static int match_index_scope(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, size_t ordinal)
+{
+	struct match_state *state = job->match;
+	struct match_branch *branch = &state->branches[ordinal];
+	struct pg_typing *typing = synthesis->typing;
+	const struct pg_evidence *pattern = match_constructor_pattern(synthesis, job, ordinal, branch->fields);
+	for (size_t i = 0; pattern && i < state->path_count; ++i) {
+		pattern = pg_prove_substitution_lift(typing, pattern, state->path_extensions[i], pg_binder(typing->graph));
+		if (!pattern) return -1;
+		const struct pg_evidence *context = pg_evidence_premise(pattern, 1);
+		branch->scope = pg_synthesis_bind(synthesis, branch->scope, (struct pg_token){0},
+			pg_evidence_context(context)->binder, context);
+		if (!branch->scope) return -1;
+	}
+	if (!pattern || state->path_count > SIZE_MAX / sizeof(*branch->paths)) return -1;
+	branch->paths = pg_alloc(typing->graph, state->path_count * sizeof(*branch->paths));
+	if (!branch->paths) return -1;
+	const struct pg_evidence *context = source_context(branch->scope);
+	struct pg_inductive_instance generic;
+	if (!pg_inductive_instance(typing, pg_evidence_premise(state->motive_context_job->result, 1), &generic)) return -1;
+	size_t first = pg_evidence_premise_count(state->instance.parameters) + 1;
+	const struct pg_evidence *indices = pg_prove_substitution_compose(typing, generic.indices,
+		pg_prove_substitution_projection(typing, pg_evidence_premise(generic.indices, 1), state->path_context));
+	indices = pg_prove_substitution_compose(typing, indices, pattern);
+	if (!indices) return -1;
+	for (size_t i = 0; i < state->path_count; ++i) {
+		struct match_index_path *path = &branch->paths[i];
+		path->left = pg_prove_projection(typing, context, pg_evidence_premise(state->instance.indices, first + i));
+		path->right = pg_evidence_premise(indices, first + i);
+		path->path = pg_substitution_image(typing, pattern, pg_evidence_context(state->path_extensions[i])->binder);
+		if (!path->left || !path->right || !path->path) return -1;
+	}
+	return 0;
+}
+
+/* Head comparison selects a possible refutation only. Acceptance still needs
+ * a transport derivation using the corresponding, scoped Identity witness. */
+static void match_index_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	struct match_branch *branch = &state->branches[state->path_scoped];
+	if (!branch->paths && match_index_scope(synthesis, job, state->path_scoped)) goto unsupported;
+	if (!branch->contradiction && branch->path_checked < state->path_count) {
+		struct match_index_path *path = &branch->paths[branch->path_checked];
+		const struct pg_evidence *ends[] = {path->left, path->right};
+		const struct pg_object *heads[2] = {0};
+		for (size_t i = 0; i < 2; ++i) {
+			if (!path->normal[i]) path->normal[i] = pg_synthesis_normalize_jobs(synthesis,
+				branch->scope->context_job, pg_synthesis_evidence(synthesis, ends[i]), PG_REDUCTION_WHNF);
+			if (!path->normal[i]) goto error;
+			if (path->normal[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, path->normal[i]); return; }
+			if (path->normal[i]->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, path->normal[i]->status); return; }
+			const struct pg_term *head = pg_evidence_subject(path->normal[i]->result)->core;
+			while (head->kind == PG_APPLICATION) head = head->as.application.function;
+			if (head->kind == PG_REFERENCE) heads[i] = head->as.reference;
+		}
+		struct pg_inductive_instance instance;
+		const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers,
+			source_context(branch->scope), path->normal[0]->result);
+		if (heads[0] && heads[1] && heads[0] != heads[1] && pg_inductive_instance(synthesis->typing, type, &instance)) {
+			size_t positions[2];
+			const struct pg_data_layout *layout = pg_data_schema_layout(instance.schema);
+			if (pg_data_constructor_position(layout, heads[0], &positions[0]) &&
+				pg_data_constructor_position(layout, heads[1], &positions[1])) branch->contradiction = path;
+		}
+		++branch->path_checked;
+		enqueue(synthesis, job); return;
+	}
+	++state->path_scoped;
+	enqueue(synthesis, job); return;
+unsupported:
+	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+}
+
+static void match_refuted_branch(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	struct match_branch *branch = &state->branches[state->prepared];
+	if (!branch->contradiction) { ++state->prepared; enqueue(synthesis, job); return; }
+	if (!branch->adapted) {
+		struct match_index_path *path = branch->contradiction;
+		/* Ex falso at U(C), then force, works for every computation carrier,
+		 * including raw Pi. The unreachable source body does not choose C. */
+		const struct pg_evidence *type = pg_prove_thunk_type(synthesis->typing, synthesis->classifiers, state->path_result);
+		if (!type) goto unsupported;
+		type = pg_prove_projection(synthesis->typing, source_context(branch->scope), type);
+		if (!type) goto unsupported;
+		branch->body = pg_synthesis_disjoint_transport(synthesis, branch->scope->context_job,
+			pg_synthesis_evidence(synthesis, path->left), pg_synthesis_evidence(synthesis, path->right),
+			pg_synthesis_evidence(synthesis, path->path), pg_synthesis_evidence(synthesis, path->left),
+			pg_synthesis_evidence(synthesis, type));
+		branch->body = plain_rule(synthesis, PG_FORCE_ELIM, NULL, 1, &branch->body);
+		branch->adapted = pg_synthesis_abstract(synthesis, source_context(job->inner),
+			source_context(branch->scope), branch->body);
+		if (!branch->adapted) goto error;
+	}
+	if (branch->adapted->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->adapted); return; }
+	if (branch->adapted->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, branch->adapted->status); return; }
+	branch->function = branch->adapted->result;
+	++state->prepared;
+	enqueue(synthesis, job); return;
+unsupported:
+	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+}
+
 static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->result) goto complete;
@@ -5569,9 +5726,11 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	}
 	if (!state->scoped) {
 		if (match_generalize(synthesis, job)) return;
+		if (match_index_context(synthesis, job)) goto unsupported;
+		if (state->path_scoped < state->count && state->path_context) { match_index_step(synthesis, job); return; }
 		for (size_t i = 0; i < state->count; ++i) {
 			struct match_branch *branch = &state->branches[i];
-			if (branch->needs_ih) continue;
+			if (branch->needs_ih || branch->contradiction) continue;
 			if (state->generalization) branch->scope = match_generalized_scope(synthesis, job, i);
 			if (!branch->scope) goto unsupported;
 			branch->body = pg_synthesis_request(synthesis, branch->scope, branch->clause->right);
@@ -5584,7 +5743,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	if (state->demanded < state->count) { match_demand_step(synthesis, job); return; }
 	if (state->checked < state->count) {
 		struct match_branch *branch = &state->branches[state->checked];
-		if (branch->needs_ih) {
+		if (branch->needs_ih || branch->contradiction) {
 			++state->checked;
 			enqueue(synthesis, job);
 			return;
@@ -5595,6 +5754,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (!candidate) goto error;
 		if (candidate->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, candidate); return; }
 		if (candidate->status == PG_SYNTHESIS_UNSUPPORTED && !state->induction && !state->type_cases) {
+			if (state->path_context) goto unsupported;
 			state->type_cases = 1;
 			enqueue(synthesis, job);
 			return;
@@ -5605,7 +5765,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			const struct pg_evidence *type = candidate->result;
 			if (!state->motive) state->motive = type;
 			else if (pg_alpha_equal(pg_evidence_subject(state->motive)->core, pg_evidence_subject(type)->core) != 1) {
-				if (state->induction) goto unsupported;
+				if (state->induction || state->path_context) goto unsupported;
 				state->type_cases = 1;
 			}
 		}
@@ -5614,14 +5774,17 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		return;
 	}
 	if (state->type_cases && !state->motive_context) { match_dependent_motive_step(synthesis, job); return; }
+	if (!state->motive && state->path_context) goto unsupported;
 	if (!state->motive && state->result_checked < state->count) { match_result_step(synthesis, job); return; }
 	if (!state->motive) goto unsupported;
 	if (!state->motive_context) {
 		if (!state->motive_job) {
+			if (state->path_context) state->path_result = state->motive;
 			const struct pg_evidence *motive_context = match_motive_context(synthesis, job);
 			if (!motive_context) goto unsupported;
 			struct pg_synthesis_job *target = state->generalization
 				? pg_synthesis_evidence(synthesis, pg_evidence_premise(state->generalization, 1)) : state->motive_context_job;
+			if (state->path_context) target = pg_synthesis_evidence(synthesis, state->path_context);
 			struct pg_synthesis_job *premises[] = {target,
 				pg_synthesis_evidence(synthesis, state->motive)};
 			struct pg_derivation_input project = {.rule = PG_CONTEXT_PROJECTION, .count = 2};
@@ -5635,8 +5798,11 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		const struct pg_evidence *extension = state->generalization ? pg_evidence_premise(state->generalization, 1) : NULL;
 		for (size_t i = state->generalized_count; i; --i, extension = pg_evidence_premise(extension, 0))
 			state->motive = pg_prove_pi(synthesis->typing, synthesis->classifiers, extension, state->motive);
+		for (size_t i = state->path_count; state->motive && i; --i)
+			state->motive = pg_prove_pi(synthesis->typing, synthesis->classifiers, state->path_extensions[i - 1], state->motive);
 		if (!state->motive) goto unsupported;
 	}
+	if (state->path_context && state->prepared < state->count) { match_refuted_branch(synthesis, job); return; }
 	if (state->type_cases && state->prepared < state->count) { match_dependent_branch(synthesis, job); return; }
 	if (state->induction && state->prepared < state->count) {
 		struct match_branch *branch = &state->branches[state->prepared];
@@ -5721,6 +5887,25 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	free(branches);
 	if (!job->result) goto unsupported;
 complete:
+	if (job->match && job->match->path_context) {
+		struct match_state *state = job->match;
+		if (!job->value_job) {
+			const struct pg_evidence *context = source_context(job->inner);
+			struct pg_synthesis_job *result = pg_synthesis_evidence(synthesis, job->result);
+			size_t first = pg_evidence_premise_count(state->instance.parameters) + 1;
+			for (size_t i = 0; i < state->path_count; ++i) {
+				const struct pg_evidence *value = pg_evidence_premise(state->instance.indices, first + i);
+				const struct pg_evidence *type = pg_prove_classifier(synthesis->typing, synthesis->classifiers, context, value);
+				const struct pg_evidence *path = pg_prove_reflexivity(synthesis->typing, type, value);
+				result = pg_synthesis_application(synthesis, context, result, pg_synthesis_evidence(synthesis, path));
+			}
+			if (!result) goto error;
+			job->value_job = result;
+		}
+		if (job->value_job->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->value_job); return; }
+		if (job->value_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->value_job->status); return; }
+		job->result = job->value_job->result;
+	}
 	if (job->match && job->match->specialization) {
 		struct match_state *state = job->match;
 		if (!job->value_job) {

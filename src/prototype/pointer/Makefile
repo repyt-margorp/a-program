@@ -110,6 +110,12 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-dependent-environment.p zeroMain zeroExpected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-dependent-environment.p pointMain zeroExpected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-dependent-environment-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-rigid-refutation.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-rigid-refutation.p boolMain boolExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-rigid-refutation.p emptyMain emptyExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-rigid-refutation.p functionMain expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-rigid-refutation.p secondIndexMain expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-rigid-refutation-wrong.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-ih-environment.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-ih-environment-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p main expected
