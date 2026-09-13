@@ -65,10 +65,12 @@ struct application_state {
 	struct pg_synthesis_job *context, *callee, *argument, *tail;
 	const struct block_frame *frames;
 };
-struct index_argument_state {
+struct index_transport_state {
 	const struct pg_evidence *cursor, *path, *endpoints[2], *fields, *prefix;
 	const struct pg_term *spines[2];
-	struct pg_synthesis_job *normal[2], *candidate;
+	struct pg_synthesis_job *normal[2], *candidates[2];
+	size_t candidate_next;
+	int direct_checked;
 };
 struct substitution_entry {
 	const struct pg_evidence *extension;
@@ -115,7 +117,7 @@ struct match_index_path {
 };
 struct match_branch {
 	const struct pg_source_scope *scope;
-	const struct pg_evidence *fields;
+	const struct pg_evidence *fields, *pattern;
 	const struct pg_syntax *clause;
 	struct pg_synthesis_job *body;
 	struct pg_synthesis_job *adapted;
@@ -155,6 +157,8 @@ struct match_state {
 	int scoped;
 	struct match_generalization *generalizing;
 	const struct pg_evidence *path_context, *path_result;
+	const struct pg_evidence *candidate;
+	size_t candidate_next, candidate_checked;
 	const struct pg_evidence **path_extensions;
 	size_t path_count, path_scoped;
 	size_t count, next, effect_checked, demanded, checked, prepared, typed, result_checked, validated;
@@ -209,7 +213,7 @@ struct effect_substitution_state {
 	const struct pg_term *result;
 };
 enum job_role { LIFT_JOB, FUNCTION_WITNESS_JOB, PI_SCOPE_JOB, DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
-	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB, FAMILY_FUNCTION_JOB, FAMILY_CONTRACT_JOB, FUNCTION_GRAPH_JOB, CONSTRUCTOR_TRANSPORT_JOB, INDEX_ARGUMENT_JOB };
+	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB, FAMILY_FUNCTION_JOB, FAMILY_CONTRACT_JOB, FUNCTION_GRAPH_JOB, CONSTRUCTOR_TRANSPORT_JOB, INDEX_TRANSPORT_JOB };
 enum { APPLICATION_RULE_READY = 6 };
 struct context_allocation {
 	const struct pg_context *prefix, *end;
@@ -253,7 +257,7 @@ struct pg_synthesis_job {
 	union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
 	struct block_state *block;
 	struct application_state *application;
-	struct index_argument_state *index_argument;
+	struct index_transport_state *index_transport;
 	const struct block_frame *match_frame;
 	struct definition_state *definitions;
 	struct substitution_state *substitution;
@@ -5162,12 +5166,90 @@ static const struct pg_evidence *match_branch_result(struct pg_synthesis *synthe
 		state->motive_effects, pg_prove_return_content(synthesis->typing, type));
 }
 
+/* A branch proposes a family; it does not establish the other branch
+ * equations. Check every reachable body before committing to that motive. */
+static void match_candidate_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	struct pg_typing *typing = synthesis->typing;
+	const struct pg_evidence *context = source_context(job->inner);
+	if (!state->candidate) {
+		struct match_branch *branch = &state->branches[state->candidate_next++];
+		if (!branch->contradiction) {
+			const struct pg_evidence *type = match_branch_result(synthesis, state, branch);
+			const struct pg_evidence *fields = source_context(branch->scope);
+			if (state->path_context) {
+				/* Strip hidden paths only when the result family is independent. */
+				while (type && pg_evidence_context(fields) != pg_evidence_context(branch->fields)) {
+					type = pg_prove_pi_constant_codomain(typing,
+						pg_prove_pi(typing, synthesis->classifiers, fields, type));
+					fields = pg_evidence_premise(fields, 0);
+				}
+			}
+			const struct pg_evidence *pattern = match_constructor_pattern(synthesis, job,
+				state->candidate_next - 1, fields);
+			state->candidate = pg_prove_pattern_type(typing, synthesis->classifiers, context, pattern, type);
+		}
+		enqueue(synthesis, job); return;
+	}
+	if (state->candidate_checked == state->count) {
+		state->motive_context = match_motive_context(synthesis, job);
+		state->motive = state->candidate;
+		if (state->path_context) {
+			state->path_result = pg_prove_projection(typing, state->path_context, state->motive);
+			state->motive = state->path_result;
+			for (size_t i = state->path_count; state->motive && i; --i)
+				state->motive = pg_prove_pi(typing, synthesis->classifiers, state->path_extensions[i - 1], state->motive);
+		} else state->prepared = state->count;
+		if (!state->motive) goto unsupported;
+		for (size_t i = 0; i < state->count; ++i) state->branches[i].converted = NULL;
+		enqueue(synthesis, job); return;
+	}
+	struct match_branch *branch = &state->branches[state->candidate_checked];
+	if (branch->contradiction) {
+		++state->candidate_checked;
+		enqueue(synthesis, job); return;
+	}
+	if (!branch->converted) {
+		const struct pg_evidence *fields = source_context(branch->scope);
+		const struct pg_evidence *pattern = match_constructor_pattern(synthesis, job, state->candidate_checked, fields);
+		const struct pg_evidence *target = pg_prove_reindex(typing, pattern, state->candidate);
+		if (!target) goto next_candidate;
+		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, branch->body);
+		if (state->path_context) {
+			/* Transport U(C), then force, without running C during synthesis. */
+			target = pg_prove_thunk_type(typing, synthesis->classifiers, target);
+			body = plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &body);
+			const void *inputs[] = {branch->scope->context_job, body, pg_synthesis_evidence(synthesis, target)};
+			body = request_inputs(synthesis, INDEX_TRANSPORT_JOB, 3, inputs);
+			body = plain_rule(synthesis, PG_FORCE_ELIM, NULL, 1, &body);
+		} else body = pg_synthesis_expect(synthesis, body, pg_synthesis_evidence(synthesis, target));
+		branch->converted = pg_synthesis_abstract(synthesis, context, fields, body);
+		if (!branch->converted) goto error;
+	}
+	if (branch->converted->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->converted); return; }
+	if (branch->converted->status == PG_SYNTHESIS_ERROR) goto error;
+	if (branch->converted->status != PG_SYNTHESIS_DONE) goto next_candidate;
+	branch->function = branch->converted->result;
+	++state->candidate_checked;
+	enqueue(synthesis, job); return;
+next_candidate:
+	state->candidate = NULL; state->candidate_checked = 0;
+	for (size_t i = 0; i < state->count; ++i) state->branches[i].converted = NULL;
+	enqueue(synthesis, job); return;
+unsupported:
+	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+}
+
 static void match_dependent_motive_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct match_state *state = job->match;
 	const struct pg_evidence *context = source_context(job->inner);
 	if (state->typed < state->count) {
 		struct match_branch *branch = &state->branches[state->typed];
+		if (branch->contradiction) { ++state->typed; enqueue(synthesis, job); return; }
 		const struct pg_evidence *fields = source_context(branch->scope);
 		if (!branch->type_job) {
 			struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, branch->body);
@@ -5190,31 +5272,8 @@ static void match_dependent_motive_step(struct pg_synthesis *synthesis, struct p
 	}
 	const struct pg_evidence *mc = match_motive_context(synthesis, job);
 	if (!mc) goto unsupported;
-	/* Prefer an index family satisfying all branch equations to a new type
-	 * case. Failed pattern inversion is not an index contradiction. */
-	struct branch_equation { const struct pg_evidence *pattern, *type; };
-	if (state->count > SIZE_MAX / sizeof(struct branch_equation)) goto error;
-	struct branch_equation *equations = malloc(state->count * sizeof(*equations));
-	if (!equations) goto error;
-	const struct pg_evidence *candidate = NULL;
-	for (size_t i = 0; i < state->count; ++i) {
-		struct match_branch *branch = &state->branches[i];
-		equations[i].pattern = match_constructor_pattern(synthesis, job, i, source_context(branch->scope));
-		equations[i].type = match_branch_result(synthesis, state, branch);
-		if (!candidate) candidate = pg_prove_pattern_type(synthesis->typing, synthesis->classifiers,
-			context, equations[i].pattern, equations[i].type);
-	}
-	for (size_t i = 0; candidate && i < state->count; ++i) {
-		const struct pg_evidence *instance = pg_prove_reindex(synthesis->typing, equations[i].pattern, candidate);
-		if (!instance || !equations[i].type || pg_alpha_equal(pg_evidence_subject(instance)->core,
-			pg_evidence_subject(equations[i].type)->core) != 1) candidate = NULL;
-	}
-	free(equations);
-	if (candidate) {
-		state->motive = candidate;
-		state->motive_context = mc;
-		enqueue(synthesis, job); return;
-	}
+	if (state->candidate || state->candidate_next < state->count) { match_candidate_step(synthesis, job); return; }
+	if (state->path_context) goto unsupported;
 	const struct pg_evidence *projection = pg_prove_substitution_projection(synthesis->typing, context, mc);
 	const struct pg_evidence *parameters = pg_prove_substitution_compose(synthesis->typing, state->instance.parameters, projection);
 	const struct pg_evidence **families = malloc(state->count * sizeof(*families));
@@ -5502,6 +5561,7 @@ static int match_index_scope(struct pg_synthesis *synthesis, struct pg_synthesis
 		if (!branch->scope) return -1;
 	}
 	if (!pattern || state->path_count > SIZE_MAX / sizeof(*branch->paths)) return -1;
+	branch->pattern = pattern;
 	branch->paths = pg_alloc(typing->graph, state->path_count * sizeof(*branch->paths));
 	if (!branch->paths) return -1;
 	const struct pg_evidence *context = source_context(branch->scope);
@@ -5572,9 +5632,8 @@ static void match_refuted_branch(struct pg_synthesis *synthesis, struct pg_synth
 		struct match_index_path *path = branch->contradiction;
 		/* Ex falso at U(C), then force, works for every computation carrier,
 		 * including raw Pi. The unreachable source body does not choose C. */
-		const struct pg_evidence *type = pg_prove_thunk_type(synthesis->typing, synthesis->classifiers, state->path_result);
-		if (!type) goto unsupported;
-		type = pg_prove_projection(synthesis->typing, source_context(branch->scope), type);
+		const struct pg_evidence *type = pg_prove_reindex(synthesis->typing, branch->pattern, state->path_result);
+		type = pg_prove_thunk_type(synthesis->typing, synthesis->classifiers, type);
 		if (!type) goto unsupported;
 		branch->body = pg_synthesis_disjoint_transport(synthesis, branch->scope->context_job,
 			pg_synthesis_evidence(synthesis, path->left), pg_synthesis_evidence(synthesis, path->right),
@@ -5779,7 +5838,6 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (!candidate) goto error;
 		if (candidate->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, candidate); return; }
 		if (candidate->status == PG_SYNTHESIS_UNSUPPORTED && !state->induction && !state->type_cases) {
-			if (state->path_context) goto unsupported;
 			state->type_cases = 1;
 			enqueue(synthesis, job);
 			return;
@@ -5790,7 +5848,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			const struct pg_evidence *type = candidate->result;
 			if (!state->motive) state->motive = type;
 			else if (pg_alpha_equal(pg_evidence_subject(state->motive)->core, pg_evidence_subject(type)->core) != 1) {
-				if (state->induction || state->path_context) goto unsupported;
+				if (state->induction) goto unsupported;
 				state->type_cases = 1;
 			}
 		}
@@ -5804,7 +5862,6 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	if (!state->motive) goto unsupported;
 	if (!state->motive_context) {
 		if (!state->motive_job) {
-			if (state->path_context) state->path_result = state->motive;
 			const struct pg_evidence *motive_context = match_motive_context(synthesis, job);
 			if (!motive_context) goto unsupported;
 			struct pg_synthesis_job *target = state->generalization
@@ -5820,6 +5877,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (state->motive_job->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, state->motive_job->status); return; }
 		state->motive_context = state->motive_context_job->result;
 		state->motive = state->motive_job->result;
+		if (state->path_context) state->path_result = state->motive;
 		const struct pg_evidence *extension = state->generalization ? pg_evidence_premise(state->generalization, 1) : NULL;
 		for (size_t i = state->generalized_count; i; --i, extension = pg_evidence_premise(extension, 0))
 			state->motive = pg_prove_pi(synthesis->typing, synthesis->classifiers, extension, state->motive);
@@ -6982,17 +7040,18 @@ error:
 /* Factor the argument classifier through a constructor-field variable, then
  * transport along that field's derived identity. Pattern inversion constructs
  * checked substitutions; it never rewrites a classifier's raw Core in place. */
-static struct pg_synthesis_job *index_argument_candidate(struct pg_synthesis *synthesis,
+static struct pg_synthesis_job *index_transport_candidate(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_object *field,
-	const struct pg_term *left, const struct pg_term *right)
+	const struct pg_term *left, const struct pg_term *right, enum pg_identity_direction direction)
 {
 	if (left->kind != PG_REFERENCE || right->kind != PG_REFERENCE) return NULL;
 	if (left->as.reference->kind != PG_BINDER || right->as.reference->kind != PG_BINDER) return NULL;
 	struct pg_typing *typing = synthesis->typing;
-	struct index_argument_state *state = job->index_argument;
+	struct index_transport_state *state = job->index_transport;
 	const struct pg_evidence *context = ((struct pg_synthesis_job *)job->inputs[0])->result;
+	const struct pg_term *from = direction == PG_IDENTITY_LEFT ? right : left;
 	const struct pg_evidence *extension = context;
-	while (pg_evidence_context(extension) && pg_evidence_context(extension)->binder != right->as.reference)
+	while (pg_evidence_context(extension) && pg_evidence_context(extension)->binder != from->as.reference)
 		extension = pg_evidence_premise(extension, 0);
 	if (!pg_evidence_context(extension) || pg_evidence_rule(extension) != PG_CONTEXT_EXTEND) return NULL;
 	const struct pg_evidence *prefix = pg_evidence_premise(extension, 0);
@@ -7000,26 +7059,35 @@ static struct pg_synthesis_job *index_argument_candidate(struct pg_synthesis *sy
 		pg_binder(typing->graph), pg_evidence_premise(extension, 1));
 	const struct pg_evidence *lv = pg_prove_variable(typing, context, left->as.reference);
 	const struct pg_evidence *rv = pg_prove_variable(typing, context, right->as.reference);
+	if (!field) {
+		/* This is index refinement, not an implicit cast along an arbitrary
+		 * Universe path between nominal types. Named transport stays explicit. */
+		struct pg_inductive_instance instance;
+		const struct pg_evidence *index_type = pg_prove_classifier(typing, synthesis->classifiers, context, lv);
+		if (!pg_inductive_instance(typing, index_type, &instance)) return NULL;
+	}
 	const struct pg_evidence *map = pg_prove_substitution_projection(typing, prefix, context);
 	const struct pg_evidence *ls = pg_prove_substitution_pair(typing, map, source, lv);
 	const struct pg_evidence *rs = pg_prove_substitution_pair(typing, map, source, rv);
 	if (!ls || !rs) return NULL;
 	struct pg_synthesis_job *argument = (void *)job->inputs[1];
 	const struct pg_evidence *type = pg_prove_classifier(typing, synthesis->classifiers, context, argument->result);
-	const struct pg_evidence *family = pg_prove_pattern_type(typing, synthesis->classifiers, prefix, rs,
+	const struct pg_evidence *family = pg_prove_pattern_type(typing, synthesis->classifiers, prefix,
+		direction == PG_IDENTITY_LEFT ? rs : ls,
 		pg_prove_return_type(typing, synthesis->classifiers, type));
 	if (!family) return NULL;
 	family = pg_prove_return_content(typing, family);
-	struct pg_synthesis_job *path = pg_synthesis_constructor_field_identity(synthesis,
+	struct pg_synthesis_job *path = field ? pg_synthesis_constructor_field_identity(synthesis,
 		(void *)job->inputs[0], pg_synthesis_evidence(synthesis, state->endpoints[0]),
 		pg_synthesis_evidence(synthesis, state->endpoints[1]), pg_synthesis_evidence(synthesis, state->path), field,
-		pg_synthesis_evidence(synthesis, lv), pg_synthesis_evidence(synthesis, rv));
+		pg_synthesis_evidence(synthesis, lv), pg_synthesis_evidence(synthesis, rv))
+		: pg_synthesis_evidence(synthesis, state->path);
 	struct pg_synthesis_job *transported = pg_synthesis_family_transport_jobs(synthesis,
-		pg_synthesis_evidence(synthesis, family), ls, rs, 1, &path, argument, PG_IDENTITY_LEFT);
+		pg_synthesis_evidence(synthesis, family), ls, rs, 1, &path, argument, direction);
 	return pg_synthesis_expect(synthesis, transported, (void *)job->inputs[2]);
 }
 
-static void index_argument_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (!job->left) job->left = pg_synthesis_expect(synthesis, (void *)job->inputs[1], (void *)job->inputs[2]);
 	if (!job->left) goto error;
@@ -7031,17 +7099,22 @@ static void index_argument_step(struct pg_synthesis *synthesis, struct pg_synthe
 	if (argument->status != PG_SYNTHESIS_DONE || pg_evidence_judgement(argument->result) != PG_JUDGEMENT_VALUE) goto rejected;
 	struct pg_typing *typing = synthesis->typing;
 	const struct pg_evidence *context = cj->result;
-	if (!job->index_argument) {
-		job->index_argument = pg_alloc(typing->graph, sizeof(*job->index_argument));
-		if (!job->index_argument) goto error;
-		job->index_argument->cursor = context;
+	if (!job->index_transport) {
+		job->index_transport = pg_alloc(typing->graph, sizeof(*job->index_transport));
+		if (!job->index_transport) goto error;
+		job->index_transport->cursor = context;
+		job->index_transport->candidate_next = 2;
 	}
-	struct index_argument_state *state = job->index_argument;
-	if (state->candidate) {
-		if (state->candidate->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, state->candidate); return; }
-		if (state->candidate->status == PG_SYNTHESIS_DONE) { forward_proof(synthesis, job, state->candidate); return; }
-		if (state->candidate->status == PG_SYNTHESIS_ERROR) goto error;
-		state->candidate = NULL;
+	struct index_transport_state *state = job->index_transport;
+	if (state->candidate_next < 2) {
+		struct pg_synthesis_job *candidate = state->candidates[state->candidate_next];
+		if (candidate) {
+			if (candidate->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, candidate); return; }
+			if (candidate->status == PG_SYNTHESIS_DONE) { forward_proof(synthesis, job, candidate); return; }
+			if (candidate->status == PG_SYNTHESIS_ERROR) goto error;
+		}
+		++state->candidate_next;
+		enqueue(synthesis, job); return;
 	}
 	if (state->fields) {
 		if (pg_evidence_context(state->fields) != pg_evidence_context(state->prefix)) {
@@ -7052,7 +7125,9 @@ static void index_argument_step(struct pg_synthesis *synthesis, struct pg_synthe
 			state->spines[0] = state->spines[0]->as.application.function;
 			state->spines[1] = state->spines[1]->as.application.function;
 			state->fields = pg_evidence_premise(state->fields, 0);
-			state->candidate = index_argument_candidate(synthesis, job, field, left, right);
+			state->candidates[0] = index_transport_candidate(synthesis, job, field, left, right, PG_IDENTITY_LEFT);
+			state->candidates[1] = index_transport_candidate(synthesis, job, field, left, right, PG_IDENTITY_RIGHT);
+			state->candidate_next = 0;
 			enqueue(synthesis, job); return;
 		}
 		goto next_context;
@@ -7068,6 +7143,14 @@ static void index_argument_step(struct pg_synthesis *synthesis, struct pg_synthe
 		state->endpoints[1] = pg_prove_projection(typing, context, boundary.right);
 		state->path = pg_prove_variable(typing, context, pg_evidence_context(state->cursor)->binder);
 		if (!state->endpoints[0] || !state->endpoints[1] || !state->path) goto next_context;
+	}
+	if (!state->direct_checked) {
+		const struct pg_term *left = pg_evidence_subject(state->endpoints[0])->core;
+		const struct pg_term *right = pg_evidence_subject(state->endpoints[1])->core;
+		state->candidates[0] = index_transport_candidate(synthesis, job, NULL, left, right, PG_IDENTITY_LEFT);
+		state->candidates[1] = index_transport_candidate(synthesis, job, NULL, left, right, PG_IDENTITY_RIGHT);
+		state->candidate_next = 0; state->direct_checked = 1;
+		enqueue(synthesis, job); return;
 	}
 	const struct pg_object *heads[2];
 	for (size_t i = 0; i < 2; ++i) {
@@ -7095,6 +7178,7 @@ static void index_argument_step(struct pg_synthesis *synthesis, struct pg_synthe
 next_context:
 	state->cursor = pg_evidence_premise(state->cursor, 0);
 	state->path = NULL; state->fields = NULL;
+	state->direct_checked = 0;
 	state->normal[0] = state->normal[1] = NULL;
 	enqueue(synthesis, job); return;
 rejected:
@@ -7220,9 +7304,9 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 		finish(synthesis, job, PG_SYNTHESIS_DONE);
 		return;
 	}
-	if (producer->role == EXPECT_JOB || producer->role == INDEX_ARGUMENT_JOB) {
+	if (producer->role == EXPECT_JOB || producer->role == INDEX_TRANSPORT_JOB) {
 		if (!job->left) job->left = pg_synthesis_type_structure(synthesis,
-			(void *)producer->inputs[producer->role == INDEX_ARGUMENT_JOB ? 2 : 1]);
+			(void *)producer->inputs[producer->role == INDEX_TRANSPORT_JOB ? 2 : 1]);
 		forward_structure(synthesis, job);
 		return;
 	}
@@ -8107,7 +8191,7 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		struct pg_synthesis_job *expected = application_domain(synthesis, state->context, callee);
 		if (!expected) goto error;
 		const void *inputs[] = {state->context, argument, expected};
-		argument = request_inputs(synthesis, INDEX_ARGUMENT_JOB, 3, inputs);
+		argument = request_inputs(synthesis, INDEX_TRANSPORT_JOB, 3, inputs);
 		struct pg_synthesis_job *premises[] = {callee, argument};
 		state->tail = plain_rule(synthesis, PG_APP_ELIM, NULL, 2, premises);
 	} else state->tail = pg_synthesis_application_jobs(synthesis, state->context, callee, argument);
@@ -8172,7 +8256,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == HANDLER_CLAUSE_JOB) { handler_clause_step(synthesis, job); return; }
 	if (job->role == HANDLER_JOB) { handler_step(synthesis, job); return; }
 	if (job->role == CONSTRUCTOR_TRANSPORT_JOB) { constructor_transport_step(synthesis, job); return; }
-	if (job->role == INDEX_ARGUMENT_JOB) { index_argument_step(synthesis, job); return; }
+	if (job->role == INDEX_TRANSPORT_JOB) { index_transport_step(synthesis, job); return; }
 	if (job->role == EXPRESSION_JOB && handler_syntax(job->syntax)) {
 		if (job->syntax->item_count == 1) { return_handler_step(synthesis, job); return; }
 		if (!job->value_job) job->value_job = pg_synthesis_handler(synthesis, job->scope, NULL, job->syntax);

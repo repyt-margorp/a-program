@@ -66,9 +66,15 @@ not the stale worktree `read_file.out` (which fails the length fixture).
 an initial 18 source/result cases using unchanged legacy fixtures: Vec, Acc,
 order proofs, six function-graph examples, named cases, six QuickSort inputs,
 and two expected rejections. Main passed that initial baseline. The current
-19-case gate passes 10: eight legacy positive cases, one justified admission of
-a historical negative request, and one new actual wrong-result rejection
-(details below). Remaining cases are UNSUPPORTED or incorrectly REJECTED.
+19-case gate, rechecked after `de8ca1c` with dependent-result transport, passes
+11: eight legacy positive cases,
+one justified admission of a historical negative request, and two genuine
+negative checks (details below). The eight failing entries cover order proofs,
+named graph cases and six QuickSort result cases; they are not eight independent
+compiler defects. QuickSort remains UNSUPPORTED. The immediate work is indexed
+induction's ambient bindings and all-impossible branches whose result constraints
+come from an application domain. This is missing source compatibility, not
+checkpoint performance work.
 This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
 checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
@@ -345,14 +351,37 @@ unchanged; computations over logical hypotheses use the extension below.
   and the dependent-result Match in `accessibleSucc`. IADT tests, source
   argument result/rejection cases, handler origins and the complete source
   image CLI suite pass ASan/UBSan. No test budget or expected result was relaxed.
-- [ ] Complete rigid indexed source Match beyond that constant-result,
-  nonrecursive fragment. All-impossible cases need result constraints from
+- [x] After `de8ca1c`: connect dependent result-family synthesis to nonrecursive
+  rigid-index Match. Each reachable branch can propose a pattern-inverted
+  motive; ordinary Solve checks all reachable bodies before selecting it.
+  A failed candidate does not end the search or establish a contradiction.
+  Hidden paths are removed from a proposed family only by checked constant-Pi
+  elimination. Refuted branches instantiate the selected family using their
+  scoped constructor substitution, never their unreachable source body.
+  The existing index argument worker is now `INDEX_TRANSPORT_JOB`, shared with
+  result checking. It uses direct inductive-index paths or constructor-field
+  paths in either direction. Computations, including raw Pi, are transported
+  at U(C) and forced afterwards, without executing them during synthesis.
+  Arbitrary Universe paths do not become implicit nominal-type casts: existing
+  named-transport rejection tests caught that overreach and remain unchanged.
+  `indexed-result-transport.p` checks dependent outputs, multiple candidate
+  attempts, impossible cases, and raw-function results; a wrong-index `::`
+  assertion rejects. Full acceptance passes preceding gates and remains 11/19
+  at legacy compatibility. QuickSort is UNSUPPORTED at 38,732 steps. Synthesis,
+  rejection and complete source-image suites pass ASan/UBSan, including the
+  new result cases through unfinished/completed image resaves.
+- [ ] Complete indexed induction and general dependent index transport.
+  All-impossible cases need result constraints from
   existing application domains, never `::` or unreachable branch bodies.
   Same-constructor equations need injectivity and transport of dependent
   fields, retaining earlier selected paths; they are not disjointness.
-  Integrate these paths with local recursive IH scopes and general dependent
-  motives and branch-result transport. Argument transport alone does not solve
-  `accessibleSucc`: its branch results still require a dependent motive.
+  `accessibleSucc` still lacks the ambient refinement from the outer Acc
+  induction: `proof : Acc n` is used inside the branch at `current`, while both
+  ambient generalization and index-path scope construction exclude local
+  induction. Do not silently identify these binders. Generalize the dependent
+  ambient bindings with checked substitutions and preserve the recursive IH's
+  motive. Merely adding `n = recursive_index` as an IH argument would make the
+  IH unusable for a smaller, different recursive index.
   Do not replace missing evidence with a trusted empty-case marker.
 - [x] Form path hypotheses between chosen parallel index substitutions with
   `pg_identity_substitution_context`. Ordinary Context/Substitution/Identity
