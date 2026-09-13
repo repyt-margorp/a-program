@@ -716,7 +716,8 @@ static void continuation_frames(void)
 		"computation/force_answer/v1", "computation/fold_answer/v1",
 		"iadt/match_answer/v1", "iadt/action_answer/v1", "symmetry/symmetry_answer/v1",
 		"identity/right_endpoint/v1", "identity/left_endpoint/v1", "identity/action_body/v1",
-		"identity/action_source/v1", "identity/thunk_return_field/v1", "identity/field_answer/v1"
+		"identity/action_source/v1", "identity/thunk_return_field/v1", "identity/field_answer/v1",
+		"identity/diagonal_path/v1", "identity/diagonal_left/v1", "identity/diagonal_right/v1"
 	};
 	struct pg_graph graph, arena = {0};
 	assert(!pg_graph_init(&graph));
@@ -725,13 +726,14 @@ static void continuation_frames(void)
 	struct action_scope scope = {term, term, 1, &binding};
 	struct action_result_work initial_result = {&graph, &binding, term, 0, 0};
 	struct action_result_work *result = &initial_result;
-	struct pg_eval_frame initial[11] = {0};
-	for (size_t i = 0; i < 11; ++i) {
+	enum { frame_count = sizeof(names) / sizeof(*names) };
+	struct pg_eval_frame initial[frame_count] = {0};
+	for (size_t i = 0; i < frame_count; ++i) {
 		initial[i].caller.term = term;
 		initial[i].continuation = pg_computation_continuation_resolve(names[i]);
 		assert(initial[i].continuation);
 		if (pg_identity_continuation_uses_scope(initial[i].continuation)) initial[i].state = &scope;
-		if (i + 1 < 11) initial[i].parent = &initial[i + 1];
+		if (i + 1 < frame_count) initial[i].parent = &initial[i + 1];
 	}
 	struct pg_eval_frame *frames = initial;
 	struct pg_eval_configuration current = {{term, NULL}, NULL};
@@ -747,7 +749,7 @@ static void continuation_frames(void)
 		size_t i = 0;
 		const struct action_scope *shared = NULL;
 		for (struct pg_eval_frame *p = frames; p; p = p->parent, ++i) {
-			assert(i < 11 && p->continuation == pg_computation_continuation_resolve(names[i]));
+			assert(i < frame_count && p->continuation == pg_computation_continuation_resolve(names[i]));
 			assert(p->caller.term == current.head.term);
 			if (p->state) {
 				if (!shared) shared = p->state;
@@ -755,7 +757,7 @@ static void continuation_frames(void)
 				assert(shared->bindings[0].source == current.head.term->as.reference);
 			}
 		}
-		assert(i == 11 && shared);
+		assert(i == frame_count && shared);
 		assert(result && result->bindings == shared->bindings && result->result == current.head.term);
 		/* Unknown names cannot select arbitrary host callbacks. */
 		assert(!fseek(file, 24, SEEK_SET) && fputc('?', file) != EOF);
@@ -1241,9 +1243,9 @@ static int machine_payload_read(FILE *file, struct pg_eval *machine,
 
 static void machine_envelope(void)
 {
-	const struct pg_eval_policy *policies[] = {&pg_beta_policy, &pg_pure_policy};
+	const struct pg_eval_policy *policies[] = {&pg_beta_policy, &pg_pure_policy, &pg_pure_policy};
 	unsigned seen = 0;
-	for (size_t p = 0; p < 2; ++p) {
+	for (size_t p = 0; p < sizeof(policies) / sizeof(*policies); ++p) {
 		uint64_t total = 0;
 		for (uint64_t cut = 0; ; ++cut) {
 			struct pg_graph graph;
@@ -1254,6 +1256,13 @@ static void machine_envelope(void)
 			const struct pg_term *term = pg_identity_action(&graph, pg_lambda(&graph, x, pg_reference(&graph, x)));
 			for (size_t i = 0; i < 3; ++i) term = pg_application(&graph, term, value);
 			term = pg_application(&graph, pg_reference(&graph, &pg_force_operation), term);
+			if (p == 2) {
+				const struct pg_term *id = pg_lambda(&graph, x, pg_reference(&graph, x));
+				const struct pg_term *function = pg_reference(&graph, pg_binder(&graph));
+				term = pg_identity_apply(&graph, function, pg_application(&graph, id, expected), expected,
+					pg_application(&graph, id, pg_identity_action(&graph, expected)));
+				expected = pg_identity_action(&graph, pg_application(&graph, function, expected));
+			}
 			if (!p) expected = term;
 			struct pg_eval machine;
 			pg_eval_init(&machine, term);

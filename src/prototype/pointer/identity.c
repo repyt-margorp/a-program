@@ -254,6 +254,17 @@ static int action_source_body(struct pg_eval *machine, const struct action_scope
 
 /* Orient ap f (refl a) toward refl (f a), never the converse for a neutral
  * application. Four administrative binders preserve all incoming closures. */
+static int diagonal_result(struct pg_eval *machine)
+{
+	struct pg_graph *graph = machine->output;
+	const struct pg_object *f = pg_binder(graph), *a = pg_binder(graph), *ignored = pg_binder(graph);
+	const struct pg_term *result = pg_identity_action(graph,
+		pg_application(graph, pg_reference(graph, f), pg_reference(graph, a)));
+	result = pg_lambda(graph, f, pg_lambda(graph, a,
+		pg_lambda(graph, ignored, pg_lambda(graph, ignored, result))));
+	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 0);
+}
+
 static int diagonal_argument(struct pg_eval *machine)
 {
 	const struct pg_argument *cursor = machine->arguments;
@@ -266,13 +277,60 @@ static int diagonal_argument(struct pg_eval *machine)
 	if (left->environment != path->environment) return 1;
 	const struct pg_term *value;
 	if (!pg_identity_action_view(path->term, &value) || value != left->term) return 1;
-	struct pg_graph *graph = machine->output;
-	const struct pg_object *f = pg_binder(graph), *a = pg_binder(graph), *ignored = pg_binder(graph);
-	const struct pg_term *result = pg_identity_action(graph,
-		pg_application(graph, pg_reference(graph, f), pg_reference(graph, a)));
-	result = pg_lambda(graph, f, pg_lambda(graph, a,
-		pg_lambda(graph, ignored, pg_lambda(graph, ignored, result))));
-	return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 0);
+	return diagonal_result(machine);
+}
+
+static int diagonal_right(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
+{
+	(void)answer; (void)unused;
+	const struct pg_closure *path = pg_eval_argument(machine, 3);
+	const struct pg_term *source;
+	if (!path || path->environment || !pg_identity_action_view(path->term, &source)) return 1;
+	/* Demanded closures have been materialized. Compare their bound structure
+	 * explicitly: readback may freshen Lambda binders, without interning alpha. */
+	for (size_t i = 1; i < 3; ++i) {
+		const struct pg_closure *endpoint = pg_eval_argument(machine, i);
+		if (endpoint->environment) return 1;
+		int equal = pg_alpha_equal(endpoint->term, source);
+		if (equal != 1) return equal < 0 ? -1 : 1;
+	}
+	return diagonal_result(machine);
+}
+
+static const struct pg_eval_continuation diagonal_right_continuation = {
+	"identity/diagonal_right/v1", diagonal_right
+};
+
+static int diagonal_left(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
+{
+	(void)answer; (void)unused;
+	return pg_eval_demand(machine, 2, &diagonal_right_continuation, NULL);
+}
+
+static const struct pg_eval_continuation diagonal_left_continuation = {
+	"identity/diagonal_left/v1", diagonal_left
+};
+
+static int diagonal_path(struct pg_eval *machine, const struct pg_term *answer, const void *unused)
+{
+	(void)unused;
+	const struct pg_term *source;
+	if (!pg_identity_action_view(answer, &source)) return 1;
+	return pg_eval_demand(machine, 1, &diagonal_left_continuation, NULL);
+}
+
+static const struct pg_eval_continuation diagonal_path_continuation = {
+	"identity/diagonal_path/v1", diagonal_path
+};
+
+/* Only a stuck, fully applied action observes its path. Scope pruning runs
+ * first, preserving constant families that ignore even divergent arguments.
+ * Demand replaces each argument by its checked reduction, not by an assumed
+ * reflexivity proof; opaque loops and mismatched endpoints remain neutral. */
+static int diagonal_fallback(struct pg_eval *machine)
+{
+	return pg_eval_argument(machine, 3)
+		? pg_eval_demand(machine, 3, &diagonal_path_continuation, NULL) : 1;
 }
 
 static int right_endpoint_scoped(struct pg_eval *machine, const struct action_scope *prepared, const struct pg_term *right)
@@ -703,7 +761,7 @@ static int action_source_scoped(struct pg_eval *machine, const struct action_sco
 	}
 	if (body->kind == PG_REFERENCE) {
 		if (center) return pg_eval_enter(machine, *pg_eval_argument(machine, center), 1 + 3 * scope.count);
-		if (!scope.count) return 1;
+		if (!scope.count) return diagonal_fallback(machine);
 		const struct pg_term *result = pg_identity_action(machine->output, body);
 		return pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1 + 3 * scope.count);
 	}
@@ -805,7 +863,7 @@ static int action_source_body(struct pg_eval *machine, const struct action_scope
 	}
 	/* With no varying binder, congruence would rebuild ap f (refl a) and
 	 * loop with diagonal_argument. Keep refl of a neutral APP as its form. */
-	if (!scope.count) return 1;
+	if (!scope.count) return diagonal_fallback(machine);
 	if (head->kind == PG_REFERENCE) {
 		if (head->as.reference == &identity_action) {
 			return pg_eval_demand_closure(machine, (struct pg_closure){body, NULL}, &action_body_continuation, prepared);
@@ -1060,7 +1118,8 @@ const struct pg_eval_work_operation *pg_identity_work_resolve(const char *name)
 const struct pg_eval_continuation *pg_identity_continuation_resolve(const char *name)
 {
 	static const struct pg_eval_continuation *const entries[] = {
-		&right_endpoint_continuation, &left_endpoint_continuation, &action_body_continuation, &action_source_continuation, &thunk_return_field_continuation, &field_answer_continuation
+		&right_endpoint_continuation, &left_endpoint_continuation, &action_body_continuation, &action_source_continuation, &thunk_return_field_continuation, &field_answer_continuation,
+		&diagonal_path_continuation, &diagonal_left_continuation, &diagonal_right_continuation
 	};
 	return pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
 }

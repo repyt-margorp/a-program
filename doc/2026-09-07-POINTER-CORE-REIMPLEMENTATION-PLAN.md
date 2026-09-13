@@ -77,10 +77,12 @@ and their `::` checks succeed. Application-domain constraints close the
 all-impossible zero case; block-scoped IH demands now also restore `partition`,
 `quickSortAcc`, `quickSort`, and their post-checks. The unchanged whole file
 still rejects at `quickSortTerminates`: `#.terminates` is not connected.
-Separately, a diagnostic stream omitting only that definition compiles, but
-QuickSort NF remains pending at ten million steps. This diagnostic is not an
-acceptance substitute or a termination proof. Runtime results and the unchanged
-file must both pass before claiming compatibility; this is not checkpoint work.
+Separately, a diagnostic stream omitting only that definition now compiles and
+all six QuickSort results normalize to their expected values. Computed
+reflexivity previously left dependent transport neutral; its reduction now
+unblocks execution. This diagnostic is not an acceptance substitute or a
+termination proof. The unchanged file must pass before claiming compatibility;
+connecting its termination request is correctness work, not checkpoint work.
 This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
 checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
@@ -421,6 +423,18 @@ unchanged; computations over logical hypotheses use the extension below.
   Full acceptance passes all preceding gates and remains 11/19 at compatibility
   (`#.terminates` rejects at 58,775 steps). Program, synthesis, IADT and the full
   image CLI suite pass ASan/UBSan. No Core tag, kernel rule or Replay path added.
+- [x] After `b6f3e2e`: reduce a stuck Identity action when its path computes to
+  reflexivity and its demanded endpoints match the reflexive endpoint.
+  Explicit alpha comparison tolerates freshened readback binders; it does not
+  change exact-pointer interning. Structural action and scope pruning run first,
+  preserving constant families that ignore divergent arguments. Opaque proofs
+  and mismatched endpoints remain neutral. Regression tests cover those cases,
+  computed function endpoints and suspension/resumption at each step boundary.
+  Identity, Identity image and full image CLI tests pass ASan/UBSan. Full normal
+  acceptance passes preceding gates but compatibility remains 11/19. A diagnostic
+  stream excluding only `quickSortTerminates` verifies all six QuickSort outputs
+  against expected values in the same Program; legacy fixtures are unchanged.
+  No completion claim for termination evidence or post-hoc properties is made.
 - [ ] Complete indexed induction and general dependent index transport.
   All-impossible cases need result constraints from
   existing application domains, never `::` or unreachable branch bodies.
@@ -428,8 +442,8 @@ unchanged; computations over logical hypotheses use the extension below.
   fields, retaining earlier selected paths; they are not disjointness.
   Ambient refinement, all-impossible result constraints and block IH-domain
   collection now handle `accessibleSucc`, `natAccessible` and `partition`.
-  Next trace the residual QuickSort runtime computation and connect the legacy
-  termination request to actual evidence, never to an empty effect row.
+  QuickSort runtime results now pass the diagnostic above. Next connect the
+  legacy termination request to actual evidence, never to an empty effect row.
   Preserve the recursive IH's motive: adding `n = recursive_index` as an IH
   argument would make it unusable at a smaller, different recursive index.
   Do not replace missing evidence with a trusted empty-case marker.

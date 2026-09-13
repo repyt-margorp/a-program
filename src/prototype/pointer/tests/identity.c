@@ -2017,6 +2017,38 @@ static void lambda_actions(struct pg_classifiers *classifiers)
 	normalizes(&work, pg_application(graph, pg_identity_instance(graph, observed_refl, a, a), refl_a), forced_refl);
 	const struct pg_term *neutral_loop = pg_identity_apply(graph, q, a, a, p);
 	normalizes(&work, neutral_loop, neutral_loop);
+	const struct pg_term *beta_a = pg_application(graph, id, a);
+	const struct pg_term *computed_refl = pg_application(graph, id, refl_a);
+	const struct pg_term *computed_diagonal = pg_identity_apply(graph, q, beta_a, a, computed_refl);
+	normalizes(&work, computed_diagonal, neutral_refl);
+	const struct pg_term *renamed_id = pg_lambda(graph, y, vy);
+	const struct pg_term *function_diagonal = pg_identity_apply(graph, q, id, renamed_id,
+		pg_application(graph, id, pg_identity_action(graph, id)));
+	converts(&work, function_diagonal, pg_identity_action(graph, pg_application(graph, q, id)));
+	normalizes(&work, pg_identity_apply(graph, q, beta_a, a, pg_application(graph, id, p)),
+		pg_identity_apply(graph, q, beta_a, a, p));
+	const struct pg_term *refl_b = pg_identity_action(graph, b);
+	normalizes(&work, pg_identity_apply(graph, q, beta_a, a, pg_application(graph, id, refl_b)),
+		pg_identity_apply(graph, q, a, a, refl_b));
+	struct pg_eval computed_whole;
+	pg_eval_init(&computed_whole, computed_diagonal);
+	computed_whole.output = graph;
+	computed_whole.dispatch = pg_pure_policy.dispatch;
+	assert(pg_eval_advance(&computed_whole, 10000) == PG_EVAL_WHNF);
+	uint64_t computed_steps = computed_whole.steps;
+	pg_eval_destroy(&computed_whole);
+	for (uint64_t cut = 0; cut < computed_steps; ++cut) {
+		struct pg_eval split;
+		pg_eval_init(&split, computed_diagonal);
+		split.output = graph;
+		split.dispatch = pg_pure_policy.dispatch;
+		assert(pg_eval_advance(&split, cut) == PG_EVAL_PENDING);
+		converts(&work, pg_eval_readback(&split, graph), neutral_refl);
+		assert(pg_eval_advance(&split, computed_steps - cut) == PG_EVAL_WHNF);
+		assert(split.steps == computed_steps);
+		converts(&work, pg_eval_readback(&split, graph), neutral_refl);
+		pg_eval_destroy(&split);
+	}
 	/* Equal syntax under different environments is not an equal endpoint. */
 	const struct pg_term *prefix = pg_application(graph, pg_lambda(graph, x,
 		pg_application(graph, pg_identity_action(graph, diagonal_family), vx)), a);
