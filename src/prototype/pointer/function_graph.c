@@ -571,7 +571,7 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 				if (!plan->computation) return -1;
 				plan->continuations = frame->next;
 			}
-			call->child = pg_prove_total_pure_value(t, child_call, pg_binder(t->graph));
+			call->child = pg_prove_total_pure_value(t, child_call);
 			if (!call->child) return -1;
 		}
 		call->arguments = pg_alloc(&s->temporary, s->arity * sizeof(*call->arguments));
@@ -674,7 +674,7 @@ static const struct pg_evidence *original_hypothesis(struct pg_function_graph_st
 			call = pg_prove_application(t, projection(s, scope, call), pg_prove_variable(t, scope, binder));
 			classifier = pg_prove_classifier(t, s->classifiers, scope, call);
 		}
-		child = pg_prove_total_pure_value(t, call, pg_binder(t->graph));
+		child = pg_prove_total_pure_value(t, call);
 	}
 	if (!child) return NULL;
 	const struct pg_evidence *input = argument_substitution(s, scope, child);
@@ -1238,7 +1238,7 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 		if (status != PG_EVAL_WHNF) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; break; }
 		const struct pg_evidence *normalized = pg_prove_normalization(s->typing, s->branch, pg_whnf_certificate(s->normalization));
 		const struct pg_evidence *output = pg_prove_return_value(s->typing, normalized);
-		if (!output) output = pg_prove_total_pure_value(s->typing, normalized, pg_binder(s->typing->graph));
+		if (!output) output = pg_prove_total_pure_value(s->typing, normalized);
 		if (!output) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; break; }
 		const struct pg_evidence *map = pg_prove_substitution_projection(s->typing, s->self, s->branch_context);
 		size_t arity = s->index_count + s->arity + 2;

@@ -2429,8 +2429,7 @@ static void contents_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 	}
 	job->result = contents(synthesis, job, job->left->result);
 	if (!job->result && job->role == RETURN_JOB) {
-		if (!job->binder) job->binder = pg_binder(synthesis->typing->graph);
-		job->result = pg_prove_total_pure_value(synthesis->typing, job->left->result, job->binder);
+		job->result = pg_prove_total_pure_value(synthesis->typing, job->left->result);
 	}
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 }

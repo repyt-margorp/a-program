@@ -1,5 +1,4 @@
-/* Valid source, currently pending; not a passing acceptance case.
- * Supply acceptance/computed-index-arithmetic.p with --imports. */
+/* Supply computed-index-arithmetic.p with --imports. */
 import Nat;
 import Vec;
 import add;

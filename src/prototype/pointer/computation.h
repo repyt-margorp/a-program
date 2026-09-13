@@ -7,6 +7,8 @@
 /* Fixed semantic operations, not additional Core tags. Construction does not
  * execute them. The beta-only evaluator keeps these references neutral. */
 extern const struct pg_object pg_return_operation;
+/* Result projection for the typed TOTAL/empty-row fragment. */
+extern const struct pg_object pg_total_result_operation;
 extern const struct pg_object pg_thunk_operation;
 extern const struct pg_object pg_force_operation;
 /* Zero-operation-clause fold: applied to M and its raw return continuation. */

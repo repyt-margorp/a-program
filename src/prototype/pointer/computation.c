@@ -6,12 +6,14 @@
 #include <string.h>
 
 static const struct pg_object_class return_class = {"return"};
+static const struct pg_object_class total_result_class = {"total-result"};
 static const struct pg_object_class thunk_class = {"thunk"};
 static const struct pg_object_class force_class = {"force"};
 static const struct pg_object_class fold_class = {"computation-fold"};
 static const struct pg_object_class request_class = {"operation-request"};
 static const struct pg_object_class handler_class = {"computation-fold-clauses"};
 const struct pg_object pg_return_operation = {PG_SEMANTIC_OBJECT, &return_class};
+const struct pg_object pg_total_result_operation = {PG_SEMANTIC_OBJECT, &total_result_class};
 const struct pg_object pg_thunk_operation = {PG_SEMANTIC_OBJECT, &thunk_class};
 const struct pg_object pg_force_operation = {PG_SEMANTIC_OBJECT, &force_class};
 const struct pg_object pg_fold_operation = {PG_SEMANTIC_OBJECT, &fold_class};
@@ -138,6 +140,7 @@ static const struct {
 	const char *name;
 } descriptors[] = {
 	{&pg_return_operation, "kernel/return/v1"},
+	{&pg_total_result_operation, "kernel/total-result/v1"},
 	{&pg_thunk_operation, "kernel/thunk/v1"},
 	{&pg_force_operation, "kernel/force/v1"},
 	{&pg_fold_operation, "kernel/fold/v1"},
@@ -306,6 +309,28 @@ const struct pg_eval_work_operation pg_fold_work_operation = {
 };
 
 static int fold_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state);
+static int total_result_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
+{
+	(void)state;
+	const struct pg_term *value = unary_argument(answer, &pg_return_operation);
+	if (value) return pg_eval_enter(machine, (struct pg_closure){value, NULL}, 1);
+	if (answer->kind != PG_APPLICATION) return 1;
+	const struct pg_term *source = unary_argument(answer->as.application.function, &pg_fold_operation);
+	if (!source) return 1;
+	/* q(Fold(M,K)) = q(K(q(M))) belongs to the TOTAL/empty-row result
+	 * projection, not to ordinary Fold. Typing checks q's domain. */
+	struct pg_graph *graph = machine->output;
+	const struct pg_term *projection = pg_reference(graph, &pg_total_result_operation);
+	const struct pg_term *argument = pg_application(graph, projection, source);
+	const struct pg_term *call = pg_application(graph, answer->as.application.argument, argument);
+	const struct pg_term *result = pg_application(graph, projection, call);
+	return result ? pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1) : -1;
+}
+
+static const struct pg_eval_continuation total_result_continuation = {
+	"computation/total_result/v1", total_result_answer
+};
+
 static const struct pg_eval_continuation fold_answer_continuation = {
 	"computation/fold_answer/v2", fold_answer
 };
@@ -363,7 +388,7 @@ const struct pg_eval_work_operation *pg_computation_work_resolve(const char *nam
 const struct pg_eval_continuation *pg_computation_continuation_resolve(const char *name)
 {
 	static const struct pg_eval_continuation *const entries[] = {
-		&force_answer_continuation, &fold_answer_continuation
+		&force_answer_continuation, &fold_answer_continuation, &total_result_continuation
 	};
 	const struct pg_eval_continuation *found = pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
 	if (!found) found = pg_data_continuation_resolve(name);
@@ -374,6 +399,10 @@ const struct pg_eval_continuation *pg_computation_continuation_resolve(const cha
 static int dispatch(struct pg_eval *machine)
 {
 	const struct pg_object *operation = machine->current.term->as.reference;
+	if (operation == &pg_total_result_operation) {
+		if (!pg_eval_argument(machine, 0)) return 1;
+		return pg_eval_demand(machine, 0, &total_result_continuation, NULL);
+	}
 	if (operation == &pg_thunk_operation) {
 		const struct pg_closure *body = pg_eval_argument(machine, 0);
 		if (!body) return 1;
@@ -412,7 +441,7 @@ static const struct {
 	const char *name;
 } portable_policies[] = {
 	{&pg_beta_policy, "evaluation/beta/v1"},
-	{&pg_pure_policy, "evaluation/pure/v3"}
+	{&pg_pure_policy, "evaluation/pure/v4"}
 };
 
 const char *pg_computation_policy_name(const struct pg_eval_policy *policy)

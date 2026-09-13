@@ -43,6 +43,7 @@ while read -r expectation name left right; do
 	fi
 done <<'CASES'
 0 typing/explicit_index_family_vec_check
+0 typing/explicit_index_family_append_check
 0 typing/explicit_index_family_tail_check
 0 typing/explicit_index_family_tail_infer
 0 typing/explicit_index_family_acc_eliminator_check
@@ -97,6 +98,19 @@ test "$failed" -eq 0
 # witnesses, using the original module through ordinary imports and Solve.
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
+client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-vec-append-results.p"
+for steps in 0 100000; do
+	code=0
+	"$checker" --steps "$steps" --imports "$fixtures/typing/explicit_index_family_append_check.p" \
+		--save "$directory/append.a" "$client" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	for pair in original:expected empty:nil leftEmpty:right rightEmpty:right ordered:pair recursive:triple; do
+		"$runtime" --equal-image "$directory/append.a" "${pair%:*}" "${pair#*:}"
+	done
+done
+acceptance="$(dirname "${BASH_SOURCE[0]}")/acceptance"
+"$checker" --steps 100000 --imports "$acceptance/computed-index-arithmetic.p" \
+	"$acceptance/computed-constructor-index.p"
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-rebuild-results.p"
 for steps in 0 100000; do
 	code=0

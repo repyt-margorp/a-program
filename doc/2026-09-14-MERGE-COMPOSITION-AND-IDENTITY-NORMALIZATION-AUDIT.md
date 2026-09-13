@@ -315,6 +315,10 @@ conversion, and artifact semantics are unchanged.
 
 ## Typed Elimination Follow-up
 
+Historical diagnosis below: the later
+[total-result projection](2026-09-14-TOTAL-PURE-RESULT-PROJECTION.md) restores these
+cases. The constructor client now lives in `tests/acceptance/`.
+
 The Vec problem is reproducible without an append or IH. The positive control
 `tests/acceptance/computed-index-arithmetic.p` checks the explicit index types
 `Vec Nat (add (succ m) n)` and `Vec Nat (succ (add m n))`, then executes a

@@ -516,10 +516,9 @@ void pg_reindex_destroy(struct pg_reindex *work);
 const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 	const struct pg_evidence *computation);
 /* A symbolic result, not eager evaluation. The checked computation must have
- * both TOTAL and an empty operation row. The Core identity binder is retained
- * explicitly so derivation transport does not allocate a different encoding. */
+ * both TOTAL and an empty operation row. */
 const struct pg_evidence *pg_prove_total_pure_value(struct pg_typing *typing,
-	const struct pg_evidence *computation, const struct pg_object *binder);
+	const struct pg_evidence *computation);
 const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 	const struct pg_evidence *value);
 /* first : Delta -> Gamma, second : Theta -> Delta; result : Theta -> Gamma. */

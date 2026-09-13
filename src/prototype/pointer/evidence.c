@@ -1356,7 +1356,7 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
 	if (pg_effect_count(effects)) return NULL;
 	const struct pg_evidence *at;
 	if (field_totality == PG_TOTALITY_TOTAL) {
-		const struct pg_evidence *result = pg_prove_total_pure_value(typing, call, pg_binder(typing->graph));
+		const struct pg_evidence *result = pg_prove_total_pure_value(typing, call);
 		at = pg_prove_inductive_motive_at(typing, classifiers,
 			formation, parameters, motive_context, motive, scope, result);
 		goto abstract;
@@ -2756,18 +2756,17 @@ const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_total_pure_value(struct pg_typing *typing,
-	const struct pg_evidence *computation, const struct pg_object *binder)
+	const struct pg_evidence *computation)
 {
 	if (!pg_evidence_owned_by(computation, typing)) return NULL;
 	if (computation->judgement != PG_JUDGEMENT_COMPUTATION) return NULL;
-	if (!binder || binder->kind != PG_BINDER) return NULL;
 	const struct pg_term *type;
 	const struct pg_effect_row *effects;
 	enum pg_totality totality;
 	if (!pg_computation_type_view(computation->classifier, &totality, &effects, &type)) return NULL;
 	if (totality != PG_TOTALITY_TOTAL || pg_effect_count(effects)) return NULL;
-	const struct pg_term *identity = pg_lambda(typing->graph, binder, pg_reference(typing->graph, binder));
-	const struct pg_term *core = pg_computation_fold(typing->graph, computation->subject->core, identity, 0, NULL);
+	const struct pg_term *core = pg_application(typing->graph,
+		pg_reference(typing->graph, &pg_total_result_operation), computation->subject->core);
 	if (!core) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, computation->context, core, NULL, 1, &computation->subject);
 	if (!subject) return NULL;

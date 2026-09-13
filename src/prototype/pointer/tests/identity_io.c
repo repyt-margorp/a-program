@@ -113,7 +113,8 @@ static void policy_names(void)
 	assert(!pg_computation_policy_resolve(""));
 	assert(!pg_computation_policy_resolve("evaluation/pure/v1"));
 	assert(!pg_computation_policy_resolve("evaluation/pure/v2"));
-	assert(pg_computation_policy_resolve("evaluation/pure/v3") == &pg_pure_policy);
+	assert(!pg_computation_policy_resolve("evaluation/pure/v3"));
+	assert(pg_computation_policy_resolve("evaluation/pure/v4") == &pg_pure_policy);
 	assert(!pg_computation_policy_resolve("computation/fold_work/v1"));
 	pg_whnf_work_destroy(&work);
 	pg_graph_destroy(&graph);
@@ -716,6 +717,7 @@ static void continuation_frames(void)
 {
 	const char *names[] = {
 		"computation/force_answer/v1", "computation/fold_answer/v2",
+		"computation/total_result/v1",
 		"iadt/match_answer/v1", "iadt/action_answer/v1", "symmetry/symmetry_answer/v1",
 		"identity/right_endpoint/v1", "identity/left_endpoint/v1", "identity/action_body/v1",
 		"identity/action_source/v1", "identity/thunk_return_field/v1", "identity/field_answer/v1",
@@ -773,7 +775,8 @@ static void continuation_frames(void)
 	}
 	FILE *bad = tmpfile();
 	assert(bad);
-	frames->state = frames->parent->parent->parent->parent->parent->state;
+	/* FORCE accepts no state payload, regardless of later frame ordering. */
+	frames->state = result;
 	assert(pg_computation_frames_write(bad, frames, result, &current, &codec, NULL));
 	assert(!fclose(bad));
 	pg_materialize_destroy(&frames->answer);
@@ -2025,6 +2028,32 @@ static void result_frames(void)
 	assert(retained);
 }
 
+static void total_result_machine(void)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	const struct pg_term *expected = pg_reference(&graph, pg_binder(&graph));
+	const struct pg_term *input = pg_application(&graph, pg_reference(&graph, &pg_force_operation),
+		pg_reference(&graph, pg_binder(&graph)));
+	const struct pg_term *body = pg_application(&graph, pg_reference(&graph, &pg_return_operation), expected);
+	const struct pg_term *fold = pg_computation_fold(&graph, input,
+		pg_lambda(&graph, pg_binder(&graph), body), 0, NULL);
+	const struct pg_term *term = pg_application(&graph, pg_reference(&graph, &pg_total_result_operation), fold);
+	struct pg_eval machine;
+	pg_computation_eval_init(&machine, &graph, term);
+	int saw_projection = 0;
+	while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) {
+		assert(machine.steps < 500);
+		for (const struct pg_eval_frame *p = machine.frames; p; p = p->parent)
+			if (p->continuation == pg_computation_continuation_resolve("computation/total_result/v1")) saw_projection = 1;
+		machine_resave(&machine, &graph, NULL, &expected);
+	}
+	assert(saw_projection && machine.status == PG_EVAL_WHNF);
+	assert(pg_eval_readback(&machine, &graph) == expected);
+	pg_eval_destroy(&machine);
+	pg_graph_destroy(&graph);
+}
+
 static void machine_forest(void)
 {
 	struct pg_graph graph;
@@ -3194,6 +3223,7 @@ int main(int argc, char **argv)
 	discovery_progress(0);
 	discovery_progress(1);
 	continuation_frames();
+	total_result_machine();
 	force_frames();
 	fold_progress();
 	symmetry_progress();

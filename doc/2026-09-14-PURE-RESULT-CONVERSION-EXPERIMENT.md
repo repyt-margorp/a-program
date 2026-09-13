@@ -3,6 +3,8 @@
 Date: 2026-09-14
 Baseline: `aa21f98` on `rewrite/pointer-core-hott`
 Status: rejected experiment; compiler changes reverted
+Follow-up: [explicit total-result projection](2026-09-14-TOTAL-PURE-RESULT-PROJECTION.md)
+restores the counterexamples below; this document retains the earlier results.
 Parent: [pointer rewrite plan](2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md)
 
 ## Question
@@ -121,7 +123,7 @@ It prevents repeatedly installing a local rewrite with no coherent typing law.
 ## Finite Control After Withdrawal
 
 On unchanged compiler implementation `aa21f98`,
-[`nonrecursive-computed-index.p`](../src/prototype/pointer/tests/known-limitations/nonrecursive-computed-index.p)
+[`nonrecursive-open-index.p`](../src/prototype/pointer/tests/acceptance/nonrecursive-open-index.p)
 replaces recursive addition with `choose : Bool -> Nat`, implemented by two
 constant branches. The following post-check rejects after 2,539 Solve steps:
 

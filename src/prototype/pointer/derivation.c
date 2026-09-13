@@ -68,8 +68,6 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 		result.binder = pg_evidence_context(evidence)->binder; break;
 	case PG_VARIABLE:
 		result.binder = subject->core->as.reference; break;
-	case PG_TOTAL_PURE_VALUE:
-		result.binder = subject->core->as.application.argument->as.lambda.binder; break;
 	case PG_UNIVERSE_FORM:
 		if (!pg_universe_level(subject->core, &result.level)) return -1;
 		break;
@@ -204,7 +202,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_IDENTITY_RIGHT_TYPE, 1, pg_prove_identity_endpoint_type(typing, classifiers, p[0], rule));
 	RULE(PG_IDENTITY_TRANSPORT, 3, pg_prove_identity_transport(typing, classifiers, p[1], p[2], parameters->direction));
 	RULE(PG_RETURN_VALUE, 1, pg_prove_return_value(typing, p[0]));
-	RULE(PG_TOTAL_PURE_VALUE, 1, pg_prove_total_pure_value(typing, p[0], parameters->binder));
+	RULE(PG_TOTAL_PURE_VALUE, 1, pg_prove_total_pure_value(typing, p[0]));
 	RULE(PG_THUNK_COMPUTATION, 1, pg_prove_thunk_computation(typing, p[0]));
 	case PG_REFLEXIVITY:
 		if (count != 2 || pg_evidence_rule(p[0]) != PG_IDENTITY_FORM) return NULL;

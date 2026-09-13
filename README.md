@@ -137,22 +137,21 @@ wall-clock time or the cost of an individual rule.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 31-case legacy
+September 14 verification includes examples 01-07 and 09, a 32-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. Acc is source-defined using indexed induction, not a
 special kernel primitive. A post-hoc specification of an existing `length`
 is tested in [length-output-proof.p](src/prototype/pointer/tests/acceptance/length-output-proof.p).
 Selected captured indexed functions also generate checked graphs and witnesses,
-including Vec copy. This does not yet cover the legacy dependent Vec append.
+including Vec copy. The unchanged legacy dependent Vec append now compiles,
+and six result comparisons cover empty inputs, order and repeated recursion
+through unfinished/completed images.
 Typed one-step elimination supports direct and sequenced function fields, and
-recovers constructor origins through return-producing sequences. Computed-index
-conversion remains incomplete: a
-[recursive reproduction](src/prototype/pointer/tests/known-limitations/computed-constructor-index.p)
-stays pending, while a
-[finite Bool reproduction](src/prototype/pointer/tests/known-limitations/nonrecursive-computed-index.p)
-is rejected after normalization. Concrete Bool calls pass, including their
-post-checks. More fuel alone cannot resolve this boundary; see the
-[conversion investigation](doc/2026-09-14-PURE-RESULT-CONVERSION-EXPERIMENT.md).
+recovers constructor origins through return-producing sequences. Checked total,
+effect-free result projection now has an explicit semantic reference, allowing
+computed constructor indices to agree with source post-checks. Ordinary Fold and
+Identity transport retain their strict behavior. See the
+[result projection contract](doc/2026-09-14-TOTAL-PURE-RESULT-PROJECTION.md).
 
 This is not complete legacy compatibility or complete Higher Observational
 Type Theory. General higher/dependent/Universe Identity coherence, some indexed

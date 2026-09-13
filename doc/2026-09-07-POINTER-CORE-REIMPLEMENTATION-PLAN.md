@@ -99,6 +99,16 @@ and classifiers before another extraction rewrite. Scoped typed conversion and
 uniform typed elaboration remain candidates, not admitted rules. Raw conversion,
 strict Fold and the requirement to restore unchanged Vec append remain intact.
 
+Result-projection follow-up after `28d0823`: the existing TOTAL/empty-row result
+rule now uses an explicit semantic reference instead of ordinary Fold with an
+identity continuation. Its unit and sequencing laws restore the finite open
+index, computed constructor substitution and unchanged Vec append. Ordinary
+Fold, source sequencing and Identity transport are unchanged. See the
+[contract and verification gates](2026-09-14-TOTAL-PURE-RESULT-PROJECTION.md).
+The compatibility inventory grows to 32 cases, with six append result checks
+through unfinished/completed images. This supersedes the pending Vec diagnosis
+above, not the remaining compatibility and Higher Identity obligations.
+
 This user-directed ordering supersedes earlier checkpoint-first next steps.
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the
@@ -276,7 +286,9 @@ September 13 compatibility follow-up:
   Full `check-acceptance` passes in debug and ASan/UBSan builds, including
   source/image checks for the new computed-index cases and the unchanged
   **27/27** legacy compatibility gate with all six QuickSort results.
-- [ ] Finish Vec append's remaining neutral result conversion. Source result
+- [x] Finish Vec append's remaining neutral result conversion. Restored by the
+  explicit total-result projection documented above, with the unchanged fixture
+  and result tests. Historical diagnosis and withdrawn trials follow. Source result
   formation now succeeds, but compilation still exhausts 1,000,000 steps in
   conversion. The failing comparison relates the indexed IH result at a succ
   input to the branch result containing succ of the recursive add result.

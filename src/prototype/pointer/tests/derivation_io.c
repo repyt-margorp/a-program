@@ -1241,7 +1241,7 @@ static void termination_proofs(FILE *file, struct pg_typing *typing,
 			pg_prove_classifier(typing, classifiers, context, suspended), suspended);
 		const struct pg_evidence *witness = pg_prove_termination(typing, classifiers, formation, suspended);
 		const struct pg_evidence *result = pg_prove_total_pure_value(typing,
-			pg_prove_force(typing, suspended), pg_binder(typing->graph));
+			pg_prove_force(typing, suspended));
 		assert(formation && witness && result && !pg_derivations_write(file, 3,
 			(const struct pg_evidence *[]){formation, witness, result}, name, classifiers));
 		return;

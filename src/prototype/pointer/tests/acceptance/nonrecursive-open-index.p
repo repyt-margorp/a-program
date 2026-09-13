@@ -1,4 +1,4 @@
-/* A finite control for computed-index substitution; not a passing test. */
+/* Open post-check: neither recursion nor a concrete Bool may guide synthesis. */
 Nat := @{zero:*; succ:*->*;};
 Bool := @{false:*; true:*;};
 Vec := \A:@ => @\n:Nat => {
@@ -12,3 +12,8 @@ choose := \b:Bool => b
 
 prepend := \b:Bool => \xs:Vec Nat (choose b) =>
 	((Vec Nat).cons (choose b) Nat.zero xs :: Vec Nat (Nat.succ (choose b)));
+
+one := (Vec Nat).cons Nat.zero Nat.zero (Vec Nat).nil;
+two := (Vec Nat).cons (Nat.succ Nat.zero) Nat.zero one;
+main := prepend Bool.false (Vec Nat).nil;
+other := prepend Bool.true one;
