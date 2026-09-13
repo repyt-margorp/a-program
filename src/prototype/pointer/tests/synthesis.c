@@ -5767,6 +5767,21 @@ static void graded_application(struct pg_typing *typing, struct pg_classifiers *
 		for (size_t effectful = 0; effectful < 2; ++effectful) {
 			const struct pg_effect_row *effects = effectful ? pg_effect_row(typing->graph, 1,
 				(const struct pg_object *[]){&pg_return_operation}) : row;
+			/* Logical callees must use the same checked family contract as
+			 * ordinary callees, including its effect and termination boundary. */
+			const struct pg_object *index = pg_binder(typing->graph), *callback = pg_binder(typing->graph);
+			const struct pg_evidence *index_context = pg_prove_context_extension(typing, empty, index, u0);
+			const struct pg_evidence *callback_type = pg_prove_thunk_type(typing, classifiers,
+				pg_prove_pi(typing, classifiers, index_context,
+					pg_prove_computation_type(typing, classifiers, grade, effects,
+						pg_prove_projection(typing, index_context, u0))));
+			const struct pg_evidence *callback_context = pg_prove_context_extension(typing, empty, callback, callback_type);
+			const struct pg_source_scope *callback_scope = pg_synthesis_bind(&synthesis, pg_synthesis_root(&synthesis),
+				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "f", .length = 1}, callback, callback_context);
+			assert(callback_scope);
+			complete(&synthesis, program(&synthesis, callback_scope,
+				"D:=\\F:@->@=>F; applied:=D f;"),
+				effectful ? PG_SYNTHESIS_REJECTED : grade == PG_TOTALITY_TOTAL ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 			const struct pg_evidence *type = pg_prove_computation_type(typing, classifiers, grade, effects, u1);
 			const struct pg_object *m = pg_binder(typing->graph);
 			const struct pg_evidence *scope = pg_prove_context_extension(typing, empty, m,

@@ -47,6 +47,13 @@ done <<'CASES'
 0 typing/explicit_index_family_tail_check
 0 typing/explicit_index_family_tail_infer
 0 typing/explicit_index_family_acc_eliminator_check
+0 typing/explicit_index_family_fin_check
+0 typing/explicit_index_family_head_check
+0 typing/explicit_index_family_map_check
+0 typing/explicit_index_family_acc_check
+0 typing/explicit_index_family_acc_parameter_specialization_check
+0 typing/explicit_index_family_acc_full_specialization_check
+0 typing/explicit_index_family_acc_concrete_check
 0 typing/indexed_branch_rebuild_check
 0 typing/residual_index_equation_negative
 0 ../../../../examples/type-infer-and-check/level2/02_tree
@@ -98,6 +105,15 @@ test "$failed" -eq 0
 # witnesses, using the original module through ordinary imports and Solve.
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
+client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-acc-concrete-results.p"
+for steps in 0 100000; do
+	code=0
+	"$checker" --steps "$steps" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
+		--save "$directory/acc.a" "$client" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"$runtime" --equal-image "$directory/acc.a" falseMain falseExpected
+	"$runtime" --equal-image "$directory/acc.a" main expected
+done
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-vec-append-results.p"
 for steps in 0 100000; do
 	code=0

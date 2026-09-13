@@ -140,10 +140,14 @@ successful verification nor evidence that the program is invalid.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 32-case legacy
+September 14 verification includes examples 01-07 and 09, a 39-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. Acc is source-defined using indexed induction, not a
-special kernel primitive. A post-hoc specification of an existing `length`
+special kernel primitive. Quoted type-producing functions use the same checked
+family contract in both ordinary and logical-family applications. The original
+concrete Acc example and its imported elimination results are covered through
+unfinished/completed images; this does not establish arbitrary dependent Match
+inference. A post-hoc specification of an existing `length`
 is tested in [length-output-proof.p](src/prototype/pointer/tests/acceptance/length-output-proof.p).
 Importing clients prove content preservation for the unchanged QuickSort
 provider's [measure](src/prototype/pointer/tests/acceptance/legacy-measure-property.p)
@@ -172,7 +176,8 @@ Identity transport retain their strict behavior. See the
 This is not complete legacy compatibility or complete Higher Observational
 Type Theory. General higher/dependent/Universe Identity coherence, some indexed
 graph and Vec cases, comparator-dependent sortedness proofs, and full host/backend
-coverage remain open. Execution witnesses alone do not prove sorting
+coverage remain open. Refining captured dependent arguments in a non-indexed
+Match also remains incomplete. Execution witnesses alone do not prove sorting
 correctness. In particular, a standalone indexed Match whose every branch is
 refuted can remain pending without a result-classifier constraint from an
 application. Its trailing `::` deliberately does not supply that constraint.

@@ -8491,6 +8491,12 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 	if (raw_shape->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, raw_shape->status); return 1; }
 	if (logical_family_signature(pg_synthesis_type_structure_result(raw_shape))) {
 		struct pg_synthesis_job *argument = state->argument;
+		const struct pg_term *domain, *body;
+		const struct pg_object *binder;
+		if (!pg_pi_view(pg_synthesis_type_structure_result(raw_shape), &domain, &binder, &body)) goto error;
+		if (logical_family_signature(domain))
+			argument = request_job(synthesis, FAMILY_CONTRACT_JOB, state->context, argument);
+		if (!argument) goto error;
 		if (argument->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, argument); return 1; }
 		if (argument->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, argument->status); return 1; }
 		if (pg_evidence_judgement(argument->result) == PG_JUDGEMENT_COMPUTATION)

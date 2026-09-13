@@ -287,6 +287,54 @@ count pending as rejection. This is a test-budget correction, not a compiler
 acceptance-rule change.
 
 This user-directed ordering supersedes earlier checkpoint-first next steps.
+
+Concrete Acc compatibility follow-up after `4515008` (September 14):
+
+- [x] Restore the unchanged `explicit_index_family_acc_concrete_check.p`.
+  `Acc Bool &precedesRelation` previously rejected because the logical-callee
+  application path skipped `FAMILY_CONTRACT_JOB`, already used by ordinary
+  callees. Reuse that job when the logical Pi domain is itself a family.
+  Kernel application still requires a checked family with the correct classifier;
+  no Core tag, conversion rule or expected-type synthesis input is added.
+- [x] Add seven unchanged legacy cases (Fin, head, map and four Acc cases) to
+  the existing 32-case gate. Add an importing concrete Acc client checking the
+  exposed index and a constant-step elimination through pending/completed images.
+- [x] Exercise quoted callbacks with total/unspecified guarantees and empty/nonempty
+  effects. Pure total callbacks pass; effectful callbacks reject; opaque pure
+  callbacks without totality remain unsupported. A loaded family's old blanket
+  rejection of a quoted pure type function is replaced by checking its accepted
+  family-application derivation. Wrong post-checks still reject.
+- [x] Complete debug `check-acceptance`, ASan/UBSan `check-source-compatibility`,
+  `synthesis_test` and `tests/derivation_io.sh`. All pass, including 39/39 inventory
+  cases and QuickSort property clients. The optimized checker also accepts the
+  concrete client (6,686 transitions) and the README's example 05 command.
+  Implementation C: +6/-0; tests/fixtures/scripts: +53/-1. No kernel rule changed.
+
+Newly exposed limitations, not solved by the application repair:
+
+```ap
+heightStep := \b : Bool => \ih : (y : Bool) -> Precedes y b -> Nat => b
+  @false => Nat.zero
+  @true => Nat.succ (ih Bool.false Precedes.falseBeforeTrue);
+```
+
+The true branch still sees the captured `ih` at `Precedes y b`. The existing
+checked ambient-telescope generalization is gated to indexed or certain
+inductive matches. Simply broadening that gate did not complete the concrete
+client and was withdrawn; no untyped branch-local classifier substitution was
+introduced. Separately, constructing `Acc ... Bool.true` using
+`\y : Bool => \edge : Precedes y Bool.true => edge @falseBeforeTrue => accFalse`
+rejects the quoted field's application. The necessary result-index refinement
+must be traced independently before changing kernel rules. The new positive
+client deliberately tests only the original `accFalse` and a constant step;
+it is not evidence that these two extensions work.
+
+Next: retain these examples as dependent-motive acceptance targets, derive the
+ambient telescope and branch result specialization with existing typed maps,
+and test both valid and mismatched indices. Do not use trailing `::` to choose
+the motive or weaken totality/effect checks. README describes the current
+rewrite; its archived legacy README remains byte-identical to `e9a131d`.
+
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the
 already-defined `length` and `quickSort` are the following milestone, not a

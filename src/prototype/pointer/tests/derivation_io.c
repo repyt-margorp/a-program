@@ -464,7 +464,13 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	assert(pg_synthesis_status(expect) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(expect));
 	assert(pg_synthesis_status(family_use) == PG_SYNTHESIS_DONE);
 	assert(pg_evidence_judgement(pg_synthesis_result(family_use)) == PG_JUDGEMENT_TYPE_FAMILY);
-	assert(pg_synthesis_status(family_thunk) == PG_SYNTHESIS_REJECTED);
+	/* Quoted pure type functions pass the same family contract after loading;
+	 * a raw thunk is still not a kernel-level logical family argument. */
+	assert(pg_synthesis_status(family_thunk) == PG_SYNTHESIS_DONE);
+	const struct pg_evidence *contracted = pg_synthesis_result(family_thunk);
+	assert(pg_evidence_rule(contracted) == PG_TYPE_FAMILY_APP);
+	assert(pg_evidence_judgement(contracted) == PG_JUDGEMENT_TYPE_FAMILY);
+	assert(pg_evidence_judgement(pg_evidence_premise(contracted, 1)) == PG_JUDGEMENT_TYPE_FAMILY);
 	assert(pg_synthesis_status(family_expect) == PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *family_application = pg_synthesis_result(jobs[13]);
 	assert(pg_evidence_rule(family_application) == PG_TYPE_FAMILY_APP);
