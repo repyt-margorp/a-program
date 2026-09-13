@@ -54,6 +54,15 @@ done <<'CASES'
 0 typing/explicit_index_family_acc_parameter_specialization_check
 0 typing/explicit_index_family_acc_full_specialization_check
 0 typing/explicit_index_family_acc_concrete_check
+0 typing/iadts_box_perfect_construction_check
+0 typing/outer_ih_nested_match_check tailResult tailExpected
+0 typing/outer_ih_nested_match_check functionResult functionExpected
+0 typing/recursive_ih_field_identity_check leftResult leftExpected
+0 typing/recursive_ih_field_identity_check rightResult rightExpected
+0 typing/recursive_ih_field_identity_check bothResult leftExpected
+0 typing/recursive_ih_field_identity_check sizeResult sizeExpected
+0 typing/recursive_ih_field_identity_check choiceLeftResult leftExpected
+0 typing/recursive_ih_field_identity_check choiceRightResult rightExpected
 0 typing/indexed_branch_rebuild_check
 0 typing/residual_index_equation_negative
 0 ../../../../examples/type-infer-and-check/level2/02_tree
@@ -120,7 +129,7 @@ for steps in 0 100000; do
 	"$checker" --steps "$steps" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
 		--save "$directory/successor.a" "$client" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
-	for pair in main:expected base:zero; do
+	for pair in main:expected base:zero childIndex:falseValue; do
 		"$runtime" --equal-image "$directory/successor.a" "${pair%:*}" "${pair#*:}"
 	done
 done
@@ -130,6 +139,15 @@ code=0
 test "$code" -eq 1
 code=0
 "$checker" --load "$directory/wrong-successor.a" > "$directory/status" || code=$?
+test "$code" -eq 1
+sed 's/down Bool.false Precedes.falseBeforeTrue/down Bool.true Precedes.falseBeforeTrue/' \
+	"$client" > "$directory/wrong-child.p"
+code=0
+"$checker" --imports "$fixtures/typing/explicit_index_family_acc_concrete_check.p" \
+	--save "$directory/wrong-child.a" "$directory/wrong-child.p" > "$directory/status" || code=$?
+test "$code" -eq 1
+code=0
+"$checker" --load "$directory/wrong-child.a" > "$directory/status" || code=$?
 test "$code" -eq 1
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-vec-append-results.p"
 for steps in 0 100000; do

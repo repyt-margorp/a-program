@@ -108,6 +108,11 @@ for steps in 0 100000; do
 	for pair in main:one second:two base:zero dependentMain:two dependentBase:zero multipleMain:two multipleBase:one; do
 		"$runtime" --equal-image "$directory/dependent.a" "${pair%:*}" "${pair#*:}"
 	done
+	code=0
+	"$checker" --steps "$steps" --save "$directory/constructed.a" \
+		"$fixtures/constructed-index-transport.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"$runtime" --equal-image "$directory/constructed.a" main expected
 done
 "$runtime" --reject "$fixtures/captured-dependent-match-wrong.p"
 code=0
@@ -116,4 +121,13 @@ code=0
 test "$code" -eq 3
 code=0
 "$checker" --load "$directory/wrong-dependent.a" > "$directory/status" || code=$?
+test "$code" -eq 1
+sed 's/f (At.at one)/f (At.at two)/' "$fixtures/constructed-index-transport.p" > "$directory/wrong-constructed.p"
+"$runtime" --reject "$directory/wrong-constructed.p"
+code=0
+"$checker" --steps 0 --save "$directory/wrong-constructed.a" \
+	"$directory/wrong-constructed.p" > "$directory/status" || code=$?
+test "$code" -eq 3
+code=0
+"$checker" --load "$directory/wrong-constructed.a" > "$directory/status" || code=$?
 test "$code" -eq 1

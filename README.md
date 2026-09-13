@@ -140,7 +140,7 @@ successful verification nor evidence that the program is invalid.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 39-case legacy
+September 14 verification includes examples 01-07 and 09, a 48-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. Acc is source-defined using indexed induction, not a
 special kernel primitive. Quoted type-producing functions use the same checked
@@ -149,7 +149,9 @@ concrete Acc example and its imported elimination results are covered through
 unfinished/completed images. Non-recursive Match can refine captured dependent
 arguments, and reachable indexed branches retain constructor-index information
 when synthesizing their motive. A concrete two-element accessibility relation
-exercises recursive Acc elimination; this is not arbitrary motive inference.
+exercises recursive Acc elimination and direct child extraction, including
+transport from a constructor index to a branch variable. This is not arbitrary
+motive inference.
 A post-hoc specification of an existing `length`
 is tested in [length-output-proof.p](src/prototype/pointer/tests/acceptance/length-output-proof.p).
 Importing clients prove content preservation for the unchanged QuickSort

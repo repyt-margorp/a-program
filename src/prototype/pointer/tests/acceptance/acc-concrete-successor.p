@@ -16,3 +16,6 @@ main := accElim Bool &precedesRelation &natFamily &heightStep Bool.true accTrue;
 expected := Nat.succ Nat.zero;
 base := accElim Bool &precedesRelation &natFamily &heightStep Bool.false accFalse;
 zero := Nat.zero;
+child := accTrue @acc subject down => down Bool.false Precedes.falseBeforeTrue;
+childIndex := child @acc subject down => subject;
+falseValue := Bool.false;

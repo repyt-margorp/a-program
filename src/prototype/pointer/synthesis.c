@@ -7327,28 +7327,33 @@ static struct pg_synthesis_job *index_transport_check(struct pg_synthesis *synth
 	return pg_synthesis_expect(synthesis, argument, target);
 }
 
-/* Factor the argument classifier through a constructor-field variable, then
- * transport along that field's derived identity. Pattern inversion constructs
+/* Factor the classifier through a typed index endpoint or constructor-field
+ * variable, then transport along its identity. Pattern inversion constructs
  * checked substitutions; it never rewrites a classifier's raw Core in place. */
 static struct pg_synthesis_job *index_transport_candidate(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_object *field,
 	const struct pg_term *left, const struct pg_term *right, enum pg_identity_direction direction)
 {
-	if (left->kind != PG_REFERENCE || right->kind != PG_REFERENCE) return NULL;
-	if (left->as.reference->kind != PG_BINDER || right->as.reference->kind != PG_BINDER) return NULL;
+	if (field && (left->kind != PG_REFERENCE || right->kind != PG_REFERENCE)) return NULL;
+	if (field && (left->as.reference->kind != PG_BINDER || right->as.reference->kind != PG_BINDER)) return NULL;
 	struct pg_typing *typing = synthesis->typing;
 	struct index_transport_state *state = job->index_transport;
 	const struct pg_evidence *context = ((struct pg_synthesis_job *)job->inputs[0])->result;
 	const struct pg_term *from = direction == PG_IDENTITY_LEFT ? right : left;
-	const struct pg_evidence *extension = context;
-	while (pg_evidence_context(extension) && pg_evidence_context(extension)->binder != from->as.reference)
-		extension = pg_evidence_premise(extension, 0);
-	if (!pg_evidence_context(extension) || pg_evidence_rule(extension) != PG_CONTEXT_EXTEND) return NULL;
-	const struct pg_evidence *prefix = pg_evidence_premise(extension, 0);
-	const struct pg_evidence *source = pg_prove_context_extension(typing, prefix,
-		pg_binder(typing->graph), pg_evidence_premise(extension, 1));
-	const struct pg_evidence *lv = pg_prove_variable(typing, context, left->as.reference);
-	const struct pg_evidence *rv = pg_prove_variable(typing, context, right->as.reference);
+	const struct pg_evidence *lv = field ? pg_prove_variable(typing, context, left->as.reference) : state->endpoints[0];
+	const struct pg_evidence *rv = field ? pg_prove_variable(typing, context, right->as.reference) : state->endpoints[1];
+	const struct pg_evidence *prefix = context;
+	const struct pg_evidence *domain;
+	if (from->kind == PG_REFERENCE && from->as.reference->kind == PG_BINDER) {
+		const struct pg_evidence *extension = context;
+		while (pg_evidence_context(extension) && pg_evidence_context(extension)->binder != from->as.reference)
+			extension = pg_evidence_premise(extension, 0);
+		if (!pg_evidence_context(extension) || pg_evidence_rule(extension) != PG_CONTEXT_EXTEND) return NULL;
+		prefix = pg_evidence_premise(extension, 0);
+		domain = pg_evidence_premise(extension, 1);
+	} else domain = pg_prove_classifier(typing, synthesis->classifiers, context,
+		direction == PG_IDENTITY_LEFT ? rv : lv);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, prefix, pg_binder(typing->graph), domain);
 	if (!field) {
 		/* This is index refinement, not an implicit cast along an arbitrary
 		 * Universe path between nominal types. Named transport stays explicit. */

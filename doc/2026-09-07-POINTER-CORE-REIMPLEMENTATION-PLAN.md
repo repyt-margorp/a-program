@@ -357,15 +357,50 @@ Implementation C: +26/-4; tests/fixtures/scripts: +103/-0; documentation separat
 
 Remaining scope restrictions are explicit: generalization across local
 definitions/handlers and arbitrary dependent IH domains are not enabled by
-this repair. A direct specialized extraction
-`accTrue @acc subject down => down Bool.false Precedes.falseBeforeTrue`
-still rejects its edge argument: the branch field expects
-`Precedes false subject`, not `Precedes false true`. Existing path transport
-does not yet close that application; accepting the constructor and recursive
-generic eliminator is not evidence that arbitrary specialized field use works.
-Continue wider valid-source compatibility without allowing `::`
+this repair. The direct specialized extraction was a separate open case;
+its resolution is tracked below. Continue wider valid-source compatibility without allowing `::`
 to select a motive or weaken totality/effect checks. README describes the
 current rewrite; its legacy archive remains byte-identical to `e9a131d`.
+
+Constructed-index transport follow-up after `e59d30c` (September 14):
+
+- [x] Reproduce `accTrue @acc subject down => down Bool.false Precedes.falseBeforeTrue`.
+  The edge has type `Precedes false true`, but the field requires
+  `Precedes false subject`. The branch already holds a checked identity between
+  `true` and `subject`; the automatic transport search discarded it because one
+  endpoint is a constructor, not a binder.
+- [x] Use the retained typed endpoints of a direct index identity. For a variable
+  endpoint retain its earlier prefix; for a constructed endpoint abstract a
+  fresh index over the current context. Existing pattern inversion factors the
+  classifier, checks substitution back, and existing family transport builds
+  the result. No raw classifier rewrite, DefEq update or new kernel rule.
+  Automatic transport still requires an inductive index type; a Universe path
+  between arbitrary nominal types does not become an implicit cast.
+- [x] Extend the Acc client with direct child extraction and its result index.
+  Add an independent indexed consumer whose fixed index is `succ zero`, not
+  just a nullary Bool constructor. Source/image checks exercise split budgets
+  and reject a changed predecessor or a changed constructor index.
+- [x] Inspect three further unchanged legacy fixtures: Box/Perfect construction,
+  an outer IH used under a nested Match, and distinct recursive tree fields.
+  Their existing acceptance needs no compiler change. Add nine formation/result
+  checks to the gate (39 -> 48 cases), including left/right field distinction,
+  sequenced use of both fields, and the two ChoiceTree constructors.
+- [x] Complete debug and ASan/UBSan acceptance, including unchanged QuickSort
+  property, Merge graph, index refutation and explicit Identity tests.
+  Debug acceptance passed, followed by the expanded 48-case compatibility gate.
+  Final ASan/UBSan `check-acceptance` passed with all 48 gate cases, using
+  `BUILD=/tmp/a-program-total-result-sanitize` and
+  `CFLAGS='-std=c11 -Wall -Wextra -Werror -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie'`.
+  Rebuilt the optimized CLI and checked the README's example 05 NF command.
+
+The constructor-field subcase still requires binder field endpoints. Extending
+that subcase needs typed field recovery, not assuming any raw subterm has the
+field classifier. Wider source compatibility and higher Identity remain open.
+
+Change size for this follow-up: implementation C +18/-13; fixtures and test
+scripts +45/-1; documentation counted separately. The unchanged QuickSort
+property takes 148,372 solver transitions versus 147,758 at `e59d30c` (about
+0.4% more); this is a transition count, not a general wall-time benchmark.
 
 The immediate deliverable is recompiling valid, previously accepted source
 programs unchanged and checking their results. Post-hoc properties of the
