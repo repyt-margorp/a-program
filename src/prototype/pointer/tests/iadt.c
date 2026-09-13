@@ -591,6 +591,103 @@ static void check(struct pg_whnf_work *work, const struct pg_term *term, const s
 	assert(pg_whnf_advance(job, 100) == PG_EVAL_WHNF && pg_whnf_steps(job) == steps);
 }
 
+static const struct pg_evidence *solve_index_proof(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, uint64_t chunk, enum pg_synthesis_status expected)
+{
+	assert(job);
+	while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+		assert(synthesis->steps < 100000);
+		pg_synthesis_advance(synthesis, chunk);
+	}
+	assert(pg_synthesis_status(job) == expected);
+	return pg_synthesis_result(job);
+}
+
+static void indexed_path_motive(struct pg_typing *typing, struct pg_classifiers *classifiers,
+	const struct pg_evidence *formation, const struct pg_evidence *parameters,
+	const struct pg_evidence *scrutinee, const struct pg_evidence *mc,
+	const struct pg_evidence *fields, const struct pg_evidence *original_type,
+	const struct pg_evidence *original_value)
+{
+	const struct pg_evidence *context = pg_evidence_premise(parameters, 1);
+	struct pg_inductive_instance actual, generic;
+	assert(pg_inductive_instance(typing, pg_prove_classifier(typing, classifiers, context, scrutinee), &actual));
+	assert(pg_inductive_instance(typing, pg_evidence_premise(mc, 1), &generic));
+	const struct pg_evidence *projection = pg_prove_substitution_projection(typing, context, mc);
+	const struct pg_evidence *left = pg_prove_substitution_compose(typing, actual.indices, projection);
+	const struct pg_evidence *right = pg_prove_substitution_compose(typing, generic.indices,
+		pg_prove_substitution_projection(typing, pg_evidence_premise(generic.indices, 1), mc));
+	const struct pg_object *binders[] = {pg_binder(typing->graph), pg_binder(typing->graph)};
+	const struct pg_evidence *paths[2];
+	const struct pg_evidence *pc = pg_identity_substitution_context(typing, left, right, 2, binders, paths);
+	assert(pc);
+	/* Motive: for each generic (A',x') and d:D A' x', consume paths
+	 * (A,x)=(A',x') and return an A. A is the fixed ambient type, so a
+	 * branch field of type A' requires transport, not just substitution. */
+	const struct pg_evidence *motive = pg_prove_return_type(typing, classifiers,
+		pg_prove_projection(typing, pc, original_type));
+	const struct pg_evidence *extensions[] = {pg_evidence_premise(pc, 0), pc};
+	for (const struct pg_evidence *c = pc; pg_evidence_context(c) != pg_evidence_context(mc); c = pg_evidence_premise(c, 0))
+		motive = pg_prove_pi(typing, classifiers, c, motive);
+	assert(motive);
+	const struct pg_evidence *fc = pg_evidence_premise(fields, 1);
+	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(actual.schema), 0);
+	const struct pg_evidence *values[] = {
+		pg_evidence_premise(fields, pg_evidence_premise_count(fields) - 2),
+		pg_evidence_premise(fields, pg_evidence_premise_count(fields) - 1)
+	};
+	const struct pg_evidence *field_parameters = pg_prove_substitution_compose(typing, parameters,
+		pg_prove_substitution_projection(typing, context, fc));
+	const struct pg_evidence *data = pg_prove_constructor(typing, formation, constructor, field_parameters, 2, values);
+	const struct pg_evidence *pattern = pg_prove_inductive_motive_substitution(typing, classifiers,
+		formation, parameters, mc, fc, data);
+	for (size_t i = 0; i < 2; ++i)
+		pattern = pg_prove_substitution_lift(typing, pattern, extensions[i], pg_binder(typing->graph));
+	assert(pattern);
+	const struct pg_evidence *bc = pg_evidence_premise(pattern, 1);
+	const struct pg_evidence *type_path = pg_substitution_image(typing, pattern, binders[0]);
+	const struct pg_evidence *field = pg_prove_projection(typing, bc, values[1]);
+	const struct pg_evidence *transported = pg_prove_identity_transport(typing, classifiers,
+		type_path, field, PG_IDENTITY_LEFT);
+	assert(transported && pg_evidence_classifier(transported) == pg_evidence_subject(original_type)->core);
+	const struct pg_evidence *branch = pg_prove_abstract(typing, classifiers, context, bc,
+		pg_prove_return(typing, classifiers, transported));
+	const struct pg_evidence *match = pg_prove_match(typing, classifiers, formation, parameters,
+		scrutinee, mc, motive, 1, &branch);
+	assert(match);
+	const struct pg_evidence *untransported = pg_prove_abstract(typing, classifiers, context, bc,
+		pg_prove_return(typing, classifiers, field));
+	assert(untransported && !pg_prove_match(typing, classifiers, formation, parameters,
+		scrutinee, mc, motive, 1, &untransported));
+	common_rule(typing, classifiers, match);
+	const struct pg_evidence *type_value = pg_prove_type_value(typing, original_type);
+	const struct pg_evidence *arguments[] = {
+		pg_prove_reflexivity(typing, pg_prove_classifier(typing, classifiers, context, type_value), type_value),
+		pg_prove_reflexivity(typing, original_type, original_value)
+	};
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_whnf_work work;
+		struct pg_synthesis synthesis;
+		assert(!pg_whnf_work_init(&work, typing->graph));
+		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_synthesis_job *applied = pg_synthesis_evidence(&synthesis, match);
+		for (size_t i = 0; i < 2; ++i)
+			applied = pg_synthesis_application(&synthesis, context, applied, pg_synthesis_evidence(&synthesis, arguments[i]));
+		const struct pg_evidence *result = solve_index_proof(&synthesis, applied, chunk, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_classifier(result) == pg_return_type(classifiers, pg_evidence_subject(original_type)->core));
+		const struct pg_evidence *normal = solve_index_proof(&synthesis,
+			pg_synthesis_normalize_jobs(&synthesis, pg_synthesis_evidence(&synthesis, context), applied, PG_REDUCTION_NF),
+			chunk, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_subject(normal)->core == pg_evidence_subject(pg_prove_return(typing, classifiers, original_value))->core);
+		solve_index_proof(&synthesis, pg_synthesis_application(&synthesis, context,
+			pg_synthesis_evidence(&synthesis, match), pg_synthesis_evidence(&synthesis, arguments[1])),
+			chunk, PG_SYNTHESIS_REJECTED);
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&work);
+	}
+	puts("indexed Match: dependent path motive, branch transport and reflexive application compute through Solve");
+}
+
 static void indexed_match(void)
 {
 	struct pg_graph graph;
@@ -627,6 +724,8 @@ static void indexed_match(void)
 	assert(motive);
 	const struct pg_evidence *fields = pg_prove_constructor_scope(&typing, formation, constructor, parameters);
 	const struct pg_evidence *field_context = pg_evidence_premise(fields, 1);
+	indexed_path_motive(&typing, &classifiers, formation, parameters, value, mc, fields,
+		pg_prove_value_type(&typing, av), xv);
 	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers,
 		pg_substitution_image(&typing, fields, x));
 	const struct pg_evidence *branch = pg_prove_abstract(&typing, &classifiers, xc, field_context, body);
@@ -698,18 +797,6 @@ static const struct pg_term *boundary_apply(struct pg_graph *graph, const struct
 	const struct pg_term *left, const struct pg_term *right, const struct pg_term *path)
 {
 	return pg_application(graph, pg_identity_instance(graph, function, left, right), path);
-}
-
-static const struct pg_evidence *solve_index_proof(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *job, uint64_t chunk, enum pg_synthesis_status expected)
-{
-	assert(job);
-	while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
-		assert(synthesis->steps < 100000);
-		pg_synthesis_advance(synthesis, chunk);
-	}
-	assert(pg_synthesis_status(job) == expected);
-	return pg_synthesis_result(job);
 }
 
 static void index_paths(struct pg_typing *typing, struct pg_classifiers *classifiers,

@@ -109,6 +109,17 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 	size_t count, const struct pg_binding_face *const *centers,
 	const struct pg_evidence **left, const struct pg_evidence **right,
 	const struct pg_evidence **paths);
+/* Given parallel checked substitutions, extend their destination by paths
+ * between the final count images. The preceding images must agree by alpha.
+ * Each path's family acts along earlier paths; equal endpoint terms do not
+ * erase a path declaration. Binders are caller-owned allocation inputs.
+ * Returns assumptions, not a proof that either substitution is exhaustive or
+ * that any equality holds. Outputs are written only on success, in the final
+ * extended context. Uses ordinary context, substitution and Identity rules. */
+const struct pg_evidence *pg_identity_substitution_context(struct pg_typing *typing,
+	const struct pg_evidence *left, const struct pg_evidence *right,
+	size_t count, const struct pg_object *const *binders,
+	const struct pg_evidence **paths);
 /* Replace the final count declarations by their complete cube telescopes,
  * including assumed centers. count must be nonzero; cubes follow declaration
  * order and share a dimension. order permutes their axes. Repeats context action;

@@ -650,6 +650,59 @@ done:
 	return result;
 }
 
+const struct pg_evidence *pg_identity_substitution_context(struct pg_typing *typing,
+	const struct pg_evidence *left, const struct pg_evidence *right,
+	size_t count, const struct pg_object *const *binders,
+	const struct pg_evidence **paths)
+{
+	if (!pg_evidence_owned_by(left, typing) || !pg_evidence_owned_by(right, typing)) return NULL;
+	if (pg_evidence_rule(left) != PG_CONTEXT_SUBSTITUTION || pg_evidence_rule(right) != PG_CONTEXT_SUBSTITUTION) return NULL;
+	const struct pg_evidence *source = pg_evidence_premise(left, 0);
+	if (pg_evidence_context(source) != pg_evidence_context(pg_evidence_premise(right, 0))) return NULL;
+	if (pg_evidence_context(left) != pg_evidence_context(right)) return NULL;
+	size_t arity = pg_evidence_premise_count(left) - 2;
+	if (count > arity || arity > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	if (count && (!binders || !paths)) return NULL;
+	size_t common = arity - count;
+	for (size_t i = 0; i < common; ++i)
+		if (pg_alpha_equal(pg_evidence_subject(pg_evidence_premise(left, i + 2))->core,
+			pg_evidence_subject(pg_evidence_premise(right, i + 2))->core) != 1) return NULL;
+	const struct pg_evidence *context = pg_evidence_premise(left, 1);
+	if (!count) return context;
+	struct pg_graph temporary = {0};
+	const struct pg_evidence *result = NULL;
+	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
+	const struct pg_evidence **centers = pg_alloc(&temporary, count * sizeof(*centers));
+	const struct pg_evidence **li = pg_alloc(&temporary, arity * sizeof(*li));
+	const struct pg_evidence **ri = pg_alloc(&temporary, arity * sizeof(*ri));
+	if (!extensions || !centers || !li || !ri) goto done;
+	for (size_t i = count; i; --i, source = pg_evidence_premise(source, 0)) {
+		if (pg_evidence_rule(source) != PG_CONTEXT_EXTEND) goto done;
+		extensions[i - 1] = source;
+	}
+	for (size_t i = 0; i < arity; ++i) {
+		li[i] = pg_evidence_premise(left, i + 2);
+		ri[i] = pg_evidence_premise(right, i + 2);
+	}
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_evidence *prefix = pg_evidence_premise(extensions[i], 0);
+		const struct pg_evidence *ls = pg_prove_substitution(typing, prefix, context, common + i, li);
+		const struct pg_evidence *rs = pg_prove_substitution(typing, prefix, context, common + i, ri);
+		const struct pg_evidence *type = pg_prove_family_identity_type(typing,
+			pg_evidence_premise(extensions[i], 1), ls, rs, i, centers, li[common + i], ri[common + i]);
+		context = pg_prove_context_extension(typing, context, binders[i], type);
+		if (!context) goto done;
+		project_boundary(typing, context, arity, li, ri, i, centers);
+		centers[i] = pg_prove_variable(typing, context, binders[i]);
+		if (!centers[i]) goto done;
+	}
+	for (size_t i = 0; i < count; ++i) paths[i] = centers[i];
+	result = context;
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
 static const struct pg_evidence *cube_action(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	struct pg_dimensions *dimensions, const struct pg_evidence *source,
 	size_t count, const struct pg_binding_cube *const *cubes,

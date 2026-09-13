@@ -2231,6 +2231,62 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 	assert(cp && pg_evidence_judgement(cp) == PG_JUDGEMENT_COMPUTATION_TYPE);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
+	/* A branch may relate already chosen dependent indices (A,x:A) and
+	 * (B,y:B). Its second equation must retain the chosen first equation. */
+	const struct pg_object *index = pg_binder(typing->graph);
+	const struct pg_evidence *indices = pg_prove_context_extension(typing, source, index, family);
+	const struct pg_evidence *index_left = pg_prove_substitution_pair(typing, ls, indices, x);
+	const struct pg_evidence *index_right = pg_prove_substitution_pair(typing, rs, indices, y);
+	const struct pg_object *path_binders[] = {pg_binder(typing->graph), pg_binder(typing->graph)};
+	const struct pg_evidence *index_paths[2];
+	const struct pg_evidence *path_context = pg_identity_substitution_context(typing,
+		index_left, index_right, 2, path_binders, index_paths);
+	assert(path_context && pg_evidence_context(path_context)->parent->parent == pg_evidence_context(scope));
+	for (size_t i = 0; i < 2; ++i) {
+		assert(pg_evidence_context(index_paths[i]) == pg_evidence_context(path_context));
+		assert(pg_evidence_subject(index_paths[i])->core == pg_reference(typing->graph, path_binders[i]));
+	}
+	const struct pg_evidence *equation_type = pg_prove_identity_instance(typing, classifiers, index_paths[0],
+		pg_prove_projection(typing, path_context, x), pg_prove_projection(typing, path_context, y));
+	assert(equation_type);
+	converts(&work, pg_evidence_classifier(index_paths[1]), pg_evidence_subject(equation_type)->core);
+	const struct pg_evidence *project = pg_prove_substitution_projection(typing, scope, path_context);
+	const struct pg_evidence *full_left = pg_prove_substitution_compose(typing, index_left, project);
+	const struct pg_evidence *full_right = pg_prove_substitution_compose(typing, index_right, project);
+	const struct pg_evidence *index_value = pg_prove_variable(typing, indices, index);
+	const struct pg_evidence *index_action = pg_prove_family_action(typing,
+		pg_prove_projection(typing, indices, family), index_value, full_left, full_right, 2, index_paths);
+	assert(index_action);
+	action_result(typing, classifiers, path_context, &work, index_action, index_paths[1]);
+	size_t path_proofs = typing->proofs.count, path_terms = typing->graph->terms.count;
+	const struct pg_evidence *again[2];
+	assert(pg_identity_substitution_context(typing, index_left, index_right, 2, path_binders, again) == path_context);
+	assert(again[0] == index_paths[0] && again[1] == index_paths[1]);
+	assert(typing->proofs.count == path_proofs && typing->graph->terms.count == path_terms);
+	assert(pg_identity_substitution_context(typing, index_left, index_left, 0, NULL, NULL) == scope);
+	assert(!pg_identity_substitution_context(typing, index_left, index_right, 0, NULL, NULL));
+	again[0] = again[1] = universe;
+	assert(!pg_identity_substitution_context(typing, index_left, index_right, 1, path_binders, again));
+	assert(!pg_identity_substitution_context(typing, index_left, index_right, 3, path_binders, again));
+	assert(!pg_identity_substitution_context(typing, index_left, index_right, 2, NULL, again));
+	assert(!pg_identity_substitution_context(typing, index_left, index_right, 2, path_binders, NULL));
+	assert(!pg_identity_substitution_context(typing, index_left, rs, 1, path_binders, again));
+	assert(!pg_identity_substitution_context(typing, index_left, full_right, 2, path_binders, again));
+	const struct pg_object *duplicate[] = {path_binders[0], path_binders[0]};
+	assert(!pg_identity_substitution_context(typing, index_left, index_right, 2, duplicate, again));
+	assert(again[0] == universe && again[1] == universe);
+	/* Even coincident maps leave both path hypotheses present. In particular,
+	 * the first loop is a variable, not silently replaced by reflexivity. */
+	const struct pg_evidence *loops = pg_identity_substitution_context(typing,
+		index_left, index_left, 2, path_binders, again);
+	assert(loops && loops != path_context);
+	assert(pg_evidence_context(loops)->parent->parent == pg_evidence_context(scope));
+	for (size_t i = 0; i < 2; ++i)
+		assert(pg_evidence_subject(again[i])->core == pg_reference(typing->graph, path_binders[i]));
+	struct pg_typing foreign_paths;
+	assert(!pg_typing_init(&foreign_paths, typing->graph));
+	assert(!pg_identity_substitution_context(&foreign_paths, index_left, index_right, 2, path_binders, again));
+	pg_typing_destroy(&foreign_paths);
 	/* Contextual action of z:Universe retains the selected p, not just A/B. */
 	const struct pg_evidence *zvalue = pg_prove_variable(typing, source, z);
 	const struct pg_evidence *zsort = pg_prove_projection(typing, source, universe);

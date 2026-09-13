@@ -179,11 +179,29 @@ unchanged; computations over logical hypotheses use the extension below.
   Validation: `check check-examples check-example-results check-open-families`
   passes; the indexed kernel tests also pass ASan/UBSan. The unchanged source
   compatibility gate remains 10/19 (QuickSort REJECTED at 34060 steps).
+- [x] Form path hypotheses between chosen parallel index substitutions with
+  `pg_identity_substitution_context`. Ordinary Context/Substitution/Identity
+  evidence retains each earlier path in later dependent equations; identical
+  maps do not erase loop assumptions. Fixed-prefix mismatches, wrong contexts
+  and duplicate binders fail without publishing partial output. Exact repeated
+  requests reuse the existing proofs and terms.
+  `tests/iadt.c` constructs an indexed Match with a path-quantified Pi motive
+  for dependent indices `(A,x:A)`. Its branch transports a field back to the
+  fixed ambient A; applying reflexive index paths through Solve computes to
+  the original value in NF at chunks 1/64. Omitting transport or supplying a
+  wrong path is rejected. This is an ordinary eliminator construction, not
+  automatic source refinement yet; no new rule or wire representation is used.
+  Validation: normal checks, examples/results and open families pass; Identity
+  and IADT tests pass ASan/UBSan. Legacy source compatibility remains 10/19.
 - [ ] Connect these building blocks to source indexed Match: generalize the
   motive over checked index paths, supply reflexivity at the original scrutinee,
   and transport dependent branch inputs using those paths. Prove unreachable
   cases rather than accepting a failed unification as contradiction. Preserve
   dependent path telescopes and do not delete arbitrary reflexive equations.
+  For induction, first generalize index-dependent ambient inputs/results:
+  copying the original scrutinee's fixed-index equations into every IH can
+  make recursive hypotheses unusable at smaller/different indices. The checked
+  path-motive example above is nonrecursive Match, not this induction step.
   This is a proposed A Program elaboration into existing rules, not yet source
   support. Constructor-domain constraints for all-impossible motives remain
   separate from `::` post-checking. QuickSort compatibility is still incomplete.
