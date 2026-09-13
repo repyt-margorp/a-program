@@ -572,11 +572,13 @@ struct pg_synthesis_job *pg_synthesis_data_case(struct pg_synthesis *synthesis,
 /* Synthesize a clause under checked field/IH assumptions from an already
  * established motive. No expected result guides body synthesis; whole
  * induction checks the returned branch function separately. */
+/* An optional checked generalization maps the ambient context into the
+ * motive telescope (possibly extended). It refines source bindings, not DefEq. */
 struct pg_synthesis_job *pg_synthesis_induction_branch(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
-	const struct pg_syntax *clause);
+	const struct pg_evidence *generalization, const struct pg_syntax *clause);
 /* Recover the selected nominal declaration and parameter map, never by Core
  * lookup. Pending producers converge on the same accepted-evidence request. */
 struct pg_synthesis_job *pg_synthesis_inductive_instance(struct pg_synthesis *synthesis,

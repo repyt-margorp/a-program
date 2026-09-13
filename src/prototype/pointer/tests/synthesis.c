@@ -4869,11 +4869,11 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 			parameters_job, context_job, formation_job), PG_SYNTHESIS_REJECTED);
 		struct pg_synthesis_job *branch = pg_synthesis_induction_branch(&synthesis, named,
 			nat, pg_data_constructor(nat_layout, i), nat_instance.parameters, motive_context, motive,
-			induction->items[i].expression);
+			NULL, induction->items[i].expression);
 		induction_branches[i] = complete(&synthesis, branch, PG_SYNTHESIS_DONE);
 		size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
 		assert(pg_synthesis_induction_branch(&synthesis, named, nat, pg_data_constructor(nat_layout, i),
-			nat_instance.parameters, motive_context, motive, induction->items[i].expression) == branch);
+			nat_instance.parameters, motive_context, motive, NULL, induction->items[i].expression) == branch);
 		assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
 	}
 	const struct pg_evidence *countdown = pg_prove_induction(typing, classifiers, nat,
@@ -4887,7 +4887,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	for (size_t i = 0; i < 2; ++i)
 		induction_branches[i] = complete(&synthesis, pg_synthesis_induction_branch(&synthesis, named,
 			nat, pg_data_constructor(nat_layout, i), nat_instance.parameters, motive_context, motive,
-			copy_induction->items[i].expression), PG_SYNTHESIS_DONE);
+			NULL, copy_induction->items[i].expression), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *copy = pg_prove_induction(typing, classifiers, nat,
 		nat_instance.parameters, two, motive_context, motive, 2, induction_branches);
 	assert(copy);
@@ -4901,7 +4901,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	for (size_t i = 0; i < 2; ++i)
 		induction_branches[i] = complete(&synthesis, pg_synthesis_induction_branch(&synthesis, named,
 			nat, pg_data_constructor(nat_layout, i), nat_instance.parameters, motive_context, function_motive,
-			function_induction->items[i].expression), PG_SYNTHESIS_DONE);
+			NULL, function_induction->items[i].expression), PG_SYNTHESIS_DONE);
 	const struct pg_evidence *recursive_function = pg_prove_induction(typing, classifiers,
 		nat, nat_instance.parameters, two, motive_context, function_motive, 2, induction_branches);
 	assert(recursive_function);
@@ -4912,7 +4912,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 		"r:=Nat.zero @succ k=>(\\k:Nat=>*k);");
 	complete(&synthesis, pg_synthesis_induction_branch(&synthesis, named, nat,
 		pg_data_constructor(nat_layout, 1), nat_instance.parameters, motive_context, motive,
-		shadow->items[0].expression), PG_SYNTHESIS_UNSUPPORTED);
+		NULL, shadow->items[0].expression), PG_SYNTHESIS_UNSUPPORTED);
 	/* The ordinary source path discovers the constant motive before opening
 	 * IH assumptions. No expected type or explicit motive is supplied here. */
 	const char *source_inductions[] = {

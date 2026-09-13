@@ -126,6 +126,10 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-result-transport.p functionMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-result-transport.p functionOtherMain expected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-result-transport-expect.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/induction-index-environment.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/induction-index-environment.p readMain two
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/induction-index-environment-wrong.p
+	$(BUILD)/pointer-check $(ROOT)tests/acceptance/acc-accessible-successor.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-ih-environment.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-ih-environment-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-field-induction.p main expected

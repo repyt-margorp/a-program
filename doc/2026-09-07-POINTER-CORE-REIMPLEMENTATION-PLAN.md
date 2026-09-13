@@ -71,9 +71,10 @@ and two expected rejections. Main passed that initial baseline. The current
 one justified admission of a historical negative request, and two genuine
 negative checks (details below). The eight failing entries cover order proofs,
 named graph cases and six QuickSort result cases; they are not eight independent
-compiler defects. QuickSort remains UNSUPPORTED. The immediate work is indexed
-induction's ambient bindings and all-impossible branches whose result constraints
-come from an application domain. This is missing source compatibility, not
+compiler defects. QuickSort remains UNSUPPORTED. Indexed induction now preserves
+the checked ambient generalization; the unchanged `accessibleSucc` and its `::`
+check succeed. The immediate blocker is all-impossible branches whose result
+constraints come from an application domain. This is missing source compatibility, not
 checkpoint performance work.
 This gate is included in
 `check-acceptance`; it is not an expected-failure test. The export comparison
@@ -370,18 +371,29 @@ unchanged; computations over logical hypotheses use the extension below.
   at legacy compatibility. QuickSort is UNSUPPORTED at 38,732 steps. Synthesis,
   rejection and complete source-image suites pass ASan/UBSan, including the
   new result cases through unfinished/completed image resaves.
+- [x] After `ac60223`: share checked constructor substitutions and ambient
+  generalization between ordinary Match and indexed induction. Preserve the
+  map even when no extra ambient variable is copied; reindex accepted value
+  aliases through nested matches and retain IH/graph associations. Do not add
+  the original fixed-index equation to recursive hypotheses. New regressions
+  cover returning the refined scrutinee, a dependent ambient input supplied
+  to the recursive call, and rejection of a wrong recursive result index.
+  The unchanged legacy `accessibleSucc` definition and its post-check succeed;
+  a focused admission fixture and image resaves preserve this boundary.
+  Full acceptance passes preceding gates, but legacy compatibility stays
+  11/19: QuickSort is UNSUPPORTED at 41,343 steps. Synthesis and source-image
+  suites, plus both indexed-IH rejection cases, pass ASan/UBSan. No claim of
+  full QuickSort compilation or its post-hoc property proof is made.
 - [ ] Complete indexed induction and general dependent index transport.
   All-impossible cases need result constraints from
   existing application domains, never `::` or unreachable branch bodies.
   Same-constructor equations need injectivity and transport of dependent
   fields, retaining earlier selected paths; they are not disjointness.
-  `accessibleSucc` still lacks the ambient refinement from the outer Acc
-  induction: `proof : Acc n` is used inside the branch at `current`, while both
-  ambient generalization and index-path scope construction exclude local
-  induction. Do not silently identify these binders. Generalize the dependent
-  ambient bindings with checked substitutions and preserve the recursive IH's
-  motive. Merely adding `n = recursive_index` as an IH argument would make the
-  IH unusable for a smaller, different recursive index.
+  Ambient refinement now handles `accessibleSucc`. The all-impossible Match
+  in `natAccessible` still needs an application-domain result constraint in
+  the shared Solve graph, rather than premature UNSUPPORTED finalization.
+  Preserve the recursive IH's motive: adding `n = recursive_index` as an IH
+  argument would make it unusable at a smaller, different recursive index.
   Do not replace missing evidence with a trusted empty-case marker.
 - [x] Form path hypotheses between chosen parallel index substitutions with
   `pg_identity_substitution_context`. Ordinary Context/Substitution/Identity
