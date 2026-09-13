@@ -376,6 +376,28 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 	}
 }
 
+static const struct pg_evidence *graph_witness_result(struct pg_program *p,
+	struct pg_function_graph_work *work, const struct pg_evidence *input,
+	const struct pg_evidence *expected, uint64_t chunk)
+{
+	for (size_t turns = 0; pg_function_graph_witness_advance(work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+		assert(turns < 100000);
+	assert(pg_function_graph_witness_advance(work, 0) == PG_FUNCTION_GRAPH_DONE);
+	assert(pg_function_graph_packet(work));
+	const struct pg_evidence *call = pg_prove_application(&p->typing, pg_function_graph_witness(work), input);
+	assert(call);
+	struct pg_nf_job *nf = pg_nf_request(&p->evaluation, &pg_pure_policy, pg_evidence_subject(call)->core);
+	for (size_t turns = 0; pg_nf_advance(nf, chunk) == PG_NF_PENDING; ++turns) assert(turns < 100000);
+	assert(pg_nf_status(nf) == PG_NF_DONE);
+	const struct pg_evidence *packet = pg_prove_return_value(&p->typing,
+		pg_prove_normalization(&p->typing, call, pg_nf_certificate(nf)));
+	assert(packet);
+	const struct pg_term *core = pg_evidence_subject(packet)->core;
+	assert(core->kind == PG_APPLICATION && core->as.application.function->kind == PG_APPLICATION);
+	assert(pg_alpha_equal(core->as.application.function->as.application.argument, pg_evidence_subject(expected)->core) == 1);
+	return packet;
+}
+
 static void function_graphs(void)
 {
 	const char *source = "Nat:=@{zero:*;succ:*->*;}; NatList:=@{nil:*;cons:Nat->*->*;};"
@@ -467,9 +489,15 @@ static void function_graphs(void)
 							ordered_fork, parameters, 6, ordered_fields);
 						assert(ordered_pair);
 						ordered_fields[1] = pair; ordered_fields[2] = pair; ordered_fields[3] = ordered_pair;
-						assert(pg_prove_constructor(&p->typing, ordered_type, ordered_fork, parameters, 6, ordered_fields));
+						const struct pg_evidence *ordered_step = pg_prove_constructor(&p->typing, ordered_type,
+							ordered_fork, parameters, 6, ordered_fields);
+						assert(ordered_step);
 						ordered_fields[3] = ordered_base;
 						assert(!pg_prove_constructor(&p->typing, ordered_type, ordered_fork, parameters, 6, ordered_fields));
+						const struct pg_evidence *packet = graph_witness_result(p, &ordered,
+							export_value(p, "leftTree"), export_value(p, "rightTree"), chunk);
+						assert(pg_alpha_equal(pg_evidence_subject(packet)->core->as.application.argument,
+							pg_evidence_subject(ordered_step)->core) == 1);
 					} else {
 						assert(pg_function_graph_advance(&ordered, 0) == PG_FUNCTION_GRAPH_UNSUPPORTED);
 						assert(!pg_function_graph_formation(&ordered));
@@ -478,24 +506,9 @@ static void function_graphs(void)
 				}
 			}
 			assert(pg_function_graph_witness_advance(&work, 0) == PG_FUNCTION_GRAPH_PENDING);
-			for (size_t turns = 0; pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
-				assert(turns < 100000);
-			assert(pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_DONE);
-			assert(pg_function_graph_witness(&work));
-			assert(pg_function_graph_packet(&work));
 			const struct pg_evidence *input = i == 2 ? export_value(p, "leftTree") : i ? one : successor;
 			const struct pg_evidence *expected = i == 2 ? export_value(p, "rightTree") : successor;
-			const struct pg_evidence *call = pg_prove_application(&p->typing, pg_function_graph_witness(&work), input);
-			assert(call);
-			struct pg_nf_job *nf = pg_nf_request(&p->evaluation, &pg_pure_policy, pg_evidence_subject(call)->core);
-			for (size_t turns = 0; pg_nf_advance(nf, chunk) == PG_NF_PENDING; ++turns) assert(turns < 100000);
-			assert(pg_nf_status(nf) == PG_NF_DONE);
-			const struct pg_evidence *packet = pg_prove_return_value(&p->typing,
-				pg_prove_normalization(&p->typing, call, pg_nf_certificate(nf)));
-			assert(packet);
-			const struct pg_term *core = pg_evidence_subject(packet)->core;
-			assert(core->kind == PG_APPLICATION && core->as.application.function->kind == PG_APPLICATION);
-			assert(pg_alpha_equal(core->as.application.function->as.application.argument, pg_evidence_subject(expected)->core) == 1);
+			graph_witness_result(p, &work, input, expected, chunk);
 			pg_function_graph_destroy(&work);
 			assert(pg_evidence_owned_by(formation, &p->typing));
 			struct pg_inductive_instance retained;

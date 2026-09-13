@@ -326,6 +326,15 @@ September 13 typed Match exposure:
   Debug `check-acceptance` passes (20/20 compatibility), as does the final
   expanded IADT test. ASan/UBSan passes Core, IADT, Program, image CLI and
   20/20 compatibility. Implementation +86/-0; tests +86/-0; docs separate.
+- [x] Prepare shared call prefixes without mutating source call facts during
+  schema layout. Each case owns its execution-order array and public slot map;
+  schema outputs no longer overwrite the source call record. Existing reverse
+  slot-order tests now also evaluate the generated witness and compare its
+  graph evidence, not just its result. Debug `check-acceptance` passes, including
+  20/20 compatibility. The expanded Program test, five function-field results,
+  dependent successive calls and false-evidence rejection pass ASan/UBSan.
+  Implementation +54/-36; tests +30/-17; documentation counted separately.
+  This does not yet add branching or close the following unchecked item.
 - [ ] Replace the flat per-case call list with shared branch-aware translation
   for schema and witness. The concrete `@quickSortAcc` blocker is still at
   59,322 steps: its inner Match has a raw Pi result and pending application
