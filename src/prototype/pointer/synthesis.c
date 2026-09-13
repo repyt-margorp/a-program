@@ -1334,6 +1334,42 @@ struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
 	return request_inputs(synthesis, EXPECT_JOB, 2, inputs);
 }
 
+struct pg_synthesis_job *pg_synthesis_family_transport_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *family, const struct pg_evidence *left_substitution,
+	const struct pg_evidence *right_substitution, size_t count,
+	struct pg_synthesis_job *const *paths, struct pg_synthesis_job *value,
+	enum pg_identity_direction direction)
+{
+	if ((unsigned)direction > PG_IDENTITY_LEFT) return NULL;
+	if (!family || family->owner != synthesis->owner_key) return NULL;
+	if (!value || value->owner != synthesis->owner_key) return NULL;
+	if (!pg_evidence_owned_by(left_substitution, synthesis->typing)) return NULL;
+	if (pg_evidence_rule(left_substitution) != PG_CONTEXT_SUBSTITUTION) return NULL;
+	struct pg_derivation_input as_value = {.rule = PG_VALUE_FROM_TYPE, .count = 1};
+	struct pg_synthesis_job *type_value = pg_synthesis_rule(synthesis, &as_value, &family, NULL, NULL);
+	struct pg_synthesis_job *action = pg_synthesis_family_action_jobs(synthesis,
+		type_value, left_substitution, right_substitution, count, paths);
+	if (!action) return NULL;
+	struct pg_synthesis_job *context = pg_synthesis_evidence(synthesis,
+		pg_evidence_premise(left_substitution, 1));
+	action = pg_synthesis_normalize_classifier_jobs(synthesis, context, action);
+	if (!action) return NULL;
+	struct pg_derivation_input endpoints[] = {
+		{.rule = PG_IDENTITY_LEFT_TYPE, .count = 1},
+		{.rule = PG_IDENTITY_RIGHT_TYPE, .count = 1}
+	};
+	struct pg_synthesis_job *left = pg_synthesis_rule(synthesis, &endpoints[0], &action, NULL, NULL);
+	struct pg_synthesis_job *right = pg_synthesis_rule(synthesis, &endpoints[1], &action, NULL, NULL);
+	struct pg_synthesis_job *checked = pg_synthesis_expect(synthesis, value,
+		direction == PG_IDENTITY_RIGHT ? left : right);
+	struct pg_derivation_input transport = {.rule = PG_IDENTITY_TRANSPORT,
+		.count = 3, .parameters.direction = direction};
+	struct pg_synthesis_job *premises[] = {
+		direction == PG_IDENTITY_RIGHT ? right : left, action, checked
+	};
+	return pg_synthesis_rule(synthesis, &transport, premises, NULL, NULL);
+}
+
 struct pg_synthesis_job *pg_synthesis_source_expect(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_synthesis_job *term,
 	struct pg_synthesis_job *type)

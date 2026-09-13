@@ -508,6 +508,16 @@ struct pg_synthesis_job *pg_synthesis_family_action_jobs(struct pg_synthesis *sy
 	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
 	const struct pg_evidence *right_substitution, size_t count,
 	struct pg_synthesis_job *const *paths);
+/* Transport a value along the action of a value-type family. Compose ordinary
+ * type-as-value, action, classifier normalization, conversion and transport
+ * jobs; no additional rule, work kind or equality reflection. Family and value
+ * synthesize independently. Selected paths are checked, never inferred merely
+ * from equal endpoints. The result has the opposite endpoint's family type. */
+struct pg_synthesis_job *pg_synthesis_family_transport_jobs(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *family, const struct pg_evidence *left_substitution,
+	const struct pg_evidence *right_substitution, size_t count,
+	struct pg_synthesis_job *const *paths, struct pg_synthesis_job *value,
+	enum pg_identity_direction direction);
 struct pg_data_schema;
 /* Assemble field telescopes and result maps for a parsed @{...} or @\i:T=>
  * declaration in its already opened parameter scope. Constructors are checked

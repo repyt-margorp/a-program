@@ -167,6 +167,33 @@ unchanged; computations over logical hypotheses use the extension below.
   a motive or accept arbitrary mismatched branch classifiers.
   General Act on higher logical signatures and post-hoc property proofs remain
   open. Do not replace the unchanged fixture with a reduced success case.
+- [x] Establish the checked index-path building blocks through ordinary Solve.
+  `pg_synthesis_family_transport_jobs` composes existing type-as-value, Act,
+  classifier normalization, conversion and transport jobs. No Core tag, proof
+  rule or wire format is added. `tests/iadt.c` derives constructor disjointness
+  (`Id Nat zero (succ m) -> Empty`) and injectivity (`Id Nat (succ n) (succ m)
+  -> Id Nat n m`) using type cases. Assumptions are abstracted into closed
+  functions, not asserted as unconditional equality or inhabitants of Empty.
+  Distinct selected paths stay distinct; diagonal transport computes; wrong
+  paths and computation-for-value substitutions are rejected at chunks 1/64.
+  Validation: `check check-examples check-example-results check-open-families`
+  passes; the indexed kernel tests also pass ASan/UBSan. The unchanged source
+  compatibility gate remains 10/19 (QuickSort REJECTED at 34060 steps).
+- [ ] Connect these building blocks to source indexed Match: generalize the
+  motive over checked index paths, supply reflexivity at the original scrutinee,
+  and transport dependent branch inputs using those paths. Prove unreachable
+  cases rather than accepting a failed unification as contradiction. Preserve
+  dependent path telescopes and do not delete arbitrary reflexive equations.
+  This is a proposed A Program elaboration into existing rules, not yet source
+  support. Constructor-domain constraints for all-impossible motives remain
+  separate from `::` post-checking. QuickSort compatibility is still incomplete.
+
+Theory constraint for this step: [Cockx, *Dependent pattern matching and
+proof-relevant unification*](https://www.cs.tufts.edu/~nr/cs257/archive/jesper-cockx/thesis-final-digital.pdf)
+and [Agda's without-K rules](https://agda.readthedocs.io/en/v2.5.4.1/language/without-k.html)
+explain why solving index equations is not license to erase their proof content.
+The type-case/Act/transport construction above is checked in A Program's own
+kernel; it does not import Agda's unifier or assert that all index types are sets.
 
 Validation of the source-family contract: `check check-examples
 check-example-results check-open-families` passes, including all four open-family
