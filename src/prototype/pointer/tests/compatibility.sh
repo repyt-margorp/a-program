@@ -44,6 +44,11 @@ while read -r expectation name left right; do
 done <<'CASES'
 0 typing/explicit_index_family_vec_check
 0 typing/explicit_index_family_acc_eliminator_check
+0 typing/insertion_sort_check main expected
+0 typing/eager_insertion_check main expected
+0 typing/eager_insertion_check earlyMain earlyExpected
+0 typing/eager_insertion_check traceEarly traceEarlyExpected
+0 typing/eager_insertion_check traceRecursive traceRecursiveExpected
 1 typing/if8_order_check
 0 typing/function_graph_generated_length_check main expected
 0 typing/function_graph_dependent_output_ih_check main expected

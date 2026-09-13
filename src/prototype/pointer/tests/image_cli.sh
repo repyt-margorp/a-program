@@ -170,6 +170,8 @@ acceptance/function-graph-indexed-canonical.p main emptyMain:emptyExpected
 acceptance/function-graph-curried.p main specMain emptySpecMain:right growMain:two chooseMain:two twiceMain:four
 acceptance/termination.p main
 ../../tests/fixtures/typing/if8_fuel_free_quicksort_check.p main emptyMain:emptyExpected singletonMain:singletonExpected ascendingMain:ascendingExpected descendingMain:descendingExpected duplicateMain:duplicateExpected
+../../tests/fixtures/typing/insertion_sort_check.p main
+../../tests/fixtures/typing/eager_insertion_check.p main earlyMain:earlyExpected traceEarly:traceEarlyExpected traceRecursive:traceRecursiveExpected
 acceptance/length-output-proof.p main emptyMain:emptyExpected specMain emptySpecMain:emptyExpected
 acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain directMain directProof shadowMain:baseExpected nestedProof:baseExpected
 acceptance/generated-function-graph-direct.p main certified

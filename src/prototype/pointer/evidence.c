@@ -478,6 +478,8 @@ static const struct pg_evidence *variable_frame(struct pg_typing *typing,
 	const struct pg_object *binder = variable->subject->core->as.reference;
 	if (step->rule == PG_CONTEXT_PROJECTION)
 		return pg_prove_variable(typing, step->premises[0], binder);
+	if (step->rule == PG_PI_CONSTANT_CODOMAIN)
+		return pg_prove_variable(typing, step->premises[0]->premises[0]->premises[0], binder);
 	return pg_substitution_image(typing, step->premises[0], binder);
 }
 
@@ -590,13 +592,14 @@ done:
 	return result;
 }
 
-/* Recover either component from retained Pi formation. A NULL argument in
- * codomain mode requires independence; domain recovery needs no argument.
- * Frames preserve substitution order on curried proof spines. */
-static const struct pg_evidence *pi_component(struct pg_typing *typing,
+/* Select the retained formation before transporting its required parameters.
+ * Rebuilding the whole Pi context would demand images for unused binders
+ * already removed by constant-codomain projection. */
+static const struct pg_evidence *pi_component(struct pg_inductive_recovery *work,
 	const struct pg_evidence *pi, const struct pg_evidence *argument,
 	enum pg_evidence_rule component)
 {
+	struct pg_typing *typing = work->typing;
 	struct pending {
 		const struct pg_evidence *argument;
 		struct evidence_frame *frames;
@@ -604,7 +607,6 @@ static const struct pg_evidence *pi_component(struct pg_typing *typing,
 		enum pg_evidence_rule component;
 		struct pending *next;
 	};
-	struct pg_graph temporary = {0};
 	struct pending *pending = NULL;
 	struct evidence_frame *frames = NULL;
 	const struct pg_evidence *result = NULL;
@@ -612,7 +614,7 @@ static const struct pg_evidence *pi_component(struct pg_typing *typing,
 	while (pi) {
 		switch (pi->rule) {
 		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
-			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
+			struct evidence_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
 			if (!frame) goto done;
 			*frame = (struct evidence_frame){pi, frames};
 			frames = frame;
@@ -626,31 +628,49 @@ static const struct pg_evidence *pi_component(struct pg_typing *typing,
 		case PG_THUNK_TYPE_FORM:
 			if (!thunks) goto done;
 			--thunks; pi = pi->premises[0]; break;
-		case PG_PI_DOMAIN: case PG_PI_CODOMAIN: {
-			struct pending *next = pg_alloc(&temporary, sizeof(*next));
+		case PG_PI_CONSTANT_CODOMAIN: case PG_PI_DOMAIN: case PG_PI_CODOMAIN: {
+			struct pending *next = pg_alloc(&work->temporary, sizeof(*next));
 			if (!next) goto done;
 			*next = (struct pending){argument, frames, thunks, component, pending};
 			pending = next;
 			frames = NULL;
 			thunks = 0;
 			argument = pi->rule == PG_PI_CODOMAIN ? pi->premises[1] : NULL;
-			component = pi->rule;
+			component = pi->rule == PG_PI_CONSTANT_CODOMAIN ? PG_PI_CODOMAIN : pi->rule;
 			pi = pi->premises[0];
 			break;
 		}
 		case PG_PI_FORM: {
 			if (thunks) goto done;
 			const struct pg_evidence *extended = pi->premises[0];
-			const struct pg_evidence *map = evidence_map(typing, extended->premises[0], frames);
 			if (component == PG_PI_DOMAIN) {
-				pi = pg_prove_reindex(typing, map, extended->premises[1]);
-			} else if (argument) {
-				map = pg_prove_substitution_pair(typing, map, extended, argument);
-				pi = pg_prove_reindex(typing, map, pi->premises[1]);
-			} else pi = pg_prove_reindex(typing, map, pg_prove_pi_constant_codomain(typing, pi));
-			if (!pending) { result = pi; goto done; }
+				pi = extended->premises[1];
+			} else {
+				const struct pg_evidence *map = argument ? evidence_map(typing, extended->premises[0], frames) : NULL;
+				if (map) {
+					map = pg_prove_substitution_pair(typing, map, extended, argument);
+					pi = pg_prove_reindex(typing, map, pi->premises[1]);
+					frames = NULL;
+				} else {
+					const struct pg_evidence *constant = pg_prove_pi_constant_codomain(typing, pi);
+					if (!constant) goto done;
+					struct evidence_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
+					if (!frame) goto done;
+					*frame = (struct evidence_frame){constant, frames};
+					frames = frame;
+					pi = pi->premises[1];
+				}
+			}
+			struct evidence_frame **tail = &frames;
+			while (*tail) tail = &(*tail)->next;
+			if (!pending) {
+				*tail = work->frames;
+				work->frames = frames;
+				result = pi;
+				goto done;
+			}
 			argument = pending->argument;
-			frames = pending->frames;
+			*tail = pending->frames;
 			thunks = pending->thunks;
 			component = pending->component;
 			pending = pending->next;
@@ -660,7 +680,6 @@ static const struct pg_evidence *pi_component(struct pg_typing *typing,
 		}
 	}
 done:
-	pg_graph_destroy(&temporary);
 	return result;
 }
 
@@ -779,24 +798,11 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 			--work->thunk_contents;
 			formation = formation->premises[0];
 			break;
-		case PG_PI_DOMAIN: case PG_PI_CODOMAIN: {
-			formation = pi_component(typing, formation->premises[0],
-				formation->rule == PG_PI_DOMAIN ? NULL : formation->premises[1], formation->rule);
+		case PG_PI_CONSTANT_CODOMAIN: case PG_PI_DOMAIN: case PG_PI_CODOMAIN: {
+			formation = pi_component(work, formation->premises[0],
+				formation->rule == PG_PI_CODOMAIN ? formation->premises[1] : NULL,
+				formation->rule == PG_PI_DOMAIN ? PG_PI_DOMAIN : PG_PI_CODOMAIN);
 			if (!formation) goto failed;
-			break;
-		}
-		case PG_PI_CONSTANT_CODOMAIN: {
-			const struct pg_evidence *pi = formation->premises[0];
-			if (pi->rule != PG_PI_FORM) {
-				formation = pi_component(typing, pi, NULL, PG_PI_CODOMAIN);
-				if (!formation) goto failed;
-				break;
-			}
-			struct evidence_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
-			if (!frame) goto failed;
-			*frame = (struct evidence_frame){formation, work->frames};
-			work->frames = frame;
-			formation = pi->premises[1];
 			break;
 		}
 		default: goto failed;

@@ -23,7 +23,7 @@ reason to delay compilation compatibility. Neither milestone requires
 eliminating recomputation during image loading. The full rewrite remains open.
 
 Current milestone summary (September 13): selected unchanged legacy sources
-and all six QuickSort results pass the 20-case compatibility gate. The existing
+and all six QuickSort results pass the 25-case compatibility gate. The existing
 length has a checked post-hoc property proof; QuickSort does not yet. Completing
 the wider legacy inventory remains necessary before claiming full compatibility.
 No checkpoint optimization or broader Higher Identity work is a prerequisite
@@ -36,7 +36,7 @@ for that first delivery; preserve existing checks without expanding this gate.
   families, dependent motives, recursive fields and Acc-based recursion. Keep
   `::` post-synthesis; do not add length/QuickSort-specific kernel rules.
 - [x] Compile the selected existing function-graph length fixtures and fuel-free
-  QuickSort fixture unchanged, and check their runtime results (20/20 gate).
+  QuickSort fixture unchanged, and check their runtime results (25/25 gate).
 - [ ] Support an explicit property proof using the graph/witness of an already-defined function, not
   a separately rewritten certified implementation. Witness production alone
   does not establish a property such as preservation of length or sortedness.
@@ -102,6 +102,26 @@ checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
 
 September 13 compatibility follow-up:
 
+- [x] Restore unchanged `insertion_sort_check.p` and `eager_insertion_check.p`.
+  Main `63b00eb` accepts both; its normalization comparison confirms all five
+  selected results. Two distinct source bugs prevented compatibility: Pi
+  origin recovery demanded an unused binder removed by a checked constant
+  codomain, and recursive Match could retain the initial scrutinee instead
+  of its current constructor. Pi recovery now transports the selected
+  formation and still substitutes actual dependent arguments. The existing
+  branch dependency scan identifies uses requiring scrutinee generalization;
+  independent branches keep their original context. No new kernel, Core,
+  wire-format or Replay rule was added.
+  Full debug `check-acceptance` passes, including **25/25** legacy cases,
+  all six QuickSort results, and source/unfinished/partial/completed image
+  comparisons at chunk sizes 1/64. Pi tests also cover projection/reindexing
+  and reject genuinely dependent constant codomains. ASan/UBSan passes IADT,
+  Program, source IO, image CLI and the 25-case compatibility suite. Exact
+  retained-reduction reuse for generalized alias scopes is not established;
+  ordinary Solve recomputation remains acceptable. Broader inventory work
+  remains: unchanged Vec tail/append and opaque higher-order callees in
+  QuickSort's generated graph are not resolved by this change. Neither
+  complete legacy compatibility nor QuickSort's post-hoc property is claimed.
 - [x] Restore constructor lookup through computed type aliases such as
   `Nat := Counter Unit`. Member lookup now uses ordinary source-reference
   coercion, and nominal evidence recovery follows matching FORCE/THUNK

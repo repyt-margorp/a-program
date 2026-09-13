@@ -1515,10 +1515,19 @@ static void schema_positivity(void)
 		assert(wrapped && !pg_inductive_instance(&typing, wrapped, &recovered));
 		const struct pg_evidence *curried = pg_prove_pi(&typing, &classifiers, z_context,
 			pg_prove_projection(&typing, z_context, pi));
+		const struct pg_evidence *inner_context = pg_prove_context_extension(&typing, z_context,
+			pg_binder(&graph), pg_prove_projection(&typing, z_context, nat));
+		const struct pg_evidence *scoped_curried = pg_prove_pi(&typing, &classifiers, z_context,
+			pg_prove_pi(&typing, &classifiers, inner_context,
+				pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, inner_context, nat))));
 		const struct pg_evidence *derived[] = {
 			pg_prove_projection(&typing, n_context, pi),
 			pg_prove_reindex(&typing, map, pi),
 			pg_prove_projection(&typing, n_context, pg_prove_pi_codomain(&typing, curried, zero)),
+			pg_prove_projection(&typing, n_context, pg_prove_pi_constant_codomain(&typing, curried)),
+			pg_prove_pi_constant_codomain(&typing, pg_prove_reindex(&typing, map, curried)),
+			pg_prove_pi_constant_codomain(&typing, pg_prove_projection(&typing, n_context, curried)),
+			pg_prove_projection(&typing, n_context, pg_prove_pi_constant_codomain(&typing, scoped_curried)),
 			pg_prove_thunk_content(&typing, pg_prove_projection(&typing, n_context, wrapped)),
 			pg_prove_thunk_content(&typing, pg_prove_reindex(&typing, map, wrapped))
 		};
@@ -1533,6 +1542,10 @@ static void schema_positivity(void)
 			assert(content);
 			struct pg_inductive_instance instance;
 			assert(pg_inductive_instance(&typing, content, &instance));
+			assert(instance.formation == nat && instance.schema == nat_schema);
+			assert(pg_evidence_context(instance.parameters) == pg_evidence_context(n_context));
+			content = pg_prove_return_content(&typing, pg_prove_pi_codomain(&typing, derived[i], n_value));
+			assert(content && pg_inductive_instance(&typing, content, &instance));
 			assert(instance.formation == nat && instance.schema == nat_schema);
 			assert(pg_evidence_context(instance.parameters) == pg_evidence_context(n_context));
 		}

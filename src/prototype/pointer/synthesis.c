@@ -175,7 +175,7 @@ struct match_state {
 	const struct pg_evidence **path_extensions;
 	size_t path_count, path_scoped;
 	size_t count, selected, next, collected, effect_checked, demanded, checked, prepared, typed, result_checked, validated;
-	int induction, has_demands, type_cases, packet;
+	int induction, uses_scrutinee, has_demands, type_cases, packet;
 	struct match_branch branches[];
 };
 struct family_state {
@@ -2623,13 +2623,14 @@ static const struct pg_object *hypothesis_field(const struct pg_source_scope *sc
 /* Lexical dependency discovery only. The normal binder resolver and kernel
  * still check every use. Nested pattern/Lambda/block binders shadow names;
  * declarations introduce their own Self marker. No classifier is guessed. */
-static int branch_needs_ih(const struct pg_source_scope *scope,
-	const struct pg_context *prefix, const struct pg_syntax *body)
+static int branch_dependencies(const struct pg_source_scope *scope,
+	const struct pg_context *prefix, const struct pg_syntax *body,
+	const struct pg_object *scrutinee, int *uses_scrutinee)
 {
-	if (lookup_scope(scope, (struct pg_token){.kind = '*'}).binder) return 0;
+	int self = lookup_scope(scope, (struct pg_token){.kind = '*'}).binder != NULL;
 	struct pg_graph arena = {0};
 	struct marker_task *tasks = NULL;
-	int result = -1;
+	int result = -1, needs_ih = 0;
 	if (marker_push(&arena, &tasks, body, NULL)) goto done;
 	while (tasks) {
 		const struct pg_syntax *syntax = tasks->syntax;
@@ -2641,7 +2642,12 @@ static int branch_needs_ih(const struct pg_source_scope *scope,
 			syntax = syntax->left;
 		}
 		if (syntax->kind == PG_SYNTAX_DECLARATION) continue;
-		if (syntax->kind == PG_SYNTAX_APPLICATION && syntax->left->kind == PG_SYNTAX_ATOM &&
+		if (scrutinee && syntax->kind == PG_SYNTAX_ATOM && syntax->token.kind == PG_TOKEN_IDENT) {
+			const struct marker_shadow *bound = shadow;
+			while (bound && !same_name(bound->name, syntax->token)) bound = bound->parent;
+			if (!bound && lookup_scope(scope, syntax->token).binder == scrutinee) *uses_scrutinee = 1;
+		}
+		if (!self && syntax->kind == PG_SYNTAX_APPLICATION && syntax->left->kind == PG_SYNTAX_ATOM &&
 			syntax->left->token.kind == '*' && syntax->right->kind == PG_SYNTAX_ATOM) {
 			struct pg_token name = syntax->right->token;
 			const struct marker_shadow *bound = shadow;
@@ -2650,7 +2656,10 @@ static int branch_needs_ih(const struct pg_source_scope *scope,
 				const struct pg_object *field = hypothesis_field(scope, name);
 				for (const struct pg_context *context = pg_evidence_context(source_context(scope));
 					context && context != prefix; context = context->parent) {
-					if (context->binder == field) { result = 1; goto done; }
+					if (context->binder == field) {
+						needs_ih = 1;
+						if (!scrutinee) { result = 1; goto done; }
+					}
 				}
 			}
 		}
@@ -2699,10 +2708,16 @@ static int branch_needs_ih(const struct pg_source_scope *scope,
 			}
 		}
 	}
-	result = 0;
+	result = needs_ih;
 done:
 	pg_graph_destroy(&arena);
 	return result;
+}
+
+static int branch_needs_ih(const struct pg_source_scope *scope,
+	const struct pg_context *prefix, const struct pg_syntax *body)
+{
+	return branch_dependencies(scope, prefix, body, NULL, NULL);
 }
 
 static int hypothesis_syntax(const struct pg_syntax *syntax)
@@ -5495,7 +5510,7 @@ static const struct pg_evidence *scope_value(const struct pg_source_scope *scope
 	return pg_evidence_judgement(producer->result) == PG_JUDGEMENT_VALUE ? producer->result : NULL;
 }
 
-/* Abstract the ambient telescope after distinct variable indices. The
+/* Abstract the ambient telescope after distinct variable indices/scrutinee. The
  * specialization is a checked section: copied inputs are supplied once after
  * elimination, not silently retyped at each constructor. */
 static int match_generalize(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -5506,12 +5521,12 @@ static int match_generalize(struct pg_synthesis *synthesis, struct pg_synthesis_
 	const struct pg_term *subject = pg_evidence_subject(job->right->result)->core;
 	struct match_generalization *work = state->generalizing;
 	if (work) goto advance;
-	if (state->packet || !state->instance.indices) return 0;
+	if (state->packet) return 0;
 	if (subject->kind != PG_REFERENCE || subject->as.reference->kind != PG_BINDER) return 0;
 	/* The index substitution also contains the declaration's Self image. */
 	size_t first = pg_evidence_premise_count(state->instance.parameters) + 1;
-	size_t end = pg_evidence_premise_count(state->instance.indices);
-	if (first == end) return 0;
+	size_t end = state->instance.indices ? pg_evidence_premise_count(state->instance.indices) : first;
+	if (first == end && !(state->induction && state->uses_scrutinee)) return 0;
 	for (size_t i = first; i < end; ++i) {
 		const struct pg_term *index = pg_evidence_subject(pg_evidence_premise(state->instance.indices, i))->core;
 		if (index->kind != PG_REFERENCE || index->as.reference->kind != PG_BINDER) return 0;
@@ -5562,8 +5577,10 @@ advance:
 				work->active = 1;
 			}
 		}
-		if (binder == subject->as.reference)
+		if (binder == subject->as.reference) {
 			image = pg_prove_variable(typing, work->motive_context, pg_evidence_context(work->motive_context)->binder);
+			work->active = 1;
+		}
 		if (!work->active) image = pg_prove_variable(typing, work->motive_context, binder);
 		work->replacing = image != NULL;
 		if (image) work->pair = pg_synthesis_substitution_pair(synthesis, work->map, extension,
@@ -5963,7 +5980,10 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		branch->scope = scope;
 		branch->fields = source_context(scope);
 		branch->field_count = count;
-		branch->needs_ih = clause ? branch_needs_ih(scope, pg_evidence_context(context), clause->right) : 0;
+		const struct pg_term *subject = pg_evidence_subject(scrutinee)->core;
+		const struct pg_object *binder = subject->kind == PG_REFERENCE ? subject->as.reference : NULL;
+		branch->needs_ih = clause ? branch_dependencies(scope, pg_evidence_context(context), clause->right,
+			binder, &state->uses_scrutinee) : 0;
 		if (branch->needs_ih < 0) goto error;
 		if (branch->needs_ih) {
 			state->induction = 1;
