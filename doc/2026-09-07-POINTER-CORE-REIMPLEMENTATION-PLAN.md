@@ -23,7 +23,7 @@ reason to delay compilation compatibility. Neither milestone requires
 eliminating recomputation during image loading. The full rewrite remains open.
 
 Current milestone summary (September 13): selected unchanged legacy sources
-and all six QuickSort results pass the 25-case compatibility gate. The existing
+and all six QuickSort results pass the 27-case compatibility gate. The existing
 length has a checked post-hoc property proof; QuickSort does not yet. Completing
 the wider legacy inventory remains necessary before claiming full compatibility.
 No checkpoint optimization or broader Higher Identity work is a prerequisite
@@ -36,7 +36,7 @@ for that first delivery; preserve existing checks without expanding this gate.
   families, dependent motives, recursive fields and Acc-based recursion. Keep
   `::` post-synthesis; do not add length/QuickSort-specific kernel rules.
 - [x] Compile the selected existing function-graph length fixtures and fuel-free
-  QuickSort fixture unchanged, and check their runtime results (25/25 gate).
+  QuickSort fixture unchanged, and check their runtime results (27/27 gate).
 - [ ] Support an explicit property proof using the graph/witness of an already-defined function, not
   a separately rewritten certified implementation. Witness production alone
   does not establish a property such as preservation of length or sortedness.
@@ -102,6 +102,31 @@ checks typed values in the same Program at chunk sizes 1/64, not printed DAGs.
 
 September 13 compatibility follow-up:
 
+- [x] Recompile unchanged `explicit_index_family_tail_check.p` and
+  `explicit_index_family_tail_infer.p`, both also accepted by Main `63b00eb`.
+  A cons branch provides `succ n = succ k`, but its synthesized `Vec A k`
+  could not previously leave the branch. Result synthesis now shares the
+  existing scoped index-transport search: derive field Identity, transport
+  the quoted computation, and use checked constant-codomain formation to
+  propose a result type independent of local fields. The candidate still
+  has to type every reachable original branch; `::` contributes nothing.
+  An attempted eager rewrite of each branch was discarded because it lost
+  a valid dependent motive in `accessibleSucc`. Original pattern-derived
+  candidates and branch bodies remain intact; refinement only proposes an
+  alternative when pattern inversion cannot construct that branch's candidate.
+  No Core tag, kernel rule, wire format or separate Replay path changed.
+  Full debug acceptance passes with **27/27** compatibility cases, including
+  all six QuickSort results. ASan/UBSan passes IADT, Program, image CLI and
+  the 27-case compatibility suite. Tests cover empty/nonempty tails, a raw Pi branch
+  result, source/image chunk sizes 1/64, and rejection of the wrong output
+  index before and after unfinished image resaves. Vec append remains
+  unsupported: its type-level `add k n` reaches RETURN value extraction;
+  the kernel's existing `pg_prove_total_pure_value` accepts that checked
+  total, empty-effect computation, but source synthesis does not yet use it.
+  Investigate that shared rule before adding another result representation;
+  unspecified totality and nonempty effects must still be rejected.
+  This is separate from tail's result-motive inference. General compatibility
+  and QuickSort's post-hoc property remain open.
 - [x] Restore unchanged `insertion_sort_check.p` and `eager_insertion_check.p`.
   Main `63b00eb` accepts both; its normalization comparison confirms all five
   selected results. Two distinct source bugs prevented compatibility: Pi

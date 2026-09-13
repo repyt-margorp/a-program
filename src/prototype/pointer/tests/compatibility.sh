@@ -43,6 +43,8 @@ while read -r expectation name left right; do
 	fi
 done <<'CASES'
 0 typing/explicit_index_family_vec_check
+0 typing/explicit_index_family_tail_check
+0 typing/explicit_index_family_tail_infer
 0 typing/explicit_index_family_acc_eliminator_check
 0 typing/insertion_sort_check main expected
 0 typing/eager_insertion_check main expected
