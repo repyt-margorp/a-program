@@ -13,6 +13,19 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+## September 14 Publication Policy
+
+The user superseded the final Main-merge delivery policy: publish incremental
+work on `rewrite/pointer-core-hott` while keeping Main as the frozen old version.
+Main remains at `63b00eba3a3cf87b8aa20434b7c8e513a71be92b`, also identified by
+the annotated tag `old-version/2026-09-14-main`. Do not merge or force-push the
+rewrite into Main, or change the default branch, without a new user decision.
+Later references to Main promotion are historical and do not authorize it.
+
+Commit and push verified development increments on the rewrite branch. A
+published increment is not completion of the full rewrite; retain the open
+compatibility, property-proof and Higher Identity requirements below.
+
 ## September 13 Priority Correction: Source Compatibility First
 
 September 14 follow-up: see
