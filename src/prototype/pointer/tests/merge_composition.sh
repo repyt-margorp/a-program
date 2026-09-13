@@ -45,4 +45,14 @@ done
 "$checker" --steps 100000 --imports "$source" --save "$directory/graph.a" \
 	"$fixtures/merge-function-graph-request.p"
 "$runtime" --equal-image "$directory/graph.a" main graphExpected
+for input in "$source" "$directory/alone.p" "$directory/reordered.p"; do
+	"$checker" --steps 100000 --imports "$input" --save "$directory/captured.a" \
+		"$fixtures/merge-function-graph-captured-request.p"
+	"$runtime" --equal-image "$directory/captured.a" main graphExpected
+	"$runtime" --equal-image "$directory/captured.a" repeatMain repeatExpected
+	"$runtime" --equal-image "$directory/captured.a" emptyMain emptyExpected
+	"$runtime" --equal-image "$directory/captured.a" chosen one
+	"$runtime" --equal-image "$directory/captured.a" laterMain one
+	"$runtime" --equal-image "$directory/captured.a" dependentMain dependentExpected
+done
 printf '%s\n' 'merge composition: capture, currying, declaration order, result and image checks passed'

@@ -35,7 +35,10 @@ form; corrected merge forms pass execution and declaration-order tests. A
 separate explicit `@curriedMerge` request failed generated schema formation
 because Pi inversion retained an unnecessarily large universe bound. Recovery
 of the retained domain formation now restores this graph and its witness;
-full MergeSort and post-hoc properties remain open. An independent Identity WHNF early-stop bug is fixed by
+captured `structuralMerge` now uses a local eliminator graph in the unchanged
+argument environment, specialized at publication. Captured indexed inputs,
+nested graph export-name collisions, a recursive merge caller, full MergeSort
+and post-hoc properties remain open. An independent Identity WHNF early-stop bug is fixed by
 using the existing checked diagonal fallback. The broad pure-sequence Vec
 trial was withdrawn because it regressed higher-order indexed fields; Vec
 append and the wider compatibility milestone are not marked complete.

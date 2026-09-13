@@ -4,7 +4,7 @@ Date: 2026-09-14
 Branch: `rewrite/pointer-core-hott`
 Starting revision: `eb007ed`
 Issue: <https://github.com/repyt-margorp/a-program/issues/28>
-Status: ordinary merge covered; curried merge graph and witness restored.
+Status: ordinary merge covered; curried and captured merge graph/witness restored.
 
 ## What Reproduces
 
@@ -12,6 +12,9 @@ The posted Issue #28 source rejects both with and without `repeatWithFuel`
 on the starting revision and this worktree. The reported declaration-order
 contamination is therefore not reproduced here. This does not establish what
 happened in the reporter's older `843c57c` binary or other source variants.
+The reporter subsequently confirmed in Issue #28 that the corrected library
+program runs with both `843c57c` and `3c5ab2a`. That is external confirmation,
+not a local run of the full library; its source location is still needed here.
 
 The first failing source application is `*tail right` in `structuralMerge`.
 Its `right` lambda surrounds the Match, rather than appearing inside each
@@ -82,13 +85,62 @@ refuses to place this evidence in the generated level-0 declaration.
 - [ ] Prove an actual post-hoc property separately from obtaining that witness.
 - [ ] Inspect the full MergeSort source when its location is available.
 
-The captured-argument form still has a separate public graph limitation:
-`import structuralMerge; graph := @structuralMerge;` is unsupported, although
-ordinary execution passes. Graph input selection currently chooses the last
-outer Lambda, whereas that function matches an earlier argument. The curried
-fixture is therefore not evidence that every equivalent Lambda placement has
-graph support. Preserve the valid ordinary form and fix graph input selection
-without redefining its IH as a function. This remains a follow-up requirement.
+### Captured Eliminator Follow-up
+
+At `3b9bdae`, `import structuralMerge; graph := @structuralMerge;` was still
+unsupported although ordinary execution passed. Graph input selection chose
+the last outer Lambda, whereas this function matches an earlier argument.
+
+The graph generator now retains the complete source argument environment and
+abstracts the eliminator's scrutinee in that environment. It reuses checked
+elimination reindexing and ordinary Match/induction, Pi, Lambda and application
+rules. The local graph varies only its fresh input; captured arguments stay
+fixed. Publication applies that graph and witness to the original scrutinee,
+then abstracts the original argument telescope. Public application order and
+the List-valued IH are unchanged. No Core node, evaluator rule or proof axiom
+is added, and source arguments are not permuted across dependent binders.
+
+Helper result-type substitution must also insert the specialized local input;
+otherwise the helper's private result context has one more binder than its
+public argument list. This is an ordinary typed context map, not a second
+source or solver authority.
+
+- [x] Generate `@structuralMerge` and `*structuralMerge` without rewriting it.
+- [x] Check nonempty and empty outputs through saved source images, chunks 1/64.
+- [x] Repeat with standalone and reordered provider declarations.
+- [x] Check a captured non-recursive Match and branches returning raw functions.
+- [x] Check `\P : Nat -> @ => \n : Nat => \v : P n => ...`, where
+  moving `n` past the captured `v` would invalidate its domain. The witness
+  returns the expected value for a nonconstant `Family`.
+- [x] Check a recursive caller of a captured list-copy helper, including its
+  specialized result context. This isolates helper mapping from comparison.
+- [x] Full debug `check-acceptance`, including compatibility 28/28 and QuickSort.
+- [x] Full sanitizer `check-acceptance` for this follow-up.
+  The final dependent-capture fixture was added afterward and the complete
+  merge-composition script was rerun separately on debug and sanitizer builds.
+
+Remaining limits are not acceptance successes:
+
+- Captured indexed inputs still require generalizing the index telescope along
+  with the new local input. The existing generic-index check remains in force;
+  the single-input construction does not solve fixed indices backwards.
+- `import lessEqual; graph := @lessEqual; witness := *lessEqual;` is unsupported
+  on both the prior test binary and this implementation. The backend forms
+  its three-leaf graph, but `function_graph_exports` rejects repeated source
+  constructor names (`zero` from different split paths). An earlier debugger
+  stop at unresolved `*k` was a speculative branch, not this final cause.
+- A recursive caller of `structuralMerge` still encounters a separate graph
+  branch-planning limitation. Its local reproduction is `repeatMerge le fuel`,
+  with zero branch `\xs : List Nat => xs` and successor branch
+  `\xs : List Nat => { previous := *k xs; structuralMerge Nat le left previous; }`.
+  The failure occurs before schema construction, after recording the first IH
+  call. The planner reaches a neutral nested induction after losing the helper
+  call boundary through partial application/sequencing. The shared normalizer
+  cannot turn that open induction into RETURN. Next inspect typed application
+  continuation handling before beta exposure; do not replace it with a second
+  evaluator or attribute this failure to the export collision.
+- These cases and full MergeSort remain follow-up work. The captured list-copy
+  test is not a substitute for restoring the merge-caller graph.
 
 Keep Issue #28 open while reporting this distinction, rather than describing
 all graph-composition concerns as fixed.
