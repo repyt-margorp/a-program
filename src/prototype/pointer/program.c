@@ -103,6 +103,13 @@ struct pg_program *pg_program_allocate(enum pg_definition_policy policy)
 	}
 	hosts = host_functions(program, hosts, context);
 	if (!hosts) goto fail;
+	struct pg_derivation_input text_input = {.rule = PG_HOST_TYPE_FORM, .count = 1,
+		.parameters.constant = pg_host_type("Text")};
+	struct pg_synthesis_job *text = pg_synthesis_rule(&program->synthesis, &text_input, &context, NULL, NULL);
+	hosts = pg_synthesis_name_job(&program->synthesis, hosts,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "print", .length = 5, .text_length = 5},
+		pg_synthesis_operation_jobs(&program->synthesis, pg_host_print(&program->graph), text, text));
+	if (!hosts) goto fail;
 	program->scope = pg_synthesis_namespace(&program->synthesis, program->scope,
 		(struct pg_token){.kind = '#'}, hosts);
 	if (!program->scope) goto fail;

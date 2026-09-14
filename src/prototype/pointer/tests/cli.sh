@@ -85,6 +85,19 @@ check 1 'rejected steps=' 'a:=#int_add #1 #2 #3;'
 check 1 'rejected steps=' 'f:=#int_add; f::#Int64->#Int64->#Int64;'
 check 0 'done steps=' 'add:=#int_add; main:=add #20 #22;'
 check 0 'done steps=' 'add:=#.int_add; main:=add #20 #22;' --legacy-intrinsic-dot
+check 0 'done steps=' 'main:=#print #"not-a-compiler-output";'
+test "$output" = "${output%%$'\n'*}"
+check 0 'done steps=' 'main:=#.print #"not-a-compiler-output";' --legacy-intrinsic-dot
+test "$output" = "${output%%$'\n'*}"
+check 1 'rejected steps=' 'main:=#print #42;'
+check 1 'rejected steps=' 'main:=(#print #"x") @#print req k=>k #42 @#return x=>x;'
+check 1 'rejected steps=' 'main:=(#print #"x") @#print req k=>{k #42; k req;} @#return x=>x;'
+check 1 'rejected steps=' 'main:=(#print #"x") @#print req k=>#missing req @#return x=>x;'
+check 1 'rejected steps=' 'main:=(#print #"x") @#print req k=>missing req @#return x=>x;'
+for mode in --whnf --nf; do
+	check 0 'done steps=' 'main:=#print #"not-a-compiler-output";' "$mode" main
+	case "$output" in *'not-a-compiler-output'*) exit 1 ;; esac
+done
 for budget in 0 100000; do
 	if [ "$budget" = 0 ]; then code=3; status='pending steps='; else code=1; status='rejected steps='; fi
 	check "$code" "$status" 'main:=#int64_add #1 #2;' --steps "$budget" --save "$directory/wrong-width.a"

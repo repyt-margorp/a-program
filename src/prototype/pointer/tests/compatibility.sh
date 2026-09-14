@@ -130,6 +130,12 @@ trap 'rm -rf "$directory"' EXIT
 acceptance="$(dirname "${BASH_SOURCE[0]}")/acceptance"
 for steps in 0 100000; do
 	code=0
+	"${checker[@]}" --steps "$steps" --save "$directory/print.a" "$acceptance/host-print.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	for name in main alias discard twice forward reemitted arithmetic; do
+		"${runtime[@]}" --equal-image "$directory/print.a" "$name" expected
+	done
+	code=0
 	"${checker[@]}" --steps "$steps" --save "$directory/arithmetic.a" "$acceptance/host-arithmetic.p" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
 	for pair in main:expected overflow:minimum underflow:maximum product:negativeTwo negatedMinimum:minimum partialResult:expected higherResult:expected unboxed:expected; do

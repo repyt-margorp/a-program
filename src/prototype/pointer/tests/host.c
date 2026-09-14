@@ -90,6 +90,16 @@ int main(void)
 	const struct pg_evidence *t32 = pg_prove_host_type(&typing, &classifiers, empty, i32);
 	const struct pg_evidence *t64 = pg_prove_host_type(&typing, &classifiers, empty, i64);
 	assert(t32 && t64 && t32 != t64);
+	const struct pg_evidence *text_proof = pg_prove_host_type(&typing, &classifiers, empty, text);
+	const struct pg_object *print = pg_host_print(&graph);
+	assert(print && print == pg_host_print(&graph));
+	const struct pg_operation_declaration *print_declaration = pg_operation_declaration_at(&typing, print, text_proof, text_proof);
+	assert(print_declaration && pg_operation_label(print_declaration) == print);
+	assert(!pg_operation_declaration_at(&typing, print, t32, text_proof));
+	assert(!pg_operation_declaration_at(&typing, print, text_proof, t32));
+	const struct pg_operation_declaration *generic = pg_operation_declaration(&typing, text_proof, text_proof);
+	assert(generic && pg_operation_label(generic) != print);
+	assert(!pg_host_operation_descriptor(pg_operation_label(generic)));
 	assert(!pg_prove_host_type(&typing, &classifiers, pg_prove_empty_context(&foreign), i32));
 	assert(!pg_prove_host_type(&typing, &classifiers, empty, pg_binder(&graph)));
 	const int64_t cases[] = {INT64_MIN, INT32_MIN, -1, 0, 1, INT32_MAX, INT64_MAX};
@@ -118,14 +128,28 @@ int main(void)
 	assert(!pg_host_integer(&graph, text, 0));
 	const struct pg_term *roots[] = {pg_reference(&graph, value),
 		pg_reference(&graph, pg_host_literal(&graph, text, 0, NULL)),
-		pg_reference(&graph, pg_host_integer(&graph, i64, INT64_MIN))};
+		pg_reference(&graph, pg_host_integer(&graph, i64, INT64_MIN)),
+		pg_reference(&graph, print), pg_reference(&graph, pg_operation_label(generic))};
 	FILE *file = tmpfile();
-	assert(file && !pg_graph_write_descriptors(file, 3, roots, &pg_builtin_graph_codec, &classifiers));
+	assert(file && !pg_graph_write_descriptors(file, 5, roots, &pg_builtin_graph_codec, &classifiers));
 	rewind(file);
 	size_t count;
 	const struct pg_term *const *restored;
 	assert(!pg_graph_read_descriptors(file, &loaded, 100, 100, &pg_builtin_graph_codec, NULL, &count, &restored));
-	assert(count == 3);
+	assert(count == 5);
+	assert(restored[3]->as.reference == pg_host_print(&loaded));
+	assert(!pg_host_operation_descriptor(restored[4]->as.reference));
+	const struct pg_term *print_payload, *print_response;
+	assert(pg_operation_label_types(restored[3]->as.reference, &print_payload, &print_response));
+	assert(print_payload == pg_reference(&loaded, text) && print_payload == print_response);
+	struct pg_classifiers loaded_classifiers;
+	assert(!pg_classifiers_init(&loaded_classifiers, &loaded));
+	const struct pg_evidence *loaded_empty = pg_prove_empty_context(&foreign);
+	const struct pg_evidence *loaded_text = pg_prove_host_type(&foreign, &loaded_classifiers, loaded_empty, text);
+	const struct pg_evidence *loaded_int = pg_prove_host_type(&foreign, &loaded_classifiers, loaded_empty, i32);
+	assert(pg_operation_declaration_at(&foreign, restored[3]->as.reference, loaded_text, loaded_text));
+	assert(!pg_operation_declaration_at(&foreign, restored[3]->as.reference, loaded_int, loaded_int));
+	pg_classifiers_destroy(&loaded_classifiers);
 	const struct pg_object *type;
 	const unsigned char *bytes;
 	size_t length;
@@ -138,6 +162,8 @@ int main(void)
 	/* Reject malformed descriptor sizes and noncanonical trailing bits. */
 	const struct pg_term *types[] = {pg_reference(&graph, text)};
 	uint64_t scalars[] = {1, UINT64_C(0x7800000000000001)};
+	assert(!pg_builtin_graph_codec.restore(NULL, &graph, "host/print-text/v1", 1, types, 0, NULL));
+	assert(!pg_builtin_graph_codec.restore(NULL, &graph, "host/print-text/v1", 0, NULL, 1, scalars));
 	assert(!pg_builtin_graph_codec.restore(NULL, &graph, "host/literal/v1", 1, types, 2, scalars));
 	scalars[1] = UINT64_C(0x7800000000000000);
 	assert(pg_builtin_graph_codec.restore(NULL, &graph, "host/literal/v1", 1, types, 2, scalars));

@@ -3735,6 +3735,7 @@ const struct pg_object *pg_operation_label_create(struct pg_graph *graph,
 int pg_operation_label_types(const struct pg_object *object,
 	const struct pg_term **payload, const struct pg_term **response)
 {
+	if (pg_host_operation_types(object, payload, response)) return 1;
 	if (!object || object->owner != &operation_label_class || object->kind != PG_SEMANTIC_OBJECT) return 0;
 	if (!payload || !response) return 0;
 	const struct operation_label *label = (const void *)object;

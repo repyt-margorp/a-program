@@ -26,6 +26,11 @@ const char *pg_host_function_descriptor(const struct pg_object *function);
 const struct pg_object *pg_host_function_resolve(const char *descriptor);
 int pg_host_function_view(const struct pg_object *function,
 	const struct pg_object **type, size_t *arity);
+/* Inert, interceptable operation labels with fixed host signatures. */
+const struct pg_object *pg_host_print(struct pg_graph *graph);
+const char *pg_host_operation_descriptor(const struct pg_object *label);
+int pg_host_operation_types(const struct pg_object *label,
+	const struct pg_term **payload, const struct pg_term **response);
 struct pg_eval;
 struct pg_eval_continuation;
 int pg_host_dispatch(struct pg_eval *machine);

@@ -30,6 +30,8 @@ static const char *descriptor_name(void *context, const struct pg_object *object
 	if (host_name) return host_name;
 	host_name = pg_host_function_descriptor(object);
 	if (host_name) return host_name;
+	host_name = pg_host_operation_descriptor(object);
+	if (host_name) return host_name;
 	const struct pg_term *payload, *response;
 	const struct pg_data_layout *layout;
 	size_t position, arity;
@@ -65,6 +67,7 @@ static int descriptor_child(void *context, struct pg_graph *scratch,
 	const struct pg_object *object, size_t index, const struct pg_term **child)
 {
 	(void)context;
+	if (pg_host_operation_descriptor(object)) return 0;
 	const struct pg_object *host_type;
 	const unsigned char *bytes;
 	size_t byte_count;
@@ -152,6 +155,8 @@ static const struct pg_object *descriptor_restore(void *context, struct pg_graph
 	size_t scalar_count, const uint64_t *scalars)
 {
 	(void)context;
+	if (!strcmp(name, "host/print-text/v1"))
+		return count || scalar_count ? NULL : pg_host_print(graph);
 	if (!strcmp(name, "host/literal/v1")) {
 		if (count != 1 || terms[0]->kind != PG_REFERENCE || !scalar_count) return NULL;
 		if (!pg_host_type_name(terms[0]->as.reference) || scalars[0] > SIZE_MAX) return NULL;

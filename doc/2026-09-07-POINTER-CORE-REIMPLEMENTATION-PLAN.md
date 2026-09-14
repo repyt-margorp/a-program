@@ -29,6 +29,80 @@ Commit and push verified development increments on the rewrite branch. A
 published increment is not completion of the full rewrite; retain the open
 compatibility, property-proof and Higher Identity requirements below.
 
+## September 14 Print Requests and Handler Inference
+
+This increment follows `6acf121`. It restores the symbolic operation, not the
+terminal execution backend. All work remains on the published rewrite branch.
+
+- [x] Expose `#print` through the existing operation producer. Its graph-owned,
+  interned label has the fixed `Text -> Text` contract, matching the predecessor.
+  The `host/print-text/v1` descriptor restores that label, not a fresh generic
+  Text operation. User labels with identical signatures remain distinct.
+- [x] Reuse ordinary operation declaration, request, handler and effect-row
+  rules. Reject wrong payload/response type proofs and descriptor payloads.
+  No new Core tag, proof rule, pure reduction or replay path is introduced.
+- [x] Extend existing structural projections for host type/value/function
+  producers. A provisional structure helps collect effect equations; it does
+  not certify the term or bypass final derivation checking.
+- [x] Resolve qualified lexical names before the surrounding effect row is
+  closed. Typed nominal member selection still waits for its checked context.
+  Build sequencing for a known computation before accepting that computation;
+  its proof remains a premise of the resulting fold. This removes circular
+  waits in handler bodies without dropping validation of ignored expressions.
+- [x] Reject absent names immediately. Preserve the distinction between absent
+  names and existing non-term module/context producers. The pending-name test
+  caught a regression in this distinction; its original assertion is retained.
+- [x] Add `tests/acceptance/host-print.p`: normal/aliased interception, discarded
+  and repeated resumptions, forwarding, clause re-emission caught outside its
+  own handler, and arithmetic inside a clause. Compare seven results after
+  unsolved/completed source-image reloads through ordinary Solve.
+- [x] CLI checks confirm that checking, WHNF and NF never output print payloads;
+  wrong continuation arguments and absent names are rejected. Existing
+  `--legacy-intrinsic-dot` gating also applies to print.
+- [x] Final debug and ASan/UBSan `check-acceptance` runs exit 0 after the
+  pending-name correction, including the 59-case legacy gate and subsequent
+  property/image checks. Optimized CLI build and CLI tests also pass. Local logs:
+  `/tmp/a-program-print-acceptance-final.log` and
+  `/tmp/a-program-print-sanitize-final.log`.
+- [ ] Execute unhandled host requests in a fresh runtime invocation, through
+  the existing evaluator rather than the pure memo store. Establish explicit
+  entry/output handling, repeated execution, suspension and I/O-failure tests.
+- [ ] Restore the remaining legacy effect-composition cases below. Do not
+  promote them to accepted compatibility cases before their actual outcomes
+  and effect order are verified.
+- [ ] Encoding conversions and host Higher Identity/model correspondence
+  remain required, not consequences of the print signature tests.
+
+Two independently reproduced remaining cases from
+`cbpv/runtime_strict_effects_check.p` are:
+
+```ap
+second := \x : #Text => \y : #Text => y;
+main := second (#print #"a") (#print #"b"); // currently unsupported
+```
+
+```ap
+Bool := @{ true : *; false : *; };
+main := { x : #Text := #print #"m"; Bool.false; }; // currently rejected
+```
+
+In contrast, `#print (#print #"e")` and `{ x := #print #"s"; second x x; }`
+typecheck. The first failing case reaches a RETURN extraction job that cannot
+extract an effectful computation's value; curried constructor application has
+the same symptom. The second involves the annotated block-binding path.
+Investigate sequencing/classifier contracts and annotation placement, not a
+print-specific coercion or treating a nonempty effect row as pure. Preserve
+`::` as a post-synthesis check. These are not terminal-output tests yet.
+
+The unchanged QuickSort content-property client/provider still checks:
+149,473 Solve transitions versus 148,474 at `6acf121` (+999, about 0.67%).
+This is not a controlled wall-clock comparison. Change size before documentation:
+implementation C/headers +112/-15 (net +97); tests/fixtures +64/-3 (net +61).
+Verification uses `make -f src/prototype/pointer/Makefile check-acceptance`,
+`BUILD=/tmp/a-program-print` or `/tmp/a-program-print-sanitize`, and C11
+`-Wall -Wextra -Werror -O0 -g`. The latter adds
+`-fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`.
+
 ## September 14 Fixed-Width Arithmetic
 
 This increment follows the literal/spelling work in `797d82a`.

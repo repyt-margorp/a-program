@@ -2849,7 +2849,7 @@ static struct pg_synthesis_job *source_reference_producer(struct pg_synthesis *s
 }
 
 static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, struct source_reference *reference,
+	struct pg_synthesis_job *context_job, struct source_reference *reference,
 	struct pg_token token, struct pg_synthesis_job **dependency)
 {
 	if (reference->exports) {
@@ -2881,6 +2881,9 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 		if (!producer) return PG_SYNTHESIS_ERROR;
 		*dependency = producer;
 		if (producer->status != PG_SYNTHESIS_DONE) return producer->status;
+		*dependency = context_job;
+		if (context_job->status != PG_SYNTHESIS_DONE) return context_job->status;
+		const struct pg_evidence *context = context_job->result;
 		const struct pg_evidence *proof = pg_prove_projection(synthesis->typing, context, producer->result);
 		if (!proof) return PG_SYNTHESIS_UNSUPPORTED;
 		if (pg_evidence_judgement(proof) == PG_JUDGEMENT_COMPUTATION) {
@@ -2946,7 +2949,7 @@ static enum pg_synthesis_status resolve_reference(struct pg_synthesis *synthesis
 	for (size_t i = count; i; --i, syntax = syntax->left) path[i - 1] = syntax->right;
 	enum pg_synthesis_status status = PG_SYNTHESIS_DONE;
 	for (size_t i = 0; i < count; ++i) {
-		status = resolve_member(synthesis, source_context(scope), reference, path[i]->token, dependency);
+		status = resolve_member(synthesis, scope->context_job, reference, path[i]->token, dependency);
 		if (status != PG_SYNTHESIS_DONE) break;
 	}
 	free(path);
@@ -3566,12 +3569,15 @@ static void block_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		const struct block_frame *frame = block->frames;
 		struct pg_synthesis_job *context = frame->context;
 		if (!frame->binds) {
-			if (frame->input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, frame->input); return; }
-			if (frame->input->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, frame->input->status); return; }
-			if (value(synthesis, frame->input->result)) {
-				block->frames = frame->parent;
-				enqueue(synthesis, job);
-				return;
+			if (await_source_preparation(synthesis, job, frame->input)) return;
+			if (source_value_kind(frame->input) != 0) {
+				if (frame->input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, frame->input); return; }
+				if (frame->input->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, frame->input->status); return; }
+				if (value(synthesis, frame->input->result)) {
+					block->frames = frame->parent;
+					enqueue(synthesis, job);
+					return;
+				}
 			}
 			struct pg_synthesis_job *input = pg_synthesis_normalize_classifier_jobs(synthesis, context, frame->input);
 			context = pg_synthesis_result_context(synthesis, context, input, pg_binder(synthesis->typing->graph));
@@ -7000,6 +7006,7 @@ static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_j
 	if (job->syntax->kind == PG_SYNTAX_LAMBDA) return job->value_job;
 	if (job->syntax->kind == PG_SYNTAX_ATOM && job->binder) return job->left;
 	if (job->syntax->kind == PG_SYNTAX_ATOM && job->value_job) return job->value_job;
+	if (job->syntax->kind == PG_SYNTAX_QUALIFIED && job->value_job) return job->value_job;
 	if (job->syntax->kind == PG_SYNTAX_ATOM && job->syntax->token.kind == '@') return job->left;
 	return NULL;
 }
@@ -7041,11 +7048,16 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 			break;
 		}
 		switch (producer->syntax->kind) {
+		case PG_SYNTAX_QUALIFIED:
+			preparing = !producer->value_job && producer->syntax->left->kind != PG_SYNTAX_DEFINITIONS;
+			break;
 		case PG_SYNTAX_APPLICATION:
 			preparing = !producer->stage || (producer->stage == 2 && !producer->function);
 			break;
 		case PG_SYNTAX_LAMBDA: case PG_SYNTAX_QUOTE: preparing = !producer->stage; break;
 		case PG_SYNTAX_ATOM:
+			if (producer->syntax->token.kind == PG_TOKEN_INT || producer->syntax->token.kind == PG_TOKEN_TEXT)
+				preparing = !producer->value_job;
 			if (producer->syntax->token.kind == PG_TOKEN_IDENT && !producer->value_job && !producer->binder) {
 				struct source_reference reference = lookup_scope(producer->scope, producer->syntax->token);
 				preparing = reference.binder || (reference.producer &&
@@ -7099,9 +7111,11 @@ static int body_rule_polarity(const struct pg_synthesis_job *rule)
 	if (rule->role != DERIVATION_JOB) return -1;
 	const struct pg_derivation_input *input = rule->inputs[0];
 	switch (input->rule) {
-	case PG_VARIABLE: case PG_THUNK_INTRO: case PG_VALUE_FROM_TYPE: case PG_UNIVERSE_FORM: return 1;
+	case PG_VARIABLE: case PG_THUNK_INTRO: case PG_VALUE_FROM_TYPE: case PG_UNIVERSE_FORM:
+	case PG_HOST_TYPE_FORM: case PG_HOST_VALUE_INTRO: return 1;
 	case PG_LAMBDA_INTRO: case PG_APP_ELIM: case PG_FORCE_ELIM: case PG_RETURN_INTRO:
-	case PG_FOLD_ELIM: case PG_REQUEST_INTRO: case PG_HANDLER_ELIM: case PG_EFFECT_SUBSUMPTION: return 0;
+	case PG_FOLD_ELIM: case PG_REQUEST_INTRO: case PG_HANDLER_ELIM: case PG_EFFECT_SUBSUMPTION:
+	case PG_HOST_FUNCTION_INTRO: return 0;
 	default: return -1;
 	}
 }
@@ -7112,7 +7126,8 @@ static int source_value_kind(const struct pg_synthesis_job *producer)
 	const struct pg_synthesis_job *rule = polarity_origin(producer);
 	int kind = body_rule_polarity(rule);
 	if (kind == 1 && rule->role == DERIVATION_JOB &&
-		((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_UNIVERSE_FORM) return 2;
+		(((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_UNIVERSE_FORM ||
+		 ((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_HOST_TYPE_FORM)) return 2;
 	const struct pg_evidence *result = rule->result ? rule->result : producer->result;
 	if (result) {
 		enum pg_evidence_judgement judgement = pg_evidence_judgement(result);
@@ -7233,6 +7248,11 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 	const struct pg_object *operation = NULL;
 	if (input) {
 		if (input->rule == PG_HANDLER_ELIM) { handler_structure_step(synthesis, job, producer, input); return; }
+		if (input->rule == PG_HOST_TYPE_FORM || input->rule == PG_HOST_VALUE_INTRO || input->rule == PG_HOST_FUNCTION_INTRO) {
+			job->type_structure = pg_reference(synthesis->typing->graph, input->parameters.constant);
+			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+			return;
+		}
 		if (input->rule == PG_UNIVERSE_FORM) {
 			job->type_structure = pg_universe(synthesis->classifiers, input->parameters.level);
 			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
@@ -7739,6 +7759,8 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 		if (premise) switch (input->rule) {
 		case PG_VARIABLE:
 			job->left = request_job(synthesis, DECLARED_TYPE_JOB, premise, input->parameters.binder); break;
+		case PG_HOST_VALUE_INTRO: case PG_HOST_FUNCTION_INTRO:
+			job->left = pg_synthesis_type_structure(synthesis, premise); break;
 		case PG_FORCE_ELIM: case PG_THUNK_INTRO: case PG_APP_ELIM: case PG_RETURN_INTRO: case PG_VALUE_FROM_TYPE: case PG_FOLD_ELIM:
 			job->left = pg_synthesis_classifier_structure(synthesis, premise); break;
 		case PG_CONTEXT_PROJECTION:
@@ -7838,6 +7860,9 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		switch (input->rule) {
 		case PG_UNIVERSE_FORM:
 			job->type_structure = pg_universe(synthesis->classifiers, input->parameters.level);
+			goto done;
+		case PG_HOST_TYPE_FORM:
+			job->type_structure = pg_reference(synthesis->typing->graph, input->parameters.constant);
 			goto done;
 		case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM: case PG_PI_FORM: case PG_PI_DOMAIN: case PG_PI_CODOMAIN: case PG_RETURN_CONTENT:
 		case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE: case PG_PI_CONSTANT_CODOMAIN:
@@ -8324,7 +8349,10 @@ error:
 
 static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_ATOM) return 0;
+	if (job->role != EXPRESSION_JOB) return 0;
+	int qualified = job->syntax->kind == PG_SYNTAX_QUALIFIED;
+	if (qualified && (block_syntax(job->syntax) || job->syntax->left->kind == PG_SYNTAX_DEFINITIONS)) return 0;
+	if (!qualified && job->syntax->kind != PG_SYNTAX_ATOM) return 0;
 	struct pg_token token = job->syntax->token;
 	if (token.kind == PG_TOKEN_INT || token.kind == PG_TOKEN_TEXT) {
 		if (!job->value_job) {
@@ -8351,14 +8379,18 @@ static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 		forward_proof(synthesis, job, job->left);
 		return 1;
 	}
-	if (job->syntax->token.kind != PG_TOKEN_IDENT) return 0;
+	if (!qualified && job->syntax->token.kind != PG_TOKEN_IDENT) return 0;
 	if (job->value_job) {
 		if (job->left) job->exports = job->left->exports;
 		forward_proof(synthesis, job, job->value_job); return 1;
 	}
 	if (!job->binder) {
 		if (job->left) return 0;
-		struct source_reference reference = lookup_scope(job->scope, job->syntax->token);
+		struct source_reference reference;
+		struct pg_synthesis_job *dependency = NULL;
+		enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, job->syntax, &reference, &dependency);
+		if (status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, dependency); return 1; }
+		if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return 1; }
 		if (named_term_ready(reference.producer)) {
 			if (reference.producer->status == PG_SYNTHESIS_DONE &&
 				(!reference.producer->result || !pg_evidence_subject(reference.producer->result))) {
@@ -8378,7 +8410,16 @@ static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 			depend(synthesis, job, reference.producer);
 			return 1;
 		}
-		if (!reference.binder) return 0;
+		if (reference.producer) {
+			finish(synthesis, job, reference.producer->status == PG_SYNTHESIS_DONE
+				? PG_SYNTHESIS_UNSUPPORTED : reference.producer->status);
+			return 1;
+		}
+		if (!reference.binder) {
+			if (reference.exports || reference.module) return 0;
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED);
+			return 1;
+		}
 		struct pg_derivation_input input = {.rule = PG_VARIABLE,
 			.parameters.binder = reference.binder, .count = 1};
 		job->binder = reference.binder;

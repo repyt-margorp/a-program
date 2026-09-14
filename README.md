@@ -157,14 +157,16 @@ source fixtures and default CLI tests use `#Name`.
 | Dependent synthesis | Constructor-index refinement and branch-proposed motives checked against every induction branch; unchanged `lengthCertified` |
 | Function properties | [Length specification](src/prototype/pointer/tests/acceptance/length-output-proof.p) and [QuickSort content preservation](src/prototype/pointer/tests/acceptance/legacy-quicksort-property.p), not sortedness |
 | Higher Identity | Selected typed action, transport and higher-dimensional examples; general coherence remains unfinished |
-| Effects | Checked requests, multi-clause handlers, forwarding and resumptions; no terminal/host execution backend |
+| Effects | `#print` requests with a fixed Text-to-Text signature, multi-clause handlers, forwarding and resumptions; no terminal/host execution backend |
 | Host values | `#Int` aliases `#Int32`; distinct `#Int64`; `#Text` stores exact bytes. Literal typing and image round trips, including recursive Text fields |
 | Arithmetic | `#int_add`, `#int_sub`, `#int_mul`, `#int_neg` and corresponding `#int64_*` functions: fixed-width wraparound; partial and higher-order application |
 | Images | Unfinished/completed source inputs, imports and selected retained reductions through ordinary Solve |
 
 Important limitations:
 
-- Host printing and encoding conversions are not restored. Integer literals synthesize
+- `#print` can be described and intercepted, but terminal execution and encoding
+  conversions are not restored. Pure checking/normalization never prints its payload.
+  Integer literals synthesize
   `#Int32` and reject out-of-range values; `:: #Int64` does not change that
   choice. Text literals do not impose Unicode normalization or decode an
   encoding. Host types do not yet have general Higher Identity rules.

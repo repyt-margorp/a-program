@@ -24,6 +24,44 @@ struct host_literal {
 	unsigned char bytes[];
 };
 
+static const struct pg_object_class print_class = {"host-print"};
+struct host_print {
+	struct pg_object_entry base;
+	const struct pg_term *text;
+};
+
+const struct pg_object *pg_host_print(struct pg_graph *graph)
+{
+	if (!graph) return NULL;
+	const struct pg_term *text = pg_reference(graph, &text_type);
+	if (!text) return NULL;
+	if (!graph->objects.capacity && pg_index_init(&graph->objects)) return NULL;
+	uint64_t hash = (uintptr_t)&print_class;
+	for (struct pg_index_entry *p = pg_index_candidates(&graph->objects, hash); p; p = p->next) {
+		const struct pg_object_entry *base = (const void *)p;
+		if (base->object.owner == &print_class) return &base->object;
+	}
+	struct host_print *label = pg_alloc(graph, sizeof(*label));
+	if (!label) return NULL;
+	label->base.object = (struct pg_object){PG_SEMANTIC_OBJECT, &print_class};
+	label->text = text;
+	return pg_index_insert(&graph->objects, &label->base.index, hash) ? NULL : &label->base.object;
+}
+
+const char *pg_host_operation_descriptor(const struct pg_object *label)
+{
+	return label && label->owner == &print_class ? "host/print-text/v1" : NULL;
+}
+
+int pg_host_operation_types(const struct pg_object *object,
+	const struct pg_term **payload, const struct pg_term **response)
+{
+	if (!pg_host_operation_descriptor(object) || !payload || !response) return 0;
+	const struct host_print *label = (const void *)((const char *)object - offsetof(struct pg_object_entry, object));
+	*payload = *response = label->text;
+	return 1;
+}
+
 const struct pg_object *pg_host_type(const char *name)
 {
 	if (!name) return NULL;
