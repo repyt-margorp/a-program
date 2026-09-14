@@ -80,20 +80,28 @@ static void machine_resave(struct pg_eval *machine, struct pg_graph *graph,
 	}
 }
 
-static void host_operand_frames(void)
+static void host_operand_frames(size_t function_index)
 {
 	struct pg_graph graph;
 	assert(!pg_graph_init(&graph));
-	const struct pg_object *type = pg_host_type("Int32");
-	const struct pg_term *call = pg_reference(&graph, pg_host_function(0));
-	for (size_t i = 0; i < 2; ++i) {
+	const struct pg_object *type, *result_type, *function = pg_host_function(function_index);
+	size_t arity;
+	assert(pg_host_function_view(function, &type, &result_type, &arity));
+	const struct pg_term *call = pg_reference(&graph, function);
+	for (size_t i = 0; i < arity; ++i) {
 		const struct pg_object *x = pg_binder(&graph);
-		const struct pg_term *literal = pg_reference(&graph, pg_host_integer(&graph, type, i ? 22 : 20));
+		int64_t number = function_index ? (type == pg_host_type("Int32") ? INT32_MIN : INT64_MIN) : (i ? 22 : 20);
+		const struct pg_term *literal = pg_reference(&graph, pg_host_integer(&graph, type, number));
 		call = pg_application(&graph, call, pg_application(&graph,
 			pg_lambda(&graph, x, pg_reference(&graph, x)), literal));
 	}
-	const struct pg_term *expected = pg_application(&graph, pg_reference(&graph, &pg_return_operation),
-		pg_reference(&graph, pg_host_integer(&graph, type, 42)));
+	const struct pg_object *answer;
+	if (!function_index) answer = pg_host_integer(&graph, type, 42);
+	else {
+		const char *text = type == pg_host_type("Int32") ? "-2147483648" : "-9223372036854775808";
+		answer = pg_host_literal(&graph, result_type, strlen(text), (const unsigned char *)text);
+	}
+	const struct pg_term *expected = pg_application(&graph, pg_reference(&graph, &pg_return_operation), pg_reference(&graph, answer));
 	struct pg_eval machine;
 	pg_computation_eval_init(&machine, &graph, call);
 	unsigned seen = 0;
@@ -106,7 +114,7 @@ static void host_operand_frames(void)
 		machine_resave(&machine, &graph, NULL, &expected);
 		pg_eval_advance(&machine, 1);
 	}
-	assert(seen == 3 && machine.status == PG_EVAL_WHNF);
+	assert(seen == (arity == 2 ? 3u : 1u) && machine.status == PG_EVAL_WHNF);
 	assert(pg_alpha_equal(pg_eval_readback(&machine, &graph), expected) == 1);
 	pg_eval_destroy(&machine);
 	pg_graph_destroy(&graph);
@@ -148,7 +156,8 @@ static void policy_names(void)
 	assert(!pg_computation_policy_resolve("evaluation/pure/v1"));
 	assert(!pg_computation_policy_resolve("evaluation/pure/v2"));
 	assert(!pg_computation_policy_resolve("evaluation/pure/v3"));
-	assert(pg_computation_policy_resolve("evaluation/pure/v5") == &pg_pure_policy);
+	assert(pg_computation_policy_resolve("evaluation/pure/v6") == &pg_pure_policy);
+	assert(!pg_computation_policy_resolve("evaluation/pure/v5"));
 	assert(!pg_computation_policy_resolve("evaluation/pure/v4"));
 	assert(!pg_computation_policy_resolve("computation/fold_work/v1"));
 	pg_whnf_work_destroy(&work);
@@ -3236,7 +3245,9 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
-	host_operand_frames();
+	host_operand_frames(0);
+	host_operand_frames(8);
+	host_operand_frames(9);
 	policy_names();
 	comparison_scope_owner();
 	machine_envelope();

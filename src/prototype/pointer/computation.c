@@ -484,7 +484,7 @@ static const struct {
 	const char *name;
 } portable_policies[] = {
 	{&pg_beta_policy, "evaluation/beta/v1"},
-	{&pg_pure_policy, "evaluation/pure/v5"}
+	{&pg_pure_policy, "evaluation/pure/v6"}
 };
 
 const char *pg_computation_policy_name(const struct pg_eval_policy *policy)

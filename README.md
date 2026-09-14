@@ -116,6 +116,7 @@ not new Core tags for every feature.
 | Area | Sources under `src/prototype/pointer/` |
 | --- | --- |
 | Graph and evaluation | `graph.c`, `eval.c`, `computation.c` |
+| Host contracts and explicit execution | `host.c`, `execution.c` |
 | Typing evidence and conversion | `typing.c`, `evidence.c`, `conversion.c` |
 | Source synthesis and scheduling | `syntax.c`, `synthesis.c`, `program.c` |
 | Inductive families and function graphs | `iadt.c`, `function_graph.c` |
@@ -167,17 +168,22 @@ source fixtures and default CLI tests use `#Name`.
 | Effects | `#print` requests, multi-clause handlers, forwarding and resumptions; ordered partial applications; explicit `--run` terminal output with split-budget and source/image tests |
 | Host values | `#Int` aliases `#Int32`; distinct `#Int64`; `#Text` stores exact bytes. Literal typing and image round trips, including recursive Text fields |
 | Arithmetic | `#int_add`, `#int_sub`, `#int_mul`, `#int_neg` and corresponding `#int64_*` functions: fixed-width wraparound; partial and higher-order application |
+| Formatting | `#int_to_text` / `#int64_to_text`: signed decimal ASCII, no leading zeros or added newline; `#print (#int_to_text (#int_add #20 #22))` prints `42` with `--run` |
 | Images | Unfinished/completed source inputs, imports and selected retained reductions through ordinary Solve |
 
 Important limitations:
 
 - The execution backend handles unhandled `#print` only. Other unhandled
   operations report unsupported; runtime sessions are not checkpointed.
-  Encoding conversions are not restored. Pure checking/normalization never prints.
+  General character/encoding conversions remain open; integer decimal ASCII
+  formatting is available. Pure checking/normalization never prints.
   Integer literals synthesize
   `#Int32` and reject out-of-range values; `:: #Int64` does not change that
   choice. Text literals do not impose Unicode normalization or decode an
   encoding. Host types do not yet have general Higher Identity rules.
+- Pure evaluation now uses profile `evaluation/pure/v6`. Old v5 retained
+  evaluation records are rejected, not silently upgraded. Regenerate those
+  images from source or save description-only inputs with the older compiler.
 - General dependent motive inference, indexed graph coverage and
   higher/dependent/Universe Identity coherence remain open.
 - A standalone indexed Match whose every branch is refuted can remain pending

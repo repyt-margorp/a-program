@@ -2248,21 +2248,21 @@ const struct pg_evidence *pg_prove_host_function(struct pg_typing *typing,
 	const struct pg_evidence *type, const struct pg_object *function)
 {
 	if (!pg_evidence_owned_by(type, typing) || type->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
-	const struct pg_object *host_type;
+	const struct pg_object *host_domain, *host_result;
 	size_t arity;
-	if (!pg_host_function_view(function, &host_type, &arity)) return NULL;
+	if (!pg_host_function_view(function, &host_domain, &host_result, &arity)) return NULL;
 	const struct pg_term *signature = type->subject->core;
 	for (size_t i = 0; i < arity; ++i) {
 		const struct pg_term *domain, *codomain;
 		const struct pg_object *binder;
 		if (!pg_pi_view(signature, &domain, &binder, &codomain)) return NULL;
-		if (domain->kind != PG_REFERENCE || domain->as.reference != host_type) return NULL;
+		if (domain->kind != PG_REFERENCE || domain->as.reference != host_domain) return NULL;
 		signature = codomain;
 	}
 	enum pg_totality totality;
 	const struct pg_term *result;
 	if (!pg_pure_computation_type_view(signature, &totality, &result) || totality != PG_TOTALITY_TOTAL) return NULL;
-	if (result->kind != PG_REFERENCE || result->as.reference != host_type) return NULL;
+	if (result->kind != PG_REFERENCE || result->as.reference != host_result) return NULL;
 	const struct pg_term *core = pg_reference(typing->graph, function);
 	const struct pg_occurrence *subject = core ? pg_occurrence(typing, type->context, core, NULL, 0, NULL) : NULL;
 	return subject ? accept(typing, PG_HOST_FUNCTION_INTRO, PG_JUDGEMENT_COMPUTATION,

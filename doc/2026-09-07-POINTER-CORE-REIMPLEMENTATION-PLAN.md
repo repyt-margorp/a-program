@@ -29,6 +29,74 @@ Commit and push verified development increments on the rewrite branch. A
 published increment is not completion of the full rewrite; retain the open
 compatibility, property-proof and Higher Identity requirements below.
 
+## September 14 Fixed Integer Formatting
+
+This increment follows `c306f64`. Add `#int_to_text` and `#int64_to_text` with
+checked signatures `Int32 -> Comp(total, {}, Text)` and
+`Int64 -> Comp(total, {}, Text)`. `#Int` still aliases Int32. Integer literals
+still synthesize Int32; neither function nor `::` silently widens them.
+
+The contract is explicit: for a w-bit word b, interpret
+`z = b` when `b < 2^(w-1)`, otherwise `z = b - 2^w`. Emit ASCII `0x2d` exactly
+when z is negative, followed by the base-10 digits of abs(z), most significant
+first, each encoded as `0x30 + digit`. Zero is one digit; no leading zeros,
+positive sign, separators, newline, locale or implementation-defined encoding.
+The implementation uses unsigned magnitude and repeated division by 10, bounded
+by 19 digit steps plus a sign. It never negates Int64 minimum in a signed type.
+
+- [x] Replace the equal-domain/result assumption with one fixed host function
+  descriptor carrying domain, result and arity. Kernel introduction checks that
+  signature; namespace setup and reduction read the same metadata. Existing
+  signature jobs reuse ordinary exact-input interning, not a second cache.
+- [x] Implement the two conversions in the existing pure primitive dispatcher.
+  The ordinary APP/RETURN/Fold path composes arithmetic, formatting and print.
+  No new Core tag, effect operation, typing rule or parser special case.
+- [x] Extend the pure profile to `evaluation/pure/v6`; do not reinterpret v5
+  evaluation records under the extended rule set. A v5 source-description-only
+  image was checked with ordinary Solve; a v5 retained-reduction image rejects.
+  Recompile the source or regenerate a description-only image to migrate it.
+- [x] Add tests for both signed minima/maxima, decimal boundaries, zero, every
+  value -100..100 at both widths, and every evaluator budget cut. Incorrect
+  domain/result signatures reject. Descriptor relocation and repeated machine
+  save/resume include both decimal functions and their suspended operand demand.
+- [x] Add source/image result tests: aliases, higher-order and partial use,
+  overflow before formatting, generic ADT fields and print interception. Runtime
+  byte comparisons check arithmetic -> decimal ASCII -> `#print` from source
+  and images. Wrong widths and misleading post-synthesis annotations reject.
+- [x] Full debug and ASan/UBSan `check-acceptance` both exit 0, including the
+  60/60 legacy gate and the later decimal/QuickSort source/image comparisons.
+  Logs: `/tmp/a-program-decimal-acceptance.log` and
+  `/tmp/a-program-decimal-sanitize.log`. Optimized CLI rebuild, CLI regression
+  tests and execution tests also pass. Publish on the rewrite branch only.
+
+Change size relative to `c306f64`, excluding documentation:
+
+| File under `src/prototype/pointer/` | Added | Removed |
+| --- | ---: | ---: |
+| `computation.c` | 1 | 1 |
+| `evidence.c` | 4 | 4 |
+| `host.c` | 57 | 29 |
+| `host.h` | 3 | 2 |
+| `program.c` | 12 | 12 |
+| `tests/host.c` | 65 | 11 |
+| `tests/identity_io.c` | 21 | 10 |
+| `tests/cli.sh` | 5 | 0 |
+| `tests/compatibility.sh` | 7 | 0 |
+| `tests/execution.sh` | 8 | 0 |
+| `tests/acceptance/host-decimal.p` | 20 | 0 |
+
+Implementation/header total +77/-48 (net +29); tests +126/-21 (net +105).
+The unchanged QuickSort content-property check takes 149,501 Solve transitions
+versus 149,473 at `c306f64`. An unrelated `main:=#42;` likewise changes from
+177 to 205 steps, consistent with the fixed cost of adding two host producers.
+This is not a wall-clock benchmark or a claim of complete performance parity.
+
+This defines and tests a trusted fixed host primitive, not an A Program proof
+that its C implementation refines a constructive word/encoding model. Internal
+word models, model/implementation Identity, character encodings, general Text
+operations and higher host action remain required open work. Formatting does
+not substitute for that proof/model interface or make opaque host types ADTs.
+
 ## September 14 Explicit Host Execution
 
 This increment follows `ee3cef7`. Runtime reuses `pg_eval` and the existing pure

@@ -54,6 +54,14 @@ cmp "$directory/out" "$directory/expected"
 invoke 0 --run main --load "$directory/bytes.a"
 cmp "$directory/out" "$directory/expected"
 
+# Arithmetic -> fixed ASCII formatting -> host output uses ordinary Apply/Fold.
+printf 'main:=#print (#int_to_text (#int_add #2147483647 #1));\n' > "$directory/decimal.p"
+printf '%s' '-2147483648' > "$directory/expected"
+invoke 0 --run main --save "$directory/decimal.a" "$directory/decimal.p"
+cmp "$directory/out" "$directory/expected"
+invoke 0 --run main --load "$directory/decimal.a"
+cmp "$directory/out" "$directory/expected"
+
 # Whole-module and imported-sibling rejection happens before any output.
 printf 'main:=#print #"forbidden"; bad:=#int_add #"wrong" #1;\n' > "$directory/bad.p"
 invoke 1 --run main "$directory/bad.p"

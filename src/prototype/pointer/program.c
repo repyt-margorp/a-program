@@ -19,7 +19,7 @@ static const struct pg_source_scope *host_functions(struct pg_program *p,
 	const char *widths[] = {"Int32", "Int64"};
 	for (size_t width = 0; width < 2; ++width) {
 		const struct pg_object *host = pg_host_type(widths[width]);
-		struct pg_synthesis_job *contexts[3] = {context}, *types[3], *signatures[2];
+		struct pg_synthesis_job *contexts[3] = {context}, *types[3];
 		for (size_t depth = 0; depth < 3; ++depth) {
 			struct pg_derivation_input type = {.rule = PG_HOST_TYPE_FORM, .count = 1, .parameters.constant = host};
 			types[depth] = pg_synthesis_rule(&p->synthesis, &type, &contexts[depth], NULL, NULL);
@@ -29,26 +29,26 @@ static const struct pg_source_scope *host_functions(struct pg_program *p,
 			struct pg_synthesis_job *premises[] = {contexts[depth], types[depth]};
 			contexts[depth + 1] = pg_synthesis_rule(&p->synthesis, &extend, premises, NULL, NULL);
 		}
-		for (size_t arity = 1; arity <= 2; ++arity) {
+		const struct pg_object *function;
+		for (size_t i = 0; (function = pg_host_function(i)); ++i) {
+			const struct pg_object *domain, *result;
+			size_t arity;
+			if (!pg_host_function_view(function, &domain, &result, &arity)) return NULL;
+			if (domain != host) continue;
+			if (!arity || arity > 2) return NULL;
+			struct pg_derivation_input result_type = {.rule = PG_HOST_TYPE_FORM, .count = 1, .parameters.constant = result};
+			struct pg_synthesis_job *value_type = pg_synthesis_rule(&p->synthesis, &result_type, &contexts[arity], NULL, NULL);
 			struct pg_derivation_input returned = {.rule = PG_RETURN_TYPE_FORM, .count = 1,
 				.parameters.totality = PG_TOTALITY_TOTAL, .parameters.effects = pg_effect_row(&p->graph, 0, NULL)};
-			struct pg_synthesis_job *signature = pg_synthesis_rule(&p->synthesis, &returned, &types[arity], NULL, NULL);
+			struct pg_synthesis_job *signature = pg_synthesis_rule(&p->synthesis, &returned, &value_type, NULL, NULL);
 			for (size_t depth = arity; depth; --depth) {
 				struct pg_derivation_input pi = {.rule = PG_PI_FORM, .count = 2};
 				struct pg_synthesis_job *premises[] = {contexts[depth], signature};
 				signature = pg_synthesis_rule(&p->synthesis, &pi, premises, NULL, NULL);
 			}
-			signatures[arity - 1] = signature;
-		}
-		const struct pg_object *function;
-		for (size_t i = 0; (function = pg_host_function(i)); ++i) {
-			const struct pg_object *type;
-			size_t arity;
-			if (!pg_host_function_view(function, &type, &arity)) return NULL;
-			if (type != host) continue;
 			struct pg_derivation_input intro = {.rule = PG_HOST_FUNCTION_INTRO, .count = 1,
 				.parameters.constant = function};
-			struct pg_synthesis_job *value = pg_synthesis_rule(&p->synthesis, &intro, &signatures[arity - 1], NULL, NULL);
+			struct pg_synthesis_job *value = pg_synthesis_rule(&p->synthesis, &intro, &signature, NULL, NULL);
 			const char *name = pg_host_function_name(function);
 			scope = pg_synthesis_name_job(&p->synthesis, scope,
 				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = name, .length = strlen(name), .text_length = strlen(name)}, value);

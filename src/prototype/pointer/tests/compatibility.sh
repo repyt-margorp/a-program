@@ -141,6 +141,13 @@ for steps in 0 100000; do
 		"${runtime[@]}" --equal-image "$directory/effect-application.a" "${pair%:*}" "${pair#*:}"
 	done
 	code=0
+	"${checker[@]}" --steps "$steps" --save "$directory/decimal.a" "$acceptance/host-decimal.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	for pair in main:expected minimum:minimumExpected maximum:maximumExpected zero:zeroExpected wrapped:minimumExpected higher:expected partialMain:expected handled:expected unboxed:expected; do
+		"${runtime[@]}" --equal "$acceptance/host-decimal.p" "${pair%:*}" "${pair#*:}"
+		"${runtime[@]}" --equal-image "$directory/decimal.a" "${pair%:*}" "${pair#*:}"
+	done
+	code=0
 	"${checker[@]}" --steps "$steps" --save "$directory/print.a" "$acceptance/host-print.p" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
 	for name in main alias discard twice forward reemitted arithmetic annotated lastAnnotated selectedAnnotated aliasAnnotated computedAnnotated continuationAnnotated; do

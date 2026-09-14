@@ -19,13 +19,14 @@ int pg_host_literal_view(const struct pg_object *object,
 const struct pg_object *pg_host_integer(struct pg_graph *graph,
 	const struct pg_object *type, int64_t value);
 int pg_host_integer_view(const struct pg_object *object, int64_t *value);
-/* Fixed modular arithmetic. Enumerate until NULL; no user callbacks. */
+/* Fixed pure functions. Integer formatting is signed decimal ASCII, without
+ * leading zeros, a positive sign, separator or newline. No user callbacks. */
 const struct pg_object *pg_host_function(size_t index);
 const char *pg_host_function_name(const struct pg_object *function);
 const char *pg_host_function_descriptor(const struct pg_object *function);
 const struct pg_object *pg_host_function_resolve(const char *descriptor);
 int pg_host_function_view(const struct pg_object *function,
-	const struct pg_object **type, size_t *arity);
+	const struct pg_object **domain, const struct pg_object **result, size_t *arity);
 /* Inert, interceptable operation labels with fixed host signatures. */
 const struct pg_object *pg_host_print(struct pg_graph *graph);
 const char *pg_host_operation_descriptor(const struct pg_object *label);
