@@ -196,13 +196,19 @@ struct pg_synthesis_job *pg_program_normalize(struct pg_program *program,
 		full ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
 }
 
-struct pg_synthesis_job *pg_program_evaluate_name(struct pg_program *program,
-	struct pg_synthesis_job *module, struct pg_token name, int full)
+struct pg_synthesis_job *pg_program_select_name(struct pg_program *program,
+	struct pg_synthesis_job *module, struct pg_token name)
 {
 	if (!program) return NULL;
 	const struct pg_source_scope *exports = pg_program_exports(program,
 		pg_synthesis_root(&program->synthesis), module);
-	struct pg_synthesis_job *subject = pg_synthesis_named_input(&program->synthesis, exports, name);
+	return pg_synthesis_named_input(&program->synthesis, exports, name);
+}
+
+struct pg_synthesis_job *pg_program_evaluate_name(struct pg_program *program,
+	struct pg_synthesis_job *module, struct pg_token name, int full)
+{
+	struct pg_synthesis_job *subject = pg_program_select_name(program, module, name);
 	if (!subject) return NULL;
 	return pg_synthesis_evaluate_jobs(&program->synthesis,
 		pg_synthesis_evidence(&program->synthesis, pg_prove_empty_context(&program->typing)),

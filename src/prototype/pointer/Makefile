@@ -4,15 +4,23 @@ ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)effect_inference.c $(ROOT)evidence.c $(ROOT)derivation.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c $(ROOT)descriptor_io.c $(ROOT)context_payload.c $(ROOT)declaration_io.c
 
-SOURCES += $(ROOT)function_graph.c $(ROOT)host.c
+SOURCES += $(ROOT)function_graph.c $(ROOT)host.c $(ROOT)execution.c
 
 .PHONY: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-acceptance check-eval-io check-identity-io
-.PHONY: check-source-compatibility check-host
+.PHONY: check-source-compatibility check-host check-execution
 check-examples: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 
 check-host: $(BUILD)/host_test
 	$(BUILD)/host_test
+
+check-execution: $(BUILD)/execution_test $(BUILD)/pointer-check
+	$(BUILD)/execution_test
+	bash $(ROOT)tests/execution.sh $(BUILD)/pointer-check
+
+$(BUILD)/execution_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)tests/execution.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)tests/execution.c -o $@
 
 $(BUILD)/host_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)tests/host.c
 	mkdir -p $(BUILD)
@@ -48,7 +56,7 @@ check-handler-nesting: $(BUILD)/source_io_test
 	$(BUILD)/source_io_test handler-nesting
 	$(BUILD)/source_io_test handler-boundaries
 
-check-acceptance: check-host check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-source-compatibility
+check-acceptance: check-host check-execution check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-source-compatibility
 
 check-eval-io: $(BUILD)/eval_io_test
 	bash $(ROOT)tests/eval_io.sh $(BUILD)/eval_io_test

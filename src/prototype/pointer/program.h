@@ -52,6 +52,9 @@ struct pg_synthesis_job *pg_program_normalize(struct pg_program *program,
  * exported producers, then forces a stored thunk once after typing. */
 struct pg_synthesis_job *pg_program_evaluate_name(struct pg_program *program,
 	struct pg_synthesis_job *module, struct pg_token name, int full);
+/* The same whole-module-checked selection without normalization or execution. */
+struct pg_synthesis_job *pg_program_select_name(struct pg_program *program,
+	struct pg_synthesis_job *module, struct pg_token name);
 /* Publish a source module's local assignments over parent, without Solve.
  * Each name refers to a whole-module-checked selection, not copied evidence.
  * Imports are not re-exported. The returned scope and syntax are graph-owned. */

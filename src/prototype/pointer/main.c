@@ -3,6 +3,7 @@
 #include "graph_io.h"
 #include "source_io.h"
 #include "computation_io.h"
+#include "execution.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -123,7 +124,7 @@ static int steps_argument(const char *text, uint64_t *steps)
 	return 0;
 }
 
-static int report(struct pg_program *program, struct pg_synthesis_job *job)
+static int report(FILE *output, struct pg_program *program, struct pg_synthesis_job *job)
 {
 	const char *status;
 	int result;
@@ -134,11 +135,37 @@ static int report(struct pg_program *program, struct pg_synthesis_job *job)
 	case PG_SYNTHESIS_UNSUPPORTED: status = "unsupported"; result = 4; break;
 	default: status = "error"; result = 2; break;
 	}
-	printf("%s steps=%" PRIu64 "\n", status, program->synthesis.steps);
+	fprintf(output, "%s steps=%" PRIu64 "\n", status, program->synthesis.steps);
 	if (result == 3 && !program->synthesis.ready) {
-		fflush(stdout);
+		fflush(output);
 		fputs("pending: no runnable synthesis work; increasing the step budget alone will not advance this Program\n", stderr);
 	}
+	return result;
+}
+
+static int run(struct pg_program *program, const struct pg_evidence *proof, uint64_t budget)
+{
+	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_VALUE) {
+		const struct pg_term *content;
+		proof = pg_thunk_type_view(pg_evidence_classifier(proof), &content)
+			? pg_prove_force(&program->typing, proof)
+			: pg_prove_return(&program->typing, &program->classifiers, proof);
+	}
+	struct pg_execution execution;
+	int result = 4;
+	const char *status = "unsupported entry: expected a closed returning computation";
+	if (!pg_execution_init(&execution, &program->typing, proof, stdout)) {
+		switch (pg_execution_advance(&execution, budget)) {
+		case PG_EXECUTION_DONE: status = "done"; result = 0; break;
+		case PG_EXECUTION_PENDING: status = "pending"; result = 3; break;
+		case PG_EXECUTION_UNHANDLED: status = "unhandled operation"; break;
+		case PG_EXECUTION_STUCK: status = "stuck computation"; break;
+		case PG_EXECUTION_IO_ERROR: status = "output error (not retried)"; result = 2; break;
+		case PG_EXECUTION_ERROR: status = "internal error"; result = 2; break;
+		}
+	}
+	fprintf(stderr, "run: %s steps=%" PRIu64 "\n", status, execution.steps);
+	pg_execution_destroy(&execution);
 	return result;
 }
 
@@ -172,7 +199,7 @@ static int repl(struct pg_program *program, uint64_t budget,
 			if (retain_root(roots, root)) { result = 2; break; }
 			program->root = root;
 			pg_synthesis_advance(&program->synthesis, budget);
-			report(program, root);
+			report(stdout, program, root);
 			continue;
 		}
 		char *argument = command + strcspn(command, " \t\r\n");
@@ -182,7 +209,7 @@ static int repl(struct pg_program *program, uint64_t budget,
 		while (length && strchr(" \t\r\n", argument[length - 1])) argument[--length] = 0;
 		if (!*command) continue;
 		if (!strcmp(command, ":quit") && !*argument) break;
-		if (!strcmp(command, ":status") && !*argument) { report(program, program->root); continue; }
+		if (!strcmp(command, ":status") && !*argument) { report(stdout, program, program->root); continue; }
 		if (!strcmp(command, ":root")) {
 			uint64_t index;
 			if (steps_argument(argument, &index) || !index || index > roots->count) {
@@ -190,14 +217,14 @@ static int repl(struct pg_program *program, uint64_t budget,
 				continue;
 			}
 			program->root = roots->items[index - 1];
-			report(program, program->root);
+			report(stdout, program, program->root);
 			continue;
 		}
 		if (!strcmp(command, ":solve")) {
 			uint64_t steps = budget;
 			if (*argument && steps_argument(argument, &steps)) { fputs("invalid step budget\n", stderr); continue; }
 			pg_synthesis_advance(&program->synthesis, steps);
-			report(program, program->root);
+			report(stdout, program, program->root);
 			continue;
 		}
 		if (!strcmp(command, ":save") && *argument) {
@@ -212,7 +239,7 @@ static int repl(struct pg_program *program, uint64_t budget,
 			if (!job) { fputs("definition not found\n", stderr); continue; }
 			if (retain_root(roots, job)) { result = 2; break; }
 			pg_synthesis_advance(&program->synthesis, budget);
-			if (!report(program, job) && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core))
+			if (!report(stdout, program, job) && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core))
 				fputs("cannot print result\n", stderr);
 			continue;
 		}
@@ -225,6 +252,7 @@ static int repl(struct pg_program *program, uint64_t budget,
 int main(int argc, char **argv)
 {
 	uint64_t budget = 100000;
+	uint64_t run_budget = 100000;
 	uint64_t root_index = 0;
 	enum pg_definition_policy policy = PG_DEFINITION_IMPLICIT_THUNK;
 	const char *path = NULL;
@@ -232,14 +260,19 @@ int main(int argc, char **argv)
 	const char *save = NULL;
 	const char *imports = NULL;
 	int nf = 0, load = 0, interactive = 0, retain_reductions = 0, legacy_intrinsic_dot = 0;
+	int execute = 0, run_steps = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "--steps")) {
 			if (++i == argc || steps_argument(argv[i], &budget) != 0) goto usage;
+		} else if (!strcmp(argv[i], "--run-steps")) {
+			if (run_steps || ++i == argc || steps_argument(argv[i], &run_budget)) goto usage;
+			run_steps = 1;
 		} else if (!strcmp(argv[i], "--root")) {
 			if (root_index || ++i == argc || steps_argument(argv[i], &root_index) || !root_index) goto usage;
-		} else if (!strcmp(argv[i], "--nf") || !strcmp(argv[i], "--whnf")) {
+		} else if (!strcmp(argv[i], "--nf") || !strcmp(argv[i], "--whnf") || !strcmp(argv[i], "--run")) {
 			if (selected) goto usage;
 			nf = !strcmp(argv[i], "--nf");
+			execute = !strcmp(argv[i], "--run");
 			if (++i == argc || !*argv[i]) goto usage;
 			selected = argv[i];
 		} else if (!strcmp(argv[i], "--imports")) {
@@ -254,8 +287,12 @@ int main(int argc, char **argv)
 		} else if (!strcmp(argv[i], "--strict-thunks")) policy = PG_DEFINITION_EXPLICIT_THUNK;
 		else if (!strcmp(argv[i], "--legacy-intrinsic-dot")) legacy_intrinsic_dot = 1;
 		else if (!strcmp(argv[i], "--help")) {
-			puts("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME] INPUT|-\n"
-				"Checks with the pointer-core solver; does not execute host effects.\n"
+			puts("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME|--run NAME [--run-steps N]] INPUT|-\n"
+				"Checks with the pointer-core solver; host effects execute only with --run.\n"
+				"--run selects a checked definition, forces a stored thunk once, and runs it with fresh effect state.\n"
+				"Print writes exact Text bytes without a newline. Run diagnostics go to stderr.\n"
+				"--run-steps bounds evaluator/host-dispatch transitions (default 100000), not I/O time or byte count.\n"
+				"A saved image is not an effect receipt; another --run starts over and can repeat output.\n"
 				"#Name is standard; --legacy-intrinsic-dot also accepts #.Name in source/imports/REPL.\n"
 				"--imports FILE.p supplies exported symbols to explicit source imports.\n"
 				"--repl keeps the loaded Program for :solve, :whnf, :nf, :status, :root, :save, :quit.\n"
@@ -276,6 +313,8 @@ int main(int argc, char **argv)
 	}
 	if (!path || (load && (policy == PG_DEFINITION_EXPLICIT_THUNK || imports)) || (root_index && !load)) goto usage;
 	if (interactive && !strcmp(path, "-")) goto usage;
+	if (execute && interactive) goto usage;
+	if (run_steps && !execute) goto usage;
 	if (retain_reductions && !save && !interactive) goto usage;
 	if (!root_index) root_index = 1;
 	FILE *file = !strcmp(path, "-") ? stdin : fopen(path, "rb");
@@ -326,7 +365,8 @@ int main(int argc, char **argv)
 		struct pg_synthesis_job *job = program->root;
 		if (selected) {
 			struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = selected, .length = strlen(selected)};
-			job = pg_program_evaluate_name(program, job, name, nf);
+			job = execute ? pg_program_select_name(program, job, name)
+				: pg_program_evaluate_name(program, job, name, nf);
 			if (!job) {
 				fprintf(stderr, "%s: definition not found: %s\n", path, selected);
 				result = 1; goto done;
@@ -334,13 +374,14 @@ int main(int argc, char **argv)
 			if (retain_root(&retained, job)) { result = 2; goto done; }
 		}
 		pg_synthesis_advance(&program->synthesis, budget);
-		result = report(program, job);
-		if (selected && !result && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core)) result = 2;
+		result = report(execute ? stderr : stdout, program, job);
+		if (selected && !execute && !result && pg_graph_print(stdout, pg_evidence_subject(pg_synthesis_result(job))->core)) result = 2;
 		if (save) {
 			if (save_image(save, program, retained.count, retained.items, retain_reductions)) {
 				fprintf(stderr, "%s: cannot save input image\n", save); result = 2;
 			}
 		}
+		if (execute && !result) result = run(program, pg_synthesis_result(job), run_budget);
 		if (interactive) result = repl(program, budget, &retained, retain_reductions);
 	}
 done:
@@ -348,6 +389,6 @@ done:
 	pg_program_destroy(program);
 	return result;
 usage:
-	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME] INPUT|-\n", stderr);
+	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME|--run NAME [--run-steps N]] INPUT|-\n", stderr);
 	return 2;
 }

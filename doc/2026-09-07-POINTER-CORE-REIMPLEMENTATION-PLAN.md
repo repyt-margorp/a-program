@@ -29,6 +29,60 @@ Commit and push verified development increments on the rewrite branch. A
 published increment is not completion of the full rewrite; retain the open
 compatibility, property-proof and Higher Identity requirements below.
 
+## September 14 Explicit Host Execution
+
+This increment follows `ee3cef7`. Runtime reuses `pg_eval` and the existing pure
+dispatcher. Only a returning computation's root WHNF is offered to the host;
+dispatching inside a pure demand would incorrectly steal operations from an
+enclosing user handler. No new Core kind, kernel proof rule or wire format.
+
+- [x] Add `execution.c/h`: locally accepted closed computation entry, fresh
+  evaluator per invocation, budgeted resume/cancellation, and explicit
+  done/pending/unhandled/stuck/I/O-error states. The result is a materialized
+  value, not a typing certificate or a pure conversion receipt.
+- [x] Unhandled print writes/flushes exact Text bytes and resumes with the same
+  Text. No newline, encoding conversion, callback retry or effect memoization.
+  A failed write can be partial; clearing the stream error does not restart it.
+- [x] Share whole-module-checked name selection with normalization. `--run NAME`
+  selects without a normalization job, forces a stored thunk once (or returns
+  an ordinary value), then executes. A raw Pi needs an argument. Returned
+  thunks are not recursively forced. Rejected siblings/imports prevent output.
+- [x] Add `--run-steps N` (default 100000), separate from Solve fuel; counts
+  evaluator/root-dispatch transitions, not wall time or bytes. Output is stdout,
+  diagnostics stderr. REPL execution remains separate future work.
+- [x] Add permanent `check-execution`: twelve split-at-every-transition cases,
+  cancellation, repeated invocations, handler drop/reemit/forward/multi-resume,
+  unchanged proof/pure-memo stores, foreign/open entry rejection, unknown
+  operation, and I/O error without retry. CLI covers partial-call order,
+  unused/shared/repeated results, quoted returns, NUL bytes, module/import
+  rejection, budget zero, and fresh execution of unsolved/completed/resaved
+  images. Images are program descriptions, never external-effect receipts.
+- [x] Full debug and ASan/UBSan `check-acceptance` both exit 0, including the
+  60/60 compatibility gate and subsequent QuickSort property/image checks.
+  Logs: `/tmp/a-program-execution-acceptance.log` and
+  `/tmp/a-program-execution-sanitize.log`. Optimized CLI build, ordinary CLI
+  tests and execution CLI tests also pass. The unchanged QuickSort content
+  property remains at 149,473 Solve transitions; no wall-time claim is made.
+
+Change size (relative to `ee3cef7`, documentation excluded):
+
+| File under `src/prototype/pointer/` | Added | Removed |
+| --- | ---: | ---: |
+| `execution.c` | 104 | 0 |
+| `execution.h` | 35 | 0 |
+| `main.c` | 56 | 15 |
+| `program.c` | 9 | 3 |
+| `program.h` | 3 | 0 |
+| `tests/execution.c` | 182 | 0 |
+| `tests/execution.sh` | 82 | 0 |
+| `Makefile` | 11 | 3 |
+
+Implementation/header total: +207/-18 (net +189). Tests: +264/-0.
+Build: +11/-3. Publish this verified increment on the rewrite branch only.
+
+Host encoding/model/Identity, further backends, general dependent motives and
+higher coherence remain open. This is not completion of N4 or the whole goal.
+
 ## September 14 Effectful Function Results
 
 This increment follows `fd32a38`. The previously unsupported partial call
@@ -81,8 +135,8 @@ Implementation C: +44/-13 (net +31). Tests/fixtures: +76/-0. Documentation is
 separate. The unchanged QuickSort content-property client/provider remains at
 149,473 Solve transitions, equal to `fd32a38`; no wall-clock claim is inferred.
 
-Next: execute unhandled host requests in a fresh invocation of the existing
-evaluator; do not use pure normalization receipts to suppress or repeat I/O.
+The follow-up above implements fresh host execution through the existing
+evaluator; pure normalization receipts never suppress or repeat I/O.
 Host model/Identity, general dependent/higher Identity and the other unchecked
 rewrite milestones remain required.
 
@@ -172,12 +226,12 @@ terminal execution backend. All work remains on the published rewrite branch.
   property/image checks. Optimized CLI build and CLI tests also pass. Local logs:
   `/tmp/a-program-print-acceptance-final.log` and
   `/tmp/a-program-print-sanitize-final.log`.
-- [ ] Execute unhandled host requests in a fresh runtime invocation, through
+- [x] Execute unhandled host requests in a fresh runtime invocation, through
   the existing evaluator rather than the pure memo store. Establish explicit
   entry/output handling, repeated execution, suspension and I/O-failure tests.
 - [x] Restore compilation of the legacy effect-composition cases below and
   verify effect order through handler traces in the later function-result
-  increment. Terminal output remains a separate, unimplemented backend.
+  increment. The later Explicit Host Execution increment adds terminal output.
 - [ ] Encoding conversions and host Higher Identity/model correspondence
   remain required, not consequences of the print signature tests.
 
@@ -296,8 +350,8 @@ below. It does not complete arithmetic, host effects or the full rewrite.
   `/tmp/a-program-host-sanitize-final.log` (local execution records).
 - [x] Restore `host_expression_evaluator_check.p`: completed by the subsequent
   fixed-width arithmetic increment above, with explicit modular semantics.
-- [ ] Add runtime host effect dispatch separately; `#print` is the intended
-  spelling, not a claim that terminal printing is implemented already.
+- [x] Add runtime host effect dispatch separately: the later Explicit Host
+  Execution increment implements `--run` for unhandled `#print`.
 - [ ] Define and check the missing host Higher Identity behavior.
 
 Source setup and image restoration need not take identical numbers of Solve

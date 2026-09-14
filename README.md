@@ -27,12 +27,17 @@ make -f src/prototype/pointer/Makefile pointer-check
 src/prototype/pointer/.build/pointer-check examples/05_bool_to_nat.p
 src/prototype/pointer/.build/pointer-check --nf main examples/05_bool_to_nat.p
 src/prototype/pointer/.build/pointer-check --repl examples/07_add.p
+src/prototype/pointer/.build/pointer-check --run raw src/prototype/pointer/tests/acceptance/host-print.p
 ```
 
 Use this explicit Makefile: plain `make` still selects the legacy build.
-`pointer-check` checks source and normalizes pure computations. It does **not**
-dispatch host effects such as terminal printing. Normalization prints a Core
-DAG, not a pretty-printed source value.
+`pointer-check` checks source and normalizes pure computations. Only explicit
+`--run NAME` executes unhandled `#print` requests, after module checking.
+Print writes exact Text bytes with no added newline; run diagnostics use stderr.
+Normalization prints a Core DAG, not a pretty-printed source value, and never
+executes terminal output. `--run-steps N` separately bounds execution transitions
+(default 100000), not I/O time. A repeated run starts a fresh invocation; saved
+images do not record which effects have already happened.
 
 REPL commands include `:status`, `:solve 100000`, `:whnf main`, `:nf main`,
 `:save session.a`, and `:quit`. Source definitions can also be entered.
@@ -137,7 +142,7 @@ recomputation. `--retain-reductions` additionally preserves supported reduction
 records; it is not a complete zero-recomputation solver checkpoint. These images
 are not the legacy `.apo`/v90 formats.
 
-Exit codes: `0` done, `1` rejected/syntax error, `2` input/internal error,
+Exit codes: `0` done, `1` rejected/syntax error, `2` input/output/internal error,
 `3` pending, `4` unsupported. `--steps` bounds solver transitions, not
 wall-clock time or the cost of an individual rule.
 When a pending Program has no runnable synthesis work, a diagnostic is printed
@@ -159,15 +164,16 @@ source fixtures and default CLI tests use `#Name`.
 | Dependent synthesis | Constructor-index refinement and branch-proposed motives checked against every induction branch; unchanged `lengthCertified` |
 | Function properties | [Length specification](src/prototype/pointer/tests/acceptance/length-output-proof.p) and [QuickSort content preservation](src/prototype/pointer/tests/acceptance/legacy-quicksort-property.p), not sortedness |
 | Higher Identity | Selected typed action, transport and higher-dimensional examples; general coherence remains unfinished |
-| Effects | `#print` requests, multi-clause handlers, forwarding and resumptions; effectful partial applications and constructor arguments have ordered trace tests. No terminal/host execution backend |
+| Effects | `#print` requests, multi-clause handlers, forwarding and resumptions; ordered partial applications; explicit `--run` terminal output with split-budget and source/image tests |
 | Host values | `#Int` aliases `#Int32`; distinct `#Int64`; `#Text` stores exact bytes. Literal typing and image round trips, including recursive Text fields |
 | Arithmetic | `#int_add`, `#int_sub`, `#int_mul`, `#int_neg` and corresponding `#int64_*` functions: fixed-width wraparound; partial and higher-order application |
 | Images | Unfinished/completed source inputs, imports and selected retained reductions through ordinary Solve |
 
 Important limitations:
 
-- `#print` can be described and intercepted, but terminal execution and encoding
-  conversions are not restored. Pure checking/normalization never prints its payload.
+- The execution backend handles unhandled `#print` only. Other unhandled
+  operations report unsupported; runtime sessions are not checkpointed.
+  Encoding conversions are not restored. Pure checking/normalization never prints.
   Integer literals synthesize
   `#Int32` and reject out-of-range values; `:: #Int64` does not change that
   choice. Text literals do not impose Unicode normalization or decode an
