@@ -145,6 +145,13 @@ values, classifiers, traces and rejection conditions; rewrite assertions about
 obsolete DB layouts or pretty-print tags. New implementation results should be
 stored separately from this reproducible source inventory.
 
+The source compatibility gate includes an imported ordinary Sigma declaration
+with a Bool-indexed Nat/Bool field family. It compares both field projections
+after unsolved/completed image saves and one/64-step resumption. Wrong field
+types and a structurally identical but distinct nominal Nat must reject before
+and after saving. This is not a primitive Sigma rule. Provider-dependent
+fixtures are run with their providers, not scored by standalone exit status.
+
 One concrete parser boundary to change: the archive reader's
 `build_certified_function_companion_type` checks the spelling `Bool` and builds
 a `$certified.binary-bool` classifier. Its accepted surface notation belongs in

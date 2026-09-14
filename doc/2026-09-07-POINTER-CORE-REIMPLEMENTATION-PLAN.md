@@ -29,6 +29,42 @@ Commit and push verified development increments on the rewrite branch. A
 published increment is not completion of the full rewrite; retain the open
 compatibility, property-proof and Higher Identity requirements below.
 
+## September 14 Dependent Import Compatibility Audit
+
+Baseline: `f1f2e00`. All 61 current `tests/fixtures/typing/*.p` inputs were
+checked separately with legacy spelling enabled, one million Solve steps and
+a 20-second per-input limit. There were 52 completed, five rejected, three
+unsupported and one pending result; none timed out. These are raw outcomes,
+not a 52/61 conformance score: import consumers require providers, and the
+QuickSort benchmark suffix requires its surrounding program. The frozen
+`tests/compatibility.tsv` remains an inventory, not a passing-test manifest.
+
+- [x] Check unchanged `dependent_constructor_import_user_check.p` with its
+  `dependent_constructor_provider_check.p`: completed in 1093 steps.
+- [x] Permanently test an imported, ordinarily declared Sigma with a genuinely
+  dependent Bool-indexed field family (Nat on false, Bool on true). Check both
+  field projections and both first projections after zero-step and completed
+  image saves, with Solve chunks of one and 64. No primitive Sigma is added.
+- [x] Reject a wrong dependent field and a field of a structurally identical
+  but distinct nominal Nat, directly and after resuming a zero-step image.
+- [x] Add unchanged distinct typed identity definitions, general multi/dependent-index
+  formation, and the Sigma provider to the compatibility gate: 63 cases.
+- [ ] Complete the all-refuted Match motive policy recorded below. The unchanged
+  `impossible_index_branch_check.p` still stops pending at 719 transitions;
+  do not use trailing `::` as synthesis input or silently infer its result
+  from a dead branch when application constraints require another carrier.
+- [ ] Finish the remaining inventory by reconstructing original harness inputs
+  and checking actual values/properties. In particular, named generated graph
+  consumers and unsupported negative IADT cases are not counted as restored.
+
+This increment adds test coverage only; synthesis, kernel rules and image
+format are unchanged. It does not complete N0, N3 or N7.
+Verification: optimized `check-acceptance` and ASan/UBSan
+`check-source-compatibility` both exit zero, including the 63-case gate and
+QuickSort result/property image checks. Per-file changes: `compatibility.sh`
++30/-0, new `acceptance/import-dependent-constructor.p` +20/-0, tests README
++7/-0; implementation/header changes +0/-0. Plan prose is counted separately.
+
 ## September 14 Fixed Integer Formatting
 
 This increment follows `c306f64`. Add `#int_to_text` and `#int64_to_text` with

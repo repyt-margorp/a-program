@@ -1,0 +1,20 @@
+import Sigma;
+
+Bool := @{false:*; true:*;};
+Nat := @{zero:*; succ:*->*;};
+Family := \b:Bool=>b @false=>Nat @true=>Bool;
+Pair := Sigma Bool Family;
+number := Pair.mk Bool.false (Nat.succ Nat.zero);
+boolean := Pair.mk Bool.true Bool.false;
+first := \p:Pair=>p @mk key value=>key;
+second := \p:Pair=>p @mk key value=>value;
+numberValue := second number;
+booleanValue := second boolean;
+numberKey := first number;
+booleanKey := first boolean;
+zero := Nat.zero;
+one := Nat.succ zero;
+falseValue := Bool.false;
+trueValue := Bool.true;
+numberValue :: Nat;
+booleanValue :: Bool;

@@ -58,6 +58,9 @@ done <<'CASES'
 0 typing/explicit_index_family_acc_full_specialization_check
 0 typing/explicit_index_family_acc_concrete_check
 0 typing/iadts_box_perfect_construction_check
+0 typing/iadts_general_conformance_check
+0 typing/typed_shared_core_definition_check
+0 typing/dependent_constructor_provider_check
 0 typing/outer_ih_nested_match_check tailResult tailExpected
 0 typing/outer_ih_nested_match_check functionResult functionExpected
 0 typing/recursive_ih_field_identity_check leftResult leftExpected
@@ -129,6 +132,33 @@ test "$failed" -eq 0
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 acceptance="$(dirname "${BASH_SOURCE[0]}")/acceptance"
+# The schema comes from the provider; actual parameter types come from the
+# client. Both must retain their nominal identity when an image is resumed.
+provider="$fixtures/typing/dependent_constructor_provider_check.p"
+"${checker[@]}" --imports "$provider" "$fixtures/typing/dependent_constructor_import_user_check.p"
+for steps in 0 100000; do
+	code=0
+	"${checker[@]}" --steps "$steps" --imports "$provider" --save "$directory/dependent-pair.a" \
+		"$acceptance/import-dependent-constructor.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	for pair in numberValue:one booleanValue:falseValue numberKey:falseValue booleanKey:trueValue; do
+		"${runtime[@]}" --equal-image "$directory/dependent-pair.a" "${pair%:*}" "${pair#*:}"
+	done
+done
+for invalid in 'bad:=Pair.mk Bool.false Bool.false;' 'OtherNat:=@{zero:*;succ:*->*;}; bad:=Pair.mk Bool.false OtherNat.zero;'; do
+	cp "$acceptance/import-dependent-constructor.p" "$directory/invalid-pair.p"
+	printf '%s\n' "$invalid" >> "$directory/invalid-pair.p"
+	code=0
+	"${checker[@]}" --imports "$provider" "$directory/invalid-pair.p" > "$directory/status" || code=$?
+	test "$code" -eq 1
+	code=0
+	"${checker[@]}" --steps 0 --imports "$provider" --save "$directory/invalid-pair.a" \
+		"$directory/invalid-pair.p" > "$directory/status" || code=$?
+	test "$code" -eq 3
+	code=0
+	"${checker[@]}" --load "$directory/invalid-pair.a" > "$directory/status" || code=$?
+	test "$code" -eq 1
+done
 effect_pairs='main:expected partialMain:partialExpected unusedMain:unusedExpected sharedMain:sharedExpected repeatedMain:repeatedExpected constructorMain:constructorExpected nestedMain:nestedExpected bodyMain:bodyExpected calleeMain:calleeExpected annotatedMain:expected'
 for pair in $effect_pairs; do
 	"${runtime[@]}" --equal "$acceptance/effect-application.p" "${pair%:*}" "${pair#*:}"
