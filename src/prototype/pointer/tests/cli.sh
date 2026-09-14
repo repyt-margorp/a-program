@@ -94,17 +94,28 @@ check 1 'rejected steps=' 'main:=(#print #"x") @#print req k=>k #42 @#return x=>
 check 1 'rejected steps=' 'main:=(#print #"x") @#print req k=>{k #42; k req;} @#return x=>x;'
 check 1 'rejected steps=' 'main:=(#print #"x") @#print req k=>#missing req @#return x=>x;'
 check 1 'rejected steps=' 'main:=(#print #"x") @#print req k=>missing req @#return x=>x;'
+check 0 'done steps=' 'Bool:=@{true:*;false:*;}; main:={x:#Text:=#print #"m";Bool.false;};'
+check 1 'rejected steps=' 'main:={x:#Int:=#print #"m";#42;};'
+check 1 'rejected steps=' 'main:={x:#Int:=#print #"m";};'
+check 1 'rejected steps=' 'main:={x:#Int:=#print #"m";missing;}.x;'
+check 1 'rejected steps=' 'main:={x:#Int64:=#2147483648;};'
+check 1 'rejected steps=' 'main:={x:#Text:=#print #"m";x;}; main::#Text;'
+check 1 'rejected steps=' 'main:={x:=#print #"m";x;}; main::#Text;'
+check 1 'rejected steps=' 'main:=(#print #"m") @#print req k=>{x:#Int:=k req;req;} @#return x=>x;'
 for mode in --whnf --nf; do
 	check 0 'done steps=' 'main:=#print #"not-a-compiler-output";' "$mode" main
 	case "$output" in *'not-a-compiler-output'*) exit 1 ;; esac
 done
 for budget in 0 100000; do
-	if [ "$budget" = 0 ]; then code=3; status='pending steps='; else code=1; status='rejected steps='; fi
-	check "$code" "$status" 'main:=#int64_add #1 #2;' --steps "$budget" --save "$directory/wrong-width.a"
-	code=0
-	"$binary" --load "$directory/wrong-width.a" > "$directory/wrong-width.out" || code=$?
-	test "$code" = 1
-	grep -q '^rejected steps=' "$directory/wrong-width.out"
+	if [ "$budget" = 0 ]; then expected=3; status='pending steps='; else expected=1; status='rejected steps='; fi
+	for invalid_source in 'main:=#int64_add #1 #2;' \
+		'main:=(#print #"m") @#print req k=>{x:#Int:=k req;req;} @#return x=>x;'; do
+		check "$expected" "$status" "$invalid_source" --steps "$budget" --save "$directory/wrong.a"
+		code=0
+		"$binary" --load "$directory/wrong.a" > "$directory/wrong.out" || code=$?
+		test "$code" = 1
+		grep -q '^rejected steps=' "$directory/wrong.out"
+	done
 done
 check 1 '-:1:' 'a:=#.Int;'
 case "$output" in *'--legacy-intrinsic-dot'*) ;; *) exit 1 ;; esac

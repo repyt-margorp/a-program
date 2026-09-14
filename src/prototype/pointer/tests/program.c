@@ -3,6 +3,7 @@
 #include "derivation.h"
 #include "computation.h"
 #include "function_graph.h"
+#include "host.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -51,6 +52,37 @@ static void pending_normalization(void)
 	assert(pg_synthesis_result(accepted) == pg_synthesis_result(nf));
 	assert(!pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, (enum pg_reduction_kind)99));
 	pg_program_destroy(p);
+}
+
+static void binding_contracts(void)
+{
+	const char *expressions[] = {"#\"m\"", "#print #\"m\""};
+	for (size_t effectful = 0; effectful < 2; ++effectful) {
+		enum pg_totality inferred = PG_TOTALITY_UNSPECIFIED;
+		for (size_t annotated = 0; annotated < 2; ++annotated) {
+			char source[128];
+			int size = snprintf(source, sizeof(source), "{{ m:={x%s:=%s;x;}; }}.m",
+				annotated ? ":#Text" : "", expressions[effectful]);
+			assert(size > 0 && (size_t)size < sizeof(source));
+			struct pg_program *p = pg_program_create(source, (size_t)size, PG_DEFINITION_IMPLICIT_THUNK);
+			assert(p && p->root);
+			solve(p, 1);
+			assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+			const struct pg_evidence *computation = pg_prove_force(&p->typing, pg_synthesis_result(p->root));
+			assert(computation);
+			enum pg_totality totality;
+			const struct pg_effect_row *effects;
+			const struct pg_term *content;
+			assert(pg_computation_type_view(pg_evidence_classifier(computation), &totality, &effects, &content));
+			assert(content == pg_reference(&p->graph, pg_host_type("Text")));
+			assert(pg_effect_count(effects) == effectful);
+			if (effectful) assert(pg_effect_label(effects, 0) == pg_host_print(&p->graph));
+			if (!annotated) inferred = totality;
+			assert(inferred == totality);
+			pg_program_destroy(p);
+		}
+	}
+	puts("block annotations: inferred result, effect label and totality preserved");
 }
 
 static void remembered_normalization(void)
@@ -655,6 +687,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	modules();
+	binding_contracts();
 	result_comparison_checks();
 	pending_normalization();
 	remembered_normalization();

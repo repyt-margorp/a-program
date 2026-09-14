@@ -64,6 +64,8 @@ supplies an expected type to guide synthesis.
 - Constructor selection: `Nat.zero`, `(List Nat).cons`; Match uses `@case`.
 - Sequential blocks: `{ x := M; N; }`. A `.x` suffix selects execution
   through the binding of `x`; later statements are excluded.
+  `x : A := M` checks the synthesized result type against `A`, preserving
+  the effects and totality of `M`; the annotation does not make `M` pure.
 - Program-wide definition blocks: `{{ name := expression; ... }}.name` name
   a graph root instead of executing sequential bindings.
 - Quotation: `&M`. The default policy inserts supported CBPV boundaries;

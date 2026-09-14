@@ -29,6 +29,57 @@ Commit and push verified development increments on the rewrite branch. A
 published increment is not completion of the full rewrite; retain the open
 compatibility, property-proof and Higher Identity requirements below.
 
+## September 14 Sequential Result Annotations
+
+This increment follows `b509fbf`. A sequential binder names the result of its
+input computation, so `x : A := M` checks that result against `A`. It does not
+claim that obtaining the result is pure or total. Previously this path reused
+the source `:: A` adapter, which asked for `Comp(total, {}, A)` and rejected
+valid effectful bindings.
+
+- [x] Reuse the existing source post-check implementation with a private
+  binding-result job. For an inferred `Comp(g, E, B)`, check against
+  `Comp(g, E, A)` through ordinary classifier normalization and checked
+  conversion. Preserve `g` and `E`; do not extract or execute the result.
+- [x] Preserve ordinary `::` behavior. An annotation cannot choose a literal's
+  width, synthesize a missing motive, erase an effect, or establish totality.
+  No new Core node, proof rule, descriptor, or source-image format is added.
+- [x] Expose the input's provisional structure for constraint collection,
+  never the annotation as an inference answer. This breaks a circular wait in
+  handler clauses such as `{ x : #Text := k req; x; }`. The checked binding
+  remains a premise, including when the name is unused; wrong annotations
+  still reject the entire handler.
+- [x] Add ordinary, last, selected, aliased, computed-type, and handler-local
+  annotated bindings to the host-print result tests. Selection still checks
+  the selected binding, while ignoring its excluded suffix.
+- [x] Inspect accepted computation classifiers directly: annotated and
+  unannotated pure/effectful blocks retain the same totality and exact effect
+  label. Add negative source and source-image tests, including unsolved saves.
+- [x] Complete full debug and ASan/UBSan `check-acceptance` runs after the final
+  test harness correction: both exit 0, including the 59/59 legacy gate and
+  subsequent QuickSort property/image checks. Logs are
+  `/tmp/a-program-effect-sequence-acceptance-verified.log` and
+  `/tmp/a-program-effect-sequence-sanitize-verified.log`. The optimized CLI
+  build and CLI suite also pass. An intermediate run exposed test-variable
+  shadowing; the corresponding sanitizer run was deliberately stopped before
+  correcting that harness defect. Neither is counted as final verification.
+- [x] Verify the increment for publication on `rewrite/pointer-core-hott`;
+  the frozen Main and archived implementation are unchanged.
+
+Implementation C: +30/-8 (net +22). Tests and fixtures: +65/-7 (net +58).
+README and this plan are counted separately from code. The unchanged QuickSort
+content-property client/provider requires 149,473 Solve transitions, the same
+as `b509fbf`; this is not a wall-clock performance claim.
+
+The remaining curried effectful application failure is separate: the current
+fold rule rejects an effectful prefix when the continuation returns raw Pi.
+The fallback then attempts pure RETURN extraction, which cannot produce the
+effectful argument. Moving prefix effects into a Lambda body is not an
+acceptable fix: it changes when partial application performs effects. Restore
+this using a checked source sequencing/carrier construction, with partial-call
+and evaluation-order tests, before claiming the legacy strict-effects fixture
+works. Terminal host execution and host-model Identity remain open.
+
 ## September 14 Print Requests and Handler Inference
 
 This increment follows `6acf121`. It restores the symbolic operation, not the
@@ -73,7 +124,7 @@ terminal execution backend. All work remains on the published rewrite branch.
 - [ ] Encoding conversions and host Higher Identity/model correspondence
   remain required, not consequences of the print signature tests.
 
-Two independently reproduced remaining cases from
+Two independently reproduced cases from
 `cbpv/runtime_strict_effects_check.p` are:
 
 ```ap
@@ -83,14 +134,14 @@ main := second (#print #"a") (#print #"b"); // currently unsupported
 
 ```ap
 Bool := @{ true : *; false : *; };
-main := { x : #Text := #print #"m"; Bool.false; }; // currently rejected
+main := { x : #Text := #print #"m"; Bool.false; }; // fixed by result-annotation increment above
 ```
 
 In contrast, `#print (#print #"e")` and `{ x := #print #"s"; second x x; }`
 typecheck. The first failing case reaches a RETURN extraction job that cannot
 extract an effectful computation's value; curried constructor application has
-the same symptom. The second involves the annotated block-binding path.
-Investigate sequencing/classifier contracts and annotation placement, not a
+the same symptom. The second was the annotated block-binding path, fixed above.
+Investigate the remaining sequencing/classifier contract, not a
 print-specific coercion or treating a nonempty effect row as pure. Preserve
 `::` as a post-synthesis check. These are not terminal-output tests yet.
 

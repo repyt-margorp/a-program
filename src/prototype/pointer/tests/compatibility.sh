@@ -132,7 +132,7 @@ for steps in 0 100000; do
 	code=0
 	"${checker[@]}" --steps "$steps" --save "$directory/print.a" "$acceptance/host-print.p" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
-	for name in main alias discard twice forward reemitted arithmetic; do
+	for name in main alias discard twice forward reemitted arithmetic annotated lastAnnotated selectedAnnotated aliasAnnotated computedAnnotated continuationAnnotated; do
 		"${runtime[@]}" --equal-image "$directory/print.a" "$name" expected
 	done
 	code=0
