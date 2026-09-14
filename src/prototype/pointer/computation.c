@@ -1,4 +1,5 @@
 #include "computation_internal.h"
+#include "host.h"
 #include "identity.h"
 #include "iadt.h"
 #include "symmetry.h"
@@ -432,6 +433,7 @@ const struct pg_eval_continuation *pg_computation_continuation_resolve(const cha
 	const struct pg_eval_continuation *found = pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
 	if (!found) found = pg_data_continuation_resolve(name);
 	if (!found) found = pg_identity_continuation_resolve(name);
+	if (!found) found = pg_host_continuation_resolve(name);
 	return found ? found : pg_symmetry_continuation_resolve(name);
 }
 
@@ -467,6 +469,8 @@ static int dispatch(struct pg_eval *machine)
 		if (!handler && return_continuation(continuation->term)) return pg_eval_enter(machine, *pg_eval_argument(machine, 0), 2);
 		return pg_eval_demand(machine, 0, &fold_answer_continuation, NULL);
 	}
+	int host = pg_host_dispatch(machine);
+	if (host != 1) return host;
 	int data = pg_data_dispatch(machine);
 	if (data != 1) return data;
 	int identity = pg_identity_dispatch(machine);

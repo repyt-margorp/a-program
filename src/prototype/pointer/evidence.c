@@ -2244,6 +2244,31 @@ const struct pg_evidence *pg_prove_host_value(struct pg_typing *typing,
 	return accept(typing, PG_HOST_VALUE_INTRO, PG_JUDGEMENT_VALUE, type->context, subject, type->subject->core, 1, &type);
 }
 
+const struct pg_evidence *pg_prove_host_function(struct pg_typing *typing,
+	const struct pg_evidence *type, const struct pg_object *function)
+{
+	if (!pg_evidence_owned_by(type, typing) || type->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+	const struct pg_object *host_type;
+	size_t arity;
+	if (!pg_host_function_view(function, &host_type, &arity)) return NULL;
+	const struct pg_term *signature = type->subject->core;
+	for (size_t i = 0; i < arity; ++i) {
+		const struct pg_term *domain, *codomain;
+		const struct pg_object *binder;
+		if (!pg_pi_view(signature, &domain, &binder, &codomain)) return NULL;
+		if (domain->kind != PG_REFERENCE || domain->as.reference != host_type) return NULL;
+		signature = codomain;
+	}
+	enum pg_totality totality;
+	const struct pg_term *result;
+	if (!pg_pure_computation_type_view(signature, &totality, &result) || totality != PG_TOTALITY_TOTAL) return NULL;
+	if (result->kind != PG_REFERENCE || result->as.reference != host_type) return NULL;
+	const struct pg_term *core = pg_reference(typing->graph, function);
+	const struct pg_occurrence *subject = core ? pg_occurrence(typing, type->context, core, NULL, 0, NULL) : NULL;
+	return subject ? accept(typing, PG_HOST_FUNCTION_INTRO, PG_JUDGEMENT_COMPUTATION,
+		type->context, subject, type->subject->core, 1, &type) : NULL;
+}
+
 static enum pg_evidence_judgement binding_judgement(const struct pg_evidence *extension)
 {
 	return extension->rule == PG_CONTEXT_FAMILY_EXTEND
@@ -4105,6 +4130,7 @@ static const struct pg_evidence *classifier_leaf(struct pg_typing *typing,
 	case PG_REFLEXIVITY: case PG_FAMILY_ACTION:
 	case PG_TERMINATION_INTRO:
 	case PG_HOST_VALUE_INTRO:
+	case PG_HOST_FUNCTION_INTRO:
 	case PG_CONSTRUCTOR_INTRO:
 	case PG_IDENTITY_TRANSPORT: case PG_IDENTITY_LIFT:
 		formation = term->premises[0];

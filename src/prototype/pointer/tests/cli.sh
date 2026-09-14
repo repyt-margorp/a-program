@@ -19,7 +19,7 @@ check 0 'done steps=' 'm:=&(\A:@=>A); alias:=&&m;' --strict-thunks
 check 1 'rejected steps=' 'bad:=&@;' --strict-thunks
 check 1 'rejected steps=' 'Nat:=@{zero:*;}; bad:=&Nat.zero;' --strict-thunks
 check 3 'pending steps=0' 'id:=&(\A:@ => \x:A => x);' --steps 0
-check 3 'pending steps=' 'x:=x;' --steps 100
+check 3 'pending steps=' 'x:=x;'
 # An exhausted queue is not fuel exhaustion or a completed proof.
 case "$output" in *'pending: no runnable synthesis work;'*) ;; *) exit 1 ;; esac
 check 3 'pending steps=0' 'x:=x;' --steps 0
@@ -79,6 +79,20 @@ check 1 'rejected steps=' 'a:=#-2147483649;'
 check 1 'rejected steps=' 'a:=#-9223372036854775808;'
 check 1 'rejected steps=' 'a:=#"hello"; a::#Int;'
 check 1 'rejected steps=' 'a:=#42; a::#Text;'
+check 1 'rejected steps=' 'a:=#int64_add #1 #2;'
+check 1 'rejected steps=' 'a:=#int_neg #"hello";'
+check 1 'rejected steps=' 'a:=#int_add #1 #2 #3;'
+check 1 'rejected steps=' 'f:=#int_add; f::#Int64->#Int64->#Int64;'
+check 0 'done steps=' 'add:=#int_add; main:=add #20 #22;'
+check 0 'done steps=' 'add:=#.int_add; main:=add #20 #22;' --legacy-intrinsic-dot
+for budget in 0 100000; do
+	if [ "$budget" = 0 ]; then code=3; status='pending steps='; else code=1; status='rejected steps='; fi
+	check "$code" "$status" 'main:=#int64_add #1 #2;' --steps "$budget" --save "$directory/wrong-width.a"
+	code=0
+	"$binary" --load "$directory/wrong-width.a" > "$directory/wrong-width.out" || code=$?
+	test "$code" = 1
+	grep -q '^rejected steps=' "$directory/wrong-width.out"
+done
 check 1 '-:1:' 'a:=#.Int;'
 case "$output" in *'--legacy-intrinsic-dot'*) ;; *) exit 1 ;; esac
 check 1 '-:1:' 'a:=#print; b:=#.print;'

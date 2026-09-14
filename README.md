@@ -144,7 +144,7 @@ successful verification nor evidence that the program is invalid.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 58-case legacy
+September 14 verification includes examples 01-07 and 09, a 59-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. These are supported fragments, not complete legacy
 compatibility or complete Higher Observational Type Theory.
@@ -159,11 +159,12 @@ source fixtures and default CLI tests use `#Name`.
 | Higher Identity | Selected typed action, transport and higher-dimensional examples; general coherence remains unfinished |
 | Effects | Checked requests, multi-clause handlers, forwarding and resumptions; no terminal/host execution backend |
 | Host values | `#Int` aliases `#Int32`; distinct `#Int64`; `#Text` stores exact bytes. Literal typing and image round trips, including recursive Text fields |
+| Arithmetic | `#int_add`, `#int_sub`, `#int_mul`, `#int_neg` and corresponding `#int64_*` functions: fixed-width wraparound; partial and higher-order application |
 | Images | Unfinished/completed source inputs, imports and selected retained reductions through ordinary Solve |
 
 Important limitations:
 
-- Host arithmetic and printing are not restored. Integer literals synthesize
+- Host printing and encoding conversions are not restored. Integer literals synthesize
   `#Int32` and reject out-of-range values; `:: #Int64` does not change that
   choice. Text literals do not impose Unicode normalization or decode an
   encoding. Host types do not yet have general Higher Identity rules.

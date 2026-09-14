@@ -19,7 +19,7 @@ enum pg_evidence_rule { PG_CONTEXT_EMPTY, PG_CONTEXT_EXTEND, PG_UNIVERSE_FORM, P
 	PG_MATCH_ELIM, PG_INDUCTION_ELIM, PG_EFFECT_SUBSUMPTION, PG_REQUEST_INTRO, PG_HANDLER_ELIM,
 	PG_CONTEXT_FAMILY_EXTEND, PG_TYPE_FAMILY_APP, PG_TYPE_FAMILY_ABSTRACT, PG_TYPE_CASE,
 	PG_TERMINATION_FORM, PG_TERMINATION_INTRO, PG_TOTAL_PURE_VALUE,
-	PG_HOST_TYPE_FORM, PG_HOST_VALUE_INTRO };
+	PG_HOST_TYPE_FORM, PG_HOST_VALUE_INTRO, PG_HOST_FUNCTION_INTRO };
 enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
 	PG_JUDGEMENT_SUBSTITUTION, PG_JUDGEMENT_TYPE_FAMILY };
@@ -31,6 +31,8 @@ const struct pg_evidence *pg_prove_host_type(struct pg_typing *typing,
 	const struct pg_object *type);
 const struct pg_evidence *pg_prove_host_value(struct pg_typing *typing,
 	const struct pg_evidence *type, const struct pg_object *value);
+const struct pg_evidence *pg_prove_host_function(struct pg_typing *typing,
+	const struct pg_evidence *type, const struct pg_object *function);
 /* Formation accepts a checked suspended computation, without requiring TOTAL.
  * Introduction additionally requires a TOTAL result contract for that same
  * suspended term in that context. Neither rule runs the computation or treats

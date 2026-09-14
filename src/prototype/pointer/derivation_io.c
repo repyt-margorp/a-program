@@ -253,7 +253,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t rule, level, direction, totality, arity, reduction_kind;
 		if (pg_wire_read_u64(file, &rule)) return -1;
-		if (rule > (header[7] == 11 ? PG_TOTAL_PURE_VALUE : PG_HOST_VALUE_INTRO)) return -1;
+		if (rule > (header[7] == 11 ? PG_TOTAL_PURE_VALUE : PG_HOST_FUNCTION_INTRO)) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
 		if (pg_wire_read_u64(file, &totality) || totality > PG_TOTALITY_TOTAL) return -1;
 		if (totality && rule != PG_RETURN_TYPE_FORM && rule != PG_RETURN_INTRO) return -1;
@@ -343,7 +343,8 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 		if (r->operation > term_count || r->handler > term_count) return -1;
 		if (r->declaration > term_count || r->constructor > term_count) return -1;
 		if (r->constant > term_count) return -1;
-		if (r->input->rule == PG_HOST_TYPE_FORM || r->input->rule == PG_HOST_VALUE_INTRO) {
+		if (r->input->rule == PG_HOST_TYPE_FORM || r->input->rule == PG_HOST_VALUE_INTRO
+			|| r->input->rule == PG_HOST_FUNCTION_INTRO) {
 			if (!r->constant || terms[r->constant - 1]->kind != PG_REFERENCE) return -1;
 			r->input->parameters.constant = terms[r->constant - 1]->as.reference;
 		} else if (r->constant) return -1;

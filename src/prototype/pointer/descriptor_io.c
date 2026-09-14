@@ -28,6 +28,8 @@ static const char *descriptor_name(void *context, const struct pg_object *object
 	if (pg_host_literal_view(object, &host_type, &byte_count, &bytes)) return "host/literal/v1";
 	const char *host_name = pg_host_type_name(object);
 	if (host_name) return host_name;
+	host_name = pg_host_function_descriptor(object);
+	if (host_name) return host_name;
 	const struct pg_term *payload, *response;
 	const struct pg_data_layout *layout;
 	size_t position, arity;
@@ -50,6 +52,8 @@ static const char *descriptor_name(void *context, const struct pg_object *object
 static const struct pg_object *descriptor_resolve(void *context, const char *name)
 {
 	const struct pg_object *host = pg_host_type_resolve(name);
+	if (host) return host;
+	host = pg_host_function_resolve(name);
 	if (host) return host;
 	const struct pg_object *object = pg_classifier_resolve(context, name);
 	if (object) return object;

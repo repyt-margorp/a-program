@@ -4,8 +4,9 @@
 #include "graph.h"
 
 /* Fixed machine contracts, not C's implementation-dependent int/long widths.
- * Text is an exact byte sequence, including embedded zero bytes. No decoding,
- * normalization, arithmetic or external execution occurs in this module. */
+ * Text is an exact byte sequence, including embedded zero bytes. Literal
+ * construction is inert; only the explicit dispatcher below runs arithmetic.
+ * Neither path performs encoding conversion or external effects. */
 const struct pg_object *pg_host_type(const char *source_name);
 const char *pg_host_type_name(const struct pg_object *type);
 const struct pg_object *pg_host_type_resolve(const char *descriptor);
@@ -18,5 +19,16 @@ int pg_host_literal_view(const struct pg_object *object,
 const struct pg_object *pg_host_integer(struct pg_graph *graph,
 	const struct pg_object *type, int64_t value);
 int pg_host_integer_view(const struct pg_object *object, int64_t *value);
+/* Fixed modular arithmetic. Enumerate until NULL; no user callbacks. */
+const struct pg_object *pg_host_function(size_t index);
+const char *pg_host_function_name(const struct pg_object *function);
+const char *pg_host_function_descriptor(const struct pg_object *function);
+const struct pg_object *pg_host_function_resolve(const char *descriptor);
+int pg_host_function_view(const struct pg_object *function,
+	const struct pg_object **type, size_t *arity);
+struct pg_eval;
+struct pg_eval_continuation;
+int pg_host_dispatch(struct pg_eval *machine);
+const struct pg_eval_continuation *pg_host_continuation_resolve(const char *name);
 
 #endif

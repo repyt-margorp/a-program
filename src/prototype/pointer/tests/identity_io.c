@@ -11,6 +11,7 @@
 #include "symmetry.h"
 #include "symmetry_internal.h"
 #include "wire.h"
+#include "host.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -77,6 +78,39 @@ static void machine_resave(struct pg_eval *machine, struct pg_graph *graph,
 		}
 		assert(!fclose(file));
 	}
+}
+
+static void host_operand_frames(void)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	const struct pg_object *type = pg_host_type("Int32");
+	const struct pg_term *call = pg_reference(&graph, pg_host_function(0));
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_object *x = pg_binder(&graph);
+		const struct pg_term *literal = pg_reference(&graph, pg_host_integer(&graph, type, i ? 22 : 20));
+		call = pg_application(&graph, call, pg_application(&graph,
+			pg_lambda(&graph, x, pg_reference(&graph, x)), literal));
+	}
+	const struct pg_term *expected = pg_application(&graph, pg_reference(&graph, &pg_return_operation),
+		pg_reference(&graph, pg_host_integer(&graph, type, 42)));
+	struct pg_eval machine;
+	pg_computation_eval_init(&machine, &graph, call);
+	unsigned seen = 0;
+	while (machine.status == PG_EVAL_PENDING) {
+		assert(machine.steps < 10000);
+		if (machine.frames) {
+			if (machine.frames->continuation == pg_host_continuation_resolve("host/first-operand/v1")) seen |= 1;
+			if (machine.frames->continuation == pg_host_continuation_resolve("host/second-operand/v1")) seen |= 2;
+		}
+		machine_resave(&machine, &graph, NULL, &expected);
+		pg_eval_advance(&machine, 1);
+	}
+	assert(seen == 3 && machine.status == PG_EVAL_WHNF);
+	assert(pg_alpha_equal(pg_eval_readback(&machine, &graph), expected) == 1);
+	pg_eval_destroy(&machine);
+	pg_graph_destroy(&graph);
+	puts("host operand frames: every transition resumes through the ordinary machine codec");
 }
 
 static void policy_names(void)
@@ -3202,6 +3236,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
+	host_operand_frames();
 	policy_names();
 	comparison_scope_owner();
 	machine_envelope();

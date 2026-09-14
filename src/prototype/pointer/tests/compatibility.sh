@@ -86,6 +86,7 @@ done <<'CASES'
 0 typing/function_graph_generated_length_check main expected
 0 typing/function_graph_certified_length_model
 0 typing/host_text_recursive_motive_check main expected
+0 typing/host_expression_evaluator_check main expected
 0 typing/function_graph_dependent_output_ih_check main expected
 0 typing/function_graph_two_recursive_calls_check main expected
 0 typing/function_graph_dependent_spine_check main expected
@@ -128,6 +129,17 @@ directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 acceptance="$(dirname "${BASH_SOURCE[0]}")/acceptance"
 for steps in 0 100000; do
+	code=0
+	"${checker[@]}" --steps "$steps" --save "$directory/arithmetic.a" "$acceptance/host-arithmetic.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	for pair in main:expected overflow:minimum underflow:maximum product:negativeTwo negatedMinimum:minimum partialResult:expected higherResult:expected unboxed:expected; do
+		"${runtime[@]}" --equal-image "$directory/arithmetic.a" "${pair%:*}" "${pair#*:}"
+	done
+	code=0
+	"${checker[@]}" --steps "$steps" --save "$directory/host-expression.a" \
+		"$fixtures/typing/host_expression_evaluator_check.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	"${runtime[@]}" --equal-image "$directory/host-expression.a" main expected
 	code=0
 	"${checker[@]}" --steps "$steps" --save "$directory/host.a" "$acceptance/host-literals.p" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi

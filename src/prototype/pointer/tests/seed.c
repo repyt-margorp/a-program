@@ -4,6 +4,7 @@
 #include "descriptor_io.h"
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 static const char source[] = "{{ id:=&(\\A:@ => \\x:A => x); id::(A:@)->A->A; }}.id";
@@ -83,13 +84,17 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	assert(argc == 1);
-	unsigned char bytes[4096];
 	for (int policy = PG_DEFINITION_IMPLICIT_THUNK; policy <= PG_DEFINITION_EXPLICIT_THUNK; ++policy) {
 		FILE *file = tmpfile();
 		assert(file && pg_seed_write(file, source, strlen(source), policy) == 0);
+		long end = ftell(file);
+		assert(end > 0 && (uintmax_t)end < SIZE_MAX);
+		size_t length = (size_t)end;
+		unsigned char *bytes = malloc(length + 1);
+		assert(bytes);
 		rewind(file);
-		size_t length = fread(bytes, 1, sizeof(bytes), file);
-		assert(feof(file) && !ferror(file) && fclose(file) == 0);
+		assert(fread(bytes, 1, length, file) == length && fgetc(file) == EOF);
+		assert(!ferror(file) && fclose(file) == 0);
 		assert(length > 56 && !memcmp(bytes, "APGSRC\46", 8));
 		assert(bytes[8] == policy);
 		compare(read_bytes(bytes, length, 4096), source, policy);
@@ -114,6 +119,7 @@ int main(int argc, char **argv)
 		bytes[6] = 28;
 		memset(bytes + 16, 255, 8);
 		assert(!read_bytes(bytes, length, 4096));
+		free(bytes);
 	}
 	FILE *file = tmpfile();
 	assert(file && pg_seed_write(file, "x:=", 3, PG_DEFINITION_EXPLICIT_THUNK) == -1);

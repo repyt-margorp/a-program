@@ -29,7 +29,53 @@ Commit and push verified development increments on the rewrite branch. A
 published increment is not completion of the full rewrite; retain the open
 compatibility, property-proof and Higher Identity requirements below.
 
-## September 14 Host Literals and Intrinsic Spelling
+## September 14 Fixed-Width Arithmetic
+
+This increment follows the literal/spelling work in `797d82a`.
+
+- [x] Restore `#int_add/sub/mul/neg` and `#int64_add/sub/mul/neg` with the
+  predecessor's modular two's-complement semantics (modulo 2^32 or 2^64).
+  Arithmetic uses unsigned C operations and explicit byte truncation, never
+  signed overflow or implementation-dependent host `int` width.
+- [x] Keep the functions distinct from interceptable effect operations. Their
+  fixed descriptor determines width/arity; a checked ordinary Pi formation
+  must match that signature and finish in TOTAL, empty-row Comp of the same
+  host type. No signature supplied by a caller can certify an arbitrary oracle.
+- [x] Use Reference/APP and the existing demand evaluator. Operand continuations
+  carry no private state and resume through the existing machine codec. New
+  versioned function descriptors extend the previously accepted fragment;
+  no existing operator's reduction equation or descriptor meaning changes.
+- [x] Restore the unchanged expression evaluator and its `42` result. The
+  compatibility gate is 59/59, with source/image result checks, partial and
+  higher-order applications, wrong-width rejection, and all eight arithmetic
+  boundary cases. Every transition across both operand continuations survives
+  machine save/load using ordinary evaluator work.
+- [x] Full debug acceptance passes. Additional function-descriptor rejection
+  and wrong-width source/image checks pass separately after the full run.
+- [x] Full ASan/UBSan acceptance exits 0, including all 59 compatibility cases
+  and subsequent QuickSort property/image checks. Local logs are
+  `/tmp/a-program-arithmetic-acceptance.log` and
+  `/tmp/a-program-arithmetic-sanitize.log`; commands use the preceding
+  increment's CFLAGS and `BUILD=/tmp/a-program-arithmetic` or
+  `/tmp/a-program-arithmetic-sanitize`. The optimized CLI is also rebuilt.
+- [ ] Host print dispatch, encoding conversions and host Higher Identity remain
+  open. Modular arithmetic does not itself prove correspondence to an internal
+  quotient/bit-vector model; that proof integration is still required.
+
+The seed test's fixed 4 KiB byte buffer was insufficient for the 8,936-byte
+namespace/derivation image. It now sizes its buffer from the actual file length;
+truncation checks and resource limits remain unchanged. Namespace signatures
+share their width/arity construction rather than rebuilding each function type.
+The CLI deadlock diagnostic test now permits normal initialization to finish
+instead of assuming it always takes fewer than 100 transitions. Its assertions
+still distinguish an empty runnable queue from mere fuel exhaustion. The
+unchanged QuickSort property client/provider takes 148,474 transitions versus
+148,380 before arithmetic setup (+94); this does not measure wall-clock speed.
+Change size: implementation C/headers +236/-7 (net +229); tests/fixtures
++162/-5 (net +157). Documentation is counted separately; no Core tag or
+separate arithmetic replay engine is added.
+
+## September 14 Host Literals and Intrinsic Spelling (797d82a)
 
 This revision supersedes the missing-literal status in the historical follow-up
 below. It does not complete arithmetic, host effects or the full rewrite.
@@ -65,8 +111,8 @@ below. It does not complete arithmetic, host effects or the full rewrite.
   gate and all subsequent property/image checks. Debug and sanitizer logs are
   `/tmp/a-program-host-acceptance-final.log` and
   `/tmp/a-program-host-sanitize-final.log` (local execution records).
-- [ ] Restore `host_expression_evaluator_check.p`: arithmetic still needs its
-  width/overflow contract and explicit pure-versus-interceptable classification.
+- [x] Restore `host_expression_evaluator_check.p`: completed by the subsequent
+  fixed-width arithmetic increment above, with explicit modular semantics.
 - [ ] Add runtime host effect dispatch separately; `#print` is the intended
   spelling, not a claim that terminal printing is implemented already.
 - [ ] Define and check the missing host Higher Identity behavior.

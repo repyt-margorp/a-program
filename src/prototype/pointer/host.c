@@ -1,4 +1,5 @@
 #include "host.h"
+#include "computation.h"
 
 #include <string.h>
 
@@ -110,4 +111,134 @@ int pg_host_integer_view(const struct pg_object *object, int64_t *value)
 	uint64_t maximum = count == 4 ? UINT32_MAX : UINT64_MAX;
 	*value = bytes[0] & 128 ? -1 - (int64_t)(maximum - bits) : (int64_t)bits;
 	return 1;
+}
+
+enum arithmetic { ADD, SUBTRACT, MULTIPLY, NEGATE };
+static const struct pg_object_class function_class = {"host-function"};
+static const struct host_function {
+	struct pg_object object;
+	const char *name, *descriptor;
+	const struct pg_object *type;
+	enum arithmetic operation;
+} functions[] = {
+	{{PG_SEMANTIC_OBJECT, &function_class}, "int_add", "host/int32/add/v1", &int32_type, ADD},
+	{{PG_SEMANTIC_OBJECT, &function_class}, "int_sub", "host/int32/sub/v1", &int32_type, SUBTRACT},
+	{{PG_SEMANTIC_OBJECT, &function_class}, "int_mul", "host/int32/mul/v1", &int32_type, MULTIPLY},
+	{{PG_SEMANTIC_OBJECT, &function_class}, "int_neg", "host/int32/neg/v1", &int32_type, NEGATE},
+	{{PG_SEMANTIC_OBJECT, &function_class}, "int64_add", "host/int64/add/v1", &int64_type, ADD},
+	{{PG_SEMANTIC_OBJECT, &function_class}, "int64_sub", "host/int64/sub/v1", &int64_type, SUBTRACT},
+	{{PG_SEMANTIC_OBJECT, &function_class}, "int64_mul", "host/int64/mul/v1", &int64_type, MULTIPLY},
+	{{PG_SEMANTIC_OBJECT, &function_class}, "int64_neg", "host/int64/neg/v1", &int64_type, NEGATE}
+};
+
+const struct pg_object *pg_host_function(size_t index)
+{
+	return index < sizeof(functions) / sizeof(*functions) ? &functions[index].object : NULL;
+}
+
+static const struct host_function *function_view(const struct pg_object *object)
+{
+	for (size_t i = 0; i < sizeof(functions) / sizeof(*functions); ++i)
+		if (object == &functions[i].object) return &functions[i];
+	return NULL;
+}
+
+const char *pg_host_function_name(const struct pg_object *object)
+{
+	const struct host_function *function = function_view(object);
+	return function ? function->name : NULL;
+}
+
+const char *pg_host_function_descriptor(const struct pg_object *object)
+{
+	const struct host_function *function = function_view(object);
+	return function ? function->descriptor : NULL;
+}
+
+const struct pg_object *pg_host_function_resolve(const char *descriptor)
+{
+	if (!descriptor) return NULL;
+	for (size_t i = 0; i < sizeof(functions) / sizeof(*functions); ++i)
+		if (!strcmp(descriptor, functions[i].descriptor)) return &functions[i].object;
+	return NULL;
+}
+
+int pg_host_function_view(const struct pg_object *object, const struct pg_object **type, size_t *arity)
+{
+	const struct host_function *function = function_view(object);
+	if (!function || !type || !arity) return 0;
+	*type = function->type;
+	*arity = function->operation == NEGATE ? 1 : 2;
+	return 1;
+}
+
+/* A demanded answer replaces its operand in the caller. No private invocation
+ * state is needed, so suspended evaluation uses the ordinary frame codec. */
+static int operand_answer(struct pg_eval *machine, const struct pg_term *answer, size_t index)
+{
+	const struct host_function *function = function_view(machine->current.term->as.reference);
+	const struct pg_object *type;
+	size_t length;
+	const unsigned char *bytes;
+	if (!function || answer->kind != PG_REFERENCE
+		|| !pg_host_literal_view(answer->as.reference, &type, &length, &bytes)
+		|| type != function->type) return 1;
+	const struct pg_term *head = machine->current.term;
+	if (index) head = pg_application(machine->output, head, pg_eval_argument(machine, 0)->term);
+	return head ? pg_eval_apply(machine, (struct pg_closure){head, NULL},
+		(struct pg_closure){answer, NULL}, index + 1) : -1;
+}
+
+static int first_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
+{
+	(void)state;
+	return operand_answer(machine, answer, 0);
+}
+
+static int second_answer(struct pg_eval *machine, const struct pg_term *answer, const void *state)
+{
+	(void)state;
+	return operand_answer(machine, answer, 1);
+}
+
+static const struct pg_eval_continuation first_operand = {"host/first-operand/v1", first_answer};
+static const struct pg_eval_continuation second_operand = {"host/second-operand/v1", second_answer};
+
+const struct pg_eval_continuation *pg_host_continuation_resolve(const char *name)
+{
+	const struct pg_eval_continuation *entries[] = {&first_operand, &second_operand};
+	return pg_eval_continuation_find(name, 2, entries);
+}
+
+int pg_host_dispatch(struct pg_eval *machine)
+{
+	const struct host_function *function = function_view(machine->current.term->as.reference);
+	if (!function) return 1;
+	size_t arity = function->operation == NEGATE ? 1 : 2;
+	if (!pg_eval_argument(machine, arity - 1)) return 1;
+	uint64_t arguments[2] = {0};
+	size_t width = 0;
+	for (size_t i = 0; i < arity; ++i) {
+		const struct pg_term *term = pg_eval_argument(machine, i)->term;
+		const struct pg_object *type;
+		const unsigned char *bytes;
+		if (term->kind != PG_REFERENCE || !pg_host_literal_view(term->as.reference, &type, &width, &bytes))
+			return pg_eval_demand(machine, i, i ? &second_operand : &first_operand, NULL);
+		if (type != function->type) return 1;
+		for (size_t j = 0; j < width; ++j) arguments[i] = (arguments[i] << 8) | bytes[j];
+	}
+	uint64_t result;
+	switch (function->operation) {
+	case ADD: result = arguments[0] + arguments[1]; break;
+	case SUBTRACT: result = arguments[0] - arguments[1]; break;
+	case MULTIPLY: result = arguments[0] * arguments[1]; break;
+	case NEGATE: result = UINT64_C(0) - arguments[0]; break;
+	default: return -1;
+	}
+	unsigned char bytes[8];
+	for (size_t i = width; i; --i, result >>= 8) bytes[i - 1] = (unsigned char)(result & 255);
+	const struct pg_object *value = pg_host_literal(machine->output, function->type, width, bytes);
+	const struct pg_term *returned = value ? pg_application(machine->output,
+		pg_reference(machine->output, &pg_return_operation), pg_reference(machine->output, value)) : NULL;
+	return returned ? pg_eval_enter(machine, (struct pg_closure){returned, NULL}, arity) : -1;
 }
