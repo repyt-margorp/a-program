@@ -29,6 +29,63 @@ Commit and push verified development increments on the rewrite branch. A
 published increment is not completion of the full rewrite; retain the open
 compatibility, property-proof and Higher Identity requirements below.
 
+## September 14 Effectful Function Results
+
+This increment follows `fd32a38`. The previously unsupported partial call
+`second (#print #"a")` must perform its prefix before yielding a callable
+value. Neither pure RETURN extraction nor moving the prefix under a Lambda
+represents that behavior.
+
+For `M : Comp(g, E, A)` and `K : Pi(A, C)`, with a nonempty checked `E` and
+a constant raw-Pi result `C`, source sequencing now constructs:
+
+```text
+FOLD(M, LAMBDA(x, RETURN(THUNK(APP(K, x))))) : Comp(g, E, U(C))
+```
+
+This is a checked source carrier construction, not a new conversion equation
+between differently typed terms. `M` remains outside THUNK. The existing
+callee path sequences the returned value and forces it when applied. Pure
+raw-Pi sequencing and dependent pure-result substitution retain their previous
+rules. This does not admit general effect-dependent result types.
+
+- [x] Build the adapter through existing context extension, projection, APP,
+  THUNK, RETURN and Fold rules. No new Core node, kernel rule or image format.
+  Invalid domains still fail checked application; nonempty effects are not
+  treated as pure, and prefix totality is retained by the ordinary Fold rule.
+- [x] Preserve the defining context in the temporary lexical lookup result.
+  Resolve generic ADT members there; the ordinary reference projection checks
+  use in the caller's context later. Previously `Trace #Text` selection inside
+  a handler waited for the handler row that its own body had to determine.
+  This borrows an existing context producer, not a new context authority.
+- [x] Check function-result binding annotations as `U(Pi)`, like Lambda
+  domains. `f : #Text -> #Text := partial` retains the effect of obtaining `f`.
+  Ordinary `::` and raw-function annotations retain their separate meanings.
+- [x] Add `effect-application.p`: typed generic-ADT traces check partial calls,
+  unused results, shared functions, repeated computations, constructors,
+  nested requests, callee/body/argument order and annotated function results.
+  Ten result pairs are checked from source and unsolved/completed images,
+  with scheduler chunks 1 and 64. These are handler-based observations, not
+  tests of a terminal-output backend.
+- [x] Restore compilation of unchanged `cbpv/runtime_strict_effects_check.p`
+  and add it to the compatibility gate. Reject wrong arguments, false pure
+  annotations, missing generic members and wrong generic field types.
+- [x] Full debug and ASan/UBSan `check-acceptance` runs both exit 0, including
+  the 60/60 legacy gate and later QuickSort property/image checks. Logs:
+  `/tmp/a-program-effect-application-acceptance.log` and
+  `/tmp/a-program-effect-application-sanitize.log`. Optimized CLI build and
+  CLI suite also pass. Verify this increment for rewrite publication; keep
+  Main frozen.
+
+Implementation C: +44/-13 (net +31). Tests/fixtures: +76/-0. Documentation is
+separate. The unchanged QuickSort content-property client/provider remains at
+149,473 Solve transitions, equal to `fd32a38`; no wall-clock claim is inferred.
+
+Next: execute unhandled host requests in a fresh invocation of the existing
+evaluator; do not use pure normalization receipts to suppress or repeat I/O.
+Host model/Identity, general dependent/higher Identity and the other unchecked
+rewrite milestones remain required.
+
 ## September 14 Sequential Result Annotations
 
 This increment follows `b509fbf`. A sequential binder names the result of its
@@ -71,14 +128,14 @@ README and this plan are counted separately from code. The unchanged QuickSort
 content-property client/provider requires 149,473 Solve transitions, the same
 as `b509fbf`; this is not a wall-clock performance claim.
 
-The remaining curried effectful application failure is separate: the current
+At this checkpoint the curried effectful application failure was separate: the
 fold rule rejects an effectful prefix when the continuation returns raw Pi.
 The fallback then attempts pure RETURN extraction, which cannot produce the
 effectful argument. Moving prefix effects into a Lambda body is not an
 acceptable fix: it changes when partial application performs effects. Restore
 this using a checked source sequencing/carrier construction, with partial-call
-and evaluation-order tests, before claiming the legacy strict-effects fixture
-works. Terminal host execution and host-model Identity remain open.
+and evaluation-order tests. The increment above supplies that construction;
+terminal host execution and host-model Identity remain open.
 
 ## September 14 Print Requests and Handler Inference
 
@@ -118,9 +175,9 @@ terminal execution backend. All work remains on the published rewrite branch.
 - [ ] Execute unhandled host requests in a fresh runtime invocation, through
   the existing evaluator rather than the pure memo store. Establish explicit
   entry/output handling, repeated execution, suspension and I/O-failure tests.
-- [ ] Restore the remaining legacy effect-composition cases below. Do not
-  promote them to accepted compatibility cases before their actual outcomes
-  and effect order are verified.
+- [x] Restore compilation of the legacy effect-composition cases below and
+  verify effect order through handler traces in the later function-result
+  increment. Terminal output remains a separate, unimplemented backend.
 - [ ] Encoding conversions and host Higher Identity/model correspondence
   remain required, not consequences of the print signature tests.
 
@@ -129,7 +186,7 @@ Two independently reproduced cases from
 
 ```ap
 second := \x : #Text => \y : #Text => y;
-main := second (#print #"a") (#print #"b"); // currently unsupported
+main := second (#print #"a") (#print #"b"); // fixed by function-result increment above
 ```
 
 ```ap
@@ -137,10 +194,11 @@ Bool := @{ true : *; false : *; };
 main := { x : #Text := #print #"m"; Bool.false; }; // fixed by result-annotation increment above
 ```
 
-In contrast, `#print (#print #"e")` and `{ x := #print #"s"; second x x; }`
-typecheck. The first failing case reaches a RETURN extraction job that cannot
-extract an effectful computation's value; curried constructor application has
-the same symptom. The second was the annotated block-binding path, fixed above.
+At `b509fbf`, `#print (#print #"e")` and `{ x := #print #"s"; second x x; }`
+already typechecked. The first failing case reached a RETURN extraction job
+that could not extract an effectful computation's value; curried constructor
+application had the same symptom. Both it and the annotated block-binding
+path are fixed by the later increments above.
 Investigate the remaining sequencing/classifier contract, not a
 print-specific coercion or treating a nonempty effect row as pure. Preserve
 `::` as a post-synthesis check. These are not terminal-output tests yet.

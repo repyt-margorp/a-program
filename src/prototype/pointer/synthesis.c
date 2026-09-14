@@ -2480,6 +2480,7 @@ struct source_reference {
 	struct pg_synthesis_job *producer;
 	const struct pg_source_scope *exports;
 	struct pg_synthesis_job *module;
+	struct pg_synthesis_job *context;
 };
 
 static struct pg_synthesis_job *lookup_definition(const struct definition_state *state, struct pg_token token)
@@ -2494,7 +2495,7 @@ static struct source_reference lookup_scope(const struct pg_source_scope *scope,
 	for (; scope; scope = scope->parent) {
 		if (scope->definitions && token.kind == PG_TOKEN_IDENT) {
 			struct pg_synthesis_job *producer = lookup_definition(scope->definitions, token);
-			if (producer) return (struct source_reference){.producer = producer};
+			if (producer) return (struct source_reference){.producer = producer, .context = scope->context_job};
 		}
 		if (scope->name.kind != token.kind) continue;
 		/* Punctuation tokens carry their spelling in kind, not text. */
@@ -2502,7 +2503,7 @@ static struct source_reference lookup_scope(const struct pg_source_scope *scope,
 			if (scope->name.length != token.length) continue;
 			if (memcmp(scope->name.text, token.text, token.length) != 0) continue;
 		}
-		return (struct source_reference){scope->binder, scope->producer, scope->exports, scope->module};
+		return (struct source_reference){scope->binder, scope->producer, scope->exports, scope->module, scope->context_job};
 	}
 	return (struct source_reference){0};
 }
@@ -2856,7 +2857,7 @@ static struct pg_synthesis_job *source_reference_producer(struct pg_synthesis *s
 }
 
 static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context_job, struct source_reference *reference,
+	struct source_reference *reference,
 	struct pg_token token, struct pg_synthesis_job **dependency)
 {
 	if (reference->exports) {
@@ -2873,10 +2874,15 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 		if (!member || !member->producer) return PG_SYNTHESIS_REJECTED;
 		*dependency = module;
 		if (module->status != PG_SYNTHESIS_DONE) return module->status;
-		*reference = (struct source_reference){.producer = member->producer};
+		*reference = (struct source_reference){.producer = member->producer,
+			.context = registration->definitions->scope->context_job};
 		return PG_SYNTHESIS_DONE;
 	}
 	if (reference->producer) {
+		/* Resolve in the defining context. The final reference rule projects
+		 * the selected member into its use site after that context is checked. */
+		struct pg_synthesis_job *context_job = reference->context;
+		if (!context_job) return PG_SYNTHESIS_ERROR;
 		struct pg_synthesis_job *producer = reference->producer;
 		*dependency = producer;
 		if (producer->status != PG_SYNTHESIS_DONE) return producer->status;
@@ -2920,7 +2926,7 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 		if (!member.producer) return PG_SYNTHESIS_REJECTED;
 		if (member.producer->role != CONSTRUCTOR_VALUE_JOB) return PG_SYNTHESIS_UNSUPPORTED;
 		*reference = (struct source_reference){.producer = pg_synthesis_constructor_value(synthesis,
-			instance.formation, member.producer->inputs[1], instance.parameters)};
+			instance.formation, member.producer->inputs[1], instance.parameters), .context = context_job};
 		return reference->producer ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR;
 	}
 	/* Nominal members require a typed declaration, never an older namespace. */
@@ -2946,7 +2952,8 @@ static enum pg_synthesis_status resolve_reference(struct pg_synthesis *synthesis
 		*reference = lookup_scope(scope, root->token);
 	} else {
 		if (!count) return PG_SYNTHESIS_UNSUPPORTED;
-		*reference = (struct source_reference){.producer = pg_synthesis_request(synthesis, scope, root)};
+		*reference = (struct source_reference){.producer = pg_synthesis_request(synthesis, scope, root),
+			.context = scope->context_job};
 		if (!reference->producer) return PG_SYNTHESIS_ERROR;
 	}
 	if (!count) return PG_SYNTHESIS_DONE;
@@ -2956,7 +2963,7 @@ static enum pg_synthesis_status resolve_reference(struct pg_synthesis *synthesis
 	for (size_t i = count; i; --i, syntax = syntax->left) path[i - 1] = syntax->right;
 	enum pg_synthesis_status status = PG_SYNTHESIS_DONE;
 	for (size_t i = 0; i < count; ++i) {
-		status = resolve_member(synthesis, scope->context_job, reference, path[i]->token, dependency);
+		status = resolve_member(synthesis, reference, path[i]->token, dependency);
 		if (status != PG_SYNTHESIS_DONE) break;
 	}
 	free(path);
@@ -3456,6 +3463,29 @@ static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 		input = job->left->result;
 		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
 		if (job->right->status != PG_SYNTHESIS_REJECTED) { forward_proof(synthesis, job, job->right); return; }
+		const struct pg_term *content, *domain, *body;
+		const struct pg_object *binder;
+		const struct pg_effect_row *effects;
+		enum pg_totality totality;
+		const struct pg_term *codomain = pg_pi_constant_codomain(pg_evidence_classifier(continuation));
+		if (pg_computation_type_view(pg_evidence_classifier(input), &totality, &effects, &content) &&
+			pg_effect_count(effects) && pg_pi_view(codomain, &domain, &binder, &body)) {
+			/* Preserve the effectful prefix outside the returned function.
+			 * The source adapter uses only checked APP/THUNK/RETURN/FOLD. */
+			binder = pg_binder(synthesis->typing->graph);
+			struct pg_synthesis_job *extended = pg_synthesis_result_context(synthesis,
+				(void *)job->inputs[0], job->left, binder);
+			struct pg_synthesis_job *variable = plain_rule(synthesis, PG_VARIABLE, binder, 1, &extended);
+			struct pg_synthesis_job *premises[] = {extended, (void *)job->inputs[2]};
+			struct pg_synthesis_job *projected = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
+			struct pg_synthesis_job *applied = pg_synthesis_application_jobs(synthesis, extended, projected, variable);
+			struct pg_synthesis_job *quoted = plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &applied);
+			premises[0] = job->left;
+			premises[1] = pg_synthesis_lambda_body(synthesis, extended, quoted);
+			job->value_job = plain_rule(synthesis, PG_FOLD_ELIM, NULL, 2, premises);
+			forward_proof(synthesis, job, job->value_job);
+			return;
+		}
 		struct pg_synthesis_job *argument = pg_synthesis_return(synthesis, context, input);
 		job->value_job = pg_synthesis_application(synthesis, context,
 			(void *)job->inputs[2], argument);
@@ -3687,16 +3717,17 @@ static void source_expect_step(struct pg_synthesis *synthesis, struct pg_synthes
 		if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE_TYPE) left = value(synthesis, left);
 		if (!left) goto rejected;
 		if (pg_evidence_judgement(left) == PG_JUDGEMENT_VALUE) right = value_type(synthesis, right);
-		else if (pg_evidence_judgement(right) != PG_JUDGEMENT_COMPUTATION_TYPE) {
+		else {
 			enum pg_totality totality = PG_TOTALITY_TOTAL;
 			const struct pg_effect_row *effects = pg_effect_row(synthesis->typing->graph, 0, NULL);
 			const struct pg_term *content;
 			/* A binding annotation checks the result, not the effects needed
-			 * to obtain it. Explicit computation annotations still check all. */
-			if (job->role == BINDING_EXPECT_JOB &&
-				!pg_computation_type_view(pg_evidence_classifier(left), &totality, &effects, &content)) goto rejected;
-			right = pg_prove_computation_type(synthesis->typing, synthesis->classifiers,
-				totality, effects, value_type(synthesis, right));
+			 * to obtain it. Function results use the same U(Pi) as binders. */
+			int result_binding = job->role == BINDING_EXPECT_JOB &&
+				pg_computation_type_view(pg_evidence_classifier(left), &totality, &effects, &content);
+			if (result_binding || pg_evidence_judgement(right) != PG_JUDGEMENT_COMPUTATION_TYPE)
+				right = pg_prove_computation_type(synthesis->typing, synthesis->classifiers,
+					totality, effects, value_type(synthesis, right));
 		}
 		if (!right) goto rejected;
 		job->checking_term = left;

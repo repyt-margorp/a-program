@@ -146,7 +146,7 @@ successful verification nor evidence that the program is invalid.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 59-case legacy
+September 14 verification includes examples 01-07 and 09, a 60-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
 QuickSort output cases. These are supported fragments, not complete legacy
 compatibility or complete Higher Observational Type Theory.
@@ -159,7 +159,7 @@ source fixtures and default CLI tests use `#Name`.
 | Dependent synthesis | Constructor-index refinement and branch-proposed motives checked against every induction branch; unchanged `lengthCertified` |
 | Function properties | [Length specification](src/prototype/pointer/tests/acceptance/length-output-proof.p) and [QuickSort content preservation](src/prototype/pointer/tests/acceptance/legacy-quicksort-property.p), not sortedness |
 | Higher Identity | Selected typed action, transport and higher-dimensional examples; general coherence remains unfinished |
-| Effects | `#print` requests with a fixed Text-to-Text signature, multi-clause handlers, forwarding and resumptions; no terminal/host execution backend |
+| Effects | `#print` requests, multi-clause handlers, forwarding and resumptions; effectful partial applications and constructor arguments have ordered trace tests. No terminal/host execution backend |
 | Host values | `#Int` aliases `#Int32`; distinct `#Int64`; `#Text` stores exact bytes. Literal typing and image round trips, including recursive Text fields |
 | Arithmetic | `#int_add`, `#int_sub`, `#int_mul`, `#int_neg` and corresponding `#int64_*` functions: fixed-width wraparound; partial and higher-order application |
 | Images | Unfinished/completed source inputs, imports and selected retained reductions through ordinary Solve |

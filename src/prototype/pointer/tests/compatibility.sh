@@ -45,6 +45,7 @@ while read -r expectation name left right; do
 	fi
 done <<'CASES'
 0 typing/explicit_index_family_vec_check
+0 cbpv/runtime_strict_effects_check
 0 typing/explicit_index_family_append_check
 0 typing/explicit_index_family_tail_check
 0 typing/explicit_index_family_tail_infer
@@ -128,7 +129,17 @@ test "$failed" -eq 0
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 acceptance="$(dirname "${BASH_SOURCE[0]}")/acceptance"
+effect_pairs='main:expected partialMain:partialExpected unusedMain:unusedExpected sharedMain:sharedExpected repeatedMain:repeatedExpected constructorMain:constructorExpected nestedMain:nestedExpected bodyMain:bodyExpected calleeMain:calleeExpected annotatedMain:expected'
+for pair in $effect_pairs; do
+	"${runtime[@]}" --equal "$acceptance/effect-application.p" "${pair%:*}" "${pair#*:}"
+done
 for steps in 0 100000; do
+	code=0
+	"${checker[@]}" --steps "$steps" --save "$directory/effect-application.a" "$acceptance/effect-application.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
+	for pair in $effect_pairs; do
+		"${runtime[@]}" --equal-image "$directory/effect-application.a" "${pair%:*}" "${pair#*:}"
+	done
 	code=0
 	"${checker[@]}" --steps "$steps" --save "$directory/print.a" "$acceptance/host-print.p" > "$directory/status" || code=$?
 	if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi

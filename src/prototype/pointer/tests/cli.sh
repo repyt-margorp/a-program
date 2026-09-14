@@ -102,6 +102,10 @@ check 1 'rejected steps=' 'main:={x:#Int64:=#2147483648;};'
 check 1 'rejected steps=' 'main:={x:#Text:=#print #"m";x;}; main::#Text;'
 check 1 'rejected steps=' 'main:={x:=#print #"m";x;}; main::#Text;'
 check 1 'rejected steps=' 'main:=(#print #"m") @#print req k=>{x:#Int:=k req;req;} @#return x=>x;'
+check 1 'rejected steps=' 'second:=\x:#Text=>\y:#Text=>y;main:=second (#print #"a") #42;'
+check 1 'rejected steps=' 'second:=\x:#Text=>\y:#Text=>y;partial:=second (#print #"a");partial::#Text->#Text;'
+check 1 'rejected steps=' 'Box:=\A:@=>@{mk:A->*;};T:=Box #Text;main:=(#print #"a") @#print req k=>T.missing req @#return x=>T.mk x;'
+check 1 'rejected steps=' 'Box:=\A:@=>@{mk:A->*;};T:=Box #Int;main:=(#print #"a") @#print req k=>T.mk req @#return x=>T.mk #42;'
 for mode in --whnf --nf; do
 	check 0 'done steps=' 'main:=#print #"not-a-compiler-output";' "$mode" main
 	case "$output" in *'not-a-compiler-output'*) exit 1 ;; esac
