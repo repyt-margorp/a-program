@@ -510,6 +510,36 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *converted_code = checked_normalize(&typing, &evaluation, converted_force);
 	assert(pg_evidence_premise(converted_code, 0) == converted_force);
 	assert(pg_evidence_classifier(converted_code) == pg_evidence_subject(pi_z)->core);
+	/* Beta reads typed construction, independently of the chosen receipt and
+	 * of conversion, normalization or suspended-function wrappers. */
+	const struct pg_evidence *function_variable = pg_prove_variable(&typing, f_context, f);
+	const struct pg_evidence *apply_pi = pg_prove_pi(&typing, &classifiers, f_context,
+		pg_prove_projection(&typing, f_context, pi_z));
+	const struct pg_evidence *apply_function = pg_prove_lambda(&typing, apply_pi,
+		pg_prove_force(&typing, function_variable));
+	const struct pg_evidence *nested_application = pg_prove_application(&typing, apply_function, converted);
+	const struct pg_evidence *identity_map = pg_prove_substitution_projection(&typing, x_context, x_context);
+	const struct pg_evidence *beta_functions[] = {identity_y,
+		pg_prove_reindex(&typing, identity_map, identity_y), converted_force,
+		converted_code, pg_prove_thunk_computation(&typing, converted), nested_application};
+	const struct pg_evidence *beta_results[sizeof(beta_functions) / sizeof(*beta_functions)];
+	for (size_t i = 0; i < sizeof(beta_functions) / sizeof(*beta_functions); ++i) {
+		beta_results[i] = pg_prove_application_body(&typing, beta_functions[i], x_term);
+		assert(beta_results[i]);
+		assert(pg_evidence_context(beta_results[i]) == pg_evidence_context(x_term));
+		assert(pg_alpha_equal(pg_evidence_subject(beta_results[i])->core, pg_evidence_subject(returned)->core) == 1);
+		assert(pg_alpha_equal(pg_evidence_classifier(beta_results[i]), pg_evidence_classifier(returned)) == 1);
+		reconstruct_derivation(&typing, &classifiers, beta_results[i]);
+	}
+	const struct pg_evidence *projected_beta = pg_prove_application_body(&typing, weakened_function, y_term);
+	assert(projected_beta && pg_evidence_subject(projected_beta)->core == pg_evidence_subject(return_y)->core);
+	assert(!pg_prove_application_body(&typing, identity_y, a_in_x));
+	assert(!pg_prove_application_body(&typing, identity_y, returned));
+	size_t beta_terms = graph->terms.count, beta_proofs = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i)
+		for (size_t j = 0; j < sizeof(beta_functions) / sizeof(*beta_functions); ++j)
+			assert(pg_prove_application_body(&typing, beta_functions[j], x_term) == beta_results[j]);
+	assert(graph->terms.count == beta_terms && typing.proofs.count == beta_proofs);
 	size_t reduction_terms = graph->terms.count, reduction_proofs = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i) {
 		assert(checked_normalize(&typing, &evaluation, reindexed_force) == force_result);

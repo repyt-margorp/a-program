@@ -694,3 +694,57 @@ maps, 102871 occurrence actions, 2934 input queries, 14970 contexts and 179019
 Core terms. The added index cost and remaining legacy consumers must be
 included in R5's memory/time review; this is not a final performance acceptance
 or a net-reduction claim. Main publication remains pending.
+
+### 2026-09-17: Beta and returned-value structural access
+
+- [x] Replace the proof-rule walks in `pg_prove_application_body` and
+  `return_value_origin` with typed construction inputs and retained context
+  maps. Lambda and family abstraction share the Core Lambda/body contract;
+  APP, FORCE/THUNK, RETURN and sequencing are identified from their actual
+  Core structure and matching typed edges, not from a selected receipt's rule.
+  The old dispatches are deleted, not retained as fallback implementations.
+- [x] Share traversal of structural origins/maps between the two consumers.
+  A normalization origin is a recipe for the unreduced computation, never
+  claimed to be the normalized result's children. Beta still uses ordinary
+  checked substitution/pair/reindex. Returned-value recovery resumes only
+  actual Return nodes; it neither executes requests nor guesses a value from
+  a totality contract.
+- [x] Factor certification of structural maps out of subject certification.
+  The first QuickSort trial exposed descriptive projection images without
+  receipts. Certify these through the existing variable/substitution rules;
+  do not treat allocation of a structural map as acceptance. Source and
+  destination contexts must still already have accepted evidence.
+- [x] Extend the existing Core suite with direct/reindexed, projected,
+  converted, normalized, thunk-inverted and nested higher-order beta cases.
+  Check wrong arguments, derivation reconstruction, and 100 repeated queries
+  with no additional Terms or accepted derivations. Existing IADT tests cover
+  constructor recovery through normalized sequencing and captured scopes.
+- [x] Full debug `check-acceptance` passed, including 63/63 compatibility and
+  QuickSort properties through source/images at chunks one and 64. ASan/UBSan
+  Core, IADT, Identity and QuickSort property compilation also passed.
+- [ ] The two structural traversals still run synchronously and revisit
+  retained maps on repeated calls. Reusing substitution results is not the
+  same as a shared, budgeted typed-reduction request. This remains part of R3;
+  neither this checkpoint nor passing regressions completes that phase.
+
+Identity audit: ordinary Identity formation retains its three typed inputs,
+but dependent family formation still obtains its selected left/right maps
+from premises. Those maps and path witnesses are semantic boundary data, not
+expendable bookkeeping. Migrate their structural representation before
+deleting `action.c`'s formation recovery; do not infer the boundary from an
+erased Core or silently discard it. No Identity rules changed here.
+
+Delta against `e90fd19` (paths under `src/prototype/pointer/`):
+
+| File | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `evidence.c` | 119 | 79 | +40 |
+| `tests/core.c` | 30 | 0 | +30 |
+
+Cumulative implementation growth is **+821**, so R5's net-negative condition
+is still unmet. Sequential single-run debug QuickSort measurements were
+1.445 seconds / 274464 KiB at R7 and 1.464 seconds / 274344 KiB here, both
+201138 Solve transitions. This does not establish a speedup or regression.
+Derivations decreased from 504226 to 504223; the other R7 structural counts
+were unchanged. Final comparative gates, remaining consumer deletions and
+Main publication remain pending.

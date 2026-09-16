@@ -251,6 +251,24 @@ static const struct pg_evidence *conclusion_first(const struct pg_typing *typing
 	return entry ? entry->first : NULL;
 }
 
+static const struct pg_evidence *structural_map(struct pg_typing *typing,
+	const struct pg_context_map *map)
+{
+	const struct pg_evidence *proof = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, map);
+	if (proof) return proof;
+	if (!map || map->count > SIZE_MAX / sizeof(proof)) return NULL;
+	const struct pg_evidence *source = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->source);
+	const struct pg_evidence *destination = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination);
+	if (!source || !destination) return NULL;
+	const struct pg_evidence **images = malloc(map->count * sizeof(*images));
+	if (map->count && !images) return NULL;
+	for (size_t i = 0; i < map->count; ++i)
+		images[i] = pg_prove_structural_subject(typing, map->images[i]);
+	proof = pg_prove_substitution(typing, source, destination, map->count, images);
+	free(images);
+	return proof;
+}
+
 static int structural_dependency(void *owner, const void *key, size_t index, const void **child)
 {
 	struct pg_typing *typing = owner;
@@ -277,20 +295,8 @@ const struct pg_evidence *pg_prove_structural_subject(struct pg_typing *typing,
 		if (pg_evidence_for_subject(typing, input, NULL)) continue;
 		const struct pg_evidence *proof = NULL;
 		if (input->map) {
-			const struct pg_context_map *map = input->map;
-			const struct pg_evidence *mapping = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, map);
-			if (!mapping) {
-				const struct pg_evidence *source = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->source);
-				const struct pg_evidence *destination = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination);
-				if (!source || !destination || map->count > SIZE_MAX / sizeof(proof)) goto done;
-				const struct pg_evidence **images = malloc(map->count * sizeof(*images));
-				if (map->count && !images) goto done;
-				for (size_t i = 0; i < map->count; ++i)
-					images[i] = pg_evidence_for_subject(typing, map->images[i], NULL);
-				mapping = pg_prove_substitution(typing, source, destination, map->count, images);
-				free(images);
-			}
-			proof = pg_prove_reindex(typing, mapping, pg_evidence_for_subject(typing, input->origin, NULL));
+			proof = pg_prove_reindex(typing, structural_map(typing, input->map),
+				pg_evidence_for_subject(typing, input->origin, NULL));
 		} else if (input->core->kind == PG_REFERENCE && input->core->as.reference->kind == PG_BINDER) {
 			const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, input->context);
 			proof = pg_prove_variable(typing, context, input->core->as.reference);
@@ -613,59 +619,76 @@ static const struct pg_evidence *variable_frame(struct pg_typing *typing,
 	return pg_substitution_image(typing, step->premises[0], binder);
 }
 
-/* Recover a returned value's typed origin, preserving each surrounding map.
- * This builds ordinary beta/substitution evidence, not a new reduction rule. */
+struct construction_map {
+	const struct pg_context_map *map;
+	struct construction_map *next;
+};
+
+/* Follow retained structural context actions without interpreting proof rules.
+ * A derived result's input remains a reduction recipe, not current children. */
+static const struct pg_occurrence *construction_origin(struct pg_graph *temporary,
+	const struct pg_occurrence *subject, struct construction_map **frames)
+{
+	while (subject->origin && (subject->map || subject->judgement == subject->origin->judgement)) {
+		if (subject->map) {
+			struct construction_map *frame = pg_alloc(temporary, sizeof(*frame));
+			if (!frame) return NULL;
+			*frame = (struct construction_map){subject->map, *frames};
+			*frames = frame;
+		}
+		subject = subject->origin;
+	}
+	return subject;
+}
+
+/* Recover a returned value through its typed computation, not receipt history.
+ * Requests remain opaque; only actual Return nodes resume a pending fold. */
 static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 	const struct pg_evidence *computation)
 {
 	struct pg_graph temporary = {0};
-	struct evidence_frame *frames = NULL;
+	struct construction_map *frames = NULL;
 	const struct pg_evidence *result = NULL;
 	struct pending_return {
 		const struct pg_evidence *continuation;
-		struct evidence_frame *frames;
+		struct construction_map *frames;
 		struct pending_return *next;
 	};
 	struct pending_return *pending = NULL;
 	while (computation) {
-		switch (computation->rule) {
-		case PG_RETURN_INTRO:
-			result = evidence_image(typing, computation->premises[0], frames);
+		const struct pg_occurrence *subject = construction_origin(&temporary,
+			pg_evidence_subject(computation), &frames);
+		if (!subject || subject->origin || subject->core->kind != PG_APPLICATION) goto done;
+		const struct pg_term *head = subject->core->as.application.function;
+		if (head->kind == PG_REFERENCE && head->as.reference == &pg_return_operation) {
+			if (subject->operand_count != 1 || subject->operands[0]->core != subject->core->as.application.argument) goto done;
+			result = pg_prove_structural_subject(typing, subject->operands[0]);
+			for (; result && frames; frames = frames->next)
+				result = pg_prove_reindex(typing, structural_map(typing, frames->map), result);
 			if (result && pending) {
 				computation = pg_prove_application_body(typing, pending->continuation, result);
 				frames = pending->frames;
 				pending = pending->next;
 				result = NULL;
-				break;
+				continue;
 			}
 			goto done;
-		case PG_PURE_NORMALIZATION: case PG_TYPE_CONVERSION: case PG_EFFECT_SUBSUMPTION:
-			computation = computation->premises[0];
-			break;
-		case PG_FOLD_ELIM: {
-			/* Resume only after recovering an actual Return introduction.
-			 * Totality alone supplies no value; operations are not executed. */
+		}
+		if (subject->operand_count != 2 || subject->operands[1]->core != subject->core->as.application.argument) goto done;
+		const struct pg_evidence *left = pg_prove_structural_subject(typing, subject->operands[0]);
+		const struct pg_evidence *right = pg_prove_structural_subject(typing, subject->operands[1]);
+		if (!left || !right) goto done;
+		if (head->kind == PG_APPLICATION && head->as.application.function == pg_reference(typing->graph, &pg_fold_operation) &&
+			subject->operands[0]->core == head->as.application.argument) {
 			struct pending_return *next = pg_alloc(&temporary, sizeof(*next));
 			if (!next) goto done;
-			*next = (struct pending_return){computation->premises[1], frames, pending};
+			*next = (struct pending_return){right, frames, pending};
 			pending = next;
 			frames = NULL;
-			computation = computation->premises[0];
-			break;
-		}
-		case PG_APP_ELIM:
-			computation = pg_prove_application_body(typing, computation->premises[0], computation->premises[1]);
-			break;
-		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
-			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
-			if (!frame) goto done;
-			*frame = (struct evidence_frame){computation, frames};
-			frames = frame;
-			computation = computation->premises[1];
-			break;
-		}
-		default: goto done;
-		}
+			computation = left;
+		} else if (subject->operands[0]->core == head)
+			computation = pg_prove_application_body(typing, left, right);
+		else goto done;
 	}
 done:
 	pg_graph_destroy(&temporary);
@@ -681,65 +704,82 @@ const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 	if (pg_evidence_judgement(argument) != PG_JUDGEMENT_VALUE && pg_evidence_judgement(argument) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_context(function) != pg_evidence_context(argument)) return NULL;
 	struct pg_graph temporary = {0};
-	struct evidence_frame *frames = NULL;
+	struct construction_map *frames = NULL;
+	const struct pg_occurrence *current = pg_evidence_subject(function);
 	const struct pg_evidence *result = NULL;
 	struct pending_application {
 		const struct pg_evidence *argument;
-		struct evidence_frame *frames;
+		struct construction_map *frames;
 		size_t forces;
 		struct pending_application *next;
 	};
 	struct pending_application *pending = NULL;
 	size_t forces = 0;
 	for (;;) {
-		switch (function->rule) {
-		case PG_LAMBDA_INTRO: case PG_TYPE_FAMILY_ABSTRACT: {
+		current = construction_origin(&temporary, current, &frames);
+		if (!current) goto done;
+		if (current->origin) {
+			if (current->judgement != PG_JUDGEMENT_COMPUTATION ||
+				current->origin->judgement != PG_JUDGEMENT_VALUE) goto done;
+			++forces;
+			current = current->origin;
+			continue;
+		}
+		const struct pg_term *core = current->core;
+		if (core->kind == PG_LAMBDA) {
 			if (forces) goto done;
-			const struct pg_evidence *extended = function->rule == PG_LAMBDA_INTRO
-				? function->premises[0]->premises[0] : function->premises[0];
-			const struct pg_evidence *map = evidence_map(typing, extended->premises[0], frames);
+			if (current->operand_count != 1) goto done;
+			const struct pg_occurrence *body = current->operands[0];
+			if (!body->context || body->context->parent != current->context ||
+				body->context->binder != core->as.lambda.binder || body->core != core->as.lambda.body) goto done;
+			const struct pg_evidence *extended = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, body->context);
+			if (!extended) goto done;
+			const struct pg_evidence *map = pg_prove_substitution_projection(typing, extended->premises[0], extended->premises[0]);
+			for (; map && frames; frames = frames->next)
+				map = pg_prove_substitution_compose(typing, map, structural_map(typing, frames->map));
 			map = pg_prove_substitution_pair(typing, map, extended, argument);
-			function = pg_prove_reindex(typing, map, function->premises[1]);
+			function = pg_prove_reindex(typing, map, pg_prove_structural_subject(typing, body));
 			if (!function) goto done;
 			if (!pending) { result = function; goto done; }
+			current = pg_evidence_subject(function);
 			argument = pending->argument;
 			frames = pending->frames;
 			forces = pending->forces;
 			pending = pending->next;
-			break;
+			continue;
 		}
-		case PG_APP_ELIM: case PG_TYPE_FAMILY_APP: {
+		if (core->kind == PG_APPLICATION) {
+			const struct pg_term *head = core->as.application.function;
+			if (head->kind == PG_REFERENCE &&
+				(head->as.reference == &pg_force_operation || head->as.reference == &pg_thunk_operation)) {
+				if (current->operand_count != 1 || current->operands[0]->core != core->as.application.argument) goto done;
+				if (head->as.reference == &pg_force_operation) ++forces;
+				else if (forces) --forces;
+				else goto done;
+				current = current->operands[0];
+				continue;
+			}
+			if (current->operand_count != 2 || current->operands[0]->core != head ||
+				current->operands[1]->core != core->as.application.argument) goto done;
 			struct pending_application *next = pg_alloc(&temporary, sizeof(*next));
 			if (!next) goto done;
 			*next = (struct pending_application){argument, frames, forces, pending};
 			pending = next;
-			argument = function->premises[1];
-			function = function->premises[0];
+			argument = pg_prove_structural_subject(typing, current->operands[1]);
+			if (!argument) goto done;
+			current = current->operands[0];
 			frames = NULL;
 			forces = 0;
-			break;
+			continue;
 		}
-		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
-			struct evidence_frame *frame = pg_alloc(&temporary, sizeof(*frame));
-			if (!frame) goto done;
-			*frame = (struct evidence_frame){function, frames};
-			frames = frame;
-			function = function->premises[1];
-			break;
-		}
-		case PG_PURE_NORMALIZATION: case PG_TYPE_CONVERSION:
-			function = function->premises[0]; break;
-		case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION:
-			++forces; function = function->premises[0]; break;
-		case PG_THUNK_INTRO:
-			if (!forces) goto done;
-			--forces; function = function->premises[0]; break;
-		case PG_VARIABLE:
-			function = variable_frame(typing, function, &frames);
-			if (!function) goto done;
-			break;
-		default: goto done;
-		}
+		if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER || !frames) goto done;
+		const struct pg_context_map *map = frames->map;
+		const struct pg_context *scope = pg_context_lookup(map->source, core->as.reference);
+		if (!scope) goto done;
+		size_t index;
+		if (pg_context_extension_size(scope->parent, NULL, &index)) goto done;
+		current = map->images[index];
+		frames = frames->next;
 	}
 done:
 	pg_graph_destroy(&temporary);
