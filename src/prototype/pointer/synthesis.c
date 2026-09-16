@@ -4178,9 +4178,7 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		return;
 	}
 	if (job->left->status != PG_SYNTHESIS_DONE) {
-		enum pg_synthesis_status status = job->left->status;
-		if (status == PG_SYNTHESIS_REJECTED && !job->nominal_input) status = PG_SYNTHESIS_UNSUPPORTED;
-		finish(synthesis, job, status); return;
+		finish(synthesis, job, job->left->status); return;
 	}
 	const struct pg_data_schema *schema = pg_synthesis_schema_result(job->left);
 	uint64_t candidate, bound;

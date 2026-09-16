@@ -4748,7 +4748,7 @@ static void source_declarations(struct pg_typing *typing, struct pg_classifiers 
 	complete(&synthesis, pg_synthesis_request(&synthesis, root,
 		expression_syntax(typing->graph, "D:=@{bad:(* -> @)->*;};")), PG_SYNTHESIS_UNSUPPORTED);
 	complete(&synthesis, pg_synthesis_request(&synthesis, root,
-		expression_syntax(typing->graph, "D:=@\\i:@=>{mk:* i;};")), PG_SYNTHESIS_UNSUPPORTED);
+		expression_syntax(typing->graph, "D:=@\\i:@=>{mk:* i;};")), PG_SYNTHESIS_REJECTED);
 	struct pg_synthesis_job *nat_job = request(&synthesis, root, "Nat:=@{zero:*; succ:*->*;};");
 	struct pg_synthesis_job *pending_instance = pg_synthesis_inductive_instance(&synthesis, nat_job);
 	assert(pending_instance == pg_synthesis_inductive_instance(&synthesis, nat_job));
@@ -5641,8 +5641,8 @@ static void data_cases(struct pg_typing *typing, struct pg_classifiers *classifi
 	struct pg_synthesis_job *type_body = request(&split, scope, "type := @{ nil : *; };");
 	complete(&split, type_body, PG_SYNTHESIS_DONE);
 	complete(&split, pg_synthesis_data_case(&split, type_body, schema, ctor, motive), PG_SYNTHESIS_REJECTED);
-	struct pg_synthesis_job *unsupported = request(&split, scope, "type := @\\i:A => { nil : * i; };");
-	complete(&split, pg_synthesis_data_case(&split, unsupported, schema, ctor, motive), PG_SYNTHESIS_UNSUPPORTED);
+	struct pg_synthesis_job *unbound_index = request(&split, scope, "type := @\\i:A => { nil : * i; };");
+	complete(&split, pg_synthesis_data_case(&split, unbound_index, schema, ctor, motive), PG_SYNTHESIS_REJECTED);
 	/* Declaration exports schedule constructor wrappers independently of the
 	 * rejected case above. Settle setup work before testing action quiescence. */
 	pg_synthesis_advance(&split, 1000);
