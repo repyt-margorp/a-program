@@ -495,9 +495,9 @@ const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_e
 const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_reduction_certificate *certificate);
 const struct pg_reduction_certificate *pg_evidence_normalization(const struct pg_evidence *evidence);
-/* Expose a direct construction input after congruent NF, with its original
- * typed scope/classifier. No new inference rule or erased-Core proof lookup.
- * Head-changing reductions and non-direct source inputs return NULL. */
+/* Expose a construction input after congruent NF, applying retained context
+ * maps through the shared input query. No new inference rule or erased-Core
+ * proof lookup. Head-changing/unexposed source inputs return NULL. */
 const struct pg_evidence *pg_prove_normalization_input(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_reduction_certificate *certificate,
 	size_t index);

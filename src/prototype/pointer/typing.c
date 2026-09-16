@@ -468,6 +468,12 @@ const struct pg_occurrence *pg_occurrence_unproject(struct pg_typing *typing,
 {
 	size_t count;
 	if (!source || pg_context_extension_size(source->context, destination, &count)) return NULL;
+	if (source->context == destination) return source;
+	if (source->core->kind == PG_REFERENCE && source->core->as.reference->kind == PG_BINDER) {
+		const struct pg_context *declaration = pg_context_lookup(destination, source->core->as.reference);
+		if (declaration && declaration->judgement == source->judgement && declaration->declared_type == source->classifier)
+			return pg_occurrence(typing, source->judgement, destination, source->core, source->classifier, NULL, 0, NULL);
+	}
 	while (source->context != destination) {
 		if (!source->map) return NULL;
 		/* Only cancel an exact weakening. A converted boundary or a map that

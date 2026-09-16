@@ -257,15 +257,48 @@ const struct pg_evidence *pg_prove_context_map(struct pg_typing *typing,
 	const struct pg_evidence *proof = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, map);
 	if (proof) return proof;
 	if (!map || map->count > SIZE_MAX / sizeof(proof)) return NULL;
+	/* A structural input query may lift into a scope not checked yet. Peel
+	 * only exact weakenings, then reapply the ordinary checked lifting rule.
+	 * Arbitrary context declarations do not acquire acceptance this way. */
+	struct map_lift {
+		const struct pg_context_map *map;
+		struct map_lift *parent;
+	};
+	struct pg_graph temporary = {0};
+	struct map_lift *lifts = NULL;
+	while (!conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination)) {
+		if (!map->source || !map->destination || !map->count) goto done;
+		if (!conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->source)) goto done;
+		const struct pg_occurrence *variable = map->images[map->count - 1];
+		if (variable->core != pg_reference(typing->graph, map->destination->binder)) goto done;
+		if (variable->classifier != map->destination->declared_type) goto done;
+		struct map_lift *frame = pg_alloc(&temporary, sizeof(*frame));
+		const struct pg_occurrence **images = pg_alloc(&temporary, (map->count - 1) * sizeof(*images));
+		if (!frame || (map->count > 1 && !images)) goto done;
+		*frame = (struct map_lift){map, lifts};
+		lifts = frame;
+		for (size_t i = 0; i + 1 < map->count; ++i) {
+			images[i] = pg_occurrence_unproject(typing, map->images[i], map->destination->parent);
+			if (!images[i]) goto done;
+		}
+		map = pg_context_map(typing, map->source->parent, map->destination->parent, map->count - 1, images);
+		if (!map) goto done;
+	}
 	const struct pg_evidence *source = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->source);
 	const struct pg_evidence *destination = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination);
-	if (!source || !destination) return NULL;
-	const struct pg_evidence **images = malloc(map->count * sizeof(*images));
-	if (map->count && !images) return NULL;
+	if (!source || !destination) goto done;
+	const struct pg_evidence **images = pg_alloc(&temporary, map->count * sizeof(*images));
+	if (map->count && !images) goto done;
 	for (size_t i = 0; i < map->count; ++i)
 		images[i] = pg_prove_structural_subject(typing, map->images[i]);
 	proof = pg_prove_substitution(typing, source, destination, map->count, images);
-	free(images);
+	for (; proof && lifts; lifts = lifts->parent) {
+		proof = pg_prove_substitution_lift(typing, proof,
+			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, lifts->map->source), lifts->map->destination->binder);
+		if (pg_evidence_context_map(proof) != lifts->map) { proof = NULL; break; }
+	}
+done:
+	pg_graph_destroy(&temporary);
 	return proof;
 }
 
@@ -274,6 +307,8 @@ static int structural_dependency(void *owner, const void *key, size_t index, con
 	struct pg_typing *typing = owner;
 	const struct pg_occurrence *subject = key;
 	if (pg_evidence_for_subject(typing, subject, NULL) || !subject->map) return 0;
+	if (!conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->map->destination) &&
+		!pg_prove_context_map(typing, subject->map)) return -1;
 	if (index > subject->map->count) return 0;
 	*child = index ? subject->map->images[index - 1] : subject->origin;
 	return 1;
@@ -3119,7 +3154,7 @@ const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
 	return body;
 }
 
-static int structural_input(struct pg_typing *typing, const struct pg_occurrence *source,
+static int direct_structural_input(struct pg_typing *typing, const struct pg_occurrence *source,
 	size_t index, const struct pg_occurrence **result)
 {
 	struct pg_occurrence_input *input = pg_occurrence_input_request(typing, source, index);
@@ -3129,6 +3164,13 @@ static int structural_input(struct pg_typing *typing, const struct pg_occurrence
 	/* Descriptive binder lifting may create a scope with no formation proof.
 	 * Retain the inversion recipe unless ordinary rules certify this view. */
 	if (*result && !pg_prove_structural_subject(typing, *result)) *result = NULL;
+	return status != PG_INPUT_ERROR;
+}
+
+static int structural_input(struct pg_typing *typing, const struct pg_occurrence *source,
+	size_t index, const struct pg_occurrence **result)
+{
+	if (!direct_structural_input(typing, source, index, result)) return 0;
 	if (!*result) {
 		const struct pg_reduction_certificate *receipt = subject_normalization(typing, source);
 		if (receipt) {
@@ -3137,7 +3179,7 @@ static int structural_input(struct pg_typing *typing, const struct pg_occurrence
 			if (normalized) *result = pg_evidence_subject(normalized);
 		}
 	}
-	return status != PG_INPUT_ERROR;
+	return 1;
 }
 
 /* Preserve an available typed child through context action. A computed result
@@ -3168,9 +3210,7 @@ static const struct pg_evidence *term_content(struct pg_typing *typing,
 	const struct pg_occurrence *subject = content_subject(typing, pg_evidence_subject(proof),
 		core->as.application.argument, classifier, judgement);
 	if (!subject) return NULL;
-	const struct pg_occurrence *input;
-	if (!structural_input(typing, pg_evidence_subject(proof), 0, &input)) return NULL;
-	if (subject != input && !subject->type) {
+	if (!subject->type && !pg_evidence_for_subject(typing, subject, NULL)) {
 		const struct pg_evidence *formation = formed_classifier(typing, NULL, proof);
 		formation = operation == &pg_return_operation ? pg_prove_return_content(typing, formation)
 			: pg_prove_thunk_content(typing, formation);
@@ -3305,7 +3345,10 @@ const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
 	default: return NULL;
 	}
 	if (pg_reduction_policy(certificate) != &pg_pure_policy) return NULL;
-	if (pg_reduction_source(certificate) != pg_evidence_subject(source)->core) return NULL;
+	/* Context action and evaluator readback can independently freshen bound
+	 * pointers. Alpha conversion preserves the typed source; it does not intern
+	 * the two graphs together or change any free binding or classifier. */
+	if (pg_alpha_equal(pg_reduction_source(certificate), pg_evidence_subject(source)->core) != 1) return NULL;
 	const struct pg_term *target = pg_reduction_target(certificate);
 	if (target == pg_evidence_subject(source)->core) return source;
 	const struct pg_occurrence *subject = pg_occurrence_derived(typing, pg_evidence_subject(source),
@@ -3321,18 +3364,18 @@ const struct pg_evidence *pg_prove_normalization_input(struct pg_typing *typing,
 {
 	if (!pg_evidence_owned_by(source, typing) || !certificate) return NULL;
 	const struct pg_occurrence *subject = pg_evidence_subject(source);
-	if (!subject || subject->origin || index >= subject->operand_count) return NULL;
+	if (!subject) return NULL;
 	if (pg_reduction_policy(certificate) != &pg_pure_policy || pg_reduction_source(certificate) != subject->core) return NULL;
-	const struct pg_occurrence *input = subject->operands[index];
-	if (input->context != subject->context && !pg_occurrence_scoped_input(subject, index)) return NULL;
+	const struct pg_occurrence *input;
+	if (!direct_structural_input(typing, subject, index, &input) || !input) return NULL;
 	/* Semantic operands occur at typed boundaries along the erased APP spine;
 	 * do not descend into a different operand just because its Core is shared. */
 	for (;;) {
 		const struct pg_reduction_phase *phase = pg_reduction_congruence(certificate);
 		if (!phase) return NULL;
-		if (pg_reduction_source(phase->children[0]) == input->core)
+		if (pg_alpha_equal(pg_reduction_source(phase->children[0]), input->core) == 1)
 			certificate = phase->children[0];
-		else if (phase->children[1] && pg_reduction_source(phase->children[1]) == input->core)
+		else if (phase->children[1] && pg_alpha_equal(pg_reduction_source(phase->children[1]), input->core) == 1)
 			certificate = phase->children[1];
 		else {
 			if (pg_reduction_source(certificate)->kind != PG_APPLICATION) return NULL;

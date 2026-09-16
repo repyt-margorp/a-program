@@ -342,7 +342,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, classifiers, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[17];
+	const struct pg_evidence *roots[18];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -407,8 +407,19 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 		pg_prove_projection(typing, fc, u));
 	roots[15] = pg_prove_substitution_lift(typing, pg_prove_substitution_projection(typing, empty, ca), hc, h);
 	roots[16] = pg_prove_reindex(typing, roots[15], pg_prove_variable(typing, hc, h));
-	for (size_t i = 0; i < 17; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 17, roots, name, classifiers) == 0);
+	/* Independent readback may freshen a bound pointer. Persist the receipt
+	 * against the original typed premise, not an erased-Core proof lookup. */
+	const struct pg_object *renamed = pg_binder(graph);
+	const struct pg_binding_value binding = {x, pg_reference(graph, renamed)};
+	const struct pg_term *original = pg_evidence_subject(under_lambda)->core;
+	const struct pg_term *alpha = pg_lambda(graph, renamed,
+		pg_substitution_compute(&typing->substitutions, original->as.lambda.body, 1, &binding));
+	assert(alpha != original && pg_alpha_equal(alpha, original) == 1);
+	nf = pg_nf_request(&work, &pg_pure_policy, alpha);
+	assert(nf && pg_nf_advance(nf, 10000) == PG_NF_DONE);
+	roots[17] = pg_prove_normalization(typing, under_lambda, pg_nf_certificate(nf));
+	for (size_t i = 0; i < 18; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 18, roots, name, classifiers) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -436,13 +447,13 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing, 1000, 100, resolve, classifiers, &count, &roots) == 0);
-	assert(count == 17 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 18 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[17];
+	struct pg_synthesis_job *jobs[18];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -491,6 +502,8 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	assert(pg_evidence_classifier(left) != pg_evidence_classifier(right));
 	assert(pg_reduction_kind(pg_evidence_normalization(pg_synthesis_result(jobs[3]))) == PG_REDUCTION_WHNF);
 	assert(pg_reduction_kind(pg_evidence_normalization(pg_synthesis_result(jobs[5]))) == PG_REDUCTION_NF);
+	assert(pg_alpha_equal(pg_evidence_subject(pg_synthesis_result(jobs[17]))->core,
+		pg_evidence_subject(pg_synthesis_result(jobs[5]))->core) == 1);
 	assert(pg_evidence_rule(pg_synthesis_result(jobs[6])) == PG_REFLEXIVITY);
 	const struct pg_evidence *fold_result = pg_synthesis_result(jobs[11]);
 	assert(pg_evidence_rule(pg_evidence_premise(fold_result, 0)) == PG_FOLD_ELIM);

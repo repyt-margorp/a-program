@@ -488,15 +488,26 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *weakened_app = pg_prove_application(&typing, weakened_function, y_term);
 	const struct pg_evidence *weakened_reduct = checked_normalize(&typing, &evaluation, weakened_app);
 	assert(weakened_reduct && pg_evidence_subject(weakened_reduct)->core == pg_evidence_subject(return_y)->core);
+	/* Alpha alignment may rename bound pointers, never free arguments. */
+	assert(!pg_prove_normalization(&typing, app, pg_evidence_normalization(weakened_reduct)));
 	/* Congruent NF exposes checked result inputs, not the source's redexes.
 	 * The Lambda body retains its extended context; RETURN/THUNK do not. */
 	const struct pg_evidence *suspended_app = pg_prove_thunk(&typing, &classifiers, app);
+	const struct pg_evidence *redex_lambda = pg_prove_lambda(&typing, pi_y, weakened_app);
+	const struct pg_evidence *nf_scope = pg_prove_context_extension(&typing, x_context, pg_binder(graph), a_in_x);
+	const struct pg_evidence *nf_images[] = {a_in_y, y_term};
+	const struct pg_evidence *nf_map = pg_prove_substitution(&typing, x_context, y_context, 2, nf_images);
+	assert(nf_scope && nf_map);
 	const struct pg_evidence *normal_inputs[] = {suspended_app,
 		pg_prove_return(&typing, &classifiers, suspended_app),
-		pg_prove_lambda(&typing, pi_y, weakened_app)};
+		redex_lambda, pg_prove_projection(&typing, nf_scope, suspended_app),
+		pg_prove_reindex(&typing, nf_map, suspended_app),
+		pg_prove_projection(&typing, nf_scope, redex_lambda),
+		pg_prove_reindex(&typing, nf_map, redex_lambda)};
 	const struct pg_term *input_results[] = {pg_evidence_subject(returned)->core,
-		pg_evidence_subject(delayed)->core, pg_evidence_subject(return_y)->core};
-	for (size_t i = 0; i < 3; ++i) {
+		pg_evidence_subject(delayed)->core, NULL, pg_evidence_subject(returned)->core,
+		pg_evidence_subject(return_y)->core, NULL, NULL};
+	for (size_t i = 0; i < sizeof(normal_inputs) / sizeof(*normal_inputs); ++i) {
 		assert(normal_inputs[i]);
 		struct pg_nf_job *nf = pg_nf_request(&evaluation, &pg_pure_policy,
 			pg_evidence_subject(normal_inputs[i])->core);
@@ -505,15 +516,27 @@ static void evidence_test(struct pg_graph *graph)
 		const struct pg_reduction_certificate *receipt = pg_nf_certificate(nf);
 		assert(pg_reduction_congruence(receipt));
 		const struct pg_evidence *input = pg_prove_normalization_input(&typing, normal_inputs[i], receipt, 0);
-		assert(input && pg_evidence_subject(input)->core == input_results[i]);
-		assert(pg_evidence_context(input) == pg_evidence_subject(normal_inputs[i])->operands[0]->context);
-		assert(pg_evidence_classifier(input) == pg_evidence_subject(normal_inputs[i])->operands[0]->classifier);
+		assert(input);
+		const struct pg_context *parent_scope = pg_evidence_context(normal_inputs[i]);
+		if (input_results[i]) {
+			assert(pg_evidence_subject(input)->core == input_results[i]);
+			assert(pg_evidence_context(input) == parent_scope);
+		} else {
+			const struct pg_term *lambda = pg_nf_result(nf);
+			assert(lambda->kind == PG_LAMBDA);
+			assert(pg_evidence_subject(input)->core == lambda->as.lambda.body);
+			assert(pg_evidence_context(input)->parent == parent_scope);
+			assert(pg_evidence_context(input)->binder == lambda->as.lambda.binder);
+		}
+		struct pg_occurrence_input *source_input = pg_occurrence_input_request(&typing, pg_evidence_subject(normal_inputs[i]), 0);
+		assert(pg_occurrence_input_advance(source_input, 0) == PG_INPUT_READY);
+		assert(pg_evidence_classifier(input) == pg_occurrence_input_result(source_input)->classifier);
 		reconstruct_derivation(&typing, &classifiers, input);
 		const struct pg_evidence *normal = pg_prove_normalization(&typing, normal_inputs[i], receipt);
 		assert(normal && pg_evidence_subject(normal)->origin == pg_evidence_subject(normal_inputs[i]));
 		assert(!pg_evidence_subject(normal)->operand_count);
-		if (i < 2) {
-			const struct pg_evidence *extraction = i ? pg_prove_return_value(&typing, normal)
+		if (input_results[i]) {
+			const struct pg_evidence *extraction = i == 1 ? pg_prove_return_value(&typing, normal)
 				: pg_prove_thunk_computation(&typing, normal);
 			assert(extraction && pg_evidence_subject(extraction) == pg_evidence_subject(input));
 			reconstruct_derivation(&typing, &classifiers, extraction);
@@ -1424,6 +1447,37 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(lifted_x && pg_evidence_subject(lifted_x)->core == pg_reference(graph, y));
 	assert(!pg_prove_substitution_lift(&typing, sigma, source_extension, y));
 	assert(!pg_prove_substitution_lift(&typing, sigma, destination, q));
+	/* A descriptive lift is checked by the same rule as an explicit lift. */
+	const struct pg_object *fresh = pg_binder(graph);
+	const struct pg_context_map *raw_lift = pg_context_map_lift(&typing,
+		pg_evidence_context_map(sigma), pg_evidence_context(source_extension), fresh);
+	assert(raw_lift);
+	const struct pg_evidence *checked = pg_prove_context_map(&typing, raw_lift);
+	assert(checked && pg_evidence_context_map(checked) == raw_lift);
+	assert(pg_prove_substitution_lift(&typing, sigma, source_extension, fresh) == checked);
+	const struct pg_occurrence *free_image = raw_lift->images[1];
+	assert(pg_occurrence_unproject(&typing, free_image, raw_lift->destination) == free_image);
+	assert(pg_occurrence_unproject(&typing, free_image, pg_evidence_context(destination)) ==
+		pg_evidence_subject(destination_y));
+	assert(!pg_occurrence_unproject(&typing, raw_lift->images[2], pg_evidence_context(destination)));
+	const struct pg_occurrence *wrong_variable = pg_occurrence_boundary(&typing,
+		free_image, PG_JUDGEMENT_VALUE, pg_evidence_subject(universe)->core);
+	assert(wrong_variable && !pg_occurrence_unproject(&typing, wrong_variable, pg_evidence_context(destination)));
+	const struct pg_context *wrong_scope = pg_context_bind(&typing, pg_evidence_context(destination),
+		pg_binder(graph), pg_evidence_subject(universe)->core, PG_JUDGEMENT_VALUE);
+	const struct pg_context_map *weakening = pg_context_map_projection(&typing, pg_evidence_context(destination), wrong_scope);
+	const struct pg_occurrence *wrong_images[] = {
+		pg_occurrence_projection(&typing, weakening, pg_evidence_subject(destination_b)),
+		pg_occurrence_projection(&typing, weakening, pg_evidence_subject(destination_y)),
+		pg_occurrence(&typing, PG_JUDGEMENT_VALUE, wrong_scope,
+			pg_reference(graph, wrong_scope->binder), wrong_scope->declared_type, NULL, 0, NULL)
+	};
+	const struct pg_context_map *wrong_lift = pg_context_map(&typing,
+		pg_evidence_context(source_extension), wrong_scope, 3, wrong_images);
+	assert(wrong_lift && !pg_prove_context_map(&typing, wrong_lift));
+	size_t lifted_proofs = typing.proofs.count, lifted_subjects = typing.occurrences.count;
+	assert(pg_prove_context_map(&typing, raw_lift) == checked);
+	assert(typing.proofs.count == lifted_proofs && typing.occurrences.count == lifted_subjects);
 	const struct pg_evidence *a_extended = pg_prove_variable(&typing, source_extension, a);
 	const struct pg_evidence *fa_extended = pg_prove_return_type(&typing, &classifiers, a_extended);
 	const struct pg_evidence *paired = pg_prove_substitution_pair(&typing, sigma, source_extension, destination_y);

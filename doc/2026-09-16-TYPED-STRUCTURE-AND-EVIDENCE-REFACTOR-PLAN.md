@@ -304,7 +304,7 @@ the complete matrix at R5, including retained/recomputed image modes.
 | Type/value view, conversion, widening | Unchanged construction children | Different conclusion boundary, not resynthesized operands |
 | Projection/reindex | Origin and typed context map; no direct operands | Effective inputs use shared context action, lifting under actual lexical binders. A substituted variable selects its typed image |
 | Pi/F/U type-component inversion | Source, selected ordinal, optional typed argument | Explicit selection recipe, not the result's children. A scoped codomain is instantiated by the argument, or restricted when constant |
-| Pure normalization and term-content inversion | Origin without stale direct operands | Result recipe, not immediate result structure. Congruent NF can now expose checked direct inputs through its receipts. Head-changing and mapped result exposure still needs shared/budgeted work |
+| Pure normalization and term-content inversion | Origin without stale direct operands | Result recipe, not immediate result structure. Congruent NF exposes checked direct and mapped inputs through shared input queries and receipts. Head-changing results and budgeted certification remain open |
 
 The last row prevents claiming the migration is complete: the erased reducer
 can finish while the typed result still needs exposure. Preserve this distinction
@@ -1516,3 +1516,44 @@ the same **179803 Terms / 416611 typed subjects / 433565 proofs / 537 body
 requests**. This does not establish a speedup or resolve the cumulative cost
 regression documented above. Logs: `/tmp/a-program-typed-structure-r26-debug.log`
 and `/tmp/a-program-typed-structure-r26-san-{core,iadt,synthesis,quicksort}.log`.
+
+### 2026-09-17: Scoped congruent NF inputs (R27)
+
+- [x] Use the shared structural input query for mapped NF inputs. Certify
+  descriptive binder lifts with the existing substitution-lift rule, requiring
+  the resulting map to equal the requested map exactly. Unproject declaration
+  variables only when the surviving declaration has the same sort/classifier.
+- [x] Align a reduction receipt with its typed premise by explicit alpha
+  comparison. Whole-term and child substitution can independently freshen
+  bound pointers. This does not rename free variables, intern alpha-equal Core,
+  change classifiers, or promote propositional Identity into conversion.
+- [x] Remove a duplicate input traversal in RETURN/THUNK content inversion.
+- [x] Test projection/nonidentity substitution under Lambda/THUNK, preserved
+  result scopes and classifiers, two distinct constructor field positions,
+  repeated lookup reuse, wrong lifted domains, removed variables and changed
+  free arguments. Fresh-process derivation Solve accepts alpha-aligned NF
+  receipts with chunks one/64; it still computes and checks the saved target.
+- [x] Debug acceptance passed through all final QuickSort source/image results
+  (63/63 compatibility). ASan/UBSan Core, IADT, derivation IO, synthesis and
+  imported QuickSort passed. No image format or new proof rule was added.
+
+Against `2a484c0`: implementation/header `evidence.c` +58/-15,
+`evidence.h` +3/-3, `typing.c` +6/-0, `typing.h` +2/-1: net **+50**,
+cumulative **+1435** against `4657cc6`. Tests are +96/-13. The net-negative
+gate remains unmet; this is not completion of R3 or R5.
+
+Sequential O0 QuickSort samples: R26 **1.0593 s / 276548 KiB / 132011 steps**;
+R27 **1.0722 s / 276112 KiB / 131899 steps**. R27 retained **179362 Terms /
+415826 typed subjects / 435123 proofs / 537 body requests**, versus R26
+179803/416611/433565/537. Fewer typed subjects but more checked derivations do
+not establish a speedup or resolve the baseline memory regression. Logs are
+`/tmp/a-program-typed-structure-r27-debug.log` and
+`/tmp/a-program-typed-structure-r27-san-{core,iadt,derivation,synthesis,quicksort}.log`.
+
+Remaining: receipt traversal/final certification are synchronous; nested
+normalization recipes and head-changing beta/iota result exposure are not
+generalized. Constructor NF input tests validate the checked input API, not
+`constructor_origin` rebuilding a dependent constructor with normalized fields.
+That consumer still needs coherent field-classifier conversion before replacing
+its source-field reconstruction. Full final optimized/sanitized acceptance,
+representation-cost reduction and Main publication remain outstanding.

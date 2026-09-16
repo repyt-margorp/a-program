@@ -1439,6 +1439,12 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 	const struct pg_evidence *params = pg_prove_substitution_projection(typing, empty, context);
 	const struct pg_evidence *left = pg_prove_constructor(typing, pair, ctor, params, 2, values);
 	const struct pg_evidence *right = pg_prove_constructor(typing, pair, ctor, params, 2, reverse);
+	const struct pg_evidence *redexes[2];
+	for (size_t i = 0; i < 2; ++i)
+		redexes[i] = pg_prove_total_pure_value(typing,
+			pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, values[i]));
+	const struct pg_evidence *redex_pair = pg_prove_constructor(typing, pair, ctor, params, 2, redexes);
+	assert(redex_pair);
 	context = pg_prove_context_extension(typing, context, p,
 		pg_prove_identity_type(typing, pg_prove_projection(typing, context, pair), left, right));
 	assert(context);
@@ -1447,6 +1453,16 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 		struct pg_synthesis synthesis;
 		assert(!pg_whnf_work_init(&work, typing->graph));
 		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(redex_pair)->core);
+		while (pg_nf_advance(nf, chunk) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
+		assert(pg_nf_result(nf) == pg_evidence_subject(left)->core);
+		for (size_t i = 0; i < 2; ++i) {
+			const struct pg_evidence *field = pg_prove_normalization_input(typing, redex_pair, pg_nf_certificate(nf), i);
+			assert(field && pg_evidence_subject(field)->core == pg_evidence_subject(values[i])->core);
+			assert(pg_evidence_context(field) == pg_evidence_context(values[i]));
+			assert(pg_evidence_classifier(field) == pg_evidence_classifier(values[i]));
+		}
+		assert(!pg_prove_normalization_input(typing, redex_pair, pg_nf_certificate(nf), 2));
 		struct pg_synthesis_job *jobs[2];
 		for (size_t i = 0; i < 2; ++i) {
 			const struct pg_evidence *lv = pg_prove_projection(typing, context, values[i]);
