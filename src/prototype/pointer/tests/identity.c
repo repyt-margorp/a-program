@@ -982,8 +982,25 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 	const struct pg_evidence *source = pg_prove_context_extension(typing, empty, a,
 		pg_prove_universe(typing, classifiers, empty, 0));
 	source = pg_prove_context_extension(typing, source, b, pg_prove_universe(typing, classifiers, source, 0));
-	const struct pg_evidence *relation = pg_prove_identity_type(typing, pg_prove_universe(typing, classifiers, source, 0),
+	const struct pg_evidence *universe = pg_prove_universe(typing, classifiers, source, 0);
+	const struct pg_evidence *alternate = pg_prove_return_content(typing,
+		pg_prove_return_type(typing, classifiers, universe));
+	assert(alternate && alternate != universe && pg_evidence_subject(alternate) == pg_evidence_subject(universe));
+	const struct pg_evidence *relation = pg_prove_identity_type(typing, alternate,
 		pg_prove_variable(typing, source, a), pg_prove_variable(typing, source, b));
+	/* Boundary inspection must not reconstruct the same theorem using the
+	 * first available child derivation instead of the supplied one. */
+	size_t proofs = typing->proofs.count, subjects = typing->occurrences.count;
+	assert(pg_identity_formation(typing, classifiers, relation) == relation);
+	assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
+	const struct pg_evidence *other_relation = pg_prove_identity_type(typing, universe,
+		pg_prove_variable(typing, source, a), pg_prove_variable(typing, source, b));
+	assert(other_relation && other_relation != relation);
+	assert(pg_evidence_subject(other_relation) == pg_evidence_subject(relation));
+	proofs = typing->proofs.count;
+	assert(pg_identity_formation(typing, classifiers, other_relation) == relation);
+	assert(typing->proofs.count == proofs);
+	assert(pg_evidence_for_subject(typing, pg_evidence_subject(relation), relation) == other_relation);
 	source = pg_prove_context_extension(typing, source, r, relation);
 	const struct pg_evidence *r_value = pg_prove_variable(typing, source, r);
 	const struct pg_evidence *square_type = pg_prove_identity_type(typing,

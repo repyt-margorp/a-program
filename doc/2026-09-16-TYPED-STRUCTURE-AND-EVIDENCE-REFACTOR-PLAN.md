@@ -140,7 +140,7 @@ Temporary adapters are permitted within a phase, not as permanent fallbacks.
 
 | State | Phase | Changes and completion evidence |
 |---|---|---|
-| [ ] | R0 Contracts and baseline | Record current tests, per-file LOC, time/memory/work counters. Classify every occurrence producer and Evidence structural consumer. Specify child roles/scopes for each semantic owner, including type families and Identity. Pin conversion/normalization behavior. |
+| [x] | R0 Contracts and baseline | Baseline `4657cc6` debug acceptance, LOC ledger and source/image timing/work/memory matrix are recorded below. The R35 publisher audit covers each node producer and the structural consumers; the role/scope table and deletion ledger specify their contracts and remaining migrations. This closes the audit, not R2-R5 implementation or the final measurements. |
 | [x] | R1 Typed conclusions | Term conclusions have one typed-subject reference; classifier/context/sort accessors delegate to it. All rules publish through `accept_record`; Context and Substitution retain their distinct conclusions. Exact interning and alternative derivations are preserved. Verified by the R29 structural audit and acceptance tests below; this does not complete R2/R3. |
 | [ ] | R2 Context action | Migrate projection/reindex to the same typed structure with explicit effective child maps. Use existing substitution work and binder lifting. Verify repeated lookup sharing, capture avoidance, dependent classifiers and chunked execution. |
 | [ ] | R3 Structural and formation consumers | Move `return_value_origin`, `pi_component`, constructor/inductive recovery and classifier recovery to checked views. Keep theorem-specific inversions where required. Replace structural wrapper walks in `function_graph.c`, `action.c` and `synthesis.c`; remove replaced paths in the same phase. |
@@ -292,15 +292,18 @@ the complete matrix at R5, including retained/recomputed image modes.
 | Producer family | Current operands | Required interpretation |
 |---|---|---|
 | Universe, host leaf, variable, nominal family | None | Leaf; classifier/context remain part of the typed use |
-| APP, family APP, RETURN, THUNK, FORCE | Direct construction inputs | Ordered children in the enclosing scope; each term introduction retains its classifier formation |
-| Request, zero-clause Fold, handler | Payload/continuation; input/continuation; input/return clause/operation clauses | Clause functions are typed inputs in the enclosing context. Their nested Lambda bodies retain lexical scopes; labels remain semantic-owner inputs |
-| Lambda/family abstraction | Body in an extended context | The body edge must retain its lexical extension when a map is lifted |
-| Pi | Checked value-domain formation, or declared family variable; checked codomain | Value domain is in the parent scope; family variable and codomain are in the extended scope. A logical signature is not an ordinary value type |
+| APP, family APP, RETURN, THUNK, FORCE | APP `[function, argument]`; unary terms `[content]` | Ordered children in the enclosing scope; each term introduction retains its classifier formation |
+| Request, zero-clause Fold, handler | `[payload, continuation]`; `[input, continuation]`; `[input, return clause, operation clauses...]` | Clause functions are typed inputs in the enclosing context. Their nested Lambda bodies retain lexical scopes; labels remain semantic-owner inputs |
+| Lambda/family abstraction | `[body]` in an extended context | The body edge must retain its lexical extension when a map is lifted |
+| Pi | `[value-domain formation or declared family variable, codomain]` | Value domain is in the parent scope; family variable and codomain are in the extended scope. A logical signature is not an ordinary value type |
+| F/U formation | `[value type]` / `[computation type]` | Enclosing context. Effect row and totality grade remain explicit semantic-owner inputs, not extra proof children |
 | Constructor | Field occurrences and retained classifier formation | The classifier retains the instantiated nominal family. Recover its exact formation and parameter map through typed structure; fields are not read from arbitrary proof premises |
-| Match/induction | Scrutinee, branches, motive, nominal formation; parameter map | Motive and branch functions retain their own telescopes. Recursive allocation binders/clause contexts belong to the typed node, not a second Evidence payload |
-| Type case | Scrutinee and branch families | These are type-valued branches, not runtime handler clauses. Checking still needs the nominal declaration and branch telescopes |
-| Identity/termination formation and witness | Explicit family/type, endpoint or suspended-term inputs, as appropriate to the owner | Logical construction inputs are not interchangeable with erased APP operands; endpoint-type inversion retains its relation witness. Interpret a view only after validating its semantic owner |
-| Selected family Identity/action | Family, paths, endpoints and two context maps; action source and formed Identity | Selected maps and typed scopes are retained independently of which accepted derivation is used; no equality reflection |
+| Match/induction | `[scrutinee, branches..., motive, nominal formation]`; one parameter map | Scrutinee/branch functions are in the enclosing context; motive has its explicit telescope and nominal formation retains its declaration context. Recursive allocation binders/clause contexts belong to the typed node, not a second Evidence payload |
+| Type case | `[scrutinee, branch families...]` | Enclosing context; these are type-valued branches, not runtime handler clauses. Checking still needs the nominal declaration and branch telescopes |
+| Identity formation/instance | `[type or relation witness, left, right]` | Enclosing context; the type/relation distinction is typed, not inferred from erased APP arity |
+| Identity endpoints, reflexivity, transport/lift | `[relation witness]`, `[term]`, `[relation witness, value]` respectively | Enclosing context. Endpoint inversion retains its relation witness; reflexivity retains its formed Identity separately as the classifier |
+| Termination and total-result | Termination type `[thunk type, suspended]`, witness `[suspended]`, total-result `[computation]` | Enclosing context. No purity or termination follows from descriptive allocation |
+| Selected family Identity/action | `[family, paths..., left, right]` and two maps; action `[source term, formed Identity]` | The family/source retain the source context of the maps; paths/endpoints live in their common destination. No equality reflection |
 | Type/value view | Original typed subject; no copied inputs/maps/allocation | Exact type/value round trips reuse the original subject; both derivations remain. Restriction restores the requested sort through the ordinary rules |
 | Conversion, widening | Original typed subject and target formation; no copied operands | Reference the original construction even if only the classifier formation changes, not its Core. Attaching descriptive formation metadata during image read is a separate operation |
 | Projection/reindex | Origin and typed context map; no direct operands | Effective inputs use shared context action, lifting under actual lexical binders. A substituted variable selects its typed image |
@@ -335,6 +338,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `typed_construction` | Deleted in R30. Conversion/widening retain their source typed use; checked construction access retrieves existing evidence. R32 removes operand/map/allocation copying from sort and content boundaries too. General result exposure remains open |
 | Metadata attachment copies | R34 deletes `pg_occurrence_classified`, `pg_occurrence_with_maps` and `pg_occurrence_with_induction`. Match/Identity construction and image read intern complete tuples once. Inversion may still attach a newly obtained classifier to an existing descriptive selection; that distinct formation is not discarded |
 | `action.c:origin_step` | Reads typed origins/maps; does not reinterpret derivation wrappers |
+| `action.c:identity_structure` | R35 removes repeated introduction of the same Identity theorem. Looks up a compatible accepted formation of the exact typed subject; different derivations remain available. Checked transport/rebuilding in a changed context is still required |
 | `derivation.c:pg_prove_derivation` | Intentionally retained: verifies rule inputs rather than interpreting program structure |
 
 Baseline source LOC at `4657cc6`: `evidence.c` 4343, `typing.c` 129,
@@ -1832,3 +1836,41 @@ In particular, the common typed-body machine does not yet expose Match results;
 recursive branch inspection requires checked classifier/induction services and
 must not instantiate a second classifier owner merely to reuse a function.
 R2-R5 and the whole-change net-negative gate remain open.
+
+### 2026-09-17: Reuse accepted Identity formations (R35)
+
+- [x] Remove Identity introduction reconstruction from `action.c`. Boundary
+  inspection selects an accepted Identity formation by the exact typed subject;
+  it does not look up an arbitrary same-Core term or replace other derivations.
+  The existing boundary-view rule check distinguishes the applicable theorem.
+- [x] Construct an Identity using a non-first derivation of its family, then
+  inspect it without adding proof or subject records. The test fails on R34,
+  which reconstructs the theorem with the first child receipt instead. A second
+  valid derivation of the same Identity remains independently retrievable.
+- [x] Recheck all occurrence-construction calls outside tests: only `typing.c`,
+  `evidence.c` and inert `occurrence_io.c` publish these records. Each accepted
+  producer is classified in the role/scope table above, including family
+  abstractions, family-domain Pi, selected Identity, endpoint inversion and
+  F/U. Structural query helpers create descriptive maps/results, not acceptance.
+  The original named consumers are covered by the deletion ledger. General
+  head-changing/scoped normalized results remain explicitly unfinished.
+- [x] Revalidate the R0 baseline evidence: the recorded `4657cc6` debug log
+  ends with the full QuickSort source/image comparisons; the earlier LOC ledger
+  and expanded source/zero-work-image matrix retain that baseline. R0 is an
+  audit gate and is now closed. R5 still requires final repeated measurements,
+  all build modes and net-negative implementation/header LOC.
+- [x] Full debug acceptance passed, including 63/63 compatibility and final
+  QuickSort source/image comparisons. ASan/UBSan Identity, Core, synthesis,
+  Identity transport and imported QuickSort passed. These checkpoint checks do
+  not replace R5's final fixed-snapshot gates.
+
+Regression log: `/tmp/a-program-typed-structure-r35-identity-before.log`.
+No new logical rule, typed record, image version or query index was introduced.
+
+Against `ec1cf7c`, `action.c` is +11/-28 (**-17** implementation lines),
+and `tests/identity.c` is +18/-1 (**+17** test lines). Cumulative
+implementation/header delta remains **+1420** against `4657cc6`; the whole-change
+reduction target is still unmet. A sequential O0 QuickSort diagnostic run took
+1.0674 seconds / 276120 KiB / 132079 Solve transitions. This is not a speedup
+claim. Acceptance log: `/tmp/a-program-typed-structure-r35-debug.log`;
+sanitizer QuickSort log: `/tmp/a-program-typed-structure-r35-san-quicksort.log`.

@@ -90,35 +90,18 @@ static int formation_origin_step(struct pg_typing *typing, struct formation_orig
 	return origin_step(typing, &origin->family, &origin->family_map);
 }
 
-/* Certify the selected structural boundary using the existing Identity rules.
- * Operand roles and maps come from the typed node, never a receipt's layout. */
+/* Select an already accepted Identity formation of this exact typed subject.
+ * Alternative premises remain valid; inspecting a boundary does not rebuild
+ * its theorem with whichever child receipts happen to be found first. */
 static const struct pg_evidence *identity_structure(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_occurrence *subject)
+	const struct pg_occurrence *subject)
 {
-	if (!subject || subject->origin || subject->operand_count < 3) return NULL;
-	size_t count = subject->operand_count - 3;
-	const struct pg_evidence *family = pg_prove_structural_subject(typing, subject->operands[0]);
-	const struct pg_evidence *left = pg_prove_structural_subject(typing, subject->operands[count + 1]);
-	const struct pg_evidence *right = pg_prove_structural_subject(typing, subject->operands[count + 2]);
-	const struct pg_evidence *result = NULL;
-	if (subject->map_count == 2) {
-		struct pg_graph temporary = {0};
-		const struct pg_evidence **paths = pg_alloc(&temporary, count * sizeof(*paths));
-		if (paths) {
-			for (size_t i = 0; i < count; ++i) paths[i] = pg_prove_structural_subject(typing, subject->operands[i + 1]);
-			const struct pg_context_map *const *maps = pg_occurrence_maps(subject);
-			result = pg_prove_family_identity_type(typing, family, pg_prove_context_map(typing, maps[0]),
-				pg_prove_context_map(typing, maps[1]), count, paths, left, right);
-		}
-		pg_graph_destroy(&temporary);
-	} else if (!subject->map_count && !count && family) {
-		result = pg_evidence_judgement(family) == PG_JUDGEMENT_VALUE
-			? pg_prove_identity_instance(typing, classifiers, family, left, right)
-			: pg_prove_identity_type(typing, family, left, right);
+	for (const struct pg_evidence *proof = pg_evidence_for_subject(typing, subject, NULL);
+		proof; proof = pg_evidence_for_subject(typing, subject, proof)) {
+		struct pg_identity_boundary boundary;
+		if (pg_identity_boundary_view(proof, &boundary)) return proof;
 	}
-	if (!result || pg_evidence_context(result) != subject->context ||
-		pg_alpha_equal(pg_evidence_subject(result)->core, subject->core) != 1) return NULL;
-	return result;
+	return NULL;
 }
 
 static const struct pg_evidence *rebuild_family(struct pg_typing *typing,
@@ -143,7 +126,7 @@ static const struct pg_evidence *rebuild_family(struct pg_typing *typing,
 static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct formation_origin *origin)
 {
-	const struct pg_evidence *formation = identity_structure(typing, classifiers, origin->term), *map = origin->map;
+	const struct pg_evidence *formation = identity_structure(typing, origin->term), *map = origin->map;
 	if (!formation) return NULL;
 	enum pg_evidence_rule rule = pg_evidence_rule(formation);
 	struct pg_identity_boundary boundary;
@@ -163,7 +146,7 @@ static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
 			rule = PG_IDENTITY_FORM;
 		} else if (family->operand_count == 2 && family->operands[1]->map_count == 2) {
 			struct pg_identity_boundary action;
-			if (!pg_identity_boundary_view(identity_structure(typing, classifiers, family->operands[1]), &action)) return NULL;
+			if (!pg_identity_boundary_view(identity_structure(typing, family->operands[1]), &action)) return NULL;
 			const struct pg_evidence *term = pg_prove_structural_subject(typing, family->operands[0]);
 			const struct pg_evidence *checked = pg_prove_family_action(typing, action.family, term,
 				action.left_substitution, action.right_substitution, action.path_count, action.paths);
