@@ -187,6 +187,10 @@ enum pg_occurrence_input_status { PG_INPUT_PENDING, PG_INPUT_READY,
 	PG_INPUT_UNAVAILABLE, PG_INPUT_ERROR };
 struct pg_occurrence_input *pg_occurrence_input_request(struct pg_typing *typing,
 	const struct pg_occurrence *source, size_t index);
+/* Request an input under an outer action without constructing the mapped
+ * parent. Scoped binders may differ from a separately mapped closed Core. */
+struct pg_occurrence_input *pg_occurrence_input_mapped_request(struct pg_typing *typing,
+	const struct pg_occurrence *source, size_t index, const struct pg_context_map *map);
 struct pg_occurrence_input *pg_occurrence_type_request(struct pg_typing *typing,
 	const struct pg_occurrence *source);
 /* The budget includes transitions of selected-input dependencies; nested

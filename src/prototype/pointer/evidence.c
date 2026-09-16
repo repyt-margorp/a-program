@@ -2008,9 +2008,10 @@ static const struct pg_evidence *elimination_instance(struct pg_typing *typing,
 	if (elimination_structure(typing, elimination, &view)) return NULL;
 	if (!pg_evidence_owned_by(substitution, typing) || substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (pg_evidence_context(substitution->premises[0]) != pg_evidence_context(elimination)) return NULL;
-	const struct pg_evidence *mapped = pg_prove_reindex(typing, substitution, elimination);
-	const struct pg_occurrence *input;
-	if (!mapped || !structural_input(typing, pg_evidence_subject(mapped), view.count + 1, &input)) return NULL;
+	struct pg_occurrence_input *query = pg_occurrence_input_mapped_request(typing,
+		view.subject, view.count + 1, pg_evidence_context_map(substitution));
+	while (pg_occurrence_input_advance(query, 1024) == PG_INPUT_PENDING) {}
+	const struct pg_occurrence *input = pg_occurrence_input_result(query);
 	const struct pg_evidence *motive = input ? pg_prove_structural_subject(typing, input) : NULL;
 	if (!motive) return NULL;
 	struct pg_graph temporary = {0};

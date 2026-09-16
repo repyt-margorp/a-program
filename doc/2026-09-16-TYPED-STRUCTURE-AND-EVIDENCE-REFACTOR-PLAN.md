@@ -2000,3 +2000,43 @@ open its motive. This is a remaining avoidable construction cost, not a speedup;
 future shared scope-action work should request the input under its map directly
 without fabricating an unverified mapped parent. Keep the declaration-scope and
 exact weakening regressions when removing that intermediate construction.
+
+### 2026-09-17: Request mapped inputs without rebuilding parents (R39)
+
+- [x] Add an optional outer context map to the existing shared input request.
+  Exact `(subject, input index, map)` requests share work. Mismatched source
+  contexts reject; the query publishes no acceptance evidence. Scoped inputs
+  retain capture avoidance, dependent telescope action and declaration scope.
+- [x] Remove the whole-eliminator reindex previously needed to obtain its
+  motive. `elimination_instance` requests that input under the substitution
+  directly and checks it with ordinary structural/context rules. There is no
+  fabricated parent, second work graph, new logical rule or wire change.
+- [x] Test mapped Lambda and dependent indexed motives, zero/chunked budgets,
+  completed request reuse, exact motive identity, source-map rejection and
+  absence of evidence publication during structural queries. An opened Lambda
+  binder can differ from a separately substituted closed Lambda's binder;
+  compare the closed terms modulo alpha, not by interning them together.
+- [x] Full debug acceptance passed, including 63/63 compatibility and final
+  QuickSort source/image properties. ASan/UBSan Core, IADT, Identity, synthesis
+  and imported QuickSort passed.
+
+Against `6119f8a`: `evidence.c` +4/-3, `typing.c` +25/-10, `typing.h` +4/-0;
+implementation/header **+20**, cumulative **+1562** against `4657cc6`.
+Tests: `core.c` +9/-0, `iadt.c` +15/-0. R2-R5 and net-negative acceptance
+remain open; this checkpoint removes unnecessary construction, not the
+remaining structural recovery adapters.
+
+Sequential O0 QuickSort: 1.0880 seconds / 275760 KiB / 132053 Solve transitions.
+Counts: 178449 Terms / 415460 typed subjects / 434771 proofs / 506 body requests /
+3458 input requests. Compared with R38, Terms decrease by 2669, typed subjects
+and proofs by nine each. Time and memory remain similar; no speedup is claimed.
+Logs: `/tmp/a-program-typed-structure-r39-debug.log`,
+`/tmp/a-program-typed-structure-r39-san-{core,iadt,identity,synthesis,quicksort}.log`.
+
+Remaining scope prerequisite: checked family lifting allocates its signature's
+index binders independently of structural signature substitution. Consequently
+alpha-equivalent signatures can still produce different exact destination
+contexts/maps. Do not relax exact map checking or treat a family signature as
+a value type to bypass this. A shared signature/telescope allocation contract
+must account for ambient binder collisions and nested family parameters before
+removing that fallback.

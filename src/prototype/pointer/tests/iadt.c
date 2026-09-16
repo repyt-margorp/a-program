@@ -867,6 +867,20 @@ static void indexed_match(void)
 	const struct pg_evidence *renamed_values[] = {
 		pg_prove_variable(&typing, renamed_xc, renamed_a), pg_prove_variable(&typing, renamed_xc, renamed_x)};
 	const struct pg_evidence *renaming = pg_prove_substitution(&typing, xc, renamed_xc, 2, renamed_values);
+	struct pg_occurrence_input *mapped_input = pg_occurrence_input_mapped_request(&typing,
+		structure, 2, pg_evidence_context_map(renaming));
+	size_t before_input = typing.proofs.count, before_terms = graph.terms.count;
+	assert(mapped_input && pg_occurrence_input_advance(mapped_input, 0) == PG_INPUT_PENDING);
+	assert(graph.terms.count == before_terms);
+	while (pg_occurrence_input_advance(mapped_input, 1) == PG_INPUT_PENDING) {}
+	const struct pg_occurrence *mapped_motive = pg_occurrence_input_result(mapped_input);
+	assert(mapped_motive && typing.proofs.count == before_input);
+	assert(pg_occurrence_input_mapped_request(&typing, structure, 2, pg_evidence_context_map(renaming)) == mapped_input);
+	uint64_t input_steps = pg_occurrence_input_steps(mapped_input);
+	assert(pg_occurrence_input_advance(mapped_input, 64) == PG_INPUT_READY);
+	assert(pg_occurrence_input_steps(mapped_input) == input_steps);
+	assert(!pg_occurrence_input_mapped_request(&typing, structure, 2, pg_evidence_context_map(parameters)));
+	assert(!pg_occurrence_input_mapped_request(&typing, structure, 2, NULL));
 	const struct pg_evidence *renamed_match = pg_prove_elimination_reindex(&typing, &classifiers, renaming, match);
 	const struct pg_evidence *mapped_match = pg_prove_reindex(&typing, renaming, match);
 	assert(renamed_match && mapped_match && pg_evidence_rule(renamed_match) == PG_MATCH_ELIM);
@@ -876,6 +890,7 @@ static void indexed_match(void)
 	assert(pg_occurrence_maps(renamed_structure)[0]->destination == pg_evidence_context(renamed_xc));
 	assert(renamed_structure->operands[3] == structure->operands[3]);
 	assert(renamed_structure->operands[2]->context != structure->operands[2]->context);
+	assert(renamed_structure->operands[2] == mapped_motive);
 	assert(pg_alpha_equal(pg_evidence_subject(renamed_match)->core, pg_evidence_subject(mapped_match)->core) == 1);
 	assert(pg_alpha_equal(pg_evidence_classifier(renamed_match), pg_evidence_classifier(mapped_match)) == 1);
 	common_rule(&typing, &classifiers, renamed_match);

@@ -1343,6 +1343,15 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(mapped_lambda->context == function_map->destination && typing.proofs.count == before_action);
 	assert(mapped_lambda->core->kind == PG_LAMBDA);
 	assert(mapped_lambda->core->as.lambda.binder != x);
+	struct pg_occurrence_input *under_map = pg_occurrence_input_mapped_request(&typing,
+		pg_evidence_subject(function), 0, function_map);
+	while (pg_occurrence_input_advance(under_map, 1) == PG_INPUT_PENDING) {}
+	const struct pg_occurrence *under_body = pg_occurrence_input_result(under_map);
+	assert(under_body && under_body->context->parent == function_map->destination);
+	assert(!pg_context_lookup(function_map->destination, under_body->context->binder));
+	assert(pg_alpha_equal(pg_lambda(graph, under_body->context->binder, under_body->core), mapped_lambda->core) == 1);
+	assert(typing.proofs.count == before_action);
+	assert(pg_occurrence_input_mapped_request(&typing, pg_evidence_subject(function), 0, function_map) == under_map);
 	const struct pg_context_map *body_map = pg_context_map_lift(&typing, function_map,
 		pg_evidence_context(source), mapped_lambda->core->as.lambda.binder);
 	assert(body_map && body_map->source == pg_evidence_context(source));
