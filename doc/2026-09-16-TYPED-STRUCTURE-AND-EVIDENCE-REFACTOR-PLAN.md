@@ -801,3 +801,32 @@ or a speedup claim. Current counts: 405313 occurrences, 496977 derivations,
 406356 conclusion keys, 39769 context maps, 103154 occurrence actions, 3097
 input queries, 14921 contexts and 175371 Core terms. Final time/memory gates
 and the remaining physical deletions are still required.
+
+### 2026-09-17: Constructor structural access
+
+- [x] Replace `constructor_origin`'s receipt-rule switch with typed constructor
+  inputs and the shared construction-origin/context-map path. Validate the
+  constructor spine against those inputs, obtain the nominal instance from
+  its retained classifier, and certify transported fields with existing rules.
+  Derived Return results use the typed returned-value path. Remove the now
+  unused `evidence_map` history helper; do not retain the old constructor walk.
+- [x] Extend IADT tests with exact field extraction through normalized Fold
+  and captured scopes, invalid field rejection, and 100 repeated requests
+  without additional Terms or derivations.
+- [x] Full debug `check-acceptance` passed again (63/63 compatibility and
+  source/image QuickSort properties); ASan/UBSan IADT and Identity passed.
+- [ ] Nominal classifier recovery still uses `inductive_recovery_step` and
+  Pi-component/rebase helpers. Moving constructor operands is not completion
+  of that remaining formation migration.
+
+Against `e19f72f`: `evidence.c` +41/-43 (-2), `tests/iadt.c` +13/-0 (+13).
+Cumulative implementation delta is **+840**. A single debug QuickSort run was
+1.478 seconds, 272484 KiB peak RSS and 154851 Solve transitions; no performance
+improvement claim follows from this single run. Main remains unpublished.
+
+The next deletion prerequisites are explicit: Match/induction must retain its
+typed motive and recursive clause scopes, not only scrutinee/branches/output;
+dependent Identity must retain its selected left/right structural maps, not
+only family/paths/endpoints. Their current presence in acceptance premises is
+not redundant evidence to discard. General constant-codomain strengthening
+also needs a scoped structural representation before removing Pi recovery.

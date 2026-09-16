@@ -1926,6 +1926,15 @@ static void schema_positivity(void)
 			pg_whnf_request(&constructor_work, &pg_pure_policy, pg_evidence_subject(sequenced)->core));
 		const struct pg_evidence *returned = pg_prove_return_value(&typing,
 			pg_prove_normalization(&typing, sequenced, receipt));
+		const struct pg_evidence *field = pg_prove_constructor_field(&typing, returned, x);
+		assert(field && pg_evidence_context(field) == NULL);
+		assert(pg_evidence_subject(field)->core == pg_evidence_subject(i ? succ : zero)->core);
+		assert(pg_evidence_classifier(field) == pg_evidence_subject(nat)->core);
+		assert(!pg_prove_constructor_field(&typing, returned, self));
+		size_t field_proofs = typing.proofs.count, field_terms = graph.terms.count;
+		for (size_t j = 0; j < 100; ++j)
+			assert(pg_prove_constructor_field(&typing, returned, x) == field);
+		assert(typing.proofs.count == field_proofs && graph.terms.count == field_terms);
 		const struct pg_evidence *selected = pg_prove_match(&typing, &classifiers,
 			nat, identity, returned, z_context, nat_motive, 2, pred_branches);
 		assert(returned && selected);
@@ -1950,6 +1959,10 @@ static void schema_positivity(void)
 		while (pg_whnf_advance(state, 64) == PG_EVAL_PENDING) assert(pg_whnf_steps(state) < 100000);
 		const struct pg_evidence *scoped_value = pg_prove_return_value(&typing,
 			pg_prove_normalization(&typing, scoped, pg_whnf_certificate(state)));
+		const struct pg_evidence *scoped_field = pg_prove_constructor_field(&typing, scoped_value, x);
+		assert(scoped_field && pg_evidence_context(scoped_field) == pg_evidence_context(n_context));
+		assert(pg_evidence_subject(scoped_field)->core == pg_evidence_subject(i ? twice : succ)->core);
+		assert(pg_evidence_classifier(scoped_field) == pg_evidence_subject(nat)->core);
 		const struct pg_evidence *scoped_branches[] = {
 			pg_evidence_premise(mapped, 5), pg_evidence_premise(mapped, 6)};
 		const struct pg_evidence *scoped_match = pg_prove_match(&typing, &classifiers, nat, map,
