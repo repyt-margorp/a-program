@@ -156,9 +156,6 @@ static int derived_output(enum pg_evidence_rule rule)
 
 static const void *certificate_key(enum pg_evidence_rule rule, const void *certificate)
 {
-	/* Allocation records preserve the first construction of this derivation;
-	 * explicit reconstruction checks conflicts before returning that proof. */
-	if (rule == PG_INDUCTION_ELIM) return NULL;
 	/* Schema wrappers attest premises; they do not introduce another family. */
 	return rule == PG_INDUCTIVE_FORM ? pg_data_schema_declaration(certificate) : certificate;
 }
@@ -328,7 +325,7 @@ const struct pg_object *pg_evidence_constructor(const struct pg_evidence *eviden
 
 const struct pg_induction_allocation *pg_evidence_induction_allocation(const struct pg_evidence *evidence)
 {
-	return evidence && evidence->rule == PG_INDUCTION_ELIM ? evidence->certificate : NULL;
+	return evidence && evidence->rule == PG_INDUCTION_ELIM ? pg_evidence_subject(evidence)->induction : NULL;
 }
 
 const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
@@ -1802,8 +1799,8 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 	struct pg_induction_allocation *saved = NULL;
 	const struct pg_context **contexts = NULL;
 	if (rule == PG_INDUCTION_ELIM) {
-		saved = pg_alloc(typing->graph, sizeof(*saved));
-		contexts = pg_alloc(typing->graph, count * sizeof(*contexts));
+		saved = pg_alloc(&temporary, sizeof(*saved));
+		contexts = pg_alloc(&temporary, count * sizeof(*contexts));
 		if (!saved || (count && !contexts)) goto done;
 		*saved = (struct pg_induction_allocation){
 			.recursion = allocation ? allocation->recursion : pg_binder(typing->graph),
@@ -1840,9 +1837,10 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_COMPUTATION, core, pg_evidence_subject(output), NULL, count + 3, operands);
 	const struct pg_context_map *parameter_map = pg_evidence_context_map(parameters);
 	subject = pg_occurrence_with_maps(typing, subject, 1, &parameter_map);
+	if (saved) subject = pg_occurrence_with_induction(typing, subject, saved);
 	if (!subject) goto done;
 	result = accept_record(typing, rule,
-		pg_evidence_context(destination), subject, count + 6, premises, saved, NULL);
+		pg_evidence_context(destination), subject, count + 6, premises, NULL, NULL);
 done:
 	pg_graph_destroy(&temporary);
 	return result;

@@ -1879,6 +1879,8 @@ static void schema_positivity(void)
 	}
 	const struct pg_induction_allocation *countdown_allocation = pg_evidence_induction_allocation(countdown);
 	assert(countdown_allocation && countdown_allocation->count == 2);
+	assert(countdown_allocation == pg_evidence_subject(countdown)->induction);
+	assert(pg_occurrence_with_induction(&typing, pg_evidence_subject(countdown), countdown_allocation) == pg_evidence_subject(countdown));
 	assert(!pg_evidence_induction_allocation(zero));
 	assert(pg_prove_induction_at(&typing, &classifiers, nat, identity, twice, z_context,
 		nat_motive, 2, recursive_branches, countdown_allocation) == countdown);

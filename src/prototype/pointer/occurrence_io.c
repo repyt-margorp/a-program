@@ -5,7 +5,7 @@
 
 #include <string.h>
 
-static const char magic[8] = "APGOCC5";
+static const char magic[8] = "APGOCC6";
 
 static size_t structure_arity(const struct pg_occurrence *source)
 {
@@ -53,15 +53,22 @@ int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *c
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&dag, roots[i])) goto done;
 	size_t size = dag.count, context_count = size;
 	if (size > SIZE_MAX / sizeof(void *) / 3) goto done;
+	size_t term_count = 3 * size;
 	for (const struct pg_dag_node *r = dag.first; r; r = r->next) {
 		const struct pg_occurrence *o = r->key;
 		if (o->map_count > SIZE_MAX / sizeof(void *) - context_count) goto done;
 		context_count += o->map_count;
+		if (o->induction) {
+			if (o->induction->count > SIZE_MAX / sizeof(void *) - context_count) goto done;
+			if (term_count > SIZE_MAX / sizeof(void *) - 3) goto done;
+			context_count += o->induction->count;
+			term_count += 3;
+		}
 	}
 	const struct pg_context **contexts = pg_alloc(&arena, context_count * sizeof(*contexts));
-	const struct pg_term **terms = pg_alloc(&arena, 3 * size * sizeof(*terms));
+	const struct pg_term **terms = pg_alloc(&arena, term_count * sizeof(*terms));
 	if (!contexts || !terms) goto done;
-	size_t next_context = size;
+	size_t next_context = size, next_term = 3 * size;
 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, size) || pg_wire_write_u64(file, count)) goto done;
 	for (const struct pg_dag_node *r = dag.first; r; r = r->next) {
 		const struct pg_occurrence *o = r->key;
@@ -70,7 +77,8 @@ int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *c
 		terms[3 * (r->id - 1) + 1] = o->annotation ? o->annotation : o->core;
 		terms[3 * (r->id - 1) + 2] = o->classifier ? o->classifier : o->core;
 		int flags = (o->annotation != NULL) | ((o->classifier != NULL) << 1) |
-			((o->map != NULL) << 2) | ((o->origin && !o->map) << 3) | ((o->type != NULL) << 4);
+			((o->map != NULL) << 2) | ((o->origin && !o->map) << 3) | ((o->type != NULL) << 4) |
+			((o->induction != NULL) << 5);
 		size_t arity = structure_arity(o) + (o->type != NULL);
 		const struct pg_context_map *const *maps = pg_occurrence_maps(o);
 		for (size_t i = 0; i < o->map_count; ++i) {
@@ -89,12 +97,20 @@ int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *c
 		if (pg_wire_write_u64(file, o->map_count)) goto done;
 		for (size_t i = 0; i < o->map_count; ++i)
 			if (pg_wire_write_u64(file, maps[i]->count)) goto done;
+		if (o->induction) {
+			const struct pg_induction_allocation *a = o->induction;
+			if (pg_wire_write_u64(file, a->count)) goto done;
+			for (size_t i = 0; i < a->count; ++i) contexts[next_context++] = a->clauses[i];
+			terms[next_term++] = pg_reference(&arena, a->recursion);
+			terms[next_term++] = pg_reference(&arena, a->argument);
+			terms[next_term++] = pg_reference(&arena, a->self);
+		}
 	}
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_dag_node *r = pg_dag_find(&dag, roots[i]);
 		if (!r || pg_wire_write_u64(file, r->id)) goto done;
 	}
-	status = pg_contexts_write(file, context_count, contexts, 3 * size, terms, name, owner);
+	status = pg_contexts_write(file, context_count, contexts, term_count, terms, name, owner);
 done:
 	pg_dag_destroy(&dag);
 	pg_graph_destroy(&arena);
@@ -102,7 +118,7 @@ done:
 }
 
 struct input {
-	size_t count, structural, map_count;
+	size_t count, structural, map_count, clause_count;
 	size_t *map_sizes;
 	int flags;
 	enum pg_evidence_judgement judgement;
@@ -127,11 +143,13 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 	const struct pg_occurrence **result = pg_alloc(graph, (size_t)nr * sizeof(*result));
 	if (!inputs || !ids || !all || !result) return -1;
 	size_t available = limit - (size_t)n - (size_t)nr, max_arity = 0, max_maps = 0, context_count = (size_t)n;
+	size_t term_count = 3 * (size_t)n;
 	for (size_t i = 0; i < n; ++i) {
 		inputs[i].flags = fgetc(file);
 		inputs[i].judgement = fgetc(file);
 		uint64_t arity;
-		if (inputs[i].flags < 0 || inputs[i].flags > 31 || (inputs[i].flags & 12) == 12) return -1;
+		if (inputs[i].flags < 0 || inputs[i].flags > 63 || (inputs[i].flags & 12) == 12) return -1;
+		if ((inputs[i].flags & 32) && (inputs[i].flags & 12)) return -1;
 		if (pg_wire_read_u64(file, &arity) || arity > available) return -1;
 		available -= (size_t)arity;
 		inputs[i].count = (size_t)arity;
@@ -162,6 +180,18 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 		if ((inputs[i].flags & 4) && !structural) return -1;
 		if ((inputs[i].flags & 8) && (structural != 1 || (inputs[i].flags & 1))) return -1;
 		inputs[i].structural = structural;
+		inputs[i].clause_count = 0;
+		if (inputs[i].flags & 32) {
+			uint64_t clauses;
+			if (available < 3) return -1;
+			available -= 3;
+			if (pg_wire_read_u64(file, &clauses) || clauses > available) return -1;
+			available -= (size_t)clauses;
+			inputs[i].clause_count = (size_t)clauses;
+			context_count += (size_t)clauses;
+			if (term_count > SIZE_MAX - 3) return -1;
+			term_count += 3;
+		}
 	}
 	for (size_t i = 0; i < nr; ++i)
 		if (pg_wire_read_u64(file, &ids[i]) || !ids[i] || ids[i] > n) return -1;
@@ -169,11 +199,11 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 	const struct pg_context *const *contexts;
 	const struct pg_term *const *terms;
 	if (pg_contexts_read(file, typing, limit, name_limit, resolve, owner, &nc, &contexts, &nt, &terms)) return -1;
-	if (nc != context_count || nt != 3 * n) return -1;
+	if (nc != context_count || nt != term_count) return -1;
 	const struct pg_occurrence **operands = pg_alloc(graph, max_arity * sizeof(*operands));
 	const struct pg_context_map **maps = pg_alloc(graph, max_maps * sizeof(*maps));
 	if (!operands || !maps) return -1;
-	size_t next_context = (size_t)n;
+	size_t next_context = (size_t)n, next_term = 3 * (size_t)n;
 	for (size_t i = 0; i < n; ++i) {
 		for (size_t j = 0; j < inputs[i].count; ++j) operands[j] = all[inputs[i].operands[j] - 1];
 		size_t arity = inputs[i].structural;
@@ -204,6 +234,18 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 			first_image += inputs[i].map_sizes[j];
 		}
 		if (inputs[i].map_count) all[i] = pg_occurrence_with_maps(typing, all[i], inputs[i].map_count, maps);
+		if (inputs[i].flags & 32) {
+			for (size_t j = 0; j < 3; ++j)
+				if (terms[next_term + j]->kind != PG_REFERENCE) return -1;
+			struct pg_induction_allocation a = {
+				.recursion = terms[next_term]->as.reference,
+				.argument = terms[next_term + 1]->as.reference,
+				.self = terms[next_term + 2]->as.reference,
+				.count = inputs[i].clause_count, .clauses = contexts + next_context};
+			all[i] = pg_occurrence_with_induction(typing, all[i], &a);
+			next_context += a.count;
+			next_term += 3;
+		}
 		if (!all[i]) return -1;
 	}
 	for (size_t i = 0; i < nr; ++i) result[i] = all[ids[i] - 1];

@@ -902,3 +902,41 @@ a replacement for transporting typed construction dependencies. General
 constant-codomain restriction must retain its scoped structural input before
 `pi_component` and its associated rebase machinery can be deleted. This is
 remaining work, not an exception to R3 or R5.
+
+### 2026-09-17: Induction allocation belongs to typed construction
+
+- [x] Move the existing recursion/argument/self binder tuple and ordered
+  clause scopes from the induction receipt's certificate to its typed subject.
+  Exact binder/context pointers, not allocation addresses or normalized Core,
+  participate in interning. The subject copies the tuple into its own arena
+  allocation; temporary construction storage is no longer retained by Evidence.
+  Classifier boundaries preserve it. Reindexed/derived uses retain their
+  origin rather than attaching stale clause scopes to the new context.
+- [x] Remove the induction-specific certificate-key exception. The existing
+  Evidence allocation accessor and derivation transport now read the same
+  structural owner. Ordinary induction checking still verifies scope, branch
+  types, freshness and conflicting explicit allocations. No new typing rule,
+  Core tag, acceptance authority or parallel graph is introduced.
+- [x] APGOCC6 transports the binder tuple and clause contexts through the
+  existing shared Core/context relocation tables. Earlier occurrence images
+  reject. Tests cover tuple sharing independent of temporary array identity,
+  ordered scope differences, preserved boundary inputs, fresh-process binder
+  relocation, truncated images and zero acceptance evidence after readback.
+- [x] Full debug `check-acceptance` passed, including 63/63 compatibility and
+  source/image QuickSort property checks at chunks one and 64. ASan/UBSan IADT,
+  occurrence I/O and imported QuickSort property compilation passed.
+- [ ] The function-graph consumer still traverses Evidence wrappers. Its
+  replacement must also handle classifier-converted constructions whose first
+  accepted receipt is not an introduction. Merely swapping its lookup to the
+  first receipt for a typed subject would not complete that migration.
+
+Against `40e0687`, implementation/header changes are +128/-37 (**+91**):
+`evidence.c` +5/-7, `evidence.h` +0/-8, `typing.c` +55/-10,
+`typing.h` +13/-0, `occurrence_io.c` +51/-9, `occurrence_io.h` +4/-3.
+Tests are +39/-5 (**+34**). Cumulative implementation growth is **+1086**;
+the net-negative gate remains unmet. Sequential single debug QuickSort runs
+were 1.515 seconds / 272088 KiB before and 1.575 seconds / 284304 KiB after,
+both 154851 Solve transitions. These do not establish a timing trend, but the
+12216 KiB RSS increase is a recorded cost of this representation change, not
+a claimed optimization. Final R5 cleanup and comparative measurement remain
+required. No Main publication has taken place.

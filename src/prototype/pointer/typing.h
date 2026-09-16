@@ -15,6 +15,14 @@ struct pg_context {
 	enum pg_evidence_judgement judgement;
 };
 
+/* Lexical allocation of recursive elimination, not acceptance evidence.
+ * Scope checking validates the declarations separately. */
+struct pg_induction_allocation {
+	const struct pg_object *recursion, *argument, *self;
+	size_t count;
+	const struct pg_context *const *clauses;
+};
+
 /* Descriptive typed structure, not acceptance evidence. A NULL classifier
  * denotes an unclassified input. Source locations belong to diagnostics. */
 struct pg_occurrence {
@@ -31,6 +39,7 @@ struct pg_occurrence {
 	 * An origin without a map records a derived result, not current children. */
 	const struct pg_occurrence *origin;
 	const struct pg_context_map *map;
+	const struct pg_induction_allocation *induction;
 	size_t operand_count;
 	/* Selected construction maps follow operands in the same allocation.
 	 * Unlike map above, they are inputs, not an action on the whole subject. */
@@ -96,6 +105,10 @@ const struct pg_occurrence *pg_occurrence_classified(struct pg_typing *typing,
 const struct pg_context_map *const *pg_occurrence_maps(const struct pg_occurrence *subject);
 const struct pg_occurrence *pg_occurrence_with_maps(struct pg_typing *typing,
 	const struct pg_occurrence *source, size_t count, const struct pg_context_map *const *maps);
+/* Copies the allocation tuple, not its referenced binders/contexts. Exact
+ * tuple identity participates in interning; no proof is accepted here. */
+const struct pg_occurrence *pg_occurrence_with_induction(struct pg_typing *typing,
+	const struct pg_occurrence *source, const struct pg_induction_allocation *allocation);
 /* A different boundary preserves construction inputs, not typing acceptance. */
 const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 	const struct pg_occurrence *source, enum pg_evidence_judgement judgement,

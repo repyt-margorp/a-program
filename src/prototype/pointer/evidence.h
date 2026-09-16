@@ -322,14 +322,6 @@ const struct pg_evidence *pg_prove_induction_scope_at(struct pg_typing *typing,
 /* Indexed induction. Branches abstract fields, then the IH values
  * from induction_scope. No unrestricted recursive function enters their
  * typing context. Function fields sequence their pure result into recursion. */
-/* Immutable construction inputs, not evidence. Context annotations are not
- * trusted: only their binder identities are used by ordinary scope checking.
- * All borrowed objects/contexts must outlive construction and the proof. */
-struct pg_induction_allocation {
-	const struct pg_object *recursion, *argument, *self;
-	size_t count;
-	const struct pg_context *const *clauses;
-};
 const struct pg_induction_allocation *pg_evidence_induction_allocation(const struct pg_evidence *evidence);
 const struct pg_evidence *pg_prove_induction(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,

@@ -37,8 +37,22 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	assert(selected && swapped && selected != swapped && selected->core == swapped->core);
 	assert(pg_occurrence_with_maps(typing, image, 2, maps) == selected);
 	assert(!pg_occurrence_with_maps(typing, va, 2, maps));
-	const struct pg_occurrence *roots[] = {oa, ob, oa, bare, mapped, boundary, derived, derived, mapped_variable, typed, type, selected, swapped};
-	assert(mapped && boundary && derived && mapped_variable && typed && pg_occurrences_write(file, 13, roots, NULL, NULL) == 0);
+	const struct pg_context *clauses[] = {ca, cb};
+	struct pg_induction_allocation allocation = {x, a->as.reference, b->as.reference, 2, clauses};
+	const struct pg_occurrence *recursive = pg_occurrence_with_induction(typing, selected, &allocation);
+	assert(recursive && recursive->induction != &allocation && recursive->induction->clauses != clauses);
+	assert(pg_occurrence_with_induction(typing, selected, recursive->induction) == recursive);
+	assert(!pg_occurrence_with_induction(typing, mapped, &allocation));
+	assert(pg_occurrence_with_induction(typing, recursive, NULL) == selected);
+	const struct pg_context *reverse_clauses[] = {cb, ca};
+	allocation.clauses = reverse_clauses;
+	const struct pg_occurrence *other_scopes = pg_occurrence_with_induction(typing, selected, &allocation);
+	assert(other_scopes && other_scopes != recursive && recursive->induction->clauses[0] == ca);
+	const struct pg_occurrence *recursive_boundary = pg_occurrence_boundary(typing, recursive, PG_JUDGEMENT_VALUE, a);
+	assert(recursive_boundary && recursive_boundary->induction->recursion == x);
+	const struct pg_occurrence *roots[] = {oa, ob, oa, bare, mapped, boundary, derived, derived, mapped_variable, typed, type, selected, swapped,
+		recursive, recursive, other_scopes, recursive_boundary};
+	assert(mapped && boundary && derived && mapped_variable && typed && pg_occurrences_write(file, 17, roots, NULL, NULL) == 0);
 	/* Arbitrary elaboration inputs are transported, never treated as proofs. */
 	assert(typing->proofs.count == 0);
 	FILE *other = tmpfile();
@@ -76,13 +90,18 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	assert(pg_occurrences_read(other, typing, 0, 0, NULL, NULL, &count, &loaded) == 0 && count == 0);
 	assert(fclose(other) == 0);
 	other = tmpfile();
-	assert(other && fwrite("APGOCC5", 1, 8, other) == 8);
+	assert(other && fwrite("APGOCC6", 1, 8, other) == 8);
 	assert(!pg_wire_write_u64(other, 1) && !pg_wire_write_u64(other, 1));
 	assert(fputc(0, other) != EOF && fputc(PG_JUDGEMENT_INPUT, other) != EOF);
 	assert(!pg_wire_write_u64(other, 1) && !pg_wire_write_u64(other, 1));
 	rewind(other);
 	assert(pg_occurrences_read(other, typing, 100, 0, NULL, NULL, &count, &loaded) == -1);
 	assert(count == 0 && fclose(other) == 0);
+	other = tmpfile();
+	assert(other && fwrite("APGOCC5", 1, 8, other) == 8);
+	rewind(other);
+	assert(pg_occurrences_read(other, typing, 100, 0, NULL, NULL, &count, &loaded) == -1);
+	assert(fclose(other) == 0);
 	other = tmpfile();
 	assert(other && fwrite("APGOCC4", 1, 8, other) == 8);
 	rewind(other);
@@ -115,7 +134,20 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	size_t count;
 	const struct pg_occurrence *const *roots;
 	assert(pg_occurrences_read(file, typing, 1000, 0, NULL, NULL, &count, &roots) == 0);
-	assert(count == 13 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 17 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(roots[13] == roots[14] && roots[13] != roots[15]);
+	const struct pg_induction_allocation *allocation = roots[13]->induction;
+	assert(allocation && allocation->count == 2);
+	assert(allocation->recursion == roots[0]->core->as.lambda.binder);
+	assert(allocation->argument == roots[0]->classifier->as.reference);
+	assert(allocation->self == roots[1]->classifier->as.reference);
+	assert(allocation->clauses[0] == roots[0]->operands[0]->context);
+	assert(allocation->clauses[1] == roots[1]->operands[0]->context);
+	assert(roots[15]->induction->clauses[0] == allocation->clauses[1]);
+	assert(roots[15]->induction->clauses[1] == allocation->clauses[0]);
+	assert(roots[16]->induction->recursion == allocation->recursion);
+	assert(pg_occurrence_with_induction(typing, roots[11], allocation) == roots[13]);
+	assert(roots[13]->map_count == 2 && pg_occurrence_maps(roots[13])[0] == pg_occurrence_maps(roots[11])[0]);
 	assert(roots[11] != roots[12] && roots[11]->core == roots[12]->core);
 	assert(roots[11]->map_count == 2 && roots[12]->map_count == 2);
 	const struct pg_context_map *const *maps = pg_occurrence_maps(roots[11]);
@@ -170,7 +202,7 @@ static void read_input(FILE *file, struct pg_typing *typing)
 		struct pg_typing destination;
 		assert(pg_graph_init(&graph) == 0 && pg_typing_init(&destination, &graph) == 0);
 		FILE *fragment = tmpfile();
-		if (cut == length) bytes[24] = 32; /* Unknown occurrence flag. */
+		if (cut == length) bytes[24] = 64; /* Unknown occurrence flag. */
 		assert(fragment && fwrite(bytes, 1, cut, fragment) == cut);
 		rewind(fragment);
 		size_t unchanged = count;
