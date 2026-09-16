@@ -367,7 +367,7 @@ static const struct pg_evidence *export_value(struct pg_program *p, const char *
 static void graded_function_graph(struct pg_program *p, const struct pg_evidence *function,
 	const struct pg_evidence *argument, uint64_t chunk)
 {
-	function = pg_function_graph_source(function);
+	function = pg_function_graph_source(&p->typing, &p->classifiers, function);
 	assert(function && pg_evidence_rule(function) == PG_LAMBDA_INTRO);
 	const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_premise(function, 0), 0);
 	const struct pg_evidence *value = pg_prove_return_value(&p->typing, pg_evidence_premise(function, 1));
@@ -455,6 +455,54 @@ static const struct pg_evidence *graph_witness_result(struct pg_program *p,
 	return packet;
 }
 
+static void function_graph_aliases(struct pg_program *p,
+	const struct pg_evidence *function, uint64_t chunk)
+{
+	struct pg_typing *typing = &p->typing;
+	const struct pg_evidence *raw = pg_function_graph_source(typing, &p->classifiers, function);
+	assert(raw && pg_evidence_rule(raw) == PG_LAMBDA_INTRO);
+	const struct pg_evidence *pi = pg_evidence_premise(raw, 0);
+	struct pg_conversion conversion;
+	assert(!pg_conversion_init(&conversion, &p->evaluation, pg_evidence_classifier(raw), pg_evidence_classifier(raw)));
+	assert(pg_conversion_advance(&conversion, 64) == PG_CONVERSION_EQUAL);
+	const struct pg_evidence *alternate = pg_prove_conversion(typing, raw, pi, pg_conversion_certificate(&conversion));
+	assert(alternate && alternate != raw && pg_evidence_subject(alternate) == pg_evidence_subject(raw));
+	assert(pg_evidence_subject(pg_function_graph_source(typing, &p->classifiers, alternate)) == pg_evidence_subject(raw));
+	size_t proofs = typing->proofs.count, subjects = typing->occurrences.count;
+	for (size_t i = 0; i < 100; ++i)
+		assert(pg_evidence_subject(pg_function_graph_source(typing, &p->classifiers, alternate)) == pg_evidence_subject(raw));
+	assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
+	assert(!pg_function_graph_source(NULL, &p->classifiers, raw));
+	assert(!pg_function_graph_source(typing, NULL, raw));
+	const struct pg_evidence *outer = pg_evidence_premise(pg_evidence_premise(pi, 0), 0);
+	const struct pg_evidence *scope = pg_prove_context_extension(typing, outer, pg_binder(&p->graph), pg_prove_pi_domain(typing, pi));
+	const struct pg_evidence *projected = pg_prove_projection(typing, scope, raw);
+	assert(projected && !pg_function_graph_source(typing, &p->classifiers, projected));
+	const struct pg_source_scope *names = pg_synthesis_name(&p->synthesis, p->scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "original", .length = 8}, raw);
+	names = pg_synthesis_name(&p->synthesis, names,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "alternate", .length = 9}, alternate);
+	const char *source = "left:=@original;right:=@alternate;leftBase:=(@original).nil;rightBase:=(@alternate).nil;";
+	struct pg_parser parser;
+	struct pg_synthesis_job *module = pg_program_source(p, names, source, strlen(source), &parser);
+	assert(module);
+	for (size_t turns = 0; pg_synthesis_status(module) == PG_SYNTHESIS_PENDING; ++turns) {
+		assert(turns < 100000);
+		pg_synthesis_advance(&p->synthesis, chunk);
+	}
+	assert(pg_synthesis_status(module) == PG_SYNTHESIS_DONE);
+	const char *exports[] = {"left", "right", "leftBase", "rightBase"};
+	const struct pg_occurrence *results[4];
+	for (size_t i = 0; i < 4; ++i) {
+		const struct pg_evidence *proof = pg_synthesis_result(pg_synthesis_definition(module,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = exports[i], .length = strlen(exports[i])}));
+		assert(proof);
+		results[i] = pg_evidence_subject(proof);
+	}
+	assert(results[0] == results[1] && results[2] == results[3]);
+	pg_conversion_destroy(&conversion);
+}
+
 static void function_graphs(void)
 {
 	const char *source = "Nat:=@{zero:*;succ:*->*;}; NatList:=@{nil:*;cons:Nat->*->*;};"
@@ -479,6 +527,7 @@ static void function_graphs(void)
 			const struct pg_evidence *function = pg_synthesis_result(pg_synthesis_definition(p->root,
 				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[i], .length = strlen(names[i])}));
 			if (!i) graded_function_graph(p, function, successor, chunk);
+			if (i == 1) function_graph_aliases(p, function, chunk);
 			struct pg_function_graph_work work;
 			assert(!pg_function_graph_init(&work, &p->typing, &p->classifiers, &p->evaluation, function));
 			assert(pg_function_graph_advance(&work, 0) == PG_FUNCTION_GRAPH_PENDING);
@@ -585,7 +634,8 @@ static void function_graphs(void)
 			assert(turns < 100000);
 			assert(pg_function_graph_advance(&works[0], chunk) == PG_FUNCTION_GRAPH_PENDING);
 		}
-		assert(pg_function_graph_dependency(&works[0]) == pg_function_graph_source(functions[1]));
+		assert(pg_evidence_subject(pg_function_graph_dependency(&works[0])) ==
+			pg_evidence_subject(pg_function_graph_source(&p->typing, &p->classifiers, functions[1])));
 		assert(pg_function_graph_advance(&works[0], 0) == PG_FUNCTION_GRAPH_PENDING);
 		assert(pg_function_graph_supply(&works[0], &works[0]));
 		assert(pg_function_graph_supply(&works[0], &works[1]));

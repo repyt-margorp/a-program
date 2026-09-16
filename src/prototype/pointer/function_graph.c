@@ -430,7 +430,7 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 		if (!function) goto done;
 		/* The eta graph of an opaque parameter is its leaf, not a request
 		 * for another graph of that same parameter. */
-		if (function == s->source_function) goto done;
+		if (pg_evidence_subject(function) == pg_evidence_subject(s->source_function)) goto done;
 	} else {
 		if (forces || pg_evidence_rule(function) != PG_LAMBDA_INTRO) goto done;
 		const struct pg_evidence *body = function;
@@ -445,7 +445,7 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 		}
 		if (pg_evidence_rule(body) != PG_INDUCTION_ELIM) goto done;
 	}
-	if (function == s->source_function) { result = -1; goto done; }
+	if (pg_evidence_subject(function) == pg_evidence_subject(s->source_function)) { result = -1; goto done; }
 	struct graph_call *call = pg_alloc(&s->temporary, sizeof(*call));
 	if (!call) { result = -1; goto done; }
 	*call = (struct graph_call){.field = SIZE_MAX, .hypothesis = SIZE_MAX,
@@ -888,21 +888,22 @@ static int case_branch(struct pg_function_graph_state *s, struct graph_case *pla
 	return 0;
 }
 
-const struct pg_evidence *pg_function_graph_source(const struct pg_evidence *function)
+const struct pg_evidence *pg_function_graph_source(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *function)
 {
 	while (function) {
+		const struct pg_evidence *environment = NULL;
+		function = pg_prove_computation_origin(typing, classifiers, function, &environment);
+		if (!function) return NULL;
+		if (environment) {
+			const struct pg_context *scope = pg_evidence_context(function);
+			if (pg_evidence_context_map(environment) != pg_context_map_projection(typing, scope, scope)) return NULL;
+		}
 		enum pg_evidence_rule rule = pg_evidence_rule(function);
 		if (rule == PG_LAMBDA_INTRO) return function;
-		const struct pg_evidence *inner;
-		switch (rule) {
-		case PG_THUNK_INTRO: case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION:
-			inner = pg_evidence_premise(function, 0); break;
-		case PG_CONTEXT_PROJECTION:
-			inner = pg_evidence_premise(function, 1); break;
-		default: return NULL;
-		}
-		if (pg_evidence_context(inner) != pg_evidence_context(function)) return NULL;
-		function = inner;
+		/* Invert only the introduction just checked from typed construction. */
+		if (rule != PG_THUNK_INTRO && rule != PG_FORCE_ELIM && rule != PG_THUNK_COMPUTATION) return NULL;
+		function = pg_evidence_premise(function, 0);
 	}
 	return NULL;
 }
@@ -966,7 +967,7 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	if (!s) return -1;
 	work->state = s;
 	s->typing = typing; s->classifiers = classifiers; s->evaluation = evaluation;
-	function = pg_function_graph_source(function);
+	function = pg_function_graph_source(typing, classifiers, function);
 	if (!function) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; return 0; }
 	s->source_function = function;
 	s->outer_context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(function, 0), 0), 0);
@@ -1255,7 +1256,8 @@ int pg_function_graph_supply(struct pg_function_graph_work *work, const struct p
 	const struct pg_function_graph_state *d = dependency->state;
 	if (!s->waiting || s->waiting->helper || s == d) return -1;
 	if (s->typing != d->typing || s->classifiers != d->classifiers) return -1;
-	if (s->waiting->helper_source != d->source_function || d->witness_status != PG_FUNCTION_GRAPH_DONE) return -1;
+	if (pg_evidence_subject(s->waiting->helper_source) != pg_evidence_subject(d->source_function) ||
+		d->witness_status != PG_FUNCTION_GRAPH_DONE) return -1;
 	s->waiting->helper = dependency;
 	if (d->level > s->level) s->level = d->level;
 	return 0;

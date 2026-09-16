@@ -225,7 +225,7 @@ struct effect_substitution_state {
 	struct pg_substitution *work;
 	const struct pg_term *result;
 };
-enum job_role { LIFT_JOB, FUNCTION_WITNESS_JOB, PI_SCOPE_JOB, DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
+enum job_role { LIFT_JOB, FUNCTION_WITNESS_JOB, PI_SCOPE_JOB, DERIVATION_INPUT_JOB, INDUCTIVE_INSTANCE_JOB, INDUCTION_SCOPE_JOB, CONSTRUCTOR_SCOPE_JOB, ROW_CONTRIBUTION_JOB, SEQUENCE_JOB, EFFECT_CONTRIBUTION_JOB, BODY_JOB, CLASSIFIER_FORMATION_JOB, DOMAIN_JOB, TERM_STRUCTURE_JOB, DECLARED_TYPE_JOB, CLASSIFIER_STRUCTURE_JOB, TYPE_STRUCTURE_JOB, EXPRESSION_JOB, DEFINITION_JOB, DEFINITION_SCOPE_JOB, EVIDENCE_JOB, SOURCE_ORIGIN_JOB, RETURN_JOB, THUNK_JOB, NORMALIZATION_JOB, NF_JOB,
 	RESULT_TYPE_JOB, CLASSIFIER_CONSTRAINT_JOB, BINDING_EXPECT_JOB,
 	REFLEXIVITY_JOB, CLASSIFIER_JOB, FAMILY_ACTION_JOB, FORMATION_JOB, FACE_JOB, EXPECT_JOB, SOURCE_EXPECT_JOB, INSTANCE_JOB, CONVERSION_JOB, DATA_CASE_JOB, REINDEX_JOB, PAIR_JOB, SUBSTITUTION_JOB, BINDING_JOB, TELESCOPE_JOB, TELESCOPE_STRUCTURE_JOB, DATA_RESULT_JOB, DATA_SCHEMA_JOB, CONSTRUCTOR_JOB, CONSTRUCTOR_VALUE_JOB, INDUCTION_BRANCH_JOB, CONSTANT_MOTIVE_JOB, DERIVATION_JOB, OPERATION_JOB, OPERATION_REFERENCE_JOB, EFFECT_INFERENCE_JOB, HANDLER_RETURN_JOB, HANDLER_CLAUSE_JOB, HANDLER_JOB, SCOPE_CONTEXT_JOB, EFFECT_SUBSTITUTION_JOB, FAMILY_FUNCTION_JOB, FAMILY_CONTRACT_JOB, FUNCTION_GRAPH_JOB, CONSTRUCTOR_TRANSPORT_JOB, INDEX_TRANSPORT_JOB, INDEX_RESULT_JOB };
 enum { APPLICATION_RULE_READY = 6 };
@@ -280,7 +280,6 @@ struct pg_synthesis_job {
 	const struct pg_operation_declaration *operation;
 	const struct pg_data_declaration *nominal_input;
 	struct pg_synthesis_job *allocation_origin;
-	struct pg_synthesis_job *source_origin;
 	struct pg_synthesis_job *packet_origin;
 	struct pg_synthesis_job *graph_origin;
 	struct source_case_layout *case_layouts;
@@ -602,6 +601,9 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 	if (pg_index_insert(&synthesis->jobs, &job->index, hash) != 0) return NULL;
 	if (role == EVIDENCE_JOB) {
 		job->result = inputs[0];
+		job->status = PG_SYNTHESIS_DONE;
+	} else if (role == SOURCE_ORIGIN_JOB) {
+		/* Source naming/layout association only; no accepted result. */
 		job->status = PG_SYNTHESIS_DONE;
 	} else if (role != DEFINITION_JOB) {
 		enqueue(synthesis, job);
@@ -2078,9 +2080,9 @@ static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	enum pg_synthesis_status status)
 {
 	if (status == PG_SYNTHESIS_DONE && job->role == EXPRESSION_JOB && job->match && job->result) {
-		struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, job->result);
-		if (!accepted) status = PG_SYNTHESIS_ERROR;
-		else if (!accepted->source_origin) accepted->source_origin = job;
+		struct pg_synthesis_job *origin = request_job(synthesis, SOURCE_ORIGIN_JOB, pg_evidence_subject(job->result), NULL);
+		if (!origin) status = PG_SYNTHESIS_ERROR;
+		else if (!origin->left) origin->left = job;
 	}
 	if (status > PG_SYNTHESIS_DONE && job->handler && job->handler->effect_owner) {
 		struct handler_state *owner = job->handler->effect_owner;
@@ -3138,16 +3140,16 @@ done:
 static struct pg_synthesis_job *function_graph_request(struct pg_synthesis *synthesis,
 	const struct pg_evidence *function)
 {
-	const struct pg_evidence *body = function;
-	while (pg_evidence_rule(body) == PG_LAMBDA_INTRO) body = pg_evidence_premise(body, 1);
-	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, body);
-	return accepted ? request_job(synthesis, FUNCTION_GRAPH_JOB, function, accepted->source_origin) : NULL;
+	const struct pg_occurrence *subject = pg_evidence_subject(function), *body = subject;
+	while (body->core->kind == PG_LAMBDA && body->operand_count == 1) body = body->operands[0];
+	struct pg_synthesis_job *origin = request_job(synthesis, SOURCE_ORIGIN_JOB, body, NULL);
+	return origin ? request_job(synthesis, FUNCTION_GRAPH_JOB, subject, origin->left) : NULL;
 }
 
 static void function_graph_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	const struct pg_evidence *function = job->inputs[0];
 	if (!job->function_graph.state) {
+		const struct pg_evidence *function = pg_prove_structural_subject(synthesis->typing, job->inputs[0]);
 		if (pg_function_graph_init(&job->function_graph,
 			synthesis->typing, synthesis->classifiers, synthesis->normalization, function)) {
 			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
@@ -3228,7 +3230,8 @@ static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (!reference.producer) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		if (reference.producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, reference.producer); return; }
 		if (reference.producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, reference.producer->status); return; }
-		const struct pg_evidence *function = pg_function_graph_source(reference.producer->result);
+		const struct pg_evidence *function = pg_function_graph_source(synthesis->typing,
+			synthesis->classifiers, reference.producer->result);
 		if (!function) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		struct pg_synthesis_job *graph = function_graph_request(synthesis, function);
 		if (!graph) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }

@@ -975,3 +975,39 @@ QuickSort runs were 1.577 seconds / 284352 KiB before and 1.543 seconds /
 284012 KiB after, both 154851 Solve transitions; no speedup is claimed.
 The R5 net-negative gate, remaining Pi/nominal recovery migration, shared
 budgeted normalization and Main publication are still outstanding.
+
+### 2026-09-17: Typed function source and generation identity
+
+- [x] Make `pg_function_graph_source` take its typing/classifier owner and
+  use the checked typed-construction origin interface. Remove its independent
+  projection/quotation receipt walk. The remaining F/U rule inversion is of
+  the introduction just certified from typed inputs. Do not silently discard
+  a nonidentity context map when selecting the source Lambda.
+- [x] Key synthesis function-graph requests by typed subject and the selected
+  source layout, not by a typing receipt. Compare helper/self dependencies by
+  typed subject too. Different derivations remain accepted alternatives;
+  neither their pointers nor erased Core alone define the generated family.
+- [x] Move Match source naming/layout association to the existing synthesis
+  index keyed by typed subject. `SOURCE_ORIGIN_JOB` is a completed metadata
+  entry with no accepted result, not another acceptance authority or program
+  graph. Remove `source_origin` from every synthesis job. Graph requests still
+  include the selected source layout; semantic sharing does not erase public
+  field-order/naming requirements.
+- [x] Regression tests attach a distinct conversion receipt to the same
+  Lambda subject and verify repeated source recovery without occurrence/proof
+  growth. Both names then expose the exact same generated relation and named
+  constructor. Tests also reject dropping a genuine scope extension and
+  retain dependency mismatch checks at budgets one and 64.
+- [x] Full debug `check-acceptance` passed (63/63 compatibility, source/image
+  QuickSort properties). ASan/UBSan program, synthesis and imported QuickSort
+  property compilation passed. No receipt alternatives were removed.
+
+Against `5386916`, implementation/header +35/-29 (**+6**):
+`function_graph.c` +17/-15, `function_graph.h` +4/-3, `synthesis.c` +14/-11.
+Tests: +52/-2 (**+50**). Cumulative implementation growth is **+1153**, still
+not the required reduction. Sequential single debug QuickSort runs were
+1.526 seconds / 284736 KiB before and 1.540 seconds / 284432 KiB after, both
+154851 Solve transitions. These are checkpoints, not a demonstrated speedup.
+Direct signature/branch theorem inversions remain intentional; Pi component,
+nominal formation and strengthening history recovery still require migration.
+R0-R5 aggregate completion and Main publication remain unclaimed.
