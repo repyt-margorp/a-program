@@ -1707,6 +1707,21 @@ static void schema_positivity(void)
 		assert(domain && pg_evidence_subject(domain) == pg_evidence_subject(large));
 		assert(pg_evidence_classifier(domain) == pg_universe(&classifiers, 3));
 		common_rule(&typing, &classifiers, domain);
+		/* A widened constant result's first receipt is an inversion, not its
+		 * F introduction. Structural recovery must not revisit that receipt. */
+		const struct pg_evidence *closed = pg_prove_return_type(&typing, &classifiers, nat);
+		const struct pg_evidence *constant = pg_prove_pi_constant_codomain(&typing,
+			pg_prove_pi(&typing, &classifiers, scope, pg_prove_projection(&typing, scope, closed)));
+		const struct pg_evidence *content = pg_prove_return_content(&typing, constant);
+		assert(content && pg_evidence_classifier(content) == pg_universe(&classifiers, 3));
+		for (size_t chunk = 1; chunk <= 64; chunk *= 64) {
+			struct pg_inductive_recovery work;
+			assert(!pg_inductive_recovery_init(&work, &typing, content));
+			for (size_t fuel = 0; !work.status && fuel < 128; fuel += chunk)
+				pg_inductive_recovery_advance(&work, chunk);
+			assert(work.status == 1 && work.result.formation == nat);
+			pg_inductive_recovery_destroy(&work);
+		}
 	}
 	{
 		const struct pg_evidence *result_type = pg_prove_return_type(&typing, &classifiers,

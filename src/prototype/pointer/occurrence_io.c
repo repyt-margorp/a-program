@@ -5,11 +5,11 @@
 
 #include <string.h>
 
-static const char magic[8] = "APGOCC6";
+static const char magic[8] = "APGOCC7";
 
 static size_t structure_arity(const struct pg_occurrence *source)
 {
-	return source->map ? 1 + source->map->count : source->origin ? 1 : source->operand_count;
+	return source->map ? 1 + source->map->count : source->operand_count + (source->origin != NULL);
 }
 
 static int operand(void *unused, const void *key, size_t index, const void **child)
@@ -35,7 +35,7 @@ static int operand(void *unused, const void *key, size_t index, const void **chi
 		return 1;
 	}
 	if (source->origin) {
-		*child = source->origin;
+		*child = index ? source->operands[index - 1] : source->origin;
 		return 1;
 	}
 	*child = source->operands[index];
@@ -87,7 +87,7 @@ int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *c
 			contexts[next_context++] = maps[i]->source;
 		}
 		if (fputc(flags, file) == EOF || fputc(o->judgement, file) == EOF ||
-			pg_wire_write_u64(file, arity)) goto done;
+			pg_wire_write_u64(file, arity) || pg_wire_write_u64(file, o->selection)) goto done;
 		for (size_t i = 0; i < arity; ++i) {
 			const void *key;
 			if (!operand(NULL, o, i, &key)) goto done;
@@ -118,7 +118,7 @@ done:
 }
 
 struct input {
-	size_t count, structural, map_count, clause_count;
+	size_t count, structural, map_count, clause_count, selection;
 	size_t *map_sizes;
 	int flags;
 	enum pg_evidence_judgement judgement;
@@ -147,10 +147,13 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 	for (size_t i = 0; i < n; ++i) {
 		inputs[i].flags = fgetc(file);
 		inputs[i].judgement = fgetc(file);
-		uint64_t arity;
+		uint64_t arity, selection;
 		if (inputs[i].flags < 0 || inputs[i].flags > 63 || (inputs[i].flags & 12) == 12) return -1;
 		if ((inputs[i].flags & 32) && (inputs[i].flags & 12)) return -1;
 		if (pg_wire_read_u64(file, &arity) || arity > available) return -1;
+		if (pg_wire_read_u64(file, &selection) || selection > SIZE_MAX) return -1;
+		if (selection && !(inputs[i].flags & 8)) return -1;
+		inputs[i].selection = (size_t)selection;
 		available -= (size_t)arity;
 		inputs[i].count = (size_t)arity;
 		if (arity > max_arity) max_arity = (size_t)arity;
@@ -178,7 +181,9 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 		if ((inputs[i].flags & 16) && (!structural || !(inputs[i].flags & 2))) return -1;
 		structural -= !!(inputs[i].flags & 16);
 		if ((inputs[i].flags & 4) && !structural) return -1;
-		if ((inputs[i].flags & 8) && (structural != 1 || (inputs[i].flags & 1))) return -1;
+		if (inputs[i].flags & 8) {
+			if (!structural || structural > 1 + (selection != 0) || (inputs[i].flags & 1)) return -1;
+		}
 		inputs[i].structural = structural;
 		inputs[i].clause_count = 0;
 		if (inputs[i].flags & 32) {
@@ -216,8 +221,10 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 				classifier, annotation, operands[0], map);
 		} else if (inputs[i].flags & 8) {
 			if (contexts[i] != operands[0]->context) return -1;
-			all[i] = pg_occurrence_derived(typing, operands[0], inputs[i].judgement,
-				terms[3 * i], classifier);
+			all[i] = inputs[i].selection
+				? pg_occurrence_selected(typing, operands[0], inputs[i].selection - 1, arity == 2 ? operands[1] : NULL,
+					inputs[i].judgement, terms[3 * i], classifier)
+				: pg_occurrence_derived(typing, operands[0], inputs[i].judgement, terms[3 * i], classifier);
 		} else {
 			all[i] = pg_occurrence(typing, inputs[i].judgement, contexts[i], terms[3 * i],
 				classifier, annotation, arity, operands);

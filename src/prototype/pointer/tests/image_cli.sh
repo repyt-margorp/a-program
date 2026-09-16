@@ -168,6 +168,7 @@ acceptance/function-graph-exposed-match.p main proofMain quotedMain sequencedMai
 acceptance/function-graph-known-match.p main proofMain unpackMain skipMain:zero
 acceptance/function-graph-branch-tree.p main proofMain emptyMain:zero prefixMain prefixProofMain afterMain nestedMain:three directMain walkMain indexedMain refinedMain:one
 acceptance/function-graph-helper-call.p main:one proofMain:one twiceMain:two twiceProofMain:two appendMain:appendExpected genericMain:one againMain:two againEmpty:zero
+acceptance/typed-selection-motive.p
 acceptance/function-graph-callable-parameter.p main applyMain:two propertyMain:two filterMain:filterExpected allMain:sample noneMain:noneExpected
 acceptance/function-graph-function-field.p main fromMain walkMain:three proofMain visitMain
 acceptance/function-graph-family-parameters.p main relatedMain

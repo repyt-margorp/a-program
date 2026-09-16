@@ -625,7 +625,7 @@ struct construction_map {
 static const struct pg_occurrence *construction_origin(struct pg_graph *temporary,
 	const struct pg_occurrence *subject, struct construction_map **frames)
 {
-	while (subject->origin && (subject->map || subject->judgement == subject->origin->judgement)) {
+	while (subject->origin && !subject->selection && (subject->map || subject->judgement == subject->origin->judgement)) {
 		if (subject->map) {
 			struct construction_map *frame = pg_alloc(temporary, sizeof(*frame));
 			if (!frame) return NULL;
@@ -778,10 +778,12 @@ done:
 }
 
 static struct scope_frame *pi_argument_frames(struct pg_typing *typing, struct pg_graph *temporary,
-	const struct pg_evidence *pi, const struct pg_evidence *argument,
+	const struct pg_occurrence *pi, const struct pg_evidence *argument,
 	const struct scope_frame *frames)
 {
-	const struct pg_evidence *extended = pi->premises[0];
+	const struct pg_occurrence *body = pg_occurrence_scoped_input(pi, 1);
+	const struct pg_evidence *extended = body ? conclusion_first(typing, PG_JUDGEMENT_CONTEXT, body->context) : NULL;
+	if (!extended) return NULL;
 	struct scope_frame *result = NULL, **tail = &result;
 	for (;;) {
 		const struct pg_evidence *map = NULL, *restricted = NULL;
@@ -815,91 +817,70 @@ static struct scope_frame *pi_argument_frames(struct pg_typing *typing, struct p
 /* Select the retained formation before transporting its required parameters.
  * Rebuilding the whole Pi context would demand images for unused binders
  * already removed by constant-codomain projection. */
-static const struct pg_evidence *pi_component(struct pg_typing *typing, struct pg_graph *temporary,
+static const struct pg_evidence *selected_formation(struct pg_typing *typing, struct pg_graph *temporary,
 	struct scope_frame **outer_frames,
-	const struct pg_evidence *pi, const struct pg_evidence *argument,
-	enum pg_evidence_rule component)
+	const struct pg_occurrence *current)
 {
 	struct pending {
 		const struct pg_evidence *argument;
 		struct scope_frame *frames;
-		size_t thunks;
-		enum pg_evidence_rule component;
+		size_t index;
 		struct pending *next;
 	};
 	struct pending *pending = NULL;
 	struct scope_frame *frames = NULL;
-	const struct pg_evidence *result = NULL;
-	size_t thunks = 0;
-	while (pi) {
-		switch (pi->rule) {
-		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
-			const struct pg_context_map *map = pi->rule == PG_REINDEX ? pg_evidence_context_map(pi->premises[0])
-				: pg_context_map_projection(typing, pg_evidence_context(pi->premises[1]), pg_evidence_context(pi));
-			struct scope_frame *frame = scope_frame(temporary, map, NULL, frames);
-			if (!frame) goto done;
+	const struct pg_evidence *argument = NULL;
+	size_t index = SIZE_MAX;
+	while (current) {
+		if (current->map) {
+			struct scope_frame *frame = scope_frame(temporary, current->map, NULL, frames);
+			if (!frame) return NULL;
 			frames = frame;
-			pi = pi->premises[1];
-			break;
+			current = current->origin;
+			continue;
 		}
-		case PG_TYPE_CONVERSION: case PG_PURE_NORMALIZATION:
-			pi = pi->premises[0]; break;
-		case PG_THUNK_CONTENT:
-			++thunks; pi = pi->premises[0]; break;
-		case PG_THUNK_TYPE_FORM:
-			if (!thunks) goto done;
-			--thunks; pi = pi->premises[0]; break;
-		case PG_PI_CONSTANT_CODOMAIN: case PG_PI_DOMAIN: case PG_PI_CODOMAIN: {
+		if (current->selection) {
 			struct pending *next = pg_alloc(temporary, sizeof(*next));
-			if (!next) goto done;
-			*next = (struct pending){argument, frames, thunks, component, pending};
+			if (!next) return NULL;
+			*next = (struct pending){argument, frames, index, pending};
 			pending = next;
 			frames = NULL;
-			thunks = 0;
-			argument = pi->rule == PG_PI_CODOMAIN ? pi->premises[1] : NULL;
-			component = pi->rule == PG_PI_CONSTANT_CODOMAIN ? PG_PI_CODOMAIN : pi->rule;
-			pi = pi->premises[0];
-			break;
+			argument = current->operand_count ? pg_prove_structural_subject(typing, current->operands[0]) : NULL;
+			if (current->operand_count && !argument) return NULL;
+			index = current->selection - 1;
+			current = current->origin;
+			continue;
 		}
-		case PG_PI_FORM: {
-			if (thunks) goto done;
-			const struct pg_evidence *extended = pi->premises[0];
-			if (component == PG_PI_DOMAIN) {
-				pi = extended->premises[1];
-			} else {
-				if (argument) {
-					frames = pi_argument_frames(typing, temporary, pi, argument, frames);
-					if (!frames) goto done;
-					pi = pi->premises[1];
-				} else {
-					const struct pg_evidence *constant = pg_prove_pi_constant_codomain(typing, pi);
-					if (!constant) goto done;
-					struct scope_frame *frame = scope_frame(temporary, NULL, pg_evidence_subject(constant), frames);
-					if (!frame) goto done;
-					frames = frame;
-					pi = pi->premises[1];
-				}
+		if (current->origin) { current = current->origin; continue; }
+		if (index == SIZE_MAX) break;
+		if (index >= current->operand_count) return NULL;
+		const struct pg_occurrence *child = current->operands[index];
+		if (child->context != current->context) {
+			if (pg_occurrence_scoped_input(current, index) != child) return NULL;
+			if (argument) frames = pi_argument_frames(typing, temporary, current, argument, frames);
+			else {
+				const struct pg_evidence *constant = pg_prove_pi_constant_codomain(typing,
+					pg_prove_structural_subject(typing, current));
+				frames = scope_frame(temporary, NULL, pg_evidence_subject(constant), frames);
 			}
-			struct scope_frame **tail = &frames;
-			while (*tail) tail = &(*tail)->next;
-			if (!pending) {
-				*tail = *outer_frames;
-				*outer_frames = frames;
-				result = pi;
-				goto done;
-			}
-			argument = pending->argument;
-			*tail = pending->frames;
-			thunks = pending->thunks;
-			component = pending->component;
-			pending = pending->next;
-			break;
-		}
-		default: goto done;
-		}
+			if (!frames) return NULL;
+		} else if (argument) return NULL;
+		current = child;
+		struct scope_frame **tail = &frames;
+		while (*tail) tail = &(*tail)->next;
+		*tail = pending->frames;
+		argument = pending->argument;
+		index = pending->index;
+		pending = pending->next;
+		/* A selected type may itself be computed. Its source is not another
+		 * component of this Pi; leave that computation to typed recovery. */
+		if (index == SIZE_MAX) break;
 	}
-done:
-	return result;
+	struct scope_frame **tail = &frames;
+	while (*tail) tail = &(*tail)->next;
+	*tail = *outer_frames;
+	*outer_frames = frames;
+	return pg_prove_structural_subject(typing, current);
 }
 
 struct inductive_argument {
@@ -930,6 +911,22 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_evidence *formation = work->formation;
+	const struct pg_occurrence *subject = pg_evidence_subject(formation);
+	if (!subject->origin && subject->operand_count == 1) {
+		const struct pg_term *content;
+		const struct pg_effect_row *effects;
+		enum pg_totality totality;
+		size_t *contents = NULL;
+		if (pg_computation_type_view(subject->core, &totality, &effects, &content)) contents = &work->return_contents;
+		else if (pg_thunk_type_view(subject->core, &content)) contents = &work->thunk_contents;
+		if (contents) {
+			if (!*contents || subject->operands[0]->core != content) goto failed;
+			--*contents;
+			formation = pg_prove_structural_subject(typing, subject->operands[0]);
+			if (!formation) goto failed;
+			goto advanced;
+		}
+	}
 	if (formation->rule != PG_INDUCTIVE_FORM) {
 		switch (formation->rule) {
 		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
@@ -1004,29 +1001,18 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 			++work->return_contents;
 			formation = formation->premises[0];
 			break;
-		case PG_RETURN_TYPE_FORM:
-			if (!work->return_contents) goto failed;
-			--work->return_contents;
-			formation = formation->premises[0];
-			break;
 		case PG_THUNK_CONTENT:
 			++work->thunk_contents;
 			formation = formation->premises[0];
 			break;
-		case PG_THUNK_TYPE_FORM:
-			if (!work->thunk_contents) goto failed;
-			--work->thunk_contents;
-			formation = formation->premises[0];
-			break;
 		case PG_PI_CONSTANT_CODOMAIN: case PG_PI_DOMAIN: case PG_PI_CODOMAIN: {
-			formation = pi_component(typing, &work->temporary, &work->frames, formation->premises[0],
-				formation->rule == PG_PI_CODOMAIN ? formation->premises[1] : NULL,
-				formation->rule == PG_PI_DOMAIN ? PG_PI_DOMAIN : PG_PI_CODOMAIN);
+			formation = selected_formation(typing, &work->temporary, &work->frames, pg_evidence_subject(formation));
 			if (!formation) goto failed;
 			break;
 		}
 		default: goto failed;
 		}
+	advanced:
 		work->formation = formation;
 		return;
 	}
@@ -3064,6 +3050,9 @@ static int structural_input(struct pg_typing *typing, const struct pg_occurrence
 	enum pg_occurrence_input_status status;
 	do status = pg_occurrence_input_advance(input, 1024); while (status == PG_INPUT_PENDING);
 	*result = pg_occurrence_input_result(input);
+	/* Descriptive binder lifting may create a scope with no formation proof.
+	 * Retain the inversion recipe unless ordinary rules certify this view. */
+	if (*result && !pg_prove_structural_subject(typing, *result)) *result = NULL;
 	return status != PG_INPUT_ERROR;
 }
 
@@ -3077,7 +3066,9 @@ static const struct pg_occurrence *content_subject(struct pg_typing *typing,
 	if (!structural_input(typing, source, 0, &child)) return NULL;
 	if (child && child->context == source->context && child->core == core && child->judgement == judgement)
 		return pg_occurrence_boundary(typing, child, judgement, classifier);
-	return pg_occurrence_derived(typing, source, judgement, core, classifier);
+	if (judgement == PG_JUDGEMENT_VALUE || judgement == PG_JUDGEMENT_COMPUTATION)
+		return pg_occurrence_derived(typing, source, judgement, core, classifier);
+	return pg_occurrence_selected(typing, source, 0, NULL, judgement, core, classifier);
 }
 
 /* Inversion uses an accepted judgement, never an untyped constructor spine. */
@@ -4015,7 +4006,7 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 		if (pg_alpha_equal(subject->core, codomain) != 1) return NULL;
 		subject = pg_occurrence_boundary(typing, subject, PG_JUDGEMENT_COMPUTATION_TYPE,
 			pg_evidence_classifier(pi));
-	} else subject = pg_occurrence_derived(typing, pg_evidence_subject(pi),
+	} else subject = pg_occurrence_selected(typing, pg_evidence_subject(pi), 1, NULL,
 		PG_JUDGEMENT_COMPUTATION_TYPE, codomain, pg_evidence_classifier(pi));
 	if (!subject) return NULL;
 	return accept(typing, PG_PI_CONSTANT_CODOMAIN,
@@ -4396,14 +4387,16 @@ const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 	if (pg_universe_level(pg_evidence_subject(pi)->classifier, &level) && level) {
 		struct pg_graph temporary = {0};
 		struct scope_frame *frames = NULL;
-		const struct pg_evidence *domain_proof = pi_component(typing, &temporary, &frames, pi, NULL, PG_PI_DOMAIN);
+		const struct pg_occurrence *selected = pg_occurrence_selected(typing, pg_evidence_subject(pi), 0, NULL,
+			PG_JUDGEMENT_VALUE_TYPE, domain, pg_evidence_classifier(pi));
+		const struct pg_evidence *domain_proof = selected_formation(typing, &temporary, &frames, selected);
 		if (domain_proof) domain_proof = scope_image(typing, domain_proof, frames);
 		pg_graph_destroy(&temporary);
 		if (domain_proof && pg_evidence_context(domain_proof) == pg_evidence_context(pi) &&
 			pg_evidence_judgement(domain_proof) == PG_JUDGEMENT_VALUE_TYPE &&
 			pg_alpha_equal(pg_evidence_subject(domain_proof)->core, domain) == 1) return domain_proof;
 	}
-	subject = pg_occurrence_derived(typing, pg_evidence_subject(pi),
+	subject = pg_occurrence_selected(typing, pg_evidence_subject(pi), 0, NULL,
 		PG_JUDGEMENT_VALUE_TYPE, domain, pg_evidence_classifier(pi));
 	if (!subject) return NULL;
 	return accept(typing, PG_PI_DOMAIN,
@@ -4426,24 +4419,10 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(pi)->core, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, pg_evidence_subject(argument)->classifier) != 1) return NULL;
-	const struct pg_occurrence *body, *subject = NULL;
-	if (!structural_input(typing, pg_evidence_subject(pi), 1, &body)) return NULL;
-	if (body && body->judgement == PG_JUDGEMENT_COMPUTATION_TYPE && body->context &&
-		body->context->parent == pg_evidence_context(pi)) {
-		const struct pg_term *expected = pg_lambda(typing->graph, binder, codomain);
-		const struct pg_term *actual = pg_lambda(typing->graph, body->context->binder, body->core);
-		if (pg_alpha_equal(actual, expected) != 1) return NULL;
-		struct pg_occurrence_action *action = pg_occurrence_instantiate_request(typing, body,
-			pg_evidence_subject(argument));
-		while (pg_occurrence_action_advance(action, 1024) == PG_SUBSTITUTION_PENDING) {}
-		subject = pg_occurrence_boundary(typing, pg_occurrence_action_result(action),
-			PG_JUDGEMENT_COMPUTATION_TYPE, pg_evidence_classifier(pi));
-	} else {
-		struct pg_binding_value binding = {binder, pg_evidence_subject(argument)->core};
-		const struct pg_term *type = pg_substitution_compute(&typing->substitutions, codomain, 1, &binding);
-		subject = pg_occurrence_derived(typing, pg_evidence_subject(pi),
-			PG_JUDGEMENT_COMPUTATION_TYPE, type, pg_evidence_classifier(pi));
-	}
+	struct pg_binding_value binding = {binder, pg_evidence_subject(argument)->core};
+	const struct pg_term *type = pg_substitution_compute(&typing->substitutions, codomain, 1, &binding);
+	const struct pg_occurrence *subject = pg_occurrence_selected(typing, pg_evidence_subject(pi), 1,
+		pg_evidence_subject(argument), PG_JUDGEMENT_COMPUTATION_TYPE, type, pg_evidence_classifier(pi));
 	if (!subject) return NULL;
 	return accept(typing, PG_PI_CODOMAIN,
 		pg_evidence_context(pi), subject, 2, premises);

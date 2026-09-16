@@ -61,6 +61,7 @@ static int origin_step(struct pg_typing *typing,
 	const struct pg_occurrence **current, const struct pg_evidence **substitution)
 {
 	const struct pg_occurrence *formation = *current;
+	if (formation->selection) return 1;
 	if (!formation->origin) return 1;
 	if (formation->map) {
 		const struct pg_evidence *step = pg_prove_context_map(typing, formation->map);

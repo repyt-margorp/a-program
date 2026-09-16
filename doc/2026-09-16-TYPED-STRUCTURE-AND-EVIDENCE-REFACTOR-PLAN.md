@@ -312,14 +312,21 @@ changing every child to the destination context would capture lexical binders.
 
 ### Deletion ledger
 
+Current state, updated after the typed Pi-selection migration. Earlier
+checkpoint notes below are historical, not additional completion claims.
+
 | Existing path | State / next action |
 |---|---|
 | Evidence classifier/context/sort copies | Removed for term conclusions |
-| `return_value_origin`, `pg_prove_application_body` | Retained pending typed reduction/context-action views |
-| `pi_component`, `pi_argument_frames` | Retained pending binder-domain and dependent child scope contract |
-| `inductive_recovery_step`, `constructor_origin`, `pg_prove_elimination_body` | Retained pending schema/parameter/branch view migration |
-| `classifier_leaf`, `classifier_recovery_step` | Retained pending checked classifier-formation inputs |
-| `function_graph.c:computation_origin`, `action.c:origin_step` | Retained until shared structural context action exists |
+| `return_value_origin`, `pg_prove_application_body` | Read typed construction/maps; still synchronous and not shared budgeted typed normalization |
+| `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
+| `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
+| `inductive_recovery_step`, `rebase_image` | Remaining Evidence-history consumers; nominal formation and strengthening migration unfinished |
+| `constructor_origin`, `pg_prove_elimination_body` | Read typed fields/motive/allocation; ordinary nominal acceptance still required |
+| `classifier_leaf` | Deleted |
+| `classifier_recovery_step` | Reads retained classifier/maps, with variable formation from its context; calls into synchronous certification remain |
+| `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
+| `action.c:origin_step` | Reads typed origins/maps; does not reinterpret derivation wrappers |
 | `derivation.c:pg_prove_derivation` | Intentionally retained: verifies rule inputs rather than interpreting program structure |
 
 Baseline source LOC at `4657cc6`: `evidence.c` 4343, `typing.c` 129,
@@ -1162,3 +1169,94 @@ remaining nominal history recovery. They cannot be replaced with fabricated
 substitution images or by treating normalized source inputs as result children.
 Shared budgeted typed normalization, aggregate R0-R5 acceptance and Main
 publication remain outstanding.
+
+### 2026-09-17: Retain Pi selection and its typed argument
+
+- [x] Replace `pi_component`'s proof-rule traversal with `selected_formation`.
+  A typed subject retains the selected input ordinal and, for dependent Pi
+  application, the actual typed argument. Selection is not another executable
+  Core constructor or a new acceptance rule. Its operands describe the
+  selection recipe, not the normalized result's children.
+- [x] Preserve selection through classifier boundaries and exact interning.
+  Scope restriction uses the selected Pi's own context before applying outer
+  maps. Stop at a selected computed type; traversing its source again loses
+  the distinction between input selection and execution.
+- [x] Reuse a materialized input only when ordinary rules certify its scope.
+  Structural binder lifting alone does not establish context formation.
+  Keep the checked Pi inversion recipe when such a descriptive view cannot
+  be certified. This fixed generated dependent motives and QuickSort recovery
+  without admitting fabricated substitutions or changing source synthesis.
+- [x] Consume direct F/U type inputs structurally in nominal recovery. An
+  alternative first receipt (for example constant-codomain inversion at a
+  widened universe) must not cause a loop back to the same selection.
+- [x] Transport selections in `APGOCC7`; source versions become 42/43.
+  Versions 40/41 and `APGOCC6` reject explicitly rather than silently losing
+  selection arguments. Unaccepted descriptions still load without granting
+  evidence. Test exact sharing, distinct ordinals/arguments, source images,
+  and the generated `typed-selection-motive.p` regression.
+- [x] Final debug and optimized `check-acceptance` passed, including 63/63
+  compatibility and source/image QuickSort properties. Full sanitizer
+  acceptance passed before the waiting-frame change below. On the final
+  implementation, ASan/UBSan Core, IADT, synthesis and imported QuickSort
+  property checks passed. Full sanitizer acceptance on the eventual R5
+  snapshot remains required. `git diff --check` passed.
+- [x] Remove recursive advancement between selected-input requests. Explicit
+  waiting frames account for dependency transitions in the caller's budget.
+  Test 10000 nested selections at chunks one and 64, one-step bounded request
+  allocation, completion of a shared dependency by another caller, and repeat
+  lookup without additional work. The Core suite passes on this change.
+
+`inductive_recovery_step` and `rebase_image` still interpret parts of Evidence
+history. The structural Pi migration does not complete that removal, shared
+budgeted typed normalization, or the net-negative implementation LOC gate.
+Do not mark aggregate R0-R5 complete or publish Main at this checkpoint.
+
+Against `1bda739`, implementation/header changes are:
+
+| File in `src/prototype/pointer/` | Added | Deleted |
+|---|---:|---:|
+| `action.c` | 1 | 0 |
+| `evidence.c` | 85 | 106 |
+| `occurrence_io.c` | 16 | 9 |
+| `occurrence_io.h` | 4 | 2 |
+| `source_io.c` | 2 | 2 |
+| `source_io.h` | 3 | 3 |
+| `typing.c` | 65 | 10 |
+| `typing.h` | 9 | 0 |
+| **Total** | **185** | **132** |
+
+This increment is **+53**, not a net reduction. Cumulative implementation/
+header changes from `4657cc6` are **+2614/-1387, net +1227**. Tests, the new
+18-line source fixture, build wiring and documentation are excluded.
+
+Three alternating sequential debug runs of the imported QuickSort property
+used the same input and flags as the baseline measurements above:
+
+| Version | Elapsed seconds | Peak RSS, KiB | Solve transitions |
+|---|---|---|---:|
+| R19 | 1.403, 1.454, 1.390 | 272144, 271696, 272352 | 154851 |
+| R20 | 1.397, 1.382, 1.416 | 277752, 278100, 277332 | 132488 |
+| Initial baseline, second comparison | 0.831, 0.811, 0.775 | 225248, 226036, 225976 | 149501 |
+| R20, second comparison | 1.414, 1.404, 1.405 | 277920, 277848, 277768 | 132488 |
+
+Lower Solve counts do not establish a speedup: R20 is approximately unchanged
+from R19 in elapsed time, but the cumulative refactor is substantially slower
+and larger than the initial baseline. These are local debug measurements, not
+an optimized production benchmark. Do not waive this regression at R5.
+
+A diagnostic `-O0 -g -pg` run identifies a concrete repeated-work path:
+`pg_context_map_projection` was called 342376 times and called `pg_occurrence`
+9320652 times while rebuilding image arrays before map interning. Most calls
+came from `pg_prove_projection` through substitution lifting. This is not
+millions of distinct accepted conclusions; repeated lookup preparation is the
+problem. Sampling attributed about 47% inclusive time to this path, but the
+short instrumented sample is only a profiling lead, not a precise wall-time
+attribution.
+
+- [ ] Reuse projection requests by their immutable source/destination before
+  reconstructing all images. Preserve the same canonical map returned through
+  the general map constructor; do not add a second acceptance authority or
+  special-case QuickSort. Test generic/projection construction in both orders,
+  invalid prefixes, and repeated lookup without rebuilding variable inputs.
+- [ ] Repeat baseline/final timing, memory and work-count comparisons after
+  that change and the remaining structural recovery removal.

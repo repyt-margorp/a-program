@@ -316,6 +316,37 @@ static void context_test(struct pg_graph *graph)
 	input = pg_occurrence_input_request(&typing, derived, 0);
 	assert(pg_occurrence_input_advance(input, 10) == PG_INPUT_UNAVAILABLE);
 	assert(pg_occurrence_input_advance(NULL, 10) == PG_INPUT_ERROR);
+	/* Repeated component selection has depth independent of the C stack.
+	 * One outer transition must not advance the entire dependency chain. */
+	for (size_t budget = 1; budget <= 64; budget *= 64) {
+		const struct pg_occurrence *nested[10001];
+		const struct pg_term *head = pg_reference(graph, pg_binder(graph));
+		nested[0] = parent;
+		for (size_t i = 1; i <= 10000; ++i)
+			nested[i] = pg_occurrence(&typing, PG_JUDGEMENT_VALUE, in_a,
+				pg_application(graph, head, nested[i - 1]->core), a, NULL, 1, &nested[i - 1]);
+		deep = nested[10000];
+		for (size_t i = 10000; i; --i)
+			deep = pg_occurrence_selected(&typing, deep, 0, NULL,
+				PG_JUDGEMENT_VALUE, nested[i - 1]->core, a);
+		input = pg_occurrence_input_request(&typing, deep, 0);
+		size_t requests = typing.occurrence_inputs.count;
+		assert(pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING);
+		assert(pg_occurrence_input_steps(input) == 1);
+		assert(typing.occurrence_inputs.count == requests + 1);
+		/* Finish a shared dependency separately while the outer query waits. */
+		struct pg_occurrence_input *shared = pg_occurrence_input_request(&typing, deep->origin, 0);
+		while (pg_occurrence_input_advance(shared, budget) == PG_INPUT_PENDING) {}
+		while (pg_occurrence_input_advance(input, budget) == PG_INPUT_PENDING) {}
+		assert(pg_occurrence_input_result(input) == typed_a);
+		assert(pg_occurrence_input_steps(shared) <= 40002);
+		assert(pg_occurrence_input_steps(input) <= 5);
+		uint64_t steps = pg_occurrence_input_steps(input);
+		requests = typing.occurrence_inputs.count;
+		assert(pg_occurrence_input_request(&typing, deep, 0) == input);
+		assert(pg_occurrence_input_advance(input, 100000) == PG_INPUT_READY);
+		assert(pg_occurrence_input_steps(input) == steps && typing.occurrence_inputs.count == requests);
+	}
 	assert(!typing.proofs.count && !typing.occurrence_actions.count);
 	pg_typing_destroy(&typing);
 	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
@@ -1146,7 +1177,11 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(typing.proofs.count == input_proofs);
 	assert(!pg_occurrence_instantiate_request(&typing, typed_codomain, pg_evidence_subject(source_x)));
 	const struct pg_evidence *applied_codomain = pg_prove_pi_codomain(&typing, mapped_pi, destination_y);
-	assert(applied_codomain && pg_evidence_subject(applied_codomain) == pg_occurrence_action_result(instantiation));
+	const struct pg_occurrence *applied_type = pg_evidence_subject(applied_codomain);
+	assert(applied_type && applied_type->origin == pg_evidence_subject(mapped_pi) && applied_type->selection == 2);
+	assert(applied_type->operand_count == 1 && applied_type->operands[0] == pg_evidence_subject(destination_y));
+	assert(pg_alpha_equal(applied_type->core, pg_occurrence_action_result(instantiation)->core) == 1);
+	assert(applied_type->context == pg_occurrence_action_result(instantiation)->context);
 	const struct pg_evidence *returned_type = pg_prove_return_content(&typing, applied_codomain);
 	assert(returned_type && pg_evidence_subject(returned_type)->core == pg_reference(graph, b));
 	assert(pg_evidence_context(returned_type) == pg_evidence_context(destination));

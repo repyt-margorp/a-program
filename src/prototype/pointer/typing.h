@@ -38,6 +38,10 @@ struct pg_occurrence {
 	/* A mapped construction has an origin/map, not stale direct operands.
 	 * An origin without a map records a derived result, not current children. */
 	const struct pg_occurrence *origin;
+	/* One-based input selection from origin, or zero for a result recipe.
+	 * operands then retain the optional argument instantiating a scoped input,
+	 * not the current children. Acceptance belongs to the inversion rule. */
+	size_t selection;
 	const struct pg_context_map *map;
 	const struct pg_induction_allocation *induction;
 	size_t operand_count;
@@ -116,6 +120,9 @@ const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 const struct pg_occurrence *pg_occurrence_derived(struct pg_typing *typing,
 	const struct pg_occurrence *source, enum pg_evidence_judgement judgement,
 	const struct pg_term *core, const struct pg_term *classifier);
+const struct pg_occurrence *pg_occurrence_selected(struct pg_typing *typing,
+	const struct pg_occurrence *source, size_t index, const struct pg_occurrence *argument,
+	enum pg_evidence_judgement judgement, const struct pg_term *core, const struct pg_term *classifier);
 const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 	const struct pg_context *source, const struct pg_context *destination,
 	size_t count, const struct pg_occurrence *const *images);
@@ -173,6 +180,8 @@ struct pg_occurrence_input *pg_occurrence_input_request(struct pg_typing *typing
 	const struct pg_occurrence *source, size_t index);
 struct pg_occurrence_input *pg_occurrence_type_request(struct pg_typing *typing,
 	const struct pg_occurrence *source);
+/* The budget includes transitions of selected-input dependencies; nested
+ * requests use explicit waiting frames, not recursive C calls. */
 enum pg_occurrence_input_status pg_occurrence_input_advance(struct pg_occurrence_input *work,
 	uint64_t budget);
 const struct pg_occurrence *pg_occurrence_input_result(const struct pg_occurrence_input *work);

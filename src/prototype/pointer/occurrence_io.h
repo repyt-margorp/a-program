@@ -4,11 +4,13 @@
 #include "typing.h"
 #include <stdio.h>
 
-/* APGOCC6 transports descriptive typed inputs, not evidence. Contexts, Core,
+/* APGOCC7 transports descriptive typed inputs, not evidence. Contexts, Core,
  * classifiers and annotations share relocation tables. Sorts and operand order
  * and structural maps are retained. Derived origins are distinct from direct
  * construction inputs. Selected construction maps retain their source scopes
- * and typed images. Recursive elimination retains its binder allocation and
+ * and typed images. Input selection retains its ordinal and optional argument;
+ * neither a selected result nor a lifted child view certifies a judgement.
+ * Recursive elimination retains its binder allocation and
  * clause scopes through the same relocation tables. Earlier images reject.
  * Descriptor naming/resolution obeys graph_io.h's owner contract. */
 int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *const *roots,

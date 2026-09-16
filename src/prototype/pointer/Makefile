@@ -91,6 +91,7 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	bash $(ROOT)tests/image_cli.sh $(BUILD)/source_io_test $(BUILD)/pointer-check $(BUILD)/program_test
 	$(BUILD)/identity_test
 	$(BUILD)/iadt_test
+	$(BUILD)/pointer-check $(ROOT)tests/acceptance/typed-selection-motive.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-formation.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/acc-family-parameter.p main expected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-motive-wrong-field.p
