@@ -1893,10 +1893,11 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 			saved->argument, saved->self, pg_evidence_subject(scrutinee)->core, count, clauses)
 		: pg_data_match(typing->graph, layout, pg_evidence_subject(scrutinee)->core, count, clauses);
 	if (!core) goto done;
-	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_COMPUTATION, core, pg_evidence_subject(output), NULL, count + 3, operands);
 	const struct pg_context_map *parameter_map = pg_evidence_context_map(parameters);
-	subject = pg_occurrence_with_maps(typing, subject, 1, &parameter_map);
-	if (saved) subject = pg_occurrence_with_induction(typing, subject, saved);
+	const struct pg_occurrence *subject = pg_occurrence_intern(typing, &(struct pg_occurrence){
+		.judgement = PG_JUDGEMENT_COMPUTATION, .context = pg_evidence_context(destination),
+		.core = core, .classifier = pg_evidence_subject(output)->core, .type = pg_evidence_subject(output),
+		.operand_count = count + 3, .map_count = 1, .induction = saved}, operands, &parameter_map);
 	if (!subject) goto done;
 	result = accept_record(typing, rule,
 		pg_evidence_context(destination), subject, count + 6, premises, NULL, NULL);
@@ -3223,7 +3224,10 @@ static const struct pg_evidence *term_content(struct pg_typing *typing,
 		formation = operation == &pg_return_operation ? pg_prove_return_content(typing, formation)
 			: pg_prove_thunk_content(typing, formation);
 		if (!formation) return NULL;
-		subject = pg_occurrence_classified(typing, subject, pg_evidence_subject(formation));
+		struct pg_occurrence header = *subject;
+		header.type = pg_evidence_subject(formation);
+		header.classifier = header.type->core;
+		subject = pg_occurrence_intern(typing, &header, subject->operands, pg_occurrence_maps(subject));
 		if (!subject) return NULL;
 	}
 	return accept(typing, rule, pg_evidence_context(proof), subject, 1, &proof);
@@ -3703,9 +3707,11 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	for (size_t i = 0; i < count; ++i) operands[i + 1] = pg_evidence_subject(paths[i]);
 	operands[count + 1] = pg_evidence_subject(left);
 	operands[count + 2] = pg_evidence_subject(right);
-	const struct pg_occurrence *subject = pg_occurrence(typing, pg_evidence_judgement(family), context, core, pg_evidence_subject(family)->classifier, NULL, count + 3, operands);
 	const struct pg_context_map *maps[] = {pg_evidence_context_map(left_substitution), pg_evidence_context_map(right_substitution)};
-	subject = pg_occurrence_with_maps(typing, subject, 2, maps);
+	const struct pg_occurrence *subject = pg_occurrence_intern(typing, &(struct pg_occurrence){
+		.judgement = pg_evidence_judgement(family), .context = context, .core = core,
+		.classifier = pg_evidence_classifier(family), .operand_count = count + 3,
+		.map_count = 2}, operands, maps);
 	if (!subject) goto done;
 	result = accept(typing, PG_FAMILY_IDENTITY_FORM, context,
 		subject, count + 5, premises);

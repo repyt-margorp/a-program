@@ -2063,7 +2063,14 @@ static void schema_positivity(void)
 	const struct pg_induction_allocation *countdown_allocation = pg_evidence_induction_allocation(countdown);
 	assert(countdown_allocation && countdown_allocation->count == 2);
 	assert(countdown_allocation == pg_evidence_subject(countdown)->induction);
-	assert(pg_occurrence_with_induction(&typing, pg_evidence_subject(countdown), countdown_allocation) == pg_evidence_subject(countdown));
+	assert(pg_occurrence_intern(&typing, pg_evidence_subject(countdown), pg_evidence_subject(countdown)->operands,
+		pg_occurrence_maps(pg_evidence_subject(countdown))) == pg_evidence_subject(countdown));
+	for (size_t i = 0; i < typing.occurrences.capacity; ++i)
+		for (const struct pg_index_entry *p = typing.occurrences.buckets[i]; p; p = p->next) {
+			const struct pg_occurrence *subject = (const void *)p;
+			if (subject->core != pg_evidence_subject(countdown)->core || subject->origin) continue;
+			assert(subject->map_count == 1 && subject->induction);
+		}
 	{
 		const struct pg_evidence *environment = NULL;
 		assert(pg_prove_construction_origin(&typing, &classifiers, countdown, &environment) == countdown && !environment);

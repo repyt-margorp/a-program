@@ -30,27 +30,47 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	const struct pg_occurrence *mapped_variable = pg_occurrence_mapped(typing,
 		PG_JUDGEMENT_VALUE, id, a, a, va, image_map);
 	const struct pg_occurrence *type = pg_occurrence(typing, PG_JUDGEMENT_VALUE_TYPE, NULL, a, b, NULL, 0, NULL);
-	const struct pg_occurrence *typed = pg_occurrence_classified(typing, oa, type);
+	struct pg_occurrence header = *oa;
+	header.type = type;
+	const struct pg_occurrence *typed = pg_occurrence_intern(typing, &header, oa->operands, NULL);
 	const struct pg_occurrence *alternate_type = pg_occurrence_derived(typing, type, type->judgement, type->core, type->classifier);
 	const struct pg_occurrence *reclassified = pg_occurrence_reclassified(typing, typed, alternate_type);
 	assert(reclassified && reclassified->origin == typed && !reclassified->operand_count);
 	assert(pg_occurrence_reclassified(typing, typed, type) == typed);
+	header = *reclassified;
+	header.type = NULL;
+	const struct pg_occurrence *unformed = pg_occurrence_intern(typing, &header, NULL, NULL);
+	assert(unformed && !unformed->type && unformed->origin == typed);
 	const struct pg_context_map *maps[] = {map, image_map}, *reverse[] = {image_map, map};
-	const struct pg_occurrence *selected = pg_occurrence_with_maps(typing, image, 2, maps);
-	const struct pg_occurrence *swapped = pg_occurrence_with_maps(typing, image, 2, reverse);
+	header = *image;
+	header.map_count = 2;
+	const struct pg_occurrence *selected = pg_occurrence_intern(typing, &header, image->operands, maps);
+	const struct pg_occurrence *swapped = pg_occurrence_intern(typing, &header, image->operands, reverse);
 	assert(selected && swapped && selected != swapped && selected->core == swapped->core);
-	assert(pg_occurrence_with_maps(typing, image, 2, maps) == selected);
-	assert(!pg_occurrence_with_maps(typing, va, 2, maps));
+	assert(pg_occurrence_intern(typing, &header, image->operands, maps) == selected);
+	header.context = va->context;
+	assert(!pg_occurrence_intern(typing, &header, image->operands, maps));
 	const struct pg_context *clauses[] = {ca, cb};
 	struct pg_induction_allocation allocation = {x, a->as.reference, b->as.reference, 2, clauses};
-	const struct pg_occurrence *recursive = pg_occurrence_with_induction(typing, selected, &allocation);
+	header = *selected;
+	header.induction = &allocation;
+	size_t before = typing->occurrences.count;
+	const struct pg_occurrence *recursive = pg_occurrence_intern(typing, &header, selected->operands, maps);
+	assert(typing->occurrences.count == before + 1);
 	assert(recursive && recursive->induction != &allocation && recursive->induction->clauses != clauses);
-	assert(pg_occurrence_with_induction(typing, selected, recursive->induction) == recursive);
-	assert(!pg_occurrence_with_induction(typing, mapped, &allocation));
-	assert(pg_occurrence_with_induction(typing, recursive, NULL) == selected);
+	header.induction = recursive->induction;
+	assert(pg_occurrence_intern(typing, &header, selected->operands, maps) == recursive);
+	assert(typing->occurrences.count == before + 1);
+	header = *mapped;
+	header.induction = &allocation;
+	assert(!pg_occurrence_intern(typing, &header, NULL, NULL));
+	header = *recursive;
+	header.induction = NULL;
+	assert(pg_occurrence_intern(typing, &header, recursive->operands, maps) == selected);
 	const struct pg_context *reverse_clauses[] = {cb, ca};
 	allocation.clauses = reverse_clauses;
-	const struct pg_occurrence *other_scopes = pg_occurrence_with_induction(typing, selected, &allocation);
+	header.induction = &allocation;
+	const struct pg_occurrence *other_scopes = pg_occurrence_intern(typing, &header, selected->operands, maps);
 	assert(other_scopes && other_scopes != recursive && recursive->induction->clauses[0] == ca);
 	const struct pg_occurrence *recursive_boundary = pg_occurrence_boundary(typing, recursive, PG_JUDGEMENT_VALUE, a);
 	assert(recursive_boundary && recursive_boundary->origin == recursive && !recursive_boundary->induction);
@@ -63,9 +83,21 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	assert(pg_occurrence_selected(typing, oa, 0, ob, PG_JUDGEMENT_VALUE, id, a) == pick);
 	assert(!pg_occurrence_selected(typing, oa, SIZE_MAX, ob, PG_JUDGEMENT_VALUE, id, a));
 	assert(!pg_occurrence_selected(typing, oa, 0, vb, PG_JUDGEMENT_VALUE, id, a));
+	before = typing->occurrences.count;
+	header = *pick;
+	assert(!pg_occurrence_intern(typing, &header, &vb, NULL));
+	header.selection = 0;
+	assert(!pg_occurrence_intern(typing, &header, &ob, NULL));
+	header = *mapped;
+	header.context = ca;
+	assert(!pg_occurrence_intern(typing, &header, NULL, NULL));
+	header = *typed;
+	header.classifier = b;
+	assert(!pg_occurrence_intern(typing, &header, typed->operands, NULL));
+	assert(typing->occurrences.count == before);
 	const struct pg_occurrence *roots[] = {oa, ob, oa, bare, mapped, boundary, derived, derived, mapped_variable, typed, type, selected, swapped,
-		recursive, recursive, other_scopes, recursive_boundary, pick, pick, constant, other_input, other_argument, reclassified};
-	assert(mapped && boundary && derived && mapped_variable && typed && pg_occurrences_write(file, 23, roots, NULL, NULL) == 0);
+		recursive, recursive, other_scopes, recursive_boundary, pick, pick, constant, other_input, other_argument, reclassified, unformed};
+	assert(mapped && boundary && derived && mapped_variable && typed && pg_occurrences_write(file, 24, roots, NULL, NULL) == 0);
 	/* Arbitrary elaboration inputs are transported, never treated as proofs. */
 	assert(typing->proofs.count == 0);
 	FILE *other = tmpfile();
@@ -149,10 +181,22 @@ static void write_input(FILE *file, struct pg_typing *typing)
 
 static void read_input(FILE *file, struct pg_typing *typing)
 {
+	/* Loading a complete tuple must not intern stripped, untyped or
+	 * allocation-free intermediate versions of that same node. */
+	fpos_t start;
+	char magic[8];
+	uint64_t nodes;
+	assert(!fgetpos(file, &start));
+	assert(fread(magic, 1, sizeof(magic), file) == sizeof(magic));
+	assert(!pg_wire_read_u64(file, &nodes));
+	assert(!fsetpos(file, &start));
+	size_t before = typing->occurrences.count;
 	size_t count;
 	const struct pg_occurrence *const *roots;
 	assert(pg_occurrences_read(file, typing, 1000, 0, NULL, NULL, &count, &roots) == 0);
-	assert(count == 23 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(typing->occurrences.count == before + nodes);
+	assert(count == 24 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(!roots[23]->type && roots[23]->origin == roots[9]);
 	assert(roots[22]->origin == roots[9] && roots[22]->type->origin == roots[10]);
 	assert(roots[22]->core == roots[9]->core && roots[22]->classifier == roots[9]->classifier);
 	assert(!roots[22]->operand_count && roots[22]->type != roots[9]->type);
@@ -176,7 +220,9 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	assert(roots[15]->induction->clauses[0] == allocation->clauses[1]);
 	assert(roots[15]->induction->clauses[1] == allocation->clauses[0]);
 	assert(roots[16]->origin == roots[13] && !roots[16]->induction && !roots[16]->operand_count);
-	assert(pg_occurrence_with_induction(typing, roots[11], allocation) == roots[13]);
+	struct pg_occurrence header = *roots[11];
+	header.induction = allocation;
+	assert(pg_occurrence_intern(typing, &header, roots[11]->operands, pg_occurrence_maps(roots[11])) == roots[13]);
 	assert(roots[13]->map_count == 2 && pg_occurrence_maps(roots[13])[0] == pg_occurrence_maps(roots[11])[0]);
 	assert(roots[11] != roots[12] && roots[11]->core == roots[12]->core);
 	assert(roots[11]->map_count == 2 && roots[12]->map_count == 2);
@@ -186,7 +232,9 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	assert(maps[0] == roots[4]->map && maps[1] == roots[8]->map);
 	assert(maps[0]->source == roots[0]->operands[0]->context);
 	assert(maps[0]->destination == roots[11]->context);
-	assert(pg_occurrence_with_maps(typing, maps[1]->images[0], 2, maps) == roots[11]);
+	header = *maps[1]->images[0];
+	header.map_count = 2;
+	assert(pg_occurrence_intern(typing, &header, maps[1]->images[0]->operands, maps) == roots[11]);
 	assert(roots[9]->type == roots[10] && roots[9]->core == roots[0]->core);
 	assert(roots[9]->classifier == roots[10]->core && roots[9]->operands[0] == roots[0]->operands[0]);
 	assert(!roots[0]->type);

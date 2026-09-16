@@ -333,6 +333,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `classifier_recovery_step` | Uses the shared typed classifier query; separate map stack removed. Variable/Universe formation and final synchronous certification remain legitimate checks |
 | `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
 | `typed_construction` | Deleted in R30. Conversion/widening retain their source typed use; checked construction access retrieves existing evidence. R32 removes operand/map/allocation copying from sort and content boundaries too. General result exposure remains open |
+| Metadata attachment copies | R34 deletes `pg_occurrence_classified`, `pg_occurrence_with_maps` and `pg_occurrence_with_induction`. Match/Identity construction and image read intern complete tuples once. Inversion may still attach a newly obtained classifier to an existing descriptive selection; that distinct formation is not discarded |
 | `action.c:origin_step` | Reads typed origins/maps; does not reinterpret derivation wrappers |
 | `derivation.c:pg_prove_derivation` | Intentionally retained: verifies rule inputs rather than interpreting program structure |
 
@@ -1770,3 +1771,64 @@ with 3491 input requests. These single samples establish no speedup or memory
 improvement. Logs: `/tmp/a-program-typed-structure-r33-debug.log`,
 `/tmp/a-program-typed-structure-r33-nested-before.log` (reproduced missing case),
 `/tmp/a-program-typed-structure-r33-san-{core,iadt,synthesis,quicksort}.log`.
+
+### 2026-09-17: Intern complete structural tuples once (R34)
+
+- [x] Use a stack header of the existing `pg_occurrence` structure to describe
+  a complete node. `pg_occurrence_intern` copies operand/map arrays and lexical
+  allocation into one immutable interned record. There is no extra descriptor
+  graph, Core tag, acceptance bit, or alternative proof representation.
+- [x] Remove the three metadata-attachment APIs. Match/induction and dependent
+  Identity no longer intern partial records before adding maps or allocation.
+  Sort/conversion boundaries retain their distinct origin-preserving APIs;
+  descriptive construction must not replace accepted typing derivations.
+- [x] Read complete image tuples in one operation. Descriptive formation,
+  selected arguments, ordered maps and induction scopes retain exact identity.
+  Missing formation metadata stays missing; the reader no longer fills it
+  from a same-classifier origin. A round-trip regression failed before this
+  correction. No wire fields or version changed, and readback accepts no proof.
+- [x] Add checks that complete construction increments the occurrence index
+  once, repeated interning adds nothing, recursive elimination has no stripped
+  intermediate nodes, and image read creates exactly its serialized node count.
+  Keep invalid classifier/scope/map checks and all prior negative fixtures.
+- [x] Full debug acceptance passed after the readback correction, including
+  63/63 compatibility and final QuickSort source/image comparisons. ASan/UBSan
+  Core, IADT, synthesis, occurrence transport and imported QuickSort passed.
+  An R33 retained typed Match image can be resaved, checked and recomputed by
+  R34; R33 also checks R34's retained typed Match image. This does not waive
+  the final fixed-snapshot full optimized/debug/sanitizer gates.
+
+Against `b9dc294`:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `typing.c` | 36 | 56 | -20 |
+| `typing.h` | 7 | 9 | -2 |
+| `evidence.c` | 12 | 6 | +6 |
+| `occurrence_io.c` | 19 | 20 | -1 |
+| **Implementation/header** | **74** | **91** | **-17** |
+| `tests/iadt.c` | 8 | 1 | +7 |
+| `tests/occurrence_io.c` | 63 | 15 | +48 |
+
+Cumulative implementation/header delta remains **+1437** against `4657cc6`.
+Sequential, alternating O0 QuickSort samples (seconds / peak KiB):
+
+| Sample | R33 | R34 |
+|---|---:|---:|
+| 1 | 1.0689 / 275688 | 1.0484 / 275944 |
+| 2 | 1.0549 / 276204 | 1.0754 / 275840 |
+| 3 | 1.0808 / 275688 | 1.0718 / 276016 |
+
+Both use **132079 Solve transitions**. R34 retains **179313 Terms / 415569
+typed subjects / 434897 proofs / 529 body requests / 3491 input requests**:
+127 fewer typed nodes, with other counts unchanged. These samples show no
+meaningful speed or peak-memory improvement. Logs:
+`/tmp/a-program-typed-structure-r34-final-debug.log`,
+`/tmp/a-program-typed-structure-r34-readback-before.log` (reproduced failure),
+`/tmp/a-program-typed-structure-r34-san-{core,iadt,synthesis,occurrence,quicksort}.log`.
+
+This allocation consolidation does not close general normalized-result access.
+In particular, the common typed-body machine does not yet expose Match results;
+recursive branch inspection requires checked classifier/induction services and
+must not instantiate a second classifier owner merely to reuse a function.
+R2-R5 and the whole-change net-negative gate remain open.

@@ -212,27 +212,25 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 	for (size_t i = 0; i < n; ++i) {
 		for (size_t j = 0; j < inputs[i].count; ++j) operands[j] = all[inputs[i].operands[j] - 1];
 		size_t arity = inputs[i].structural;
-		const struct pg_term *classifier = inputs[i].flags & 2 ? terms[3 * i + 2] : NULL;
-		const struct pg_term *annotation = inputs[i].flags & 1 ? terms[3 * i + 1] : NULL;
+		struct pg_occurrence header = {.judgement = inputs[i].judgement, .context = contexts[i],
+			.core = terms[3 * i], .classifier = inputs[i].flags & 2 ? terms[3 * i + 2] : NULL,
+			.annotation = inputs[i].flags & 1 ? terms[3 * i + 1] : NULL,
+			.operand_count = arity, .map_count = inputs[i].map_count};
+		const struct pg_occurrence *const *children = operands;
 		if (inputs[i].flags & 4) {
-			const struct pg_context_map *map = pg_context_map(typing, operands[0]->context,
+			header.origin = operands[0];
+			header.map = pg_context_map(typing, operands[0]->context,
 				contexts[i], arity - 1, operands + 1);
-			all[i] = pg_occurrence_mapped(typing, inputs[i].judgement, terms[3 * i],
-				classifier, annotation, operands[0], map);
+			if (!header.map) return -1;
+			header.operand_count = 0;
 		} else if (inputs[i].flags & 8) {
 			if (contexts[i] != operands[0]->context) return -1;
-			all[i] = inputs[i].selection
-				? pg_occurrence_selected(typing, operands[0], inputs[i].selection - 1, arity == 2 ? operands[1] : NULL,
-					inputs[i].judgement, terms[3 * i], classifier)
-				: pg_occurrence_derived(typing, operands[0], inputs[i].judgement, terms[3 * i], classifier);
-		} else {
-			all[i] = pg_occurrence(typing, inputs[i].judgement, contexts[i], terms[3 * i],
-				classifier, annotation, arity, operands);
+			header.origin = operands[0];
+			header.selection = inputs[i].selection;
+			header.operand_count = arity - 1;
+			children = operands + 1;
 		}
-		if (inputs[i].flags & 16) {
-			if (operands[arity]->core != classifier) return -1;
-			all[i] = pg_occurrence_classified(typing, all[i], operands[arity]);
-		}
+		if (inputs[i].flags & 16) header.type = operands[arity];
 		size_t first_image = arity + !!(inputs[i].flags & 16);
 		for (size_t j = 0; j < inputs[i].map_count; ++j) {
 			maps[j] = pg_context_map(typing, contexts[next_context++], contexts[i],
@@ -240,19 +238,20 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 			if (!maps[j]) return -1;
 			first_image += inputs[i].map_sizes[j];
 		}
-		if (inputs[i].map_count) all[i] = pg_occurrence_with_maps(typing, all[i], inputs[i].map_count, maps);
+		struct pg_induction_allocation allocation;
 		if (inputs[i].flags & 32) {
 			for (size_t j = 0; j < 3; ++j)
 				if (terms[next_term + j]->kind != PG_REFERENCE) return -1;
-			struct pg_induction_allocation a = {
+			allocation = (struct pg_induction_allocation){
 				.recursion = terms[next_term]->as.reference,
 				.argument = terms[next_term + 1]->as.reference,
 				.self = terms[next_term + 2]->as.reference,
 				.count = inputs[i].clause_count, .clauses = contexts + next_context};
-			all[i] = pg_occurrence_with_induction(typing, all[i], &a);
-			next_context += a.count;
+			header.induction = &allocation;
+			next_context += allocation.count;
 			next_term += 3;
 		}
+		all[i] = pg_occurrence_intern(typing, &header, children, maps);
 		if (!all[i]) return -1;
 	}
 	for (size_t i = 0; i < nr; ++i) result[i] = all[ids[i] - 1];
