@@ -725,9 +725,8 @@ const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 		if (core->kind == PG_LAMBDA) {
 			if (forces) goto done;
 			if (current->operand_count != 1) goto done;
-			const struct pg_occurrence *body = current->operands[0];
-			if (!body->context || body->context->parent != current->context ||
-				body->context->binder != core->as.lambda.binder || body->core != core->as.lambda.body) goto done;
+			const struct pg_occurrence *body = pg_occurrence_scoped_input(current, 0);
+			if (!body) goto done;
 			const struct pg_evidence *extended = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, body->context);
 			if (!extended) goto done;
 			const struct pg_evidence *map = pg_prove_substitution_projection(typing, extended->premises[0], extended->premises[0]);
@@ -1873,7 +1872,7 @@ static int elimination_structure(struct pg_typing *typing,
 /* Re-establish the construction's introduction from typed inputs. A converted
  * classifier can have only a conversion receipt for this subject; selecting
  * its first receipt would not expose the program's actual constructor. */
-static const struct pg_evidence *computation_construction(struct pg_typing *typing,
+static const struct pg_evidence *typed_construction(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_occurrence *subject)
 {
 	if (subject->origin) {
@@ -1888,6 +1887,9 @@ static const struct pg_evidence *computation_construction(struct pg_typing *typi
 		if (subject->operand_count != 1) return NULL;
 		const struct pg_occurrence *body = pg_occurrence_scoped_input(subject, 0);
 		if (!body) return NULL;
+		if (subject->judgement == PG_JUDGEMENT_TYPE_FAMILY)
+			return pg_prove_family_abstraction(typing,
+				conclusion_first(typing, PG_JUDGEMENT_CONTEXT, body->context), pg_prove_structural_subject(typing, body));
 		return pg_prove_abstract(typing, classifiers,
 			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context),
 			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, body->context), pg_prove_structural_subject(typing, body));
@@ -1910,6 +1912,7 @@ done:
 	}
 	if (core->kind != PG_APPLICATION || !subject->operand_count || subject->operand_count > 2) return NULL;
 	const struct pg_evidence *left = pg_prove_structural_subject(typing, subject->operands[0]);
+	if (!left) return NULL;
 	const struct pg_term *head = core->as.application.function;
 	if (subject->operand_count == 1) {
 		if (head->kind != PG_REFERENCE || subject->operands[0]->core != core->as.application.argument) return NULL;
@@ -1920,25 +1923,28 @@ done:
 	}
 	if (subject->operands[1]->core != core->as.application.argument) return NULL;
 	const struct pg_evidence *right = pg_prove_structural_subject(typing, subject->operands[1]);
-	if (subject->operands[0]->core == head) return pg_prove_application(typing, left, right);
+	if (subject->operands[0]->core == head)
+		return pg_evidence_judgement(left) == PG_JUDGEMENT_TYPE_FAMILY
+			? pg_prove_family_application(typing, left, right) : pg_prove_application(typing, left, right);
 	if (head->kind == PG_APPLICATION && head->as.application.function == pg_reference(typing->graph, &pg_fold_operation) &&
 		subject->operands[0]->core == head->as.application.argument) return pg_prove_fold(typing, classifiers, left, right);
 	return NULL;
 }
 
-const struct pg_evidence *pg_prove_computation_origin(struct pg_typing *typing,
+const struct pg_evidence *pg_prove_construction_origin(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *proof,
 	const struct pg_evidence **environment)
 {
 	if (!typing || !classifiers || classifiers->graph != typing->graph || !environment) return NULL;
 	if (!pg_evidence_owned_by(proof, typing)) return NULL;
+	if (!pg_evidence_subject(proof)) return NULL;
 	struct pg_graph temporary = {0};
 	struct construction_map *frames = NULL;
 	const struct pg_evidence *result = NULL, *map = NULL;
 	const struct pg_occurrence *subject = construction_origin(&temporary, pg_evidence_subject(proof), &frames);
 	if (!subject) goto done;
-	result = computation_construction(typing, classifiers, subject);
-	if (!result || pg_evidence_context(result) != subject->context ||
+	result = typed_construction(typing, classifiers, subject);
+	if (!result || pg_evidence_judgement(result) != subject->judgement || pg_evidence_context(result) != subject->context ||
 		pg_evidence_subject(result)->core != subject->core) { result = NULL; goto done; }
 	for (; frames; frames = frames->next) {
 		const struct pg_evidence *step = pg_prove_context_map(typing, frames->map);

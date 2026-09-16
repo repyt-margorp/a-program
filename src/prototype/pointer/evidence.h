@@ -460,11 +460,11 @@ const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
  * NULL when introduction provenance cannot be recovered. No evaluation. */
 const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
-/* Certify a retained computation construction and its accumulated context
+/* Certify a retained computation/family construction and its accumulated context
  * map through ordinary rules. Reads typed inputs, not receipt wrappers.
  * Normalized subjects expose their checked source recipe, not current WHNF.
  * The returned classifier may precede conversion/effect subsumption. */
-const struct pg_evidence *pg_prove_computation_origin(struct pg_typing *typing,
+const struct pg_evidence *pg_prove_construction_origin(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *proof,
 	const struct pg_evidence **environment);
 /* The certificate and its endpoint graphs must outlive typing->graph. */

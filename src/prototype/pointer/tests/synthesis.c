@@ -4574,6 +4574,23 @@ static void source_telescopes(struct pg_typing *typing, struct pg_classifiers *c
 	assert(pg_evidence_judgement(admitted) == PG_JUDGEMENT_TYPE_FAMILY);
 	assert(pg_evidence_rule(admitted) == PG_TYPE_FAMILY_ABSTRACT);
 	assert(pg_evidence_rule(pg_evidence_premise(admitted, 1)) == PG_INDUCTIVE_FORM);
+	/* Quotation uses retained family construction even after beta reduction,
+	 * not the first receipt's rule or its premise offsets. */
+	const struct pg_evidence *unit = complete(&synthesis, request(&synthesis, root, "D:=@{u:*;};"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *partial_family = pg_prove_family_application(typing, admitted, pg_prove_type_value(typing, unit));
+	assert(partial_family && pg_evidence_judgement(partial_family) == PG_JUDGEMENT_TYPE_FAMILY);
+	const struct pg_evidence *reduced_family = complete(&synthesis,
+		pg_synthesis_normalize(&synthesis, empty, partial_family), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_rule(reduced_family) == PG_PURE_NORMALIZATION);
+	const struct pg_evidence *families[] = {partial_family, reduced_family};
+	const struct pg_evidence *quoted[2];
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_source_scope *named = pg_synthesis_name(&synthesis, root,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "F", .length = 1}, families[i]);
+		quoted[i] = complete(&synthesis, request(&synthesis, named, "f:=&F;"), PG_SYNTHESIS_DONE);
+		assert(pg_evidence_judgement(quoted[i]) == PG_JUDGEMENT_VALUE);
+	}
+	same_judgement(quoted[0], quoted[1]);
 	const char *invalid[] = {"f:=\\x:missing => x;", "f:=\\A:@ => \\x:A => \\y:x => y;"};
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
 		struct pg_synthesis_job *job = pg_synthesis_telescope(&synthesis, root,

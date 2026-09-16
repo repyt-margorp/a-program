@@ -6592,25 +6592,29 @@ static void family_function_step(struct pg_synthesis *synthesis, struct pg_synth
 	if (pg_evidence_judgement(proof) != PG_JUDGEMENT_TYPE_FAMILY) { forward_proof(synthesis, job, input); return; }
 	struct pg_synthesis_job *canonical = family_function(synthesis, input);
 	if (canonical != job) { forward_proof(synthesis, job, canonical); return; }
+	if (job->value_job) { forward_proof(synthesis, job, job->value_job); return; }
 	if (!job->left) {
-		enum pg_evidence_rule rule = pg_evidence_rule(proof);
-		if (rule == PG_TYPE_FAMILY_ABSTRACT) {
-			const struct pg_evidence *context = pg_evidence_premise(proof, 0);
+		const struct pg_evidence *environment = NULL;
+		const struct pg_evidence *construction = pg_prove_construction_origin(synthesis->typing,
+			synthesis->classifiers, proof, &environment);
+		const struct pg_occurrence *subject = construction ? pg_evidence_subject(construction) : NULL;
+		if (subject && subject->core->kind == PG_LAMBDA) {
+			const struct pg_evidence *context = pg_evidence_premise(construction, 0);
 			struct pg_synthesis_job *body = family_function(synthesis,
-				pg_synthesis_evidence(synthesis, pg_evidence_premise(proof, 1)));
+				pg_synthesis_evidence(synthesis, pg_prove_structural_subject(synthesis->typing, subject->operands[0])));
 			job->value_job = pg_synthesis_lambda_body(synthesis,
 				pg_synthesis_evidence(synthesis, context), body);
-		} else if (rule == PG_CONTEXT_PROJECTION || rule == PG_REINDEX) {
-			struct pg_synthesis_job *premises[] = {
-				pg_synthesis_evidence(synthesis, pg_evidence_premise(proof, 0)),
-				family_function(synthesis, pg_synthesis_evidence(synthesis, pg_evidence_premise(proof, 1)))};
-			job->value_job = plain_rule(synthesis, rule, NULL, 2, premises);
-		} else if (rule == PG_TYPE_FAMILY_APP) {
+		} else if (subject && subject->core->kind == PG_APPLICATION) {
 			const struct pg_evidence *body = pg_prove_application_body(synthesis->typing,
-				pg_evidence_premise(proof, 0), pg_evidence_premise(proof, 1));
+				pg_prove_structural_subject(synthesis->typing, subject->operands[0]),
+				pg_prove_structural_subject(synthesis->typing, subject->operands[1]));
 			if (body) job->value_job = family_function(synthesis, pg_synthesis_evidence(synthesis, body));
 		}
-		if (job->value_job) { forward_proof(synthesis, job, job->value_job); return; }
+		if (job->value_job) {
+			if (environment) job->value_job = pg_synthesis_reindex_jobs(synthesis,
+				pg_synthesis_evidence(synthesis, environment), job->value_job);
+			forward_proof(synthesis, job, job->value_job); return;
+		}
 		job->left = pg_synthesis_inductive_instance(synthesis, input);
 		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 	}

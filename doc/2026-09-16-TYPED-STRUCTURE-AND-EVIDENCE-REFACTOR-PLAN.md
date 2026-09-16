@@ -1115,3 +1115,50 @@ Against `57fc128`, implementation/header changes are `evidence.c` +2/-3,
 Tests add 17 lines. Cumulative implementation growth is **+1163**. This does
 not complete the remaining formation/normalization migration or the R5
 net-negative gate; Main remains unpublished.
+
+### 2026-09-17: Family construction uses the shared typed source
+
+- [x] Extend the shared checked construction interface to family Lambda/APP
+  and rename it `pg_prove_construction_origin`. Re-establish the appropriate
+  ordinary family or computation rule from typed inputs. Keep those logical
+  rules distinct; add no Core constructor or serialized evidence tag. Require
+  the reconstructed source's judgement, context and Core to match the retained
+  construction. Reject context/substitution evidence at this interface.
+- [x] Remove `family_function_step`'s projection/reindex receipt recursion.
+  It reads typed Lambda bodies/application arguments and applies the shared
+  accumulated context map to the resulting function. The extended context is
+  taken from the family introduction just checked, not an arbitrary receipt.
+  Nominal declarations still require their ordinary declaration/instance
+  checking; a missing Lambda/APP view does not admit a nominal declaration.
+- [x] Share exact scoped-body validation in typed beta-body exposure too.
+  Test direct and projected family constructions, partial/final family
+  applications and repeated lookup without proof/occurrence growth. Test that
+  partial application followed by pure normalization still supports `&F`,
+  with the same resulting judgement as quotation before normalization.
+- [x] Fix a related consumer failure discovered while auditing the shared
+  API: graph generation for a Match branch calling a helper ending in
+  `#int_add` dereferenced a missing construction view. Absence of an induction
+  helper now returns control to ordinary computation handling. The regression
+  generates `@f` and `*f` and verifies the runtime result `3` at chunks one and
+  64; it does not assert that every host operation has a structural graph.
+- [x] Full debug acceptance passed on the final implementation, including
+  63/63 compatibility and source/image QuickSort properties. ASan/UBSan Core,
+  IADT, synthesis, program and imported QuickSort checks passed.
+  `git diff --check` passed. No wire format or acceptance policy changed.
+
+Against `3849848`, implementation/header changes are `evidence.c` +14/-8,
+`evidence.h` +2/-2, `function_graph.c` +5/-4, `synthesis.c` +16/-12:
+**+11 net**. Tests are +50/-6 (**+44**). Cumulative implementation/header
+changes from `4657cc6` are +2482/-1308 (**+1174**), still failing the reduction
+gate. Sequential single debug QuickSort runs were 1.532 seconds / 271616 KiB
+before and 1.499 seconds / 271536 KiB after, both 154851 Solve transitions.
+No performance improvement is inferred from one pair of measurements.
+
+The next substantial dependency remains typed Pi restriction/result structure:
+the constant-codomain fallback retains its Pi source but not the scoped body,
+and the codomain fallback does not retain its typed argument. These omissions
+must be resolved before deleting `pi_component`, its scope-frame path and the
+remaining nominal history recovery. They cannot be replaced with fabricated
+substitution images or by treating normalized source inputs as result children.
+Shared budgeted typed normalization, aggregate R0-R5 acceptance and Main
+publication remain outstanding.

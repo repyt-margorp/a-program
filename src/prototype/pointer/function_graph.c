@@ -225,7 +225,7 @@ static int computation_view(struct pg_function_graph_state *s,
 {
 	if (!structural_computation_view(s, proof, rule, left, right)) return 0;
 	const struct pg_evidence *map = NULL;
-	proof = pg_prove_computation_origin(s->typing, s->classifiers, proof, &map);
+	proof = pg_prove_construction_origin(s->typing, s->classifiers, proof, &map);
 	if (!proof) return -1;
 	*rule = pg_evidence_rule(proof);
 	if (*rule == PG_MATCH_ELIM || *rule == PG_INDUCTION_ELIM) {
@@ -402,7 +402,7 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 	size_t count = 0, forces = 0;
 	int result = 0;
 	for (;;) {
-		function = pg_prove_computation_origin(s->typing, s->classifiers, function, &environment);
+		function = pg_prove_construction_origin(s->typing, s->classifiers, function, &environment);
 		if (!function) goto done;
 		enum pg_evidence_rule rule = pg_evidence_rule(function);
 		if (rule == PG_APP_ELIM) {
@@ -436,7 +436,8 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 		const struct pg_evidence *body = function;
 		for (;;) {
 			const struct pg_evidence *body_environment;
-			body = pg_prove_computation_origin(s->typing, s->classifiers, body, &body_environment);
+			body = pg_prove_construction_origin(s->typing, s->classifiers, body, &body_environment);
+			if (!body) goto done;
 			if (pg_evidence_rule(body) == PG_LAMBDA_INTRO) body = pg_evidence_premise(body, 1);
 			else if (pg_evidence_rule(body) == PG_APP_ELIM) body = pg_evidence_premise(body, 0);
 			else if (pg_evidence_rule(body) == PG_FORCE_ELIM || pg_evidence_rule(body) == PG_THUNK_COMPUTATION ||
@@ -893,7 +894,7 @@ const struct pg_evidence *pg_function_graph_source(struct pg_typing *typing,
 {
 	while (function) {
 		const struct pg_evidence *environment = NULL;
-		function = pg_prove_computation_origin(typing, classifiers, function, &environment);
+		function = pg_prove_construction_origin(typing, classifiers, function, &environment);
 		if (!function) return NULL;
 		if (environment) {
 			const struct pg_context *scope = pg_evidence_context(function);

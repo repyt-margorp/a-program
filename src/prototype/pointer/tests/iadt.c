@@ -181,6 +181,20 @@ static void scoped_type_families(void)
 	const struct pg_evidence *abstracted = pg_prove_family_abstraction(&typing, vc, fiber);
 	assert(abstracted && pg_evidence_subject(abstracted)->core->kind == PG_LAMBDA);
 	common_rule(&typing, &classifiers, abstracted);
+	const struct pg_evidence *environment = NULL;
+	assert(!pg_prove_construction_origin(&typing, &classifiers, empty, &environment));
+	assert(!pg_prove_construction_origin(&typing, &classifiers, vc, &environment));
+	assert(pg_prove_construction_origin(&typing, &classifiers, abstracted, &environment) == abstracted && !environment);
+	assert(pg_prove_construction_origin(&typing, &classifiers, partial, &environment) == partial && !environment);
+	assert(pg_prove_construction_origin(&typing, &classifiers, fiber, &environment) == fiber && !environment);
+	const struct pg_evidence *projected_family = pg_prove_projection(&typing, vc, abstracted);
+	assert(pg_prove_construction_origin(&typing, &classifiers, projected_family, &environment) == abstracted);
+	assert(environment && pg_evidence_context_map(environment)->source == pg_evidence_context(fc));
+	assert(pg_evidence_context_map(environment)->destination == pg_evidence_context(vc));
+	size_t occurrence_count = typing.occurrences.count, proof_count = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i)
+		assert(pg_prove_construction_origin(&typing, &classifiers, projected_family, &environment) == abstracted);
+	assert(typing.occurrences.count == occurrence_count && typing.proofs.count == proof_count);
 	/* Substitution preserves the binding sort, even though both images are
 	 * ordinary Core terms. Neither a type value nor a raw thunk is a family. */
 	const struct pg_evidence *prefix = pg_prove_substitution_projection(&typing, base, vc);
@@ -192,6 +206,7 @@ static void scoped_type_families(void)
 	assert(!pg_prove_substitution_pair(&typing, zero, base, family));
 	const struct pg_evidence *projection = pg_prove_substitution_projection(&typing, vc, vc);
 	assert(projection && pg_prove_reindex(&typing, projection, family));
+	assert(!pg_prove_construction_origin(&typing, &classifiers, projection, &environment));
 	/* Admit an empty indexed family with the dependent signature (A, x:A).
 	 * Recovery must retain both typed images, in order, across wrappers. */
 	const struct pg_evidence *ia = pg_prove_context_extension(&typing, fc, a, pg_prove_projection(&typing, fc, u));
@@ -1883,17 +1898,17 @@ static void schema_positivity(void)
 	assert(pg_occurrence_with_induction(&typing, pg_evidence_subject(countdown), countdown_allocation) == pg_evidence_subject(countdown));
 	{
 		const struct pg_evidence *environment = NULL;
-		assert(pg_prove_computation_origin(&typing, &classifiers, countdown, &environment) == countdown && !environment);
+		assert(pg_prove_construction_origin(&typing, &classifiers, countdown, &environment) == countdown && !environment);
 		const struct pg_evidence *projected = pg_prove_projection(&typing, z_context, countdown);
-		assert(pg_prove_computation_origin(&typing, &classifiers, projected, &environment) == countdown);
+		assert(pg_prove_construction_origin(&typing, &classifiers, projected, &environment) == countdown);
 		assert(environment && pg_evidence_context_map(environment)->source == pg_evidence_context(countdown));
 		assert(pg_evidence_context_map(environment)->destination == pg_evidence_context(z_context));
 		size_t before = typing.proofs.count, subjects = typing.occurrences.count;
 		for (size_t i = 0; i < 100; ++i)
-			assert(pg_prove_computation_origin(&typing, &classifiers, projected, &environment) == countdown);
+			assert(pg_prove_construction_origin(&typing, &classifiers, projected, &environment) == countdown);
 		assert(typing.proofs.count == before && typing.occurrences.count == subjects);
-		assert(!pg_prove_computation_origin(NULL, &classifiers, countdown, &environment));
-		assert(!pg_prove_computation_origin(&typing, &classifiers, countdown, NULL));
+		assert(!pg_prove_construction_origin(NULL, &classifiers, countdown, &environment));
+		assert(!pg_prove_construction_origin(&typing, &classifiers, countdown, NULL));
 		/* This boundary has no introduction receipt until structural recovery.
 		 * Its typed Return child is unchanged by totality subsumption. */
 		const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, pg_binder(&graph), nat);
@@ -1903,7 +1918,7 @@ static void schema_positivity(void)
 		const struct pg_evidence *boundary = pg_prove_effect_subsumption(&typing, total, target);
 		assert(boundary && pg_evidence_rule(boundary) == PG_EFFECT_SUBSUMPTION);
 		assert(pg_evidence_for_subject(&typing, pg_evidence_subject(boundary), NULL) == boundary);
-		const struct pg_evidence *recovered = pg_prove_computation_origin(&typing, &classifiers, boundary, &environment);
+		const struct pg_evidence *recovered = pg_prove_construction_origin(&typing, &classifiers, boundary, &environment);
 		assert(recovered && pg_evidence_rule(recovered) == PG_RETURN_INTRO && !environment);
 		assert(pg_evidence_subject(recovered)->core == pg_evidence_subject(boundary)->core);
 		assert(pg_evidence_for_subject(&typing, pg_evidence_subject(boundary), NULL) == boundary);

@@ -647,6 +647,18 @@ static void function_graphs(void)
 		graph_witness_result(p, &works[0], one, zero, chunk);
 		for (size_t i = 0; i < 3; ++i) pg_function_graph_destroy(&works[i]);
 		pg_program_destroy(p);
+		/* A non-recursive helper can end in an opaque host callee. A missing
+		 * construction view is not an induction dependency or a typing failure. */
+		const char *host_helper = "Unit:=@{unit:*;}; helper:=\\x:Unit=>#int_add;"
+			"f:=\\x:Unit=>x @unit=>helper x #1 #2; graph:=@f; proof:=*f; main:=f Unit.unit;";
+		p = pg_program_create(host_helper, strlen(host_helper), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		solve(p, chunk);
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+		const struct pg_term *answer = pg_evidence_subject(export_value(p, "main"))->core;
+		int64_t integer;
+		assert(answer->kind == PG_REFERENCE && pg_host_integer_view(answer->as.reference, &integer) && integer == 3);
+		pg_program_destroy(p);
 	}
 	puts("function graphs: ordinary indexed schemas and result witnesses preserve identity/length/mirror results");
 }
