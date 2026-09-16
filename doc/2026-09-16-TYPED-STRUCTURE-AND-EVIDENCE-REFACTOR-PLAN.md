@@ -327,7 +327,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
 | `inductive_recovery_step` | Reads typed origins/maps, selections and computation inputs; application-body transitions share work and consume recovery budget. Exact nominal formation and other synchronous kernel suboperations remain |
 | `rebase_image` | Reads typed maps/origins and constructor/family inputs; rechecks introductions in the target context. Retains normalization receipts and nominal formation checks, not wrapper-history dispatch; synchronous work remains |
-| `constructor_origin`, `pg_prove_elimination_body` | Read typed fields/motive/allocation; ordinary nominal acceptance still required |
+| `constructor_origin`, `pg_prove_elimination_body` | Read typed fields/motive/allocation; ordinary nominal acceptance still required. Individual field selection now uses checked typed inputs and nominal declaration binders; computed construction exposure and bulk reconstruction remain |
 | `classifier_leaf` | Deleted |
 | `classifier_recovery_step` | Uses the shared typed classifier query; separate map stack removed. Variable/Universe formation and final synchronous certification remain legitimate checks |
 | `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
@@ -1557,3 +1557,36 @@ generalized. Constructor NF input tests validate the checked input API, not
 That consumer still needs coherent field-classifier conversion before replacing
 its source-field reconstruction. Full final optimized/sanitized acceptance,
 representation-cost reduction and Main publication remain outstanding.
+
+### 2026-09-17: Constructor field selection (R28)
+
+- [x] Reproduce the stale-field path: selecting a field from a normalized
+  two-field constructor returned the source redex rather than the current NF
+  field. The new IADT assertion failed before the implementation change.
+- [x] Resolve field positions from the checked nominal declaration, verify its
+  erased layout/saturation, and read the checked typed input. Do not rebuild
+  the complete constructor introduction just to select an available input.
+  Retain the existing computed-construction exposure for unavailable inputs;
+  reject a historical field whose Core is not alpha-equal to the current field.
+- [x] Test distinct field positions and a dependent package `(A : @, x : A)`
+  whose type field reduces. The second field keeps its existing conversion
+  evidence/classifier: normalization does not silently retag it with the first
+  field's new Core. Repeated selection creates no additional proofs.
+- [x] Debug acceptance passed, including 63/63 compatibility and final
+  QuickSort source/image results. ASan/UBSan Core, IADT, synthesis and imported
+  QuickSort passed. `git diff --check` passed; no rule or format change.
+
+Against `fc4af49`: `evidence.c` +36/-7, `evidence.h` +4/-4: implementation net
+**+29**, cumulative **+1464**. Tests are +31/-0. This replaces the unconditional
+field reconstruction path, not all of `constructor_origin`; the net-negative
+gate and R3/R5 remain open. In particular, maps outside normalization recipes,
+general head-changing result exposure, and coherent reconstruction of an entire
+dependent normalized constructor still need the shared result-view work.
+
+Sequential O0 QuickSort: R27 **1.0945 s / 275964 KiB**, R28
+**1.0698 s / 275332 KiB**, both **131899** Solve transitions. R28 retained
+**179362 Terms / 415826 typed subjects / 435124 proofs / 537 body requests**,
+one more proof than R27. These single samples do not establish a speedup or
+resolve the cumulative representation cost. Logs:
+`/tmp/a-program-typed-structure-r28-debug.log` and
+`/tmp/a-program-typed-structure-r28-san-{core,iadt,synthesis,quicksort}.log`.

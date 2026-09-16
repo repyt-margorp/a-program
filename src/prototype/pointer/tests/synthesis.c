@@ -5367,6 +5367,33 @@ static void source_schemas(struct pg_typing *typing, struct pg_classifiers *clas
 		same_judgement(pg_prove_constructor_field(typing, packed, members->binder), zero_value);
 		same_judgement(pg_prove_constructor_field(typing, packed, members->parent->binder), values[0]);
 		assert(!pg_prove_constructor_field(typing, packed, field));
+		/* Normalizing the type field does not silently retag a dependent value.
+		 * Its existing conversion remains the evidence for its classifier. */
+		const struct pg_evidence *type_redex = pg_prove_total_pure_value(typing,
+			pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, values[0]));
+		const struct pg_evidence *redex_formation = pg_prove_value_type(typing, type_redex);
+		struct pg_conversion conversion;
+		assert(redex_formation && !pg_conversion_init(&conversion, &work,
+			pg_evidence_classifier(zero_value), pg_evidence_subject(redex_formation)->core));
+		assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
+		const struct pg_evidence *converted_zero = pg_prove_conversion(typing, zero_value,
+			redex_formation, pg_conversion_certificate(&conversion));
+		const struct pg_evidence *redex_fields[] = {type_redex, converted_zero};
+		const struct pg_evidence *redex_box = pg_prove_constructor(typing,
+			box.formation, mk, box.parameters, 2, redex_fields);
+		assert(redex_box);
+		struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(redex_box)->core);
+		assert(pg_nf_advance(nf, 10000) == PG_NF_DONE);
+		const struct pg_evidence *normal_box = pg_prove_normalization(typing, redex_box, pg_nf_certificate(nf));
+		assert(normal_box && pg_evidence_subject(normal_box)->core == pg_evidence_subject(packed)->core);
+		const struct pg_evidence *type_field = pg_prove_constructor_field(typing, normal_box, members->parent->binder);
+		const struct pg_evidence *value_field = pg_prove_constructor_field(typing, normal_box, members->binder);
+		assert(type_field && pg_evidence_subject(type_field)->core == pg_evidence_subject(values[0])->core);
+		assert(value_field == converted_zero && pg_evidence_classifier(value_field) == pg_evidence_subject(type_redex)->core);
+		proofs = typing->proofs.count;
+		assert(pg_prove_constructor_field(typing, normal_box, members->binder) == value_field);
+		assert(typing->proofs.count == proofs);
+		pg_conversion_destroy(&conversion);
 	}
 	/* Retaining field allocation does not accept retained field classifiers. */
 	const struct pg_evidence *saved_map = pg_prove_constructor_scope(typing, admitted, successor, parameter_map);

@@ -1456,11 +1456,15 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 		struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(redex_pair)->core);
 		while (pg_nf_advance(nf, chunk) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
 		assert(pg_nf_result(nf) == pg_evidence_subject(left)->core);
+		const struct pg_evidence *normalized_pair = pg_prove_normalization(typing, redex_pair, pg_nf_certificate(nf));
+		assert(normalized_pair);
 		for (size_t i = 0; i < 2; ++i) {
 			const struct pg_evidence *field = pg_prove_normalization_input(typing, redex_pair, pg_nf_certificate(nf), i);
 			assert(field && pg_evidence_subject(field)->core == pg_evidence_subject(values[i])->core);
 			assert(pg_evidence_context(field) == pg_evidence_context(values[i]));
 			assert(pg_evidence_classifier(field) == pg_evidence_classifier(values[i]));
+			const struct pg_evidence *selected = pg_prove_constructor_field(typing, normalized_pair, fields[i]);
+			assert(selected && pg_evidence_subject(selected) == pg_evidence_subject(field));
 		}
 		assert(!pg_prove_normalization_input(typing, redex_pair, pg_nf_certificate(nf), 2));
 		struct pg_synthesis_job *jobs[2];

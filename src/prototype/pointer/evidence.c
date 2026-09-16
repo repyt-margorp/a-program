@@ -441,6 +441,8 @@ static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 	const struct pg_evidence *computation);
 static const struct pg_evidence *constructor_origin(struct pg_typing *typing,
 	const struct pg_evidence *value);
+static int structural_input(struct pg_typing *typing, const struct pg_occurrence *source,
+	size_t index, const struct pg_occurrence **result);
 
 static const struct pg_reduction_certificate *subject_normalization(struct pg_typing *typing,
 	const struct pg_occurrence *subject)
@@ -2147,14 +2149,41 @@ done:
 const struct pg_evidence *pg_prove_constructor_field(struct pg_typing *typing,
 	const struct pg_evidence *value, const struct pg_object *field)
 {
-	const struct pg_evidence *origin = constructor_origin(typing, value);
-	if (!origin) return NULL;
-	const struct pg_evidence *fields = origin->premises[3];
-	const struct pg_context *scope = pg_evidence_context(fields->premises[0]);
-	const struct pg_context *prefix = pg_evidence_context(origin->premises[1]->premises[0]);
-	for (; scope != prefix; scope = scope->parent)
-		if (scope->binder == field) return pg_substitution_image(typing, fields, field);
+	if (!pg_evidence_owned_by(value, typing) || pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) return NULL;
+	const struct pg_evidence *source = value;
+	const struct pg_term *expected = NULL;
+	const struct pg_occurrence *subject;
+expose:
+	subject = pg_evidence_subject(value);
+	const struct pg_term *head = subject->core;
+	size_t count = 0, position, arity;
+	for (; head->kind == PG_APPLICATION; head = head->as.application.function) ++count;
+	const struct pg_data_layout *layout;
+	if (head->kind != PG_REFERENCE || !pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) goto origin;
+	if (count != arity) return NULL;
+	struct pg_inductive_instance instance;
+	if (!pg_inductive_instance(typing, formed_classifier(typing, NULL, value), &instance)) goto origin;
+	if (layout != pg_data_schema_layout(instance.schema)) return NULL;
+	const struct pg_context *scope = pg_data_declaration_fields(pg_data_schema_declaration(instance.schema), position);
+	if (count && !scope) return NULL;
+	const struct pg_term *spine = subject->core;
+	for (size_t i = count; i; --i, scope = scope->parent, spine = spine->as.application.function) {
+		if (scope->binder != field) continue;
+		if (!expected) expected = spine->as.application.argument;
+		const struct pg_occurrence *input;
+		if (!structural_input(typing, subject, i - 1, &input)) return NULL;
+		if (!input) goto origin;
+		if (input->context != pg_evidence_context(source) || pg_alpha_equal(input->core, expected) != 1) return NULL;
+		return pg_prove_structural_subject(typing, input);
+	}
 	return NULL;
+origin:
+	/* Computed RETURN/APP results may still require exposing their construction.
+	 * Never substitute a historical field for a different current NF field. */
+	if (value != source) return NULL;
+	value = constructor_origin(typing, source);
+	if (!value || value == source) return NULL;
+	goto expose;
 }
 
 static const struct pg_evidence *induction_field_body(struct pg_typing *typing,

@@ -226,10 +226,10 @@ int pg_inductive_motive_context_valid(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
 	const struct pg_evidence *elimination);
-/* Recover a field of a retained constructor introduction by its schema binder.
- * Uses the introduction's checked substitution, including dependent earlier
- * fields. Neutral values and binders outside this constructor return NULL.
- * This inspects evidence; it is not a new projection or equality rule. */
+/* Select a checked typed field by its nominal schema binder, including scoped
+ * and congruently normalized inputs. Preserve its classifier; do not retag a
+ * dependent field after normalizing an earlier field. Computed constructions
+ * still require exposure. Neutral/unexposed values return NULL. No new rule. */
 const struct pg_evidence *pg_prove_constructor_field(struct pg_typing *typing,
 	const struct pg_evidence *value, const struct pg_object *field);
 /* Expose Match/induction at a retained constructor introduction. Apply fields
