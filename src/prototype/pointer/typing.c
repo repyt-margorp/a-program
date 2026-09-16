@@ -19,6 +19,7 @@ int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph)
 	if (pg_index_init(&typing->occurrences) != 0) goto fail;
 	if (pg_index_init(&typing->context_maps) != 0) goto fail;
 	if (pg_index_init(&typing->context_projections) != 0) goto fail;
+	if (pg_index_init(&typing->context_lifts) != 0) goto fail;
 	if (pg_index_init(&typing->occurrence_actions) != 0) goto fail;
 	if (pg_index_init(&typing->occurrence_inputs) != 0) goto fail;
 	if (pg_index_init(&typing->typed_bodies) != 0) goto fail;
@@ -36,6 +37,7 @@ void pg_typing_destroy(struct pg_typing *typing)
 	pg_index_destroy(&typing->occurrences);
 	pg_index_destroy(&typing->context_maps);
 	pg_index_destroy(&typing->context_projections);
+	pg_index_destroy(&typing->context_lifts);
 	pg_index_destroy(&typing->occurrence_actions);
 	pg_index_destroy(&typing->occurrence_inputs);
 	pg_index_destroy(&typing->typed_bodies);
@@ -57,22 +59,41 @@ const struct pg_context *pg_context_bind(struct pg_typing *typing,
 	const struct pg_context *parent, const struct pg_object *binder,
 	const struct pg_term *declared_type, enum pg_evidence_judgement judgement)
 {
+	return pg_context_intern(typing, &(struct pg_context){
+		.parent = parent, .binder = binder, .declared_type = declared_type, .judgement = judgement});
+}
+
+const struct pg_context *pg_context_intern(struct pg_typing *typing,
+	const struct pg_context *declaration)
+{
+	if (!declaration) return NULL;
+	const struct pg_context *parent = declaration->parent;
+	const struct pg_object *binder = declaration->binder;
+	const struct pg_term *declared_type = declaration->declared_type;
+	enum pg_evidence_judgement judgement = declaration->judgement;
 	if (!binder || !declared_type) return NULL;
 	if (binder->kind != PG_BINDER) return NULL;
 	if (judgement != PG_JUDGEMENT_VALUE && judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
+	if (declaration->indices) {
+		size_t count;
+		if (judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
+		if (pg_context_extension_size(declaration->indices, parent, &count) || !count) return NULL;
+	}
 	uint64_t hash = context_hash(parent, binder, declared_type);
 	hash = (hash ^ judgement) * UINT64_C(1099511628211);
+	hash = (hash ^ (uintptr_t)declaration->indices) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->contexts, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
 		const struct context_entry *entry = (const struct context_entry *)candidate;
 		if (entry->context.parent != parent) continue;
 		if (entry->context.binder != binder) continue;
 		if (entry->context.judgement != judgement) continue;
+		if (entry->context.indices != declaration->indices) continue;
 		if (entry->context.declared_type == declared_type) return &entry->context;
 	}
 	struct context_entry *entry = pg_alloc(typing->graph, sizeof(*entry));
 	if (!entry) return NULL;
-	entry->context = (struct pg_context){parent, binder, declared_type, judgement};
+	entry->context = *declaration;
 	if (pg_index_insert(&typing->contexts, &entry->index, hash) != 0) return NULL;
 	return &entry->context;
 }
@@ -84,6 +105,19 @@ const struct pg_context *pg_context_lookup(const struct pg_context *context,
 		if (context->binder == binder) return context;
 	}
 	return NULL;
+}
+
+const struct pg_term *pg_context_signature(struct pg_graph *graph,
+	const struct pg_context *parent, const struct pg_context *indices,
+	const struct pg_term *universe)
+{
+	const struct pg_term *signature = universe;
+	for (const struct pg_context *slot = indices; slot != parent; slot = slot->parent) {
+		if (!slot) return NULL;
+		signature = pg_pi(graph, slot->declared_type, slot->binder, signature);
+		if (!signature) return NULL;
+	}
+	return signature;
 }
 
 int pg_context_extension_size(const struct pg_context *context,
@@ -375,13 +409,14 @@ const struct pg_context_map *pg_context_map_projection(struct pg_typing *typing,
 
 static const struct pg_context_map *context_map_lift_at(struct pg_typing *typing,
 	const struct pg_context_map *map, const struct pg_context *extension,
-	const struct pg_object *binder, const struct pg_term *type)
+	const struct pg_object *binder, const struct pg_term *type, const struct pg_context *indices)
 {
 	if (!map || !extension || extension->parent != map->source) return NULL;
 	if (!binder || binder->kind != PG_BINDER || pg_context_lookup(map->destination, binder)) return NULL;
 	if (map->count >= SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
-	const struct pg_context *destination = pg_context_bind(typing, map->destination,
-		binder, type, extension->judgement);
+	const struct pg_context *destination = pg_context_intern(typing, &(struct pg_context){
+		.parent = map->destination, .binder = binder, .declared_type = type,
+		.judgement = extension->judgement, .indices = indices});
 	if (!destination) return NULL;
 	const struct pg_context_map *projection = pg_context_map_projection(typing, map->destination, destination);
 	if (!projection) return NULL;
@@ -396,14 +431,129 @@ static const struct pg_context_map *context_map_lift_at(struct pg_typing *typing
 	return result;
 }
 
-const struct pg_context_map *pg_context_map_lift(struct pg_typing *typing,
+struct lift_wait { struct pg_context_lift *work; struct lift_wait *parent; };
+
+struct pg_context_lift {
+	struct pg_index_entry index;
+	struct pg_typing *typing;
+	const struct pg_context_map *map, *result, *indices_map;
+	const struct pg_context *extension;
+	const struct pg_object *binder;
+	const struct pg_context **indices;
+	const struct pg_term *universe;
+	size_t count, next;
+	struct pg_context_lift *child;
+	struct pg_substitution *substitution;
+	struct lift_wait *waiting;
+	enum pg_substitution_status status;
+	uint64_t steps;
+};
+
+struct pg_context_lift *pg_context_lift_request(struct pg_typing *typing,
 	const struct pg_context_map *map, const struct pg_context *extension,
 	const struct pg_object *binder)
 {
 	if (!map || !extension || extension->parent != map->source) return NULL;
-	const struct pg_term *type = pg_substitution_compute(&typing->substitutions,
-		extension->declared_type, map->count, pg_context_map_bindings(map));
-	return context_map_lift_at(typing, map, extension, binder, type);
+	if (!binder || binder->kind != PG_BINDER || pg_context_lookup(map->destination, binder)) return NULL;
+	uint64_t hash = (uintptr_t)map * UINT64_C(1099511628211);
+	hash = (hash ^ (uintptr_t)extension) * UINT64_C(1099511628211);
+	hash = (hash ^ (uintptr_t)binder) * UINT64_C(1099511628211);
+	for (struct pg_index_entry *p = pg_index_candidates(&typing->context_lifts, hash); p; p = p->next) {
+		struct pg_context_lift *work = (void *)p;
+		if (p->hash == hash && work->map == map && work->extension == extension && work->binder == binder) return work;
+	}
+	struct pg_context_lift *work = pg_alloc(typing->graph, sizeof(*work));
+	if (!work) return NULL;
+	work->typing = typing;
+	work->map = map;
+	work->extension = extension;
+	work->binder = binder;
+	work->indices_map = map;
+	work->universe = extension->declared_type;
+	if (extension->judgement == PG_JUDGEMENT_TYPE_FAMILY) {
+		if (!extension->indices || pg_context_extension_size(extension->indices, extension->parent, &work->count)) return NULL;
+		if (work->count > SIZE_MAX / sizeof(*work->indices)) return NULL;
+		work->indices = pg_alloc(typing->graph, work->count * sizeof(*work->indices));
+		if (!work->indices) return NULL;
+		const struct pg_context *index = extension->indices;
+		for (size_t i = work->count; i; --i, index = index->parent) work->indices[i - 1] = index;
+		for (size_t i = 0; i < work->count; ++i) {
+			const struct pg_term *domain, *body;
+			const struct pg_object *bound;
+			if (!pg_pi_view(work->universe, &domain, &bound, &body)) return NULL;
+			if (domain != work->indices[i]->declared_type || bound != work->indices[i]->binder) return NULL;
+			work->universe = body;
+		}
+	}
+	return pg_index_insert(&typing->context_lifts, &work->index, hash) ? NULL : work;
+}
+
+static enum pg_substitution_status context_lift_step(struct pg_context_lift *work)
+{
+	struct pg_typing *typing = work->typing;
+	if (work->child) {
+		if (work->child->status != PG_SUBSTITUTION_DONE) return work->child->status;
+		work->indices_map = work->child->result;
+		work->child = NULL;
+		++work->next;
+	}
+	if (work->next < work->count) {
+		const struct pg_context *index = work->indices[work->next];
+		const struct pg_object *name = index->binder;
+		if (pg_context_lookup(work->indices_map->destination, name)) name = pg_binder(typing->graph);
+		work->child = pg_context_lift_request(typing, work->indices_map, index, name);
+		return work->child ? PG_SUBSTITUTION_PENDING : PG_SUBSTITUTION_ERROR;
+	}
+	if (!work->substitution) work->substitution = pg_substitution_request(&typing->substitutions,
+		work->universe, work->indices_map->count, pg_context_map_bindings(work->indices_map));
+	enum pg_substitution_status status = pg_substitution_advance(work->substitution, 1);
+	if (status != PG_SUBSTITUTION_DONE) return status;
+	const struct pg_term *type = pg_substitution_result(work->substitution);
+	const struct pg_context *indices = work->count ? work->indices_map->destination : NULL;
+	if (indices) type = pg_context_signature(typing->graph, work->map->destination, indices, type);
+	work->result = context_map_lift_at(typing, work->map, work->extension, work->binder, type, indices);
+	return work->result ? PG_SUBSTITUTION_DONE : PG_SUBSTITUTION_ERROR;
+}
+
+enum pg_substitution_status pg_context_lift_advance(struct pg_context_lift *work, uint64_t budget)
+{
+	if (!work) return PG_SUBSTITUTION_ERROR;
+	while (work->status == PG_SUBSTITUTION_PENDING && budget--) {
+		struct pg_context_lift *current = work->waiting ? work->waiting->work : work;
+		++work->steps;
+		if (current->status == PG_SUBSTITUTION_PENDING) {
+			if (current != work) ++current->steps;
+			current->status = context_lift_step(current);
+		}
+		if (current->status != PG_SUBSTITUTION_PENDING) {
+			if (work->waiting) work->waiting = work->waiting->parent;
+		} else if (current->child && current->child->status == PG_SUBSTITUTION_PENDING) {
+			struct lift_wait *wait = pg_alloc(work->typing->graph, sizeof(*wait));
+			if (!wait) { work->status = PG_SUBSTITUTION_ERROR; break; }
+			*wait = (struct lift_wait){current->child, work->waiting};
+			work->waiting = wait;
+		}
+	}
+	return work->status;
+}
+
+const struct pg_context_map *pg_context_lift_result(const struct pg_context_lift *work)
+{
+	return work && work->status == PG_SUBSTITUTION_DONE ? work->result : NULL;
+}
+
+uint64_t pg_context_lift_steps(const struct pg_context_lift *work)
+{
+	return work ? work->steps : 0;
+}
+
+const struct pg_context_map *pg_context_map_lift(struct pg_typing *typing,
+	const struct pg_context_map *map, const struct pg_context *extension,
+	const struct pg_object *binder)
+{
+	struct pg_context_lift *work = pg_context_lift_request(typing, map, extension, binder);
+	while (pg_context_lift_advance(work, 1024) == PG_SUBSTITUTION_PENDING) {}
+	return pg_context_lift_result(work);
 }
 
 struct pg_occurrence_action {
@@ -587,7 +737,7 @@ struct pg_occurrence_input {
 	size_t index;
 	struct input_map *maps;
 	struct pg_occurrence_action *action;
-	struct pg_substitution *domain;
+	struct pg_context_lift *lift;
 	struct pg_occurrence_input *selected;
 	struct input_wait *waiting;
 	struct input_scope *scopes;
@@ -762,21 +912,21 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 	}
 	if (work->scopes) {
 		const struct pg_context *scope = work->scopes->context;
-		const struct pg_term *body;
-		const struct pg_object *binder = input_binder(work->maps->core, work->index, &body);
-		if (!binder) binder = scope->binder;
-		map = work->effective;
-		if (!work->domain) work->domain = pg_substitution_request(&typing->substitutions,
-			scope->declared_type, map->count, pg_context_map_bindings(map));
-		enum pg_substitution_status status = pg_substitution_advance(work->domain, 1);
+		if (!work->lift) {
+			const struct pg_term *body;
+			const struct pg_object *binder = input_binder(work->maps->core, work->index, &body);
+			if (!binder) binder = scope->binder;
+			map = work->effective;
+			if (pg_context_lookup(map->destination, binder)) binder = pg_binder(typing->graph);
+			work->lift = pg_context_lift_request(typing, map, scope, binder);
+		}
+		enum pg_substitution_status status = pg_context_lift_advance(work->lift, 1);
 		if (status == PG_SUBSTITUTION_ERROR) return PG_INPUT_ERROR;
 		if (status == PG_SUBSTITUTION_PENDING) return PG_INPUT_PENDING;
-		if (pg_context_lookup(map->destination, binder)) binder = pg_binder(typing->graph);
-		work->effective = context_map_lift_at(typing, map, scope,
-			binder, pg_substitution_result(work->domain));
+		work->effective = pg_context_lift_result(work->lift);
 		if (!work->effective) return PG_INPUT_ERROR;
 		work->scopes = work->scopes->next;
-		work->domain = NULL;
+		work->lift = NULL;
 		return PG_INPUT_PENDING;
 	}
 	if (!work->action) {
@@ -785,7 +935,6 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 			work->result = projection;
 			work->maps = work->maps->next;
 			work->effective = NULL;
-			work->domain = NULL;
 			return PG_INPUT_PENDING;
 		}
 		work->action = pg_occurrence_action_request(typing, work->effective, work->result);
@@ -797,7 +946,6 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 		work->maps = work->maps->next;
 		work->action = NULL;
 		work->effective = NULL;
-		work->domain = NULL;
 	}
 	return PG_INPUT_PENDING;
 }

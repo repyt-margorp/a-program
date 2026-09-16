@@ -2040,3 +2040,61 @@ contexts/maps. Do not relax exact map checking or treat a family signature as
 a value type to bypass this. A shared signature/telescope allocation contract
 must account for ambient binder collisions and nested family parameters before
 removing that fallback.
+
+### 2026-09-17: Retain family telescopes and share scoped allocation (R40)
+
+- [x] Resolve R39's family-scope prerequisite. A family declaration now retains
+  its index telescope in the existing Context DAG. Exact context interning
+  includes that edge. It is descriptive data, not a formation certificate;
+  raw descriptions still require ordinary checking.
+- [x] Share logical signature construction between structural scope action,
+  family context formation and IADT formation. Remove Evidence's private
+  signature-building routine and synthesis's readback loop that reconstructed
+  the same index declarations from Pi syntax and a separate declaration scope.
+- [x] Use one memoized lifting request for value and family declarations.
+  Nested signatures preserve their dependent telescope and freshen collisions
+  once in the structural producer. Checked lifting uses those exact target
+  binders and verifies the resulting map, rather than allocating another
+  alpha-equivalent telescope. No alpha interning or relaxed map equality.
+- [x] Advance nested lifting and substitution through explicit waiting frames.
+  Construction-input queries use this same work instead of their private
+  domain-substitution path. Zero budget does no work; completed requests share
+  results. Telescope enumeration, signature closing and kernel certification
+  still have synchronous costs: the transition budget is not an instruction
+  or wall-time bound.
+- [x] Preserve the additional Context edge in the existing relocation DAG.
+  Formats become `APGCTX3`, `data-declaration/v3`, derivation version 14 and
+  source versions 44/45 (recompute/retained). Old formats reject; rebuild from
+  source rather than treating old payloads as the new schema. Source 42/43
+  and Context 2 rejection are covered explicitly. No independent Replay path.
+- [x] Cover exact checked/descriptive map identity, nested family parameters,
+  ambient binder collisions, mapped Pi bodies, chunked work, repeated lookup
+  without new Terms/proofs, malformed signatures, Context cycles and shared
+  family telescope roundtrips with no imported acceptance bits.
+- [x] Full debug acceptance passed, including 63/63 compatibility and final
+  QuickSort image properties. The final additional boundary tests passed in
+  debug and ASan/UBSan. Sanitizer Core, IADT, Identity, synthesis, graph/context
+  transport, source-image/retention, seed and imported QuickSort passed; the
+  affected synthesis/source tests were rebuilt after removing the readback loop.
+
+Logs: `/tmp/a-program-typed-structure-r40-debug.log`,
+`/tmp/a-program-typed-structure-r40-{core,graph,seed}.log`, and
+`/tmp/a-program-typed-structure-r40-san-{core,iadt,identity,synthesis,graph,source,seed,quicksort}.log`.
+
+Against `55eda9b`, implementation/header net is **+145**, cumulative **+1707**
+against `4657cc6`. Per-file nonzero nets: `typing.c` +170/-22 (+148),
+`typing.h` +16/-0 (+16), `evidence.c` +21/-30 (-9), `synthesis.c` +3/-19 (-16),
+`context_payload.c` +21/-16 (+5), `context_payload.h` +2/-1 (+1).
+Version-only files have net zero: `context_io.c` +1/-1,
+`declaration_io.c` +2/-2, `derivation_io.c` +1/-1, `source_io.c` +2/-2,
+`source_io.h` +3/-3. Tests: `core.c` +45/-2, `graph_acceptance.c` +23/-5,
+`seed.c` +2/-2. This does not satisfy the net-negative gate.
+
+Sequential O0 QuickSort: 1.0946 seconds / 278380 KiB / 132053 Solve transitions;
+178449 Terms / 416924 typed subjects / 434771 proofs / 14619 shared lift
+requests / 3458 input requests. Compared with R39, time is similar, Terms and
+proofs are unchanged, typed subjects increase by 1464 and peak RSS by 2620 KiB.
+The new shared work has a storage cost; no speedup is claimed. R2-R5 remain
+open, including normalized/strengthened result access, obsolete recovery
+removal, final performance/memory review and net code reduction. Main is not
+published by this checkpoint.

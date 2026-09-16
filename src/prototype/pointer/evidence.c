@@ -344,10 +344,6 @@ done:
 	return result;
 }
 
-static const struct pg_term *family_signature(struct pg_typing *typing,
-	const struct pg_evidence *parent, const struct pg_evidence *indices,
-	const struct pg_term *universe);
-
 const struct pg_data_declaration *pg_evidence_inductive_declaration(const struct pg_evidence *evidence)
 {
 	return evidence && evidence->rule == PG_INDUCTIVE_FORM ? pg_data_schema_declaration(evidence->certificate) : NULL;
@@ -377,7 +373,8 @@ const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
 	const struct pg_term *universe = indexed ? pg_evidence_subject(self->premises[2])->core : pg_evidence_context(self)->declared_type;
 	if (!pg_universe_level(universe, &level)) return NULL;
 	if (indexed) {
-		const struct pg_term *signature = family_signature(typing, self, indices, universe);
+		const struct pg_term *signature = pg_context_signature(typing->graph,
+			pg_evidence_context(self), pg_evidence_context(indices), universe);
 		if (!signature || pg_alpha_equal(signature, pg_evidence_context(self)->declared_type) != 1) return NULL;
 	} else if (pg_evidence_context(indices) != pg_evidence_context(self)) return NULL;
 	const struct pg_evidence *parent = self->premises[0];
@@ -2681,22 +2678,6 @@ static enum pg_evidence_judgement binding_judgement(const struct pg_evidence *ex
 	return pg_evidence_context(extension)->judgement;
 }
 
-/* Logical signatures share Pi syntax, including higher family parameters.
- * Each domain's value/family sort comes from its checked context extension. */
-static const struct pg_term *family_signature(struct pg_typing *typing,
-	const struct pg_evidence *parent, const struct pg_evidence *indices,
-	const struct pg_term *universe)
-{
-	const struct pg_term *signature = universe;
-	for (const struct pg_context *slot = pg_evidence_context(indices);
-		slot != pg_evidence_context(parent); slot = slot->parent) {
-		if (!slot) return NULL;
-		signature = pg_pi(typing->graph, slot->declared_type, slot->binder, signature);
-		if (!signature) return NULL;
-	}
-	return signature;
-}
-
 const struct pg_evidence *pg_prove_family_context_extension(struct pg_typing *typing,
 	const struct pg_evidence *parent, const struct pg_object *binder,
 	const struct pg_evidence *indices, const struct pg_evidence *universe)
@@ -2709,10 +2690,12 @@ const struct pg_evidence *pg_prove_family_context_extension(struct pg_typing *ty
 	size_t count;
 	if (pg_context_extension_size(pg_evidence_context(indices), pg_evidence_context(parent), &count) || !count) return NULL;
 	if (pg_context_lookup(pg_evidence_context(parent), binder)) return NULL;
-	const struct pg_term *signature = family_signature(typing, parent, indices, pg_evidence_subject(universe)->core);
+	const struct pg_term *signature = pg_context_signature(typing->graph,
+		pg_evidence_context(parent), pg_evidence_context(indices), pg_evidence_subject(universe)->core);
 	if (!signature) return NULL;
-	const struct pg_context *context = pg_context_bind(typing, pg_evidence_context(parent), binder,
-		signature, PG_JUDGEMENT_TYPE_FAMILY);
+	const struct pg_context *context = pg_context_intern(typing, &(struct pg_context){
+		.parent = pg_evidence_context(parent), .binder = binder, .declared_type = signature,
+		.judgement = PG_JUDGEMENT_TYPE_FAMILY, .indices = pg_evidence_context(indices)});
 	if (!context) return NULL;
 	const struct pg_evidence *premises[] = {parent, indices, universe};
 	return accept(typing, PG_CONTEXT_FAMILY_EXTEND,
@@ -3934,7 +3917,8 @@ struct lift_frame {
 	struct lift_frame *parent;
 	const struct pg_evidence *substitution, *extension, *map;
 	const struct pg_object *binder;
-	const struct pg_evidence **indices;
+	const struct pg_context_map *target;
+	struct lift_index { const struct pg_evidence *source; const struct pg_context *target; } *indices;
 	size_t count, next;
 };
 
@@ -3954,6 +3938,9 @@ const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	while (frame) {
 		const struct pg_evidence *extension = frame->extension;
 		const struct pg_evidence *destination;
+		if (!frame->target) frame->target = pg_context_map_lift(typing,
+			pg_evidence_context_map(frame->substitution), pg_evidence_context(extension), frame->binder);
+		if (!frame->target) goto done;
 		if (extension->rule == PG_CONTEXT_EXTEND) {
 			const struct pg_evidence *domain = pg_prove_reindex(typing, frame->substitution, extension->premises[1]);
 			destination = pg_prove_context_extension(typing, frame->substitution->premises[1], frame->binder, domain);
@@ -3964,16 +3951,20 @@ const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 				if (frame->count > SIZE_MAX / sizeof(*frame->indices)) goto done;
 				frame->indices = pg_alloc(&temporary, frame->count * sizeof(*frame->indices));
 				if (!frame->indices) goto done;
-				for (size_t i = frame->count; i; --i, indices = indices->premises[0]) frame->indices[i - 1] = indices;
+				const struct pg_context *target = frame->target->destination->indices;
+				for (size_t i = frame->count; i; --i, indices = indices->premises[0], target = target->parent) {
+					if (!target) goto done;
+					frame->indices[i - 1] = (struct lift_index){indices, target};
+				}
 				frame->map = frame->substitution;
 			}
 			if (frame->next < frame->count) {
 				struct lift_frame *child = pg_alloc(&temporary, sizeof(*child));
 				if (!child) goto done;
-				/* Signature-local binders are not declarations in the ambient
-				 * destination. Allocate them once per lifted family producer. */
+				/* Check the telescope already allocated by structural lifting. */
+				struct lift_index index = frame->indices[frame->next++];
 				*child = (struct lift_frame){.parent = frame, .substitution = frame->map,
-					.extension = frame->indices[frame->next++], .binder = pg_binder(typing->graph)};
+					.extension = index.source, .binder = index.target->binder};
 				frame = child;
 				continue;
 			}
@@ -3984,7 +3975,7 @@ const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 		if (!destination) goto done;
 		const struct pg_evidence *image = pg_prove_variable(typing, destination, frame->binder);
 		const struct pg_evidence *lifted = substitution_pair(typing, frame->substitution, extension, destination, image);
-		if (!lifted) goto done;
+		if (!lifted || pg_evidence_context_map(lifted) != frame->target) goto done;
 		frame = frame->parent;
 		if (frame) frame->map = lifted;
 		else result = lifted;

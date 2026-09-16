@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 /* Reconstructible source environments and source/definition/rule roots, including pending modules.
- * APGSRC42 retains value/family binder judgements in context payloads, preserves
+ * APGSRC44 retains value/family binder judgements and family index telescopes, preserves
  * already suspended values under surface &, admits checked
  * termination requests, and uses TOTAL source RETURN/arrow contracts with F
  * totality contracts, context-authoritative Pi premises and lexical
@@ -44,9 +44,9 @@
  * Streams are borrowed. */
 int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots);
-/* APGSRC43 optionally retains raw reduction records in the same Core table.
+/* APGSRC45 optionally retains raw reduction records in the same Core table.
  * Reading leaves them in program->retained_reductions, without checking or
- * installing results. NULL reductions selects ordinary APGSRC42 RECOMPUTE.
+ * installing results. NULL reductions selects ordinary APGSRC44 RECOMPUTE.
  * Origin selection includes retained endpoints and intermediate phase Terms. */
 int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots, const struct pg_reduction_archive *reductions);

@@ -3,7 +3,8 @@
 #include "typing.h"
 
 /* Temporary relocation data, never context formation evidence. Metadata is
- * node count, selected count, (parent ID, binder judgement) pairs, selected IDs.
+ * node count, selected count, (parent ID, binder judgement, indices ID) triples,
+ * selected IDs. Family index telescopes share the same context DAG.
  * IDs are local, 1-based; zero is empty. Only value/family judgements are
  * declaration kinds. Terms are binder/type pairs followed by additional roots.
  * Pack borrows nodes and allocates arrays in storage. Unpack interns contexts

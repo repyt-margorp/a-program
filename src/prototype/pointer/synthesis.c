@@ -4132,27 +4132,11 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	if (indexed) {
 		if (!job->right && job->nominal_input) {
 			const struct pg_context *self = pg_data_declaration_parameters(job->nominal_input);
-			const struct pg_context *prefix = pg_evidence_context(source_context(job->scope)), *end = prefix;
-			if (!self || self->parent != prefix) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-			const struct pg_context *indices = pg_data_declaration_indices(job->nominal_input);
-			size_t count;
-			if (pg_context_extension_size(indices, self, &count) || count > SIZE_MAX / sizeof(void *)) {
+			const struct pg_context *prefix = pg_evidence_context(source_context(job->scope));
+			if (!self || self->parent != prefix || !self->indices) {
 				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 			}
-			const struct pg_context **slots = malloc(count * sizeof(*slots));
-			if (count && !slots) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			for (size_t i = count; i; --i, indices = indices->parent) slots[i - 1] = indices;
-			const struct pg_term *tail = self->declared_type, *domain, *body;
-			const struct pg_object *binder;
-			for (size_t i = 0; i < count; ++i) {
-				if (!pg_pi_view(tail, &domain, &binder, &body)) { end = NULL; break; }
-				end = pg_context_bind(synthesis->typing, end, binder, domain, slots[i]->judgement);
-				if (!end) break;
-				tail = body;
-			}
-			free(slots);
-			if (!end) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-			job->right = pg_synthesis_telescope_at(synthesis, job->scope, job->syntax->left, prefix, end);
+			job->right = pg_synthesis_telescope_at(synthesis, job->scope, job->syntax->left, prefix, self->indices);
 		} else if (!job->right) job->right = pg_synthesis_telescope(synthesis, job->scope, job->syntax->left);
 		if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }

@@ -9,8 +9,8 @@
 #include "context_payload.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\52";
-static const char retained_magic[8] = "APGSRC\53";
+static const char magic[8] = "APGSRC\54";
+static const char retained_magic[8] = "APGSRC\55";
 enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING, HANDLER_SCOPE, HANDLER_BINDING, GRAPH_BINDING };
 
 struct environment {

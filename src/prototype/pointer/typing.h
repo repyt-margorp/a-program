@@ -13,6 +13,8 @@ struct pg_context {
 	const struct pg_object *binder;
 	const struct pg_term *declared_type;
 	enum pg_evidence_judgement judgement;
+	/* Family signature telescope, extending parent; not formation evidence. */
+	const struct pg_context *indices;
 };
 
 /* Lexical allocation of recursive elimination, not acceptance evidence.
@@ -70,6 +72,7 @@ struct pg_typing {
 	struct pg_index context_maps;
 	/* Projection lookup references the same interned maps, not new evidence. */
 	struct pg_index context_projections;
+	struct pg_index context_lifts;
 	struct pg_index occurrence_actions;
 	struct pg_index occurrence_inputs;
 	struct pg_index typed_bodies;
@@ -88,6 +91,12 @@ void pg_typing_destroy(struct pg_typing *typing);
 const struct pg_context *pg_context_bind(struct pg_typing *typing,
 	const struct pg_context *parent, const struct pg_object *binder,
 	const struct pg_term *declared_type, enum pg_evidence_judgement judgement);
+const struct pg_context *pg_context_intern(struct pg_typing *typing,
+	const struct pg_context *declaration);
+/* Close a declared telescope into its logical Pi signature. No typing claim. */
+const struct pg_term *pg_context_signature(struct pg_graph *graph,
+	const struct pg_context *parent, const struct pg_context *indices,
+	const struct pg_term *universe);
 const struct pg_context *pg_context_lookup(const struct pg_context *context,
 	const struct pg_object *binder);
 /* Count declarations after an exact prefix. Returns -1 for unrelated contexts
@@ -139,6 +148,13 @@ const struct pg_context_map *pg_context_map_projection(struct pg_typing *typing,
 const struct pg_context_map *pg_context_map_lift(struct pg_typing *typing,
 	const struct pg_context_map *map, const struct pg_context *extension,
 	const struct pg_object *binder);
+struct pg_context_lift;
+struct pg_context_lift *pg_context_lift_request(struct pg_typing *typing,
+	const struct pg_context_map *map, const struct pg_context *extension,
+	const struct pg_object *binder);
+enum pg_substitution_status pg_context_lift_advance(struct pg_context_lift *work, uint64_t budget);
+const struct pg_context_map *pg_context_lift_result(const struct pg_context_lift *work);
+uint64_t pg_context_lift_steps(const struct pg_context_lift *work);
 /* Immutable erased projection of the typed images, computed at construction. */
 const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map);
 /* Structural image selection, independent of a substitution's derivation. */

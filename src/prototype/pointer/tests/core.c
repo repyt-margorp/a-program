@@ -1700,11 +1700,54 @@ static void family_instance_test(struct pg_graph *graph)
 	assert(typing.proofs.count == evidence_before_lift);
 	const struct pg_evidence *checked_lift = pg_prove_substitution_lift(&typing,
 		pg_prove_substitution_projection(&typing, empty, empty), family_scope, g);
-	/* Checked family lifting allocates its index telescope; those binders need
-	 * not be the exact pointers used by structural signature substitution. */
+	/* Both layers use one signature telescope, including its binder pointers. */
 	assert(checked_lift && pg_evidence_context(checked_lift)->binder == g);
 	assert(pg_evidence_context(checked_lift)->judgement == PG_JUDGEMENT_TYPE_FAMILY);
 	assert(pg_alpha_equal(pg_evidence_context(checked_lift)->declared_type, lift->destination->declared_type) == 1);
+	assert(pg_evidence_context_map(checked_lift) == lift);
+	assert(pg_evidence_context(family_scope)->indices == pg_evidence_context(indices));
+	const struct pg_evidence *outer = pg_prove_family_context_extension(&typing, empty, pg_binder(graph),
+		family_scope, pg_prove_universe(&typing, &classifiers, family_scope, 0));
+	const struct pg_context_map *prefix_map = pg_context_map_projection(&typing, NULL, pg_evidence_context(indices));
+	const struct pg_object *outer_binder = pg_binder(graph);
+	evidence_before_lift = typing.proofs.count;
+	struct pg_context_lift *nested_work = pg_context_lift_request(&typing, prefix_map, pg_evidence_context(outer), outer_binder);
+	size_t before_steps = graph->terms.count;
+	assert(nested_work && pg_context_lift_advance(nested_work, 0) == PG_SUBSTITUTION_PENDING);
+	assert(graph->terms.count == before_steps && !pg_context_lift_steps(nested_work));
+	while (pg_context_lift_advance(nested_work, 1) == PG_SUBSTITUTION_PENDING)
+		assert(pg_context_lift_steps(nested_work) < 1000);
+	const struct pg_context_map *nested_lift = pg_context_lift_result(nested_work);
+	assert(nested_lift && typing.proofs.count == evidence_before_lift);
+	const struct pg_context *nested = nested_lift->destination->indices;
+	assert(nested && nested->indices && nested->indices->parent == pg_evidence_context(indices));
+	assert(nested->indices->binder != pg_evidence_context(indices)->binder);
+	const struct pg_evidence *nested_checked = pg_prove_context_map(&typing, nested_lift);
+	assert(nested_checked && pg_evidence_context_map(nested_checked) == nested_lift);
+	size_t terms_after_lift = graph->terms.count, proofs_after_lift = typing.proofs.count;
+	uint64_t completed_steps = pg_context_lift_steps(nested_work);
+	for (size_t i = 0; i < 10; ++i) {
+		assert(pg_context_map_lift(&typing, prefix_map, pg_evidence_context(outer), outer_binder) == nested_lift);
+		assert(pg_prove_context_map(&typing, nested_lift) == nested_checked);
+		assert(pg_context_lift_request(&typing, prefix_map, pg_evidence_context(outer), outer_binder) == nested_work);
+		assert(pg_context_lift_steps(nested_work) == completed_steps);
+	}
+	assert(graph->terms.count == terms_after_lift && typing.proofs.count == proofs_after_lift);
+	reconstruct_derivation(&typing, &classifiers, nested_checked);
+	struct pg_occurrence_input *family_body = pg_occurrence_input_mapped_request(&typing,
+		pg_evidence_subject(family_pi), 1, prefix_map);
+	evidence_before_lift = typing.proofs.count;
+	while (pg_occurrence_input_advance(family_body, 1) == PG_INPUT_PENDING) {}
+	const struct pg_occurrence *body_input = pg_occurrence_input_result(family_body);
+	assert(body_input && body_input->context->parent == pg_evidence_context(indices));
+	assert(typing.proofs.count == evidence_before_lift);
+	assert(pg_prove_structural_subject(&typing, body_input));
+	struct pg_context invalid = *pg_evidence_context(family_scope);
+	invalid.declared_type = pg_pi(graph, pg_evidence_subject(u0)->core, pg_binder(graph), pg_evidence_subject(u0)->core);
+	const struct pg_context *wrong_signature = pg_context_intern(&typing, &invalid);
+	assert(wrong_signature && !pg_context_lift_request(&typing, empty_map, wrong_signature, pg_binder(graph)));
+	invalid.judgement = PG_JUDGEMENT_VALUE;
+	assert(!pg_context_intern(&typing, &invalid));
 	const struct pg_evidence *value = pg_prove_type_value(&typing, u0);
 	const struct pg_object *left = pg_binder(graph), *right = pg_binder(graph);
 	const struct pg_evidence *left_scope = pg_prove_context_extension(&typing, empty, left, u1);

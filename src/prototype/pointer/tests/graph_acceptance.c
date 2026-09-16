@@ -32,7 +32,7 @@ static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 	rewind(file);
 	size_t length = fread(bytes, 1, sizeof(bytes), file);
 	assert(feof(file) && !ferror(file) && length > 32);
-	for (size_t cut = 0; cut <= length + 2; ++cut) {
+	for (size_t cut = 0; cut <= length + 3; ++cut) {
 		struct pg_graph graph;
 		struct pg_typing typing;
 		struct pg_classifiers classifiers;
@@ -46,6 +46,7 @@ static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 		if (cut == length) bytes[32] = 255;
 		if (cut == length + 1) { bytes[32] = 0; bytes[40] = PG_JUDGEMENT_COMPUTATION; }
 		if (cut == length + 2) { bytes[40] = PG_JUDGEMENT_VALUE; bytes[6] = 1; }
+		if (cut == length + 3) bytes[6] = 2;
 		size_t size = cut < length ? cut : length;
 		assert(fragment && fwrite(bytes, 1, size, fragment) == size);
 		rewind(fragment);
@@ -65,13 +66,18 @@ static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 
 static void context_boundaries(struct pg_typing *typing, const struct pg_term *type)
 {
-	struct pg_context cycle = {NULL, pg_binder(typing->graph), type, PG_JUDGEMENT_VALUE};
+	struct pg_context cycle = {.binder = pg_binder(typing->graph), .declared_type = type, .judgement = PG_JUDGEMENT_VALUE};
 	cycle.parent = &cycle;
 	const struct pg_context *root = &cycle;
 	FILE *file = tmpfile();
 	assert(file && pg_contexts_write(file, 1, &root, 0, NULL, NULL, NULL) == -1);
 	assert(fclose(file) == 0);
 	cycle.parent = NULL;
+	cycle.indices = &cycle;
+	file = tmpfile();
+	assert(file && pg_contexts_write(file, 1, &root, 0, NULL, NULL, NULL) == -1);
+	assert(fclose(file) == 0);
+	cycle.indices = NULL;
 	cycle.judgement = PG_JUDGEMENT_COMPUTATION;
 	file = tmpfile();
 	assert(file && pg_contexts_write(file, 1, &root, 0, NULL, NULL, NULL) == -1);
@@ -114,8 +120,13 @@ static void write_graph(FILE *file, struct pg_graph *graph)
 	const struct pg_context *xa = pg_context_bind(&typing, cb, x, roots[0], PG_JUDGEMENT_VALUE);
 	const struct pg_context *xb = pg_context_bind(&typing, cb, x, roots[1], PG_JUDGEMENT_VALUE);
 	const struct pg_context *xf = pg_context_bind(&typing, cb, x, roots[0], PG_JUDGEMENT_TYPE_FAMILY);
-	const struct pg_context *contexts[] = {ca, cb, xa, xb, NULL, xa, xf};
-	assert(pg_contexts_write(file, 7, contexts, 5, roots, name, &classifiers) == 0);
+	const struct pg_object *k = pg_binder(graph);
+	const struct pg_context *index = pg_context_bind(&typing, cb, k, u, PG_JUDGEMENT_VALUE);
+	const struct pg_context *family = pg_context_intern(&typing, &(struct pg_context){
+		.parent = cb, .binder = x, .declared_type = pg_pi(graph, u, k, u),
+		.judgement = PG_JUDGEMENT_TYPE_FAMILY, .indices = index});
+	const struct pg_context *contexts[] = {ca, cb, xa, xb, NULL, xa, xf, index, family, family};
+	assert(pg_contexts_write(file, 10, contexts, 5, roots, name, &classifiers) == 0);
 	context_boundaries(&typing, roots[0]);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
@@ -133,7 +144,9 @@ static void read_graph(FILE *file, struct pg_graph *graph)
 	const struct pg_context *const *contexts = NULL;
 	assert(pg_contexts_read(file, &typing, 100, 100, resolve, &classifiers,
 		&context_count, &contexts, &count, &roots) == 0);
-	assert(context_count == 7 && contexts[4] == NULL && contexts[2] == contexts[5]);
+	assert(context_count == 10 && contexts[4] == NULL && contexts[2] == contexts[5]);
+	assert(contexts[8] == contexts[9] && contexts[8]->indices == contexts[7]);
+	assert(contexts[7]->parent == contexts[1] && contexts[8]->parent == contexts[1]);
 	assert(contexts[2] != contexts[3] && contexts[2]->parent == contexts[1]);
 	assert(contexts[2] != contexts[6] && contexts[6]->parent == contexts[1]);
 	assert(contexts[2]->binder == contexts[6]->binder && contexts[2]->declared_type == contexts[6]->declared_type);
@@ -153,6 +166,11 @@ static void read_graph(FILE *file, struct pg_graph *graph)
 	const struct pg_evidence *context = pg_prove_context_extension(&typing, ca, b, ua);
 	assert(context && !pg_prove_variable(&typing, context, x));
 	assert(pg_evidence_context(context) == contexts[1]);
+	const struct pg_evidence *indices = pg_prove_context_extension(&typing, context, contexts[7]->binder,
+		pg_prove_universe(&typing, &classifiers, context, 0));
+	const struct pg_evidence *family = pg_prove_family_context_extension(&typing, context, x, indices,
+		pg_prove_universe(&typing, &classifiers, indices, 0));
+	assert(family && pg_evidence_context(family) == contexts[8]);
 	const struct pg_object *types[] = {a, b};
 	const struct pg_evidence *pi[2], *body[2], *identity[2];
 	for (size_t i = 0; i < 2; ++i) {
