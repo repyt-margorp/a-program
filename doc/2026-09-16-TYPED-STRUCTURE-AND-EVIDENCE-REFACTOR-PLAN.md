@@ -1874,3 +1874,35 @@ reduction target is still unmet. A sequential O0 QuickSort diagnostic run took
 1.0674 seconds / 276120 KiB / 132079 Solve transitions. This is not a speedup
 claim. Acceptance log: `/tmp/a-program-typed-structure-r35-debug.log`;
 sanitizer QuickSort log: `/tmp/a-program-typed-structure-r35-san-quicksort.log`.
+
+### 2026-09-17: Fold results in callee position (R36)
+
+- [x] Reproduce a typed-body query failure for a checked zero-clause Fold
+  whose continuation returns a raw Pi computation. The ordinary Fold rule and
+  evaluator already support this term; the query had an extra condition that
+  recognized Fold only when no application argument was pending.
+- [x] Remove that condition. The existing continuation frame already preserves
+  the pending application argument, context maps and Force demand while it
+  obtains the prefix's returned value and enters the continuation. No new
+  computation constructor, typing rule or wrapper graph is needed.
+- [x] Extend the shared-body regressions with direct, normalized, Force/Thunk
+  and projected Fold callees; verify accepted result derivations, bounded
+  advancement and repeated lookup reuse. A neutral prefix remains unavailable
+  even if the continuation ignores its argument; callee lookup must not skip it.
+- [x] Full debug acceptance passed, including 63/63 compatibility and final
+  QuickSort source/image comparisons.
+- [x] ASan/UBSan Core, IADT, synthesis and imported QuickSort passed.
+
+Before-fix regression: `/tmp/a-program-typed-structure-r36-fold-before.log`.
+Acceptance log: `/tmp/a-program-typed-structure-r36-debug.log`.
+Against `8de90db`, `evidence.c` is +1/-1 (net zero implementation lines), and
+`tests/core.c` is +14/-2 (+12 test lines). The cumulative implementation/header
+delta is still +1420 against `4657cc6`. This removes one unsupported body-query
+case, not the outstanding general Match/IH result-query and R2-R5 obligations.
+
+Sequential O0 QuickSort: 1.0728 seconds / 275272 KiB / 132053 Solve transitions
+(R35: 1.0674 seconds / 276120 KiB / 132079 transitions). R36 retains 178465
+Terms / 415460 typed subjects / 434767 proofs / 506 body requests / 3442 input
+requests. The work/allocation counts decreased; these single timings do not
+establish a wall-time improvement. Sanitizer logs:
+`/tmp/a-program-typed-structure-r36-san-{core,iadt,synthesis,quicksort}.log`.

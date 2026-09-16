@@ -697,9 +697,14 @@ static void evidence_test(struct pg_graph *graph)
 		pg_prove_force(&typing, function_variable));
 	const struct pg_evidence *nested_application = pg_prove_application(&typing, apply_function, converted);
 	const struct pg_evidence *identity_map = pg_prove_substitution_projection(&typing, x_context, x_context);
+	const struct pg_evidence *fold_function = pg_prove_fold(&typing, &classifiers,
+		pg_prove_return(&typing, &classifiers, converted), apply_function);
+	assert(fold_function);
 	const struct pg_evidence *beta_functions[] = {identity_y,
 		pg_prove_reindex(&typing, identity_map, identity_y), converted_force,
-		converted_code, pg_prove_thunk_computation(&typing, converted), nested_application};
+		converted_code, pg_prove_thunk_computation(&typing, converted), nested_application,
+		fold_function, checked_normalize(&typing, &evaluation, fold_function),
+		pg_prove_force(&typing, pg_prove_thunk(&typing, &classifiers, fold_function))};
 	const struct pg_evidence *beta_results[sizeof(beta_functions) / sizeof(*beta_functions)];
 	for (size_t i = 0; i < sizeof(beta_functions) / sizeof(*beta_functions); ++i) {
 		struct pg_typed_body_work *work = pg_application_body_request(&typing, beta_functions[i], x_term);
@@ -763,6 +768,10 @@ static void evidence_test(struct pg_graph *graph)
 	}
 	const struct pg_evidence *projected_beta = pg_prove_application_body(&typing, weakened_function, y_term);
 	assert(projected_beta && pg_evidence_subject(projected_beta)->core == pg_evidence_subject(return_y)->core);
+	const struct pg_evidence *projected_fold = pg_prove_application_body(&typing,
+		pg_prove_projection(&typing, y_context, fold_function), y_term);
+	assert(projected_fold && pg_evidence_context(projected_fold) == pg_evidence_context(y_term));
+	assert(pg_alpha_equal(pg_evidence_subject(projected_fold)->core, pg_evidence_subject(return_y)->core) == 1);
 	assert(!pg_prove_application_body(&typing, identity_y, a_in_x));
 	assert(!pg_prove_application_body(&typing, identity_y, returned));
 	size_t beta_terms = graph->terms.count, beta_proofs = typing.proofs.count;
@@ -4225,7 +4234,10 @@ static void totality_classifier_test(struct pg_graph *graph)
 				pg_prove_classifier(&typing, &classifiers, inner, raw_body));
 			const struct pg_evidence *raw = pg_prove_lambda(&typing, raw_type, raw_body);
 			assert(raw);
-			assert(!!pg_prove_fold(&typing, &classifiers, input, raw) == (i || !j));
+			const struct pg_evidence *raw_fold = pg_prove_fold(&typing, &classifiers, input, raw);
+			assert(!!raw_fold == (i || !j));
+			if (raw_fold) assert(!pg_prove_application_body(&typing, raw_fold,
+				pg_prove_projection(&typing, outer, v)));
 			/* A literal RETURN is finite even when its declared guarantee was
 			 * weakened. This uses typed inversion, not WHNF or an empty row. */
 			assert(pg_prove_fold(&typing, &classifiers,

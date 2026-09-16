@@ -852,7 +852,7 @@ static int typed_body_step(struct pg_typed_body_work *work)
 			return 0;
 		}
 		if (current->operand_count != 2 || current->operands[1]->core != core->as.application.argument) return -1;
-		int fold = !work->argument && head->kind == PG_APPLICATION &&
+		int fold = head->kind == PG_APPLICATION &&
 			head->as.application.function == pg_reference(typing->graph, &pg_fold_operation) &&
 			current->operands[0]->core == head->as.application.argument;
 		if (!fold && current->operands[0]->core != head) return -1;
