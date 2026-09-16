@@ -326,6 +326,7 @@ checkpoint notes below are historical, not additional completion claims.
 | Existing path | State / next action |
 |---|---|
 | Evidence classifier/context/sort copies | Removed for term conclusions |
+| Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
 | `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R37 adds nonrecursive Match branch selection and shared computed-scrutinee dependencies. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
@@ -2098,3 +2099,53 @@ The new shared work has a storage cost; no speedup is claimed. R2-R5 remain
 open, including normalized/strengthened result access, obsolete recovery
 removal, final performance/memory review and net code reduction. Main is not
 published by this checkpoint.
+
+### 2026-09-17: Check shared family lifting dependencies (R41)
+
+- [x] Remove Evidence's separate family telescope walk and its `lift_frame`
+  and `lift_index` records. Use the existing temporary `pg_dag` over prefix
+  and signature maps, then ordinary checked context formation and pairing.
+  No additional persistent program graph, logical rule or image format.
+- [x] Share destination formation between descriptive map checking and
+  explicit checked lifting. Require the exact structurally allocated Context;
+  alpha-equivalent allocation does not substitute for that identity.
+- [x] Preserve explicit prefix/source derivations. Do not first construct an
+  alternative root substitution just to obtain its destination context.
+  For an already checked destination, generic image checking does not require
+  reconstructing an unproved strengthened prefix. Completed maps are reused.
+- [x] Cover 64 nested family signatures with ambient binder collisions,
+  repeated lookup without new proofs, checked-prefix reuse, ordinary maps
+  without an accepted prefix, and two distinct valid prefix derivations.
+  A fresh explicit lift must publish the requested derivation first, not an
+  unrequested alternative assembled by structural lookup.
+- [x] ASan/UBSan Core, IADT, Identity, synthesis and imported QuickSort passed.
+- [x] Final full debug acceptance after the premise-preservation correction:
+  63/63 compatibility cases and final QuickSort source/image property checks
+  passed; the complete command exited successfully.
+
+The intermediate implementation passed functional tests but increased
+QuickSort proofs from 434771 to 460048. Rule counts localized the increase
+mostly to Projection (+20942) and Substitution (+4344): structural checking
+produced an alternative before explicit lifting used the caller's premises.
+This was redundant certificate construction, not a demonstrated invalid
+judgement. Reusing checked prefixes alone did not fix the fresh-context case.
+The final correction shares destination formation and pairs the supplied
+premises directly. No alternative proof is overwritten or discarded.
+
+Final narrow O0 QuickSort: 1.1130 seconds / 278684 KiB / 132053 transitions;
+178454 Terms / 416930 typed subjects / 434774 proofs / 14619 lift requests.
+Compared with R40, Terms +5, typed subjects +6, proofs +3, lift requests and
+Solve transitions unchanged. No speedup is claimed. Logs:
+`/tmp/a-program-typed-structure-r41-debug.log`,
+`/tmp/a-program-typed-structure-r41-{core,iadt}.log`, and
+`/tmp/a-program-typed-structure-r41-san-{core,iadt,identity,synthesis,quicksort}.log`.
+
+Against `b50b1e0`, `evidence.c` +107/-101, `typing.c` +5/-0 and `typing.h`
++2/-0: implementation/header **+13**, cumulative **+1720** against `4657cc6`.
+`tests/core.c` adds 61 lines. Removing a private walk has not yet reduced the
+whole implementation: the shared checked dependency path also needs code.
+R2-R5 remain open. In particular, `structural_input` still has the synchronous
+normalized/mapped-result adapter, and `rebase_image`/selected formations retain
+checked reconstruction work. Do not delete these before their replacements
+handle dependent result classifiers and retained image evidence. Main remains
+unpublished until the original completion and net-negative gates are met.

@@ -1633,6 +1633,21 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *function_context = pg_prove_context_extension(&typing, source, f, source_upi);
 	const struct pg_evidence *function_lift = pg_prove_substitution_lift(&typing, sigma, function_context, g);
 	assert(function_lift);
+	const struct pg_evidence *alternate_lift = pg_prove_substitution_lift(&typing, alternate, function_context, g);
+	assert(alternate_lift && alternate_lift != function_lift);
+	assert(pg_evidence_context_map(alternate_lift) == pg_evidence_context_map(function_lift));
+	assert(pg_evidence_premise(alternate_lift, 2) == pg_prove_projection(&typing,
+		pg_evidence_premise(alternate_lift, 1), alternate_b));
+	assert(pg_evidence_premise(alternate_lift, 2) != pg_evidence_premise(function_lift, 2));
+	reconstruct_derivation(&typing, &classifiers, alternate_lift);
+	const struct pg_evidence *fresh_alternate_lift = pg_prove_substitution_lift(&typing,
+		alternate, function_context, pg_binder(graph));
+	assert(fresh_alternate_lift && pg_prove_context_map(&typing,
+		pg_evidence_context_map(fresh_alternate_lift)) == fresh_alternate_lift);
+	/* A fresh destination must not first publish an unrequested alternative
+	 * assembled from a different prefix proof. */
+	assert(pg_evidence_premise(fresh_alternate_lift, 2) == pg_prove_projection(&typing,
+		pg_evidence_premise(fresh_alternate_lift, 1), alternate_b));
 	/* Extending an accepted map must not freshen Pi binders in its prefix. */
 	const struct pg_evidence *function_destination = pg_evidence_premise(function_lift, 1);
 	const struct pg_evidence *extended_universe = pg_prove_projection(&typing, function_context, universe);
@@ -1748,6 +1763,52 @@ static void family_instance_test(struct pg_graph *graph)
 	assert(wrong_signature && !pg_context_lift_request(&typing, empty_map, wrong_signature, pg_binder(graph)));
 	invalid.judgement = PG_JUDGEMENT_VALUE;
 	assert(!pg_context_intern(&typing, &invalid));
+	/* Every signature-local binder collides with the destination. The map
+	 * checker must follow nested signature actions without another lift walk. */
+	const struct pg_evidence *deep = family_scope, *ambient = empty;
+	for (size_t i = 0; i < 64; ++i) {
+		ambient = pg_prove_context_extension(&typing, ambient, pg_evidence_context(deep)->binder,
+			pg_prove_universe(&typing, &classifiers, ambient, 0));
+		deep = pg_prove_family_context_extension(&typing, empty, pg_binder(graph), deep,
+			pg_prove_universe(&typing, &classifiers, deep, 0));
+		assert(deep && ambient);
+	}
+	const struct pg_context_map *deep_base = pg_context_map_projection(&typing, NULL, pg_evidence_context(ambient));
+	const struct pg_context_map *deep_map = pg_context_map_lift(&typing, deep_base, pg_evidence_context(deep), pg_binder(graph));
+	const struct pg_evidence *deep_checked = pg_prove_context_map(&typing, deep_map);
+	assert(deep_checked && pg_evidence_context_map(deep_checked) == deep_map);
+	size_t checked_count = typing.proofs.count;
+	assert(pg_prove_context_map(&typing, deep_map) == deep_checked && typing.proofs.count == checked_count);
+	const struct pg_evidence *ambient_identity = pg_prove_substitution_projection(&typing, ambient, ambient);
+	const struct pg_object *extra_binder = pg_binder(graph);
+	const struct pg_evidence *extra_scope = pg_prove_context_extension(&typing, ambient, extra_binder,
+		pg_prove_universe(&typing, &classifiers, ambient, 0));
+	const struct pg_context_map *extra_map = pg_context_map_lift(&typing,
+		pg_evidence_context_map(ambient_identity), pg_evidence_context(extra_scope), extra_binder);
+	checked_count = typing.proofs.count;
+	const struct pg_evidence *extra_checked = pg_prove_context_map(&typing, extra_map);
+	assert(extra_checked && extra_checked == pg_prove_substitution_lift(&typing,
+		ambient_identity, extra_scope, extra_binder));
+	/* Structural lookup and explicit lifting use the same checked prefix,
+	 * not competing variable/projection proofs for every prefix image. */
+	assert(typing.proofs.count - checked_count <= 64 + 4);
+	/* An already checked destination needs only checked images, not a proof
+	 * of their strengthened prefix or a speculative signature lifting. */
+	const struct pg_evidence *plain_source = pg_prove_context_extension(&typing, indices, pg_binder(graph),
+		pg_prove_universe(&typing, &classifiers, indices, 0));
+	const struct pg_object *a = pg_binder(graph), *b = pg_binder(graph);
+	const struct pg_evidence *plain_prefix = pg_prove_context_extension(&typing, empty, a, u0);
+	const struct pg_evidence *plain_destination = pg_prove_context_extension(&typing, plain_prefix, b,
+		pg_prove_universe(&typing, &classifiers, plain_prefix, 0));
+	const struct pg_occurrence *plain_images[] = {
+		pg_evidence_subject(pg_prove_variable(&typing, plain_destination, a)),
+		pg_evidence_subject(pg_prove_variable(&typing, plain_destination, b))
+	};
+	const struct pg_context_map *plain_map = pg_context_map(&typing,
+		pg_evidence_context(plain_source), pg_evidence_context(plain_destination), 2, plain_images);
+	size_t lift_count = typing.context_lifts.count;
+	assert(pg_prove_context_map(&typing, plain_map));
+	assert(typing.context_lifts.count == lift_count);
 	const struct pg_evidence *value = pg_prove_type_value(&typing, u0);
 	const struct pg_object *left = pg_binder(graph), *right = pg_binder(graph);
 	const struct pg_evidence *left_scope = pg_prove_context_extension(&typing, empty, left, u1);

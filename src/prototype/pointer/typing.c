@@ -542,6 +542,11 @@ const struct pg_context_map *pg_context_lift_result(const struct pg_context_lift
 	return work && work->status == PG_SUBSTITUTION_DONE ? work->result : NULL;
 }
 
+const struct pg_context_map *pg_context_lift_indices(const struct pg_context_lift *work)
+{
+	return pg_context_lift_result(work) && work->count ? work->indices_map : NULL;
+}
+
 uint64_t pg_context_lift_steps(const struct pg_context_lift *work)
 {
 	return work ? work->steps : 0;

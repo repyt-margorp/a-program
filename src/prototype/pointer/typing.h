@@ -154,6 +154,8 @@ struct pg_context_lift *pg_context_lift_request(struct pg_typing *typing,
 	const struct pg_object *binder);
 enum pg_substitution_status pg_context_lift_advance(struct pg_context_lift *work, uint64_t budget);
 const struct pg_context_map *pg_context_lift_result(const struct pg_context_lift *work);
+/* Completed action on a family's index telescope; NULL for a value binder. */
+const struct pg_context_map *pg_context_lift_indices(const struct pg_context_lift *work);
 uint64_t pg_context_lift_steps(const struct pg_context_lift *work);
 /* Immutable erased projection of the typed images, computed at construction. */
 const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map);
