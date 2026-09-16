@@ -12,6 +12,7 @@ struct pg_context {
 	const struct pg_context *parent;
 	const struct pg_object *binder;
 	const struct pg_term *declared_type;
+	enum pg_evidence_judgement judgement;
 };
 
 /* Descriptive typed structure, not acceptance evidence. A NULL classifier
@@ -59,7 +60,7 @@ void pg_typing_destroy(struct pg_typing *typing);
  * this operation records a declaration, not its well-formedness proof. */
 const struct pg_context *pg_context_bind(struct pg_typing *typing,
 	const struct pg_context *parent, const struct pg_object *binder,
-	const struct pg_term *declared_type);
+	const struct pg_term *declared_type, enum pg_evidence_judgement judgement);
 const struct pg_context *pg_context_lookup(const struct pg_context *context,
 	const struct pg_object *binder);
 /* Count declarations after an exact prefix. Returns -1 for unrelated contexts
@@ -79,6 +80,13 @@ const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 	const struct pg_context *source, const struct pg_context *destination,
 	size_t count, const struct pg_occurrence *const *images);
+const struct pg_context_map *pg_context_map_projection(struct pg_typing *typing,
+	const struct pg_context *source, const struct pg_context *destination);
+/* Lift under the named target binder, including one allocated by Core
+ * substitution. This describes scope transport, not context acceptance. */
+const struct pg_context_map *pg_context_map_lift(struct pg_typing *typing,
+	const struct pg_context_map *map, const struct pg_context *extension,
+	const struct pg_object *binder);
 /* Immutable erased projection of the typed images, computed at construction. */
 const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map);
 const struct pg_occurrence *pg_occurrence_mapped(struct pg_typing *typing,

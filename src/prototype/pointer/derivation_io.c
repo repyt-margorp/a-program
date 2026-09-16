@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 12};
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 13};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {
@@ -242,8 +242,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	if (work && (work->rows != graph || work->sealed || work->failed || work->row_sources.count)) return -1;
 	char header[8];
 	uint64_t n, nr;
-	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 7)) return -1;
-	if (header[7] != 11 && header[7] != 12) return -1;
+	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return -1;
 	if (pg_wire_read_u64(file, &n) || pg_wire_read_u64(file, &nr)) return -1;
 	if (n > limit || nr > limit - n || limit > SIZE_MAX / sizeof(struct input_record)) return -1;
 	struct input_record *records = pg_alloc(graph, (size_t)n * sizeof(*records));
@@ -253,7 +252,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t rule, level, direction, totality, arity, reduction_kind;
 		if (pg_wire_read_u64(file, &rule)) return -1;
-		if (rule > (header[7] == 11 ? PG_TOTAL_PURE_VALUE : PG_HOST_FUNCTION_INTRO)) return -1;
+		if (rule > PG_HOST_FUNCTION_INTRO) return -1;
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
 		if (pg_wire_read_u64(file, &totality) || totality > PG_TOTALITY_TOTAL) return -1;
 		if (totality && rule != PG_RETURN_TYPE_FORM && rule != PG_RETURN_INTRO) return -1;
@@ -263,7 +262,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 			|| pg_wire_read_u64(file, &records[i].target) || pg_wire_read_u64(file, &records[i].operation)
 			|| pg_wire_read_u64(file, &records[i].handler)
 			|| pg_wire_read_u64(file, &records[i].declaration) || pg_wire_read_u64(file, &records[i].constructor)) return -1;
-		if (header[7] == 12 && pg_wire_read_u64(file, &records[i].constant)) return -1;
+		if (pg_wire_read_u64(file, &records[i].constant)) return -1;
 		uint64_t nm, na;
 		if (pg_wire_read_u64(file, &nm) || pg_wire_read_u64(file, &na)) return -1;
 		if (nm > available || na > available - nm) return -1;

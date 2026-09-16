@@ -389,7 +389,10 @@ const struct pg_evidence *pg_prove_return_type(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *computation_type);
 /* The checked final context binding determines the parameter contract, including
- * logical families. The result is a computation type, never a value-side Pi. */
+ * logical families. The result is a computation type, never a value-side Pi.
+ * The first structural input is the value-domain formation in the parent
+ * scope, or the declared family variable in the extended scope. The second
+ * input is the checked codomain in that extended scope. */
 const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_evidence *extended_context,
 	const struct pg_evidence *codomain);

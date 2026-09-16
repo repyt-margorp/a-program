@@ -10,8 +10,8 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	const struct pg_term *a = pg_reference(g, pg_binder(g)), *b = pg_reference(g, pg_binder(g));
 	const struct pg_object *x = pg_binder(g);
 	const struct pg_term *v = pg_reference(g, x), *id = pg_lambda(g, x, v);
-	const struct pg_context *ca = pg_context_bind(typing, NULL, x, a);
-	const struct pg_context *cb = pg_context_bind(typing, NULL, x, b);
+	const struct pg_context *ca = pg_context_bind(typing, NULL, x, a, PG_JUDGEMENT_VALUE);
+	const struct pg_context *cb = pg_context_bind(typing, NULL, x, b, PG_JUDGEMENT_VALUE);
 	const struct pg_occurrence *va = pg_occurrence(typing, PG_JUDGEMENT_VALUE, ca, v, a, a, 0, NULL);
 	const struct pg_occurrence *vb = pg_occurrence(typing, PG_JUDGEMENT_VALUE, cb, v, b, b, 0, NULL);
 	const struct pg_occurrence *oa = pg_occurrence(typing, PG_JUDGEMENT_VALUE, NULL, id, a, a, 1, &va);

@@ -1390,7 +1390,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 			(struct pg_synthesis_job *[]){root_context, response}, NULL, NULL);
 		assert(payload && response && !pg_synthesis_result(payload) && !pg_synthesis_result(response));
 		const struct pg_context *end = allocation.allocation;
-		if (mode == 1) end = pg_context_bind(typing, end->parent, end->binder, pg_universe(classifiers, 0));
+		if (mode == 1) end = pg_context_bind(typing, end->parent, end->binder, pg_universe(classifiers, 0), PG_JUDGEMENT_VALUE);
 		assert(!pg_synthesis_operation_at(&restored, allocation.label, payload, response, end->parent));
 		struct pg_synthesis_job *rebuilt = pg_synthesis_operation_at(&restored, allocation.label, payload, response, end);
 		assert(rebuilt && rebuilt == pg_synthesis_operation_jobs(&restored, allocation.label, payload, response));
@@ -1412,7 +1412,7 @@ static void effect_expectations(struct pg_typing *typing, struct pg_classifiers 
 			assert(signature.payload == payload && signature.response == response);
 			assert(pg_synthesis_result(payload) == pg_operation_payload_type(pg_synthesis_operation_declaration(reference)));
 		}
-		const struct pg_context *different = pg_context_bind(typing, end->parent, pg_binder(typing->graph), end->declared_type);
+		const struct pg_context *different = pg_context_bind(typing, end->parent, pg_binder(typing->graph), end->declared_type, PG_JUDGEMENT_VALUE);
 		assert(!pg_synthesis_operation_at(&restored, allocation.label, payload, response, different));
 		assert(!pg_synthesis_operation_jobs(&restored, pg_binder(typing->graph), payload, response));
 		pg_synthesis_destroy(&restored);
@@ -4390,13 +4390,13 @@ static void application_allocations(struct pg_synthesis *synthesis,
 		assert(named);
 		const struct pg_context *end = prefix;
 		for (unsigned i = 0; i < count; ++i)
-			end = pg_context_bind(synthesis->typing, end, pg_binder(graph), pg_universe(synthesis->classifiers, 0));
+			end = pg_context_bind(synthesis->typing, end, pg_binder(graph), pg_universe(synthesis->classifiers, 0), PG_JUDGEMENT_VALUE);
 		assert(end);
 		const struct pg_term *core = NULL;
 		for (unsigned mode = 0; mode < 5; ++mode) {
 			const struct pg_syntax *syntax = expression_syntax(graph, "r:=f m;");
 			const struct pg_context *allocation = mode == 2 ? end->parent : end;
-			if (mode == 3) allocation = pg_context_bind(synthesis->typing, end, pg_binder(graph), end->declared_type);
+			if (mode == 3) allocation = pg_context_bind(synthesis->typing, end, pg_binder(graph), end->declared_type, PG_JUDGEMENT_VALUE);
 			const struct pg_context *base = mode == 4 ? end : prefix;
 			struct pg_synthesis_job *job = pg_synthesis_application_at(synthesis, named, syntax, base, allocation);
 			assert(job && job == pg_synthesis_request(synthesis, named, syntax));

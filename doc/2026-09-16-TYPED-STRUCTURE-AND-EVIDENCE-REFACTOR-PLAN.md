@@ -294,7 +294,7 @@ the complete matrix at R5, including retained/recomputed image modes.
 | Universe, host leaf, variable, nominal family | None | Leaf; classifier/context remain part of the typed use |
 | APP, family APP, RETURN, THUNK, FORCE, request/fold | Direct construction inputs | Ordered children in the enclosing scope; handler bodies retain their own binders |
 | Lambda/family abstraction | Body in an extended context | The body edge must retain its lexical extension when a map is lifted |
-| Pi | Synthetic domain description, checked codomain | Replace the synthetic input with an explicit binder-domain contract; do not pretend family binders are ordinary value types |
+| Pi | Checked value-domain formation, or declared family variable; checked codomain | Value domain is in the parent scope; family variable and codomain are in the extended scope. A logical signature is not an ordinary value type |
 | Constructor | Field occurrences | Preserve nominal schema and parameter substitution separately from executable fields |
 | Match/induction/type case | Scrutinee and branch occurrences | Preserve motive/indices, constructor branch telescope and recursive binder scopes |
 | Identity, termination, family action | Typed construction inputs | Keep the selected family and dependency maps; no equality reflection |
@@ -423,3 +423,67 @@ Context-action checkpoint delta against `f644889` (all paths below are under
 | **Implementation subtotal** | **331** | **116** | **+215** |
 | `tests/core.c` | 70 | 0 | +70 |
 | `tests/occurrence_io.c` | 22 | 5 | +17 |
+
+### 2026-09-16: Declared binder sorts and scoped map lifting
+
+- [x] Store the existing VALUE/TYPE_FAMILY distinction in the immutable Context
+  declaration and its exact interning key. Neither a new Core constructor nor
+  a new logical judgement is introduced. Context allocation remains descriptive;
+  ordinary extension rules still check formation, universe and freshness.
+- [x] Remove the Evidence-chain walk used to recover a variable's binder sort.
+  Build projection maps and logical signatures from Context structure rather
+  than decoding extension proof tags. Proof premises are retained for checking.
+- [x] Replace Pi's synthetic unclassified domain operand. A value binder stores
+  its actual checked domain formation; a family binder stores its typed variable
+  in the extended scope. Both retain the checked codomain. No fictitious
+  Universe judgement is assigned to a logical family signature.
+- [x] Lift structural maps under an explicitly supplied target binder, including
+  the binder allocated by Core substitution. Transport the dependent domain,
+  project prefix images and append the new variable. This creates no Evidence.
+- [x] Preserve declaration kinds through context/declaration/source transport:
+  `APGCTX2`, `data-declaration/v2`, derivation version 13, source versions 40/41
+  (recompute/retained reductions). Previous affected versions reject explicitly.
+  Indexed source restoration retains the pre-Self signature's binder pointers
+  and the saved telescope's declaration kinds, then uses ordinary Solve.
+- [x] Test exact interning across different binder kinds; actual substituted
+  Lambda-body binders and dependent classifiers; family lifting; fresh-process
+  context sharing; invalid declaration kinds, old context versions and truncation.
+- [ ] Consume these maps in effective-child views and remove the major recovery
+  walks. This checkpoint does not complete R2/R3 or satisfy the LOC target.
+
+The family-lift test exposed an important allocation distinction: the existing
+checked family lift freshly constructs its signature-local index telescope,
+whereas structural signature substitution may retain different binder pointers.
+Their signatures are alpha-equivalent, not necessarily pointer-identical. They
+must not be interned together on that basis. The next checked-child migration
+must align with the actual allocated target telescope; it cannot use pointer
+inequality as rejection or silently choose an unrelated context.
+
+The full debug acceptance gate passed, including 63/63 compatibility and the
+QuickSort source/image property cases. ASan/UBSan core, context/declaration and
+occurrence transport tests passed. A diagnostic QuickSort run remained at
+149471 transitions, approximately 1.52 seconds and 270180 KiB; this is not a
+stable speedup claim and does not resolve the R1-to-R2 performance regression.
+Full optimized/sanitized acceptance and final performance comparison remain R5.
+
+Checkpoint delta against `fc97aae`, excluding documentation:
+
+| File, under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `typing.c` | 49 | 2 | +47 |
+| `typing.h` | 9 | 1 | +8 |
+| `evidence.c` | 20 | 33 | -13 |
+| `evidence.h` | 4 | 1 | +3 |
+| `context_payload.c` | 18 | 11 | +7 |
+| `context_payload.h` | 3 | 2 | +1 |
+| `context_io.c` | 1 | 1 | 0 |
+| `declaration_io.c` | 2 | 2 | 0 |
+| `derivation_io.c` | 4 | 5 | -1 |
+| `source_io.c` | 2 | 2 | 0 |
+| `source_io.h` | 4 | 3 | +1 |
+| `synthesis.c` | 16 | 5 | +11 |
+| **Implementation subtotal** | **132** | **68** | **+64** |
+| Tests (seven files, including migrated API calls) | 95 | 38 | +57 |
+
+The accumulated implementation delta is still positive (+311 lines against
+the diagnostic baseline). No net reduction or final completion is claimed.

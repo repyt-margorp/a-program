@@ -32,7 +32,7 @@ static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 	rewind(file);
 	size_t length = fread(bytes, 1, sizeof(bytes), file);
 	assert(feof(file) && !ferror(file) && length > 32);
-	for (size_t cut = 0; cut <= length; ++cut) {
+	for (size_t cut = 0; cut <= length + 2; ++cut) {
 		struct pg_graph graph;
 		struct pg_typing typing;
 		struct pg_classifiers classifiers;
@@ -44,7 +44,10 @@ static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 		FILE *fragment = tmpfile();
 		/* The complete-sized final case has an invalid parent reference. */
 		if (cut == length) bytes[32] = 255;
-		assert(fragment && fwrite(bytes, 1, cut, fragment) == cut);
+		if (cut == length + 1) { bytes[32] = 0; bytes[40] = PG_JUDGEMENT_COMPUTATION; }
+		if (cut == length + 2) { bytes[40] = PG_JUDGEMENT_VALUE; bytes[6] = 1; }
+		size_t size = cut < length ? cut : length;
+		assert(fragment && fwrite(bytes, 1, size, fragment) == size);
 		rewind(fragment);
 		size_t nc = 71, nt = 72;
 		const struct pg_context *const *contexts = NULL;
@@ -62,15 +65,20 @@ static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 
 static void context_boundaries(struct pg_typing *typing, const struct pg_term *type)
 {
-	struct pg_context cycle = {NULL, pg_binder(typing->graph), type};
+	struct pg_context cycle = {NULL, pg_binder(typing->graph), type, PG_JUDGEMENT_VALUE};
 	cycle.parent = &cycle;
 	const struct pg_context *root = &cycle;
 	FILE *file = tmpfile();
 	assert(file && pg_contexts_write(file, 1, &root, 0, NULL, NULL, NULL) == -1);
 	assert(fclose(file) == 0);
+	cycle.parent = NULL;
+	cycle.judgement = PG_JUDGEMENT_COMPUTATION;
+	file = tmpfile();
+	assert(file && pg_contexts_write(file, 1, &root, 0, NULL, NULL, NULL) == -1);
+	assert(fclose(file) == 0);
 	root = NULL;
 	for (size_t i = 0; i < 10000; ++i)
-		root = pg_context_bind(typing, root, pg_binder(typing->graph), type);
+		root = pg_context_bind(typing, root, pg_binder(typing->graph), type, PG_JUDGEMENT_VALUE);
 	assert(root);
 	file = tmpfile();
 	assert(file && pg_contexts_write(file, 1, &root, 1, &type, NULL, NULL) == 0);
@@ -101,12 +109,13 @@ static void write_graph(FILE *file, struct pg_graph *graph)
 	struct pg_classifiers classifiers;
 	assert(pg_typing_init(&typing, graph) == 0 && pg_classifiers_init(&classifiers, graph) == 0);
 	const struct pg_term *u = pg_universe(&classifiers, 0);
-	const struct pg_context *ca = pg_context_bind(&typing, NULL, a, u);
-	const struct pg_context *cb = pg_context_bind(&typing, ca, b, u);
-	const struct pg_context *xa = pg_context_bind(&typing, cb, x, roots[0]);
-	const struct pg_context *xb = pg_context_bind(&typing, cb, x, roots[1]);
-	const struct pg_context *contexts[] = {ca, cb, xa, xb, NULL, xa};
-	assert(pg_contexts_write(file, 6, contexts, 5, roots, name, &classifiers) == 0);
+	const struct pg_context *ca = pg_context_bind(&typing, NULL, a, u, PG_JUDGEMENT_VALUE);
+	const struct pg_context *cb = pg_context_bind(&typing, ca, b, u, PG_JUDGEMENT_VALUE);
+	const struct pg_context *xa = pg_context_bind(&typing, cb, x, roots[0], PG_JUDGEMENT_VALUE);
+	const struct pg_context *xb = pg_context_bind(&typing, cb, x, roots[1], PG_JUDGEMENT_VALUE);
+	const struct pg_context *xf = pg_context_bind(&typing, cb, x, roots[0], PG_JUDGEMENT_TYPE_FAMILY);
+	const struct pg_context *contexts[] = {ca, cb, xa, xb, NULL, xa, xf};
+	assert(pg_contexts_write(file, 7, contexts, 5, roots, name, &classifiers) == 0);
 	context_boundaries(&typing, roots[0]);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
@@ -124,8 +133,11 @@ static void read_graph(FILE *file, struct pg_graph *graph)
 	const struct pg_context *const *contexts = NULL;
 	assert(pg_contexts_read(file, &typing, 100, 100, resolve, &classifiers,
 		&context_count, &contexts, &count, &roots) == 0);
-	assert(context_count == 6 && contexts[4] == NULL && contexts[2] == contexts[5]);
+	assert(context_count == 7 && contexts[4] == NULL && contexts[2] == contexts[5]);
 	assert(contexts[2] != contexts[3] && contexts[2]->parent == contexts[1]);
+	assert(contexts[2] != contexts[6] && contexts[6]->parent == contexts[1]);
+	assert(contexts[2]->binder == contexts[6]->binder && contexts[2]->declared_type == contexts[6]->declared_type);
+	assert(contexts[2]->judgement == PG_JUDGEMENT_VALUE && contexts[6]->judgement == PG_JUDGEMENT_TYPE_FAMILY);
 	assert(contexts[3]->parent == contexts[1] && contexts[1]->parent == contexts[0]);
 	assert(typing.proofs.count == 0);
 	assert(count == 5 && roots[3] == roots[4]);
@@ -329,10 +341,10 @@ static void layout_graph(FILE *file, struct pg_graph *graph, int writing, uint64
 		const struct pg_term *roots[] = {zero, successor, match, match, foreign,
 			pg_data_match(graph, a, foreign, 2, clauses), pg_reference(graph, pg_data_matcher(pg_data_layout(graph, 0, NULL)))};
 		const struct pg_object *family = pg_binder(graph);
-		const struct pg_context *prefix = pg_context_bind(&typing, NULL, family, pg_universe(&classifiers, 0));
+		const struct pg_context *prefix = pg_context_bind(&typing, NULL, family, pg_universe(&classifiers, 0), PG_JUDGEMENT_VALUE);
 		/* Deliberately only declared, not well-typed: no family formation exists. */
 		const struct pg_context *field = pg_context_bind(&typing, prefix, x,
-			pg_application(graph, pg_reference(graph, family), zero));
+			pg_application(graph, pg_reference(graph, family), zero), PG_JUDGEMENT_VALUE);
 		const struct pg_context *contexts[] = {prefix, field, field, NULL};
 		size_t terms = graph->terms.count, objects = graph->objects.count;
 		assert(!pg_contexts_write_descriptors(file, 4, contexts, 7, roots, &pg_builtin_graph_codec, &classifiers));
@@ -403,8 +415,8 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 	if (writing) {
 		const struct pg_object *self = pg_binder(graph), *n = pg_binder(graph);
 		const struct pg_term *image = pg_reference(graph, self);
-		const struct pg_context *parameters = pg_context_bind(&typing, NULL, self, pg_universe(&classifiers, 0));
-		const struct pg_context *fields = pg_context_bind(&typing, parameters, n, image);
+		const struct pg_context *parameters = pg_context_bind(&typing, NULL, self, pg_universe(&classifiers, 0), PG_JUDGEMENT_VALUE);
+		const struct pg_context *fields = pg_context_bind(&typing, parameters, n, image, PG_JUDGEMENT_VALUE);
 		const struct pg_data_constructor_input constructors[] = {{parameters, &image}, {fields, &image}};
 		const struct pg_data_declaration *declaration = pg_data_declaration(graph, parameters, parameters, 2, constructors);
 		const struct pg_data_layout *layout = pg_data_declaration_layout(declaration);
@@ -421,7 +433,7 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 		assert(!pg_data_declaration_pack(declaration, &storage, &nc, &contexts, &nt, &terms));
 		assert(nc == 4 && nt == 3);
 		const struct pg_context *selected[] = {contexts[0], contexts[1], contexts[2], contexts[3],
-			pg_context_bind(&typing, NULL, pg_binder(graph), family)};
+			pg_context_bind(&typing, NULL, pg_binder(graph), family, PG_JUDGEMENT_VALUE)};
 		const struct pg_term *roots[] = {terms[0], terms[1], terms[2], successor, family, family, other_family};
 		assert(!pg_contexts_write_descriptors(file, 5, selected, 7, roots, &pg_declaration_graph_codec, &io));
 		assert(io.payloads.count == 2);

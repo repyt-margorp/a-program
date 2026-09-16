@@ -2185,7 +2185,8 @@ const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
 	uint64_t level;
 	if (!pg_universe_level(pg_evidence_subject(type)->classifier, &level)) return NULL;
 	if (pg_context_lookup(pg_evidence_context(parent), binder)) return NULL;
-	const struct pg_context *context = pg_context_bind(typing, pg_evidence_context(parent), binder, pg_evidence_subject(type)->core);
+	const struct pg_context *context = pg_context_bind(typing, pg_evidence_context(parent), binder,
+		pg_evidence_subject(type)->core, PG_JUDGEMENT_VALUE);
 	if (!context) return NULL;
 	const struct pg_evidence *premises[] = {parent, type};
 	return accept(typing, PG_CONTEXT_EXTEND, context, NULL, 2, premises);
@@ -2262,8 +2263,7 @@ const struct pg_evidence *pg_prove_host_function(struct pg_typing *typing,
 
 static enum pg_evidence_judgement binding_judgement(const struct pg_evidence *extension)
 {
-	return extension->rule == PG_CONTEXT_FAMILY_EXTEND
-		? PG_JUDGEMENT_TYPE_FAMILY : PG_JUDGEMENT_VALUE;
+	return pg_evidence_context(extension)->judgement;
 }
 
 /* Logical signatures share Pi syntax, including higher family parameters.
@@ -2273,12 +2273,11 @@ static const struct pg_term *family_signature(struct pg_typing *typing,
 	const struct pg_term *universe)
 {
 	const struct pg_term *signature = universe;
-	while (pg_evidence_context(indices) != pg_evidence_context(parent)) {
-		if (indices->rule != PG_CONTEXT_EXTEND && indices->rule != PG_CONTEXT_FAMILY_EXTEND) return NULL;
-		signature = pg_pi(typing->graph, pg_evidence_context(indices)->declared_type,
-			pg_evidence_context(indices)->binder, signature);
+	for (const struct pg_context *slot = pg_evidence_context(indices);
+		slot != pg_evidence_context(parent); slot = slot->parent) {
+		if (!slot) return NULL;
+		signature = pg_pi(typing->graph, slot->declared_type, slot->binder, signature);
 		if (!signature) return NULL;
-		indices = indices->premises[0];
 	}
 	return signature;
 }
@@ -2297,7 +2296,8 @@ const struct pg_evidence *pg_prove_family_context_extension(struct pg_typing *ty
 	if (pg_context_lookup(pg_evidence_context(parent), binder)) return NULL;
 	const struct pg_term *signature = family_signature(typing, parent, indices, pg_evidence_subject(universe)->core);
 	if (!signature) return NULL;
-	const struct pg_context *context = pg_context_bind(typing, pg_evidence_context(parent), binder, signature);
+	const struct pg_context *context = pg_context_bind(typing, pg_evidence_context(parent), binder,
+		signature, PG_JUDGEMENT_TYPE_FAMILY);
 	if (!context) return NULL;
 	const struct pg_evidence *premises[] = {parent, indices, universe};
 	return accept(typing, PG_CONTEXT_FAMILY_EXTEND,
@@ -2311,9 +2311,8 @@ const struct pg_evidence *pg_prove_variable(struct pg_typing *typing,
 	const struct pg_context *declaration = pg_context_lookup(pg_evidence_context(context), binder);
 	if (!declaration) return NULL;
 	const struct pg_term *term = pg_reference(typing->graph, binder);
-	const struct pg_evidence *extension = context;
-	while (pg_evidence_context(extension) != declaration) extension = extension->premises[0];
-	const struct pg_occurrence *subject = pg_occurrence(typing, binding_judgement(extension), pg_evidence_context(context), term, declaration->declared_type, NULL, 0, NULL);
+	const struct pg_occurrence *subject = pg_occurrence(typing, declaration->judgement, pg_evidence_context(context),
+		term, declaration->declared_type, NULL, 0, NULL);
 	if (!subject) return NULL;
 	return accept(typing, PG_VARIABLE, pg_evidence_context(context),
 		subject, 1, &context);
@@ -2666,7 +2665,12 @@ const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classi
 	const struct pg_term *term = pg_pi(typing->graph, scope->declared_type,
 		scope->binder, pg_evidence_subject(codomain)->core);
 	if (!bound || !term) return NULL;
-	const struct pg_occurrence *domain = pg_occurrence(typing, PG_JUDGEMENT_INPUT, scope->parent, scope->declared_type, NULL, NULL, 0, NULL);
+	/* A logical family signature is a binding declaration, not a value type.
+	 * Keep its variable in the extended scope rather than invent a type proof. */
+	const struct pg_occurrence *domain = scope->judgement == PG_JUDGEMENT_VALUE
+		? pg_evidence_subject(extended_context->premises[1])
+		: pg_occurrence(typing, scope->judgement, scope, pg_reference(typing->graph, scope->binder),
+			scope->declared_type, NULL, 0, NULL);
 	if (!domain) return NULL;
 	const struct pg_occurrence *operands[] = {domain, pg_evidence_subject(codomain)};
 	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_COMPUTATION_TYPE, scope->parent, term, bound, NULL, 2, operands);
@@ -2927,31 +2931,14 @@ const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(proof, typing)) return NULL;
 	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_CONTEXT) return NULL;
 	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_SUBSTITUTION) return NULL;
-	const struct pg_evidence *source = context;
-	while (pg_evidence_context(source) != pg_evidence_context(proof)) {
-		if (!pg_evidence_context(source)) return NULL;
-		source = source->premises[0];
-	}
-	if (source == context) return proof;
+	if (pg_evidence_context(proof) == pg_evidence_context(context)) return proof;
 	const struct pg_evidence *premises[] = {context, proof};
 	uint64_t hash;
 	const struct pg_evidence *found = find_record(typing, PG_CONTEXT_PROJECTION,
 		pg_evidence_context(context), NULL, 2, premises, NULL, &hash);
 	if (found) return found;
-	size_t count;
-	if (pg_context_extension_size(pg_evidence_context(source), NULL, &count)) return NULL;
-	if (count > SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
-	const struct pg_occurrence **images = malloc(count * sizeof(*images));
-	if (count && !images) return NULL;
-	const struct pg_evidence *scope = source;
-	for (size_t i = count; i; --i, scope = scope->premises[0]) {
-		const struct pg_context *declaration = pg_evidence_context(scope);
-		images[i - 1] = pg_occurrence(typing, binding_judgement(scope), pg_evidence_context(context),
-			pg_reference(typing->graph, declaration->binder), declaration->declared_type, NULL, 0, NULL);
-	}
-	const struct pg_context_map *map = pg_context_map(typing, pg_evidence_context(source),
-		pg_evidence_context(context), count, images);
-	free(images);
+	const struct pg_context_map *map = pg_context_map_projection(typing,
+		pg_evidence_context(proof), pg_evidence_context(context));
 	const struct pg_occurrence *subject = pg_occurrence_projection(typing, map, pg_evidence_subject(proof));
 	if (!subject) return NULL;
 	return accept(typing, PG_CONTEXT_PROJECTION,

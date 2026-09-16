@@ -51,7 +51,7 @@ static const struct payload *payload(struct pg_declaration_io *io, const struct 
 static const char *name(void *owner, const struct pg_object *object)
 {
 	struct pg_declaration_io *io = owner;
-	return pg_data_declaration_view(object) ? "data-declaration/v1" : pg_builtin_graph_codec.name(io->classifiers, object);
+	return pg_data_declaration_view(object) ? "data-declaration/v2" : pg_builtin_graph_codec.name(io->classifiers, object);
 }
 
 static const struct pg_object *resolve(void *owner, const char *label)
@@ -88,7 +88,7 @@ static const struct pg_object *restore(void *owner, struct pg_graph *graph, cons
 {
 	struct pg_declaration_io *io = owner;
 	if (graph != io->typing->graph) return NULL;
-	if (strcmp(label, "data-declaration/v1"))
+	if (strcmp(label, "data-declaration/v2"))
 		return pg_builtin_graph_codec.restore(io->classifiers, graph, label, count, terms, scalar_count, scalars);
 	size_t nc, nt;
 	const struct pg_context *const *contexts;

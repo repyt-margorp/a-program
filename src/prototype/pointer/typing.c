@@ -1,6 +1,7 @@
 #include "typing.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 struct context_entry {
 	struct pg_index_entry index;
@@ -45,21 +46,24 @@ static uint64_t context_hash(const struct pg_context *parent,
 
 const struct pg_context *pg_context_bind(struct pg_typing *typing,
 	const struct pg_context *parent, const struct pg_object *binder,
-	const struct pg_term *declared_type)
+	const struct pg_term *declared_type, enum pg_evidence_judgement judgement)
 {
 	if (!binder || !declared_type) return NULL;
 	if (binder->kind != PG_BINDER) return NULL;
+	if (judgement != PG_JUDGEMENT_VALUE && judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	uint64_t hash = context_hash(parent, binder, declared_type);
+	hash = (hash ^ judgement) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->contexts, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
 		const struct context_entry *entry = (const struct context_entry *)candidate;
 		if (entry->context.parent != parent) continue;
 		if (entry->context.binder != binder) continue;
+		if (entry->context.judgement != judgement) continue;
 		if (entry->context.declared_type == declared_type) return &entry->context;
 	}
 	struct context_entry *entry = pg_alloc(typing->graph, sizeof(*entry));
 	if (!entry) return NULL;
-	entry->context = (struct pg_context){parent, binder, declared_type};
+	entry->context = (struct pg_context){parent, binder, declared_type, judgement};
 	if (pg_index_insert(&typing->contexts, &entry->index, hash) != 0) return NULL;
 	return &entry->context;
 }
@@ -205,6 +209,49 @@ const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 		bindings[i - 1] = (struct pg_binding_value){scope->binder, images[i - 1]->core};
 	}
 	return pg_index_insert(&typing->context_maps, &map->index, hash) ? NULL : map;
+}
+
+const struct pg_context_map *pg_context_map_projection(struct pg_typing *typing,
+	const struct pg_context *source, const struct pg_context *destination)
+{
+	size_t count;
+	if (pg_context_extension_size(destination, source, &count)) return NULL;
+	if (pg_context_extension_size(source, NULL, &count)) return NULL;
+	if (count > SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
+	const struct pg_occurrence **images = malloc(count * sizeof(*images));
+	if (count && !images) return NULL;
+	const struct pg_context *scope = source;
+	for (size_t i = count; i; --i, scope = scope->parent)
+		images[i - 1] = pg_occurrence(typing, scope->judgement, destination,
+			pg_reference(typing->graph, scope->binder), scope->declared_type, NULL, 0, NULL);
+	const struct pg_context_map *map = pg_context_map(typing, source, destination, count, images);
+	free(images);
+	return map;
+}
+
+const struct pg_context_map *pg_context_map_lift(struct pg_typing *typing,
+	const struct pg_context_map *map, const struct pg_context *extension,
+	const struct pg_object *binder)
+{
+	if (!map || !extension || extension->parent != map->source) return NULL;
+	if (!binder || binder->kind != PG_BINDER || pg_context_lookup(map->destination, binder)) return NULL;
+	if (map->count >= SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
+	const struct pg_term *type = pg_substitution_compute(&typing->substitutions,
+		extension->declared_type, map->count, pg_context_map_bindings(map));
+	const struct pg_context *destination = pg_context_bind(typing, map->destination,
+		binder, type, extension->judgement);
+	if (!destination) return NULL;
+	const struct pg_context_map *projection = pg_context_map_projection(typing, map->destination, destination);
+	if (!projection) return NULL;
+	const struct pg_occurrence **images = malloc((map->count + 1) * sizeof(*images));
+	if (!images) return NULL;
+	for (size_t i = 0; i < map->count; ++i)
+		images[i] = pg_occurrence_projection(typing, projection, map->images[i]);
+	images[map->count] = pg_occurrence(typing, extension->judgement, destination,
+		pg_reference(typing->graph, binder), type, NULL, 0, NULL);
+	const struct pg_context_map *result = pg_context_map(typing, extension, destination, map->count + 1, images);
+	free(images);
+	return result;
 }
 
 struct pg_occurrence_action {

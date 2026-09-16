@@ -673,7 +673,7 @@ static void declaration_members(void)
 		assert(pg_synthesis_declaration_member_input(&p->synthesis, family, 1, &allocation) == 1);
 		assert(allocation.fields && !allocation.prefix);
 		const struct pg_object *binder = allocation.fields->binder;
-		if (mode == 1) allocation.fields = pg_context_bind(&p->typing, NULL, binder, pg_universe(&p->classifiers, 0));
+		if (mode == 1) allocation.fields = pg_context_bind(&p->typing, NULL, binder, pg_universe(&p->classifiers, 0), PG_JUDGEMENT_VALUE);
 		if (mode == 2) allocation.constructor = pg_data_constructor(pg_data_schema_layout(instance.schema), 0);
 		if (mode == 3) allocation.fields = NULL;
 		pg_synthesis_destroy(&p->synthesis);
@@ -829,7 +829,7 @@ static void constructor_inputs(void)
 			const struct pg_evidence *map = pg_prove_constructor_scope(&p->typing, formation, constructor, instance.parameters);
 			assert(map);
 			const struct pg_context *fields = pg_context_bind(&p->typing, NULL,
-				pg_evidence_context(map)->binder, pg_universe(&p->classifiers, 0));
+				pg_evidence_context(map)->binder, pg_universe(&p->classifiers, 0), PG_JUDGEMENT_VALUE);
 			assert(map && pg_synthesis_constructor_scope_at(&p->synthesis, family, constructor, parameters,
 				NULL, fields));
 		}
@@ -1067,9 +1067,9 @@ static void induction_scope_inputs(struct pg_program *p, const struct pg_evidenc
 		struct pg_synthesis_job *f = pg_synthesis_evidence(&restored, formation), *ps = pg_synthesis_evidence(&restored, parameters);
 		struct pg_synthesis_job *mc = pg_synthesis_evidence(&restored, motive_context), *m = pg_synthesis_evidence(&restored, motive);
 		const struct pg_context *prefix = fields, *allocation = end;
-		if (mode == 1) allocation = pg_context_bind(&p->typing, fields, end->binder, pg_universe(&p->classifiers, 0));
+		if (mode == 1) allocation = pg_context_bind(&p->typing, fields, end->binder, pg_universe(&p->classifiers, 0), PG_JUDGEMENT_VALUE);
 		if (mode == 2) allocation = fields;
-		if (mode == 3) allocation = pg_context_bind(&p->typing, end, pg_binder(&p->graph), end->declared_type);
+		if (mode == 3) allocation = pg_context_bind(&p->typing, end, pg_binder(&p->graph), end->declared_type, PG_JUDGEMENT_VALUE);
 		if (mode == 4) prefix = fields->parent;
 		assert(pg_synthesis_constructor_scope_at(&restored, f, constructor, ps, fields->parent, fields));
 		struct pg_synthesis_job *job = pg_synthesis_induction_scope_at(&restored, f, constructor, ps, mc, m, prefix, allocation);
@@ -1082,7 +1082,7 @@ static void induction_scope_inputs(struct pg_program *p, const struct pg_evidenc
 		}
 		assert(pg_synthesis_status(job) == (mode < 2 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED));
 		if (mode < 2) assert(pg_evidence_context(pg_evidence_premise(pg_synthesis_result(job), 1)) == end);
-		const struct pg_context *other = pg_context_bind(&p->typing, fields, pg_binder(&p->graph), end->declared_type);
+		const struct pg_context *other = pg_context_bind(&p->typing, fields, pg_binder(&p->graph), end->declared_type, PG_JUDGEMENT_VALUE);
 		assert(!pg_synthesis_induction_scope_at(&restored, f, constructor, ps, mc, m, fields, other));
 		pg_synthesis_destroy(&restored);
 	}

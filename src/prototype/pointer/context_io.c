@@ -3,7 +3,7 @@
 #include "wire.h"
 #include <string.h>
 
-static const char magic[8] = "APGCTX\1";
+static const char magic[8] = "APGCTX\2";
 
 int pg_contexts_write(FILE *file, size_t count, const struct pg_context *const *contexts,
 	size_t term_count, const struct pg_term *const *terms,

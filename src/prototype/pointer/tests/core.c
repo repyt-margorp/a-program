@@ -210,28 +210,33 @@ static void context_test(struct pg_graph *graph)
 	const struct pg_term *b = pg_reference(graph, type_b);
 	const struct pg_object *x = pg_binder(graph);
 	const struct pg_object *y = pg_binder(graph);
-	const struct pg_context *in_a = pg_context_bind(&typing, NULL, x, a);
-	const struct pg_context *in_b = pg_context_bind(&typing, NULL, x, b);
+	const struct pg_context *in_a = pg_context_bind(&typing, NULL, x, a, PG_JUDGEMENT_VALUE);
+	const struct pg_context *in_b = pg_context_bind(&typing, NULL, x, b, PG_JUDGEMENT_VALUE);
 	assert(in_a && in_b);
 	assert(in_a != in_b);
-	assert(in_a == pg_context_bind(&typing, NULL, x, a));
+	const struct pg_context *family_binding = pg_context_bind(&typing, NULL, x, a, PG_JUDGEMENT_TYPE_FAMILY);
+	assert(family_binding && family_binding != in_a);
+	assert(family_binding == pg_context_bind(&typing, NULL, x, a, PG_JUDGEMENT_TYPE_FAMILY));
+	assert(family_binding->binder == in_a->binder && family_binding->declared_type == in_a->declared_type);
+	assert(!pg_context_bind(&typing, NULL, x, a, PG_JUDGEMENT_COMPUTATION));
+	assert(in_a == pg_context_bind(&typing, NULL, x, a, PG_JUDGEMENT_VALUE));
 	const struct pg_term *identity = pg_lambda(graph, x, pg_reference(graph, x));
 	assert(identity == pg_lambda(graph, in_a->binder, pg_reference(graph, in_a->binder)));
 	assert(identity == pg_lambda(graph, in_b->binder, pg_reference(graph, in_b->binder)));
 	assert(pg_context_lookup(in_a, x)->declared_type == a);
 	assert(pg_context_lookup(in_b, x)->declared_type == b);
 	assert(!pg_context_lookup(in_a, y));
-	const struct pg_context *extended = pg_context_bind(&typing, in_a, y, b);
+	const struct pg_context *extended = pg_context_bind(&typing, in_a, y, b, PG_JUDGEMENT_VALUE);
 	assert(extended->parent == in_a);
 	assert(pg_context_lookup(extended, x) == in_a);
 	assert(pg_context_lookup(extended, y) == extended);
 	for (size_t i = 0; i < 1000; ++i) {
-		assert(pg_context_bind(&typing, in_a, pg_binder(graph), a));
+		assert(pg_context_bind(&typing, in_a, pg_binder(graph), a, PG_JUDGEMENT_VALUE));
 	}
-	assert(in_a == pg_context_bind(&typing, NULL, x, a));
+	assert(in_a == pg_context_bind(&typing, NULL, x, a, PG_JUDGEMENT_VALUE));
 	assert(in_a->declared_type == a);
 	assert(in_b->declared_type == b);
-	assert(!pg_context_bind(&typing, NULL, type_a, a));
+	assert(!pg_context_bind(&typing, NULL, type_a, a, PG_JUDGEMENT_VALUE));
 	const struct pg_term *vx = pg_reference(graph, x);
 	const struct pg_occurrence *body_a = pg_occurrence(&typing, PG_JUDGEMENT_INPUT, in_a, vx, NULL, NULL, 0, NULL);
 	const struct pg_occurrence *body_b = pg_occurrence(&typing, PG_JUDGEMENT_INPUT, in_b, vx, NULL, NULL, 0, NULL);
@@ -864,6 +869,20 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(mapped_lambda->context == function_map->destination && typing.proofs.count == before_action);
 	assert(mapped_lambda->core->kind == PG_LAMBDA);
 	assert(mapped_lambda->core->as.lambda.binder != x);
+	const struct pg_context_map *body_map = pg_context_map_lift(&typing, function_map,
+		pg_evidence_context(source), mapped_lambda->core->as.lambda.binder);
+	assert(body_map && body_map->source == pg_evidence_context(source));
+	assert(body_map->destination->parent == mapped_lambda->context);
+	assert(body_map->destination->judgement == PG_JUDGEMENT_VALUE);
+	assert(body_map->destination->declared_type == pg_reference(graph, b));
+	struct pg_occurrence_action *body_action = pg_occurrence_action_request(&typing, body_map, pg_evidence_subject(returned));
+	while (pg_occurrence_action_advance(body_action, 1) == PG_SUBSTITUTION_PENDING) {}
+	const struct pg_occurrence *mapped_body = pg_occurrence_action_result(body_action);
+	assert(mapped_body && mapped_body->core == mapped_lambda->core->as.lambda.body);
+	assert(mapped_body->context == body_map->destination && typing.proofs.count == before_action);
+	assert(body_map == pg_context_map_lift(&typing, function_map, pg_evidence_context(source), mapped_lambda->core->as.lambda.binder));
+	assert(!pg_context_map_lift(&typing, function_map, pg_evidence_context(destination), y));
+	assert(!pg_context_map_lift(&typing, function_map, pg_evidence_context(source), b));
 	action_steps = pg_occurrence_action_steps(action);
 	assert(pg_occurrence_action_advance(action, 64) == PG_SUBSTITUTION_DONE);
 	assert(pg_occurrence_action_steps(action) == action_steps);
@@ -971,6 +990,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(ufa_instance && pg_evidence_judgement(ufa_instance) == PG_JUDGEMENT_VALUE_TYPE);
 	assert(pg_evidence_subject(ufa_instance)->core == pg_thunk_type(&classifiers, pg_evidence_subject(fa_instance)->core));
 	const struct pg_evidence *source_pi = pg_prove_pi(&typing, &classifiers, source_extension, fa_extended);
+	assert(pg_evidence_subject(source_pi)->operands[0] == pg_evidence_subject(pg_prove_value_type(&typing, a_in_source)));
 	const struct pg_evidence *source_lambda = pg_prove_lambda(&typing, source_pi,
 		pg_prove_return(&typing, &classifiers, source_p));
 	assert(source_lambda);
@@ -1062,6 +1082,31 @@ static void family_instance_test(struct pg_graph *graph)
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
 	const struct pg_evidence *u1 = pg_prove_universe(&typing, &classifiers, empty, 1);
 	const struct pg_evidence *u0 = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *indices = pg_prove_context_extension(&typing, empty, pg_binder(graph), u0);
+	const struct pg_object *f = pg_binder(graph), *g = pg_binder(graph);
+	const struct pg_evidence *family_scope = pg_prove_family_context_extension(&typing, empty, f,
+		indices, pg_prove_universe(&typing, &classifiers, indices, 0));
+	assert(family_scope && pg_evidence_context(family_scope)->judgement == PG_JUDGEMENT_TYPE_FAMILY);
+	const struct pg_evidence *family_variable = pg_prove_variable(&typing, family_scope, f);
+	assert(pg_evidence_judgement(family_variable) == PG_JUDGEMENT_TYPE_FAMILY);
+	const struct pg_evidence *family_pi = pg_prove_pi(&typing, &classifiers, family_scope,
+		pg_prove_return_type(&typing, &classifiers, pg_prove_universe(&typing, &classifiers, family_scope, 0)));
+	assert(family_pi && pg_evidence_subject(family_pi)->operands[0] == pg_evidence_subject(family_variable));
+	const struct pg_context_map *empty_map = pg_context_map_projection(&typing, NULL, NULL);
+	size_t evidence_before_lift = typing.proofs.count;
+	const struct pg_context_map *lift = pg_context_map_lift(&typing, empty_map, pg_evidence_context(family_scope), g);
+	assert(lift && lift->destination->judgement == PG_JUDGEMENT_TYPE_FAMILY);
+	assert(lift->images[0]->judgement == PG_JUDGEMENT_TYPE_FAMILY);
+	assert(lift->images[0]->core == pg_reference(graph, g));
+	assert(pg_alpha_equal(lift->destination->declared_type, pg_evidence_context(family_scope)->declared_type) == 1);
+	assert(typing.proofs.count == evidence_before_lift);
+	const struct pg_evidence *checked_lift = pg_prove_substitution_lift(&typing,
+		pg_prove_substitution_projection(&typing, empty, empty), family_scope, g);
+	/* Checked family lifting allocates its index telescope; those binders need
+	 * not be the exact pointers used by structural signature substitution. */
+	assert(checked_lift && pg_evidence_context(checked_lift)->binder == g);
+	assert(pg_evidence_context(checked_lift)->judgement == PG_JUDGEMENT_TYPE_FAMILY);
+	assert(pg_alpha_equal(pg_evidence_context(checked_lift)->declared_type, lift->destination->declared_type) == 1);
 	const struct pg_evidence *value = pg_prove_type_value(&typing, u0);
 	const struct pg_object *left = pg_binder(graph), *right = pg_binder(graph);
 	const struct pg_evidence *left_scope = pg_prove_context_extension(&typing, empty, left, u1);
@@ -3372,7 +3417,7 @@ static void effect_classifier_test(struct pg_graph *graph)
 	const struct pg_evidence *context = pg_prove_empty_context(&typing);
 	const struct pg_evidence *universe = pg_prove_universe(&typing, &classifiers, context, 0);
 	size_t accepted_before = typing.proofs.count;
-	const struct pg_context *pending_scope = pg_context_bind(&typing, NULL, argument, latent);
+	const struct pg_context *pending_scope = pg_context_bind(&typing, NULL, argument, latent, PG_JUDGEMENT_VALUE);
 	assert(pending_scope && pending_scope->declared_type == latent);
 	assert(pg_occurrence(&typing, PG_JUDGEMENT_INPUT, pending_scope, pg_reference(graph, argument), NULL, latent, 0, NULL));
 	assert(typing.proofs.count == accepted_before);

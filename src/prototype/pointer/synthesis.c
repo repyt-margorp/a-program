@@ -4131,13 +4131,24 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			const struct pg_context *self = pg_data_declaration_parameters(job->nominal_input);
 			const struct pg_context *prefix = pg_evidence_context(source_context(job->scope)), *end = prefix;
 			if (!self || self->parent != prefix) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+			const struct pg_context *indices = pg_data_declaration_indices(job->nominal_input);
+			size_t count;
+			if (pg_context_extension_size(indices, self, &count) || count > SIZE_MAX / sizeof(void *)) {
+				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+			}
+			const struct pg_context **slots = malloc(count * sizeof(*slots));
+			if (count && !slots) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			for (size_t i = count; i; --i, indices = indices->parent) slots[i - 1] = indices;
 			const struct pg_term *tail = self->declared_type, *domain, *body;
 			const struct pg_object *binder;
-			while (pg_pi_view(tail, &domain, &binder, &body)) {
-				end = pg_context_bind(synthesis->typing, end, binder, domain);
-				if (!end) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			for (size_t i = 0; i < count; ++i) {
+				if (!pg_pi_view(tail, &domain, &binder, &body)) { end = NULL; break; }
+				end = pg_context_bind(synthesis->typing, end, binder, domain, slots[i]->judgement);
+				if (!end) break;
 				tail = body;
 			}
+			free(slots);
+			if (!end) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 			job->right = pg_synthesis_telescope_at(synthesis, job->scope, job->syntax->left, prefix, end);
 		} else if (!job->right) job->right = pg_synthesis_telescope(synthesis, job->scope, job->syntax->left);
 		if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -4563,9 +4574,9 @@ static void operation_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		struct pg_synthesis_job *empty = plain_rule(synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
 		if (!job->context_allocation) {
 			const struct pg_context *allocation = pg_context_bind(synthesis->typing, NULL,
-				pg_binder(synthesis->typing->graph), pg_evidence_subject(pg_operation_payload_type(operation))->core);
+				pg_binder(synthesis->typing->graph), pg_evidence_subject(pg_operation_payload_type(operation))->core, PG_JUDGEMENT_VALUE);
 			if (allocation) allocation = pg_context_bind(synthesis->typing, allocation,
-				pg_binder(synthesis->typing->graph), pg_evidence_subject(pg_operation_response_type(operation))->core);
+				pg_binder(synthesis->typing->graph), pg_evidence_subject(pg_operation_response_type(operation))->core, PG_JUDGEMENT_VALUE);
 			if (!allocation || context_allocation_at(synthesis, job, NULL, allocation, 0)) {
 				finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 			}

@@ -1718,7 +1718,7 @@ static void schema_positivity(void)
 	assert(pg_prove_induction_scope_at(&typing, &classifiers, nat,
 		pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive, ih_allocation) == induction_scope);
 	const struct pg_context *wrong_ih = pg_context_bind(&typing, ih_allocation->parent,
-		ih_allocation->binder, pg_universe(&classifiers, 0));
+		ih_allocation->binder, pg_universe(&classifiers, 0), PG_JUDGEMENT_VALUE);
 	assert(wrong_ih != ih_allocation);
 	assert(pg_prove_induction_scope_at(&typing, &classifiers, nat,
 		pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive, wrong_ih) == induction_scope);
@@ -2055,7 +2055,7 @@ static void schema_positivity(void)
 	const struct pg_context *packed_allocation = pg_evidence_context(pg_evidence_premise(packed_map, 1));
 	assert(pg_prove_constructor_scope_at(&typing, packed, packed_constructor, identity, packed_allocation) == packed_map);
 	const struct pg_context *wrong_packed = pg_context_bind(&typing, packed_allocation->parent,
-		packed_allocation->binder, pg_universe(&classifiers, 0));
+		packed_allocation->binder, pg_universe(&classifiers, 0), PG_JUDGEMENT_VALUE);
 	assert(wrong_packed && wrong_packed != packed_allocation);
 	assert(pg_prove_constructor_scope_at(&typing, packed, packed_constructor, identity, wrong_packed) == packed_map);
 	assert(!pg_prove_constructor_scope_at(&typing, packed, packed_constructor, identity, packed_allocation->parent));
