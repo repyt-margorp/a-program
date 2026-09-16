@@ -12,12 +12,12 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	const struct pg_term *v = pg_reference(g, x), *id = pg_lambda(g, x, v);
 	const struct pg_context *ca = pg_context_bind(typing, NULL, x, a);
 	const struct pg_context *cb = pg_context_bind(typing, NULL, x, b);
-	const struct pg_occurrence *va = pg_occurrence(typing, ca, v, a, 0, NULL);
-	const struct pg_occurrence *vb = pg_occurrence(typing, cb, v, b, 0, NULL);
-	const struct pg_occurrence *oa = pg_occurrence(typing, NULL, id, a, 1, &va);
-	const struct pg_occurrence *ob = pg_occurrence(typing, NULL, id, b, 1, &vb);
+	const struct pg_occurrence *va = pg_occurrence(typing, PG_JUDGEMENT_VALUE, ca, v, a, a, 0, NULL);
+	const struct pg_occurrence *vb = pg_occurrence(typing, PG_JUDGEMENT_VALUE, cb, v, b, b, 0, NULL);
+	const struct pg_occurrence *oa = pg_occurrence(typing, PG_JUDGEMENT_VALUE, NULL, id, a, a, 1, &va);
+	const struct pg_occurrence *ob = pg_occurrence(typing, PG_JUDGEMENT_VALUE, NULL, id, b, b, 1, &vb);
 	const struct pg_occurrence *operands[] = {oa, ob};
-	const struct pg_occurrence *bare = pg_occurrence(typing, NULL, id, NULL, 2, operands);
+	const struct pg_occurrence *bare = pg_occurrence(typing, PG_JUDGEMENT_INPUT, NULL, id, NULL, NULL, 2, operands);
 	const struct pg_occurrence *roots[] = {oa, ob, oa, bare};
 	assert(pg_occurrences_write(file, 4, roots, NULL, NULL) == 0);
 	/* Arbitrary elaboration inputs are transported, never treated as proofs. */
@@ -34,7 +34,7 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	const struct pg_occurrence *deep = bare;
 	for (size_t i = 0; i < 10000; ++i) {
 		const struct pg_occurrence *pair[] = {deep, deep};
-		deep = pg_occurrence(typing, NULL, id, NULL, 2, pair);
+		deep = pg_occurrence(typing, PG_JUDGEMENT_INPUT, NULL, id, NULL, NULL, 2, pair);
 		assert(deep);
 	}
 	other = tmpfile();
@@ -57,12 +57,17 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	assert(pg_occurrences_read(other, typing, 0, 0, NULL, NULL, &count, &loaded) == 0 && count == 0);
 	assert(fclose(other) == 0);
 	other = tmpfile();
-	assert(other && fwrite("APGOCC\0", 1, 8, other) == 8);
+	assert(other && fwrite("APGOCC1", 1, 8, other) == 8);
 	assert(!pg_wire_write_u64(other, 1) && !pg_wire_write_u64(other, 1));
 	assert(fputc(0, other) != EOF && !pg_wire_write_u64(other, 1) && !pg_wire_write_u64(other, 1));
 	rewind(other);
 	assert(pg_occurrences_read(other, typing, 100, 0, NULL, NULL, &count, &loaded) == -1);
 	assert(count == 0 && fclose(other) == 0);
+	other = tmpfile();
+	assert(other && fwrite("APGOCC\0", 1, 8, other) == 8);
+	rewind(other);
+	assert(pg_occurrences_read(other, typing, 100, 0, NULL, NULL, &count, &loaded) == -1);
+	assert(fclose(other) == 0);
 }
 
 static void read_input(FILE *file, struct pg_typing *typing)
@@ -73,11 +78,14 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	assert(count == 4 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(roots[0]->core == roots[1]->core && roots[0]->core == roots[3]->core);
 	assert(roots[0]->annotation != roots[1]->annotation && !roots[3]->annotation);
+	assert(roots[0]->classifier == roots[0]->annotation);
+	assert(roots[1]->classifier == roots[1]->annotation && !roots[3]->classifier);
 	assert(roots[3]->operands[0] == roots[0] && roots[3]->operands[1] == roots[1]);
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_occurrence *v = roots[i]->operands[0];
 		assert(v->context->declared_type == roots[i]->annotation);
 		assert(v->annotation == roots[i]->annotation);
+		assert(v->classifier == roots[i]->classifier);
 		assert(v->core == roots[i]->core->as.lambda.body);
 		assert(v->context->binder == roots[i]->core->as.lambda.binder);
 	}
@@ -91,7 +99,7 @@ static void read_input(FILE *file, struct pg_typing *typing)
 		struct pg_typing destination;
 		assert(pg_graph_init(&graph) == 0 && pg_typing_init(&destination, &graph) == 0);
 		FILE *fragment = tmpfile();
-		if (cut == length) bytes[24] = 2; /* Invalid annotation flag. */
+		if (cut == length) bytes[24] = 4; /* Unknown occurrence flag. */
 		assert(fragment && fwrite(bytes, 1, cut, fragment) == cut);
 		rewind(fragment);
 		size_t unchanged = count;

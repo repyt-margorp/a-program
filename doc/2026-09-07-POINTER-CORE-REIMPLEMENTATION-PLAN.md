@@ -13,6 +13,22 @@ Further correction: Core interning uses exact pointer tuples only. Alpha
 comparison and normalization are explicit operations, never construction-time
 criteria for merging different Lambda or semantic-object references.
 
+## September 16 Priority: Typed Structure and Evidence
+
+Before continuing unrelated compatibility extensions, execute the
+[typed-structure/Evidence refactoring plan](2026-09-16-TYPED-STRUCTURE-AND-EVIDENCE-REFACTOR-PLAN.md).
+Witnesses already are Terms; the issue is that typed structural consumers
+recover operands and context maps from derivation history. Replace the existing
+occurrence/conclusion representation, without adding a parallel authoritative
+program graph. Preserve kernel rules, proof premises, Core erasure, CBPV and
+Higher Identity. R0--R5 in that document track this prerequisite for N2--N7;
+none is marked implemented. The current uncommitted declaration-status edits
+remain separate from this refactor.
+Completion requires deleting superseded recovery paths and a net reduction in
+implementation/header LOC, including replacement/support modules. Test or
+documentation reductions do not count toward that target. Growth requires
+design reconsideration and an explicitly reviewed exception, not silent closure.
+
 ## September 14 Publication Policy
 
 The user superseded the final Main-merge delivery policy: publish incremental

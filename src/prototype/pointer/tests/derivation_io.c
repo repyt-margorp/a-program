@@ -130,7 +130,9 @@ static void effect_transport(enum pg_totality totality)
 	assert(pg_synthesis_status(widening_job) == PG_SYNTHESIS_DONE);
 	const struct pg_evidence *loaded = pg_synthesis_result(widening_job);
 	assert(pg_evidence_rule(loaded) == PG_EFFECT_SUBSUMPTION);
-	assert(pg_evidence_subject(loaded) == pg_evidence_subject(pg_evidence_premise(loaded, 0)));
+	assert(pg_evidence_subject(loaded) != pg_evidence_subject(pg_evidence_premise(loaded, 0)));
+	assert(pg_evidence_subject(loaded)->core == pg_evidence_subject(pg_evidence_premise(loaded, 0))->core);
+	assert(pg_evidence_subject(loaded)->classifier == pg_evidence_classifier(loaded));
 	assert(pg_computation_type_view(pg_evidence_classifier(loaded), &grade, &row, &value) && row == rows[1] && grade == totality);
 	assert(pg_synthesis_status(return_shape) == PG_SYNTHESIS_DONE && pg_synthesis_status(fold_shape) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_type_structure_result(return_shape) == pg_evidence_classifier(pg_evidence_premise(loaded, 0)));

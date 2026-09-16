@@ -7,11 +7,6 @@ struct context_entry {
 	struct pg_context context;
 };
 
-struct occurrence_entry {
-	struct pg_index_entry index;
-	const struct pg_occurrence *occurrence;
-};
-
 int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph)
 {
 	memset(typing, 0, sizeof(*typing));
@@ -88,14 +83,19 @@ int pg_context_extension_size(const struct pg_context *context,
 }
 
 const struct pg_occurrence *pg_occurrence(struct pg_typing *typing,
-	const struct pg_context *context, const struct pg_term *core,
-	const struct pg_term *annotation, size_t operand_count,
+	enum pg_evidence_judgement judgement, const struct pg_context *context, const struct pg_term *core,
+	const struct pg_term *classifier, const struct pg_term *annotation, size_t operand_count,
 	const struct pg_occurrence *const *operands)
 {
 	if (!core) return NULL;
+	if (judgement < PG_JUDGEMENT_VALUE_TYPE || judgement > PG_JUDGEMENT_INPUT) return NULL;
+	if (judgement == PG_JUDGEMENT_SUBSTITUTION) return NULL;
+	if ((judgement == PG_JUDGEMENT_INPUT) != (classifier == NULL)) return NULL;
 	if (operand_count && !operands) return NULL;
 	if (operand_count > (SIZE_MAX - sizeof(struct pg_occurrence)) / sizeof(*operands)) return NULL;
 	uint64_t hash = context_hash(context, NULL, core);
+	hash = (hash ^ judgement) * UINT64_C(1099511628211);
+	hash = (hash ^ (uintptr_t)classifier) * UINT64_C(1099511628211);
 	hash = (hash ^ (uintptr_t)annotation) * UINT64_C(1099511628211);
 	hash = (hash ^ operand_count) * UINT64_C(1099511628211);
 	for (size_t i = 0; i < operand_count; ++i) {
@@ -104,9 +104,11 @@ const struct pg_occurrence *pg_occurrence(struct pg_typing *typing,
 	}
 	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->occurrences, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
-		const struct pg_occurrence *found = ((const struct occurrence_entry *)candidate)->occurrence;
+		const struct pg_occurrence *found = (const struct pg_occurrence *)candidate;
+		if (found->judgement != judgement) continue;
 		if (found->context != context) continue;
 		if (found->core != core) continue;
+		if (found->classifier != classifier) continue;
 		if (found->annotation != annotation) continue;
 		if (found->operand_count != operand_count) continue;
 		size_t i = 0;
@@ -116,14 +118,21 @@ const struct pg_occurrence *pg_occurrence(struct pg_typing *typing,
 	struct pg_occurrence *result = pg_alloc(typing->graph,
 		sizeof(*result) + operand_count * sizeof(*operands));
 	if (!result) return NULL;
+	result->judgement = judgement;
 	result->context = context;
 	result->core = core;
+	result->classifier = classifier;
 	result->annotation = annotation;
 	result->operand_count = operand_count;
 	for (size_t i = 0; i < operand_count; ++i) result->operands[i] = operands[i];
-	struct occurrence_entry *entry = pg_alloc(typing->graph, sizeof(*entry));
-	if (!entry) return NULL;
-	entry->occurrence = result;
-	if (pg_index_insert(&typing->occurrences, &entry->index, hash) != 0) return NULL;
+	if (pg_index_insert(&typing->occurrences, &result->index, hash) != 0) return NULL;
 	return result;
+}
+
+const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
+	const struct pg_occurrence *source, enum pg_evidence_judgement judgement,
+	const struct pg_term *classifier)
+{
+	return source ? pg_occurrence(typing, judgement, source->context, source->core,
+		classifier, source->annotation, source->operand_count, source->operands) : NULL;
 }
