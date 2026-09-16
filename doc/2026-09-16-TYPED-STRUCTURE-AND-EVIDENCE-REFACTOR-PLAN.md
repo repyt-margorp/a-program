@@ -1043,3 +1043,51 @@ transitions. No performance improvement is claimed. This removes an avoidable
 loss of structure at a producer; it does not remove general Pi restriction,
 normalization or nominal recovery. The aggregate R0-R5 and net-negative LOC
 gates remain open, and Main has not been published.
+
+### 2026-09-17: Structural scope actions in nominal/Pi recovery
+
+- [x] Replace temporary `evidence_frame` entries with structural scope
+  actions. A frame contains either the exact total context map, or the typed
+  Pi component whose independent inputs must be recovered in its smaller
+  context. It does not retain a chosen projection/reindex receipt. Scope
+  restriction is not encoded as a total substitution with a fabricated image
+  for the removed binder. No persistent graph or wire-format tag was added.
+- [x] Delete `strengthened_context`, `evidence_map_step` and `evidence_image`.
+  Their replacement consumers use the retained map or restriction context,
+  not repeated proof-rule tests and nested premise offsets. Pi argument
+  lifting retains its checked map directly, without constructing a variable
+  and its reindex receipt merely to recover that map again later.
+- [x] Share structural binder-image lookup through `pg_context_map_image`
+  in nominal recovery, typed beta body access and scoped child queries.
+  Keep `pg_substitution_image` as genuine receipt inversion: its callers can
+  still select the original alternative image proof. Structural lookup does
+  not grant acceptance or change any alternative derivation.
+- [x] Handle a variable image through the destination context's variable
+  rule, rather than re-entering the arbitrary receipt used to certify a
+  shared map. The first implementation of shared map frames exposed a loop
+  when that receipt was itself a projection of the same variable. A bounded
+  regression now pre-registers that alternative and verifies that unknown
+  nominal formation terminates as unavailable at budgets one and 64. This
+  negative result is not a proof that the type has no inhabitants.
+- [x] Full debug `check-acceptance` passed, including 63/63 compatibility,
+  source/image QuickSort properties and split budgets. ASan/UBSan Core,
+  IADT, synthesis and imported QuickSort property checks passed.
+  `git diff --check` passed; none of the deleted helper names remain.
+
+Against `d5272ea`, implementation/header changes are `evidence.c` +79/-86,
+`evidence.h` +1/-1, `typing.c` +13/-4, and `typing.h` +3/-0: **+5 net**.
+`tests/core.c` adds 19 lines. Cumulative implementation growth is **+1160**;
+the complete change still fails the net-negative gate. Three alternating,
+sequential debug QuickSort samples used 154851 Solve transitions each:
+
+| Version | Elapsed seconds | Peak RSS, KiB |
+|---|---|---|
+| Previous checkpoint | 1.553, 1.562, 1.541 | 284548, 284288, 284356 |
+| Structural scope frames | 1.511, 1.501, 1.514 | 271124, 271376, 271804 |
+
+These samples show a repeatable memory reduction for this input, consistent
+with removing intermediate variable/reindex receipts. They are not a general
+speedup claim. `pi_component`, `inductive_recovery_step` and `rebase_image`
+still recover structure from receipt history; replacing their scope-action
+payload does not complete their removal or shared budgeted normalization.
+R0-R5 aggregate completion and Main publication remain outstanding.

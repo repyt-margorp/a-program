@@ -282,6 +282,16 @@ const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_m
 	return (const struct pg_binding_value *)(map->images + map->count);
 }
 
+const struct pg_occurrence *pg_context_map_image(const struct pg_context_map *map,
+	const struct pg_object *binder)
+{
+	if (!map) return NULL;
+	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
+	for (size_t i = 0; i < map->count; ++i)
+		if (bindings[i].binder == binder) return map->images[i];
+	return NULL;
+}
+
 const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 	const struct pg_context *source, const struct pg_context *destination,
 	size_t count, const struct pg_occurrence *const *images)
@@ -594,10 +604,9 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 		if (current->map) {
 			const struct pg_term *origin = current->origin->core;
 			if (work->index != SIZE_MAX && origin->kind == PG_REFERENCE && origin->as.reference->kind == PG_BINDER) {
-				const struct pg_binding_value *bindings = pg_context_map_bindings(current->map);
-				for (size_t i = 0; i < current->map->count; ++i) {
-					if (bindings[i].binder != origin->as.reference) continue;
-					work->current = current->map->images[i];
+				const struct pg_occurrence *image = pg_context_map_image(current->map, origin->as.reference);
+				if (image) {
+					work->current = image;
 					return PG_INPUT_PENDING;
 				}
 			}

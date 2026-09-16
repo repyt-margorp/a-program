@@ -169,7 +169,7 @@ struct pg_inductive_instance {
 struct pg_inductive_recovery {
 	struct pg_typing *typing;
 	struct pg_graph temporary;
-	struct evidence_frame *frames;
+	struct scope_frame *frames;
 	struct inductive_argument *arguments;
 	struct inductive_fold *folds;
 	const struct pg_evidence *type, *formation, *map;

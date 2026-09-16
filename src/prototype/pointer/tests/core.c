@@ -781,6 +781,20 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *source_x = pg_prove_variable(&typing, source, x);
 	const struct pg_evidence *destination_b = pg_prove_variable(&typing, destination, b);
 	const struct pg_evidence *destination_y = pg_prove_variable(&typing, destination, y);
+	/* A structural map may first be certified with a projected variable as
+	 * its image. Nominal lookup must not chase that receipt back into itself. */
+	const struct pg_evidence *projected_a = pg_prove_projection(&typing, source, a_type);
+	const struct pg_evidence *projected_image_map = pg_prove_substitution(&typing, a_scope, source, 1, &projected_a);
+	assert(projected_image_map && pg_prove_context_map(&typing, pg_evidence_context_map(projected_image_map)) == projected_image_map);
+	const struct pg_evidence *unknown_type = pg_prove_value_type(&typing, projected_a);
+	for (size_t budget = 1; budget <= 64; budget *= 64) {
+		struct pg_inductive_recovery recovery;
+		assert(!pg_inductive_recovery_init(&recovery, &typing, unknown_type));
+		for (size_t i = 0; i < 16 && !recovery.status; ++i)
+			pg_inductive_recovery_advance(&recovery, budget);
+		assert(recovery.status < 0);
+		pg_inductive_recovery_destroy(&recovery);
+	}
 	const struct pg_evidence *images[] = {destination_b, destination_y};
 	const struct pg_evidence *sigma = pg_prove_substitution(&typing, source, destination, 2, images);
 	assert(sigma && pg_evidence_judgement(sigma) == PG_JUDGEMENT_SUBSTITUTION);
@@ -790,6 +804,11 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(map->destination == pg_evidence_context(destination) && map->count == 2);
 	assert(map->images[0] == pg_evidence_subject(destination_b));
 	assert(map->images[1] == pg_evidence_subject(destination_y));
+	assert(pg_context_map_image(map, a) == map->images[0]);
+	assert(pg_context_map_image(map, x) == map->images[1]);
+	assert(!pg_context_map_image(map, b));
+	assert(!pg_context_map_image(map, NULL));
+	assert(!pg_context_map_image(NULL, a));
 	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	assert(bindings[0].binder == a && bindings[0].value == pg_evidence_subject(destination_b)->core);
 	assert(bindings[1].binder == x && bindings[1].value == pg_evidence_subject(destination_y)->core);

@@ -384,10 +384,23 @@ done:
 	return result;
 }
 
-struct evidence_frame {
-	const struct pg_evidence *proof;
-	struct evidence_frame *next;
+/* A scope action is either a total substitution or a Pi component whose
+ * independent inputs must be recovered in its smaller context. */
+struct scope_frame {
+	const struct pg_context_map *map;
+	const struct pg_occurrence *restriction;
+	struct scope_frame *next;
 };
+
+static struct scope_frame *scope_frame(struct pg_graph *storage,
+	const struct pg_context_map *map, const struct pg_occurrence *restriction,
+	struct scope_frame *next)
+{
+	if (!!map == !!restriction) return NULL;
+	struct scope_frame *frame = pg_alloc(storage, sizeof(*frame));
+	if (frame) *frame = (struct scope_frame){map, restriction, next};
+	return frame;
+}
 
 static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 	const struct pg_evidence *computation);
@@ -561,54 +574,45 @@ const struct pg_evidence *pg_prove_substitution_rebase(struct pg_typing *typing,
 	return result;
 }
 
-/* A lifted constant-codomain step is represented by its ordinary Pi
- * inversion at a fresh variable. That variable retains the target scope. */
-static const struct pg_evidence *strengthened_context(const struct pg_evidence *step)
+static const struct pg_evidence *scope_map_step(struct pg_typing *typing,
+	const struct pg_evidence *map, const struct scope_frame *frame)
 {
-	if (step->rule == PG_PI_CONSTANT_CODOMAIN)
-		return step->premises[0]->premises[0]->premises[0];
-	if (step->rule == PG_PI_CODOMAIN && step->premises[1]->rule == PG_VARIABLE)
-		return step->premises[1]->premises[0];
-	return NULL;
+	if (frame->map)
+		return pg_prove_substitution_compose(typing, map, pg_prove_context_map(typing, frame->map));
+	return pg_prove_substitution_rebase(typing,
+		conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frame->restriction->context), map);
 }
 
-static const struct pg_evidence *evidence_map_step(struct pg_typing *typing,
-	const struct pg_evidence *map, const struct pg_evidence *step)
-{
-	const struct pg_evidence *context = strengthened_context(step);
-	if (context) return pg_prove_substitution_rebase(typing, context, map);
-	const struct pg_evidence *substitution = step->premises[0];
-	if (step->rule == PG_CONTEXT_PROJECTION)
-		substitution = pg_prove_substitution_projection(typing, map->premises[1], substitution);
-	return pg_prove_substitution_compose(typing, map, substitution);
-}
-
-static const struct pg_evidence *evidence_image(struct pg_typing *typing,
-	const struct pg_evidence *value, const struct evidence_frame *frames)
+static const struct pg_evidence *scope_image(struct pg_typing *typing,
+	const struct pg_evidence *value, const struct scope_frame *frames)
 {
 	for (; value && frames; frames = frames->next) {
-		const struct pg_evidence *step = frames->proof;
-		const struct pg_evidence *context = strengthened_context(step);
-		if (context) value = rebase_image(typing, context, value);
-		else if (step->rule == PG_CONTEXT_PROJECTION)
-			value = pg_prove_projection(typing, step->premises[0], value);
-		else value = pg_prove_reindex(typing, step->premises[0], value);
+		if (frames->map) value = pg_prove_reindex(typing, pg_prove_context_map(typing, frames->map), value);
+		else value = rebase_image(typing,
+			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frames->restriction->context), value);
 	}
 	return value;
 }
 
 static const struct pg_evidence *variable_frame(struct pg_typing *typing,
-	const struct pg_evidence *variable, struct evidence_frame **frames)
+	const struct pg_evidence *variable, struct scope_frame **frames)
 {
 	if (!*frames) return NULL;
-	const struct pg_evidence *step = (*frames)->proof;
+	const struct scope_frame *frame = *frames;
 	*frames = (*frames)->next;
 	const struct pg_object *binder = pg_evidence_subject(variable)->core->as.reference;
-	if (step->rule == PG_CONTEXT_PROJECTION)
-		return pg_prove_variable(typing, step->premises[0], binder);
-	const struct pg_evidence *context = strengthened_context(step);
-	if (context) return pg_prove_variable(typing, context, binder);
-	return pg_substitution_image(typing, step->premises[0], binder);
+	if (frame->map) {
+		const struct pg_occurrence *image = pg_context_map_image(frame->map, binder);
+		if (!image) return NULL;
+		const struct pg_term *core = image->core;
+		if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER)
+			return pg_prove_structural_subject(typing, image);
+		binder = core->as.reference;
+		return pg_prove_variable(typing,
+			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frame->map->destination), binder);
+	}
+	return pg_prove_variable(typing,
+		conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frame->restriction->context), binder);
 }
 
 struct construction_map {
@@ -765,12 +769,8 @@ const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 			continue;
 		}
 		if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER || !frames) goto done;
-		const struct pg_context_map *map = frames->map;
-		const struct pg_context *scope = pg_context_lookup(map->source, core->as.reference);
-		if (!scope) goto done;
-		size_t index;
-		if (pg_context_extension_size(scope->parent, NULL, &index)) goto done;
-		current = map->images[index];
+		current = pg_context_map_image(frames->map, core->as.reference);
+		if (!current) goto done;
 		frames = frames->next;
 	}
 done:
@@ -778,42 +778,34 @@ done:
 	return result;
 }
 
-static struct evidence_frame *pi_argument_frames(struct pg_typing *typing, struct pg_graph *temporary,
+static struct scope_frame *pi_argument_frames(struct pg_typing *typing, struct pg_graph *temporary,
 	const struct pg_evidence *pi, const struct pg_evidence *argument,
-	const struct evidence_frame *frames)
+	const struct scope_frame *frames)
 {
 	const struct pg_evidence *extended = pi->premises[0];
-	struct evidence_frame *result = NULL, **tail = &result;
+	struct scope_frame *result = NULL, **tail = &result;
 	for (;;) {
-		const struct pg_evidence *variable = pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder);
-		const struct pg_evidence *map, *proof;
+		const struct pg_evidence *map = NULL, *restricted = NULL;
 		if (!frames) {
 			map = pg_prove_substitution_projection(typing, extended->premises[0], extended->premises[0]);
 			map = pg_prove_substitution_pair(typing, map, extended, argument);
-			proof = pg_prove_reindex(typing, map, variable);
+		} else if (frames->map) {
+			map = pg_prove_substitution_lift(typing, pg_prove_context_map(typing, frames->map),
+				extended, pg_binder(typing->graph));
+			if (!map) return NULL;
+			extended = map->premises[1];
 		} else {
-			const struct pg_evidence *step = frames->proof;
-			const struct pg_evidence *context = strengthened_context(step);
-			if (context) {
-				extended = pg_prove_context_extension(typing, context, pg_evidence_context(extended)->binder,
-					pg_prove_pi_domain(typing, step));
-				if (!extended) return NULL;
-				proof = pg_prove_pi_codomain(typing, pg_prove_projection(typing, extended, step),
-					pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder));
-			} else {
-				map = step->premises[0];
-				if (step->rule == PG_CONTEXT_PROJECTION)
-					map = pg_prove_substitution_projection(typing, extended->premises[0], map);
-				map = pg_prove_substitution_lift(typing, map, extended, pg_binder(typing->graph));
-				if (!map) return NULL;
-				proof = pg_prove_reindex(typing, map, variable);
-				extended = map->premises[1];
-			}
+			const struct pg_evidence *step = pg_prove_structural_subject(typing, frames->restriction);
+			const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frames->restriction->context);
+			extended = pg_prove_context_extension(typing, context, pg_evidence_context(extended)->binder,
+				pg_prove_pi_domain(typing, step));
+			if (!extended) return NULL;
+			restricted = pg_prove_pi_codomain(typing, pg_prove_projection(typing, extended, step),
+				pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder));
 		}
-		if (!proof) return NULL;
-		struct evidence_frame *frame = pg_alloc(temporary, sizeof(*frame));
+		struct scope_frame *frame = scope_frame(temporary, pg_evidence_context_map(map),
+			restricted ? pg_evidence_subject(restricted) : NULL, NULL);
 		if (!frame) return NULL;
-		*frame = (struct evidence_frame){proof, NULL};
 		*tail = frame;
 		tail = &frame->next;
 		if (!frames) return result;
@@ -825,27 +817,28 @@ static struct evidence_frame *pi_argument_frames(struct pg_typing *typing, struc
  * Rebuilding the whole Pi context would demand images for unused binders
  * already removed by constant-codomain projection. */
 static const struct pg_evidence *pi_component(struct pg_typing *typing, struct pg_graph *temporary,
-	struct evidence_frame **outer_frames,
+	struct scope_frame **outer_frames,
 	const struct pg_evidence *pi, const struct pg_evidence *argument,
 	enum pg_evidence_rule component)
 {
 	struct pending {
 		const struct pg_evidence *argument;
-		struct evidence_frame *frames;
+		struct scope_frame *frames;
 		size_t thunks;
 		enum pg_evidence_rule component;
 		struct pending *next;
 	};
 	struct pending *pending = NULL;
-	struct evidence_frame *frames = NULL;
+	struct scope_frame *frames = NULL;
 	const struct pg_evidence *result = NULL;
 	size_t thunks = 0;
 	while (pi) {
 		switch (pi->rule) {
 		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
-			struct evidence_frame *frame = pg_alloc(temporary, sizeof(*frame));
+			const struct pg_context_map *map = pi->rule == PG_REINDEX ? pg_evidence_context_map(pi->premises[0])
+				: pg_context_map_projection(typing, pg_evidence_context(pi->premises[1]), pg_evidence_context(pi));
+			struct scope_frame *frame = scope_frame(temporary, map, NULL, frames);
 			if (!frame) goto done;
-			*frame = (struct evidence_frame){pi, frames};
 			frames = frame;
 			pi = pi->premises[1];
 			break;
@@ -882,14 +875,13 @@ static const struct pg_evidence *pi_component(struct pg_typing *typing, struct p
 				} else {
 					const struct pg_evidence *constant = pg_prove_pi_constant_codomain(typing, pi);
 					if (!constant) goto done;
-					struct evidence_frame *frame = pg_alloc(temporary, sizeof(*frame));
+					struct scope_frame *frame = scope_frame(temporary, NULL, pg_evidence_subject(constant), frames);
 					if (!frame) goto done;
-					*frame = (struct evidence_frame){constant, frames};
 					frames = frame;
 					pi = pi->premises[1];
 				}
 			}
-			struct evidence_frame **tail = &frames;
+			struct scope_frame **tail = &frames;
 			while (*tail) tail = &(*tail)->next;
 			if (!pending) {
 				*tail = *outer_frames;
@@ -913,13 +905,13 @@ done:
 
 struct inductive_argument {
 	const struct pg_evidence *value;
-	const struct evidence_frame *frames;
+	const struct scope_frame *frames;
 	struct inductive_argument *next;
 };
 
 struct inductive_fold {
 	const struct pg_evidence *continuation;
-	struct evidence_frame *frames;
+	struct scope_frame *frames;
 	struct inductive_argument *arguments;
 	size_t return_contents, return_values, thunk_contents, thunk_values;
 	struct inductive_fold *parent;
@@ -942,9 +934,10 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 	if (formation->rule != PG_INDUCTIVE_FORM) {
 		switch (formation->rule) {
 		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
-			struct evidence_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
+			const struct pg_context_map *map = formation->rule == PG_REINDEX ? pg_evidence_context_map(formation->premises[0])
+				: pg_context_map_projection(typing, pg_evidence_context(formation->premises[1]), pg_evidence_context(formation));
+			struct scope_frame *frame = scope_frame(&work->temporary, map, NULL, work->frames);
 			if (!frame) goto failed;
-			*frame = (struct evidence_frame){formation, work->frames};
 			work->frames = frame;
 			formation = formation->premises[1];
 			break;
@@ -967,7 +960,7 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 			if (!work->return_values) goto failed;
 			if (work->return_values == 1 && work->folds) {
 				struct inductive_fold *fold = work->folds;
-				const struct pg_evidence *value = evidence_image(typing, formation->premises[0], work->frames);
+				const struct pg_evidence *value = scope_image(typing, formation->premises[0], work->frames);
 				formation = pg_prove_application_body(typing, fold->continuation, value);
 				if (!formation) goto failed;
 				work->frames = fold->frames;
@@ -1046,7 +1039,7 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		return;
 	}
 	if (work->frames) {
-		work->map = evidence_map_step(typing, work->map, work->frames->proof);
+		work->map = scope_map_step(typing, work->map, work->frames);
 		work->frames = work->frames->next;
 		if (!work->map) goto failed;
 		return;
@@ -1069,7 +1062,7 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		/* Index arguments cross precisely the wrappers outside their own
 		 * application, not the parameter substitutions inside its callee. */
 		for (struct inductive_argument *a = work->arguments; a; a = a->next) {
-			const struct pg_evidence *value = evidence_image(typing, a->value, a->frames);
+			const struct pg_evidence *value = scope_image(typing, a->value, a->frames);
 			if (!value) goto failed;
 			values[i++] = value;
 			instance = pg_prove_family_application(typing, instance, value);
@@ -4397,9 +4390,9 @@ const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 	uint64_t level;
 	if (pg_universe_level(pg_evidence_subject(pi)->classifier, &level) && level) {
 		struct pg_graph temporary = {0};
-		struct evidence_frame *frames = NULL;
+		struct scope_frame *frames = NULL;
 		const struct pg_evidence *domain_proof = pi_component(typing, &temporary, &frames, pi, NULL, PG_PI_DOMAIN);
-		if (domain_proof) domain_proof = evidence_image(typing, domain_proof, frames);
+		if (domain_proof) domain_proof = scope_image(typing, domain_proof, frames);
 		pg_graph_destroy(&temporary);
 		if (domain_proof && pg_evidence_context(domain_proof) == pg_evidence_context(pi) &&
 			pg_evidence_judgement(domain_proof) == PG_JUDGEMENT_VALUE_TYPE &&

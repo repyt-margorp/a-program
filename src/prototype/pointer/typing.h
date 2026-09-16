@@ -128,6 +128,9 @@ const struct pg_context_map *pg_context_map_lift(struct pg_typing *typing,
 	const struct pg_object *binder);
 /* Immutable erased projection of the typed images, computed at construction. */
 const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map);
+/* Structural image selection, independent of a substitution's derivation. */
+const struct pg_occurrence *pg_context_map_image(const struct pg_context_map *map,
+	const struct pg_object *binder);
 const struct pg_occurrence *pg_occurrence_mapped(struct pg_typing *typing,
 	enum pg_evidence_judgement judgement, const struct pg_term *core,
 	const struct pg_term *classifier, const struct pg_term *annotation,
