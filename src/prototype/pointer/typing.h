@@ -23,8 +23,20 @@ struct pg_occurrence {
 	const struct pg_term *core;
 	const struct pg_term *classifier;
 	const struct pg_term *annotation;
+	/* A mapped construction has an origin/map, not stale direct operands. */
+	const struct pg_occurrence *origin;
+	const struct pg_context_map *map;
 	size_t operand_count;
 	const struct pg_occurrence *operands[];
+};
+
+/* Structural substitution, not its well-formedness proof. Images are ordered
+ * from the oldest source declaration to the newest, in the destination scope. */
+struct pg_context_map {
+	struct pg_index_entry index;
+	const struct pg_context *source, *destination;
+	size_t count;
+	const struct pg_occurrence *images[];
 };
 
 struct pg_typing {
@@ -34,6 +46,8 @@ struct pg_typing {
 	const void *owner_key;
 	struct pg_index contexts;
 	struct pg_index occurrences;
+	struct pg_index context_maps;
+	struct pg_index occurrence_actions;
 	struct pg_index proofs;
 	/* Computation work, not an additional source of typing evidence. */
 	struct pg_substitution_work substitutions;
@@ -62,5 +76,25 @@ const struct pg_occurrence *pg_occurrence(struct pg_typing *typing,
 const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 	const struct pg_occurrence *source, enum pg_evidence_judgement judgement,
 	const struct pg_term *classifier);
+const struct pg_context_map *pg_context_map(struct pg_typing *typing,
+	const struct pg_context *source, const struct pg_context *destination,
+	size_t count, const struct pg_occurrence *const *images);
+/* Immutable erased projection of the typed images, computed at construction. */
+const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map);
+const struct pg_occurrence *pg_occurrence_mapped(struct pg_typing *typing,
+	enum pg_evidence_judgement judgement, const struct pg_term *core,
+	const struct pg_term *classifier, const struct pg_term *annotation,
+	const struct pg_occurrence *source, const struct pg_context_map *map);
+/* A prefix projection changes scope without scheduling term substitution. */
+const struct pg_occurrence *pg_occurrence_projection(struct pg_typing *typing,
+	const struct pg_context_map *map, const struct pg_occurrence *source);
+/* Shared, budgeted structural context action. No typing acceptance is created. */
+struct pg_occurrence_action;
+struct pg_occurrence_action *pg_occurrence_action_request(struct pg_typing *typing,
+	const struct pg_context_map *map, const struct pg_occurrence *source);
+enum pg_substitution_status pg_occurrence_action_advance(struct pg_occurrence_action *work,
+	uint64_t budget);
+const struct pg_occurrence *pg_occurrence_action_result(const struct pg_occurrence_action *work);
+uint64_t pg_occurrence_action_steps(const struct pg_occurrence_action *work);
 
 #endif

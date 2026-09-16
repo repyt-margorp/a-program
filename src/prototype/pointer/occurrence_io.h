@@ -4,9 +4,9 @@
 #include "typing.h"
 #include <stdio.h>
 
-/* APGOCC1 transports descriptive typed inputs, not evidence. Contexts, Core,
+/* APGOCC2 transports descriptive typed inputs, not evidence. Contexts, Core,
  * classifiers and annotations share relocation tables. Sorts and operand order
- * are retained. Previous APGOCC input images are rejected, not reinterpreted.
+ * and structural maps are retained. Earlier input images are rejected.
  * Descriptor naming/resolution obeys graph_io.h's owner contract. */
 int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner);

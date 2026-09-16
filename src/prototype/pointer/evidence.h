@@ -489,6 +489,8 @@ const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
  * rebuilt. An absent binder or a foreign/non-substitution proof returns NULL. */
 const struct pg_evidence *pg_substitution_image(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_object *binder);
+/* Checked substitution conclusion; distinct derivations may share this map. */
+const struct pg_context_map *pg_evidence_context_map(const struct pg_evidence *evidence);
 const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *destination,
 	size_t count, const struct pg_evidence *const *images);

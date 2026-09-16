@@ -57,23 +57,6 @@ done:
 	return result;
 }
 
-static const struct pg_evidence *projection_substitution(struct pg_typing *typing,
-	const struct pg_evidence *source, const struct pg_evidence *destination)
-{
-	size_t count = 0;
-	for (const struct pg_context *c = pg_evidence_context(source); c; c = c->parent) ++count;
-	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-	struct pg_graph temporary = {0};
-	const struct pg_evidence **images = pg_alloc(&temporary, count * sizeof(*images));
-	if (count && !images) { pg_graph_destroy(&temporary); return NULL; }
-	const struct pg_context *c = pg_evidence_context(source);
-	for (size_t i = count; i; --i, c = c->parent)
-		images[i - 1] = pg_prove_variable(typing, destination, c->binder);
-	const struct pg_evidence *result = pg_prove_substitution(typing, source, destination, count, images);
-	pg_graph_destroy(&temporary);
-	return result;
-}
-
 static int origin_step(struct pg_typing *typing,
 	const struct pg_evidence **current, const struct pg_evidence **substitution)
 {
@@ -97,7 +80,7 @@ static int origin_step(struct pg_typing *typing,
 		const struct pg_evidence *source = destination;
 		while (pg_evidence_context(source) != pg_evidence_context(formation))
 			source = pg_evidence_premise(source, 0);
-		step = projection_substitution(typing, source, destination);
+		step = pg_prove_substitution_projection(typing, source, destination);
 	} else return 1;
 	if (!step) return -1;
 	map = map ? pg_prove_substitution_compose(typing, step, map) : step;
@@ -501,7 +484,7 @@ const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
 	const struct pg_evidence *right, const struct pg_object *x0,
 	const struct pg_object *x1, const struct pg_object *path)
 {
-	const struct pg_evidence *identity = projection_substitution(typing, context, context);
+	const struct pg_evidence *identity = pg_prove_substitution_projection(typing, context, context);
 	return pg_identity_family_pi_type(typing, classifiers, pi, identity, identity,
 		0, NULL, left, right, x0, x1, path);
 }
@@ -528,7 +511,7 @@ const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
 	boundary = pg_prove_context_extension(typing, boundary, x1,
 		pg_prove_projection(typing, boundary, pg_prove_reindex(typing, right_substitution, domain)));
 	if (!boundary) goto done;
-	const struct pg_evidence *prefix = projection_substitution(typing, context, boundary);
+	const struct pg_evidence *prefix = pg_prove_substitution_projection(typing, context, boundary);
 	const struct pg_evidence *ls = pg_prove_substitution_compose(typing, left_substitution, prefix);
 	const struct pg_evidence *rs = pg_prove_substitution_compose(typing, right_substitution, prefix);
 	for (size_t i = 0; i < count; ++i) centers[i] = pg_prove_projection(typing, boundary, paths[i]);
@@ -547,7 +530,7 @@ const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
 	const struct pg_evidence *r = pg_prove_variable(typing, boundary, x1);
 	for (size_t i = 0; i < count; ++i) centers[i] = pg_prove_projection(typing, boundary, paths[i]);
 	centers[count] = pg_prove_variable(typing, boundary, path);
-	prefix = projection_substitution(typing, context, boundary);
+	prefix = pg_prove_substitution_projection(typing, context, boundary);
 	ls = pg_prove_substitution_pair(typing,
 		pg_prove_substitution_compose(typing, left_substitution, prefix), source, l);
 	rs = pg_prove_substitution_pair(typing,
@@ -612,7 +595,7 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 		extensions[i - 1] = context;
 		context = pg_evidence_premise(context, 0);
 	}
-	const struct pg_evidence *ls = projection_substitution(typing, context, context), *rs = ls;
+	const struct pg_evidence *ls = pg_prove_substitution_projection(typing, context, context), *rs = ls;
 	if (!ls) goto done;
 	for (size_t i = 0; i < common; ++i) li[i] = ri[i] = pg_evidence_premise(ls, i + 2);
 	for (size_t i = 0; i < count; ++i) {
@@ -741,7 +724,7 @@ static const struct pg_evidence *cube_action(struct pg_typing *typing, struct pg
 	}
 	/* Rename the entire dependent suffix to zero vertices with one checked
 	 * substitution. Later declarations use the preceding renamed images. */
-	const struct pg_evidence *map = projection_substitution(typing, prefix, context);
+	const struct pg_evidence *map = pg_prove_substitution_projection(typing, prefix, context);
 	const struct pg_dimension_map *zero = pg_dimension_map(dimensions, 0, dimension, coordinates);
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_binding_face *vertex = pg_binding_face(dimensions, cubes[i], zero);
@@ -750,7 +733,7 @@ static const struct pg_evidence *cube_action(struct pg_typing *typing, struct pg
 		context = pg_prove_context_extension(typing, context, &vertex->variable,
 			pg_prove_reindex(typing, map, pg_evidence_premise(extensions[i], 1)));
 		if (!context) goto done;
-		map = pg_prove_substitution_compose(typing, map, projection_substitution(typing, previous, context));
+		map = pg_prove_substitution_compose(typing, map, pg_prove_substitution_projection(typing, previous, context));
 		map = pg_prove_substitution_pair(typing, map, extensions[i], pg_prove_variable(typing, context, &vertex->variable));
 		if (!map) { context = NULL; goto done; }
 	}

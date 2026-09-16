@@ -1,7 +1,7 @@
 # Typed Structure and Evidence Refactoring
 
 Date: 2026-09-16
-Status: in progress; typed-conclusion checkpoint verified, scoped edges next
+Status: in progress; typed conclusions verified, scoped context action in progress
 Baseline: `1b95e551b6ef315e079120a52b1a878d06ff2d63`, `rewrite/pointer-core-hott`
 Parent: [Pointer Core reimplementation](2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md)
 
@@ -343,3 +343,83 @@ Conclusion checkpoint LOC delta (against `4657cc6`, excluding documentation):
 | `tests/core.c` | 51 | 17 | +34 |
 | `tests/derivation_io.c` | 3 | 1 | +2 |
 | `tests/occurrence_io.c` | 16 | 8 | +8 |
+
+### 2026-09-16: Shared structural context action
+
+- [x] Intern structural context maps by source/destination contexts and typed
+  image pointers. Keep the checked substitution derivation separate: creating
+  a descriptive map does not accept a substitution. Different derivations of
+  the same images share the map without discarding either derivation.
+- [x] Remove raw binding arrays from substitution Evidence allocations. The
+  erased binding array is an immutable projection owned by the structural map.
+  Dependent image checks still run before the substitution proof is accepted.
+- [x] Share budgeted occurrence action by exact `(map, occurrence)` inputs,
+  using the existing Core substitution work. Evidence reindex no longer owns
+  another three-term substitution state machine.
+- [x] Keep prefix projection structural: do not create substitution proofs or
+  evaluator jobs merely to record unchanged Core/classifier data in a larger
+  scope. It uses the same action-result constructor as computed substitution.
+  A regression test requires exactly one new projection proof and no new
+  occurrence-action jobs; explicit checked substitution yields the same subject.
+- [x] Remove `action.c:projection_substitution`; Identity construction now
+  calls the existing checked projection constructor rather than duplicating it.
+- [x] Stop copying old children into projection/reindex conclusions. A mapped
+  construction retains its origin and context map, with no direct child array.
+  Substitution of a variable instead exposes the image construction, including
+  its own map if needed. Boundary changes preserve this structural description.
+- [x] Transport these dependencies with `APGOCC2`. Origins and typed map images
+  participate in the occurrence DAG; scope and Core relocation remain shared.
+  `APGOCC1` and older occurrence images reject rather than silently lose maps.
+  Ordinary source/derivation Solve remains the acceptance path.
+- [x] Test different proof paths sharing one map/action; pending and completed
+  work reuse; dependent classifier substitution; variable-to-function images;
+  fresh binder allocation; descriptive map creation without acceptance; and
+  fresh-process mapped occurrence transport with shared maps and no Evidence.
+- [ ] Expose effective children through lifted maps, using the actual binder
+  allocated by Core substitution. A map record alone does not finish this.
+- [ ] Replace structural Evidence consumers and normalized/inverted provenance
+  operands. No R3 deletion is claimed merely for moving substitution work.
+- [ ] Complete the full acceptance, sanitizer and performance checks for this
+  slice; record actual deltas before marking R2 complete.
+
+The function-image test distinguishes exact structural sharing from alpha
+comparison: substituting a dependent function classifier can allocate a fresh
+binder, so the resulting classifier need not be pointer-identical to the
+image's classifier. Its alpha equality is checked separately. This is not a
+reason to alpha-intern Core or select a different proof by erased Term identity.
+
+Core and fresh-process occurrence transport passed ASan/UBSan for this slice.
+The full debug acceptance gate passed before and after projection's allocation
+fix, including 63/63 compatibility and source/image QuickSort property cases.
+Full sanitized/optimized acceptance remains R5.
+
+Performance review caught and rejected an expensive first projection design:
+constructing a checked substitution just for the structural map raised the
+QuickSort property's derivations from 588033 to 996207, action jobs to 493066,
+elapsed time to 3.92 seconds and peak RSS to 356004 KiB. Removing those unused
+proofs/jobs restored the derivation count to 588033. The current diagnostic run
+has 462743 occurrences, 41480 maps, 108591 occurrence-action jobs, 16079 contexts,
+168635 Core terms and 149471 Solve transitions. Elapsed time is 1.57 seconds,
+peak RSS 270808 KiB, versus a repeated R1 run of 0.91 seconds / 224292 KiB.
+
+This remaining regression is **not accepted as the final outcome**. Structural
+maps/jobs now coexist with the old history-based consumers; R3 must remove
+that reconstruction rather than treating the extra records as a finished
+optimization. R5 must remeasure retained memory and query cost. The final
+net-negative implementation LOC requirement is unchanged.
+
+Context-action checkpoint delta against `f644889` (all paths below are under
+`src/prototype/pointer/`; this is an incomplete migration, not a reduction claim):
+
+| File | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `action.c` | 7 | 24 | -17 |
+| `evidence.c` | 77 | 77 | 0 |
+| `evidence.h` | 2 | 0 | +2 |
+| `typing.c` | 183 | 4 | +179 |
+| `typing.h` | 34 | 0 | +34 |
+| `occurrence_io.c` | 26 | 9 | +17 |
+| `occurrence_io.h` | 2 | 2 | 0 |
+| **Implementation subtotal** | **331** | **116** | **+215** |
+| `tests/core.c` | 70 | 0 | +70 |
+| `tests/occurrence_io.c` | 22 | 5 | +17 |

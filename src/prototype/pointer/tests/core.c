@@ -695,6 +695,26 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *sigma = pg_prove_substitution(&typing, source, destination, 2, images);
 	assert(sigma && pg_evidence_judgement(sigma) == PG_JUDGEMENT_SUBSTITUTION);
 	assert(pg_prove_substitution(&typing, source, destination, 2, images) == sigma);
+	const struct pg_context_map *map = pg_evidence_context_map(sigma);
+	assert(map && map->source == pg_evidence_context(source));
+	assert(map->destination == pg_evidence_context(destination) && map->count == 2);
+	assert(map->images[0] == pg_evidence_subject(destination_b));
+	assert(map->images[1] == pg_evidence_subject(destination_y));
+	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
+	assert(bindings[0].binder == a && bindings[0].value == pg_evidence_subject(destination_b)->core);
+	assert(bindings[1].binder == x && bindings[1].value == pg_evidence_subject(destination_y)->core);
+	const struct pg_evidence *alternate_b = pg_prove_type_value(&typing,
+		pg_prove_value_type(&typing, destination_b));
+	assert(alternate_b != destination_b && pg_evidence_subject(alternate_b) == pg_evidence_subject(destination_b));
+	const struct pg_evidence *alternate_images[] = {alternate_b, destination_y};
+	size_t map_count = typing.context_maps.count;
+	const struct pg_evidence *alternate = pg_prove_substitution(&typing, source, destination, 2, alternate_images);
+	assert(alternate && alternate != sigma && pg_evidence_context_map(alternate) == map);
+	assert(typing.context_maps.count == map_count);
+	assert(pg_substitution_image(&typing, sigma, a) == destination_b);
+	assert(pg_substitution_image(&typing, alternate, a) == alternate_b);
+	assert(!pg_evidence_context_map(destination_b) && !pg_evidence_context_map(NULL));
+	assert(!pg_context_map(&typing, map->source, map->destination, 1, map->images));
 	struct pg_reindex split, whole;
 	assert(pg_reindex_init(&split, &typing, sigma, source_x) == 0);
 	assert(pg_reindex_init(&whole, &typing, sigma, source_x) == 0);
@@ -720,6 +740,13 @@ static void typed_substitution_test(struct pg_graph *graph)
 	pg_reindex_destroy(&whole);
 	const struct pg_evidence *reindexed = pg_prove_reindex(&typing, sigma, source_x);
 	assert(reindexed == split_result);
+	struct pg_occurrence_action *action = pg_occurrence_action_request(&typing, map, pg_evidence_subject(source_x));
+	assert(action && pg_occurrence_action_result(action) == pg_evidence_subject(destination_y));
+	uint64_t action_steps = pg_occurrence_action_steps(action);
+	const struct pg_evidence *alternative_result = pg_prove_reindex(&typing, alternate, source_x);
+	assert(alternative_result != reindexed && pg_evidence_subject(alternative_result) == pg_evidence_subject(reindexed));
+	assert(pg_occurrence_action_request(&typing, pg_evidence_context_map(alternate), pg_evidence_subject(source_x)) == action);
+	assert(pg_occurrence_action_steps(action) == action_steps);
 	assert(pg_reindex_init(&split, &typing, sigma, source_x) == 0);
 	assert(pg_reindex_advance(&split, 0) == PG_REINDEX_DONE);
 	assert(pg_reindex_steps(&split) == 0);
@@ -738,12 +765,20 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *returned = pg_prove_return(&typing, &classifiers, source_x);
 	const struct pg_evidence *reindexed_return = pg_prove_reindex(&typing, sigma, returned);
 	assert(reindexed_return && pg_evidence_classifier(reindexed_return) == pg_return_type(&classifiers, pg_reference(graph, b)));
+	assert(pg_evidence_subject(reindexed_return)->origin == pg_evidence_subject(returned));
+	assert(pg_evidence_subject(reindexed_return)->map == map);
+	assert(pg_evidence_subject(reindexed_return)->operand_count == 0);
 	assert(!pg_prove_reindex(&typing, sigma, destination_y));
 	assert(!pg_prove_reindex(&typing, sigma, source));
 	assert(!pg_prove_projection(&typing, destination, sigma));
 	assert(!pg_prove_substitution(&typing, source, destination, 1, images));
 	const struct pg_evidence *bad[] = {destination_y, destination_b};
+	const struct pg_occurrence *bad_subjects[] = {pg_evidence_subject(bad[0]), pg_evidence_subject(bad[1])};
+	size_t accepted = typing.proofs.count;
+	assert(pg_context_map(&typing, map->source, map->destination, 2, bad_subjects));
+	assert(typing.proofs.count == accepted);
 	assert(!pg_prove_substitution(&typing, source, destination, 2, bad));
+	assert(typing.proofs.count == accepted);
 	bad[0] = destination_b;
 	bad[1] = pg_prove_return(&typing, &classifiers, destination_y);
 	assert(!pg_prove_substitution(&typing, source, destination, 2, bad));
@@ -761,6 +796,18 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *extended_destination = pg_prove_context_extension(&typing,
 		destination, pg_binder(graph), pg_prove_classifier(&typing, &classifiers, destination, destination_y));
 	assert(extended_destination);
+	size_t before_projection = typing.proofs.count, actions = typing.occurrence_actions.count;
+	const struct pg_evidence *projected = pg_prove_projection(&typing, extended_destination, reindexed_return);
+	assert(projected && typing.proofs.count == before_projection + 1);
+	assert(typing.occurrence_actions.count == actions);
+	assert(pg_evidence_subject(projected)->origin == pg_evidence_subject(reindexed_return));
+	assert(pg_evidence_subject(projected)->operand_count == 0);
+	assert(pg_prove_projection(&typing, extended_destination, reindexed_return) == projected);
+	assert(typing.proofs.count == before_projection + 1 && typing.occurrence_actions.count == actions);
+	const struct pg_evidence *projection_map = pg_prove_substitution_projection(&typing, destination, extended_destination);
+	assert(pg_evidence_subject(projected)->map == pg_evidence_context_map(projection_map));
+	assert(pg_evidence_subject(pg_prove_reindex(&typing, projection_map, reindexed_return)) == pg_evidence_subject(projected));
+	assert(!pg_occurrence_projection(&typing, map, pg_evidence_subject(returned)));
 	const struct pg_evidence *extended_map = pg_prove_substitution_compose(&typing, sigma,
 		pg_prove_substitution_projection(&typing, destination, extended_destination));
 	assert(extended_map);
@@ -798,6 +845,29 @@ static void typed_substitution_test(struct pg_graph *graph)
 		pg_prove_classifier(&typing, &classifiers, a_scope, suspended));
 	const struct pg_evidence *function_values = pg_prove_substitution_pair(&typing, type_pair,
 		function_scope, pg_prove_reindex(&typing, type_pair, suspended));
+	const struct pg_evidence *function_image = pg_substitution_image(&typing, function_values, function_binder);
+	const struct pg_evidence *function_variable = pg_prove_variable(&typing, function_scope, function_binder);
+	const struct pg_evidence *mapped_function = pg_prove_reindex(&typing, function_values, function_variable);
+	assert(mapped_function && pg_evidence_subject(mapped_function)->core == pg_evidence_subject(function_image)->core);
+	assert(pg_alpha_equal(pg_evidence_classifier(mapped_function), pg_evidence_classifier(function_image)) == 1);
+	assert(pg_evidence_subject(mapped_function)->map == pg_evidence_subject(function_image)->map);
+	assert(pg_evidence_subject(mapped_function)->origin == pg_evidence_subject(suspended));
+	/* The typed action itself creates no evidence, and completed work is reused. */
+	const struct pg_context_map *function_map = pg_evidence_context_map(type_pair);
+	size_t before_action = typing.proofs.count;
+	action = pg_occurrence_action_request(&typing, function_map, pg_evidence_subject(function));
+	assert(action && pg_occurrence_action_advance(action, 0) == PG_SUBSTITUTION_PENDING);
+	while (pg_occurrence_action_advance(action, 1) == PG_SUBSTITUTION_PENDING) {}
+	const struct pg_occurrence *mapped_lambda = pg_occurrence_action_result(action);
+	assert(mapped_lambda && mapped_lambda->origin == pg_evidence_subject(function));
+	assert(mapped_lambda->map == function_map && mapped_lambda->operand_count == 0);
+	assert(mapped_lambda->context == function_map->destination && typing.proofs.count == before_action);
+	assert(mapped_lambda->core->kind == PG_LAMBDA);
+	assert(mapped_lambda->core->as.lambda.binder != x);
+	action_steps = pg_occurrence_action_steps(action);
+	assert(pg_occurrence_action_advance(action, 64) == PG_SUBSTITUTION_DONE);
+	assert(pg_occurrence_action_steps(action) == action_steps);
+	assert(pg_evidence_subject(pg_prove_reindex(&typing, type_pair, function)) == mapped_lambda);
 	const struct pg_evidence *rebased_function = pg_prove_substitution_rebase(&typing, b_scope, function_values);
 	assert(rebased_function);
 	assert(pg_evidence_judgement(pg_substitution_image(&typing, rebased_function, function_binder)) == PG_JUDGEMENT_VALUE);
