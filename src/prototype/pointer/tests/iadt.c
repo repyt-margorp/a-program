@@ -9,6 +9,20 @@
 #include <assert.h>
 #include <stdio.h>
 
+static size_t constructor_introductions(const struct pg_typing *typing)
+{
+	size_t count = 0;
+	for (size_t i = 0; i < typing->occurrences.capacity; ++i) {
+		for (const struct pg_index_entry *entry = typing->occurrences.buckets[i]; entry; entry = entry->next) {
+			const struct pg_occurrence *subject = (const void *)entry;
+			for (const struct pg_evidence *proof = pg_evidence_for_subject(typing, subject, NULL);
+				proof; proof = pg_evidence_for_subject(typing, subject, proof))
+				if (pg_evidence_rule(proof) == PG_CONSTRUCTOR_INTRO) ++count;
+		}
+	}
+	return count;
+}
+
 static void common_rule(struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_evidence *proof)
 {
@@ -2118,10 +2132,12 @@ static void schema_positivity(void)
 			pg_whnf_request(&constructor_work, &pg_pure_policy, pg_evidence_subject(sequenced)->core));
 		const struct pg_evidence *returned = pg_prove_return_value(&typing,
 			pg_prove_normalization(&typing, sequenced, receipt));
+		size_t introductions = constructor_introductions(&typing);
 		const struct pg_evidence *field = pg_prove_constructor_field(&typing, returned, x);
 		assert(field && pg_evidence_context(field) == NULL);
 		assert(pg_evidence_subject(field)->core == pg_evidence_subject(i ? succ : zero)->core);
 		assert(pg_evidence_classifier(field) == pg_evidence_subject(nat)->core);
+		assert(constructor_introductions(&typing) == introductions);
 		assert(!pg_prove_constructor_field(&typing, returned, self));
 		size_t field_proofs = typing.proofs.count, field_terms = graph.terms.count;
 		for (size_t j = 0; j < 100; ++j)
@@ -2130,14 +2146,18 @@ static void schema_positivity(void)
 		const struct pg_evidence *selected = pg_prove_match(&typing, &classifiers,
 			nat, identity, returned, z_context, nat_motive, 2, pred_branches);
 		assert(returned && selected);
+		introductions = constructor_introductions(&typing);
 		const struct pg_evidence *body = pg_prove_elimination_body(&typing, &classifiers, selected);
 		assert(body);
+		assert(constructor_introductions(&typing) == introductions);
 		check(&constructor_work, pg_evidence_subject(selected)->core, pg_evidence_subject(body)->core);
 		common_rule(&typing, &classifiers, body);
 		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
 		const struct pg_evidence *mapped = pg_prove_elimination_reindex(&typing, &classifiers, map, selected);
+		introductions = constructor_introductions(&typing);
 		const struct pg_evidence *mapped_body = pg_prove_elimination_body(&typing, &classifiers, mapped);
 		assert(mapped_body);
+		assert(constructor_introductions(&typing) == introductions);
 		check(&constructor_work, pg_evidence_subject(mapped)->core, pg_evidence_subject(mapped_body)->core);
 		common_rule(&typing, &classifiers, mapped_body);
 		/* A map inside a pending Fold must resume in the outer context. */
@@ -2159,8 +2179,10 @@ static void schema_positivity(void)
 			pg_evidence_premise(mapped, 5), pg_evidence_premise(mapped, 6)};
 		const struct pg_evidence *scoped_match = pg_prove_match(&typing, &classifiers, nat, map,
 			scoped_value, pg_evidence_premise(mapped, 4), pg_evidence_premise(mapped, 0), 2, scoped_branches);
+		introductions = constructor_introductions(&typing);
 		const struct pg_evidence *scoped_body = pg_prove_elimination_body(&typing, &classifiers, scoped_match);
 		assert(scoped_body);
+		assert(constructor_introductions(&typing) == introductions);
 		check(&constructor_work, pg_evidence_subject(scoped_body)->core,
 			pg_evidence_subject(pg_prove_return(&typing, &classifiers,
 				pg_prove_projection(&typing, n_context, i ? twice : succ)))->core);

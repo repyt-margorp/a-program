@@ -439,8 +439,14 @@ static struct scope_frame *scope_frame(struct pg_graph *storage,
 
 static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 	const struct pg_evidence *computation);
-static const struct pg_evidence *constructor_origin(struct pg_typing *typing,
-	const struct pg_evidence *value);
+struct constructor_structure {
+	const struct pg_evidence *formation, *parameters;
+	const struct pg_object *constructor;
+	size_t count;
+	const struct pg_evidence **fields;
+};
+static int constructor_structure(struct pg_typing *typing, struct pg_graph *temporary,
+	const struct pg_evidence *value, struct constructor_structure *view);
 static int structural_input(struct pg_typing *typing, const struct pg_occurrence *source,
 	size_t index, const struct pg_occurrence **result);
 
@@ -480,7 +486,8 @@ static const struct pg_evidence *rebase_image(struct pg_typing *typing,
 {
 	struct image_frame {
 		const struct pg_occurrence *expected;
-		const struct pg_evidence *source, *substitution, *constructor;
+		const struct pg_evidence *source, *substitution;
+		struct constructor_structure constructor;
 		const struct pg_reduction_certificate *reduction;
 		const struct pg_evidence **inputs, **outputs;
 		size_t parameters, count, next;
@@ -535,9 +542,8 @@ start:
 		size_t position, arity;
 		if (!subject->origin && head->kind == PG_REFERENCE && pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) {
 			if (arity != subject->operand_count) goto done;
-			next->constructor = constructor_origin(typing, next->source);
-			if (!next->constructor) goto done;
-			next->parameters = next->constructor->premises[2]->premise_count - 2;
+			if (!constructor_structure(typing, &temporary, next->source, &next->constructor)) goto done;
+			next->parameters = pg_evidence_context_map(next->constructor.parameters)->count;
 			next->count = next->parameters + subject->operand_count;
 		} else if (!subject->origin && subject->operand_count == 2 && subject->core->kind == PG_APPLICATION &&
 			subject->operands[0]->judgement == PG_JUDGEMENT_TYPE_FAMILY &&
@@ -558,7 +564,8 @@ start:
 		if (next->count && (!next->inputs || !next->outputs)) goto done;
 		for (size_t i = 0; i < next->count; ++i) {
 			const struct pg_evidence *input;
-			if (next->constructor && i < next->parameters) input = next->constructor->premises[2]->premises[i + 2];
+			if (next->constructor.constructor && i < next->parameters)
+				input = pg_prove_structural_subject(typing, pg_evidence_context_map(next->constructor.parameters)->images[i]);
 			else if (next->substitution) input = pg_prove_structural_subject(typing, pg_evidence_context_map(next->substitution)->images[i]);
 			else input = pg_prove_structural_subject(typing,
 				next->reduction ? subject->origin : subject->operands[i - next->parameters]);
@@ -575,11 +582,11 @@ children:
 		expected = pg_evidence_subject(image);
 		goto start;
 	}
-	if (frame->constructor) {
-		const struct pg_evidence *map = pg_prove_substitution(typing, frame->constructor->premises[2]->premises[0],
+	if (frame->constructor.constructor) {
+		const struct pg_evidence *map = pg_prove_substitution(typing, frame->constructor.parameters->premises[0],
 			context, frame->parameters, frame->outputs);
-		result = pg_prove_constructor(typing, frame->constructor->premises[1],
-			pg_evidence_constructor(frame->constructor), map, frame->count - frame->parameters,
+		result = pg_prove_constructor(typing, frame->constructor.formation,
+			frame->constructor.constructor, map, frame->count - frame->parameters,
 			frame->count > frame->parameters ? frame->outputs + frame->parameters : NULL);
 	} else if (frame->substitution) {
 		const struct pg_evidence *map = pg_prove_substitution(typing, frame->substitution->premises[0],
@@ -2031,63 +2038,65 @@ const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
 	return elimination_instance(typing, classifiers, substitution, elimination, NULL);
 }
 
-static const struct pg_evidence *constructor_origin(struct pg_typing *typing,
-	const struct pg_evidence *value)
+static int constructor_structure(struct pg_typing *typing, struct pg_graph *temporary,
+	const struct pg_evidence *value, struct constructor_structure *view)
 {
-	if (!pg_evidence_owned_by(value, typing) || pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) return NULL;
-	/* Reuse an already checked introduction of this exact typed construction.
-	 * Other receipts remain accepted alternatives, not a source of operands. */
-	for (const struct pg_evidence *proof = pg_evidence_for_subject(typing, pg_evidence_subject(value), NULL);
-		proof; proof = pg_evidence_for_subject(typing, pg_evidence_subject(value), proof))
-		if (proof->rule == PG_CONSTRUCTOR_INTRO) return proof;
-	struct pg_graph temporary = {0};
+	if (!pg_evidence_owned_by(value, typing) || pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) return 0;
 	struct construction_map *frames = NULL;
-	const struct pg_evidence *result = NULL;
 	const struct pg_occurrence *current = pg_evidence_subject(value);
 	for (;;) {
-		current = construction_origin(&temporary, current, &frames);
-		if (!current) goto done;
+		current = construction_origin(temporary, current, &frames);
+		if (!current) return 0;
 		if (current->origin) {
 			if (current->judgement != PG_JUDGEMENT_VALUE ||
-				current->origin->judgement != PG_JUDGEMENT_COMPUTATION) goto done;
+				current->origin->judgement != PG_JUDGEMENT_COMPUTATION) return 0;
 			value = return_value_origin(typing, pg_prove_structural_subject(typing, current->origin));
-			if (!value) goto done;
+			if (!value) return 0;
 			current = pg_evidence_subject(value);
 			continue;
 		}
 		const struct pg_term *core = current->core;
 		if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER) break;
-		if (!frames) goto done;
+		if (!frames) return 0;
 		const struct pg_context *scope = pg_context_lookup(frames->map->source, core->as.reference);
 		size_t index;
-		if (!scope || pg_context_extension_size(scope->parent, NULL, &index)) goto done;
+		if (!scope || pg_context_extension_size(scope->parent, NULL, &index)) return 0;
 		current = frames->map->images[index];
 		frames = frames->next;
 	}
 	size_t count = current->operand_count;
 	const struct pg_term *head = current->core;
 	for (size_t i = count; i; --i) {
-		if (head->kind != PG_APPLICATION || head->as.application.argument != current->operands[i - 1]->core) goto done;
+		if (head->kind != PG_APPLICATION || head->as.application.argument != current->operands[i - 1]->core) return 0;
 		head = head->as.application.function;
 	}
-	if (head->kind != PG_REFERENCE) goto done;
+	if (head->kind != PG_REFERENCE) return 0;
 	struct pg_inductive_instance instance;
 	if (!pg_inductive_instance(typing, formed_classifier(typing, NULL,
-		pg_prove_structural_subject(typing, current)), &instance)) goto done;
-	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;
-	const struct pg_evidence **fields = pg_alloc(&temporary, count * sizeof(*fields));
-	if (count && !fields) goto done;
-	for (size_t i = 0; i < count; ++i) fields[i] = pg_prove_structural_subject(typing, current->operands[i]);
+		pg_prove_structural_subject(typing, current)), &instance)) return 0;
+	const struct pg_data_layout *layout;
+	size_t position, arity;
+	if (!pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) return 0;
+	if (layout != pg_data_schema_layout(instance.schema) || arity != count) return 0;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return 0;
+	const struct pg_evidence **fields = pg_alloc(temporary, count * sizeof(*fields));
+	if (count && !fields) return 0;
+	for (size_t i = 0; i < count; ++i) {
+		fields[i] = pg_prove_structural_subject(typing, current->operands[i]);
+		if (!fields[i]) return 0;
+	}
 	const struct pg_evidence *parameters = instance.parameters;
 	for (; frames; frames = frames->next) {
 		const struct pg_evidence *map = pg_prove_context_map(typing, frames->map);
 		parameters = pg_prove_substitution_compose(typing, parameters, map);
-		for (size_t i = 0; i < count; ++i) fields[i] = pg_prove_reindex(typing, map, fields[i]);
+		if (!parameters) return 0;
+		for (size_t i = 0; i < count; ++i) {
+			fields[i] = pg_prove_reindex(typing, map, fields[i]);
+			if (!fields[i]) return 0;
+		}
 	}
-	result = pg_prove_constructor(typing, instance.formation, head->as.reference, parameters, count, fields);
-done:
-	pg_graph_destroy(&temporary);
-	return result;
+	*view = (struct constructor_structure){instance.formation, parameters, head->as.reference, count, fields};
+	return 1;
 }
 
 const struct pg_evidence *pg_prove_constructor_field(struct pg_typing *typing,
@@ -2096,9 +2105,7 @@ const struct pg_evidence *pg_prove_constructor_field(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(value, typing) || pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) return NULL;
 	const struct pg_evidence *source = value;
 	const struct pg_term *expected = NULL;
-	const struct pg_occurrence *subject;
-expose:
-	subject = pg_evidence_subject(value);
+	const struct pg_occurrence *subject = pg_evidence_subject(value);
 	const struct pg_term *head = subject->core;
 	size_t count = 0, position, arity;
 	for (; head->kind == PG_APPLICATION; head = head->as.application.function) ++count;
@@ -2124,10 +2131,22 @@ expose:
 origin:
 	/* Computed RETURN/APP results may still require exposing their construction.
 	 * Never substitute a historical field for a different current NF field. */
-	if (value != source) return NULL;
-	value = constructor_origin(typing, source);
-	if (!value || value == source) return NULL;
-	goto expose;
+	struct pg_graph temporary = {0};
+	struct constructor_structure view;
+	const struct pg_evidence *result = NULL;
+	if (!constructor_structure(typing, &temporary, source, &view)) goto done;
+	const struct pg_data_schema *schema = view.formation->certificate;
+	scope = pg_evidence_context(pg_data_schema_fields(schema, view.constructor));
+	for (size_t i = view.count; i; --i, scope = scope->parent) {
+		if (scope->binder != field) continue;
+		result = view.fields[i - 1];
+		if (pg_evidence_context(result) != pg_evidence_context(source)) result = NULL;
+		else if (expected && pg_alpha_equal(pg_evidence_subject(result)->core, expected) != 1) result = NULL;
+		break;
+	}
+done:
+	pg_graph_destroy(&temporary);
+	return result;
 }
 
 static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
@@ -2183,23 +2202,23 @@ const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
 	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
 	struct elimination_structure view;
 	if (elimination_structure(typing, elimination, &view)) return NULL;
-	const struct pg_evidence *value = constructor_origin(typing, view.scrutinee);
-	if (!value || pg_evidence_subject(value->premises[1]) != pg_evidence_subject(view.formation)) return NULL;
+	struct pg_graph temporary = {0};
+	struct constructor_structure value;
+	const struct pg_evidence *result = NULL;
+	if (!constructor_structure(typing, &temporary, view.scrutinee, &value)) goto failed;
+	if (pg_evidence_subject(value.formation) != pg_evidence_subject(view.formation)) goto failed;
 	const struct pg_data_schema *schema = view.formation->certificate;
 	size_t position;
-	if (!pg_data_constructor_position(pg_data_schema_layout(schema), value->certificate, &position)) return NULL;
-	if (position >= view.count) return NULL;
-	const struct pg_evidence *result = pg_prove_structural_subject(typing, view.subject->operands[position + 1]);
-	const struct pg_evidence *fields = value->premises[3];
-	size_t first = value->premises[2]->premise_count + 1;
-	for (size_t i = first; result && i < fields->premise_count; ++i)
-		result = pg_prove_application_body(typing, result, fields->premises[i]);
-	if (!result || elimination->rule == PG_MATCH_ELIM) return result;
-	struct pg_graph temporary = {0};
-	size_t count = fields->premise_count - first;
+	if (!pg_data_constructor_position(pg_data_schema_layout(schema), value.constructor, &position)) goto failed;
+	if (position >= view.count) goto failed;
+	result = pg_prove_structural_subject(typing, view.subject->operands[position + 1]);
+	size_t count = value.count;
+	for (size_t i = 0; result && i < count; ++i)
+		result = pg_prove_application_body(typing, result, value.fields[i]);
+	if (!result || elimination->rule == PG_MATCH_ELIM) goto done;
 	unsigned char *recursive = pg_alloc(&temporary, count);
 	if (count && !recursive) goto failed;
-	const struct pg_context *declaration = pg_evidence_context(pg_data_schema_fields(schema, value->certificate));
+	const struct pg_context *declaration = pg_evidence_context(pg_data_schema_fields(schema, value.constructor));
 	const struct pg_object *self = pg_evidence_context(view.formation->premises[0])->binder;
 	for (size_t i = count; i; --i, declaration = declaration->parent) {
 		int kind = pg_data_recursive_field(declaration->declared_type, self);
@@ -2208,16 +2227,17 @@ const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
 	}
 	for (size_t i = 0; i < count; ++i) {
 		if (!recursive[i]) continue;
-		const struct pg_evidence *field = fields->premises[first + i];
+		const struct pg_evidence *field = value.fields[i];
 		const struct pg_evidence *call = induction_field_body(typing, classifiers, elimination, &view, field);
 		result = pg_prove_application_body(typing, result, pg_prove_thunk(typing, classifiers, call));
 		if (!result) goto failed;
 	}
+	goto done;
+failed:
+	result = NULL;
+done:
 	pg_graph_destroy(&temporary);
 	return result;
-failed:
-	pg_graph_destroy(&temporary);
-	return NULL;
 }
 
 static int factor_binding(struct pg_graph *temporary, struct pg_index *index,
@@ -2239,20 +2259,18 @@ const struct pg_evidence *pg_prove_refinement_factor(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(refinement, typing) || refinement->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (!pg_evidence_owned_by(instance, typing) || instance->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (pg_evidence_context(refinement->premises[0]) != pg_evidence_context(instance->premises[0])) return NULL;
-	const struct pg_evidence *pattern = constructor_origin(typing, pg_substitution_image(typing, refinement, scrutinee));
-	const struct pg_evidence *value = constructor_origin(typing, pg_substitution_image(typing, instance, scrutinee));
-	if (!pattern || !value || pattern->certificate != value->certificate) return NULL;
-	if (pattern->premises[1] != value->premises[1]) return NULL;
-	const struct pg_evidence *left = pattern->premises[3], *right = value->premises[3];
-	if (left->premise_count != right->premise_count) return NULL;
 	struct pg_graph temporary = {0};
 	struct pg_index bindings;
 	if (pg_index_init(&bindings)) return NULL;
 	const struct pg_evidence *result = NULL;
+	struct constructor_structure pattern, value;
+	if (!constructor_structure(typing, &temporary, pg_substitution_image(typing, refinement, scrutinee), &pattern) ||
+		!constructor_structure(typing, &temporary, pg_substitution_image(typing, instance, scrutinee), &value)) goto done;
+	if (pattern.constructor != value.constructor || pattern.formation != value.formation || pattern.count != value.count) goto done;
 	for (size_t i = 2; i < refinement->premise_count; ++i)
 		if (factor_binding(&temporary, &bindings, pg_evidence_subject(refinement->premises[i])->core, instance->premises[i])) goto done;
-	for (size_t i = pattern->premises[2]->premise_count + 1; i < left->premise_count; ++i)
-		if (factor_binding(&temporary, &bindings, pg_evidence_subject(left->premises[i])->core, right->premises[i])) goto done;
+	for (size_t i = 0; i < pattern.count; ++i)
+		if (factor_binding(&temporary, &bindings, pg_evidence_subject(pattern.fields[i])->core, value.fields[i])) goto done;
 	size_t count;
 	if (pg_context_extension_size(pg_evidence_context(refinement), NULL, &count)) goto done;
 	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;

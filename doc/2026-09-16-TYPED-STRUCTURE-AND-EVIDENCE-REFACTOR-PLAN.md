@@ -328,7 +328,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
 | `inductive_recovery_step` | Reads typed origins/maps, selections and computation inputs; application-body transitions share work and consume recovery budget. Exact nominal formation and other synchronous kernel suboperations remain |
 | `rebase_image` | Reads typed maps/origins and constructor/family inputs; rechecks introductions in the target context. Retains normalization receipts and nominal formation checks, not wrapper-history dispatch; synchronous work remains |
-| `constructor_origin`, `pg_prove_elimination_body` | Read typed fields/motive/allocation; ordinary nominal acceptance still required. Individual field selection now uses checked typed inputs and nominal declaration binders; computed construction exposure and bulk reconstruction remain |
+| `constructor_origin`, `pg_prove_elimination_body` | Whole-introduction reconstruction deleted in R31. A temporary constructor view exposes retained nominal formation, parameters and typed fields for Match/refinement; actual introduction in a changed context remains checked. Congruent NF field selection uses receipts; general current-result exposure remains open |
 | `classifier_leaf` | Deleted |
 | `classifier_recovery_step` | Uses the shared typed classifier query; separate map stack removed. Variable/Universe formation and final synchronous certification remain legitimate checks |
 | `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
@@ -1677,3 +1677,35 @@ with 3497 structural input requests. These single samples show no established
 speedup and do not resolve the baseline memory regression. Logs:
 `/tmp/a-program-typed-structure-r30-debug.log` and
 `/tmp/a-program-typed-structure-r30-san-{core,iadt,synthesis,occurrence,match,quicksort}.log`.
+
+### 2026-09-17: Constructor inspection without re-introduction (R31)
+
+- [x] Replace `constructor_origin` with a temporary structural view of nominal
+  formation, parameter substitution and typed fields. Check constructor layout
+  and saturation; compose retained maps through ordinary checked substitution.
+  No new permanent graph, rule, Core tag or image format is introduced.
+- [x] Match unfolding and refinement factoring read those fields directly,
+  rather than rebuilding `PG_CONSTRUCTOR_INTRO` and inspecting its premises.
+  Context restriction still introduces a constructor when its context really
+  changes. Current NF field selection retains the existing receipt/Core checks.
+- [x] Count constructor introductions around computed/mapped/scoped field and
+  Match queries. The new test fails against R30 at computed field selection;
+  it passes with R31. Existing dependent-field and nominal rejection tests pass.
+- [x] Full debug acceptance passed (63/63 compatibility, final source/image
+  QuickSort comparisons). ASan/UBSan Core, IADT, synthesis and imported
+  QuickSort passed. `git diff --check` passed.
+
+Against `7122351`: `evidence.c` **+89/-71**, implementation net **+18**;
+`tests/iadt.c` **+22/-0**. Cumulative implementation/header net is **+1491**
+against `4657cc6`: the net-negative gate remains unmet. The view exposes source
+construction through maps, not arbitrary current NF structure. Shared budgeted
+result exposure, sort-boundary copies and R2-R5 completion remain open.
+
+Sequential O0 QuickSort: R30 **1.0699 s / 276372 KiB**, R31
+**1.0552 s / 276008 KiB**, both **131899** Solve transitions. R31 retains
+**179313 Terms / 415723 typed subjects / 434924 proofs / 537 body requests**,
+with 3491 structural input requests. Single samples establish no speedup;
+the baseline memory regression remains unresolved. Logs:
+`/tmp/a-program-typed-structure-r31-debug.log`,
+`/tmp/a-program-typed-structure-r31-before-test.log` (expected old-code failure),
+`/tmp/a-program-typed-structure-r31-san-{core,iadt,synthesis,quicksort}.log`.
