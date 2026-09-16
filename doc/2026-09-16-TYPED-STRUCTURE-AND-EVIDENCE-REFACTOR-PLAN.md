@@ -312,7 +312,7 @@ changing every child to the destination context would capture lexical binders.
 
 ### Deletion ledger
 
-Current state, updated after the typed Pi-selection migration. Earlier
+Current state, updated after typed nominal recovery. Earlier
 checkpoint notes below are historical, not additional completion claims.
 
 | Existing path | State / next action |
@@ -321,7 +321,8 @@ checkpoint notes below are historical, not additional completion claims.
 | `return_value_origin`, `pg_prove_application_body` | Read typed construction/maps; still synchronous and not shared budgeted typed normalization |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
-| `inductive_recovery_step`, `rebase_image` | Remaining Evidence-history consumers; nominal formation and strengthening migration unfinished |
+| `inductive_recovery_step` | Reads typed origins/maps, selections and computation inputs; exact nominal formation still requires accepted evidence. Nested synchronous helpers remain |
+| `rebase_image` | Remaining Evidence-history consumer; checked strengthening migration unfinished |
 | `constructor_origin`, `pg_prove_elimination_body` | Read typed fields/motive/allocation; ordinary nominal acceptance still required |
 | `classifier_leaf` | Deleted |
 | `classifier_recovery_step` | Reads retained classifier/maps, with variable formation from its context; calls into synchronous certification remain |
@@ -1290,3 +1291,35 @@ lookup preparation, not a weakening of checking or a smaller accepted result.
 It does not eliminate the remaining baseline time/memory regression. Against
 `5e7e5dd`, `typing.c` is +19/-1, `typing.h` +2/-0 and tests +20/-0: implementation
 net **+20**, cumulative **+1247**. The code-reduction gate remains unmet.
+
+### 2026-09-17: Nominal recovery follows typed construction
+
+- [x] Replace `inductive_recovery_step`'s derivation-rule switch with typed
+  maps, selected inputs, origin recipes and direct APP/RETURN/THUNK/FORCE/Fold
+  inputs. Remove the two F/U-content history counters; type components are
+  selected structurally. Keep pending index arguments in their actual scopes.
+- [x] Resolve the final nominal owner using the declaration's exact original
+  context, declared classifier and Core. Require its accepted `INDUCTIVE_FORM`
+  certificate. This is not global lookup by erased Core and does not treat a
+  descriptive nominal reference as acceptance. Boundary conversions do not
+  change which declaration was chosen.
+- [x] Add tests for alternative receipts of one nominal subject and for a
+  second typing store sharing the Core graph: descriptive structure and foreign
+  evidence do not transfer acceptance. Existing dependent-index, constant Pi,
+  F/U, Fold, substitution and split-budget regressions remain enabled.
+- [x] Full debug `check-acceptance` passed, including 63/63 compatibility and
+  source/image QuickSort properties. ASan/UBSan Core, IADT, synthesis and
+  imported QuickSort checks passed. `git diff --check` passed.
+
+Against `fb86cdc`, `evidence.c` is **+89/-84**, `evidence.h` **+4/-4** and
+`tests/iadt.c` **+20/-0**. Implementation/header net is **+5**, cumulative
+**+1252** from `4657cc6`; this is a structural migration, not a LOC reduction.
+A single sequential debug QuickSort diagnostic took **1.092 s**, **278900 KiB**
+peak RSS and **132383** Solve transitions. It does not establish a speedup or
+close the previously documented baseline memory/time regression.
+
+Remaining prerequisites are checked strengthening (`rebase_image`), shared
+budgeted typed normalization/exposure, the final producer/consumer audit and
+the full R5 gates. In particular, replacing receipt dispatch does not make
+the synchronous work inside each nominal recovery transition fully budgeted.
+No Main publication or aggregate completion is claimed at this checkpoint.

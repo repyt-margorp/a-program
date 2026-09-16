@@ -173,7 +173,7 @@ struct pg_inductive_recovery {
 	struct inductive_argument *arguments;
 	struct inductive_fold *folds;
 	const struct pg_evidence *type, *formation, *map;
-	size_t return_contents, return_values, thunk_contents, thunk_values;
+	size_t return_values, thunk_values;
 	struct pg_inductive_instance result;
 	int status;
 };
@@ -181,9 +181,9 @@ int pg_inductive_recovery_init(struct pg_inductive_recovery *work,
 	struct pg_typing *typing, const struct pg_evidence *type);
 int pg_inductive_recovery_advance(struct pg_inductive_recovery *work, size_t steps);
 void pg_inductive_recovery_destroy(struct pg_inductive_recovery *work);
-/* Recover nominal formation and its parameter map from retained evidence,
- * including projection, reindex, type/value coercion, type conversion,
- * RETURN/THUNK type and term inversion, and codomain instantiation of a direct Pi formation.
+/* Recover nominal formation and its parameter map from typed construction,
+ * including context maps, selected components and pure computation inputs.
+ * The nominal declaration still requires its exact accepted formation.
  * No global search by Core. Returns zero and leaves output unchanged when
  * provenance is unavailable; this is not evidence of a non-inductive type. */
 int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *type,

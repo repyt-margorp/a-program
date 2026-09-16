@@ -1517,6 +1517,26 @@ static void schema_positivity(void)
 	assert(recovered.schema == nat_schema && recovered.formation == nat);
 	assert(pg_evidence_premise_count(recovered.parameters) == 2);
 	{
+		/* Acceptance histories do not determine the nominal construction. */
+		const struct pg_evidence *views[] = {nat,
+			pg_prove_value_type(&typing, pg_prove_type_value(&typing, nat)),
+			pg_prove_projection(&typing, empty, nat)};
+		for (size_t i = 0; i < sizeof(views) / sizeof(*views); ++i) {
+			assert(views[i] && pg_evidence_subject(views[i]) == pg_evidence_subject(nat));
+			assert(pg_inductive_instance(&typing, views[i], &recovered));
+			assert(recovered.formation == nat && recovered.schema == nat_schema);
+		}
+		struct pg_typing foreign;
+		pg_typing_init(&foreign, &graph);
+		const struct pg_occurrence *description = pg_occurrence(&foreign, PG_JUDGEMENT_VALUE_TYPE,
+			NULL, pg_evidence_subject(nat)->core, pg_evidence_classifier(nat), NULL, 0, NULL);
+		assert(description && !pg_prove_structural_subject(&foreign, description));
+		struct pg_inductive_instance previous = recovered;
+		assert(!pg_inductive_instance(&foreign, nat, &recovered));
+		assert(recovered.formation == previous.formation && recovered.parameters == previous.parameters);
+		pg_typing_destroy(&foreign);
+	}
+	{
 		const struct pg_evidence *context = empty, *projected = nat;
 		for (size_t i = 0; i < 32; ++i) {
 			context = pg_prove_context_extension(&typing, context, pg_binder(&graph), projected);

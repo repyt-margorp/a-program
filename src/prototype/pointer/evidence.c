@@ -893,7 +893,7 @@ struct inductive_fold {
 	const struct pg_evidence *continuation;
 	struct scope_frame *frames;
 	struct inductive_argument *arguments;
-	size_t return_contents, return_values, thunk_contents, thunk_values;
+	size_t return_values, thunk_values;
 	struct inductive_fold *parent;
 };
 
@@ -907,116 +907,117 @@ int pg_inductive_recovery_init(struct pg_inductive_recovery *work,
 	return 0;
 }
 
+/* The nominal owner fixes the formation context and classifier. Look up that
+ * exact typed declaration, not any judgement sharing the erased Core. */
+static const struct pg_evidence *nominal_formation(struct pg_typing *typing,
+	const struct pg_occurrence *subject)
+{
+	if (subject->operand_count) return NULL;
+	const struct pg_term *head = subject->core;
+	while (head->kind == PG_APPLICATION) head = head->as.application.function;
+	if (head->kind != PG_REFERENCE) return NULL;
+	const struct pg_data_declaration *declaration = pg_data_declaration_view(head->as.reference);
+	if (!declaration) return NULL;
+	const struct pg_context *self = pg_data_declaration_parameters(declaration);
+	if (!self || self->parent != subject->context) return NULL;
+	enum pg_evidence_judgement judgement = self->judgement == PG_JUDGEMENT_TYPE_FAMILY
+		? PG_JUDGEMENT_TYPE_FAMILY : PG_JUDGEMENT_VALUE_TYPE;
+	const struct pg_occurrence *formed = pg_occurrence(typing, judgement, self->parent,
+		subject->core, self->declared_type, NULL, 0, NULL);
+	for (const struct pg_evidence *proof = pg_evidence_for_subject(typing, formed, NULL);
+		proof; proof = pg_evidence_for_subject(typing, formed, proof))
+		if (proof->rule == PG_INDUCTIVE_FORM && pg_data_schema_declaration(proof->certificate) == declaration) return proof;
+	return NULL;
+}
+
 static void inductive_recovery_step(struct pg_inductive_recovery *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_evidence *formation = work->formation;
 	const struct pg_occurrence *subject = pg_evidence_subject(formation);
-	if (!subject->origin && subject->operand_count == 1) {
-		const struct pg_term *content;
-		const struct pg_effect_row *effects;
-		enum pg_totality totality;
-		size_t *contents = NULL;
-		if (pg_computation_type_view(subject->core, &totality, &effects, &content)) contents = &work->return_contents;
-		else if (pg_thunk_type_view(subject->core, &content)) contents = &work->thunk_contents;
-		if (contents) {
-			if (!*contents || subject->operands[0]->core != content) goto failed;
-			--*contents;
-			formation = pg_prove_structural_subject(typing, subject->operands[0]);
-			if (!formation) goto failed;
-			goto advanced;
-		}
+	if (subject->map) {
+		struct scope_frame *frame = scope_frame(&work->temporary, subject->map, NULL, work->frames);
+		if (!frame) goto failed;
+		work->frames = frame;
+		formation = pg_prove_structural_subject(typing, subject->origin);
+		goto advanced;
 	}
-	if (formation->rule != PG_INDUCTIVE_FORM) {
-		switch (formation->rule) {
-		case PG_REINDEX: case PG_CONTEXT_PROJECTION: {
-			const struct pg_context_map *map = formation->rule == PG_REINDEX ? pg_evidence_context_map(formation->premises[0])
-				: pg_context_map_projection(typing, pg_evidence_context(formation->premises[1]), pg_evidence_context(formation));
-			struct scope_frame *frame = scope_frame(&work->temporary, map, NULL, work->frames);
-			if (!frame) goto failed;
-			work->frames = frame;
-			formation = formation->premises[1];
-			break;
-		}
-		case PG_TYPE_FROM_VALUE: case PG_VALUE_FROM_TYPE: case PG_TYPE_CONVERSION: case PG_PURE_NORMALIZATION:
-			formation = formation->premises[0];
-			break;
-		case PG_VARIABLE:
-			formation = variable_frame(typing, formation, &work->frames);
-			if (!formation) goto failed;
-			break;
-		case PG_RETURN_VALUE:
-			++work->return_values; formation = formation->premises[0]; break;
-		case PG_FORCE_ELIM: case PG_THUNK_COMPUTATION:
-			++work->thunk_values; formation = formation->premises[0]; break;
-		case PG_THUNK_INTRO:
-			if (!work->thunk_values) goto failed;
-			--work->thunk_values; formation = formation->premises[0]; break;
-		case PG_RETURN_INTRO:
+	if (subject->selection) {
+		formation = selected_formation(typing, &work->temporary, &work->frames, subject);
+		goto advanced;
+	}
+	if (subject->origin) {
+		if (subject->origin->judgement == PG_JUDGEMENT_COMPUTATION && subject->judgement != PG_JUDGEMENT_COMPUTATION)
+			++work->return_values;
+		else if (subject->origin->judgement == PG_JUDGEMENT_VALUE && subject->judgement == PG_JUDGEMENT_COMPUTATION)
+			++work->thunk_values;
+		formation = pg_prove_structural_subject(typing, subject->origin);
+		goto advanced;
+	}
+	const struct pg_term *core = subject->core;
+	if (core->kind == PG_REFERENCE && core->as.reference->kind == PG_BINDER) {
+		formation = variable_frame(typing, formation, &work->frames);
+		goto advanced;
+	}
+	formation = nominal_formation(typing, subject);
+	if (!formation) {
+		if (core->kind != PG_APPLICATION || !subject->operand_count || subject->operand_count > 2) goto failed;
+		const struct pg_term *head = core->as.application.function;
+		const struct pg_evidence *left = pg_prove_structural_subject(typing, subject->operands[0]);
+		if (!left) goto failed;
+		if (subject->operand_count == 1) {
+			if (head->kind != PG_REFERENCE || subject->operands[0]->core != core->as.application.argument) goto failed;
+			formation = left;
+			if (head->as.reference == &pg_force_operation) { ++work->thunk_values; goto advanced; }
+			if (head->as.reference == &pg_thunk_operation) {
+				if (!work->thunk_values) goto failed;
+				--work->thunk_values;
+				goto advanced;
+			}
+			if (head->as.reference != &pg_return_operation) goto failed;
 			if (!work->return_values) goto failed;
 			if (work->return_values == 1 && work->folds) {
 				struct inductive_fold *fold = work->folds;
-				const struct pg_evidence *value = scope_image(typing, formation->premises[0], work->frames);
+				const struct pg_evidence *value = scope_image(typing, left, work->frames);
 				formation = pg_prove_application_body(typing, fold->continuation, value);
-				if (!formation) goto failed;
 				work->frames = fold->frames;
 				work->arguments = fold->arguments;
-				work->return_contents = fold->return_contents;
 				work->return_values = fold->return_values;
-				work->thunk_contents = fold->thunk_contents;
 				work->thunk_values = fold->thunk_values;
 				work->folds = fold->parent;
-				break;
-			}
-			--work->return_values; formation = formation->premises[0]; break;
-		case PG_FOLD_ELIM: {
+			} else --work->return_values;
+			goto advanced;
+		}
+		if (subject->operands[1]->core != core->as.application.argument) goto failed;
+		const struct pg_evidence *right = pg_prove_structural_subject(typing, subject->operands[1]);
+		if (!right) goto failed;
+		if (head->kind == PG_APPLICATION && head->as.application.function == pg_reference(typing->graph, &pg_fold_operation) &&
+			subject->operands[0]->core == head->as.application.argument) {
 			struct inductive_fold *fold = pg_alloc(&work->temporary, sizeof(*fold));
 			if (!fold) goto failed;
-			*fold = (struct inductive_fold){formation->premises[1], work->frames, work->arguments,
-				work->return_contents, work->return_values, work->thunk_contents, work->thunk_values, work->folds};
+			*fold = (struct inductive_fold){right, work->frames, work->arguments,
+				work->return_values, work->thunk_values, work->folds};
 			work->folds = fold;
 			work->frames = NULL;
 			work->arguments = NULL;
-			work->return_contents = work->thunk_contents = work->thunk_values = 0;
+			work->thunk_values = 0;
 			work->return_values = 1;
-			formation = formation->premises[0];
-			break;
+			formation = left;
+			goto advanced;
 		}
-		case PG_TYPE_FAMILY_APP: {
-			const struct pg_evidence *body = pg_prove_application_body(typing,
-				formation->premises[0], formation->premises[1]);
-			if (body) { formation = body; break; }
+		if (subject->operands[0]->core != head) goto failed;
+		formation = pg_prove_application_body(typing, left, right);
+		if (!formation && pg_evidence_judgement(left) == PG_JUDGEMENT_TYPE_FAMILY) {
 			struct inductive_argument *argument = pg_alloc(&work->temporary, sizeof(*argument));
 			if (!argument) goto failed;
-			*argument = (struct inductive_argument){formation->premises[1], work->frames, work->arguments};
+			*argument = (struct inductive_argument){right, work->frames, work->arguments};
 			work->arguments = argument;
-			formation = formation->premises[0];
-			break;
+			formation = left;
 		}
-		case PG_APP_ELIM:
-			formation = pg_prove_application_body(typing, formation->premises[0], formation->premises[1]);
-			if (!formation) goto failed;
-			break;
-		case PG_RETURN_CONTENT:
-			++work->return_contents;
-			formation = formation->premises[0];
-			break;
-		case PG_THUNK_CONTENT:
-			++work->thunk_contents;
-			formation = formation->premises[0];
-			break;
-		case PG_PI_CONSTANT_CODOMAIN: case PG_PI_DOMAIN: case PG_PI_CODOMAIN: {
-			formation = selected_formation(typing, &work->temporary, &work->frames, pg_evidence_subject(formation));
-			if (!formation) goto failed;
-			break;
-		}
-		default: goto failed;
-		}
-	advanced:
-		work->formation = formation;
-		return;
+		goto advanced;
 	}
-	if (work->return_contents || work->return_values || work->thunk_contents || work->thunk_values || work->folds) goto failed;
+	work->formation = formation;
+	if (work->return_values || work->thunk_values || work->folds) goto failed;
 	if (!work->map) {
 		const struct pg_evidence *context = formation->premises[0]->premises[0];
 		work->map = pg_prove_substitution_projection(typing, context, context);
@@ -1060,6 +1061,10 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 	if (!instance || pg_alpha_equal(pg_evidence_subject(instance)->core, pg_evidence_subject(work->type)->core) != 1) goto failed;
 	work->result = (struct pg_inductive_instance){formation->certificate, formation, work->map, indices};
 	work->status = 1;
+	return;
+advanced:
+	if (!formation) goto failed;
+	work->formation = formation;
 	return;
 failed:
 	work->status = -1;
