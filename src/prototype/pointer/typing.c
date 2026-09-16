@@ -473,6 +473,7 @@ const struct pg_occurrence *pg_occurrence_unproject(struct pg_typing *typing,
 		 * changes images must retain its justification and typed dependencies. */
 		if (pg_occurrence_projection(typing, source->map, source->origin) != source) return NULL;
 		source = source->origin;
+		if (source->context == destination) return source;
 		if (!pg_context_extension_size(destination, source->context, &count))
 			return pg_occurrence_projection(typing,
 				pg_context_map_projection(typing, source->context, destination), source);
@@ -572,6 +573,11 @@ struct input_wait {
 	struct input_wait *parent;
 };
 
+struct input_scope {
+	const struct pg_context *context;
+	struct input_scope *next;
+};
+
 struct pg_occurrence_input {
 	struct pg_index_entry entry;
 	struct pg_typing *typing;
@@ -582,6 +588,7 @@ struct pg_occurrence_input {
 	struct pg_substitution *domain;
 	struct pg_occurrence_input *selected;
 	struct input_wait *waiting;
+	struct input_scope *scopes;
 	const struct pg_context_map *effective;
 	uint64_t steps;
 	enum pg_occurrence_input_status status;
@@ -646,6 +653,22 @@ const struct pg_occurrence *pg_occurrence_scoped_input(const struct pg_occurrenc
 	return binder && scope->binder == binder && input->core == body ? input : NULL;
 }
 
+/* These declarations are inputs in their own context, not terms in the
+ * elimination's destination. Its explicit parameter maps carry the action. */
+static int retained_input(const struct pg_occurrence *source, size_t index)
+{
+	if (source->map_count == 2) return index == 0;
+	return source->map_count == 1 && source->operand_count >= 3 && index == source->operand_count - 1;
+}
+
+static int motive_input(const struct pg_occurrence *source, size_t index)
+{
+	if (source->judgement != PG_JUDGEMENT_COMPUTATION || source->map_count != 1) return 0;
+	if (source->operand_count < 3 || index != source->operand_count - 2) return 0;
+	size_t count;
+	return !pg_context_extension_size(source->operands[index]->context, source->context, &count);
+}
+
 static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrence_input *work)
 {
 	struct pg_typing *typing = work->typing;
@@ -702,7 +725,8 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 			}
 			if (work->index >= current->operand_count) return PG_INPUT_UNAVAILABLE;
 			work->result = current->operands[work->index];
-			if (work->result->context != current->context &&
+			if (retained_input(current, work->index)) work->maps = NULL;
+			else if (work->result->context != current->context && !motive_input(current, work->index) &&
 				!pg_occurrence_scoped_input(current, work->index)) return PG_INPUT_UNAVAILABLE;
 			work->current = NULL;
 		}
@@ -712,23 +736,33 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 	const struct pg_occurrence *parent = work->maps->parent;
 	const struct pg_context_map *map = parent->map;
 	if (!work->effective) {
-		const struct pg_context *scope = work->result->context;
-		if (scope == map->source) work->effective = map;
-		else {
-			if (!scope || scope->parent != map->source) return PG_INPUT_UNAVAILABLE;
-			const struct pg_term *body;
-			const struct pg_object *binder = input_binder(parent->core, work->index, &body);
-			if (!binder) return PG_INPUT_UNAVAILABLE;
-			if (!work->domain) work->domain = pg_substitution_request(&typing->substitutions,
-				scope->declared_type, map->count, pg_context_map_bindings(map));
-			enum pg_substitution_status status = pg_substitution_advance(work->domain, 1);
-			if (status == PG_SUBSTITUTION_ERROR) return PG_INPUT_ERROR;
-			if (status == PG_SUBSTITUTION_PENDING) return PG_INPUT_PENDING;
-			if (pg_context_lookup(map->destination, binder)) binder = pg_binder(typing->graph);
-			work->effective = context_map_lift_at(typing, map, scope,
-				binder, pg_substitution_result(work->domain));
-			if (!work->effective) return PG_INPUT_ERROR;
+		for (const struct pg_context *scope = work->result->context; scope != map->source; scope = scope->parent) {
+			if (!scope) return PG_INPUT_UNAVAILABLE;
+			struct input_scope *frame = pg_alloc(typing->graph, sizeof(*frame));
+			if (!frame) return PG_INPUT_ERROR;
+			*frame = (struct input_scope){scope, work->scopes};
+			work->scopes = frame;
 		}
+		work->effective = map;
+	}
+	if (work->scopes) {
+		const struct pg_context *scope = work->scopes->context;
+		const struct pg_term *body;
+		const struct pg_object *binder = input_binder(parent->core, work->index, &body);
+		if (!binder) binder = scope->binder;
+		map = work->effective;
+		if (!work->domain) work->domain = pg_substitution_request(&typing->substitutions,
+			scope->declared_type, map->count, pg_context_map_bindings(map));
+		enum pg_substitution_status status = pg_substitution_advance(work->domain, 1);
+		if (status == PG_SUBSTITUTION_ERROR) return PG_INPUT_ERROR;
+		if (status == PG_SUBSTITUTION_PENDING) return PG_INPUT_PENDING;
+		if (pg_context_lookup(map->destination, binder)) binder = pg_binder(typing->graph);
+		work->effective = context_map_lift_at(typing, map, scope,
+			binder, pg_substitution_result(work->domain));
+		if (!work->effective) return PG_INPUT_ERROR;
+		work->scopes = work->scopes->next;
+		work->domain = NULL;
+		return PG_INPUT_PENDING;
 	}
 	if (!work->action) {
 		const struct pg_occurrence *projection = pg_occurrence_projection(typing, work->effective, work->result);

@@ -879,6 +879,45 @@ static void indexed_match(void)
 	assert(pg_alpha_equal(pg_evidence_subject(renamed_match)->core, pg_evidence_subject(mapped_match)->core) == 1);
 	assert(pg_alpha_equal(pg_evidence_classifier(renamed_match), pg_evidence_classifier(mapped_match)) == 1);
 	common_rule(&typing, &classifiers, renamed_match);
+	/* Opening a mapped motive lifts its indices and scrutinee, but must not
+	 * move the nominal declaration into the elimination's context. */
+	const struct pg_evidence *shadowed = pg_prove_projection(&typing, mc, match);
+	const struct pg_evidence *input_sources[] = {match, mapped_match, shadowed};
+	for (size_t i = 0; i < sizeof(input_sources) / sizeof(*input_sources); ++i) {
+		const struct pg_occurrence *source = pg_evidence_subject(input_sources[i]);
+		struct pg_occurrence_input *query = pg_occurrence_input_request(&typing, source, 2);
+		uint64_t steps = pg_occurrence_input_steps(query), budget = i % 2 ? 64 : 1;
+		enum pg_occurrence_input_status status;
+		do {
+			status = pg_occurrence_input_advance(query, budget);
+			assert(pg_occurrence_input_steps(query) <= steps + budget);
+			steps = pg_occurrence_input_steps(query);
+			assert(steps < 10000);
+		} while (status == PG_INPUT_PENDING);
+		assert(status == PG_INPUT_READY);
+		const struct pg_occurrence *opened = pg_occurrence_input_result(query);
+		size_t depth;
+		assert(!pg_context_extension_size(opened->context, source->context, &depth) && depth == 3);
+		const struct pg_context *indices = opened->context->parent;
+		assert(indices->declared_type == pg_reference(&graph, indices->parent->binder));
+		for (const struct pg_context *scope = opened->context; scope != source->context; scope = scope->parent)
+			assert(!pg_context_lookup(source->context, scope->binder));
+		const struct pg_evidence *accepted = pg_prove_structural_subject(&typing, opened);
+		assert(accepted && pg_evidence_subject(accepted) == opened);
+		common_rule(&typing, &classifiers, accepted);
+		assert(pg_occurrence_input_request(&typing, source, 2) == query);
+		assert(pg_occurrence_input_advance(query, 64) == PG_INPUT_READY && pg_occurrence_input_steps(query) == steps);
+		query = pg_occurrence_input_request(&typing, source, 3);
+		while (pg_occurrence_input_advance(query, budget) == PG_INPUT_PENDING) {}
+		assert(pg_occurrence_input_result(query) == pg_evidence_subject(formation));
+	}
+	const struct pg_occurrence *invalid_inputs[] = {structure->operands[0], structure->operands[1],
+		pg_evidence_subject(u), structure->operands[3]};
+	const struct pg_occurrence *invalid_scope = pg_occurrence_intern(&typing, structure,
+		invalid_inputs, pg_occurrence_maps(structure));
+	struct pg_occurrence_input *invalid_query = pg_occurrence_input_request(&typing, invalid_scope, 2);
+	assert(pg_occurrence_input_advance(invalid_query, 64) == PG_INPUT_UNAVAILABLE);
+	assert(!pg_occurrence_input_result(invalid_query) && !pg_prove_structural_subject(&typing, invalid_scope));
 	const struct pg_evidence *inverse = pg_prove_substitution(&typing, renamed_xc, xc, 2, values);
 	const struct pg_evidence *twice = pg_prove_elimination_reindex(&typing, &classifiers, inverse, renamed_match);
 	const struct pg_evidence *once = pg_prove_elimination_reindex(&typing, &classifiers,
@@ -903,8 +942,10 @@ static void indexed_match(void)
 	const struct pg_evidence *match_sources[] = {match, renamed_match, mapped_match, twice, once};
 	for (size_t i = 0; i < sizeof(match_sources) / sizeof(*match_sources); ++i) {
 		struct pg_typed_body_work *query = pg_return_body_request(&typing, match_sources[i]);
-		assert(query && !pg_typed_body_advance(query, 0));
-		uint64_t steps = 0;
+		assert(query);
+		uint64_t steps = pg_typed_body_steps(query);
+		pg_typed_body_advance(query, 0);
+		assert(pg_typed_body_steps(query) == steps);
 		int status;
 		do {
 			status = pg_typed_body_advance(query, i % 2 ? 64 : 1);

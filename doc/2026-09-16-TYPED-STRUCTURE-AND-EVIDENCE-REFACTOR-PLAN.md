@@ -1949,3 +1949,54 @@ Counts remain 178465 Terms / 415460 typed subjects / 434767 proofs / 506 body
 requests / 3442 input requests. Logs:
 `/tmp/a-program-typed-structure-r37-debug.log`,
 `/tmp/a-program-typed-structure-r37-san-{core,iadt,synthesis,quicksort}.log`.
+
+### 2026-09-17: Shared motive scope queries (R38)
+
+- [x] Extend the shared construction-input request to lift a Match/induction
+  motive's dependent telescope, not just a single Lambda/Pi binder. Domain
+  substitution uses existing resumable work; colliding binders are freshened.
+  Lambda/Pi's exact lexical checks remain unchanged. A motive must extend the
+  enclosing context; an unrelated descriptive scope is not accepted.
+- [x] Retain nominal formations and selected Identity source families in their
+  declaration contexts. Their explicit parameter/boundary maps, not ambient
+  weakening of these inputs, describe their use at an elimination site.
+- [x] Replace `elimination_instance`'s private motive-lifting call with the
+  shared input query. Ordinary context-map and term rules still certify the
+  result; this does not grant acceptance to descriptive records or change the
+  elimination theorem. Constructor/refinement scope formation still uses
+  `lift_scope`; its remaining uses are not redundant queries.
+- [x] Fix exact weakening cancellation exposed by this migration. After
+  reaching the requested context, `pg_occurrence_unproject` unnecessarily
+  applied an identity map. For a variable with a converted classifier, that
+  added another structural origin and broke exact lifted-map reconstruction.
+  Return the original typed subject at that boundary instead of relaxing map
+  equality. The focused Core regression fails against `84ec50e`'s `typing.c`.
+- [x] Test dependent multi-index motives, chunk sizes 1/64, repeated query
+  sharing, binder collisions, retained declarations/families, converted-variable
+  weakening and unrelated-scope rejection. Repeated equivalent eliminations
+  may now reuse an already completed body query; zero budget changes no steps.
+- [x] Full debug acceptance, including 63/63 compatibility and final QuickSort
+  source/image properties, passed. ASan/UBSan Core, IADT, Identity, synthesis
+  and imported QuickSort passed.
+
+The first full run exposed the weakening regression in QuickSort's property
+client; it was fixed, not excluded from acceptance. Logs:
+`/tmp/a-program-typed-structure-r38-unproject-before.log`,
+`/tmp/a-program-typed-structure-r38-debug.log`,
+`/tmp/a-program-typed-structure-r38-san-{core,iadt,identity,synthesis,quicksort}.log`.
+
+Against `84ec50e`: `typing.c` +51/-17, `typing.h` +3/-1, `evidence.c` +8/-4;
+implementation/header **+40**, cumulative **+1542** against `4657cc6`.
+Tests: `core.c` +17/-0, `iadt.c` +43/-2, `identity.c` +11/-0.
+R2-R5 and the net-negative gate remain open. Scope enumeration and ordinary
+certification still have synchronous costs; this is not a full instruction
+budget. No image format or logical rule changed.
+
+Sequential O0 QuickSort: 1.0728 seconds / 275684 KiB / 132053 Solve transitions.
+Counts: 181118 Terms / 415469 typed subjects / 434780 proofs / 506 body requests /
+3458 input requests. Compared with R37, the migration allocates 2653 more Terms
+and 16 more input requests because it first reindexes the whole eliminator to
+open its motive. This is a remaining avoidable construction cost, not a speedup;
+future shared scope-action work should request the input under its map directly
+without fabricating an unverified mapped parent. Keep the declaration-scope and
+exact weakening regressions when removing that intermediate construction.

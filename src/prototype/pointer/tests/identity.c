@@ -2293,6 +2293,17 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 	assert(pg_occurrence_maps(structure)[1] == pg_evidence_context_map(rs));
 	assert(structure->operands[0] == pg_evidence_subject(family));
 	assert(structure->operands[1] == pg_evidence_subject(p));
+	const struct pg_evidence *extended = pg_prove_context_extension(typing, scope,
+		pg_binder(typing->graph), pg_prove_projection(typing, scope, universe));
+	const struct pg_evidence *projected = pg_prove_projection(typing, extended, vp);
+	assert(projected);
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_occurrence_input *input = pg_occurrence_input_request(typing, pg_evidence_subject(projected), i);
+		while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING) {}
+		const struct pg_occurrence *expected_input = i ? pg_evidence_subject(pg_prove_projection(typing, extended, p))
+			: pg_evidence_subject(family);
+		assert(pg_occurrence_input_result(input) == expected_input);
+	}
 	const struct pg_evidence *round_trip = pg_prove_value_type(typing, pg_prove_type_value(typing, vp));
 	assert(pg_evidence_subject(round_trip) == structure);
 	assert(pg_identity_formation(typing, classifiers, round_trip) == vp);

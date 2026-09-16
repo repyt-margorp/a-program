@@ -178,7 +178,9 @@ const struct pg_occurrence *pg_occurrence_scoped_input(const struct pg_occurrenc
 /* Read a construction input, applying retained maps lazily. Lambda bodies and
  * Pi codomains use the target Core binder, freshened if it collides with the
  * destination context. The closed binder/body remains alpha-equivalent to the
- * parent. Other scoped inputs remain unavailable.
+ * parent. Match motives lift their dependent telescope; nominal formations
+ * and selected Identity families retain the source context of their maps.
+ * Other scoped inputs remain unavailable.
  * These requests describe structure only; they cannot certify an input. */
 struct pg_occurrence_input;
 enum pg_occurrence_input_status { PG_INPUT_PENDING, PG_INPUT_READY,

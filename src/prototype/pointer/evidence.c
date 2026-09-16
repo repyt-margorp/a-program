@@ -2008,8 +2008,11 @@ static const struct pg_evidence *elimination_instance(struct pg_typing *typing,
 	if (elimination_structure(typing, elimination, &view)) return NULL;
 	if (!pg_evidence_owned_by(substitution, typing) || substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (pg_evidence_context(substitution->premises[0]) != pg_evidence_context(elimination)) return NULL;
-	const struct pg_evidence *map = lift_scope(typing, substitution, view.motive_context, NULL, 0);
-	if (!map) return NULL;
+	const struct pg_evidence *mapped = pg_prove_reindex(typing, substitution, elimination);
+	const struct pg_occurrence *input;
+	if (!mapped || !structural_input(typing, pg_evidence_subject(mapped), view.count + 1, &input)) return NULL;
+	const struct pg_evidence *motive = input ? pg_prove_structural_subject(typing, input) : NULL;
+	if (!motive) return NULL;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence *result = NULL;
 	size_t count = view.count;
@@ -2022,8 +2025,9 @@ static const struct pg_evidence *elimination_instance(struct pg_typing *typing,
 	}
 	result = prove_data_elimination(typing, classifiers, view.formation,
 		pg_prove_substitution_compose(typing, view.parameters, substitution),
-		scrutinee ? scrutinee : pg_prove_reindex(typing, substitution, view.scrutinee), map->premises[1],
-		pg_prove_reindex(typing, map, view.motive), count, branches, elimination->rule, NULL);
+		scrutinee ? scrutinee : pg_prove_reindex(typing, substitution, view.scrutinee),
+		conclusion_first(typing, PG_JUDGEMENT_CONTEXT, input->context), motive,
+		count, branches, elimination->rule, NULL);
 done:
 	pg_graph_destroy(&temporary);
 	return result;

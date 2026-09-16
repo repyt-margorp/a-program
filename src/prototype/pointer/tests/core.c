@@ -638,6 +638,23 @@ static void evidence_test(struct pg_graph *graph)
 	assert(!pg_prove_conversion(&typing, quoted_function, ufa, certificate));
 	assert(!pg_prove_conversion(&typing, quoted_function, pi_z, certificate));
 	assert(pg_prove_application(&typing, pg_prove_force(&typing, converted), x_term));
+	/* Cancelling weakening must preserve a variable's converted classifier,
+	 * including its exact typed origin; no extra identity map is needed. */
+	const struct pg_object *converted_binder = pg_binder(graph);
+	const struct pg_evidence *converted_scope = pg_prove_context_extension(&typing, x_context,
+		converted_binder, pg_prove_classifier(&typing, &classifiers, x_context, quoted_function));
+	const struct pg_evidence *converted_variable = pg_prove_conversion(&typing,
+		pg_prove_variable(&typing, converted_scope, converted_binder),
+		pg_prove_projection(&typing, converted_scope, upi_z), certificate);
+	assert(converted_variable);
+	const struct pg_evidence *outer_scope = pg_prove_context_extension(&typing, converted_scope,
+		pg_binder(graph), pg_prove_projection(&typing, converted_scope, a_in_x));
+	const struct pg_evidence *weakened_variable = pg_prove_projection(&typing, outer_scope, converted_variable);
+	assert(weakened_variable);
+	size_t unproject_nodes = typing.occurrences.count;
+	assert(pg_occurrence_unproject(&typing, pg_evidence_subject(weakened_variable),
+		pg_evidence_context(converted_scope)) == pg_evidence_subject(converted_variable));
+	assert(typing.occurrences.count == unproject_nodes);
 	assert(pg_whnf_work_init(&work, graph) == 0);
 	assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(identity_y), pg_evidence_subject(pi_z)->core) == 0);
 	while (pg_conversion_advance(&comparison, 1) == PG_CONVERSION_PENDING) {}
