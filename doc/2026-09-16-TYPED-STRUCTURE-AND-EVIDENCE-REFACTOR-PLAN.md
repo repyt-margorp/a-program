@@ -329,7 +329,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `rebase_image` | Reads typed maps/origins and constructor/family inputs; rechecks introductions in the target context. Retains normalization receipts and nominal formation checks, not wrapper-history dispatch; synchronous work remains |
 | `constructor_origin`, `pg_prove_elimination_body` | Read typed fields/motive/allocation; ordinary nominal acceptance still required |
 | `classifier_leaf` | Deleted |
-| `classifier_recovery_step` | Reads retained classifier/maps, with variable formation from its context; calls into synchronous certification remain |
+| `classifier_recovery_step` | Uses the shared typed classifier query; separate map stack removed. Variable/Universe formation and final synchronous certification remain legitimate checks |
 | `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
 | `action.c:origin_step` | Reads typed origins/maps; does not reinterpret derivation wrappers |
 | `derivation.c:pg_prove_derivation` | Intentionally retained: verifies rule inputs rather than interpreting program structure |
@@ -1370,3 +1370,72 @@ do not establish a wall-time improvement over R22. The cumulative time/memory
 regression against the initial baseline still requires the R5 review. Producer
 contracts above now distinguish actual construction inputs, logical inversion
 dependencies and result recipes; no phase is marked complete from tests alone.
+### 2026-09-17: Classifier access uses the shared typed-input query
+
+- [x] Remove the separate classifier map stack and its temporary arena.
+  Retained classifiers use the same indexed, budgeted context-action query as
+  typed input views. Final formation still requires ordinary acceptance.
+- [x] Keep legitimate leaf rules: Universe formation and a variable's declared
+  type from its accepted context. Descriptive nodes do not certify themselves.
+- [x] Add a dependent mapped-function regression checking zero budget, one-step
+  progress, exact result reuse and no extra proof/query work on repeat access.
+- [x] Full debug acceptance passed, including 63/63 compatibility and the final
+  QuickSort source/image result checks. ASan/UBSan Core, IADT, synthesis and
+  imported QuickSort passed. No input format or logical rule changed.
+
+Against `bb02b9d`, `evidence.c` is +21/-41, `evidence.h` +5/-6:
+implementation/header net **-21**. Tests are +22/-0. Cumulative implementation
+net is still **+1228**; the net-negative and final publication gates stay open.
+The final certification of a typed result can still invoke synchronous kernel
+checks; this change does not claim to budget all kernel work or complete typed
+normalization exposure.
+
+#### Expanded baseline diagnostics
+
+Both binaries use debug O0 flags and the same inputs, legacy spelling option,
+and one-million-step limit. Baseline is the retained `4657cc6` binary, R24 is
+`bb02b9d` plus this change. Each timing runs sequentially in a fresh process.
+These are single diagnostic samples, not a statistical speedup claim. Counts
+were measured separately at `pg_program_destroy` using GDB, without modifying
+the source. The eight root examples matching 01-09 are listed below; this
+checkout has no matching root example 08.
+
+| Input | Baseline / R24 seconds | Baseline / R24 Solve transitions | Baseline / R24 Terms, typed subjects, proofs |
+|---|---|---|---|
+| 01_bool | 0.0011 / 0.0026 | 520 / 470 | 92/70/97 / 92/80/100 |
+| 02_nat | 0.0015 / 0.0012 | 307 / 300 | 73/61/92 / 73/70/92 |
+| 03_main | 0.0014 / 0.0021 | 520 / 470 | 92/70/97 / 92/80/100 |
+| 04_match | 0.0017 / 0.0022 | 1302 / 1221 | 171/185/336 / 172/255/345 |
+| 05_bool_to_nat | 0.0018 / 0.0023 | 946 / 853 | 118/122/205 / 118/156/213 |
+| 06_pred | 0.0016 / 0.0025 | 811 / 755 | 119/122/207 / 119/152/210 |
+| 07_add | 0.0021 / 0.0023 | 1844 / 1685 | 227/246/382 / 227/305/408 |
+| 09_list_induction | 0.0039 / 0.0034 | 3536 / 3177 | 290/351/614 / 286/443/618 |
+| Vec-append | 0.0132 / 0.0151 | 22765 / 20744 | 6301/2737/6505 / 8257/3122/4123 |
+| dependent-Sigma | 0.0025 / 0.0051 | 4048 / 3734 | 614/475/741 / 681/600/755 |
+| generated-length | 0.0095 / 0.0134 | 10950 / 9580 | 1829/2249/3856 / 1911/3146/3724 |
+| QuickSort-property | 0.8403 / 1.0766 | 149501 / 131321 | 168628/435774/588033 / 179803/416611/433565 |
+
+| Zero-work image | Baseline / R24 seconds | Baseline / R24 Solve transitions |
+|---|---|---|
+| Vec-append | 0.0123 / 0.0133 | 23074 / 21049 |
+| dependent-Sigma | 0.0028 / 0.0036 | 4357 / 4039 |
+| generated-length | 0.0084 / 0.0111 | 11259 / 9885 |
+| QuickSort-property | 0.8841 / 1.0683 | 149810 / 131626 |
+
+The image cases save at zero Solve steps and resume in a fresh process; each
+version writes its own format. Vec uses `explicit_index_family_append_check.p`
+with `legacy-vec-append-results.p`; Sigma uses
+`dependent_constructor_provider_check.p` with `import-dependent-constructor.p`;
+length uses `length-output-proof.p`; QuickSort uses
+`if8_fuel_free_quicksort_check.p` with `legacy-quicksort-property.p`.
+Provider files are under `src/prototype/tests/fixtures/typing`, clients under
+`src/prototype/pointer/tests/acceptance`.
+
+QuickSort source peak RSS was **225904 / 275876 KiB**; image RSS was
+**225804 / 276156 KiB** (baseline / R24). Small-case RSS was 10.7-11.1 MiB and
+is dominated by the measurement process's inherited high-water mark, so it
+cannot resolve allocator changes. Fewer proofs and Solve transitions do not
+by themselves imply lower time/memory: typed records and shared work are
+larger than the old receipts. This remains an R5 representation-cost concern,
+not a reason to bypass logical checks. Repeated final measurements are still
+required after the remaining structural work.

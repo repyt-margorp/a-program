@@ -1177,6 +1177,28 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(typing.proofs.count == input_proofs);
 	const struct pg_evidence *pi = pg_prove_classifier(&typing, &classifiers, a_scope, function);
 	const struct pg_evidence *mapped_pi = pg_prove_reindex(&typing, type_pair, pi);
+	/* Classifier recovery resumes the same typed edge query used by views,
+	 * including its substitution work, rather than copying a map stack. */
+	struct pg_occurrence_input *type_input = pg_occurrence_type_request(&typing, mapped_lambda);
+	uint64_t type_steps = pg_occurrence_input_steps(type_input);
+	struct pg_classifier_recovery classifier_work;
+	const struct pg_evidence *classifier_function = pg_prove_reindex(&typing, type_pair, function);
+	assert(!pg_classifier_recovery_init(&classifier_work, &typing, &classifiers, destination, classifier_function));
+	assert(!pg_classifier_recovery_advance(&classifier_work, 0));
+	assert(pg_occurrence_input_steps(type_input) == type_steps);
+	size_t classifier_calls = 0;
+	while (!pg_classifier_recovery_advance(&classifier_work, 1)) {
+		assert(pg_occurrence_input_steps(type_input) <= type_steps + 1);
+		type_steps = pg_occurrence_input_steps(type_input);
+		assert(++classifier_calls < 10000);
+	}
+	assert(classifier_work.status == 1 && classifier_work.result == mapped_pi);
+	assert(pg_occurrence_input_result(type_input) == pg_evidence_subject(mapped_pi));
+	pg_classifier_recovery_destroy(&classifier_work);
+	type_steps = pg_occurrence_input_steps(type_input);
+	input_proofs = typing.proofs.count;
+	assert(pg_prove_classifier(&typing, &classifiers, destination, classifier_function) == mapped_pi);
+	assert(pg_occurrence_input_steps(type_input) == type_steps && typing.proofs.count == input_proofs);
 	const struct pg_term *pi_domain, *pi_codomain;
 	const struct pg_object *pi_binder;
 	assert(mapped_pi && pg_pi_view(pg_evidence_subject(mapped_pi)->core, &pi_domain, &pi_binder, &pi_codomain));

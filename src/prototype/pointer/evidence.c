@@ -4430,22 +4430,16 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 		pg_evidence_context(pi), subject, 2, premises);
 }
 
-struct pg_classifier_frame {
-	const struct pg_context_map *map;
-	struct pg_classifier_frame *next;
-};
-
 static int classifier_initialize(struct pg_classifier_recovery *work,
 	struct pg_typing *typing, struct pg_classifiers *classifiers,
 	const struct pg_evidence *context, const struct pg_evidence *term)
 {
-	*work = (struct pg_classifier_recovery){.typing = typing, .classifiers = classifiers,
-		.context = context, .status = -1};
+	*work = (struct pg_classifier_recovery){.typing = typing, .classifiers = classifiers, .status = -1};
 	if (!context_proof(typing, context) || !pg_evidence_owned_by(term, typing)) return -1;
 	if (pg_evidence_context(context) != pg_evidence_context(term)) return -1;
 	if (pg_evidence_judgement(term) != PG_JUDGEMENT_VALUE &&
 		pg_evidence_judgement(term) != PG_JUDGEMENT_COMPUTATION) return -1;
-	work->current = work->subject = pg_evidence_subject(term);
+	work->subject = pg_evidence_subject(term);
 	work->status = 0;
 	return 0;
 }
@@ -4464,41 +4458,28 @@ int pg_classifier_recovery_init(struct pg_classifier_recovery *work,
 static void classifier_recovery_step(struct pg_classifier_recovery *work)
 {
 	struct pg_typing *typing = work->typing;
-	if (work->result) {
-		const struct pg_context_map *map = work->frames->map;
-		work->frames = work->frames->next;
-		work->result = pg_prove_reindex(typing, pg_prove_context_map(typing, map), work->result);
+	const struct pg_occurrence *subject = work->subject;
+	uint64_t level;
+	if (subject->type) work->result = pg_prove_structural_subject(typing, subject->type);
+	else if (subject->judgement == PG_JUDGEMENT_VALUE && work->classifiers &&
+		pg_universe_level(subject->classifier, &level)) {
+		work->result = pg_prove_universe(typing, work->classifiers,
+			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context), level);
+	} else if (subject->judgement == PG_JUDGEMENT_VALUE && subject->core->kind == PG_REFERENCE &&
+		subject->core->as.reference->kind == PG_BINDER) {
+		const struct pg_context *declaration = pg_context_lookup(subject->context, subject->core->as.reference);
+		const struct pg_evidence *scope = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, declaration);
+		if (scope && scope->rule == PG_CONTEXT_EXTEND)
+			work->result = pg_prove_projection(typing,
+				conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context), scope->premises[1]);
 	} else {
-		const struct pg_occurrence *subject = work->current;
-		uint64_t level;
-		if (subject->type) {
-			work->result = pg_prove_structural_subject(typing, subject->type);
-		} else if (subject->judgement == PG_JUDGEMENT_VALUE && work->classifiers &&
-			pg_universe_level(subject->classifier, &level)) {
-			work->result = pg_prove_universe(typing, work->classifiers,
-				conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context), level);
-		} else if (subject->map) {
-			struct pg_classifier_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
-			if (!frame) { work->status = -1; return; }
-			*frame = (struct pg_classifier_frame){subject->map, work->frames};
-			work->frames = frame;
-			work->current = subject->origin;
-			return;
-		} else if (subject->origin && subject->classifier == subject->origin->classifier) {
-			work->current = subject->origin;
-			return;
-		} else if (subject->judgement == PG_JUDGEMENT_VALUE) {
-			const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context);
-			if (subject->core->kind == PG_REFERENCE && subject->core->as.reference->kind == PG_BINDER) {
-				const struct pg_context *declaration = pg_context_lookup(subject->context, subject->core->as.reference);
-				const struct pg_evidence *scope = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, declaration);
-				if (scope && scope->rule == PG_CONTEXT_EXTEND)
-					work->result = pg_prove_projection(typing, context, scope->premises[1]);
-			}
-		}
+		if (!work->input) work->input = pg_occurrence_type_request(typing, subject);
+		enum pg_occurrence_input_status status = pg_occurrence_input_advance(work->input, 1);
+		if (status == PG_INPUT_PENDING) return;
+		work->result = pg_prove_structural_subject(typing, pg_occurrence_input_result(work->input));
 	}
 	if (!work->result) work->status = -1;
-	else if (!work->frames) {
+	else {
 		work->status = pg_evidence_context(work->result) == work->subject->context &&
 			pg_alpha_equal(pg_evidence_subject(work->result)->core, work->subject->classifier) == 1 ? 1 : -1;
 	}
@@ -4512,7 +4493,6 @@ int pg_classifier_recovery_advance(struct pg_classifier_recovery *work, size_t s
 
 void pg_classifier_recovery_destroy(struct pg_classifier_recovery *work)
 {
-	pg_graph_destroy(&work->temporary);
 	*work = (struct pg_classifier_recovery){0};
 }
 
