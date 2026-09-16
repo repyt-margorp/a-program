@@ -236,6 +236,15 @@ const struct pg_occurrence *pg_occurrence_classified(struct pg_typing *typing,
 		source->origin, source->selection, source->map, type, source->map_count, pg_occurrence_maps(source), source->induction) : NULL;
 }
 
+const struct pg_occurrence *pg_occurrence_reclassified(struct pg_typing *typing,
+	const struct pg_occurrence *source, const struct pg_occurrence *type)
+{
+	if (!source || !type) return NULL;
+	if (source->type == type) return source;
+	return occurrence(typing, source->judgement, source->context, source->core,
+		type->core, NULL, 0, NULL, source, 0, NULL, type, 0, NULL, NULL);
+}
+
 const struct pg_context_map *const *pg_occurrence_maps(const struct pg_occurrence *subject)
 {
 	return (const struct pg_context_map *const *)(subject->operands + subject->operand_count);
@@ -642,6 +651,8 @@ static const struct pg_object *input_binder(const struct pg_term *core, size_t i
 const struct pg_occurrence *pg_occurrence_scoped_input(const struct pg_occurrence *source,
 	size_t index)
 {
+	while (source && source->origin && !source->map && !source->selection && source->core == source->origin->core)
+		source = source->origin;
 	if (!source || source->origin || index >= source->operand_count) return NULL;
 	const struct pg_occurrence *input = source->operands[index];
 	const struct pg_context *scope = input->context;
@@ -700,7 +711,11 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 				work->current = current->origin;
 				return PG_INPUT_PENDING;
 			}
-			if (current->origin) return PG_INPUT_UNAVAILABLE;
+			if (current->origin) {
+				if (current->core != current->origin->core) return PG_INPUT_UNAVAILABLE;
+				work->current = current->origin;
+				return PG_INPUT_PENDING;
+			}
 			if (work->index >= current->operand_count) return PG_INPUT_UNAVAILABLE;
 			work->result = current->operands[work->index];
 			if (work->result->context != current->context &&

@@ -622,7 +622,11 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_evidence_subject(converted)->core == pg_evidence_subject(quoted_function)->core);
 	assert(pg_evidence_subject(converted)->classifier == new_classifier);
 	assert(pg_evidence_subject(quoted_function)->classifier == old_classifier);
-	assert(pg_evidence_subject(converted)->operands[0] == pg_evidence_subject(quoted_function)->operands[0]);
+	assert(pg_evidence_subject(converted)->origin == pg_evidence_subject(quoted_function));
+	assert(!pg_evidence_subject(converted)->operand_count);
+	struct pg_occurrence_input *converted_input = pg_occurrence_input_request(&typing, pg_evidence_subject(converted), 0);
+	while (pg_occurrence_input_advance(converted_input, 1) == PG_INPUT_PENDING) {}
+	assert(pg_occurrence_input_result(converted_input) == pg_evidence_subject(quoted_function)->operands[0]);
 	assert(pg_evidence_conversion(converted) == certificate);
 	assert(pg_evidence_premise(converted, 0) == quoted_function);
 	assert(pg_evidence_premise(converted, 1) == upi_z);
@@ -632,6 +636,21 @@ static void evidence_test(struct pg_graph *graph)
 	assert(!pg_prove_conversion(&typing, quoted_function, ufa, certificate));
 	assert(!pg_prove_conversion(&typing, quoted_function, pi_z, certificate));
 	assert(pg_prove_application(&typing, pg_prove_force(&typing, converted), x_term));
+	assert(pg_whnf_work_init(&work, graph) == 0);
+	assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(identity_y), pg_evidence_subject(pi_z)->core) == 0);
+	while (pg_conversion_advance(&comparison, 1) == PG_CONVERSION_PENDING) {}
+	const struct pg_evidence *converted_lambda = pg_prove_conversion(&typing, identity_y, pi_z,
+		pg_conversion_certificate(&comparison));
+	pg_conversion_destroy(&comparison);
+	pg_whnf_work_destroy(&work);
+	assert(converted_lambda && pg_evidence_subject(converted_lambda)->origin == pg_evidence_subject(identity_y));
+	assert(pg_occurrence_scoped_input(pg_evidence_subject(converted_lambda), 0) == pg_evidence_subject(return_y));
+	const struct pg_evidence *construction_map = NULL;
+	size_t construction_proofs = typing.proofs.count, construction_subjects = typing.occurrences.count;
+	for (size_t i = 0; i < 100; ++i)
+		assert(pg_prove_construction_origin(&typing, &classifiers, converted_lambda, &construction_map) == identity_y);
+	assert(!construction_map && typing.proofs.count == construction_proofs && typing.occurrences.count == construction_subjects);
+	reconstruct_derivation(&typing, &classifiers, converted_lambda);
 	const struct pg_evidence *folded = pg_prove_fold(&typing, &classifiers, returned, identity_y);
 	assert(folded && pg_evidence_classifier(folded) == pg_evidence_classifier(returned));
 	assert(!pg_prove_fold(&typing, &classifiers, x_term, identity_y));
@@ -4066,9 +4085,17 @@ static void totality_classifier_test(struct pg_graph *graph)
 	assert(!pg_computation_type(&classifiers, (enum pg_totality)-1, empty, pg_evidence_subject(a)->core));
 	assert(!pg_prove_effect_subsumption(&typing, returned[0], types[1]));
 	const struct pg_evidence *weakened = pg_prove_effect_subsumption(&typing, returned[1], types[0]);
-	/* Distinct proofs of one classified structure retain their premises. */
-	assert(weakened && pg_evidence_subject(weakened) == pg_evidence_subject(returned[0]));
+	/* Widening retains the total construction, rather than replacing its inputs
+	 * with those of a separately constructed partial Return. */
+	assert(weakened && pg_evidence_subject(weakened)->origin == pg_evidence_subject(returned[1]));
+	assert(!pg_evidence_subject(weakened)->operand_count);
+	assert(pg_evidence_classifier(weakened) == pg_evidence_classifier(returned[0]));
 	assert(weakened != returned[0] && pg_evidence_premise(weakened, 0) == returned[1]);
+	const struct pg_evidence *environment = NULL;
+	size_t proof_count = typing.proofs.count, subject_count = typing.occurrences.count;
+	assert(pg_prove_construction_origin(&typing, &classifiers, weakened, &environment) == returned[1]);
+	assert(!environment && typing.proofs.count == proof_count && typing.occurrences.count == subject_count);
+	reconstruct_derivation(&typing, &classifiers, weakened);
 	const struct pg_evidence *pure_value = pg_prove_total_pure_value(&typing, returned[1]);
 	assert(pure_value && pg_evidence_judgement(pure_value) == PG_JUDGEMENT_VALUE);
 	assert(pg_prove_total_pure_value(&typing, returned[1]) == pure_value);

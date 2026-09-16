@@ -301,7 +301,8 @@ the complete matrix at R5, including retained/recomputed image modes.
 | Type case | Scrutinee and branch families | These are type-valued branches, not runtime handler clauses. Checking still needs the nominal declaration and branch telescopes |
 | Identity/termination formation and witness | Explicit family/type, endpoint or suspended-term inputs, as appropriate to the owner | Logical construction inputs are not interchangeable with erased APP operands; endpoint-type inversion retains its relation witness. Interpret a view only after validating its semantic owner |
 | Selected family Identity/action | Family, paths, endpoints and two context maps; action source and formed Identity | Selected maps and typed scopes are retained independently of which accepted derivation is used; no equality reflection |
-| Type/value view, conversion, widening | Unchanged construction children | Different conclusion boundary, not resynthesized operands |
+| Type/value view | Unchanged construction children | Sort views retain the construction; remaining copies are still cleanup work |
+| Conversion, widening | Original typed subject and target formation; no copied operands | Reference the original construction even if only the classifier formation changes, not its Core. Attaching descriptive formation metadata during image read is a separate operation |
 | Projection/reindex | Origin and typed context map; no direct operands | Effective inputs use shared context action, lifting under actual lexical binders. A substituted variable selects its typed image |
 | Pi/F/U type-component inversion | Source, selected ordinal, optional typed argument | Explicit selection recipe, not the result's children. A scoped codomain is instantiated by the argument, or restricted when constant |
 | Pure normalization and term-content inversion | Origin without stale direct operands | Result recipe, not immediate result structure. Congruent NF exposes checked direct and mapped inputs through shared input queries and receipts. Head-changing results and budgeted certification remain open |
@@ -331,7 +332,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `classifier_leaf` | Deleted |
 | `classifier_recovery_step` | Uses the shared typed classifier query; separate map stack removed. Variable/Universe formation and final synchronous certification remain legitimate checks |
 | `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
-| `typed_construction` | Still re-establishes introductions from copied inputs after classifier-boundary changes. Preserve the original typed construction at that boundary before removing this reconstruction; do not replace it with erased-Core proof search |
+| `typed_construction` | Deleted in R30. Conversion/widening retain their source typed use; checked construction access retrieves its existing evidence rather than reconstructing introductions. Sort views and term-content boundaries still have copies; this is not completion of all structural recovery |
 | `action.c:origin_step` | Reads typed origins/maps; does not reinterpret derivation wrappers |
 | `derivation.c:pg_prove_derivation` | Intentionally retained: verifies rule inputs rather than interpreting program structure |
 
@@ -1629,3 +1630,50 @@ Sequential O0 QuickSort: R28 **1.0920 s / 276012 KiB**, R29
 These single samples do not establish a speedup or resolve the baseline memory
 regression. Logs: `/tmp/a-program-typed-structure-r29-debug.log` and
 `/tmp/a-program-typed-structure-r29-san-{core,iadt,synthesis,quicksort}.log`.
+
+### 2026-09-17: Retain classifier-boundary origins (R30)
+
+- [x] Conversion and effect widening reference their original typed use and
+  the target formation, rather than copying the program inputs. Exact reuse
+  of the same formation returns the existing subject. A different formation
+  is retained even when its Core is identical to the previous classifier.
+- [x] Keep `pg_occurrence_classified` as descriptive formation attachment for
+  image loading and new inversion records. `pg_occurrence_reclassified`
+  describes the checked boundary change instead. Neither function accepts
+  evidence. Combining these operations would add spurious origins on readback
+  or lose the original introduction on conversion.
+- [x] Delete `typed_construction`, including its duplicated Lambda, Match,
+  APP, F/U and Fold introduction reconstruction. Construction lookup now uses
+  the exact original typed subject's accepted evidence. This is not a search
+  for an arbitrary proof sharing erased Core, nor a replacement of alternative
+  derivations by one canonical proof.
+- [x] Let scoped and general input queries follow unchanged-Core boundaries.
+  During context restriction, skip only boundaries preserving Core,
+  classifier and sort; other conversions still require checking.
+- [x] Add direct tests for converted Lambda scope, widening origin, repeated
+  construction lookup without new accepted records, and fresh-process inert
+  images whose classifier Core is unchanged but formation identity differs.
+  Existing tests exposed two missed consumers: saved Match branch scopes and
+  restriction of converted parameter images in direct List recursion. Both
+  are fixed without relaxing their assertions. The branch-name collision
+  fixture continues to be unsupported, rather than silently losing branches.
+- [x] Full debug acceptance passed (63/63 compatibility and all final
+  QuickSort source/image results). ASan/UBSan Core, IADT, synthesis, occurrence
+  IO, saved Match scope and imported QuickSort passed. `git diff --check`
+  passed. An R29 retained typed Match image was also resaved by R30 and passed
+  both retained checking and recomputation; no wire grammar/version changed.
+
+Against `83ef616`: `evidence.c` +10/-66, `typing.c` +16/-1, `typing.h` +5/-1:
+implementation/header net **-37**, cumulative **+1473** against `4657cc6`.
+Tests: `core.c` +30/-3, `occurrence_io.c` +12/-3, net **+36**. This deletes
+one real reconstruction path, but does not meet the whole-change reduction
+gate. Constructor reconstruction, sort/content boundary copies, generalized
+typed reduction exposure and synchronous certification remain open.
+
+Sequential O0 QuickSort: R29 **1.0638 s / 275996 KiB**, R30
+**1.0753 s / 275944 KiB**, both **131899** Solve transitions. R30 retained
+**179313 Terms / 415798 typed subjects / 435044 proofs / 537 body requests**,
+with 3497 structural input requests. These single samples show no established
+speedup and do not resolve the baseline memory regression. Logs:
+`/tmp/a-program-typed-structure-r30-debug.log` and
+`/tmp/a-program-typed-structure-r30-san-{core,iadt,synthesis,occurrence,match,quicksort}.log`.

@@ -104,8 +104,12 @@ const struct pg_occurrence *pg_occurrence_typed(struct pg_typing *typing,
 	enum pg_evidence_judgement judgement, const struct pg_term *core,
 	const struct pg_occurrence *type, const struct pg_term *annotation,
 	size_t operand_count, const struct pg_occurrence *const *operands);
-/* Select a formed classifier while retaining the term's construction. */
+/* Attach a formation to a descriptive record, including inert image inputs. */
 const struct pg_occurrence *pg_occurrence_classified(struct pg_typing *typing,
+	const struct pg_occurrence *source, const struct pg_occurrence *type);
+/* Describe a changed judgement boundary by referencing the original typed use,
+ * without copying its operands. Neither API accepts a derivation. */
+const struct pg_occurrence *pg_occurrence_reclassified(struct pg_typing *typing,
 	const struct pg_occurrence *source, const struct pg_occurrence *type);
 /* Scoped construction inputs (for example selected Identity boundaries), not
  * an action on the entire subject. Their roles belong to the semantic owner. */
