@@ -3297,18 +3297,9 @@ static int structural_input(struct pg_typing *typing, const struct pg_occurrence
 		const struct pg_evidence *proof;
 		if (frames->reduction) proof = normalized_input(typing, input, frames->reduction);
 		else {
-			const struct pg_context_map *map = frames->source->map;
-			const struct pg_evidence *action = pg_prove_context_map(typing, map);
-			if (input->context != map->source) {
-				if (!input->context || input->context->parent != map->source) goto done;
-				const struct pg_term *core = frames->source->core, *domain, *body;
-				const struct pg_object *binder;
-				if (core->kind == PG_LAMBDA && !index) binder = core->as.lambda.binder;
-				else if (index != 1 || !pg_pi_view(core, &domain, &binder, &body)) goto done;
-				action = pg_prove_substitution_lift(typing, action,
-					conclusion_first(typing, PG_JUDGEMENT_CONTEXT, input->context), binder);
-			}
-			proof = pg_prove_reindex(typing, action, pg_prove_structural_subject(typing, input));
+			struct pg_occurrence_input *action = pg_occurrence_input_reindex_request(typing, frames->source, index, input);
+			while (pg_occurrence_input_advance(action, 1024) == PG_INPUT_PENDING) {}
+			proof = pg_prove_structural_subject(typing, pg_occurrence_input_result(action));
 		}
 		if (!proof) goto done;
 		input = pg_evidence_subject(proof);

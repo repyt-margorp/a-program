@@ -327,6 +327,7 @@ checkpoint notes below are historical, not additional completion claims.
 |---|---|
 | Evidence classifier/context/sort copies | Removed for term conclusions |
 | Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
+| Normalized-input context action | R42 removes Evidence's private Lambda/Pi lifting path. Already exposed normalized inputs use the existing indexed input work, including its effective-scope allocation and ordinary structural certification. Normalization receipt selection/frames are still synchronous and remain to migrate |
 | `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R37 adds nonrecursive Match branch selection and shared computed-scrutinee dependencies. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
@@ -2149,3 +2150,38 @@ normalized/mapped-result adapter, and `rebase_image`/selected formations retain
 checked reconstruction work. Do not delete these before their replacements
 handle dependent result classifiers and retained image evidence. Main remains
 unpublished until the original completion and net-negative gates are met.
+
+### 2026-09-17: Share context action for normalized inputs (R42)
+
+- [x] Remove the manual Lambda/Pi binder selection, scope lifting and reindex
+  path from `structural_input`. Route an already exposed normalized child
+  through the existing indexed `pg_occurrence_input` work. No additional
+  graph, acceptance store, Core tag or image format is introduced.
+- [x] Include the supplied child in the exact request key. Direct inspection
+  and action on a normalized input must not share an answer merely because
+  their parent/index agree. Scope lifting, projection and substitution remain
+  one implementation. The caller still establishes that the supplied child
+  belongs to the source input; descriptive allocation cannot establish this.
+- [x] Check zero/chunked budgets, repeated request identity, unchanged work
+  counters after completion, no evidence publication by structural queries,
+  and exact Core/classifier/Context agreement for mapped normalized Lambda
+  bodies and thunk contents. Invalid entry arguments reject.
+- [x] Full debug acceptance passed, including 63/63 compatibility and final
+  QuickSort source/image results. ASan/UBSan Core, IADT, Identity, synthesis
+  and imported QuickSort passed.
+
+Sequential O0 QuickSort: 1.1323 seconds / 278612 KiB / 132053 transitions.
+Counts remain 178454 Terms / 416930 typed subjects / 434774 proofs / 3458
+input requests, unchanged from R41. This example does not exercise the new
+normalized-input request; the direct Core and constructor-field tests do.
+No speedup is claimed. Logs: `/tmp/a-program-typed-structure-r42-debug.log`,
+`/tmp/a-program-typed-structure-r42-{core,iadt,quicksort}.log`, and
+`/tmp/a-program-typed-structure-r42-san-{core,iadt,identity,synthesis,quicksort}.log`.
+
+Against `a67afbf`, implementation/header: `evidence.c` +3/-12, `typing.c`
++20/-9 and `typing.h` +5/-0; net **+7**, cumulative **+1727** against
+`4657cc6`. `tests/core.c` adds 19 lines. This is a path consolidation, not
+completion of R2-R5 or satisfaction of the net-negative gate. The receipt
+selection and temporary normalization frames in `structural_input` remain;
+head-changing and dependent normalized results must not be presented as
+fully exposed typed structure. Main remains unpublished.

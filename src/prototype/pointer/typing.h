@@ -209,6 +209,11 @@ struct pg_occurrence_input *pg_occurrence_input_request(struct pg_typing *typing
  * parent. Scoped binders may differ from a separately mapped closed Core. */
 struct pg_occurrence_input *pg_occurrence_input_mapped_request(struct pg_typing *typing,
 	const struct pg_occurrence *source, size_t index, const struct pg_context_map *map);
+/* Apply a mapped parent's action to an already exposed input, including a
+ * normalized one. Uses the same scoped lifting as direct input queries.
+ * The caller checks the child's relation to the parent's original input. */
+struct pg_occurrence_input *pg_occurrence_input_reindex_request(struct pg_typing *typing,
+	const struct pg_occurrence *source, size_t index, const struct pg_occurrence *child);
 struct pg_occurrence_input *pg_occurrence_type_request(struct pg_typing *typing,
 	const struct pg_occurrence *source);
 /* The budget includes transitions of selected-input dependencies; nested

@@ -553,11 +553,23 @@ static void evidence_test(struct pg_graph *graph)
 				pg_prove_reindex(&typing, nf_map, normal)};
 			for (size_t j = 0; j < 2; ++j) {
 				assert(wrapped[j]);
+				const struct pg_occurrence *parent = pg_evidence_subject(wrapped[j]);
+				struct pg_occurrence_input *moved_input = pg_occurrence_input_reindex_request(&typing,
+					parent, 0, pg_evidence_subject(input));
+				proofs = typing.proofs.count;
+				assert(pg_occurrence_input_advance(moved_input, 0) == PG_INPUT_PENDING);
+				while (pg_occurrence_input_advance(moved_input, j ? 64 : 1) == PG_INPUT_PENDING)
+					assert(pg_occurrence_input_steps(moved_input) < 100000);
+				const struct pg_occurrence *moved = pg_occurrence_input_result(moved_input);
+				assert(moved && typing.proofs.count == proofs);
 				struct pg_nf_job *again = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(wrapped[j])->core);
 				while (pg_nf_advance(again, j ? 64 : 1) == PG_NF_PENDING) assert(pg_nf_steps(again) < 100000);
 				const struct pg_reduction_certificate *again_receipt = pg_nf_certificate(again);
 				const struct pg_evidence *child = pg_prove_normalization_input(&typing, wrapped[j], again_receipt, 0);
 				assert(child);
+				assert(moved->core == pg_evidence_subject(child)->core);
+				assert(moved->context == pg_evidence_context(child));
+				assert(moved->classifier == pg_evidence_classifier(child));
 				if (i == 2) {
 					const struct pg_term *lambda = pg_nf_result(again);
 					assert(lambda->kind == PG_LAMBDA && pg_evidence_subject(child)->core == lambda->as.lambda.body);
@@ -569,11 +581,18 @@ static void evidence_test(struct pg_graph *graph)
 				}
 				reconstruct_derivation(&typing, &classifiers, child);
 				proofs = typing.proofs.count; occurrences = typing.occurrences.count;
+				uint64_t moved_steps = pg_occurrence_input_steps(moved_input);
+				assert(pg_occurrence_input_reindex_request(&typing, parent, 0, pg_evidence_subject(input)) == moved_input);
+				assert(pg_occurrence_input_advance(moved_input, 64) == PG_INPUT_READY);
+				assert(pg_occurrence_input_steps(moved_input) == moved_steps);
 				assert(pg_prove_normalization_input(&typing, wrapped[j], again_receipt, 0) == child);
 				assert(typing.proofs.count == proofs && typing.occurrences.count == occurrences);
 			}
 		}
 	}
+	assert(!pg_occurrence_input_reindex_request(&typing, pg_evidence_subject(suspended_app), 0, pg_evidence_subject(app)));
+	assert(!pg_occurrence_input_reindex_request(&typing, pg_evidence_subject(normal_inputs[3]), 0, NULL));
+	assert(!pg_occurrence_input_reindex_request(&typing, pg_evidence_subject(normal_inputs[3]), SIZE_MAX, pg_evidence_subject(app)));
 	struct pg_nf_job *beta_nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(app)->core);
 	assert(pg_nf_advance(beta_nf, 100000) == PG_NF_DONE);
 	assert(!pg_reduction_congruence(pg_nf_certificate(beta_nf)));

@@ -737,7 +737,7 @@ struct input_scope {
 struct pg_occurrence_input {
 	struct pg_index_entry entry;
 	struct pg_typing *typing;
-	const struct pg_occurrence *source, *current, *result;
+	const struct pg_occurrence *source, *current, *result, *child;
 	const struct pg_context_map *outer;
 	size_t index;
 	struct input_map *maps;
@@ -752,20 +752,24 @@ struct pg_occurrence_input {
 };
 
 static struct pg_occurrence_input *input_request(struct pg_typing *typing,
-	const struct pg_occurrence *source, size_t index, const struct pg_context_map *map)
+	const struct pg_occurrence *source, size_t index, const struct pg_context_map *map,
+	const struct pg_occurrence *child)
 {
 	if (!source || !source->classifier) return NULL;
-	if (map && map->source != source->context) return NULL;
+	if (map && map->source != (child ? source->origin->context : source->context)) return NULL;
 	uint64_t hash = ((uintptr_t)source ^ index) * UINT64_C(1099511628211);
 	hash = (hash ^ (uintptr_t)map) * UINT64_C(1099511628211);
+	hash = (hash ^ (uintptr_t)child) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *p = pg_index_candidates(&typing->occurrence_inputs, hash); p; p = p->next) {
 		struct pg_occurrence_input *work = (void *)p;
-		if (p->hash == hash && work->source == source && work->index == index && work->outer == map) return work;
+		if (p->hash == hash && work->source == source && work->index == index && work->outer == map && work->child == child) return work;
 	}
 	struct pg_occurrence_input *work = pg_alloc(typing->graph, sizeof(*work));
 	if (!work) return NULL;
 	work->typing = typing;
-	work->source = work->current = source;
+	work->source = source;
+	work->current = child ? NULL : source;
+	work->child = work->result = child;
 	work->index = index;
 	work->outer = map;
 	if (map) {
@@ -779,13 +783,20 @@ static struct pg_occurrence_input *input_request(struct pg_typing *typing,
 struct pg_occurrence_input *pg_occurrence_input_request(struct pg_typing *typing,
 	const struct pg_occurrence *source, size_t index)
 {
-	return index == SIZE_MAX ? NULL : input_request(typing, source, index, NULL);
+	return index == SIZE_MAX ? NULL : input_request(typing, source, index, NULL, NULL);
 }
 
 struct pg_occurrence_input *pg_occurrence_input_mapped_request(struct pg_typing *typing,
 	const struct pg_occurrence *source, size_t index, const struct pg_context_map *map)
 {
-	return map && index != SIZE_MAX ? input_request(typing, source, index, map) : NULL;
+	return map && index != SIZE_MAX ? input_request(typing, source, index, map, NULL) : NULL;
+}
+
+struct pg_occurrence_input *pg_occurrence_input_reindex_request(struct pg_typing *typing,
+	const struct pg_occurrence *source, size_t index, const struct pg_occurrence *child)
+{
+	if (!source || !source->map || !child || !child->classifier || index == SIZE_MAX) return NULL;
+	return input_request(typing, source, index, source->map, child);
 }
 
 struct pg_occurrence_input *pg_occurrence_type_request(struct pg_typing *typing,
@@ -793,7 +804,7 @@ struct pg_occurrence_input *pg_occurrence_type_request(struct pg_typing *typing,
 {
 	/* No operand array can have this index; the same scoped edge machinery
 	 * handles the classifier without another work graph or source of truth. */
-	return input_request(typing, source, SIZE_MAX, NULL);
+	return input_request(typing, source, SIZE_MAX, NULL, NULL);
 }
 
 /* The semantic owner exposes the same lexical binding carried by Core.
@@ -851,7 +862,7 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 			return PG_INPUT_PENDING;
 		}
 		if (current->selection && work->index != SIZE_MAX) {
-			if (!work->selected) work->selected = input_request(typing, current->origin, current->selection - 1, NULL);
+			if (!work->selected) work->selected = input_request(typing, current->origin, current->selection - 1, NULL, NULL);
 			if (!work->selected) return PG_INPUT_ERROR;
 			enum pg_occurrence_input_status status = work->selected->status;
 			if (status != PG_INPUT_READY) return status;
