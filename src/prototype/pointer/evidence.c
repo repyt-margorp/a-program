@@ -1886,9 +1886,8 @@ static const struct pg_evidence *computation_construction(struct pg_typing *typi
 		return pg_prove_variable(typing, conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context), core->as.reference);
 	if (core->kind == PG_LAMBDA) {
 		if (subject->operand_count != 1) return NULL;
-		const struct pg_occurrence *body = subject->operands[0];
-		if (!body->context || body->context->parent != subject->context ||
-			body->context->binder != core->as.lambda.binder || body->core != core->as.lambda.body) return NULL;
+		const struct pg_occurrence *body = pg_occurrence_scoped_input(subject, 0);
+		if (!body) return NULL;
 		return pg_prove_abstract(typing, classifiers,
 			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context),
 			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, body->context), pg_prove_structural_subject(typing, body));

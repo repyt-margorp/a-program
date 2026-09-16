@@ -249,6 +249,19 @@ static void context_test(struct pg_graph *graph)
 	assert(lambda_a == pg_occurrence(&typing, PG_JUDGEMENT_INPUT, NULL, identity, NULL, NULL, 1, &body_a));
 	assert(lambda_a->operands[0]->context == in_a);
 	assert(lambda_b->operands[0]->context == in_b);
+	assert(pg_occurrence_scoped_input(lambda_a, 0) == body_a);
+	assert(pg_occurrence_scoped_input(lambda_b, 0) == body_b);
+	assert(!pg_occurrence_scoped_input(NULL, 0));
+	assert(!pg_occurrence_scoped_input(lambda_a, 1));
+	const struct pg_occurrence *wrong_binder = pg_occurrence(&typing, PG_JUDGEMENT_INPUT, NULL,
+		pg_lambda(graph, y, vx), NULL, NULL, 1, &body_a);
+	const struct pg_occurrence *wrong_body = pg_occurrence(&typing, PG_JUDGEMENT_INPUT, NULL,
+		pg_lambda(graph, x, a), NULL, NULL, 1, &body_a);
+	const struct pg_occurrence *wrong_scope = pg_occurrence(&typing, PG_JUDGEMENT_INPUT, in_a,
+		identity, NULL, NULL, 1, &body_a);
+	assert(!pg_occurrence_scoped_input(wrong_binder, 0));
+	assert(!pg_occurrence_scoped_input(wrong_body, 0));
+	assert(!pg_occurrence_scoped_input(wrong_scope, 0));
 	const struct pg_occurrence *annotated = pg_occurrence(&typing, PG_JUDGEMENT_INPUT, in_a, vx, NULL, a, 0, NULL);
 	assert(annotated && annotated != body_a);
 	assert(annotated->annotation == a);
@@ -298,6 +311,8 @@ static void context_test(struct pg_graph *graph)
 	assert(pg_occurrence_input_result(input) == typed_a);
 	const struct pg_occurrence *derived = pg_occurrence_derived(&typing, parent, PG_JUDGEMENT_VALUE, vx, a);
 	assert(derived && !derived->operand_count && derived->origin == parent && !derived->map);
+	assert(!pg_occurrence_scoped_input(deep, 0));
+	assert(!pg_occurrence_scoped_input(derived, 0));
 	input = pg_occurrence_input_request(&typing, derived, 0);
 	assert(pg_occurrence_input_advance(input, 10) == PG_INPUT_UNAVAILABLE);
 	assert(pg_occurrence_input_advance(NULL, 10) == PG_INPUT_ERROR);
@@ -1241,6 +1256,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(ufa_instance && pg_evidence_judgement(ufa_instance) == PG_JUDGEMENT_VALUE_TYPE);
 	assert(pg_evidence_subject(ufa_instance)->core == pg_thunk_type(&classifiers, pg_evidence_subject(fa_instance)->core));
 	const struct pg_evidence *source_pi = pg_prove_pi(&typing, &classifiers, source_extension, fa_extended);
+	assert(pg_occurrence_scoped_input(pg_evidence_subject(source_pi), 1) == pg_evidence_subject(fa_extended));
 	assert(pg_evidence_subject(source_pi)->operands[0] == pg_evidence_subject(pg_prove_value_type(&typing, a_in_source)));
 	const struct pg_evidence *source_lambda = pg_prove_lambda(&typing, source_pi,
 		pg_prove_return(&typing, &classifiers, source_p));
@@ -1270,6 +1286,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_evidence_subject(moved_lambda)->annotation == pg_reference(graph, b));
 	pg_reindex_destroy(&split);
 	const struct pg_evidence *moved_pi = pg_prove_reindex(&typing, sigma, source_pi);
+	assert(!pg_occurrence_scoped_input(pg_evidence_subject(moved_pi), 1));
 	const struct pg_evidence *codomain = pg_prove_pi_codomain(&typing, moved_pi, destination_y);
 	assert(codomain && pg_evidence_subject(codomain)->core == pg_return_type(&classifiers, pg_reference(graph, b)));
 	assert(pg_evidence_classifier(codomain) == pg_evidence_classifier(moved_pi));

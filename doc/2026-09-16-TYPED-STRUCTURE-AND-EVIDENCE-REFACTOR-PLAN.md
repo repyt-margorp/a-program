@@ -1091,3 +1091,27 @@ speedup claim. `pi_component`, `inductive_recovery_step` and `rebase_image`
 still recover structure from receipt history; replacing their scope-action
 payload does not complete their removal or shared budgeted normalization.
 R0-R5 aggregate completion and Main publication remain outstanding.
+
+### 2026-09-17: Source allocation scopes from typed binder inputs
+
+- [x] Share direct Lambda/Pi binder-edge validation through
+  `pg_occurrence_scoped_input`. It checks the exact parent context, binder and
+  Core body; it describes structure without granting acceptance. Mapped and
+  derived inputs still use the existing budgeted structural request.
+- [x] Recover source Match branch and handler payload/resumption scopes from
+  their typed Lambda inputs, rather than peeling conversion receipts and
+  indexing Lambda/Pi premises. Keep recursive erasure clause scopes separate:
+  induction allocation clauses are not necessarily the original source
+  branch scopes and cannot replace those binders.
+- [x] Test distinct typed identity bodies, mismatched binders/bodies/parents,
+  mapped and derived records, and direct versus reindexed Pi bodies.
+- [x] Full debug acceptance passed, including 63/63 compatibility and
+  source/image QuickSort properties. ASan/UBSan Core, synthesis, one/two-clause
+  handler image reconstruction and imported QuickSort compilation passed.
+  QuickSort used 154851 Solve transitions. `git diff --check` passed.
+
+Against `57fc128`, implementation/header changes are `evidence.c` +2/-3,
+`synthesis.c` +25/-33, `typing.c` +14/-7, and `typing.h` +5/-0: **+3 net**.
+Tests add 17 lines. Cumulative implementation growth is **+1163**. This does
+not complete the remaining formation/normalization migration or the R5
+net-negative gate; Main remains unpublished.

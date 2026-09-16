@@ -156,6 +156,11 @@ enum pg_substitution_status pg_occurrence_action_advance(struct pg_occurrence_ac
 const struct pg_occurrence *pg_occurrence_action_result(const struct pg_occurrence_action *work);
 uint64_t pg_occurrence_action_steps(const struct pg_occurrence_action *work);
 
+/* Inspect a direct Lambda/Pi scoped input with exact Core/binder agreement.
+ * No context action or acceptance is performed; mapped/derived inputs need
+ * the budgeted query below. NULL means this direct edge is not exposed. */
+const struct pg_occurrence *pg_occurrence_scoped_input(const struct pg_occurrence *source,
+	size_t index);
 /* Read a construction input, applying retained maps lazily. Lambda bodies and
  * Pi codomains use the target Core binder, freshened if it collides with the
  * destination context. The closed binder/body remains alpha-equivalent to the

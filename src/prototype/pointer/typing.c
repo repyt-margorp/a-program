@@ -591,6 +591,18 @@ static const struct pg_object *input_binder(const struct pg_term *core, size_t i
 	return index == 1 && pg_pi_view(core, &domain, &binder, body) ? binder : NULL;
 }
 
+const struct pg_occurrence *pg_occurrence_scoped_input(const struct pg_occurrence *source,
+	size_t index)
+{
+	if (!source || source->origin || index >= source->operand_count) return NULL;
+	const struct pg_occurrence *input = source->operands[index];
+	const struct pg_context *scope = input->context;
+	if (!scope || scope->parent != source->context) return NULL;
+	const struct pg_term *body;
+	const struct pg_object *binder = input_binder(source->core, index, &body);
+	return binder && scope->binder == binder && input->core == body ? input : NULL;
+}
+
 static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrence_input *work)
 {
 	struct pg_typing *typing = work->typing;
@@ -624,13 +636,8 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 			if (current->origin) return PG_INPUT_UNAVAILABLE;
 			if (work->index >= current->operand_count) return PG_INPUT_UNAVAILABLE;
 			work->result = current->operands[work->index];
-			if (work->result->context != current->context) {
-				const struct pg_context *scope = work->result->context;
-				if (!scope || scope->parent != current->context) return PG_INPUT_UNAVAILABLE;
-				const struct pg_term *body;
-				if (scope->binder != input_binder(current->core, work->index, &body)) return PG_INPUT_UNAVAILABLE;
-				if (work->result->core != body) return PG_INPUT_UNAVAILABLE;
-			}
+			if (work->result->context != current->context &&
+				!pg_occurrence_scoped_input(current, work->index)) return PG_INPUT_UNAVAILABLE;
 			work->current = NULL;
 		}
 		return PG_INPUT_PENDING;

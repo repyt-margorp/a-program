@@ -4714,14 +4714,13 @@ static void handler_clause_step(struct pg_synthesis *synthesis, struct pg_synthe
 		if (job->allocation_origin) {
 			if (job->allocation_origin->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->allocation_origin); return; }
 			if (job->allocation_origin->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->allocation_origin->status); return; }
-			const struct pg_evidence *lambda = job->allocation_origin->result;
-			if (pg_evidence_rule(lambda) != PG_LAMBDA_INTRO) goto rejected;
-			input.payload = pg_evidence_subject(lambda)->core->as.lambda.binder;
-			lambda = pg_evidence_premise(lambda, 1);
-			if (pg_evidence_rule(lambda) != PG_LAMBDA_INTRO) goto rejected;
-			input.resume = pg_evidence_subject(lambda)->core->as.lambda.binder;
-			const struct pg_evidence *pi = pg_evidence_premise(lambda, 0);
-			const struct pg_context *saved = pg_evidence_context(pg_evidence_premise(pi, 0));
+			const struct pg_occurrence *lambda = pg_evidence_subject(job->allocation_origin->result);
+			const struct pg_occurrence *inner = pg_occurrence_scoped_input(lambda, 0);
+			const struct pg_occurrence *body = pg_occurrence_scoped_input(inner, 0);
+			if (!body) goto rejected;
+			input.payload = inner->context->binder;
+			input.resume = body->context->binder;
+			const struct pg_context *saved = body->context;
 			const struct pg_term *function, *domain, *codomain;
 			if (!pg_thunk_type_view(saved->declared_type, &function) ||
 				!pg_pi_view(function, &domain, &input.response, &codomain)) goto rejected;
@@ -5014,28 +5013,21 @@ static struct pg_synthesis_job *projected_image(struct pg_synthesis *synthesis,
 	return pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
 }
 
-/* The stored derivation is checked by ordinary Solve. Its Lambda contexts
- * supply allocation identity only; source bodies are still synthesized. */
-static const struct pg_evidence *source_match_branch_context(const struct pg_synthesis_job *job,
-	size_t ordinal, size_t count)
+/* Source binders belong to the branch's typed Lambda edges, not the separate
+ * recursive-erasure allocation. Ordinary Solve still checks the source body. */
+static int source_match_branch_context(const struct pg_synthesis_job *job,
+	size_t ordinal, size_t count, const struct pg_context **context)
 {
 	const struct pg_evidence *origin = pg_synthesis_result(job->allocation_origin);
-	if (!origin || pg_evidence_rule(origin) != PG_INDUCTION_ELIM) return NULL;
-	if (pg_evidence_premise_count(origin) < 6 || ordinal >= pg_evidence_premise_count(origin) - 6) return NULL;
-	const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(origin, 2), 1);
-	const struct pg_evidence *branch = pg_evidence_premise(origin, ordinal + 5);
+	const struct pg_induction_allocation *allocation = pg_evidence_induction_allocation(origin);
+	if (!allocation || ordinal >= allocation->count) return -1;
+	const struct pg_occurrence *branch = pg_evidence_subject(origin)->operands[ordinal + 1];
 	for (size_t i = 0; i < count; ++i) {
-		while (pg_evidence_rule(branch) == PG_TYPE_CONVERSION || pg_evidence_rule(branch) == PG_EFFECT_SUBSUMPTION)
-			branch = pg_evidence_premise(branch, 0);
-		if (pg_evidence_rule(branch) != PG_LAMBDA_INTRO) return NULL;
-		const struct pg_evidence *pi = pg_evidence_premise(branch, 0);
-		const struct pg_evidence *extension = pg_evidence_premise(pi, 0);
-		if (pg_evidence_rule(extension) != PG_CONTEXT_EXTEND ||
-			pg_evidence_context(extension)->parent != pg_evidence_context(context)) return NULL;
-		context = extension;
-		branch = pg_evidence_premise(branch, 1);
+		branch = pg_occurrence_scoped_input(branch, 0);
+		if (!branch) return -1;
 	}
-	return context;
+	*context = branch->context;
+	return 0;
 }
 
 static const struct pg_evidence *match_motive_context(struct pg_synthesis *synthesis,
@@ -5441,11 +5433,11 @@ static struct pg_synthesis_job *match_induction_scope(struct pg_synthesis *synth
 		if (recursive < 0 || (recursive && total == SIZE_MAX)) return NULL;
 		total += recursive != 0;
 	}
-	const struct pg_evidence *prefix = source_match_branch_context(job, ordinal, count);
-	const struct pg_evidence *end = source_match_branch_context(job, ordinal, total);
-	if (!prefix || !end) return NULL;
+	const struct pg_context *prefix, *end;
+	if (source_match_branch_context(job, ordinal, count, &prefix) ||
+		source_match_branch_context(job, ordinal, total, &end)) return NULL;
 	return pg_synthesis_induction_scope_at(synthesis, formation, constructor, parameters, context, type,
-		pg_evidence_context(prefix), pg_evidence_context(end));
+		prefix, end);
 }
 
 static struct pg_synthesis_job *match_induction_source(struct pg_synthesis *synthesis,
@@ -6195,10 +6187,10 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		if (pg_context_extension_size(pg_evidence_context(schema_fields),
 			pg_evidence_context(pg_evidence_premise(state->instance.formation, 0)), &field_count)) goto error;
 		if (job->allocation_origin) {
-			const struct pg_evidence *saved = source_match_branch_context(job, ordinal, field_count);
-			if (!saved || !pg_synthesis_constructor_scope_at(synthesis,
+			const struct pg_context *saved;
+			if (source_match_branch_context(job, ordinal, field_count, &saved) || !pg_synthesis_constructor_scope_at(synthesis,
 				pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
-				pg_synthesis_evidence(synthesis, state->instance.parameters), pg_evidence_context(context), pg_evidence_context(saved))) goto rejected;
+				pg_synthesis_evidence(synthesis, state->instance.parameters), pg_evidence_context(context), saved)) goto rejected;
 		}
 		struct pg_synthesis_job *scope_job = pg_synthesis_constructor_scope(synthesis,
 			pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
