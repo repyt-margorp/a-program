@@ -287,32 +287,36 @@ and child resource usage, not extra compiler instrumentation. Generated length
 property checking used 10950 Solve transitions both before and after. Repeat
 the complete matrix at R5, including retained/recomputed image modes.
 
-### Structural producer contracts for the next slice
+### Structural producer contracts (current audit)
 
 | Producer family | Current operands | Required interpretation |
 |---|---|---|
 | Universe, host leaf, variable, nominal family | None | Leaf; classifier/context remain part of the typed use |
-| APP, family APP, RETURN, THUNK, FORCE, request/fold | Direct construction inputs | Ordered children in the enclosing scope; handler bodies retain their own binders |
+| APP, family APP, RETURN, THUNK, FORCE | Direct construction inputs | Ordered children in the enclosing scope; each term introduction retains its classifier formation |
+| Request, zero-clause Fold, handler | Payload/continuation; input/continuation; input/return clause/operation clauses | Clause functions are typed inputs in the enclosing context. Their nested Lambda bodies retain lexical scopes; labels remain semantic-owner inputs |
 | Lambda/family abstraction | Body in an extended context | The body edge must retain its lexical extension when a map is lifted |
 | Pi | Checked value-domain formation, or declared family variable; checked codomain | Value domain is in the parent scope; family variable and codomain are in the extended scope. A logical signature is not an ordinary value type |
-| Constructor | Field occurrences | Preserve nominal schema and parameter substitution separately from executable fields |
-| Match/induction/type case | Scrutinee and branch occurrences | Preserve motive/indices, constructor branch telescope and recursive binder scopes |
-| Identity, termination, family action | Typed construction inputs | Keep the selected family and dependency maps; no equality reflection |
+| Constructor | Field occurrences and retained classifier formation | The classifier retains the instantiated nominal family. Recover its exact formation and parameter map through typed structure; fields are not read from arbitrary proof premises |
+| Match/induction | Scrutinee, branches, motive, nominal formation; parameter map | Motive and branch functions retain their own telescopes. Recursive allocation binders/clause contexts belong to the typed node, not a second Evidence payload |
+| Type case | Scrutinee and branch families | These are type-valued branches, not runtime handler clauses. Checking still needs the nominal declaration and branch telescopes |
+| Identity/termination formation and witness | Explicit family/type, endpoint or suspended-term inputs, as appropriate to the owner | Logical construction inputs are not interchangeable with erased APP operands; endpoint-type inversion retains its relation witness. Interpret a view only after validating its semantic owner |
+| Selected family Identity/action | Family, paths, endpoints and two context maps; action source and formed Identity | Selected maps and typed scopes are retained independently of which accepted derivation is used; no equality reflection |
 | Type/value view, conversion, widening | Unchanged construction children | Different conclusion boundary, not resynthesized operands |
-| Projection/reindex | Old children copied under a new parent | Replace with explicit scoped context action; not directly usable as current children |
-| Normalization and content/Pi inversions | Historical source operands | These are provenance, not the target's immediate semantic children |
+| Projection/reindex | Origin and typed context map; no direct operands | Effective inputs use shared context action, lifting under actual lexical binders. A substituted variable selects its typed image |
+| Pi/F/U type-component inversion | Source, selected ordinal, optional typed argument | Explicit selection recipe, not the result's children. A scoped codomain is instantiated by the argument, or restricted when constant |
+| Pure normalization and term-content inversion | Origin without stale direct operands | Result recipe, not immediate result structure. Shared/budgeted typed result exposure remains required |
 
-The last two rows prevent claiming that the current operand array is already
-the target structural graph. Next migrate these producers and their consumers
-together. Do not implement a new view by simply hiding their Evidence walks.
-In particular, substitution of a variable must expose the image's typed
-construction, not retain the variable's empty operand list. Under a Lambda,
-child context action must account for the binder chosen by Core substitution;
-changing every child to the destination context would capture lexical binders.
+The last row prevents claiming the migration is complete: the erased reducer
+can finish while the typed result still needs exposure. Preserve this distinction
+when adding result views; never reuse source operands under a changed Core.
+Pending synthesis rule inputs are still unaccepted requests. Their rule dispatch
+and `derivation.c`'s checking are not redundant stored program representations.
+In particular, do not remove either just because accepted structural consumers
+no longer need to walk Evidence wrappers.
 
 ### Deletion ledger
 
-Current state, updated after typed nominal recovery. Earlier
+Current state, updated after typed nominal recovery and structural rebasing. Earlier
 checkpoint notes below are historical, not additional completion claims.
 
 | Existing path | State / next action |
@@ -322,7 +326,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
 | `inductive_recovery_step` | Reads typed origins/maps, selections and computation inputs; exact nominal formation still requires accepted evidence. Nested synchronous helpers remain |
-| `rebase_image` | Remaining Evidence-history consumer; checked strengthening migration unfinished |
+| `rebase_image` | Reads typed maps/origins and constructor/family inputs; rechecks introductions in the target context. Retains normalization receipts and nominal formation checks, not wrapper-history dispatch; synchronous work remains |
 | `constructor_origin`, `pg_prove_elimination_body` | Read typed fields/motive/allocation; ordinary nominal acceptance still required |
 | `classifier_leaf` | Deleted |
 | `classifier_recovery_step` | Reads retained classifier/maps, with variable formation from its context; calls into synchronous certification remain |
@@ -1323,3 +1327,46 @@ budgeted typed normalization/exposure, the final producer/consumer audit and
 the full R5 gates. In particular, replacing receipt dispatch does not make
 the synchronous work inside each nominal recovery transition fully budgeted.
 No Main publication or aggregate completion is claimed at this checkpoint.
+
+### 2026-09-17: Checked rebasing from typed inputs
+
+- [x] Remove `rebase_image`'s Evidence-wrapper traversal and reconstruction
+  switch. Read retained context maps, returned-value origins, constructor
+  fields and family-application inputs from typed structure. Compose maps
+  through the ordinary substitution checker, preserving lexical dependencies.
+- [x] Re-establish each restricted introduction in the target context. Keep
+  exact nominal formation checks and the normalization receipt for an exact
+  typed source/result recipe. Type/value boundary changes still use ordinary
+  rules, and the final Core/classifier must agree with the requested image.
+- [x] Reuse accepted constructor introductions of the exact typed subject.
+  Route substitution composition through shared typed context action, then
+  certify its result only when no matching accepted result exists. This avoids
+  wrapping already accepted variable images in redundant REINDEX derivations;
+  no existing alternative derivation is removed or overwritten.
+- [x] Add positive/negative restriction tests: an irrelevant map image may
+  mention the removed binder, but a real constructor field may not. Test pure
+  normalization through a type/value boundary, repeated accepted-result reuse,
+  and identity/variable substitution composition. Existing tests remain enabled.
+- [x] Final debug `check-acceptance` passed, including 63/63 compatibility and
+  source/image QuickSort properties. Final ASan/UBSan Core, IADT, synthesis and
+  imported QuickSort checks passed. `git diff --check` passed.
+
+Against `2f310a6`, implementation (`evidence.c`) is **+110/-113, net -3**;
+tests are **+55/-0**. Cumulative implementation/header net is still **+1249**.
+The new structural restriction uses synchronous checked suboperations; it does
+not complete shared/budgeted typed result exposure or the net-negative gate.
+
+Sequential debug diagnostics, with the same imported QuickSort input:
+
+| Version | Elapsed seconds | Peak RSS, KiB | Solve transitions |
+|---|---|---|---:|
+| Initial baseline | 0.873 | 225096 | 149501 |
+| R22 | 1.046, 1.068 | 278520, 278564 | 132383 |
+| R23 before result reuse | 1.081 | 283092 | 132383 |
+| R23 final | 1.061, 1.095 | 276024, 276160 | 132370 |
+
+Result reuse eliminates the interim memory regression, but these short samples
+do not establish a wall-time improvement over R22. The cumulative time/memory
+regression against the initial baseline still requires the R5 review. Producer
+contracts above now distinguish actual construction inputs, logical inversion
+dependencies and result recipes; no phase is marked complete from tests alone.

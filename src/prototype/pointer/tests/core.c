@@ -1279,6 +1279,12 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *tau = pg_prove_substitution(&typing, destination, third, 2, second_images);
 	const struct pg_evidence *composite = pg_prove_substitution_compose(&typing, sigma, tau);
 	assert(composite);
+	assert(pg_prove_substitution_compose(&typing,
+		pg_prove_substitution_projection(&typing, source, source), sigma) == sigma);
+	assert(pg_prove_substitution_compose(&typing, sigma,
+		pg_prove_substitution_projection(&typing, destination, destination)) == sigma);
+	for (size_t i = 0; i < 2; ++i)
+		assert(pg_evidence_premise(composite, i + 2) == second_images[i]);
 	assert(!pg_prove_substitution_compose(&typing, tau, sigma));
 	const struct pg_evidence *once = pg_prove_reindex(&typing, composite, returned);
 	const struct pg_evidence *twice = pg_prove_reindex(&typing, tau, reindexed_return);

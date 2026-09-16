@@ -404,151 +404,140 @@ static struct scope_frame *scope_frame(struct pg_graph *storage,
 
 static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 	const struct pg_evidence *computation);
+static const struct pg_evidence *constructor_origin(struct pg_typing *typing,
+	const struct pg_evidence *value);
 
-static const struct pg_evidence *project_image(struct pg_typing *typing,
-	const struct pg_evidence *context, const struct pg_evidence *image,
-	const struct pg_term *core, const struct pg_term *classifier,
-	enum pg_evidence_judgement judgement)
+static const struct pg_evidence *image_boundary(struct pg_typing *typing,
+	const struct pg_evidence *result, const struct pg_occurrence *expected)
 {
-	const struct pg_evidence *result = pg_prove_projection(typing, context, image);
-	if (!result || pg_evidence_judgement(result) != judgement) return NULL;
-	if (pg_alpha_equal(pg_evidence_subject(result)->core, core) != 1) return NULL;
-	if (pg_alpha_equal(pg_evidence_subject(result)->classifier, classifier) != 1) return NULL;
+	if (!result) return NULL;
+	if (pg_evidence_judgement(result) != expected->judgement) {
+		if (expected->judgement == PG_JUDGEMENT_VALUE_TYPE) result = pg_prove_value_type(typing, result);
+		else if (expected->judgement == PG_JUDGEMENT_VALUE) result = pg_prove_type_value(typing, result);
+	}
+	if (!result || pg_evidence_judgement(result) != expected->judgement) return NULL;
+	if (pg_alpha_equal(pg_evidence_subject(result)->core, expected->core) != 1) return NULL;
+	if (pg_alpha_equal(pg_evidence_classifier(result), expected->classifier) != 1) return NULL;
 	return result;
 }
 
-/* Recover an image from retained origins in a smaller context. Reconstruct
- * ordinary rules, including type/value views and substitution images. The
- * judgement kind is retained along with the subject and classifier. */
+/* Restrict construction inputs, then check the ordinary introduction/map in
+ * the target context. No inference follows a chosen receipt's wrapper chain. */
 static const struct pg_evidence *rebase_image(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *image)
 {
 	struct image_frame {
-		const struct pg_evidence *source;
-		const struct pg_term *core, *classifier;
+		const struct pg_occurrence *expected;
+		const struct pg_evidence *source, *substitution, *constructor;
+		const struct pg_reduction_certificate *reduction;
 		const struct pg_evidence **inputs, **outputs;
-		enum pg_evidence_judgement judgement;
 		size_t parameters, count, next;
 		struct image_frame *parent;
 	};
 	struct pg_graph temporary = {0};
 	struct image_frame *frame = NULL;
-	const struct pg_evidence *result = NULL, *source = NULL, *map = NULL;
-	const struct pg_term *core = pg_evidence_subject(image)->core, *classifier = pg_evidence_subject(image)->classifier;
-	enum pg_evidence_judgement judgement = pg_evidence_judgement(image);
+	const struct pg_evidence *result = NULL;
+	const struct pg_occurrence *expected = pg_evidence_subject(image);
 start:
-	if (core->kind == PG_REFERENCE && core->as.reference->kind == PG_BINDER) {
-		const struct pg_evidence *variable = pg_prove_variable(typing, context, core->as.reference);
-		if (variable && pg_evidence_judgement(variable) == judgement && pg_alpha_equal(pg_evidence_subject(variable)->classifier, classifier) == 1) {
-			result = variable; goto resolved;
-		}
+	if (expected->core->kind == PG_REFERENCE && expected->core->as.reference->kind == PG_BINDER) {
+		result = image_boundary(typing, pg_prove_variable(typing, context, expected->core->as.reference), expected);
+		if (result) goto resolved;
 	}
 	while (image) {
-		result = project_image(typing, context, image, core, classifier, judgement);
+		result = image_boundary(typing, pg_prove_projection(typing, context, image), expected);
 		if (result) goto resolved;
-		if (image->rule == PG_CONTEXT_PROJECTION) image = image->premises[1];
-		else if (image->rule == PG_TYPE_CONVERSION) image = image->premises[0];
-		else if (image->rule == PG_RETURN_VALUE) image = return_value_origin(typing, image->premises[0]);
-		else if (image->rule == PG_CONSTRUCTOR_INTRO || image->rule == PG_TYPE_FAMILY_APP || image->rule == PG_VALUE_FROM_TYPE ||
-			image->rule == PG_TYPE_FROM_VALUE || image->rule == PG_PURE_NORMALIZATION) {
-			source = image; map = NULL; goto rebuild;
-		}
-		else if (image->rule == PG_REINDEX) {
-			map = image->premises[0];
-			source = image->premises[1];
-			/* Substitution can leave a retained closed proof unchanged. */
-			result = project_image(typing, context, source, core, classifier, judgement);
+		const struct pg_occurrence *subject = pg_evidence_subject(image);
+		const struct pg_evidence *map = NULL;
+		while (subject->map) {
+			const struct pg_evidence *inner = pg_prove_context_map(typing, subject->map);
+			map = map ? pg_prove_substitution_compose(typing, inner, map) : inner;
+			if (!map) goto done;
+			subject = subject->origin;
+			result = image_boundary(typing, pg_prove_projection(typing, context,
+				pg_prove_structural_subject(typing, subject)), expected);
 			if (result) goto resolved;
-			if (source->rule == PG_VARIABLE)
-				image = pg_substitution_image(typing, map, pg_evidence_subject(source)->core->as.reference);
-			else if (source->rule == PG_REINDEX)
-				image = pg_prove_reindex(typing,
-					pg_prove_substitution_compose(typing, source->premises[0], map), source->premises[1]);
-			else if (source->rule == PG_CONTEXT_PROJECTION) {
-				const struct pg_evidence *prefix = map->premises[0];
-				size_t count = map->premise_count - 2;
-				while (pg_evidence_context(prefix) != pg_evidence_context(source->premises[1])) {
-					if (!count || !pg_evidence_context(prefix)) goto done;
-					prefix = prefix->premises[0];
-					--count;
-				}
-				image = pg_prove_reindex(typing, pg_prove_substitution(typing, prefix,
-					map->premises[1], count, map->premises + 2), source->premises[1]);
-			} else if (source->rule == PG_TYPE_CONVERSION)
-				image = pg_prove_reindex(typing, map, source->premises[0]);
-			else if (source->rule == PG_RETURN_VALUE)
-				image = pg_prove_reindex(typing, map, return_value_origin(typing, source->premises[0]));
-			else if (source->rule == PG_CONSTRUCTOR_INTRO || source->rule == PG_TYPE_FAMILY_APP ||
-				source->rule == PG_VALUE_FROM_TYPE || source->rule == PG_TYPE_FROM_VALUE) goto rebuild;
-			else { source = image; map = NULL; goto rebuild; }
 		}
-		else goto done;
+		if (map && subject->core->kind == PG_REFERENCE && subject->core->as.reference->kind == PG_BINDER) {
+			image = pg_substitution_image(typing, map, subject->core->as.reference);
+			continue;
+		}
+		if (subject->origin && !subject->selection && subject->origin->judgement == PG_JUDGEMENT_COMPUTATION &&
+			subject->judgement != PG_JUDGEMENT_COMPUTATION) {
+			image = return_value_origin(typing, pg_prove_structural_subject(typing, subject->origin));
+			if (map) image = pg_prove_reindex(typing, map, image);
+			continue;
+		}
+		struct image_frame *next = pg_alloc(&temporary, sizeof(*next));
+		if (!next) goto done;
+		*next = (struct image_frame){.expected = expected, .source = pg_prove_structural_subject(typing, subject), .parent = frame};
+		if (!next->source) goto done;
+		const struct pg_term *head = subject->core;
+		while (head->kind == PG_APPLICATION) head = head->as.application.function;
+		const struct pg_data_layout *layout;
+		size_t position, arity;
+		if (!subject->origin && head->kind == PG_REFERENCE && pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) {
+			if (arity != subject->operand_count) goto done;
+			next->constructor = constructor_origin(typing, next->source);
+			if (!next->constructor) goto done;
+			next->parameters = next->constructor->premises[2]->premise_count - 2;
+			next->count = next->parameters + subject->operand_count;
+		} else if (!subject->origin && subject->operand_count == 2 && subject->core->kind == PG_APPLICATION &&
+			subject->operands[0]->judgement == PG_JUDGEMENT_TYPE_FAMILY &&
+			subject->operands[0]->core == subject->core->as.application.function &&
+			subject->operands[1]->core == subject->core->as.application.argument) next->count = 2;
+		else if (map) {
+			next->substitution = map;
+			next->count = pg_evidence_context_map(map)->count;
+			map = NULL;
+		} else if (subject->origin && !subject->selection) {
+			/* A normalization receipt justifies this reduction, not its inputs.
+			 * Restore its original boundary before looking up that exact recipe. */
+			const struct pg_occurrence *normalized = pg_occurrence_derived(typing, subject->origin,
+				subject->origin->judgement, subject->core, subject->origin->classifier);
+			for (const struct pg_evidence *proof = pg_evidence_for_subject(typing, normalized, NULL);
+				proof && !next->reduction; proof = pg_evidence_for_subject(typing, normalized, proof))
+				next->reduction = pg_evidence_normalization(proof);
+			if (!next->reduction) goto done;
+			next->count = 1;
+		} else goto done;
+		if (next->count > SIZE_MAX / sizeof(*next->inputs)) goto done;
+		next->inputs = pg_alloc(&temporary, next->count * sizeof(*next->inputs));
+		next->outputs = pg_alloc(&temporary, next->count * sizeof(*next->outputs));
+		if (next->count && (!next->inputs || !next->outputs)) goto done;
+		for (size_t i = 0; i < next->count; ++i) {
+			const struct pg_evidence *input;
+			if (next->constructor && i < next->parameters) input = next->constructor->premises[2]->premises[i + 2];
+			else if (next->substitution) input = pg_prove_structural_subject(typing, pg_evidence_context_map(next->substitution)->images[i]);
+			else input = pg_prove_structural_subject(typing,
+				next->reduction ? subject->origin : subject->operands[i - next->parameters]);
+			next->inputs[i] = map ? pg_prove_reindex(typing, map, input) : input;
+			if (!next->inputs[i]) goto done;
+		}
+		frame = next;
+		goto children;
 	}
 	goto done;
-rebuild: {
-	size_t parameters = 0, count = source->premise_count;
-	if (source->rule == PG_CONSTRUCTOR_INTRO) {
-		parameters = source->premises[2]->premise_count - 2;
-		count = source->premises[3]->premise_count - 3;
-	} else if (source->rule == PG_REINDEX) count = source->premises[0]->premise_count - 2;
-	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;
-	struct image_frame *next = pg_alloc(&temporary, sizeof(*next));
-	if (!next) goto done;
-	*next = (struct image_frame){.source = source, .core = core, .classifier = classifier,
-		.judgement = judgement, .parameters = parameters, .count = count, .parent = frame};
-	next->inputs = pg_alloc(&temporary, count * sizeof(*next->inputs));
-	next->outputs = pg_alloc(&temporary, count * sizeof(*next->outputs));
-	if (count && (!next->inputs || !next->outputs)) goto done;
-	for (size_t i = 0; i < count; ++i) {
-		const struct pg_evidence *input;
-		if (source->rule == PG_CONSTRUCTOR_INTRO)
-			input = i < parameters ? source->premises[2]->premises[i + 2] : source->premises[3]->premises[i + 3];
-		else if (source->rule == PG_REINDEX) input = source->premises[0]->premises[i + 2];
-		else input = source->premises[i];
-		next->inputs[i] = map ? pg_prove_reindex(typing, map, input) : input;
-		if (!next->inputs[i]) goto done;
-	}
-	frame = next;
-}
 children:
 	if (frame->next < frame->count) {
 		image = frame->inputs[frame->next];
-		core = pg_evidence_subject(image)->core;
-		classifier = pg_evidence_subject(image)->classifier;
-		judgement = pg_evidence_judgement(image);
+		expected = pg_evidence_subject(image);
 		goto start;
 	}
-	switch (frame->source->rule) {
-	case PG_CONSTRUCTOR_INTRO:
-		map = pg_prove_substitution(typing, frame->source->premises[2]->premises[0],
+	if (frame->constructor) {
+		const struct pg_evidence *map = pg_prove_substitution(typing, frame->constructor->premises[2]->premises[0],
 			context, frame->parameters, frame->outputs);
-		result = pg_prove_constructor(typing, frame->source->premises[1],
-			pg_evidence_constructor(frame->source), map, frame->count - frame->parameters,
+		result = pg_prove_constructor(typing, frame->constructor->premises[1],
+			pg_evidence_constructor(frame->constructor), map, frame->count - frame->parameters,
 			frame->count > frame->parameters ? frame->outputs + frame->parameters : NULL);
-		break;
-	case PG_REINDEX:
-		map = pg_prove_substitution(typing, frame->source->premises[0]->premises[0],
+	} else if (frame->substitution) {
+		const struct pg_evidence *map = pg_prove_substitution(typing, frame->substitution->premises[0],
 			context, frame->count, frame->outputs);
-		result = pg_prove_reindex(typing, map, frame->source->premises[1]);
-		break;
-	case PG_VALUE_FROM_TYPE: result = pg_prove_type_value(typing, frame->outputs[0]); break;
-	case PG_TYPE_FROM_VALUE: result = pg_prove_value_type(typing, frame->outputs[0]); break;
-	case PG_TYPE_FAMILY_APP: result = pg_prove_family_application(typing, frame->outputs[0], frame->outputs[1]); break;
-	case PG_PURE_NORMALIZATION:
-		result = pg_prove_normalization(typing, frame->outputs[0], pg_evidence_normalization(frame->source));
-		break;
-	default: goto done;
-	}
-	core = frame->core;
-	classifier = frame->classifier;
-	judgement = frame->judgement;
+		result = pg_prove_reindex(typing, map, frame->source);
+	} else if (frame->reduction) result = pg_prove_normalization(typing, frame->outputs[0], frame->reduction);
+	else result = pg_prove_family_application(typing, frame->outputs[0], frame->outputs[1]);
+	result = image_boundary(typing, result, frame->expected);
 	frame = frame->parent;
 	if (!result) goto done;
-	if (pg_evidence_judgement(result) != judgement || pg_alpha_equal(pg_evidence_subject(result)->core, core) != 1 ||
-		pg_alpha_equal(pg_evidence_subject(result)->classifier, classifier) != 1) {
-		result = NULL;
-		goto done;
-	}
 resolved:
 	if (frame) {
 		frame->outputs[frame->next++] = result;
@@ -1988,6 +1977,11 @@ static const struct pg_evidence *constructor_origin(struct pg_typing *typing,
 	const struct pg_evidence *value)
 {
 	if (!pg_evidence_owned_by(value, typing) || pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) return NULL;
+	/* Reuse an already checked introduction of this exact typed construction.
+	 * Other receipts remain accepted alternatives, not a source of operands. */
+	for (const struct pg_evidence *proof = pg_evidence_for_subject(typing, pg_evidence_subject(value), NULL);
+		proof; proof = pg_evidence_for_subject(typing, pg_evidence_subject(value), proof))
+		if (proof->rule == PG_CONSTRUCTOR_INTRO) return proof;
 	struct pg_graph temporary = {0};
 	struct construction_map *frames = NULL;
 	const struct pg_evidence *result = NULL;
@@ -3621,7 +3615,10 @@ const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing
 	const struct pg_evidence *result = NULL;
 	if (count && !images) goto done;
 	for (size_t i = 0; i < count; ++i) {
-		images[i] = pg_prove_reindex(typing, second, first->premises[i + 2]);
+		struct pg_occurrence_action *action = pg_occurrence_action_request(typing,
+			pg_evidence_context_map(second), pg_evidence_context_map(first)->images[i]);
+		while (pg_occurrence_action_advance(action, UINT64_MAX) == PG_SUBSTITUTION_PENDING) {}
+		images[i] = pg_prove_structural_subject(typing, pg_occurrence_action_result(action));
 		if (!images[i]) goto done;
 	}
 	result = pg_prove_substitution(typing, first->premises[0], second->premises[1], count, images);

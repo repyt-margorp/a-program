@@ -1669,6 +1669,55 @@ static void schema_positivity(void)
 	assert(!pg_inductive_instance(&typing, zero, &recovered));
 	assert(!pg_prove_substitution_projection(&typing, n_context, empty));
 	{
+		/* An unused map image may depend on a removed binder. Only the
+		 * constructor's real fields and nominal parameters need rebasing. */
+		const struct pg_evidence *z_zero = pg_prove_projection(&typing, z_context, zero);
+		const struct pg_evidence *parameters = pg_prove_substitution_projection(&typing, empty, z_context);
+		const struct pg_evidence *closed_successor = pg_prove_constructor(&typing, nat,
+			pg_data_constructor(nat_layout, 1), parameters, 1, &z_zero);
+		const struct pg_evidence *replace = pg_prove_substitution(&typing, z_context, n_context, 1, &n_value);
+		const struct pg_evidence *mapped_successor = pg_prove_reindex(&typing, replace, closed_successor);
+		const struct pg_object *selected = pg_binder(&graph);
+		const struct pg_evidence *selected_context = pg_prove_context_extension(&typing, empty, selected, nat);
+		const struct pg_evidence *images = pg_prove_substitution(&typing, selected_context, n_context, 1, &mapped_successor);
+		const struct pg_evidence *restricted = pg_prove_substitution_rebase(&typing, empty, images);
+		assert(restricted);
+		const struct pg_evidence *actual = pg_substitution_image(&typing, restricted, selected);
+		assert(pg_evidence_subject(actual)->core == pg_evidence_subject(succ)->core);
+		assert(!pg_evidence_context(actual));
+		common_rule(&typing, &classifiers, restricted);
+		size_t before = typing.proofs.count;
+		for (size_t i = 0; i < 100; ++i)
+			assert(pg_prove_substitution_rebase(&typing, empty, images) == restricted);
+		assert(typing.proofs.count == before);
+		const struct pg_evidence *z_value = pg_prove_variable(&typing, z_context, z);
+		const struct pg_evidence *open_successor = pg_prove_constructor(&typing, nat,
+			pg_data_constructor(nat_layout, 1), parameters, 1, &z_value);
+		open_successor = pg_prove_reindex(&typing, replace, open_successor);
+		images = pg_prove_substitution(&typing, selected_context, n_context, 1, &open_successor);
+		assert(images && !pg_prove_substitution_rebase(&typing, empty, images));
+		/* Normalization retains a receipt, including through a type/value
+		 * boundary; its input construction is restricted independently. */
+		const struct pg_evidence *family = pg_prove_family_abstraction(&typing, z_context,
+			pg_prove_projection(&typing, z_context, nat));
+		const struct pg_evidence *applied = pg_prove_family_application(&typing,
+			pg_prove_projection(&typing, n_context, family), pg_prove_projection(&typing, n_context, zero));
+		assert(applied);
+		check(&constructor_work, pg_evidence_subject(applied)->core, pg_evidence_subject(nat)->core);
+		const struct pg_evidence *normalized = pg_prove_normalization(&typing, applied,
+			pg_whnf_certificate(pg_whnf_request(&constructor_work, &pg_pure_policy, pg_evidence_subject(applied)->core)));
+		const struct pg_evidence *value = pg_prove_type_value(&typing, normalized);
+		const struct pg_object *a = pg_binder(&graph);
+		const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, u);
+		images = pg_prove_substitution(&typing, a_context, n_context, 1, &value);
+		restricted = pg_prove_substitution_rebase(&typing, empty, images);
+		assert(restricted);
+		actual = pg_substitution_image(&typing, restricted, a);
+		assert(pg_evidence_subject(actual)->core == pg_evidence_subject(nat)->core);
+		assert(pg_evidence_judgement(actual) == PG_JUDGEMENT_VALUE && !pg_evidence_context(actual));
+		common_rule(&typing, &classifiers, restricted);
+	}
+	{
 		/* A high codomain must not inflate the retained Nat domain. */
 		const struct pg_evidence *large_result = pg_prove_return_type(&typing, &classifiers,
 			pg_prove_universe(&typing, &classifiers, z_context, 2));
