@@ -487,3 +487,69 @@ Checkpoint delta against `fc97aae`, excluding documentation:
 
 The accumulated implementation delta is still positive (+311 lines against
 the diagnostic baseline). No net reduction or final completion is claimed.
+
+### 2026-09-16: Effective inputs and explicit derived results
+
+- [x] Add a shared `(typed subject, input index)` request, with resumable map
+  traversal and explicit ready/unavailable/error outcomes. Reading structure
+  creates no acceptance evidence. A repeated completed request does no work.
+- [x] Lift a Lambda body's input through the actual target Core binder, using
+  the shared domain substitution and context-map construction. Do not alpha
+  intern binders or expose a body in its old context.
+- [x] Connect RETURN/THUNK content inversion to effective inputs. The resulting
+  subject shares the actual child structure when available; its certificate
+  still records the inversion premise. No erased-Core proof search is used.
+- [x] Represent an unresolved derived result by `origin` without `map`, not by
+  putting its predecessor in `operands`. Normalization and the unrecovered
+  Pi-domain result use this representation. It is explicit provenance, **not**
+  a completed typed normalizer: input queries return unavailable for it.
+- [x] Transport derived origins with sharing in `APGOCC3`; reject older
+  occurrence formats. Source/derivation inputs continue through ordinary Solve.
+- [x] Cover 10,000 mapped layers without recursive C traversal, zero/chunk-one
+  budgets, repeated lookup, mapped/projected RETURN inputs, the actual mapped
+  Lambda binder, missing inputs, and fresh-process derived-origin transport.
+- [x] Add a regression for preserving a low-universe Pi domain after removing
+  an unused outer binder.
+- [ ] Complete typed result exposure, including Pi scopes and strengthening,
+  before removing the associated Evidence recovery. This slice does not
+  complete R2/R3. The existing major recovery walks have not been deleted.
+- [x] Full debug acceptance gate, including 63/63 compatibility and QuickSort
+  source/image properties; ASan/UBSan core, IADT and occurrence transport tests.
+
+An attempted replacement of `pg_prove_pi_domain`'s history recovery passed the
+existing full debug gate but failed the new nested-universe regression. For
+`P = Pi(x : Nat, F(Universe 2))`, removing an unused binder from
+`Pi(z : Nat, P)` must still expose `Nat : Universe 0`; inheriting `P`'s bound
+instead yields `Universe 3`. That attempted replacement was withdrawn, rather
+than weakening the test or silently widening the classifier. The old domain
+recovery remains pending migration. A direct domain test checks the typed
+subject and ordinary rule reconstruction, not accidental proof-pointer identity.
+
+This establishes an additional R3 prerequisite: strengthening is not a total
+context substitution with a fabricated image for the removed variable. A typed
+result view must preserve the chosen domain formation through codomain
+application and removal of unused binders, including dependent metadata. Do not
+implement it by assigning every recovered type the parent's universe bound.
+
+Checkpoint delta against `e8b2fb6`, excluding documentation:
+
+| File, under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `typing.c` | 146 | 4 | +142 |
+| `typing.h` | 19 | 1 | +18 |
+| `evidence.c` | 26 | 9 | +17 |
+| `occurrence_io.c` | 15 | 4 | +11 |
+| `occurrence_io.h` | 3 | 2 | +1 |
+| **Implementation subtotal** | **209** | **20** | **+189** |
+| Tests (three files) | 79 | 7 | +72 |
+
+The accumulated implementation delta is **+500**, not a reduction. The final
+net-negative implementation requirement is unchanged. Old recovery plus new
+views is an incomplete migration, not the accepted final architecture.
+
+The diagnostic QuickSort command completed in 149471 transitions, 1.47 seconds
+and 270540 KiB peak RSS (single debug run, not a statistically established
+improvement). Counts were 461284 occurrences, 588033 derivations, 41480 maps,
+108673 occurrence-action requests, 667 input requests, 16079 contexts and
+168935 Core terms. The earlier R1-to-R2 performance regression is still open;
+full optimized/sanitized acceptance and comparative measurements remain R5.

@@ -1635,12 +1635,22 @@ static void schema_positivity(void)
 			assert(pg_prove_pi_domain(&typing, derived[i]) == domain);
 			assert(typing.proofs.count == before);
 		}
+		/* Narrow domain formation survives removing an unused outer binder. */
+		const struct pg_evidence *nested = pg_prove_pi(&typing, &classifiers, z_context,
+			pg_prove_projection(&typing, z_context, pi));
+		const struct pg_evidence *inner = pg_prove_pi_constant_codomain(&typing, nested);
+		const struct pg_evidence *inner_domain = pg_prove_pi_domain(&typing, inner);
+		assert(inner_domain && pg_evidence_classifier(inner_domain) == pg_universe(&classifiers, 0));
+		common_rule(&typing, &classifiers, inner_domain);
 		/* Recover an actual large domain without lowering its universe. */
 		const struct pg_evidence *large = pg_prove_universe(&typing, &classifiers, empty, 2);
 		const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, pg_binder(&graph), large);
 		pi = pg_prove_pi(&typing, &classifiers, scope,
 			pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, scope, nat)));
-		assert(pg_prove_pi_domain(&typing, pi) == large);
+		const struct pg_evidence *domain = pg_prove_pi_domain(&typing, pi);
+		assert(domain && pg_evidence_subject(domain) == pg_evidence_subject(large));
+		assert(pg_evidence_classifier(domain) == pg_universe(&classifiers, 3));
+		common_rule(&typing, &classifiers, domain);
 	}
 	{
 		const struct pg_evidence *result_type = pg_prove_return_type(&typing, &classifiers,

@@ -273,6 +273,35 @@ static void context_test(struct pg_graph *graph)
 		assert(pg_occurrence(&typing, PG_JUDGEMENT_INPUT, NULL, variable, NULL, NULL, 0, NULL));
 	}
 	assert(lambda_a == pg_occurrence(&typing, PG_JUDGEMENT_INPUT, NULL, identity, NULL, NULL, 1, &body_a));
+	const struct pg_occurrence *parent = pg_occurrence(&typing, PG_JUDGEMENT_VALUE,
+		in_a, pg_application(graph, identity, vx), a, NULL, 1, &typed_a);
+	const struct pg_context_map *same = pg_context_map_projection(&typing, in_a, in_a);
+	const struct pg_occurrence *deep = parent;
+	for (size_t i = 0; i < 10000; ++i)
+		deep = pg_occurrence_mapped(&typing, PG_JUDGEMENT_VALUE, parent->core, a, NULL, deep, same);
+	struct pg_occurrence_input *input = pg_occurrence_input_request(&typing, deep, 0);
+	assert(input && !pg_occurrence_input_result(input));
+	assert(pg_occurrence_input_advance(input, 0) == PG_INPUT_PENDING);
+	while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING) {}
+	assert(pg_occurrence_input_result(input) == typed_a);
+	assert(pg_occurrence_input_steps(input) == 20002);
+	assert(pg_occurrence_input_request(&typing, deep, 0) == input);
+	assert(pg_occurrence_input_advance(input, 1000) == PG_INPUT_READY);
+	assert(pg_occurrence_input_steps(input) == 20002);
+	input = pg_occurrence_input_request(&typing, parent, 1);
+	assert(pg_occurrence_input_advance(input, 10) == PG_INPUT_UNAVAILABLE);
+	assert(!pg_occurrence_input_result(input));
+	const struct pg_occurrence *scoped = pg_occurrence(&typing, PG_JUDGEMENT_COMPUTATION,
+		NULL, identity, a, NULL, 1, &typed_a);
+	input = pg_occurrence_input_request(&typing, scoped, 0);
+	assert(pg_occurrence_input_advance(input, 10) == PG_INPUT_READY);
+	assert(pg_occurrence_input_result(input) == typed_a);
+	const struct pg_occurrence *derived = pg_occurrence_derived(&typing, parent, PG_JUDGEMENT_VALUE, vx, a);
+	assert(derived && !derived->operand_count && derived->origin == parent && !derived->map);
+	input = pg_occurrence_input_request(&typing, derived, 0);
+	assert(pg_occurrence_input_advance(input, 10) == PG_INPUT_UNAVAILABLE);
+	assert(pg_occurrence_input_advance(NULL, 10) == PG_INPUT_ERROR);
+	assert(!typing.proofs.count && !typing.occurrence_actions.count);
 	pg_typing_destroy(&typing);
 	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
 }
@@ -773,6 +802,21 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_evidence_subject(reindexed_return)->origin == pg_evidence_subject(returned));
 	assert(pg_evidence_subject(reindexed_return)->map == map);
 	assert(pg_evidence_subject(reindexed_return)->operand_count == 0);
+	size_t input_proofs = typing.proofs.count;
+	struct pg_occurrence_input *input = pg_occurrence_input_request(&typing, pg_evidence_subject(reindexed_return), 0);
+	assert(input && !pg_occurrence_input_result(input));
+	assert(pg_occurrence_input_advance(input, 0) == PG_INPUT_PENDING);
+	while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING)
+		assert(!pg_occurrence_input_result(input));
+	assert(pg_occurrence_input_result(input) == pg_evidence_subject(destination_y));
+	assert(typing.proofs.count == input_proofs);
+	uint64_t input_steps = pg_occurrence_input_steps(input);
+	assert(pg_occurrence_input_request(&typing, pg_evidence_subject(reindexed_return), 0) == input);
+	assert(pg_occurrence_input_advance(input, 0) == PG_INPUT_READY);
+	assert(pg_occurrence_input_steps(input) == input_steps);
+	const struct pg_evidence *extracted = pg_prove_return_value(&typing, reindexed_return);
+	assert(extracted && pg_evidence_subject(extracted) == pg_evidence_subject(destination_y));
+	assert(pg_evidence_premise(extracted, 0) == reindexed_return);
 	assert(!pg_prove_reindex(&typing, sigma, destination_y));
 	assert(!pg_prove_reindex(&typing, sigma, source));
 	assert(!pg_prove_projection(&typing, destination, sigma));
@@ -812,6 +856,10 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *projection_map = pg_prove_substitution_projection(&typing, destination, extended_destination);
 	assert(pg_evidence_subject(projected)->map == pg_evidence_context_map(projection_map));
 	assert(pg_evidence_subject(pg_prove_reindex(&typing, projection_map, reindexed_return)) == pg_evidence_subject(projected));
+	extracted = pg_prove_return_value(&typing, projected);
+	assert(extracted && pg_evidence_context(extracted) == pg_evidence_context(extended_destination));
+	assert(pg_evidence_subject(extracted)->core == pg_reference(graph, y));
+	assert(!pg_evidence_subject(extracted)->operand_count);
 	assert(!pg_occurrence_projection(&typing, map, pg_evidence_subject(returned)));
 	const struct pg_evidence *extended_map = pg_prove_substitution_compose(&typing, sigma,
 		pg_prove_substitution_projection(&typing, destination, extended_destination));
@@ -880,6 +928,10 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_occurrence *mapped_body = pg_occurrence_action_result(body_action);
 	assert(mapped_body && mapped_body->core == mapped_lambda->core->as.lambda.body);
 	assert(mapped_body->context == body_map->destination && typing.proofs.count == before_action);
+	input = pg_occurrence_input_request(&typing, mapped_lambda, 0);
+	while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING) {}
+	assert(pg_occurrence_input_result(input) == mapped_body);
+	assert(typing.proofs.count == before_action);
 	assert(body_map == pg_context_map_lift(&typing, function_map, pg_evidence_context(source), mapped_lambda->core->as.lambda.binder));
 	assert(!pg_context_map_lift(&typing, function_map, pg_evidence_context(destination), y));
 	assert(!pg_context_map_lift(&typing, function_map, pg_evidence_context(source), b));

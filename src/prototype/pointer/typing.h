@@ -24,7 +24,8 @@ struct pg_occurrence {
 	const struct pg_term *core;
 	const struct pg_term *classifier;
 	const struct pg_term *annotation;
-	/* A mapped construction has an origin/map, not stale direct operands. */
+	/* A mapped construction has an origin/map, not stale direct operands.
+	 * An origin without a map records a derived result, not current children. */
 	const struct pg_occurrence *origin;
 	const struct pg_context_map *map;
 	size_t operand_count;
@@ -49,6 +50,7 @@ struct pg_typing {
 	struct pg_index occurrences;
 	struct pg_index context_maps;
 	struct pg_index occurrence_actions;
+	struct pg_index occurrence_inputs;
 	struct pg_index proofs;
 	/* Computation work, not an additional source of typing evidence. */
 	struct pg_substitution_work substitutions;
@@ -77,6 +79,9 @@ const struct pg_occurrence *pg_occurrence(struct pg_typing *typing,
 const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 	const struct pg_occurrence *source, enum pg_evidence_judgement judgement,
 	const struct pg_term *classifier);
+const struct pg_occurrence *pg_occurrence_derived(struct pg_typing *typing,
+	const struct pg_occurrence *source, enum pg_evidence_judgement judgement,
+	const struct pg_term *core, const struct pg_term *classifier);
 const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 	const struct pg_context *source, const struct pg_context *destination,
 	size_t count, const struct pg_occurrence *const *images);
@@ -104,5 +109,18 @@ enum pg_substitution_status pg_occurrence_action_advance(struct pg_occurrence_ac
 	uint64_t budget);
 const struct pg_occurrence *pg_occurrence_action_result(const struct pg_occurrence_action *work);
 uint64_t pg_occurrence_action_steps(const struct pg_occurrence_action *work);
+
+/* Read a construction input, applying retained maps lazily. Lambda bodies lift
+ * under the actual target Core binder. Other scoped inputs remain unavailable.
+ * These requests describe structure only; they cannot certify an input. */
+struct pg_occurrence_input;
+enum pg_occurrence_input_status { PG_INPUT_PENDING, PG_INPUT_READY,
+	PG_INPUT_UNAVAILABLE, PG_INPUT_ERROR };
+struct pg_occurrence_input *pg_occurrence_input_request(struct pg_typing *typing,
+	const struct pg_occurrence *source, size_t index);
+enum pg_occurrence_input_status pg_occurrence_input_advance(struct pg_occurrence_input *work,
+	uint64_t budget);
+const struct pg_occurrence *pg_occurrence_input_result(const struct pg_occurrence_input *work);
+uint64_t pg_occurrence_input_steps(const struct pg_occurrence_input *work);
 
 #endif
