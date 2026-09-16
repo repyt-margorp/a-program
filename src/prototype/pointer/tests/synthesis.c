@@ -6334,8 +6334,9 @@ int main(void)
 	assert(pg_evidence_classifier(converted_value) == pg_evidence_subject(target_quote_type)->core);
 	assert(pg_alpha_equal(pg_evidence_subject(converted_value)->core, pg_evidence_subject(original_quote)->core) == 1);
 	assert(pg_evidence_classifier(original_quote) != pg_evidence_classifier(converted_value));
-	assert(pg_evidence_subject(converted_value)->operand_count == 1);
-	assert(pg_evidence_subject(converted_value)->operands[0] == pg_evidence_subject(computed_domain));
+	assert(!pg_evidence_subject(converted_value)->operand_count);
+	assert(pg_evidence_subject(converted_value)->origin == pg_evidence_subject(original_quote));
+	assert(pg_evidence_subject(original_quote)->operands[0] == pg_evidence_subject(computed_domain));
 	assert(pg_evidence_subject(converted_value)->type == pg_evidence_subject(target_quote_type));
 	assert(pg_evidence_premise(converted_value, 0) == converted_return);
 	assert(pg_evidence_conversion(converted_return));

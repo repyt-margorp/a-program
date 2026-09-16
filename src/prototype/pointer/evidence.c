@@ -509,8 +509,7 @@ start:
 		const struct pg_evidence *map = NULL;
 		while (subject->origin && !subject->selection) {
 			if (!subject->map) {
-				if (subject->core != subject->origin->core || subject->classifier != subject->origin->classifier ||
-					subject->judgement != subject->origin->judgement) break;
+				if (subject->core != subject->origin->core || subject->classifier != subject->origin->classifier) break;
 				subject = subject->origin;
 				continue;
 			}

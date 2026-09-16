@@ -120,7 +120,8 @@ const struct pg_occurrence *pg_occurrence_with_maps(struct pg_typing *typing,
  * tuple identity participates in interning; no proof is accepted here. */
 const struct pg_occurrence *pg_occurrence_with_induction(struct pg_typing *typing,
 	const struct pg_occurrence *source, const struct pg_induction_allocation *allocation);
-/* A different boundary preserves construction inputs, not typing acceptance. */
+/* A different sort/classifier boundary references the original construction;
+ * it does not copy inputs, scoped maps or induction allocation. */
 const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 	const struct pg_occurrence *source, enum pg_evidence_judgement judgement,
 	const struct pg_term *classifier);

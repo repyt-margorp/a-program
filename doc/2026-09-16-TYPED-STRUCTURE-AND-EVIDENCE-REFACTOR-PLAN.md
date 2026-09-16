@@ -301,7 +301,7 @@ the complete matrix at R5, including retained/recomputed image modes.
 | Type case | Scrutinee and branch families | These are type-valued branches, not runtime handler clauses. Checking still needs the nominal declaration and branch telescopes |
 | Identity/termination formation and witness | Explicit family/type, endpoint or suspended-term inputs, as appropriate to the owner | Logical construction inputs are not interchangeable with erased APP operands; endpoint-type inversion retains its relation witness. Interpret a view only after validating its semantic owner |
 | Selected family Identity/action | Family, paths, endpoints and two context maps; action source and formed Identity | Selected maps and typed scopes are retained independently of which accepted derivation is used; no equality reflection |
-| Type/value view | Unchanged construction children | Sort views retain the construction; remaining copies are still cleanup work |
+| Type/value view | Original typed subject; no copied inputs/maps/allocation | Exact type/value round trips reuse the original subject; both derivations remain. Restriction restores the requested sort through the ordinary rules |
 | Conversion, widening | Original typed subject and target formation; no copied operands | Reference the original construction even if only the classifier formation changes, not its Core. Attaching descriptive formation metadata during image read is a separate operation |
 | Projection/reindex | Origin and typed context map; no direct operands | Effective inputs use shared context action, lifting under actual lexical binders. A substituted variable selects its typed image |
 | Pi/F/U type-component inversion | Source, selected ordinal, optional typed argument | Explicit selection recipe, not the result's children. A scoped codomain is instantiated by the argument, or restricted when constant |
@@ -332,7 +332,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `classifier_leaf` | Deleted |
 | `classifier_recovery_step` | Uses the shared typed classifier query; separate map stack removed. Variable/Universe formation and final synchronous certification remain legitimate checks |
 | `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
-| `typed_construction` | Deleted in R30. Conversion/widening retain their source typed use; checked construction access retrieves its existing evidence rather than reconstructing introductions. Sort views and term-content boundaries still have copies; this is not completion of all structural recovery |
+| `typed_construction` | Deleted in R30. Conversion/widening retain their source typed use; checked construction access retrieves existing evidence. R32 removes operand/map/allocation copying from sort and content boundaries too. General result exposure remains open |
 | `action.c:origin_step` | Reads typed origins/maps; does not reinterpret derivation wrappers |
 | `derivation.c:pg_prove_derivation` | Intentionally retained: verifies rule inputs rather than interpreting program structure |
 
@@ -1709,3 +1709,34 @@ the baseline memory regression remains unresolved. Logs:
 `/tmp/a-program-typed-structure-r31-debug.log`,
 `/tmp/a-program-typed-structure-r31-before-test.log` (expected old-code failure),
 `/tmp/a-program-typed-structure-r31-san-{core,iadt,synthesis,quicksort}.log`.
+
+### 2026-09-17: Sort and content boundary sharing (R32)
+
+- [x] `pg_occurrence_boundary` references the original typed subject instead of
+  copying its operands, selected maps and induction allocation. Exact no-ops
+  and type/value round trips reuse existing subjects without erasing evidence.
+  A changed retained formation does not qualify for round-trip cancellation.
+- [x] Context restriction traverses unchanged-Core/classifier sort boundaries
+  and restores the requested judgement using checked type/value rules. Existing
+  rebasing tests caught this required consumer change; their checks remain.
+- [x] Update structural tests to assert origin sharing instead of copied
+  arrays, including converted Return content and fresh-process induction/map
+  transport. Full debug acceptance passed (63/63 compatibility and final
+  QuickSort comparisons). ASan/UBSan Core, IADT, synthesis, occurrence IO and
+  imported QuickSort passed. R31 retained typed Match images also pass R32
+  resave/check/recompute. No wire grammar/version or logical rule changed.
+
+Against `182f48d`: implementation/header `evidence.c` **+1/-2**, `typing.c`
+**+8/-4**, `typing.h` **+2/-1**, net **+4**; tests **+11/-7**, net **+4**.
+Cumulative implementation/header net **+1495** against `4657cc6`; R5 and the
+net-negative gate remain open. Descriptive construction/formation attachment
+still builds allocation tuples; this is not a claim that all allocation
+overhead or synchronous result recovery has been removed.
+
+Sequential O0 QuickSort: R31 **1.0877 s / 276108 KiB / 131899 transitions**;
+R32 **1.0773 s / 276036 KiB / 131961 transitions**. R32 retains
+**179313 Terms / 415652 typed subjects / 434853 proofs / 537 body requests**,
+with 3491 input requests. The 62 extra transitions and small single-sample time
+difference do not establish a performance improvement; baseline memory remains
+regressed. Logs: `/tmp/a-program-typed-structure-r32-debug.log` and
+`/tmp/a-program-typed-structure-r32-san-{core,iadt,synthesis,occurrence,quicksort}.log`.

@@ -270,10 +270,14 @@ const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 	const struct pg_occurrence *source, enum pg_evidence_judgement judgement,
 	const struct pg_term *classifier)
 {
-	return source ? occurrence(typing, judgement, source->context, source->core,
-		classifier, source->annotation, source->operand_count, source->operands,
-		source->origin, source->selection, source->map, source->classifier == classifier ? source->type : NULL,
-		source->map_count, pg_occurrence_maps(source), source->induction) : NULL;
+	if (!source) return NULL;
+	if (source->judgement == judgement && source->classifier == classifier) return source;
+	/* Type/value round trips retain the original construction. Evidence still
+	 * records both rules; a changed formation is not such a round trip. */
+	const struct pg_occurrence *origin = source->origin;
+	if (origin && !source->map && !source->selection && source->core == origin->core && source->type == origin->type)
+		if (origin->judgement == judgement && origin->classifier == classifier) return origin;
+	return pg_occurrence_derived(typing, source, judgement, source->core, classifier);
 }
 
 const struct pg_occurrence *pg_occurrence_mapped(struct pg_typing *typing,

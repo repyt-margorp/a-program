@@ -53,7 +53,7 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	const struct pg_occurrence *other_scopes = pg_occurrence_with_induction(typing, selected, &allocation);
 	assert(other_scopes && other_scopes != recursive && recursive->induction->clauses[0] == ca);
 	const struct pg_occurrence *recursive_boundary = pg_occurrence_boundary(typing, recursive, PG_JUDGEMENT_VALUE, a);
-	assert(recursive_boundary && recursive_boundary->induction->recursion == x);
+	assert(recursive_boundary && recursive_boundary->origin == recursive && !recursive_boundary->induction);
 	const struct pg_occurrence *pick = pg_occurrence_selected(typing, oa, 0, ob, PG_JUDGEMENT_VALUE, id, a);
 	const struct pg_occurrence *constant = pg_occurrence_selected(typing, oa, 0, NULL, PG_JUDGEMENT_VALUE, id, a);
 	const struct pg_occurrence *other_input = pg_occurrence_selected(typing, oa, 1, ob, PG_JUDGEMENT_VALUE, id, a);
@@ -175,7 +175,7 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	assert(allocation->clauses[1] == roots[1]->operands[0]->context);
 	assert(roots[15]->induction->clauses[0] == allocation->clauses[1]);
 	assert(roots[15]->induction->clauses[1] == allocation->clauses[0]);
-	assert(roots[16]->induction->recursion == allocation->recursion);
+	assert(roots[16]->origin == roots[13] && !roots[16]->induction && !roots[16]->operand_count);
 	assert(pg_occurrence_with_induction(typing, roots[11], allocation) == roots[13]);
 	assert(roots[13]->map_count == 2 && pg_occurrence_maps(roots[13])[0] == pg_occurrence_maps(roots[11])[0]);
 	assert(roots[11] != roots[12] && roots[11]->core == roots[12]->core);
@@ -203,8 +203,8 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	assert(roots[0]->classifier == roots[0]->annotation);
 	assert(roots[1]->classifier == roots[1]->annotation && !roots[3]->classifier);
 	assert(roots[3]->operands[0] == roots[0] && roots[3]->operands[1] == roots[1]);
-	assert(roots[4] != roots[5] && roots[4]->map == roots[5]->map);
-	assert(roots[4]->origin == roots[5]->origin && roots[4]->operand_count == 0);
+	assert(roots[4] != roots[5] && roots[5]->origin == roots[4]);
+	assert(!roots[5]->map && !roots[5]->operand_count && !roots[4]->operand_count);
 	assert(roots[4]->map->source == roots[4]->origin->context);
 	assert(roots[4]->map->destination == roots[4]->context);
 	assert(roots[4]->map->count == 1 && roots[4]->map->images[0] == roots[1]->operands[0]);
