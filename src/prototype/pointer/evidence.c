@@ -3706,7 +3706,8 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 	if (existing) return existing;
 	const struct pg_term *codomain = pg_pi_constant_codomain(pg_evidence_subject(pi)->core);
 	if (!codomain) return NULL;
-	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_COMPUTATION_TYPE, pg_evidence_context(pi), codomain, pg_evidence_subject(pi)->classifier, NULL, 1, (const struct pg_occurrence *[]){pg_evidence_subject(pi)});
+	const struct pg_occurrence *subject = pg_occurrence_derived(typing, pg_evidence_subject(pi),
+		PG_JUDGEMENT_COMPUTATION_TYPE, codomain, pg_evidence_classifier(pi));
 	if (!subject) return NULL;
 	return accept(typing, PG_PI_CONSTANT_CODOMAIN,
 		pg_evidence_context(pi), subject, 1, &pi);
@@ -4103,11 +4104,27 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(pi)->core, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, pg_evidence_subject(argument)->classifier) != 1) return NULL;
-	struct pg_binding_value binding = {binder, pg_evidence_subject(argument)->core};
-	const struct pg_term *type = pg_substitution_compute(&typing->substitutions, codomain, 1, &binding);
-	if (!type) return NULL;
-	const struct pg_occurrence *operands[] = {pg_evidence_subject(pi), pg_evidence_subject(argument)};
-	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_COMPUTATION_TYPE, pg_evidence_context(pi), type, pg_evidence_subject(pi)->classifier, NULL, 2, operands);
+	struct pg_occurrence_input *input = pg_occurrence_input_request(typing, pg_evidence_subject(pi), 1);
+	enum pg_occurrence_input_status status;
+	do status = pg_occurrence_input_advance(input, 1024); while (status == PG_INPUT_PENDING);
+	if (status == PG_INPUT_ERROR) return NULL;
+	const struct pg_occurrence *body = pg_occurrence_input_result(input), *subject = NULL;
+	if (body && body->judgement == PG_JUDGEMENT_COMPUTATION_TYPE && body->context &&
+		body->context->parent == pg_evidence_context(pi)) {
+		const struct pg_term *expected = pg_lambda(typing->graph, binder, codomain);
+		const struct pg_term *actual = pg_lambda(typing->graph, body->context->binder, body->core);
+		if (pg_alpha_equal(actual, expected) != 1) return NULL;
+		struct pg_occurrence_action *action = pg_occurrence_instantiate_request(typing, body,
+			pg_evidence_subject(argument));
+		while (pg_occurrence_action_advance(action, 1024) == PG_SUBSTITUTION_PENDING) {}
+		subject = pg_occurrence_boundary(typing, pg_occurrence_action_result(action),
+			PG_JUDGEMENT_COMPUTATION_TYPE, pg_evidence_classifier(pi));
+	} else {
+		struct pg_binding_value binding = {binder, pg_evidence_subject(argument)->core};
+		const struct pg_term *type = pg_substitution_compute(&typing->substitutions, codomain, 1, &binding);
+		subject = pg_occurrence_derived(typing, pg_evidence_subject(pi),
+			PG_JUDGEMENT_COMPUTATION_TYPE, type, pg_evidence_classifier(pi));
+	}
 	if (!subject) return NULL;
 	return accept(typing, PG_PI_CODOMAIN,
 		pg_evidence_context(pi), subject, 2, premises);

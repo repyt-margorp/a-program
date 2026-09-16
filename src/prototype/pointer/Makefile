@@ -363,9 +363,9 @@ $(BUILD)/graph_acceptance_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)graph_i
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)wire.c $(ROOT)tests/graph_acceptance.c -o $@
 
-$(BUILD)/occurrence_io_test: $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(ROOT)tests/occurrence_io.c
+$(BUILD)/occurrence_io_test: $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)classifier.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(ROOT)tests/occurrence_io.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(ROOT)tests/occurrence_io.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)classifier.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(ROOT)tests/occurrence_io.c -o $@
 
 $(BUILD)/derivation_io_test: $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)graph_io.c $(ROOT)derivation_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(ROOT)tests/derivation_io.c
 	mkdir -p $(BUILD)

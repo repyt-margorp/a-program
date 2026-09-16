@@ -1,4 +1,5 @@
 #include "typing.h"
+#include "classifier.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -335,6 +336,24 @@ struct pg_occurrence_action *pg_occurrence_action_request(struct pg_typing *typi
 	return pg_index_insert(&typing->occurrence_actions, &work->index, hash) ? NULL : work;
 }
 
+struct pg_occurrence_action *pg_occurrence_instantiate_request(struct pg_typing *typing,
+	const struct pg_occurrence *body, const struct pg_occurrence *argument)
+{
+	if (!body || !argument || !body->context) return NULL;
+	if (body->context->parent != argument->context) return NULL;
+	const struct pg_context_map *prefix = pg_context_map_projection(typing,
+		argument->context, argument->context);
+	if (!prefix || prefix->count >= SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
+	const struct pg_occurrence **images = malloc((prefix->count + 1) * sizeof(*images));
+	if (!images) return NULL;
+	memcpy(images, prefix->images, prefix->count * sizeof(*images));
+	images[prefix->count] = argument;
+	const struct pg_context_map *map = pg_context_map(typing, body->context,
+		argument->context, prefix->count + 1, images);
+	free(images);
+	return pg_occurrence_action_request(typing, map, body);
+}
+
 static enum pg_substitution_status occurrence_action_step(struct pg_occurrence_action *work)
 {
 	const struct pg_occurrence *source = work->source;
@@ -416,6 +435,20 @@ struct pg_occurrence_input *pg_occurrence_input_request(struct pg_typing *typing
 	return pg_index_insert(&typing->occurrence_inputs, &work->entry, hash) ? NULL : work;
 }
 
+/* The semantic owner exposes the same lexical binding carried by Core.
+ * This is a scope view, not another executable binder representation. */
+static const struct pg_object *input_binder(const struct pg_term *core, size_t index,
+	const struct pg_term **body)
+{
+	if (core->kind == PG_LAMBDA && index == 0) {
+		*body = core->as.lambda.body;
+		return core->as.lambda.binder;
+	}
+	const struct pg_term *domain;
+	const struct pg_object *binder;
+	return index == 1 && pg_pi_view(core, &domain, &binder, body) ? binder : NULL;
+}
+
 static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrence_input *work)
 {
 	struct pg_typing *typing = work->typing;
@@ -433,10 +466,10 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 			work->result = current->operands[work->index];
 			if (work->result->context != current->context) {
 				const struct pg_context *scope = work->result->context;
-				if (!scope || scope->parent != current->context || current->core->kind != PG_LAMBDA)
-					return PG_INPUT_UNAVAILABLE;
-				if (scope->binder != current->core->as.lambda.binder ||
-					work->result->core != current->core->as.lambda.body) return PG_INPUT_UNAVAILABLE;
+				if (!scope || scope->parent != current->context) return PG_INPUT_UNAVAILABLE;
+				const struct pg_term *body;
+				if (scope->binder != input_binder(current->core, work->index, &body)) return PG_INPUT_UNAVAILABLE;
+				if (work->result->core != body) return PG_INPUT_UNAVAILABLE;
 			}
 			work->current = NULL;
 		}
@@ -449,15 +482,18 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 		const struct pg_context *scope = work->result->context;
 		if (scope == map->source) work->effective = map;
 		else {
-			if (!scope || scope->parent != map->source || parent->core->kind != PG_LAMBDA)
-				return PG_INPUT_UNAVAILABLE;
+			if (!scope || scope->parent != map->source) return PG_INPUT_UNAVAILABLE;
+			const struct pg_term *body;
+			const struct pg_object *binder = input_binder(parent->core, work->index, &body);
+			if (!binder) return PG_INPUT_UNAVAILABLE;
 			if (!work->domain) work->domain = pg_substitution_request(&typing->substitutions,
 				scope->declared_type, map->count, pg_context_map_bindings(map));
 			enum pg_substitution_status status = pg_substitution_advance(work->domain, 1);
 			if (status == PG_SUBSTITUTION_ERROR) return PG_INPUT_ERROR;
 			if (status == PG_SUBSTITUTION_PENDING) return PG_INPUT_PENDING;
+			if (pg_context_lookup(map->destination, binder)) binder = pg_binder(typing->graph);
 			work->effective = context_map_lift_at(typing, map, scope,
-				parent->core->as.lambda.binder, pg_substitution_result(work->domain));
+				binder, pg_substitution_result(work->domain));
 			if (!work->effective) return PG_INPUT_ERROR;
 		}
 	}

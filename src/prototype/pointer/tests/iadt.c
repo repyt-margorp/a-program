@@ -1638,6 +1638,14 @@ static void schema_positivity(void)
 		/* Narrow domain formation survives removing an unused outer binder. */
 		const struct pg_evidence *nested = pg_prove_pi(&typing, &classifiers, z_context,
 			pg_prove_projection(&typing, z_context, pi));
+		const struct pg_evidence *applied = pg_prove_pi_codomain(&typing, nested, zero);
+		assert(applied);
+		struct pg_occurrence_input *input = pg_occurrence_input_request(&typing, pg_evidence_subject(applied), 0);
+		while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING) {}
+		const struct pg_occurrence *retained_domain = pg_occurrence_input_result(input);
+		assert(retained_domain && retained_domain->classifier == pg_universe(&classifiers, 0));
+		assert(retained_domain->core == pg_evidence_subject(nat)->core && !retained_domain->context);
+		common_rule(&typing, &classifiers, applied);
 		const struct pg_evidence *inner = pg_prove_pi_constant_codomain(&typing, nested);
 		const struct pg_evidence *inner_domain = pg_prove_pi_domain(&typing, inner);
 		assert(inner_domain && pg_evidence_classifier(inner_domain) == pg_universe(&classifiers, 0));

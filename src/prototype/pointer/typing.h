@@ -105,13 +105,19 @@ const struct pg_occurrence *pg_occurrence_projection(struct pg_typing *typing,
 struct pg_occurrence_action;
 struct pg_occurrence_action *pg_occurrence_action_request(struct pg_typing *typing,
 	const struct pg_context_map *map, const struct pg_occurrence *source);
+/* Substitute the newest scoped binder, preserving the argument's typed
+ * structure. Classifier agreement is checked by the calling kernel rule. */
+struct pg_occurrence_action *pg_occurrence_instantiate_request(struct pg_typing *typing,
+	const struct pg_occurrence *body, const struct pg_occurrence *argument);
 enum pg_substitution_status pg_occurrence_action_advance(struct pg_occurrence_action *work,
 	uint64_t budget);
 const struct pg_occurrence *pg_occurrence_action_result(const struct pg_occurrence_action *work);
 uint64_t pg_occurrence_action_steps(const struct pg_occurrence_action *work);
 
-/* Read a construction input, applying retained maps lazily. Lambda bodies lift
- * under the actual target Core binder. Other scoped inputs remain unavailable.
+/* Read a construction input, applying retained maps lazily. Lambda bodies and
+ * Pi codomains use the target Core binder, freshened if it collides with the
+ * destination context. The closed binder/body remains alpha-equivalent to the
+ * parent. Other scoped inputs remain unavailable.
  * These requests describe structure only; they cannot certify an input. */
 struct pg_occurrence_input;
 enum pg_occurrence_input_status { PG_INPUT_PENDING, PG_INPUT_READY,

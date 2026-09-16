@@ -553,3 +553,50 @@ improvement). Counts were 461284 occurrences, 588033 derivations, 41480 maps,
 108673 occurrence-action requests, 667 input requests, 16079 contexts and
 168935 Core terms. The earlier R1-to-R2 performance regression is still open;
 full optimized/sanitized acceptance and comparative measurements remain R5.
+
+### 2026-09-16: Scoped Pi inputs and codomain instantiation
+
+- [x] Extend the shared input query to Pi codomains, using the existing Pi
+  semantic owner's view. Core remains Lambda/Application/Reference. The
+  standalone occurrence transport target now links that owner implementation.
+- [x] Instantiate a scoped typed body by extending the identity context map
+  with the argument, then use the existing occurrence-action request. The
+  kernel still checks the argument's classifier; structural allocation alone
+  grants no acceptance. Pi codomain inversion retains this result's structure
+  and records its ordinary Pi/argument premises separately.
+- [x] Handle a projection whose destination already contains the source's
+  bound pointer (found in the open Acc regression). Opening the body freshens
+  that binder and lifts the map accordingly. Compare the **closed** binder/body
+  with the parent's binding; comparing free bodies would be incorrect. Repeated
+  queries reuse the same chosen binder. This does not alpha-intern Core.
+- [x] Stop storing a constant-codomain predecessor as its current child. It
+  remains an explicit derived result until typed strengthening is implemented.
+- [x] Test scope collision, mapped Pi binders, argument-scope rejection,
+  chunked instantiation, repeated requests, reconstructed codomain derivations,
+  and the retained low-universe domain after instantiating an outer Pi.
+- [x] Full debug acceptance (including 63/63 compatibility and QuickSort
+  source/images), plus ASan/UBSan core, IADT and occurrence transport checks.
+- [ ] Complete strengthening and normalized-result exposure; remove the
+  unavailable-input codomain adapter and remaining Evidence recovery. Neither
+  R2 nor R3 is complete merely because direct/mapped Pi inputs now work.
+
+Checkpoint delta against `b1fdb02` (paths under `src/prototype/pointer/`):
+
+| File | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `typing.c` | 43 | 7 | +36 |
+| `typing.h` | 8 | 2 | +6 |
+| `evidence.c` | 23 | 6 | +17 |
+| **Implementation subtotal** | **74** | **15** | **+59** |
+| `Makefile` | 2 | 2 | 0 |
+| Tests (two files) | 49 | 0 | +49 |
+
+The diagnostic QuickSort run used 201265 Solve transitions, 1.32 seconds and
+249684 KiB peak RSS; the previous checkpoint used 149471 transitions, 1.47
+seconds and 270540 KiB. These single debug runs do not establish a stable
+speedup. Transition counts increased while wall time and retained memory fell;
+they are not interchangeable measures of work. Counts are 424369 occurrences,
+522142 derivations, 41981 maps, 104964 occurrence-action requests, 1601 input
+requests, 16052 contexts and 183346 Core terms. Final comparisons remain R5.
+Implementation LOC is still **+559** against the diagnostic baseline; no net
+reduction or completed migration is claimed.

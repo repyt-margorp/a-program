@@ -939,6 +939,47 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_occurrence_action_advance(action, 64) == PG_SUBSTITUTION_DONE);
 	assert(pg_occurrence_action_steps(action) == action_steps);
 	assert(pg_evidence_subject(pg_prove_reindex(&typing, type_pair, function)) == mapped_lambda);
+	/* Open projected scopes without reusing a binder already in the context. */
+	const struct pg_evidence *shadowed = pg_prove_projection(&typing, source, function);
+	input = pg_occurrence_input_request(&typing, pg_evidence_subject(shadowed), 0);
+	input_proofs = typing.proofs.count;
+	while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING) {}
+	const struct pg_occurrence *opened_body = pg_occurrence_input_result(input);
+	assert(opened_body && opened_body->context->parent == pg_evidence_context(source));
+	assert(opened_body->context->binder != x);
+	assert(!pg_context_lookup(pg_evidence_context(source), opened_body->context->binder));
+	assert(pg_alpha_equal(pg_lambda(graph, opened_body->context->binder, opened_body->core),
+		pg_evidence_subject(shadowed)->core) == 1);
+	assert(typing.proofs.count == input_proofs);
+	const struct pg_evidence *pi = pg_prove_classifier(&typing, &classifiers, a_scope, function);
+	const struct pg_evidence *mapped_pi = pg_prove_reindex(&typing, type_pair, pi);
+	const struct pg_term *pi_domain, *pi_codomain;
+	const struct pg_object *pi_binder;
+	assert(mapped_pi && pg_pi_view(pg_evidence_subject(mapped_pi)->core, &pi_domain, &pi_binder, &pi_codomain));
+	input = pg_occurrence_input_request(&typing, pg_evidence_subject(mapped_pi), 1);
+	input_proofs = typing.proofs.count;
+	assert(pg_occurrence_input_advance(input, 0) == PG_INPUT_PENDING);
+	while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING) {}
+	const struct pg_occurrence *typed_codomain = pg_occurrence_input_result(input);
+	assert(typed_codomain && typed_codomain->context->parent == pg_evidence_context(destination));
+	assert(typed_codomain->context->binder == pi_binder);
+	assert(pg_alpha_equal(typed_codomain->core, pi_codomain) == 1);
+	assert(typing.proofs.count == input_proofs);
+	struct pg_occurrence_action *instantiation = pg_occurrence_instantiate_request(&typing,
+		typed_codomain, pg_evidence_subject(destination_y));
+	assert(instantiation && pg_occurrence_action_advance(instantiation, 0) == PG_SUBSTITUTION_PENDING);
+	while (pg_occurrence_action_advance(instantiation, 1) == PG_SUBSTITUTION_PENDING) {}
+	assert(pg_occurrence_action_result(instantiation));
+	assert(typing.proofs.count == input_proofs);
+	assert(!pg_occurrence_instantiate_request(&typing, typed_codomain, pg_evidence_subject(source_x)));
+	const struct pg_evidence *applied_codomain = pg_prove_pi_codomain(&typing, mapped_pi, destination_y);
+	assert(applied_codomain && pg_evidence_subject(applied_codomain) == pg_occurrence_action_result(instantiation));
+	const struct pg_evidence *returned_type = pg_prove_return_content(&typing, applied_codomain);
+	assert(returned_type && pg_evidence_subject(returned_type)->core == pg_reference(graph, b));
+	assert(pg_evidence_context(returned_type) == pg_evidence_context(destination));
+	reconstruct_derivation(&typing, &classifiers, applied_codomain);
+	assert(pg_occurrence_instantiate_request(&typing, typed_codomain,
+		pg_evidence_subject(destination_y)) == instantiation);
 	const struct pg_evidence *rebased_function = pg_prove_substitution_rebase(&typing, b_scope, function_values);
 	assert(rebased_function);
 	assert(pg_evidence_judgement(pg_substitution_image(&typing, rebased_function, function_binder)) == PG_JUDGEMENT_VALUE);
