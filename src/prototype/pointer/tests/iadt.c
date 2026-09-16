@@ -900,6 +900,28 @@ static void indexed_match(void)
 	check(&work, pg_evidence_subject(renamed_match)->core, pg_evidence_subject(renamed_body)->core);
 	common_rule(&typing, &classifiers, selected_body);
 	common_rule(&typing, &classifiers, renamed_body);
+	const struct pg_evidence *match_sources[] = {match, renamed_match, mapped_match, twice, once};
+	for (size_t i = 0; i < sizeof(match_sources) / sizeof(*match_sources); ++i) {
+		struct pg_typed_body_work *query = pg_return_body_request(&typing, match_sources[i]);
+		assert(query && !pg_typed_body_advance(query, 0));
+		uint64_t steps = 0;
+		int status;
+		do {
+			status = pg_typed_body_advance(query, i % 2 ? 64 : 1);
+			assert(pg_typed_body_steps(query) <= steps + (i % 2 ? 64 : 1));
+			steps = pg_typed_body_steps(query);
+			assert(steps < 10000);
+		} while (!status);
+		assert(status == 1);
+		const struct pg_evidence *result = pg_typed_body_result(query);
+		const struct pg_evidence *expected = i == 1 || i == 2 ? renamed_values[1] : xv;
+		assert(pg_evidence_context(result) == pg_evidence_context(expected));
+		assert(pg_evidence_classifier(result) == pg_evidence_classifier(expected));
+		assert(pg_evidence_subject(result)->core == pg_evidence_subject(expected)->core);
+		common_rule(&typing, &classifiers, result);
+		assert(pg_return_body_request(&typing, match_sources[i]) == query);
+		assert(pg_typed_body_advance(query, 64) == 1 && pg_typed_body_steps(query) == steps);
+	}
 	size_t structures = typing.occurrences.count, proofs = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i)
 		assert(pg_prove_elimination_body(&typing, &classifiers, match) == selected_body);
@@ -1026,6 +1048,10 @@ static void indexed_match(void)
 	assert(function_body);
 	const struct pg_evidence *body_application = pg_prove_application_body(&typing, function_body, refined_consumer);
 	assert(body_application);
+	const struct pg_evidence *match_application = pg_prove_application_body(&typing, specialized_function, refined_consumer);
+	assert(match_application);
+	check(&work, pg_evidence_subject(match_application)->core, pg_evidence_subject(body_application)->core);
+	common_rule(&typing, &classifiers, match_application);
 	check(&work, pg_evidence_subject(body_application)->core, pg_evidence_subject(applied)->core);
 	common_rule(&typing, &classifiers, body_application);
 	const struct pg_evidence *result_type = pg_prove_classifier(&typing, &classifiers, consumer_context, consumer_match);
@@ -2153,6 +2179,36 @@ static void schema_positivity(void)
 	const struct pg_evidence *pred_reduced = pg_prove_normalization(&typing, pred, pred_receipt);
 	assert(pred_reduced && pg_prove_return_value(&typing, pred_reduced));
 	assert(pg_evidence_classifier(pred_reduced) == pg_evidence_classifier(pred));
+	/* Typed results may demand another Match's result. Keep these dependencies
+	 * in the shared work graph rather than recursively entering the C evaluator. */
+	const struct pg_evidence *total_motive = pg_prove_computation_type(&typing, &classifiers,
+		PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_prove_projection(&typing, z_context, nat));
+	const struct pg_evidence *total_zero = pg_prove_return_contract(&typing, &classifiers, PG_TOTALITY_TOTAL, zero);
+	const struct pg_evidence *total_pred = pg_prove_abstract(&typing, &classifiers, empty, n_context,
+		pg_prove_return_contract(&typing, &classifiers, PG_TOTALITY_TOTAL,
+			pg_prove_variable(&typing, n_context, pg_evidence_context(n_context)->binder)));
+	const struct pg_evidence *total_branches[] = {total_zero, total_pred};
+	const struct pg_evidence *nested = total_zero;
+	struct pg_typed_body_work *middle = NULL;
+	for (size_t i = 0; i < 2048; ++i) {
+		nested = pg_prove_match(&typing, &classifiers, nat, identity,
+			pg_prove_total_pure_value(&typing, nested), z_context, total_motive, 2, total_branches);
+		assert(nested);
+		if (i == 1023) middle = pg_return_body_request(&typing, nested);
+	}
+	struct pg_typed_body_work *nested_result = pg_return_body_request(&typing, nested);
+	assert(nested_result && middle && !pg_typed_body_advance(nested_result, 0));
+	assert(!pg_typed_body_advance(nested_result, 64));
+	assert(pg_typed_body_steps(nested_result) == 64);
+	while (!pg_typed_body_advance(middle, 64)) assert(pg_typed_body_steps(middle) < 100000);
+	assert(pg_typed_body_result(middle) == zero);
+	uint64_t middle_steps = pg_typed_body_steps(middle);
+	while (!pg_typed_body_advance(nested_result, 1)) assert(pg_typed_body_steps(nested_result) < 100000);
+	assert(pg_typed_body_result(nested_result) == zero);
+	assert(pg_typed_body_steps(middle) == middle_steps);
+	uint64_t nested_steps = pg_typed_body_steps(nested_result);
+	assert(pg_return_body_request(&typing, nested) == nested_result);
+	assert(pg_typed_body_advance(nested_result, 64) == 1 && pg_typed_body_steps(nested_result) == nested_steps);
 	/* Recover constructor evidence across sequencing, not from erased Core. */
 	const struct pg_evidence *sequenced = zero_function;
 	for (size_t i = 0; i < 2; ++i) {
@@ -2258,6 +2314,9 @@ static void schema_positivity(void)
 	const struct pg_evidence *neutral_match = pg_prove_match(&typing, &classifiers, nat,
 		n_parameters, n_value, open_z_context, open_motive, 2, open_branches);
 	assert(neutral_match && pg_evidence_context(neutral_match) == pg_evidence_context(n_context));
+	struct pg_typed_body_work *neutral_body = pg_return_body_request(&typing, neutral_match);
+	while (!pg_typed_body_advance(neutral_body, 1)) {}
+	assert(!pg_typed_body_result(neutral_body));
 	check(&constructor_work, pg_evidence_subject(neutral_match)->core, pg_evidence_subject(neutral_match)->core);
 	const struct pg_evidence *refinements[2], *refined_bodies[2];
 	for (size_t i = 0; i < 2; ++i) {

@@ -463,7 +463,9 @@ const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 struct pg_typed_body_work;
 struct pg_typed_body_work *pg_application_body_request(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
-/* Return extraction follows typed beta and zero-clause Fold construction.
+/* Return extraction follows typed beta, zero-clause Fold and nonrecursive
+ * Match construction. Computed scrutinees share budgeted body dependencies;
+ * a root's step count includes the dependency transitions it advances.
  * Requests remain opaque: only an actual RETURN resumes the continuation.
  * A normalized input exposes its checked source recipe, not normalized fields. */
 struct pg_typed_body_work *pg_return_body_request(struct pg_typing *typing,

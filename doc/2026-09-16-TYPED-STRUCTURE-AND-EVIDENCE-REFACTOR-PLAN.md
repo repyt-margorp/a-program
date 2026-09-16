@@ -326,7 +326,7 @@ checkpoint notes below are historical, not additional completion claims.
 | Existing path | State / next action |
 |---|---|
 | Evidence classifier/context/sort copies | Removed for term conclusions |
-| `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
+| `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R37 adds nonrecursive Match branch selection and shared computed-scrutinee dependencies. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
 | `inductive_recovery_step` | Reads typed origins/maps, selections and family inputs. R33 removes its private Return/Thunk counters and Fold continuation stack; computed results and applications share indexed typed-body work. Exact nominal formation and synchronous kernel suboperations remain |
@@ -1906,3 +1906,46 @@ Terms / 415460 typed subjects / 434767 proofs / 506 body requests / 3442 input
 requests. The work/allocation counts decreased; these single timings do not
 establish a wall-time improvement. Sanitizer logs:
 `/tmp/a-program-typed-structure-r36-san-{core,iadt,synthesis,quicksort}.log`.
+
+### 2026-09-17: Shared nonrecursive Match body work (R37)
+
+- [x] Share constructor/branch selection between elimination inspection and
+  typed-body work. The selected branch and fields retain their checked nominal
+  formation and effective scope. Ordinary typed APP connects them; no Match
+  introduction, second classifier owner or new logical rule is synthesized
+  just to inspect the result. Recursive IH construction remains separate.
+- [x] Carry outer context maps through scrutinee and branch selection. Return
+  extraction and callee application now enter a nonrecursive Match through the
+  same body machine instead of reporting this construction as unsupported.
+- [x] Treat typed RETURN extraction and TOTAL pure-result projection as demands
+  on their original computation. A constructor query can suspend on shared
+  body work instead of recursively running another C query. Explicit waiting
+  frames charge dependency transitions to the advancing root; completed work
+  can be supplied by another caller. This does not run operation requests or
+  equate TOTAL with an empty effect row.
+- [x] Test dependent indexed Match, renamed/reindexed contexts, raw-Pi branch
+  results, neutral scrutinee rejection and 2048 nested computed scrutinees.
+  Verify chunked advancement, independently advanced shared dependencies,
+  result scope/classifier, ordinary derivation reconstruction and stable
+  completed request reuse. The direct Match query regression fails when built
+  with `fe200bb`'s `evidence.c` and passes with this implementation.
+- [x] Full debug acceptance passed, including 63/63 compatibility and final
+  QuickSort source/image comparisons. ASan/UBSan Core, IADT (including nested
+  Match dependencies), synthesis and imported QuickSort passed.
+
+Before-fix log: `/tmp/a-program-typed-structure-r37-match-before.log`.
+This checkpoint does not expose every recursive/normalized result. Individual
+kernel certification and constructor inspection still have synchronous costs;
+the dependency-transition budget does not bound all C instructions. General
+IH result queries, pending-image work retention and the R2-R5 gates stay open.
+Current delta against `fe200bb`: `evidence.c` +100/-20, `evidence.h` +3/-1,
+`tests/iadt.c` +59/-0. Implementation/header net is **+82**, cumulative **+1502**
+against `4657cc6`; this increases rather than satisfies the deletion debt.
+
+Sequential O0 QuickSort: 1.1036 seconds / 275424 KiB / 132053 Solve transitions.
+Two additional alternating time samples were R36 1.0727/1.0769 seconds and
+R37 1.0485/1.0637 seconds. No significant speedup/regression is established.
+Counts remain 178465 Terms / 415460 typed subjects / 434767 proofs / 506 body
+requests / 3442 input requests. Logs:
+`/tmp/a-program-typed-structure-r37-debug.log`,
+`/tmp/a-program-typed-structure-r37-san-{core,iadt,synthesis,quicksort}.log`.
