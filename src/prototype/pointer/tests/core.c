@@ -856,6 +856,18 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *projection_map = pg_prove_substitution_projection(&typing, destination, extended_destination);
 	assert(pg_evidence_subject(projected)->map == pg_evidence_context_map(projection_map));
 	assert(pg_evidence_subject(pg_prove_reindex(&typing, projection_map, reindexed_return)) == pg_evidence_subject(projected));
+	assert(pg_occurrence_unproject(&typing, pg_evidence_subject(projected), pg_evidence_context(destination)) ==
+		pg_evidence_subject(reindexed_return));
+	assert(!pg_occurrence_unproject(&typing, pg_evidence_subject(projected), NULL));
+	assert(!pg_occurrence_unproject(&typing, pg_evidence_subject(projected), pg_evidence_context(source)));
+	const struct pg_occurrence *changed_boundary = pg_occurrence_boundary(&typing,
+		pg_evidence_subject(projected), PG_JUDGEMENT_COMPUTATION, pg_evidence_classifier(universe));
+	assert(changed_boundary && !pg_occurrence_unproject(&typing, changed_boundary, pg_evidence_context(destination)));
+	size_t unprojected_subjects = typing.occurrences.count, unprojected_proofs = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i)
+		assert(pg_occurrence_unproject(&typing, pg_evidence_subject(projected), pg_evidence_context(destination)) ==
+			pg_evidence_subject(reindexed_return));
+	assert(typing.occurrences.count == unprojected_subjects && typing.proofs.count == unprojected_proofs);
 	extracted = pg_prove_return_value(&typing, projected);
 	assert(extracted && pg_evidence_context(extracted) == pg_evidence_context(extended_destination));
 	assert(pg_evidence_subject(extracted)->core == pg_reference(graph, y));

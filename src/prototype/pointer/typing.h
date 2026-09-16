@@ -101,6 +101,11 @@ const struct pg_occurrence *pg_occurrence_mapped(struct pg_typing *typing,
 /* A prefix projection changes scope without scheduling term substitution. */
 const struct pg_occurrence *pg_occurrence_projection(struct pg_typing *typing,
 	const struct pg_context_map *map, const struct pg_occurrence *source);
+/* Cancel retained exact weakenings to a prefix context. This is not general
+ * strengthening or a total substitution assigning a removed variable a value.
+ * NULL means the construction is not exposed in the requested context. */
+const struct pg_occurrence *pg_occurrence_unproject(struct pg_typing *typing,
+	const struct pg_occurrence *source, const struct pg_context *destination);
 /* Shared, budgeted structural context action. No typing acceptance is created. */
 struct pg_occurrence_action;
 struct pg_occurrence_action *pg_occurrence_action_request(struct pg_typing *typing,

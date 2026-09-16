@@ -600,3 +600,42 @@ they are not interchangeable measures of work. Counts are 424369 occurrences,
 requests, 16052 contexts and 183346 Core terms. Final comparisons remain R5.
 Implementation LOC is still **+559** against the diagnostic baseline; no net
 reduction or completed migration is claimed.
+
+### 2026-09-16: Cancel retained Pi weakenings
+
+- [x] Cancel exact structural projections to a prefix context, retaining the
+  original typed construction. This does not assign a fictitious image to a
+  removed binder. Nonidentity maps, changed boundaries and unrelated contexts
+  are unavailable; repeated queries do not allocate more occurrences/proofs.
+- [x] Use this cancellation for constant Pi codomains and consume the retained
+  domain formation through the ordinary `PG_PI_DOMAIN` inversion. The chosen
+  domain's universe is preserved rather than inherited from the larger Pi.
+- [x] Share the blocking adapter for existing budgeted input requests. No new
+  structural authority, Core tag or proof rule was introduced.
+- [x] Keep separate regression cases for a projected inner Pi and an inner Pi
+  constructed directly under the removed binder. Only the first is an inverse
+  of recorded weakening. The latter still requires general strengthening;
+  replacing its domain by the enclosing universe bound is not valid.
+- [x] Full debug acceptance, including compatibility and QuickSort source/image
+  cases; ASan/UBSan Core, IADT and fresh-process occurrence transport passed.
+- [ ] Remove general Pi recovery after scoped strengthening and typed reduction
+  are available. `pi_component` and `pi_argument_frames` remain in use, including
+  nominal-family recovery; this checkpoint does not claim their removal.
+
+Delta against `28068be` (paths under `src/prototype/pointer/`):
+
+| File | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `evidence.c` | 33 | 12 | +21 |
+| `typing.c` | 18 | 0 | +18 |
+| `typing.h` | 5 | 0 | +5 |
+| **Implementation subtotal** | **56** | **12** | **+44** |
+| `tests/core.c` | 12 | 0 | +12 |
+| `tests/iadt.c` | 14 | 0 | +14 |
+
+Implementation growth is now **+603** against the diagnostic baseline. The
+net-negative R5 condition remains unmet. A diagnostic QuickSort run used 201138
+transitions, 1.318 seconds and 243328 KiB peak RSS, against 201265 transitions,
+1.32 seconds and 249684 KiB at the preceding checkpoint. These single debug
+runs do not establish a stable speedup. Full final comparative gates and Main
+publication remain pending.

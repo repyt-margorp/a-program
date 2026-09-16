@@ -1647,7 +1647,21 @@ static void schema_positivity(void)
 		assert(retained_domain->core == pg_evidence_subject(nat)->core && !retained_domain->context);
 		common_rule(&typing, &classifiers, applied);
 		const struct pg_evidence *inner = pg_prove_pi_constant_codomain(&typing, nested);
+		assert(inner && pg_evidence_subject(inner) == pg_evidence_subject(pi));
+		size_t before_domain = typing.proofs.count;
 		const struct pg_evidence *inner_domain = pg_prove_pi_domain(&typing, inner);
+		assert(inner_domain && pg_evidence_classifier(inner_domain) == pg_universe(&classifiers, 0));
+		assert(pg_evidence_rule(inner_domain) == PG_PI_DOMAIN);
+		assert(pg_evidence_premise(inner_domain, 0) == inner);
+		assert(typing.proofs.count == before_domain + 1);
+		common_rule(&typing, &classifiers, inner_domain);
+		/* A directly formed inner Pi is not merely a retained projection. */
+		const struct pg_evidence *direct_scope = pg_prove_context_extension(&typing, z_context,
+			pg_binder(&graph), pg_prove_projection(&typing, z_context, nat));
+		const struct pg_evidence *direct = pg_prove_pi(&typing, &classifiers, direct_scope,
+			pg_prove_return_type(&typing, &classifiers, pg_prove_universe(&typing, &classifiers, direct_scope, 2)));
+		inner = pg_prove_pi_constant_codomain(&typing, pg_prove_pi(&typing, &classifiers, z_context, direct));
+		inner_domain = pg_prove_pi_domain(&typing, inner);
 		assert(inner_domain && pg_evidence_classifier(inner_domain) == pg_universe(&classifiers, 0));
 		common_rule(&typing, &classifiers, inner_domain);
 		/* Recover an actual large domain without lowering its universe. */

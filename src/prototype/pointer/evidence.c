@@ -2775,17 +2775,24 @@ const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
 	return body;
 }
 
+static int structural_input(struct pg_typing *typing, const struct pg_occurrence *source,
+	size_t index, const struct pg_occurrence **result)
+{
+	struct pg_occurrence_input *input = pg_occurrence_input_request(typing, source, index);
+	enum pg_occurrence_input_status status;
+	do status = pg_occurrence_input_advance(input, 1024); while (status == PG_INPUT_PENDING);
+	*result = pg_occurrence_input_result(input);
+	return status != PG_INPUT_ERROR;
+}
+
 /* Preserve an available typed child through context action. A computed result
  * without exposed children is kept explicit, not encoded as a fake child edge. */
 static const struct pg_occurrence *content_subject(struct pg_typing *typing,
 	const struct pg_occurrence *source, const struct pg_term *core,
 	const struct pg_term *classifier, enum pg_evidence_judgement judgement)
 {
-	struct pg_occurrence_input *input = pg_occurrence_input_request(typing, source, 0);
-	enum pg_occurrence_input_status status;
-	do status = pg_occurrence_input_advance(input, 1024); while (status == PG_INPUT_PENDING);
-	if (status == PG_INPUT_ERROR) return NULL;
-	const struct pg_occurrence *child = pg_occurrence_input_result(input);
+	const struct pg_occurrence *child;
+	if (!structural_input(typing, source, 0, &child)) return NULL;
 	if (child && child->context == source->context && child->core == core && child->judgement == judgement)
 		return pg_occurrence_boundary(typing, child, judgement, classifier);
 	return pg_occurrence_derived(typing, source, judgement, core, classifier);
@@ -3706,7 +3713,15 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 	if (existing) return existing;
 	const struct pg_term *codomain = pg_pi_constant_codomain(pg_evidence_subject(pi)->core);
 	if (!codomain) return NULL;
-	const struct pg_occurrence *subject = pg_occurrence_derived(typing, pg_evidence_subject(pi),
+	const struct pg_occurrence *subject;
+	if (!structural_input(typing, pg_evidence_subject(pi), 1, &subject)) return NULL;
+	subject = pg_occurrence_unproject(typing, subject, pg_evidence_context(pi));
+	if (subject) {
+		if (subject->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
+		if (pg_alpha_equal(subject->core, codomain) != 1) return NULL;
+		subject = pg_occurrence_boundary(typing, subject, PG_JUDGEMENT_COMPUTATION_TYPE,
+			pg_evidence_classifier(pi));
+	} else subject = pg_occurrence_derived(typing, pg_evidence_subject(pi),
 		PG_JUDGEMENT_COMPUTATION_TYPE, codomain, pg_evidence_classifier(pi));
 	if (!subject) return NULL;
 	return accept(typing, PG_PI_CONSTANT_CODOMAIN,
@@ -4068,6 +4083,15 @@ const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 	const struct pg_term *index, *fiber;
 	const struct pg_object *parameter;
 	if (pg_pi_view(domain, &index, &parameter, &fiber)) return NULL;
+	const struct pg_occurrence *subject;
+	if (!structural_input(typing, pg_evidence_subject(pi), 0, &subject)) return NULL;
+	if (subject && subject->judgement == PG_JUDGEMENT_VALUE_TYPE && subject->context == pg_evidence_context(pi)) {
+		uint64_t bound, level;
+		if (!pg_universe_level(pg_evidence_classifier(pi), &bound)) return NULL;
+		if (!pg_universe_level(subject->classifier, &level) || level > bound) return NULL;
+		if (pg_alpha_equal(subject->core, domain) != 1) return NULL;
+		return accept(typing, PG_PI_DOMAIN, subject->context, subject, 1, &pi);
+	}
 	/* Level zero cannot improve. Otherwise recover the retained domain rather
 	 * than unnecessarily inheriting the whole polymorphic Pi's bound. */
 	uint64_t level;
@@ -4081,7 +4105,7 @@ const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 			pg_evidence_judgement(domain_proof) == PG_JUDGEMENT_VALUE_TYPE &&
 			pg_alpha_equal(pg_evidence_subject(domain_proof)->core, domain) == 1) return domain_proof;
 	}
-	const struct pg_occurrence *subject = pg_occurrence_derived(typing, pg_evidence_subject(pi),
+	subject = pg_occurrence_derived(typing, pg_evidence_subject(pi),
 		PG_JUDGEMENT_VALUE_TYPE, domain, pg_evidence_classifier(pi));
 	if (!subject) return NULL;
 	return accept(typing, PG_PI_DOMAIN,
@@ -4104,11 +4128,8 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(pi)->core, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, pg_evidence_subject(argument)->classifier) != 1) return NULL;
-	struct pg_occurrence_input *input = pg_occurrence_input_request(typing, pg_evidence_subject(pi), 1);
-	enum pg_occurrence_input_status status;
-	do status = pg_occurrence_input_advance(input, 1024); while (status == PG_INPUT_PENDING);
-	if (status == PG_INPUT_ERROR) return NULL;
-	const struct pg_occurrence *body = pg_occurrence_input_result(input), *subject = NULL;
+	const struct pg_occurrence *body, *subject = NULL;
+	if (!structural_input(typing, pg_evidence_subject(pi), 1, &body)) return NULL;
 	if (body && body->judgement == PG_JUDGEMENT_COMPUTATION_TYPE && body->context &&
 		body->context->parent == pg_evidence_context(pi)) {
 		const struct pg_term *expected = pg_lambda(typing->graph, binder, codomain);

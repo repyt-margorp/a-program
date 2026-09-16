@@ -318,6 +318,24 @@ const struct pg_occurrence *pg_occurrence_projection(struct pg_typing *typing,
 	return action_result(typing, map, source, source->core, source->classifier, source->annotation);
 }
 
+const struct pg_occurrence *pg_occurrence_unproject(struct pg_typing *typing,
+	const struct pg_occurrence *source, const struct pg_context *destination)
+{
+	size_t count;
+	if (!source || pg_context_extension_size(source->context, destination, &count)) return NULL;
+	while (source->context != destination) {
+		if (!source->map) return NULL;
+		/* Only cancel an exact weakening. A converted boundary or a map that
+		 * changes images must retain its justification and typed dependencies. */
+		if (pg_occurrence_projection(typing, source->map, source->origin) != source) return NULL;
+		source = source->origin;
+		if (!pg_context_extension_size(destination, source->context, &count))
+			return pg_occurrence_projection(typing,
+				pg_context_map_projection(typing, source->context, destination), source);
+	}
+	return source;
+}
+
 struct pg_occurrence_action *pg_occurrence_action_request(struct pg_typing *typing,
 	const struct pg_context_map *map, const struct pg_occurrence *source)
 {
