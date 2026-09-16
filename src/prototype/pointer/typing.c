@@ -18,6 +18,7 @@ int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph)
 	if (pg_index_init(&typing->contexts) != 0) goto fail;
 	if (pg_index_init(&typing->occurrences) != 0) goto fail;
 	if (pg_index_init(&typing->context_maps) != 0) goto fail;
+	if (pg_index_init(&typing->context_projections) != 0) goto fail;
 	if (pg_index_init(&typing->occurrence_actions) != 0) goto fail;
 	if (pg_index_init(&typing->occurrence_inputs) != 0) goto fail;
 	if (pg_index_init(&typing->proofs) != 0) goto fail;
@@ -33,6 +34,7 @@ void pg_typing_destroy(struct pg_typing *typing)
 	pg_index_destroy(&typing->contexts);
 	pg_index_destroy(&typing->occurrences);
 	pg_index_destroy(&typing->context_maps);
+	pg_index_destroy(&typing->context_projections);
 	pg_index_destroy(&typing->occurrence_actions);
 	pg_index_destroy(&typing->occurrence_inputs);
 	pg_index_destroy(&typing->proofs);
@@ -342,9 +344,21 @@ const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 	return pg_index_insert(&typing->context_maps, &map->index, hash) ? NULL : map;
 }
 
+struct context_projection {
+	struct pg_index_entry index;
+	const struct pg_context_map *map;
+};
+
 const struct pg_context_map *pg_context_map_projection(struct pg_typing *typing,
 	const struct pg_context *source, const struct pg_context *destination)
 {
+	uint64_t hash = (uintptr_t)source * UINT64_C(1099511628211);
+	hash = (hash ^ (uintptr_t)destination) * UINT64_C(1099511628211);
+	for (struct pg_index_entry *p = pg_index_candidates(&typing->context_projections, hash); p; p = p->next) {
+		if (p->hash != hash) continue;
+		const struct pg_context_map *map = ((const struct context_projection *)p)->map;
+		if (map->source == source && map->destination == destination) return map;
+	}
 	size_t count;
 	if (pg_context_extension_size(destination, source, &count)) return NULL;
 	if (pg_context_extension_size(source, NULL, &count)) return NULL;
@@ -357,7 +371,11 @@ const struct pg_context_map *pg_context_map_projection(struct pg_typing *typing,
 			pg_reference(typing->graph, scope->binder), scope->declared_type, NULL, 0, NULL);
 	const struct pg_context_map *map = pg_context_map(typing, source, destination, count, images);
 	free(images);
-	return map;
+	if (!map) return NULL;
+	struct context_projection *entry = pg_alloc(typing->graph, sizeof(*entry));
+	if (!entry) return NULL;
+	entry->map = map;
+	return pg_index_insert(&typing->context_projections, &entry->index, hash) ? NULL : map;
 }
 
 static const struct pg_context_map *context_map_lift_at(struct pg_typing *typing,

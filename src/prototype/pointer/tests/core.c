@@ -288,7 +288,27 @@ static void context_test(struct pg_graph *graph)
 	assert(lambda_a == pg_occurrence(&typing, PG_JUDGEMENT_INPUT, NULL, identity, NULL, NULL, 1, &body_a));
 	const struct pg_occurrence *parent = pg_occurrence(&typing, PG_JUDGEMENT_VALUE,
 		in_a, pg_application(graph, identity, vx), a, NULL, 1, &typed_a);
+	const struct pg_context_map *general = pg_context_map(&typing, in_a, in_a, 1, &typed_a);
 	const struct pg_context_map *same = pg_context_map_projection(&typing, in_a, in_a);
+	assert(same == general);
+	const struct pg_context_map *projection = pg_context_map_projection(&typing, in_a, extended);
+	assert(projection && projection->count == 1);
+	assert(pg_context_map(&typing, in_a, extended, 1, projection->images) == projection);
+	const struct pg_context_map *family_projection = pg_context_map_projection(&typing, family_binding, family_binding);
+	assert(family_projection && family_projection->images[0]->judgement == PG_JUDGEMENT_TYPE_FAMILY);
+	size_t projections = typing.context_projections.count, maps = typing.context_maps.count;
+	size_t occurrences = typing.occurrences.count, terms = graph->terms.count;
+	for (size_t i = 0; i < 10000; ++i) {
+		assert(pg_context_map_projection(&typing, in_a, in_a) == general);
+		assert(pg_context_map_projection(&typing, in_a, extended) == projection);
+	}
+	assert(!pg_context_map_projection(&typing, in_a, in_b));
+	assert(!pg_context_map_projection(&typing, extended, in_a));
+	assert(!pg_context_map_projection(&typing, family_binding, in_a));
+	assert(typing.context_projections.count == projections && typing.context_maps.count == maps);
+	assert(typing.occurrences.count == occurrences && graph->terms.count == terms);
+	const struct pg_context_map *empty_map = pg_context_map(&typing, NULL, extended, 0, NULL);
+	assert(empty_map && pg_context_map_projection(&typing, NULL, extended) == empty_map);
 	const struct pg_occurrence *deep = parent;
 	for (size_t i = 0; i < 10000; ++i)
 		deep = pg_occurrence_mapped(&typing, PG_JUDGEMENT_VALUE, parent->core, a, NULL, deep, same);

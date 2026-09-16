@@ -1253,10 +1253,40 @@ problem. Sampling attributed about 47% inclusive time to this path, but the
 short instrumented sample is only a profiling lead, not a precise wall-time
 attribution.
 
-- [ ] Reuse projection requests by their immutable source/destination before
+- [x] Reuse projection requests by their immutable source/destination before
   reconstructing all images. Preserve the same canonical map returned through
   the general map constructor; do not add a second acceptance authority or
   special-case QuickSort. Test generic/projection construction in both orders,
   invalid prefixes, and repeated lookup without rebuilding variable inputs.
 - [ ] Repeat baseline/final timing, memory and work-count comparisons after
   that change and the remaining structural recovery removal.
+
+### 2026-09-17: Reuse structural projection requests
+
+- [x] Index completed projection requests by immutable source/destination.
+  Each entry references the existing interned `pg_context_map`; it stores no
+  additional images, classifier, acceptance bit, or mutable solution. A miss
+  still checks the prefix and uses the general map constructor. Generic-first
+  and projection-first construction therefore return the same map.
+- [x] Add Core tests for both construction orders, empty maps, value/family
+  binder sorts, invalid/unrelated prefixes and 10000 repeated requests without
+  term/occurrence/map/index growth. The Core suite passes.
+- [x] Full debug acceptance passed, including 63/63 compatibility and
+  source/image QuickSort properties. ASan/UBSan Core, IADT, synthesis and
+  imported QuickSort checks passed. `git diff --check` passed. R5's final
+  optimized/sanitized full gates remain open with the rest of the migration.
+
+On the same imported QuickSort property, sequential debug samples were:
+
+| Version | Elapsed seconds | Peak RSS, KiB | Solve transitions |
+|---|---|---|---:|
+| R20 | 1.409, 1.384 | 278228, 278284 | 132488 |
+| Projection reuse | 1.002, 1.010, 0.976 | 278476, 278280, 278800 | 132488 |
+| Initial baseline | 0.809, 0.807 | 226076, 225472 | 149501 |
+
+Instrumented projection-to-occurrence calls fell from **9320652 to 360092**;
+projection requests remained **342376**. This confirms removal of repeated
+lookup preparation, not a weakening of checking or a smaller accepted result.
+It does not eliminate the remaining baseline time/memory regression. Against
+`5e7e5dd`, `typing.c` is +19/-1, `typing.h` +2/-0 and tests +20/-0: implementation
+net **+20**, cumulative **+1247**. The code-reduction gate remains unmet.

@@ -68,6 +68,8 @@ struct pg_typing {
 	struct pg_index contexts;
 	struct pg_index occurrences;
 	struct pg_index context_maps;
+	/* Projection lookup references the same interned maps, not new evidence. */
+	struct pg_index context_projections;
 	struct pg_index occurrence_actions;
 	struct pg_index occurrence_inputs;
 	struct pg_index proofs;
