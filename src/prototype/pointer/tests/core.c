@@ -546,6 +546,31 @@ static void evidence_test(struct pg_graph *graph)
 		assert(typing.proofs.count == proofs && typing.occurrences.count == occurrences);
 		assert(!pg_prove_normalization_input(&typing, normal_inputs[i], receipt, 1));
 		assert(!pg_prove_normalization_input(&typing, returned, receipt, 0));
+		if (i == 0 || i == 2) {
+			const struct pg_evidence *wrapped[] = {pg_prove_projection(&typing, nf_scope, normal),
+				pg_prove_reindex(&typing, nf_map, normal)};
+			for (size_t j = 0; j < 2; ++j) {
+				assert(wrapped[j]);
+				struct pg_nf_job *again = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(wrapped[j])->core);
+				while (pg_nf_advance(again, j ? 64 : 1) == PG_NF_PENDING) assert(pg_nf_steps(again) < 100000);
+				const struct pg_reduction_certificate *again_receipt = pg_nf_certificate(again);
+				const struct pg_evidence *child = pg_prove_normalization_input(&typing, wrapped[j], again_receipt, 0);
+				assert(child);
+				if (i == 2) {
+					const struct pg_term *lambda = pg_nf_result(again);
+					assert(lambda->kind == PG_LAMBDA && pg_evidence_subject(child)->core == lambda->as.lambda.body);
+					assert(pg_evidence_context(child)->parent == pg_evidence_context(wrapped[j]));
+					assert(pg_evidence_context(child)->binder == lambda->as.lambda.binder);
+				} else {
+					assert(pg_evidence_subject(child)->core == pg_evidence_subject(j ? return_y : returned)->core);
+					assert(pg_evidence_context(child) == pg_evidence_context(wrapped[j]));
+				}
+				reconstruct_derivation(&typing, &classifiers, child);
+				proofs = typing.proofs.count; occurrences = typing.occurrences.count;
+				assert(pg_prove_normalization_input(&typing, wrapped[j], again_receipt, 0) == child);
+				assert(typing.proofs.count == proofs && typing.occurrences.count == occurrences);
+			}
+		}
 	}
 	struct pg_nf_job *beta_nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(app)->core);
 	assert(pg_nf_advance(beta_nf, 100000) == PG_NF_DONE);

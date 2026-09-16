@@ -141,7 +141,7 @@ Temporary adapters are permitted within a phase, not as permanent fallbacks.
 | State | Phase | Changes and completion evidence |
 |---|---|---|
 | [ ] | R0 Contracts and baseline | Record current tests, per-file LOC, time/memory/work counters. Classify every occurrence producer and Evidence structural consumer. Specify child roles/scopes for each semantic owner, including type families and Identity. Pin conversion/normalization behavior. |
-| [ ] | R1 Typed conclusions | Replace occurrence/conclusion duplication in `typing.h/.c`, `evidence.h/.c`. Migrate all accepted constructors, not only APP/Lambda. Preserve input-versus-acceptance distinction, exact interning and alternative derivations. No mutable classifier side table. |
+| [x] | R1 Typed conclusions | Term conclusions have one typed-subject reference; classifier/context/sort accessors delegate to it. All rules publish through `accept_record`; Context and Substitution retain their distinct conclusions. Exact interning and alternative derivations are preserved. Verified by the R29 structural audit and acceptance tests below; this does not complete R2/R3. |
 | [ ] | R2 Context action | Migrate projection/reindex to the same typed structure with explicit effective child maps. Use existing substitution work and binder lifting. Verify repeated lookup sharing, capture avoidance, dependent classifiers and chunked execution. |
 | [ ] | R3 Structural and formation consumers | Move `return_value_origin`, `pi_component`, constructor/inductive recovery and classifier recovery to checked views. Keep theorem-specific inversions where required. Replace structural wrapper walks in `function_graph.c`, `action.c` and `synthesis.c`; remove replaced paths in the same phase. |
 | [ ] | R4 Images and pending work | Update occurrence/derivation/source transport and allocation dependency collection. Bump the affected format/policy explicitly. Reconstruct through ordinary Solve, not copied acceptance bits; document whether old images migrate or reject with a version diagnostic. |
@@ -331,6 +331,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `classifier_leaf` | Deleted |
 | `classifier_recovery_step` | Uses the shared typed classifier query; separate map stack removed. Variable/Universe formation and final synchronous certification remain legitimate checks |
 | `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
+| `typed_construction` | Still re-establishes introductions from copied inputs after classifier-boundary changes. Preserve the original typed construction at that boundary before removing this reconstruction; do not replace it with erased-Core proof search |
 | `action.c:origin_step` | Reads typed origins/maps; does not reinterpret derivation wrappers |
 | `derivation.c:pg_prove_derivation` | Intentionally retained: verifies rule inputs rather than interpreting program structure |
 
@@ -1590,3 +1591,41 @@ one more proof than R27. These single samples do not establish a speedup or
 resolve the cumulative representation cost. Logs:
 `/tmp/a-program-typed-structure-r28-debug.log` and
 `/tmp/a-program-typed-structure-r28-san-{core,iadt,synthesis,quicksort}.log`.
+
+### 2026-09-17: Composed normalized input views (R29)
+
+- [x] Reproduce failed constructor-field selection after projection or
+  nonidentity substitution of a normalized constructor. Compose these maps
+  and congruent NF receipts inside-out using checked input scopes and the
+  ordinary substitution-lift/reindex/normalization rules.
+- [x] Share receipt-spine selection with the public normalization-input API.
+  Treat unchanged-Core NF certificates as checked normality, including cached
+  certificates without rebuilding phases. No new reduction or proof rule.
+- [x] Test Lambda/THUNK scopes, swapped constructor fields, 1000 mapped layers,
+  chunks one/64 and repeated lookup without additional accepted records.
+  Repeated traversal time is not asserted to be cached by these tests.
+- [x] Full debug acceptance passed through the final source/image QuickSort
+  comparisons (63/63 compatibility). ASan/UBSan Core, IADT, synthesis and
+  imported QuickSort passed. No image version change.
+- [x] Audit R1 independently of the unfinished structural view work:
+  `accept_record` is the only Evidence allocator; its term conclusion is one
+  typed-subject pointer. `pg_evidence_judgement`, `pg_evidence_context` and
+  `pg_evidence_classifier` read that record. The occurrence interner keys
+  context/Core/classifier/sort/structure and distinguishes pending INPUT.
+  Tests retain same-Core/different-classifier uses, alternative derivations,
+  owner isolation and ordinary image acceptance. No mutable classifier answer
+  is duplicated in Evidence. R1 is complete; R2-R5 are not.
+
+Against `d8085bc`, `evidence.c` is +70/-24: implementation net **+46**,
+cumulative **+1510** against `4657cc6`. Tests are +50/-0. The representation
+and net-negative gates remain unmet. The temporary input frame stack does not
+add a permanent typed graph, but its synchronous traversal/certification still
+needs to join shared budgeted result exposure. General head-changing beta/iota
+and dependent constructor reconstruction are not completed by this change.
+
+Sequential O0 QuickSort: R28 **1.0920 s / 276012 KiB**, R29
+**1.0521 s / 276140 KiB**, both **131899** Solve transitions. R29 retained
+**179362 Terms / 415830 typed subjects / 435124 proofs / 537 body requests**.
+These single samples do not establish a speedup or resolve the baseline memory
+regression. Logs: `/tmp/a-program-typed-structure-r29-debug.log` and
+`/tmp/a-program-typed-structure-r29-san-{core,iadt,synthesis,quicksort}.log`.

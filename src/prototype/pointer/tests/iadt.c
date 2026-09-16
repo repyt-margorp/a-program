@@ -1458,6 +1458,13 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 		assert(pg_nf_result(nf) == pg_evidence_subject(left)->core);
 		const struct pg_evidence *normalized_pair = pg_prove_normalization(typing, redex_pair, pg_nf_certificate(nf));
 		assert(normalized_pair);
+		const struct pg_evidence *projected_pair = pg_prove_projection(typing, context, normalized_pair);
+		const struct pg_evidence *swapped[] = {pg_prove_projection(typing, context, reverse[0]),
+			pg_prove_projection(typing, context, reverse[1])};
+		const struct pg_evidence *swap = pg_prove_substitution(typing,
+			pg_evidence_premise(params, 1), context, 2, swapped);
+		const struct pg_evidence *mapped_pair = pg_prove_reindex(typing, swap, normalized_pair);
+		assert(projected_pair && mapped_pair);
 		for (size_t i = 0; i < 2; ++i) {
 			const struct pg_evidence *field = pg_prove_normalization_input(typing, redex_pair, pg_nf_certificate(nf), i);
 			assert(field && pg_evidence_subject(field)->core == pg_evidence_subject(values[i])->core);
@@ -1465,8 +1472,26 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 			assert(pg_evidence_classifier(field) == pg_evidence_classifier(values[i]));
 			const struct pg_evidence *selected = pg_prove_constructor_field(typing, normalized_pair, fields[i]);
 			assert(selected && pg_evidence_subject(selected) == pg_evidence_subject(field));
+			selected = pg_prove_constructor_field(typing, projected_pair, fields[i]);
+			assert(selected && pg_evidence_subject(selected)->core == pg_evidence_subject(values[i])->core);
+			assert(pg_evidence_context(selected) == pg_evidence_context(context));
+			selected = pg_prove_constructor_field(typing, mapped_pair, fields[i]);
+			assert(selected && pg_evidence_subject(selected)->core == pg_evidence_subject(reverse[i])->core);
+			assert(pg_evidence_context(selected) == pg_evidence_context(context));
 		}
 		assert(!pg_prove_normalization_input(typing, redex_pair, pg_nf_certificate(nf), 2));
+		if (chunk == 1) {
+			const struct pg_evidence *scope = pg_evidence_premise(params, 1);
+			const struct pg_evidence *cycle = pg_prove_substitution(typing, scope, scope, 2, reverse);
+			const struct pg_evidence *deep = normalized_pair;
+			for (size_t i = 0; i < 1000; ++i) deep = pg_prove_reindex(typing, cycle, deep);
+			assert(deep);
+			const struct pg_evidence *field = pg_prove_constructor_field(typing, deep, fields[0]);
+			assert(field && pg_evidence_subject(field)->core == pg_evidence_subject(values[0])->core);
+			size_t proofs = typing->proofs.count, occurrences = typing->occurrences.count;
+			assert(pg_prove_constructor_field(typing, deep, fields[0]) == field);
+			assert(typing->proofs.count == proofs && typing->occurrences.count == occurrences);
+		}
 		struct pg_synthesis_job *jobs[2];
 		for (size_t i = 0; i < 2; ++i) {
 			const struct pg_evidence *lv = pg_prove_projection(typing, context, values[i]);

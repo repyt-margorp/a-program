@@ -3196,19 +3196,76 @@ static int direct_structural_input(struct pg_typing *typing, const struct pg_occ
 	return status != PG_INPUT_ERROR;
 }
 
+static const struct pg_evidence *normalized_input(struct pg_typing *typing,
+	const struct pg_occurrence *input, const struct pg_reduction_certificate *certificate)
+{
+	/* Semantic inputs are boundaries along the erased APP spine, not arbitrary
+	 * matching descendants. Their checked scope and classifier stay attached. */
+	for (;;) {
+		const struct pg_reduction_phase *phase = pg_reduction_congruence(certificate);
+		if (!phase) return NULL;
+		if (pg_alpha_equal(pg_reduction_source(phase->children[0]), input->core) == 1)
+			certificate = phase->children[0];
+		else if (phase->children[1] && pg_alpha_equal(pg_reduction_source(phase->children[1]), input->core) == 1)
+			certificate = phase->children[1];
+		else {
+			if (pg_reduction_source(certificate)->kind != PG_APPLICATION) return NULL;
+			certificate = phase->children[0];
+			continue;
+		}
+		return pg_prove_normalization(typing, pg_prove_structural_subject(typing, input), certificate);
+	}
+}
+
 static int structural_input(struct pg_typing *typing, const struct pg_occurrence *source,
 	size_t index, const struct pg_occurrence **result)
 {
 	if (!direct_structural_input(typing, source, index, result)) return 0;
-	if (!*result) {
-		const struct pg_reduction_certificate *receipt = subject_normalization(typing, source);
-		if (receipt) {
-			const struct pg_evidence *normalized = pg_prove_normalization_input(typing,
-				pg_prove_structural_subject(typing, source->origin), receipt, index);
-			if (normalized) *result = pg_evidence_subject(normalized);
-		}
+	if (*result) return 1;
+	struct input_frame {
+		const struct pg_occurrence *source;
+		const struct pg_reduction_certificate *reduction;
+		struct input_frame *next;
+	};
+	struct pg_graph temporary = {0};
+	struct input_frame *frames = NULL;
+	int valid = 1;
+	while (source->origin && !source->selection) {
+		const struct pg_reduction_certificate *reduction = source->map ? NULL : subject_normalization(typing, source);
+		if (!source->map && !reduction) break;
+		struct input_frame *frame = pg_alloc(&temporary, sizeof(*frame));
+		if (!frame) { valid = 0; goto done; }
+		*frame = (struct input_frame){source, reduction, frames};
+		frames = frame;
+		source = source->origin;
 	}
-	return 1;
+	const struct pg_occurrence *input;
+	valid = direct_structural_input(typing, source, index, &input);
+	if (!valid || !input) goto done;
+	for (; frames; frames = frames->next) {
+		const struct pg_evidence *proof;
+		if (frames->reduction) proof = normalized_input(typing, input, frames->reduction);
+		else {
+			const struct pg_context_map *map = frames->source->map;
+			const struct pg_evidence *action = pg_prove_context_map(typing, map);
+			if (input->context != map->source) {
+				if (!input->context || input->context->parent != map->source) goto done;
+				const struct pg_term *core = frames->source->core, *domain, *body;
+				const struct pg_object *binder;
+				if (core->kind == PG_LAMBDA && !index) binder = core->as.lambda.binder;
+				else if (index != 1 || !pg_pi_view(core, &domain, &binder, &body)) goto done;
+				action = pg_prove_substitution_lift(typing, action,
+					conclusion_first(typing, PG_JUDGEMENT_CONTEXT, input->context), binder);
+			}
+			proof = pg_prove_reindex(typing, action, pg_prove_structural_subject(typing, input));
+		}
+		if (!proof) goto done;
+		input = pg_evidence_subject(proof);
+	}
+	*result = input;
+done:
+	pg_graph_destroy(&temporary);
+	return valid;
 }
 
 /* Preserve an available typed child through context action. A computed result
@@ -3396,23 +3453,12 @@ const struct pg_evidence *pg_prove_normalization_input(struct pg_typing *typing,
 	if (!subject) return NULL;
 	if (pg_reduction_policy(certificate) != &pg_pure_policy || pg_reduction_source(certificate) != subject->core) return NULL;
 	const struct pg_occurrence *input;
-	if (!direct_structural_input(typing, subject, index, &input) || !input) return NULL;
-	/* Semantic operands occur at typed boundaries along the erased APP spine;
-	 * do not descend into a different operand just because its Core is shared. */
-	for (;;) {
-		const struct pg_reduction_phase *phase = pg_reduction_congruence(certificate);
-		if (!phase) return NULL;
-		if (pg_alpha_equal(pg_reduction_source(phase->children[0]), input->core) == 1)
-			certificate = phase->children[0];
-		else if (phase->children[1] && pg_alpha_equal(pg_reduction_source(phase->children[1]), input->core) == 1)
-			certificate = phase->children[1];
-		else {
-			if (pg_reduction_source(certificate)->kind != PG_APPLICATION) return NULL;
-			certificate = phase->children[0];
-			continue;
-		}
-		return pg_prove_normalization(typing, pg_prove_structural_subject(typing, input), certificate);
-	}
+	if (!structural_input(typing, subject, index, &input) || !input) return NULL;
+	/* Cached normality has no rebuilding phases. The whole Core is unchanged,
+	 * so its already checked input needs no additional reduction receipt. */
+	if (pg_reduction_kind(certificate) == PG_REDUCTION_NF && pg_reduction_target(certificate) == subject->core)
+		return pg_prove_structural_subject(typing, input);
+	return normalized_input(typing, input, certificate);
 }
 
 const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
