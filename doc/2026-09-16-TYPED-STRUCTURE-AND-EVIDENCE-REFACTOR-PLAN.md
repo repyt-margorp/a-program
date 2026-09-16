@@ -304,7 +304,7 @@ the complete matrix at R5, including retained/recomputed image modes.
 | Type/value view, conversion, widening | Unchanged construction children | Different conclusion boundary, not resynthesized operands |
 | Projection/reindex | Origin and typed context map; no direct operands | Effective inputs use shared context action, lifting under actual lexical binders. A substituted variable selects its typed image |
 | Pi/F/U type-component inversion | Source, selected ordinal, optional typed argument | Explicit selection recipe, not the result's children. A scoped codomain is instantiated by the argument, or restricted when constant |
-| Pure normalization and term-content inversion | Origin without stale direct operands | Result recipe, not immediate result structure. Shared/budgeted typed result exposure remains required |
+| Pure normalization and term-content inversion | Origin without stale direct operands | Result recipe, not immediate result structure. Congruent NF can now expose checked direct inputs through its receipts. Head-changing and mapped result exposure still needs shared/budgeted work |
 
 The last row prevents claiming the migration is complete: the erased reducer
 can finish while the typed result still needs exposure. Preserve this distinction
@@ -1479,3 +1479,40 @@ previously synchronous traversal is now charged incrementally. These samples
 show no material time/memory change, not a demonstrated speedup. Final typed
 NF-child exposure, synchronous certification costs, cumulative representation
 cost and the full R5 publication gates remain open. Main has not been pushed.
+
+### 2026-09-17: Checked congruent NF inputs
+
+- [x] Add a read-only congruence view of completed NF receipts. It requires
+  unchanged heads before and after the single child-rebuilding phase. It does
+  not treat beta/iota/eta's source operands as children of the result.
+- [x] Expose a direct typed construction input using its own accepted evidence
+  and the corresponding child reduction receipt. Lambda bodies retain their
+  extended context. Semantic inputs on an APP spine keep their classifier;
+  there is no lookup of an arbitrary proof by erased Core.
+- [x] Connect this checked view to existing RETURN/THUNK content inversion.
+  Share exact normalization-receipt lookup with structural rebasing. Keep the
+  normalized parent's origin recipe without copying old operands onto it.
+- [x] Test changed inputs beneath RETURN, THUNK and Lambda; preserved scope
+  and classifier; ordinary derivation reconstruction; repeated result reuse;
+  invalid input index/source; and rejection of a head-changing beta receipt.
+- [x] Full debug acceptance passed (63/63 compatibility and final QuickSort
+  source/image results). ASan/UBSan Core, IADT, synthesis and imported
+  QuickSort passed. `git diff --check` passed.
+
+This is not a general typed NF evaluator. `pg_prove_normalization_input` is a
+checked synchronous view of direct source inputs and completed congruent NF
+receipts. It does not yet expose every mapped input, perform iota reconstruction,
+or schedule receipt-spine traversal as shared Solve work. These limitations
+remain R3 work, rather than new language restrictions. The view introduces no
+logical rule, Core tag, image format, or independent acceptance authority.
+
+Against `14d52a2`: implementation/header `eval.c` +12/-0, `eval.h` +4/-0,
+`evidence.c` +53/-7 and `evidence.h` +6/-0: net **+68**, cumulative **+1385**.
+Tests are +43/-0. The net-negative gate remains unmet.
+
+Sequential O0 QuickSort samples: R25 **1.0864 s / 275928 KiB**, R26
+**1.0772 s / 276048 KiB**. Both used **132011** Solve transitions. R26 retained
+the same **179803 Terms / 416611 typed subjects / 433565 proofs / 537 body
+requests**. This does not establish a speedup or resolve the cumulative cost
+regression documented above. Logs: `/tmp/a-program-typed-structure-r26-debug.log`
+and `/tmp/a-program-typed-structure-r26-san-{core,iadt,synthesis,quicksort}.log`.

@@ -488,6 +488,49 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *weakened_app = pg_prove_application(&typing, weakened_function, y_term);
 	const struct pg_evidence *weakened_reduct = checked_normalize(&typing, &evaluation, weakened_app);
 	assert(weakened_reduct && pg_evidence_subject(weakened_reduct)->core == pg_evidence_subject(return_y)->core);
+	/* Congruent NF exposes checked result inputs, not the source's redexes.
+	 * The Lambda body retains its extended context; RETURN/THUNK do not. */
+	const struct pg_evidence *suspended_app = pg_prove_thunk(&typing, &classifiers, app);
+	const struct pg_evidence *normal_inputs[] = {suspended_app,
+		pg_prove_return(&typing, &classifiers, suspended_app),
+		pg_prove_lambda(&typing, pi_y, weakened_app)};
+	const struct pg_term *input_results[] = {pg_evidence_subject(returned)->core,
+		pg_evidence_subject(delayed)->core, pg_evidence_subject(return_y)->core};
+	for (size_t i = 0; i < 3; ++i) {
+		assert(normal_inputs[i]);
+		struct pg_nf_job *nf = pg_nf_request(&evaluation, &pg_pure_policy,
+			pg_evidence_subject(normal_inputs[i])->core);
+		while (pg_nf_advance(nf, i % 2 ? 64 : 1) == PG_NF_PENDING)
+			assert(pg_nf_steps(nf) < 100000);
+		const struct pg_reduction_certificate *receipt = pg_nf_certificate(nf);
+		assert(pg_reduction_congruence(receipt));
+		const struct pg_evidence *input = pg_prove_normalization_input(&typing, normal_inputs[i], receipt, 0);
+		assert(input && pg_evidence_subject(input)->core == input_results[i]);
+		assert(pg_evidence_context(input) == pg_evidence_subject(normal_inputs[i])->operands[0]->context);
+		assert(pg_evidence_classifier(input) == pg_evidence_subject(normal_inputs[i])->operands[0]->classifier);
+		reconstruct_derivation(&typing, &classifiers, input);
+		const struct pg_evidence *normal = pg_prove_normalization(&typing, normal_inputs[i], receipt);
+		assert(normal && pg_evidence_subject(normal)->origin == pg_evidence_subject(normal_inputs[i]));
+		assert(!pg_evidence_subject(normal)->operand_count);
+		if (i < 2) {
+			const struct pg_evidence *extraction = i ? pg_prove_return_value(&typing, normal)
+				: pg_prove_thunk_computation(&typing, normal);
+			assert(extraction && pg_evidence_subject(extraction) == pg_evidence_subject(input));
+			reconstruct_derivation(&typing, &classifiers, extraction);
+		}
+		size_t proofs = typing.proofs.count, occurrences = typing.occurrences.count;
+		assert(pg_prove_normalization_input(&typing, normal_inputs[i], receipt, 0) == input);
+		assert(typing.proofs.count == proofs && typing.occurrences.count == occurrences);
+		assert(!pg_prove_normalization_input(&typing, normal_inputs[i], receipt, 1));
+		assert(!pg_prove_normalization_input(&typing, returned, receipt, 0));
+	}
+	struct pg_nf_job *beta_nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(app)->core);
+	assert(pg_nf_advance(beta_nf, 100000) == PG_NF_DONE);
+	assert(!pg_reduction_congruence(pg_nf_certificate(beta_nf)));
+	assert(!pg_prove_normalization_input(&typing, app, pg_nf_certificate(beta_nf), 0));
+	assert(!pg_prove_normalization_input(&typing, NULL, pg_nf_certificate(beta_nf), 0));
+	assert(!pg_prove_normalization_input(&typing, suspended_app, NULL, 0));
+	assert(!pg_reduction_congruence(NULL));
 	assert(!pg_prove_application(&typing, identity_y, returned));
 	assert(!pg_prove_application(&typing, identity_y, a_in_x));
 	const struct pg_evidence *quoted_function = pg_prove_thunk(&typing, &classifiers, identity_y);

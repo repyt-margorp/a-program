@@ -191,6 +191,10 @@ struct pg_reduction_phase {
 	const struct pg_term *rebuilt;
 };
 const struct pg_reduction_phase *pg_reduction_phases(const struct pg_reduction_certificate *certificate);
+/* Single congruent NF phase with unchanged heads before/after rebuilding.
+ * NULL when beta/iota/eta changes an enclosing constructor. Child receipts
+ * then refer to the actual input/output children, not historical operands. */
+const struct pg_reduction_phase *pg_reduction_congruence(const struct pg_reduction_certificate *certificate);
 /* A reflexive cache entry can inherit normality from a completed reduction
  * whose target is its source. This edge never points back to the cache entry. */
 const struct pg_reduction_certificate *pg_reduction_normality(const struct pg_reduction_certificate *certificate);

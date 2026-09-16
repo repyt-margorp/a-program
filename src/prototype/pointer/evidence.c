@@ -407,6 +407,21 @@ static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 static const struct pg_evidence *constructor_origin(struct pg_typing *typing,
 	const struct pg_evidence *value);
 
+static const struct pg_reduction_certificate *subject_normalization(struct pg_typing *typing,
+	const struct pg_occurrence *subject)
+{
+	if (!subject->origin || subject->map || subject->selection) return NULL;
+	/* A boundary conversion does not replace the original reduction receipt. */
+	const struct pg_occurrence *normalized = pg_occurrence_derived(typing, subject->origin,
+		subject->origin->judgement, subject->core, subject->origin->classifier);
+	for (const struct pg_evidence *proof = pg_evidence_for_subject(typing, normalized, NULL);
+		proof; proof = pg_evidence_for_subject(typing, normalized, proof)) {
+		const struct pg_reduction_certificate *receipt = pg_evidence_normalization(proof);
+		if (receipt) return receipt;
+	}
+	return NULL;
+}
+
 static const struct pg_evidence *image_boundary(struct pg_typing *typing,
 	const struct pg_evidence *result, const struct pg_occurrence *expected)
 {
@@ -490,13 +505,7 @@ start:
 			next->count = pg_evidence_context_map(map)->count;
 			map = NULL;
 		} else if (subject->origin && !subject->selection) {
-			/* A normalization receipt justifies this reduction, not its inputs.
-			 * Restore its original boundary before looking up that exact recipe. */
-			const struct pg_occurrence *normalized = pg_occurrence_derived(typing, subject->origin,
-				subject->origin->judgement, subject->core, subject->origin->classifier);
-			for (const struct pg_evidence *proof = pg_evidence_for_subject(typing, normalized, NULL);
-				proof && !next->reduction; proof = pg_evidence_for_subject(typing, normalized, proof))
-				next->reduction = pg_evidence_normalization(proof);
+			next->reduction = subject_normalization(typing, subject);
 			if (!next->reduction) goto done;
 			next->count = 1;
 		} else goto done;
@@ -3120,6 +3129,14 @@ static int structural_input(struct pg_typing *typing, const struct pg_occurrence
 	/* Descriptive binder lifting may create a scope with no formation proof.
 	 * Retain the inversion recipe unless ordinary rules certify this view. */
 	if (*result && !pg_prove_structural_subject(typing, *result)) *result = NULL;
+	if (!*result) {
+		const struct pg_reduction_certificate *receipt = subject_normalization(typing, source);
+		if (receipt) {
+			const struct pg_evidence *normalized = pg_prove_normalization_input(typing,
+				pg_prove_structural_subject(typing, source->origin), receipt, index);
+			if (normalized) *result = pg_evidence_subject(normalized);
+		}
+	}
 	return status != PG_INPUT_ERROR;
 }
 
@@ -3297,6 +3314,35 @@ const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
 	return accept_record(typing, PG_PURE_NORMALIZATION,
 		pg_evidence_context(source), subject, 1, &source, certificate, NULL);
 }
+
+const struct pg_evidence *pg_prove_normalization_input(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_reduction_certificate *certificate,
+	size_t index)
+{
+	if (!pg_evidence_owned_by(source, typing) || !certificate) return NULL;
+	const struct pg_occurrence *subject = pg_evidence_subject(source);
+	if (!subject || subject->origin || index >= subject->operand_count) return NULL;
+	if (pg_reduction_policy(certificate) != &pg_pure_policy || pg_reduction_source(certificate) != subject->core) return NULL;
+	const struct pg_occurrence *input = subject->operands[index];
+	if (input->context != subject->context && !pg_occurrence_scoped_input(subject, index)) return NULL;
+	/* Semantic operands occur at typed boundaries along the erased APP spine;
+	 * do not descend into a different operand just because its Core is shared. */
+	for (;;) {
+		const struct pg_reduction_phase *phase = pg_reduction_congruence(certificate);
+		if (!phase) return NULL;
+		if (pg_reduction_source(phase->children[0]) == input->core)
+			certificate = phase->children[0];
+		else if (phase->children[1] && pg_reduction_source(phase->children[1]) == input->core)
+			certificate = phase->children[1];
+		else {
+			if (pg_reduction_source(certificate)->kind != PG_APPLICATION) return NULL;
+			certificate = phase->children[0];
+			continue;
+		}
+		return pg_prove_normalization(typing, pg_prove_structural_subject(typing, input), certificate);
+	}
+}
+
 const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *proof)
 {
