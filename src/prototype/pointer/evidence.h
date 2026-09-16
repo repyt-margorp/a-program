@@ -164,14 +164,15 @@ struct pg_inductive_instance {
 	 * NULL for an unapplied family or a non-indexed declaration. */
 	const struct pg_evidence *indices;
 };
-/* Traversal fuel counts retained wrappers and map frames. Individual kernel
- * operations (including application/Pi body recovery) retain their own cost. */
+/* Traversal fuel includes shared application-body transitions. Individual
+ * kernel checks and selected Pi recovery retain their own cost. */
 struct pg_inductive_recovery {
 	struct pg_typing *typing;
 	struct pg_graph temporary;
 	struct scope_frame *frames;
 	struct inductive_argument *arguments;
 	struct inductive_fold *folds;
+	struct pg_typed_body_work *application;
 	const struct pg_evidence *type, *formation, *map;
 	size_t return_values, thunk_values;
 	struct pg_inductive_instance result;
@@ -455,9 +456,24 @@ const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *body);
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
-/* Derived beta body for retained Lambda or type-family abstraction, including
- * curried applications, projection/reindex and force/thunk wrappers. Uses ordinary substitution;
- * NULL when introduction provenance cannot be recovered. No evaluation. */
+/* Shared typed body work, keyed by exact typed function/argument inputs,
+ * not receipt identity. Advances traverse construction and context maps;
+ * individual kernel certification operations retain their own cost. No host
+ * request is executed, nor is Core normalization used as an interning key.
+ * Status: 0 pending, 1 checked result, -1 no supported checked body. A failure
+ * is not a proof of inequality. Jobs belong to typing and are not serialized. */
+struct pg_typed_body_work;
+struct pg_typed_body_work *pg_application_body_request(struct pg_typing *typing,
+	const struct pg_evidence *function, const struct pg_evidence *argument);
+/* Return extraction follows typed beta and zero-clause Fold construction.
+ * Requests remain opaque: only an actual RETURN resumes the continuation.
+ * A normalized input exposes its checked source recipe, not normalized fields. */
+struct pg_typed_body_work *pg_return_body_request(struct pg_typing *typing,
+	const struct pg_evidence *computation);
+int pg_typed_body_advance(struct pg_typed_body_work *work, uint64_t budget);
+const struct pg_evidence *pg_typed_body_result(const struct pg_typed_body_work *work);
+uint64_t pg_typed_body_steps(const struct pg_typed_body_work *work);
+/* Synchronous adapter to the same shared work. */
 const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
 /* Certify a retained computation/family construction and its accumulated context

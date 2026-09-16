@@ -590,12 +590,50 @@ static void evidence_test(struct pg_graph *graph)
 		converted_code, pg_prove_thunk_computation(&typing, converted), nested_application};
 	const struct pg_evidence *beta_results[sizeof(beta_functions) / sizeof(*beta_functions)];
 	for (size_t i = 0; i < sizeof(beta_functions) / sizeof(*beta_functions); ++i) {
-		beta_results[i] = pg_prove_application_body(&typing, beta_functions[i], x_term);
+		struct pg_typed_body_work *work = pg_application_body_request(&typing, beta_functions[i], x_term);
+		assert(work && pg_application_body_request(&typing, beta_functions[i], x_term) == work);
+		uint64_t steps = pg_typed_body_steps(work);
+		int status = pg_typed_body_advance(work, 0);
+		assert(pg_typed_body_steps(work) == steps);
+		while (!status) {
+			status = pg_typed_body_advance(work, i % 2 ? 64 : 1);
+			assert(pg_typed_body_steps(work) <= steps + (i % 2 ? 64 : 1));
+			steps = pg_typed_body_steps(work);
+			assert(steps < 10000);
+		}
+		assert(status == 1);
+		beta_results[i] = pg_typed_body_result(work);
+		assert(pg_prove_application_body(&typing, beta_functions[i], x_term) == beta_results[i]);
+		assert(pg_typed_body_steps(work) == steps);
 		assert(beta_results[i]);
 		assert(pg_evidence_context(beta_results[i]) == pg_evidence_context(x_term));
 		assert(pg_alpha_equal(pg_evidence_subject(beta_results[i])->core, pg_evidence_subject(returned)->core) == 1);
 		assert(pg_alpha_equal(pg_evidence_classifier(beta_results[i]), pg_evidence_classifier(returned)) == 1);
 		reconstruct_derivation(&typing, &classifiers, beta_results[i]);
+	}
+	assert(pg_application_body_request(&typing, beta_functions[0], x_term) ==
+		pg_application_body_request(&typing, beta_functions[1], x_term));
+	assert(!pg_application_body_request(&typing, NULL, x_term));
+	assert(!pg_application_body_request(&typing, identity_y, returned));
+	assert(pg_typed_body_advance(NULL, 1) == -1);
+	assert(!pg_typed_body_result(NULL) && !pg_typed_body_steps(NULL));
+	assert(!pg_return_body_request(&typing, x_term));
+	const struct pg_evidence *return_sources[] = {returned, app, folded, reindexed_fold, weakened_fold};
+	for (size_t i = 0; i < sizeof(return_sources) / sizeof(*return_sources); ++i) {
+		struct pg_typed_body_work *work = pg_return_body_request(&typing, return_sources[i]);
+		assert(work && pg_return_body_request(&typing, return_sources[i]) == work);
+		assert(!pg_typed_body_advance(work, 0) && !pg_typed_body_result(work));
+		uint64_t steps = 0;
+		while (!pg_typed_body_advance(work, i % 2 ? 64 : 1)) {
+			assert(pg_typed_body_steps(work) <= steps + (i % 2 ? 64 : 1));
+			steps = pg_typed_body_steps(work);
+			assert(steps < 10000);
+		}
+		const struct pg_evidence *value = pg_typed_body_result(work);
+		assert(value && pg_evidence_context(value) == pg_evidence_context(return_sources[i]));
+		assert(pg_alpha_equal(pg_evidence_subject(value)->core, pg_evidence_subject(x_term)->core) == 1);
+		steps = pg_typed_body_steps(work);
+		assert(pg_typed_body_advance(work, 64) == 1 && pg_typed_body_steps(work) == steps);
 	}
 	const struct pg_evidence *projected_beta = pg_prove_application_body(&typing, weakened_function, y_term);
 	assert(projected_beta && pg_evidence_subject(projected_beta)->core == pg_evidence_subject(return_y)->core);
@@ -606,6 +644,22 @@ static void evidence_test(struct pg_graph *graph)
 		for (size_t j = 0; j < sizeof(beta_functions) / sizeof(*beta_functions); ++j)
 			assert(pg_prove_application_body(&typing, beta_functions[j], x_term) == beta_results[j]);
 	assert(graph->terms.count == beta_terms && typing.proofs.count == beta_proofs);
+	const struct pg_evidence *deep_function = identity_y;
+	for (size_t i = 0; i < 10000; ++i) {
+		deep_function = pg_prove_force(&typing, pg_prove_thunk(&typing, &classifiers, deep_function));
+		assert(deep_function);
+	}
+	struct pg_typed_body_work *deep_body = pg_application_body_request(&typing, deep_function, x_term);
+	assert(deep_body && !pg_typed_body_advance(deep_body, 0));
+	assert(!pg_typed_body_steps(deep_body) && !pg_typed_body_result(deep_body));
+	assert(!pg_typed_body_advance(deep_body, 1) && pg_typed_body_steps(deep_body) == 1);
+	assert(pg_application_body_request(&typing, deep_function, x_term) == deep_body);
+	while (!pg_typed_body_advance(deep_body, 64)) assert(pg_typed_body_steps(deep_body) < 100000);
+	assert(pg_typed_body_result(deep_body) == beta_results[0]);
+	uint64_t deep_steps = pg_typed_body_steps(deep_body);
+	assert(deep_steps >= 20000);
+	assert(pg_prove_application_body(&typing, deep_function, x_term) == beta_results[0]);
+	assert(pg_typed_body_steps(deep_body) == deep_steps);
 	size_t reduction_terms = graph->terms.count, reduction_proofs = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i) {
 		assert(checked_normalize(&typing, &evaluation, reindexed_force) == force_result);
@@ -3981,6 +4035,9 @@ static void totality_classifier_test(struct pg_graph *graph)
 				pg_evidence_premise(functions[j], 0), constant_body);
 			constant = pg_prove_projection(&typing, outer, constant);
 			const struct pg_evidence *constant_fold = pg_prove_fold(&typing, &classifiers, input, constant);
+			struct pg_typed_body_work *prefix = pg_return_body_request(&typing, constant_fold);
+			while (!pg_typed_body_advance(prefix, 1)) {}
+			assert(!pg_typed_body_result(prefix));
 			const struct pg_evidence *result = pg_prove_total_pure_value(&typing, constant_fold);
 			assert(constant_fold && !!result == (i && j));
 			assert(request_whnf(graph, pg_evidence_subject(constant_fold)->core, 1)

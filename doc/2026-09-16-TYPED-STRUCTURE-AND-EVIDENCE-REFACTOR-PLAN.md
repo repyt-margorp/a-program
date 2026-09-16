@@ -322,10 +322,10 @@ checkpoint notes below are historical, not additional completion claims.
 | Existing path | State / next action |
 |---|---|
 | Evidence classifier/context/sort copies | Removed for term conclusions |
-| `return_value_origin`, `pg_prove_application_body` | Read typed construction/maps; still synchronous and not shared budgeted typed normalization |
+| `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
-| `inductive_recovery_step` | Reads typed origins/maps, selections and computation inputs; exact nominal formation still requires accepted evidence. Nested synchronous helpers remain |
+| `inductive_recovery_step` | Reads typed origins/maps, selections and computation inputs; application-body transitions share work and consume recovery budget. Exact nominal formation and other synchronous kernel suboperations remain |
 | `rebase_image` | Reads typed maps/origins and constructor/family inputs; rechecks introductions in the target context. Retains normalization receipts and nominal formation checks, not wrapper-history dispatch; synchronous work remains |
 | `constructor_origin`, `pg_prove_elimination_body` | Read typed fields/motive/allocation; ordinary nominal acceptance still required |
 | `classifier_leaf` | Deleted |
@@ -1439,3 +1439,43 @@ by themselves imply lower time/memory: typed records and shared work are
 larger than the old receipts. This remains an R5 representation-cost concern,
 not a reason to bypass logical checks. Repeated final measurements are still
 required after the remaining structural work.
+
+### 2026-09-17: Shared typed application and Return bodies
+
+- [x] Replace the synchronous application-body walk with exact typed-input
+  requests. Return extraction uses the same machine, including pending
+  zero-clause Fold continuations; delete its separate traversal and stack.
+  Alternative receipts of one subject share work, not a canonical proof.
+- [x] Advance application requests one transition at a time from nominal
+  recovery and family quotation. Explicitly requeue pending family work in
+  Solve. Context-map composition and final reindexing use existing checked
+  rules; their internal cost is not claimed to be one primitive step.
+- [x] Add zero/chunked-budget and repeated-result tests, shared requests from
+  different receipts, 10000 nested thunk/force wrappers, Return/Fold under
+  substitution/projection, invalid argument sorts, and a neutral Fold prefix
+  which must not be skipped. An unsupported body is not an inequality proof.
+- [x] Final debug acceptance passed through the final source/image QuickSort
+  results, including 63/63 compatibility. Final ASan/UBSan Core, IADT,
+  synthesis and imported QuickSort passed; `git diff --check` passed.
+
+`typing.typed_bodies` indexes computational work, not another program graph or
+acceptance authority. Keys are exact typed source/argument references; a
+missing argument denotes the separately validated Return-body request. Results
+reference ordinary accepted evidence. Jobs/frames are graph-owned, are not
+serialized, and are recreated through Solve after loading. No new logical rule,
+image version, host execution, or equality reflection was introduced.
+
+Against `d0c336f`, implementation/header changes are: `evidence.c` +192/-124,
+`evidence.h` +21/-5, `synthesis.c` +3/-1, `typing.c` +2/-0 and `typing.h` +1/-0:
+net **+89**, cumulative **+1317**. Tests are +58/-1. The shared resumable machine
+replaces both walks, but its scheduling interface still costs code; this does
+not satisfy the net-negative completion gate.
+
+Sequential O0 QuickSort diagnostics: R24 **1.0729 s / 276160 KiB**, R25
+**1.0663 s / 276396 KiB** and **1.0352 s / 276008 KiB**. R25 has exactly the
+same **179803 Terms / 416611 typed subjects / 433565 proofs** as R24, plus 537
+shared body requests. Solve transitions change **131321 -> 132011** because
+previously synchronous traversal is now charged incrementally. These samples
+show no material time/memory change, not a demonstrated speedup. Final typed
+NF-child exposure, synchronous certification costs, cumulative representation
+cost and the full R5 publication gates remain open. Main has not been pushed.

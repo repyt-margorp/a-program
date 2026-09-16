@@ -6605,9 +6605,11 @@ static void family_function_step(struct pg_synthesis *synthesis, struct pg_synth
 			job->value_job = pg_synthesis_lambda_body(synthesis,
 				pg_synthesis_evidence(synthesis, context), body);
 		} else if (subject && subject->core->kind == PG_APPLICATION) {
-			const struct pg_evidence *body = pg_prove_application_body(synthesis->typing,
+			struct pg_typed_body_work *application = pg_application_body_request(synthesis->typing,
 				pg_prove_structural_subject(synthesis->typing, subject->operands[0]),
 				pg_prove_structural_subject(synthesis->typing, subject->operands[1]));
+			if (!pg_typed_body_advance(application, 1)) { enqueue(synthesis, job); return; }
+			const struct pg_evidence *body = pg_typed_body_result(application);
 			if (body) job->value_job = family_function(synthesis, pg_synthesis_evidence(synthesis, body));
 		}
 		if (job->value_job) {

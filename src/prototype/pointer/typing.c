@@ -21,6 +21,7 @@ int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph)
 	if (pg_index_init(&typing->context_projections) != 0) goto fail;
 	if (pg_index_init(&typing->occurrence_actions) != 0) goto fail;
 	if (pg_index_init(&typing->occurrence_inputs) != 0) goto fail;
+	if (pg_index_init(&typing->typed_bodies) != 0) goto fail;
 	if (pg_index_init(&typing->proofs) != 0) goto fail;
 	if (pg_index_init(&typing->evidence_conclusions) != 0) goto fail;
 	if (pg_substitution_work_init(&typing->substitutions, graph) == 0) return 0;
@@ -37,6 +38,7 @@ void pg_typing_destroy(struct pg_typing *typing)
 	pg_index_destroy(&typing->context_projections);
 	pg_index_destroy(&typing->occurrence_actions);
 	pg_index_destroy(&typing->occurrence_inputs);
+	pg_index_destroy(&typing->typed_bodies);
 	pg_index_destroy(&typing->proofs);
 	pg_index_destroy(&typing->evidence_conclusions);
 	pg_substitution_work_destroy(&typing->substitutions);
