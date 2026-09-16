@@ -23,6 +23,9 @@ struct pg_occurrence {
 	const struct pg_context *context;
 	const struct pg_term *core;
 	const struct pg_term *classifier;
+	/* Retained formation of the classifier, not its acceptance receipt.
+	 * Mapped uses obtain it by the same context action as other typed edges. */
+	const struct pg_occurrence *type;
 	const struct pg_term *annotation;
 	/* A mapped construction has an origin/map, not stale direct operands.
 	 * An origin without a map records a derived result, not current children. */
@@ -78,6 +81,13 @@ const struct pg_occurrence *pg_occurrence(struct pg_typing *typing,
 	enum pg_evidence_judgement judgement, const struct pg_context *context, const struct pg_term *core,
 	const struct pg_term *classifier, const struct pg_term *annotation, size_t operand_count,
 	const struct pg_occurrence *const *operands);
+const struct pg_occurrence *pg_occurrence_typed(struct pg_typing *typing,
+	enum pg_evidence_judgement judgement, const struct pg_term *core,
+	const struct pg_occurrence *type, const struct pg_term *annotation,
+	size_t operand_count, const struct pg_occurrence *const *operands);
+/* Select a formed classifier while retaining the term's construction. */
+const struct pg_occurrence *pg_occurrence_classified(struct pg_typing *typing,
+	const struct pg_occurrence *source, const struct pg_occurrence *type);
 /* A different boundary preserves construction inputs, not typing acceptance. */
 const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 	const struct pg_occurrence *source, enum pg_evidence_judgement judgement,
@@ -132,6 +142,8 @@ enum pg_occurrence_input_status { PG_INPUT_PENDING, PG_INPUT_READY,
 	PG_INPUT_UNAVAILABLE, PG_INPUT_ERROR };
 struct pg_occurrence_input *pg_occurrence_input_request(struct pg_typing *typing,
 	const struct pg_occurrence *source, size_t index);
+struct pg_occurrence_input *pg_occurrence_type_request(struct pg_typing *typing,
+	const struct pg_occurrence *source);
 enum pg_occurrence_input_status pg_occurrence_input_advance(struct pg_occurrence_input *work,
 	uint64_t budget);
 const struct pg_occurrence *pg_occurrence_input_result(const struct pg_occurrence_input *work);

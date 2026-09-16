@@ -3905,7 +3905,7 @@ static void deep_classifier_test(void)
 	}
 	struct pg_classifier_recovery cancelled;
 	assert(!pg_classifier_recovery_init(&cancelled, &typing, &classifiers, empty, value));
-	assert(!pg_classifier_recovery_advance(&cancelled, 100));
+	assert(!pg_classifier_recovery_advance(&cancelled, 0));
 	pg_classifier_recovery_destroy(&cancelled);
 	assert(pg_classifier_recovery_init(&cancelled, &typing, NULL, empty, value) == -1);
 	assert(pg_classifier_recovery_advance(&cancelled, 10) == -1);
@@ -3916,15 +3916,17 @@ static void deep_classifier_test(void)
 		context = pg_prove_context_extension(&typing, context, pg_binder(&graph), pg_prove_projection(&typing, context, universe));
 	const struct pg_evidence *variable = pg_prove_variable(&typing, context, binder);
 	assert(!pg_classifier_recovery_init(&cancelled, &typing, &classifiers, context, variable));
-	assert(!pg_classifier_recovery_advance(&cancelled, 64));
+	assert(!pg_classifier_recovery_advance(&cancelled, 0));
 	assert(!cancelled.result);
 	assert(pg_classifier_recovery_advance(&cancelled, 1) == 1);
-	assert(cancelled.result == pg_prove_projection(&typing, context, universe));
+	assert(pg_evidence_subject(cancelled.result)->core == pg_evidence_subject(universe)->core);
+	assert(pg_evidence_context(cancelled.result) == pg_evidence_context(context));
+	assert(pg_evidence_judgement(cancelled.result) == PG_JUDGEMENT_VALUE_TYPE);
 	pg_classifier_recovery_destroy(&cancelled);
 	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
-	puts("classifier: 40000 retained-premise steps, exact formation reuse, no recursive recovery");
+	puts("classifier: 40000 nested constructors, direct formation reuse, no proof-history traversal");
 }
 
 static const struct pg_evidence *resume_clause(struct pg_typing *typing, struct pg_classifiers *classifiers,

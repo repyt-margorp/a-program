@@ -29,8 +29,10 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	const struct pg_context_map *image_map = pg_context_map(typing, ca, cb, 1, &image);
 	const struct pg_occurrence *mapped_variable = pg_occurrence_mapped(typing,
 		PG_JUDGEMENT_VALUE, id, a, a, va, image_map);
-	const struct pg_occurrence *roots[] = {oa, ob, oa, bare, mapped, boundary, derived, derived, mapped_variable};
-	assert(mapped && boundary && derived && mapped_variable && pg_occurrences_write(file, 9, roots, NULL, NULL) == 0);
+	const struct pg_occurrence *type = pg_occurrence(typing, PG_JUDGEMENT_VALUE_TYPE, NULL, a, b, NULL, 0, NULL);
+	const struct pg_occurrence *typed = pg_occurrence_classified(typing, oa, type);
+	const struct pg_occurrence *roots[] = {oa, ob, oa, bare, mapped, boundary, derived, derived, mapped_variable, typed, type};
+	assert(mapped && boundary && derived && mapped_variable && typed && pg_occurrences_write(file, 11, roots, NULL, NULL) == 0);
 	/* Arbitrary elaboration inputs are transported, never treated as proofs. */
 	assert(typing->proofs.count == 0);
 	FILE *other = tmpfile();
@@ -68,13 +70,18 @@ static void write_input(FILE *file, struct pg_typing *typing)
 	assert(pg_occurrences_read(other, typing, 0, 0, NULL, NULL, &count, &loaded) == 0 && count == 0);
 	assert(fclose(other) == 0);
 	other = tmpfile();
-	assert(other && fwrite("APGOCC3", 1, 8, other) == 8);
+	assert(other && fwrite("APGOCC4", 1, 8, other) == 8);
 	assert(!pg_wire_write_u64(other, 1) && !pg_wire_write_u64(other, 1));
 	assert(fputc(0, other) != EOF && fputc(PG_JUDGEMENT_INPUT, other) != EOF);
 	assert(!pg_wire_write_u64(other, 1) && !pg_wire_write_u64(other, 1));
 	rewind(other);
 	assert(pg_occurrences_read(other, typing, 100, 0, NULL, NULL, &count, &loaded) == -1);
 	assert(count == 0 && fclose(other) == 0);
+	other = tmpfile();
+	assert(other && fwrite("APGOCC3", 1, 8, other) == 8);
+	rewind(other);
+	assert(pg_occurrences_read(other, typing, 100, 0, NULL, NULL, &count, &loaded) == -1);
+	assert(fclose(other) == 0);
 	other = tmpfile();
 	assert(other && fwrite("APGOCC2", 1, 8, other) == 8);
 	rewind(other);
@@ -97,7 +104,15 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	size_t count;
 	const struct pg_occurrence *const *roots;
 	assert(pg_occurrences_read(file, typing, 1000, 0, NULL, NULL, &count, &roots) == 0);
-	assert(count == 9 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 11 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(roots[9]->type == roots[10] && roots[9]->core == roots[0]->core);
+	assert(roots[9]->classifier == roots[10]->core && roots[9]->operands[0] == roots[0]->operands[0]);
+	assert(!roots[0]->type);
+	struct pg_occurrence_input *type_query = pg_occurrence_type_request(typing, roots[9]);
+	assert(pg_occurrence_input_advance(type_query, 0) == PG_INPUT_PENDING);
+	while (pg_occurrence_input_advance(type_query, 1) == PG_INPUT_PENDING) {}
+	assert(pg_occurrence_input_result(type_query) == roots[10]);
+	assert(pg_occurrence_type_request(typing, roots[9]) == type_query);
 	assert(roots[6] == roots[7] && roots[6]->origin == roots[4]);
 	assert(!roots[6]->map && !roots[6]->operand_count);
 	assert(roots[6]->context == roots[4]->context);
@@ -135,7 +150,7 @@ static void read_input(FILE *file, struct pg_typing *typing)
 		struct pg_typing destination;
 		assert(pg_graph_init(&graph) == 0 && pg_typing_init(&destination, &graph) == 0);
 		FILE *fragment = tmpfile();
-		if (cut == length) bytes[24] = 16; /* Unknown occurrence flag. */
+		if (cut == length) bytes[24] = 32; /* Unknown occurrence flag. */
 		assert(fragment && fwrite(bytes, 1, cut, fragment) == cut);
 		rewind(fragment);
 		size_t unchanged = count;

@@ -1545,7 +1545,8 @@ static void schema_positivity(void)
 	assert(pg_evidence_classifier(succ) == pg_evidence_subject(nat)->core);
 	assert(pg_evidence_subject(succ)->core == pg_application(&graph,
 		pg_reference(&graph, pg_data_constructor(nat_layout, 1)), pg_evidence_subject(zero)->core));
-	assert(pg_prove_classifier(&typing, &classifiers, empty, succ) == pg_evidence_premise(succ, 0));
+	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, empty, succ)) ==
+		pg_evidence_subject(pg_evidence_premise(succ, 0)));
 	proofs = typing.proofs.count; terms = graph.terms.count;
 	assert(pg_prove_inductive_type(&typing, &classifiers, nat_schema) == nat);
 	assert(pg_prove_constructor(&typing, nat, pg_data_constructor(nat_layout, 1), identity, 1, &zero) == succ);

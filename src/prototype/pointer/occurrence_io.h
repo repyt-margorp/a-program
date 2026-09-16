@@ -4,7 +4,7 @@
 #include "typing.h"
 #include <stdio.h>
 
-/* APGOCC3 transports descriptive typed inputs, not evidence. Contexts, Core,
+/* APGOCC4 transports descriptive typed inputs, not evidence. Contexts, Core,
  * classifiers and annotations share relocation tables. Sorts and operand order
  * and structural maps are retained. Derived origins are distinct from direct
  * construction inputs. Earlier input images are rejected.

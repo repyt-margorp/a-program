@@ -748,3 +748,56 @@ is still unmet. Sequential single-run debug QuickSort measurements were
 Derivations decreased from 504226 to 504223; the other R7 structural counts
 were unchanged. Final comparative gates, remaining consumer deletions and
 Main publication remain pending.
+
+### 2026-09-17: Retained classifier formation
+
+- [x] Retain the classifier's typed structural node on constructed terms.
+  This is an edge between existing occurrences, not a new Core tag, proof
+  database or acceptance bit. Interning checks its exact identity and enforces
+  matching context and classifier Core. Conversion selects the target edge;
+  normalization preserves it when the classifier is unchanged.
+- [x] Construct the formation at Return/Thunk/Force, APP, extraction, request
+  and Fold introduction using the existing checked rules. Constructor, Match,
+  Lambda, host and Identity producers retain their supplied formations.
+  Delete `classifier_leaf` and the rule-indexed classifier history walk.
+  Recovery now follows typed origins/maps, reads the selected type edge, and
+  checks the resulting context/classifier. Variables use the exact accepted
+  context declaration; Universe formation is constructed lazily.
+- [x] Add classifier-edge queries to the existing scoped input work. This is
+  descriptive access only. Update occurrence transport to APGOCC4, retaining
+  the type edge in the same DAG; reject earlier occurrence images. Fresh-process
+  round trips retain sharing without creating acceptance evidence.
+- [x] Debug `check-acceptance` passed, including 63/63 compatibility and all
+  QuickSort source/image property comparisons at chunks one and 64. ASan/UBSan
+  Core, IADT, Identity, synthesis and occurrence round trips passed. An initial
+  synthesis regression revealed missing formation after converted Return/Thunk
+  inversion; derived extraction now retains its checked target formation.
+- [ ] Finish shared/budgeted access for classifier recovery: the kernel still
+  follows origin/map frames synchronously inside formation-producing rules.
+  Descriptive edge-query memoization alone does not settle this requirement.
+- [ ] Remove nominal/Pi-component recovery and Identity boundary-history
+  reconstruction only after their actual semantic inputs are retained. No
+  claim of R3/R5 completion or Main publication is made at this checkpoint.
+
+Changes against `5bc2f0e`, excluding documentation:
+
+| File | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `evidence.c` | 123 | 175 | -52 |
+| `evidence.h` | 5 | 4 | +1 |
+| `typing.c` | 52 | 7 | +45 |
+| `typing.h` | 12 | 0 | +12 |
+| `occurrence_io.c` | 26 | 11 | +15 |
+| `occurrence_io.h` | 1 | 1 | 0 |
+| **Implementation subtotal** | **219** | **198** | **+21** |
+| Tests (three files) | 28 | 10 | +18 |
+
+Cumulative implementation delta against `4657cc6` is **+842**, still above the
+required net-negative result. Sequential single-run debug QuickSort measurements
+were 1.456 seconds / 274332 KiB before and 1.505 seconds / 271788 KiB after.
+Solve transitions fell from 201138 to 154851 because formation work moved to
+construction; this is not a comparable reduction in total computational work
+or a speedup claim. Current counts: 405313 occurrences, 496977 derivations,
+406356 conclusion keys, 39769 context maps, 103154 occurrence actions, 3097
+input queries, 14921 contexts and 175371 Core terms. Final time/memory gates
+and the remaining physical deletions are still required.
