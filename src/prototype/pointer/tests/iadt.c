@@ -242,8 +242,28 @@ static void scoped_type_families(void)
 	const struct pg_evidence *resumed = pg_prove_return_content(&typing,
 		pg_prove_thunk_content(&typing, pg_prove_reindex(&typing,
 			pg_prove_substitution_projection(&typing, vc, outer), suspended)));
+	/* Nominal recovery consumes the same checked body work as term recovery,
+	 * including Force/Thunk and Fold, without a second continuation machine. */
+	const struct pg_evidence *type_value = pg_prove_type_value(&typing, nt);
+	const struct pg_evidence *type_scope = pg_prove_context_extension(&typing, vc, pg_binder(&graph),
+		pg_prove_classifier(&typing, &classifiers, vc, type_value));
+	const struct pg_evidence *type_identity = pg_prove_abstract(&typing, &classifiers, vc, type_scope,
+		pg_prove_return(&typing, &classifiers,
+			pg_prove_variable(&typing, type_scope, pg_evidence_context(type_scope)->binder)));
+	const struct pg_evidence *computed = pg_prove_fold(&typing, &classifiers,
+		pg_prove_force(&typing, pg_prove_thunk(&typing, &classifiers,
+			pg_prove_return(&typing, &classifiers, type_value))), type_identity);
+	assert(computed);
+	struct pg_whnf_work reduction;
+	assert(!pg_whnf_work_init(&reduction, &graph));
+	struct pg_whnf_job *head = pg_whnf_request(&reduction, &pg_pure_policy, pg_evidence_subject(computed)->core);
+	while (pg_whnf_advance(head, 1) == PG_EVAL_PENDING) assert(pg_whnf_steps(head) < 10000);
+	const struct pg_evidence *normal = pg_prove_normalization(&typing, computed, pg_whnf_certificate(head));
+	const struct pg_evidence *computed_type = pg_prove_value_type(&typing, pg_prove_return_value(&typing, normal));
+	struct pg_typed_body_work *shared = pg_return_body_request(&typing, normal);
+	assert(shared && !pg_typed_body_advance(shared, 0));
 	const struct pg_evidence *wrapped[] = {nt, pg_prove_projection(&typing, outer, nt),
-		pg_prove_reindex(&typing, pg_prove_substitution_projection(&typing, vc, outer), nt), resumed};
+		pg_prove_reindex(&typing, pg_prove_substitution_projection(&typing, vc, outer), nt), resumed, computed_type};
 	for (size_t i = 0; i < sizeof(wrapped) / sizeof(*wrapped); ++i) {
 		assert(wrapped[i] && pg_inductive_instance(&typing, wrapped[i], &recovered));
 		assert(recovered.schema == schema && recovered.formation == nominal && recovered.indices);
@@ -259,6 +279,11 @@ static void scoped_type_families(void)
 			pg_inductive_recovery_destroy(&work);
 		}
 	}
+	uint64_t shared_steps = pg_typed_body_steps(shared);
+	assert(shared_steps && pg_typed_body_result(shared));
+	assert(pg_typed_body_advance(shared, 64) == 1 && pg_typed_body_steps(shared) == shared_steps);
+	assert(pg_return_body_request(&typing, normal) == shared);
+	pg_whnf_work_destroy(&reduction);
 	const struct pg_object *w = pg_binder(&graph);
 	const struct pg_evidence *wc = pg_prove_context_extension(&typing, vc, w, type);
 	const struct pg_evidence *wv = pg_prove_variable(&typing, wc, w);

@@ -730,7 +730,21 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_typed_body_advance(NULL, 1) == -1);
 	assert(!pg_typed_body_result(NULL) && !pg_typed_body_steps(NULL));
 	assert(!pg_return_body_request(&typing, x_term));
-	const struct pg_evidence *return_sources[] = {returned, app, folded, reindexed_fold, weakened_fold};
+	const struct pg_object *suspension = pg_binder(graph);
+	const struct pg_evidence *suspension_scope = pg_prove_context_extension(&typing, x_context, suspension,
+		pg_prove_classifier(&typing, &classifiers, x_context, delayed));
+	const struct pg_evidence *suspension_map = pg_prove_substitution_pair(&typing, identity_map, suspension_scope, delayed);
+	const struct pg_evidence *mapped_force = pg_prove_reindex(&typing, suspension_map,
+		pg_prove_force(&typing, pg_prove_variable(&typing, suspension_scope, suspension)));
+	assert(mapped_force);
+	const struct pg_evidence *suspension_identity = pg_prove_abstract(&typing, &classifiers, x_context, suspension_scope,
+		pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, suspension_scope, suspension)));
+	const struct pg_evidence *returned_suspension = pg_prove_return_value(&typing, checked_normalize(&typing, &evaluation,
+		pg_prove_application(&typing, suspension_identity, delayed)));
+	assert(returned_suspension && pg_evidence_subject(returned_suspension)->origin);
+	const struct pg_evidence *computed_force = pg_prove_force(&typing, returned_suspension);
+	const struct pg_evidence *return_sources[] = {returned, app, folded, reindexed_fold, weakened_fold,
+		forced, mapped_force, computed_force};
 	for (size_t i = 0; i < sizeof(return_sources) / sizeof(*return_sources); ++i) {
 		struct pg_typed_body_work *work = pg_return_body_request(&typing, return_sources[i]);
 		assert(work && pg_return_body_request(&typing, return_sources[i]) == work);

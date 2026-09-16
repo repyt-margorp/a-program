@@ -767,6 +767,20 @@ static int typed_body_resume(struct pg_typed_body_work *work, const struct pg_ev
 	return 0;
 }
 
+static int typed_body_enter(struct pg_typed_body_work *work, const struct pg_occurrence *current,
+	const struct pg_evidence *argument, const struct pg_evidence *continuation)
+{
+	struct typed_body_frame *next = pg_alloc(work->typing->graph, sizeof(*next));
+	if (!next) return -1;
+	*next = (struct typed_body_frame){work->argument, continuation, work->frames, work->forces, work->pending};
+	work->pending = next;
+	work->current = current;
+	work->argument = argument;
+	work->frames = NULL;
+	work->forces = 0;
+	return 0;
+}
+
 static int typed_body_step(struct pg_typed_body_work *work)
 {
 	struct pg_typing *typing = work->typing;
@@ -802,7 +816,8 @@ static int typed_body_step(struct pg_typed_body_work *work)
 			*frame = (struct construction_map){current->map, work->frames};
 			work->frames = frame;
 		} else if (current->judgement != current->origin->judgement) {
-			if (!work->argument) return -1;
+			if (current->judgement == PG_JUDGEMENT_VALUE && current->origin->judgement == PG_JUDGEMENT_COMPUTATION)
+				return typed_body_enter(work, current->origin, NULL, NULL);
 			if (current->judgement != PG_JUDGEMENT_COMPUTATION || current->origin->judgement != PG_JUDGEMENT_VALUE) return -1;
 			++work->forces;
 		}
@@ -822,11 +837,12 @@ static int typed_body_step(struct pg_typed_body_work *work)
 	if (core->kind == PG_APPLICATION) {
 		const struct pg_term *head = core->as.application.function;
 		if (!work->argument && head == pg_reference(typing->graph, &pg_return_operation)) {
+			if (work->forces) return -1;
 			if (current->operand_count != 1 || current->operands[0]->core != core->as.application.argument) return -1;
 			work->value = pg_prove_structural_subject(typing, current->operands[0]);
 			return work->value ? 0 : -1;
 		}
-		if (work->argument && head->kind == PG_REFERENCE &&
+		if (head->kind == PG_REFERENCE &&
 			(head->as.reference == &pg_force_operation || head->as.reference == &pg_thunk_operation)) {
 			if (current->operand_count != 1 || current->operands[0]->core != core->as.application.argument) return -1;
 			if (head->as.reference == &pg_force_operation) ++work->forces;
@@ -842,17 +858,9 @@ static int typed_body_step(struct pg_typed_body_work *work)
 		if (!fold && current->operands[0]->core != head) return -1;
 		const struct pg_evidence *right = pg_prove_structural_subject(typing, current->operands[1]);
 		if (!right) return -1;
-		struct typed_body_frame *next = pg_alloc(typing->graph, sizeof(*next));
-		if (!next) return -1;
-		*next = (struct typed_body_frame){work->argument, fold ? right : NULL, work->frames, work->forces, work->pending};
-		work->pending = next;
-		work->argument = fold ? NULL : right;
-		work->current = current->operands[0];
-		work->frames = NULL;
-		work->forces = 0;
-		return 0;
+		return typed_body_enter(work, current->operands[0], fold ? NULL : right, fold ? right : NULL);
 	}
-	if (!work->argument || core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER || !work->frames) return -1;
+	if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER || !work->frames) return -1;
 	work->current = pg_context_map_image(work->frames->map, core->as.reference);
 	work->frames = work->frames->next;
 	return work->current ? 0 : -1;
@@ -998,14 +1006,6 @@ struct inductive_argument {
 	struct inductive_argument *next;
 };
 
-struct inductive_fold {
-	const struct pg_evidence *continuation;
-	struct scope_frame *frames;
-	struct inductive_argument *arguments;
-	size_t return_values, thunk_values;
-	struct inductive_fold *parent;
-};
-
 int pg_inductive_recovery_init(struct pg_inductive_recovery *work,
 	struct pg_typing *typing, const struct pg_evidence *type)
 {
@@ -1056,11 +1056,13 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		goto advanced;
 	}
 	if (subject->origin) {
-		if (subject->origin->judgement == PG_JUDGEMENT_COMPUTATION && subject->judgement != PG_JUDGEMENT_COMPUTATION)
-			++work->return_values;
-		else if (subject->origin->judgement == PG_JUDGEMENT_VALUE && subject->judgement == PG_JUDGEMENT_COMPUTATION)
-			++work->thunk_values;
 		formation = pg_prove_structural_subject(typing, subject->origin);
+		if (subject->origin->judgement == PG_JUDGEMENT_COMPUTATION && subject->judgement != PG_JUDGEMENT_COMPUTATION) {
+			if (!work->body) work->body = pg_return_body_request(typing, formation);
+			if (!pg_typed_body_advance(work->body, 1)) return;
+			formation = pg_typed_body_result(work->body);
+			work->body = NULL;
+		}
 		goto advanced;
 	}
 	const struct pg_term *core = subject->core;
@@ -1070,58 +1072,18 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 	}
 	formation = nominal_formation(typing, subject);
 	if (!formation) {
-		if (core->kind != PG_APPLICATION || !subject->operand_count || subject->operand_count > 2) goto failed;
+		if (core->kind != PG_APPLICATION || subject->operand_count != 2) goto failed;
 		const struct pg_term *head = core->as.application.function;
 		const struct pg_evidence *left = pg_prove_structural_subject(typing, subject->operands[0]);
 		if (!left) goto failed;
-		if (subject->operand_count == 1) {
-			if (head->kind != PG_REFERENCE || subject->operands[0]->core != core->as.application.argument) goto failed;
-			formation = left;
-			if (head->as.reference == &pg_force_operation) { ++work->thunk_values; goto advanced; }
-			if (head->as.reference == &pg_thunk_operation) {
-				if (!work->thunk_values) goto failed;
-				--work->thunk_values;
-				goto advanced;
-			}
-			if (head->as.reference != &pg_return_operation) goto failed;
-			if (!work->return_values) goto failed;
-			if (work->return_values == 1 && work->folds) {
-				struct inductive_fold *fold = work->folds;
-				if (!work->application) work->application = pg_application_body_request(typing,
-					fold->continuation, scope_image(typing, left, work->frames));
-				if (!pg_typed_body_advance(work->application, 1)) return;
-				formation = pg_typed_body_result(work->application);
-				work->application = NULL;
-				work->frames = fold->frames;
-				work->arguments = fold->arguments;
-				work->return_values = fold->return_values;
-				work->thunk_values = fold->thunk_values;
-				work->folds = fold->parent;
-			} else --work->return_values;
-			goto advanced;
-		}
 		if (subject->operands[1]->core != core->as.application.argument) goto failed;
 		const struct pg_evidence *right = pg_prove_structural_subject(typing, subject->operands[1]);
 		if (!right) goto failed;
-		if (head->kind == PG_APPLICATION && head->as.application.function == pg_reference(typing->graph, &pg_fold_operation) &&
-			subject->operands[0]->core == head->as.application.argument) {
-			struct inductive_fold *fold = pg_alloc(&work->temporary, sizeof(*fold));
-			if (!fold) goto failed;
-			*fold = (struct inductive_fold){right, work->frames, work->arguments,
-				work->return_values, work->thunk_values, work->folds};
-			work->folds = fold;
-			work->frames = NULL;
-			work->arguments = NULL;
-			work->thunk_values = 0;
-			work->return_values = 1;
-			formation = left;
-			goto advanced;
-		}
 		if (subject->operands[0]->core != head) goto failed;
-		if (!work->application) work->application = pg_application_body_request(typing, left, right);
-		if (!pg_typed_body_advance(work->application, 1)) return;
-		formation = pg_typed_body_result(work->application);
-		work->application = NULL;
+		if (!work->body) work->body = pg_application_body_request(typing, left, right);
+		if (!pg_typed_body_advance(work->body, 1)) return;
+		formation = pg_typed_body_result(work->body);
+		work->body = NULL;
 		if (!formation && pg_evidence_judgement(left) == PG_JUDGEMENT_TYPE_FAMILY) {
 			struct inductive_argument *argument = pg_alloc(&work->temporary, sizeof(*argument));
 			if (!argument) goto failed;
@@ -1132,7 +1094,6 @@ static void inductive_recovery_step(struct pg_inductive_recovery *work)
 		goto advanced;
 	}
 	work->formation = formation;
-	if (work->return_values || work->thunk_values || work->folds) goto failed;
 	if (!work->map) {
 		const struct pg_evidence *context = formation->premises[0]->premises[0];
 		work->map = pg_prove_substitution_projection(typing, context, context);

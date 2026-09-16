@@ -171,10 +171,8 @@ struct pg_inductive_recovery {
 	struct pg_graph temporary;
 	struct scope_frame *frames;
 	struct inductive_argument *arguments;
-	struct inductive_fold *folds;
-	struct pg_typed_body_work *application;
+	struct pg_typed_body_work *body;
 	const struct pg_evidence *type, *formation, *map;
-	size_t return_values, thunk_values;
 	struct pg_inductive_instance result;
 	int status;
 };

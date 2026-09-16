@@ -326,7 +326,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
-| `inductive_recovery_step` | Reads typed origins/maps, selections and computation inputs; application-body transitions share work and consume recovery budget. Exact nominal formation and other synchronous kernel suboperations remain |
+| `inductive_recovery_step` | Reads typed origins/maps, selections and family inputs. R33 removes its private Return/Thunk counters and Fold continuation stack; computed results and applications share indexed typed-body work. Exact nominal formation and synchronous kernel suboperations remain |
 | `rebase_image` | Reads typed maps/origins and constructor/family inputs; rechecks introductions in the target context. Retains normalization receipts and nominal formation checks, not wrapper-history dispatch; synchronous work remains |
 | `constructor_origin`, `pg_prove_elimination_body` | Whole-introduction reconstruction deleted in R31. A temporary constructor view exposes retained nominal formation, parameters and typed fields for Match/refinement; actual introduction in a changed context remains checked. Congruent NF field selection uses receipts; general current-result exposure remains open |
 | `classifier_leaf` | Deleted |
@@ -1740,3 +1740,33 @@ with 3491 input requests. The 62 extra transitions and small single-sample time
 difference do not establish a performance improvement; baseline memory remains
 regressed. Logs: `/tmp/a-program-typed-structure-r32-debug.log` and
 `/tmp/a-program-typed-structure-r32-san-{core,iadt,synthesis,occurrence,quicksort}.log`.
+
+### 2026-09-17: One body machine for nominal recovery (R33)
+
+- [x] Remove `inductive_fold` and nominal recovery's Return/Thunk counters.
+  Nominal recovery advances shared Return/application body requests instead;
+  declaration ownership, parameter maps and dependent index checks remain.
+- [x] Share Force/Thunk traversal for applications and returned computations.
+  Mapped suspension variables and computed suspension contents resume through
+  the existing body continuation frames. A new nested-thunk test exposed a
+  missing case after the initial consolidation; it now passes without restoring
+  a second continuation machine. No effects are executed by these queries.
+- [x] Test dependent indexed-family recovery through Force/Fold and assert it
+  completes the same cached body request used by term recovery. Chunked and
+  repeated queries retain results. Existing nominal and context rejection
+  checks remain. Full debug acceptance passed after the nested-thunk fix,
+  including 63/63 compatibility and final QuickSort source/image comparisons.
+  ASan/UBSan Core, IADT, synthesis and imported QuickSort passed.
+
+Against `739ffb9`: `evidence.c` **+31/-70**, `evidence.h` **+1/-3**,
+implementation/header net **-41**; tests **+41/-2**, net **+39**. Cumulative
+implementation/header net is **+1454** against `4657cc6`. The whole-change
+reduction gate, general normalized result exposure and R2-R5 remain open.
+
+Sequential O0 QuickSort: R32 **1.0726 s / 275420 KiB / 131961 transitions**;
+R33 **1.0601 s / 276088 KiB / 132079 transitions**. R33 retains
+**179313 Terms / 415696 typed subjects / 434897 proofs / 529 body requests**,
+with 3491 input requests. These single samples establish no speedup or memory
+improvement. Logs: `/tmp/a-program-typed-structure-r33-debug.log`,
+`/tmp/a-program-typed-structure-r33-nested-before.log` (reproduced missing case),
+`/tmp/a-program-typed-structure-r33-san-{core,iadt,synthesis,quicksort}.log`.
