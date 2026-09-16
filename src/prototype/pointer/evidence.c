@@ -1794,9 +1794,11 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 	}
 	const struct pg_data_layout *layout = pg_data_schema_layout(schema);
 	struct pg_match_clause *clauses = pg_alloc(&temporary, count * sizeof(*clauses));
-	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 1) * sizeof(*operands));
+	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 3) * sizeof(*operands));
 	if ((count && !clauses) || !operands) goto done;
 	operands[0] = pg_evidence_subject(scrutinee);
+	operands[count + 1] = pg_evidence_subject(motive);
+	operands[count + 2] = pg_evidence_subject(formation);
 	struct pg_induction_allocation *saved = NULL;
 	const struct pg_context **contexts = NULL;
 	if (rule == PG_INDUCTION_ELIM) {
@@ -1835,7 +1837,9 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 			saved->argument, saved->self, pg_evidence_subject(scrutinee)->core, count, clauses)
 		: pg_data_match(typing->graph, layout, pg_evidence_subject(scrutinee)->core, count, clauses);
 	if (!core) goto done;
-	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_COMPUTATION, core, pg_evidence_subject(output), NULL, count + 1, operands);
+	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_COMPUTATION, core, pg_evidence_subject(output), NULL, count + 3, operands);
+	const struct pg_context_map *parameter_map = pg_evidence_context_map(parameters);
+	subject = pg_occurrence_with_maps(typing, subject, 1, &parameter_map);
 	if (!subject) goto done;
 	result = accept_record(typing, rule,
 		pg_evidence_context(destination), subject, count + 6, premises, saved, NULL);
@@ -1844,29 +1848,56 @@ done:
 	return result;
 }
 
+/* The checked rule identifies the eliminator theorem. Its program inputs and
+ * lexical scopes come from the conclusion, not the premise array layout. */
+struct elimination_structure {
+	const struct pg_occurrence *subject;
+	const struct pg_evidence *formation, *parameters, *motive_context, *motive, *scrutinee;
+	size_t count;
+};
+
+static int elimination_structure(struct pg_typing *typing,
+	const struct pg_evidence *proof, struct elimination_structure *view)
+{
+	if (!pg_evidence_owned_by(proof, typing)) return -1;
+	if (proof->rule != PG_MATCH_ELIM && proof->rule != PG_INDUCTION_ELIM) return -1;
+	const struct pg_occurrence *subject = pg_evidence_subject(proof);
+	if (subject->operand_count < 3 || subject->map_count != 1) return -1;
+	size_t count = subject->operand_count - 3;
+	*view = (struct elimination_structure){.subject = subject, .count = count,
+		.formation = pg_prove_structural_subject(typing, subject->operands[count + 2]),
+		.parameters = pg_prove_context_map(typing, pg_occurrence_maps(subject)[0]),
+		.motive = pg_prove_structural_subject(typing, subject->operands[count + 1]),
+		.motive_context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->operands[count + 1]->context),
+		.scrutinee = pg_prove_structural_subject(typing, subject->operands[0])};
+	if (!view->formation || view->formation->rule != PG_INDUCTIVE_FORM) return -1;
+	return view->parameters && view->motive && view->motive_context && view->scrutinee ? 0 : -1;
+}
+
 static const struct pg_evidence *elimination_instance(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
 	const struct pg_evidence *elimination, const struct pg_evidence *scrutinee)
 {
-	if (!pg_evidence_owned_by(elimination, typing)) return NULL;
-	if (elimination->rule != PG_MATCH_ELIM && elimination->rule != PG_INDUCTION_ELIM) return NULL;
+	struct elimination_structure view;
+	if (elimination_structure(typing, elimination, &view)) return NULL;
 	if (!pg_evidence_owned_by(substitution, typing) || substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (pg_evidence_context(substitution->premises[0]) != pg_evidence_context(elimination)) return NULL;
-	const struct pg_evidence *map = lift_scope(typing, substitution, elimination->premises[4], NULL, 0);
+	const struct pg_evidence *map = lift_scope(typing, substitution, view.motive_context, NULL, 0);
 	if (!map) return NULL;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence *result = NULL;
-	size_t count = elimination->premise_count - 6;
+	size_t count = view.count;
 	const struct pg_evidence **branches = pg_alloc(&temporary, count * sizeof(*branches));
 	if (count && !branches) goto done;
 	for (size_t i = 0; i < count; ++i) {
-		branches[i] = pg_prove_reindex(typing, substitution, elimination->premises[i + 5]);
+		branches[i] = pg_prove_reindex(typing, substitution,
+			pg_prove_structural_subject(typing, view.subject->operands[i + 1]));
 		if (!branches[i]) goto done;
 	}
-	result = prove_data_elimination(typing, classifiers, elimination->premises[1],
-		pg_prove_substitution_compose(typing, elimination->premises[2], substitution),
-		scrutinee ? scrutinee : pg_prove_reindex(typing, substitution, elimination->premises[3]), map->premises[1],
-		pg_prove_reindex(typing, map, elimination->premises[0]), count, branches, elimination->rule, NULL);
+	result = prove_data_elimination(typing, classifiers, view.formation,
+		pg_prove_substitution_compose(typing, view.parameters, substitution),
+		scrutinee ? scrutinee : pg_prove_reindex(typing, substitution, view.scrutinee), map->premises[1],
+		pg_prove_reindex(typing, map, view.motive), count, branches, elimination->rule, NULL);
 done:
 	pg_graph_destroy(&temporary);
 	return result;
@@ -1948,14 +1979,23 @@ const struct pg_evidence *pg_prove_constructor_field(struct pg_typing *typing,
 
 static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *elimination,
-	const struct pg_evidence *field)
+	const struct elimination_structure *view, const struct pg_evidence *field)
 {
 	const struct pg_term *type;
-	if (!pg_thunk_type_view(pg_evidence_subject(field)->classifier, &type))
-		return pg_prove_induction(typing, classifiers, elimination->premises[1],
-			elimination->premises[2], field, elimination->premises[4], elimination->premises[0],
-			elimination->premise_count - 6, elimination->premises + 5);
-	const struct pg_evidence *context = elimination->premises[2]->premises[1], *scope = context;
+	if (!pg_thunk_type_view(pg_evidence_subject(field)->classifier, &type)) {
+		struct pg_graph temporary = {0};
+		const struct pg_evidence **branches = pg_alloc(&temporary, view->count * sizeof(*branches));
+		const struct pg_evidence *result = NULL;
+		if (branches) {
+			for (size_t i = 0; i < view->count; ++i)
+				branches[i] = pg_prove_structural_subject(typing, view->subject->operands[i + 1]);
+			result = pg_prove_induction(typing, classifiers, view->formation, view->parameters,
+				field, view->motive_context, view->motive, view->count, branches);
+		}
+		pg_graph_destroy(&temporary);
+		return result;
+	}
+	const struct pg_evidence *context = view->parameters->premises[1], *scope = context;
 	const struct pg_evidence *call = pg_prove_force(typing, field);
 	const struct pg_evidence *classifier = pg_prove_classifier(typing, classifiers, scope, call);
 	const struct pg_term *domain, *codomain;
@@ -1987,15 +2027,17 @@ const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
 	struct pg_classifiers *classifiers,
 	const struct pg_evidence *elimination)
 {
-	if (!pg_evidence_owned_by(elimination, typing)) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
-	if (elimination->rule != PG_MATCH_ELIM && elimination->rule != PG_INDUCTION_ELIM) return NULL;
-	const struct pg_evidence *value = constructor_origin(typing, elimination->premises[3]);
-	if (!value || value->premises[1] != elimination->premises[1]) return NULL;
-	const struct pg_data_schema *schema = elimination->premises[1]->certificate;
+	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	struct elimination_structure view;
+	if (elimination_structure(typing, elimination, &view)) return NULL;
+	const struct pg_evidence *value = constructor_origin(typing, view.scrutinee);
+	if (!value || pg_evidence_subject(value->premises[1]) != pg_evidence_subject(view.formation)) return NULL;
+	const struct pg_data_schema *schema = view.formation->certificate;
 	size_t position;
 	if (!pg_data_constructor_position(pg_data_schema_layout(schema), value->certificate, &position)) return NULL;
-	const struct pg_evidence *result = elimination->premises[position + 5], *fields = value->premises[3];
+	if (position >= view.count) return NULL;
+	const struct pg_evidence *result = pg_prove_structural_subject(typing, view.subject->operands[position + 1]);
+	const struct pg_evidence *fields = value->premises[3];
 	size_t first = value->premises[2]->premise_count + 1;
 	for (size_t i = first; result && i < fields->premise_count; ++i)
 		result = pg_prove_application_body(typing, result, fields->premises[i]);
@@ -2005,7 +2047,7 @@ const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
 	unsigned char *recursive = pg_alloc(&temporary, count);
 	if (count && !recursive) goto failed;
 	const struct pg_context *declaration = pg_evidence_context(pg_data_schema_fields(schema, value->certificate));
-	const struct pg_object *self = pg_evidence_context(elimination->premises[1]->premises[0])->binder;
+	const struct pg_object *self = pg_evidence_context(view.formation->premises[0])->binder;
 	for (size_t i = count; i; --i, declaration = declaration->parent) {
 		int kind = pg_data_recursive_field(declaration->declared_type, self);
 		if (kind < 0) goto failed;
@@ -2014,7 +2056,7 @@ const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
 	for (size_t i = 0; i < count; ++i) {
 		if (!recursive[i]) continue;
 		const struct pg_evidence *field = fields->premises[first + i];
-		const struct pg_evidence *call = induction_field_body(typing, classifiers, elimination, field);
+		const struct pg_evidence *call = induction_field_body(typing, classifiers, elimination, &view, field);
 		result = pg_prove_application_body(typing, result, pg_prove_thunk(typing, classifiers, call));
 		if (!result) goto failed;
 	}

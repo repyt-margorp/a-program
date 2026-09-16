@@ -795,6 +795,14 @@ static void indexed_match(void)
 	const struct pg_evidence *match = pg_prove_match(&typing, &classifiers, formation, parameters,
 		value, mc, motive, 1, &branch);
 	assert(match && pg_evidence_classifier(match) == pg_return_type(&classifiers, pg_evidence_subject(av)->core));
+	const struct pg_occurrence *structure = pg_evidence_subject(match);
+	assert(structure->operand_count == 4 && structure->map_count == 1);
+	assert(structure->operands[0] == pg_evidence_subject(value));
+	assert(structure->operands[1] == pg_evidence_subject(branch));
+	assert(structure->operands[2] == pg_evidence_subject(motive));
+	assert(structure->operands[2]->context == pg_evidence_context(mc));
+	assert(structure->operands[3] == pg_evidence_subject(formation));
+	assert(pg_occurrence_maps(structure)[0] == pg_evidence_context_map(parameters));
 	common_rule(&typing, &classifiers, match);
 	/* Reconstruct the elimination after substituting both dependent indices.
 	 * Its generic motive remains generic, rather than fixing the source fiber. */
@@ -808,6 +816,12 @@ static void indexed_match(void)
 	const struct pg_evidence *renamed_match = pg_prove_elimination_reindex(&typing, &classifiers, renaming, match);
 	const struct pg_evidence *mapped_match = pg_prove_reindex(&typing, renaming, match);
 	assert(renamed_match && mapped_match && pg_evidence_rule(renamed_match) == PG_MATCH_ELIM);
+	assert(pg_evidence_subject(mapped_match)->origin == structure);
+	const struct pg_occurrence *renamed_structure = pg_evidence_subject(renamed_match);
+	assert(renamed_structure->operand_count == 4 && renamed_structure->map_count == 1);
+	assert(pg_occurrence_maps(renamed_structure)[0]->destination == pg_evidence_context(renamed_xc));
+	assert(renamed_structure->operands[3] == structure->operands[3]);
+	assert(renamed_structure->operands[2]->context != structure->operands[2]->context);
 	assert(pg_alpha_equal(pg_evidence_subject(renamed_match)->core, pg_evidence_subject(mapped_match)->core) == 1);
 	assert(pg_alpha_equal(pg_evidence_classifier(renamed_match), pg_evidence_classifier(mapped_match)) == 1);
 	common_rule(&typing, &classifiers, renamed_match);
@@ -832,6 +846,10 @@ static void indexed_match(void)
 	check(&work, pg_evidence_subject(renamed_match)->core, pg_evidence_subject(renamed_body)->core);
 	common_rule(&typing, &classifiers, selected_body);
 	common_rule(&typing, &classifiers, renamed_body);
+	size_t structures = typing.occurrences.count, proofs = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i)
+		assert(pg_prove_elimination_body(&typing, &classifiers, match) == selected_body);
+	assert(typing.occurrences.count == structures && typing.proofs.count == proofs);
 	assert(!pg_prove_elimination_body(&typing, &classifiers, value));
 	assert(!pg_prove_elimination_body(&typing, &classifiers, NULL));
 	const struct pg_evidence *branch_type = pg_prove_value_type(&typing,
@@ -1852,6 +1870,7 @@ static void schema_positivity(void)
 		common_rule(&typing, &classifiers, body);
 	}
 	assert(!pg_prove_elimination_body(&typing, NULL, countdown));
+	assert(!pg_prove_elimination_body(NULL, &classifiers, countdown));
 	{
 		struct pg_typing foreign;
 		assert(!pg_typing_init(&foreign, &graph));

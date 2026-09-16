@@ -867,3 +867,38 @@ Against `513dbe3`, implementation/header changes are +190/-77 (**+113**):
 Cumulative implementation delta is **+953**; R5's net-negative condition is
 still unmet. Nominal/Pi recovery, Match/induction construction metadata,
 shared budgeted typed normalization and final publication remain incomplete.
+
+### 2026-09-17: Retained Match motive and nominal inputs
+
+- [x] Match/induction conclusions retain `scrutinee, branches..., motive,
+  nominal formation` as ordered typed inputs, the parameter substitution as
+  one selected structural map, and the output formation on their existing type
+  edge. The motive's context retains its index/scrutinee telescope. No Core
+  constructor, proof-rule tag or parallel graph is added.
+- [x] Elimination reindexing, selected branch extraction and recursive field
+  expansion read these inputs through one local view. They no longer recover
+  them from the elimination receipt's premise offsets. Checked substitution,
+  Match, induction and beta rules still establish acceptance; their premise
+  DAG and nominal schema validation are retained. Different derivations of one
+  nominal typed subject are not treated as different nominal declarations.
+- [x] Add tests for dependent motive scope, retained nominal identity and
+  parameter maps before/after reindexing, repeated branch extraction without
+  occurrence/proof growth, and the public NULL typing-store boundary.
+  Full debug `check-acceptance` passed on the final implementation, including
+  source/image properties, chunks one and 64, and 63/63 compatibility.
+- [x] ASan/UBSan IADT, Identity and imported QuickSort property compilation
+  passed. Sequential single-run debug QuickSort measurements were 1.495 seconds
+  / 272280 KiB before and 1.534 seconds / 271540 KiB after, both 154851 Solve
+  transitions. No speedup is claimed from these individual runs.
+- [ ] Move retained induction clause allocations/scopes to the structural
+  owner before deleting the remaining function-graph elimination-origin path.
+  The current local view still requires an actual checked Match/induction rule;
+  it does not claim arbitrary normalized or converted eliminator recovery.
+
+Against `cceb78c`: `evidence.c` +68/-26 (**+42**), `tests/iadt.c` +19/-0.
+Cumulative implementation delta is **+995**, still not the required reduction.
+The Pi investigation also confirms that erased Core independence alone is not
+a replacement for transporting typed construction dependencies. General
+constant-codomain restriction must retain its scoped structural input before
+`pi_component` and its associated rebase machinery can be deleted. This is
+remaining work, not an exception to R3 or R5.
