@@ -890,10 +890,10 @@ shared budgeted typed normalization and final publication remain incomplete.
   passed. Sequential single-run debug QuickSort measurements were 1.495 seconds
   / 272280 KiB before and 1.534 seconds / 271540 KiB after, both 154851 Solve
   transitions. No speedup is claimed from these individual runs.
-- [ ] Move retained induction clause allocations/scopes to the structural
-  owner before deleting the remaining function-graph elimination-origin path.
-  The current local view still requires an actual checked Match/induction rule;
-  it does not claim arbitrary normalized or converted eliminator recovery.
+- [x] Move retained induction clause allocations/scopes to the structural
+  owner before deleting the function-graph elimination-origin wrapper walk.
+  Completed by `08fb5d4` and `5386916` below. Direct theorem inversion remains
+  distinct from obtaining the construction behind a converted boundary.
 
 Against `cceb78c`: `evidence.c` +68/-26 (**+42**), `tests/iadt.c` +19/-0.
 Cumulative implementation delta is **+995**, still not the required reduction.
@@ -925,10 +925,10 @@ remaining work, not an exception to R3 or R5.
 - [x] Full debug `check-acceptance` passed, including 63/63 compatibility and
   source/image QuickSort property checks at chunks one and 64. ASan/UBSan IADT,
   occurrence I/O and imported QuickSort property compilation passed.
-- [ ] The function-graph consumer still traverses Evidence wrappers. Its
-  replacement must also handle classifier-converted constructions whose first
-  accepted receipt is not an introduction. Merely swapping its lookup to the
-  first receipt for a typed subject would not complete that migration.
+- [x] Replace the function-graph consumer's Evidence wrapper traversal,
+  including classifier-converted constructions whose first accepted receipt
+  is not an introduction. Completed by `5386916` and `7f77b3c` below, using
+  typed construction inputs rather than selecting the first receipt.
 
 Against `40e0687`, implementation/header changes are +128/-37 (**+91**):
 `evidence.c` +5/-7, `evidence.h` +0/-8, `typing.c` +55/-10,
@@ -962,11 +962,10 @@ required. No Main publication has taken place.
   Full debug acceptance passed, including 63/63 compatibility and source/image
   QuickSort property checks. ASan/UBSan IADT, program/function-graph tests and
   imported QuickSort property compilation passed.
-- [ ] `pg_function_graph_source` still performs its separate public-entry
-  wrapper walk; direct signature/branch rule inversions also remain. Its API
-  currently has no typing/classifier owner and source dependencies use Evidence
-  identity. Migrate this contract deliberately rather than treating the local
-  consumer deletion above as completion of R3.
+- [x] Migrate `pg_function_graph_source`'s separate public-entry wrapper walk,
+  owner contract and Evidence-keyed dependencies. Completed by `7f77b3c`
+  below. Direct signature/branch theorem inversions remain intentional; this
+  does not complete R3's unrelated Pi/nominal recovery work.
 
 Against `08fb5d4`: implementation/header +102/-41 (**+61**): `evidence.c`
 +92/-5, `evidence.h` +7/-0, `function_graph.c` +3/-36. Tests: +27/-0.
@@ -1011,3 +1010,36 @@ not the required reduction. Sequential single debug QuickSort runs were
 Direct signature/branch theorem inversions remain intentional; Pi component,
 nominal formation and strengthening history recovery still require migration.
 R0-R5 aggregate completion and Main publication remain unclaimed.
+
+### 2026-09-17: Preserve F/U inputs across classifier boundaries
+
+- [x] `content_subject` retains an available component's construction when
+  Core, context and judgement match but its classifier boundary changes.
+  In particular, constant-codomain extraction can inherit a larger Pi
+  Universe bound without losing the F/U components' semantic inputs.
+  The ordinary inversion rule still establishes the new conclusion; no
+  structural record grants acceptance on its own.
+- [x] Term inversion retains the changed classifier's formation as well.
+  An initial implementation lost it for a converted Return of a function;
+  the existing synthesis regression exposed that failure. The corrected
+  implementation distinguishes an unchanged component from a newly exposed
+  boundary by its typed input, not by receipt discovery order. The second
+  input lookup reuses the same completed structural request.
+- [x] Add tests for F/U extraction through a wider Universe, retained Pi
+  domain formation, ordinary derivation reconstruction and 100 repeated
+  lookups without occurrence/proof growth. Extend the converted-function
+  regression to require both the original body and the new classifier
+  formation. Existing exact-subject checks for unchanged values remain.
+- [x] Full debug `check-acceptance` passed on the corrected implementation:
+  63/63 compatibility and source/image QuickSort properties at chunks one
+  and 64. ASan/UBSan Core, synthesis and imported QuickSort property checks
+  passed. `git diff --check` passed.
+
+Against `7f77b3c`, implementation `evidence.c` is +5/-3 (**+2**); tests are
+`tests/core.c` +26/-0 and `tests/synthesis.c` +3/-0. Cumulative implementation
+growth is **+1155**. Sequential single debug QuickSort runs were 1.526 seconds
+/ 284672 KiB before and 1.571 seconds / 284044 KiB after, both 154851 Solve
+transitions. No performance improvement is claimed. This removes an avoidable
+loss of structure at a producer; it does not remove general Pi restriction,
+normalization or nominal recovery. The aggregate R0-R5 and net-negative LOC
+gates remain open, and Main has not been published.

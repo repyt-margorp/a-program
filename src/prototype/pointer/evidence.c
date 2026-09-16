@@ -3077,8 +3077,8 @@ static const struct pg_occurrence *content_subject(struct pg_typing *typing,
 {
 	const struct pg_occurrence *child;
 	if (!structural_input(typing, source, 0, &child)) return NULL;
-	if (child && child->context == source->context && child->core == core &&
-		child->judgement == judgement && child->classifier == classifier) return child;
+	if (child && child->context == source->context && child->core == core && child->judgement == judgement)
+		return pg_occurrence_boundary(typing, child, judgement, classifier);
 	return pg_occurrence_derived(typing, source, judgement, core, classifier);
 }
 
@@ -3095,7 +3095,9 @@ static const struct pg_evidence *term_content(struct pg_typing *typing,
 	const struct pg_occurrence *subject = content_subject(typing, pg_evidence_subject(proof),
 		core->as.application.argument, classifier, judgement);
 	if (!subject) return NULL;
-	if (subject->origin == pg_evidence_subject(proof) && !subject->map) {
+	const struct pg_occurrence *input;
+	if (!structural_input(typing, pg_evidence_subject(proof), 0, &input)) return NULL;
+	if (subject != input && !subject->type) {
 		const struct pg_evidence *formation = formed_classifier(typing, NULL, proof);
 		formation = operation == &pg_return_operation ? pg_prove_return_content(typing, formation)
 			: pg_prove_thunk_content(typing, formation);

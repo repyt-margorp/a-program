@@ -667,6 +667,32 @@ static void dependent_application_test(struct pg_graph *graph)
 	assert(!pg_prove_type_value(&typing, fa));
 	const struct pg_evidence *upi = pg_prove_thunk_type(&typing, &classifiers, pi);
 	assert(pg_prove_type_value(&typing, upi));
+	/* Pi's Universe bound can exceed that of its constant body. F/U
+	 * inversion preserves the body's construction across that boundary. */
+	const struct pg_evidence *closed = pg_prove_return_type(&typing, &classifiers, upi);
+	const struct pg_evidence *u3 = pg_prove_universe(&typing, &classifiers, empty, 3);
+	const struct pg_evidence *unused = pg_prove_context_extension(&typing, empty, pg_binder(graph), u3);
+	const struct pg_evidence *wide = pg_prove_pi(&typing, &classifiers, unused,
+		pg_prove_projection(&typing, unused, closed));
+	const struct pg_evidence *constant_body = pg_prove_pi_constant_codomain(&typing, wide);
+	const struct pg_evidence *exposed_upi = pg_prove_return_content(&typing, constant_body);
+	const struct pg_evidence *exposed_pi = pg_prove_thunk_content(&typing, exposed_upi);
+	assert(exposed_pi && pg_evidence_classifier(exposed_pi) == pg_evidence_classifier(wide));
+	assert(pg_evidence_subject(exposed_upi)->operands[0] == pg_evidence_subject(pi));
+	assert(pg_evidence_subject(exposed_pi) == pg_occurrence_boundary(&typing, pg_evidence_subject(pi),
+		PG_JUDGEMENT_COMPUTATION_TYPE, pg_evidence_classifier(wide)));
+	const struct pg_evidence *exposed_domain = pg_prove_pi_domain(&typing, exposed_pi);
+	assert(exposed_domain && pg_evidence_subject(exposed_domain) == pg_evidence_subject(u1));
+	assert(pg_evidence_rule(exposed_domain) == PG_PI_DOMAIN);
+	reconstruct_derivation(&typing, &classifiers, exposed_pi);
+	reconstruct_derivation(&typing, &classifiers, exposed_domain);
+	size_t input_count = typing.occurrences.count, proof_count = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i) {
+		assert(pg_prove_return_content(&typing, constant_body) == exposed_upi);
+		assert(pg_prove_thunk_content(&typing, exposed_upi) == exposed_pi);
+		assert(pg_prove_pi_domain(&typing, exposed_pi) == exposed_domain);
+	}
+	assert(typing.occurrences.count == input_count && typing.proofs.count == proof_count);
 	const struct pg_object *f = pg_binder(graph);
 	const struct pg_evidence *f_context = pg_prove_context_extension(&typing, empty, f, upi);
 	const struct pg_evidence *function = pg_prove_force(&typing, pg_prove_variable(&typing, f_context, f));
