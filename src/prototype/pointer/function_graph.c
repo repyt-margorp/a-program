@@ -178,39 +178,6 @@ static int signature(struct pg_function_graph_state *s)
 	return s->indices ? 0 : -1;
 }
 
-/* Expose executable premises, not formation premises. Substitution is the
- * ordinary typed context map; this view grants no new conversion rule. */
-static const struct pg_evidence *computation_origin(struct pg_function_graph_state *s,
-	const struct pg_evidence *proof, const struct pg_evidence **environment)
-{
-	const struct pg_evidence *map = NULL;
-	for (;;) {
-		enum pg_evidence_rule rule = pg_evidence_rule(proof);
-		if (rule == PG_CONTEXT_PROJECTION || rule == PG_REINDEX) {
-			const struct pg_evidence *inner = pg_evidence_premise(proof, 1);
-			const struct pg_evidence *step = pg_evidence_premise(proof, 0);
-			/* Projection may cross more than one extension. */
-			if (rule == PG_CONTEXT_PROJECTION) {
-				const struct pg_evidence *source = pg_evidence_premise(proof, 0);
-				while (source && pg_evidence_context(source) != pg_evidence_context(inner))
-					source = pg_evidence_premise(source, 0);
-				step = pg_prove_substitution_projection(s->typing, source, pg_evidence_premise(proof, 0));
-			}
-			map = map ? pg_prove_substitution_compose(s->typing, step, map) : step;
-			if (!map) return NULL;
-			proof = inner;
-			continue;
-		}
-		if (rule == PG_TYPE_CONVERSION || rule == PG_PURE_NORMALIZATION || rule == PG_EFFECT_SUBSUMPTION) {
-			proof = pg_evidence_premise(proof, 0);
-			continue;
-		}
-		break;
-	}
-	*environment = map;
-	return proof;
-}
-
 static int structural_computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
 	const struct pg_evidence **left, const struct pg_evidence **right)
@@ -258,7 +225,7 @@ static int computation_view(struct pg_function_graph_state *s,
 {
 	if (!structural_computation_view(s, proof, rule, left, right)) return 0;
 	const struct pg_evidence *map = NULL;
-	proof = computation_origin(s, proof, &map);
+	proof = pg_prove_computation_origin(s->typing, s->classifiers, proof, &map);
 	if (!proof) return -1;
 	*rule = pg_evidence_rule(proof);
 	if (*rule == PG_MATCH_ELIM || *rule == PG_INDUCTION_ELIM) {
@@ -435,7 +402,7 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 	size_t count = 0, forces = 0;
 	int result = 0;
 	for (;;) {
-		function = computation_origin(s, function, &environment);
+		function = pg_prove_computation_origin(s->typing, s->classifiers, function, &environment);
 		if (!function) goto done;
 		enum pg_evidence_rule rule = pg_evidence_rule(function);
 		if (rule == PG_APP_ELIM) {
@@ -469,7 +436,7 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 		const struct pg_evidence *body = function;
 		for (;;) {
 			const struct pg_evidence *body_environment;
-			body = computation_origin(s, body, &body_environment);
+			body = pg_prove_computation_origin(s->typing, s->classifiers, body, &body_environment);
 			if (pg_evidence_rule(body) == PG_LAMBDA_INTRO) body = pg_evidence_premise(body, 1);
 			else if (pg_evidence_rule(body) == PG_APP_ELIM) body = pg_evidence_premise(body, 0);
 			else if (pg_evidence_rule(body) == PG_FORCE_ELIM || pg_evidence_rule(body) == PG_THUNK_COMPUTATION ||

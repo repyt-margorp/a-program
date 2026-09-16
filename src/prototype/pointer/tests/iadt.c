@@ -1881,6 +1881,33 @@ static void schema_positivity(void)
 	assert(countdown_allocation && countdown_allocation->count == 2);
 	assert(countdown_allocation == pg_evidence_subject(countdown)->induction);
 	assert(pg_occurrence_with_induction(&typing, pg_evidence_subject(countdown), countdown_allocation) == pg_evidence_subject(countdown));
+	{
+		const struct pg_evidence *environment = NULL;
+		assert(pg_prove_computation_origin(&typing, &classifiers, countdown, &environment) == countdown && !environment);
+		const struct pg_evidence *projected = pg_prove_projection(&typing, z_context, countdown);
+		assert(pg_prove_computation_origin(&typing, &classifiers, projected, &environment) == countdown);
+		assert(environment && pg_evidence_context_map(environment)->source == pg_evidence_context(countdown));
+		assert(pg_evidence_context_map(environment)->destination == pg_evidence_context(z_context));
+		size_t before = typing.proofs.count, subjects = typing.occurrences.count;
+		for (size_t i = 0; i < 100; ++i)
+			assert(pg_prove_computation_origin(&typing, &classifiers, projected, &environment) == countdown);
+		assert(typing.proofs.count == before && typing.occurrences.count == subjects);
+		assert(!pg_prove_computation_origin(NULL, &classifiers, countdown, &environment));
+		assert(!pg_prove_computation_origin(&typing, &classifiers, countdown, NULL));
+		/* This boundary has no introduction receipt until structural recovery.
+		 * Its typed Return child is unchanged by totality subsumption. */
+		const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, pg_binder(&graph), nat);
+		const struct pg_evidence *input = pg_prove_variable(&typing, scope, pg_evidence_context(scope)->binder);
+		const struct pg_evidence *total = pg_prove_return_contract(&typing, &classifiers, PG_TOTALITY_TOTAL, input);
+		const struct pg_evidence *target = pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, scope, nat));
+		const struct pg_evidence *boundary = pg_prove_effect_subsumption(&typing, total, target);
+		assert(boundary && pg_evidence_rule(boundary) == PG_EFFECT_SUBSUMPTION);
+		assert(pg_evidence_for_subject(&typing, pg_evidence_subject(boundary), NULL) == boundary);
+		const struct pg_evidence *recovered = pg_prove_computation_origin(&typing, &classifiers, boundary, &environment);
+		assert(recovered && pg_evidence_rule(recovered) == PG_RETURN_INTRO && !environment);
+		assert(pg_evidence_subject(recovered)->core == pg_evidence_subject(boundary)->core);
+		assert(pg_evidence_for_subject(&typing, pg_evidence_subject(boundary), NULL) == boundary);
+	}
 	assert(!pg_evidence_induction_allocation(zero));
 	assert(pg_prove_induction_at(&typing, &classifiers, nat, identity, twice, z_context,
 		nat_motive, 2, recursive_branches, countdown_allocation) == countdown);

@@ -1854,12 +1854,9 @@ struct elimination_structure {
 	size_t count;
 };
 
-static int elimination_structure(struct pg_typing *typing,
-	const struct pg_evidence *proof, struct elimination_structure *view)
+static int elimination_inputs(struct pg_typing *typing,
+	const struct pg_occurrence *subject, struct elimination_structure *view)
 {
-	if (!pg_evidence_owned_by(proof, typing)) return -1;
-	if (proof->rule != PG_MATCH_ELIM && proof->rule != PG_INDUCTION_ELIM) return -1;
-	const struct pg_occurrence *subject = pg_evidence_subject(proof);
 	if (subject->operand_count < 3 || subject->map_count != 1) return -1;
 	size_t count = subject->operand_count - 3;
 	*view = (struct elimination_structure){.subject = subject, .count = count,
@@ -1870,6 +1867,96 @@ static int elimination_structure(struct pg_typing *typing,
 		.scrutinee = pg_prove_structural_subject(typing, subject->operands[0])};
 	if (!view->formation || view->formation->rule != PG_INDUCTIVE_FORM) return -1;
 	return view->parameters && view->motive && view->motive_context && view->scrutinee ? 0 : -1;
+}
+
+static int elimination_structure(struct pg_typing *typing,
+	const struct pg_evidence *proof, struct elimination_structure *view)
+{
+	if (!pg_evidence_owned_by(proof, typing)) return -1;
+	if (proof->rule != PG_MATCH_ELIM && proof->rule != PG_INDUCTION_ELIM) return -1;
+	return elimination_inputs(typing, pg_evidence_subject(proof), view);
+}
+
+/* Re-establish the construction's introduction from typed inputs. A converted
+ * classifier can have only a conversion receipt for this subject; selecting
+ * its first receipt would not expose the program's actual constructor. */
+static const struct pg_evidence *computation_construction(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_occurrence *subject)
+{
+	if (subject->origin) {
+		if (subject->judgement != PG_JUDGEMENT_COMPUTATION ||
+			subject->origin->judgement != PG_JUDGEMENT_VALUE) return NULL;
+		return pg_prove_thunk_computation(typing, pg_prove_structural_subject(typing, subject->origin));
+	}
+	const struct pg_term *core = subject->core;
+	if (core->kind == PG_REFERENCE && core->as.reference->kind == PG_BINDER)
+		return pg_prove_variable(typing, conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context), core->as.reference);
+	if (core->kind == PG_LAMBDA) {
+		if (subject->operand_count != 1) return NULL;
+		const struct pg_occurrence *body = subject->operands[0];
+		if (!body->context || body->context->parent != subject->context ||
+			body->context->binder != core->as.lambda.binder || body->core != core->as.lambda.body) return NULL;
+		return pg_prove_abstract(typing, classifiers,
+			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context),
+			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, body->context), pg_prove_structural_subject(typing, body));
+	}
+	if (subject->map_count) {
+		struct elimination_structure view;
+		if (elimination_inputs(typing, subject, &view)) return NULL;
+		struct pg_graph temporary = {0};
+		const struct pg_evidence *result = NULL;
+		const struct pg_evidence **branches = pg_alloc(&temporary, view.count * sizeof(*branches));
+		if (view.count && !branches) goto done;
+		for (size_t i = 0; i < view.count; ++i)
+			branches[i] = pg_prove_structural_subject(typing, subject->operands[i + 1]);
+		result = prove_data_elimination(typing, classifiers, view.formation, view.parameters,
+			view.scrutinee, view.motive_context, view.motive, view.count, branches,
+			subject->induction ? PG_INDUCTION_ELIM : PG_MATCH_ELIM, subject->induction);
+done:
+		pg_graph_destroy(&temporary);
+		return result;
+	}
+	if (core->kind != PG_APPLICATION || !subject->operand_count || subject->operand_count > 2) return NULL;
+	const struct pg_evidence *left = pg_prove_structural_subject(typing, subject->operands[0]);
+	const struct pg_term *head = core->as.application.function;
+	if (subject->operand_count == 1) {
+		if (head->kind != PG_REFERENCE || subject->operands[0]->core != core->as.application.argument) return NULL;
+		if (head->as.reference == &pg_return_operation) return pg_prove_return(typing, classifiers, left);
+		if (head->as.reference == &pg_thunk_operation) return pg_prove_thunk(typing, classifiers, left);
+		if (head->as.reference == &pg_force_operation) return pg_prove_force(typing, left);
+		return NULL;
+	}
+	if (subject->operands[1]->core != core->as.application.argument) return NULL;
+	const struct pg_evidence *right = pg_prove_structural_subject(typing, subject->operands[1]);
+	if (subject->operands[0]->core == head) return pg_prove_application(typing, left, right);
+	if (head->kind == PG_APPLICATION && head->as.application.function == pg_reference(typing->graph, &pg_fold_operation) &&
+		subject->operands[0]->core == head->as.application.argument) return pg_prove_fold(typing, classifiers, left, right);
+	return NULL;
+}
+
+const struct pg_evidence *pg_prove_computation_origin(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *proof,
+	const struct pg_evidence **environment)
+{
+	if (!typing || !classifiers || classifiers->graph != typing->graph || !environment) return NULL;
+	if (!pg_evidence_owned_by(proof, typing)) return NULL;
+	struct pg_graph temporary = {0};
+	struct construction_map *frames = NULL;
+	const struct pg_evidence *result = NULL, *map = NULL;
+	const struct pg_occurrence *subject = construction_origin(&temporary, pg_evidence_subject(proof), &frames);
+	if (!subject) goto done;
+	result = computation_construction(typing, classifiers, subject);
+	if (!result || pg_evidence_context(result) != subject->context ||
+		pg_evidence_subject(result)->core != subject->core) { result = NULL; goto done; }
+	for (; frames; frames = frames->next) {
+		const struct pg_evidence *step = pg_prove_context_map(typing, frames->map);
+		map = map ? pg_prove_substitution_compose(typing, map, step) : step;
+		if (!map) { result = NULL; goto done; }
+	}
+	*environment = map;
+done:
+	pg_graph_destroy(&temporary);
+	return result;
 }
 
 static const struct pg_evidence *elimination_instance(struct pg_typing *typing,

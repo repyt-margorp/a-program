@@ -940,3 +940,38 @@ both 154851 Solve transitions. These do not establish a timing trend, but the
 12216 KiB RSS increase is a recorded cost of this representation change, not
 a claimed optimization. Final R5 cleanup and comparative measurement remain
 required. No Main publication has taken place.
+
+### 2026-09-17: Function-graph computation origin from typed inputs
+
+- [x] Delete `function_graph.c`'s `computation_origin` receipt-wrapper walk.
+  The shared Evidence interface follows retained structural origins/maps and
+  certifies their construction through existing variable, Lambda, APP, F/U,
+  Fold, Match and induction rules. Match uses its retained motive/parameter
+  inputs; induction uses the allocation now owned by its typed subject.
+  No arbitrary Core-to-proof lookup or new kernel acceptance rule is used.
+- [x] Re-establish the actual introduction from typed operands instead of
+  assuming the first receipt is an introduction. A changed classifier boundary
+  may have only a subsumption/conversion receipt. Preserve that alternative;
+  reconstructed introductions can have the pre-subsumption classifier. Check
+  exact source Core/context agreement before publishing the returned view.
+  Normalized inputs expose their checked source recipe, not alleged WHNF
+  operands. This does not complete budgeted typed normalization.
+- [x] Test direct/reindexed induction origins, exact scope maps, 100 repeated
+  lookups without additional occurrences/derivations, and an initially
+  subsumption-only Return boundary whose first receipt remains unchanged.
+  Full debug acceptance passed, including 63/63 compatibility and source/image
+  QuickSort property checks. ASan/UBSan IADT, program/function-graph tests and
+  imported QuickSort property compilation passed.
+- [ ] `pg_function_graph_source` still performs its separate public-entry
+  wrapper walk; direct signature/branch rule inversions also remain. Its API
+  currently has no typing/classifier owner and source dependencies use Evidence
+  identity. Migrate this contract deliberately rather than treating the local
+  consumer deletion above as completion of R3.
+
+Against `08fb5d4`: implementation/header +102/-41 (**+61**): `evidence.c`
++92/-5, `evidence.h` +7/-0, `function_graph.c` +3/-36. Tests: +27/-0.
+Cumulative implementation growth is **+1147**. Sequential single debug
+QuickSort runs were 1.577 seconds / 284352 KiB before and 1.543 seconds /
+284012 KiB after, both 154851 Solve transitions; no speedup is claimed.
+The R5 net-negative gate, remaining Pi/nominal recovery migration, shared
+budgeted normalization and Main publication are still outstanding.
