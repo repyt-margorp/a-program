@@ -612,6 +612,18 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence);
 /* Storage provenance only; this does not validate a rule-specific premise. */
 int pg_evidence_owned_by(const struct pg_evidence *evidence, const struct pg_typing *typing);
+/* Enumerate existing receipts for this exact typed subject, in acceptance
+ * order. NULL after starts the enumeration. No rule runs and no acceptance is
+ * inferred from an erased Core. Receipt selection must not determine semantic
+ * structure; inspect the typed subject instead. */
+const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing,
+	const struct pg_occurrence *subject, const struct pg_evidence *after);
+/* Reuse an exact accepted subject or certify its structural substitution using
+ * ordinary variable/substitution/reindex rules and already accepted contexts.
+ * Descriptive nodes alone never authorize a judgement. No new context or
+ * normalized construction is inferred here. NULL means no such derivation. */
+const struct pg_evidence *pg_prove_structural_subject(struct pg_typing *typing,
+	const struct pg_occurrence *subject);
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence);
 /* Context formation has no term subject or classifier. */
 const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence);

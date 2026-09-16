@@ -4,11 +4,13 @@
 #include "identity.h"
 #include "iadt.h"
 #include "host.h"
+#include "dag.h"
 #include <stdlib.h>
 #include <string.h>
 
 struct pg_evidence {
 	struct pg_index_entry index;
+	struct pg_evidence *next_conclusion;
 	const void *owner;
 	enum pg_evidence_rule rule;
 	union {
@@ -20,6 +22,50 @@ struct pg_evidence {
 	size_t premise_count;
 	const struct pg_evidence *premises[];
 };
+
+struct evidence_conclusion {
+	struct pg_index_entry index;
+	enum pg_evidence_judgement judgement;
+	const void *key;
+	struct pg_evidence *first, *last;
+};
+
+static struct evidence_conclusion *conclusion_find(const struct pg_typing *typing,
+	enum pg_evidence_judgement judgement, const void *key)
+{
+	uint64_t hash = ((uintptr_t)key ^ judgement) * UINT64_C(1099511628211);
+	if (!typing || !typing->evidence_conclusions.capacity) return NULL;
+	for (struct pg_index_entry *p = pg_index_candidates(&typing->evidence_conclusions, hash); p; p = p->next) {
+		struct evidence_conclusion *entry = (void *)p;
+		if (p->hash == hash && entry->judgement == judgement && entry->key == key) return entry;
+	}
+	return NULL;
+}
+
+static struct evidence_conclusion *conclusion_prepare(struct pg_typing *typing,
+	enum pg_evidence_judgement judgement, const void *key)
+{
+	struct evidence_conclusion *entry = conclusion_find(typing, judgement, key);
+	if (entry) return entry;
+	entry = pg_alloc(typing->graph, sizeof(*entry));
+	if (!entry) return NULL;
+	entry->judgement = judgement;
+	entry->key = key;
+	uint64_t hash = ((uintptr_t)key ^ judgement) * UINT64_C(1099511628211);
+	return pg_index_insert(&typing->evidence_conclusions, &entry->index, hash) ? NULL : entry;
+}
+
+const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing,
+	const struct pg_occurrence *subject, const struct pg_evidence *after)
+{
+	if (!subject) return NULL;
+	if (after) {
+		if (!pg_evidence_owned_by(after, typing) || pg_evidence_subject(after) != subject) return NULL;
+		return after->next_conclusion;
+	}
+	const struct evidence_conclusion *entry = conclusion_find(typing, subject->judgement, subject);
+	return entry ? entry->first : NULL;
+}
 
 struct pg_operation_declaration {
 	struct pg_object_entry base;
@@ -154,6 +200,13 @@ static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg
 		subject, count, premises, certificate, &hash);
 	if (existing) return existing;
 	if (count > (SIZE_MAX - sizeof(struct pg_evidence)) / sizeof(*premises)) return NULL;
+	/* Allocate the secondary key before publishing either index entry. An
+	 * empty key after allocation failure contains no accepted derivation. */
+	enum pg_evidence_judgement judgement = map ? PG_JUDGEMENT_SUBSTITUTION
+		: subject ? subject->judgement : PG_JUDGEMENT_CONTEXT;
+	const void *key = map ? (const void *)map : subject ? (const void *)subject : (const void *)context;
+	struct evidence_conclusion *conclusion = conclusion_prepare(typing, judgement, key);
+	if (!conclusion) return NULL;
 	size_t size = sizeof(struct pg_evidence) + count * sizeof(*premises);
 	struct pg_evidence *proof = pg_alloc(typing->graph, size);
 	if (!proof) return NULL;
@@ -166,6 +219,9 @@ static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg
 	proof->premise_count = count;
 	for (size_t i = 0; i < count; ++i) proof->premises[i] = premises[i];
 	if (pg_index_insert(&typing->proofs, &proof->index, hash) != 0) return NULL;
+	if (conclusion->last) conclusion->last->next_conclusion = proof;
+	else conclusion->first = proof;
+	conclusion->last = proof;
 	return proof;
 }
 
@@ -186,6 +242,65 @@ static int context_proof(const struct pg_typing *typing, const struct pg_evidenc
 {
 	if (!pg_evidence_owned_by(proof, typing)) return 0;
 	return pg_evidence_judgement(proof) == PG_JUDGEMENT_CONTEXT;
+}
+
+static const struct pg_evidence *conclusion_first(const struct pg_typing *typing,
+	enum pg_evidence_judgement judgement, const void *key)
+{
+	const struct evidence_conclusion *entry = conclusion_find(typing, judgement, key);
+	return entry ? entry->first : NULL;
+}
+
+static int structural_dependency(void *owner, const void *key, size_t index, const void **child)
+{
+	struct pg_typing *typing = owner;
+	const struct pg_occurrence *subject = key;
+	if (pg_evidence_for_subject(typing, subject, NULL) || !subject->map) return 0;
+	if (index > subject->map->count) return 0;
+	*child = index ? subject->map->images[index - 1] : subject->origin;
+	return 1;
+}
+
+/* Typed structure selects the construction; ordinary rules certify its maps.
+ * No search by erased Core or interpretation of a receipt's history occurs. */
+const struct pg_evidence *pg_prove_structural_subject(struct pg_typing *typing,
+	const struct pg_occurrence *subject)
+{
+	if (!typing || !subject) return NULL;
+	const struct pg_evidence *result = pg_evidence_for_subject(typing, subject, NULL);
+	if (result) return result;
+	struct pg_dag dag = {0};
+	if (pg_dag_init(&dag, structural_dependency, typing)) return NULL;
+	if (pg_dag_add(&dag, subject)) goto done;
+	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
+		const struct pg_occurrence *input = node->key;
+		if (pg_evidence_for_subject(typing, input, NULL)) continue;
+		const struct pg_evidence *proof = NULL;
+		if (input->map) {
+			const struct pg_context_map *map = input->map;
+			const struct pg_evidence *mapping = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, map);
+			if (!mapping) {
+				const struct pg_evidence *source = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->source);
+				const struct pg_evidence *destination = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination);
+				if (!source || !destination || map->count > SIZE_MAX / sizeof(proof)) goto done;
+				const struct pg_evidence **images = malloc(map->count * sizeof(*images));
+				if (map->count && !images) goto done;
+				for (size_t i = 0; i < map->count; ++i)
+					images[i] = pg_evidence_for_subject(typing, map->images[i], NULL);
+				mapping = pg_prove_substitution(typing, source, destination, map->count, images);
+				free(images);
+			}
+			proof = pg_prove_reindex(typing, mapping, pg_evidence_for_subject(typing, input->origin, NULL));
+		} else if (input->core->kind == PG_REFERENCE && input->core->as.reference->kind == PG_BINDER) {
+			const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, input->context);
+			proof = pg_prove_variable(typing, context, input->core->as.reference);
+		}
+		if (!proof || pg_evidence_subject(proof) != input) goto done;
+	}
+	result = pg_evidence_for_subject(typing, subject, NULL);
+done:
+	pg_dag_destroy(&dag);
+	return result;
 }
 
 static const struct pg_term *family_signature(struct pg_typing *typing,

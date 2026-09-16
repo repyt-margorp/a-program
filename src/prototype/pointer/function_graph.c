@@ -211,31 +211,63 @@ static const struct pg_evidence *computation_origin(struct pg_function_graph_sta
 	return proof;
 }
 
+static int structural_computation_view(struct pg_function_graph_state *s,
+	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
+	const struct pg_evidence **left, const struct pg_evidence **right)
+{
+	const struct pg_occurrence *subject = pg_evidence_subject(proof);
+	const struct pg_term *core = subject->core;
+	if (core->kind != PG_APPLICATION) return -1;
+	const struct pg_term *terms[] = {core->as.application.function, core->as.application.argument};
+	size_t count = 2;
+	*rule = PG_APP_ELIM;
+	if (terms[0]->kind == PG_REFERENCE) {
+		const struct pg_object *operation = terms[0]->as.reference;
+		if (operation == &pg_return_operation) *rule = PG_RETURN_INTRO;
+		else if (operation == &pg_thunk_operation) *rule = PG_THUNK_INTRO;
+		else if (operation == &pg_force_operation) *rule = PG_FORCE_ELIM;
+		if (*rule != PG_APP_ELIM) {
+			terms[0] = terms[1];
+			count = 1;
+		}
+	} else if (terms[0]->kind == PG_APPLICATION) {
+		const struct pg_term *head = terms[0]->as.application.function;
+		if (head->kind == PG_REFERENCE && head->as.reference == &pg_fold_operation) {
+			*rule = PG_FOLD_ELIM;
+			terms[0] = terms[0]->as.application.argument;
+		}
+	}
+	const struct pg_evidence *children[2] = {NULL, NULL};
+	for (size_t i = 0; i < count; ++i) {
+		struct pg_occurrence_input *input = pg_occurrence_input_request(s->typing, subject, i);
+		while (pg_occurrence_input_advance(input, 1024) == PG_INPUT_PENDING) {}
+		const struct pg_occurrence *child = pg_occurrence_input_result(input);
+		if (!child || child->context != subject->context) return -1;
+		if (pg_alpha_equal(child->core, terms[i]) != 1) return -1;
+		children[i] = pg_prove_structural_subject(s->typing, child);
+		if (!children[i]) return -1;
+	}
+	*left = children[0];
+	*right = children[1];
+	return 0;
+}
+
 static int computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
 	const struct pg_evidence **left, const struct pg_evidence **right)
 {
+	if (!structural_computation_view(s, proof, rule, left, right)) return 0;
 	const struct pg_evidence *map = NULL;
 	proof = computation_origin(s, proof, &map);
 	if (!proof) return -1;
 	*rule = pg_evidence_rule(proof);
-	size_t count;
-	switch (*rule) {
-	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
+	if (*rule == PG_MATCH_ELIM || *rule == PG_INDUCTION_ELIM) {
 		*left = map ? pg_prove_elimination_reindex(s->typing, s->classifiers, map, proof) : proof;
 		*right = NULL;
 		return *left ? 0 : -1;
-	case PG_APP_ELIM: case PG_FOLD_ELIM: count = 2; break;
-	case PG_FORCE_ELIM: case PG_THUNK_INTRO: case PG_RETURN_INTRO: count = 1; break;
-	default: return -1;
 	}
-	*left = pg_evidence_premise(proof, 0);
-	*right = count == 2 ? pg_evidence_premise(proof, 1) : NULL;
-	if (map) {
-		*left = pg_prove_reindex(s->typing, map, *left);
-		if (*right) *right = pg_prove_reindex(s->typing, map, *right);
-	}
-	return *left && (count == 1 || *right) ? 0 : -1;
+	if (map) proof = pg_prove_reindex(s->typing, map, proof);
+	return proof ? structural_computation_view(s, proof, rule, left, right) : -1;
 }
 
 static int plan_case(struct pg_function_graph_state *s, struct graph_case *plan)

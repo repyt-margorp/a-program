@@ -25,8 +25,12 @@ static void write_input(FILE *file, struct pg_typing *typing)
 		id, b, b, scoped, map);
 	const struct pg_occurrence *boundary = pg_occurrence_boundary(typing, mapped, PG_JUDGEMENT_VALUE, a);
 	const struct pg_occurrence *derived = pg_occurrence_derived(typing, mapped, PG_JUDGEMENT_VALUE, v, b);
-	const struct pg_occurrence *roots[] = {oa, ob, oa, bare, mapped, boundary, derived, derived};
-	assert(mapped && boundary && derived && pg_occurrences_write(file, 8, roots, NULL, NULL) == 0);
+	const struct pg_occurrence *image = pg_occurrence(typing, PG_JUDGEMENT_VALUE, cb, id, b, NULL, 1, &vb);
+	const struct pg_context_map *image_map = pg_context_map(typing, ca, cb, 1, &image);
+	const struct pg_occurrence *mapped_variable = pg_occurrence_mapped(typing,
+		PG_JUDGEMENT_VALUE, id, a, a, va, image_map);
+	const struct pg_occurrence *roots[] = {oa, ob, oa, bare, mapped, boundary, derived, derived, mapped_variable};
+	assert(mapped && boundary && derived && mapped_variable && pg_occurrences_write(file, 9, roots, NULL, NULL) == 0);
 	/* Arbitrary elaboration inputs are transported, never treated as proofs. */
 	assert(typing->proofs.count == 0);
 	FILE *other = tmpfile();
@@ -93,7 +97,7 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	size_t count;
 	const struct pg_occurrence *const *roots;
 	assert(pg_occurrences_read(file, typing, 1000, 0, NULL, NULL, &count, &roots) == 0);
-	assert(count == 8 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 9 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(roots[6] == roots[7] && roots[6]->origin == roots[4]);
 	assert(!roots[6]->map && !roots[6]->operand_count);
 	assert(roots[6]->context == roots[4]->context);
@@ -108,6 +112,11 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	assert(roots[4]->map->destination == roots[4]->context);
 	assert(roots[4]->map->count == 1 && roots[4]->map->images[0] == roots[1]->operands[0]);
 	assert(pg_context_map_bindings(roots[4]->map)[0].binder == roots[4]->origin->context->binder);
+	assert(roots[8]->origin == roots[0]->operands[0]);
+	assert(roots[8]->classifier != roots[8]->map->images[0]->classifier);
+	struct pg_occurrence_input *input = pg_occurrence_input_request(typing, roots[8], 0);
+	while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING) {}
+	assert(pg_occurrence_input_result(input) == roots[1]->operands[0]);
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_occurrence *v = roots[i]->operands[0];
 		assert(v->context->declared_type == roots[i]->annotation);

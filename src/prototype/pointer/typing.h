@@ -52,6 +52,9 @@ struct pg_typing {
 	struct pg_index occurrence_actions;
 	struct pg_index occurrence_inputs;
 	struct pg_index proofs;
+	/* Read-only lookup paths to the same accepted derivations, not claims or
+	 * another acceptance store. Alternatives are never replaced. */
+	struct pg_index evidence_conclusions;
 	/* Computation work, not an additional source of typing evidence. */
 	struct pg_substitution_work substitutions;
 };

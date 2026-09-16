@@ -639,3 +639,58 @@ transitions, 1.318 seconds and 243328 KiB peak RSS, against 201265 transitions,
 1.32 seconds and 249684 KiB at the preceding checkpoint. These single debug
 runs do not establish a stable speedup. Full final comparative gates and Main
 publication remain pending.
+
+### 2026-09-16: Checked structural inputs for function graphs
+
+- [x] Index existing derivations by their exact typed conclusion, retaining
+  every alternative in acceptance order. This is a lookup index over the same
+  receipts, not a new Claim authority, a Core-to-type search or an image trust
+  bit. Only the existing acceptance routine appends receipts; index linkage is
+  not a mutation of logical premises. Reading an index publishes no proof.
+- [x] Resolve a mapped typed subject by its structural dependency DAG and the
+  ordinary variable/substitution/reindex rules. Source/destination contexts
+  must already be accepted, every image is checked, and the resulting subject
+  must match exactly. Invalid maps/boundaries and foreign stores do not grant
+  acceptance. Repeated successful requests reuse their accepted receipts.
+- [x] Obtain APP, RETURN, THUNK, FORCE and zero-clause Fold inputs in function
+  graph construction from typed structure. Remove the duplicate basic-operation
+  premise dispatch in `computation_view`. Match/IH and unavailable normalized
+  constructions still require `computation_origin`; its deletion is pending.
+- [x] Preserve a substituted variable's source/map when the image classifier
+  and substituted classifier have different binder pointers. The input query
+  follows the typed image, without alpha-interning either classifier. Previously
+  a bare image boundary lost the acceptance recipe. Removing the old basic
+  operation path exposed this as a rejected QuickSort property and an unexpected
+  one-case generated graph. The regression was fixed, not accepted as a change
+  to the graph API or hidden by restoring the old child-dispatch path.
+- [x] Test alternative receipts, wrong boundaries/maps, store ownership,
+  newly certified projections, alpha-distinct classifier provenance, repeated
+  queries and fresh-process mapped-variable input transport without Evidence.
+- [x] Full debug acceptance, including 63/63 compatibility and QuickSort
+  source/image properties; ASan/UBSan Core, IADT, occurrence transport and
+  QuickSort property compilation passed. The final added transport fixture
+  also passed separately under sanitizers; it changes no implementation code.
+- [ ] Migrate the remaining scoped/normalized/nominal inputs and their
+  consumers. The structural receipt helper does not invent a context, infer
+  arbitrary descriptive nodes or implement typed normalization. R3 is not done.
+
+Delta against `9553615` (paths under `src/prototype/pointer/`):
+
+| File | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `evidence.c` | 115 | 0 | +115 |
+| `evidence.h` | 12 | 0 | +12 |
+| `function_graph.c` | 45 | 13 | +32 |
+| `typing.c` | 17 | 1 | +16 |
+| `typing.h` | 3 | 0 | +3 |
+| **Implementation subtotal** | **192** | **14** | **+178** |
+| Tests (two files) | 87 | 7 | +80 |
+
+The implementation delta remains positive at **+781**. A single debug QuickSort
+run used 201138 transitions, 1.489 seconds and 274532 KiB peak RSS, versus
+1.318 seconds / 243328 KiB at the preceding checkpoint. Counts are 409090 typed
+occurrences, 504226 derivations, 411458 conclusion-index keys, 39571 context
+maps, 102871 occurrence actions, 2934 input queries, 14970 contexts and 179019
+Core terms. The added index cost and remaining legacy consumers must be
+included in R5's memory/time review; this is not a final performance acceptance
+or a net-reduction claim. Main publication remains pending.

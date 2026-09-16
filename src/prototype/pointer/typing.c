@@ -21,6 +21,7 @@ int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph)
 	if (pg_index_init(&typing->occurrence_actions) != 0) goto fail;
 	if (pg_index_init(&typing->occurrence_inputs) != 0) goto fail;
 	if (pg_index_init(&typing->proofs) != 0) goto fail;
+	if (pg_index_init(&typing->evidence_conclusions) != 0) goto fail;
 	if (pg_substitution_work_init(&typing->substitutions, graph) == 0) return 0;
 fail:
 	pg_typing_destroy(typing);
@@ -35,6 +36,7 @@ void pg_typing_destroy(struct pg_typing *typing)
 	pg_index_destroy(&typing->occurrence_actions);
 	pg_index_destroy(&typing->occurrence_inputs);
 	pg_index_destroy(&typing->proofs);
+	pg_index_destroy(&typing->evidence_conclusions);
 	pg_substitution_work_destroy(&typing->substitutions);
 	memset(typing, 0, sizeof(*typing));
 }
@@ -294,7 +296,12 @@ static const struct pg_occurrence *action_result(struct pg_typing *typing,
 		for (size_t i = 0; i < map->count; ++i) {
 			if (bindings[i].binder != source->core->as.reference) continue;
 			if (map->images[i]->core != core) return NULL;
-			return pg_occurrence_boundary(typing, map->images[i], source->judgement, classifier);
+			if (map->images[i]->judgement == source->judgement && map->images[i]->classifier == classifier)
+				return map->images[i];
+			/* Keep the checked substitution's recipe when its classifier has
+			 * different binder pointers. A bare boundary loses that premise. */
+			return pg_occurrence_mapped(typing, source->judgement, core, classifier,
+				annotation, source, map);
 		}
 	}
 	int identity = map->source == map->destination;
@@ -473,6 +480,15 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 	if (work->current) {
 		const struct pg_occurrence *current = work->current;
 		if (current->map) {
+			const struct pg_term *origin = current->origin->core;
+			if (origin->kind == PG_REFERENCE && origin->as.reference->kind == PG_BINDER) {
+				const struct pg_binding_value *bindings = pg_context_map_bindings(current->map);
+				for (size_t i = 0; i < current->map->count; ++i) {
+					if (bindings[i].binder != origin->as.reference) continue;
+					work->current = current->map->images[i];
+					return PG_INPUT_PENDING;
+				}
+			}
 			struct input_map *frame = pg_alloc(typing->graph, sizeof(*frame));
 			if (!frame) return PG_INPUT_ERROR;
 			*frame = (struct input_map){current, work->maps};
