@@ -254,7 +254,7 @@ static const struct pg_evidence *conclusion_first(const struct pg_typing *typing
 	return entry ? entry->first : NULL;
 }
 
-static const struct pg_evidence *structural_map(struct pg_typing *typing,
+const struct pg_evidence *pg_prove_context_map(struct pg_typing *typing,
 	const struct pg_context_map *map)
 {
 	const struct pg_evidence *proof = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, map);
@@ -298,7 +298,7 @@ const struct pg_evidence *pg_prove_structural_subject(struct pg_typing *typing,
 		if (pg_evidence_for_subject(typing, input, NULL)) continue;
 		const struct pg_evidence *proof = NULL;
 		if (input->map) {
-			proof = pg_prove_reindex(typing, structural_map(typing, input->map),
+			proof = pg_prove_reindex(typing, pg_prove_context_map(typing, input->map),
 				pg_evidence_for_subject(typing, input->origin, NULL));
 		} else if (input->core->kind == PG_REFERENCE && input->core->as.reference->kind == PG_BINDER) {
 			const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, input->context);
@@ -659,7 +659,7 @@ static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 			if (subject->operand_count != 1 || subject->operands[0]->core != subject->core->as.application.argument) goto done;
 			result = pg_prove_structural_subject(typing, subject->operands[0]);
 			for (; result && frames; frames = frames->next)
-				result = pg_prove_reindex(typing, structural_map(typing, frames->map), result);
+				result = pg_prove_reindex(typing, pg_prove_context_map(typing, frames->map), result);
 			if (result && pending) {
 				computation = pg_prove_application_body(typing, pending->continuation, result);
 				frames = pending->frames;
@@ -731,7 +731,7 @@ const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 			if (!extended) goto done;
 			const struct pg_evidence *map = pg_prove_substitution_projection(typing, extended->premises[0], extended->premises[0]);
 			for (; map && frames; frames = frames->next)
-				map = pg_prove_substitution_compose(typing, map, structural_map(typing, frames->map));
+				map = pg_prove_substitution_compose(typing, map, pg_prove_context_map(typing, frames->map));
 			map = pg_prove_substitution_pair(typing, map, extended, argument);
 			function = pg_prove_reindex(typing, map, pg_prove_structural_subject(typing, body));
 			if (!function) goto done;
@@ -1923,7 +1923,7 @@ static const struct pg_evidence *constructor_origin(struct pg_typing *typing,
 	for (size_t i = 0; i < count; ++i) fields[i] = pg_prove_structural_subject(typing, current->operands[i]);
 	const struct pg_evidence *parameters = instance.parameters;
 	for (; frames; frames = frames->next) {
-		const struct pg_evidence *map = structural_map(typing, frames->map);
+		const struct pg_evidence *map = pg_prove_context_map(typing, frames->map);
 		parameters = pg_prove_substitution_compose(typing, parameters, map);
 		for (size_t i = 0; i < count; ++i) fields[i] = pg_prove_reindex(typing, map, fields[i]);
 	}
@@ -3433,6 +3433,8 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	operands[count + 1] = pg_evidence_subject(left);
 	operands[count + 2] = pg_evidence_subject(right);
 	const struct pg_occurrence *subject = pg_occurrence(typing, pg_evidence_judgement(family), context, core, pg_evidence_subject(family)->classifier, NULL, count + 3, operands);
+	const struct pg_context_map *maps[] = {pg_evidence_context_map(left_substitution), pg_evidence_context_map(right_substitution)};
+	subject = pg_occurrence_with_maps(typing, subject, 2, maps);
 	if (!subject) goto done;
 	result = accept(typing, PG_FAMILY_IDENTITY_FORM, context,
 		subject, count + 5, premises);
@@ -4357,7 +4359,7 @@ static void classifier_recovery_step(struct pg_classifier_recovery *work)
 	if (work->result) {
 		const struct pg_context_map *map = work->frames->map;
 		work->frames = work->frames->next;
-		work->result = pg_prove_reindex(typing, structural_map(typing, map), work->result);
+		work->result = pg_prove_reindex(typing, pg_prove_context_map(typing, map), work->result);
 	} else {
 		const struct pg_occurrence *subject = work->current;
 		uint64_t level;

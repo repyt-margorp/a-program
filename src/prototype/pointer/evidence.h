@@ -625,6 +625,10 @@ const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing
  * normalized construction is inferred here. NULL means no such derivation. */
 const struct pg_evidence *pg_prove_structural_subject(struct pg_typing *typing,
 	const struct pg_occurrence *subject);
+/* Check an existing descriptive context map through ordinary substitution
+ * rules. Source/destination contexts must already be accepted. */
+const struct pg_evidence *pg_prove_context_map(struct pg_typing *typing,
+	const struct pg_context_map *map);
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence);
 /* Context formation has no term subject or classifier. */
 const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence);

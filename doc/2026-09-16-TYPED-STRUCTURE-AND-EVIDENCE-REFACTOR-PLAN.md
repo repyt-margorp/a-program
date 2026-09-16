@@ -830,3 +830,40 @@ dependent Identity must retain its selected left/right structural maps, not
 only family/paths/endpoints. Their current presence in acceptance premises is
 not redundant evidence to discard. General constant-codomain strengthening
 also needs a scoped structural representation before removing Pi recovery.
+
+### 2026-09-17: Selected Identity construction maps
+
+- [x] Retain the two selected dependent Identity substitutions as structural
+  map inputs on the existing typed occurrence. Their ordered pointers enter
+  exact interning; they are neither acceptance receipts nor a second graph.
+  Each destination is the construction context. Conversion retains these
+  inputs; outer reindexing retains its ordinary origin/map recipe.
+- [x] Delete `action.c`'s proof-rule wrapper walk. Identity formation, endpoint
+  and face work now follow typed origins and selected maps, then certify the
+  recovered inputs using the existing Identity rules. The direct introduction
+  view remains a logical rule inversion, not a search through receipt history.
+  Classifier conversion must not replace a family action's original input
+  Identity. No new Identity introduction or equality reflection is added.
+- [x] APGOCC5 transports selected source scopes and typed map images in the
+  same occurrence DAG. Earlier occurrence images reject. Fresh-process tests
+  cover selected-map order, scope relocation, sharing, invalid destinations,
+  truncated input and zero acceptance evidence after readback.
+- [x] Full debug `check-acceptance` passed (63/63 compatibility, QuickSort
+  properties through source/images, chunks one and 64). Identity regressions
+  cover converted families, dependent/higher boundaries and repeated queries
+  with no additional occurrences or derivations. Tests no longer require
+  traversing 128 redundant type/value receipts or choosing the same derivation
+  when two valid derivations share one typed subject. Cancellation uses a cold
+  work queue, since a warm queue can now reuse its completed boundary.
+- [x] ASan/UBSan Core, Identity, synthesis and fresh-process occurrence I/O
+  passed. Sequential single-run debug QuickSort measurements were 1.498 seconds
+  / 271912 KiB before and 1.524 seconds / 271784 KiB after, both 154851 Solve
+  transitions. These runs establish no performance improvement claim.
+
+Against `513dbe3`, implementation/header changes are +190/-77 (**+113**):
+`action.c` +64/-43, `evidence.c` +8/-6, `evidence.h` +4/-0,
+`typing.c` +37/-10, `typing.h` +8/-0, `occurrence_io.c` +64/-14,
+`occurrence_io.h` +5/-4. Tests are +61/-25 (**+36**).
+Cumulative implementation delta is **+953**; R5's net-negative condition is
+still unmet. Nominal/Pi recovery, Match/induction construction metadata,
+shared budgeted typed normalization and final publication remain incomplete.

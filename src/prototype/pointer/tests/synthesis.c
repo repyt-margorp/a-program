@@ -3303,7 +3303,10 @@ static void endpoint_jobs(struct pg_typing *typing, struct pg_classifiers *class
 		complete(&synthesis, unsupported, PG_SYNTHESIS_UNSUPPORTED);
 		pg_synthesis_advance(&synthesis, 100);
 		assert(!synthesis.ready);
-		/* Release workers while face validation is still pending. */
+		/* A warm queue may reuse the completed structural boundary immediately.
+		 * Use a cold queue to release workers while face validation is pending. */
+		pg_synthesis_destroy(&synthesis);
+		assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
 		coordinates[0].kind = PG_ENDPOINT_ONE;
 		const struct pg_evidence *cancel_type = pg_prove_value_type(typing, pg_prove_type_value(typing, roundtrip));
 		struct pg_synthesis_job *cancelled = pg_synthesis_identity_endpoint(&synthesis, context, cancel_type,
@@ -3313,7 +3316,7 @@ static void endpoint_jobs(struct pg_typing *typing, struct pg_classifiers *class
 		struct pg_synthesis_job *cancelled_face = pg_synthesis_identity_face(&synthesis, context, cancel_type, selector);
 		pg_synthesis_advance(&synthesis, 0);
 		assert(pg_synthesis_status(cancelled_face) == PG_SYNTHESIS_PENDING);
-		pg_synthesis_advance(&synthesis, 6);
+		pg_synthesis_advance(&synthesis, 2);
 		assert(!pg_synthesis_result(cancelled_face));
 		pg_synthesis_destroy(&synthesis);
 		pg_whnf_work_destroy(&work);

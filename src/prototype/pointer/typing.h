@@ -32,6 +32,9 @@ struct pg_occurrence {
 	const struct pg_occurrence *origin;
 	const struct pg_context_map *map;
 	size_t operand_count;
+	/* Selected construction maps follow operands in the same allocation.
+	 * Unlike map above, they are inputs, not an action on the whole subject. */
+	size_t map_count;
 	const struct pg_occurrence *operands[];
 };
 
@@ -88,6 +91,11 @@ const struct pg_occurrence *pg_occurrence_typed(struct pg_typing *typing,
 /* Select a formed classifier while retaining the term's construction. */
 const struct pg_occurrence *pg_occurrence_classified(struct pg_typing *typing,
 	const struct pg_occurrence *source, const struct pg_occurrence *type);
+/* Scoped construction inputs (for example selected Identity boundaries), not
+ * an action on the entire subject. Their roles belong to the semantic owner. */
+const struct pg_context_map *const *pg_occurrence_maps(const struct pg_occurrence *subject);
+const struct pg_occurrence *pg_occurrence_with_maps(struct pg_typing *typing,
+	const struct pg_occurrence *source, size_t count, const struct pg_context_map *const *maps);
 /* A different boundary preserves construction inputs, not typing acceptance. */
 const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 	const struct pg_occurrence *source, enum pg_evidence_judgement judgement,

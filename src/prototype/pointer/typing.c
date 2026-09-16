@@ -99,7 +99,8 @@ static const struct pg_occurrence *occurrence(struct pg_typing *typing,
 	enum pg_evidence_judgement judgement, const struct pg_context *context, const struct pg_term *core,
 	const struct pg_term *classifier, const struct pg_term *annotation, size_t operand_count,
 	const struct pg_occurrence *const *operands, const struct pg_occurrence *origin,
-	const struct pg_context_map *map, const struct pg_occurrence *type)
+	const struct pg_context_map *map, const struct pg_occurrence *type,
+	size_t map_count, const struct pg_context_map *const *maps)
 {
 	if (!core) return NULL;
 	if (judgement < PG_JUDGEMENT_VALUE_TYPE || judgement > PG_JUDGEMENT_INPUT) return NULL;
@@ -107,7 +108,9 @@ static const struct pg_occurrence *occurrence(struct pg_typing *typing,
 	if ((judgement == PG_JUDGEMENT_INPUT) != (classifier == NULL)) return NULL;
 	if (type && (type->context != context || type->core != classifier)) return NULL;
 	if (operand_count && !operands) return NULL;
-	if (operand_count > (SIZE_MAX - sizeof(struct pg_occurrence)) / sizeof(*operands)) return NULL;
+	if (map_count && !maps) return NULL;
+	if (map_count > (SIZE_MAX - sizeof(struct pg_occurrence)) / sizeof(*maps)) return NULL;
+	if (operand_count > (SIZE_MAX - sizeof(struct pg_occurrence) - map_count * sizeof(*maps)) / sizeof(*operands)) return NULL;
 	uint64_t hash = context_hash(context, NULL, core);
 	hash = (hash ^ judgement) * UINT64_C(1099511628211);
 	hash = (hash ^ (uintptr_t)classifier) * UINT64_C(1099511628211);
@@ -116,6 +119,11 @@ static const struct pg_occurrence *occurrence(struct pg_typing *typing,
 	hash = (hash ^ (uintptr_t)origin) * UINT64_C(1099511628211);
 	hash = (hash ^ (uintptr_t)map) * UINT64_C(1099511628211);
 	hash = (hash ^ operand_count) * UINT64_C(1099511628211);
+	hash = (hash ^ map_count) * UINT64_C(1099511628211);
+	for (size_t i = 0; i < map_count; ++i) {
+		if (!maps[i] || maps[i]->destination != context) return NULL;
+		hash = (hash ^ (uintptr_t)maps[i]) * UINT64_C(1099511628211);
+	}
 	for (size_t i = 0; i < operand_count; ++i) {
 		if (!operands[i]) return NULL;
 		hash = (hash ^ (uintptr_t)operands[i]) * UINT64_C(1099511628211);
@@ -131,12 +139,15 @@ static const struct pg_occurrence *occurrence(struct pg_typing *typing,
 		if (found->annotation != annotation) continue;
 		if (found->origin != origin || found->map != map) continue;
 		if (found->operand_count != operand_count) continue;
+		if (found->map_count != map_count) continue;
 		size_t i = 0;
 		while (i < operand_count && found->operands[i] == operands[i]) ++i;
-		if (i == operand_count) return found;
+		if (i != operand_count) continue;
+		for (i = 0; i < map_count && pg_occurrence_maps(found)[i] == maps[i]; ++i) {}
+		if (i == map_count) return found;
 	}
 	struct pg_occurrence *result = pg_alloc(typing->graph,
-		sizeof(*result) + operand_count * sizeof(*operands));
+		sizeof(*result) + operand_count * sizeof(*operands) + map_count * sizeof(*maps));
 	if (!result) return NULL;
 	result->judgement = judgement;
 	result->context = context;
@@ -147,7 +158,9 @@ static const struct pg_occurrence *occurrence(struct pg_typing *typing,
 	result->origin = origin;
 	result->map = map;
 	result->operand_count = operand_count;
+	result->map_count = map_count;
 	for (size_t i = 0; i < operand_count; ++i) result->operands[i] = operands[i];
+	if (map_count) memcpy(result->operands + operand_count, maps, map_count * sizeof(*maps));
 	if (pg_index_insert(&typing->occurrences, &result->index, hash) != 0) return NULL;
 	return result;
 }
@@ -158,7 +171,7 @@ const struct pg_occurrence *pg_occurrence(struct pg_typing *typing,
 	const struct pg_occurrence *const *operands)
 {
 	return occurrence(typing, judgement, context, core, classifier, annotation,
-		operand_count, operands, NULL, NULL, NULL);
+		operand_count, operands, NULL, NULL, NULL, 0, NULL);
 }
 
 const struct pg_occurrence *pg_occurrence_typed(struct pg_typing *typing,
@@ -167,7 +180,7 @@ const struct pg_occurrence *pg_occurrence_typed(struct pg_typing *typing,
 	size_t operand_count, const struct pg_occurrence *const *operands)
 {
 	return type ? occurrence(typing, judgement, type->context, core, type->core, annotation,
-		operand_count, operands, NULL, NULL, type) : NULL;
+		operand_count, operands, NULL, NULL, type, 0, NULL) : NULL;
 }
 
 const struct pg_occurrence *pg_occurrence_classified(struct pg_typing *typing,
@@ -175,7 +188,20 @@ const struct pg_occurrence *pg_occurrence_classified(struct pg_typing *typing,
 {
 	return source && type ? occurrence(typing, source->judgement, source->context, source->core,
 		type->core, source->annotation, source->operand_count, source->operands,
-		source->origin, source->map, type) : NULL;
+		source->origin, source->map, type, source->map_count, pg_occurrence_maps(source)) : NULL;
+}
+
+const struct pg_context_map *const *pg_occurrence_maps(const struct pg_occurrence *subject)
+{
+	return (const struct pg_context_map *const *)(subject->operands + subject->operand_count);
+}
+
+const struct pg_occurrence *pg_occurrence_with_maps(struct pg_typing *typing,
+	const struct pg_occurrence *source, size_t count, const struct pg_context_map *const *maps)
+{
+	return source ? occurrence(typing, source->judgement, source->context, source->core,
+		source->classifier, source->annotation, source->operand_count, source->operands,
+		source->origin, source->map, source->type, count, maps) : NULL;
 }
 
 const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
@@ -184,7 +210,8 @@ const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 {
 	return source ? occurrence(typing, judgement, source->context, source->core,
 		classifier, source->annotation, source->operand_count, source->operands,
-		source->origin, source->map, source->classifier == classifier ? source->type : NULL) : NULL;
+		source->origin, source->map, source->classifier == classifier ? source->type : NULL,
+		source->map_count, pg_occurrence_maps(source)) : NULL;
 }
 
 const struct pg_occurrence *pg_occurrence_mapped(struct pg_typing *typing,
@@ -194,7 +221,7 @@ const struct pg_occurrence *pg_occurrence_mapped(struct pg_typing *typing,
 {
 	if (!source || !map || source->context != map->source) return NULL;
 	return occurrence(typing, judgement, map->destination, core, classifier,
-		annotation, 0, NULL, source, map, NULL);
+		annotation, 0, NULL, source, map, NULL, 0, NULL);
 }
 
 const struct pg_occurrence *pg_occurrence_derived(struct pg_typing *typing,
@@ -202,7 +229,7 @@ const struct pg_occurrence *pg_occurrence_derived(struct pg_typing *typing,
 	const struct pg_term *core, const struct pg_term *classifier)
 {
 	return source ? occurrence(typing, judgement, source->context, core, classifier,
-		NULL, 0, NULL, source, NULL, source->classifier == classifier ? source->type : NULL) : NULL;
+		NULL, 0, NULL, source, NULL, source->classifier == classifier ? source->type : NULL, 0, NULL) : NULL;
 }
 
 const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map)

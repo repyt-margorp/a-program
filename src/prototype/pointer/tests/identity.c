@@ -1133,12 +1133,14 @@ static void reflexive_instance_boundary(struct pg_typing *typing, struct pg_clas
 	for (size_t i = 0; i < 64; ++i)
 		wrapped = pg_prove_value_type(typing, pg_prove_type_value(typing, wrapped));
 	assert(!pg_identity_formation_init(typing, classifiers, path));
-	for (uint64_t split = 0; split <= 129; ++split) {
+	/* Receipt round trips share structure; they add no structural work. */
+	assert(pg_evidence_subject(wrapped) == pg_evidence_subject(instance));
+	for (uint64_t split = 0; split <= 1; ++split) {
 		struct pg_identity_formation_work *pending = pg_identity_formation_init(typing, classifiers, wrapped);
 		assert(pending && !pg_identity_formation_result(pending));
-		assert(pg_identity_formation_advance(pending, split) == (split == 129));
-		assert(pg_identity_formation_result(pending) == (split == 129 ? recovered : NULL));
-		assert(pg_identity_formation_advance(pending, 129 - split) == 1);
+		assert(pg_identity_formation_advance(pending, split) == (split == 1));
+		assert(pg_identity_formation_result(pending) == (split == 1 ? recovered : NULL));
+		assert(pg_identity_formation_advance(pending, 1 - split) == 1);
 		assert(pg_identity_formation_result(pending) == recovered);
 		pg_identity_formation_destroy(pending);
 	}
@@ -1148,24 +1150,23 @@ static void reflexive_instance_boundary(struct pg_typing *typing, struct pg_clas
 	assert(pg_identity_formation_advance(unsupported, 0) == -1);
 	assert(!pg_identity_formation_result(unsupported));
 	pg_identity_formation_destroy(unsupported);
-	for (uint64_t split = 0; split <= 128; ++split) {
+	for (uint64_t split = 0; split <= 1; ++split) {
 		struct pg_identity_endpoint_work *pending = pg_identity_endpoint_init(typing, classifiers,
 			empty, wrapped, 0, PG_IDENTITY_LEFT);
-		assert(pending && pg_identity_endpoint_advance(pending, split) == 0);
-		assert(!pg_identity_endpoint_result(pending));
-		assert(pg_identity_endpoint_advance(pending, 128 - split) == 0);
-		assert(pg_identity_endpoint_advance(pending, 1) == 1);
+		assert(pending && pg_identity_endpoint_advance(pending, split) == (split == 1));
+		assert(pg_identity_endpoint_result(pending) == (split == 1 ? path : NULL));
+		assert(pg_identity_endpoint_advance(pending, 1 - split) == 1);
 		assert(pg_identity_endpoint_result(pending) == path);
 		pg_identity_endpoint_destroy(pending);
 	}
 	struct pg_coordinate coordinate = {PG_ENDPOINT_ZERO, 0};
 	struct pg_dimension_map face = {0, 1, &coordinate};
 	assert(!pg_identity_face_init(typing, classifiers, empty, path, &face));
-	for (uint64_t split = 0; split <= 131; ++split) {
+	for (uint64_t split = 0; split <= 3; ++split) {
 		struct pg_identity_face_work *pending = pg_identity_face_init(typing, classifiers, empty, wrapped, &face);
-		assert(pending && pg_identity_face_advance(pending, split) == (split == 131));
-		assert(pg_identity_face_result(pending) == (split == 131 ? path : NULL));
-		assert(pg_identity_face_advance(pending, 131 - split) == 1);
+		assert(pending && pg_identity_face_advance(pending, split) == (split == 3));
+		assert(pg_identity_face_result(pending) == (split == 3 ? path : NULL));
+		assert(pg_identity_face_advance(pending, 3 - split) == 1);
 		assert(pg_identity_face_result(pending) == path);
 		pg_identity_face_destroy(pending);
 	}
@@ -1182,13 +1183,12 @@ static void reflexive_instance_boundary(struct pg_typing *typing, struct pg_clas
 	const struct pg_evidence *converted_instance = pg_prove_identity_instance(typing, classifiers,
 		converted_family, path, path);
 	assert(converted_instance);
-	for (uint64_t split = 0; split <= 64; ++split) {
+	for (uint64_t split = 0; split <= 1; ++split) {
 		struct pg_identity_endpoint_work *pending = pg_identity_endpoint_init(typing, classifiers,
 			empty, converted_instance, 0, PG_IDENTITY_LEFT);
-		assert(pending && pg_identity_endpoint_advance(pending, split) == 0);
-		assert(!pg_identity_endpoint_result(pending));
-		assert(pg_identity_endpoint_advance(pending, 64 - split) == 0);
-		assert(pg_identity_endpoint_advance(pending, 1) == 1);
+		assert(pending && pg_identity_endpoint_advance(pending, split) == (split == 1));
+		assert(pg_identity_endpoint_result(pending) == (split == 1 ? path : NULL));
+		assert(pg_identity_endpoint_advance(pending, 1 - split) == 1);
 		assert(pg_identity_endpoint_result(pending) == path);
 		pg_identity_endpoint_destroy(pending);
 	}
@@ -1337,7 +1337,7 @@ static void generated_contexts(struct pg_typing *typing, struct pg_classifiers *
 			struct pg_coordinate zero = {PG_ENDPOINT_ZERO, 0};
 			const struct pg_evidence *selected = pg_identity_proper_face(typing, classifiers, path_context,
 				formation, pg_dimension_map(&dimensions, 0, 1, &zero));
-			assert(selected == boundary.left);
+			assert(selected && pg_evidence_subject(selected) == pg_evidence_subject(boundary.left));
 			assert(pg_identity_formation(typing, classifiers,
 				pg_prove_classifier(typing, classifiers, path_context, selected)));
 		}
@@ -2270,6 +2270,19 @@ static void dependent_families(struct pg_typing *typing, struct pg_classifiers *
 	const struct pg_evidence *vp = pg_prove_family_identity_type(typing, family, ls, rs, 1, &p, x, y);
 	const struct pg_evidence *vq = pg_prove_family_identity_type(typing, family, ls, rs, 1, &q, x, y);
 	assert(vp && vq && vp != vq);
+	const struct pg_occurrence *structure = pg_evidence_subject(vp);
+	assert(structure->map_count == 2 && structure->operand_count == 4);
+	assert(pg_occurrence_maps(structure)[0] == pg_evidence_context_map(ls));
+	assert(pg_occurrence_maps(structure)[1] == pg_evidence_context_map(rs));
+	assert(structure->operands[0] == pg_evidence_subject(family));
+	assert(structure->operands[1] == pg_evidence_subject(p));
+	const struct pg_evidence *round_trip = pg_prove_value_type(typing, pg_prove_type_value(typing, vp));
+	assert(pg_evidence_subject(round_trip) == structure);
+	assert(pg_identity_formation(typing, classifiers, round_trip) == vp);
+	size_t nodes = typing->occurrences.count, proofs = typing->proofs.count;
+	for (size_t i = 0; i < 100; ++i)
+		assert(pg_identity_formation(typing, classifiers, round_trip) == vp);
+	assert(typing->occurrences.count == nodes && typing->proofs.count == proofs);
 	assert(pg_evidence_classifier(vp) == pg_universe(classifiers, 0));
 	assert(pg_evidence_judgement(vp) == PG_JUDGEMENT_VALUE_TYPE);
 	assert(pg_evidence_subject(vp)->core != pg_evidence_subject(vq)->core);
