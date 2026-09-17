@@ -211,7 +211,7 @@ composition, lifting, family-context and image round-trip tests remain gates.
 - [x] Debug Core suite.
 - [x] Full optimized acceptance and compatibility suite (63/63).
 - [x] ASan/UBSan Core suite with leak detection.
-- [ ] Review delta and publish only after all gates pass.
+- [x] Review delta and publish only after all gates pass (`5ec308a`, both remote tips verified).
 
 Gate: `make -f src/prototype/pointer/Makefile -j2
 BUILD=/tmp/a-program-authority-scope-opt check-acceptance`, default strict `-O2`.

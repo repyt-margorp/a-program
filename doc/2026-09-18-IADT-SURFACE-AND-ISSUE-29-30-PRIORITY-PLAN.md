@@ -1540,9 +1540,15 @@ remote tips verified. Implementation +76/-76, tests +27/-0, documentation
 - [x] Debug Core regression, including invalid first/last dependent images.
 - [x] Measure same-input allocation/work/node counts against `7eeefb8`.
 - [x] Full optimized acceptance and affected ASan/UBSan Core suite.
-- [ ] Publish and verify both remote tips after all gates pass.
+- [x] Publish and verify both remote tips after all gates pass.
 
 The [scope-copy audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#substitution-telescope-checking-after-7eeefb8)
 records the eliminated allocation/traversal and rejected extra-cache proposal.
 Composition arrays and nested synchronous wrappers remain; this is not the
 completion of the broader R goal.
+
+Published as `5ec308a28ac7fc47b7b170173c400e48c23afcf0`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `7eeefb8`;
+both remote tips verified. Implementation +10/-11, tests +15/-0,
+documentation +82/-1; total +107/-12. This publication record changes
+documentation only.
