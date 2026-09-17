@@ -335,7 +335,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[20];
+	const struct pg_evidence *roots[22];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -438,8 +438,9 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	const struct pg_object *m = pg_binder(graph);
 	const struct pg_evidence *mc = pg_prove_context_extension(typing, context, m,
 		pg_prove_thunk_type(typing, pg_prove_return_type(typing, pg_prove_variable(typing, context, a))));
-	const struct pg_evidence *staged = pg_prove_thunk(typing, pg_prove_fold(typing,
-		pg_prove_force(typing, pg_prove_variable(typing, mc, m)), pg_prove_projection(typing, mc, under_lambda)));
+	const struct pg_evidence *fold_source = pg_prove_fold(typing,
+		pg_prove_force(typing, pg_prove_variable(typing, mc, m)), pg_prove_projection(typing, mc, under_lambda));
+	const struct pg_evidence *staged = pg_prove_thunk(typing, fold_source);
 	assert(staged);
 	nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(staged)->core);
 	const struct pg_reduction_certificate *prefix = NULL;
@@ -450,8 +451,16 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	assert(pg_nf_status(nf) == PG_NF_PENDING);
 	roots[19] = pg_prove_normalization(typing, staged, prefix);
 	assert(pg_reduction_target(prefix) != pg_reference(graph, m));
-	for (size_t i = 0; i < 20; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 20, roots, name, typing->graph) == 0);
+	nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(fold_source)->core);
+	assert(pg_nf_status(nf) == PG_NF_DONE && !pg_reduction_head_congruence(pg_nf_certificate(nf)));
+	roots[20] = pg_prove_normalization(typing, fold_source, pg_nf_certificate(nf));
+	const struct pg_evidence *nested = pg_prove_fold(typing, fold_source, pg_prove_projection(typing, mc, under_lambda));
+	nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(nested)->core);
+	while (pg_nf_advance(nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
+	assert(pg_nf_status(nf) == PG_NF_DONE);
+	roots[21] = pg_prove_normalization(typing, nested, pg_nf_certificate(nf));
+	for (size_t i = 0; i < 22; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 22, roots, name, typing->graph) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -479,13 +488,13 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing, 1000, 100, resolve, typing->graph, &count, &roots) == 0);
-	assert(count == 20 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 22 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[20];
+	struct pg_synthesis_job *jobs[22];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -551,7 +560,7 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	/* Restored normalization exposes typed result inputs only after ordinary
 	 * Solve. A renamed NF binder needs a checked child scope action, not the
 	 * original Lambda body's context copied onto its new Core. */
-	const size_t normalized[] = {3, 5, 11, 17, 18};
+	const size_t normalized[] = {3, 5, 11, 17, 18, 20, 21};
 	for (size_t i = 0; i < sizeof(normalized) / sizeof(*normalized); ++i) {
 		const struct pg_evidence *parent = pg_synthesis_result(jobs[normalized[i]]);
 		const struct pg_term *core = pg_evidence_subject(parent)->core;
@@ -569,7 +578,9 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 			assert(pg_evidence_context(child)->parent == pg_evidence_context(parent));
 			assert(pg_evidence_context(child)->binder == binder);
 		} else {
-			assert(core->kind == PG_APPLICATION && core->as.application.function == pg_reference(typing->graph, &pg_return_operation));
+			assert(core->kind == PG_APPLICATION);
+			assert(core->as.application.function == pg_reference(typing->graph,
+				normalized[i] >= 20 ? &pg_force_operation : &pg_return_operation));
 			assert(pg_evidence_subject(child)->core == core->as.application.argument);
 			assert(pg_evidence_context(child) == pg_evidence_context(parent));
 		}

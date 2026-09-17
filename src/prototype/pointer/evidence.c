@@ -613,8 +613,8 @@ struct typed_query_wait {
 	struct typed_query_wait *parent;
 };
 
-enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER, TYPED_REBASE, TYPED_INDUCTIVE, TYPED_SELECTION };
-enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT };
+enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER, TYPED_REBASE, TYPED_INDUCTIVE, TYPED_SELECTION, TYPED_PHASE };
+enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT, TYPED_RESUME_PHASE };
 
 struct typed_elimination {
 	const struct pg_evidence *branch;
@@ -665,11 +665,18 @@ struct typed_selection {
 	size_t index;
 };
 
+struct typed_association {
+	const struct pg_evidence *outer, *inner, *source, *first, *last;
+	const struct pg_term *inner_target;
+	const struct pg_object *binder;
+	unsigned next;
+};
+
 struct pg_typed_query {
 	struct pg_index_entry index;
 	struct pg_typing *typing;
 	const struct pg_occurrence *source, *current;
-	/* Argument subject, rebase Context, head Core, or immutable outer scopes. */
+	/* Argument subject, rebase Context, head Core, outer scopes, or NF phase. */
 	const void *argument_key;
 	const struct pg_evidence *argument, *environment, *value, *result;
 	const struct pg_evidence *continuation;
@@ -684,6 +691,7 @@ struct pg_typed_query {
 	struct typed_rebase *rebase;
 	struct typed_inductive *inductive;
 	struct typed_selection *selection;
+	struct typed_association *association;
 	const struct pg_reduction_certificate *reduction;
 	const struct pg_reduction_certificate *input_reduction;
 	enum typed_query_kind kind;
@@ -760,6 +768,32 @@ static struct pg_typed_query *typed_head_request(struct pg_typing *typing,
 	/* Without a receipt the caller requests constructor exposure, not a
 	 * prediction of the evaluator's normal form. */
 	return typed_query_request(typing, pg_evidence_subject(source), NULL, TYPED_HEAD, 0, receipt ? pg_reduction_target(receipt) : NULL);
+}
+
+/* Reuse the accepted source and its finite reduction chain. Different input
+ * queries share these intermediate conclusions; this is not another AST. */
+static struct pg_typed_query *typed_phase_request(struct pg_typing *typing,
+	const struct pg_occurrence *source, const struct pg_reduction_phase *phase)
+{
+	return typed_query_request(typing, source, NULL, TYPED_PHASE, 0, phase);
+}
+
+static int typed_phase_step(struct pg_typed_query *work)
+{
+	const struct pg_reduction_phase *phase = work->argument_key;
+	const struct pg_evidence *source;
+	if (phase->previous) {
+		if (!work->dependency) {
+			work->dependency = typed_phase_request(work->typing, work->source, phase->previous);
+			return work->dependency ? 0 : -1;
+		}
+		if (!work->dependency->status) return 0;
+		source = pg_typed_query_result(work->dependency);
+	} else source = pg_prove_structural_subject(work->typing, work->source);
+	const struct pg_reduction_certificate *receipt = phase->children[0]
+		? pg_reduction_prefix(work->typing->graph, phase->head, phase->children[0], phase->children[1]) : phase->head;
+	work->result = pg_prove_normalization(work->typing, source, receipt);
+	return work->result ? 1 : -1;
 }
 
 struct pg_typed_query *pg_typed_input_request(struct pg_typing *typing,
@@ -947,10 +981,84 @@ static int constructor_head(const struct pg_occurrence *subject)
 	return head->kind == PG_REFERENCE && pg_data_constructor_view(head->as.reference, &layout, &position, &arity);
 }
 
+static const struct pg_term *fold_source(const struct pg_term *core)
+{
+	if (!core || core->kind != PG_APPLICATION) return NULL;
+	const struct pg_term *head = core->as.application.function;
+	if (head->kind != PG_APPLICATION || head->as.application.function->kind != PG_REFERENCE) return NULL;
+	return head->as.application.function->as.reference == &pg_fold_operation ? head->as.application.argument : NULL;
+}
+
+/* Read the evaluator's association shape to demand the inner head first.
+ * The shape guides work only; ordinary rules establish every typed result. */
+static int typed_association_start(struct pg_typed_query *work)
+{
+	if (work->kind != TYPED_HEAD || !work->argument_key || work->forces) return 0;
+	if (!fold_source(fold_source(work->current->core))) return 0;
+	const struct pg_term *target = work->argument_key, *source = fold_source(target);
+	if (!source) return 0;
+	const struct pg_term *lambda = target->as.application.argument;
+	if (lambda->kind != PG_LAMBDA) return 0;
+	const struct pg_term *call = fold_source(lambda->as.lambda.body);
+	if (!call || call->kind != PG_APPLICATION) return 0;
+	const struct pg_term *argument = call->as.application.argument;
+	if (argument->kind != PG_REFERENCE || argument->as.reference != lambda->as.lambda.binder) return 0;
+	struct typed_association *state = pg_alloc(work->typing->graph, sizeof(*state));
+	if (!state) return -1;
+	*state = (struct typed_association){0};
+	state->outer = pg_prove_structural_subject(work->typing, work->current);
+	if (work->environment) state->outer = pg_prove_reindex(work->typing, work->environment, state->outer);
+	state->inner_target = pg_computation_fold(work->typing->graph, source, call->as.application.function, 0, NULL);
+	state->binder = lambda->as.lambda.binder;
+	if (!state->outer || !state->inner_target) return -1;
+	work->association = state;
+	work->environment = NULL;
+	return 1;
+}
+
+static int typed_association_step(struct pg_typed_query *work)
+{
+	struct pg_typing *typing = work->typing;
+	struct typed_association *state = work->association;
+	const struct pg_evidence **outputs[] = {&state->inner, &state->inner, &state->source, &state->first, &state->last};
+	if (state->next < 5) {
+		if (!work->dependency) {
+			switch (state->next) {
+			case 0: work->dependency = pg_typed_input_request(typing, state->outer, 0); break;
+			case 1: work->dependency = typed_query_request(typing, pg_evidence_subject(state->inner), NULL,
+				TYPED_HEAD, 0, state->inner_target); break;
+			case 2: work->dependency = pg_typed_input_request(typing, state->inner, 0); break;
+			case 3: work->dependency = pg_typed_input_request(typing, state->inner, 1); break;
+			case 4: work->dependency = pg_typed_input_request(typing, state->outer, 1); break;
+			}
+			return work->dependency ? 0 : -1;
+		}
+		if (!work->dependency->status) return 0;
+		const struct pg_evidence *input = pg_typed_query_result(work->dependency);
+		if (!input) return -1;
+		*outputs[state->next++] = input;
+		work->dependency = NULL;
+		return 0;
+	}
+	const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, pg_evidence_context(state->outer));
+	const struct pg_evidence *domain = pg_prove_return_content(typing, pg_prove_classifier(typing, context, state->source));
+	const struct pg_evidence *extended = pg_prove_context_extension(typing, context, state->binder, domain);
+	const struct pg_evidence *call = pg_prove_application(typing, pg_prove_projection(typing, extended, state->first),
+		pg_prove_variable(typing, extended, state->binder));
+	const struct pg_evidence *body = pg_prove_fold(typing, call, pg_prove_projection(typing, extended, state->last));
+	const struct pg_evidence *pi = pg_prove_pi(typing, extended, pg_prove_classifier(typing, extended, body));
+	const struct pg_evidence *result = pg_prove_fold(typing, state->source, pg_prove_lambda(typing, pi, body));
+	if (!result) return -1;
+	work->current = pg_evidence_subject(result);
+	work->association = NULL;
+	return 0;
+}
+
 static int typed_body_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_occurrence *current = work->current;
+	if (work->association) return typed_association_step(work);
 	if (work->resume == TYPED_RESUME_BODY) {
 		if (!work->dependency->status) return 0;
 		const struct pg_evidence *result = pg_typed_query_result(work->dependency);
@@ -1010,6 +1118,19 @@ static int typed_body_step(struct pg_typed_query *work)
 	}
 	const struct pg_occurrence *returned = returned_computation(current);
 	if (returned) return typed_body_enter(work, returned, NULL);
+	/* Child normalization can reveal right unit. Select the current typed
+	 * input before following provenance, including under a context action. */
+	if (core->kind == PG_APPLICATION && core->as.application.function->kind == PG_APPLICATION) {
+		const struct pg_term *head = core->as.application.function;
+		if (head->as.application.function == pg_reference(typing->graph, &pg_fold_operation) &&
+			pg_computation_eta(typing->graph, core) == head->as.application.argument) {
+			work->dependency = pg_typed_input_request(typing, pg_prove_structural_subject(typing, current), 0);
+			work->resume = TYPED_RESUME_BODY;
+			return work->dependency ? 0 : -1;
+		}
+	}
+	int association = typed_association_start(work);
+	if (association) return association < 0 ? -1 : 0;
 	if (current->origin) {
 		if (current->selection) return -1;
 		if (current->map) {
@@ -1053,12 +1174,6 @@ static int typed_body_step(struct pg_typed_query *work)
 			head->as.application.function == pg_reference(typing->graph, &pg_fold_operation) &&
 			current->operands[0]->core == head->as.application.argument;
 		if (!fold && current->operands[0]->core != head) return -1;
-		/* Core's right-unit law exposes M, not a hypothetical returned value.
-		 * Keep its typed input and the pending context action intact. */
-		if (fold && pg_computation_eta(typing->graph, core) == current->operands[0]->core) {
-			work->current = current->operands[0];
-			return 0;
-		}
 		const struct pg_evidence *right = pg_prove_structural_subject(typing, current->operands[1]);
 		if (!right) return -1;
 		work->continuation = fold ? right : NULL;
@@ -1088,6 +1203,7 @@ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
 			case TYPED_REBASE: current->status = typed_rebase_step(current); break;
 			case TYPED_INDUCTIVE: current->status = typed_inductive_step(current); break;
 			case TYPED_SELECTION: current->status = typed_selection_step(current); break;
+			case TYPED_PHASE: current->status = typed_phase_step(current); break;
 			default: current->status = typed_body_step(current); break;
 			}
 			if (current->kind == TYPED_INPUT && current->status == 1 && !current->result && !current->ordinal)
@@ -3513,7 +3629,12 @@ static int typed_input_step(struct pg_typed_query *work)
 		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
 		const struct pg_evidence *origin = pg_prove_structural_subject(typing, blocked->origin);
 		work->current = blocked->origin;
-		if (phase && pg_reduction_source(phase->head) == pg_reduction_target(phase->head))
+		const struct pg_reduction_phase *last = pg_reduction_phases(work->reduction);
+		if (!phase && last && last->previous) {
+			work->dependency = typed_phase_request(typing, blocked->origin, last->previous);
+			work->reduction = last->head;
+			work->resume = TYPED_RESUME_PHASE;
+		} else if (phase && pg_reduction_source(phase->head) == pg_reduction_target(phase->head))
 			work->dependency = pg_typed_input_request(typing, origin, work->ordinal);
 		else {
 			work->dependency = typed_head_request(typing, origin, phase ? phase->head : work->reduction);
@@ -3525,6 +3646,12 @@ static int typed_input_step(struct pg_typed_query *work)
 	if (work->dependency->status < 0) return work->resume == TYPED_RESUME_INPUT ? 1 : -1;
 	const struct pg_evidence *input = work->dependency->result;
 	if (!input) return 1;
+	if (work->resume == TYPED_RESUME_PHASE) {
+		work->current = pg_evidence_subject(input);
+		work->dependency = typed_head_request(typing, input, work->reduction);
+		work->resume = TYPED_RESUME_INPUT;
+		return work->dependency ? 0 : -1;
+	}
 	if (work->resume == TYPED_RESUME_INPUT) {
 		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
 		const struct pg_occurrence *blocked = pg_occurrence_input_blocked_source(work->input);

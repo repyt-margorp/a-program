@@ -3356,3 +3356,61 @@ Delta against `ee04e7c`, excluding this document:
 Cumulative implementation/header delta against `4657cc6` is
 **+4617/-2655 (+1962)**. The cumulative and checkpoint totals use Git's
 respective diffs rather than adding historical patch sizes. No build changes.
+
+### 2026-09-17: Connect typed normalization phases (R69)
+
+- [x] Feed completed NF phases to the existing typed-query scheduler in
+  reduction order. Each intermediate conclusion uses the checked finite
+  prefix introduced in R68. Sibling input requests share phase conclusions;
+  no Core-based proof search, separate evaluator or permanent AST is added.
+- [x] Apply Fold right unit to the current typed source before following its
+  provenance. Child normalization may reveal the identity continuation;
+  returning the original operand array would then lose the current structure.
+- [x] Reconstruct neutral Fold association through existing input, projection,
+  Lambda, APP and Fold rules. The retained WHNF result guides the inner-first
+  order and binder; it does not grant acceptance. The reconstructed head must
+  still agree with the actual receipt in the same Context. This handles plain
+  sequencing Fold, not a new rule equating arbitrary handlers.
+- [x] Core regressions cover direct/delayed right unit, double/triple Fold,
+  projection, nontrivial substitution, and a non-unit continuation that must
+  remain. Check zero/split budgets, current inputs/classifiers/scopes, ordinary
+  derivation reconstruction, invalid input ordinal, and repeated-query sharing.
+  The delayed case failed against R68 at typed-input extraction; the nested
+  case also failed before the checked association step was implemented.
+- [x] Fresh-process derivation I/O covers both delayed and nested Fold NF.
+  Imported data remains unaccepted until ordinary Solve, then exposes the
+  current FORCE input. Split and bulk Solve both pass (1568 transitions).
+- [x] Full debug acceptance passes, including 63/63 compatibility and final
+  QuickSort source/images: `/tmp/a-program-typed-structure-r69-debug.log`.
+- [x] Full optimized acceptance passes, including 63/63 compatibility and
+  final QuickSort source/images: `/tmp/a-program-typed-structure-r69-o2.log`.
+- [x] Full ASan/UBSan acceptance passes, including 63/63 compatibility and
+  final QuickSort source/images: `/tmp/a-program-typed-structure-r69-sanitize.log`.
+
+The phase connection is implemented; this is not a claim that every typed
+head transformation is supported. R2/R3 still require the structural-access
+consolidation, notably raw scoped input work and checked selection/strengthening.
+Kernel certification remains synchronous inside scheduler transitions. No
+transport format or public API changes, and no Main publication yet.
+
+Next concrete R3 boundary: `tests/core.c:request_typing_test` already checks
+the Core result of the one-clause forwarding handler, but not its typed inputs.
+Against the R69 debug binary, stopping immediately after normalization of
+`forwarded` and advancing `pg_typed_input_request(typing, normal, 0)` for 10000
+transitions finishes with status 1 and NULL result. This is unavailable
+structural information, not a fabricated witness or failed execution. Add
+payload/continuation extraction and fresh-process coverage for this existing
+case before claiming handler normalization is covered by R3. Reconstruct from
+the accepted typed handler/request and its actual reduction; do not look up
+arbitrary evidence by erased label/Core or execute a host response.
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `evidence.c` | 137 | 10 | +127 |
+| `tests/core.c` | 52 | 22 | +30 |
+| `tests/derivation_io.c` | 20 | 9 | +11 |
+
+Cumulative implementation/header delta against `4657cc6` is
+**+4744/-2655 (+2089)**. The net-negative completion gate is unmet, not waived;
+remaining traversal consolidation must remove replaced machinery rather than
+retain both paths or count tests/documentation as implementation savings.

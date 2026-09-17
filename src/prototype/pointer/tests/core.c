@@ -722,23 +722,50 @@ static void evidence_test(struct pg_graph *graph)
 	assert(unit_fold);
 	const struct pg_evidence *unit_scope = pg_prove_context_extension(&typing, neutral_scope,
 		pg_binder(graph), neutral_domain);
-	const struct pg_evidence *unit_sources[] = {unit_fold, pg_prove_projection(&typing, unit_scope, unit_fold)};
+	const struct pg_evidence *delayed_fold = pg_prove_fold(&typing, neutral_call,
+		pg_prove_projection(&typing, neutral_scope, redex_lambda));
+	assert(delayed_fold);
+	const struct pg_evidence *nested_fold = pg_prove_fold(&typing, delayed_fold,
+		pg_prove_projection(&typing, neutral_scope, redex_lambda));
+	const struct pg_evidence *triple_fold = pg_prove_fold(&typing, nested_fold,
+		pg_prove_projection(&typing, neutral_scope, redex_lambda));
+	const struct pg_evidence *unit_variable = pg_prove_variable(&typing, unit_scope, pg_evidence_context(unit_scope)->binder);
+	const struct pg_evidence *unit_images[] = {pg_prove_projection(&typing, unit_scope, neutral_domain), unit_variable,
+		pg_prove_projection(&typing, unit_scope, neutral)};
+	const struct pg_evidence *unit_map = pg_prove_substitution(&typing, neutral_scope, unit_scope, 3, unit_images);
+	const struct pg_evidence *unit_mapped_call = pg_prove_application(&typing,
+		pg_prove_projection(&typing, unit_scope, force_neutral), unit_variable);
+	const struct pg_evidence *unit_sources[] = {unit_fold, pg_prove_projection(&typing, unit_scope, unit_fold),
+		delayed_fold, pg_prove_projection(&typing, unit_scope, delayed_fold), nested_fold,
+		triple_fold, pg_prove_reindex(&typing, unit_map, delayed_fold),
+		pg_prove_reindex(&typing, unit_map, triple_fold)};
 	const struct pg_evidence *unit_inputs[] = {force_neutral, neutral_x};
-	for (size_t side = 0; side < 2; ++side) {
+	for (size_t side = 0; side < sizeof(unit_sources) / sizeof(*unit_sources); ++side) {
+		assert(unit_sources[side]);
 		struct pg_nf_job *unit_nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(unit_sources[side])->core);
 		while (pg_nf_advance(unit_nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(unit_nf) < 100000);
-		assert(pg_reduction_head_congruence(pg_nf_certificate(unit_nf)));
-		assert(pg_nf_result(unit_nf) == pg_evidence_subject(neutral_call)->core);
+		assert(!!pg_reduction_head_congruence(pg_nf_certificate(unit_nf)) == (side < 2));
+		assert(pg_nf_result(unit_nf) == pg_evidence_subject(side >= 6 ? unit_mapped_call : neutral_call)->core);
 		const struct pg_evidence *unit_normal = pg_prove_normalization(&typing, unit_sources[side], pg_nf_certificate(unit_nf));
 		for (size_t i = 0; i < 2; ++i) {
 			struct pg_typed_query *query = pg_typed_input_request(&typing, unit_normal, i);
+			uint64_t before = pg_typed_query_steps(query);
+			pg_typed_query_advance(query, 0);
+			assert(pg_typed_query_steps(query) == before);
 			while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
 			const struct pg_evidence *input = pg_typed_query_result(query);
-			assert(input && pg_evidence_subject(input)->core == pg_evidence_subject(unit_inputs[i])->core);
+			const struct pg_evidence *expected = side >= 6 && i == 1 ? unit_variable : unit_inputs[i];
+			assert(input && pg_evidence_subject(input)->core == pg_evidence_subject(expected)->core);
 			assert(pg_evidence_context(input) == pg_evidence_context(unit_normal));
-			assert(pg_alpha_equal(pg_evidence_classifier(input), pg_evidence_classifier(unit_inputs[i])) == 1);
+			assert(pg_alpha_equal(pg_evidence_classifier(input), pg_evidence_classifier(expected)) == 1);
 			reconstruct_derivation(&typing, input);
+			before = pg_typed_query_steps(query);
+			size_t proofs = typing.proofs.count, subjects = typing.occurrences.count;
+			assert(pg_typed_input_request(&typing, unit_normal, i) == query);
+			assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == before);
+			assert(typing.proofs.count == proofs && typing.occurrences.count == subjects);
 		}
+		assert(!pg_prove_normalization_input(&typing, unit_sources[side], pg_nf_certificate(unit_nf), 2));
 	}
 	/* A beta result may still be an eliminator: this continuation is not
 	 * right unit, so the neutral Fold must remain, with its own two inputs. */
@@ -752,22 +779,25 @@ static void evidence_test(struct pg_graph *graph)
 		pg_prove_projection(&typing, call_scope, neutral_call), constant);
 	const struct pg_evidence *stuck_redex = pg_prove_application(&typing, pg_prove_lambda(&typing,
 		pg_prove_pi(&typing, call_scope, pg_prove_classifier(&typing, call_scope, stuck_fold)), stuck_fold), neutral_x);
-	assert(stuck_redex);
-	struct pg_nf_job *stuck_nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(stuck_redex)->core);
-	while (pg_nf_advance(stuck_nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(stuck_nf) < 100000);
-	const struct pg_term *stuck = pg_nf_result(stuck_nf);
-	assert(stuck && stuck->kind == PG_APPLICATION && stuck->as.application.function->kind == PG_APPLICATION);
-	assert(stuck->as.application.function->as.application.function == pg_reference(graph, &pg_fold_operation));
-	const struct pg_term *stuck_inputs[] = {stuck->as.application.function->as.application.argument,
-		stuck->as.application.argument};
-	const struct pg_evidence *stuck_normal = pg_prove_normalization(&typing, stuck_redex, pg_nf_certificate(stuck_nf));
-	for (size_t i = 0; i < 2; ++i) {
-		struct pg_typed_query *query = pg_typed_input_request(&typing, stuck_normal, i);
-		while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
-		const struct pg_evidence *input = pg_typed_query_result(query);
-		assert(input && pg_alpha_equal(pg_evidence_subject(input)->core, stuck_inputs[i]) == 1);
-		assert(pg_evidence_context(input) == pg_evidence_context(stuck_redex));
-		reconstruct_derivation(&typing, input);
+	const struct pg_evidence *stuck_sources[] = {stuck_redex, pg_prove_fold(&typing, stuck_fold, constant)};
+	for (size_t side = 0; side < 2; ++side) {
+		assert(stuck_sources[side]);
+		struct pg_nf_job *stuck_nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(stuck_sources[side])->core);
+		while (pg_nf_advance(stuck_nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(stuck_nf) < 100000);
+		const struct pg_term *stuck = pg_nf_result(stuck_nf);
+		assert(stuck && stuck->kind == PG_APPLICATION && stuck->as.application.function->kind == PG_APPLICATION);
+		assert(stuck->as.application.function->as.application.function == pg_reference(graph, &pg_fold_operation));
+		const struct pg_term *stuck_inputs[] = {stuck->as.application.function->as.application.argument,
+			stuck->as.application.argument};
+		const struct pg_evidence *stuck_normal = pg_prove_normalization(&typing, stuck_sources[side], pg_nf_certificate(stuck_nf));
+		for (size_t i = 0; i < 2; ++i) {
+			struct pg_typed_query *query = pg_typed_input_request(&typing, stuck_normal, i);
+			while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
+			const struct pg_evidence *input = pg_typed_query_result(query);
+			assert(input && pg_alpha_equal(pg_evidence_subject(input)->core, stuck_inputs[i]) == 1);
+			assert(pg_evidence_context(input) == pg_evidence_context(stuck_sources[side]));
+			reconstruct_derivation(&typing, input);
+		}
 	}
 	const struct pg_object *z = pg_binder(graph);
 	const struct pg_evidence *z_context = pg_prove_context_extension(&typing, x_context, z, a_in_x);
