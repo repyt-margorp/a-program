@@ -144,7 +144,7 @@ Temporary adapters are permitted within a phase, not as permanent fallbacks.
 | [x] | R1 Typed conclusions | Term conclusions have one typed-subject reference; classifier/context/sort accessors delegate to it. All rules publish through `accept_record`; Context and Substitution retain their distinct conclusions. Exact interning and alternative derivations are preserved. Verified by the R29 structural audit and acceptance tests below; this does not complete R2/R3. |
 | [ ] | R2 Context action | Migrate projection/reindex to the same typed structure with explicit effective child maps. Use existing substitution work and binder lifting. Verify repeated lookup sharing, capture avoidance, dependent classifiers and chunked execution. |
 | [ ] | R3 Structural and formation consumers | Move `return_value_origin`, `pi_component`, constructor/inductive recovery and classifier recovery to checked views. Keep theorem-specific inversions where required. Replace structural wrapper walks in `function_graph.c`, `action.c` and `synthesis.c`; remove replaced paths in the same phase. |
-| [ ] | R4 Images and pending work | R47/R68 verified the representation and finite NF-prefix extension. R74's additional retained QuickSort test reproduces a pre-existing family-binder restoration rejection, including on R73. Reopened pending the minimal regression and retained/recompute checks below. Imported inputs still require ordinary Solve. |
+| [ ] | R4 Images and pending work | R75 repairs retained family bindings; R76 restores qualified constructor allocations and passes retained append and imported QuickSort. Function-field source reconstruction still loses an application binder under generated index aliases; both source-only and typed-root tests now expose it. Imported inputs still require ordinary Solve. |
 | [ ] | R5 Acceptance and cleanup | Run the full gates below, remove obsolete occurrence fields/adapters, document remaining intentional rule dispatch. Require net implementation LOC reduction, compare behavior and performance to R0, report per-file additions/deletions, then publish the verified increment. |
 
 R1 and R2 form one vertical slice: first exercise an annotated Lambda/APP under
@@ -3784,7 +3784,7 @@ allocation and normal checking, not a trusted-image exception or Replay path.
 - [x] Restore family binding allocation through the existing binding job.
 - [x] Add the minimal retained-family case to fresh-process resave/check and
   recompute tests; verify all nested binders retain coherent contexts.
-- [ ] Check the imported QuickSort retained image, both stepping granularities.
+- [x] Check the imported QuickSort retained image, both stepping granularities (R76).
 - [ ] Run the debug, optimized and sanitizer gates before closing R4 again.
 
 Following that first correction exposed three additional dependencies on
@@ -3862,3 +3862,66 @@ cases remain enabled and failing for source-only append/function-field exact
 Core restoration. No test was weakened or removed to hide that failure.
 Implementation/header delta versus `4657cc6` is **+5042/-2701, net +2341**;
 R5's net-negative condition is still unmet and has not been waived.
+
+### 2026-09-17: Qualified constructor allocation (R76, incomplete checkpoint)
+
+Qualified constructor uses now associate their retained field-scope
+substitution with their source site through the existing origin table.
+Both `atomic_rule_step` and `reference_step` use `resolve_source_reference`:
+the former previously bypassed allocation restoration entirely. Parameters,
+nominal constructor selection and field types are still synthesized/checked;
+the retained input supplies binder allocation only. If declaration and use
+already retain the same binder spine, their separately checked field-type
+derivations need not be pointer-identical. Different binders or lengths reject.
+No Core alpha interning or arbitrary formation-proof selection was added.
+
+The source formats are **APGSRC46 / APGSRC47** (ordinary / retained), since
+qualified-use origin records are new. Earlier versions reject. The seed tests
+use the current header for truncation, size-limit and invalid-policy checks;
+previously some of those checks failed at an obsolete header first.
+
+- [x] Retained append, source-only and typed-root, two inert resaves, both
+  checked-receipt reuse and recomputation.
+- [x] Qualified-use boundary checks: unchanged accepted subject, duplicate
+  registration, late/conflicting origins, non-rule input, wrong syntax and
+  wrong field scope; no accepted conclusion on rejection.
+- [x] Strengthen typed-root retention tests to check the separately synthesized
+  source Core too. Passing an imported proof no longer masks a source mismatch.
+- [x] Debug Core/IADT/seed and the new member-use tests.
+- [x] Targeted ASan/UBSan (`-O1`) Core/IADT/seed/member-use checks and retained
+  append in both root selections through two inert resaves and both reader
+  modes. This does not replace the still-failing full acceptance gate.
+- [x] Debug compatibility **63/63**, including completed retained QuickSort
+  results at chunks 1 and 64. Fresh retained QuickSort load: **265413**
+  transitions (R75: 261466).
+- [ ] Function-field retained-source equality, both root selections and modes.
+- [ ] Final optimized/sanitizer acceptance and R5 cleanup.
+
+The debug acceptance gate **fails**, specifically on the function-field
+fixture. A separate `make -i -k check` diagnostic run executed the checks after
+that failure; no additional failures were reported. Its zero exit status is
+not acceptance. Logs: `/tmp/a-program-typed-structure-r76-debug-final.log`
+and `/tmp/a-program-typed-structure-r76-check-all.log`.
+
+**Remaining mechanism, now localized:** `generalized_scope` creates index
+aliases with `pg_synthesis_name_job`. A saved alias uses a
+`DERIVATION_INPUT_JOB`; fresh synthesis uses an `EVIDENCE_JOB`. In the minimal
+function-field fixture these two producers finish with the **same exact
+Evidence pointer**, yet remain different scope keys. Reconstructed application
+jobs consequently miss the saved lexical allocation and allocate a new Fold
+binder. This is neither a need for equality reflection nor a disagreement
+between proofs of the program.
+
+An experiment allowing origin collection through syntax-free alias scopes
+retained the missing application, but did not merge its two lexical scopes and
+made retained QuickSort reject. It was withdrawn; widening collection alone is
+not a repair. The next change must give these generated source bindings a
+proof-producer-independent lexical identity while preserving validation of
+every supplied interpretation. Do not merge arbitrary names, mutate completed
+scope meaning, scan for a convenient proof, or use scheduling order to select
+an authority. Test both preparation orders, pending resaves, mismatching alias
+interpretations and the imported QuickSort case before expanding collection.
+
+R76 implementation/header delta: **+82/-7, net +75**. Cumulative versus
+`4657cc6`: **+5119/-2703, net +2416**. Tests are separate. This is not the
+requested net-negative result; R2-R5 and Main publication remain open.

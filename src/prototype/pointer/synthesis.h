@@ -91,6 +91,12 @@ const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis
 struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
+/* Associate a qualified constructor use with its retained field scope.
+ * The origin is an ordinary substitution input, checked before use; constructor
+ * identity, parameters and field types are synthesized again at the use site. */
+struct pg_synthesis_job *pg_synthesis_restore_member(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	struct pg_synthesis_job *origin);
 /* Retain recursive Match, return-only Fold or multi-clause handler allocations.
  * Source branches/motives are still synthesized; no saved carrier is supplied
  * as an expected type. Ordinary Solve validates the origin before its contexts

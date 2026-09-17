@@ -1163,6 +1163,65 @@ static void match_origins(void)
 	puts("source Match origin: unsolved resaves preserve induction binders and clause allocations; ordinary source checking passed");
 }
 
+struct member_origin {
+	struct pg_synthesis *synthesis;
+	struct pg_synthesis_job *job;
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+};
+
+static int find_member_origin(void *owner, struct pg_synthesis_job *job)
+{
+	struct member_origin *found = owner;
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+	if (pg_synthesis_source_input(found->synthesis, job, &scope, &syntax)) return 0;
+	if (syntax->kind != PG_SYNTAX_QUALIFIED) return 0;
+	assert(!found->job);
+	found->job = job; found->scope = scope; found->syntax = syntax;
+	return 0;
+}
+
+static void member_use_origins(void)
+{
+	const char *text = "{{ Nat:=@{zero:*;}; Box:=&(\\A:@=>@{mk:A->*;}); r:=&(Box Nat).mk; }}.r";
+	struct pg_program *p = retained_program(text);
+	struct member_origin found = {.synthesis = &p->synthesis};
+	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, find_member_origin, &found) && found.job);
+	struct pg_graph storage = {0};
+	struct pg_effect_inference effects;
+	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&effects, &storage));
+	struct pg_synthesis_job *source = pg_synthesis_allocation_origin(found.job);
+	const struct pg_derivation_input *const *inputs;
+	assert(source && !pg_synthesis_export_rules(&p->synthesis, 1, &source, &storage, &effects, 1, &inputs));
+	struct pg_synthesis_job *origin = pg_synthesis_derivation(&p->synthesis, inputs[0]);
+	assert(origin && !pg_synthesis_result(origin));
+	/* The same source shape at a new lexical use must check the allocation
+	 * through both atomic preparation and ordinary reference resolution. */
+	struct pg_syntax copies[2] = {*found.syntax, *found.syntax};
+	struct pg_synthesis_job *restored = pg_synthesis_restore_member(&p->synthesis, found.scope, copies, origin);
+	assert(restored && restored == pg_synthesis_restore_member(&p->synthesis, found.scope, copies, origin));
+	assert(!pg_synthesis_restore_member(&p->synthesis, found.scope, found.syntax, origin));
+	assert(!pg_synthesis_restore_member(&p->synthesis, found.scope, found.syntax->left, origin));
+	const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
+	struct pg_synthesis_job *wrong = pg_synthesis_evidence(&p->synthesis,
+		pg_prove_substitution_projection(&p->typing, empty, empty));
+	assert(!pg_synthesis_restore_member(&p->synthesis, found.scope, copies + 1, wrong));
+	assert(!pg_synthesis_export_rules(&p->synthesis, 1, &wrong, &storage, &effects, 1, &inputs));
+	wrong = pg_synthesis_derivation(&p->synthesis, inputs[0]);
+	assert(wrong && !pg_synthesis_restore_member(&p->synthesis, found.scope, copies, wrong));
+	struct pg_synthesis_job *rejected = pg_synthesis_restore_member(&p->synthesis, found.scope, copies + 1, wrong);
+	assert(rejected);
+	pg_synthesis_advance(&p->synthesis, 10000);
+	assert(pg_synthesis_status(restored) == PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(pg_synthesis_result(restored)) == pg_evidence_subject(pg_synthesis_result(found.job)));
+	assert(pg_synthesis_status(rejected) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(rejected));
+	pg_effect_inference_destroy(&effects);
+	pg_graph_destroy(&storage);
+	pg_program_destroy(p);
+	puts("source member uses: checked allocation sharing, invalid scope and late/conflicting origins passed");
+}
+
 static void check_retained_program(struct pg_program *p, struct pg_synthesis_job *root, int reuse)
 {
 	const struct pg_reduction_archive *reductions = p->retained_reductions;
@@ -2111,6 +2170,8 @@ static void retained_process(int argc, char **argv)
 			assert(reuse || !strcmp(argv[1], "retained-recompute"));
 			check_retained_program(p, roots[count - 1], reuse);
 			assert(pg_synthesis_result(roots[0]));
+			const struct pg_evidence *source = pg_prove_force(&p->typing, pg_synthesis_result(roots[0]));
+			assert(source && pg_evidence_subject(source)->core == pg_reduction_source(p->retained_reductions->roots[0]));
 		}
 	}
 	pg_program_destroy(p);
@@ -2144,7 +2205,7 @@ int main(int argc, char **argv)
 	}
 	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "indexed-families")) { indexed_family_sources(); return 0; }
-	if (argc == 2 && !strcmp(argv[1], "constructor-inputs")) { constructor_inputs(); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "constructor-inputs")) { constructor_inputs(); member_use_origins(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "match-origins")) { match_origins(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "fold-origins")) { fold_origins(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "handler-scopes")) {

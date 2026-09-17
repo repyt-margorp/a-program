@@ -435,6 +435,13 @@ int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
 		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_synthesis_job *job = (void *)entry;
+			if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_QUALIFIED) {
+				const struct pg_evidence *proof = job->left && job->left->role == CONSTRUCTOR_VALUE_JOB
+					? pg_synthesis_result(job->left) : NULL;
+				if (job->allocation_origin || (proof && pg_evidence_subject(proof)->core->kind == PG_LAMBDA))
+					if (visit(owner, job)) return -1;
+				continue;
+			}
 			if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_ELIMINATION) {
 				int returned = handler_syntax(job->syntax) &&
 					(job->allocation_origin || job->status == PG_SYNTHESIS_DONE);
@@ -844,6 +851,8 @@ struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthe
 struct pg_synthesis_job *pg_synthesis_allocation_origin(const struct pg_synthesis_job *job)
 {
 	if (job->allocation_origin) return job->allocation_origin;
+	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_QUALIFIED && job->left
+		&& job->left->role == CONSTRUCTOR_VALUE_JOB) return job->left->left;
 	if (job->application) return job->application->context;
 	if (job->role == EXPRESSION_JOB && handler_syntax(job->syntax) && job->syntax->item_count == 1
 		&& job->right && job->right->inner) {
@@ -857,6 +866,16 @@ const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis
 {
 	if (!job) return NULL;
 	if (job->role == BINDING_JOB) return job->binder;
+	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_QUALIFIED) {
+		const struct pg_synthesis_job *origin = pg_synthesis_allocation_origin(job);
+		if (!origin) return NULL;
+		if (origin->role == DERIVATION_INPUT_JOB) {
+			const struct pg_derivation_input *input = origin->inputs[0];
+			return input->count >= 2 ? input->premises[1]->parameters.binder : NULL;
+		}
+		const struct pg_context *context = pg_evidence_context(pg_synthesis_result(origin));
+		return context ? context->binder : NULL;
+	}
 	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_ELIMINATION) {
 		const struct pg_induction_allocation *allocation = source_induction_allocation(job);
 		if (allocation) return allocation->self;
@@ -962,6 +981,20 @@ struct pg_synthesis_job *pg_synthesis_restore_application(struct pg_synthesis *s
 	struct pg_synthesis_job *job = pg_synthesis_request(synthesis, scope, syntax);
 	if (!job || job->application) return NULL;
 	if (job->allocation_origin && job->allocation_origin != origin) return NULL;
+	job->allocation_origin = origin;
+	return job;
+}
+
+struct pg_synthesis_job *pg_synthesis_restore_member(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+	struct pg_synthesis_job *origin)
+{
+	if (!syntax || syntax->kind != PG_SYNTAX_QUALIFIED) return NULL;
+	if (!origin || origin->owner != synthesis->owner_key || origin->role != DERIVATION_INPUT_JOB) return NULL;
+	const struct pg_derivation_input *input = origin->inputs[0];
+	if (input->rule != PG_CONTEXT_SUBSTITUTION || input->count < 2) return NULL;
+	struct pg_synthesis_job *job = pg_synthesis_request(synthesis, scope, syntax);
+	if (!job || job->left || (job->allocation_origin && job->allocation_origin != origin)) return NULL;
 	job->allocation_origin = origin;
 	return job;
 }
@@ -3235,6 +3268,37 @@ static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synth
 	forward_proof(synthesis, job, job->value_job);
 }
 
+static enum pg_synthesis_status resolve_source_reference(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, struct source_reference *reference,
+	struct pg_synthesis_job **dependency)
+{
+	if (job->allocation_origin) {
+		*dependency = job->allocation_origin;
+		if ((*dependency)->status != PG_SYNTHESIS_DONE) return (*dependency)->status;
+	}
+	enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, job->syntax, reference, dependency);
+	if (status != PG_SYNTHESIS_DONE || !job->allocation_origin) return status;
+	struct pg_constructor_input input;
+	if (pg_synthesis_constructor_input(synthesis, reference->producer, &input)) return PG_SYNTHESIS_REJECTED;
+	*dependency = input.parameters;
+	if ((*dependency)->status != PG_SYNTHESIS_DONE) return (*dependency)->status;
+	const struct pg_context *prefix = pg_evidence_context(pg_evidence_premise(input.parameters->result, 1));
+	const struct pg_context *fields = pg_evidence_context(job->allocation_origin->result);
+	if (input.allocated) {
+		/* Declaration and use may retain the same binders through different
+		 * checked field-type derivations. Only allocation is shared here. */
+		const struct pg_context *existing = input.fields;
+		while (existing != input.prefix && fields != prefix) {
+			if (!existing || !fields || existing->binder != fields->binder) return PG_SYNTHESIS_REJECTED;
+			existing = existing->parent; fields = fields->parent;
+		}
+		return existing == input.prefix && fields == prefix && input.prefix == prefix
+			? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED;
+	}
+	return pg_synthesis_constructor_scope_at(synthesis, input.formation, input.constructor, input.parameters,
+		prefix, fields) ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED;
+}
+
 static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->left) {
@@ -3264,7 +3328,7 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	} else {
 		struct source_reference reference;
 		struct pg_synthesis_job *dependency = NULL;
-		enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, job->syntax, &reference, &dependency);
+		enum pg_synthesis_status status = resolve_source_reference(synthesis, job, &reference, &dependency);
 		if (status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, dependency); return; }
 		if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return; }
 		if (reference.producer) {
@@ -8447,7 +8511,7 @@ static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 		if (job->left) return 0;
 		struct source_reference reference;
 		struct pg_synthesis_job *dependency = NULL;
-		enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, job->syntax, &reference, &dependency);
+		enum pg_synthesis_status status = resolve_source_reference(synthesis, job, &reference, &dependency);
 		if (status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, dependency); return 1; }
 		if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return 1; }
 		if (named_term_ready(reference.producer)) {
