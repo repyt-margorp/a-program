@@ -1420,3 +1420,24 @@ This following publication-record update is documentation only.
 Next: resume R against the current typed-data authority plan and deferred Solver
 audit, rechecking their premises against this implementation. This milestone
 does not complete that parent goal or waive its cleanup/acceptance conditions.
+
+### 2026-09-18: R declaration-allocation epoch
+
+Completed the declaration dependency removal documented in the
+[Solver audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#declaration-epoch-implementation-and-measurements).
+Source images retain the nominal declaration without its allocation-only
+formation derivation. Ordinary synthesis verifies every field and result index;
+independently selected proof roots remain independently checked. No equality
+reflection, new Core tag or acceptance cache is added.
+
+- [x] Remove `allocation_origin` and declaration restoration through proof jobs.
+- [x] Preserve alpha-renamed fields, reject incompatible fields, and test two
+  inert resaves with both valid and invalid independent roots.
+- [x] Full optimized `check-acceptance`; affected debug and ASan/UBSan suites.
+- [x] Record per-file LOC and retained QuickSort work/image measurements.
+- [ ] Publish this completed epoch to Main and verify both remote tips.
+
+Source-image formats are now APGSRC62/63 and reduction records APGRCP3;
+older images require regeneration. Implementation/header delta is +137/-72
+(net +65); tests +135/-9 (net +126). This is removal of a specific duplicate
+dependency, not completion of R or a claim of overall code-size reduction.

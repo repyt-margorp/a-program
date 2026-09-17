@@ -95,14 +95,15 @@ int main(int argc, char **argv)
 		rewind(file);
 		assert(fread(bytes, 1, length, file) == length && fgetc(file) == EOF);
 		assert(!ferror(file) && fclose(file) == 0);
-		assert(length > 56 && !memcmp(bytes, "APGSRC\74", 8));
+		assert(length > 56 && !memcmp(bytes, "APGSRC\76", 8));
+		const unsigned char version = bytes[6];
 		assert(bytes[8] == policy);
 		compare(read_bytes(bytes, length, 4096), source, policy);
-		for (unsigned version = 34; version <= 45; ++version) {
-			bytes[6] = version;
+		for (unsigned old_version = 0; old_version < version; ++old_version) {
+			bytes[6] = old_version;
 			assert(!read_bytes(bytes, length, 4096));
 		}
-		bytes[6] = 46;
+		bytes[6] = version;
 		assert(!read_bytes(bytes, length, 0));
 		for (size_t cut = 0; cut < length; ++cut) assert(!read_bytes(bytes, cut, 4096));
 		bytes[length] = 0;
@@ -116,7 +117,7 @@ int main(int argc, char **argv)
 		assert(!read_bytes(bytes, length, 4096));
 		bytes[6] = 26;
 		assert(!read_bytes(bytes, length, 4096));
-		bytes[6] = 46;
+		bytes[6] = version;
 		memset(bytes + 16, 255, 8);
 		assert(!read_bytes(bytes, length, 4096));
 		free(bytes);

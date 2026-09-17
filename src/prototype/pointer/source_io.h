@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 /* Reconstructible source environments and source/definition/rule roots, including pending modules.
- * APGSRC60 retains source/handler binding symbols and family index telescopes, preserves
+ * APGSRC62 retains source/handler binding symbols and family index telescopes, preserves
  * already suspended values under surface &, admits checked
  * termination requests, and uses TOTAL source RETURN/arrow contracts with F
  * totality contracts, context-authoritative Pi premises and lexical
@@ -50,17 +50,19 @@
  * Rule evidence is stored as unaccepted derivation inputs through the existing
  * codec, with one Core table for all rule roots. Effect contributions must be
  * complete (workers sealed); solutions are recomputed by ordinary Solve.
- * Selected source declaration origins use that same table. Retained
- * origin inputs survive save-before-Solve and do not certify the source.
+ * Source declarations retain their nominal reference in the shared graph,
+ * not an allocation-only formation theorem. Source synthesis checks fields
+ * and result images against that immutable declaration; nested alpha renaming
+ * uses fresh field evidence, not acceptance of loaded annotations.
  * No search state or acceptance flag is retained. Unsupported producer/scope
  * kinds fail explicitly instead of being omitted. Source roots are recomputed;
  * retaining annotation recipes is not a complete CHECKPOINT codec.
  * Streams are borrowed. */
 int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots);
-/* APGSRC61 optionally retains raw reduction records in the same Core table.
+/* APGSRC63 optionally retains raw reduction records in the same Core table.
  * Reading leaves them in program->retained_reductions, without checking or
- * installing results. NULL reductions selects ordinary APGSRC60 RECOMPUTE.
+ * installing results. NULL reductions selects ordinary APGSRC62 RECOMPUTE.
  * Origin selection includes retained endpoints and intermediate phase Terms. */
 int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots, const struct pg_reduction_archive *reductions);

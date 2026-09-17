@@ -553,6 +553,12 @@ const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
  * fields unused by a subsequent result. Binder identities need not agree. */
 const struct pg_evidence *pg_prove_telescope_correspondence(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *destination);
+/* Re-establish a retained Context from independently checked annotations.
+ * Binding identities and judgements must agree; bound names inside field types
+ * may differ by alpha conversion. Uses substitution and zero-step subject
+ * reduction, not a stored formation theorem or acceptance of raw annotations. */
+const struct pg_evidence *pg_prove_context_alpha(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_context *target);
 /* Prefix projection destination -> source (identity when contexts coincide).
  * Uses ordinary variable and substitution evidence, without another rule. */
 const struct pg_evidence *pg_prove_substitution_projection(struct pg_typing *typing,

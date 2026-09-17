@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-static const char magic[8] = "APGRCP\2";
+static const char magic[8] = "APGRCP\3";
 
 const struct pg_reduction_archive *pg_reduction_archive_snapshot(struct pg_graph *output,
 	const struct pg_whnf_work *work, const struct pg_reduction_archive *previous)
@@ -198,7 +198,8 @@ static int receipt_shape(const struct pg_reduction_certificate *c, const struct 
 	if (c->kind == PG_REDUCTION_WHNF) return !c->phases;
 	const struct pg_reduction_phase *p = c->phases;
 	if (c->kind == PG_REDUCTION_PREFIX) {
-		if (!p || p->previous || !first || first->source != c->source) return 0;
+		if (!p) return c->source == c->target;
+		if (p->previous || !first || first->source != c->source) return 0;
 		if (!p->children[0] && p->rebuilt->kind != PG_REFERENCE) return 0;
 		return p->rebuilt == c->target && p->head->policy == c->policy;
 	}

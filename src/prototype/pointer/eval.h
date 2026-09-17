@@ -197,6 +197,10 @@ struct pg_reduction_phase {
 const struct pg_reduction_certificate *pg_reduction_prefix(struct pg_graph *graph,
 	const struct pg_reduction_certificate *head,
 	const struct pg_reduction_certificate *left, const struct pg_reduction_certificate *right);
+/* Zero-step directed reduction. Does not evaluate or assert normality, and
+ * does not populate the WHNF/NF work store. */
+const struct pg_reduction_certificate *pg_reduction_identity(struct pg_graph *graph,
+	const struct pg_eval_policy *policy, const struct pg_term *term);
 const struct pg_reduction_phase *pg_reduction_phases(const struct pg_reduction_certificate *certificate);
 /* Single congruent NF phase with unchanged heads before/after rebuilding.
  * NULL when beta/iota/eta changes an enclosing constructor. Child receipts

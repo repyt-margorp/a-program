@@ -20,6 +20,13 @@ regressions pass. Follow the priority plan's publication policy. This supersedes
 the earlier requirement to wait for the entire cleanup before publishing;
 overall completion and the net-negative goal remain distinct from epoch pushes.
 
+Resume checkpoint, 2026-09-18 (`28e1837`): both priority milestones are now
+published, and issue #29 is closed. Resume the unchecked cleanup below; do not
+interpret its historical failing-test checkpoints as current failures. The
+[Solver audit resume checkpoint](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#resume-checkpoint-2026-09-18)
+records the remaining declaration-origin dependency and its exact-field
+validation gate. Resolve that gate before changing the source image format.
+
 This is the executable remainder of R2-R5, not an additional feature project.
 It supersedes R76's proposed alias-specific repair. Historical measurements
 and checkpoints stay in the parent document; they do not imply acceptance.
@@ -1154,3 +1161,14 @@ authority layer does not count as simplification.
 A named witness member could reduce surface spellings; this remains a proposal.
 IH `*k` is unchanged. Tests/build/doc additions for #29 are separate from the
 implementation/header totals above and must remain separate in the final report.
+
+### Declaration allocation epoch
+
+The linked Solver audit now records completion of target 2: source declaration
+allocation uses the nominal descriptor directly, not a saved formation-proof
+producer. Fresh field evidence re-establishes the retained Context through
+existing checked rules. Exact schema validation is unchanged. Full optimized
+acceptance and affected sanitizer suites pass; source images advance to 62/63.
+This completes that dependency removal, not A0-A5 as a whole. Pending structural
+reconstruction and the net-negative implementation gate remain open. The audit
+includes per-file changes, negative tests and same-input work measurements.

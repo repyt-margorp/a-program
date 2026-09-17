@@ -287,8 +287,8 @@ static void family_context_scopes(void)
 		struct pg_definition definition;
 		pg_parser_init(&parser, &p->graph, renamed, sizeof(renamed) - 1);
 		assert(pg_parser_next(&parser, &definition) == 1);
-		struct pg_synthesis_job *equivalent = pg_synthesis_restore_declaration(&p->synthesis, scope,
-			definition.expression, pg_synthesis_allocation_origin(roots[1]));
+		struct pg_synthesis_job *equivalent = pg_synthesis_declaration_at(&p->synthesis, scope,
+			definition.expression, pg_data_schema_declaration(instance.schema));
 		assert(equivalent);
 		while (p->synthesis.ready && p->synthesis.steps < 20000) pg_synthesis_advance(&p->synthesis, chunk);
 		assert(pg_synthesis_status(equivalent) == PG_SYNTHESIS_DONE);
@@ -298,12 +298,33 @@ static void family_context_scopes(void)
 		const char changed[] = "Acc := @\\subject : A => { acc : (x:A) -> ((y:A) -> R x y -> * y) -> * x; };";
 		pg_parser_init(&parser, &p->graph, changed, sizeof(changed) - 1);
 		assert(pg_parser_next(&parser, &definition) == 1);
-		struct pg_synthesis_job *invalid = pg_synthesis_restore_declaration(&p->synthesis, scope,
-			definition.expression, pg_synthesis_allocation_origin(roots[1]));
+		struct pg_synthesis_job *invalid = pg_synthesis_declaration_at(&p->synthesis, scope,
+			definition.expression, pg_data_schema_declaration(instance.schema));
 		assert(invalid);
 		while (p->synthesis.ready && p->synthesis.steps < 20000) pg_synthesis_advance(&p->synthesis, chunk);
 		assert(pg_synthesis_status(invalid) == PG_SYNTHESIS_REJECTED);
 		assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
+		/* An explicitly selected theorem remains a checking root, but neither
+		 * source declaration needs it as an allocation producer. */
+		struct pg_synthesis_job *selected[] = {equivalent,
+			pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(equivalent)), invalid};
+		roots = selected;
+		for (unsigned round = 0; round < 2; ++round) {
+			FILE *file = tmpfile();
+			assert(file && !pg_sources_write(file, &p->synthesis, 3, roots));
+			pg_program_destroy(p);
+			rewind(file);
+			p = pg_sources_read(file, 100000, &count, &roots);
+			assert(p && count == 3 && !p->synthesis.steps);
+			for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
+			assert(!fclose(file));
+		}
+		while (p->synthesis.ready && p->synthesis.steps < 40000) pg_synthesis_advance(&p->synthesis, chunk);
+		assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_status(roots[2]) == PG_SYNTHESIS_REJECTED);
+		assert(pg_data_schema_declaration(pg_evidence_inductive_schema(pg_synthesis_result(roots[0]))) ==
+			pg_data_schema_declaration(pg_evidence_inductive_schema(pg_synthesis_result(roots[1]))));
 		pg_program_destroy(p);
 	}
 	puts("source families: logical R/Acc scopes, unsolved and solved resaves, wrong argument rejection passed");
@@ -1121,6 +1142,7 @@ static void invalid_declaration_members(FILE *file)
 	uint64_t bindings, matches, metadata, members;
 	assert(!pg_wire_read_u64(file, &bindings) && !fseek(file, (long)bindings * 3 * 8, SEEK_CUR));
 	assert(!pg_wire_read_u64(file, &matches) && !fseek(file, (long)matches * 8, SEEK_CUR));
+	assert(!fseek(file, 8, SEEK_CUR)); /* Nominal declaration reference count. */
 	assert(!pg_wire_read_u64(file, &metadata) && !fseek(file, (long)metadata * 8, SEEK_CUR));
 	long count_offset = ftell(file);
 	assert(count_offset >= 0 && !pg_wire_read_u64(file, &members) && members == 2);

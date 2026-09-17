@@ -98,13 +98,7 @@ int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
  * deduplicates shared jobs; unrelated jobs are not implicitly image roots. */
 int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, struct pg_synthesis_job *), void *owner);
-/* Retain unaccepted rule input as allocation provenance across save-before-Solve.
- * Registration grants no acceptance; ordinary Solve validates imported inputs. */
-struct pg_synthesis_job *pg_synthesis_allocation_origin(const struct pg_synthesis_job *job);
 const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis_job *job);
-struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
-	struct pg_synthesis_job *origin);
 /* Associate a qualified constructor use with its retained field scope.
  * Contexts supply binders only; constructor identity, parameters and field
  * types are synthesized at the use site. No substitution proof is restored. */

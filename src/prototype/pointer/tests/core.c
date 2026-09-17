@@ -1243,6 +1243,15 @@ static void dependent_application_test(struct pg_graph *graph)
 			: pg_pi(graph, pg_evidence_subject(u1)->core, renamed, body);
 		if (i == 2) alpha = pg_application(graph, pg_reference(graph, &pg_force_operation),
 			pg_application(graph, pg_reference(graph, &pg_thunk_operation), alpha));
+		const struct pg_reduction_certificate *unchanged = pg_reduction_identity(graph, &pg_pure_policy, alpha);
+		const struct pg_evidence *renamed_source = pg_prove_normalization(&typing, sources[i], unchanged);
+		assert(renamed_source && pg_evidence_subject(renamed_source)->core == alpha);
+		assert(pg_evidence_classifier(renamed_source) == pg_evidence_classifier(sources[i]));
+		assert(!pg_reduction_phases(unchanged) && !pg_reduction_normality(unchanged));
+		reconstruct_derivation(&typing, renamed_source);
+		assert(!pg_prove_normalization(&typing, sources[i],
+			pg_reduction_identity(graph, &pg_pure_policy, pg_reference(graph, pg_binder(graph)))));
+		assert(!pg_prove_normalization(&typing, sources[i], pg_reduction_identity(graph, &pg_beta_policy, alpha)));
 		struct pg_nf_job *nf = pg_nf_request(&normalization, &pg_pure_policy, alpha);
 		while (pg_nf_advance(nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
 		const struct pg_evidence *normal = pg_prove_normalization(&typing, sources[i], pg_nf_certificate(nf));
@@ -5305,6 +5314,48 @@ static void request_typing_test(struct pg_graph *graph)
 	puts("typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed");
 }
 
+static void context_alpha_test(struct pg_graph *graph)
+{
+	struct pg_typing typing, foreign;
+	assert(!pg_typing_init(&typing, graph) && !pg_typing_init(&foreign, graph));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
+	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph), *f = pg_binder(graph);
+	const struct pg_evidence *inner = pg_prove_context_extension(&typing, empty, x, u);
+	const struct pg_evidence *body = pg_prove_return_type(&typing, pg_prove_variable(&typing, inner, x));
+	const struct pg_evidence *type = pg_prove_thunk_type(&typing, pg_prove_pi(&typing, inner, body));
+	const struct pg_evidence *source = pg_prove_context_extension(&typing, empty, f, type);
+	assert(source);
+	const struct pg_term *alpha = pg_thunk_type(graph, pg_pi(graph, pg_evidence_subject(u)->core, y,
+		pg_computation_type(graph, PG_TOTALITY_UNSPECIFIED, pg_effect_row(graph, 0, NULL), pg_reference(graph, y))));
+	/* No formation of this raw target is supplied to the adapter. */
+	const struct pg_context *target = pg_context_bind(&typing, NULL, f, alpha, PG_JUDGEMENT_VALUE);
+	const struct pg_evidence *adapted = pg_prove_context_alpha(&typing, source, target);
+	assert(adapted && pg_evidence_context(adapted) == target);
+	assert(pg_prove_context_alpha(&typing, source, pg_evidence_context(source)) == source);
+	reconstruct_derivation(&typing, adapted);
+	assert(!pg_prove_context_alpha(&foreign, source, target));
+	assert(!pg_prove_context_alpha(&typing, type, target));
+	assert(!pg_prove_context_alpha(&typing, source, NULL));
+	assert(!pg_prove_context_alpha(&typing, source,
+		pg_context_bind(&typing, NULL, pg_binder(graph), alpha, PG_JUDGEMENT_VALUE)));
+	assert(!pg_prove_context_alpha(&typing, source,
+		pg_context_bind(&typing, NULL, f, pg_evidence_subject(u)->core, PG_JUDGEMENT_VALUE)));
+	/* A family signature depends on its checked index telescope too. */
+	const struct pg_object *family = pg_binder(graph);
+	const struct pg_evidence *source_family = pg_prove_family_context_extension(&typing, empty, family,
+		source, pg_prove_projection(&typing, source, u));
+	const struct pg_context *target_family = pg_context_intern(&typing, &(struct pg_context){
+		.binder = family, .judgement = PG_JUDGEMENT_TYPE_FAMILY, .indices = target,
+		.declared_type = pg_context_signature(graph, NULL, target, pg_evidence_subject(u)->core)});
+	adapted = pg_prove_context_alpha(&typing, source_family, target_family);
+	assert(adapted && pg_evidence_context(adapted) == target_family);
+	reconstruct_derivation(&typing, adapted);
+	pg_typing_destroy(&foreign);
+	pg_typing_destroy(&typing);
+	puts("context alpha: raw annotations require fresh field evidence; nominal/free bindings remain fixed");
+}
+
 static void continuation_names(void)
 {
 	const char *names[] = {
@@ -5342,6 +5393,7 @@ int main(void)
 	context_test(&graph);
 	evidence_test(&graph);
 	evidence_owner_test(&graph);
+	context_alpha_test(&graph);
 	dependent_application_test(&graph);
 	typed_substitution_test(&graph);
 	family_instance_test(&graph);

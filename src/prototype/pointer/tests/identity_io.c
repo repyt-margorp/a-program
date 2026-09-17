@@ -2279,6 +2279,56 @@ static void whnf_progress(void)
 	puts("WHNF pending transport: evaluation, deferred work and capture-avoiding readback retain exact progress");
 }
 
+static void reduction_identity_checks(void)
+{
+	struct pg_graph graph;
+	struct pg_whnf_work work;
+	assert(!pg_graph_init(&graph) && !pg_whnf_work_init(&work, &graph));
+	const struct pg_object *x = pg_binder(&graph);
+	const struct pg_term *ref = pg_reference(&graph, x);
+	const struct pg_term *self = pg_lambda(&graph, x, pg_application(&graph, ref, ref));
+	const struct pg_term *omega = pg_application(&graph, self, self);
+	const struct pg_reduction_certificate *root = pg_reduction_identity(&graph, &pg_pure_policy, omega);
+	assert(root && root->source == omega && root->target == omega);
+	assert(!pg_reduction_identity(NULL, &pg_pure_policy, omega));
+	assert(!pg_reduction_identity(&graph, NULL, omega));
+	assert(!pg_reduction_identity(&graph, &pg_pure_policy, NULL));
+	const struct pg_reduction_archive *archive;
+	FILE *file = tmpfile();
+	assert(file && !pg_reduction_records_write(file, 1, &root, 0, NULL, &pg_builtin_graph_codec, NULL));
+	rewind(file);
+	assert(!pg_reduction_records_read(file, &graph, 1000, 100, &pg_builtin_graph_codec, NULL, &archive));
+	assert(!fclose(file));
+	struct pg_reduction_check check;
+	assert(!pg_reduction_check_init(&check, &work, archive));
+	assert(pg_reduction_check_advance(&check, 1) == PG_COMPARISON_EQUAL);
+	assert(pg_reduction_check_certificate(&check, 0));
+	assert(!work.jobs.count && !work.normal_forms.count);
+	pg_reduction_check_destroy(&check);
+	/* An empty trace cannot certify a different endpoint or normality. */
+	for (unsigned i = 0; i < 3; ++i) {
+		struct pg_reduction_certificate invalid = *root;
+		if (!i) invalid.target = self;
+		else invalid.kind = i == 1 ? PG_REDUCTION_WHNF : PG_REDUCTION_NF;
+		const struct pg_reduction_certificate *input = &invalid;
+		file = tmpfile();
+		assert(file && !pg_reduction_records_write(file, 1, &input, 0, NULL, &pg_builtin_graph_codec, NULL));
+		rewind(file);
+		int status = pg_reduction_records_read(file, &graph, 1000, 100, &pg_builtin_graph_codec, NULL, &archive);
+		assert(!fclose(file));
+		if (i != 1) assert(status && !archive);
+		else {
+			assert(!status && !pg_reduction_check_init(&check, &work, archive));
+			assert(pg_reduction_check_advance(&check, 64) == PG_COMPARISON_PENDING);
+			assert(!pg_reduction_check_certificate(&check, 0));
+			pg_reduction_check_destroy(&check);
+		}
+	}
+	pg_whnf_work_destroy(&work);
+	pg_graph_destroy(&graph);
+	puts("reduction identity: zero-step transport neither runs divergence nor certifies normality");
+}
+
 static void reduction_leaf_checks(void)
 {
 	for (unsigned kind = 0; kind < 4; ++kind) {
@@ -3269,6 +3319,7 @@ int main(int argc, char **argv)
 	whnf_progress();
 	reduction_records();
 	reduction_leaf_checks();
+	reduction_identity_checks();
 	discovery_progress(0);
 	discovery_progress(1);
 	continuation_frames();

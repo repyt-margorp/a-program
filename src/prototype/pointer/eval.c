@@ -719,6 +719,13 @@ static struct pg_reduction_certificate *reduction_certificate(struct pg_graph *g
 	return certificate;
 }
 
+const struct pg_reduction_certificate *pg_reduction_identity(struct pg_graph *graph,
+	const struct pg_eval_policy *policy, const struct pg_term *term)
+{
+	return graph && policy && term
+		? reduction_certificate(graph, term, term, policy, PG_REDUCTION_PREFIX) : NULL;
+}
+
 static enum pg_eval_status whnf_step(struct pg_whnf_job *job)
 {
 	if (job->machine.status == PG_EVAL_PENDING) {

@@ -4463,6 +4463,72 @@ const struct pg_evidence *pg_prove_substitution_extend(struct pg_typing *typing,
 	return substitution_build(typing, source, prefix->premises[1], prefix, count, values);
 }
 
+struct context_alpha_frame {
+	const struct pg_evidence *source, *parent, *indices;
+	const struct pg_context *target;
+	struct context_alpha_frame *previous;
+	unsigned stage;
+};
+
+const struct pg_evidence *pg_prove_context_alpha(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_context *target)
+{
+	if (!context_proof(typing, source)) return NULL;
+	struct pg_graph temporary = {0};
+	struct context_alpha_frame root = {.source = source, .target = target};
+	struct context_alpha_frame *frame = &root;
+	const struct pg_evidence *result = NULL;
+	while (frame) {
+		const struct pg_evidence *input = frame->source;
+		const struct pg_context *from = pg_evidence_context(input), *to = frame->target;
+		if (!frame->stage) {
+			if (from == to) { result = input; frame = frame->previous; continue; }
+			if (!from || !to || from->binder != to->binder || from->judgement != to->judgement) goto fail;
+			if (input->rule != PG_CONTEXT_EXTEND && input->rule != PG_CONTEXT_FAMILY_EXTEND) goto fail;
+			struct context_alpha_frame *parent = pg_alloc(&temporary, sizeof(*parent));
+			if (!parent) goto fail;
+			*parent = (struct context_alpha_frame){.source = input->premises[0],
+				.target = to->parent, .previous = frame};
+			frame->stage = 1;
+			frame = parent;
+			continue;
+		}
+		if (frame->stage == 1) {
+			frame->parent = result;
+			if (input->rule == PG_CONTEXT_FAMILY_EXTEND) {
+				struct context_alpha_frame *indices = pg_alloc(&temporary, sizeof(*indices));
+				if (!indices) goto fail;
+				*indices = (struct context_alpha_frame){.source = input->premises[1],
+					.target = to->indices, .previous = frame};
+				frame->stage = 2;
+				frame = indices;
+				continue;
+			}
+		} else frame->indices = result;
+		const struct pg_evidence *old_scope = input->premises[frame->indices ? 1 : 0];
+		const struct pg_evidence *new_scope = frame->indices ? frame->indices : frame->parent;
+		const struct pg_evidence *type = input->premises[frame->indices ? 2 : 1];
+		if (pg_evidence_context(old_scope) != pg_evidence_context(new_scope))
+			type = pg_prove_reindex(typing, pg_prove_telescope_correspondence(typing, old_scope, new_scope), type);
+		if (!type) goto fail;
+		if (frame->indices)
+			result = pg_prove_family_context_extension(typing, frame->parent, to->binder, frame->indices, type);
+		else {
+			if (pg_evidence_subject(type)->core != to->declared_type)
+				type = pg_prove_normalization(typing, type,
+					pg_reduction_identity(typing->graph, &pg_pure_policy, to->declared_type));
+			result = pg_prove_context_extension(typing, frame->parent, to->binder, type);
+		}
+		if (!result || pg_evidence_context(result) != to) goto fail;
+		frame = frame->previous;
+	}
+	pg_graph_destroy(&temporary);
+	return result;
+fail:
+	pg_graph_destroy(&temporary);
+	return NULL;
+}
+
 const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second)
 {

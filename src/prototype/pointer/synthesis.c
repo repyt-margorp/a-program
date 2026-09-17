@@ -323,7 +323,6 @@ struct pg_synthesis_job {
 	const struct pg_data_schema *schema;
 	const struct pg_operation_declaration *operation;
 	const struct pg_data_declaration *nominal_input;
-	struct pg_synthesis_job *allocation_origin;
 	const struct constructor_callable *callable;
 	const struct pg_match_allocation *match_allocation;
 	struct source_case_layout *case_layouts;
@@ -559,7 +558,7 @@ int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 				continue;
 			}
 			if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_DECLARATION) continue;
-			if (!job->allocation_origin && (job->status != PG_SYNTHESIS_DONE || !job->schema)) continue;
+			if (!job->nominal_input && !job->schema) continue;
 			if (visit(owner, job)) return -1;
 		}
 	return 0;
@@ -937,12 +936,6 @@ struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthe
 	return attach_nominal(pg_synthesis_request(synthesis, scope, syntax), allocation);
 }
 
-struct pg_synthesis_job *pg_synthesis_allocation_origin(const struct pg_synthesis_job *job)
-{
-	if (job->allocation_origin) return job->allocation_origin;
-	return (struct pg_synthesis_job *)job;
-}
-
 int pg_synthesis_member_allocation(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, const struct pg_context **prefix, const struct pg_context **fields)
 {
@@ -989,19 +982,6 @@ const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis
 	const struct pg_data_declaration *declaration = job->nominal_input;
 	if (!declaration && job->schema) declaration = pg_data_schema_declaration(job->schema);
 	return declaration ? pg_data_declaration_family(declaration) : NULL;
-}
-
-struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
-	struct pg_synthesis_job *origin)
-{
-	if (!origin || origin->owner != synthesis->owner_key || origin->role != DERIVATION_INPUT_JOB) return NULL;
-	const struct pg_derivation_input *input = origin->inputs[0];
-	if (input->rule != PG_INDUCTIVE_FORM || !input->parameters.declaration) return NULL;
-	struct pg_synthesis_job *job = pg_synthesis_declaration_at(synthesis, scope, syntax, input->parameters.declaration);
-	if (!job || (job->allocation_origin && job->allocation_origin != origin)) return NULL;
-	job->allocation_origin = origin;
-	return job;
 }
 
 struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *synthesis,
@@ -4172,14 +4152,12 @@ static void constructor_step(struct pg_synthesis *synthesis, struct pg_synthesis
  * Keep the saved declaration immutable, and transport the independently
  * synthesized result through a checked variable substitution instead. */
 static const struct pg_evidence *schema_result_context(struct pg_typing *typing,
-	const struct pg_evidence *result, const struct pg_evidence *target)
+	const struct pg_evidence *result, const struct pg_context *target)
 {
 	const struct pg_evidence *source = pg_evidence_premise(result, 1);
-	const struct pg_context *left = pg_evidence_context(source), *right = pg_evidence_context(target);
-	if (left == right) return result;
-	if (!same_context_binders(left, right)) return NULL;
+	if (pg_evidence_context(source) == target) return result;
 	return pg_prove_substitution_compose(typing, result,
-		pg_prove_telescope_correspondence(typing, source, target));
+		pg_prove_telescope_correspondence(typing, source, pg_prove_context_alpha(typing, source, target)));
 }
 
 /* Compile direct typed index projections once per constructor. These paths
@@ -4323,24 +4301,10 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		if (state->checked <= SIZE_MAX / sizeof(*results))
 			results = pg_alloc(&temporary, state->checked * sizeof(*results));
 		if (state->checked && !results) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		const struct pg_data_schema *origin = NULL;
-		if (job->allocation_origin) {
-			if (job->allocation_origin->status == PG_SYNTHESIS_PENDING) {
-				pg_graph_destroy(&temporary);
-				depend(synthesis, job, job->allocation_origin); return;
-			}
-			origin = pg_evidence_inductive_schema(job->allocation_origin->result);
-			if (!origin || pg_data_schema_declaration(origin) != job->nominal_input) {
-				pg_graph_destroy(&temporary);
-				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-			}
-		}
 		for (size_t i = 0; i < state->checked; ++i) {
 			results[i] = state->members[i].producer->result;
-			if (origin) {
-				const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(origin), i);
-				results[i] = schema_result_context(synthesis->typing, results[i], pg_data_schema_fields(origin, constructor));
-			}
+			if (job->nominal_input) results[i] = schema_result_context(synthesis->typing, results[i],
+				pg_data_declaration_fields(job->nominal_input, i));
 		}
 		job->schema = job->nominal_input
 			? pg_data_schema_check(synthesis->typing, job->nominal_input, signature, state->checked, results)
@@ -4508,12 +4472,6 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			: pg_prove_context_extension(synthesis->typing, source_context(job->scope), job->binder, job->domain);
 		job->inner = pg_synthesis_bind(synthesis, job->scope, (struct pg_token){.kind = '*'}, job->binder, self);
 		job->left = pg_synthesis_data_schema_at(synthesis, job->inner, job->syntax, allocation);
-		if (job->left && allocation) {
-			if (job->left->allocation_origin && job->left->allocation_origin != job->allocation_origin) {
-				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-			}
-			job->left->allocation_origin = job->allocation_origin;
-		}
 		depend(synthesis, job, job->left);
 		return;
 	}
@@ -8849,6 +8807,11 @@ static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 				if (comparison->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, comparison); return; }
 				if (comparison->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, comparison->status); return; }
 				job->certificate = comparison->certificate;
+			} else if (input->reduction_kind == PG_REDUCTION_PREFIX && input->source == input->target) {
+				/* The checked source endpoint already establishes alpha identity.
+				 * A zero-step prefix makes no normality claim and must not run NF. */
+				state->reduction = pg_reduction_identity(synthesis->typing->graph, &pg_pure_policy, input->target);
+				if (!state->reduction) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			} else {
 				state->reduction = normalization_receipt(synthesis, job, actual_source, input->reduction_kind);
 				if (!state->reduction) return;

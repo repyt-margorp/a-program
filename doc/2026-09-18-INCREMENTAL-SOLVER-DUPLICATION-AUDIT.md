@@ -18,6 +18,147 @@ This review follows the active `src/prototype/pointer/Makefile` dependency graph
 It does not treat the archived integer-ID implementation as a second active
 authority. Static inspection is not a proof that every execution path is covered.
 
+### Resume Checkpoint: 2026-09-18
+
+Inspected revision: `28e1837d6a06ae111d6b5166ab0216871298ccd4`. Both remote
+Main and `rewrite/pointer-core-hott` point to it. The IADT surface and issue
+#29 / PR #30 gates are complete; the broad authority refactor remains open.
+The original line numbers and LOC deltas below are historical, not measurements
+of this revision. No implementation change is included in this checkpoint.
+
+Target 2 is still present: `pg_synthesis_restore_declaration` retains a
+`DERIVATION_INPUT_JOB`; `data_schema_step` waits for that job and obtains its
+checked field Contexts through `pg_evidence_inductive_schema`. Source checking
+then constructs its own field results. This is a confirmed allocation/checking
+dependency, not a newly demonstrated acceptance bug.
+
+There is an important constraint on deleting it. `pg_data_declaration` already
+owns the nominal family, parameter/index/field Contexts and result images.
+However, a `pg_context` contains erased `declared_type` Terms, not the complete
+typed construction of each field type. `schema_result_context` currently uses
+the old checked Context to transport newly synthesized fields with fresh nested
+binders. The existing `family_context_scopes` test requires both acceptance of
+`y` -> `z` alpha renaming and rejection of `R y x` -> `R x y`, even when that
+field is absent from the constructor result index.
+
+Before replacing this path:
+
+- [x] Specify how independently synthesized field evidence establishes the
+  exact retained declaration Context, including nested binder renaming. Reuse
+  existing typed construction/action where sufficient; identify a missing edge
+  before adding storage. Raw Context existence is not formation evidence.
+- [x] Preserve `pg_data_schema_check`'s validation of every field and result
+  image. Do not relax it to result-index equality or silently replace the
+  immutable nominal declaration with freshly synthesized annotations.
+- [x] Transport the existing nominal reference through the declaration graph
+  codec, without a formation theorem retained solely for allocation. Keep
+  separately selected proof obligations and failed producers independent.
+- [x] Extend the existing source-image tests for raw declaration restoration,
+  alpha-renamed versus incompatible fields, two inert resaves and chunks 1/64.
+  A loaded descriptor must create no accepted evidence before Solve.
+
+Replacing the old formation dependency with another full declaration checker
+solely to recover the same allocation would not meet this cleanup's purpose.
+Conversely, trusting deserialized field annotations would remove a necessary
+check. Neither shortcut is adopted. Publication remains per completed epoch,
+after the existing suite and affected regressions pass, not after a partial
+wire-format migration or a plan-only update.
+
+### Declaration Epoch: Implementation and Measurements
+
+The missing-edge investigation above found a smaller solution than retaining
+another typed graph: independently synthesized field evidence already supplies
+formation. `pg_prove_context_alpha` transports it to the retained Context using
+ordinary variable substitution, Context extension and subject reduction. Only
+bound names inside types may differ; free bindings, nominal identity, judgement
+and every field remain checked. No Core tag, equality reflection, accepted-state
+table or unchecked schema substitution is introduced.
+
+A zero-step `PG_REDUCTION_PREFIX` supplies alpha-renamed subject reduction
+without pretending the target is normal or executing it. The existing rule
+checks the source modulo alpha. Imported zero-step prefixes require identical
+stored endpoints and the same typed-source check through ordinary Solve. The
+archive parser validates the empty trace; it never installs a WHNF/NF result.
+APGRCP3 records this extension. Source images are APGSRC62/63, retaining only
+the existing nominal declaration reference through the existing graph codec.
+
+Deleted: `allocation_origin`, `pg_synthesis_allocation_origin`,
+`pg_synthesis_restore_declaration`, declaration-origin completion waits and
+formation-proof collection solely for source allocation. Explicitly selected
+proof roots still undergo checking, including failed independent source roots.
+`pg_data_schema_check` retains its exact Context/result-image checks.
+
+Same-build-family comparison against `28e1837` (debug `-O0 -g`), using the
+unchanged `if8_fuel_free_quicksort_check.p` and `--steps 1000000`:
+
+| Workload / quantity | Before | After |
+|---|---:|---:|
+| Fresh compile Solve steps | 48,735 | 48,735 |
+| Ordinary source-image load Solve steps | 48,999 | 48,999 |
+| Retained `--whnf main` image load steps, root 2 | 139,084 | 138,924 |
+| Retained image load requests | 17,526 | 17,460 |
+| Retained image load evidence | 22,986 | 22,986 |
+| Retained image load Contexts / maps | 1,369 / 4,832 | 1,369 / 4,832 |
+| Retained image load occurrences / Terms | 19,341 / 36,366 | 19,341 / 36,366 |
+| Retained image bytes | 442,130 | 437,130 |
+
+Each revision writes its own image from the same source; old source-image
+formats are intentionally not read by the new reader. GDB stops after Solve
+at `main.c:395`. Counters are not a wall-clock bound or a global speedup claim.
+
+Target 3 measurement at the same baseline: length calls composition 378 times
+for 317 exact proof pairs (532 image visits, 57 repeat visits); the universal
+QuickSort proof calls it 11,204 times for 8,504 pairs (54,160 image visits,
+6,581 repeats). This confirms repeated assembly, not that it dominates runtime.
+No new proof cache was added: map identity alone cannot select an alternative
+requested derivation, and a second proof-pair index needs measured benefit.
+
+Focused debug Core/source-image and ASan/UBSan Core, reduction-image and full
+source-image tests pass. New coverage checks raw alpha-renamed Contexts,
+family telescopes, wrong/free bindings, divergent zero-step Terms, forged
+endpoints, explicit theorem roots and rejected declarations through two inert
+resaves. The full optimized run initially stopped at an obsolete seed version
+assertion. That test also restored version 46 before its negative checks;
+it now restores the actual current version so truncation/policy tests exercise
+their intended boundary. The final optimized `check-acceptance` passes, including
+the universal QuickSort proof and invalid-claim regressions. The corrected seed
+suite also passes under ASan/UBSan. Publication is recorded in the priority plan.
+
+Verification logs under `/tmp/` (local execution evidence, not repository inputs):
+
+- `a-program-authority-declaration-full-final.log`: complete optimized acceptance,
+  `-std=c11 -Wall -Wextra -Werror -O2`, build `a-program-authority-declaration-opt`.
+- `a-program-authority-declaration-core.log` and
+  `a-program-authority-declaration-source.log`: affected debug suites, `-O0 -g`.
+- `a-program-authority-declaration-asan-{core,identity,source,seed}.log`: affected
+  sanitizer suites, `-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer`,
+  non-PIE, leak detection and halt-on-error enabled. These are not a full
+  sanitizer acceptance run.
+
+Per-file source delta from `28e1837`, paths under `src/prototype/pointer/`:
+
+| File | Added | Removed | Net |
+|---|---:|---:|---:|
+| `eval.c` | 7 | 0 | 7 |
+| `eval.h` | 4 | 0 | 4 |
+| `evidence.c` | 66 | 0 | 66 |
+| `evidence.h` | 6 | 0 | 6 |
+| `reduction_io.c` | 3 | 2 | 1 |
+| `source_io.c` | 33 | 11 | 22 |
+| `source_io.h` | 7 | 5 | 2 |
+| `synthesis.c` | 11 | 48 | -37 |
+| `synthesis.h` | 0 | 6 | -6 |
+| `tests/core.c` | 52 | 0 | 52 |
+| `tests/identity_io.c` | 51 | 0 | 51 |
+| `tests/seed.c` | 6 | 5 | 1 |
+| `tests/source_io.c` | 26 | 4 | 22 |
+
+Implementation/headers: **+137/-72, net +65**. Tests: **+135/-9, net +126**.
+Build files are unchanged; documentation is excluded. Removing the allocation
+proof dependency reduced synthesis code but required a reusable checked Context
+adaptation. This epoch does not satisfy the parent's net-negative gate. Target 1
+and the remainder of targets 3-5 still require investigation and implementation.
+
 ## What Was Checked
 
 | Area | Files / main paths | Finding |
@@ -57,7 +198,10 @@ trace its consumers and preserve the non-feedback tests, not accidentally turn
 this descriptive boundary into an inference oracle. No unsound acceptance from
 this path has been demonstrated by this audit.
 
-### 2. Declaration allocation through saved evidence
+### 2. Declaration allocation through saved evidence (completed this epoch)
+
+The following describes the pre-epoch dependency; its replacement and tests are
+recorded above. It is no longer present in the current implementation.
 
 `source_io.c:367`, `synthesis.c:911` and `synthesis.c:4208` still retain/import
 an `allocation_origin` producer for declarations. Source checking waits for it
@@ -162,7 +306,7 @@ existing changes, but do not let this cleanup displace those two user priorities
   proof limitations in the linked report.
 - [x] Audit the active Core/typed/Solver/persistence paths and identify existing
   sharing as well as actual reconstruction.
-- [ ] Finish declaration raw allocation (target 2, existing parent A1-A4 work).
+- [x] Finish declaration raw allocation (target 2, existing parent A1-A4 work).
 - [ ] Consolidate pending construction (target 1), deleting replaced paths in
   the same change. No permanent old/new dual authority.
 - [ ] Measure targets 3-5; adopt only changes with demonstrated simplification
