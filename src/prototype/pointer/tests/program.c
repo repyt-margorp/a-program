@@ -367,19 +367,19 @@ static const struct pg_evidence *export_value(struct pg_program *p, const char *
 static void graded_function_graph(struct pg_program *p, const struct pg_evidence *function,
 	const struct pg_evidence *argument, uint64_t chunk)
 {
-	function = pg_function_graph_source(&p->typing, &p->classifiers, function);
+	function = pg_function_graph_source(&p->typing, function);
 	assert(function && pg_evidence_rule(function) == PG_LAMBDA_INTRO);
 	const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_premise(function, 0), 0);
 	const struct pg_evidence *value = pg_prove_return_value(&p->typing, pg_evidence_premise(function, 1));
 	assert(value);
 	for (enum pg_totality grade = PG_TOTALITY_UNSPECIFIED; grade <= PG_TOTALITY_TOTAL; ++grade) {
-		const struct pg_evidence *body = pg_prove_return_contract(&p->typing, &p->classifiers, grade, value);
-		const struct pg_evidence *type = pg_prove_classifier(&p->typing, &p->classifiers, scope, body);
+		const struct pg_evidence *body = pg_prove_return_contract(&p->typing, grade, value);
+		const struct pg_evidence *type = pg_prove_classifier(&p->typing, scope, body);
 		const struct pg_evidence *lambda = pg_prove_lambda(&p->typing,
-			pg_prove_pi(&p->typing, &p->classifiers, scope, type), body);
+			pg_prove_pi(&p->typing, scope, type), body);
 		assert(lambda && pg_evidence_subject(lambda)->core == pg_evidence_subject(function)->core);
 		struct pg_function_graph_work work;
-		assert(!pg_function_graph_init(&work, &p->typing, &p->classifiers, &p->evaluation, lambda));
+		assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, lambda));
 		for (size_t turns = 0; pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
 			assert(turns < 100000);
 		assert(pg_function_graph_witness_advance(&work, 0) == PG_FUNCTION_GRAPH_DONE);
@@ -400,34 +400,34 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 		pg_function_graph_destroy(&work);
 		/* A neutral result needs a total contract, not just an empty row. */
 		const struct pg_evidence *neutral_scope = pg_prove_context_extension(&p->typing,
-			scope, pg_binder(&p->graph), pg_prove_thunk_type(&p->typing, &p->classifiers, type));
+			scope, pg_binder(&p->graph), pg_prove_thunk_type(&p->typing, type));
 		assert(neutral_scope);
 		const struct pg_object *neutral_binder = pg_evidence_context(neutral_scope)->binder;
-		const struct pg_evidence *domain = pg_prove_classifier(&p->typing, &p->classifiers, scope, value);
+		const struct pg_evidence *domain = pg_prove_classifier(&p->typing, scope, value);
 		const struct pg_evidence *inner = pg_prove_context_extension(&p->typing, neutral_scope,
 			pg_binder(&p->graph), pg_prove_projection(&p->typing, neutral_scope, domain));
 		const struct pg_evidence *neutral = pg_prove_force(&p->typing,
 			pg_prove_variable(&p->typing, inner, neutral_binder));
-		const struct pg_evidence *neutral_type = pg_prove_classifier(&p->typing, &p->classifiers, inner, neutral);
+		const struct pg_evidence *neutral_type = pg_prove_classifier(&p->typing, inner, neutral);
 		const struct pg_evidence *neutral_lambda = pg_prove_lambda(&p->typing,
-			pg_prove_pi(&p->typing, &p->classifiers, inner, neutral_type), neutral);
+			pg_prove_pi(&p->typing, inner, neutral_type), neutral);
 		assert(neutral_lambda);
-		assert(!pg_function_graph_init(&work, &p->typing, &p->classifiers, &p->evaluation, neutral_lambda));
+		assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, neutral_lambda));
 		for (size_t turns = 0; pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
 			assert(turns < 100000);
 		assert(pg_function_graph_witness_advance(&work, 0) == (grade == PG_TOTALITY_TOTAL
 			? PG_FUNCTION_GRAPH_DONE : PG_FUNCTION_GRAPH_UNSUPPORTED));
 		pg_function_graph_destroy(&work);
 		/* TOTAL is not permission to run effectful code during graph formation. */
-		const struct pg_evidence *u0 = pg_prove_universe(&p->typing, &p->classifiers,
+		const struct pg_evidence *u0 = pg_prove_universe(&p->typing,
 			pg_prove_empty_context(&p->typing), 0);
 		const struct pg_object *label = pg_operation_label(pg_operation_declaration(&p->typing, u0, u0));
-		type = pg_prove_computation_type(&p->typing, &p->classifiers, grade,
+		type = pg_prove_computation_type(&p->typing, grade,
 			pg_effect_row(&p->graph, 1, &label), pg_prove_return_content(&p->typing, type));
 		body = pg_prove_effect_subsumption(&p->typing, body, type);
-		lambda = pg_prove_lambda(&p->typing, pg_prove_pi(&p->typing, &p->classifiers, scope, type), body);
+		lambda = pg_prove_lambda(&p->typing, pg_prove_pi(&p->typing, scope, type), body);
 		assert(lambda);
-		assert(!pg_function_graph_init(&work, &p->typing, &p->classifiers, &p->evaluation, lambda));
+		assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, lambda));
 		assert(pg_function_graph_advance(&work, chunk) == PG_FUNCTION_GRAPH_UNSUPPORTED);
 		pg_function_graph_destroy(&work);
 	}
@@ -459,7 +459,7 @@ static void function_graph_aliases(struct pg_program *p,
 	const struct pg_evidence *function, uint64_t chunk)
 {
 	struct pg_typing *typing = &p->typing;
-	const struct pg_evidence *raw = pg_function_graph_source(typing, &p->classifiers, function);
+	const struct pg_evidence *raw = pg_function_graph_source(typing, function);
 	assert(raw && pg_evidence_rule(raw) == PG_LAMBDA_INTRO);
 	const struct pg_evidence *pi = pg_evidence_premise(raw, 0);
 	struct pg_conversion conversion;
@@ -467,17 +467,16 @@ static void function_graph_aliases(struct pg_program *p,
 	assert(pg_conversion_advance(&conversion, 64) == PG_CONVERSION_EQUAL);
 	const struct pg_evidence *alternate = pg_prove_conversion(typing, raw, pi, pg_conversion_certificate(&conversion));
 	assert(alternate && alternate != raw && pg_evidence_subject(alternate) == pg_evidence_subject(raw));
-	assert(pg_evidence_subject(pg_function_graph_source(typing, &p->classifiers, alternate)) == pg_evidence_subject(raw));
+	assert(pg_evidence_subject(pg_function_graph_source(typing, alternate)) == pg_evidence_subject(raw));
 	size_t proofs = typing->proofs.count, subjects = typing->occurrences.count;
 	for (size_t i = 0; i < 100; ++i)
-		assert(pg_evidence_subject(pg_function_graph_source(typing, &p->classifiers, alternate)) == pg_evidence_subject(raw));
+		assert(pg_evidence_subject(pg_function_graph_source(typing, alternate)) == pg_evidence_subject(raw));
 	assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
-	assert(!pg_function_graph_source(NULL, &p->classifiers, raw));
-	assert(!pg_function_graph_source(typing, NULL, raw));
+	assert(!pg_function_graph_source(NULL, raw));
 	const struct pg_evidence *outer = pg_evidence_premise(pg_evidence_premise(pi, 0), 0);
 	const struct pg_evidence *scope = pg_prove_context_extension(typing, outer, pg_binder(&p->graph), pg_prove_pi_domain(typing, pi));
 	const struct pg_evidence *projected = pg_prove_projection(typing, scope, raw);
-	assert(projected && !pg_function_graph_source(typing, &p->classifiers, projected));
+	assert(projected && !pg_function_graph_source(typing, projected));
 	const struct pg_source_scope *names = pg_synthesis_name(&p->synthesis, p->scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "original", .length = 8}, raw);
 	names = pg_synthesis_name(&p->synthesis, names,
@@ -529,7 +528,7 @@ static void function_graphs(void)
 			if (!i) graded_function_graph(p, function, successor, chunk);
 			if (i == 1) function_graph_aliases(p, function, chunk);
 			struct pg_function_graph_work work;
-			assert(!pg_function_graph_init(&work, &p->typing, &p->classifiers, &p->evaluation, function));
+			assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, function));
 			assert(pg_function_graph_advance(&work, 0) == PG_FUNCTION_GRAPH_PENDING);
 			for (size_t turns = 0; pg_function_graph_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
 				assert(turns < 100000);
@@ -573,7 +572,7 @@ static void function_graphs(void)
 				assert(!pg_prove_constructor(&p->typing, formation, fork, parameters, 6, fields));
 				for (size_t mode = 0; mode < 3; ++mode) {
 					struct pg_function_graph_work ordered;
-					assert(!pg_function_graph_init(&ordered, &p->typing, &p->classifiers, &p->evaluation, function));
+					assert(!pg_function_graph_init(&ordered, &p->typing, &p->evaluation, function));
 					size_t slots[] = {1, mode == 2 ? 1 : 0};
 					struct pg_function_graph_order order[] = {{0, NULL}, {mode ? 2 : 1, slots}};
 					assert(pg_function_graph_source_order(&ordered, 1, order));
@@ -628,14 +627,14 @@ static void function_graphs(void)
 		for (size_t i = 0; i < 3; ++i) {
 			functions[i] = pg_synthesis_result(pg_synthesis_definition(p->root,
 				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = dependencies[i], .length = strlen(dependencies[i])}));
-			assert(!pg_function_graph_init(&works[i], &p->typing, &p->classifiers, &p->evaluation, functions[i]));
+			assert(!pg_function_graph_init(&works[i], &p->typing, &p->evaluation, functions[i]));
 		}
 		for (size_t turns = 0; !pg_function_graph_dependency(&works[0]); ++turns) {
 			assert(turns < 100000);
 			assert(pg_function_graph_advance(&works[0], chunk) == PG_FUNCTION_GRAPH_PENDING);
 		}
 		assert(pg_evidence_subject(pg_function_graph_dependency(&works[0])) ==
-			pg_evidence_subject(pg_function_graph_source(&p->typing, &p->classifiers, functions[1])));
+			pg_evidence_subject(pg_function_graph_source(&p->typing, functions[1])));
 		assert(pg_function_graph_advance(&works[0], 0) == PG_FUNCTION_GRAPH_PENDING);
 		assert(pg_function_graph_supply(&works[0], &works[0]));
 		assert(pg_function_graph_supply(&works[0], &works[1]));
@@ -781,7 +780,7 @@ int main(int argc, char **argv)
 	assert(!pg_program_normalize(split, NULL, 0));
 	assert(!pg_program_normalize(whole, proof, 0));
 	const struct pg_evidence *empty = pg_prove_empty_context(&split->typing);
-	const struct pg_evidence *universe = pg_prove_universe(&split->typing, &split->classifiers, empty, 0);
+	const struct pg_evidence *universe = pg_prove_universe(&split->typing, empty, 0);
 	const struct pg_object *binder = pg_binder(&split->graph);
 	const struct pg_evidence *open = pg_prove_context_extension(&split->typing, empty, binder, universe);
 	const struct pg_evidence *variable = pg_prove_variable(&split->typing, open, binder);

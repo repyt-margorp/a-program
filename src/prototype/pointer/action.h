@@ -21,7 +21,7 @@
  * input; this result does not certify a new equality or a shared Core pointer.
  * Work is synchronous; no new acceptance rule or cached boundary authority. */
 const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation);
+	const struct pg_evidence *formation);
 
 /* The same recovery suspended between retained origin wrappers. No work at
  * request time and no partial result. Returns 0 pending, 1 done, -1 unsupported
@@ -29,7 +29,7 @@ const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
  * proof reconstruction remains synchronous. Destroying work retains evidence. */
 struct pg_identity_formation_work;
 struct pg_identity_formation_work *pg_identity_formation_init(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation);
+	const struct pg_evidence *formation);
 int pg_identity_formation_advance(struct pg_identity_formation_work *work, uint64_t fuel);
 const struct pg_evidence *pg_identity_formation_result(const struct pg_identity_formation_work *work);
 void pg_identity_formation_destroy(struct pg_identity_formation_work *work);
@@ -41,7 +41,7 @@ void pg_identity_formation_destroy(struct pg_identity_formation_work *work);
  * without an inner formation return NULL. Work is synchronous and uses an
  * explicit stack. The result is checked evidence, not a conversion certificate. */
 const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side);
 
 /* The same derivation construction, suspended between descent/unwind steps.
@@ -53,7 +53,7 @@ const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
  * this work. Destroying pending work does not retract accepted premises. */
 struct pg_identity_endpoint_work;
 struct pg_identity_endpoint_work *pg_identity_endpoint_init(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side);
 int pg_identity_endpoint_advance(struct pg_identity_endpoint_work *work, uint64_t fuel);
 const struct pg_evidence *pg_identity_endpoint_result(const struct pg_identity_endpoint_work *work);
@@ -64,21 +64,21 @@ void pg_identity_endpoint_destroy(struct pg_identity_endpoint_work *work);
  * selections. No center, degeneracy or nonidentity axis permutation is admitted.
  * An inherited Identity below the selected directions is left intact. */
 const struct pg_evidence *pg_identity_proper_face(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *formation, const struct pg_dimension_map *face);
 
 /* Extend Gamma by x0 : A, x1 : B, x01 : R x0 x1 for a supplied checked
  * R : Id Universe_i A B in Gamma. Binders may be binding-cube faces, but
  * their pointers alone supply no typing. No transport or new R is inferred. */
 const struct pg_evidence *pg_identity_context_extend(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *family, const struct pg_object *left,
 	const struct pg_object *right, const struct pg_object *center);
 /* Form the expanded homogeneous Identity of a raw computation Pi through
  * ordinary Pi formation over its dependent value boundary. Conversion from
  * the symbolic Identity is a separate check using the fixed pure reducer. */
 const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *pi, const struct pg_evidence *left,
 	const struct pg_evidence *right, const struct pg_object *x0,
 	const struct pg_object *x1, const struct pg_object *path);
@@ -87,7 +87,7 @@ const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
  * substituted Pi types; the generated argument path retains that same family.
  * This composes existing formation rules, not a new Identity axiom. */
 const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *pi,
+	const struct pg_evidence *pi,
 	const struct pg_evidence *left_substitution, const struct pg_evidence *right_substitution,
 	size_t count, const struct pg_evidence *const *paths,
 	const struct pg_evidence *left, const struct pg_evidence *right,
@@ -95,7 +95,7 @@ const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
 /* Id_(U C) v0 v1 expands to U(Id_C (FORCE v0) (FORCE v1)).
  * FORCE forms observations; this function does not execute endpoints. */
 const struct pg_evidence *pg_identity_thunk_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *type,
+	const struct pg_evidence *type,
 	const struct pg_evidence *left, const struct pg_evidence *right);
 
 /* Act on the final count declarations, keeping the ambient prefix fixed.
@@ -132,7 +132,7 @@ const struct pg_evidence *pg_identity_cube_context(struct pg_typing *typing,
  * uses checked family action, retaining polarity and selected boundaries.
  * The source term must have exactly source's context. No center is invented. */
 const struct pg_evidence *pg_identity_cube_action(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, struct pg_dimensions *dimensions,
+	struct pg_dimensions *dimensions,
 	const struct pg_evidence *source, const struct pg_evidence *term,
 	size_t count, const struct pg_binding_cube *const *cubes, const struct pg_dimension_map *order);
 
@@ -142,7 +142,7 @@ const struct pg_evidence *pg_identity_cube_action(struct pg_typing *typing,
  * The caller owns an image_count output array; it is written only on success.
  * -1 includes unsupported regularity rules and allocation failure. */
 int pg_identity_substitution_images(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
+	const struct pg_evidence *substitution,
 	const struct pg_evidence *left, const struct pg_evidence *right,
 	size_t count, const struct pg_evidence *const *paths, size_t image_count,
 	const struct pg_evidence **images);
@@ -163,7 +163,7 @@ const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,
  * synchronous. No partial result is exposed; -1 includes unsupported input. */
 struct pg_identity_face_work;
 struct pg_identity_face_work *pg_identity_face_init(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *formation, const struct pg_dimension_map *face);
 int pg_identity_face_advance(struct pg_identity_face_work *work, uint64_t fuel);
 const struct pg_evidence *pg_identity_face_result(const struct pg_identity_face_work *work);

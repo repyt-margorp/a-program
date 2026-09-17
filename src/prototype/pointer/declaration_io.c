@@ -13,10 +13,10 @@ struct payload {
 };
 
 int pg_declaration_io_init(struct pg_declaration_io *io,
-	struct pg_typing *typing, struct pg_classifiers *classifiers)
+	struct pg_typing *typing)
 {
-	if (!io || !typing || !classifiers || typing->graph != classifiers->graph) return -1;
-	*io = (struct pg_declaration_io){.typing = typing, .classifiers = classifiers};
+	if (!io || !typing) return -1;
+	*io = (struct pg_declaration_io){.typing = typing};
 	if (!pg_graph_init(&io->storage) && !pg_index_init(&io->payloads)) return 0;
 	pg_declaration_io_destroy(io);
 	return -1;
@@ -51,20 +51,20 @@ static const struct payload *payload(struct pg_declaration_io *io, const struct 
 static const char *name(void *owner, const struct pg_object *object)
 {
 	struct pg_declaration_io *io = owner;
-	return pg_data_declaration_view(object) ? "data-declaration/v3" : pg_builtin_graph_codec.name(io->classifiers, object);
+	return pg_data_declaration_view(object) ? "data-declaration/v3" : pg_builtin_graph_codec.name(io->typing->graph, object);
 }
 
 static const struct pg_object *resolve(void *owner, const char *label)
 {
 	struct pg_declaration_io *io = owner;
-	return pg_builtin_graph_codec.resolve(io->classifiers, label);
+	return pg_builtin_graph_codec.resolve(io->typing->graph, label);
 }
 
 static int child(void *owner, struct pg_graph *scratch, const struct pg_object *object,
 	size_t index, const struct pg_term **term)
 {
 	struct pg_declaration_io *io = owner;
-	if (!pg_data_declaration_view(object)) return pg_builtin_graph_codec.child(io->classifiers, scratch, object, index, term);
+	if (!pg_data_declaration_view(object)) return pg_builtin_graph_codec.child(io->typing->graph, scratch, object, index, term);
 	const struct payload *p = payload(io, object);
 	if (!p) return -1;
 	if (index >= p->term_count) return 0;
@@ -75,7 +75,7 @@ static int child(void *owner, struct pg_graph *scratch, const struct pg_object *
 static int scalar(void *owner, const struct pg_object *object, size_t index, uint64_t *value)
 {
 	struct pg_declaration_io *io = owner;
-	if (!pg_data_declaration_view(object)) return pg_builtin_graph_codec.scalar(io->classifiers, object, index, value);
+	if (!pg_data_declaration_view(object)) return pg_builtin_graph_codec.scalar(io->typing->graph, object, index, value);
 	const struct payload *p = payload(io, object);
 	if (!p) return -1;
 	if (index >= p->scalar_count) return 0;
@@ -89,7 +89,7 @@ static const struct pg_object *restore(void *owner, struct pg_graph *graph, cons
 	struct pg_declaration_io *io = owner;
 	if (graph != io->typing->graph) return NULL;
 	if (strcmp(label, "data-declaration/v3"))
-		return pg_builtin_graph_codec.restore(io->classifiers, graph, label, count, terms, scalar_count, scalars);
+		return pg_builtin_graph_codec.restore(io->typing->graph, graph, label, count, terms, scalar_count, scalars);
 	size_t nc, nt;
 	const struct pg_context *const *contexts;
 	const struct pg_term *const *roots;

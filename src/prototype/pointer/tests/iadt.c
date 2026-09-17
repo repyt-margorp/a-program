@@ -23,7 +23,7 @@ static size_t constructor_introductions(const struct pg_typing *typing)
 	return count;
 }
 
-static void common_rule(struct pg_typing *typing, struct pg_classifiers *classifiers,
+static void common_rule(struct pg_typing *typing,
 	const struct pg_evidence *proof)
 {
 	struct pg_derivation_input input;
@@ -32,13 +32,13 @@ static void common_rule(struct pg_typing *typing, struct pg_classifiers *classif
 	assert(premises && input.count);
 	for (size_t i = 0; i < input.count; ++i) premises[i] = pg_evidence_premise(proof, i);
 	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
-	assert(pg_prove_derivation(typing, classifiers, input.rule, &input.parameters, input.count, premises) == proof);
+	assert(pg_prove_derivation(typing, input.rule, &input.parameters, input.count, premises) == proof);
 	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
 		struct pg_whnf_work work;
 		struct pg_synthesis synthesis;
 		assert(!pg_whnf_work_init(&work, typing->graph));
-		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
 		struct pg_synthesis_job **jobs = pg_alloc(typing->graph, input.count * sizeof(*jobs));
 		assert(jobs);
 		for (size_t i = 0; i < input.count; ++i) jobs[i] = pg_synthesis_evidence(&synthesis, premises[i]);
@@ -66,21 +66,20 @@ static void common_rule(struct pg_typing *typing, struct pg_classifiers *classif
 		pg_synthesis_destroy(&synthesis);
 		pg_whnf_work_destroy(&work);
 	}
-	assert(!pg_prove_derivation(typing, classifiers, input.rule, &input.parameters, input.count - 1, premises));
+	assert(!pg_prove_derivation(typing, input.rule, &input.parameters, input.count - 1, premises));
 	if (input.count > 1) assert(premises[input.count - 1] != premises[0]);
 	premises[input.count - 1] = input.count > 1 ? premises[0] : NULL;
-	assert(!pg_prove_derivation(typing, classifiers, input.rule, &input.parameters, input.count, premises));
+	assert(!pg_prove_derivation(typing, input.rule, &input.parameters, input.count, premises));
 }
 
 static void positive_fields(void)
 {
 	struct pg_graph graph;
-	struct pg_classifiers classifiers;
-	assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+	assert(!pg_graph_init(&graph));
 	const struct pg_object *self = pg_binder(&graph), *x = pg_binder(&graph);
 	const struct pg_term *recursive = pg_reference(&graph, self);
 	const struct pg_term *index = pg_reference(&graph, x);
-	const struct pg_term *a = pg_universe(&classifiers, 0);
+	const struct pg_term *a = pg_universe(&graph, 0);
 	const struct pg_term *fiber = pg_application(&graph, recursive, index);
 	assert(pg_data_field_positive(recursive, self, 0) == 1);
 	assert(pg_data_field_positive(fiber, self, 1) == 1);
@@ -88,28 +87,28 @@ static void positive_fields(void)
 	assert(pg_data_field_positive(recursive, self, 1) == 0);
 	assert(pg_data_field_positive(pg_application(&graph, recursive, recursive), self, 1) == 0);
 	/* Acc-shaped recursion: independent quantified inputs, recursive output. */
-	const struct pg_term *positive = pg_thunk_type(&classifiers,
-		pg_pi(&graph, a, x, pg_return_type(&classifiers, fiber)));
+	const struct pg_term *positive = pg_thunk_type(&graph,
+		pg_pi(&graph, a, x, pg_return_type(&graph, fiber)));
 	assert(pg_data_field_positive(positive, self, 1) == 1);
 	assert(pg_data_recursive_field(recursive, self) == 1);
 	assert(pg_data_recursive_field(positive, self) == 1);
-	assert(pg_data_recursive_field(pg_thunk_type(&classifiers, pg_return_type(&classifiers, fiber)), self) == 1);
+	assert(pg_data_recursive_field(pg_thunk_type(&graph, pg_return_type(&graph, fiber)), self) == 1);
 	assert(pg_data_recursive_field(a, self) == 0);
 	static const struct pg_object_class label_class = {"test-effect"};
 	static const struct pg_object label = {PG_SEMANTIC_OBJECT, &label_class};
 	const struct pg_object *op = &label;
 	const struct pg_effect_row *effects = pg_effect_row(&graph, 1, &op);
 	assert(effects);
-	assert(pg_data_recursive_field(pg_thunk_type(&classifiers,
-		pg_pi(&graph, a, x, pg_effect_type(&classifiers, effects, fiber))), self) == -1);
-	const struct pg_term *negative = pg_thunk_type(&classifiers,
-		pg_pi(&graph, recursive, x, pg_return_type(&classifiers, a)));
+	assert(pg_data_recursive_field(pg_thunk_type(&graph,
+		pg_pi(&graph, a, x, pg_effect_type(&graph, effects, fiber))), self) == -1);
+	const struct pg_term *negative = pg_thunk_type(&graph,
+		pg_pi(&graph, recursive, x, pg_return_type(&graph, a)));
 	assert(pg_data_field_positive(negative, self, 0) == 0);
 	assert(pg_data_recursive_field(negative, self) == -1);
 	assert(pg_data_recursive_field(pg_application(&graph, recursive, recursive), self) == -1);
 	/* Double negation is not strict positivity. */
-	assert(pg_data_field_positive(pg_thunk_type(&classifiers,
-		pg_pi(&graph, negative, x, pg_return_type(&classifiers, a))), self, 0) == 0);
+	assert(pg_data_field_positive(pg_thunk_type(&graph,
+		pg_pi(&graph, negative, x, pg_return_type(&graph, a))), self, 0) == 0);
 	/* Unknown type constructors do not acquire an assumed variance. */
 	assert(pg_data_field_positive(pg_application(&graph, index, recursive), self, 0) == 0);
 	assert(pg_data_field_positive(pg_application(&graph, index, a), self, 0) == 1);
@@ -119,15 +118,14 @@ static void positive_fields(void)
 	assert(pg_data_field_positive(redex, self, 0) == 0);
 	assert(pg_data_field_positive(a, self, 0) == 1);
 	for (size_t i = 0; i < 10000; ++i)
-		positive = pg_thunk_type(&classifiers, pg_return_type(&classifiers, positive));
+		positive = pg_thunk_type(&graph, pg_return_type(&graph, positive));
 	assert(pg_data_field_positive(positive, self, 1) == 1);
 	assert(pg_data_field_positive(NULL, self, 0) == -1);
 	assert(pg_data_field_positive(a, a->as.reference, 0) == -1);
-	pg_classifiers_destroy(&classifiers);
 	pg_graph_destroy(&graph);
 }
 
-static void solved_family_lift(struct pg_typing *typing, struct pg_classifiers *classifiers,
+static void solved_family_lift(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *extension,
 	const struct pg_object *binder, const struct pg_evidence *expected)
 {
@@ -135,7 +133,7 @@ static void solved_family_lift(struct pg_typing *typing, struct pg_classifiers *
 		struct pg_whnf_work work;
 		struct pg_synthesis synthesis;
 		assert(!pg_whnf_work_init(&work, typing->graph));
-		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
 		size_t proofs = typing->proofs.count;
 		struct pg_synthesis_job *job = pg_synthesis_substitution_lift(&synthesis, substitution, extension, binder);
 		assert(job && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING && typing->proofs.count == proofs);
@@ -148,7 +146,7 @@ static void solved_family_lift(struct pg_typing *typing, struct pg_classifiers *
 		assert(image && reference && pg_evidence_judgement(image) == PG_JUDGEMENT_TYPE_FAMILY);
 		assert(pg_evidence_subject(image)->core == pg_evidence_subject(reference)->core);
 		assert(pg_alpha_equal(pg_evidence_classifier(image), pg_evidence_classifier(reference)) == 1);
-		common_rule(typing, classifiers, result);
+		common_rule(typing, result);
 		pg_synthesis_destroy(&synthesis);
 		pg_whnf_work_destroy(&work);
 	}
@@ -158,11 +156,9 @@ static void scoped_type_families(void)
 {
 	struct pg_graph graph;
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
 	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
-	assert(!pg_classifiers_init(&classifiers, &graph));
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
 	const struct pg_object *t = pg_binder(&graph), *a = pg_binder(&graph), *x = pg_binder(&graph);
 	const struct pg_object *f = pg_binder(&graph), *v = pg_binder(&graph);
 	const struct pg_evidence *base = pg_prove_context_extension(&typing, empty, t, u);
@@ -171,7 +167,7 @@ static void scoped_type_families(void)
 	const struct pg_evidence *universe = pg_prove_projection(&typing, xc, u);
 	const struct pg_evidence *fc = pg_prove_family_context_extension(&typing, base, f, xc, universe);
 	assert(fc && pg_evidence_rule(fc) == PG_CONTEXT_FAMILY_EXTEND);
-	common_rule(&typing, &classifiers, fc);
+	common_rule(&typing, fc);
 	assert(!pg_prove_family_context_extension(&typing, base, f, base, pg_prove_projection(&typing, base, u)));
 	assert(!pg_prove_family_context_extension(&typing, base, f, xc, u));
 	const struct pg_evidence *vc = pg_prove_context_extension(&typing, fc, v, pg_prove_variable(&typing, fc, t));
@@ -180,7 +176,7 @@ static void scoped_type_families(void)
 	const struct pg_evidence *value = pg_prove_variable(&typing, vc, v);
 	assert(family && pg_evidence_judgement(family) == PG_JUDGEMENT_TYPE_FAMILY);
 	assert(!pg_prove_value_type(&typing, family) && !pg_prove_type_value(&typing, family));
-	assert(!pg_prove_return(&typing, &classifiers, family) && !pg_prove_force(&typing, family));
+	assert(!pg_prove_return(&typing, family) && !pg_prove_force(&typing, family));
 	assert(!pg_prove_application(&typing, family, type));
 	assert(!pg_prove_family_application(&typing, family, value));
 	const struct pg_evidence *partial = pg_prove_family_application(&typing, family, type);
@@ -190,24 +186,24 @@ static void scoped_type_families(void)
 	assert(pg_evidence_classifier(fiber) == pg_evidence_subject(u)->core);
 	assert(!pg_prove_family_application(&typing, fiber, value));
 	assert(pg_prove_type_value(&typing, fiber));
-	common_rule(&typing, &classifiers, partial);
-	common_rule(&typing, &classifiers, fiber);
+	common_rule(&typing, partial);
+	common_rule(&typing, fiber);
 	const struct pg_evidence *abstracted = pg_prove_family_abstraction(&typing, vc, fiber);
 	assert(abstracted && pg_evidence_subject(abstracted)->core->kind == PG_LAMBDA);
-	common_rule(&typing, &classifiers, abstracted);
+	common_rule(&typing, abstracted);
 	const struct pg_evidence *environment = NULL;
-	assert(!pg_prove_construction_origin(&typing, &classifiers, empty, &environment));
-	assert(!pg_prove_construction_origin(&typing, &classifiers, vc, &environment));
-	assert(pg_prove_construction_origin(&typing, &classifiers, abstracted, &environment) == abstracted && !environment);
-	assert(pg_prove_construction_origin(&typing, &classifiers, partial, &environment) == partial && !environment);
-	assert(pg_prove_construction_origin(&typing, &classifiers, fiber, &environment) == fiber && !environment);
+	assert(!pg_prove_construction_origin(&typing, empty, &environment));
+	assert(!pg_prove_construction_origin(&typing, vc, &environment));
+	assert(pg_prove_construction_origin(&typing, abstracted, &environment) == abstracted && !environment);
+	assert(pg_prove_construction_origin(&typing, partial, &environment) == partial && !environment);
+	assert(pg_prove_construction_origin(&typing, fiber, &environment) == fiber && !environment);
 	const struct pg_evidence *projected_family = pg_prove_projection(&typing, vc, abstracted);
-	assert(pg_prove_construction_origin(&typing, &classifiers, projected_family, &environment) == abstracted);
+	assert(pg_prove_construction_origin(&typing, projected_family, &environment) == abstracted);
 	assert(environment && pg_evidence_context_map(environment)->source == pg_evidence_context(fc));
 	assert(pg_evidence_context_map(environment)->destination == pg_evidence_context(vc));
 	size_t occurrence_count = typing.occurrences.count, proof_count = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i)
-		assert(pg_prove_construction_origin(&typing, &classifiers, projected_family, &environment) == abstracted);
+		assert(pg_prove_construction_origin(&typing, projected_family, &environment) == abstracted);
 	assert(typing.occurrences.count == occurrence_count && typing.proofs.count == proof_count);
 	/* Substitution preserves the binding sort, even though both images are
 	 * ordinary Core terms. Neither a type value nor a raw thunk is a family. */
@@ -220,13 +216,13 @@ static void scoped_type_families(void)
 	assert(!pg_prove_substitution_pair(&typing, zero, base, family));
 	const struct pg_evidence *projection = pg_prove_substitution_projection(&typing, vc, vc);
 	assert(projection && pg_prove_reindex(&typing, projection, family));
-	assert(!pg_prove_construction_origin(&typing, &classifiers, projection, &environment));
+	assert(!pg_prove_construction_origin(&typing, projection, &environment));
 	/* Admit an empty indexed family with the dependent signature (A, x:A).
 	 * Recovery must retain both typed images, in order, across wrappers. */
 	const struct pg_evidence *ia = pg_prove_context_extension(&typing, fc, a, pg_prove_projection(&typing, fc, u));
 	const struct pg_evidence *ix = pg_prove_context_extension(&typing, ia, x, pg_prove_variable(&typing, ia, a));
 	const struct pg_data_schema *schema = pg_data_schema(&typing, pg_data_signature(&typing, fc, ix), 0, NULL);
-	const struct pg_evidence *nominal = pg_prove_inductive_type(&typing, &classifiers, schema);
+	const struct pg_evidence *nominal = pg_prove_inductive_type(&typing, schema);
 	assert(nominal);
 	struct pg_inductive_instance recovered;
 	assert(!pg_inductive_instance(&typing, fiber, &recovered));
@@ -236,8 +232,8 @@ static void scoped_type_families(void)
 	assert(nt && !pg_inductive_instance(&typing, np, &recovered));
 	assert(pg_inductive_instance(&typing, nf, &recovered) && !recovered.indices);
 	const struct pg_evidence *outer = pg_prove_context_extension(&typing, vc, pg_binder(&graph), nt);
-	const struct pg_evidence *suspended = pg_prove_thunk_type(&typing, &classifiers,
-		pg_prove_return_type(&typing, &classifiers, nt));
+	const struct pg_evidence *suspended = pg_prove_thunk_type(&typing,
+		pg_prove_return_type(&typing, nt));
 	assert(suspended && !pg_inductive_instance(&typing, suspended, &recovered));
 	const struct pg_evidence *resumed = pg_prove_return_content(&typing,
 		pg_prove_thunk_content(&typing, pg_prove_reindex(&typing,
@@ -246,13 +242,13 @@ static void scoped_type_families(void)
 	 * including Force/Thunk and Fold, without a second continuation machine. */
 	const struct pg_evidence *type_value = pg_prove_type_value(&typing, nt);
 	const struct pg_evidence *type_scope = pg_prove_context_extension(&typing, vc, pg_binder(&graph),
-		pg_prove_classifier(&typing, &classifiers, vc, type_value));
-	const struct pg_evidence *type_identity = pg_prove_abstract(&typing, &classifiers, vc, type_scope,
-		pg_prove_return(&typing, &classifiers,
+		pg_prove_classifier(&typing, vc, type_value));
+	const struct pg_evidence *type_identity = pg_prove_abstract(&typing, vc, type_scope,
+		pg_prove_return(&typing,
 			pg_prove_variable(&typing, type_scope, pg_evidence_context(type_scope)->binder)));
-	const struct pg_evidence *computed = pg_prove_fold(&typing, &classifiers,
-		pg_prove_force(&typing, pg_prove_thunk(&typing, &classifiers,
-			pg_prove_return(&typing, &classifiers, type_value))), type_identity);
+	const struct pg_evidence *computed = pg_prove_fold(&typing,
+		pg_prove_force(&typing, pg_prove_thunk(&typing,
+			pg_prove_return(&typing, type_value))), type_identity);
 	assert(computed);
 	struct pg_whnf_work reduction;
 	assert(!pg_whnf_work_init(&reduction, &graph));
@@ -315,10 +311,9 @@ static void scoped_type_families(void)
 		lifted_family, pg_prove_variable(&typing, destination, a)), pg_prove_variable(&typing, destination, x)));
 	assert(!pg_prove_substitution_lift(&typing, into_indices, fc, a));
 	assert(!pg_prove_substitution_lift(&typing, zero, fc, g));
-	common_rule(&typing, &classifiers, lifted);
-	common_rule(&typing, &classifiers, destination);
-	solved_family_lift(&typing, &classifiers, into_indices, fc, g, lifted);
-	pg_classifiers_destroy(&classifiers);
+	common_rule(&typing, lifted);
+	common_rule(&typing, destination);
+	solved_family_lift(&typing, into_indices, fc, g, lifted);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
 }
@@ -327,11 +322,9 @@ static void higher_family_lift(void)
 {
 	struct pg_graph graph;
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
 	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
-	assert(!pg_classifiers_init(&classifiers, &graph));
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
 	const struct pg_object *a = pg_binder(&graph), *f = pg_binder(&graph), *h = pg_binder(&graph);
 	const struct pg_evidence *ac = pg_prove_context_extension(&typing, empty, a, u);
 	const struct pg_evidence *fc = pg_prove_family_context_extension(&typing, empty, f, ac,
@@ -353,10 +346,9 @@ static void higher_family_lift(void)
 	assert(pg_evidence_rule(destination) == PG_CONTEXT_FAMILY_EXTEND);
 	assert(pg_alpha_equal(pg_evidence_classifier(pg_prove_variable(&typing, hc, h)),
 		pg_evidence_classifier(pg_prove_variable(&typing, destination, h))) == 1);
-	common_rule(&typing, &classifiers, lifted);
-	common_rule(&typing, &classifiers, destination);
-	solved_family_lift(&typing, &classifiers, prefix, hc, h, lifted);
-	pg_classifiers_destroy(&classifiers);
+	common_rule(&typing, lifted);
+	common_rule(&typing, destination);
+	solved_family_lift(&typing, prefix, hc, h, lifted);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
 }
@@ -367,11 +359,9 @@ static void accessibility_elimination(enum pg_totality field_totality)
 {
 	struct pg_graph graph;
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
 	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
-	assert(!pg_classifiers_init(&classifiers, &graph));
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-	const struct pg_evidence *universe = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *universe = pg_prove_universe(&typing, empty, 0);
 	const struct pg_object *a = pg_binder(&graph), *r = pg_binder(&graph), *p = pg_binder(&graph);
 	const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph), *e = pg_binder(&graph);
 	const struct pg_evidence *ac = pg_prove_context_extension(&typing, empty, a, universe);
@@ -383,7 +373,7 @@ static void accessibility_elimination(enum pg_totality field_totality)
 		struct pg_whnf_work work;
 		struct pg_synthesis synthesis;
 		assert(!pg_whnf_work_init(&work, &graph));
-		assert(!pg_synthesis_init(&synthesis, &typing, &classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		assert(!pg_synthesis_init(&synthesis, &typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
 		const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, pg_synthesis_root(&synthesis),
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "A", .length = 1}, a, ac);
 		scope = pg_synthesis_bind(&synthesis, scope,
@@ -428,29 +418,29 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	const struct pg_evidence *ec = pg_prove_context_extension(&typing, yc, e, edge);
 	const struct pg_evidence *recursive = pg_prove_family_application(&typing,
 		pg_prove_variable(&typing, ec, self), pg_prove_variable(&typing, ec, y));
-	const struct pg_evidence *down_type = pg_prove_pi(&typing, &classifiers, ec,
-		pg_prove_computation_type(&typing, &classifiers, field_totality,
+	const struct pg_evidence *down_type = pg_prove_pi(&typing, ec,
+		pg_prove_computation_type(&typing, field_totality,
 			pg_effect_row(&graph, 0, NULL), recursive));
-	down_type = pg_prove_pi(&typing, &classifiers, yc, down_type);
+	down_type = pg_prove_pi(&typing, yc, down_type);
 	const struct pg_evidence *fields = pg_prove_context_extension(&typing, xc, down,
-		pg_prove_thunk_type(&typing, &classifiers, down_type));
+		pg_prove_thunk_type(&typing, down_type));
 	const struct pg_evidence *result = pg_prove_substitution_pair(&typing,
 		pg_prove_substitution_projection(&typing, sc, fields), indices, pg_prove_variable(&typing, fields, x));
 	const struct pg_data_schema *schema = pg_data_schema(&typing,
 		pg_data_signature(&typing, sc, indices), 1, &result);
-	const struct pg_evidence *acc = pg_prove_inductive_type(&typing, &classifiers, schema);
+	const struct pg_evidence *acc = pg_prove_inductive_type(&typing, schema);
 	assert(acc);
-	common_rule(&typing, &classifiers, acc);
+	common_rule(&typing, acc);
 	const struct pg_evidence *acc_r = pg_prove_family_abstraction(&typing, rc, acc);
 	const struct pg_evidence *acc_a = pg_prove_family_abstraction(&typing, ac, acc_r);
 	assert(acc_r && acc_a);
-	common_rule(&typing, &classifiers, acc_r);
-	common_rule(&typing, &classifiers, acc_a);
+	common_rule(&typing, acc_r);
+	common_rule(&typing, acc_a);
 	const struct pg_evidence *applied_a = pg_prove_family_application(&typing,
 		pg_prove_projection(&typing, rc, acc_a), pg_prove_variable(&typing, rc, a));
 	const struct pg_evidence *applied_r = pg_prove_family_application(&typing, applied_a, pg_prove_variable(&typing, rc, r));
 	assert(applied_r);
-	common_rule(&typing, &classifiers, applied_r);
+	common_rule(&typing, applied_r);
 	const struct pg_evidence *applied_body = pg_prove_application_body(&typing, applied_a, pg_prove_variable(&typing, rc, r));
 	assert(applied_body);
 	struct pg_inductive_instance instance;
@@ -463,8 +453,8 @@ static void accessibility_elimination(enum pg_totality field_totality)
 		pg_prove_value_type(&typing, pg_prove_variable(&typing, unary_context, a)));
 	assert(unary && !pg_prove_family_application(&typing, applied_a, unary));
 	assert(!pg_prove_application_body(&typing, applied_a, unary));
-	const struct pg_evidence *delayed = pg_prove_thunk(&typing, &classifiers,
-		pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, rc, a)));
+	const struct pg_evidence *delayed = pg_prove_thunk(&typing,
+		pg_prove_return(&typing, pg_prove_variable(&typing, rc, a)));
 	assert(delayed && !pg_prove_family_application(&typing, applied_a, delayed));
 	/* A higher signature can quantify over R itself; it still admits only a
 	 * logical family of the specified arity, never an arbitrary computation. */
@@ -472,7 +462,7 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	const struct pg_evidence *oc = pg_prove_family_context_extension(&typing, ac, operator, index,
 		pg_prove_projection(&typing, index, universe));
 	assert(oc);
-	common_rule(&typing, &classifiers, oc);
+	common_rule(&typing, oc);
 	const struct pg_evidence *map = pg_prove_substitution_projection(&typing, ac, oc);
 	map = pg_prove_substitution_lift(&typing, map, rx, x);
 	map = pg_prove_substitution_lift(&typing, map, ry, y);
@@ -483,14 +473,14 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	const struct pg_evidence *higher = pg_prove_family_application(&typing,
 		pg_prove_variable(&typing, both, operator), pg_prove_variable(&typing, both, r));
 	assert(higher && pg_evidence_judgement(higher) == PG_JUDGEMENT_TYPE_FAMILY);
-	common_rule(&typing, &classifiers, higher);
+	common_rule(&typing, higher);
 	const struct pg_evidence *higher_value_context = pg_prove_context_extension(&typing, both, pg_binder(&graph),
 		pg_prove_variable(&typing, both, a));
 	const struct pg_evidence *higher_fiber = pg_prove_family_application(&typing,
 		pg_prove_projection(&typing, higher_value_context, higher),
 		pg_prove_variable(&typing, higher_value_context, pg_evidence_context(higher_value_context)->binder));
 	assert(higher_fiber && pg_evidence_judgement(higher_fiber) == PG_JUDGEMENT_VALUE_TYPE);
-	common_rule(&typing, &classifiers, higher_fiber);
+	common_rule(&typing, higher_fiber);
 	const struct pg_evidence *pc = pg_prove_family_context_extension(&typing, rc, p, index,
 		pg_prove_projection(&typing, index, universe));
 	/* step : (x:A) -> U((y:A) -> R y x -> F(P y)) -> F(P x). */
@@ -502,18 +492,18 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	ec = pg_prove_context_extension(&typing, yc, e, edge);
 	const struct pg_evidence *py = pg_prove_family_application(&typing,
 		pg_prove_variable(&typing, ec, p), pg_prove_variable(&typing, ec, y));
-	const struct pg_evidence *ih_type = pg_prove_pi(&typing, &classifiers, ec,
-		pg_prove_return_type(&typing, &classifiers, py));
-	ih_type = pg_prove_pi(&typing, &classifiers, yc, ih_type);
+	const struct pg_evidence *ih_type = pg_prove_pi(&typing, ec,
+		pg_prove_return_type(&typing, py));
+	ih_type = pg_prove_pi(&typing, yc, ih_type);
 	const struct pg_evidence *hc = pg_prove_context_extension(&typing, xc, pg_binder(&graph),
-		pg_prove_thunk_type(&typing, &classifiers, ih_type));
+		pg_prove_thunk_type(&typing, ih_type));
 	const struct pg_evidence *px = pg_prove_family_application(&typing,
 		pg_prove_variable(&typing, hc, p), pg_prove_variable(&typing, hc, x));
-	const struct pg_evidence *step_type = pg_prove_pi(&typing, &classifiers, hc, pg_prove_return_type(&typing, &classifiers, px));
-	step_type = pg_prove_pi(&typing, &classifiers, xc, step_type);
+	const struct pg_evidence *step_type = pg_prove_pi(&typing, hc, pg_prove_return_type(&typing, px));
+	step_type = pg_prove_pi(&typing, xc, step_type);
 	const struct pg_object *step = pg_binder(&graph), *subject = pg_binder(&graph), *proof = pg_binder(&graph);
 	const struct pg_evidence *context = pg_prove_context_extension(&typing, pc, step,
-		pg_prove_thunk_type(&typing, &classifiers, step_type));
+		pg_prove_thunk_type(&typing, step_type));
 	context = pg_prove_context_extension(&typing, context, subject, pg_prove_variable(&typing, context, a));
 	const struct pg_evidence *fiber = pg_prove_family_application(&typing,
 		pg_prove_projection(&typing, context, acc), pg_prove_variable(&typing, context, subject));
@@ -521,7 +511,7 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	const struct pg_evidence *parameters = pg_prove_substitution_projection(&typing, rc, context);
 	const struct pg_evidence *mc = pg_prove_inductive_motive_context(&typing, acc, parameters, pg_binder(&graph));
 	const struct pg_evidence *motive_index = pg_prove_variable(&typing, mc, pg_evidence_context(mc)->parent->binder);
-	const struct pg_evidence *motive = pg_prove_return_type(&typing, &classifiers,
+	const struct pg_evidence *motive = pg_prove_return_type(&typing,
 		pg_prove_family_application(&typing, pg_prove_variable(&typing, mc, p), motive_index));
 	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), 0);
 	/* Infer the candidate from step x's result before an IH exists. The
@@ -530,9 +520,9 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	const struct pg_evidence *field_context = pg_evidence_premise(field_map, 1);
 	const struct pg_evidence *field_values[] = {
 		pg_substitution_image(&typing, field_map, x), pg_substitution_image(&typing, field_map, down)};
-	const struct pg_evidence *total_motive = pg_prove_computation_type(&typing, &classifiers,
+	const struct pg_evidence *total_motive = pg_prove_computation_type(&typing,
 		PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_prove_return_content(&typing, motive));
-	const struct pg_evidence *bounded_ih = pg_prove_inductive_hypothesis_type(&typing, &classifiers,
+	const struct pg_evidence *bounded_ih = pg_prove_inductive_hypothesis_type(&typing,
 		acc, parameters, mc, total_motive, field_context, field_values[1]);
 	assert(bounded_ih);
 	const struct pg_term *tail, *domain, *codomain, *content;
@@ -547,41 +537,41 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	 * admissible only when the recursive field carries a total pure contract. */
 	const struct pg_evidence *z = pg_prove_variable(&typing, mc, pg_evidence_context(mc)->binder);
 	const struct pg_evidence *child_identity = pg_prove_identity_type(&typing,
-		pg_prove_classifier(&typing, &classifiers, mc, z), z, z);
-	const struct pg_evidence *child_motive = pg_prove_return_type(&typing, &classifiers, child_identity);
+		pg_prove_classifier(&typing, mc, z), z, z);
+	const struct pg_evidence *child_motive = pg_prove_return_type(&typing, child_identity);
 	assert(child_motive);
-	const struct pg_evidence *dependent_ih = pg_prove_inductive_hypothesis_type(&typing, &classifiers,
+	const struct pg_evidence *dependent_ih = pg_prove_inductive_hypothesis_type(&typing,
 		acc, parameters, mc, child_motive, field_context, field_values[1]);
 	assert(!!dependent_ih == (field_totality == PG_TOTALITY_TOTAL));
 	if (dependent_ih) {
-		common_rule(&typing, &classifiers, dependent_ih);
-		assert(pg_prove_induction_scope(&typing, &classifiers, acc, constructor,
+		common_rule(&typing, dependent_ih);
+		assert(pg_prove_induction_scope(&typing, acc, constructor,
 			parameters, mc, child_motive));
 	}
 	const struct pg_evidence *constructor_value = pg_prove_constructor(&typing, acc, constructor,
 		pg_prove_substitution_projection(&typing, rc, field_context), 2, field_values);
 	const struct pg_evidence *constructor_pattern = pg_prove_inductive_motive_substitution(&typing,
-		&classifiers, acc, parameters, mc, field_context, constructor_value);
+		acc, parameters, mc, field_context, constructor_value);
 	const struct pg_evidence *step_at_field = pg_prove_application(&typing,
 		pg_prove_force(&typing, pg_prove_variable(&typing, field_context, step)), field_values[0]);
 	const struct pg_evidence *branch_result = pg_prove_pi_constant_codomain(&typing,
-		pg_prove_classifier(&typing, &classifiers, field_context, step_at_field));
-	const struct pg_evidence *inferred = pg_prove_pattern_type(&typing, &classifiers,
+		pg_prove_classifier(&typing, field_context, step_at_field));
+	const struct pg_evidence *inferred = pg_prove_pattern_type(&typing,
 		context, constructor_pattern, branch_result);
 	assert(inferred && pg_alpha_equal(pg_evidence_subject(inferred)->core, pg_evidence_subject(motive)->core) == 1);
-	common_rule(&typing, &classifiers, inferred);
-	const struct pg_evidence *total_branch_type = pg_prove_computation_type(&typing, &classifiers,
+	common_rule(&typing, inferred);
+	const struct pg_evidence *total_branch_type = pg_prove_computation_type(&typing,
 		PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_prove_return_content(&typing, branch_result));
-	const struct pg_evidence *total_inferred = pg_prove_pattern_type(&typing, &classifiers,
+	const struct pg_evidence *total_inferred = pg_prove_pattern_type(&typing,
 		context, constructor_pattern, total_branch_type);
 	assert(total_inferred && pg_alpha_equal(pg_evidence_subject(total_inferred)->core,
 		pg_evidence_subject(total_motive)->core) == 1);
 	const struct pg_evidence *down_identity = pg_prove_identity_type(&typing,
-		pg_prove_classifier(&typing, &classifiers, field_context, field_values[1]), field_values[1], field_values[1]);
-	assert(down_identity && !pg_prove_pattern_type(&typing, &classifiers, context, constructor_pattern,
-		pg_prove_return_type(&typing, &classifiers, down_identity)));
+		pg_prove_classifier(&typing, field_context, field_values[1]), field_values[1], field_values[1]);
+	assert(down_identity && !pg_prove_pattern_type(&typing, context, constructor_pattern,
+		pg_prove_return_type(&typing, down_identity)));
 	motive = inferred;
-	const struct pg_evidence *scope = pg_prove_induction_scope(&typing, &classifiers, acc, constructor, parameters, mc, motive);
+	const struct pg_evidence *scope = pg_prove_induction_scope(&typing, acc, constructor, parameters, mc, motive);
 	assert(scope);
 	const struct pg_evidence *branch_context = pg_evidence_premise(scope, 1);
 	const struct pg_evidence *ih = pg_prove_variable(&typing, branch_context, pg_evidence_context(branch_context)->binder);
@@ -589,27 +579,27 @@ static void accessibility_elimination(enum pg_totality field_totality)
 		pg_prove_force(&typing, pg_prove_variable(&typing, branch_context, step)), pg_substitution_image(&typing, scope, x));
 	const struct pg_evidence *body = pg_prove_application(&typing, at_x, ih);
 	assert(body && !pg_prove_application(&typing, at_x, pg_substitution_image(&typing, scope, down)));
-	const struct pg_evidence *branch = pg_prove_abstract(&typing, &classifiers, context, branch_context, body);
-	const struct pg_evidence *elimination = pg_prove_induction(&typing, &classifiers, acc, parameters,
+	const struct pg_evidence *branch = pg_prove_abstract(&typing, context, branch_context, body);
+	const struct pg_evidence *elimination = pg_prove_induction(&typing, acc, parameters,
 		pg_prove_variable(&typing, context, proof), mc, motive, 1, &branch);
 	assert(elimination);
-	assert(!pg_prove_elimination_body(&typing, &classifiers, elimination));
-	common_rule(&typing, &classifiers, elimination);
+	assert(!pg_prove_elimination_body(&typing, elimination));
+	common_rule(&typing, elimination);
 	const struct pg_evidence *constructor_parameters = pg_prove_substitution_projection(&typing, rc, field_context);
-	const struct pg_evidence *projected = pg_prove_elimination_reindex(&typing, &classifiers,
+	const struct pg_evidence *projected = pg_prove_elimination_reindex(&typing,
 		pg_prove_substitution_projection(&typing, context, field_context), elimination);
 	const struct pg_evidence *projected_branch = pg_evidence_premise(projected, 5);
-	const struct pg_evidence *at_constructor = pg_prove_induction(&typing, &classifiers, acc,
+	const struct pg_evidence *at_constructor = pg_prove_induction(&typing, acc,
 		constructor_parameters, constructor_value, pg_evidence_premise(projected, 4),
 		pg_evidence_premise(projected, 0), 1, &projected_branch);
 	assert(at_constructor);
-	const struct pg_evidence *unfolded = pg_prove_elimination_body(&typing, &classifiers, at_constructor);
+	const struct pg_evidence *unfolded = pg_prove_elimination_body(&typing, at_constructor);
 	assert(unfolded);
 	assert(pg_alpha_equal(pg_evidence_classifier(at_constructor), pg_evidence_classifier(unfolded)) == 1);
-	const struct pg_evidence *unfolded_again = pg_prove_elimination_body(&typing, &classifiers, at_constructor);
+	const struct pg_evidence *unfolded_again = pg_prove_elimination_body(&typing, at_constructor);
 	assert(unfolded_again && pg_alpha_equal(pg_evidence_subject(unfolded)->core,
 		pg_evidence_subject(unfolded_again)->core) == 1);
-	common_rule(&typing, &classifiers, unfolded);
+	common_rule(&typing, unfolded);
 	struct pg_whnf_work unfolding_work;
 	assert(!pg_whnf_work_init(&unfolding_work, &graph));
 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
@@ -622,19 +612,19 @@ static void accessibility_elimination(enum pg_totality field_totality)
 		pg_conversion_destroy(&unfolding);
 	}
 	pg_whnf_work_destroy(&unfolding_work);
-	const struct pg_evidence *expected = pg_prove_return_type(&typing, &classifiers,
+	const struct pg_evidence *expected = pg_prove_return_type(&typing,
 		pg_prove_family_application(&typing, pg_prove_variable(&typing, context, p), pg_prove_variable(&typing, context, subject)));
 	assert(pg_alpha_equal(pg_evidence_classifier(elimination), pg_evidence_subject(expected)->core) == 1);
 	/* Close the same eliminator over A, R and P, then instantiate it using
 	 * ordinary APP and typed substitution. Logical families are not values. */
-	const struct pg_evidence *closed = pg_prove_abstract(&typing, &classifiers, empty, context, elimination);
+	const struct pg_evidence *closed = pg_prove_abstract(&typing, empty, context, elimination);
 	assert(closed && !pg_evidence_context(closed));
-	common_rule(&typing, &classifiers, closed);
+	common_rule(&typing, closed);
 	const struct pg_evidence *opened = pg_prove_projection(&typing, context, closed);
 	const struct pg_object *parameter_binders[] = {a, r, p, step, subject, proof};
 	for (size_t i = 0; i < sizeof(parameter_binders) / sizeof(parameter_binders[0]); ++i) {
 		const struct pg_evidence *argument = pg_prove_variable(&typing, context, parameter_binders[i]);
-		const struct pg_evidence *pi = pg_prove_classifier(&typing, &classifiers, context, opened);
+		const struct pg_evidence *pi = pg_prove_classifier(&typing, context, opened);
 		assert(pi);
 		if (i == 1 || i == 2) {
 			assert(!pg_prove_pi_domain(&typing, pi));
@@ -645,10 +635,9 @@ static void accessibility_elimination(enum pg_totality field_totality)
 		opened = pg_prove_application(&typing, opened, argument);
 		assert(opened && codomain);
 		assert(pg_alpha_equal(pg_evidence_classifier(opened), pg_evidence_subject(codomain)->core) == 1);
-		common_rule(&typing, &classifiers, opened);
+		common_rule(&typing, opened);
 	}
 	assert(pg_alpha_equal(pg_evidence_classifier(opened), pg_evidence_subject(expected)->core) == 1);
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
 	puts("Acc: open logical relation, indexed function-field IH and dependent elimination passed");
@@ -658,11 +647,9 @@ static void retained_substitution_prefix(void)
 {
 	struct pg_graph graph;
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
 	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
-	assert(!pg_classifiers_init(&classifiers, &graph));
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
 	const struct pg_evidence *contexts[2], *function_types[2], *images[2];
 	const struct pg_object *function_binders[2];
 	for (size_t i = 0; i < 2; ++i) {
@@ -671,9 +658,9 @@ static void retained_substitution_prefix(void)
 		const struct pg_evidence *base = pg_prove_context_extension(&typing, empty, a, u);
 		const struct pg_evidence *domain = pg_prove_variable(&typing, base, a);
 		const struct pg_evidence *body = pg_prove_context_extension(&typing, base, x, domain);
-		function_types[i] = pg_prove_thunk_type(&typing, &classifiers,
-			pg_prove_pi(&typing, &classifiers, body,
-				pg_prove_return_type(&typing, &classifiers, pg_prove_variable(&typing, body, a))));
+		function_types[i] = pg_prove_thunk_type(&typing,
+			pg_prove_pi(&typing, body,
+				pg_prove_return_type(&typing, pg_prove_variable(&typing, body, a))));
 		contexts[i] = pg_prove_context_extension(&typing, base, function_binders[i], function_types[i]);
 		assert(contexts[i]);
 		if (i) {
@@ -693,7 +680,6 @@ static void retained_substitution_prefix(void)
 	assert(pg_evidence_premise(result, 0) == alternate);
 	assert(pg_prove_substitution(&typing, alternate, contexts[1], 2, images) == result);
 	assert(pg_evidence_premise(result, 2) == images[0] && pg_evidence_premise(result, 3) == images[1]);
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
 }
@@ -720,7 +706,7 @@ static const struct pg_evidence *solve_index_proof(struct pg_synthesis *synthesi
 	return pg_synthesis_result(job);
 }
 
-static void indexed_path_motive(struct pg_typing *typing, struct pg_classifiers *classifiers,
+static void indexed_path_motive(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_evidence *parameters,
 	const struct pg_evidence *scrutinee, const struct pg_evidence *mc,
 	const struct pg_evidence *fields, const struct pg_evidence *original_type,
@@ -728,7 +714,7 @@ static void indexed_path_motive(struct pg_typing *typing, struct pg_classifiers 
 {
 	const struct pg_evidence *context = pg_evidence_premise(parameters, 1);
 	struct pg_inductive_instance actual, generic;
-	assert(pg_inductive_instance(typing, pg_prove_classifier(typing, classifiers, context, scrutinee), &actual));
+	assert(pg_inductive_instance(typing, pg_prove_classifier(typing, context, scrutinee), &actual));
 	assert(pg_inductive_instance(typing, pg_evidence_premise(mc, 1), &generic));
 	const struct pg_evidence *projection = pg_prove_substitution_projection(typing, context, mc);
 	const struct pg_evidence *left = pg_prove_substitution_compose(typing, actual.indices, projection);
@@ -741,11 +727,11 @@ static void indexed_path_motive(struct pg_typing *typing, struct pg_classifiers 
 	/* Motive: for each generic (A',x') and d:D A' x', consume paths
 	 * (A,x)=(A',x') and return an A. A is the fixed ambient type, so a
 	 * branch field of type A' requires transport, not just substitution. */
-	const struct pg_evidence *motive = pg_prove_return_type(typing, classifiers,
+	const struct pg_evidence *motive = pg_prove_return_type(typing,
 		pg_prove_projection(typing, pc, original_type));
 	const struct pg_evidence *extensions[] = {pg_evidence_premise(pc, 0), pc};
 	for (const struct pg_evidence *c = pc; pg_evidence_context(c) != pg_evidence_context(mc); c = pg_evidence_premise(c, 0))
-		motive = pg_prove_pi(typing, classifiers, c, motive);
+		motive = pg_prove_pi(typing, c, motive);
 	assert(motive);
 	const struct pg_evidence *fc = pg_evidence_premise(fields, 1);
 	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(actual.schema), 0);
@@ -756,7 +742,7 @@ static void indexed_path_motive(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *field_parameters = pg_prove_substitution_compose(typing, parameters,
 		pg_prove_substitution_projection(typing, context, fc));
 	const struct pg_evidence *data = pg_prove_constructor(typing, formation, constructor, field_parameters, 2, values);
-	const struct pg_evidence *pattern = pg_prove_inductive_motive_substitution(typing, classifiers,
+	const struct pg_evidence *pattern = pg_prove_inductive_motive_substitution(typing,
 		formation, parameters, mc, fc, data);
 	for (size_t i = 0; i < 2; ++i)
 		pattern = pg_prove_substitution_lift(typing, pattern, extensions[i], pg_binder(typing->graph));
@@ -764,38 +750,38 @@ static void indexed_path_motive(struct pg_typing *typing, struct pg_classifiers 
 	const struct pg_evidence *bc = pg_evidence_premise(pattern, 1);
 	const struct pg_evidence *type_path = pg_substitution_image(typing, pattern, binders[0]);
 	const struct pg_evidence *field = pg_prove_projection(typing, bc, values[1]);
-	const struct pg_evidence *transported = pg_prove_identity_transport(typing, classifiers,
+	const struct pg_evidence *transported = pg_prove_identity_transport(typing,
 		type_path, field, PG_IDENTITY_LEFT);
 	assert(transported && pg_evidence_classifier(transported) == pg_evidence_subject(original_type)->core);
-	const struct pg_evidence *branch = pg_prove_abstract(typing, classifiers, context, bc,
-		pg_prove_return(typing, classifiers, transported));
-	const struct pg_evidence *match = pg_prove_match(typing, classifiers, formation, parameters,
+	const struct pg_evidence *branch = pg_prove_abstract(typing, context, bc,
+		pg_prove_return(typing, transported));
+	const struct pg_evidence *match = pg_prove_match(typing, formation, parameters,
 		scrutinee, mc, motive, 1, &branch);
 	assert(match);
-	const struct pg_evidence *untransported = pg_prove_abstract(typing, classifiers, context, bc,
-		pg_prove_return(typing, classifiers, field));
-	assert(untransported && !pg_prove_match(typing, classifiers, formation, parameters,
+	const struct pg_evidence *untransported = pg_prove_abstract(typing, context, bc,
+		pg_prove_return(typing, field));
+	assert(untransported && !pg_prove_match(typing, formation, parameters,
 		scrutinee, mc, motive, 1, &untransported));
-	common_rule(typing, classifiers, match);
+	common_rule(typing, match);
 	const struct pg_evidence *type_value = pg_prove_type_value(typing, original_type);
 	const struct pg_evidence *arguments[] = {
-		pg_prove_reflexivity(typing, pg_prove_classifier(typing, classifiers, context, type_value), type_value),
+		pg_prove_reflexivity(typing, pg_prove_classifier(typing, context, type_value), type_value),
 		pg_prove_reflexivity(typing, original_type, original_value)
 	};
 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
 		struct pg_whnf_work work;
 		struct pg_synthesis synthesis;
 		assert(!pg_whnf_work_init(&work, typing->graph));
-		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
 		struct pg_synthesis_job *applied = pg_synthesis_evidence(&synthesis, match);
 		for (size_t i = 0; i < 2; ++i)
 			applied = pg_synthesis_application(&synthesis, context, applied, pg_synthesis_evidence(&synthesis, arguments[i]));
 		const struct pg_evidence *result = solve_index_proof(&synthesis, applied, chunk, PG_SYNTHESIS_DONE);
-		assert(pg_evidence_classifier(result) == pg_return_type(classifiers, pg_evidence_subject(original_type)->core));
+		assert(pg_evidence_classifier(result) == pg_return_type(typing->graph, pg_evidence_subject(original_type)->core));
 		const struct pg_evidence *normal = solve_index_proof(&synthesis,
 			pg_synthesis_normalize_jobs(&synthesis, pg_synthesis_evidence(&synthesis, context), applied, PG_REDUCTION_NF),
 			chunk, PG_SYNTHESIS_DONE);
-		assert(pg_evidence_subject(normal)->core == pg_evidence_subject(pg_prove_return(typing, classifiers, original_value))->core);
+		assert(pg_evidence_subject(normal)->core == pg_evidence_subject(pg_prove_return(typing, original_value))->core);
 		solve_index_proof(&synthesis, pg_synthesis_application(&synthesis, context,
 			pg_synthesis_evidence(&synthesis, match), pg_synthesis_evidence(&synthesis, arguments[1])),
 			chunk, PG_SYNTHESIS_REJECTED);
@@ -809,12 +795,10 @@ static void indexed_match(void)
 {
 	struct pg_graph graph;
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
 	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
-	assert(!pg_classifiers_init(&classifiers, &graph));
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
-	const struct pg_evidence *u1 = pg_prove_universe(&typing, &classifiers, empty, 1);
+	const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
+	const struct pg_evidence *u1 = pg_prove_universe(&typing, empty, 1);
 	const struct pg_object *a = pg_binder(&graph), *x = pg_binder(&graph), *f = pg_binder(&graph);
 	const struct pg_evidence *ac = pg_prove_context_extension(&typing, empty, a, u);
 	const struct pg_evidence *xc = pg_prove_context_extension(&typing, ac, x, pg_prove_variable(&typing, ac, a));
@@ -824,7 +808,7 @@ static void indexed_match(void)
 	const struct pg_evidence *ix = pg_prove_context_extension(&typing, ia, x, pg_prove_variable(&typing, ia, a));
 	const struct pg_evidence *result_map = pg_prove_substitution_projection(&typing, ix, ix);
 	const struct pg_data_schema *schema = pg_data_schema(&typing, pg_data_signature(&typing, fc, ix), 1, &result_map);
-	const struct pg_evidence *formation = pg_prove_inductive_type(&typing, &classifiers, schema);
+	const struct pg_evidence *formation = pg_prove_inductive_type(&typing, schema);
 	assert(formation);
 	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), 0);
 	const struct pg_evidence *parameters = pg_prove_substitution_projection(&typing, empty, xc);
@@ -835,20 +819,20 @@ static void indexed_match(void)
 	const struct pg_evidence *mc = pg_prove_inductive_motive_context(&typing, formation, parameters, pg_binder(&graph));
 	assert(mc);
 	const struct pg_context *mi = pg_evidence_context(mc)->parent;
-	const struct pg_evidence *motive = pg_prove_return_type(&typing, &classifiers,
+	const struct pg_evidence *motive = pg_prove_return_type(&typing,
 		pg_prove_variable(&typing, mc, mi->parent->binder));
 	/* The result type is the first index A, not a constant carrier. */
 	assert(motive);
 	const struct pg_evidence *fields = pg_prove_constructor_scope(&typing, formation, constructor, parameters);
 	const struct pg_evidence *field_context = pg_evidence_premise(fields, 1);
-	indexed_path_motive(&typing, &classifiers, formation, parameters, value, mc, fields,
+	indexed_path_motive(&typing, formation, parameters, value, mc, fields,
 		pg_prove_value_type(&typing, av), xv);
-	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers,
+	const struct pg_evidence *body = pg_prove_return(&typing,
 		pg_substitution_image(&typing, fields, x));
-	const struct pg_evidence *branch = pg_prove_abstract(&typing, &classifiers, xc, field_context, body);
-	const struct pg_evidence *match = pg_prove_match(&typing, &classifiers, formation, parameters,
+	const struct pg_evidence *branch = pg_prove_abstract(&typing, xc, field_context, body);
+	const struct pg_evidence *match = pg_prove_match(&typing, formation, parameters,
 		value, mc, motive, 1, &branch);
-	assert(match && pg_evidence_classifier(match) == pg_return_type(&classifiers, pg_evidence_subject(av)->core));
+	assert(match && pg_evidence_classifier(match) == pg_return_type(&graph, pg_evidence_subject(av)->core));
 	const struct pg_occurrence *structure = pg_evidence_subject(match);
 	assert(structure->operand_count == 4 && structure->map_count == 1);
 	assert(structure->operands[0] == pg_evidence_subject(value));
@@ -857,7 +841,7 @@ static void indexed_match(void)
 	assert(structure->operands[2]->context == pg_evidence_context(mc));
 	assert(structure->operands[3] == pg_evidence_subject(formation));
 	assert(pg_occurrence_maps(structure)[0] == pg_evidence_context_map(parameters));
-	common_rule(&typing, &classifiers, match);
+	common_rule(&typing, match);
 	/* Reconstruct the elimination after substituting both dependent indices.
 	 * Its generic motive remains generic, rather than fixing the source fiber. */
 	const struct pg_object *renamed_a = pg_binder(&graph), *renamed_x = pg_binder(&graph);
@@ -881,7 +865,7 @@ static void indexed_match(void)
 	assert(pg_occurrence_input_steps(mapped_input) == input_steps);
 	assert(!pg_occurrence_input_mapped_request(&typing, structure, 2, pg_evidence_context_map(parameters)));
 	assert(!pg_occurrence_input_mapped_request(&typing, structure, 2, NULL));
-	const struct pg_evidence *renamed_match = pg_prove_elimination_reindex(&typing, &classifiers, renaming, match);
+	const struct pg_evidence *renamed_match = pg_prove_elimination_reindex(&typing, renaming, match);
 	const struct pg_evidence *mapped_match = pg_prove_reindex(&typing, renaming, match);
 	assert(renamed_match && mapped_match && pg_evidence_rule(renamed_match) == PG_MATCH_ELIM);
 	assert(pg_evidence_subject(mapped_match)->origin == structure);
@@ -893,7 +877,7 @@ static void indexed_match(void)
 	assert(renamed_structure->operands[2] == mapped_motive);
 	assert(pg_alpha_equal(pg_evidence_subject(renamed_match)->core, pg_evidence_subject(mapped_match)->core) == 1);
 	assert(pg_alpha_equal(pg_evidence_classifier(renamed_match), pg_evidence_classifier(mapped_match)) == 1);
-	common_rule(&typing, &classifiers, renamed_match);
+	common_rule(&typing, renamed_match);
 	/* Opening a mapped motive lifts its indices and scrutinee, but must not
 	 * move the nominal declaration into the elimination's context. */
 	const struct pg_evidence *shadowed = pg_prove_projection(&typing, mc, match);
@@ -919,7 +903,7 @@ static void indexed_match(void)
 			assert(!pg_context_lookup(source->context, scope->binder));
 		const struct pg_evidence *accepted = pg_prove_structural_subject(&typing, opened);
 		assert(accepted && pg_evidence_subject(accepted) == opened);
-		common_rule(&typing, &classifiers, accepted);
+		common_rule(&typing, accepted);
 		assert(pg_occurrence_input_request(&typing, source, 2) == query);
 		assert(pg_occurrence_input_advance(query, 64) == PG_INPUT_READY && pg_occurrence_input_steps(query) == steps);
 		query = pg_occurrence_input_request(&typing, source, 3);
@@ -934,26 +918,26 @@ static void indexed_match(void)
 	assert(pg_occurrence_input_advance(invalid_query, 64) == PG_INPUT_UNAVAILABLE);
 	assert(!pg_occurrence_input_result(invalid_query) && !pg_prove_structural_subject(&typing, invalid_scope));
 	const struct pg_evidence *inverse = pg_prove_substitution(&typing, renamed_xc, xc, 2, values);
-	const struct pg_evidence *twice = pg_prove_elimination_reindex(&typing, &classifiers, inverse, renamed_match);
-	const struct pg_evidence *once = pg_prove_elimination_reindex(&typing, &classifiers,
+	const struct pg_evidence *twice = pg_prove_elimination_reindex(&typing, inverse, renamed_match);
+	const struct pg_evidence *once = pg_prove_elimination_reindex(&typing,
 		pg_prove_substitution_compose(&typing, renaming, inverse), match);
 	assert(twice && once);
 	assert(pg_alpha_equal(pg_evidence_subject(twice)->core, pg_evidence_subject(once)->core) == 1);
 	assert(pg_alpha_equal(pg_evidence_classifier(twice), pg_evidence_classifier(once)) == 1);
-	common_rule(&typing, &classifiers, twice);
-	assert(!pg_prove_elimination_reindex(&typing, &classifiers, parameters, match));
-	assert(!pg_prove_elimination_reindex(&typing, &classifiers, renaming, value));
+	common_rule(&typing, twice);
+	assert(!pg_prove_elimination_reindex(&typing, parameters, match));
+	assert(!pg_prove_elimination_reindex(&typing, renaming, value));
 	struct pg_whnf_work work;
 	assert(!pg_whnf_work_init(&work, &graph));
-	check(&work, pg_evidence_subject(match)->core, pg_evidence_subject(pg_prove_return(&typing, &classifiers, xv))->core);
-	const struct pg_evidence *selected_body = pg_prove_elimination_body(&typing, &classifiers, match);
-	const struct pg_evidence *renamed_body = pg_prove_elimination_body(&typing, &classifiers, renamed_match);
+	check(&work, pg_evidence_subject(match)->core, pg_evidence_subject(pg_prove_return(&typing, xv))->core);
+	const struct pg_evidence *selected_body = pg_prove_elimination_body(&typing, match);
+	const struct pg_evidence *renamed_body = pg_prove_elimination_body(&typing, renamed_match);
 	assert(selected_body && renamed_body);
 	assert(pg_alpha_equal(pg_evidence_classifier(selected_body), pg_evidence_classifier(match)) == 1);
 	check(&work, pg_evidence_subject(match)->core, pg_evidence_subject(selected_body)->core);
 	check(&work, pg_evidence_subject(renamed_match)->core, pg_evidence_subject(renamed_body)->core);
-	common_rule(&typing, &classifiers, selected_body);
-	common_rule(&typing, &classifiers, renamed_body);
+	common_rule(&typing, selected_body);
+	common_rule(&typing, renamed_body);
 	const struct pg_evidence *match_sources[] = {match, renamed_match, mapped_match, twice, once};
 	for (size_t i = 0; i < sizeof(match_sources) / sizeof(*match_sources); ++i) {
 		struct pg_typed_query *query = pg_return_body_request(&typing, match_sources[i]);
@@ -974,7 +958,7 @@ static void indexed_match(void)
 		assert(pg_evidence_context(result) == pg_evidence_context(expected));
 		assert(pg_evidence_classifier(result) == pg_evidence_classifier(expected));
 		assert(pg_evidence_subject(result)->core == pg_evidence_subject(expected)->core);
-		common_rule(&typing, &classifiers, result);
+		common_rule(&typing, result);
 		assert(pg_return_body_request(&typing, match_sources[i]) == query);
 		assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
 		struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(match_sources[i])->core);
@@ -983,14 +967,14 @@ static void indexed_match(void)
 		assert(field && pg_evidence_context(field) == pg_evidence_context(expected));
 		assert(pg_evidence_subject(field)->core == pg_evidence_subject(expected)->core);
 		assert(pg_evidence_classifier(field) == pg_evidence_classifier(expected));
-		common_rule(&typing, &classifiers, field);
+		common_rule(&typing, field);
 	}
 	size_t structures = typing.occurrences.count, proofs = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i)
-		assert(pg_prove_elimination_body(&typing, &classifiers, match) == selected_body);
+		assert(pg_prove_elimination_body(&typing, match) == selected_body);
 	assert(typing.occurrences.count == structures && typing.proofs.count == proofs);
-	assert(!pg_prove_elimination_body(&typing, &classifiers, value));
-	assert(!pg_prove_elimination_body(&typing, &classifiers, NULL));
+	assert(!pg_prove_elimination_body(&typing, value));
+	assert(!pg_prove_elimination_body(&typing, NULL));
 	const struct pg_evidence *branch_type = pg_prove_value_type(&typing,
 		pg_substitution_image(&typing, fields, a));
 	const struct pg_evidence *scope = field_context;
@@ -998,20 +982,21 @@ static void indexed_match(void)
 		branch_type = pg_prove_family_abstraction(&typing, scope, branch_type);
 		scope = pg_evidence_premise(scope, 0);
 	}
-	const struct pg_evidence *selected_type = pg_prove_type_case(&typing, &classifiers,
+	const struct pg_evidence *selected_type = pg_prove_type_case(&typing,
 		formation, parameters, value, 1, &branch_type);
 	assert(selected_type && pg_evidence_judgement(selected_type) == PG_JUDGEMENT_VALUE_TYPE);
 	check(&work, pg_evidence_subject(selected_type)->core, pg_evidence_subject(av)->core);
 	size_t proof_count = typing.proofs.count, term_count = graph.terms.count;
-	assert(pg_prove_type_case(&typing, &classifiers, formation, parameters, value, 1, &branch_type) == selected_type);
+	assert(pg_prove_type_case(&typing,
+		formation, parameters, value, 1, &branch_type) == selected_type);
 	assert(typing.proofs.count == proof_count && graph.terms.count == term_count);
 	struct pg_derivation_parameters no_parameters = {0};
 	const struct pg_evidence *type_premises[] = {formation, parameters, value, branch_type};
-	assert(pg_prove_derivation(&typing, &classifiers, PG_TYPE_CASE, &no_parameters, 4, type_premises) == selected_type);
-	assert(!pg_prove_type_case(&typing, &classifiers, formation, parameters, value, 0, NULL));
-	assert(!pg_prove_type_case(&typing, &classifiers, formation, parameters, value, 1, &branch));
-	assert(!pg_prove_type_case(&typing, &classifiers, formation, parameters, xv, 1, &branch_type));
-	assert(!pg_prove_type_case(&typing, &classifiers, formation, parameters, value, 1, &u));
+	assert(pg_prove_derivation(&typing, PG_TYPE_CASE, &no_parameters, 4, type_premises) == selected_type);
+	assert(!pg_prove_type_case(&typing, formation, parameters, value, 0, NULL));
+	assert(!pg_prove_type_case(&typing, formation, parameters, value, 1, &branch));
+	assert(!pg_prove_type_case(&typing, formation, parameters, xv, 1, &branch_type));
+	assert(!pg_prove_type_case(&typing, formation, parameters, value, 1, &u));
 	const struct pg_object *packet = pg_binder(&graph);
 	const struct pg_evidence *packet_context = pg_prove_context_extension(&typing, xc,
 		packet, pg_evidence_premise(value, 0));
@@ -1019,20 +1004,20 @@ static void indexed_match(void)
 	 * function bound after it. Keeping that function at the old A is invalid. */
 	const struct pg_evidence *function_domain = pg_prove_context_extension(&typing, packet_context,
 		pg_binder(&graph), pg_prove_projection(&typing, packet_context, pg_evidence_premise(value, 0)));
-	const struct pg_evidence *function_type = pg_prove_pi(&typing, &classifiers, function_domain,
-		pg_prove_return_type(&typing, &classifiers, pg_prove_variable(&typing, function_domain, a)));
+	const struct pg_evidence *function_type = pg_prove_pi(&typing, function_domain,
+		pg_prove_return_type(&typing, pg_prove_variable(&typing, function_domain, a)));
 	const struct pg_object *consumer = pg_binder(&graph);
 	const struct pg_evidence *consumer_context = pg_prove_context_extension(&typing, packet_context, consumer,
-		pg_prove_thunk_type(&typing, &classifiers, function_type));
+		pg_prove_thunk_type(&typing, function_type));
 	const struct pg_evidence *consumer_packet = pg_prove_variable(&typing, consumer_context, packet);
-	const struct pg_evidence *refinement = pg_prove_constructor_refinement(&typing, &classifiers,
+	const struct pg_evidence *refinement = pg_prove_constructor_refinement(&typing,
 		consumer_context, consumer_packet, constructor);
 	assert(refinement);
-	const struct pg_evidence *other_refinement = pg_prove_constructor_refinement(&typing, &classifiers,
+	const struct pg_evidence *other_refinement = pg_prove_constructor_refinement(&typing,
 		consumer_context, consumer_packet, constructor);
 	const struct pg_evidence *factor = pg_prove_refinement_factor(&typing, refinement, other_refinement, packet);
 	assert(factor);
-	common_rule(&typing, &classifiers, factor);
+	common_rule(&typing, factor);
 	const struct pg_evidence *composite = pg_prove_substitution_compose(&typing, refinement, factor);
 	assert(composite);
 	for (size_t i = 2; i < pg_evidence_premise_count(composite); ++i)
@@ -1050,40 +1035,40 @@ static void indexed_match(void)
 	const struct pg_evidence *applied = pg_prove_application(&typing,
 		pg_prove_force(&typing, refined_consumer), refined_packet);
 	assert(applied && pg_alpha_equal(pg_evidence_classifier(applied),
-		pg_return_type(&classifiers, pg_evidence_subject(refined_a)->core)) == 1);
-	assert(!pg_prove_constructor_refinement(&typing, &classifiers, xc, value, constructor));
-	assert(!pg_prove_constructor_refinement(&typing, &classifiers, consumer_context, consumer_packet, pg_binder(&graph)));
+		pg_return_type(&graph, pg_evidence_subject(refined_a)->core)) == 1);
+	assert(!pg_prove_constructor_refinement(&typing, xc, value, constructor));
+	assert(!pg_prove_constructor_refinement(&typing, consumer_context, consumer_packet, pg_binder(&graph)));
 	const struct pg_evidence *consumer_parameters = pg_prove_substitution_projection(&typing, empty, consumer_context);
 	const struct pg_evidence *consumer_mc = pg_prove_inductive_motive_context(&typing, formation,
 		consumer_parameters, pg_binder(&graph));
 	const struct pg_context *consumer_indices = pg_evidence_context(consumer_mc)->parent;
-	const struct pg_evidence *consumer_motive = pg_prove_return_type(&typing, &classifiers,
+	const struct pg_evidence *consumer_motive = pg_prove_return_type(&typing,
 		pg_prove_variable(&typing, consumer_mc, consumer_indices->parent->binder));
 	const struct pg_evidence *consumer_branch = pg_prove_projection(&typing, consumer_context, branch);
-	const struct pg_evidence *consumer_match = pg_prove_match(&typing, &classifiers, formation,
+	const struct pg_evidence *consumer_match = pg_prove_match(&typing, formation,
 		consumer_parameters, consumer_packet, consumer_mc, consumer_motive, 1, &consumer_branch);
-	const struct pg_evidence *refined_match = pg_prove_elimination_reindex(&typing, &classifiers, refinement, consumer_match);
+	const struct pg_evidence *refined_match = pg_prove_elimination_reindex(&typing, refinement, consumer_match);
 	assert(refined_match);
-	assert(!pg_prove_elimination_body(&typing, &classifiers, consumer_match));
-	const struct pg_evidence *refined_body = pg_prove_elimination_body(&typing, &classifiers, refined_match);
+	assert(!pg_prove_elimination_body(&typing, consumer_match));
+	const struct pg_evidence *refined_body = pg_prove_elimination_body(&typing, refined_match);
 	assert(refined_body);
 	check(&work, pg_evidence_subject(refined_match)->core, pg_evidence_subject(refined_body)->core);
-	common_rule(&typing, &classifiers, refined_body);
+	common_rule(&typing, refined_body);
 	check(&work, pg_evidence_subject(refined_match)->core, pg_evidence_subject(pg_prove_return(&typing,
-		&classifiers, pg_substitution_image(&typing, refinement, x)))->core);
-	common_rule(&typing, &classifiers, refinement);
-	common_rule(&typing, &classifiers, refined_match);
+		pg_substitution_image(&typing, refinement, x)))->core);
+	common_rule(&typing, refinement);
+	common_rule(&typing, refined_match);
 	/* Match may return a function whose argument depends on the generic
 	 * indices. Specialize the pending argument along with the scrutinee. */
 	const struct pg_evidence *generic_packet = pg_evidence_premise(consumer_mc, 1);
 	const struct pg_evidence *generic_argument = pg_prove_context_extension(&typing, consumer_mc,
 		pg_binder(&graph), pg_prove_projection(&typing, consumer_mc, generic_packet));
-	const struct pg_evidence *generic_function = pg_prove_pi(&typing, &classifiers, generic_argument,
-		pg_prove_return_type(&typing, &classifiers,
+	const struct pg_evidence *generic_function = pg_prove_pi(&typing, generic_argument,
+		pg_prove_return_type(&typing,
 			pg_prove_variable(&typing, generic_argument, consumer_indices->parent->binder)));
 	const struct pg_evidence *generic_consumer = pg_prove_context_extension(&typing, consumer_mc,
-		pg_binder(&graph), pg_prove_thunk_type(&typing, &classifiers, generic_function));
-	const struct pg_evidence *function_motive = pg_prove_pi(&typing, &classifiers, generic_consumer,
+		pg_binder(&graph), pg_prove_thunk_type(&typing, generic_function));
+	const struct pg_evidence *function_motive = pg_prove_pi(&typing, generic_consumer,
 		pg_prove_projection(&typing, generic_consumer, consumer_motive));
 	const struct pg_evidence *consumer_fields = pg_prove_constructor_scope(&typing, formation, constructor, consumer_parameters);
 	const struct pg_evidence *consumer_field_context = pg_evidence_premise(consumer_fields, 1);
@@ -1091,7 +1076,7 @@ static void indexed_match(void)
 		pg_substitution_image(&typing, consumer_fields, x)};
 	const struct pg_evidence *field_packet = pg_prove_constructor(&typing, formation, constructor,
 		pg_prove_substitution_projection(&typing, empty, consumer_field_context), 2, field_values);
-	const struct pg_evidence *field_function_type = pg_prove_inductive_motive_at(&typing, &classifiers, formation,
+	const struct pg_evidence *field_function_type = pg_prove_inductive_motive_at(&typing, formation,
 		consumer_parameters, consumer_mc, function_motive, consumer_field_context, field_packet);
 	const struct pg_object *field_consumer = pg_binder(&graph);
 	const struct pg_evidence *field_consumer_context = pg_prove_context_extension(&typing, consumer_field_context,
@@ -1099,45 +1084,45 @@ static void indexed_match(void)
 	const struct pg_evidence *function_branch = pg_prove_application(&typing,
 		pg_prove_force(&typing, pg_prove_variable(&typing, field_consumer_context, field_consumer)),
 		pg_prove_projection(&typing, field_consumer_context, field_packet));
-	function_branch = pg_prove_abstract(&typing, &classifiers, consumer_context, field_consumer_context, function_branch);
-	const struct pg_evidence *function_match = pg_prove_match(&typing, &classifiers, formation, consumer_parameters,
+	function_branch = pg_prove_abstract(&typing, consumer_context, field_consumer_context, function_branch);
+	const struct pg_evidence *function_match = pg_prove_match(&typing, formation, consumer_parameters,
 		consumer_packet, consumer_mc, function_motive, 1, &function_branch);
 	assert(function_match);
-	const struct pg_evidence *specialized_function = pg_prove_elimination_reindex(&typing, &classifiers, refinement, function_match);
+	const struct pg_evidence *specialized_function = pg_prove_elimination_reindex(&typing, refinement, function_match);
 	const struct pg_evidence *specialized_application = pg_prove_application(&typing, specialized_function, refined_consumer);
 	assert(specialized_application);
 	check(&work, pg_evidence_subject(specialized_application)->core, pg_evidence_subject(applied)->core);
-	const struct pg_evidence *function_body = pg_prove_elimination_body(&typing, &classifiers, specialized_function);
+	const struct pg_evidence *function_body = pg_prove_elimination_body(&typing, specialized_function);
 	assert(function_body);
 	const struct pg_evidence *body_application = pg_prove_application_body(&typing, function_body, refined_consumer);
 	assert(body_application);
 	const struct pg_evidence *match_application = pg_prove_application_body(&typing, specialized_function, refined_consumer);
 	assert(match_application);
 	check(&work, pg_evidence_subject(match_application)->core, pg_evidence_subject(body_application)->core);
-	common_rule(&typing, &classifiers, match_application);
+	common_rule(&typing, match_application);
 	check(&work, pg_evidence_subject(body_application)->core, pg_evidence_subject(applied)->core);
-	common_rule(&typing, &classifiers, body_application);
-	const struct pg_evidence *result_type = pg_prove_classifier(&typing, &classifiers, consumer_context, consumer_match);
-	const struct pg_evidence *assembled = pg_prove_refined_match(&typing, &classifiers, consumer_context,
+	common_rule(&typing, body_application);
+	const struct pg_evidence *result_type = pg_prove_classifier(&typing, consumer_context, consumer_match);
+	const struct pg_evidence *assembled = pg_prove_refined_match(&typing, consumer_context,
 		consumer_packet, result_type, 1, &refinement, &body_application);
 	assert(assembled && pg_alpha_equal(pg_evidence_classifier(assembled), pg_evidence_subject(result_type)->core) == 1);
-	common_rule(&typing, &classifiers, assembled);
+	common_rule(&typing, assembled);
 	const struct pg_evidence *assembled_branch = pg_prove_reindex(&typing, refinement, assembled);
 	assert(assembled_branch);
 	check(&work, pg_evidence_subject(assembled_branch)->core, pg_evidence_subject(applied)->core);
-	assert(!pg_prove_refined_match(&typing, &classifiers, consumer_context,
+	assert(!pg_prove_refined_match(&typing, consumer_context,
 		consumer_packet, result_type, 0, NULL, NULL));
-	assert(!pg_prove_refined_match(&typing, &classifiers, consumer_context,
+	assert(!pg_prove_refined_match(&typing, consumer_context,
 		consumer_packet, result_type, 1, &refinement, &consumer_match));
 	const struct pg_evidence *wrong_refinement = pg_prove_substitution_projection(&typing, consumer_context, consumer_context);
-	assert(!pg_prove_refined_match(&typing, &classifiers, consumer_context,
+	assert(!pg_prove_refined_match(&typing, consumer_context,
 		consumer_packet, result_type, 1, &wrong_refinement, &consumer_match));
 	const struct pg_object *predicate = pg_binder(&graph);
 	const struct pg_evidence *predicate_domain = pg_prove_context_extension(&typing, consumer_context,
 		pg_binder(&graph), pg_prove_variable(&typing, consumer_context, a));
 	const struct pg_evidence *predicate_context = pg_prove_family_context_extension(&typing,
 		consumer_context, predicate, predicate_domain, pg_prove_projection(&typing, predicate_domain, u));
-	const struct pg_evidence *family_refinement = pg_prove_constructor_refinement(&typing, &classifiers,
+	const struct pg_evidence *family_refinement = pg_prove_constructor_refinement(&typing,
 		predicate_context, pg_prove_variable(&typing, predicate_context, packet), constructor);
 	assert(family_refinement);
 	const struct pg_evidence *family_image = pg_substitution_image(&typing, family_refinement, predicate);
@@ -1148,21 +1133,21 @@ static void indexed_match(void)
 	const struct pg_object *property_binder = pg_binder(&graph);
 	const struct pg_evidence *property_context = pg_prove_context_extension(&typing, predicate_context, property_binder, property);
 	const struct pg_evidence *property_packet = pg_prove_variable(&typing, property_context, packet);
-	const struct pg_evidence *property_refinement = pg_prove_constructor_refinement(&typing, &classifiers,
+	const struct pg_evidence *property_refinement = pg_prove_constructor_refinement(&typing,
 		property_context, property_packet, constructor);
-	const struct pg_evidence *property_body = pg_prove_return(&typing, &classifiers,
+	const struct pg_evidence *property_body = pg_prove_return(&typing,
 		pg_substitution_image(&typing, property_refinement, property_binder));
-	const struct pg_evidence *property_motive = pg_prove_return_type(&typing, &classifiers,
+	const struct pg_evidence *property_motive = pg_prove_return_type(&typing,
 		pg_prove_projection(&typing, property_context, property));
-	const struct pg_evidence *property_match = pg_prove_refined_match(&typing, &classifiers, property_context,
+	const struct pg_evidence *property_match = pg_prove_refined_match(&typing, property_context,
 		property_packet, property_motive, 1, &property_refinement, &property_body);
 	assert(property_match);
-	common_rule(&typing, &classifiers, property_match);
+	common_rule(&typing, property_match);
 	check(&work, pg_evidence_subject(pg_prove_reindex(&typing, property_refinement, property_match))->core,
 		pg_evidence_subject(property_body)->core);
 	const struct pg_evidence *open_parameters = pg_prove_substitution_projection(&typing, empty, packet_context);
 	const struct pg_evidence *open_branch = pg_prove_projection(&typing, packet_context, branch_type);
-	const struct pg_evidence *neutral = pg_prove_type_case(&typing, &classifiers,
+	const struct pg_evidence *neutral = pg_prove_type_case(&typing,
 		formation, open_parameters, pg_prove_variable(&typing, packet_context, packet), 1, &open_branch);
 	assert(neutral);
 	const struct pg_evidence *replace = pg_prove_substitution_pair(&typing,
@@ -1173,15 +1158,14 @@ static void indexed_match(void)
 	/* A fixed-fiber motive cannot replace the generic index telescope. */
 	const struct pg_evidence *fixed = pg_prove_context_extension(&typing, xc, pg_binder(&graph),
 		pg_evidence_premise(value, 0));
-	const struct pg_evidence *fixed_motive = pg_prove_return_type(&typing, &classifiers,
+	const struct pg_evidence *fixed_motive = pg_prove_return_type(&typing,
 		pg_prove_projection(&typing, fixed, av));
 	assert(fixed && fixed_motive);
-	assert(!pg_prove_match(&typing, &classifiers, formation, parameters, value, fixed, fixed_motive, 1, &branch));
-	const struct pg_evidence *wrong = pg_prove_abstract(&typing, &classifiers, xc, field_context,
-		pg_prove_return(&typing, &classifiers, pg_prove_projection(&typing, field_context, xv)));
-	assert(wrong && !pg_prove_match(&typing, &classifiers, formation, parameters, value, mc, motive, 1, &wrong));
+	assert(!pg_prove_match(&typing, formation, parameters, value, fixed, fixed_motive, 1, &branch));
+	const struct pg_evidence *wrong = pg_prove_abstract(&typing, xc, field_context,
+		pg_prove_return(&typing, pg_prove_projection(&typing, field_context, xv)));
+	assert(wrong && !pg_prove_match(&typing, formation, parameters, value, mc, motive, 1, &wrong));
 	pg_whnf_work_destroy(&work);
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
 }
@@ -1199,7 +1183,7 @@ static const struct pg_term *boundary_apply(struct pg_graph *graph, const struct
 	return pg_application(graph, pg_identity_instance(graph, function, left, right), path);
 }
 
-static void index_paths(struct pg_typing *typing, struct pg_classifiers *classifiers,
+static void index_paths(struct pg_typing *typing,
 	const struct pg_evidence *nat, const struct pg_evidence *zero,
 	const struct pg_evidence *empty_type, const struct pg_object *succ)
 {
@@ -1211,26 +1195,26 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 	 * an inverse k for an arbitrary n. Repeated pattern images are ambiguous. */
 	const struct pg_object *self = pg_binder(typing->graph), *index = pg_binder(typing->graph);
 	const struct pg_evidence *sc = pg_prove_family_context_extension(typing, empty, self, nc,
-		pg_prove_universe(typing, classifiers, nc, 0));
+		pg_prove_universe(typing, nc, 0));
 	const struct pg_evidence *indices = pg_prove_context_extension(typing, sc, index,
 		pg_prove_projection(typing, sc, nat));
 	const struct pg_data_schema *schema = pg_data_schema(typing,
 		pg_data_signature(typing, sc, indices), 0, NULL);
-	const struct pg_evidence *family = pg_prove_inductive_type(typing, classifiers, schema);
+	const struct pg_evidence *family = pg_prove_inductive_type(typing, schema);
 	assert(family);
 	const struct pg_evidence *fields = pg_prove_context_extension(typing, empty, m, nat);
 	const struct pg_evidence *field = pg_prove_variable(typing, fields, m);
 	const struct pg_evidence *parameters = pg_prove_substitution_projection(typing, empty, fields);
 	const struct pg_evidence *successor = pg_prove_constructor(typing, nat, succ, parameters, 1, &field);
 	const struct pg_evidence *pattern = pg_prove_substitution(typing, nc, fields, 1, &successor);
-	const struct pg_evidence *body = pg_prove_return_type(typing, classifiers,
+	const struct pg_evidence *body = pg_prove_return_type(typing,
 		pg_prove_family_application(typing, pg_prove_projection(typing, fields, family), successor));
-	const struct pg_evidence *generalized = pg_prove_pattern_type(typing, classifiers, empty, pattern, body);
-	const struct pg_evidence *expected = pg_prove_return_type(typing, classifiers,
+	const struct pg_evidence *generalized = pg_prove_pattern_type(typing, empty, pattern, body);
+	const struct pg_evidence *expected = pg_prove_return_type(typing,
 		pg_prove_family_application(typing, pg_prove_projection(typing, nc, family), pg_prove_variable(typing, nc, n)));
 	assert(generalized && expected);
 	assert(pg_alpha_equal(pg_evidence_subject(generalized)->core, pg_evidence_subject(expected)->core) == 1);
-	common_rule(typing, classifiers, generalized);
+	common_rule(typing, generalized);
 	const struct pg_evidence *back = pg_prove_reindex(typing, pattern, generalized);
 	assert(back && pg_alpha_equal(pg_evidence_subject(back)->core, pg_evidence_subject(body)->core) == 1);
 	/* A field at Family (succ m) cannot be replaced by one at Family n.
@@ -1246,41 +1230,41 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 	const struct pg_evidence *extended_pattern = pg_prove_substitution(typing,
 		source_field, target_field, 2, extended_images);
 	const struct pg_evidence *extended_body = pg_prove_projection(typing, target_field, body);
-	const struct pg_evidence *extended_result = pg_prove_pattern_type(typing, classifiers,
+	const struct pg_evidence *extended_result = pg_prove_pattern_type(typing,
 		empty, extended_pattern, extended_body);
 	assert(extended_result && pg_alpha_equal(pg_evidence_subject(extended_result)->core,
 		pg_evidence_subject(expected)->core) == 1);
 	assert(pg_evidence_context(extended_result) == pg_evidence_context(source_field));
-	common_rule(typing, classifiers, extended_result);
-	const struct pg_evidence *dependent_body = pg_prove_return_type(typing, classifiers,
+	common_rule(typing, extended_result);
+	const struct pg_evidence *dependent_body = pg_prove_return_type(typing,
 		pg_prove_identity_type(typing, pg_prove_return_content(typing, extended_body), target_value, target_value));
-	assert(dependent_body && !pg_prove_pattern_type(typing, classifiers, empty, extended_pattern, dependent_body));
+	assert(dependent_body && !pg_prove_pattern_type(typing, empty, extended_pattern, dependent_body));
 	const struct pg_evidence *duplicate[] = {successor, successor};
-	assert(!pg_prove_pattern_type(typing, classifiers, empty,
+	assert(!pg_prove_pattern_type(typing, empty,
 		pg_prove_substitution(typing, mc, fields, 2, duplicate), body));
 	const struct pg_evidence *wrapped = body, *wrapped_expected = expected;
 	for (size_t i = 0; i < 32; ++i) {
-		wrapped = pg_prove_return_type(typing, classifiers, pg_prove_thunk_type(typing, classifiers, wrapped));
-		wrapped_expected = pg_prove_return_type(typing, classifiers,
-			pg_prove_thunk_type(typing, classifiers, wrapped_expected));
+		wrapped = pg_prove_return_type(typing, pg_prove_thunk_type(typing, wrapped));
+		wrapped_expected = pg_prove_return_type(typing,
+			pg_prove_thunk_type(typing, wrapped_expected));
 	}
-	const struct pg_evidence *under_wrappers = pg_prove_pattern_type(typing, classifiers, empty, pattern, wrapped);
+	const struct pg_evidence *under_wrappers = pg_prove_pattern_type(typing, empty, pattern, wrapped);
 	assert(under_wrappers && pg_alpha_equal(pg_evidence_subject(under_wrappers)->core,
 		pg_evidence_subject(wrapped_expected)->core) == 1);
-	common_rule(typing, classifiers, under_wrappers);
+	common_rule(typing, under_wrappers);
 	const struct pg_object *argument = pg_binder(typing->graph);
 	const struct pg_evidence *argument_scope = pg_prove_context_extension(typing, fields, argument,
 		pg_prove_projection(typing, fields, nat));
-	const struct pg_evidence *pi_body = pg_prove_pi(typing, classifiers, argument_scope,
+	const struct pg_evidence *pi_body = pg_prove_pi(typing, argument_scope,
 		pg_prove_projection(typing, argument_scope, wrapped));
 	const struct pg_evidence *pi_expected_scope = pg_prove_context_extension(typing, nc, argument,
 		pg_prove_projection(typing, nc, nat));
-	const struct pg_evidence *pi_expected = pg_prove_pi(typing, classifiers, pi_expected_scope,
+	const struct pg_evidence *pi_expected = pg_prove_pi(typing, pi_expected_scope,
 		pg_prove_projection(typing, pi_expected_scope, wrapped_expected));
-	const struct pg_evidence *under_pi = pg_prove_pattern_type(typing, classifiers, empty, pattern, pi_body);
+	const struct pg_evidence *under_pi = pg_prove_pattern_type(typing, empty, pattern, pi_body);
 	assert(under_pi && pg_alpha_equal(pg_evidence_subject(under_pi)->core,
 		pg_evidence_subject(pi_expected)->core) == 1);
-	common_rule(typing, classifiers, under_pi);
+	common_rule(typing, under_pi);
 	/* Removing an unused domain must retain constructed index images, even
 	 * when their value proofs were built inside that larger context. */
 	const struct pg_evidence *unused = pg_prove_context_extension(typing, fields,
@@ -1292,10 +1276,10 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 		small_value = pg_prove_constructor(typing, nat, succ, parameters, 1, &small_value);
 		assert(large_value && small_value);
 	}
-	const struct pg_evidence *large_type = pg_prove_return_type(typing, classifiers,
+	const struct pg_evidence *large_type = pg_prove_return_type(typing,
 		pg_prove_family_application(typing, pg_prove_projection(typing, unused, family), large_value));
 	const struct pg_evidence *smaller = pg_prove_return_content(typing,
-		pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, classifiers, unused, large_type)));
+		pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, unused, large_type)));
 	struct pg_inductive_instance recovered, again;
 	assert(smaller && pg_inductive_instance(typing, smaller, &recovered));
 	assert(recovered.schema == schema);
@@ -1304,29 +1288,29 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 	assert(pg_evidence_context(last) == pg_evidence_context(fields));
 	assert(pg_evidence_subject(last)->core == pg_evidence_subject(small_value)->core);
 	assert(pg_inductive_instance(typing, smaller, &again) && recovered.indices == again.indices);
-	common_rule(typing, classifiers, last);
+	common_rule(typing, last);
 	const struct pg_evidence *dependent = pg_prove_context_extension(typing, fields, pg_binder(typing->graph),
 		pg_prove_projection(typing, fields, nat));
 	const struct pg_evidence *local = pg_prove_variable(typing, dependent, pg_evidence_context(dependent)->binder);
-	const struct pg_evidence *local_type = pg_prove_return_type(typing, classifiers,
+	const struct pg_evidence *local_type = pg_prove_return_type(typing,
 		pg_prove_family_application(typing, pg_prove_projection(typing, dependent, family), local));
-	assert(!pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, classifiers, dependent, local_type)));
+	assert(!pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, dependent, local_type)));
 	/* A dependent Pi may survive removal of an unrelated ambient field.
 	 * Lift the context action under its binders before applying arguments. */
 	for (size_t arity = 1; arity <= 2; ++arity) {
 		const struct pg_object *x = pg_binder(typing->graph);
 		const struct pg_evidence *xc = pg_prove_context_extension(typing, unused, x,
 			pg_prove_projection(typing, unused, nat));
-		const struct pg_evidence *result_type = pg_prove_return_type(typing, classifiers,
+		const struct pg_evidence *result_type = pg_prove_return_type(typing,
 			pg_prove_family_application(typing, pg_prove_projection(typing, xc, family),
 				pg_prove_variable(typing, xc, x)));
 		if (arity == 2) {
 			const struct pg_evidence *yc = pg_prove_context_extension(typing, xc, pg_binder(typing->graph),
 				pg_prove_projection(typing, xc, nat));
-			result_type = pg_prove_pi(typing, classifiers, yc, pg_prove_projection(typing, yc, result_type));
+			result_type = pg_prove_pi(typing, yc, pg_prove_projection(typing, yc, result_type));
 		}
 		const struct pg_evidence *pi = pg_prove_pi_constant_codomain(typing,
-			pg_prove_pi(typing, classifiers, unused, pg_prove_pi(typing, classifiers, xc, result_type)));
+			pg_prove_pi(typing, unused, pg_prove_pi(typing, xc, result_type)));
 		assert(pi && !pg_prove_pi_codomain(typing, pi,
 			pg_prove_type_value(typing, pg_prove_projection(typing, fields, nat))));
 		for (size_t mode = 0; mode < 3; ++mode) {
@@ -1342,8 +1326,8 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 			assert(recovered.schema == schema && pg_evidence_context(recovered.parameters) == pg_evidence_context(context));
 			last = pg_evidence_premise(recovered.indices, pg_evidence_premise_count(recovered.indices) - 1);
 			assert(pg_alpha_equal(pg_evidence_subject(last)->core, pg_evidence_subject(actual)->core) == 1);
-			common_rule(typing, classifiers, applied);
-			common_rule(typing, classifiers, last);
+			common_rule(typing, applied);
+			common_rule(typing, last);
 		}
 	}
 	for (size_t injection = 0; injection < 2; ++injection) {
@@ -1385,7 +1369,7 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 			pg_prove_projection(typing, zc, injection ? empty_type : nat),
 			pg_prove_family_abstraction(typing, fc, branch)
 		};
-		const struct pg_evidence *family = pg_prove_type_case(typing, classifiers, nat,
+		const struct pg_evidence *family = pg_prove_type_case(typing, nat,
 			parameters, pg_prove_variable(typing, zc, z), 2, branches);
 		assert(family);
 		const struct pg_evidence *prefix = pg_prove_substitution_projection(typing, context, context);
@@ -1397,7 +1381,7 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 			struct pg_whnf_work work;
 			struct pg_synthesis synthesis;
 			assert(!pg_whnf_work_init(&work, typing->graph));
-			assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+			assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
 			struct pg_synthesis_job *fj = pg_synthesis_evidence(&synthesis, family);
 			struct pg_synthesis_job *vj = pg_synthesis_evidence(&synthesis, input);
 			for (size_t i = 0; i < 2; ++i) {
@@ -1415,8 +1399,8 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 				assert(pg_evidence_classifier(checked) == pg_evidence_subject(expected)->core);
 				/* Discharge the assumed paths into a closed function, rather than
 				 * claiming an inhabitant of Empty or an unconditional n=m. */
-				const struct pg_evidence *theorem = pg_prove_abstract(typing, classifiers, empty, context,
-					pg_prove_return(typing, classifiers, checked));
+				const struct pg_evidence *theorem = pg_prove_abstract(typing, empty, context,
+					pg_prove_return(typing, checked));
 				assert(theorem && !pg_evidence_context(theorem));
 				if (!injection) {
 					struct pg_synthesis_job *cj = pg_synthesis_evidence(&synthesis, context);
@@ -1432,9 +1416,9 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 					assert(pg_evidence_rule(eliminated) == PG_TYPE_CONVERSION);
 					const struct pg_evidence *transported = pg_evidence_premise(eliminated, 0);
 					assert(pg_evidence_rule(transported) == PG_IDENTITY_TRANSPORT);
-					common_rule(typing, classifiers, transported);
-					const struct pg_evidence *closed = pg_prove_abstract(typing, classifiers, empty, context,
-						pg_prove_return(typing, classifiers, eliminated));
+					common_rule(typing, transported);
+					const struct pg_evidence *closed = pg_prove_abstract(typing, empty, context,
+						pg_prove_return(typing, eliminated));
 					assert(closed && !pg_evidence_context(closed));
 					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
 					assert(derived == pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, pj, vj, tj));
@@ -1449,7 +1433,7 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 						pg_synthesis_evidence(&synthesis, diagonal), vj, tj), chunk, PG_SYNTHESIS_REJECTED);
 					assert(!pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, NULL, vj, tj));
 					struct pg_synthesis_job *computed = pg_synthesis_evidence(&synthesis,
-						pg_prove_return(typing, classifiers, input));
+						pg_prove_return(typing, input));
 					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, pj, computed, tj),
 						chunk, PG_SYNTHESIS_REJECTED);
 					const struct pg_object *rp = pg_binder(typing->graph);
@@ -1480,7 +1464,7 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 					assert(pg_term_independent(pg_evidence_subject(proof)->core, i ? p : q) == 1);
 					const struct pg_evidence *transported = pg_evidence_premise(proof, 0);
 					assert(pg_evidence_rule(transported) == PG_IDENTITY_TRANSPORT);
-					common_rule(typing, classifiers, transported);
+					common_rule(typing, transported);
 					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
 					assert(derived == pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj, field, nj, mj));
 					assert(before == typing->proofs.count && terms == typing->graph->terms.count);
@@ -1506,7 +1490,7 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 				size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
 				assert(pg_synthesis_family_transport_jobs(&synthesis, fj, ls, rs, 1, &pj, vj, PG_IDENTITY_RIGHT) == job);
 				assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
-				common_rule(typing, classifiers, result);
+				common_rule(typing, result);
 			}
 			assert(pg_evidence_subject(results[0])->core != pg_evidence_subject(results[1])->core);
 			const struct pg_evidence *refl = pg_prove_reflexivity(typing, pg_prove_projection(typing, context, nat), left);
@@ -1528,11 +1512,11 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 			solve_index_proof(&synthesis, pg_synthesis_family_transport_jobs(&synthesis,
 				fj, ls, rs, 1, &refl_job, vj, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
 			struct pg_synthesis_job *wrong = pg_synthesis_evidence(&synthesis,
-				pg_prove_return(typing, classifiers, input));
+				pg_prove_return(typing, input));
 			solve_index_proof(&synthesis, pg_synthesis_family_transport_jobs(&synthesis,
 				fj, ls, rs, 1, &pj, wrong, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
 			struct pg_synthesis_job *computation_type = pg_synthesis_evidence(&synthesis,
-				pg_prove_return_type(typing, classifiers, family));
+				pg_prove_return_type(typing, family));
 			solve_index_proof(&synthesis, pg_synthesis_family_transport_jobs(&synthesis,
 				computation_type, ls, rs, 1, &pj, vj, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
 			assert(!pg_synthesis_family_transport_jobs(&synthesis, fj, ls, rs, 1, NULL, vj, PG_IDENTITY_RIGHT));
@@ -1544,19 +1528,19 @@ static void index_paths(struct pg_typing *typing, struct pg_classifiers *classif
 	puts("index paths: constructor disjointness/injectivity via type-case action and checked transport passed");
 }
 
-static void constructor_field_paths(struct pg_typing *typing, struct pg_classifiers *classifiers,
+static void constructor_field_paths(struct pg_typing *typing,
 	const struct pg_evidence *nat)
 {
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
 	const struct pg_evidence *self = pg_prove_context_extension(typing, empty, pg_binder(typing->graph),
-		pg_prove_universe(typing, classifiers, empty, 0));
+		pg_prove_universe(typing, empty, 0));
 	const struct pg_object *fields[] = {pg_binder(typing->graph), pg_binder(typing->graph)};
 	const struct pg_evidence *fc = self;
 	for (size_t i = 0; i < 2; ++i)
 		fc = pg_prove_context_extension(typing, fc, fields[i], pg_prove_projection(typing, fc, nat));
 	const struct pg_evidence *cases[] = {parameter_result(typing, self, self), parameter_result(typing, self, fc)};
 	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, self, self), 2, cases);
-	const struct pg_evidence *pair = pg_prove_inductive_type(typing, classifiers, schema);
+	const struct pg_evidence *pair = pg_prove_inductive_type(typing, schema);
 	assert(pair);
 	const struct pg_object *ctor = pg_data_constructor(pg_data_schema_layout(schema), 1);
 	const struct pg_object *n = pg_binder(typing->graph), *m = pg_binder(typing->graph), *p = pg_binder(typing->graph);
@@ -1570,7 +1554,7 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 	const struct pg_evidence *redexes[2];
 	for (size_t i = 0; i < 2; ++i)
 		redexes[i] = pg_prove_total_pure_value(typing,
-			pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, values[i]));
+			pg_prove_return_contract(typing, PG_TOTALITY_TOTAL, values[i]));
 	const struct pg_evidence *redex_pair = pg_prove_constructor(typing, pair, ctor, params, 2, redexes);
 	assert(redex_pair);
 	context = pg_prove_context_extension(typing, context, p,
@@ -1580,7 +1564,7 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 		struct pg_whnf_work work;
 		struct pg_synthesis synthesis;
 		assert(!pg_whnf_work_init(&work, typing->graph));
-		assert(!pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
 		struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(redex_pair)->core);
 		while (pg_nf_advance(nf, chunk) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
 		assert(pg_nf_result(nf) == pg_evidence_subject(left)->core);
@@ -1611,7 +1595,7 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 		/* Expose a constructor reached by head reduction, then normalize its
 		 * fields. Input zero of total_result is not field zero of the pair. */
 		const struct pg_evidence *computed_pair = pg_prove_total_pure_value(typing,
-			pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, redex_pair));
+			pg_prove_return_contract(typing, PG_TOTALITY_TOTAL, redex_pair));
 		struct pg_nf_job *computed_nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(computed_pair)->core);
 		while (pg_nf_advance(computed_nf, chunk) == PG_NF_PENDING) assert(pg_nf_steps(computed_nf) < 10000);
 		const struct pg_evidence *computed_normal = pg_prove_normalization(typing, computed_pair, pg_nf_certificate(computed_nf));
@@ -1627,7 +1611,7 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 			struct pg_derivation_parameters parameters;
 			assert(!pg_derivation_parameters(field, &parameters));
 			const struct pg_evidence *premise = pg_evidence_premise(field, 0);
-			assert(pg_prove_derivation(typing, classifiers, pg_evidence_rule(field), &parameters, 1, &premise) == field);
+			assert(pg_prove_derivation(typing, pg_evidence_rule(field), &parameters, 1, &premise) == field);
 			size_t proofs = typing->proofs.count, queries = typing->typed_queries.count;
 			uint64_t steps = pg_typed_query_steps(query);
 			assert(pg_prove_constructor_field(typing, computed_normal, fields[i]) == field);
@@ -1664,7 +1648,7 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 			const struct pg_evidence *proof = solve_index_proof(&synthesis, jobs[i], chunk, PG_SYNTHESIS_DONE);
 			const struct pg_evidence *expected = pg_prove_identity_type(typing, pg_prove_projection(typing, context, nat), lv, rv);
 			assert(pg_evidence_classifier(proof) == pg_evidence_subject(expected)->core);
-			assert(pg_prove_abstract(typing, classifiers, empty, context, pg_prove_return(typing, classifiers, proof)));
+			assert(pg_prove_abstract(typing, empty, context, pg_prove_return(typing, proof)));
 		}
 		assert(jobs[0] != jobs[1]);
 		pg_synthesis_destroy(&synthesis);
@@ -1677,19 +1661,17 @@ static void schema_positivity(void)
 {
 	struct pg_graph graph;
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
 	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
-	assert(!pg_classifiers_init(&classifiers, &graph));
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
 	const struct pg_object *self = pg_binder(&graph), *x = pg_binder(&graph);
 	/* An ordinary assumed type supplies test fields, not an admitted Self. */
 	const struct pg_evidence *parameters = pg_prove_context_extension(&typing, empty, self, u);
 	const struct pg_evidence *type = pg_prove_value_type(&typing, pg_prove_variable(&typing, parameters, self));
 	const struct pg_evidence *fields = pg_prove_context_extension(&typing, parameters, x, type);
-	const struct pg_evidence *negative = pg_prove_thunk_type(&typing, &classifiers,
-		pg_prove_pi(&typing, &classifiers, fields,
-			pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, fields, u))));
+	const struct pg_evidence *negative = pg_prove_thunk_type(&typing,
+		pg_prove_pi(&typing, fields,
+			pg_prove_return_type(&typing, pg_prove_projection(&typing, fields, u))));
 	const struct pg_evidence *bad_fields = pg_prove_context_extension(&typing, parameters, pg_binder(&graph), negative);
 	const struct pg_data_signature *signature = pg_data_signature(&typing, parameters, parameters);
 	const struct pg_evidence *recursive_result = parameter_result(&typing, parameters, fields);
@@ -1714,9 +1696,9 @@ static void schema_positivity(void)
 	assert(pg_data_schema_field_level(good, NULL) == -1);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
 	const struct pg_data_schema *nat_schema = pg_data_schema(&typing, signature, 2, results);
-	const struct pg_evidence *nat = pg_prove_inductive_type(&typing, &classifiers, nat_schema);
+	const struct pg_evidence *nat = pg_prove_inductive_type(&typing, nat_schema);
 	assert(nat && pg_evidence_rule(nat) == PG_INDUCTIVE_FORM);
-	constructor_field_paths(&typing, &classifiers, nat);
+	constructor_field_paths(&typing, nat);
 	struct pg_inductive_instance recovered;
 	assert(pg_inductive_instance(&typing, nat, &recovered));
 	assert(recovered.schema == nat_schema && recovered.formation == nat);
@@ -1783,10 +1765,10 @@ static void schema_positivity(void)
 	assert(!pg_evidence_context(nat));
 	assert(pg_evidence_premise(nat, 0) == parameters);
 	assert(pg_evidence_premise_count(nat) == 3);
-	assert(pg_evidence_classifier(nat) == pg_universe(&classifiers, 0));
+	assert(pg_evidence_classifier(nat) == pg_universe(&graph, 0));
 	assert(pg_term_independent(pg_evidence_subject(nat)->core, self) == 1);
-	assert(!pg_prove_inductive_type(&typing, &classifiers, bad));
-	assert(!pg_prove_inductive_type(&typing, &classifiers, NULL));
+	assert(!pg_prove_inductive_type(&typing, bad));
+	assert(!pg_prove_inductive_type(&typing, NULL));
 	const struct pg_evidence *identity = pg_prove_substitution(&typing, empty, empty, 0, NULL);
 	const struct pg_data_layout *nat_layout = pg_data_schema_layout(nat_schema);
 	size_t position = 99;
@@ -1798,19 +1780,19 @@ static void schema_positivity(void)
 	const struct pg_evidence *succ = pg_prove_constructor(&typing, nat,
 		pg_data_constructor(nat_layout, 1), identity, 1, &zero);
 	assert(zero && succ && pg_evidence_rule(succ) == PG_CONSTRUCTOR_INTRO);
-	index_paths(&typing, &classifiers, nat, zero,
-		pg_prove_inductive_type(&typing, &classifiers, none), pg_data_constructor(nat_layout, 1));
+	index_paths(&typing, nat, zero,
+		pg_prove_inductive_type(&typing, none), pg_data_constructor(nat_layout, 1));
 	assert(pg_evidence_classifier(succ) == pg_evidence_subject(nat)->core);
 	assert(pg_evidence_subject(succ)->core == pg_application(&graph,
 		pg_reference(&graph, pg_data_constructor(nat_layout, 1)), pg_evidence_subject(zero)->core));
-	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, empty, succ)) ==
+	assert(pg_evidence_subject(pg_prove_classifier(&typing, empty, succ)) ==
 		pg_evidence_subject(pg_evidence_premise(succ, 0)));
 	proofs = typing.proofs.count; terms = graph.terms.count;
-	assert(pg_prove_inductive_type(&typing, &classifiers, nat_schema) == nat);
+	assert(pg_prove_inductive_type(&typing, nat_schema) == nat);
 	assert(pg_prove_constructor(&typing, nat, pg_data_constructor(nat_layout, 1), identity, 1, &zero) == succ);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
 	const struct pg_data_schema *other_schema = pg_data_schema(&typing, signature, 2, results);
-	const struct pg_evidence *other = pg_prove_inductive_type(&typing, &classifiers, other_schema);
+	const struct pg_evidence *other = pg_prove_inductive_type(&typing, other_schema);
 	assert(other && pg_evidence_subject(other)->core != pg_evidence_subject(nat)->core);
 	assert(!pg_prove_constructor(&typing, other, pg_data_constructor(nat_layout, 0), identity, 0, NULL));
 	assert(!pg_prove_constructor(&typing, other,
@@ -1822,14 +1804,14 @@ static void schema_positivity(void)
 	const struct pg_evidence *formation_premises[] = {pg_evidence_premise(nat, 0),
 		pg_evidence_premise(nat, 1), pg_evidence_premise(nat, 2)};
 	proofs = typing.proofs.count;
-	assert(pg_prove_derivation(&typing, &classifiers, PG_INDUCTIVE_FORM, &wire_parameters, 3, formation_premises) == nat);
+	assert(pg_prove_derivation(&typing, PG_INDUCTIVE_FORM, &wire_parameters, 3, formation_premises) == nat);
 	assert(typing.proofs.count == proofs);
 	assert(!pg_derivation_parameters(succ, &wire_parameters));
 	assert(wire_parameters.constructor == pg_data_constructor(nat_layout, 1));
-	common_rule(&typing, &classifiers, zero);
-	common_rule(&typing, &classifiers, succ);
+	common_rule(&typing, zero);
+	common_rule(&typing, succ);
 	const struct pg_evidence *successor_function = pg_prove_constructor_function(&typing,
-		&classifiers, nat, pg_data_constructor(nat_layout, 1), identity);
+		nat, pg_data_constructor(nat_layout, 1), identity);
 	assert(successor_function && pg_evidence_rule(successor_function) == PG_LAMBDA_INTRO);
 	const struct pg_evidence *successor_application = pg_prove_application(&typing, successor_function, zero);
 	assert(successor_application);
@@ -1851,21 +1833,21 @@ static void schema_positivity(void)
 	check(&constructor_work, pg_evidence_subject(successor_application)->core, returned_successor);
 	check(&constructor_work, pg_evidence_subject(successor_body)->core, returned_successor);
 	const struct pg_evidence *zero_function = pg_prove_constructor_function(&typing,
-		&classifiers, nat, pg_data_constructor(nat_layout, 0), identity);
+		nat, pg_data_constructor(nat_layout, 0), identity);
 	assert(zero_function && pg_evidence_rule(zero_function) == PG_RETURN_INTRO);
 	assert(pg_prove_return_value(&typing, zero_function) == zero);
-	assert(pg_evidence_classifier(zero_function) == pg_computation_type(&classifiers,
+	assert(pg_evidence_classifier(zero_function) == pg_computation_type(&graph,
 		PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_evidence_subject(nat)->core));
 	/* The following hand-built motives deliberately use the weaker contract. */
 	zero_function = pg_prove_effect_subsumption(&typing, zero_function,
-		pg_prove_return_type(&typing, &classifiers, nat));
+		pg_prove_return_type(&typing, nat));
 	assert(zero_function);
 	/* Case elimination checks synthesized branches, not just the chosen branch. */
 	const struct pg_object *z = pg_binder(&graph), *n = pg_binder(&graph);
 	const struct pg_evidence *z_context = pg_prove_context_extension(&typing, empty, z, nat);
 	const struct pg_evidence *n_context = pg_prove_context_extension(&typing, empty, n, nat);
 	const struct pg_evidence *n_value = pg_prove_variable(&typing, n_context, n);
-	const struct pg_evidence *n_type = pg_prove_classifier(&typing, &classifiers, n_context, n_value);
+	const struct pg_evidence *n_type = pg_prove_classifier(&typing, n_context, n_value);
 	assert(pg_inductive_instance(&typing, n_type, &recovered));
 	assert(recovered.formation == nat && pg_evidence_context(recovered.parameters) == pg_evidence_context(n_context));
 	struct pg_inductive_instance unchanged = recovered;
@@ -1890,7 +1872,7 @@ static void schema_positivity(void)
 		const struct pg_evidence *actual = pg_substitution_image(&typing, restricted, selected);
 		assert(pg_evidence_subject(actual)->core == pg_evidence_subject(succ)->core);
 		assert(!pg_evidence_context(actual));
-		common_rule(&typing, &classifiers, restricted);
+		common_rule(&typing, restricted);
 		size_t before = typing.proofs.count;
 		for (size_t i = 0; i < 100; ++i)
 			assert(pg_prove_substitution_rebase(&typing, empty, images) == restricted);
@@ -1920,74 +1902,74 @@ static void schema_positivity(void)
 		actual = pg_substitution_image(&typing, restricted, a);
 		assert(pg_evidence_subject(actual)->core == pg_evidence_subject(nat)->core);
 		assert(pg_evidence_judgement(actual) == PG_JUDGEMENT_VALUE && !pg_evidence_context(actual));
-		common_rule(&typing, &classifiers, restricted);
+		common_rule(&typing, restricted);
 	}
 	{
 		/* A high codomain must not inflate the retained Nat domain. */
-		const struct pg_evidence *large_result = pg_prove_return_type(&typing, &classifiers,
-			pg_prove_universe(&typing, &classifiers, z_context, 2));
-		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, z_context, large_result);
-		assert(pg_evidence_classifier(pi) == pg_universe(&classifiers, 3));
+		const struct pg_evidence *large_result = pg_prove_return_type(&typing,
+			pg_prove_universe(&typing, z_context, 2));
+		const struct pg_evidence *pi = pg_prove_pi(&typing, z_context, large_result);
+		assert(pg_evidence_classifier(pi) == pg_universe(&graph, 3));
 		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
 		const struct pg_evidence *derived[] = {pi,
 			pg_prove_projection(&typing, n_context, pi),
 			pg_prove_reindex(&typing, map, pi),
-			pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, &classifiers, pi))};
+			pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi))};
 		for (size_t i = 0; i < sizeof(derived) / sizeof(*derived); ++i) {
 			const struct pg_evidence *domain = pg_prove_pi_domain(&typing, derived[i]);
-			assert(domain && pg_evidence_classifier(domain) == pg_universe(&classifiers, 0));
+			assert(domain && pg_evidence_classifier(domain) == pg_universe(&graph, 0));
 			assert(pg_evidence_context(domain) == pg_evidence_context(derived[i]));
 			assert(pg_evidence_subject(domain)->core == pg_evidence_subject(nat)->core);
-			common_rule(&typing, &classifiers, domain);
+			common_rule(&typing, domain);
 			size_t before = typing.proofs.count;
 			assert(pg_prove_pi_domain(&typing, derived[i]) == domain);
 			assert(typing.proofs.count == before);
 		}
 		/* Narrow domain formation survives removing an unused outer binder. */
-		const struct pg_evidence *nested = pg_prove_pi(&typing, &classifiers, z_context,
+		const struct pg_evidence *nested = pg_prove_pi(&typing, z_context,
 			pg_prove_projection(&typing, z_context, pi));
 		const struct pg_evidence *applied = pg_prove_pi_codomain(&typing, nested, zero);
 		assert(applied);
 		struct pg_occurrence_input *input = pg_occurrence_input_request(&typing, pg_evidence_subject(applied), 0);
 		while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING) {}
 		const struct pg_occurrence *retained_domain = pg_occurrence_input_result(input);
-		assert(retained_domain && retained_domain->classifier == pg_universe(&classifiers, 0));
+		assert(retained_domain && retained_domain->classifier == pg_universe(&graph, 0));
 		assert(retained_domain->core == pg_evidence_subject(nat)->core && !retained_domain->context);
-		common_rule(&typing, &classifiers, applied);
+		common_rule(&typing, applied);
 		const struct pg_evidence *inner = pg_prove_pi_constant_codomain(&typing, nested);
 		assert(inner && pg_evidence_subject(inner) == pg_evidence_subject(pi));
 		size_t before_domain = typing.proofs.count;
 		const struct pg_evidence *inner_domain = pg_prove_pi_domain(&typing, inner);
-		assert(inner_domain && pg_evidence_classifier(inner_domain) == pg_universe(&classifiers, 0));
+		assert(inner_domain && pg_evidence_classifier(inner_domain) == pg_universe(&graph, 0));
 		assert(pg_evidence_rule(inner_domain) == PG_PI_DOMAIN);
 		assert(pg_evidence_premise(inner_domain, 0) == inner);
 		assert(typing.proofs.count == before_domain + 1);
-		common_rule(&typing, &classifiers, inner_domain);
+		common_rule(&typing, inner_domain);
 		/* A directly formed inner Pi is not merely a retained projection. */
 		const struct pg_evidence *direct_scope = pg_prove_context_extension(&typing, z_context,
 			pg_binder(&graph), pg_prove_projection(&typing, z_context, nat));
-		const struct pg_evidence *direct = pg_prove_pi(&typing, &classifiers, direct_scope,
-			pg_prove_return_type(&typing, &classifiers, pg_prove_universe(&typing, &classifiers, direct_scope, 2)));
-		inner = pg_prove_pi_constant_codomain(&typing, pg_prove_pi(&typing, &classifiers, z_context, direct));
+		const struct pg_evidence *direct = pg_prove_pi(&typing, direct_scope,
+			pg_prove_return_type(&typing, pg_prove_universe(&typing, direct_scope, 2)));
+		inner = pg_prove_pi_constant_codomain(&typing, pg_prove_pi(&typing, z_context, direct));
 		inner_domain = pg_prove_pi_domain(&typing, inner);
-		assert(inner_domain && pg_evidence_classifier(inner_domain) == pg_universe(&classifiers, 0));
-		common_rule(&typing, &classifiers, inner_domain);
+		assert(inner_domain && pg_evidence_classifier(inner_domain) == pg_universe(&graph, 0));
+		common_rule(&typing, inner_domain);
 		/* Recover an actual large domain without lowering its universe. */
-		const struct pg_evidence *large = pg_prove_universe(&typing, &classifiers, empty, 2);
+		const struct pg_evidence *large = pg_prove_universe(&typing, empty, 2);
 		const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, pg_binder(&graph), large);
-		pi = pg_prove_pi(&typing, &classifiers, scope,
-			pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, scope, nat)));
+		pi = pg_prove_pi(&typing, scope,
+			pg_prove_return_type(&typing, pg_prove_projection(&typing, scope, nat)));
 		const struct pg_evidence *domain = pg_prove_pi_domain(&typing, pi);
 		assert(domain && pg_evidence_subject(domain) == pg_evidence_subject(large));
-		assert(pg_evidence_classifier(domain) == pg_universe(&classifiers, 3));
-		common_rule(&typing, &classifiers, domain);
+		assert(pg_evidence_classifier(domain) == pg_universe(&graph, 3));
+		common_rule(&typing, domain);
 		/* A widened constant result's first receipt is an inversion, not its
 		 * F introduction. Structural recovery must not revisit that receipt. */
-		const struct pg_evidence *closed = pg_prove_return_type(&typing, &classifiers, nat);
+		const struct pg_evidence *closed = pg_prove_return_type(&typing, nat);
 		const struct pg_evidence *constant = pg_prove_pi_constant_codomain(&typing,
-			pg_prove_pi(&typing, &classifiers, scope, pg_prove_projection(&typing, scope, closed)));
+			pg_prove_pi(&typing, scope, pg_prove_projection(&typing, scope, closed)));
 		const struct pg_evidence *content = pg_prove_return_content(&typing, constant);
-		assert(content && pg_evidence_classifier(content) == pg_universe(&classifiers, 3));
+		assert(content && pg_evidence_classifier(content) == pg_universe(&graph, 3));
 		for (size_t chunk = 1; chunk <= 64; chunk *= 64) {
 			struct pg_inductive_recovery work;
 			assert(!pg_inductive_recovery_init(&work, &typing, content));
@@ -1998,19 +1980,19 @@ static void schema_positivity(void)
 		}
 	}
 	{
-		const struct pg_evidence *result_type = pg_prove_return_type(&typing, &classifiers,
+		const struct pg_evidence *result_type = pg_prove_return_type(&typing,
 			pg_prove_projection(&typing, z_context, nat));
-		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, z_context, result_type);
+		const struct pg_evidence *pi = pg_prove_pi(&typing, z_context, result_type);
 		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
-		const struct pg_evidence *wrapped = pg_prove_thunk_type(&typing, &classifiers, pi);
+		const struct pg_evidence *wrapped = pg_prove_thunk_type(&typing, pi);
 		assert(wrapped && !pg_inductive_instance(&typing, wrapped, &recovered));
-		const struct pg_evidence *curried = pg_prove_pi(&typing, &classifiers, z_context,
+		const struct pg_evidence *curried = pg_prove_pi(&typing, z_context,
 			pg_prove_projection(&typing, z_context, pi));
 		const struct pg_evidence *inner_context = pg_prove_context_extension(&typing, z_context,
 			pg_binder(&graph), pg_prove_projection(&typing, z_context, nat));
-		const struct pg_evidence *scoped_curried = pg_prove_pi(&typing, &classifiers, z_context,
-			pg_prove_pi(&typing, &classifiers, inner_context,
-				pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, inner_context, nat))));
+		const struct pg_evidence *scoped_curried = pg_prove_pi(&typing, z_context,
+			pg_prove_pi(&typing, inner_context,
+				pg_prove_return_type(&typing, pg_prove_projection(&typing, inner_context, nat))));
 		const struct pg_evidence *derived[] = {
 			pg_prove_projection(&typing, n_context, pi),
 			pg_prove_reindex(&typing, map, pi),
@@ -2040,8 +2022,8 @@ static void schema_positivity(void)
 			assert(instance.formation == nat && instance.schema == nat_schema);
 			assert(pg_evidence_context(instance.parameters) == pg_evidence_context(n_context));
 		}
-		const struct pg_evidence *returned = pg_prove_return_type(&typing, &classifiers, nat);
-		wrapped = pg_prove_thunk_type(&typing, &classifiers, returned);
+		const struct pg_evidence *returned = pg_prove_return_type(&typing, nat);
+		wrapped = pg_prove_thunk_type(&typing, returned);
 		assert(wrapped && !pg_inductive_instance(&typing, wrapped, &recovered));
 		const struct pg_evidence *content = pg_prove_return_content(&typing,
 			pg_prove_thunk_content(&typing, pg_prove_reindex(&typing, map, wrapped)));
@@ -2049,61 +2031,61 @@ static void schema_positivity(void)
 		assert(recovered.formation == nat && recovered.schema == nat_schema);
 		assert(pg_evidence_context(recovered.parameters) == pg_evidence_context(n_context));
 		const struct pg_evidence *z_value = pg_prove_variable(&typing, z_context, z);
-		const struct pg_evidence *dependent = pg_prove_pi(&typing, &classifiers, z_context,
-			pg_prove_return_type(&typing, &classifiers, pg_prove_identity_type(&typing,
+		const struct pg_evidence *dependent = pg_prove_pi(&typing, z_context,
+			pg_prove_return_type(&typing, pg_prove_identity_type(&typing,
 				pg_prove_projection(&typing, z_context, nat), z_value, z_value)));
 		assert(dependent && !pg_prove_pi_constant_codomain(&typing, dependent));
 		assert(!pg_prove_pi_constant_codomain(&typing, pg_prove_reindex(&typing, map, dependent)));
 	}
-	const struct pg_evidence *pred_branch = pg_prove_abstract(&typing, &classifiers,
-		empty, n_context, pg_prove_return(&typing, &classifiers, n_value));
-	const struct pg_evidence *nat_motive = pg_prove_return_type(&typing, &classifiers,
-		pg_prove_projection(&typing, z_context, nat));
+	const struct pg_evidence *pred_branch = pg_prove_abstract(&typing,
+		empty, n_context, pg_prove_return(&typing, n_value));
+	const struct pg_evidence *nat_motive = pg_prove_return_type(&typing,
+			pg_prove_projection(&typing, z_context, nat));
 	const struct pg_evidence *induction_scope = pg_prove_induction_scope(&typing,
-		&classifiers, nat, pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive);
+		nat, pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive);
 	assert(induction_scope);
 	const struct pg_evidence *ih_context = pg_evidence_premise(induction_scope, 1);
 	const struct pg_evidence *ih = pg_prove_variable(&typing, ih_context, pg_evidence_context(ih_context)->binder);
 	const struct pg_evidence *ih_call = pg_prove_force(&typing, ih);
-	assert(ih_call && pg_evidence_classifier(ih_call) == pg_return_type(&classifiers, pg_evidence_subject(nat)->core));
+	assert(ih_call && pg_evidence_classifier(ih_call) == pg_return_type(&graph, pg_evidence_subject(nat)->core));
 	size_t induction_bindings;
 	assert(!pg_context_extension_size(pg_evidence_context(ih_context), NULL, &induction_bindings));
 	assert(induction_bindings == 2);
 	const struct pg_context *ih_allocation = pg_evidence_context(ih_context);
-	assert(pg_prove_induction_scope_at(&typing, &classifiers, nat,
+	assert(pg_prove_induction_scope_at(&typing, nat,
 		pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive, ih_allocation) == induction_scope);
 	const struct pg_context *wrong_ih = pg_context_bind(&typing, ih_allocation->parent,
-		ih_allocation->binder, pg_universe(&classifiers, 0), PG_JUDGEMENT_VALUE);
+		ih_allocation->binder, pg_universe(&graph, 0), PG_JUDGEMENT_VALUE);
 	assert(wrong_ih != ih_allocation);
-	assert(pg_prove_induction_scope_at(&typing, &classifiers, nat,
+	assert(pg_prove_induction_scope_at(&typing, nat,
 		pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive, wrong_ih) == induction_scope);
-	assert(!pg_prove_induction_scope_at(&typing, &classifiers, nat,
+	assert(!pg_prove_induction_scope_at(&typing, nat,
 		pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive, ih_allocation->parent));
 	assert(!pg_prove_projection(&typing, empty, ih_call));
 	const struct pg_evidence *base_scope = pg_prove_induction_scope(&typing,
-		&classifiers, nat, pg_data_constructor(nat_layout, 0), identity, z_context, nat_motive);
+		nat, pg_data_constructor(nat_layout, 0), identity, z_context, nat_motive);
 	assert(base_scope && !pg_evidence_context(base_scope));
-	assert(pg_prove_induction_scope_at(&typing, &classifiers, nat,
+	assert(pg_prove_induction_scope_at(&typing, nat,
 		pg_data_constructor(nat_layout, 0), identity, z_context, nat_motive, NULL) == base_scope);
 	{
 		const struct pg_evidence *two_fields = pg_prove_context_extension(&typing, fields,
 			pg_binder(&graph), pg_prove_projection(&typing, fields, type));
 		const struct pg_evidence *tree_results[] = {results[0], parameter_result(&typing, parameters, two_fields)};
 		const struct pg_data_schema *tree_schema = pg_data_schema(&typing, signature, 2, tree_results);
-		const struct pg_evidence *tree = pg_prove_inductive_type(&typing, &classifiers, tree_schema);
+		const struct pg_evidence *tree = pg_prove_inductive_type(&typing, tree_schema);
 		const struct pg_object *node = pg_data_constructor(pg_data_schema_layout(tree_schema), 1);
 		const struct pg_evidence *tree_context = pg_prove_context_extension(&typing, empty, pg_binder(&graph), tree);
-		const struct pg_evidence *tree_motive = pg_prove_return_type(&typing, &classifiers,
+		const struct pg_evidence *tree_motive = pg_prove_return_type(&typing,
 			pg_prove_projection(&typing, tree_context, nat));
-		const struct pg_evidence *tree_scope = pg_prove_induction_scope(&typing, &classifiers,
+		const struct pg_evidence *tree_scope = pg_prove_induction_scope(&typing,
 			tree, node, identity, tree_context, tree_motive);
 		assert(tree_scope);
 		const struct pg_context *allocated = pg_evidence_context(pg_evidence_premise(tree_scope, 1));
 		size_t bindings;
 		assert(!pg_context_extension_size(allocated, NULL, &bindings) && bindings == 4);
-		assert(pg_prove_induction_scope_at(&typing, &classifiers, tree, node, identity,
+		assert(pg_prove_induction_scope_at(&typing, tree, node, identity,
 			tree_context, tree_motive, allocated) == tree_scope);
-		assert(!pg_prove_induction_scope_at(&typing, &classifiers, tree, node, identity,
+		assert(!pg_prove_induction_scope_at(&typing, tree, node, identity,
 			tree_context, tree_motive, allocated->parent));
 		const struct pg_evidence *leaf = pg_prove_constructor(&typing, tree,
 			pg_data_constructor(pg_data_schema_layout(tree_schema), 0), identity, 0, NULL);
@@ -2113,35 +2095,35 @@ static void schema_positivity(void)
 		const struct pg_evidence *root = pg_prove_constructor(&typing, tree, node, identity, 2, root_fields);
 		const struct pg_evidence *scope = pg_evidence_premise(tree_scope, 1);
 		const struct pg_evidence *first_ih = pg_prove_variable(&typing, scope, allocated->parent->binder);
-		const struct pg_evidence *successor = pg_prove_constructor_function(&typing, &classifiers,
-			nat, pg_data_constructor(nat_layout, 1), identity);
-		const struct pg_evidence *body = pg_prove_fold(&typing, &classifiers,
+		const struct pg_evidence *successor = pg_prove_constructor_function(&typing,
+		nat, pg_data_constructor(nat_layout, 1), identity);
+		const struct pg_evidence *body = pg_prove_fold(&typing,
 			pg_prove_force(&typing, first_ih), pg_prove_projection(&typing, scope, successor));
-		const struct pg_evidence *step = pg_prove_abstract(&typing, &classifiers, empty, scope, body);
+		const struct pg_evidence *step = pg_prove_abstract(&typing, empty, scope, body);
 		const struct pg_evidence *branches[] = {zero_function, step};
-		const struct pg_evidence *elimination = pg_prove_induction(&typing, &classifiers,
+		const struct pg_evidence *elimination = pg_prove_induction(&typing,
 			tree, identity, root, tree_context, tree_motive, 2, branches);
 		struct pg_typed_query *query = pg_elimination_body_request(&typing, elimination);
 		assert(query && !pg_typed_query_advance(query, 0));
 		while (!pg_typed_query_advance(query, 64)) assert(pg_typed_query_steps(query) < 10000);
-		const struct pg_evidence *unfolded = pg_prove_elimination_body(&typing, &classifiers, elimination);
+		const struct pg_evidence *unfolded = pg_prove_elimination_body(&typing, elimination);
 		assert(unfolded && pg_typed_query_result(query) == unfolded);
 		const struct pg_evidence *two = pg_prove_constructor(&typing, nat,
 			pg_data_constructor(nat_layout, 1), identity, 1, &succ);
 		assert(elimination && unfolded && two);
-		const struct pg_term *expected = pg_evidence_subject(pg_prove_return(&typing, &classifiers, two))->core;
+		const struct pg_term *expected = pg_evidence_subject(pg_prove_return(&typing, two))->core;
 		check(&constructor_work, pg_evidence_subject(elimination)->core, expected);
 		check(&constructor_work, pg_evidence_subject(unfolded)->core, expected);
-		common_rule(&typing, &classifiers, unfolded);
+		common_rule(&typing, unfolded);
 	}
-	assert(!pg_prove_induction_scope(&typing, &classifiers, other,
+	assert(!pg_prove_induction_scope(&typing, other,
 		pg_data_constructor(pg_data_schema_layout(other_schema), 1), identity, z_context, nat_motive));
 	const struct pg_evidence *recursive_branch = pg_prove_abstract(&typing,
-		&classifiers, empty, ih_context, ih_call);
+		empty, ih_context, ih_call);
 	const struct pg_evidence *recursive_branches[] = {zero_function, recursive_branch};
 	const struct pg_evidence *twice = pg_prove_constructor(&typing, nat,
 		pg_data_constructor(nat_layout, 1), identity, 1, &succ);
-	const struct pg_evidence *countdown = pg_prove_induction(&typing, &classifiers,
+	const struct pg_evidence *countdown = pg_prove_induction(&typing,
 		nat, identity, twice, z_context, nat_motive, 2, recursive_branches);
 	assert(countdown && pg_evidence_rule(countdown) == PG_INDUCTION_ELIM);
 	struct pg_typed_query *countdown_query = pg_elimination_body_request(&typing, countdown);
@@ -2152,13 +2134,13 @@ static void schema_positivity(void)
 		countdown_steps = pg_typed_query_steps(countdown_query);
 		assert(countdown_steps < 10000);
 	}
-	const struct pg_evidence *countdown_body = pg_prove_elimination_body(&typing, &classifiers, countdown);
+	const struct pg_evidence *countdown_body = pg_prove_elimination_body(&typing, countdown);
 	assert(pg_typed_query_result(countdown_query) == countdown_body);
 	assert(countdown_body && pg_evidence_context(countdown_body) == pg_evidence_context(countdown));
 	assert(pg_alpha_equal(pg_evidence_classifier(countdown_body), pg_evidence_classifier(countdown)) == 1);
 	check(&constructor_work, pg_evidence_subject(countdown_body)->core, pg_evidence_subject(zero_function)->core);
-	common_rule(&typing, &classifiers, countdown_body);
-	assert(pg_prove_elimination_body(&typing, &classifiers, countdown) == countdown_body);
+	common_rule(&typing, countdown_body);
+	assert(pg_prove_elimination_body(&typing, countdown) == countdown_body);
 	{
 		struct pg_typed_query *returned = pg_return_body_request(&typing, countdown);
 		while (!pg_typed_query_advance(returned, 1)) assert(pg_typed_query_steps(returned) < 10000);
@@ -2166,32 +2148,31 @@ static void schema_positivity(void)
 		assert(value && pg_evidence_context(value) == pg_evidence_context(countdown));
 		assert(pg_evidence_subject(value)->core == pg_evidence_subject(pg_prove_return_value(&typing, zero_function))->core);
 		assert(pg_evidence_classifier(value) == pg_evidence_subject(nat)->core);
-		common_rule(&typing, &classifiers, value);
+		common_rule(&typing, value);
 		size_t proofs = typing.proofs.count, subjects = typing.occurrences.count;
 		countdown_steps = pg_typed_query_steps(countdown_query);
 		assert(pg_elimination_body_request(&typing, countdown) == countdown_query);
 		assert(pg_typed_query_advance(countdown_query, 64) == 1);
 		assert(pg_typed_query_steps(countdown_query) == countdown_steps);
-		assert(pg_prove_elimination_body(&typing, &classifiers, countdown) == countdown_body);
+		assert(pg_prove_elimination_body(&typing, countdown) == countdown_body);
 		assert(typing.proofs.count == proofs && typing.occurrences.count == subjects);
 	}
 	{
 		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
 		const struct pg_evidence *scope = pg_prove_inductive_motive_context(&typing, nat, map, pg_binder(&graph));
-		const struct pg_evidence *motive = pg_prove_return_type(&typing, &classifiers,
-			pg_prove_projection(&typing, scope, nat));
+		const struct pg_evidence *motive = pg_prove_return_type(&typing, pg_prove_projection(&typing, scope, nat));
 		const struct pg_evidence *branches[] = {pg_prove_projection(&typing, n_context, zero_function),
 			pg_prove_projection(&typing, n_context, recursive_branch)};
 		const struct pg_evidence *input = pg_prove_constructor(&typing, nat,
 			pg_data_constructor(nat_layout, 1), map, 1, &n_value);
-		const struct pg_evidence *outer = pg_prove_induction(&typing, &classifiers,
+		const struct pg_evidence *outer = pg_prove_induction(&typing,
 			nat, map, input, scope, motive, 2, branches);
-		const struct pg_evidence *inner = pg_prove_induction(&typing, &classifiers,
+		const struct pg_evidence *inner = pg_prove_induction(&typing,
 			nat, map, n_value, scope, motive, 2, branches);
-		assert(outer && inner && !pg_prove_elimination_body(&typing, &classifiers, inner));
-		const struct pg_evidence *body = pg_prove_elimination_body(&typing, &classifiers, outer);
+		assert(outer && inner && !pg_prove_elimination_body(&typing, inner));
+		const struct pg_evidence *body = pg_prove_elimination_body(&typing, outer);
 		const struct pg_evidence *expected_body = pg_prove_force(&typing,
-			pg_prove_thunk(&typing, &classifiers, inner));
+			pg_prove_thunk(&typing, inner));
 		assert(body && expected_body);
 		assert(pg_alpha_equal(pg_evidence_subject(body)->core, pg_evidence_subject(expected_body)->core) == 1);
 		assert(pg_alpha_equal(pg_evidence_classifier(body), pg_evidence_classifier(outer)) == 1);
@@ -2200,16 +2181,15 @@ static void schema_positivity(void)
 			pg_evidence_subject(outer)->core, pg_evidence_subject(body)->core));
 		assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
 		pg_conversion_destroy(&comparison);
-		common_rule(&typing, &classifiers, body);
+		common_rule(&typing, body);
 	}
-	assert(!pg_prove_elimination_body(&typing, NULL, countdown));
-	assert(!pg_prove_elimination_body(NULL, &classifiers, countdown));
+	assert(!pg_prove_elimination_body(NULL, countdown));
 	assert(!pg_elimination_body_request(&typing, NULL));
 	assert(!pg_elimination_body_request(&typing, zero_function));
 	{
 		struct pg_typing foreign;
 		assert(!pg_typing_init(&foreign, &graph));
-		assert(!pg_prove_elimination_body(&foreign, &classifiers, countdown));
+		assert(!pg_prove_elimination_body(&foreign, countdown));
 		assert(!pg_elimination_body_request(&foreign, countdown));
 		pg_typing_destroy(&foreign);
 	}
@@ -2226,17 +2206,17 @@ static void schema_positivity(void)
 		}
 	{
 		const struct pg_evidence *environment = NULL;
-		assert(pg_prove_construction_origin(&typing, &classifiers, countdown, &environment) == countdown && !environment);
+		assert(pg_prove_construction_origin(&typing, countdown, &environment) == countdown && !environment);
 		const struct pg_evidence *projected = pg_prove_projection(&typing, z_context, countdown);
-		assert(pg_prove_construction_origin(&typing, &classifiers, projected, &environment) == countdown);
+		assert(pg_prove_construction_origin(&typing, projected, &environment) == countdown);
 		assert(environment && pg_evidence_context_map(environment)->source == pg_evidence_context(countdown));
 		assert(pg_evidence_context_map(environment)->destination == pg_evidence_context(z_context));
 		size_t before = typing.proofs.count, subjects = typing.occurrences.count;
 		for (size_t i = 0; i < 100; ++i)
-			assert(pg_prove_construction_origin(&typing, &classifiers, projected, &environment) == countdown);
+			assert(pg_prove_construction_origin(&typing, projected, &environment) == countdown);
 		assert(typing.proofs.count == before && typing.occurrences.count == subjects);
-		assert(!pg_prove_construction_origin(NULL, &classifiers, countdown, &environment));
-		assert(!pg_prove_construction_origin(&typing, &classifiers, countdown, NULL));
+		assert(!pg_prove_construction_origin(NULL, countdown, &environment));
+		assert(!pg_prove_construction_origin(&typing, countdown, NULL));
 		{
 			const struct pg_evidence *scope = z_context, *nested = projected;
 			struct pg_typed_query *middle = NULL;
@@ -2254,85 +2234,88 @@ static void schema_positivity(void)
 			const struct pg_evidence *direct = pg_prove_substitution_projection(&typing, empty, scope);
 			assert(pg_evidence_context_map(pg_construction_origin_environment(query)) == pg_evidence_context_map(direct));
 			uint64_t steps = pg_typed_query_steps(query), middle_steps = pg_typed_query_steps(middle);
-			assert(pg_prove_construction_origin(&typing, &classifiers, nested, &environment) == countdown);
+			assert(pg_prove_construction_origin(&typing, nested, &environment) == countdown);
 			assert(pg_typed_query_steps(query) == steps && pg_typed_query_steps(middle) == middle_steps);
 		}
 		/* This boundary has no introduction receipt until structural recovery.
 		 * Its typed Return child is unchanged by totality subsumption. */
 		const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, pg_binder(&graph), nat);
 		const struct pg_evidence *input = pg_prove_variable(&typing, scope, pg_evidence_context(scope)->binder);
-		const struct pg_evidence *total = pg_prove_return_contract(&typing, &classifiers, PG_TOTALITY_TOTAL, input);
-		const struct pg_evidence *target = pg_prove_return_type(&typing, &classifiers, pg_prove_projection(&typing, scope, nat));
+		const struct pg_evidence *total = pg_prove_return_contract(&typing, PG_TOTALITY_TOTAL, input);
+		const struct pg_evidence *target = pg_prove_return_type(&typing, pg_prove_projection(&typing, scope, nat));
 		const struct pg_evidence *boundary = pg_prove_effect_subsumption(&typing, total, target);
 		assert(boundary && pg_evidence_rule(boundary) == PG_EFFECT_SUBSUMPTION);
 		assert(pg_evidence_for_subject(&typing, pg_evidence_subject(boundary), NULL) == boundary);
-		const struct pg_evidence *recovered = pg_prove_construction_origin(&typing, &classifiers, boundary, &environment);
+		const struct pg_evidence *recovered = pg_prove_construction_origin(&typing, boundary, &environment);
 		assert(recovered && pg_evidence_rule(recovered) == PG_RETURN_INTRO && !environment);
 		assert(pg_evidence_subject(recovered)->core == pg_evidence_subject(boundary)->core);
 		assert(pg_evidence_for_subject(&typing, pg_evidence_subject(boundary), NULL) == boundary);
 	}
 	assert(!pg_evidence_induction_allocation(zero));
-	assert(pg_prove_induction_at(&typing, &classifiers, nat, identity, twice, z_context,
+	assert(pg_prove_induction_at(&typing, nat, identity, twice, z_context,
 		nat_motive, 2, recursive_branches, countdown_allocation) == countdown);
-	const struct pg_evidence *retained_base = pg_prove_induction_at(&typing, &classifiers,
+	const struct pg_evidence *retained_base = pg_prove_induction_at(&typing,
 		nat, identity, zero, z_context, nat_motive, 2, recursive_branches, countdown_allocation);
 	assert(retained_base);
-	assert(pg_prove_elimination_body(&typing, &classifiers, retained_base) == zero_function);
+	assert(pg_prove_elimination_body(&typing, retained_base) == zero_function);
 	const struct pg_term *countdown_core = pg_evidence_subject(countdown)->core;
 	assert(countdown_core->kind == PG_APPLICATION);
 	assert(pg_evidence_subject(retained_base)->core == pg_application(&graph,
 		countdown_core->as.application.function, pg_evidence_subject(zero)->core));
 	struct pg_induction_allocation invalid_allocation = *countdown_allocation;
 	invalid_allocation.argument = invalid_allocation.recursion;
-	assert(!pg_prove_induction_at(&typing, &classifiers, nat, identity, twice, z_context,
+	assert(!pg_prove_induction_at(&typing, nat, identity, twice, z_context,
 		nat_motive, 2, recursive_branches, &invalid_allocation));
 	invalid_allocation = *countdown_allocation;
 	invalid_allocation.recursion = pg_binder(&graph);
 	/* Fresh, noncapturing allocation is a distinct valid construction, not a
 	 * conflicting proof of the default construction. Neither replaces the other. */
-	const struct pg_evidence *alternative = pg_prove_induction_at(&typing, &classifiers,
-		nat, identity, twice, z_context, nat_motive, 2, recursive_branches, &invalid_allocation);
+	const struct pg_evidence *alternative = pg_prove_induction_at(&typing, nat, identity, twice, z_context, nat_motive, 2, recursive_branches, &invalid_allocation);
 	assert(alternative && alternative != countdown);
 	assert(pg_evidence_subject(alternative)->core != pg_evidence_subject(countdown)->core);
 	assert(pg_alpha_equal(pg_evidence_subject(alternative)->core, pg_evidence_subject(countdown)->core) == 1);
-	assert(pg_prove_induction_at(&typing, &classifiers, nat, identity, twice, z_context,
+	assert(pg_prove_induction_at(&typing, nat, identity, twice, z_context,
 		nat_motive, 2, recursive_branches, &invalid_allocation) == alternative);
-	common_rule(&typing, &classifiers, alternative);
-	assert(pg_prove_induction(&typing, &classifiers, nat, identity, twice, z_context,
+	common_rule(&typing, alternative);
+	assert(pg_prove_induction(&typing,
+		nat, identity, twice, z_context,
 		nat_motive, 2, recursive_branches) == countdown);
 	{
 		/* Supplying a valid allocation first must not reserve this premise tuple
 		 * against later default construction or another explicit allocation. */
 		const struct pg_evidence *three = pg_prove_constructor(&typing, nat,
 			pg_data_constructor(nat_layout, 1), identity, 1, &twice);
-		const struct pg_evidence *explicit_first = pg_prove_induction_at(&typing, &classifiers,
+		const struct pg_evidence *explicit_first = pg_prove_induction_at(&typing,
 			nat, identity, three, z_context, nat_motive, 2, recursive_branches, countdown_allocation);
-		const struct pg_evidence *default_next = pg_prove_induction(&typing, &classifiers,
+		const struct pg_evidence *default_next = pg_prove_induction(&typing,
 			nat, identity, three, z_context, nat_motive, 2, recursive_branches);
 		assert(explicit_first && default_next && explicit_first != default_next);
 		assert(pg_alpha_equal(pg_evidence_subject(explicit_first)->core,
 			pg_evidence_subject(default_next)->core) == 1);
-		common_rule(&typing, &classifiers, explicit_first);
-		common_rule(&typing, &classifiers, default_next);
-		assert(pg_prove_induction(&typing, &classifiers, nat, identity, three, z_context,
+		common_rule(&typing, explicit_first);
+		common_rule(&typing, default_next);
+		assert(pg_prove_induction(&typing,
+			nat, identity, three, z_context,
 			nat_motive, 2, recursive_branches) == default_next);
-		assert(pg_prove_induction_at(&typing, &classifiers, nat, identity, three, z_context,
+		assert(pg_prove_induction_at(&typing,
+			nat, identity, three, z_context,
 			nat_motive, 2, recursive_branches, countdown_allocation) == explicit_first);
 	}
 	const struct pg_context *short_clauses[] = {countdown_allocation->clauses[0], countdown_allocation->clauses[1]->parent};
 	invalid_allocation = *countdown_allocation;
 	invalid_allocation.clauses = short_clauses;
-	assert(!pg_prove_induction_at(&typing, &classifiers, nat, identity, succ, z_context,
+	assert(!pg_prove_induction_at(&typing, nat, identity, succ, z_context,
 		nat_motive, 2, recursive_branches, &invalid_allocation));
 	invalid_allocation = *countdown_allocation;
 	invalid_allocation.recursion = countdown_allocation->clauses[1]->parent->binder;
-	assert(!pg_prove_induction_at(&typing, &classifiers, nat, identity, succ, z_context,
+	assert(!pg_prove_induction_at(&typing, nat, identity, succ, z_context,
 		nat_motive, 2, recursive_branches, &invalid_allocation));
-	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, empty, countdown))->core
-		== pg_return_type(&classifiers, pg_evidence_subject(nat)->core));
+	assert(pg_evidence_subject(pg_prove_classifier(&typing, empty, countdown))->core
+		== pg_return_type(&graph, pg_evidence_subject(nat)->core));
 	check(&constructor_work, pg_evidence_subject(countdown)->core, pg_evidence_subject(zero_function)->core);
 	proofs = typing.proofs.count; terms = graph.terms.count;
-	assert(pg_prove_induction(&typing, &classifiers, nat, identity, twice,
+	assert(pg_prove_induction(&typing,
+		nat, identity, twice,
 		z_context, nat_motive, 2, recursive_branches) == countdown);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
 	assert(!pg_derivation_parameters(countdown, &wire_parameters));
@@ -2340,13 +2323,13 @@ static void schema_positivity(void)
 	struct pg_derivation_input retained_induction;
 	assert(!pg_derivation_input_header(countdown, &retained_induction));
 	assert(retained_induction.parameters.induction == countdown_allocation);
-	common_rule(&typing, &classifiers, countdown);
-	assert(!pg_prove_match(&typing, &classifiers, nat, identity, twice,
+	common_rule(&typing, countdown);
+	assert(!pg_prove_match(&typing, nat, identity, twice,
 		z_context, nat_motive, 2, recursive_branches));
 	const struct pg_evidence *pred_branches[] = {zero_function, pred_branch};
-	assert(!pg_prove_induction(&typing, &classifiers, nat, identity, twice,
+	assert(!pg_prove_induction(&typing, nat, identity, twice,
 		z_context, nat_motive, 2, pred_branches));
-	const struct pg_evidence *pred = pg_prove_match(&typing, &classifiers, nat,
+	const struct pg_evidence *pred = pg_prove_match(&typing, nat,
 		identity, succ, z_context, nat_motive, 2, pred_branches);
 	assert(pred && pg_evidence_rule(pred) == PG_MATCH_ELIM);
 	check(&constructor_work, pg_evidence_subject(pred)->core, pg_evidence_subject(zero_function)->core);
@@ -2357,17 +2340,17 @@ static void schema_positivity(void)
 	assert(pg_evidence_classifier(pred_reduced) == pg_evidence_classifier(pred));
 	/* Typed results may demand another Match's result. Keep these dependencies
 	 * in the shared work graph rather than recursively entering the C evaluator. */
-	const struct pg_evidence *total_motive = pg_prove_computation_type(&typing, &classifiers,
+	const struct pg_evidence *total_motive = pg_prove_computation_type(&typing,
 		PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_prove_projection(&typing, z_context, nat));
-	const struct pg_evidence *total_zero = pg_prove_return_contract(&typing, &classifiers, PG_TOTALITY_TOTAL, zero);
-	const struct pg_evidence *total_pred = pg_prove_abstract(&typing, &classifiers, empty, n_context,
-		pg_prove_return_contract(&typing, &classifiers, PG_TOTALITY_TOTAL,
+	const struct pg_evidence *total_zero = pg_prove_return_contract(&typing, PG_TOTALITY_TOTAL, zero);
+	const struct pg_evidence *total_pred = pg_prove_abstract(&typing, empty, n_context,
+		pg_prove_return_contract(&typing, PG_TOTALITY_TOTAL,
 			pg_prove_variable(&typing, n_context, pg_evidence_context(n_context)->binder)));
 	const struct pg_evidence *total_branches[] = {total_zero, total_pred};
 	const struct pg_evidence *nested = total_zero;
 	struct pg_typed_query *middle = NULL;
 	for (size_t i = 0; i < 2048; ++i) {
-		nested = pg_prove_match(&typing, &classifiers, nat, identity,
+		nested = pg_prove_match(&typing, nat, identity,
 			pg_prove_total_pure_value(&typing, nested), z_context, total_motive, 2, total_branches);
 		assert(nested);
 		if (i == 1023) middle = pg_return_body_request(&typing, nested);
@@ -2388,10 +2371,10 @@ static void schema_positivity(void)
 	/* Recover constructor evidence across sequencing, not from erased Core. */
 	const struct pg_evidence *sequenced = zero_function;
 	for (size_t i = 0; i < 2; ++i) {
-		sequenced = pg_prove_fold(&typing, &classifiers, sequenced, successor_function);
+		sequenced = pg_prove_fold(&typing, sequenced, successor_function);
 		assert(sequenced);
 		check(&constructor_work, pg_evidence_subject(sequenced)->core,
-			pg_evidence_subject(pg_prove_return(&typing, &classifiers, i ? twice : succ))->core);
+			pg_evidence_subject(pg_prove_return(&typing, i ? twice : succ))->core);
 		const struct pg_reduction_certificate *receipt = pg_whnf_certificate(
 			pg_whnf_request(&constructor_work, &pg_pure_policy, pg_evidence_subject(sequenced)->core));
 		const struct pg_evidence *returned = pg_prove_return_value(&typing,
@@ -2407,25 +2390,25 @@ static void schema_positivity(void)
 		for (size_t j = 0; j < 100; ++j)
 			assert(pg_prove_constructor_field(&typing, returned, x) == field);
 		assert(typing.proofs.count == field_proofs && graph.terms.count == field_terms);
-		const struct pg_evidence *selected = pg_prove_match(&typing, &classifiers,
+		const struct pg_evidence *selected = pg_prove_match(&typing,
 			nat, identity, returned, z_context, nat_motive, 2, pred_branches);
 		assert(returned && selected);
 		introductions = constructor_introductions(&typing);
-		const struct pg_evidence *body = pg_prove_elimination_body(&typing, &classifiers, selected);
+		const struct pg_evidence *body = pg_prove_elimination_body(&typing, selected);
 		assert(body);
 		assert(constructor_introductions(&typing) == introductions);
 		check(&constructor_work, pg_evidence_subject(selected)->core, pg_evidence_subject(body)->core);
-		common_rule(&typing, &classifiers, body);
+		common_rule(&typing, body);
 		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
-		const struct pg_evidence *mapped = pg_prove_elimination_reindex(&typing, &classifiers, map, selected);
+		const struct pg_evidence *mapped = pg_prove_elimination_reindex(&typing, map, selected);
 		introductions = constructor_introductions(&typing);
-		const struct pg_evidence *mapped_body = pg_prove_elimination_body(&typing, &classifiers, mapped);
+		const struct pg_evidence *mapped_body = pg_prove_elimination_body(&typing, mapped);
 		assert(mapped_body);
 		assert(constructor_introductions(&typing) == introductions);
 		check(&constructor_work, pg_evidence_subject(mapped)->core, pg_evidence_subject(mapped_body)->core);
-		common_rule(&typing, &classifiers, mapped_body);
+		common_rule(&typing, mapped_body);
 		/* A map inside a pending Fold must resume in the outer context. */
-		const struct pg_evidence *scoped = pg_prove_fold(&typing, &classifiers,
+		const struct pg_evidence *scoped = pg_prove_fold(&typing,
 			pg_prove_projection(&typing, n_context, sequenced),
 			pg_prove_projection(&typing, n_context, successor_function));
 		assert(scoped);
@@ -2441,36 +2424,35 @@ static void schema_positivity(void)
 		assert(pg_evidence_classifier(scoped_field) == pg_evidence_subject(nat)->core);
 		const struct pg_evidence *scoped_branches[] = {
 			pg_evidence_premise(mapped, 5), pg_evidence_premise(mapped, 6)};
-		const struct pg_evidence *scoped_match = pg_prove_match(&typing, &classifiers, nat, map,
+		const struct pg_evidence *scoped_match = pg_prove_match(&typing, nat, map,
 			scoped_value, pg_evidence_premise(mapped, 4), pg_evidence_premise(mapped, 0), 2, scoped_branches);
 		introductions = constructor_introductions(&typing);
-		const struct pg_evidence *scoped_body = pg_prove_elimination_body(&typing, &classifiers, scoped_match);
+		const struct pg_evidence *scoped_body = pg_prove_elimination_body(&typing, scoped_match);
 		assert(scoped_body);
 		assert(constructor_introductions(&typing) == introductions);
 		check(&constructor_work, pg_evidence_subject(scoped_body)->core,
-			pg_evidence_subject(pg_prove_return(&typing, &classifiers,
+			pg_evidence_subject(pg_prove_return(&typing,
 				pg_prove_projection(&typing, n_context, i ? twice : succ)))->core);
-		common_rule(&typing, &classifiers, scoped_body);
+		common_rule(&typing, scoped_body);
 	}
-	assert(pg_evidence_subject(pg_prove_classifier(&typing, &classifiers, empty, pred))->core ==
-		pg_return_type(&classifiers, pg_evidence_subject(nat)->core));
+	assert(pg_evidence_subject(pg_prove_classifier(&typing, empty, pred))->core ==
+		pg_return_type(&graph, pg_evidence_subject(nat)->core));
 	proofs = typing.proofs.count; terms = graph.terms.count;
-	assert(pg_prove_match(&typing, &classifiers, nat, identity, succ,
+	assert(pg_prove_match(&typing, nat, identity, succ,
 		z_context, nat_motive, 2, pred_branches) == pred);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
 	assert(!pg_derivation_parameters(pred, &wire_parameters));
-	common_rule(&typing, &classifiers, pred);
-	assert(!pg_prove_match(&typing, &classifiers, nat, identity, succ, z_context, nat_motive, 1, pred_branches));
+	common_rule(&typing, pred);
+	assert(!pg_prove_match(&typing, nat, identity, succ, z_context, nat_motive, 1, pred_branches));
 	const struct pg_evidence *wrong_branches[] = {zero_function, zero_function};
-	assert(!pg_prove_match(&typing, &classifiers, nat, identity, zero, z_context, nat_motive, 2, wrong_branches));
-	assert(!pg_prove_match(&typing, &classifiers, other, identity, succ, z_context, nat_motive, 2, pred_branches));
-	assert(!pg_prove_match(&typing, &classifiers, nat, identity, succ, z_context, nat, 2, pred_branches));
+	assert(!pg_prove_match(&typing, nat, identity, zero, z_context, nat_motive, 2, wrong_branches));
+	assert(!pg_prove_match(&typing, other, identity, succ, z_context, nat_motive, 2, pred_branches));
+	assert(!pg_prove_match(&typing, nat, identity, succ, z_context, nat, 2, pred_branches));
 	/* A genuinely dependent motive: z |-> F (Identity Nat z z). */
 	const struct pg_evidence *z_value = pg_prove_variable(&typing, z_context, z);
-	const struct pg_evidence *path_motive = pg_prove_return_type(&typing, &classifiers,
-		pg_prove_identity_type(&typing, pg_prove_projection(&typing, z_context, nat), z_value, z_value));
+	const struct pg_evidence *path_motive = pg_prove_return_type(&typing, pg_prove_identity_type(&typing, pg_prove_projection(&typing, z_context, nat), z_value, z_value));
 	const struct pg_evidence *dependent_scope = pg_prove_induction_scope(&typing,
-		&classifiers, nat, pg_data_constructor(nat_layout, 1), identity, z_context, path_motive);
+		nat, pg_data_constructor(nat_layout, 1), identity, z_context, path_motive);
 	assert(dependent_scope);
 	const struct pg_evidence *dependent_context = pg_evidence_premise(dependent_scope, 1);
 	const struct pg_evidence *recursive_field = pg_evidence_premise(dependent_scope, 3);
@@ -2479,15 +2461,15 @@ static void schema_positivity(void)
 	const struct pg_evidence *dependent_ih = pg_prove_force(&typing,
 		pg_prove_variable(&typing, dependent_context, pg_evidence_context(dependent_context)->binder));
 	assert(field_identity && dependent_ih);
-	assert(pg_evidence_classifier(dependent_ih) == pg_return_type(&classifiers, pg_evidence_subject(field_identity)->core));
+	assert(pg_evidence_classifier(dependent_ih) == pg_return_type(&graph, pg_evidence_subject(field_identity)->core));
 	const struct pg_evidence *n_parameters = pg_prove_substitution(&typing, empty, n_context, 0, NULL);
 	const struct pg_evidence *open_z_context = pg_prove_context_extension(&typing, n_context,
 		pg_binder(&graph), pg_prove_projection(&typing, n_context, nat));
-	const struct pg_evidence *open_motive = pg_prove_return_type(&typing, &classifiers,
+	const struct pg_evidence *open_motive = pg_prove_return_type(&typing,
 		pg_prove_projection(&typing, open_z_context, nat));
 	const struct pg_evidence *open_branches[] = {pg_prove_projection(&typing, n_context, zero_function),
 		pg_prove_projection(&typing, n_context, pred_branch)};
-	const struct pg_evidence *neutral_match = pg_prove_match(&typing, &classifiers, nat,
+	const struct pg_evidence *neutral_match = pg_prove_match(&typing, nat,
 		n_parameters, n_value, open_z_context, open_motive, 2, open_branches);
 	assert(neutral_match && pg_evidence_context(neutral_match) == pg_evidence_context(n_context));
 	struct pg_typed_query *neutral_body = pg_return_body_request(&typing, neutral_match);
@@ -2496,18 +2478,18 @@ static void schema_positivity(void)
 	check(&constructor_work, pg_evidence_subject(neutral_match)->core, pg_evidence_subject(neutral_match)->core);
 	const struct pg_evidence *refinements[2], *refined_bodies[2];
 	for (size_t i = 0; i < 2; ++i) {
-		refinements[i] = pg_prove_constructor_refinement(&typing, &classifiers, n_context, n_value,
+		refinements[i] = pg_prove_constructor_refinement(&typing, n_context, n_value,
 			pg_data_constructor(nat_layout, i));
 		assert(refinements[i]);
-		refined_bodies[i] = pg_prove_elimination_body(&typing, &classifiers,
-			pg_prove_elimination_reindex(&typing, &classifiers, refinements[i], neutral_match));
+		refined_bodies[i] = pg_prove_elimination_body(&typing,
+			pg_prove_elimination_reindex(&typing, refinements[i], neutral_match));
 		assert(refined_bodies[i]);
 	}
-	const struct pg_evidence *refined_motive = pg_prove_classifier(&typing, &classifiers, n_context, neutral_match);
-	const struct pg_evidence *refined_pred = pg_prove_refined_match(&typing, &classifiers, n_context,
+	const struct pg_evidence *refined_motive = pg_prove_classifier(&typing, n_context, neutral_match);
+	const struct pg_evidence *refined_pred = pg_prove_refined_match(&typing, n_context,
 		n_value, refined_motive, 2, refinements, refined_bodies);
 	assert(refined_pred);
-	common_rule(&typing, &classifiers, refined_pred);
+	common_rule(&typing, refined_pred);
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *selected = pg_prove_reindex(&typing, refinements[i], refined_pred);
 		assert(selected);
@@ -2520,27 +2502,27 @@ static void schema_positivity(void)
 		pg_prove_substitution_projection(&typing, empty, wrong_refined_context), n_context,
 		pg_prove_projection(&typing, wrong_refined_context, zero));
 	const struct pg_evidence *wrong_refinements[] = {refinements[0], wrong_refinement};
-	assert(wrong_refinement && !pg_prove_refined_match(&typing, &classifiers, n_context,
+	assert(wrong_refinement && !pg_prove_refined_match(&typing, n_context,
 		n_value, refined_motive, 2, wrong_refinements, refined_bodies));
 	const struct pg_evidence *succ_n = pg_prove_constructor(&typing, nat,
 		pg_data_constructor(nat_layout, 1), n_parameters, 1, &n_value);
 	const struct pg_evidence *path_branches[] = {
-		pg_prove_return(&typing, &classifiers, pg_prove_reflexivity(&typing, nat, zero)),
-		pg_prove_abstract(&typing, &classifiers, empty, n_context,
-			pg_prove_return(&typing, &classifiers, pg_prove_reflexivity(&typing,
+		pg_prove_return(&typing, pg_prove_reflexivity(&typing, nat, zero)),
+		pg_prove_abstract(&typing, empty, n_context,
+			pg_prove_return(&typing, pg_prove_reflexivity(&typing,
 				pg_prove_projection(&typing, n_context, nat), succ_n)))};
-	const struct pg_evidence *path_match = pg_prove_match(&typing, &classifiers, nat,
+	const struct pg_evidence *path_match = pg_prove_match(&typing, nat,
 		identity, succ, z_context, path_motive, 2, path_branches);
 	assert(path_match);
 	const struct pg_evidence *succ_path = pg_prove_identity_type(&typing, nat, succ, succ);
-	assert(pg_evidence_classifier(path_match) == pg_return_type(&classifiers, pg_evidence_subject(succ_path)->core));
+	assert(pg_evidence_classifier(path_match) == pg_return_type(&graph, pg_evidence_subject(succ_path)->core));
 	/* Match may return a raw function computation, not F(U(Pi ...)). */
-	const struct pg_evidence *function_type = pg_prove_classifier(&typing, &classifiers, empty, successor_function);
+	const struct pg_evidence *function_type = pg_prove_classifier(&typing, empty, successor_function);
 	const struct pg_evidence *function_motive = pg_prove_projection(&typing, z_context, function_type);
 	const struct pg_evidence *function_branches[] = {successor_function,
-		pg_prove_abstract(&typing, &classifiers, empty, n_context,
+		pg_prove_abstract(&typing, empty, n_context,
 			pg_prove_projection(&typing, n_context, successor_function))};
-	const struct pg_evidence *function_match = pg_prove_match(&typing, &classifiers, nat,
+	const struct pg_evidence *function_match = pg_prove_match(&typing, nat,
 		identity, succ, z_context, function_motive, 2, function_branches);
 	assert(function_match);
 	const struct pg_evidence *match_app = pg_prove_application(&typing, function_match, zero);
@@ -2553,16 +2535,16 @@ static void schema_positivity(void)
 	const struct pg_evidence *stored_result = parameter_result(&typing, parameters, stored_universe);
 	const struct pg_data_schema *too_large = pg_data_schema(&typing, signature, 1, &stored_result);
 	assert(too_large && pg_data_schema_positive(too_large, self) == 1);
-	assert(!pg_prove_inductive_type(&typing, &classifiers, too_large));
+	assert(!pg_prove_inductive_type(&typing, too_large));
 	const struct pg_evidence *wide_parameters = pg_prove_context_extension(&typing, empty,
-		pg_binder(&graph), pg_prove_universe(&typing, &classifiers, empty, 1));
+		pg_binder(&graph), pg_prove_universe(&typing, empty, 1));
 	const struct pg_evidence *wide_fields = pg_prove_context_extension(&typing, wide_parameters,
 		pg_binder(&graph), pg_prove_projection(&typing, wide_parameters, u));
 	const struct pg_evidence *wide_result = parameter_result(&typing, wide_parameters, wide_fields);
 	const struct pg_data_schema *wide_schema = pg_data_schema(&typing,
 		pg_data_signature(&typing, wide_parameters, wide_parameters), 1, &wide_result);
-	const struct pg_evidence *wide = pg_prove_inductive_type(&typing, &classifiers, wide_schema);
-	assert(wide && pg_evidence_classifier(wide) == pg_universe(&classifiers, 1));
+	const struct pg_evidence *wide = pg_prove_inductive_type(&typing, wide_schema);
+	assert(wide && pg_evidence_classifier(wide) == pg_universe(&graph, 1));
 	/* Dependent fields become ordinary nested Pi/Lambda, not tuple metadata. */
 	const struct pg_object *packed_type = pg_binder(&graph);
 	const struct pg_evidence *packed_prefix = pg_prove_context_extension(&typing, wide_parameters,
@@ -2572,17 +2554,17 @@ static void schema_positivity(void)
 	const struct pg_evidence *packed_result = parameter_result(&typing, wide_parameters, packed_fields);
 	const struct pg_data_schema *packed_schema = pg_data_schema(&typing,
 		pg_data_signature(&typing, wide_parameters, wide_parameters), 1, &packed_result);
-	const struct pg_evidence *packed = pg_prove_inductive_type(&typing, &classifiers, packed_schema);
+	const struct pg_evidence *packed = pg_prove_inductive_type(&typing, packed_schema);
 	const struct pg_object *packed_constructor = pg_data_constructor(pg_data_schema_layout(packed_schema), 0);
 	const struct pg_evidence *packed_function = pg_prove_constructor_function(&typing,
-		&classifiers, packed, packed_constructor, identity);
+		packed, packed_constructor, identity);
 	assert(packed_function && pg_evidence_rule(packed_function) == PG_LAMBDA_INTRO);
 	const struct pg_evidence *packed_map = pg_prove_constructor_scope(&typing, packed, packed_constructor, identity);
 	assert(packed_map);
 	const struct pg_context *packed_allocation = pg_evidence_context(pg_evidence_premise(packed_map, 1));
 	assert(pg_prove_constructor_scope_at(&typing, packed, packed_constructor, identity, packed_allocation) == packed_map);
 	const struct pg_context *wrong_packed = pg_context_bind(&typing, packed_allocation->parent,
-		packed_allocation->binder, pg_universe(&classifiers, 0), PG_JUDGEMENT_VALUE);
+		packed_allocation->binder, pg_universe(&graph, 0), PG_JUDGEMENT_VALUE);
 	assert(wrong_packed && wrong_packed != packed_allocation);
 	assert(pg_prove_constructor_scope_at(&typing, packed, packed_constructor, identity, wrong_packed) == packed_map);
 	assert(!pg_prove_constructor_scope_at(&typing, packed, packed_constructor, identity, packed_allocation->parent));
@@ -2590,14 +2572,14 @@ static void schema_positivity(void)
 		pg_prove_type_value(&typing, nat));
 	const struct pg_evidence *packed_second = pg_prove_application(&typing, packed_first, zero);
 	assert(packed_second && pg_evidence_classifier(packed_second) ==
-		pg_computation_type(&classifiers, PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_evidence_subject(packed)->core));
-	assert(!pg_prove_constructor_function(&typing, &classifiers, packed,
+		pg_computation_type(&graph, PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_evidence_subject(packed)->core));
+	assert(!pg_prove_constructor_function(&typing, packed,
 		pg_data_constructor(nat_layout, 0), identity));
 	/* Parameters survive discharge and are actual operands of the family. */
 	const struct pg_object *a = pg_binder(&graph), *box_self = pg_binder(&graph);
 	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, u);
 	const struct pg_evidence *box_parameters = pg_prove_context_extension(&typing, a_context, box_self,
-		pg_prove_universe(&typing, &classifiers, a_context, 0));
+		pg_prove_universe(&typing, a_context, 0));
 	const struct pg_evidence *box_fields = pg_prove_context_extension(&typing, box_parameters,
 		pg_binder(&graph), pg_prove_variable(&typing, box_parameters, a));
 	const struct pg_evidence *box_images[] = {
@@ -2605,7 +2587,7 @@ static void schema_positivity(void)
 	const struct pg_evidence *box_result = pg_prove_substitution(&typing, box_parameters, box_fields, 2, box_images);
 	const struct pg_data_schema *box_schema = pg_data_schema(&typing,
 		pg_data_signature(&typing, box_parameters, box_parameters), 1, &box_result);
-	const struct pg_evidence *box = pg_prove_inductive_type(&typing, &classifiers, box_schema);
+	const struct pg_evidence *box = pg_prove_inductive_type(&typing, box_schema);
 	assert(box && pg_evidence_context(box) == pg_evidence_context(a_context));
 	assert(pg_evidence_subject(box)->core == pg_application(&graph,
 		pg_reference(&graph, pg_data_family_object(box_schema)), pg_reference(&graph, a)));
@@ -2616,7 +2598,7 @@ static void schema_positivity(void)
 	assert(boxed && !pg_evidence_context(boxed));
 	assert(pg_evidence_classifier(boxed) == pg_application(&graph,
 		pg_reference(&graph, pg_data_family_object(box_schema)), pg_evidence_subject(nat)->core));
-	const struct pg_evidence *boxed_type = pg_prove_classifier(&typing, &classifiers, empty, boxed);
+	const struct pg_evidence *boxed_type = pg_prove_classifier(&typing, empty, boxed);
 	assert(pg_inductive_instance(&typing, boxed_type, &recovered));
 	assert(recovered.formation == box && recovered.schema == box_schema);
 	assert(pg_evidence_subject(pg_evidence_premise(recovered.parameters, 2))->core == pg_evidence_subject(nat)->core);
@@ -2642,8 +2624,8 @@ static void schema_positivity(void)
 			pg_binder(&graph), pg_prove_projection(&typing, renamed_context, nat));
 		const struct pg_evidence *image = pg_prove_variable(&typing, argument_context, renamed);
 		const struct pg_evidence *map = pg_prove_substitution(&typing, a_context, argument_context, 1, &image);
-		const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, argument_context,
-			pg_prove_return_type(&typing, &classifiers, pg_prove_reindex(&typing, map, box)));
+		const struct pg_evidence *pi = pg_prove_pi(&typing, argument_context,
+			pg_prove_return_type(&typing, pg_prove_reindex(&typing, map, box)));
 		const struct pg_evidence *content = pg_prove_return_content(&typing,
 			pg_prove_pi_constant_codomain(&typing, pi));
 		assert(content && pg_inductive_instance(&typing, content, &recovered));
@@ -2653,9 +2635,9 @@ static void schema_positivity(void)
 		assert(!pg_prove_variable(&typing, renamed_context, a));
 	}
 	const struct pg_evidence *box_motive_context = pg_prove_context_extension(&typing, empty, pg_binder(&graph), boxed_type);
-	const struct pg_evidence *box_motive = pg_prove_return_type(&typing, &classifiers,
+	const struct pg_evidence *box_motive = pg_prove_return_type(&typing,
 		pg_prove_projection(&typing, box_motive_context, nat));
-	const struct pg_evidence *unboxed = pg_prove_match(&typing, &classifiers, box,
+	const struct pg_evidence *unboxed = pg_prove_match(&typing, box,
 		box_arguments, boxed, box_motive_context, box_motive, 1, &pred_branch);
 	assert(unboxed);
 	assert(!pg_whnf_work_init(&constructor_work, &graph));
@@ -2665,21 +2647,20 @@ static void schema_positivity(void)
 	const struct pg_evidence *wrong_arguments = pg_prove_substitution(&typing, a_context, empty, 1, &other_value);
 	assert(!pg_prove_constructor(&typing, box, box_constructor, wrong_arguments, 1, &zero));
 	/* A large index universe does not become a constructor field bound. */
-	const struct pg_evidence *large = pg_prove_universe(&typing, &classifiers, parameters, 4);
+	const struct pg_evidence *large = pg_prove_universe(&typing, parameters, 4);
 	const struct pg_evidence *indices = pg_prove_context_extension(&typing, parameters, pg_binder(&graph), large);
 	const struct pg_evidence *images[] = {pg_prove_variable(&typing, parameters, self),
-		pg_prove_type_value(&typing, pg_prove_universe(&typing, &classifiers, parameters, 3))};
+		pg_prove_type_value(&typing, pg_prove_universe(&typing, parameters, 3))};
 	const struct pg_evidence *indexed_result = pg_prove_substitution(&typing, indices, parameters, 2, images);
 	const struct pg_data_schema *indexed = pg_data_schema(&typing,
 		pg_data_signature(&typing, parameters, indices), 1, &indexed_result);
 	assert(indexed && !pg_data_schema_field_level(indexed, &level) && level == 0);
-	assert(!pg_prove_inductive_type(&typing, &classifiers, indexed));
+	assert(!pg_prove_inductive_type(&typing, indexed));
 	/* A retained signature does not belong to a reinitialized typing store,
 	 * even when no constructors would otherwise force a premise check. */
 	pg_typing_destroy(&typing);
 	assert(!pg_typing_init(&typing, &graph));
 	assert(!pg_data_schema(&typing, signature, 0, NULL));
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
 }
@@ -2695,7 +2676,7 @@ static const struct pg_term *action_match(struct pg_graph *graph, const struct p
 }
 
 static const struct pg_evidence *checked_case(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, struct pg_whnf_work *work,
+	struct pg_whnf_work *work,
 	const struct pg_data_schema *schema, const struct pg_object *constructor,
 	const struct pg_evidence *motive, const struct pg_evidence *body)
 {
@@ -2706,15 +2687,15 @@ static const struct pg_evidence *checked_case(struct pg_typing *typing,
 	assert(pg_data_branch_motive(typing, schema, constructor, motive) == target);
 	struct pg_conversion comparison;
 	assert(pg_conversion_init(&comparison, work, pg_evidence_classifier(body), pg_evidence_subject(target)->core) == 0);
-	assert(!pg_data_case(typing, classifiers, schema, constructor, motive, body, NULL));
+	assert(!pg_data_case(typing, schema, constructor, motive, body, NULL));
 	if (pg_conversion_status(&comparison) == PG_CONVERSION_PENDING)
 		assert(!pg_conversion_certificate(&comparison));
 	while (pg_conversion_advance(&comparison, 1) == PG_CONVERSION_PENDING)
 		assert(pg_conversion_steps(&comparison) < 100000);
 	assert(pg_conversion_status(&comparison) == PG_CONVERSION_EQUAL);
 	const struct pg_conversion_certificate *certificate = pg_conversion_certificate(&comparison);
-	const struct pg_evidence *result = pg_data_case(typing, classifiers, schema, constructor, motive, body, certificate);
-	assert(result && pg_data_case(typing, classifiers, schema, constructor, motive, body, certificate) == result);
+	const struct pg_evidence *result = pg_data_case(typing, schema, constructor, motive, body, certificate);
+	assert(result && pg_data_case(typing, schema, constructor, motive, body, certificate) == result);
 	const struct pg_evidence *leaf = result;
 	while (pg_evidence_rule(leaf) == PG_LAMBDA_INTRO) leaf = pg_evidence_premise(leaf, 1);
 	assert(pg_evidence_rule(leaf) == PG_TYPE_CONVERSION);
@@ -2811,13 +2792,11 @@ static void higher_matches(struct pg_graph *graph, struct pg_whnf_work *work)
 static void schemas(struct pg_graph *graph)
 {
 	struct pg_typing typing, foreign;
-	struct pg_classifiers classifiers;
 	struct pg_dimensions dimensions;
 	assert(pg_typing_init(&typing, graph) == 0 && pg_typing_init(&foreign, graph) == 0);
-	assert(pg_classifiers_init(&classifiers, graph) == 0);
 	assert(pg_dimensions_init(&dimensions, graph) == 0);
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
 	const struct pg_object *a = pg_binder(graph), *x = pg_binder(graph), *p = pg_binder(graph);
 	const struct pg_evidence *parameters = pg_prove_context_extension(&typing, empty, a, u);
 	const struct pg_evidence *av = pg_prove_variable(&typing, parameters, a);
@@ -2946,10 +2925,10 @@ static void schemas(struct pg_graph *graph)
 	check(&work, pg_data_match(graph, layout, data, 3, clauses), vx);
 	/* Branch abstraction synthesizes raw Pi/Lambda from the field telescope.
 	 * Its application agrees with direct typed substitution of the body. */
-	const struct pg_evidence *body = pg_prove_return(&typing, &classifiers, pv);
-	const struct pg_evidence *branch = pg_data_branch(&typing, &classifiers, indexed, indexed_ctor, body);
+	const struct pg_evidence *body = pg_prove_return(&typing, pv);
+	const struct pg_evidence *branch = pg_data_branch(&typing, indexed, indexed_ctor, body);
 	assert(branch && pg_evidence_context(branch) == pg_evidence_context(parameters));
-	assert(pg_data_branch(&typing, &classifiers, indexed, indexed_ctor, body) == branch);
+	assert(pg_data_branch(&typing, indexed, indexed_ctor, body) == branch);
 	const struct pg_evidence *applied = pg_prove_reindex(&typing, params, branch);
 	for (size_t n = 0; n < 2; ++n) applied = pg_prove_application(&typing, applied, values[n]);
 	assert(applied);
@@ -2961,11 +2940,11 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *reduced = pg_prove_normalization(&typing, applied, receipt);
 	assert(reduced && pg_alpha_equal(pg_evidence_classifier(reduced), pg_evidence_classifier(body_instance)) == 1);
 	const struct pg_evidence *qv = pg_prove_variable(&typing, indices, q);
-	const struct pg_evidence *motive = pg_prove_return_type(&typing, &classifiers,
-		pg_prove_classifier(&typing, &classifiers, indices, qv));
+	const struct pg_evidence *motive = pg_prove_return_type(&typing,
+		pg_prove_classifier(&typing, indices, qv));
 	const struct pg_evidence *result_type = pg_prove_reindex(&typing, index_result, motive);
 	assert(result_type && pg_alpha_equal(pg_evidence_classifier(applied), pg_evidence_subject(result_type)->core) == 1);
-	const struct pg_evidence *case_proof = checked_case(&typing, &classifiers, &work, indexed, indexed_ctor, motive, body);
+	const struct pg_evidence *case_proof = checked_case(&typing, &work, indexed, indexed_ctor, motive, body);
 	assert(pg_evidence_subject(case_proof)->core == pg_evidence_subject(branch)->core);
 	const struct pg_evidence *case_application = pg_prove_reindex(&typing, params, case_proof);
 	for (size_t n = 0; n < 2; ++n) case_application = pg_prove_application(&typing, case_application, values[n]);
@@ -2976,52 +2955,52 @@ static void schemas(struct pg_graph *graph)
 	assert(!pg_data_branch_motive(&typing, indexed, indexed_ctor, qv));
 	assert(!pg_data_branch_motive(&typing, indexed, indexed_ctor, result_type));
 	assert(!pg_data_branch_motive(&typing, NULL, indexed_ctor, motive));
-	const struct pg_evidence *wrong_motive = pg_prove_return_type(&typing, &classifiers, index_type);
+	const struct pg_evidence *wrong_motive = pg_prove_return_type(&typing, index_type);
 	wrong_motive = pg_prove_projection(&typing, indices, wrong_motive);
 	const struct pg_evidence *wrong_target = pg_data_branch_motive(&typing, indexed, indexed_ctor, wrong_motive);
 	assert(wrong_target);
 	const struct pg_evidence *checked_body = case_proof;
 	while (pg_evidence_rule(checked_body) == PG_LAMBDA_INTRO) checked_body = pg_evidence_premise(checked_body, 1);
 	const struct pg_conversion_certificate *valid = pg_evidence_conversion(checked_body);
-	assert(valid && !pg_data_case(&typing, &classifiers, indexed, indexed_ctor, wrong_motive, body, valid));
-	assert(!pg_data_case(&foreign, &classifiers, indexed, indexed_ctor, motive, body, valid));
-	assert(!pg_data_case(&typing, &classifiers, indexed, indexed_ctor, motive, pv, valid));
+	assert(valid && !pg_data_case(&typing, indexed, indexed_ctor, wrong_motive, body, valid));
+	assert(!pg_data_case(&foreign, indexed, indexed_ctor, motive, body, valid));
+	assert(!pg_data_case(&typing, indexed, indexed_ctor, motive, pv, valid));
 	struct pg_conversion mismatch;
 	assert(pg_conversion_init(&mismatch, &work, pg_evidence_classifier(body), pg_evidence_subject(wrong_target)->core) == 0);
 	assert(pg_conversion_advance(&mismatch, 100000) == PG_CONVERSION_DIFFERENT);
-	assert(!pg_data_case(&typing, &classifiers, indexed, indexed_ctor, wrong_motive, body, pg_conversion_certificate(&mismatch)));
+	assert(!pg_data_case(&typing, indexed, indexed_ctor, wrong_motive, body, pg_conversion_certificate(&mismatch)));
 	pg_conversion_destroy(&mismatch);
 	struct pg_match_clause typed_clause = {indexed_ctor, pg_evidence_subject(branch)->core};
 	const struct pg_term *indexed_data = pg_application(graph, pg_application(graph,
 		pg_reference(graph, indexed_ctor), vx), pg_evidence_subject(values[1])->core);
 	check(&work, pg_data_match(graph, pg_data_schema_layout(indexed), indexed_data, 1, &typed_clause), answer);
-	assert(!pg_data_branch(&typing, &classifiers, indexed, indexed_ctor, pv));
-	assert(!pg_data_branch(&typing, &classifiers, indexed, indexed_ctor,
-		pg_prove_return(&typing, &classifiers, xv)));
-	assert(!pg_data_branch(&typing, &classifiers, indexed, ctor, body));
-	assert(!pg_data_branch(&foreign, &classifiers, indexed, indexed_ctor, body));
-	const struct pg_evidence *constant = pg_prove_return(&typing, &classifiers,
+	assert(!pg_data_branch(&typing, indexed, indexed_ctor, pv));
+	assert(!pg_data_branch(&typing, indexed, indexed_ctor,
+		pg_prove_return(&typing, xv)));
+	assert(!pg_data_branch(&typing, indexed, ctor, body));
+	assert(!pg_data_branch(&foreign, indexed, indexed_ctor, body));
+	const struct pg_evidence *constant = pg_prove_return(&typing,
 		pg_prove_variable(&typing, parameters, a));
-	assert(pg_data_branch(&typing, &classifiers, schema, pg_data_constructor(layout, 0), constant) == constant);
-	const struct pg_evidence *constant_case = checked_case(&typing, &classifiers, &work, schema,
-		pg_data_constructor(layout, 0), pg_prove_classifier(&typing, &classifiers, parameters, constant), constant);
+	assert(pg_data_branch(&typing, schema, pg_data_constructor(layout, 0), constant) == constant);
+	const struct pg_evidence *constant_case = checked_case(&typing, &work, schema,
+		pg_data_constructor(layout, 0), pg_prove_classifier(&typing, parameters, constant), constant);
 	assert(pg_evidence_subject(constant_case) == pg_evidence_subject(constant));
 	/* A branch returning a raw function stays a computation Pi, not F(U Pi). */
 	const struct pg_object *z = pg_binder(graph);
 	const struct pg_evidence *field_a = pg_prove_value_type(&typing, index_images[0]);
 	const struct pg_evidence *under_z = pg_prove_context_extension(&typing, fields, z, field_a);
-	const struct pg_evidence *return_p = pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, under_z, p));
-	const struct pg_evidence *function_type = pg_prove_pi(&typing, &classifiers, under_z,
-		pg_prove_classifier(&typing, &classifiers, under_z, return_p));
+	const struct pg_evidence *return_p = pg_prove_return(&typing, pg_prove_variable(&typing, under_z, p));
+	const struct pg_evidence *function_type = pg_prove_pi(&typing, under_z,
+		pg_prove_classifier(&typing, under_z, return_p));
 	const struct pg_evidence *function_body = pg_prove_lambda(&typing, function_type, return_p);
-	const struct pg_evidence *function_branch = pg_data_branch(&typing, &classifiers, indexed, indexed_ctor, function_body);
+	const struct pg_evidence *function_branch = pg_data_branch(&typing, indexed, indexed_ctor, function_body);
 	const struct pg_object *index_z = pg_binder(graph);
 	const struct pg_evidence *index_a = pg_prove_value_type(&typing, pg_prove_variable(&typing, indices, a));
 	const struct pg_evidence *index_under_z = pg_prove_context_extension(&typing, indices, index_z, index_a);
-	const struct pg_evidence *function_motive = pg_prove_pi(&typing, &classifiers, index_under_z,
+	const struct pg_evidence *function_motive = pg_prove_pi(&typing, index_under_z,
 		pg_prove_projection(&typing, index_under_z, motive));
 	assert(function_motive);
-	const struct pg_evidence *function_case = checked_case(&typing, &classifiers, &work, indexed, indexed_ctor,
+	const struct pg_evidence *function_case = checked_case(&typing, &work, indexed, indexed_ctor,
 		function_motive, function_body);
 	assert(pg_evidence_subject(function_case)->core == pg_evidence_subject(function_branch)->core);
 	applied = pg_prove_reindex(&typing, params, function_branch);
@@ -3038,7 +3017,7 @@ static void schemas(struct pg_graph *graph)
 	assert(!pg_data_instance(&typing, schema, ctor, params, 2, NULL));
 	const struct pg_evidence *bad[] = {values[1], xv};
 	assert(!pg_data_instance(&typing, schema, ctor, params, 2, bad));
-	bad[0] = pg_prove_return(&typing, &classifiers, xv);
+	bad[0] = pg_prove_return(&typing, xv);
 	bad[1] = values[1];
 	assert(!pg_data_instance(&typing, schema, ctor, params, 2, bad));
 	assert(!pg_data_instance(&foreign, schema, ctor, params, 2, values));
@@ -3095,12 +3074,12 @@ static void schemas(struct pg_graph *graph)
 			assert(pg_evidence_subject(pg_evidence_premise(index_result, n + 3))->core == pg_evidence_subject(values[n])->core);
 	}
 	assert(pg_whnf_work_init(&work, graph) == 0);
-	const struct pg_evidence *body_type = pg_prove_classifier(&typing, &classifiers, fields, body);
+	const struct pg_evidence *body_type = pg_prove_classifier(&typing, fields, body);
 	const struct pg_evidence *acted_body = pg_prove_family_action(&typing, body_type, body, left, right, 2, paths);
 	const struct pg_term *acted_answer = pg_application(graph, pg_reference(graph, &pg_return_operation),
 		pg_evidence_subject(paths[1])->core);
 	assert(acted_body);
-	const struct pg_evidence *branch_type = pg_prove_classifier(&typing, &classifiers, parameters, branch);
+	const struct pg_evidence *branch_type = pg_prove_classifier(&typing, parameters, branch);
 	const struct pg_evidence *branch_action = pg_prove_reflexivity(&typing, branch_type, branch);
 	assert(branch_action);
 	const struct pg_term *acted_branch = pg_evidence_subject(branch_action)->core;
@@ -3131,8 +3110,8 @@ static void schemas(struct pg_graph *graph)
 		pg_conversion_destroy(&comparison);
 	}
 	const struct pg_evidence *acted_indices[2], *again[2];
-	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, paths, 2, acted_indices) == 0);
-	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, paths, 2, again) == 0);
+	assert(pg_identity_substitution_images(&typing, index_map, left, right, 2, paths, 2, acted_indices) == 0);
+	assert(pg_identity_substitution_images(&typing, index_map, left, right, 2, paths, 2, again) == 0);
 	for (size_t n = 0; n < 2; ++n) {
 		assert(acted_indices[n] == again[n]);
 		check(&work, pg_evidence_subject(acted_indices[n])->core, pg_evidence_subject(paths[n])->core);
@@ -3179,20 +3158,19 @@ static void schemas(struct pg_graph *graph)
 			assert(pg_alpha_equal(pg_evidence_subject(pg_evidence_premise(composite, n + 2))->core,
 				pg_evidence_subject(pg_evidence_premise(map_endpoints[side], n + 2))->core) == 1);
 	}
-	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, paths, 0, NULL) == 0);
-	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, left, 0, NULL, 2, again) == 0);
+	assert(pg_identity_substitution_images(&typing, index_map, left, right, 2, paths, 0, NULL) == 0);
+	assert(pg_identity_substitution_images(&typing, index_map, left, left, 0, NULL, 2, again) == 0);
 	for (size_t n = 0; n < 2; ++n)
 		check(&work, pg_evidence_subject(again[n])->core,
 			pg_identity_action(graph, pg_evidence_subject(pg_evidence_premise(map_endpoints[0], n + 3))->core));
-	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, paths, 2, again) == 0);
-	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, paths, 4, again) == -1);
-	assert(pg_identity_substitution_images(&foreign, &classifiers, index_map, left, right, 2, paths, 2, again) == -1);
+	assert(pg_identity_substitution_images(&typing, index_map, left, right, 2, paths, 2, again) == 0);
+	assert(pg_identity_substitution_images(&typing, index_map, left, right, 2, paths, 4, again) == -1);
+	assert(pg_identity_substitution_images(&foreign, index_map, left, right, 2, paths, 2, again) == -1);
 	const struct pg_evidence *invalid_paths[] = {paths[0], paths[0]};
-	assert(pg_identity_substitution_images(&typing, &classifiers, index_map, left, right, 2, invalid_paths, 2, again) == -1);
+	assert(pg_identity_substitution_images(&typing, index_map, left, right, 2, invalid_paths, 2, again) == -1);
 	assert(again[0] == acted_indices[0] && again[1] == acted_indices[1]);
 	pg_whnf_work_destroy(&work);
 	pg_dimensions_destroy(&dimensions);
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&foreign);
 	pg_typing_destroy(&typing);
 	puts("data schemas: dependent fields/indices, fixed parameters, composition and selected boundaries passed");

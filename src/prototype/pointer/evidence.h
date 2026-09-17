@@ -24,7 +24,7 @@ struct pg_evidence;
 /* Closed host descriptors are checked against the fixed host contract. A raw
  * semantic reference or arbitrary signature cannot establish these premises. */
 const struct pg_evidence *pg_prove_host_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_object *type);
 const struct pg_evidence *pg_prove_host_value(struct pg_typing *typing,
 	const struct pg_evidence *type, const struct pg_object *value);
@@ -36,10 +36,10 @@ const struct pg_evidence *pg_prove_host_function(struct pg_typing *typing,
  * an empty operation row as a termination proof. TOTAL is conditional on
  * returning operation interpretations, not a guarantee about a host handler. */
 const struct pg_evidence *pg_prove_termination_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *type,
+	const struct pg_evidence *type,
 	const struct pg_evidence *suspended);
 const struct pg_evidence *pg_prove_termination(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *suspended);
 /* A scoped family hypothesis over a nonempty value/family telescope. The signature
  * is an ordinary Pi-shaped Core term ending in Universe, not a CBPV value
@@ -59,13 +59,13 @@ const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
  * nullary constructors). Uses ordinary Match Core/iota, not Comp-to-value
  * inversion. The result universe bounds all branch universes. */
 const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	size_t count, const struct pg_evidence *const *branches);
 /* Expected branch classifier, formed by the same constructor/motive
  * substitution as Match/induction. Does not synthesize or check a body. */
 const struct pg_evidence *pg_prove_match_branch_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_evidence *fields);
@@ -95,10 +95,10 @@ const struct pg_evidence *pg_operation_response_type(const struct pg_operation_d
 /* Derived raw Lambda a. request op a (Lambda b. RETURN b). Like constructor
  * wrappers, allocates fresh lexical binders; schedule once per named producer. */
 const struct pg_evidence *pg_prove_operation_function(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_operation_declaration *declaration);
+	const struct pg_operation_declaration *declaration);
 /* Request op a k, with k : Pi(B,F E C) independent of its response binder.
  * Produces F ({op} union E) C without executing the operation. */
-const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_classifiers *classifiers,
+const struct pg_evidence *pg_prove_request(struct pg_typing *typing,
 	const struct pg_operation_declaration *declaration,
 	const struct pg_evidence *payload, const struct pg_evidence *continuation);
 struct pg_handler_clause {
@@ -118,27 +118,27 @@ const struct pg_handler_signature *pg_handler_signature_view(const struct pg_ter
 /* Extend the carrier's context by payload:A and resume:U(Pi(B,carrier)).
  * Only binder types are supplied; a clause body must still synthesize its
  * own classifier and pass pg_prove_handler. No handler term is accepted here. */
-const struct pg_evidence *pg_prove_handler_context(struct pg_typing *typing, struct pg_classifiers *classifiers,
+const struct pg_evidence *pg_prove_handler_context(struct pg_typing *typing,
 	const struct pg_operation_declaration *operation, const struct pg_evidence *context,
 	const struct pg_evidence *carrier, const struct pg_object *payload, const struct pg_object *resume);
 /* Nondependent deep handler at a checked F G C carrier. Clauses are raw
  * Lambda payload. Lambda (U(Pi(response,F G C))). computation.
  * Input effects not handled here and all clause/return effects must fit G. */
-const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_classifiers *classifiers,
+const struct pg_evidence *pg_prove_handler(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *returned,
 	const struct pg_evidence *carrier, size_t count, const struct pg_handler_clause *clauses);
 /* Closed-row computation-type formation. The row is a syntactic set of labels,
  * not evidence of an operation's signature, execution, or termination. */
 const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_effect_row *effects,
+	const struct pg_effect_row *effects,
 	const struct pg_evidence *value_type);
 const struct pg_evidence *pg_prove_computation_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, enum pg_totality totality,
+	enum pg_totality totality,
 	const struct pg_effect_row *effects, const struct pg_evidence *value_type);
 /* RETURN has a total derivation regardless of whether the returned value is
  * itself a thunk. Selecting UNSPECIFIED explicitly forgets that guarantee. */
 const struct pg_evidence *pg_prove_return_contract(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, enum pg_totality totality,
+	enum pg_totality totality,
 	const struct pg_evidence *value);
 /* Directed closed-row widening and TOTAL-to-UNSPECIFIED weakening, retaining
  * the already synthesized computation. Never strengthens an unknown contract.
@@ -153,7 +153,7 @@ const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
  * computation; a saturated family application proves a fiber is a type.
  * Datatype higher computation is not implemented here. */
 const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_data_schema *schema);
+	const struct pg_data_schema *schema);
 const struct pg_data_declaration *pg_evidence_inductive_declaration(const struct pg_evidence *evidence);
 const struct pg_object *pg_evidence_constructor(const struct pg_evidence *evidence);
 struct pg_inductive_instance {
@@ -197,7 +197,7 @@ const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
  * Zero fields yields RETURN directly. Uses fresh lexical field binders, not
  * a value-side Pi or a new proof rule. Schedule once per wrapper request. */
 const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters);
 /* Fresh instantiated field telescope, returned as a checked substitution into
  * the conditional schema context. Its destination extends parameters'
@@ -222,7 +222,7 @@ int pg_inductive_motive_context_valid(struct pg_typing *typing,
  * Lift its generic motive telescope, not the scrutinee's fixed fiber.
  * Returns ordinary evidence, with no new conversion or reduction rule. */
 const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
+	const struct pg_evidence *substitution,
 	const struct pg_evidence *elimination);
 /* Select a checked typed field by its nominal schema binder, including scoped
  * and congruently normalized inputs. Preserve its classifier; do not retag a
@@ -236,7 +236,6 @@ const struct pg_evidence *pg_prove_constructor_field(struct pg_typing *typing,
  * step, not recursive normalization. Neutral scrutinees and unsupported
  * dependent Fold results return NULL. No new proof rule. */
 const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
-	struct pg_classifiers *classifiers,
 	const struct pg_evidence *elimination);
 /* Factor instance through a constructor refinement. Recover images of the
  * refinement's variables from the retained constructor and source images,
@@ -250,7 +249,7 @@ const struct pg_evidence *pg_prove_refinement_factor(struct pg_typing *typing,
  * in the Match motive and supplied after elimination. This is derived
  * Match/Pi/APP, not a rule. */
 const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *scrutinee, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *refinements,
 	const struct pg_evidence *const *branches);
@@ -259,12 +258,12 @@ const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
  * Uses checked index scopes, family application, RETURN and Lambda; not a
  * new admission rule or a coercion of an arbitrary computation to a family. */
 const struct pg_evidence *pg_prove_inductive_family_function(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters);
 /* Checked motive substitution shared by Match, IH construction and Solve.
  * The value's fiber evidence supplies its indices; no expected type input. */
 const struct pg_evidence *pg_prove_inductive_motive_substitution(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *source,
 	const struct pg_evidence *destination, const struct pg_evidence *value);
 /* Specialize a context at a constructor of a variable scrutinee. Its indices
@@ -272,10 +271,10 @@ const struct pg_evidence *pg_prove_inductive_motive_substitution(struct pg_typin
  * remaining dependent suffix over the constructor fields. The returned map
  * targets context; it is not equality evidence for an arbitrary scrutinee. */
 const struct pg_evidence *pg_prove_constructor_refinement(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *scrutinee, const struct pg_object *constructor);
 const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters,
 	const struct pg_evidence *source, const struct pg_evidence *motive,
 	const struct pg_evidence *destination, const struct pg_evidence *value);
@@ -285,7 +284,7 @@ const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
  * Direct fields retain fully dependent motive substitution. No value is
  * extracted from a neutral computation; this builds type formation only. */
 const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *motive_context,
 	const struct pg_evidence *motive, const struct pg_evidence *context,
 	const struct pg_evidence *field);
@@ -297,7 +296,7 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
  * The result substitutes the scrutinee's indices and value into the motive,
  * including a raw Pi when appropriate. Zero indices uses the same rule. */
 const struct pg_evidence *pg_prove_match(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches);
@@ -308,13 +307,13 @@ const struct pg_evidence *pg_prove_match(struct pg_typing *typing,
  * IHs are assumptions, not proven inhabitants or a completed induction rule.
  * Unsupported recursive shapes return NULL, never omit an IH. */
 const struct pg_evidence *pg_prove_induction_scope(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive);
 /* Same rule with retained field/IH binder identities. The exact suffix length
  * is derived from the declaration; all field and IH types are recomputed. */
 const struct pg_evidence *pg_prove_induction_scope_at(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_context *allocation);
@@ -323,7 +322,7 @@ const struct pg_evidence *pg_prove_induction_scope_at(struct pg_typing *typing,
  * typing context. Function fields sequence their pure result into recursion. */
 const struct pg_induction_allocation *pg_evidence_induction_allocation(const struct pg_evidence *evidence);
 const struct pg_evidence *pg_prove_induction(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches);
@@ -331,7 +330,7 @@ const struct pg_evidence *pg_prove_induction(struct pg_typing *typing,
  * distinct constructions; no existing derivation is replaced. Default
  * allocation requests are memoized separately from accepted derivations. */
 const struct pg_evidence *pg_prove_induction_at(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches,
@@ -339,7 +338,7 @@ const struct pg_evidence *pg_prove_induction_at(struct pg_typing *typing,
 /* Weaken an independently synthesized fields-only case function with unused
  * IH arguments. Derived projection/application/abstraction, not resynthesis. */
 const struct pg_evidence *pg_prove_induction_case(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_evidence *branch);
@@ -367,7 +366,7 @@ const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
 	const struct pg_evidence *parent, const struct pg_object *binder,
 	const struct pg_evidence *type);
 const struct pg_evidence *pg_prove_universe(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context, uint64_t level);
+	const struct pg_evidence *context, uint64_t level);
 const struct pg_evidence *pg_prove_variable(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_object *binder);
 /* A value in a value-type universe determines a value type. This operation
@@ -377,15 +376,15 @@ const struct pg_evidence *pg_prove_value_type(struct pg_typing *typing, const st
  * but is not a value inhabiting that universe. */
 const struct pg_evidence *pg_prove_type_value(struct pg_typing *typing, const struct pg_evidence *type);
 const struct pg_evidence *pg_prove_return_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *value_type);
+	const struct pg_evidence *value_type);
 const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *computation_type);
+	const struct pg_evidence *computation_type);
 /* The checked final context binding determines the parameter contract, including
  * logical families. The result is a computation type, never a value-side Pi.
  * The first structural input is the value-domain formation in the parent
  * scope, or the declared family variable in the extended scope. The second
  * input is the checked codomain in that extended scope. */
-const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classifiers *classifiers,
+const struct pg_evidence *pg_prove_pi(struct pg_typing *typing,
 	const struct pg_evidence *extended_context,
 	const struct pg_evidence *codomain);
 /* Homogeneous Identity formation has the base formation's polarity. It does
@@ -397,21 +396,21 @@ const struct pg_evidence *pg_prove_identity_type(struct pg_typing *typing,
  * This is family instantiation, not Pi elimination. R is retained explicitly;
  * an arbitrary function/relation is not a universe Identity witness. */
 const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *family,
 	const struct pg_evidence *left, const struct pg_evidence *right);
 /* Fibrant value-universe Identity fields. RIGHT sends x:A to B and lifts to
  * R x (trr R x); LEFT sends y:B to A and lifts to R (trl R y) y.
  * No raw computation is used as an endpoint or coerced to a universe value. */
 const struct pg_evidence *pg_prove_identity_transport(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *family,
 	const struct pg_evidence *value, enum pg_identity_direction direction);
 const struct pg_evidence *pg_prove_identity_lift(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *family,
 	const struct pg_evidence *value, enum pg_identity_direction direction);
 /* Regularity of R : Id Universe_i A B gives A/B : Universe_i. The
  * accepted R, not an untyped family spine, is the premise. */
 const struct pg_evidence *pg_prove_identity_endpoint_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *family,
 	enum pg_evidence_rule side);
 /* C type in Gamma,Delta; the substitutions agree on Gamma and paths contains
  * one checked center for each declaration of Delta, in declaration order.
@@ -436,9 +435,9 @@ const struct pg_evidence *pg_prove_reflexivity(struct pg_typing *typing,
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence);
 const struct pg_evidence *pg_prove_return(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *value);
+	const struct pg_evidence *value);
 const struct pg_evidence *pg_prove_thunk(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *computation);
+	const struct pg_evidence *computation);
 const struct pg_evidence *pg_prove_force(struct pg_typing *typing,
 	const struct pg_evidence *value);
 /* Lambda admits structural alpha renaming of its body classifier (including
@@ -451,7 +450,7 @@ const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
  * in context; no expected type, implicit RETURN or new proof rule is used.
  * A zero-length suffix preserves body. All contexts/proofs belong to typing. */
 const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
+	const struct pg_evidence *prefix,
 	const struct pg_evidence *context, const struct pg_evidence *body);
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
@@ -498,7 +497,7 @@ struct pg_typed_query *pg_construction_origin_request(struct pg_typing *typing,
 const struct pg_evidence *pg_construction_origin_environment(const struct pg_typed_query *work);
 /* Synchronous adapter, sharing the same completed origin/map result. */
 const struct pg_evidence *pg_prove_construction_origin(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *proof,
+	const struct pg_evidence *proof,
 	const struct pg_evidence **environment);
 /* The certificate and its endpoint graphs must outlive typing->graph. */
 const struct pg_evidence *pg_prove_conversion(struct pg_typing *typing,
@@ -606,7 +605,7 @@ const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
  * constant-codomain inversion. NULL includes nonpatterns and escaping fields;
  * this is a proof-producing partial solver, not a new kernel rule. */
 const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
+	const struct pg_evidence *prefix,
 	const struct pg_evidence *pattern, const struct pg_evidence *body);
 /* Formation inversion retains the parent's universe upper bound. It does not
  * equate universe levels or claim to recover a minimal bound. */
@@ -627,7 +626,7 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 	const struct pg_evidence *pi);
 /* Closed-row sequencing unions source/returning-continuation effects.
  * A raw Pi result is currently admitted only for an empty source row. */
-const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_classifiers *classifiers,
+const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *continuation);
 /* Recover formation of an already synthesized classifier, not an expected
  * type. NULL also covers rules whose regularity action is not implemented. */
@@ -635,19 +634,18 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_clas
  * Budgets cover its context action, not the final kernel certification. */
 struct pg_classifier_recovery {
 	struct pg_typing *typing;
-	struct pg_classifiers *classifiers;
 	struct pg_occurrence_input *input;
 	const struct pg_evidence *result;
 	const struct pg_occurrence *subject;
 	int status;
 };
 int pg_classifier_recovery_init(struct pg_classifier_recovery *work,
-	struct pg_typing *typing, struct pg_classifiers *classifiers,
+	struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *term);
 int pg_classifier_recovery_advance(struct pg_classifier_recovery *work, size_t steps);
 void pg_classifier_recovery_destroy(struct pg_classifier_recovery *work);
 const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *term);
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence);
 /* Storage provenance only; this does not validate a rule-specific premise. */

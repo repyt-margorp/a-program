@@ -35,12 +35,10 @@ static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 	for (size_t cut = 0; cut <= length + 3; ++cut) {
 		struct pg_graph graph;
 		struct pg_typing typing;
-		struct pg_classifiers classifiers;
 		assert(pg_graph_init(&graph) == 0 && pg_typing_init(&typing, &graph) == 0);
-		assert(pg_classifiers_init(&classifiers, &graph) == 0);
 		struct pg_declaration_io io;
 		int declarations = codec == &pg_declaration_graph_codec;
-		if (declarations) assert(!pg_declaration_io_init(&io, &typing, &classifiers));
+		if (declarations) assert(!pg_declaration_io_init(&io, &typing));
 		FILE *fragment = tmpfile();
 		/* The complete-sized final case has an invalid parent reference. */
 		if (cut == length) bytes[32] = 255;
@@ -53,12 +51,11 @@ static void rejected_prefixes(FILE *file, const struct pg_graph_codec *codec)
 		size_t nc = 71, nt = 72;
 		const struct pg_context *const *contexts = NULL;
 		const struct pg_term *const *terms = NULL;
-		assert(pg_contexts_read_descriptors(fragment, &typing, 100, 100, codec, declarations ? (void *)&io : &classifiers,
+		assert(pg_contexts_read_descriptors(fragment, &typing, 100, 100, codec, declarations ? (void *)&io : &graph,
 			&nc, &contexts, &nt, &terms) == -1);
 		assert(nc == 71 && nt == 72 && !contexts && !terms && typing.proofs.count == 0);
 		assert(fclose(fragment) == 0);
 		if (declarations) pg_declaration_io_destroy(&io);
-		pg_classifiers_destroy(&classifiers);
 		pg_typing_destroy(&typing);
 		pg_graph_destroy(&graph);
 	}
@@ -112,9 +109,8 @@ static void write_graph(FILE *file, struct pg_graph *graph)
 	const struct pg_term *identity = pg_lambda(graph, x, body);
 	const struct pg_term *roots[] = {pg_reference(graph, a), pg_reference(graph, b), value, identity, identity};
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
-	assert(pg_typing_init(&typing, graph) == 0 && pg_classifiers_init(&classifiers, graph) == 0);
-	const struct pg_term *u = pg_universe(&classifiers, 0);
+	assert(pg_typing_init(&typing, graph) == 0);
+	const struct pg_term *u = pg_universe(graph, 0);
 	const struct pg_context *ca = pg_context_bind(&typing, NULL, a, u, PG_JUDGEMENT_VALUE);
 	const struct pg_context *cb = pg_context_bind(&typing, ca, b, u, PG_JUDGEMENT_VALUE);
 	const struct pg_context *xa = pg_context_bind(&typing, cb, x, roots[0], PG_JUDGEMENT_VALUE);
@@ -126,9 +122,8 @@ static void write_graph(FILE *file, struct pg_graph *graph)
 		.parent = cb, .binder = x, .declared_type = pg_pi(graph, u, k, u),
 		.judgement = PG_JUDGEMENT_TYPE_FAMILY, .indices = index});
 	const struct pg_context *contexts[] = {ca, cb, xa, xb, NULL, xa, xf, index, family, family};
-	assert(pg_contexts_write(file, 10, contexts, 5, roots, name, &classifiers) == 0);
+	assert(pg_contexts_write(file, 10, contexts, 5, roots, name, graph) == 0);
 	context_boundaries(&typing, roots[0]);
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 }
 
@@ -137,12 +132,10 @@ static void read_graph(FILE *file, struct pg_graph *graph)
 	size_t count = 0;
 	const struct pg_term *const *roots = NULL;
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
 	assert(pg_typing_init(&typing, graph) == 0);
-	assert(pg_classifiers_init(&classifiers, graph) == 0);
 	size_t context_count = 0;
 	const struct pg_context *const *contexts = NULL;
-	assert(pg_contexts_read(file, &typing, 100, 100, resolve, &classifiers,
+	assert(pg_contexts_read(file, &typing, 100, 100, resolve, graph,
 		&context_count, &contexts, &count, &roots) == 0);
 	assert(context_count == 10 && contexts[4] == NULL && contexts[2] == contexts[5]);
 	assert(contexts[8] == contexts[9] && contexts[8]->indices == contexts[7]);
@@ -160,16 +153,16 @@ static void read_graph(FILE *file, struct pg_graph *graph)
 	/* The fixture supplies declarations, not a serialized accepted flag.
 	 * Every judgement below is constructed by the ordinary kernel rules. */
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-	const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+	const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
 	const struct pg_evidence *ca = pg_prove_context_extension(&typing, empty, a, u);
-	const struct pg_evidence *ua = pg_prove_universe(&typing, &classifiers, ca, 0);
+	const struct pg_evidence *ua = pg_prove_universe(&typing, ca, 0);
 	const struct pg_evidence *context = pg_prove_context_extension(&typing, ca, b, ua);
 	assert(context && !pg_prove_variable(&typing, context, x));
 	assert(pg_evidence_context(context) == contexts[1]);
 	const struct pg_evidence *indices = pg_prove_context_extension(&typing, context, contexts[7]->binder,
-		pg_prove_universe(&typing, &classifiers, context, 0));
+		pg_prove_universe(&typing, context, 0));
 	const struct pg_evidence *family = pg_prove_family_context_extension(&typing, context, x, indices,
-		pg_prove_universe(&typing, &classifiers, indices, 0));
+		pg_prove_universe(&typing, indices, 0));
 	assert(family && pg_evidence_context(family) == contexts[8]);
 	const struct pg_object *types[] = {a, b};
 	const struct pg_evidence *pi[2], *body[2], *identity[2];
@@ -177,13 +170,13 @@ static void read_graph(FILE *file, struct pg_graph *graph)
 		const struct pg_evidence *domain = pg_prove_variable(&typing, context, types[i]);
 		const struct pg_evidence *extended = pg_prove_context_extension(&typing, context, x, domain);
 		assert(pg_evidence_context(extended) == contexts[2 + i]);
-		const struct pg_evidence *codomain = pg_prove_return_type(&typing, &classifiers,
+		const struct pg_evidence *codomain = pg_prove_return_type(&typing,
 			pg_prove_variable(&typing, extended, types[i]));
-		pi[i] = pg_prove_pi(&typing, &classifiers, extended, codomain);
-		body[i] = pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, extended, x));
+		pi[i] = pg_prove_pi(&typing, extended, codomain);
+		body[i] = pg_prove_return(&typing, pg_prove_variable(&typing, extended, x));
 		const struct pg_evidence *premises[] = {pi[i], body[i]};
 		struct pg_derivation_parameters parameters = {0};
-		identity[i] = pg_prove_derivation(&typing, &classifiers, PG_LAMBDA_INTRO, &parameters, 2, premises);
+		identity[i] = pg_prove_derivation(&typing, PG_LAMBDA_INTRO, &parameters, 2, premises);
 		assert(identity[i] && pg_evidence_subject(identity[i])->core == roots[3]);
 		assert(pg_prove_lambda(&typing, pi[i], body[i]) == identity[i]);
 	}
@@ -193,7 +186,6 @@ static void read_graph(FILE *file, struct pg_graph *graph)
 	assert(!pg_prove_lambda(&typing, pi[0], body[1]));
 	assert(!pg_prove_lambda(&typing, pi[1], body[0]));
 	rejected_prefixes(file, &(const struct pg_graph_codec){.resolve = resolve});
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 }
 
@@ -205,8 +197,7 @@ static void descriptor_boundaries(FILE *file)
 	assert(feof(file) && !ferror(file) && length);
 	for (size_t cut = 0; cut <= length; ++cut) {
 		struct pg_graph graph;
-		struct pg_classifiers classifiers;
-		assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+		assert(!pg_graph_init(&graph));
 		FILE *fragment = tmpfile();
 		assert(fragment && fwrite(bytes, 1, cut, fragment) == cut);
 		rewind(fragment);
@@ -215,9 +206,8 @@ static void descriptor_boundaries(FILE *file)
 		struct pg_graph_codec codec = pg_builtin_graph_codec;
 		/* Complete stream, but no implementation of its descriptor contract. */
 		if (cut == length) codec.restore = NULL;
-		assert(pg_graph_read_descriptors(fragment, &graph, 1000, 100, &codec, &classifiers, &count, &roots));
+		assert(pg_graph_read_descriptors(fragment, &graph, 1000, 100, &codec, &graph, &count, &roots));
 		assert(count == 71 && !roots && !fclose(fragment));
-		pg_classifiers_destroy(&classifiers);
 		pg_graph_destroy(&graph);
 	}
 }
@@ -225,25 +215,24 @@ static void descriptor_boundaries(FILE *file)
 static void operation_graph(FILE *file, struct pg_graph *graph, int writing)
 {
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
-	assert(!pg_typing_init(&typing, graph) && !pg_classifiers_init(&classifiers, graph));
+	assert(!pg_typing_init(&typing, graph));
 	if (writing) {
-		const struct pg_term *u = pg_universe(&classifiers, 0);
+		const struct pg_term *u = pg_universe(graph, 0);
 		const struct pg_object *labels[] = {pg_operation_label_create(graph, u, u), pg_operation_label_create(graph, u, u)};
 		const struct pg_effect_row *row = pg_effect_row(graph, 2, labels);
-		const struct pg_term *delayed = pg_thunk_type(&classifiers, pg_effect_type(&classifiers, row, u));
+		const struct pg_term *delayed = pg_thunk_type(graph, pg_effect_type(graph, row, u));
 		const struct pg_object *higher = pg_operation_label_create(graph, delayed, u), *x = pg_binder(graph);
 		const struct pg_term *request = pg_computation_request(graph, labels[0], u,
 			pg_lambda(graph, x, pg_application(graph, pg_reference(graph, &pg_return_operation), pg_reference(graph, x))));
 		const struct pg_term *roots[] = {pg_reference(graph, labels[0]), pg_reference(graph, labels[1]),
 			pg_reference(graph, higher), pg_effect_reference(graph, row), request, request, u};
 		size_t terms = graph->terms.count, objects = graph->objects.count;
-		assert(!pg_graph_write_descriptors(file, 7, roots, &pg_builtin_graph_codec, &classifiers));
+		assert(!pg_graph_write_descriptors(file, 7, roots, &pg_builtin_graph_codec, graph));
 		assert(terms == graph->terms.count && objects == graph->objects.count && !typing.proofs.count);
 	} else {
 		size_t count = 0;
 		const struct pg_term *const *roots = NULL;
-		assert(!pg_graph_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, &classifiers, &count, &roots));
+		assert(!pg_graph_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, graph, &count, &roots));
 		assert(count == 7 && roots[4] == roots[5] && roots[0] != roots[1] && !typing.proofs.count);
 		const struct pg_object *a = roots[0]->as.reference, *b = roots[1]->as.reference;
 		const struct pg_term *payload, *response;
@@ -252,29 +241,27 @@ static void operation_graph(FILE *file, struct pg_graph *graph, int writing)
 		const struct pg_effect_row *row = pg_effect_row_view(roots[3]);
 		assert(pg_effect_count(row) == 2 && pg_effect_contains(row, a) == 1 && pg_effect_contains(row, b) == 1);
 		assert(pg_operation_label_types(roots[2]->as.reference, &payload, &response) && response == roots[6]);
-		assert(payload == pg_thunk_type(&classifiers, pg_effect_type(&classifiers, row, roots[6])));
+		assert(payload == pg_thunk_type(graph, pg_effect_type(graph, row, roots[6])));
 		const struct pg_object *label;
 		const struct pg_term *argument, *continuation;
 		assert(pg_computation_request_view(roots[4], &label, &argument, &continuation));
 		assert(label == a && argument == roots[6]);
 		const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-		const struct pg_evidence *u = pg_prove_universe(&typing, &classifiers, empty, 0);
+		const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
 		assert(pg_operation_declaration_at(&typing, a, u, u));
-		assert(!pg_operation_declaration_at(&typing, a, pg_prove_universe(&typing, &classifiers, empty, 1), u));
+		assert(!pg_operation_declaration_at(&typing, a, pg_prove_universe(&typing, empty, 1), u));
 		descriptor_boundaries(file);
 	}
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 }
 
 static void effect_graph(FILE *file, struct pg_graph *graph, int writing, uint64_t budget)
 {
-	struct pg_classifiers classifiers;
 	struct pg_effect_inference work;
-	assert(!pg_classifiers_init(&classifiers, graph) && !pg_effect_inference_init(&work, graph));
+	assert(!pg_effect_inference_init(&work, graph));
 	const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL);
 	if (writing) {
-		const struct pg_term *u = pg_universe(&classifiers, 0);
+		const struct pg_term *u = pg_universe(graph, 0);
 		const struct pg_object *op = pg_operation_label_create(graph, u, u);
 		const struct pg_effect_row *seed = pg_effect_row(graph, 1, &op);
 		struct pg_effect_equation *a = pg_effect_equation(&work, seed), *b = pg_effect_equation(&work, empty);
@@ -289,20 +276,20 @@ static void effect_graph(FILE *file, struct pg_graph *graph, int writing, uint64
 		const struct pg_term **roots = pg_alloc(graph, (count + 1) * sizeof(*roots));
 		assert(roots);
 		memcpy(roots, definitions, count * sizeof(*roots));
-		roots[count] = pg_effect_type_spine(&classifiers,
+		roots[count] = pg_effect_type_spine(graph,
 			pg_reference(graph, pg_effect_equation_parameter(&work, b)), u);
 		assert(!pg_wire_write_u64(file, equations));
-		assert(!pg_graph_write_descriptors(file, count + 1, roots, &pg_builtin_graph_codec, &classifiers));
+		assert(!pg_graph_write_descriptors(file, count + 1, roots, &pg_builtin_graph_codec, graph));
 	} else {
 		uint64_t equations;
 		size_t count;
 		const struct pg_term *const *roots;
 		assert(!pg_wire_read_u64(file, &equations) && equations == 3);
-		assert(!pg_graph_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, &classifiers, &count, &roots));
+		assert(!pg_graph_read_descriptors(file, graph, 1000, 100, &pg_builtin_graph_codec, graph, &count, &roots));
 		assert(count == 16);
 		const struct pg_term *parameter, *value;
 		assert(pg_effect_type_spine_view(roots[count - 1], &parameter, &value));
-		assert(value == pg_universe(&classifiers, 0));
+		assert(value == pg_universe(graph, 0));
 		assert(!pg_effect_inference_unpack(&work, equations, count - 1, roots));
 		struct pg_effect_equation *b = NULL;
 		const struct pg_effect_row *seed = NULL;
@@ -338,14 +325,12 @@ static void effect_graph(FILE *file, struct pg_graph *graph, int writing, uint64
 		puts("effect image: shared classifier parameter, immutable seeds, cyclic Solve and failed-import isolation passed");
 	}
 	pg_effect_inference_destroy(&work);
-	pg_classifiers_destroy(&classifiers);
 }
 
 static void layout_graph(FILE *file, struct pg_graph *graph, int writing, uint64_t budget)
 {
-	struct pg_classifiers classifiers;
 	struct pg_typing typing;
-	assert(!pg_classifiers_init(&classifiers, graph) && !pg_typing_init(&typing, graph));
+	assert(!pg_typing_init(&typing, graph));
 	if (writing) {
 		const size_t arities[] = {0, 1};
 		const struct pg_data_layout *a = pg_data_layout(graph, 2, arities), *b = pg_data_layout(graph, 2, arities);
@@ -359,20 +344,20 @@ static void layout_graph(FILE *file, struct pg_graph *graph, int writing, uint64
 		const struct pg_term *roots[] = {zero, successor, match, match, foreign,
 			pg_data_match(graph, a, foreign, 2, clauses), pg_reference(graph, pg_data_matcher(pg_data_layout(graph, 0, NULL)))};
 		const struct pg_object *family = pg_binder(graph);
-		const struct pg_context *prefix = pg_context_bind(&typing, NULL, family, pg_universe(&classifiers, 0), PG_JUDGEMENT_VALUE);
+		const struct pg_context *prefix = pg_context_bind(&typing, NULL, family, pg_universe(graph, 0), PG_JUDGEMENT_VALUE);
 		/* Deliberately only declared, not well-typed: no family formation exists. */
 		const struct pg_context *field = pg_context_bind(&typing, prefix, x,
 			pg_application(graph, pg_reference(graph, family), zero), PG_JUDGEMENT_VALUE);
 		const struct pg_context *contexts[] = {prefix, field, field, NULL};
 		size_t terms = graph->terms.count, objects = graph->objects.count;
-		assert(!pg_contexts_write_descriptors(file, 4, contexts, 7, roots, &pg_builtin_graph_codec, &classifiers));
+		assert(!pg_contexts_write_descriptors(file, 4, contexts, 7, roots, &pg_builtin_graph_codec, graph));
 		assert(terms == graph->terms.count && objects == graph->objects.count && !typing.proofs.count);
 	} else {
 		size_t count, context_count;
 		const struct pg_term *const *roots;
 		const struct pg_context *const *contexts;
 		assert(!pg_contexts_read_descriptors(file, &typing, 1000, 100, &pg_builtin_graph_codec,
-			&classifiers, &context_count, &contexts, &count, &roots));
+			graph, &context_count, &contexts, &count, &roots));
 		assert(count == 7 && roots[2] == roots[3] && !typing.proofs.count);
 		assert(context_count == 4 && contexts[1] == contexts[2] && !contexts[3]);
 		assert(contexts[1]->parent == contexts[0] && !contexts[0]->parent);
@@ -402,10 +387,10 @@ static void layout_graph(FILE *file, struct pg_graph *graph, int writing, uint64
 		assert(empty && !pg_data_layout_count(empty) && !pg_data_constructor(empty, 0));
 		const struct pg_term *owner = pg_reference(graph, pg_data_matcher(a));
 		const uint64_t out_of_range = 2;
-		assert(!pg_builtin_graph_codec.restore(&classifiers, graph, "data-constructor/v1", 1, &owner, 1, &out_of_range));
-		assert(!pg_builtin_graph_codec.restore(&classifiers, graph, "data-constructor/v1", 1, &owner, 0, NULL));
-		assert(!pg_builtin_graph_codec.restore(&classifiers, graph, "data-layout/v1", 1, &owner, 0, NULL));
-		assert(!pg_builtin_graph_codec.restore(&classifiers, graph, "effect-row/v1", 0, NULL, 1, &out_of_range));
+		assert(!pg_builtin_graph_codec.restore(graph, graph, "data-constructor/v1", 1, &owner, 1, &out_of_range));
+		assert(!pg_builtin_graph_codec.restore(graph, graph, "data-constructor/v1", 1, &owner, 0, NULL));
+		assert(!pg_builtin_graph_codec.restore(graph, graph, "data-layout/v1", 1, &owner, 0, NULL));
+		assert(!pg_builtin_graph_codec.restore(graph, graph, "effect-row/v1", 0, NULL, 1, &out_of_range));
 		struct pg_whnf_work work;
 		assert(!pg_whnf_work_init(&work, graph));
 		struct pg_whnf_job *match = pg_whnf_request(&work, &pg_pure_policy, roots[2]);
@@ -420,20 +405,18 @@ static void layout_graph(FILE *file, struct pg_graph *graph, int writing, uint64
 		puts("layout image: shared contexts/constructors, inert annotations, distinct layouts and resumed iota passed");
 	}
 	pg_typing_destroy(&typing);
-	pg_classifiers_destroy(&classifiers);
 }
 
 static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 {
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
-	assert(!pg_typing_init(&typing, graph) && !pg_classifiers_init(&classifiers, graph));
+	assert(!pg_typing_init(&typing, graph));
 	struct pg_declaration_io io;
-	assert(!pg_declaration_io_init(&io, &typing, &classifiers));
+	assert(!pg_declaration_io_init(&io, &typing));
 	if (writing) {
 		const struct pg_object *self = pg_binder(graph), *n = pg_binder(graph);
 		const struct pg_term *image = pg_reference(graph, self);
-		const struct pg_context *parameters = pg_context_bind(&typing, NULL, self, pg_universe(&classifiers, 0), PG_JUDGEMENT_VALUE);
+		const struct pg_context *parameters = pg_context_bind(&typing, NULL, self, pg_universe(graph, 0), PG_JUDGEMENT_VALUE);
 		const struct pg_context *fields = pg_context_bind(&typing, parameters, n, image, PG_JUDGEMENT_VALUE);
 		const struct pg_data_constructor_input constructors[] = {{parameters, &image}, {fields, &image}};
 		const struct pg_data_declaration *declaration = pg_data_declaration(graph, parameters, parameters, 2, constructors);
@@ -472,7 +455,7 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 		assert(terms[3]->as.application.function->as.reference == pg_data_constructor(layout, 1));
 		assert(terms[3]->as.application.argument->as.reference == pg_data_constructor(layout, 0));
 		const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-		const struct pg_evidence *universe = pg_prove_universe(&typing, &classifiers, empty, 0);
+		const struct pg_evidence *universe = pg_prove_universe(&typing, empty, 0);
 		const struct pg_evidence *parameters = pg_prove_context_extension(&typing, empty, contexts[0]->binder, universe);
 		const struct pg_evidence *self = pg_prove_variable(&typing, parameters, contexts[0]->binder);
 		const struct pg_evidence *fields = pg_prove_context_extension(&typing, parameters, contexts[3]->binder, self);
@@ -482,9 +465,9 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 		const struct pg_data_signature *signature = pg_data_signature(&typing, parameters, parameters);
 		const struct pg_data_schema *schema = pg_data_schema_check(&typing, declaration, signature, 2, results);
 		assert(schema && pg_data_schema_layout(schema) == layout);
-		const struct pg_evidence *formation = pg_prove_inductive_type(&typing, &classifiers, schema);
+		const struct pg_evidence *formation = pg_prove_inductive_type(&typing, schema);
 		assert(formation && pg_evidence_subject(formation)->core->as.reference == pg_data_declaration_family(declaration));
-		assert(pg_prove_inductive_type(&typing, &classifiers, schema) == formation);
+		assert(pg_prove_inductive_type(&typing, schema) == formation);
 		size_t proofs = typing.proofs.count;
 		const struct pg_term *wrong[] = {terms[0], contexts[0]->declared_type, terms[2]};
 		const struct pg_data_declaration *changed = pg_data_declaration_unpack(graph, 4, contexts, 3, wrong);
@@ -498,7 +481,6 @@ static void declaration_graph(FILE *file, struct pg_graph *graph, int writing)
 		puts("declaration image: relocated family, shared contexts/layout, local formation and changed-map rejection passed");
 	}
 	pg_declaration_io_destroy(&io);
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 }
 

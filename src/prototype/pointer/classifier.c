@@ -206,9 +206,9 @@ const char *pg_classifier_name(const struct pg_object *object, char *buffer, siz
 	return NULL;
 }
 
-const struct pg_object *pg_classifier_resolve(struct pg_classifiers *classifiers, const char *name)
+const struct pg_object *pg_classifier_resolve(struct pg_graph *graph, const char *name)
 {
-	if (!classifiers || !name) return NULL;
+	if (!graph || !name) return NULL;
 	for (size_t i = 0; i < sizeof(descriptors) / sizeof(*descriptors); ++i)
 		if (!strcmp(name, descriptors[i].name)) return descriptors[i].object;
 	static const char prefix[] = "kernel/universe/";
@@ -220,26 +220,13 @@ const struct pg_object *pg_classifier_resolve(struct pg_classifiers *classifiers
 	uintmax_t level = strtoumax(digits, &end, 10);
 	if (errno == ERANGE || level > UINT64_MAX || strcmp(end, "/v1")) return NULL;
 	if (*digits == '0' && end != digits + 1) return NULL;
-	const struct pg_term *term = pg_universe(classifiers, (uint64_t)level);
+	const struct pg_term *term = pg_universe(graph, (uint64_t)level);
 	return term ? term->as.reference : NULL;
 }
 
-int pg_classifiers_init(struct pg_classifiers *classifiers, struct pg_graph *graph)
+const struct pg_term *pg_universe(struct pg_graph *graph, uint64_t level)
 {
-	if (!classifiers || !graph) return -1;
-	classifiers->graph = graph;
-	return 0;
-}
-
-void pg_classifiers_destroy(struct pg_classifiers *classifiers)
-{
-	memset(classifiers, 0, sizeof(*classifiers));
-}
-
-const struct pg_term *pg_universe(struct pg_classifiers *classifiers, uint64_t level)
-{
-	if (!classifiers || !classifiers->graph) return NULL;
-	struct pg_graph *graph = classifiers->graph;
+	if (!graph) return NULL;
 	if (!graph->objects.capacity && pg_index_init(&graph->objects)) return NULL;
 	uint64_t hash = (level ^ (uintptr_t)&universe_class) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *candidate = pg_index_candidates(&graph->objects, hash); candidate; candidate = candidate->next) {
@@ -301,10 +288,10 @@ const struct pg_term *pg_pi_constant_codomain(const struct pg_term *pi)
 	return codomain;
 }
 
-static const struct pg_term *unary_type(struct pg_classifiers *classifiers,
+static const struct pg_term *unary_type(struct pg_graph *graph,
 	const struct pg_object *former, const struct pg_term *argument)
 {
-	return pg_application(classifiers->graph, pg_reference(classifiers->graph, former), argument);
+	return pg_application(graph, pg_reference(graph, former), argument);
 }
 
 static int unary_view(const struct pg_term *term, const struct pg_object *former, const struct pg_term **argument)
@@ -316,19 +303,19 @@ static int unary_view(const struct pg_term *term, const struct pg_object *former
 	return 1;
 }
 
-const struct pg_term *pg_return_type(struct pg_classifiers *classifiers, const struct pg_term *value_type)
+const struct pg_term *pg_return_type(struct pg_graph *graph, const struct pg_term *value_type)
 {
-	return pg_effect_type(classifiers, &empty_effects, value_type);
+	return pg_effect_type(graph, &empty_effects, value_type);
 }
 
-const struct pg_term *pg_termination_type(struct pg_classifiers *classifiers, const struct pg_term *suspended)
+const struct pg_term *pg_termination_type(struct pg_graph *graph, const struct pg_term *suspended)
 {
-	return classifiers && suspended ? unary_type(classifiers, &termination_formers[0], suspended) : NULL;
+	return graph && suspended ? unary_type(graph, &termination_formers[0], suspended) : NULL;
 }
 
-const struct pg_term *pg_termination_witness(struct pg_classifiers *classifiers, const struct pg_term *suspended)
+const struct pg_term *pg_termination_witness(struct pg_graph *graph, const struct pg_term *suspended)
 {
-	return classifiers && suspended ? unary_type(classifiers, &termination_formers[1], suspended) : NULL;
+	return graph && suspended ? unary_type(graph, &termination_formers[1], suspended) : NULL;
 }
 
 int pg_termination_type_view(const struct pg_term *term, const struct pg_term **suspended)
@@ -336,34 +323,34 @@ int pg_termination_type_view(const struct pg_term *term, const struct pg_term **
 	return suspended && unary_view(term, &termination_formers[0], suspended);
 }
 
-const struct pg_term *pg_effect_type(struct pg_classifiers *classifiers,
+const struct pg_term *pg_effect_type(struct pg_graph *graph,
 	const struct pg_effect_row *effects, const struct pg_term *value_type)
 {
-	return pg_computation_type(classifiers, PG_TOTALITY_UNSPECIFIED, effects, value_type);
+	return pg_computation_type(graph, PG_TOTALITY_UNSPECIFIED, effects, value_type);
 }
 
-const struct pg_term *pg_effect_type_spine(struct pg_classifiers *classifiers,
+const struct pg_term *pg_effect_type_spine(struct pg_graph *graph,
 	const struct pg_term *effects, const struct pg_term *value_type)
 {
-	return pg_computation_type_spine(classifiers, PG_TOTALITY_UNSPECIFIED, effects, value_type);
+	return pg_computation_type_spine(graph, PG_TOTALITY_UNSPECIFIED, effects, value_type);
 }
 
-const struct pg_term *pg_computation_type(struct pg_classifiers *classifiers,
+const struct pg_term *pg_computation_type(struct pg_graph *graph,
 	enum pg_totality totality, const struct pg_effect_row *effects, const struct pg_term *value_type)
 {
-	if (!classifiers) return NULL;
-	return pg_computation_type_spine(classifiers, totality,
-		pg_effect_reference(classifiers->graph, effects), value_type);
+	if (!graph) return NULL;
+	return pg_computation_type_spine(graph, totality,
+		pg_effect_reference(graph, effects), value_type);
 }
 
-const struct pg_term *pg_computation_type_spine(struct pg_classifiers *classifiers,
+const struct pg_term *pg_computation_type_spine(struct pg_graph *graph,
 	enum pg_totality totality, const struct pg_term *effects, const struct pg_term *value_type)
 {
-	if (!classifiers || !effects || !value_type || (unsigned)totality > PG_TOTALITY_TOTAL) return NULL;
-	const struct pg_term *grade = pg_reference(classifiers->graph, &totality_objects[totality]);
-	const struct pg_term *head = unary_type(classifiers, &return_type_former, grade);
-	head = pg_application(classifiers->graph, head, effects);
-	return pg_application(classifiers->graph, head, value_type);
+	if (!graph || !effects || !value_type || (unsigned)totality > PG_TOTALITY_TOTAL) return NULL;
+	const struct pg_term *grade = pg_reference(graph, &totality_objects[totality]);
+	const struct pg_term *head = unary_type(graph, &return_type_former, grade);
+	head = pg_application(graph, head, effects);
+	return pg_application(graph, head, value_type);
 }
 
 const struct pg_term *pg_effect_reference(struct pg_graph *graph, const struct pg_effect_row *row)
@@ -444,9 +431,9 @@ int pg_computation_type_view(const struct pg_term *term,
 	*value_type = value;
 	return 1;
 }
-const struct pg_term *pg_thunk_type(struct pg_classifiers *classifiers, const struct pg_term *computation_type)
+const struct pg_term *pg_thunk_type(struct pg_graph *graph, const struct pg_term *computation_type)
 {
-	return unary_type(classifiers, &thunk_type_former, computation_type);
+	return unary_type(graph, &thunk_type_former, computation_type);
 }
 int pg_pure_computation_type_view(const struct pg_term *term,
 	enum pg_totality *totality, const struct pg_term **value_type)

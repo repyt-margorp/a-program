@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 int pg_identity_substitution_images(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
+	const struct pg_evidence *substitution,
 	const struct pg_evidence *left, const struct pg_evidence *right,
 	size_t count, const struct pg_evidence *const *paths, size_t image_count,
 	const struct pg_evidence **images)
@@ -19,7 +19,7 @@ int pg_identity_substitution_images(struct pg_typing *typing,
 	const struct pg_evidence *context = pg_evidence_premise(substitution, 1);
 	for (size_t i = 0; i < image_count; ++i) {
 		const struct pg_evidence *value = pg_evidence_premise(substitution, 2 + total - image_count + i);
-		const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, value);
+		const struct pg_evidence *type = pg_prove_classifier(typing, context, value);
 		results[i] = pg_prove_family_action(typing, type, value, left, right, count, paths);
 		if (!results[i]) goto done;
 	}
@@ -132,7 +132,7 @@ static const struct pg_evidence *rebuild_family(struct pg_typing *typing,
 }
 
 static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct formation_origin *origin)
+	const struct formation_origin *origin)
 {
 	const struct pg_evidence *formation = identity_structure(typing, origin->term), *map = origin->map;
 	if (!formation) return NULL;
@@ -171,7 +171,7 @@ static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
 		const struct pg_evidence *left = pg_prove_reindex(typing, map, boundary.left);
 		const struct pg_evidence *right = pg_prove_reindex(typing, map, boundary.right);
 		return rule == PG_IDENTITY_FORM ? pg_prove_identity_type(typing, family, left, right)
-			: pg_prove_identity_instance(typing, classifiers, family, left, right);
+			: pg_prove_identity_instance(typing, family, left, right);
 	}
 	const struct pg_evidence *left = pg_prove_reindex(typing, map, boundary.left);
 	const struct pg_evidence *right = pg_prove_reindex(typing, map, boundary.right);
@@ -180,32 +180,30 @@ static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
 
 struct pg_identity_formation_work {
 	struct pg_typing *typing;
-	struct pg_classifiers *classifiers;
 	struct formation_origin origin;
 	const struct pg_evidence *result;
 	int failed;
 };
 
 static int formation_initialize(struct pg_identity_formation_work *work, struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation)
+	const struct pg_evidence *formation)
 {
 	if (!pg_evidence_owned_by(formation, typing)) return -1;
-	if (!classifiers || classifiers->graph != typing->graph) return -1;
 	switch (pg_evidence_judgement(formation)) {
 	case PG_JUDGEMENT_VALUE_TYPE: case PG_JUDGEMENT_COMPUTATION_TYPE: break;
 	default: return -1;
 	}
-	*work = (struct pg_identity_formation_work){.typing = typing, .classifiers = classifiers,
+	*work = (struct pg_identity_formation_work){.typing = typing,
 		.origin = {.term = pg_evidence_subject(formation)}};
 	return 0;
 }
 
 struct pg_identity_formation_work *pg_identity_formation_init(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation)
+	const struct pg_evidence *formation)
 {
 	struct pg_identity_formation_work *work = malloc(sizeof(*work));
 	if (!work) return NULL;
-	if (formation_initialize(work, typing, classifiers, formation) != 0) { free(work); return NULL; }
+	if (formation_initialize(work, typing, formation) != 0) { free(work); return NULL; }
 	return work;
 }
 
@@ -216,7 +214,7 @@ int pg_identity_formation_advance(struct pg_identity_formation_work *work, uint6
 		if (!fuel--) return 0;
 		int status = formation_origin_step(work->typing, &work->origin);
 		if (status > 0) {
-			work->result = formation_from_origin(work->typing, work->classifiers, &work->origin);
+			work->result = formation_from_origin(work->typing, &work->origin);
 			if (!work->result) status = -1;
 		}
 		if (status < 0) { work->failed = 1; return -1; }
@@ -232,10 +230,10 @@ const struct pg_evidence *pg_identity_formation_result(const struct pg_identity_
 void pg_identity_formation_destroy(struct pg_identity_formation_work *work) { free(work); }
 
 const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation)
+	const struct pg_evidence *formation)
 {
 	struct pg_identity_formation_work work;
-	if (formation_initialize(&work, typing, classifiers, formation) != 0) return NULL;
+	if (formation_initialize(&work, typing, formation) != 0) return NULL;
 	while (pg_identity_formation_advance(&work, UINT64_MAX) == 0) {}
 	return pg_identity_formation_result(&work);
 }
@@ -249,7 +247,6 @@ struct endpoint_frame {
 struct pg_identity_endpoint_work {
 	struct pg_graph temporary;
 	struct pg_typing *typing;
-	struct pg_classifiers *classifiers;
 	const struct pg_evidence *context, *formation, *result;
 	struct formation_origin origin;
 	struct endpoint_frame *stack;
@@ -259,7 +256,7 @@ struct pg_identity_endpoint_work {
 };
 
 struct pg_identity_endpoint_work *pg_identity_endpoint_init(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side)
 {
 	if (!pg_evidence_owned_by(context, typing)) return NULL;
@@ -269,11 +266,9 @@ struct pg_identity_endpoint_work *pg_identity_endpoint_init(struct pg_typing *ty
 		pg_evidence_judgement(formation) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	if (pg_evidence_context(context) != pg_evidence_context(formation)) return NULL;
 	if (side != PG_IDENTITY_LEFT && side != PG_IDENTITY_RIGHT) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	struct pg_identity_endpoint_work *work = calloc(1, sizeof(*work));
 	if (!work) return NULL;
 	work->typing = typing;
-	work->classifiers = classifiers;
 	work->context = context;
 	work->formation = formation;
 	work->depth = depth;
@@ -288,7 +283,7 @@ static int endpoint_step(struct pg_identity_endpoint_work *work)
 		if (!work->origin.term) work->origin.term = pg_evidence_subject(work->formation);
 		int status = formation_origin_step(typing, &work->origin);
 		if (status <= 0) return status;
-		const struct pg_evidence *formation = formation_from_origin(typing, work->classifiers, &work->origin);
+		const struct pg_evidence *formation = formation_from_origin(typing, &work->origin);
 		work->origin = (struct formation_origin){0};
 		struct pg_identity_boundary boundary;
 		if (!pg_identity_boundary_view(formation, &boundary)) return -1;
@@ -307,7 +302,7 @@ static int endpoint_step(struct pg_identity_endpoint_work *work)
 		return 0;
 	}
 	const struct endpoint_frame *frame = work->stack;
-	const struct pg_evidence *type = pg_prove_classifier(typing, work->classifiers, work->context, work->result);
+	const struct pg_evidence *type = pg_prove_classifier(typing, work->context, work->result);
 	const struct pg_identity_boundary *boundary = &frame->boundary;
 	work->result = boundary->left_substitution
 		? pg_prove_family_action(typing, type, work->result, boundary->left_substitution,
@@ -343,10 +338,10 @@ void pg_identity_endpoint_destroy(struct pg_identity_endpoint_work *work)
 }
 
 const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *formation, size_t depth, enum pg_identity_direction side)
 {
-	struct pg_identity_endpoint_work *work = pg_identity_endpoint_init(typing, classifiers, context, formation, depth, side);
+	struct pg_identity_endpoint_work *work = pg_identity_endpoint_init(typing, context, formation, depth, side);
 	while (pg_identity_endpoint_advance(work, UINT64_MAX) == 0) {}
 	const struct pg_evidence *result = pg_identity_endpoint_result(work);
 	pg_identity_endpoint_destroy(work);
@@ -355,7 +350,6 @@ const struct pg_evidence *pg_identity_face_endpoint(struct pg_typing *typing,
 
 struct pg_identity_face_work {
 	struct pg_typing *typing;
-	struct pg_classifiers *classifiers;
 	const struct pg_evidence *context, *formation, *layer, *result;
 	struct formation_origin origin;
 	const struct pg_dimension_map *face;
@@ -365,11 +359,10 @@ struct pg_identity_face_work {
 };
 
 struct pg_identity_face_work *pg_identity_face_init(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *formation, const struct pg_dimension_map *face)
 {
 	if (!face || face->source >= face->target || !face->coordinates) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	if (!pg_evidence_owned_by(formation, typing)) return NULL;
 	if (pg_evidence_judgement(formation) != PG_JUDGEMENT_VALUE_TYPE &&
 		pg_evidence_judgement(formation) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
@@ -379,7 +372,6 @@ struct pg_identity_face_work *pg_identity_face_init(struct pg_typing *typing,
 	struct pg_identity_face_work *work = calloc(1, sizeof(*work));
 	if (!work) return NULL;
 	work->typing = typing;
-	work->classifiers = classifiers;
 	work->context = context;
 	work->formation = work->layer = formation;
 	work->face = face;
@@ -403,7 +395,7 @@ static int face_step(struct pg_identity_face_work *work)
 		case PG_ENDPOINT_ZERO: case PG_ENDPOINT_ONE: break;
 		default: return -1;
 		}
-		const struct pg_evidence *layer = formation_from_origin(work->typing, work->classifiers, &work->origin);
+		const struct pg_evidence *layer = formation_from_origin(work->typing, &work->origin);
 		work->origin = (struct formation_origin){0};
 		struct pg_identity_boundary boundary;
 		if (!pg_identity_boundary_view(layer, &boundary)) return -1;
@@ -417,7 +409,7 @@ static int face_step(struct pg_identity_face_work *work)
 		if (!work->next) return -1;
 		enum pg_coordinate_kind kind = face->coordinates[--work->next].kind;
 		if (kind == PG_AXIS) { ++work->retained; return 0; }
-		work->endpoint = pg_identity_endpoint_init(work->typing, work->classifiers,
+		work->endpoint = pg_identity_endpoint_init(work->typing,
 			work->context, work->formation, work->retained,
 			kind == PG_ENDPOINT_ZERO ? PG_IDENTITY_LEFT : PG_IDENTITY_RIGHT);
 		if (!work->endpoint) return -1;
@@ -429,7 +421,7 @@ static int face_step(struct pg_identity_face_work *work)
 	pg_identity_endpoint_destroy(work->endpoint);
 	work->endpoint = NULL;
 	if (!--work->remaining) { work->result = result; return 1; }
-	work->formation = pg_prove_classifier(work->typing, work->classifiers, work->context, result);
+	work->formation = pg_prove_classifier(work->typing, work->context, result);
 	return work->formation ? 0 : -1;
 }
 
@@ -458,10 +450,10 @@ void pg_identity_face_destroy(struct pg_identity_face_work *work)
 }
 
 const struct pg_evidence *pg_identity_proper_face(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *formation, const struct pg_dimension_map *face)
 {
-	struct pg_identity_face_work *work = pg_identity_face_init(typing, classifiers, context, formation, face);
+	struct pg_identity_face_work *work = pg_identity_face_init(typing, context, formation, face);
 	while (pg_identity_face_advance(work, UINT64_MAX) == 0) {}
 	const struct pg_evidence *result = pg_identity_face_result(work);
 	pg_identity_face_destroy(work);
@@ -469,14 +461,14 @@ const struct pg_evidence *pg_identity_proper_face(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_identity_context_extend(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *family, const struct pg_object *left,
 	const struct pg_object *right, const struct pg_object *center)
 {
 	const struct pg_evidence *left_type = pg_prove_identity_endpoint_type(typing,
-		classifiers, family, PG_IDENTITY_LEFT_TYPE);
+		family, PG_IDENTITY_LEFT_TYPE);
 	const struct pg_evidence *right_type = pg_prove_identity_endpoint_type(typing,
-		classifiers, family, PG_IDENTITY_RIGHT_TYPE);
+		family, PG_IDENTITY_RIGHT_TYPE);
 	if (!left_type || !right_type) return NULL;
 	context = pg_prove_context_extension(typing, context, left, left_type);
 	if (!context) return NULL;
@@ -487,23 +479,23 @@ const struct pg_evidence *pg_identity_context_extend(struct pg_typing *typing,
 	const struct pg_evidence *x0 = pg_prove_variable(typing, context, left);
 	const struct pg_evidence *x1 = pg_prove_variable(typing, context, right);
 	const struct pg_evidence *center_type = pg_prove_identity_instance(typing,
-		classifiers, family, x0, x1);
+		family, x0, x1);
 	return pg_prove_context_extension(typing, context, center, center_type);
 }
 
 const struct pg_evidence *pg_identity_pi_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *pi, const struct pg_evidence *left,
 	const struct pg_evidence *right, const struct pg_object *x0,
 	const struct pg_object *x1, const struct pg_object *path)
 {
 	const struct pg_evidence *identity = pg_prove_substitution_projection(typing, context, context);
-	return pg_identity_family_pi_type(typing, classifiers, pi, identity, identity,
+	return pg_identity_family_pi_type(typing, pi, identity, identity,
 		0, NULL, left, right, x0, x1, path);
 }
 
 const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *pi,
+	const struct pg_evidence *pi,
 	const struct pg_evidence *left_substitution, const struct pg_evidence *right_substitution,
 	size_t count, const struct pg_evidence *const *paths,
 	const struct pg_evidence *left, const struct pg_evidence *right,
@@ -552,7 +544,7 @@ const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, left), l),
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, right), r));
 	for (size_t i = 0; body && i < 3; ++i) {
-		body = pg_prove_pi(typing, classifiers, boundary, body);
+		body = pg_prove_pi(typing, boundary, body);
 		boundary = pg_evidence_premise(boundary, 0);
 	}
 done:
@@ -561,14 +553,14 @@ done:
 }
 
 const struct pg_evidence *pg_identity_thunk_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *type,
+	const struct pg_evidence *type,
 	const struct pg_evidence *left, const struct pg_evidence *right)
 {
 	if (!pg_prove_identity_type(typing, type, left, right)) return NULL;
 	const struct pg_evidence *content = pg_prove_thunk_content(typing, type);
 	const struct pg_evidence *identity = pg_prove_identity_type(typing, content,
 		pg_prove_force(typing, left), pg_prove_force(typing, right));
-	return pg_prove_thunk_type(typing, classifiers, identity);
+	return pg_prove_thunk_type(typing, identity);
 }
 
 static void project_boundary(struct pg_typing *typing, const struct pg_evidence *context,
@@ -699,7 +691,7 @@ done:
 	return result;
 }
 
-static const struct pg_evidence *cube_action(struct pg_typing *typing, struct pg_classifiers *classifiers,
+static const struct pg_evidence *cube_action(struct pg_typing *typing,
 	struct pg_dimensions *dimensions, const struct pg_evidence *source,
 	size_t count, const struct pg_binding_cube *const *cubes,
 	const struct pg_dimension_map *order, const struct pg_evidence *term)
@@ -752,7 +744,7 @@ static const struct pg_evidence *cube_action(struct pg_typing *typing, struct pg
 	}
 	if (term) {
 		term = pg_prove_reindex(typing, map, term);
-		if (!term || !pg_prove_classifier(typing, classifiers, context, term)) { context = NULL; goto done; }
+		if (!term || !pg_prove_classifier(typing, context, term)) { context = NULL; goto done; }
 	}
 	for (size_t d = 1, faces = 1; context && d <= dimension; ++d) {
 		size_t active = count * faces;
@@ -766,7 +758,7 @@ static const struct pg_evidence *cube_action(struct pg_typing *typing, struct pg
 			centers[i] = pg_binding_face(dimensions, cube, pg_dimension_map(dimensions, axes, cube->dimension, coordinates));
 			centers[i] = pg_binding_permute(dimensions, centers[i], order);
 		}
-		const struct pg_evidence *type = term ? pg_prove_classifier(typing, classifiers, context, term) : NULL;
+		const struct pg_evidence *type = term ? pg_prove_classifier(typing, context, term) : NULL;
 		context = pg_identity_context(typing, dimensions, context, active, centers, &left, &right, paths);
 		if (term && context) {
 			term = pg_prove_family_action(typing, type, term, left, right, active, paths);
@@ -783,16 +775,16 @@ const struct pg_evidence *pg_identity_cube_context(struct pg_typing *typing,
 	struct pg_dimensions *dimensions, const struct pg_evidence *source,
 	size_t count, const struct pg_binding_cube *const *cubes, const struct pg_dimension_map *order)
 {
-	return cube_action(typing, NULL, dimensions, source, count, cubes, order, NULL);
+	return cube_action(typing, dimensions, source, count, cubes, order, NULL);
 }
 
 const struct pg_evidence *pg_identity_cube_action(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, struct pg_dimensions *dimensions,
+	struct pg_dimensions *dimensions,
 	const struct pg_evidence *source, const struct pg_evidence *term,
 	size_t count, const struct pg_binding_cube *const *cubes, const struct pg_dimension_map *order)
 {
-	if (!classifiers || !pg_evidence_owned_by(term, typing)) return NULL;
-	return cube_action(typing, classifiers, dimensions, source, count, cubes, order, term);
+	if (!pg_evidence_owned_by(term, typing)) return NULL;
+	return cube_action(typing, dimensions, source, count, cubes, order, term);
 }
 
 const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,

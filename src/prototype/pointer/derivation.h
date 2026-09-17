@@ -48,7 +48,7 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
  * different rule. Serialization retains the resulting evidence, not the request.
  * NULL includes invalid arity/parameters or inconsistent formation choices. */
 const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, enum pg_evidence_rule rule,
+	enum pg_evidence_rule rule,
 	const struct pg_derivation_parameters *parameters, size_t count,
 	const struct pg_evidence *const *premises);
 

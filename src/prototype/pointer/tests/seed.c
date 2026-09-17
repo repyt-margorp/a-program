@@ -44,8 +44,8 @@ static void compare(struct pg_program *loaded, const char *text, enum pg_definit
 	const struct pg_term *a = pg_evidence_classifier(pg_synthesis_result(loaded->root));
 	const struct pg_term *b = pg_evidence_classifier(pg_synthesis_result(fresh->root));
 	assert(left && right);
-	assert(!pg_graph_write_descriptors(left, 1, &a, &pg_builtin_graph_codec, &loaded->classifiers));
-	assert(!pg_graph_write_descriptors(right, 1, &b, &pg_builtin_graph_codec, &fresh->classifiers));
+	assert(!pg_graph_write_descriptors(left, 1, &a, &pg_builtin_graph_codec, &loaded->graph));
+	assert(!pg_graph_write_descriptors(right, 1, &b, &pg_builtin_graph_codec, &fresh->graph));
 	rewind(left); rewind(right);
 	int byte;
 	do { byte = fgetc(left); assert(byte == fgetc(right)); } while (byte != EOF);

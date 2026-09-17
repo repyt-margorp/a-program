@@ -3,18 +3,16 @@
 #include "descriptor_io.h"
 #include "typing.h"
 
-struct pg_classifiers;
 /* Per-transport packing cache, not a live declaration/solver authority.
- * Borrow typing and classifiers for this call; both must share one graph.
+ * Borrow typing and its graph for this call.
  * Destroy after transport. Loaded declarations belong to typing->graph. */
 struct pg_declaration_io {
 	struct pg_typing *typing;
-	struct pg_classifiers *classifiers;
 	struct pg_graph storage;
 	struct pg_index payloads;
 };
 int pg_declaration_io_init(struct pg_declaration_io *io,
-	struct pg_typing *typing, struct pg_classifiers *classifiers);
+	struct pg_typing *typing);
 void pg_declaration_io_destroy(struct pg_declaration_io *io);
 extern const struct pg_graph_codec pg_declaration_graph_codec;
 #endif

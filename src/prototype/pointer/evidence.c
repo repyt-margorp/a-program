@@ -24,7 +24,7 @@ struct pg_evidence {
 };
 
 static const struct pg_evidence *formed_classifier(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *term);
+	const struct pg_evidence *term);
 
 struct evidence_conclusion {
 	struct pg_index_entry index;
@@ -424,13 +424,12 @@ const struct pg_induction_allocation *pg_evidence_induction_allocation(const str
 }
 
 const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_data_schema *schema)
+	const struct pg_data_schema *schema)
 {
 	const struct pg_evidence *self = pg_data_schema_parameters(schema);
 	if (!context_proof(typing, self)) return NULL;
 	int indexed = self->rule == PG_CONTEXT_FAMILY_EXTEND;
 	if (!indexed && self->rule != PG_CONTEXT_EXTEND) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	const struct pg_evidence *indices = pg_data_schema_indices(schema);
 	if (!context_proof(typing, indices)) return NULL;
 	uint64_t level, bound;
@@ -1481,7 +1480,7 @@ const struct pg_evidence *pg_prove_inductive_motive_context(struct pg_typing *ty
 }
 
 const struct pg_evidence *pg_prove_inductive_family_function(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters)
 {
 	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
@@ -1489,9 +1488,9 @@ const struct pg_evidence *pg_prove_inductive_family_function(struct pg_typing *t
 	const struct pg_evidence *map = prove_data_scope(typing, formation,
 		pg_data_schema_indices(formation->certificate), parameters, NULL, 0);
 	if (!map) return NULL;
-	const struct pg_evidence *body = pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL,
+	const struct pg_evidence *body = pg_prove_return_contract(typing, PG_TOTALITY_TOTAL,
 		pg_prove_type_value(typing, family_in_scope(typing, formation, parameters, map)));
-	return pg_prove_abstract(typing, classifiers, parameters->premises[1], map->premises[1], body);
+	return pg_prove_abstract(typing, parameters->premises[1], map->premises[1], body);
 }
 
 static const struct pg_evidence *constructor_in_scope(struct pg_typing *typing,
@@ -1508,16 +1507,15 @@ static const struct pg_evidence *constructor_in_scope(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters)
 {
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	const struct pg_evidence *map = pg_prove_constructor_scope(typing, formation, constructor, parameters);
 	if (!map) return NULL;
 	const struct pg_evidence *body = constructor_in_scope(typing, formation, constructor, parameters, map);
-	body = pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, body);
+	body = pg_prove_return_contract(typing, PG_TOTALITY_TOTAL, body);
 	if (!body) return NULL;
-	return pg_prove_abstract(typing, classifiers, parameters->premises[1], map->premises[1], body);
+	return pg_prove_abstract(typing, parameters->premises[1], map->premises[1], body);
 }
 
 /* Check Gamma, indices, z : Family(parameters, indices), not a fixed fiber.
@@ -1559,14 +1557,14 @@ done:
  * membership retains its result map; variables retain their fiber formation.
  * This is checked substitution, not a search for an expected result type. */
 const struct pg_evidence *pg_prove_inductive_motive_substitution(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *source,
 	const struct pg_evidence *destination, const struct pg_evidence *value)
 {
 	if (!pg_inductive_motive_context_valid(typing, formation, parameters, source)) return NULL;
 	const struct pg_evidence *prefix = pg_prove_substitution_projection(typing, parameters->premises[1], destination);
 	if (pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY) {
-		const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, destination, value);
+		const struct pg_evidence *type = pg_prove_classifier(typing, destination, value);
 		struct pg_inductive_instance instance;
 		if (!pg_inductive_instance(typing, type, &instance)) return NULL;
 		if (instance.formation != formation || !instance.indices) return NULL;
@@ -1596,13 +1594,13 @@ static struct refinement_binding *refinement_find(const struct pg_index *index,
 }
 
 const struct pg_evidence *pg_prove_constructor_refinement(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *scrutinee, const struct pg_object *constructor)
 {
 	if (!context_proof(typing, context) || !pg_evidence_owned_by(scrutinee, typing)) return NULL;
 	if (pg_evidence_judgement(scrutinee) != PG_JUDGEMENT_VALUE || pg_evidence_context(scrutinee) != pg_evidence_context(context)) return NULL;
 	struct pg_inductive_instance instance;
-	if (!pg_inductive_instance(typing, pg_prove_classifier(typing, classifiers, context, scrutinee), &instance)) return NULL;
+	if (!pg_inductive_instance(typing, pg_prove_classifier(typing, context, scrutinee), &instance)) return NULL;
 	size_t first = instance.parameters->premise_count + 1;
 	size_t indices = instance.indices ? instance.indices->premise_count - first : 0;
 	if (indices >= SIZE_MAX / sizeof(struct refinement_binding)) return NULL;
@@ -1658,7 +1656,7 @@ done:
 }
 
 const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters,
 	const struct pg_evidence *source, const struct pg_evidence *motive,
 	const struct pg_evidence *destination, const struct pg_evidence *value)
@@ -1667,7 +1665,7 @@ const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(motive, typing) || pg_evidence_judgement(motive) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	if (pg_evidence_context(motive) != pg_evidence_context(source)) return NULL;
 	const struct pg_evidence *map = pg_prove_inductive_motive_substitution(typing,
-		classifiers, formation, parameters, source, destination, value);
+		formation, parameters, source, destination, value);
 	return pg_prove_reindex(typing, map, motive);
 }
 
@@ -1682,7 +1680,7 @@ static int unspecified_computation_result(const struct pg_term *type)
 }
 
 const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *motive_context,
 	const struct pg_evidence *motive, const struct pg_evidence *context,
 	const struct pg_evidence *field)
@@ -1691,13 +1689,13 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
 	if (!context_proof(typing, context) || pg_evidence_context(field) != pg_evidence_context(context)) return NULL;
 	const struct pg_term *type;
 	if (!pg_thunk_type_view(pg_evidence_subject(field)->classifier, &type)) {
-		const struct pg_evidence *at = pg_prove_inductive_motive_at(typing, classifiers,
+		const struct pg_evidence *at = pg_prove_inductive_motive_at(typing,
 			formation, parameters, motive_context, motive, context, field);
-		return pg_prove_thunk_type(typing, classifiers, at);
+		return pg_prove_thunk_type(typing, at);
 	}
 	const struct pg_evidence *scope = context;
 	const struct pg_evidence *call = pg_prove_force(typing, field);
-	const struct pg_evidence *classifier = pg_prove_classifier(typing, classifiers, scope, call);
+	const struct pg_evidence *classifier = pg_prove_classifier(typing, scope, call);
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
 	while (classifier && pg_pi_view(pg_evidence_subject(classifier)->core, &domain, &binder, &codomain)) {
@@ -1707,7 +1705,7 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
 		if (!scope) return NULL;
 		call = pg_prove_application(typing, pg_prove_projection(typing, scope, call),
 			pg_prove_variable(typing, scope, binder));
-		classifier = pg_prove_classifier(typing, classifiers, scope, call);
+		classifier = pg_prove_classifier(typing, scope, call);
 	}
 	enum pg_totality field_totality;
 	const struct pg_effect_row *effects;
@@ -1716,42 +1714,41 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
 	const struct pg_evidence *at;
 	if (field_totality == PG_TOTALITY_TOTAL) {
 		const struct pg_evidence *result = pg_prove_total_pure_value(typing, call);
-		at = pg_prove_inductive_motive_at(typing, classifiers,
+		at = pg_prove_inductive_motive_at(typing,
 			formation, parameters, motive_context, motive, scope, result);
 		goto abstract;
 	}
 	const struct pg_evidence *returned_type = pg_prove_return_content(typing, classifier);
 	binder = pg_binder(typing->graph);
 	const struct pg_evidence *returned = pg_prove_context_extension(typing, scope, binder, returned_type);
-	at = pg_prove_inductive_motive_at(typing, classifiers,
+	at = pg_prove_inductive_motive_at(typing,
 		formation, parameters, motive_context, motive, returned, pg_prove_variable(typing, returned, binder));
 	if (!at) return NULL;
 	/* Calling a recursive function field precedes recursion on its result.
 	 * The IH cannot promise termination that this field does not provide. */
 	enum pg_totality motive_totality;
 	if (pg_computation_type_view(pg_evidence_subject(at)->core, &motive_totality, &effects, &type)) {
-		at = pg_prove_computation_type(typing, classifiers, field_totality, effects,
+		at = pg_prove_computation_type(typing, field_totality, effects,
 			pg_prove_return_content(typing, at));
 	} else if (!unspecified_computation_result(pg_evidence_subject(at)->core)) return NULL;
 	/* Fold the returned recursive value once. Its result classifier must not
 	 * escape with that value's binder; indices may depend on the Pi arguments. */
 	at = pg_prove_pi_constant_codomain(typing,
-		pg_prove_pi(typing, classifiers, returned, at));
+		pg_prove_pi(typing, returned, at));
 abstract:
 	while (at && pg_evidence_context(scope) != pg_evidence_context(context)) {
-		at = pg_prove_pi(typing, classifiers, scope, at);
+		at = pg_prove_pi(typing, scope, at);
 		scope = scope->premises[0];
 	}
-	return pg_prove_thunk_type(typing, classifiers, at);
+	return pg_prove_thunk_type(typing, at);
 }
 
 static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_context *allocation, int retained)
 {
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	if (!context_proof(typing, motive_context) || motive_context->rule != PG_CONTEXT_EXTEND) return NULL;
 	if (!pg_evidence_owned_by(motive, typing) || pg_evidence_judgement(motive) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	if (pg_evidence_context(motive) != pg_evidence_context(motive_context)) return NULL;
@@ -1796,7 +1793,7 @@ static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 	for (size_t i = 0; i < count; ++i) {
 		if (!recursive_fields[i]) continue;
 		const struct pg_evidence *field = pg_prove_projection(typing, context, map->premises[prefix + 3 + i]);
-		const struct pg_evidence *ih = pg_prove_inductive_hypothesis_type(typing, classifiers, formation, parameters,
+		const struct pg_evidence *ih = pg_prove_inductive_hypothesis_type(typing, formation, parameters,
 			motive_context, motive, context, field);
 		const struct pg_object *binder = retained ? ih_binders[next_ih++] : pg_binder(typing->graph);
 		context = pg_prove_context_extension(typing, context, binder, ih);
@@ -1810,38 +1807,38 @@ done:
 }
 
 const struct pg_evidence *pg_prove_induction_scope(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive)
 {
-	return prove_induction_scope(typing, classifiers, formation, constructor, parameters,
+	return prove_induction_scope(typing, formation, constructor, parameters,
 		motive_context, motive, NULL, 0);
 }
 
 const struct pg_evidence *pg_prove_induction_scope_at(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_context *allocation)
 {
-	return prove_induction_scope(typing, classifiers, formation, constructor, parameters,
+	return prove_induction_scope(typing, formation, constructor, parameters,
 		motive_context, motive, allocation, 1);
 }
 
 const struct pg_evidence *pg_prove_induction_case(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_evidence *branch)
 {
-	const struct pg_evidence *map = pg_prove_induction_scope(typing, classifiers,
+	const struct pg_evidence *map = pg_prove_induction_scope(typing,
 		formation, constructor, parameters, motive_context, motive);
 	if (!map) return NULL;
 	const struct pg_evidence *context = map->premises[1];
 	const struct pg_evidence *body = pg_prove_projection(typing, context, branch);
 	for (size_t i = parameters->premise_count + 1; body && i < map->premise_count; ++i)
 		body = pg_prove_application(typing, body, map->premises[i]);
-	return pg_prove_abstract(typing, classifiers, parameters->premises[1], context, body);
+	return pg_prove_abstract(typing, parameters->premises[1], context, body);
 }
 
 static const struct pg_term *induction_field_core(struct pg_graph *graph,
@@ -1924,12 +1921,12 @@ done:
 }
 
 const struct pg_evidence *pg_prove_match_branch_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_evidence *fields)
 {
-	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!typing) return NULL;
 	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (!pg_evidence_owned_by(fields, typing) || fields->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (fields->premise_count <= parameters->premise_count) return NULL;
@@ -1937,10 +1934,10 @@ const struct pg_evidence *pg_prove_match_branch_type(struct pg_typing *typing,
 	size_t count;
 	if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(parameters), &count)) return NULL;
 	const struct pg_evidence *value = constructor_in_scope(typing, formation, constructor, parameters, fields);
-	const struct pg_evidence *expected = pg_prove_inductive_motive_at(typing, classifiers,
+	const struct pg_evidence *expected = pg_prove_inductive_motive_at(typing,
 		formation, parameters, motive_context, motive, context, value);
 	for (size_t i = 0; expected && i < count; ++i, context = context->premises[0])
-		expected = pg_prove_pi(typing, classifiers, context, expected);
+		expected = pg_prove_pi(typing, context, expected);
 	return expected;
 }
 
@@ -1973,7 +1970,7 @@ static struct induction_request *induction_request(struct pg_typing *typing,
 }
 
 static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches, enum pg_evidence_rule rule,
@@ -1987,7 +1984,6 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 		if (allocation->recursion == allocation->argument || allocation->recursion == allocation->self ||
 			allocation->argument == allocation->self) return NULL;
 	}
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
 	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (pg_evidence_context(parameters->premises[0]) != pg_evidence_context(formation)) return NULL;
@@ -2024,7 +2020,7 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 		if (pg_evidence_context(branches[i]) != pg_evidence_context(destination)) goto done;
 		premises[i + 5] = branches[i];
 	}
-	const struct pg_evidence *output = pg_prove_inductive_motive_at(typing, classifiers, formation, parameters,
+	const struct pg_evidence *output = pg_prove_inductive_motive_at(typing, formation, parameters,
 		motive_context, motive, destination, scrutinee);
 	if (!output) goto done;
 	premises[count + 5] = output;
@@ -2070,15 +2066,16 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_object *constructor = pg_data_constructor(layout, i);
 		const struct pg_evidence *map = allocation
-			? pg_prove_induction_scope_at(typing, classifiers, formation, constructor, parameters,
+			? pg_prove_induction_scope_at(typing, formation, constructor, parameters,
 				motive_context, motive, allocation->clauses[i])
 			: rule == PG_INDUCTION_ELIM
-			? pg_prove_induction_scope(typing, classifiers, formation, constructor, parameters, motive_context, motive)
+			? pg_prove_induction_scope(typing,
+		formation, constructor, parameters, motive_context, motive)
 			: pg_prove_constructor_scope(typing, formation, constructor, parameters);
 		if (!map) goto done;
 		const struct pg_evidence *context = map->premises[1];
 		if (contexts) contexts[i] = allocation ? allocation->clauses[i] : pg_evidence_context(context);
-		const struct pg_evidence *expected = pg_prove_match_branch_type(typing, classifiers,
+		const struct pg_evidence *expected = pg_prove_match_branch_type(typing,
 			formation, constructor, parameters, motive_context, motive, map);
 		if (!expected || pg_alpha_equal(pg_evidence_subject(expected)->core, pg_evidence_subject(branches[i])->classifier) != 1) goto done;
 		clauses[i] = (struct pg_match_clause){constructor, pg_evidence_subject(branches[i])->core};
@@ -2140,10 +2137,10 @@ static int elimination_structure(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_construction_origin(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *proof,
+	const struct pg_evidence *proof,
 	const struct pg_evidence **environment)
 {
-	if (!typing || !classifiers || classifiers->graph != typing->graph || !environment) return NULL;
+	if (!typing || !environment) return NULL;
 	struct pg_typed_query *work = pg_construction_origin_request(typing, proof);
 	while (!pg_typed_query_advance(work, 1024)) {}
 	const struct pg_evidence *result = pg_typed_query_result(work);
@@ -2152,7 +2149,7 @@ const struct pg_evidence *pg_prove_construction_origin(struct pg_typing *typing,
 }
 
 static const struct pg_evidence *elimination_instance(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
+	const struct pg_evidence *substitution,
 	const struct pg_evidence *elimination, const struct pg_evidence *scrutinee)
 {
 	struct elimination_structure view;
@@ -2175,7 +2172,7 @@ static const struct pg_evidence *elimination_instance(struct pg_typing *typing,
 			pg_prove_structural_subject(typing, view.subject->operands[i + 1]));
 		if (!branches[i]) goto done;
 	}
-	result = prove_data_elimination(typing, classifiers, view.formation,
+	result = prove_data_elimination(typing, view.formation,
 		pg_prove_substitution_compose(typing, view.parameters, substitution),
 		scrutinee ? scrutinee : pg_prove_reindex(typing, substitution, view.scrutinee),
 		conclusion_first(typing, PG_JUDGEMENT_CONTEXT, input->context), motive,
@@ -2186,10 +2183,10 @@ done:
 }
 
 const struct pg_evidence *pg_prove_elimination_reindex(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *substitution,
+	const struct pg_evidence *substitution,
 	const struct pg_evidence *elimination)
 {
-	return elimination_instance(typing, classifiers, substitution, elimination, NULL);
+	return elimination_instance(typing, substitution, elimination, NULL);
 }
 
 static int constructor_structure(struct pg_typing *typing, struct pg_graph *temporary,
@@ -2212,7 +2209,7 @@ static int constructor_structure(struct pg_typing *typing, struct pg_graph *temp
 	for (; head->kind == PG_APPLICATION; head = head->as.application.function) ++count;
 	if (head->kind != PG_REFERENCE) return 0;
 	struct pg_inductive_instance instance;
-	if (!pg_inductive_instance(typing, formed_classifier(typing, NULL, value), &instance)) return 0;
+	if (!pg_inductive_instance(typing, formed_classifier(typing, value), &instance)) return 0;
 	const struct pg_data_layout *layout;
 	size_t position, arity;
 	if (!pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) return 0;
@@ -2244,7 +2241,7 @@ const struct pg_evidence *pg_prove_constructor_field(struct pg_typing *typing,
 	if (head->kind != PG_REFERENCE || !pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) goto origin;
 	if (count != arity) return NULL;
 	struct pg_inductive_instance instance;
-	if (!pg_inductive_instance(typing, formed_classifier(typing, NULL, value), &instance)) goto origin;
+	if (!pg_inductive_instance(typing, formed_classifier(typing, value), &instance)) goto origin;
 	if (layout != pg_data_schema_layout(instance.schema)) return NULL;
 	const struct pg_context *scope = pg_data_declaration_fields(pg_data_schema_declaration(instance.schema), position);
 	if (count && !scope) return NULL;
@@ -2298,9 +2295,8 @@ static int typed_body_match(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_evidence *source = pg_prove_structural_subject(typing, work->current);
-	struct pg_classifiers classifiers = {.graph = typing->graph};
 	if (work->environment)
-		source = pg_prove_elimination_reindex(typing, &classifiers, work->environment, source);
+		source = pg_prove_elimination_reindex(typing, work->environment, source);
 	work->environment = NULL;
 	work->dependency = pg_elimination_body_request(typing, source);
 	work->resume = TYPED_RESUME_BODY;
@@ -2308,7 +2304,7 @@ static int typed_body_match(struct pg_typed_query *work)
 }
 
 static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *elimination,
+	const struct pg_evidence *elimination,
 	const struct elimination_structure *view, const struct pg_evidence *field)
 {
 	const struct pg_term *type;
@@ -2319,7 +2315,7 @@ static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
 		if (branches) {
 			for (size_t i = 0; i < view->count; ++i)
 				branches[i] = pg_prove_structural_subject(typing, view->subject->operands[i + 1]);
-			result = pg_prove_induction_at(typing, classifiers, view->formation, view->parameters,
+			result = pg_prove_induction_at(typing, view->formation, view->parameters,
 				field, view->motive_context, view->motive, view->count, branches,
 				pg_evidence_induction_allocation(elimination));
 		}
@@ -2328,7 +2324,7 @@ static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
 	}
 	const struct pg_evidence *context = view->parameters->premises[1], *scope = context;
 	const struct pg_evidence *call = pg_prove_force(typing, field);
-	const struct pg_evidence *classifier = pg_prove_classifier(typing, classifiers, scope, call);
+	const struct pg_evidence *classifier = pg_prove_classifier(typing, scope, call);
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
 	while (classifier && pg_pi_view(pg_evidence_subject(classifier)->core, &domain, &binder, &codomain)) {
@@ -2337,7 +2333,7 @@ static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
 		if (!scope) return NULL;
 		call = pg_prove_application(typing, pg_prove_projection(typing, scope, call),
 			pg_prove_variable(typing, scope, binder));
-		classifier = pg_prove_classifier(typing, classifiers, scope, call);
+		classifier = pg_prove_classifier(typing, scope, call);
 	}
 	const struct pg_evidence *returned = pg_prove_context_extension(typing, scope,
 		pg_binder(typing->graph), pg_prove_return_content(typing, classifier));
@@ -2345,19 +2341,18 @@ static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
 	const struct pg_evidence *map = pg_prove_substitution_projection(typing, context, returned);
 	const struct pg_evidence *value = pg_prove_variable(typing, returned, pg_evidence_context(returned)->binder);
 	if (!value) return NULL;
-	const struct pg_evidence *child = elimination_instance(typing, classifiers, map, elimination,
+	const struct pg_evidence *child = elimination_instance(typing, map, elimination,
 		value);
 	/* Demand the field result before recursion, exactly as induction_field_core.
 	 * Fold rejects a result classifier escaping with the returned-value binder. */
-	const struct pg_evidence *continuation = pg_prove_abstract(typing, classifiers, scope, returned, child);
-	const struct pg_evidence *body = pg_prove_fold(typing, classifiers, call, continuation);
-	return pg_prove_abstract(typing, classifiers, context, scope, body);
+	const struct pg_evidence *continuation = pg_prove_abstract(typing, scope, returned, child);
+	const struct pg_evidence *body = pg_prove_fold(typing, call, continuation);
+	return pg_prove_abstract(typing, context, scope, body);
 }
 
 static int typed_elimination_prepare(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
-	struct pg_classifiers classifiers = {.graph = typing->graph};
 	const struct pg_evidence *elimination = pg_prove_structural_subject(typing, work->source);
 	struct elimination_structure view;
 	if (elimination_structure(typing, elimination, &view)) return -1;
@@ -2389,8 +2384,8 @@ static int typed_elimination_prepare(struct pg_typed_query *work)
 		state->count += count;
 		for (size_t i = count; i < state->count; ++i) {
 			if (!state->arguments[i]) continue;
-			const struct pg_evidence *call = induction_field_body(typing, &classifiers, elimination, &view, state->arguments[i]);
-			state->arguments[i] = pg_prove_thunk(typing, &classifiers, call);
+			const struct pg_evidence *call = induction_field_body(typing, elimination, &view, state->arguments[i]);
+			state->arguments[i] = pg_prove_thunk(typing, call);
 			if (!state->arguments[i]) goto done;
 		}
 	}
@@ -2422,9 +2417,9 @@ static int typed_elimination_step(struct pg_typed_query *work)
 }
 
 const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *elimination)
+	const struct pg_evidence *elimination)
 {
-	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!typing) return NULL;
 	struct pg_typed_query *work = pg_elimination_body_request(typing, elimination);
 	while (!pg_typed_query_advance(work, 1024)) {}
 	return pg_typed_query_result(work);
@@ -2504,7 +2499,7 @@ static const struct pg_evidence *telescope_correspondence(struct pg_typing *typi
 }
 
 const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *scrutinee, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *refinements,
 	const struct pg_evidence *const *branches)
@@ -2514,12 +2509,12 @@ const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(scrutinee, typing) || pg_evidence_context(scrutinee) != pg_evidence_context(context)) return NULL;
 	if (count && (!refinements || !branches)) return NULL;
 	struct pg_inductive_instance instance;
-	if (!pg_inductive_instance(typing, pg_prove_classifier(typing, classifiers, context, scrutinee), &instance)) return NULL;
+	if (!pg_inductive_instance(typing, pg_prove_classifier(typing, context, scrutinee), &instance)) return NULL;
 	if (count != pg_data_constructor_count(instance.schema)) return NULL;
 	const struct pg_evidence *mc = pg_prove_inductive_motive_context(typing,
 		instance.formation, instance.parameters, pg_binder(typing->graph));
 	if (!mc) return NULL;
-	if (!count) return pg_prove_match(typing, classifiers, instance.formation, instance.parameters,
+	if (!count) return pg_prove_match(typing, instance.formation, instance.parameters,
 		scrutinee, mc, pg_prove_projection(typing, mc, motive), 0, NULL);
 	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	struct pg_graph temporary = {0};
@@ -2533,7 +2528,7 @@ const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
 		if (!pg_evidence_owned_by(map, typing) || map->rule != PG_CONTEXT_SUBSTITUTION) goto done;
 		if (pg_evidence_context(map->premises[0]) != pg_evidence_context(context)) goto done;
 		if (!pg_evidence_owned_by(body, typing) || pg_evidence_context(body) != pg_evidence_context(map)) goto done;
-		const struct pg_evidence *expected = pg_prove_constructor_refinement(typing, classifiers, context,
+		const struct pg_evidence *expected = pg_prove_constructor_refinement(typing, context,
 			scrutinee, pg_data_constructor(pg_data_schema_layout(instance.schema), i));
 		if (!expected) goto done;
 		if (!i) {
@@ -2556,7 +2551,7 @@ const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
 		const struct pg_evidence *lift = lift_scope(typing,
 			pg_prove_substitution_projection(typing, prefix, context), map->premises[1], NULL, 0);
 		if (!lift) goto done;
-		functions[i] = pg_prove_abstract(typing, classifiers, context, lift->premises[1],
+		functions[i] = pg_prove_abstract(typing, context, lift->premises[1],
 			pg_prove_reindex(typing, lift, body));
 		if (!functions[i]) goto done;
 	}
@@ -2593,8 +2588,8 @@ const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
 	if (!map) goto done;
 	const struct pg_evidence *generalized = pg_prove_reindex(typing, map, motive);
 	for (scope = map->premises[1]; generalized && pg_evidence_context(scope) != pg_evidence_context(mc); scope = scope->premises[0])
-		generalized = pg_prove_pi(typing, classifiers, scope, generalized);
-	result = pg_prove_match(typing, classifiers, instance.formation, instance.parameters,
+		generalized = pg_prove_pi(typing, scope, generalized);
+	result = pg_prove_match(typing, instance.formation, instance.parameters,
 		scrutinee, mc, generalized, count, functions);
 	for (size_t i = 0; result && i < suffix; ++i) {
 		const struct pg_object *binder = pg_evidence_context(extensions[i])->binder;
@@ -2608,11 +2603,11 @@ done:
 }
 
 const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	size_t count, const struct pg_evidence *const *branches)
 {
-	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!typing) return NULL;
 	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
 	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (pg_evidence_context(parameters->premises[0]) != pg_evidence_context(formation)) return NULL;
@@ -2635,7 +2630,7 @@ const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
 	result = find_record(typing, PG_TYPE_CASE,
 		pg_evidence_context(parameters), NULL, count + 3, premises, NULL, &hash);
 	if (result) goto done;
-	const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, parameters->premises[1], scrutinee);
+	const struct pg_evidence *type = pg_prove_classifier(typing, parameters->premises[1], scrutinee);
 	struct pg_inductive_instance instance;
 	if (!pg_inductive_instance(typing, type, &instance) || instance.formation != formation) goto done;
 	if (instance.parameters->premise_count != parameters->premise_count) goto done;
@@ -2662,7 +2657,7 @@ const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
 		operands[i + 1] = pg_evidence_subject(branches[i]);
 	}
 	const struct pg_term *core = pg_data_match(typing->graph, layout, pg_evidence_subject(scrutinee)->core, count, clauses);
-	const struct pg_term *universe = pg_universe(classifiers, level);
+	const struct pg_term *universe = pg_universe(typing->graph, level);
 	if (!core || !universe) goto done;
 	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_VALUE_TYPE, pg_evidence_context(parameters), core, universe, NULL, count + 1, operands);
 	if (!subject) goto done;
@@ -2674,34 +2669,34 @@ done:
 }
 
 const struct pg_evidence *pg_prove_match(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches)
 {
-	return prove_data_elimination(typing, classifiers, formation, parameters,
+	return prove_data_elimination(typing, formation, parameters,
 		scrutinee, motive_context, motive, count, branches, PG_MATCH_ELIM, NULL);
 }
 
 const struct pg_evidence *pg_prove_induction(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches)
 {
-	return prove_data_elimination(typing, classifiers, formation, parameters,
+	return prove_data_elimination(typing, formation, parameters,
 		scrutinee, motive_context, motive, count, branches, PG_INDUCTION_ELIM, NULL);
 }
 
 const struct pg_evidence *pg_prove_induction_at(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches,
 	const struct pg_induction_allocation *allocation)
 {
 	if (!allocation) return NULL;
-	return prove_data_elimination(typing, classifiers, formation, parameters,
+	return prove_data_elimination(typing, formation, parameters,
 		scrutinee, motive_context, motive, count, branches, PG_INDUCTION_ELIM, allocation);
 }
 
@@ -2752,13 +2747,12 @@ const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_universe(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context, uint64_t level)
+	const struct pg_evidence *context, uint64_t level)
 {
 	if (!context_proof(typing, context)) return NULL;
-	if (classifiers->graph != typing->graph) return NULL;
 	if (level == UINT64_MAX) return NULL;
-	const struct pg_term *term = pg_universe(classifiers, level);
-	const struct pg_term *sort = pg_universe(classifiers, level + 1);
+	const struct pg_term *term = pg_universe(typing->graph, level);
+	const struct pg_term *sort = pg_universe(typing->graph, level + 1);
 	if (!term || !sort) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_VALUE_TYPE, pg_evidence_context(context), term, sort, NULL, 0, NULL);
 	if (!subject) return NULL;
@@ -2766,13 +2760,13 @@ const struct pg_evidence *pg_prove_universe(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_host_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_object *type)
 {
-	if (!context_proof(typing, context) || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!context_proof(typing, context)) return NULL;
 	if (!pg_host_type_name(type)) return NULL;
 	const struct pg_term *core = pg_reference(typing->graph, type);
-	const struct pg_term *universe = pg_universe(classifiers, 0);
+	const struct pg_term *universe = pg_universe(typing->graph, 0);
 	if (!core || !universe) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_VALUE_TYPE, pg_evidence_context(context), core, universe, NULL, 0, NULL);
 	if (!subject) return NULL;
@@ -2909,22 +2903,21 @@ const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
 }
 
 static const struct pg_evidence *unary_formation(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *argument,
+	const struct pg_evidence *argument,
 	enum pg_evidence_rule rule, enum pg_totality totality, const struct pg_effect_row *effects)
 {
 	if (!pg_evidence_owned_by(argument, typing)) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	enum pg_evidence_judgement output;
 	const struct pg_term *term;
 	if (rule == PG_RETURN_TYPE_FORM) {
 		argument = pg_prove_value_type(typing, argument);
 		if (!argument) return NULL;
 		output = PG_JUDGEMENT_COMPUTATION_TYPE;
-		term = pg_computation_type(classifiers, totality, effects, pg_evidence_subject(argument)->core);
+		term = pg_computation_type(typing->graph, totality, effects, pg_evidence_subject(argument)->core);
 	} else {
 		if (pg_evidence_judgement(argument) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 		output = PG_JUDGEMENT_VALUE_TYPE;
-		term = pg_thunk_type(classifiers, pg_evidence_subject(argument)->core);
+		term = pg_thunk_type(typing->graph, pg_evidence_subject(argument)->core);
 	}
 	if (!term) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, output, pg_evidence_context(argument),
@@ -2934,17 +2927,17 @@ static const struct pg_evidence *unary_formation(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_termination_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *type,
+	const struct pg_evidence *type,
 	const struct pg_evidence *suspended)
 {
-	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!typing) return NULL;
 	if (!pg_evidence_owned_by(type, typing) || !pg_evidence_owned_by(suspended, typing)) return NULL;
 	if (pg_evidence_judgement(type) != PG_JUDGEMENT_VALUE_TYPE || pg_evidence_judgement(suspended) != PG_JUDGEMENT_VALUE) return NULL;
 	if (pg_evidence_context(type) != pg_evidence_context(suspended)) return NULL;
 	const struct pg_term *computation;
 	if (!pg_thunk_type_view(pg_evidence_subject(type)->core, &computation)) return NULL;
 	if (pg_alpha_equal(pg_evidence_subject(type)->core, pg_evidence_subject(suspended)->classifier) != 1) return NULL;
-	const struct pg_term *core = pg_termination_type(classifiers, pg_evidence_subject(suspended)->core);
+	const struct pg_term *core = pg_termination_type(typing->graph, pg_evidence_subject(suspended)->core);
 	if (!core) return NULL;
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(type), pg_evidence_subject(suspended)};
 	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_VALUE_TYPE, pg_evidence_context(type), core, pg_evidence_subject(type)->classifier, NULL, 2, operands);
@@ -2954,10 +2947,10 @@ const struct pg_evidence *pg_prove_termination_type(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_termination(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
+	const struct pg_evidence *formation,
 	const struct pg_evidence *suspended)
 {
-	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!typing) return NULL;
 	if (!pg_evidence_owned_by(formation, typing) || !pg_evidence_owned_by(suspended, typing)) return NULL;
 	if (pg_evidence_judgement(formation) != PG_JUDGEMENT_VALUE_TYPE || pg_evidence_judgement(suspended) != PG_JUDGEMENT_VALUE) return NULL;
 	if (pg_evidence_context(formation) != pg_evidence_context(suspended)) return NULL;
@@ -2969,7 +2962,7 @@ const struct pg_evidence *pg_prove_termination(struct pg_typing *typing,
 	if (!pg_thunk_type_view(pg_evidence_subject(suspended)->classifier, &computation)) return NULL;
 	if (!pg_computation_type_view(computation, &totality, &effects, &value)) return NULL;
 	if (totality != PG_TOTALITY_TOTAL) return NULL;
-	const struct pg_term *core = pg_termination_witness(classifiers, pg_evidence_subject(suspended)->core);
+	const struct pg_term *core = pg_termination_witness(typing->graph, pg_evidence_subject(suspended)->core);
 	if (!core) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_VALUE, core, pg_evidence_subject(formation), NULL, 1, (const struct pg_occurrence *[]){pg_evidence_subject(suspended)});
 	const struct pg_evidence *premises[] = {formation, suspended};
@@ -2978,25 +2971,25 @@ const struct pg_evidence *pg_prove_termination(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_return_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *value_type)
+	const struct pg_evidence *value_type)
 {
 	if (!typing) return NULL;
-	return pg_prove_effect_type(typing, classifiers, pg_effect_row(typing->graph, 0, NULL), value_type);
+	return pg_prove_effect_type(typing, pg_effect_row(typing->graph, 0, NULL), value_type);
 }
 
 const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_effect_row *effects,
+	const struct pg_effect_row *effects,
 	const struct pg_evidence *value_type)
 {
-	return pg_prove_computation_type(typing, classifiers, PG_TOTALITY_UNSPECIFIED, effects, value_type);
+	return pg_prove_computation_type(typing, PG_TOTALITY_UNSPECIFIED, effects, value_type);
 }
 
 const struct pg_evidence *pg_prove_computation_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, enum pg_totality totality,
+	enum pg_totality totality,
 	const struct pg_effect_row *effects, const struct pg_evidence *value_type)
 {
 	if (!effects) return NULL;
-	return unary_formation(typing, classifiers, value_type, PG_RETURN_TYPE_FORM, totality, effects);
+	return unary_formation(typing, value_type, PG_RETURN_TYPE_FORM, totality, effects);
 }
 
 static int endpoint(const struct pg_typing *typing, const struct pg_evidence *term,
@@ -3046,10 +3039,9 @@ static int universe_identity(const struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_identity_endpoint_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *family,
 	enum pg_evidence_rule side)
 {
-	if (classifiers->graph != typing->graph) return NULL;
 	const struct pg_term *left, *right, *core;
 	uint64_t level;
 	if (!universe_identity(typing, family, &left, &right, &level)) return NULL;
@@ -3058,7 +3050,7 @@ const struct pg_evidence *pg_prove_identity_endpoint_type(struct pg_typing *typi
 	case PG_IDENTITY_RIGHT_TYPE: core = right; break;
 	default: return NULL;
 	}
-	const struct pg_term *sort = pg_universe(classifiers, level);
+	const struct pg_term *sort = pg_universe(typing->graph, level);
 	if (!sort) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_VALUE_TYPE, pg_evidence_context(family),
 		core, sort, NULL, 1, (const struct pg_occurrence *[]){pg_evidence_subject(family)});
@@ -3068,10 +3060,9 @@ const struct pg_evidence *pg_prove_identity_endpoint_type(struct pg_typing *typi
 }
 
 const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *family,
 	const struct pg_evidence *left, const struct pg_evidence *right)
 {
-	if (classifiers->graph != typing->graph) return NULL;
 	const struct pg_term *left_type, *right_type;
 	uint64_t level;
 	if (!universe_identity(typing, family, &left_type, &right_type, &level)) return NULL;
@@ -3080,7 +3071,7 @@ const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
 	const struct pg_term *core = pg_identity_instance(typing->graph, pg_evidence_subject(family)->core,
 		pg_evidence_subject(left)->core, pg_evidence_subject(right)->core);
 	if (!core) return NULL;
-	const struct pg_term *sort = pg_universe(classifiers, level);
+	const struct pg_term *sort = pg_universe(typing->graph, level);
 	if (!sort) return NULL;
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(family), pg_evidence_subject(left), pg_evidence_subject(right)};
 	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_VALUE_TYPE, pg_evidence_context(family), core, sort, NULL, 3, operands);
@@ -3105,7 +3096,7 @@ const struct pg_evidence *pg_prove_reflexivity(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_identity_transport(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *family,
 	const struct pg_evidence *value, enum pg_identity_direction direction)
 {
 	if ((unsigned)direction > PG_IDENTITY_LEFT) return NULL;
@@ -3114,7 +3105,7 @@ const struct pg_evidence *pg_prove_identity_transport(struct pg_typing *typing,
 	if (!universe_identity(typing, family, &left, &right, &level)) return NULL;
 	const struct pg_term *domain = direction == PG_IDENTITY_RIGHT ? left : right;
 	if (!endpoint(typing, value, PG_JUDGEMENT_VALUE, pg_evidence_context(family), domain)) return NULL;
-	const struct pg_evidence *target = pg_prove_identity_endpoint_type(typing, classifiers, family,
+	const struct pg_evidence *target = pg_prove_identity_endpoint_type(typing, family,
 		direction == PG_IDENTITY_RIGHT ? PG_IDENTITY_RIGHT_TYPE : PG_IDENTITY_LEFT_TYPE);
 	if (!target) return NULL;
 	const struct pg_term *core = pg_identity_transport(typing->graph, pg_evidence_subject(family)->core, pg_evidence_subject(value)->core, direction);
@@ -3128,14 +3119,14 @@ const struct pg_evidence *pg_prove_identity_transport(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_identity_lift(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *family,
+	const struct pg_evidence *family,
 	const struct pg_evidence *value, enum pg_identity_direction direction)
 {
-	const struct pg_evidence *transport = pg_prove_identity_transport(typing, classifiers, family, value, direction);
+	const struct pg_evidence *transport = pg_prove_identity_transport(typing, family, value, direction);
 	if (!transport) return NULL;
 	const struct pg_evidence *left = direction == PG_IDENTITY_RIGHT ? value : transport;
 	const struct pg_evidence *right = direction == PG_IDENTITY_RIGHT ? transport : value;
-	const struct pg_evidence *type = pg_prove_identity_instance(typing, classifiers, family, left, right);
+	const struct pg_evidence *type = pg_prove_identity_instance(typing, family, left, right);
 	if (!type) return NULL;
 	const struct pg_term *core = pg_identity_lift(typing->graph, pg_evidence_subject(family)->core, pg_evidence_subject(value)->core, direction);
 	if (!core) return NULL;
@@ -3148,9 +3139,9 @@ const struct pg_evidence *pg_prove_identity_lift(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *computation_type)
+	const struct pg_evidence *computation_type)
 {
-	return unary_formation(typing, classifiers, computation_type, PG_THUNK_TYPE_FORM, PG_TOTALITY_UNSPECIFIED, NULL);
+	return unary_formation(typing, computation_type, PG_THUNK_TYPE_FORM, PG_TOTALITY_UNSPECIFIED, NULL);
 }
 
 /* A logical signature has the bound of its telescope and terminal Universe.
@@ -3188,11 +3179,10 @@ done:
 	return status;
 }
 
-const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classifiers *classifiers,
+const struct pg_evidence *pg_prove_pi(struct pg_typing *typing,
 	const struct pg_evidence *extended_context,
 	const struct pg_evidence *codomain)
 {
-	if (classifiers->graph != typing->graph) return NULL;
 	if (!context_proof(typing, extended_context)) return NULL;
 	const struct pg_context *scope = pg_evidence_context(extended_context);
 	if (!scope) return NULL;
@@ -3206,7 +3196,7 @@ const struct pg_evidence *pg_prove_pi(struct pg_typing *typing, struct pg_classi
 	uint64_t left, right;
 	if (binding_level(extended_context, &left)) return NULL;
 	if (!pg_universe_level(pg_evidence_subject(codomain)->classifier, &right)) return NULL;
-	const struct pg_term *bound = pg_universe(classifiers, left > right ? left : right);
+	const struct pg_term *bound = pg_universe(typing->graph, left > right ? left : right);
 	const struct pg_term *term = pg_pi(typing->graph, scope->declared_type,
 		scope->binder, pg_evidence_subject(codomain)->core);
 	if (!bound || !term) return NULL;
@@ -3240,33 +3230,31 @@ static const struct pg_evidence *unary_term(struct pg_typing *typing,
 }
 
 const struct pg_evidence *pg_prove_return(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *value)
+	const struct pg_evidence *value)
 {
-	return pg_prove_return_contract(typing, classifiers, PG_TOTALITY_UNSPECIFIED, value);
+	return pg_prove_return_contract(typing, PG_TOTALITY_UNSPECIFIED, value);
 }
 
 const struct pg_evidence *pg_prove_return_contract(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, enum pg_totality totality,
+	enum pg_totality totality,
 	const struct pg_evidence *value)
 {
 	if (!pg_evidence_owned_by(value, typing)) return NULL;
 	if (pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
-	const struct pg_evidence *type = pg_prove_computation_type(typing, classifiers, totality,
-		pg_effect_row(typing->graph, 0, NULL), formed_classifier(typing, classifiers, value));
+	const struct pg_evidence *type = pg_prove_computation_type(typing, totality,
+		pg_effect_row(typing->graph, 0, NULL), formed_classifier(typing, value));
 	if (!type) return NULL;
 	return unary_term(typing, value, &pg_return_operation,
 		type, PG_RETURN_INTRO, PG_JUDGEMENT_COMPUTATION);
 }
 
 const struct pg_evidence *pg_prove_thunk(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *computation)
+	const struct pg_evidence *computation)
 {
 	if (!pg_evidence_owned_by(computation, typing)) return NULL;
 	if (pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
-	if (classifiers->graph != typing->graph) return NULL;
 	return unary_term(typing, computation, &pg_thunk_operation,
-		pg_prove_thunk_type(typing, classifiers, formed_classifier(typing, classifiers, computation)), PG_THUNK_INTRO, PG_JUDGEMENT_VALUE);
+		pg_prove_thunk_type(typing, formed_classifier(typing, computation)), PG_THUNK_INTRO, PG_JUDGEMENT_VALUE);
 }
 
 const struct pg_evidence *pg_prove_force(struct pg_typing *typing, const struct pg_evidence *value)
@@ -3276,7 +3264,7 @@ const struct pg_evidence *pg_prove_force(struct pg_typing *typing, const struct 
 	const struct pg_term *classifier;
 	if (!pg_thunk_type_view(pg_evidence_subject(value)->classifier, &classifier)) return NULL;
 	return unary_term(typing, value, &pg_force_operation,
-		pg_prove_thunk_content(typing, formed_classifier(typing, NULL, value)), PG_FORCE_ELIM, PG_JUDGEMENT_COMPUTATION);
+		pg_prove_thunk_content(typing, formed_classifier(typing, value)), PG_FORCE_ELIM, PG_JUDGEMENT_COMPUTATION);
 }
 
 const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
@@ -3300,20 +3288,18 @@ const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 		pg_evidence_context(pi), subject, 2, premises);
 }
 
-
 const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
+	const struct pg_evidence *prefix,
 	const struct pg_evidence *context, const struct pg_evidence *body)
 {
-	if (classifiers->graph != typing->graph) return NULL;
 	if (!context_proof(typing, prefix) || !context_proof(typing, context)) return NULL;
 	if (!pg_evidence_owned_by(body, typing) || pg_evidence_judgement(body) != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (pg_evidence_context(body) != pg_evidence_context(context)) return NULL;
-	const struct pg_evidence *type = pg_prove_classifier(typing, classifiers, context, body);
+	const struct pg_evidence *type = pg_prove_classifier(typing, context, body);
 	if (!type) return NULL;
 	while (pg_evidence_context(context) != pg_evidence_context(prefix)) {
 		if (context->rule != PG_CONTEXT_EXTEND && context->rule != PG_CONTEXT_FAMILY_EXTEND) return NULL;
-		type = pg_prove_pi(typing, classifiers, context, type);
+		type = pg_prove_pi(typing, context, type);
 		body = pg_prove_lambda(typing, type, body);
 		if (!body) return NULL;
 		context = context->premises[0];
@@ -3499,7 +3485,7 @@ static const struct pg_evidence *unary_term_content(struct pg_typing *typing,
 		judgement, core->as.application.argument, classifier);
 	if (!subject) return NULL;
 	if (!subject->type && !pg_evidence_for_subject(typing, subject, NULL)) {
-		const struct pg_evidence *formation = formed_classifier(typing, NULL, proof);
+		const struct pg_evidence *formation = formed_classifier(typing, proof);
 		formation = operation == &pg_return_operation ? pg_prove_return_content(typing, formation)
 			: pg_prove_thunk_content(typing, formation);
 		if (!formation) return NULL;
@@ -3547,14 +3533,13 @@ const struct pg_evidence *pg_prove_total_pure_value(struct pg_typing *typing,
 	const struct pg_term *core = pg_application(typing->graph,
 		pg_reference(typing->graph, &pg_total_result_operation), pg_evidence_subject(computation)->core);
 	if (!core) return NULL;
-	const struct pg_evidence *formation = pg_prove_return_content(typing, formed_classifier(typing, NULL, computation));
+	const struct pg_evidence *formation = pg_prove_return_content(typing, formed_classifier(typing, computation));
 	if (!formation) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_VALUE, core, pg_evidence_subject(formation), NULL, 1, (const struct pg_occurrence *[]){pg_evidence_subject(computation)});
 	if (!subject) return NULL;
 	return accept(typing, PG_TOTAL_PURE_VALUE,
 		pg_evidence_context(computation), subject, 1, &computation);
 }
-
 
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument)
@@ -3572,7 +3557,7 @@ const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(function)->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, pg_evidence_subject(argument)->classifier) != 1) return NULL;
-	const struct pg_evidence *type = pg_prove_pi_codomain(typing, formed_classifier(typing, NULL, function), argument);
+	const struct pg_evidence *type = pg_prove_pi_codomain(typing, formed_classifier(typing, function), argument);
 	const struct pg_term *term = pg_application(typing->graph, pg_evidence_subject(function)->core, pg_evidence_subject(argument)->core);
 	if (!type || !term) return NULL;
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(function), pg_evidence_subject(argument)};
@@ -3884,7 +3869,6 @@ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	return result;
 }
 
-
 static int substitution_proof(const struct pg_typing *typing, const struct pg_evidence *proof)
 {
 	if (!pg_evidence_owned_by(proof, typing)) return 0;
@@ -4031,7 +4015,6 @@ const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
 		subject, 2, premises);
 }
 
-
 const struct pg_evidence *pg_prove_substitution_extend(struct pg_typing *typing,
 	const struct pg_evidence *prefix, const struct pg_evidence *source,
 	size_t count, const struct pg_evidence *const *values)
@@ -4134,7 +4117,7 @@ struct pattern_type_frame {
  * arguments. Rebuild with ordinary formation rules, never raw replacement in
  * a claimed type. The caller checks substitution back to the original body. */
 static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
+	const struct pg_evidence *prefix,
 	const struct pg_evidence *pattern, const struct pg_evidence *inverse,
 	const struct pg_evidence *body)
 {
@@ -4180,10 +4163,10 @@ static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
 			}
 			if (!child) goto fail;
 		} else if (frame->phase <= PATTERN_TYPE_PI) {
-			if (frame->phase == PATTERN_TYPE_RETURN) result = pg_prove_computation_type(typing, classifiers,
+			if (frame->phase == PATTERN_TYPE_RETURN) result = pg_prove_computation_type(typing,
 				frame->totality, frame->effects, result);
-			else if (frame->phase == PATTERN_TYPE_THUNK) result = pg_prove_thunk_type(typing, classifiers, result);
-			else result = pg_prove_pi(typing, classifiers, frame->extension, result);
+			else if (frame->phase == PATTERN_TYPE_THUNK) result = pg_prove_thunk_type(typing, result);
+			else result = pg_prove_pi(typing, frame->extension, result);
 			if (!result) goto fail;
 			frame = frame->parent;
 			continue;
@@ -4236,10 +4219,10 @@ fail:
 }
 
 const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *prefix,
+	const struct pg_evidence *prefix,
 	const struct pg_evidence *pattern, const struct pg_evidence *body)
 {
-	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	if (!typing) return NULL;
 	if (!context_proof(typing, prefix) || !substitution_proof(typing, pattern)) return NULL;
 	if (!pg_evidence_owned_by(body, typing)) return NULL;
 	if (pg_evidence_judgement(body) != PG_JUDGEMENT_COMPUTATION_TYPE || pg_evidence_context(body) != pg_evidence_context(pattern)) return NULL;
@@ -4295,13 +4278,13 @@ const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
 	}
 	if (!inverse) goto done;
 	result = pg_prove_reindex(typing, inverse, body);
-	result = pattern_index_type(typing, classifiers, prefix, pattern, inverse, result);
+	result = pattern_index_type(typing, prefix, pattern, inverse, result);
 	/* Keep every intermediate substitution total and typed. Only then remove
 	 * fresh nuisance fields, checking that the result does not depend on them. */
 	for (extension = inverse->premises[1]; result && pg_evidence_context(extension) != pg_evidence_context(source);
 		extension = extension->premises[0])
 		result = pg_prove_pi_constant_codomain(typing,
-			pg_prove_pi(typing, classifiers, extension, result));
+			pg_prove_pi(typing, extension, result));
 	if (result) {
 		const struct pg_evidence *instance = pg_prove_reindex(typing, pattern, result);
 		if (!instance || pg_alpha_equal(pg_evidence_subject(instance)->core, pg_evidence_subject(body)->core) != 1) result = NULL;
@@ -4448,7 +4431,7 @@ const struct pg_operation_declaration *pg_evidence_request_declaration(const str
 	return evidence && evidence->rule == PG_REQUEST_INTRO ? evidence->certificate : NULL;
 }
 
-const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_classifiers *classifiers,
+const struct pg_evidence *pg_prove_request(struct pg_typing *typing,
 	const struct pg_operation_declaration *declaration,
 	const struct pg_evidence *payload, const struct pg_evidence *continuation)
 {
@@ -4457,7 +4440,6 @@ const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_c
 	if (!pg_evidence_owned_by(declaration->response_type, typing)) return NULL;
 	if (!pg_evidence_owned_by(payload, typing)) return NULL;
 	if (!pg_evidence_owned_by(continuation, typing)) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	if (pg_evidence_judgement(payload) != PG_JUDGEMENT_VALUE) return NULL;
 	if (pg_evidence_judgement(continuation) != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (pg_evidence_context(payload) != pg_evidence_context(continuation)) return NULL;
@@ -4476,8 +4458,8 @@ const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_c
 	if (!pg_computation_type_view(codomain, &totality, &effects, &result_type)) return NULL;
 	const struct pg_object *label = pg_operation_label(declaration);
 	const struct pg_effect_row *row = pg_effect_union(typing->graph, pg_effect_row(typing->graph, 1, &label), effects);
-	const struct pg_evidence *type = pg_prove_pi_constant_codomain(typing, formed_classifier(typing, classifiers, continuation));
-	type = pg_prove_computation_type(typing, classifiers, totality, row, pg_prove_return_content(typing, type));
+	const struct pg_evidence *type = pg_prove_pi_constant_codomain(typing, formed_classifier(typing, continuation));
+	type = pg_prove_computation_type(typing, totality, row, pg_prove_return_content(typing, type));
 	const struct pg_term *core = pg_computation_request(typing->graph, label, pg_evidence_subject(payload)->core, pg_evidence_subject(continuation)->core);
 	if (!type || !core) return NULL;
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(payload), pg_evidence_subject(continuation)};
@@ -4488,30 +4470,29 @@ const struct pg_evidence *pg_prove_request(struct pg_typing *typing, struct pg_c
 }
 
 const struct pg_evidence *pg_prove_operation_function(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_operation_declaration *declaration)
+	const struct pg_operation_declaration *declaration)
 {
-	if (!declaration || !classifiers) return NULL;
+	if (!declaration) return NULL;
 	if (!pg_evidence_owned_by(declaration->payload_type, typing)) return NULL;
 	if (!pg_evidence_owned_by(declaration->response_type, typing)) return NULL;
-	if (classifiers->graph != typing->graph) return NULL;
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
 	const struct pg_object *a = pg_binder(typing->graph), *b = pg_binder(typing->graph);
 	const struct pg_evidence *scope = pg_prove_context_extension(typing, empty, a, declaration->payload_type);
 	const struct pg_evidence *response_type = pg_prove_projection(typing, scope, declaration->response_type);
 	const struct pg_evidence *response_scope = pg_prove_context_extension(typing, scope, b, response_type);
-	const struct pg_evidence *returned = pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL,
+	const struct pg_evidence *returned = pg_prove_return_contract(typing, PG_TOTALITY_TOTAL,
 		pg_prove_variable(typing, response_scope, b));
-	const struct pg_evidence *response_pi = pg_prove_pi(typing, classifiers, response_scope,
-		pg_prove_classifier(typing, classifiers, response_scope, returned));
+	const struct pg_evidence *response_pi = pg_prove_pi(typing, response_scope,
+		pg_prove_classifier(typing, response_scope, returned));
 	const struct pg_evidence *continuation = pg_prove_lambda(typing, response_pi, returned);
-	const struct pg_evidence *body = pg_prove_request(typing, classifiers, declaration,
+	const struct pg_evidence *body = pg_prove_request(typing, declaration,
 		pg_prove_variable(typing, scope, a), continuation);
-	const struct pg_evidence *pi = pg_prove_pi(typing, classifiers, scope,
-		pg_prove_classifier(typing, classifiers, scope, body));
+	const struct pg_evidence *pi = pg_prove_pi(typing, scope,
+		pg_prove_classifier(typing, scope, body));
 	return pg_prove_lambda(typing, pi, body);
 }
 
-const struct pg_evidence *pg_prove_handler_context(struct pg_typing *typing, struct pg_classifiers *classifiers,
+const struct pg_evidence *pg_prove_handler_context(struct pg_typing *typing,
 	const struct pg_operation_declaration *operation, const struct pg_evidence *context,
 	const struct pg_evidence *carrier, const struct pg_object *payload, const struct pg_object *resume)
 {
@@ -4519,7 +4500,6 @@ const struct pg_evidence *pg_prove_handler_context(struct pg_typing *typing, str
 	if (!pg_evidence_owned_by(operation->payload_type, typing)) return NULL;
 	if (!pg_evidence_owned_by(operation->response_type, typing)) return NULL;
 	if (!pg_evidence_owned_by(carrier, typing)) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	if (pg_evidence_context(carrier) != pg_evidence_context(context)) return NULL;
 	if (pg_evidence_judgement(carrier) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	const struct pg_effect_row *effects;
@@ -4529,8 +4509,8 @@ const struct pg_evidence *pg_prove_handler_context(struct pg_typing *typing, str
 	const struct pg_evidence *response_type = pg_prove_projection(typing, context, operation->response_type);
 	const struct pg_evidence *response_scope = pg_prove_context_extension(typing, context,
 		pg_binder(typing->graph), response_type);
-	const struct pg_evidence *resume_type = pg_prove_thunk_type(typing, classifiers,
-		pg_prove_pi(typing, classifiers, response_scope,
+	const struct pg_evidence *resume_type = pg_prove_thunk_type(typing,
+		pg_prove_pi(typing, response_scope,
 			pg_prove_projection(typing, response_scope, carrier)));
 	const struct pg_evidence *payload_scope = pg_prove_context_extension(typing, context, payload,
 		pg_prove_projection(typing, context, operation->payload_type));
@@ -4566,12 +4546,12 @@ static int handler_clause_type(const struct pg_term *type,
 	return pg_alpha_equal(pg_pi_constant_codomain(resume), carrier) == 1;
 }
 
-const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_classifiers *classifiers,
+const struct pg_evidence *pg_prove_handler(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *returned,
 	const struct pg_evidence *carrier, size_t count, const struct pg_handler_clause *clauses)
 {
 	if (!count) return pg_prove_effect_subsumption(typing,
-		pg_prove_fold(typing, classifiers, computation, returned), carrier);
+		pg_prove_fold(typing, computation, returned), carrier);
 	if (!clauses || count > (SIZE_MAX - 3) / 3) return NULL;
 	size_t n = 3 + 3 * count;
 	if (n > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
@@ -4579,7 +4559,6 @@ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing, struct pg_c
 	if (!pg_evidence_owned_by(computation, typing)) return NULL;
 	if (!pg_evidence_owned_by(returned, typing)) return NULL;
 	if (!pg_evidence_owned_by(carrier, typing)) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	if (pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (pg_evidence_judgement(returned) != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (pg_evidence_judgement(carrier) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
@@ -4665,11 +4644,10 @@ const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
 		pg_evidence_context(computation), subject, 2, premises);
 }
 
-const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_classifiers *classifiers,
+const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *continuation)
 {
 	if (!pg_evidence_owned_by(computation, typing)) return NULL;
-	if (!classifiers || classifiers->graph != typing->graph) return NULL;
 	if (!pg_evidence_owned_by(continuation, typing)) return NULL;
 	if (pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (pg_evidence_judgement(continuation) != PG_JUDGEMENT_COMPUTATION) return NULL;
@@ -4687,12 +4665,12 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing, struct pg_clas
 	if (pg_alpha_equal(domain, value_type) != 1) return NULL;
 	codomain = pg_pi_constant_codomain(pg_evidence_subject(continuation)->classifier);
 	if (!codomain) return NULL;
-	const struct pg_evidence *type = pg_prove_pi_constant_codomain(typing, formed_classifier(typing, classifiers, continuation));
+	const struct pg_evidence *type = pg_prove_pi_constant_codomain(typing, formed_classifier(typing, continuation));
 	if (!type) return NULL;
 	const struct pg_term *result_type;
 	if (pg_computation_type_view(codomain, &next_totality, &following, &result_type)) {
 		enum pg_totality totality = first_totality < next_totality ? first_totality : next_totality;
-		type = pg_prove_computation_type(typing, classifiers, totality,
+		type = pg_prove_computation_type(typing, totality,
 			pg_effect_union(typing->graph, effects, following), pg_prove_return_content(typing, type));
 		if (!type) return NULL;
 	} else {
@@ -4782,11 +4760,11 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 		pg_evidence_context(pi), subject, 2, premises);
 }
 
-static int classifier_initialize(struct pg_classifier_recovery *work,
-	struct pg_typing *typing, struct pg_classifiers *classifiers,
+int pg_classifier_recovery_init(struct pg_classifier_recovery *work,
+	struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *term)
 {
-	*work = (struct pg_classifier_recovery){.typing = typing, .classifiers = classifiers, .status = -1};
+	*work = (struct pg_classifier_recovery){.typing = typing, .status = -1};
 	if (!context_proof(typing, context) || !pg_evidence_owned_by(term, typing)) return -1;
 	if (pg_evidence_context(context) != pg_evidence_context(term)) return -1;
 	if (pg_evidence_judgement(term) != PG_JUDGEMENT_VALUE &&
@@ -4796,26 +4774,15 @@ static int classifier_initialize(struct pg_classifier_recovery *work,
 	return 0;
 }
 
-int pg_classifier_recovery_init(struct pg_classifier_recovery *work,
-	struct pg_typing *typing, struct pg_classifiers *classifiers,
-	const struct pg_evidence *context, const struct pg_evidence *term)
-{
-	if (!classifiers || !typing || classifiers->graph != typing->graph) {
-		*work = (struct pg_classifier_recovery){.status = -1};
-		return -1;
-	}
-	return classifier_initialize(work, typing, classifiers, context, term);
-}
-
 static void classifier_recovery_step(struct pg_classifier_recovery *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_occurrence *subject = work->subject;
 	uint64_t level;
 	if (subject->type) work->result = pg_prove_structural_subject(typing, subject->type);
-	else if (subject->judgement == PG_JUDGEMENT_VALUE && work->classifiers &&
+	else if (subject->judgement == PG_JUDGEMENT_VALUE &&
 		pg_universe_level(subject->classifier, &level)) {
-		work->result = pg_prove_universe(typing, work->classifiers,
+		work->result = pg_prove_universe(typing,
 			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context), level);
 	} else if (subject->judgement == PG_JUDGEMENT_VALUE && subject->core->kind == PG_REFERENCE &&
 		subject->core->as.reference->kind == PG_BINDER) {
@@ -4848,27 +4815,21 @@ void pg_classifier_recovery_destroy(struct pg_classifier_recovery *work)
 	*work = (struct pg_classifier_recovery){0};
 }
 
-/* Computation classifiers have retained formations. Universe-valued terms
- * alone need the Universe owner to construct their next formation lazily. */
+/* Universe successors are formed lazily in the typing store's graph. */
 static const struct pg_evidence *formed_classifier(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *term)
+	const struct pg_evidence *term)
 {
 	if (!pg_evidence_owned_by(term, typing)) return NULL;
-	struct pg_classifier_recovery work;
 	const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, pg_evidence_context(term));
-	classifier_initialize(&work, typing, classifiers, context, term);
-	while (!pg_classifier_recovery_advance(&work, 1024)) {}
-	const struct pg_evidence *result = work.status > 0 ? work.result : NULL;
-	pg_classifier_recovery_destroy(&work);
-	return result;
+	return pg_prove_classifier(typing, context, term);
 }
 
 const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *context,
+	const struct pg_evidence *context,
 	const struct pg_evidence *term)
 {
 	struct pg_classifier_recovery work;
-	pg_classifier_recovery_init(&work, typing, classifiers, context, term);
+	pg_classifier_recovery_init(&work, typing, context, term);
 	while (!pg_classifier_recovery_advance(&work, 1024)) {}
 	const struct pg_evidence *result = work.status > 0 ? work.result : NULL;
 	pg_classifier_recovery_destroy(&work);

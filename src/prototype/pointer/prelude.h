@@ -27,6 +27,6 @@ struct pg_identity_library {
 	const struct pg_evidence *lifting[2];
 };
 const struct pg_identity_library *pg_identity_library(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, struct pg_whnf_work *normalization, uint64_t level);
+	struct pg_whnf_work *normalization, uint64_t level);
 
 #endif

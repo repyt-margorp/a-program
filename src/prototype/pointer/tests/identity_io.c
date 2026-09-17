@@ -32,7 +32,7 @@ static const struct pg_graph_codec codec = {.name = name, .resolve = resolve};
 static unsigned machine_tasks;
 
 static void machine_resave(struct pg_eval *machine, struct pg_graph *graph,
-	struct pg_classifiers *classifiers, const struct pg_term **expected)
+	void *codec_context, const struct pg_term **expected)
 {
 	const struct pg_eval_work_operation *entries[] = {
 		&pg_fold_work_operation, &pg_symmetry_composition_operation, &pg_symmetry_prefix_operation,
@@ -50,18 +50,16 @@ static void machine_resave(struct pg_eval *machine, struct pg_graph *graph,
 		struct pg_eval_configuration extra[] = {{{*expected, NULL}, NULL}};
 		FILE *file = tmpfile();
 		assert(file && !pg_computation_machine_write(file, machine, &pg_pure_policy, 1, extra,
-			&pg_builtin_graph_codec, classifiers));
+			&pg_builtin_graph_codec, codec_context));
 		pg_eval_destroy(machine);
-		if (classifiers) pg_classifiers_destroy(classifiers);
 		pg_graph_destroy(graph);
 		assert(!pg_graph_init(graph));
-		if (classifiers) assert(!pg_classifiers_init(classifiers, graph));
 		rewind(file);
 		const struct pg_eval_policy *policy;
 		size_t count;
 		const struct pg_eval_configuration *roots;
 		assert(!pg_computation_machine_read(file, machine, graph, 10000, 100, &pg_builtin_graph_codec,
-			classifiers, &policy, &count, &roots));
+			codec_context, &policy, &count, &roots));
 		assert(policy == &pg_pure_policy && count == 1);
 		assert(machine->steps == steps && machine->status == status && machine->head_ready == ready);
 		assert((machine->frames != NULL) == framed);
@@ -72,7 +70,7 @@ static void machine_resave(struct pg_eval *machine, struct pg_graph *graph,
 			rewind(file);
 			struct pg_eval rejected;
 			assert(pg_computation_machine_read(file, &rejected, graph, 10000, 100,
-				&pg_builtin_graph_codec, classifiers, &policy, &count, &roots));
+				&pg_builtin_graph_codec, codec_context, &policy, &count, &roots));
 			assert(!policy && !count && !roots && !rejected.task && !rejected.frames);
 			pg_eval_destroy(&rejected);
 		}
@@ -469,7 +467,7 @@ static void scope_indexes(void)
 struct family_codec {
 	struct family_scope_work *work;
 	struct pg_graph *arena;
-	struct pg_classifiers *classifiers;
+	struct pg_graph *graph;
 	struct family_result_work *result;
 	const struct pg_term *expected;
 };
@@ -484,7 +482,7 @@ static int family_owner_write(FILE *file, size_t scope_count, const struct actio
 	for (size_t i = 0; i < count; ++i) all[i] = roots[i];
 	all[count] = state->expected;
 	int status = pg_family_result_write(file, state->result, scope_count, scopes,
-		count + 1, all, &pg_builtin_graph_codec, state->classifiers);
+		count + 1, all, &pg_builtin_graph_codec, state->graph);
 	pg_graph_destroy(&temporary);
 	return status;
 }
@@ -495,7 +493,7 @@ static int family_owner_read(FILE *file, struct pg_graph *graph, size_t limit, s
 {
 	struct family_codec *state = opaque;
 	int status = pg_family_result_read(file, state->arena, graph, limit, name_limit,
-		&pg_builtin_graph_codec, state->classifiers, &state->result, scope_count, scopes, count, roots);
+		&pg_builtin_graph_codec, state->graph, &state->result, scope_count, scopes, count, roots);
 	if (status) return status;
 	assert(*count);
 	state->expected = (*roots)[--*count];
@@ -506,8 +504,8 @@ static int family_write(FILE *file, size_t count, const struct pg_term *const *r
 {
 	struct family_codec *state = opaque;
 	if (state->result) return pg_family_result_write(file, state->result, 0, NULL,
-		count, roots, &pg_builtin_graph_codec, state->classifiers);
-	return pg_family_scope_write(file, state->work, 0, NULL, count, roots, &pg_builtin_graph_codec, state->classifiers);
+		count, roots, &pg_builtin_graph_codec, state->graph);
+	return pg_family_scope_write(file, state->work, 0, NULL, count, roots, &pg_builtin_graph_codec, state->graph);
 }
 
 static int family_read(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
@@ -518,14 +516,14 @@ static int family_read(FILE *file, struct pg_graph *graph, size_t limit, size_t 
 		size_t n;
 		struct action_scope *const *scopes;
 		int status = pg_family_result_read(file, state->arena, graph, limit, name_limit,
-			&pg_builtin_graph_codec, state->classifiers, &state->result, &n, &scopes, count, roots);
+			&pg_builtin_graph_codec, state->graph, &state->result, &n, &scopes, count, roots);
 		assert(status || !n);
 		return status;
 	}
 	size_t n;
 	struct action_scope *const *scopes;
 	int status = pg_family_scope_read(file, state->arena, graph, limit, name_limit,
-		&pg_builtin_graph_codec, state->classifiers, &state->work, &n, &scopes, count, roots);
+		&pg_builtin_graph_codec, state->graph, &state->work, &n, &scopes, count, roots);
 	assert(status || !n);
 	return status;
 }
@@ -542,16 +540,15 @@ static void family_resume(void)
 		unsigned stages = 0;
 		for (uint64_t cut = 0; ; ++cut) {
 			struct pg_graph graph, arena = {0};
-			struct pg_classifiers classifiers;
-			assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+			assert(!pg_graph_init(&graph));
 			const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
-			const struct pg_term *type = pg_universe(&classifiers, 0);
-			const struct pg_term *content = pg_return_type(&classifiers, pg_reference(&graph, x));
+			const struct pg_term *type = pg_universe(&graph, 0);
+			const struct pg_term *content = pg_return_type(&graph, pg_reference(&graph, x));
 			if (function) content = pg_pi(&graph, pg_reference(&graph, x), y, content);
-			const struct pg_term *source = pg_lambda(&graph, x, pg_thunk_type(&classifiers, content));
+			const struct pg_term *source = pg_lambda(&graph, x, pg_thunk_type(&graph, content));
 			const struct pg_term *family = pg_identity_action(&graph, source);
 			family = pg_application(&graph, family, type);
-			family = pg_application(&graph, family, pg_universe(&classifiers, 1));
+			family = pg_application(&graph, family, pg_universe(&graph, 1));
 			family = pg_application(&graph, family, pg_reference(&graph, pg_binder(&graph)));
 			const struct pg_term *value = pg_reference(&graph, pg_binder(&graph));
 			const struct pg_term *body = pg_application(&graph, pg_reference(&graph, &pg_return_operation),
@@ -581,7 +578,7 @@ static void family_resume(void)
 				(mode < 2 && machine.task->operation == operation))) {
 				assert((machine.frames != NULL) == (mode >= 2));
 				const struct pg_eval_work_operation *active = machine.task->operation;
-				struct family_codec state = {.arena = &arena, .classifiers = &classifiers, .expected = expected};
+				struct family_codec state = {.arena = &arena, .graph = &graph, .expected = expected};
 				if (active == result_operation) {
 					state.result = machine.task->state;
 					stages |= 1u << (2 + state.result->phase);
@@ -603,10 +600,9 @@ static void family_resume(void)
 					uint64_t elapsed = machine.steps;
 					int ready = machine.head_ready;
 					pg_eval_destroy(&machine);
-					pg_classifiers_destroy(&classifiers);
 					pg_graph_destroy(&arena);
 					pg_graph_destroy(&graph);
-					assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+					assert(!pg_graph_init(&graph));
 					rewind(file);
 					uint64_t name_length;
 					char task_name[100];
@@ -643,11 +639,10 @@ static void family_resume(void)
 					assert(!pg_eval_defer(&machine, restored_operation, state.result ? (void *)state.result : state.work));
 				}
 			}
-			machine_resave(&machine, &graph, &classifiers, &expected);
+			machine_resave(&machine, &graph, &graph, &expected);
 			assert(pg_eval_advance(&machine, 10000) == PG_EVAL_WHNF && machine.steps == steps);
 			assert(pg_alpha_equal(pg_eval_readback(&machine, &graph), expected) == 1);
 			pg_eval_destroy(&machine);
-			pg_classifiers_destroy(&classifiers);
 			pg_graph_destroy(&arena);
 			pg_graph_destroy(&graph);
 			if (finished) break;
@@ -663,10 +658,9 @@ static void family_discovery(void)
 	};
 	for (size_t mode = 0; mode < 2; ++mode) {
 		struct pg_graph graph, arena = {0};
-		struct pg_classifiers classifiers;
-		assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
-		const struct pg_term *content = pg_return_type(&classifiers, pg_universe(&classifiers, 0));
-		const struct pg_term *body = pg_thunk_type(&classifiers, content);
+		assert(!pg_graph_init(&graph));
+		const struct pg_term *content = pg_return_type(&graph, pg_universe(&graph, 0));
+		const struct pg_term *body = pg_thunk_type(&graph, content);
 		const struct pg_term *source = pg_lambda(&graph, pg_binder(&graph),
 			pg_lambda(&graph, pg_binder(&graph), body));
 		const struct pg_term *family = pg_identity_action(&graph, source);
@@ -682,17 +676,16 @@ static void family_discovery(void)
 				FILE *file = tmpfile();
 				struct action_scope distinct = {.source = roots[1], .body = roots[2]};
 				const struct action_scope *inputs[] = {&work->scope, &distinct, &work->scope, NULL};
-				assert(file && !pg_family_scope_write(file, work, 4, inputs, 4, roots, &pg_builtin_graph_codec, &classifiers));
-				pg_classifiers_destroy(&classifiers);
+				assert(file && !pg_family_scope_write(file, work, 4, inputs, 4, roots, &pg_builtin_graph_codec, &graph));
 				pg_graph_destroy(&arena);
 				pg_graph_destroy(&graph);
-				assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+				assert(!pg_graph_init(&graph));
 				rewind(file);
 				size_t count;
 				size_t scope_count;
 				struct action_scope *const *scopes;
 				assert(!pg_family_scope_read(file, &arena, &graph, 1000, 100,
-					&pg_builtin_graph_codec, &classifiers, &work, &scope_count, &scopes, &count, &roots));
+					&pg_builtin_graph_codec, &graph, &work, &scope_count, &scopes, &count, &roots));
 				assert(!fclose(file) && count == 4 && !work->scope.bindings);
 				assert(scope_count == 4 && scopes[0] == &work->scope && scopes[2] == scopes[0]);
 				assert(scopes[1] != scopes[0] && !scopes[3]);
@@ -707,16 +700,15 @@ static void family_discovery(void)
 		assert(work->scope.body == roots[2] && work->content == roots[3]);
 		/* Invalid supplied arity must not publish a partially restored work handle. */
 		FILE *file = tmpfile();
-		assert(file && !pg_family_scope_write(file, work, 0, NULL, 4, roots, &pg_builtin_graph_codec, &classifiers));
+		assert(file && !pg_family_scope_write(file, work, 0, NULL, 4, roots, &pg_builtin_graph_codec, &graph));
 		assert(!fseek(file, 8, SEEK_SET) && !pg_wire_write_u64(file, 5));
 		rewind(file);
 		size_t count = 1;
 		size_t scope_count;
 		struct action_scope *const *scopes;
 		assert(pg_family_scope_read(file, &arena, &graph, 1000, 100,
-			&pg_builtin_graph_codec, &classifiers, &work, &scope_count, &scopes, &count, &roots) == -1);
+			&pg_builtin_graph_codec, &graph, &work, &scope_count, &scopes, &count, &roots) == -1);
 		assert(!work && !count && !roots && !scope_count && !scopes && !fclose(file));
-		pg_classifiers_destroy(&classifiers);
 		pg_graph_destroy(&arena);
 		pg_graph_destroy(&graph);
 	}
@@ -1672,14 +1664,11 @@ static void handlers(void)
 		assert(file && !pg_graph_write_descriptors(file, 8, roots, &pg_builtin_graph_codec, NULL));
 		pg_graph_destroy(&graph);
 		assert(!pg_graph_init(&graph));
-		struct pg_classifiers classifiers;
-		assert(!pg_classifiers_init(&classifiers, &graph));
 		rewind(file);
 		size_t count;
-		assert(!pg_graph_read_descriptors(file, &graph, 1000, 100, &pg_builtin_graph_codec, &classifiers, &count, &roots));
+		assert(!pg_graph_read_descriptors(file, &graph, 1000, 100, &pg_builtin_graph_codec, &graph, &count, &roots));
 		assert(count == 8 && !fclose(file));
 		check_handlers(&graph, roots);
-		pg_classifiers_destroy(&classifiers);
 	}
 	pg_graph_destroy(&graph);
 }
@@ -3190,23 +3179,21 @@ int main(int argc, char **argv)
 	}
 	if (argc == 3 && (!strcmp(argv[1], "write-handlers") || !strcmp(argv[1], "read-handlers"))) {
 		struct pg_graph graph;
-		struct pg_classifiers classifiers;
-		assert(!pg_graph_init(&graph) && !pg_classifiers_init(&classifiers, &graph));
+		assert(!pg_graph_init(&graph));
 		if (!strcmp(argv[1], "write-handlers")) {
 			const struct pg_term *const *roots = handler_fixture(&graph);
 			FILE *file = fopen(argv[2], "wb");
-			assert(file && !pg_graph_write_descriptors(file, 8, roots, &pg_builtin_graph_codec, &classifiers));
+			assert(file && !pg_graph_write_descriptors(file, 8, roots, &pg_builtin_graph_codec, &graph));
 			assert(!fclose(file));
 		} else {
 			FILE *file = fopen(argv[2], "rb");
 			size_t count;
 			const struct pg_term *const *roots;
 			assert(file && !pg_graph_read_descriptors(file, &graph, 1000, 100,
-				&pg_builtin_graph_codec, &classifiers, &count, &roots));
+				&pg_builtin_graph_codec, &graph, &count, &roots));
 			assert(count == 8 && !fclose(file));
 			check_handlers(&graph, roots);
 		}
-		pg_classifiers_destroy(&classifiers);
 		pg_graph_destroy(&graph);
 		return 0;
 	}

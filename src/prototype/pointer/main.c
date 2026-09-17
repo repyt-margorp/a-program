@@ -149,7 +149,7 @@ static int run(struct pg_program *program, const struct pg_evidence *proof, uint
 		const struct pg_term *content;
 		proof = pg_thunk_type_view(pg_evidence_classifier(proof), &content)
 			? pg_prove_force(&program->typing, proof)
-			: pg_prove_return(&program->typing, &program->classifiers, proof);
+			: pg_prove_return(&program->typing, proof);
 	}
 	struct pg_execution execution;
 	int result = 4;

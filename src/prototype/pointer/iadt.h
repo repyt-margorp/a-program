@@ -47,7 +47,6 @@ int pg_data_dispatch(struct pg_eval *machine);
 int pg_data_action(struct pg_eval *machine, const struct pg_term *source);
 
 struct pg_typing;
-struct pg_classifiers;
 struct pg_evidence;
 struct pg_data_schema;
 struct pg_data_signature;
@@ -168,7 +167,7 @@ const struct pg_evidence *pg_data_instance(struct pg_typing *typing,
  * prefix. No expected motive guides synthesis, and no RETURN is inserted.
  * This proves the branch function, not an entire Match elimination. */
 const struct pg_evidence *pg_data_branch(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_data_schema *schema,
+	const struct pg_data_schema *schema,
 	const struct pg_object *constructor, const struct pg_evidence *body);
 /* Pull an index-dependent computation motive back along the constructor's
  * result map. This constructs a checking obligation, never synthesizes a body. */
@@ -181,7 +180,7 @@ struct pg_conversion_certificate;
  * callers obtain the comparison certificate from the shared conversion work.
  * This certifies a case function, not scrutinee membership or a whole Match. */
 const struct pg_evidence *pg_data_case(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_data_schema *schema,
+	const struct pg_data_schema *schema,
 	const struct pg_object *constructor, const struct pg_evidence *motive,
 	const struct pg_evidence *body, const struct pg_conversion_certificate *conversion);
 

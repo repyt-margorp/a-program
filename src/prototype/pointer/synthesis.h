@@ -17,7 +17,6 @@ struct pg_synthesis {
 	/* Arena-owned initialization identity for pending jobs and source scopes.
 	 * Accepted evidence has the independent lifetime of its typing store. */
 	const void *owner_key;
-	struct pg_classifiers *classifiers;
 	struct pg_whnf_work *normalization;
 	struct pg_index jobs;
 	struct pg_index scopes;
@@ -27,10 +26,10 @@ struct pg_synthesis {
 	enum pg_definition_policy definition_policy;
 };
 
-/* Syntax, source buffers, typing, classifiers and normalization work outlive this store.
+/* Syntax, source buffers, typing and normalization work outlive this store.
  * Requesting an expression only creates pending work; advance performs it. */
 int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
-	struct pg_classifiers *classifiers, struct pg_whnf_work *normalization,
+	struct pg_whnf_work *normalization,
 	enum pg_definition_policy definition_policy);
 void pg_synthesis_destroy(struct pg_synthesis *synthesis);
 /* Scope construction interns immutable binding inputs within this store.

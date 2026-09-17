@@ -11,21 +11,21 @@
 #include <string.h>
 
 static const struct pg_evidence *signature(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_object *domain, const struct pg_object *codomain, size_t arity)
+	const struct pg_object *domain, const struct pg_object *codomain, size_t arity)
 {
 	const struct pg_evidence *contexts[3] = {pg_prove_empty_context(typing)}, *value = NULL;
 	for (size_t i = 0; i <= arity; ++i) {
-		value = pg_prove_host_type(typing, classifiers, contexts[i], i == arity ? codomain : domain);
+		value = pg_prove_host_type(typing, contexts[i], i == arity ? codomain : domain);
 		if (i < arity) contexts[i + 1] = pg_prove_context_extension(typing, contexts[i], pg_binder(typing->graph), value);
 	}
-	const struct pg_evidence *result = pg_prove_computation_type(typing, classifiers,
+	const struct pg_evidence *result = pg_prove_computation_type(typing,
 		PG_TOTALITY_TOTAL, pg_effect_row(typing->graph, 0, NULL), value);
-	for (size_t i = arity; i; --i) result = pg_prove_pi(typing, classifiers, contexts[i], result);
+	for (size_t i = arity; i; --i) result = pg_prove_pi(typing, contexts[i], result);
 	assert(result);
 	return result;
 }
 
-static void arithmetic(struct pg_typing *typing, struct pg_classifiers *classifiers)
+static void arithmetic(struct pg_typing *typing)
 {
 	struct pg_graph *graph = typing->graph;
 	const int64_t cases[][3] = {
@@ -39,17 +39,17 @@ static void arithmetic(struct pg_typing *typing, struct pg_classifiers *classifi
 		size_t arity;
 		assert(pg_host_function_view(function, &type, &result_type, &arity) && type == result_type);
 		assert(pg_host_function_resolve(pg_host_function_descriptor(function)) == function);
-		const struct pg_evidence *pi = signature(typing, classifiers, type, result_type, arity);
+		const struct pg_evidence *pi = signature(typing, type, result_type, arity);
 		const struct pg_evidence *proof = pg_prove_host_function(typing, pi, function);
-		assert(proof && pg_prove_classifier(typing, classifiers, pg_prove_empty_context(typing), proof) == pi);
+		assert(proof && pg_prove_classifier(typing, pg_prove_empty_context(typing), proof) == pi);
 		assert(!pg_prove_host_function(typing, pi, pg_binder(graph)));
 		assert(!pg_prove_host_function(typing, pi, pg_host_integer(graph, type, 0)));
 		struct pg_derivation_parameters parameters;
 		assert(!pg_derivation_parameters(proof, &parameters) && parameters.constant == function);
-		assert(pg_prove_derivation(typing, classifiers, PG_HOST_FUNCTION_INTRO, &parameters, 1, &pi) == proof);
-		assert(!pg_prove_host_function(typing, signature(typing, classifiers, type, type, 3 - arity), function));
+		assert(pg_prove_derivation(typing, PG_HOST_FUNCTION_INTRO, &parameters, 1, &pi) == proof);
+		assert(!pg_prove_host_function(typing, signature(typing, type, type, 3 - arity), function));
 		const struct pg_object *other = pg_host_type(i < 4 ? "Int64" : "Int32");
-		assert(!pg_prove_host_function(typing, signature(typing, classifiers, other, other, arity), function));
+		assert(!pg_prove_host_function(typing, signature(typing, other, other, arity), function));
 		const struct pg_term *call = pg_reference(graph, function);
 		for (size_t j = 0; j < arity; ++j) {
 			const struct pg_term *literal = pg_reference(graph, pg_host_integer(graph, type, cases[i][j]));
@@ -96,7 +96,7 @@ static void decimal_result(struct pg_graph *graph, const struct pg_object *funct
 	}
 }
 
-static void formatting(struct pg_typing *typing, struct pg_classifiers *classifiers)
+static void formatting(struct pg_typing *typing)
 {
 	const struct { int64_t value; const char *text; } cases[] = {
 		{INT64_MIN, "-9223372036854775808"}, {INT32_MIN, "-2147483648"},
@@ -109,10 +109,10 @@ static void formatting(struct pg_typing *typing, struct pg_classifiers *classifi
 		size_t arity;
 		assert(pg_host_function_view(function, &domain, &result, &arity));
 		assert(result == pg_host_type("Text") && arity == 1);
-		const struct pg_evidence *pi = signature(typing, classifiers, domain, result, arity);
+		const struct pg_evidence *pi = signature(typing, domain, result, arity);
 		assert(pg_prove_host_function(typing, pi, function));
-		assert(!pg_prove_host_function(typing, signature(typing, classifiers, domain, domain, arity), function));
-		assert(!pg_prove_host_function(typing, signature(typing, classifiers, result, result, arity), function));
+		assert(!pg_prove_host_function(typing, signature(typing, domain, domain, arity), function));
+		assert(!pg_prove_host_function(typing, signature(typing, result, result, arity), function));
 		for (size_t j = 0; j < sizeof(cases) / sizeof(*cases); ++j) {
 			if (i == 8 && (cases[j].value < INT32_MIN || cases[j].value > INT32_MAX)) continue;
 			decimal_result(typing->graph, function, domain, cases[j].value, cases[j].text);
@@ -130,20 +130,18 @@ int main(void)
 {
 	struct pg_graph graph, loaded;
 	struct pg_typing typing, foreign;
-	struct pg_classifiers classifiers;
 	assert(!pg_graph_init(&graph) && !pg_graph_init(&loaded));
 	assert(!pg_typing_init(&typing, &graph) && !pg_typing_init(&foreign, &loaded));
-	assert(!pg_classifiers_init(&classifiers, &graph));
-	arithmetic(&typing, &classifiers);
-	formatting(&typing, &classifiers);
+	arithmetic(&typing);
+	formatting(&typing);
 	const struct pg_object *i32 = pg_host_type("Int32"), *i64 = pg_host_type("Int64"), *text = pg_host_type("Text");
 	assert(i32 == pg_host_type("Int") && i32 != i64);
 	assert(!pg_host_type("Nat") && !pg_host_type_resolve("host/int32/v2"));
 	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
-	const struct pg_evidence *t32 = pg_prove_host_type(&typing, &classifiers, empty, i32);
-	const struct pg_evidence *t64 = pg_prove_host_type(&typing, &classifiers, empty, i64);
+	const struct pg_evidence *t32 = pg_prove_host_type(&typing, empty, i32);
+	const struct pg_evidence *t64 = pg_prove_host_type(&typing, empty, i64);
 	assert(t32 && t64 && t32 != t64);
-	const struct pg_evidence *text_proof = pg_prove_host_type(&typing, &classifiers, empty, text);
+	const struct pg_evidence *text_proof = pg_prove_host_type(&typing, empty, text);
 	const struct pg_object *print = pg_host_print(&graph);
 	assert(print && print == pg_host_print(&graph));
 	const struct pg_operation_declaration *print_declaration = pg_operation_declaration_at(&typing, print, text_proof, text_proof);
@@ -153,8 +151,8 @@ int main(void)
 	const struct pg_operation_declaration *generic = pg_operation_declaration(&typing, text_proof, text_proof);
 	assert(generic && pg_operation_label(generic) != print);
 	assert(!pg_host_operation_descriptor(pg_operation_label(generic)));
-	assert(!pg_prove_host_type(&typing, &classifiers, pg_prove_empty_context(&foreign), i32));
-	assert(!pg_prove_host_type(&typing, &classifiers, empty, pg_binder(&graph)));
+	assert(!pg_prove_host_type(&typing, pg_prove_empty_context(&foreign), i32));
+	assert(!pg_prove_host_type(&typing, empty, pg_binder(&graph)));
 	const int64_t cases[] = {INT64_MIN, INT32_MIN, -1, 0, 1, INT32_MAX, INT64_MAX};
 	for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
 		const struct pg_object *value = pg_host_integer(&graph, i64, cases[i]);
@@ -163,11 +161,11 @@ int main(void)
 		assert(pg_host_integer_view(value, &result) && result == cases[i]);
 		const struct pg_evidence *proof = pg_prove_host_value(&typing, t64, value);
 		assert(proof && !pg_prove_host_value(&typing, t32, value));
-		assert(pg_prove_classifier(&typing, &classifiers, empty, proof) == t64);
+		assert(pg_prove_classifier(&typing, empty, proof) == t64);
 		struct pg_derivation_parameters parameters;
 		assert(!pg_derivation_parameters(proof, &parameters) && parameters.constant == value);
-		assert(pg_prove_derivation(&typing, &classifiers, PG_HOST_VALUE_INTRO, &parameters, 1, &t64) == proof);
-		assert(!pg_prove_derivation(&typing, &classifiers, PG_HOST_VALUE_INTRO, &parameters, 1, &t32));
+		assert(pg_prove_derivation(&typing, PG_HOST_VALUE_INTRO, &parameters, 1, &t64) == proof);
+		assert(!pg_prove_derivation(&typing, PG_HOST_VALUE_INTRO, &parameters, 1, &t32));
 		const struct pg_object *narrow = pg_host_integer(&graph, i32, cases[i]);
 		if (cases[i] < INT32_MIN || cases[i] > INT32_MAX) assert(!narrow);
 		else assert(narrow != value && pg_host_integer_view(narrow, &result) && result == cases[i]);
@@ -185,7 +183,7 @@ int main(void)
 		pg_reference(&graph, print), pg_reference(&graph, pg_operation_label(generic)),
 		pg_reference(&graph, pg_host_function(8)), pg_reference(&graph, pg_host_function(9))};
 	FILE *file = tmpfile();
-	assert(file && !pg_graph_write_descriptors(file, 7, roots, &pg_builtin_graph_codec, &classifiers));
+	assert(file && !pg_graph_write_descriptors(file, 7, roots, &pg_builtin_graph_codec, &graph));
 	rewind(file);
 	size_t count;
 	const struct pg_term *const *restored;
@@ -196,14 +194,11 @@ int main(void)
 	const struct pg_term *print_payload, *print_response;
 	assert(pg_operation_label_types(restored[3]->as.reference, &print_payload, &print_response));
 	assert(print_payload == pg_reference(&loaded, text) && print_payload == print_response);
-	struct pg_classifiers loaded_classifiers;
-	assert(!pg_classifiers_init(&loaded_classifiers, &loaded));
 	const struct pg_evidence *loaded_empty = pg_prove_empty_context(&foreign);
-	const struct pg_evidence *loaded_text = pg_prove_host_type(&foreign, &loaded_classifiers, loaded_empty, text);
-	const struct pg_evidence *loaded_int = pg_prove_host_type(&foreign, &loaded_classifiers, loaded_empty, i32);
+	const struct pg_evidence *loaded_text = pg_prove_host_type(&foreign, loaded_empty, text);
+	const struct pg_evidence *loaded_int = pg_prove_host_type(&foreign, loaded_empty, i32);
 	assert(pg_operation_declaration_at(&foreign, restored[3]->as.reference, loaded_text, loaded_text));
 	assert(!pg_operation_declaration_at(&foreign, restored[3]->as.reference, loaded_int, loaded_int));
-	pg_classifiers_destroy(&loaded_classifiers);
 	const struct pg_object *type;
 	const unsigned char *bytes;
 	size_t length;
@@ -224,7 +219,6 @@ int main(void)
 	types[0] = pg_reference(&graph, i32);
 	assert(!pg_builtin_graph_codec.restore(NULL, &graph, "host/literal/v1", 1, types, 2, scalars));
 	fclose(file);
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&foreign); pg_typing_destroy(&typing);
 	pg_graph_destroy(&loaded); pg_graph_destroy(&graph);
 	puts("host: typed literals, modular arithmetic, ordinary evidence and descriptor relocation passed");

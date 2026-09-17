@@ -45,9 +45,9 @@ struct pg_function_graph_work { struct pg_function_graph_state *state; };
 /* Recover the retained Lambda through typed quotation/forcing and identity
  * context maps. Source identity is its typed subject, not its receipt or Core. */
 const struct pg_evidence *pg_function_graph_source(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, const struct pg_evidence *function);
+	const struct pg_evidence *function);
 int pg_function_graph_init(struct pg_function_graph_work *work,
-	struct pg_typing *typing, struct pg_classifiers *classifiers,
+	struct pg_typing *typing,
 	struct pg_whnf_work *evaluation, const struct pg_evidence *function);
 /* Optional public telescope layout, supplied after preparation and before
  * case planning. Each entry names

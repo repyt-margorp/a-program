@@ -11,7 +11,6 @@
 struct pg_program {
 	struct pg_graph graph;
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
 	struct pg_whnf_work evaluation;
 	struct pg_synthesis synthesis;
 	/* Own imported immutable effect equations; ordinary Solve computes them. */

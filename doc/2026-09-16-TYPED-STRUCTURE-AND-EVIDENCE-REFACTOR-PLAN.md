@@ -336,6 +336,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `constructor_origin`, `pg_prove_elimination_body` | Whole-introduction reconstruction deleted in R31. A temporary constructor view exposes retained nominal formation, parameters and typed fields for Match/refinement; actual introduction in a changed context remains checked. Congruent NF field selection uses receipts; general current-result exposure remains open |
 | `classifier_leaf` | Deleted |
 | `classifier_recovery_step` | Uses the shared typed classifier query; separate map stack removed. Variable/Universe formation and final synchronous certification remain legitimate checks |
+| `pg_classifiers` | R57 deletes the graph-only facade, its lifecycle and duplicate API/state arguments. Structural classifier constructors and codecs use Graph directly; checked constructors use the existing Typing owner. Universe successor formation remains lazy and checked |
 | `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
 | `typed_construction` | Deleted in R30. Conversion/widening retain their source typed use; checked construction access retrieves existing evidence. R32 removes operand/map/allocation copying from sort and content boundaries too. General result exposure remains open |
 | Metadata attachment copies | R34 deletes `pg_occurrence_classified`, `pg_occurrence_with_maps` and `pg_occurrence_with_induction`. Match/Identity construction and image read intern complete tuples once. Inversion may still attach a newly obtained classifier to an existing descriptive selection; that distinct formation is not discarded |
@@ -2688,3 +2689,90 @@ R2/R3/R5 and Main publication remain open. The remaining representation review
 also includes the now graph-only `pg_classifiers` facade: its lifetime is no
 longer a semantic owner, but removing it must preserve lazy Universe formation
 and graph isolation, not merely rename another manager.
+
+### 2026-09-17: Remove the redundant classifier owner facade (R57)
+
+- [x] Remove `pg_classifiers`, initialization/destruction, stored facade pointers
+  and forwarded facade arguments across checking, Identity, IADT, synthesis,
+  generated function graphs, prelude and transport. Do not replace them with
+  another manager. Raw classifier syntax uses Graph; checked construction uses
+  Typing, which already owns the graph and the evidence acceptance identity.
+- [x] Use Graph as the built-in descriptor codec context. Declaration transport
+  obtains it from its existing Typing owner. Descriptor names and wire formats
+  are unchanged; importing still supplies inputs to ordinary Solve.
+- [x] Merge the private/public classifier-recovery initializers and their
+  blocking adapter. A formerly nullable facade is no longer a capability to
+  form a Universe successor; the actual graph owner is available through Typing.
+  The existing Universe rule checks its level/context and constructs lazily.
+- [x] Preserve cross-store rejection even when two Typing stores share Core.
+  Extend the ownership regression: after reinitializing a Typing store, its
+  Universe Core is reused, its old evidence is not accepted, successor formation
+  is checked, and repeated classifier lookup allocates no new proofs/objects.
+  Keep graph-isolation, split-budget, pending-work transport, descriptor and
+  effect tests. Tests of a NULL/destroyed facade disappear with that API; NULL
+  Typing and foreign evidence continue to reject.
+- [x] Full debug acceptance passes, including 63/63 compatibility and final
+  QuickSort source/image checks. ASan/UBSan Core, IADT, Identity, synthesis,
+  imported QuickSort and the full derivation I/O script pass. Logs:
+  `/tmp/a-program-typed-structure-r57-debug-final.log` and
+  `/tmp/a-program-typed-structure-r57-sanitize-*.log`.
+- [x] Full optimized acceptance passes, including 63/63 compatibility and final
+  QuickSort source/image checks (`r57-o2.log`).
+
+Per-file changes against `1d01e0a` (paths under `src/prototype/pointer/`):
+
+| Implementation/header | Added | Deleted | Net |
+|---|---:|---:|---:|
+| action.c | 39 | 47 | -8 |
+| action.h | 12 | 12 | 0 |
+| classifier.c | 29 | 42 | -13 |
+| classifier.h | 11 | 18 | -7 |
+| declaration_io.c | 8 | 8 | 0 |
+| declaration_io.h | 2 | 4 | -2 |
+| derivation.c | 23 | 23 | 0 |
+| derivation.h | 1 | 1 | 0 |
+| descriptor_io.h | 1 | 1 | 0 |
+| evidence.c | 167 | 206 | -39 |
+| evidence.h | 43 | 45 | -2 |
+| function_graph.c | 53 | 54 | -1 |
+| function_graph.h | 2 | 2 | 0 |
+| iadt.c | 4 | 4 | 0 |
+| iadt.h | 2 | 3 | -1 |
+| main.c | 1 | 1 | 0 |
+| prelude.c | 30 | 30 | 0 |
+| prelude.h | 1 | 1 | 0 |
+| program.c | 1 | 3 | -2 |
+| program.h | 0 | 1 | -1 |
+| source_io.c | 2 | 2 | 0 |
+| synthesis.c | 83 | 86 | -3 |
+| synthesis.h | 2 | 3 | -1 |
+| **Total** | **517** | **597** | **-80** |
+
+| Tests (`tests/`) | Added | Deleted | Net |
+|---|---:|---:|---:|
+| core.c | 413 | 442 | -29 |
+| derivation_io.c | 149 | 161 | -12 |
+| execution.c | 3 | 3 | 0 |
+| graph_acceptance.c | 44 | 62 | -18 |
+| host.c | 27 | 33 | -6 |
+| iadt.c | 505 | 527 | -22 |
+| identity.c | 463 | 465 | -2 |
+| identity_io.c | 31 | 44 | -13 |
+| program.c | 24 | 25 | -1 |
+| seed.c | 2 | 2 | 0 |
+| source_io.c | 21 | 21 | 0 |
+| syntax_io.c | 2 | 4 | -2 |
+| synthesis.c | 444 | 451 | -7 |
+| **Total** | **2128** | **2240** | **-112** |
+
+No build/fixture changes. Cumulative implementation/header **+1842** against
+`4657cc6`; the net-negative completion gate remains unmet. This API migration
+removes an owner with no independent state, not a logical distinction between
+Core, typed structure and evidence. No kernel rule or witness representation
+was merged to obtain the reduction.
+
+Idle O0 QuickSort: 1.1318 seconds / 276728 KiB / 131255 transitions. Counts:
+178745 Core terms, 414644 subjects, 433548 proofs, 4095 typed queries and
+3386 input queries, all unchanged from R56. One sample is not a speedup claim.
+R2/R3/R5 remain open, including general dependent normalized-result exposure
+and repeated scoped formation/strengthening traversal. Main is not published.

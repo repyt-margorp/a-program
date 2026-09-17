@@ -360,7 +360,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		|| pg_graph_init(&rules.storage)
 		|| pg_dag_init(&collection.objects, NULL, NULL) || pg_index_init(&collection.candidates)
 		|| pg_effect_inference_init(&effects, &rules.storage)
-		|| pg_declaration_io_init(&codec, synthesis->typing, synthesis->classifiers)) goto done;
+		|| pg_declaration_io_init(&codec, synthesis->typing)) goto done;
 	if (pg_graph_dependencies_init(&collection.terms, &collection.objects, &pg_declaration_graph_codec, &codec)) goto done;
 	for (size_t i = 0; i < count; ++i) if (!roots[i] || pg_dag_add(&producers, roots[i])) goto done;
 	if (collect_inputs(&collection)) goto done;
@@ -562,7 +562,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	if (!program) return NULL;
 	struct pg_declaration_io codec = {0};
 	struct pg_dag order = {0};
-	if (pg_declaration_io_init(&codec, &program->typing, &program->classifiers)) goto fail;
+	if (pg_declaration_io_init(&codec, &program->typing)) goto fail;
 	struct pg_graph *graph = &program->graph;
 	struct record *records = pg_alloc(graph, (size_t)n * sizeof(*records));
 	const struct pg_source_scope **scopes = pg_alloc(graph, (size_t)n * sizeof(*scopes));

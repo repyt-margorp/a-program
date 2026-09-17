@@ -16,19 +16,17 @@ static void run(struct pg_graph *graph, const struct pg_syntax *syntax)
 {
 	assert(!pg_syntax_validate(1, &syntax));
 	struct pg_typing typing;
-	struct pg_classifiers classifiers;
 	struct pg_whnf_work work;
 	struct pg_synthesis synthesis;
-	assert(!pg_typing_init(&typing, graph) && !pg_classifiers_init(&classifiers, graph));
+	assert(!pg_typing_init(&typing, graph));
 	assert(!pg_whnf_work_init(&work, graph));
-	assert(!pg_synthesis_init(&synthesis, &typing, &classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	assert(!pg_synthesis_init(&synthesis, &typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
 	struct pg_synthesis_job *job = pg_synthesis_request(&synthesis, pg_synthesis_root(&synthesis), syntax);
 	assert(job && !synthesis.steps && !pg_synthesis_result(job));
 	while (synthesis.ready) { assert(synthesis.steps < 10000); pg_synthesis_advance(&synthesis, 1); }
 	assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
-	pg_classifiers_destroy(&classifiers);
 	pg_typing_destroy(&typing);
 }
 

@@ -24,7 +24,7 @@ static const struct pg_evidence *entry(struct pg_program *program, const char *s
 		const struct pg_term *content;
 		proof = pg_thunk_type_view(pg_evidence_classifier(proof), &content)
 			? pg_prove_force(&program->typing, proof)
-			: pg_prove_return(&program->typing, &program->classifiers, proof);
+			: pg_prove_return(&program->typing, proof);
 	}
 	assert(proof);
 	return proof;
@@ -122,7 +122,7 @@ static void admission_and_unknown(void)
 	struct pg_program *foreign = pg_program_allocate(PG_DEFINITION_IMPLICIT_THUNK);
 	assert(p && foreign);
 	const struct pg_evidence *context = pg_prove_empty_context(&p->typing);
-	const struct pg_evidence *text = pg_prove_host_type(&p->typing, &p->classifiers, context, pg_host_type("Text"));
+	const struct pg_evidence *text = pg_prove_host_type(&p->typing, context, pg_host_type("Text"));
 	const struct pg_operation_declaration *op = pg_operation_declaration(&p->typing, text, text);
 	assert(op);
 	p->scope = pg_synthesis_name_job(&p->synthesis, p->scope,
@@ -141,7 +141,7 @@ static void admission_and_unknown(void)
 	const struct pg_object *x = pg_binder(&p->graph);
 	const struct pg_evidence *extended = pg_prove_context_extension(&p->typing, context, x, text);
 	const struct pg_evidence *variable = pg_prove_variable(&p->typing, extended, x);
-	const struct pg_evidence *open = pg_prove_return(&p->typing, &p->classifiers, variable);
+	const struct pg_evidence *open = pg_prove_return(&p->typing, variable);
 	assert(open && pg_execution_init(&execution, &p->typing, open, output));
 	pg_execution_destroy(&execution);
 	assert(!pg_execution_init(&execution, &p->typing, proof, output));

@@ -27,29 +27,29 @@ static void indexed_ih_fiber(struct pg_program *p, const struct pg_evidence *for
 	const struct pg_evidence *mc = pg_prove_inductive_motive_context(&p->typing,
 		formation, parameters, pg_binder(&p->graph));
 	assert(mc);
-	const struct pg_evidence *motive = pg_prove_computation_type(&p->typing, &p->classifiers, PG_TOTALITY_TOTAL,
+	const struct pg_evidence *motive = pg_prove_computation_type(&p->typing, PG_TOTALITY_TOTAL,
 		pg_effect_row(&p->graph, 0, NULL),
 		pg_prove_projection(&p->typing, mc, pg_evidence_premise(mc, 1)));
 	struct pg_inductive_instance instance;
 	assert(motive && pg_inductive_instance(&p->typing, formation, &instance));
 	const struct pg_object *next = pg_data_constructor(pg_data_schema_layout(instance.schema), 1);
-	const struct pg_evidence *scope = pg_prove_induction_scope(&p->typing, &p->classifiers,
+	const struct pg_evidence *scope = pg_prove_induction_scope(&p->typing,
 		formation, next, parameters, mc, motive);
 	assert(scope);
 	const struct pg_evidence *field = pg_evidence_premise(scope, pg_evidence_premise_count(scope) - 1);
 	const struct pg_context *with_ih = pg_evidence_context(pg_evidence_premise(scope, 1));
-	const struct pg_term *expected = pg_thunk_type(&p->classifiers,
-		pg_computation_type(&p->classifiers, PG_TOTALITY_TOTAL, pg_effect_row(&p->graph, 0, NULL), pg_evidence_classifier(field)));
+	const struct pg_term *expected = pg_thunk_type(&p->graph,
+		pg_computation_type(&p->graph, PG_TOTALITY_TOTAL, pg_effect_row(&p->graph, 0, NULL), pg_evidence_classifier(field)));
 	const struct pg_term *function;
 	if (pg_thunk_type_view(pg_evidence_classifier(field), &function)) {
 		expected = pg_evidence_classifier(field);
 		const struct pg_evidence *z = pg_prove_variable(&p->typing, mc, pg_evidence_context(mc)->binder);
-		const struct pg_evidence *dependent = pg_prove_return_type(&p->typing, &p->classifiers,
-			pg_prove_identity_type(&p->typing, pg_prove_classifier(&p->typing, &p->classifiers, mc, z), z, z));
+		const struct pg_evidence *dependent = pg_prove_return_type(&p->typing,
+			pg_prove_identity_type(&p->typing, pg_prove_classifier(&p->typing, mc, z), z, z));
 		assert(dependent);
 		/* Source arrows promise TOTAL; the child can now remain a symbolic
 		 * pure result in the motive instead of escaping as a free binder. */
-		assert(pg_prove_induction_scope(&p->typing, &p->classifiers, formation, next, parameters, mc, dependent));
+		assert(pg_prove_induction_scope(&p->typing, formation, next, parameters, mc, dependent));
 	}
 	assert(pg_alpha_equal(with_ih->declared_type, expected) == 1);
 }
@@ -230,7 +230,7 @@ static void family_context_scopes(void)
 		assert(p);
 		struct pg_typing *t = &p->typing;
 		const struct pg_evidence *empty = pg_prove_empty_context(t);
-		const struct pg_evidence *u = pg_prove_universe(t, &p->classifiers, empty, 0);
+		const struct pg_evidence *u = pg_prove_universe(t, empty, 0);
 		const struct pg_object *a = pg_binder(&p->graph), *r = pg_binder(&p->graph);
 		const struct pg_evidence *ac = pg_prove_context_extension(t, empty, a, u);
 		const struct pg_evidence *xc = pg_prove_context_extension(t, ac, pg_binder(&p->graph), pg_prove_variable(t, ac, a));
@@ -306,11 +306,11 @@ static void associated_context_scope(int graph)
 	const struct pg_evidence *empty = pg_prove_empty_context(t);
 	const struct pg_object *a = pg_binder(&p->graph), *x = pg_binder(&p->graph), *ih = pg_binder(&p->graph);
 	const struct pg_evidence *ac = pg_prove_context_extension(t, empty, a,
-		pg_prove_universe(t, &p->classifiers, empty, 0));
+		pg_prove_universe(t, empty, 0));
 	const struct pg_evidence *at = pg_prove_value_type(t, pg_prove_variable(t, ac, a));
 	const struct pg_evidence *xc = pg_prove_context_extension(t, ac, x, at);
-	const struct pg_evidence *it = pg_prove_thunk_type(t, &p->classifiers,
-		pg_prove_return_type(t, &p->classifiers, pg_prove_projection(t, xc, at)));
+	const struct pg_evidence *it = pg_prove_thunk_type(t,
+		pg_prove_return_type(t, pg_prove_projection(t, xc, at)));
 	const struct pg_evidence *ic = pg_prove_context_extension(t, xc, ih, it);
 	const struct pg_source_scope *scope = pg_synthesis_root(&p->synthesis);
 	scope = pg_synthesis_bind_context(&p->synthesis, scope,
@@ -673,11 +673,11 @@ static void declaration_members(void)
 		assert(pg_synthesis_declaration_member_input(&p->synthesis, family, 1, &allocation) == 1);
 		assert(allocation.fields && !allocation.prefix);
 		const struct pg_object *binder = allocation.fields->binder;
-		if (mode == 1) allocation.fields = pg_context_bind(&p->typing, NULL, binder, pg_universe(&p->classifiers, 0), PG_JUDGEMENT_VALUE);
+		if (mode == 1) allocation.fields = pg_context_bind(&p->typing, NULL, binder, pg_universe(&p->graph, 0), PG_JUDGEMENT_VALUE);
 		if (mode == 2) allocation.constructor = pg_data_constructor(pg_data_schema_layout(instance.schema), 0);
 		if (mode == 3) allocation.fields = NULL;
 		pg_synthesis_destroy(&p->synthesis);
-		assert(!pg_synthesis_init(&p->synthesis, &p->typing, &p->classifiers, &p->evaluation, PG_DEFINITION_EXPLICIT_THUNK));
+		assert(!pg_synthesis_init(&p->synthesis, &p->typing, &p->evaluation, PG_DEFINITION_EXPLICIT_THUNK));
 		p->scope = pg_synthesis_root(&p->synthesis);
 		family = pg_synthesis_declaration_at(&p->synthesis, p->scope, definition.expression,
 			pg_data_schema_declaration(instance.schema));
@@ -829,7 +829,7 @@ static void constructor_inputs(void)
 			const struct pg_evidence *map = pg_prove_constructor_scope(&p->typing, formation, constructor, instance.parameters);
 			assert(map);
 			const struct pg_context *fields = pg_context_bind(&p->typing, NULL,
-				pg_evidence_context(map)->binder, pg_universe(&p->classifiers, 0), PG_JUDGEMENT_VALUE);
+				pg_evidence_context(map)->binder, pg_universe(&p->graph, 0), PG_JUDGEMENT_VALUE);
 			assert(map && pg_synthesis_constructor_scope_at(&p->synthesis, family, constructor, parameters,
 				NULL, fields));
 		}
@@ -872,7 +872,7 @@ static void constructor_inputs(void)
 			assert(pg_pi_view(pg_evidence_classifier(result), &domain, &binder, &codomain));
 			assert(binder == core->as.lambda.binder);
 			assert(domain == pg_evidence_subject(pg_synthesis_result(input.formation))->core);
-			assert(codomain == pg_computation_type(&p->classifiers, PG_TOTALITY_TOTAL, pg_effect_row(&p->graph, 0, NULL), domain));
+			assert(codomain == pg_computation_type(&p->graph, PG_TOTALITY_TOTAL, pg_effect_row(&p->graph, 0, NULL), domain));
 		}
 		pg_program_destroy(p);
 	}
@@ -1063,11 +1063,11 @@ static void induction_scope_inputs(struct pg_program *p, const struct pg_evidenc
 	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(instance.schema), 1);
 	for (unsigned mode = 0; mode < 5; ++mode) {
 		struct pg_synthesis restored;
-		assert(!pg_synthesis_init(&restored, &p->typing, &p->classifiers, &p->evaluation, PG_DEFINITION_EXPLICIT_THUNK));
+		assert(!pg_synthesis_init(&restored, &p->typing, &p->evaluation, PG_DEFINITION_EXPLICIT_THUNK));
 		struct pg_synthesis_job *f = pg_synthesis_evidence(&restored, formation), *ps = pg_synthesis_evidence(&restored, parameters);
 		struct pg_synthesis_job *mc = pg_synthesis_evidence(&restored, motive_context), *m = pg_synthesis_evidence(&restored, motive);
 		const struct pg_context *prefix = fields, *allocation = end;
-		if (mode == 1) allocation = pg_context_bind(&p->typing, fields, end->binder, pg_universe(&p->classifiers, 0), PG_JUDGEMENT_VALUE);
+		if (mode == 1) allocation = pg_context_bind(&p->typing, fields, end->binder, pg_universe(&p->graph, 0), PG_JUDGEMENT_VALUE);
 		if (mode == 2) allocation = fields;
 		if (mode == 3) allocation = pg_context_bind(&p->typing, end, pg_binder(&p->graph), end->declared_type, PG_JUDGEMENT_VALUE);
 		if (mode == 4) prefix = fields->parent;
@@ -1384,7 +1384,7 @@ static void rule_environments(void)
 	const struct pg_effect_row *row;
 	const struct pg_term *value;
 	assert(pg_effect_type_view(pg_evidence_subject(pg_synthesis_result(roots[2]))->core, &row, &value));
-	assert(!pg_effect_count(row) && value == pg_universe(&p->classifiers, 0));
+	assert(!pg_effect_count(row) && value == pg_universe(&p->graph, 0));
 	assert(!fclose(file));
 	pg_program_destroy(p);
 }
@@ -1496,7 +1496,7 @@ static void nominal_sources(FILE *file, int writing, uint64_t chunk, int origins
 		}
 		const struct pg_evidence *type = pg_synthesis_result(values[0]);
 		const struct pg_operation_declaration *declaration = pg_operation_declaration(&p->typing, type, type);
-		const struct pg_evidence *function = pg_prove_operation_function(&p->typing, &p->classifiers, declaration);
+		const struct pg_evidence *function = pg_prove_operation_function(&p->typing, declaration);
 		assert(function);
 		struct pg_synthesis_job *operation = pg_synthesis_evidence(&p->synthesis, function);
 		scope = pg_synthesis_name_job(&p->synthesis, scope,
@@ -1761,7 +1761,7 @@ static void prepared_scope_chain(void)
 			pg_synthesis_advance(&p->synthesis, chunk);
 		}
 		assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
-		assert(pg_evidence_subject(pg_synthesis_result(roots[0]))->core == pg_universe(&p->classifiers, 0));
+		assert(pg_evidence_subject(pg_synthesis_result(roots[0]))->core == pg_universe(&p->graph, 0));
 		if (chunk == 1) steps = p->synthesis.steps;
 		assert(p->synthesis.steps == steps);
 		pg_program_destroy(p);
@@ -1845,7 +1845,7 @@ static void annotation_sources(FILE *file, int writing, uint64_t chunk)
 		for (size_t i = 0; i < count; ++i)
 			assert(pg_synthesis_status(roots[i]) == (i == 1 || i == 7 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
 		assert(roots[2] == roots[4]);
-		assert(pg_evidence_subject(pg_synthesis_result(roots[0]))->core == pg_universe(&p->classifiers, 0));
+		assert(pg_evidence_subject(pg_synthesis_result(roots[0]))->core == pg_universe(&p->graph, 0));
 		puts("source image: named prepared annotations retain sharing, reject dependency cycles and check targets through ordinary Solve");
 	}
 	pg_program_destroy(p);

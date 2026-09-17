@@ -101,11 +101,11 @@ static const struct pg_evidence *retained_premises(const struct pg_evidence *res
 #define RULE(tag, arity, call) case tag: if (count != arity) return NULL; result = (call); break
 
 const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
-	struct pg_classifiers *classifiers, enum pg_evidence_rule rule,
+	enum pg_evidence_rule rule,
 	const struct pg_derivation_parameters *parameters, size_t count,
 	const struct pg_evidence *const *p)
 {
-	if (!typing || !classifiers || classifiers->graph != typing->graph || !parameters) return NULL;
+	if (!typing || !parameters) return NULL;
 	if (count && !p) return NULL;
 	if (parameters->declaration && rule != PG_INDUCTIVE_FORM) return NULL;
 	if (parameters->constructor && rule != PG_CONSTRUCTOR_INTRO) return NULL;
@@ -118,7 +118,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	const struct pg_evidence *result = NULL;
 	struct pg_identity_boundary boundary;
 	switch (rule) {
-	RULE(PG_HOST_TYPE_FORM, 1, pg_prove_host_type(typing, classifiers, p[0], parameters->constant));
+	RULE(PG_HOST_TYPE_FORM, 1, pg_prove_host_type(typing, p[0], parameters->constant));
 	RULE(PG_HOST_VALUE_INTRO, 1, pg_prove_host_value(typing, p[0], parameters->constant));
 	RULE(PG_HOST_FUNCTION_INTRO, 1, pg_prove_host_function(typing, p[0], parameters->constant));
 	case PG_CONSTRUCTOR_INTRO: {
@@ -139,13 +139,13 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
 		if (count < 6) return NULL;
 		result = rule == PG_MATCH_ELIM
-			? pg_prove_match(typing, classifiers, p[1], p[2], p[3], p[4], p[0], count - 6, p + 5)
-			: pg_prove_induction_at(typing, classifiers, p[1], p[2], p[3], p[4], p[0],
+			? pg_prove_match(typing, p[1], p[2], p[3], p[4], p[0], count - 6, p + 5)
+			: pg_prove_induction_at(typing, p[1], p[2], p[3], p[4], p[0],
 				count - 6, p + 5, parameters->induction);
 		break;
 	case PG_TYPE_CASE:
 		if (count < 4) return NULL;
-		result = pg_prove_type_case(typing, classifiers, p[0], p[1], p[2], count - 3, p + 3);
+		result = pg_prove_type_case(typing, p[0], p[1], p[2], count - 3, p + 3);
 		break;
 	case PG_INDUCTIVE_FORM: {
 		if (!count || !parameters->declaration) return NULL;
@@ -154,7 +154,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 		const struct pg_data_signature *signature = pg_data_signature(typing, p[0], prefix == 2 ? p[1] : p[0]);
 		const struct pg_data_schema *schema = pg_data_schema_check(typing, parameters->declaration,
 			signature, count - prefix, p + prefix);
-		result = pg_prove_inductive_type(typing, classifiers, schema);
+		result = pg_prove_inductive_type(typing, schema);
 		break;
 	}
 	RULE(PG_CONTEXT_EMPTY, 0, pg_prove_empty_context(typing));
@@ -162,17 +162,17 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_CONTEXT_FAMILY_EXTEND, 3, pg_prove_family_context_extension(typing, p[0], parameters->binder, p[1], p[2]));
 	RULE(PG_TYPE_FAMILY_APP, 2, pg_prove_family_application(typing, p[0], p[1]));
 	RULE(PG_TYPE_FAMILY_ABSTRACT, 2, pg_prove_family_abstraction(typing, p[0], p[1]));
-	RULE(PG_UNIVERSE_FORM, 1, pg_prove_universe(typing, classifiers, p[0], parameters->level));
+	RULE(PG_UNIVERSE_FORM, 1, pg_prove_universe(typing, p[0], parameters->level));
 	RULE(PG_VARIABLE, 1, pg_prove_variable(typing, p[0], parameters->binder));
 	RULE(PG_TYPE_FROM_VALUE, 1, pg_prove_value_type(typing, p[0]));
 	RULE(PG_VALUE_FROM_TYPE, 1, pg_prove_type_value(typing, p[0]));
-	RULE(PG_RETURN_TYPE_FORM, 1, pg_prove_computation_type(typing, classifiers, parameters->totality, parameters->effects, p[0]));
-	RULE(PG_THUNK_TYPE_FORM, 1, pg_prove_thunk_type(typing, classifiers, p[0]));
-	RULE(PG_TERMINATION_FORM, 2, pg_prove_termination_type(typing, classifiers, p[0], p[1]));
-	RULE(PG_TERMINATION_INTRO, 2, pg_prove_termination(typing, classifiers, p[0], p[1]));
-	RULE(PG_PI_FORM, 2, pg_prove_pi(typing, classifiers, p[0], p[1]));
-	RULE(PG_RETURN_INTRO, 1, pg_prove_return_contract(typing, classifiers, parameters->totality, p[0]));
-	RULE(PG_THUNK_INTRO, 1, pg_prove_thunk(typing, classifiers, p[0]));
+	RULE(PG_RETURN_TYPE_FORM, 1, pg_prove_computation_type(typing, parameters->totality, parameters->effects, p[0]));
+	RULE(PG_THUNK_TYPE_FORM, 1, pg_prove_thunk_type(typing, p[0]));
+	RULE(PG_TERMINATION_FORM, 2, pg_prove_termination_type(typing, p[0], p[1]));
+	RULE(PG_TERMINATION_INTRO, 2, pg_prove_termination(typing, p[0], p[1]));
+	RULE(PG_PI_FORM, 2, pg_prove_pi(typing, p[0], p[1]));
+	RULE(PG_RETURN_INTRO, 1, pg_prove_return_contract(typing, parameters->totality, p[0]));
+	RULE(PG_THUNK_INTRO, 1, pg_prove_thunk(typing, p[0]));
 	RULE(PG_FORCE_ELIM, 1, pg_prove_force(typing, p[0]));
 	RULE(PG_LAMBDA_INTRO, 2, pg_prove_lambda(typing, p[0], p[1]));
 	RULE(PG_APP_ELIM, 2, pg_prove_application(typing, p[0], p[1]));
@@ -185,8 +185,8 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_PI_CODOMAIN, 2, pg_prove_pi_codomain(typing, p[0], p[1]));
 	RULE(PG_PI_DOMAIN, 1, pg_prove_pi_domain(typing, p[0]));
 	RULE(PG_PI_CONSTANT_CODOMAIN, 1, pg_prove_pi_constant_codomain(typing, p[0]));
-	RULE(PG_FOLD_ELIM, 2, pg_prove_fold(typing, classifiers, p[0], p[1]));
-	RULE(PG_REQUEST_INTRO, 4, pg_prove_request(typing, classifiers,
+	RULE(PG_FOLD_ELIM, 2, pg_prove_fold(typing, p[0], p[1]));
+	RULE(PG_REQUEST_INTRO, 4, pg_prove_request(typing,
 		pg_operation_declaration_at(typing, parameters->operation_label, p[0], p[1]), p[2], p[3]));
 	case PG_HANDLER_ELIM: {
 		size_t clauses = pg_handler_signature_count(parameters->handler);
@@ -198,16 +198,16 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 		for (size_t i = 0; i < clauses; ++i)
 			bodies[i] = (struct pg_handler_clause){pg_operation_declaration_at(typing,
 				pg_handler_signature_label(parameters->handler, i), p[3 + 3 * i], p[4 + 3 * i]), p[5 + 3 * i]};
-		result = pg_prove_handler(typing, classifiers, p[0], p[1], p[2], clauses, bodies);
+		result = pg_prove_handler(typing, p[0], p[1], p[2], clauses, bodies);
 		pg_graph_destroy(&temporary);
 		break;
 	}
 	RULE(PG_EFFECT_SUBSUMPTION, 2, pg_prove_effect_subsumption(typing, p[0], p[1]));
 	RULE(PG_IDENTITY_FORM, 3, pg_prove_identity_type(typing, p[0], p[1], p[2]));
-	RULE(PG_IDENTITY_INSTANCE, 3, pg_prove_identity_instance(typing, classifiers, p[0], p[1], p[2]));
-	RULE(PG_IDENTITY_LEFT_TYPE, 1, pg_prove_identity_endpoint_type(typing, classifiers, p[0], rule));
-	RULE(PG_IDENTITY_RIGHT_TYPE, 1, pg_prove_identity_endpoint_type(typing, classifiers, p[0], rule));
-	RULE(PG_IDENTITY_TRANSPORT, 3, pg_prove_identity_transport(typing, classifiers, p[1], p[2], parameters->direction));
+	RULE(PG_IDENTITY_INSTANCE, 3, pg_prove_identity_instance(typing, p[0], p[1], p[2]));
+	RULE(PG_IDENTITY_LEFT_TYPE, 1, pg_prove_identity_endpoint_type(typing, p[0], rule));
+	RULE(PG_IDENTITY_RIGHT_TYPE, 1, pg_prove_identity_endpoint_type(typing, p[0], rule));
+	RULE(PG_IDENTITY_TRANSPORT, 3, pg_prove_identity_transport(typing, p[1], p[2], parameters->direction));
 	RULE(PG_RETURN_VALUE, 1, pg_prove_return_value(typing, p[0]));
 	RULE(PG_TOTAL_PURE_VALUE, 1, pg_prove_total_pure_value(typing, p[0]));
 	RULE(PG_THUNK_COMPUTATION, 1, pg_prove_thunk_computation(typing, p[0]));
@@ -217,7 +217,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 		result = pg_prove_reflexivity(typing, boundary.family, p[1]); break;
 	case PG_IDENTITY_LIFT:
 		if (count != 2 || pg_evidence_rule(p[1]) != PG_IDENTITY_TRANSPORT) return NULL;
-		result = pg_prove_identity_lift(typing, classifiers,
+		result = pg_prove_identity_lift(typing,
 			pg_evidence_premise(p[1], 1), pg_evidence_premise(p[1], 2), parameters->direction); break;
 	case PG_CONTEXT_SUBSTITUTION:
 		if (count < 2) return NULL;
