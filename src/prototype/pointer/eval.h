@@ -144,7 +144,7 @@ struct pg_eval_policy { int (*dispatch)(struct pg_eval *machine); };
 extern const struct pg_eval_policy pg_beta_policy;
 struct pg_whnf_job;
 struct pg_reduction_certificate;
-enum pg_reduction_kind { PG_REDUCTION_WHNF, PG_REDUCTION_NF };
+enum pg_reduction_kind { PG_REDUCTION_WHNF, PG_REDUCTION_NF, PG_REDUCTION_PREFIX };
 /* Keys are (input term, policy pointer), with empty environments. Captured
  * environments remain inside jobs. All referenced graphs outlive the store. */
 struct pg_whnf_work {
@@ -190,13 +190,20 @@ struct pg_reduction_phase {
 	const struct pg_reduction_certificate *children[2];
 	const struct pg_term *rebuilt;
 };
+/* One WHNF followed by congruent child NF, before the parent head recheck.
+ * This is a finite reduction, not a claim that its result is WHNF or NF.
+ * Premise receipts must already be checked; imported descriptions are not
+ * certificates. The result belongs to graph and never populates NF caches. */
+const struct pg_reduction_certificate *pg_reduction_prefix(struct pg_graph *graph,
+	const struct pg_reduction_certificate *head,
+	const struct pg_reduction_certificate *left, const struct pg_reduction_certificate *right);
 const struct pg_reduction_phase *pg_reduction_phases(const struct pg_reduction_certificate *certificate);
 /* Single congruent NF phase with unchanged heads before/after rebuilding.
  * NULL when beta/iota/eta changes an enclosing constructor. Child receipts
  * then refer to the actual input/output children, not historical operands. */
 const struct pg_reduction_phase *pg_reduction_congruence(const struct pg_reduction_certificate *certificate);
-/* One initial WHNF followed by congruent child normalization and an unchanged
- * head recheck. Unlike congruence above, the initial head may contract. A typed
+/* One initial WHNF followed by congruent child normalization: a PREFIX, or
+ * NF with an unchanged head recheck. The initial head may contract. A typed
  * consumer must first expose and check that head, not reuse source inputs. */
 const struct pg_reduction_phase *pg_reduction_head_congruence(const struct pg_reduction_certificate *certificate);
 /* A reflexive cache entry can inherit normality from a completed reduction
@@ -221,6 +228,11 @@ enum pg_nf_status pg_nf_advance(struct pg_nf_job *job, uint64_t budget);
 enum pg_nf_status pg_nf_status(const struct pg_nf_job *job);
 const struct pg_term *pg_nf_result(const struct pg_nf_job *job);
 const struct pg_reduction_certificate *pg_nf_certificate(const struct pg_nf_job *job);
+/* Read the first completed phase without advancing NF. Returns 0 while
+ * pending, 1 with a shared finite prefix, or -1 on error; output changes only
+ * on success. A known normal input uses its existing normality evidence. */
+int pg_nf_prefix_certificate(struct pg_nf_job *job,
+	const struct pg_reduction_certificate **certificate);
 /* Transitions charged to advances of this root, including dependencies;
  * shared work performed by another root is not charged a second time. */
 uint64_t pg_nf_steps(const struct pg_nf_job *job);

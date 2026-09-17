@@ -35,6 +35,7 @@ const struct pg_reduction_archive *pg_reduction_archive_snapshot(struct pg_graph
 	for (size_t i = 0; i < work->normal_forms.capacity; ++i) {
 		for (const struct pg_index_entry *entry = work->normal_forms.buckets[i]; entry; entry = entry->next) {
 			const struct pg_nf_job *job = (const void *)entry;
+			if (job->prefix && pg_dag_add(&receipts, job->prefix)) goto done;
 			const struct pg_reduction_certificate *receipt = pg_nf_certificate(job);
 			if (receipt) {
 				if (pg_dag_add(&receipts, receipt)) goto done;
@@ -155,7 +156,7 @@ int pg_reduction_records_write(FILE *file, size_t count,
 		} else {
 			const struct pg_reduction_certificate *c = r->value;
 			const char *name = pg_computation_policy_name(c->policy);
-			if (!name || !c->source || !c->target || c->kind > PG_REDUCTION_NF || c->kind < PG_REDUCTION_WHNF) goto done;
+			if (!name || !c->source || !c->target || c->kind > PG_REDUCTION_PREFIX || c->kind < PG_REDUCTION_WHNF) goto done;
 			size_t length = strlen(name);
 			if (fputc(c->kind, file) == EOF || pg_wire_write_u64(file, length) || fwrite(name, 1, length, file) != length) goto done;
 			terms[n++] = c->source;
@@ -190,11 +191,17 @@ static int receipt_shape(const struct pg_reduction_certificate *c, const struct 
 {
 	if (c->normality) {
 		const struct pg_reduction_certificate *basis = c->normality;
+		enum pg_reduction_kind basis_kind = c->kind == PG_REDUCTION_PREFIX ? PG_REDUCTION_NF : c->kind;
 		return !c->phases && c->source == c->target && basis->target == c->source
-			&& basis->kind == c->kind && basis->policy == c->policy;
+			&& basis->kind == basis_kind && basis->policy == c->policy;
 	}
 	if (c->kind == PG_REDUCTION_WHNF) return !c->phases;
 	const struct pg_reduction_phase *p = c->phases;
+	if (c->kind == PG_REDUCTION_PREFIX) {
+		if (!p || p->previous || !first || first->source != c->source) return 0;
+		if (!p->children[0] && p->rebuilt->kind != PG_REFERENCE) return 0;
+		return p->rebuilt == c->target && p->head->policy == c->policy;
+	}
 	if (!p || !first || p->children[0] || p->children[1]) return 0;
 	return first->source == c->source && p->rebuilt == c->target
 		&& p->head->policy == c->policy && pg_reduction_nf_terminal(p->previous, p->head);
@@ -247,7 +254,7 @@ int pg_reduction_records_read(FILE *file, struct pg_graph *output, size_t limit,
 			records[i] = c;
 			int reduction = fgetc(file);
 			uint64_t length;
-			if (reduction < PG_REDUCTION_WHNF || reduction > PG_REDUCTION_NF || pg_wire_read_u64(file, &length)
+			if (reduction < PG_REDUCTION_WHNF || reduction > PG_REDUCTION_PREFIX || pg_wire_read_u64(file, &length)
 				|| !length || length > name_limit || length >= SIZE_MAX) goto done;
 			char *name = pg_alloc(&scratch, (size_t)length + 1);
 			if (!name || fread(name, 1, (size_t)length, file) != length || memchr(name, 0, (size_t)length)) goto done;

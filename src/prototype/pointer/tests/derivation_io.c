@@ -335,7 +335,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[19];
+	const struct pg_evidence *roots[20];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -433,8 +433,25 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	nf = pg_nf_request(&work, &pg_pure_policy, alpha);
 	assert(nf && pg_nf_advance(nf, 10000) == PG_NF_DONE);
 	roots[18] = pg_prove_normalization(typing, pi, pg_nf_certificate(nf));
-	for (size_t i = 0; i < 19; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 19, roots, name, typing->graph) == 0);
+	/* Child NF exposes the right-unit rule, then THUNK/FORCE contracts. The
+	 * saved prefix must stop before that last contraction, not claim NF. */
+	const struct pg_object *m = pg_binder(graph);
+	const struct pg_evidence *mc = pg_prove_context_extension(typing, context, m,
+		pg_prove_thunk_type(typing, pg_prove_return_type(typing, pg_prove_variable(typing, context, a))));
+	const struct pg_evidence *staged = pg_prove_thunk(typing, pg_prove_fold(typing,
+		pg_prove_force(typing, pg_prove_variable(typing, mc, m)), pg_prove_projection(typing, mc, under_lambda)));
+	assert(staged);
+	nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(staged)->core);
+	const struct pg_reduction_certificate *prefix = NULL;
+	while (!prefix) {
+		assert(pg_nf_steps(nf) < 10000 && pg_nf_advance(nf, 1) != PG_NF_ERROR);
+		assert(pg_nf_prefix_certificate(nf, &prefix) >= 0);
+	}
+	assert(pg_nf_status(nf) == PG_NF_PENDING);
+	roots[19] = pg_prove_normalization(typing, staged, prefix);
+	assert(pg_reduction_target(prefix) != pg_reference(graph, m));
+	for (size_t i = 0; i < 20; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 20, roots, name, typing->graph) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -462,13 +479,13 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing, 1000, 100, resolve, typing->graph, &count, &roots) == 0);
-	assert(count == 19 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 20 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[19];
+	struct pg_synthesis_job *jobs[20];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -517,6 +534,14 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	assert(pg_evidence_classifier(left) != pg_evidence_classifier(right));
 	assert(pg_reduction_kind(pg_evidence_normalization(pg_synthesis_result(jobs[3]))) == PG_REDUCTION_WHNF);
 	assert(pg_reduction_kind(pg_evidence_normalization(pg_synthesis_result(jobs[5]))) == PG_REDUCTION_NF);
+	const struct pg_evidence *prefix_result = pg_synthesis_result(jobs[19]);
+	const struct pg_reduction_certificate *prefix = pg_evidence_normalization(prefix_result);
+	assert(prefix && pg_reduction_kind(prefix) == PG_REDUCTION_PREFIX);
+	assert(pg_evidence_classifier(prefix_result) == pg_evidence_classifier(pg_evidence_premise(prefix_result, 0)));
+	struct pg_nf_job *prefix_nf = pg_nf_request(&work, &pg_pure_policy, pg_reduction_source(prefix));
+	assert(pg_nf_status(prefix_nf) == PG_NF_PENDING && !pg_nf_certificate(prefix_nf));
+	assert(pg_nf_advance(prefix_nf, 10000) == PG_NF_DONE);
+	assert(pg_nf_result(prefix_nf) != pg_reduction_target(prefix));
 	assert(pg_alpha_equal(pg_evidence_subject(pg_synthesis_result(jobs[17]))->core,
 		pg_evidence_subject(pg_synthesis_result(jobs[5]))->core) == 1);
 	assert(pg_evidence_rule(pg_synthesis_result(jobs[6])) == PG_REFLEXIVITY);
@@ -607,6 +632,17 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	pg_synthesis_advance(&synthesis, 10000);
 	assert(pg_synthesis_status(bad) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(bad));
 	saved = roots[7];
+	/* A completed NF cache cannot satisfy an intermediate-prefix endpoint. */
+	const struct pg_derivation_input *prefix_input = roots[19];
+	size_t prefix_bytes = sizeof(*prefix_input) + prefix_input->count * sizeof(*prefix_input->premises);
+	struct pg_derivation_input *overshoot = pg_alloc(typing->graph, prefix_bytes);
+	assert(overshoot);
+	memcpy(overshoot, prefix_input, prefix_bytes);
+	overshoot->target = pg_nf_result(prefix_nf);
+	bad = pg_synthesis_derivation(&synthesis, overshoot);
+	assert(bad && pg_synthesis_status(bad) == PG_SYNTHESIS_PENDING);
+	pg_synthesis_advance(&synthesis, 10000);
+	assert(pg_synthesis_status(bad) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(bad));
 	bytes = sizeof(*saved) + saved->count * sizeof(*saved->premises);
 	struct pg_derivation_input *wrong_direction = pg_alloc(typing->graph, bytes);
 	assert(wrong_direction);

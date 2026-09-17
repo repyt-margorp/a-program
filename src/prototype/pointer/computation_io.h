@@ -59,7 +59,7 @@ int pg_whnf_pending_read(FILE *file, struct pg_whnf_job *job, struct pg_graph *o
  * without inventing a completed receipt. Resaving is inert; WHNF endpoint claims
  * still need their execution basis before an accepted owner can use them. */
 struct pg_reduction_archive;
-/* Snapshot immutable completed WHNF/NF receipts and unfinished NF phase roots
+/* Snapshot immutable WHNF/NF/prefix receipts and unfinished NF phase roots
  * from the ordinary work store, together with a previous raw image archive.
  * Completed local work replaces old raw roots at the same input/policy/mode
  * key; this neither checks nor accepts those old claims. Pointer-identical
@@ -81,7 +81,7 @@ int pg_reduction_archive_collect(struct pg_dag *terms, const struct pg_reduction
 
 /* Check a decoded archive by recomputing WHNF leaves through the ordinary
  * shared work store, then structural alpha comparison (never conversion of
- * the claimed output). NF dependencies were checked during decoding.
+ * the claimed output). NF/prefix phase dependencies were checked during decoding.
  * This is recomputation mode, not no-recomputation CHECKPOINT. work and the
  * immutable archive must outlive the check; returned receipts belong to the
  * archive graph. A pending/error/different check exposes no certificates. */

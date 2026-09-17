@@ -6967,13 +6967,19 @@ static void formation_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 static const struct pg_reduction_certificate *normalization_receipt(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_term *input, enum pg_reduction_kind kind)
 {
-	const struct pg_reduction_certificate *certificate;
-	if (kind == PG_REDUCTION_NF) {
+	const struct pg_reduction_certificate *certificate = NULL;
+	if (kind == PG_REDUCTION_NF || kind == PG_REDUCTION_PREFIX) {
 		if (!job->normalizing.nf) job->normalizing.nf = pg_nf_request(synthesis->normalization, &pg_pure_policy, input);
-		if (!job->normalizing.nf || pg_nf_advance(job->normalizing.nf, 1) == PG_NF_ERROR) {
-			finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL;
+		if (!job->normalizing.nf) goto failure;
+		if (kind == PG_REDUCTION_PREFIX) {
+			int status = pg_nf_prefix_certificate(job->normalizing.nf, &certificate);
+			if (status < 0) goto failure;
+			if (status) return certificate;
 		}
-		certificate = pg_nf_certificate(job->normalizing.nf);
+		if (pg_nf_advance(job->normalizing.nf, 1) == PG_NF_ERROR) goto failure;
+		if (kind == PG_REDUCTION_PREFIX) {
+			if (pg_nf_prefix_certificate(job->normalizing.nf, &certificate) < 0) goto failure;
+		} else certificate = pg_nf_certificate(job->normalizing.nf);
 	} else if (kind == PG_REDUCTION_WHNF) {
 		if (!job->normalizing.whnf) job->normalizing.whnf = pg_whnf_request(synthesis->normalization, &pg_pure_policy, input);
 		if (!job->normalizing.whnf || pg_whnf_advance(job->normalizing.whnf, 1) == PG_EVAL_ERROR) {
@@ -6983,6 +6989,9 @@ static const struct pg_reduction_certificate *normalization_receipt(struct pg_sy
 	} else { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return NULL; }
 	if (!certificate) enqueue(synthesis, job);
 	return certificate;
+failure:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
+	return NULL;
 }
 
 static int derivation_endpoint(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,

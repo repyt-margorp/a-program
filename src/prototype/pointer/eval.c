@@ -658,9 +658,10 @@ const struct pg_reduction_certificate *pg_reduction_find(const struct pg_whnf_wo
 		const struct pg_whnf_job *job = (const void *)reduction_find(&work->jobs, policy, input, &hash);
 		return job ? pg_whnf_certificate(job) : NULL;
 	}
-	case PG_REDUCTION_NF: {
+	case PG_REDUCTION_NF:
+	case PG_REDUCTION_PREFIX: {
 		const struct pg_nf_job *job = (const void *)reduction_find(&work->normal_forms, policy, input, &hash);
-		return job ? pg_nf_certificate(job) : NULL;
+		return job ? (kind == PG_REDUCTION_PREFIX ? job->prefix : pg_nf_certificate(job)) : NULL;
 	}
 	}
 	return NULL;
@@ -867,6 +868,23 @@ const struct pg_term *pg_reduction_phase_rebuild(struct pg_graph *graph,
 	}
 }
 
+const struct pg_reduction_certificate *pg_reduction_prefix(struct pg_graph *graph,
+	const struct pg_reduction_certificate *head,
+	const struct pg_reduction_certificate *left, const struct pg_reduction_certificate *right)
+{
+	if (!graph) return NULL;
+	const struct pg_term *rebuilt = pg_reduction_phase_rebuild(graph, NULL, head, left, right);
+	if (!rebuilt) return NULL;
+	if (!left && rebuilt->kind != PG_REFERENCE) return NULL;
+	struct pg_reduction_phase *phase = pg_alloc(graph, sizeof(*phase));
+	struct pg_reduction_certificate *certificate = reduction_certificate(graph,
+		head->source, rebuilt, head->policy, PG_REDUCTION_PREFIX);
+	if (!phase || !certificate) return NULL;
+	*phase = (struct pg_reduction_phase){.head = head, .children = {left, right}, .rebuilt = rebuilt};
+	certificate->phases = phase;
+	return certificate;
+}
+
 int pg_reduction_nf_terminal(const struct pg_reduction_phase *previous,
 	const struct pg_reduction_certificate *head)
 {
@@ -878,8 +896,14 @@ int pg_reduction_nf_terminal(const struct pg_reduction_phase *previous,
 
 const struct pg_reduction_phase *pg_reduction_head_congruence(const struct pg_reduction_certificate *certificate)
 {
-	if (!certificate || certificate->kind != PG_REDUCTION_NF) return NULL;
+	if (!certificate) return NULL;
 	const struct pg_reduction_phase *last = certificate->phases;
+	if (certificate->kind == PG_REDUCTION_PREFIX) {
+		if (!last || last->previous || !last->children[0]) return NULL;
+		if (last->head->source != certificate->source || last->rebuilt != certificate->target) return NULL;
+		return last;
+	}
+	if (certificate->kind != PG_REDUCTION_NF) return NULL;
 	if (!last || last->children[0] || last->children[1]) return NULL;
 	const struct pg_reduction_phase *phase = last->previous;
 	if (!phase || phase->previous || !phase->children[0]) return NULL;
@@ -984,4 +1008,27 @@ enum pg_nf_status pg_nf_advance(struct pg_nf_job *job, uint64_t budget)
 enum pg_nf_status pg_nf_status(const struct pg_nf_job *job) { return job->status; }
 const struct pg_term *pg_nf_result(const struct pg_nf_job *job) { return job->certificate ? job->certificate->target : NULL; }
 const struct pg_reduction_certificate *pg_nf_certificate(const struct pg_nf_job *job) { return job->certificate; }
+int pg_nf_prefix_certificate(struct pg_nf_job *job,
+	const struct pg_reduction_certificate **certificate)
+{
+	if (!job || !certificate || job->status == PG_NF_ERROR) return -1;
+	if (!job->prefix) {
+		const struct pg_reduction_phase *phase = job->phases;
+		if (!phase && job->certificate) phase = job->certificate->phases;
+		while (phase && phase->previous) phase = phase->previous;
+		if (phase) {
+			job->prefix = pg_reduction_prefix(job->request.work->graph,
+				phase->head, phase->children[0], phase->children[1]);
+		} else if (job->certificate) {
+			if (job->certificate->source != job->certificate->target) return -1;
+			struct pg_reduction_certificate *prefix = reduction_certificate(job->request.work->graph,
+				job->request.input, job->request.input, job->request.policy, PG_REDUCTION_PREFIX);
+			if (prefix) prefix->normality = job->certificate;
+			job->prefix = prefix;
+		} else return 0;
+		if (!job->prefix) return -1;
+	}
+	*certificate = job->prefix;
+	return 1;
+}
 uint64_t pg_nf_steps(const struct pg_nf_job *job) { return job->steps; }

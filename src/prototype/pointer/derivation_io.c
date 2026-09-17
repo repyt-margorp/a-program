@@ -256,7 +256,7 @@ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t n
 		if (pg_wire_read_u64(file, &level) || pg_wire_read_u64(file, &direction) || direction > PG_IDENTITY_LEFT) return -1;
 		if (pg_wire_read_u64(file, &totality) || totality > PG_TOTALITY_TOTAL) return -1;
 		if (totality && rule != PG_RETURN_TYPE_FORM && rule != PG_RETURN_INTRO) return -1;
-		if (pg_wire_read_u64(file, &reduction_kind) || reduction_kind > PG_REDUCTION_NF) return -1;
+		if (pg_wire_read_u64(file, &reduction_kind) || reduction_kind > PG_REDUCTION_PREFIX) return -1;
 		if (pg_wire_read_u64(file, &records[i].binder) || pg_wire_read_u64(file, &records[i].effects)
 			|| pg_wire_read_u64(file, &records[i].source)
 			|| pg_wire_read_u64(file, &records[i].target) || pg_wire_read_u64(file, &records[i].operation)

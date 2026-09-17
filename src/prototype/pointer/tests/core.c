@@ -3370,18 +3370,24 @@ static void reduction_congruence_test(struct pg_graph *graph)
 		.policy = &pg_beta_policy, .source = x, .target = y};
 	assert(pg_reduction_phase_rebuild(graph, NULL, &head, &child, NULL) == pg_lambda(graph, binder, y));
 	assert(pg_reduction_phase_rebuild(graph, NULL, &head, NULL, NULL) == lambda);
+	assert(!pg_reduction_prefix(graph, &head, NULL, NULL));
+	assert(!pg_reduction_prefix(NULL, &head, &child, NULL));
+	assert(!pg_reduction_prefix(graph, NULL, &child, NULL));
 	assert(!pg_reduction_phase_rebuild(graph, NULL, &head, &child, &child));
 	assert(!pg_reduction_phase_rebuild(graph, NULL, &head, NULL, &child));
 	assert(!pg_reduction_phase_rebuild(graph, NULL, NULL, &child, NULL));
 	struct pg_reduction_certificate bad = child;
 	bad.kind = PG_REDUCTION_WHNF;
 	assert(!pg_reduction_phase_rebuild(graph, NULL, &head, &bad, NULL));
+	assert(!pg_reduction_prefix(graph, &head, &bad, NULL));
 	bad = child;
 	bad.policy = &pg_pure_policy;
 	assert(!pg_reduction_phase_rebuild(graph, NULL, &head, &bad, NULL));
+	assert(!pg_reduction_prefix(graph, &head, &bad, NULL));
 	bad = child;
 	bad.source = y;
 	assert(!pg_reduction_phase_rebuild(graph, NULL, &head, &bad, NULL));
+	assert(!pg_reduction_prefix(graph, &head, &bad, NULL));
 	bad = child;
 	bad.target = NULL;
 	assert(!pg_reduction_phase_rebuild(graph, NULL, &head, &bad, NULL));
@@ -3446,6 +3452,27 @@ static void normal_form_test(struct pg_graph *graph)
 	assert(split_work.jobs.count == 0 && !pg_nf_result(split));
 	assert(pg_nf_advance(split, 0) == PG_NF_PENDING && pg_nf_steps(split) == 0);
 	assert(!pg_nf_certificate(split));
+	const struct pg_reduction_certificate *prefix = NULL;
+	assert(pg_nf_prefix_certificate(NULL, &prefix) == -1 && !prefix);
+	assert(pg_nf_prefix_certificate(split, &prefix) == 0 && !prefix);
+	assert(pg_nf_prefix_certificate(split, NULL) == -1);
+	while (!prefix) {
+		assert(pg_nf_status(split) == PG_NF_PENDING && pg_nf_steps(split) < 10000);
+		pg_nf_advance(split, 1);
+		assert(pg_nf_prefix_certificate(split, &prefix) >= 0);
+	}
+	assert(pg_nf_status(split) == PG_NF_PENDING && !pg_nf_certificate(split));
+	assert(pg_reduction_kind(prefix) == PG_REDUCTION_PREFIX);
+	assert(pg_reduction_source(prefix) == term && pg_reduction_target(prefix) != vu);
+	assert(pg_reduction_head_congruence(prefix));
+	assert(pg_reduction_find(&split_work, &pg_pure_policy, term, PG_REDUCTION_PREFIX) == prefix);
+	assert(!pg_reduction_find(&split_work, &pg_beta_policy, term, PG_REDUCTION_PREFIX));
+	assert(!pg_reduction_find(&split_work, &pg_pure_policy, term, PG_REDUCTION_NF));
+	assert(pg_nf_remember(&split_work, prefix) == -1);
+	uint64_t prefix_steps = pg_nf_steps(split);
+	const struct pg_reduction_certificate *same_prefix = NULL;
+	assert(pg_nf_prefix_certificate(split, &same_prefix) == 1 && same_prefix == prefix);
+	assert(pg_nf_steps(split) == prefix_steps);
 	while (pg_nf_status(split) == PG_NF_PENDING) {
 		uint64_t steps = pg_nf_steps(split);
 		pg_nf_advance(split, 1);
@@ -3459,6 +3486,10 @@ static void normal_form_test(struct pg_graph *graph)
 	struct pg_nf_job *whole = pg_nf_request(&whole_work, &pg_pure_policy, term);
 	assert(pg_nf_advance(whole, 10000) == PG_NF_DONE);
 	assert(pg_nf_result(whole) == vu && pg_nf_steps(whole) == pg_nf_steps(split));
+	assert(pg_nf_prefix_certificate(whole, &same_prefix) == 1);
+	assert(pg_alpha_equal(pg_reduction_target(same_prefix), pg_reduction_target(prefix)) == 1);
+	struct pg_whnf_job *prefix_head = pg_whnf_request(&whole_work, &pg_pure_policy, pg_reduction_target(prefix));
+	assert(pg_whnf_advance(prefix_head, 10000) == PG_EVAL_WHNF && pg_whnf_result(prefix_head) == vu);
 	size_t count = split_work.normal_forms.count, terms = graph->terms.count;
 	uint64_t steps = pg_nf_steps(split);
 	assert(pg_nf_advance(pg_nf_request(&split_work, &pg_pure_policy, term), 10000) == PG_NF_DONE);
@@ -3497,6 +3528,11 @@ static void normal_form_test(struct pg_graph *graph)
 	nf_dependencies(graph, pg_nf_certificate(parent));
 	nf_dependencies(graph, pg_nf_certificate(answer));
 	assert(pg_reduction_normality(pg_nf_certificate(answer)) == pg_nf_certificate(parent));
+	assert(pg_nf_prefix_certificate(answer, &same_prefix) == 1);
+	assert(pg_reduction_source(same_prefix) == pg_nf_result(parent));
+	assert(pg_reduction_target(same_prefix) == pg_nf_result(parent));
+	assert(pg_reduction_normality(same_prefix) == pg_nf_certificate(answer));
+	assert(pg_nf_steps(answer) == 0 && pg_nf_remember(&split_work, same_prefix) == -1);
 	const struct pg_reduction_phase *parent_phase = pg_reduction_phases(pg_nf_certificate(parent));
 	assert(parent_phase->previous->children[0] == pg_nf_certificate(child));
 	/* Demand the head before descending: a discarded divergent argument does

@@ -2449,9 +2449,12 @@ static void reduction_records(void)
 	const struct pg_term *neutral = pg_reference(&graph, pg_binder(&graph));
 	struct pg_nf_job *duplicated = pg_nf_request(&work, &pg_pure_policy, pg_application(&graph, neutral, neutral));
 	assert(pg_nf_advance(duplicated, 10000) == PG_NF_DONE);
+	const struct pg_reduction_certificate *prefix, *normal_prefix;
+	assert(pg_nf_prefix_certificate(pure, &prefix) == 1);
+	assert(pg_nf_prefix_certificate(normal, &normal_prefix) == 1);
 	const struct pg_reduction_certificate *initial[] = {
 		pg_nf_certificate(pure), pg_nf_certificate(normal), pg_nf_certificate(pure), pg_nf_certificate(beta),
-		pg_nf_certificate(duplicated)
+		pg_nf_certificate(duplicated), prefix, normal_prefix
 	};
 	struct pg_nf_job *pending = pg_nf_request(&work, &pg_pure_policy,
 		pg_lambda(&graph, pg_binder(&graph), pg_application(&graph, neutral, neutral)));
@@ -2468,10 +2471,12 @@ static void reduction_records(void)
 	for (size_t i = 0; i < snapshot->count; ++i) {
 		if (snapshot->roots[i] == initial[0]) found |= 1;
 		if (snapshot->roots[i] == initial[3]) found |= 2;
+		if (snapshot->roots[i] == prefix) found |= 8;
+		if (snapshot->roots[i] == normal_prefix) found |= 16;
 	}
 	for (size_t i = 0; i < snapshot->phase_count; ++i)
 		if (snapshot->phases[i] == pending->phases) found |= 4;
-	assert(found == 7);
+	assert(found == 31);
 	const struct pg_reduction_archive *merged = pg_reduction_archive_snapshot(&graph, &work, snapshot);
 	assert(merged && merged->count == snapshot->count && merged->phase_count == snapshot->phase_count);
 	for (size_t i = 0; i < merged->count; ++i) assert(merged->roots[i] == snapshot->roots[i]);
@@ -2496,14 +2501,17 @@ static void reduction_records(void)
 		FILE *file = tmpfile();
 		assert(file);
 		assert(!(round ? pg_reduction_archive_write(file, archive, &pg_builtin_graph_codec, NULL)
-			: pg_reduction_records_write(file, 5, initial, 3, initial_phases, &pg_builtin_graph_codec, NULL)));
+			: pg_reduction_records_write(file, 7, initial, 3, initial_phases, &pg_builtin_graph_codec, NULL)));
 		if (!round) pg_whnf_work_destroy(&work);
 		pg_graph_destroy(&graph);
 		assert(!pg_graph_init(&graph));
 		rewind(file);
 		assert(!pg_reduction_records_read(file, &graph, 10000, 100, &pg_builtin_graph_codec, NULL, &archive));
 		/* Inspect private raw layout only; never pass it to evidence constructors. */
-		assert(archive->count == 5 && archive->roots[0] == archive->roots[2]);
+		assert(archive->count == 7 && archive->roots[0] == archive->roots[2]);
+		assert(archive->roots[5]->kind == PG_REDUCTION_PREFIX && archive->roots[5]->phases);
+		assert(archive->roots[6]->kind == PG_REDUCTION_PREFIX && !archive->roots[6]->phases);
+		assert(archive->roots[6]->normality == archive->roots[1]);
 		assert(archive->phase_count == 3 && archive->phases[0] == archive->phases[1]);
 		assert(archive->phases[0]->children[0] == archive->roots[4]);
 		assert(archive->phases[2] == archive->roots[4]->phases);
@@ -2525,6 +2533,10 @@ static void reduction_records(void)
 		assert(pg_reduction_check_advance(&check, 100000) == PG_COMPARISON_EQUAL);
 		assert(pg_reduction_check_certificate(&check, 0) == pg_reduction_check_certificate(&check, 2));
 		assert(pg_reduction_check_certificate(&check, 4) == archive->roots[4]);
+		assert(pg_reduction_check_certificate(&check, 5) == archive->roots[5]);
+		assert(pg_reduction_check_certificate(&check, 6) == archive->roots[6]);
+		assert(pg_nf_remember(&verification_work, pg_reduction_check_certificate(&check, 5)));
+		assert(pg_nf_remember(&verification_work, pg_reduction_check_certificate(&check, 6)));
 		const struct pg_reduction_certificate *accepted = pg_reduction_check_certificate(&check, 0);
 		struct pg_nf_job *resuming = pg_nf_request(&verification_work, accepted->policy, accepted->source);
 		struct pg_nf_job *canonical = pg_nf_request(&verification_work, accepted->policy, accepted->target);
@@ -2601,7 +2613,7 @@ static void reduction_records(void)
 	}
 	/* A consistent partial history is not completed NF. Origin, result and
 	 * canonical normality links must also describe the same reduction. */
-	for (unsigned kind = 0; kind < 9; ++kind) {
+	for (unsigned kind = 0; kind < 12; ++kind) {
 		struct pg_reduction_certificate invalid = *archive->roots[4];
 		struct pg_reduction_phase final = *invalid.phases;
 		const struct pg_term *other = pg_reference(&graph, pg_binder(&graph));
@@ -2619,6 +2631,9 @@ static void reduction_records(void)
 		case 6: invalid = *archive->roots[1]; invalid.source = other; break;
 		case 7: invalid = *archive->roots[1]; invalid.phases = &final; break;
 		case 8: invalid.kind = PG_REDUCTION_WHNF; break;
+		case 9: invalid = *archive->roots[5]; invalid.kind = PG_REDUCTION_NF; break;
+		case 10: invalid = *archive->roots[6]; invalid.normality = archive->roots[5]; break;
+		case 11: invalid = *archive->roots[5]; invalid.target = other; break;
 		}
 		const struct pg_reduction_certificate *root = &invalid;
 		file = tmpfile();

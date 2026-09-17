@@ -144,7 +144,7 @@ Temporary adapters are permitted within a phase, not as permanent fallbacks.
 | [x] | R1 Typed conclusions | Term conclusions have one typed-subject reference; classifier/context/sort accessors delegate to it. All rules publish through `accept_record`; Context and Substitution retain their distinct conclusions. Exact interning and alternative derivations are preserved. Verified by the R29 structural audit and acceptance tests below; this does not complete R2/R3. |
 | [ ] | R2 Context action | Migrate projection/reindex to the same typed structure with explicit effective child maps. Use existing substitution work and binder lifting. Verify repeated lookup sharing, capture avoidance, dependent classifiers and chunked execution. |
 | [ ] | R3 Structural and formation consumers | Move `return_value_origin`, `pi_component`, constructor/inductive recovery and classifier recovery to checked views. Keep theorem-specific inversions where required. Replace structural wrapper walks in `function_graph.c`, `action.c` and `synthesis.c`; remove replaced paths in the same phase. |
-| [x] | R4 Images and pending work | R47 audits the current transport after R40/R46: APGOCC7 preserves descriptive typed structure, Context v3 retains family telescopes, derivation v14 and source v44/v45 preserve rule/allocation inputs. Old formats reject. Fresh-process tests check ordinary Solve, no imported acceptance bits, split budgets and normalized scoped inputs. Future representation changes must reopen this transport gate; this does not close R2/R3/R5. |
+| [x] | R4 Images and pending work | R47 verified APGOCC7, Context v3, derivation v14 and source v44/v45. R68 reopens and verifies the reduction-kind extension for finite NF prefixes with fresh-process ordinary Solve, inert resave, negative endpoint/normality cases, and full debug/optimized/sanitizer gates. Pending inputs do not become trusted on import. Future representation changes must reopen this gate; R2/R3/R5 remain open. |
 | [ ] | R5 Acceptance and cleanup | Run the full gates below, remove obsolete occurrence fields/adapters, document remaining intentional rule dispatch. Require net implementation LOC reduction, compare behavior and performance to R0, report per-file additions/deletions, then publish the verified increment. |
 
 R1 and R2 form one vertical slice: first exercise an annotated Lambda/APP under
@@ -3284,3 +3284,75 @@ verification `tests/iadt.c` **+42/-0**. No header/build/format changes.
 Cumulative implementation/header **+4526/-2640 (+1886)** against `4657cc6`.
 The work-sharing improvement is real, but does not meet the code-reduction
 gate or complete R2/R3/R5. Main remains unpublished.
+
+### 2026-09-17: Preserve finite normalization phases (R68)
+
+General multi-phase NF exposure needs the typed intermediate parent after its
+children normalize but before its head is checked again. Calling that parent
+WHNF or NF is unsound: child reduction can expose the Fold right-unit rule or
+THUNK/FORCE contraction. The next typed step needs a genuine directed reduction,
+not a fabricated normal-form certificate.
+
+- [x] Add `PG_REDUCTION_PREFIX`: the first completed phase of ordinary NF
+  (WHNF followed by congruent child NF, before parent recheck). This is not a
+  new evaluator, Core former, equality reflection rule or typing rule.
+  Existing `PG_PURE_NORMALIZATION` consumes its checked reduction evidence.
+- [x] Reuse ordinary NF requests and immutable phase premises. Prefix lookup
+  does not advance evaluation, and repeated requests return the same receipt.
+  A known normal input uses its existing NF evidence for a reflexive prefix.
+  Prefix receipts never populate the NF-result cache.
+- [x] Recompute imported prefix obligations through the existing Solve/NF
+  pathway. Keep the source, target and reduction kind as unaccepted input;
+  check the actual intermediate endpoint rather than computing to final NF.
+- [x] Extend the existing reduction-kind field in derivation v14 and receipt
+  v2 records, without changing their byte layout. Existing WHNF/NF records
+  remain readable; older readers reject the new kind rather than reinterpret
+  it. This is an enum extension, not a claim of bidirectional compatibility.
+- [x] Targeted Core, derivation I/O and receipt I/O tests pass: pending prefix,
+  shared lookup, split fuel, separate policies, ordinary fresh-process Solve,
+  inert resave, normality premises, and refusal to reuse a prefix as NF.
+- [x] Full debug acceptance passes after final edits, including 63/63 source
+  compatibility and final QuickSort source/images. Log:
+  `/tmp/a-program-typed-structure-r68-debug-final.log`.
+- [x] Full optimized acceptance and receipt I/O pass, including 63/63 source
+  compatibility and final QuickSort source/images. Log:
+  `/tmp/a-program-typed-structure-r68-o2.log`.
+- [x] Full ASan/UBSan acceptance and receipt I/O pass after final edits,
+  including 63/63 compatibility and final QuickSort source/images. Log:
+  `/tmp/a-program-typed-structure-r68-sanitize.log`. R4 is closed again for
+  this representation; this is not completion of R2/R3/R5.
+- [ ] Use these phases for general multi-phase typed-input exposure; the
+  receipt prerequisite alone does not finish that work or close R2/R3.
+
+The cumulative code-reduction gate remains open. No Main publication until
+the whole plan is verified; this intermediate checkpoint adds machinery that
+must be integrated with the remaining structural traversal consolidation.
+
+The next consumer change must follow retained phases in their reduction order.
+For each phase, expose its checked WHNF head, use the existing semantic-input
+queries for normalized children, and only then expose the next head contraction.
+Do not peel a normalized parent back to its historical operands when those
+operands have changed. Do not manufacture a fresh typed AST or add an evaluator
+beside the existing head/body work. Scoped child alignment and dependent field
+Conversion still require their existing checked rules.
+
+Delta against `ee04e7c`, excluding this document:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `computation_io.h` | 2 | 2 | 0 |
+| `derivation_io.c` | 1 | 1 | 0 |
+| `eval.c` | 50 | 3 | +47 |
+| `eval.h` | 15 | 3 | +12 |
+| `eval_internal.h` | 1 | 0 | +1 |
+| `reduction_io.c` | 10 | 3 | +7 |
+| `synthesis.c` | 15 | 6 | +9 |
+| Implementation/header subtotal | 94 | 18 | +76 |
+| `tests/core.c` | 36 | 0 | +36 |
+| `tests/derivation_io.c` | 41 | 5 | +36 |
+| `tests/identity_io.c` | 20 | 5 | +15 |
+| Verification subtotal | 97 | 10 | +87 |
+
+Cumulative implementation/header delta against `4657cc6` is
+**+4617/-2655 (+1962)**. The cumulative and checkpoint totals use Git's
+respective diffs rather than adding historical patch sizes. No build changes.

@@ -93,6 +93,7 @@ struct pg_nf_job {
 	struct pg_reduction_request request;
 	const struct pg_term *body;
 	const struct pg_reduction_certificate *certificate;
+	const struct pg_reduction_certificate *prefix;
 	const struct pg_reduction_phase *phases;
 	struct pg_whnf_job *head;
 	struct pg_nf_job *children[2];
