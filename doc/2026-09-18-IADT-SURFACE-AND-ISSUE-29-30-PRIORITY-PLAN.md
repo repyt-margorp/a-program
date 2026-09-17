@@ -311,7 +311,8 @@ Checkboxes mean implementation plus the stated verification, not just a design.
 - [x] I2: Declaration-time recovery validation and diagnostics.
 - [x] I3: Constructor calls, aliases, quotation and partial-application contract.
 - [x] I4: Match/IH mapping, generated graphs and image preservation.
-- [ ] S-PUSH: Verify and publish the completed IADT surface milestone to Main.
+- [x] S-PUSH: Verify and publish the completed IADT surface milestone to Main
+  (`1f1f134`, 2026-09-18; publication record below).
 - [x] G1a: Isolated graph collision and LE predecessor fixes in dirty worktree;
   targeted and optimized full acceptance passed before IADT changes.
 - [x] G1b: Revalidate those fixes with new IADT elaboration; document alias policy.
@@ -538,10 +539,21 @@ reported 63/63 passed, but that is only the first part of `compatibility.sh`;
 the subsequent checks had not all passed. The failing partition counterexample
 and its repair are recorded in the whole-spine entry above. Log:
 `/tmp/a-program-iadt-spine-acceptance.log` (local, temporary evidence).
-S-PUSH remains unchecked; no Main push has been made.
+At that failed gate S-PUSH remained unchecked; the successful publication below
+supersedes this historical status.
 Do not relax existing expectations merely to open this publication gate.
 
 ### Surface validation and change accounting
+
+Publication: commit `1f1f134` was pushed atomically to `origin/main` and
+`origin/rewrite/pointer-core-hott` on 2026-09-18, without force. The old Main
+remains archived by `old-version/2026-09-14-main`. Both remote branches accepted
+the fast-forward. This record is a documentation-only follow-up; tested source
+and tests are unchanged. The feature commit contains 5187 additions and 764
+deletions across 60 files, including its documentation/accounting section.
+Issue #29 and PR #30 remain open: G2/G3 and the broader refactor are not complete.
+The next issue milestone must discharge conventional LE/comparator and actual
+sort-result property obligations without new theorem-specific kernel shortcuts.
 
 The final optimized acceptance gate and final ASan/UBSan image CLI both passed
 (exit 0). The latter used sanitized source writer, checker and evaluator binaries.
