@@ -293,20 +293,6 @@ static struct pg_context_lift *map_lift_work(struct pg_typing *typing,
 	return pg_context_lift_result(work) == map ? work : NULL;
 }
 
-static int map_dependency(void *owner, const void *key, size_t index, const void **child)
-{
-	struct pg_typing *typing = owner;
-	const struct pg_context_map *map = key;
-	if (index > 1 || conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, map)) return 0;
-	if (!conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->source)) return -1;
-	if (index && conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination)) return 0;
-	const struct pg_context_map *prefix = map_lift_prefix(typing, map);
-	struct pg_context_lift *work = prefix ? map_lift_work(typing, map, prefix) : NULL;
-	if (!work) return conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination) ? 0 : -1;
-	*child = index ? pg_context_lift_indices(work) : prefix;
-	return *child != NULL;
-}
-
 static const struct pg_evidence *lift_destination(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *prefix, struct pg_context_lift *work)
 {
@@ -325,45 +311,38 @@ static const struct pg_evidence *lift_destination(struct pg_typing *typing,
 	return destination && pg_evidence_context(destination) == map->destination ? destination : NULL;
 }
 
-const struct pg_evidence *pg_prove_context_map(struct pg_typing *typing,
-	const struct pg_context_map *map)
+static int map_dependency(void *owner, const void *key, size_t index, const void **child)
 {
-	if (!map) return NULL;
-	const struct pg_evidence *proof = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, map);
-	if (proof) return proof;
-	struct pg_dag dag = {0};
-	if (pg_dag_init(&dag, map_dependency, typing)) return NULL;
-	if (pg_dag_add(&dag, map)) goto done;
-	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
-		const struct pg_context_map *input = node->key;
-		if (conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, input)) continue;
-		const struct pg_evidence *source = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, input->source);
-		const struct pg_evidence *destination = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, input->destination);
-		if (!source) goto done;
-		const struct pg_evidence *accepted = NULL;
-		const struct pg_context_map *prefix_map = map_lift_prefix(typing, input);
-		struct pg_context_lift *work = prefix_map ? map_lift_work(typing, input, prefix_map) : NULL;
-		if (work) {
-			const struct pg_evidence *prefix = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, prefix_map);
-			if (!prefix) goto done;
-			const struct pg_object *binder = input->destination->binder;
-			destination = lift_destination(typing, source, prefix, work);
-			if (!destination) goto done;
-			accepted = substitution_pair(typing, prefix, source, destination, pg_prove_variable(typing, destination, binder));
-		} else {
-			if (!destination) goto done;
-			if (input->count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;
-			const struct pg_evidence **images = pg_alloc(&dag.storage, input->count * sizeof(*images));
-			if (input->count && !images) goto done;
-			for (size_t i = 0; i < input->count; ++i) images[i] = pg_prove_structural_subject(typing, input->images[i]);
-			accepted = pg_prove_substitution(typing, source, destination, input->count, images);
+	struct pg_typing *typing = owner;
+	const struct pg_context_map *map = key;
+	if (conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, map)) return 0;
+	const struct pg_evidence *source = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->source);
+	const struct pg_evidence *destination = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination);
+	if (!source) return -1;
+	const struct pg_context_map *prefix_map = map_lift_prefix(typing, map);
+	struct pg_context_lift *work = prefix_map ? map_lift_work(typing, map, prefix_map) : NULL;
+	const struct pg_evidence *accepted;
+	if (work) {
+		if (!index) { *child = prefix_map; return 1; }
+		if (index == 1 && !destination) {
+			*child = pg_context_lift_indices(work);
+			if (*child) return 1;
 		}
-		if (pg_evidence_context_map(accepted) != input) goto done;
+		const struct pg_evidence *prefix = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, prefix_map);
+		if (!prefix) return -1;
+		destination = lift_destination(typing, source, prefix, work);
+		if (!destination) return -1;
+		accepted = substitution_pair(typing, prefix, source, destination,
+			pg_prove_variable(typing, destination, map->destination->binder));
+	} else {
+		if (!destination || map->count > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
+		const struct pg_evidence **images = malloc(map->count * sizeof(*images));
+		if (map->count && !images) return -1;
+		for (size_t i = 0; i < map->count; ++i) images[i] = pg_prove_structural_subject(typing, map->images[i]);
+		accepted = pg_prove_substitution(typing, source, destination, map->count, images);
+		free(images);
 	}
-	proof = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, map);
-done:
-	pg_dag_destroy(&dag);
-	return proof;
+	return pg_evidence_context_map(accepted) == map ? 0 : -1;
 }
 
 static int structural_dependency(void *owner, const void *key, size_t index, const void **child)
@@ -386,21 +365,34 @@ static int structural_dependency(void *owner, const void *key, size_t index, con
 	return proof && pg_evidence_subject(proof) == subject ? 0 : -1;
 }
 
+/* Each callback checks its rule once dependencies finish. There is no second
+ * interpretation pass over the collected graph, nor acceptance from shape. */
+static const struct pg_evidence *prove_structural(struct pg_typing *typing,
+	enum pg_evidence_judgement judgement, const void *key,
+	int (*dependency)(void *, const void *, size_t, const void **))
+{
+	if (!typing || !key) return NULL;
+	const struct pg_evidence *result = conclusion_first(typing, judgement, key);
+	if (result) return result;
+	struct pg_dag dag = {0};
+	if (pg_dag_init(&dag, dependency, typing)) return NULL;
+	if (!pg_dag_add(&dag, key)) result = conclusion_first(typing, judgement, key);
+	pg_dag_destroy(&dag);
+	return result;
+}
+
+const struct pg_evidence *pg_prove_context_map(struct pg_typing *typing,
+	const struct pg_context_map *map)
+{
+	return prove_structural(typing, PG_JUDGEMENT_SUBSTITUTION, map, map_dependency);
+}
+
 /* Typed structure selects the construction; ordinary rules certify its maps.
  * No search by erased Core or interpretation of a receipt's history occurs. */
 const struct pg_evidence *pg_prove_structural_subject(struct pg_typing *typing,
 	const struct pg_occurrence *subject)
 {
-	if (!typing || !subject) return NULL;
-	const struct pg_evidence *result = pg_evidence_for_subject(typing, subject, NULL);
-	if (result) return result;
-	struct pg_dag dag = {0};
-	if (pg_dag_init(&dag, structural_dependency, typing)) return NULL;
-	if (pg_dag_add(&dag, subject)) goto done;
-	result = pg_evidence_for_subject(typing, subject, NULL);
-done:
-	pg_dag_destroy(&dag);
-	return result;
+	return subject ? prove_structural(typing, subject->judgement, subject, structural_dependency) : NULL;
 }
 
 const struct pg_data_declaration *pg_evidence_inductive_declaration(const struct pg_evidence *evidence)

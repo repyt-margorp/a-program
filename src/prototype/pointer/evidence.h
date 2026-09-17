@@ -632,13 +632,14 @@ int pg_evidence_owned_by(const struct pg_evidence *evidence, const struct pg_typ
 const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing,
 	const struct pg_occurrence *subject, const struct pg_evidence *after);
 /* Reuse an exact accepted subject or certify its structural substitution using
- * ordinary variable/substitution/reindex rules and already accepted contexts.
- * Descriptive nodes alone never authorize a judgement. No new context or
- * normalized construction is inferred here. NULL means no such derivation. */
+ * ordinary variable/substitution/reindex rules. Descriptive nodes alone never
+ * authorize a judgement. Map checking below may establish a lifted destination;
+ * normalized construction is not inferred here. NULL means no derivation. */
 const struct pg_evidence *pg_prove_structural_subject(struct pg_typing *typing,
 	const struct pg_occurrence *subject);
-/* Check an existing descriptive context map through ordinary substitution
- * rules. Source/destination contexts must already be accepted. */
+/* Check a descriptive map by ordinary substitution rules. The source must be
+ * accepted. An exact lift can establish its destination from accepted prefix
+ * and declaration premises; other maps need an accepted destination. */
 const struct pg_evidence *pg_prove_context_map(struct pg_typing *typing,
 	const struct pg_context_map *map);
 const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence);

@@ -326,7 +326,7 @@ checkpoint notes below are historical, not additional completion claims.
 | Existing path | State / next action |
 |---|---|
 | Evidence classifier/context/sort copies | Removed for term conclusions |
-| Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
+| Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. R73 removes the second map-DAG interpretation pass: the same structural-check driver certifies maps and subjects as their prerequisites finish. Ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
 | Caller-owned Reindex work | R64 removes `pg_reindex_state` and its lifecycle/status API. Solve advances the existing shared occurrence action directly, then the ordinary Reindex rule certifies the result with the explicitly supplied premise derivations. Structural completion alone is not acceptance |
 | Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. R59 transports dependent constructor-field classifiers through explicit Conversion using preceding fields' pure receipts. R68/R69 connect finite NF phases; R70 exposes Fold/handler Request inputs. This is not a proof of coverage for every Core reduction. Individual kernel checks and receipt lookup remain synchronous |
 | `return_value_origin`, `pg_prove_application_body` | R60 deletes `return_value_origin`; scope restriction requests Return work as an ordinary shared dependency. `pg_prove_application_body` remains a synchronous adapter to indexed typed-body work. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. R70 makes returned-value work select the input of shared checked RETURN-head work, deleting its separate Fold continuation path. Nominal/family recovery advances application work incrementally |
@@ -3628,3 +3628,99 @@ This is not permission to trust a map descriptor or an arbitrary first
 producer: unchecked destination scopes, family-signature lifts, alternate
 premise derivations and fresh-process images must retain their current checks.
 Do not add a second semantic map representation just to remove the walk.
+
+### 2026-09-17: Certify structural dependencies in one traversal (R73)
+
+The R72 map-ownership review found a removable second interpretation pass,
+not a justification for treating completed structural lifting as acceptance.
+
+- [x] Merge dependency discovery and ordinary map certification: after its
+  prefix/signature dependencies complete, the map callback checks context
+  formation and substitution pairing. Delete the second postorder loop.
+- [x] Share the temporary DAG driver with structural-subject certification.
+  Exact accepted conclusions are reused; explicit alternative derivations
+  remain untouched. No persistent failed-query cache or acceptance store is
+  introduced, so an unsuccessful attempt does not poison later checking.
+- [x] Test a descriptive lifted map built without a retained lift producer:
+  allocation publishes no proof; subsequent checking establishes the missing
+  destination through ordinary rules, and reconstructing the derivation
+  succeeds. Existing wrong-image/scope and alternate-prefix cases remain.
+- [x] Correct the API comments: the source context must already be accepted;
+  a recognized lift can establish its destination. The old header incorrectly
+  claimed that both contexts always had to be accepted beforehand.
+- [x] Debug and optimized full acceptance gates, including 63/63 source
+  compatibility and final QuickSort source/images, exit zero. Logs:
+  `/tmp/a-program-typed-structure-r73-{debug,o2}.log`.
+- [x] ASan/UBSan full acceptance exits zero, including compatibility and
+  QuickSort source/images: `/tmp/a-program-typed-structure-r73-sanitize.log`.
+- [x] Sequential source/zero-work-image baseline matrix and direct predecessor
+  comparison below; no build/test processes ran during timing.
+
+Rejected alternative: accepting only maps that can be found in completed
+`pg_context_lift` producer work. A map's semantic identity is its source,
+destination and images; direct descriptors and imported maps need not retain
+that producer. A first-producer cache would either reject legitimate maps or
+require the old reconstruction fallback plus another provenance authority.
+`map_lift_prefix` therefore remains a checking mechanism, not a new semantic
+owner. Structural interning alone still establishes no typing judgement.
+
+Measured on the same imported QuickSort/property input with the two O0
+binaries, GDB counted **8098 -> 4754** calls to `map_lift_prefix`. Both runs
+exited normally. This measures removal of repeated inspection, not wall time;
+the repeated callbacks needed to check actual dependencies still remain.
+The final retained-image `main` check remains at **673668** transitions for
+both chunk sizes 1 and 64.
+
+Delta against `94ef1e0`: `evidence.c` **+52/-60 (-8)**, `evidence.h`
+**+6/-5 (+1)**, verification `tests/core.c` **+22/-0**. Implementation/header
+net is **-7**; cumulative against `4657cc6` is **+4944/-2658 (+2286)**.
+R2/R3/R5 and Main publication remain open. This local simplification does not
+meet the whole-plan deletion requirement, nor eliminate the remaining scope
+representation review. Do not substitute another normalization feature for
+that review or count retained logical checks as disposable duplication.
+
+#### R73 baseline measurements
+
+Three alternating-order O0 samples per version/input, fresh processes, same
+commands and fixtures as the R24 baseline matrix. Times are medians in seconds;
+counts are obtained separately at program destruction with GDB. Binaries are
+`/tmp/a-program-typed-structure-{baseline,r73}/pointer-check`. All checks exit
+zero. Zero-work images are saved by each version and solved in a new process.
+
+| Source | Baseline / R73 seconds | Solve transitions | Terms / subjects / proofs, baseline -> R73 |
+|---|---|---|---|
+| 01_bool | .001408 / .001457 | 520 / 470 | 92/70/97 -> 92/79/102 |
+| 02_nat | .000912 / .000978 | 307 / 300 | 73/61/92 -> 73/69/94 |
+| 03_main | .001752 / .000919 | 520 / 470 | 92/70/97 -> 92/79/102 |
+| 04_match | .001600 / .001703 | 1302 / 1228 | 171/185/336 -> 172/251/356 |
+| 05_bool_to_nat | .001494 / .001718 | 946 / 859 | 118/122/205 -> 120/167/236 |
+| 06_pred | .001324 / .001538 | 811 / 758 | 119/122/207 -> 120/157/224 |
+| 07_add | .002298 / .002844 | 1844 / 1687 | 227/246/382 -> 236/353/510 |
+| 09_list_induction | .003247 / .003531 | 3536 / 3184 | 290/351/614 -> 290/514/747 |
+| Vec-append | .012976 / .019100 | 22765 / 20770 | 6301/2737/6505 -> 11518/3319/4638 |
+| dependent-Sigma | .002726 / .003446 | 4048 / 3734 | 614/475/741 -> 895/658/909 |
+| generated-length | .009333 / .014118 | 10950 / 9646 | 1829/2249/3856 -> 2035/3578/4947 |
+| QuickSort-property | .874446 / .822527 | 149501 / 131613 | 168628/435774/588033 -> 170872/278007/306174 |
+
+| Zero-work image | Baseline / R73 seconds | Solve transitions |
+|---|---|---|
+| Vec-append | .010697 / .020502 | 23074 / 21075 |
+| dependent-Sigma | .002778 / .004532 | 4357 / 4039 |
+| generated-length | .012941 / .015572 | 11259 / 9951 |
+| QuickSort-property | .869258 / .833665 | 149810 / 131918 |
+
+Per-child `wait4` peak RSS for QuickSort source is **224972-225496 ->
+209768-210024 KiB**; zero-work image is **225624-226116 -> 210008-210328 KiB**.
+Small cases stay near the Python parent's inherited high-water mark (about
+13 MiB), which cannot resolve their allocator differences. This is not
+evidence that their memory use is unchanged. Vec and length retain observable
+baseline time/cost increases despite fewer Solve transitions; they remain
+representation-cost review inputs, not waived regressions or new features.
+
+For the immediate predecessor, six alternating-order QuickSort source runs
+give O0 medians **R72 .8374 / R73 .8318**, O2 **.5494 / .5609** seconds. Peak
+RSS ranges overlap at approximately 209-210 MiB. These small samples do not
+establish a stable speedup: the removed inspections do not eliminate the
+cost of the remaining rules. Final retained/recompute timing at R5 and the
+whole-plan LOC gate remain outstanding. The requested review of the LOC
+condition has not changed or waived that condition.

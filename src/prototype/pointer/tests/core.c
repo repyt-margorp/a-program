@@ -1944,6 +1944,28 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_occurrence_unproject(&typing, free_image, pg_evidence_context(destination)) ==
 		pg_evidence_subject(destination_y));
 	assert(!pg_occurrence_unproject(&typing, raw_lift->images[2], pg_evidence_context(destination)));
+	/* A valid map need not have been produced by a retained lift request.
+	 * Its unchecked destination still needs ordinary context formation. */
+	const struct pg_context *described_scope = pg_context_bind(&typing, pg_evidence_context(destination),
+		pg_binder(graph), pg_reference(graph, b), PG_JUDGEMENT_VALUE);
+	const struct pg_context_map *described_projection = pg_context_map_projection(&typing,
+		pg_evidence_context(destination), described_scope);
+	const struct pg_occurrence *described_images[] = {
+		pg_occurrence_projection(&typing, described_projection, pg_evidence_subject(destination_b)),
+		pg_occurrence_projection(&typing, described_projection, pg_evidence_subject(destination_y)),
+		pg_occurrence(&typing, PG_JUDGEMENT_VALUE, described_scope,
+			pg_reference(graph, described_scope->binder), described_scope->declared_type, NULL, 0, NULL)
+	};
+	size_t before_described_lift = typing.context_lifts.count, before_described_proofs = typing.proofs.count;
+	const struct pg_context_map *described_map = pg_context_map(&typing,
+		pg_evidence_context(source_extension), described_scope, 3, described_images);
+	assert(described_map && typing.context_lifts.count == before_described_lift);
+	assert(typing.proofs.count == before_described_proofs);
+	const struct pg_evidence *described = pg_prove_context_map(&typing, described_map);
+	assert(described && pg_evidence_context_map(described) == described_map);
+	assert(pg_evidence_context(pg_evidence_premise(described, 1)) == described_scope);
+	reconstruct_derivation(&typing, described);
+	assert(!pg_prove_context_map(NULL, described_map));
 	const struct pg_occurrence *wrong_variable = pg_occurrence_boundary(&typing,
 		free_image, PG_JUDGEMENT_VALUE, pg_evidence_subject(universe)->core);
 	assert(wrong_variable && !pg_occurrence_unproject(&typing, wrong_variable, pg_evidence_context(destination)));
