@@ -91,7 +91,7 @@ printf '%s\n' 'image cli: multi-root selection, retained obligations and range r
 printf '%s\n' 'image cli: parameterized List source/image NF agreement passed'
 
 # An unfinished image cannot bypass induction or coverage checks.
-for fixture in indexed-later-scope-wrong le-transitivity-wrong comparator-order-wrong inferred-index-wrong-family inferred-index-earlier-wrong inferred-index-partial-dependent inferred-index-disagreement inferred-index-unrecoverable inferred-index-no-inverse inferred-index-unselected-invalid graph-duplicate-leaf-wrong graph-duplicate-leaf-ambiguous le-predecessor-wrong le-predecessor-invalid indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong indexed-tail-wrong indexed-computed-type-wrong nested-index-motive-wrong length-output-proof-wrong termination-wrong-target termination-wrong-value function-graph-curried-wrong function-graph-indexed-wrong function-graph-function-field-wrong function-graph-exposed-match-wrong function-graph-known-match-wrong function-graph-branch-tree-wrong function-graph-helper-call-wrong function-graph-callable-parameter-wrong; do
+for fixture in indexed-motive-domain-wrong function-graph-partial-source-wrong indexed-later-scope-wrong le-transitivity-wrong comparator-order-wrong inferred-index-wrong-family inferred-index-earlier-wrong inferred-index-partial-dependent inferred-index-disagreement inferred-index-unrecoverable inferred-index-no-inverse inferred-index-unselected-invalid graph-duplicate-leaf-wrong graph-duplicate-leaf-ambiguous le-predecessor-wrong le-predecessor-invalid indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong indexed-tail-wrong indexed-computed-type-wrong nested-index-motive-wrong length-output-proof-wrong termination-wrong-target termination-wrong-value function-graph-curried-wrong function-graph-indexed-wrong function-graph-function-field-wrong function-graph-exposed-match-wrong function-graph-known-match-wrong function-graph-branch-tree-wrong function-graph-helper-call-wrong function-graph-callable-parameter-wrong; do
 	input="$(dirname "${BASH_SOURCE[0]}")/acceptance/$fixture.p"
 	for steps in 0 100; do
 		code=0
@@ -178,6 +178,8 @@ acceptance/le-predecessor.p main
 acceptance/indexed-later-scope.p main
 acceptance/le-transitivity.p main base:baseExpected deep:deepExpected
 acceptance/comparator-order.p base:trueValue greater:falseValue smaller:trueValue same:trueValue
+acceptance/function-graph-partial-source.p main:expected aliasMain:expected
+acceptance/indexed-motive-domain.p main:expected
 acceptance/nonrecursive-computed-index.p main:one other:two
 acceptance/nonrecursive-open-index.p main:one other:two
 acceptance/function-graph-exposed-match.p main proofMain quotedMain sequencedMain indexedMain

@@ -476,7 +476,11 @@ static void function_graph_aliases(struct pg_program *p,
 	const struct pg_evidence *outer = pg_evidence_premise(pg_evidence_premise(pi, 0), 0);
 	const struct pg_evidence *scope = pg_prove_context_extension(typing, outer, pg_binder(&p->graph), pg_prove_pi_domain(typing, pi));
 	const struct pg_evidence *projected = pg_prove_projection(typing, scope, raw);
-	assert(projected && !pg_function_graph_source(typing, projected));
+	assert(projected && pg_function_graph_source(typing, projected) == raw);
+	proofs = typing->proofs.count; subjects = typing->occurrences.count;
+	for (size_t i = 0; i < 100; ++i)
+		assert(pg_function_graph_source(typing, projected) == raw);
+	assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
 	const struct pg_source_scope *names = pg_synthesis_name(&p->synthesis, p->scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "original", .length = 8}, raw);
 	names = pg_synthesis_name(&p->synthesis, names,

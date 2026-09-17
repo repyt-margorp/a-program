@@ -7,7 +7,7 @@ SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)t
 SOURCES += $(ROOT)function_graph.c $(ROOT)host.c $(ROOT)execution.c
 
 .PHONY: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-acceptance check-eval-io check-identity-io
-.PHONY: check-source-compatibility check-host check-execution
+.PHONY: check-source-compatibility check-host check-execution check-sort-insertion
 check-examples: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 
@@ -56,7 +56,10 @@ check-handler-nesting: $(BUILD)/source_io_test
 	$(BUILD)/source_io_test handler-nesting
 	$(BUILD)/source_io_test handler-boundaries
 
-check-acceptance: check-host check-execution check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-source-compatibility
+check-acceptance: check-host check-execution check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-source-compatibility check-sort-insertion
+
+check-sort-insertion: $(BUILD)/pointer-check $(BUILD)/program_test
+	bash $(ROOT)tests/sort_insertion.sh $(BUILD)/pointer-check $(BUILD)/program_test
 
 check-eval-io: $(BUILD)/eval_io_test
 	bash $(ROOT)tests/eval_io.sh $(BUILD)/eval_io_test
@@ -115,6 +118,11 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/termination-wrong-target.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/termination-wrong-value.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-partial-source.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-partial-source.p aliasMain expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-partial-source-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-motive-domain.p main expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-motive-domain-wrong.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p specMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p emptySpecMain right
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p growMain two

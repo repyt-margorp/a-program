@@ -4540,7 +4540,7 @@ static const struct pattern_variable *pattern_variable(const struct pg_index *in
 }
 
 enum pattern_type_phase { PATTERN_TYPE_ENTER, PATTERN_TYPE_RETURN, PATTERN_TYPE_THUNK,
-	PATTERN_TYPE_PI, PATTERN_TYPE_ARGUMENTS, PATTERN_TYPE_PARAMETER };
+	PATTERN_TYPE_PI, PATTERN_TYPE_PI_DOMAIN, PATTERN_TYPE_ARGUMENTS, PATTERN_TYPE_PARAMETER };
 
 struct pattern_type_frame {
 	struct pattern_type_frame *parent;
@@ -4578,13 +4578,8 @@ static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
 				frame->phase = PATTERN_TYPE_THUNK;
 				child = pg_prove_thunk_content(typing, frame->body);
 			} else if (pg_pi_view(core, &domain, &binder, &content)) {
-				frame->phase = PATTERN_TYPE_PI;
-				frame->extension = pg_prove_context_extension(typing, frame->context, binder,
-					pg_prove_pi_domain(typing, frame->body));
-				child_context = frame->extension;
-				child = pg_prove_pi_codomain(typing,
-					pg_prove_projection(typing, child_context, frame->body),
-					pg_prove_variable(typing, child_context, binder));
+				frame->phase = PATTERN_TYPE_PI_DOMAIN;
+				child = pg_prove_pi_domain(typing, frame->body);
 			} else if (pg_inductive_instance(typing, frame->body, &frame->instance)) {
 				frame->phase = PATTERN_TYPE_ARGUMENTS;
 				frame->parameters = frame->instance.parameters->premise_count - 2;
@@ -4602,6 +4597,25 @@ static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
 				continue;
 			}
 			if (!child) goto fail;
+		} else if (frame->phase == PATTERN_TYPE_PI_DOMAIN) {
+			const struct pg_term *domain, *codomain;
+			const struct pg_object *binder;
+			if (!pg_pi_view(pg_evidence_subject(frame->body)->core, &domain, &binder, &codomain)) goto fail;
+			frame->extension = pg_prove_context_extension(typing, frame->context, binder, result);
+			child_context = frame->extension;
+			if (!child_context) goto fail;
+			if (pg_alpha_equal(domain, pg_evidence_subject(result)->core) == 1) {
+				child = pg_prove_pi_codomain(typing,
+					pg_prove_projection(typing, child_context, frame->body),
+					pg_prove_variable(typing, child_context, binder));
+			} else {
+				/* A changed domain cannot retype the original bound variable.
+				 * Only an independent codomain can be weakened into this scope. */
+				child = pg_prove_projection(typing, child_context,
+					pg_prove_pi_constant_codomain(typing, frame->body));
+			}
+			if (!child) goto fail;
+			frame->phase = PATTERN_TYPE_PI;
 		} else if (frame->phase <= PATTERN_TYPE_PI) {
 			if (frame->phase == PATTERN_TYPE_RETURN) result = pg_prove_computation_type(typing,
 				frame->totality, frame->effects, result);

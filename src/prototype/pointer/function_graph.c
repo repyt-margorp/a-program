@@ -429,7 +429,13 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 		const struct pg_evidence *current = environment ? map_value(s, environment, function) : function;
 		if (!current) goto done;
 		if (hypothesis_position(s, plan, pg_evidence_subject(current)->core) != plan->hypothesis_count) goto done;
-		function = parameter_source(s, function);
+		const struct pg_evidence *concrete = pg_function_graph_source(s->typing, current);
+		if (concrete) {
+			const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(concrete, 0), 0), 0);
+			environment = pg_prove_substitution_projection(s->typing, context, plan->context);
+			if (!environment) goto done;
+			function = concrete;
+		} else function = parameter_source(s, function);
 		if (!function) goto done;
 		/* The eta graph of an opaque parameter is its leaf, not a request
 		 * for another graph of that same parameter. */
@@ -899,15 +905,44 @@ const struct pg_evidence *pg_function_graph_source(struct pg_typing *typing,
 		const struct pg_evidence *environment = NULL;
 		function = pg_prove_construction_origin(typing, function, &environment);
 		if (!function) return NULL;
-		if (environment) {
-			const struct pg_context *scope = pg_evidence_context(function);
-			if (pg_evidence_context_map(environment) != pg_context_map_projection(typing, scope, scope)) return NULL;
-		}
 		enum pg_evidence_rule rule = pg_evidence_rule(function);
-		if (rule == PG_LAMBDA_INTRO) return function;
+		if (rule == PG_VARIABLE && environment) {
+			const struct pg_term *variable = pg_evidence_subject(function)->core;
+			const struct pg_evidence *image = pg_substitution_image(typing, environment, variable->as.reference);
+			if (!image || pg_evidence_subject(image)->core == variable) return NULL;
+			function = image;
+			continue;
+		}
+		if (rule == PG_LAMBDA_INTRO) {
+			if (!environment) return function;
+			const struct pg_context *scope = pg_evidence_context(function);
+			if (pg_evidence_context_map(environment) == pg_context_map_projection(typing, scope,
+				pg_evidence_context(environment))) return function;
+			/* Specialization keeps its typed context action. Reuse the mapped
+			 * Core binder, including capture avoidance, rather than freshening
+			 * a different graph source on every request. */
+			const struct pg_evidence *mapped = pg_prove_reindex(typing, environment, function);
+			const struct pg_term *core = mapped ? pg_evidence_subject(mapped)->core : NULL;
+			if (!core || core->kind != PG_LAMBDA) return NULL;
+			const struct pg_evidence *extension = pg_evidence_premise(pg_evidence_premise(function, 0), 0);
+			const struct pg_evidence *lifted = pg_prove_substitution_lift(typing, environment, extension, core->as.lambda.binder);
+			const struct pg_evidence *body = pg_prove_reindex(typing, lifted, pg_evidence_premise(function, 1));
+			return pg_prove_abstract(typing, pg_evidence_premise(environment, 1), pg_evidence_premise(lifted, 1), body);
+		}
+		if (rule == PG_APP_ELIM) {
+			const struct pg_evidence *callee = pg_evidence_premise(function, 0);
+			const struct pg_evidence *argument = pg_evidence_premise(function, 1);
+			if (environment) {
+				callee = pg_prove_reindex(typing, environment, callee);
+				argument = pg_prove_reindex(typing, environment, argument);
+			}
+			function = pg_prove_application_body(typing, callee, argument);
+			continue;
+		}
 		/* Invert only the introduction just checked from typed construction. */
 		if (rule != PG_THUNK_INTRO && rule != PG_FORCE_ELIM && rule != PG_THUNK_COMPUTATION) return NULL;
 		function = pg_evidence_premise(function, 0);
+		if (environment) function = pg_prove_reindex(typing, environment, function);
 	}
 	return NULL;
 }
@@ -975,8 +1010,15 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	if (!function) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; return 0; }
 	s->source_function = function;
 	s->outer_context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(function, 0), 0), 0);
-	while (pg_evidence_rule(pg_evidence_premise(function, 1)) == PG_LAMBDA_INTRO)
-		function = pg_evidence_premise(function, 1);
+	for (;;) {
+		const struct pg_evidence *body = pg_evidence_premise(function, 1);
+		const struct pg_term *domain, *codomain;
+		const struct pg_object *binder;
+		if (!pg_pi_view(pg_evidence_classifier(body), &domain, &binder, &codomain)) break;
+		body = pg_function_graph_source(typing, body);
+		if (!body) break;
+		function = body;
+	}
 	if (function_signature(s, function)) return 0;
 	if (pg_evidence_rule(s->body) == PG_MATCH_ELIM || pg_evidence_rule(s->body) == PG_INDUCTION_ELIM)
 		return prepare_graph(s);

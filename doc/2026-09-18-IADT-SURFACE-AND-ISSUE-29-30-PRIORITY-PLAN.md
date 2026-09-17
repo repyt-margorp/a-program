@@ -694,3 +694,110 @@ of the net-negative authority cleanup. PR documentation adds 710 lines separatel
 | `src/prototype/pointer/tests/acceptance/le-transitivity-wrong.p` | 13 | 0 | 13 |
 | `src/prototype/pointer/tests/{le-transitivity-probe.p => acceptance/le-transitivity.p}` | 6 | 1 | 5 |
 | `src/prototype/pointer/tests/image_cli.sh` | 4 | 1 | 3 |
+
+### 2026-09-18: G3 insertion proof and remaining helper boundary
+
+G3a remains open. The current worktree admits ordinary universal
+`insert_bound` and `insert_sorted` terms over the exact PR #30 `insertNat`.
+The historical provider is now `tests/fixtures/sorted-proof-provider.p`, SHA256
+`b859e517843b40a9448e26e28ab9d26f926e4485d6e1f62a6ef763d95aa3639c`;
+no algorithm or intrinsic spelling was changed. Its legacy namespace spelling
+is explicitly enabled in the test, not accepted by default.
+
+Two implementation gaps were isolated:
+
+- `pg_function_graph_source` stopped at typed partial applications and at
+  variables whose checked substitution image was a known callable. Follow
+  those existing typed edges, lift the mapped Lambda binder, and reuse the
+  ordinary graph owner. An unknown callable still uses the existing parameter
+  graph. Pure weakening must not allocate a different source.
+- `pattern_index_type` generalized Pi results but not their domains. For
+  example, matching `n` and returning `Box n -> Nat` failed when each branch
+  annotated its own constructor index. Recurse into the domain too. When its
+  generalized type changes, only a checked independent codomain may be
+  weakened into the new binder scope; otherwise this candidate fails.
+  Reinstantiating the complete candidate must still reproduce the original
+  branch type. This is not a new equality or an expected-type inference rule.
+
+The independent `indexed-motive-domain.p` regression is unsupported on the
+published G2 binary (1,246 steps), accepted by the worktree (1,645 steps), and
+its wrong-index sibling is rejected (1,384 steps). The insertion theorem's
+execution consumer normalizes through the constructed Sorted evidence to three
+successors. The completed gates are recorded below.
+
+The next obstacle is distinct from motive inference: `@insertionSort` retains
+a helper witness for the generic `@insertBy` instantiated at Nat/comparator,
+whereas the new theorem consumes `@insertNat`, generated after typed partial
+application. Those are distinct nominal graph declarations. The direct
+consumer below is rejected, correctly refusing to identify
+the two witnesses. Before G3a can close, provide a checked relationship or a
+coherent shared graph construction that preserves both public contracts.
+Do not merge declarations by Core/WHNF equality or replace the provider.
+This also matters for merge sort and QuickSort's generic helpers.
+
+- [x] Extract and hash the exact provider; construct universal insertion lemmas.
+- [x] Diagnose partial-source and Pi-domain synthesis gaps with independent input.
+- [x] Verify all added source/image/negative tests and the existing full suite.
+- [ ] Connect the generic helper graph to the specialized theorem explicitly.
+- [ ] Complete the insertion-sort theorem and actual execution consumers (G3a).
+- [ ] Complete G3b-G3d, then J1/J3; #29 stays open.
+
+Remaining connection probe (with provider and insertion-property definitions
+available through imports; rejected at 139,757 steps with a one-million budget):
+
+```a-program
+import Nat;
+import List;
+import insertionSort;
+import Sorted;
+import insert_sorted;
+sort_correct := \xs:List Nat => \ys:List Nat => \graph:@insertionSort xs ys => graph
+	@case0 => Sorted.nil
+	@case1 head tail sorted rest result inserted => insert_sorted head sorted result inserted *rest;
+sort_correct :: (xs:List Nat)->(ys:List Nat)->@insertionSort xs ys->Sorted ys;
+```
+
+Verification completed on the worktree:
+
+- Full optimized `check-acceptance`: `/tmp/a-program-g3-final-acceptance.log`.
+- ASan/UBSan `program_test`, including repeated source lookup with no further
+  proof/occurrence allocation: `/tmp/a-program-g3-asan-program.log`.
+- All-sanitized image CLI, including new positive and negative source fixtures:
+  `/tmp/a-program-g3-asan-images.log`.
+- Exact-provider insertion theorem consumers, completed and partial images,
+  inert resaves and a rejected wrong-index theorem, both optimized and
+  sanitized: `/tmp/a-program-g3-sort.log`, `/tmp/a-program-g3-asan-sort.log`.
+  The packet's result and the original `insertNat` execution both normalize to
+  `[zero, one, two]`. Sorted evidence is separately eliminated in empty,
+  middle, duplicate and after-tail insertion cases. Solve chunks 1 and 64 agree.
+
+Two initial gate failures were corrected explicitly: the new source test needed
+an explicit budget above the CLI default; an old C assertion required weakened
+function sources to be unsupported. The replacement checks the exact original
+source identity and stable repeated lookup, not merely acceptance.
+
+GitHub #29 was found closed immediately after PR #30's documentation merge,
+despite the progress comment saying it remained open. It was reopened with an
+explanation; the remaining universal proof requirements are unchanged.
+
+Changes relative to `e29b7c6`, excluding this progress document: implementation
++71/-15 (net +56), tests and fixtures +518/-2 (net +516), prototype build runner
++10/-2 (net +8). The 302-line provider is the verbatim historical test input,
+not added compiler machinery. This feature repair is not the later net-negative
+authority refactor.
+
+| File under `src/prototype/pointer/` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `evidence.c` | 22 | 8 | 14 |
+| `function_graph.c` | 49 | 7 | 42 |
+| `Makefile` | 10 | 2 | 8 |
+| `tests/program.c` | 5 | 1 | 4 |
+| `tests/image_cli.sh` | 3 | 1 | 2 |
+| `tests/sort_insertion.sh` | 37 | 0 | 37 |
+| `tests/fixtures/sorted-proof-provider.p` | 302 | 0 | 302 |
+| `tests/acceptance/function-graph-partial-source.p` | 23 | 0 | 23 |
+| `tests/acceptance/function-graph-partial-source-wrong.p` | 8 | 0 | 8 |
+| `tests/acceptance/indexed-motive-domain.p` | 9 | 0 | 9 |
+| `tests/acceptance/indexed-motive-domain-wrong.p` | 6 | 0 | 6 |
+| `tests/acceptance/sort-insertion-property.p` | 118 | 0 | 118 |
+| `tests/acceptance/sort-insertion-property-wrong.p` | 7 | 0 | 7 |
