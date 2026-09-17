@@ -320,7 +320,8 @@ Checkboxes mean implementation plus the stated verification, not just a design.
 - [x] G2b: Comparator theorem related to conventional LE, not only Compared.
 - [x] G3a: Universal insertion-sort Sorted proof tied to actual results
   (exact PR #30 provider; source/image/negative and sanitizer gates below).
-- [ ] G3b: Universal tree-sort Sorted proof tied to actual results.
+- [x] G3b: Universal tree-sort Sorted proof tied to actual results
+  (exact provider; full optimized and affected sanitizer gates below).
 - [ ] G3c: Universal reported merge-sort Sorted proof tied to actual results.
 - [ ] G3d: Universal QuickSort Sorted proof tied to actual results.
 - [ ] J1: Combined regression and sanitizer gates; no ignored failures.
@@ -908,5 +909,82 @@ Changes against `006a969`, excluding this progress document: implementation
 | `tests/acceptance/open-recursive-conversion-wrong.p` | 6 | 0 | 6 |
 | `tests/acceptance/indexed-normalized-transport.p` | 11 | 0 | 11 |
 | `tests/acceptance/indexed-normalized-transport-wrong.p` | 9 | 0 | 9 |
+
+## G3b: Tree-Sort Proof (2026-09-18)
+
+`sort-tree-property.p` proves, for the unchanged PR #30 provider:
+
+```a-program
+tree_correct :: (xs:List Nat)->(ys:List Nat)->
+    @treeSort Nat (&natLessOrEqual) xs ys->Sorted ys;
+```
+
+Ordinary IADTs express upper/lower bounds and ordered trees. Graph induction
+proves insertion preserves these invariants, building creates an ordered tree,
+and traversal produces a Sorted list. Append lemmas preserve list bounds and
+sortedness across a separating pivot. No tree-sort rule, alternate algorithm,
+finite enumeration of inputs, or order axiom is added to the kernel.
+
+The first append proof exposed an independent Pi-result extraction gap. After
+generalizing an earlier domain, selecting a later independent codomain through
+an unnecessary bound argument could lose the retained nominal formation.
+`pattern_index_type` now prefers checked constant-codomain projection when
+independence holds. Dependent codomains still require the unchanged domain and
+ordinary typed substitution. Reinstantiation of the candidate is still checked.
+This reorders existing rules; it adds no conversion equation, inference from
+`::`, replacement of raw binders, or copied typing authority. It does not claim
+to solve general dependent-domain inversion or every typed-selection problem.
+
+The standalone `indexed-independent-pi-motive.p` reproduces the problem without
+ordering or sorting: baseline `ffda902` is unsupported in 8,068 steps; the fixed
+implementation accepts its unannotated recursive definition and checks its
+separate type expectation in 11,091 steps. The whole tree proof is accepted in 403,465
+steps. Actual execution consumers include empty, singleton, duplicate, mixed,
+ascending and descending inputs. A negative consumer falsely ascribes the
+output's Sorted evidence to the arbitrary input.
+
+An initial runner failure was its 1,000,000-step comparison budget: consuming
+the ascending four-element proof takes approximately 1,082,000 steps. The test
+binary now accepts an explicit comparison budget; only the completed tree
+comparisons request 2,000,000. The default remains unchanged. Inputs and proof
+consumption are not reduced to make the test pass.
+
+- [x] Universal source theorem and isolated baseline reproduction.
+- [x] Extended source/image/negative tree runner, chunks 1/64 and inert resaves.
+- [x] Full optimized acceptance (`/tmp/a-program-g3b-acceptance.log`, exit 0).
+- [x] ASan/UBSan synthesis, program and extended sort runner
+      (`/tmp/a-program-g3b-asan-{synthesis,program,sort}.log`, all exit 0).
+- [x] Full sanitized image runner (`/tmp/a-program-g3b-asan-images.log`, exit 0).
+- [x] Record final counts and pass the Main publication gates.
+
+Verification uses `make -f src/prototype/pointer/Makefile -j2
+BUILD=/tmp/a-program-g3-tree check-acceptance` with default `-O2 -Werror`.
+The sanitizer binaries use `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -no-pie`, with `ASAN_OPTIONS=detect_leaks=1` and
+`UBSAN_OPTIONS=halt_on_error=1`. All four sanitized runs above exit 0.
+This verified G3b epoch is ready for atomic publication to Main and the active
+rewrite branch; #29 must remain open with the remaining obligations stated.
+
+G3c/G3d and final J1/J3 remain open. No issue closure or broad authority refactor
+is authorized by this intermediate result.
+
+The optimized image comparisons consume 1,082,155 steps for the ascending input
+and 976,328 for the descending input, identically at chunk sizes 1 and 64.
+The invalid input-index theorem is rejected in 404,253 steps. Explicit test
+budget 1 remains a failure, and budget 0 is rejected as invalid; increasing a
+budget does not change acceptance or equality criteria.
+
+Changes against `ffda902`, excluding this document: implementation +6/-6 (net
+0), tests/proofs +268/-2 (net +266). There is no new implementation module.
+
+| File under `src/prototype/pointer/` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `evidence.c` | 6 | 6 | 0 |
+| `tests/program.c` | 16 | 2 | 14 |
+| `tests/image_cli.sh` | 1 | 0 | 1 |
+| `tests/sort_insertion.sh` | 24 | 0 | 24 |
+| `tests/acceptance/indexed-independent-pi-motive.p` | 21 | 0 | 21 |
+| `tests/acceptance/sort-tree-property.p` | 197 | 0 | 197 |
+| `tests/acceptance/sort-tree-property-wrong.p` | 9 | 0 | 9 |
 | `tests/acceptance/sort-insertion-sort-property.p` | 79 | 0 | 79 |
 | `tests/acceptance/sort-insertion-sort-property-wrong.p` | 8 | 0 | 8 |

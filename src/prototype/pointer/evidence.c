@@ -4604,15 +4604,15 @@ static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
 			frame->extension = pg_prove_context_extension(typing, frame->context, binder, result);
 			child_context = frame->extension;
 			if (!child_context) goto fail;
-			if (pg_alpha_equal(domain, pg_evidence_subject(result)->core) == 1) {
+			/* Independent results need no argument substitution, including
+			 * through earlier domains generalized to different index images. */
+			const struct pg_evidence *constant = pg_prove_pi_constant_codomain(typing, frame->body);
+			if (constant) {
+				child = pg_prove_projection(typing, child_context, constant);
+			} else if (pg_alpha_equal(domain, pg_evidence_subject(result)->core) == 1) {
 				child = pg_prove_pi_codomain(typing,
 					pg_prove_projection(typing, child_context, frame->body),
 					pg_prove_variable(typing, child_context, binder));
-			} else {
-				/* A changed domain cannot retype the original bound variable.
-				 * Only an independent codomain can be weakened into this scope. */
-				child = pg_prove_projection(typing, child_context,
-					pg_prove_pi_constant_codomain(typing, frame->body));
 			}
 			if (!child) goto fail;
 			frame->phase = PATTERN_TYPE_PI;

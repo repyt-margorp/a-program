@@ -182,6 +182,7 @@ acceptance/function-graph-partial-source.p main:expected aliasMain:expected
 acceptance/indexed-motive-domain.p main:expected
 acceptance/open-recursive-conversion.p
 acceptance/indexed-normalized-transport.p main:expected
+acceptance/indexed-independent-pi-motive.p main:expected
 acceptance/nonrecursive-computed-index.p main:one other:two
 acceptance/nonrecursive-open-index.p main:one other:two
 acceptance/function-graph-exposed-match.p main proofMain quotedMain sequencedMain indexedMain

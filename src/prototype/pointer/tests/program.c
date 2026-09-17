@@ -6,6 +6,8 @@
 #include "host.h"
 
 #include <assert.h>
+#include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -198,6 +200,7 @@ static void modules(void)
 }
 
 static int allow_legacy_intrinsic_dot;
+static uint64_t comparison_steps = 1000000;
 
 static struct pg_program *load_program(const char *path)
 {
@@ -229,7 +232,7 @@ static int equal_results(struct pg_program *p, const char *label,
 		pg_program_destroy(p);
 		return 1;
 	}
-	while (p->synthesis.ready && p->synthesis.steps < 1000000)
+	while (p->synthesis.ready && p->synthesis.steps < comparison_steps)
 		pg_synthesis_advance(&p->synthesis, chunk);
 	const struct pg_evidence *x = pg_synthesis_result(l), *y = pg_synthesis_result(r);
 	if (x && pg_evidence_judgement(x) == PG_JUDGEMENT_COMPUTATION) x = pg_prove_return_value(&p->typing, x);
@@ -241,7 +244,7 @@ static int equal_results(struct pg_program *p, const char *label,
 		struct pg_conversion conversion = {0};
 		equal = !pg_conversion_init(&conversion, &p->evaluation,
 			pg_evidence_classifier(x), pg_evidence_classifier(y));
-		for (uint64_t budget = 0; equal && pg_conversion_status(&conversion) == PG_CONVERSION_PENDING && budget < 1000000;
+		for (uint64_t budget = 0; equal && pg_conversion_status(&conversion) == PG_CONVERSION_PENDING && budget < comparison_steps;
 			budget += chunk) pg_conversion_advance(&conversion, chunk);
 		equal = equal && pg_conversion_status(&conversion) == PG_CONVERSION_EQUAL;
 		pg_conversion_destroy(&conversion);
@@ -726,6 +729,17 @@ int main(int argc, char **argv)
 	if (argc > 1 && !strcmp(argv[1], "--legacy-intrinsic-dot")) {
 		allow_legacy_intrinsic_dot = 1;
 		++argv; --argc;
+	}
+	if (argc > 2 && !strcmp(argv[1], "--steps")) {
+		char *end;
+		errno = 0;
+		uintmax_t limit = strtoumax(argv[2], &end, 10);
+		if (errno || end == argv[2] || *end || argv[2][0] == '-' || !limit || limit > UINT64_MAX - 64) {
+			fputs("invalid comparison step limit\n", stderr);
+			return 2;
+		}
+		comparison_steps = (uint64_t)limit;
+		argv += 2; argc -= 2;
 	}
 	if (argc == 3 && (!strcmp(argv[1], "--reject") || !strcmp(argv[1], "--unsupported"))) {
 		struct pg_program *p = load_program(argv[2]);

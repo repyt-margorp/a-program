@@ -58,3 +58,27 @@ code=0
 "$binary" --legacy-intrinsic-dot --steps 1000000 --imports "$directory/provider.p" "$directory/wrong-sort.p" || code=$?
 test "$code" = 1
 printf '%s\n' 'insertionSort: universal Sorted proof, executed graph packets, source/image agreement and wrong input-index rejection passed'
+
+# Reuse the checked order lemmas, excluding their local execution examples.
+sed '/^import read_sorted;/,$d; /^import /d' "$proof" >> "$directory/provider.p"
+proof="$root/acceptance/sort-tree-property.p"
+"$binary" --legacy-intrinsic-dot --steps 1000000 --imports "$directory/provider.p" --save "$directory/tree.a" "$proof"
+for pair in main:four empty:zero singleton:one_value already:four reversed:four packet_value:expected_value direct_value:expected_value; do
+	"$compare" --steps 2000000 --equal-image "$directory/tree.a" "${pair%:*}" "${pair#*:}"
+done
+for steps in 0 100; do
+	code=0
+	"$binary" --legacy-intrinsic-dot --imports "$directory/provider.p" --steps "$steps" --save "$directory/partial.a" "$proof" || code=$?
+	test "$code" = 3
+	code=0
+	"$binary" --load --steps 0 --save "$directory/resaved.a" "$directory/partial.a" || code=$?
+	test "$code" = 3
+	cmp "$directory/partial.a" "$directory/resaved.a"
+	"$compare" --equal-image "$directory/resaved.a" main four
+done
+cat "$proof" > "$directory/wrong-tree.p"
+sed '/^import /d' "$root/acceptance/sort-tree-property-wrong.p" >> "$directory/wrong-tree.p"
+code=0
+"$binary" --legacy-intrinsic-dot --steps 1000000 --imports "$directory/provider.p" "$directory/wrong-tree.p" || code=$?
+test "$code" = 1
+printf '%s\n' 'treeSort: universal bounds and Sorted proof, execution witnesses, images and wrong input-index rejection passed'
