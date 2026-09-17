@@ -147,6 +147,33 @@ static void accepted_structures(struct pg_typing *typing)
 	puts("accepted structure: exact typed projections without premise reconstruction or evaluation");
 }
 
+static void source_preparation_subscription(struct pg_typing *typing)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
+	while (synthesis.ready) pg_synthesis_advance(&synthesis, 1);
+	struct pg_synthesis_job *producer = request(&synthesis, scope, "v := (\\x : @ => x) (@{unit:*;});");
+	struct pg_synthesis_job *structure = pg_synthesis_term_structure(&synthesis, producer);
+	/* The producer starts preparation; its consumer runs before the newly
+	 * enqueued children. Wait on the producer, not its moving prerequisite. */
+	pg_synthesis_advance(&synthesis, 2);
+	assert(pg_synthesis_status(producer) == PG_SYNTHESIS_PENDING);
+	assert(pg_synthesis_dependency(structure) == producer);
+	assert(!complete(&synthesis, structure, PG_SYNTHESIS_DONE));
+	const struct pg_term *core = pg_synthesis_type_structure_result(structure);
+	const struct pg_evidence *proof = complete(&synthesis, producer, PG_SYNTHESIS_DONE);
+	assert(pg_alpha_equal(core, pg_evidence_subject(proof)->core) == 1);
+	while (synthesis.ready) pg_synthesis_advance(&synthesis, 1);
+	uint64_t steps = synthesis.steps;
+	pg_synthesis_advance(&synthesis, 1000);
+	assert(synthesis.steps == steps && !pg_synthesis_dependency(structure));
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+}
+
 struct effect_copy {
 	const struct pg_effect_inference *source;
 	struct pg_effect_inference *destination;
@@ -6236,6 +6263,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	accepted_structures(&typing);
+	source_preparation_subscription(&typing);
 	graded_application(&typing);
 	effect_equations(&typing);
 	pending_effect_contexts(&typing);

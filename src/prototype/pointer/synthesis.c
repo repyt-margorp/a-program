@@ -7307,21 +7307,15 @@ static int named_term_ready(const struct pg_synthesis_job *producer)
 	return source_value_kind(producer) >= 0;
 }
 
-/* Wait for preparation's current prerequisite, not whole-source acceptance. */
-static int await_source_preparation(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *job, struct pg_synthesis_job *producer)
+/* Descriptive preparation is independent of acceptance. Both subscription
+ * and publication use this predicate, never a copy of a child's dependency. */
+static int source_preparing(const struct pg_synthesis_job *producer)
 {
 	if (producer->status != PG_SYNTHESIS_PENDING) return 0;
-	if (producer->role == DERIVATION_INPUT_JOB && !producer->left) {
-		subscribe(synthesis, job, producer, 1);
-		return 1;
-	}
-	if (producer->role == BODY_JOB && !producer->value_job) {
-		subscribe(synthesis, job, producer, 1);
-		return 1;
-	}
 	int preparing = 0;
 	switch (producer->role) {
+	case DERIVATION_INPUT_JOB: preparing = !producer->left; break;
+	case BODY_JOB: preparing = !producer->value_job; break;
 	case OPERATION_JOB:
 		preparing = !producer->left;
 		break;
@@ -7359,10 +7353,14 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 		break;
 	default: break;
 	}
-	if (!preparing) return 0;
-	if (producer->dependency)
-		depend(synthesis, job, producer->dependency->child);
-	else enqueue(synthesis, job);
+	return preparing;
+}
+
+static int await_source_preparation(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, struct pg_synthesis_job *producer)
+{
+	if (!source_preparing(producer)) return 0;
+	subscribe(synthesis, job, producer, 1);
 	return 1;
 }
 
@@ -7448,7 +7446,6 @@ static void body_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *j
 		}
 		if (!body) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		job->value_job = body;
-		wake(synthesis, job, 1);
 	}
 	struct pg_synthesis_job *context = (void *)job->inputs[1];
 	if (context) {
@@ -8746,7 +8743,6 @@ static void derivation_input_step(struct pg_synthesis *synthesis, struct pg_synt
 		}
 		job->left = pg_synthesis_rule(synthesis, &header, state->premises, equation ? work : NULL, equation);
 		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-		wake(synthesis, job, 1);
 	}
 	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 	job->result = job->left->result;
@@ -9876,6 +9872,7 @@ void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget)
 		--budget;
 		++synthesis->steps;
 		step(synthesis, job);
+		if (job->waiters && !source_preparing(job)) wake(synthesis, job, 1);
 	}
 }
 enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job) { return job->status; }

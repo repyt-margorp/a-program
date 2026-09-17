@@ -161,6 +161,42 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### Preparation Notifications (after `7c7a58b`)
+
+`await_source_preparation` followed the producer's changing dependency or
+requeued its consumer. Only BODY and stored derivation adapters used direct
+preparation subscriptions. All these paths now subscribe to the original
+producer. `source_preparing` is the shared predicate for subscription and
+publication at the existing scheduler step boundary. The two local publication
+calls are removed. Completion still wakes all consumers; early preparation
+wakes only preparation consumers, without accepting evidence or closing effects.
+There is no extra queue, cache, completion flag or Core/typed-data change.
+
+The new unit test fixes the queue order so the structural consumer encounters
+an unprepared application, checks its direct producer dependency, checks the
+final Core agrees, and checks the drained queue does no further work. Existing
+pending-effect, handler, failed-input, deep stored-DAG and cycle tests pass in
+debug and ASan/UBSan builds. Full optimized `check-acceptance` passes, including
+63/63 compatibility cases, sort properties, resaves and invalid claims.
+No implementation or test changes followed these runs. Local logs:
+`/tmp/a-program-authority-preparation-synthesis-final.log`,
+`/tmp/a-program-authority-preparation-asan.log`, and
+`/tmp/a-program-authority-preparation-acceptance.log`. Flags match the body epoch
+below; sanitizer coverage is the affected synthesis suite, not all acceptance.
+
+Same-input debug counters, before/after; proof/occurrence/Term counts are unchanged:
+
+| Input | Solve steps | Requests | Proofs | Occurrences | Terms |
+|---|---:|---:|---:|---:|---:|
+| `examples/06_pred.p` | 766 / 762 | 285 / 285 | 224 | 157 | 120 |
+| `length-output-proof.p` | 9,813 / 9,369 | 3,308 / 3,301 | 4,941 | 3,574 | 2,031 |
+| Original IF8 QuickSort | 48,875 / 46,766 | 15,017 / 14,998 | 23,315 | 19,522 | 11,958 |
+
+Fewer requests reflect accepted projections becoming available at different
+queue positions, not removal of proof checks. These are work counters, not
+wall-clock claims. Implementation `synthesis.c`: +14/-17 (net -3); permanent
+tests `tests/synthesis.c`: +28/-0. Other pending reconstruction remains open.
+
 ### Body Adaptation: One Prepared Rule (after `cee33c3`)
 
 `BODY_JOB` previously performed value-to-computation adaptation in three places:

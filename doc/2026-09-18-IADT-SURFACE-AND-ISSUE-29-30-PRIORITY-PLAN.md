@@ -1494,3 +1494,16 @@ Published as `fe7b3e9d681863eae0378938cc41b1ed47841158`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `cee33c3`; both
 remote tips verified. Documentation in that commit is +86/-3, separate from
 implementation and tests; total +161/-63. This publication record is doc-only.
+
+### R: Shared preparation notifications
+
+- [x] Replace consumer prerequisite-following/polling with existing producer
+  subscriptions; share readiness between subscription and publication.
+- [x] Remove per-adapter publication calls; add direct-dependency and idle-queue
+  regression coverage. Existing pending-effect/cycle and debug synthesis pass.
+- [x] Full optimized acceptance and affected ASan/UBSan synthesis.
+- [ ] Publish the completed epoch to Main and verify remote tips.
+
+The [notification audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#preparation-notifications-after-7c7a58b)
+records the unchanged proof/node counts, lower work counts and per-file delta.
+This does not complete R's pending-structure or remaining authority cleanup.
