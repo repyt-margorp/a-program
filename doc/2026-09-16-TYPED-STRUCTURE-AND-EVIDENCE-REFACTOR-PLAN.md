@@ -2523,3 +2523,33 @@ retains R50's 131247 Solve transitions and all five recorded graph/query
 counts. The idle O0 sample is 1.1104 seconds / 277372 KiB; one sample, not a
 performance improvement claim. Logs: `/tmp/a-program-typed-structure-r51-*`.
 The net-negative and remaining structural migration gates are not waived.
+
+### 2026-09-17: Expose checked unary results through the shared query (R52)
+
+- [x] Share RETURN/THUNK inversion between explicit kernel access and checked
+  input queries. A completed input query can use the existing inversion rule
+  on an accepted unary result even when the source reduction's construction
+  cannot be exposed. It does not re-execute the source handler or make a
+  descriptive Core node acceptable. Existing successful scoped/congruent
+  queries retain their typed child and classifier formation.
+- [x] Remove the inversion-to-query dependency from the shared rule checker;
+  it consumes an optional already checked child. This avoids recursively
+  querying the same normalized result. F/U formation selection remains
+  distinct and no longer has unused term-judgement branches.
+- [x] Strengthen R50's normalized-handler test: the common input query now
+  returns the checked result instead of being unavailable. Check projection,
+  normalized thunk contents, exact context/Core/classifier, rejection of a
+  nonexistent second input, ordinary derivation reconstruction, completed
+  query reuse and the generated graph witness's executed result.
+- [x] Full debug acceptance passes, including 63/63 compatibility and final
+  QuickSort source/image checks. ASan/UBSan Core, IADT, Identity, synthesis
+  and imported QuickSort pass. Logs: `/tmp/a-program-typed-structure-r52-*`.
+
+Against `cb5769e`: `evidence.c` +42/-20 (**+22**); `tests/core.c` +32/-4.
+Cumulative implementation/header is **+1756** against `4657cc6`, so the
+required overall reduction is still unmet. O0 QuickSort: 1.1203 seconds /
+276832 KiB / 131247 Solve transitions; all five graph/query counts remain
+R51's values. One timing sample does not establish a performance change.
+No Core tag, logical rule or image format changes. This makes the existing
+unary inversion available consistently; it does not solve arbitrary IH or
+dependent result reconstruction. R2/R3/R5 and Main publication remain open.

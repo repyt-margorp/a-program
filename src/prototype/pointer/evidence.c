@@ -771,6 +771,8 @@ struct pg_typed_query {
 
 static int typed_body_match(struct pg_typed_query *work);
 static int typed_input_step(struct pg_typed_query *work);
+static const struct pg_evidence *unary_term_content(struct pg_typing *typing,
+	const struct pg_evidence *proof, const struct pg_occurrence *child);
 
 static struct pg_typed_query *typed_query_request(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument,
@@ -950,6 +952,9 @@ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
 		if (!current->status) {
 			if (current != work) ++current->steps;
 			current->status = current->kind == TYPED_INPUT ? typed_input_step(current) : typed_body_step(current);
+			if (current->kind == TYPED_INPUT && current->status == 1 && !current->result && !current->ordinal)
+				current->result = unary_term_content(current->typing,
+					pg_prove_structural_subject(current->typing, current->source), NULL);
 		}
 		if (current->status) {
 			if (work->waiting) work->waiting = work->waiting->parent;
@@ -3319,8 +3324,8 @@ static int structural_input(struct pg_typing *typing, const struct pg_occurrence
 	return status > 0;
 }
 
-/* Preserve an available typed child through context action. A computed result
- * without exposed children is kept explicit, not encoded as a fake child edge. */
+/* A selected F/U formation retains its source when context action cannot
+ * expose the child directly. Selection is not itself typing acceptance. */
 static const struct pg_occurrence *content_subject(struct pg_typing *typing,
 	const struct pg_occurrence *source, const struct pg_term *core,
 	const struct pg_term *classifier, enum pg_evidence_judgement judgement)
@@ -3329,23 +3334,44 @@ static const struct pg_occurrence *content_subject(struct pg_typing *typing,
 	if (!structural_input(typing, source, 0, &child)) return NULL;
 	if (child && child->context == source->context && child->core == core && child->judgement == judgement)
 		return pg_occurrence_boundary(typing, child, judgement, classifier);
-	if (judgement == PG_JUDGEMENT_VALUE || judgement == PG_JUDGEMENT_COMPUTATION)
-		return pg_occurrence_derived(typing, source, judgement, core, classifier);
 	return pg_occurrence_selected(typing, source, 0, NULL, judgement, core, classifier);
 }
 
 /* Inversion uses an accepted judgement, never an untyped constructor spine. */
-static const struct pg_evidence *term_content(struct pg_typing *typing,
-	const struct pg_evidence *proof, const struct pg_object *operation,
-	const struct pg_term *classifier, enum pg_evidence_rule rule,
-	enum pg_evidence_judgement judgement)
+static const struct pg_evidence *unary_term_content(struct pg_typing *typing,
+	const struct pg_evidence *proof, const struct pg_occurrence *child)
 {
+	if (!pg_evidence_owned_by(proof, typing)) return NULL;
+	const struct pg_object *operation;
+	const struct pg_term *classifier;
+	enum pg_evidence_rule rule;
+	enum pg_evidence_judgement judgement;
+	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_COMPUTATION) {
+		const struct pg_effect_row *effects;
+		enum pg_totality totality;
+		if (!pg_computation_type_view(pg_evidence_classifier(proof), &totality, &effects, &classifier) || pg_effect_count(effects)) return NULL;
+		operation = &pg_return_operation;
+		rule = PG_RETURN_VALUE;
+		judgement = PG_JUDGEMENT_VALUE;
+	} else if (pg_evidence_judgement(proof) == PG_JUDGEMENT_VALUE) {
+		if (!pg_thunk_type_view(pg_evidence_classifier(proof), &classifier)) return NULL;
+		operation = &pg_thunk_operation;
+		rule = PG_THUNK_COMPUTATION;
+		judgement = PG_JUDGEMENT_COMPUTATION;
+	} else return NULL;
 	const struct pg_term *core = pg_evidence_subject(proof)->core;
 	if (core->kind != PG_APPLICATION) return NULL;
 	const struct pg_term *head = core->as.application.function;
 	if (head->kind != PG_REFERENCE || head->as.reference != operation) return NULL;
-	const struct pg_occurrence *subject = content_subject(typing, pg_evidence_subject(proof),
-		core->as.application.argument, classifier, judgement);
+	/* Inverting an accepted unary result does not require reconstructing
+	 * the redex which produced it. Retain a checked structural child when
+	 * available, but never query this result recursively to invent one. */
+	const struct pg_occurrence *subject;
+	if (child && child->context == pg_evidence_context(proof) &&
+		child->core == core->as.application.argument && child->judgement == judgement)
+		subject = pg_occurrence_boundary(typing, child, judgement, classifier);
+	else subject = pg_occurrence_derived(typing, pg_evidence_subject(proof),
+		judgement, core->as.application.argument, classifier);
 	if (!subject) return NULL;
 	if (!subject->type && !pg_evidence_for_subject(typing, subject, NULL)) {
 		const struct pg_evidence *formation = formed_classifier(typing, NULL, proof);
@@ -3367,12 +3393,9 @@ const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(computation, typing)) return NULL;
 	if (pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (computation->rule == PG_RETURN_INTRO) return computation->premises[0];
-	const struct pg_term *classifier;
-	const struct pg_effect_row *effects;
-	enum pg_totality totality;
-	if (!pg_computation_type_view(pg_evidence_subject(computation)->classifier, &totality, &effects, &classifier) || pg_effect_count(effects)) return NULL;
-	return term_content(typing, computation, &pg_return_operation, classifier,
-		PG_RETURN_VALUE, PG_JUDGEMENT_VALUE);
+	const struct pg_occurrence *child;
+	if (!structural_input(typing, pg_evidence_subject(computation), 0, &child)) return NULL;
+	return unary_term_content(typing, computation, child);
 }
 
 const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
@@ -3381,10 +3404,9 @@ const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(value, typing)) return NULL;
 	if (pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) return NULL;
 	if (value->rule == PG_THUNK_INTRO) return value->premises[0];
-	const struct pg_term *classifier;
-	if (!pg_thunk_type_view(pg_evidence_subject(value)->classifier, &classifier)) return NULL;
-	return term_content(typing, value, &pg_thunk_operation, classifier,
-		PG_THUNK_COMPUTATION, PG_JUDGEMENT_COMPUTATION);
+	const struct pg_occurrence *child;
+	if (!structural_input(typing, pg_evidence_subject(value), 0, &child)) return NULL;
+	return unary_term_content(typing, value, child);
 }
 
 const struct pg_evidence *pg_prove_total_pure_value(struct pg_typing *typing,

@@ -4823,12 +4823,40 @@ static void request_typing_test(struct pg_graph *graph)
 	const struct pg_evidence *answer = pg_prove_return_value(&typing, normal);
 	assert(answer && pg_evidence_subject(answer)->core == pg_evidence_subject(payload)->core);
 	{
-		/* A receipt can expose RETURN while the checked input query does not
-		 * yet support the source handler. Graph generation must not dereference
-		 * a missing child; checked RETURN inversion can still form its leaf. */
+		/* The checked result exposes its returned value without replaying
+		 * the source handler's clauses. Inversion and structural access agree. */
 		struct pg_typed_query *input = pg_typed_input_request(&typing, normal, 0);
 		while (!pg_typed_query_advance(input, 1)) assert(pg_typed_query_steps(input) < 10000);
-		assert(!pg_typed_query_result(input));
+		assert(pg_typed_query_result(input));
+		assert(pg_evidence_subject(pg_typed_query_result(input)) == pg_evidence_subject(answer));
+		reconstruct_derivation(&typing, &classifiers, pg_typed_query_result(input));
+		uint64_t input_steps = pg_typed_query_steps(input);
+		size_t proofs = typing.proofs.count, occurrences = typing.occurrences.count;
+		assert(pg_typed_input_request(&typing, normal, 0) == input);
+		assert(pg_typed_query_advance(input, 64) == 1);
+		assert(pg_typed_query_steps(input) == input_steps);
+		assert(pg_prove_return_value(&typing, normal) == answer);
+		assert(typing.proofs.count == proofs && typing.occurrences.count == occurrences);
+		const struct pg_evidence *suspended = pg_prove_thunk(&typing, &classifiers, handled);
+		struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(suspended)->core);
+		while (pg_nf_advance(nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
+		const struct pg_evidence *normal_thunk = pg_prove_normalization(&typing, suspended, pg_nf_certificate(nf));
+		const struct pg_evidence *parents[] = {pg_prove_projection(&typing, scope, normal), normal_thunk};
+		for (size_t i = 0; i < 2; ++i) {
+			input = pg_typed_input_request(&typing, parents[i], 0);
+			while (!pg_typed_query_advance(input, i ? 64 : 1)) assert(pg_typed_query_steps(input) < 10000);
+			const struct pg_evidence *child = pg_typed_query_result(input);
+			assert(child && pg_evidence_context(child) == pg_evidence_context(parents[i]));
+			assert(pg_evidence_subject(child)->core == pg_evidence_subject(i ? normal : payload)->core);
+			assert(pg_evidence_classifier(child) == pg_evidence_classifier(i ? normal : payload));
+			const struct pg_evidence *extracted = i ? pg_prove_thunk_computation(&typing, parents[i])
+				: pg_prove_return_value(&typing, parents[i]);
+			assert(extracted && pg_evidence_subject(extracted) == pg_evidence_subject(child));
+			reconstruct_derivation(&typing, &classifiers, child);
+			struct pg_typed_query *absent = pg_typed_input_request(&typing, parents[i], 1);
+			while (!pg_typed_query_advance(absent, 1)) assert(pg_typed_query_steps(absent) < 10000);
+			assert(!pg_typed_query_result(absent));
+		}
 		const struct pg_evidence *body = pg_prove_projection(&typing, scope, normal);
 		const struct pg_evidence *function = pg_prove_lambda(&typing,
 			pg_prove_pi(&typing, &classifiers, scope,
