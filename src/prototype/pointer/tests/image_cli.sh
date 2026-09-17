@@ -91,7 +91,7 @@ printf '%s\n' 'image cli: multi-root selection, retained obligations and range r
 printf '%s\n' 'image cli: parameterized List source/image NF agreement passed'
 
 # An unfinished image cannot bypass induction or coverage checks.
-for fixture in indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong indexed-tail-wrong indexed-computed-type-wrong nested-index-motive-wrong length-output-proof-wrong termination-wrong-target termination-wrong-value function-graph-curried-wrong function-graph-indexed-wrong function-graph-function-field-wrong function-graph-exposed-match-wrong function-graph-known-match-wrong function-graph-branch-tree-wrong function-graph-helper-call-wrong function-graph-callable-parameter-wrong; do
+for fixture in inferred-index-wrong-family inferred-index-earlier-wrong inferred-index-partial-dependent inferred-index-disagreement inferred-index-unrecoverable inferred-index-no-inverse inferred-index-unselected-invalid graph-duplicate-leaf-wrong graph-duplicate-leaf-ambiguous le-predecessor-wrong le-predecessor-invalid indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong indexed-tail-wrong indexed-computed-type-wrong nested-index-motive-wrong length-output-proof-wrong termination-wrong-target termination-wrong-value function-graph-curried-wrong function-graph-indexed-wrong function-graph-function-field-wrong function-graph-exposed-match-wrong function-graph-known-match-wrong function-graph-branch-tree-wrong function-graph-helper-call-wrong function-graph-callable-parameter-wrong; do
 	input="$(dirname "${BASH_SOURCE[0]}")/acceptance/$fixture.p"
 	for steps in 0 100; do
 		code=0
@@ -162,6 +162,19 @@ while read -r fixture names; do
 		fi
 	done
 done <<'GRAPHS'
+acceptance/inferred-index-declaration.p main
+acceptance/inferred-index-two-inputs.p main
+acceptance/inferred-index-effects.p main spineMain:spineExpected
+acceptance/inferred-index-later-recovery.p main
+acceptance/inferred-index-dependent.p main
+acceptance/inferred-index-graph.p main
+acceptance/inferred-index-copy.p main graphMain
+acceptance/graph-duplicate-leaf.p base:zero middle:zero last:one
+acceptance/graph-helper-leaf.p base:zero middle:zero last:one
+acceptance/function-graph-branch-name-collision.p main
+acceptance/graph-canonical-leaf-name.p base:zero main:one
+acceptance/graph-comparison-leaves.p base:trueValue greater:falseValue smaller:trueValue same:trueValue
+acceptance/le-predecessor.p main
 acceptance/nonrecursive-computed-index.p main:one other:two
 acceptance/nonrecursive-open-index.p main:one other:two
 acceptance/function-graph-exposed-match.p main proofMain quotedMain sequencedMain indexedMain

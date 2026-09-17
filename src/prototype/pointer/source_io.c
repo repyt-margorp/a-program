@@ -9,8 +9,8 @@
 #include "context_payload.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRC\56";
-static const char retained_magic[8] = "APGSRC\57";
+static const char magic[8] = "APGSRC\74";
+static const char retained_magic[8] = "APGSRC\75";
 enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING, HANDLER_SCOPE, HANDLER_BINDING, GRAPH_BINDING };
 
 struct environment {
@@ -20,6 +20,7 @@ struct environment {
 	const struct pg_syntax *syntax, *definitions;
 	struct pg_synthesis_job *rule;
 	struct pg_synthesis_job *producer;
+	const struct pg_object *binder;
 	struct pg_handler_clause_input allocation;
 	unsigned slot;
 };
@@ -48,6 +49,20 @@ static int callable_input(const struct pg_synthesis *synthesis, const struct pg_
 	return 0;
 }
 
+static int allocation_input(const struct pg_synthesis *synthesis, const struct pg_synthesis_job *job,
+	const struct pg_context **prefix, const struct pg_context **end, const struct pg_object **reference)
+{
+	if (!pg_synthesis_member_allocation(synthesis, job, prefix, end)) {
+		if (*prefix == *end) return -1;
+		*reference = (*end)->binder;
+		return 0;
+	}
+	struct callable_input input;
+	if (callable_input(synthesis, job, &input)) return -1;
+	*prefix = input.prefix; *end = input.fields; *reference = input.reference;
+	return 0;
+}
+
 static int source_input(const struct pg_synthesis *synthesis, const struct pg_synthesis_job *job,
 	const struct pg_source_scope **scope, const struct pg_syntax **syntax, const struct pg_syntax **definitions)
 {
@@ -71,7 +86,6 @@ static int environment(const struct pg_synthesis *synthesis, const struct pg_sou
 		output->target = binding.parent;
 		output->syntax = binding.clause;
 		output->definitions = binding.handler;
-		output->rule = binding.origin;
 		output->producer = binding.allocation.operation;
 		output->allocation = binding.allocation;
 		output->slot = binding.slot;
@@ -88,9 +102,8 @@ static int environment(const struct pg_synthesis *synthesis, const struct pg_sou
 		return 0;
 	}
 	if (input.binding) {
-		const struct pg_object *binder;
-		if (pg_synthesis_binding_input(synthesis, input.binding, &output->parent, &output->syntax, &binder)) return -1;
-		output->kind = BINDING; output->rule = pg_synthesis_allocation_origin(input.binding);
+		if (pg_synthesis_binding_input(synthesis, input.binding, &output->parent, &output->syntax, &output->binder)) return -1;
+		output->kind = BINDING;
 		return 0;
 	}
 	if (input.definitions) {
@@ -162,7 +175,7 @@ struct source_member {
 
 struct origin_collection {
 	const struct pg_synthesis *synthesis;
-	struct pg_dag *scopes, *syntax, *rules, *origins, *producers, *callables;
+	struct pg_dag *scopes, *syntax, *rules, *origins, *producers, *allocations, *bindings, *matches;
 	struct pg_dag objects, terms;
 	struct pg_index candidates;
 	struct pg_declaration_io *codec;
@@ -184,6 +197,14 @@ static int collect_allocation(struct origin_collection *c, const struct pg_conte
 	return 0;
 }
 
+static int collect_member_use(struct origin_collection *c, struct pg_synthesis_job *job,
+	const struct pg_context *prefix, const struct pg_context *fields)
+{
+	if (id(c->allocations, job)) return 0;
+	if (!fields || prefix == fields || pg_dag_add(c->origins, job) || pg_dag_add(c->allocations, job)) return -1;
+	return collect_allocation(c, prefix, fields, fields->binder);
+}
+
 /* Drain newly discovered immutable inputs once, including edges from lexical
  * names to prepared producers and back to their defining scopes. */
 static int collect_inputs(struct origin_collection *c)
@@ -199,7 +220,7 @@ static int collect_inputs(struct origin_collection *c)
 			struct callable_input callable;
 			enum pg_reduction_kind kind;
 			if (!callable_input(c->synthesis, producer->key, &callable)) {
-				if (pg_dag_add(c->callables, producer->key)) return -1;
+				if (pg_dag_add(c->allocations, producer->key)) return -1;
 				if (collect_allocation(c, callable.prefix, callable.fields, callable.reference)) return -1;
 				continue;
 			}
@@ -212,6 +233,9 @@ static int collect_inputs(struct origin_collection *c)
 			} else {
 				if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->syntax, term)) return -1;
 				if (definitions && pg_dag_add(c->syntax, definitions)) return -1;
+				const struct pg_context *prefix, *fields;
+				if (!pg_synthesis_member_allocation(c->synthesis, producer->key, &prefix, &fields) && fields != prefix)
+					if (collect_member_use(c, (void *)producer->key, prefix, fields)) return -1;
 				if (!pg_synthesis_source_input(c->synthesis, producer->key, &scope, &term)
 					&& pg_syntax_constructors(term)) {
 					for (size_t i = 0; i < pg_syntax_constructors(term)->item_count; ++i) {
@@ -237,6 +261,7 @@ static int collect_inputs(struct origin_collection *c)
 			if (input.definitions && pg_dag_add(c->syntax, input.definitions)) return -1;
 			if (input.rule && pg_dag_add(c->rules, input.rule)) return -1;
 			if (input.producer && pg_dag_add(c->producers, input.producer)) return -1;
+			if (input.binder && pg_dag_add(&c->terms, pg_reference(&c->rules->storage, input.binder))) return -1;
 			if (input.kind == HANDLER_BINDING) {
 				const struct pg_object *binders[] = {input.allocation.payload, input.allocation.resume, input.allocation.response};
 				for (size_t i = 0; i < 3; ++i)
@@ -250,20 +275,21 @@ struct origin_candidate {
 	struct pg_index_entry index;
 	const struct pg_object *object;
 	struct pg_synthesis_job *job;
+	const struct pg_source_binding *binding;
 };
 
 static int index_origin_object(struct origin_collection *c, struct pg_synthesis_job *job,
-	const struct pg_object *object)
+	const struct pg_source_binding *binding, const struct pg_object *object)
 {
 	if (!object) return -1;
 	uint64_t hash = (uintptr_t)object;
 	for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, hash); entry; entry = entry->next) {
 		const struct origin_candidate *candidate = (const void *)entry;
-		if (candidate->object == object && candidate->job == job) return 0;
+		if (candidate->object == object && candidate->job == job && candidate->binding == binding) return 0;
 	}
 	struct origin_candidate *candidate = pg_alloc(&c->objects.storage, sizeof(*candidate));
 	if (!candidate) return -1;
-	candidate->object = object; candidate->job = job;
+	candidate->object = object; candidate->job = job; candidate->binding = binding;
 	return pg_index_insert(&c->candidates, &candidate->index, hash);
 }
 
@@ -271,16 +297,33 @@ static int index_origin(void *owner, struct pg_synthesis_job *job)
 {
 	struct origin_collection *c = owner;
 	const struct pg_object *object = pg_synthesis_allocation_object(job);
-	if (index_origin_object(c, job, object)) return -1;
+	if (index_origin_object(c, job, NULL, object)) return -1;
 	/* Computation endpoints may retain only the layout, not the type family. */
 	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
-	return declaration ? index_origin_object(c, job,
+	return declaration ? index_origin_object(c, job, NULL,
 		pg_data_matcher(pg_data_declaration_layout(declaration))) : 0;
+}
+
+static int index_binding(void *owner, const struct pg_source_binding *input)
+{
+	return index_origin_object(owner, NULL, input, input->binder);
+}
+
+static int collect_binding(struct origin_collection *c, const struct pg_source_binding *input)
+{
+	if (input->syntax && !id(c->syntax, input->syntax)) return 0;
+	if (pg_dag_add(c->bindings, input)) return -1;
+	if (input->constructor && pg_dag_add(&c->terms, pg_reference(&c->rules->storage, input->constructor))) return -1;
+	if (pg_dag_add(&c->terms, pg_reference(&c->rules->storage, input->binder))) return -1;
+	for (size_t i = 0; i < input->scope_count; ++i)
+		if (pg_dag_add(&c->terms, pg_reference(&c->rules->storage, input->scope[i]))) return -1;
+	return 0;
 }
 
 static int collect_origin(void *owner, struct pg_synthesis_job *job)
 {
 	struct origin_collection *c = owner;
+	if (id(c->origins, job)) return 0;
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
 	const struct pg_object *binder = NULL;
@@ -303,8 +346,25 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 		parent = input.parent;
 		if (!parent) return 0;
 	}
-	if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->rules, pg_synthesis_allocation_origin(job))
+	if (pg_dag_add(c->scopes, scope)
 		|| (!binder && (pg_dag_add(c->origins, job) || pg_dag_add(c->producers, job)))) return -1;
+	if (syntax->kind == PG_SYNTAX_QUALIFIED) {
+		const struct pg_context *prefix, *fields;
+		if (pg_synthesis_member_allocation(c->synthesis, job, &prefix, &fields)) return -1;
+		return collect_member_use(c, job, prefix, fields);
+	}
+	if (syntax->kind == PG_SYNTAX_ELIMINATION) {
+		const struct pg_match_allocation *input = pg_synthesis_match_allocation(job, &c->rules->storage);
+		if (!input || pg_dag_add(c->matches, job)) return -1;
+		const struct pg_induction_allocation *a = &input->induction;
+		if (collect_allocation(c, input->prefix, input->motive, a->self)) return -1;
+		if (pg_dag_add(&c->terms, pg_reference(&c->rules->storage, a->recursion)) ||
+			pg_dag_add(&c->terms, pg_reference(&c->rules->storage, a->argument))) return -1;
+		for (size_t i = 0; i < a->count; ++i)
+			if (collect_allocation(c, input->branches[i], a->clauses[i], a->self)) return -1;
+		return 0;
+	}
+	if (!binder && pg_dag_add(c->rules, pg_synthesis_allocation_origin(job))) return -1;
 	return 0;
 }
 
@@ -315,7 +375,9 @@ static int retain_objects(struct origin_collection *c, const struct pg_dag_node 
 			uint64_t hash = (uintptr_t)node->key;
 			for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, hash); entry; entry = entry->next) {
 				const struct origin_candidate *candidate = (const void *)entry;
-				if (candidate->object == node->key && collect_origin(c, candidate->job)) return -1;
+				if (candidate->object != node->key) continue;
+				int status = candidate->binding ? collect_binding(c, candidate->binding) : collect_origin(c, candidate->job);
+				if (status) return -1;
 			}
 		}
 		previous = c->objects.last;
@@ -346,17 +408,19 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots, const struct pg_reduction_archive *reductions)
 {
 	if (!file || !synthesis || (count && !roots)) return -1;
-	struct pg_dag scopes = {0}, syntax = {0}, rules = {0}, origins = {0}, producers = {0}, callables = {0};
+	struct pg_dag scopes = {0}, syntax = {0}, rules = {0}, origins = {0}, producers = {0}, allocations = {0};
+	struct pg_dag bindings = {0}, matches = {0};
 	struct pg_effect_inference effects = {0};
 	struct pg_declaration_io codec = {0};
 	struct origin_collection collection = {.synthesis = synthesis, .scopes = &scopes,
 		.syntax = &syntax, .rules = &rules, .origins = &origins, .producers = &producers,
-		.callables = &callables, .codec = &codec};
+		.allocations = &allocations, .bindings = &bindings, .matches = &matches, .codec = &codec};
 	int status = -1;
 	/* Callbacks only inspect synthesis; no solver entry is invoked. */
 	if (pg_dag_init(&scopes, child, &synthesis) || pg_dag_init(&syntax, pg_syntax_child, NULL)
 		|| pg_dag_init(&producers, producer_child, &synthesis)
-		|| pg_dag_init(&rules, NULL, NULL) || pg_dag_init(&origins, NULL, NULL) || pg_dag_init(&callables, NULL, NULL)
+		|| pg_dag_init(&rules, NULL, NULL) || pg_dag_init(&origins, NULL, NULL) || pg_dag_init(&allocations, NULL, NULL)
+		|| pg_dag_init(&bindings, NULL, NULL) || pg_dag_init(&matches, NULL, NULL)
 		|| pg_graph_init(&rules.storage)
 		|| pg_dag_init(&collection.objects, NULL, NULL) || pg_index_init(&collection.candidates)
 		|| pg_effect_inference_init(&effects, &rules.storage)
@@ -365,6 +429,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	for (size_t i = 0; i < count; ++i) if (!roots[i] || pg_dag_add(&producers, roots[i])) goto done;
 	if (collect_inputs(&collection)) goto done;
 	if (pg_synthesis_visit_source_allocations(synthesis, index_origin, &collection)) goto done;
+	if (pg_synthesis_visit_source_bindings(synthesis, index_binding, &collection)) goto done;
 	if (retain_objects(&collection, NULL)) goto done;
 	if (reductions) {
 		const struct pg_dag_node *previous = collection.objects.last;
@@ -373,28 +438,51 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *const *derivations;
 	if (pg_synthesis_export_rule_closure(synthesis, &rules, &rules.storage, &effects, 1,
 		retain_dependencies, &collection, &derivations)) goto done;
-	if (collection.member_count > SIZE_MAX - callables.count) goto done;
-	size_t allocation_count = callables.count + collection.member_count;
+	if (matches.count > SIZE_MAX / (3 * sizeof(void *))) goto done;
+	const struct pg_match_allocation **match_inputs = pg_alloc(&rules.storage, matches.count * sizeof(*match_inputs));
+	if (!match_inputs) goto done;
+	size_t match_context_count = 0;
+	for (const struct pg_dag_node *node = matches.first; node; node = node->next) {
+		const struct pg_match_allocation *input = pg_synthesis_match_allocation(node->key, &rules.storage);
+		if (!input || SIZE_MAX - match_context_count < 2 ||
+			input->induction.count > (SIZE_MAX - match_context_count - 2) / 2) goto done;
+		match_inputs[node->id - 1] = input;
+		match_context_count += 2 + 2 * input->induction.count;
+	}
+	if (collection.member_count > SIZE_MAX - allocations.count) goto done;
+	size_t allocation_count = allocations.count + collection.member_count;
 	if (allocation_count > SIZE_MAX / (2 * sizeof(void *))) goto done;
-	size_t binding_count = 0;
+	size_t binding_reference_count = 0;
 	for (const struct pg_dag_node *node = scopes.first; node; node = node->next) {
 		struct environment input;
 		if (environment(synthesis, node->key, &input)) goto done;
-		if (input.kind == HANDLER_BINDING) ++binding_count;
+		size_t extra = input.kind == HANDLER_BINDING ? 3 : input.kind == BINDING;
+		if (extra > SIZE_MAX - binding_reference_count) goto done;
+		binding_reference_count += extra;
 	}
-	if (binding_count > (SIZE_MAX / sizeof(void *) - allocation_count) / 3) goto done;
-	size_t reference_count = allocation_count + 3 * binding_count;
-	const struct pg_context **contexts = pg_alloc(&rules.storage, 2 * allocation_count * sizeof(*contexts));
+	if (binding_reference_count > SIZE_MAX - allocation_count) goto done;
+	size_t reference_count = allocation_count + binding_reference_count;
+	for (const struct pg_dag_node *node = bindings.first; node; node = node->next) {
+		const struct pg_source_binding *input = node->key;
+		size_t extra = input->constructor ? 2 : 1;
+		if (extra > SIZE_MAX - reference_count || input->scope_count > SIZE_MAX - reference_count - extra) goto done;
+		reference_count += input->scope_count + extra;
+	}
+	if (matches.count > (SIZE_MAX - reference_count) / 3) goto done;
+	reference_count += 3 * matches.count;
+	if (reference_count > SIZE_MAX / sizeof(void *) || match_context_count > SIZE_MAX - 2 * allocation_count) goto done;
+	size_t context_count = 2 * allocation_count + match_context_count;
+	if (context_count > SIZE_MAX / sizeof(void *)) goto done;
+	const struct pg_context **contexts = pg_alloc(&rules.storage, context_count * sizeof(*contexts));
 	const struct pg_term **references = pg_alloc(&rules.storage, reference_count * sizeof(*references));
 	if (!contexts || !references) goto done;
-	for (const struct pg_dag_node *node = callables.first; node; node = node->next) {
-		struct callable_input input;
-		if (callable_input(synthesis, node->key, &input)) goto done;
-		contexts[2 * (node->id - 1)] = input.prefix;
-		contexts[2 * (node->id - 1) + 1] = input.fields;
-		references[node->id - 1] = pg_reference(&rules.storage, input.reference);
+	for (const struct pg_dag_node *node = allocations.first; node; node = node->next) {
+		const struct pg_object *reference;
+		if (allocation_input(synthesis, node->key,
+			&contexts[2 * (node->id - 1)], &contexts[2 * (node->id - 1) + 1], &reference)) goto done;
+		references[node->id - 1] = pg_reference(&rules.storage, reference);
 	}
-	size_t slot = callables.count;
+	size_t slot = allocations.count;
 	for (const struct source_member *member = collection.members; member; member = member->next, ++slot) {
 		contexts[2 * slot] = member->allocation.prefix;
 		contexts[2 * slot + 1] = member->allocation.fields;
@@ -403,12 +491,33 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	for (const struct pg_dag_node *node = scopes.first; node; node = node->next) {
 		struct environment input;
 		if (environment(synthesis, node->key, &input)) goto done;
+		if (input.kind == BINDING) references[slot++] = pg_reference(&rules.storage, input.binder);
 		if (input.kind != HANDLER_BINDING) continue;
 		const struct pg_object *binders[] = {input.allocation.payload, input.allocation.resume, input.allocation.response};
 		for (size_t i = 0; i < 3; ++i) references[slot++] = pg_reference(&rules.storage, binders[i]);
 	}
+	for (const struct pg_dag_node *node = bindings.first; node; node = node->next) {
+		const struct pg_source_binding *input = node->key;
+		for (size_t i = 0; i < input->scope_count; ++i) references[slot++] = pg_reference(&rules.storage, input->scope[i]);
+		references[slot++] = pg_reference(&rules.storage, input->binder);
+		if (input->constructor) references[slot++] = pg_reference(&rules.storage, input->constructor);
+	}
+	size_t context_slot = 2 * allocation_count;
+	for (size_t i = 0; i < matches.count; ++i) {
+		const struct pg_match_allocation *input = match_inputs[i];
+		const struct pg_induction_allocation *a = &input->induction;
+		contexts[context_slot++] = input->prefix;
+		contexts[context_slot++] = input->motive;
+		for (size_t j = 0; j < a->count; ++j) {
+			contexts[context_slot++] = input->branches[j];
+			contexts[context_slot++] = a->clauses[j];
+		}
+		references[slot++] = pg_reference(&rules.storage, a->self);
+		references[slot++] = pg_reference(&rules.storage, a->recursion);
+		references[slot++] = pg_reference(&rules.storage, a->argument);
+	}
 	struct pg_derivation_payload payload;
-	if (pg_contexts_pack(&rules.storage, 2 * allocation_count, contexts, reference_count, references,
+	if (pg_contexts_pack(&rules.storage, context_count, contexts, reference_count, references,
 		&payload.metadata_count, &payload.metadata, &payload.count, &payload.terms)) goto done;
 	size_t entry_count = 0;
 	for (const struct pg_dag_node *node = producers.first; node; node = node->next) {
@@ -441,7 +550,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		int force;
 		struct callable_input callable;
 		if (!callable_input(synthesis, node->key, &callable)) {
-			words[1] = callable.operation ? 6 : 5; words[2] = id(&callables, node->key); words[3] = callable.allocated;
+			words[1] = callable.operation ? 6 : 5; words[2] = id(&allocations, node->key); words[3] = callable.allocated;
 			words[4] = id(&producers, callable.left); words[5] = id(&producers, callable.right);
 		} else if (!pg_synthesis_normalization_input(synthesis, node->key, &left, &right, &kind, &force)) {
 			/* No scope: syntax slot carries the request mode, not an AST ID. */
@@ -474,14 +583,26 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		const struct pg_source_scope *scope;
 		const struct pg_syntax *term;
 		if (pg_synthesis_source_input(synthesis, node->key, &scope, &term)) goto done;
+		uint64_t allocation = term->kind == PG_SYNTAX_QUALIFIED ? id(&allocations, node->key)
+			: term->kind == PG_SYNTAX_ELIMINATION ? id(&matches, node->key)
+			: id(&rules, pg_synthesis_allocation_origin(node->key));
 		if (pg_wire_write_u64(file, id(&scopes, scope)) || pg_wire_write_u64(file, id(&syntax, term))
-			|| pg_wire_write_u64(file, id(&rules, pg_synthesis_allocation_origin(node->key)))) goto done;
+			|| pg_wire_write_u64(file, allocation)) goto done;
 	}
 	if (syntax.count > SIZE_MAX / sizeof(void *)) goto done;
 	const struct pg_syntax **terms = pg_alloc(&syntax.storage, syntax.count * sizeof(*terms));
 	if (!terms) goto done;
 	for (const struct pg_dag_node *node = syntax.first; node; node = node->next) terms[node->id - 1] = node->key;
 	if (pg_syntax_write(file, syntax.count, terms)) goto done;
+	if (pg_wire_write_u64(file, bindings.count)) goto done;
+	for (const struct pg_dag_node *node = bindings.first; node; node = node->next) {
+		const struct pg_source_binding *input = node->key;
+		if (pg_wire_write_u64(file, id(&syntax, input->syntax)) || pg_wire_write_u64(file, input->scope_count)
+			|| pg_wire_write_u64(file, input->slot)) goto done;
+	}
+	if (pg_wire_write_u64(file, matches.count)) goto done;
+	for (size_t i = 0; i < matches.count; ++i)
+		if (pg_wire_write_u64(file, match_inputs[i]->induction.count)) goto done;
 	if (pg_wire_write_u64(file, payload.metadata_count)) goto done;
 	for (size_t i = 0; i < payload.metadata_count; ++i)
 		if (pg_wire_write_u64(file, payload.metadata[i])) goto done;
@@ -494,7 +615,8 @@ done:
 	pg_index_destroy(&collection.candidates); pg_dag_destroy(&collection.terms); pg_dag_destroy(&collection.objects);
 	pg_declaration_io_destroy(&codec);
 	pg_effect_inference_destroy(&effects); pg_dag_destroy(&rules); pg_dag_destroy(&origins);
-	pg_dag_destroy(&syntax); pg_dag_destroy(&scopes); pg_dag_destroy(&producers); pg_dag_destroy(&callables);
+	pg_dag_destroy(&bindings); pg_dag_destroy(&matches);
+	pg_dag_destroy(&syntax); pg_dag_destroy(&scopes); pg_dag_destroy(&producers); pg_dag_destroy(&allocations);
 	return status;
 }
 
@@ -574,7 +696,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	struct pg_synthesis_job **producers = pg_alloc(graph, (size_t)np * sizeof(*producers));
 	if (!records || !scopes || !ids || !jobs || !origin_ids || !selections || !producers || !entries) goto fail;
 	size_t remaining = limit - (size_t)n - (size_t)nr - 3 * (size_t)no - 6 * (size_t)np - 3 * (size_t)ne;
-	size_t binding_count = 0;
+	size_t binding_reference_count = 0;
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t w[10];
 		for (size_t j = 0; j < 10; ++j) if (pg_wire_read_u64(file, &w[j])) goto fail;
@@ -585,8 +707,10 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		if (!name || fread(name, 1, (size_t)w[6], file) != w[6]) goto fail;
 		remaining -= (size_t)w[6];
 		records[i] = (struct record){w[0], w[1], w[2], w[3], w[4], w[7],
-			{.kind = w[5], .text = name, .length = w[6], .text_length = w[6]}, w[8], w[9], binding_count};
-		if (w[0] == HANDLER_BINDING) ++binding_count;
+			{.kind = w[5], .text = name, .length = w[6], .text_length = w[6]}, w[8], w[9], binding_reference_count};
+		size_t extra = w[0] == HANDLER_BINDING ? 3 : w[0] == BINDING;
+		if (extra > SIZE_MAX - binding_reference_count) goto fail;
+		binding_reference_count += extra;
 	}
 	for (size_t i = 0; i < nr; ++i)
 		if (pg_wire_read_u64(file, &selections[i]) || !selections[i] || selections[i] > np) goto fail;
@@ -596,6 +720,35 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	size_t nt;
 	const struct pg_syntax *const *terms;
 	if (pg_syntax_read(file, graph, limit, &nt, &terms) || pg_syntax_validate(nt, terms)) goto fail;
+	uint64_t source_binding_count;
+	if (pg_wire_read_u64(file, &source_binding_count) || source_binding_count > limit / 3
+		|| source_binding_count > SIZE_MAX / (3 * sizeof(uint64_t))) goto fail;
+	uint64_t *source_bindings = pg_alloc(graph, 3 * (size_t)source_binding_count * sizeof(*source_bindings));
+	if (!source_bindings) goto fail;
+	size_t source_reference_count = 0;
+	for (size_t i = 0; i < source_binding_count; ++i) {
+		uint64_t *words = &source_bindings[3 * i];
+		for (size_t j = 0; j < 3; ++j) if (pg_wire_read_u64(file, &words[j])) goto fail;
+		size_t extra = words[0] ? 1 : 2;
+		if (words[0] > nt || extra > limit - source_reference_count || words[2] > SIZE_MAX) goto fail;
+		if (words[1] > limit - source_reference_count - extra) goto fail;
+		source_reference_count += (size_t)words[1] + extra;
+	}
+	uint64_t match_count;
+	if (pg_wire_read_u64(file, &match_count) || match_count > limit / 3 || match_count > SIZE_MAX / sizeof(void *)) goto fail;
+	struct pg_match_allocation **matches = pg_alloc(graph, (size_t)match_count * sizeof(*matches));
+	if (!matches) goto fail;
+	size_t match_context_count = 0;
+	for (size_t i = 0; i < match_count; ++i) {
+		uint64_t branches;
+		if (pg_wire_read_u64(file, &branches) || limit - match_context_count < 2 ||
+			branches > (limit - match_context_count - 2) / 2 ||
+			branches > (SIZE_MAX - sizeof(**matches)) / (2 * sizeof(void *))) goto fail;
+		matches[i] = pg_alloc(graph, sizeof(**matches) + 2 * (size_t)branches * sizeof(void *));
+		if (!matches[i]) goto fail;
+		matches[i]->induction.count = (size_t)branches;
+		match_context_count += 2 + 2 * (size_t)branches;
+	}
 	uint64_t metadata_count;
 	if (pg_wire_read_u64(file, &metadata_count) || metadata_count > limit
 		|| metadata_count > SIZE_MAX / sizeof(uint64_t)) goto fail;
@@ -620,10 +773,51 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	const struct pg_term *const *references;
 	if (pg_contexts_unpack(&program->typing, (size_t)metadata_count, metadata, input_count, input_terms,
 		&context_count, &contexts, &reference_count, &references)) goto fail;
-	if (binding_count > reference_count / 3) goto fail;
-	size_t allocation_count = reference_count - 3 * binding_count;
+	if (source_reference_count > reference_count) goto fail;
+	if (binding_reference_count > reference_count - source_reference_count) goto fail;
+	size_t allocation_count = reference_count - source_reference_count - binding_reference_count;
+	if (match_count > allocation_count / 3) goto fail;
+	allocation_count -= 3 * (size_t)match_count;
 	if (member_count > allocation_count || allocation_count - member_count > np
-		|| allocation_count > SIZE_MAX / 2 || context_count != 2 * allocation_count) goto fail;
+		|| match_context_count > context_count || allocation_count > SIZE_MAX / 2 ||
+		context_count - match_context_count != 2 * allocation_count) goto fail;
+	size_t context_slot = 2 * allocation_count;
+	size_t match_slot = reference_count - 3 * (size_t)match_count;
+	for (size_t i = 0; i < match_count; ++i) {
+		struct pg_match_allocation *input = matches[i];
+		input->prefix = contexts[context_slot++];
+		input->motive = contexts[context_slot++];
+		const struct pg_context **clauses = input->branches + input->induction.count;
+		for (size_t j = 0; j < input->induction.count; ++j) {
+			input->branches[j] = contexts[context_slot++];
+			clauses[j] = contexts[context_slot++];
+		}
+		input->induction.clauses = clauses;
+		for (size_t j = 0; j < 3; ++j)
+			if (references[match_slot + j]->kind != PG_REFERENCE) goto fail;
+		input->induction.self = references[match_slot++]->as.reference;
+		input->induction.recursion = references[match_slot++]->as.reference;
+		input->induction.argument = references[match_slot++]->as.reference;
+	}
+	size_t use_count = allocation_count - (size_t)member_count;
+	size_t source_offset = allocation_count + binding_reference_count;
+	if (source_reference_count > SIZE_MAX / sizeof(void *)) goto fail;
+	const struct pg_object **binding_objects = pg_alloc(graph, source_reference_count * sizeof(*binding_objects));
+	if (!binding_objects) goto fail;
+	for (size_t i = 0; i < source_reference_count; ++i) {
+		const struct pg_term *term = references[source_offset + i];
+		if (term->kind != PG_REFERENCE) goto fail;
+		binding_objects[i] = term->as.reference;
+	}
+	source_offset = 0;
+	for (size_t i = 0; i < source_binding_count; ++i) {
+		const uint64_t *words = &source_bindings[3 * i];
+		struct pg_source_binding input = {words[0] ? terms[words[0] - 1] : NULL, (size_t)words[1], (size_t)words[2],
+			binding_objects + source_offset, binding_objects[source_offset + words[1]],
+			words[0] ? NULL : binding_objects[source_offset + words[1] + 1]};
+		if (!pg_synthesis_source_binding(&program->synthesis, &input)) goto fail;
+		source_offset += input.scope_count + (input.constructor ? 2 : 1);
+	}
 	if (fgetc(file) != EOF || ferror(file)) goto fail;
 	if (nd > SIZE_MAX / sizeof(void *)) goto fail;
 	struct pg_synthesis_job **rules = pg_alloc(graph, nd * sizeof(*rules));
@@ -648,7 +842,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 			uint64_t scope = ids[6 * i], syntax = ids[6 * i + 1], definitions = ids[6 * i + 2], rule = ids[6 * i + 3];
 			uint64_t left = ids[6 * i + 4], right = ids[6 * i + 5];
 			if (!scope && (syntax == 5 || syntax == 6)) {
-				if (!left || left > i || !right || right > i || !definitions || definitions > allocation_count - member_count || rule > 1) goto fail;
+				if (!left || left > i || !right || right > i || !definitions || definitions > use_count || rule > 1) goto fail;
 				const struct pg_term *reference = references[definitions - 1];
 				if (reference->kind != PG_REFERENCE) goto fail;
 				const struct pg_context *prefix = contexts[2 * (definitions - 1)], *fields = contexts[2 * (definitions - 1) + 1];
@@ -696,13 +890,12 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		const struct pg_source_scope *target = r->target ? scopes[r->target - 1] : NULL;
 		struct pg_synthesis *s = &program->synthesis;
 		if (r->kind == HANDLER_BINDING) {
-			if (!parent || !target || !r->syntax || !r->definitions || r->rule > nd) goto fail;
-			const struct pg_term *const *binders = &references[allocation_count + 3 * r->allocation];
+			if (!parent || !target || !r->syntax || !r->definitions || r->rule) goto fail;
+			const struct pg_term *const *binders = &references[allocation_count + r->allocation];
 			for (size_t j = 0; j < 3; ++j)
 				if (binders[j]->kind != PG_REFERENCE || binders[j]->as.reference->kind != PG_BINDER) goto fail;
 			struct pg_handler_binding_input input = {.parent = target, .handler = terms[r->definitions - 1],
 				.clause = terms[r->syntax - 1], .slot = (unsigned)r->slot,
-				.origin = r->rule ? rules[r->rule - 1] : NULL,
 				.allocation = {producers[r->operation - 1], binders[0]->as.reference,
 					binders[1]->as.reference, binders[2]->as.reference}};
 			scopes[i] = pg_synthesis_restore_handler_binding(s, &input);
@@ -737,9 +930,11 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 			continue;
 		}
 		if (r->kind == BINDING) {
-			if (!parent || target || !r->syntax || !r->rule || r->rule > nd || r->definitions || r->name.kind || r->name.length) goto fail;
-			scopes[i] = pg_synthesis_binding_scope(pg_synthesis_restore_binding(s, parent,
-				terms[r->syntax - 1], rules[r->rule - 1]));
+			if (!parent || target || !r->syntax || r->rule || r->definitions || r->name.kind || r->name.length) goto fail;
+			const struct pg_term *binder = references[allocation_count + r->allocation];
+			if (binder->kind != PG_REFERENCE) goto fail;
+			scopes[i] = pg_synthesis_binding_scope(pg_synthesis_binding_at(s, parent,
+				terms[r->syntax - 1], binder->as.reference));
 			if (!scopes[i]) goto fail;
 			continue;
 		}
@@ -779,21 +974,26 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	}
 	for (size_t i = 0; i < no; ++i) {
 		uint64_t scope = origin_ids[3 * i], syntax = origin_ids[3 * i + 1], rule = origin_ids[3 * i + 2];
-		if (!scope || scope > n || !syntax || syntax > nt || !rule || rule > nd) goto fail;
+		if (!scope || scope > n || !syntax || syntax > nt || !rule) goto fail;
 		const struct pg_syntax *site = terms[syntax - 1];
-		struct pg_synthesis_job *restored = site->kind == PG_SYNTAX_APPLICATION
-			? pg_synthesis_restore_application(&program->synthesis, scopes[scope - 1], site, rules[rule - 1])
-			: site->kind == PG_SYNTAX_QUALIFIED
-			? pg_synthesis_restore_member(&program->synthesis, scopes[scope - 1], site, rules[rule - 1])
-			: site->kind == PG_SYNTAX_ELIMINATION
-			? pg_synthesis_restore_elimination(&program->synthesis, scopes[scope - 1], site, rules[rule - 1])
-			: pg_synthesis_restore_declaration(&program->synthesis, scopes[scope - 1], site, rules[rule - 1]);
-		if (!restored) goto fail;
+		if (site->kind == PG_SYNTAX_QUALIFIED) {
+			if (rule > use_count) goto fail;
+			const struct pg_context *prefix = contexts[2 * (rule - 1)], *fields = contexts[2 * (rule - 1) + 1];
+			const struct pg_term *reference = references[rule - 1];
+			if (!fields || prefix == fields || reference->kind != PG_REFERENCE || reference->as.reference != fields->binder) goto fail;
+			if (!pg_synthesis_member_at(&program->synthesis, scopes[scope - 1], site, prefix, fields)) goto fail;
+			continue;
+		}
+		if (site->kind == PG_SYNTAX_ELIMINATION) {
+			if (rule > match_count || !pg_synthesis_restore_elimination(&program->synthesis,
+				scopes[scope - 1], site, matches[rule - 1])) goto fail;
+		} else if (rule > nd || !pg_synthesis_restore_declaration(&program->synthesis,
+			scopes[scope - 1], site, rules[rule - 1])) goto fail;
 	}
 	for (size_t i = 0; i < member_count; ++i) {
 		uint64_t producer = members[2 * i], index = members[2 * i + 1];
 		if (!producer || producer > np || index > SIZE_MAX) goto fail;
-		size_t slot = allocation_count - (size_t)member_count + i;
+		size_t slot = use_count + i;
 		if (references[slot]->kind != PG_REFERENCE) goto fail;
 		struct pg_constructor_allocation allocation = {
 			references[slot]->as.reference, contexts[2 * slot], contexts[2 * slot + 1]};

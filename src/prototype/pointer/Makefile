@@ -93,6 +93,22 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/iadt_test
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/typed-selection-motive.p
 	$(BUILD)/pointer-check $(ROOT)tests/acceptance/indexed-formation.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/inferred-index-declaration.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/inferred-index-two-inputs.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/inferred-index-effects.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/inferred-index-effects.p spineMain spineExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/inferred-index-later-recovery.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/inferred-index-dependent.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/inferred-index-graph.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/inferred-index-copy.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/inferred-index-copy.p graphMain expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/inferred-index-wrong-family.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/inferred-index-earlier-wrong.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/inferred-index-partial-dependent.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/inferred-index-disagreement.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/inferred-index-unrecoverable.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/inferred-index-no-inverse.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/inferred-index-unselected-invalid.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/acc-family-parameter.p main expected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-motive-wrong-field.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/termination.p main expected
@@ -146,7 +162,14 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p indexedMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-tree.p refinedMain one
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-branch-tree-wrong.p
-	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/function-graph-branch-name-collision.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-branch-name-collision.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/graph-duplicate-leaf.p last one
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/graph-helper-leaf.p last one
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/graph-canonical-leaf-name.p main one
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/graph-comparison-leaves.p smaller trueValue
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/graph-comparison-leaves.p greater falseValue
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/graph-duplicate-leaf-wrong.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/graph-duplicate-leaf-ambiguous.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p main one
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p proofMain one
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-helper-call.p twiceMain two
@@ -208,6 +231,9 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-field-transport.p pairMain expected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-field-transport-wrong.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-field-transport-expect.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/le-predecessor.p main expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/le-predecessor-wrong.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/le-predecessor-invalid.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-result-transport.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-result-transport.p otherMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-result-transport.p bothMain expected

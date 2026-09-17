@@ -1,5 +1,7 @@
 #include "conversion.h"
 #include "computation.h"
+#include "classifier.h"
+#include "iadt.h"
 
 #include <stdlib.h>
 
@@ -26,10 +28,28 @@ struct pg_conversion_state {
 	int failed;
 };
 
+/* Congruence compares children of rigid heads without normalizing unrelated
+ * siblings. Reducible oracle applications still need parent rechecking. */
+static int rigid_head(const struct pg_term *term)
+{
+	if (term->kind == PG_LAMBDA) return 1;
+	while (term->kind == PG_APPLICATION) term = term->as.application.function;
+	if (term->kind != PG_REFERENCE) return 0;
+	const struct pg_object *head = term->as.reference;
+	if (head->kind == PG_BINDER) return 1;
+	if (pg_classifier_rigid(head)) return 1;
+	if (pg_data_declaration_view(head)) return 1;
+	const struct pg_data_layout *layout;
+	size_t position, arity;
+	if (pg_data_constructor_view(head, &layout, &position, &arity)) return 1;
+	return head == &pg_return_operation || head == &pg_request_operation;
+}
+
 static int normalize(void *policy, const struct pg_term *input, const struct pg_term **output)
 {
 	struct pg_conversion_state *state = policy;
 	if (state->strong) {
+		if (rigid_head(input)) { *output = input; return 1; }
 		if (state->normalizing != input) {
 			state->normalization.nf = pg_nf_request(state->work, &pg_pure_policy, input);
 			state->normalizing = input;

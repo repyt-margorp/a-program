@@ -124,6 +124,20 @@ static int steps_argument(const char *text, uint64_t *steps)
 	return 0;
 }
 
+static int report_index_path(void *owner, struct pg_token constructor,
+	struct pg_token index, size_t field, size_t position)
+{
+	FILE *output = owner;
+	fprintf(output, "constructor check %zu:%zu: ", constructor.line, constructor.column);
+	fwrite(constructor.text, 1, constructor.length, output);
+	fputs(": implicit index ", output);
+	fwrite(index.text, 1, index.length, output);
+	if (field == SIZE_MAX)
+		fputs(" has no supported direct family-index projection from a written argument; use an explicit constructor field\n", output);
+	else fprintf(output, " is available from written argument %zu, family index %zu\n", field + 1, position + 1);
+	return ferror(output) ? -1 : 0;
+}
+
 static int report(FILE *output, struct pg_program *program, struct pg_synthesis_job *job)
 {
 	const char *status;
@@ -136,6 +150,10 @@ static int report(FILE *output, struct pg_program *program, struct pg_synthesis_
 	default: status = "error"; result = 2; break;
 	}
 	fprintf(output, "%s steps=%" PRIu64 "\n", status, program->synthesis.steps);
+	if (result == 1) {
+		fflush(output);
+		pg_synthesis_visit_rejected_index_paths(&program->synthesis, report_index_path, stderr);
+	}
 	if (result == 3 && !program->synthesis.ready) {
 		fflush(output);
 		fputs("pending: no runnable synthesis work; increasing the step budget alone will not advance this Program\n", stderr);

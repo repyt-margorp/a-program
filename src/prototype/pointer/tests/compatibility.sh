@@ -132,6 +132,19 @@ test "$failed" -eq 0
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 acceptance="$(dirname "${BASH_SOURCE[0]}")/acceptance"
+# Imported source calling conventions survive unfinished and completed images.
+for steps in 0 100 100000; do
+	code=0
+	"${checker[@]}" --steps "$steps" --imports "$acceptance/inferred-index-declaration.p" \
+		--save "$directory/inferred-import.a" "$acceptance/inferred-index-import.p" > "$directory/status" || code=$?
+	if [ "$steps" -eq 100000 ]; then test "$code" -eq 0; else test "$code" -eq 3; fi
+	code=0
+	"${checker[@]}" --load --steps 0 --save "$directory/inferred-resaved.a" \
+		"$directory/inferred-import.a" > "$directory/status" || code=$?
+	test "$code" -eq 3
+	"${runtime[@]}" --equal-image "$directory/inferred-resaved.a" main expected
+	"${runtime[@]}" --equal-image "$directory/inferred-resaved.a" copyMain copyExpected
+done
 # The schema comes from the provider; actual parameter types come from the
 # client. Both must retain their nominal identity when an image is resumed.
 provider="$fixtures/typing/dependent_constructor_provider_check.p"

@@ -49,6 +49,16 @@ static const struct {
 	{&thunk_type_former, "kernel/thunk-type/v1"}
 };
 
+int pg_classifier_rigid(const struct pg_object *object)
+{
+	if (!object || object->kind != PG_SEMANTIC_OBJECT) return 0;
+	if (object->owner == &universe_class) return 1;
+	if (object->owner == &effect_row_class) return 1;
+	for (size_t i = 0; i < sizeof(descriptors) / sizeof(*descriptors); ++i)
+		if (object == descriptors[i].object) return 1;
+	return 0;
+}
+
 static int compare_effects(const void *left, const void *right)
 {
 	uintptr_t a = (uintptr_t)*(const struct pg_object *const *)left;

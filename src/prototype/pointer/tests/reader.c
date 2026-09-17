@@ -439,8 +439,58 @@ static void intrinsic_names(void)
 	puts("intrinsic names: #Name and #.Name use ordinary qualified lookup");
 }
 
+static void constructor_indices(void)
+{
+	const struct {
+		const char *source;
+		size_t count;
+		const char *names;
+	} cases[] = {
+		{"D:=@\\n:Nat=>{c:A->* n->* (Nat.succ n);};", 1, "n"},
+		{"D:=@\\n:Nat=>{c:* Nat.zero;};", 0, ""},
+		{"D:=@\\n:Nat=>{c:(k:Nat)->A->* k->* (Nat.succ k);};", 0, ""},
+		{"D:=@\\n:Nat=>{c:* n;};", 1, "n"},
+		{"D:=@\\n:Nat=>{c:(n:Nat)->* n;};", 0, ""},
+		{"D:=@\\n:Nat=>{c:(n:T n)->* n;};", 1, "n"},
+		{"D:=@\\n:Nat=>{c:Box.n;};", 0, ""},
+		{"D:=@\\n:Nat=>{c:n.Type;};", 1, "n"},
+		{"D:=@\\n:Nat=>\\v:Vec Nat n=>{c:Proof v;};", 2, "nv"},
+		{"D:=@\\n:Nat=>\\v:Vec Nat n=>{c:* Nat.zero empty;};", 0, ""},
+		{"D:=@\\n:Nat=>{c:(\\n:Nat=>F n) Nat.zero;};", 0, ""},
+		{"D:=@\\n:Nat=>{c:(\\n:T n=>F n) value;};", 1, "n"},
+		{"D:=@\\n:Nat=>{c:(b @some n=>F n @none=>T);};", 0, ""},
+		{"D:=@\\n:Nat=>{c:(b @some n=>F n @none=>F n);};", 1, "n"},
+		{"D:=@\\n:Nat=>{c:(b @some {field:=n;}=>F n);};", 0, ""},
+		{"D:=@\\n:Nat=>{c:{n:=Nat.zero; F n;};};", 0, ""},
+		{"D:=@\\n:Nat=>{c:{n:=f n; F n;};};", 1, "n"},
+		{"D:=@\\n:Nat=>{c:@\\n:Nat=>{inner:* n;};};", 0, ""},
+		{"D:=@{c:*;};", 0, ""},
+	};
+	for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+		struct pg_graph arena = {0};
+		struct pg_parser parser;
+		struct pg_definition definition;
+		pg_parser_init(&parser, &arena, cases[i].source, strlen(cases[i].source));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		const struct pg_syntax *original = pg_syntax_constructors(definition.expression)->items[0].expression;
+		size_t count = SIZE_MAX;
+		const struct pg_syntax *type = pg_syntax_constructor_telescope(&arena, definition.expression, 0, &count);
+		assert(type && count == cases[i].count);
+		for (size_t n = 0; n < count; ++n) {
+			assert(type->kind == PG_SYNTAX_PI && type->left->kind == PG_SYNTAX_BINDER);
+			assert(type->left->token.text_length == 1 && type->left->token.text[0] == cases[i].names[n]);
+			type = type->right;
+		}
+		assert(type == original);
+		assert(!pg_syntax_constructor_telescope(&arena, definition.expression, 1, &count));
+		pg_graph_destroy(&arena);
+	}
+	puts("constructor indices: lexical use, shadowing and dependent header generalization passed");
+}
+
 int main(void)
 {
+	constructor_indices();
 	intrinsic_names();
 	tokens();
 	literals();

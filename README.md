@@ -90,9 +90,22 @@ Uniform parameters and indices are separate in a vector family:
 ```ap
 Vec := \A : @ => @\n : Nat => {
 	nil : * Nat.zero;
-	cons : (k : Nat) -> A -> * k -> * (Nat.succ k);
+	cons : A -> * n -> * (Nat.succ n);
 };
 ```
+
+`(Vec Nat).cons value tail` recovers `n` from `tail`'s synthesized type.
+Its pattern is `@cons head tail`; `*tail` is the induction result. Header
+indices used in a constructor are fresh constructor-local binders, not a
+fixed result index. Unused indices add no hidden argument to `nil`.
+
+Recovery currently uses direct nominal-family index projections from written
+arguments, never a trailing `::` or an assumed inverse of an arbitrary function.
+For example, `@\n:Nat => { mark:* n; }` is rejected at declaration time.
+The explicit form `cons : (k:Nat) -> A -> * k -> * (Nat.succ k)` remains valid;
+its calls and patterns still include `k`. Direct aliases and partial applications
+such as `(Vec Nat).cons value` retain the source convention; an ordinary
+higher-order parameter keeps its explicitly declared Pi signature.
 
 A declaration's own name is not an implicit recursive alias. See the
 [parser](src/prototype/pointer/syntax.c),

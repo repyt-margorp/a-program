@@ -1769,11 +1769,23 @@ static void constructor_field_paths(struct pg_typing *typing,
 		for (size_t i = 0; i < 2; ++i) {
 			const struct pg_evidence *lv = pg_prove_projection(typing, context, values[i]);
 			const struct pg_evidence *rv = pg_prove_projection(typing, context, reverse[i]);
-			jobs[i] = pg_synthesis_constructor_field_identity(&synthesis, pg_synthesis_evidence(&synthesis, context),
+			struct pg_synthesis_job *inputs[] = {pg_synthesis_evidence(&synthesis, context),
 				pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, context, left)),
 				pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, context, right)),
-				pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, p)), fields[i],
-				pg_synthesis_evidence(&synthesis, lv), pg_synthesis_evidence(&synthesis, rv));
+				pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, p)),
+				pg_synthesis_evidence(&synthesis, lv), pg_synthesis_evidence(&synthesis, rv)};
+			for (size_t j = 0; j < 6; ++j)
+				solve_index_proof(&synthesis, inputs[j], chunk, PG_SYNTHESIS_DONE);
+			jobs[i] = pg_synthesis_constructor_field_identity(&synthesis,
+				inputs[0], inputs[1], inputs[2], inputs[3], fields[i], inputs[4], inputs[5]);
+			if (!i) {
+				/* Scheduling endpoint normalization must not first construct the
+				 * field identity/reflexivity on every subsequent wakeup. */
+				size_t proofs = typing->proofs.count, occurrences = typing->occurrences.count;
+				pg_synthesis_advance(&synthesis, 1);
+				assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
+				assert(typing->proofs.count == proofs && typing->occurrences.count == occurrences);
+			}
 			const struct pg_evidence *proof = solve_index_proof(&synthesis, jobs[i], chunk, PG_SYNTHESIS_DONE);
 			const struct pg_evidence *expected = pg_prove_identity_type(typing, pg_prove_projection(typing, context, nat), lv, rv);
 			assert(pg_evidence_classifier(proof) == pg_evidence_subject(expected)->core);

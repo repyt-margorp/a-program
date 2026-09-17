@@ -187,6 +187,12 @@ The compiler must not infer that split from constructor result types.
 
 ### 2.5 Constructor-local variables
 
+Update, 2026-09-18: the paragraph below describes the existing explicit form.
+The next surface design permits header-index names in constructor signatures
+and rejects unrecoverable implicit indices at declaration time. See the
+[constructor index synthesis decision](2026-09-18-CONSTRUCTOR-INDEX-SYNTHESIS-DECISION.md).
+That elaboration change is not implemented yet.
+
 The family index binder and constructor-local variables are distinct bindings.
 In the accepted Vec syntax:
 

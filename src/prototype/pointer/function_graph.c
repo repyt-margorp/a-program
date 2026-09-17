@@ -222,6 +222,7 @@ static int computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
 	const struct pg_evidence **left, const struct pg_evidence **right)
 {
+	const struct pg_occurrence *subject = pg_evidence_subject(proof);
 	if (!structural_computation_view(s, proof, rule, left, right)) return 0;
 	const struct pg_evidence *map = NULL;
 	proof = pg_prove_construction_origin(s->typing, proof, &map);
@@ -233,7 +234,10 @@ static int computation_view(struct pg_function_graph_state *s,
 		return *left ? 0 : -1;
 	}
 	if (map) proof = pg_prove_reindex(s->typing, map, proof);
-	return proof ? structural_computation_view(s, proof, rule, left, right) : -1;
+	/* Input queries are keyed by the immutable typed subject, not its receipt.
+	 * Rechecking the same subject cannot change the failed structural view. */
+	if (!proof || pg_evidence_subject(proof) == subject) return -1;
+	return structural_computation_view(s, proof, rule, left, right);
 }
 
 static int plan_case(struct pg_function_graph_state *s, struct graph_case *plan)
@@ -295,7 +299,7 @@ static int split_case(struct pg_function_graph_state *s, struct graph_case *plan
 {
 	struct pg_typing *t = s->typing;
 	const struct pg_evidence *formation = pg_evidence_premise(elimination, 1);
-	const struct pg_data_layout *layout = pg_data_declaration_layout(pg_evidence_inductive_declaration(formation));
+	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(formation));
 	if (!layout) return -1;
 	plan->split_formation = formation;
 	plan->discriminant = pg_evidence_premise(elimination, 3);
@@ -1296,7 +1300,7 @@ static const struct pg_evidence *packet_type(struct pg_function_graph_state *s,
 
 static const struct pg_object *packet_constructor(struct pg_function_graph_state *s)
 {
-	return pg_data_constructor(pg_data_declaration_layout(pg_evidence_inductive_declaration(s->packet)), 0);
+	return pg_data_constructor(pg_data_schema_layout(pg_evidence_inductive_schema(s->packet)), 0);
 }
 
 static int packet_formation(struct pg_function_graph_state *s)

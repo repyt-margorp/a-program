@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 /* Reconstructible source environments and source/definition/rule roots, including pending modules.
- * APGSRC46 retains value/family binder judgements and family index telescopes, preserves
+ * APGSRC60 retains source/handler binding symbols and family index telescopes, preserves
  * already suspended values under surface &, admits checked
  * termination requests, and uses TOTAL source RETURN/arrow contracts with F
  * totality contracts, context-authoritative Pi premises and lexical
@@ -21,14 +21,25 @@
  * stored contexts supply binder identities, not accepted typing evidence.
  * Source declaration members use the same context payload and reconnect their
  * allocations before publication, including after an unsolved resave.
- * Qualified constructor uses retain field-scope substitution inputs as origins.
- * Recomputed constructor parameters and fields are still checked normally;
- * an origin supplies lexical allocation, not a constructor typing conclusion.
- * Recursive source Match origins retain their raw induction allocation through
- * the ordinary derivation payload; source branches remain synthesis inputs.
+ * Application, Lambda/Pi and Handler addresses retain syntax, enclosing lexical binders
+ * and slot, independently of generated names and checking jobs. Their graph
+ * objects use the same relocation table; no context proof or type annotation
+ * is reconstructed solely to recover a binder. Source typing runs normally.
+ * Lambda/Pi environments retain their binder reference, not a Context theorem.
+ * Their annotations are synthesized again; explicit proof roots stay checked.
+ * Default constructor field bindings use the same address format, with the
+ * constructor pointer instead of syntax and the parameter destination's
+ * binder sequence. Explicit field allocations remain independent inputs.
+ * Qualified constructor uses retain field Context references in the same
+ * allocation payload, without a substitution proof. Recomputed constructor
+ * parameters and field types are still checked normally.
+ * Recursive source Match retains motive, source-branch and erasure Contexts
+ * through the shared context payload, without an origin theorem. These inputs
+ * supply lexical symbols only; source types and branches are synthesized anew.
  * Handler clause bindings retain their source owner, operation producer and
  * three binders. Reading rebuilds their contexts with the newly inferred open
  * carrier through the ordinary clause builder, without a saved carrier answer.
+ * Handler/Fold allocation does not retain or reconstruct a Handler proof.
  * Named/module environments reference that producer DAG, including prepared
  * annotations. A shared scope/producer dependency order rejects cross-table
  * cycles before invoking the ordinary construction factories.
@@ -47,9 +58,9 @@
  * Streams are borrowed. */
 int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots);
-/* APGSRC47 optionally retains raw reduction records in the same Core table.
+/* APGSRC61 optionally retains raw reduction records in the same Core table.
  * Reading leaves them in program->retained_reductions, without checking or
- * installing results. NULL reductions selects ordinary APGSRC46 RECOMPUTE.
+ * installing results. NULL reductions selects ordinary APGSRC60 RECOMPUTE.
  * Origin selection includes retained endpoints and intermediate phase Terms. */
 int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *roots, const struct pg_reduction_archive *reductions);

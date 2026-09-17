@@ -1,9 +1,21 @@
 # Typed Structure and Evidence Refactoring
 
 Date: 2026-09-16
-Status: in progress; typed conclusions verified, scoped context action in progress
+Status: replanned after R76; authority correction in progress, acceptance incomplete
 Baseline: `1b95e551b6ef315e079120a52b1a878d06ff2d63`, `rewrite/pointer-core-hott`
 Parent: [Pointer Core reimplementation](2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md)
+
+## Current Execution Plan (2026-09-17)
+
+Follow [Typed Data Authority Reaudit and Revised Plan](2026-09-17-TYPED-DATA-AUTHORITY-REAUDIT-PLAN.md)
+before continuing R2-R5. Its A0-A5 checklist supersedes the next-step advice
+in the historical log, especially R76's generated-alias proposal. Do not add
+`refinement`, `REFINED_SCOPE_JOB`, or an alias-specific acceptance/serialization
+path. First reuse the existing typed subject, context map and lexical allocation
+references; identify any genuinely missing source association before changing
+the representation. R0/R1 remain historical milestones, not a claim that the
+source/image identity contract is complete. The remaining implementation,
+full acceptance, net LOC reduction and Main publication are still open.
 
 ## 1. Purpose and Boundaries
 
@@ -142,9 +154,9 @@ Temporary adapters are permitted within a phase, not as permanent fallbacks.
 |---|---|---|
 | [x] | R0 Contracts and baseline | Baseline `4657cc6` debug acceptance, LOC ledger and source/image timing/work/memory matrix are recorded below. The R35 publisher audit covers each node producer and the structural consumers; the role/scope table and deletion ledger specify their contracts and remaining migrations. This closes the audit, not R2-R5 implementation or the final measurements. |
 | [x] | R1 Typed conclusions | Term conclusions have one typed-subject reference; classifier/context/sort accessors delegate to it. All rules publish through `accept_record`; Context and Substitution retain their distinct conclusions. Exact interning and alternative derivations are preserved. Verified by the R29 structural audit and acceptance tests below; this does not complete R2/R3. |
-| [ ] | R2 Context action | Migrate projection/reindex to the same typed structure with explicit effective child maps. Use existing substitution work and binder lifting. Verify repeated lookup sharing, capture avoidance, dependent classifiers and chunked execution. |
-| [ ] | R3 Structural and formation consumers | Move `return_value_origin`, `pi_component`, constructor/inductive recovery and classifier recovery to checked views. Keep theorem-specific inversions where required. Replace structural wrapper walks in `function_graph.c`, `action.c` and `synthesis.c`; remove replaced paths in the same phase. |
-| [ ] | R4 Images and pending work | R75 repairs retained family bindings; R76 restores qualified constructor allocations and passes retained append and imported QuickSort. Function-field source reconstruction still loses an application binder under generated index aliases; both source-only and typed-root tests now expose it. Imported inputs still require ordinary Solve. |
+| [ ] | R2 Context action | Continue through revised A1/A2: use existing `pg_context_map_image` and occurrence action, separating source binding identity from proof-producing jobs. No parallel alias/refinement map. Verify captured binders, dependent classifiers and chunked execution. |
+| [ ] | R3 Structural and formation consumers | Continue through revised A4. Several originally named recovery functions have already been deleted; audit remaining consumers against current typed data instead of repeating the historical migration. Keep genuine rule checks and remove replaced reconstruction paths in the same phase. |
+| [ ] | R4 Images and pending work | Revised A2/A3 passes all 11 retained source fixtures in debug, including function-field and index-alias, with exact binder identity through two inert resaves and both reader modes. APGSRC58/59 transports source Lambda/Pi, Handler/Fold and qualified constructor allocations without restoring proofs solely for binder identity. Broader acceptance remains open; no alpha interning or alias-specific worker was added. |
 | [ ] | R5 Acceptance and cleanup | Run the full gates below, remove obsolete occurrence fields/adapters, document remaining intentional rule dispatch. Require net implementation LOC reduction, compare behavior and performance to R0, report per-file additions/deletions, then publish the verified increment. |
 
 R1 and R2 form one vertical slice: first exercise an annotated Lambda/APP under
@@ -3915,12 +3927,13 @@ between proofs of the program.
 An experiment allowing origin collection through syntax-free alias scopes
 retained the missing application, but did not merge its two lexical scopes and
 made retained QuickSort reject. It was withdrawn; widening collection alone is
-not a repair. The next change must give these generated source bindings a
-proof-producer-independent lexical identity while preserving validation of
-every supplied interpretation. Do not merge arbitrary names, mutate completed
-scope meaning, scan for a convenient proof, or use scheduling order to select
-an authority. Test both preparation orders, pending resaves, mismatching alias
-interpretations and the imported QuickSort case before expanding collection.
+not a repair. **Revised after user review:** the earlier proposal to add a
+generated-alias identity field and worker is withdrawn. Existing typed maps
+already record binder images. Audit how source naming and image restoration
+lose those references, following A0-A5 in the current execution plan above.
+Proof-producer-independent structure remains required, but is not permission
+to add a parallel refinement representation. Do not merge arbitrary names,
+mutate interned keys, or select semantic meaning by proof discovery order.
 
 R76 implementation/header delta: **+82/-7, net +75**. Cumulative versus
 `4657cc6`: **+5119/-2703, net +2416**. Tests are separate. This is not the

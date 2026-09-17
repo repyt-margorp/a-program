@@ -419,9 +419,9 @@ const struct pg_evidence *pg_prove_structural_subject(struct pg_typing *typing,
 	return subject ? prove_structural(typing, subject->judgement, subject, structural_dependency) : NULL;
 }
 
-const struct pg_data_declaration *pg_evidence_inductive_declaration(const struct pg_evidence *evidence)
+const struct pg_data_schema *pg_evidence_inductive_schema(const struct pg_evidence *evidence)
 {
-	return evidence && evidence->rule == PG_INDUCTIVE_FORM ? pg_data_schema_declaration(evidence->certificate) : NULL;
+	return evidence && evidence->rule == PG_INDUCTIVE_FORM ? evidence->certificate : NULL;
 }
 
 const struct pg_object *pg_evidence_constructor(const struct pg_evidence *evidence)
@@ -1880,16 +1880,31 @@ static const struct pg_evidence *family_in_scope(struct pg_typing *typing,
 	return pg_prove_value_type(typing, family);
 }
 
+static const struct pg_evidence *inductive_motive_context(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_evidence *parameters,
+	const struct pg_object *binder, const struct pg_context *indices, int retained)
+{
+	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
+	const struct pg_evidence *map = prove_data_scope(typing, formation,
+		pg_data_schema_indices(formation->certificate), parameters, indices, retained);
+	if (!map) return NULL;
+	return pg_prove_context_extension(typing, map->premises[1], binder,
+		family_in_scope(typing, formation, parameters, map));
+}
+
 const struct pg_evidence *pg_prove_inductive_motive_context(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_evidence *parameters,
 	const struct pg_object *binder)
 {
-	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
-	const struct pg_evidence *map = prove_data_scope(typing, formation,
-		pg_data_schema_indices(formation->certificate), parameters, NULL, 0);
-	if (!map) return NULL;
-	return pg_prove_context_extension(typing, map->premises[1], binder,
-		family_in_scope(typing, formation, parameters, map));
+	return inductive_motive_context(typing, formation, parameters, binder, NULL, 0);
+}
+
+const struct pg_evidence *pg_prove_inductive_motive_context_at(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_evidence *parameters,
+	const struct pg_context *allocation)
+{
+	return allocation ? inductive_motive_context(typing, formation, parameters,
+		allocation->binder, allocation->parent, 1) : NULL;
 }
 
 const struct pg_evidence *pg_prove_inductive_family_function(struct pg_typing *typing,
@@ -2524,33 +2539,22 @@ done:
 
 /* The checked rule identifies the eliminator theorem. Its program inputs and
  * lexical scopes come from the conclusion, not the premise array layout. */
-struct elimination_structure {
-	const struct pg_occurrence *subject;
-	const struct pg_evidence *formation, *parameters, *motive_context, *motive, *scrutinee;
-	size_t count;
-};
-
-static int elimination_inputs(struct pg_typing *typing,
-	const struct pg_occurrence *subject, struct elimination_structure *view)
+int pg_elimination_view(const struct pg_typing *typing,
+	const struct pg_evidence *proof, struct pg_elimination_inputs *view)
 {
+	if (!view || !pg_evidence_owned_by(proof, typing)) return -1;
+	if (proof->rule != PG_MATCH_ELIM && proof->rule != PG_INDUCTION_ELIM) return -1;
+	const struct pg_occurrence *subject = pg_evidence_subject(proof);
 	if (subject->operand_count < 3 || subject->map_count != 1) return -1;
 	size_t count = subject->operand_count - 3;
-	*view = (struct elimination_structure){.subject = subject, .count = count,
-		.formation = pg_prove_structural_subject(typing, subject->operands[count + 2]),
-		.parameters = pg_prove_context_map(typing, pg_occurrence_maps(subject)[0]),
-		.motive = pg_prove_structural_subject(typing, subject->operands[count + 1]),
+	*view = (struct pg_elimination_inputs){.subject = subject, .count = count,
+		.formation = pg_evidence_for_subject(typing, subject->operands[count + 2], NULL),
+		.parameters = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, pg_occurrence_maps(subject)[0]),
+		.motive = pg_evidence_for_subject(typing, subject->operands[count + 1], NULL),
 		.motive_context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->operands[count + 1]->context),
-		.scrutinee = pg_prove_structural_subject(typing, subject->operands[0])};
+		.scrutinee = pg_evidence_for_subject(typing, subject->operands[0], NULL)};
 	if (!view->formation || view->formation->rule != PG_INDUCTIVE_FORM) return -1;
 	return view->parameters && view->motive && view->motive_context && view->scrutinee ? 0 : -1;
-}
-
-static int elimination_structure(struct pg_typing *typing,
-	const struct pg_evidence *proof, struct elimination_structure *view)
-{
-	if (!pg_evidence_owned_by(proof, typing)) return -1;
-	if (proof->rule != PG_MATCH_ELIM && proof->rule != PG_INDUCTION_ELIM) return -1;
-	return elimination_inputs(typing, pg_evidence_subject(proof), view);
 }
 
 const struct pg_evidence *pg_prove_construction_origin(struct pg_typing *typing,
@@ -2569,8 +2573,8 @@ static const struct pg_evidence *elimination_instance(struct pg_typing *typing,
 	const struct pg_evidence *substitution,
 	const struct pg_evidence *elimination, const struct pg_evidence *scrutinee)
 {
-	struct elimination_structure view;
-	if (elimination_structure(typing, elimination, &view)) return NULL;
+	struct pg_elimination_inputs view;
+	if (pg_elimination_view(typing, elimination, &view)) return NULL;
 	if (!pg_evidence_owned_by(substitution, typing) || substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (pg_evidence_context(substitution->premises[0]) != pg_evidence_context(elimination)) return NULL;
 	struct pg_occurrence_input *query = pg_occurrence_input_mapped_request(typing,
@@ -2665,7 +2669,7 @@ const struct pg_evidence *pg_prove_constructor_field(struct pg_typing *typing,
 }
 
 static const struct pg_evidence *elimination_branch(struct pg_typing *typing,
-	struct pg_graph *temporary, const struct elimination_structure *view,
+	struct pg_graph *temporary, const struct pg_elimination_inputs *view,
 	struct constructor_structure *value,
 	struct pg_typed_query **dependency)
 {
@@ -2692,7 +2696,7 @@ static int typed_body_match(struct pg_typed_query *work)
 
 static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
 	const struct pg_evidence *elimination,
-	const struct elimination_structure *view, const struct pg_evidence *field)
+	const struct pg_elimination_inputs *view, const struct pg_evidence *field)
 {
 	const struct pg_term *type;
 	if (!pg_thunk_type_view(pg_evidence_subject(field)->classifier, &type)) {
@@ -2741,8 +2745,8 @@ static int typed_elimination_prepare(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_evidence *elimination = pg_prove_structural_subject(typing, work->source);
-	struct elimination_structure view;
-	if (elimination_structure(typing, elimination, &view)) return -1;
+	struct pg_elimination_inputs view;
+	if (pg_elimination_view(typing, elimination, &view)) return -1;
 	struct pg_graph temporary = {0};
 	struct constructor_structure value;
 	int status = -1;
@@ -2868,9 +2872,10 @@ done:
 
 /* A positional correspondence is only a candidate. The ordinary substitution
  * constructor checks every image against the preceding dependent telescope. */
-static const struct pg_evidence *telescope_correspondence(struct pg_typing *typing,
+const struct pg_evidence *pg_prove_telescope_correspondence(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *destination)
 {
+	if (!context_proof(typing, source) || !context_proof(typing, destination)) return NULL;
 	size_t count, other;
 	if (pg_context_extension_size(pg_evidence_context(source), NULL, &count) ||
 		pg_context_extension_size(pg_evidence_context(destination), NULL, &other) || count != other) return NULL;
@@ -2930,7 +2935,7 @@ const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
 				prefix = prefix->premises[0]; target = target->premises[0];
 			}
 		}
-		const struct pg_evidence *rename = telescope_correspondence(typing, expected->premises[1], map->premises[1]);
+		const struct pg_evidence *rename = pg_prove_telescope_correspondence(typing, expected->premises[1], map->premises[1]);
 		expected = pg_prove_substitution_compose(typing, expected, rename);
 		if (!expected || expected->premise_count != map->premise_count) goto done;
 		for (size_t j = 2; j < map->premise_count; ++j)

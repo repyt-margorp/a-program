@@ -187,4 +187,24 @@ code=0
 output=$("$binary" --load "$directory/rejected.a") || code=$?
 test "$code" = 1
 case "$output" in 'rejected steps='*) ;; *) exit 1 ;; esac
+acceptance="$(dirname "${BASH_SOURCE[0]}")/acceptance"
+for fixture in inferred-index-unrecoverable inferred-index-no-inverse inferred-index-partially-recoverable inferred-index-unselected-invalid; do
+	code=0
+	"$binary" "$acceptance/$fixture.p" > "$directory/status" 2> "$directory/diagnostic" || code=$?
+	test "$code" = 1
+	grep -q 'constructor check .*implicit index .* has no supported direct family-index projection' "$directory/diagnostic"
+	code=0
+	"$binary" --steps 0 --save "$directory/invalid-index.a" "$acceptance/$fixture.p" \
+		> "$directory/status" 2> "$directory/pending-diagnostic" || code=$?
+	test "$code" = 3
+	test ! -s "$directory/pending-diagnostic"
+	code=0
+	"$binary" --load "$directory/invalid-index.a" > "$directory/status" 2> "$directory/restored-diagnostic" || code=$?
+	test "$code" = 1
+	cmp "$directory/diagnostic" "$directory/restored-diagnostic"
+	if [ "$fixture" = inferred-index-partially-recoverable ]; then
+		grep -q 'mark: implicit index n is available from written argument 1, family index 1' "$directory/diagnostic"
+		grep -q 'mark: implicit index k has no supported direct family-index projection' "$directory/diagnostic"
+	fi
+done
 printf '%s\n' 'cli: bounded source checking, pending, rejection and argument diagnostics passed'

@@ -70,5 +70,12 @@ int pg_parser_next(struct pg_parser *parser, struct pg_definition *definition);
 const struct pg_syntax *pg_parser_program(struct pg_parser *parser);
 /* Constructor array beneath a declaration's optional index telescope. */
 const struct pg_syntax *pg_syntax_constructors(const struct pg_syntax *declaration);
+/* Generalize the header indices used freely by one constructor, including
+ * their domain dependencies. The result is an ordinary Pi telescope; its
+ * leading implicit_count fields are source-inferred, not kernel implicit
+ * arguments. This resolves lexical names only, not recoverability or typing.
+ * Original syntax is unchanged. NULL denotes invalid input/allocation failure. */
+const struct pg_syntax *pg_syntax_constructor_telescope(struct pg_graph *arena,
+	const struct pg_syntax *declaration, size_t constructor, size_t *implicit_count);
 
 #endif

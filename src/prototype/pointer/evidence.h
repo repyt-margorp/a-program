@@ -154,7 +154,8 @@ const struct pg_evidence *pg_prove_effect_subsumption(struct pg_typing *typing,
  * Datatype higher computation is not implemented here. */
 const struct pg_evidence *pg_prove_inductive_type(struct pg_typing *typing,
 	const struct pg_data_schema *schema);
-const struct pg_data_declaration *pg_evidence_inductive_declaration(const struct pg_evidence *evidence);
+/* Borrow the checked schema of a direct inductive formation; no traversal. */
+const struct pg_data_schema *pg_evidence_inductive_schema(const struct pg_evidence *evidence);
 const struct pg_object *pg_evidence_constructor(const struct pg_evidence *evidence);
 struct pg_inductive_instance {
 	const struct pg_data_schema *schema;
@@ -205,6 +206,10 @@ const struct pg_evidence *pg_prove_constructor_scope_at(struct pg_typing *typing
 const struct pg_evidence *pg_prove_inductive_motive_context(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_evidence *parameters,
 	const struct pg_object *binder);
+/* Reuse only the index/scrutinee binders; reconstruct their types normally. */
+const struct pg_evidence *pg_prove_inductive_motive_context_at(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_evidence *parameters,
+	const struct pg_context *allocation);
 int pg_inductive_motive_context_valid(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context);
@@ -333,6 +338,17 @@ const struct pg_evidence *pg_prove_induction_case(struct pg_typing *typing,
 	const struct pg_object *constructor, const struct pg_evidence *parameters,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	const struct pg_evidence *branch);
+
+/* Read-only inputs of an accepted direct Match/induction. All operand/map
+ * receipts were registered by its introduction; never reconstruct evidence
+ * during inspection. Rejects other rules and foreign evidence. */
+struct pg_elimination_inputs {
+	const struct pg_occurrence *subject;
+	const struct pg_evidence *formation, *parameters, *motive_context, *motive, *scrutinee;
+	size_t count;
+};
+int pg_elimination_view(const struct pg_typing *typing,
+	const struct pg_evidence *proof, struct pg_elimination_inputs *view);
 
 /* Borrowed view of an explicit Identity formation's immutable premises.
  * family is a formation for IDENTITY_FORM/FAMILY_IDENTITY_FORM and a selected
@@ -532,6 +548,11 @@ const struct pg_context_map *pg_evidence_context_map(const struct pg_evidence *e
 const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *destination,
 	size_t count, const struct pg_evidence *const *images);
+/* Positional variable substitution between equally long telescopes. Every
+ * dependent field is checked by the ordinary substitution rule, including
+ * fields unused by a subsequent result. Binder identities need not agree. */
+const struct pg_evidence *pg_prove_telescope_correspondence(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_evidence *destination);
 /* Prefix projection destination -> source (identity when contexts coincide).
  * Uses ordinary variable and substitution evidence, without another rule. */
 const struct pg_evidence *pg_prove_substitution_projection(struct pg_typing *typing,

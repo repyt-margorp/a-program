@@ -1396,6 +1396,15 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *sigma = pg_prove_substitution(&typing, source, destination, 2, images);
 	assert(sigma && pg_evidence_judgement(sigma) == PG_JUDGEMENT_SUBSTITUTION);
 	assert(pg_prove_substitution(&typing, source, destination, 2, images) == sigma);
+	size_t correspondence_proofs = typing.proofs.count;
+	assert(pg_prove_telescope_correspondence(&typing, source, destination) == sigma);
+	assert(typing.proofs.count == correspondence_proofs);
+	assert(!pg_prove_telescope_correspondence(&typing, source, b_scope));
+	assert(!pg_prove_telescope_correspondence(&typing, NULL, destination));
+	assert(!pg_prove_telescope_correspondence(&typing, source, destination_y));
+	const struct pg_evidence *wrong_field = pg_prove_context_extension(&typing,
+		b_scope, y, pg_prove_projection(&typing, b_scope, universe));
+	assert(wrong_field && !pg_prove_telescope_correspondence(&typing, source, wrong_field));
 	const struct pg_context_map *map = pg_evidence_context_map(sigma);
 	assert(map && map->source == pg_evidence_context(source));
 	assert(map->destination == pg_evidence_context(destination) && map->count == 2);
@@ -1527,6 +1536,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(typing.proofs.count == before_receipt + 1);
 	struct pg_typing foreign;
 	assert(!pg_typing_init(&foreign, graph));
+	assert(!pg_prove_telescope_correspondence(&foreign, source, destination));
 	assert(!pg_evidence_for_subject(&foreign, mapped_suspended, NULL));
 	assert(!pg_evidence_for_subject(&foreign, mapped_suspended, suspended_receipt));
 	assert(!pg_prove_structural_subject(&foreign, mapped_suspended));
@@ -3276,6 +3286,15 @@ static void conversion_test(struct pg_graph *graph)
 	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_EQUAL);
 	assert(pg_whnf_steps(pg_whnf_request(&work, &pg_pure_policy, omega_x)) == 0);
 	pg_conversion_destroy(&conversion);
+	/* A false result index must not normalize a shared recursive domain.
+	 * Both the weak and the stronger comparison preserve rigid congruence. */
+	const struct pg_term *pi_left = pg_pi(graph, omega_x, x, vx);
+	const struct pg_term *pi_right = pg_pi(graph, omega_x, x, vy);
+	assert(!pg_conversion_init(&conversion, &work, pi_left, pi_right));
+	assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_DIFFERENT);
+	assert(!pg_conversion_certificate(&conversion));
+	assert(pg_whnf_steps(pg_whnf_request(&work, &pg_pure_policy, omega_x)) == 0);
+	pg_conversion_destroy(&conversion);
 	/* Reduction elsewhere must still compare recursive subterms structurally,
 	 * under the enclosing alpha map rather than an empty binding scope. */
 	const struct pg_object *z = pg_binder(graph);
@@ -3564,6 +3583,17 @@ static void normal_form_test(struct pg_graph *graph)
 		assert(pg_conversion_steps(&conversion) <= comparison_steps);
 	assert(pg_conversion_status(&conversion) == PG_CONVERSION_EQUAL);
 	assert(pg_conversion_steps(&conversion) == comparison_steps);
+	pg_conversion_destroy(&conversion);
+	/* Rigid outer structure does not make its fields opaque: a field whose
+	 * parent contracts only after child normalization still converts. */
+	const struct pg_term *recursive_body = pg_lambda(graph, x, pg_application(graph, vx, vx));
+	const struct pg_term *recursive = pg_application(graph, recursive_body, recursive_body);
+	const struct pg_term *rigid_left = pg_pi(graph, recursive, x, vu);
+	const struct pg_term *rigid_right = pg_pi(graph, recursive, x, term);
+	assert(!pg_conversion_init(&conversion, &split_work, rigid_left, rigid_right));
+	assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
+	assert(pg_conversion_certificate(&conversion));
+	assert(pg_whnf_steps(pg_whnf_request(&split_work, &pg_pure_policy, recursive)) == 0);
 	pg_conversion_destroy(&conversion);
 	/* Interleaved requests reuse child progress, with no per-parent copy. */
 	const struct pg_term *body = pg_application(graph, identity, vu);

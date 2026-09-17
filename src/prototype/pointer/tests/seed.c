@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 		rewind(file);
 		assert(fread(bytes, 1, length, file) == length && fgetc(file) == EOF);
 		assert(!ferror(file) && fclose(file) == 0);
-		assert(length > 56 && !memcmp(bytes, "APGSRC\56", 8));
+		assert(length > 56 && !memcmp(bytes, "APGSRC\74", 8));
 		assert(bytes[8] == policy);
 		compare(read_bytes(bytes, length, 4096), source, policy);
 		for (unsigned version = 34; version <= 45; ++version) {

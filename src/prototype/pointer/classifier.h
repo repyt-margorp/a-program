@@ -12,6 +12,8 @@ int pg_universe_level(const struct pg_term *term, uint64_t *level);
  * insufficient buffer. Resolve accepts only canonical versioned names. */
 const char *pg_classifier_name(const struct pg_object *object, char *buffer, size_t capacity);
 const struct pg_object *pg_classifier_resolve(struct pg_graph *graph, const char *name);
+/* Inert classifier heads have no pure root contraction at any arity. */
+int pg_classifier_rigid(const struct pg_object *object);
 const struct pg_term *pg_pi(struct pg_graph *graph,
 	const struct pg_term *domain, const struct pg_object *binder, const struct pg_term *codomain);
 int pg_pi_view(const struct pg_term *term, const struct pg_term **domain,

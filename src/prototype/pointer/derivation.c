@@ -61,7 +61,7 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 	case PG_INDUCTION_ELIM:
 		result.induction = pg_evidence_induction_allocation(evidence); break;
 	case PG_INDUCTIVE_FORM:
-		result.declaration = pg_evidence_inductive_declaration(evidence); break;
+		result.declaration = pg_data_schema_declaration(pg_evidence_inductive_schema(evidence)); break;
 	case PG_HANDLER_ELIM:
 		result.handler = pg_evidence_handler_signature(evidence); break;
 	case PG_REQUEST_INTRO:

@@ -10,6 +10,131 @@ const struct pg_syntax *pg_syntax_constructors(const struct pg_syntax *declarati
 	return body && body->kind == PG_SYNTAX_CONSTRUCTORS ? body : NULL;
 }
 
+struct index_name {
+	struct pg_token name;
+	const struct index_name *parent;
+	int *used;
+};
+
+static int token_name_equal(struct pg_token a, struct pg_token b)
+{
+	return a.kind == PG_TOKEN_IDENT && b.kind == PG_TOKEN_IDENT &&
+		a.text_length == b.text_length && !memcmp(a.text, b.text, a.text_length);
+}
+
+/* A shadowing entry has no used slot. Member labels are not lexical uses. */
+static int mark_index_names(struct pg_graph *scratch, const struct pg_syntax *syntax,
+	const struct index_name *names)
+{
+	if (!syntax) return 0;
+	if (syntax->kind == PG_SYNTAX_ATOM) {
+		for (const struct index_name *entry = names; entry; entry = entry->parent) {
+			if (!token_name_equal(entry->name, syntax->token)) continue;
+			if (entry->used) *entry->used = 1;
+			break;
+		}
+		return 0;
+	}
+	if (syntax->kind == PG_SYNTAX_QUALIFIED)
+		return mark_index_names(scratch, syntax->left, names);
+	if (syntax->kind == PG_SYNTAX_LAMBDA || syntax->kind == PG_SYNTAX_PI) {
+		const struct pg_syntax *domain = syntax->left;
+		struct pg_token name = syntax->token;
+		if (syntax->kind == PG_SYNTAX_PI) {
+			name = (struct pg_token){0};
+			if (domain && domain->kind == PG_SYNTAX_BINDER) {
+				name = domain->token;
+				domain = domain->left;
+			}
+		}
+		if (mark_index_names(scratch, domain, names)) return -1;
+		struct index_name bound = {.name = name, .parent = names};
+		return mark_index_names(scratch, syntax->right, &bound);
+	}
+	if (syntax->kind == PG_SYNTAX_CLAUSE || syntax->kind == PG_SYNTAX_DEFINITIONS ||
+		syntax->kind == PG_SYNTAX_BLOCK) {
+		const struct index_name *scope = names;
+		if (syntax->kind == PG_SYNTAX_CLAUSE && syntax->left &&
+			syntax->left->kind != PG_SYNTAX_ATOM && mark_index_names(scratch, syntax->left, names)) return -1;
+		for (size_t i = 0; i < syntax->item_count; ++i) {
+			const struct pg_syntax_item *item = &syntax->items[i];
+			if (syntax->kind == PG_SYNTAX_BLOCK) {
+				if (mark_index_names(scratch, item->annotation, scope) ||
+					mark_index_names(scratch, item->expression, scope)) return -1;
+			}
+			struct pg_token name = item->name;
+			if (syntax->kind == PG_SYNTAX_CLAUSE && item->expression)
+				name = item->expression->token;
+			if (name.kind != PG_TOKEN_IDENT || item->operation == PG_TOKEN_EXPECT) continue;
+			struct index_name *bound = pg_alloc(scratch, sizeof(*bound));
+			if (!bound) return -1;
+			*bound = (struct index_name){.name = name, .parent = scope};
+			scope = bound;
+		}
+		if (syntax->kind == PG_SYNTAX_DEFINITIONS) {
+			for (size_t i = 0; i < syntax->item_count; ++i) {
+				if (mark_index_names(scratch, syntax->items[i].annotation, scope) ||
+					mark_index_names(scratch, syntax->items[i].expression, scope)) return -1;
+			}
+		}
+		return mark_index_names(scratch, syntax->right, scope);
+	}
+	if (mark_index_names(scratch, syntax->left, names) ||
+		mark_index_names(scratch, syntax->right, names)) return -1;
+	for (size_t i = 0; i < syntax->item_count; ++i) {
+		if (mark_index_names(scratch, syntax->items[i].annotation, names) ||
+			mark_index_names(scratch, syntax->items[i].expression, names)) return -1;
+	}
+	return 0;
+}
+
+const struct pg_syntax *pg_syntax_constructor_telescope(struct pg_graph *arena,
+	const struct pg_syntax *declaration, size_t constructor, size_t *implicit_count)
+{
+	const struct pg_syntax *constructors = pg_syntax_constructors(declaration);
+	if (!arena || !implicit_count || !constructors || constructor >= constructors->item_count) return NULL;
+	if (declaration->left == constructors) {
+		*implicit_count = 0;
+		return constructors->items[constructor].expression;
+	}
+	struct header_index {
+		struct index_name name;
+		const struct pg_syntax *domain;
+		int used;
+	};
+	struct pg_graph scratch = {0};
+	const struct index_name *names = NULL;
+	const struct pg_syntax *result = NULL;
+	size_t count = 0;
+	for (const struct pg_syntax *header = declaration->left; header != constructors; header = header->right) {
+		struct header_index *index = pg_alloc(&scratch, sizeof(*index));
+		if (!index) goto done;
+		*index = (struct header_index){.name = {.name = header->token, .parent = names, .used = &index->used},
+			.domain = header->left};
+		names = &index->name;
+	}
+	result = constructors->items[constructor].expression;
+	if (mark_index_names(&scratch, result, names)) { result = NULL; goto done; }
+	/* Domains only depend on earlier header entries. One reverse pass closes
+	 * dependencies and builds binders in the original telescope order. */
+	for (const struct index_name *entry = names; entry; entry = entry->parent) {
+		const struct header_index *index = (const struct header_index *)entry;
+		if (!index->used) continue;
+		if (mark_index_names(&scratch, index->domain, entry->parent)) { result = NULL; goto done; }
+		struct pg_syntax *binder = pg_alloc(arena, sizeof(*binder));
+		struct pg_syntax *pi = pg_alloc(arena, sizeof(*pi));
+		if (!binder || !pi) { result = NULL; goto done; }
+		*binder = (struct pg_syntax){.kind = PG_SYNTAX_BINDER, .token = entry->name, .left = index->domain};
+		*pi = (struct pg_syntax){.kind = PG_SYNTAX_PI, .token = entry->name, .left = binder, .right = result};
+		result = pi;
+		++count;
+	}
+	*implicit_count = count;
+done:
+	pg_graph_destroy(&scratch);
+	return result;
+}
+
 static void error(struct pg_parser *parser, const char *message)
 {
 	if (parser->error) return;

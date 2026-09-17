@@ -20,6 +20,9 @@ struct pg_synthesis {
 	struct pg_whnf_work *normalization;
 	struct pg_index jobs;
 	struct pg_index scopes;
+	/* Source spelling/layout attached to typed subjects; not scheduled work. */
+	struct pg_index source_metadata;
+	struct pg_index source_bindings;
 	struct pg_synthesis_job *ready;
 	struct pg_synthesis_job *ready_tail;
 	uint64_t steps;
@@ -34,7 +37,8 @@ int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
 void pg_synthesis_destroy(struct pg_synthesis *synthesis);
 /* Scope construction interns immutable binding inputs within this store.
  * Name spelling matters; token source offsets do not. Exact parent, context producer,
- * binder, evidence producer and export-scope pointers remain distinct keys.
+ * binder and export-scope pointers remain distinct keys. Already checked names
+ * use their exact typed subjects; pending producers keep their own identity.
  * This never compares Core by alpha/conversion or merges typed evidence. */
 const struct pg_source_scope *pg_synthesis_root(struct pg_synthesis *synthesis);
 /* A '*' token can name an explicitly supplied type assumption. Reading it
@@ -61,12 +65,22 @@ const struct pg_source_scope *pg_synthesis_bind_graph(struct pg_synthesis *synth
 enum pg_source_association { PG_SOURCE_UNASSOCIATED, PG_SOURCE_HYPOTHESIS, PG_SOURCE_GRAPH };
 struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
-/* Retain only sequencing binder identities for a source application.
- * Ordinary result-context rules reconstruct annotations. Attach before
- * application preparation; conflicting or late allocation is rejected. */
-struct pg_synthesis_job *pg_synthesis_application_at(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
-	const struct pg_context *prefix, const struct pg_context *end);
+/* An allocation address, not a typed environment or an acceptance request.
+ * Exactly one of syntax and constructor identifies the allocation site.
+ * Lambda/Pi and return clauses use slot zero; operation clauses use slots
+ * 0/1/2 for payload/resume/response. Applications may allocate multiple binders.
+ * scope lists enclosing binders from innermost to outermost. */
+struct pg_source_binding {
+	const struct pg_syntax *syntax;
+	size_t scope_count, slot;
+	const struct pg_object *const *scope;
+	const struct pg_object *binder;
+	const struct pg_object *constructor;
+};
+const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis *synthesis,
+	const struct pg_source_binding *input);
+int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
+	int (*visit)(void *, const struct pg_source_binding *), void *owner);
 /* Nominal allocation input for a source declaration, before preparation.
  * Candidate universe inference still runs. Only the matching candidate uses
  * the stored Self binder/schema; no stored formation evidence is trusted.
@@ -92,18 +106,27 @@ struct pg_synthesis_job *pg_synthesis_restore_declaration(struct pg_synthesis *s
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	struct pg_synthesis_job *origin);
 /* Associate a qualified constructor use with its retained field scope.
- * The origin is an ordinary substitution input, checked before use; constructor
- * identity, parameters and field types are synthesized again at the use site. */
-struct pg_synthesis_job *pg_synthesis_restore_member(struct pg_synthesis *synthesis,
+ * Contexts supply binders only; constructor identity, parameters and field
+ * types are synthesized at the use site. No substitution proof is restored. */
+struct pg_synthesis_job *pg_synthesis_member_at(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
-	struct pg_synthesis_job *origin);
-/* Retain recursive Match, return-only Fold or multi-clause handler allocations.
- * Source branches/motives are still synthesized; no saved carrier is supplied
- * as an expected type. Ordinary Solve validates the origin before its contexts
- * are used. Nested handler lexical producer retention is not yet complete. */
+	const struct pg_context *prefix, const struct pg_context *fields);
+int pg_synthesis_member_allocation(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job, const struct pg_context **prefix, const struct pg_context **fields);
+/* Lexical inputs only. Source branch scopes and recursive-erasure scopes are
+ * distinct. Context annotations are not accepted types or an expected motive. */
+struct pg_match_allocation {
+	const struct pg_context *prefix, *motive;
+	struct pg_induction_allocation induction;
+	const struct pg_context *branches[];
+};
+/* Read retained input or extract it from the accepted typed construction into
+ * caller-owned temporary storage. This never executes Solve. */
+const struct pg_match_allocation *pg_synthesis_match_allocation(
+	const struct pg_synthesis_job *job, struct pg_graph *storage);
 struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
-	struct pg_synthesis_job *origin);
+	const struct pg_match_allocation *allocation);
 /* Source member allocations are connected before namespace publication.
  * Index selects the source clause; constructor identity is checked against
  * the synthesized declaration, never inferred from that index. Field types
@@ -120,12 +143,6 @@ int pg_synthesis_declaration_member_at(struct pg_synthesis *synthesis,
 int pg_synthesis_declaration_member_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *declaration, size_t index,
 	struct pg_constructor_allocation *allocation);
-struct pg_synthesis_job *pg_synthesis_restore_binding(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
-	struct pg_synthesis_job *origin);
-struct pg_synthesis_job *pg_synthesis_restore_application(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
-	struct pg_synthesis_job *origin);
 /* A definition is keyed by its registration producer and expression, not by
  * the registration worker's allocated scope. Borrow its reconstructible source
  * inputs without claiming whole-module acceptance. Available while dormant. */
@@ -280,7 +297,6 @@ struct pg_handler_binding_input {
 	const struct pg_source_scope *parent;
 	const struct pg_syntax *handler, *clause;
 	struct pg_handler_clause_input allocation;
-	struct pg_synthesis_job *origin;
 	unsigned slot;
 };
 /* 1: source handler binding, 0: another lexical binding, -1: invalid input. */
@@ -820,6 +836,13 @@ struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
 void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);
 enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job);
 const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job);
+/* Read-only diagnostics for rejected declaration checks in this store, not
+ * a new failure authority or a complete causal explanation of a root status.
+ * Each callback borrows constructor/index tokens and a zero-based written
+ * field/family-index path. SIZE_MAX field means no supported direct path;
+ * the family-index position is then unspecified. No Solve work is performed. */
+int pg_synthesis_visit_rejected_index_paths(const struct pg_synthesis *synthesis,
+	int (*visit)(void *, struct pg_token, struct pg_token, size_t, size_t), void *owner);
 /* Inspect the active subscription, not historical premises. A cycle query
  * returns one job on a reachable waiting cycle, or NULL. It neither advances
  * work nor rejects recursion, and an absent cycle does not prove progress. */

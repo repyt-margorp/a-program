@@ -1,0 +1,10 @@
+Nat := @{zero:*; succ:*->*;};
+Vec := \A:@ => @\n:Nat => {nil:* Nat.zero; cons:A->* n->* (Nat.succ n);};
+W := @\n:Nat => @\xs:Vec Nat n => {mk:(k:Nat)->(ys:Vec Nat k)->* k ys;};
+T := @\n:Nat => @\xs:Vec Nat n => {mk:W n xs->* n xs;};
+nil := (Vec Nat).nil;
+w := W.mk Nat.zero nil;
+main := T.mk w;
+main :: T Nat.zero nil;
+explicit := \c:(n:Nat)->(xs:Vec Nat n)->W n xs->T n xs => c Nat.zero nil w;
+expected := explicit &T.mk;
