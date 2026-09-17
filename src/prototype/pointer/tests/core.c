@@ -2884,6 +2884,22 @@ static void classifiers_test(struct pg_graph *graph)
 	const struct pg_term *u1 = pg_universe(&classifiers, 1);
 	assert(u0 && u1 && u0 != u1);
 	assert(u0 == pg_universe(&classifiers, 0));
+	struct pg_classifiers borrowed = {.graph = graph};
+	size_t objects = graph->objects.count, terms = graph->terms.count;
+	assert(pg_universe(&borrowed, 0) == u0 && pg_universe(&borrowed, 1) == u1);
+	assert(graph->objects.count == objects && graph->terms.count == terms);
+	assert(pg_classifier_resolve(&borrowed, "kernel/universe/0/v1") == u0->as.reference);
+	{
+		struct pg_graph other;
+		struct pg_classifiers separate;
+		assert(!pg_graph_init(&other) && !pg_classifiers_init(&separate, &other));
+		const struct pg_term *other_u0 = pg_universe(&separate, 0);
+		uint64_t other_level;
+		assert(other_u0 && other_u0 != u0 && other_u0->as.reference != u0->as.reference);
+		assert(pg_universe_level(other_u0, &other_level) && !other_level);
+		pg_classifiers_destroy(&separate);
+		pg_graph_destroy(&other);
+	}
 	uint64_t level;
 	assert(pg_universe_level(u0, &level) && level == 0);
 	assert(pg_universe_level(u1, &level) && level == 1);
@@ -2920,6 +2936,11 @@ static void classifiers_test(struct pg_graph *graph)
 	assert(u0 == pg_universe(&classifiers, 0));
 	pg_classifiers_destroy(&classifiers);
 	assert(pg_universe_level(u0, &level) && level == 0);
+	assert(!pg_universe(&classifiers, 0));
+	assert(pg_universe(&borrowed, 0) == u0);
+	assert(!pg_classifiers_init(&classifiers, graph));
+	assert(pg_universe(&classifiers, 0) == u0);
+	pg_classifiers_destroy(&classifiers);
 	puts("classifiers: distinct universe levels and Pi spines reuse Core without typed Lambda tags");
 }
 

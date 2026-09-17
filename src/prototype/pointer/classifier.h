@@ -3,9 +3,10 @@
 
 #include "graph.h"
 
+/* Borrowed graph access for classifier construction. Semantic references are
+ * interned by their owner in the graph, not by the lifetime of this view. */
 struct pg_classifiers {
 	struct pg_graph *graph;
-	struct pg_index universes;
 };
 
 int pg_classifiers_init(struct pg_classifiers *classifiers, struct pg_graph *graph);

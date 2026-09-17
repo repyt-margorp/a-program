@@ -178,21 +178,22 @@ int pg_effect_contains(const struct pg_effect_row *row, const struct pg_object *
 	return 0;
 }
 
-struct universe_object {
-	struct pg_object object;
+struct universe_entry {
+	struct pg_object_entry base;
 	uint64_t level;
 };
-struct universe_entry {
-	struct pg_index_entry index;
-	struct universe_object universe;
-};
+
+static const struct universe_entry *universe_entry(const struct pg_object *object)
+{
+	return (const void *)((const char *)object - offsetof(struct pg_object_entry, object));
+}
 
 const char *pg_classifier_name(const struct pg_object *object, char *buffer, size_t capacity)
 {
 	if (!object || !buffer || !capacity) return NULL;
 	if (object->owner == &universe_class) {
 		int length = snprintf(buffer, capacity, "kernel/universe/%" PRIu64 "/v1",
-			((const struct universe_object *)object)->level);
+			universe_entry(object)->level);
 		return length >= 0 && (size_t)length < capacity ? buffer : NULL;
 	}
 	for (size_t i = 0; i < sizeof(descriptors) / sizeof(*descriptors); ++i) {
@@ -225,30 +226,35 @@ const struct pg_object *pg_classifier_resolve(struct pg_classifiers *classifiers
 
 int pg_classifiers_init(struct pg_classifiers *classifiers, struct pg_graph *graph)
 {
-	memset(classifiers, 0, sizeof(*classifiers));
+	if (!classifiers || !graph) return -1;
 	classifiers->graph = graph;
-	return pg_index_init(&classifiers->universes);
+	return 0;
 }
 
 void pg_classifiers_destroy(struct pg_classifiers *classifiers)
 {
-	pg_index_destroy(&classifiers->universes);
 	memset(classifiers, 0, sizeof(*classifiers));
 }
 
 const struct pg_term *pg_universe(struct pg_classifiers *classifiers, uint64_t level)
 {
-	uint64_t hash = level * UINT64_C(1099511628211);
-	for (struct pg_index_entry *candidate = pg_index_candidates(&classifiers->universes, hash); candidate; candidate = candidate->next) {
+	if (!classifiers || !classifiers->graph) return NULL;
+	struct pg_graph *graph = classifiers->graph;
+	if (!graph->objects.capacity && pg_index_init(&graph->objects)) return NULL;
+	uint64_t hash = (level ^ (uintptr_t)&universe_class) * UINT64_C(1099511628211);
+	for (struct pg_index_entry *candidate = pg_index_candidates(&graph->objects, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
+		const struct pg_object_entry *base = (const void *)candidate;
+		if (base->object.owner != &universe_class) continue;
 		struct universe_entry *entry = (struct universe_entry *)candidate;
-		if (entry->universe.level == level) return pg_reference(classifiers->graph, &entry->universe.object);
+		if (entry->level == level) return pg_reference(graph, &entry->base.object);
 	}
-	struct universe_entry *entry = pg_alloc(classifiers->graph, sizeof(*entry));
+	struct universe_entry *entry = pg_alloc(graph, sizeof(*entry));
 	if (!entry) return NULL;
-	entry->universe = (struct universe_object){{PG_SEMANTIC_OBJECT, &universe_class}, level};
-	if (pg_index_insert(&classifiers->universes, &entry->index, hash) != 0) return NULL;
-	return pg_reference(classifiers->graph, &entry->universe.object);
+	entry->base.object = (struct pg_object){PG_SEMANTIC_OBJECT, &universe_class};
+	entry->level = level;
+	if (pg_index_insert(&graph->objects, &entry->base.index, hash) != 0) return NULL;
+	return pg_reference(graph, &entry->base.object);
 }
 
 int pg_universe_level(const struct pg_term *term, uint64_t *level)
@@ -256,7 +262,7 @@ int pg_universe_level(const struct pg_term *term, uint64_t *level)
 	if (!term || term->kind != PG_REFERENCE) return 0;
 	const struct pg_object *object = term->as.reference;
 	if (object->owner != &universe_class) return 0;
-	*level = ((const struct universe_object *)object)->level;
+	*level = universe_entry(object)->level;
 	return 1;
 }
 

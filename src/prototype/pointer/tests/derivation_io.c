@@ -229,10 +229,10 @@ static void classifier_transport(struct pg_classifiers *source)
 		"kernel/universe/+1/v1", "kernel/universe/ 1/v1", "kernel/universe//v1",
 		"kernel/universe/18446744073709551616/v1", "kernel/universe/1/v2",
 		"kernel/universe/1/v1/extra", "kernel/pi/v2", "other/pi/v1"};
-	size_t before = destination.universes.count;
+	size_t before = graph.objects.count, terms_before = graph.terms.count;
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
 		assert(!pg_classifier_resolve(&destination, invalid[i]));
-	assert(destination.universes.count == before);
+	assert(graph.objects.count == before && graph.terms.count == terms_before);
 	char small[2];
 	assert(!pg_classifier_name(domain->as.reference, small, sizeof(small)));
 	assert(!pg_classifier_name(binder, small, sizeof(small)));

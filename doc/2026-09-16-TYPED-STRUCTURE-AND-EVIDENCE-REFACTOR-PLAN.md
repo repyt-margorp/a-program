@@ -2580,3 +2580,32 @@ This removes unnecessary origin traversal for already exposed results, not
 general recursive-IH construction or dependent classifier transport. No new
 Core tag, logical rule or image format. R2/R3/R5, overall code reduction and
 Main publication remain open.
+
+### 2026-09-17: Share the graph's Universe reference owner (R54)
+
+- [x] Remove the per-`pg_classifiers` Universe index. Universe descriptors use
+  the existing graph-owned semantic-object index, keyed by owner and concrete
+  level. `pg_classifiers` is a borrowed construction view, not an independent
+  identity authority. Distinct levels and distinct graphs remain distinct;
+  Core still does not interpret semantic payloads or normalize interning keys.
+- [x] This is a prerequisite for shared recursive-IH construction: typed
+  queries can borrow classifier construction without creating a second
+  Universe identity store or retaining a caller's stack-owned manager. No new
+  typing acceptance follows from this reference sharing.
+- [x] Test same-graph sharing, unchanged allocation counts on repeat, reference
+  survival across view destruction/reinitialization, different-graph separation
+  and descriptor resolution. Update the transport test's private-index count
+  to check that invalid descriptors allocate neither objects nor Terms.
+- [x] Full debug acceptance passes after updating that private-field test,
+  including 63/63 compatibility and final QuickSort source/image checks.
+  ASan/UBSan Core, IADT, Identity, synthesis, imported QuickSort and the complete
+  derivation I/O script pass. Logs: `/tmp/a-program-typed-structure-r54-*`;
+  final debug log is `r54-debug-final.log`.
+
+Against `b5f940b`: implementation `classifier.c` +24/-18, `classifier.h`
++2/-1: **+7**; tests `core.c` +21/-0 and `derivation_io.c` +2/-2.
+Cumulative implementation/header **+1774** against `4657cc6`. O0 QuickSort:
+1.1111 seconds / 277488 KiB / 131255 transitions; all five graph/query counts
+match R53. This is one sample, not a speedup claim. Descriptor names and image
+formats are unchanged. Recursive-IH query integration, R2/R3/R5, net code
+reduction and Main publication remain open.
