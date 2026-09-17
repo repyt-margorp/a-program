@@ -1435,9 +1435,15 @@ reflection, new Core tag or acceptance cache is added.
   inert resaves with both valid and invalid independent roots.
 - [x] Full optimized `check-acceptance`; affected debug and ASan/UBSan suites.
 - [x] Record per-file LOC and retained QuickSort work/image measurements.
-- [ ] Publish this completed epoch to Main and verify both remote tips.
+- [x] Publish this completed epoch to Main and verify both remote tips.
 
 Source-image formats are now APGSRC62/63 and reduction records APGRCP3;
 older images require regeneration. Implementation/header delta is +137/-72
 (net +65); tests +135/-9 (net +126). This is removal of a specific duplicate
 dependency, not completion of R or a claim of overall code-size reduction.
+
+Publication: `121d6e5b04620b590b839f1ff98f008d5e1fa666`, atomically pushed to
+`origin/main` and `origin/rewrite/pointer-core-hott`, fast-forward from `28e1837`.
+Both remote tips were verified. No implementation/test edits occurred after the
+final gates. Documentation in that commit is +185/-2, separate from source and
+tests; total +457/-83. This publication-record update is documentation only.
