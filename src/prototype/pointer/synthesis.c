@@ -7262,6 +7262,23 @@ static void forward_structure(struct pg_synthesis *synthesis, struct pg_synthesi
 	finish(synthesis, job, job->left->status);
 }
 
+/* Accepted typed data is the structural authority. Pending recipes are only
+ * needed before that data exists, for example to close effect equations. */
+static int accepted_structure(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	const struct pg_synthesis_job *producer)
+{
+	const struct pg_evidence *proof = pg_synthesis_result(producer);
+	if (!proof) return 0;
+	const struct pg_occurrence *subject = pg_evidence_subject(proof);
+	if (job->role == TYPE_STRUCTURE_JOB) {
+		enum pg_evidence_judgement kind = pg_evidence_judgement(proof);
+		if (kind != PG_JUDGEMENT_VALUE_TYPE && kind != PG_JUDGEMENT_COMPUTATION_TYPE) subject = NULL;
+	}
+	job->type_structure = !subject ? NULL : job->role == CLASSIFIER_STRUCTURE_JOB ? subject->classifier : subject->core;
+	finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+	return 1;
+}
+
 static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_job *job)
 {
 	/* Result annotations cannot supply inference information. Collect the
@@ -7467,6 +7484,7 @@ static void handler_structure_step(struct pg_synthesis *synthesis, struct pg_syn
 static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	if (accepted_structure(synthesis, job, producer)) return;
 	if (await_source_preparation(synthesis, job, producer)) return;
 	/* Classifier conversion and post-checking never rewrite the subject. */
 	if (producer->role == CLASSIFIER_JOB || producer->role == EXPECT_JOB) {
@@ -7595,10 +7613,7 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 	}
 accepted_subject:
 	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
-	if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return; }
-	const struct pg_occurrence *subject = producer->result ? pg_evidence_subject(producer->result) : NULL;
-	job->type_structure = subject ? subject->core : NULL;
-	finish(synthesis, job, subject ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+	finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
 }
 
 /* Vary the complete Identity boundary, not only a value in its left fiber.
@@ -8229,6 +8244,7 @@ static void pi_application_structure_step(struct pg_synthesis *synthesis,
 static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	if (accepted_structure(synthesis, job, producer)) return;
 	if (await_source_preparation(synthesis, job, producer)) return;
 	if (producer->role == HANDLER_JOB) {
 		struct pg_synthesis_job *carrier = (void *)producer->inputs[1];
@@ -8358,14 +8374,13 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 	}
 accepted_classifier:
 	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
-	if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return; }
-	job->type_structure = producer->result ? pg_evidence_classifier(producer->result) : NULL;
-	finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+	finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
 }
 
 static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+	if (accepted_structure(synthesis, job, producer)) return;
 	if (await_source_preparation(synthesis, job, producer)) return;
 	if (producer->role == CLASSIFIER_FORMATION_JOB) {
 		if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, (void *)producer->inputs[1]);
@@ -8412,13 +8427,8 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 	}
 	if (!input) {
 		if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
-		if (producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, producer->status); return; }
-		const struct pg_evidence *proof = producer->result;
-		if (!proof) goto unsupported;
-		enum pg_evidence_judgement kind = pg_evidence_judgement(proof);
-		if (kind != PG_JUDGEMENT_VALUE_TYPE && kind != PG_JUDGEMENT_COMPUTATION_TYPE) goto unsupported;
-		job->type_structure = pg_evidence_subject(proof)->core;
-		goto done;
+		finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
+		return;
 	}
 	if (input->rule == PG_PI_FORM) {
 		struct pg_synthesis_job *context = rule_premise(synthesis, producer, 0);

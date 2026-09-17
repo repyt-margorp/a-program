@@ -161,6 +161,59 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### Accepted Structural Projections (after `83249f1`)
+
+Inspection found a concrete duplicate in target 1: all three structural queries
+could follow source/derivation recipes even when their producer already retained
+an accepted typed occurrence. They now share `accepted_structure`, reading its
+Core or classifier directly. The three late-result extraction copies are removed.
+No new job role, acceptance state, cache, Core tag or proof rule is introduced.
+This removes completed-producer reconstruction; pending symbolic reconstruction
+and the remaining target-1 work are not declared finished.
+
+The old API comment promised symbolic rows even for a first query after
+acceptance. That is not required by the consumers: contribution registration
+already accepts closed rows, and formation still waits for the equation owner.
+The revised contract explicitly freezes completed snapshots but lets later
+queries read accepted data. Symbolic and closed snapshots agree after ordinary
+substitution of solved parameters, not necessarily by pointer identity. This
+changes an internal representation contract, not surface typing or execution.
+Do not mutate old snapshots or register a closed row as independent acceptance.
+
+Permanent tests cover Universe, Pi, Lambda, Thunk, application and a sequential
+block. Three completed-producer queries take three steps/requests and allocate
+no further Terms, occurrences, proofs or normalization jobs. Value/computation
+terms are still rejected as type formations. The pending-effect suite checks a
+cached symbolic Pi and a fresh accepted projection after closure, including
+substitution agreement and unchanged snapshots at chunks 1/64. Existing rejected
+producer tests remain unchanged; structural availability is not acceptance.
+
+Same-input debug QuickSort compilation (`if8_fuel_free_quicksort_check.p`,
+`--steps 1000000 --legacy-intrinsic-dot`, GDB at `main.c:395`):
+
+| Quantity | Before (`83249f1`) | After |
+|---|---:|---:|
+| Solve steps | 48,735 | 48,155 |
+| Requests | 15,203 | 14,978 |
+| Accepted proofs | 23,315 | 23,315 |
+| Typed occurrences | 19,522 | 19,522 |
+| Core Terms | 11,990 | 11,958 |
+
+Debug synthesis and ASan/UBSan synthesis pass, including the new tests; logs:
+`/tmp/a-program-authority-structure-publish-debug.log` and
+`/tmp/a-program-authority-structure-publish-asan.log`. Full optimized
+`check-acceptance` also passes (`/tmp/a-program-authority-structure-publish.log`,
+`-std=c11 -Wall -Wextra -Werror -O2`), including source-image and universal
+QuickSort positive/negative checks. Sanitizers cover synthesis, not the whole
+acceptance suite. Publication is recorded in the priority plan. No wall-clock
+speedup is claimed.
+
+Per-file delta: `synthesis.c` +24/-14; `synthesis.h` +6/-2;
+`tests/synthesis.c` +58/-0. Implementation/headers total +30/-16 (net +14),
+tests net +58, documentation separate. The parent's net-negative gate remains
+unmet. Next inspect pending subject construction and declared-type lookup,
+preserving effect-equation closure rather than waiting for full acceptance.
+
 | Area | Files / main paths | Finding |
 |---|---|---|
 | Core and evaluation | `graph`, `eval`, `conversion`, `computation`, `execution` | Only Lambda/Application/Reference Core tags. Pure normalization shares work; actual external effects are not memoized results. |

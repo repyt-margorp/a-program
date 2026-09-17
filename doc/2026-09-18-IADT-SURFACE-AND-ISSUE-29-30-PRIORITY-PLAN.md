@@ -1447,3 +1447,18 @@ Publication: `121d6e5b04620b590b839f1ff98f008d5e1fa666`, atomically pushed to
 Both remote tips were verified. No implementation/test edits occurred after the
 final gates. Documentation in that commit is +185/-2, separate from source and
 tests; total +457/-83. This publication-record update is documentation only.
+
+### R: Accepted structural projections
+
+- [x] Use the retained typed occurrence before traversing completed producers'
+  recipes; share extraction for term, type and classifier queries.
+- [x] Test allocation-free projections and symbolic/closed effect snapshot
+  agreement without replacing the original producer's checks.
+- [x] Debug and ASan/UBSan synthesis suites; same-input QuickSort work counts.
+- [x] Full optimized acceptance, including imported/resaved QuickSort proofs.
+- [ ] Main publication and remote-tip verification.
+
+The [audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#accepted-structural-projections-after-83249f1)
+records the internal snapshot-contract adjustment and measured request reduction.
+This is progress on target 1, not completion of the pending-construction cleanup
+or the broad R goal. Source-image formats are unchanged by this epoch.

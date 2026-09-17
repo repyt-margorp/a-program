@@ -386,8 +386,11 @@ struct pg_derivation_input;
 /* Structural subject of an unaccepted formation producer. Universe/F/U/Pi
  * inputs can be inspected before row closure. Unknown rule forms await their
  * accepted formation instead. No accepted type certificate is issued;
- * callers must retain/check the original formation producer. Symbolic row
- * parameters remain symbolic even if that producer has already completed. */
+ * callers must retain/check the original formation producer. Completed
+ * snapshots are immutable, including any symbolic row parameters. A query
+ * advancing after its producer has accepted evidence reads that typed subject
+ * directly instead of reconstructing the producer's symbolic recipe. Compare
+ * snapshots after substituting solved parameters, not by raw pointer identity. */
 struct pg_synthesis_job *pg_synthesis_type_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation);
 const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthesis_job *job);
@@ -396,6 +399,7 @@ const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthes
  * Uses binder identity through context producers, not names or accepted proof
  * guesses. Explicit classifier-normalization producers use shared pure WHNF;
  * post-check producers expose their target, without proving the check passes.
+ * Accepted producers expose their retained classifier without new inference.
  * Other producers await acceptance. Read the raw result with the same
  * type_structure_result accessor; it supplies no typing evidence. */
 struct pg_synthesis_job *pg_synthesis_classifier_structure(struct pg_synthesis *synthesis,

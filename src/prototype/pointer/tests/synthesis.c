@@ -95,6 +95,52 @@ static const struct pg_evidence *normalize(struct pg_synthesis *synthesis,
 	return complete(synthesis, pg_synthesis_normalize(synthesis, context, input), PG_SYNTHESIS_DONE);
 }
 
+static void accepted_structures(struct pg_typing *typing)
+{
+	const char *sources[] = {
+		"v := @;", "v := @ -> @;", "v := \\x : @ => x;",
+		"v := &(\\x : @ => x);", "v := (\\x : @ => x) (@{ unit : *; });",
+		"v := { x := @; x; };"
+	};
+	struct pg_whnf_work normalization;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&normalization, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+	for (size_t i = 0; i < sizeof(sources) / sizeof(*sources); ++i) {
+		struct pg_synthesis_job *producer = request(&synthesis, pg_synthesis_root(&synthesis), sources[i]);
+		const struct pg_evidence *proof = complete(&synthesis, producer, PG_SYNTHESIS_DONE);
+		while (synthesis.ready) pg_synthesis_advance(&synthesis, 1);
+		const struct pg_occurrence *subject = pg_evidence_subject(proof);
+		enum pg_evidence_judgement kind = pg_evidence_judgement(proof);
+		int is_type = kind == PG_JUDGEMENT_VALUE_TYPE || kind == PG_JUDGEMENT_COMPUTATION_TYPE;
+		size_t jobs = synthesis.jobs.count, proofs = typing->proofs.count;
+		size_t occurrences = typing->occurrences.count, terms = typing->graph->terms.count;
+		size_t whnf = normalization.jobs.count, nf = normalization.normal_forms.count;
+		uint64_t steps = synthesis.steps;
+		struct pg_synthesis_job *term = pg_synthesis_term_structure(&synthesis, producer);
+		struct pg_synthesis_job *classifier = pg_synthesis_classifier_structure(&synthesis, producer);
+		struct pg_synthesis_job *type = pg_synthesis_type_structure(&synthesis, producer);
+		pg_synthesis_advance(&synthesis, 3);
+		assert(pg_synthesis_status(term) == PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_status(classifier) == PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_status(type) == (is_type ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED));
+		assert(pg_synthesis_type_structure_result(term) == subject->core);
+		assert(pg_synthesis_type_structure_result(classifier) == subject->classifier);
+		assert(pg_synthesis_type_structure_result(type) == (is_type ? subject->core : NULL));
+		assert(!pg_synthesis_result(term) && !pg_synthesis_result(classifier) && !pg_synthesis_result(type));
+		assert(pg_synthesis_term_structure(&synthesis, producer) == term);
+		assert(pg_synthesis_classifier_structure(&synthesis, producer) == classifier);
+		assert(pg_synthesis_type_structure(&synthesis, producer) == type);
+		assert(synthesis.steps == steps + 3 && synthesis.jobs.count == jobs + 3 && !synthesis.ready);
+		assert(typing->proofs.count == proofs && typing->occurrences.count == occurrences);
+		assert(typing->graph->terms.count == terms);
+		assert(normalization.jobs.count == whnf && normalization.normal_forms.count == nf);
+	}
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&normalization);
+	puts("accepted structure: exact typed projections without premise reconstruction or evaluation");
+}
+
 struct effect_copy {
 	const struct pg_effect_inference *source;
 	struct pg_effect_inference *destination;
@@ -1242,6 +1288,17 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		/* Capture-avoiding substitution freshens the Pi binder. */
 		assert(pg_alpha_equal(pg_term_substitute(typing->graph, symbolic_pi, 1, &image),
 			pg_evidence_subject(pg_synthesis_result(pi))->core) == 1);
+		assert(pg_synthesis_type_structure_result(structure) == symbolic_pi);
+		/* A fresh query on an accepted producer reads typed data, not the
+		 * pre-closure recipe. Existing symbolic snapshots stay immutable. */
+		struct pg_synthesis_job *late = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){empty, pi});
+		const struct pg_evidence *late_proof = complete(&synthesis, late, PG_SYNTHESIS_DONE);
+		struct pg_synthesis_job *late_shape = pg_synthesis_type_structure(&synthesis, late);
+		assert(!complete(&synthesis, late_shape, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(late_shape) == pg_evidence_subject(late_proof)->core);
+		assert(pg_alpha_equal(pg_term_substitute(typing->graph, symbolic_pi, 1, &image),
+			pg_synthesis_type_structure_result(late_shape)) == 1);
 		assert(pg_synthesis_type_structure_result(structure) == symbolic_pi);
 		struct pg_synthesis_job *invalid = rule_job(&synthesis, PG_THUNK_TYPE_FORM, NULL, 1, &universe);
 		struct pg_synthesis_job *invalid_structure = pg_synthesis_type_structure(&synthesis, invalid);
@@ -6149,6 +6206,7 @@ int main(void)
 	struct pg_synthesis synthesis;
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
+	accepted_structures(&typing);
 	graded_application(&typing);
 	effect_equations(&typing);
 	pending_effect_contexts(&typing);
