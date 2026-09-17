@@ -2989,3 +2989,12 @@ proofs, +452 retained queries and +88 Solve transitions. Reusing nominal work
 avoids some repeated freshening; no accepted alternate derivations are deleted.
 Dependency scheduling changes transition counts, not the logical rules. No Main
 publication until the complete refactor's acceptance gates are met.
+
+Next deletion review: `selected_formation` is not interchangeable with an
+ordinary child lookup. A constant Pi codomain can retain a nominal type while
+discarding a binder for which no substitution image exists. Selecting the
+nominal declaration before restricting only its required parameters is
+therefore necessary; rebuilding the entire old Pi context is not a valid
+replacement. Consolidate this scoped selection with typed input/restriction
+work without fabricating images for removed binders, retaining a second walk,
+or weakening the existing selected-codomain regressions.
