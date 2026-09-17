@@ -209,6 +209,7 @@ static int structural_computation_view(struct pg_function_graph_state *s,
 		struct pg_typed_query *input = pg_typed_input_request(s->typing, proof, i);
 		while (!pg_typed_query_advance(input, 1024)) {}
 		children[i] = pg_typed_query_result(input);
+		if (!children[i]) return -1;
 		const struct pg_occurrence *child = pg_evidence_subject(children[i]);
 		if (!child || child->context != subject->context) return -1;
 		if (pg_alpha_equal(child->core, terms[i]) != 1) return -1;

@@ -7,6 +7,7 @@
 #include "conversion.h"
 #include "classifier.h"
 #include "evidence.h"
+#include "function_graph.h"
 #include "derivation.h"
 #include "computation.h"
 #include "action.h"
@@ -760,6 +761,30 @@ static void evidence_test(struct pg_graph *graph)
 		const struct pg_evidence *again = NULL;
 		assert(pg_prove_construction_origin(&typing, &classifiers, moved, &again) == return_y && again == environment);
 		assert(typing.proofs.count == proofs && typing.occurrences.count == subjects);
+		const struct pg_evidence *parameter = pg_prove_context_extension(&typing, y_context, pg_binder(graph), a_in_y);
+		const struct pg_evidence *constant_body = pg_prove_projection(&typing, parameter, return_y);
+		const struct pg_evidence *constant = pg_prove_lambda(&typing,
+			pg_prove_pi(&typing, &classifiers, parameter,
+				pg_prove_classifier(&typing, &classifiers, parameter, constant_body)), constant_body);
+		constant = pg_prove_projection(&typing, scope,
+			pg_prove_reindex(&typing, duplicate, pg_prove_reindex(&typing, swap, constant)));
+		struct pg_typed_query *queries[] = {
+			pg_return_body_request(&typing, moved),
+			pg_application_body_request(&typing, constant, pg_prove_projection(&typing, scope, y_term))
+		};
+		for (size_t i = 0; i < 2; ++i) {
+			struct pg_typed_query *query = queries[i];
+			while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
+			const struct pg_evidence *result = pg_typed_query_result(query);
+			const struct pg_evidence *expected = i ? pg_prove_return(&typing, &classifiers, image) : image;
+			assert(result && pg_evidence_context(result) == pg_evidence_context(scope));
+			assert(pg_evidence_subject(result)->core == pg_evidence_subject(expected)->core);
+			assert(pg_evidence_classifier(result) == pg_evidence_classifier(expected));
+			proofs = typing.proofs.count; subjects = typing.occurrences.count;
+			uint64_t steps = pg_typed_query_steps(query);
+			assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
+			assert(typing.proofs.count == proofs && typing.occurrences.count == subjects);
+		}
 	}
 	reconstruct_derivation(&typing, &classifiers, converted_lambda);
 	const struct pg_evidence *folded = pg_prove_fold(&typing, &classifiers, returned, identity_y);
@@ -4791,6 +4816,39 @@ static void request_typing_test(struct pg_graph *graph)
 	normal = checked_normalize(&typing, &work, handled);
 	const struct pg_evidence *answer = pg_prove_return_value(&typing, normal);
 	assert(answer && pg_evidence_subject(answer)->core == pg_evidence_subject(payload)->core);
+	{
+		/* A receipt can expose RETURN while the checked input query does not
+		 * yet support the source handler. Graph generation must not dereference
+		 * a missing child; checked RETURN inversion can still form its leaf. */
+		struct pg_typed_query *input = pg_typed_input_request(&typing, normal, 0);
+		while (!pg_typed_query_advance(input, 1)) assert(pg_typed_query_steps(input) < 10000);
+		assert(!pg_typed_query_result(input));
+		const struct pg_evidence *body = pg_prove_projection(&typing, scope, normal);
+		const struct pg_evidence *function = pg_prove_lambda(&typing,
+			pg_prove_pi(&typing, &classifiers, scope,
+				pg_prove_classifier(&typing, &classifiers, scope, body)), body);
+		struct pg_function_graph_work generated;
+		assert(function && !pg_function_graph_init(&generated, &typing, &classifiers, &work, function));
+		enum pg_function_graph_status status;
+		size_t steps = 0;
+		do {
+			status = pg_function_graph_advance(&generated, 1);
+			assert(++steps < 10000);
+		} while (status == PG_FUNCTION_GRAPH_PENDING);
+		assert(status == PG_FUNCTION_GRAPH_DONE && pg_function_graph_formation(&generated));
+		do {
+			status = pg_function_graph_witness_advance(&generated, 1);
+			assert(++steps < 10000);
+		} while (status == PG_FUNCTION_GRAPH_PENDING);
+		assert(status == PG_FUNCTION_GRAPH_DONE);
+		const struct pg_evidence *call = pg_prove_application(&typing, pg_function_graph_witness(&generated), payload);
+		const struct pg_evidence *packet = pg_prove_return_value(&typing, checked_normalize(&typing, &work, call));
+		assert(packet);
+		const struct pg_term *pair = pg_evidence_subject(packet)->core;
+		assert(pair->kind == PG_APPLICATION && pair->as.application.function->kind == PG_APPLICATION);
+		assert(pair->as.application.function->as.application.argument == pg_evidence_subject(payload)->core);
+		pg_function_graph_destroy(&generated);
+	}
 	assert(!pg_prove_handler(&typing, &classifiers, two, k, carrier, 1, clauses));
 	clauses[1] = clauses[0];
 	assert(!pg_prove_handler(&typing, &classifiers, two, k, carrier, 2, clauses));

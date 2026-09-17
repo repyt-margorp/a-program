@@ -720,11 +720,6 @@ static const struct pg_evidence *variable_frame(struct pg_typing *typing,
 		conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frame->restriction->context), binder);
 }
 
-struct construction_map {
-	const struct pg_context_map *map;
-	struct construction_map *next;
-};
-
 static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 	const struct pg_evidence *computation)
 {
@@ -758,8 +753,7 @@ struct pg_typed_query {
 	struct pg_index_entry index;
 	struct pg_typing *typing;
 	const struct pg_occurrence *source, *argument_source, *current;
-	const struct pg_evidence *argument, *map, *extended, *value, *result;
-	struct construction_map *frames;
+	const struct pg_evidence *argument, *environment, *value, *result;
 	const struct pg_evidence *continuation;
 	enum typed_query_resume resume;
 	struct pg_typed_query *dependency;
@@ -860,24 +854,7 @@ static int typed_body_step(struct pg_typed_query *work)
 		return 0;
 	}
 	if (work->value) {
-		if (work->frames) {
-			work->value = pg_prove_reindex(typing, pg_prove_context_map(typing, work->frames->map), work->value);
-			work->frames = work->frames->next;
-			return work->value ? 0 : -1;
-		}
-		work->result = work->value;
-		return 1;
-	}
-	if (work->map) {
-		if (work->frames) {
-			work->map = pg_prove_substitution_compose(typing, work->map,
-				pg_prove_context_map(typing, work->frames->map));
-			work->frames = work->frames->next;
-			return work->map ? 0 : -1;
-		}
-		const struct pg_evidence *map = pg_prove_substitution_pair(typing, work->map, work->extended, work->argument);
-		work->result = pg_prove_reindex(typing, map,
-			pg_prove_structural_subject(typing, pg_occurrence_scoped_input(current, 0)));
+		work->result = work->environment ? pg_prove_reindex(typing, work->environment, work->value) : work->value;
 		return work->result ? 1 : -1;
 	}
 	const struct pg_occurrence *returned = returned_computation(current);
@@ -885,10 +862,9 @@ static int typed_body_step(struct pg_typed_query *work)
 	if (current->origin) {
 		if (current->selection) return -1;
 		if (current->map) {
-			struct construction_map *frame = pg_alloc(typing->graph, sizeof(*frame));
-			if (!frame) return -1;
-			*frame = (struct construction_map){current->map, work->frames};
-			work->frames = frame;
+			const struct pg_evidence *step = pg_prove_context_map(typing, current->map);
+			work->environment = work->environment ? pg_prove_substitution_compose(typing, step, work->environment) : step;
+			if (!work->environment) return -1;
 		} else if (current->judgement != current->origin->judgement) {
 			if (current->judgement != PG_JUDGEMENT_COMPUTATION || current->origin->judgement != PG_JUDGEMENT_VALUE) return -1;
 			++work->forces;
@@ -917,10 +893,13 @@ static int typed_body_step(struct pg_typed_query *work)
 		if (!work->argument || work->forces || current->operand_count != 1) return -1;
 		const struct pg_occurrence *body = pg_occurrence_scoped_input(current, 0);
 		if (!body) return -1;
-		work->extended = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, body->context);
-		if (!work->extended) return -1;
-		work->map = pg_prove_substitution_projection(typing, work->extended->premises[0], work->extended->premises[0]);
-		return work->map ? 0 : -1;
+		const struct pg_evidence *extended = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, body->context);
+		if (!extended) return -1;
+		const struct pg_evidence *map = work->environment ? work->environment
+			: pg_prove_substitution_projection(typing, extended->premises[0], extended->premises[0]);
+		map = pg_prove_substitution_pair(typing, map, extended, work->argument);
+		work->result = pg_prove_reindex(typing, map, pg_prove_structural_subject(typing, body));
+		return work->result ? 1 : -1;
 	}
 	if (core->kind == PG_APPLICATION) {
 		const struct pg_term *head = core->as.application.function;
@@ -954,9 +933,11 @@ static int typed_body_step(struct pg_typed_query *work)
 		work->continuation = fold ? right : NULL;
 		return typed_body_enter(work, current->operands[0], fold ? NULL : right);
 	}
-	if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER || !work->frames) return -1;
-	work->current = pg_context_map_image(work->frames->map, core->as.reference);
-	work->frames = work->frames->next;
+	if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER || !work->environment) return -1;
+	const struct pg_evidence *image = pg_substitution_image(typing, work->environment, core->as.reference);
+	if (!image) return -1;
+	work->current = pg_evidence_subject(image);
+	work->environment = NULL;
 	return work->current ? 0 : -1;
 }
 
@@ -2221,21 +2202,15 @@ static int typed_body_match(struct pg_typed_query *work)
 	const struct pg_evidence *source = pg_prove_structural_subject(typing, work->current);
 	struct elimination_structure view;
 	if (!source || source->rule != PG_MATCH_ELIM || elimination_structure(typing, source, &view)) return -1;
-	const struct pg_evidence *map = NULL;
-	for (struct construction_map *frame = work->frames; frame; frame = frame->next) {
-		const struct pg_evidence *step = pg_prove_context_map(typing, frame->map);
-		map = map ? pg_prove_substitution_compose(typing, map, step) : step;
-		if (!map) return -1;
-	}
 	struct pg_graph temporary = {0};
 	struct constructor_structure value;
-	const struct pg_evidence *branch = elimination_branch(typing, &temporary, &view, map, &value, &work->dependency);
+	const struct pg_evidence *branch = elimination_branch(typing, &temporary, &view, work->environment, &value, &work->dependency);
 	for (size_t i = 0; branch && i < value.count; ++i)
 		branch = pg_prove_application(typing, branch, value.fields[i]);
 	pg_graph_destroy(&temporary);
 	if (!branch) return work->dependency ? 0 : -1;
 	work->current = pg_evidence_subject(branch);
-	work->frames = NULL;
+	work->environment = NULL;
 	return 0;
 }
 

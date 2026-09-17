@@ -2466,3 +2466,37 @@ Against `f8432f3`, implementation/header: `evidence.c` +14/-31,
 implementation/header is **+1792** against `4657cc6`; the required overall
 reduction is still outstanding. R2, R3 and R5 remain open; R4's representation
 contract is unchanged. Main is not published by this checkpoint.
+
+### 2026-09-17: Compose typed-body environments directly (R50)
+
+- [x] Remove `construction_map` and the typed-body query's private map stack.
+  Each retained action composes into one checked environment, inner-to-outer.
+  Lambda pairing, RETURN exposure, substituted variables and Match selection
+  consume that same environment. This removes staging, not context checking;
+  restriction frames used for strengthening are a different operation.
+- [x] Extend the noncommuting-map regression to checked RETURN and Lambda
+  body queries, with chunk-one/chunk-64 advancement, exact Core/classifier/
+  destination checks and no repeated completed work.
+- [x] Correct a missing NULL-result check introduced in R49's function-graph
+  adapter. A normalized handler reaches RETURN even when the general typed
+  input query cannot expose its child. The added test reproduced a NULL read
+  under ASan before the fix. After the fix, the existing checked RETURN
+  inversion builds the relation and witness; executing the witness returns
+  the original payload. Do not classify this entire program as unsupported
+  merely because one structural query is unavailable.
+- [x] Debug Core/IADT/Identity/synthesis and imported QuickSort pass. Final
+  ASan/UBSan Core (including the regression), IADT, Identity, synthesis and
+  imported QuickSort pass.
+- [x] Full final debug acceptance passes, including 63/63 compatibility and
+  the final QuickSort source/image checks. Log:
+  `/tmp/a-program-typed-structure-r50-debug-final.log`.
+
+Implementation/header against `40bd4a4`: `evidence.c` +19/-44,
+`function_graph.c` +1/-0, net **-24**. `tests/core.c` +58/-0. Cumulative
+implementation/header **+1768** against `4657cc6`; net-negative remains open.
+QuickSort: 131247 Solve transitions (-110), 178434 Core terms (-1977),
+414593 typed subjects (-245), 433515 proofs (-1802), 3197 typed queries and
+3371 raw input queries (both unchanged). The final idle O0 sample after
+acceptance is 1.0977 seconds / 277400 KiB. This is a single sample, not a
+speedup claim. No Core tag, image format or logical rule changed.
+R2/R3/R5 remain open; this is not the requested Main publication.
