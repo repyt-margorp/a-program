@@ -740,6 +740,35 @@ static void evidence_test(struct pg_graph *graph)
 			reconstruct_derivation(&typing, input);
 		}
 	}
+	/* A beta result may still be an eliminator: this continuation is not
+	 * right unit, so the neutral Fold must remain, with its own two inputs. */
+	const struct pg_evidence *constant_scope = pg_prove_context_extension(&typing, call_scope,
+		pg_binder(graph), pg_prove_projection(&typing, call_scope, neutral_domain));
+	const struct pg_evidence *constant_body = pg_prove_return(&typing,
+		pg_prove_projection(&typing, constant_scope, call_argument));
+	const struct pg_evidence *constant = pg_prove_lambda(&typing,
+		pg_prove_pi(&typing, constant_scope, pg_prove_classifier(&typing, constant_scope, constant_body)), constant_body);
+	const struct pg_evidence *stuck_fold = pg_prove_fold(&typing,
+		pg_prove_projection(&typing, call_scope, neutral_call), constant);
+	const struct pg_evidence *stuck_redex = pg_prove_application(&typing, pg_prove_lambda(&typing,
+		pg_prove_pi(&typing, call_scope, pg_prove_classifier(&typing, call_scope, stuck_fold)), stuck_fold), neutral_x);
+	assert(stuck_redex);
+	struct pg_nf_job *stuck_nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(stuck_redex)->core);
+	while (pg_nf_advance(stuck_nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(stuck_nf) < 100000);
+	const struct pg_term *stuck = pg_nf_result(stuck_nf);
+	assert(stuck && stuck->kind == PG_APPLICATION && stuck->as.application.function->kind == PG_APPLICATION);
+	assert(stuck->as.application.function->as.application.function == pg_reference(graph, &pg_fold_operation));
+	const struct pg_term *stuck_inputs[] = {stuck->as.application.function->as.application.argument,
+		stuck->as.application.argument};
+	const struct pg_evidence *stuck_normal = pg_prove_normalization(&typing, stuck_redex, pg_nf_certificate(stuck_nf));
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typed_query *query = pg_typed_input_request(&typing, stuck_normal, i);
+		while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
+		const struct pg_evidence *input = pg_typed_query_result(query);
+		assert(input && pg_alpha_equal(pg_evidence_subject(input)->core, stuck_inputs[i]) == 1);
+		assert(pg_evidence_context(input) == pg_evidence_context(stuck_redex));
+		reconstruct_derivation(&typing, input);
+	}
 	const struct pg_object *z = pg_binder(graph);
 	const struct pg_evidence *z_context = pg_prove_context_extension(&typing, x_context, z, a_in_x);
 	const struct pg_evidence *a_in_z = pg_prove_variable(&typing, z_context, a);
@@ -4955,6 +4984,21 @@ static void request_typing_test(struct pg_graph *graph)
 	normal = checked_normalize(&typing, &work, application);
 	assert(normal && pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &a, &continuation));
 	assert(label == pg_operation_label(op) && a == pg_evidence_subject(payload)->core);
+	/* Pure beta exposes a request, not its effectful response. Typed structure
+	 * must expose the retained payload/continuation without executing it. */
+	const struct pg_term *request_inputs[] = {a, continuation};
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typed_query *query = pg_typed_input_request(&typing, normal, i);
+		while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
+		const struct pg_evidence *input = pg_typed_query_result(query);
+		assert(input && pg_alpha_equal(pg_evidence_subject(input)->core, request_inputs[i]) == 1);
+		assert(pg_evidence_context(input) == pg_evidence_context(normal));
+		reconstruct_derivation(&typing, input);
+		uint64_t steps = pg_typed_query_steps(query);
+		assert(pg_typed_input_request(&typing, normal, i) == query);
+		assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
+	}
+	assert(!pg_prove_return_value(&typing, normal));
 	const struct pg_evidence *carrier = pg_prove_return_type(&typing, u1);
 	const struct pg_object *payload_binder = pg_binder(graph), *resume_binder = pg_binder(graph);
 	assert(!pg_prove_handler_context(&typing, op, empty, u1, payload_binder, resume_binder));

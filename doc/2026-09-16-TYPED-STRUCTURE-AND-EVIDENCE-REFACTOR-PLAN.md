@@ -3179,3 +3179,44 @@ Solve transitions. Idle interleaved O0 runs (seconds / peak KiB), R64 -> R65:
 `1.0560/271412 -> 1.0758/270492`,
 `1.0576/270844 -> 1.0651/270668`.
 No material performance change is established by these samples.
+
+### 2026-09-17: Use the retained result instead of predicting typed heads (R66)
+
+- [x] Delete `typed_head_exposed` and its Lambda/Return/Thunk/neutral/constructor
+  whitelist. Normalized input recovery already has a pure reduction receipt;
+  use its result Core as the requested boundary, keyed with the original typed
+  subject in the existing work store. Check the source against that receipt.
+- [x] Apply a pending environment through the shared, budgeted occurrence
+  action, then compare the actual result and context. No extra proof, evaluator,
+  graph or runtime execution is needed to predict whether a head is stable.
+- [x] Keep nominal constructor search as its own demand within this work: it
+  has no reduction receipt and only requests a constructor. Constructor arity,
+  classifier and nominal membership still undergo the existing checks. It
+  must not guess another consumer's WHNF result.
+- [x] Add beta-to-stuck-Fold and beta-to-request input tests, including both
+  child positions, context, split budgets and derivation reconstruction. The
+  former fails with R65's `evidence.c` at missing typed input (exit 134).
+  Request exposure preserves the operation and does not produce its response;
+  repeated lookup reuses completed work. Core and synthesis pass.
+- [x] Full debug and optimized acceptance pass, including 63/63 compatibility
+  and final QuickSort source/images. ASan/UBSan Core, synthesis, IADT, the full
+  derivation I/O script and imported QuickSort pass. Logs:
+  `/tmp/a-program-typed-structure-r66-{debug,o2,sanitize-*}.log`.
+  Sanitizer coverage is the named subset, not full sanitized acceptance.
+
+Implementation `evidence.c`: **+42/-48 (-6)**; tests `core.c`: **+44/-0**.
+Cumulative implementation/header **+1848** against `4657cc6`. No transport
+format or logical rule changes. This removes the per-head prediction path,
+not general multi-phase NF recovery or scoped Pi selection. R2/R3/R5 and the
+net-negative/Main publication gates remain open.
+
+QuickSort counts: 174858 Core terms, 392438 typed subjects, 429942 proofs,
+7805 typed queries, 3386 raw input queries and 131353 Solve transitions.
+Only typed queries change from R65 (-2). Idle interleaved O0 samples
+(seconds / peak KiB), R65 -> R66:
+`1.0650/271584 -> 1.0854/270696`,
+`1.0674/271060 -> 1.0832/271112`,
+`1.0778/271024 -> 1.0639/271176`.
+These samples establish no material performance change. Cumulative exact
+implementation/header additions/deletions are +4463/-2615, net +1848;
+passing this checkpoint does not satisfy the final deletion gate.

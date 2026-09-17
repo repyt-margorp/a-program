@@ -648,7 +648,7 @@ struct pg_typed_query {
 	struct pg_index_entry index;
 	struct pg_typing *typing;
 	const struct pg_occurrence *source, *current;
-	/* The argument's typed subject, or its Context for a rebase request. */
+	/* Argument subject, rebase Context, or the head receipt's result Core. */
 	const void *argument_key;
 	const struct pg_evidence *argument, *environment, *value, *result;
 	const struct pg_evidence *continuation;
@@ -681,10 +681,10 @@ static const struct pg_evidence *unary_term_content(struct pg_typing *typing,
 
 static struct pg_typed_query *typed_query_request(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument,
-	enum typed_query_kind kind, size_t ordinal)
+	enum typed_query_kind kind, size_t ordinal, const struct pg_term *head)
 {
 	const struct pg_occurrence *source = pg_evidence_subject(function);
-	const void *value = argument ? (kind == TYPED_REBASE
+	const void *value = head ? (const void *)head : argument ? (kind == TYPED_REBASE
 		? (const void *)pg_evidence_context(argument) : (const void *)pg_evidence_subject(argument)) : NULL;
 	uint64_t hash = ((uintptr_t)source * UINT64_C(1099511628211) ^ (uintptr_t)value) * UINT64_C(1099511628211);
 	hash = (hash ^ ordinal) * UINT64_C(1099511628211);
@@ -709,14 +709,14 @@ struct pg_typed_query *pg_application_body_request(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(argument, typing)) return NULL;
 	if (pg_evidence_judgement(argument) != PG_JUDGEMENT_VALUE && pg_evidence_judgement(argument) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_context(function) != pg_evidence_context(argument)) return NULL;
-	return typed_query_request(typing, function, argument, TYPED_BODY, 0);
+	return typed_query_request(typing, function, argument, TYPED_BODY, 0, NULL);
 }
 
 struct pg_typed_query *pg_return_body_request(struct pg_typing *typing,
 	const struct pg_evidence *computation)
 {
 	if (!pg_evidence_owned_by(computation, typing) || pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
-	return typed_query_request(typing, computation, NULL, TYPED_BODY, 0);
+	return typed_query_request(typing, computation, NULL, TYPED_BODY, 0, NULL);
 }
 
 struct pg_typed_query *pg_elimination_body_request(struct pg_typing *typing,
@@ -724,35 +724,41 @@ struct pg_typed_query *pg_elimination_body_request(struct pg_typing *typing,
 {
 	if (!pg_evidence_owned_by(elimination, typing)) return NULL;
 	if (elimination->rule != PG_MATCH_ELIM && elimination->rule != PG_INDUCTION_ELIM) return NULL;
-	return typed_query_request(typing, elimination, NULL, TYPED_ELIMINATION, 0);
+	return typed_query_request(typing, elimination, NULL, TYPED_ELIMINATION, 0, NULL);
 }
 
 static struct pg_typed_query *typed_head_request(struct pg_typing *typing,
-	const struct pg_evidence *source)
+	const struct pg_evidence *source, const struct pg_reduction_certificate *receipt)
 {
 	if (!pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source)) return NULL;
-	return typed_query_request(typing, source, NULL, TYPED_HEAD, 0);
+	if (receipt) {
+		if (pg_reduction_policy(receipt) != &pg_pure_policy) return NULL;
+		if (pg_alpha_equal(pg_evidence_subject(source)->core, pg_reduction_source(receipt)) != 1) return NULL;
+	}
+	/* Without a receipt the caller requests constructor exposure, not a
+	 * prediction of the evaluator's normal form. */
+	return typed_query_request(typing, source, NULL, TYPED_HEAD, 0, receipt ? pg_reduction_target(receipt) : NULL);
 }
 
 struct pg_typed_query *pg_typed_input_request(struct pg_typing *typing,
 	const struct pg_evidence *source, size_t index)
 {
 	if (!pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source) || index == SIZE_MAX) return NULL;
-	return typed_query_request(typing, source, NULL, TYPED_INPUT, index);
+	return typed_query_request(typing, source, NULL, TYPED_INPUT, index, NULL);
 }
 
 struct pg_typed_query *pg_construction_origin_request(struct pg_typing *typing,
 	const struct pg_evidence *source)
 {
 	if (!pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source)) return NULL;
-	return typed_query_request(typing, source, NULL, TYPED_ORIGIN, 0);
+	return typed_query_request(typing, source, NULL, TYPED_ORIGIN, 0, NULL);
 }
 
 struct pg_typed_query *pg_rebase_request(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *source)
 {
 	if (!context_proof(typing, context) || !pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source)) return NULL;
-	return typed_query_request(typing, source, context, TYPED_REBASE, 0);
+	return typed_query_request(typing, source, context, TYPED_REBASE, 0, NULL);
 }
 
 static int typed_rebase_step(struct pg_typed_query *work)
@@ -909,28 +915,14 @@ static int typed_body_enter(struct pg_typed_query *work, const struct pg_occurre
 	return work->dependency ? 0 : -1;
 }
 
-static int typed_head_exposed(const struct pg_occurrence *subject, int neutral)
+static int constructor_head(const struct pg_occurrence *subject)
 {
-	const struct pg_term *core = subject->core;
-	if (core->kind == PG_LAMBDA) return 1;
-	if (core->kind == PG_APPLICATION) {
-		const struct pg_term *head = core->as.application.function;
-		if (head->kind == PG_REFERENCE &&
-			(head->as.reference == &pg_return_operation || head->as.reference == &pg_thunk_operation)) return 1;
-	}
-	while (core->kind == PG_APPLICATION) {
-		const struct pg_term *head = core->as.application.function;
-		if (neutral && head->kind == PG_REFERENCE && head->as.reference == &pg_force_operation) {
-			const struct pg_term *value = core->as.application.argument;
-			if (value->kind == PG_REFERENCE && value->as.reference->kind == PG_BINDER) return 1;
-		}
-		core = head;
-	}
-	if (neutral && core->kind == PG_REFERENCE && core->as.reference->kind == PG_BINDER) return 1;
 	if (subject->judgement != PG_JUDGEMENT_VALUE) return 0;
+	const struct pg_term *head = subject->core;
+	while (head->kind == PG_APPLICATION) head = head->as.application.function;
 	const struct pg_data_layout *layout;
 	size_t position, arity;
-	return core->kind == PG_REFERENCE && pg_data_constructor_view(core->as.reference, &layout, &position, &arity);
+	return head->kind == PG_REFERENCE && pg_data_constructor_view(head->as.reference, &layout, &position, &arity);
 }
 
 static int typed_body_step(struct pg_typed_query *work)
@@ -958,22 +950,24 @@ static int typed_body_step(struct pg_typed_query *work)
 	/* A checked result is usable structure, even when its origin is a
 	 * computation whose construction cannot be exposed by this query. */
 	const struct pg_term *core = current->core;
-	/* A neutral head is stable only after the pending environment has been
-	 * applied: its image may instead expose a beta/force redex. */
-	if (work->kind == TYPED_HEAD && !work->forces && (work->action || typed_head_exposed(current, 1))) {
-		if (!work->action && (!work->environment || typed_head_exposed(current, 0))) {
-			work->value = pg_prove_structural_subject(typing, current);
-			return work->value ? 0 : -1;
+	/* The retained reduction specifies the head. Constructor guesses cannot
+	 * replace that boundary, especially while a context action is pending. */
+	if (work->kind == TYPED_HEAD && !work->forces &&
+		(work->argument_key || work->action || constructor_head(current))) {
+		const struct pg_occurrence *image = current;
+		if (work->environment) {
+			if (!work->action) work->action = pg_occurrence_action_request(typing,
+				pg_evidence_context_map(work->environment), current);
+			enum pg_substitution_status status = pg_occurrence_action_advance(work->action, 1);
+			if (status == PG_SUBSTITUTION_PENDING) return 0;
+			if (status == PG_SUBSTITUTION_ERROR) return -1;
+			image = pg_occurrence_action_result(work->action);
+			work->action = NULL;
 		}
-		if (!work->action) work->action = pg_occurrence_action_request(typing,
-			pg_evidence_context_map(work->environment), current);
-		enum pg_substitution_status status = pg_occurrence_action_advance(work->action, 1);
-		if (status == PG_SUBSTITUTION_PENDING) return 0;
-		if (status == PG_SUBSTITUTION_ERROR) return -1;
-		const struct pg_occurrence *image = pg_occurrence_action_result(work->action);
-		work->action = NULL;
-		if (typed_head_exposed(image, 1)) {
-			work->value = pg_prove_reindex(typing, work->environment, pg_prove_structural_subject(typing, current));
+		if (image->context == work->source->context &&
+			(!work->argument_key || pg_alpha_equal(image->core, work->argument_key) == 1)) {
+			work->value = pg_prove_structural_subject(typing, current);
+			if (work->environment) work->value = pg_prove_reindex(typing, work->environment, work->value);
 			work->environment = NULL;
 			return work->value ? 0 : -1;
 		}
@@ -1224,7 +1218,7 @@ struct pg_typed_query *pg_inductive_request(struct pg_typing *typing,
 {
 	if (!pg_evidence_owned_by(type, typing)) return NULL;
 	if (pg_evidence_judgement(type) != PG_JUDGEMENT_VALUE_TYPE && pg_evidence_judgement(type) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
-	return typed_query_request(typing, type, NULL, TYPED_INDUCTIVE, 0);
+	return typed_query_request(typing, type, NULL, TYPED_INDUCTIVE, 0, NULL);
 }
 
 /* The nominal owner fixes the formation context and classifier. Look up that
@@ -2232,7 +2226,7 @@ static int constructor_structure(struct pg_typing *typing, struct pg_graph *temp
 	struct pg_typed_query **dependency)
 {
 	if (!pg_evidence_owned_by(value, typing) || pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) return 0;
-	struct pg_typed_query *head_query = typed_head_request(typing, value);
+	struct pg_typed_query *head_query = typed_head_request(typing, value, NULL);
 	if (!head_query) return 0;
 	if (dependency) {
 		*dependency = head_query;
@@ -3483,7 +3477,7 @@ static int typed_input_step(struct pg_typed_query *work)
 		if (phase && pg_reduction_source(phase->head) == pg_reduction_target(phase->head))
 			work->dependency = pg_typed_input_request(typing, origin, work->ordinal);
 		else {
-			work->dependency = typed_head_request(typing, origin);
+			work->dependency = typed_head_request(typing, origin, phase ? phase->head : work->reduction);
 			work->resume = TYPED_RESUME_INPUT;
 		}
 		return work->dependency ? 0 : -1;
@@ -4804,7 +4798,7 @@ struct pg_typed_query *pg_classifier_request(struct pg_typing *typing,
 	if (pg_evidence_context(context) != pg_evidence_context(term)) return NULL;
 	if (pg_evidence_judgement(term) != PG_JUDGEMENT_VALUE &&
 		pg_evidence_judgement(term) != PG_JUDGEMENT_COMPUTATION) return NULL;
-	return typed_query_request(typing, term, NULL, TYPED_CLASSIFIER, 0);
+	return typed_query_request(typing, term, NULL, TYPED_CLASSIFIER, 0, NULL);
 }
 
 static int typed_classifier_step(struct pg_typed_query *work)
