@@ -259,9 +259,9 @@ static void scoped_type_families(void)
 	struct pg_whnf_job *head = pg_whnf_request(&reduction, &pg_pure_policy, pg_evidence_subject(computed)->core);
 	while (pg_whnf_advance(head, 1) == PG_EVAL_PENDING) assert(pg_whnf_steps(head) < 10000);
 	const struct pg_evidence *normal = pg_prove_normalization(&typing, computed, pg_whnf_certificate(head));
-	const struct pg_evidence *computed_type = pg_prove_value_type(&typing, pg_prove_return_value(&typing, normal));
-	struct pg_typed_query *shared = pg_return_body_request(&typing, normal);
+	struct pg_typed_query *shared = pg_typed_input_request(&typing, normal, 0);
 	assert(shared && !pg_typed_query_advance(shared, 0));
+	const struct pg_evidence *computed_type = pg_prove_value_type(&typing, pg_prove_return_value(&typing, normal));
 	const struct pg_evidence *wrapped[] = {nt, pg_prove_projection(&typing, outer, nt),
 		pg_prove_reindex(&typing, pg_prove_substitution_projection(&typing, vc, outer), nt), resumed, computed_type};
 	for (size_t i = 0; i < sizeof(wrapped) / sizeof(*wrapped); ++i) {
@@ -282,7 +282,7 @@ static void scoped_type_families(void)
 	uint64_t shared_steps = pg_typed_query_steps(shared);
 	assert(shared_steps && pg_typed_query_result(shared));
 	assert(pg_typed_query_advance(shared, 64) == 1 && pg_typed_query_steps(shared) == shared_steps);
-	assert(pg_return_body_request(&typing, normal) == shared);
+	assert(pg_typed_input_request(&typing, normal, 0) == shared);
 	pg_whnf_work_destroy(&reduction);
 	const struct pg_object *w = pg_binder(&graph);
 	const struct pg_evidence *wc = pg_prove_context_extension(&typing, vc, w, type);
@@ -977,6 +977,13 @@ static void indexed_match(void)
 		common_rule(&typing, &classifiers, result);
 		assert(pg_return_body_request(&typing, match_sources[i]) == query);
 		assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
+		struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(match_sources[i])->core);
+		while (pg_nf_advance(nf, 64) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
+		const struct pg_evidence *field = pg_prove_normalization_input(&typing, match_sources[i], pg_nf_certificate(nf), 0);
+		assert(field && pg_evidence_context(field) == pg_evidence_context(expected));
+		assert(pg_evidence_subject(field)->core == pg_evidence_subject(expected)->core);
+		assert(pg_evidence_classifier(field) == pg_evidence_classifier(expected));
+		common_rule(&typing, &classifiers, field);
 	}
 	size_t structures = typing.occurrences.count, proofs = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i)

@@ -876,16 +876,22 @@ int pg_reduction_nf_terminal(const struct pg_reduction_phase *previous,
 	return previous->rebuilt == head->source && head->source == head->target;
 }
 
-const struct pg_reduction_phase *pg_reduction_congruence(const struct pg_reduction_certificate *certificate)
+const struct pg_reduction_phase *pg_reduction_head_congruence(const struct pg_reduction_certificate *certificate)
 {
 	if (!certificate || certificate->kind != PG_REDUCTION_NF) return NULL;
 	const struct pg_reduction_phase *last = certificate->phases;
 	if (!last || last->children[0] || last->children[1]) return NULL;
 	const struct pg_reduction_phase *phase = last->previous;
 	if (!phase || phase->previous || !phase->children[0]) return NULL;
-	if (phase->head->source != certificate->source || phase->head->target != certificate->source) return NULL;
+	if (phase->head->source != certificate->source) return NULL;
 	if (last->head->source != phase->rebuilt || last->head->target != phase->rebuilt) return NULL;
 	return certificate->target == phase->rebuilt ? phase : NULL;
+}
+
+const struct pg_reduction_phase *pg_reduction_congruence(const struct pg_reduction_certificate *certificate)
+{
+	const struct pg_reduction_phase *phase = pg_reduction_head_congruence(certificate);
+	return phase && phase->head->target == certificate->source ? phase : NULL;
 }
 
 static int nf_phase(struct pg_nf_job *job, int children)

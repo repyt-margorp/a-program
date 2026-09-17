@@ -327,7 +327,7 @@ checkpoint notes below are historical, not additional completion claims.
 |---|---|
 | Evidence classifier/context/sort copies | Removed for term conclusions |
 | Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
-| Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. Checked inputs and typed bodies share the query cache/scheduler; structural traversal resumes its existing map spine after checked child normalization. Individual kernel checks and receipt lookup remain synchronous |
+| Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. General multi-phase NF, recursive IH exposure and dependent field-classifier transport remain open; individual kernel checks and receipt lookup remain synchronous |
 | `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R37 adds nonrecursive Match branch selection and shared computed-scrutinee dependencies. R44 deletes the private `typed_body_frame` continuation stack: nested APP, Fold prefix/continuation and computed returned values use shared queries. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
@@ -2273,3 +2273,58 @@ Cumulative implementation/header delta against `4657cc6` is **+1724**.
 The net-negative gate is still unmet. R2-R5 remain open, particularly typed
 head-changing beta/iota result exposure and dependent normalized inputs.
 This checkpoint does not complete the goal or authorize Main publication.
+
+### 2026-09-17: Expose checked beta/iota result inputs (R45)
+
+- [x] Add a head-exposure query to the existing typed-body machine/index,
+  rather than a second evaluator. It follows the same application, Fold,
+  nonrecursive Match, force/thunk and context-action work, stopping at a
+  checked Lambda, RETURN or THUNK construction. The query kinds distinguish
+  work requests, not Core constructors or logical rules.
+- [x] Before exposing children of a head-changing result, require the
+  independently checked construction's Core and context to match the pure
+  receipt's actual head. Exact binder identity is required here; alpha-related
+  heads with different bound pointers are not silently given each other's
+  scoped inputs. Apply child NF receipts only after that correspondence.
+- [x] Share the single-phase NF shape check with `pg_reduction_congruence`;
+  its original unchanged-head contract remains intact. The new head-congruence
+  view permits an initial contraction but still requires an unchanged final
+  head recheck. Descending an APP spine cannot bypass a changed inner head.
+- [x] Support a completed WHNF receipt as well as NF. The same typed subject
+  can already have an earlier WHNF derivation, so requiring an NF phase at
+  every lookup incorrectly hides an otherwise exposed result. A receipt
+  without usable rebuilding phases is accepted for input exposure only when
+  the checked construction matches its complete target.
+- [x] Replace the old beta-result-unavailable regression with an actual
+  returned-value check: APP input zero is not RETURN input zero. Check
+  Fold/application-to-Lambda scopes and nonrecursive Match-to-RETURN under
+  renaming/reindexing. Retain ordinary derivation reconstruction, invalid
+  ordinal/source/receipt cases and shared budgeted lookup checks.
+- [x] Update two tests that assumed the previous recovery path: a computed
+  suspension need not retain an unresolved origin when its actual typed
+  input is now available, and nominal recovery need not execute a Return-body
+  request after checked input exposure has already supplied its result.
+  Tests still check Core, classifier, context, exact nominal formation and
+  reuse of the shared checked-input work; no semantic assertion is dropped.
+- [x] Full debug acceptance passed, including 63/63 compatibility and final
+  source/image QuickSort properties. ASan/UBSan Core, IADT, Identity,
+  synthesis and imported QuickSort passed. The final extra mapped-beta tests
+  also passed in rebuilt debug and ASan/UBSan Core binaries; implementation
+  files were unchanged after the full gate.
+
+Idle O0 QuickSort: 1.1286 seconds / 279276 KiB / **131357 transitions**
+(R44: 131964). Counts: 180411 Terms (+1957), 414783 typed subjects (-2147),
+435281 proofs (+507), 2956 typed queries (+212), 3276 raw inputs (-108).
+More result constructions are checked, while fewer derived-subject wrappers
+are needed. This is not a memory or timing improvement claim; the final
+storage and baseline comparison is still required. Logs:
+`/tmp/a-program-typed-structure-r45-debug.log` and
+`/tmp/a-program-typed-structure-r45-san-{core,iadt,identity,synthesis,quicksort}.log`.
+
+Against `e8773c9`, implementation/header: `eval.c` +8/-2, `eval.h` +4/-0,
+`evidence.c` +67/-23 and `evidence.h` +7/-4: net **+57**, cumulative
+**+1781** against `4657cc6`. This remains above the required net-negative
+finish line. Tests: `core.c` +44/-7, `iadt.c` +10/-3. R2-R5 remain open.
+In particular this is not complete recursive
+IH exposure, arbitrary multi-phase normalization, dependent normalized-field
+classifier transport or general fresh-binder alignment. Main remains unpublished.

@@ -615,16 +615,39 @@ static void evidence_test(struct pg_graph *graph)
 	struct pg_nf_job *beta_nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(app)->core);
 	assert(pg_nf_advance(beta_nf, 100000) == PG_NF_DONE);
 	assert(!pg_reduction_congruence(pg_nf_certificate(beta_nf)));
-	assert(!pg_prove_normalization_input(&typing, app, pg_nf_certificate(beta_nf), 0));
+	assert(pg_reduction_head_congruence(pg_nf_certificate(beta_nf)));
 	const struct pg_evidence *beta_result = pg_prove_normalization(&typing, app, pg_nf_certificate(beta_nf));
 	struct pg_typed_query *changed_head = pg_typed_input_request(&typing, beta_result, 0);
 	while (!pg_typed_query_advance(changed_head, 1)) assert(pg_typed_query_steps(changed_head) < 10000);
-	/* Until head-changing typed exposure is supported, a query is unavailable;
-	 * it must not return the source APP's callee as the resulting RETURN value. */
-	assert(pg_typed_query_advance(changed_head, 0) == 1 && !pg_typed_query_result(changed_head));
+	/* The source is APP but its result is RETURN. Input zero must be the
+	 * returned value, never the original callee. */
+	assert(pg_typed_query_advance(changed_head, 0) == 1 && pg_typed_query_result(changed_head));
+	const struct pg_evidence *beta_input = pg_typed_query_result(changed_head);
+	assert(pg_evidence_subject(beta_input)->core == pg_evidence_subject(x_term)->core);
+	assert(pg_evidence_classifier(beta_input) == pg_evidence_classifier(x_term));
+	assert(pg_evidence_context(beta_input) == pg_evidence_context(x_term));
+	assert(pg_prove_normalization_input(&typing, app, pg_nf_certificate(beta_nf), 0) == beta_input);
+	assert(!pg_prove_normalization_input(&typing, app, pg_nf_certificate(beta_nf), 1));
+	reconstruct_derivation(&typing, &classifiers, beta_input);
+	const struct pg_evidence *mapped_beta[] = {pg_prove_projection(&typing, nf_scope, beta_result),
+		pg_prove_reindex(&typing, nf_map, beta_result)};
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typed_query *query = pg_typed_input_request(&typing, mapped_beta[i], 0);
+		assert(query && !pg_typed_query_advance(query, 0));
+		while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
+		const struct pg_evidence *child = pg_typed_query_result(query);
+		assert(child && pg_evidence_context(child) == pg_evidence_context(mapped_beta[i]));
+		assert(pg_evidence_subject(child)->core == pg_evidence_subject(i ? y_term : x_term)->core);
+		assert(pg_evidence_classifier(child) == pg_evidence_classifier(x_term));
+		reconstruct_derivation(&typing, &classifiers, child);
+		uint64_t steps = pg_typed_query_steps(query);
+		assert(pg_typed_input_request(&typing, mapped_beta[i], 0) == query);
+		assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
+	}
 	assert(!pg_prove_normalization_input(&typing, NULL, pg_nf_certificate(beta_nf), 0));
 	assert(!pg_prove_normalization_input(&typing, suspended_app, NULL, 0));
 	assert(!pg_reduction_congruence(NULL));
+	assert(!pg_reduction_head_congruence(NULL));
 	assert(!pg_prove_application(&typing, identity_y, returned));
 	assert(!pg_prove_application(&typing, identity_y, a_in_x));
 	const struct pg_evidence *quoted_function = pg_prove_thunk(&typing, &classifiers, identity_y);
@@ -819,15 +842,18 @@ static void evidence_test(struct pg_graph *graph)
 		pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, suspension_scope, suspension)));
 	const struct pg_evidence *returned_suspension = pg_prove_return_value(&typing, checked_normalize(&typing, &evaluation,
 		pg_prove_application(&typing, suspension_identity, delayed)));
-	assert(returned_suspension && pg_evidence_subject(returned_suspension)->origin);
+	assert(returned_suspension);
+	assert(pg_evidence_subject(returned_suspension)->core == pg_evidence_subject(delayed)->core);
+	assert(pg_evidence_classifier(returned_suspension) == pg_evidence_classifier(delayed));
 	const struct pg_evidence *computed_force = pg_prove_force(&typing, returned_suspension);
 	const struct pg_evidence *return_sources[] = {returned, app, folded, reindexed_fold, weakened_fold,
 		forced, mapped_force, computed_force};
 	for (size_t i = 0; i < sizeof(return_sources) / sizeof(*return_sources); ++i) {
 		struct pg_typed_query *work = pg_return_body_request(&typing, return_sources[i]);
 		assert(work && pg_return_body_request(&typing, return_sources[i]) == work);
-		assert(!pg_typed_query_advance(work, 0) && !pg_typed_query_result(work));
-		uint64_t steps = 0;
+		uint64_t steps = pg_typed_query_steps(work);
+		pg_typed_query_advance(work, 0);
+		assert(pg_typed_query_steps(work) == steps);
 		while (!pg_typed_query_advance(work, i % 2 ? 64 : 1)) {
 			assert(pg_typed_query_steps(work) <= steps + (i % 2 ? 64 : 1));
 			steps = pg_typed_query_steps(work);
@@ -847,6 +873,17 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_alpha_equal(pg_evidence_subject(projected_fold)->core, pg_evidence_subject(return_y)->core) == 1);
 	assert(pg_typed_query_steps(shared_beta) == shared_beta_steps);
 	assert(pg_typed_query_steps(shared_prefix) == shared_prefix_steps);
+	for (size_t i = 0; i < sizeof(beta_functions) / sizeof(*beta_functions); ++i) {
+		struct pg_nf_job *nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(beta_functions[i])->core);
+		while (pg_nf_advance(nf, 64) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
+		const struct pg_term *lambda = pg_nf_result(nf);
+		assert(lambda && lambda->kind == PG_LAMBDA);
+		const struct pg_evidence *body = pg_prove_normalization_input(&typing, beta_functions[i], pg_nf_certificate(nf), 0);
+		assert(body && pg_evidence_subject(body)->core == lambda->as.lambda.body);
+		assert(pg_evidence_context(body)->parent == pg_evidence_context(beta_functions[i]));
+		assert(pg_evidence_context(body)->binder == lambda->as.lambda.binder);
+		reconstruct_derivation(&typing, &classifiers, body);
+	}
 	assert(!pg_prove_application_body(&typing, identity_y, a_in_x));
 	assert(!pg_prove_application_body(&typing, identity_y, returned));
 	size_t beta_terms = graph->terms.count, beta_proofs = typing.proofs.count;

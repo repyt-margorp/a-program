@@ -768,6 +768,9 @@ struct typed_query_wait {
 	struct typed_query_wait *parent;
 };
 
+enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD };
+enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT };
+
 struct pg_typed_query {
 	struct pg_index_entry index;
 	struct pg_typing *typing;
@@ -775,12 +778,12 @@ struct pg_typed_query {
 	const struct pg_evidence *argument, *map, *extended, *value, *result;
 	struct construction_map *frames;
 	const struct pg_evidence *continuation;
-	int resume_body;
+	enum typed_query_resume resume;
 	struct pg_typed_query *dependency;
 	struct typed_query_wait *waiting;
 	struct pg_occurrence_input *input;
 	const struct pg_reduction_certificate *reduction;
-	/* SIZE_MAX selects body computation; otherwise select this input. */
+	enum typed_query_kind kind;
 	size_t ordinal;
 	size_t forces;
 	uint64_t steps;
@@ -791,20 +794,23 @@ static int typed_body_match(struct pg_typed_query *work);
 static int typed_input_step(struct pg_typed_query *work);
 
 static struct pg_typed_query *typed_query_request(struct pg_typing *typing,
-	const struct pg_evidence *function, const struct pg_evidence *argument, size_t ordinal)
+	const struct pg_evidence *function, const struct pg_evidence *argument,
+	enum typed_query_kind kind, size_t ordinal)
 {
 	const struct pg_occurrence *source = pg_evidence_subject(function);
 	const struct pg_occurrence *value = argument ? pg_evidence_subject(argument) : NULL;
 	uint64_t hash = ((uintptr_t)source * UINT64_C(1099511628211) ^ (uintptr_t)value) * UINT64_C(1099511628211);
 	hash = (hash ^ ordinal) * UINT64_C(1099511628211);
+	hash = (hash ^ kind) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *p = pg_index_candidates(&typing->typed_queries, hash); p; p = p->next) {
 		struct pg_typed_query *work = (void *)p;
-		if (p->hash == hash && work->source == source && work->argument_source == value && work->ordinal == ordinal) return work;
+		if (p->hash == hash && work->source == source && work->argument_source == value &&
+			work->kind == kind && work->ordinal == ordinal) return work;
 	}
 	struct pg_typed_query *work = pg_alloc(typing->graph, sizeof(*work));
 	if (!work) return NULL;
 	*work = (struct pg_typed_query){.typing = typing, .source = source,
-		.argument_source = value, .current = source, .argument = argument, .ordinal = ordinal};
+		.argument_source = value, .current = source, .argument = argument, .kind = kind, .ordinal = ordinal};
 	return pg_index_insert(&typing->typed_queries, &work->index, hash) ? NULL : work;
 }
 
@@ -816,21 +822,28 @@ struct pg_typed_query *pg_application_body_request(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(argument, typing)) return NULL;
 	if (pg_evidence_judgement(argument) != PG_JUDGEMENT_VALUE && pg_evidence_judgement(argument) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_context(function) != pg_evidence_context(argument)) return NULL;
-	return typed_query_request(typing, function, argument, SIZE_MAX);
+	return typed_query_request(typing, function, argument, TYPED_BODY, 0);
 }
 
 struct pg_typed_query *pg_return_body_request(struct pg_typing *typing,
 	const struct pg_evidence *computation)
 {
 	if (!pg_evidence_owned_by(computation, typing) || pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
-	return typed_query_request(typing, computation, NULL, SIZE_MAX);
+	return typed_query_request(typing, computation, NULL, TYPED_BODY, 0);
+}
+
+static struct pg_typed_query *typed_head_request(struct pg_typing *typing,
+	const struct pg_evidence *source)
+{
+	if (!pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source)) return NULL;
+	return typed_query_request(typing, source, NULL, TYPED_HEAD, 0);
 }
 
 struct pg_typed_query *pg_typed_input_request(struct pg_typing *typing,
 	const struct pg_evidence *source, size_t index)
 {
 	if (!pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source) || index == SIZE_MAX) return NULL;
-	return typed_query_request(typing, source, NULL, index);
+	return typed_query_request(typing, source, NULL, TYPED_INPUT, index);
 }
 
 static int typed_body_enter(struct pg_typed_query *work, const struct pg_occurrence *current,
@@ -839,7 +852,7 @@ static int typed_body_enter(struct pg_typed_query *work, const struct pg_occurre
 	const struct pg_evidence *source = pg_prove_structural_subject(work->typing, current);
 	work->dependency = argument ? pg_application_body_request(work->typing, source, argument)
 		: pg_return_body_request(work->typing, source);
-	work->resume_body = 1;
+	work->resume = TYPED_RESUME_BODY;
 	return work->dependency ? 0 : -1;
 }
 
@@ -847,7 +860,7 @@ static int typed_body_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_occurrence *current = work->current;
-	if (work->resume_body) {
+	if (work->resume == TYPED_RESUME_BODY) {
 		if (!work->dependency->status) return 0;
 		const struct pg_evidence *result = pg_typed_query_result(work->dependency);
 		if (!result) return -1;
@@ -858,7 +871,7 @@ static int typed_body_step(struct pg_typed_query *work)
 		}
 		work->current = pg_evidence_subject(result);
 		work->dependency = NULL;
-		work->resume_body = 0;
+		work->resume = TYPED_RESUME_NONE;
 		return 0;
 	}
 	if (work->value) {
@@ -902,6 +915,10 @@ static int typed_body_step(struct pg_typed_query *work)
 	if (current->map_count == 1 && !current->induction)
 		return typed_body_match(work);
 	if (core->kind == PG_LAMBDA) {
+		if (work->kind == TYPED_HEAD && !work->forces) {
+			work->value = pg_prove_structural_subject(typing, current);
+			return work->value ? 0 : -1;
+		}
 		if (!work->argument || work->forces || current->operand_count != 1) return -1;
 		const struct pg_occurrence *body = pg_occurrence_scoped_input(current, 0);
 		if (!body) return -1;
@@ -915,7 +932,8 @@ static int typed_body_step(struct pg_typed_query *work)
 		if (!work->argument && head == pg_reference(typing->graph, &pg_return_operation)) {
 			if (work->forces) return -1;
 			if (current->operand_count != 1 || current->operands[0]->core != core->as.application.argument) return -1;
-			work->value = pg_prove_structural_subject(typing, current->operands[0]);
+			work->value = pg_prove_structural_subject(typing,
+				work->kind == TYPED_HEAD ? current : current->operands[0]);
 			return work->value ? 0 : -1;
 		}
 		if (head->kind == PG_REFERENCE &&
@@ -923,6 +941,10 @@ static int typed_body_step(struct pg_typed_query *work)
 			if (current->operand_count != 1 || current->operands[0]->core != core->as.application.argument) return -1;
 			if (head->as.reference == &pg_force_operation) ++work->forces;
 			else if (work->forces) --work->forces;
+			else if (work->kind == TYPED_HEAD) {
+				work->value = pg_prove_structural_subject(typing, current);
+				return work->value ? 0 : -1;
+			}
 			else return -1;
 			work->current = current->operands[0];
 			return 0;
@@ -951,7 +973,7 @@ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
 		++work->steps;
 		if (!current->status) {
 			if (current != work) ++current->steps;
-			current->status = current->ordinal == SIZE_MAX ? typed_body_step(current) : typed_input_step(current);
+			current->status = current->kind == TYPED_INPUT ? typed_input_step(current) : typed_body_step(current);
 		}
 		if (current->status) {
 			if (work->waiting) work->waiting = work->waiting->parent;
@@ -3244,25 +3266,51 @@ static int typed_input_step(struct pg_typed_query *work)
 		if (!blocked) return 1;
 		work->reduction = subject_normalization(typing, blocked);
 		if (!work->reduction) return 1;
-		work->dependency = pg_typed_input_request(typing,
-			pg_prove_structural_subject(typing, blocked->origin), work->ordinal);
+		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
+		const struct pg_evidence *origin = pg_prove_structural_subject(typing, blocked->origin);
+		if (phase && pg_reduction_source(phase->head) == pg_reduction_target(phase->head))
+			work->dependency = pg_typed_input_request(typing, origin, work->ordinal);
+		else {
+			work->dependency = typed_head_request(typing, origin);
+			work->resume = TYPED_RESUME_INPUT;
+		}
 		return work->dependency ? 0 : -1;
 	}
 	if (!work->dependency->status) return 0;
-	if (work->dependency->status < 0) return -1;
+	if (work->dependency->status < 0) return work->resume == TYPED_RESUME_INPUT ? 1 : -1;
 	const struct pg_evidence *input = work->dependency->result;
 	if (!input) return 1;
+	if (work->resume == TYPED_RESUME_INPUT) {
+		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
+		const struct pg_occurrence *blocked = pg_occurrence_input_blocked_source(work->input);
+		const struct pg_term *head = pg_reduction_target(phase ? phase->head : work->reduction);
+		/* Match the actual result, not the pre-reduction construction. Exact
+		 * binders also preserve the NF child's lexical scope under Lambda. */
+		if (pg_evidence_subject(input)->core != head ||
+			pg_evidence_context(input) != blocked->context) return 1;
+		work->current = pg_evidence_subject(input);
+		work->dependency = pg_typed_input_request(typing, input, work->ordinal);
+		work->resume = TYPED_RESUME_NONE;
+		return work->dependency ? 0 : -1;
+	}
 	if (!work->value) {
 		/* Follow the semantic input boundary along the erased APP spine,
 		 * one congruence phase per transition, not arbitrary descendants. */
-		const struct pg_reduction_phase *phase = pg_reduction_congruence(work->reduction);
-		if (!phase) return 1;
+		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
+		if (!phase) {
+			if (work->current->core != pg_reduction_target(work->reduction)) return 1;
+			work->value = input;
+			work->input = pg_occurrence_input_resume_request(typing, work->input, pg_evidence_subject(input));
+			return work->input ? 0 : -1;
+		}
+		if (pg_reduction_source(phase->head) != pg_reduction_target(phase->head) &&
+			work->current->core != pg_reduction_target(phase->head)) return 1;
 		const struct pg_term *core = pg_evidence_subject(input)->core;
 		const struct pg_reduction_certificate *child = NULL;
 		if (pg_alpha_equal(pg_reduction_source(phase->children[0]), core) == 1) child = phase->children[0];
 		else if (phase->children[1] && pg_alpha_equal(pg_reduction_source(phase->children[1]), core) == 1) child = phase->children[1];
 		else {
-			if (pg_reduction_source(work->reduction)->kind != PG_APPLICATION) return 1;
+			if (pg_reduction_target(phase->head)->kind != PG_APPLICATION) return 1;
 			work->reduction = phase->children[0];
 			return 0;
 		}
@@ -3476,10 +3524,6 @@ const struct pg_evidence *pg_prove_normalization_input(struct pg_typing *typing,
 	const struct pg_occurrence *subject = pg_evidence_subject(source);
 	if (!subject) return NULL;
 	if (pg_reduction_policy(certificate) != &pg_pure_policy || pg_reduction_source(certificate) != subject->core) return NULL;
-	/* Cached normality has no rebuilding phases. The whole Core is unchanged,
-	 * so its already checked input needs no additional reduction receipt. */
-	if (!pg_reduction_congruence(certificate) &&
-		!(pg_reduction_kind(certificate) == PG_REDUCTION_NF && pg_reduction_target(certificate) == subject->core)) return NULL;
 	const struct pg_evidence *normal = pg_prove_normalization(typing, source, certificate);
 	struct pg_typed_query *work = pg_typed_input_request(typing, normal, index);
 	while (!pg_typed_query_advance(work, 1024)) {}

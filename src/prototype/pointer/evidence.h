@@ -470,7 +470,8 @@ struct pg_typed_query *pg_application_body_request(struct pg_typing *typing,
  * A normalized input exposes its checked source recipe, not normalized fields. */
 struct pg_typed_query *pg_return_body_request(struct pg_typing *typing,
 	const struct pg_evidence *computation);
-/* Checked construction inputs, including congruent normal forms. A finished
+/* Checked construction inputs, including exposed beta/iota heads and
+ * congruent normal forms. A finished
  * query with no result means that this input is not exposed, not ill-typing.
  * Descriptive-only subjects cannot seed this cache. Child/map dependencies
  * and congruence spines advance on the same budget as body dependencies. */
@@ -501,9 +502,11 @@ const struct pg_conversion_certificate *pg_evidence_conversion(const struct pg_e
 const struct pg_evidence *pg_prove_normalization(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_reduction_certificate *certificate);
 const struct pg_reduction_certificate *pg_evidence_normalization(const struct pg_evidence *evidence);
-/* Expose a construction input after congruent NF, applying retained context
- * maps through the shared input query. No new inference rule or erased-Core
- * proof lookup. Head-changing/unexposed source inputs return NULL. */
+/* Expose a construction input after pure reduction through the shared query.
+ * Head-changing receipts require a matching checked result construction;
+ * congruent child receipts normalize its inputs before retained maps act.
+ * Unsupported heads/rebuilding phases return NULL, never historical inputs.
+ * No new inference rule or erased-Core proof lookup is used. */
 const struct pg_evidence *pg_prove_normalization_input(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_reduction_certificate *certificate,
 	size_t index);
