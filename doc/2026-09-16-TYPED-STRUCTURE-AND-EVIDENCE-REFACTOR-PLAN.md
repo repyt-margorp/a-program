@@ -2435,3 +2435,34 @@ Against `cebdb2a`, `evidence.c` is **+26/-46, net -20**;
 `tests/iadt.c` is +25/-0. Cumulative implementation/header remains **+1810**
 against `4657cc6`, so the overall net-negative gate remains unmet. No new Core
 tag, proof rule, format or accepted-conclusion authority is introduced.
+
+### 2026-09-17: Remove construction-origin staging (R49)
+
+- [x] Remove `construction_origin` and its temporary arena/list from
+  `pg_prove_construction_origin`. Descending structural origin edges now
+  composes the checked inner-to-outer context action directly. Selection and
+  judgement boundaries still stop traversal; this API exposes provenance,
+  not the current children of a changed normalized term.
+- [x] Test three nested actions with a noncommuting swap/duplication followed
+  by projection. Check the exact destination, binder image, dependent
+  classifier and resulting Core; repeated recovery creates no extra typed
+  subjects or proofs. The accumulation changes association, not application
+  order, and does not overwrite explicit alternative derivations.
+- [x] `function_graph.c:structural_computation_view` uses the shared checked
+  input query, eliminating its independent raw-input-then-certification path.
+  Actual child Core/context checks remain. Match/IH theorem reconstruction
+  remains distinct from ordinary APP/unary input inspection.
+- [x] Full debug acceptance passes, including 63/63 compatibility and final
+  QuickSort source/image checks. ASan/UBSan Core, IADT, Identity, synthesis and
+  imported QuickSort pass. Logs use `/tmp/a-program-typed-structure-r49-*`.
+  Idle O0 QuickSort: 1.1026 seconds / 279828 KiB / 131357 Solve transitions;
+  one sample, not a speedup claim. Counts: 180411 Core terms, 414838 typed
+  subjects, 435317 proofs (unchanged from R48), 3197 typed queries (+131),
+  3371 raw input queries (unchanged). The added checked-query requests replace
+  the function-graph caller's private certification path, not new conclusions.
+
+Against `f8432f3`, implementation/header: `evidence.c` +14/-31,
+`function_graph.c` +4/-5: net **-18**. Tests: `core.c` +25/-0. Cumulative
+implementation/header is **+1792** against `4657cc6`; the required overall
+reduction is still outstanding. R2, R3 and R5 remain open; R4's representation
+contract is unchanged. Main is not published by this checkpoint.

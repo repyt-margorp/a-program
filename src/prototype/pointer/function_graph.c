@@ -206,13 +206,12 @@ static int structural_computation_view(struct pg_function_graph_state *s,
 	}
 	const struct pg_evidence *children[2] = {NULL, NULL};
 	for (size_t i = 0; i < count; ++i) {
-		struct pg_occurrence_input *input = pg_occurrence_input_request(s->typing, subject, i);
-		while (pg_occurrence_input_advance(input, 1024) == PG_INPUT_PENDING) {}
-		const struct pg_occurrence *child = pg_occurrence_input_result(input);
+		struct pg_typed_query *input = pg_typed_input_request(s->typing, proof, i);
+		while (!pg_typed_query_advance(input, 1024)) {}
+		children[i] = pg_typed_query_result(input);
+		const struct pg_occurrence *child = pg_evidence_subject(children[i]);
 		if (!child || child->context != subject->context) return -1;
 		if (pg_alpha_equal(child->core, terms[i]) != 1) return -1;
-		children[i] = pg_prove_structural_subject(s->typing, child);
-		if (!children[i]) return -1;
 	}
 	*left = children[0];
 	*right = children[1];

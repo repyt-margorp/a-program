@@ -725,23 +725,6 @@ struct construction_map {
 	struct construction_map *next;
 };
 
-/* Follow retained structural context actions without interpreting proof rules.
- * A derived result's input remains a reduction recipe, not current children. */
-static const struct pg_occurrence *construction_origin(struct pg_graph *temporary,
-	const struct pg_occurrence *subject, struct construction_map **frames)
-{
-	while (subject->origin && !subject->selection && (subject->map || subject->judgement == subject->origin->judgement)) {
-		if (subject->map) {
-			struct construction_map *frame = pg_alloc(temporary, sizeof(*frame));
-			if (!frame) return NULL;
-			*frame = (struct construction_map){subject->map, *frames};
-			*frames = frame;
-		}
-		subject = subject->origin;
-	}
-	return subject;
-}
-
 static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
 	const struct pg_evidence *computation)
 {
@@ -2067,22 +2050,22 @@ const struct pg_evidence *pg_prove_construction_origin(struct pg_typing *typing,
 	if (!typing || !classifiers || classifiers->graph != typing->graph || !environment) return NULL;
 	if (!pg_evidence_owned_by(proof, typing)) return NULL;
 	if (!pg_evidence_subject(proof)) return NULL;
-	struct pg_graph temporary = {0};
-	struct construction_map *frames = NULL;
-	const struct pg_evidence *result = NULL, *map = NULL;
-	const struct pg_occurrence *subject = construction_origin(&temporary, pg_evidence_subject(proof), &frames);
-	if (!subject) goto done;
-	result = pg_prove_structural_subject(typing, subject);
-	if (!result || pg_evidence_judgement(result) != subject->judgement || pg_evidence_context(result) != subject->context ||
-		pg_evidence_subject(result)->core != subject->core) { result = NULL; goto done; }
-	for (; frames; frames = frames->next) {
-		const struct pg_evidence *step = pg_prove_context_map(typing, frames->map);
-		map = map ? pg_prove_substitution_compose(typing, map, step) : step;
-		if (!map) { result = NULL; goto done; }
+	const struct pg_evidence *map = NULL;
+	const struct pg_occurrence *subject = pg_evidence_subject(proof);
+	/* Accumulate the inner-to-outer action while descending the retained
+	 * structure. This does not interpret an Evidence wrapper history. */
+	while (subject->origin && !subject->selection && (subject->map || subject->judgement == subject->origin->judgement)) {
+		if (subject->map) {
+			const struct pg_evidence *step = pg_prove_context_map(typing, subject->map);
+			map = map ? pg_prove_substitution_compose(typing, step, map) : step;
+			if (!map) return NULL;
+		}
+		subject = subject->origin;
 	}
+	const struct pg_evidence *result = pg_prove_structural_subject(typing, subject);
+	if (!result || pg_evidence_judgement(result) != subject->judgement || pg_evidence_context(result) != subject->context ||
+		pg_evidence_subject(result)->core != subject->core) return NULL;
 	*environment = map;
-done:
-	pg_graph_destroy(&temporary);
 	return result;
 }
 

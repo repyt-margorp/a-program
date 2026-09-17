@@ -736,6 +736,31 @@ static void evidence_test(struct pg_graph *graph)
 	for (size_t i = 0; i < 100; ++i)
 		assert(pg_prove_construction_origin(&typing, &classifiers, converted_lambda, &construction_map) == identity_y);
 	assert(!construction_map && typing.proofs.count == construction_proofs && typing.occurrences.count == construction_subjects);
+	{
+		/* Swap then duplicate is not duplicate then swap. Accumulating an
+		 * outer projection must preserve that order and the dependent type A. */
+		const struct pg_evidence *vx = pg_prove_variable(&typing, y_context, x);
+		const struct pg_evidence *swap_images[] = {a_in_y, y_term, vx};
+		const struct pg_evidence *duplicate_images[] = {a_in_y, vx, vx};
+		const struct pg_evidence *swap = pg_prove_substitution(&typing, y_context, y_context, 3, swap_images);
+		const struct pg_evidence *duplicate = pg_prove_substitution(&typing, y_context, y_context, 3, duplicate_images);
+		const struct pg_evidence *scope = pg_prove_context_extension(&typing, y_context, pg_binder(graph), a_in_y);
+		const struct pg_evidence *moved = pg_prove_projection(&typing, scope,
+			pg_prove_reindex(&typing, duplicate, pg_prove_reindex(&typing, swap, return_y)));
+		const struct pg_evidence *environment = NULL;
+		assert(moved && pg_prove_construction_origin(&typing, &classifiers, moved, &environment) == return_y);
+		assert(pg_evidence_context_map(environment)->source == pg_evidence_context(y_context));
+		assert(pg_evidence_context_map(environment)->destination == pg_evidence_context(scope));
+		const struct pg_evidence *image = pg_substitution_image(&typing, environment, y);
+		assert(image && pg_evidence_subject(image)->core == pg_evidence_subject(vx)->core);
+		assert(pg_evidence_classifier(image) == pg_evidence_subject(a_in_y)->core);
+		const struct pg_evidence *rebuilt = pg_prove_reindex(&typing, environment, return_y);
+		assert(rebuilt && pg_evidence_subject(rebuilt)->core == pg_evidence_subject(moved)->core);
+		size_t proofs = typing.proofs.count, subjects = typing.occurrences.count;
+		const struct pg_evidence *again = NULL;
+		assert(pg_prove_construction_origin(&typing, &classifiers, moved, &again) == return_y && again == environment);
+		assert(typing.proofs.count == proofs && typing.occurrences.count == subjects);
+	}
 	reconstruct_derivation(&typing, &classifiers, converted_lambda);
 	const struct pg_evidence *folded = pg_prove_fold(&typing, &classifiers, returned, identity_y);
 	assert(folded && pg_evidence_classifier(folded) == pg_evidence_classifier(returned));
