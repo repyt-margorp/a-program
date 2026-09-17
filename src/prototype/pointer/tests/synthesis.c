@@ -136,6 +136,12 @@ static void accepted_structures(struct pg_typing *typing)
 		assert(typing->graph->terms.count == terms);
 		assert(normalization.jobs.count == whnf && normalization.normal_forms.count == nf);
 	}
+	/* A pending family application becomes a type value in a lambda body,
+	 * unlike an ordinary computation application. */
+	const struct pg_evidence *family_body = complete(&synthesis, program(&synthesis,
+		pg_synthesis_root(&synthesis), "{{ N := @{zero:*;}; F := @\\n:N=>{atZero:* N.zero;};"
+		"f := &(\\n:N=>F n); }}.f;"), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_judgement(family_body) == PG_JUDGEMENT_VALUE);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&normalization);
 	puts("accepted structure: exact typed projections without premise reconstruction or evaluation");
@@ -1061,6 +1067,24 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(!complete(&synthesis, quoted_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(quoted_type) == pg_thunk_type(typing->graph, symbolic_pi));
 		assert(!pg_synthesis_result(body) && !pg_synthesis_result(quoted_lambda));
+		/* Body adaptation publishes its ordinary rule before effect closure;
+		 * term/type projection and acceptance must share that exact rule. */
+		const struct pg_evidence *empty_proof = pg_prove_empty_context(typing);
+		struct pg_synthesis_job *adapted = pg_synthesis_abstract(&synthesis, empty_proof, empty_proof, quoted_lambda);
+		struct pg_synthesis_job *adapted_type = pg_synthesis_classifier_structure(&synthesis, adapted);
+		struct pg_synthesis_job *adapted_term = pg_synthesis_term_structure(&synthesis, adapted);
+		assert(!complete(&synthesis, adapted_term, PG_SYNTHESIS_DONE));
+		assert(!complete(&synthesis, adapted_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(adapted_type) ==
+			total_return_type(typing->graph, pg_thunk_type(typing->graph, symbolic_pi)));
+		assert(!pg_synthesis_result(adapted) && !pg_effect_inference_result(&effects, equation));
+		struct pg_derivation_input adapted_rule = {.rule = PG_RETURN_INTRO,
+			.parameters.totality = PG_TOTALITY_TOTAL, .count = 1};
+		size_t adapted_jobs = synthesis.jobs.count;
+		struct pg_synthesis_job *ordinary_return = pg_synthesis_rule(&synthesis, &adapted_rule, &quoted_lambda, NULL, NULL);
+		assert(ordinary_return && synthesis.jobs.count == adapted_jobs);
+		struct pg_synthesis_job *unchanged_body = pg_synthesis_abstract(&synthesis, empty_proof, empty_proof, lambda);
+		struct pg_synthesis_job *wrong_body_scope = pg_synthesis_abstract(&synthesis, empty_proof, empty_proof, body);
 		struct pg_synthesis_job *projected_thunk = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){context, thunk});
 		struct pg_synthesis_job *extended = rule_job(&synthesis, PG_CONTEXT_EXTEND, pg_binder(typing->graph), 2,
@@ -1125,6 +1149,11 @@ static void pending_effect_contexts(struct pg_typing *typing)
 			pg_synthesis_advance(&synthesis, chunk);
 		}
 		assert(pg_synthesis_status(lambda) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *adapted_proof = complete(&synthesis, adapted, PG_SYNTHESIS_DONE);
+		assert(adapted_proof == complete(&synthesis, ordinary_return, PG_SYNTHESIS_DONE));
+		assert(pg_evidence_subject(adapted_proof)->core == pg_synthesis_type_structure_result(adapted_term));
+		assert(complete(&synthesis, unchanged_body, PG_SYNTHESIS_DONE) == pg_synthesis_result(lambda));
+		complete(&synthesis, wrong_body_scope, PG_SYNTHESIS_REJECTED);
 		assert(pg_effect_inference_result(&effects, collected) == row);
 		assert(pg_effect_inference_result(&effects, masked) == no_effects);
 		assert(pg_effect_inference_result(&effects, joined_target) == other_row);

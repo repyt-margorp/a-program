@@ -442,9 +442,12 @@ Important limits:
 Structural synthesis needs a further distinction: `term_structure_step` and
 `type_structure_step` can construct terms with unresolved effect parameters
 before acceptance. `stored_effect_derivation` in `tests/synthesis.c` requires
-that symbolic structure to remain stable even after the accepted type has a
-solved effect row. Replacing a structural query with the accepted result only
-when its producer finishes would make its meaning scheduling-dependent.
+that completed symbolic snapshots remain stable even after the accepted type
+has a solved effect row. The later accepted-projection epoch (`607058c`)
+preserves these snapshots but lets a not-yet-completed query read accepted
+typed data directly. Its contract compares the symbolic and closed forms after
+effect substitution, rather than requiring the same unsolved representation
+regardless of scheduling. The audit records the consumer checks and regression.
 Remove redundant reconstruction, not necessary initial symbolic construction;
 do not claim every structural Job is redundant.
 

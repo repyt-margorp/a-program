@@ -2607,13 +2607,6 @@ static const struct pg_evidence *value(struct pg_synthesis *synthesis, const str
 	return pg_evidence_judgement(proof) == PG_JUDGEMENT_VALUE ? proof : NULL;
 }
 
-static const struct pg_evidence *computation(struct pg_synthesis *synthesis, const struct pg_evidence *proof)
-{
-	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_COMPUTATION) return proof;
-	proof = value(synthesis, proof);
-	return proof ? pg_prove_return_contract(synthesis->typing, PG_TOTALITY_TOTAL, proof) : NULL;
-}
-
 static uint64_t name_hash(struct pg_token name)
 {
 	uint64_t hash = UINT64_C(14695981039346656037);
@@ -7281,6 +7274,7 @@ static int accepted_structure(struct pg_synthesis *synthesis, struct pg_synthesi
 
 static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_job *job)
 {
+	if (job->role == BODY_JOB) return job->value_job;
 	/* Result annotations cannot supply inference information. Collect the
 	 * operand's structure now; acceptance still requires its post-check. */
 	if (job->role == BINDING_EXPECT_JOB) return job->left;
@@ -7319,6 +7313,10 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 {
 	if (producer->status != PG_SYNTHESIS_PENDING) return 0;
 	if (producer->role == DERIVATION_INPUT_JOB && !producer->left) {
+		subscribe(synthesis, job, producer, 1);
+		return 1;
+	}
+	if (producer->role == BODY_JOB && !producer->value_job) {
 		subscribe(synthesis, job, producer, 1);
 		return 1;
 	}
@@ -7430,12 +7428,40 @@ static int source_value_kind(const struct pg_synthesis_job *producer)
 	return kind;
 }
 
-static struct pg_synthesis_job *body_rule(const struct pg_synthesis_job *adapter)
+static void body_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	struct pg_synthesis_job *body = (void *)adapter->inputs[0];
-	if (body->role == SEQUENCE_JOB) return body;
-	struct pg_synthesis_job *rule = prepared_source_rule(body);
-	return rule ? rule : body;
+	struct pg_synthesis_job *input = (void *)job->inputs[0];
+	if (!job->value_job) {
+		if (await_source_preparation(synthesis, job, input)) return;
+		int kind = source_value_kind(input);
+		if (kind < 0) {
+			if (input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, input); return; }
+			finish(synthesis, job, input->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : input->status);
+			return;
+		}
+		struct pg_synthesis_job *body = input;
+		if (kind == 2) body = plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &body);
+		if (kind > 0) {
+			struct pg_derivation_input returned = {.rule = PG_RETURN_INTRO,
+				.parameters.totality = PG_TOTALITY_TOTAL, .count = 1};
+			body = pg_synthesis_rule(synthesis, &returned, &body, NULL, NULL);
+		}
+		if (!body) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		job->value_job = body;
+		wake(synthesis, job, 1);
+	}
+	struct pg_synthesis_job *context = (void *)job->inputs[1];
+	if (context) {
+		struct pg_synthesis_job *premises[] = {input, context};
+		for (size_t i = 0; i < 2; ++i) {
+			if (premises[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, premises[i]); return; }
+			if (premises[i]->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, premises[i]->status); return; }
+		}
+		if (!input->result || !context->result || pg_evidence_context(input->result) != pg_evidence_context(context->result)) {
+			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+		}
+	}
+	forward_proof(synthesis, job, job->value_job);
 }
 
 static void handler_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
@@ -7492,21 +7518,6 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 			(void *)producer->inputs[producer->role == CLASSIFIER_JOB ? 1 : 0]);
 		forward_structure(synthesis, job);
 		return;
-	}
-	if (producer->role == BODY_JOB) {
-		struct pg_synthesis_job *rule = body_rule(producer);
-		int polarity = body_rule_polarity(rule);
-		if (polarity >= 0) {
-			if (!job->left) job->left = pg_synthesis_term_structure(synthesis, rule);
-			if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
-			if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-			const struct pg_term *term = pg_synthesis_type_structure_result(job->left);
-			job->type_structure = polarity ? pg_application(synthesis->typing->graph,
-				pg_reference(synthesis->typing->graph, &pg_return_operation), term) : term;
-			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-			return;
-		}
 	}
 	struct pg_synthesis_job *source_rule = prepared_source_rule(producer);
 	if (source_rule) {
@@ -8278,21 +8289,6 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 			(void *)producer->inputs[producer->role == INDEX_TRANSPORT_JOB ? 2 : 1]);
 		forward_structure(synthesis, job);
 		return;
-	}
-	if (producer->role == BODY_JOB) {
-		struct pg_synthesis_job *rule = body_rule(producer);
-		int returns_value = body_rule_polarity(rule);
-		if (returns_value >= 0) {
-			if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, rule);
-			if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
-			if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-			const struct pg_term *type = pg_synthesis_type_structure_result(job->left);
-			job->type_structure = returns_value ? pg_computation_type(synthesis->typing->graph,
-				PG_TOTALITY_TOTAL, pg_effect_row(synthesis->typing->graph, 0, NULL), type) : type;
-			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-			return;
-		}
 	}
 	struct pg_synthesis_job *source_rule = prepared_source_rule(producer);
 	if (source_rule) {
@@ -9679,30 +9675,20 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == DERIVATION_INPUT_JOB) { derivation_input_step(synthesis, job); return; }
 	if (job->role == SOURCE_EXPECT_JOB || job->role == BINDING_EXPECT_JOB) { source_expect_step(synthesis, job); return; }
 	if (job->role == TYPE_STRUCTURE_JOB) { type_structure_step(synthesis, job); return; }
-	if (job->role == BODY_JOB || job->role == CLASSIFIER_FORMATION_JOB) {
+	if (job->role == BODY_JOB) { body_step(synthesis, job); return; }
+	if (job->role == CLASSIFIER_FORMATION_JOB) {
 		for (size_t i = 0; i < 2; ++i) {
 			struct pg_synthesis_job *premise = (void *)job->inputs[i];
 			if (!premise) continue;
 			if (premise->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, premise); return; }
 			if (premise->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, premise->status); return; }
 		}
-		const struct pg_synthesis_job *first = job->inputs[0];
-		if (job->role == BODY_JOB) {
-			const struct pg_synthesis_job *context = job->inputs[1];
-			if (context && pg_evidence_context(first->result) != pg_evidence_context(context->result)) {
-				finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-			}
-			job->result = computation(synthesis, first->result);
-		}
-		else {
-			const struct pg_synthesis_job *body = job->inputs[1];
-			struct pg_typed_query *classifier = pg_classifier_request(synthesis->typing, first->result, body->result);
-			int status = pg_typed_query_advance(classifier, 1);
-			if (!status) { enqueue(synthesis, job); return; }
-			job->result = pg_typed_query_result(classifier);
-		}
-		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE
-			: job->role == BODY_JOB ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_UNSUPPORTED);
+		const struct pg_synthesis_job *context = job->inputs[0], *body = job->inputs[1];
+		struct pg_typed_query *classifier = pg_classifier_request(synthesis->typing, context->result, body->result);
+		int status = pg_typed_query_advance(classifier, 1);
+		if (!status) { enqueue(synthesis, job); return; }
+		job->result = pg_typed_query_result(classifier);
+		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 		return;
 	}
 	if (job->role == TERM_STRUCTURE_JOB) { term_structure_step(synthesis, job); return; }

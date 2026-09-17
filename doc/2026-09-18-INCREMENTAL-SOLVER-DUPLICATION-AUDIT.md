@@ -161,6 +161,64 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### Body Adaptation: One Prepared Rule (after `cee33c3`)
+
+`BODY_JOB` previously performed value-to-computation adaptation in three places:
+an acceptance helper and independent term/classifier projection branches. It now
+prepares one ordinary rule chain: VALUE_FROM_TYPE if needed, then TOTAL RETURN
+for a value; a computation is passed through. Both structural queries follow
+this same chain. Acceptance still checks the original input and optional Context.
+The obsolete `computation`, `body_rule` and the two projection branches are
+removed. No new Core tag, job role, stored acceptance flag or scheduler is added.
+
+Preparation wakes the existing preparation subscribers without waiting for
+effect closure. Thus a pending body can contribute its structure to the same
+effect equation that acceptance awaits. A known polarity selects a checking
+rule; it is not permission to accept its premises. Failed inputs and mismatched
+Contexts remain failures even if their structural query completed earlier.
+
+The extended `pending_effect_contexts` test verifies that an explicit RETURN
+request finds the already prepared request without allocating another job,
+then shares the same final proof. It also checks unchanged raw computations,
+pre-closure term/type snapshots, and wrong-scope rejection at chunks 1/64.
+The first full run found a real regression in the concrete Acc fixture:
+unprepared source application syntax was classified as a computation before
+resolution chose TYPE_FAMILY_APP. Body preparation now waits for the existing
+source preparation boundary before choosing its ordinary rule. No expected
+type or fixture-specific exception participates. A small family-application
+lambda regression complements the original compatibility test. Its initial
+test fixture used a definition block in expression position, then omitted the
+explicit quotation required by this unit suite; these test authoring errors
+are separate from the implementation regression. After correcting both, the
+full optimized `check-acceptance` passes, including all 63 compatibility cases,
+resaved/imported sort proofs and invalid-claim rejection. The final synthesis
+suite passes in debug and ASan/UBSan builds (leak detection and halt-on-error).
+This is affected sanitizer coverage, not the parent's full sanitizer gate.
+
+Final local logs: `/tmp/a-program-authority-body-acceptance-final.log`,
+`/tmp/a-program-authority-body-synthesis-final.log`, and
+`/tmp/a-program-authority-body-asan-final.log`. Compiler flags are respectively
+`-O2`, `-O0 -g`, and `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`, all with C11 and warnings as errors.
+
+Same-input `-O0 -g` counts at `main.c:395`, before/after:
+
+| Input | Solve steps | Requests | Proofs | Occurrences | Terms |
+|---|---:|---:|---:|---:|---:|
+| `examples/06_pred.p` | 752 / 766 | 282 / 285 | 224 / 224 | 157 / 157 | 120 / 120 |
+| `length-output-proof.p` | 9,599 / 9,813 | 3,297 / 3,308 | 4,941 / 4,941 | 3,574 / 3,574 | 2,031 / 2,031 |
+| Original IF8 QuickSort | 48,155 / 48,875 | 14,978 / 15,017 | 23,315 / 23,315 | 19,522 / 19,522 | 11,958 / 11,958 |
+
+This is consolidation, not a speedup: ordinary rule scheduling adds small
+amounts of work while eliminating duplicated adaptation. Do not restore the
+separate acceptance implementation just to hide that cost. `synthesis.c` is
++46/-60 (net -14); `tests/synthesis.c` is +29/-0; documentation is separate.
+QuickSort adds 39 requests and 720 outer Solve steps (about 1.5%), without
+additional proofs, typed occurrences or Core Terms. Preparation currently
+follows the producer's changing prerequisite; replacing unnecessary polling
+with the existing preparation subscription requires its own scheduling tests.
+Pending construction outside body adaptation and audit targets 3-5 remain open.
+
 ### Accepted Structural Projections (after `83249f1`)
 
 Inspection found a concrete duplicate in target 1: all three structural queries

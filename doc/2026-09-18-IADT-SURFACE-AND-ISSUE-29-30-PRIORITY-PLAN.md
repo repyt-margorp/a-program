@@ -1467,3 +1467,25 @@ Published as `607058c`, atomically fast-forwarding both `origin/main` and
 `origin/rewrite/pointer-core-hott` from `83249f1`; remote tips verified.
 Implementation/headers +30/-16, tests +58/-0, documentation +68/-0.
 No implementation or test edits followed the final verification runs.
+
+### R: Shared pending body adaptation
+
+- [x] Prepare the existing body adapter once as ordinary VALUE_FROM_TYPE/RETURN
+  rules or a raw computation; delete separate term/type adaptation branches.
+- [x] Test shared pending rules, effect-closure progress, unchanged computations
+  and rejection of the wrong Context; debug and sanitizer synthesis pass.
+- [x] Full optimized acceptance, including 63/63 compatibility cases and the
+  concrete Acc regression; final debug and ASan/UBSan synthesis suites.
+- [ ] Milestone publication and remote-tip verification.
+
+The [body audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#body-adaptation-one-prepared-rule-after-cee33c3)
+records the net -14 implementation lines and the modest scheduling cost. This
+does not complete the broader pending-construction cleanup or R.
+
+This epoch removes the three independent body-adaptation paths in favor of
+ordinary shared checking rules. A premature application-polarity assumption
+found by full compatibility testing was corrected before publication. No new
+Core tag, proof rule, acceptance authority or wire format is introduced.
+Implementation: `synthesis.c` +46/-60; tests: `tests/synthesis.c` +29/-0.
+The final QuickSort delta is +39 requests/+720 steps, with unchanged proof,
+occurrence and Term counts. No implementation/test edits followed these gates.
