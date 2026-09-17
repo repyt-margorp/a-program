@@ -164,22 +164,12 @@ struct pg_inductive_instance {
 	 * NULL for an unapplied family or a non-indexed declaration. */
 	const struct pg_evidence *indices;
 };
-/* Traversal fuel includes shared application-body transitions. Individual
- * kernel checks and selected Pi recovery retain their own cost. */
-struct pg_inductive_recovery {
-	struct pg_typing *typing;
-	struct pg_graph temporary;
-	struct scope_frame *frames;
-	struct inductive_argument *arguments;
-	struct pg_typed_query *body;
-	const struct pg_evidence *type, *formation, *map;
-	struct pg_inductive_instance result;
-	int status;
-};
-int pg_inductive_recovery_init(struct pg_inductive_recovery *work,
-	struct pg_typing *typing, const struct pg_evidence *type);
-int pg_inductive_recovery_advance(struct pg_inductive_recovery *work, size_t steps);
-void pg_inductive_recovery_destroy(struct pg_inductive_recovery *work);
+/* Shared nominal lookup by accepted typed subject. Traversal fuel includes
+ * application-body dependencies; individual kernel/selected-Pi checks retain
+ * their own cost. The completed instance is borrowed from the typing store. */
+struct pg_typed_query *pg_inductive_request(struct pg_typing *typing,
+	const struct pg_evidence *type);
+const struct pg_inductive_instance *pg_inductive_query_result(const struct pg_typed_query *work);
 /* Recover nominal formation and its parameter map from typed construction,
  * including context maps, selected components and pure computation inputs.
  * The nominal declaration still requires its exact accepted formation.

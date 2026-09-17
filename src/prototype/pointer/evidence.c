@@ -618,7 +618,7 @@ struct typed_query_wait {
 	struct typed_query_wait *parent;
 };
 
-enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER, TYPED_REBASE };
+enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER, TYPED_REBASE, TYPED_INDUCTIVE };
 enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT };
 
 struct typed_elimination {
@@ -643,6 +643,12 @@ struct typed_rebase {
 	size_t parameters, count, next;
 };
 
+struct typed_inductive {
+	struct scope_frame *frames;
+	struct inductive_argument *arguments;
+	struct pg_inductive_instance result;
+};
+
 struct pg_typed_query {
 	struct pg_index_entry index;
 	struct pg_typing *typing;
@@ -660,6 +666,7 @@ struct pg_typed_query {
 	struct typed_elimination *elimination;
 	struct typed_field *field;
 	struct typed_rebase *rebase;
+	struct typed_inductive *inductive;
 	const struct pg_reduction_certificate *reduction;
 	const struct pg_reduction_certificate *input_reduction;
 	enum typed_query_kind kind;
@@ -673,6 +680,7 @@ static int typed_body_match(struct pg_typed_query *work);
 static int typed_input_step(struct pg_typed_query *work);
 static int typed_elimination_step(struct pg_typed_query *work);
 static int typed_classifier_step(struct pg_typed_query *work);
+static int typed_inductive_step(struct pg_typed_query *work);
 static const struct pg_evidence *unary_term_content(struct pg_typing *typing,
 	const struct pg_evidence *proof, const struct pg_occurrence *child);
 
@@ -1037,6 +1045,7 @@ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
 			case TYPED_ORIGIN: current->status = typed_origin_step(current); break;
 			case TYPED_CLASSIFIER: current->status = typed_classifier_step(current); break;
 			case TYPED_REBASE: current->status = typed_rebase_step(current); break;
+			case TYPED_INDUCTIVE: current->status = typed_inductive_step(current); break;
 			default: current->status = typed_body_step(current); break;
 			}
 			if (current->kind == TYPED_INPUT && current->status == 1 && !current->result && !current->ordinal)
@@ -1185,14 +1194,12 @@ struct inductive_argument {
 	struct inductive_argument *next;
 };
 
-int pg_inductive_recovery_init(struct pg_inductive_recovery *work,
-	struct pg_typing *typing, const struct pg_evidence *type)
+struct pg_typed_query *pg_inductive_request(struct pg_typing *typing,
+	const struct pg_evidence *type)
 {
-	*work = (struct pg_inductive_recovery){.typing = typing, .type = type, .formation = type, .status = -1};
-	if (!pg_evidence_owned_by(type, typing)) return -1;
-	if (pg_evidence_judgement(type) != PG_JUDGEMENT_VALUE_TYPE && pg_evidence_judgement(type) != PG_JUDGEMENT_TYPE_FAMILY) return -1;
-	work->status = 0;
-	return 0;
+	if (!pg_evidence_owned_by(type, typing)) return NULL;
+	if (pg_evidence_judgement(type) != PG_JUDGEMENT_VALUE_TYPE && pg_evidence_judgement(type) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
+	return typed_query_request(typing, type, NULL, TYPED_INDUCTIVE, 0);
 }
 
 /* The nominal owner fixes the formation context and classifier. Look up that
@@ -1218,136 +1225,127 @@ static const struct pg_evidence *nominal_formation(struct pg_typing *typing,
 	return NULL;
 }
 
-static void inductive_recovery_step(struct pg_inductive_recovery *work)
+static int typed_inductive_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
-	const struct pg_evidence *formation = work->formation;
-	const struct pg_occurrence *subject = pg_evidence_subject(formation);
+	if (!work->inductive) work->inductive = pg_alloc(typing->graph, sizeof(*work->inductive));
+	struct typed_inductive *state = work->inductive;
+	if (!state) return -1;
+	const struct pg_occurrence *subject = work->current;
+	const struct pg_evidence *formation = pg_prove_structural_subject(typing, subject);
+	if (!formation) return -1;
 	if (subject->map) {
-		struct scope_frame *frame = scope_frame(&work->temporary, subject->map, NULL, work->frames);
-		if (!frame) goto failed;
-		work->frames = frame;
+		struct scope_frame *frame = scope_frame(typing->graph, subject->map, NULL, state->frames);
+		if (!frame) return -1;
+		state->frames = frame;
 		formation = pg_prove_structural_subject(typing, subject->origin);
 		goto advanced;
 	}
 	if (subject->selection) {
-		formation = selected_formation(typing, &work->temporary, &work->frames, subject);
+		formation = selected_formation(typing, typing->graph, &state->frames, subject);
 		goto advanced;
 	}
 	if (subject->origin) {
 		formation = pg_prove_structural_subject(typing, subject->origin);
 		if (subject->origin->judgement == PG_JUDGEMENT_COMPUTATION && subject->judgement != PG_JUDGEMENT_COMPUTATION) {
-			if (!work->body) work->body = pg_return_body_request(typing, formation);
-			if (!pg_typed_query_advance(work->body, 1)) return;
-			formation = pg_typed_query_result(work->body);
-			work->body = NULL;
+			if (!work->dependency) work->dependency = pg_return_body_request(typing, formation);
+			if (work->dependency && !work->dependency->status) return 0;
+			formation = pg_typed_query_result(work->dependency);
+			work->dependency = NULL;
 		}
 		goto advanced;
 	}
 	const struct pg_term *core = subject->core;
 	if (core->kind == PG_REFERENCE && core->as.reference->kind == PG_BINDER) {
-		formation = variable_frame(typing, formation, &work->frames);
+		formation = variable_frame(typing, formation, &state->frames);
 		goto advanced;
 	}
 	formation = nominal_formation(typing, subject);
 	if (!formation) {
-		if (core->kind != PG_APPLICATION || subject->operand_count != 2) goto failed;
+		if (core->kind != PG_APPLICATION || subject->operand_count != 2) return -1;
 		const struct pg_term *head = core->as.application.function;
 		const struct pg_evidence *left = pg_prove_structural_subject(typing, subject->operands[0]);
-		if (!left) goto failed;
-		if (subject->operands[1]->core != core->as.application.argument) goto failed;
+		if (!left) return -1;
+		if (subject->operands[1]->core != core->as.application.argument) return -1;
 		const struct pg_evidence *right = pg_prove_structural_subject(typing, subject->operands[1]);
-		if (!right) goto failed;
-		if (subject->operands[0]->core != head) goto failed;
-		if (!work->body) work->body = pg_application_body_request(typing, left, right);
-		if (!pg_typed_query_advance(work->body, 1)) return;
-		formation = pg_typed_query_result(work->body);
-		work->body = NULL;
+		if (!right) return -1;
+		if (subject->operands[0]->core != head) return -1;
+		if (!work->dependency) work->dependency = pg_application_body_request(typing, left, right);
+		if (work->dependency && !work->dependency->status) return 0;
+		formation = pg_typed_query_result(work->dependency);
+		work->dependency = NULL;
 		if (!formation && pg_evidence_judgement(left) == PG_JUDGEMENT_TYPE_FAMILY) {
-			struct inductive_argument *argument = pg_alloc(&work->temporary, sizeof(*argument));
-			if (!argument) goto failed;
-			*argument = (struct inductive_argument){right, work->frames, work->arguments};
-			work->arguments = argument;
+			struct inductive_argument *argument = pg_alloc(typing->graph, sizeof(*argument));
+			if (!argument) return -1;
+			*argument = (struct inductive_argument){right, state->frames, state->arguments};
+			state->arguments = argument;
 			formation = left;
 		}
 		goto advanced;
 	}
-	work->formation = formation;
-	if (!work->map) {
+	work->current = pg_evidence_subject(formation);
+	if (!work->environment) {
 		const struct pg_evidence *context = formation->premises[0]->premises[0];
-		work->map = pg_prove_substitution_projection(typing, context, context);
-		if (!work->map) goto failed;
-		return;
+		work->environment = pg_prove_substitution_projection(typing, context, context);
+		return work->environment ? 0 : -1;
 	}
-	if (work->frames) {
-		work->map = scope_map_step(typing, work->map, work->frames);
-		work->frames = work->frames->next;
-		if (!work->map) goto failed;
-		return;
+	if (state->frames) {
+		work->environment = scope_map_step(typing, work->environment, state->frames);
+		state->frames = state->frames->next;
+		return work->environment ? 0 : -1;
 	}
-	if (pg_evidence_context(work->map) != pg_evidence_context(work->type)) goto failed;
-	const struct pg_evidence *instance = pg_prove_reindex(typing, work->map, formation);
+	if (pg_evidence_context(work->environment) != work->source->context) return -1;
+	const struct pg_evidence *instance = pg_prove_reindex(typing, work->environment, formation);
 	const struct pg_evidence *indices = NULL;
-	if (work->arguments) {
-		if (!instance || pg_evidence_judgement(instance) != PG_JUDGEMENT_TYPE_FAMILY) goto failed;
+	if (state->arguments) {
+		if (!instance || pg_evidence_judgement(instance) != PG_JUDGEMENT_TYPE_FAMILY) return -1;
 		const struct pg_data_schema *schema = formation->certificate;
 		const struct pg_evidence *self = formation->premises[0];
-		const struct pg_evidence *prefix = pg_prove_substitution_pair(typing, work->map, self, instance);
-		if (!prefix) goto failed;
+		const struct pg_evidence *prefix = pg_prove_substitution_pair(typing, work->environment, self, instance);
+		if (!prefix) return -1;
 		size_t count = 0;
-		for (struct inductive_argument *a = work->arguments; a; a = a->next) ++count;
-		if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto failed;
-		const struct pg_evidence **values = pg_alloc(&work->temporary, count * sizeof(*values));
-		if (!values) goto failed;
+		for (struct inductive_argument *a = state->arguments; a; a = a->next) ++count;
+		if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
+		const struct pg_evidence **values = pg_alloc(typing->graph, count * sizeof(*values));
+		if (!values) return -1;
 		size_t i = 0;
 		/* Index arguments cross precisely the wrappers outside their own
 		 * application, not the parameter substitutions inside its callee. */
-		for (struct inductive_argument *a = work->arguments; a; a = a->next) {
+		for (struct inductive_argument *a = state->arguments; a; a = a->next) {
 			const struct pg_evidence *value = scope_image(typing, a->value, a->frames);
-			if (!value) goto failed;
+			if (!value) return -1;
 			values[i++] = value;
 			instance = pg_prove_family_application(typing, instance, value);
-			if (!instance) goto failed;
+			if (!instance) return -1;
 		}
 		const struct pg_data_signature *signature = pg_data_signature(typing, self, pg_data_schema_indices(schema));
 		indices = pg_data_signature_instance(typing, signature, prefix, count, values);
-		if (!indices || pg_evidence_judgement(instance) != PG_JUDGEMENT_VALUE_TYPE) goto failed;
+		if (!indices || pg_evidence_judgement(instance) != PG_JUDGEMENT_VALUE_TYPE) return -1;
 	}
-	if (!instance || pg_alpha_equal(pg_evidence_subject(instance)->core, pg_evidence_subject(work->type)->core) != 1) goto failed;
-	work->result = (struct pg_inductive_instance){formation->certificate, formation, work->map, indices};
-	work->status = 1;
-	return;
+	if (!instance || pg_alpha_equal(pg_evidence_subject(instance)->core, work->source->core) != 1) return -1;
+	state->result = (struct pg_inductive_instance){formation->certificate, formation, work->environment, indices};
+	work->result = instance;
+	return 1;
 advanced:
-	if (!formation) goto failed;
-	work->formation = formation;
-	return;
-failed:
-	work->status = -1;
+	if (!formation) return -1;
+	work->current = pg_evidence_subject(formation);
+	return 0;
 }
 
-int pg_inductive_recovery_advance(struct pg_inductive_recovery *work, size_t steps)
+const struct pg_inductive_instance *pg_inductive_query_result(const struct pg_typed_query *work)
 {
-	while (!work->status && steps--) inductive_recovery_step(work);
-	return work->status;
-}
-
-void pg_inductive_recovery_destroy(struct pg_inductive_recovery *work)
-{
-	pg_graph_destroy(&work->temporary);
-	*work = (struct pg_inductive_recovery){0};
+	return work && work->kind == TYPED_INDUCTIVE && work->status == 1 ? &work->inductive->result : NULL;
 }
 
 int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *type,
 	struct pg_inductive_instance *output)
 {
 	if (!output) return 0;
-	struct pg_inductive_recovery work;
-	pg_inductive_recovery_init(&work, typing, type);
-	while (!pg_inductive_recovery_advance(&work, 1024)) {}
-	int success = work.status > 0;
-	if (success) *output = work.result;
-	pg_inductive_recovery_destroy(&work);
-	return success;
+	struct pg_typed_query *work = pg_inductive_request(typing, type);
+	while (!pg_typed_query_advance(work, 1024)) {}
+	const struct pg_inductive_instance *result = pg_inductive_query_result(work);
+	if (result) *output = *result;
+	return result != NULL;
 }
 
 const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,

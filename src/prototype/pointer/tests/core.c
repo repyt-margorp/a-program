@@ -1233,13 +1233,17 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *projected_image_map = pg_prove_substitution(&typing, a_scope, source, 1, &projected_a);
 	assert(projected_image_map && pg_prove_context_map(&typing, pg_evidence_context_map(projected_image_map)) == projected_image_map);
 	const struct pg_evidence *unknown_type = pg_prove_value_type(&typing, projected_a);
+	struct pg_typed_query *nominal = pg_inductive_request(&typing, unknown_type);
+	assert(nominal && !pg_typed_query_advance(nominal, 0));
+	int nominal_status = 0;
+	for (size_t i = 0; i < 16 && !nominal_status; ++i)
+		nominal_status = pg_typed_query_advance(nominal, 1);
+	assert(nominal_status < 0 && !pg_inductive_query_result(nominal));
+	uint64_t nominal_steps = pg_typed_query_steps(nominal);
 	for (size_t budget = 1; budget <= 64; budget *= 64) {
-		struct pg_inductive_recovery recovery;
-		assert(!pg_inductive_recovery_init(&recovery, &typing, unknown_type));
-		for (size_t i = 0; i < 16 && !recovery.status; ++i)
-			pg_inductive_recovery_advance(&recovery, budget);
-		assert(recovery.status < 0);
-		pg_inductive_recovery_destroy(&recovery);
+		assert(pg_inductive_request(&typing, unknown_type) == nominal);
+		assert(pg_typed_query_advance(nominal, budget) < 0);
+		assert(pg_typed_query_steps(nominal) == nominal_steps);
 	}
 	const struct pg_evidence *images[] = {destination_b, destination_y};
 	const struct pg_evidence *sigma = pg_prove_substitution(&typing, source, destination, 2, images);

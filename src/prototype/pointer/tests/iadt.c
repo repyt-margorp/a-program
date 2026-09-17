@@ -268,11 +268,11 @@ static void scoped_type_families(void)
 		assert(pg_evidence_subject(pg_substitution_image(&typing, recovered.indices, a))->core == pg_evidence_subject(type)->core);
 		assert(pg_evidence_subject(pg_substitution_image(&typing, recovered.indices, x))->core == pg_evidence_subject(value)->core);
 		for (size_t chunk = 1; chunk <= 64; chunk *= 64) {
-			struct pg_inductive_recovery work;
-			assert(!pg_inductive_recovery_init(&work, &typing, wrapped[i]));
-			while (!pg_inductive_recovery_advance(&work, chunk)) {}
-			assert(work.status == 1 && work.result.indices == recovered.indices);
-			pg_inductive_recovery_destroy(&work);
+			struct pg_typed_query *work = pg_inductive_request(&typing, wrapped[i]);
+			uint64_t steps = pg_typed_query_steps(work);
+			assert(pg_typed_query_advance(work, chunk) == 1);
+			assert(pg_inductive_query_result(work)->indices == recovered.indices);
+			assert(pg_typed_query_steps(work) == steps);
 		}
 	}
 	uint64_t shared_steps = pg_typed_query_steps(shared);
@@ -1807,6 +1807,7 @@ static void schema_positivity(void)
 		assert(description && !pg_prove_structural_subject(&foreign, description));
 		struct pg_inductive_instance previous = recovered;
 		assert(!pg_inductive_instance(&foreign, nat, &recovered));
+		assert(!pg_inductive_request(&foreign, nat) && !foreign.typed_queries.count);
 		assert(recovered.formation == previous.formation && recovered.parameters == previous.parameters);
 		pg_typing_destroy(&foreign);
 	}
@@ -1817,37 +1818,54 @@ static void schema_positivity(void)
 			projected = pg_prove_projection(&typing, context, projected);
 			assert(projected);
 		}
-		struct pg_inductive_recovery work;
-		assert(!pg_inductive_recovery_init(&work, &typing, projected));
-		assert(!pg_inductive_recovery_advance(&work, 0));
-		assert(!pg_inductive_recovery_advance(&work, 32));
-		assert(work.formation == nat && !work.map && !work.result.formation);
-		assert(!pg_inductive_recovery_advance(&work, 33));
-		assert(work.map && !work.frames && !work.result.formation);
-		assert(pg_inductive_recovery_advance(&work, 1) == 1);
-		struct pg_inductive_instance expected = work.result;
+		struct pg_typed_query *work = pg_inductive_request(&typing, projected);
+		assert(work && !pg_typed_query_advance(work, 0));
+		assert(!pg_typed_query_advance(work, 32) && !pg_inductive_query_result(work));
+		int status = 0;
+		for (size_t calls = 0; !status && calls < 100; ++calls)
+			status = pg_typed_query_advance(work, 1);
+		assert(status == 1);
+		struct pg_inductive_instance expected = *pg_inductive_query_result(work);
 		assert(expected.formation == nat && expected.schema == nat_schema);
 		assert(pg_evidence_context(expected.parameters) == pg_evidence_context(context));
-		pg_inductive_recovery_destroy(&work);
+		const struct pg_evidence *alternate = pg_prove_reindex(&typing,
+			pg_prove_substitution_projection(&typing, context, context), projected);
+		assert(alternate && pg_evidence_subject(alternate) == pg_evidence_subject(projected));
+		assert(pg_inductive_request(&typing, alternate) == work);
 		size_t saved_proofs = typing.proofs.count, saved_terms = graph.terms.count;
+		size_t saved_queries = typing.typed_queries.count;
+		uint64_t saved_steps = pg_typed_query_steps(work);
 		const size_t chunks[] = {1, 7, 64};
 		for (size_t i = 0; i < sizeof(chunks) / sizeof(*chunks); ++i) {
-			assert(!pg_inductive_recovery_init(&work, &typing, projected));
-			size_t calls = 0;
-			while (!pg_inductive_recovery_advance(&work, chunks[i])) assert(++calls < 100);
-			assert(work.status == 1 && work.result.parameters == expected.parameters);
-			pg_inductive_recovery_destroy(&work);
+			assert(pg_inductive_request(&typing, projected) == work);
+			assert(pg_typed_query_advance(work, chunks[i]) == 1);
+			assert(pg_inductive_query_result(work)->parameters == expected.parameters);
+			assert(pg_typed_query_steps(work) == saved_steps);
 		}
 		struct pg_inductive_instance sync;
 		assert(pg_inductive_instance(&typing, projected, &sync));
 		assert(sync.parameters == expected.parameters);
 		assert(typing.proofs.count == saved_proofs && graph.terms.count == saved_terms);
-		assert(!pg_inductive_recovery_init(&work, &typing, projected));
-		assert(!pg_inductive_recovery_advance(&work, 37));
-		pg_inductive_recovery_destroy(&work);
-		assert(pg_inductive_recovery_init(&work, &typing, NULL) == -1);
-		assert(pg_inductive_recovery_advance(&work, 1) == -1);
-		pg_inductive_recovery_destroy(&work);
+		assert(typing.typed_queries.count == saved_queries);
+		/* Distinct scopes require fresh work; every chunk size resumes it. */
+		for (size_t i = 0; i < sizeof(chunks) / sizeof(*chunks); ++i) {
+			context = pg_prove_context_extension(&typing, context, pg_binder(&graph), projected);
+			projected = pg_prove_projection(&typing, context, projected);
+			work = pg_inductive_request(&typing, projected);
+			assert(work && !pg_typed_query_advance(work, 0));
+			status = 0;
+			for (size_t calls = 0; !status && calls < 128; ++calls)
+				status = pg_typed_query_advance(work, chunks[i]);
+			assert(status == 1 && pg_inductive_query_result(work)->formation == nat);
+			assert(pg_evidence_context(pg_inductive_query_result(work)->parameters) == pg_evidence_context(context));
+		}
+		/* Pending work is owned by typing/graph, not a caller lifecycle. */
+		context = pg_prove_context_extension(&typing, context, pg_binder(&graph), projected);
+		work = pg_inductive_request(&typing, pg_prove_projection(&typing, context, projected));
+		assert(work && !pg_typed_query_advance(work, 37));
+		assert(!pg_inductive_request(&typing, NULL));
+		assert(!pg_inductive_request(&typing, empty));
+		assert(!pg_inductive_query_result(NULL));
 	}
 	assert(!pg_evidence_context(nat));
 	assert(pg_evidence_premise(nat, 0) == parameters);
@@ -2096,12 +2114,11 @@ static void schema_positivity(void)
 		const struct pg_evidence *content = pg_prove_return_content(&typing, constant);
 		assert(content && pg_evidence_classifier(content) == pg_universe(&graph, 3));
 		for (size_t chunk = 1; chunk <= 64; chunk *= 64) {
-			struct pg_inductive_recovery work;
-			assert(!pg_inductive_recovery_init(&work, &typing, content));
-			for (size_t fuel = 0; !work.status && fuel < 128; fuel += chunk)
-				pg_inductive_recovery_advance(&work, chunk);
-			assert(work.status == 1 && work.result.formation == nat);
-			pg_inductive_recovery_destroy(&work);
+			struct pg_typed_query *work = pg_inductive_request(&typing, content);
+			int status = 0;
+			for (size_t fuel = 0; !status && fuel < 128; fuel += chunk)
+				status = pg_typed_query_advance(work, chunk);
+			assert(status == 1 && pg_inductive_query_result(work)->formation == nat);
 		}
 	}
 	{

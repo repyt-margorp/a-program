@@ -262,7 +262,6 @@ struct pg_synthesis_job {
 	struct pg_conversion comparison;
 	const struct pg_conversion_certificate *certificate;
 	struct pg_reindex reindex;
-	struct pg_inductive_recovery *inductive_recovery;
 	struct pg_function_graph_work function_graph;
 	const struct pg_inductive_instance *inductive_instance;
 	struct pg_identity_face_work *face;
@@ -338,7 +337,6 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			pg_conversion_destroy(&job->comparison);
 			pg_reindex_destroy(&job->reindex);
-			if (job->inductive_recovery) pg_inductive_recovery_destroy(job->inductive_recovery);
 			pg_function_graph_destroy(&job->function_graph);
 			pg_identity_face_destroy(job->face);
 			pg_identity_formation_destroy(job->formation);
@@ -6463,31 +6461,22 @@ static void inductive_instance_step(struct pg_synthesis *synthesis, struct pg_sy
 		finish(synthesis, job, canonical->status);
 		return;
 	}
-	if (!job->inductive_recovery) {
-		enum pg_evidence_judgement kind = pg_evidence_judgement(type->result);
-		if (kind != PG_JUDGEMENT_VALUE_TYPE && kind != PG_JUDGEMENT_TYPE_FAMILY) {
-			finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
-		}
-		/* Retain beta evidence before recovering the nominal declaration. */
-		const struct pg_reduction_certificate *receipt = normalization_receipt(synthesis, job,
-			pg_evidence_subject(type->result)->core, PG_REDUCTION_WHNF);
-		if (!receipt) return;
-		const struct pg_evidence *normalized = pg_prove_normalization(synthesis->typing, type->result, receipt);
-		if (!normalized) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		job->inductive_recovery = pg_alloc(synthesis->typing->graph, sizeof(*job->inductive_recovery));
-		if (!job->inductive_recovery) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		pg_inductive_recovery_init(job->inductive_recovery, synthesis->typing, normalized);
+	enum pg_evidence_judgement kind = pg_evidence_judgement(type->result);
+	if (kind != PG_JUDGEMENT_VALUE_TYPE && kind != PG_JUDGEMENT_TYPE_FAMILY) {
+		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 	}
-	int status = pg_inductive_recovery_advance(job->inductive_recovery, 1);
+	/* Retain beta evidence before recovering the nominal declaration. */
+	const struct pg_reduction_certificate *receipt = normalization_receipt(synthesis, job,
+		pg_evidence_subject(type->result)->core, PG_REDUCTION_WHNF);
+	if (!receipt) return;
+	const struct pg_evidence *normalized = pg_prove_normalization(synthesis->typing, type->result, receipt);
+	if (!normalized) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	struct pg_typed_query *query = pg_inductive_request(synthesis->typing, normalized);
+	int status = pg_typed_query_advance(query, 1);
 	if (!status) { enqueue(synthesis, job); return; }
-	struct pg_inductive_instance instance = job->inductive_recovery->result;
-	pg_inductive_recovery_destroy(job->inductive_recovery);
 	if (status < 0) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-	struct pg_inductive_instance *result = pg_alloc(synthesis->typing->graph, sizeof(*result));
-	if (!result) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-	*result = instance;
-	job->inductive_instance = result;
-	job->result = instance.parameters;
+	job->inductive_instance = pg_inductive_query_result(query);
+	job->result = job->inductive_instance->parameters;
 	finish(synthesis, job, PG_SYNTHESIS_DONE);
 }
 

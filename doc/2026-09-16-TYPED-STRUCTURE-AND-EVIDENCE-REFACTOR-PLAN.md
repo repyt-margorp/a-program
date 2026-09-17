@@ -331,7 +331,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `return_value_origin`, `pg_prove_application_body` | R60 deletes `return_value_origin`; scope restriction requests Return work as an ordinary shared dependency. `pg_prove_application_body` remains a synchronous adapter to indexed typed-body work. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
-| `inductive_recovery_step` | Reads typed origins/maps, selections and family inputs. R33 removes its private Return/Thunk counters and Fold continuation stack; computed results and applications share indexed typed-body work. Exact nominal formation and synchronous kernel suboperations remain |
+| `inductive_recovery_step` | R61 removes the caller-owned recovery object and lifecycle. Nominal requests share the existing typed-query store by exact accepted subject; Return/application work uses scheduler dependencies and synthesis borrows the completed instance. Exact nominal formation, selected-component traversal and synchronous kernel suboperations remain |
 | `rebase_image` | R60 replaces its private traversal stack and repeated subtree work with a synchronous adapter to shared `(typed subject, target Context)` queries. Origin steps and child/Return dependencies use the common scheduler; ordinary introduction, nominal formation, substitution and receipt checks remain. These kernel subchecks are still synchronous |
 | `constructor_origin`, `pg_prove_elimination_body` | Whole-introduction reconstruction deleted in R31. A temporary constructor view exposes retained nominal formation, parameters and typed fields for Match/refinement; actual introduction in a changed context remains checked. Congruent NF field selection uses receipts; general current-result exposure remains open |
 | `classifier_leaf` | Deleted |
@@ -2932,3 +2932,60 @@ and Solve transitions (131255) are unchanged. Typed queries rise from 6860 to
 7340, retaining 480 scope restrictions instead of re-traversing them on every
 call. Repeated-query unit tests verify no further steps or proof/query growth.
 No Main publication; the complete refactor's performance and LOC gates remain.
+
+### 2026-09-17: Share nominal instance requests (R61)
+
+- [x] Replace `pg_inductive_recovery` and its init/advance/destroy API with a
+  request keyed by the accepted typed subject in the existing query store.
+  Preserve declaration identity, parameter/index scope checking and the final
+  Core alpha comparison. The query does not accept a descriptive occurrence.
+- [x] Use the common scheduler for Return/application dependencies. Synthesis
+  borrows the completed instance instead of allocating its own recovery object
+  and copying the result. Kernel callers retain a synchronous adapter to the
+  same work, not a second recovery implementation.
+- [x] Test pending zero/one/seven/64 budgets on distinct scopes, same-subject
+  derivations sharing work, repeated queries without more transitions or graph
+  growth, cached unsupported variable lookup, indexed/computed instances,
+  cross-store rejection and disposal with pending work.
+- [x] ASan/UBSan Core, IADT, synthesis, imported QuickSort and the complete
+  derivation I/O script pass (`/tmp/a-program-typed-structure-r61-sanitize-*`).
+  This is not a full sanitized acceptance claim.
+- [x] Debug and optimized full acceptance pass, including 63/63 compatibility
+  and final QuickSort images (`r61-debug.log`, `r61-o2.log`). Compare the same
+  QuickSort inputs/build flags after the other verification processes ended.
+
+The nominal algorithm still needs its exact formation and checked context
+action. Interning its work does not make erased Core identity a typing proof,
+identify different nominal declarations, or change an unsupported query into
+a proof of impossibility. Intermediate query storage now lives in the existing
+graph arena; it is not an exported witness or a new program representation.
+`selected_formation`, `pi_argument_frames`, individual kernel subchecks and
+general multi-phase NF exposure remain open. R2/R3/R5 are not complete.
+
+Delta against `1f12423`, under `src/prototype/pointer/`:
+
+| File | Added | Deleted | Net |
+|---|---:|---:|---:|
+| evidence.c | 82 | 84 | -2 |
+| evidence.h | 6 | 16 | -10 |
+| synthesis.c | 13 | 24 | -11 |
+| **Implementation/header** | **101** | **124** | **-23** |
+| tests/core.c | 10 | 6 | +4 |
+| tests/iadt.c | 49 | 32 | +17 |
+
+Cumulative implementation/header **+1917** against `4657cc6`; the net-negative
+gate remains unmet. No build, fixture or transport-format changes.
+
+| O0 QuickSort sample | R60 seconds / peak KiB | R61 seconds / peak KiB |
+|---|---:|---:|
+| 1 | 1.0927 / 277692 | 1.1117 / 276812 |
+| 2 | 1.1066 / 277340 | 1.1011 / 276252 |
+| 3 | 1.1088 / 277480 | 1.0974 / 276628 |
+
+These samples establish no material speedup. R61 counts: 178715 Core terms,
+414289 typed subjects, 433198 proofs, 7792 typed queries, 3386 raw input queries,
+131343 Solve transitions. Relative to R60: -30 terms, -355 subjects, -350
+proofs, +452 retained queries and +88 Solve transitions. Reusing nominal work
+avoids some repeated freshening; no accepted alternate derivations are deleted.
+Dependency scheduling changes transition counts, not the logical rules. No Main
+publication until the complete refactor's acceptance gates are met.
