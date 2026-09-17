@@ -203,7 +203,7 @@ these counters establish less substitution work, not a wall-time speedup.
 - [x] Shared action implementation and focused debug Core tests.
 - [x] Full optimized and full ASan/UBSan acceptance; affected suites repeated
   with leak detection and halt-on-error enabled.
-- [ ] Publish after verification and confirm both remote tips.
+- [x] Publish after verification and confirm both remote tips (`fe62337b`).
 
 Verification logs: `/tmp/a-program-authority-projection-core.log` (strict
 `-O0 -g`), `-acceptance.log` (strict `-O2`) and `-asan.log` (full strict

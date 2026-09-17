@@ -1606,9 +1606,15 @@ documentation +66/-0; total +122/-13. This publication record is documentation o
   keep non-identity map checks and independent proof validation.
 - [x] Debug Core, full optimized and full ASan/UBSan acceptance pass. Repeat
   Core/synthesis/source images with leak detection and halt-on-error enabled.
-- [ ] Publish this completed epoch and verify both remote tips.
+- [x] Publish this completed epoch and verify both remote tips (`fe62337b`).
 
 `typing.c` +5/-9 (net -4); `tests/core.c` +12/-1 (net +11).
 The incremental Solver audit records exact commands, work/node counts and
 remaining cumulative growth. Neither the pending-classifier cleanup nor R's
 overall acceptance and net-negative gates are closed by this epoch.
+
+Published as `fe62337bf782baaf85de1d6a3fe10558b1225387`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `8503fd6`; both
+remote tips were verified. Commit totals: implementation +5/-9, tests +12/-1,
+documentation +77/-0; overall +94/-10. This publication record is documentation
+only and does not change the verified implementation.
