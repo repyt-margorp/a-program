@@ -174,6 +174,32 @@ static void source_preparation_subscription(struct pg_typing *typing)
 	pg_whnf_work_destroy(&work);
 }
 
+static void sequence_structure_choice(struct pg_typing *typing)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	const char *continuations[] = {"v := \\T : @ => \\x : @ => x;", "v := \\T : @ => \\x : T => x;"};
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
+		struct pg_synthesis_job *input = request(&synthesis, scope, "v := (\\x : @ => x) (@{unit:*;});");
+		struct pg_synthesis_job *continuation = request(&synthesis, scope, continuations[i]);
+		struct pg_synthesis_job *context = pg_synthesis_evidence(&synthesis, pg_prove_empty_context(typing));
+		struct pg_synthesis_job *sequence = pg_synthesis_sequence(&synthesis, context, input, continuation);
+		struct pg_synthesis_job *term = pg_synthesis_term_structure(&synthesis, sequence);
+		struct pg_synthesis_job *type = pg_synthesis_classifier_structure(&synthesis, sequence);
+		assert(!complete(&synthesis, term, PG_SYNTHESIS_DONE));
+		assert(!complete(&synthesis, type, PG_SYNTHESIS_DONE));
+		const struct pg_evidence *proof = complete(&synthesis, sequence, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_rule(proof) == (i ? PG_APP_ELIM : PG_FOLD_ELIM));
+		assert(pg_alpha_equal(pg_synthesis_type_structure_result(term), pg_evidence_subject(proof)->core) == 1);
+		assert(pg_alpha_equal(pg_synthesis_type_structure_result(type), pg_evidence_classifier(proof)) == 1);
+	}
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+}
+
 struct effect_copy {
 	const struct pg_effect_inference *source;
 	struct pg_effect_inference *destination;
@@ -6264,6 +6290,7 @@ int main(void)
 	assert(pg_typing_init(&typing, &graph) == 0);
 	accepted_structures(&typing);
 	source_preparation_subscription(&typing);
+	sequence_structure_choice(&typing);
 	graded_application(&typing);
 	effect_equations(&typing);
 	pending_effect_contexts(&typing);

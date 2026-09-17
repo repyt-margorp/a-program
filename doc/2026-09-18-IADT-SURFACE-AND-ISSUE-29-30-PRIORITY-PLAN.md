@@ -1512,3 +1512,17 @@ Published as `95d8d996b767fd7529584cfd7b9aed9b47aec821`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `7c7a58b`; both
 remote tips verified. Implementation +14/-17, tests +28/-0, documentation
 +49/-0; total +91/-17. This publication-record update is documentation only.
+
+### R: Sequence choice owned by its source adapter
+
+- [x] Publish only the selected sequence construction; retain the original
+  Context/premise checks and the checked pure/effectful fallback rules.
+- [x] Delete independent provisional-FOLD decisions from term/classifier
+  projections. Test constant/dependent continuation snapshots against evidence.
+- [x] Debug and ASan/UBSan synthesis suites; record work and per-file deltas.
+- [x] Full optimized acceptance, including 63/63 compatibility cases.
+- [ ] Publication with remote-tip verification.
+
+The [sequence audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#sequence-construction-choice-after-a37b283)
+records both the authority consolidation and increased descriptive work.
+Pending-construction sharing and the broader R acceptance gates remain open.

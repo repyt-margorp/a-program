@@ -3615,6 +3615,21 @@ static int source_value_kind(const struct pg_synthesis_job *producer);
 static int await_source_preparation(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, struct pg_synthesis_job *producer);
 
+/* Sufficient structural conditions for choosing FOLD before acceptance.
+ * Other cases still need checked conversion or finite-return inversion. */
+static int fixed_sequence_fold(const struct pg_term *input, const struct pg_term *continuation)
+{
+	const struct pg_term *row, *value, *domain, *codomain, *following, *result;
+	const struct pg_object *binder;
+	enum pg_totality first, next;
+	if (!pg_computation_type_spine_view(input, &first, &row, &value)) return 0;
+	if (!pg_pi_view(continuation, &domain, &binder, &codomain)) return 0;
+	if (pg_alpha_equal(domain, value) != 1 || pg_term_independent(codomain, binder) != 1) return 0;
+	if (pg_computation_type_spine_view(codomain, &next, &following, &result)) return 1;
+	const struct pg_effect_row *closed = pg_effect_row_view(row);
+	return first == PG_TOTALITY_TOTAL && closed && !pg_effect_count(closed);
+}
+
 /* The compatibility policy quotes functions at value boundaries. Returning
  * computations keep their ordinary sequencing; no result value is assumed. */
 static int prepare_value_argument(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
@@ -3664,58 +3679,71 @@ static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 			if (!job->right) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
 	}
-	if (job->value_job) { forward_proof(synthesis, job, job->value_job); return; }
+	if (job->value_job && job->value_job != job->right) { forward_proof(synthesis, job, job->value_job); return; }
+	if (!job->value_job) {
+		struct pg_synthesis_job *shapes[] = {
+			pg_synthesis_classifier_structure(synthesis, job->left),
+			pg_synthesis_classifier_structure(synthesis, (void *)job->inputs[2])};
+		for (size_t i = 0; i < 2; ++i) {
+			if (!shapes[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			if (shapes[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, shapes[i]); return; }
+			if (shapes[i]->status == PG_SYNTHESIS_ERROR) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		}
+		if (fixed_sequence_fold(pg_synthesis_type_structure_result(shapes[0]), pg_synthesis_type_structure_result(shapes[1])))
+			job->value_job = job->right;
+	}
 	for (size_t i = 0; i < 3; ++i) {
 		struct pg_synthesis_job *input = (void *)job->inputs[i];
 		if (input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, input); return; }
 		if (input->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, input->status); return; }
 	}
-	if (!job->value_job) {
-		const struct pg_evidence *context = ((const struct pg_synthesis_job *)job->inputs[0])->result;
-		const struct pg_evidence *input = ((const struct pg_synthesis_job *)job->inputs[1])->result;
-		const struct pg_evidence *continuation = ((const struct pg_synthesis_job *)job->inputs[2])->result;
-		if (!context || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT || !input || !continuation) {
-			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-		}
-		if (pg_evidence_context(input) != pg_evidence_context(context) ||
-			pg_evidence_context(continuation) != pg_evidence_context(context)) {
-			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-		}
-		if (pg_evidence_judgement(input) != PG_JUDGEMENT_COMPUTATION) {
-			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-		}
-		if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
-		if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
-		input = job->left->result;
-		if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
-		if (job->right->status != PG_SYNTHESIS_REJECTED) { forward_proof(synthesis, job, job->right); return; }
-		const struct pg_term *content, *domain, *body;
-		const struct pg_object *binder;
-		const struct pg_effect_row *effects;
-		enum pg_totality totality;
-		const struct pg_term *codomain = pg_pi_constant_codomain(pg_evidence_classifier(continuation));
-		if (pg_computation_type_view(pg_evidence_classifier(input), &totality, &effects, &content) &&
-			pg_effect_count(effects) && pg_pi_view(codomain, &domain, &binder, &body)) {
-			/* Preserve the effectful prefix outside the returned function.
-			 * The source adapter uses only checked APP/THUNK/RETURN/FOLD. */
-			binder = pg_binder(synthesis->typing->graph);
-			struct pg_synthesis_job *extended = pg_synthesis_result_context(synthesis,
-				(void *)job->inputs[0], job->left, binder);
-			struct pg_synthesis_job *variable = plain_rule(synthesis, PG_VARIABLE, binder, 1, &extended);
-			struct pg_synthesis_job *premises[] = {extended, (void *)job->inputs[2]};
-			struct pg_synthesis_job *projected = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
-			struct pg_synthesis_job *applied = pg_synthesis_application_jobs(synthesis, extended, projected, variable);
-			struct pg_synthesis_job *quoted = plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &applied);
-			premises[0] = job->left;
-			premises[1] = pg_synthesis_lambda_body(synthesis, extended, quoted);
-			job->value_job = plain_rule(synthesis, PG_FOLD_ELIM, NULL, 2, premises);
-			forward_proof(synthesis, job, job->value_job);
-			return;
-		}
-		struct pg_synthesis_job *argument = pg_synthesis_return(synthesis, context, input);
-		job->value_job = pg_synthesis_application(synthesis, context,
-			(void *)job->inputs[2], argument);
+	const struct pg_evidence *context = ((const struct pg_synthesis_job *)job->inputs[0])->result;
+	const struct pg_evidence *input = ((const struct pg_synthesis_job *)job->inputs[1])->result;
+	const struct pg_evidence *continuation = ((const struct pg_synthesis_job *)job->inputs[2])->result;
+	if (!context || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT || !input || !continuation) {
+		finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 	}
+	if (pg_evidence_context(input) != pg_evidence_context(context) ||
+		pg_evidence_context(continuation) != pg_evidence_context(context)) {
+		finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+	}
+	if (pg_evidence_judgement(input) != PG_JUDGEMENT_COMPUTATION) {
+		finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+	}
+	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	input = job->left->result;
+	if (job->right->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->right); return; }
+	if (job->value_job || job->right->status != PG_SYNTHESIS_REJECTED) {
+		job->value_job = job->right;
+		forward_proof(synthesis, job, job->value_job); return;
+	}
+	const struct pg_term *content, *domain, *body;
+	const struct pg_object *binder;
+	const struct pg_effect_row *effects;
+	enum pg_totality totality;
+	const struct pg_term *codomain = pg_pi_constant_codomain(pg_evidence_classifier(continuation));
+	if (pg_computation_type_view(pg_evidence_classifier(input), &totality, &effects, &content) &&
+		pg_effect_count(effects) && pg_pi_view(codomain, &domain, &binder, &body)) {
+		/* Preserve the effectful prefix outside the returned function.
+		 * The source adapter uses only checked APP/THUNK/RETURN/FOLD. */
+		binder = pg_binder(synthesis->typing->graph);
+		struct pg_synthesis_job *extended = pg_synthesis_result_context(synthesis,
+			(void *)job->inputs[0], job->left, binder);
+		struct pg_synthesis_job *variable = plain_rule(synthesis, PG_VARIABLE, binder, 1, &extended);
+		struct pg_synthesis_job *premises[] = {extended, (void *)job->inputs[2]};
+		struct pg_synthesis_job *projected = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
+		struct pg_synthesis_job *applied = pg_synthesis_application_jobs(synthesis, extended, projected, variable);
+		struct pg_synthesis_job *quoted = plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &applied);
+		premises[0] = job->left;
+		premises[1] = pg_synthesis_lambda_body(synthesis, extended, quoted);
+		job->value_job = plain_rule(synthesis, PG_FOLD_ELIM, NULL, 2, premises);
+		forward_proof(synthesis, job, job->value_job);
+		return;
+	}
+	struct pg_synthesis_job *argument = pg_synthesis_return(synthesis, context, input);
+	job->value_job = pg_synthesis_application(synthesis, context,
+		(void *)job->inputs[2], argument);
 	forward_proof(synthesis, job, job->value_job);
 }
 
@@ -7282,7 +7310,7 @@ static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_j
 	if (job->role == OPERATION_JOB) return job->left;
 	if (job->role == HANDLER_JOB) return job->value_job;
 	if (job->role == HANDLER_RETURN_JOB || job->role == HANDLER_CLAUSE_JOB) return job->value_job;
-	if (job->role == SEQUENCE_JOB) return job->value_job ? job->value_job : job->right;
+	if (job->role == SEQUENCE_JOB) return job->value_job;
 	if (job->role != EXPRESSION_JOB) return NULL;
 	if (handler_syntax(job->syntax))
 		return job->value_job;
@@ -7320,7 +7348,7 @@ static int source_preparing(const struct pg_synthesis_job *producer)
 		preparing = !producer->left;
 		break;
 	case SEQUENCE_JOB:
-		preparing = !producer->value_job && !producer->right && source_value_kind(producer->inputs[1]) >= 0;
+		preparing = !producer->value_job;
 		break;
 	case HANDLER_RETURN_JOB: case HANDLER_CLAUSE_JOB: case HANDLER_JOB:
 		preparing = !producer->value_job;
@@ -7518,29 +7546,6 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 	}
 	struct pg_synthesis_job *source_rule = prepared_source_rule(producer);
 	if (source_rule) {
-		/* A source sequence may replace a rejected fold with checked pure application. */
-		if (producer->role == SEQUENCE_JOB && source_rule == producer->right) {
-			struct pg_synthesis_job *shapes[] = {
-				pg_synthesis_classifier_structure(synthesis, rule_premise(synthesis, source_rule, 0)),
-				pg_synthesis_classifier_structure(synthesis, rule_premise(synthesis, source_rule, 1))};
-			for (size_t i = 0; i < 2; ++i) {
-				if (!shapes[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-				if (shapes[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, shapes[i]); return; }
-				if (shapes[i]->status == PG_SYNTHESIS_ERROR) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-				if (shapes[i]->status != PG_SYNTHESIS_DONE) goto accepted_subject;
-			}
-			const struct pg_term *row, *value, *domain, *codomain, *following, *result;
-			const struct pg_object *binder;
-			enum pg_totality totality;
-			if (!pg_computation_type_spine_view(shapes[0]->type_structure, &totality, &row, &value)) goto accepted_subject;
-			if (!pg_pi_view(shapes[1]->type_structure, &domain, &binder, &codomain)) goto accepted_subject;
-			if (pg_alpha_equal(domain, value) != 1) goto accepted_subject;
-			if (pg_term_independent(codomain, binder) != 1) goto accepted_subject;
-			if (!pg_computation_type_spine_view(codomain, &totality, &following, &result)) {
-				const struct pg_effect_row *closed = pg_effect_row_view(row);
-				if (!closed || pg_effect_count(closed)) goto accepted_subject;
-			}
-		}
 		if (!job->left) job->left = pg_synthesis_term_structure(synthesis, source_rule);
 		forward_structure(synthesis, job);
 		return;
@@ -7619,7 +7624,6 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		return;
 	}
-accepted_subject:
 	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
 	finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
 }
@@ -8290,10 +8294,6 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 	struct pg_synthesis_job *source_rule = prepared_source_rule(producer);
 	if (source_rule) {
 		if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, source_rule);
-		/* A failed provisional FOLD may still close by checked pure APP. */
-		if (producer->role == SEQUENCE_JOB && job->left &&
-			(job->left->status == PG_SYNTHESIS_REJECTED || job->left->status == PG_SYNTHESIS_UNSUPPORTED))
-			goto accepted_classifier;
 		forward_structure(synthesis, job);
 		return;
 	}

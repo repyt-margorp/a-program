@@ -161,6 +161,53 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### Sequence Construction Choice (after `a37b283`)
+
+Term projection independently decided whether a provisional FOLD could be
+exposed, while classifier projection recovered from that FOLD's failure and
+sequence acceptance separately selected pure APP or an effect-preserving
+quoted result. These were three consumers of the same source adaptation choice.
+
+Only `sequence_step` now publishes that choice through its existing `value_job`.
+It may expose FOLD early when the descriptive domain agrees, the codomain is
+independent, and either the result is F or the prefix is explicitly total/pure.
+These are sufficient selection conditions, not a typing judgement. All original
+premises and the requested Context still undergo checking. Cases needing
+conversion, finite RETURN inversion or effectful quotation await that checking
+before publishing a choice. Once published, a choice is not replaced.
+
+Deleted: the term-projection FOLD eligibility branch and the classifier's
+provisional-FOLD recovery branch. The checked sequence fallback itself remains;
+this is not a claim that speculative candidate construction is eliminated.
+No Core tag, proof rule, accepted-state store or image format is added.
+
+The new unit test requests term/classifier structure before acceptance for both
+constant and dependent raw-Pi continuations, verifies FOLD versus APP, and checks
+both snapshots agree with the final evidence. Existing pending effect equations,
+wrong Context and invalid FOLD tests also pass in debug and ASan/UBSan. Full
+optimized `check-acceptance` passes, including 63/63 compatibility cases and
+saved sort-property witnesses. No implementation/test edits followed the gates.
+Local logs: `/tmp/a-program-authority-sequence-synthesis-final.log`,
+`/tmp/a-program-authority-sequence-asan.log`,
+`/tmp/a-program-authority-sequence-acceptance.log`. Flags and the affected-only
+sanitizer scope match the preceding epochs.
+
+Same-input debug counters, before/after:
+
+| Input | Solve steps | Requests | Proofs | Occurrences | Terms |
+|---|---:|---:|---:|---:|---:|
+| `examples/06_pred.p` | 762 / 780 | 285 / 294 | 224 / 224 | 157 / 157 | 120 / 120 |
+| `length-output-proof.p` | 9,369 / 9,698 | 3,301 / 3,445 | 4,941 / 4,941 | 3,574 / 3,574 | 2,031 / 2,031 |
+| Original IF8 QuickSort | 46,766 / 47,619 | 14,998 / 15,378 | 23,315 / 23,315 | 19,522 / 19,522 | 11,958 / 11,969 |
+
+Central selection requests shapes even when no external projection requested
+them yet. Thus this is consolidation, not a speedup: QuickSort adds 853 steps,
+380 requests and 11 descriptive Terms, without adding accepted evidence or
+typed occurrences. Remaining shared pending-construction work must address that
+cost without restoring independent consumer-side choice. `synthesis.c` is
++76/-76 (net zero, including removal of an unnecessary nested scope);
+`tests/synthesis.c` is +27/-0. Documentation is counted separately.
+
 ### Preparation Notifications (after `7c7a58b`)
 
 `await_source_preparation` followed the producer's changing dependency or
