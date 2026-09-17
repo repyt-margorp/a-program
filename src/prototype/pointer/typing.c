@@ -686,6 +686,10 @@ static enum pg_substitution_status occurrence_action_step(struct pg_occurrence_a
 {
 	const struct pg_occurrence *source = work->source;
 	const struct pg_context_map *map = work->map;
+	if (!work->next && !work->substitution) {
+		work->result = pg_occurrence_projection(work->typing, map, source);
+		if (work->result) return PG_SUBSTITUTION_DONE;
+	}
 	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	if (work->next < 3) {
 		const struct pg_term *inputs[] = {source->core, source->classifier, source->annotation};
@@ -965,16 +969,8 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 		work->lift = NULL;
 		return PG_INPUT_PENDING;
 	}
-	if (!work->action) {
-		const struct pg_occurrence *projection = pg_occurrence_projection(typing, work->effective, work->result);
-		if (projection) {
-			work->result = projection;
-			work->maps = work->maps->next;
-			work->effective = NULL;
-			return PG_INPUT_PENDING;
-		}
+	if (!work->action)
 		work->action = pg_occurrence_action_request(typing, work->effective, work->result);
-	}
 	enum pg_substitution_status status = pg_occurrence_action_advance(work->action, 1);
 	if (status == PG_SUBSTITUTION_ERROR) return PG_INPUT_ERROR;
 	if (status == PG_SUBSTITUTION_DONE) {

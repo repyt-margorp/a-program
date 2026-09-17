@@ -161,6 +161,68 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### Shared Projection Action (after `8503fd6`)
+
+Typed input traversal had a private projection shortcut, while callers of the
+ordinary occurrence action substituted Core/classifier/annotation even for
+that same projection. Projection now belongs to `occurrence_action_step`;
+input traversal always uses the existing action request. The separate input
+completion branch is deleted. No new job kind, cache, wire field or acceptance
+rule is introduced. The direct projection API used by the kernel still shares
+the same construction without requiring an action request.
+
+This optimization requires an exact Context prefix and identity Core images,
+as checked by the existing `pg_occurrence_projection`. It is not DefEq-based
+interning. A general map, including one changing images without changing its
+source/destination, still goes through substitution and ordinary proof checks.
+
+The 10,000-level input test now checks one shared identity action, one action
+transition, zero Core substitution requests and zero proofs, instead of zero
+action requests. Its 20,002 input transitions and exact result are unchanged.
+A separate weakening test checks zero-fuel suspension followed by one-step
+completion, exact agreement with the kernel projection, and no new evidence
+or Core substitution request. Existing non-identity/chunked-map checks remain.
+
+Same-input debug comparison at `main.c:395`, `--steps 1000000`:
+
+| Quantity | IF8 before / after | length property before / after |
+|---|---:|---:|
+| Solve transitions | 47,513 / 47,046 | 9,674 / 9,569 |
+| Occurrence actions | 7,066 / 7,072 | 1,431 / 1,431 |
+| Interned Core substitution jobs | 5,854 / 5,663 | 1,040 / 934 |
+| Accepted proofs | 23,315 / 23,315 | 4,941 / 4,941 |
+| Typed occurrences | 19,522 / 19,522 | 3,574 / 3,574 |
+| Core Terms | 11,969 / 11,969 | 2,031 / 2,031 |
+
+IF8 uses `--legacy-intrinsic-dot` and the unchanged
+`if8_fuel_free_quicksort_check.p`; the other input is `length-output-proof.p`.
+The extra six action records are shared projection requests, not extra proof
+obligations. A preliminary `-pg` run was too short for a reliable time profile;
+these counters establish less substitution work, not a wall-time speedup.
+
+- [x] Shared action implementation and focused debug Core tests.
+- [x] Full optimized and full ASan/UBSan acceptance; affected suites repeated
+  with leak detection and halt-on-error enabled.
+- [ ] Publish after verification and confirm both remote tips.
+
+Verification logs: `/tmp/a-program-authority-projection-core.log` (strict
+`-O0 -g`), `-acceptance.log` (strict `-O2`) and `-asan.log` (full strict
+`-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`).
+All commands exited 0. The full sanitizer run reported no diagnostics; Core,
+synthesis and `source_io.sh` were then repeated with
+`ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
+`UBSAN_OPTIONS=halt_on_error=1`, also exit 0, in `-asan-{core,synthesis,source}.log`.
+All optimized `export results` records agree with the declared-Context baseline
+after removing temporary paths and step counts and sorting execution order.
+
+Implementation: `typing.c` +5/-9, net -4. Tests: `tests/core.c` +12/-1,
+net +11. Documentation is separate. Pending classifier reconstruction, source
+allocation traversal and the overall net-negative/final acceptance gates remain
+open; this is not completion of R2-R5.
+Current implementation/header totals remain +2,245/-976 (net +1,269) from R76,
+and +7,208/-3,523 (net +3,685) from R0. This local reduction does not satisfy
+the cumulative reduction requirement.
+
 ### Declared Types from Accepted Contexts (after `b4b674b`)
 
 `declared_type_step` previously inspected source/derivation recipes even when

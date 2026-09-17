@@ -324,6 +324,9 @@ static void context_test(struct pg_graph *graph)
 	assert(pg_occurrence_input_request(&typing, deep, 0) == input);
 	assert(pg_occurrence_input_advance(input, 1000) == PG_INPUT_READY);
 	assert(pg_occurrence_input_steps(input) == 20002);
+	struct pg_occurrence_action *identity_action = pg_occurrence_action_request(&typing, same, typed_a);
+	assert(pg_occurrence_action_result(identity_action) == typed_a);
+	assert(pg_occurrence_action_steps(identity_action) == 1);
 	input = pg_occurrence_input_request(&typing, parent, 1);
 	assert(pg_occurrence_input_advance(input, 10) == PG_INPUT_UNAVAILABLE);
 	assert(!pg_occurrence_input_result(input));
@@ -370,7 +373,7 @@ static void context_test(struct pg_graph *graph)
 		assert(pg_occurrence_input_advance(input, 100000) == PG_INPUT_READY);
 		assert(pg_occurrence_input_steps(input) == steps && typing.occurrence_inputs.count == requests);
 	}
-	assert(!typing.proofs.count && !typing.occurrence_actions.count);
+	assert(!typing.proofs.count && !typing.substitutions.jobs.count && typing.occurrence_actions.count == 1);
 	pg_typing_destroy(&typing);
 	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
 }
@@ -1611,6 +1614,14 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(typing.proofs.count == before_projection + 1 && typing.occurrence_actions.count == actions);
 	const struct pg_evidence *projection_map = pg_prove_substitution_projection(&typing, destination, extended_destination);
 	assert(pg_evidence_subject(projected)->map == pg_evidence_context_map(projection_map));
+	struct pg_occurrence_action *projection_action = pg_occurrence_action_request(&typing,
+		pg_evidence_context_map(projection_map), pg_evidence_subject(reindexed_return));
+	size_t projection_substitutions = typing.substitutions.jobs.count;
+	size_t projection_proofs = typing.proofs.count;
+	assert(pg_occurrence_action_advance(projection_action, 0) == PG_SUBSTITUTION_PENDING);
+	assert(pg_occurrence_action_advance(projection_action, 1) == PG_SUBSTITUTION_DONE);
+	assert(pg_occurrence_action_result(projection_action) == pg_evidence_subject(projected));
+	assert(typing.substitutions.jobs.count == projection_substitutions && typing.proofs.count == projection_proofs);
 	assert(pg_evidence_subject(pg_prove_reindex(&typing, projection_map, reindexed_return)) == pg_evidence_subject(projected));
 	assert(pg_occurrence_unproject(&typing, pg_evidence_subject(projected), pg_evidence_context(destination)) ==
 		pg_evidence_subject(reindexed_return));

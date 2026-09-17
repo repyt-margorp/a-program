@@ -1597,3 +1597,18 @@ Published as `2cc3e5a62952f731c40eadf6d777ed7ea4d4d1ad`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `b4b674b`;
 both remote tips verified. Implementation +11/-13, tests +45/-0,
 documentation +66/-0; total +122/-13. This publication record is documentation only.
+
+### 2026-09-18: Shared Context projection action
+
+- [x] Move projection completion into the existing occurrence action; remove
+  the private typed-input projection branch. No new acceptance authority.
+- [x] Verify shared one-step identity/weakening and no Core substitution work;
+  keep non-identity map checks and independent proof validation.
+- [x] Debug Core, full optimized and full ASan/UBSan acceptance pass. Repeat
+  Core/synthesis/source images with leak detection and halt-on-error enabled.
+- [ ] Publish this completed epoch and verify both remote tips.
+
+`typing.c` +5/-9 (net -4); `tests/core.c` +12/-1 (net +11).
+The incremental Solver audit records exact commands, work/node counts and
+remaining cumulative growth. Neither the pending-classifier cleanup nor R's
+overall acceptance and net-negative gates are closed by this epoch.
