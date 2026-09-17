@@ -161,6 +161,63 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### Shared Type-Term Construction (after `b21dc46`)
+
+Type-forming rules were interpreted separately by TYPE_STRUCTURE and
+TERM_STRUCTURE. For Pi/F/U formation and their structural projections, the
+ordinary Term path could wait for acceptance while the type path constructed
+an early symbolic Core. Interning the eventual Core did not share this work.
+
+Known type-forming derivations now use the **same TERM_STRUCTURE request** for
+both APIs. The existing type-former construction is owned by that request;
+Universe/host-type construction is no longer duplicated. The type-specific
+wrapper remains for unresolved source and Context projection: projecting a
+value must not make it usable as a type. No pending proof is trusted, and
+invalid formation descriptions may still be constructed before their ordinary
+typing rule rejects them. This does not merge erased computation with typing.
+
+After `source_preparing` has released a handler, its selected
+rule already specifies the result carrier. Zero clauses use effect subsumption
+over FOLD; nonzero clauses use HANDLER_ELIM. Their ordinary classifier
+projection now replaces the source-specific carrier lookup and dependency
+polling branch. Clause/signature checking and effect equation ownership remain.
+
+- [x] Share known formation requests between both views; retain type guards.
+- [x] Test both request orders with unresolved effects and shared request identity.
+- [x] Reject a value projection used as a type after effect closure.
+- [x] Remove redundant source-handler carrier projection; debug synthesis passes.
+- [x] Full optimized acceptance (including 63/63 compatibility) and ASan/UBSan synthesis on the final diff.
+- [x] Record work, node and per-file counts.
+- [ ] Publish only after verification and check both remote tips.
+
+Pending classifier inference still has rule-specific computation (including
+Pi application, effects and dependent substitution). This is not completion of
+the entire pending-structure cleanup or the parent net-negative gate.
+
+Fresh debug checker measurements at `main.c:395`, before (`b21dc46`) / after:
+
+| Input | Solve steps | Requests | Proofs | Typed occurrences | Core Terms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Original IF8 QuickSort | 47,619 / 47,619 | 15,378 / 15,378 | 23,315 / 23,315 | 19,522 / 19,522 | 11,969 / 11,969 |
+| `inferred-index-effects.p` | 5,530 / 5,530 | 2,170 / 2,170 | 1,275 / 1,275 | 939 / 939 | 648 / 648 |
+
+These source workloads do not show a work reduction; no speedup is claimed.
+The pending-effect unit regression directly tests the eliminated duplication:
+asking both views of each Universe/F/U/Pi producer returns the same request,
+with no second allocation, in either request order. It also checks that the
+symbolic snapshot survives effect closure and invalid formation still fails.
+
+Per-file delta: `synthesis.c` +35/-35 (net 0); `synthesis.h` +4/-2 (net +2,
+API comments); `tests/synthesis.c` +21/-0. Documentation is counted separately.
+
+Verification: strict `-O0 -g` synthesis; `make -f
+src/prototype/pointer/Makefile -j2 BUILD=/tmp/a-program-authority-type-core-opt
+check-acceptance` with strict `-O2`; and synthesis with strict `-O1 -g
+-fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`,
+`ASAN_OPTIONS=detect_leaks=1:halt_on_error=1`,
+`UBSAN_OPTIONS=halt_on_error=1`. Logs are
+`/tmp/a-program-authority-type-core-{synthesis,final-acceptance,asan}.log`.
+
 ### Substitution Telescope Checking (after `7eeefb8`)
 
 The composition audit did not find repeated source synthesis in each image:

@@ -1260,10 +1260,24 @@ struct pg_synthesis_job *pg_synthesis_evidence(struct pg_synthesis *synthesis,
 	return request_inputs(synthesis, EVIDENCE_JOB, 1, inputs);
 }
 
+static int type_structure_rule(enum pg_evidence_rule rule)
+{
+	switch (rule) {
+	case PG_UNIVERSE_FORM: case PG_HOST_TYPE_FORM:
+	case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM: case PG_PI_FORM:
+	case PG_PI_DOMAIN: case PG_PI_CODOMAIN: case PG_RETURN_CONTENT:
+	case PG_TYPE_FROM_VALUE: case PG_PI_CONSTANT_CODOMAIN: return 1;
+	default: return 0;
+	}
+}
+
 struct pg_synthesis_job *pg_synthesis_type_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation)
 {
 	if (!formation || formation->owner != synthesis->owner_key) return NULL;
+	if (formation->role == DERIVATION_JOB &&
+		type_structure_rule(((const struct pg_derivation_input *)formation->inputs[0])->rule))
+		return pg_synthesis_term_structure(synthesis, formation);
 	return request_job(synthesis, TYPE_STRUCTURE_JOB, formation, NULL);
 }
 
@@ -7532,6 +7546,9 @@ static void handler_structure_step(struct pg_synthesis *synthesis, struct pg_syn
 	finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 }
 
+static void type_rule_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	struct pg_synthesis_job *producer, const struct pg_derivation_input *input);
+
 static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
@@ -7562,6 +7579,10 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		if (input->rule == PG_UNIVERSE_FORM) {
 			job->type_structure = pg_universe(synthesis->typing->graph, input->parameters.level);
 			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+			return;
+		}
+		if (type_structure_rule(input->rule)) {
+			type_rule_structure_step(synthesis, job, producer, input);
 			return;
 		}
 		if (input->rule == PG_LAMBDA_INTRO || input->rule == PG_APP_ELIM
@@ -8258,21 +8279,6 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
 	if (accepted_structure(synthesis, job, producer)) return;
 	if (await_source_preparation(synthesis, job, producer)) return;
-	if (producer->role == HANDLER_JOB) {
-		struct pg_synthesis_job *carrier = (void *)producer->inputs[1];
-		if (!carrier && producer->handler) carrier = producer->handler->carrier;
-		if (!carrier) {
-			if (producer->status != PG_SYNTHESIS_PENDING) {
-				finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status); return;
-			}
-			if (producer->dependency) depend(synthesis, job, producer->dependency->child);
-			else enqueue(synthesis, job);
-			return;
-		}
-		if (!job->left) job->left = pg_synthesis_type_structure(synthesis, carrier);
-		forward_structure(synthesis, job);
-		return;
-	}
 	if (producer->role == CLASSIFIER_JOB) {
 		if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, (void *)producer->inputs[1]);
 		if (!job->left) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -8404,25 +8410,20 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		return;
 	}
 	const struct pg_derivation_input *input = producer->role == DERIVATION_JOB ? producer->inputs[0] : NULL;
-	if (input) {
-		switch (input->rule) {
-		case PG_UNIVERSE_FORM:
-			job->type_structure = pg_universe(synthesis->typing->graph, input->parameters.level);
-			goto done;
-		case PG_HOST_TYPE_FORM:
-			job->type_structure = pg_reference(synthesis->typing->graph, input->parameters.constant);
-			goto done;
-		case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM: case PG_PI_FORM: case PG_PI_DOMAIN: case PG_PI_CODOMAIN: case PG_RETURN_CONTENT:
-		case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE: case PG_PI_CONSTANT_CODOMAIN:
-			break;
-		default: input = NULL; break;
-		}
-	}
-	if (!input) {
-		if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
-		finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
+	if (input && input->rule == PG_CONTEXT_PROJECTION) {
+		if (!job->left) job->left = pg_synthesis_type_structure(synthesis, rule_premise(synthesis, producer, 1));
+		forward_structure(synthesis, job);
 		return;
 	}
+	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
+	finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
+}
+
+/* Formation and ordinary term queries share this construction. The type view
+ * restricts eligible rules; neither view is acceptance evidence. */
+static void type_rule_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	struct pg_synthesis_job *producer, const struct pg_derivation_input *input)
+{
 	if (input->rule == PG_PI_FORM) {
 		struct pg_synthesis_job *context = rule_premise(synthesis, producer, 0);
 		if (!context) goto unsupported;
@@ -8455,8 +8456,7 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		goto done;
 	}
 	if (!job->left) {
-		size_t index = input->rule == PG_CONTEXT_PROJECTION ? 1 : 0;
-		struct pg_synthesis_job *premise = rule_premise(synthesis, producer, index);
+		struct pg_synthesis_job *premise = rule_premise(synthesis, producer, 0);
 		job->left = input->rule == PG_TYPE_FROM_VALUE ? pg_synthesis_term_structure(synthesis, premise)
 			: pg_synthesis_type_structure(synthesis, premise);
 		if (!job->left) goto unsupported;
@@ -8478,7 +8478,7 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 	}
 	case PG_THUNK_TYPE_FORM:
 		job->type_structure = pg_thunk_type(synthesis->typing->graph, left); break;
-	case PG_CONTEXT_PROJECTION: case PG_TYPE_FROM_VALUE:
+	case PG_TYPE_FROM_VALUE:
 		job->type_structure = left; break;
 	case PG_RETURN_CONTENT: {
 		const struct pg_term *row;

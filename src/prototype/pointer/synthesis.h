@@ -390,7 +390,9 @@ struct pg_derivation_input;
  * snapshots are immutable, including any symbolic row parameters. A query
  * advancing after its producer has accepted evidence reads that typed subject
  * directly instead of reconstructing the producer's symbolic recipe. Compare
- * snapshots after substituting solved parameters, not by raw pointer identity. */
+ * snapshots after substituting solved parameters, not by raw pointer identity.
+ * Known formation rules share their construction request with term_structure;
+ * source/projection views still enforce that the subject describes a type. */
 struct pg_synthesis_job *pg_synthesis_type_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *formation);
 const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthesis_job *job);
@@ -404,7 +406,7 @@ const struct pg_term *pg_synthesis_type_structure_result(const struct pg_synthes
  * type_structure_result accessor; it supplies no typing evidence. */
 struct pg_synthesis_job *pg_synthesis_classifier_structure(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term);
-/* Raw subject of supported pending rules (variables, value/type bridge,
+/* Raw subject of supported pending rules (type formers, variables, value/type bridge,
  * projection, Lambda/APP and unary CBPV introductions/elimination). Other rules await
  * accepted subjects. No execution: an effectful computation is not its result.
  * The same type_structure_result accessor returns the structural term. */

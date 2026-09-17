@@ -1552,3 +1552,18 @@ fast-forwarding Main and `rewrite/pointer-core-hott` from `7eeefb8`;
 both remote tips verified. Implementation +10/-11, tests +15/-0,
 documentation +82/-1; total +107/-12. This publication record changes
 documentation only.
+
+### R: Shared type-Term construction and handler projection
+
+- [x] Share the pending construction request for known type-forming derivations
+  between type and ordinary Term views; keep source/projection type guards.
+- [x] Delete the handler-specific carrier projection and dependency polling;
+  use the prepared zero-clause/nonzero-clause rule's classifier projection.
+- [x] Debug synthesis, both pending request orders, invalid value-as-type guard,
+  immutable effect snapshots and same-input work/node measurements.
+- [x] Final optimized acceptance (63/63 compatibility) and ASan/UBSan synthesis.
+- [ ] Publish and verify Main and the active rewrite tip after all gates pass.
+
+See the [shared construction audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#shared-type-term-construction-after-b21dc46).
+This unifies descriptive work, not erased Core and typing or proof acceptance.
+The broader pending-classifier and net-negative refactoring gates remain open.
