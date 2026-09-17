@@ -327,7 +327,7 @@ Checkboxes mean implementation plus the stated verification, not just a design.
 - [x] G3d: Universal QuickSort Sorted proof tied to actual results.
 - [x] J1: Combined regression and sanitizer gates; no ignored failures.
 - [x] J2: README and source examples updated to verified syntax, with limits.
-- [ ] J3: Issue requirement table, explanations, implementation references and
+- [x] J3: Issue requirement table, explanations, implementation references and
   justified issue/PR disposition. Pending items are not relabelled complete.
 - [x] G-PUSH: Publish the verified G1/G2 improvement milestone to Main
   (`1590b2f`, merged report `5d9fa03`); G3 and issue closure remain pending.
@@ -1097,7 +1097,7 @@ Still required before G3d completion:
   inversion. `sized_rest`, `part_left` and `part_right` remain unsupported.
 - [ ] Complete generic property preservation, partition order, recursive
   QuickSort order and actual execution-packet checks for the exact provider.
-- [ ] Publish only after the G3d milestone and its stated gates are complete.
+- [x] Publish only after the G3d milestone and its stated gates are complete.
 
 For dependent fields, do not turn `tail : SizedList k` into `SizedList n` by
 retagging it, nor assume the size path is reflexivity. The remaining route must
@@ -1223,8 +1223,8 @@ Progress and remaining gates:
   and pending/completed images.
 - [x] Complete partition order bounds, QuickSort Acc graph induction, public
   QuickSort Sorted proof and actual-result packets; finish G3d/J1.
-- [ ] Finish J3 publication/issue disposition using the requirement table below.
-- [ ] Publish the completed G3d milestone. #29 remains open and R has not begun.
+- [x] Finish J3 publication/issue disposition using the requirement table below.
+- [x] Publish the completed G3d milestone; #29 is closed. R has not begun.
 
 The fresh full optimized `check-acceptance` passed (exit 0), recorded in
 `/tmp/a-program-g3d-captured-acceptance.log`, using
@@ -1398,3 +1398,25 @@ Implementation/headers: +266/-63 (net +203); build: +10/-0; tests/proofs:
 authority refactor or a claimed code-size reduction. The README now distinguishes
 the separate universal Sorted proofs from mere execution witnesses. Publication
 and issue disposition are recorded after their remote operations succeed.
+
+### 2026-09-18: G3d publication and issue disposition
+
+Commit `6ba6cf306442d4a022c191100188f0ff174489d8` was pushed atomically to
+`origin/main` and `origin/rewrite/pointer-core-hott`, fast-forward from `794ec6a`
+without force. Both remote tips were verified afterward. No implementation or
+test changes occurred between the final gates and that commit.
+
+The [resolution report](https://github.com/repyt-margorp/a-program/issues/29#issuecomment-5721616118)
+links the implementation, requirement table, tests and limitations. Issue #29
+was then closed as completed and its remote CLOSED state verified. PR #30 had
+already been merged as documentation; it was not merged again. This supersedes
+earlier chronological entries saying G3d/J1/J3 or #29 were still pending.
+
+The implementation commit changes documentation separately: README +11/-6;
+this plan +348/-2. Together with the source/test counts above, that commit is
++991/-79 (net +912); source/build/tests alone are +632/-71 (net +561).
+This following publication-record update is documentation only.
+
+Next: resume R against the current typed-data authority plan and deferred Solver
+audit, rechecking their premises against this implementation. This milestone
+does not complete that parent goal or waive its cleanup/acceptance conditions.
