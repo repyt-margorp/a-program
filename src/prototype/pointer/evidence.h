@@ -481,6 +481,11 @@ struct pg_typed_query *pg_return_body_request(struct pg_typing *typing,
  * and congruence spines advance on the same budget as body dependencies. */
 struct pg_typed_query *pg_typed_input_request(struct pg_typing *typing,
 	const struct pg_evidence *source, size_t index);
+/* Checked restriction/projection of a typed input to a requested context.
+ * Shared by subject and target scope, not by erased Core. An unavailable
+ * restriction is not permission to assign removed binders arbitrary values. */
+struct pg_typed_query *pg_rebase_request(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *source);
 int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget);
 const struct pg_evidence *pg_typed_query_result(const struct pg_typed_query *work);
 uint64_t pg_typed_query_steps(const struct pg_typed_query *work);

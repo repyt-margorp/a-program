@@ -328,11 +328,11 @@ checkpoint notes below are historical, not additional completion claims.
 | Evidence classifier/context/sort copies | Removed for term conclusions |
 | Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
 | Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. R59 transports dependent constructor-field classifiers through explicit Conversion using preceding fields' pure receipts. General multi-phase NF remains open; individual kernel checks and receipt lookup remain synchronous |
-| `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
+| `return_value_origin`, `pg_prove_application_body` | R60 deletes `return_value_origin`; scope restriction requests Return work as an ordinary shared dependency. `pg_prove_application_body` remains a synchronous adapter to indexed typed-body work. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
 | `inductive_recovery_step` | Reads typed origins/maps, selections and family inputs. R33 removes its private Return/Thunk counters and Fold continuation stack; computed results and applications share indexed typed-body work. Exact nominal formation and synchronous kernel suboperations remain |
-| `rebase_image` | Reads typed maps/origins and constructor/family inputs; rechecks introductions in the target context. Retains normalization receipts and nominal formation checks, not wrapper-history dispatch; synchronous work remains |
+| `rebase_image` | R60 replaces its private traversal stack and repeated subtree work with a synchronous adapter to shared `(typed subject, target Context)` queries. Origin steps and child/Return dependencies use the common scheduler; ordinary introduction, nominal formation, substitution and receipt checks remain. These kernel subchecks are still synchronous |
 | `constructor_origin`, `pg_prove_elimination_body` | Whole-introduction reconstruction deleted in R31. A temporary constructor view exposes retained nominal formation, parameters and typed fields for Match/refinement; actual introduction in a changed context remains checked. Congruent NF field selection uses receipts; general current-result exposure remains open |
 | `classifier_leaf` | Deleted |
 | `classifier_recovery_step` | R58 removes the caller-owned recovery object and lifecycle. Classifier requests share the existing typed-query store by exact typed subject, including final certification. Variable/Universe formation remains a kernel check; raw context action still uses the existing typed-input machinery |
@@ -2882,3 +2882,53 @@ The small timing difference is not a speedup claim. Both use 178745 Core terms,
 414644 typed subjects, 433548 proofs, 6860 typed queries, 3386 raw input queries
 and 131255 Solve transitions. This workload does not exercise the new field
 conversion; its coverage comes from the dependent-field regression above.
+
+### 2026-09-17: Share checked scope restriction (R60)
+
+- [x] Replace `rebase_image`'s private frame stack with the existing typed-query
+  scheduler. Key work by accepted typed subject and target Context; check owner
+  before interning. Alternate source derivations share work, not proof identity.
+  Different target scopes remain different requests. Do not add a program graph,
+  an acceptance bit, a wire tag or a new logical rule.
+- [x] Advance origin traversal and child restrictions as shared dependencies.
+  Delete `return_value_origin`: extraction now waits on the existing Return-body
+  query. Remove eagerly collected input arrays and unused constructor-field
+  views. Request each needed typed input only when its dependency is visited.
+- [x] Preserve the checked introduction/substitution boundary, exact nominal
+  declaration, classifier/Core comparison and normalization receipt. A removed
+  binder is never assigned a fabricated inhabitant. Independent constructor
+  inputs can be restricted even when unused images in an enclosing map cannot.
+- [x] Extend IADT tests for zero/one/64 budgets, shared alternate derivations,
+  distinct targets, unchanged repeated-query counters, an essential removed
+  variable rejecting, 128 nested constructors and cross-store rejection.
+- [x] Optimized full acceptance passes, including 63/63 compatibility and
+  QuickSort source/images. Forced-rebuild ASan/UBSan Core, IADT, synthesis,
+  imported QuickSort and complete derivation I/O pass. A stale intermediate
+  sanitizer executable initially contained an already-fixed missing NULL guard;
+  its failed run is not counted. Final sanitizer logs end in `-final.log` under
+  `/tmp/a-program-typed-structure-r60-*`.
+- [x] Forced-rebuild debug acceptance passes, including 63/63 compatibility and
+  final QuickSort images (`r60-debug-rebuild.log`). Idle performance comparison
+  below uses the same inputs and build flags, after other verification ended.
+
+Against `a81e81e`: `evidence.c` **+142/-139**, `evidence.h` **+5/-0**;
+implementation/header **+8**, cumulative **+1940** against `4657cc6`.
+`tests/iadt.c` **+39/-1**; no build/fixture/format changes. This checkpoint removes
+an independent traversal and repeated work but does not deliver net code
+reduction. R2/R3/R5 remain open. Query work retains its completed result and
+intermediate storage in the existing graph arena; it is not exported as evidence.
+Synchronous nominal/map/formation checks, `selected_formation` and
+`pi_argument_frames`, and general multi-phase NF exposure remain to address.
+
+| O0 QuickSort sample | R59 seconds / peak KiB | R60 seconds / peak KiB |
+|---|---:|---:|
+| 1 | 1.1071 / 277536 | 1.1050 / 277720 |
+| 2 | 1.1207 / 277520 | 1.1186 / 277136 |
+| 3 | 1.0815 / 277468 | 1.0984 / 277292 |
+
+No material timing or memory improvement is established by these samples.
+Core (178745), subjects (414644), proofs (433548), raw input queries (3386)
+and Solve transitions (131255) are unchanged. Typed queries rise from 6860 to
+7340, retaining 480 scope restrictions instead of re-traversing them on every
+call. Repeated-query unit tests verify no further steps or proof/query growth.
+No Main publication; the complete refactor's performance and LOC gates remain.

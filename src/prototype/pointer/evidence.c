@@ -497,17 +497,12 @@ static struct scope_frame *scope_frame(struct pg_graph *storage,
 	return frame;
 }
 
-static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
-	const struct pg_evidence *computation);
 struct constructor_structure {
 	const struct pg_evidence *formation, *parameters;
 	const struct pg_object *constructor;
 	size_t count;
 	const struct pg_evidence **fields;
 };
-static int constructor_structure(struct pg_typing *typing, struct pg_graph *temporary,
-	const struct pg_evidence *value, struct constructor_structure *view,
-	struct pg_typed_query **dependency);
 static int structural_input(struct pg_typing *typing, const struct pg_occurrence *source,
 	size_t index, const struct pg_occurrence **result);
 
@@ -545,127 +540,9 @@ static const struct pg_evidence *image_boundary(struct pg_typing *typing,
 static const struct pg_evidence *rebase_image(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *image)
 {
-	struct image_frame {
-		const struct pg_occurrence *expected;
-		const struct pg_evidence *source, *substitution;
-		struct constructor_structure constructor;
-		const struct pg_reduction_certificate *reduction;
-		const struct pg_evidence **inputs, **outputs;
-		size_t parameters, count, next;
-		struct image_frame *parent;
-	};
-	struct pg_graph temporary = {0};
-	struct image_frame *frame = NULL;
-	const struct pg_evidence *result = NULL;
-	const struct pg_occurrence *expected = pg_evidence_subject(image);
-start:
-	if (expected->core->kind == PG_REFERENCE && expected->core->as.reference->kind == PG_BINDER) {
-		result = image_boundary(typing, pg_prove_variable(typing, context, expected->core->as.reference), expected);
-		if (result) goto resolved;
-	}
-	while (image) {
-		result = image_boundary(typing, pg_prove_projection(typing, context, image), expected);
-		if (result) goto resolved;
-		const struct pg_occurrence *subject = pg_evidence_subject(image);
-		const struct pg_evidence *map = NULL;
-		while (subject->origin && !subject->selection) {
-			if (!subject->map) {
-				if (subject->core != subject->origin->core || subject->classifier != subject->origin->classifier) break;
-				subject = subject->origin;
-				continue;
-			}
-			const struct pg_evidence *inner = pg_prove_context_map(typing, subject->map);
-			map = map ? pg_prove_substitution_compose(typing, inner, map) : inner;
-			if (!map) goto done;
-			subject = subject->origin;
-			result = image_boundary(typing, pg_prove_projection(typing, context,
-				pg_prove_structural_subject(typing, subject)), expected);
-			if (result) goto resolved;
-		}
-		if (map && subject->core->kind == PG_REFERENCE && subject->core->as.reference->kind == PG_BINDER) {
-			image = pg_substitution_image(typing, map, subject->core->as.reference);
-			continue;
-		}
-		if (subject->origin && !subject->selection && subject->origin->judgement == PG_JUDGEMENT_COMPUTATION &&
-			subject->judgement != PG_JUDGEMENT_COMPUTATION) {
-			image = return_value_origin(typing, pg_prove_structural_subject(typing, subject->origin));
-			if (map) image = pg_prove_reindex(typing, map, image);
-			continue;
-		}
-		struct image_frame *next = pg_alloc(&temporary, sizeof(*next));
-		if (!next) goto done;
-		*next = (struct image_frame){.expected = expected, .source = pg_prove_structural_subject(typing, subject), .parent = frame};
-		if (!next->source) goto done;
-		const struct pg_term *head = subject->core;
-		while (head->kind == PG_APPLICATION) head = head->as.application.function;
-		const struct pg_data_layout *layout;
-		size_t position, arity;
-		if (!subject->origin && head->kind == PG_REFERENCE && pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) {
-			if (arity != subject->operand_count) goto done;
-			if (!constructor_structure(typing, &temporary, next->source, &next->constructor, NULL)) goto done;
-			next->parameters = pg_evidence_context_map(next->constructor.parameters)->count;
-			next->count = next->parameters + subject->operand_count;
-		} else if (!subject->origin && subject->operand_count == 2 && subject->core->kind == PG_APPLICATION &&
-			subject->operands[0]->judgement == PG_JUDGEMENT_TYPE_FAMILY &&
-			subject->operands[0]->core == subject->core->as.application.function &&
-			subject->operands[1]->core == subject->core->as.application.argument) next->count = 2;
-		else if (map) {
-			next->substitution = map;
-			next->count = pg_evidence_context_map(map)->count;
-			map = NULL;
-		} else if (subject->origin && !subject->selection) {
-			next->reduction = subject_normalization(typing, subject);
-			if (!next->reduction) goto done;
-			next->count = 1;
-		} else goto done;
-		if (next->count > SIZE_MAX / sizeof(*next->inputs)) goto done;
-		next->inputs = pg_alloc(&temporary, next->count * sizeof(*next->inputs));
-		next->outputs = pg_alloc(&temporary, next->count * sizeof(*next->outputs));
-		if (next->count && (!next->inputs || !next->outputs)) goto done;
-		for (size_t i = 0; i < next->count; ++i) {
-			const struct pg_evidence *input;
-			if (next->constructor.constructor && i < next->parameters)
-				input = pg_prove_structural_subject(typing, pg_evidence_context_map(next->constructor.parameters)->images[i]);
-			else if (next->substitution) input = pg_prove_structural_subject(typing, pg_evidence_context_map(next->substitution)->images[i]);
-			else input = pg_prove_structural_subject(typing,
-				next->reduction ? subject->origin : subject->operands[i - next->parameters]);
-			next->inputs[i] = map ? pg_prove_reindex(typing, map, input) : input;
-			if (!next->inputs[i]) goto done;
-		}
-		frame = next;
-		goto children;
-	}
-	goto done;
-children:
-	if (frame->next < frame->count) {
-		image = frame->inputs[frame->next];
-		expected = pg_evidence_subject(image);
-		goto start;
-	}
-	if (frame->constructor.constructor) {
-		const struct pg_evidence *map = pg_prove_substitution(typing, frame->constructor.parameters->premises[0],
-			context, frame->parameters, frame->outputs);
-		result = pg_prove_constructor(typing, frame->constructor.formation,
-			frame->constructor.constructor, map, frame->count - frame->parameters,
-			frame->count > frame->parameters ? frame->outputs + frame->parameters : NULL);
-	} else if (frame->substitution) {
-		const struct pg_evidence *map = pg_prove_substitution(typing, frame->substitution->premises[0],
-			context, frame->count, frame->outputs);
-		result = pg_prove_reindex(typing, map, frame->source);
-	} else if (frame->reduction) result = pg_prove_normalization(typing, frame->outputs[0], frame->reduction);
-	else result = pg_prove_family_application(typing, frame->outputs[0], frame->outputs[1]);
-	result = image_boundary(typing, result, frame->expected);
-	frame = frame->parent;
-	if (!result) goto done;
-resolved:
-	if (frame) {
-		frame->outputs[frame->next++] = result;
-		result = NULL;
-		goto children;
-	}
-done:
-	pg_graph_destroy(&temporary);
-	return result;
+	struct pg_typed_query *work = pg_rebase_request(typing, context, image);
+	while (!pg_typed_query_advance(work, UINT64_MAX)) {}
+	return pg_typed_query_result(work);
 }
 
 const struct pg_evidence *pg_prove_substitution_rebase(struct pg_typing *typing,
@@ -723,14 +600,6 @@ static const struct pg_evidence *variable_frame(struct pg_typing *typing,
 		conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frame->restriction->context), binder);
 }
 
-static const struct pg_evidence *return_value_origin(struct pg_typing *typing,
-	const struct pg_evidence *computation)
-{
-	struct pg_typed_query *work = pg_return_body_request(typing, computation);
-	while (!pg_typed_query_advance(work, UINT64_MAX)) {}
-	return pg_typed_query_result(work);
-}
-
 static const struct pg_occurrence *returned_computation(const struct pg_occurrence *subject)
 {
 	if (subject->judgement != PG_JUDGEMENT_VALUE) return NULL;
@@ -749,7 +618,7 @@ struct typed_query_wait {
 	struct typed_query_wait *parent;
 };
 
-enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER };
+enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER, TYPED_REBASE };
 enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT };
 
 struct typed_elimination {
@@ -766,10 +635,20 @@ struct typed_field {
 	size_t prefix, next;
 };
 
+struct typed_rebase {
+	const struct pg_evidence *source, *substitution;
+	struct constructor_structure constructor;
+	const struct pg_reduction_certificate *reduction;
+	const struct pg_evidence **outputs;
+	size_t parameters, count, next;
+};
+
 struct pg_typed_query {
 	struct pg_index_entry index;
 	struct pg_typing *typing;
-	const struct pg_occurrence *source, *argument_source, *current;
+	const struct pg_occurrence *source, *current;
+	/* The argument's typed subject, or its Context for a rebase request. */
+	const void *argument_key;
 	const struct pg_evidence *argument, *environment, *value, *result;
 	const struct pg_evidence *continuation;
 	enum typed_query_resume resume;
@@ -780,6 +659,7 @@ struct pg_typed_query {
 	struct pg_occurrence_action *action;
 	struct typed_elimination *elimination;
 	struct typed_field *field;
+	struct typed_rebase *rebase;
 	const struct pg_reduction_certificate *reduction;
 	const struct pg_reduction_certificate *input_reduction;
 	enum typed_query_kind kind;
@@ -801,19 +681,20 @@ static struct pg_typed_query *typed_query_request(struct pg_typing *typing,
 	enum typed_query_kind kind, size_t ordinal)
 {
 	const struct pg_occurrence *source = pg_evidence_subject(function);
-	const struct pg_occurrence *value = argument ? pg_evidence_subject(argument) : NULL;
+	const void *value = argument ? (kind == TYPED_REBASE
+		? (const void *)pg_evidence_context(argument) : (const void *)pg_evidence_subject(argument)) : NULL;
 	uint64_t hash = ((uintptr_t)source * UINT64_C(1099511628211) ^ (uintptr_t)value) * UINT64_C(1099511628211);
 	hash = (hash ^ ordinal) * UINT64_C(1099511628211);
 	hash = (hash ^ kind) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *p = pg_index_candidates(&typing->typed_queries, hash); p; p = p->next) {
 		struct pg_typed_query *work = (void *)p;
-		if (p->hash == hash && work->source == source && work->argument_source == value &&
+		if (p->hash == hash && work->source == source && work->argument_key == value &&
 			work->kind == kind && work->ordinal == ordinal) return work;
 	}
 	struct pg_typed_query *work = pg_alloc(typing->graph, sizeof(*work));
 	if (!work) return NULL;
 	*work = (struct pg_typed_query){.typing = typing, .source = source,
-		.argument_source = value, .current = source, .argument = argument, .kind = kind, .ordinal = ordinal};
+		.argument_key = value, .current = source, .argument = argument, .kind = kind, .ordinal = ordinal};
 	return pg_index_insert(&typing->typed_queries, &work->index, hash) ? NULL : work;
 }
 
@@ -862,6 +743,127 @@ struct pg_typed_query *pg_construction_origin_request(struct pg_typing *typing,
 {
 	if (!pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source)) return NULL;
 	return typed_query_request(typing, source, NULL, TYPED_ORIGIN, 0);
+}
+
+struct pg_typed_query *pg_rebase_request(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *source)
+{
+	if (!context_proof(typing, context) || !pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source)) return NULL;
+	return typed_query_request(typing, source, context, TYPED_REBASE, 0);
+}
+
+static int typed_rebase_step(struct pg_typed_query *work)
+{
+	struct pg_typing *typing = work->typing;
+	const struct pg_evidence *context = work->argument;
+	if (work->resume == TYPED_RESUME_BODY) {
+		const struct pg_evidence *value = pg_typed_query_result(work->dependency);
+		if (work->environment) value = pg_prove_reindex(typing, work->environment, value);
+		work->current = value ? pg_evidence_subject(value) : NULL;
+		work->environment = NULL;
+		work->dependency = NULL;
+		work->resume = TYPED_RESUME_NONE;
+		return work->current ? 0 : -1;
+	}
+	if (!work->rebase) {
+		const struct pg_occurrence *subject = work->current;
+		if (work->source->core->kind == PG_REFERENCE && work->source->core->as.reference->kind == PG_BINDER)
+			work->result = image_boundary(typing, pg_prove_variable(typing, context, work->source->core->as.reference), work->source);
+		if (!work->result) work->result = image_boundary(typing, pg_prove_projection(typing, context,
+			pg_prove_structural_subject(typing, subject)), work->source);
+		if (work->result) return 1;
+		if (subject->origin && !subject->selection) {
+			if (subject->map) {
+				const struct pg_evidence *inner = pg_prove_context_map(typing, subject->map);
+				work->environment = work->environment ? pg_prove_substitution_compose(typing, inner, work->environment) : inner;
+				if (!work->environment) return -1;
+				work->current = subject->origin;
+				return 0;
+			}
+			if (subject->core == subject->origin->core && subject->classifier == subject->origin->classifier) {
+				work->current = subject->origin;
+				return 0;
+			}
+			if (subject->origin->judgement == PG_JUDGEMENT_COMPUTATION && subject->judgement != PG_JUDGEMENT_COMPUTATION) {
+				work->dependency = pg_return_body_request(typing, pg_prove_structural_subject(typing, subject->origin));
+				work->resume = TYPED_RESUME_BODY;
+				return work->dependency ? 0 : -1;
+			}
+		}
+		if (work->environment && subject->core->kind == PG_REFERENCE && subject->core->as.reference->kind == PG_BINDER) {
+			const struct pg_evidence *value = pg_substitution_image(typing, work->environment, subject->core->as.reference);
+			work->current = value ? pg_evidence_subject(value) : NULL;
+			work->environment = NULL;
+			return work->current ? 0 : -1;
+		}
+		struct typed_rebase *state = pg_alloc(typing->graph, sizeof(*state));
+		if (!state) return -1;
+		state->source = pg_prove_structural_subject(typing, subject);
+		if (!state->source) return -1;
+		const struct pg_term *head = subject->core;
+		while (head->kind == PG_APPLICATION) head = head->as.application.function;
+		const struct pg_data_layout *layout;
+		size_t position, arity;
+		if (!subject->origin && head->kind == PG_REFERENCE && pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) {
+			if (arity != subject->operand_count) return -1;
+			struct pg_inductive_instance instance;
+			if (!pg_inductive_instance(typing, formed_classifier(typing, state->source), &instance)) return -1;
+			if (layout != pg_data_schema_layout(instance.schema)) return -1;
+			state->constructor = (struct constructor_structure){.formation = instance.formation,
+				.parameters = instance.parameters, .constructor = head->as.reference};
+			state->parameters = pg_evidence_context_map(instance.parameters)->count;
+			if (subject->operand_count > SIZE_MAX - state->parameters) return -1;
+			state->count = state->parameters + subject->operand_count;
+		} else if (!subject->origin && subject->operand_count == 2 && subject->core->kind == PG_APPLICATION &&
+			subject->operands[0]->judgement == PG_JUDGEMENT_TYPE_FAMILY &&
+			subject->operands[0]->core == subject->core->as.application.function &&
+			subject->operands[1]->core == subject->core->as.application.argument) state->count = 2;
+		else if (work->environment) {
+			state->substitution = work->environment;
+			state->count = pg_evidence_context_map(state->substitution)->count;
+			work->environment = NULL;
+		} else if (subject->origin && !subject->selection) {
+			state->reduction = subject_normalization(typing, subject);
+			if (!state->reduction) return -1;
+			state->count = 1;
+		} else return -1;
+		if (state->count > SIZE_MAX / sizeof(*state->outputs)) return -1;
+		state->outputs = pg_alloc(typing->graph, state->count * sizeof(*state->outputs));
+		if (state->count && !state->outputs) return -1;
+		work->rebase = state;
+	}
+	struct typed_rebase *state = work->rebase;
+	if (work->dependency) {
+		const struct pg_evidence *result = pg_typed_query_result(work->dependency);
+		if (!result) return -1;
+		state->outputs[state->next++] = result;
+		work->dependency = NULL;
+	}
+	if (state->next < state->count) {
+		const struct pg_occurrence *input;
+		if (state->constructor.constructor && state->next < state->parameters)
+			input = pg_evidence_context_map(state->constructor.parameters)->images[state->next];
+		else if (state->substitution) input = pg_evidence_context_map(state->substitution)->images[state->next];
+		else input = state->reduction ? work->current->origin : work->current->operands[state->next - state->parameters];
+		const struct pg_evidence *value = pg_prove_structural_subject(typing, input);
+		if (work->environment) value = pg_prove_reindex(typing, work->environment, value);
+		work->dependency = pg_rebase_request(typing, context, value);
+		return work->dependency ? 0 : -1;
+	}
+	if (state->constructor.constructor) {
+		const struct pg_evidence *map = pg_prove_substitution(typing, state->constructor.parameters->premises[0],
+			context, state->parameters, state->outputs);
+		work->result = pg_prove_constructor(typing, state->constructor.formation,
+			state->constructor.constructor, map, state->count - state->parameters,
+			state->count > state->parameters ? state->outputs + state->parameters : NULL);
+	} else if (state->substitution) {
+		const struct pg_evidence *map = pg_prove_substitution(typing, state->substitution->premises[0],
+			context, state->count, state->outputs);
+		work->result = pg_prove_reindex(typing, map, state->source);
+	} else if (state->reduction) work->result = pg_prove_normalization(typing, state->outputs[0], state->reduction);
+	else work->result = pg_prove_family_application(typing, state->outputs[0], state->outputs[1]);
+	work->result = image_boundary(typing, work->result, work->source);
+	return work->result ? 1 : -1;
 }
 
 static int typed_origin_step(struct pg_typed_query *work)
@@ -1034,6 +1036,7 @@ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
 			case TYPED_ELIMINATION: current->status = typed_elimination_step(current); break;
 			case TYPED_ORIGIN: current->status = typed_origin_step(current); break;
 			case TYPED_CLASSIFIER: current->status = typed_classifier_step(current); break;
+			case TYPED_REBASE: current->status = typed_rebase_step(current); break;
 			default: current->status = typed_body_step(current); break;
 			}
 			if (current->kind == TYPED_INPUT && current->status == 1 && !current->result && !current->ordinal)
