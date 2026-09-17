@@ -1637,6 +1637,17 @@ static void constructor_field_paths(struct pg_typing *typing,
 	const struct pg_evidence *params = pg_prove_substitution_projection(typing, empty, context);
 	const struct pg_evidence *left = pg_prove_constructor(typing, pair, ctor, params, 2, values);
 	const struct pg_evidence *right = pg_prove_constructor(typing, pair, ctor, params, 2, reverse);
+	/* One field request must not enumerate unrelated fields. The nominal
+	 * declaration's binder, not its position or a similarly shaped term, selects it. */
+	struct pg_typed_query *unused = pg_typed_input_request(typing, left, 0);
+	assert(unused && !pg_typed_query_advance(unused, 0));
+	assert(pg_prove_constructor_field(typing, left, fields[1]) == values[1]);
+	assert(!pg_typed_query_steps(unused) && !pg_typed_query_result(unused));
+	assert(!pg_prove_constructor_field(typing, left, n));
+	assert(!pg_prove_constructor_field(typing, left, NULL));
+	const struct pg_evidence *nullary = pg_prove_constructor(typing, pair,
+		pg_data_constructor(pg_data_schema_layout(schema), 0), params, 0, NULL);
+	assert(nullary && !pg_prove_constructor_field(typing, nullary, fields[1]));
 	const struct pg_evidence *redexes[2];
 	for (size_t i = 0; i < 2; ++i)
 		redexes[i] = pg_prove_total_pure_value(typing,

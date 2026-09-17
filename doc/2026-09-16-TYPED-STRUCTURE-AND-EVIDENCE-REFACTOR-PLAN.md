@@ -334,7 +334,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `pi_argument_frames` | R67 removes the synchronous frame loop. Scoped selection advances one lifted frame per transition using the existing checked substitution/formation rules. Private prefixes retain their tail for constant-time concatenation; published suffixes are borrowed, not copied or mutated. Individual kernel checks remain synchronous |
 | `inductive_recovery_step` | R61 removes the caller-owned recovery object and lifecycle. Nominal requests share the existing typed-query store by exact accepted subject; Return/application work uses scheduler dependencies and synthesis borrows the completed instance. Exact nominal formation, selected-component traversal and synchronous kernel suboperations remain |
 | `rebase_image` | R60 replaces its private traversal stack and repeated subtree work with a synchronous adapter to shared `(typed subject, target Context)` queries. Origin steps and child/Return dependencies use the common scheduler; ordinary introduction, nominal formation, substitution and receipt checks remain. These kernel subchecks are still synchronous |
-| `constructor_origin`, `pg_prove_elimination_body` | Whole-introduction reconstruction deleted in R31. A temporary constructor view exposes retained nominal formation, parameters and typed fields for Match/refinement; actual introduction in a changed context remains checked. Congruent NF field selection uses receipts; general current-result exposure remains open |
+| `constructor_origin`, `pg_prove_elimination_body` | Whole-introduction reconstruction deleted in R31. R72 shares current-head declaration/arity checking across restriction, dependent field conversion, Match/refinement and field selection. Field selection no longer has a separate historical fallback or allocates all sibling fields. Actual introduction in a changed context remains checked; normalized inputs use shared queries and receipts |
 | `classifier_leaf` | Deleted |
 | `classifier_recovery_step` | R58 removes the caller-owned recovery object and lifecycle. Classifier requests share the existing typed-query store by exact typed subject, including final certification. Variable/Universe formation remains a kernel check; raw context action still uses the existing typed-input machinery |
 | `pg_classifiers` | R57 deletes the graph-only facade, its lifecycle and duplicate API/state arguments. Structural classifier constructors and codecs use Graph directly; checked constructors use the existing Typing owner. Universe successor formation remains lazy and checked |
@@ -3552,3 +3552,79 @@ The named baseline recovery functions have already been removed. Finding one
 more unsupported input is not by itself a reason to expand R3 indefinitely;
 the remaining objective is one coherent structural access path with less
 duplicate machinery, while retaining the existing supported behavior.
+
+### 2026-09-17: Consolidate constructor inspection and nominal scope traversal (R72)
+
+The R71 traversal review distinguishes actual duplicate ownership from distinct
+semantic operations. No new supported normalization case or language feature
+is added in this increment.
+
+| Reviewed path | Decision |
+|---|---|
+| Raw `occurrence_input_step` / checked input | Keep descriptive inspection separate from acceptance. Image and direct-descriptor callers must not acquire proofs by allocating structures. Both already use the same raw action/lift requests; checked exposure resumes the stopped map spine rather than restarting it |
+| `typed_selection_step` / nominal recovery | Share scope traversal. Nominal recovery now delegates maps, selections and same-Core boundaries to selection work instead of building its own map prefix. It still resolves the declaration and dependent parameter/index instances |
+| `typed_origin_step` / current-head work | Keep the contracts distinct. Retained construction may precede normalization; input inspection must preserve the normalized head. Replacing either by the other would recreate the stale-input defect covered by R71 |
+| `typed_rebase_step` / substitution | Keep restriction distinct from total substitution. Removing an unused binder does not provide a typed value for it. Introduction, classifier and receipt checks cannot be removed as duplicate traversal |
+| `typed_classifier_step` | No independent wrapper interpreter remains: it delegates to raw classifier-input work, then certifies the exact formation. Universe/variable formation are kernel rules, not redundant lookup machinery |
+| Constructor field selection / Match / restriction / dependent NF fields | Share declaration and arity inspection of the current typed head. Delete the separate direct/fallback field-selection routes; expose the head once and request only the named field |
+
+- [x] Introduce private `constructor_view` over the existing accepted typed
+  subject. It adds no permanent representation, proof rule or public API.
+- [x] Route field selection through shared head/input work. Keep exact nominal
+  layout, arity, field-binder, context and current-Core checks. Do not select
+  historical fields as a fallback when current exposure is unavailable.
+- [x] Delegate nominal scope traversal to existing indexed selection work.
+  Published frame suffixes remain immutable; computation/type extraction
+  continues through the checked Return-body query.
+- [x] Add regression checks: selecting one independent field does not advance
+  the sibling input query; unrelated/NULL field binders and nullary
+  constructors have no selectable field. Existing dependent, normalized,
+  projected, computed and 1000-map cases still pass the IADT suite.
+- [x] Full debug and optimized acceptance, rerun after retaining the source
+  context check in the common head query: 63/63 compatibility and final
+  QuickSort source/images pass. Logs:
+  `/tmp/a-program-typed-structure-r72-{debug,o2}-final.log`.
+- [x] Full ASan/UBSan acceptance on the final snapshot, including 63/63
+  compatibility and final QuickSort source/images:
+  `/tmp/a-program-typed-structure-r72-sanitize.log`.
+- [x] Record final per-file delta and performance check; `git diff --check`
+  passes. R2/R3/R5 and Main publication remain open.
+
+Delta against `3be53d9`: implementation `evidence.c` **+61/-88 (-27)**;
+verification `tests/iadt.c` **+11/-0**. No header/build/format changes.
+Cumulative implementation/header **+4951/-2658 (+2293)** against `4657cc6`.
+This increment deletes code, but does not meet the whole-plan net-negative
+condition. No reduction in verification coverage offsets implementation growth.
+
+Interleaved QuickSort measurements use the same imported sources and
+1000000-step command recorded above, after all build/test processes finished.
+Each child has separately measured peak RSS. All samples exit zero.
+
+| Check | R71 | R72 |
+|---|---:|---:|
+| Source Solve transitions | 131325 | 131613 |
+| Final retained-image `main` transitions (chunks 1 and 64) | 673380 | 673668 |
+| O0 median seconds, three samples | 0.8504 | 0.8367 |
+| O0 peak RSS range, KiB | 208908-209248 | 209096-210224 |
+| O2 median seconds, six alternating-order samples | 0.5535 | 0.5547 |
+| O2 peak RSS range, KiB | 208996-209896 | 209264-209900 |
+
+An initial three-sample O2 run showed medians 0.5460 / 0.5744 seconds;
+the alternating-order repeat did not reproduce that difference. These small
+samples establish neither a speedup nor a stable timing regression. The added
+288 transitions account for delegation through shared selection work; they do
+not change accepted output. R5 still requires its complete baseline matrix.
+
+This audit does not justify replacing all walkers with one generic proof rule.
+The next ownership review should concentrate on the shared scope representation
+used by raw input and checked selection, not expand the normalization fragment
+again. Any consolidation must retain descriptive access to unaccepted data,
+ordinary checking, budgeted progress and precise lexical input scopes.
+
+`pg_prove_context_map` also reconstructs a lifted prefix through
+`map_lift_prefix` before looking up the original shared lift request. Review
+whether retaining access to completed lift work can remove that inverse walk.
+This is not permission to trust a map descriptor or an arbitrary first
+producer: unchecked destination scopes, family-signature lifts, alternate
+premise derivations and fresh-process images must retain their current checks.
+Do not add a second semantic map representation just to remove the walk.
