@@ -1502,8 +1502,13 @@ implementation and tests; total +161/-63. This publication record is doc-only.
 - [x] Remove per-adapter publication calls; add direct-dependency and idle-queue
   regression coverage. Existing pending-effect/cycle and debug synthesis pass.
 - [x] Full optimized acceptance and affected ASan/UBSan synthesis.
-- [ ] Publish the completed epoch to Main and verify remote tips.
+- [x] Publish the completed epoch to Main and verify remote tips.
 
 The [notification audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#preparation-notifications-after-7c7a58b)
 records the unchanged proof/node counts, lower work counts and per-file delta.
 This does not complete R's pending-structure or remaining authority cleanup.
+
+Published as `95d8d996b767fd7529584cfd7b9aed9b47aec821`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `7c7a58b`; both
+remote tips verified. Implementation +14/-17, tests +28/-0, documentation
++49/-0; total +91/-17. This publication-record update is documentation only.
