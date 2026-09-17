@@ -4199,18 +4199,11 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	if (count > SIZE_MAX - retained) return NULL;
 	size_t total = retained + count;
 	if (total > SIZE_MAX / sizeof(struct pg_binding_value)) return NULL;
-	if (count > SIZE_MAX / sizeof(const struct pg_context *)) return NULL;
 	if (total > SIZE_MAX / sizeof(const struct pg_evidence *) - 2) return NULL;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence *result = NULL;
-	const struct pg_evidence **declarations = pg_alloc(&temporary, count * sizeof(*declarations));
-	const struct pg_occurrence **typed_images = pg_alloc(&temporary, total * sizeof(*typed_images));
 	const struct pg_evidence **premises = pg_alloc(&temporary, (total + 2) * sizeof(*premises));
 	if (!premises) goto done;
-	if (count && !declarations) goto done;
-	if (total && !typed_images) goto done;
-	const struct pg_evidence *scope = source;
-	for (size_t i = count; i; --i) { declarations[i - 1] = scope; scope = scope->premises[0]; }
 	premises[0] = source;
 	premises[1] = destination;
 	/* A lifted prefix is the same checked map in a larger destination.
@@ -4222,7 +4215,6 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_evidence *image = images[i];
 		if (!pg_evidence_owned_by(image, typing)) goto done;
-		if (pg_evidence_judgement(image) != binding_judgement(declarations[i])) goto done;
 		if (pg_evidence_context(image) != pg_evidence_context(destination)) goto done;
 		premises[retained + i + 2] = image;
 	}
@@ -4230,14 +4222,21 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	result = find_record(typing, PG_CONTEXT_SUBSTITUTION,
 		pg_evidence_context(destination), NULL, total + 2, premises, NULL, &hash);
 	if (result) goto done;
+	const struct pg_occurrence **typed_images = pg_alloc(&temporary, total * sizeof(*typed_images));
+	if (total && !typed_images) goto done;
 	for (size_t i = 0; i < total; ++i) typed_images[i] = pg_evidence_subject(premises[i + 2]);
 	const struct pg_context_map *map = pg_context_map(typing, pg_evidence_context(source),
 		pg_evidence_context(destination), total, typed_images);
 	if (!map) goto done;
 	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
-	for (size_t i = 0; i < count; ++i) {
-		const struct pg_evidence *image = images[i];
-		const struct pg_term *expected = pg_substitution_compute(&typing->substitutions, pg_evidence_context(declarations[i])->declared_type, retained + i, bindings);
+	/* Every image is available before checking; the declaration chain already
+	 * supplies reverse telescope order without a second scope array. */
+	const struct pg_evidence *scope = source;
+	for (size_t i = count; i; --i, scope = scope->premises[0]) {
+		const struct pg_evidence *image = images[i - 1];
+		if (pg_evidence_judgement(image) != binding_judgement(scope)) goto done;
+		const struct pg_term *expected = pg_substitution_compute(&typing->substitutions,
+			pg_evidence_context(scope)->declared_type, retained + i - 1, bindings);
 		if (!expected) goto done;
 		if (pg_alpha_equal(expected, pg_evidence_subject(image)->classifier) != 1) goto done;
 	}

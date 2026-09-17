@@ -161,6 +161,72 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### Substitution Telescope Checking (after `7eeefb8`)
+
+The composition audit did not find repeated source synthesis in each image:
+`pg_occurrence_action_request` already shares that work. Adding a map-pair to
+accepted-proof cache is not justified. Composition's image-premise array and
+its synchronous wrapper remain; this change does not claim to remove them.
+
+One removable copy was in the common `substitution_build` admission path.
+It copied the source declaration chain into a reverse array on every request,
+including already accepted requests, and allocated the typed-image array
+before consulting the existing proof index. It now:
+
+1. Assembles the actual source, destination and image premises, preserving
+   projection of a lifted prefix, ownership and destination checks.
+2. Looks up that exact proof in the existing immutable derivation index.
+3. On a miss, forms the structural map and checks its new suffix by traversing
+   the declaration chain directly, newest first. Each classifier is still
+   substituted using only its preceding images (`retained + i - 1`).
+
+The order of independent checks changes, not the dependent substitution scope.
+All images exist before checking; none obtains acceptance from a later image.
+A rejected request may leave an interned descriptive map, never an accepted
+substitution. Alternate image evidence still yields a distinct derivation for
+the same structural map. No cache, term tag, proof rule or wire change is added.
+
+Debug GDB measurements on the same IF8 original QuickSort input, with
+`--legacy-intrinsic-dot --steps 1000000`:
+
+| Measurement | Published baseline | Current |
+| --- | ---: | ---: |
+| `substitution_build` scratch-array allocation calls | 16,791 | 9,544 |
+| Requested scratch-array payload bytes | 609,896 | 455,784 |
+| Declarations copied into a scratch array | 13,563 | 0 |
+| Exact accepted-proof lookup hits | 1,650 | 1,650 |
+| Solve steps / requests | 47,619 / 15,378 | 47,619 / 15,378 |
+| Proofs / typed occurrences / Core Terms | 23,315 / 19,522 / 11,969 | 23,315 / 19,522 / 11,969 |
+
+Counts come from breakpoints at the scratch allocations and exact-proof lookup,
+not a new production counter. Payload bytes exclude allocator overhead. These
+are local allocation savings, not a measured wall-time speedup. Logs:
+`/tmp/a-program-scope-{before,after}-measure.log`.
+
+Focused regression coverage repeats both exact and alternate substitutions,
+checks that no proof/map/substitution work is added, and rejects incorrect
+first and last dependent images without accepting a proof. Existing pairing,
+composition, lifting, family-context and image round-trip tests remain gates.
+
+- [x] Debug Core suite.
+- [x] Full optimized acceptance and compatibility suite (63/63).
+- [x] ASan/UBSan Core suite with leak detection.
+- [ ] Review delta and publish only after all gates pass.
+
+Gate: `make -f src/prototype/pointer/Makefile -j2
+BUILD=/tmp/a-program-authority-scope-opt check-acceptance`, default strict `-O2`.
+Core also passed with `-O0 -g` and `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`. Sanitizers used
+`ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
+`UBSAN_OPTIONS=halt_on_error=1`. Logs: `/tmp/a-program-authority-scope-{core,acceptance,asan}.log`.
+
+Implementation delta: `evidence.c` +10/-11 (net -1); tests `core.c` +15/-0.
+This is a limited scope-copy cleanup. Pending structural reconstruction and
+the parent R net-negative gate remain open.
+For `src/prototype/pointer` implementation/header files, excluding tests, the
+cumulative diff is +2,193/-920 (net +1,273) from R76 `3a3bf550`, and
++7,166/-3,477 (net +3,689) from `4657cc6`. This does not satisfy that gate.
+
 ### Sequence Construction Choice (after `a37b283`)
 
 Term projection independently decided whether a provisional FOLD could be
@@ -510,7 +576,7 @@ existing changes, but do not let this cleanup displace those two user priorities
 - [ ] Report implementation/header, test and documentation LOC separately;
   compare allocations and work, not just wall time or outer Solve steps.
 
-Current implementation/header delta is **+891/-580, net +311** from R76, and
+Historical audit-baseline implementation/header delta was **+891/-580, net +311** from R76, and
 **+5883/-3156, net +2727** from `4657cc6`. These include the preceding worktree
 refactor, not just #29. Tests/docs/build files are excluded. The parent
 net-negative gate is not met. This audit does not declare the refactor complete

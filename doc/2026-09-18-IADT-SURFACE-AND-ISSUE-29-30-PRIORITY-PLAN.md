@@ -1531,3 +1531,18 @@ Published as `8a97c8babc1f5c7b48ac37e1c4132a3dad5095c8`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `a37b283`; both
 remote tips verified. Implementation +76/-76, tests +27/-0, documentation
 +61/-0; total +164/-76. This publication-record update is documentation only.
+
+### R: Direct substitution telescope checking
+
+- [x] Remove the temporary declaration-chain copy from substitution admission.
+- [x] Reuse the existing exact proof index before allocating typed images;
+  preserve alternate derivations and dependent classifier checking.
+- [x] Debug Core regression, including invalid first/last dependent images.
+- [x] Measure same-input allocation/work/node counts against `7eeefb8`.
+- [x] Full optimized acceptance and affected ASan/UBSan Core suite.
+- [ ] Publish and verify both remote tips after all gates pass.
+
+The [scope-copy audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#substitution-telescope-checking-after-7eeefb8)
+records the eliminated allocation/traversal and rejected extra-cache proposal.
+Composition arrays and nested synchronous wrappers remain; this is not the
+completion of the broader R goal.

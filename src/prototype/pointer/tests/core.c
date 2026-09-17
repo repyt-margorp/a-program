@@ -1437,6 +1437,21 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(typing.context_maps.count == map_count);
 	assert(pg_substitution_image(&typing, sigma, a) == destination_b);
 	assert(pg_substitution_image(&typing, alternate, a) == alternate_b);
+	{
+		size_t proofs = typing.proofs.count, work = typing.substitutions.jobs.count;
+		for (size_t repeat = 0; repeat < 16; ++repeat) {
+			assert(pg_prove_substitution(&typing, source, destination, 2, images) == sigma);
+			assert(pg_prove_substitution(&typing, source, destination, 2, alternate_images) == alternate);
+		}
+		assert(typing.proofs.count == proofs && typing.context_maps.count == map_count);
+		assert(typing.substitutions.jobs.count == work);
+		/* Reverse checking must still validate both ends of a dependent telescope. */
+		const struct pg_evidence *bad_first[] = {destination_y, destination_y};
+		const struct pg_evidence *bad_last[] = {destination_b, destination_b};
+		assert(!pg_prove_substitution(&typing, source, destination, 2, bad_first));
+		assert(!pg_prove_substitution(&typing, source, destination, 2, bad_last));
+		assert(typing.proofs.count == proofs);
+	}
 	assert(!pg_evidence_context_map(destination_b) && !pg_evidence_context_map(NULL));
 	assert(!pg_context_map(&typing, map->source, map->destination, 1, map->images));
 	struct pg_occurrence_action *split = pg_occurrence_action_request(&typing, map, pg_evidence_subject(source_x));
