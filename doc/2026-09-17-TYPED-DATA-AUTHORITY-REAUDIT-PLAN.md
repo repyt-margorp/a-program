@@ -548,6 +548,29 @@ The allocation-address changes in sections 1/4 now pass the retained index-alias
 and function-field cases. The complete remaining descriptor/consumer audit is
 still open; green images alone do not close that audit.
 
+Current contract audit at `58c9295` (2026-09-18): the following table supersedes
+the historical failure/status descriptions below. Re-running the complete
+`tests/source_io.sh` with `/tmp/a-program-authority-declared-opt/source_io_test`
+exited 0; log: `/tmp/a-program-authority-current-contract.log`. This includes
+44 retained source/image comparisons, not a new full acceptance run.
+
+| Reference | Existing authority/key | Checked boundary |
+|---|---|---|
+| Accepted name | `source_name_target`: immutable typed occurrence | Alternate proofs share a target, not their premise DAGs |
+| Pending name | Exact producer plus lexical scope | Completion cannot mutate the intern key or hide a rejected producer |
+| Source binder | `pg_source_binding`: syntax/constructor, slot, enclosing binder sequence | Both checking orders share allocation; shadowed scopes remain distinct |
+| Transported alias | Existing typed subject and Context map | Equal source/destination with different images must stay distinct |
+| Application/constructor use | Existing source-binding addresses and prefix/field Contexts | Relocated binders reused; saved annotations are independently checked |
+| Match | `pg_match_allocation` for imported inputs; typed elimination for completed fresh inputs | Source and erasure scopes retained without trusting the saved motive |
+| Declaration | Nominal declaration reference and existing schema/member allocation | Same shape does not merge distinct declarations |
+
+`source_alias_targets` now has 16 scenarios, including automatic allocation as
+well as explicit allocation. `member_use_origins`, `application_origins`,
+`fold_origins` and `match_motive_authority` cover the corresponding retained
+allocation and invalid-input boundaries. No new persistent alias schema is
+needed. Sharing allocation is not permission to merge independent checking
+obligations.
+
 `source_alias_targets` in `tests/source_io.c` now checks two maps with identical
 source/destination but different images, alternate map-image proofs, direct
 versus unaccepted producers resolving to the same exact occurrence, and an
@@ -564,9 +587,9 @@ are already unified. The end-to-end source image regression still fails.
   process, never numerical addresses across processes.
 - [ ] For each differing reference, distinguish missing serialization from
   reconstruction keyed by a checker. Include the hidden Fold binder allocation.
-- [ ] Specify concrete scope/name/request keys for resolved and pending input;
+- [x] Specify concrete scope/name/request keys for resolved and pending input;
   verify source shadowing, distinct maps and nominal declarations remain distinct.
-- [ ] Record which existing field/edge supplies each key. Any proposed extra
+- [x] Record which existing field/edge supplies each key. Any proposed extra
   field needs a counterexample showing why existing data cannot supply it.
   No implementation of a new persistent schema before this gate closes.
 
@@ -672,26 +695,35 @@ and all 12 source selectors also pass ASan/UBSan in
 `/tmp/a-program-authority-map-sanitize`. Fresh function-field retained-check and
 retained-recompute still fail at the same exact binder comparison, exit 134.
 
-- [ ] Change `generalized_scope`, normal name creation/lookup and the relevant
-  source request key together, according to A1. Use the existing typed target
-  and map; eliminate generated aliases' dependence on receipt/job identity.
-- [ ] Reuse existing context allocation references when preparing applications;
+- [x] Repair alias transport using the existing typed target/map and lexical
+  allocation key. Do not merge pending checking requests merely because their
+  proposed results coincide. The original requirement to remove all producer
+  identity was too broad; `source_alias_targets` demonstrates why it is needed
+  for independent rejection while Core allocation is shared.
+- [x] Reuse existing context allocation references when preparing applications;
   no fresh binder merely because a different checker established the same input.
-- [ ] Retain failed and pending proof obligations independently. Neither an
+- [x] Retain failed and pending proof obligations independently. Neither an
   earlier successful producer nor a cached structural result may suppress them.
-- [ ] Cover both producer completion orders, alternate proofs of the same
+- [x] Cover both producer completion orders, alternate proofs of the same
   target, distinct targets, nested shadowing and two maps into one context.
-- [ ] Delete superseded alias reconstruction/key exceptions in this same change.
+- [x] Delete the superseded `scope_value`/`match_generalize` producer gate and
+  synchronous alias reindex path. Pending-producer identity is retained for
+  checking, not as a second authority for binder allocation.
 
 ### A3. Transport the same structure
 
-- [ ] Update `source_io.c` environment/producer/origin handling using A1's
+- [x] Update `source_io.c` environment/producer/origin handling using A1's
   reference contract. Loaded inputs and fresh source reference the same relocated
   lexical allocations; source rechecking remains necessary.
 - [ ] Preserve selected-root reachability without scanning unrelated source
   scopes or collecting all syntax-free aliases. Do not repeat the withdrawn
   broad `collect_origin` experiment.
-- [ ] Read and resave zero/partial/completed inputs without executing requests
+  Current distinction: `collect_origin` filters lexical reachability, but
+  `pg_synthesis_visit_source_allocations` still scans all jobs and the writer
+  indexes all source bindings before filtering. Correct retained roots do not
+  establish output-sensitive traversal. Measure inspected/retained entries
+  before changing this path; do not add a second mutable allocation authority.
+- [x] Read and resave zero/partial/completed inputs without executing requests
   or promoting saved results into acceptance. Reuse context/occurrence payloads
   where appropriate; do not duplicate their maps in a new alias wire record.
 - [x] Evaluate and remove the unused occurrence-codec split. Its experimental
@@ -703,6 +735,12 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   Explain the actual newly transported reference, not just the version number.
 - [ ] Remove obsolete proof-shape allocation recovery only after its pending
   cases have descriptive replacements. A source-only image must still work.
+  `pg_synthesis_match_allocation` still obtains a fresh completed elimination's
+  operand Contexts from its typed occurrence; restored inputs use the explicit
+  allocation tuple. This is read-only, not proof replay or source synthesis.
+  Audit whether both access paths are needed before deleting either. Likewise,
+  `pg_synthesis_allocation_object` has a completed Handler return-binder read;
+  it is not the Handler source-binding transport authority.
 - [x] Replace source Lambda/Pi binding-origin theorems with relocated binder
   references plus their existing source annotation. Remove the restore adapter;
   retain real Context/proof roots and test unchecked/invalid annotations.

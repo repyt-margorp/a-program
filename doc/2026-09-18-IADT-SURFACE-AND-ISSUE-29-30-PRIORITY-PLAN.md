@@ -330,8 +330,14 @@ Checkboxes mean implementation plus the stated verification, not just a design.
 - [x] J3: Issue requirement table, explanations, implementation references and
   justified issue/PR disposition. Pending items are not relabelled complete.
 - [x] G-PUSH: Publish the verified G1/G2 improvement milestone to Main
-  (`1590b2f`, merged report `5d9fa03`); G3 and issue closure remain pending.
+  (`1590b2f`, merged report `5d9fa03`), followed by the separately verified
+  G3 milestones and #29 closure recorded below. The earlier pending status is
+  historical, not the current checklist state.
 - [ ] R: Resume the parent duplicate-synthesis/authority refactor after J1-J3.
+  The parent's A1-A3 contract audit at `58c9295` distinguishes completed
+  allocation transport from remaining whole-job scans and structural consumers.
+  Do not restart solved alias repairs or equate shared allocation with shared
+  acceptance. The publication policy below still applies per completed epoch.
 
 At each milestone, append a short dated entry containing changed files, tests,
 remaining blockers and any justified plan adjustment. Report per-file added,
