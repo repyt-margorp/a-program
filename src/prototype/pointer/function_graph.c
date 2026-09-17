@@ -453,7 +453,28 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 				pg_evidence_rule(body) == PG_THUNK_INTRO) body = pg_evidence_premise(body, 0);
 			else break;
 		}
-		if (pg_evidence_rule(body) != PG_INDUCTION_ELIM) goto done;
+		switch (pg_evidence_rule(body)) {
+		case PG_MATCH_ELIM: {
+			/* A split may refine local graph inputs, but must not replace
+			 * the fixed parameter telescope. Retain this call when its
+			 * discriminant belongs to that telescope. */
+			body = environment ? map_value(s, environment, function) : function;
+			body = projection(s, plan->context, body);
+			for (const struct graph_continuation *a = arguments; body && a; a = a->next)
+				body = pg_prove_application_body(s->typing, body,
+					projection(s, plan->context, a->argument));
+			enum pg_evidence_rule rule;
+			const struct pg_evidence *elimination, *unused;
+			if (!body || computation_view(s, body, &rule, &elimination, &unused)) goto done;
+			if (rule != PG_MATCH_ELIM) goto done;
+			const struct pg_evidence *input = pg_evidence_premise(elimination, 3);
+			const struct pg_term *term = pg_evidence_subject(input)->core;
+			if (term->kind != PG_REFERENCE || !pg_context_lookup(pg_evidence_context(s->context), term->as.reference)) goto done;
+			break;
+		}
+		case PG_INDUCTION_ELIM: break;
+		default: goto done;
+		}
 	}
 	if (pg_evidence_subject(function) == pg_evidence_subject(s->source_function)) { result = -1; goto done; }
 	struct graph_call *call = pg_alloc(&s->temporary, sizeof(*call));

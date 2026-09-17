@@ -80,6 +80,23 @@ static int normalize(void *policy, const struct pg_term *input, const struct pg_
 	*output = pg_whnf_result(job);
 	if (!*output) return -1;
 	if (!state->strong || rigid_head(*output)) return 1;
+	/* A suspended lambda cannot contract by thunk/force eta. Expose its
+	 * head without normalizing recursive code under the lambda binder. */
+	if ((*output)->kind == PG_APPLICATION &&
+		(*output)->as.application.function == pg_reference(state->work->graph, &pg_thunk_operation)) {
+		struct pg_whnf_job *body = pg_whnf_request(state->work, &pg_pure_policy,
+			(*output)->as.application.argument);
+		if (!body) return -1;
+		if (pg_whnf_status(body) == PG_EVAL_PENDING)
+			return pg_whnf_advance(body, 1) == PG_EVAL_ERROR ? -1 : 0;
+		const struct pg_term *head = pg_whnf_result(body);
+		if (!head) return -1;
+		if (head->kind == PG_LAMBDA) {
+			*output = pg_application(state->work->graph,
+				(*output)->as.application.function, head);
+			return *output ? 1 : -1;
+		}
+	}
 	if (!state->normalization.nf)
 		state->normalization.nf = pg_nf_request(state->work, &pg_pure_policy, *output);
 	struct pg_nf_job *nf = state->normalization.nf;

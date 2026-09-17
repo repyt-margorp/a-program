@@ -91,7 +91,7 @@ printf '%s\n' 'image cli: multi-root selection, retained obligations and range r
 printf '%s\n' 'image cli: parameterized List source/image NF agreement passed'
 
 # An unfinished image cannot bypass induction or coverage checks.
-for fixture in indexed-normalized-transport-wrong open-recursive-conversion-wrong indexed-motive-domain-wrong function-graph-partial-source-wrong indexed-later-scope-wrong le-transitivity-wrong comparator-order-wrong inferred-index-wrong-family inferred-index-earlier-wrong inferred-index-partial-dependent inferred-index-disagreement inferred-index-unrecoverable inferred-index-no-inverse inferred-index-unselected-invalid graph-duplicate-leaf-wrong graph-duplicate-leaf-ambiguous le-predecessor-wrong le-predecessor-invalid indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong indexed-tail-wrong indexed-computed-type-wrong nested-index-motive-wrong length-output-proof-wrong termination-wrong-target termination-wrong-value function-graph-curried-wrong function-graph-indexed-wrong function-graph-function-field-wrong function-graph-exposed-match-wrong function-graph-known-match-wrong function-graph-branch-tree-wrong function-graph-helper-call-wrong function-graph-callable-parameter-wrong; do
+for fixture in recursive-thunk-conversion-wrong function-graph-captured-match-wrong indexed-dependent-tail-path-wrong indexed-dependent-field-path-wrong indexed-dependent-field-evidence-wrong indexed-normalized-transport-wrong open-recursive-conversion-wrong indexed-motive-domain-wrong function-graph-partial-source-wrong indexed-later-scope-wrong le-transitivity-wrong comparator-order-wrong inferred-index-wrong-family inferred-index-earlier-wrong inferred-index-partial-dependent inferred-index-disagreement inferred-index-unrecoverable inferred-index-no-inverse inferred-index-unselected-invalid graph-duplicate-leaf-wrong graph-duplicate-leaf-ambiguous le-predecessor-wrong le-predecessor-invalid indexed-rigid-induction-invalid function-graph-missing-case indexed-omitted-case-wrong indexed-tail-wrong indexed-computed-type-wrong nested-index-motive-wrong length-output-proof-wrong termination-wrong-target termination-wrong-value function-graph-curried-wrong function-graph-indexed-wrong function-graph-function-field-wrong function-graph-exposed-match-wrong function-graph-known-match-wrong function-graph-branch-tree-wrong function-graph-helper-call-wrong function-graph-callable-parameter-wrong; do
 	input="$(dirname "${BASH_SOURCE[0]}")/acceptance/$fixture.p"
 	for steps in 0 100; do
 		code=0
@@ -183,6 +183,8 @@ acceptance/indexed-motive-domain.p main:expected
 acceptance/open-recursive-conversion.p
 acceptance/indexed-normalized-transport.p main:expected
 acceptance/indexed-independent-pi-motive.p main:expected
+acceptance/indexed-dependent-field-path.p main:expected dependent:expected
+acceptance/indexed-dependent-tail-path.p main:expected
 acceptance/nonrecursive-computed-index.p main:one other:two
 acceptance/nonrecursive-open-index.p main:one other:two
 acceptance/function-graph-exposed-match.p main proofMain quotedMain sequencedMain indexedMain
@@ -207,6 +209,7 @@ acceptance/function-graph-named-fields.p main aliasMain graphMain valueMain
 acceptance/order-reflexivity.p main certified observed:two zeroCertified:zeroExpected
 acceptance/dependent-graph-motive.p main reorderedMain certifiedMain
 acceptance/function-graph-call-sites.p main unusedMain:unusedExpected orderedMain:orderedExpected propertyMain:propertyExpected cutMain:cutExpected
+acceptance/function-graph-captured-match.p main other:two
 acceptance/motive-computed-callee.p main
 acceptance/recursive-dependent-package.p main
 acceptance/dependent-order-reflexivity.p main

@@ -165,9 +165,11 @@ successful verification nor evidence that the program is invalid.
 
 ## Status and Tests
 
-September 14 verification includes examples 01-07 and 09, a 60-case legacy
+September 18 verification includes examples 01-07 and 09, a 60-case legacy
 compatibility gate (including intentional rejections), and six fuel-free
-QuickSort output cases. These are supported fragments, not complete legacy
+QuickSort output cases. Post-hoc universal Sorted proofs now cover the unchanged
+reported insertion, tree, merge and QuickSort implementations using the proved
+natural-number comparator. These are supported fragments, not complete legacy
 compatibility or complete Higher Observational Type Theory.
 The frozen compatibility inputs opt into `--legacy-intrinsic-dot`; current
 source fixtures and default CLI tests use `#Name`.
@@ -176,7 +178,7 @@ source fixtures and default CLI tests use `#Name`.
 | --- | --- |
 | Indexed induction | Source-defined Acc, recursive/function fields, dependent Vec append and selected captured indexed functions |
 | Dependent synthesis | Constructor-index refinement and branch-proposed motives checked against every induction branch; unchanged `lengthCertified` |
-| Function properties | [Length specification](src/prototype/pointer/tests/acceptance/length-output-proof.p) and [QuickSort content preservation](src/prototype/pointer/tests/acceptance/legacy-quicksort-property.p), not sortedness |
+| Function properties | [Length specification](src/prototype/pointer/tests/acceptance/length-output-proof.p), [QuickSort content preservation](src/prototype/pointer/tests/acceptance/legacy-quicksort-property.p), and [universal QuickSort Sorted proof](src/prototype/pointer/tests/acceptance/sort-quick-property.p) connected to actual execution witnesses |
 | Higher Identity | Selected typed action, transport and higher-dimensional examples; general coherence remains unfinished |
 | Effects | `#print` requests, multi-clause handlers, forwarding and resumptions; ordered partial applications; explicit `--run` terminal output with split-budget and source/image tests |
 | Host values | `#Int` aliases `#Int32`; distinct `#Int64`; `#Text` stores exact bytes. Literal typing and image round trips, including recursive Text fields |
@@ -205,9 +207,12 @@ Important limitations:
 - Nested definition-block expressions and general dependent handlers are not
   supported. Tested dependent captures cover ordinary sequential aliases and
   return-only handlers.
-- Execution witnesses do not establish sorting correctness; the current
-  QuickSort property certifies content preservation, not comparator-dependent
-  sortedness.
+- Execution witnesses alone do not establish sorting correctness. Separate
+  proofs connect the reported algorithms to conventional natural-number order;
+  they do not establish sortedness for arbitrary Boolean comparators, stability,
+  or complexity. The reported merge uses repeated insertion rather than a
+  linear two-front merge. Evaluating the four-element QuickSort proof takes
+  about 3.5 million solver transitions; this is distinct from running the sort.
 
 Detailed contracts and implementation history are in the
 [active plan](doc/2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md),

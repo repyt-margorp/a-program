@@ -324,8 +324,8 @@ Checkboxes mean implementation plus the stated verification, not just a design.
   (exact provider; full optimized and affected sanitizer gates below).
 - [x] G3c: Universal reported merge-sort Sorted proof tied to actual results
   (ordinary fuel bounds and direct graph induction; verified gates below).
-- [ ] G3d: Universal QuickSort Sorted proof tied to actual results.
-- [ ] J1: Combined regression and sanitizer gates; no ignored failures.
+- [x] G3d: Universal QuickSort Sorted proof tied to actual results.
+- [x] J1: Combined regression and sanitizer gates; no ignored failures.
 - [x] J2: README and source examples updated to verified syntax, with limits.
 - [ ] J3: Issue requirement table, explanations, implementation references and
   justified issue/PR disposition. Pending items are not relabelled complete.
@@ -1052,3 +1052,349 @@ image proof consumption 634,349 / 591,112 / 645,101, each identical at chunks
 resumption), and the wrong input-index theorem at 282,021 (282,326 resumed).
 | `tests/acceptance/sort-insertion-sort-property.p` | 79 | 0 | 79 |
 | `tests/acceptance/sort-insertion-sort-property-wrong.p` | 8 | 0 | 8 |
+
+### 2026-09-18: G3d indexed-field transport boundary
+
+G3c was published as `794ec6a` to Main and the active rewrite branch. G3d
+remains open; `sort-quick-property.p` is an unfinished working proof, not an
+acceptance claim. The frozen provider is unchanged.
+
+The first QuickSort helper exposed two different problems:
+
+- The draft passed `&P` where `P : Nat -> @` was already a suspended value.
+  A minimal `Box P` example accepts `P` and rejects the extra thunk. This was
+  a source error, fixed without changing coercion policy.
+- Extracting a proof of `P head` from an indexed `SizedAll` constructor was
+  unsupported even after that correction. Its Match has paths for both size
+  and the sized-list value. `constructor_transport_step` constructed its
+  transport family over the left endpoint's fixed fiber, so the right endpoint
+  could not be paired into that context. This is a real missing synthesis case.
+
+The repair lifts the complete existing Identity boundary telescope into the
+current context, then extends it with the compared value. Left/right maps and
+all prefix paths feed the existing family-transport checker. Original endpoint
+terms, nominal schema field binders and the final result check are preserved.
+No new Core tag, Identity rule, trusted cast, UIP, expected-type inference or
+QuickSort-specific rule is introduced.
+
+Independent regression `indexed-dependent-field-path.p` states extraction for
+arbitrary `P`, not just a closed numeric result. The initial one-prefix case was
+unsupported on baseline `794ec6a` at 5,222 steps and accepted at 5,852 after the
+repair. The final fixture also covers a dependent prefix `(n, xs : Vec n)`:
+baseline is unsupported at 9,036 steps; the repair accepts it at 11,367. Actual
+dependent-prefix result comparison passes at chunks 1/64, both 12,449 steps.
+Wrong input index and using
+the data field itself as arbitrary `P` evidence are rejected. The fixtures are
+registered in the existing source/image runners. Full gates are still pending
+at this entry; do not infer publication readiness from this focused result.
+
+Still required before G3d completion:
+
+- [x] Reproduce independent field extraction and preserve the boundary's paths.
+- [x] Verify the changed shared transport with full optimized/image/sanitizer gates.
+- [ ] Handle a field whose own type depends on earlier constructor fields, or
+  construct the same universal partition/sort theorem without requiring that
+  inversion. `sized_rest`, `part_left` and `part_right` remain unsupported.
+- [ ] Complete generic property preservation, partition order, recursive
+  QuickSort order and actual execution-packet checks for the exact provider.
+- [ ] Publish only after the G3d milestone and its stated gates are complete.
+
+For dependent fields, do not turn `tail : SizedList k` into `SizedList n` by
+retagging it, nor assume the size path is reflexivity. The remaining route must
+retain the preceding size path and use a dependent family transport (potentially
+over the whole constructor telescope). Independent-field extraction alone does
+not establish this case. An alternative recursive type predicate was tried:
+it moved the difficulty into type normalization/motive synthesis and did not
+complete the theorem. That trial was removed; it is not counted as a solution.
+
+The full ASan/UBSan image runner passed in
+`/tmp/a-program-g3d-asan-images.log`, as did `synthesis_test` and `program_test`
+in the corresponding `-asan-synthesis.log` and `-asan-program.log`. The later
+dependent-prefix extension also passed focused source/image comparisons under
+the same sanitizer binaries: save budgets 0/100/completed, byte-identical inert
+resave and both exported results at chunks 1/64. Loading a completed source
+image at zero Solve steps reports `pending`, as in the existing image runner;
+it is not interpreted as proof failure or as already-accepted evidence.
+
+Final working-tree gates (all exit 0; no publication yet):
+
+| Gate | Record |
+|---|---|
+| Full optimized `check-acceptance`, final implementation and fixtures | `/tmp/a-program-g3d-final-acceptance.log` |
+| ASan/UBSan full source/image runner | `/tmp/a-program-g3d-asan-images.log` |
+| ASan/UBSan shared sort runner | `/tmp/a-program-g3d-asan-sort.log` |
+| ASan/UBSan synthesis and program unit suites | `/tmp/a-program-g3d-asan-synthesis.log`, `/tmp/a-program-g3d-asan-program.log` |
+| Extended dependent-prefix source/image matrix | `/tmp/a-program-g3d-dependent-{0,100,1000000}{,-resaved}.a`, exact results at chunks 1/64 |
+
+The optimized command used `make -f src/prototype/pointer/Makefile -j2
+BUILD=/tmp/a-program-g3d CFLAGS='-std=c11 -Wall -Wextra -Werror -O2'
+check-acceptance`. Sanitizer binaries used `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`, with leak detection and halt-on-error.
+The image runner precedes the final dependent-prefix extension; that extension
+was checked separately under the same sanitizer binaries and is included in the
+final full optimized runner. This is a scope qualification, not a skipped test.
+
+Working diff against `794ec6a`, including untracked proof/fixture files:
+
+| File under `src/prototype/pointer/` | Added | Removed | Net |
+|---|---:|---:|---:|
+| `synthesis.c` | 67 | 11 | 56 |
+| `Makefile` | 4 | 0 | 4 |
+| `tests/image_cli.sh` | 2 | 1 | 1 |
+| `tests/acceptance/indexed-dependent-field-path.p` | 26 | 0 | 26 |
+| `tests/acceptance/indexed-dependent-field-path-wrong.p` | 12 | 0 | 12 |
+| `tests/acceptance/indexed-dependent-field-evidence-wrong.p` | 10 | 0 | 10 |
+| `tests/acceptance/sort-quick-property.p` (unfinished draft) | 83 | 0 | 83 |
+
+Implementation: +67/-11 (net +56); build: +4/-0; tests/proofs: +133/-1
+(net +132), of which 83 lines are not a completed theorem. This plan adds
+98 documentation lines, counted separately. G3d, J1/J3 and R remain open;
+neither passing existing tests nor this helper repair closes #29.
+
+### 2026-09-18: G3d dependent telescope and captured helper progress
+
+This entry supersedes the earlier `sized_rest`/`part_left`/`part_right`
+unsupported status, not the outstanding universal QuickSort requirement.
+
+The indexed-result synthesizer now derives a type-case family over a whole
+constructor telescope. It removes the source field binders from the candidate
+base, factors the existing result classifier through the constructor fields,
+and transports the value along the full checked Identity boundary. Dependent
+prefix paths are retained. The target type is normalized and checked by the
+ordinary rules. No homogeneous equality is asserted between different fibers;
+no UIP, equality reflection, expected-type motive synthesis or new kernel rule
+was added. The existing distinct-variable pattern-factorization check remains.
+
+Automatic result inference no longer scans separately for homogeneous
+identities of every field. The explicit `constructor_field_identity` API stays:
+its caller chooses a particular observer and path, unlike result inference.
+Removing it initially broke the `iadt_test` build; restoring it retains the
+existing observer/path, wrong-endpoint and nominal-schema regression coverage.
+This is an intentional distinction between two derivations, not duplicate
+authority. Both use the shared boundary-lifting implementation.
+
+`indexed-dependent-tail-path.p` checks a dependent tail and an arbitrary
+evidence payload; its negative companion must reject substituting an unrelated
+tail. The previous independent-field and dependent-prefix regressions remain.
+The repaired optimized suite before the helper change reached its final syntax
+inventory in `/tmp/a-program-g3d-telescope-acceptance.log`; its process was
+already terminal when observation resumed, so no captured exit status is claimed
+for that run. The following fresh full run is the publication-relevant gate.
+
+A second independent blocker was isolated at `case_branch`: expanding a
+nonrecursive helper Match could refine a captured parameter, making the later
+projection from the branch Context to the fixed graph parameter Context
+undefined. For `@partitionByDecision`, this was a null prefix before dependent
+substitution, not a failed equality between result classifiers.
+
+An initial attempt to retain every Match helper passed the new example but
+changed existing public graph constructor layouts. The full acceptance run
+`/tmp/a-program-g3d-helper-acceptance.log` exited 2 at source compatibility:
+the legacy partition property no longer checked. That attempt is superseded.
+The current policy retains nonrecursive helper calls only when their actual
+discriminant belongs to the fixed graph parameter telescope. Local inputs still
+split as before; recursive helper calls continue to use their shared graphs.
+The retained call uses the existing graph/witness owner and substitution checks.
+It does not turn a failed projection into an unchecked map.
+
+Focused evidence:
+
+- The standalone captured-Match fixture is unsupported at published `794ec6a`
+  (2,107 steps); the new implementation accepts it (6,054 steps). Both branches
+  of its execution witness normalize, and the wrong-output claim is rejected
+  (3,932 steps).
+- The unchanged legacy partition proof accepts again (93,731 steps).
+- `@partitionByDecision` accepts (61,373 steps with the exact PR #30 provider).
+- The QuickSort draft now proves `append_all`, `lower_all`, `upper_all`,
+  `decision_all` and `partition_all`, including their explicit postchecks
+  (322,667 steps with the mechanically assembled provider). These are generic
+  element-property preservation lemmas, not yet a universal Sorted theorem.
+
+Progress and remaining gates:
+
+- [x] Replace the dependent-field inference dead end with whole-telescope
+  transport using existing typed terms and Identity rules.
+- [x] Preserve explicit field-observer tests and API.
+- [x] Isolate and repair captured nonrecursive helper handling without changing
+  the existing local-split graph layout.
+- [x] Add captured-Match positive and wrong-result regression fixtures.
+- [x] Pass a fresh full optimized gate after the helper repair.
+- [x] Check the new dependent-tail and captured-helper paths with sanitizers
+  and pending/completed images.
+- [x] Complete partition order bounds, QuickSort Acc graph induction, public
+  QuickSort Sorted proof and actual-result packets; finish G3d/J1.
+- [ ] Finish J3 publication/issue disposition using the requirement table below.
+- [ ] Publish the completed G3d milestone. #29 remains open and R has not begun.
+
+The fresh full optimized `check-acceptance` passed (exit 0), recorded in
+`/tmp/a-program-g3d-captured-acceptance.log`, using
+`BUILD=/tmp/a-program-g3d-telescope-opt` and the same `-O2` flags as above.
+The final captured-helper positive/negative fixtures are included. In particular,
+the legacy partition property, QuickSort property clients and all three already
+published universal sort proofs pass without changing their providers or claims.
+The sanitizer `program_test` and QuickSort preservation draft also passed;
+the full sanitizer image runner is a separate gate, recorded below when complete.
+
+Same-input Solve work comparison (published `794ec6a` / current working tree):
+
+| Input | Before | After |
+|---|---:|---:|
+| Original IF8 QuickSort provider | 48,320 | 48,735 |
+| Legacy partition property with that provider | 93,316 | 93,731 |
+
+These are solver transitions, not wall-clock or allocation measurements. The
+415-step increase must not be advertised as zero-cost; it is approximately
+0.86% and 0.44%, respectively.
+
+Working changes against `794ec6a` at this checkpoint, including untracked files:
+
+| File under `src/prototype/pointer/` | Added | Removed | Net |
+|---|---:|---:|---:|
+| `function_graph.c` | 22 | 1 | 21 |
+| `synthesis.c` | 224 | 57 | 167 |
+| `synthesis.h` | 3 | 5 | -2 |
+| `Makefile` | 9 | 0 | 9 |
+| `tests/image_cli.sh` | 4 | 1 | 3 |
+| `tests/acceptance/indexed-dependent-field-path.p` | 26 | 0 | 26 |
+| `tests/acceptance/indexed-dependent-field-path-wrong.p` | 12 | 0 | 12 |
+| `tests/acceptance/indexed-dependent-field-evidence-wrong.p` | 10 | 0 | 10 |
+| `tests/acceptance/indexed-dependent-tail-path.p` | 14 | 0 | 14 |
+| `tests/acceptance/indexed-dependent-tail-path-wrong.p` | 11 | 0 | 11 |
+| `tests/acceptance/function-graph-captured-match.p` | 18 | 0 | 18 |
+| `tests/acceptance/function-graph-captured-match-wrong.p` | 9 | 0 | 9 |
+| `tests/acceptance/sort-quick-property.p` (preservation draft) | 112 | 0 | 112 |
+
+Implementation/headers: +249/-63 (net +186); build: +9/-0; tests/proofs:
++216/-1 (net +215). Documentation is counted separately. This is correctness
+foundation work for G3d, not a claim to have completed the net-negative R epoch.
+
+### 2026-09-18: Universal QuickSort theorem and conversion gate
+
+The preservation draft has now been extended to an ordinary universal proof:
+
+```text
+quick_correct :
+  (xs : List Nat) -> (ys : List Nat) ->
+  @quickSort Nat (&natLessOrEqual) xs ys -> Sorted ys
+```
+
+`partition_ordered` proves both pivot bounds; `quick_all` proves that the Acc
+implementation preserves an arbitrary element predicate. `quick_sorted` uses
+both recursive graph IHs, preserved pivot bounds and the existing general
+append theorem. `quick_correct` eliminates the public QuickSort graph to use
+that result. The sort, Acc and comparator in the exact PR #30 provider remain
+unchanged. No new theorem-specific kernel rule, order axiom, Returns predicate
+or expected-type proof search was introduced.
+
+The source checks in 440,684 transitions, including its execution examples.
+The mixed four-element packet yields the expected Sorted evidence and exact
+output. Reading the proof takes about 3.47 million transitions; the earlier
+two-million-step test was genuinely pending, not a failed theorem. The shared
+runner uses a ten-million comparison budget for QuickSort, retains two million
+for tree/merge, and reports actual work at chunks 1 and 64. This higher budget
+is not a performance improvement. Empty, singleton, duplicate, ascending and
+descending cases exercise the same universal proof; finite tests do not replace
+that proof. Sortedness alone is not a permutation, stability or complexity claim.
+
+The additional wrong-comparator test uncovered a conversion scheduling defect:
+strong comparison descended into NF beneath a thunk containing a recursive
+function, unfolding the fixpoint beneath its Lambda indefinitely. The source
+remained pending at five million transitions. The comparison work was observed
+at NF stack depth 14,022 after one million source transitions. This was not an
+unresolved graph property or an unsupported comparator theorem.
+
+`conversion.c` now exposes only the suspended computation's WHNF; when that is
+a Lambda, congruence compares the Lambda without first normalizing its entire
+body. Thunk is not declared globally rigid: thunk/force eta and potentially
+divergent suspended computations keep their existing rules. The Core suite
+checks those old positive and pending cases. Reduction semantics, evaluation
+profile and artifact format are unchanged; only conversion's demand strategy
+changes. The small `recursive-thunk-conversion-wrong.p` is pending at 100,000
+steps in published `794ec6a`, and rejected at 1,412 in this implementation.
+The actual wrong-comparator proof is now rejected at 441,574 transitions.
+
+Failed gate records are retained: `/tmp/a-program-g3d-quick-sort.log`,
+`/tmp/a-program-g3d-final-full.log` and
+`/tmp/a-program-g3d-final-asan-sort.log` stopped at the wrong-comparator pending
+case. They are superseded only by the final runs listed below. The earlier
+successful sanitizer image run covers the pre-conversion revision; it does not
+by itself verify this last conversion change.
+
+Issue #29 requirement-to-test audit (publication gates still apply):
+
+| Requirement | Permanent evidence |
+|---|---|
+| Distinct nested graph leaves, helper factoring, elimination and witnesses | `graph-duplicate-leaf.p`, `graph-helper-leaf.p`, `function-graph-helper-call.p`; wrong/ambiguous companions; source and image runners |
+| Open-index LE predecessor inversion and impossible branches | `le-predecessor.p`, `le-predecessor-wrong.p`, `le-predecessor-invalid.p` |
+| Conventional LE transitivity | `le-transitivity.p` and its wrong-endpoint companion |
+| Boolean comparator connected to conventional order | `comparator-order.p`, `sort-insertion-property.p` and `sort-insertion-sort-property.p` (`Decision`, `direct`, `unwrap`); wrong comparator/order claims |
+| Universal insertion-sort theorem | `sort-insertion-sort-property.p` (`sort_correct`) |
+| Universal tree-sort theorem | `sort-tree-property.p` (`tree_correct`) |
+| Universal reported merge-sort theorem | `sort-merge-property.p` (`merge_correct`); insufficient-fuel negative |
+| Universal fuel-free QuickSort theorem | `sort-quick-property.p` (`partition_ordered`, `quick_all`, `quick_sorted`, `quick_correct`) |
+| Connection to actual execution, not an independently written expected result | Each proof consumes `*sort` packets; `sort_insertion.sh` compares proof readers, packet values and direct values |
+| Rejection of invalid claims | Per-sort wrong-input tests, QuickSort wrong-comparator test, graph leaf/evidence negatives |
+| Pending/completed persistence and unchanged provider | `sort_insertion.sh` checks the provider SHA-256, save budgets 0/100/completed, inert byte resaves, resumed checks and wrong claims; `image_cli.sh` covers the independent compiler regressions |
+
+The historical report's A/B defects were valid. Its direct comparator attempt
+was an unfinished attempt, not proof of impossibility; the current explicit
+Decision proof supplies a supported construction without weakening `::`.
+PR #30 was already merged as `5d9fa03`; do not reclassify that documentation
+merge as the implementation repair. Close #29 only after the final gates and
+publication, with a link to this table and the actual implementation commits.
+
+Final G3d gates, all exit 0, on unchanged implementation/tests:
+
+| Gate | Log under `/tmp/` |
+|---|---|
+| Full optimized `check-acceptance`, including all four universal sort proofs | `a-program-g3d-publish-full.log` |
+| ASan/UBSan complete shared sort runner | `a-program-g3d-publish-asan-sort.log` |
+| ASan/UBSan complete source/image runner | `a-program-g3d-publish-asan-images.log` |
+| ASan/UBSan Core and Program unit suites | `a-program-g3d-publish-asan-core.log`, `a-program-g3d-publish-asan-program.log` |
+| Debug Core suite | `a-program-g3d-conversion-core.log` |
+
+Builds use the optimized and sanitizer flags recorded above. The final sanitizer
+executables are in `/tmp/a-program-g3d-telescope-asan`; all runs enable leak
+detection and halt on errors. The source/image runner includes all the new
+dependent-field, captured-helper and recursive-thunk negative regressions.
+`git diff --check` passes. No test expectation was weakened to pass a gate.
+
+Same-input allocation counts were inspected at `main.c:395` immediately after
+Solve, using the pre-G3d debug compiler and the final debug compiler. The G3c
+commit only changed proof/tests/docs, so its compiler matches the saved G3b
+baseline. Counts are interned records, not bytes or peak RSS:
+
+| Input | Steps before/after | Terms | Typed occurrences | Contexts | Maps | Proofs |
+|---|---:|---:|---:|---:|---:|---:|
+| `examples/06_pred.p` | 758 / 758 | 120 / 120 | 157 / 157 | 18 / 18 | 47 / 47 | 224 / 224 |
+| `length-output-proof.p` | 9,638 / 9,638 | 2,031 / 2,031 | 3,574 / 3,574 | 334 / 334 | 1,359 / 1,359 | 4,941 / 4,941 |
+| Original IF8 QuickSort | 48,320 / 48,735 | 11,577 / 11,990 | 19,186 / 19,522 | 1,348 / 1,366 | 4,805 / 4,943 | 22,915 / 23,315 |
+
+Final source/test changes against `794ec6a` (documentation separate):
+
+| File under `src/prototype/pointer/` | Added | Removed | Net |
+|---|---:|---:|---:|
+| `conversion.c` | 17 | 0 | 17 |
+| `function_graph.c` | 22 | 1 | 21 |
+| `synthesis.c` | 224 | 57 | 167 |
+| `synthesis.h` | 3 | 5 | -2 |
+| `Makefile` | 10 | 0 | 10 |
+| `tests/image_cli.sh` | 4 | 1 | 3 |
+| `tests/sort_insertion.sh` | 17 | 7 | 10 |
+| `tests/acceptance/indexed-dependent-field-path.p` | 26 | 0 | 26 |
+| `tests/acceptance/indexed-dependent-field-path-wrong.p` | 12 | 0 | 12 |
+| `tests/acceptance/indexed-dependent-field-evidence-wrong.p` | 10 | 0 | 10 |
+| `tests/acceptance/indexed-dependent-tail-path.p` | 14 | 0 | 14 |
+| `tests/acceptance/indexed-dependent-tail-path-wrong.p` | 11 | 0 | 11 |
+| `tests/acceptance/function-graph-captured-match.p` | 18 | 0 | 18 |
+| `tests/acceptance/function-graph-captured-match-wrong.p` | 9 | 0 | 9 |
+| `tests/acceptance/recursive-thunk-conversion-wrong.p` | 8 | 0 | 8 |
+| `tests/acceptance/sort-quick-property.p` | 209 | 0 | 209 |
+| `tests/acceptance/sort-quick-property-wrong.p` | 9 | 0 | 9 |
+| `tests/acceptance/sort-quick-comparator-wrong.p` | 9 | 0 | 9 |
+
+Implementation/headers: +266/-63 (net +203); build: +10/-0; tests/proofs:
++356/-8 (net +348). This is a correctness/feature milestone, not the deferred
+authority refactor or a claimed code-size reduction. The README now distinguishes
+the separate universal Sorted proofs from mere execution witnesses. Publication
+and issue disposition are recorded after their remote operations succeed.

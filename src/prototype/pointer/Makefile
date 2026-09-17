@@ -123,6 +123,12 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-partial-source-wrong.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-motive-domain.p main expected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-motive-domain-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-dependent-field-path.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-dependent-field-path.p dependent expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-dependent-field-path-wrong.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-dependent-field-evidence-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-dependent-tail-path.p main expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-dependent-tail-path-wrong.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p specMain expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p emptySpecMain right
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-curried.p growMain two
@@ -354,6 +360,10 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p propertyMain propertyExpected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-call-sites.p cutMain cutExpected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-call-sites-rejected.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-captured-match.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/function-graph-captured-match.p other two
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/function-graph-captured-match-wrong.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/recursive-thunk-conversion-wrong.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-motive-conflict.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/dependent-motive-expect-rejected.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/motive-computed-callee.p main expected

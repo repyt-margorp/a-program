@@ -547,11 +547,9 @@ struct pg_synthesis_job *pg_synthesis_disjoint_transport(struct pg_synthesis *sy
 	struct pg_synthesis_job *context, struct pg_synthesis_job *left,
 	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
 	struct pg_synthesis_job *value, struct pg_synthesis_job *target_type);
-/* Same-constructor field identity by ordinary type-case action/transport.
- * field is the exact binder in the constructor's semantic telescope. Supplied
- * field values must check as its endpoint images. This homogeneous fragment
- * requires a common field type independent of earlier constructor fields;
- * it does not infer dependent transports or identify distinct chosen paths. */
+/* Explicit same-constructor field identity by type-case action/transport.
+ * The schema binder fixes the observer; this is not result-type inference.
+ * The field type must be independent of preceding constructor fields. */
 struct pg_synthesis_job *pg_synthesis_constructor_field_identity(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *left,
 	struct pg_synthesis_job *right, struct pg_synthesis_job *path,

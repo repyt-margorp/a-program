@@ -61,31 +61,41 @@ printf '%s\n' 'insertionSort: universal Sorted proof, executed graph packets, so
 
 # Reuse the checked order lemmas, excluding their local execution examples.
 sed '/^import read_sorted;/,$d; /^import /d' "$proof" >> "$directory/provider.p"
-for sort in tree merge; do
+for sort in tree merge quick; do
+	sort_provider="$directory/provider.p"
+	comparison_steps=2000000
+	if [ "$sort" = quick ]; then
+		# Reuse the tree proof's general append/bounds lemmas, not its algorithm.
+		sort_provider="$directory/quick-provider.p"
+		cat "$directory/provider.p" > "$sort_provider"
+		sed -n '/^AllTo :=/,/^list_lower :=/{ /^list_lower :=/!p; }' "$root/acceptance/sort-tree-property.p" >> "$sort_provider"
+		sed -n '/^le_refl :=/p' "$root/acceptance/sort-tree-property.p" >> "$sort_provider"
+		comparison_steps=10000000
+	fi
 	proof="$root/acceptance/sort-$sort-property.p"
-	"$binary" --legacy-intrinsic-dot --steps 1000000 --imports "$directory/provider.p" --save "$directory/$sort.a" "$proof"
+	"$binary" --legacy-intrinsic-dot --steps 1000000 --imports "$sort_provider" --save "$directory/$sort.a" "$proof"
 	for pair in main:four empty:zero singleton:one_value already:four reversed:four packet_value:expected_value direct_value:expected_value; do
-		"$compare" --steps 2000000 --equal-image "$directory/$sort.a" "${pair%:*}" "${pair#*:}"
+		"$compare" --steps "$comparison_steps" --equal-image "$directory/$sort.a" "${pair%:*}" "${pair#*:}"
 	done
 	for steps in 0 100; do
 		code=0
-		"$binary" --legacy-intrinsic-dot --imports "$directory/provider.p" --steps "$steps" --save "$directory/partial.a" "$proof" || code=$?
+		"$binary" --legacy-intrinsic-dot --imports "$sort_provider" --steps "$steps" --save "$directory/partial.a" "$proof" || code=$?
 		test "$code" = 3
 		code=0
 		"$binary" --load --steps 0 --save "$directory/resaved.a" "$directory/partial.a" || code=$?
 		test "$code" = 3
 		cmp "$directory/partial.a" "$directory/resaved.a"
-		"$compare" --equal-image "$directory/resaved.a" main four
+		"$compare" --steps "$comparison_steps" --equal-image "$directory/resaved.a" main four
 	done
 	for negative in "$root/acceptance/sort-$sort-"*wrong.p; do
 		cat "$proof" > "$directory/wrong-sort.p"
 		sed '/^import /d' "$negative" >> "$directory/wrong-sort.p"
 		code=0
-		"$binary" --legacy-intrinsic-dot --steps 1000000 --imports "$directory/provider.p" "$directory/wrong-sort.p" || code=$?
+		"$binary" --legacy-intrinsic-dot --steps 1000000 --imports "$sort_provider" "$directory/wrong-sort.p" || code=$?
 		test "$code" = 1
 		for steps in 0 100; do
 			code=0
-			"$binary" --legacy-intrinsic-dot --steps "$steps" --imports "$directory/provider.p" --save "$directory/invalid.a" "$directory/wrong-sort.p" || code=$?
+			"$binary" --legacy-intrinsic-dot --steps "$steps" --imports "$sort_provider" --save "$directory/invalid.a" "$directory/wrong-sort.p" || code=$?
 			test "$code" = 3
 			code=0
 			"$binary" --load --steps 0 --save "$directory/resaved.a" "$directory/invalid.a" || code=$?
