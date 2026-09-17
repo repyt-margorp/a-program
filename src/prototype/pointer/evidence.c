@@ -1441,7 +1441,7 @@ static int selection_lift_step(struct pg_typing *typing, struct typed_selection 
 	} else if (frame) {
 		const struct pg_context *destination = frame->map ? frame->map->destination : frame->restriction->context;
 		const struct pg_object *binder = !frame->next && state->binder ? state->binder
-			: frame->map ? pg_binder(typing->graph) : pg_evidence_context(extended)->binder;
+			: pg_evidence_context(extended)->binder;
 		if (pg_context_lookup(destination, binder)) binder = pg_binder(typing->graph);
 		if (frame->map) {
 			map = pg_prove_substitution_lift(typing, pg_prove_context_map(typing, frame->map), extended, binder);

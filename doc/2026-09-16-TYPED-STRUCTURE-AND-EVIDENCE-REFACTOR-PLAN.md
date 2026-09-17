@@ -144,7 +144,7 @@ Temporary adapters are permitted within a phase, not as permanent fallbacks.
 | [x] | R1 Typed conclusions | Term conclusions have one typed-subject reference; classifier/context/sort accessors delegate to it. All rules publish through `accept_record`; Context and Substitution retain their distinct conclusions. Exact interning and alternative derivations are preserved. Verified by the R29 structural audit and acceptance tests below; this does not complete R2/R3. |
 | [ ] | R2 Context action | Migrate projection/reindex to the same typed structure with explicit effective child maps. Use existing substitution work and binder lifting. Verify repeated lookup sharing, capture avoidance, dependent classifiers and chunked execution. |
 | [ ] | R3 Structural and formation consumers | Move `return_value_origin`, `pi_component`, constructor/inductive recovery and classifier recovery to checked views. Keep theorem-specific inversions where required. Replace structural wrapper walks in `function_graph.c`, `action.c` and `synthesis.c`; remove replaced paths in the same phase. |
-| [x] | R4 Images and pending work | R47 verified APGOCC7, Context v3, derivation v14 and source v44/v45. R68 reopens and verifies the reduction-kind extension for finite NF prefixes with fresh-process ordinary Solve, inert resave, negative endpoint/normality cases, and full debug/optimized/sanitizer gates. Pending inputs do not become trusted on import. Future representation changes must reopen this gate; R2/R3/R5 remain open. |
+| [ ] | R4 Images and pending work | R47/R68 verified the representation and finite NF-prefix extension. R74's additional retained QuickSort test reproduces a pre-existing family-binder restoration rejection, including on R73. Reopened pending the minimal regression and retained/recompute checks below. Imported inputs still require ordinary Solve. |
 | [ ] | R5 Acceptance and cleanup | Run the full gates below, remove obsolete occurrence fields/adapters, document remaining intentional rule dispatch. Require net implementation LOC reduction, compare behavior and performance to R0, report per-file additions/deletions, then publish the verified increment. |
 
 R1 and R2 form one vertical slice: first exercise an annotated Lambda/APP under
@@ -3724,3 +3724,65 @@ establish a stable speedup: the removed inspections do not eliminate the
 cost of the remaining rules. Final retained/recompute timing at R5 and the
 whole-plan LOC gate remain outstanding. The requested review of the LOC
 condition has not changed or waived that condition.
+
+### 2026-09-17: Reuse lexical binders in selected scope actions (R74)
+
+The cost review found that `selection_lift_step` allocated a fresh binder for
+every intermediate map, even when the original binder did not occur in the
+destination context. Raw input/context action already preserves that binder
+until a collision requires renaming. These two paths consequently requested
+different exact lifts for the same capture-free scope operation.
+
+- [x] Use the original scoped binder for an intermediate selected lift. Keep
+  an explicitly required final binder and the destination-collision check.
+  The existing lift request, Context and proof rules are unchanged; there is
+  no alpha interning, new cache or unchecked typing acceptance.
+- [x] Add a regression which requests the raw lift, instantiates the selected
+  Pi codomain, then observes that the same lift is already complete at zero
+  additional budget. This fails on R73 and passes with the change.
+- [x] Exercise a genuinely colliding destination: selected instantiation
+  preserves the supplied free variable in both Identity endpoints and its
+  enclosing context. Ordinary derivation reconstruction passes.
+- [x] Targeted Core and IADT suites pass.
+- [x] Full debug, optimized and sanitizer gates pass in
+  `/tmp/a-program-typed-structure-r74-{debug,o2,sanitize}.log`.
+- [x] Six alternating source measurements against R73, with no build running:
+  QuickSort O0 median **.822688 -> .335943 s**, O2 **.555197 -> .213036 s**;
+  peak RSS **209376-209912 -> 89540-90028 KiB** (O0). Vec O0 medians
+  **.016259 -> .016935 s**, O2 **.012260 -> .010300 s**; its small RSS is
+  below the inherited process high-water mark's measurement resolution.
+- [x] R73/R74 derivation images read in both directions, including producer
+  and nominal cases, with identical single-step/bulk accepted results.
+
+Initial Vec source counts are **R73 11518/3319/4638 -> R74 10756/2804/3845**
+for Terms/typed subjects/proofs, with unchanged **20770** Solve transitions.
+These counts do not by themselves establish a timing improvement. This is
+sharing of the same lexical operation, not permission to reuse binders for
+independent source declarations or nominal constructor/Match allocations.
+Implementation delta so far is `evidence.c` **+1/-1**, tests **+22/-0**;
+the whole-plan net-negative condition remains unmet.
+
+QuickSort Terms/subjects/proofs are **170872/278007/306174 ->
+135138/81780/92676**; completed context lifts **9971 -> 3752**. Solve
+transitions stay **131613**. This removes duplicate lexical work without
+changing the compiled program or its logical rules.
+
+### 2026-09-17: Retained family parameter bindings (R75, R4 reopened)
+
+The extra imported QuickSort `--retain-reductions` save succeeds, but the
+reader rejects initialization on both R73 and R74 (also cross-version).
+Minimal source: `id := \A : @ => \R : A -> @ => \x : A => \p : R x => p;`.
+Without the final dependent binder, the two smaller retained examples pass.
+The existing full gates did not cover this retained family-binding case.
+
+`pg_synthesis_restore_binding` accepts `PG_CONTEXT_EXTEND` only, although
+source synthesis legitimately creates `PG_CONTEXT_FAMILY_EXTEND` for `R`.
+The image has already decoded its ordinary derivation inputs; the allocation
+gate rejects the family binder before Solve can check them. Preserve lexical
+allocation and normal checking, not a trusted-image exception or Replay path.
+
+- [ ] Restore family binding allocation through the existing binding job.
+- [ ] Add the minimal retained-family case to fresh-process resave/check and
+  recompute tests; verify all nested binders retain coherent contexts.
+- [ ] Check the imported QuickSort retained image, both stepping granularities.
+- [ ] Run the debug, optimized and sanitizer gates before closing R4 again.

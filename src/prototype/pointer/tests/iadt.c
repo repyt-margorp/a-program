@@ -2186,6 +2186,28 @@ static void schema_positivity(void)
 		inner = pg_prove_pi_constant_codomain(&typing, pg_prove_pi(&typing, z_context, dependent));
 		const struct pg_evidence *views[] = {inner, pg_prove_projection(&typing, n_context, inner),
 			pg_prove_reindex(&typing, map, inner)};
+		/* Instantiating a selected codomain uses the same collision-free lift
+		 * as raw scope action, rather than allocating an unrelated binder. */
+		const struct pg_evidence *independent_scope = pg_prove_context_extension(&typing, empty, binder, nat);
+		struct pg_context_lift *shared_lift = pg_context_lift_request(&typing,
+			pg_evidence_context_map(map), pg_evidence_context(independent_scope), binder);
+		const struct pg_evidence *instantiated = pg_prove_pi_codomain(&typing, views[1], n_value);
+		const struct pg_evidence *relation = pg_prove_return_content(&typing, instantiated);
+		assert(relation && pg_evidence_context(relation) == pg_evidence_context(n_context));
+		assert(pg_context_lift_advance(shared_lift, 0) == PG_SUBSTITUTION_DONE);
+		common_rule(&typing, relation);
+		/* A real collision still freshens the local binder; the supplied
+		 * argument remains the free variable of the destination context. */
+		const struct pg_evidence *colliding = pg_prove_projection(&typing, independent_scope, inner);
+		const struct pg_evidence *free_value = pg_prove_variable(&typing, independent_scope, binder);
+		const struct pg_evidence *colliding_result = pg_prove_return_content(&typing,
+			pg_prove_pi_codomain(&typing, colliding, free_value));
+		const struct pg_term *relation_type, *left, *right;
+		assert(colliding_result && pg_identity_view(pg_evidence_subject(colliding_result)->core,
+			&relation_type, &left, &right));
+		assert(left == pg_evidence_subject(free_value)->core && right == left);
+		assert(pg_evidence_context(colliding_result) == pg_evidence_context(independent_scope));
+		common_rule(&typing, colliding_result);
 		for (size_t i = 0; i < sizeof(views) / sizeof(*views); ++i) {
 			struct pg_typed_query *query = pg_typed_input_request(&typing, views[i], 1);
 			while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
