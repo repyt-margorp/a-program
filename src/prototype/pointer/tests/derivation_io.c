@@ -335,7 +335,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[22];
+	const struct pg_evidence *roots[27];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -459,8 +459,35 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	while (pg_nf_advance(nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
 	assert(pg_nf_status(nf) == PG_NF_DONE);
 	roots[21] = pg_prove_normalization(typing, nested, pg_nf_certificate(nf));
-	for (size_t i = 0; i < 22; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 22, roots, name, typing->graph) == 0);
+	/* The outer binder is unused, but the selected inner codomain depends
+	 * on its own binder. Save the parent and both checked input views. */
+	const struct pg_object *inner = pg_binder(graph);
+	const struct pg_evidence *inner_scope = pg_prove_context_extension(typing, extended, inner,
+		pg_prove_projection(typing, extended, u));
+	const struct pg_evidence *variable = pg_prove_variable(typing, inner_scope, inner);
+	const struct pg_evidence *path = pg_prove_identity_type(typing,
+		pg_prove_projection(typing, inner_scope, u), variable, variable);
+	const struct pg_evidence *dependent = pg_prove_pi(typing, inner_scope, pg_prove_return_type(typing, path));
+	roots[22] = pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, extended, dependent));
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typed_query *query = pg_typed_input_request(typing, roots[22], i);
+		while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+		roots[23 + i] = pg_typed_query_result(query);
+	}
+	/* Selecting from a normalized Pi must expose its current type, not the
+	 * redex still retained as the normalization's source. */
+	const struct pg_evidence *redex_pi = pg_prove_pi(typing, extended,
+		pg_prove_return_type(typing, pg_prove_projection(typing, extended, type_redex)));
+	nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(redex_pi)->core);
+	assert(pg_nf_advance(nf, 10000) == PG_NF_DONE);
+	roots[25] = pg_prove_pi_codomain(typing,
+		pg_prove_normalization(typing, redex_pi, pg_nf_certificate(nf)), pg_prove_type_value(typing, u));
+	struct pg_typed_query *query = pg_typed_input_request(typing, roots[25], 0);
+	while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+	roots[26] = pg_typed_query_result(query);
+	assert(roots[26] && pg_evidence_subject(roots[26])->core == u1_core);
+	for (size_t i = 0; i < 27; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 27, roots, name, typing->graph) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -488,13 +515,13 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing, 1000, 100, resolve, typing->graph, &count, &roots) == 0);
-	assert(count == 22 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 27 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[22];
+	struct pg_synthesis_job *jobs[27];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -589,6 +616,29 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 		assert(pg_typed_query_advance(input, 64) == 1 && pg_typed_query_steps(input) == steps);
 	}
 	assert(!pg_computation_resolve("kernel/fold/v2"));
+	const struct pg_evidence *selected = pg_synthesis_result(jobs[22]);
+	const struct pg_term *domain, *body;
+	const struct pg_object *binder;
+	assert(pg_pi_view(pg_evidence_subject(selected)->core, &domain, &binder, &body));
+	assert(!pg_prove_pi_constant_codomain(typing, selected));
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typed_query *query = pg_typed_input_request(typing, selected, i);
+		while (!pg_typed_query_advance(query, chunk)) assert(pg_typed_query_steps(query) < 10000);
+		const struct pg_evidence *child = pg_typed_query_result(query), *saved = pg_synthesis_result(jobs[23 + i]);
+		assert(child && pg_evidence_subject(child)->core == (i ? body : domain));
+		assert(pg_evidence_subject(child)->core == pg_evidence_subject(saved)->core);
+		assert(pg_evidence_context(child) == pg_evidence_context(saved));
+		assert(pg_evidence_classifier(child) == pg_evidence_classifier(saved));
+		if (i) {
+			assert(pg_evidence_context(child)->parent == pg_evidence_context(selected));
+			assert(pg_evidence_context(child)->binder == binder);
+		} else assert(pg_evidence_context(child) == pg_evidence_context(selected));
+	}
+	struct pg_typed_query *selected_input = pg_typed_input_request(typing, pg_synthesis_result(jobs[25]), 0);
+	while (!pg_typed_query_advance(selected_input, chunk)) assert(pg_typed_query_steps(selected_input) < 10000);
+	const struct pg_evidence *current_type = pg_typed_query_result(selected_input);
+	assert(current_type && pg_evidence_subject(current_type)->core == pg_universe(typing->graph, 1));
+	assert(pg_evidence_subject(current_type)->core == pg_evidence_subject(pg_synthesis_result(jobs[26]))->core);
 	for (unsigned side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
 		const struct pg_evidence *transport = pg_synthesis_result(jobs[7 + 2 * side]);
 		const struct pg_evidence *lift = pg_synthesis_result(jobs[8 + 2 * side]);

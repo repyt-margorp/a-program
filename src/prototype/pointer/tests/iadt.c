@@ -1973,12 +1973,11 @@ static void schema_positivity(void)
 			pg_prove_projection(&typing, scopes[depth], nat));
 		for (size_t i = depth; i; --i) type = pg_prove_pi(&typing, scopes[i], type);
 		for (size_t i = 0; i < depth; ++i) type = pg_prove_pi_constant_codomain(&typing, type);
-		const struct pg_evidence *content = pg_prove_return_content(&typing, type);
-		assert(content && pg_evidence_subject(content)->selection);
-		const struct pg_evidence *sources[] = {content, pg_prove_projection(&typing, n_context, content)};
+		assert(type && pg_evidence_subject(type)->selection);
+		const struct pg_evidence *sources[] = {type, pg_prove_projection(&typing, n_context, type)};
 		struct pg_typed_query *queries[2];
 		for (size_t i = 0; i < 2; ++i) {
-			queries[i] = pg_inductive_request(&typing, sources[i]);
+			queries[i] = pg_typed_input_request(&typing, sources[i], 0);
 			size_t proofs = typing.proofs.count;
 			assert(queries[i] && !pg_typed_query_advance(queries[i], 0));
 			assert(!pg_typed_query_advance(queries[i], 2));
@@ -1990,13 +1989,15 @@ static void schema_positivity(void)
 				if (!status[i]) status[i] = pg_typed_query_advance(queries[i], i ? 64 : 1);
 		for (size_t i = 0; i < 2; ++i) {
 			assert(status[i] == 1);
-			const struct pg_inductive_instance *instance = pg_inductive_query_result(queries[i]);
-			assert(instance->formation == nat && instance->schema == nat_schema);
-			assert(pg_evidence_context(instance->parameters) == pg_evidence_context(sources[i]));
+			const struct pg_evidence *content = pg_typed_query_result(queries[i]);
+			struct pg_inductive_instance instance;
+			assert(content && pg_inductive_instance(&typing, content, &instance));
+			assert(instance.formation == nat && instance.schema == nat_schema);
+			assert(pg_evidence_context(instance.parameters) == pg_evidence_context(sources[i]));
 			common_rule(&typing, sources[i]);
 			uint64_t steps = pg_typed_query_steps(queries[i]);
 			size_t proofs = typing.proofs.count, requests = typing.typed_queries.count;
-			assert(pg_inductive_request(&typing, sources[i]) == queries[i]);
+			assert(pg_typed_input_request(&typing, sources[i], 0) == queries[i]);
 			assert(pg_typed_query_advance(queries[i], 64) == 1);
 			assert(pg_typed_query_steps(queries[i]) == steps);
 			assert(typing.proofs.count == proofs && typing.typed_queries.count == requests);
@@ -2139,6 +2140,54 @@ static void schema_positivity(void)
 		inner_domain = pg_prove_pi_domain(&typing, inner);
 		assert(inner_domain && pg_evidence_classifier(inner_domain) == pg_universe(&graph, 0));
 		common_rule(&typing, inner_domain);
+		for (size_t i = 0; i < 2; ++i) {
+			struct pg_typed_query *query = pg_typed_input_request(&typing, inner, i);
+			uint64_t initial = pg_typed_query_steps(query);
+			pg_typed_query_advance(query, 0);
+			assert(pg_typed_query_steps(query) == initial);
+			while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
+			const struct pg_evidence *component = pg_typed_query_result(query);
+			assert(component);
+			if (!i) assert(pg_evidence_subject(component) == pg_evidence_subject(inner_domain));
+			else {
+				const struct pg_context *scope = pg_evidence_context(component);
+				const struct pg_term *domain, *body;
+				const struct pg_object *binder;
+				assert(pg_pi_view(pg_evidence_subject(inner)->core, &domain, &binder, &body));
+				assert(scope && scope->parent == pg_evidence_context(inner));
+				assert(scope->binder == binder);
+				assert(scope->declared_type == pg_evidence_subject(nat)->core);
+				assert(pg_evidence_subject(component)->core == pg_return_type(&graph, pg_universe(&graph, 2)));
+			}
+			common_rule(&typing, component);
+			uint64_t steps = pg_typed_query_steps(query);
+			size_t proofs = typing.proofs.count, subjects = typing.occurrences.count;
+			assert(pg_typed_input_request(&typing, inner, i) == query);
+			assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
+			assert(proofs == typing.proofs.count && subjects == typing.occurrences.count);
+		}
+		/* Removing the outer binder must not remove the inner dependency. */
+		const struct pg_object *binder = pg_evidence_context(direct_scope)->binder;
+		const struct pg_evidence *variable = pg_prove_variable(&typing, direct_scope, binder);
+		const struct pg_evidence *path = pg_prove_identity_type(&typing,
+			pg_prove_projection(&typing, direct_scope, nat), variable, variable);
+		const struct pg_evidence *dependent = pg_prove_pi(&typing, direct_scope, pg_prove_return_type(&typing, path));
+		inner = pg_prove_pi_constant_codomain(&typing, pg_prove_pi(&typing, z_context, dependent));
+		const struct pg_evidence *views[] = {inner, pg_prove_projection(&typing, n_context, inner),
+			pg_prove_reindex(&typing, map, inner)};
+		for (size_t i = 0; i < sizeof(views) / sizeof(*views); ++i) {
+			struct pg_typed_query *query = pg_typed_input_request(&typing, views[i], 1);
+			while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
+			const struct pg_evidence *component = pg_typed_query_result(query);
+			const struct pg_term *domain, *body;
+			const struct pg_object *bound;
+			assert(views[i] && pg_pi_view(pg_evidence_subject(views[i])->core, &domain, &bound, &body));
+			assert(component && pg_evidence_context(component)->parent == pg_evidence_context(views[i]));
+			assert(pg_evidence_context(component)->binder == bound);
+			assert(pg_alpha_equal(pg_evidence_subject(component)->core, body) == 1);
+			common_rule(&typing, component);
+			assert(!pg_prove_pi_constant_codomain(&typing, views[i]));
+		}
 		/* Recover an actual large domain without lowering its universe. */
 		const struct pg_evidence *large = pg_prove_universe(&typing, empty, 2);
 		const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, pg_binder(&graph), large);

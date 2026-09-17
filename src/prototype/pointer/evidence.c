@@ -614,7 +614,8 @@ struct typed_query_wait {
 };
 
 enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER, TYPED_REBASE, TYPED_INDUCTIVE, TYPED_SELECTION, TYPED_PHASE };
-enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT, TYPED_RESUME_PHASE };
+enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT, TYPED_RESUME_PHASE,
+	TYPED_RESUME_SELECTION, TYPED_RESUME_SELECTED_INPUT };
 
 struct typed_elimination {
 	const struct pg_evidence *branch;
@@ -659,8 +660,9 @@ struct selection_pending {
 struct typed_selection {
 	struct scope_sequence frames, lifted;
 	struct selection_pending *pending;
-	const struct pg_evidence *argument, *extended;
+	const struct pg_evidence *argument, *extended, *body;
 	const struct pg_occurrence *child;
+	const struct pg_object *binder;
 	const struct scope_frame *cursor;
 	size_t index;
 };
@@ -1420,6 +1422,52 @@ static void scope_append(struct scope_sequence *prefix, struct scope_sequence su
 	prefix->last = suffix.last;
 }
 
+/* Transport an open input's scope before its body. An explicit argument
+ * closes the lifted binder; without one the input remains an open body. */
+static int selection_lift_step(struct pg_typing *typing, struct typed_selection *state)
+{
+	const struct scope_frame *frame = state->cursor;
+	const struct pg_evidence *map = NULL, *restricted = NULL;
+	const struct pg_evidence *extended = state->extended;
+	if (!frame && state->argument) {
+		map = pg_prove_substitution_projection(typing, extended->premises[0], extended->premises[0]);
+		map = pg_prove_substitution_pair(typing, map, extended, state->argument);
+	} else if (frame) {
+		const struct pg_context *destination = frame->map ? frame->map->destination : frame->restriction->context;
+		const struct pg_object *binder = !frame->next && state->binder ? state->binder
+			: frame->map ? pg_binder(typing->graph) : pg_evidence_context(extended)->binder;
+		if (pg_context_lookup(destination, binder)) binder = pg_binder(typing->graph);
+		if (frame->map) {
+			map = pg_prove_substitution_lift(typing, pg_prove_context_map(typing, frame->map), extended, binder);
+			if (!map) return -1;
+			state->extended = map->premises[1];
+		} else {
+			const struct pg_evidence *step = pg_prove_structural_subject(typing, frame->restriction);
+			const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, destination);
+			state->extended = pg_prove_context_extension(typing, context, binder, pg_prove_pi_domain(typing, step));
+			if (!state->extended) return -1;
+			restricted = pg_prove_pi_codomain(typing, pg_prove_projection(typing, state->extended, step),
+				pg_prove_variable(typing, state->extended, binder));
+		}
+	}
+	if (frame || state->argument) {
+		struct scope_frame *lifted = scope_frame(typing->graph, pg_evidence_context_map(map), restricted ? pg_evidence_subject(restricted) : NULL, NULL);
+		if (!lifted) return -1;
+		scope_append(&state->lifted, (struct scope_sequence){lifted, lifted});
+		/* An open codomain is exactly the checked component described by
+		 * the restriction. No independent strengthening of its body is needed. */
+		if (state->body) {
+			state->body = map ? pg_prove_reindex(typing, map, state->body) : restricted;
+			if (!state->body) return -1;
+		}
+	}
+	if (frame) { state->cursor = frame->next; return 0; }
+	state->extended = NULL;
+	state->frames = state->lifted;
+	state->lifted = (struct scope_sequence){0};
+	return 1;
+}
+
 static int typed_selection_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
@@ -1431,31 +1479,8 @@ static int typed_selection_step(struct pg_typed_query *work)
 	struct typed_selection *state = work->selection;
 	const struct pg_occurrence *current = work->current;
 	if (state->extended) {
-		const struct scope_frame *frame = state->cursor;
-		const struct pg_evidence *map = NULL, *restricted = NULL;
-		const struct pg_evidence *extended = state->extended;
-		if (!frame) {
-			map = pg_prove_substitution_projection(typing, extended->premises[0], extended->premises[0]);
-			map = pg_prove_substitution_pair(typing, map, extended, state->argument);
-		} else if (frame->map) {
-			map = pg_prove_substitution_lift(typing, pg_prove_context_map(typing, frame->map), extended, pg_binder(typing->graph));
-			if (!map) return -1;
-			state->extended = map->premises[1];
-		} else {
-			const struct pg_evidence *step = pg_prove_structural_subject(typing, frame->restriction);
-			const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frame->restriction->context);
-			state->extended = pg_prove_context_extension(typing, context, pg_evidence_context(extended)->binder, pg_prove_pi_domain(typing, step));
-			if (!state->extended) return -1;
-			restricted = pg_prove_pi_codomain(typing, pg_prove_projection(typing, state->extended, step),
-				pg_prove_variable(typing, state->extended, pg_evidence_context(state->extended)->binder));
-		}
-		struct scope_frame *lifted = scope_frame(typing->graph, pg_evidence_context_map(map), restricted ? pg_evidence_subject(restricted) : NULL, NULL);
-		if (!lifted) return -1;
-		scope_append(&state->lifted, (struct scope_sequence){lifted, lifted});
-		if (frame) { state->cursor = frame->next; return 0; }
-		state->extended = NULL;
-		state->frames = state->lifted;
-		state->lifted = (struct scope_sequence){0};
+		int status = selection_lift_step(typing, state);
+		if (status <= 0) return status;
 	}
 	if (state->child) {
 		work->current = state->child;
@@ -1484,14 +1509,31 @@ static int typed_selection_step(struct pg_typed_query *work)
 		state->index = current->selection - 1;
 		work->current = current->origin;
 		return 0;
-	} else if (current->origin) {
+	} else if (current->origin && current->core == current->origin->core) {
 		work->current = current->origin;
 		return 0;
 	} else if (state->index != SIZE_MAX) {
-		if (state->index >= current->operand_count) return -1;
-		const struct pg_occurrence *child = current->operands[state->index];
+		const struct pg_occurrence *child;
+		if (current->origin) {
+			/* A changed head needs its checked current inputs. Following the
+			 * old construction would silently select a pre-normalized child. */
+			if (!work->dependency) work->dependency = pg_typed_input_request(typing,
+				pg_prove_structural_subject(typing, current), state->index);
+			if (!work->dependency) return -1;
+			if (!work->dependency->status) return 0;
+			const struct pg_evidence *input = pg_typed_query_result(work->dependency);
+			if (!input) return -1;
+			child = pg_evidence_subject(input);
+			work->dependency = NULL;
+		} else {
+			if (state->index >= current->operand_count) return -1;
+			child = current->operands[state->index];
+		}
 		if (child->context != current->context) {
-			if (pg_occurrence_scoped_input(current, state->index) != child) return -1;
+			const struct pg_term *body;
+			const struct pg_object *binder = pg_occurrence_input_binder(current->core, state->index, &body);
+			if (!binder || !child->context || child->context->parent != current->context ||
+				child->context->binder != binder || child->core != body) return -1;
 			if (state->argument) {
 				state->extended = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, child->context);
 				if (!state->extended) return -1;
@@ -3762,7 +3804,7 @@ static int typed_input_step(struct pg_typed_query *work)
 	const struct pg_occurrence *source = work->source;
 	if (work->value) {
 		if (!work->input_resumed) {
-			int status = typed_field_step(work);
+			int status = work->reduction ? typed_field_step(work) : 1;
 			if (status <= 0) return status;
 			work->input_resumed = 1;
 			work->input = pg_occurrence_input_resume_request(typing, work->input, pg_evidence_subject(work->value));
@@ -3783,6 +3825,11 @@ static int typed_input_step(struct pg_typed_query *work)
 		if (work->result) return 1;
 		const struct pg_occurrence *blocked = pg_occurrence_input_blocked_source(work->input);
 		if (!blocked) return 1;
+		if (blocked->selection) {
+			work->dependency = selection_request(typing, blocked, NULL);
+			work->resume = TYPED_RESUME_SELECTION;
+			return work->dependency ? 0 : -1;
+		}
 		work->reduction = subject_normalization(typing, blocked);
 		if (!work->reduction) return 1;
 		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
@@ -3802,9 +3849,48 @@ static int typed_input_step(struct pg_typed_query *work)
 		return work->dependency ? 0 : -1;
 	}
 	if (!work->dependency->status) return 0;
-	if (work->dependency->status < 0) return work->resume == TYPED_RESUME_INPUT ? 1 : -1;
+	if (work->dependency->status < 0) {
+		/* Checked exposure may be unavailable even for an accepted type.
+		 * Inversion can still use its own rule; no child is fabricated. */
+		switch (work->resume) {
+		case TYPED_RESUME_INPUT: case TYPED_RESUME_SELECTION: case TYPED_RESUME_SELECTED_INPUT:
+			return 1;
+		default: return -1;
+		}
+	}
 	const struct pg_evidence *input = work->dependency->result;
 	if (!input) return 1;
+	if (work->resume == TYPED_RESUME_SELECTION) {
+		work->selection = pg_alloc(typing->graph, sizeof(*work->selection));
+		if (!work->selection) return -1;
+		work->selection->frames.first = work->dependency->selection->frames.first;
+		work->current = pg_evidence_subject(input);
+		work->dependency = pg_typed_input_request(typing, input, work->ordinal);
+		work->resume = TYPED_RESUME_SELECTED_INPUT;
+		return work->dependency ? 0 : -1;
+	}
+	if (work->resume == TYPED_RESUME_SELECTED_INPUT) {
+		struct typed_selection *state = work->selection;
+		if (!state->child) {
+			state->child = pg_evidence_subject(input);
+			if (state->child->context != work->current->context) {
+				if (pg_occurrence_scoped_input(work->current, work->ordinal) != state->child) return 1;
+				const struct pg_occurrence *blocked = pg_occurrence_input_blocked_source(work->input);
+				const struct pg_term *body;
+				state->binder = pg_occurrence_input_binder(blocked->core, work->ordinal, &body);
+				state->extended = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, state->child->context);
+				if (!state->binder || !state->extended) return 1;
+				state->cursor = state->frames.first;
+				state->body = input;
+			}
+		}
+		if (state->extended) {
+			int status = selection_lift_step(typing, state);
+			if (status <= 0) return status;
+		}
+		work->value = state->body ? state->body : scope_image(typing, input, state->frames.first);
+		return work->value ? 0 : 1;
+	}
 	if (work->resume == TYPED_RESUME_PHASE) {
 		work->current = pg_evidence_subject(input);
 		work->dependency = typed_head_request(typing, input, work->reduction);
@@ -5068,20 +5154,6 @@ const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 		if (!pg_universe_level(subject->classifier, &level) || level > bound) return NULL;
 		if (pg_alpha_equal(subject->core, domain) != 1) return NULL;
 		return accept(typing, PG_PI_DOMAIN, subject->context, subject, 1, &pi);
-	}
-	/* Level zero cannot improve. Otherwise recover the retained domain rather
-	 * than unnecessarily inheriting the whole polymorphic Pi's bound. */
-	uint64_t level;
-	if (pg_universe_level(pg_evidence_subject(pi)->classifier, &level) && level) {
-		const struct pg_occurrence *selected = pg_occurrence_selected(typing, pg_evidence_subject(pi), 0, NULL,
-			PG_JUDGEMENT_VALUE_TYPE, domain, pg_evidence_classifier(pi));
-		struct pg_typed_query *work = selection_request(typing, selected, NULL);
-		while (!pg_typed_query_advance(work, UINT64_MAX)) {}
-		const struct pg_evidence *domain_proof = pg_typed_query_result(work);
-		if (domain_proof) domain_proof = scope_image(typing, domain_proof, work->selection->frames.first);
-		if (domain_proof && pg_evidence_context(domain_proof) == pg_evidence_context(pi) &&
-			pg_evidence_judgement(domain_proof) == PG_JUDGEMENT_VALUE_TYPE &&
-			pg_alpha_equal(pg_evidence_subject(domain_proof)->core, domain) == 1) return domain_proof;
 	}
 	subject = pg_occurrence_selected(typing, pg_evidence_subject(pi), 0, NULL,
 		PG_JUDGEMENT_VALUE_TYPE, domain, pg_evidence_classifier(pi));

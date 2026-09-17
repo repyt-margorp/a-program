@@ -330,7 +330,7 @@ checkpoint notes below are historical, not additional completion claims.
 | Caller-owned Reindex work | R64 removes `pg_reindex_state` and its lifecycle/status API. Solve advances the existing shared occurrence action directly, then the ordinary Reindex rule certifies the result with the explicitly supplied premise derivations. Structural completion alone is not acceptance |
 | Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. R59 transports dependent constructor-field classifiers through explicit Conversion using preceding fields' pure receipts. R68/R69 connect finite NF phases; R70 exposes Fold/handler Request inputs. This is not a proof of coverage for every Core reduction. Individual kernel checks and receipt lookup remain synchronous |
 | `return_value_origin`, `pg_prove_application_body` | R60 deletes `return_value_origin`; scope restriction requests Return work as an ordinary shared dependency. `pg_prove_application_body` remains a synchronous adapter to indexed typed-body work. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. R70 makes returned-value work select the input of shared checked RETURN-head work, deleting its separate Fold continuation path. Nominal/family recovery advances application work incrementally |
-| `pi_component`, `selected_formation` | Deleted. R67 moves deferred scoped selection to the existing typed-query store, keyed by source and immutable outer scope suffix. Nominal recovery waits on the same scheduler; Pi domain inversion uses a synchronous adapter to it. Selection still precedes restriction of required components; it does not invent values for removed binders |
+| `pi_component`, `selected_formation` | Deleted. R67 moves deferred scoped selection to the existing typed-query store, keyed by source and immutable outer scope suffix. R71 routes common input exposure through that work and removes the Pi-domain-only selection fallback. Nominal recovery and input exposure share the scheduler. Selection still precedes restriction of required components; it does not invent values for removed binders |
 | `pi_argument_frames` | R67 removes the synchronous frame loop. Scoped selection advances one lifted frame per transition using the existing checked substitution/formation rules. Private prefixes retain their tail for constant-time concatenation; published suffixes are borrowed, not copied or mutated. Individual kernel checks remain synchronous |
 | `inductive_recovery_step` | R61 removes the caller-owned recovery object and lifecycle. Nominal requests share the existing typed-query store by exact accepted subject; Return/application work uses scheduler dependencies and synthesis borrows the completed instance. Exact nominal formation, selected-component traversal and synchronous kernel suboperations remain |
 | `rebase_image` | R60 replaces its private traversal stack and repeated subtree work with a synchronous adapter to shared `(typed subject, target Context)` queries. Origin steps and child/Return dependencies use the common scheduler; ordinary introduction, nominal formation, substitution and receipt checks remain. These kernel subchecks are still synchronous |
@@ -3479,3 +3479,76 @@ input query through the same selection/restriction work. Preserve scoped
 codomains, exact binder identity and rejection of genuinely dependent
 strengthening. Do not replace restriction with a total substitution assigning
 arbitrary values to removed binders, or trust raw image descriptions.
+
+### 2026-09-17: Share selected Pi input exposure (R71)
+
+- [x] Reproduce R70's disagreement between common input exposure and Pi domain
+  inversion; assert the exact narrow domain through both APIs.
+- [x] Route blocked selected inputs through the existing shared selection
+  request, select the retained input and apply its pending scope actions.
+  Delete the independent Pi-domain recovery path.
+- [x] Share scope lifting with selected codomain instantiation. An open Pi
+  input stays open under its own binder; lifting a restriction uses the checked
+  Pi component itself rather than inventing an image of the removed binder.
+- [x] Check direct, projected and substituted dependent codomains, exact binder
+  identity and rejection of removing a genuinely used binder. Deep selection
+  tests query the deferred parent before a synchronous inversion consumes it;
+  split budgets and repeated-query allocation/work stability remain covered.
+- [x] Fix the execution regression caught during this change. The optional
+  checked selection API reports unsupported exposure with a negative status;
+  the input API must translate that to unavailable, as for normalized heads,
+  rather than treating an already accepted type as invalid. The existing
+  `second (#print #"a") (#print #"b")` test again executes in order. This does
+  not grant acceptance to a missing child: fallback inversion uses its ordinary
+  kernel rule and retained parent proof.
+- [x] Fresh-process selected input coverage through ordinary Solve: preserve
+  the open dependent Pi body and the narrow domain, including both exposed
+  input proofs as image roots. Both one-step and 64-step schedules pass.
+- [x] A second regression check found stale input exposure after Pi
+  normalization. Selecting `F(A)` from a normalized Pi returned the retained
+  redex for `A`, not its current normalized Core. Selection now stops at a
+  changed construction and requests its checked current input. The writer and
+  fresh reader assert the actual normalized Universe, not just successful
+  typing. Unsupported current-input queries remain unavailable; the existing
+  higher cube application test also checks that this path does not dereference
+  a missing result.
+- [x] Full debug acceptance, exit 0, including 63/63 compatibility and final
+  QuickSort source/images: `/tmp/a-program-typed-structure-r71-debug.log`.
+- [x] Full optimized acceptance, exit 0, including 63/63 compatibility and
+  final QuickSort source/images: `/tmp/a-program-typed-structure-r71-o2.log`.
+- [x] Full ASan/UBSan acceptance, exit 0, including 63/63 compatibility and
+  final QuickSort source/images: `/tmp/a-program-typed-structure-r71-sanitize.log`.
+
+No Core representation, logical rule or image format changes. This is not
+general strengthening of arbitrary typed structure: optional exposure can
+still be unavailable, and no host operation is run to resolve it. An attempted
+shortcut in constant-codomain construction was reverted; it continues to use
+the common structural-input API.
+
+R2/R3/R5 remain open, including the net-negative implementation gate. Main
+publication is pending completion, not authorized by these targeted tests.
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `evidence.c` | 119 | 47 | +72 |
+| `tests/iadt.c` | 57 | 8 | +49 |
+| `tests/derivation_io.c` | 55 | 5 | +50 |
+
+Cumulative implementation/header delta against `4657cc6` is
+**+4973/-2653 (+2320)**. The removal of the Pi-specific fallback does not
+offset the new common selection/exposure work; this checkpoint is not a
+code-reduction claim. The remaining representation/ownership review must
+remove duplicate traversal responsibilities without weakening acceptance or
+counting test/documentation changes as implementation savings.
+
+Before another exposure extension, review the remaining traversal ownership:
+`typing.c:occurrence_input_step` and `evidence.c:typed_selection_step`,
+`typed_origin_step`, `typed_rebase_step`, and `typed_classifier_step`. They all
+interpret some combination of origin/map/selection edges, but restriction,
+total substitution and proof acceptance are not interchangeable. Inventory
+their shared transitions and actual callers before consolidating them; these
+are review candidates, not a claim that every walker can simply be deleted.
+The named baseline recovery functions have already been removed. Finding one
+more unsupported input is not by itself a reason to expand R3 indefinitely;
+the remaining objective is one coherent structural access path with less
+duplicate machinery, while retaining the existing supported behavior.
