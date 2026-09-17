@@ -1,4 +1,4 @@
-// Open issue #29 investigation; not a passing acceptance fixture.
+// Conventional LE transitivity, using the ordinary indexed IH.
 Nat := @{zero:*; succ:*->*;};
 LE := @\left:Nat => @\right:Nat => {
 	zero:(n:Nat)->* Nat.zero n;
@@ -16,3 +16,8 @@ one := Nat.succ zero;
 two := Nat.succ one;
 main := trans one one (LE.succ zero zero (LE.zero zero)) two (LE.succ zero one (LE.zero one));
 expected := LE.succ zero one (LE.zero one);
+base := trans zero one (LE.zero one) two (LE.succ zero one (LE.zero one));
+baseExpected := LE.zero two;
+deep := trans two two (LE.succ one one (LE.succ zero zero (LE.zero zero))) two
+	(LE.succ one one (LE.succ zero zero (LE.zero zero)));
+deepExpected := LE.succ one one (LE.succ zero zero (LE.zero zero));

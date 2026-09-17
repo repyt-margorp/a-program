@@ -316,8 +316,8 @@ Checkboxes mean implementation plus the stated verification, not just a design.
 - [x] G1a: Isolated graph collision and LE predecessor fixes in dirty worktree;
   targeted and optimized full acceptance passed before IADT changes.
 - [x] G1b: Revalidate those fixes with new IADT elaboration; document alias policy.
-- [ ] G2a: Conventional LE transitivity, universal proof and invalid variants.
-- [ ] G2b: Comparator theorem related to conventional LE, not only Compared.
+- [x] G2a: Conventional LE transitivity, universal proof and invalid variants.
+- [x] G2b: Comparator theorem related to conventional LE, not only Compared.
 - [ ] G3a: Universal insertion-sort Sorted proof tied to actual results.
 - [ ] G3b: Universal tree-sort Sorted proof tied to actual results.
 - [ ] G3c: Universal reported merge-sort Sorted proof tied to actual results.
@@ -645,3 +645,45 @@ counts are available with `git show --numstat`.
 | `src/prototype/pointer/tests/source_io.c` | 798 | 117 | 681 |
 | `src/prototype/pointer/tests/source_io.sh` | 2 | 1 | 1 |
 | `src/prototype/pointer/tests/synthesis.c` | 153 | 22 | 131 |
+
+### 2026-09-18: G2 verified milestone
+
+The scope diagnosis and exact tests are in the
+[issue report](2026-09-18-ISSUE-29-GRAPH-EXPORT-AND-INDEX-TRANSPORT.md#2026-09-18-follow-up-retaining-independent-later-fields).
+The sole implementation change is a checked scope map in `synthesis.c` that
+retains independent later declarations while varying an earlier index. Core,
+Identity rules and artifact schema are unchanged. The original two-constructor
+LE now admits an ordinary universal transitivity proof. Graph induction proves
+that the comparator's true result carries LE and its false result carries
+strict reverse order, including equal/duplicate inputs on the true side.
+
+Verification: full optimized `check-acceptance`, focused debug checks,
+ASan/UBSan synthesis and source-origin/root checks, and the complete all-sanitized
+image CLI passed. Logs are `/tmp/a-program-g2-final-acceptance.log` and
+`/tmp/a-program-g2-asan-images.log`. G3a-G3d remain open; finite result checks
+are consumers of G2's open-variable proofs, not substitutes for sort proofs.
+
+PR #30 at `bd315b0` was reviewed again: its branch adds only the historical
+710-line report. Its two diagnosed defects have reproducible repairs; its
+universal-proof caveats are correct. Preserve the report unchanged on merge,
+link this resolution separately, and leave #29 open. The reported merge
+algorithm is insertion-based; the G3 tests must not replace it by another sort.
+
+Change counts below compare with `d5a02de`, before this progress/accounting
+entry and final validation wording. Implementation: +39/-4 (net +35);
+existing build runner: +11/-0; tests: +107/-2 (net +105, including a recognized
+fixture rename); issue report: +64/-0. This is feature repair, not completion
+of the net-negative authority cleanup. PR documentation adds 710 lines separately.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `doc/2026-09-18-ISSUE-29-GRAPH-EXPORT-AND-INDEX-TRANSPORT.md` | 64 | 0 | 64 |
+| `src/prototype/pointer/Makefile` | 11 | 0 | 11 |
+| `src/prototype/pointer/synthesis.c` | 39 | 4 | 35 |
+| `src/prototype/pointer/tests/acceptance/comparator-order-wrong.p` | 24 | 0 | 24 |
+| `src/prototype/pointer/tests/acceptance/comparator-order.p` | 38 | 0 | 38 |
+| `src/prototype/pointer/tests/acceptance/indexed-later-scope-wrong.p` | 8 | 0 | 8 |
+| `src/prototype/pointer/tests/acceptance/indexed-later-scope.p` | 14 | 0 | 14 |
+| `src/prototype/pointer/tests/acceptance/le-transitivity-wrong.p` | 13 | 0 | 13 |
+| `src/prototype/pointer/tests/{le-transitivity-probe.p => acceptance/le-transitivity.p}` | 6 | 1 | 5 |
+| `src/prototype/pointer/tests/image_cli.sh` | 4 | 1 | 3 |

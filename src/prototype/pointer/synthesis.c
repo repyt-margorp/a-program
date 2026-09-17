@@ -7765,6 +7765,35 @@ static struct pg_synthesis_job *index_transport_check(struct pg_synthesis *synth
 	return pg_synthesis_expect(synthesis, argument, target);
 }
 
+/* Keep later independent declarations when varying an earlier index. The
+ * resulting map is checked, not a partial assignment to discarded variables. */
+static const struct pg_evidence *index_transport_scope(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *prefix,
+	const struct pg_object *omitted)
+{
+	size_t count;
+	if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(prefix), &count)) return NULL;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	const struct pg_evidence **fields = malloc(count * sizeof(*fields));
+	if (count && !fields) return NULL;
+	const struct pg_evidence *extension = context;
+	for (size_t i = count; i; --i, extension = pg_evidence_premise(extension, 0)) fields[i - 1] = extension;
+	const struct pg_evidence *map = pg_prove_substitution_projection(typing, prefix, context);
+	for (size_t i = 0; map && i < count; ++i) {
+		const struct pg_object *binder = pg_evidence_context(fields[i])->binder;
+		if (binder == omitted || pg_evidence_rule(fields[i]) != PG_CONTEXT_EXTEND) continue;
+		const struct pg_evidence *scope = pg_evidence_premise(map, 0);
+		struct pg_typed_query *query = pg_rebase_request(typing, scope, pg_evidence_premise(fields[i], 1));
+		while (!pg_typed_query_advance(query, UINT64_MAX)) {}
+		const struct pg_evidence *domain = pg_typed_query_result(query);
+		if (!domain) continue;
+		extension = pg_prove_context_extension(typing, scope, binder, domain);
+		map = pg_prove_substitution_pair(typing, map, extension, pg_prove_variable(typing, context, binder));
+	}
+	free(fields);
+	return map;
+}
+
 /* Factor the classifier through a typed index endpoint or constructor-field
  * variable, then transport along its identity. Pattern inversion constructs
  * checked substitutions; it never rewrites a classifier's raw Core in place. */
@@ -7779,6 +7808,7 @@ static struct pg_synthesis_job *index_transport_candidate(struct pg_synthesis *s
 	const struct pg_term *from = pg_evidence_subject(direction == PG_IDENTITY_LEFT ? rv : lv)->core;
 	const struct pg_evidence *prefix = context;
 	const struct pg_evidence *domain;
+	const struct pg_evidence *map;
 	if (from->kind == PG_REFERENCE && from->as.reference->kind == PG_BINDER) {
 		const struct pg_evidence *extension = context;
 		while (pg_evidence_context(extension) && pg_evidence_context(extension)->binder != from->as.reference)
@@ -7786,9 +7816,15 @@ static struct pg_synthesis_job *index_transport_candidate(struct pg_synthesis *s
 		if (!pg_evidence_context(extension) || pg_evidence_rule(extension) != PG_CONTEXT_EXTEND) return NULL;
 		prefix = pg_evidence_premise(extension, 0);
 		domain = pg_evidence_premise(extension, 1);
-	} else domain = pg_prove_classifier(typing, context,
-		direction == PG_IDENTITY_LEFT ? rv : lv);
-	const struct pg_evidence *source = pg_prove_context_extension(typing, prefix, pg_binder(typing->graph), domain);
+		map = index_transport_scope(typing, context, prefix, from->as.reference);
+	} else {
+		domain = pg_prove_classifier(typing, context, direction == PG_IDENTITY_LEFT ? rv : lv);
+		map = pg_prove_substitution_projection(typing, context, context);
+	}
+	if (!map) return NULL;
+	const struct pg_evidence *scope = pg_evidence_premise(map, 0);
+	domain = pg_prove_projection(typing, scope, domain);
+	const struct pg_evidence *source = pg_prove_context_extension(typing, scope, pg_binder(typing->graph), domain);
 	if (!field) {
 		/* This is index refinement, not an implicit cast along an arbitrary
 		 * Universe path between nominal types. Named transport stays explicit. */
@@ -7796,7 +7832,6 @@ static struct pg_synthesis_job *index_transport_candidate(struct pg_synthesis *s
 		const struct pg_evidence *index_type = pg_prove_classifier(typing, context, lv);
 		if (!pg_inductive_instance(typing, index_type, &instance)) return NULL;
 	}
-	const struct pg_evidence *map = pg_prove_substitution_projection(typing, prefix, context);
 	const struct pg_evidence *ls = pg_prove_substitution_pair(typing, map, source, lv);
 	const struct pg_evidence *rs = pg_prove_substitution_pair(typing, map, source, rv);
 	if (!ls || !rs) return NULL;

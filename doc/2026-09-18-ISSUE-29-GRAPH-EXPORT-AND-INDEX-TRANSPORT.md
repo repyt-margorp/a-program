@@ -147,3 +147,69 @@ do not remove scope checks or silently identify c and b.
 
 Neither probe is counted as an accepted universal theorem. The remaining
 transitivity, comparator and per-sort obligations are unchanged.
+
+## 2026-09-18 Follow-up: Retaining Independent Later Fields
+
+The previous scope hypothesis was reproduced on published Surface revision
+`d5a02de`: the retained transitivity probe rejected at 4363 steps. The first
+failed field transport could not form its family for `LE c d`. Choosing only
+the prefix before `c` discarded independent `d` as well as dependent fields.
+
+The candidate builder now constructs a checked map retaining later declarations
+whose domains can be rebased into the retained scope. It omits the varied binder
+and unavailable dependent declarations. It then appends one fresh varied binder.
+Pattern inversion still checks substitution back to the original classifier;
+ordinary family transport checks both endpoint substitutions and the path.
+The family for this example is `t |-> LE t d`, with `d` held constant. This is
+context exchange/weakening through existing rules, not equality reflection,
+raw Core replacement, or a new refinement store. Rebase queries use the existing
+typed-subject/context cache. Unsupported dependent exchanges remain unsupported.
+
+Focused results with the change:
+
+- `indexed-later-scope.p`: a nonrecursive reconstruction through a typed helper;
+  rejected at 2996 steps before, accepted at 4854 after.
+- `le-transitivity.p`: the original conventional two-constructor proof, extended
+  with base and two-level consumers; accepted at 11447 steps. The previous
+  investigation fixture moved into acceptance coverage.
+- `comparator-order.p`: graph induction proves `Decision x y answer`, whose true
+  constructor contains `LE x y` and false constructor contains `LE (succ y) x`.
+  This is an order theorem, not the earlier equation-only `Compared` relation.
+  Base, less-than, greater-than and duplicate/equal executions pass result checks
+  with Solve chunks 1 and 64. No direct proof of the historical alternative
+  comparator spelling is claimed.
+- Reversed scope-transport arguments and reversed transitivity endpoints reject.
+
+Final acceptance/image/sanitizer gates now pass; publication is the next step.
+The four universal sort properties are still separate unfinished work.
+
+### Validation and Cost Comparison
+
+Full optimized `check-acceptance` passed after finalizing the negative fixtures
+(`/tmp/a-program-g2-final-acceptance.log`). A first negative comparator attempt
+omitted the successor lifting entirely and stopped at unsupported motive
+synthesis, not explicit rejection. It was replaced by a well-formed theorem
+with a reversed-endpoint ascription, which rejects. No existing rejection test
+was relaxed. Sanitized synthesis, Match-origin and constructor-input/root tests
+also pass. The all-sanitized image-CLI run passed (exit 0):
+`/tmp/a-program-g2-asan-images.log`. It covers positive saves at 0/100/100000
+steps, negative saves at 0/100, inert resaves and result Solve chunks 1/64.
+
+Comparison against published Surface `d5a02de`, using identical source inputs
+and options; both checkers use `-O2` for the time samples. The allocation counts
+were read at `report` in separate `-O0 -g` builds from each exact source tree.
+Arena usage is the sum of used aligned units (32 bytes here), not total RSS or
+temporary/index heap allocation. Times are single noisy local samples, not a
+claimed speedup or statistically established regression.
+
+| Input | Solve steps before/after | Arena bytes before/after | Seconds before/after |
+| --- | ---: | ---: | ---: |
+| `le-predecessor.p` | 7801 / 8453 | 3955904 / 4240192 | 0.009 / 0.011 |
+| imported `legacy-certified-length-results.p` | 5683 / 5683 | 2279520 / 2279520 | 0.005 / 0.008 |
+| imported `legacy-quicksort-witness.p` | 94926 / 95227 | 33426432 / 33596064 | 0.093 / 0.101 |
+
+The predecessor increase is 8.4% in steps and 7.2% in arena use. QuickSort adds
+0.32% in steps and 0.51% in arena use; length is structurally unchanged. Retaining
+more independent declarations makes some unsuccessful candidates larger; this
+is a bounded search cost, not another acceptance authority. Keep this baseline
+for later shared-synthesis cleanup rather than claiming the change is free.

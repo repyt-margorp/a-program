@@ -232,6 +232,17 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-field-transport-wrong.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-field-transport-expect.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/le-predecessor.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-later-scope.p main expected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/indexed-later-scope-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/le-transitivity.p main expected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/le-transitivity.p base baseExpected
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/le-transitivity.p deep deepExpected
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/le-transitivity-wrong.p
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/comparator-order.p base trueValue
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/comparator-order.p greater falseValue
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/comparator-order.p smaller trueValue
+	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/comparator-order.p same trueValue
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/comparator-order-wrong.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/le-predecessor-wrong.p
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/le-predecessor-invalid.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/indexed-result-transport.p main expected
