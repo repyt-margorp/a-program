@@ -188,7 +188,7 @@ polling branch. Clause/signature checking and effect equation ownership remain.
 - [x] Remove redundant source-handler carrier projection; debug synthesis passes.
 - [x] Full optimized acceptance (including 63/63 compatibility) and ASan/UBSan synthesis on the final diff.
 - [x] Record work, node and per-file counts.
-- [ ] Publish only after verification and check both remote tips.
+- [x] Publish only after verification and check both remote tips (`1a08868`).
 
 Pending classifier inference still has rule-specific computation (including
 Pi application, effects and dependent substitution). This is not completion of

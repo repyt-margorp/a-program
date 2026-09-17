@@ -1562,8 +1562,13 @@ documentation only.
 - [x] Debug synthesis, both pending request orders, invalid value-as-type guard,
   immutable effect snapshots and same-input work/node measurements.
 - [x] Final optimized acceptance (63/63 compatibility) and ASan/UBSan synthesis.
-- [ ] Publish and verify Main and the active rewrite tip after all gates pass.
+- [x] Publish and verify Main and the active rewrite tip after all gates pass.
 
 See the [shared construction audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#shared-type-term-construction-after-b21dc46).
 This unifies descriptive work, not erased Core and typing or proof acceptance.
 The broader pending-classifier and net-negative refactoring gates remain open.
+
+Published as `1a08868a365dfd98d32c75b33d13e5d310fb4986`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `b21dc46`;
+both remote tips verified. Implementation/header +39/-37, tests +21/-0,
+documentation +72/-0; total +132/-37. This publication record is documentation only.
