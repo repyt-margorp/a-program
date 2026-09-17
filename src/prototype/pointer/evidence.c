@@ -672,6 +672,12 @@ struct typed_association {
 	unsigned next;
 };
 
+struct typed_fold {
+	const struct pg_evidence *outer, *handler, *carrier, *head, *payload, *resume, *origin;
+	const struct pg_evidence **inputs, **waiting;
+	size_t count, next;
+};
+
 struct pg_typed_query {
 	struct pg_index_entry index;
 	struct pg_typing *typing;
@@ -679,7 +685,6 @@ struct pg_typed_query {
 	/* Argument subject, rebase Context, head Core, outer scopes, or NF phase. */
 	const void *argument_key;
 	const struct pg_evidence *argument, *environment, *value, *result;
-	const struct pg_evidence *continuation;
 	enum typed_query_resume resume;
 	struct pg_typed_query *dependency;
 	struct typed_query_wait *waiting;
@@ -692,12 +697,14 @@ struct pg_typed_query {
 	struct typed_inductive *inductive;
 	struct typed_selection *selection;
 	struct typed_association *association;
+	struct typed_fold *fold;
 	const struct pg_reduction_certificate *reduction;
 	const struct pg_reduction_certificate *input_reduction;
 	enum typed_query_kind kind;
 	size_t ordinal;
 	size_t forces;
 	uint64_t steps;
+	int input_resumed;
 	int status;
 };
 
@@ -965,14 +972,33 @@ static int typed_body_enter(struct pg_typed_query *work, const struct pg_occurre
 	const struct pg_evidence *argument)
 {
 	const struct pg_evidence *source = pg_prove_structural_subject(work->typing, current);
+	/* A captured callee may itself be the image of a binder. Apply the same
+	 * pending scope to both operands before asking shared application work. */
+	if (work->environment) {
+		source = pg_prove_reindex(work->typing, work->environment, source);
+		if (argument) {
+			argument = pg_prove_reindex(work->typing, work->environment, argument);
+			if (!argument) return -1;
+		}
+		work->environment = NULL;
+	}
 	work->dependency = argument ? pg_application_body_request(work->typing, source, argument)
 		: pg_return_body_request(work->typing, source);
 	work->resume = TYPED_RESUME_BODY;
 	return work->dependency ? 0 : -1;
 }
 
-static int constructor_head(const struct pg_occurrence *subject)
+static int exposed_head(const struct pg_occurrence *subject)
 {
+	const struct pg_term *core = subject->core, *payload, *resume;
+	const struct pg_object *label;
+	if (subject->judgement == PG_JUDGEMENT_COMPUTATION &&
+		core->kind == PG_APPLICATION && core->as.application.function->kind == PG_REFERENCE &&
+		core->as.application.function->as.reference == &pg_return_operation) return 1;
+	/* A normalized request still needs its typed construction, not merely
+	 * its printed head, to retain the operation's accepted declaration. */
+	if (subject->judgement == PG_JUDGEMENT_COMPUTATION && !subject->origin &&
+		pg_computation_request_view(core, &label, &payload, &resume)) return 1;
 	if (subject->judgement != PG_JUDGEMENT_VALUE) return 0;
 	const struct pg_term *head = subject->core;
 	while (head->kind == PG_APPLICATION) head = head->as.application.function;
@@ -1054,20 +1080,169 @@ static int typed_association_step(struct pg_typed_query *work)
 	return 0;
 }
 
+static int typed_fold_start(struct pg_typed_query *work)
+{
+	const struct pg_occurrence *source = work->current;
+	const struct pg_term *head = source->core;
+	size_t supplied = source->operand_count, count = 0;
+	if (supplied < 2) return 0;
+	if (supplied == 2 && !fold_source(head)) return 0;
+	for (size_t i = 0; i < supplied; ++i) {
+		if (head->kind != PG_APPLICATION) return 0;
+		head = head->as.application.function;
+	}
+	if (head->kind != PG_REFERENCE) return 0;
+	const struct pg_clause_position *positions;
+	if (head->as.reference != &pg_fold_operation &&
+		!pg_computation_handler_view(head->as.reference, &count, &positions)) return 0;
+	if (count > SIZE_MAX - 2 || supplied != count + 2) return -1;
+	if (supplied > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
+	struct typed_fold *state = pg_alloc(work->typing->graph, sizeof(*state));
+	if (!state) return -1;
+	*state = (struct typed_fold){.count = count};
+	state->inputs = pg_alloc(work->typing->graph, supplied * sizeof(*state->inputs));
+	if (!state->inputs) return -1;
+	/* Signature formation is logical evidence. Program operands come from
+	 * the typed structure; no traversal of premise wrappers recovers them. */
+	if (count) {
+		for (state->handler = pg_evidence_for_subject(work->typing, source, NULL);
+			state->handler && state->handler->rule != PG_HANDLER_ELIM;
+			state->handler = pg_evidence_for_subject(work->typing, source, state->handler)) {}
+		if (!state->handler) return -1;
+	}
+	state->outer = pg_prove_structural_subject(work->typing, source);
+	if (work->environment) state->outer = pg_prove_reindex(work->typing, work->environment, state->outer);
+	if (!state->outer) return -1;
+	if (count) {
+		state->carrier = formed_classifier(work->typing, state->outer);
+		if (!state->carrier) return -1;
+	}
+	work->environment = NULL;
+	work->fold = state;
+	return 1;
+}
+
+static const struct pg_evidence *typed_fold_rebuild(struct pg_typing *typing,
+	const struct typed_fold *state, const struct pg_evidence *context, const struct pg_evidence *input)
+{
+	const struct pg_evidence *returned = pg_prove_projection(typing, context, state->inputs[1]);
+	if (!state->count) return pg_prove_fold(typing, input, returned);
+	struct pg_graph temporary = {0};
+	const struct pg_evidence *result = NULL;
+	if (state->count > SIZE_MAX / sizeof(struct pg_handler_clause)) return NULL;
+	struct pg_handler_clause *clauses = pg_alloc(&temporary, state->count * sizeof(*clauses));
+	if (!clauses) goto done;
+	for (size_t i = 0; i < state->count; ++i) {
+		clauses[i].operation = pg_operation_declaration_at(typing,
+			pg_handler_signature_label(state->handler->certificate, i),
+			state->handler->premises[3 + 3 * i], state->handler->premises[4 + 3 * i]);
+		clauses[i].body = pg_prove_projection(typing, context, state->inputs[i + 2]);
+	}
+	result = pg_prove_handler(typing, input, returned,
+		pg_prove_projection(typing, context, state->carrier), state->count, clauses);
+done:
+	pg_graph_destroy(&temporary);
+	return result;
+}
+
+static int typed_fold_wait(struct pg_typed_query *work,
+	const struct pg_evidence **slot, struct pg_typed_query *dependency)
+{
+	work->fold->waiting = slot;
+	work->dependency = dependency;
+	return dependency ? 0 : -1;
+}
+
+static int typed_fold_step(struct pg_typed_query *work)
+{
+	struct pg_typing *typing = work->typing;
+	struct typed_fold *state = work->fold;
+	if (state->waiting) {
+		if (!work->dependency->status) return 0;
+		*state->waiting = pg_typed_query_result(work->dependency);
+		if (!*state->waiting) return -1;
+		state->waiting = NULL;
+		work->dependency = NULL;
+		return 0;
+	}
+	if (state->next < state->count + 2) {
+		size_t i = state->next++;
+		return typed_fold_wait(work, &state->inputs[i], pg_typed_input_request(typing, state->outer, i));
+	}
+	if (!state->head)
+		return typed_fold_wait(work, &state->head, typed_head_request(typing, state->inputs[0], NULL));
+	const struct pg_term *head = pg_evidence_subject(state->head)->core;
+	const struct pg_evidence *result;
+	if (head->kind == PG_APPLICATION && head->as.application.function == pg_reference(typing->graph, &pg_return_operation)) {
+		if (!state->payload)
+			return typed_fold_wait(work, &state->payload, pg_return_body_request(typing, state->inputs[0]));
+		result = pg_prove_application(typing, state->inputs[1], state->payload);
+	} else {
+		const struct pg_term *payload, *resume;
+		const struct pg_object *label;
+		if (!pg_computation_request_view(head, &label, &payload, &resume)) return -1;
+		if (!state->payload)
+			return typed_fold_wait(work, &state->payload, pg_typed_input_request(typing, state->head, 0));
+		if (!state->resume)
+			return typed_fold_wait(work, &state->resume, pg_typed_input_request(typing, state->head, 1));
+		if (!state->origin)
+			return typed_fold_wait(work, &state->origin, pg_construction_origin_request(typing, state->head));
+		const struct pg_operation_declaration *operation = pg_evidence_request_declaration(state->origin);
+		if (!operation || pg_operation_label(operation) != label) return -1;
+		const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, pg_evidence_context(state->outer));
+		const struct pg_object *binder = pg_binder(typing->graph);
+		const struct pg_evidence *scope = pg_prove_context_extension(typing, context, binder,
+			pg_prove_projection(typing, context, pg_operation_response_type(operation)));
+		const struct pg_evidence *call = pg_prove_application(typing, pg_prove_projection(typing, scope, state->resume),
+			pg_prove_variable(typing, scope, binder));
+		const struct pg_evidence *body = typed_fold_rebuild(typing, state, scope, call);
+		const struct pg_evidence *pi = pg_prove_pi(typing, scope, formed_classifier(typing, body));
+		const struct pg_evidence *continuation = pg_prove_lambda(typing, pi, body);
+		size_t i = 0;
+		while (i < state->count && pg_handler_signature_label(state->handler->certificate, i) != label) ++i;
+		result = i == state->count ? pg_prove_request(typing, operation, state->payload, continuation)
+			: pg_prove_application(typing, pg_prove_application(typing, state->inputs[i + 2], state->payload),
+				pg_prove_thunk(typing, continuation));
+	}
+	if (!result) return -1;
+	work->current = pg_evidence_subject(result);
+	work->fold = NULL;
+	return 0;
+}
+
+static int typed_return_step(struct pg_typed_query *work)
+{
+	if (!work->dependency) {
+		work->dependency = typed_head_request(work->typing,
+			pg_prove_structural_subject(work->typing, work->source), NULL);
+		return work->dependency ? 0 : -1;
+	}
+	if (!work->dependency->status) return 0;
+	const struct pg_evidence *result = pg_typed_query_result(work->dependency);
+	if (!result) return -1;
+	if (work->resume == TYPED_RESUME_INPUT) {
+		work->result = result;
+		return 1;
+	}
+	const struct pg_term *core = pg_evidence_subject(result)->core;
+	if (core->kind != PG_APPLICATION || core->as.application.function !=
+		pg_reference(work->typing->graph, &pg_return_operation)) return -1;
+	work->dependency = pg_typed_input_request(work->typing, result, 0);
+	work->resume = TYPED_RESUME_INPUT;
+	return work->dependency ? 0 : -1;
+}
+
 static int typed_body_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_occurrence *current = work->current;
+	if (work->kind == TYPED_BODY && !work->argument) return typed_return_step(work);
 	if (work->association) return typed_association_step(work);
+	if (work->fold) return typed_fold_step(work);
 	if (work->resume == TYPED_RESUME_BODY) {
 		if (!work->dependency->status) return 0;
 		const struct pg_evidence *result = pg_typed_query_result(work->dependency);
 		if (!result) return -1;
-		if (work->continuation) {
-			work->dependency = pg_application_body_request(typing, work->continuation, result);
-			work->continuation = NULL;
-			return work->dependency ? 0 : -1;
-		}
 		work->current = pg_evidence_subject(result);
 		work->dependency = NULL;
 		work->resume = TYPED_RESUME_NONE;
@@ -1083,7 +1258,7 @@ static int typed_body_step(struct pg_typed_query *work)
 	/* The retained reduction specifies the head. Constructor guesses cannot
 	 * replace that boundary, especially while a context action is pending. */
 	if (work->kind == TYPED_HEAD && !work->forces &&
-		(work->argument_key || work->action || constructor_head(current))) {
+		(work->argument_key || work->action || exposed_head(current))) {
 		const struct pg_occurrence *image = current;
 		if (work->environment) {
 			if (!work->action) work->action = pg_occurrence_action_request(typing,
@@ -1101,20 +1276,6 @@ static int typed_body_step(struct pg_typed_query *work)
 			work->environment = NULL;
 			return work->value ? 0 : -1;
 		}
-	}
-	if (!work->argument && core->kind == PG_APPLICATION &&
-		core->as.application.function == pg_reference(typing->graph, &pg_return_operation)) {
-		if (work->forces) return -1;
-		if (current->operand_count == 1 && current->operands[0]->core == core->as.application.argument)
-			work->value = pg_prove_structural_subject(typing, current->operands[0]);
-		else {
-			if (!work->dependency) work->dependency = pg_typed_input_request(typing,
-				pg_prove_structural_subject(typing, current), 0);
-			if (!work->dependency) return -1;
-			if (!work->dependency->status) return 0;
-			work->value = pg_typed_query_result(work->dependency);
-		}
-		return work->value ? 0 : -1;
 	}
 	const struct pg_occurrence *returned = returned_computation(current);
 	if (returned) return typed_body_enter(work, returned, NULL);
@@ -1146,6 +1307,8 @@ static int typed_body_step(struct pg_typed_query *work)
 	}
 	if (current->map_count == 1)
 		return typed_body_match(work);
+	int fold = typed_fold_start(work);
+	if (fold) return fold < 0 ? -1 : 0;
 	if (core->kind == PG_LAMBDA) {
 		if (!work->argument || work->forces || current->operand_count != 1) return -1;
 		const struct pg_occurrence *body = pg_occurrence_scoped_input(current, 0);
@@ -1170,14 +1333,10 @@ static int typed_body_step(struct pg_typed_query *work)
 			return 0;
 		}
 		if (current->operand_count != 2 || current->operands[1]->core != core->as.application.argument) return -1;
-		int fold = head->kind == PG_APPLICATION &&
-			head->as.application.function == pg_reference(typing->graph, &pg_fold_operation) &&
-			current->operands[0]->core == head->as.application.argument;
-		if (!fold && current->operands[0]->core != head) return -1;
+		if (current->operands[0]->core != head) return -1;
 		const struct pg_evidence *right = pg_prove_structural_subject(typing, current->operands[1]);
 		if (!right) return -1;
-		work->continuation = fold ? right : NULL;
-		return typed_body_enter(work, current->operands[0], fold ? NULL : right);
+		return typed_body_enter(work, current->operands[0], right);
 	}
 	if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER || !work->environment) return -1;
 	const struct pg_evidence *image = pg_substitution_image(typing, work->environment, core->as.reference);
@@ -3602,10 +3761,10 @@ static int typed_input_step(struct pg_typed_query *work)
 	struct pg_typing *typing = work->typing;
 	const struct pg_occurrence *source = work->source;
 	if (work->value) {
-		if (!work->continuation) {
+		if (!work->input_resumed) {
 			int status = typed_field_step(work);
 			if (status <= 0) return status;
-			work->continuation = work->value;
+			work->input_resumed = 1;
 			work->input = pg_occurrence_input_resume_request(typing, work->input, pg_evidence_subject(work->value));
 			return work->input ? 0 : -1;
 		}

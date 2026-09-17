@@ -328,8 +328,8 @@ checkpoint notes below are historical, not additional completion claims.
 | Evidence classifier/context/sort copies | Removed for term conclusions |
 | Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
 | Caller-owned Reindex work | R64 removes `pg_reindex_state` and its lifecycle/status API. Solve advances the existing shared occurrence action directly, then the ordinary Reindex rule certifies the result with the explicitly supplied premise derivations. Structural completion alone is not acceptance |
-| Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. R59 transports dependent constructor-field classifiers through explicit Conversion using preceding fields' pure receipts. General multi-phase NF remains open; individual kernel checks and receipt lookup remain synchronous |
-| `return_value_origin`, `pg_prove_application_body` | R60 deletes `return_value_origin`; scope restriction requests Return work as an ordinary shared dependency. `pg_prove_application_body` remains a synchronous adapter to indexed typed-body work. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
+| Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. R59 transports dependent constructor-field classifiers through explicit Conversion using preceding fields' pure receipts. R68/R69 connect finite NF phases; R70 exposes Fold/handler Request inputs. This is not a proof of coverage for every Core reduction. Individual kernel checks and receipt lookup remain synchronous |
+| `return_value_origin`, `pg_prove_application_body` | R60 deletes `return_value_origin`; scope restriction requests Return work as an ordinary shared dependency. `pg_prove_application_body` remains a synchronous adapter to indexed typed-body work. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. R70 makes returned-value work select the input of shared checked RETURN-head work, deleting its separate Fold continuation path. Nominal/family recovery advances application work incrementally |
 | `pi_component`, `selected_formation` | Deleted. R67 moves deferred scoped selection to the existing typed-query store, keyed by source and immutable outer scope suffix. Nominal recovery waits on the same scheduler; Pi domain inversion uses a synchronous adapter to it. Selection still precedes restriction of required components; it does not invent values for removed binders |
 | `pi_argument_frames` | R67 removes the synchronous frame loop. Scoped selection advances one lifted frame per transition using the existing checked substitution/formation rules. Private prefixes retain their tail for constant-time concatenation; published suffixes are borrowed, not copied or mutated. Individual kernel checks remain synchronous |
 | `inductive_recovery_step` | R61 removes the caller-owned recovery object and lifecycle. Nominal requests share the existing typed-query store by exact accepted subject; Return/application work uses scheduler dependencies and synthesis borrows the completed instance. Exact nominal formation, selected-component traversal and synchronous kernel suboperations remain |
@@ -348,9 +348,10 @@ checkpoint notes below are historical, not additional completion claims.
 Baseline source LOC at `4657cc6`: `evidence.c` 4343, `typing.c` 129,
 `occurrence_io.c` 114, `function_graph.c` 1636, `action.c` 839,
 `derivation.c` 248. Compare all new/support modules as well, not just these files.
-The first conclusion slice grows temporarily; no structural recovery deletion
-has been credited yet. R5 remains unchecked until the complete replacement is
-net-negative and the performance/behavior comparisons are recorded.
+The conclusion checkpoint below is historical. The ledger above records actual
+deletions, but replacement scope and reduction work still costs more overall.
+R5 remains unchecked until the complete replacement is net-negative and the
+performance/behavior comparisons are recorded.
 
 Conclusion checkpoint LOC delta (against `4657cc6`, excluding documentation):
 
@@ -3414,3 +3415,67 @@ Cumulative implementation/header delta against `4657cc6` is
 **+4744/-2655 (+2089)**. The net-negative completion gate is unmet, not waived;
 remaining traversal consolidation must remove replaced machinery rather than
 retain both paths or count tests/documentation as implementation savings.
+
+### 2026-09-17: Expose typed Fold/handler results (R70)
+
+- [x] Turn R69's forwarding failure into a Core regression; it fails on
+  `04b7dad` because the normalized Request's input query returns NULL.
+- [x] Use one typed Fold pathway for Return application, handled Request
+  resumption and unhandled Request forwarding, including zero-clause Fold.
+  Program inputs use existing structural queries. Operation signature
+  formation comes from the accepted declaration evidence of that exact typed
+  construction, never an erased-Core search or unaccepted label description.
+- [x] Construct resumptions with ordinary projection, Lambda, APP, THUNK,
+  Fold/handler and Request rules. Clause code runs outside its own handler;
+  only its resumption is recursively handled. Core runtime behavior, logical
+  rules, witness encoding and transport formats are unchanged.
+- [x] Make returned-value queries select the RETURN input of shared head
+  work, deleting the independent Return-unwrapping and Fold continuation path.
+  Keep application-body work distinct: its input is an explicit argument,
+  not a request to execute an arbitrary computation to a returned value.
+- [x] Apply a pending context map to both callee and argument before shared
+  application work. Deferring that action loses a captured callee's image;
+  the forwarding clause exposed this pre-existing failure. Failed argument
+  action rejects rather than changing an application into returned-value work.
+- [x] Extend Core coverage to plain Fold forwarding, multi-clause swaps,
+  captured/open contexts and nontrivial substitution. Check typed payload and
+  continuation domains, scopes, derivation checking, split/zero budgets and
+  repeated-query allocation/work stability. Existing synthesis tests pass.
+- [x] Save both a normalized forwarding handler and its extracted typed
+  inputs. Fresh-process ordinary Solve reconstructs them and checks the
+  resulting inputs/classifiers, for both totality grades and split budgets.
+- [x] Full debug acceptance, including 63/63 compatibility and final QuickSort
+  source/images: `/tmp/a-program-typed-structure-r70-debug.log`.
+- [x] Full optimized acceptance, exit 0, including 63/63 compatibility:
+  `/tmp/a-program-typed-structure-r70-o2-confirm.log`.
+- [x] Full ASan/UBSan acceptance, exit 0, including 63/63 compatibility:
+  `/tmp/a-program-typed-structure-r70-sanitize.log`.
+
+This closes the concrete forwarding boundary recorded in R69, not all R2/R3
+structural-access consolidation or R5. Handler declaration formation remains
+logical evidence; reading it is not reconstructing program operands from a
+chosen derivation's wrappers. Ordinary APP does not scan an arbitrary callee
+spine to identify handlers: the retained semantic input count bounds the view.
+Kernel rule construction inside a transition remains synchronous.
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `evidence.c` | 189 | 30 | +159 |
+| `tests/core.c` | 44 | 12 | +32 |
+| `tests/derivation_io.c` | 42 | 3 | +39 |
+
+Cumulative implementation/header **+4899/-2651 (+2248)** against `4657cc6`.
+The net-negative gate remains unmet. This is not completion or Main publication.
+
+Concrete remaining R3 consolidation: `tests/iadt.c:schema_positivity` constructs
+an inner Pi directly under an unused outer binder, then obtains it with
+`pg_prove_pi_constant_codomain`. Its `pg_prove_pi_domain` succeeds and retains
+the narrow Universe. At the following `large` declaration (line 2143 in this
+checkpoint), a debugger call to `pg_typed_input_request(&typing, inner, 0)`
+finishes after a budget of 10000 with status 1 and NULL result. Thus the common
+input view and the dedicated domain path still disagree about availability.
+Turn this existing case into a regression, and route the domain inversion and
+input query through the same selection/restriction work. Preserve scoped
+codomains, exact binder identity and rejection of genuinely dependent
+strengthening. Do not replace restriction with a total substitution assigning
+arbitrary values to removed binders, or trust raw image descriptions.

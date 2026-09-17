@@ -697,14 +697,36 @@ static void operation_proofs(FILE *file, struct pg_typing *typing,
 			clauses[i] = (struct pg_handler_clause){operations[i], pg_prove_abstract(typing, empty, scope, body)};
 		}
 		const struct pg_evidence *handled = pg_prove_handler(typing, request, returned, carrier, 2, clauses);
-		const struct pg_evidence *roots[] = {request, handled, handled, u0};
-		assert(request && handled && !pg_derivations_write_descriptors(file, 4, roots, &pg_builtin_graph_codec, typing->graph));
+		const struct pg_object *label = pg_operation_label(operations[0]);
+		const struct pg_evidence *forward_carrier = pg_prove_computation_type(typing, totality,
+			pg_effect_row(graph, 1, &label), u1);
+		const struct pg_object *a = pg_binder(graph), *k = pg_binder(graph);
+		const struct pg_evidence *scope = pg_prove_handler_context(typing, operations[1], empty, forward_carrier, a, k);
+		const struct pg_evidence *body = pg_prove_application(typing,
+			pg_prove_force(typing, pg_prove_variable(typing, scope, k)), pg_prove_variable(typing, scope, a));
+		struct pg_handler_clause forward = {operations[1], pg_prove_abstract(typing, empty, scope, body)};
+		const struct pg_evidence *forwarded = pg_prove_handler(typing, request, returned, forward_carrier, 1, &forward);
+		assert(forwarded);
+		struct pg_whnf_work work;
+		assert(!pg_whnf_work_init(&work, graph));
+		struct pg_whnf_job *head = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(forwarded)->core);
+		while (pg_whnf_advance(head, 1) == PG_EVAL_PENDING) assert(pg_whnf_steps(head) < 10000);
+		forwarded = pg_prove_normalization(typing, forwarded, pg_whnf_certificate(head));
+		const struct pg_evidence *roots[] = {request, handled, handled, u0, forwarded, NULL, NULL};
+		for (size_t i = 0; i < 2; ++i) {
+			struct pg_typed_query *query = pg_typed_input_request(typing, forwarded, i);
+			while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+			roots[5 + i] = pg_typed_query_result(query);
+			assert(roots[5 + i]);
+		}
+		assert(request && handled && !pg_derivations_write_descriptors(file, 7, roots, &pg_builtin_graph_codec, typing->graph));
+		pg_whnf_work_destroy(&work);
 		return;
 	}
 	size_t count = 0;
 	const struct pg_derivation_input *const *roots = NULL;
 	assert(!pg_derivations_read_descriptors(file, typing, 10000, 100, &pg_builtin_graph_codec, typing->graph, &count, &roots));
-	assert(count == 4 && roots[1] == roots[2] && !typing->proofs.count);
+	assert(count == 7 && roots[1] == roots[2] && !typing->proofs.count);
 	const struct pg_object *label = roots[0]->parameters.operation_label;
 	assert(label && pg_handler_signature_count(roots[1]->parameters.handler) == 2);
 	assert(pg_handler_signature_label(roots[1]->parameters.handler, 0) == label);
@@ -716,6 +738,8 @@ static void operation_proofs(FILE *file, struct pg_typing *typing,
 	struct pg_synthesis_job *request = pg_synthesis_derivation(&synthesis, roots[0]);
 	struct pg_synthesis_job *shape = pg_synthesis_classifier_structure(&synthesis, request);
 	struct pg_synthesis_job *handled = pg_synthesis_derivation(&synthesis, roots[1]);
+	struct pg_synthesis_job *forwarded[3];
+	for (size_t i = 0; i < 3; ++i) forwarded[i] = pg_synthesis_derivation(&synthesis, roots[4 + i]);
 	assert(handled == pg_synthesis_derivation(&synthesis, roots[2]));
 	unsigned rounds = 0;
 	while (pg_synthesis_status(handled) == PG_SYNTHESIS_PENDING) {
@@ -723,6 +747,21 @@ static void operation_proofs(FILE *file, struct pg_typing *typing,
 		pg_synthesis_advance(&synthesis, chunk);
 	}
 	assert(pg_synthesis_status(handled) == PG_SYNTHESIS_DONE && pg_synthesis_status(request) == PG_SYNTHESIS_DONE);
+	for (size_t i = 0; i < 3; ++i) {
+		while (pg_synthesis_status(forwarded[i]) == PG_SYNTHESIS_PENDING) {
+			assert(++rounds < 10000);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		assert(pg_synthesis_status(forwarded[i]) == PG_SYNTHESIS_DONE);
+	}
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typed_query *query = pg_typed_input_request(typing, pg_synthesis_result(forwarded[0]), i);
+		while (!pg_typed_query_advance(query, chunk)) assert(pg_typed_query_steps(query) < 10000);
+		const struct pg_evidence *input = pg_typed_query_result(query), *saved = pg_synthesis_result(forwarded[i + 1]);
+		assert(input && pg_evidence_context(input) == pg_evidence_context(saved));
+		assert(pg_alpha_equal(pg_evidence_subject(input)->core, pg_evidence_subject(saved)->core) == 1);
+		assert(pg_alpha_equal(pg_evidence_classifier(input), pg_evidence_classifier(saved)) == 1);
+	}
 	const struct pg_evidence *proof = pg_synthesis_result(handled);
 	assert(pg_evidence_handler_signature(proof) == roots[1]->parameters.handler);
 	assert(pg_operation_label(pg_evidence_request_declaration(pg_synthesis_result(request))) == label);

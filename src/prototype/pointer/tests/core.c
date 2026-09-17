@@ -4913,6 +4913,36 @@ static const struct pg_evidence *resume_clause(struct pg_typing *typing,
 	return pg_prove_abstract(typing, empty, extended, body);
 }
 
+static void typed_request_inputs(struct pg_typing *typing, const struct pg_evidence *normal)
+{
+	const struct pg_object *label;
+	const struct pg_term *inputs[2], *payload_type, *response_type;
+	assert(normal && pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &inputs[0], &inputs[1]));
+	assert(pg_operation_label_types(label, &payload_type, &response_type));
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typed_query *query = pg_typed_input_request(typing, normal, i);
+		uint64_t steps = pg_typed_query_steps(query);
+		pg_typed_query_advance(query, 0);
+		assert(pg_typed_query_steps(query) == steps);
+		while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
+		const struct pg_evidence *input = pg_typed_query_result(query);
+		assert(input && pg_alpha_equal(pg_evidence_subject(input)->core, inputs[i]) == 1);
+		assert(pg_evidence_context(input) == pg_evidence_context(normal));
+		const struct pg_term *domain, *codomain;
+		const struct pg_object *binder;
+		if (i) {
+			assert(pg_pi_view(pg_evidence_classifier(input), &domain, &binder, &codomain));
+			assert(pg_alpha_equal(domain, response_type) == 1);
+		} else assert(pg_alpha_equal(pg_evidence_classifier(input), payload_type) == 1);
+		reconstruct_derivation(typing, input);
+		steps = pg_typed_query_steps(query);
+		size_t proofs = typing->proofs.count, subjects = typing->occurrences.count;
+		assert(pg_typed_input_request(typing, normal, i) == query);
+		assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
+		assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
+	}
+}
+
 static void request_typing_test(struct pg_graph *graph)
 {
 	struct pg_typing typing;
@@ -5052,18 +5082,7 @@ static void request_typing_test(struct pg_graph *graph)
 	assert(label == pg_operation_label(op) && a == pg_evidence_subject(payload)->core);
 	/* Pure beta exposes a request, not its effectful response. Typed structure
 	 * must expose the retained payload/continuation without executing it. */
-	const struct pg_term *request_inputs[] = {a, continuation};
-	for (size_t i = 0; i < 2; ++i) {
-		struct pg_typed_query *query = pg_typed_input_request(&typing, normal, i);
-		while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
-		const struct pg_evidence *input = pg_typed_query_result(query);
-		assert(input && pg_alpha_equal(pg_evidence_subject(input)->core, request_inputs[i]) == 1);
-		assert(pg_evidence_context(input) == pg_evidence_context(normal));
-		reconstruct_derivation(&typing, input);
-		uint64_t steps = pg_typed_query_steps(query);
-		assert(pg_typed_input_request(&typing, normal, i) == query);
-		assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
-	}
+	typed_request_inputs(&typing, normal);
 	assert(!pg_prove_return_value(&typing, normal));
 	const struct pg_evidence *carrier = pg_prove_return_type(&typing, u1);
 	const struct pg_object *payload_binder = pg_binder(graph), *resume_binder = pg_binder(graph);
@@ -5192,7 +5211,19 @@ static void request_typing_test(struct pg_graph *graph)
 	assert(forwarded);
 	normal = checked_normalize(&typing, &work, forwarded);
 	assert(pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &a, &continuation));
+	typed_request_inputs(&typing, normal);
 	assert(label == other_label);
+	typed_request_inputs(&typing, checked_normalize(&typing, &work, pg_prove_fold(&typing, two, k)));
+	typed_request_inputs(&typing, checked_normalize(&typing, &work, pg_prove_projection(&typing, function_scope, forwarded)));
+	const struct pg_evidence *open_two = pg_prove_request(&typing, op, pg_prove_variable(&typing, scope, x),
+		pg_prove_projection(&typing, scope, second_continuation));
+	struct pg_handler_clause open_forward = {op, pg_prove_projection(&typing, scope, forward.body)};
+	const struct pg_evidence *open_handler = pg_prove_handler(&typing, open_two, pg_prove_projection(&typing, scope, k),
+		pg_prove_projection(&typing, scope, forward_carrier), 1, &open_forward);
+	typed_request_inputs(&typing, checked_normalize(&typing, &work, open_handler));
+	const struct pg_evidence *map = pg_prove_substitution_pair(&typing,
+		pg_prove_substitution_projection(&typing, empty, empty), scope, payload);
+	typed_request_inputs(&typing, checked_normalize(&typing, &work, pg_prove_reindex(&typing, map, open_handler)));
 	forward.body = clause;
 	assert(!pg_prove_handler(&typing, two, k, forward_carrier, 1, &forward));
 	assert(!pg_prove_handler(&typing, two, second_continuation, carrier, 2, clauses));
@@ -5212,6 +5243,7 @@ static void request_typing_test(struct pg_graph *graph)
 	normal = checked_normalize(&typing, &work, swapped);
 	assert(pg_computation_request_view(pg_evidence_subject(normal)->core, &label, &a, &continuation));
 	assert(label == other_label);
+	typed_request_inputs(&typing, normal);
 	pg_whnf_work_destroy(&work);
 	struct pg_typing separate;
 	assert(!pg_typing_init(&separate, graph));
