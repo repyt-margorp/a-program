@@ -1336,31 +1336,30 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_substitution_image(&typing, alternate, a) == alternate_b);
 	assert(!pg_evidence_context_map(destination_b) && !pg_evidence_context_map(NULL));
 	assert(!pg_context_map(&typing, map->source, map->destination, 1, map->images));
-	struct pg_reindex split, whole;
-	assert(pg_reindex_init(&split, &typing, sigma, source_x) == 0);
-	assert(pg_reindex_init(&whole, &typing, sigma, source_x) == 0);
+	struct pg_occurrence_action *split = pg_occurrence_action_request(&typing, map, pg_evidence_subject(source_x));
+	assert(split && pg_occurrence_action_request(&typing, map, pg_evidence_subject(source_x)) == split);
 	size_t pending_proofs = typing.proofs.count;
-	assert(pg_reindex_advance(&split, 0) == PG_REINDEX_PENDING);
-	assert(pg_reindex_steps(&split) == 0);
-	while (pg_reindex_status(&split) == PG_REINDEX_PENDING) {
-		assert(!pg_reindex_result(&split));
+	assert(pg_occurrence_action_advance(split, 0) == PG_SUBSTITUTION_PENDING);
+	assert(pg_occurrence_action_steps(split) == 0);
+	while (pg_occurrence_action_advance(split, 0) == PG_SUBSTITUTION_PENDING) {
+		assert(!pg_occurrence_action_result(split));
 		assert(typing.proofs.count == pending_proofs);
-		uint64_t steps = pg_reindex_steps(&split);
-		pg_reindex_advance(&split, 1);
-		assert(pg_reindex_steps(&split) == steps + 1);
+		uint64_t steps = pg_occurrence_action_steps(split);
+		pg_occurrence_action_advance(split, 1);
+		assert(pg_occurrence_action_steps(split) == steps + 1);
 	}
 	size_t substitutions = typing.substitutions.jobs.count, substituted_terms = graph->terms.count;
-	assert(pg_reindex_advance(&whole, UINT64_MAX) == PG_REINDEX_DONE);
-	/* These consumers share a work store, unlike independent split-fuel runs. */
-	assert(pg_reindex_steps(&whole) <= pg_reindex_steps(&split));
+	uint64_t split_steps = pg_occurrence_action_steps(split);
+	assert(pg_occurrence_action_advance(split, UINT64_MAX) == PG_SUBSTITUTION_DONE);
+	assert(pg_occurrence_action_steps(split) == split_steps);
 	assert(typing.substitutions.jobs.count == substitutions && graph->terms.count == substituted_terms);
-	assert(pg_reindex_result(&whole) == pg_reindex_result(&split));
-	assert(typing.proofs.count == pending_proofs + 1);
-	const struct pg_evidence *split_result = pg_reindex_result(&split);
-	pg_reindex_destroy(&split);
-	pg_reindex_destroy(&whole);
+	/* Completed descriptive work is not a typing proof. Certification keeps
+	 * the actual supplied premises, even when the structure is already shared. */
+	assert(typing.proofs.count == pending_proofs);
 	const struct pg_evidence *reindexed = pg_prove_reindex(&typing, sigma, source_x);
-	assert(reindexed == split_result);
+	assert(reindexed && pg_evidence_subject(reindexed) == pg_occurrence_action_result(split));
+	assert(typing.proofs.count == pending_proofs + 1);
+	assert(pg_occurrence_action_steps(split) == split_steps);
 	struct pg_occurrence_action *action = pg_occurrence_action_request(&typing, map, pg_evidence_subject(source_x));
 	assert(action && pg_occurrence_action_result(action) == pg_evidence_subject(destination_y));
 	uint64_t action_steps = pg_occurrence_action_steps(action);
@@ -1385,13 +1384,9 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(!pg_evidence_for_subject(&typing, NULL, NULL));
 	assert(pg_occurrence_action_request(&typing, pg_evidence_context_map(alternate), pg_evidence_subject(source_x)) == action);
 	assert(pg_occurrence_action_steps(action) == action_steps);
-	assert(pg_reindex_init(&split, &typing, sigma, source_x) == 0);
-	assert(pg_reindex_advance(&split, 0) == PG_REINDEX_DONE);
-	assert(pg_reindex_steps(&split) == 0);
-	pg_reindex_destroy(&split);
-	assert(pg_reindex_init(&split, &typing, sigma, destination_y) != 0);
-	assert(pg_reindex_status(&split) == PG_REINDEX_ERROR);
-	pg_reindex_destroy(&split);
+	assert(pg_prove_reindex(&typing, sigma, source_x) == reindexed);
+	assert(pg_occurrence_action_steps(split) == split_steps);
+	assert(!pg_prove_reindex(&typing, sigma, destination_y));
 	assert(reindexed && pg_evidence_subject(reindexed)->core == pg_reference(graph, y));
 	assert(pg_evidence_classifier(reindexed) == pg_reference(graph, b));
 	assert(pg_evidence_context(reindexed) == pg_evidence_context(destination));
@@ -1917,18 +1912,16 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_evidence_premise(unchanged_lambda, 1) == source_lambda);
 	assert(graph->terms.count == unchanged_terms);
 	pending_proofs = typing.proofs.count;
-	assert(pg_reindex_init(&split, &typing, sigma, source_lambda) == 0);
-	assert(pg_reindex_advance(&split, 1) == PG_REINDEX_PENDING);
-	assert(!pg_reindex_result(&split));
-	pg_reindex_destroy(&split);
+	split = pg_occurrence_action_request(&typing, map, pg_evidence_subject(source_lambda));
+	assert(pg_occurrence_action_advance(split, 1) == PG_SUBSTITUTION_PENDING);
+	assert(!pg_occurrence_action_result(split));
 	assert(typing.proofs.count == pending_proofs);
-	assert(pg_reindex_init(&split, &typing, sigma, source_lambda) == 0);
+	assert(pg_occurrence_action_request(&typing, map, pg_evidence_subject(source_lambda)) == split);
 	const struct pg_evidence *moved_lambda = pg_prove_reindex(&typing, sigma, source_lambda);
-	while (pg_reindex_advance(&split, 1) == PG_REINDEX_PENDING) assert(!pg_reindex_result(&split));
-	assert(pg_reindex_result(&split) == moved_lambda);
+	assert(pg_occurrence_action_advance(split, 0) == PG_SUBSTITUTION_DONE);
+	assert(pg_occurrence_action_result(split) == pg_evidence_subject(moved_lambda));
 	assert(pg_evidence_subject(moved_lambda)->annotation);
 	assert(pg_evidence_subject(moved_lambda)->annotation == pg_reference(graph, b));
-	pg_reindex_destroy(&split);
 	const struct pg_evidence *moved_pi = pg_prove_reindex(&typing, sigma, source_pi);
 	assert(!pg_occurrence_scoped_input(pg_evidence_subject(moved_pi), 1));
 	const struct pg_evidence *codomain = pg_prove_pi_codomain(&typing, moved_pi, destination_y);

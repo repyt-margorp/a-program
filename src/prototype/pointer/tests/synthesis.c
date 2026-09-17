@@ -5795,12 +5795,27 @@ static void data_cases(struct pg_typing *typing)
 	pg_synthesis_advance(&split, 1000);
 	assert(pg_synthesis_status(waiting) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(waiting));
 	assert(!pg_synthesis_result(waiting));
-	/* Destroy while a distinct reindex job still owns suspended traversal. */
-	struct pg_synthesis_job *unfinished = pg_synthesis_reindex(&split, result_map, pg_prove_type_value(typing, index_a));
+	/* Shared substitution work outlives a scheduler borrowing it. */
+	const struct pg_evidence *suspended_type = index_a;
+	for (size_t i = 0; i < 3; ++i)
+		suspended_type = pg_prove_thunk_type(typing, pg_prove_return_type(typing, suspended_type));
+	const struct pg_evidence *suspended_value = pg_prove_type_value(typing, suspended_type);
+	struct pg_occurrence_action *action = pg_occurrence_action_request(typing,
+		pg_evidence_context_map(result_map), pg_evidence_subject(suspended_value));
+	assert(action && !pg_occurrence_action_steps(action));
+	struct pg_synthesis_job *unfinished = pg_synthesis_reindex(&split, result_map, suspended_value);
 	assert(unfinished);
-	pg_synthesis_advance(&split, 1);
+	for (size_t i = 0; i < 1000 && !pg_occurrence_action_steps(action); ++i)
+		pg_synthesis_advance(&split, 1);
+	assert(pg_occurrence_action_steps(action) == 1 && !pg_occurrence_action_result(action));
 	assert(pg_synthesis_status(unfinished) == PG_SYNTHESIS_PENDING);
 	pg_synthesis_destroy(&split);
+	assert(pg_occurrence_action_request(typing, pg_evidence_context_map(result_map),
+		pg_evidence_subject(suspended_value)) == action);
+	const struct pg_evidence *resumed = complete(&whole,
+		pg_synthesis_reindex(&whole, result_map, suspended_value), PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(resumed) == pg_occurrence_action_result(action));
+	assert(pg_evidence_premise(resumed, 0) == result_map && pg_evidence_premise(resumed, 1) == suspended_value);
 	pg_synthesis_destroy(&whole);
 	pg_whnf_work_destroy(&work);
 	puts("case synthesis: independent producers, index motives, post-check evidence and shared scheduling passed");

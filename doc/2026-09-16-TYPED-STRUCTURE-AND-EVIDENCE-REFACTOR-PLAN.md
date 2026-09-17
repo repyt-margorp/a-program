@@ -327,6 +327,7 @@ checkpoint notes below are historical, not additional completion claims.
 |---|---|
 | Evidence classifier/context/sort copies | Removed for term conclusions |
 | Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
+| Caller-owned Reindex work | R64 removes `pg_reindex_state` and its lifecycle/status API. Solve advances the existing shared occurrence action directly, then the ordinary Reindex rule certifies the result with the explicitly supplied premise derivations. Structural completion alone is not acceptance |
 | Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. R59 transports dependent constructor-field classifiers through explicit Conversion using preceding fields' pure receipts. General multi-phase NF remains open; individual kernel checks and receipt lookup remain synchronous |
 | `return_value_origin`, `pg_prove_application_body` | R60 deletes `return_value_origin`; scope restriction requests Return work as an ordinary shared dependency. `pg_prove_application_body` remains a synchronous adapter to indexed typed-body work. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
@@ -3091,3 +3092,54 @@ Idle interleaved O0 runs (seconds / peak KiB), R62 -> R63:
 `1.0881/271188 -> 1.0756/271064`,
 `1.0925/270712 -> 1.0762/271112`. These samples do not establish a material
 performance change.
+
+### 2026-09-17: Remove the Reindex work wrapper (R64)
+
+- [x] Delete the private `pg_reindex_state`, per-consumer allocation, duplicate
+  status/step tracking and initialization/destruction API. The existing shared
+  occurrence action is the sole structural substitution work object.
+- [x] Let synthesis advance that action with its existing budget. On completion,
+  `pg_prove_reindex` reuses its output and applies the unchanged kernel rule.
+  Synchronous callers use that same action. No new request tag, manager or
+  acceptance cache replaces the deleted wrapper.
+- [x] Preserve the exact substitution/source derivations as premises. Sharing
+  structural work by map/typed subject must not erase alternative proofs or
+  replace them with whichever proof was found first.
+- [x] Migrate the existing tests to the actual shared work: zero/one-step
+  budgets, pending and completed work creating no Evidence, certification
+  without further substitution, alternate derivations sharing the same output,
+  repeated lookup, wrong-source rejection and resuming a partially processed
+  Lambda with its dependent classifier/annotation. Core and synthesis pass.
+- [x] Complete full debug, optimized and ASan/UBSan acceptance, each including
+  63/63 compatibility and final QuickSort source/images. Logs:
+  `/tmp/a-program-typed-structure-r64-{debug,o2,sanitize}.log`.
+- [x] Strengthen the existing scheduler destruction regression: start shared
+  substitution, destroy its borrowing scheduler, then resume from a second
+  scheduler with the same work pointer and exact original premises. The
+  updated synthesis suite passes all three configurations after the full
+  suites; no implementation changed between these runs.
+
+Delta against `bbcd689`:
+
+| File, under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| evidence.c | 12 | 92 | -80 |
+| evidence.h | 3 | 13 | -10 |
+| synthesis.c | 13 | 11 | +2 |
+| **Implementation/header** | **28** | **116** | **-88** |
+| tests/core.c | 27 | 34 | -7 |
+| tests/synthesis.c | 18 | 3 | +15 |
+
+Cumulative implementation/header **+1834** against `4657cc6`. This removes
+one duplicate work lifecycle, not Pi's required scoped selection/strengthening
+or general multi-phase NF exposure. Those remain open; the net-negative gate
+is still unmet. R2/R3/R5 are not complete and Main is not published.
+
+QuickSort counters are unchanged from R63: 174858 Core terms, 392438 typed
+subjects, 429942 proofs, 7807 typed queries, 3386 raw input queries and 131353
+Solve transitions. Idle interleaved O0 runs (seconds / peak KiB), R63 -> R64:
+`1.0886/270780 -> 1.0773/271212`,
+`1.0722/271272 -> 1.0540/271568`,
+`1.0746/271568 -> 1.0750/270824`.
+These samples show no material runtime/memory change; this checkpoint removes
+duplicate lifecycle code, not substitution computations.

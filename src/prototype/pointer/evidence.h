@@ -547,21 +547,11 @@ const struct pg_evidence *pg_prove_substitution_rebase(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_substitution_extend(struct pg_typing *typing,
 	const struct pg_evidence *prefix, const struct pg_evidence *source,
 	size_t count, const struct pg_evidence *const *values);
+/* Certify context action with the supplied premise derivations. Budgeted
+ * callers first advance pg_occurrence_action_request on the same map/subject;
+ * this rule reuses that completed work without replacing either premise. */
 const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
-struct pg_reindex_state;
-struct pg_reindex { struct pg_reindex_state *state; };
-enum pg_reindex_status { PG_REINDEX_PENDING, PG_REINDEX_DONE, PG_REINDEX_ERROR };
-/* Same rule as pg_prove_reindex, with suspended term/classifier substitution.
- * No evidence is exposed before all outputs are constructed. Typing and input
- * proofs must outlive the work; accepted evidence survives work destruction. */
-int pg_reindex_init(struct pg_reindex *work, struct pg_typing *typing,
-	const struct pg_evidence *substitution, const struct pg_evidence *proof);
-enum pg_reindex_status pg_reindex_advance(struct pg_reindex *work, uint64_t budget);
-enum pg_reindex_status pg_reindex_status(const struct pg_reindex *work);
-uint64_t pg_reindex_steps(const struct pg_reindex *work);
-const struct pg_evidence *pg_reindex_result(const struct pg_reindex *work);
-void pg_reindex_destroy(struct pg_reindex *work);
 /* Invert accepted RETURN v : F A or THUNK M : U C judgements with canonical
  * heads. Retains the input proof; never executes M or guesses a type from Core.
  * Symbolic heads must first be normalized with evidence and converted. */

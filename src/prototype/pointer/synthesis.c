@@ -261,7 +261,7 @@ struct pg_synthesis_job {
 	const struct pg_evidence *function;
 	struct pg_conversion comparison;
 	const struct pg_conversion_certificate *certificate;
-	struct pg_reindex reindex;
+	struct pg_occurrence_action *reindex;
 	struct pg_function_graph_work function_graph;
 	const struct pg_inductive_instance *inductive_instance;
 	struct pg_identity_face_work *face;
@@ -336,7 +336,6 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			pg_conversion_destroy(&job->comparison);
-			pg_reindex_destroy(&job->reindex);
 			pg_function_graph_destroy(&job->function_graph);
 			pg_identity_face_destroy(job->face);
 			pg_identity_formation_destroy(job->formation);
@@ -3836,7 +3835,7 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 
 static void reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
-	if (!job->reindex.state) {
+	if (!job->reindex) {
 		for (size_t i = 0; i < 2; ++i) {
 			struct pg_synthesis_job *input = (struct pg_synthesis_job *)job->inputs[i];
 			if (input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, input); return; }
@@ -3851,23 +3850,26 @@ static void reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 		 * allocating traversal state. Distinct producers may prove the same map. */
 		struct pg_synthesis_job *canonical = pg_synthesis_reindex(synthesis, substitution, proof);
 		if (forward_proof(synthesis, job, canonical)) return;
-		if (pg_reindex_init(&job->reindex, synthesis->typing, substitution, proof) != 0) {
+		job->reindex = pg_occurrence_action_request(synthesis->typing,
+			pg_evidence_context_map(substitution), pg_evidence_subject(proof));
+		if (!job->reindex) {
 			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 		}
 	}
-	switch (pg_reindex_advance(&job->reindex, 1)) {
-	case PG_REINDEX_PENDING:
+	switch (pg_occurrence_action_advance(job->reindex, 1)) {
+	case PG_SUBSTITUTION_PENDING:
 		enqueue(synthesis, job);
 		return;
-	case PG_REINDEX_ERROR:
+	case PG_SUBSTITUTION_ERROR:
 		finish(synthesis, job, PG_SYNTHESIS_ERROR);
 		break;
-	case PG_REINDEX_DONE:
-		job->result = pg_reindex_result(&job->reindex);
-		finish(synthesis, job, PG_SYNTHESIS_DONE);
+	case PG_SUBSTITUTION_DONE:
+		job->result = pg_prove_reindex(synthesis->typing,
+			((const struct pg_synthesis_job *)job->inputs[0])->result,
+			((const struct pg_synthesis_job *)job->inputs[1])->result);
+		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 		break;
 	}
-	pg_reindex_destroy(&job->reindex);
 }
 
 static void pair_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)

@@ -3867,103 +3867,23 @@ const struct pg_evidence *pg_prove_substitution_projection(struct pg_typing *typ
 	return result;
 }
 
-struct pg_reindex_state {
-	struct pg_typing *typing;
-	const struct pg_evidence *premises[2];
-	struct pg_occurrence_action *action;
-	uint64_t steps;
-	enum pg_reindex_status status;
-	const struct pg_evidence *result;
-};
-
-static int reindex_prepare(struct pg_reindex_state *state, struct pg_typing *typing,
-	const struct pg_evidence *substitution, const struct pg_evidence *proof)
-{
-	if (!pg_evidence_owned_by(substitution, typing)) return -1;
-	if (substitution->rule != PG_CONTEXT_SUBSTITUTION) return -1;
-	if (!pg_evidence_owned_by(proof, typing)) return -1;
-	if (!pg_evidence_subject(proof)) return -1;
-	if (pg_evidence_context(proof) != pg_evidence_context(substitution->premises[0])) return -1;
-	state->typing = typing;
-	state->premises[0] = substitution;
-	state->premises[1] = proof;
-	const struct pg_evidence *premises[] = {substitution, proof};
-	uint64_t hash;
-	state->result = find_record(typing, PG_REINDEX,
-		pg_evidence_context(substitution), NULL, 2, premises, NULL, &hash);
-	state->status = state->result ? PG_REINDEX_DONE : PG_REINDEX_PENDING;
-	if (!state->result) {
-		state->action = pg_occurrence_action_request(typing,
-			substitution->conclusion.map, pg_evidence_subject(proof));
-		if (!state->action) return -1;
-	}
-	return 0;
-}
-
-int pg_reindex_init(struct pg_reindex *work, struct pg_typing *typing,
-	const struct pg_evidence *substitution, const struct pg_evidence *proof)
-{
-	work->state = calloc(1, sizeof(*work->state));
-	if (!work->state) return -1;
-	if (reindex_prepare(work->state, typing, substitution, proof) == 0) return 0;
-	pg_reindex_destroy(work);
-	return -1;
-}
-
-static enum pg_reindex_status reindex_step(struct pg_reindex_state *state)
-{
-	switch (pg_occurrence_action_advance(state->action, 1)) {
-	case PG_SUBSTITUTION_PENDING: return PG_REINDEX_PENDING;
-	case PG_SUBSTITUTION_ERROR: return PG_REINDEX_ERROR;
-	case PG_SUBSTITUTION_DONE: break;
-	}
-	const struct pg_occurrence *subject = pg_occurrence_action_result(state->action);
-	state->result = accept(state->typing, PG_REINDEX, subject->context,
-		subject, 2, state->premises);
-	return state->result ? PG_REINDEX_DONE : PG_REINDEX_ERROR;
-}
-
-enum pg_reindex_status pg_reindex_status(const struct pg_reindex *work)
-{
-	return work->state ? work->state->status : PG_REINDEX_ERROR;
-}
-
-enum pg_reindex_status pg_reindex_advance(struct pg_reindex *work, uint64_t budget)
-{
-	while (pg_reindex_status(work) == PG_REINDEX_PENDING && budget) {
-		--budget;
-		++work->state->steps;
-		work->state->status = reindex_step(work->state);
-	}
-	return pg_reindex_status(work);
-}
-
-const struct pg_evidence *pg_reindex_result(const struct pg_reindex *work)
-{
-	return pg_reindex_status(work) == PG_REINDEX_DONE ? work->state->result : NULL;
-}
-
-uint64_t pg_reindex_steps(const struct pg_reindex *work)
-{
-	return work->state ? work->state->steps : 0;
-}
-
-void pg_reindex_destroy(struct pg_reindex *work)
-{
-	if (!work->state) return;
-	free(work->state);
-	work->state = NULL;
-}
-
 const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof)
 {
-	struct pg_reindex_state state = {0};
-	struct pg_reindex work = {&state};
-	if (reindex_prepare(&state, typing, substitution, proof) != 0) return NULL;
-	while (pg_reindex_advance(&work, UINT64_MAX) == PG_REINDEX_PENDING) {}
-	const struct pg_evidence *result = pg_reindex_result(&work);
-	return result;
+	if (!pg_evidence_owned_by(substitution, typing)) return NULL;
+	if (substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (!pg_evidence_owned_by(proof, typing) || !pg_evidence_subject(proof)) return NULL;
+	if (pg_evidence_context(proof) != pg_evidence_context(substitution->premises[0])) return NULL;
+	const struct pg_evidence *premises[] = {substitution, proof};
+	uint64_t hash;
+	const struct pg_evidence *result = find_record(typing, PG_REINDEX,
+		pg_evidence_context(substitution), NULL, 2, premises, NULL, &hash);
+	if (result) return result;
+	struct pg_occurrence_action *action = pg_occurrence_action_request(typing,
+		substitution->conclusion.map, pg_evidence_subject(proof));
+	while (pg_occurrence_action_advance(action, UINT64_MAX) == PG_SUBSTITUTION_PENDING) {}
+	const struct pg_occurrence *subject = pg_occurrence_action_result(action);
+	return subject ? accept(typing, PG_REINDEX, subject->context, subject, 2, premises) : NULL;
 }
 
 static int substitution_proof(const struct pg_typing *typing, const struct pg_evidence *proof)
