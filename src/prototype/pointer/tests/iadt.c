@@ -2121,7 +2121,11 @@ static void schema_positivity(void)
 		const struct pg_evidence *branches[] = {zero_function, step};
 		const struct pg_evidence *elimination = pg_prove_induction(&typing, &classifiers,
 			tree, identity, root, tree_context, tree_motive, 2, branches);
+		struct pg_typed_query *query = pg_elimination_body_request(&typing, elimination);
+		assert(query && !pg_typed_query_advance(query, 0));
+		while (!pg_typed_query_advance(query, 64)) assert(pg_typed_query_steps(query) < 10000);
 		const struct pg_evidence *unfolded = pg_prove_elimination_body(&typing, &classifiers, elimination);
+		assert(unfolded && pg_typed_query_result(query) == unfolded);
 		const struct pg_evidence *two = pg_prove_constructor(&typing, nat,
 			pg_data_constructor(nat_layout, 1), identity, 1, &succ);
 		assert(elimination && unfolded && two);
@@ -2140,12 +2144,37 @@ static void schema_positivity(void)
 	const struct pg_evidence *countdown = pg_prove_induction(&typing, &classifiers,
 		nat, identity, twice, z_context, nat_motive, 2, recursive_branches);
 	assert(countdown && pg_evidence_rule(countdown) == PG_INDUCTION_ELIM);
+	struct pg_typed_query *countdown_query = pg_elimination_body_request(&typing, countdown);
+	assert(countdown_query && !pg_typed_query_advance(countdown_query, 0));
+	uint64_t countdown_steps = 0;
+	while (!pg_typed_query_advance(countdown_query, 1)) {
+		assert(pg_typed_query_steps(countdown_query) <= countdown_steps + 1);
+		countdown_steps = pg_typed_query_steps(countdown_query);
+		assert(countdown_steps < 10000);
+	}
 	const struct pg_evidence *countdown_body = pg_prove_elimination_body(&typing, &classifiers, countdown);
+	assert(pg_typed_query_result(countdown_query) == countdown_body);
 	assert(countdown_body && pg_evidence_context(countdown_body) == pg_evidence_context(countdown));
 	assert(pg_alpha_equal(pg_evidence_classifier(countdown_body), pg_evidence_classifier(countdown)) == 1);
 	check(&constructor_work, pg_evidence_subject(countdown_body)->core, pg_evidence_subject(zero_function)->core);
 	common_rule(&typing, &classifiers, countdown_body);
 	assert(pg_prove_elimination_body(&typing, &classifiers, countdown) == countdown_body);
+	{
+		struct pg_typed_query *returned = pg_return_body_request(&typing, countdown);
+		while (!pg_typed_query_advance(returned, 1)) assert(pg_typed_query_steps(returned) < 10000);
+		const struct pg_evidence *value = pg_typed_query_result(returned);
+		assert(value && pg_evidence_context(value) == pg_evidence_context(countdown));
+		assert(pg_evidence_subject(value)->core == pg_evidence_subject(pg_prove_return_value(&typing, zero_function))->core);
+		assert(pg_evidence_classifier(value) == pg_evidence_subject(nat)->core);
+		common_rule(&typing, &classifiers, value);
+		size_t proofs = typing.proofs.count, subjects = typing.occurrences.count;
+		countdown_steps = pg_typed_query_steps(countdown_query);
+		assert(pg_elimination_body_request(&typing, countdown) == countdown_query);
+		assert(pg_typed_query_advance(countdown_query, 64) == 1);
+		assert(pg_typed_query_steps(countdown_query) == countdown_steps);
+		assert(pg_prove_elimination_body(&typing, &classifiers, countdown) == countdown_body);
+		assert(typing.proofs.count == proofs && typing.occurrences.count == subjects);
+	}
 	{
 		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
 		const struct pg_evidence *scope = pg_prove_inductive_motive_context(&typing, nat, map, pg_binder(&graph));
@@ -2175,10 +2204,13 @@ static void schema_positivity(void)
 	}
 	assert(!pg_prove_elimination_body(&typing, NULL, countdown));
 	assert(!pg_prove_elimination_body(NULL, &classifiers, countdown));
+	assert(!pg_elimination_body_request(&typing, NULL));
+	assert(!pg_elimination_body_request(&typing, zero_function));
 	{
 		struct pg_typing foreign;
 		assert(!pg_typing_init(&foreign, &graph));
 		assert(!pg_prove_elimination_body(&foreign, &classifiers, countdown));
+		assert(!pg_elimination_body_request(&foreign, countdown));
 		pg_typing_destroy(&foreign);
 	}
 	const struct pg_induction_allocation *countdown_allocation = pg_evidence_induction_allocation(countdown);
@@ -2236,8 +2268,37 @@ static void schema_positivity(void)
 		nat_motive, 2, recursive_branches, &invalid_allocation));
 	invalid_allocation = *countdown_allocation;
 	invalid_allocation.recursion = pg_binder(&graph);
-	assert(!pg_prove_induction_at(&typing, &classifiers, nat, identity, twice, z_context,
-		nat_motive, 2, recursive_branches, &invalid_allocation));
+	/* Fresh, noncapturing allocation is a distinct valid construction, not a
+	 * conflicting proof of the default construction. Neither replaces the other. */
+	const struct pg_evidence *alternative = pg_prove_induction_at(&typing, &classifiers,
+		nat, identity, twice, z_context, nat_motive, 2, recursive_branches, &invalid_allocation);
+	assert(alternative && alternative != countdown);
+	assert(pg_evidence_subject(alternative)->core != pg_evidence_subject(countdown)->core);
+	assert(pg_alpha_equal(pg_evidence_subject(alternative)->core, pg_evidence_subject(countdown)->core) == 1);
+	assert(pg_prove_induction_at(&typing, &classifiers, nat, identity, twice, z_context,
+		nat_motive, 2, recursive_branches, &invalid_allocation) == alternative);
+	common_rule(&typing, &classifiers, alternative);
+	assert(pg_prove_induction(&typing, &classifiers, nat, identity, twice, z_context,
+		nat_motive, 2, recursive_branches) == countdown);
+	{
+		/* Supplying a valid allocation first must not reserve this premise tuple
+		 * against later default construction or another explicit allocation. */
+		const struct pg_evidence *three = pg_prove_constructor(&typing, nat,
+			pg_data_constructor(nat_layout, 1), identity, 1, &twice);
+		const struct pg_evidence *explicit_first = pg_prove_induction_at(&typing, &classifiers,
+			nat, identity, three, z_context, nat_motive, 2, recursive_branches, countdown_allocation);
+		const struct pg_evidence *default_next = pg_prove_induction(&typing, &classifiers,
+			nat, identity, three, z_context, nat_motive, 2, recursive_branches);
+		assert(explicit_first && default_next && explicit_first != default_next);
+		assert(pg_alpha_equal(pg_evidence_subject(explicit_first)->core,
+			pg_evidence_subject(default_next)->core) == 1);
+		common_rule(&typing, &classifiers, explicit_first);
+		common_rule(&typing, &classifiers, default_next);
+		assert(pg_prove_induction(&typing, &classifiers, nat, identity, three, z_context,
+			nat_motive, 2, recursive_branches) == default_next);
+		assert(pg_prove_induction_at(&typing, &classifiers, nat, identity, three, z_context,
+			nat_motive, 2, recursive_branches, countdown_allocation) == explicit_first);
+	}
 	const struct pg_context *short_clauses[] = {countdown_allocation->clauses[0], countdown_allocation->clauses[1]->parent};
 	invalid_allocation = *countdown_allocation;
 	invalid_allocation.clauses = short_clauses;

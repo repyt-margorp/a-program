@@ -327,8 +327,9 @@ const struct pg_evidence *pg_prove_induction(struct pg_typing *typing,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches);
-/* Reconstruct with explicit allocation. A conflicting allocation for an
- * already-built derivation is rejected, never substituted into its proof. */
+/* Reconstruct with explicit allocation. Distinct valid allocations produce
+ * distinct constructions; no existing derivation is replaced. Default
+ * allocation requests are memoized separately from accepted derivations. */
 const struct pg_evidence *pg_prove_induction_at(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
@@ -463,8 +464,12 @@ const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 struct pg_typed_query;
 struct pg_typed_query *pg_application_body_request(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
-/* Return extraction follows typed beta, zero-clause Fold and nonrecursive
- * Match construction. Computed scrutinees share budgeted body dependencies;
+/* One Match/IH unfolding, preserving the selected branch's computation.
+ * Constructor exposure and successive applications are shared dependencies. */
+struct pg_typed_query *pg_elimination_body_request(struct pg_typing *typing,
+	const struct pg_evidence *elimination);
+/* Return extraction follows typed beta, zero-clause Fold and Match/IH
+ * construction. Computed scrutinees share budgeted body dependencies;
  * a root's step count includes the dependency transitions it advances.
  * Requests remain opaque: only an actual RETURN resumes the continuation.
  * A normalized input exposes its checked source recipe, not normalized fields. */

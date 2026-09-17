@@ -25,6 +25,10 @@ struct pg_induction_allocation {
 	const struct pg_context *const *clauses;
 };
 
+uint64_t pg_induction_allocation_hash(const struct pg_induction_allocation *allocation);
+int pg_induction_allocation_equal(const struct pg_induction_allocation *left,
+	const struct pg_induction_allocation *right);
+
 /* Descriptive typed structure, not acceptance evidence. A NULL classifier
  * denotes an unclassified input. Source locations belong to diagnostics. */
 struct pg_occurrence {
@@ -76,6 +80,8 @@ struct pg_typing {
 	struct pg_index occurrence_actions;
 	struct pg_index occurrence_inputs;
 	struct pg_index typed_queries;
+	/* Memoized default lexical allocation requests, not acceptance evidence. */
+	struct pg_index induction_requests;
 	struct pg_index proofs;
 	/* Read-only lookup paths to the same accepted derivations, not claims or
 	 * another acceptance store. Alternatives are never replaced. */

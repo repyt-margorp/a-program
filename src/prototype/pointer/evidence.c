@@ -164,10 +164,12 @@ static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_e
 	const struct pg_context *context, const struct pg_occurrence *subject, size_t count, const struct pg_evidence *const *premises,
 	const void *certificate, uint64_t *hash_out)
 {
-	/* For these rules, immutable premises determine the output. Check this key
-	 * before substitution or independence checks allocate temporary binders. */
+	/* Premises and, for induction, explicit lexical allocation determine these
+	 * outputs. Check before constructing scopes with temporary fresh binders. */
+	const struct pg_induction_allocation *allocation = rule == PG_INDUCTION_ELIM && subject ? subject->induction : NULL;
 	if (derived_output(rule)) subject = NULL;
 	uint64_t hash = ((uintptr_t)context ^ (uintptr_t)subject ^ rule) * UINT64_C(1099511628211);
+	if (rule == PG_INDUCTION_ELIM) hash ^= pg_induction_allocation_hash(allocation);
 	const void *key = certificate_key(rule, certificate);
 	hash = (hash ^ (uintptr_t)key) * UINT64_C(1099511628211);
 	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
@@ -176,6 +178,8 @@ static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_e
 		if (candidate->hash != hash) continue;
 		const struct pg_evidence *proof = (const struct pg_evidence *)candidate;
 		if (proof->rule != rule) continue;
+		if (rule == PG_INDUCTION_ELIM &&
+			!pg_induction_allocation_equal(pg_evidence_subject(proof)->induction, allocation)) continue;
 		if (pg_evidence_context(proof) != context) continue;
 		if (!derived_output(rule)) {
 			if (pg_evidence_subject(proof) != subject) continue;
@@ -746,8 +750,14 @@ struct typed_query_wait {
 	struct typed_query_wait *parent;
 };
 
-enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD };
+enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION };
 enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT };
+
+struct typed_elimination {
+	const struct pg_evidence *branch;
+	const struct pg_evidence **arguments;
+	size_t count, next;
+};
 
 struct pg_typed_query {
 	struct pg_index_entry index;
@@ -761,6 +771,7 @@ struct pg_typed_query {
 	struct pg_occurrence_input *input;
 	struct pg_context_lift *lift;
 	struct pg_occurrence_action *action;
+	struct typed_elimination *elimination;
 	const struct pg_reduction_certificate *reduction;
 	enum typed_query_kind kind;
 	size_t ordinal;
@@ -771,6 +782,7 @@ struct pg_typed_query {
 
 static int typed_body_match(struct pg_typed_query *work);
 static int typed_input_step(struct pg_typed_query *work);
+static int typed_elimination_step(struct pg_typed_query *work);
 static const struct pg_evidence *unary_term_content(struct pg_typing *typing,
 	const struct pg_evidence *proof, const struct pg_occurrence *child);
 
@@ -811,6 +823,14 @@ struct pg_typed_query *pg_return_body_request(struct pg_typing *typing,
 {
 	if (!pg_evidence_owned_by(computation, typing) || pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
 	return typed_query_request(typing, computation, NULL, TYPED_BODY, 0);
+}
+
+struct pg_typed_query *pg_elimination_body_request(struct pg_typing *typing,
+	const struct pg_evidence *elimination)
+{
+	if (!pg_evidence_owned_by(elimination, typing)) return NULL;
+	if (elimination->rule != PG_MATCH_ELIM && elimination->rule != PG_INDUCTION_ELIM) return NULL;
+	return typed_query_request(typing, elimination, NULL, TYPED_ELIMINATION, 0);
 }
 
 static struct pg_typed_query *typed_head_request(struct pg_typing *typing,
@@ -911,7 +931,7 @@ static int typed_body_step(struct pg_typed_query *work)
 		work->current = current->origin;
 		return 0;
 	}
-	if (current->map_count == 1 && !current->induction)
+	if (current->map_count == 1)
 		return typed_body_match(work);
 	if (core->kind == PG_LAMBDA) {
 		if (!work->argument || work->forces || current->operand_count != 1) return -1;
@@ -962,7 +982,11 @@ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
 		++work->steps;
 		if (!current->status) {
 			if (current != work) ++current->steps;
-			current->status = current->kind == TYPED_INPUT ? typed_input_step(current) : typed_body_step(current);
+			switch (current->kind) {
+			case TYPED_INPUT: current->status = typed_input_step(current); break;
+			case TYPED_ELIMINATION: current->status = typed_elimination_step(current); break;
+			default: current->status = typed_body_step(current); break;
+			}
 			if (current->kind == TYPED_INPUT && current->status == 1 && !current->result && !current->ordinal)
 				current->result = unary_term_content(current->typing,
 					pg_prove_structural_subject(current->typing, current->source), NULL);
@@ -1882,6 +1906,34 @@ const struct pg_evidence *pg_prove_match_branch_type(struct pg_typing *typing,
 	return expected;
 }
 
+struct induction_request {
+	struct pg_index_entry index;
+	const struct pg_evidence *result;
+};
+
+/* Omitting lexical allocation is a construction request, not an equivalence
+ * of all conclusions with the same premises. Explicit allocations must still
+ * be checked independently and retain their exact Core/typed structure. */
+static struct induction_request *induction_request(struct pg_typing *typing,
+	size_t count, const struct pg_evidence *const *premises)
+{
+	if (!typing->induction_requests.capacity && pg_index_init(&typing->induction_requests)) return NULL;
+	uint64_t hash = count;
+	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
+	for (struct pg_index_entry *p = pg_index_candidates(&typing->induction_requests, hash); p; p = p->next) {
+		if (p->hash != hash) continue;
+		struct induction_request *request = (void *)p;
+		const struct pg_evidence *result = request->result;
+		if (result->premise_count != count) continue;
+		size_t i = 0;
+		while (i < count && result->premises[i] == premises[i]) ++i;
+		if (i == count) return request;
+	}
+	struct induction_request *request = pg_alloc(typing->graph, sizeof(*request));
+	if (request) request->index.hash = hash;
+	return request;
+}
+
 static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
@@ -1938,19 +1990,24 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 		motive_context, motive, destination, scrutinee);
 	if (!output) goto done;
 	premises[count + 5] = output;
-	uint64_t hash;
-	result = find_record(typing, rule,
-		pg_evidence_context(destination), NULL, count + 6, premises, NULL, &hash);
-	if (result) {
-		if (allocation) {
-			const struct pg_induction_allocation *saved = pg_evidence_induction_allocation(result);
-			if (!saved || saved->recursion != allocation->recursion || saved->argument != allocation->argument ||
-				saved->self != allocation->self) { result = NULL; goto done; }
-			for (size_t i = 0; i < count; ++i)
-				if (saved->clauses[i] != allocation->clauses[i]) { result = NULL; break; }
+	struct induction_request *request = NULL;
+	if (rule == PG_INDUCTION_ELIM) {
+		if (!allocation) {
+			request = induction_request(typing, count + 6, premises);
+			if (!request) goto done;
+			result = request->result;
+		} else {
+			uint64_t hash;
+			struct pg_occurrence selector = {.induction = allocation};
+			result = find_record(typing, rule, pg_evidence_context(destination),
+				&selector, count + 6, premises, NULL, &hash);
 		}
-		goto done;
+	} else {
+		uint64_t hash;
+		result = find_record(typing, rule,
+			pg_evidence_context(destination), NULL, count + 6, premises, NULL, &hash);
 	}
+	if (result) goto done;
 	const struct pg_data_layout *layout = pg_data_schema_layout(schema);
 	struct pg_match_clause *clauses = pg_alloc(&temporary, count * sizeof(*clauses));
 	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 3) * sizeof(*operands));
@@ -2004,6 +2061,10 @@ static const struct pg_evidence *prove_data_elimination(struct pg_typing *typing
 	if (!subject) goto done;
 	result = accept_record(typing, rule,
 		pg_evidence_context(destination), subject, count + 6, premises, NULL, NULL);
+	if (result && request) {
+		request->result = result;
+		if (pg_index_insert(&typing->induction_requests, &request->index, request->index.hash)) result = NULL;
+	}
 done:
 	pg_graph_destroy(&temporary);
 	return result;
@@ -2197,37 +2258,29 @@ done:
 
 static const struct pg_evidence *elimination_branch(struct pg_typing *typing,
 	struct pg_graph *temporary, const struct elimination_structure *view,
-	const struct pg_evidence *map, struct constructor_structure *value,
+	struct constructor_structure *value,
 	struct pg_typed_query **dependency)
 {
-	const struct pg_evidence *scrutinee = view->scrutinee;
-	if (map) scrutinee = pg_prove_reindex(typing, map, scrutinee);
-	if (!constructor_structure(typing, temporary, scrutinee, value, dependency)) return NULL;
+	if (!constructor_structure(typing, temporary, view->scrutinee, value, dependency)) return NULL;
 	if (pg_evidence_subject(value->formation) != pg_evidence_subject(view->formation)) return NULL;
 	const struct pg_data_schema *schema = view->formation->certificate;
 	size_t position;
 	if (!pg_data_constructor_position(pg_data_schema_layout(schema), value->constructor, &position)) return NULL;
 	if (position >= view->count) return NULL;
-	const struct pg_evidence *branch = pg_prove_structural_subject(typing, view->subject->operands[position + 1]);
-	return map ? pg_prove_reindex(typing, map, branch) : branch;
+	return pg_prove_structural_subject(typing, view->subject->operands[position + 1]);
 }
 
 static int typed_body_match(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_evidence *source = pg_prove_structural_subject(typing, work->current);
-	struct elimination_structure view;
-	if (!source || source->rule != PG_MATCH_ELIM || elimination_structure(typing, source, &view)) return -1;
-	struct pg_graph temporary = {0};
-	struct constructor_structure value;
-	const struct pg_evidence *branch = elimination_branch(typing, &temporary, &view, work->environment, &value, &work->dependency);
-	for (size_t i = 0; branch && i < value.count; ++i)
-		branch = pg_prove_application(typing, branch, value.fields[i]);
-	pg_graph_destroy(&temporary);
-	if (!branch) return work->dependency ? 0 : -1;
-	work->current = pg_evidence_subject(branch);
+	struct pg_classifiers classifiers = {.graph = typing->graph};
+	if (work->environment)
+		source = pg_prove_elimination_reindex(typing, &classifiers, work->environment, source);
 	work->environment = NULL;
-	return 0;
+	work->dependency = pg_elimination_body_request(typing, source);
+	work->resume = TYPED_RESUME_BODY;
+	return work->dependency ? 0 : -1;
 }
 
 static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
@@ -2242,8 +2295,9 @@ static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
 		if (branches) {
 			for (size_t i = 0; i < view->count; ++i)
 				branches[i] = pg_prove_structural_subject(typing, view->subject->operands[i + 1]);
-			result = pg_prove_induction(typing, classifiers, view->formation, view->parameters,
-				field, view->motive_context, view->motive, view->count, branches);
+			result = pg_prove_induction_at(typing, classifiers, view->formation, view->parameters,
+				field, view->motive_context, view->motive, view->count, branches,
+				pg_evidence_induction_allocation(elimination));
 		}
 		pg_graph_destroy(&temporary);
 		return result;
@@ -2276,44 +2330,80 @@ static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
 	return pg_prove_abstract(typing, classifiers, context, scope, body);
 }
 
-const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
-	struct pg_classifiers *classifiers,
-	const struct pg_evidence *elimination)
+static int typed_elimination_prepare(struct pg_typed_query *work)
 {
-	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	struct pg_typing *typing = work->typing;
+	struct pg_classifiers classifiers = {.graph = typing->graph};
+	const struct pg_evidence *elimination = pg_prove_structural_subject(typing, work->source);
 	struct elimination_structure view;
-	if (elimination_structure(typing, elimination, &view)) return NULL;
+	if (elimination_structure(typing, elimination, &view)) return -1;
 	struct pg_graph temporary = {0};
 	struct constructor_structure value;
-	const struct pg_evidence *result = elimination_branch(typing, &temporary, &view, NULL, &value, NULL);
-	if (!result) goto failed;
+	int status = -1;
+	const struct pg_evidence *branch = elimination_branch(typing, &temporary, &view, &value, &work->dependency);
+	if (!branch) {
+		status = work->dependency ? 0 : -1;
+		goto done;
+	}
 	const struct pg_data_schema *schema = view.formation->certificate;
 	size_t count = value.count;
-	for (size_t i = 0; result && i < count; ++i)
-		result = pg_prove_application_body(typing, result, value.fields[i]);
-	if (!result || elimination->rule == PG_MATCH_ELIM) goto done;
-	unsigned char *recursive = pg_alloc(&temporary, count);
-	if (count && !recursive) goto failed;
-	const struct pg_context *declaration = pg_evidence_context(pg_data_schema_fields(schema, value.constructor));
-	const struct pg_object *self = pg_evidence_context(view.formation->premises[0])->binder;
-	for (size_t i = count; i; --i, declaration = declaration->parent) {
-		int kind = pg_data_recursive_field(declaration->declared_type, self);
-		if (kind < 0) goto failed;
-		recursive[i - 1] = kind != 0;
+	if (count > SIZE_MAX / 2 / sizeof(const struct pg_evidence *)) goto done;
+	struct typed_elimination *state = pg_alloc(typing->graph, sizeof(*state));
+	if (!state) goto done;
+	*state = (struct typed_elimination){.branch = branch, .count = count};
+	state->arguments = pg_alloc(typing->graph, 2 * count * sizeof(*state->arguments));
+	if (count && !state->arguments) goto done;
+	for (size_t i = 0; i < count; ++i) state->arguments[i] = value.fields[i];
+	if (elimination->rule == PG_INDUCTION_ELIM) {
+		const struct pg_context *declaration = pg_evidence_context(pg_data_schema_fields(schema, value.constructor));
+		const struct pg_object *self = pg_evidence_context(view.formation->premises[0])->binder;
+		for (size_t i = count; i; --i, declaration = declaration->parent) {
+			int kind = pg_data_recursive_field(declaration->declared_type, self);
+			if (kind < 0) goto done;
+			state->arguments[count + i - 1] = kind ? value.fields[i - 1] : NULL;
+		}
+		state->count += count;
+		for (size_t i = count; i < state->count; ++i) {
+			if (!state->arguments[i]) continue;
+			const struct pg_evidence *call = induction_field_body(typing, &classifiers, elimination, &view, state->arguments[i]);
+			state->arguments[i] = pg_prove_thunk(typing, &classifiers, call);
+			if (!state->arguments[i]) goto done;
+		}
 	}
-	for (size_t i = 0; i < count; ++i) {
-		if (!recursive[i]) continue;
-		const struct pg_evidence *field = value.fields[i];
-		const struct pg_evidence *call = induction_field_body(typing, classifiers, elimination, &view, field);
-		result = pg_prove_application_body(typing, result, pg_prove_thunk(typing, classifiers, call));
-		if (!result) goto failed;
-	}
-	goto done;
-failed:
-	result = NULL;
+	work->elimination = state;
+	status = 0;
 done:
 	pg_graph_destroy(&temporary);
-	return result;
+	return status;
+}
+
+static int typed_elimination_step(struct pg_typed_query *work)
+{
+	if (!work->elimination) return typed_elimination_prepare(work);
+	struct typed_elimination *state = work->elimination;
+	if (work->dependency) {
+		if (!work->dependency->status) return 0;
+		state->branch = pg_typed_query_result(work->dependency);
+		work->dependency = NULL;
+		if (!state->branch) return -1;
+	}
+	if (state->next == state->count) {
+		work->result = state->branch;
+		return 1;
+	}
+	const struct pg_evidence *argument = state->arguments[state->next++];
+	if (!argument) return 0;
+	work->dependency = pg_application_body_request(work->typing, state->branch, argument);
+	return work->dependency ? 0 : -1;
+}
+
+const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
+	struct pg_classifiers *classifiers, const struct pg_evidence *elimination)
+{
+	if (!typing || !classifiers || classifiers->graph != typing->graph) return NULL;
+	struct pg_typed_query *work = pg_elimination_body_request(typing, elimination);
+	while (!pg_typed_query_advance(work, 1024)) {}
+	return pg_typed_query_result(work);
 }
 
 static int factor_binding(struct pg_graph *temporary, struct pg_index *index,

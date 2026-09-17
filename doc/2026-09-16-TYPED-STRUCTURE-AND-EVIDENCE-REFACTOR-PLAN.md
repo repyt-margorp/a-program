@@ -2609,3 +2609,47 @@ Cumulative implementation/header **+1774** against `4657cc6`. O0 QuickSort:
 match R53. This is one sample, not a speedup claim. Descriptor names and image
 formats are unchanged. Recursive-IH query integration, R2/R3/R5, net code
 reduction and Main publication remain open.
+
+### 2026-09-17: Share Match/IH body queries and preserve lexical allocation (R55)
+
+- [x] Replace the separate blocking elimination-body loop with a shared typed
+  query. Constructor exposure and branch applications are dependencies of the
+  existing budgeted scheduler. General RETURN/body queries now traverse direct
+  recursive IHs; one-step elimination still returns the selected computation,
+  not its returned value. Delete the superseded per-branch map path.
+- [x] Recursive calls on direct fields retain the original induction allocation.
+  Deeper traversal exposed a pre-existing order-sensitive key: induction proofs
+  were interned by premises alone and rejected a different valid allocation.
+  Include allocation in that construction key. Memoize allocation-omitting
+  requests separately, referencing their accepted result and its existing
+  premises, without copying premise arrays or selecting a canonical proof for
+  a conclusion. Alternative valid explicit allocations remain separate; neither
+  overwrites an accepted derivation or changes a completed default request.
+- [x] Share exact allocation hashing/comparison with typed-subject interning.
+  No alpha/reduction equality is added to Core interning, no new logical rule,
+  and no descriptor/image format change.
+- [x] Test zero/split budgets, multi-field IH unfolding, full countdown RETURN
+  extraction, repeated-query reuse, foreign/non-elimination rejection, both
+  default/explicit construction orders, and ordinary derivation reconstruction
+  of distinct valid allocations. Captured/duplicate binders and wrong suffix
+  lengths still reject.
+- [x] Full final debug acceptance passes, including 63/63 compatibility and
+  QuickSort source/image checks. ASan/UBSan Core, IADT, Identity, synthesis,
+  imported QuickSort and the full derivation I/O script pass. Logs are under
+  `/tmp/a-program-typed-structure-r55-*`; final debug log is `r55-debug-final.log`.
+
+Rejected detour: requiring retained allocation type annotations to match the
+recomputed scope would change the existing documented API. Allocation inputs
+supply binder identities, not trusted type judgements; the checker recomputes
+field/IH types. The existing wrong-annotation/recomputed-type regression remains
+unchanged. This must not be confused with accepting a forged typed scope.
+
+Against `4cd9b41`: `evidence.c` +154/-64, `evidence.h` +9/-4, `typing.c`
++27/-17, `typing.h` +6/-0: implementation/header **+111**. `tests/iadt.c`
++63/-2. Cumulative implementation/header **+1885** against `4657cc6`.
+Idle O0 QuickSort: 1.1324 seconds / 277420 KiB / 131255 transitions. Counts:
+178766 Core terms (+338), 414650 subjects (+41), 433564 proofs (+55),
+3230 typed queries (+19), 3386 input queries (+1), 19 default induction requests.
+One sample is not a speedup or regression claim. R2/R3/R5, general dependent
+normalized-input recovery, the overall code-reduction gate and Main publication
+remain open; this checkpoint is not completion of the refactor.

@@ -41,6 +41,7 @@ void pg_typing_destroy(struct pg_typing *typing)
 	pg_index_destroy(&typing->occurrence_actions);
 	pg_index_destroy(&typing->occurrence_inputs);
 	pg_index_destroy(&typing->typed_queries);
+	pg_index_destroy(&typing->induction_requests);
 	pg_index_destroy(&typing->proofs);
 	pg_index_destroy(&typing->evidence_conclusions);
 	pg_substitution_work_destroy(&typing->substitutions);
@@ -133,6 +134,30 @@ int pg_context_extension_size(const struct pg_context *context,
 	return 0;
 }
 
+uint64_t pg_induction_allocation_hash(const struct pg_induction_allocation *allocation)
+{
+	if (!allocation) return 0;
+	uint64_t hash = (uintptr_t)allocation->recursion;
+	hash = (hash ^ (uintptr_t)allocation->argument) * UINT64_C(1099511628211);
+	hash = (hash ^ (uintptr_t)allocation->self) * UINT64_C(1099511628211);
+	hash = (hash ^ allocation->count) * UINT64_C(1099511628211);
+	for (size_t i = 0; i < allocation->count; ++i)
+		hash = (hash ^ (uintptr_t)allocation->clauses[i]) * UINT64_C(1099511628211);
+	return hash;
+}
+
+int pg_induction_allocation_equal(const struct pg_induction_allocation *left,
+	const struct pg_induction_allocation *right)
+{
+	if (left == right) return 1;
+	if (!left || !right) return 0;
+	if (left->recursion != right->recursion || left->argument != right->argument ||
+		left->self != right->self || left->count != right->count) return 0;
+	for (size_t i = 0; i < left->count; ++i)
+		if (left->clauses[i] != right->clauses[i]) return 0;
+	return 1;
+}
+
 const struct pg_occurrence *pg_occurrence_intern(struct pg_typing *typing,
 	const struct pg_occurrence *header, const struct pg_occurrence *const *operands,
 	const struct pg_context_map *const *maps)
@@ -180,14 +205,7 @@ const struct pg_occurrence *pg_occurrence_intern(struct pg_typing *typing,
 	hash = (hash ^ (uintptr_t)map) * UINT64_C(1099511628211);
 	hash = (hash ^ operand_count) * UINT64_C(1099511628211);
 	hash = (hash ^ map_count) * UINT64_C(1099511628211);
-	if (induction) {
-		hash = (hash ^ (uintptr_t)induction->recursion) * UINT64_C(1099511628211);
-		hash = (hash ^ (uintptr_t)induction->argument) * UINT64_C(1099511628211);
-		hash = (hash ^ (uintptr_t)induction->self) * UINT64_C(1099511628211);
-		hash = (hash ^ induction->count) * UINT64_C(1099511628211);
-		for (size_t i = 0; i < induction->count; ++i)
-			hash = (hash ^ (uintptr_t)induction->clauses[i]) * UINT64_C(1099511628211);
-	}
+	hash = (hash ^ pg_induction_allocation_hash(induction)) * UINT64_C(1099511628211);
 	for (size_t i = 0; i < map_count; ++i) {
 		if (!maps[i] || maps[i]->destination != context) return NULL;
 		hash = (hash ^ (uintptr_t)maps[i]) * UINT64_C(1099511628211);
@@ -209,15 +227,7 @@ const struct pg_occurrence *pg_occurrence_intern(struct pg_typing *typing,
 		if (found->selection != selection) continue;
 		if (found->operand_count != operand_count) continue;
 		if (found->map_count != map_count) continue;
-		if (!!found->induction != !!induction) continue;
-		if (induction) {
-			const struct pg_induction_allocation *a = found->induction;
-			if (a->recursion != induction->recursion || a->argument != induction->argument ||
-				a->self != induction->self || a->count != induction->count) continue;
-			size_t j = 0;
-			while (j < a->count && a->clauses[j] == induction->clauses[j]) ++j;
-			if (j != a->count) continue;
-		}
+		if (!pg_induction_allocation_equal(found->induction, induction)) continue;
 		size_t i = 0;
 		while (i < operand_count && found->operands[i] == operands[i]) ++i;
 		if (i != operand_count) continue;
