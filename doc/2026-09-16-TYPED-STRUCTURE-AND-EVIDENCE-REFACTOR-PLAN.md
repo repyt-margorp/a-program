@@ -328,7 +328,7 @@ checkpoint notes below are historical, not additional completion claims.
 | Evidence classifier/context/sort copies | Removed for term conclusions |
 | Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
 | Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. General multi-phase NF, recursive IH exposure and dependent field-classifier transport remain open; individual kernel checks and receipt lookup remain synchronous |
-| `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R37 adds nonrecursive Match branch selection and shared computed-scrutinee dependencies. R44 deletes the private `typed_body_frame` continuation stack: nested APP, Fold prefix/continuation and computed returned values use shared queries. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
+| `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
 | `inductive_recovery_step` | Reads typed origins/maps, selections and family inputs. R33 removes its private Return/Thunk counters and Fold continuation stack; computed results and applications share indexed typed-body work. Exact nominal formation and synchronous kernel suboperations remain |
@@ -339,7 +339,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
 | `typed_construction` | Deleted in R30. Conversion/widening retain their source typed use; checked construction access retrieves existing evidence. R32 removes operand/map/allocation copying from sort and content boundaries too. General result exposure remains open |
 | Metadata attachment copies | R34 deletes `pg_occurrence_classified`, `pg_occurrence_with_maps` and `pg_occurrence_with_induction`. Match/Identity construction and image read intern complete tuples once. Inversion may still attach a newly obtained classifier to an existing descriptive selection; that distinct formation is not discarded |
-| `action.c:origin_step` | Reads typed origins/maps; does not reinterpret derivation wrappers |
+| `action.c:origin_step`, `pg_prove_construction_origin` | R56 removes the independent origin/map walks. Both use shared budgeted origin queries, including cached suffix dependencies. Identity-specific crossing of type/value boundaries remains in `action.c`; ordinary construction queries stop at sort-changing extraction |
 | `action.c:identity_structure` | R35 removes repeated introduction of the same Identity theorem. Looks up a compatible accepted formation of the exact typed subject; different derivations remain available. Checked transport/rebuilding in a changed context is still required |
 | `derivation.c:pg_prove_derivation` | Intentionally retained: verifies rule inputs rather than interpreting program structure |
 
@@ -2653,3 +2653,38 @@ Idle O0 QuickSort: 1.1324 seconds / 277420 KiB / 131255 transitions. Counts:
 One sample is not a speedup or regression claim. R2/R3/R5, general dependent
 normalized-input recovery, the overall code-reduction gate and Main publication
 remain open; this checkpoint is not completion of the refactor.
+
+### 2026-09-17: Share checked construction-origin traversal (R56)
+
+- [x] Put construction-origin lookup in the existing typed-query store.
+  Origin suffixes are shared dependencies, not repeated synchronous walks.
+  Compose their checked maps in source-to-destination order. The public
+  blocking adapter and Identity formation/endpoint operations use this path.
+- [x] Keep semantic policies distinct: a normalization's origin is its checked
+  construction recipe, not its current normal form. Ordinary construction
+  access stops at a sort-changing extraction; Identity formation can explicitly
+  cross its type/value boundary after common origin/map traversal completes.
+- [x] Test alternative derivations sharing one query, composed renamed maps,
+  zero/split budgets, 32 nested projections, reuse of completed middle queries,
+  no new proofs on repeated access, foreign/context/null input rejection and
+  environment-access restrictions. Keep ordinary kernel checking of maps.
+- [x] An existing Identity test assumed an invalid depth must still be pending
+  after three transitions. Shared origins can reject it earlier. The revised
+  test retains zero-budget suspension and eventual/stable rejection, allowing
+  earlier failure, not success. Valid suspended-work cleanup is unchanged.
+- [x] Full debug acceptance passes, including 63/63 compatibility and final
+  QuickSort source/image checks. ASan/UBSan Core, IADT, Identity, synthesis and
+  imported QuickSort pass. Logs: `/tmp/a-program-typed-structure-r56-*`.
+
+Against `3b9a14a`: `action.c` +19/-11, `evidence.c` +43/-19, `evidence.h`
++5/-0: implementation/header **+37**. Tests: `core.c` +28/-0, `iadt.c`
++20/-0, `identity.c` +3/-1. Cumulative implementation/header **+1922**
+against `4657cc6`; the net-negative gate is not satisfied.
+Idle O0 QuickSort: 1.0904 seconds / 277472 KiB / 131255 transitions.
+Counts: 178745 Core terms (-21), 414644 subjects (-6), 433548 proofs (-16),
+4095 typed queries (+865), 3386 input queries (unchanged). Shared queries
+trade retained work for repeated traversal; one sample is not a speedup claim.
+R2/R3/R5 and Main publication remain open. The remaining representation review
+also includes the now graph-only `pg_classifiers` facade: its lifetime is no
+longer a semantic owner, but removing it must preserve lazy Universe formation
+and graph isolation, not merely rename another manager.

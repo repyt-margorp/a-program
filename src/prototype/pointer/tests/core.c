@@ -1388,6 +1388,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(!pg_evidence_for_subject(&foreign, mapped_suspended, NULL));
 	assert(!pg_evidence_for_subject(&foreign, mapped_suspended, suspended_receipt));
 	assert(!pg_prove_structural_subject(&foreign, mapped_suspended));
+	assert(!pg_construction_origin_request(&foreign, suspended_receipt));
 	pg_typing_destroy(&foreign);
 	assert(!pg_prove_reindex(&typing, sigma, destination_y));
 	assert(!pg_prove_reindex(&typing, sigma, source));
@@ -1467,6 +1468,33 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *extended_map = pg_prove_substitution_compose(&typing, sigma,
 		pg_prove_substitution_projection(&typing, destination, extended_destination));
 	assert(extended_map);
+	{
+		struct pg_typed_query *origin = pg_construction_origin_request(&typing, projected);
+		struct pg_typed_query *inner_origin = pg_construction_origin_request(&typing, reindexed_return);
+		assert(origin && inner_origin && !pg_typed_query_advance(origin, 0));
+		assert(!pg_construction_origin_environment(origin));
+		assert(pg_construction_origin_request(&typing, alternate_return) == inner_origin);
+		uint64_t steps = 0;
+		while (!pg_typed_query_advance(origin, 1)) {
+			assert(pg_typed_query_steps(origin) == ++steps);
+			assert(steps < 100);
+		}
+		assert(pg_typed_query_result(origin) == returned);
+		assert(pg_typed_query_advance(inner_origin, 0) == 1);
+		assert(pg_typed_query_result(inner_origin) == returned);
+		assert(pg_evidence_context_map(pg_construction_origin_environment(origin)) == pg_evidence_context_map(extended_map));
+		assert(pg_evidence_context_map(pg_construction_origin_environment(inner_origin)) == map);
+		steps = pg_typed_query_steps(origin);
+		size_t queries = typing.typed_queries.count, proofs = typing.proofs.count;
+		const struct pg_evidence *environment = NULL;
+		assert(pg_prove_construction_origin(&typing, &classifiers, projected, &environment) == returned);
+		assert(environment == pg_construction_origin_environment(origin));
+		assert(pg_typed_query_steps(origin) == steps && typing.typed_queries.count == queries && typing.proofs.count == proofs);
+		assert(!pg_construction_origin_request(NULL, returned));
+		assert(!pg_construction_origin_request(&typing, NULL));
+		assert(!pg_construction_origin_request(&typing, empty));
+		assert(!pg_construction_origin_environment(pg_return_body_request(&typing, returned)));
+	}
 	assert(pg_prove_substitution_rebase(&typing, destination, extended_map) == sigma);
 	size_t image_proofs = typing.proofs.count, image_terms = graph->terms.count;
 	assert(pg_substitution_image(&typing, sigma, a) == destination_b);

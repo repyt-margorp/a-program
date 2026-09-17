@@ -1023,7 +1023,9 @@ static void uniform_transport(struct pg_typing *typing, struct pg_classifiers *c
 	assert(!pg_identity_endpoint_result(unfinished));
 	pg_identity_endpoint_destroy(unfinished);
 	unfinished = pg_identity_endpoint_init(typing, classifiers, source, square_type, SIZE_MAX, PG_IDENTITY_LEFT);
-	assert(unfinished && pg_identity_endpoint_advance(unfinished, 3) == 0);
+	/* Shared completed origins can reveal the invalid depth earlier. */
+	assert(unfinished && pg_identity_endpoint_advance(unfinished, 0) == 0);
+	assert(pg_identity_endpoint_advance(unfinished, 3) <= 0);
 	assert(pg_identity_endpoint_advance(unfinished, 100) == -1);
 	assert(!pg_identity_endpoint_result(unfinished));
 	assert(pg_identity_endpoint_advance(unfinished, 0) == -1);

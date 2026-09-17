@@ -492,6 +492,11 @@ const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
  * map through ordinary rules. Reads typed inputs, not receipt wrappers.
  * Normalized subjects expose their checked source recipe, not current WHNF.
  * The returned classifier may precede conversion/effect subsumption. */
+struct pg_typed_query *pg_construction_origin_request(struct pg_typing *typing,
+	const struct pg_evidence *source);
+/* Available only for a completed origin query. NULL also denotes identity. */
+const struct pg_evidence *pg_construction_origin_environment(const struct pg_typed_query *work);
+/* Synchronous adapter, sharing the same completed origin/map result. */
 const struct pg_evidence *pg_prove_construction_origin(struct pg_typing *typing,
 	struct pg_classifiers *classifiers, const struct pg_evidence *proof,
 	const struct pg_evidence **environment);

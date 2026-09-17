@@ -750,7 +750,7 @@ struct typed_query_wait {
 	struct typed_query_wait *parent;
 };
 
-enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION };
+enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN };
 enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT };
 
 struct typed_elimination {
@@ -845,6 +845,43 @@ struct pg_typed_query *pg_typed_input_request(struct pg_typing *typing,
 {
 	if (!pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source) || index == SIZE_MAX) return NULL;
 	return typed_query_request(typing, source, NULL, TYPED_INPUT, index);
+}
+
+struct pg_typed_query *pg_construction_origin_request(struct pg_typing *typing,
+	const struct pg_evidence *source)
+{
+	if (!pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source)) return NULL;
+	return typed_query_request(typing, source, NULL, TYPED_ORIGIN, 0);
+}
+
+static int typed_origin_step(struct pg_typed_query *work)
+{
+	const struct pg_occurrence *subject = work->source;
+	if (subject->origin && !subject->selection && (subject->map || subject->judgement == subject->origin->judgement)) {
+		if (!work->dependency) {
+			work->dependency = pg_construction_origin_request(work->typing,
+				pg_prove_structural_subject(work->typing, subject->origin));
+			return work->dependency ? 0 : -1;
+		}
+		if (!work->dependency->status) return 0;
+		work->result = pg_typed_query_result(work->dependency);
+		if (!work->result) return -1;
+		work->environment = pg_construction_origin_environment(work->dependency);
+		if (subject->map) {
+			const struct pg_evidence *step = pg_prove_context_map(work->typing, subject->map);
+			work->environment = work->environment
+				? pg_prove_substitution_compose(work->typing, work->environment, step) : step;
+			if (!work->environment) return -1;
+		}
+		return 1;
+	}
+	work->result = pg_prove_structural_subject(work->typing, subject);
+	return work->result ? 1 : -1;
+}
+
+const struct pg_evidence *pg_construction_origin_environment(const struct pg_typed_query *work)
+{
+	return work && work->kind == TYPED_ORIGIN && work->status == 1 ? work->environment : NULL;
 }
 
 static int typed_body_enter(struct pg_typed_query *work, const struct pg_occurrence *current,
@@ -985,6 +1022,7 @@ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
 			switch (current->kind) {
 			case TYPED_INPUT: current->status = typed_input_step(current); break;
 			case TYPED_ELIMINATION: current->status = typed_elimination_step(current); break;
+			case TYPED_ORIGIN: current->status = typed_origin_step(current); break;
 			default: current->status = typed_body_step(current); break;
 			}
 			if (current->kind == TYPED_INPUT && current->status == 1 && !current->result && !current->ordinal)
@@ -2106,24 +2144,10 @@ const struct pg_evidence *pg_prove_construction_origin(struct pg_typing *typing,
 	const struct pg_evidence **environment)
 {
 	if (!typing || !classifiers || classifiers->graph != typing->graph || !environment) return NULL;
-	if (!pg_evidence_owned_by(proof, typing)) return NULL;
-	if (!pg_evidence_subject(proof)) return NULL;
-	const struct pg_evidence *map = NULL;
-	const struct pg_occurrence *subject = pg_evidence_subject(proof);
-	/* Accumulate the inner-to-outer action while descending the retained
-	 * structure. This does not interpret an Evidence wrapper history. */
-	while (subject->origin && !subject->selection && (subject->map || subject->judgement == subject->origin->judgement)) {
-		if (subject->map) {
-			const struct pg_evidence *step = pg_prove_context_map(typing, subject->map);
-			map = map ? pg_prove_substitution_compose(typing, step, map) : step;
-			if (!map) return NULL;
-		}
-		subject = subject->origin;
-	}
-	const struct pg_evidence *result = pg_prove_structural_subject(typing, subject);
-	if (!result || pg_evidence_judgement(result) != subject->judgement || pg_evidence_context(result) != subject->context ||
-		pg_evidence_subject(result)->core != subject->core) return NULL;
-	*environment = map;
+	struct pg_typed_query *work = pg_construction_origin_request(typing, proof);
+	while (!pg_typed_query_advance(work, 1024)) {}
+	const struct pg_evidence *result = pg_typed_query_result(work);
+	if (result) *environment = pg_construction_origin_environment(work);
 	return result;
 }
 

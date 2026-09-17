@@ -2237,6 +2237,26 @@ static void schema_positivity(void)
 		assert(typing.proofs.count == before && typing.occurrences.count == subjects);
 		assert(!pg_prove_construction_origin(NULL, &classifiers, countdown, &environment));
 		assert(!pg_prove_construction_origin(&typing, &classifiers, countdown, NULL));
+		{
+			const struct pg_evidence *scope = z_context, *nested = projected;
+			struct pg_typed_query *middle = NULL;
+			for (size_t i = 0; i < 32; ++i) {
+				scope = pg_prove_context_extension(&typing, scope, pg_binder(&graph), pg_prove_projection(&typing, scope, nat));
+				nested = pg_prove_projection(&typing, scope, nested);
+				assert(nested);
+				if (i == 15) middle = pg_construction_origin_request(&typing, nested);
+			}
+			assert(middle && !pg_typed_query_advance(middle, 0));
+			struct pg_typed_query *query = pg_construction_origin_request(&typing, nested);
+			while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 256);
+			assert(pg_typed_query_result(query) == countdown);
+			assert(pg_typed_query_advance(middle, 0) == 1 && pg_typed_query_result(middle) == countdown);
+			const struct pg_evidence *direct = pg_prove_substitution_projection(&typing, empty, scope);
+			assert(pg_evidence_context_map(pg_construction_origin_environment(query)) == pg_evidence_context_map(direct));
+			uint64_t steps = pg_typed_query_steps(query), middle_steps = pg_typed_query_steps(middle);
+			assert(pg_prove_construction_origin(&typing, &classifiers, nested, &environment) == countdown);
+			assert(pg_typed_query_steps(query) == steps && pg_typed_query_steps(middle) == middle_steps);
+		}
 		/* This boundary has no introduction receipt until structural recovery.
 		 * Its typed Return child is unchanged by totality subsumption. */
 		const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, pg_binder(&graph), nat);

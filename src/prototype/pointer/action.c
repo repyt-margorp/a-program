@@ -58,36 +58,44 @@ done:
 }
 
 static int origin_step(struct pg_typing *typing,
-	const struct pg_occurrence **current, const struct pg_evidence **substitution)
+	const struct pg_occurrence **current, const struct pg_evidence **substitution,
+	struct pg_typed_query **query)
 {
-	const struct pg_occurrence *formation = *current;
-	if (formation->selection) return 1;
-	if (!formation->origin) return 1;
-	if (formation->map) {
-		const struct pg_evidence *step = pg_prove_context_map(typing, formation->map);
-		if (!step) return -1;
+	if (!*query) *query = pg_construction_origin_request(typing, pg_prove_structural_subject(typing, *current));
+	int status = pg_typed_query_advance(*query, 1);
+	if (status <= 0) return status;
+	const struct pg_evidence *result = pg_typed_query_result(*query);
+	if (!result) return -1;
+	const struct pg_evidence *step = pg_construction_origin_environment(*query);
+	if (step) {
 		*substitution = *substitution ? pg_prove_substitution_compose(typing, step, *substitution) : step;
 		if (!*substitution) return -1;
 	}
-	*current = formation->origin;
+	*current = pg_evidence_subject(result);
+	*query = NULL;
+	if ((*current)->selection || !(*current)->origin) return 1;
+	/* Identity formation may cross a type/value boundary. Ordinary program
+	 * construction access stops here; it must not mistake extraction for origin. */
+	*current = (*current)->origin;
 	return 0;
 }
 
 struct formation_origin {
 	const struct pg_occurrence *term, *family;
 	const struct pg_evidence *map, *family_map;
+	struct pg_typed_query *query;
 };
 
 static int formation_origin_step(struct pg_typing *typing, struct formation_origin *origin)
 {
 	if (!origin->family) {
-		int status = origin_step(typing, &origin->term, &origin->map);
+		int status = origin_step(typing, &origin->term, &origin->map, &origin->query);
 		if (status <= 0) return status;
 		if (origin->term->map_count || origin->term->operand_count != 3 ||
 			origin->term->operands[0]->judgement != PG_JUDGEMENT_VALUE) return 1;
 		origin->family = origin->term->operands[0];
 	}
-	return origin_step(typing, &origin->family, &origin->family_map);
+	return origin_step(typing, &origin->family, &origin->family_map, &origin->query);
 }
 
 /* Select an already accepted Identity formation of this exact typed subject.
