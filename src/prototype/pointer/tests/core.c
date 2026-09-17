@@ -1030,6 +1030,42 @@ static void dependent_application_test(struct pg_graph *graph)
 	/* A : U1 |- F A computation type. No runtime result is guessed. */
 	const struct pg_evidence *pi = pg_prove_pi(&typing, &classifiers, a_context, fa);
 	assert(pi);
+	/* Independent readback can rename a binder in both its body and the
+	 * body's dependent classifier. Pi and Lambda use one scope action. */
+	const struct pg_object *inner_x = pg_binder(graph);
+	const struct pg_evidence *xc = pg_prove_context_extension(&typing, a_context, inner_x, a_type);
+	const struct pg_evidence *inner = pg_prove_abstract(&typing, &classifiers, a_context, xc,
+		pg_prove_return(&typing, &classifiers, pg_prove_variable(&typing, xc, inner_x)));
+	const struct pg_evidence *outer = pg_prove_abstract(&typing, &classifiers, empty, a_context, inner);
+	const struct pg_evidence *sources[] = {pi, outer,
+		pg_prove_force(&typing, pg_prove_thunk(&typing, &classifiers, outer))};
+	struct pg_whnf_work normalization;
+	assert(!pg_whnf_work_init(&normalization, graph));
+	for (size_t i = 0; i < 3; ++i) {
+		const struct pg_object *renamed = pg_binder(graph);
+		const struct pg_binding_value binding = {a, pg_reference(graph, renamed)};
+		const struct pg_evidence *original_child = i ? inner : fa;
+		const struct pg_term *body = pg_substitution_compute(&typing.substitutions,
+			pg_evidence_subject(original_child)->core, 1, &binding);
+		const struct pg_term *alpha = i ? pg_lambda(graph, renamed, body)
+			: pg_pi(graph, pg_evidence_subject(u1)->core, renamed, body);
+		if (i == 2) alpha = pg_application(graph, pg_reference(graph, &pg_force_operation),
+			pg_application(graph, pg_reference(graph, &pg_thunk_operation), alpha));
+		struct pg_nf_job *nf = pg_nf_request(&normalization, &pg_pure_policy, alpha);
+		while (pg_nf_advance(nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
+		const struct pg_evidence *normal = pg_prove_normalization(&typing, sources[i], pg_nf_certificate(nf));
+		assert(normal);
+		struct pg_typed_query *query = pg_typed_input_request(&typing, normal, i ? 0 : 1);
+		while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+		const struct pg_evidence *child = pg_typed_query_result(query);
+		assert(child && pg_evidence_context(child)->parent == pg_evidence_context(empty));
+		assert(pg_evidence_context(child)->binder == renamed && pg_evidence_subject(child)->core == body);
+		const struct pg_term *classifier = pg_substitution_compute(&typing.substitutions,
+			pg_evidence_classifier(original_child), 1, &binding);
+		assert(pg_evidence_classifier(child) == classifier);
+		reconstruct_derivation(&typing, &classifiers, child);
+	}
+	pg_whnf_work_destroy(&normalization);
 	assert(!pg_prove_type_value(&typing, pi));
 	assert(!pg_prove_type_value(&typing, fa));
 	const struct pg_evidence *upi = pg_prove_thunk_type(&typing, &classifiers, pi);

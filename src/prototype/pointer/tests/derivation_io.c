@@ -508,6 +508,31 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	const struct pg_evidence *fold_result = pg_synthesis_result(jobs[11]);
 	assert(pg_evidence_rule(pg_evidence_premise(fold_result, 0)) == PG_FOLD_ELIM);
 	assert(pg_evidence_subject(fold_result)->core == pg_evidence_subject(pg_synthesis_result(jobs[3]))->core);
+	/* Restored normalization exposes typed result inputs only after ordinary
+	 * Solve. A renamed NF binder needs a checked child scope action, not the
+	 * original Lambda body's context copied onto its new Core. */
+	const size_t normalized[] = {3, 5, 11, 17};
+	for (size_t i = 0; i < sizeof(normalized) / sizeof(*normalized); ++i) {
+		const struct pg_evidence *parent = pg_synthesis_result(jobs[normalized[i]]);
+		const struct pg_term *core = pg_evidence_subject(parent)->core;
+		struct pg_typed_query *input = pg_typed_input_request(typing, parent, 0);
+		assert(input);
+		while (!pg_typed_query_advance(input, chunk)) assert(pg_typed_query_steps(input) < 10000);
+		const struct pg_evidence *child = pg_typed_query_result(input);
+		assert(child);
+		if (core->kind == PG_LAMBDA) {
+			assert(pg_evidence_subject(child)->core == core->as.lambda.body);
+			assert(pg_evidence_context(child)->parent == pg_evidence_context(parent));
+			assert(pg_evidence_context(child)->binder == core->as.lambda.binder);
+		} else {
+			assert(core->kind == PG_APPLICATION && core->as.application.function == pg_reference(typing->graph, &pg_return_operation));
+			assert(pg_evidence_subject(child)->core == core->as.application.argument);
+			assert(pg_evidence_context(child) == pg_evidence_context(parent));
+		}
+		uint64_t steps = pg_typed_query_steps(input);
+		assert(pg_typed_input_request(typing, parent, 0) == input);
+		assert(pg_typed_query_advance(input, 64) == 1 && pg_typed_query_steps(input) == steps);
+	}
 	assert(!pg_computation_resolve("kernel/fold/v2"));
 	for (unsigned side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
 		const struct pg_evidence *transport = pg_synthesis_result(jobs[7 + 2 * side]);

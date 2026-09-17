@@ -782,6 +782,8 @@ struct pg_typed_query {
 	struct pg_typed_query *dependency;
 	struct typed_query_wait *waiting;
 	struct pg_occurrence_input *input;
+	struct pg_context_lift *lift;
+	struct pg_occurrence_action *action;
 	const struct pg_reduction_certificate *reduction;
 	enum typed_query_kind kind;
 	size_t ordinal;
@@ -3251,6 +3253,36 @@ const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
 	return body;
 }
 
+/* Align a scoped input with readback's binder using the same lifted context
+ * action as ordinary substitution. Free bindings are never alpha-renamed. */
+static int typed_input_align(struct pg_typed_query *work, const struct pg_evidence *input,
+	const struct pg_term *head)
+{
+	const struct pg_occurrence *child = pg_evidence_subject(input);
+	const struct pg_term *body;
+	const struct pg_object *binder = pg_occurrence_input_binder(head, work->ordinal, &body);
+	if (!binder || !child->context || child->context->binder == binder) {
+		work->argument = input;
+		return 1;
+	}
+	if (child->context->parent != work->current->context) return -1;
+	if (!work->lift) {
+		const struct pg_context_map *identity = pg_context_map_projection(work->typing,
+			child->context->parent, child->context->parent);
+		work->lift = pg_context_lift_request(work->typing, identity, child->context, binder);
+	}
+	enum pg_substitution_status status = pg_context_lift_advance(work->lift, 1);
+	if (status == PG_SUBSTITUTION_PENDING) return 0;
+	if (status == PG_SUBSTITUTION_ERROR) return -1;
+	if (!work->action) work->action = pg_occurrence_action_request(work->typing,
+		pg_context_lift_result(work->lift), child);
+	status = pg_occurrence_action_advance(work->action, 1);
+	if (status == PG_SUBSTITUTION_PENDING) return 0;
+	if (status == PG_SUBSTITUTION_ERROR) return -1;
+	work->argument = pg_prove_structural_subject(work->typing, pg_occurrence_action_result(work->action));
+	return work->argument ? 1 : -1;
+}
+
 static int typed_input_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
@@ -3268,6 +3300,7 @@ static int typed_input_step(struct pg_typed_query *work)
 		if (!work->reduction) return 1;
 		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
 		const struct pg_evidence *origin = pg_prove_structural_subject(typing, blocked->origin);
+		work->current = blocked->origin;
 		if (phase && pg_reduction_source(phase->head) == pg_reduction_target(phase->head))
 			work->dependency = pg_typed_input_request(typing, origin, work->ordinal);
 		else {
@@ -3284,34 +3317,45 @@ static int typed_input_step(struct pg_typed_query *work)
 		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
 		const struct pg_occurrence *blocked = pg_occurrence_input_blocked_source(work->input);
 		const struct pg_term *head = pg_reduction_target(phase ? phase->head : work->reduction);
-		/* Match the actual result, not the pre-reduction construction. Exact
-		 * binders also preserve the NF child's lexical scope under Lambda. */
-		if (pg_evidence_subject(input)->core != head ||
+		/* Scoped children are subsequently transported to readback's binders;
+		 * alpha comparison here cannot change any free variable. */
+		if (pg_alpha_equal(pg_evidence_subject(input)->core, head) != 1 ||
 			pg_evidence_context(input) != blocked->context) return 1;
 		work->current = pg_evidence_subject(input);
 		work->dependency = pg_typed_input_request(typing, input, work->ordinal);
 		work->resume = TYPED_RESUME_NONE;
 		return work->dependency ? 0 : -1;
 	}
+	if (!work->argument) {
+		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
+		int status = typed_input_align(work, input, pg_reduction_target(phase ? phase->head : work->reduction));
+		if (status <= 0) return status < 0 ? 1 : 0;
+	}
+	input = work->argument;
 	if (!work->value) {
 		/* Follow the semantic input boundary along the erased APP spine,
 		 * one congruence phase per transition, not arbitrary descendants. */
 		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
 		if (!phase) {
-			if (work->current->core != pg_reduction_target(work->reduction)) return 1;
+			if (pg_alpha_equal(work->current->core, pg_reduction_target(work->reduction)) != 1) return 1;
 			work->value = input;
 			work->input = pg_occurrence_input_resume_request(typing, work->input, pg_evidence_subject(input));
 			return work->input ? 0 : -1;
 		}
 		if (pg_reduction_source(phase->head) != pg_reduction_target(phase->head) &&
-			work->current->core != pg_reduction_target(phase->head)) return 1;
+			pg_alpha_equal(work->current->core, pg_reduction_target(phase->head)) != 1) return 1;
 		const struct pg_term *core = pg_evidence_subject(input)->core;
 		const struct pg_reduction_certificate *child = NULL;
 		if (pg_alpha_equal(pg_reduction_source(phase->children[0]), core) == 1) child = phase->children[0];
 		else if (phase->children[1] && pg_alpha_equal(pg_reduction_source(phase->children[1]), core) == 1) child = phase->children[1];
 		else {
-			if (pg_reduction_target(phase->head)->kind != PG_APPLICATION) return 1;
-			work->reduction = phase->children[0];
+			const struct pg_term *head = pg_reduction_target(phase->head), *body;
+			if (head->kind != PG_APPLICATION) return 1;
+			const struct pg_object *binder = pg_occurrence_input_binder(head, work->ordinal, &body);
+			/* Pi's semantic codomain is beneath its right-hand Lambda, not
+			 * the erased APP's left spine. Its scope was aligned above. */
+			work->reduction = binder ? phase->children[1] : phase->children[0];
+			if (!work->reduction) return 1;
 			return 0;
 		}
 		work->value = pg_prove_normalization(typing, input, child);

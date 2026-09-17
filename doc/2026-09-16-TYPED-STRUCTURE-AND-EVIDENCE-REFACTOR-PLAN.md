@@ -2328,3 +2328,46 @@ finish line. Tests: `core.c` +44/-7, `iadt.c` +10/-3. R2-R5 remain open.
 In particular this is not complete recursive
 IH exposure, arbitrary multi-phase normalization, dependent normalized-field
 classifier transport or general fresh-binder alignment. Main remains unpublished.
+
+### 2026-09-17: Align normalized scoped inputs (R46)
+
+- [x] Share Lambda/Pi input-binder description between raw structural inputs
+  and checked normalized inputs. After matching the pure receipt's head up to
+  alpha-equivalence, transport the checked child to the receipt's bound pointer
+  through the existing context-lift and occurrence-action requests. Free
+  bindings are unchanged. No new proof rule or acceptance shortcut is added.
+- [x] Follow Pi's codomain through the right-hand Lambda in its erased APP
+  representation. Following only the left APP spine incorrectly hid this
+  semantic input. The same binder description determines both traversal and
+  scope alignment; this is not an arbitrary descendant search.
+- [x] Test independently renamed Pi/Lambda normalization sources, nested
+  dependent classifiers, and force/thunk-to-Lambda exposure. Check exact child
+  Core, binder, parent context and transported classifier, then reconstruct
+  each derivation through ordinary rules.
+- [x] After fresh-process derivation loading and ordinary Solve, request
+  normalized Lambda and RETURN inputs, including renamed receipt sources and
+  Fold results. Chunks one and 64 produce the same checked children; repeated
+  lookup adds no transitions. Reading alone still accepts no proofs.
+- [x] Full debug acceptance passed, including 63/63 compatibility and final
+  QuickSort source/image properties. ASan/UBSan Core, IADT, Identity, synthesis,
+  derivation write/read/read-bulk and imported QuickSort passed. Derivation
+  readers both used 1026 Solve transitions. Logs are under
+  `/tmp/a-program-typed-structure-r46-{debug,san-*}.log`.
+
+Idle O0 QuickSort: 1.1466 seconds / 279792 KiB / 131357 transitions, versus
+R45's 1.1286 seconds / 279276 KiB / 131357 transitions. These single samples
+do not establish a speed or memory improvement.
+
+Against `a7cd3c0`, implementation/header: `evidence.c` +51/-7, `typing.c`
++4/-3 and `typing.h` +4/-0: net **+49**, cumulative **+1830** against
+`4657cc6`. Tests: `core.c` +36/-0, `derivation_io.c` +25/-0. The net-negative
+gate remains unmet; R2-R5 remain open and Main is not published.
+
+The deletion review also distinguishes strengthening from total substitution:
+`selected_formation`, `pi_argument_frames` and `rebase_image` can recover a
+constant Pi component in a context without its unused binder. That binder may
+have an empty type. Replacing this operation with ordinary substitution would
+require inventing an inhabitant. Core free-variable independence alone also
+does not discharge retained nominal/context dependencies. Their current
+structural reconstruction still needs consolidation/budget review, but it
+cannot simply be deleted in favor of a total map.

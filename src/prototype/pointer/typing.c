@@ -818,9 +818,10 @@ struct pg_occurrence_input *pg_occurrence_type_request(struct pg_typing *typing,
 
 /* The semantic owner exposes the same lexical binding carried by Core.
  * This is a scope view, not another executable binder representation. */
-static const struct pg_object *input_binder(const struct pg_term *core, size_t index,
+const struct pg_object *pg_occurrence_input_binder(const struct pg_term *core, size_t index,
 	const struct pg_term **body)
 {
+	if (!core || !body) return NULL;
 	if (core->kind == PG_LAMBDA && index == 0) {
 		*body = core->as.lambda.body;
 		return core->as.lambda.binder;
@@ -840,7 +841,7 @@ const struct pg_occurrence *pg_occurrence_scoped_input(const struct pg_occurrenc
 	const struct pg_context *scope = input->context;
 	if (!scope || scope->parent != source->context) return NULL;
 	const struct pg_term *body;
-	const struct pg_object *binder = input_binder(source->core, index, &body);
+	const struct pg_object *binder = pg_occurrence_input_binder(source->core, index, &body);
 	return binder && scope->binder == binder && input->core == body ? input : NULL;
 }
 
@@ -939,7 +940,7 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 		const struct pg_context *scope = work->scopes->context;
 		if (!work->lift) {
 			const struct pg_term *body;
-			const struct pg_object *binder = input_binder(work->maps->core, work->index, &body);
+			const struct pg_object *binder = pg_occurrence_input_binder(work->maps->core, work->index, &body);
 			if (!binder) binder = scope->binder;
 			map = work->effective;
 			if (pg_context_lookup(map->destination, binder)) binder = pg_binder(typing->graph);

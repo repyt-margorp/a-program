@@ -193,6 +193,10 @@ uint64_t pg_occurrence_action_steps(const struct pg_occurrence_action *work);
  * the budgeted query below. NULL means this direct edge is not exposed. */
 const struct pg_occurrence *pg_occurrence_scoped_input(const struct pg_occurrence *source,
 	size_t index);
+/* Binder/body encoded by a scoped Lambda or Pi input. This is descriptive:
+ * it establishes neither typing nor equality of another input's scope. */
+const struct pg_object *pg_occurrence_input_binder(const struct pg_term *core,
+	size_t index, const struct pg_term **body);
 /* Read a construction input, applying retained maps lazily. Lambda bodies and
  * Pi codomains use the target Core binder, freshened if it collides with the
  * destination context. The closed binder/body remains alpha-equivalent to the
