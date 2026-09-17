@@ -761,6 +761,13 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *fold_function = pg_prove_fold(&typing, &classifiers,
 		pg_prove_return(&typing, &classifiers, converted), apply_function);
 	assert(fold_function);
+	/* Different callers share the callee's beta work and the Fold prefix,
+	 * instead of evaluating them on private continuation stacks. */
+	struct pg_typed_query *shared_beta = pg_application_body_request(&typing, apply_function, converted);
+	struct pg_typed_query *shared_prefix = pg_return_body_request(&typing,
+		pg_prove_return(&typing, &classifiers, converted));
+	assert(shared_beta && shared_prefix);
+	assert(!pg_typed_query_advance(shared_beta, 0) && !pg_typed_query_advance(shared_prefix, 0));
 	const struct pg_evidence *beta_functions[] = {identity_y,
 		pg_prove_reindex(&typing, identity_map, identity_y), converted_force,
 		converted_code, pg_prove_thunk_computation(&typing, converted), nested_application,
@@ -791,6 +798,11 @@ static void evidence_test(struct pg_graph *graph)
 	}
 	assert(pg_application_body_request(&typing, beta_functions[0], x_term) ==
 		pg_application_body_request(&typing, beta_functions[1], x_term));
+	assert(pg_typed_query_advance(shared_beta, 0) == 1 && pg_typed_query_result(shared_beta));
+	assert(pg_typed_query_advance(shared_prefix, 0) == 1);
+	assert(pg_typed_query_result(shared_prefix) == converted);
+	uint64_t shared_beta_steps = pg_typed_query_steps(shared_beta);
+	uint64_t shared_prefix_steps = pg_typed_query_steps(shared_prefix);
 	assert(!pg_application_body_request(&typing, NULL, x_term));
 	assert(!pg_application_body_request(&typing, identity_y, returned));
 	assert(pg_typed_query_advance(NULL, 1) == -1);
@@ -833,6 +845,8 @@ static void evidence_test(struct pg_graph *graph)
 		pg_prove_projection(&typing, y_context, fold_function), y_term);
 	assert(projected_fold && pg_evidence_context(projected_fold) == pg_evidence_context(y_term));
 	assert(pg_alpha_equal(pg_evidence_subject(projected_fold)->core, pg_evidence_subject(return_y)->core) == 1);
+	assert(pg_typed_query_steps(shared_beta) == shared_beta_steps);
+	assert(pg_typed_query_steps(shared_prefix) == shared_prefix_steps);
 	assert(!pg_prove_application_body(&typing, identity_y, a_in_x));
 	assert(!pg_prove_application_body(&typing, identity_y, returned));
 	size_t beta_terms = graph->terms.count, beta_proofs = typing.proofs.count;

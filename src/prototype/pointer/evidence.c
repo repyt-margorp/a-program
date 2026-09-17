@@ -763,13 +763,6 @@ static const struct pg_occurrence *returned_computation(const struct pg_occurren
 		input->core == subject->core->as.application.argument ? input : NULL;
 }
 
-struct typed_body_frame {
-	const struct pg_evidence *argument, *continuation;
-	struct construction_map *frames;
-	size_t forces;
-	struct typed_body_frame *next;
-};
-
 struct typed_query_wait {
 	struct pg_typed_query *work;
 	struct typed_query_wait *parent;
@@ -781,7 +774,8 @@ struct pg_typed_query {
 	const struct pg_occurrence *source, *argument_source, *current;
 	const struct pg_evidence *argument, *map, *extended, *value, *result;
 	struct construction_map *frames;
-	struct typed_body_frame *pending;
+	const struct pg_evidence *continuation;
+	int resume_body;
 	struct pg_typed_query *dependency;
 	struct typed_query_wait *waiting;
 	struct pg_occurrence_input *input;
@@ -839,54 +833,42 @@ struct pg_typed_query *pg_typed_input_request(struct pg_typing *typing,
 	return typed_query_request(typing, source, NULL, index);
 }
 
-static int typed_body_resume(struct pg_typed_query *work, const struct pg_evidence *result)
-{
-	if (!result) return -1;
-	struct typed_body_frame *pending = work->pending;
-	if (!pending) { work->result = result; return 1; }
-	if (pending->continuation) {
-		work->current = pg_evidence_subject(pending->continuation);
-		work->argument = result;
-		work->frames = NULL;
-		work->forces = 0;
-		pending->continuation = NULL;
-	} else {
-		work->current = pg_evidence_subject(result);
-		work->argument = pending->argument;
-		work->frames = pending->frames;
-		work->forces = pending->forces;
-		work->pending = pending->next;
-	}
-	return 0;
-}
-
 static int typed_body_enter(struct pg_typed_query *work, const struct pg_occurrence *current,
-	const struct pg_evidence *argument, const struct pg_evidence *continuation)
+	const struct pg_evidence *argument)
 {
-	struct typed_body_frame *next = pg_alloc(work->typing->graph, sizeof(*next));
-	if (!next) return -1;
-	*next = (struct typed_body_frame){work->argument, continuation, work->frames, work->forces, work->pending};
-	work->pending = next;
-	work->current = current;
-	work->argument = argument;
-	work->frames = NULL;
-	work->forces = 0;
-	return 0;
+	const struct pg_evidence *source = pg_prove_structural_subject(work->typing, current);
+	work->dependency = argument ? pg_application_body_request(work->typing, source, argument)
+		: pg_return_body_request(work->typing, source);
+	work->resume_body = 1;
+	return work->dependency ? 0 : -1;
 }
 
 static int typed_body_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_occurrence *current = work->current;
+	if (work->resume_body) {
+		if (!work->dependency->status) return 0;
+		const struct pg_evidence *result = pg_typed_query_result(work->dependency);
+		if (!result) return -1;
+		if (work->continuation) {
+			work->dependency = pg_application_body_request(typing, work->continuation, result);
+			work->continuation = NULL;
+			return work->dependency ? 0 : -1;
+		}
+		work->current = pg_evidence_subject(result);
+		work->dependency = NULL;
+		work->resume_body = 0;
+		return 0;
+	}
 	if (work->value) {
 		if (work->frames) {
 			work->value = pg_prove_reindex(typing, pg_prove_context_map(typing, work->frames->map), work->value);
 			work->frames = work->frames->next;
 			return work->value ? 0 : -1;
 		}
-		const struct pg_evidence *value = work->value;
-		work->value = NULL;
-		return typed_body_resume(work, value);
+		work->result = work->value;
+		return 1;
 	}
 	if (work->map) {
 		if (work->frames) {
@@ -896,13 +878,12 @@ static int typed_body_step(struct pg_typed_query *work)
 			return work->map ? 0 : -1;
 		}
 		const struct pg_evidence *map = pg_prove_substitution_pair(typing, work->map, work->extended, work->argument);
-		const struct pg_evidence *result = pg_prove_reindex(typing, map,
+		work->result = pg_prove_reindex(typing, map,
 			pg_prove_structural_subject(typing, pg_occurrence_scoped_input(current, 0)));
-		work->map = NULL;
-		return typed_body_resume(work, result);
+		return work->result ? 1 : -1;
 	}
 	const struct pg_occurrence *returned = returned_computation(current);
-	if (returned) return typed_body_enter(work, returned, NULL, NULL);
+	if (returned) return typed_body_enter(work, returned, NULL);
 	if (current->origin) {
 		if (current->selection) return -1;
 		if (current->map) {
@@ -953,7 +934,8 @@ static int typed_body_step(struct pg_typed_query *work)
 		if (!fold && current->operands[0]->core != head) return -1;
 		const struct pg_evidence *right = pg_prove_structural_subject(typing, current->operands[1]);
 		if (!right) return -1;
-		return typed_body_enter(work, current->operands[0], fold ? NULL : right, fold ? right : NULL);
+		work->continuation = fold ? right : NULL;
+		return typed_body_enter(work, current->operands[0], fold ? NULL : right);
 	}
 	if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER || !work->frames) return -1;
 	work->current = pg_context_map_image(work->frames->map, core->as.reference);

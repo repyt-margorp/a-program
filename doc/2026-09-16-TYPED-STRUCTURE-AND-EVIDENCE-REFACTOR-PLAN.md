@@ -328,7 +328,7 @@ checkpoint notes below are historical, not additional completion claims.
 | Evidence classifier/context/sort copies | Removed for term conclusions |
 | Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
 | Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. Checked inputs and typed bodies share the query cache/scheduler; structural traversal resumes its existing map spine after checked child normalization. Individual kernel checks and receipt lookup remain synchronous |
-| `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R37 adds nonrecursive Match branch selection and shared computed-scrutinee dependencies. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
+| `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R37 adds nonrecursive Match branch selection and shared computed-scrutinee dependencies. R44 deletes the private `typed_body_frame` continuation stack: nested APP, Fold prefix/continuation and computed returned values use shared queries. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
 | `inductive_recovery_step` | Reads typed origins/maps, selections and family inputs. R33 removes its private Return/Thunk counters and Fold continuation stack; computed results and applications share indexed typed-body work. Exact nominal formation and synchronous kernel suboperations remain |
@@ -2239,3 +2239,37 @@ R2-R5 remain open: head-changing beta/iota result exposure, dependent
 normalized classifier transport, selected/strengthened result reconstruction,
 final representation/memory review, and net implementation reduction. The
 checked-query cache is not completion of those semantics. Main is not pushed.
+
+### 2026-09-17: Share nested typed body computation (R44)
+
+- [x] Delete `typed_body_frame` and `typed_body_resume`. Nested application,
+  Fold prefix/continuation and computed returned-value traversal now depend
+  on existing indexed body queries, using the same budgeted dependency
+  scheduler as checked input exposure. The caller retains its context maps,
+  force depth and argument; the child query does not capture those ambient
+  values. No Core constructor, proof rule, image format or acceptance owner
+  changes.
+- [x] Add regression checks that a parent request actually completes the
+  shared callee/prefix request, and that a projected caller reuses it without
+  additional child transitions. Existing tests retain split budgets, deeply
+  nested force/thunk, nominal scopes, converted classifiers and pure-only
+  introspection. Source bodies remain checked by ordinary substitution and
+  introduction/inversion rules; a cached request is not an acceptance axiom.
+- [x] Full debug acceptance passed, including 63/63 source compatibility and
+  final QuickSort source/image properties. ASan/UBSan Core, IADT, Identity,
+  synthesis and imported QuickSort all passed. Logs:
+  `/tmp/a-program-typed-structure-r44-debug.log` and
+  `/tmp/a-program-typed-structure-r44-san-{core,iadt,identity,synthesis,quicksort}.log`.
+
+Sequential O0 QuickSort: 1.1277 seconds / 279048 KiB / **131964 transitions**
+(R43: 132053). Terms/typed subjects/proofs remain 178454/416930/434774.
+Shared typed requests increase from 2587 to 2744; raw input requests remain
+3384. This is a measured work-sharing change, not evidence of a wall-time or
+memory improvement from a single run. Memoization replaces private evaluation
+frames with reusable work; the final storage review remains required.
+
+Against `7ce9f02`: `evidence.c` **+30/-48, net -18**; `tests/core.c` +14/-0.
+Cumulative implementation/header delta against `4657cc6` is **+1724**.
+The net-negative gate is still unmet. R2-R5 remain open, particularly typed
+head-changing beta/iota result exposure and dependent normalized inputs.
+This checkpoint does not complete the goal or authorize Main publication.
