@@ -1521,8 +1521,13 @@ remote tips verified. Implementation +14/-17, tests +28/-0, documentation
   projections. Test constant/dependent continuation snapshots against evidence.
 - [x] Debug and ASan/UBSan synthesis suites; record work and per-file deltas.
 - [x] Full optimized acceptance, including 63/63 compatibility cases.
-- [ ] Publication with remote-tip verification.
+- [x] Publication with remote-tip verification.
 
 The [sequence audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#sequence-construction-choice-after-a37b283)
 records both the authority consolidation and increased descriptive work.
 Pending-construction sharing and the broader R acceptance gates remain open.
+
+Published as `8a97c8babc1f5c7b48ac37e1c4132a3dad5095c8`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `a37b283`; both
+remote tips verified. Implementation +76/-76, tests +27/-0, documentation
++61/-0; total +164/-76. This publication-record update is documentation only.
