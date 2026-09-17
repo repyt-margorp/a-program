@@ -630,20 +630,10 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 	const struct pg_evidence *computation, const struct pg_evidence *continuation);
 /* Recover formation of an already synthesized classifier, not an expected
  * type. NULL also covers rules whose regularity action is not implemented. */
-/* Read retained classifier structure through the shared typed-input query.
- * Budgets cover its context action, not the final kernel certification. */
-struct pg_classifier_recovery {
-	struct pg_typing *typing;
-	struct pg_occurrence_input *input;
-	const struct pg_evidence *result;
-	const struct pg_occurrence *subject;
-	int status;
-};
-int pg_classifier_recovery_init(struct pg_classifier_recovery *work,
-	struct pg_typing *typing,
+/* Shared by typed subject. Budgets cover context action, not the final kernel
+ * certification. The typing store owns pending and completed requests. */
+struct pg_typed_query *pg_classifier_request(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *term);
-int pg_classifier_recovery_advance(struct pg_classifier_recovery *work, size_t steps);
-void pg_classifier_recovery_destroy(struct pg_classifier_recovery *work);
 const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	const struct pg_evidence *context,
 	const struct pg_evidence *term);

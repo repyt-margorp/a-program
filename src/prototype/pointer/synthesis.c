@@ -262,7 +262,6 @@ struct pg_synthesis_job {
 	struct pg_conversion comparison;
 	const struct pg_conversion_certificate *certificate;
 	struct pg_reindex reindex;
-	struct pg_classifier_recovery *classifier_recovery;
 	struct pg_inductive_recovery *inductive_recovery;
 	struct pg_function_graph_work function_graph;
 	const struct pg_inductive_instance *inductive_instance;
@@ -339,7 +338,6 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			pg_conversion_destroy(&job->comparison);
 			pg_reindex_destroy(&job->reindex);
-			if (job->classifier_recovery) pg_classifier_recovery_destroy(job->classifier_recovery);
 			if (job->inductive_recovery) pg_inductive_recovery_destroy(job->inductive_recovery);
 			pg_function_graph_destroy(&job->function_graph);
 			pg_identity_face_destroy(job->face);
@@ -8987,15 +8985,10 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		}
 		else {
 			const struct pg_synthesis_job *body = job->inputs[1];
-			if (!job->classifier_recovery) {
-				job->classifier_recovery = pg_alloc(synthesis->typing->graph, sizeof(*job->classifier_recovery));
-				if (!job->classifier_recovery) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-				pg_classifier_recovery_init(job->classifier_recovery, synthesis->typing, first->result, body->result);
-			}
-			int status = pg_classifier_recovery_advance(job->classifier_recovery, 1);
+			struct pg_typed_query *classifier = pg_classifier_request(synthesis->typing, first->result, body->result);
+			int status = pg_typed_query_advance(classifier, 1);
 			if (!status) { enqueue(synthesis, job); return; }
-			job->result = status > 0 ? job->classifier_recovery->result : NULL;
-			pg_classifier_recovery_destroy(job->classifier_recovery);
+			job->result = pg_typed_query_result(classifier);
 		}
 		finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE
 			: job->role == BODY_JOB ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_UNSUPPORTED);

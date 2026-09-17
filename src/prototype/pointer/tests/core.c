@@ -1300,6 +1300,10 @@ static void typed_substitution_test(struct pg_graph *graph)
 	uint64_t action_steps = pg_occurrence_action_steps(action);
 	const struct pg_evidence *alternative_result = pg_prove_reindex(&typing, alternate, source_x);
 	assert(alternative_result != reindexed && pg_evidence_subject(alternative_result) == pg_evidence_subject(reindexed));
+	struct pg_typed_query *classifier = pg_classifier_request(&typing, destination, reindexed);
+	assert(classifier && pg_classifier_request(&typing, destination, alternative_result) == classifier);
+	while (!pg_typed_query_advance(classifier, 1)) {}
+	assert(pg_typed_query_result(classifier));
 	const struct pg_occurrence *same_subject = pg_evidence_subject(reindexed);
 	int saw_original = 0, saw_alternative = 0;
 	size_t receipt_count = 0;
@@ -1601,23 +1605,24 @@ static void typed_substitution_test(struct pg_graph *graph)
 	 * including its substitution work, rather than copying a map stack. */
 	struct pg_occurrence_input *type_input = pg_occurrence_type_request(&typing, mapped_lambda);
 	uint64_t type_steps = pg_occurrence_input_steps(type_input);
-	struct pg_classifier_recovery classifier_work;
 	const struct pg_evidence *classifier_function = pg_prove_reindex(&typing, type_pair, function);
-	assert(!pg_classifier_recovery_init(&classifier_work, &typing, destination, classifier_function));
-	assert(!pg_classifier_recovery_advance(&classifier_work, 0));
+	struct pg_typed_query *classifier_work = pg_classifier_request(&typing, destination, classifier_function);
+	assert(classifier_work && !pg_typed_query_advance(classifier_work, 0));
+	assert(pg_classifier_request(&typing, destination, classifier_function) == classifier_work);
 	assert(pg_occurrence_input_steps(type_input) == type_steps);
 	size_t classifier_calls = 0;
-	while (!pg_classifier_recovery_advance(&classifier_work, 1)) {
+	while (!pg_typed_query_advance(classifier_work, 1)) {
 		assert(pg_occurrence_input_steps(type_input) <= type_steps + 1);
 		type_steps = pg_occurrence_input_steps(type_input);
 		assert(++classifier_calls < 10000);
 	}
-	assert(classifier_work.status == 1 && classifier_work.result == mapped_pi);
+	assert(pg_typed_query_result(classifier_work) == mapped_pi);
 	assert(pg_occurrence_input_result(type_input) == pg_evidence_subject(mapped_pi));
-	pg_classifier_recovery_destroy(&classifier_work);
+	uint64_t classifier_steps = pg_typed_query_steps(classifier_work);
 	type_steps = pg_occurrence_input_steps(type_input);
 	input_proofs = typing.proofs.count;
 	assert(pg_prove_classifier(&typing, destination, classifier_function) == mapped_pi);
+	assert(pg_typed_query_steps(classifier_work) == classifier_steps);
 	assert(pg_occurrence_input_steps(type_input) == type_steps && typing.proofs.count == input_proofs);
 	const struct pg_term *pi_domain, *pi_codomain;
 	const struct pg_object *pi_binder;
@@ -4608,44 +4613,46 @@ static void deep_classifier_test(void)
 			pg_prove_return(&typing, value));
 		assert(value);
 	}
-	const struct pg_evidence *formation = pg_prove_classifier(&typing, empty, value);
+	struct pg_typed_query *work = pg_classifier_request(&typing, empty, value);
+	assert(work && !pg_typed_query_advance(work, 0));
+	assert(!pg_typed_query_result(work));
+	while (!pg_typed_query_advance(work, 1)) {}
+	const struct pg_evidence *formation = pg_typed_query_result(work);
 	assert(formation && pg_evidence_judgement(formation) == PG_JUDGEMENT_VALUE_TYPE);
 	assert(pg_evidence_subject(formation)->core == pg_evidence_classifier(value));
 	size_t proofs = typing.proofs.count, terms = graph.terms.count;
 	assert(pg_prove_classifier(&typing, empty, value) == formation);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
 	assert(!pg_prove_classifier(NULL, empty, value));
+	uint64_t steps = pg_typed_query_steps(work);
+	size_t queries = typing.typed_queries.count;
 	for (size_t chunk = 1; chunk <= 64; chunk *= 64) {
-		struct pg_classifier_recovery work;
-		assert(!pg_classifier_recovery_init(&work, &typing, empty, value));
-		assert(!pg_classifier_recovery_advance(&work, 0));
-		assert(!work.result);
-		size_t calls = 0;
-		while (!pg_classifier_recovery_advance(&work, chunk)) assert(++calls < 100000);
-		assert(work.status == 1 && work.result == formation);
+		assert(pg_classifier_request(&typing, empty, value) == work);
+		assert(pg_typed_query_advance(work, 0) == 1);
+		assert(pg_typed_query_advance(work, chunk) == 1);
+		assert(pg_typed_query_result(work) == formation);
+		assert(pg_typed_query_steps(work) == steps && typing.typed_queries.count == queries);
 		assert(typing.proofs.count == proofs && graph.terms.count == terms);
-		pg_classifier_recovery_destroy(&work);
 	}
-	struct pg_classifier_recovery cancelled;
-	assert(!pg_classifier_recovery_init(&cancelled, &typing, empty, value));
-	assert(!pg_classifier_recovery_advance(&cancelled, 0));
-	pg_classifier_recovery_destroy(&cancelled);
-	assert(pg_classifier_recovery_init(&cancelled, NULL, empty, value) == -1);
-	assert(pg_classifier_recovery_advance(&cancelled, 10) == -1);
-	pg_classifier_recovery_destroy(&cancelled);
+	assert(!pg_classifier_request(NULL, empty, value));
+	assert(!pg_classifier_request(&typing, empty, universe));
 	const struct pg_object *binder = pg_binder(&graph);
 	const struct pg_evidence *context = pg_prove_context_extension(&typing, empty, binder, universe);
 	for (size_t i = 0; i < 64; ++i)
 		context = pg_prove_context_extension(&typing, context, pg_binder(&graph), pg_prove_projection(&typing, context, universe));
 	const struct pg_evidence *variable = pg_prove_variable(&typing, context, binder);
-	assert(!pg_classifier_recovery_init(&cancelled, &typing, context, variable));
-	assert(!pg_classifier_recovery_advance(&cancelled, 0));
-	assert(!cancelled.result);
-	assert(pg_classifier_recovery_advance(&cancelled, 1) == 1);
-	assert(pg_evidence_subject(cancelled.result)->core == pg_evidence_subject(universe)->core);
-	assert(pg_evidence_context(cancelled.result) == pg_evidence_context(context));
-	assert(pg_evidence_judgement(cancelled.result) == PG_JUDGEMENT_VALUE_TYPE);
-	pg_classifier_recovery_destroy(&cancelled);
+	assert(!pg_classifier_request(&typing, empty, variable));
+	work = pg_classifier_request(&typing, context, variable);
+	assert(work && !pg_typed_query_advance(work, 0));
+	assert(!pg_typed_query_result(work));
+	assert(pg_typed_query_advance(work, 1) == 1);
+	formation = pg_typed_query_result(work);
+	assert(pg_evidence_subject(formation)->core == pg_evidence_subject(universe)->core);
+	assert(pg_evidence_context(formation) == pg_evidence_context(context));
+	assert(pg_evidence_judgement(formation) == PG_JUDGEMENT_VALUE_TYPE);
+	/* Pending requests belong to Typing, not to a caller's stack. */
+	work = pg_classifier_request(&typing, context, pg_prove_return(&typing, variable));
+	assert(work && !pg_typed_query_advance(work, 0));
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
 	puts("classifier: 40000 nested constructors, direct formation reuse, no proof-history traversal");

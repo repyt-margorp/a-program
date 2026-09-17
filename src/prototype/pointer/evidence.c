@@ -749,7 +749,7 @@ struct typed_query_wait {
 	struct typed_query_wait *parent;
 };
 
-enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN };
+enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER };
 enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT };
 
 struct typed_elimination {
@@ -782,6 +782,7 @@ struct pg_typed_query {
 static int typed_body_match(struct pg_typed_query *work);
 static int typed_input_step(struct pg_typed_query *work);
 static int typed_elimination_step(struct pg_typed_query *work);
+static int typed_classifier_step(struct pg_typed_query *work);
 static const struct pg_evidence *unary_term_content(struct pg_typing *typing,
 	const struct pg_evidence *proof, const struct pg_occurrence *child);
 
@@ -1022,6 +1023,7 @@ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
 			case TYPED_INPUT: current->status = typed_input_step(current); break;
 			case TYPED_ELIMINATION: current->status = typed_elimination_step(current); break;
 			case TYPED_ORIGIN: current->status = typed_origin_step(current); break;
+			case TYPED_CLASSIFIER: current->status = typed_classifier_step(current); break;
 			default: current->status = typed_body_step(current); break;
 			}
 			if (current->kind == TYPED_INPUT && current->status == 1 && !current->result && !current->ordinal)
@@ -4760,24 +4762,20 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 		pg_evidence_context(pi), subject, 2, premises);
 }
 
-int pg_classifier_recovery_init(struct pg_classifier_recovery *work,
-	struct pg_typing *typing,
+struct pg_typed_query *pg_classifier_request(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *term)
 {
-	*work = (struct pg_classifier_recovery){.typing = typing, .status = -1};
-	if (!context_proof(typing, context) || !pg_evidence_owned_by(term, typing)) return -1;
-	if (pg_evidence_context(context) != pg_evidence_context(term)) return -1;
+	if (!context_proof(typing, context) || !pg_evidence_owned_by(term, typing)) return NULL;
+	if (pg_evidence_context(context) != pg_evidence_context(term)) return NULL;
 	if (pg_evidence_judgement(term) != PG_JUDGEMENT_VALUE &&
-		pg_evidence_judgement(term) != PG_JUDGEMENT_COMPUTATION) return -1;
-	work->subject = pg_evidence_subject(term);
-	work->status = 0;
-	return 0;
+		pg_evidence_judgement(term) != PG_JUDGEMENT_COMPUTATION) return NULL;
+	return typed_query_request(typing, term, NULL, TYPED_CLASSIFIER, 0);
 }
 
-static void classifier_recovery_step(struct pg_classifier_recovery *work)
+static int typed_classifier_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
-	const struct pg_occurrence *subject = work->subject;
+	const struct pg_occurrence *subject = work->source;
 	uint64_t level;
 	if (subject->type) work->result = pg_prove_structural_subject(typing, subject->type);
 	else if (subject->judgement == PG_JUDGEMENT_VALUE &&
@@ -4794,25 +4792,12 @@ static void classifier_recovery_step(struct pg_classifier_recovery *work)
 	} else {
 		if (!work->input) work->input = pg_occurrence_type_request(typing, subject);
 		enum pg_occurrence_input_status status = pg_occurrence_input_advance(work->input, 1);
-		if (status == PG_INPUT_PENDING) return;
+		if (status == PG_INPUT_PENDING) return 0;
 		work->result = pg_prove_structural_subject(typing, pg_occurrence_input_result(work->input));
 	}
-	if (!work->result) work->status = -1;
-	else {
-		work->status = pg_evidence_context(work->result) == work->subject->context &&
-			pg_alpha_equal(pg_evidence_subject(work->result)->core, work->subject->classifier) == 1 ? 1 : -1;
-	}
-}
-
-int pg_classifier_recovery_advance(struct pg_classifier_recovery *work, size_t steps)
-{
-	while (!work->status && steps--) classifier_recovery_step(work);
-	return work->status;
-}
-
-void pg_classifier_recovery_destroy(struct pg_classifier_recovery *work)
-{
-	*work = (struct pg_classifier_recovery){0};
+	if (!work->result) return -1;
+	return pg_evidence_context(work->result) == subject->context &&
+		pg_alpha_equal(pg_evidence_subject(work->result)->core, subject->classifier) == 1 ? 1 : -1;
 }
 
 /* Universe successors are formed lazily in the typing store's graph. */
@@ -4828,12 +4813,9 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 	const struct pg_evidence *context,
 	const struct pg_evidence *term)
 {
-	struct pg_classifier_recovery work;
-	pg_classifier_recovery_init(&work, typing, context, term);
-	while (!pg_classifier_recovery_advance(&work, 1024)) {}
-	const struct pg_evidence *result = work.status > 0 ? work.result : NULL;
-	pg_classifier_recovery_destroy(&work);
-	return result;
+	struct pg_typed_query *work = pg_classifier_request(typing, context, term);
+	while (!pg_typed_query_advance(work, 1024)) {}
+	return pg_typed_query_result(work);
 }
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }

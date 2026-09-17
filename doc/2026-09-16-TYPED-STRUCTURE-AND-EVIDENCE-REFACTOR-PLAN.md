@@ -335,7 +335,7 @@ checkpoint notes below are historical, not additional completion claims.
 | `rebase_image` | Reads typed maps/origins and constructor/family inputs; rechecks introductions in the target context. Retains normalization receipts and nominal formation checks, not wrapper-history dispatch; synchronous work remains |
 | `constructor_origin`, `pg_prove_elimination_body` | Whole-introduction reconstruction deleted in R31. A temporary constructor view exposes retained nominal formation, parameters and typed fields for Match/refinement; actual introduction in a changed context remains checked. Congruent NF field selection uses receipts; general current-result exposure remains open |
 | `classifier_leaf` | Deleted |
-| `classifier_recovery_step` | Uses the shared typed classifier query; separate map stack removed. Variable/Universe formation and final synchronous certification remain legitimate checks |
+| `classifier_recovery_step` | R58 removes the caller-owned recovery object and lifecycle. Classifier requests share the existing typed-query store by exact typed subject, including final certification. Variable/Universe formation remains a kernel check; raw context action still uses the existing typed-input machinery |
 | `pg_classifiers` | R57 deletes the graph-only facade, its lifecycle and duplicate API/state arguments. Structural classifier constructors and codecs use Graph directly; checked constructors use the existing Typing owner. Universe successor formation remains lazy and checked |
 | `function_graph.c:computation_origin` | Deleted in favor of shared checked construction access |
 | `typed_construction` | Deleted in R30. Conversion/widening retain their source typed use; checked construction access retrieves existing evidence. R32 removes operand/map/allocation copying from sort and content boundaries too. General result exposure remains open |
@@ -2776,3 +2776,47 @@ Idle O0 QuickSort: 1.1318 seconds / 276728 KiB / 131255 transitions. Counts:
 3386 input queries, all unchanged from R56. One sample is not a speedup claim.
 R2/R3/R5 remain open, including general dependent normalized-result exposure
 and repeated scoped formation/strengthening traversal. Main is not published.
+
+### 2026-09-17: Share classifier formation requests (R58)
+
+- [x] Replace `pg_classifier_recovery` with `pg_classifier_request` in the
+  existing typed-query store. Delete its public mutable record, lifecycle,
+  private advancement loop, and synthesis job field/allocation/cleanup.
+  This adds a query operation, not a Core constructor or another owner.
+- [x] Key requests by the accepted typed subject, not its erased Core or a
+  selected derivation. Check evidence ownership and context before interning.
+  Keep Universe successor formation, variable projection, context checking
+  and classifier alpha comparison. Do not infer acceptance from stored syntax.
+- [x] Test pending-request sharing, zero/partial budgets, alternate derivations
+  sharing the request, repeated results with no additional transitions,
+  mismatched context/sort/owner rejection, and disposal with unfinished work.
+  A completed shared query remains complete when called with zero fuel; callers
+  no longer manufacture an artificial pending state for already completed work.
+- [x] Full debug acceptance passes (63/63 compatibility plus final QuickSort
+  images). The final added alternate-derivation assertion also passes in the
+  rebuilt Core test. ASan/UBSan Core, synthesis and imported QuickSort pass.
+  Logs: `/tmp/a-program-typed-structure-r58-*`.
+- [x] Full optimized acceptance passes (63/63 compatibility and final QuickSort
+  source/image checks). Compare idle O0 QuickSort with the same input and
+  interleaved R57/R58 runs, three samples each; table below.
+
+Against `e414f29`, implementation/header changes are `evidence.c` +17/-35,
+`evidence.h` +3/-13, `synthesis.c` +3/-10: **+23/-58 = -35**.
+Tests: `tests/core.c` +37/-30. Cumulative implementation/header **+1807**
+against `4657cc6`; R5 remains open. Query sharing retains completed work:
+QuickSort now has 6860 typed queries rather than 4095, while Solve remains
+131255 transitions. Core terms (178745), typed subjects (414644), proofs
+(433548) and raw input queries (3386) are unchanged. No image format changes
+or Main publication.
+
+| O0 QuickSort sample | R57 seconds / peak KiB | R58 seconds / peak KiB |
+|---|---:|---:|
+| 1 | 1.1063 / 277056 | 1.1079 / 277232 |
+| 2 | 1.0916 / 277372 | 1.1094 / 277292 |
+| 3 | 1.0821 / 277484 | 1.1284 / 276288 |
+
+Median elapsed time rises about 1.6%; peak RSS overlaps. These short samples
+establish neither a speedup nor a memory reduction. The benefit verified by
+the unit tests is eliminating repeated classifier-query transitions and the
+separate recovery lifecycle; the complete refactor's R0 performance gate is
+still required. R2/R3/R5 remain open for the reasons listed after R57.
