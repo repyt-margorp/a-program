@@ -3051,3 +3051,43 @@ guarantee. R62 creates 174858 Core terms (-3857), 392438 typed subjects (-21851)
 429942 proofs (-3256), 7805 typed queries (+13), 3386 raw input queries
 (unchanged), and uses 131353 Solve transitions (+10). No existing evidence is
 pruned; the checking order avoids some repeated intermediate construction.
+
+### 2026-09-17: Expose neutral typed reduction results (R63)
+
+- [x] Reproduce a missing result view after beta reduction: an accepted
+  computation can reduce to `force f` or `force f x`, not just Lambda,
+  Return, Thunk or an ADT constructor. The previous typed-head query tried
+  to execute the unknown function and lost access to its existing inputs.
+- [x] Recognize a bound neutral head in the existing typed-body query. Do
+  not stop on such a head while an unapplied environment can replace it
+  with a reducible function. Inputs still pass ordinary structural checking,
+  retained normalization evidence and effective-context checks. No new rule,
+  evaluator, Core tag, acceptance store or transport format was introduced.
+- [x] Test both result shapes, both input positions, classifier alpha
+  agreement, exact scopes, chunks one/64, repeated lookup sharing and
+  derivation reconstruction. Substitute an actual quoted function for `f`:
+  the result must then expose Lambda/Return inputs instead, and the receipt
+  for the old free `f` must reject. The new regression fails with R62's
+  `evidence.c` at the missing input assertion (exit 134), not at type formation.
+- [x] Full debug/O2 acceptance pass (63/63 compatibility and final QuickSort
+  source/images). ASan/UBSan Core, IADT, synthesis, imported QuickSort and
+  the complete derivation I/O script pass. Logs:
+  `/tmp/a-program-typed-structure-r63-{debug,o2,sanitize-*}.log`.
+  This is not a full sanitized acceptance claim.
+
+Implementation delta: `evidence.c` **+13/-3 (+10)**; verification delta:
+`tests/core.c` **+62/-0**. Cumulative implementation/header **+1922** against
+`4657cc6`; the net-negative gate is still unmet. R2/R3/R5 and Main publication
+remain open. In particular this repairs single-head NF result exposure, not
+the general multi-phase NF case: a later head contraction can discard or
+change an enclosing constructor after child normalization. Its intermediate
+congruent term must not be mislabeled as an already completed NF receipt.
+
+Identical O0 QuickSort counts: 174858 Core terms, 392438 typed subjects,
+429942 proofs, 7807 typed queries, 3386 raw input queries and 131353 Solve
+transitions. Relative to R62 only retained typed queries change (+2).
+Idle interleaved O0 runs (seconds / peak KiB), R62 -> R63:
+`1.0625/271208 -> 1.0719/271176`,
+`1.0881/271188 -> 1.0756/271064`,
+`1.0925/270712 -> 1.0762/271112`. These samples do not establish a material
+performance change.

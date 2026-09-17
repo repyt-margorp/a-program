@@ -652,6 +652,68 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *quoted_function = pg_prove_thunk(&typing, identity_y);
 	assert(!pg_prove_application(&typing, quoted_function, x_term));
 	assert(pg_prove_application(&typing, pg_prove_force(&typing, quoted_function), x_term));
+	/* Beta can expose a neutral call rather than a constructor or RETURN.
+	 * Its typed inputs still belong to the result, not the erased redex. */
+	const struct pg_object *neutral_binder = pg_binder(graph);
+	const struct pg_evidence *neutral_scope = pg_prove_context_extension(&typing, x_context,
+		neutral_binder, pg_prove_thunk_type(&typing, pi_y));
+	const struct pg_evidence *neutral = pg_prove_variable(&typing, neutral_scope, neutral_binder);
+	const struct pg_evidence *force_neutral = pg_prove_force(&typing, neutral);
+	const struct pg_evidence *neutral_x = pg_prove_projection(&typing, neutral_scope, x_term);
+	const struct pg_evidence *neutral_domain = pg_prove_projection(&typing, neutral_scope, a_in_x);
+	const struct pg_object *call_binder = pg_binder(graph);
+	const struct pg_evidence *call_scope = pg_prove_context_extension(&typing, neutral_scope, call_binder, neutral_domain);
+	const struct pg_evidence *call_argument = pg_prove_variable(&typing, call_scope, call_binder);
+	const struct pg_evidence *call_function = pg_prove_projection(&typing, call_scope, force_neutral);
+	const struct pg_evidence *neutral_bodies[] = {call_function,
+		pg_prove_application(&typing, call_function, call_argument)};
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_evidence *signature = pg_prove_pi(&typing, call_scope,
+			pg_prove_classifier(&typing, call_scope, neutral_bodies[i]));
+		const struct pg_evidence *redex = pg_prove_application(&typing,
+			pg_prove_lambda(&typing, signature, neutral_bodies[i]), neutral_x);
+		assert(redex);
+		struct pg_nf_job *nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(redex)->core);
+		while (pg_nf_advance(nf, i ? 64 : 1) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 100000);
+		assert(pg_reduction_head_congruence(pg_nf_certificate(nf)));
+		const struct pg_evidence *normal = pg_prove_normalization(&typing, redex, pg_nf_certificate(nf));
+		const struct pg_evidence *expected[] = {i ? force_neutral : neutral, neutral_x};
+		for (size_t j = 0; j <= i; ++j) {
+			struct pg_typed_query *query = pg_typed_input_request(&typing, normal, j);
+			while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
+			const struct pg_evidence *input = pg_typed_query_result(query);
+			assert(input && pg_evidence_subject(input)->core == pg_evidence_subject(expected[j])->core);
+			assert(pg_alpha_equal(pg_evidence_classifier(input), pg_evidence_classifier(expected[j])) == 1);
+			assert(pg_evidence_context(input) == pg_evidence_context(normal));
+			reconstruct_derivation(&typing, input);
+			uint64_t steps = pg_typed_query_steps(query);
+			size_t proofs = typing.proofs.count, subjects = typing.occurrences.count;
+			assert(pg_typed_input_request(&typing, normal, j) == query);
+			assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
+			assert(typing.proofs.count == proofs && typing.occurrences.count == subjects);
+		}
+		assert(!pg_prove_normalization_input(&typing, redex, pg_nf_certificate(nf), i + 1));
+		/* Substituting an actual function removes neutrality. The same input
+		 * query must follow that beta/force result instead of the old head. */
+		const struct pg_evidence *images[] = {a_in_x, x_term, quoted_function};
+		const struct pg_evidence *map = pg_prove_substitution(&typing, neutral_scope, x_context, 3, images);
+		const struct pg_evidence *instantiated = pg_prove_reindex(&typing, map, redex);
+		assert(instantiated && !pg_prove_normalization(&typing, instantiated, pg_nf_certificate(nf)));
+		struct pg_nf_job *concrete = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(instantiated)->core);
+		while (pg_nf_advance(concrete, i ? 1 : 64) == PG_NF_PENDING) assert(pg_nf_steps(concrete) < 100000);
+		const struct pg_evidence *child = pg_prove_normalization_input(&typing, instantiated, pg_nf_certificate(concrete), 0);
+		assert(child);
+		if (i) {
+			assert(pg_evidence_subject(child)->core == pg_evidence_subject(x_term)->core);
+			assert(pg_evidence_context(child) == pg_evidence_context(x_term));
+		} else {
+			const struct pg_term *lambda = pg_nf_result(concrete);
+			assert(lambda->kind == PG_LAMBDA && pg_evidence_subject(child)->core == lambda->as.lambda.body);
+			assert(pg_evidence_context(child)->binder == lambda->as.lambda.binder);
+			assert(pg_evidence_context(child)->parent == pg_evidence_context(instantiated));
+		}
+		reconstruct_derivation(&typing, child);
+	}
 	const struct pg_object *z = pg_binder(graph);
 	const struct pg_evidence *z_context = pg_prove_context_extension(&typing, x_context, z, a_in_x);
 	const struct pg_evidence *a_in_z = pg_prove_variable(&typing, z_context, a);

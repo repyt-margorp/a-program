@@ -909,7 +909,7 @@ static int typed_body_enter(struct pg_typed_query *work, const struct pg_occurre
 	return work->dependency ? 0 : -1;
 }
 
-static int typed_head_exposed(const struct pg_occurrence *subject)
+static int typed_head_exposed(const struct pg_occurrence *subject, int neutral)
 {
 	const struct pg_term *core = subject->core;
 	if (core->kind == PG_LAMBDA) return 1;
@@ -918,8 +918,16 @@ static int typed_head_exposed(const struct pg_occurrence *subject)
 		if (head->kind == PG_REFERENCE &&
 			(head->as.reference == &pg_return_operation || head->as.reference == &pg_thunk_operation)) return 1;
 	}
+	while (core->kind == PG_APPLICATION) {
+		const struct pg_term *head = core->as.application.function;
+		if (neutral && head->kind == PG_REFERENCE && head->as.reference == &pg_force_operation) {
+			const struct pg_term *value = core->as.application.argument;
+			if (value->kind == PG_REFERENCE && value->as.reference->kind == PG_BINDER) return 1;
+		}
+		core = head;
+	}
+	if (neutral && core->kind == PG_REFERENCE && core->as.reference->kind == PG_BINDER) return 1;
 	if (subject->judgement != PG_JUDGEMENT_VALUE) return 0;
-	while (core->kind == PG_APPLICATION) core = core->as.application.function;
 	const struct pg_data_layout *layout;
 	size_t position, arity;
 	return core->kind == PG_REFERENCE && pg_data_constructor_view(core->as.reference, &layout, &position, &arity);
@@ -950,7 +958,9 @@ static int typed_body_step(struct pg_typed_query *work)
 	/* A checked result is usable structure, even when its origin is a
 	 * computation whose construction cannot be exposed by this query. */
 	const struct pg_term *core = current->core;
-	if (work->kind == TYPED_HEAD && !work->forces && typed_head_exposed(current)) {
+	/* A neutral head is stable only after the pending environment has been
+	 * applied: its image may instead expose a beta/force redex. */
+	if (work->kind == TYPED_HEAD && !work->forces && typed_head_exposed(current, !work->environment)) {
 		work->value = pg_prove_structural_subject(typing, current);
 		return work->value ? 0 : -1;
 	}
