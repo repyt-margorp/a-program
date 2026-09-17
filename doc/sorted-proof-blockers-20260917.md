@@ -708,4 +708,3 @@ compare_correct :: (x : Nat) -> (y : Nat) -> Decision x y (natLessOrEqual x y);
 main := le_refl Nat.zero;
 expected := LE.zero Nat.zero;
 ```
-
