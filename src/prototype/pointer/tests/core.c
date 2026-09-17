@@ -3119,6 +3119,34 @@ static void conversion_test(struct pg_graph *graph)
 	assert(pg_conversion_init(&conversion, &work, omega, omega) == 0);
 	assert(pg_conversion_advance(&conversion, 0) == PG_CONVERSION_EQUAL);
 	pg_conversion_destroy(&conversion);
+	/* Substitution congruence consumes issued pure receipts, never a claimed
+	 * pair of endpoints or a result produced by an arbitrary runtime policy. */
+	struct pg_substitution_work substitution;
+	assert(!pg_substitution_work_init(&substitution, graph));
+	const struct pg_term *redex = pg_application(graph, identity, vy);
+	struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, redex);
+	assert(pg_nf_advance(nf, 10000) == PG_NF_DONE && pg_nf_result(nf) == vy);
+	const struct pg_reduction_certificate *receipt = pg_nf_certificate(nf);
+	struct pg_binding_value binding = {x, redex};
+	const struct pg_term *template = pg_application(graph, vx, vx);
+	const struct pg_term *instance = pg_application(graph, redex, redex), *right = pg_application(graph, vy, vy);
+	const struct pg_conversion_certificate *congruence = pg_conversion_substitution(&substitution, instance, right, template, 1, &binding, &receipt);
+	assert(congruence && pg_conversion_left(congruence) == instance && pg_conversion_right(congruence) == right);
+	assert(!pg_conversion_substitution(&substitution, right, right, template, 1, &binding, &receipt));
+	assert(!pg_conversion_substitution(&substitution, instance, instance, template, 1, &binding, &receipt));
+	binding.value = vx;
+	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, &binding, &receipt));
+	binding.value = redex;
+	nf = pg_nf_request(&work, &pg_beta_policy, redex);
+	assert(pg_nf_advance(nf, 10000) == PG_NF_DONE);
+	receipt = pg_nf_certificate(nf);
+	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, &binding, &receipt));
+	receipt = NULL;
+	assert(pg_conversion_substitution(&substitution, instance, instance, template, 1, &binding, &receipt));
+	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, NULL, &receipt));
+	assert(!pg_conversion_substitution(&substitution, instance, right, template, 1, &binding, NULL));
+	assert(pg_conversion_substitution(&substitution, identity, identity, identity, 0, NULL, NULL));
+	pg_substitution_work_destroy(&substitution);
 	pg_whnf_work_destroy(&work);
 	puts("conversion: explicit beta comparison, binder scope, shared DAG and pending divergence passed");
 }

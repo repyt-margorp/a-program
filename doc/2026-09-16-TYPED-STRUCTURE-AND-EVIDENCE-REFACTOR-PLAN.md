@@ -327,7 +327,7 @@ checkpoint notes below are historical, not additional completion claims.
 |---|---|
 | Evidence classifier/context/sort copies | Removed for term conclusions |
 | Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
-| Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. General multi-phase NF, recursive IH exposure and dependent field-classifier transport remain open; individual kernel checks and receipt lookup remain synchronous |
+| Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. R59 transports dependent constructor-field classifiers through explicit Conversion using preceding fields' pure receipts. General multi-phase NF remains open; individual kernel checks and receipt lookup remain synchronous |
 | `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
@@ -2820,3 +2820,65 @@ establish neither a speedup nor a memory reduction. The benefit verified by
 the unit tests is eliminating repeated classifier-query transitions and the
 separate recovery lifecycle; the complete refactor's R0 performance gate is
 still required. R2/R3/R5 remain open for the reasons listed after R57.
+
+### 2026-09-17: Dependent normalized constructor fields (R59)
+
+- [x] Reproduce a stale classifier after normalizing `Pack A x`, where
+  `A = total_result(return Nat)` and `x : A`. The old field view returned
+  `zero : A` although the first field was now `Nat`; those views could not
+  reconstruct the constructor through the ordinary dependent substitution rule.
+- [x] Instantiate each field declaration using the current checked prefix.
+  Earlier fields use the same cached typed-input queries, including when the
+  last field is requested first. Convert the resulting field explicitly;
+  preserve the original evidence as its premise rather than retagging it.
+- [x] Derive conversion congruence from simultaneous substitution and already
+  issued pure reduction receipts. Check both instantiated endpoints and every
+  changed image. Reuse the substitution store, with no evaluator, PropEq
+  reflection, new logical rule, Core tag or transport format. The ordinary
+  conversion image still stores endpoints and fresh-process Solve checks them.
+- [x] Test dependent fields `A`, `x : A`, `y : Thunk(ReturnType(A))`, chunks
+  one/64, last-field-first requests, reconstruction, outer projection and
+  repeated-query sharing. Update the old synthesis assertion that preserved
+  the stale field classifier: now require an explicit Conversion and verify
+  its original premise remains unchanged. Check malformed congruence inputs
+  and non-pure receipts reject. Exercise direct rule reconstruction and ordinary
+  Solve without local certificates; alternate derivations need only share the
+  checked subject, not a certificate pointer.
+- [x] Full debug and optimized acceptance pass, including 63/63 compatibility
+  and final QuickSort images. ASan/UBSan Core, IADT, synthesis and imported
+  QuickSort pass. After the last test-only edit, the complete derivation I/O
+  script passes in debug, optimized and sanitized builds. Logs are under
+  `/tmp/a-program-typed-structure-r59-*`; the final optimized I/O log is
+  `r59-o2-io-final.log`. This is not a full sanitized acceptance claim.
+
+Per-file delta against `caf7f24`, under `src/prototype/pointer/`:
+
+| File | Added | Deleted | Net |
+|---|---:|---:|---:|
+| conversion.c | 27 | 0 | +27 |
+| conversion.h | 9 | 0 | +9 |
+| evidence.c | 125 | 36 | +89 |
+| **Implementation/header** | **161** | **36** | **+125** |
+| tests/core.c | 28 | 0 | +28 |
+| tests/derivation_io.c | 15 | 2 | +13 |
+| tests/iadt.c | 87 | 0 | +87 |
+| tests/synthesis.c | 8 | 2 | +6 |
+
+Cumulative implementation/header **+1932** against `4657cc6`; the net-negative
+gate remains unmet. No build/fixture changes. R2/R3/R5 remain open: general
+multi-phase NF exposure and synchronous scoped formation/strengthening remain.
+This correction is necessary for dependent result views, not evidence that
+the broader representation/deletion work is complete. No Main publication.
+
+Idle O0 QuickSort, identical input, interleaved runs:
+
+| Sample | R58 seconds / peak KiB | R59 seconds / peak KiB |
+|---|---:|---:|
+| 1 | 1.0259 / 277636 | 1.0611 / 277588 |
+| 2 | 1.0150 / 277552 | 1.0179 / 278272 |
+| 3 | 1.0440 / 276836 | 1.0078 / 277464 |
+
+The small timing difference is not a speedup claim. Both use 178745 Core terms,
+414644 typed subjects, 433548 proofs, 6860 typed queries, 3386 raw input queries
+and 131255 Solve transitions. This workload does not exercise the new field
+conversion; its coverage comes from the dependent-field regression above.

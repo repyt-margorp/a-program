@@ -35,5 +35,14 @@ size_t pg_conversion_task_count(const struct pg_conversion *conversion);
 const struct pg_conversion_certificate *pg_conversion_certificate(const struct pg_conversion *conversion);
 const struct pg_term *pg_conversion_left(const struct pg_conversion_certificate *certificate);
 const struct pg_term *pg_conversion_right(const struct pg_conversion_certificate *certificate);
+/* Congruence of simultaneous substitution along already certified pure
+ * reductions. A NULL image receipt means an unchanged image. Endpoints are
+ * checked modulo alpha against the two instances; no evaluator or PropEq is
+ * consulted. Imported conversions still undergo ordinary checking. */
+const struct pg_conversion_certificate *pg_conversion_substitution(
+	struct pg_substitution_work *work, const struct pg_term *left,
+	const struct pg_term *right, const struct pg_term *body, size_t count,
+	const struct pg_binding_value *bindings,
+	const struct pg_reduction_certificate *const *reductions);
 
 #endif

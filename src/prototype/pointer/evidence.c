@@ -758,6 +758,14 @@ struct typed_elimination {
 	size_t count, next;
 };
 
+struct typed_field {
+	const struct pg_evidence *map;
+	const struct pg_evidence **declarations;
+	struct pg_binding_value *bindings;
+	const struct pg_reduction_certificate **reductions;
+	size_t prefix, next;
+};
+
 struct pg_typed_query {
 	struct pg_index_entry index;
 	struct pg_typing *typing;
@@ -771,7 +779,9 @@ struct pg_typed_query {
 	struct pg_context_lift *lift;
 	struct pg_occurrence_action *action;
 	struct typed_elimination *elimination;
+	struct typed_field *field;
 	const struct pg_reduction_certificate *reduction;
+	const struct pg_reduction_certificate *input_reduction;
 	enum typed_query_kind kind;
 	size_t ordinal;
 	size_t forces;
@@ -3339,10 +3349,97 @@ static int typed_input_align(struct pg_typed_query *work, const struct pg_eviden
 	return work->argument ? 1 : -1;
 }
 
+/* Reinstantiate a dependent field's declared type with the current preceding
+ * fields. Their retained reductions justify conversion of the old instance;
+ * checking the new substitution remains the ordinary dependent map rule. */
+static int typed_field_step(struct pg_typed_query *work)
+{
+	struct pg_typing *typing = work->typing;
+	if (!work->field) {
+		if (!work->ordinal) return 1;
+		const struct pg_term *head = work->current->core;
+		size_t count = 0, position, arity;
+		for (; head->kind == PG_APPLICATION; head = head->as.application.function) ++count;
+		const struct pg_data_layout *layout;
+		if (head->kind != PG_REFERENCE || !pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) return 1;
+		if (count != arity || work->ordinal >= count) return -1;
+		struct pg_inductive_instance instance;
+		if (!pg_inductive_instance(typing, formed_classifier(typing,
+			pg_prove_structural_subject(typing, work->current)), &instance)) return -1;
+		if (layout != pg_data_schema_layout(instance.schema)) return -1;
+		const struct pg_evidence *family = pg_prove_reindex(typing, instance.parameters, instance.formation);
+		if (!family) return -1;
+		const struct pg_evidence *self = pg_evidence_judgement(family) == PG_JUDGEMENT_TYPE_FAMILY
+			? family : pg_prove_type_value(typing, family);
+		const struct pg_evidence *map = pg_prove_substitution_pair(typing, instance.parameters,
+			instance.formation->premises[0], self);
+		if (!map) return -1;
+		struct typed_field *field = pg_alloc(typing->graph, sizeof(*field));
+		if (!field) return -1;
+		*field = (struct typed_field){.map = map, .prefix = pg_evidence_context_map(map)->count};
+		if (work->ordinal >= SIZE_MAX / sizeof(*field->declarations) ||
+			field->prefix > SIZE_MAX / sizeof(*field->bindings) - work->ordinal) return -1;
+		field->declarations = pg_alloc(typing->graph, (work->ordinal + 1) * sizeof(*field->declarations));
+		field->bindings = pg_alloc(typing->graph, (field->prefix + work->ordinal) * sizeof(*field->bindings));
+		field->reductions = pg_alloc(typing->graph, (field->prefix + work->ordinal) * sizeof(*field->reductions));
+		if (!field->declarations || !field->bindings || !field->reductions) return -1;
+		memcpy(field->bindings, pg_context_map_bindings(pg_evidence_context_map(map)), field->prefix * sizeof(*field->bindings));
+		const struct pg_evidence *scope = pg_data_schema_fields(instance.schema, head->as.reference);
+		for (size_t i = count; i; --i, scope = scope->premises[0])
+			if (i <= work->ordinal + 1) field->declarations[i - 1] = scope;
+		work->field = field;
+		work->dependency = NULL;
+	}
+	struct typed_field *field = work->field;
+	if (field->next < work->ordinal) {
+		if (!work->dependency) {
+			const struct pg_occurrence *blocked = pg_occurrence_input_blocked_source(work->input);
+			work->dependency = pg_typed_input_request(typing, pg_prove_structural_subject(typing, blocked), field->next);
+			return work->dependency ? 0 : -1;
+		}
+		if (!work->dependency->status) return 0;
+		const struct pg_evidence *value = pg_typed_query_result(work->dependency);
+		const struct pg_occurrence *original;
+		if (!value || !structural_input(typing, work->current, field->next, &original) || !original) return -1;
+		const struct pg_evidence *declaration = field->declarations[field->next];
+		size_t slot = field->prefix + field->next;
+		field->bindings[slot] = (struct pg_binding_value){pg_evidence_context(declaration)->binder, original->core};
+		field->reductions[slot] = work->dependency->input_reduction;
+		field->map = pg_prove_substitution_pair(typing, field->map, declaration, value);
+		if (!field->map) return -1;
+		++field->next;
+		work->dependency = NULL;
+		return 0;
+	}
+	const struct pg_evidence *declared_type = field->declarations[work->ordinal]->premises[1];
+	const struct pg_evidence *type = pg_prove_reindex(typing, field->map, declared_type);
+	if (!type) return -1;
+	const struct pg_term *left = pg_evidence_classifier(work->value), *right = pg_evidence_subject(type)->core;
+	if (pg_alpha_equal(left, right) == 1) return 1;
+	const struct pg_conversion_certificate *conversion = pg_conversion_substitution(&typing->substitutions,
+		left, right, pg_evidence_subject(declared_type)->core, field->prefix + work->ordinal, field->bindings, field->reductions);
+	work->value = pg_prove_conversion(typing, work->value, type, conversion);
+	return work->value ? 1 : -1;
+}
+
 static int typed_input_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_occurrence *source = work->source;
+	if (work->value) {
+		if (!work->continuation) {
+			int status = typed_field_step(work);
+			if (status <= 0) return status;
+			work->continuation = work->value;
+			work->input = pg_occurrence_input_resume_request(typing, work->input, pg_evidence_subject(work->value));
+			return work->input ? 0 : -1;
+		}
+		enum pg_occurrence_input_status status = pg_occurrence_input_advance(work->input, 1);
+		if (status == PG_INPUT_PENDING) return 0;
+		if (status == PG_INPUT_ERROR) return -1;
+		work->result = pg_prove_structural_subject(typing, pg_occurrence_input_result(work->input));
+		return 1;
+	}
 	if (!work->dependency) {
 		if (!work->input) work->input = pg_occurrence_input_request(typing, source, work->ordinal);
 		enum pg_occurrence_input_status status = pg_occurrence_input_advance(work->input, 1);
@@ -3388,42 +3485,34 @@ static int typed_input_step(struct pg_typed_query *work)
 		if (status <= 0) return status < 0 ? 1 : 0;
 	}
 	input = work->argument;
-	if (!work->value) {
-		/* Follow the semantic input boundary along the erased APP spine,
-		 * one congruence phase per transition, not arbitrary descendants. */
-		const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
-		if (!phase) {
-			if (pg_alpha_equal(work->current->core, pg_reduction_target(work->reduction)) != 1) return 1;
-			work->value = input;
-			work->input = pg_occurrence_input_resume_request(typing, work->input, pg_evidence_subject(input));
-			return work->input ? 0 : -1;
-		}
-		if (pg_reduction_source(phase->head) != pg_reduction_target(phase->head) &&
-			pg_alpha_equal(work->current->core, pg_reduction_target(phase->head)) != 1) return 1;
-		const struct pg_term *core = pg_evidence_subject(input)->core;
-		const struct pg_reduction_certificate *child = NULL;
-		if (pg_alpha_equal(pg_reduction_source(phase->children[0]), core) == 1) child = phase->children[0];
-		else if (phase->children[1] && pg_alpha_equal(pg_reduction_source(phase->children[1]), core) == 1) child = phase->children[1];
-		else {
-			const struct pg_term *head = pg_reduction_target(phase->head), *body;
-			if (head->kind != PG_APPLICATION) return 1;
-			const struct pg_object *binder = pg_occurrence_input_binder(head, work->ordinal, &body);
-			/* Pi's semantic codomain is beneath its right-hand Lambda, not
-			 * the erased APP's left spine. Its scope was aligned above. */
-			work->reduction = binder ? phase->children[1] : phase->children[0];
-			if (!work->reduction) return 1;
-			return 0;
-		}
-		work->value = pg_prove_normalization(typing, input, child);
-		if (!work->value) return 1;
-		work->input = pg_occurrence_input_resume_request(typing, work->input, pg_evidence_subject(work->value));
-		return work->input ? 0 : -1;
+	/* Follow the semantic input boundary along the erased APP spine,
+	 * one congruence phase per transition, not arbitrary descendants. */
+	const struct pg_reduction_phase *phase = pg_reduction_head_congruence(work->reduction);
+	if (!phase) {
+		if (pg_alpha_equal(work->current->core, pg_reduction_target(work->reduction)) != 1) return 1;
+		work->value = input;
+		return 0;
 	}
-	enum pg_occurrence_input_status status = pg_occurrence_input_advance(work->input, 1);
-	if (status == PG_INPUT_PENDING) return 0;
-	if (status == PG_INPUT_ERROR) return -1;
-	work->result = pg_prove_structural_subject(typing, pg_occurrence_input_result(work->input));
-	return 1;
+	if (pg_reduction_source(phase->head) != pg_reduction_target(phase->head) &&
+		pg_alpha_equal(work->current->core, pg_reduction_target(phase->head)) != 1) return 1;
+	const struct pg_term *core = pg_evidence_subject(input)->core;
+	const struct pg_reduction_certificate *child = NULL;
+	if (pg_alpha_equal(pg_reduction_source(phase->children[0]), core) == 1) child = phase->children[0];
+	else if (phase->children[1] && pg_alpha_equal(pg_reduction_source(phase->children[1]), core) == 1) child = phase->children[1];
+	else {
+		const struct pg_term *head = pg_reduction_target(phase->head), *body;
+		if (head->kind != PG_APPLICATION) return 1;
+		const struct pg_object *binder = pg_occurrence_input_binder(head, work->ordinal, &body);
+		/* Pi's semantic codomain is beneath its right-hand Lambda, not
+		 * the erased APP's left spine. Its scope was aligned above. */
+		work->reduction = binder ? phase->children[1] : phase->children[0];
+		if (!work->reduction) return 1;
+		return 0;
+	}
+	work->value = pg_prove_normalization(typing, input, child);
+	if (!work->value) return 1;
+	work->input_reduction = child;
+	return 0;
 }
 
 static int structural_input(struct pg_typing *typing, const struct pg_occurrence *source,

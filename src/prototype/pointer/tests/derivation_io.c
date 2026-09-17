@@ -359,9 +359,22 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *u1 = pg_prove_universe(typing, empty, 1);
 	struct pg_conversion conversion;
 	const struct pg_term *u1_core = pg_evidence_subject(u1)->core;
-	assert(pg_conversion_init(&conversion, &work, u1_core, u1_core) == 0);
+	const struct pg_evidence *type_redex = pg_prove_value_type(typing, pg_prove_total_pure_value(typing,
+		pg_prove_return_contract(typing, PG_TOTALITY_TOTAL, pg_prove_type_value(typing, u1))));
+	const struct pg_term *type_core = pg_evidence_subject(type_redex)->core;
+	assert(pg_conversion_init(&conversion, &work, u1_core, type_core) == 0);
 	assert(pg_conversion_advance(&conversion, 10000) == PG_CONVERSION_EQUAL);
-	roots[4] = pg_prove_conversion(typing, pg_prove_type_value(typing, u), u1, pg_conversion_certificate(&conversion));
+	const struct pg_evidence *converted = pg_prove_conversion(typing,
+		pg_prove_type_value(typing, u), type_redex, pg_conversion_certificate(&conversion));
+	struct pg_nf_job *type_nf = pg_nf_request(&work, &pg_pure_policy, type_core);
+	assert(pg_nf_advance(type_nf, 10000) == PG_NF_DONE);
+	const struct pg_reduction_certificate *type_receipt = pg_nf_certificate(type_nf);
+	struct pg_binding_value type_binding = {pg_binder(graph), type_core};
+	const struct pg_conversion_certificate *congruence = pg_conversion_substitution(&typing->substitutions,
+		type_core, u1_core, pg_reference(graph, type_binding.binder), 1, &type_binding, &type_receipt);
+	/* The file carries ordinary conversion endpoints, not local authority to
+	 * trust a congruence producer. Fresh-process Solve recomputes the equality. */
+	roots[4] = pg_prove_conversion(typing, converted, u1, congruence);
 	assert(under_lambda);
 	struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(under_lambda)->core);
 	assert(nf && pg_nf_advance(nf, 10000) == PG_NF_DONE);

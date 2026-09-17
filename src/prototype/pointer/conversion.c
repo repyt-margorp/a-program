@@ -141,3 +141,30 @@ size_t pg_conversion_task_count(const struct pg_conversion *conversion)
 
 const struct pg_term *pg_conversion_left(const struct pg_conversion_certificate *certificate) { return certificate->left; }
 const struct pg_term *pg_conversion_right(const struct pg_conversion_certificate *certificate) { return certificate->right; }
+
+const struct pg_conversion_certificate *pg_conversion_substitution(
+	struct pg_substitution_work *work, const struct pg_term *left,
+	const struct pg_term *right, const struct pg_term *body, size_t count,
+	const struct pg_binding_value *bindings,
+	const struct pg_reduction_certificate *const *reductions)
+{
+	if (!work || !left || !right || !body || (count && (!bindings || !reductions))) return NULL;
+	if (count > SIZE_MAX / sizeof(*bindings)) return NULL;
+	struct pg_binding_value *images = malloc(count * sizeof(*images));
+	if (count && !images) return NULL;
+	struct pg_conversion_certificate *result = NULL;
+	for (size_t i = 0; i < count; ++i) {
+		images[i] = bindings[i];
+		if (!reductions[i]) continue;
+		if (pg_reduction_policy(reductions[i]) != &pg_pure_policy ||
+			pg_alpha_equal(bindings[i].value, pg_reduction_source(reductions[i])) != 1) goto done;
+		images[i].value = pg_reduction_target(reductions[i]);
+	}
+	if (pg_alpha_equal(left, pg_substitution_compute(work, body, count, bindings)) != 1 ||
+		pg_alpha_equal(right, pg_substitution_compute(work, body, count, images)) != 1) goto done;
+	result = pg_alloc(work->graph, sizeof(*result));
+	if (result) *result = (struct pg_conversion_certificate){left, right};
+done:
+	free(images);
+	return result;
+}

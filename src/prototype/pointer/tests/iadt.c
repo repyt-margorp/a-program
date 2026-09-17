@@ -1528,6 +1528,92 @@ static void index_paths(struct pg_typing *typing,
 	puts("index paths: constructor disjointness/injectivity via type-case action and checked transport passed");
 }
 
+static void dependent_normalized_fields(struct pg_typing *typing,
+	const struct pg_evidence *nat, uint64_t chunk)
+{
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *self = pg_prove_context_extension(typing, empty, pg_binder(typing->graph),
+		pg_prove_universe(typing, empty, 1));
+	const struct pg_object *a = pg_binder(typing->graph), *x = pg_binder(typing->graph), *y = pg_binder(typing->graph);
+	const struct pg_evidence *as = pg_prove_context_extension(typing, self, a,
+		pg_prove_universe(typing, self, 0));
+	const struct pg_evidence *xs = pg_prove_context_extension(typing, as, x,
+		pg_prove_value_type(typing, pg_prove_variable(typing, as, a)));
+	const struct pg_evidence *ys = pg_prove_context_extension(typing, xs, y,
+		pg_prove_thunk_type(typing, pg_prove_return_type(typing,
+			pg_prove_value_type(typing, pg_prove_variable(typing, xs, a)))));
+	const struct pg_evidence *case_result = parameter_result(typing, self, ys);
+	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, self, self), 1, &case_result);
+	const struct pg_evidence *pair = pg_prove_inductive_type(typing, schema);
+	assert(pair);
+	const struct pg_object *ctor = pg_data_constructor(pg_data_schema_layout(schema), 0);
+	const struct pg_evidence *parameters = pg_prove_substitution_projection(typing, empty, empty);
+	struct pg_inductive_instance ni;
+	assert(pg_inductive_instance(typing, nat, &ni));
+	const struct pg_evidence *zero = pg_prove_constructor(typing, nat,
+		pg_data_constructor(pg_data_schema_layout(ni.schema), 0), parameters, 0, NULL);
+	const struct pg_evidence *type = pg_prove_total_pure_value(typing,
+		pg_prove_return_contract(typing, PG_TOTALITY_TOTAL, pg_prove_type_value(typing, nat)));
+	const struct pg_evidence *redex_type = pg_prove_value_type(typing, type);
+	struct pg_whnf_work work;
+	struct pg_conversion comparison;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_conversion_init(&comparison, &work, pg_evidence_classifier(zero), pg_evidence_subject(redex_type)->core));
+	while (pg_conversion_advance(&comparison, 1) == PG_CONVERSION_PENDING) {}
+	const struct pg_evidence *redex_zero = pg_prove_conversion(typing, zero, redex_type, pg_conversion_certificate(&comparison));
+	const struct pg_evidence *fields[] = {type, redex_zero, pg_prove_thunk(typing, pg_prove_return(typing, redex_zero))};
+	const struct pg_evidence *value = pg_prove_constructor(typing, pair, ctor, parameters, 3, fields);
+	assert(value);
+	struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(value)->core);
+	while (pg_nf_advance(nf, chunk) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
+	const struct pg_evidence *normal = pg_prove_normalization(typing, value, pg_nf_certificate(nf));
+	/* Request the last field first: its dependent prefix is shared work, not
+	 * a prerequisite that callers must manually populate in declaration order. */
+	struct pg_typed_query *last = pg_typed_input_request(typing, normal, 2);
+	assert(last && !pg_typed_query_advance(last, 0));
+	while (!pg_typed_query_advance(last, chunk)) assert(pg_typed_query_steps(last) < 10000);
+	const struct pg_evidence *normalized[] = {
+		pg_prove_constructor_field(typing, normal, a), pg_prove_constructor_field(typing, normal, x),
+		pg_prove_constructor_field(typing, normal, y)};
+	assert(normalized[0] && normalized[1] && normalized[2] == pg_typed_query_result(last));
+	assert(pg_evidence_subject(normalized[0])->core == pg_evidence_subject(nat)->core);
+	assert(pg_evidence_subject(normalized[1])->core == pg_evidence_subject(zero)->core);
+	assert(pg_evidence_classifier(normalized[1]) == pg_evidence_subject(nat)->core);
+	assert(pg_evidence_classifier(normalized[2]) == pg_thunk_type(typing->graph,
+		pg_return_type(typing->graph, pg_evidence_subject(nat)->core)));
+	assert(pg_prove_constructor(typing, pair, ctor, parameters, 3, normalized));
+	for (size_t i = 1; i < 3; ++i) {
+		struct pg_derivation_input input;
+		struct pg_derivation_parameters parameters;
+		assert(!pg_derivation_input_header(normalized[i], &input));
+		assert(!pg_derivation_parameters(normalized[i], &parameters));
+		const struct pg_evidence *premises[] = {pg_evidence_premise(normalized[i], 0), pg_evidence_premise(normalized[i], 1)};
+		assert(pg_prove_derivation(typing, input.rule, &parameters, 2, premises) == normalized[i]);
+		struct pg_synthesis synthesis;
+		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_synthesis_job *jobs[] = {pg_synthesis_evidence(&synthesis, premises[0]), pg_synthesis_evidence(&synthesis, premises[1])};
+		struct pg_synthesis_job *job = pg_synthesis_rule(&synthesis, &input, jobs, NULL, NULL);
+		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+			pg_synthesis_advance(&synthesis, chunk);
+			assert(synthesis.steps < 10000);
+		}
+		assert(pg_evidence_subject(pg_synthesis_result(job)) == pg_evidence_subject(normalized[i]));
+		pg_synthesis_destroy(&synthesis);
+	}
+	const struct pg_evidence *outer = pg_prove_context_extension(typing, empty, pg_binder(typing->graph), nat);
+	const struct pg_evidence *moved = pg_prove_constructor_field(typing, pg_prove_projection(typing, outer, normal), y);
+	assert(moved && pg_evidence_classifier(moved) == pg_evidence_classifier(normalized[2]));
+	assert(pg_evidence_context(moved) == pg_evidence_context(outer));
+	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
+	uint64_t steps = pg_typed_query_steps(last);
+	assert(pg_typed_input_request(typing, normal, 2) == last && pg_typed_query_advance(last, 64) == 1);
+	assert(pg_typed_query_steps(last) == steps);
+	assert(pg_prove_constructor_field(typing, normal, y) == normalized[2]);
+	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
+	pg_conversion_destroy(&comparison);
+	pg_whnf_work_destroy(&work);
+}
+
 static void constructor_field_paths(struct pg_typing *typing,
 	const struct pg_evidence *nat)
 {
@@ -1699,6 +1785,7 @@ static void schema_positivity(void)
 	const struct pg_evidence *nat = pg_prove_inductive_type(&typing, nat_schema);
 	assert(nat && pg_evidence_rule(nat) == PG_INDUCTIVE_FORM);
 	constructor_field_paths(&typing, nat);
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) dependent_normalized_fields(&typing, nat, chunk);
 	struct pg_inductive_instance recovered;
 	assert(pg_inductive_instance(&typing, nat, &recovered));
 	assert(recovered.schema == nat_schema && recovered.formation == nat);

@@ -5364,7 +5364,8 @@ static void source_schemas(struct pg_typing *typing)
 		same_judgement(pg_prove_constructor_field(typing, packed, members->parent->binder), values[0]);
 		assert(!pg_prove_constructor_field(typing, packed, field));
 		/* Normalizing the type field does not silently retag a dependent value.
-		 * Its existing conversion remains the evidence for its classifier. */
+		 * An explicit conversion connects its retained classifier to the current
+		 * telescope instance, preserving the original evidence as a premise. */
 		const struct pg_evidence *type_redex = pg_prove_total_pure_value(typing,
 			pg_prove_return_contract(typing, PG_TOTALITY_TOTAL, values[0]));
 		const struct pg_evidence *redex_formation = pg_prove_value_type(typing, type_redex);
@@ -5385,7 +5386,12 @@ static void source_schemas(struct pg_typing *typing)
 		const struct pg_evidence *type_field = pg_prove_constructor_field(typing, normal_box, members->parent->binder);
 		const struct pg_evidence *value_field = pg_prove_constructor_field(typing, normal_box, members->binder);
 		assert(type_field && pg_evidence_subject(type_field)->core == pg_evidence_subject(values[0])->core);
-		assert(value_field == converted_zero && pg_evidence_classifier(value_field) == pg_evidence_subject(type_redex)->core);
+		assert(value_field && value_field != converted_zero && pg_evidence_rule(value_field) == PG_TYPE_CONVERSION);
+		assert(pg_evidence_premise(value_field, 0) == converted_zero);
+		assert(pg_evidence_classifier(converted_zero) == pg_evidence_subject(type_redex)->core);
+		assert(pg_evidence_classifier(value_field) == pg_evidence_subject(admitted)->core);
+		const struct pg_evidence *current_fields[] = {type_field, value_field};
+		assert(pg_prove_constructor(typing, box.formation, mk, box.parameters, 2, current_fields));
 		proofs = typing->proofs.count;
 		assert(pg_prove_constructor_field(typing, normal_box, members->binder) == value_field);
 		assert(typing->proofs.count == proofs);
