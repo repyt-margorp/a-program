@@ -272,12 +272,13 @@ const struct pg_evidence *pg_prove_inductive_motive_at(struct pg_typing *typing,
  * telescope and sequence its pure returned recursive value into the motive.
  * The motive may depend on indices/arguments, but not on that returned value.
  * Direct fields retain fully dependent motive substitution. No value is
- * extracted from a neutral computation; this builds type formation only. */
+ * extracted from a neutral computation; this builds type formation only.
+ * Optional allocation supplies Pi binders, never trusted type formation. */
 const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *typing,
 	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *motive_context,
 	const struct pg_evidence *motive, const struct pg_evidence *context,
-	const struct pg_evidence *field);
+	const struct pg_evidence *field, const struct pg_term *allocation);
 /* Dependent case elimination (no recursive IH). Motive is a computation-type
  * formation in destination,indices,z:Family indices. Branches are already
  * synthesized computations in destination, ordered by the schema, curried
@@ -625,6 +626,11 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence);
 /* Storage provenance only; this does not validate a rule-specific premise. */
 int pg_evidence_owned_by(const struct pg_evidence *evidence, const struct pg_typing *typing);
+/* Retain an alternative formation of the exact constructor/Match/IH result
+ * classifier. Schema, motive and substitution premises stay fixed. This is not
+ * an operation on directional/action premises, even if conclusions coincide. */
+const struct pg_evidence *pg_prove_data_result_formation(struct pg_typing *typing,
+	const struct pg_evidence *proof, const struct pg_evidence *formation);
 /* Enumerate existing receipts for this exact typed subject, in acceptance
  * order. NULL after starts the enumeration. No rule runs and no acceptance is
  * inferred from an erased Core. Receipt selection must not determine semantic

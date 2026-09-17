@@ -236,6 +236,30 @@ static const struct pg_evidence *accept_with_conversion(struct pg_typing *typing
 	return accept_record(typing, rule, context, subject, count, premises, conversion, NULL);
 }
 
+const struct pg_evidence *pg_prove_data_result_formation(struct pg_typing *typing,
+	const struct pg_evidence *proof, const struct pg_evidence *formation)
+{
+	if (!pg_evidence_owned_by(proof, typing) || !pg_evidence_owned_by(formation, typing)) return NULL;
+	size_t index;
+	switch (proof->rule) {
+	case PG_CONSTRUCTOR_INTRO: index = 0; break;
+	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: index = proof->premise_count - 1; break;
+	default: return NULL;
+	}
+	if (pg_evidence_subject(formation) != pg_evidence_subject(proof->premises[index])) return NULL;
+	if (formation == proof->premises[index]) return proof;
+	size_t count = proof->premise_count;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	const struct pg_evidence **premises = malloc(count * sizeof(*premises));
+	if (!premises) return NULL;
+	memcpy(premises, proof->premises, count * sizeof(*premises));
+	premises[index] = formation;
+	const struct pg_evidence *result = accept_record(typing, proof->rule, pg_evidence_context(proof),
+		pg_evidence_subject(proof), count, premises, proof->certificate, NULL);
+	free(premises);
+	return result;
+}
+
 static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_evidence_rule rule,
 	const struct pg_context *context, const struct pg_occurrence *subject, size_t count, const struct pg_evidence *const *premises)
 {
@@ -2072,7 +2096,7 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
 	const struct pg_evidence *formation,
 	const struct pg_evidence *parameters, const struct pg_evidence *motive_context,
 	const struct pg_evidence *motive, const struct pg_evidence *context,
-	const struct pg_evidence *field)
+	const struct pg_evidence *field, const struct pg_term *allocation)
 {
 	if (!pg_evidence_owned_by(field, typing) || pg_evidence_judgement(field) != PG_JUDGEMENT_VALUE) return NULL;
 	if (!context_proof(typing, context) || pg_evidence_context(field) != pg_evidence_context(context)) return NULL;
@@ -2087,8 +2111,11 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
 	const struct pg_evidence *classifier = pg_prove_classifier(typing, scope, call);
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
+	if (allocation && !pg_thunk_type_view(allocation, &allocation)) return NULL;
 	while (classifier && pg_pi_view(pg_evidence_subject(classifier)->core, &domain, &binder, &codomain)) {
-		binder = pg_binder(typing->graph);
+		if (allocation) {
+			if (!pg_pi_view(allocation, &domain, &binder, &allocation)) return NULL;
+		} else binder = pg_binder(typing->graph);
 		const struct pg_evidence *argument_type = pg_prove_pi_domain(typing, classifier);
 		scope = pg_prove_context_extension(typing, scope, binder, argument_type);
 		if (!scope) return NULL;
@@ -2162,16 +2189,16 @@ static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 		recursive_fields[i - 1] = (unsigned char)recursive;
 		recursive_count += (size_t)recursive;
 	}
-	const struct pg_object **ih_binders = NULL;
+	const struct pg_context **ih_allocations = NULL;
 	if (retained) {
 		size_t supplied;
 		if (recursive_count > SIZE_MAX - count ||
 			pg_context_extension_size(allocation, pg_evidence_context(parameters->premises[1]), &supplied) ||
 			supplied != count + recursive_count) goto done;
-		ih_binders = pg_alloc(&temporary, recursive_count * sizeof(*ih_binders));
-		if (recursive_count && !ih_binders) goto done;
+		ih_allocations = pg_alloc(&temporary, recursive_count * sizeof(*ih_allocations));
+		if (recursive_count && !ih_allocations) goto done;
 		for (size_t i = recursive_count; i; --i, allocation = allocation->parent)
-			ih_binders[i - 1] = allocation->binder;
+			ih_allocations[i - 1] = allocation;
 	}
 	const struct pg_evidence *map = retained
 		? pg_prove_constructor_scope_at(typing, formation, constructor, parameters, allocation)
@@ -2182,9 +2209,10 @@ static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 	for (size_t i = 0; i < count; ++i) {
 		if (!recursive_fields[i]) continue;
 		const struct pg_evidence *field = pg_prove_projection(typing, context, map->premises[prefix + 3 + i]);
+		const struct pg_context *ih_allocation = retained ? ih_allocations[next_ih++] : NULL;
 		const struct pg_evidence *ih = pg_prove_inductive_hypothesis_type(typing, formation, parameters,
-			motive_context, motive, context, field);
-		const struct pg_object *binder = retained ? ih_binders[next_ih++] : pg_binder(typing->graph);
+			motive_context, motive, context, field, ih_allocation ? ih_allocation->declared_type : NULL);
+		const struct pg_object *binder = ih_allocation ? ih_allocation->binder : pg_binder(typing->graph);
 		context = pg_prove_context_extension(typing, context, binder, ih);
 		if (!context) goto done;
 	}

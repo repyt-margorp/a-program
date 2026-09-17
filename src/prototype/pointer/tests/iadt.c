@@ -523,7 +523,7 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	const struct pg_evidence *total_motive = pg_prove_computation_type(&typing,
 		PG_TOTALITY_TOTAL, pg_effect_row(&graph, 0, NULL), pg_prove_return_content(&typing, motive));
 	const struct pg_evidence *bounded_ih = pg_prove_inductive_hypothesis_type(&typing,
-		acc, parameters, mc, total_motive, field_context, field_values[1]);
+		acc, parameters, mc, total_motive, field_context, field_values[1], NULL);
 	assert(bounded_ih);
 	const struct pg_term *tail, *domain, *codomain, *content;
 	const struct pg_object *parameter;
@@ -541,7 +541,7 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	const struct pg_evidence *child_motive = pg_prove_return_type(&typing, child_identity);
 	assert(child_motive);
 	const struct pg_evidence *dependent_ih = pg_prove_inductive_hypothesis_type(&typing,
-		acc, parameters, mc, child_motive, field_context, field_values[1]);
+		acc, parameters, mc, child_motive, field_context, field_values[1], NULL);
 	assert(!!dependent_ih == (field_totality == PG_TOTALITY_TOTAL));
 	if (dependent_ih) {
 		common_rule(&typing, dependent_ih);
@@ -550,6 +550,19 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	}
 	const struct pg_evidence *constructor_value = pg_prove_constructor(&typing, acc, constructor,
 		pg_prove_substitution_projection(&typing, rc, field_context), 2, field_values);
+	const struct pg_evidence *premises[4];
+	for (size_t i = 0; i < 4; ++i) premises[i] = pg_evidence_premise(constructor_value, i);
+	const struct pg_evidence *family = premises[0];
+	premises[0] = pg_prove_value_type(&typing, pg_prove_type_value(&typing, family));
+	assert(premises[0] != family && pg_evidence_subject(premises[0]) == pg_evidence_subject(family));
+	struct pg_derivation_parameters retained = {.constructor = constructor};
+	const struct pg_evidence *alternative = pg_prove_derivation(&typing, PG_CONSTRUCTOR_INTRO, &retained, 4, premises);
+	assert(alternative && alternative != constructor_value);
+	assert(pg_evidence_subject(alternative) == pg_evidence_subject(constructor_value));
+	assert(pg_evidence_premise(alternative, 0) == premises[0]);
+	common_rule(&typing, alternative);
+	premises[0] = pg_prove_projection(&typing, field_context, universe);
+	assert(!pg_prove_derivation(&typing, PG_CONSTRUCTOR_INTRO, &retained, 4, premises));
 	const struct pg_evidence *constructor_pattern = pg_prove_inductive_motive_substitution(&typing,
 		acc, parameters, mc, field_context, constructor_value);
 	const struct pg_evidence *step_at_field = pg_prove_application(&typing,
@@ -574,6 +587,11 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	const struct pg_evidence *scope = pg_prove_induction_scope(&typing, acc, constructor, parameters, mc, motive);
 	assert(scope);
 	const struct pg_evidence *branch_context = pg_evidence_premise(scope, 1);
+	const struct pg_evidence *restored_scope = pg_prove_induction_scope_at(&typing, acc, constructor,
+		parameters, mc, motive, pg_evidence_context(branch_context));
+	assert(restored_scope);
+	assert(pg_evidence_context(pg_evidence_premise(restored_scope, 1)) == pg_evidence_context(branch_context));
+	common_rule(&typing, restored_scope);
 	const struct pg_evidence *ih = pg_prove_variable(&typing, branch_context, pg_evidence_context(branch_context)->binder);
 	const struct pg_evidence *at_x = pg_prove_application(&typing,
 		pg_prove_force(&typing, pg_prove_variable(&typing, branch_context, step)), pg_substitution_image(&typing, scope, x));
@@ -585,6 +603,20 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	assert(elimination);
 	assert(!pg_prove_elimination_body(&typing, elimination));
 	common_rule(&typing, elimination);
+	const struct pg_evidence *case_premises[7];
+	assert(pg_evidence_premise_count(elimination) == 7);
+	for (size_t i = 0; i < 7; ++i) case_premises[i] = pg_evidence_premise(elimination, i);
+	const struct pg_evidence *output = case_premises[6];
+	case_premises[6] = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, context, context), output);
+	assert(case_premises[6] != output && pg_evidence_subject(case_premises[6]) == pg_evidence_subject(output));
+	struct pg_derivation_parameters case_parameters;
+	assert(!pg_derivation_parameters(elimination, &case_parameters));
+	const struct pg_evidence *case_alternative = pg_prove_derivation(&typing,
+		PG_INDUCTION_ELIM, &case_parameters, 7, case_premises);
+	assert(case_alternative && pg_evidence_premise(case_alternative, 6) == case_premises[6]);
+	assert(pg_evidence_subject(case_alternative) == pg_evidence_subject(elimination));
+	common_rule(&typing, case_alternative);
 	const struct pg_evidence *constructor_parameters = pg_prove_substitution_projection(&typing, rc, field_context);
 	const struct pg_evidence *projected = pg_prove_elimination_reindex(&typing,
 		pg_prove_substitution_projection(&typing, context, field_context), elimination);

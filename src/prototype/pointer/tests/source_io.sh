@@ -31,7 +31,7 @@ retained_case() {
 }
 failed=0
 for writer in retained-write-typed retained-write; do
-	for fixture in lambda nominal nullary application constructor match fold; do
+	for fixture in lambda family append function-field nominal nullary application constructor match fold; do
 		if ! retained_case "$1" "$writer" "$fixture"; then
 			printf 'FAIL: retention case %s %s\n' "$writer" "$fixture" >&2
 			failed=1

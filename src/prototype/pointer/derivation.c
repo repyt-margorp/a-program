@@ -89,10 +89,14 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 
 /* Expanded encodings carry formation choices not passed directly to the
  * public constructor. Do not silently replace those supplied premises. */
-static const struct pg_evidence *retained_premises(const struct pg_evidence *result,
+static const struct pg_evidence *retained_premises(struct pg_typing *typing, const struct pg_evidence *result,
 	enum pg_evidence_rule rule, size_t count, const struct pg_evidence *const *premises)
 {
 	if (!result || pg_evidence_rule(result) != rule || pg_evidence_premise_count(result) != count) return NULL;
+	if (rule == PG_CONSTRUCTOR_INTRO) result = pg_prove_data_result_formation(typing, result, premises[0]);
+	if (rule == PG_MATCH_ELIM || rule == PG_INDUCTION_ELIM)
+		result = pg_prove_data_result_formation(typing, result, premises[count - 1]);
+	if (!result) return NULL;
 	for (size_t i = 0; i < count; ++i) if (pg_evidence_premise(result, i) != premises[i]) return NULL;
 	return result;
 }
@@ -240,7 +244,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	case PG_IDENTITY_LIFT: case PG_FAMILY_ACTION:
 	case PG_REQUEST_INTRO: case PG_HANDLER_ELIM:
 	case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
-		return retained_premises(result, rule, count, p);
+		return retained_premises(typing, result, rule, count, p);
 	default: return result;
 	}
 }

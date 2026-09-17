@@ -362,6 +362,15 @@ CLIENTS
 client="$acceptance/legacy-quicksort-property.p"
 check_property "$client" main:ascending emptyMain:empty singletonMain:singleton \
 	ascendingMain:ascending descendingMain:ascending duplicatesMain:duplicatesExpected unorderedMain:mixed
+# Completed source allocations must also survive retained-result images.
+"${checker[@]}" --steps 1000000 --retain-reductions \
+	--imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
+	--save "$directory/retained-property.a" "$client"
+"${checker[@]}" --load --steps 1000000 "$directory/retained-property.a"
+for pair in main:ascending emptyMain:empty singletonMain:singleton ascendingMain:ascending \
+	descendingMain:ascending duplicatesMain:duplicatesExpected unorderedMain:mixed; do
+	"${runtime[@]}" --equal-image "$directory/retained-property.a" "${pair%:*}" "${pair#*:}"
+done
 # Reuse the full specification, but substitute the right recursive proof where
 # the left is required. No second, drifting copy of the specification is needed.
 sed 's/left right result \*leftGraph \*rightGraph/left right result *rightGraph *rightGraph/' \

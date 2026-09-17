@@ -2061,6 +2061,18 @@ static void retained_process(int argc, char **argv)
 		assert(argc == 4);
 		const char *text;
 		if (!strcmp(argv[3], "lambda")) text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
+		else if (!strcmp(argv[3], "family"))
+			text = "{{ id:=&(\\A:@ => \\R:A->@ => \\x:A => \\p:R x => p); }}.id";
+		else if (!strcmp(argv[3], "append"))
+			text = "{{ Nat:=@{zero:*;succ:*->*;}; List:=&(\\A:@=>@{nil:*;cons:A->*->*;});"
+				"append:=&(\\A:@=>\\xs:List A=>xs @nil=>(\\ys:List A=>ys)"
+				"@cons x rest=>(\\ys:List A=>(List A).cons x (*rest ys)));"
+				"r:=&{append Nat ((List Nat).cons Nat.zero (List Nat).nil) (List Nat).nil;}; }}.r";
+		else if (!strcmp(argv[3], "function-field"))
+			text = "{{ Nat:=@{zero:*;succ:*->*;};"
+				"D:=@\\i:Nat=>{mk:(k:Nat)->* k;next:((k:Nat)->* k)->* Nat.zero;};"
+				"steps:=&(\\i:Nat=>\\v:D i=>v @mk k=>Nat.zero @next down=>Nat.succ (*down Nat.zero));"
+				"r:=&{steps Nat.zero (D.next &(\\k:Nat=>D.mk k));}; }}.r";
 		else if (!strcmp(argv[3], "nullary"))
 			text = "{{ Nat:=@{zero:*;succ:*->*;}; Other:=@{zero:*;succ:*->*;}; r:=&{Nat.zero;}; }}.r";
 		else if (!strcmp(argv[3], "constructor"))

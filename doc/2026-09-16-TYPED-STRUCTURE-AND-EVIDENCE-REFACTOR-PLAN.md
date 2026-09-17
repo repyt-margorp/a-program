@@ -3781,8 +3781,84 @@ The image has already decoded its ordinary derivation inputs; the allocation
 gate rejects the family binder before Solve can check them. Preserve lexical
 allocation and normal checking, not a trusted-image exception or Replay path.
 
-- [ ] Restore family binding allocation through the existing binding job.
-- [ ] Add the minimal retained-family case to fresh-process resave/check and
+- [x] Restore family binding allocation through the existing binding job.
+- [x] Add the minimal retained-family case to fresh-process resave/check and
   recompute tests; verify all nested binders retain coherent contexts.
 - [ ] Check the imported QuickSort retained image, both stepping granularities.
 - [ ] Run the debug, optimized and sanitizer gates before closing R4 again.
+
+Following that first correction exposed three additional dependencies on
+derivation/allocation identity:
+
+1. Expanded constructor/Match reconstruction rejected an alternative accepted
+   formation of the **same exact result classifier**.
+   `pg_prove_data_result_formation` retains that formation as a separate
+   derivation of the unchanged conclusion; schema, motive and substitution
+   premises remain fixed. This does
+   not introduce a logical rule, erase premises or compare erased Core.
+2. Source constructor names and generated-field layouts were attached to a
+   selected formation proof. They now use the existing `SOURCE_ORIGIN_JOB`
+   keyed by its typed subject. This metadata is not acceptance evidence.
+3. Saved IH scopes retained their outer binders but lost binders inside
+   function-field IH types. Allocation now retains Context references and
+   supplies only the corresponding Pi binders to ordinary type formation.
+   Source motive synthesis still runs first; ordinary conversion checks its
+   agreement with the saved, independently checked motive before preserving
+   that motive's lexical allocation. Neither Context nor Core is alpha-interned.
+
+The previously failing R74 QuickSort image now completes in **261466** Solve
+transitions. Targeted IADT tests also pass, including alternative premise
+preservation, incorrect-premise rejection and exact higher-order IH scope
+reconstruction. Freshly produced retained images and the complete gates are
+still pending. The permanent tests are being extended to retained family,
+append/function-field recursion and the full imported QuickSort property.
+
+**Remaining exact-allocation failure:** the new source-only retained append
+and function-field cases type-check, but reconstruct alpha-equivalent rather
+than identical Core endpoints. Their saved NF receipt consequently cannot be
+reused for that reconstructed source. The source-I/O regression intentionally
+still fails; R4 is not closed. The typed-root variant passing is insufficient:
+it checks the imported typed root, not exact reconstruction of the source root.
+
+The first difference is in an instantiated curried constructor wrapper.
+Constructor work is keyed by formation/parameter producers, so independently
+checked derivations can lead to different fresh wrapper binders even when
+their typed formation and substitution map agree. Merely retaining every
+wrapper's field allocation does not associate it with the recomputed source
+use. That experimental collector was removed. A second experiment reused
+declaration binders by default; it broke the distinct-variable requirement of
+`indexed_match`'s constructor refinement and was also removed. Do not relax
+that test, alpha-intern Core, or pick an arbitrary proof to mask this failure.
+The remaining repair needs an explicit structural source-use/allocation
+association, preserving independent refinement allocations and ordinary
+checking. No new trusted Replay path is warranted.
+
+The debug aggregate also caught an overgeneralized premise-variation attempt:
+`family_instance_test` requires the selected endpoint direction of Identity
+transport even when both endpoint types coincide. The generic helper was
+removed in favor of the data-result-formation operation above; directional/action
+premises remain exact. The test is unchanged. Reindexing a generic constructor
+instead of rebuilding it was also evaluated and withdrawn: raw substitution
+readback still freshens its bound variables, so this alone does not preserve
+the saved Core and additionally changes qualified-pattern producer shape.
+Any future migration to that route must address both contracts together.
+
+The debug aggregate before that correction passed **63/63** compatibility
+cases and every added retained QuickSort result (empty, singleton, ascending,
+descending, duplicates and unordered), under runtime chunks 1 and 64. It was
+**not** a passing gate: Core stopped at the directional-premise regression,
+and the separately run source-I/O suite still exposes the exact-allocation
+failure. After narrowing the operation, Core and IADT tests pass again and the
+old retained QuickSort image completes in 261466 transitions. New result-
+formation variation tests preserve the supplied proof without changing the
+conclusion. Final aggregate reruns remain outstanding, alongside the failing
+source-only retained cases. No Main publication or whole-plan completion is
+claimed.
+
+R75 is an **incomplete work-branch checkpoint**, not a passing acceptance
+checkpoint. The final targeted Core/IADT reruns pass, including retained
+constructor and induction result-formation alternatives. The new source-I/O
+cases remain enabled and failing for source-only append/function-field exact
+Core restoration. No test was weakened or removed to hide that failure.
+Implementation/header delta versus `4657cc6` is **+5042/-2701, net +2341**;
+R5's net-negative condition is still unmet and has not been waived.
