@@ -529,6 +529,50 @@ static struct pg_synthesis_job *rule_job(struct pg_synthesis *synthesis,
 	return pg_synthesis_rule(synthesis, input, premises, NULL, NULL);
 }
 
+static void accepted_context_structure(struct pg_typing *typing)
+{
+	struct pg_whnf_work normalization;
+	struct pg_effect_inference effects;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&normalization, typing->graph));
+	assert(!pg_effect_inference_init(&effects, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+	struct pg_synthesis_job *empty = rule_job(&synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
+	struct pg_synthesis_job *universe = rule_job(&synthesis, PG_UNIVERSE_FORM, NULL, 1, &empty);
+	struct pg_synthesis_job *parent = rule_job(&synthesis, PG_CONTEXT_EXTEND, pg_binder(typing->graph), 2,
+		(struct pg_synthesis_job *[]){empty, universe});
+	struct pg_synthesis_job *annotation = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+		(struct pg_synthesis_job *[]){parent, universe});
+	const struct pg_object *binder = pg_binder(typing->graph);
+	struct pg_synthesis_job *context = rule_job(&synthesis, PG_CONTEXT_EXTEND, binder, 2,
+		(struct pg_synthesis_job *[]){parent, annotation});
+	complete(&synthesis, context, PG_SYNTHESIS_DONE);
+	struct pg_synthesis_job *value_type = rule_job(&synthesis, PG_UNIVERSE_FORM, NULL, 1, &context);
+	struct pg_effect_equation *equation = pg_effect_equation(&effects, pg_effect_row(typing->graph, 0, NULL));
+	struct pg_derivation_input formation = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
+	struct pg_synthesis_job *carrier = pg_synthesis_rule(&synthesis, &formation, &value_type, &effects, equation);
+	struct pg_synthesis_job *pi = rule_job(&synthesis, PG_PI_FORM, NULL, 2,
+		(struct pg_synthesis_job *[]){context, carrier});
+	struct pg_synthesis_job *shape = pg_synthesis_type_structure(&synthesis, pi);
+	assert(!complete(&synthesis, shape, PG_SYNTHESIS_DONE));
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *actual_binder;
+	assert(pg_pi_view(pg_synthesis_type_structure_result(shape), &domain, &actual_binder, &codomain));
+	assert(domain == pg_evidence_subject(pg_synthesis_result(annotation))->core && actual_binder == binder);
+	assert(!pg_synthesis_result(pi));
+	/* No replay of the accepted annotation was needed for declared-type lookup. */
+	size_t requests = synthesis.jobs.count;
+	struct pg_synthesis_job *unused = pg_synthesis_type_structure(&synthesis, annotation);
+	assert(synthesis.jobs.count == requests + 1);
+	assert(!complete(&synthesis, unused, PG_SYNTHESIS_DONE));
+	pg_effect_inference_seal(&effects);
+	assert(pg_synthesis_effect_inference(&synthesis, &effects));
+	complete(&synthesis, pi, PG_SYNTHESIS_DONE);
+	pg_synthesis_destroy(&synthesis);
+	pg_effect_inference_destroy(&effects);
+	pg_whnf_work_destroy(&normalization);
+}
+
 static void application_substitution_sharing(struct pg_typing *typing)
 {
 	for (unsigned prime = 0; prime < 2; ++prime) {
@@ -6315,6 +6359,7 @@ int main(void)
 	graded_application(&typing);
 	effect_equations(&typing);
 	pending_effect_contexts(&typing);
+	accepted_context_structure(&typing);
 	application_substitution_sharing(&typing);
 	effect_expectations(&typing);
 	synthesis_lifetime(&typing);

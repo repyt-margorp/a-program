@@ -7321,6 +7321,7 @@ static struct pg_synthesis_job *prepared_source_rule(const struct pg_synthesis_j
 	 * operand's structure now; acceptance still requires its post-check. */
 	if (job->role == BINDING_EXPECT_JOB) return job->left;
 	if (job->role == DERIVATION_INPUT_JOB) return job->left;
+	if (job->role == PI_SCOPE_JOB) return job->left;
 	if (job->role == OPERATION_JOB) return job->left;
 	if (job->role == HANDLER_JOB) return job->value_job;
 	if (job->role == HANDLER_RETURN_JOB || job->role == HANDLER_CLAUSE_JOB) return job->value_job;
@@ -7356,7 +7357,7 @@ static int source_preparing(const struct pg_synthesis_job *producer)
 	if (producer->status != PG_SYNTHESIS_PENDING) return 0;
 	int preparing = 0;
 	switch (producer->role) {
-	case DERIVATION_INPUT_JOB: preparing = !producer->left; break;
+	case DERIVATION_INPUT_JOB: case PI_SCOPE_JOB: preparing = !producer->left; break;
 	case BODY_JOB: preparing = !producer->value_job; break;
 	case OPERATION_JOB:
 		preparing = !producer->left;
@@ -8188,6 +8189,14 @@ static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthes
 {
 	struct pg_synthesis_job *context = (void *)job->inputs[0];
 	const struct pg_object *binder = job->inputs[1];
+	const struct pg_evidence *accepted = pg_synthesis_result(context);
+	if (accepted) {
+		const struct pg_context *declaration = pg_evidence_judgement(accepted) == PG_JUDGEMENT_CONTEXT
+			? pg_context_lookup(pg_evidence_context(accepted), binder) : NULL;
+		job->type_structure = declaration ? declaration->declared_type : NULL;
+		finish(synthesis, job, declaration ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+		return;
+	}
 	if (await_source_preparation(synthesis, job, context)) return;
 	struct pg_synthesis_job *prepared = prepared_source_rule(context);
 	if (!job->left && prepared) job->left = request_job(synthesis, DECLARED_TYPE_JOB, prepared, binder);
@@ -8196,11 +8205,6 @@ static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthes
 	if (!job->left && context->role == BINDING_JOB)
 		job->left = context->binder == binder ? pg_synthesis_type_structure(synthesis, context->right)
 			: request_job(synthesis, DECLARED_TYPE_JOB, context->scope->context_job, binder);
-	if (!job->left && context->role == PI_SCOPE_JOB && context->binder == binder) {
-		struct pg_synthesis_job *type = (void *)context->inputs[1];
-		struct pg_synthesis_job *domain = plain_rule(synthesis, PG_PI_DOMAIN, NULL, 1, &type);
-		job->left = pg_synthesis_type_structure(synthesis, domain);
-	}
 	if (!job->left && context->role == DERIVATION_JOB) {
 		const struct pg_derivation_input *input = context->inputs[0];
 		if (input->rule == PG_CONTEXT_EXTEND) {
@@ -8222,13 +8226,7 @@ static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthes
 		return;
 	}
 	if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
-	if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return; }
-	if (!context->result || pg_evidence_judgement(context->result) != PG_JUDGEMENT_CONTEXT) {
-		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
-	}
-	const struct pg_context *declaration = pg_context_lookup(pg_evidence_context(context->result), binder);
-	job->type_structure = declaration ? declaration->declared_type : NULL;
-	finish(synthesis, job, declaration ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+	finish(synthesis, job, context->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : context->status);
 }
 
 static const struct pg_term *continuation_effect_structure(struct pg_synthesis *synthesis,

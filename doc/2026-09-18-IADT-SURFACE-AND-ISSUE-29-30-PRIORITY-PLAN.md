@@ -1572,3 +1572,17 @@ Published as `1a08868a365dfd98d32c75b33d13e5d310fb4986`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `b21dc46`;
 both remote tips verified. Implementation/header +39/-37, tests +21/-0,
 documentation +72/-0; total +132/-37. This publication record is documentation only.
+
+### R: Accepted Context declaration projection
+
+- [x] Read accepted Context declarations directly by binder identity; remove
+  the superseded late lookup and the pending Pi-domain reconstruction branch.
+- [x] Route pending Pi scopes through their prepared ordinary extension rule.
+- [x] Test that an accepted annotation is not structurally reconstructed;
+  verify pending effect closure and compare QuickSort work/node counts.
+- [x] Full optimized acceptance (63/63 compatibility) and affected ASan/UBSan synthesis.
+- [ ] Publish and verify remote tips after all gates pass.
+
+See the [Context projection audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#declared-types-from-accepted-contexts-after-b4b674b).
+Source family-parameter adaptation remains intentionally distinct. This is not
+completion of the broader R pending-construction or net-negative gates.

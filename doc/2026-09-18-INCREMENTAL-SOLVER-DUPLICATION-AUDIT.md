@@ -161,6 +161,58 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### Declared Types from Accepted Contexts (after `b4b674b`)
+
+`declared_type_step` previously inspected source/derivation recipes even when
+the Context was accepted. It now reads the declaration keyed by the exact
+binder pointer in that Context first. The old late-result lookup is removed.
+Existing symbolic snapshots remain immutable; a later query may use the closed
+accepted declaration, as for the other structural views.
+
+A pending PI_SCOPE now exposes its already-prepared CONTEXT_EXTEND through the
+existing preparation notification and projection path. The dedicated Pi-domain
+reconstruction branch is removed. Its binder allocation is still owned by the
+scope request; no alternative allocation key or proof cache is introduced.
+Source BINDING's family-parameter adaptation is retained: converting a surface
+thunked family annotation into a family Context is not plain Context lookup.
+
+Fresh debug IF8 original QuickSort measurements, before / after:
+
+| Measurement | Before | After |
+| --- | ---: | ---: |
+| Declared-type step invocations | 163 | 101 |
+| Invocations with an accepted Context | 126 | 64 |
+| Solve steps | 47,619 | 47,513 |
+| Requests | 15,378 | 15,318 |
+| Proofs / typed occurrences / Core Terms | 23,315 / 19,522 / 11,969 | unchanged |
+
+The `length-output-proof.p` control also drops from 9,698 to 9,674 steps and
+3,445 to 3,430 requests, retaining 4,941 proofs, 3,574 occurrences and 2,031 Terms.
+
+Counts use GDB at `declared_type_step` and `main.c:395`, with
+`--legacy-intrinsic-dot --steps 1000000`. This measures less reconstruction,
+not a demonstrated wall-time speedup. The new test constructs an accepted
+dependent Context and a still-pending effectful Pi; its structure must read the
+Context directly without requesting the original annotation's structure. The
+Pi is subsequently checked after effect closure. Existing pending-effect tests
+exercise source/Pi contexts at chunks 1/64 and invalid Context rejection.
+
+- [x] Implement direct accepted lookup and shared pending Pi-scope projection.
+- [x] Debug synthesis, focused no-reconstruction test, and work/node measurement.
+- [x] Full optimized acceptance (63/63 compatibility) and ASan/UBSan synthesis.
+- [ ] Publish after the gates and verify both remote tips.
+
+Per-file delta: `synthesis.c` +11/-13 (net -2); `tests/synthesis.c` +45/-0.
+Remaining pending classifier reconstruction and the broader R gates stay open.
+
+Verification: strict `-O0 -g` synthesis; `make -f
+src/prototype/pointer/Makefile -j2 BUILD=/tmp/a-program-authority-declared-opt
+check-acceptance` with strict `-O2`; synthesis with strict `-O1 -g
+-fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`,
+`ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
+`UBSAN_OPTIONS=halt_on_error=1`. Logs:
+`/tmp/a-program-authority-declared-{synthesis,acceptance,asan}.log`.
+
 ### Shared Type-Term Construction (after `b21dc46`)
 
 Type-forming rules were interpreted separately by TYPE_STRUCTURE and
