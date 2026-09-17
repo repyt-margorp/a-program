@@ -960,9 +960,23 @@ static int typed_body_step(struct pg_typed_query *work)
 	const struct pg_term *core = current->core;
 	/* A neutral head is stable only after the pending environment has been
 	 * applied: its image may instead expose a beta/force redex. */
-	if (work->kind == TYPED_HEAD && !work->forces && typed_head_exposed(current, !work->environment)) {
-		work->value = pg_prove_structural_subject(typing, current);
-		return work->value ? 0 : -1;
+	if (work->kind == TYPED_HEAD && !work->forces && (work->action || typed_head_exposed(current, 1))) {
+		if (!work->action && (!work->environment || typed_head_exposed(current, 0))) {
+			work->value = pg_prove_structural_subject(typing, current);
+			return work->value ? 0 : -1;
+		}
+		if (!work->action) work->action = pg_occurrence_action_request(typing,
+			pg_evidence_context_map(work->environment), current);
+		enum pg_substitution_status status = pg_occurrence_action_advance(work->action, 1);
+		if (status == PG_SUBSTITUTION_PENDING) return 0;
+		if (status == PG_SUBSTITUTION_ERROR) return -1;
+		const struct pg_occurrence *image = pg_occurrence_action_result(work->action);
+		work->action = NULL;
+		if (typed_head_exposed(image, 1)) {
+			work->value = pg_prove_reindex(typing, work->environment, pg_prove_structural_subject(typing, current));
+			work->environment = NULL;
+			return work->value ? 0 : -1;
+		}
 	}
 	if (!work->argument && core->kind == PG_APPLICATION &&
 		core->as.application.function == pg_reference(typing->graph, &pg_return_operation)) {
@@ -1023,6 +1037,12 @@ static int typed_body_step(struct pg_typed_query *work)
 			head->as.application.function == pg_reference(typing->graph, &pg_fold_operation) &&
 			current->operands[0]->core == head->as.application.argument;
 		if (!fold && current->operands[0]->core != head) return -1;
+		/* Core's right-unit law exposes M, not a hypothetical returned value.
+		 * Keep its typed input and the pending context action intact. */
+		if (fold && pg_computation_eta(typing->graph, core) == current->operands[0]->core) {
+			work->current = current->operands[0];
+			return 0;
+		}
 		const struct pg_evidence *right = pg_prove_structural_subject(typing, current->operands[1]);
 		if (!right) return -1;
 		work->continuation = fold ? right : NULL;

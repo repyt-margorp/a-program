@@ -714,6 +714,32 @@ static void evidence_test(struct pg_graph *graph)
 		}
 		reconstruct_derivation(&typing, child);
 	}
+	/* Right-unit fold exposes the computation even when no returned value
+	 * can be known, as with a call through a free function parameter. */
+	const struct pg_evidence *neutral_call = pg_prove_application(&typing, force_neutral, neutral_x);
+	const struct pg_evidence *unit_fold = pg_prove_fold(&typing, neutral_call,
+		pg_prove_projection(&typing, neutral_scope, identity_y));
+	assert(unit_fold);
+	const struct pg_evidence *unit_scope = pg_prove_context_extension(&typing, neutral_scope,
+		pg_binder(graph), neutral_domain);
+	const struct pg_evidence *unit_sources[] = {unit_fold, pg_prove_projection(&typing, unit_scope, unit_fold)};
+	const struct pg_evidence *unit_inputs[] = {force_neutral, neutral_x};
+	for (size_t side = 0; side < 2; ++side) {
+		struct pg_nf_job *unit_nf = pg_nf_request(&evaluation, &pg_pure_policy, pg_evidence_subject(unit_sources[side])->core);
+		while (pg_nf_advance(unit_nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(unit_nf) < 100000);
+		assert(pg_reduction_head_congruence(pg_nf_certificate(unit_nf)));
+		assert(pg_nf_result(unit_nf) == pg_evidence_subject(neutral_call)->core);
+		const struct pg_evidence *unit_normal = pg_prove_normalization(&typing, unit_sources[side], pg_nf_certificate(unit_nf));
+		for (size_t i = 0; i < 2; ++i) {
+			struct pg_typed_query *query = pg_typed_input_request(&typing, unit_normal, i);
+			while (!pg_typed_query_advance(query, i ? 64 : 1)) assert(pg_typed_query_steps(query) < 10000);
+			const struct pg_evidence *input = pg_typed_query_result(query);
+			assert(input && pg_evidence_subject(input)->core == pg_evidence_subject(unit_inputs[i])->core);
+			assert(pg_evidence_context(input) == pg_evidence_context(unit_normal));
+			assert(pg_alpha_equal(pg_evidence_classifier(input), pg_evidence_classifier(unit_inputs[i])) == 1);
+			reconstruct_derivation(&typing, input);
+		}
+	}
 	const struct pg_object *z = pg_binder(graph);
 	const struct pg_evidence *z_context = pg_prove_context_extension(&typing, x_context, z, a_in_x);
 	const struct pg_evidence *a_in_z = pg_prove_variable(&typing, z_context, a);

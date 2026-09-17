@@ -3143,3 +3143,39 @@ Solve transitions. Idle interleaved O0 runs (seconds / peak KiB), R63 -> R64:
 `1.0746/271568 -> 1.0750/270824`.
 These samples show no material runtime/memory change; this checkpoint removes
 duplicate lifecycle code, not substitution computations.
+
+### 2026-09-17: Preserve neutral structure through Fold and context action (R65)
+
+- [x] Reproduce failure to expose the inputs of `fold M (lambda x. return x)`
+  when `M` is a neutral function application. Core already applies right unit;
+  typed-body work incorrectly demanded a returned value from the unknown
+  function. The new regression fails at result-input extraction on R64.
+- [x] Use the existing `pg_computation_eta` predicate to select Fold's retained
+  computation input. No new eta equation, kernel rule or guessed result type
+  is introduced. The caller still checks the result against its pure receipt.
+- [x] Cover the same input under projection. A pending environment can leave
+  a neutral head neutral, not just replace it with a reducible function. Advance
+  shared context action with the query budget, then test its actual head before
+  exposing it. Do not rescan the application spine on each substitution step.
+  Existing substituted-function tests still require Lambda/Return results.
+- [x] Check exact result inputs, context, classifier alpha agreement, one/64-step
+  execution and reconstruction of their derivations. Targeted Core tests pass.
+- [x] Full debug/O2 acceptance passes, including 63/63 compatibility and final
+  QuickSort source/images. ASan/UBSan Core, synthesis, IADT, the full derivation
+  I/O script and imported QuickSort pass. Logs:
+  `/tmp/a-program-typed-structure-r65-{debug,o2,sanitize-*}.log`.
+  Sanitizer coverage is the named subset, not full sanitized acceptance.
+
+Implementation `evidence.c`: **+23/-3 (+20)**.
+Verification `tests/core.c`: **+26/-0**. Cumulative implementation/header
+**+1854** against `4657cc6`; the net-negative gate remains unmet. This completes
+neither general multi-phase NF exposure nor scoped Pi selection. R2/R3/R5 and
+Main publication remain open.
+
+QuickSort counts are unchanged from R64: 174858 Core terms, 392438 typed
+subjects, 429942 proofs, 7807 typed queries, 3386 raw input queries and 131353
+Solve transitions. Idle interleaved O0 runs (seconds / peak KiB), R64 -> R65:
+`1.0985/270784 -> 1.0855/271296`,
+`1.0560/271412 -> 1.0758/270492`,
+`1.0576/270844 -> 1.0651/270668`.
+No material performance change is established by these samples.
