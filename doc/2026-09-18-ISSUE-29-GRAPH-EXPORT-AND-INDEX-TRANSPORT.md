@@ -180,7 +180,8 @@ Focused results with the change:
   comparator spelling is claimed.
 - Reversed scope-transport arguments and reversed transitivity endpoints reject.
 
-Final acceptance/image/sanitizer gates now pass; publication is the next step.
+Final acceptance/image/sanitizer gates pass; implementation `1590b2f` and the
+documentation-only PR #30 merge `5d9fa03` have been published to Main.
 The four universal sort properties are still separate unfinished work.
 
 ### Validation and Cost Comparison

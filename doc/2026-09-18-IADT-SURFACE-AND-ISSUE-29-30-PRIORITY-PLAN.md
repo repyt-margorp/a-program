@@ -326,8 +326,8 @@ Checkboxes mean implementation plus the stated verification, not just a design.
 - [x] J2: README and source examples updated to verified syntax, with limits.
 - [ ] J3: Issue requirement table, explanations, implementation references and
   justified issue/PR disposition. Pending items are not relabelled complete.
-- [ ] G-PUSH: Verify and publish the issue #29 / PR #30 improvement milestone
-  to Main; record remaining requirements separately from issue closure.
+- [x] G-PUSH: Publish the verified G1/G2 improvement milestone to Main
+  (`1590b2f`, merged report `5d9fa03`); G3 and issue closure remain pending.
 - [ ] R: Resume the parent duplicate-synthesis/authority refactor after J1-J3.
 
 At each milestone, append a short dated entry containing changed files, tests,
@@ -647,6 +647,13 @@ counts are available with `git show --numstat`.
 | `src/prototype/pointer/tests/synthesis.c` | 153 | 22 | 131 |
 
 ### 2026-09-18: G2 verified milestone
+
+Published: implementation `1590b2f` and documentation-only PR #30 merge
+`5d9fa03` are on Main and the default rewrite branch (fast-forward, no force).
+GitHub confirms #30 is merged. #29 remains open for G3's universal sort proofs.
+The report's embedded provider hash was independently verified as
+`b859e517843b40a9448e26e28ab9d26f926e4485d6e1f62a6ef763d95aa3639c`.
+No source or test changes occurred between final verification and publication.
 
 The scope diagnosis and exact tests are in the
 [issue report](2026-09-18-ISSUE-29-GRAPH-EXPORT-AND-INDEX-TRANSPORT.md#2026-09-18-follow-up-retaining-independent-later-fields).
