@@ -2405,3 +2405,33 @@ R47 changes are test-only. Against `373582b`, `tests/derivation_io.c` is
 +24/-11; implementation/header delta is zero, cumulative **+1830**.
 No claim is made that persistence reduces that outstanding implementation
 growth. Main remains unpublished.
+
+### 2026-09-17: Share constructor exposure (R48)
+
+- [x] Remove `constructor_structure`'s private origin/map/returned-value walk
+  and its second pass that reindexes every field. The existing typed-head
+  query now also stops at checked constructor values; context action and
+  computed results use the same machine/dependency graph as Lambda/RETURN.
+  Constructor fields are checked typed-input queries on that exposed value.
+- [x] Preserve the distinction between exposing a construction for Match and
+  selecting a current normalized field. `pg_prove_constructor_field` still
+  requires the selected field to correspond to the current Core when a
+  normalization receipt changes field terms. A constructor label alone is
+  not evidence for its nominal classifier or its field typings.
+- [x] Add a head-changing total-result/RETURN-to-constructor NF case. Its two
+  normalized fields must match the existing typed variables, their contexts
+  and classifiers, not the source computation operand. Verify reconstruction
+  with the actual reduction certificate and stable repeated query/proof work.
+- [x] Core, IADT, synthesis and imported QuickSort pass in debug. ASan/UBSan
+  Core, IADT, Identity, synthesis and imported QuickSort pass.
+- [x] Full debug acceptance passed, including 63/63 compatibility and final
+  QuickSort source/image properties. Idle O0 QuickSort: 1.1343 seconds /
+  279732 KiB / 131357 Solve transitions. This single sample is comparable to
+  R46, not evidence of a speedup. Logs:
+  `/tmp/a-program-typed-structure-r48-debug.log` and
+  `/tmp/a-program-typed-structure-r48-san-{core,iadt,identity,synthesis,quicksort}.log`.
+
+Against `cebdb2a`, `evidence.c` is **+26/-46, net -20**;
+`tests/iadt.c` is +25/-0. Cumulative implementation/header remains **+1810**
+against `4657cc6`, so the overall net-negative gate remains unmet. No new Core
+tag, proof rule, format or accepted-conclusion authority is introduced.

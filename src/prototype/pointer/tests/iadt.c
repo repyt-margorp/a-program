@@ -1608,6 +1608,31 @@ static void constructor_field_paths(struct pg_typing *typing, struct pg_classifi
 			assert(pg_evidence_context(selected) == pg_evidence_context(context));
 		}
 		assert(!pg_prove_normalization_input(typing, redex_pair, pg_nf_certificate(nf), 2));
+		/* Expose a constructor reached by head reduction, then normalize its
+		 * fields. Input zero of total_result is not field zero of the pair. */
+		const struct pg_evidence *computed_pair = pg_prove_total_pure_value(typing,
+			pg_prove_return_contract(typing, classifiers, PG_TOTALITY_TOTAL, redex_pair));
+		struct pg_nf_job *computed_nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(computed_pair)->core);
+		while (pg_nf_advance(computed_nf, chunk) == PG_NF_PENDING) assert(pg_nf_steps(computed_nf) < 10000);
+		const struct pg_evidence *computed_normal = pg_prove_normalization(typing, computed_pair, pg_nf_certificate(computed_nf));
+		assert(computed_normal && pg_evidence_subject(computed_normal)->core == pg_evidence_subject(left)->core);
+		for (size_t i = 0; i < 2; ++i) {
+			struct pg_typed_query *query = pg_typed_input_request(typing, computed_normal, i);
+			while (!pg_typed_query_advance(query, chunk)) assert(pg_typed_query_steps(query) < 10000);
+			const struct pg_evidence *field = pg_typed_query_result(query);
+			assert(field && pg_evidence_subject(field)->core == pg_evidence_subject(values[i])->core);
+			assert(pg_evidence_context(field) == pg_evidence_context(values[i]));
+			assert(pg_evidence_classifier(field) == pg_evidence_classifier(values[i]));
+			assert(pg_prove_constructor_field(typing, computed_normal, fields[i]) == field);
+			struct pg_derivation_parameters parameters;
+			assert(!pg_derivation_parameters(field, &parameters));
+			const struct pg_evidence *premise = pg_evidence_premise(field, 0);
+			assert(pg_prove_derivation(typing, classifiers, pg_evidence_rule(field), &parameters, 1, &premise) == field);
+			size_t proofs = typing->proofs.count, queries = typing->typed_queries.count;
+			uint64_t steps = pg_typed_query_steps(query);
+			assert(pg_prove_constructor_field(typing, computed_normal, fields[i]) == field);
+			assert(typing->proofs.count == proofs && typing->typed_queries.count == queries && pg_typed_query_steps(query) == steps);
+		}
 		if (chunk == 1) {
 			const struct pg_evidence *scope = pg_evidence_premise(params, 1);
 			const struct pg_evidence *cycle = pg_prove_substitution(typing, scope, scope, 2, reverse);

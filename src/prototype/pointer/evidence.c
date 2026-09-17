@@ -914,6 +914,16 @@ static int typed_body_step(struct pg_typed_query *work)
 		return 0;
 	}
 	const struct pg_term *core = current->core;
+	if (work->kind == TYPED_HEAD && !work->forces && current->judgement == PG_JUDGEMENT_VALUE) {
+		const struct pg_term *head = core;
+		while (head->kind == PG_APPLICATION) head = head->as.application.function;
+		const struct pg_data_layout *layout;
+		size_t position, arity;
+		if (head->kind == PG_REFERENCE && pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) {
+			work->value = pg_prove_structural_subject(typing, current);
+			return work->value ? 0 : -1;
+		}
+	}
 	if (current->map_count == 1 && !current->induction)
 		return typed_body_match(work);
 	if (core->kind == PG_LAMBDA) {
@@ -2122,44 +2132,22 @@ static int constructor_structure(struct pg_typing *typing, struct pg_graph *temp
 	struct pg_typed_query **dependency)
 {
 	if (!pg_evidence_owned_by(value, typing) || pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) return 0;
-	struct construction_map *frames = NULL;
+	struct pg_typed_query *head_query = typed_head_request(typing, value);
+	if (!head_query) return 0;
+	if (dependency) {
+		*dependency = head_query;
+		if (!head_query->status) return 0;
+		*dependency = NULL;
+	} else while (!pg_typed_query_advance(head_query, 1024)) {}
+	value = pg_typed_query_result(head_query);
+	if (!value) return 0;
 	const struct pg_occurrence *current = pg_evidence_subject(value);
-	for (;;) {
-		current = construction_origin(temporary, current, &frames);
-		if (!current) return 0;
-		const struct pg_occurrence *returned = returned_computation(current);
-		if (returned) {
-			value = pg_prove_structural_subject(typing, returned);
-			if (dependency) {
-				*dependency = pg_return_body_request(typing, value);
-				if (!*dependency || !(*dependency)->status) return 0;
-				value = pg_typed_query_result(*dependency);
-				*dependency = NULL;
-			} else value = return_value_origin(typing, value);
-			if (!value) return 0;
-			current = pg_evidence_subject(value);
-			continue;
-		}
-		if (current->origin) return 0;
-		const struct pg_term *core = current->core;
-		if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER) break;
-		if (!frames) return 0;
-		const struct pg_context *scope = pg_context_lookup(frames->map->source, core->as.reference);
-		size_t index;
-		if (!scope || pg_context_extension_size(scope->parent, NULL, &index)) return 0;
-		current = frames->map->images[index];
-		frames = frames->next;
-	}
-	size_t count = current->operand_count;
+	size_t count = 0;
 	const struct pg_term *head = current->core;
-	for (size_t i = count; i; --i) {
-		if (head->kind != PG_APPLICATION || head->as.application.argument != current->operands[i - 1]->core) return 0;
-		head = head->as.application.function;
-	}
+	for (; head->kind == PG_APPLICATION; head = head->as.application.function) ++count;
 	if (head->kind != PG_REFERENCE) return 0;
 	struct pg_inductive_instance instance;
-	if (!pg_inductive_instance(typing, formed_classifier(typing, NULL,
-		pg_prove_structural_subject(typing, current)), &instance)) return 0;
+	if (!pg_inductive_instance(typing, formed_classifier(typing, NULL, value), &instance)) return 0;
 	const struct pg_data_layout *layout;
 	size_t position, arity;
 	if (!pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) return 0;
@@ -2168,20 +2156,12 @@ static int constructor_structure(struct pg_typing *typing, struct pg_graph *temp
 	const struct pg_evidence **fields = pg_alloc(temporary, count * sizeof(*fields));
 	if (count && !fields) return 0;
 	for (size_t i = 0; i < count; ++i) {
-		fields[i] = pg_prove_structural_subject(typing, current->operands[i]);
+		const struct pg_occurrence *input;
+		if (!structural_input(typing, current, i, &input)) return 0;
+		fields[i] = pg_prove_structural_subject(typing, input);
 		if (!fields[i]) return 0;
 	}
-	const struct pg_evidence *parameters = instance.parameters;
-	for (; frames; frames = frames->next) {
-		const struct pg_evidence *map = pg_prove_context_map(typing, frames->map);
-		parameters = pg_prove_substitution_compose(typing, parameters, map);
-		if (!parameters) return 0;
-		for (size_t i = 0; i < count; ++i) {
-			fields[i] = pg_prove_reindex(typing, map, fields[i]);
-			if (!fields[i]) return 0;
-		}
-	}
-	*view = (struct constructor_structure){instance.formation, parameters, head->as.reference, count, fields};
+	*view = (struct constructor_structure){instance.formation, instance.parameters, head->as.reference, count, fields};
 	return 1;
 }
 
