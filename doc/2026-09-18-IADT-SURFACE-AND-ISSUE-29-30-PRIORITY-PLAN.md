@@ -322,7 +322,8 @@ Checkboxes mean implementation plus the stated verification, not just a design.
   (exact PR #30 provider; source/image/negative and sanitizer gates below).
 - [x] G3b: Universal tree-sort Sorted proof tied to actual results
   (exact provider; full optimized and affected sanitizer gates below).
-- [ ] G3c: Universal reported merge-sort Sorted proof tied to actual results.
+- [x] G3c: Universal reported merge-sort Sorted proof tied to actual results
+  (ordinary fuel bounds and direct graph induction; verified gates below).
 - [ ] G3d: Universal QuickSort Sorted proof tied to actual results.
 - [ ] J1: Combined regression and sanitizer gates; no ignored failures.
 - [x] J2: README and source examples updated to verified syntax, with limits.
@@ -962,8 +963,8 @@ BUILD=/tmp/a-program-g3-tree check-acceptance` with default `-O2 -Werror`.
 The sanitizer binaries use `-O1 -g -fsanitize=address,undefined
 -fno-omit-frame-pointer -no-pie`, with `ASAN_OPTIONS=detect_leaks=1` and
 `UBSAN_OPTIONS=halt_on_error=1`. All four sanitized runs above exit 0.
-This verified G3b epoch is ready for atomic publication to Main and the active
-rewrite branch; #29 must remain open with the remaining obligations stated.
+G3b was published atomically to Main and the active rewrite branch in
+`271c643`; #29 remains open with the remaining obligations stated.
 
 G3c/G3d and final J1/J3 remain open. No issue closure or broad authority refactor
 is authorized by this intermediate result.
@@ -986,5 +987,68 @@ Changes against `ffda902`, excluding this document: implementation +6/-6 (net
 | `tests/acceptance/indexed-independent-pi-motive.p` | 21 | 0 | 21 |
 | `tests/acceptance/sort-tree-property.p` | 197 | 0 | 197 |
 | `tests/acceptance/sort-tree-property-wrong.p` | 9 | 0 | 9 |
+
+## G3c: Fuelled Merge-Sort Proof (2026-09-18)
+
+`sort-merge-property.p` proves for the unchanged PR #30 implementation:
+
+```a-program
+fuel_correct :: (fuel:Nat)->(xs:List Nat)->(ys:List Nat)->
+    @mergeSortFuel (&natLessOrEqual) fuel xs ys->Fits fuel xs->Sorted ys;
+merge_correct :: (xs:List Nat)->(ys:List Nat)->
+    @mergeSort (&natLessOrEqual) xs ys->Sorted ys;
+```
+
+`Fits fuel xs` is an ordinary IADT expressing a list-length upper bound, not
+a built-in termination predicate. Induction uses `@splitAlternating` directly;
+`FitsPair` bounds both outputs. On a nonempty input the right output
+fits the predecessor fuel. `MeasurementFits` relates the actual `measure`
+packet to this bound. The zero-fuel Sorted proof uses that `Fits Nat.zero xs`
+forces an empty input. The program itself still returns any supplied input at
+zero fuel; it is not assumed to sort arbitrary lists.
+
+The reported `mergeBy` inserts every left element into the right list. Its
+result is therefore sorted whenever the right input is sorted, without an
+assumption on the left input. This property suffices for graph induction on
+the exact fuelled program. Neither a conventional linear merge algorithm nor
+a different sorting program is substituted for the reported implementation.
+
+All these definitions use existing source IADTs, Match/IH, typed graph evidence
+and postchecking. There is no kernel, solver or artifact-format change. The
+source proof for four mixed elements can be fully consumed in 634,043 steps.
+The shared tree/merge runner checks empty, singleton, duplicates, ascending and
+descending inputs, execution-packet/direct-result agreement, chunks 1/64 and
+unfinished/completed images. Independent negatives cover an incorrect input
+Sorted claim and a forged zero-fuel bound for a nonempty unsorted input,
+including rejection after inert resaving and resuming budgets 0/100.
+
+An initial `SplitOf` relation merely copied the generated graph's structure.
+It and its conversion proof were removed before publication. Direct graph
+induction saves ten source lines and lowers this concrete proof-consumption
+work from 644,108 to 634,043 steps, with the same theorem and no kernel change.
+
+- [x] Universal theorem and actual source execution-proof consumption.
+- [x] Final full optimized acceptance, including invalid image resumptions
+      (`/tmp/a-program-g3c-final-acceptance.log`, exit 0).
+- [x] ASan/UBSan shared sort runner; no implementation files changed
+      (`/tmp/a-program-g3c-final-asan-sort.log`, exit 0).
+- [x] Record verified results and pass G3c publication gates.
+
+The optimized command is the same `check-acceptance` command recorded for G3b.
+The sanitizer run uses those unchanged implementation binaries with leak
+checking and halt-on-undefined-behavior enabled. G3c is ready for Main
+publication; #29 remains open for G3d/J1/J3. This does not start the deferred
+authority refactor or claim permutation/stability/complexity theorems.
+
+Against `271c643`, excluding this document: implementation +0/-0;
+tests/proofs +158/-20 (net +138). Per file: `sort_insertion.sh` +36/-20,
+`sort-merge-property.p` +103/-0, `sort-merge-property-wrong.p` +9/-0,
+`sort-merge-fuel-wrong.p` +10/-0. The common runner avoids a second copy of
+the same image/normalization checks.
+
+Final optimized counts: source module 281,264 steps; mixed/ascending/descending
+image proof consumption 634,349 / 591,112 / 645,101, each identical at chunks
+1/64. The wrong fuel bound is rejected at 283,190 steps (283,495 after image
+resumption), and the wrong input-index theorem at 282,021 (282,326 resumed).
 | `tests/acceptance/sort-insertion-sort-property.p` | 79 | 0 | 79 |
 | `tests/acceptance/sort-insertion-sort-property-wrong.p` | 8 | 0 | 8 |
