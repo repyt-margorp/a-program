@@ -1476,7 +1476,7 @@ No implementation or test edits followed the final verification runs.
   and rejection of the wrong Context; debug and sanitizer synthesis pass.
 - [x] Full optimized acceptance, including 63/63 compatibility cases and the
   concrete Acc regression; final debug and ASan/UBSan synthesis suites.
-- [ ] Milestone publication and remote-tip verification.
+- [x] Milestone publication and remote-tip verification.
 
 The [body audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#body-adaptation-one-prepared-rule-after-cee33c3)
 records the net -14 implementation lines and the modest scheduling cost. This
@@ -1489,3 +1489,8 @@ Core tag, proof rule, acceptance authority or wire format is introduced.
 Implementation: `synthesis.c` +46/-60; tests: `tests/synthesis.c` +29/-0.
 The final QuickSort delta is +39 requests/+720 steps, with unchanged proof,
 occurrence and Term counts. No implementation/test edits followed these gates.
+
+Published as `fe7b3e9d681863eae0378938cc41b1ed47841158`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `cee33c3`; both
+remote tips verified. Documentation in that commit is +86/-3, separate from
+implementation and tests; total +161/-63. This publication record is doc-only.
