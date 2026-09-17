@@ -200,7 +200,7 @@ exercise source/Pi contexts at chunks 1/64 and invalid Context rejection.
 - [x] Implement direct accepted lookup and shared pending Pi-scope projection.
 - [x] Debug synthesis, focused no-reconstruction test, and work/node measurement.
 - [x] Full optimized acceptance (63/63 compatibility) and ASan/UBSan synthesis.
-- [ ] Publish after the gates and verify both remote tips.
+- [x] Publish after the gates and verify both remote tips (`2cc3e5a`).
 
 Per-file delta: `synthesis.c` +11/-13 (net -2); `tests/synthesis.c` +45/-0.
 Remaining pending classifier reconstruction and the broader R gates stay open.

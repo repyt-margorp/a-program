@@ -1581,8 +1581,13 @@ documentation +72/-0; total +132/-37. This publication record is documentation o
 - [x] Test that an accepted annotation is not structurally reconstructed;
   verify pending effect closure and compare QuickSort work/node counts.
 - [x] Full optimized acceptance (63/63 compatibility) and affected ASan/UBSan synthesis.
-- [ ] Publish and verify remote tips after all gates pass.
+- [x] Publish and verify remote tips after all gates pass.
 
 See the [Context projection audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#declared-types-from-accepted-contexts-after-b4b674b).
 Source family-parameter adaptation remains intentionally distinct. This is not
 completion of the broader R pending-construction or net-negative gates.
+
+Published as `2cc3e5a62952f731c40eadf6d777ed7ea4d4d1ad`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `b4b674b`;
+both remote tips verified. Implementation +11/-13, tests +45/-0,
+documentation +66/-0; total +122/-13. This publication record is documentation only.
