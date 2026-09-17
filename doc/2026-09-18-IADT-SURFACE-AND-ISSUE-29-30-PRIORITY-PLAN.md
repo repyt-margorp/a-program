@@ -1456,9 +1456,14 @@ tests; total +457/-83. This publication-record update is documentation only.
   agreement without replacing the original producer's checks.
 - [x] Debug and ASan/UBSan synthesis suites; same-input QuickSort work counts.
 - [x] Full optimized acceptance, including imported/resaved QuickSort proofs.
-- [ ] Main publication and remote-tip verification.
+- [x] Main publication and remote-tip verification.
 
 The [audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#accepted-structural-projections-after-83249f1)
 records the internal snapshot-contract adjustment and measured request reduction.
 This is progress on target 1, not completion of the pending-construction cleanup
 or the broad R goal. Source-image formats are unchanged by this epoch.
+
+Published as `607058c`, atomically fast-forwarding both `origin/main` and
+`origin/rewrite/pointer-core-hott` from `83249f1`; remote tips verified.
+Implementation/headers +30/-16, tests +58/-0, documentation +68/-0.
+No implementation or test edits followed the final verification runs.
