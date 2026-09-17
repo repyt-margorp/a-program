@@ -837,6 +837,22 @@ static int typed_body_enter(struct pg_typed_query *work, const struct pg_occurre
 	return work->dependency ? 0 : -1;
 }
 
+static int typed_head_exposed(const struct pg_occurrence *subject)
+{
+	const struct pg_term *core = subject->core;
+	if (core->kind == PG_LAMBDA) return 1;
+	if (core->kind == PG_APPLICATION) {
+		const struct pg_term *head = core->as.application.function;
+		if (head->kind == PG_REFERENCE &&
+			(head->as.reference == &pg_return_operation || head->as.reference == &pg_thunk_operation)) return 1;
+	}
+	if (subject->judgement != PG_JUDGEMENT_VALUE) return 0;
+	while (core->kind == PG_APPLICATION) core = core->as.application.function;
+	const struct pg_data_layout *layout;
+	size_t position, arity;
+	return core->kind == PG_REFERENCE && pg_data_constructor_view(core->as.reference, &layout, &position, &arity);
+}
+
 static int typed_body_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
@@ -859,6 +875,27 @@ static int typed_body_step(struct pg_typed_query *work)
 		work->result = work->environment ? pg_prove_reindex(typing, work->environment, work->value) : work->value;
 		return work->result ? 1 : -1;
 	}
+	/* A checked result is usable structure, even when its origin is a
+	 * computation whose construction cannot be exposed by this query. */
+	const struct pg_term *core = current->core;
+	if (work->kind == TYPED_HEAD && !work->forces && typed_head_exposed(current)) {
+		work->value = pg_prove_structural_subject(typing, current);
+		return work->value ? 0 : -1;
+	}
+	if (!work->argument && core->kind == PG_APPLICATION &&
+		core->as.application.function == pg_reference(typing->graph, &pg_return_operation)) {
+		if (work->forces) return -1;
+		if (current->operand_count == 1 && current->operands[0]->core == core->as.application.argument)
+			work->value = pg_prove_structural_subject(typing, current->operands[0]);
+		else {
+			if (!work->dependency) work->dependency = pg_typed_input_request(typing,
+				pg_prove_structural_subject(typing, current), 0);
+			if (!work->dependency) return -1;
+			if (!work->dependency->status) return 0;
+			work->value = pg_typed_query_result(work->dependency);
+		}
+		return work->value ? 0 : -1;
+	}
 	const struct pg_occurrence *returned = returned_computation(current);
 	if (returned) return typed_body_enter(work, returned, NULL);
 	if (current->origin) {
@@ -874,24 +911,9 @@ static int typed_body_step(struct pg_typed_query *work)
 		work->current = current->origin;
 		return 0;
 	}
-	const struct pg_term *core = current->core;
-	if (work->kind == TYPED_HEAD && !work->forces && current->judgement == PG_JUDGEMENT_VALUE) {
-		const struct pg_term *head = core;
-		while (head->kind == PG_APPLICATION) head = head->as.application.function;
-		const struct pg_data_layout *layout;
-		size_t position, arity;
-		if (head->kind == PG_REFERENCE && pg_data_constructor_view(head->as.reference, &layout, &position, &arity)) {
-			work->value = pg_prove_structural_subject(typing, current);
-			return work->value ? 0 : -1;
-		}
-	}
 	if (current->map_count == 1 && !current->induction)
 		return typed_body_match(work);
 	if (core->kind == PG_LAMBDA) {
-		if (work->kind == TYPED_HEAD && !work->forces) {
-			work->value = pg_prove_structural_subject(typing, current);
-			return work->value ? 0 : -1;
-		}
 		if (!work->argument || work->forces || current->operand_count != 1) return -1;
 		const struct pg_occurrence *body = pg_occurrence_scoped_input(current, 0);
 		if (!body) return -1;
@@ -905,22 +927,11 @@ static int typed_body_step(struct pg_typed_query *work)
 	}
 	if (core->kind == PG_APPLICATION) {
 		const struct pg_term *head = core->as.application.function;
-		if (!work->argument && head == pg_reference(typing->graph, &pg_return_operation)) {
-			if (work->forces) return -1;
-			if (current->operand_count != 1 || current->operands[0]->core != core->as.application.argument) return -1;
-			work->value = pg_prove_structural_subject(typing,
-				work->kind == TYPED_HEAD ? current : current->operands[0]);
-			return work->value ? 0 : -1;
-		}
 		if (head->kind == PG_REFERENCE &&
 			(head->as.reference == &pg_force_operation || head->as.reference == &pg_thunk_operation)) {
 			if (current->operand_count != 1 || current->operands[0]->core != core->as.application.argument) return -1;
 			if (head->as.reference == &pg_force_operation) ++work->forces;
 			else if (work->forces) --work->forces;
-			else if (work->kind == TYPED_HEAD) {
-				work->value = pg_prove_structural_subject(typing, current);
-				return work->value ? 0 : -1;
-			}
 			else return -1;
 			work->current = current->operands[0];
 			return 0;

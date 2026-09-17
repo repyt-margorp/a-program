@@ -4837,6 +4837,13 @@ static void request_typing_test(struct pg_graph *graph)
 		assert(pg_typed_query_steps(input) == input_steps);
 		assert(pg_prove_return_value(&typing, normal) == answer);
 		assert(typing.proofs.count == proofs && typing.occurrences.count == occurrences);
+		struct pg_typed_query *returned = pg_return_body_request(&typing, normal);
+		while (!pg_typed_query_advance(returned, 1)) assert(pg_typed_query_steps(returned) < 10000);
+		assert(pg_typed_query_result(returned));
+		assert(pg_evidence_subject(pg_typed_query_result(returned)) == pg_evidence_subject(answer));
+		input_steps = pg_typed_query_steps(input);
+		assert(pg_typed_query_advance(returned, 64) == 1);
+		assert(pg_typed_query_steps(input) == input_steps);
 		const struct pg_evidence *suspended = pg_prove_thunk(&typing, &classifiers, handled);
 		struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(suspended)->core);
 		while (pg_nf_advance(nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);

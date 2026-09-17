@@ -2553,3 +2553,30 @@ R51's values. One timing sample does not establish a performance change.
 No Core tag, logical rule or image format changes. This makes the existing
 unary inversion available consistently; it does not solve arbitrary IH or
 dependent result reconstruction. R2/R3/R5 and Main publication remain open.
+
+### 2026-09-17: Inspect current checked heads before construction origins (R53)
+
+- [x] Head queries first use an exposed checked Lambda, constructor, RETURN
+  or THUNK. Reading a normalized head no longer requires exposing the source
+  program which computed it. Constructor inputs still require their own
+  checked structural queries; recognizing a head does not certify fields.
+- [x] RETURN body queries retain direct typed inputs or depend on the shared
+  checked input query. Outer context actions still apply to the resulting
+  value. Remove the later duplicate head/RETURN cases instead of keeping two
+  interpretations of the same constructor.
+- [x] Extend the normalized-handler regression to the body query. Check the
+  exact typed returned subject and completed shared dependency reuse. Existing
+  mapped/scoped/NF constructor, Lambda and noncommuting-map tests pass.
+- [x] Full debug acceptance passes, including 63/63 compatibility and final
+  QuickSort source/image checks. ASan/UBSan Core, IADT, Identity, synthesis and
+  imported QuickSort pass. Logs: `/tmp/a-program-typed-structure-r53-*`.
+
+Against `7a97a45`: `evidence.c` +37/-26 (**+11**), `tests/core.c` +7/-0.
+Cumulative implementation/header is **+1767** against `4657cc6`. O0 QuickSort:
+1.1157 seconds / 276976 KiB / 131255 transitions; one timing sample, not a
+speedup claim. Counts: 178428 Core terms (-6), 414609 typed subjects (+16),
+433509 proofs (-6), 3211 checked queries (+14), 3385 raw queries (+14).
+This removes unnecessary origin traversal for already exposed results, not
+general recursive-IH construction or dependent classifier transport. No new
+Core tag, logical rule or image format. R2/R3/R5, overall code reduction and
+Main publication remain open.
