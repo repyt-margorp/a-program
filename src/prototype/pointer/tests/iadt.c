@@ -1961,6 +1961,48 @@ static void schema_positivity(void)
 	assert(!pg_inductive_instance(&typing, zero, &recovered));
 	assert(!pg_prove_substitution_projection(&typing, n_context, empty));
 	{
+		/* Selection traverses the telescope before restricting only the
+		 * retained nominal parameters. It must not hide that traversal in
+		 * one unbudgeted step or mutate another caller's scope suffix. */
+		enum { depth = 64 };
+		const struct pg_evidence *scopes[depth + 1] = {empty};
+		for (size_t i = 0; i < depth; ++i)
+			scopes[i + 1] = pg_prove_context_extension(&typing, scopes[i], pg_binder(&graph),
+				pg_prove_projection(&typing, scopes[i], nat));
+		const struct pg_evidence *type = pg_prove_return_type(&typing,
+			pg_prove_projection(&typing, scopes[depth], nat));
+		for (size_t i = depth; i; --i) type = pg_prove_pi(&typing, scopes[i], type);
+		for (size_t i = 0; i < depth; ++i) type = pg_prove_pi_constant_codomain(&typing, type);
+		const struct pg_evidence *content = pg_prove_return_content(&typing, type);
+		assert(content && pg_evidence_subject(content)->selection);
+		const struct pg_evidence *sources[] = {content, pg_prove_projection(&typing, n_context, content)};
+		struct pg_typed_query *queries[2];
+		for (size_t i = 0; i < 2; ++i) {
+			queries[i] = pg_inductive_request(&typing, sources[i]);
+			size_t proofs = typing.proofs.count;
+			assert(queries[i] && !pg_typed_query_advance(queries[i], 0));
+			assert(!pg_typed_query_advance(queries[i], 2));
+			assert(typing.proofs.count == proofs);
+		}
+		int status[2] = {0};
+		for (size_t calls = 0; (!status[0] || !status[1]) && calls < 10000; ++calls)
+			for (size_t i = 0; i < 2; ++i)
+				if (!status[i]) status[i] = pg_typed_query_advance(queries[i], i ? 64 : 1);
+		for (size_t i = 0; i < 2; ++i) {
+			assert(status[i] == 1);
+			const struct pg_inductive_instance *instance = pg_inductive_query_result(queries[i]);
+			assert(instance->formation == nat && instance->schema == nat_schema);
+			assert(pg_evidence_context(instance->parameters) == pg_evidence_context(sources[i]));
+			common_rule(&typing, sources[i]);
+			uint64_t steps = pg_typed_query_steps(queries[i]);
+			size_t proofs = typing.proofs.count, requests = typing.typed_queries.count;
+			assert(pg_inductive_request(&typing, sources[i]) == queries[i]);
+			assert(pg_typed_query_advance(queries[i], 64) == 1);
+			assert(pg_typed_query_steps(queries[i]) == steps);
+			assert(typing.proofs.count == proofs && typing.typed_queries.count == requests);
+		}
+	}
+	{
 		/* An unused map image may depend on a removed binder. Only the
 		 * constructor's real fields and nominal parameters need rebasing. */
 		const struct pg_evidence *z_zero = pg_prove_projection(&typing, z_context, zero);

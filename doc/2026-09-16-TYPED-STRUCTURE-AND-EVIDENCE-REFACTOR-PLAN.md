@@ -330,8 +330,8 @@ checkpoint notes below are historical, not additional completion claims.
 | Caller-owned Reindex work | R64 removes `pg_reindex_state` and its lifecycle/status API. Solve advances the existing shared occurrence action directly, then the ordinary Reindex rule certifies the result with the explicitly supplied premise derivations. Structural completion alone is not acceptance |
 | Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. R45 exposes supported head-changing beta/iota results through that same typed-body machine, then checks them against the receipt before selecting children. Structural traversal resumes its existing map spine. R59 transports dependent constructor-field classifiers through explicit Conversion using preceding fields' pure receipts. General multi-phase NF remains open; individual kernel checks and receipt lookup remain synchronous |
 | `return_value_origin`, `pg_prove_application_body` | R60 deletes `return_value_origin`; scope restriction requests Return work as an ordinary shared dependency. `pg_prove_application_body` remains a synchronous adapter to indexed typed-body work. R44 deletes the private continuation stack; R55 adds shared Match/IH unfolding and direct recursive returned values. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
-| `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
-| `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
+| `pi_component`, `selected_formation` | Deleted. R67 moves deferred scoped selection to the existing typed-query store, keyed by source and immutable outer scope suffix. Nominal recovery waits on the same scheduler; Pi domain inversion uses a synchronous adapter to it. Selection still precedes restriction of required components; it does not invent values for removed binders |
+| `pi_argument_frames` | R67 removes the synchronous frame loop. Scoped selection advances one lifted frame per transition using the existing checked substitution/formation rules. Private prefixes retain their tail for constant-time concatenation; published suffixes are borrowed, not copied or mutated. Individual kernel checks remain synchronous |
 | `inductive_recovery_step` | R61 removes the caller-owned recovery object and lifecycle. Nominal requests share the existing typed-query store by exact accepted subject; Return/application work uses scheduler dependencies and synthesis borrows the completed instance. Exact nominal formation, selected-component traversal and synchronous kernel suboperations remain |
 | `rebase_image` | R60 replaces its private traversal stack and repeated subtree work with a synchronous adapter to shared `(typed subject, target Context)` queries. Origin steps and child/Return dependencies use the common scheduler; ordinary introduction, nominal formation, substitution and receipt checks remain. These kernel subchecks are still synchronous |
 | `constructor_origin`, `pg_prove_elimination_body` | Whole-introduction reconstruction deleted in R31. A temporary constructor view exposes retained nominal formation, parameters and typed fields for Match/refinement; actual introduction in a changed context remains checked. Congruent NF field selection uses receipts; general current-result exposure remains open |
@@ -3220,3 +3220,67 @@ Only typed queries change from R65 (-2). Idle interleaved O0 samples
 These samples establish no material performance change. Cumulative exact
 implementation/header additions/deletions are +4463/-2615, net +1848;
 passing this checkpoint does not satisfy the final deletion gate.
+
+### 2026-09-17: Share deferred scoped selection (R67)
+
+- [x] Delete the caller-owned `selected_formation` traversal and the synchronous
+  `pi_argument_frames` loop. Both are now one request in the existing typed
+  query store. Keys contain the typed source and exact immutable outer scope
+  suffix; no new program representation, evidence rule or Core former is added.
+- [x] Nominal recovery schedules that dependency. Pi domain inversion uses
+  the same request, without a temporary traversal arena. Every wrapper,
+  component selection and lifted scope frame consumes a query transition;
+  individual checked kernel operations are still synchronous.
+- [x] Keep selection before restriction. A discarded binder need not have an
+  inhabitant. Check the selected formation and transport only the parameters
+  required by its nominal schema. Total substitution and strengthening remain
+  distinct operations, rather than introducing fictitious context maps.
+- [x] Track each private frame prefix's tail instead of repeatedly scanning
+  it to concatenate pending selections. Publish the outer suffix only after
+  construction ends. Consumers advance const-qualified cursors without editing
+  shared tails; no cast removes their const qualification.
+- [x] Core, IADT and synthesis tests pass. Add a 64-level selection regression
+  with zero/two/one/64-step advancement, two interleaved destination contexts,
+  nominal/classifier scope checks, ordinary derivation checking and repeated
+  lookup without additional work. Against R66's `evidence.c`, the test fails
+  at the two-step proof-count boundary (exit 134), demonstrating the old hidden
+  traversal. The intermediate NULL-guard mistake during migration was fixed;
+  its failed run is not passing verification.
+- [x] Full debug acceptance passes after the final const-qualified change,
+  including 63/63 compatibility and final QuickSort source/images. Log:
+  `/tmp/a-program-typed-structure-r67-debug-final.log`.
+- [x] Full optimized and ASan/UBSan acceptance pass, including 63/63
+  compatibility and final QuickSort source/images. Logs:
+  `/tmp/a-program-typed-structure-r67-{o2,sanitize}.log`.
+
+This checkpoint does not unify raw input queries with deferred strengthening,
+nor implement general multi-phase NF result exposure. Those remain R2/R3
+work. R5's cumulative net-negative requirement and Main publication remain
+open. Query caches are not saved acceptance authorities; the transport format
+and ordinary imported-rule acceptance path are unchanged.
+
+QuickSort completes in 131446 Solve transitions (R66: 131353). Retained
+counts, R66 -> R67: Core 174858 -> 130400; typed subjects 392438 -> 168765;
+proofs 429942 -> 183697; typed queries 7805 -> 7605; raw input queries
+3386 -> 3318. Sharing avoids repeated fresh scope/binder construction;
+it does not remove previously accepted alternative derivations. The increase
+in transitions accounts for selection work that previously ran synchronously.
+
+Idle interleaved QuickSort runs, same two imported sources and 1000000-step
+limit; all runs exit zero. Each cell is seconds / peak RSS in KiB:
+
+| Sample | R66 O0 | R67 O0 | R66 O2 | R67 O2 |
+|---|---:|---:|---:|---:|
+| 1 | 1.0790 / 271120 | 0.4915 / 133796 | 0.7280 / 271020 | 0.3282 / 133612 |
+| 2 | 1.0784 / 270912 | 0.5012 / 133676 | 0.7337 / 271388 | 0.3418 / 133624 |
+| 3 | 1.0594 / 271028 | 0.4916 / 133884 | 0.7154 / 271504 | 0.3366 / 133928 |
+
+This input shows approximately 54% lower elapsed time and 51% lower peak RSS.
+These figures are not a claim about all programs or a substitute for R5's
+complete baseline matrix.
+
+Delta against `0ee49e6`: implementation `evidence.c` **+160/-122 (+38)**;
+verification `tests/iadt.c` **+42/-0**. No header/build/format changes.
+Cumulative implementation/header **+4526/-2640 (+1886)** against `4657cc6`.
+The work-sharing improvement is real, but does not meet the code-reduction
+gate or complete R2/R3/R5. Main remains unpublished.
