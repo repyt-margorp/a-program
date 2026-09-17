@@ -171,7 +171,7 @@ struct pg_inductive_recovery {
 	struct pg_graph temporary;
 	struct scope_frame *frames;
 	struct inductive_argument *arguments;
-	struct pg_typed_body_work *body;
+	struct pg_typed_query *body;
 	const struct pg_evidence *type, *formation, *map;
 	struct pg_inductive_instance result;
 	int status;
@@ -454,25 +454,31 @@ const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *body);
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
-/* Shared typed body work, keyed by exact typed function/argument inputs,
+/* Shared typed queries, keyed by exact typed subjects and query arguments,
  * not receipt identity. Advances traverse construction and context maps;
  * individual kernel certification operations retain their own cost. No host
  * request is executed, nor is Core normalization used as an interning key.
- * Status: 0 pending, 1 checked result, -1 no supported checked body. A failure
+ * Status: 0 pending, 1 finished, -1 error/no supported checked body. A failure
  * is not a proof of inequality. Jobs belong to typing and are not serialized. */
-struct pg_typed_body_work;
-struct pg_typed_body_work *pg_application_body_request(struct pg_typing *typing,
+struct pg_typed_query;
+struct pg_typed_query *pg_application_body_request(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
 /* Return extraction follows typed beta, zero-clause Fold and nonrecursive
  * Match construction. Computed scrutinees share budgeted body dependencies;
  * a root's step count includes the dependency transitions it advances.
  * Requests remain opaque: only an actual RETURN resumes the continuation.
  * A normalized input exposes its checked source recipe, not normalized fields. */
-struct pg_typed_body_work *pg_return_body_request(struct pg_typing *typing,
+struct pg_typed_query *pg_return_body_request(struct pg_typing *typing,
 	const struct pg_evidence *computation);
-int pg_typed_body_advance(struct pg_typed_body_work *work, uint64_t budget);
-const struct pg_evidence *pg_typed_body_result(const struct pg_typed_body_work *work);
-uint64_t pg_typed_body_steps(const struct pg_typed_body_work *work);
+/* Checked construction inputs, including congruent normal forms. A finished
+ * query with no result means that this input is not exposed, not ill-typing.
+ * Descriptive-only subjects cannot seed this cache. Child/map dependencies
+ * and congruence spines advance on the same budget as body dependencies. */
+struct pg_typed_query *pg_typed_input_request(struct pg_typing *typing,
+	const struct pg_evidence *source, size_t index);
+int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget);
+const struct pg_evidence *pg_typed_query_result(const struct pg_typed_query *work);
+uint64_t pg_typed_query_steps(const struct pg_typed_query *work);
 /* Synchronous adapter to the same shared work. */
 const struct pg_evidence *pg_prove_application_body(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);

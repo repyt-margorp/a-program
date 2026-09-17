@@ -75,7 +75,7 @@ struct pg_typing {
 	struct pg_index context_lifts;
 	struct pg_index occurrence_actions;
 	struct pg_index occurrence_inputs;
-	struct pg_index typed_bodies;
+	struct pg_index typed_queries;
 	struct pg_index proofs;
 	/* Read-only lookup paths to the same accepted derivations, not claims or
 	 * another acceptance store. Alternatives are never replaced. */
@@ -209,11 +209,13 @@ struct pg_occurrence_input *pg_occurrence_input_request(struct pg_typing *typing
  * parent. Scoped binders may differ from a separately mapped closed Core. */
 struct pg_occurrence_input *pg_occurrence_input_mapped_request(struct pg_typing *typing,
 	const struct pg_occurrence *source, size_t index, const struct pg_context_map *map);
-/* Apply a mapped parent's action to an already exposed input, including a
- * normalized one. Uses the same scoped lifting as direct input queries.
- * The caller checks the child's relation to the parent's original input. */
-struct pg_occurrence_input *pg_occurrence_input_reindex_request(struct pg_typing *typing,
-	const struct pg_occurrence *source, size_t index, const struct pg_occurrence *child);
+/* An unavailable query can stop at a computed source whose input needs
+ * checked reduction. Resume with that exposed input and the existing map
+ * spine, without repeating the traversal or mutating the original query.
+ * The caller checks the input's relation to the blocked source. */
+const struct pg_occurrence *pg_occurrence_input_blocked_source(const struct pg_occurrence_input *work);
+struct pg_occurrence_input *pg_occurrence_input_resume_request(struct pg_typing *typing,
+	const struct pg_occurrence_input *work, const struct pg_occurrence *child);
 struct pg_occurrence_input *pg_occurrence_type_request(struct pg_typing *typing,
 	const struct pg_occurrence *source);
 /* The budget includes transitions of selected-input dependencies; nested

@@ -327,7 +327,7 @@ checkpoint notes below are historical, not additional completion claims.
 |---|---|
 | Evidence classifier/context/sort copies | Removed for term conclusions |
 | Checked family telescope lifting | R41 removes `lift_frame`/`lift_index` and the separate signature walk. The existing temporary DAG checks prefix/signature maps from shared structural lifting; ordinary context formation and substitution pairing remain. Explicit requests preserve their supplied premise derivations |
-| Normalized-input context action | R42 removes Evidence's private Lambda/Pi lifting path. Already exposed normalized inputs use the existing indexed input work, including its effective-scope allocation and ordinary structural certification. Normalization receipt selection/frames are still synchronous and remain to migrate |
+| Normalized-input context action | R42 removes the private Lambda/Pi lifting path. R43 removes the temporary `input_frame` walk and the synchronous `normalized_input` spine loop. Checked inputs and typed bodies share the query cache/scheduler; structural traversal resumes its existing map spine after checked child normalization. Individual kernel checks and receipt lookup remain synchronous |
 | `return_value_origin`, `pg_prove_application_body` | Synchronous adapters to one indexed typed-body machine; separate Return/Fold traversal removed. R37 adds nonrecursive Match branch selection and shared computed-scrutinee dependencies. Nominal/family recovery advances application work incrementally; this exposes checked source bodies, not arbitrary NF children |
 | `pi_component` | Deleted; selection source/ordinal/argument drive `selected_formation` |
 | `pi_argument_frames` | Retained checked binder substitution; no Pi-premise layout dependency |
@@ -2185,3 +2185,57 @@ completion of R2-R5 or satisfaction of the net-negative gate. The receipt
 selection and temporary normalization frames in `structural_input` remain;
 head-changing and dependent normalized results must not be presented as
 fully exposed typed structure. Main remains unpublished.
+
+### 2026-09-17: Budget and memoize checked input exposure (R43)
+
+- [x] Replace the temporary normalization/input frame stack with indexed
+  checked queries. Rename the existing `typed_bodies` work index/API to
+  `typed_queries`; body and input requests share allocation, exact-key lookup,
+  dependency waiting and budget accounting. The input ordinal distinguishes
+  a query, not a Core node or a logical proof rule. No additional work index,
+  persistent program graph, image format or acceptance authority is added.
+- [x] Accept only checked subjects as seeds for checked input queries. Keys
+  use the typed subject and query arguments, not the selected derivation.
+  Alternative derivations remain available and share a structural answer.
+  Raw descriptive input work still publishes no acceptance evidence.
+- [x] Remove `direct_structural_input`, `normalized_input` and `input_frame`.
+  `structural_input` is now a blocking adapter to the shared query. Traversal
+  of a congruence receipt's APP spine advances one phase per transition;
+  alpha comparison, exact receipt lookup and individual kernel checks retain
+  their own synchronous costs. This is not a wall-time/instruction bound.
+- [x] Resume a blocked structural query with its exposed normalized child
+  and retained immutable map spine. Replace R42's immediate-parent reindex
+  entry point rather than keep two scope-action APIs. The original query is
+  not mutated. A provisional per-origin dependency scheme was rejected:
+  restarting raw traversal at every prefix can scan a deep map chain
+  quadratically. The final implementation scans and resumes that chain once.
+- [x] Cover zero/split budgets, completed reuse without added work or evidence,
+  equivalent typed subjects with distinct derivations, invalid request inputs,
+  exact normalized child scope/type, and 1000 composed maps. The deep checked
+  input completes in 2019 transitions with budget one; its repeated lookup
+  adds none. A head-changing beta result remains unavailable instead of
+  returning the original APP's callee as the resulting RETURN's child.
+- [x] Full debug acceptance passed, including 63/63 compatibility and final
+  QuickSort source/image properties. ASan/UBSan Core, IADT, Identity, synthesis
+  and imported QuickSort passed. The final additional head-change boundary
+  test was rebuilt and passed in both debug and ASan/UBSan Core tests.
+
+QuickSort O0: 1.0436 seconds / 279048 KiB / 132053 transitions. Counts remain
+178454 Terms / 416930 typed subjects / 434774 proofs. The shared query index
+now contains 2587 body/input requests; raw structural input requests decrease
+from 3458 to 3384. The added checked-query memoization has a storage cost;
+timing differences from single samples do not establish a speedup. Logs:
+`/tmp/a-program-typed-structure-r43-debug.log`,
+`/tmp/a-program-typed-structure-r43-{core,iadt,quicksort}.log`, and
+`/tmp/a-program-typed-structure-r43-san-{core,iadt,identity,synthesis,quicksort}.log`.
+
+Against `2ff31ad`, implementation/header: `evidence.c` +114/-116,
+`evidence.h` +15/-9, `synthesis.c` +3/-3, `typing.c` +17/-8 and `typing.h`
++8/-6: net **+15**, cumulative **+1742** against `4657cc6`. Tests:
+`core.c` +64/-36, `iadt.c` +37/-30; many changed lines rename the shared work
+API rather than add tests. Net-negative acceptance remains unmet.
+
+R2-R5 remain open: head-changing beta/iota result exposure, dependent
+normalized classifier transport, selected/strengthened result reconstruction,
+final representation/memory review, and net implementation reduction. The
+checked-query cache is not completion of those semantics. Main is not pushed.

@@ -22,7 +22,7 @@ int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph)
 	if (pg_index_init(&typing->context_lifts) != 0) goto fail;
 	if (pg_index_init(&typing->occurrence_actions) != 0) goto fail;
 	if (pg_index_init(&typing->occurrence_inputs) != 0) goto fail;
-	if (pg_index_init(&typing->typed_bodies) != 0) goto fail;
+	if (pg_index_init(&typing->typed_queries) != 0) goto fail;
 	if (pg_index_init(&typing->proofs) != 0) goto fail;
 	if (pg_index_init(&typing->evidence_conclusions) != 0) goto fail;
 	if (pg_substitution_work_init(&typing->substitutions, graph) == 0) return 0;
@@ -40,7 +40,7 @@ void pg_typing_destroy(struct pg_typing *typing)
 	pg_index_destroy(&typing->context_lifts);
 	pg_index_destroy(&typing->occurrence_actions);
 	pg_index_destroy(&typing->occurrence_inputs);
-	pg_index_destroy(&typing->typed_bodies);
+	pg_index_destroy(&typing->typed_queries);
 	pg_index_destroy(&typing->proofs);
 	pg_index_destroy(&typing->evidence_conclusions);
 	pg_substitution_work_destroy(&typing->substitutions);
@@ -756,7 +756,7 @@ static struct pg_occurrence_input *input_request(struct pg_typing *typing,
 	const struct pg_occurrence *child)
 {
 	if (!source || !source->classifier) return NULL;
-	if (map && map->source != (child ? source->origin->context : source->context)) return NULL;
+	if (map && map->source != source->context) return NULL;
 	uint64_t hash = ((uintptr_t)source ^ index) * UINT64_C(1099511628211);
 	hash = (hash ^ (uintptr_t)map) * UINT64_C(1099511628211);
 	hash = (hash ^ (uintptr_t)child) * UINT64_C(1099511628211);
@@ -772,7 +772,11 @@ static struct pg_occurrence_input *input_request(struct pg_typing *typing,
 	work->child = work->result = child;
 	work->index = index;
 	work->outer = map;
-	if (map) {
+	if (child) {
+		const struct pg_occurrence_input *resume = input_request(typing, source, index, map, NULL);
+		if (!resume || resume->status != PG_INPUT_UNAVAILABLE || !resume->current) return NULL;
+		work->maps = resume->maps;
+	} else if (map) {
 		work->maps = pg_alloc(typing->graph, sizeof(*work->maps));
 		if (!work->maps) return NULL;
 		*work->maps = (struct input_map){map, source->core, NULL};
@@ -792,11 +796,16 @@ struct pg_occurrence_input *pg_occurrence_input_mapped_request(struct pg_typing 
 	return map && index != SIZE_MAX ? input_request(typing, source, index, map, NULL) : NULL;
 }
 
-struct pg_occurrence_input *pg_occurrence_input_reindex_request(struct pg_typing *typing,
-	const struct pg_occurrence *source, size_t index, const struct pg_occurrence *child)
+const struct pg_occurrence *pg_occurrence_input_blocked_source(const struct pg_occurrence_input *work)
 {
-	if (!source || !source->map || !child || !child->classifier || index == SIZE_MAX) return NULL;
-	return input_request(typing, source, index, source->map, child);
+	return work && work->status == PG_INPUT_UNAVAILABLE && work->index != SIZE_MAX ? work->current : NULL;
+}
+
+struct pg_occurrence_input *pg_occurrence_input_resume_request(struct pg_typing *typing,
+	const struct pg_occurrence_input *work, const struct pg_occurrence *child)
+{
+	if (!work || work->typing != typing || !pg_occurrence_input_blocked_source(work) || !child || !child->classifier) return NULL;
+	return input_request(typing, work->source, work->index, work->outer, child);
 }
 
 struct pg_occurrence_input *pg_occurrence_type_request(struct pg_typing *typing,
