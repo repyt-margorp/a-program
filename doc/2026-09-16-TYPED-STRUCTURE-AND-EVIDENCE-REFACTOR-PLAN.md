@@ -144,7 +144,7 @@ Temporary adapters are permitted within a phase, not as permanent fallbacks.
 | [x] | R1 Typed conclusions | Term conclusions have one typed-subject reference; classifier/context/sort accessors delegate to it. All rules publish through `accept_record`; Context and Substitution retain their distinct conclusions. Exact interning and alternative derivations are preserved. Verified by the R29 structural audit and acceptance tests below; this does not complete R2/R3. |
 | [ ] | R2 Context action | Migrate projection/reindex to the same typed structure with explicit effective child maps. Use existing substitution work and binder lifting. Verify repeated lookup sharing, capture avoidance, dependent classifiers and chunked execution. |
 | [ ] | R3 Structural and formation consumers | Move `return_value_origin`, `pi_component`, constructor/inductive recovery and classifier recovery to checked views. Keep theorem-specific inversions where required. Replace structural wrapper walks in `function_graph.c`, `action.c` and `synthesis.c`; remove replaced paths in the same phase. |
-| [ ] | R4 Images and pending work | Update occurrence/derivation/source transport and allocation dependency collection. Bump the affected format/policy explicitly. Reconstruct through ordinary Solve, not copied acceptance bits; document whether old images migrate or reject with a version diagnostic. |
+| [x] | R4 Images and pending work | R47 audits the current transport after R40/R46: APGOCC7 preserves descriptive typed structure, Context v3 retains family telescopes, derivation v14 and source v44/v45 preserve rule/allocation inputs. Old formats reject. Fresh-process tests check ordinary Solve, no imported acceptance bits, split budgets and normalized scoped inputs. Future representation changes must reopen this transport gate; this does not close R2/R3/R5. |
 | [ ] | R5 Acceptance and cleanup | Run the full gates below, remove obsolete occurrence fields/adapters, document remaining intentional rule dispatch. Require net implementation LOC reduction, compare behavior and performance to R0, report per-file additions/deletions, then publish the verified increment. |
 
 R1 and R2 form one vertical slice: first exercise an annotated Lambda/APP under
@@ -2371,3 +2371,37 @@ require inventing an inhabitant. Core free-variable independence alone also
 does not discharge retained nominal/context dependencies. Their current
 structural reconstruction still needs consolidation/budget review, but it
 cannot simply be deleted in favor of a total map.
+
+### 2026-09-17: Current image-boundary audit (R47)
+
+R4 is complete for the current representation; R2, R3 and R5 remain open.
+This closes the existing transport migration, not general typed normalization
+or the entire refactor. Reopen R4 if the remaining representation work changes
+its saved contracts.
+
+| Boundary | Implementation and checked contract |
+|---|---|
+| Descriptive typed structure | `occurrence_io.c:operand` collects construction/origin/selection inputs, retained formation and typed map images. `pg_occurrences_write/read` preserve judgement, Core, classifier, annotation, maps and induction allocation in APGOCC7. Reading interns full tuples but creates no accepted derivations. |
+| Lexical scope | `context_payload.c:parent` traverses both parent and family index telescope. The common pack/unpack path serves Context, declaration and induction payloads; Context v3 preserves pointer sharing after relocation. |
+| Derivation requests | `pg_derivation_input_header` exports rule inputs and receipt endpoints/kind, not a copied acceptance flag. `pg_derivation_input_terms` includes induction binders and clause scopes. Derivation v14 loads inert requests; ordinary synthesis/Solve obtains checked receipts and calls the existing kernel rules. |
+| Pending source and allocations | `source_io.c:collect_inputs`, `collect_allocation`, `retain_objects` and `retain_dependencies` collect lexical scopes, declaration members, handler binders, prepared producers and retained-reduction dependencies. Context payload packing supplies their shared scope representation. Export inspects work without executing Solve. |
+| Retention policy | Source v44/v45 distinguish recompute and retained data. Typed query caches and waiting stacks are not serialized acceptance authorities. Resumed source/rule work goes through the same Solve path. Source loading may establish the ordinary empty context; it does not trust imported term conclusions. |
+| Compatibility policy | APGOCC0-6, Context v2 and source v42/v43 reject rather than reinterpret obsolete layouts. Rebuild from source; no implicit migration or separate Replay semantics is added. |
+
+- [x] Extend the existing fresh-process derivation fixture with an independently
+  renamed Pi receipt. After ordinary Solve, expose its codomain with the exact
+  normalized binder, parent context and body. Share the same checks already
+  used for Lambda/RETURN; no new audit runner or implementation code.
+- [x] Debug derivation I/O suite passes, including inert inputs, pending effect
+  equations, operation/handler execution, nominal constructor/Match/IH/type
+  cases, malformed requests and chunk-one/chunk-64 agreement. The expanded
+  normalization fixture uses 1185 Solve transitions in both readers.
+- [x] The same expanded derivation suite passes under ASan/UBSan, including
+  both readers at 1185 Solve transitions.
+
+The full R46 debug gate already covered occurrence, context, source,
+retained/recompute, Identity and final QuickSort image suites. The additional
+R47 changes are test-only. Against `373582b`, `tests/derivation_io.c` is
++24/-11; implementation/header delta is zero, cumulative **+1830**.
+No claim is made that persistence reduces that outstanding implementation
+growth. Main remains unpublished.

@@ -342,7 +342,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, classifiers, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[18];
+	const struct pg_evidence *roots[19];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -418,8 +418,17 @@ static void write_proofs(FILE *file, struct pg_typing *typing, struct pg_classif
 	nf = pg_nf_request(&work, &pg_pure_policy, alpha);
 	assert(nf && pg_nf_advance(nf, 10000) == PG_NF_DONE);
 	roots[17] = pg_prove_normalization(typing, under_lambda, pg_nf_certificate(nf));
-	for (size_t i = 0; i < 18; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 18, roots, name, classifiers) == 0);
+	const struct pg_evidence *pi = pg_evidence_premise(under_lambda, 0);
+	const struct pg_term *domain, *body;
+	const struct pg_object *bound;
+	assert(pg_pi_view(pg_evidence_subject(pi)->core, &domain, &bound, &body) && bound == x);
+	alpha = pg_pi(graph, domain, renamed,
+		pg_substitution_compute(&typing->substitutions, body, 1, &binding));
+	nf = pg_nf_request(&work, &pg_pure_policy, alpha);
+	assert(nf && pg_nf_advance(nf, 10000) == PG_NF_DONE);
+	roots[18] = pg_prove_normalization(typing, pi, pg_nf_certificate(nf));
+	for (size_t i = 0; i < 19; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 19, roots, name, classifiers) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -447,13 +456,13 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing, 1000, 100, resolve, classifiers, &count, &roots) == 0);
-	assert(count == 18 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 19 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, classifiers, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[18];
+	struct pg_synthesis_job *jobs[19];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -511,26 +520,30 @@ static void read_proofs(FILE *file, struct pg_typing *typing, struct pg_classifi
 	/* Restored normalization exposes typed result inputs only after ordinary
 	 * Solve. A renamed NF binder needs a checked child scope action, not the
 	 * original Lambda body's context copied onto its new Core. */
-	const size_t normalized[] = {3, 5, 11, 17};
+	const size_t normalized[] = {3, 5, 11, 17, 18};
 	for (size_t i = 0; i < sizeof(normalized) / sizeof(*normalized); ++i) {
 		const struct pg_evidence *parent = pg_synthesis_result(jobs[normalized[i]]);
 		const struct pg_term *core = pg_evidence_subject(parent)->core;
-		struct pg_typed_query *input = pg_typed_input_request(typing, parent, 0);
+		const struct pg_term *domain, *body;
+		const struct pg_object *binder;
+		size_t ordinal = pg_pi_view(core, &domain, &binder, &body) ? 1 : 0;
+		struct pg_typed_query *input = pg_typed_input_request(typing, parent, ordinal);
 		assert(input);
 		while (!pg_typed_query_advance(input, chunk)) assert(pg_typed_query_steps(input) < 10000);
 		const struct pg_evidence *child = pg_typed_query_result(input);
 		assert(child);
-		if (core->kind == PG_LAMBDA) {
-			assert(pg_evidence_subject(child)->core == core->as.lambda.body);
+		if (core->kind == PG_LAMBDA || ordinal) {
+			if (!ordinal) { binder = core->as.lambda.binder; body = core->as.lambda.body; }
+			assert(pg_evidence_subject(child)->core == body);
 			assert(pg_evidence_context(child)->parent == pg_evidence_context(parent));
-			assert(pg_evidence_context(child)->binder == core->as.lambda.binder);
+			assert(pg_evidence_context(child)->binder == binder);
 		} else {
 			assert(core->kind == PG_APPLICATION && core->as.application.function == pg_reference(typing->graph, &pg_return_operation));
 			assert(pg_evidence_subject(child)->core == core->as.application.argument);
 			assert(pg_evidence_context(child) == pg_evidence_context(parent));
 		}
 		uint64_t steps = pg_typed_query_steps(input);
-		assert(pg_typed_input_request(typing, parent, 0) == input);
+		assert(pg_typed_input_request(typing, parent, ordinal) == input);
 		assert(pg_typed_query_advance(input, 64) == 1 && pg_typed_query_steps(input) == steps);
 	}
 	assert(!pg_computation_resolve("kernel/fold/v2"));
