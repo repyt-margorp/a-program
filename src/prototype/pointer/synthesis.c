@@ -90,7 +90,7 @@ struct index_transport_state {
 	const struct pg_evidence *cursor, *path, *endpoints[2], *fields, *prefix;
 	struct pg_synthesis_job *normal[2], *candidates[2], *checks[2];
 	size_t candidate_next;
-	int direct_checked;
+	int direct_checked, normalized_checked;
 };
 struct substitution_entry {
 	const struct pg_evidence *extension;
@@ -7799,7 +7799,8 @@ static const struct pg_evidence *index_transport_scope(struct pg_typing *typing,
  * checked substitutions; it never rewrites a classifier's raw Core in place. */
 static struct pg_synthesis_job *index_transport_candidate(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_object *field,
-	const struct pg_evidence *lv, const struct pg_evidence *rv, enum pg_identity_direction direction)
+	const struct pg_evidence *lv, const struct pg_evidence *rv, enum pg_identity_direction direction,
+	const struct pg_evidence *normalized_from)
 {
 	if (!lv || !rv) return NULL;
 	struct pg_typing *typing = synthesis->typing;
@@ -7837,8 +7838,13 @@ static struct pg_synthesis_job *index_transport_candidate(struct pg_synthesis *s
 	if (!ls || !rs) return NULL;
 	struct pg_synthesis_job *argument = (void *)job->inputs[1];
 	const struct pg_evidence *type = pg_prove_classifier(typing, context, argument->result);
-	const struct pg_evidence *family = pg_prove_pattern_type(typing, prefix,
-		direction == PG_IDENTITY_LEFT ? rs : ls,
+	/* Normalization may expose the index image inside the synthesized type.
+	 * Only candidate factoring uses that image; transport retains the original
+	 * endpoints/path and checks its source type by ordinary conversion. */
+	const struct pg_evidence *pattern = normalized_from
+		? pg_prove_substitution_pair(typing, map, source, normalized_from)
+		: direction == PG_IDENTITY_LEFT ? rs : ls;
+	const struct pg_evidence *family = pg_prove_pattern_type(typing, prefix, pattern,
 		pg_prove_return_type(typing, type));
 	if (!family) return NULL;
 	family = pg_prove_return_content(typing, family);
@@ -7930,8 +7936,8 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 			const struct pg_evidence *left = pg_prove_constructor_field(typing, state->normal[0]->result, field);
 			const struct pg_evidence *right = pg_prove_constructor_field(typing, state->normal[1]->result, field);
 			state->fields = pg_evidence_premise(state->fields, 0);
-			state->candidates[0] = index_transport_candidate(synthesis, job, field, left, right, PG_IDENTITY_LEFT);
-			state->candidates[1] = index_transport_candidate(synthesis, job, field, left, right, PG_IDENTITY_RIGHT);
+			state->candidates[0] = index_transport_candidate(synthesis, job, field, left, right, PG_IDENTITY_LEFT, NULL);
+			state->candidates[1] = index_transport_candidate(synthesis, job, field, left, right, PG_IDENTITY_RIGHT, NULL);
 			state->candidate_next = 0;
 			enqueue(synthesis, job); return;
 		}
@@ -7952,12 +7958,11 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 	if (!state->direct_checked) {
 		const struct pg_evidence *left = state->endpoints[0];
 		const struct pg_evidence *right = state->endpoints[1];
-		state->candidates[0] = index_transport_candidate(synthesis, job, NULL, left, right, PG_IDENTITY_LEFT);
-		state->candidates[1] = index_transport_candidate(synthesis, job, NULL, left, right, PG_IDENTITY_RIGHT);
+		state->candidates[0] = index_transport_candidate(synthesis, job, NULL, left, right, PG_IDENTITY_LEFT, NULL);
+		state->candidates[1] = index_transport_candidate(synthesis, job, NULL, left, right, PG_IDENTITY_RIGHT, NULL);
 		state->candidate_next = 0; state->direct_checked = 1;
 		enqueue(synthesis, job); return;
 	}
-	const struct pg_object *heads[2];
 	for (size_t i = 0; i < 2; ++i) {
 		if (!state->normal[i]) state->normal[i] = pg_synthesis_normalize_jobs(synthesis, cj,
 			pg_synthesis_evidence(synthesis, state->endpoints[i]), PG_REDUCTION_WHNF);
@@ -7965,6 +7970,21 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (state->normal[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, state->normal[i]); return; }
 		if (state->normal[i]->status == PG_SYNTHESIS_ERROR) goto error;
 		if (state->normal[i]->status != PG_SYNTHESIS_DONE) goto next_context;
+	}
+	if (!state->normalized_checked) {
+		for (size_t i = 0; i < 2; ++i) {
+			const struct pg_evidence *image = state->normal[1 - i]->result;
+			state->candidates[i] = NULL;
+			if (pg_alpha_equal(pg_evidence_subject(image)->core,
+				pg_evidence_subject(state->endpoints[1 - i])->core) == 1) continue;
+			state->candidates[i] = index_transport_candidate(synthesis, job, NULL,
+				state->endpoints[0], state->endpoints[1], i ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT, image);
+		}
+		state->candidate_next = 0; state->normalized_checked = 1;
+		enqueue(synthesis, job); return;
+	}
+	const struct pg_object *heads[2];
+	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_term *head = pg_evidence_subject(state->normal[i]->result)->core;
 		while (head->kind == PG_APPLICATION) head = head->as.application.function;
 		if (head->kind != PG_REFERENCE) goto next_context;
@@ -7982,7 +8002,7 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 next_context:
 	state->cursor = pg_evidence_premise(state->cursor, 0);
 	state->path = NULL; state->fields = NULL;
-	state->direct_checked = 0;
+	state->direct_checked = state->normalized_checked = 0;
 	state->normal[0] = state->normal[1] = NULL;
 	enqueue(synthesis, job); return;
 rejected:

@@ -1,0 +1,11 @@
+Nat := @{zero:*; succ:*->*;};
+Bool := @{true:*; false:*;};
+pick := \b:Bool => b @true => (\n:Nat => n) @false => (\n:Nat => Nat.zero);
+Box := @\n:Nat => {mk:(k:Nat)->* k;};
+Trace := \f:Bool->Nat->Nat => \b:Bool => \n:Nat => @\result:Nat => {done:* (f b n);};
+value := \b:Bool => \n:Nat => Box.mk (pick b n);
+consume := \p:Box Nat.zero => Nat.zero;
+good := \b:Bool => \n:Nat => \trace:Trace (&pick) b n Nat.zero => trace @done => consume (value b n);
+good :: (b:Bool)->(n:Nat)->Trace (&pick) b n Nat.zero->Nat;
+main := good Bool.true Nat.zero (Trace (&pick) Bool.true Nat.zero).done;
+expected := Nat.zero;

@@ -35,3 +35,26 @@ code=0
 "$binary" --legacy-intrinsic-dot --steps 1000000 --imports "$directory/provider.p" "$root/acceptance/sort-insertion-property-wrong.p" || code=$?
 test "$code" = 1
 printf '%s\n' 'sort insertion: exact provider, universal property, execution witnesses, images and wrong result index passed'
+
+# The generic helper graph is consumed directly, not identified with @insertNat.
+proof="$root/acceptance/sort-insertion-sort-property.p"
+"$binary" --legacy-intrinsic-dot --steps 1000000 --imports "$directory/provider.p" --save "$directory/sort.a" "$proof"
+for pair in main:four empty:zero singleton:one_value already:four packet_value:expected_value direct_value:expected_value; do
+	"$compare" --equal-image "$directory/sort.a" "${pair%:*}" "${pair#*:}"
+done
+for steps in 0 100; do
+	code=0
+	"$binary" --legacy-intrinsic-dot --imports "$directory/provider.p" --steps "$steps" --save "$directory/partial.a" "$proof" || code=$?
+	test "$code" = 3
+	code=0
+	"$binary" --load --steps 0 --save "$directory/resaved.a" "$directory/partial.a" || code=$?
+	test "$code" = 3
+	cmp "$directory/partial.a" "$directory/resaved.a"
+	"$compare" --equal-image "$directory/resaved.a" main four
+done
+cat "$proof" > "$directory/wrong-sort.p"
+sed '/^import /d' "$root/acceptance/sort-insertion-sort-property-wrong.p" >> "$directory/wrong-sort.p"
+code=0
+"$binary" --legacy-intrinsic-dot --steps 1000000 --imports "$directory/provider.p" "$directory/wrong-sort.p" || code=$?
+test "$code" = 1
+printf '%s\n' 'insertionSort: universal Sorted proof, executed graph packets, source/image agreement and wrong input-index rejection passed'

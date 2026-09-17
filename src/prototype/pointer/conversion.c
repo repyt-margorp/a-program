@@ -18,7 +18,7 @@ struct pg_conversion_state {
 	const struct pg_conversion_certificate *certificate;
 	/* Borrow the shared job while a comparison endpoint is suspended. */
 	const struct pg_term *normalizing;
-	union {
+	struct {
 		struct pg_whnf_job *whnf;
 		struct pg_nf_job *nf;
 	} normalization;
@@ -28,11 +28,31 @@ struct pg_conversion_state {
 	int failed;
 };
 
+/* These eliminators cannot reduce while their demanded operand is open.
+ * Follow only the demanded operand, never recursive branch bodies. */
+static int neutral(const struct pg_term *term)
+{
+	for (;;) {
+		const struct pg_term *first = NULL;
+		while (term->kind == PG_APPLICATION) {
+			first = term->as.application.argument;
+			term = term->as.application.function;
+		}
+		if (term->kind != PG_REFERENCE) return 0;
+		const struct pg_object *head = term->as.reference;
+		if (head->kind == PG_BINDER) return 1;
+		if (!first) return 0;
+		if (!pg_data_layout_view(head) && head != &pg_total_result_operation &&
+			head != &pg_force_operation) return 0;
+		term = first;
+	}
+}
+
 /* Congruence compares children of rigid heads without normalizing unrelated
  * siblings. Reducible oracle applications still need parent rechecking. */
 static int rigid_head(const struct pg_term *term)
 {
-	if (term->kind == PG_LAMBDA) return 1;
+	if (term->kind == PG_LAMBDA || neutral(term)) return 1;
 	while (term->kind == PG_APPLICATION) term = term->as.application.function;
 	if (term->kind != PG_REFERENCE) return 0;
 	const struct pg_object *head = term->as.reference;
@@ -48,21 +68,9 @@ static int rigid_head(const struct pg_term *term)
 static int normalize(void *policy, const struct pg_term *input, const struct pg_term **output)
 {
 	struct pg_conversion_state *state = policy;
-	if (state->strong) {
-		if (rigid_head(input)) { *output = input; return 1; }
-		if (state->normalizing != input) {
-			state->normalization.nf = pg_nf_request(state->work, &pg_pure_policy, input);
-			state->normalizing = input;
-		}
-		struct pg_nf_job *job = state->normalization.nf;
-		if (!job) return -1;
-		if (pg_nf_status(job) == PG_NF_PENDING)
-			return pg_nf_advance(job, 1) == PG_NF_ERROR ? -1 : 0;
-		*output = pg_nf_result(job);
-		return *output ? 1 : -1;
-	}
 	if (state->normalizing != input) {
 		state->normalization.whnf = pg_whnf_request(state->work, &pg_pure_policy, input);
+		state->normalization.nf = NULL;
 		state->normalizing = input;
 	}
 	struct pg_whnf_job *job = state->normalization.whnf;
@@ -70,6 +78,15 @@ static int normalize(void *policy, const struct pg_term *input, const struct pg_
 	if (pg_whnf_status(job) == PG_EVAL_PENDING)
 		return pg_whnf_advance(job, 1) == PG_EVAL_ERROR ? -1 : 0;
 	*output = pg_whnf_result(job);
+	if (!*output) return -1;
+	if (!state->strong || rigid_head(*output)) return 1;
+	if (!state->normalization.nf)
+		state->normalization.nf = pg_nf_request(state->work, &pg_pure_policy, *output);
+	struct pg_nf_job *nf = state->normalization.nf;
+	if (!nf) return -1;
+	if (pg_nf_status(nf) == PG_NF_PENDING)
+		return pg_nf_advance(nf, 1) == PG_NF_ERROR ? -1 : 0;
+	*output = pg_nf_result(nf);
 	return *output ? 1 : -1;
 }
 

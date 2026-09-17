@@ -3580,6 +3580,55 @@ static void dependent_cube_substitution(struct pg_typing *typing)
 	pg_dimensions_destroy(&dimensions);
 }
 
+static void open_eliminator_conversion(struct pg_typing *typing)
+{
+	struct pg_graph *graph = typing->graph;
+	const struct pg_object *x = pg_binder(graph), *self = pg_binder(graph);
+	const struct pg_term *variable = pg_reference(graph, x);
+	const struct pg_term *identity = pg_lambda(graph, x, variable);
+	const struct pg_term *loop = pg_lambda(graph, self,
+		pg_application(graph, pg_reference(graph, self), pg_reference(graph, self)));
+	loop = pg_application(graph, loop, loop);
+	const size_t arities[] = {0, 0};
+	const struct pg_data_layout *layout = pg_data_layout(graph, 2, arities);
+	const struct pg_term *zero = pg_reference(graph, pg_data_constructor(layout, 0));
+	struct pg_match_clause branches[] = {
+		{pg_data_constructor(layout, 0), zero}, {pg_data_constructor(layout, 1), loop}};
+	const struct pg_term *open = pg_data_match(graph, layout, variable, 2, branches);
+	const struct pg_term *over = pg_application(graph, open, variable);
+	const struct pg_term *wrapped = pg_application(graph, pg_reference(graph, &pg_total_result_operation), over);
+	const struct pg_term *forced = pg_application(graph, pg_reference(graph, &pg_force_operation), over);
+	const struct pg_term *closed = pg_data_match(graph, layout,
+		pg_application(graph, identity, zero), 2, branches);
+	/* Congruence must still reduce selected children, and a fold continuation
+	 * may expose its right-unit rule only after beta reduction. */
+	branches[1].branch = variable;
+	const struct pg_term *plain = pg_data_match(graph, layout, variable, 2, branches);
+	branches[1].branch = pg_application(graph, identity, variable);
+	const struct pg_term *expanded = pg_data_match(graph, layout, variable, 2, branches);
+	const struct pg_term *returned = pg_application(graph, pg_reference(graph, &pg_return_operation), variable);
+	const struct pg_term *unit = pg_lambda(graph, x, returned);
+	const struct pg_term *fold = pg_computation_fold(graph, variable,
+		pg_application(graph, identity, unit), 0, NULL);
+	const struct pg_term *left[] = {open, wrapped, forced, closed, expanded, fold};
+	const struct pg_term *right[] = {zero, zero, zero, zero, plain, variable};
+	const uint64_t chunks[] = {1, 7, 64};
+	for (size_t c = 0; c < sizeof(chunks) / sizeof(*chunks); ++c) {
+		struct pg_whnf_work work;
+		assert(!pg_whnf_work_init(&work, graph));
+		for (size_t i = 0; i < sizeof(left) / sizeof(*left); ++i) {
+			struct pg_conversion comparison;
+			assert(!pg_conversion_init(&comparison, &work, left[i], right[i]));
+			for (uint64_t n = 0; n < 10000 && pg_conversion_status(&comparison) == PG_CONVERSION_PENDING; n += chunks[c])
+				pg_conversion_advance(&comparison, chunks[c]);
+			assert(pg_conversion_status(&comparison) == (i < 3 ? PG_CONVERSION_DIFFERENT : PG_CONVERSION_EQUAL));
+			assert(!!pg_conversion_certificate(&comparison) == (i >= 3));
+			pg_conversion_destroy(&comparison);
+		}
+		pg_whnf_work_destroy(&work);
+	}
+}
+
 static void shared_conversion_jobs(struct pg_typing *typing)
 {
 	struct pg_whnf_work work;
@@ -6125,6 +6174,7 @@ int main(void)
 	identity_instance_jobs(&typing);
 	cube_application_jobs(&typing, 1);
 	cube_application_jobs(&typing, 2);
+	open_eliminator_conversion(&typing);
 	shared_conversion_jobs(&typing);
 	library_levels(&typing);
 	named_identity(&typing);

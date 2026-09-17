@@ -318,7 +318,8 @@ Checkboxes mean implementation plus the stated verification, not just a design.
 - [x] G1b: Revalidate those fixes with new IADT elaboration; document alias policy.
 - [x] G2a: Conventional LE transitivity, universal proof and invalid variants.
 - [x] G2b: Comparator theorem related to conventional LE, not only Compared.
-- [ ] G3a: Universal insertion-sort Sorted proof tied to actual results.
+- [x] G3a: Universal insertion-sort Sorted proof tied to actual results
+  (exact PR #30 provider; source/image/negative and sanitizer gates below).
 - [ ] G3b: Universal tree-sort Sorted proof tied to actual results.
 - [ ] G3c: Universal reported merge-sort Sorted proof tied to actual results.
 - [ ] G3d: Universal QuickSort Sorted proof tied to actual results.
@@ -738,8 +739,9 @@ This also matters for merge sort and QuickSort's generic helpers.
 - [x] Extract and hash the exact provider; construct universal insertion lemmas.
 - [x] Diagnose partial-source and Pi-domain synthesis gaps with independent input.
 - [x] Verify all added source/image/negative tests and the existing full suite.
-- [ ] Connect the generic helper graph to the specialized theorem explicitly.
-- [ ] Complete the insertion-sort theorem and actual execution consumers (G3a).
+- [x] Consume the generic helper graph through its own checked theorem instead
+  of identifying it with the specialized graph (G3a entry below).
+- [x] Complete the insertion-sort theorem and actual execution consumers (G3a).
 - [ ] Complete G3b-G3d, then J1/J3; #29 stays open.
 
 Remaining connection probe (with provider and insertion-property definitions
@@ -801,3 +803,110 @@ authority refactor.
 | `tests/acceptance/indexed-motive-domain-wrong.p` | 6 | 0 | 6 |
 | `tests/acceptance/sort-insertion-property.p` | 118 | 0 | 118 |
 | `tests/acceptance/sort-insertion-property-wrong.p` | 7 | 0 | 7 |
+
+### 2026-09-18: G3a neutral conversion and checked index factoring
+
+The direct comparator investigation has become the acceptance fixture
+`src/prototype/pointer/tests/acceptance/sort-insertion-sort-property.p`.
+Its imports require the exact provider plus the previously checked insertion
+lemmas. Reproduce without changing either algorithm:
+
+```sh
+sed '/^import /d' \
+  src/prototype/pointer/tests/fixtures/sorted-proof-provider.p \
+  src/prototype/pointer/tests/acceptance/sort-insertion-property.p \
+  > /tmp/a-program-g3-proof-provider.p
+pointer-check --legacy-intrinsic-dot --steps 1000000 \
+  --imports /tmp/a-program-g3-proof-provider.p \
+  src/prototype/pointer/tests/acceptance/sort-insertion-sort-property.p
+```
+
+The first 49 lines establish an ordinary
+`Direct x y` wrapper whose field is `Decision x y (natLessOrEqual x y)`, and
+lower-bound preservation for the generic `@insertBy` graph. No nominal graphs
+are identified, and no expected type is used to choose a motive.
+
+Previously the full probe remained pending after one million steps. Conversion
+was strongly normalizing unselected recursive branches of a neutral Match.
+The independent `open-recursive-conversion-wrong.p` reproduces this without any
+sorting: a constant recursive Bool function is not definitionally its result
+at an open Nat variable. Baseline `006a969` remains pending at 100,000 steps;
+the correction rejects in 1,083 steps. The closed-input sibling is accepted
+in 1,422 steps.
+
+The correction uses the shared WHNF result before requesting NF, and recognizes
+neutral binder-headed operands under Match, Force and total-result projection.
+Congruence still compares their children. It neither adds a computation rule nor
+reflects Identity into DefEq. Fold is deliberately excluded: reducing its
+continuation can expose the right-unit rule even with an open first operand.
+Unit tests cover that boundary, reducible scrutinees/branches, divergent unused
+branches, and Solve chunk sizes 1, 7 and 64. Source/image tests cover both the
+closed valid case and rejection after resuming an unfinished image.
+
+The conversion correction first made the sorting probe reject in 181,705 steps,
+rather than consuming the budget indefinitely. This exposed a separate gap:
+`pg_prove_pattern_type` abstracts whole index images by structural alpha
+comparison. The callback trace exposes an unreduced invocation while the
+Decision field contains an unfolded invocation. The attempted family remains
+constant in that index; its checked transport therefore cannot change the Bool
+result. The existing index-transport search already normalizes both endpoints.
+It now also tries those checked WHNF images when factoring the family. The
+transport itself retains its ORIGINAL endpoints and Identity path, and checks
+the value's source type by ordinary conversion. No equality is assumed from a
+candidate, and no new proof rule, Core tag or authority table is introduced.
+
+The independent `indexed-normalized-transport.p` fails on `006a969` (3,498
+steps) and passes after the change (4,002 steps). Its wrong-target sibling is
+rejected (3,348 steps). This is a bounded additional factoring candidate, not
+general higher-order unification or a promise to recognize every convertible
+presentation of an index. In particular both endpoints and arbitrary type
+subexpressions need not already share WHNF syntax.
+
+The source proof extracts LE in the callback's own branch context, then returns
+that evidence through Match. It no longer attempts to change the callback
+argument index and Bool result simultaneously. The ordinary theorem is:
+
+```a-program
+sort_correct :: (xs:List Nat)->(ys:List Nat)->@insertionSort xs ys->Sorted ys;
+```
+
+The complete fixture is accepted in 197,783 steps. `tests/sort_insertion.sh`
+checks actual `*insertionSort` packets for empty, singleton, duplicate-containing
+and already-sorted inputs, recursively consumes Sorted evidence, and compares
+packet/direct results with the expected list. It verifies Solve chunks 1/64,
+unfinished/completed images and inert resaves. A claim that the INPUT list is
+sorted is rejected (198,298 steps). No algorithm in the frozen provider changed.
+An initial test-runner failure was a missing exported expected singleton value;
+the fixture now explicitly exports it instead of assuming imports re-export.
+
+- [x] Independent reproduction and bounded conversion fix.
+- [x] Conversion-only full optimized and sanitized image gates.
+- [x] Resolve this checked index factoring case without changing the kernel rules.
+- [x] Universal insertionSort theorem and source/image/negative consumers
+      (`/tmp/a-program-g3-factor-sort.log`).
+- [x] Rerun full optimized acceptance on both changes
+      (`/tmp/a-program-g3a-final-acceptance.log`).
+- [x] ASan/UBSan synthesis, program and actual sort proof/image/negative tests
+      (`/tmp/a-program-g3a-asan-{synthesis,program,sort}.log`).
+- [x] Complete the full sanitized image runner (`/tmp/a-program-g3a-asan-images.log`).
+- [x] G3a publication gates; G3b-G3d and the final J1/J3 obligations remain open.
+
+The Surface and G1/G2 publications stand. This correction does not close #29
+and does not authorize starting the deferred broad authority refactor.
+
+Changes against `006a969`, excluding this progress document: implementation
++62/-25 (net +37); tests and proof fixtures +195/-1 (net +194).
+
+| File under `src/prototype/pointer/` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `conversion.c` | 32 | 15 | 17 |
+| `synthesis.c` | 30 | 10 | 20 |
+| `tests/synthesis.c` | 50 | 0 | 50 |
+| `tests/image_cli.sh` | 3 | 1 | 2 |
+| `tests/sort_insertion.sh` | 23 | 0 | 23 |
+| `tests/acceptance/open-recursive-conversion.p` | 6 | 0 | 6 |
+| `tests/acceptance/open-recursive-conversion-wrong.p` | 6 | 0 | 6 |
+| `tests/acceptance/indexed-normalized-transport.p` | 11 | 0 | 11 |
+| `tests/acceptance/indexed-normalized-transport-wrong.p` | 9 | 0 | 9 |
+| `tests/acceptance/sort-insertion-sort-property.p` | 79 | 0 | 79 |
+| `tests/acceptance/sort-insertion-sort-property-wrong.p` | 8 | 0 | 8 |
