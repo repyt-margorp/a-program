@@ -370,12 +370,20 @@ static int structural_dependency(void *owner, const void *key, size_t index, con
 {
 	struct pg_typing *typing = owner;
 	const struct pg_occurrence *subject = key;
-	if (pg_evidence_for_subject(typing, subject, NULL) || !subject->map) return 0;
-	if (!conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->map->destination) &&
-		!pg_prove_context_map(typing, subject->map)) return -1;
-	if (index > subject->map->count) return 0;
-	*child = index ? subject->map->images[index - 1] : subject->origin;
-	return 1;
+	if (pg_evidence_for_subject(typing, subject, NULL)) return 0;
+	const struct pg_evidence *proof = NULL;
+	if (subject->map) {
+		if (!index) { *child = subject->origin; return 1; }
+		/* The origin may establish the source scope of this map. Certify it
+		 * before asking the ordinary map rule to check its lifted destination
+		 * and images, rather than requiring those scopes during collection. */
+		proof = pg_prove_reindex(typing, pg_prove_context_map(typing, subject->map),
+			pg_evidence_for_subject(typing, subject->origin, NULL));
+	} else if (subject->core->kind == PG_REFERENCE && subject->core->as.reference->kind == PG_BINDER) {
+		const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context);
+		proof = pg_prove_variable(typing, context, subject->core->as.reference);
+	}
+	return proof && pg_evidence_subject(proof) == subject ? 0 : -1;
 }
 
 /* Typed structure selects the construction; ordinary rules certify its maps.
@@ -389,19 +397,6 @@ const struct pg_evidence *pg_prove_structural_subject(struct pg_typing *typing,
 	struct pg_dag dag = {0};
 	if (pg_dag_init(&dag, structural_dependency, typing)) return NULL;
 	if (pg_dag_add(&dag, subject)) goto done;
-	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
-		const struct pg_occurrence *input = node->key;
-		if (pg_evidence_for_subject(typing, input, NULL)) continue;
-		const struct pg_evidence *proof = NULL;
-		if (input->map) {
-			proof = pg_prove_reindex(typing, pg_prove_context_map(typing, input->map),
-				pg_evidence_for_subject(typing, input->origin, NULL));
-		} else if (input->core->kind == PG_REFERENCE && input->core->as.reference->kind == PG_BINDER) {
-			const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, input->context);
-			proof = pg_prove_variable(typing, context, input->core->as.reference);
-		}
-		if (!proof || pg_evidence_subject(proof) != input) goto done;
-	}
 	result = pg_evidence_for_subject(typing, subject, NULL);
 done:
 	pg_dag_destroy(&dag);

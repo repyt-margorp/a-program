@@ -2998,3 +2998,56 @@ therefore necessary; rebuilding the entire old Pi context is not a valid
 replacement. Consolidate this scoped selection with typed input/restriction
 work without fabricating images for removed binders, retaining a second walk,
 or weakening the existing selected-codomain regressions.
+
+### 2026-09-17: Check structural actions in dependency order (R62)
+
+- [x] Reproduce a structural certification ordering defect: raw nested lifts
+  can use an earlier unchecked destination as their source. The old collector
+  attempted to validate the outer destination before certifying that origin.
+  It could therefore reject a valid composed structural view.
+- [x] Certify each origin in the existing temporary DAG's postorder, then
+  invoke the ordinary map and reindex rules. Map checking remains responsible
+  for its scope and image premises. Delete the second traversal over the
+  collected subjects; do not accept descriptive allocation as proof.
+- [x] Add a regression constructing 128 raw lifted actions without issuing
+  Evidence, with chunks one/64. Check the final subject, dependent classifier,
+  scope, ordinary derivation reconstruction and repeated acceptance sharing.
+  The new test fails with `c5bdd78`'s `evidence.c` (assertion at the final
+  structural receipt) and passes with the corrected implementation.
+- [x] Full debug and optimized acceptance pass, including 63/63 source
+  compatibility and final QuickSort source/image properties. ASan/UBSan Core,
+  IADT, synthesis, imported QuickSort and the complete derivation I/O script
+  pass. Logs use `/tmp/a-program-typed-structure-r62-*`; this is not a full
+  sanitized acceptance claim. Failed logs from the removed experiment and
+  the deliberately rebuilt pre-fix regression binary are not passing evidence.
+
+Rejected consolidation experiment: replacing `selected_formation` with eager
+component reconstruction plus general `rebase_image` initially failed Acc's
+function-field IH. The ordering defect above caused that first failure. Once
+corrected, existing tests removing an uninhabited ambient domain still failed:
+eager reconstruction requires rebuilding F/U and dependent Pi formations that
+the old algorithm need not rebuild. Adding a second set of type-reconstruction
+cases to fix each example would oppose this plan's deletion goal. That
+experiment was removed; neither new component query tags nor those additional
+F/U rebuilding cases remain. Consolidation must share the deferred scoped
+selection, applying it only to required components/nominal parameters, rather
+than materializing an entire intermediate type. R2/R3 remain open.
+
+Current delta: `evidence.c` **+14/-19 (-5)**; `tests/core.c` **+33/-0**.
+No other implementation, header, fixture, build or transport changes.
+Cumulative implementation/header **+1912** against `4657cc6`; R5's net-negative
+gate remains unmet. No Main publication.
+
+Idle O0 QuickSort, identical inputs and interleaved runs:
+
+| Sample | R61 seconds / peak KiB | R62 seconds / peak KiB |
+|---|---:|---:|
+| 1 | 1.1045 / 276956 | 1.0825 / 270884 |
+| 2 | 1.1093 / 276424 | 1.0623 / 271612 |
+| 3 | 1.0955 / 277452 | 1.0856 / 270796 |
+
+This input shows a small time/memory improvement, not a general performance
+guarantee. R62 creates 174858 Core terms (-3857), 392438 typed subjects (-21851),
+429942 proofs (-3256), 7805 typed queries (+13), 3386 raw input queries
+(unchanged), and uses 131353 Solve transitions (+10). No existing evidence is
+pruned; the checking order avoids some repeated intermediate construction.

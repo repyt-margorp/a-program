@@ -1460,6 +1460,39 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *new_projected_proof = pg_prove_structural_subject(&typing, new_projected);
 	assert(new_projected_proof && pg_evidence_subject(new_projected_proof) == new_projected);
 	assert(pg_evidence_context_map(pg_evidence_premise(new_projected_proof, 0)) == new_projection);
+	/* Raw nested lifts may use a preceding, still-unchecked destination as
+	 * their source. Checking the outer map first loses that dependency. */
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		const struct pg_object *local = pg_binder(graph);
+		const struct pg_evidence *scope = pg_prove_context_extension(&typing, source, local,
+			pg_prove_classifier(&typing, source, source_x));
+		const struct pg_occurrence *nested = pg_evidence_subject(pg_prove_return(&typing,
+			pg_prove_variable(&typing, scope, local)));
+		const struct pg_context *extension = pg_evidence_context(scope);
+		const struct pg_context_map *prefix = map;
+		size_t proof_count = typing.proofs.count;
+		for (size_t depth = 0; depth < 128; ++depth) {
+			struct pg_context_lift *lift = pg_context_lift_request(&typing, prefix, extension, pg_binder(graph));
+			while (pg_context_lift_advance(lift, chunk) == PG_SUBSTITUTION_PENDING) {}
+			const struct pg_context_map *lifted = pg_context_lift_result(lift);
+			assert(lifted);
+			struct pg_occurrence_action *action = pg_occurrence_action_request(&typing, lifted, nested);
+			while (pg_occurrence_action_advance(action, chunk) == PG_SUBSTITUTION_PENDING) {}
+			nested = pg_occurrence_action_result(action);
+			assert(nested && !pg_evidence_for_subject(&typing, nested, NULL));
+			extension = lifted->destination;
+			prefix = pg_context_map_projection(&typing, extension->parent, extension->parent);
+		}
+		assert(typing.proofs.count == proof_count);
+		const struct pg_evidence *checked = pg_prove_structural_subject(&typing, nested);
+		assert(checked && pg_evidence_subject(checked) == nested);
+		assert(pg_evidence_context(checked) == extension);
+		assert(pg_evidence_classifier(checked) == pg_return_type(graph, pg_reference(graph, b)));
+		reconstruct_derivation(&typing, checked);
+		proof_count = typing.proofs.count;
+		assert(pg_prove_structural_subject(&typing, nested) == checked);
+		assert(typing.proofs.count == proof_count);
+	}
 	extracted = pg_prove_return_value(&typing, projected);
 	assert(extracted && pg_evidence_context(extracted) == pg_evidence_context(extended_destination));
 	assert(pg_evidence_subject(extracted)->core == pg_reference(graph, y));
