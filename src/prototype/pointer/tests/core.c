@@ -1762,6 +1762,12 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *fa_extended = pg_prove_return_type(&typing, &classifiers, a_extended);
 	const struct pg_evidence *paired = pg_prove_substitution_pair(&typing, sigma, source_extension, destination_y);
 	assert(paired);
+	assert(pg_prove_substitution_extend(&typing, sigma, source_extension, 1, &destination_y) == paired);
+	assert(!pg_prove_substitution_extend(&typing, sigma, source_extension, 0, NULL));
+	const struct pg_evidence *lift_images[] = {
+		pg_evidence_premise(lifted, 2), pg_evidence_premise(lifted, 3), pg_evidence_premise(lifted, 4)
+	};
+	assert(pg_prove_substitution(&typing, source_extension, pg_evidence_premise(lifted, 1), 3, lift_images) == lifted);
 	const struct pg_evidence *fa_instance = pg_prove_reindex(&typing, paired, fa_extended);
 	assert(fa_instance && pg_evidence_judgement(fa_instance) == PG_JUDGEMENT_COMPUTATION_TYPE);
 	assert(pg_evidence_subject(fa_instance)->core == pg_return_type(&classifiers, pg_reference(graph, b)));

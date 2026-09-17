@@ -2500,3 +2500,26 @@ QuickSort: 131247 Solve transitions (-110), 178434 Core terms (-1977),
 acceptance is 1.0977 seconds / 277400 KiB. This is a single sample, not a
 speedup claim. No Core tag, image format or logical rule changed.
 R2/R3/R5 remain open; this is not the requested Main publication.
+
+### 2026-09-17: Share substitution extension checking (R51)
+
+- [x] Replace `substitution_pair`'s separate validation, map construction and
+  acceptance path with the existing `substitution_build`. A lifted prefix
+  projects its checked images into the destination; the common builder checks
+  only the new suffix's dependent classifiers. Full construction, extension,
+  pairing and lifting retain the same rule and supplied premise identities.
+- [x] Check exact evidence reuse between dependent pairing and extension,
+  reject an incorrect suffix length, and compare a lifted map with direct
+  construction from the same checked images. Existing family-signature,
+  wrong-sort/context/image and alternative-premise tests remain enabled.
+- [x] Debug Core, IADT, Identity, synthesis and imported QuickSort pass.
+  ASan/UBSan passes those same suites, including the final added assertions.
+- [x] Full debug acceptance passes, including 63/63 compatibility and the
+  final QuickSort source/image checks (`r51-debug.log`).
+
+Against `975a8e6`: `evidence.c` +7/-41, net **-34**; `tests/core.c` +6/-0.
+Cumulative implementation/header is **+1734** against `4657cc6`. QuickSort
+retains R50's 131247 Solve transitions and all five recorded graph/query
+counts. The idle O0 sample is 1.1104 seconds / 277372 KiB; one sample, not a
+performance improvement claim. Logs: `/tmp/a-program-typed-structure-r51-*`.
+The net-negative and remaining structural migration gates are not waived.
