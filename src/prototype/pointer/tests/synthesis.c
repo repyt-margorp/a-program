@@ -5922,6 +5922,18 @@ static void source_schemas(struct pg_typing *typing)
 		pg_synthesis_evidence(&synthesis, nested_parameters)), PG_SYNTHESIS_DONE);
 	const struct pg_context *nested_fields = pg_evidence_context(pg_evidence_premise(nested_map, 1));
 	assert(nested_fields->parent == ordinary_fields && nested_fields->binder != ordinary_fields->binder);
+	const struct pg_evidence *deep_parameters = pg_prove_substitution_projection(typing,
+		empty_context, pg_evidence_premise(nested_map, 1));
+	const struct pg_evidence *deep_map = complete(&synthesis, pg_synthesis_constructor_scope(&synthesis,
+		pg_synthesis_evidence(&synthesis, admitted), successor,
+		pg_synthesis_evidence(&synthesis, deep_parameters)), PG_SYNTHESIS_DONE);
+	const struct pg_context *deep_fields = pg_evidence_context(pg_evidence_premise(deep_map, 1));
+	assert(deep_fields->parent == nested_fields);
+	const struct pg_object *address[] = {nested_fields->binder, ordinary_fields->binder};
+	size_t binding_count = synthesis.source_bindings.count;
+	const struct pg_source_binding *binding = pg_synthesis_source_binding(&synthesis,
+		&(struct pg_source_binding){.constructor = successor, .scope_count = 2, .scope = address});
+	assert(binding && binding->binder == deep_fields->binder && synthesis.source_bindings.count == binding_count);
 	assert(ordinary_map && !pg_synthesis_constructor_scope_at(&synthesis,
 		pg_synthesis_evidence(&synthesis, admitted), successor, pg_synthesis_evidence(&synthesis, parameter_map),
 		NULL, pg_evidence_context(pg_evidence_premise(ordinary_map, 1))));

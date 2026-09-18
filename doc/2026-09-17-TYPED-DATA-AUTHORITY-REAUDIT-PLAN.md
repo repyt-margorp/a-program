@@ -727,6 +727,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   indexes all source bindings before filtering. Correct retained roots do not
   establish output-sensitive traversal. Measure inspected/retained entries
   before changing this path; do not add a second mutable allocation authority.
+  At `8d4c731`, ordinary IF8 saving inspects 15,319 jobs, indexes 85 source
+  origins and 344 binding addresses, but selects none of those candidates.
+  The initial object closure still contains two prelude binders and two host
+  objects. A trial deferring index creation until that closure became nonempty
+  did not reduce any count and was withdrawn. Retained `--whnf main` saving
+  inspects 15,402 jobs and the same candidate counts, with 93 origin and 282
+  binding callbacks. A correct direct lookup must cover pre-completion child
+  allocations and zero-step restored descriptors, not just completed parents.
 - [x] Read and resave zero/partial/completed inputs without executing requests
   or promoting saved results into acceptance. Reuse context/occurrence payloads
   where appropriate; do not duplicate their maps in a new alias wire record.
@@ -783,6 +791,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] Remove `context_binders` and `substitution_state`'s copied scope array
+  and length. Constructor binding registration streams the original parameter
+  Context through the same address cursor as source scopes and imported arrays.
+  Existing explicit allocation checks are unchanged; this does not merge
+  Context evidence, Core terms or distinct lexical addresses. A two-level
+  Context/array lookup regression checks exact binder identity without adding
+  another registry entry. Verification is tracked in the priority plan.
 - [x] 2026-09-18: remove variable-proof construction from `binding_context`. A source name
   refers to an already accepted Context extension; checking its existing owner,
   sort, parent and binder does not require constructing the bound variable.

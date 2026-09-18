@@ -1705,3 +1705,50 @@ Published as `59b38e9cc950202d4d8d47cbb7009b6b0759b514`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `ee54b8c`; both
 remote tips verified. Commit totals: implementation/header +2/-10, tests
 +21/-8, documentation +47/-9. This publication record is documentation only.
+
+### R: Stream constructor Context addresses
+
+- [x] Delete Context-to-array copying and the duplicate stored scope/length;
+  retain one binding-registration algorithm for source, Context and wire input.
+- [x] Verify ordered nested Context/array lookup and identical work/node counts
+  on the original IF8 QuickSort and the length property proof.
+- [x] Measure ordinary and retained export traversal. Withdraw lazy index
+  initialization because prelude references leave all scan counts unchanged.
+  Keep regression coverage for references first discovered through reductions
+  and independently selected proof roots; do not add an unproven index owner.
+- [x] Complete affected debug/sanitizer and full optimized acceptance.
+- [ ] Publish the completed epoch and verify both remote tips.
+
+Compared with `8d4c731`, strict debug builds at `main.c:395` with `--steps
+1000000` give unchanged IF8 Solve/jobs/bindings/proofs/occurrences/Terms:
+47,046 / 15,319 / 344 / 23,315 / 19,522 / 11,969. Graph arena used bytes
+decrease 19,762,560 -> 19,755,840; capacity 19,922,944 -> 19,906,560 and
+blocks 1,216 -> 1,215. For `length-output-proof.p`, the same counts stay
+9,569 / 3,430 / 86 / 4,941 / 3,574 / 2,031; used bytes decrease
+4,211,040 -> 4,208,736, capacity 4,259,840 -> 4,243,456, blocks 260 -> 259.
+Arena sums exclude hash-table allocations; this is not a wall-clock speedup.
+The baseline is a `git archive` of `8d4c731`, built with the same `-O0 -g`
+flags under `/tmp/a-program-authority-context-address-baseline`.
+
+The first two optimized runs were deliberately interrupted while investigating
+the export-index trial; neither is counted as a passing verification run.
+The trial was removed entirely from `source_io.c` before final verification.
+The broad pending-construction, output-sensitive traversal and cumulative
+source-reduction gates remain open.
+
+Final verification: debug synthesis, full source-image and normalization tests;
+full optimized `check-acceptance`, including 63/63 compatibility, universal
+QuickSort and retained proof/image tests; ASan/UBSan synthesis, full source
+images, normalization, nested handlers and all 4,240 boundary snapshots pass.
+Sanitizers enable `detect_leaks=1:halt_on_error=1` and UBSan halt-on-error.
+Builds/logs use `/tmp/a-program-authority-context-address`, with `-opt`/`-asan`
+build suffixes. The completed optimized log is
+`/tmp/a-program-authority-context-address-acceptance-verified.log`.
+Export-result records, including steps, exactly match the preceding Handler
+cleanup after removing temporary filenames; no acceptance status is weakened.
+
+Per-file source changes: `synthesis.c` +20/-23 (net -3),
+`tests/synthesis.c` +12/-0, `tests/source_io.c` +14/-0.
+The withdrawn writer change contributes zero lines. Cumulative implementation
+and header changes are +2,259/-1,023 (net +1,236) from R76 `3a3bf550`, and
++7,219/-3,567 (net +3,652) from R0 `4657cc6`. The net-negative gate is unmet.

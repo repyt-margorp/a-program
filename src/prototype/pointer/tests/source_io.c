@@ -1997,6 +1997,20 @@ static void retained_normalization(void)
 {
 	struct pg_program *p = retained_program("{{ id:=&(\\A:@ => \\x:A => x); }}.id");
 	const struct pg_reduction_archive *reductions = p->retained_reductions;
+	struct pg_synthesis_job *selected[] = {p->root,
+		pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(p->root))};
+	/* Reduction/proof edges can introduce the first source-bound references
+	 * after the ordinary source closure has already been collected. */
+	for (unsigned mode = 0; mode < 3; ++mode) {
+		FILE *file = tmpfile();
+		assert(file && !pg_sources_write_retained(file, &p->synthesis, mode == 2 ? 2 : 1,
+			selected, mode == 1 ? reductions : NULL));
+		size_t syntax_count;
+		source_binding_section(file, &syntax_count);
+		uint64_t bindings;
+		assert(!pg_wire_read_u64(file, &bindings) && (mode ? bindings > 0 : bindings == 0));
+		assert(!fclose(file));
+	}
 	struct pg_synthesis_job *const *roots = &p->root;
 	size_t count = 1;
 	for (unsigned round = 0; round < 3; ++round) {

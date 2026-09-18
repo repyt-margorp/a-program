@@ -98,8 +98,6 @@ struct substitution_entry {
 struct substitution_state {
 	const struct pg_evidence *map;
 	size_t count, next;
-	size_t scope_count;
-	const struct pg_object *const *scope;
 	struct substitution_entry entries[];
 };
 struct constructor_index_path {
@@ -1075,16 +1073,22 @@ struct pg_synthesis_job *pg_synthesis_telescope_at(struct pg_synthesis *synthesi
 
 struct binding_cursor {
 	const struct pg_source_scope *source;
+	const struct pg_context *context;
 	const struct pg_object *const *binders;
 	size_t count;
 };
 
-/* Read one lexical address from a source scope or an imported array. */
+/* Read one lexical address without copying its source telescope. */
 static int binding_next(struct binding_cursor *cursor, const struct pg_object **binder)
 {
 	if (cursor->count) {
 		*binder = *cursor->binders++;
 		--cursor->count;
+		return 1;
+	}
+	if (cursor->context) {
+		*binder = cursor->context->binder;
+		cursor->context = cursor->context->parent;
 		return 1;
 	}
 	while (cursor->source && !cursor->source->binder) cursor->source = cursor->source->parent;
@@ -1094,8 +1098,8 @@ static int binding_next(struct binding_cursor *cursor, const struct pg_object **
 	return 1;
 }
 
-static const struct pg_source_binding *source_binding_in_scope(struct pg_synthesis *synthesis,
-	const struct pg_source_binding *input, const struct pg_source_scope *source)
+static const struct pg_source_binding *source_binding_intern(struct pg_synthesis *synthesis,
+	const struct pg_source_binding *input, struct binding_cursor initial)
 {
 	if (!synthesis || !input) return NULL;
 	if (input->syntax) {
@@ -1123,7 +1127,7 @@ static const struct pg_source_binding *source_binding_in_scope(struct pg_synthes
 	if (input->scope_count && !input->scope) return NULL;
 	if (input->binder && input->binder->kind != PG_BINDER) return NULL;
 	uint64_t hash = (uintptr_t)input->syntax ^ (uintptr_t)input->constructor ^ input->slot;
-	struct binding_cursor initial = {source, input->scope, input->scope_count}, cursor = initial;
+	struct binding_cursor cursor = initial;
 	const struct pg_object *binder;
 	size_t count = 0;
 	while (binding_next(&cursor, &binder)) {
@@ -1159,7 +1163,9 @@ static const struct pg_source_binding *source_binding_in_scope(struct pg_synthes
 const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis *synthesis,
 	const struct pg_source_binding *input)
 {
-	return source_binding_in_scope(synthesis, input, NULL);
+	if (!input) return NULL;
+	return source_binding_intern(synthesis, input,
+		(struct binding_cursor){.binders = input->scope, .count = input->scope_count});
 }
 
 static const struct pg_object *source_binder(struct pg_synthesis *synthesis,
@@ -1167,7 +1173,8 @@ static const struct pg_object *source_binder(struct pg_synthesis *synthesis,
 	const struct pg_object *binder)
 {
 	struct pg_source_binding input = {.syntax = syntax, .slot = slot, .binder = binder};
-	const struct pg_source_binding *binding = source_binding_in_scope(synthesis, &input, scope);
+	const struct pg_source_binding *binding = source_binding_intern(synthesis, &input,
+		(struct binding_cursor){.source = scope});
 	return binding ? binding->binder : NULL;
 }
 
@@ -1933,17 +1940,6 @@ struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *syn
 	if (!parameters || parameters->owner != synthesis->owner_key || !constructor) return NULL;
 	const void *inputs[] = {formation, parameters, constructor};
 	return request_inputs(synthesis, CONSTRUCTOR_SCOPE_JOB, 3, inputs);
-}
-
-static int context_binders(struct pg_graph *graph, const struct pg_context *context,
-	size_t *count, const struct pg_object *const **output)
-{
-	if (pg_context_extension_size(context, NULL, count) || *count > SIZE_MAX / sizeof(**output)) return -1;
-	const struct pg_object **binders = pg_alloc(graph, *count * sizeof(*binders));
-	if (!binders) return -1;
-	for (size_t i = 0; i < *count; ++i, context = context->parent) binders[i] = context->binder;
-	*output = binders;
-	return 0;
 }
 
 struct pg_synthesis_job *pg_synthesis_constructor_scope_at(struct pg_synthesis *synthesis,
@@ -6887,8 +6883,6 @@ static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_syn
 		struct substitution_state *state = pg_alloc(synthesis->typing->graph, sizeof(*state) + count * sizeof(*state->entries));
 		if (!state) goto error;
 		state->count = count;
-		if (context_binders(synthesis->typing->graph, pg_evidence_context(pg_evidence_premise(parameters, 1)),
-			&state->scope_count, &state->scope)) goto error;
 		for (size_t i = count; i; --i, fields = pg_evidence_premise(fields, 0)) state->entries[i - 1].extension = fields;
 		job->substitution = state;
 		struct pg_synthesis_job *family = pg_synthesis_reindex_jobs(synthesis, (void *)job->inputs[1], (void *)job->inputs[0]);
@@ -6918,8 +6912,11 @@ static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_syn
 	const struct pg_object *binder;
 	if (job->context_allocation) binder = job->context_allocation->contexts[state->next]->binder;
 	else {
-		const struct pg_source_binding *binding = pg_synthesis_source_binding(synthesis,
-			&(struct pg_source_binding){NULL, state->scope_count, state->next, state->scope, NULL, job->inputs[2]});
+		const struct pg_evidence *parameters = pg_synthesis_result(job->inputs[1]);
+		const struct pg_context *scope = pg_evidence_context(pg_evidence_premise(parameters, 1));
+		const struct pg_source_binding *binding = source_binding_intern(synthesis,
+			&(struct pg_source_binding){.slot = state->next, .constructor = job->inputs[2]},
+			(struct binding_cursor){.context = scope});
 		if (!binding) goto rejected;
 		binder = binding->binder;
 	}
