@@ -1904,6 +1904,7 @@ struct member_origin {
 static int find_member_origin(void *owner, struct pg_synthesis_job *job)
 {
 	struct member_origin *found = owner;
+	if (!pg_synthesis_allocation_object(found->synthesis, job)) return 0;
 	++found->visited;
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
@@ -2045,6 +2046,21 @@ static void member_use_origins(void)
 	struct member_origin repeated = {.synthesis = &p->synthesis};
 	scoped_member_origins(&repeated, found.scope);
 	assert(repeated.job == found.job && repeated.visited == indexed.visited);
+	/* Transparent descendants share the selected lexical root, but their
+	 * unselected binder syntax must not retain their pending allocation uses. */
+	for (unsigned i = 0; i < 128; ++i) {
+		struct pg_parser parser;
+		struct pg_definition definition;
+		const char *unused = "unused:=\\hidden:missing=>@;";
+		pg_parser_init(&parser, &p->graph, unused, strlen(unused));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *binding = pg_synthesis_binding(&p->synthesis, found.scope, definition.expression);
+		assert(binding);
+		struct pg_synthesis_job *use = pg_synthesis_member_at(&p->synthesis,
+			pg_synthesis_binding_scope(binding), found.syntax, prefix, fields);
+		assert(use && !pg_synthesis_result(use));
+		assert(pg_synthesis_allocation_object(&p->synthesis, use) == binder);
+	}
 	assert(!pg_sources_write(after, &p->synthesis, 1, &found.job));
 	assert(p->synthesis.steps == save_steps && p->typing.proofs.count == save_proofs);
 	rewind(before);

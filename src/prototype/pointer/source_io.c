@@ -217,7 +217,7 @@ static int collect_allocation(struct origin_collection *c, const struct pg_conte
 	return pg_dag_add(&c->terms, pg_reference(&c->rules->storage, constructor));
 }
 
-static int collect_member_use(struct origin_collection *c, struct pg_synthesis_job *job,
+static int collect_member_use(struct origin_collection *c, const struct pg_synthesis_job *job,
 	const struct pg_context *prefix, const struct pg_context *fields)
 {
 	if (id(c->allocations, job)) return 0;
@@ -246,7 +246,7 @@ static int collect_inputs(struct origin_collection *c)
 				if (input.definitions && pg_dag_add(c->syntax, input.definitions)) return -1;
 				const struct pg_context *prefix, *fields;
 				if (!pg_synthesis_member_allocation(c->synthesis, producer->key, &prefix, &fields) && fields != prefix)
-					if (collect_member_use(c, (void *)producer->key, prefix, fields)) return -1;
+					if (collect_member_use(c, producer->key, prefix, fields)) return -1;
 				if (!input.definitions && pg_syntax_constructors(input.syntax)) {
 					for (size_t i = 0; i < pg_syntax_constructors(input.syntax)->item_count; ++i) {
 						struct pg_constructor_allocation allocation;
@@ -288,8 +288,8 @@ static int collect_inputs(struct origin_collection *c)
 
 struct origin_candidate {
 	struct origin_candidate *next;
-	struct pg_synthesis_job *job;
-	const struct pg_source_binding *binding;
+	int (*resume)(struct origin_collection *, const void *);
+	const void *input;
 };
 
 struct origin_dependency {
@@ -307,16 +307,16 @@ static struct origin_dependency *origin_dependency(struct origin_collection *c, 
 	return NULL;
 }
 
-static int collect_binding(struct origin_collection *c, const struct pg_source_binding *input);
-static int collect_origin(void *owner, struct pg_synthesis_job *job);
+static int collect_binding(struct origin_collection *c, const void *key);
+static int collect_origin(struct origin_collection *c, const void *key);
 
-static int index_origin_reference(struct origin_collection *c, struct pg_synthesis_job *job,
-	const struct pg_source_binding *binding, const void *key)
+static int index_origin_reference(struct origin_collection *c, const void *key,
+	int (*resume)(struct origin_collection *, const void *), const void *input)
 {
 	if (!key) return -1;
 	const struct pg_dag_node *reached = pg_dag_find(&c->objects, key);
 	if (reached && c->last_object && reached->id <= c->last_object->id)
-		return binding ? collect_binding(c, binding) : collect_origin(c, job);
+		return resume(c, input);
 	/* Distinct input edges may await the same syntax; no global rescan is needed. */
 	struct origin_dependency *dependency = origin_dependency(c, key);
 	if (!dependency) {
@@ -327,20 +327,22 @@ static int index_origin_reference(struct origin_collection *c, struct pg_synthes
 	}
 	struct origin_candidate *candidate = pg_alloc(&c->objects.storage, sizeof(*candidate));
 	if (!candidate) return -1;
-	*candidate = (struct origin_candidate){dependency->first, job, binding};
+	*candidate = (struct origin_candidate){dependency->first, resume, input};
 	dependency->first = candidate;
 	return 0;
 }
 
-static int index_origin(void *owner, struct pg_synthesis_job *job)
+static int index_origin(struct origin_collection *c, const void *key)
 {
-	struct origin_collection *c = owner;
+	const struct pg_synthesis_job *job = key;
+	if (id(c->origins, job)) return 0;
 	const struct pg_object *object = pg_synthesis_allocation_object(c->synthesis, job);
-	if (index_origin_reference(c, job, NULL, object)) return -1;
+	if (!object) return 0;
+	if (index_origin_reference(c, object, collect_origin, job)) return -1;
 	/* Computation endpoints may retain only the layout, not the type family. */
 	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
-	return declaration ? index_origin_reference(c, job, NULL,
-		pg_data_matcher(pg_data_declaration_layout(declaration))) : 0;
+	return declaration ? index_origin_reference(c,
+		pg_data_matcher(pg_data_declaration_layout(declaration)), collect_origin, job) : 0;
 }
 
 static int index_scope_origin(void *owner, struct pg_synthesis_job *job)
@@ -352,7 +354,7 @@ static int index_scope_origin(void *owner, struct pg_synthesis_job *job)
 	const struct pg_dag_node *node = pg_dag_find(c->syntax, syntax);
 	if (node && c->last_syntax && node->id <= c->last_syntax->id) return index_origin(c, job);
 	/* Keep allocation discovery in syntax-frontier order, including inert saves. */
-	return index_origin_reference(c, job, NULL, syntax);
+	return index_origin_reference(c, syntax, index_origin, job);
 }
 
 static int index_binding(void *owner, const struct pg_source_binding *input)
@@ -360,11 +362,12 @@ static int index_binding(void *owner, const struct pg_source_binding *input)
 	struct origin_collection *c = owner;
 	if (!input->syntax || id(c->syntax, input->syntax)) return collect_binding(c, input);
 	/* The binder is reached first; wait for its source syntax, not Solve. */
-	return index_origin_reference(c, NULL, input, input->syntax);
+	return index_origin_reference(c, input->syntax, collect_binding, input);
 }
 
-static int collect_binding(struct origin_collection *c, const struct pg_source_binding *input)
+static int collect_binding(struct origin_collection *c, const void *key)
 {
+	const struct pg_source_binding *input = key;
 	if (id(c->bindings, input)) return 0;
 	if (input->syntax && !id(c->syntax, input->syntax)) return 0;
 	size_t extra = input->constructor ? 2 : 1;
@@ -379,15 +382,14 @@ static int collect_binding(struct origin_collection *c, const struct pg_source_b
 	return 0;
 }
 
-static int collect_origin(void *owner, struct pg_synthesis_job *job)
+static int collect_origin(struct origin_collection *c, const void *key)
 {
-	struct origin_collection *c = owner;
+	const struct pg_synthesis_job *job = key;
 	if (id(c->origins, job)) return 0;
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
 	if (pg_synthesis_source_input(c->synthesis, job, &scope, &syntax)) return -1;
-	if (!id(c->syntax, syntax)) return index_origin_reference(c, job, NULL, syntax);
-	/* Only lexical descendants of selected source roots belong to the image. */
+	/* Inspect lexical descendants only after syntax and object reachability. */
 	const struct pg_source_scope *parent = scope;
 	while (!id(c->scopes, parent)) {
 		struct pg_source_environment input;
@@ -397,11 +399,9 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 			const struct pg_object *binder;
 			if (pg_synthesis_binding_input(c->synthesis, input.binding, &input.parent, &site, &binder)) return -1;
 		}
-		if (!input.context) {
-			if (!site || !id(c->syntax, site)) {
-				if (site && index_origin_reference(c, job, NULL, site)) return -1;
-				return index_origin_reference(c, job, NULL, parent);
-			}
+		if (!input.context && (!site || !id(c->syntax, site))) {
+			if (site && index_origin_reference(c, site, collect_origin, job)) return -1;
+			return index_origin_reference(c, parent, collect_origin, job);
 		}
 		parent = input.parent;
 		if (!parent) return 0;
@@ -443,17 +443,8 @@ static int collect_candidates(struct origin_collection *c, const void *key)
 	struct origin_candidate *first = dependency->first;
 	dependency->first = NULL;
 	/* Callbacks may grow/rehash the index; the detached waiter list is stable. */
-	for (const struct origin_candidate *candidate = first; candidate; candidate = candidate->next) {
-		int status;
-		if (candidate->binding) status = collect_binding(c, candidate->binding);
-		else {
-			const struct pg_source_scope *scope;
-			const struct pg_syntax *syntax;
-			if (pg_synthesis_source_input(c->synthesis, candidate->job, &scope, &syntax)) return -1;
-			status = key == syntax ? index_origin(c, candidate->job) : collect_origin(c, candidate->job);
-		}
-		if (status) return -1;
-	}
+	for (const struct origin_candidate *candidate = first; candidate; candidate = candidate->next)
+		if (candidate->resume(c, candidate->input)) return -1;
 	return 0;
 }
 

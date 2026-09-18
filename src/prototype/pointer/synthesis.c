@@ -42,15 +42,6 @@ static int register_source_reference(struct pg_synthesis *synthesis, const void 
 	return pg_index_insert(&synthesis->source_references, &entry->index, (uintptr_t)key);
 }
 
-static int visit_source_reference(const struct pg_synthesis *synthesis, const struct source_reference_entry *entry,
-	int (*allocation)(void *, struct pg_synthesis_job *),
-	int (*binding)(void *, const struct pg_source_binding *), void *owner)
-{
-	if (entry->binding) return binding ? binding(owner, entry->binding) : 0;
-	return allocation && pg_synthesis_allocation_object(synthesis, entry->job)
-		? allocation(owner, entry->job) : 0;
-}
-
 int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, const void *key,
 	int (*allocation)(void *, struct pg_synthesis_job *),
 	int (*binding)(void *, const struct pg_source_binding *), void *owner)
@@ -59,7 +50,10 @@ int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, c
 	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->source_references, (uintptr_t)key);
 		entry; entry = entry->next) {
 		const struct source_reference_entry *input = (const void *)entry;
-		if (input->key == key && visit_source_reference(synthesis, input, allocation, binding, owner)) return -1;
+		if (input->key != key) continue;
+		if (input->binding) {
+			if (binding && binding(owner, input->binding)) return -1;
+		} else if (allocation && allocation(owner, input->job)) return -1;
 	}
 	return 0;
 }
@@ -578,7 +572,8 @@ int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	if (!synthesis || !visit) return -1;
 	for (size_t i = 0; i < synthesis->source_references.capacity; ++i)
 		for (struct pg_index_entry *entry = synthesis->source_references.buckets[i]; entry; entry = entry->next) {
-			if (visit_source_reference(synthesis, (const void *)entry, visit, NULL, owner)) return -1;
+			const struct source_reference_entry *input = (const void *)entry;
+			if (input->job && pg_synthesis_allocation_object(synthesis, input->job) && visit(owner, input->job)) return -1;
 		}
 	return 0;
 }

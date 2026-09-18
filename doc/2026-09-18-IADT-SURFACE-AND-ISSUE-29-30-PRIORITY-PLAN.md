@@ -2336,3 +2336,40 @@ This removes work; no wall-time speedup is claimed. Logs and temporary images
 use `/tmp/a-program-authority-payload-count-*`; debug build uses the same
 prefix, O2 uses `authority-source-sites-opt`. These local results do not close
 the broader A3/A4 audit or the cumulative net-negative gate.
+
+### 2026-09-19: Explicit source-origin continuations (local)
+
+- [x] Remove allocation probing from source-reference enumeration; select syntax
+  before reading the producer's allocation. Keep the available-allocation visitor
+  unchanged. Existing writer-local waiters hold the callback/input to resume,
+  replacing key-based phase reconstruction and another source-header inspection.
+  No new table, solver, persistent authority or format is introduced.
+- [x] Add 128 unselected transparent scopes with pending, descriptively allocated
+  member uses sharing the selected syntax/binder. Saving the selected root is
+  byte-identical and does not advance Solve or produce proofs.
+- [x] Strict-debug source-image suite and eleven controlled old/new retained
+  resaves pass. All eleven resaved outputs are byte-identical.
+- [x] Final optimized full acceptance: compatibility 63/63 and all four universal
+  sorting proof suites pass; normalized exported results/steps match `135dc55`.
+- [x] ASan/UBSan `source_io.sh`, `handler-boundaries` (4,240 snapshots) and
+  `prepared-module` (1,118 snapshots) pass with leak detection and halt-on-error.
+  These are affected-suite sanitizer gates, not a new full sanitizer run.
+- [ ] Publish with a substantial verified refactoring epoch, not separately.
+
+GDB comparison against `135dc55`: the 128-scope case makes 267 -> 134 allocation
+reads (6 without the added scopes in the new writer); environment reads remain
+224. Ordinary retained function-field writing: allocation reads 17 -> 12,
+source-input reads 100 -> 91, environment reads unchanged at 109. Waiter calls
+increase 12 -> 15 because unprepared candidates can await syntax. No wall-time
+or overall-memory improvement is claimed. Candidate enumeration remains open.
+
+A rejected draft checked scope before object reachability. It cut the 128-scope
+allocation reads to 6, but increased ordinary environment reads 109 -> 117.
+The final ordering avoids that additional ancestry work. Initial testing also
+caught a test visitor assuming every source candidate already had an allocation;
+that consumer now explicitly selects available allocations under the new API.
+
+Implementation/header diff: `source_io.c` +29/-38, `synthesis.c` +6/-11,
+`synthesis.h` +3/-3; total net -14. Test `tests/source_io.c` +16/-0.
+Logs/images use `/tmp/a-program-authority-origin-order-*`; `final-counts` and
+`access-final` describe the final implementation, not the rejected draft.

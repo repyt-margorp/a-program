@@ -829,6 +829,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   broad `collect_origin` experiment.
   Remaining bound: transparent lexical descendants within one selected root
   remain candidates. Do not claim cost strictly proportional to retained output.
+  Follow-up: reference visitation now yields source candidates without probing
+  allocation availability. The writer selects syntax, reads the allocation,
+  then checks lexical ancestry only for reached objects. Existing temporary
+  waiters retain their resumption callback instead of recovering a phase from
+  the wakeup key and inspecting source inputs again. Global enumeration of
+  available allocations retains its old contract. This removes repeated reads,
+  not the remaining descendant candidate scan; see the priority-plan measurements.
   Follow-up audit: indexing solely by the erased allocation object is not a
   substitute for lexical reachability. `member_use_origins` has 128 unselected
   named uses sharing the exact same allocation binder. A scope-by-syntax join

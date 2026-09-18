@@ -86,9 +86,9 @@ int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
 /* key is an exact lexical root scope or binder pointer. Allocations are grouped
  * through binder/definition/handler extensions, stopping at named scopes.
  * Visit selected scopes and their parents; syntax/site reachability is separate.
- * Only the corresponding inputs
- * are inspected; allocation availability is read from the original producer.
- * Optional callbacks select job allocations and/or lexical binding addresses.
+ * Job callbacks receive candidates, including unprepared producers: the caller
+ * checks syntax reachability before reading allocation availability there.
+ * Optional callbacks select source jobs and/or lexical binding addresses.
  * No Solve, acceptance, copied allocation or completion-index update occurs. */
 int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, const void *key,
 	int (*allocation)(void *, struct pg_synthesis_job *),
