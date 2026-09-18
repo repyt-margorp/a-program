@@ -1936,3 +1936,18 @@ match the preceding full acceptance log. No general speedup is claimed.
 Per-file implementation: `typing.c` +3/-3, `evidence.c` +0/-2 (net -2);
 `tests/core.c` +9/-0. Cumulative implementation/header delta is still +1,290
 from R76, +3,706 from R0. Broad A3/A4/A5 and net-negative gates remain open.
+
+### 2026-09-19: Reuse validated Context-map structure
+
+- [x] Move source-length validation after exact map lookup; retain image
+  validation and reject incorrect image counts/Contexts. A4 records the
+  measured 4,021 -> 2,657 length walks with unchanged Solve steps.
+- [x] Strict debug `core_test`, full optimized `check-acceptance`, ASan/UBSan
+  core/IADT/synthesis/program and complete `source_io.sh`: all exit 0.
+  Flags/environment match the preceding entry; logs use
+  `/tmp/a-program-authority-map-hit-*.log`. Normalized export results and
+  Solve steps exactly match the preceding full acceptance run.
+- [ ] Publish with a substantial refactoring epoch, not this small correction.
+
+Baseline: `923a220`. `typing.c` +2/-2; `tests/core.c` +5/-0.
+Cumulative implementation/header LOC and remaining gates are unchanged.

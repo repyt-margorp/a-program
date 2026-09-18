@@ -1087,6 +1087,12 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   The core regression alternates valid reuse with wrong-parent, occupied-binder
   and null-binder requests without adding lifts/proofs. Validation/publication
   status is recorded in the priority plan; no elapsed-time improvement claimed.
+- [x] Reuse the established source length on an exact `pg_context_map` intern
+  hit. New tuples still validate the Context length; image bounds, destination
+  and classifier checks remain. Wrong counts and wrong-context images are
+  rejected without adding maps. On the same function-field input, Context
+  length walks drop from 4,021 to 2,657; Solve remains 11,993 steps. No new
+  cache, proof rule or authority; elapsed-time improvement is not established.
 - [x] Delete the unused application Context-pair API, getter and associated
   count/prefix branches. Retain address-conflict, nested-scope, inferred-arity
   and malformed-image coverage through the actual address interface.

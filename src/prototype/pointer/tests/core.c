@@ -304,7 +304,12 @@ static void context_test(struct pg_graph *graph)
 	for (size_t i = 0; i < 10000; ++i) {
 		assert(pg_context_map_projection(&typing, in_a, in_a) == general);
 		assert(pg_context_map_projection(&typing, in_a, extended) == projection);
+		assert(pg_context_map(&typing, in_a, extended, 1, projection->images) == projection);
 	}
+	const struct pg_occurrence *too_many[] = {projection->images[0], projection->images[0]};
+	assert(!pg_context_map(&typing, in_a, extended, 2, too_many));
+	assert(!pg_context_map(&typing, in_a, extended, 0, NULL));
+	assert(!pg_context_map(&typing, in_a, extended, 1, &typed_a));
 	assert(!pg_context_map_projection(&typing, in_a, in_b));
 	assert(!pg_context_map_projection(&typing, extended, in_a));
 	assert(!pg_context_map_projection(&typing, family_binding, in_a));

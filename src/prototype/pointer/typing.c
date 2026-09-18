@@ -352,8 +352,6 @@ const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 	const struct pg_context *source, const struct pg_context *destination,
 	size_t count, const struct pg_occurrence *const *images)
 {
-	size_t length;
-	if (pg_context_extension_size(source, NULL, &length) || length != count) return NULL;
 	if (count && !images) return NULL;
 	size_t stride = sizeof(*images) + sizeof(struct pg_binding_value);
 	if (count > (SIZE_MAX - sizeof(struct pg_context_map)) / stride) return NULL;
@@ -369,6 +367,8 @@ const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 		if (map->source != source || map->destination != destination || map->count != count) continue;
 		if (!count || !memcmp(map->images, images, count * sizeof(*images))) return map;
 	}
+	size_t length;
+	if (pg_context_extension_size(source, NULL, &length) || length != count) return NULL;
 	struct pg_context_map *map = pg_alloc(typing->graph, sizeof(*map) + count * stride);
 	if (!map) return NULL;
 	map->source = source;
