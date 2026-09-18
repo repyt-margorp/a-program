@@ -285,19 +285,14 @@ static int index_origin_reference(struct origin_collection *c, struct pg_synthes
 	const struct pg_source_binding *binding, const void *key)
 {
 	if (!key) return -1;
-	uint64_t hash = (uintptr_t)key;
-	for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, hash); entry; entry = entry->next) {
-		const struct origin_candidate *candidate = (const void *)entry;
-		if (candidate->key == key && candidate->job == job && candidate->binding == binding) return 0;
-	}
-	struct origin_candidate *candidate = pg_alloc(&c->objects.storage, sizeof(*candidate));
-	if (!candidate) return -1;
-	candidate->key = key; candidate->job = job; candidate->binding = binding;
-	if (pg_index_insert(&c->candidates, &candidate->index, hash)) return -1;
 	const struct pg_dag_node *reached = pg_dag_find(&c->objects, key);
 	if (reached && c->last_object && reached->id <= c->last_object->id)
 		return binding ? collect_binding(c, binding) : collect_origin(c, job);
-	return 0;
+	/* Input references and frontier keys are unique; each edge is added once. */
+	struct origin_candidate *candidate = pg_alloc(&c->objects.storage, sizeof(*candidate));
+	if (!candidate) return -1;
+	candidate->key = key; candidate->job = job; candidate->binding = binding;
+	return pg_index_insert(&c->candidates, &candidate->index, (uintptr_t)key);
 }
 
 static int index_origin(void *owner, struct pg_synthesis_job *job)

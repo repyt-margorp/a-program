@@ -1839,3 +1839,32 @@ Published as `02df61ced964f5dd23fd1fc9fed899f73f740f37`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `f8fb837`; both
 remote tips verified. Commit totals: implementation/header +110/-48,
 tests +29/-0, documentation +73/-5. This publication record is doc-only.
+
+### 2026-09-19: Shared-syntax source isolation and candidate insertion
+
+- [x] Add the 128-sibling selected-image regression to `member_use_origins`.
+- [x] Remove quadratic duplicate-edge discovery from source image collection.
+- [x] Pass full optimized acceptance and affected debug/sanitizer gates.
+- [ ] Publish the verified change with the next source-traversal milestone.
+
+Baseline: `605d11b`. The parent A3 entry records the uniqueness argument,
+16,785 removed insertion comparisons, unchanged callbacks and remaining linear
+candidate bound. Core, proof rules and image format are unchanged.
+
+Verification (all exit 0): strict debug complete `tests/source_io.sh`; optimized
+`make -f src/prototype/pointer/Makefile -j2
+BUILD=/tmp/a-program-authority-source-sites-opt check-acceptance`; ASan/UBSan
+complete `source_io.sh`, `normalization`, `handler-nesting`, `handler-boundaries`
+(4,240 snapshots). Flags match the preceding epoch: debug `-O0 -g`, optimized
+`-O2`, sanitizer `-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+-fno-pie -no-pie`, all with C11/Wall/Wextra/Werror; leak checking and halt on
+sanitizer errors enabled. Logs: `/tmp/a-program-authority-siblings-*.log`.
+All normalized `export results:` records, including Solve steps, match the
+preceding full acceptance log. Compatibility remains 63/63.
+
+Per-file implementation: `source_io.c` +5/-10 (net -5); tests: `source_io.c`
++28/-0. Cumulative implementation/header counts excluding tests: R76
+`3a3bf550` +2,355/-1,064 (net +1,291); R0 `4657cc6` +7,314/-3,607
+(net +3,707). The parent net-negative gate and remaining A3/A4/A5 work are
+still open. Keep this small verified correction for the next substantial
+source-traversal publication; do not relabel it as completion of R.

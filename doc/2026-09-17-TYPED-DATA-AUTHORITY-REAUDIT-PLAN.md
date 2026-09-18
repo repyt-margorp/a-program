@@ -805,6 +805,27 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   Logs/builds: `/tmp/a-program-authority-source-sites`, with `-baseline`/`-new`
   prefixes for `-counts`, `-retained-counts` and `-arena` logs. Full optimized
   acceptance and affected sanitizers pass; details are in the priority plan.
+- [x] 2026-09-19: exercise 128 unselected sibling scopes sharing one qualified
+  member syntax and constructor-field binder. Saving the original selected
+  source before/after those requests produces byte-identical images; saving
+  neither advances Solve nor adds proofs. This establishes isolation for that
+  case, not output-sensitive discovery for every lexical scope shape.
+  The test exposed quadratic candidate-table insertion: each new edge scanned
+  all earlier edges sharing its object. Delete that duplicate search. Source
+  reference registration is unique per job/address, and selected syntax/object
+  frontiers visit each key once. Declaration family/layout edges have distinct
+  object keys. Already processed objects are collected immediately without
+  retaining a useless future candidate. No new index or acceptance state.
+
+  Strict-debug GDB counts on `source_io_test constructor-inputs`, with the same
+  added test before/after the production change: 348 candidate registrations
+  and 334 origin callbacks in both runs; the old insertion loop performs
+  16,785 candidate comparisons, and is now absent. Candidate registrations in
+  this case all precede their object frontier, so its immediate-collection
+  optimization does not reduce the 348 allocated entries. These are work
+  counts, not wall-clock speedup. The linear same-syntax candidate search and
+  lexical ancestry checks remain, so the broader A3 bound stays open.
+  Logs: `/tmp/a-program-authority-siblings-{baseline,new}-counts.log`.
 - [x] Read and resave zero/partial/completed inputs without executing requests
   or promoting saved results into acceptance. Reuse context/occurrence payloads
   where appropriate; do not duplicate their maps in a new alias wire record.

@@ -1972,6 +1972,34 @@ static void member_use_origins(void)
 	assert(!pg_synthesis_visit_source_references(&p->synthesis, found.syntax, find_member_origin, NULL, &indexed));
 	assert(indexed.job == found.job && indexed.scope == found.scope);
 	assert(p->synthesis.source_references.count == references);
+	/* Sharing syntax is not sharing a lexical use. Unselected siblings must
+	 * not change the selected image or turn saving into additional Solve work. */
+	FILE *before = tmpfile(), *after = tmpfile();
+	assert(before && after && !pg_sources_write(before, &p->synthesis, 1, &found.job));
+	for (unsigned i = 0; i < 128; ++i) {
+		const struct pg_source_scope *sibling = pg_synthesis_name(&p->synthesis, found.scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "unused", .length = 6},
+			pg_prove_universe(&p->typing, pg_prove_empty_context(&p->typing), i));
+		assert(sibling && sibling != found.scope);
+		struct pg_synthesis_job *use = pg_synthesis_request(&p->synthesis, sibling, found.syntax);
+		assert(use && use != found.job);
+		pg_synthesis_advance(&p->synthesis, 10000);
+		assert(pg_synthesis_status(use) == PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_allocation_object(&p->synthesis, use) == binder);
+	}
+	uint64_t save_steps = p->synthesis.steps;
+	size_t save_proofs = p->typing.proofs.count;
+	assert(!pg_sources_write(after, &p->synthesis, 1, &found.job));
+	assert(p->synthesis.steps == save_steps && p->typing.proofs.count == save_proofs);
+	rewind(before);
+	rewind(after);
+	int byte;
+	do {
+		byte = fgetc(before);
+		assert(byte == fgetc(after));
+	} while (byte != EOF);
+	assert(!ferror(before) && !ferror(after));
+	assert(!fclose(before) && !fclose(after));
 	/* A field Context can retain its binder without a term mentioning the
 	 * constructor. Its allocation address must still survive source-free saves. */
 	const struct pg_evidence *nat = pg_synthesis_result(pg_synthesis_definition(p->root,
