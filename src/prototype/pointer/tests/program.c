@@ -775,6 +775,66 @@ static void function_graphs(void)
 	puts("function graphs: ordinary indexed schemas and result witnesses preserve identity/length/mirror results");
 }
 
+static void suspended_helper_application(void)
+{
+	const char *source = "Bool:=@{true:*;false:*;}; Nat:=@{zero:*;succ:*->*;};"
+		"helper:=\\b:Bool=>\\n:Nat=>b @true=>n @false=>Nat.zero;"
+		"f:=\\b:Bool=>\\n:Nat=>{r:=helper b n;r;};";
+	for (size_t limit = 0;; ++limit) {
+		assert(limit < 1000);
+		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		solve(p, 1);
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *helper = pg_function_graph_source(&p->typing,
+			pg_synthesis_result(pg_synthesis_definition(p->root,
+				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "helper", .length = 6})));
+		const struct pg_evidence *function = pg_function_graph_source(&p->typing,
+			pg_synthesis_result(pg_synthesis_definition(p->root,
+				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "f", .length = 1})));
+		assert(helper && function);
+		const struct pg_evidence *inner = pg_evidence_premise(function, 1);
+		const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(inner, 0), 0);
+		const struct pg_evidence *sequence = pg_evidence_premise(inner, 1);
+		assert(pg_evidence_rule(sequence) == PG_FOLD_ELIM);
+		const struct pg_evidence *call = pg_evidence_premise(sequence, 0);
+		assert(pg_evidence_rule(call) == PG_APP_ELIM);
+		const struct pg_evidence *n = pg_evidence_premise(call, 1);
+		call = pg_evidence_premise(call, 0);
+		assert(pg_evidence_rule(call) == PG_APP_ELIM);
+		const struct pg_evidence *b = pg_evidence_premise(call, 1);
+		struct pg_typed_query *queries[2] = {
+			pg_application_body_request(&p->typing, pg_prove_projection(&p->typing, context, helper), b), NULL
+		};
+		assert(queries[0] && !pg_typed_query_steps(queries[0]));
+		struct pg_function_graph_work work;
+		assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, function));
+		for (size_t turn = 0; turn < limit && !pg_function_graph_dependency(&work); ++turn) {
+			uint64_t steps[] = {pg_typed_query_steps(queries[0]), pg_typed_query_steps(queries[1])};
+			assert(pg_function_graph_advance(&work, 1) == PG_FUNCTION_GRAPH_PENDING);
+			if (!queries[1] && pg_typed_query_result(queries[0]))
+				queries[1] = pg_application_body_request(&p->typing, pg_typed_query_result(queries[0]), n);
+			for (size_t i = 0; i < 2; ++i) assert(pg_typed_query_steps(queries[i]) - steps[i] <= 1);
+		}
+		const struct pg_evidence *dependency = pg_function_graph_dependency(&work);
+		int complete = dependency != NULL;
+		if (dependency) {
+			assert(pg_evidence_subject(dependency) == pg_evidence_subject(helper));
+			assert(queries[1] && pg_typed_query_steps(queries[0]) && pg_typed_query_steps(queries[1]));
+		}
+		pg_function_graph_destroy(&work);
+		/* Cancelled owners release only their cursor, never shared query work. */
+		for (size_t i = 0; i < 2; ++i) {
+			if (i) queries[i] = pg_application_body_request(&p->typing, pg_typed_query_result(queries[0]), n);
+			while (!pg_typed_query_advance(queries[i], 1)) assert(pg_typed_query_steps(queries[i]) < 100000);
+			assert(pg_typed_query_result(queries[i]));
+		}
+		pg_program_destroy(p);
+		if (complete) break;
+	}
+	puts("helper application: typed beta queries yield and survive cancellation at every boundary");
+}
+
 static void ambiguous_source_calls(void)
 {
 	const char *source = "Nat:=@{zero:*;succ:*->*;}; keep:=\\a:Nat=>\\b:Nat=>a;"
@@ -877,6 +937,7 @@ int main(int argc, char **argv)
 	pending_normalization();
 	remembered_normalization();
 	function_graphs();
+	suspended_helper_application();
 	ambiguous_source_calls();
 	application_result_constraints();
 	char source[] = "{{ id := &(\\A:@ => \\x:A => x); id :: (A:@)->A->A; }}.id";

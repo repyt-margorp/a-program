@@ -2779,3 +2779,93 @@ only; the tested implementation is unchanged. No final acceptance gate is waived
 
 Documentation-only delta from `cbf81fe`: authority plan +36/-0; priority plan
 +225/-0 (including this publication record). Neither is implementation code.
+
+### 2026-09-19: Withdrawn binder-frontier experiment
+
+Publication policy remains milestone-based: Surface, Issue #29/PR #30, then
+substantial refactor epochs, each after its existing acceptance tests pass.
+No failed experiment is published to Main. The following trial was withdrawn;
+implementation and tests remain those of `192f4b9`.
+
+- [x] Measure the member-only trial: 128 unused Lambda scopes increased save
+  callbacks from 4 to 132 on the baseline; binder-frontier discovery held them
+  at 4. The narrow fixture and debug source/normalization tests passed.
+- [x] Reject the trial after full optimized acceptance failed retained
+  QuickSort inert resave byte equality. The narrower tests were insufficient.
+- [x] Test per-key append-order reference groups as a possible repair. This
+  still failed: both images have 107 scopes, 157 producers and 76 origins,
+  but producer records at offsets 13043 and 13091 exchange syntax IDs 68/74
+  under scope 29. Equal counts do not prove all other differences harmless.
+- [x] Remove the experimental implementation and its candidate-count assertion;
+  retain the existing inert-resave, binding-count and exact-Core tests intact.
+- [ ] Replace lexical candidate scans only after reachability and deterministic
+  discovery order are established together. A3 is not complete.
+
+Two broader trials also failed. Gating nominal/induction origins on binders
+lost the outer allocation needed by the retained exact-Core fixture: erased
+layouts need not retain those binders. Seeding bindings from selected syntax
+repaired that case but broke ordinary recompute images' zero-binding contract.
+Neither a second syntax index nor an artifact-mode exception was retained.
+
+Next design check: a saved producer can be recreated before its restored
+origin allocation. Registration order is therefore not a serialization order.
+Trace the existing syntax/object dependency frontier before proposing another
+index. Preserve typed source identity, lexical ancestry and erased-layout
+reachability; do not sort by process addresses or run Solve from the writer.
+Validation must cover fresh save, two zero-step resaves, retained/recompute
+modes, field-only origins and unrelated scopes before full acceptance.
+
+Evidence under `/tmp/a-program-authority-binder-frontier-`:
+`before-{build,test,counts}.log`, `after-counts.log`,
+`debug-{source,normalization}.log`; both `opt.log` and `opt-final.log` FAILED.
+The append-order trial's `group.a` and `group-resaved.a` are each 420556 bytes
+and first differ at byte 13052. These are local diagnostic artifacts, not
+accepted image fixtures or proof of semantic equivalence.
+
+Withdrawal verification: rebuilt the restored CLI, source-image and program
+tests with strict `-O0 -g -Wall -Wextra -Werror`; the complete `image_cli.sh`
+passed (exit 0), including both zero-step QuickSort resaves. Logs:
+`...-withdraw-build.log`, `...-withdraw-image.log`. No source/test diff remains;
+only this audit and the parent-plan correction are pending. Remote Main and
+rewrite both remain `192f4b946f4be68c3ef25f257840dad8b1106b43`.
+
+### 2026-09-19: Suspend helper argument-spine beta inspection (local)
+
+- [x] Replace the synchronous helper Match application loop with the existing
+  shared `application_body` query adapter and `s->view` wait slot. One pointer
+  in the existing helper cursor retains its next argument; no result registry,
+  job kind, kernel tag or persistence format is added.
+- [x] Add cancellation tests for both arguments of a captured-parameter helper.
+  Cancel at every graph boundary, then resume the same queries without their
+  former graph owner. Each tracked query advances at most once per graph turn.
+  This is not a claim that all synchronous kernel work is globally fuel-bounded.
+- [x] Demonstrate the regression against `192f4b9`: exit 134 at the per-query
+  step assertion. Strict debug and ASan/UBSan program tests pass after the fix.
+  The test must borrow the original call's converted arguments, not reconstruct
+  variables with the same Core and assume identical typed occurrences.
+- [x] Optimized `check-acceptance check-eval-io` passes, including 63/63 source
+  compatibility and retained QuickSort resaves. All 2,460 normalized result
+  records agree after excluding steps. Step deltas: 2,278 unchanged, 82 +1,
+  82 +13 and 18 +21. These are scheduling changes, not equality exceptions.
+- [ ] Include this local change in the next grouped publication, not a Main
+  push for one helper. A3, remaining A4 consumers and final A5 gates stay open.
+
+GDB on the imported QuickSort-property fixture: Core terms 135287, proofs
+93435, occurrences 82230, Contexts 4389, Context maps 15764, typed queries 9925,
+jobs 37388 and query steps 336649 are unchanged. Outer Solve steps increase
+147090 -> 147103. No elapsed-time improvement is claimed. Implementation delta
+is +15/-6 (net +9); the cancellation test is counted separately. This is not
+completion of the cumulative source-reduction requirement.
+
+Evidence prefix `/tmp/a-program-authority-helper-apply-`: `program.log`,
+`before-program.log`, `opt.log`, `asan-program.log`,
+`single-root-counts.log`, `helper-apply-counts.log`. The sanitizer program run
+uses explicit leak detection and ASan/UBSan halt-on-error. Final test-only
+lifetime cleanup was rechecked: strict debug and sanitizer program tests and
+optimized `check-acceptance check-eval-io` (`opt-final.log`) all exit 0. The two
+optimized runs have identical normalized exports including steps.
+
+Local delta from `192f4b9`: `function_graph.c` +15/-6; `tests/program.c` +61/-0.
+Cumulative implementation/header deltas are R76 +2892/-1441 (net +1451),
+R0 +7790/-3923 (net +3867). Documentation is separate. The overall reduction
+gate remains unmet; Main is deliberately not advanced for this single helper.

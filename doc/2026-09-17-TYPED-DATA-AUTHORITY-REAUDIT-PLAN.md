@@ -829,6 +829,11 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   broad `collect_origin` experiment.
   Remaining bound: transparent lexical descendants within one selected root
   remain candidates. Do not claim cost strictly proportional to retained output.
+  The member-only binder-frontier trial reduced callbacks (132 -> 4), but
+  failed retained QuickSort inert resave byte equality and was withdrawn.
+  Preserving per-key registration order did not repair the failure. Nominal
+  origins also need erased-layout reachability, not only retained binders.
+  See the priority plan for the counterexamples; this gate remains open.
   Follow-up: reference visitation now yields source candidates without probing
   allocation availability. The writer selects syntax, reads the allocation,
   then checks lexical ancestry only for reached objects. Existing temporary
@@ -1187,6 +1192,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: helper Match inspection no longer finishes its argument-spine
+  beta queries synchronously. Reuse `application_body` and the graph owner's
+  shared-query wait slot; retain the next argument in the existing helper
+  cursor. Cancellation releases only that cursor. The new test fails on the
+  previous implementation and passes with this change. Other synchronous
+  subchecks remain; this does not bound every graph turn's total kernel work.
+  Verification and unchanged QuickSort work counts are in the priority plan.
 - [x] 2026-09-19: `function_graph.c:prepare_head` no longer completes typed
   beta queries through the synchronous application-body adapter. Its three
   call sites use the existing shared query and `s->view` resumption slot;

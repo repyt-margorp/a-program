@@ -53,9 +53,9 @@ struct graph_continuation {
 struct helper_cursor {
 	struct pg_graph temporary;
 	const struct pg_evidence *function, *environment, *body;
-	struct graph_continuation *arguments;
+	struct graph_continuation *arguments, *next_argument;
 	size_t count, forces;
-	enum { HELPER_ARGUMENTS, HELPER_SOURCE, HELPER_BODY, HELPER_MATCH, HELPER_READY } phase;
+	enum { HELPER_ARGUMENTS, HELPER_SOURCE, HELPER_BODY, HELPER_APPLY, HELPER_MATCH, HELPER_READY } phase;
 };
 
 struct pg_function_graph_state {
@@ -496,16 +496,25 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 			 * discriminant belongs to that telescope. */
 			h->body = h->environment ? map_value(s, h->environment, h->function) : h->function;
 			h->body = projection(s, plan->context, h->body);
-			for (const struct graph_continuation *a = h->arguments; h->body && a; a = a->next)
-				h->body = pg_prove_application_body(s->typing, h->body,
-					projection(s, plan->context, a->argument));
 			if (!h->body) goto done;
-			h->phase = HELPER_MATCH;
+			h->next_argument = h->arguments;
+			h->phase = HELPER_APPLY;
 			break;
 		}
 		case PG_INDUCTION_ELIM: h->phase = HELPER_READY; break;
 		default: goto done;
 		}
+	}
+	if (h->phase == HELPER_APPLY) {
+		while (h->next_argument) {
+			const struct graph_continuation *a = h->next_argument;
+			if (application_body(s, h->body, projection(s, plan->context, a->argument), &h->body)) {
+				result = 2; goto done;
+			}
+			if (!h->body) goto done;
+			h->next_argument = a->next;
+		}
+		h->phase = HELPER_MATCH;
 	}
 	if (h->phase == HELPER_MATCH) {
 		enum pg_evidence_rule rule;
