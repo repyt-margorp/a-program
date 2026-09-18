@@ -581,17 +581,53 @@ They pass in `context-scopes` with a fresh debug build in
 `/tmp/a-program-authority-a1`. They do not assert that producer-keyed scopes
 are already unified. The end-to-end source image regression still fails.
 
-- [ ] Extend existing source image tests with a minimal index-alias case. Observe
+- [x] Extend existing source image tests with a minimal index-alias case. Observe
   original binder, map, image occurrence, producer, scope and application job
   before save and after load/Solve. Compare relocated identities inside each
   process, never numerical addresses across processes.
-- [ ] For each differing reference, distinguish missing serialization from
+- [x] For each differing reference, distinguish missing serialization from
   reconstruction keyed by a checker. Include the hidden Fold binder allocation.
 - [x] Specify concrete scope/name/request keys for resolved and pending input;
   verify source shadowing, distinct maps and nominal declarations remain distinct.
 - [x] Record which existing field/edge supplies each key. Any proposed extra
   field needs a counterexample showing why existing data cannot supply it.
   No implementation of a new persistent schema before this gate closes.
+
+2026-09-18 gate completion (working tree based on `7c6b8fe`):
+`mapped_alias_producers` now uses `Nat.succ alias` under the indexed Match.
+The trace follows the actual branch scope's alias producer to its `PG_REINDEX`
+premises. It checks the source binder, map source/destination and exact image
+occurrence, then looks up the existing application/argument requests without
+allocating another job. The application, map and original variable premise are
+selected independently, saved and resaved without Solve, and checked again.
+The relocated source scope reaches the same application job, exact map proof
+and original premise as the independent roots. Eight schedules cover the
+existing direct/imported/delayed/invalid producers and insertion orders.
+Debug `context-scopes` and the full `source_io.sh` pass in
+`/tmp/a-program-authority-index-trace`; full publication gates are recorded in
+the priority plan. This closes the identity-trace gate, not all of A3-A5.
+
+Reference classification from current consumers:
+
+| Reference difference | Meaning and retained owner | Required action |
+|---|---|---|
+| Accepted alias versus pending producer | Typed subject versus independent checking obligation | Keep both keys; never suppress the invalid producer |
+| Original index versus branch alias | The checked map's source variable versus its destination image | Retain the same map/subject edges; no alias-specific schema |
+| Fresh versus restored Lambda/application/Fold binder | Syntax/slot/enclosing-binder address in `pg_source_binding` | One registry, including hidden application sequencing binders |
+| Fresh constructor fields versus explicit restored fields | Checked map destination versus unaccepted allocation Context | Read through `pg_synthesis_constructor_input`; recheck arity, prefix and types |
+| Fresh versus restored Match allocation | Typed elimination operands versus an unaccepted prefix/motive/branch tuple | Keep the read-only projection and recheck source; do not store a second accepted tuple |
+| Declaration versus another declaration of the same shape | Distinct nominal identity | Never merge by structural shape or checker completion |
+
+`fold_origins` checks exact hidden continuation identity, inert resaves and
+conflicting-symbol rejection; `handler_save_boundaries` additionally connects
+the accepted return Lambda directly to its lexical registry entry. These are
+allocation inputs, not accepted classifiers. For constructor uses the former
+generic getter duplicated the child-job traversal; it now delegates to the
+existing member/constructor input view. Completed constructor scopes read the
+accepted map's destination, not nested proof-premise positions. Explicit field
+allocations are not globally forced to use the automatic address: they may be
+independent, well-typed callable scopes. Restoring one source use still checks
+its agreement with that use's constructor allocation.
 
 Additional boundary verified in `source_alias_targets`: four scopes use one
 Lambda syntax and one explicitly supplied binder, but independent producers.
@@ -745,12 +781,16 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   occurrence transport tests remain intact.
 - [x] If the format must change, update magic, headers and seed tests together.
   Explain the actual newly transported reference, not just the version number.
-- [ ] Remove obsolete proof-shape allocation recovery only after its pending
+- [x] Remove obsolete proof-shape allocation recovery only after its pending
   cases have descriptive replacements. A source-only image must still work.
   `pg_synthesis_match_allocation` still obtains a fresh completed elimination's
   operand Contexts from its typed occurrence; restored inputs use the explicit
   allocation tuple. This is read-only, not proof replay or source synthesis.
-  Audit whether both access paths are needed before deleting either.
+  Both are needed: a source-only fresh compilation has no imported tuple,
+  whereas a zero-step resave has no accepted elimination. The fresh path is a
+  temporary projection of typed operands, not a second stored authority or
+  proof-constructor traversal. Keeping it avoids adding an accepted allocation
+  cache. The separate member getter traversal has been removed as noted in A1.
 - [x] Remove the completed Handler return-binder fallback from
   `pg_synthesis_allocation_object`: its only clients were test assertions;
   Handler bindings already use the single lexical source-binding registry.
@@ -921,7 +961,7 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   ASan/UBSan `core_test` and `source_io_test context-scopes` also exit zero
   in `/tmp/a-program-authority-telescope-sanitize`. The current consolidation
   has not yet had full optimized or full sanitizer acceptance runs.
-- [ ] For `pg_synthesis_allocation_object` and restoration helpers, classify
+- [x] For `pg_synthesis_allocation_object` and restoration helpers, classify
   each field as allocation description, checking input or acceptance. Read
   available binders/context/induction layout from structural owners, not nested
   theorem shapes. Keep constructor/handler/IADT checks explicit.
@@ -929,8 +969,8 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   The later declaration epoch also removed the formation-theorem wait, using
   descriptive transport and ordinary rechecking while retaining independently
   selected proof obligations. Do not treat this historical dependency as an
-  outstanding implementation path. Remaining fresh Match/member reads must
-  still be classified separately from the removed Handler fallback.
+  outstanding implementation path. The A1 reference table above classifies
+  fresh Match/member reads separately from the removed Handler fallback.
 - [x] Audit `computation_view`'s structural/origin fallback in `function_graph.c`.
   Remove repeated discovery when querying the same effective input; preserve
   the distinction between current reduced head and historical construction.

@@ -945,17 +945,14 @@ int pg_synthesis_member_allocation(const struct pg_synthesis *synthesis,
 	return 0;
 }
 
-const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis_job *job)
+const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job)
 {
-	if (!job) return NULL;
+	if (!synthesis || !job || job->owner != synthesis->owner_key) return NULL;
 	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_QUALIFIED) {
-		const struct context_allocation *allocation = job->context_allocation;
-		const struct pg_synthesis_job *scope = job->left && job->left->role == CONSTRUCTOR_VALUE_JOB
-			? job->left->left : NULL;
-		if (!allocation && scope) allocation = scope->context_allocation;
-		const struct pg_context *fields = allocation ? allocation->end :
-			scope && pg_synthesis_result(scope) ? pg_evidence_context(scope->result) : NULL;
-		return fields ? fields->binder : NULL;
+		const struct pg_context *prefix, *fields;
+		return pg_synthesis_member_allocation(synthesis, job, &prefix, &fields) || fields == prefix
+			? NULL : fields->binder;
 	}
 	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_ELIMINATION) {
 		const struct pg_induction_allocation *allocation = source_induction_allocation(job);
@@ -1977,8 +1974,8 @@ int pg_synthesis_constructor_input(const struct pg_synthesis *synthesis,
 		input->fields = scope->context_allocation->end;
 	} else if (scope->status == PG_SYNTHESIS_DONE) {
 		input->allocated = 1;
-		input->prefix = pg_evidence_context(pg_evidence_premise(input->parameters->result, 1));
-		input->fields = pg_evidence_context(pg_evidence_premise(scope->result, 1));
+		input->prefix = pg_evidence_context_map(input->parameters->result)->destination;
+		input->fields = pg_evidence_context_map(scope->result)->destination;
 	}
 	return 0;
 }

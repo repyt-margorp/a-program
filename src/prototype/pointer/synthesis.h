@@ -101,7 +101,8 @@ int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, struct pg_synthesis_job *), void *owner);
 /* Declaration/member/induction identity only; Handler return variables are
  * lexical source bindings, not a second kind of allocation origin. */
-const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis_job *job);
+const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job);
 /* Associate a qualified constructor use with its retained field scope.
  * Contexts supply binders only; constructor identity, parameters and field
  * types are synthesized at the use site. No substitution proof is restored. */

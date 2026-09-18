@@ -1757,3 +1757,41 @@ Published as `f467b34ddee717e2dfe33dcb28d762285a3c65ec`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `8d4c731`; both
 remote tips verified. Commit totals: implementation +20/-23, tests +26/-0,
 documentation +62/-0. This publication record is documentation only.
+
+### 2026-09-18: A1 reference audit and constructor allocation view
+
+- [x] Complete the parent's index-alias identity trace, including independent
+  retained map/original-premise roots and two inert resaves.
+- [x] Classify pending/accepted source references, explicit allocation inputs,
+  hidden Fold binders and fresh/restored Match descriptions in the parent A1
+  table. No new allocation cache or wire record is needed for these cases.
+- [x] Remove the duplicate constructor-child traversal from
+  `pg_synthesis_allocation_object`; use the existing member/constructor view.
+  That view reads accepted Context-map destinations instead of proof slots.
+- [x] Run the full optimized and affected debug/sanitizer gates.
+- [ ] Publish the verified epoch and record remote tips.
+
+All commands exit zero: strict debug `source_io_test context-scopes` and
+`tests/source_io.sh`; full optimized `check-acceptance`; ASan/UBSan
+`synthesis_test`, `tests/source_io.sh`, `normalization`, `handler-nesting` and
+`handler-boundaries` (4,240 snapshots). Builds/logs use the prefix
+`/tmp/a-program-authority-index-trace`; optimized log suffix `-acceptance.log`,
+sanitizer build suffix `-asan`, and sanitizer log suffixes
+`-asan-{source,synthesis,normalization,nesting,boundaries}.log`.
+Flags: debug `-O0 -g`, optimized `-O2`, sanitizer
+`-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`,
+all with `-std=c11 -Wall -Wextra -Werror`. Sanitizers enable leak detection
+and halt-on-error. Full acceptance includes 63/63 compatibility, universal
+QuickSort, retained proofs/images and negative cases. Its `export results:`
+records match the preceding Context-address epoch including step counts after
+normalizing temporary paths. No elapsed-time or allocation improvement is claimed.
+
+Per-file implementation: `synthesis.c` +8/-11, `synthesis.h` +2/-1,
+`source_io.c` +3/-3; net -2. `tests/source_io.c` is +92/-5 (net +87).
+Cumulative implementation/header deltas: R76 `3a3bf550` +2,262/-1,028
+(net +1,234); R0 `4657cc6` +7,223/-3,573 (net +3,650).
+The net-negative gate is still unmet. Closing A1 is not completion of R:
+selected-root traversal, the remaining structural-consumer audit and A5's
+final performance/verification work remain open. The next structural change
+must address the measured whole-store source-origin search, rather than add
+another persistent accepted-allocation authority or weaken image checks.

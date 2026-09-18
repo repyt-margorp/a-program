@@ -296,7 +296,7 @@ static int index_origin_object(struct origin_collection *c, struct pg_synthesis_
 static int index_origin(void *owner, struct pg_synthesis_job *job)
 {
 	struct origin_collection *c = owner;
-	const struct pg_object *object = pg_synthesis_allocation_object(job);
+	const struct pg_object *object = pg_synthesis_allocation_object(c->synthesis, job);
 	if (index_origin_object(c, job, NULL, object)) return -1;
 	/* Computation endpoints may retain only the layout, not the type family. */
 	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
@@ -359,7 +359,7 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 			if (collect_allocation(c, input->branches[i], a->clauses[i], a->self)) return -1;
 		return 0;
 	}
-	const struct pg_object *family = pg_synthesis_allocation_object(job);
+	const struct pg_object *family = pg_synthesis_allocation_object(c->synthesis, job);
 	if (!pg_data_declaration_view(family) || pg_dag_add(c->declarations, family)
 		|| pg_dag_add(&c->terms, pg_reference(&c->rules->storage, family))) return -1;
 	return 0;
@@ -588,7 +588,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		if (pg_synthesis_source_input(synthesis, node->key, &scope, &term)) goto done;
 		uint64_t allocation = term->kind == PG_SYNTAX_QUALIFIED ? id(&allocations, node->key)
 			: term->kind == PG_SYNTAX_ELIMINATION ? id(&matches, node->key)
-			: id(&declarations, pg_synthesis_allocation_object(node->key));
+			: id(&declarations, pg_synthesis_allocation_object(synthesis, node->key));
 		if (pg_wire_write_u64(file, id(&scopes, scope)) || pg_wire_write_u64(file, id(&syntax, term))
 			|| pg_wire_write_u64(file, allocation)) goto done;
 	}
