@@ -1845,7 +1845,7 @@ tests +29/-0, documentation +73/-5. This publication record is doc-only.
 - [x] Add the 128-sibling selected-image regression to `member_use_origins`.
 - [x] Remove quadratic duplicate-edge discovery from source image collection.
 - [x] Pass full optimized acceptance and affected debug/sanitizer gates.
-- [ ] Publish the verified change with the next source-traversal milestone.
+- [x] Publish the verified change with the next source-traversal milestone (`a9b24b2`).
 
 Baseline: `605d11b`. The parent A3 entry records the uniqueness argument,
 16,785 removed insertion comparisons, unchanged callbacks and remaining linear
@@ -1876,7 +1876,7 @@ source-traversal publication; do not relabel it as completion of R.
   job roles, state fields, proof rules or another cache.
 - [x] Strict debug `synthesis_test`, full optimized `check-acceptance`, and
   ASan/UBSan `synthesis_test` plus complete `source_io.sh` pass (exit 0).
-- [ ] Publish with the next substantial authority-refactoring milestone.
+- [x] Publish with the next substantial authority-refactoring milestone (`a9b24b2`).
 
 Baseline: `6a781cc`. `source_telescopes`' new per-step assertion fails on the
 old implementation (exit 134), then passes with the adapter change. Logs:
@@ -1901,7 +1901,7 @@ interned requests duplicate semantic authorities.
   and image cases pass. Normalized `export results:` including step counts
   exactly match the preceding family-query acceptance run.
 - [x] Repeat the R0/current source and zero-work-image diagnostic matrix.
-- [ ] Publish with a substantial refactoring epoch, not this test-only audit.
+- [x] Publish with a substantial refactoring epoch, not this test-only audit (`a9b24b2`).
 
 The re-audit plan's A4/A5 entries record the rejected extra specialization API,
 the regression's exact reuse checks, timings and node counts. Implementation
@@ -1926,7 +1926,7 @@ net-negative implementation/header LOC remain open.
 - [x] Strict debug `core_test`, full optimized `check-acceptance`, ASan/UBSan
   `core_test`, `iadt_test`, `synthesis_test`, `program_test`, complete
   `source_io.sh`: all exit 0. Flags/environment match preceding entries.
-- [ ] Publish with the next substantial refactoring epoch.
+- [x] Publish with the next substantial refactoring epoch (`a9b24b2`).
 
 Baseline: `c49901d`. A4 records the exact check ownership and 1,589 -> 436
 scope lookups measured on the same function-field input. Logs use
@@ -1947,7 +1947,7 @@ from R76, +3,706 from R0. Broad A3/A4/A5 and net-negative gates remain open.
   Flags/environment match the preceding entry; logs use
   `/tmp/a-program-authority-map-hit-*.log`. Normalized export results and
   Solve steps exactly match the preceding full acceptance run.
-- [ ] Publish with a substantial refactoring epoch, not this small correction.
+- [x] Publish with a substantial refactoring epoch, not this small correction (`a9b24b2`).
 
 Baseline: `923a220`. `typing.c` +2/-2; `tests/core.c` +5/-0.
 Cumulative implementation/header LOC and remaining gates are unchanged.
@@ -1964,7 +1964,7 @@ Cumulative implementation/header LOC and remaining gates are unchanged.
   complete `sort_insertion.sh` all exit 0 on the final implementation.
   Compatibility is 63/63; exported results match the preceding acceptance run
   after excluding the intentionally changed Solve transition counts.
-- [ ] Publish with the next substantial refactoring epoch.
+- [x] Publish with the next substantial refactoring epoch (`a9b24b2`).
 
 Logs: `/tmp/a-program-authority-graph-view-park-*.log`; flags/environment match
 the preceding entries. The initial unparked draft's additional sanitizer sort
@@ -1989,7 +1989,7 @@ gates and the parent's net-negative requirement remain open.
   five nodes, no Core/evidence allocation). Strict debug complete source and
   graph-acceptance scripts, full optimized `check-acceptance`, and ASan/UBSan
   complete source/graph-acceptance/derivation scripts all exit 0.
-- [ ] Publish with the next substantial source/authority-refactoring epoch.
+- [x] Publish with the next substantial source/authority-refactoring epoch (`a9b24b2`).
 
 Baseline: `8d0ddc9`; logs: `/tmp/a-program-authority-context-discovery-*.log`.
 Flags/environment match preceding entries. Compatibility is 63/63; normalized
@@ -2022,7 +2022,7 @@ is reuse of existing typed requests and immutable dependency structure:
   Repeated direct collection matches packed object dependencies; no new proof
   acceptance or Solve occurs during discovery. Retained IF8 output is unchanged;
   function-field inert resave preserves the same input image exactly.
-- [ ] Publish the grouped epoch and verify both remote tips.
+- [x] Publish the grouped epoch and verify both remote tips (`a9b24b2`).
 
 The re-audit's A3 entry records exact commands/build flags via the previous
 entries, logs, 697 removed intermediate payload calls, arena savings and the
@@ -2055,3 +2055,8 @@ Cumulative implementation/header changes are R76 +2,510/-1,149 (net +1,361),
 R0 +7,455/-3,678 (net +3,777). The overall source-reduction requirement is not
 met. A3's scope-sensitive source selection, A4's remaining structural consumers
 and final A5 acceptance remain open; publishing this epoch does not complete R.
+
+Published atomically without force from `605d11b` to `a9b24b2`; remote Main
+and `rewrite/pointer-core-hott` both verified at that revision. Documentation
+through that implementation commit is +422/-1, separate from source/test counts
+above. This follow-up only records publication and checks the grouped entries.
