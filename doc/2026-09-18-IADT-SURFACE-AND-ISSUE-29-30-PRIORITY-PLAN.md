@@ -1769,7 +1769,7 @@ documentation +62/-0. This publication record is documentation only.
   `pg_synthesis_allocation_object`; use the existing member/constructor view.
   That view reads accepted Context-map destinations instead of proof slots.
 - [x] Run the full optimized and affected debug/sanitizer gates.
-- [ ] Publish the verified epoch and record remote tips.
+- [x] Publish the verified epoch and record remote tips.
 
 All commands exit zero: strict debug `source_io_test context-scopes` and
 `tests/source_io.sh`; full optimized `check-acceptance`; ASan/UBSan
@@ -1795,3 +1795,8 @@ selected-root traversal, the remaining structural-consumer audit and A5's
 final performance/verification work remain open. The next structural change
 must address the measured whole-store source-origin search, rather than add
 another persistent accepted-allocation authority or weaken image checks.
+
+Published as `d47f4ee9075b11ea6dbd8b6412be972a88122f35`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `7c6b8fe`; both
+remote tips verified. Commit totals: implementation/header +13/-15,
+tests +92/-5, documentation +85/-7. This publication record is doc-only.
