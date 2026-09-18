@@ -1225,6 +1225,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: share IH scope-map relocation through the existing map-rebase
+  query. Remove Solver's per-image projection jobs and substitution-prefix
+  reconstruction, and the direct API's extra projection/composition map.
+  Keep constructor binder allocation and IH formation as distinct operations.
+  Full optimized acceptance and focused debug tests pass; the priority plan
+  records sanitizer status, semantic comparison, allocation costs and LOC.
+  This is local work for the next publication epoch, not A3-A5 completion.
 - [x] 2026-09-19: remove the synchronous map-image loop and `rebase_image` /
   `scope_map_step` adapters. Map restriction retains its image prefix in the
   existing rebase machine; nominal queries wait on that shared query. Explicit

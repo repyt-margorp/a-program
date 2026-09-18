@@ -5376,6 +5376,19 @@ static void source_declarations(struct pg_typing *typing)
 			pg_evidence_context(pg_evidence_premise(field_map, 1)), &ih_count));
 		assert(ih_count == i);
 		assert(pg_evidence_premise(scope_map, 0) == pg_evidence_premise(field_map, 0));
+		const struct pg_evidence *scope_context = pg_evidence_premise(scope_map, 1);
+		struct pg_typed_query *scope_query = pg_substitution_rebase_request(typing, scope_context, field_map);
+		assert(pg_typed_query_result(scope_query) == scope_map);
+		const struct pg_evidence *projection = pg_prove_substitution_projection(typing,
+			pg_evidence_premise(field_map, 1), scope_context);
+		const struct pg_evidence *composed = pg_prove_substitution_compose(typing, field_map, projection);
+		assert(composed && pg_evidence_premise_count(composed) == pg_evidence_premise_count(scope_map));
+		for (size_t j = 2; j < pg_evidence_premise_count(scope_map); ++j)
+			same_judgement(pg_evidence_premise(scope_map, j), pg_evidence_premise(composed, j));
+		size_t scope_proofs = typing->proofs.count, scope_queries = typing->typed_queries.count;
+		for (size_t j = 0; j < 20; ++j)
+			assert(pg_prove_substitution_rebase(typing, scope_context, field_map) == scope_map);
+		assert(typing->proofs.count == scope_proofs && typing->typed_queries.count == scope_queries);
 		if (i) assert(pg_alpha_equal(pg_evidence_context(pg_evidence_premise(scope_map, 1))->declared_type,
 			pg_evidence_subject(pg_prove_thunk_type(typing, motive))->core) == 1);
 		complete(&synthesis, pg_synthesis_induction_scope(&synthesis, formation_job, constructor,

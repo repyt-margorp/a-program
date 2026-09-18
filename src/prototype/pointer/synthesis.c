@@ -7007,7 +7007,6 @@ static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synth
 	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
 	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
 	const struct pg_evidence *map = job->left->result;
-	if (job->value_job) { forward_proof(synthesis, job, job->value_job); return; }
 	if (!job->substitution) {
 		if (job->context_allocation && !same_context_binders(job->context_allocation->prefix,
 			pg_evidence_context(pg_evidence_premise(map, 1)))) goto rejected;
@@ -7051,16 +7050,10 @@ static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synth
 		return;
 	}
 	if (job->context_allocation && job->context_allocation->next != job->context_allocation->count) goto rejected;
-	size_t count = pg_evidence_premise_count(map) - 2;
-	if (count > SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
-	struct pg_synthesis_job **images = malloc(count * sizeof(*images));
-	if (count && !images) goto error;
-	for (size_t i = 0; i < count; ++i) images[i] = projected_image(synthesis, context, pg_evidence_premise(map, i + 2));
-	job->value_job = pg_synthesis_substitution_jobs(synthesis, pg_synthesis_evidence(synthesis, pg_evidence_premise(map, 0)),
-		pg_synthesis_evidence(synthesis, context), count, images);
-	free(images);
-	if (!job->value_job) goto error;
-	forward_proof(synthesis, job, job->value_job);
+	struct pg_typed_query *query = pg_substitution_rebase_request(synthesis->typing, context, map);
+	if (!pg_typed_query_advance(query, 1)) { enqueue(synthesis, job); return; }
+	job->result = pg_typed_query_result(query);
+	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 	return;
 rejected:
 	finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;

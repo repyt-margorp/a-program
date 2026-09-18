@@ -3210,3 +3210,54 @@ Cumulative implementation/header: R76 +3,111/-1,534 (net +1,577), R0
 net-negative gate remains unmet. General Identity transport, function-graph
 preparation and synchronous kernel checking require further audit; inserting
 waits into code that allocates fresh binders must not restart those prefixes.
+
+### 2026-09-19: Share the completed constructor map in the IH scope (local)
+
+Baseline: published `32940ea`. Constructor fields already form a checked map;
+after extending their destination with IH binders, only its relocation remains.
+Previously `induction_scope_step` scheduled projection jobs for every image and
+rebuilt the map prefix through general substitution synthesis. The direct
+`prove_induction_scope` instead allocated a projection map and composed it.
+Both now use the existing map-rebase query. Solver advances it one transition
+per turn, retaining the already constructed IH scope. No new tag, authority,
+wire version or binder-allocation path is introduced. Telescope instantiation
+and IH formation still check different obligations and are not merged.
+
+- [x] Remove both duplicate map-construction paths.
+- [x] Test zero/one-IH scopes against independent projection/composition,
+  shared query result identity, and repeated lookup without additional proofs
+  or queries. Existing Acc/function-field and dependent-index tests still pass.
+- [x] Optimized full `check-acceptance`, including 63/63 source compatibility
+  and all four universal sorting proofs. All 2,460 exported comparison records
+  match the baseline after normalizing temporary paths and scheduling counts.
+- [x] Strict `-O0 -g` synthesis/IADT suites.
+- [x] ASan/UBSan synthesis, IADT, program and complete `source_io.sh` suites.
+- [x] ASan/UBSan complete `image_cli.sh` suite; all listed gates exit 0.
+- [ ] Group with the next substantial verified epoch before Main publication.
+
+Builds/logs: `/tmp/a-program-authority-ih-map-{opt,debug,asan}` and
+`/tmp/a-program-authority-ih-map-*.log`. Optimized gate command:
+`make -f src/prototype/pointer/Makefile -j2 BUILD=/tmp/a-program-authority-ih-map-opt check-acceptance`.
+Sanitizer flags: `-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`,
+with C11 and strict warnings, leak detection and halt-on-error enabled.
+This focused sanitizer matrix is not the parent's full sanitizer acceptance.
+
+Same imported QuickSort property, 1,000,000 fuel, strict debug before/after:
+jobs 34,874 -> 34,199; proofs 93,435 -> 93,063; occurrences 82,230 -> 82,091;
+maps 15,764 -> 15,684; typed queries 9,957 -> 10,467 (map queries 32 -> 107).
+Core terms stay 135,290 and Contexts 4,389. Query transitions increase
+341,953 -> 343,348; outer Solve decreases 142,087 -> 140,836. Program graph
+arena used bytes decrease 69,195,584 -> 68,837,792, excluding non-arena heaps.
+Counts/arena logs are `...-before-counts.log`, `...-after-counts.log` and the
+corresponding `...-arena.log` files; both processes exit normally.
+
+Twelve alternating fresh-process pairs (discard first two), median seconds:
+Vec append .01559/.01421; length .01199/.01365; function-field .02100/.02156;
+QuickSort .32075/.32404. All exit 0. No general wall-clock speedup is established;
+raw samples are `...-benchmark.log`. This does not replace the R0 matrix.
+
+Per-file delta: `evidence.c` +1/-2, `synthesis.c` +4/-11 (implementation net -8),
+`tests/synthesis.c` +13/-0. Cumulative implementation/header deltas remain
+R76 +3,119/-1,550 (net +1,569), R0 +7,956/-3,971 (net +3,985).
+Documentation is separate. A3's candidate bound, remaining A4 consumers,
+final A5 gates and the cumulative net-negative requirement remain open.
