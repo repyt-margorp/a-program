@@ -8,6 +8,7 @@
 #include "retained_io.h"
 #include "context_payload.h"
 #include <string.h>
+#include <stdlib.h>
 
 static const char magic[8] = "APGSRC\76";
 static const char retained_magic[8] = "APGSRC\77";
@@ -207,6 +208,7 @@ struct origin_collection {
 };
 
 static int index_scope_origin(void *owner, struct pg_synthesis_job *job);
+static int index_source_references(struct origin_collection *c, const void *key);
 static int collect_candidates(struct origin_collection *c, const void *key);
 
 static int collect_allocation(struct origin_collection *c, const struct pg_context *prefix,
@@ -271,7 +273,7 @@ static int collect_inputs(struct origin_collection *c)
 			if (references > SIZE_MAX - c->binding_reference_count) return -1;
 			c->binding_reference_count += references;
 			if (collect_candidates(c, scope_node->key)) return -1;
-			if (pg_synthesis_visit_source_references(c->synthesis, scope_node->key, index_scope_origin, NULL, c)) return -1;
+			if (index_source_references(c, scope_node->key)) return -1;
 			if (input.syntax && pg_dag_add(c->syntax, input.syntax)) return -1;
 			if (input.definitions && pg_dag_add(c->syntax, input.definitions)) return -1;
 			if (input.rule && pg_dag_add(c->rules, input.rule)) return -1;
@@ -363,6 +365,63 @@ static int index_binding(void *owner, const struct pg_source_binding *input)
 	if (!input->syntax || id(c->syntax, input->syntax)) return collect_binding(c, input);
 	/* The binder is reached first; wait for its source syntax, not Solve. */
 	return index_origin_reference(c, input->syntax, collect_binding, input);
+}
+
+struct ordered_origin {
+	struct pg_synthesis_job *job;
+	uint64_t syntax;
+};
+
+struct source_reference_batch {
+	struct origin_collection *collection;
+	struct ordered_origin *items;
+	size_t count, capacity;
+};
+
+static int append_source_reference(void *owner, struct pg_synthesis_job *job)
+{
+	struct source_reference_batch *batch = owner;
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+	if (pg_synthesis_source_input(batch->collection->synthesis, job, &scope, &syntax)) return -1;
+	if (batch->count == batch->capacity) {
+		size_t capacity = batch->capacity ? 2 * batch->capacity : 8;
+		if (capacity < batch->capacity || capacity > SIZE_MAX / sizeof(*batch->items)) return -1;
+		void *items = realloc(batch->items, capacity * sizeof(*batch->items));
+		if (!items) return -1;
+		batch->items = items;
+		batch->capacity = capacity;
+	}
+	batch->items[batch->count++] = (struct ordered_origin){job, id(batch->collection->syntax, syntax)};
+	return 0;
+}
+
+static int append_binding_reference(void *owner, const struct pg_source_binding *input)
+{
+	struct source_reference_batch *batch = owner;
+	return index_binding(batch->collection, input);
+}
+
+static int compare_origin(const void *left, const void *right)
+{
+	const struct ordered_origin *a = left, *b = right;
+	return (a->syntax > b->syntax) - (a->syntax < b->syntax);
+}
+
+static int index_source_references(struct origin_collection *c, const void *key)
+{
+	struct source_reference_batch batch = {.collection = c};
+	int status = pg_synthesis_visit_source_references(c->synthesis, key,
+		append_source_reference, append_binding_reference, &batch);
+	if (!status && batch.count) {
+		/* Late binder discovery must not serialize in hash/registration order.
+		 * Unreached syntax is still staged by index_scope_origin. */
+		qsort(batch.items, batch.count, sizeof(*batch.items), compare_origin);
+		for (size_t i = 0; !status && i < batch.count; ++i)
+			status = index_scope_origin(c, batch.items[i].job);
+	}
+	free(batch.items);
+	return status;
 }
 
 static int collect_binding(struct origin_collection *c, const void *key)
@@ -459,7 +518,7 @@ static int retain_objects(struct origin_collection *c)
 		for (const struct pg_dag_node *node = c->last_object ? c->last_object->next : c->objects.first;
 			node; node = node->next) {
 			c->last_object = node;
-			if (pg_synthesis_visit_source_references(c->synthesis, node->key, NULL, index_binding, c)) return -1;
+			if (index_source_references(c, node->key)) return -1;
 			if (collect_candidates(c, node->key)) return -1;
 		}
 		if (collect_inputs(c)) return -1;

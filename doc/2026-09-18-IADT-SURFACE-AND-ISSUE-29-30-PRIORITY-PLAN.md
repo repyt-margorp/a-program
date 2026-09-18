@@ -2947,3 +2947,84 @@ Evidence prefix `/tmp/a-program-authority-application-owner-`: `build.log`,
 `dependent-{before,after}.log`, and `timing.log`.
 Implementation delta: `synthesis.c` +10/-11 (net -1); tests +33/-0, docs separate.
 The cumulative implementation reduction requirement remains unmet.
+
+### 2026-09-19: Member binder frontier with syntax-ordered dispatch
+
+This supersedes the withdrawn member-only experiment, not the broader A3 gate.
+Reinspection of its two saved files found exactly four changed bytes: the two
+producer and two origin records exchange syntax IDs 68/74. The rest of the
+420,556-byte files agree. Registration order is not source serialization order.
+
+- [x] Group qualified-member candidates under their nearest binder or opaque
+  lexical scope. The writer visits reached objects as well as selected scopes.
+  Declaration/Match grouping remains unchanged: erased layouts can omit their
+  lexical binders, so applying the member shortcut to them loses allocations.
+- [x] Order each reached reference batch by the writer's selected syntax IDs
+  before dispatch. Unreached syntax still waits on the existing frontier.
+  Keep exact lexical ancestry checks. No process-address sort, new persistent
+  owner, artifact flag, Solve/replay path or wire format is introduced.
+- [x] Keep all references, including distinct scopes sharing syntax. Sorting
+  does not intern or discard them. This is a deterministic discovery repair
+  for this boundary, not a general canonicalizer of arbitrary lexical graphs.
+- [x] Extend the existing member-origin test: after 128 unused binder scopes,
+  selected lookup visits exactly the same origins. The new assertion fails on
+  `4a6a777` (exit 134, multiple qualified origins); it passes with this change.
+  Its ordinary-image byte equality and unchanged Solve/proof counts remain.
+- [x] Full optimized `check-acceptance check-eval-io` passes, including 63/63
+  compatibility. All 2,460 normalized export records, including steps, match
+  `application-owner-opt.log`. Strict debug `source_io.sh`, `image_cli.sh`
+  and `program_test` pass. Both retained QuickSort zero-step resaves are byte
+  identical; the selected recursive append origin and exact-Core checks remain.
+- [x] Affected ASan/UBSan source/image/program verification passes with leak
+  detection and halt-on-error enabled. Group with the preceding application
+  changes under the publication gate below, not as a separate helper.
+
+GDB confirms four source-origin callbacks before and after the unused binders;
+the old writer needed 132 afterward. Retained QuickSort dispatch uses 25 batches
+with 148 candidate references; the largest temporary array is 1,024 bytes.
+This is not a peak-RSS reduction. The two equal selected-syntax keys observed
+there are preliminary unsupported and accepted Match candidates before the
+syntax frontier starts; neither is silently removed. Broader lexical bound
+and ordering analysis remains part of A3.
+
+Evidence prefix `/tmp/a-program-authority-binder-order-`: `before-test.log`,
+`build.log`, `final-build.log`, `final-source.log`, `debug-image.log`,
+`debug-program.log`, `opt.log`, `counts.log`, `batches.log`, `ties.log`,
+`asan-build.log`, `asan-program.log`, `asan-source.log`, `asan-image.log`.
+The first tie-profile attempt stopped in GDB on a null syntax frontier; the
+corrected diagnostic checks that pointer and produces `ties.log`. It did not
+modify source or establish a failing compiler test.
+
+### Grouped Publication Gate: Typed Application and Member Discovery
+
+Group the helper beta-query resumption (`0c8b352`), repeated Identity inspection
+removal (`f783742`), application-producer reuse (`4a6a777`) and member-frontier
+change above. They reuse existing computation/typing/source owners and remove
+duplicate work without claiming completion of the parent refactor.
+
+- [x] Full optimized acceptance on the combined implementation.
+- [x] Debug program/source/image tests, including both previously failing
+  boundary regressions and dependent application tests recorded above.
+- [x] Complete affected sanitizer tests with leak/halt-on-error enabled.
+- [ ] Verify remote tips, commit, atomically push Main/rewrite without force,
+  and record the resulting revisions.
+
+Relative to published Main `192f4b9` (implementation, headers and tests):
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `function_graph.c` | 15 | 6 | +9 |
+| `source_io.c` | 61 | 2 | +59 |
+| `synthesis.c` | 17 | 14 | +3 |
+| `synthesis.h` | 5 | 3 | +2 |
+| `tests/program.c` | 61 | 0 | +61 |
+| `tests/source_io.c` | 3 | 0 | +3 |
+| `tests/synthesis.c` | 43 | 0 | +43 |
+
+Implementation/headers +98/-25, net +73; tests +107/-0. Documentation is counted
+separately. This epoch reduces measured repeated work, not source line count.
+A3's declaration/Match lexical bound, remaining A4 consumers, original-baseline
+performance and cumulative net-negative code gates remain open.
+
+Cumulative implementation/headers: R76 (`3a3bf550`) +2,962/-1,447 (net +1,515);
+R0 (`4657cc6`) +7,860/-3,929 (net +3,931). Neither reduction gate is satisfied.

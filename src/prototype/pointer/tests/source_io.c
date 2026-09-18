@@ -2061,6 +2061,9 @@ static void member_use_origins(void)
 		assert(use && !pg_synthesis_result(use));
 		assert(pg_synthesis_allocation_object(&p->synthesis, use) == binder);
 	}
+	struct member_origin bounded = {.synthesis = &p->synthesis};
+	scoped_member_origins(&bounded, found.scope);
+	assert(bounded.job == found.job && bounded.visited == indexed.visited);
 	assert(!pg_sources_write(after, &p->synthesis, 1, &found.job));
 	assert(p->synthesis.steps == save_steps && p->typing.proofs.count == save_proofs);
 	rewind(before);

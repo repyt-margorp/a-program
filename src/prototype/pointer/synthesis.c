@@ -730,15 +730,17 @@ static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
 		switch (syntax->kind) {
 		case PG_SYNTAX_QUALIFIED: case PG_SYNTAX_ELIMINATION: case PG_SYNTAX_DECLARATION:
 		{
-			/* Named scopes delimit independently selected source roots. Transparent
-			 * lexical extensions are checked against selected syntax by the writer. */
+			/* A member use needs its lexical binder. Nominal/Match erasure may
+			 * retain only a layout, so those origins still cross binder scopes. */
 			const struct pg_source_scope *root = scope;
 			while (root->parent) {
+				if (syntax->kind == PG_SYNTAX_QUALIFIED && root->binder) break;
 				if (!root->binder && !root->definitions &&
 					!(root->effect_owner && root->effect_owner->scope == root)) break;
 				root = root->parent;
 			}
-			if (register_source_reference(synthesis, root, job, NULL)) return NULL;
+			const void *key = syntax->kind == PG_SYNTAX_QUALIFIED && root->binder ? (const void *)root->binder : root;
+			if (register_source_reference(synthesis, key, job, NULL)) return NULL;
 			break;
 		}
 		default: break;

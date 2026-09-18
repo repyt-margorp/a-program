@@ -834,6 +834,18 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   Preserving per-key registration order did not repair the failure. Nominal
   origins also need erased-layout reachability, not only retained binders.
   See the priority plan for the counterexamples; this gate remains open.
+  Follow-up on 2026-09-19: the member-only binder boundary now passes the
+  retained-image gate when each reached reference batch is dispatched in
+  selected syntax order, rather than hash/registration order. The previous
+  images differed at exactly four bytes, exchanging syntax IDs 68/74 in two
+  producer and two origin records. A selected member save performs four
+  callbacks both before and after 128 unused binder scopes (previously 132
+  afterward). A temporary sorted reference array holds no result or acceptance
+  flag. Ordinary/retained selection and exact lexical ancestry checks remain.
+  Declaration/Match candidates still cross transparent binders because the
+  selected erased layout may omit them. This does not close the broad A3 bound
+  or claim canonical ordering for every possible externally constructed lexical
+  graph. See the priority plan for regression, sanitizer and publication gates.
   Follow-up: reference visitation now yields source candidates without probing
   allocation availability. The writer selects syntax, reads the allocation,
   then checks lexical ancestry only for reached objects. Existing temporary
