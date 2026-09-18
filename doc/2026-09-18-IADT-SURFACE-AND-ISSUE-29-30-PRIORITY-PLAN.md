@@ -2327,7 +2327,7 @@ These counts exclude this documentation-only publication follow-up.
 - [x] ASan/UBSan source-image and Handler-boundary suites: exit 0 with explicit
   leak detection and halt-on-error options; 4,240 Handler snapshots preserve
   status/effects. This is affected-suite sanitizer coverage, not a new full run.
-- [ ] Include this local change in the next substantial publication epoch.
+- [x] Include in the established-input reuse publication epoch (`a093e54`).
 
 Against `4b4fba7`, implementation `source_io.c`: +12/-17 (net -5); test
 `tests/source_io.c`: +6/-3 (net +3). GDB on retained function-field writing:
@@ -2354,7 +2354,7 @@ the broader A3/A4 audit or the cumulative net-negative gate.
 - [x] ASan/UBSan `source_io.sh`, `handler-boundaries` (4,240 snapshots) and
   `prepared-module` (1,118 snapshots) pass with leak detection and halt-on-error.
   These are affected-suite sanitizer gates, not a new full sanitizer run.
-- [ ] Publish with a substantial verified refactoring epoch, not separately.
+- [x] Publish with the established-input reuse epoch (`a093e54`), not separately.
 
 GDB comparison against `135dc55`: the 128-scope case makes 267 -> 134 allocation
 reads (6 without the added scopes in the new writer); environment reads remain
@@ -2391,7 +2391,7 @@ Logs/images use `/tmp/a-program-authority-origin-order-*`; `final-counts` and
 - [x] ASan/UBSan Core, IADT, program, callable-parameter, dependent function-field
   and invalid-callable tests pass with explicit leak detection/halt-on-error.
   This is affected-suite coverage, not a new full sanitizer acceptance run.
-- [ ] Publish with a substantial verified epoch. Broader A3/A4 and the cumulative
+- [x] Publish with the established-input reuse epoch (`a093e54`). Broader A3/A4 and the cumulative
   net-negative implementation gate are not closed by this consolidation.
 
 The initial new test incorrectly required the generated Context *receipt* to
@@ -2433,7 +2433,7 @@ Logs and the new debug binaries use `/tmp/a-program-authority-call-telescope-*`.
 - [x] ASan/UBSan Core, IADT, program, callable-parameter, function-field and
   `derivation_io.sh` pass with explicit leak detection and halt-on-error.
   This is affected-suite coverage, not a new full sanitizer acceptance run.
-- [ ] Include in a substantial verified epoch before publication to Main.
+- [x] Include in the established-input reuse publication epoch (`a093e54`).
 
 GDB on the new Core test: 306 Pi requests, 93 `binding_level` calls. A controlled
 debugger run forcing only Pi's `derived_output` result back to the old false
@@ -2463,7 +2463,7 @@ small-case performance and cumulative net-negative implementation remain open.
   sorting proof suites pass; normalized exported results/Solve steps match the
   preceding Pi-key run. ASan/UBSan Core, IADT, program, callable-parameter,
   function-field and `derivation_io.sh` pass with leak detection/halt-on-error.
-- [ ] Group publication with the pending epoch.
+- [x] Group publication with the established-input reuse epoch (`a093e54`).
 
 This uses the existing structural map interner and projection index, not a new
 cache or proof rule. The proposed deletion is the duplicate projection recipe;
@@ -2508,7 +2508,7 @@ proof premises in their existing owners; it adds no second solver or format.
   results and Solve steps match debug and optimized runs exactly; compatibility
   63/63 and all four universal sorting proof suites pass.
 - [x] Record per-file implementation/header, test and documentation deltas.
-- [ ] Recheck remote tips, publish the group to Main/rewrite without force, and
+- [x] Recheck remote tips, publish the group to Main/rewrite without force, and
   verify both remote revisions. Preserve all open parent gates.
 
 A3/A4/A5, output-sensitive lexical enumeration, small-input performance against
@@ -2547,3 +2547,10 @@ inherits `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
 All three full acceptance invocations exited 0. There were no source/test edits
 between the frozen revision and these gates. This completes verification of the
 five-change publication group, not the remaining parent refactor obligations.
+
+Published atomically without force from `4b4fba7` to
+`a093e54d1ca8d32d7d8e80509ab820e818cc1ec3`; `git ls-remote` confirmed both
+Main and `rewrite/pointer-core-hott` at that revision. Documentation at
+publication: authority plan +44/-0; priority plan +243/-4. Implementation and
+test totals are unchanged from the table above. This publication-record update
+only checks the grouped entries and records the verified remote revisions.
