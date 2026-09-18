@@ -1717,7 +1717,7 @@ remote tips verified. Commit totals: implementation/header +2/-10, tests
   Keep regression coverage for references first discovered through reductions
   and independently selected proof roots; do not add an unproven index owner.
 - [x] Complete affected debug/sanitizer and full optimized acceptance.
-- [ ] Publish the completed epoch and verify both remote tips.
+- [x] Publish the completed epoch and verify both remote tips (`f467b34`).
 
 Compared with `8d4c731`, strict debug builds at `main.c:395` with `--steps
 1000000` give unchanged IF8 Solve/jobs/bindings/proofs/occurrences/Terms:
@@ -1752,3 +1752,8 @@ Per-file source changes: `synthesis.c` +20/-23 (net -3),
 The withdrawn writer change contributes zero lines. Cumulative implementation
 and header changes are +2,259/-1,023 (net +1,236) from R76 `3a3bf550`, and
 +7,219/-3,567 (net +3,652) from R0 `4657cc6`. The net-negative gate is unmet.
+
+Published as `f467b34ddee717e2dfe33dcb28d762285a3c65ec`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `8d4c731`; both
+remote tips verified. Commit totals: implementation +20/-23, tests +26/-0,
+documentation +62/-0. This publication record is documentation only.
